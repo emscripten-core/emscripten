@@ -23,8 +23,10 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '2':   'SETST',   # [l, 0, 0]            STACKTOP = l
   '3':   'SETI',    # [l, vl, vh]          l = v (16-bit int)
   '4':   'ADD',     # [lx, ly, lz]         lx = ly + lz (32-bit int)
-  '5':   'STORE32', # [lx, ly, 0]          HEAP32[lx >> 2] = ly
-  '6':   'BRT',     # [cond, tl, th]       if cond, jump t instructions (multiple of 4)
+  '7':   'SDIV',     # [lx, ly, lz]         lx = ly / lz (32-bit signed int)
+  '8':   'UDIV',     # [lx, ly, lz]         lx = ly / lz (32-bit unsigned int)
+  '15':  'STORE32', # [lx, ly, 0]          HEAP32[lx >> 2] = ly
+  '16':  'BRT',     # [cond, tl, th]       if cond, jump t instructions (multiple of 4)
   '253': 'CALL',    # [target, sig, params..]   target(params..) # TODO: assign to a var, optionally
   '254': 'RET',     # [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
   '255': 'FUNC',    # [n, 0, 0]            function with n locals (each taking 64 bits)
@@ -46,9 +48,12 @@ def get_access(l, s='i'):
   else:
     assert 0
 
-def get_coerced_access(l, s='i'):
+def get_coerced_access(l, s='i', unsigned=False):
   if s == 'i':
-    return get_access(l, s) + '|0'
+    if not unsigned:
+      return get_access(l, s) + '|0'
+    else:
+      return get_access(l, s) + '>>>0'
   elif s == 'd':
     return '+' + get_access(l, s)
   else:
@@ -60,6 +65,8 @@ CASES[ROPCODES['GETST']] = 'HEAP32[sp + (lx << 3) >> 2] = STACKTOP;'
 CASES[ROPCODES['SETST']] = 'STACKTOP = HEAP32[sp + (lx << 3) >> 2]|0;'
 CASES[ROPCODES['SETI']] = 'HEAP32[sp + (lx << 3) >> 2] = inst >>> 16;'
 CASES[ROPCODES['ADD']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') + (' + get_coerced_access('lz') + ') | 0;'
+CASES[ROPCODES['SDIV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') / (' + get_coerced_access('lz') + ') | 0;'
+CASES[ROPCODES['UDIV']] = get_access('lx') + ' = (' + get_coerced_access('ly', unsigned=True) + ') / (' + get_coerced_access('lz', unsigned=True) + ') >>> 0;'
 CASES[ROPCODES['STORE32']] = 'HEAP32[' + get_access('lx') + ' >> 2] = ' + get_coerced_access('ly') + ';';
 CASES[ROPCODES['BRT']] = 'if (' + get_coerced_access('lx') + ') { pc = pc + ((inst >> 16) << 2) | 0; continue; }'
 

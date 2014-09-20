@@ -5721,11 +5721,12 @@ function emterpretify(ast) {
         }
         case 'binary': {
           if (node[1] === '|' && node[3][0] === 'num' && node[3][1] === 0) {
+            // int-coerced operation
             var inner = node[2];
             switch (inner[0]) {
               case 'binary': {
                 switch (inner[1]) {
-                  case '+': {
+                  case '+': case '/': {
                     assert(!dropIt);
                     return makeMath(inner, ASM_INT);
                   }
@@ -5737,6 +5738,11 @@ function emterpretify(ast) {
                 // function call with dropped result
                 assert(dropIt);
                 return [-1, makeCall(inner, ASM_NONE)];
+              }
+              case 'name': {
+                var name = inner[1];
+                assert(asmData.vars[name] === ASM_INT);
+                return [locals[name], []];
               }
               default: throw 'ehh';
             }
@@ -5795,6 +5801,15 @@ function emterpretify(ast) {
       var opcode;
       switch(node[1]) {
         case '+': opcode = 'ADD'; break;
+        case '/': {
+          assert(node[2][0] === 'binary');
+          switch(node[2][1]) {
+            case '|': opcode = 'SDIV'; break;
+            case '>>>': opcode = 'UDIV'; break;
+            default: throw 'argh';
+          }
+          break;
+        }
         default: throw 'bad';
       }
       var y = getReg(node[2]);
