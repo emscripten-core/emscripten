@@ -5818,9 +5818,9 @@ function emterpretify(ast) {
           breakStack.pop();
           continueStack.pop();
           var condition = getReg(node[1]);
-          return ['marker', top, 0, 0].concat(body).concat(['marker', cond, 0, 0]).concat(condition).concat(
+          return [-1, ['marker', top, 0, 0].concat(body).concat(['marker', cond, 0, 0]).concat(condition[1]).concat(
             ['BRT', releaseIfFree(condition[0]), top, 0, 'marker', exit, 0, 0]
-          );
+          )];
         }
         case 'sub': {
           assert(node[1][0] === 'name');
@@ -5897,7 +5897,9 @@ function emterpretify(ast) {
       if (stats[0] === 'block') stats = stats[1];
       var ret = [];
       stats.forEach(function(stat) {
-        var curr = getReg(stat, true)[1];
+        var raw = getReg(stat, true);
+        //printErr('raw: ' + JSON.stringify(raw));
+        var curr = raw[1];
         printErr('stat: ' + JSON.stringify(curr));
         verifyCode(curr);
         ret = ret.concat(curr);
