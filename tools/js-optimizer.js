@@ -5797,7 +5797,7 @@ function emterpretify(ast) {
           if (node[1][0] === 'name') {
             // function call with dropped result
             assert(dropIt);
-            return [-1, makeCall(node, ASM_NONE)];
+            return [0, makeCall(0, node, ASM_NONE)];
           } else {
             // todo: function pointer call
           }
@@ -5865,7 +5865,7 @@ function emterpretify(ast) {
       return [x, y[1].concat(z[1]).concat([opcode, x, releaseIfFree(y[0], x), releaseIfFree(z[0], x)])];
     }
 
-    function makeCall(node, type) {
+    function makeCall(lx, node, type) {
       // TODO: specialize calls like imul
       assert(node[0] === 'call');
       assert(type === ASM_NONE);
@@ -5881,6 +5881,7 @@ function emterpretify(ast) {
           actuals.push(reg[0]);
           sig += ASM_SIG[detectAsmCoercion(param, asmData)];
         });
+        ret.push(lx);
         ret.push(node[1][1]);
         assert(sig.indexOf('u') < 0); // no undefined
         ret.push(sig);

@@ -34,7 +34,8 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '140': 'STORE16', # [lx, ly, 0]          HEAP16[lx >> 2] = ly
   '150': 'STORE32', # [lx, ly, 0]          HEAP32[lx >> 2] = ly
   '160': 'BRT',     # [cond, tl, th]       if cond, jump t instructions (multiple of 4)
-  '250': 'CALL',    # [target, sig, params..]   target(params..)
+  '250': 'CALL',    # [lx, target, sig, params..]   (lx = ) target(params..) lx's existence and type depend on the target's actual callsig;
+                    #                               this instruction can take multiple 32-bit instruction chunks
   '254': 'RET',     # [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
   '255': 'FUNC',    # [n, 0, 0]            function with n locals (each taking 64 bits)
 }
@@ -102,11 +103,15 @@ def make_emterpreter(t):
       sigs = call_sigs[name]
       assert len(sigs) == 1
       sig = sigs[0]
-      ret = '     ' + name + '(' + ', '.join([get_coerced_access('HEAP8[pc+%d>>0]' % (i+3)) for i in range(len(sig)-1)]) + ')'
-      assert sig[0] == 'v' # if sig[0] != 'v': ret = get_access(..
-      return ret + '; break;'
+      ret = name + '(' + ', '.join([get_coerced_access('HEAP8[pc+%d>>0]' % (i+4)) for i in range(len(sig)-1)]) + ')'
+      if sig[0] != 'v':
+        ret = get_access('lx', sig[0]) + ' = ' + ret
+      extra = len(sig) - 1 # [opcode, lx, target, sig], take the usual 4. params are extra
+      if extra > 0:
+        ret += '; pc = pc + %d | 0' % (4*((extra+3)>>2))
+      return '     ' + ret + '; break;'
 
-    CASES[ROPCODES['CALL']] = 'switch (lx|0) {\n' + \
+    CASES[ROPCODES['CALL']] = 'switch (ly|0) {\n' + \
       '\n'.join(filter(lambda x: 'None' not in x, ['    case %d: {\n%s\n    }' % (i, make_target_call(i)) for i in range(global_id-1)])) + \
       '\n    default: assert(0);' + \
       '\n   }'
@@ -203,13 +208,13 @@ def process_code(code):
   for i in range(len(code)/4):
     j = i*4
     if code[j] == 'CALL':
-      target = code[j+1]
-      sig = code[j+2]
+      target = code[j+2]
+      sig = code[j+3]
       if target not in call_sigs: call_sigs[target] = []
       sigs = call_sigs[target]
       if sig not in sigs: sigs.append(sig)
-      code[j+1] = global_funcs[target]
-      code[j+2] = sigs.index(sig)
+      code[j+2] = global_funcs[target]
+      code[j+3] = sigs.index(sig)
 
   # finalize instruction string names to opcodes
   for i in range(len(code)/4):
