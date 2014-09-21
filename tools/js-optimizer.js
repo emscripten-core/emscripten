@@ -1898,7 +1898,7 @@ var ASM_UNSIGNED = 2
 function detectSign(node) {
   if (node[0] === 'binary') {
     switch(node[1]) {
-      case '|': return ASM_SIGNED;
+      case '|': case '&': return ASM_SIGNED;
       case '>>>': return ASM_UNSIGNED;
       case '+': return ASM_FLEXIBLE;
       default: throw 'yikes';
@@ -5801,7 +5801,7 @@ function emterpretify(ast) {
               }
               break;
             }
-            case '+': case '<': case '/': {
+            case '+': case '<': case '/': case '==': {
               return makeMath(node, type, sign);
             }
             default: throw 'ehh';
@@ -5893,6 +5893,7 @@ function emterpretify(ast) {
           else opcode = 'ULT';
           break;
         }
+        case '==': opcode = 'EQ'; break;
         default: throw 'bad';
       }
       var y = getReg(node[2]);
