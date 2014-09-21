@@ -5791,7 +5791,7 @@ function emterpretify(ast) {
           switch (node[1]) {
             case '&': return makeMath(node, ASM_INT, ASM_SIGNED);
             case '>=': case '>':
-            case '+': case '-': case '<': case '<=': case '/': case '==': {
+            case '+': case '-': case '<': case '<=': case '/': case '==': case '<<': case '>>': case '>>>': {
               var type = getCombinedType(node[2], node[3], asmData, typeHint);
               var sign = getCombinedSign(node[2], node[3], signHint);
               if (node[1] === '>=' || node[1] === '>') {
@@ -5915,6 +5915,9 @@ function emterpretify(ast) {
         }
         case '==': opcode = 'EQ'; break;
         case '&': opcode = 'AND'; break;
+        case '<<': opcode = 'SHL'; break;
+        case '>>': opcode = 'ASHR'; break;
+        case '>>>': opcode = 'LSHR'; break;
         default: throw 'bad';
       }
       var y = getReg(node[2]);

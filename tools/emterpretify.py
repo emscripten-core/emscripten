@@ -15,7 +15,7 @@ EMT_STACK_MAX = 1024*1024
 
 # consts
 
-#BLACKLIST = set(['_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets'])
+#BLACKLIST = set(['copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets'])
 BLACKLIST = set(['_memcpy', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets'])
 
 OPCODES = { # l, lx, ly etc - one of 256 locals
@@ -33,6 +33,9 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '22':  'SLE',     # [lx, ly, lz]         ly = ly <= lz (32-bit signed)
   '23':  'ULE',     # [lx, ly, lz]         ly = ly <= lz (32-bit unsigned)
   '30':  'AND',     # [lx, ly, lz]         ly = ly & lz
+  '40':  'SHL',     # [lx, ly, lz]         ly = ly << lz
+  '41':  'ASHR',    # [lx, ly, lz]         ly = ly >> lz
+  '42':  'LSHR',    # [lx, ly, lz]         ly = ly >>> lz
   '100': 'LOAD8',   # [lx, ly, 0]          lx = HEAP8[ly >> 0]
   '110': 'LOAD16',  # [lx, ly, 0]          lx = HEAP16[ly >> 1]
   '120': 'LOAD32',  # [lx, ly, 0]          lx = HEAP32[ly >> 2]
@@ -89,7 +92,10 @@ CASES[ROPCODES['SLT']] = get_access('lx') + ' = (' + get_coerced_access('ly') + 
 CASES[ROPCODES['ULT']] = get_access('lx') + ' = (' + get_coerced_access('ly', unsigned=True) + ') < (' + get_coerced_access('lz', unsigned=True) + ') | 0;'
 CASES[ROPCODES['SLE']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') <= (' + get_coerced_access('lz') + ') | 0;'
 CASES[ROPCODES['ULE']] = get_access('lx') + ' = (' + get_coerced_access('ly', unsigned=True) + ') <= (' + get_coerced_access('lz', unsigned=True) + ') | 0;'
-CASES[ROPCODES['AND']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') & (' + get_coerced_access('lz') + ') | 0;'
+CASES[ROPCODES['AND']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') & (' + get_coerced_access('lz') + ');'
+CASES[ROPCODES['SHL']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') << (' + get_coerced_access('lz') + ');'
+CASES[ROPCODES['ASHR']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') >> (' + get_coerced_access('lz') + ');'
+CASES[ROPCODES['LSHR']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') >>> (' + get_coerced_access('lz') + ');'
 CASES[ROPCODES['LOAD8']] = get_access('lx') + ' = ' + 'HEAP8[' + get_access('ly') + ' >> 0];'
 CASES[ROPCODES['LOAD16']] = get_access('lx') + ' = ' + 'HEAP16[' + get_access('ly') + ' >> 1];'
 CASES[ROPCODES['LOAD32']] = get_access('lx') + ' = ' + 'HEAP32[' + get_access('ly') + ' >> 2];'
