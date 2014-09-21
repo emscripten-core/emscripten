@@ -5821,6 +5821,7 @@ function emterpretify(ast) {
           } else {
             // todo: function pointer call
           }
+          throw 'todo';
         }
         case 'return': {
           assert(dropIt);
@@ -5869,7 +5870,7 @@ function emterpretify(ast) {
           var x = getFree(y[0]);
           return [x, y[1].concat([opcode, x, releaseIfFree(y[0], x), 0])];
         }
-        default: throw 'getReg wha? ' + node[0];
+        default: throw 'getReg wha? ' + node[0] + new Error().stack;
       }
     }
     function releaseIfFree(l, possible) {
@@ -5930,6 +5931,7 @@ function emterpretify(ast) {
     function walkStatements(stats) {
       if (!stats) return [];
       if (stats[0] === 'block') stats = stats[1];
+      if (typeof stats[0] === 'string') stats = [stats];
       var ret = [];
       stats.forEach(function(stat) {
         var raw = getReg(stat, true);
