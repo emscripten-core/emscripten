@@ -5854,32 +5854,10 @@ function emterpretify(ast) {
           return [-1, reg[1].concat(['RET', value ? releaseIfFree(reg[0]) : 0, 0, 0])];
         }
         case 'do': {
-          // TODO: optimize do-while(0)
-          var top = markerId++, cond = markerId++, exit = markerId++;
-          breakStack.push(exit);
-          continueStack.push(cond);
-          // TODO: labels
-          var body = walkStatements(node[2]);
-          breakStack.pop();
-          continueStack.pop();
-          var condition = getReg(node[1]);
-          return [-1, ['marker', top, 0, 0].concat(body).concat(['marker', cond, 0, 0]).concat(condition[1]).concat(
-            ['BRT', releaseIfFree(condition[0]), top, 0, 'marker', exit, 0, 0]
-          )];
+          return makeDo(node);
         }
         case 'while': {
-          var condition = getReg(node[1]);
-          var cond = markerId++, top = markerId++, exit = markerId++;
-          breakStack.push(exit);
-          continueStack.push(cond);
-          // TODO: labels
-          var ret = ['marker', cond, 0, 0].concat(condition[1]).concat(
-            ['BRF', releaseIfFree(condition[0]), exit, 0, 'marker', top, 0, 0]
-          );
-          ret = ret.concat(walkStatements(node[2]));
-          breakStack.pop();
-          continueStack.pop();
-          return [-1, ret.concat(['marker', exit, 0, 0])];
+          return makeWhile(node);
         }
         case 'if': {
           var exit = markerId++;
@@ -5962,6 +5940,35 @@ function emterpretify(ast) {
       var y = getReg(node[2]);
       var x = getFree(y[0]);
       return [x, y[1].concat([opcode, x, releaseIfFree(y[0], x), 0])];
+    }
+
+    function makeDo(node) {
+      // TODO: optimize do-while(0)
+      var top = markerId++, cond = markerId++, exit = markerId++;
+      breakStack.push(exit);
+      continueStack.push(cond);
+      var body = walkStatements(node[2]);
+      breakStack.pop();
+      continueStack.pop();
+      var condition = getReg(node[1]);
+      return [-1, ['marker', top, 0, 0].concat(body).concat(['marker', cond, 0, 0]).concat(condition[1]).concat(
+        ['BRT', releaseIfFree(condition[0]), top, 0, 'marker', exit, 0, 0]
+      )];
+    }
+
+    function makeWhile(node, label) {
+      var condition = getReg(node[1]);
+      var cond = markerId++, top = markerId++, exit = markerId++;
+      breakStack.push(exit);
+      continueStack.push(cond);
+      // TODO: labels
+      var ret = ['marker', cond, 0, 0].concat(condition[1]).concat(
+        ['BRF', releaseIfFree(condition[0]), exit, 0, 'marker', top, 0, 0]
+      );
+      ret = ret.concat(walkStatements(node[2]));
+      breakStack.pop();
+      continueStack.pop();
+      return [-1, ret.concat(['marker', exit, 0, 0])];
     }
 
     function makeCall(lx, node, type) {
