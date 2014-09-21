@@ -27,17 +27,17 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '5':   'SUB',     # [lx, ly, lz]         lx = ly - lz (32-bit int)
   '7':   'SDIV',    # [lx, ly, lz]         lx = ly / lz (32-bit signed int)
   '8':   'UDIV',    # [lx, ly, lz]         lx = ly / lz (32-bit unsigned int)
-  '18':  'EQ',      # [lx, ly, lz]         ly = ly == lz
-  '20':  'SLT',     # [lx, ly, lz]         ly = ly < lz (32-bit signed)
-  '21':  'ULT',     # [lx, ly, lz]         ly = ly < lz (32-bit unsigned)
-  '22':  'SLE',     # [lx, ly, lz]         ly = ly <= lz (32-bit signed)
-  '23':  'ULE',     # [lx, ly, lz]         ly = ly <= lz (32-bit unsigned)
-  '30':  'AND',     # [lx, ly, lz]         ly = ly & lz
-  '31':  'OR',      # [lx, ly, lz]         ly = ly | lz
-  '32':  'XOR',     # [lx, ly, lz]         ly = ly ^ lz
-  '40':  'SHL',     # [lx, ly, lz]         ly = ly << lz
-  '41':  'ASHR',    # [lx, ly, lz]         ly = ly >> lz
-  '42':  'LSHR',    # [lx, ly, lz]         ly = ly >>> lz
+  '18':  'EQ',      # [lx, ly, lz]         lx = ly == lz
+  '20':  'SLT',     # [lx, ly, lz]         lx = ly < lz (32-bit signed)
+  '21':  'ULT',     # [lx, ly, lz]         lx = ly < lz (32-bit unsigned)
+  '22':  'SLE',     # [lx, ly, lz]         lx = ly <= lz (32-bit signed)
+  '23':  'ULE',     # [lx, ly, lz]         lx = ly <= lz (32-bit unsigned)
+  '30':  'AND',     # [lx, ly, lz]         lx = ly & lz
+  '31':  'OR',      # [lx, ly, lz]         lx = ly | lz
+  '32':  'XOR',     # [lx, ly, lz]         lx = ly ^ lz
+  '40':  'SHL',     # [lx, ly, lz]         lx = ly << lz
+  '41':  'ASHR',    # [lx, ly, lz]         lx = ly >> lz
+  '42':  'LSHR',    # [lx, ly, lz]         lx = ly >>> lz
   '100': 'LOAD8',   # [lx, ly, 0]          lx = HEAP8[ly >> 0]
   '110': 'LOAD16',  # [lx, ly, 0]          lx = HEAP16[ly >> 1]
   '120': 'LOAD32',  # [lx, ly, 0]          lx = HEAP32[ly >> 2]
