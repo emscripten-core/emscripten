@@ -24,6 +24,7 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '2':   'SETST',   # [l, 0, 0]            STACKTOP = l
   '3':   'SETVI',   # [l, vl, vh]          l = v (16-bit int)
   '4':   'ADD',     # [lx, ly, lz]         lx = ly + lz (32-bit int)
+  '5':   'SUB',     # [lx, ly, lz]         lx = ly - lz (32-bit int)
   '7':   'SDIV',    # [lx, ly, lz]         lx = ly / lz (32-bit signed int)
   '8':   'UDIV',    # [lx, ly, lz]         lx = ly / lz (32-bit unsigned int)
   '18':  'EQ',      # [lx, ly, lz]         ly = ly == lz
@@ -78,6 +79,7 @@ CASES[ROPCODES['GETST']] = 'HEAP32[sp + (lx << 3) >> 2] = STACKTOP;'
 CASES[ROPCODES['SETST']] = 'STACKTOP = HEAP32[sp + (lx << 3) >> 2]|0;'
 CASES[ROPCODES['SETVI']] = 'HEAP32[sp + (lx << 3) >> 2] = inst >>> 16;'
 CASES[ROPCODES['ADD']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') + (' + get_coerced_access('lz') + ') | 0;'
+CASES[ROPCODES['SUB']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') - (' + get_coerced_access('lz') + ') | 0;'
 CASES[ROPCODES['SDIV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') / (' + get_coerced_access('lz') + ') | 0;'
 CASES[ROPCODES['UDIV']] = get_access('lx') + ' = (' + get_coerced_access('ly', unsigned=True) + ') / (' + get_coerced_access('lz', unsigned=True) + ') >>> 0;'
 CASES[ROPCODES['EQ']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') == (' + get_coerced_access('lz') + ') | 0;'
