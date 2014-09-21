@@ -5854,6 +5854,7 @@ function emterpretify(ast) {
           return [-1, reg[1].concat(['RET', value ? releaseIfFree(reg[0]) : 0, 0, 0])];
         }
         case 'do': {
+          // TODO: optimize do-while(0)
           var top = markerId++, cond = markerId++, exit = markerId++;
           breakStack.push(exit);
           continueStack.push(cond);
