@@ -5790,16 +5790,16 @@ function emterpretify(ast) {
 
           switch (node[1]) {
             case '&': return makeMath(node, ASM_INT, ASM_SIGNED);
-            case '>=':
-            case '+': case '-': case '<': case '/': case '==': {
+            case '>=': case '>':
+            case '+': case '-': case '<': case '<=': case '/': case '==': {
               var type = getCombinedType(node[2], node[3], asmData, typeHint);
               var sign = getCombinedSign(node[2], node[3], signHint);
-              if (node[1] === '>=') {
+              if (node[1] === '>=' || node[1] === '>') {
                 if (type === ASM_INT) { // float/double comparisons are not antisymmetrical due to NaNs
                   var temp = node[2];
                   node[2] = node[3];
                   node[3] = temp;
-                  node[1] = '<';
+                  node[1] = node[1] === '>=' ? '<' : '<=';
                 } else throw 'ex ' + type;
               }
               return makeMath(node, type, sign);
@@ -5906,6 +5906,11 @@ function emterpretify(ast) {
         case '<': {
           if (sign === ASM_SIGNED) opcode = 'SLT';
           else opcode = 'ULT';
+          break;
+        }
+        case '<=': {
+          if (sign === ASM_SIGNED) opcode = 'SLE';
+          else opcode = 'ULE';
           break;
         }
         case '==': opcode = 'EQ'; break;

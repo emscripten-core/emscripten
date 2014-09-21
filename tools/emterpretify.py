@@ -30,6 +30,8 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '18':  'EQ',      # [lx, ly, lz]         ly = ly == lz
   '20':  'SLT',     # [lx, ly, lz]         ly = ly < lz (32-bit signed)
   '21':  'ULT',     # [lx, ly, lz]         ly = ly < lz (32-bit unsigned)
+  '22':  'SLE',     # [lx, ly, lz]         ly = ly <= lz (32-bit signed)
+  '23':  'ULE',     # [lx, ly, lz]         ly = ly <= lz (32-bit unsigned)
   '30':  'AND',     # [lx, ly, lz]         ly = ly & lz
   '100': 'LOAD8',   # [lx, ly, 0]          lx = HEAP8[ly >> 0]
   '110': 'LOAD16',  # [lx, ly, 0]          lx = HEAP16[ly >> 1]
@@ -85,6 +87,8 @@ CASES[ROPCODES['UDIV']] = get_access('lx') + ' = (' + get_coerced_access('ly', u
 CASES[ROPCODES['EQ']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') == (' + get_coerced_access('lz') + ') | 0;'
 CASES[ROPCODES['SLT']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') < (' + get_coerced_access('lz') + ') | 0;'
 CASES[ROPCODES['ULT']] = get_access('lx') + ' = (' + get_coerced_access('ly', unsigned=True) + ') < (' + get_coerced_access('lz', unsigned=True) + ') | 0;'
+CASES[ROPCODES['SLE']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') <= (' + get_coerced_access('lz') + ') | 0;'
+CASES[ROPCODES['ULE']] = get_access('lx') + ' = (' + get_coerced_access('ly', unsigned=True) + ') <= (' + get_coerced_access('lz', unsigned=True) + ') | 0;'
 CASES[ROPCODES['AND']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') & (' + get_coerced_access('lz') + ') | 0;'
 CASES[ROPCODES['LOAD8']] = get_access('lx') + ' = ' + 'HEAP8[' + get_access('ly') + ' >> 0];'
 CASES[ROPCODES['LOAD16']] = get_access('lx') + ' = ' + 'HEAP16[' + get_access('ly') + ' >> 1];'
