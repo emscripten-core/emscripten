@@ -5802,7 +5802,7 @@ function emterpretify(ast) {
           switch (node[1]) {
             case '&': case '|': case '^': case '<<': case '>>': case '>>>': return makeBinary(node, ASM_INT, ASM_SIGNED);
             case '>=': case '>':
-            case '+': case '-': case '<': case '<=': case '/': case '==': case '!=': {
+            case '+': case '-': case '*': case '/': case '<': case '<=': case '==': case '!=': {
               var type = getCombinedType(node[2], node[3], asmData, typeHint);
               var sign = getCombinedSign(node[2], node[3], signHint);
               if (node[1] === '>=' || node[1] === '>') {
@@ -5953,6 +5953,11 @@ function emterpretify(ast) {
       switch(node[1]) {
         case '+': opcode = 'ADD'; break;
         case '-': opcode = 'SUB'; break;
+        case '*': {
+          assert(type === ASM_INT);
+          opcode = 'MUL';
+          break;
+        }
         case '/': {
           if (sign === ASM_SIGNED) opcode = 'SDIV';
           else opcode = 'UDIV';
