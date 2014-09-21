@@ -15,7 +15,7 @@ EMT_STACK_MAX = 1024*1024
 
 # consts
 
-BLACKLIST = set(['_memcpy', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets'])
+BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets'])
 
 OPCODES = { # l, lx, ly etc - one of 256 locals
   '0':   'SET',     # [lx, ly, 0]          lx = ly (int or float, not double)
