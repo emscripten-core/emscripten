@@ -5789,9 +5789,9 @@ function emterpretify(ast) {
           assert(!dropIt);
 
           switch (node[1]) {
-            case '&': case '|': case '^': return makeMath(node, ASM_INT, ASM_SIGNED);
+            case '&': case '|': case '^': case '<<': case '>>': case '>>>': return makeMath(node, ASM_INT, ASM_SIGNED);
             case '>=': case '>':
-            case '+': case '-': case '<': case '<=': case '/': case '==': case '<<': case '>>': case '>>>': {
+            case '+': case '-': case '<': case '<=': case '/': case '==': {
               var type = getCombinedType(node[2], node[3], asmData, typeHint);
               var sign = getCombinedSign(node[2], node[3], signHint);
               if (node[1] === '>=' || node[1] === '>') {
