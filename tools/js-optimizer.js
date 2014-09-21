@@ -5690,14 +5690,17 @@ function emterpretify(ast) {
       var ret = freeLocals.pop();
       maxLocal = Math.max(maxLocal, ret);
       assert(ret >= numLocals);
+      //printErr('get free  ' + ret);
       return ret;
     }
     // if possible is passed in, and is identical to l, then it means l was reused, and we must not free it
     function releaseFree(l, possible) {
       if (l === possible) return;
+      //printErr('free free ' + l);
       assert(freeLocals.indexOf(l) < 0);
       assert(l >= numLocals);
       freeLocals.push(l);
+      return l;
     }
 
     var markerId = 0;
@@ -5884,6 +5887,19 @@ function emterpretify(ast) {
                      .concat(['marker', otherwise, 0, 0]).concat(walkStatements(node[3]));
           }
           return [-1, ret.concat(['marker', exit, 0, 0])];
+        }
+        case 'conditional': {
+          // TODO: optimize
+          var otherwise = markerId++, exit = markerId++;
+          var temp = getFree();
+          var condition = getReg(node[1]);
+          var ret = condition[1].concat(['BRF', releaseIfFree(condition[0]), otherwise, 0]);
+          var first = getReg(node[2]);
+          ret = ret.concat(first[1]).concat(['SET', temp, releaseIfFree(first[0]), 0, 'BR', 0, exit, 0]);
+          var second = getReg(node[3]);
+          ret = ret.concat(['marker', otherwise, 0, 0]).concat(second[1]).concat(['SET', temp, releaseIfFree(second[0]), 0]);
+          ret = ret.concat(['marker', exit, 0, 0]);
+          return [temp, ret];
         }
         case 'sub': {
           assert(node[1][0] === 'name');
