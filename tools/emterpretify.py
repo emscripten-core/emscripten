@@ -160,7 +160,7 @@ function emterpret%s%s(pc) {
   lx = (inst >> 8) & 255;
   ly = (inst >> 16) & 255;
   lz = inst >>> 24;
-  //printErr([pc, inst&255, lx, ly, lz]);
+  //printErr([pc, inst&255, %s[inst&255], lx, ly, lz]);
   //printErr('  ' + Array.prototype.slice.call(HEAPU8, sp, sp+8));
   switch (inst&255) {
 %s
@@ -173,6 +173,7 @@ function emterpret%s%s(pc) {
   '_' if t != 'void' else '',
   '' if t == 'void' else t[0],
   ROPCODES['FUNC'],
+  json.dumps(OPCODES),
   '\n'.join(['   case %d: %s break;' % (k, v) for k, v in CASES.iteritems()]),
   '' if t == 'void' else 'return %s;' % shared.JS.make_initializer(t[0], settings)
 )
