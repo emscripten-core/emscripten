@@ -5844,6 +5844,20 @@ function emterpretify(ast) {
             ['BRT', releaseIfFree(condition[0]), top, 0, 'marker', exit, 0, 0]
           )];
         }
+        case 'while': {
+          var condition = getReg(node[1]);
+          var cond = markerId++, top = markerId++, exit = markerId++;
+          breakStack.push(exit);
+          continueStack.push(cond);
+          // TODO: labels
+          var ret = ['marker', cond, 0, 0].concat(condition[1]).concat(
+            ['BRF', releaseIfFree(condition[0]), exit, 0, 'marker', top, 0, 0]
+          );
+          ret = ret.concat(walkStatements(node[2]));
+          breakStack.pop();
+          continueStack.pop();
+          return [-1, ret.concat(['marker', exit, 0, 0])];
+        }
         case 'if': {
           var exit = markerId++;
           var condition = getReg(node[1]);
