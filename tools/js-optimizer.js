@@ -5786,10 +5786,23 @@ function emterpretify(ast) {
           } // TODO: double etc. coercions
 
           // not a simple coercion
+          var type = getCombinedType(node[2], node[3], asmData, typeHint);
+          var sign = getCombinedSign(node[2], node[3], signHint);
+          assert(!dropIt);
+
           switch (node[1]) {
+            case '>=': {
+              if (type === ASM_INT) { // float/double comparisons are not antisymmetrical due to NaNs
+                var temp = node[2];
+                node[2] = node[3];
+                node[3] = temp;
+                node[1] = '<';
+                return makeMath(node, type, sign);
+              }
+              break;
+            }
             case '+': case '<': case '/': {
-              assert(!dropIt);
-              return makeMath(node, getCombinedType(node[2], node[3], asmData, typeHint), getCombinedSign(node[2], node[3], signHint));
+              return makeMath(node, type, sign);
             }
             default: throw 'ehh';
           }
