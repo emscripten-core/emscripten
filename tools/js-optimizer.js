@@ -5786,22 +5786,22 @@ function emterpretify(ast) {
           } // TODO: double etc. coercions
 
           // not a simple coercion
-          var type = getCombinedType(node[2], node[3], asmData, typeHint);
-          var sign = getCombinedSign(node[2], node[3], signHint);
           assert(!dropIt);
 
           switch (node[1]) {
-            case '>=': {
-              if (type === ASM_INT) { // float/double comparisons are not antisymmetrical due to NaNs
-                var temp = node[2];
-                node[2] = node[3];
-                node[3] = temp;
-                node[1] = '<';
-                return makeMath(node, type, sign);
-              }
-              break;
-            }
+            case '&': return makeMath(node, ASM_INT, ASM_SIGNED);
+            case '>=':
             case '+': case '<': case '/': case '==': {
+              var type = getCombinedType(node[2], node[3], asmData, typeHint);
+              var sign = getCombinedSign(node[2], node[3], signHint);
+              if (node[1] === '>=') {
+                if (type === ASM_INT) { // float/double comparisons are not antisymmetrical due to NaNs
+                  var temp = node[2];
+                  node[2] = node[3];
+                  node[3] = temp;
+                  node[1] = '<';
+                } else throw 'ex ' + type;
+              }
               return makeMath(node, type, sign);
             }
             default: throw 'ehh';
@@ -5894,6 +5894,7 @@ function emterpretify(ast) {
           break;
         }
         case '==': opcode = 'EQ'; break;
+        case '&': opcode = 'AND'; break;
         default: throw 'bad';
       }
       var y = getReg(node[2]);
