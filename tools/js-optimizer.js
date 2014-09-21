@@ -5919,6 +5919,12 @@ function emterpretify(ast) {
           ret = ret.concat(['marker', exit, 0, 0]);
           return [temp, ret];
         }
+        case 'seq': {
+          var first = getReg(node[1], true); // first output is always dropped
+          releaseIfFree(first[0]);
+          var second = getReg(node[2], dropIt); // second output might be dropped
+          return [second[0], first[1].concat(second[1])];
+        }
         case 'sub': {
           assert(node[1][0] === 'name');
           // coerced heap access => a load

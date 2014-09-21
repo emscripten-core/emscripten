@@ -4105,7 +4105,7 @@ pass: error == ENOTDIR
 
 
   def test_emterpreter(self):
-    for source in ['hello_world.c', 'hello_world_loop.cpp']:
+    for source in ['hello_world.c', 'hello_world_loop.cpp']:#, 'fannkuch.cpp']:
       print
       print source
       self.clear()
