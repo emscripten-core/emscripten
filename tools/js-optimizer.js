@@ -6134,10 +6134,10 @@ function emterpretify(ast) {
 
     var locals = {};
     var numLocals = 0;
-    for (var i in asmData.vars) {
+    for (var i in asmData.params) {
       locals[i] = numLocals++;
     }
-    for (var i in asmData.params) {
+    for (var i in asmData.vars) {
       locals[i] = numLocals++;
     }
     assert(numLocals <= 256);
