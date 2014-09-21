@@ -5859,6 +5859,17 @@ function emterpretify(ast) {
         case 'while': {
           return makeWhile(node);
         }
+        case 'label': {
+          var name = node[1];
+          var inner = node[2];
+          assert(name);
+          if (inner[0] === 'do') {
+            return makeDo(inner, name);
+          } else if (inner[0] === 'while') {
+            return makeWhile(inner, name);
+          }
+          throw 'sigh';
+        }
         case 'if': {
           var exit = markerId++;
           var condition = getReg(node[1]);
@@ -5942,14 +5953,24 @@ function emterpretify(ast) {
       return [x, y[1].concat([opcode, x, releaseIfFree(y[0], x), 0])];
     }
 
-    function makeDo(node) {
+    function makeDo(node, label) {
       // TODO: optimize do-while(0)
       var top = markerId++, cond = markerId++, exit = markerId++;
       breakStack.push(exit);
       continueStack.push(cond);
+      if (label) {
+        assert(!(label in breakLabels));
+        breakLabels[label] = exit;
+        assert(!(label in continueLabels));
+        continueLabels[label] = cond;
+      }
       var body = walkStatements(node[2]);
       breakStack.pop();
       continueStack.pop();
+      if (label) {
+        delete breakLabels[label];
+        delete continueLabels[label];
+      }
       var condition = getReg(node[1]);
       return [-1, ['marker', top, 0, 0].concat(body).concat(['marker', cond, 0, 0]).concat(condition[1]).concat(
         ['BRT', releaseIfFree(condition[0]), top, 0, 'marker', exit, 0, 0]
@@ -5961,13 +5982,22 @@ function emterpretify(ast) {
       var cond = markerId++, top = markerId++, exit = markerId++;
       breakStack.push(exit);
       continueStack.push(cond);
-      // TODO: labels
+      if (label) {
+        assert(!(label in breakLabels));
+        breakLabels[label] = exit;
+        assert(!(label in continueLabels));
+        continueLabels[label] = cond;
+      }
       var ret = ['marker', cond, 0, 0].concat(condition[1]).concat(
         ['BRF', releaseIfFree(condition[0]), exit, 0, 'marker', top, 0, 0]
       );
       ret = ret.concat(walkStatements(node[2]));
       breakStack.pop();
       continueStack.pop();
+      if (label) {
+        delete breakLabels[label];
+        delete continueLabels[label];
+      }
       return [-1, ret.concat(['marker', exit, 0, 0])];
     }
 
