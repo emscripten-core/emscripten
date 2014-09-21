@@ -131,6 +131,7 @@ function emterpret%s%s(pc) {
   ly = (inst >> 16) & 255;
   lz = inst >>> 24;
   //printErr([pc, inst&255, lx, ly, lz]);
+  //printErr('  ' + Array.prototype.slice.call(HEAPU8, sp, sp+8));
   switch (inst&255) {
 %s
    default: assert(0);

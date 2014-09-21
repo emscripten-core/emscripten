@@ -5682,11 +5682,14 @@ function emterpretify(ast) {
       assert(freeLocals.length > 0);
       var ret = freeLocals.pop();
       maxLocal = Math.max(maxLocal, ret);
+      assert(ret >= numLocals);
       return ret;
     }
     // if possible is passed in, and is identical to l, then it means l was reused, and we must not free it
     function releaseFree(l, possible) {
       if (l === possible) return;
+      assert(freeLocals.indexOf(l) < 0);
+      assert(l >= numLocals);
       freeLocals.push(l);
     }
 
@@ -5836,8 +5839,8 @@ function emterpretify(ast) {
         default: throw 'getReg wha? ' + node[0];
       }
     }
-    function releaseIfFree(l) {
-      if (l >= numLocals) releaseFree(l);
+    function releaseIfFree(l, possible) {
+      if (l >= numLocals) releaseFree(l, possible);
       return l;
     }
 
@@ -5956,7 +5959,7 @@ function emterpretify(ast) {
     assert(numLocals <= 256);
     for (var i = 255; i >= numLocals; i--) {
       freeLocals.push(i);
-    }    
+    }
 
     var stats = getStatements(func);
     // emit stack assignments, emterpreter assumes params to be in place
