@@ -1898,7 +1898,7 @@ var ASM_UNSIGNED = 2
 function detectSign(node) {
   if (node[0] === 'binary') {
     switch(node[1]) {
-      case '|': case '&': return ASM_SIGNED;
+      case '|': case '&': case '^': case '<<': case '>>': return ASM_SIGNED;
       case '>>>': return ASM_UNSIGNED;
       case '+': return ASM_FLEXIBLE;
       default: throw 'yikes';
