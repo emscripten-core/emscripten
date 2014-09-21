@@ -5655,6 +5655,8 @@ function emterpretify(ast) {
   var OPCODES = extraInfo.opcodes;
   var ROPCODES = extraInfo.ropcodes;
 
+  var BRANCHES = set('BR', 'BRT', 'BRF');
+
   function verifyCode(code) {
     if (code.length % 4 !== 0) assert(0, JSON.stringify(code));
     for (var i = 0; i < code.length; i++) if (code[i] === undefined || code[i] === null || code < 0 || code > 255) assert(0, i + ' : ' + JSON.stringify(code));
@@ -5828,6 +5830,21 @@ function emterpretify(ast) {
             ['BRT', releaseIfFree(condition[0]), top, 0, 'marker', exit, 0, 0]
           )];
         }
+        case 'if': {
+          var exit = markerId++;
+          var condition = getReg(node[1]);
+          var ret;
+          if (!node[3]) {
+            ret = condition[1].concat(['BRF', releaseIfFree(condition[0]), exit, 0]);
+            ret = ret.concat(walkStatements(node[2]));
+          } else {
+            var otherwise = markerId++;
+            ret = condition[1].concat(['BRF', releaseIfFree(condition[0]), otherwise, 0]);
+            ret = ret.concat(walkStatements(node[2])).concat(['BR', 0, exit, 0])
+                     .concat(['marker', otherwise, 0, 0]).concat(walkStatements(node[3]));
+          }
+          return [-1, ret.concat(['marker', exit, 0, 0])];
+        }
         case 'sub': {
           assert(node[1][0] === 'name');
           // coerced heap access => a load
@@ -5923,9 +5940,9 @@ function emterpretify(ast) {
           i -= 4;
         }
       }
-      // second pass, finalize jumps
+      // second pass, finalize jumps TODO: optimize jump->jump->x to jump->x
       for (var i = 0; i < code.length; i += 4) {
-        if (code[i] === 'BRT') {
+        if (code[i] in BRANCHES) {
           var target = markers[code[i+2]];
           assert(target !== undefined);
           var offset = target - i;

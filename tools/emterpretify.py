@@ -15,6 +15,7 @@ EMT_STACK_MAX = 1024*1024
 
 # consts
 
+#BLACKLIST = set(['_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets'])
 BLACKLIST = set(['_memcpy', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets'])
 
 OPCODES = { # l, lx, ly etc - one of 256 locals
@@ -33,7 +34,9 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '130': 'STORE8',  # [lx, ly, 0]          HEAP8[lx >> 2] = ly
   '140': 'STORE16', # [lx, ly, 0]          HEAP16[lx >> 2] = ly
   '150': 'STORE32', # [lx, ly, 0]          HEAP32[lx >> 2] = ly
+  '159': 'BR',      # [0, tl, th]          jump t instructions (multiple of 4)
   '160': 'BRT',     # [cond, tl, th]       if cond, jump t instructions (multiple of 4)
+  '161': 'BRF',     # [cond, tl, th]       if !cond, jump t instructions (multiple of 4)
   '250': 'CALL',    # [lx, target, sig, params..]   (lx = ) target(params..) lx's existence and type depend on the target's actual callsig;
                     #                               this instruction can take multiple 32-bit instruction chunks
   '254': 'RET',     # [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
@@ -83,7 +86,9 @@ CASES[ROPCODES['LOAD32']] = get_access('lx') + ' = ' + 'HEAP32[' + get_access('l
 CASES[ROPCODES['STORE8']] = 'HEAP8[' + get_access('lx') + ' >> 0] = ' + get_coerced_access('ly') + ';';
 CASES[ROPCODES['STORE16']] = 'HEAP16[' + get_access('lx') + ' >> 1] = ' + get_coerced_access('ly') + ';';
 CASES[ROPCODES['STORE32']] = 'HEAP32[' + get_access('lx') + ' >> 2] = ' + get_coerced_access('ly') + ';';
+CASES[ROPCODES['BR']] = 'pc = pc + ((inst >> 16) << 2) | 0; continue;'
 CASES[ROPCODES['BRT']] = 'if (' + get_coerced_access('lx') + ') { pc = pc + ((inst >> 16) << 2) | 0; continue; }'
+CASES[ROPCODES['BRF']] = 'if (!(' + get_coerced_access('lx') + ')) { pc = pc + ((inst >> 16) << 2) | 0; continue; }'
 
 def make_emterpreter(t):
   # return is specialized per interpreter
