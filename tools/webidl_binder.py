@@ -221,6 +221,9 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
     if return_type in interfaces:
       call_prefix += 'wrapPointer('
       call_postfix += ', ' + return_type + ')'
+    elif return_type == 'String':
+      call_prefix += 'Pointer_stringify('
+      call_postfix += ')'
 
   args = ['arg%d' % i for i in range(max_args)]
   if not constructor:

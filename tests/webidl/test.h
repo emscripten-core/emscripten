@@ -56,6 +56,7 @@ public:
     printf("|%s|%d|%s|%d|\n", s, i, anotherString, anotherInteger);
   }
   void PrintFloat(float f) { printf("%.2f\n", f); }
+  const char* returnAString() { return "a returned string"; }
 };
 
 struct RefUser {
