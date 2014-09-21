@@ -5873,6 +5873,24 @@ function emterpretify(ast) {
           }
           throw 'sigh';
         }
+        case 'break': {
+          var label = node[1];
+          if (!label) {
+            assert(breakStack.length > 0);
+            return [-1, ['BR', 0, breakStack[breakStack.length-1], 0]];
+          }
+          assert(label in breakLabels);
+          return [-1, ['BR', 0, breakLabels[label], 0]];
+        }
+        case 'continue': {
+          var label = node[1];
+          if (!label) {
+            assert(continueStack.length > 0);
+            return [-1, ['BR', 0, continueStack[continueStack.length-1], 0]];
+          }
+          assert(label in continueLabels);
+          return [-1, ['BR', 0, continueLabels[label], 0]];
+        }
         case 'if': {
           var exit = markerId++;
           var condition = getReg(node[1]);
