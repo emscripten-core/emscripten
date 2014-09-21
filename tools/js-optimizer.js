@@ -5923,9 +5923,10 @@ function emterpretify(ast) {
       for (var i = 0; i < code.length; i += 4) {
         if (code[i] === 'BRT') {
           var target = markers[code[i+2]];
+          assert(target !== undefined);
           var offset = target - i;
           assert(offset % 4 === 0);
-          offset >> 2;
+          offset >>= 2;
           assert(Math.abs(offset) < 32768);
           code[i+2] = offset & 255;
           code[i+3] = (offset >> 8) & 255;

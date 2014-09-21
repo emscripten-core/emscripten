@@ -130,7 +130,7 @@ function emterpret%s%s(pc) {
   lx = (inst >> 8) & 255;
   ly = (inst >> 16) & 255;
   lz = inst >>> 24;
-  //printErr([pc, op, lx, ly, lz]);
+  //printErr([pc, inst&255, lx, ly, lz]);
   switch (inst&255) {
 %s
    default: assert(0);
