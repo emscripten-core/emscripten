@@ -5655,9 +5655,6 @@ function emterpretify(ast) {
   var OPCODES = extraInfo.opcodes;
   var ROPCODES = extraInfo.ropcodes;
 
-  var TYPE_TO_CALL = {};
-  TYPE_TO_CALL[ASM_NONE] = 'CALL';
-
   function verifyCode(code) {
     if (code.length % 4 !== 0) assert(0, JSON.stringify(code));
     for (var i = 0; i < code.length; i++) if (code[i] === undefined || code[i] === null || code < 0 || code > 255) assert(0, i + ' : ' + JSON.stringify(code));
@@ -5798,8 +5795,14 @@ function emterpretify(ast) {
         }
         case 'call': {
           if (node[1][0] === 'name') {
-            // function call with dropped result
-            return [0, makeCall(0, node, ASM_NONE)];
+            var type;
+            if (dropIt) {
+              type = ASM_NONE;
+            } else {
+              assert(typeHint !== ASM_NONE);
+              type = typeHint;
+            }
+            return [0, makeCall(0, node, type)];
           } else {
             // todo: function pointer call
           }
@@ -5870,11 +5873,9 @@ function emterpretify(ast) {
     function makeCall(lx, node, type) {
       // TODO: specialize calls like imul
       assert(node[0] === 'call');
-      assert(type === ASM_NONE);
       if (node[1][0] === 'name') {
         // normal direct call
-        var ret = [TYPE_TO_CALL[type]];
-        assert(ret[0], type);
+        var ret = ['CALL'];
         var actuals = [];
         var sig = ASM_SIG[type];
         node[2].forEach(function(param) {

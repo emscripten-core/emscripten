@@ -105,7 +105,7 @@ def make_emterpreter(t):
       sig = sigs[0]
       ret = name + '(' + ', '.join([get_coerced_access('HEAP8[pc+%d>>0]' % (i+4)) for i in range(len(sig)-1)]) + ')'
       if sig[0] != 'v':
-        ret = get_access('lx', sig[0]) + ' = ' + ret
+        ret = get_access('lx', sig[0]) + ' = ' + shared.JS.make_coercion(ret, sig[0])
       extra = len(sig) - 1 # [opcode, lx, target, sig], take the usual 4. params are extra
       if extra > 0:
         ret += '; pc = pc + %d | 0' % (4*((extra+3)>>2))
