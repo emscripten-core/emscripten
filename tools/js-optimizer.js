@@ -5786,13 +5786,13 @@ function emterpretify(ast) {
           } else if (node[1] === '>>>' && node[3][0] === 'num' && node[3][1] === 0) {
             // unsigned-coerced operation
             return getReg(node[2], dropIt, ASM_INT, ASM_UNSIGNED);
-          } // TODO: double etc. coercions
+          }
 
           // not a simple coercion
           assert(!dropIt);
 
           switch (node[1]) {
-            case '&': case '|': case '^': case '<<': case '>>': case '>>>': return makeMath(node, ASM_INT, ASM_SIGNED);
+            case '&': case '|': case '^': case '<<': case '>>': case '>>>': return makeBinary(node, ASM_INT, ASM_SIGNED);
             case '>=': case '>':
             case '+': case '-': case '<': case '<=': case '/': case '==': case '!=': {
               var type = getCombinedType(node[2], node[3], asmData, typeHint);
@@ -5805,7 +5805,21 @@ function emterpretify(ast) {
                   node[1] = node[1] === '>=' ? '<' : '<=';
                 } else throw 'ex ' + type;
               }
-              return makeMath(node, type, sign);
+              return makeBinary(node, type, sign);
+            }
+            default: throw 'ehh';
+          }
+          throw 'todo';
+        }
+        case 'unary-prefix': {
+          // TODO: double coercions
+          assert(!dropIt);
+
+          switch (node[1]) {
+            case '-': {
+              var type = detectAsmCoercion(node[2], asmData);
+              var sign = detectSign(node[2]);
+              return makeUnary(node, type, sign);
             }
             default: throw 'ehh';
           }
@@ -5895,7 +5909,7 @@ function emterpretify(ast) {
       return l;
     }
 
-    function makeMath(node, type, sign) {
+    function makeBinary(node, type, sign) {
       assert(type === ASM_INT);
       var opcode;
       switch(node[1]) {
@@ -5930,6 +5944,18 @@ function emterpretify(ast) {
       var z = getReg(node[3]);
       var x = getFree(y[0], z[0]);
       return [x, y[1].concat(z[1]).concat([opcode, x, releaseIfFree(y[0], x), releaseIfFree(z[0], x)])];
+    }
+
+    function makeUnary(node, type, sign) {
+      assert(type === ASM_INT);
+      var opcode;
+      switch(node[1]) {
+        case '-': opcode = 'NEG'; break;
+        default: throw 'bad';
+      }
+      var y = getReg(node[2]);
+      var x = getFree(y[0]);
+      return [x, y[1].concat([opcode, x, releaseIfFree(y[0], x), 0])];
     }
 
     function makeCall(lx, node, type) {
