@@ -244,6 +244,11 @@ def process_code(code):
       if sig not in sigs: sigs.append(sig)
       code[j+2] = global_funcs[target]
       code[j+3] = sigs.index(sig)
+      if sig[0] == 'v':
+        assert code[j+1] == -1 # dummy value for assignment
+        code[j+1] = 0 # clear it
+      else:
+        assert code[j+1] >= 0 # there should be a real target here
 
   # finalize instruction string names to opcodes
   for i in range(len(code)/4):

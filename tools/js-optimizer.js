@@ -5698,7 +5698,7 @@ function emterpretify(ast) {
       if (l === possible) return;
       //printErr('free free ' + l);
       assert(freeLocals.indexOf(l) < 0);
-      assert(l >= numLocals);
+      assert(l >= numLocals && l <= maxLocal);
       freeLocals.push(l);
       return l;
     }
@@ -5713,7 +5713,7 @@ function emterpretify(ast) {
     // if dropIt is provided, then the output of this can just be dropped.
     // you *must* call releaseIfFree on the l that is returned; if it is a free local, that will free it.
     function getReg(node, dropIt, typeHint, signHint) {
-      printErr('getReg ' + JSON.stringify(node));
+      printErr('getReg ' + JSON.stringify(node) + ' : ' + astToSrc(node) + ' : ' + [dropIt, typeHint, signHint]);
       switch(node[0]) {
         case 'name': {
           var name = node[1];
@@ -5836,13 +5836,16 @@ function emterpretify(ast) {
         case 'call': {
           if (node[1][0] === 'name') {
             var type;
+            var ret;
             if (dropIt) {
               type = ASM_NONE;
+              ret = -1;
             } else {
               assert(typeHint !== ASM_NONE);
               type = typeHint;
+              ret = getFree();
             }
-            return [0, makeCall(0, node, type)];
+            return [ret, makeCall(ret, node, type)];
           } else {
             // todo: function pointer call
           }
@@ -5853,7 +5856,7 @@ function emterpretify(ast) {
           var value = node[1];
           var reg;
           if (value) reg = getReg(value);
-          else reg = [0, []];
+          else reg = [-1, []];
           return [-1, reg[1].concat(['RET', value ? releaseIfFree(reg[0]) : 0, 0, 0])];
         }
         case 'do': {
@@ -6074,8 +6077,11 @@ function emterpretify(ast) {
       if (typeof stats[0] === 'string') stats = [stats];
       var ret = [];
       stats.forEach(function(stat) {
+        var before = freeLocals.length;
         var raw = getReg(stat, true);
         //printErr('raw: ' + JSON.stringify(raw));
+        releaseIfFree(raw[0]);
+        assert(freeLocals.length === before); // the statement is done - nothing should still be held on to
         var curr = raw[1];
         printErr('stat: ' + JSON.stringify(curr));
         verifyCode(curr);
