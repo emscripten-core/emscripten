@@ -5789,7 +5789,7 @@ function emterpretify(ast) {
           assert(!dropIt);
 
           switch (node[1]) {
-            case '&': return makeMath(node, ASM_INT, ASM_SIGNED);
+            case '&': case '|': case '^': return makeMath(node, ASM_INT, ASM_SIGNED);
             case '>=': case '>':
             case '+': case '-': case '<': case '<=': case '/': case '==': case '<<': case '>>': case '>>>': {
               var type = getCombinedType(node[2], node[3], asmData, typeHint);
@@ -5915,6 +5915,8 @@ function emterpretify(ast) {
         }
         case '==': opcode = 'EQ'; break;
         case '&': opcode = 'AND'; break;
+        case '|': opcode = 'OR'; break;
+        case '^': opcode = 'XOR'; break;
         case '<<': opcode = 'SHL'; break;
         case '>>': opcode = 'ASHR'; break;
         case '>>>': opcode = 'LSHR'; break;

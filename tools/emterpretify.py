@@ -33,6 +33,8 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '22':  'SLE',     # [lx, ly, lz]         ly = ly <= lz (32-bit signed)
   '23':  'ULE',     # [lx, ly, lz]         ly = ly <= lz (32-bit unsigned)
   '30':  'AND',     # [lx, ly, lz]         ly = ly & lz
+  '31':  'OR',      # [lx, ly, lz]         ly = ly | lz
+  '32':  'XOR',     # [lx, ly, lz]         ly = ly ^ lz
   '40':  'SHL',     # [lx, ly, lz]         ly = ly << lz
   '41':  'ASHR',    # [lx, ly, lz]         ly = ly >> lz
   '42':  'LSHR',    # [lx, ly, lz]         ly = ly >>> lz
@@ -93,6 +95,8 @@ CASES[ROPCODES['ULT']] = get_access('lx') + ' = (' + get_coerced_access('ly', un
 CASES[ROPCODES['SLE']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') <= (' + get_coerced_access('lz') + ') | 0;'
 CASES[ROPCODES['ULE']] = get_access('lx') + ' = (' + get_coerced_access('ly', unsigned=True) + ') <= (' + get_coerced_access('lz', unsigned=True) + ') | 0;'
 CASES[ROPCODES['AND']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') & (' + get_coerced_access('lz') + ');'
+CASES[ROPCODES['OR']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') | (' + get_coerced_access('lz') + ');'
+CASES[ROPCODES['XOR']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') ^ (' + get_coerced_access('lz') + ');'
 CASES[ROPCODES['SHL']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') << (' + get_coerced_access('lz') + ');'
 CASES[ROPCODES['ASHR']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') >> (' + get_coerced_access('lz') + ');'
 CASES[ROPCODES['LSHR']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') >>> (' + get_coerced_access('lz') + ');'
