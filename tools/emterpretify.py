@@ -15,7 +15,7 @@ EMT_STACK_MAX = 1024*1024
 
 # consts
 
-BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets'])
+BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64'])
 
 OPCODES = { # l, lx, ly etc - one of 256 locals
   '0':   'SET',     # [lx, ly, 0]          lx = ly (int or float, not double)
@@ -49,6 +49,7 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '159': 'BR',      # [0, tl, th]          jump t instructions (multiple of 4)
   '160': 'BRT',     # [cond, tl, th]       if cond, jump t instructions (multiple of 4)
   '161': 'BRF',     # [cond, tl, th]       if !cond, jump t instructions (multiple of 4)
+  '200': 'GETTDP',  # [l, 0, 0]            l = tempDoublePtr
   '250': 'CALL',    # [lx, target, sig, params..]   (lx = ) target(params..) lx's existence and type depend on the target's actual callsig;
                     #                               this instruction can take multiple 32-bit instruction chunks
   '254': 'RET',     # [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
@@ -114,6 +115,7 @@ CASES[ROPCODES['STORE32']] = 'HEAP32[' + get_access('lx') + ' >> 2] = ' + get_co
 CASES[ROPCODES['BR']] = 'pc = pc + ((inst >> 16) << 2) | 0; continue;'
 CASES[ROPCODES['BRT']] = 'if (' + get_coerced_access('lx') + ') { pc = pc + ((inst >> 16) << 2) | 0; continue; }'
 CASES[ROPCODES['BRF']] = 'if (!(' + get_coerced_access('lx') + ')) { pc = pc + ((inst >> 16) << 2) | 0; continue; }'
+CASES[ROPCODES['GETTDP']] = 'HEAP32[sp + (lx << 3) >> 2] = tempDoublePtr;'
 
 def make_emterpreter(t):
   # return is specialized per interpreter

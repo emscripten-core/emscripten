@@ -5724,6 +5724,10 @@ function emterpretify(ast) {
               var x = getFree();
               return [x, ['GETST', x, 0, 0]];
             }
+            case 'tempDoublePtr': {
+              var x = getFree();
+              return [x, ['GETTDP', x, 0, 0]];
+            }
             default: throw 'getReg global wha? ' + name;
           }
         }
