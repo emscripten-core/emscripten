@@ -6007,7 +6007,7 @@ function emterpretify(ast) {
 
     function makeDo(node, label) {
       var oneTime = node[1][0] === 'num' && node[1][1] === 0; // trivial one-time loops do {..} while(0) do not need condition handling
-      assert(!oneTime); // TODO: test
+      // TODO: more testing assert(!oneTime);
       var exit = markerId++;
       var top, cond;
       if (!oneTime) {
