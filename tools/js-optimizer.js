@@ -6030,9 +6030,16 @@ function emterpretify(ast) {
     }
 
     function makeWhile(node, label) {
-      // TODO: optimize while(1)
-      var condition = getReg(node[1]);
-      var cond = markerId++, top = markerId++, exit = markerId++;
+      var infinite = node[1][0] === 'num' && node[1][1] === 1; // trivial infinite loops while(1) {..} do not need condition handling
+      var top = markerId++, exit = markerId++;
+      var condition, cond;
+      if (!infinite) {
+        condition = getReg(node[1]);
+        cond = markerId++;
+      } else {
+        condition = [-1, []];
+        cond = top;
+      }
       breakStack.push(exit);
       continueStack.push(cond);
       if (label) {
@@ -6041,10 +6048,13 @@ function emterpretify(ast) {
         assert(!(label in continueLabels));
         continueLabels[label] = cond;
       }
-      var ret = ['marker', cond, 0, 0].concat(condition[1]).concat(
-        ['BRF', releaseIfFree(condition[0]), exit, 0, 'marker', top, 0, 0]
-      );
-      ret = ret.concat(walkStatements(node[2])).concat(['BR', 0, cond, 0]);
+      var ret = [];
+      if (!infinite) {
+        ret = ret.concat(['marker', cond, 0, 0]).concat(condition[1]).concat(
+          ['BRF', releaseIfFree(condition[0]), exit, 0]
+        );
+      }
+      ret = ret.concat(['marker', top, 0, 0]).concat(walkStatements(node[2])).concat(['BR', 0, cond, 0]);
       breakStack.pop();
       continueStack.pop();
       if (label) {
