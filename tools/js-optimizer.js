@@ -6030,6 +6030,7 @@ function emterpretify(ast) {
     }
 
     function makeWhile(node, label) {
+      // TODO: optimize while(1)
       var condition = getReg(node[1]);
       var cond = markerId++, top = markerId++, exit = markerId++;
       breakStack.push(exit);
@@ -6043,7 +6044,7 @@ function emterpretify(ast) {
       var ret = ['marker', cond, 0, 0].concat(condition[1]).concat(
         ['BRF', releaseIfFree(condition[0]), exit, 0, 'marker', top, 0, 0]
       );
-      ret = ret.concat(walkStatements(node[2]));
+      ret = ret.concat(walkStatements(node[2])).concat(['BR', 0, cond, 0]);
       breakStack.pop();
       continueStack.pop();
       if (label) {
