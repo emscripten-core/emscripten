@@ -168,6 +168,7 @@ function emterpret%s%s(pc) {
 %s
    default: assert(0);
   }
+  //printErr('result in ' + lx + ': ' + Array.prototype.slice.call(HEAPU8, sp+8*lx, sp+8*(lx+1)));
   pc = pc + 4 | 0;
  }
  %s
