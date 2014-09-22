@@ -6100,7 +6100,10 @@ function emterpretify(ast) {
         delete breakLabels[label];
         delete continueLabels[label];
       }
-      var condition = getReg(node[1]);
+      var condition;
+      if (!oneTime) {
+        condition = getReg(node[1]);
+      }
       var ret = [];
       if (!oneTime) {
         ret = ret.concat(['marker', top, 0, 0]);
@@ -6187,7 +6190,7 @@ function emterpretify(ast) {
         var raw = getReg(stat, true);
         //printErr('raw: ' + JSON.stringify(raw));
         releaseIfFree(raw[0]);
-        assert(freeLocals.length === before); // the statement is done - nothing should still be held on to
+        if (freeLocals.length !== before) assert(0, [before, freeLocals.length] + ' due to ' + astToSrc(stat)); // the statement is done - nothing should still be held on to
         var curr = raw[1];
         printErr('stat: ' + JSON.stringify(curr));
         verifyCode(curr);
