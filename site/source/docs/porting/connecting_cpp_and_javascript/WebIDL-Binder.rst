@@ -191,7 +191,7 @@ If the C++ returns an object (rather than a reference or a pointer) then the ret
 Const 
 =====
 
-C++ attributes, arguments or return types that use ``const`` can be specified in IDL using ``[Const]``.
+C++ arguments or return types that use ``const`` can be specified in IDL using ``[Const]``.
 
 For example, the following code fragments show the C++ and IDL for a function that returns a constant pointer object. 
 
@@ -205,7 +205,21 @@ For example, the following code fragments show the C++ and IDL for a function th
 	// WebIDL
 	[Const] myObject getAsConst();
 
-.. tip:: It is possible for an attribute or return type to have multiple specifiers. For, an attribute that is a contant reference would be marked up in the IDL using ``[Ref, Const]``.
+Attributes that correspond to const data members must be specified with the ``readonly`` keyword, not with ``[Const]``. For example:
+
+.. code-block:: cpp
+	
+	//C++
+	const int numericalConstant;
+
+.. code-block:: idl
+
+	// WebIDL
+	readonly attribute long numericalConstant;
+
+This will generate a ``get_numericalConstant()`` method in the bindings, but not a corresponding setter.
+
+.. tip:: It is possible for a return type to have multiple specifiers. For example, an method that returns a contant reference would be marked up in the IDL using ``[Ref, Const]``.
 
 
 Un-deletable classes (NoDelete)
