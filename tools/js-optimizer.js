@@ -5946,6 +5946,9 @@ function emterpretify(ast) {
           var x = getFree(y[0]);
           return [x, y[1].concat([opcode, x, releaseIfFree(y[0], x), 0])];
         }
+        case 'block': {
+          return [-1, walkStatements(node[1])];
+        }
         case 'switch': {
           var condition = getReg(node[1]);
           var exit = markerId++;
