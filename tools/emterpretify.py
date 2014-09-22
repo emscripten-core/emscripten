@@ -131,7 +131,7 @@ def make_emterpreter(t):
       name = rglobal_funcs[i]
       if name not in call_sigs: return None
       sigs = call_sigs[name]
-      assert len(sigs) == 1
+      assert len(sigs) == 1, [name, sigs]
       sig = sigs[0]
       ret = name + '(' + ', '.join([get_coerced_access('HEAP8[pc+%d>>0]' % (i+4)) for i in range(len(sig)-1)]) + ')'
       if sig[0] != 'v':
