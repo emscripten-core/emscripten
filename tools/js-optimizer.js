@@ -5999,9 +5999,10 @@ function emterpretify(ast) {
           ret.push('BR', 0, exit, 0);
           // emit the jump table targets
           for (var i = 0; i < range; i++) {
-            if (data[i]) {
-              ret.push('absolute-target', data[i].absolute, 0, 0);
-              ret = ret.concat(data[i].code);
+            var j = minn + i;
+            if (data[j]) {
+              ret.push('absolute-target', data[j].absolute, 0, 0);
+              ret = ret.concat(data[j].code);
               ret.push('BR', 0, exit, 0);
             }
           }

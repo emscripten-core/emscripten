@@ -270,7 +270,6 @@ func = None
 call_sigs = {} # signatures appearing for each call target
 def process_code(code, absolute_targets):
   absolute_start = len(all_code) + GLOBAL_BASE
-
   for i in range(len(code)/4):
     j = i*4
     if code[j] == 'CALL':
@@ -289,7 +288,7 @@ def process_code(code, absolute_targets):
         assert code[j+1] >= 0 # there should be a real target here
     elif code[j] == 'absolute-value':
       # put the 32-bit absolute value of an abolute target here
-      value = bytify(absolute_targets[code[j+1]])
+      value = bytify(absolute_targets[unicode(code[j+1])])
       for k in range(4):
         code[j + k] = value[k]
 
