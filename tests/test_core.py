@@ -5151,6 +5151,14 @@ return malloc(size);
 
     self.do_run_from_file(src, output)
 
+  def test_simd_dyncall(self):
+    if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
+
+    test_path = path_from_root('tests', 'core', 'test_simd_dyncall')
+    src, output = (test_path + s for s in ('.cpp', '.txt'))
+    self.do_run_from_file(src, output)
+
   def test_gcc_unmangler(self):
     if os.environ.get('EMCC_FAST_COMPILER') == '0': Settings.NAMED_GLOBALS = 1 # test coverage for this; fastcomp never names globals
 
