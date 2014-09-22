@@ -4105,6 +4105,17 @@ pass: error == ENOTDIR
 
 
   def test_emterpreter(self):
+    def do_emcc_test(source, args, output):
+      print
+      print 'emcc', source
+      self.clear()
+      Popen([PYTHON, EMCC, path_from_root('tests', source), '-O2', '--profiling', '-s', 'EMTERPRETIFY=1']).communicate()
+      self.assertContained(output, run_js('a.out.js', args=args))
+      out = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE, args=args, stderr=PIPE, full_output=True)
+      self.assertContained(output, out)
+      self.validate_asmjs(out)
+      assert 'function emterpret' in open('a.out.js').read()
+
     def do_test(source, args, output):
       print
       print source
@@ -4116,6 +4127,8 @@ pass: error == ENOTDIR
       out = run_js('em.out.js', engine=SPIDERMONKEY_ENGINE, args=args, stderr=PIPE, full_output=True)
       self.assertContained(output, out)
       self.validate_asmjs(out)
+
+    do_emcc_test('hello_world.c', [], 'hello, world!')
 
     do_test('hello_world.c', [], 'hello, world!')
     do_test('hello_world_loop.cpp', [], 'hello, world!')

@@ -1007,6 +1007,9 @@ try:
   if js_opts:
     shared.Settings.RUNNING_JS_OPTS = 1
 
+  if shared.Settings.EMTERPRETIFY:
+    shared.Settings.FINALIZE_ASM_JS = 0
+
   shared.Settings.RUNNING_FASTCOMP = fastcomp
 
   shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
@@ -1461,6 +1464,17 @@ try:
 
   log_time('js opts')
 
+  js_target = unsuffixed(target) + '.js'
+
+  if shared.Settings.EMTERPRETIFY:
+    try:
+      # move temp js to final position, alongside its mem init file
+      shutil.move(final, js_target)
+      execute([shared.PYTHON, shared.path_from_root('tools', 'emterpretify.py'), js_target, final + '.em.js', memfile])
+      final = final + '.em.js'
+    finally:
+      shared.try_delete(js_target)
+
   # Remove some trivial whitespace # TODO: do not run when compress has already been done on all parts of the code
   #src = open(final).read()
   #src = re.sub(r'\n+[ \n]*\n+', '\n', src)
@@ -1479,7 +1493,6 @@ try:
     shell = open(shell_path).read()
     assert '{{{ SCRIPT }}}' in shell, 'HTML shell must contain  {{{ SCRIPT }}}  , see src/shell.html for an example'
     html = open(target, 'w')
-    js_target = unsuffixed(target) + '.js'
     base_js_target = os.path.basename(js_target)
     if proxy_to_worker:
       child_js = shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename
