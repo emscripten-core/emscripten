@@ -1829,7 +1829,7 @@ var ASM_FLOAT_ZERO = null; // TODO: share the entire node?
 function detectAsmCoercion(node, asmInfo, inVarDef) {
   // for params, +x vs x|0, for vars, 0.0 vs 0
   if (node[0] === 'num' && node[1].toString().indexOf('.') >= 0) return ASM_DOUBLE;
-  if (node[0] === 'unary-prefix') return ASM_DOUBLE;
+  if (node[0] === 'unary-prefix' && node[1] === '+') return ASM_DOUBLE;
   if (node[0] === 'call' && node[1][0] === 'name' && node[1][1] === 'Math_fround') return ASM_FLOAT;
   if (asmInfo && node[0] == 'name') return getAsmType(node[1], asmInfo);
   if (node[0] === 'name') {
