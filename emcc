@@ -1467,6 +1467,7 @@ try:
   js_target = unsuffixed(target) + '.js'
 
   if shared.Settings.EMTERPRETIFY:
+    assert memory_init_file, 'emterpreter requires a mem init file'
     try:
       # move temp js to final position, alongside its mem init file
       shutil.move(final, js_target)
