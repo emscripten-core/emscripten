@@ -6006,8 +6006,17 @@ function emterpretify(ast) {
     }
 
     function makeDo(node, label) {
-      // TODO: optimize do-while(0)
-      var top = markerId++, cond = markerId++, exit = markerId++;
+      var oneTime = node[1][0] === 'num' && node[1][1] === 0; // trivial one-time loops do {..} while(0) do not need condition handling
+      assert(!oneTime); // TODO: test
+      var exit = markerId++;
+      var top, cond;
+      if (!oneTime) {
+        top = markerId++;
+        cond = markerId++;
+      } else {
+        top = -1; // no need to even mark the top
+        cond = exit; // when we reach the condition, we just exit
+      }
       breakStack.push(exit);
       continueStack.push(cond);
       if (label) {
@@ -6024,9 +6033,18 @@ function emterpretify(ast) {
         delete continueLabels[label];
       }
       var condition = getReg(node[1]);
-      return [-1, ['marker', top, 0, 0].concat(body).concat(['marker', cond, 0, 0]).concat(condition[1]).concat(
-        ['BRT', releaseIfFree(condition[0]), top, 0, 'marker', exit, 0, 0]
-      )];
+      var ret = [];
+      if (!oneTime) {
+        ret = ret.concat(['marker', top, 0, 0]);
+      }
+      ret = ret.concat(body);
+      if (!oneTime) {
+        ret = ret.concat(['marker', cond, 0, 0]).concat(condition[1]).concat(
+          ['BRT', releaseIfFree(condition[0]), top, 0]
+        );
+      }
+      ret = ret.concat(['marker', exit, 0, 0]);
+      return [-1, ret];
     }
 
     function makeWhile(node, label) {
@@ -6038,7 +6056,7 @@ function emterpretify(ast) {
         cond = markerId++;
       } else {
         condition = [-1, []];
-        cond = top;
+        cond = top; // when we reach the condition, we just go right to the top of the loop body
       }
       breakStack.push(exit);
       continueStack.push(cond);
