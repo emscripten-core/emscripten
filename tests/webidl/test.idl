@@ -49,6 +49,7 @@ interface StringUser {
   void StringUser(DOMString str, long i);
   void Print(long anotherInteger, DOMString anotherString);
   void PrintFloat(float f);
+  [Const] DOMString returnAString();
 };
 
 interface RefUser {
