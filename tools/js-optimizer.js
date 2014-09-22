@@ -5704,6 +5704,9 @@ function emterpretify(ast) {
     }
 
     var markerId = 0;
+    var absoluteId = 0;
+    var absoluteTargets = {};
+
     var breakStack = [];
     var continueStack = [];
     var breakLabels = {};
@@ -5943,6 +5946,66 @@ function emterpretify(ast) {
           var x = getFree(y[0]);
           return [x, y[1].concat([opcode, x, releaseIfFree(y[0], x), 0])];
         }
+        case 'switch': {
+          var condition = getReg(node[1]);
+          var exit = markerId++;
+          // parse cases and emit code
+          breakStack.push(exit);
+          var data = {};
+          var cases = node[2];
+          var minn = Infinity, maxx = -Infinity;
+          for (var i = 0; i < cases.length; i++) {
+            var c = cases[i];
+            var id;
+            if (c[0] === null) id = 'default';
+            else if (c[0][0] === 'num') id = c[0][1];
+            else if (c[0][0] === 'unary-prefix' && c[0][2][0] === 'num') id = -c[0][2][1];
+            else throw 'bad case';
+            data[id] = {
+              code: walkStatements(c[1]),
+              absolute: absoluteId++
+            };
+            if (typeof id === 'number') {
+              minn = Math.min(id, minn);
+              maxx = Math.max(id, maxx);
+            }
+          }
+          breakStack.pop();
+          var range = maxx - minn + 1;
+          assert(minn >= 0 && maxx < 128); // we need both minn to be a tiny int, and their range
+          var defaultAbsolute = data['default'] ? data['default'].absolute : absoluteId++;
+          // emit the switch instruction itself
+          var tempMin = getFree(), tempRange = getFree();
+          var ret = condition[1].concat(['SETVI', tempMin, minn, 0, 'SETVI', tempRange, range, 0,
+                                         'SWITCH', condition[0], tempMin, tempRange]);
+          releaseFree(tempRange);
+          releaseFree(tempMin);
+          releaseIfFree(condition[0]);
+          // emit the jump table
+          for (var i = 0; i < range; i++) {
+            if (data[i]) {
+              ret.push('absolute-value', data[i].absolute, 0, 0);
+            } else {
+              ret.push('absolute-value', defaultAbsolute, 0, 0);
+            }
+          }
+          // emit the default TODO: optimize when there is no default
+          ret.push('absolute-target', defaultAbsolute, 0, 0);
+          if (data['default']) {
+            ret = ret.concat(data['default'].code);
+          }
+          ret.push('BR', 0, exit, 0);
+          // emit the jump table targets
+          for (var i = 0; i < range; i++) {
+            if (data[i]) {
+              ret.push('absolute-target', data[i].absolute, 0, 0);
+              ret = ret.concat(data[i].code);
+              ret.push('BR', 0, exit, 0);
+            }
+          }
+          ret.push('marker', exit, 0, 0);
+          return [-1, ret];
+        }
         default: throw 'getReg wha? ' + node[0] + new Error().stack;
       }
     }
@@ -6137,6 +6200,10 @@ function emterpretify(ast) {
           markers[code[i+1]] = i;
           code.splice(i, 4);
           i -= 4;
+        } else if (code[i] === 'absolute-target') {
+          absoluteTargets[code[i+1]] = i;
+          code.splice(i, 4);
+          i -= 4;
         }
       }
       // second pass, finalize jumps TODO: optimize jump->jump->x to jump->x
@@ -6233,7 +6300,7 @@ function emterpretify(ast) {
 
     //printErr(JSON.stringify(code));
 
-    print(astToSrc(func) + ' //' + JSON.stringify(code) + '');
+    print(astToSrc(func) + ' //' + JSON.stringify([code,absoluteTargets]));
   }
   traverseGeneratedFunctions(ast, walkFunction);
 }

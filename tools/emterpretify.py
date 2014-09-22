@@ -49,9 +49,12 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '159': 'BR',      # [0, tl, th]          jump t instructions (multiple of 4)
   '160': 'BRT',     # [cond, tl, th]       if cond, jump t instructions (multiple of 4)
   '161': 'BRF',     # [cond, tl, th]       if !cond, jump t instructions (multiple of 4)
+  #'170': 'ABR',     # [lx, 0, 0, 0]        absolute branch to address lx (assumed divisible by 4)
   '200': 'GETTDP',  # [l, 0, 0]            l = tempDoublePtr
+  #'201': 'GETPC',   # [l, 0, 0]            l = pc
   '250': 'CALL',    # [lx, target, sig, params..]   (lx = ) target(params..) lx's existence and type depend on the target's actual callsig;
                     #                               this instruction can take multiple 32-bit instruction chunks
+  '251': 'SWITCH',  # [lx, ly, lz]         switch (lx) { .. }. followed by a jump table for values in range [ly..ly+lz), after which is the default (which might be empty)
   '254': 'RET',     # [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
   '255': 'FUNC',    # [n, 0, 0]            function with n locals (each taking 64 bits)
 }
@@ -60,9 +63,15 @@ ROPCODES = {}
 for o in OPCODES:
   ROPCODES[OPCODES[o]] = int(o);
 
+GLOBAL_BASE = 8
+
 # utils
 
 settings = { 'PRECISE_F32': 0 } # TODO
+
+def bytify(x):
+  assert x >= 0 and x << (2**32)
+  return [x & 255, (x >> 8) & 255, (x >> 16) & 255, (x >> 24) & 255]
 
 def get_access(l, s='i'):
   if s == 'i':
@@ -115,7 +124,18 @@ CASES[ROPCODES['STORE32']] = 'HEAP32[' + get_access('lx') + ' >> 2] = ' + get_co
 CASES[ROPCODES['BR']] = 'pc = pc + ((inst >> 16) << 2) | 0; continue;'
 CASES[ROPCODES['BRT']] = 'if (' + get_coerced_access('lx') + ') { pc = pc + ((inst >> 16) << 2) | 0; continue; }'
 CASES[ROPCODES['BRF']] = 'if (!(' + get_coerced_access('lx') + ')) { pc = pc + ((inst >> 16) << 2) | 0; continue; }'
+#CASES[ROPCODES['ABR']] = 'pc = ' + get_coerced_access('lx') + '; continue;'
 CASES[ROPCODES['GETTDP']] = 'HEAP32[sp + (lx << 3) >> 2] = tempDoublePtr;'
+#CASES[ROPCODES['GETPC']] = 'HEAP32[sp + (lx << 3) >> 2] = pc;'
+CASES[ROPCODES['SWITCH']] = '''
+lx = (lx - ly) >>> 0; // lx is now relative to the base
+if ((lx >>> 0) >= (lz >>> 0)) { // is the adjusted value too big?
+  pc = (pc + (lz << 2)) | 0; // jump to right after the table, where the default is
+  continue;
+}
+pc = HEAP32[pc + 4 + (lx << 2) >> 2] | 0; // we are within range, load from the jump table which is right after this instruction, and set pc to that
+continue;
+'''
 
 def make_emterpreter(t):
   # return is specialized per interpreter
@@ -244,11 +264,13 @@ func = None
 # first pass, collect and process bytecode
 
 call_sigs = {} # signatures appearing for each call target
-def process_code(code):
-  # find CALL instructions and fix their targets and signatures
+def process_code(code, absolute_targets):
+  absolute_start = len(all_code) + GLOBAL_BASE
+
   for i in range(len(code)/4):
     j = i*4
     if code[j] == 'CALL':
+      # fix CALL instructions' targets and signatures
       target = code[j+2]
       sig = code[j+3]
       if target not in call_sigs: call_sigs[target] = []
@@ -261,6 +283,11 @@ def process_code(code):
         code[j+1] = 0 # clear it
       else:
         assert code[j+1] >= 0 # there should be a real target here
+    elif code[j] == 'absolute-value':
+      # put the 32-bit absolute value of an abolute target here
+      value = bytify(absolute_targets[code[j+1]])
+      for k in range(4):
+        code[j + k] = value[k]
 
   # finalize instruction string names to opcodes
   for i in range(len(code)/4):
@@ -278,7 +305,7 @@ for i in range(len(lines)):
   elif line.startswith('}'):
     assert func
     try:
-      curr = json.loads(line[4:])
+      curr, absolute_targets = json.loads(line[4:])
     except:
       if '[' in line: print >> sys.stderr, 'failed to parse code from', line
       curr = None
@@ -286,7 +313,7 @@ for i in range(len(lines)):
       assert len(curr) % 4 == 0, curr
       funcs[func] = len(all_code) # no operation here should change the length
       print >> sys.stderr, 'raw bytecode for %s:' % func, curr
-      process_code(curr)
+      process_code(curr, absolute_targets)
       print >> sys.stderr, 'processed bytecode for %s:' % func, curr
       all_code += curr
     func = None
@@ -306,7 +333,7 @@ for i in range(len(lines)):
 while len(mem_init) % 8 != 0:
   mem_init.append(0)
   asm.staticbump += 1
-code_start = len(mem_init) + 8 # 8 is GLOBAL_BASE
+code_start = len(mem_init) + GLOBAL_BASE
 mem_init = mem_init + all_code
 asm.staticbump += len(all_code)
 
