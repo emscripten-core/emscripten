@@ -5814,7 +5814,7 @@ function emterpretify(ast) {
                   var temp = node[2];
                   node[2] = node[3];
                   node[3] = temp;
-                  node[1] = node[1] === '>=' ? '<' : '<=';
+                  node[1] = node[1] === '>=' ? '<=' : '<';
                 } else throw 'ex ' + type;
               }
               return makeBinary(node, type, sign);
