@@ -241,13 +241,17 @@ shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'blacklist':
 asm = asm_module.AsmModule(temp)
 
 in_mem_file = infile + '.mem'
+in_mem_file_base = os.path.basename(in_mem_file)
 out_mem_file = outfile + '.mem'
-assert in_mem_file in asm.pre_js, 'we assume a mem init file for now (looked for %s)' % in_mem_file
+out_mem_file_base = os.path.basename(out_mem_file)
+
+assert in_mem_file_base in asm.pre_js, 'we assume a mem init file for now (looked for %s)' % in_mem_file
 if not force_memfile:
-  asm.pre_js = asm.pre_js.replace(in_mem_file, out_mem_file)
-  assert os.path.exists(in_mem_file), 'need to find mem file at %s' % mem_file
+  asm.pre_js = asm.pre_js.replace(in_mem_file_base, out_mem_file_base)
+  assert os.path.exists(in_mem_file), 'need to find mem file at %s' % in_mem_file
 else:
   out_mem_file = force_memfile
+  out_mem_file_base = os.path.basename(out_mem_file)
 mem_init = map(ord, open(in_mem_file, 'rb').read())
 zero_space = asm.staticbump - len(mem_init)
 assert zero_space >= 0 # can be positive, if we add a bump of zeros
