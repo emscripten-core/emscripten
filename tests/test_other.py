@@ -4119,5 +4119,5 @@ pass: error == ENOTDIR
 
     do_test('hello_world.c', [], 'hello, world!')
     do_test('hello_world_loop.cpp', [], 'hello, world!')
-    #do_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.')
+    do_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.')
 

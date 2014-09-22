@@ -138,6 +138,8 @@ def make_emterpreter(t):
       ret = name + '(' + ', '.join([get_coerced_access('HEAP8[pc+%d>>0]' % (i+4)) for i in range(len(sig)-1)]) + ')'
       if sig[0] != 'v':
         ret = get_access('lx', sig[0]) + ' = ' + shared.JS.make_coercion(ret, sig[0])
+      elif name in actual_return_types and actual_return_types[name] != 'v':
+        ret = shared.JS.make_coercion(ret, actual_return_types[name]) # return value ignored, but need a coercion
       extra = len(sig) - 1 # [opcode, lx, target, sig], take the usual 4. params are extra
       if extra > 0:
         ret += '; pc = pc + %d | 0' % (4*((extra+3)>>2))
@@ -262,6 +264,8 @@ def process_code(code):
     if type(code[j]) in (str, unicode):
       code[j] = ROPCODES[code[j]]
 
+actual_return_types = {}
+
 for i in range(len(lines)):
   line = lines[i]
   if line.startswith('function ') and '}' not in line:
@@ -283,6 +287,16 @@ for i in range(len(lines)):
       all_code += curr
     func = None
     lines[i] = '}'
+  elif line.startswith('// return type: ['):
+    name, ret = line.split('[')[1].split(']')[0].split(',')
+    if ret == 'undefined':
+      actual_return_types[name] = 'v'
+    elif ret == '0':
+      actual_return_types[name] = 'i'
+    elif ret == '1':
+      actual_return_types[name] = 'd'
+    elif ret == '2':
+      actual_return_types[name] = 'f'
 
 # create new mem init, and calculate where code will start
 while len(mem_init) % 8 != 0:

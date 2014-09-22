@@ -6130,12 +6130,16 @@ function emterpretify(ast) {
 
     if (func[1] in BLACKLIST) {
       print(astToSrc(func));
+    }
+
+    var asmData = normalizeAsm(func);
+    print('// return type: [' + func[1] + ',' + asmData.ret + ']');
+
+    if (func[1] in BLACKLIST) {
       return;
     }
 
     printErr('emterpretifying ' + func[1]);
-
-    var asmData = normalizeAsm(func);
 
     var locals = {};
     var numLocals = 0;
