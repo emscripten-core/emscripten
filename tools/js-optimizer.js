@@ -1921,8 +1921,7 @@ function getCombinedSign(node1, node2, hint) {
   var sign1 = detectSign(node1);
   var sign2 = detectSign(node2);
   if (sign1 === ASM_FLEXIBLE && sign2 === ASM_FLEXIBLE) {
-    assert(hint !== undefined);
-    return hint;
+    return ASM_FLEXIBLE;
   }
   if (sign1 === ASM_FLEXIBLE) {
     assert(sign2 != ASM_FLEXIBLE);
@@ -6029,16 +6028,19 @@ function emterpretify(ast) {
           break;
         }
         case '/': {
+          assert(sign !== ASM_FLEXIBLE);
           if (sign === ASM_SIGNED) opcode = 'SDIV';
           else opcode = 'UDIV';
           break;
         }
         case '<': {
+          assert(sign !== ASM_FLEXIBLE);
           if (sign === ASM_SIGNED) opcode = 'SLT';
           else opcode = 'ULT';
           break;
         }
         case '<=': {
+          assert(sign !== ASM_FLEXIBLE);
           if (sign === ASM_SIGNED) opcode = 'SLE';
           else opcode = 'ULE';
           break;
