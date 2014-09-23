@@ -1858,7 +1858,9 @@ function detectAsmCoercion(node, asmInfo, inVarDef) {
       break;
     }
     case 'binary': {
-      if (node[1] === '*' || node[1] === '/') return ASM_DOUBLE; // uncoerced by |0 etc., these ops are double
+      switch (node[1]) {
+        case '+': case '-': case '*': case '/': return ASM_DOUBLE; // uncoerced by |0 etc., these ops are double
+      }
       break;
     }
   }
