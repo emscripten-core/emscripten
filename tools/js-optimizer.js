@@ -5894,7 +5894,7 @@ function emterpretify(ast) {
           assert(!dropIt);
 
           switch (node[1]) {
-            case '-': {
+            case '-': case '~': {
               var type = detectAsmCoercion(node[2], asmData);
               var sign = detectSign(node[2]);
               return makeUnary(node, type, sign);
@@ -6203,6 +6203,7 @@ function emterpretify(ast) {
       switch(node[1]) {
         case '-': assert(type === ASM_INT); opcode = 'NEG'; break;
         case '!': assert(type === ASM_INT); opcode = 'LNOT'; break;
+        case '~': assert(type === ASM_INT); opcode = 'BNOT'; break;
         case 'I2D': case 'D2I': opcode = node[1]; break;
         default: throw 'bad';
       }

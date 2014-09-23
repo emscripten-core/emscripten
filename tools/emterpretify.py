@@ -32,6 +32,7 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '11':  'UMOD',    # [lx, ly, lz]         lx = ly % lz (32-bit unsigned int)
   '12':  'NEG',     # [lx, ly, 0]          lx = -ly (int)
   '13':  'LNOT',    # [lx, ly, 0]          ly = !ly (int)
+  '14':  'BNOT',    # [lx, ly, 0]          ly = ~ly (int)
   '18':  'EQ',      # [lx, ly, lz]         lx = ly == lz (32-bit int)
   '19':  'NE',      # [lx, ly, lz]         lx = ly != lz (32-bit int)
   '20':  'SLT',     # [lx, ly, lz]         lx = ly < lz (32-bit signed)
@@ -144,6 +145,7 @@ CASES[ROPCODES['SMOD']] = get_access('lx') + ' = (' + get_coerced_access('ly') +
 CASES[ROPCODES['UMOD']] = get_access('lx') + ' = (' + get_coerced_access('ly', unsigned=True) + ') % (' + get_coerced_access('lz', unsigned=True) + ') >>> 0;'
 CASES[ROPCODES['NEG']] = get_access('lx') + ' = -(' + get_coerced_access('ly') + ');'
 CASES[ROPCODES['LNOT']] = get_access('lx') + ' = !(' + get_coerced_access('ly') + ');'
+CASES[ROPCODES['BNOT']] = get_access('lx') + ' = ~(' + get_coerced_access('ly') + ');'
 CASES[ROPCODES['EQ']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') == (' + get_coerced_access('lz') + ') | 0;'
 CASES[ROPCODES['NE']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') != (' + get_coerced_access('lz') + ') | 0;'
 CASES[ROPCODES['SLT']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') < (' + get_coerced_access('lz') + ') | 0;'
