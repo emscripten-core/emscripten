@@ -5841,20 +5841,19 @@ function emterpretify(ast) {
                 return getReg(inner, dropIt, ASM_DOUBLE, ASM_NONSIGNED);
               }
               case 'num': {
-                return makeNum(inner, ASM_DOUBLE);
+                return makeNum(inner[1], ASM_DOUBLE);
               }
               default: {
                 var type = detectAsmCoercion(inner, asmData);
                 var sign = detectSign(inner);
                 if (type === ASM_INT && (sign === ASM_SIGNED || sign === ASM_UNSIGNED)) {
-                  var y = getReg(inner);
-                  var x = getFree(y[0]);
-                  y[1].push('D2I', x, releaseIfFree(y[0], x), 0);
-                  return [x, y[1]];
+                  return makeUnary(['unary-prefix', 'I2D', node[2][2]], ASM_DOUBLE, ASM_NONSIGNED);
                 }
                 throw 'meh ' + inner[0];
               }
             }
+          } else if (node[1] === '~' && node[2][0] === 'unary-prefix' && node[2][1] === '~') {
+            return makeUnary(['unary-prefix', 'D2I', node[2][2]], ASM_INT, ASM_SIGNED);
           }
 
           // not a simple coercion
@@ -6064,7 +6063,7 @@ function emterpretify(ast) {
       } else {
         if (type === ASM_INT) {
           return [l, ['SETVIB', l, 0, 0, value & 255, (value >> 8) & 255, (value >> 16) & 255, (value >> 24) & 255]];
-        } else throw 'fff';
+        } else throw 'fff ';
       }
     }
 
@@ -6157,11 +6156,11 @@ function emterpretify(ast) {
     }
 
     function makeUnary(node, type, sign) {
-      assert(type === ASM_INT);
       var opcode;
       switch(node[1]) {
-        case '-': opcode = 'NEG'; break;
-        case '!': opcode = 'LNOT'; break;
+        case '-': assert(type === ASM_INT); opcode = 'NEG'; break;
+        case '!': assert(type === ASM_INT); opcode = 'LNOT'; break;
+        case 'I2D': case 'D2I': opcode = node[1]; break;
         default: throw 'bad';
       }
       var y = getReg(node[2]);
