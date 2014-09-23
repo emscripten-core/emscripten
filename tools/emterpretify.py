@@ -194,7 +194,7 @@ def make_emterpreter(t):
       sigs = call_sigs[name]
       assert len(sigs) == 1, [name, sigs]
       sig = sigs[0]
-      ret = name + '(' + ', '.join([get_coerced_access('HEAP8[pc+%d>>0]' % (i+4)) for i in range(len(sig)-1)]) + ')'
+      ret = name + '(' + ', '.join([get_coerced_access('HEAP8[pc+%d>>0]' % (i+4), s=sig[i+1]) for i in range(len(sig)-1)]) + ')'
       if sig[0] != 'v':
         ret = get_access('lx', sig[0]) + ' = ' + shared.JS.make_coercion(ret, sig[0])
       elif name in actual_return_types and actual_return_types[name] != 'v':
