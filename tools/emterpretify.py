@@ -128,7 +128,8 @@ CASES[ROPCODES['BRF']] = 'if (!(' + get_coerced_access('lx') + ')) { pc = pc + (
 CASES[ROPCODES['GETTDP']] = 'HEAP32[sp + (lx << 3) >> 2] = tempDoublePtr;'
 #CASES[ROPCODES['GETPC']] = 'HEAP32[sp + (lx << 3) >> 2] = pc;'
 CASES[ROPCODES['SWITCH']] = '''
-lx = (lx - ly) >>> 0; // lx is now relative to the base
+lz = ''' + get_coerced_access('lz') + ''';
+lx = ((''' + get_coerced_access('lx') + ''') - (''' + get_coerced_access('ly') + ''')) >>> 0; // lx is now relative to the base
 if ((lx >>> 0) >= (lz >>> 0)) { // is the adjusted value too big?
   pc = (pc + (lz << 2)) | 0; // jump to right after the table, where the default is
   continue;
