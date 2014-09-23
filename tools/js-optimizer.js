@@ -1835,16 +1835,32 @@ var ASM_FLOAT_ZERO = null; // TODO: share the entire node?
 
 function detectAsmCoercion(node, asmInfo, inVarDef) {
   // for params, +x vs x|0, for vars, 0.0 vs 0
-  if (node[0] === 'num' && node[1].toString().indexOf('.') >= 0) return ASM_DOUBLE;
-  if (node[0] === 'unary-prefix' && node[1] === '+') return ASM_DOUBLE;
-  if (node[0] === 'call' && node[1][0] === 'name' && node[1][1] === 'Math_fround') return ASM_FLOAT;
-  if (asmInfo && node[0] == 'name') return getAsmType(node[1], asmInfo);
-  if (node[0] === 'name') {
-    if (!inVarDef) return ASM_NONE;
-    // We are in a variable definition, where Math_fround(0) optimized into a global constant becomes f0 = Math_fround(0)
-    if (!ASM_FLOAT_ZERO) ASM_FLOAT_ZERO = node[1];
-    else assert(ASM_FLOAT_ZERO === node[1]);
-    return ASM_FLOAT;
+  switch (node[0]) {
+    case 'num': {
+      if (node[1].toString().indexOf('.') >= 0) return ASM_DOUBLE;
+      break;
+    }
+    case 'unary-prefix': {
+      if (node[1] === '+') return ASM_DOUBLE;
+      break;
+    }
+    case 'call': {
+      if (node[1][0] === 'name' && node[1][1] === 'Math_fround') return ASM_FLOAT;
+      break;
+    }
+    case 'name': {
+      if (asmInfo) return getAsmType(node[1], asmInfo);
+      if (!inVarDef) return ASM_NONE;
+      // We are in a variable definition, where Math_fround(0) optimized into a global constant becomes f0 = Math_fround(0)
+      if (!ASM_FLOAT_ZERO) ASM_FLOAT_ZERO = node[1];
+      else assert(ASM_FLOAT_ZERO === node[1]);
+      return ASM_FLOAT;
+      break;
+    }
+    case 'binary': {
+      if (node[1] === '*' || node[1] === '/') return ASM_DOUBLE; // uncoerced by |0 etc., these ops are double
+      break;
+    }
   }
   return ASM_INT;
 }
