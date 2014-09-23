@@ -8815,39 +8815,39 @@ LibraryManager.library = {
   },
   
   emscripten_float32x4_lessThan__inline: function(a, b) {
-    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.lessThan(' + a + ', ' + b + '))';
+    return 'SIMD.float32x4.lessThan(' + a + ', ' + b + ')';
   },
   
   emscripten_float32x4_lessThanOrEqual__inline: function(a, b) {
-    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.lessThanOrEqual(' + a + ', ' + b + '))';
+    return 'SIMD.float32x4.lessThanOrEqual(' + a + ', ' + b + ')';
   },
   
   emscripten_float32x4_equal__inline: function(a, b) {
-    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.equal(' + a + ', ' + b + '))';
+    return 'SIMD.float32x4.equal(' + a + ', ' + b + ')';
   },
   
   emscripten_float32x4_greaterThanOrEqual__inline: function(a, b) {
-    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.greaterThanOrEqual(' + a + ', ' + b + '))';
+    return 'SIMD.float32x4.greaterThanOrEqual(' + a + ', ' + b + ')';
   },
   
   emscripten_float32x4_greaterThan__inline: function(a, b) {
-    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.greaterThan(' + a + ', ' + b + '))';
+    return 'SIMD.float32x4.greaterThan(' + a + ', ' + b + ')';
   },
   
   emscripten_float32x4_and__inline: function(a, b) {
-    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.and(' + a + ', ' + b + '))';
+    return 'SIMD.float32x4.and(' + a + ', ' + b + ')';
   },
   
   emscripten_float32x4_andNot__inline: function(a, b) {
-    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.and(SIMD.float32x4.not(' + a + '), ' + b + '))';
+    return 'SIMD.float32x4.and(SIMD.float32x4.not(' + a + '), ' + b + ')';
   },
   
   emscripten_float32x4_or__inline: function(a, b) {
-    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.or(' + a + ', ' + b + '))';
+    return 'SIMD.float32x4.or(' + a + ', ' + b + ')';
   },
   
   emscripten_float32x4_xor__inline: function(a, b) {
-    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.xor(' + a + ', ' + b + '))';
+    return 'SIMD.float32x4.xor(' + a + ', ' + b + ')';
   },
   
   emscripten_float32x4_fromInt32x4Bits__inline: function(a) {
