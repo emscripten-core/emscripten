@@ -275,8 +275,9 @@ func = None
 # first pass, collect and process bytecode
 
 call_sigs = {} # signatures appearing for each call target
-def process_code(code, absolute_targets):
+def process_code(func, code, absolute_targets):
   absolute_start = code_start + len(all_code) # true absolute starting point of this function
+  #print 'processing code', func, absolute_start
   for i in range(len(code)/4):
     j = i*4
     if code[j] == 'CALL':
@@ -295,6 +296,7 @@ def process_code(code, absolute_targets):
         assert code[j+1] >= 0 # there should be a real target here
     elif code[j] == 'absolute-value':
       # put the 32-bit absolute value of an abolute target here
+      #print '  fixing absolute value', code[j+1], absolute_targets[unicode(code[j+1])], absolute_start + absolute_targets[unicode(code[j+1])]
       value = bytify(absolute_start + absolute_targets[unicode(code[j+1])])
       for k in range(4):
         code[j + k] = value[k]
@@ -323,7 +325,7 @@ for i in range(len(lines)):
       assert len(curr) % 4 == 0, curr
       funcs[func] = len(all_code) # no operation here should change the length
       print >> sys.stderr, 'raw bytecode for %s:' % func, curr
-      process_code(curr, absolute_targets)
+      process_code(func, curr, absolute_targets)
       print >> sys.stderr, 'processed bytecode for %s:' % func, curr
       all_code += curr
     func = None
