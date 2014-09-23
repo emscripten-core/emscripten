@@ -1930,8 +1930,9 @@ function getCombinedSign(node1, node2, hint) {
     assert(sign1 != ASM_FLEXIBLE);
     return sign1;
   }
-  assert(sign1 === sign2);//, JSON.stringify([node1, '      ', node2, sign1, sign2]));
-  return sign1;
+  if (sign1 === sign2) return sign1;
+  if (sign1 === hint || sign2 === hint) return hint;
+  assert(0, JSON.stringify([node1, '      ', node2, sign1, sign2, hint]));
 }
 
 function normalizeAsm(func) {
