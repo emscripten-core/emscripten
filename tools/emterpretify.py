@@ -22,7 +22,7 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '1':   'GETST',   # [l, 0, 0]            l = STACKTOP
   '2':   'SETST',   # [l, 0, 0]            STACKTOP = l
   '3':   'SETVI',   # [l, vl, vh]          l = v (16-bit signed int)
-  '4':   'SETVIB',  # [l, vl, vh]          l = 32-bit int in next 32-bit instruction
+  '4':   'SETVIB',  # [l, 0, 0] [..v..]    l = 32-bit int in next 32-bit instruction
   '5':   'ADD',     # [lx, ly, lz]         lx = ly + lz (32-bit int)
   '6':   'SUB',     # [lx, ly, lz]         lx = ly - lz (32-bit int)
   '7':   'MUL',     # [lx, ly, lz]         lx = ly * lz (32-bit int)
@@ -80,8 +80,9 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   #'170': 'ABR',     # [lx, 0, 0, 0]        absolute branch to address lx (assumed divisible by 4)
   '200': 'GETTDP',  # [l, 0, 0]            l = tempDoublePtr
   #'201': 'GETPC',   # [l, 0, 0]            l = pc
-  '250': 'CALL',    # [lx, target, sig, params..]   (lx = ) target(params..) lx's existence and type depend on the target's actual callsig;
-                    #                               this instruction can take multiple 32-bit instruction chunks
+  '250': 'CALL',    # [lx, target, sig] [params...]   (lx = ) target(params..) lx's existence and type depend on the target's actual callsig;
+                    #                                 this instruction can take multiple 32-bit instruction chunks
+                    #                                 if target is a function table, then the first param is the index of the register holding the function pointer
   '251': 'SWITCH',  # [lx, ly, lz]         switch (lx) { .. }. followed by a jump table for values in range [ly..ly+lz), after which is the default (which might be empty)
   '254': 'RET',     # [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
   '255': 'FUNC',    # [n, 0, 0]            function with n locals (each taking 64 bits)
@@ -209,11 +210,15 @@ def make_emterpreter(t):
     #print >> sys.stderr, call_sigs
     def make_target_call(i):
       name = rglobal_funcs[i]
+      function_pointer_call = name.startswith('FUNCTION_TABLE_')
       if name not in call_sigs: return None
       sigs = call_sigs[name]
       assert len(sigs) == 1, [name, sigs]
       sig = sigs[0]
-      ret = name + '(' + ', '.join([get_coerced_access('HEAP8[pc+%d>>0]' % (i+4), s=sig[i+1]) for i in range(len(sig)-1)]) + ')'
+      ret = name
+      if function_pointer_call:
+        ret += '[' + get_coerced_access('HEAP8[pc+4>>0]') + ']'
+      ret += '(' + ', '.join([get_coerced_access('HEAP8[pc+%d>>0]' % (i+4+(1 if function_pointer_call else 0)), s=sig[i+1]) for i in range(len(sig)-1)]) + ')'
       if sig[0] != 'v':
         ret = get_access('lx', sig[0]) + ' = ' + shared.JS.make_coercion(ret, sig[0])
       elif name in actual_return_types and actual_return_types[name] != 'v':

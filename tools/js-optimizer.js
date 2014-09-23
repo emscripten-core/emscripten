@@ -5900,22 +5900,17 @@ function emterpretify(ast) {
           throw 'todo';
         }
         case 'call': {
-          if (node[1][0] === 'name') {
-            var type;
-            var ret;
-            if (dropIt) {
-              type = ASM_NONE;
-              ret = -1;
-            } else {
-              assert(typeHint !== ASM_NONE);
-              type = typeHint;
-              ret = getFree();
-            }
-            return [ret, makeCall(ret, node, type)];
+          var type;
+          var ret;
+          if (dropIt) {
+            type = ASM_NONE;
+            ret = -1;
           } else {
-            // todo: function pointer call
+            assert(typeHint !== ASM_NONE);
+            type = typeHint;
+            ret = getFree();
           }
-          throw 'todo';
+          return [ret, makeCall(ret, node, type)];
         }
         case 'return': {
           assert(dropIt);
@@ -6293,28 +6288,39 @@ function emterpretify(ast) {
     function makeCall(lx, node, type) {
       // TODO: specialize calls like imul
       assert(node[0] === 'call');
+      var ret = [];
+      var target;
+      var functionPointer = null;
       if (node[1][0] === 'name') {
         // normal direct call
-        var ret = ['CALL'];
-        var actuals = [];
-        var sig = ASM_SIG[type];
-        node[2].forEach(function(param) {
-          var reg = getReg(param);
-          ret = reg[1].concat(ret);
-          actuals.push(reg[0]);
-          sig += ASM_SIG[detectAsmCoercion(param, asmData)];
-        });
-        ret.push(lx);
-        ret.push(node[1][1]);
-        assert(sig.indexOf('u') < 0); // no undefined
-        ret.push(sig);
-        ret = ret.concat(actuals);
-        actuals.forEach(releaseIfFree);
-        while (ret.length % 4 !== 0) ret.push(0);
-        return ret;
+        target = node[1][1];
       } else {
-        throw 'todo: function pointer call';
+        // function pointer call through function table
+        assert(node[1][0] === 'sub' && node[1][1][0] === 'name');
+        target = node[1][1][1];
+        functionPointer = getReg(node[1][2]);
+        ret = ret.concat(functionPointer[1]);
       }
+      var actuals = [];
+      var sig = ASM_SIG[type];
+      node[2].forEach(function(param) {
+        var reg = getReg(param);
+        ret = ret.concat(reg[1]);
+        actuals.push(reg[0]);
+        sig += ASM_SIG[detectAsmCoercion(param, asmData)];
+      });
+      ret.push('CALL');
+      ret.push(lx);
+      ret.push(target);
+      assert(sig.indexOf('u') < 0); // no undefined
+      ret.push(sig);
+      actuals.forEach(releaseIfFree);
+      if (functionPointer) {
+        ret.push(releaseIfFree(functionPointer[0]));
+      }
+      ret = ret.concat(actuals);
+      while (ret.length % 4 !== 0) ret.push(0);
+      return ret;
     }
 
     function walkStatements(stats) {
