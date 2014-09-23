@@ -44,6 +44,7 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '40':  'SHL',     # [lx, ly, lz]         lx = ly << lz
   '41':  'ASHR',    # [lx, ly, lz]         lx = ly >> lz
   '42':  'LSHR',    # [lx, ly, lz]         lx = ly >>> lz
+  '60':  'SETD',    # [lx, ly, lz]         lx = ly (double)
   '100': 'LOAD8',   # [lx, ly, 0]          lx = HEAP8[ly >> 0]
   '110': 'LOAD16',  # [lx, ly, 0]          lx = HEAP16[ly >> 1]
   '120': 'LOAD32',  # [lx, ly, 0]          lx = HEAP32[ly >> 2]
@@ -123,6 +124,7 @@ CASES[ROPCODES['XOR']] = get_access('lx') + ' = (' + get_coerced_access('ly') + 
 CASES[ROPCODES['SHL']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') << (' + get_coerced_access('lz') + ');'
 CASES[ROPCODES['ASHR']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') >> (' + get_coerced_access('lz') + ');'
 CASES[ROPCODES['LSHR']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') >>> (' + get_coerced_access('lz') + ');'
+CASES[ROPCODES['SETD']] = get_access('lx', s='d') + ' = ' + get_coerced_access('ly', s='d') + ';'
 CASES[ROPCODES['LOAD8']] = get_access('lx') + ' = ' + 'HEAP8[' + get_access('ly') + ' >> 0];'
 CASES[ROPCODES['LOAD16']] = get_access('lx') + ' = ' + 'HEAP16[' + get_access('ly') + ' >> 1];'
 CASES[ROPCODES['LOAD32']] = get_access('lx') + ' = ' + 'HEAP32[' + get_access('ly') + ' >> 2];'

@@ -1896,7 +1896,8 @@ function getCombinedType(node1, node2, asmData, hint) {
 
 var ASM_FLEXIBLE = 0; // small constants can be signed or unsigned, variables are also flexible
 var ASM_SIGNED = 1;
-var ASM_UNSIGNED = 2
+var ASM_UNSIGNED = 2;
+var ASM_NONSIGNED = 3;
 
 function detectSign(node) {
   if (node[0] === 'binary') {
@@ -5755,9 +5756,15 @@ function emterpretify(ast) {
               // local
               var reg = getReg(value);
               var type = asmData.vars[name];
-              assert(type !== ASM_DOUBLE); // TODO: SETD
+              if (type === undefined) type = asmData.params[name];
               // TODO: detect when the last operation in reg[1] assigns in its arg x, in which case we can avoid the SET and make it assign to us
-              return [locals[name], reg[1].concat(['SET', locals[name], releaseIfFree(reg[0]), 0])];
+              var opcode;
+              if (type === ASM_INT) {
+                opcode = 'SET';
+              } else if (type === ASM_DOUBLE) {
+                opcode = 'SETD';
+              } else throw 'ick';
+              return [locals[name], reg[1].concat([opcode, locals[name], releaseIfFree(reg[0]), 0])];
             } else {
               switch(name) {
                 case 'STACKTOP': {
@@ -5821,7 +5828,12 @@ function emterpretify(ast) {
           throw 'todo';
         }
         case 'unary-prefix': {
-          // TODO: double coercions
+          if (node[1] === '+') {
+            // double operation
+            return getReg(node[2], dropIt, ASM_DOUBLE, ASM_NONSIGNED);
+          }
+
+          // not a simple coercion
           assert(!dropIt);
 
           switch (node[1]) {
