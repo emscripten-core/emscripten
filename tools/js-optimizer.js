@@ -1928,7 +1928,8 @@ function detectSign(node) {
       case '|': case '&': case '^': case '<<': case '>>': return ASM_SIGNED;
       case '>>>': return ASM_UNSIGNED;
       case '+': case '-': return ASM_FLEXIBLE;
-      default: throw 'yikes';
+      case '*': case '/': return ASM_NONSIGNED; // without a coercion, these are double
+      default: throw 'yikes ' + node[1];
     }
   } else if (node[0] === 'unary-prefix') {
     switch(node[1]) {
@@ -5801,7 +5802,6 @@ function emterpretify(ast) {
             // assign to memory
             var heap = target[1][1];
             assert(parseHeap(heap));
-            assert(!parseHeapTemp.float);
             // coerced heap access => a load
             var y = getReg(value);
             var opcode = 'STORE' + (parseHeapTemp.float ? 'F' : '') + parseHeapTemp.bits;
