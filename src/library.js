@@ -8866,6 +8866,10 @@ LibraryManager.library = {
       return 'SIMD.int32x4.fromFloat32x4(' + a + ')';
   },
 
+  emscripten_float32x4_select__inline: function(a, b, c) {
+    return 'SIMD.float32x4.select(' + a + ', ' + b + ', ' + c + ')';
+  },
+
   //============================
   // i64 math
   //============================

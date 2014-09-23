@@ -5151,6 +5151,15 @@ return malloc(size);
 
     self.do_run_from_file(src, output)
 
+  def test_simd6(self):
+    # test_simd6 is to test x86 min and max intrinsics on NaN and -0.0
+    if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+
+    test_path = path_from_root('tests', 'core', 'test_simd6')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
+
   def test_simd_dyncall(self):
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
