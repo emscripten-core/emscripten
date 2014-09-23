@@ -9,6 +9,10 @@
 // TODO: Share EMPTY_NODE instead of emptyNode that constructs?
 //==============================================================================
 
+if (!Math.log2) Math.log2 = function log2(x) {
+  return Math.log(x) / Math.LN2;
+};
+
 // *** Environment setup code ***
 var arguments_ = [];
 var debug = false;
@@ -5779,23 +5783,28 @@ function emterpretify(ast) {
             }
           } else if (target[0] === 'sub') {
             // assign to memory
-            assert(target[1][0] === 'name');
-            assert(target[2][0] === 'binary' && target[2][1] === '>>' && target[2][3][0] === 'num');
-            var shifts = target[2][3][1];
-            var x = getReg(target[2][2], false, ASM_INT, ASM_SIGNED);
+            var heap = target[1][1];
+            assert(parseHeap(heap));
+            assert(!parseHeapTemp.float);
+            // coerced heap access => a load
             var y = getReg(value);
-            var opcode;
-            switch(shifts) {
-              case 0: opcode = 'STORE8'; break;
-              case 2: {
-                var type = detectAsmCoercion(value, asmData);
-                assert(type === ASM_INT);
-                opcode = 'STORE32';
-                break;
-              }
-              default: throw 'todo';
+            if (target[2][0] === 'binary' && target[2][1] === '>>' && target[2][3][0] === 'num') {
+              var shifts = target[2][3][1];
+              assert(shifts >= 0 && shifts <= 2);
+              var bits = Math.pow(2, shifts)*8;
+              assert(bits === parseHeapTemp.bits);
+              var opcode = 'STORE' + bits;
+              var x = getReg(target[2][2], false, ASM_INT, ASM_SIGNED);
+              return [-1, x[1].concat(y[1]).concat([opcode, releaseIfFree(x[0]), releaseIfFree(y[0]), 0])];
+            } else {
+              assert(target[2][0] === 'num'); // HEAP32[8] or such
+              var address = target[2][1];
+              var shifts = Math.log2(parseHeapTemp.bits/8);
+              assert(address === ((address << shifts) >> shifts));
+              var x = makeNum(address << shifts, ASM_INT);
+              y[1].push('STORE' + parseHeapTemp.bits, releaseIfFree(x[0]), releaseIfFree(y[0]), 0);
+              return [-1, x[1].concat(y[1])];
             }
-            return [-1, x[1].concat(y[1]).concat([opcode, releaseIfFree(x[0]), releaseIfFree(y[0]), 0])];
           } else throw 'assign wha? ' + target[0];
         }
         case 'binary': {
@@ -5985,7 +5994,11 @@ function emterpretify(ast) {
           } else {
             assert(node[2][0] === 'num'); // HEAP32[8] or such
             var address = node[2][1];
-            throw 'todo';
+            var shifts = Math.log2(parseHeapTemp.bits/8);
+            assert(address === ((address << shifts) >> shifts));
+            var ret = makeNum(address << shifts, ASM_INT, getFree());
+            ret[1].push('LOAD' + parseHeapTemp.bits, ret[0], ret[0], 0);
+            return ret;
           }
         }
         case 'block': {
