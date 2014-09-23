@@ -6314,7 +6314,7 @@ function emterpretify(ast) {
       ret.push(target);
       assert(sig.indexOf('u') < 0); // no undefined
       ret.push(sig);
-      actuals.forEach(releaseIfFree);
+      actuals.forEach(function(actual) { releaseIfFree(actual) });
       if (functionPointer) {
         ret.push(releaseIfFree(functionPointer[0]));
       }
