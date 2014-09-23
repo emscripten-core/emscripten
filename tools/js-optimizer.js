@@ -1930,7 +1930,7 @@ function getCombinedSign(node1, node2, hint) {
     assert(sign1 != ASM_FLEXIBLE);
     return sign1;
   }
-  assert(sign1 === sign2);
+  assert(sign1 === sign2);//, JSON.stringify([node1, '      ', node2, sign1, sign2]));
   return sign1;
 }
 
@@ -5835,6 +5835,7 @@ function emterpretify(ast) {
               var sign = detectSign(node[2]);
               return makeUnary(node, type, sign);
             }
+            case '!': return makeUnary(node, ASM_INT, ASM_SIGNED);
             default: throw 'ehh';
           }
           throw 'todo';
@@ -6074,6 +6075,7 @@ function emterpretify(ast) {
       var opcode;
       switch(node[1]) {
         case '-': opcode = 'NEG'; break;
+        case '!': opcode = 'LNOT'; break;
         default: throw 'bad';
       }
       var y = getReg(node[2]);
