@@ -1941,6 +1941,7 @@ function detectSign(node) {
     switch(node[1]) {
       case '-': return ASM_FLEXIBLE;
       case '+': return ASM_DOUBLE; // XXX
+      case '~': return ASM_SIGNED;
       default: throw 'yikes';
     }
   } else if (node[0] === 'num' || node[0] === 'name') {
