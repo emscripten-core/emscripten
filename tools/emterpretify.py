@@ -44,7 +44,21 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '40':  'SHL',     # [lx, ly, lz]         lx = ly << lz
   '41':  'ASHR',    # [lx, ly, lz]         lx = ly >> lz
   '42':  'LSHR',    # [lx, ly, lz]         lx = ly >>> lz
+
   '60':  'SETD',    # [lx, ly, lz]         lx = ly (double)
+  '65':  'ADDD',     # [lx, ly, lz]         lx = ly + lz (double)
+  '66':  'SUBD',     # [lx, ly, lz]         lx = ly - lz (double)
+  '67':  'MULD',     # [lx, ly, lz]         lx = ly * lz (double)
+  '69':  'DIVD',    # [lx, ly, lz]         lx = ly / lz (double)
+  '70':  'MODD',    # [lx, ly, lz]         lx = ly % lz (double)
+  #'72':  'NEGD',     # [lx, ly, 0]          lx = -ly (double)
+  '78':  'EQD',      # [lx, ly, lz]         lx = ly == lz (double)
+  '79':  'NED',      # [lx, ly, lz]         lx = ly != lz (double)
+  '80':  'LTD',     # [lx, ly, lz]         lx = ly < lz (signed)
+  '81':  'LED',     # [lx, ly, lz]         lx = ly < lz (double)
+  '82':  'GTD',     # [lx, ly, lz]         lx = ly <= lz (double)
+  '83':  'GED',     # [lx, ly, lz]         lx = ly <= lz (double)
+
   '100': 'LOAD8',   # [lx, ly, 0]          lx = HEAP8[ly >> 0]
   '110': 'LOAD16',  # [lx, ly, 0]          lx = HEAP16[ly >> 1]
   '120': 'LOAD32',  # [lx, ly, 0]          lx = HEAP32[ly >> 2]
@@ -63,6 +77,8 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '254': 'RET',     # [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
   '255': 'FUNC',    # [n, 0, 0]            function with n locals (each taking 64 bits)
 }
+
+assert len(OPCODES.values()) == len(set(OPCODES.values())) # no dupe names
 
 ROPCODES = {}
 for o in OPCODES:
@@ -124,7 +140,20 @@ CASES[ROPCODES['XOR']] = get_access('lx') + ' = (' + get_coerced_access('ly') + 
 CASES[ROPCODES['SHL']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') << (' + get_coerced_access('lz') + ');'
 CASES[ROPCODES['ASHR']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') >> (' + get_coerced_access('lz') + ');'
 CASES[ROPCODES['LSHR']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') >>> (' + get_coerced_access('lz') + ');'
+
 CASES[ROPCODES['SETD']] = get_access('lx', s='d') + ' = ' + get_coerced_access('ly', s='d') + ';'
+CASES[ROPCODES['ADDD']] = get_access('lx', s='d') + ' = (' + get_coerced_access('ly', s='d') + ') + (' + get_coerced_access('lz', s='d') + ');'
+CASES[ROPCODES['SUBD']] = get_access('lx', s='d') + ' = (' + get_coerced_access('ly', s='d') + ') - (' + get_coerced_access('lz', s='d') + ');'
+CASES[ROPCODES['MULD']] = get_access('lx', s='d') + ' = (' + get_coerced_access('ly', s='d') + ') * (' + get_coerced_access('lz', s='d') + ');'
+CASES[ROPCODES['DIVD']] = get_access('lx', s='d') + ' = (' + get_coerced_access('ly', s='d') + ') / (' + get_coerced_access('lz', s='d') + ');'
+CASES[ROPCODES['MODD']] = get_access('lx', s='d') + ' = (' + get_coerced_access('ly', s='d') + ') % (' + get_coerced_access('lz', s='d') + ');'
+CASES[ROPCODES['EQD']] = get_access('lx') + ' = (' + get_coerced_access('ly', s='d') + ') == (' + get_coerced_access('lz', s='d') + ') | 0;'
+CASES[ROPCODES['NED']] = get_access('lx') + ' = (' + get_coerced_access('ly', s='d') + ') != (' + get_coerced_access('lz', s='d') + ') | 0;'
+CASES[ROPCODES['LTD']] = get_access('lx') + ' = (' + get_coerced_access('ly', s='d') + ') < (' + get_coerced_access('lz', s='d') + ') | 0;'
+CASES[ROPCODES['LED']] = get_access('lx') + ' = (' + get_coerced_access('ly', s='d') + ') <= (' + get_coerced_access('lz', s='d') + ') | 0;'
+CASES[ROPCODES['GTD']] = get_access('lx') + ' = (' + get_coerced_access('ly', s='d') + ') > (' + get_coerced_access('lz', s='d') + ') | 0;'
+CASES[ROPCODES['GED']] = get_access('lx') + ' = (' + get_coerced_access('ly', s='d') + ') >= (' + get_coerced_access('lz', s='d') + ') | 0;'
+
 CASES[ROPCODES['LOAD8']] = get_access('lx') + ' = ' + 'HEAP8[' + get_access('ly') + ' >> 0];'
 CASES[ROPCODES['LOAD16']] = get_access('lx') + ' = ' + 'HEAP16[' + get_access('ly') + ' >> 1];'
 CASES[ROPCODES['LOAD32']] = get_access('lx') + ' = ' + 'HEAP32[' + get_access('ly') + ' >> 2];'

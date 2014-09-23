@@ -5820,7 +5820,7 @@ function emterpretify(ast) {
                   node[2] = node[3];
                   node[3] = temp;
                   node[1] = node[1] === '>=' ? '<=' : '<';
-                } else throw 'ex ' + type;
+                }
               }
               return makeBinary(node, type, sign);
             }
@@ -6037,42 +6037,79 @@ function emterpretify(ast) {
     }
 
     function makeBinary(node, type, sign) {
-      assert(type === ASM_INT);
       var opcode;
       switch(node[1]) {
-        case '+': opcode = 'ADD'; break;
-        case '-': opcode = 'SUB'; break;
+        case '+': {
+          if (type === ASM_INT) opcode = 'ADD';
+          else if (type === ASM_DOUBLE) opcode = 'ADDD';
+          break;
+        }
+        case '-': {
+          if (type === ASM_INT) opcode = 'SUB';
+          else if (type === ASM_DOUBLE) opcode = 'SUBD';
+          break;
+        }
         case '*': {
-          assert(type === ASM_INT);
-          opcode = 'MUL';
+          if (type === ASM_INT) opcode = 'MUL';
+          else if (type === ASM_DOUBLE) opcode = 'MULD';
           break;
         }
         case '/': {
-          assert(sign !== ASM_FLEXIBLE);
-          if (sign === ASM_SIGNED) opcode = 'SDIV';
-          else opcode = 'UDIV';
+          if (type === ASM_INT) {
+            assert(sign !== ASM_FLEXIBLE);
+            if (sign === ASM_SIGNED) opcode = 'SDIV';
+            else opcode = 'UDIV';
+          }
+          else if (type === ASM_DOUBLE) opcode = 'DIVD';
           break;
         }
         case '%': {
-          assert(sign !== ASM_FLEXIBLE);
-          if (sign === ASM_SIGNED) opcode = 'SMOD';
-          else opcode = 'UMOD';
+          if (type === ASM_INT) {
+            assert(sign !== ASM_FLEXIBLE);
+            if (sign === ASM_SIGNED) opcode = 'SMOD';
+            else opcode = 'UMOD';
+          }
+          else if (type === ASM_DOUBLE) opcode = 'MODD';
           break;
         }
         case '<': {
-          assert(sign !== ASM_FLEXIBLE);
-          if (sign === ASM_SIGNED) opcode = 'SLT';
-          else opcode = 'ULT';
+          if (type === ASM_INT) {
+            assert(sign !== ASM_FLEXIBLE);
+            if (sign === ASM_SIGNED) opcode = 'SLT';
+            else opcode = 'ULT';
+          }
+          else if (type === ASM_DOUBLE) opcode = 'LTD';
           break;
         }
         case '<=': {
-          assert(sign !== ASM_FLEXIBLE);
-          if (sign === ASM_SIGNED) opcode = 'SLE';
-          else opcode = 'ULE';
+          if (type === ASM_INT) {
+            assert(sign !== ASM_FLEXIBLE);
+            if (sign === ASM_SIGNED) opcode = 'SLE';
+            else opcode = 'ULE';
+          }
+          else if (type === ASM_DOUBLE) opcode = 'LED';
           break;
         }
-        case '==': assert(type === ASM_INT); opcode = 'EQ'; break;
-        case '!=': assert(type === ASM_INT); opcode = 'NE'; break;
+        case '>': {
+          assert(type === ASM_DOUBLE);
+          opcode = 'GTD';
+          break;
+        }
+        case '<=': {
+          assert(type === ASM_DOUBLE);
+          opcode = 'GED';
+          break;
+        }
+        case '==': {
+          if (type === ASM_INT) opcode = 'EQ';
+          else if (type === ASM_DOUBLE) opcode = 'EQD';
+          break;
+        }
+        case '!=': {
+          if (type === ASM_INT) opcode = 'NE';
+          else if (type === ASM_DOUBLE) opcode = 'NED';
+          break;
+        }
         case '&': opcode = 'AND'; break;
         case '|': opcode = 'OR'; break;
         case '^': opcode = 'XOR'; break;
