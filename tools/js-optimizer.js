@@ -5809,7 +5809,7 @@ function emterpretify(ast) {
             var opcode = 'STORE' + (parseHeapTemp.float ? 'F' : '') + parseHeapTemp.bits;
             if (target[2][0] === 'binary' && target[2][1] === '>>' && target[2][3][0] === 'num') {
               var shifts = target[2][3][1];
-              assert(shifts >= 0 && shifts <= 2);
+              assert(shifts >= 0 && shifts <= 3);
               var bits = Math.pow(2, shifts)*8;
               assert(bits === parseHeapTemp.bits);
               var x = getReg(target[2][2], false, ASM_INT, ASM_SIGNED);
@@ -6002,7 +6002,7 @@ function emterpretify(ast) {
           var opcode = 'LOAD' + (parseHeapTemp.float ? 'F' : '') + parseHeapTemp.bits;
           if (node[2][0] === 'binary' && node[2][1] === '>>' && node[2][3][0] === 'num') {
             var shifts = node[2][3][1];
-            assert(shifts >= 0 && shifts <= 2);
+            assert(shifts >= 0 && shifts <= 3);
             var bits = Math.pow(2, shifts)*8;
             assert(bits === parseHeapTemp.bits);
             var y = getReg(node[2][2], false, ASM_INT, ASM_SIGNED);
