@@ -259,6 +259,12 @@ assert zero_space >= 0 # can be positive, if we add a bump of zeros
 
 assert 'GLOBAL_BASE: 8,' in asm.pre_js
 
+# calculate where code will start
+while len(mem_init) % 8 != 0:
+  mem_init.append(0)
+  asm.staticbump += 1
+code_start = len(mem_init) + GLOBAL_BASE
+
 # parse out bytecode and add to mem init file
 all_code = []
 funcs = {}
@@ -270,7 +276,7 @@ func = None
 
 call_sigs = {} # signatures appearing for each call target
 def process_code(code, absolute_targets):
-  absolute_start = len(all_code) + GLOBAL_BASE
+  absolute_start = code_start + len(all_code) # true absolute starting point of this function
   for i in range(len(code)/4):
     j = i*4
     if code[j] == 'CALL':
@@ -289,7 +295,7 @@ def process_code(code, absolute_targets):
         assert code[j+1] >= 0 # there should be a real target here
     elif code[j] == 'absolute-value':
       # put the 32-bit absolute value of an abolute target here
-      value = bytify(absolute_targets[unicode(code[j+1])])
+      value = bytify(absolute_start + absolute_targets[unicode(code[j+1])])
       for k in range(4):
         code[j + k] = value[k]
 
@@ -333,11 +339,7 @@ for i in range(len(lines)):
     elif ret == '2':
       actual_return_types[name] = 'f'
 
-# create new mem init, and calculate where code will start
-while len(mem_init) % 8 != 0:
-  mem_init.append(0)
-  asm.staticbump += 1
-code_start = len(mem_init) + GLOBAL_BASE
+# create new mem init
 mem_init = mem_init + all_code
 asm.staticbump += len(all_code)
 
