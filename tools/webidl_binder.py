@@ -428,18 +428,19 @@ for name in names:
                     call_content=get_call_content,
                     const=m.getExtendedAttribute('Const'))
 
-    set_name = 'set_' + attr
-    mid_js += [r'''
-  %s.prototype['%s']= ''' % (name, set_name)]
-    render_function(name,
-                    set_name, set_sigs, 'Void',
-                    None,
-                    None,
-                    None,
-                    False,
-                    func_scope=interface,
-                    call_content=set_call_content,
-                    const=m.getExtendedAttribute('Const'))
+    if not m.readonly:
+      set_name = 'set_' + attr
+      mid_js += [r'''
+    %s.prototype['%s']= ''' % (name, set_name)]
+      render_function(name,
+                      set_name, set_sigs, 'Void',
+                      None,
+                      None,
+                      None,
+                      False,
+                      func_scope=interface,
+                      call_content=set_call_content,
+                      const=m.getExtendedAttribute('Const'))
 
   if not interface.getExtendedAttribute('NoDelete'):
     mid_js += [r'''

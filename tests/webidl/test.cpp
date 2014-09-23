@@ -1,7 +1,7 @@
 #include "test.h"
 
-Parent::Parent(int val) : value(val) { printf("Parent:%d\n", val); }
-Parent::Parent(Parent *p, Parent *q) : value(p->value + q->value) { printf("Parent:%d\n", value); }
+Parent::Parent(int val) : value(val), immutableAttr(8) { printf("Parent:%d\n", val); }
+Parent::Parent(Parent *p, Parent *q) : value(p->value + q->value), immutableAttr(8) { printf("Parent:%d\n", value); }
 void Parent::mulVal(int mul) { value *= mul; }
 
 typedef EnumClass::EnumWithinClass EnumClass_EnumWithinClass;

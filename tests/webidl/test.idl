@@ -8,6 +8,8 @@ interface Parent {
   void parentFunc();
   [Const] Parent getAsConst();
   VoidPtr voidStar(VoidPtr something);
+
+  readonly attribute long immutableAttr;
 };
 
 interface Child1 {
