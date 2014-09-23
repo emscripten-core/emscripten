@@ -1903,7 +1903,7 @@ function detectSign(node) {
     switch(node[1]) {
       case '|': case '&': case '^': case '<<': case '>>': return ASM_SIGNED;
       case '>>>': return ASM_UNSIGNED;
-      case '+': return ASM_FLEXIBLE;
+      case '+': case '-': return ASM_FLEXIBLE;
       default: throw 'yikes';
     }
   } else if (node[0] === 'unary-prefix') {
