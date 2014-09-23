@@ -368,9 +368,13 @@ function removeUnneededLabelSettings(ast) {
 
 // Various expression simplifications. Happens after elimination, which opens up many of these simplification opportunities.
 
-var parseHeapTemp = { unsigned: false, float: false, bits: 0 };
+function makeTempParseHeap() {
+  return { unsigned: false, float: false, bits: 0 };
+}
 
-function parseHeap(name, out) {
+var parseHeapTemp = makeTempParseHeap();
+
+function parseHeap(name, out) { // XXX this uses parseHeapTemp by default, which is global! If between your call and your use, something else can call - that is bad
   out = out || parseHeapTemp;
   if (name.substr(0, 4) != 'HEAP') return false;
   out.unsigned = name[4] === 'U';
@@ -525,7 +529,7 @@ function simplifyExpressions(ast) {
         } else if (input[0] === 'sub' && input[1][0] === 'name') {
           // HEAP8[..] & 255 => HEAPU8[..]
           var name = input[1][1];
-          if (parseHeap(name, parseHeapTemp)) {
+          if (parseHeap(name)) {
             if (amount === Math.pow(2, parseHeapTemp.bits)-1) {
               if (!parseHeapTemp.unsigned) {
                 input[1][1] = 'HEAPU' + parseHeapTemp.bits; // make unsigned
@@ -553,7 +557,7 @@ function simplifyExpressions(ast) {
         // collapse HEAPU?8[..] << 24 >> 24 etc. into HEAP8[..] | 0
         var amount = node[3][1];
         var name = node[2][2][1][1];
-        if (amount === node[2][3][1] && parseHeap(name, parseHeapTemp)) {
+        if (amount === node[2][3][1] && parseHeap(name)) {
           if (parseHeapTemp.bits === 32 - amount) {
             node[2][2][1][1] = 'HEAP' + parseHeapTemp.bits;
             node[1] = '|';
@@ -5646,7 +5650,7 @@ function pointerMasking(ast) {
       var addee = node[2][2];
       if (!(addee[0] === 'binary' && addee[1] === '+')) return;
       var shifts = node[2][3][1];
-      if (!parseHeap(node[1][1], parseHeapTemp)) return;
+      if (!parseHeap(node[1][1])) return;
       if (parseHeapTemp.bits !== 8*Math.pow(2, shifts)) return;
       // this is an HEAP[U]N[x + y >> n] expression. gather up all the top-level added items, seek a small constant amongst them
       var addedElements = [];
@@ -5803,21 +5807,22 @@ function emterpretify(ast) {
           } else if (target[0] === 'sub') {
             // assign to memory
             var heap = target[1][1];
-            assert(parseHeap(heap));
+            var temp = makeTempParseHeap();
+            assert(parseHeap(heap, temp));
             // coerced heap access => a load
             var y = getReg(value);
-            var opcode = 'STORE' + (parseHeapTemp.float ? 'F' : '') + parseHeapTemp.bits;
+            var opcode = 'STORE' + (temp.float ? 'F' : '') + temp.bits;
             if (target[2][0] === 'binary' && target[2][1] === '>>' && target[2][3][0] === 'num') {
               var shifts = target[2][3][1];
               assert(shifts >= 0 && shifts <= 3);
               var bits = Math.pow(2, shifts)*8;
-              assert(bits === parseHeapTemp.bits);
+              assert(bits === temp.bits, JSON.stringify([heap, '         ', temp, '               ', target]));
               var x = getReg(target[2][2], false, ASM_INT, ASM_SIGNED);
               return [-1, x[1].concat(y[1]).concat([opcode, releaseIfFree(x[0]), releaseIfFree(y[0]), 0])];
             } else {
               assert(target[2][0] === 'num'); // HEAP32[8] or such
               var address = target[2][1];
-              var shifts = Math.log2(parseHeapTemp.bits/8);
+              var shifts = Math.log2(temp.bits/8);
               assert(address === ((address << shifts) >> shifts));
               var x = makeNum(address << shifts, ASM_INT);
               y[1].push(opcode, releaseIfFree(x[0]), releaseIfFree(y[0]), 0);
@@ -5992,21 +5997,22 @@ function emterpretify(ast) {
         case 'sub': {
           assert(node[1][0] === 'name');
           var heap = node[1][1];
-          assert(parseHeap(heap));
+          var temp = makeTempParseHeap();
+          assert(parseHeap(heap, temp));
           // coerced heap access => a load
-          var opcode = 'LOAD' + (parseHeapTemp.float ? 'F' : '') + parseHeapTemp.bits;
+          var opcode = 'LOAD' + (temp.float ? 'F' : '') + temp.bits;
           if (node[2][0] === 'binary' && node[2][1] === '>>' && node[2][3][0] === 'num') {
             var shifts = node[2][3][1];
             assert(shifts >= 0 && shifts <= 3);
             var bits = Math.pow(2, shifts)*8;
-            assert(bits === parseHeapTemp.bits);
+            assert(bits === temp.bits);
             var y = getReg(node[2][2], false, ASM_INT, ASM_SIGNED);
             var x = getFree(y[0]);
             return [x, y[1].concat([opcode, x, releaseIfFree(y[0], x), 0])];
           } else {
             assert(node[2][0] === 'num'); // HEAP32[8] or such
             var address = node[2][1];
-            var shifts = Math.log2(parseHeapTemp.bits/8);
+            var shifts = Math.log2(temp.bits/8);
             assert(address === ((address << shifts) >> shifts));
             var ret = makeNum(address << shifts, ASM_INT, getFree());
             ret[1].push(opcode, ret[0], ret[0], 0);
