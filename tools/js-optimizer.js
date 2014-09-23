@@ -1918,6 +1918,7 @@ function getCombinedType(node1, node2, asmData, hint) {
   }
   if (type1 !== type2) {
     if (type1 === hint || type2 === hint) return hint;
+    if (type1 === ASM_INT || type2 === ASM_INT) return ASM_INT; // INT overrides everything, least tolerant
     assert(0, "can't figure it out " + JSON.stringify([node1, '....', node2, '     ', type1, type2, hint]));
   }
   return type1;
