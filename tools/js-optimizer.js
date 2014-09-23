@@ -1923,7 +1923,7 @@ function detectSign(node) {
   } else if (node[0] === 'num' || node[0] === 'name') {
     return ASM_FLEXIBLE;
   }
-  throw 'badd ' + JSON.stringify(node);
+  assert(0 , 'badd ' + JSON.stringify(node));
 }
 
 function getCombinedSign(node1, node2, hint) {
@@ -5788,12 +5788,12 @@ function emterpretify(ast) {
             assert(!parseHeapTemp.float);
             // coerced heap access => a load
             var y = getReg(value);
+            var opcode = 'STORE' + (parseHeapTemp.float ? 'F' : '') + parseHeapTemp.bits;
             if (target[2][0] === 'binary' && target[2][1] === '>>' && target[2][3][0] === 'num') {
               var shifts = target[2][3][1];
               assert(shifts >= 0 && shifts <= 2);
               var bits = Math.pow(2, shifts)*8;
               assert(bits === parseHeapTemp.bits);
-              var opcode = 'STORE' + bits;
               var x = getReg(target[2][2], false, ASM_INT, ASM_SIGNED);
               return [-1, x[1].concat(y[1]).concat([opcode, releaseIfFree(x[0]), releaseIfFree(y[0]), 0])];
             } else {
@@ -5802,7 +5802,7 @@ function emterpretify(ast) {
               var shifts = Math.log2(parseHeapTemp.bits/8);
               assert(address === ((address << shifts) >> shifts));
               var x = makeNum(address << shifts, ASM_INT);
-              y[1].push('STORE' + parseHeapTemp.bits, releaseIfFree(x[0]), releaseIfFree(y[0]), 0);
+              y[1].push(opcode, releaseIfFree(x[0]), releaseIfFree(y[0]), 0);
               return [-1, x[1].concat(y[1])];
             }
           } else throw 'assign wha? ' + target[0];
@@ -5848,7 +5848,7 @@ function emterpretify(ast) {
                 if (inner[1] === '+') return getReg(inner, dropIt, ASM_DOUBLE, ASM_NONSIGNED);
                 throw 'grr';
               }
-              case 'call': {
+              case 'call': case 'sub': {
                 return getReg(inner, dropIt, ASM_DOUBLE, ASM_NONSIGNED);
               }
               case 'num': {
@@ -5980,14 +5980,13 @@ function emterpretify(ast) {
           assert(node[1][0] === 'name');
           var heap = node[1][1];
           assert(parseHeap(heap));
-          assert(!parseHeapTemp.float);
           // coerced heap access => a load
+          var opcode = 'LOAD' + (parseHeapTemp.float ? 'F' : '') + parseHeapTemp.bits;
           if (node[2][0] === 'binary' && node[2][1] === '>>' && node[2][3][0] === 'num') {
             var shifts = node[2][3][1];
             assert(shifts >= 0 && shifts <= 2);
             var bits = Math.pow(2, shifts)*8;
             assert(bits === parseHeapTemp.bits);
-            var opcode = 'LOAD' + bits;
             var y = getReg(node[2][2], false, ASM_INT, ASM_SIGNED);
             var x = getFree(y[0]);
             return [x, y[1].concat([opcode, x, releaseIfFree(y[0], x), 0])];
@@ -5997,7 +5996,7 @@ function emterpretify(ast) {
             var shifts = Math.log2(parseHeapTemp.bits/8);
             assert(address === ((address << shifts) >> shifts));
             var ret = makeNum(address << shifts, ASM_INT, getFree());
-            ret[1].push('LOAD' + parseHeapTemp.bits, ret[0], ret[0], 0);
+            ret[1].push(opcode, ret[0], ret[0], 0);
             return ret;
           }
         }

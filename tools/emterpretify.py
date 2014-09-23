@@ -68,6 +68,10 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '130': 'STORE8',  # [lx, ly, 0]          HEAP8[lx >> 2] = ly
   '140': 'STORE16', # [lx, ly, 0]          HEAP16[lx >> 2] = ly
   '150': 'STORE32', # [lx, ly, 0]          HEAP32[lx >> 2] = ly
+
+  '151': 'LOADF64',  # [lx, ly, 0]         lx = HEAPF64[ly >> 3]
+  '152': 'STOREF64', # [lx, ly, 0]         HEAPF64[lx >> 3] = ly
+
   '159': 'BR',      # [0, tl, th]          jump t instructions (multiple of 4)
   '160': 'BRT',     # [cond, tl, th]       if cond, jump t instructions (multiple of 4)
   '161': 'BRF',     # [cond, tl, th]       if !cond, jump t instructions (multiple of 4)
@@ -166,6 +170,10 @@ CASES[ROPCODES['LOAD32']] = get_access('lx') + ' = ' + 'HEAP32[' + get_access('l
 CASES[ROPCODES['STORE8']] = 'HEAP8[' + get_access('lx') + ' >> 0] = ' + get_coerced_access('ly') + ';';
 CASES[ROPCODES['STORE16']] = 'HEAP16[' + get_access('lx') + ' >> 1] = ' + get_coerced_access('ly') + ';';
 CASES[ROPCODES['STORE32']] = 'HEAP32[' + get_access('lx') + ' >> 2] = ' + get_coerced_access('ly') + ';';
+
+CASES[ROPCODES['LOADF64']] = get_access('lx', s='d') + ' = ' + 'HEAPF64[' + get_access('ly') + ' >> 3];'
+CASES[ROPCODES['STOREF64']] = 'HEAPF64[' + get_access('lx') + ' >> 3] = ' + get_coerced_access('ly', s='d') + ';';
+
 CASES[ROPCODES['BR']] = 'pc = pc + ((inst >> 16) << 2) | 0; continue;'
 CASES[ROPCODES['BRT']] = 'if (' + get_coerced_access('lx') + ') { pc = pc + ((inst >> 16) << 2) | 0; continue; }'
 CASES[ROPCODES['BRF']] = 'if (!(' + get_coerced_access('lx') + ')) { pc = pc + ((inst >> 16) << 2) | 0; continue; }'
