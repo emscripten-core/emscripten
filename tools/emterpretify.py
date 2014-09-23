@@ -21,14 +21,15 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '0':   'SET',     # [lx, ly, 0]          lx = ly (int or float, not double)
   '1':   'GETST',   # [l, 0, 0]            l = STACKTOP
   '2':   'SETST',   # [l, 0, 0]            STACKTOP = l
-  '3':   'SETVI',   # [l, vl, vh]          l = v (16-bit int)
-  '4':   'ADD',     # [lx, ly, lz]         lx = ly + lz (32-bit int)
-  '5':   'SUB',     # [lx, ly, lz]         lx = ly - lz (32-bit int)
-  '6':   'MUL',     # [lx, ly, lz]         lx = ly * lz (32-bit int)
-  '7':   'SDIV',    # [lx, ly, lz]         lx = ly / lz (32-bit signed int)
-  '8':   'UDIV',    # [lx, ly, lz]         lx = ly / lz (32-bit unsigned int)
-  '9':   'SMOD',    # [lx, ly, lz]         lx = ly % lz (32-bit signed int)
-  '10':  'UMOD',    # [lx, ly, lz]         lx = ly % lz (32-bit unsigned int)
+  '3':   'SETVI',   # [l, vl, vh]          l = v (16-bit signed int)
+  '4':   'SETVIB',  # [l, vl, vh]          l = 32-bit int in next 32-bit instruction
+  '5':   'ADD',     # [lx, ly, lz]         lx = ly + lz (32-bit int)
+  '6':   'SUB',     # [lx, ly, lz]         lx = ly - lz (32-bit int)
+  '7':   'MUL',     # [lx, ly, lz]         lx = ly * lz (32-bit int)
+  '8':   'SDIV',    # [lx, ly, lz]         lx = ly / lz (32-bit signed int)
+  '9':   'UDIV',    # [lx, ly, lz]         lx = ly / lz (32-bit unsigned int)
+  '10':  'SMOD',    # [lx, ly, lz]         lx = ly % lz (32-bit signed int)
+  '11':  'UMOD',    # [lx, ly, lz]         lx = ly % lz (32-bit unsigned int)
   '12':  'NEG',     # [lx, ly, 0]          lx = -ly (int)
   '13':  'LNOT',    # [lx, ly, 0]          ly = !ly (int)
   '18':  'EQ',      # [lx, ly, lz]         lx = ly == lz (32-bit int)
@@ -99,7 +100,8 @@ CASES = {}
 CASES[ROPCODES['SET']] = get_access('lx') + ' = ' + get_coerced_access('ly') + ';'
 CASES[ROPCODES['GETST']] = 'HEAP32[sp + (lx << 3) >> 2] = STACKTOP;'
 CASES[ROPCODES['SETST']] = 'STACKTOP = HEAP32[sp + (lx << 3) >> 2]|0;'
-CASES[ROPCODES['SETVI']] = 'HEAP32[sp + (lx << 3) >> 2] = inst >>> 16;'
+CASES[ROPCODES['SETVI']] = 'HEAP32[sp + (lx << 3) >> 2] = inst >> 16;'
+CASES[ROPCODES['SETVIB']] = 'pc = pc + 4 | 0; ' + get_access('lx') + ' = HEAP32[pc >> 2] | 0;'
 CASES[ROPCODES['ADD']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') + (' + get_coerced_access('lz') + ') | 0;'
 CASES[ROPCODES['SUB']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') - (' + get_coerced_access('lz') + ') | 0;'
 CASES[ROPCODES['MUL']] = get_access('lx') + ' = Math_imul(' + get_coerced_access('ly') + ', ' + get_coerced_access('lz') + ') | 0;'

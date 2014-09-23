@@ -5735,13 +5735,7 @@ function emterpretify(ast) {
           }
         }
         case 'num': {
-          var value = node[1];
-          if (value >>> 16 === 0) {
-            var l = getFree();
-            return [l, ['SETVI', l, value & 255, value >>> 8]];
-          } else {
-            throw 'todo: big nums';
-          }
+          return makeNum(node[1]);
         }
         case 'var':
         case 'toplevel': {
@@ -5980,8 +5974,8 @@ function emterpretify(ast) {
           var defaultAbsolute = data['default'] ? data['default'].absolute : absoluteId++;
           // emit the switch instruction itself
           var tempMin = getFree(), tempRange = getFree();
-          var ret = condition[1].concat(['SETVI', tempMin, minn, 0, 'SETVI', tempRange, range, 0,
-                                         'SWITCH', condition[0], tempMin, tempRange]);
+          var ret = condition[1].concat(makeNum(minn, tempMin)[1]).concat(makeNum(range, tempRange)[1]);
+          ret.push('SWITCH', condition[0], tempMin, tempRange);
           releaseFree(tempRange);
           releaseFree(tempMin);
           releaseIfFree(condition[0]);
@@ -6018,6 +6012,15 @@ function emterpretify(ast) {
     function releaseIfFree(l, possible) {
       if (l >= numLocals) releaseFree(l, possible);
       return l;
+    }
+
+    function makeNum(value, l) {
+      if (l === undefined) l = getFree();
+      if (((value << 16) >> 16) === (value | 0)) {
+        return [l, ['SETVI', l, value & 255, (value >> 8) & 255]];
+      } else {
+        return [l, ['SETVIB', l, 0, 0, value & 255, (value >> 8) & 255, (value >> 16) & 255, (value >> 24) & 255]];
+      }
     }
 
     function makeBinary(node, type, sign) {
