@@ -171,6 +171,10 @@ def make_emterpreter(t):
       '\n    default: assert(0);' + \
       '\n   }'
 
+  def fix_case(case):
+    # we increment pc at the top of the loop. cases doing 'continue' really need to decrement it
+    return case.replace('continue;', 'pc = pc - 4 | 0; continue;')
+
   return r'''
 function emterpret%s%s(pc) {
  pc = pc | 0;
@@ -178,9 +182,9 @@ function emterpret%s%s(pc) {
  sp = EMTSTACKTOP;
  assert(((HEAPU8[pc>>0]>>>0) == %d)|0);
  EMTSTACKTOP = EMTSTACKTOP + (HEAP8[pc + 1 >> 0] << 3) | 0;
- pc = pc + 4 | 0;
  assert(((EMTSTACKTOP|0) <= (EMT_STACK_MAX|0))|0);
  while (1) {
+  pc = pc + 4 | 0;
   inst = HEAP32[pc>>2]|0;
   lx = (inst >> 8) & 255;
   ly = (inst >> 16) & 255;
@@ -192,7 +196,6 @@ function emterpret%s%s(pc) {
    default: assert(0);
   }
   //printErr('result in ' + lx + ': ' + Array.prototype.slice.call(HEAPU8, sp+8*lx, sp+8*(lx+1)));
-  pc = pc + 4 | 0;
  }
  %s
 }''' % (
@@ -200,7 +203,7 @@ function emterpret%s%s(pc) {
   '' if t == 'void' else t[0],
   ROPCODES['FUNC'],
   json.dumps(OPCODES),
-  '\n'.join(['   case %d: %s break;' % (k, v) for k, v in CASES.iteritems()]),
+  '\n'.join([fix_case('   case %d: %s break;' % (k, v)) for k, v in CASES.iteritems()]),
   '' if t == 'void' else 'return %s;' % shared.JS.make_initializer(t[0], settings)
 )
 
