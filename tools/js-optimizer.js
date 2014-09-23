@@ -5737,7 +5737,7 @@ function emterpretify(ast) {
           }
         }
         case 'num': {
-          return makeNum(node[1]);
+          return makeNum(node[1], ASM_INT);
         }
         case 'var':
         case 'toplevel': {
@@ -5831,7 +5831,30 @@ function emterpretify(ast) {
         case 'unary-prefix': {
           if (node[1] === '+') {
             // double operation
-            return getReg(node[2], dropIt, ASM_DOUBLE, ASM_NONSIGNED);
+            var inner = node[2];
+            switch (inner[0]) {
+              case 'unary-prefix': {
+                if (inner[1] === '+') return getReg(inner, dropIt, ASM_DOUBLE, ASM_NONSIGNED);
+                throw 'grr';
+              }
+              case 'call': {
+                return getReg(inner, dropIt, ASM_DOUBLE, ASM_NONSIGNED);
+              }
+              case 'num': {
+                return makeNum(inner, ASM_DOUBLE);
+              }
+              default: {
+                var type = detectAsmCoercion(inner, asmData);
+                var sign = detectSign(inner);
+                if (type === ASM_INT && (sign === ASM_SIGNED || sign === ASM_UNSIGNED)) {
+                  var y = getReg(inner);
+                  var x = getFree(y[0]);
+                  y[1].push('D2I', x, releaseIfFree(y[0], x), 0);
+                  return [x, y[1]];
+                }
+                throw 'meh ' + inner[0];
+              }
+            }
           }
 
           // not a simple coercion
@@ -5987,7 +6010,7 @@ function emterpretify(ast) {
           var defaultAbsolute = data['default'] ? data['default'].absolute : absoluteId++;
           // emit the switch instruction itself
           var tempMin = getFree(), tempRange = getFree();
-          var ret = condition[1].concat(makeNum(minn, tempMin)[1]).concat(makeNum(range, tempRange)[1]);
+          var ret = condition[1].concat(makeNum(minn, ASM_INT, tempMin)[1]).concat(makeNum(range, ASM_INT, tempRange)[1]);
           ret.push('SWITCH', condition[0], tempMin, tempRange);
           releaseFree(tempRange);
           releaseFree(tempMin);
@@ -6027,12 +6050,21 @@ function emterpretify(ast) {
       return l;
     }
 
-    function makeNum(value, l) {
+    function makeNum(value, type, l) {
       if (l === undefined) l = getFree();
-      if (((value << 16) >> 16) === (value | 0)) {
-        return [l, ['SETVI', l, value & 255, (value >> 8) & 255]];
+      var opcode;
+      if (((value << 16) >> 16) === (value | 0) && ((value === (value | 0)) || (value === (value >>> 0)))) {
+        assert(value !== 0 || 1/value > 0); // we abhor -0
+        if (type === ASM_INT) {
+          opcode = 'SETVI';
+        } else if (type === ASM_DOUBLE) {
+          opcode = 'SETVD';
+        } else throw 'yuck';
+        return [l, [opcode, l, value & 255, (value >> 8) & 255]];
       } else {
-        return [l, ['SETVIB', l, 0, 0, value & 255, (value >> 8) & 255, (value >> 16) & 255, (value >> 24) & 255]];
+        if (type === ASM_INT) {
+          return [l, ['SETVIB', l, 0, 0, value & 255, (value >> 8) & 255, (value >> 16) & 255, (value >> 24) & 255]];
+        } else throw 'fff';
       }
     }
 

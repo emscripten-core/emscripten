@@ -46,18 +46,20 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '42':  'LSHR',    # [lx, ly, lz]         lx = ly >>> lz
 
   '60':  'SETD',    # [lx, ly, lz]         lx = ly (double)
-  '65':  'ADDD',     # [lx, ly, lz]         lx = ly + lz (double)
-  '66':  'SUBD',     # [lx, ly, lz]         lx = ly - lz (double)
-  '67':  'MULD',     # [lx, ly, lz]         lx = ly * lz (double)
+  '61':  'SETVD',   # [lx, vl, vh]         lx = ly (16 bit signed int, converted into double)
+  '65':  'ADDD',    # [lx, ly, lz]         lx = ly + lz (double)
+  '66':  'SUBD',    # [lx, ly, lz]         lx = ly - lz (double)
+  '67':  'MULD',    # [lx, ly, lz]         lx = ly * lz (double)
   '69':  'DIVD',    # [lx, ly, lz]         lx = ly / lz (double)
   '70':  'MODD',    # [lx, ly, lz]         lx = ly % lz (double)
-  #'72':  'NEGD',     # [lx, ly, 0]          lx = -ly (double)
-  '78':  'EQD',      # [lx, ly, lz]         lx = ly == lz (double)
-  '79':  'NED',      # [lx, ly, lz]         lx = ly != lz (double)
+  #'72':  'NEGD',    # [lx, ly, 0]          lx = -ly (double)
+  '78':  'EQD',     # [lx, ly, lz]         lx = ly == lz (double)
+  '79':  'NED',     # [lx, ly, lz]         lx = ly != lz (double)
   '80':  'LTD',     # [lx, ly, lz]         lx = ly < lz (signed)
   '81':  'LED',     # [lx, ly, lz]         lx = ly < lz (double)
   '82':  'GTD',     # [lx, ly, lz]         lx = ly <= lz (double)
   '83':  'GED',     # [lx, ly, lz]         lx = ly <= lz (double)
+  '90':  'D2I',     # [lx, ly, 0]          lx = ~~ly (double-to-int)
 
   '100': 'LOAD8',   # [lx, ly, 0]          lx = HEAP8[ly >> 0]
   '110': 'LOAD16',  # [lx, ly, 0]          lx = HEAP16[ly >> 1]
@@ -142,6 +144,7 @@ CASES[ROPCODES['ASHR']] = get_access('lx') + ' = (' + get_coerced_access('ly') +
 CASES[ROPCODES['LSHR']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') >>> (' + get_coerced_access('lz') + ');'
 
 CASES[ROPCODES['SETD']] = get_access('lx', s='d') + ' = ' + get_coerced_access('ly', s='d') + ';'
+CASES[ROPCODES['SETVD']] = get_access('lx', s='d') + ' = +(inst >> 16);'
 CASES[ROPCODES['ADDD']] = get_access('lx', s='d') + ' = (' + get_coerced_access('ly', s='d') + ') + (' + get_coerced_access('lz', s='d') + ');'
 CASES[ROPCODES['SUBD']] = get_access('lx', s='d') + ' = (' + get_coerced_access('ly', s='d') + ') - (' + get_coerced_access('lz', s='d') + ');'
 CASES[ROPCODES['MULD']] = get_access('lx', s='d') + ' = (' + get_coerced_access('ly', s='d') + ') * (' + get_coerced_access('lz', s='d') + ');'
@@ -153,6 +156,7 @@ CASES[ROPCODES['LTD']] = get_access('lx') + ' = (' + get_coerced_access('ly', s=
 CASES[ROPCODES['LED']] = get_access('lx') + ' = (' + get_coerced_access('ly', s='d') + ') <= (' + get_coerced_access('lz', s='d') + ') | 0;'
 CASES[ROPCODES['GTD']] = get_access('lx') + ' = (' + get_coerced_access('ly', s='d') + ') > (' + get_coerced_access('lz', s='d') + ') | 0;'
 CASES[ROPCODES['GED']] = get_access('lx') + ' = (' + get_coerced_access('ly', s='d') + ') >= (' + get_coerced_access('lz', s='d') + ') | 0;'
+CASES[ROPCODES['D2I']] = get_access('lx') + ' = ~~(' + get_access('ly', s='d') + ');'
 
 CASES[ROPCODES['LOAD8']] = get_access('lx') + ' = ' + 'HEAP8[' + get_access('ly') + ' >> 0];'
 CASES[ROPCODES['LOAD16']] = get_access('lx') + ' = ' + 'HEAP16[' + get_access('ly') + ' >> 1];'
