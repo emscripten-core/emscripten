@@ -184,12 +184,13 @@ CASES[ROPCODES['SWITCH']] = '''
 
 def make_emterpreter(t):
   # return is specialized per interpreter
+  CASES[ROPCODES['RET']] = 'EMTSTACKTOP = sp; '
   if t == 'void':
-    CASES[ROPCODES['RET']] = 'return;'
+    CASES[ROPCODES['RET']] += 'return;'
   elif t == 'int':
-    CASES[ROPCODES['RET']] = 'return HEAP32[sp + (lx << 3) >> 2]|0;'
+    CASES[ROPCODES['RET']] += 'return HEAP32[sp + (lx << 3) >> 2]|0;'
   elif t == 'double':
-    CASES[ROPCODES['RET']] = 'return +HEAPF64[sp + (lx << 3) >> 3];'
+    CASES[ROPCODES['RET']] += 'return +HEAPF64[sp + (lx << 3) >> 3];'
 
   # call is generated using information of actual call patterns
   if ROPCODES['CALL'] not in CASES:
@@ -242,6 +243,7 @@ function emterpret%s%s(pc) {
   }
   //printErr('result in ' + lx + ': ' + Array.prototype.slice.call(HEAPU8, sp+8*lx, sp+8*(lx+1)));
  }
+ EMTSTACKTOP = sp;
  %s
 }''' % (
   '_' if t != 'void' else '',
