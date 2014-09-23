@@ -73,7 +73,7 @@ GLOBAL_BASE = 8
 settings = { 'PRECISE_F32': 0 } # TODO
 
 def bytify(x):
-  assert x >= 0 and x << (2**32)
+  assert x >= 0 and x < (1 << 32)
   return [x & 255, (x >> 8) & 255, (x >> 16) & 255, (x >> 24) & 255]
 
 def get_access(l, s='i'):
