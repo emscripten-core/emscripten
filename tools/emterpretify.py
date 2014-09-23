@@ -104,6 +104,12 @@ def bytify(x):
   assert x >= 0 and x < (1 << 32)
   return [x & 255, (x >> 8) & 255, (x >> 16) & 255, (x >> 24) & 255]
 
+def next_power_of_two(x):
+  if x == 0: return 0
+  ret = 1
+  while ret < x: ret <<= 1
+  return ret
+
 def get_access(l, s='i'):
   if s == 'i':
     return 'HEAP32[sp + (' + l + ' << 3) >> 2]'
@@ -217,7 +223,7 @@ def make_emterpreter(t):
       sig = sigs[0]
       ret = name
       if function_pointer_call:
-        ret += '[' + get_coerced_access('HEAP8[pc+4>>0]') + ']'
+        ret += '[' + get_access('HEAP8[pc+4>>0]') + ' & %d]' % (next_power_of_two(asm.tables[name].count(',')+1)-1)
       ret += '(' + ', '.join([get_coerced_access('HEAP8[pc+%d>>0]' % (i+4+(1 if function_pointer_call else 0)), s=sig[i+1]) for i in range(len(sig)-1)]) + ')'
       if sig[0] != 'v':
         ret = get_access('lx', sig[0]) + ' = ' + shared.JS.make_coercion(ret, sig[0])
