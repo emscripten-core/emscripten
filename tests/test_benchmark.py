@@ -142,13 +142,15 @@ try:
     #NativeBenchmarker('gcc', 'gcc', 'g++'),
     #JSBenchmarker('sm-f32', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
     JSBenchmarker('sm', SPIDERMONKEY_ENGINE),
+    JSBenchmarker('sm-ion',  SPIDERMONKEY_ENGINE + ['--no-asmjs']),
+    JSBenchmarker('sm-baseline',  SPIDERMONKEY_ENGINE + ['--no-asmjs', '--no-ion']),
     JSBenchmarker('sm-emterp', SPIDERMONKEY_ENGINE, ['-s', 'EMTERPRETIFY=1']),
+    JSBenchmarker('sm-interp',  SPIDERMONKEY_ENGINE + ['--no-asmjs', '--no-ion', '--no-baseline']),
     #JSBenchmarker('sm-f32-si', SPIDERMONKEY_ENGINE, ['--profiling', '-s', 'PRECISE_F32=2', '-s', 'SIMPLIFY_IFS=1']),
     #JSBenchmarker('sm-f32-aggro', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2', '-s', 'AGGRESSIVE_VARIABLE_ELIMINATION=1']),
     #JSBenchmarker('sm-f32-3.2', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_2 }),
     #JSBenchmarker('sm-f32-3.3', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_3 }),
     #JSBenchmarker('sm-f32-3.4', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_4 }),
-    #JSBenchmarker('sm-noasm',     SPIDERMONKEY_ENGINE + ['--no-asmjs']),
     #JSBenchmarker('sm-noasm-f32', SPIDERMONKEY_ENGINE + ['--no-asmjs'], ['-s', 'PRECISE_F32=2']),
     #JSBenchmarker('v8',           V8_ENGINE)
   ]
