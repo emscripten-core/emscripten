@@ -299,6 +299,12 @@ for i in range(len(lines)):
     global_funcs[func] = global_id
     rglobal_funcs[global_id] = func
     global_id += 1
+
+for table in asm.tables:
+  global_funcs[table] = global_id
+  rglobal_funcs[global_id] = table
+  global_id += 1
+
 assert global_id < 256
 
 # process functions, generating bytecode
