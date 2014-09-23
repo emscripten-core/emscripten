@@ -134,15 +134,14 @@ CASES[ROPCODES['BRF']] = 'if (!(' + get_coerced_access('lx') + ')) { pc = pc + (
 CASES[ROPCODES['GETTDP']] = 'HEAP32[sp + (lx << 3) >> 2] = tempDoublePtr;'
 #CASES[ROPCODES['GETPC']] = 'HEAP32[sp + (lx << 3) >> 2] = pc;'
 CASES[ROPCODES['SWITCH']] = '''
-lz = ''' + get_coerced_access('lz') + ''';
-lx = ((''' + get_coerced_access('lx') + ''') - (''' + get_coerced_access('ly') + ''')) >>> 0; // lx is now relative to the base
-if ((lx >>> 0) >= (lz >>> 0)) { // is the adjusted value too big?
-  pc = (pc + (lz << 2)) | 0; // jump to right after the table, where the default is
-  continue;
-}
-pc = HEAP32[pc + 4 + (lx << 2) >> 2] | 0; // we are within range, load from the jump table which is right after this instruction, and set pc to that
-continue;
-'''
+    lz = ''' + get_coerced_access('lz') + ''';
+    lx = ((''' + get_coerced_access('lx') + ''') - (''' + get_coerced_access('ly') + ''')) >>> 0; // lx is now relative to the base
+    if ((lx >>> 0) >= (lz >>> 0)) { // is the adjusted value too big?
+      pc = (pc + (lz << 2)) | 0; // jump to right after the table, where the default is
+      continue;
+    }
+    pc = HEAP32[pc + 4 + (lx << 2) >> 2] | 0; // load from the jump table which is right after this instruction, and set pc
+    continue;'''
 
 def make_emterpreter(t):
   # return is specialized per interpreter
@@ -209,7 +208,7 @@ function emterpret%s%s(pc) {
   '' if t == 'void' else t[0],
   ROPCODES['FUNC'],
   json.dumps(OPCODES),
-  '\n'.join([fix_case('   case %d: %s break;' % (k, v)) for k, v in CASES.iteritems()]),
+  '\n'.join([fix_case('   case %d: %s break;' % (k, CASES[k])) for k in sorted(CASES.keys())]),
   '' if t == 'void' else 'return %s;' % shared.JS.make_initializer(t[0], settings)
 )
 
