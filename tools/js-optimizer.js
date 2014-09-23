@@ -5985,8 +5985,9 @@ function emterpretify(ast) {
           releaseIfFree(condition[0]);
           // emit the jump table
           for (var i = 0; i < range; i++) {
-            if (data[i]) {
-              ret.push('absolute-value', data[i].absolute, 0, 0);
+            var j = minn + i;
+            if (data[j]) {
+              ret.push('absolute-value', data[j].absolute, 0, 0);
             } else {
               ret.push('absolute-value', defaultAbsolute, 0, 0);
             }
