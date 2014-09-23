@@ -364,10 +364,14 @@ function removeUnneededLabelSettings(ast) {
 
 // Various expression simplifications. Happens after elimination, which opens up many of these simplification opportunities.
 
+var parseHeapTemp = { unsigned: false, float: false, bits: 0 };
+
 function parseHeap(name, out) {
+  out = out || parseHeapTemp;
   if (name.substr(0, 4) != 'HEAP') return false;
   out.unsigned = name[4] === 'U';
-  out.bits = parseInt(name.substr(out.unsigned || name[4] === 'F' ? 5 : 4));
+  out.float = name[4] === 'F';
+  out.bits = parseInt(name.substr(out.unsigned || out.float ? 5 : 4));
   return true;
 }
 
@@ -492,7 +496,6 @@ function simplifyExpressions(ast) {
 
     // & and heap-related optimizations
 
-    var parseHeapTemp = { unsigned: false, bits: 0 };
     var hasTempDoublePtr = false, rerunOrZeroPass = false;
 
     traverse(ast, function(node, type) {
@@ -5614,7 +5617,6 @@ function optimizeFrounds(ast) {
 // Optimize heap expressions into   HEAP32[(x&m)+c>>2]    where c is a small aligned constant, and m guarantees the pointer is without range+aligned
 function pointerMasking(ast) {
   var MAX_SMALL_OFFSET = 32;
-  var parseHeapTemp = { unsigned: false, bits: 0 };
 
   traverse(ast, function(node, type) {
     if (type === 'sub' && node[1][0] === 'name' && node[1][1][0] === 'H' && node[2][0] === 'binary' && node[2][1] === '>>' && node[2][3][0] === 'num') {
@@ -5967,14 +5969,24 @@ function emterpretify(ast) {
         }
         case 'sub': {
           assert(node[1][0] === 'name');
+          var heap = node[1][1];
+          assert(parseHeap(heap));
+          assert(!parseHeapTemp.float);
           // coerced heap access => a load
-          assert(node[2][0] === 'binary' && node[2][1] === '>>' && node[2][3][0] === 'num');
-          var shifts = node[2][3][1];
-          assert(shifts >= 0 && shifts <= 2);
-          var opcode = 'LOAD' + (Math.pow(2, shifts)*8);
-          var y = getReg(node[2][2], false, ASM_INT, ASM_SIGNED);
-          var x = getFree(y[0]);
-          return [x, y[1].concat([opcode, x, releaseIfFree(y[0], x), 0])];
+          if (node[2][0] === 'binary' && node[2][1] === '>>' && node[2][3][0] === 'num') {
+            var shifts = node[2][3][1];
+            assert(shifts >= 0 && shifts <= 2);
+            var bits = Math.pow(2, shifts)*8;
+            assert(bits === parseHeapTemp.bits);
+            var opcode = 'LOAD' + bits;
+            var y = getReg(node[2][2], false, ASM_INT, ASM_SIGNED);
+            var x = getFree(y[0]);
+            return [x, y[1].concat([opcode, x, releaseIfFree(y[0], x), 0])];
+          } else {
+            assert(node[2][0] === 'num'); // HEAP32[8] or such
+            var address = node[2][1];
+            throw 'todo';
+          }
         }
         case 'block': {
           return [-1, walkStatements(node[1])];

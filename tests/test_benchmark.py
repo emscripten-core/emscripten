@@ -113,8 +113,8 @@ process(sys.argv[1])
                     '-s', 'TOTAL_MEMORY=128*1024*1024',
                     '--profiling',
                     #'--closure', '1',
-                    '-o', final] + shared_args + emcc_args + self.extra_args, stdout=PIPE, stderr=PIPE, env=self.env).communicate()
-                    #'-o', final] + shared_args + emcc_args + self.extra_args, stdout=None, stderr=None, env=self.env).communicate()
+                    #'-o', final] + shared_args + emcc_args + self.extra_args, stdout=PIPE, stderr=PIPE, env=self.env).communicate()
+                    '-o', final] + shared_args + emcc_args + self.extra_args, stdout=None, stderr=None, env=self.env).communicate()
     assert os.path.exists(final), 'Failed to compile file: ' + output[0]
     self.filename = final
 
@@ -141,11 +141,11 @@ try:
     #NativeBenchmarker('clang-3.4', os.path.join(LLVM_3_4, 'clang'), os.path.join(LLVM_3_4, 'clang++')),
     #NativeBenchmarker('gcc', 'gcc', 'g++'),
     #JSBenchmarker('sm-f32', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
-    JSBenchmarker('sm', SPIDERMONKEY_ENGINE),
-    JSBenchmarker('sm-ion',  SPIDERMONKEY_ENGINE + ['--no-asmjs']),
-    JSBenchmarker('sm-baseline',  SPIDERMONKEY_ENGINE + ['--no-asmjs', '--no-ion']),
+    #JSBenchmarker('sm', SPIDERMONKEY_ENGINE),
+    #JSBenchmarker('sm-ion',  SPIDERMONKEY_ENGINE + ['--no-asmjs']),
+    #JSBenchmarker('sm-baseline',  SPIDERMONKEY_ENGINE + ['--no-asmjs', '--no-ion']),
     JSBenchmarker('sm-emterp', SPIDERMONKEY_ENGINE, ['-s', 'EMTERPRETIFY=1']),
-    JSBenchmarker('sm-interp',  SPIDERMONKEY_ENGINE + ['--no-asmjs', '--no-ion', '--no-baseline']),
+    #JSBenchmarker('sm-interp',  SPIDERMONKEY_ENGINE + ['--no-asmjs', '--no-ion', '--no-baseline']),
     #JSBenchmarker('sm-f32-si', SPIDERMONKEY_ENGINE, ['--profiling', '-s', 'PRECISE_F32=2', '-s', 'SIMPLIFY_IFS=1']),
     #JSBenchmarker('sm-f32-aggro', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2', '-s', 'AGGRESSIVE_VARIABLE_ELIMINATION=1']),
     #JSBenchmarker('sm-f32-3.2', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_2 }),
