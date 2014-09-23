@@ -1910,6 +1910,7 @@ function detectSign(node) {
   } else if (node[0] === 'unary-prefix') {
     switch(node[1]) {
       case '-': return ASM_FLEXIBLE;
+      case '+': return ASM_DOUBLE; // XXX
       default: throw 'yikes';
     }
   } else if (node[0] === 'num' || node[0] === 'name') {
