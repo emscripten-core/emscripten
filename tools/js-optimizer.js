@@ -5823,7 +5823,7 @@ function emterpretify(ast) {
               var shifts = target[2][3][1];
               assert(shifts >= 0 && shifts <= 3);
               var bits = Math.pow(2, shifts)*8;
-              assert(bits === temp.bits, JSON.stringify([heap, '         ', temp, '               ', target]));
+              assert(bits === temp.bits); // JSON.stringify([heap, '         ', temp, '               ', target]));
               var x = getReg(target[2][2], false, ASM_INT, ASM_SIGNED);
               return [-1, x[1].concat(y[1]).concat([opcode, releaseIfFree(x[0]), releaseIfFree(y[0]), 0])];
             } else {
