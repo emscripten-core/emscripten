@@ -1955,7 +1955,9 @@ function detectSign(node) {
       break;
     }
     case 'num': case 'name': return ASM_FLEXIBLE;
-    case 'conditional': return detectSign(node[2]);
+    case 'conditional': case 'seq': {
+      return detectSign(node[2]);
+    }
   }
   assert(0 , 'badd ' + JSON.stringify(node));
 }
@@ -5910,11 +5912,10 @@ function emterpretify(ast) {
               }
               default: {
                 var type = detectAsmCoercion(inner, asmData);
-                var sign = detectSign(inner);
-                if (type === ASM_INT && (sign === ASM_SIGNED || sign === ASM_UNSIGNED)) {
+                if (type === ASM_INT) {
                   return makeUnary(['unary-prefix', 'I2D', node[2][2]], ASM_DOUBLE, ASM_NONSIGNED);
                 }
-                throw 'meh ' + [inner[0], type, sign] + JSON.stringify(inner);
+                throw 'meh ' + [inner[0], type] + JSON.stringify(inner);
               }
             }
           } else if (node[1] === '~' && node[2][0] === 'unary-prefix' && node[2][1] === '~') {
