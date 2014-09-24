@@ -49,6 +49,7 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '60':  'SETD',    # [lx, ly, lz]         lx = ly (double)
   '61':  'SETVD',   # [lx, vl, vh]         lx = ly (16 bit signed int, converted into double)
   '62':  'SETVDI',  # [lx, 0, 0] [..v..]   lx = v (32 bit signed int, converted into double)
+  '63':  'SETVDF',  # [lx, 0, 0] [..v..]   lx = v (32 float, converted into double)
   '65':  'ADDD',    # [lx, ly, lz]         lx = ly + lz (double)
   '66':  'SUBD',    # [lx, ly, lz]         lx = ly - lz (double)
   '67':  'MULD',    # [lx, ly, lz]         lx = ly * lz (double)
@@ -163,6 +164,7 @@ CASES[ROPCODES['LSHR']] = get_access('lx') + ' = (' + get_coerced_access('ly') +
 CASES[ROPCODES['SETD']] = get_access('lx', s='d') + ' = ' + get_coerced_access('ly', s='d') + ';'
 CASES[ROPCODES['SETVD']] = get_access('lx', s='d') + ' = +(inst >> 16);'
 CASES[ROPCODES['SETVDI']] = 'pc = pc + 4 | 0; ' + get_access('lx', s='d') + ' = +(HEAP32[pc >> 2] | 0);'
+CASES[ROPCODES['SETVDF']] = 'pc = pc + 4 | 0; ' + get_access('lx', s='d') + ' = +HEAPF32[pc >> 2];'
 CASES[ROPCODES['ADDD']] = get_access('lx', s='d') + ' = (' + get_coerced_access('ly', s='d') + ') + (' + get_coerced_access('lz', s='d') + ');'
 CASES[ROPCODES['SUBD']] = get_access('lx', s='d') + ' = (' + get_coerced_access('ly', s='d') + ') - (' + get_coerced_access('lz', s='d') + ');'
 CASES[ROPCODES['MULD']] = get_access('lx', s='d') + ' = (' + get_coerced_access('ly', s='d') + ') * (' + get_coerced_access('lz', s='d') + ');'

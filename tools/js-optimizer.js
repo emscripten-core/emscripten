@@ -12,6 +12,10 @@
 if (!Math.log2) Math.log2 = function log2(x) {
   return Math.log(x) / Math.LN2;
 };
+if (!Math.fround) {
+  var froundBuffer = new Float32Array(1);
+  Math.fround = function(x) { froundBuffer[0] = x; return froundBuffer[0] };
+}
 
 // *** Environment setup code ***
 var arguments_ = [];
@@ -5702,6 +5706,14 @@ function emterpretify(ast) {
 
   var BRANCHES = set('BR', 'BRT', 'BRF');
 
+  var tempBuffer = new ArrayBuffer(8);
+  var tempFloat32 = new Float32Array(tempBuffer);
+  var tempUint8 = new Uint8Array(tempBuffer);
+  function flattenFloat32(value) {
+    tempFloat32[0] = value;
+    return Array.prototype.slice.call(tempUint8, 0, 4);
+  }
+
   function verifyCode(code) {
     if (code.length % 4 !== 0) assert(0, JSON.stringify(code));
     var len = code.length;
@@ -6142,6 +6154,8 @@ function emterpretify(ast) {
         } else if (type === ASM_DOUBLE) {
           if (value === (value | 0)) {
             return [l, ['SETVDI', l, 0, 0, value & 255, (value >> 8) & 255, (value >> 16) & 255, (value >> 24) & 255]];
+          } else if (value === Math.fround(value)) {
+            return [l, ['SETVDF', l, 0, 0].concat(flattenFloat32(value))];
           }
           throw 'fff ' + value;
         } else throw 'aw';
