@@ -1859,7 +1859,12 @@ function detectType(node, asmInfo, inVarDef) {
     }
     case 'name': {
       if (asmInfo) return getAsmType(node[1], asmInfo);
-      if (!inVarDef) return ASM_NONE;
+      if (!inVarDef) {
+        switch (node[1]) {
+          case 'inf': return ASM_DOUBLE; // TODO: when minified
+        }
+        return ASM_NONE;
+      }
       // We are in a variable definition, where Math_fround(0) optimized into a global constant becomes f0 = Math_fround(0)
       if (!ASM_FLOAT_ZERO) ASM_FLOAT_ZERO = node[1];
       else assert(ASM_FLOAT_ZERO === node[1]);
@@ -6269,7 +6274,7 @@ function emterpretify(ast) {
         case '-': {
           if (type === ASM_INT) opcode = 'NEG';
           else if (type === ASM_DOUBLE) opcode = 'NEGD';
-          else throw 'x';
+          else throw 'x ' + type;
           break;
         }
         case '!': assert(type === ASM_INT); opcode = 'LNOT'; break;
