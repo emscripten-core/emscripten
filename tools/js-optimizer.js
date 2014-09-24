@@ -6221,7 +6221,7 @@ function emterpretify(ast) {
           opcode = 'GTD';
           break;
         }
-        case '<=': {
+        case '>=': {
           assert(type === ASM_DOUBLE);
           opcode = 'GED';
           break;
@@ -6242,7 +6242,7 @@ function emterpretify(ast) {
         case '<<': opcode = 'SHL'; break;
         case '>>': opcode = 'ASHR'; break;
         case '>>>': opcode = 'LSHR'; break;
-        default: throw 'bad';
+        default: throw 'bad ' + node[1];
       }
       var y = getReg(node[2]);
       var z = getReg(node[3]);
