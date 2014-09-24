@@ -1930,23 +1930,28 @@ var ASM_UNSIGNED = 2;
 var ASM_NONSIGNED = 3;
 
 function detectSign(node) {
-  if (node[0] === 'binary') {
-    switch(node[1]) {
-      case '|': case '&': case '^': case '<<': case '>>': return ASM_SIGNED;
-      case '>>>': return ASM_UNSIGNED;
-      case '+': case '-': return ASM_FLEXIBLE;
-      case '*': case '/': return ASM_NONSIGNED; // without a coercion, these are double
-      default: throw 'yikes ' + node[1];
+  switch (node[0]) {
+    case 'binary': {
+      switch(node[1]) {
+        case '|': case '&': case '^': case '<<': case '>>': return ASM_SIGNED;
+        case '>>>': return ASM_UNSIGNED;
+        case '+': case '-': return ASM_FLEXIBLE;
+        case '*': case '/': return ASM_NONSIGNED; // without a coercion, these are double
+        default: throw 'yikes ' + node[1];
+      }
+      break;
     }
-  } else if (node[0] === 'unary-prefix') {
-    switch(node[1]) {
-      case '-': return ASM_FLEXIBLE;
-      case '+': return ASM_NONSIGNED; // XXX double
-      case '~': return ASM_SIGNED;
-      default: throw 'yikes';
+    case 'unary-prefix': {
+      switch(node[1]) {
+        case '-': return ASM_FLEXIBLE;
+        case '+': return ASM_NONSIGNED; // XXX double
+        case '~': return ASM_SIGNED;
+        default: throw 'yikes';
+      }
+      break;
     }
-  } else if (node[0] === 'num' || node[0] === 'name') {
-    return ASM_FLEXIBLE;
+    case 'num': case 'name': return ASM_FLEXIBLE;
+    case 'conditional': return detectSign(node[2]);
   }
   assert(0 , 'badd ' + JSON.stringify(node));
 }
