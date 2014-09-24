@@ -5801,12 +5801,14 @@ function emterpretify(ast) {
               } else if (type === ASM_DOUBLE) {
                 opcode = 'SETD';
               } else throw 'ick';
-              return [locals[name], reg[1].concat([opcode, locals[name], releaseIfFree(reg[0]), 0])];
+              reg[1].push(opcode, locals[name], releaseIfFree(reg[0]), 0);
+              return [locals[name], reg[1]];
             } else {
               switch(name) {
                 case 'STACKTOP': {
                   var reg = getReg(value);
-                  return [-1, reg[1].concat(['SETST', releaseIfFree(reg[0]), 0, 0])];
+                  reg[1].push('SETST', releaseIfFree(reg[0]), 0, 0);
+                  return [-1, reg[1]];
                 }
                 default: throw 'assign global wha? ' + name;
               }
@@ -5825,7 +5827,9 @@ function emterpretify(ast) {
               var bits = Math.pow(2, shifts)*8;
               assert(bits === temp.bits); // JSON.stringify([heap, '         ', temp, '               ', target]));
               var x = getReg(target[2][2], false, ASM_INT, ASM_SIGNED);
-              return [-1, x[1].concat(y[1]).concat([opcode, releaseIfFree(x[0]), releaseIfFree(y[0]), 0])];
+              var ret = x[1].concat(y[1]);
+              ret.push(opcode, releaseIfFree(x[0]), releaseIfFree(y[0]), 0);
+              return [-1, ret];
             } else {
               assert(target[2][0] === 'num'); // HEAP32[8] or such
               var address = target[2][1];
@@ -5930,7 +5934,8 @@ function emterpretify(ast) {
           var reg;
           if (value) reg = getReg(value);
           else reg = [-1, []];
-          return [-1, reg[1].concat(['RET', value ? releaseIfFree(reg[0]) : 0, 0, 0])];
+          reg[1].push('RET', value ? releaseIfFree(reg[0]) : 0, 0, 0);
+          return [-1, reg[1]];
         }
         case 'do': {
           return makeDo(node);
@@ -5972,15 +5977,17 @@ function emterpretify(ast) {
           var condition = getReg(node[1]);
           var ret;
           if (!node[3]) {
-            ret = condition[1].concat(['BRF', releaseIfFree(condition[0]), exit, 0]);
-            ret = ret.concat(walkStatements(node[2]));
+            condition[1].push('BRF', releaseIfFree(condition[0]), exit, 0);
+            ret = condition[1].concat(walkStatements(node[2]));
           } else {
             var otherwise = markerId++;
-            ret = condition[1].concat(['BRF', releaseIfFree(condition[0]), otherwise, 0]);
-            ret = ret.concat(walkStatements(node[2])).concat(['BR', 0, exit, 0])
-                     .concat(['marker', otherwise, 0, 0]).concat(walkStatements(node[3]));
+            condition[1].push('BRF', releaseIfFree(condition[0]), otherwise, 0);
+            ret = condition[1].concat(walkStatements(node[2]));
+            ret.push('BR', 0, exit, 0, 'marker', otherwise, 0, 0);
+            ret = ret.concat(walkStatements(node[3]));
           }
-          return [-1, ret.concat(['marker', exit, 0, 0])];
+          ret.push('marker', exit, 0, 0);
+          return [-1, ret];
         }
         case 'conditional': {
           // TODO: optimize
