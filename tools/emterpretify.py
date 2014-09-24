@@ -221,20 +221,23 @@ def make_emterpreter(t):
       function_pointer_call = name.startswith('FUNCTION_TABLE_')
       if name not in call_sigs: return None
       sigs = call_sigs[name]
+
+      def make_target_call_sig(sig):
+        ret = name
+        if function_pointer_call:
+          ret += '[' + get_access('HEAP8[pc+4>>0]') + ' & %d]' % (next_power_of_two(asm.tables[name].count(',')+1)-1)
+        ret += '(' + ', '.join([get_coerced_access('HEAP8[pc+%d>>0]' % (i+4+(1 if function_pointer_call else 0)), s=sig[i+1]) for i in range(len(sig)-1)]) + ')'
+        if sig[0] != 'v':
+          ret = get_access('lx', sig[0]) + ' = ' + shared.JS.make_coercion(ret, sig[0])
+        elif name in actual_return_types and actual_return_types[name] != 'v':
+          ret = shared.JS.make_coercion(ret, actual_return_types[name]) # return value ignored, but need a coercion
+        extra = len(sig) - 1 # [opcode, lx, target, sig], take the usual 4. params are extra
+        if extra > 0:
+          ret += '; pc = pc + %d | 0' % (4*((extra+3)>>2))
+        return '     ' + ret + '; break;'
+
       assert len(sigs) == 1, [name, sigs]
-      sig = sigs[0]
-      ret = name
-      if function_pointer_call:
-        ret += '[' + get_access('HEAP8[pc+4>>0]') + ' & %d]' % (next_power_of_two(asm.tables[name].count(',')+1)-1)
-      ret += '(' + ', '.join([get_coerced_access('HEAP8[pc+%d>>0]' % (i+4+(1 if function_pointer_call else 0)), s=sig[i+1]) for i in range(len(sig)-1)]) + ')'
-      if sig[0] != 'v':
-        ret = get_access('lx', sig[0]) + ' = ' + shared.JS.make_coercion(ret, sig[0])
-      elif name in actual_return_types and actual_return_types[name] != 'v':
-        ret = shared.JS.make_coercion(ret, actual_return_types[name]) # return value ignored, but need a coercion
-      extra = len(sig) - 1 # [opcode, lx, target, sig], take the usual 4. params are extra
-      if extra > 0:
-        ret += '; pc = pc + %d | 0' % (4*((extra+3)>>2))
-      return '     ' + ret + '; break;'
+      return make_target_call_sig(sigs[0])
 
     CASES[ROPCODES['CALL']] = 'switch (ly|0) {\n' + \
       '\n'.join(filter(lambda x: 'None' not in x, ['    case %d: {\n%s\n    }' % (i, make_target_call(i)) for i in range(global_id-1)])) + \
