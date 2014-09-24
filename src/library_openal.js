@@ -22,7 +22,7 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       var idx = AL.currentContext.src.indexOf(src);
 #endif
-      if (src.state !== 0x1012 /* AL_PLAYING */) {
+      if (!src || src.state !== 0x1012 /* AL_PLAYING */) {
         return;
       }
 
