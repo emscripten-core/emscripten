@@ -6129,7 +6129,12 @@ function emterpretify(ast) {
       } else {
         if (type === ASM_INT) {
           return [l, ['SETVIB', l, 0, 0, value & 255, (value >> 8) & 255, (value >> 16) & 255, (value >> 24) & 255]];
-        } else throw 'fff ';
+        } else if (type === ASM_DOUBLE) {
+          if (value === (value | 0)) {
+            return [l, ['SETVDI', l, 0, 0, value & 255, (value >> 8) & 255, (value >> 16) & 255, (value >> 24) & 255]];
+          }
+          throw 'fff ' + value;
+        } else throw 'aw';
       }
     }
 
