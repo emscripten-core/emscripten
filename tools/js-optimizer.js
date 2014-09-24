@@ -373,7 +373,7 @@ function removeUnneededLabelSettings(ast) {
 // Various expression simplifications. Happens after elimination, which opens up many of these simplification opportunities.
 
 function makeTempParseHeap() {
-  return { unsigned: false, float: false, bits: 0 };
+  return { unsigned: false, float: false, bits: 0, type: 0 };
 }
 
 var parseHeapTemp = makeTempParseHeap();
@@ -384,6 +384,7 @@ function parseHeap(name, out) { // XXX this uses parseHeapTemp by default, which
   out.unsigned = name[4] === 'U';
   out.float = name[4] === 'F';
   out.bits = parseInt(name.substr(out.unsigned || out.float ? 5 : 4));
+  out.type = !out.float ? ASM_INT : (out.bits === 64 ? ASM_DOUBLE : ASM_FLOAT);
   return true;
 }
 
@@ -5860,6 +5861,18 @@ function emterpretify(ast) {
             assert(parseHeap(heap, temp));
             // coerced heap access => a load
             var y = getReg(value);
+            // add a coercion on the value, if needed
+            var yType = detectType(value, asmData);
+            if (yType !== temp.type) {
+              if (yType === ASM_DOUBLE && temp.float) {
+                // nothing to do - we don't have float32 values
+              } else if (yType === ASM_INT && temp.float) {
+                y[1].push('I2D', y[0], y[0], 0);
+              } else {
+                throw ['yType', yType, temp.type, temp.float, JSON.stringify(value)];
+              }
+            }
+            // emit the proper store
             var opcode = 'STORE' + (temp.float ? 'F' : '') + temp.bits;
             if (target[2][0] === 'binary' && target[2][1] === '>>' && target[2][3][0] === 'num') {
               var shifts = target[2][3][1];
