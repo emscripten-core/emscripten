@@ -20,8 +20,6 @@
   https://github.com/johnmccutchan/ecmascript_simd/blob/master/src/ecmascript_simd.js
 */
 
-"use strict";
-
 // SIMD module.
 var SIMD = {};
 

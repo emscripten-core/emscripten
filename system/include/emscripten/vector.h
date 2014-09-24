@@ -19,16 +19,23 @@ int32x4 emscripten_float32x4_equal(float32x4 a, float32x4 b);
 int32x4 emscripten_float32x4_greaterThanOrEqual(float32x4 a, float32x4 b);
 int32x4 emscripten_float32x4_greaterThan(float32x4 a, float32x4 b);
 float32x4 emscripten_float32x4_and(float32x4 a, float32x4 b);
-float32x4 emscripten_float32x4_andNot(float32x4 a, float32x4 b);
 float32x4 emscripten_float32x4_or(float32x4 a, float32x4 b);
 float32x4 emscripten_float32x4_xor(float32x4 a, float32x4 b);
 float32x4 emscripten_float32x4_not(float32x4 a);
 float32x4 emscripten_float32x4_select(int32x4 a, float32x4 b, float32x4 c);
 
-float32x4 emscripten_float32x4_fromInt32x4Bits(int32x4 a);
-float32x4 emscripten_float32x4_fromInt32x4(int32x4 a);
 int32x4 emscripten_int32x4_fromFloat32x4Bits(float32x4 a);
 int32x4 emscripten_int32x4_fromFloat32x4(float32x4 a);
+
+int32x4 emscripten_int32x4_lessThan(int32x4 a, int32x4 b);
+int32x4 emscripten_int32x4_lessThanOrEqual(int32x4 a, int32x4 b);
+int32x4 emscripten_int32x4_equal(int32x4 a, int32x4 b);
+int32x4 emscripten_int32x4_greaterThanOrEqual(int32x4 a, int32x4 b);
+int32x4 emscripten_int32x4_greaterThan(int32x4 a, int32x4 b);
+int32x4 emscripten_int32x4_select(int32x4 a, int32x4 b, int32x4 c);
+
+float32x4 emscripten_float32x4_fromInt32x4Bits(int32x4 a);
+float32x4 emscripten_float32x4_fromInt32x4(int32x4 a);
 
 #ifdef __cplusplus
 }

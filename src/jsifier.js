@@ -1890,9 +1890,6 @@ function JSify(data, functionsOnly) {
       print('// Warning: printing of i64 values may be slightly rounded! No deep i64 math used, so precise i64 code not included');
       print('var i64Math = null;');
     }
-    if (Types.usesSIMD || SIMD) {
-      print(read('simd.js'));
-    }
 
     if (CORRUPTION_CHECK) {
       assert(!ASM_JS, 'corruption checker is not compatible with asm.js');
