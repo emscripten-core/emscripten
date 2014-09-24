@@ -5704,9 +5704,13 @@ function emterpretify(ast) {
   var BRANCHES = set('BR', 'BRT', 'BRF');
 
   function verifyCode(code) {
-    return;
     if (code.length % 4 !== 0) assert(0, JSON.stringify(code));
-    for (var i = 0; i < code.length; i++) if (code[i] === undefined || code[i] === null || code < 0 || code > 255) assert(0, i + ' : ' + JSON.stringify(code));
+    var len = code.length;
+    for (var i = 0; i < len; i++) {
+      if (typeof code[i] !== 'string' && typeof code[i] !== 'number') {
+        assert(0, i + ' : ' + JSON.stringify(code));
+      }
+    }
   }
 
   function walkFunction(func) {
