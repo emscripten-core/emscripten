@@ -321,11 +321,11 @@ for table in asm.tables:
   rglobal_funcs[global_id] = table
   global_id += 1
 
-assert global_id < 256
+assert global_id < 256, global_funcs
 
 # process functions, generating bytecode
 temp = infile + '.tmp.js'
-shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'blacklist': list(BLACKLIST), 'globalFuncs': global_funcs, 'opcodes': OPCODES, 'ropcodes': ROPCODES }, output_filename=temp)
+shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'blacklist': list(BLACKLIST), 'opcodes': OPCODES, 'ropcodes': ROPCODES }, output_filename=temp)
 
 # load the module and modify it
 asm = asm_module.AsmModule(temp)

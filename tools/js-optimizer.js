@@ -5697,7 +5697,6 @@ function emterpretify(ast) {
   emitAst = false;
 
   var BLACKLIST = set(extraInfo.blacklist);
-  var GLOBAL_FUNCS = extraInfo.globalFuncs;
   var OPCODES = extraInfo.opcodes;
   var ROPCODES = extraInfo.ropcodes;
 
