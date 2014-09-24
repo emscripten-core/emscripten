@@ -3909,6 +3909,7 @@ function eliminate(ast, memSafe) {
               }
             }
           }
+          tracked = {}; // do not track from inside the switch to outside
         } else {
           if (!(type in ABORTING_ELIMINATOR_SCAN_NODES)) {
             printErr('unfamiliar eliminator scan node: ' + JSON.stringify(node));
