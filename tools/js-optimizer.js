@@ -1858,7 +1858,10 @@ function detectType(node, asmInfo, inVarDef) {
       break;
     }
     case 'name': {
-      if (asmInfo) return getAsmType(node[1], asmInfo);
+      if (asmInfo) {
+        var ret = getAsmType(node[1], asmInfo);
+        if (ret !== ASM_NONE) return ret;
+      }
       if (!inVarDef) {
         switch (node[1]) {
           case 'inf': return ASM_DOUBLE; // TODO: when minified
@@ -5803,6 +5806,9 @@ function emterpretify(ast) {
             case 'tempDoublePtr': {
               var x = getFree();
               return [x, ['GETTDP', x, 0, 0]];
+            }
+            case 'inf': {
+              return makeNum(Infinity, ASM_DOUBLE);
             }
             default: throw 'getReg global wha? ' + name;
           }
