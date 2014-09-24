@@ -280,7 +280,7 @@ Struct
 	
 		A system and implementation dependent numeric code identifying the unmodified value of the pressed key; this is usually the same as ``keyCode``.
 		
-		.. warning:: This attribute is deprecated, you should use the field ``key`` instead, if available.
+		.. warning:: This attribute is deprecated, you should use the field ``key`` instead, if available. Note thought that while this field is deprecated, the cross-browser support for ``which`` may be better than for the other fields, so experimentation is recommended. Read issue https://github.com/kripken/emscripten/issues/2817 for more information.
 
 		
 Callback functions
