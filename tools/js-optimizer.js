@@ -5754,7 +5754,7 @@ function emterpretify(ast) {
     // if dropIt is provided, then the output of this can just be dropped.
     // you *must* call releaseIfFree on the l that is returned; if it is a free local, that will free it.
     function getReg(node, dropIt, typeHint, signHint) {
-      printErr('getReg ' + JSON.stringify(node) + ' : ' + astToSrc(node) + ' : ' + [dropIt, typeHint, signHint]);
+      //printErr('getReg ' + JSON.stringify(node) + ' : ' + astToSrc(node) + ' : ' + [dropIt, typeHint, signHint]);
       switch(node[0]) {
         case 'name': {
           var name = node[1];
@@ -6349,7 +6349,7 @@ function emterpretify(ast) {
         releaseIfFree(raw[0]);
         if (freeLocals.length !== before) assert(0, [before, freeLocals.length] + ' due to ' + astToSrc(stat)); // the statement is done - nothing should still be held on to
         var curr = raw[1];
-        printErr('stat: ' + JSON.stringify(curr));
+        //printErr('stat: ' + JSON.stringify(curr));
         verifyCode(curr);
         ret = ret.concat(curr);
       });
