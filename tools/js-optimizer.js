@@ -663,7 +663,7 @@ function simplifyExpressions(ast) {
                 node[2][0] !== 'seq') { // avoid (x, y, z) which can be used for tempDoublePtr on doubles for alignment fixes
               if (node[1][2][1][1] === 'HEAP32') {
                 node[1][3][1][1] = 'HEAPF32';
-                return makeAsmCoercion(node[1][3], detectAsmCoercion(node[2]));
+                return makeAsmCoercion(node[1][3], detectType(node[2]));
               } else {
                 node[1][3][1][1] = 'HEAP32';
                 return ['binary', '|', node[1][3], ['num', 0]];
@@ -1841,7 +1841,7 @@ var ASM_SIG = {
 
 var ASM_FLOAT_ZERO = null; // TODO: share the entire node?
 
-function detectAsmCoercion(node, asmInfo, inVarDef) {
+function detectType(node, asmInfo, inVarDef) {
   // for params, +x vs x|0, for vars, 0.0 vs 0
   switch (node[0]) {
     case 'num': {
@@ -1850,7 +1850,7 @@ function detectAsmCoercion(node, asmInfo, inVarDef) {
     }
     case 'unary-prefix': {
       if (node[1] === '+') return ASM_DOUBLE;
-      if (node[1] === '-') return detectAsmCoercion(node[2], asmInfo, inVarDef);
+      if (node[1] === '-') return detectType(node[2], asmInfo, inVarDef);
       break;
     }
     case 'call': {
@@ -1873,7 +1873,7 @@ function detectAsmCoercion(node, asmInfo, inVarDef) {
       break;
     }
     case 'conditional': case 'seq': {
-      return detectAsmCoercion(node[2], asmInfo, inVarDef);
+      return detectType(node[2], asmInfo, inVarDef);
     }
   }
   assert(0 , 'horrible ' + JSON.stringify(node));
@@ -1911,8 +1911,8 @@ function getAsmType(name, asmInfo) {
 }
 
 function getCombinedType(node1, node2, asmData, hint) {
-  var type1 = detectAsmCoercion(node1, asmData);
-  var type2 = detectAsmCoercion(node2, asmData);
+  var type1 = detectType(node1, asmData);
+  var type2 = detectType(node2, asmData);
   if (type1 === ASM_NONE && type2 === ASM_NONE) {
     assert(hint !== undefined);
     return hint;
@@ -2001,7 +2001,7 @@ function normalizeAsm(func) {
     var name = node[2][1];
     if (func[2] && func[2].indexOf(name) < 0) break; // not an assign into a parameter, but a global
     if (name in data.params) break; // already done that param, must be starting function body
-    data.params[name] = detectAsmCoercion(node[3]);
+    data.params[name] = detectType(node[3]);
     stats[i] = emptyNode();
     i++;
   }
@@ -2015,7 +2015,7 @@ function normalizeAsm(func) {
       var name = v[0];
       var value = v[1];
       if (!(name in data.vars)) {
-        data.vars[name] = detectAsmCoercion(value, null, true);
+        data.vars[name] = detectType(value, null, true);
         v.length = 1; // make an un-assigning var
       } else {
         assert(j === 0, 'cannot break in the middle');
@@ -2040,7 +2040,7 @@ function normalizeAsm(func) {
   // look for final 'return' statement to get return type.
   var retStmt = stats[stats.length - 1];
   if (retStmt && retStmt[0] === 'return' && retStmt[1]) {
-    data.ret = detectAsmCoercion(retStmt[1]);
+    data.ret = detectType(retStmt[1]);
   }
   //printErr('normalized \n\n' + astToSrc(func) + '\n\nwith: ' + JSON.stringify(data));
   return data;
@@ -4959,7 +4959,7 @@ function outline(ast) {
         if (!node[1]) {
           hasReturn = true;
         } else {
-          hasReturnType[detectAsmCoercion(node[1])] = true;
+          hasReturnType[detectType(node[1])] = true;
         }
       } else if (type == 'break') {
         var label = node[1] || 0;
@@ -5103,7 +5103,7 @@ function outline(ast) {
               if (!node[1]) {
                 ret.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos(outlineIndex)), ['num', CONTROL_RETURN_VOID])]);
               } else {
-                var type = detectAsmCoercion(node[1], asmData);
+                var type = detectType(node[1], asmData);
                 ret.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos(outlineIndex)), ['num', controlFromAsmType(type)])]);
                 ret.push(['stat', makeAssign(makeStackAccess(type, asmData.controlDataStackPos(outlineIndex)), node[1])]);
               }
@@ -5914,7 +5914,7 @@ function emterpretify(ast) {
                 throw 'no ' + type;
               }
               default: {
-                var type = detectAsmCoercion(inner, asmData);
+                var type = detectType(inner, asmData);
                 if (type === ASM_INT) {
                   return makeUnary(['unary-prefix', 'I2D', node[2][2]], ASM_DOUBLE, ASM_NONSIGNED);
                 }
@@ -5930,7 +5930,7 @@ function emterpretify(ast) {
 
           switch (node[1]) {
             case '-': case '~': {
-              var type = detectAsmCoercion(node[2], asmData);
+              var type = detectType(node[2], asmData);
               var sign = detectSign(node[2]);
               return makeUnary(node, type, sign);
             }
@@ -6373,7 +6373,7 @@ function emterpretify(ast) {
         var reg = getReg(param);
         ret = ret.concat(reg[1]);
         actuals.push(reg[0]);
-        sig += ASM_SIG[detectAsmCoercion(param, asmData)];
+        sig += ASM_SIG[detectType(param, asmData)];
       });
       ret.push('CALL');
       ret.push(lx);
@@ -6488,7 +6488,7 @@ function emterpretify(ast) {
     func[3] = func[3].filter(function(node) {
       if (node[0] === 'return') {
         assert(asmData.ret !== undefined);
-        var type = detectAsmCoercion(node[1]);
+        var type = detectType(node[1]);
         node[1] = makeAsmCoercion(theCall, type);
         switch (type) {
           case ASM_INT:    theName[1] += '_i'; break;
