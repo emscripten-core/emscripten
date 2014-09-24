@@ -236,8 +236,11 @@ def make_emterpreter(t):
           ret += '; pc = pc + %d | 0' % (4*((extra+3)>>2))
         return '     ' + ret + '; break;'
 
-      assert len(sigs) == 1, [name, sigs]
-      return make_target_call_sig(sigs[0])
+      if len(sigs) == 1:
+        return make_target_call_sig(sigs[0])
+      else:
+        assert len(sigs) == 2
+        return 'if ((HEAP8[pc+3>>0]|0) == 0) { ' + make_target_call_sig(sigs[0]) + ' } else { ' + make_target_call_sig(sigs[1]) + ' }'
 
     CASES[ROPCODES['CALL']] = 'switch (ly|0) {\n' + \
       '\n'.join(filter(lambda x: 'None' not in x, ['    case %d: {\n%s\n    }' % (i, make_target_call(i)) for i in range(global_id-1)])) + \
