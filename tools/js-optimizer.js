@@ -5792,7 +5792,7 @@ function emterpretify(ast) {
     // if dropIt is provided, then the output of this can just be dropped.
     // you *must* call releaseIfFree on the l that is returned; if it is a free local, that will free it.
     function getReg(node, dropIt, typeHint, signHint) {
-      printErr('getReg ' + JSON.stringify(node) + ' : ' + astToSrc(node) + ' : ' + [dropIt, typeHint, signHint]);
+      //printErr('getReg ' + JSON.stringify(node) + ' : ' + astToSrc(node) + ' : ' + [dropIt, typeHint, signHint]);
       switch(node[0]) {
         case 'name': {
           var name = node[1];
@@ -5807,9 +5807,8 @@ function emterpretify(ast) {
               var x = getFree();
               return [x, ['GETTDP', x, 0, 0]];
             }
-            case 'inf': {
-              return makeNum(Infinity, ASM_DOUBLE);
-            }
+            case 'inf': return makeNum(Infinity, ASM_DOUBLE);
+            case '_stderr': printErr('WARNING: stderr!'); return makeNum(0, ASM_DOUBLE); // XXX XXX XXX
             default: throw 'getReg global wha? ' + name;
           }
         }
@@ -5934,7 +5933,7 @@ function emterpretify(ast) {
                 var name = inner[1];
                 var type = getAsmType(name, asmData);
                 if (type === ASM_DOUBLE) {
-                  return [name, []];
+                  return [locals[name], []];
                 }
                 throw 'no ' + type;
               }
