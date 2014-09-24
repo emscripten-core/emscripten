@@ -55,7 +55,7 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '67':  'MULD',    # [lx, ly, lz]         lx = ly * lz (double)
   '69':  'DIVD',    # [lx, ly, lz]         lx = ly / lz (double)
   '70':  'MODD',    # [lx, ly, lz]         lx = ly % lz (double)
-  #'72':  'NEGD',    # [lx, ly, 0]          lx = -ly (double)
+  '72':  'NEGD',    # [lx, ly, 0]          lx = -ly (double)
   '78':  'EQD',     # [lx, ly, lz]         lx = ly == lz (double)
   '79':  'NED',     # [lx, ly, lz]         lx = ly != lz (double)
   '80':  'LTD',     # [lx, ly, lz]         lx = ly < lz (signed)
@@ -170,6 +170,7 @@ CASES[ROPCODES['SUBD']] = get_access('lx', s='d') + ' = (' + get_coerced_access(
 CASES[ROPCODES['MULD']] = get_access('lx', s='d') + ' = (' + get_coerced_access('ly', s='d') + ') * (' + get_coerced_access('lz', s='d') + ');'
 CASES[ROPCODES['DIVD']] = get_access('lx', s='d') + ' = (' + get_coerced_access('ly', s='d') + ') / (' + get_coerced_access('lz', s='d') + ');'
 CASES[ROPCODES['MODD']] = get_access('lx', s='d') + ' = (' + get_coerced_access('ly', s='d') + ') % (' + get_coerced_access('lz', s='d') + ');'
+CASES[ROPCODES['NEGD']] = get_access('lx', s='d') + ' = -(' + get_coerced_access('ly', s='d') + ');'
 CASES[ROPCODES['EQD']] = get_access('lx') + ' = (' + get_coerced_access('ly', s='d') + ') == (' + get_coerced_access('lz', s='d') + ') | 0;'
 CASES[ROPCODES['NED']] = get_access('lx') + ' = (' + get_coerced_access('ly', s='d') + ') != (' + get_coerced_access('lz', s='d') + ') | 0;'
 CASES[ROPCODES['LTD']] = get_access('lx') + ' = (' + get_coerced_access('ly', s='d') + ') < (' + get_coerced_access('lz', s='d') + ') | 0;'

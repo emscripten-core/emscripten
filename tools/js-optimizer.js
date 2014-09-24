@@ -6255,7 +6255,12 @@ function emterpretify(ast) {
     function makeUnary(node, type, sign) {
       var opcode;
       switch(node[1]) {
-        case '-': assert(type === ASM_INT); opcode = 'NEG'; break;
+        case '-': {
+          if (type === ASM_INT) opcode = 'NEG';
+          else if (type === ASM_DOUBLE) opcode = 'NEGD';
+          else throw 'x';
+          break;
+        }
         case '!': assert(type === ASM_INT); opcode = 'LNOT'; break;
         case '~': assert(type === ASM_INT); opcode = 'BNOT'; break;
         case 'I2D': case 'D2I': opcode = node[1]; break;
