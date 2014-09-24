@@ -243,7 +243,7 @@ def make_emterpreter(t):
         return 'if ((HEAP8[pc+3>>0]|0) == 0) { ' + make_target_call_sig(sigs[0]) + ' } else { ' + make_target_call_sig(sigs[1]) + ' }'
 
     CASES[ROPCODES['CALL']] = 'switch (ly|0) {\n' + \
-      '\n'.join(filter(lambda x: 'None' not in x, ['    case %d: {\n%s\n    }' % (i, make_target_call(i)) for i in range(global_id-1)])) + \
+      '\n'.join(filter(lambda x: 'None' not in x, ['    case %d: {\n%s\n    }' % (i, make_target_call(i)) for i in range(global_id)])) + \
       '\n    default: assert(0);' + \
       '\n   }'
 
