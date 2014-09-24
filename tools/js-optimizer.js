@@ -6055,7 +6055,7 @@ function emterpretify(ast) {
           }
           breakStack.pop();
           var range = maxx - minn + 1;
-          assert(minn >= 0 && maxx < 128); // we need both minn to be a tiny int, and their range
+          assert(minn === (minn | 0) && range === (range | 0));
           var defaultAbsolute = data['default'] ? data['default'].absolute : absoluteId++;
           // emit the switch instruction itself
           var tempMin = getFree(), tempRange = getFree();
