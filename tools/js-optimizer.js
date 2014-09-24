@@ -1850,6 +1850,7 @@ function detectAsmCoercion(node, asmInfo, inVarDef) {
     }
     case 'unary-prefix': {
       if (node[1] === '+') return ASM_DOUBLE;
+      if (node[1] === '-') return detectAsmCoercion(node[2], asmInfo, inVarDef);
       break;
     }
     case 'call': {
