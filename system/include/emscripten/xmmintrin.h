@@ -73,7 +73,7 @@ _mm_min_ps(__m128 a, __m128 b)
 {
   // Use a comparsion and select instead of emscripten_float32x4_min in order to
   // correctly emulate x86's NaN and -0.0 semantics.
-  return emscripten_float32x4_select(emscripten_float32x4_greaterThan(a, b), a, b);
+  return emscripten_float32x4_select(emscripten_float32x4_lessThan(a, b), a, b);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
@@ -81,7 +81,7 @@ _mm_max_ps(__m128 a, __m128 b)
 {
   // Use a comparsion and select instead of emscripten_float32x4_max in order to
   // correctly emulate x86's NaN and -0.0 semantics.
-  return emscripten_float32x4_select(emscripten_float32x4_lessThan(a, b), a, b);
+  return emscripten_float32x4_select(emscripten_float32x4_greaterThan(a, b), a, b);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
