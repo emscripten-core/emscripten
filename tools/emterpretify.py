@@ -298,30 +298,6 @@ print 'emterpretifying %s to %s' % (infile, outfile)
 # final global functions
 
 asm = asm_module.AsmModule(infile)
-global_funcs = {}
-rglobal_funcs = {}
-global_id = 0
-for k, v in asm.imports.iteritems():
-  if '|' not in v and '+' not in v and 'new ' not in v and '.0' not in v and v != '0':
-    global_funcs[k] = global_id
-    rglobal_funcs[global_id] = k
-    global_id += 1
-
-lines = asm.funcs_js.split('\n')
-for i in range(len(lines)):
-  line = lines[i]
-  if line.startswith('function ') and '}' not in line:
-    func = line.split(' ')[1].split('(')[0]
-    global_funcs[func] = global_id
-    rglobal_funcs[global_id] = func
-    global_id += 1
-
-for table in asm.tables:
-  global_funcs[table] = global_id
-  rglobal_funcs[global_id] = table
-  global_id += 1
-
-assert global_id < 256, global_funcs
 
 # process functions, generating bytecode
 temp = infile + '.tmp.js'
@@ -363,6 +339,10 @@ func = None
 
 # first pass, collect and process bytecode
 
+global_funcs = {}
+rglobal_funcs = {}
+global_id = 0
+
 call_sigs = {} # signatures appearing for each call target
 def process_code(func, code, absolute_targets):
   absolute_start = code_start + len(all_code) # true absolute starting point of this function
@@ -376,6 +356,12 @@ def process_code(func, code, absolute_targets):
       if target not in call_sigs: call_sigs[target] = []
       sigs = call_sigs[target]
       if sig not in sigs: sigs.append(sig)
+      if target not in global_funcs:
+        global global_id
+        assert global_id < 256, global_funcs
+        global_funcs[target] = global_id
+        rglobal_funcs[global_id] = target
+        global_id += 1
       code[j+2] = global_funcs[target]
       code[j+3] = sigs.index(sig)
       if sig[0] == 'v':
