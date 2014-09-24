@@ -5770,7 +5770,7 @@ function emterpretify(ast) {
     // if dropIt is provided, then the output of this can just be dropped.
     // you *must* call releaseIfFree on the l that is returned; if it is a free local, that will free it.
     function getReg(node, dropIt, typeHint, signHint) {
-      //printErr('getReg ' + JSON.stringify(node) + ' : ' + astToSrc(node) + ' : ' + [dropIt, typeHint, signHint]);
+      printErr('getReg ' + JSON.stringify(node) + ' : ' + astToSrc(node) + ' : ' + [dropIt, typeHint, signHint]);
       switch(node[0]) {
         case 'name': {
           var name = node[1];
@@ -5894,14 +5894,7 @@ function emterpretify(ast) {
             // double operation
             var inner = node[2];
             switch (inner[0]) {
-              case 'unary-prefix': {
-                if (inner[1] === '+') return getReg(inner, dropIt, ASM_DOUBLE, ASM_NONSIGNED);
-                throw 'grr';
-              }
-              case 'binary': {
-                return getReg(inner, dropIt, ASM_DOUBLE, ASM_NONSIGNED);
-              }
-              case 'call': case 'sub': {
+              case 'unary-prefix': case 'binary': case 'call': case 'sub': {
                 return getReg(inner, dropIt, ASM_DOUBLE, ASM_NONSIGNED);
               }
               case 'num': {
