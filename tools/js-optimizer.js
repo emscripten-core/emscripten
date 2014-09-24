@@ -6472,7 +6472,7 @@ function emterpretify(ast) {
     var code = walkStatements(stats);
     assert(code.length % 4 === 0);
     if (code.length < 4 || code[code.length-4] != 'RET') {
-      code = code.concat(['RET', 0, 0, 0]); // final ret for the function
+      code.push('RET', 0, 0, 0); // final ret for the function
     }
     assert(maxLocal <= 256);
     code = ['FUNC', maxLocal+1, 0, 0].concat(code);
