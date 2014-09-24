@@ -5994,12 +5994,15 @@ function emterpretify(ast) {
           var otherwise = markerId++, exit = markerId++;
           var temp = getFree();
           var condition = getReg(node[1]);
-          var ret = condition[1].concat(['BRF', releaseIfFree(condition[0]), otherwise, 0]);
+          var ret = condition[1];
+          ret.push('BRF', releaseIfFree(condition[0]), otherwise, 0);
           var first = getReg(node[2]);
-          ret = ret.concat(first[1]).concat(['SET', temp, releaseIfFree(first[0]), 0, 'BR', 0, exit, 0]);
+          ret = ret.concat(first[1]);
+          ret.push('SET', temp, releaseIfFree(first[0]), 0, 'BR', 0, exit, 0);
           var second = getReg(node[3]);
-          ret = ret.concat(['marker', otherwise, 0, 0]).concat(second[1]).concat(['SET', temp, releaseIfFree(second[0]), 0]);
-          ret = ret.concat(['marker', exit, 0, 0]);
+          ret.push('marker', otherwise, 0, 0);
+          ret = ret.concat(second[1]);
+          ret.push('SET', temp, releaseIfFree(second[0]), 0, 'marker', exit, 0, 0);
           return [temp, ret];
         }
         case 'seq': {
@@ -6022,7 +6025,8 @@ function emterpretify(ast) {
             assert(bits === temp.bits);
             var y = getReg(node[2][2], false, ASM_INT, ASM_SIGNED);
             var x = getFree(y[0]);
-            return [x, y[1].concat([opcode, x, releaseIfFree(y[0], x), 0])];
+            y[1].push(opcode, x, releaseIfFree(y[0], x), 0);
+            return [x, y[1]];
           } else {
             assert(node[2][0] === 'num'); // HEAP32[8] or such
             var address = node[2][1];
@@ -6209,7 +6213,9 @@ function emterpretify(ast) {
       var y = getReg(node[2]);
       var z = getReg(node[3]);
       var x = getFree(y[0], z[0]);
-      return [x, y[1].concat(z[1]).concat([opcode, x, releaseIfFree(y[0], x), releaseIfFree(z[0], x)])];
+      y[1] = y[1].concat(z[1]);
+      y[1].push(opcode, x, releaseIfFree(y[0], x), releaseIfFree(z[0], x));
+      return [x, y[1]];
     }
 
     function makeUnary(node, type, sign) {
@@ -6223,7 +6229,8 @@ function emterpretify(ast) {
       }
       var y = getReg(node[2]);
       var x = getFree(y[0]);
-      return [x, y[1].concat([opcode, x, releaseIfFree(y[0], x), 0])];
+      y[1].push(opcode, x, releaseIfFree(y[0], x), 0);
+      return [x, y[1]];
     }
 
     function makeDo(node, label) {
@@ -6259,15 +6266,15 @@ function emterpretify(ast) {
       }
       var ret = [];
       if (!oneTime) {
-        ret = ret.concat(['marker', top, 0, 0]);
+        ret.push('marker', top, 0, 0);
       }
       ret = ret.concat(body);
       if (!oneTime) {
-        ret = ret.concat(['marker', cond, 0, 0]).concat(condition[1]).concat(
-          ['BRT', releaseIfFree(condition[0]), top, 0]
-        );
+        ret.push('marker', cond, 0, 0);
+        ret = ret.concat(condition[1]);
+        ret.push('BRT', releaseIfFree(condition[0]), top, 0);
       }
-      ret = ret.concat(['marker', exit, 0, 0]);
+      ret.push('marker', exit, 0, 0);
       return [-1, ret];
     }
 
@@ -6292,18 +6299,20 @@ function emterpretify(ast) {
       }
       var ret = [];
       if (!infinite) {
-        ret = ret.concat(['marker', cond, 0, 0]).concat(condition[1]).concat(
-          ['BRF', releaseIfFree(condition[0]), exit, 0]
-        );
+        ret.push('marker', cond, 0, 0);
+        ret = ret.concat(condition[1]);
+        ret.push('BRF', releaseIfFree(condition[0]), exit, 0);
       }
-      ret = ret.concat(['marker', top, 0, 0]).concat(walkStatements(node[2])).concat(['BR', 0, cond, 0]);
+      ret = ret.concat(['marker', top, 0, 0]).concat(walkStatements(node[2]));
+      ret.push('BR', 0, cond, 0);
       breakStack.pop();
       continueStack.pop();
       if (label) {
         delete breakLabels[label];
         delete continueLabels[label];
       }
-      return [-1, ret.concat(['marker', exit, 0, 0])];
+      ret.push('marker', exit, 0, 0);
+      return [-1, ret];
     }
 
     function makeCall(lx, node, type) {
