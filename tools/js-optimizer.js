@@ -1875,6 +1875,11 @@ function detectType(node, asmInfo, inVarDef) {
     case 'conditional': case 'seq': {
       return detectType(node[2], asmInfo, inVarDef);
     }
+    case 'sub': {
+      assert(node[1][0] === 'name');
+      assert(parseHeap(node[1][1]));
+      return parseHeapTemp.float ? ASM_DOUBLE : ASM_INT; // XXX ASM_FLOAT?
+    }
   }
   assert(0 , 'horrible ' + JSON.stringify(node));
 }
@@ -5900,6 +5905,11 @@ function emterpretify(ast) {
             var inner = node[2];
             switch (inner[0]) {
               case 'unary-prefix': case 'binary': case 'call': case 'sub': {
+                return getReg(inner, dropIt, ASM_DOUBLE, ASM_NONSIGNED);
+              }
+              case 'conditional': {
+                var type = detectType(inner, asmData);
+                assert(type === ASM_DOUBLE, JSON.stringify([type, ASM_DOUBLE, inner]));
                 return getReg(inner, dropIt, ASM_DOUBLE, ASM_NONSIGNED);
               }
               case 'num': {
