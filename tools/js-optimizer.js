@@ -1846,7 +1846,7 @@ function detectAsmCoercion(node, asmInfo, inVarDef) {
   switch (node[0]) {
     case 'num': {
       if (node[1].toString().indexOf('.') >= 0) return ASM_DOUBLE;
-      break;
+      return ASM_INT;
     }
     case 'unary-prefix': {
       if (node[1] === '+') return ASM_DOUBLE;
@@ -1864,16 +1864,19 @@ function detectAsmCoercion(node, asmInfo, inVarDef) {
       if (!ASM_FLOAT_ZERO) ASM_FLOAT_ZERO = node[1];
       else assert(ASM_FLOAT_ZERO === node[1]);
       return ASM_FLOAT;
-      break;
     }
     case 'binary': {
       switch (node[1]) {
         case '+': case '-': case '*': case '/': return ASM_DOUBLE; // uncoerced by |0 etc., these ops are double
+        case '|': case '&': case '^': case '<<': case '>>': case '>>>': return ASM_INT;
       }
       break;
     }
+    case 'conditional': case 'seq': {
+      return detectAsmCoercion(node[2], asmInfo, inVarDef);
+    }
   }
-  return ASM_INT;
+  assert(0 , 'horrible ' + JSON.stringify(node));
 }
 
 function makeAsmCoercion(node, type) {
@@ -1923,8 +1926,7 @@ function getCombinedType(node1, node2, asmData, hint) {
   }
   if (type1 !== type2) {
     if (type1 === hint || type2 === hint) return hint;
-    if (type1 === ASM_INT || type2 === ASM_INT) return ASM_INT; // INT overrides everything, least tolerant
-    assert(0, "can't figure it out " + JSON.stringify([node1, '....', node2, '     ', type1, type2, hint]));
+    assert(0, "can't figure it out " + JSON.stringify([node1, '....', node2, '     ', type1, type2, hint], null, '  '));
   }
   return type1;
 }
