@@ -203,15 +203,27 @@ Then you can implement ``my_js`` in JavaScript by simply adding the implementati
          alert('hi');
        },
 
+If you add it to your own file, you should write something like
+
+.. code-block:: javascript
+
+      mergeInto(LibraryManager.library, {
+        my_js: function() {
+          alert('hi');
+        },
+      });
+
+``mergeInto`` just copies the properties on the second parameter onto the first, so this add ``my_js`` onto ``LibraryManager.library``, the global object where all JavaScript library code should be.
 
 See the `library_*.js <https://github.com/kripken/emscripten/tree/master/src>`_ files for other examples.
 
 .. note:: 
 
-	- JavaScript libraries can declare dependencies (``__deps``), however those are only for other JavaScript libraries. See examples in `/src <https://github.com/kripken/emscripten/tree/master/src>`_ with the name format **library_*.js**
-	- If a JavaScript library depends on a compiled C library (like most of *libc*), you must edit `src/deps_info.json <https://github.com/kripken/emscripten/blob/master/src/deps_info.json>`_. Search for "deps_info" in `tools/system_libs.py <https://github.com/kripken/emscripten/blob/master/tools/system_libs.py>`_.
+  - JavaScript libraries can declare dependencies (``__deps``), however those are only for other JavaScript libraries. See examples in `/src <https://github.com/kripken/emscripten/tree/master/src>`_ with the name format **library_*.js**
+  - You can add dependencies for all your methods using ``autoAddDeps(myLibrary, name)`` where myLibrary is the object with all your methods, and ``name`` is the thing they all depend upon. This is useful when all the implemented methods use a JavaScript singleton containing helper methods. See ``library_gl.js`` for an example.
+  - If a JavaScript library depends on a compiled C library (like most of *libc*), you must edit `src/deps_info.json <https://github.com/kripken/emscripten/blob/master/src/deps_info.json>`_. Search for "deps_info" in `tools/system_libs.py <https://github.com/kripken/emscripten/blob/master/tools/system_libs.py>`_.
 
-	
+
 .. _interacting-with-code-call-function-pointers-from-c:
 
 Calling JavaScript functions as function pointers from C
