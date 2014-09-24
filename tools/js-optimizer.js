@@ -5886,11 +5886,22 @@ function emterpretify(ast) {
                 if (inner[1] === '+') return getReg(inner, dropIt, ASM_DOUBLE, ASM_NONSIGNED);
                 throw 'grr';
               }
+              case 'binary': {
+                return getReg(inner, dropIt, ASM_DOUBLE, ASM_NONSIGNED);
+              }
               case 'call': case 'sub': {
                 return getReg(inner, dropIt, ASM_DOUBLE, ASM_NONSIGNED);
               }
               case 'num': {
                 return makeNum(inner[1], ASM_DOUBLE);
+              }
+              case 'name': {
+                var name = inner[1];
+                var type = getAsmType(name, asmData);
+                if (type === ASM_DOUBLE) {
+                  return [name, []];
+                }
+                throw 'no ' + type;
               }
               default: {
                 var type = detectAsmCoercion(inner, asmData);
@@ -5898,7 +5909,7 @@ function emterpretify(ast) {
                 if (type === ASM_INT && (sign === ASM_SIGNED || sign === ASM_UNSIGNED)) {
                   return makeUnary(['unary-prefix', 'I2D', node[2][2]], ASM_DOUBLE, ASM_NONSIGNED);
                 }
-                throw 'meh ' + inner[0];
+                throw 'meh ' + [inner[0], type, sign] + JSON.stringify(inner);
               }
             }
           } else if (node[1] === '~' && node[2][0] === 'unary-prefix' && node[2][1] === '~') {
