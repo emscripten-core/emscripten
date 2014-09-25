@@ -2812,7 +2812,7 @@ LibraryManager.library = {
     // FILE *tmpfile(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/tmpfile.html
     // TODO: Delete the created file on closing.
-    if (_tmpfile.mode) {
+    if (!_tmpfile.mode) {
       _tmpfile.mode = allocate(intArrayFromString('w+'), 'i8', ALLOC_NORMAL);
     }
     return _fopen(_tmpnam(0), _tmpfile.mode);
