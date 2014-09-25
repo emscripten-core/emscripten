@@ -5853,17 +5853,10 @@ function emterpretify(ast) {
             var name = target[1];
             if (name in locals) {
               // local
-              var reg = getReg(value);
-              var type = asmData.vars[name];
-              if (type === undefined) type = asmData.params[name];
+              var type = getAsmType(name, asmData);
+              var reg = getReg(value, type);
               // TODO: detect when the last operation in reg[1] assigns in its arg x, in which case we can avoid the SET and make it assign to us
-              var opcode;
-              if (type === ASM_INT) {
-                opcode = 'SET';
-              } else if (type === ASM_DOUBLE) {
-                opcode = 'SETD';
-              } else throw 'ick';
-              reg[1].push(opcode, locals[name], releaseIfFree(reg[0]), 0);
+              reg[1] = reg[1].concat(makeSet(locals[name], releaseIfFree(reg[0]), type));
               return [locals[name], reg[1]];
             } else {
               var reg = getReg(value);
@@ -6086,18 +6079,21 @@ function emterpretify(ast) {
         }
         case 'conditional': {
           // TODO: optimize
+          // TODO: handle dropIt
           var otherwise = markerId++, exit = markerId++;
           var temp = getFree();
           var condition = getReg(node[1]);
           var ret = condition[1];
+          var type = detectType(node[2], asmData);
+          assert(type !== ASM_NONE);
           ret.push('BRF', releaseIfFree(condition[0]), otherwise, 0);
           var first = getReg(node[2]);
-          ret = ret.concat(first[1]);
-          ret.push('SET', temp, releaseIfFree(first[0]), 0, 'BR', 0, exit, 0);
+          ret = ret.concat(first[1]).concat(makeSet(temp, releaseIfFree(first[0]), type)); 
+          ret.push('BR', 0, exit, 0);
           var second = getReg(node[3]);
           ret.push('marker', otherwise, 0, 0);
-          ret = ret.concat(second[1]);
-          ret.push('SET', temp, releaseIfFree(second[0]), 0, 'marker', exit, 0, 0);
+          ret = ret.concat(second[1]).concat(makeSet(temp, releaseIfFree(second[0]), type));
+          ret.push('marker', exit, 0, 0);
           return [temp, ret];
         }
         case 'seq': {
@@ -6203,6 +6199,16 @@ function emterpretify(ast) {
     function releaseIfFree(l, possible) {
       if (l >= numLocals) releaseFree(l, possible);
       return l;
+    }
+
+    function makeSet(dst, src, type) {
+      var opcode;
+      if (type === ASM_INT) {
+        opcode = 'SET';
+      } else if (type === ASM_DOUBLE) {
+        opcode = 'SETD';
+      } else assert(0, 'ick ' + type);
+      return [opcode, dst, src, 0];
     }
 
     function makeNum(value, type, l) {
