@@ -5106,6 +5106,7 @@ return malloc(size);
       assert main.count('\n') <= 7, ('must not emit too many postSets: %d' % main.count('\n')) + ' : ' + main
 
   def test_simd(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
@@ -5116,6 +5117,7 @@ return malloc(size);
     self.do_run_from_file(src, output)
 
   def test_simd2(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
@@ -5138,6 +5140,7 @@ return malloc(size);
 
   def test_simd4(self):
     # test_simd4 is to test phi node handling of SIMD path
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
@@ -5148,6 +5151,7 @@ return malloc(size);
 
   def test_simd5(self):
     # test_simd5 is to test shufflevector of SIMD path
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
@@ -5170,6 +5174,7 @@ return malloc(size);
   def test_simd7(self):
     # test_simd7 is to test negative zero handling.
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
 
     test_path = path_from_root('tests', 'core', 'test_simd7')
     src, output = (test_path + s for s in ('.in', '.out'))
