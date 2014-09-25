@@ -87,6 +87,8 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   #'201': 'GETPC',   # [l, 0, 0]            l = pc
   '202': 'GETTR0',  # [l, 0, 0]            l = tempRet0
   '203': 'SETTR0',  # [l, 0, 0]            tempRet0 = l
+  '240': 'GETGLBI', # [l, vl, vh]          get global value, int, indexed by v
+  '241': 'GETGLBD', # [l, vl, vh]          get global value, double, indexed by v
   '250': 'CALL',    # [lx, target, sig] [params...]   (lx = ) target(params..) lx's existence and type depend on the target's actual callsig;
                     #                                 this instruction can take multiple 32-bit instruction chunks
                     #                                 if target is a function table, then the first param is the index of the register holding the function pointer
@@ -252,11 +254,25 @@ def make_emterpreter(t):
       if len(sigs) == 1:
         return make_target_call_sig(sigs[0])
       else:
-        assert len(sigs) == 2
+        assert len(sigs) == 2, [name, sigs]
         return 'if ((HEAP8[pc+3>>0]|0) == 0) { ' + make_target_call_sig(sigs[0]) + ' } else { ' + make_target_call_sig(sigs[1]) + ' }'
 
     CASES[ROPCODES['CALL']] = 'switch (ly|0) {\n' + \
-      '\n'.join(filter(lambda x: 'None' not in x, ['    case %d: {\n%s\n    }' % (i, make_target_call(i)) for i in range(global_id)])) + \
+      '\n'.join(filter(lambda x: 'None' not in x, ['    case %d: {\n%s\n    }' % (i, make_target_call(i)) for i in range(global_func_id)])) + \
+      '\n    default: assert(0);' + \
+      '\n   }'
+
+  if ROPCODES['GETGLBI'] not in CASES:
+    def make_target_access(i):
+      name = rglobal_vars[i]
+
+      def make_target_access_sig(sig):
+        return '     ' + get_access('lx', sig[0]) + ' = ' + name + '; break;'
+
+      return make_target_access_sig('i') # XXX 'i' is the assumption for now
+
+    CASES[ROPCODES['GETGLBI']] = 'switch (ly|0) {\n' + \
+      '\n'.join(filter(lambda x: 'None' not in x, ['    case %d: {\n%s\n    }' % (i, make_target_access(i)) for i in range(global_var_id)])) + \
       '\n    default: assert(0);' + \
       '\n   }'
 
@@ -351,7 +367,11 @@ func = None
 
 global_funcs = {}
 rglobal_funcs = {}
-global_id = 0
+global_func_id = 0
+
+global_vars = {}
+rglobal_vars = {}
+global_var_id = 0
 
 call_sigs = {} # signatures appearing for each call target
 def process_code(func, code, absolute_targets):
@@ -367,11 +387,11 @@ def process_code(func, code, absolute_targets):
       sigs = call_sigs[target]
       if sig not in sigs: sigs.append(sig)
       if target not in global_funcs:
-        global global_id
-        assert global_id < 256, global_funcs
-        global_funcs[target] = global_id
-        rglobal_funcs[global_id] = target
-        global_id += 1
+        global global_func_id
+        assert global_func_id < 256, global_funcs
+        global_funcs[target] = global_func_id
+        rglobal_funcs[global_func_id] = target
+        global_func_id += 1
       code[j+2] = global_funcs[target]
       code[j+3] = sigs.index(sig)
       if sig[0] == 'v':
@@ -379,6 +399,16 @@ def process_code(func, code, absolute_targets):
         code[j+1] = 0 # clear it
       else:
         assert code[j+1] >= 0 # there should be a real target here
+    elif code[j] in ['GETGLBI', 'GETGLBD']:
+      # fix global-accessing instructions' targets
+      target = code[j+2]
+      if target not in global_vars:
+        global global_var_id
+        assert global_var_id < 256, global_vars
+        global_vars[target] = global_var_id
+        rglobal_vars[global_var_id] = target
+        global_var_id += 1
+      code[j+2] = global_vars[target]
     elif code[j] == 'absolute-value':
       # put the 32-bit absolute value of an abolute target here
       #print '  fixing absolute value', code[j+1], absolute_targets[unicode(code[j+1])], absolute_start + absolute_targets[unicode(code[j+1])]

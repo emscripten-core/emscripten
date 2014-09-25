@@ -1866,6 +1866,7 @@ function detectType(node, asmInfo, inVarDef) {
       if (!inVarDef) {
         switch (node[1]) {
           case 'inf': return ASM_DOUBLE; // TODO: when minified
+          case 'tempRet0': return ASM_INT;
         }
         return ASM_NONE;
       }
@@ -5826,8 +5827,11 @@ function emterpretify(ast) {
               return [x, ['GETTR0', x, 0, 0]];
             }
             case 'inf': return makeNum(Infinity, ASM_DOUBLE);
-            case '_stdout': case '_stderr': printErr('WARNING: stdout|err!'); return makeNum(0, ASM_INT); // XXX XXX XXX
-            default: throw 'getReg global wha? ' + name;
+            default: {
+              var x = getFree();
+              assert(typeHint === ASM_INT);
+              return [x, ['GETGLBI', x, name, 0]];
+            }
           }
         }
         case 'num': {
@@ -6311,8 +6315,8 @@ function emterpretify(ast) {
         case '>>>': opcode = 'LSHR'; break;
         default: throw 'bad ' + node[1];
       }
-      var y = getReg(node[2]);
-      var z = getReg(node[3]);
+      var y = getReg(node[2], undefined, type, sign);
+      var z = getReg(node[3], undefined, type, sign);
       var x = getFree(y[0], z[0]);
       y[1] = y[1].concat(z[1]);
       y[1].push(opcode, x, releaseIfFree(y[0], x), releaseIfFree(z[0], x));
@@ -6443,7 +6447,9 @@ function emterpretify(ast) {
         var reg = getReg(param);
         ret = ret.concat(reg[1]);
         actuals.push(reg[0]);
-        sig += ASM_SIG[detectType(param, asmData)];
+        var curr = ASM_SIG[detectType(param, asmData)];
+        assert(curr !== 'v');//, JSON.stringify(param) + ' ==> ' + ASM_SIG[detectType(param, asmData)]);
+        sig += curr;
       });
       ret.push('CALL');
       ret.push(lx);
