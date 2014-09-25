@@ -5789,6 +5789,10 @@ function emterpretify(ast) {
       return l;
     }
 
+    function isFree(l) {
+      return l >= numLocals;
+    }
+
     var markerId = 0;
     var absoluteId = 0;
     var absoluteTargets = {};
@@ -5932,43 +5936,46 @@ function emterpretify(ast) {
         case 'unary-prefix': {
           if (node[1] === '+') {
             // double operation
+            var appliedCoercion = false;
             var ret = (function() {
               var inner = node[2];
               switch (inner[0]) {
-                case 'unary-prefix': case 'binary': case 'call': case 'sub': {
-                  return getReg(inner, dropIt, ASM_DOUBLE, ASM_NONSIGNED);
-                }
-                case 'conditional': {
-                  var type = detectType(inner, asmData);
-                  assert(type === ASM_DOUBLE, JSON.stringify([type, ASM_DOUBLE, inner]));
+                case 'call': case 'sub': {
+                  // the coercion is part of the syntax of these
+                  appliedCoercion = true;
                   return getReg(inner, dropIt, ASM_DOUBLE, ASM_NONSIGNED);
                 }
                 case 'num': {
+                  appliedCoercion = true;
                   return makeNum(inner[1], ASM_DOUBLE);
                 }
-                case 'name': {
-                  var name = inner[1];
-                  var type = getAsmType(name, asmData);
-                  if (type === ASM_DOUBLE) {
-                    return [locals[name], []];
+                case 'unary-prefix': {
+                  if (inner[1] === '-' && inner[2][0] === 'num') {
+                    appliedCoercion = true;
+                    return makeNum(-inner[2][1], ASM_DOUBLE);
                   }
-                  throw 'no ' + type;
+                  // otherwise fall through
                 }
                 default: {
-                  var type = detectType(inner, asmData);
-                  if (type === ASM_INT) {
-                    return makeUnary(['unary-prefix', 'I2D', node[2][2]], ASM_DOUBLE, ASM_NONSIGNED);
-                  }
-                  throw 'meh ' + [inner[0], type] + JSON.stringify(inner);
+                  return getReg(inner, dropIt, ASM_DOUBLE, ASM_NONSIGNED);
                 }
               }
             })();
             // add a coercion on the value, if needed
-            if (node[2][0] !== 'call') {
+            if (!appliedCoercion) {
               var innerType = detectType(node[2], asmData);
               if (innerType !== ASM_DOUBLE) {
                 if (innerType === ASM_INT) {
-                  ret[1].push('I2D', ret[0], ret[0], 0);
+                  var sign = detectSign(node[2]);
+                  var opcode = sign === ASM_SIGNED ? 'SI2D' : 'UI2D';
+                  if (isFree(ret[0])) {
+                    ret[1].push(opcode, ret[0], ret[0], 0);
+                  } else {
+                    // we can't trample this reg
+                    var l = getFree();
+                    ret[1].push(opcode, l, ret[0], 0);                   
+                    ret[0] = l;
+                  }
                 } else {
                   throw 'whoops';
                 }
@@ -5983,7 +5990,13 @@ function emterpretify(ast) {
           assert(!dropIt);
 
           switch (node[1]) {
-            case '-': case '~': {
+            case '-': {
+              if (node[2][0] === 'num') {
+                return makeNum(-node[2][1], ASM_INT);
+              }
+              // otherwise fall through
+            }
+            case '~': {
               var type = detectType(node[2], asmData);
               var sign = detectSign(node[2]);
               return makeUnary(node, type, sign);
