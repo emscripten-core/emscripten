@@ -265,19 +265,18 @@ function emterpret%s%s(pc) {
  EMTSTACKTOP = EMTSTACKTOP + (HEAP8[pc + 1 >> 0] << 3) | 0;
  assert(((EMTSTACKTOP|0) <= (EMT_STACK_MAX|0))|0);
  while (1) {
-  //printErr('last lx: ' + [HEAP32[sp + (lx << 3) >> 2]|0, +HEAPF64[sp + (lx << 3) >> 3]]);
+  //print('last lx: ' + [HEAP32[sp + (lx << 3) >> 2]|0, +HEAPF64[sp + (lx << 3) >> 3]]);
   pc = pc + 4 | 0;
   inst = HEAP32[pc>>2]|0;
   lx = (inst >> 8) & 255;
   ly = (inst >> 16) & 255;
   lz = inst >>> 24;
-  //printErr([pc, inst&255, %s[inst&255], lx, ly, lz].join(', '));
+  //print([pc, inst&255, %s[inst&255], lx, ly, lz].join(', '));
   //printErr('  ' + Array.prototype.slice.call(HEAPU8, sp, sp+8));
   switch (inst&255) {
 %s
    default: assert(0);
   }
-  //printErr('result in ' + lx + ': ' + Array.prototype.slice.call(HEAPU8, sp+8*lx, sp+8*(lx+1)));
  }
  EMTSTACKTOP = sp;
  %s
