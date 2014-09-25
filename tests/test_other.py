@@ -4123,14 +4123,13 @@ pass: error == ENOTDIR
 
     def do_test(source, args, output):
       print
-      print 'emcc', source[:40], '\n' in source
+      print 'emcc', source.replace('\n', '.')[:40], '\n' in source
       self.clear()
       if '\n' in source:
         open('src.cpp', 'w').write(source)
         source = 'src.cpp'
       else:
         source = path_from_root('tests', source)
-      self.clear()
       Popen([PYTHON, EMCC, source, '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0']).communicate()
       Popen([PYTHON, path_from_root('tools', 'emterpretify.py'), 'a.out.js', 'em.out.js']).communicate()
       self.assertContained(output, run_js('a.out.js', args=args))
@@ -4144,4 +4143,16 @@ pass: error == ENOTDIR
     do_test('hello_world.c', [], 'hello, world!')
     do_test('hello_world_loop.cpp', [], 'hello, world!')
     do_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.')
+
+    do_test(r'''
+#include<stdio.h>
+
+int main() {
+  volatile float f;
+  volatile float *ff = &f;
+  *ff = -10;
+  printf("hello, world! %d\n", (int)f);
+  return 0;
+}
+''', [], 'hello, world! -10')
 

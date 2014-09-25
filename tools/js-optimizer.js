@@ -5861,6 +5861,7 @@ function emterpretify(ast) {
             assert(parseHeap(heap, temp));
             // coerced heap access => a load
             var y = getReg(value);
+            /*
             // add a coercion on the value, if needed
             var yType = detectType(value, asmData);
             if (yType !== temp.type) {
@@ -5872,6 +5873,7 @@ function emterpretify(ast) {
                 throw ['yType', yType, temp.type, temp.float, JSON.stringify(value)];
               }
             }
+            */
             // emit the proper store
             var opcode = 'STORE' + (temp.float ? 'F' : '') + temp.bits;
             if (target[2][0] === 'binary' && target[2][1] === '>>' && target[2][3][0] === 'num') {
@@ -5929,35 +5931,47 @@ function emterpretify(ast) {
         case 'unary-prefix': {
           if (node[1] === '+') {
             // double operation
-            var inner = node[2];
-            switch (inner[0]) {
-              case 'unary-prefix': case 'binary': case 'call': case 'sub': {
-                return getReg(inner, dropIt, ASM_DOUBLE, ASM_NONSIGNED);
-              }
-              case 'conditional': {
-                var type = detectType(inner, asmData);
-                assert(type === ASM_DOUBLE, JSON.stringify([type, ASM_DOUBLE, inner]));
-                return getReg(inner, dropIt, ASM_DOUBLE, ASM_NONSIGNED);
-              }
-              case 'num': {
-                return makeNum(inner[1], ASM_DOUBLE);
-              }
-              case 'name': {
-                var name = inner[1];
-                var type = getAsmType(name, asmData);
-                if (type === ASM_DOUBLE) {
-                  return [locals[name], []];
+            var ret = (function() {
+              var inner = node[2];
+              switch (inner[0]) {
+                case 'unary-prefix': case 'binary': case 'call': case 'sub': {
+                  return getReg(inner, dropIt, ASM_DOUBLE, ASM_NONSIGNED);
                 }
-                throw 'no ' + type;
-              }
-              default: {
-                var type = detectType(inner, asmData);
-                if (type === ASM_INT) {
-                  return makeUnary(['unary-prefix', 'I2D', node[2][2]], ASM_DOUBLE, ASM_NONSIGNED);
+                case 'conditional': {
+                  var type = detectType(inner, asmData);
+                  assert(type === ASM_DOUBLE, JSON.stringify([type, ASM_DOUBLE, inner]));
+                  return getReg(inner, dropIt, ASM_DOUBLE, ASM_NONSIGNED);
                 }
-                throw 'meh ' + [inner[0], type] + JSON.stringify(inner);
+                case 'num': {
+                  return makeNum(inner[1], ASM_DOUBLE);
+                }
+                case 'name': {
+                  var name = inner[1];
+                  var type = getAsmType(name, asmData);
+                  if (type === ASM_DOUBLE) {
+                    return [locals[name], []];
+                  }
+                  throw 'no ' + type;
+                }
+                default: {
+                  var type = detectType(inner, asmData);
+                  if (type === ASM_INT) {
+                    return makeUnary(['unary-prefix', 'I2D', node[2][2]], ASM_DOUBLE, ASM_NONSIGNED);
+                  }
+                  throw 'meh ' + [inner[0], type] + JSON.stringify(inner);
+                }
+              }
+            })();
+            // add a coercion on the value, if needed
+            var innerType = detectType(node[2], asmData);
+            if (innerType !== ASM_DOUBLE) {
+              if (innerType === ASM_INT) {
+                ret[1].push('I2D', ret[0], ret[0], 0);
+              } else {
+                throw 'whoops';
               }
             }
+            return ret;
           } else if (node[1] === '~' && node[2][0] === 'unary-prefix' && node[2][1] === '~') {
             return makeUnary(['unary-prefix', 'D2I', node[2][2]], ASM_INT, ASM_SIGNED);
           }
