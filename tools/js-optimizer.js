@@ -5730,11 +5730,16 @@ function emterpretify(ast) {
   var BRANCHES = set('BR', 'BRT', 'BRF');
 
   var tempBuffer = new ArrayBuffer(8);
+  var tempFloat64 = new Float64Array(tempBuffer);
   var tempFloat32 = new Float32Array(tempBuffer);
   var tempUint8 = new Uint8Array(tempBuffer);
   function flattenFloat32(value) {
     tempFloat32[0] = value;
     return Array.prototype.slice.call(tempUint8, 0, 4);
+  }
+  function flattenFloat64(value) {
+    tempFloat64[0] = value;
+    return Array.prototype.slice.call(tempUint8, 0, 8);
   }
 
   function verifyCode(code) {
@@ -6197,6 +6202,8 @@ function emterpretify(ast) {
             return [l, ['SETVDI', l, 0, 0, value & 255, (value >> 8) & 255, (value >> 16) & 255, (value >> 24) & 255]];
           } else if (value === Math.fround(value)) {
             return [l, ['SETVDF', l, 0, 0].concat(flattenFloat32(value))];
+          } else {
+            return [l, ['SETVDD', l, 0, 0].concat(flattenFloat64(value))];
           }
           throw 'fff ' + value;
         } else throw 'aw';
