@@ -5954,12 +5954,14 @@ function emterpretify(ast) {
               }
             })();
             // add a coercion on the value, if needed
-            var innerType = detectType(node[2], asmData);
-            if (innerType !== ASM_DOUBLE) {
-              if (innerType === ASM_INT) {
-                ret[1].push('I2D', ret[0], ret[0], 0);
-              } else {
-                throw 'whoops';
+            if (node[2][0] !== 'call') {
+              var innerType = detectType(node[2], asmData);
+              if (innerType !== ASM_DOUBLE) {
+                if (innerType === ASM_INT) {
+                  ret[1].push('I2D', ret[0], ret[0], 0);
+                } else {
+                  throw 'whoops';
+                }
               }
             }
             return ret;
