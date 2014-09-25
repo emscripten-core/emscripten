@@ -6239,7 +6239,7 @@ function emterpretify(ast) {
         }
         case '<': {
           if (type === ASM_INT) {
-            assert(sign !== ASM_FLEXIBLE);
+            if (sign === ASM_FLEXIBLE) sign = ASM_SIGNED; // e.g. two numbers
             if (sign === ASM_SIGNED) opcode = 'SLT';
             else opcode = 'ULT';
           }
@@ -6248,7 +6248,7 @@ function emterpretify(ast) {
         }
         case '<=': {
           if (type === ASM_INT) {
-            assert(sign !== ASM_FLEXIBLE);
+            if (sign === ASM_FLEXIBLE) sign = ASM_SIGNED; // e.g. two numbers
             if (sign === ASM_SIGNED) opcode = 'SLE';
             else opcode = 'ULE';
           }
