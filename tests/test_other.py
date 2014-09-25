@@ -4156,3 +4156,15 @@ int main() {
 }
 ''', [], 'hello, world! -10')
 
+    do_test(r'''
+#include<stdio.h>
+
+int main() {
+  volatile float f;
+  volatile float *ff = &f;
+  *ff = -10;
+  printf("hello, world! %.2f\n", f);
+  return 0;
+}
+''', [], 'hello, world! -10.00')
+

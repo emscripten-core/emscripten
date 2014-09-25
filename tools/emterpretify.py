@@ -271,7 +271,7 @@ function emterpret%s%s(pc) {
   lx = (inst >> 8) & 255;
   ly = (inst >> 16) & 255;
   lz = inst >>> 24;
-  //print([pc, inst&255, %s[inst&255], lx, ly, lz].join(', '));
+  //print([pc, inst&255, %s[inst&255], lx, ly, lz, HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]].join(', '));
   //printErr('  ' + Array.prototype.slice.call(HEAPU8, sp, sp+8));
   switch (inst&255) {
 %s

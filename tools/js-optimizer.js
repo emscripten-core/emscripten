@@ -5860,28 +5860,14 @@ function emterpretify(ast) {
             var temp = makeTempParseHeap();
             assert(parseHeap(heap, temp));
             // coerced heap access => a load
-            var y = getReg(value);
-            /*
-            // add a coercion on the value, if needed
-            var yType = detectType(value, asmData);
-            if (yType !== temp.type) {
-              if (yType === ASM_DOUBLE && temp.float) {
-                // nothing to do - we don't have float32 values
-              } else if (yType === ASM_INT && temp.float) {
-                y[1].push('I2D', y[0], y[0], 0);
-              } else {
-                throw ['yType', yType, temp.type, temp.float, JSON.stringify(value)];
-              }
-            }
-            */
-            // emit the proper store
             var opcode = 'STORE' + (temp.float ? 'F' : '') + temp.bits;
             if (target[2][0] === 'binary' && target[2][1] === '>>' && target[2][3][0] === 'num') {
               var shifts = target[2][3][1];
               assert(shifts >= 0 && shifts <= 3);
               var bits = Math.pow(2, shifts)*8;
-              assert(bits === temp.bits); // JSON.stringify([heap, '         ', temp, '               ', target]));
+              assert(bits === temp.bits);
               var x = getReg(target[2][2], false, ASM_INT, ASM_SIGNED);
+              var y = getReg(value); // generate y now, not earlier, to not trample x's output reg, which might be a temp
               var ret = x[1].concat(y[1]);
               ret.push(opcode, releaseIfFree(x[0]), releaseIfFree(y[0]), 0);
               return [-1, ret];
@@ -5891,6 +5877,7 @@ function emterpretify(ast) {
               var shifts = Math.log2(temp.bits/8);
               assert(address === ((address << shifts) >> shifts));
               var x = makeNum(address << shifts, ASM_INT);
+              var y = getReg(value);
               y[1].push(opcode, releaseIfFree(x[0]), releaseIfFree(y[0]), 0);
               return [-1, x[1].concat(y[1])];
             }
