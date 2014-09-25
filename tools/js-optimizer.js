@@ -1998,6 +1998,10 @@ function getCombinedSign(node1, node2, hint) {
   }
   if (sign1 === sign2) return sign1;
   if (sign1 === hint || sign2 === hint) return hint;
+  if ((sign1 === ASM_SIGNED && sign2 === ASM_UNSIGNED) ||
+      (sign1 === ASM_UNSIGNED && sign2 === ASM_SIGNED)) {
+    return ASM_FLEXIBLE;
+  }
   assert(0, JSON.stringify([node1, '      ', node2, sign1, sign2, hint]));
 }
 
