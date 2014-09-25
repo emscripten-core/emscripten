@@ -6204,8 +6204,9 @@ function emterpretify(ast) {
     function makeNum(value, type, l) {
       if (l === undefined) l = getFree();
       var opcode;
-      if (((value << 16) >> 16) === (value | 0) && ((value === (value | 0)) || (value === (value >>> 0)))) {
-        assert(value !== 0 || 1/value > 0); // we abhor -0
+      if (((value << 16) >> 16) === (value | 0) && ((value === (value | 0)) || (value === (value >>> 0))) &&
+          (value !== 0 || 1/value > 0)) {
+        // a small 16-bit integer value, and not negative zero
         if (type === ASM_INT) {
           opcode = 'SETVI';
         } else if (type === ASM_DOUBLE) {
