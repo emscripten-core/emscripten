@@ -4138,6 +4138,28 @@ pass: error == ENOTDIR
       self.assertContained(output, out)
       self.validate_asmjs(out)
 
+    # generate default shell for js test
+    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0']).communicate()
+    default = open('a.out.js').read()
+    start = default.index('function _main(')
+    end = default.index('}', start)
+    default = default[:start] + '{{{MAIN}}}' + default[end+1:]
+    default_mem = open('a.out.js.mem', 'rb').read()
+
+    def do_js_test(name, source, args, output):
+      print
+      print 'js', name
+      self.clear()
+      if '\n' not in source:
+        source = open(source).read()
+      source = default.replace('{{{MAIN}}}', source)
+      open('a.out.js', 'w').write(source)
+      open('a.out.js.mem', 'wb').write(default_mem)
+      Popen([PYTHON, path_from_root('tools', 'emterpretify.py'), 'a.out.js', 'em.out.js']).communicate()
+      sm_no_warn = filter(lambda x: x != '-w', SPIDERMONKEY_ENGINE)
+      self.assertContained(output, run_js('a.out.js', engine=sm_no_warn, args=args)) # run in spidermonkey for print()
+      self.assertContained(output, run_js('em.out.js', engine=sm_no_warn, args=args))
+
     do_emcc_test('hello_world.c', [], 'hello, world!')
 
     do_test('hello_world.c', [], 'hello, world!')
@@ -4167,4 +4189,25 @@ int main() {
   return 0;
 }
 ''', [], 'hello, world! -10.00')
+
+    do_js_test('conditionals', r'''
+function _main() {
+ var i8 = 0;
+ var d10 = +d10, d11 = +d11, d7 = +d7, d5 = +d5, d6 = +d6, d9 = +d9;
+ d11 = +1;
+ d7 = +2;
+ d5 = +3;
+ d6 = +4;
+ d10 = d11 < d7 ? d11 : d7;
+ print(d10);
+ d9 = d5 < d6 ? d5 : d6;
+ print(d9);
+ HEAPF64[tempDoublePtr >> 3] = d10;
+ i8 = STACKTOP;
+ HEAP32[i8 >> 2] = HEAP32[tempDoublePtr >> 2];
+ HEAP32[i8 + 4 >> 2] = HEAP32[tempDoublePtr + 4 >> 2];
+ print(HEAP32[i8 >> 2]);
+ print(HEAP32[i8 + 4 >> 2]);
+}
+''', [], '1\n3\n0\n1072693248\n')
 
