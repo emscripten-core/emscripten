@@ -903,6 +903,9 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
     global_initializers = ', '.join(map(lambda i: '{ func: function() { %s() } }' % i, metadata['initializers']))
 
+    if settings['SIMD'] == 1:
+      pre = open(path_from_root(os.path.join('src', 'simd.js'))).read() + '\n\n' + pre
+
     pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + Runtime.alignMemory(%d);
   /* global initializers */ __ATINIT__.push(%s);
   %s''' % (mem_init.count(',')+1, global_initializers, mem_init)) # XXX wrong size calculation!
@@ -1036,7 +1039,21 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
       asm_setup = ''
       maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul']]
+      simdfloattypes = ['float32x4']
+      simdinttypes = ['int32x4']
+      simdtypes = simdfloattypes + simdinttypes
+      # TODO: Make mul, min and max available for int32x4 too.
+      simdfuncs = ['add', 'sub',
+                   'equal', 'notEqual', 'lessThan', 'lessThanOrEqual', 'greaterThan', 'greaterThanOrEqual',
+                   'select', 'and', 'or', 'xor', 'not',
+                   'splat', 'shuffle', 'shuffleMix',
+                   'withX', 'withY', 'withZ', 'withW']
+      simdfloatfuncs = simdfuncs + ['mul', 'div', 'min', 'max', 'sqrt',
+                                    'fromInt32x4', 'fromInt32x44Bits'];
+      simdintfuncs = simdfuncs + ['fromFloat32x4', 'fromFloat32x4Bits'];
       fundamentals = ['Math', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
+      if metadata['simd']:
+          fundamentals += ['SIMD']
       if settings['ALLOW_MEMORY_GROWTH']: fundamentals.append('byteLength')
       math_envs = ['Math.min'] # TODO: move min to maths
       asm_setup += '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in math_envs])
@@ -1170,8 +1187,12 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       global_funcs = list(set([key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2]).difference(set(global_vars)).difference(implemented_functions))
       def math_fix(g):
         return g if not g.startswith('Math_') else g.split('_')[1]
-      asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global' + access_quote(g) + ';\n' for g in maths]) + \
-                         ''.join(['  var ' + g + '=env' + access_quote(math_fix(g)) + ';\n' for g in basic_funcs + global_funcs])
+      asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global' + access_quote(g) + ';\n' for g in maths]);
+      asm_global_funcs += ''.join(['  var ' + g + '=env' + access_quote(math_fix(g)) + ';\n' for g in basic_funcs + global_funcs])
+      if metadata['simd']:
+        asm_global_funcs += ''.join(['  var SIMD_' + ty + '=global' + access_quote('SIMD') + access_quote(ty) + ';\n' for ty in simdtypes])
+        asm_global_funcs += ''.join(['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdinttypes for g in simdintfuncs])
+        asm_global_funcs += ''.join(['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdfloattypes for g in simdfloatfuncs])
       asm_global_vars = ''.join(['  var ' + g + '=env' + access_quote(g) + '|0;\n' for g in basic_vars + global_vars])
       # In linkable modules, we need to add some explicit globals for global variables that can be linked and used across modules
       if settings.get('MAIN_MODULE') or settings.get('SIDE_MODULE'):

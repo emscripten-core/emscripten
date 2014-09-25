@@ -157,7 +157,7 @@ _mm_and_ps(__m128 a, __m128 b)
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_andnot_ps(__m128 a, __m128 b)
 {
-  return emscripten_float32x4_andNot(a, b);
+  return emscripten_float32x4_and(emscripten_float32x4_not(a), b);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))

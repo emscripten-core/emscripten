@@ -5108,6 +5108,7 @@ return malloc(size);
   def test_simd(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+    Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
     test_path = path_from_root('tests', 'core', 'test_simd')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5116,6 +5117,7 @@ return malloc(size);
 
   def test_simd2(self):
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+    Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
     test_path = path_from_root('tests', 'core', 'test_simd2')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5127,6 +5129,7 @@ return malloc(size);
 
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+    Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
     test_path = path_from_root('tests', 'core', 'test_simd3')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5136,6 +5139,7 @@ return malloc(size);
   def test_simd4(self):
     # test_simd4 is to test phi node handling of SIMD path
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+    Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
     test_path = path_from_root('tests', 'core', 'test_simd4')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5145,6 +5149,7 @@ return malloc(size);
   def test_simd5(self):
     # test_simd5 is to test shufflevector of SIMD path
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+    Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
     test_path = path_from_root('tests', 'core', 'test_simd5')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5154,6 +5159,7 @@ return malloc(size);
   def test_simd6(self):
     # test_simd6 is to test x86 min and max intrinsics on NaN and -0.0
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+    Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
 
     test_path = path_from_root('tests', 'core', 'test_simd6')
@@ -5172,6 +5178,7 @@ return malloc(size);
 
   def test_simd_dyncall(self):
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+    Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
 
     test_path = path_from_root('tests', 'core', 'test_simd_dyncall')
