@@ -1009,6 +1009,7 @@ try:
 
   if shared.Settings.EMTERPRETIFY:
     shared.Settings.FINALIZE_ASM_JS = 0
+    debug_level = max(debug_level, 2)
 
   shared.Settings.RUNNING_FASTCOMP = fastcomp
 
