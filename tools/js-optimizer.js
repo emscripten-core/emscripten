@@ -5854,7 +5854,7 @@ function emterpretify(ast) {
             if (name in locals) {
               // local
               var type = getAsmType(name, asmData);
-              var reg = getReg(value, type);
+              var reg = getReg(value, undefined, type);
               // TODO: detect when the last operation in reg[1] assigns in its arg x, in which case we can avoid the SET and make it assign to us
               reg[1] = reg[1].concat(makeSet(locals[name], releaseIfFree(reg[0]), type));
               return [locals[name], reg[1]];
