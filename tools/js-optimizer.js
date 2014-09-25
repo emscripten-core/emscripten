@@ -5808,6 +5808,10 @@ function emterpretify(ast) {
               var x = getFree();
               return [x, ['GETTDP', x, 0, 0]];
             }
+            case 'tempRet0': {
+              var x = getFree();
+              return [x, ['GETTR0', x, 0, 0]];
+            }
             case 'inf': return makeNum(Infinity, ASM_DOUBLE);
             case '_stderr': printErr('WARNING: stderr!'); return makeNum(0, ASM_DOUBLE); // XXX XXX XXX
             default: throw 'getReg global wha? ' + name;

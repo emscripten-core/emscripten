@@ -83,6 +83,7 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   #'170': 'ABR',     # [lx, 0, 0, 0]        absolute branch to address lx (assumed divisible by 4)
   '200': 'GETTDP',  # [l, 0, 0]            l = tempDoublePtr
   #'201': 'GETPC',   # [l, 0, 0]            l = pc
+  '202': 'GETTR0',  # [l, 0, 0]            l = tempRet0
   '250': 'CALL',    # [lx, target, sig] [params...]   (lx = ) target(params..) lx's existence and type depend on the target's actual callsig;
                     #                                 this instruction can take multiple 32-bit instruction chunks
                     #                                 if target is a function table, then the first param is the index of the register holding the function pointer
@@ -198,6 +199,7 @@ CASES[ROPCODES['BRF']] = 'if (!(' + get_coerced_access('lx') + ')) { pc = pc + (
 #CASES[ROPCODES['ABR']] = 'pc = ' + get_coerced_access('lx') + '; continue;'
 CASES[ROPCODES['GETTDP']] = 'HEAP32[sp + (lx << 3) >> 2] = tempDoublePtr;'
 #CASES[ROPCODES['GETPC']] = 'HEAP32[sp + (lx << 3) >> 2] = pc;'
+CASES[ROPCODES['GETTR0']] = 'HEAP32[sp + (lx << 3) >> 2] = tempRet0;'
 CASES[ROPCODES['SWITCH']] = '''
     lz = ''' + get_coerced_access('lz') + ''';
     lx = ((''' + get_coerced_access('lx') + ''') - (''' + get_coerced_access('ly') + ''')) >>> 0; // lx is now relative to the base
