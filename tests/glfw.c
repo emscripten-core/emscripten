@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <GL/glfw.h>
 #include <stdio.h>
+#include <assert.h>
 #include <emscripten/emscripten.h>
 
 void Init(void);
@@ -47,6 +48,12 @@ void Init()
  
   if (glfwInit() != GL_TRUE)
     Shut_Down(1);
+
+  int red_bits = glfwGetWindowParam(GLFW_RED_BITS);
+  glfwOpenWindowHint(GLFW_RED_BITS, 8);
+  assert(glfwGetWindowParam(GLFW_RED_BITS) == 8);
+  glfwOpenWindowHint(GLFW_RED_BITS, red_bits);
+
   // 800 x 600, 16 bit color, no depth, alpha or stencil buffers, windowed
   if (glfwOpenWindow(window_width, window_height, 5, 6, 5,
                   0, 0, 0, GLFW_WINDOW) != GL_TRUE)
