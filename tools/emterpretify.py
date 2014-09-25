@@ -271,7 +271,7 @@ function emterpret%s%s(pc) {
  EMTSTACKTOP = EMTSTACKTOP + (HEAP8[pc + 1 >> 0] << 3) | 0;
  assert(((EMTSTACKTOP|0) <= (EMT_STACK_MAX|0))|0);
  while (1) {
-  //print('last lx: ' + [HEAP32[sp + (lx << 3) >> 2]|0, +HEAPF64[sp + (lx << 3) >> 3]]);
+  //print('last lx (' + lx + '): ' + [HEAP32[sp + (lx << 3) >> 2]|0, +HEAPF64[sp + (lx << 3) >> 3]]);
   pc = pc + 4 | 0;
   inst = HEAP32[pc>>2]|0;
   lx = (inst >> 8) & 255;
