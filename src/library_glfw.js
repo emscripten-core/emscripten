@@ -1079,7 +1079,7 @@ var LibraryGLFW = {
 
   glfwOpenWindowHint: function(target, hint) {
     target = GLFW.GLFW2ParamToGLFW3Param(target);
-    GLFW.windowHint(target, hint);
+    GLFW.hints[target] = hint;
   },
 
   glfwGetWindowSize: function(width, height) {
