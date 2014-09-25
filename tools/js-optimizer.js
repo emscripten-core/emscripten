@@ -5818,7 +5818,7 @@ function emterpretify(ast) {
               return [x, ['GETTR0', x, 0, 0]];
             }
             case 'inf': return makeNum(Infinity, ASM_DOUBLE);
-            case '_stderr': printErr('WARNING: stderr!'); return makeNum(0, ASM_DOUBLE); // XXX XXX XXX
+            case '_stdout': case '_stderr': printErr('WARNING: stdout|err!'); return makeNum(0, ASM_INT); // XXX XXX XXX
             default: throw 'getReg global wha? ' + name;
           }
         }
@@ -5854,14 +5854,15 @@ function emterpretify(ast) {
               reg[1].push(opcode, locals[name], releaseIfFree(reg[0]), 0);
               return [locals[name], reg[1]];
             } else {
+              var reg = getReg(value);
+              var opcode;
               switch(name) {
-                case 'STACKTOP': {
-                  var reg = getReg(value);
-                  reg[1].push('SETST', releaseIfFree(reg[0]), 0, 0);
-                  return [-1, reg[1]];
-                }
+                case 'STACKTOP': opcode = 'SETST'; break;
+                case 'tempRet0': opcode = 'SETTR0'; break;
                 default: throw 'assign global wha? ' + name;
               }
+              reg[1].push(opcode, releaseIfFree(reg[0]), 0, 0);
+              return [-1, reg[1]];
             }
           } else if (target[0] === 'sub') {
             // assign to memory
