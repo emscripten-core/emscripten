@@ -4107,9 +4107,14 @@ pass: error == ENOTDIR
   def test_emterpreter(self):
     def do_emcc_test(source, args, output):
       print
-      print 'emcc', source
+      print 'emcc', source[:40], '\n' in source
       self.clear()
-      Popen([PYTHON, EMCC, path_from_root('tests', source), '-O2', '--profiling', '-s', 'EMTERPRETIFY=1']).communicate()
+      if '\n' in source:
+        open('src.cpp', 'w').write(source)
+        source = 'src.cpp'
+      else:
+        source = path_from_root('tests', source)
+      Popen([PYTHON, EMCC, source, '-O2', '-s', 'EMTERPRETIFY=1']).communicate()
       self.assertContained(output, run_js('a.out.js', args=args))
       out = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE, args=args, stderr=PIPE, full_output=True)
       self.assertContained(output, out)
@@ -4118,9 +4123,15 @@ pass: error == ENOTDIR
 
     def do_test(source, args, output):
       print
-      print source
+      print 'emcc', source[:40], '\n' in source
       self.clear()
-      Popen([PYTHON, EMCC, path_from_root('tests', source), '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0']).communicate()
+      if '\n' in source:
+        open('src.cpp', 'w').write(source)
+        source = 'src.cpp'
+      else:
+        source = path_from_root('tests', source)
+      self.clear()
+      Popen([PYTHON, EMCC, source, '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0']).communicate()
       Popen([PYTHON, path_from_root('tools', 'emterpretify.py'), 'a.out.js', 'em.out.js']).communicate()
       self.assertContained(output, run_js('a.out.js', args=args))
       self.assertContained(output, run_js('em.out.js', args=args))
