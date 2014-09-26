@@ -391,7 +391,6 @@ def process_code(func, code, absolute_targets):
       if sig not in sigs: sigs.append(sig)
       if target not in global_funcs:
         global global_func_id
-        assert global_func_id < 256, global_funcs
         global_funcs[target] = global_func_id
         rglobal_funcs[global_func_id] = target
         global_func_id += 1
@@ -407,7 +406,6 @@ def process_code(func, code, absolute_targets):
       target = code[j+2]
       if target not in global_vars:
         global global_var_id
-        assert global_var_id < 256, global_vars
         global_vars[target] = global_var_id
         rglobal_vars[global_var_id] = target
         global_var_id += 1
@@ -458,6 +456,9 @@ for i in range(len(lines)):
       actual_return_types[name] = 'd'
     elif ret == '2':
       actual_return_types[name] = 'f'
+
+assert global_func_id < 256, [global_funcs, global_func_id]
+assert global_var_id < 256, [global_vars, global_var_id]
 
 # create new mem init
 mem_init = mem_init + all_code
