@@ -1316,6 +1316,7 @@ try:
       def repl(m):
         # handle chunking of the memory initializer
         s = m.groups(0)[0]
+        if len(s) == 0 and not shared.Settings.EMTERPRETIFY: return m.group(0) # emterpreter must have a mem init file; otherwise, don't emit 0-size ones
         open(memfile, 'wb').write(''.join(map(lambda x: chr(int(x or '0')), s.split(','))))
         if DEBUG:
           # Copy into temp dir as well, so can be run there too

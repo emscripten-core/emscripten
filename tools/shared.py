@@ -1726,7 +1726,7 @@ JCache = cache.JCache(Cache)
 chunkify = cache.chunkify
 
 class JS:
-  memory_initializer_pattern = '/\* memory initializer \*/ allocate\(\[([\d, ]+)\], "i8", ALLOC_NONE, ([\d+Runtime\.GLOBAL_BASEH]+)\);'
+  memory_initializer_pattern = '/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+Runtime\.GLOBAL_BASEH]+)\);'
   no_memory_initializer_pattern = '/\* no memory initializer \*/'
 
   memory_staticbump_pattern = 'STATICTOP = STATIC_BASE \+ (\d+);'
