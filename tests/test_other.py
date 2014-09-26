@@ -4211,3 +4211,25 @@ function _main() {
 }
 ''', [], '1\n3\n0\n1072693248\n')
 
+    do_js_test('bigswitch', r'''
+function _main() {
+ var i2 = 0, i3 = 0, i4 = 0, i6 = 0, i8 = 0, i9 = 0, i10 = 0, i11 = 0, i12 = 0, i13 = 0, i14 = 0, i15 = 0, i16 = 0, i5 = 0, i7 = 0, i1 = 0;
+ print(4278);
+ L1 : while (1) {
+  i11 = -1;
+  switch ((i11 | 0)) {
+  case 0:
+   {
+    i6 = 67;
+    break;
+   }
+  default:
+   {}
+  }
+  print(i6);
+  break;
+ }
+ print(i6);
+}
+''', [], '4278\n0\n0\n')
+
