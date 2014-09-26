@@ -1852,6 +1852,7 @@ function detectType(node, asmInfo, inVarDef) {
     case 'unary-prefix': {
       if (node[1] === '+') return ASM_DOUBLE;
       if (node[1] === '-') return detectType(node[2], asmInfo, inVarDef);
+      if (node[1] === '!') return ASM_INT;
       break;
     }
     case 'call': {

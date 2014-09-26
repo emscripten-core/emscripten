@@ -213,7 +213,7 @@ CASES[ROPCODES['SWITCH']] = '''
     lx = ((''' + get_coerced_access('lx') + ''') - (''' + get_coerced_access('ly') + ''')) >>> 0; // lx is now relative to the base
     if ((lx >>> 0) >= (lz >>> 0)) { // is the adjusted value too big?
       pc = (pc + (lz << 2)) | 0; // jump to right after the table, where the default is
-      continue;
+      break; // also increment the pc normally, to skip the switch itself
     }
     pc = HEAP32[pc + 4 + (lx << 2) >> 2] | 0; // load from the jump table which is right after this instruction, and set pc
     continue;'''
@@ -439,9 +439,9 @@ for i in range(len(lines)):
     if curr is not None:
       assert len(curr) % 4 == 0, curr
       funcs[func] = len(all_code) # no operation here should change the length
-      #print >> sys.stderr, 'raw bytecode for %s:' % func, curr
+      print >> sys.stderr, 'raw bytecode for %s:' % func, curr
       process_code(func, curr, absolute_targets)
-      #print >> sys.stderr, 'processed bytecode for %s:' % func, curr
+      print >> sys.stderr, 'processed bytecode for %s:' % func, curr
       all_code += curr
     func = None
     lines[i] = '}'
