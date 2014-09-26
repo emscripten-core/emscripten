@@ -278,9 +278,10 @@ for i in range(len(lines)):
       m = re.match('[\w\d\.]+: +; preds', lines[i])
       if m:
         # basic block
-        lines[i] += '\n  call void @emscripten_autodebug_i32(i32 -10, i32 %s)' % (index,)
-        lines_added += 1
-        continue
+        if len(lines) > i+1 and 'phi' not in lines[i+1]:
+          lines[i] += '\n  call void @emscripten_autodebug_i32(i32 -10, i32 %s)' % (index,)
+          lines_added += 1
+          continue
 
   finally:
     if len(pre) > 0:
