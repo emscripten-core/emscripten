@@ -275,7 +275,7 @@ for i in range(len(lines)):
                         '\n  call void @emscripten_autodebug_i8(i32 %d, i8 %%adtemp%d)' % (index, index)
             lines_added += 3
             continue
-      m = re.match('[\w\d\.]+: +; preds', lines[i])
+      m = re.match('[^ ] .*; preds = ', lines[i])
       if m:
         # basic block
         if len(lines) > i+1 and 'phi' not in lines[i+1] and 'landingpad' not in lines[i+1]:
