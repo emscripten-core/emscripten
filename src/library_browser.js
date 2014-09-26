@@ -2,7 +2,7 @@
 
 // Utilities for browser environments
 mergeInto(LibraryManager.library, {
-  $Browser__deps: ['$PATH'],
+  $Browser__deps: ['$PATH', 'emscripten_set_main_loop'],
   $Browser__postset: 'Module["requestFullScreen"] = function Module_requestFullScreen(lockPointer, resizeCanvas) { Browser.requestFullScreen(lockPointer, resizeCanvas) };\n' + // exports
                      'Module["requestAnimationFrame"] = function Module_requestAnimationFrame(func) { Browser.requestAnimationFrame(func) };\n' +
                      'Module["setCanvasSize"] = function Module_setCanvasSize(width, height, noUpdates) { Browser.setCanvasSize(width, height, noUpdates) };\n' +
@@ -13,18 +13,17 @@ mergeInto(LibraryManager.library, {
     mainLoop: {
       scheduler: null,
       method: '',
-      shouldPause: false,
-      paused: false,
+      // Each main loop is numbered with a ID in sequence order. Only one main loop can run at a time. This variable stores the ordinal number of the main loop that is currently
+      // allowed to run. All previous main loops will quit themselves. This is incremented whenever a new main loop is created.
+      currentlyRunningMainloop: 0,
       queue: [],
       pause: function() {
-        Browser.mainLoop.shouldPause = true;
+        Browser.mainLoop.scheduler = null;
+        Browser.mainLoop.currentlyRunningMainloop++; // Incrementing this signals the previous main loop that it's now become old, and it must return.
       },
       resume: function() {
-        if (Browser.mainLoop.paused) {
-          Browser.mainLoop.paused = false;
-          Browser.mainLoop.scheduler();
-        }
-        Browser.mainLoop.shouldPause = false;
+        Browser.mainLoop.currentlyRunningMainloop++;
+        _emscripten_set_main_loop(Browser.mainLoop.func, Browser.mainLoop.fps, false, Browser.mainLoop.arg);
       },
       updateStatus: function() {
         if (Module['setStatus']) {
@@ -966,9 +965,13 @@ mergeInto(LibraryManager.library, {
   emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop, arg) {
     Module['noExitRuntime'] = true;
 
-    assert(!Browser.mainLoop.scheduler, 'there can only be one main loop function at once: call emscripten_cancel_main_loop to cancel the previous one, if you want to');
+    assert(!Browser.mainLoop.scheduler, 'there can only be one main loop function at once: call emscripten_cancel_main_loop to cancel the previous one before setting a new one with different parameters.');
 
-    Browser.mainLoop.shouldPause = Browser.mainLoop.paused = false; // if we were cancelled or paused, undo that
+    Browser.mainLoop.func = func;
+    Browser.mainLoop.fps = fps;
+    Browser.mainLoop.arg = arg;
+
+    var thisMainLoopId = Browser.mainLoop.currentlyRunningMainloop;
 
     Browser.mainLoop.runner = function Browser_mainLoop_runner() {
       if (ABORT) return;
@@ -992,12 +995,9 @@ mergeInto(LibraryManager.library, {
         setTimeout(Browser.mainLoop.runner, 0);
         return;
       }
-      if (Browser.mainLoop.shouldPause) {
-        // catch pauses from non-main loop sources
-        Browser.mainLoop.paused = true;
-        Browser.mainLoop.shouldPause = false;
-        return;
-      }
+
+      // catch pauses from non-main loop sources
+      if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) return;
 
       // Signal GL rendering layer that processing of a new frame is about to start. This helps it optimize
       // VBO double-buffering and reduce GPU stalls.
@@ -1018,12 +1018,8 @@ mergeInto(LibraryManager.library, {
         }
       });
 
-      if (Browser.mainLoop.shouldPause) {
-        // catch pauses from the main loop itself
-        Browser.mainLoop.paused = true;
-        Browser.mainLoop.shouldPause = false;
-        return;
-      }
+      // catch pauses from the main loop itself
+      if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) return;
 
       // Queue new audio data. This is important to be right after the main loop invocation, so that we will immediately be able
       // to queue the newest produced audio samples.
@@ -1057,8 +1053,7 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_cancel_main_loop: function() {
-    Browser.mainLoop.scheduler = null;
-    Browser.mainLoop.shouldPause = true;
+    Browser.mainLoop.pause();
   },
 
   emscripten_pause_main_loop: function() {
