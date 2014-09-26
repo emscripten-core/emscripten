@@ -409,6 +409,8 @@ def process_code(func, code, absolute_targets):
     elif code[j] in ['GETGLBI', 'GETGLBD']:
       # fix global-accessing instructions' targets
       target = code[j+2]
+      imp = asm.imports[target]
+      assert '|0' in imp or '| 0' in imp or imp == '0'
       if target not in global_vars:
         global_vars[target] = global_var_id
         rglobal_vars[global_var_id] = target

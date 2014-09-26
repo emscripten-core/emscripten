@@ -5831,7 +5831,7 @@ function emterpretify(ast) {
             case 'nan': return makeNum(NaN, ASM_DOUBLE);
             default: {
               var x = getFree();
-              assert(typeHint === ASM_INT, name);
+              // we assert in the python driver that these are ints
               return [x, ['GETGLBI', x, name, 0]];
             }
           }
