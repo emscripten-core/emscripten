@@ -6008,7 +6008,7 @@ function emterpretify(ast) {
         case 'call': {
           var type;
           var ret;
-          if (dropIt) {
+          if (dropIt && (typeHint === undefined || typeHint === ASM_NONE)) {
             type = ASM_NONE;
             ret = -1;
           } else {
