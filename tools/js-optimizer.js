@@ -6215,9 +6215,10 @@ function emterpretify(ast) {
     function makeNum(value, type, l) {
       if (l === undefined) l = getFree();
       var opcode;
-      if (((value << 16) >> 16) === (value | 0) && ((value === (value | 0)) || (value === (value >>> 0))) &&
+      if (((value << 16) >> 16) === (value | 0) && ((value === (value | 0)) || (type === ASM_INT && value === (value >>> 0))) &&
           (value !== 0 || 1/value > 0)) {
         // a small 16-bit integer value, and not negative zero
+        // note that for ints, we don't care if it is signed or not; for floating-point, we need this to be signed
         if (type === ASM_INT) {
           opcode = 'SETVI';
         } else if (type === ASM_DOUBLE) {
