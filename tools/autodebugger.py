@@ -275,6 +275,12 @@ for i in range(len(lines)):
                         '\n  call void @emscripten_autodebug_i8(i32 %d, i8 %%adtemp%d)' % (index, index)
             lines_added += 3
             continue
+      m = re.match('[\w\d\.]+: +; preds', lines[i])
+      if m:
+        # basic block
+        lines[i] += '\n  call void @emscripten_autodebug_i32(i32 -10, i32 %s)' % (index,)
+        lines_added += 1
+        continue
 
   finally:
     if len(pre) > 0:
