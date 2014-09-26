@@ -6560,7 +6560,8 @@ function emterpretify(ast) {
     var ignore = (func[1] in BLACKLIST) || /^dynCall_.*/.test(func[1]);
 
     if (ignore) {
-      print(astToSrc(func));
+      prepDotZero(func);
+      print(fixDotZero(astToSrc(func)));
     }
 
     var asmData = normalizeAsm(func);
