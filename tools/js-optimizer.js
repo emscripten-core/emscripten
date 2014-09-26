@@ -6117,7 +6117,7 @@ function emterpretify(ast) {
           var temp = makeTempParseHeap();
           assert(parseHeap(heap, temp));
           // coerced heap access => a load
-          var opcode = 'LOAD' + (temp.float ? 'F' : '') + temp.bits;
+          var opcode = 'LOAD' + (temp.float ? 'F' : (temp.bits < 32 && temp.unsigned ? 'U' : '')) + temp.bits;
           if (node[2][0] === 'binary' && node[2][1] === '>>' && node[2][3][0] === 'num') {
             var shifts = node[2][3][1];
             assert(shifts >= 0 && shifts <= 3);

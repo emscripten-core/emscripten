@@ -68,8 +68,10 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '92':  'UI2D',    # [lx, ly, 0]          lx = +ly (unsigned int-to-double)
 
   '100': 'LOAD8',   # [lx, ly, 0]          lx = HEAP8[ly >> 0]
+  '101': 'LOADU8',  # [lx, ly, 0]          lx = HEAPU8[ly >> 0]
   '110': 'LOAD16',  # [lx, ly, 0]          lx = HEAP16[ly >> 1]
-  '120': 'LOAD32',  # [lx, ly, 0]          lx = HEAP32[ly >> 2]
+  '111': 'LOADU16', # [lx, ly, 0]          lx = HEAPU16[ly >> 1]
+  '120': 'LOAD32',  # [lx, ly, 0]          lx = HEAP32[ly >> 2]   - no need for unsigned version, this is set to a register anyhow
   '130': 'STORE8',  # [lx, ly, 0]          HEAP8[lx >> 2] = ly
   '140': 'STORE16', # [lx, ly, 0]          HEAP16[lx >> 2] = ly
   '150': 'STORE32', # [lx, ly, 0]          HEAP32[lx >> 2] = ly
@@ -190,7 +192,9 @@ CASES[ROPCODES['SI2D']] = get_access('lx', s='d') + ' = +(' + get_coerced_access
 CASES[ROPCODES['UI2D']] = get_access('lx', s='d') + ' = +(' + get_coerced_access('ly', unsigned=True) + ');'
 
 CASES[ROPCODES['LOAD8']] = get_access('lx') + ' = ' + 'HEAP8[' + get_access('ly') + ' >> 0];'
+CASES[ROPCODES['LOADU8']] = get_access('lx') + ' = ' + 'HEAPU8[' + get_access('ly') + ' >> 0];'
 CASES[ROPCODES['LOAD16']] = get_access('lx') + ' = ' + 'HEAP16[' + get_access('ly') + ' >> 1];'
+CASES[ROPCODES['LOADU16']] = get_access('lx') + ' = ' + 'HEAPU16[' + get_access('ly') + ' >> 1];'
 CASES[ROPCODES['LOAD32']] = get_access('lx') + ' = ' + 'HEAP32[' + get_access('ly') + ' >> 2];'
 CASES[ROPCODES['STORE8']] = 'HEAP8[' + get_access('lx') + ' >> 0] = ' + get_coerced_access('ly') + ';';
 CASES[ROPCODES['STORE16']] = 'HEAP16[' + get_access('lx') + ' >> 1] = ' + get_coerced_access('ly') + ';';
