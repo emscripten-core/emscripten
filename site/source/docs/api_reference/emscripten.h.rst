@@ -237,6 +237,24 @@ Functions
 	
 	See also :c:func:`emscripten_set_main_loop` and :c:func:`emscripten_set_main_loop_arg` for information about setting and using the main loop. 
 
+.. c:function:: int emscripten_set_main_loop_interval(int interval)
+
+	Specifies the interval that the current main loop tick function will be called with.
+
+	This function can be used to interactively control the rate at which Emscripten runtime drives the main loop specified by calling the function :c:func:`emscripten_set_main_loop`. In native development, this corresponds with the "swap interval" or the "presentation interval" for 3D rendering. The new tick interval specified by this function takes effect immediately on the existing main loop, and this function must be called only after setting up a main loop via :c:func:`emscripten_set_main_loop`.
+
+	:param int interval: The swap interval to activate for the main loop. This interval value has the following overloaded interpretation:
+
+	   - If a positive value is specified, then ``interval`` denotes a fixed number of milliseconds between subsequent ticks to the main loop, and updates occur independent of the vsync rate of the display (vsync off). This method uses the JavaScript ``setTimeout`` function to drive the animation.
+	   - If ``interval`` is zero, then the runtime will call the tick function as fast as possible without throttling, by using the ``setTimeout`` function.
+	   - If ``interval`` is negative, then updates are performed using the ``requestAnimationFrame`` function (with vsync enabled), and this value is interpreted as a "swap interval" rate for the main loop. The value of ``-1`` specifies the runtime that it should render at every vsync (typically 60fps), whereas the value ``-2`` means that the main loop callback should be called only every second vsync (30fps). As a general formula, the value ``-n`` means that the main loop is updated at every n'th vsync, or at a rate of ``60/n`` for 60Hz displays, and ``120/n`` for 120Hz displays.
+
+	:rtype: int
+	:return: The value 0 is returned on success, and a nonzero value is returned on failure. A failure occurs if there is no main loop active before calling this function.
+
+	.. note:: Browsers heavily optimize towards using ``requestAnimationFrame`` for animation instead of ``setTimeout``. Because of that, for best experience across browsers, calling this function with the value of ``-1`` will yield best results. Using the JavaScript ``setTimeout`` function is known to cause stutter and generally worse experience than using the ``requestAnimationFrame`` function. Using a value of ``-2`` or lower can be interesting for power-saving purposes, whereas using the value of zero can be interesting for benchmarking purposes.
+
+	.. note:: There is a functional difference between ``setTimeout`` and ``requestAnimationFrame``: If the user minimizes the browser window or hides your application tab, browsers will typically stop calling ``requestAnimationFrame`` callbacks, but ``setTimeout``-based main loop will continue to be run, although with heavily throttled intervals. See `setTimeout on MDN <https://developer.mozilla.org/en-US/docs/Web/API/WindowTimers.setTimeout#Inactive_tabs>` for more information.
 	
 .. c:function:: void emscripten_set_main_loop_expected_blockers(int num)
 

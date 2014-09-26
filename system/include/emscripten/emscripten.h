@@ -63,6 +63,7 @@ extern void emscripten_async_load_script(const char *script, em_callback_func on
 
 #if __EMSCRIPTEN__
 extern void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_infinite_loop);
+extern int emscripten_set_main_loop_interval(int interval);
 extern void emscripten_set_main_loop_arg(em_arg_callback_func func, void *arg, int fps, int simulate_infinite_loop);
 extern void emscripten_pause_main_loop(void);
 extern void emscripten_resume_main_loop(void);
