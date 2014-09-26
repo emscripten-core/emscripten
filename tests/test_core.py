@@ -6947,10 +6947,9 @@ def process(filename):
       assert "high = 1234" in out
 
   def test_asyncify(self):
-    if not Settings.ASM_JS: 
-      return self.skip('asyncify requires asm.js')
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': 
-      return self.skip('asyncify requires fastcomp')
+    if not Settings.ASM_JS: return self.skip('asyncify requires asm.js')
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('asyncify requires fastcomp')
+    if 'EMTERPRETIFY=1' in self.emcc_args: return self.skip('todo')
 
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
 
