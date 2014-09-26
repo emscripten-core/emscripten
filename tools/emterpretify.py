@@ -470,6 +470,7 @@ for i in range(len(lines)):
       actual_return_types[name] = 'd'
     elif ret == '2':
       actual_return_types[name] = 'f'
+    lines[i] = ''
 
 assert global_func_id < 65536, [global_funcs, global_func_id]
 assert global_var_id < 256, [global_vars, global_var_id]
