@@ -6048,8 +6048,10 @@ function emterpretify(ast) {
             return makeDo(inner, name);
           } else if (inner[0] === 'while') {
             return makeWhile(inner, name);
+          } else if (inner[0] === 'switch') {
+            return makeSwitch(inner, name);
           }
-          throw 'sigh';
+          throw 'sigh ' + inner[0];
         }
         case 'break': {
           var label = node[1];
@@ -6141,65 +6143,7 @@ function emterpretify(ast) {
           return [-1, walkStatements(node[1])];
         }
         case 'switch': {
-          var condition = getReg(node[1]);
-          var exit = markerId++;
-          // parse cases and emit code
-          breakStack.push(exit);
-          var data = {};
-          var cases = node[2];
-          var minn = Infinity, maxx = -Infinity;
-          for (var i = 0; i < cases.length; i++) {
-            var c = cases[i];
-            var id;
-            if (c[0] === null) id = 'default';
-            else if (c[0][0] === 'num') id = c[0][1];
-            else if (c[0][0] === 'unary-prefix' && c[0][2][0] === 'num') id = -c[0][2][1];
-            else throw 'bad case';
-            data[id] = {
-              code: walkStatements(c[1]),
-              absolute: absoluteId++
-            };
-            if (typeof id === 'number') {
-              minn = Math.min(id, minn);
-              maxx = Math.max(id, maxx);
-            }
-          }
-          breakStack.pop();
-          var range = maxx - minn + 1;
-          assert(minn === (minn | 0) && range === (range | 0));
-          var defaultAbsolute = data['default'] ? data['default'].absolute : absoluteId++;
-          // emit the switch instruction itself
-          var tempMin = getFree(), tempRange = getFree();
-          var ret = condition[1].concat(makeNum(minn, ASM_INT, tempMin)[1]).concat(makeNum(range, ASM_INT, tempRange)[1]);
-          ret.push('SWITCH', condition[0], tempMin, tempRange);
-          releaseFree(tempRange);
-          releaseFree(tempMin);
-          releaseIfFree(condition[0]);
-          // emit the jump table
-          for (var i = 0; i < range; i++) {
-            var j = minn + i;
-            if (data[j]) {
-              ret.push('absolute-value', data[j].absolute, 0, 0);
-            } else {
-              ret.push('absolute-value', defaultAbsolute, 0, 0);
-            }
-          }
-          // emit the default TODO: optimize when there is no default
-          ret.push('absolute-target', defaultAbsolute, 0, 0);
-          if (data['default']) {
-            ret = ret.concat(data['default'].code);
-          }
-          ret.push('BR', 0, exit, 0);
-          // emit the jump table targets
-          for (var i = 0; i < range; i++) {
-            var j = minn + i;
-            if (data[j]) {
-              ret.push('absolute-target', data[j].absolute, 0, 0);
-              ret = ret.concat(data[j].code);
-            }
-          }
-          ret.push('marker', exit, 0, 0);
-          return [-1, ret];
+          return makeSwitch(node);
         }
         default: throw 'getReg wha? ' + node[0] + new Error().stack;
       }
@@ -6435,6 +6379,75 @@ function emterpretify(ast) {
       if (label) {
         delete breakLabels[label];
         delete continueLabels[label];
+      }
+      ret.push('marker', exit, 0, 0);
+      return [-1, ret];
+    }
+
+    function makeSwitch(node, label) {
+      var condition = getReg(node[1]);
+      var exit = markerId++;
+      // parse cases and emit code
+      breakStack.push(exit);
+      if (label) {
+        assert(!(label in breakLabels));
+        breakLabels[label] = exit;
+      }
+      var data = {};
+      var cases = node[2];
+      var minn = Infinity, maxx = -Infinity;
+      for (var i = 0; i < cases.length; i++) {
+        var c = cases[i];
+        var id;
+        if (c[0] === null) id = 'default';
+        else if (c[0][0] === 'num') id = c[0][1];
+        else if (c[0][0] === 'unary-prefix' && c[0][2][0] === 'num') id = -c[0][2][1];
+        else throw 'bad case';
+        data[id] = {
+          code: walkStatements(c[1]),
+          absolute: absoluteId++
+        };
+        if (typeof id === 'number') {
+          minn = Math.min(id, minn);
+          maxx = Math.max(id, maxx);
+        }
+      }
+      breakStack.pop();
+      if (label) {
+        delete breakLabels[label];
+      }
+      var range = maxx - minn + 1;
+      assert(minn === (minn | 0) && range === (range | 0));
+      var defaultAbsolute = data['default'] ? data['default'].absolute : absoluteId++;
+      // emit the switch instruction itself
+      var tempMin = getFree(), tempRange = getFree();
+      var ret = condition[1].concat(makeNum(minn, ASM_INT, tempMin)[1]).concat(makeNum(range, ASM_INT, tempRange)[1]);
+      ret.push('SWITCH', condition[0], tempMin, tempRange);
+      releaseFree(tempRange);
+      releaseFree(tempMin);
+      releaseIfFree(condition[0]);
+      // emit the jump table
+      for (var i = 0; i < range; i++) {
+        var j = minn + i;
+        if (data[j]) {
+          ret.push('absolute-value', data[j].absolute, 0, 0);
+        } else {
+          ret.push('absolute-value', defaultAbsolute, 0, 0);
+        }
+      }
+      // emit the default TODO: optimize when there is no default
+      ret.push('absolute-target', defaultAbsolute, 0, 0);
+      if (data['default']) {
+        ret = ret.concat(data['default'].code);
+      }
+      ret.push('BR', 0, exit, 0);
+      // emit the jump table targets
+      for (var i = 0; i < range; i++) {
+        var j = minn + i;
+        if (data[j]) {
+          ret.push('absolute-target', data[j].absolute, 0, 0);
+          ret = ret.concat(data[j].code);
+        }
       }
       ret.push('marker', exit, 0, 0);
       return [-1, ret];
