@@ -2136,7 +2136,8 @@ function registerize(ast) {
           case ASM_FLOAT:     ret = 'f'; break;
           case ASM_FLOAT32X4: ret = 'F4'; break;
           case ASM_INT32X4:   ret = 'I4'; break;
-          default: assert(false, 'type doesn\'t have a name yet');
+          case ASM_NONE:      ret = 'Z'; break;
+          default: assert(false, 'type ' + type + ' doesn\'t have a name yet');
         }
         ret += num;
         regTypes[ret] = type;
