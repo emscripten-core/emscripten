@@ -5828,9 +5828,10 @@ function emterpretify(ast) {
               return [x, ['GETTR0', x, 0, 0]];
             }
             case 'inf': return makeNum(Infinity, ASM_DOUBLE);
+            case 'nan': return makeNum(NaN, ASM_DOUBLE);
             default: {
               var x = getFree();
-              assert(typeHint === ASM_INT);
+              assert(typeHint === ASM_INT, name);
               return [x, ['GETGLBI', x, name, 0]];
             }
           }
