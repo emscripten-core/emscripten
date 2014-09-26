@@ -92,7 +92,7 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '240': 'GETGLBI', # [l, vl, vh]          get global value, int, indexed by v
   '241': 'GETGLBD', # [l, vl, vh]          get global value, double, indexed by v
   '245': 'SETGLBI', # [vl, vh, l]          set global value, int, indexed by v (v = l)
-  '250': 'CALL',    # [lx, target, sig] [params...]   (lx = ) target(params..) lx's existence and type depend on the target's actual callsig;
+  '250': 'CALL',    # [lx, targetl, targeth] [params...]   (lx = ) target(params..) lx's existence and type depend on the target's actual callsig;
                     #                                 this instruction can take multiple 32-bit instruction chunks
                     #                                 if target is a function table, then the first param is the index of the register holding the function pointer
   '251': 'SWITCH',  # [lx, ly, lz]         switch (lx) { .. }. followed by a jump table for values in range [ly..ly+lz), after which is the default (which might be empty)
@@ -235,34 +235,26 @@ def make_emterpreter(t):
 
   # call is generated using information of actual call patterns
   if ROPCODES['CALL'] not in CASES:
-    #print >> sys.stderr, call_sigs
     def make_target_call(i):
-      name = rglobal_funcs[i]
+      name = global_func_names[i]
+      sig = global_func_sigs[i]
+
       function_pointer_call = name.startswith('FUNCTION_TABLE_')
-      if name not in call_sigs: return None
-      sigs = call_sigs[name]
 
-      def make_target_call_sig(sig):
-        ret = name
-        if function_pointer_call:
-          ret += '[' + get_access('HEAP8[pc+4>>0]') + ' & %d]' % (next_power_of_two(asm.tables[name].count(',')+1)-1)
-        ret += '(' + ', '.join([get_coerced_access('HEAP8[pc+%d>>0]' % (i+4+(1 if function_pointer_call else 0)), s=sig[i+1]) for i in range(len(sig)-1)]) + ')'
-        if sig[0] != 'v':
-          ret = get_access('lx', sig[0]) + ' = ' + shared.JS.make_coercion(ret, sig[0])
-        elif name in actual_return_types and actual_return_types[name] != 'v':
-          ret = shared.JS.make_coercion(ret, actual_return_types[name]) # return value ignored, but need a coercion
-        extra = len(sig) - 1 # [opcode, lx, target, sig], take the usual 4. params are extra
-        if extra > 0:
-          ret += '; pc = pc + %d | 0' % (4*((extra+3)>>2))
-        return '     ' + ret + '; break;'
+      ret = name
+      if function_pointer_call:
+        ret += '[' + get_access('HEAP8[pc+4>>0]') + ' & %d]' % (next_power_of_two(asm.tables[name].count(',')+1)-1)
+      ret += '(' + ', '.join([get_coerced_access('HEAP8[pc+%d>>0]' % (i+4+(1 if function_pointer_call else 0)), s=sig[i+1]) for i in range(len(sig)-1)]) + ')'
+      if sig[0] != 'v':
+        ret = get_access('lx', sig[0]) + ' = ' + shared.JS.make_coercion(ret, sig[0])
+      elif name in actual_return_types and actual_return_types[name] != 'v':
+        ret = shared.JS.make_coercion(ret, actual_return_types[name]) # return value ignored, but need a coercion
+      extra = len(sig) - 1 # [opcode, lx, target, sig], take the usual 4. params are extra
+      if extra > 0:
+        ret += '; pc = pc + %d | 0' % (4*((extra+3)>>2))
+      return '     ' + ret + '; break;'
 
-      if len(sigs) == 1:
-        return make_target_call_sig(sigs[0])
-      else:
-        assert len(sigs) == 2, [name, sigs]
-        return 'if ((HEAP8[pc+3>>0]|0) == 0) { ' + make_target_call_sig(sigs[0]) + ' } else { ' + make_target_call_sig(sigs[1]) + ' }'
-
-    CASES[ROPCODES['CALL']] = 'switch (ly|0) {\n' + \
+    CASES[ROPCODES['CALL']] = 'switch ((inst>>>16)|0) {\n' + \
       '\n'.join(filter(lambda x: 'None' not in x, ['    case %d: {\n%s\n    }' % (i, make_target_call(i)) for i in range(global_func_id)])) + \
       '\n    default: assert(0);' + \
       '\n   }'
@@ -377,8 +369,9 @@ func = None
 
 # first pass, collect and process bytecode
 
-global_funcs = {}
-rglobal_funcs = {}
+global_funcs = {} # 'name|sig' -> id
+global_func_names = {} # id -> name
+global_func_sigs = {} # id -> sig, one name can have multiple sigs
 global_func_id = 0
 
 global_vars = {}
@@ -387,6 +380,7 @@ global_var_id = 0
 
 call_sigs = {} # signatures appearing for each call target
 def process_code(func, code, absolute_targets):
+  global global_func_id
   global global_var_id
   absolute_start = code_start + len(all_code) # true absolute starting point of this function
   #print 'processing code', func, absolute_start
@@ -399,13 +393,14 @@ def process_code(func, code, absolute_targets):
       if target not in call_sigs: call_sigs[target] = []
       sigs = call_sigs[target]
       if sig not in sigs: sigs.append(sig)
-      if target not in global_funcs:
-        global global_func_id
-        global_funcs[target] = global_func_id
-        rglobal_funcs[global_func_id] = target
+      fullname = target + '|' + sig
+      if fullname not in global_funcs:
+        global_funcs[fullname] = global_func_id
+        global_func_names[global_func_id] = target
+        global_func_sigs[global_func_id] = sig
         global_func_id += 1
-      code[j+2] = global_funcs[target]
-      code[j+3] = sigs.index(sig)
+      code[j+2] = global_funcs[fullname] & 255
+      code[j+3] = global_funcs[fullname] >> 8
       if sig[0] == 'v':
         assert code[j+1] == -1 # dummy value for assignment
         code[j+1] = 0 # clear it
@@ -474,7 +469,7 @@ for i in range(len(lines)):
     elif ret == '2':
       actual_return_types[name] = 'f'
 
-assert global_func_id < 256, [global_funcs, global_func_id]
+assert global_func_id < 65536, [global_funcs, global_func_id]
 assert global_var_id < 256, [global_vars, global_var_id]
 
 # create new mem init
