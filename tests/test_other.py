@@ -4233,3 +4233,9 @@ function _main() {
 }
 ''', [], '4278\n0\n0\n')
 
+    do_js_test('big int compare', r'''
+function _main() {
+  print ((0 > 4294963001) | 0);
+}
+''', [], '0\n')
+

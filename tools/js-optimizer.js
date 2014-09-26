@@ -1979,7 +1979,14 @@ function detectSign(node) {
       }
       break;
     }
-    case 'num': case 'name': return ASM_FLEXIBLE;
+    case 'num': {
+      var value = node[1];
+      if (value < 0) return ASM_SIGNED;
+      if (value > (-1>>>0)) return ASM_NONSIGNED;
+      if (value === (value | 0)) return ASM_FLEXIBLE;
+      return ASM_UNSIGNED;
+    }
+    case 'name': return ASM_FLEXIBLE;
     case 'conditional': case 'seq': {
       return detectSign(node[2]);
     }
