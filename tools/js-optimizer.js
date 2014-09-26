@@ -6544,14 +6544,16 @@ function emterpretify(ast) {
 
     // walkFunction main
 
-    if (func[1] in BLACKLIST) {
+    var ignore = (func[1] in BLACKLIST) || /^dynCall_.*/.test(func[1]);
+
+    if (ignore) {
       print(astToSrc(func));
     }
 
     var asmData = normalizeAsm(func);
     print('// return type: [' + func[1] + ',' + asmData.ret + ']');
 
-    if (func[1] in BLACKLIST) {
+    if (ignore) {
       return;
     }
 
