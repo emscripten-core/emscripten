@@ -1868,7 +1868,7 @@ function detectType(node, asmInfo, inVarDef) {
       }
       if (!inVarDef) {
         switch (node[1]) {
-          case 'inf': return ASM_DOUBLE; // TODO: when minified
+          case 'inf': case 'nan': return ASM_DOUBLE; // TODO: when minified
           case 'tempRet0': return ASM_INT;
         }
         return ASM_NONE;
