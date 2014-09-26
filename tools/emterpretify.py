@@ -439,9 +439,9 @@ for i in range(len(lines)):
     if curr is not None:
       assert len(curr) % 4 == 0, curr
       funcs[func] = len(all_code) # no operation here should change the length
-      print >> sys.stderr, 'raw bytecode for %s:' % func, curr
+      #print >> sys.stderr, 'raw bytecode for %s:' % func, curr
       process_code(func, curr, absolute_targets)
-      print >> sys.stderr, 'processed bytecode for %s:' % func, curr
+      #print >> sys.stderr, 'processed bytecode for %s:' % func, curr
       all_code += curr
     func = None
     lines[i] = '}'
