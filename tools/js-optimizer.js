@@ -1850,9 +1850,11 @@ function detectType(node, asmInfo, inVarDef) {
       return ASM_INT;
     }
     case 'unary-prefix': {
-      if (node[1] === '+') return ASM_DOUBLE;
-      if (node[1] === '-') return detectType(node[2], asmInfo, inVarDef);
-      if (node[1] === '!') return ASM_INT;
+      switch (node[1]) {
+        case '+': return ASM_DOUBLE;
+        case '-': return detectType(node[2], asmInfo, inVarDef);
+        case '!': case '~': return ASM_INT;
+      }
       break;
     }
     case 'call': {
@@ -6009,8 +6011,7 @@ function emterpretify(ast) {
             }
             case '~': {
               var type = detectType(node[2], asmData);
-              var sign = detectSign(node[2]);
-              return makeUnary(node, type, sign);
+              return makeUnary(node, type, ASM_SIGNED);
             }
             case '!': return makeUnary(node, ASM_INT, ASM_SIGNED);
             default: throw 'ehh';
