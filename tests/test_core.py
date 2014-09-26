@@ -16,7 +16,11 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
       self.do_run_from_file(src, output)
 
-      assert 'EMSCRIPTEN_GENERATED_FUNCTIONS' not in open(self.in_dir('src.cpp.o.js')).read(), 'must not emit this unneeded internal thing'
+      src = open(self.in_dir('src.cpp.o.js')).read()
+      if self.run_name != 'asm3i':
+        assert 'EMSCRIPTEN_GENERATED_FUNCTIONS' not in src, 'must not emit this unneeded internal thing'
+      else:
+        assert 'function emterpret(' in src
 
   def test_intvars(self):
       if self.emcc_args == None: return self.skip('needs ta2')
@@ -7103,6 +7107,7 @@ asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2"])
 asm3 = make_run("asm3", compiler=CLANG, emcc_args=["-O3"])
 asm2f = make_run("asm2f", compiler=CLANG, emcc_args=["-O2", "-s", "PRECISE_F32=1"])
 asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "-s", "SAFE_HEAP=1"])
+asm3i = make_run("asm3i", compiler=CLANG, emcc_args=["-O3", '-s', 'EMTERPRETIFY=1'])
 
 # Legacy test modes - 
 slow2 = make_run("slow2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=0"], env={"EMCC_FAST_COMPILER": "0"})
