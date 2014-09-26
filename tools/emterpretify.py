@@ -89,6 +89,7 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '203': 'SETTR0',  # [l, 0, 0]            tempRet0 = l
   '240': 'GETGLBI', # [l, vl, vh]          get global value, int, indexed by v
   '241': 'GETGLBD', # [l, vl, vh]          get global value, double, indexed by v
+  '245': 'SETGLBI', # [vl, vh, l]          set global value, int, indexed by v (v = l)
   '250': 'CALL',    # [lx, target, sig] [params...]   (lx = ) target(params..) lx's existence and type depend on the target's actual callsig;
                     #                                 this instruction can take multiple 32-bit instruction chunks
                     #                                 if target is a function table, then the first param is the index of the register holding the function pointer
@@ -263,16 +264,20 @@ def make_emterpreter(t):
       '\n   }'
 
   if ROPCODES['GETGLBI'] not in CASES:
-    def make_target_access(i):
+    def make_load(i):
+      sig = 'i'
       name = rglobal_vars[i]
-
-      def make_target_access_sig(sig):
-        return '     ' + get_access('lx', sig[0]) + ' = ' + name + '; break;'
-
-      return make_target_access_sig('i') # XXX 'i' is the assumption for now
-
+      return '     ' + get_access('lx', sig[0]) + ' = ' + name + '; break;'
     CASES[ROPCODES['GETGLBI']] = 'switch (ly|0) {\n' + \
-      '\n'.join(filter(lambda x: 'None' not in x, ['    case %d: {\n%s\n    }' % (i, make_target_access(i)) for i in range(global_var_id)])) + \
+      '\n'.join(filter(lambda x: 'None' not in x, ['    case %d: {\n%s\n    }' % (i, make_load(i)) for i in range(global_var_id)])) + \
+      '\n    default: assert(0);' + \
+      '\n   }'
+    def make_store(i):
+      sig = 'i'
+      name = rglobal_vars[i]
+      return '     ' + name + ' = ' + get_coerced_access('lz', sig[0]) + '; break;'
+    CASES[ROPCODES['SETGLBI']] = 'switch ((inst >> 8)&255) {\n' + \
+      '\n'.join(filter(lambda x: 'None' not in x, ['    case %d: {\n%s\n    }' % (i, make_store(i)) for i in range(global_var_id)])) + \
       '\n    default: assert(0);' + \
       '\n   }'
 
@@ -378,6 +383,7 @@ global_var_id = 0
 
 call_sigs = {} # signatures appearing for each call target
 def process_code(func, code, absolute_targets):
+  global global_var_id
   absolute_start = code_start + len(all_code) # true absolute starting point of this function
   #print 'processing code', func, absolute_start
   for i in range(len(code)/4):
@@ -405,11 +411,18 @@ def process_code(func, code, absolute_targets):
       # fix global-accessing instructions' targets
       target = code[j+2]
       if target not in global_vars:
-        global global_var_id
         global_vars[target] = global_var_id
         rglobal_vars[global_var_id] = target
         global_var_id += 1
       code[j+2] = global_vars[target]
+    elif code[j] in ['SETGLBI']:
+      # fix global-accessing instructions' targets
+      target = code[j+1]
+      if target not in global_vars:
+        global_vars[target] = global_var_id
+        rglobal_vars[global_var_id] = target
+        global_var_id += 1
+      code[j+1] = global_vars[target]
     elif code[j] == 'absolute-value':
       # put the 32-bit absolute value of an abolute target here
       #print '  fixing absolute value', code[j+1], absolute_targets[unicode(code[j+1])], absolute_start + absolute_targets[unicode(code[j+1])]

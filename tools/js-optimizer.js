@@ -5866,10 +5866,17 @@ function emterpretify(ast) {
               switch(name) {
                 case 'STACKTOP': opcode = 'SETST'; break;
                 case 'tempRet0': opcode = 'SETTR0'; break;
-                default: throw 'assign global wha? ' + name;
+                default: {
+                  var type = detectType(value, asmData);
+                  assert(type === ASM_INT);
+                  reg[1].push('SETGLBI', name, 0, releaseIfFree(reg[0]));
+                  reg[0] = -1;
+                  return reg;
+                }
               }
               reg[1].push(opcode, releaseIfFree(reg[0]), 0, 0);
-              return [-1, reg[1]];
+              reg[0] = -1;
+              return reg;
             }
           } else if (target[0] === 'sub') {
             // assign to memory
