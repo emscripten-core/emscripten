@@ -5917,7 +5917,12 @@ function emterpretify(ast) {
           }
 
           // not a simple coercion
-          assert(!dropIt);
+
+          if (dropIt) {
+            // a pointless thing we can drop entirely
+            assert(!hasSideEffects(node));
+            return [-1, []];
+          }
 
           switch (node[1]) {
             case '&': case '|': case '^': case '<<': case '>>': case '>>>': return makeBinary(node, ASM_INT, ASM_SIGNED);
