@@ -6196,7 +6196,6 @@ function emterpretify(ast) {
             if (data[j]) {
               ret.push('absolute-target', data[j].absolute, 0, 0);
               ret = ret.concat(data[j].code);
-              ret.push('BR', 0, exit, 0);
             }
           }
           ret.push('marker', exit, 0, 0);
