@@ -6534,7 +6534,7 @@ function emterpretify(ast) {
       return;
     }
 
-    printErr('emterpretifying ' + func[1]);
+    //printErr('emterpretifying ' + func[1]);
 
     var locals = {};
     var numLocals = 0;

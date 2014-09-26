@@ -7,7 +7,7 @@ Currently this requires the asm.js code to have been built with -s FINALIZE_ASM_
 '''
 
 import os, sys, re, json
-import asm_module, shared
+import asm_module, shared, shutil
 
 # params
 
@@ -319,7 +319,10 @@ infile = sys.argv[1]
 outfile = sys.argv[2]
 force_memfile = sys.argv[3] if len(sys.argv) >= 4 else None
 
-print 'emterpretifying %s to %s' % (infile, outfile)
+#print 'emterpretifying %s to %s' % (infile, outfile)
+
+if shared.DEBUG:
+  shutil.copyfile(infile, infile + '.save.js')
 
 # final global functions
 
