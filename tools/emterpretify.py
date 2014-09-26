@@ -97,7 +97,7 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
                     #                                 if target is a function table, then the first param is the index of the register holding the function pointer
   '251': 'SWITCH',  # [lx, ly, lz]         switch (lx) { .. }. followed by a jump table for values in range [ly..ly+lz), after which is the default (which might be empty)
   '254': 'RET',     # [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
-  '255': 'FUNC',    # [n, 0, 0]            function with n locals (each taking 64 bits)
+  '255': 'FUNC',    # [total locals, num params, 0]            function with n locals (each taking 64 bits), of which the first are params
 }
 
 assert len(OPCODES.values()) == len(set(OPCODES.values())) # no dupe names
@@ -287,8 +287,14 @@ function emterpret%s%s(pc) {
  var sp = 0, inst = 0, lx = 0, ly = 0, lz = 0;
  sp = EMTSTACKTOP;
  assert(((HEAPU8[pc>>0]>>>0) == %d)|0);
- EMTSTACKTOP = EMTSTACKTOP + (HEAP8[pc + 1 >> 0] << 3) | 0;
+ lx = HEAP8[pc + 1 >> 0] | 0; // num locals
+ EMTSTACKTOP = EMTSTACKTOP + (lx << 3) | 0;
  assert(((EMTSTACKTOP|0) <= (EMT_STACK_MAX|0))|0);
+ ly = HEAP8[pc + 2 >> 0] | 0;
+ while ((ly | 0) < (lx | 0)) { // clear the non-param locals
+  HEAPF64[sp + (ly << 3) >> 3] = +0;
+  ly = ly + 1 | 0;
+ }
  while (1) {
   //print('last lx (' + lx + '): ' + [HEAP32[sp + (lx << 3) >> 2]|0, +HEAPF64[sp + (lx << 3) >> 3]]);
   pc = pc + 4 | 0;

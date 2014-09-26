@@ -6630,7 +6630,7 @@ function emterpretify(ast) {
       code.push('RET', 0, 0, 0); // final ret for the function
     }
     assert(maxLocal <= 256);
-    code = ['FUNC', maxLocal+1, 0, 0].concat(code);
+    code = ['FUNC', maxLocal+1, func[2].length, 0].concat(code);
     verifyCode(code);
 
     finalizeJumps(code);
