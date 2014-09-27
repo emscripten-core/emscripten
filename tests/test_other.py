@@ -2331,7 +2331,7 @@ int main()
     simd_args += ['-bb-vectorize-vector-bits=128', '-force-vector-width=4']
 
     self.clear()
-    Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-s', 'SIMD=1', '-DSP', '--llvm-opts', str(simd_args)]).communicate()
+    Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-s', 'SIMD=1', '-DSP', '--llvm-opts', str(simd_args), '-s', 'PRECISE_F32=1']).communicate()
     self.assertContained('Unrolled Single  Precision', run_js('a.out.js'))
 
   def test_dependency_file(self):
