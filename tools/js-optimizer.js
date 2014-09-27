@@ -6193,7 +6193,7 @@ function emterpretify(ast) {
         if (type === ASM_INT) {
           return [l, ['SETVIB', l, 0, 0, value & 255, (value >> 8) & 255, (value >> 16) & 255, (value >> 24) & 255]];
         } else if (type === ASM_DOUBLE) {
-          if (value === (value | 0)) {
+          if (value === (value | 0) && (value !== 0 || 1/value > 0)) {
             return [l, ['SETVDI', l, 0, 0, value & 255, (value >> 8) & 255, (value >> 16) & 255, (value >> 24) & 255]];
           } else if (value === Math.fround(value)) {
             return [l, ['SETVDF', l, 0, 0].concat(flattenFloat32(value))];
