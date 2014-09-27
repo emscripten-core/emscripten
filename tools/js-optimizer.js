@@ -6648,13 +6648,27 @@ function emterpretify(ast) {
 
     var locals = {};
     var numLocals = 0;
-    for (var i in asmData.params) {
-      locals[i] = numLocals++;
+
+    function parseLocals() {
+      locals = {};
+      numLocals = 0;
+      for (var i in asmData.params) {
+        locals[i] = numLocals++;
+      }
+      for (var i in asmData.vars) {
+        locals[i] = numLocals++;
+      }
     }
-    for (var i in asmData.vars) {
-      locals[i] = numLocals++;
+
+    parseLocals();
+    if (numLocals >= 200) {
+      printErr(numLocals + ' locals in ' + func[1] + ', which is very high, trying to reduce');
+      aggressiveVariableEliminationInternal(func, asmData);
+      parseLocals();
+      printErr('number of locals is now ' + numLocals);
+      assert(numLocals <= 256, 'we need <= 256 locals');
     }
-    assert(numLocals <= 256, [func[1], numLocals]);
+
     for (var i = 255; i >= numLocals; i--) {
       freeLocals.push(i);
     }
@@ -6702,7 +6716,7 @@ function emterpretify(ast) {
     if (code.length < 4 || code[code.length-4] != 'RET') {
       code.push('RET', 0, 0, 0); // final ret for the function
     }
-    assert(maxLocal <= 256);
+    assert(maxLocal < 255, 'too many locals ' + [maxLocal, numLocals]); // maximum local value is 255, for a total of 256 of them
     code = ['FUNC', maxLocal+1, func[2].length, 0].concat(code);
     verifyCode(code);
 
