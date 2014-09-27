@@ -5855,7 +5855,6 @@ function emterpretify(ast) {
         }
         case 'stat': return getReg(node[1], dropIt);
         case 'assign': {
-          assert(dropIt);
           assert(node[1] === true);
           var target = node[2];
           var value = node[3];
@@ -5878,16 +5877,15 @@ function emterpretify(ast) {
                 default: {
                   var type = detectType(value, asmData);
                   assert(type === ASM_INT);
-                  reg[1].push('SETGLBI', name, 0, releaseIfFree(reg[0]));
-                  reg[0] = -1;
-                  return reg;
+                  reg[1].push('SETGLBI', name, 0, reg[0]);
+                  return reg; // caller will free reg[0] if necessary
                 }
               }
-              reg[1].push(opcode, releaseIfFree(reg[0]), 0, 0);
-              reg[0] = -1;
+              reg[1].push(opcode, reg[0], 0, 0); // caller will free reg[0] if necessary
               return reg;
             }
           } else if (target[0] === 'sub') {
+            assert(dropIt);
             // assign to memory
             var heap = target[1][1];
             var temp = makeTempParseHeap();
