@@ -6674,6 +6674,7 @@ def process(filename):
         os.environ.pop('EMCC_DEBUG', None)
 
   def test_exception_source_map(self):
+    if self.is_emterpreter(): return self.skip('todo')
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip("doesn't pass without typed arrays")
     if '-g4' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g4')
     if NODE_JS not in JS_ENGINES: return self.skip('sourcemapper requires Node to run')
@@ -6714,6 +6715,7 @@ def process(filename):
     self.build(src, dirname, os.path.join(dirname, 'src.cpp'), post_build=(None, post))
 
   def test_emscripten_log(self):
+    if self.is_emterpreter(): return self.skip('todo')
     if Settings.ASM_JS:
       # XXX Does not work in SpiderMonkey since callstacks cannot be captured when running in asm.js, see https://bugzilla.mozilla.org/show_bug.cgi?id=947996
       self.banned_js_engines = [SPIDERMONKEY_ENGINE] 
