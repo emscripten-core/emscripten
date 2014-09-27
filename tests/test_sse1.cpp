@@ -160,7 +160,7 @@ int main()
 	_mm_store_ps(arr2, _mm_set1_ps(100.f)); _mm_store1_ps(arr2, a); aeq(_mm_load_ps(arr2), 2.f, 2.f, 2.f, 2.f); // _mm_store1_ps == _mm_store_ps1
 	_mm_storeu_ps(uarr2, _mm_set1_ps(100.f)); _mm_storeh_pi((__m64*)uarr2, a); aeq(_mm_loadu_ps(uarr2), 100.f, 100.f, 8.f, 6.f); // _mm_storeh_pi: Store two highest elements to memory.
 	_mm_storeu_ps(uarr2, _mm_set1_ps(100.f)); _mm_storel_pi((__m64*)uarr2, a); aeq(_mm_loadu_ps(uarr2), 100.f, 100.f, 4.f, 2.f); // _mm_storel_pi: Store two lowest elements to memory.
-	_mm_storer_ps(arr2, a); aeq(_mm_load_ps(arr2), 2.f, 4.f, 6.f, 8.f); // _mm_storeu_ps: 4-wide store to aligned memory address, but reverse the elements on output.
+	_mm_storer_ps(arr2, a); aeq(_mm_load_ps(arr2), 2.f, 4.f, 6.f, 8.f); // _mm_storer_ps: 4-wide store to aligned memory address, but reverse the elements on output.
 	_mm_storeu_ps(uarr2, a); aeq(_mm_loadu_ps(uarr2), 8.f, 6.f, 4.f, 2.f); // _mm_storeu_ps: 4-wide store to unaligned memory address.
 	/*M64*/_mm_stream_pi((__m64*)uarr, u64castm64(0x0080FF7F01FEFF40ULL)); Assert(*(uint64_t*)uarr == 0x0080FF7F01FEFF40ULL); // _mm_stream_pi: 2-wide store, but with a non-temporal memory cache hint.
 	_mm_store_ps(arr2, _mm_set1_ps(100.f)); _mm_stream_ps(arr2, a); aeq(_mm_load_ps(arr2), 8.f, 6.f, 4.f, 2.f); // _mm_stream_ps: 4-wide store, but with a non-temporal memory cache hint.
