@@ -43,9 +43,29 @@ tick_t ticks_per_sec()
 #error No tick_t
 #endif
 
-#define START() do { tick_t start = tick();
-#define END(result, name) tick_t end = tick(); double msecs = (double)(end - start) * 1000.0 / ticks_per_sec(); printf(name ": %f msecs (%.3fx of scalar) Result: %f.\n", msecs, msecs/scalarTime, (result)); } while(0)
-#define ENDSCALAR(result, name) tick_t end = tick(); scalarTime = (double)(end - start) * 1000.0 / ticks_per_sec(); printf(name ": %f msecs. Result: %f.\n", scalarTime, (result)); } while(0)
+tick_t scalarTotalTicks = 0;
+tick_t simdTotalTicks = 0;
+tick_t scalarTicks = 0;
+
+#define START() \
+	do { \
+		tick_t start = tick();
+
+#define END(result, name) \
+		tick_t end = tick(); \
+		tick_t ticks = end - start; \
+		scalarTotalTicks += scalarTicks; \
+		simdTotalTicks += ticks; \
+		double msecs = (double)ticks * 1000.0 / ticks_per_sec(); \
+		printf(name ": %f msecs (%.3fx of scalar)%s\n", msecs, msecs/scalarTime, (result) != 0 ? "Error!" : ""); \
+	} while(0)
+
+#define ENDSCALAR(result, name) \
+		tick_t end = tick(); \
+		scalarTicks = end - start; \
+		scalarTime = (double)scalarTicks * 1000.0 / ticks_per_sec(); \
+		printf(name ": %f msecs.%s\n", scalarTime, (result) != 0 ? "Error!" : ""); \
+	} while(0)
 
 void Print(__m128 m)
 {
@@ -54,7 +74,11 @@ void Print(__m128 m)
 	fprintf(stderr, "[%g, %g, %g, %g]\n", val[3], val[2], val[1], val[0]);
 }
 
-const int N = 64*1024*1024;
+#ifdef __EMSCRIPTEN__
+const int N = 256*1024;
+#else
+const int N = 16*1024*1024;
+#endif
 
 bool always_true() { return time(NULL) != 0; } // This function always returns true, but the compiler should not know this.
 
@@ -115,9 +139,16 @@ float ucastf(uint32_t t) { return *(float*)&t; }
 #define Max(a,b) ((a) >= (b) ? (a) : (b))
 #define Min(a,b) ((a) <= (b) ? (a) : (b))
 
+static __inline__ int Isnan(float __f)
+{
+  return (*(unsigned int*)&__f << 1) > 0xFF000000u;
+}
+
 int main()
 {
+#ifndef __EMSCRIPTEN__
 	_MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
+#endif
 
 	printf("N: %u\n", N);
 	assert(N%4 == 0); // Don't care about the tail for now.
@@ -199,19 +230,28 @@ int main()
 	START(); dst[0] = src[0]; dst[1] = src[1]; dst[2] = src[2]; dst[3] = src[3]; for(int i = 0; i < N; ++i) { dst[0] = ucastf(fcastu(dst[0]) ^ fcastu(src2[0])); dst[1] = ucastf(fcastu(dst[1]) ^ fcastu(src2[1])); dst[2] = ucastf(fcastu(dst[2]) ^ fcastu(src2[2])); dst[3] = ucastf(fcastu(dst[3]) ^ fcastu(src2[3])); } ENDSCALAR(checksum_dst(dst), "scalar xor");
 	BINARYOP_TEST("_mm_xor_ps", _mm_xor_ps, _mm_load_ps(src), _mm_load_ps(src2));
 
+#ifndef __EMSCRIPTEN__ // TODO: Disabled due to https://github.com/kripken/emscripten/issues/2841
+	START(); dst[0] = src[0]; dst[1] = src[1]; dst[2] = src[2]; dst[3] = src[3]; for(int i = 0; i < N; ++i) { dst[0] = (dst[0] == src2[0]) ? ucastf(0xFFFFFFFFU) : 0.f; dst[1] = (dst[1] == src2[1]) ? ucastf(0xFFFFFFFFU) : 0.f; dst[2] = (dst[2] == src2[2]) ? ucastf(0xFFFFFFFFU) : 0.f; dst[3] = (dst[3] == src2[3]) ? ucastf(0xFFFFFFFFU) : 0.f; } ENDSCALAR(checksum_dst(dst), "scalar cmp==");
 	BINARYOP_TEST("_mm_cmpeq_ps", _mm_cmpeq_ps, _mm_load_ps(src), _mm_load_ps(src2));
 	BINARYOP_TEST("_mm_cmpeq_ss", _mm_cmpeq_ss, _mm_load_ps(src), _mm_load_ps(src2));
+	START(); dst[0] = src[0]; dst[1] = src[1]; dst[2] = src[2]; dst[3] = src[3]; for(int i = 0; i < N; ++i) { dst[0] = (dst[0] >= src2[0]) ? ucastf(0xFFFFFFFFU) : 0.f; dst[1] = (dst[1] >= src2[1]) ? ucastf(0xFFFFFFFFU) : 0.f; dst[2] = (dst[2] >= src2[2]) ? ucastf(0xFFFFFFFFU) : 0.f; dst[3] = (dst[3] >= src2[3]) ? ucastf(0xFFFFFFFFU) : 0.f; } ENDSCALAR(checksum_dst(dst), "scalar cmp>=");
 	BINARYOP_TEST("_mm_cmpge_ps", _mm_cmpge_ps, _mm_load_ps(src), _mm_load_ps(src2));
 	BINARYOP_TEST("_mm_cmpge_ss", _mm_cmpge_ss, _mm_load_ps(src), _mm_load_ps(src2));
+	START(); dst[0] = src[0]; dst[1] = src[1]; dst[2] = src[2]; dst[3] = src[3]; for(int i = 0; i < N; ++i) { dst[0] = (dst[0] > src2[0]) ? ucastf(0xFFFFFFFFU) : 0.f; dst[1] = (dst[1] > src2[1]) ? ucastf(0xFFFFFFFFU) : 0.f; dst[2] = (dst[2] > src2[2]) ? ucastf(0xFFFFFFFFU) : 0.f; dst[3] = (dst[3] > src2[3]) ? ucastf(0xFFFFFFFFU) : 0.f; } ENDSCALAR(checksum_dst(dst), "scalar cmp>");
 	BINARYOP_TEST("_mm_cmpgt_ps", _mm_cmpgt_ps, _mm_load_ps(src), _mm_load_ps(src2));
 	BINARYOP_TEST("_mm_cmpgt_ss", _mm_cmpgt_ss, _mm_load_ps(src), _mm_load_ps(src2));
+	START(); dst[0] = src[0]; dst[1] = src[1]; dst[2] = src[2]; dst[3] = src[3]; for(int i = 0; i < N; ++i) { dst[0] = (dst[0] <= src2[0]) ? ucastf(0xFFFFFFFFU) : 0.f; dst[1] = (dst[1] <= src2[1]) ? ucastf(0xFFFFFFFFU) : 0.f; dst[2] = (dst[2] <= src2[2]) ? ucastf(0xFFFFFFFFU) : 0.f; dst[3] = (dst[3] <= src2[3]) ? ucastf(0xFFFFFFFFU) : 0.f; } ENDSCALAR(checksum_dst(dst), "scalar cmp<=");
 	BINARYOP_TEST("_mm_cmple_ps", _mm_cmple_ps, _mm_load_ps(src), _mm_load_ps(src2));
 	BINARYOP_TEST("_mm_cmple_ss", _mm_cmple_ss, _mm_load_ps(src), _mm_load_ps(src2));
+	START(); dst[0] = src[0]; dst[1] = src[1]; dst[2] = src[2]; dst[3] = src[3]; for(int i = 0; i < N; ++i) { dst[0] = (dst[0] < src2[0]) ? ucastf(0xFFFFFFFFU) : 0.f; dst[1] = (dst[1] < src2[1]) ? ucastf(0xFFFFFFFFU) : 0.f; dst[2] = (dst[2] < src2[2]) ? ucastf(0xFFFFFFFFU) : 0.f; dst[3] = (dst[3] < src2[3]) ? ucastf(0xFFFFFFFFU) : 0.f; } ENDSCALAR(checksum_dst(dst), "scalar cmp<");
 	BINARYOP_TEST("_mm_cmplt_ps", _mm_cmplt_ps, _mm_load_ps(src), _mm_load_ps(src2));
 	BINARYOP_TEST("_mm_cmplt_ss", _mm_cmplt_ss, _mm_load_ps(src), _mm_load_ps(src2));
+#endif
 
+	START(); dst[0] = src[0]; dst[1] = src[1]; dst[2] = src[2]; dst[3] = src[3]; for(int i = 0; i < N; ++i) { dst[0] = (!Isnan(dst[0]) && !Isnan(src2[0])) ? ucastf(0xFFFFFFFFU) : 0.f; dst[1] = (!Isnan(dst[1]) && !Isnan(src2[1])) ? ucastf(0xFFFFFFFFU) : 0.f; dst[2] = (!Isnan(dst[2]) && !Isnan(src2[2])) ? ucastf(0xFFFFFFFFU) : 0.f; dst[3] = (!Isnan(dst[3]) && !Isnan(src2[3])) ? ucastf(0xFFFFFFFFU) : 0.f; } ENDSCALAR(checksum_dst(dst), "scalar cmpord");
 	BINARYOP_TEST("_mm_cmpord_ps", _mm_cmpord_ps, _mm_load_ps(src), _mm_load_ps(src2));
 	BINARYOP_TEST("_mm_cmpord_ss", _mm_cmpord_ss, _mm_load_ps(src), _mm_load_ps(src2));
+	START(); dst[0] = src[0]; dst[1] = src[1]; dst[2] = src[2]; dst[3] = src[3]; for(int i = 0; i < N; ++i) { dst[0] = (Isnan(dst[0]) || Isnan(src2[0])) ? ucastf(0xFFFFFFFFU) : 0.f; dst[1] = (Isnan(dst[1]) || Isnan(src2[1])) ? ucastf(0xFFFFFFFFU) : 0.f; dst[2] = (Isnan(dst[2]) || Isnan(src2[2])) ? ucastf(0xFFFFFFFFU) : 0.f; dst[3] = (Isnan(dst[3]) || Isnan(src2[3])) ? ucastf(0xFFFFFFFFU) : 0.f; } ENDSCALAR(checksum_dst(dst), "scalar cmpunord");
 	BINARYOP_TEST("_mm_cmpunord_ps", _mm_cmpunord_ps, _mm_load_ps(src), _mm_load_ps(src2));
 	BINARYOP_TEST("_mm_cmpunord_ss", _mm_cmpunord_ss, _mm_load_ps(src), _mm_load_ps(src2));
 
@@ -222,15 +262,26 @@ int main()
 	BINARYOP_TEST("_mm_min_ps", _mm_min_ps, _mm_load_ps(src), _mm_load_ps(src2));
 	BINARYOP_TEST("_mm_min_ss", _mm_min_ss, _mm_load_ps(src), _mm_load_ps(src2));
 
+	START(); dst[0] = src[0]; dst[1] = src[1]; dst[2] = src[2]; dst[3] = src[3]; for(int i = 0; i < N; ++i) { dst[3] = dst[1]; dst[2] = dst[0]; dst[1] = src2[3]; dst[0] = src2[2]; } ENDSCALAR(checksum_dst(dst), "scalar shuffle");
 //	BINARYOP_TEST("_mm_shuffle_ps", _mm_shuffle_ps, _mm_load_ps(src), _mm_load_ps(src2));
 	START();
 		__m128 o0 = _mm_load_ps(src);
 		__m128 o1 = _mm_load_ps(src2);
 		for(int i = 0; i < N; i += 4)
-			o0 = _mm_shuffle_ps(o0, o1, _MM_SHUFFLE(3, 0, 1, 2));
+			o0 = _mm_shuffle_ps(o0, o1, _MM_SHUFFLE(1, 0, 3, 2));
 		_mm_store_ps(dst, o0);
 	END(checksum_dst(dst), "_mm_shuffle_ps");
 
+	START(); dst[0] = src[0]; dst[1] = src[1]; dst[2] = src[2]; dst[3] = src[3]; for(int i = 0; i < N; ++i) { dst[0] = dst[2]; dst[1] = src2[2]; dst[2] = dst[3]; dst[3] = src2[3]; } ENDSCALAR(checksum_dst(dst), "scalar unpackhi_ps");
 	BINARYOP_TEST("_mm_unpackhi_ps", _mm_unpackhi_ps, _mm_load_ps(src), _mm_load_ps(src2));
+	START(); dst[0] = src[0]; dst[1] = src[1]; dst[2] = src[2]; dst[3] = src[3]; for(int i = 0; i < N; ++i) { dst[2] = dst[1]; dst[1] = dst[0]; dst[0] = src2[0]; dst[3] = src2[1]; } ENDSCALAR(checksum_dst(dst), "scalar unpacklo_ps");
 	BINARYOP_TEST("_mm_unpacklo_ps", _mm_unpacklo_ps, _mm_load_ps(src), _mm_load_ps(src2));
+
+	printf("Finished!\n");
+	printf("Total time spent in scalar intrinsics: %f msecs.\n", (double)scalarTotalTicks * 1000.0 / ticks_per_sec());
+	printf("Total time spent in SSE1 intrinsics: %f msecs.\n", (double)simdTotalTicks * 1000.0 / ticks_per_sec());
+	if (scalarTotalTicks > simdTotalTicks)
+		printf("SSE1 was %.3fx faster than scalar!\n", (double)scalarTotalTicks / simdTotalTicks);
+	else
+		printf("SSE1 was %.3fx slower than scalar!\n", (double)simdTotalTicks / scalarTotalTicks);
 }
