@@ -452,6 +452,11 @@ def process_code(func, code, absolute_targets):
     if type(code[j]) in (str, unicode):
       code[j] = ROPCODES[code[j]]
 
+  # sanity checks
+  for i in range(len(code)):
+    v = code[i]
+    assert type(v) == int and v >= 0 and v < 256, [i, v, 'in', code]
+
 actual_return_types = {}
 
 for i in range(len(lines)):
