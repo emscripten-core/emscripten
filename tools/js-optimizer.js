@@ -6612,7 +6612,7 @@ function emterpretify(ast) {
     for (var i in asmData.vars) {
       locals[i] = numLocals++;
     }
-    assert(numLocals <= 256);
+    assert(numLocals <= 256, [func[1], numLocals]);
     for (var i = 255; i >= numLocals; i--) {
       freeLocals.push(i);
     }
