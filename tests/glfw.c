@@ -102,6 +102,12 @@ void Iteration()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     // draw the figure
     Draw();
+
+    // Test that glfwSwapInterval doesn't crash (although we don't test actual timings)
+    static int i = 0;
+    glfwSwapInterval(i);
+    if (i < 2) ++i;
+
     // swap back and front buffers
     glfwSwapBuffers();
 }
