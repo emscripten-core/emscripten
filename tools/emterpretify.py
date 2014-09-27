@@ -84,7 +84,10 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '159': 'BR',      # [0, tl, th]          jump t instructions (multiple of 4)
   '160': 'BRT',     # [cond, tl, th]       if cond, jump t instructions (multiple of 4)
   '161': 'BRF',     # [cond, tl, th]       if !cond, jump t instructions (multiple of 4)
-  #'170': 'ABR',     # [lx, 0, 0, 0]        absolute branch to address lx (assumed divisible by 4)
+  '169': 'BRA',      # [0, 0, 0] [addr]     jump to addr
+  '170': 'BRTA',     # [cond, 0, 0] [addr]  if cond, jump to addr
+  '171': 'BRFA',     # [cond, 0, 0] [addr]  if !cond, jump to addr
+
   '200': 'GETTDP',  # [l, 0, 0]            l = tempDoublePtr
   #'201': 'GETPC',   # [l, 0, 0]            l = pc
   '202': 'GETTR0',  # [l, 0, 0]            l = tempRet0
@@ -208,7 +211,10 @@ CASES[ROPCODES['STOREF32']] = 'HEAPF32[' + get_access('lx') + ' >> 2] = ' + get_
 CASES[ROPCODES['BR']] = 'pc = pc + ((inst >> 16) << 2) | 0; continue;'
 CASES[ROPCODES['BRT']] = 'if (' + get_coerced_access('lx') + ') { pc = pc + ((inst >> 16) << 2) | 0; continue; }'
 CASES[ROPCODES['BRF']] = 'if (!(' + get_coerced_access('lx') + ')) { pc = pc + ((inst >> 16) << 2) | 0; continue; }'
-#CASES[ROPCODES['ABR']] = 'pc = ' + get_coerced_access('lx') + '; continue;'
+CASES[ROPCODES['BRA']] = 'pc = HEAP32[pc + 4 >> 2] | 0; continue;'
+CASES[ROPCODES['BRTA']] = 'if (' + get_coerced_access('lx') + ') { pc = HEAP32[pc + 4 >> 2] | 0; continue; }'
+CASES[ROPCODES['BRFA']] = 'if (!(' + get_coerced_access('lx') + ')) { pc = HEAP32[pc + 4 >> 2] | 0; continue; }'
+
 CASES[ROPCODES['GETTDP']] = 'HEAP32[sp + (lx << 3) >> 2] = tempDoublePtr;'
 #CASES[ROPCODES['GETPC']] = 'HEAP32[sp + (lx << 3) >> 2] = pc;'
 CASES[ROPCODES['GETTR0']] = 'HEAP32[sp + (lx << 3) >> 2] = tempRet0;'
@@ -433,7 +439,10 @@ def process_code(func, code, absolute_targets):
     elif code[j] == 'absolute-value':
       # put the 32-bit absolute value of an abolute target here
       #print '  fixing absolute value', code[j+1], absolute_targets[unicode(code[j+1])], absolute_start + absolute_targets[unicode(code[j+1])]
-      value = bytify(absolute_start + absolute_targets[unicode(code[j+1])])
+      absolute_value = absolute_start + absolute_targets[unicode(code[j+1])]
+      assert absolute_value < (1 << 31)
+      assert absolute_value % 4 == 0
+      value = bytify(absolute_value)
       for k in range(4):
         code[j + k] = value[k]
 
