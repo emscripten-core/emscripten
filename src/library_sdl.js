@@ -2974,7 +2974,15 @@ var LibrarySDL = {
 
   SDL_GL_DeleteContext: function(context) {},
 
-  SDL_GL_SetSwapInterval: function(state) {},
+  SDL_GL_GetSwapInterval__deps: ['emscripten_get_main_loop_interval'],
+  SDL_GL_GetSwapInterval: function(state) {
+    return -_emscripten_get_main_loop_interval();
+  },
+
+  SDL_GL_SetSwapInterval__deps: ['emscripten_set_main_loop_interval'],
+  SDL_GL_SetSwapInterval: function(state) {
+    _emscripten_set_main_loop_interval(-interval);
+  },
 
   SDL_SetWindowTitle: function(window, title) {
     if (title) document.title = Pointer_stringify(title);

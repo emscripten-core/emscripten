@@ -178,6 +178,12 @@ int main(int argc, char *argv[])
     glDisableClientState(GL_COLOR_ARRAY);
     glDisableClientState(GL_VERTEX_ARRAY);
 
+    for(int i = 0; i <= 2; ++ i)
+    {
+        SDL_GL_SetSwapInterval(i);
+        assert(SDL_GL_GetSwapInterval() == i);
+    }
+
     SDL_GL_SwapBuffers();
     
 #ifndef __EMSCRIPTEN__

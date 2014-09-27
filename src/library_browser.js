@@ -968,6 +968,10 @@ mergeInto(LibraryManager.library, {
     document.body.appendChild(script);
   },
 
+  emscripten_get_main_loop_interval: function() {
+    return Browser.mainLoop.interval;
+  },
+
   emscripten_set_main_loop_interval: function(interval) {
     Browser.mainLoop.interval = interval;
 

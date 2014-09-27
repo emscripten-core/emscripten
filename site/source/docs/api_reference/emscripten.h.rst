@@ -184,6 +184,8 @@ Functions
 	.. tip:: There can be only *one* main loop function at a time. To change the main loop function, first :c:func:`cancel <emscripten_cancel_main_loop>` the current loop, and then call this function to set another.
 	
 	.. note:: See :c:func:`emscripten_set_main_loop_expected_blockers`, :c:func:`emscripten_pause_main_loop`, :c:func:`emscripten_resume_main_loop` and :c:func:`emscripten_cancel_main_loop` for information about blocking, pausing, and resuming the main loop.
+
+	.. note:: Calling this function overrides the effect of any previous calls to :c:func:`emscripten_set_main_loop_interval` by applying the swap interval specified by the parameter ``fps``.
 	
 	:param em_callback_func func: C function to set as main event loop.
 	:param int fps: Number of frames per second that the JavaScript will call the function. Setting ``int <=0`` (recommended) uses the browser’s ``requestAnimationFrame`` mechanism to call the function.	
@@ -255,6 +257,13 @@ Functions
 	.. note:: Browsers heavily optimize towards using ``requestAnimationFrame`` for animation instead of ``setTimeout``. Because of that, for best experience across browsers, calling this function with the value of ``-1`` will yield best results. Using the JavaScript ``setTimeout`` function is known to cause stutter and generally worse experience than using the ``requestAnimationFrame`` function. Using a value of ``-2`` or lower can be interesting for power-saving purposes, whereas using the value of zero can be interesting for benchmarking purposes.
 
 	.. note:: There is a functional difference between ``setTimeout`` and ``requestAnimationFrame``: If the user minimizes the browser window or hides your application tab, browsers will typically stop calling ``requestAnimationFrame`` callbacks, but ``setTimeout``-based main loop will continue to be run, although with heavily throttled intervals. See `setTimeout on MDN <https://developer.mozilla.org/en-US/docs/Web/API/WindowTimers.setTimeout#Inactive_tabs>` for more information.
+
+.. c:function:: int emscripten_get_main_loop_interval()
+
+	Returns the current main loop swap interval that is in effect. For interpretation of the values, see the documentation of the function :c:func:`emscripten_set_main_loop_interval`. The swap interval is controlled by calling the functions :c:func:`emscripten_set_main_loop_interval` and :c:func:`emscripten_set_main_loop`.
+
+	:rtype: int
+	:return: The current swap interval setting.
 	
 .. c:function:: void emscripten_set_main_loop_expected_blockers(int num)
 

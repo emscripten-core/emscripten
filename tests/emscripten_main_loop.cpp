@@ -45,8 +45,10 @@ void looper() {
     int ret;
     if (frame % 20 == 0) {
       ret = emscripten_set_main_loop_interval(-4);
+      assert(emscripten_get_main_loop_interval() == -4);
     } else {
       ret = emscripten_set_main_loop_interval(-1);
+      assert(emscripten_get_main_loop_interval() == -1);
     }
     assert(ret == 0);
   } else if (frame == 90) {
