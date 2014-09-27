@@ -212,8 +212,8 @@ CASES[ROPCODES['BR']] = 'pc = pc + ((inst >> 16) << 2) | 0; continue;'
 CASES[ROPCODES['BRT']] = 'if (' + get_coerced_access('lx') + ') { pc = pc + ((inst >> 16) << 2) | 0; continue; }'
 CASES[ROPCODES['BRF']] = 'if (!(' + get_coerced_access('lx') + ')) { pc = pc + ((inst >> 16) << 2) | 0; continue; }'
 CASES[ROPCODES['BRA']] = 'pc = HEAP32[pc + 4 >> 2] | 0; continue;'
-CASES[ROPCODES['BRTA']] = 'if (' + get_coerced_access('lx') + ') { pc = HEAP32[pc + 4 >> 2] | 0; continue; }'
-CASES[ROPCODES['BRFA']] = 'if (!(' + get_coerced_access('lx') + ')) { pc = HEAP32[pc + 4 >> 2] | 0; continue; }'
+CASES[ROPCODES['BRTA']] = 'pc = pc + 4 | 0; if (' + get_coerced_access('lx') + ') { pc = HEAP32[pc >> 2] | 0; continue; }'
+CASES[ROPCODES['BRFA']] = 'pc = pc + 4 | 0; if (!(' + get_coerced_access('lx') + ')) { pc = HEAP32[pc >> 2] | 0; continue; }'
 
 CASES[ROPCODES['GETTDP']] = 'HEAP32[sp + (lx << 3) >> 2] = tempDoublePtr;'
 #CASES[ROPCODES['GETPC']] = 'HEAP32[sp + (lx << 3) >> 2] = pc;'
@@ -438,8 +438,8 @@ def process_code(func, code, absolute_targets):
       code[j+1] = global_vars[target]
     elif code[j] == 'absolute-value':
       # put the 32-bit absolute value of an abolute target here
-      #print '  fixing absolute value', code[j+1], absolute_targets[unicode(code[j+1])], absolute_start + absolute_targets[unicode(code[j+1])]
       absolute_value = absolute_start + absolute_targets[unicode(code[j+1])]
+      #print '  fixing absolute value', code[j+1], absolute_targets[unicode(code[j+1])], absolute_value
       assert absolute_value < (1 << 31)
       assert absolute_value % 4 == 0
       value = bytify(absolute_value)
