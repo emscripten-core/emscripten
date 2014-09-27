@@ -334,6 +334,8 @@ Defines
 	EMSCRIPTEN_EVENT_MOUSEUP
 	EMSCRIPTEN_EVENT_DBLCLICK
 	EMSCRIPTEN_EVENT_MOUSEMOVE
+	EMSCRIPTEN_EVENT_MOUSEENTER
+	EMSCRIPTEN_EVENT_MOUSELEAVE
 			 
     Emscripten mouse events.
 
@@ -434,6 +436,8 @@ Functions
 	EMSCRIPTEN_RESULT emscripten_set_mouseup_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback)
 	EMSCRIPTEN_RESULT emscripten_set_dblclick_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback)
 	EMSCRIPTEN_RESULT emscripten_set_mousemove_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback)
+	EMSCRIPTEN_RESULT emscripten_set_mouseenter_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback)
+	EMSCRIPTEN_RESULT emscripten_set_mouseleave_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback)
 
 	Registers a callback function for receiving browser-generated `mouse input events <https://developer.mozilla.org/en/DOM/MouseEvent>`_.
 
