@@ -5742,7 +5742,11 @@ function emterpretify(ast) {
   var OPCODES = extraInfo.opcodes;
   var ROPCODES = extraInfo.ropcodes;
 
-  var BRANCHES = set('BR', 'BRT', 'BRF');
+  var RELATIVE_BRANCHES = set('BR', 'BRT', 'BRF');
+  var ABSOLUTE_BRANCHES = set('BRA', 'BRTA', 'BRFA');
+  var BRANCHES = {};
+  mergeInto(BRANCHES, RELATIVE_BRANCHES);
+  mergeInto(BRANCHES, ABSOLUTE_BRANCHES);
 
   var tempBuffer = new ArrayBuffer(8);
   var tempFloat64 = new Float64Array(tempBuffer);
@@ -6554,23 +6558,63 @@ function emterpretify(ast) {
     }
 
     function finalizeJumps(code) {
-      assert(code.length / 4 < 32768); // our jumps are 16-bit offsets
-      // first pass, finalize relatives. after this, every instruction is in its absolute location
+      // first pass, collect and remove markers and absolute targets
       var relatives = {};
+      var absolutes = {};
       for (var i = 0; i < code.length; i += 4) {
         if (code[i] === 'relative') {
           relatives[code[i+1]] = i;
           code.splice(i, 4);
           i -= 4;
         } else if (code[i] === 'absolute-target') {
-          absoluteTargets[code[i+1]] = i;
+          absolutes[code[i+1]] = i;
           code.splice(i, 4);
           i -= 4;
         }
       }
-      // second pass, finalize jumps TODO: optimize jump->jump->x to jump->x
+      // second pass, find out which relative branches must be converted to absolutes, because they are too big
+      var needAbsolute = {}; // old relative id => new absolute id
       for (var i = 0; i < code.length; i += 4) {
-        if (code[i] in BRANCHES) {
+        if (code[i] in RELATIVE_BRANCHES) {
+          var id = code[i+2];
+          var target = relatives[id];
+          var offset = target - i;
+          var storedOffset = offset >> 2; // offsets are divisible by 4, so we ignore the lower bits
+          var maxOffset = storedOffset * 2; // when we convert relative to absolute, we double the size of a branch.
+                                            // so worst case, we may double offsets (TODO this could be optimized)
+          if ((maxOffset << 16 >> 16) !== maxOffset) {
+            if (!(id in needAbsolute)) {
+              var newId = absoluteId++;
+              needAbsolute[id] = newId;
+              delete relatives[id];
+              absolutes[newId] = target;
+            }
+          }
+        }
+      }
+      // convert necessary relative branches to absolutes
+      for (var i = 0; i < code.length; i += 4) {
+        if (code[i] in RELATIVE_BRANCHES) {
+          var id = code[i+2];
+          if (id in needAbsolute) {
+            code[i] += 'A'; // convert branch to absolute
+            code[i+2] = 0; // id is no longer needed
+            code.splice(i+4, 0, 'absolute-value', needAbsolute[id], 0, 0); // add absolute value after first part of branch inst
+            // we have added code, so we must adjust all relatives and absolutes
+            for (var x in relatives) {
+              if (relatives[x] >= i+4) relatives[x] += 4;
+            }
+            for (var x in absolutes) {
+              if (absolutes[x] >= i+4) absolutes[x] += 4;
+            }
+          }
+        }
+      }
+      // every instruction is now in its absolute location
+      mergeInto(absoluteTargets, absolutes);
+      // final pass, finalize relative jumps TODO: optimize jump->jump->x to jump->x
+      for (var i = 0; i < code.length; i += 4) {
+        if (code[i] in RELATIVE_BRANCHES) {
           var id = code[i+2];
           var target = relatives[id];
           assert(target !== undefined, id);
