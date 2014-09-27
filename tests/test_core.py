@@ -2172,6 +2172,7 @@ def process(filename):
     self.do_run_from_file(src, output)
 
   def test_memorygrowth(self):
+    if self.is_emterpreter(): return self.skip('todo')
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('memory growth is only supported with typed arrays mode 2')
     self.banned_js_engines = [V8_ENGINE] # stderr printing limitations in v8
 
@@ -5116,6 +5117,7 @@ return malloc(size);
       assert main.count('\n') <= 7, ('must not emit too many postSets: %d' % main.count('\n')) + ' : ' + main
 
   def test_simd(self):
+    if self.is_emterpreter(): return self.skip('todo')
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
 
@@ -5145,6 +5147,7 @@ return malloc(size);
 
   def test_simd4(self):
     # test_simd4 is to test phi node handling of SIMD path
+    if self.is_emterpreter(): return self.skip('todo')
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
 
     test_path = path_from_root('tests', 'core', 'test_simd4')
@@ -5228,6 +5231,7 @@ def process(filename):
 
     # Main
     for outlining in [0, 5000]:
+      if outlining and self.is_emterpreter(): continue
       Settings.OUTLINING_LIMIT = outlining
       print >> sys.stderr, 'outlining:', outlining
       self.do_run(open(path_from_root('tests', 'freetype', 'main.c'), 'r').read(),
