@@ -244,12 +244,12 @@ def make_emterpreter(t):
       ret = name
       if function_pointer_call:
         ret += '[' + get_access('HEAP8[pc+4>>0]') + ' & %d]' % (next_power_of_two(asm.tables[name].count(',')+1)-1)
-      ret += '(' + ', '.join([get_coerced_access('HEAP8[pc+%d>>0]' % (i+4+(1 if function_pointer_call else 0)), s=sig[i+1]) for i in range(len(sig)-1)]) + ')'
+      ret += '(' + ', '.join([get_coerced_access('HEAP8[pc+%d>>0]' % (i+4+int(function_pointer_call)), s=sig[i+1]) for i in range(len(sig)-1)]) + ')'
       if sig[0] != 'v':
         ret = get_access('lx', sig[0]) + ' = ' + shared.JS.make_coercion(ret, sig[0])
       elif name in actual_return_types and actual_return_types[name] != 'v':
         ret = shared.JS.make_coercion(ret, actual_return_types[name]) # return value ignored, but need a coercion
-      extra = len(sig) - 1 # [opcode, lx, target, sig], take the usual 4. params are extra
+      extra = len(sig) - 1 + int(function_pointer_call) # [opcode, lx, target, sig], take the usual 4. params are extra
       if extra > 0:
         ret += '; pc = pc + %d | 0' % (4*((extra+3)>>2))
       return '     ' + ret + '; break;'
