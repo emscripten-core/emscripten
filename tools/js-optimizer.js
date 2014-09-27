@@ -6409,16 +6409,22 @@ function emterpretify(ast) {
       var data = {};
       var cases = node[2];
       var minn = Infinity, maxx = -Infinity;
+      function getId(raw) {
+        if (raw === null) return 'default';
+        else if (raw[0] === 'num') return raw[1];
+        else if (raw[0] === 'unary-prefix' && raw[2][0] === 'num') return -raw[2][1];
+        else throw 'bad case';
+      }
       for (var i = 0; i < cases.length; i++) {
         var c = cases[i];
-        var id;
-        if (c[0] === null) id = 'default';
-        else if (c[0][0] === 'num') id = c[0][1];
-        else if (c[0][0] === 'unary-prefix' && c[0][2][0] === 'num') id = -c[0][2][1];
-        else throw 'bad case';
+        var id = getId(c[0]);
         data[id] = {
+          i: i, // original index
+          id: id,
           code: walkStatements(c[1]),
-          absolute: absoluteId++
+          absolute: absoluteId++,
+          marker: markerId++,
+          next: -1 // will be the fall through target
         };
         if (typeof id === 'number') {
           minn = Math.min(id, minn);
@@ -6429,9 +6435,27 @@ function emterpretify(ast) {
       if (label) {
         delete breakLabels[label];
       }
+      // finalize nexts
+      for (var id in data) {
+        var info = data[id];
+        var i = info.i + 1;
+        while (1) {
+          if (i >= cases.length) {
+            info.next = exit;
+            break;
+          }
+          var nextId = getId(cases[i][0]);
+          assert(nextId in data);
+          info.next = data[nextId].marker;
+          break;
+          // TODO: optimize all this, we don't need a fallthrough branch if we branch anyhow; recurse multiple fallthroughs; etc.
+        }
+      }
+      // calculate values
       var range = maxx - minn + 1;
       assert(minn === (minn | 0) && range === (range | 0));
       var defaultAbsolute = data['default'] ? data['default'].absolute : absoluteId++;
+      var defaultMarker = data['default'] ? data['default'].marker : markerId++;
       // emit the switch instruction itself
       var tempMin = getFree(), tempRange = getFree();
       var ret = condition[1].concat(makeNum(minn, ASM_INT, tempMin)[1]).concat(makeNum(range, ASM_INT, tempRange)[1]);
@@ -6442,14 +6466,16 @@ function emterpretify(ast) {
       // emit the jump table
       for (var i = 0; i < range; i++) {
         var j = minn + i;
-        if (data[j]) {
-          ret.push('absolute-value', data[j].absolute, 0, 0);
+        var info = data[j];
+        if (info) {
+          ret.push('absolute-value', info.absolute, 0, 0);
         } else {
           ret.push('absolute-value', defaultAbsolute, 0, 0);
         }
       }
       // emit the default TODO: optimize when there is no default
       ret.push('absolute-target', defaultAbsolute, 0, 0);
+      ret.push('marker', defaultMarker, 0, 0);
       if (data['default']) {
         ret = ret.concat(data['default'].code);
       }
@@ -6457,9 +6483,12 @@ function emterpretify(ast) {
       // emit the jump table targets
       for (var i = 0; i < range; i++) {
         var j = minn + i;
-        if (data[j]) {
-          ret.push('absolute-target', data[j].absolute, 0, 0);
-          ret = ret.concat(data[j].code);
+        var info = data[j];
+        if (info) {
+          ret.push('absolute-target', info.absolute, 0, 0);
+          ret.push('marker', info.marker, 0, 0);
+          ret = ret.concat(info.code);
+          ret.push('BR', 0, info.next, 0);
         }
       }
       ret.push('marker', exit, 0, 0);
@@ -6543,8 +6572,9 @@ function emterpretify(ast) {
       // second pass, finalize jumps TODO: optimize jump->jump->x to jump->x
       for (var i = 0; i < code.length; i += 4) {
         if (code[i] in BRANCHES) {
-          var target = markers[code[i+2]];
-          assert(target !== undefined);
+          var id = code[i+2];
+          var target = markers[id];
+          assert(target !== undefined, id);
           var offset = target - i;
           assert(offset % 4 === 0);
           offset >>= 2;
