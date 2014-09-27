@@ -10,6 +10,9 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def is_emscripten_abi(self):
     return not ('i386-pc-linux-gnu' in COMPILER_OPTS or self.env.get('EMCC_LLVM_TARGET') == 'i386-pc-linux-gnu')
 
+  def is_emterpreter(self):
+    return 'EMTERPRETIFY=1' in self.emcc_args
+
   def test_hello_world(self):
       test_path = path_from_root('tests', 'core', 'test_hello_world')
       src, output = (test_path + s for s in ('.in', '.out'))
@@ -17,7 +20,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run_from_file(src, output)
 
       src = open(self.in_dir('src.cpp.o.js')).read()
-      if self.run_name != 'asm3i':
+      if not self.is_emterpreter():
         assert 'EMSCRIPTEN_GENERATED_FUNCTIONS' not in src, 'must not emit this unneeded internal thing'
       else:
         assert 'function emterpret(' in src
@@ -470,8 +473,9 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_float32_precise(self):
-    Settings.PRECISE_F32 = 1
+    if self.is_emterpreter(): return self.skip('todo')
 
+    Settings.PRECISE_F32 = 1
     test_path = path_from_root('tests', 'core', 'test_float32_precise')
     src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -4957,6 +4961,7 @@ int main(void) {
       for precision in [0, 1, 2]:
         Settings.PRECISE_F32 = precision
         for t in ['float', 'double']:
+          if self.is_emterpreter() and precision > 0: continue
           print precision, t
           src = open(path_from_root('tests', 'fasta.cpp'), 'r').read().replace('double', t)
           for i, j in results:
@@ -6949,7 +6954,7 @@ def process(filename):
   def test_asyncify(self):
     if not Settings.ASM_JS: return self.skip('asyncify requires asm.js')
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('asyncify requires fastcomp')
-    if 'EMTERPRETIFY=1' in self.emcc_args: return self.skip('todo')
+    if self.is_emterpreter(): return self.skip('todo')
 
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
 
@@ -6975,7 +6980,7 @@ int main() {
   def test_coroutine(self):
     if not Settings.ASM_JS: return self.skip('asyncify requires asm.js')
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('asyncify requires fastcomp')
-    if 'EMTERPRETIFY=1' in self.emcc_args: return self.skip('todo')
+    if self.is_emterpreter(): return self.skip('todo')
 
     src = r'''
 #include <stdio.h>
