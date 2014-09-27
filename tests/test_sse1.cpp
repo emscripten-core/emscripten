@@ -9,6 +9,11 @@
 #include <inttypes.h>
 #include <stdlib.h>
 
+// If defined, tests the section of the SSE1 api that interfaces with the MMX instruction set.
+#ifndef __EMSCRIPTEN__
+#define TEST_M64
+#endif
+
 // Use custom assert macro so that this test is independent to #define NDEBUG and similar.
 #define Assert(X) do { if (!(X)) { fprintf(stderr, "Condition '" #X "' failed!\n"); exit(1); } } while(0)
 
@@ -30,6 +35,7 @@ bool __attribute__((noinline)) aeq(__m128 m, float v3, float v2, float v1, float
 	return eq;
 }
 
+#ifdef TEST_M64
 bool __attribute__((noinline)) aeq64(__m64 m, uint64_t u, bool abortOnFailure = true)
 {
 	union { __m64 m; uint64_t u; } c; c.m = m;
@@ -41,6 +47,8 @@ bool __attribute__((noinline)) aeq64(__m64 m, uint64_t u, bool abortOnFailure = 
 	}
 	return eq;
 }
+#endif
+
 // Tests if m == [v3, v2, v1, v0] but where vx are integers.
 bool __attribute__((noinline)) aeqi(__m128 m, uint32_t v3, uint32_t v2, uint32_t v1, uint32_t v0, bool abortOnFailure = true)
 {
@@ -59,8 +67,10 @@ bool __attribute__((noinline)) aeqi(__m128 m, uint32_t v3, uint32_t v2, uint32_t
 uint32_t fcastu(float f) { return *(uint32_t*)&f; }
 float ucastf(uint32_t t) { return *(float*)&t; }
 
+#ifdef TEST_M64
 // uint64_t -> __m64. (This is identical to _m_from_int64, but don't want to include mmintrin.h since this is strictly a SSE1 test suite)
 __m64 u64castm64(uint64_t x) { union { __m64 m; uint64_t u; } c; c.u = x; return c.m; }
+#endif
 
 // Data used in test. Store them global and access via a getter to confuse optimizer to not "solve" the whole test suite at compile-time,
 // so that the operation will actually be performed at runtime, and not at compile-time. (Testing the capacity of the compiler to perform
@@ -106,8 +116,10 @@ __attribute__((noinline)) __m128 get_i1() { return always_true() ? _mm_set_ps(uc
 __attribute__((noinline)) __m128 get_i2() { return always_true() ? _mm_set_ps(ucastf(0xBBAA9988), ucastf(0xFFEEDDCC), ucastf(0xF02468BD), ucastf(0x13579ACE)) : __m128(); }
 __attribute__((noinline)) __m128 get_nan1() { return always_true() ? nan1_ : __m128(); }
 __attribute__((noinline)) __m128 get_nan2() { return always_true() ? nan2_ : __m128(); }
+#ifdef TEST_M64
 __attribute__((noinline)) __m64 get_m1() { return always_true() ? u64castm64(0x00FF800110F0377FULL) : __m64(); }
 __attribute__((noinline)) __m64 get_m2() { return always_true() ? u64castm64(0xFEDCBA9876543210ULL) : __m64(); }
+#endif
 
 int main()
 {
@@ -126,7 +138,9 @@ int main()
 
 	// Test that aeq itself works and does not trivially return true on everything.
 	Assert(aeq(_mm_load_ps(arr), 4.f, 3.f, 2.f, 0.f, false) == false);
+#ifdef TEST_M64
 	Assert(aeq64(u64castm64(0x22446688AACCEEFFULL), 0xABABABABABABABABULL, false) == false);
+#endif
 
 	// SSE1 Load instructions:	
 	aeq(_mm_load_ps(arr), 4.f, 3.f, 2.f, 1.f); // 4-wide load from aligned address.
@@ -152,8 +166,10 @@ int main()
 	aeq(_mm_movelh_ps(a, b), 3.f, 4.f, 4.f, 2.f); // Copy two lowest elements from a, and take two lowest from b and place them to the two highest in output.
 
 	// SSE1 Store instructions:
+#ifdef TEST_M64
 	/*M64*/*(uint64_t*)uarr = 0xCDCDCDCDCDCDCDCDULL; _mm_maskmove_si64(u64castm64(0x00EEDDCCBBAA9988ULL), u64castm64(0x0080FF7F01FEFF40ULL), (char*)uarr); Assert(*(uint64_t*)uarr == 0xCDEEDDCDCDAA99CDULL); // _mm_maskmove_si64: Conditionally store bytes of a 64-bit value.
 	/*M64*/*(uint64_t*)uarr = 0xABABABABABABABABULL;       _m_maskmovq(u64castm64(0x00EEDDCCBBAA9988ULL), u64castm64(0x0080FF7F01FEFF40ULL), (char*)uarr); Assert(*(uint64_t*)uarr == 0xABEEDDABABAA99ABULL); // _m_maskmovq is an alias to _mm_maskmove_si64.
+#endif
 	_mm_store_ps(arr2, a); aeq(_mm_load_ps(arr2), 8.f, 6.f, 4.f, 2.f); // _mm_store_ps: 4-wide store to aligned memory address.
 	_mm_store_ps1(arr2, a); aeq(_mm_load_ps(arr2), 2.f, 2.f, 2.f, 2.f); // _mm_store_ps1: Store lowest scalar to aligned address, duplicating the element 4 times. 
 	_mm_storeu_ps(uarr2, _mm_set1_ps(100.f)); _mm_store_ss(uarr2, b); aeq(_mm_loadu_ps(uarr2), 100.f, 100.f, 100.f, 4.f); // _mm_store_ss: Store lowest scalar to unaligned address. Don't adjust higher addresses in memory.
@@ -162,7 +178,9 @@ int main()
 	_mm_storeu_ps(uarr2, _mm_set1_ps(100.f)); _mm_storel_pi((__m64*)uarr2, a); aeq(_mm_loadu_ps(uarr2), 100.f, 100.f, 4.f, 2.f); // _mm_storel_pi: Store two lowest elements to memory.
 	_mm_storer_ps(arr2, a); aeq(_mm_load_ps(arr2), 2.f, 4.f, 6.f, 8.f); // _mm_storer_ps: 4-wide store to aligned memory address, but reverse the elements on output.
 	_mm_storeu_ps(uarr2, a); aeq(_mm_loadu_ps(uarr2), 8.f, 6.f, 4.f, 2.f); // _mm_storeu_ps: 4-wide store to unaligned memory address.
+#ifdef TEST_M64
 	/*M64*/_mm_stream_pi((__m64*)uarr, u64castm64(0x0080FF7F01FEFF40ULL)); Assert(*(uint64_t*)uarr == 0x0080FF7F01FEFF40ULL); // _mm_stream_pi: 2-wide store, but with a non-temporal memory cache hint.
+#endif
 	_mm_store_ps(arr2, _mm_set1_ps(100.f)); _mm_stream_ps(arr2, a); aeq(_mm_load_ps(arr2), 8.f, 6.f, 4.f, 2.f); // _mm_stream_ps: 4-wide store, but with a non-temporal memory cache hint.
 
 	// SSE1 Arithmetic instructions:
@@ -172,12 +190,14 @@ int main()
 	aeq(_mm_div_ss(a, _mm_set_ps(2.f, 3.f, 8.f, 8.f)), 8.f, 6.f, 4.f, 0.25f); // Div lowest element, preserve three highest unchanged from a.
 	aeq(_mm_mul_ps(a, b), 8.f, 12.f, 12.f, 8.f); // 4-wide mul.
 	aeq(_mm_mul_ss(a, b), 8.f, 6.f, 4.f, 8.f); // Mul lowest element, preserve three highest unchanged from a.
+#ifdef TEST_M64
 	__m64 m1 = get_m1();
 	/*M64*/aeq64(_mm_mulhi_pu16(m1, u64castm64(0x22446688AACCEEFFULL)), 0x002233440B4C33CFULL); // Multiply u16 channels, and store high parts.
 	/*M64*/aeq64(    _m_pmulhuw(m1, u64castm64(0x22446688AACCEEFFULL)), 0x002233440B4C33CFULL); // _m_pmulhuw is an alias to _mm_mulhi_pu16.
 	__m64 m2 = get_m2();
 	/*M64*/aeq64(_mm_sad_pu8(m1, m2), 0x368ULL); // Compute abs. differences of u8 channels, and sum those up to a single 16-bit scalar.
 	/*M64*/aeq64(  _m_psadbw(m1, m2), 0x368ULL); // _m_psadbw is an alias to _mm_sad_pu8.
+#endif
 	aeq(_mm_sub_ps(a, b), 7.f, 4.f, 1.f, -2.f); // 4-wide sub.
 	aeq(_mm_sub_ss(a, b), 8.f, 6.f, 4.f, -2.f); // Sub lowest element, preserve three highest unchanged from a.
 
@@ -250,12 +270,15 @@ int main()
 	__m128 c = get_c(); // [1.5, 2.5, 3.5, 4.5]
 	__m128 e = get_e(); // [INF, -INF, 2.5, 3.5]
 	__m128 f = get_f(); // [-1.5, 1.5, -2.5, -9223372036854775808]
+#ifdef TEST_M64
 	/*M64*/aeq(_mm_cvt_pi2ps(a, m2), 8.f, 6.f, -19088744.f, 1985229312.f); // 2-way int32 to float conversion to two lowest channels of m128.
 	/*M64*/aeq64(_mm_cvt_ps2pi(c), 0x400000004ULL); // 2-way two lowest floats from m128 to integer, return as m64.
+#endif
 	aeq(_mm_cvtsi32_ss(c, -16777215), 1.5f, 2.5f, 3.5f, -16777215.f); // Convert int to float, store in lowest channel of m128.
 	aeq( _mm_cvt_si2ss(c, -16777215), 1.5f, 2.5f, 3.5f, -16777215.f); // _mm_cvt_si2ss is an alias to _mm_cvtsi32_ss.
 	Assert(_mm_cvtss_si32(c) == 4); Assert(_mm_cvtss_si32(e) == 4); // Convert lowest channel of m128 from float to int.
 	Assert( _mm_cvt_ss2si(c) == 4); Assert( _mm_cvt_ss2si(e) == 4); // _mm_cvt_ss2si is an alias to _mm_cvtss_si32.
+#ifdef TEST_M64
 	/*M64*/aeq(_mm_cvtpi16_ps(m1), 255.f , -32767.f, 4336.f, 14207.f); // 4-way convert int16s to floats, return in a m128.
 	/*M64*/aeq(_mm_cvtpi32_ps(a, m1), 8.f, 6.f, 16744449.f, 284178304.f); // 2-way convert int32s to floats, return in two lowest channels of m128, pass two highest unchanged.
 	/*M64*/aeq(_mm_cvtpi32x2_ps(m1, m2), -19088744.f, 1985229312.f, 16744449.f, 284178304.f); // 4-way convert int32s from two different m64s to float.
@@ -265,15 +288,21 @@ int main()
 	/*M64*/aeq64(_mm_cvtps_pi8(c),  0x0000000002020404ULL); // 4-way convert floats to int8s in a m64, zero higher half of the returned m64.
 	/*M64*/aeq(_mm_cvtpu16_ps(m1), 255.f , 32769.f, 4336.f, 14207.f); // 4-way convert uint16s to floats, return in a m128.
 	/*M64*/aeq(_mm_cvtpu8_ps(m1), 16.f, 240.f, 55.f, 127.f); // 4-way convert uint8s from lowest end of m64 to float in a m128.
+#endif
 	aeq(_mm_cvtsi64_ss(c, -9223372036854775808ULL), 1.5f, 2.5f, 3.5f, -9223372036854775808.f); // Convert single int64 to float, store in lowest channel of m128, and pass three higher channel unchanged.
 	Assert(_mm_cvtss_f32(c) == 4.5f); // Extract lowest channel of m128 to a plain old float.
 	Assert(_mm_cvtss_si64(f) == -9223372036854775808ULL); // Convert lowest channel of m128 from float to int64.
+#ifdef TEST_M64
 	/*M64*/aeq64(_mm_cvtt_ps2pi(e), 0x0000000200000003ULL); aeq64(_mm_cvtt_ps2pi(f), 0xfffffffe80000000ULL); // Truncating conversion from two lowest floats of m128 to int32s, return in a m64.
+#endif
 	Assert(_mm_cvttss_si32(e) == 3); // Truncating conversion from the lowest float of a m128 to int32.
 	Assert( _mm_cvtt_ss2si(e) == 3); // _mm_cvtt_ss2si is an alias to _mm_cvttss_si32.
+#ifdef TEST_M64
 	/*M64*/aeq64(_mm_cvttps_pi32(c), 0x0000000300000004ULL); // Truncating conversion from two lowest floats of m128 to m64.
+#endif
 	Assert(_mm_cvttss_si64(f) == -9223372036854775808ULL); // Truncating conversion from lowest channel of m128 from float to int64.
 
+#ifndef __EMSCRIPTEN__
 	// SSE1 General support:
 	unsigned int mask = _MM_GET_EXCEPTION_MASK();
 	_MM_SET_EXCEPTION_MASK(mask);
@@ -289,13 +318,17 @@ int main()
 	_mm_prefetch(dummyData, _MM_HINT_T2);
 	_mm_prefetch(dummyData, _MM_HINT_NTA);
 	_mm_sfence();
+#endif
 
 	// SSE1 Misc instructions:
+#ifdef TEST_M64
 	/*M64*/Assert(_mm_movemask_pi8(m1) == 100); // Return int with eight lowest bits set depending on the highest bits of the 8 uint8 input channels of the m64.
 	/*M64*/Assert(     _m_pmovmskb(m1) == 100); // _m_pmovmskb is an alias to _mm_movemask_pi8.
+#endif
 	Assert(_mm_movemask_ps(_mm_set_ps(-1.f, 0.f, 1.f, NAN)) == 8); Assert(_mm_movemask_ps(_mm_set_ps(-INFINITY, -0.f, INFINITY, -INFINITY)) == 13); // Return int with four lowest bits set depending on the highest bits of the 4 m128 input channels.
 
 	// SSE1 Probability/Statistics instructions:
+#ifdef TEST_M64
 	/*M64*/aeq64(_mm_avg_pu16(m1, m2), 0x7FEE9D4D43A234C8ULL); // 4-way average uint16s.
 	/*M64*/aeq64(    _m_pavgw(m1, m2), 0x7FEE9D4D43A234C8ULL); // _m_pavgw is an alias to _mm_avg_pu16.
 	/*M64*/aeq64(_mm_avg_pu8(m1, m2),  0x7FEE9D4D43A23548ULL); // 8-way average uint8s.
@@ -310,6 +343,7 @@ int main()
 	/*M64*/aeq64(   _m_pminsw(m1, m2), 0xFEDC800110F03210ULL); // is an alias to _mm_min_pi16.
 	/*M64*/aeq64(_mm_min_pu8(m1, m2), 0xDC800110543210ULL); // 4-way average uint16s.
 	/*M64*/aeq64(  _m_pminub(m1, m2), 0xDC800110543210ULL); // is an alias to _mm_min_pu8.
+#endif
 	// a = [8, 6, 4, 2], b = [1, 2, 3, 4]
 	aeq(_mm_max_ps(a, b), 8.f, 6.f, 4.f, 4.f); // 4-wide max.
 	aeq(_mm_max_ss(a, _mm_set1_ps(100.f)), 8.f, 6.f, 4.f, 100.f); // Scalar max, pass three highest unchanged.
@@ -317,12 +351,14 @@ int main()
 	aeq(_mm_min_ss(a, _mm_set1_ps(-100.f)), 8.f, 6.f, 4.f, -100.f); // Scalar min, pass three highest unchanged.
 
 	// SSE1 Swizzle instructions:
+#ifdef TEST_M64
 	/*M64*/Assert(_mm_extract_pi16(m1, 1) == 4336); // Extract the given int16 channel from a m64.
 	/*M64*/Assert(       _m_pextrw(m1, 1) == 4336); // _m_pextrw is an alias to _mm_extract_pi16.
 	/*M64*/aeq64(_mm_insert_pi16(m1, 0xABCD, 1), 0xFF8001ABCD377FULL); // Insert a int16 to a specific channel of a m64.
 	/*M64*/aeq64(      _m_pinsrw(m1, 0xABCD, 1), 0xFF8001ABCD377FULL); // _m_pinsrw is an alias to _mm_insert_pi16.
 	/*M64*/aeq64(_mm_shuffle_pi16(m1, _MM_SHUFFLE(1, 0, 3, 2)), 0x10F0377F00FF8001ULL); // Shuffle int16s around in the 4 channels of the m64.
 	/*M64*/aeq64(       _m_pshufw(m1, _MM_SHUFFLE(1, 0, 3, 2)), 0x10F0377F00FF8001ULL); // _m_pshufw is an alias to _mm_shuffle_pi16.
+#endif
 	aeq(_mm_shuffle_ps(a, b, _MM_SHUFFLE(1, 0, 3, 2)), 3.f, 4.f, 8.f, 6.f);
 	aeq(_mm_unpackhi_ps(a, b), 1.f , 8.f, 2.f, 6.f);
 	aeq(_mm_unpacklo_ps(a, b), 3.f , 4.f, 4.f, 2.f);
