@@ -5804,7 +5804,7 @@ function emterpretify(ast) {
       return l >= numLocals;
     }
 
-    var markerId = 0;
+    var relativeId = 0;
     var absoluteId = 0;
     var absoluteTargets = {};
 
@@ -6083,26 +6083,26 @@ function emterpretify(ast) {
           return [-1, ['BR', 0, continueLabels[label], 0]];
         }
         case 'if': {
-          var exit = markerId++;
+          var exit = relativeId++;
           var condition = getReg(node[1]);
           var ret;
           if (!node[3]) {
             condition[1].push('BRF', releaseIfFree(condition[0]), exit, 0);
             ret = condition[1].concat(walkStatements(node[2]));
           } else {
-            var otherwise = markerId++;
+            var otherwise = relativeId++;
             condition[1].push('BRF', releaseIfFree(condition[0]), otherwise, 0);
             ret = condition[1].concat(walkStatements(node[2]));
-            ret.push('BR', 0, exit, 0, 'marker', otherwise, 0, 0);
+            ret.push('BR', 0, exit, 0, 'relative', otherwise, 0, 0);
             ret = ret.concat(walkStatements(node[3]));
           }
-          ret.push('marker', exit, 0, 0);
+          ret.push('relative', exit, 0, 0);
           return [-1, ret];
         }
         case 'conditional': {
           // TODO: optimize
           // TODO: handle dropIt
-          var otherwise = markerId++, exit = markerId++;
+          var otherwise = relativeId++, exit = relativeId++;
           var temp = getFree();
           var condition = getReg(node[1]);
           var ret = condition[1];
@@ -6113,9 +6113,9 @@ function emterpretify(ast) {
           ret = ret.concat(first[1]).concat(makeSet(temp, releaseIfFree(first[0]), type)); 
           ret.push('BR', 0, exit, 0);
           var second = getReg(node[3]);
-          ret.push('marker', otherwise, 0, 0);
+          ret.push('relative', otherwise, 0, 0);
           ret = ret.concat(second[1]).concat(makeSet(temp, releaseIfFree(second[0]), type));
-          ret.push('marker', exit, 0, 0);
+          ret.push('relative', exit, 0, 0);
           return [temp, ret];
         }
         case 'seq': {
@@ -6316,11 +6316,11 @@ function emterpretify(ast) {
     function makeDo(node, label) {
       var oneTime = node[1][0] === 'num' && node[1][1] === 0; // trivial one-time loops do {..} while(0) do not need condition handling
       // TODO: more testing assert(!oneTime);
-      var exit = markerId++;
+      var exit = relativeId++;
       var top, cond;
       if (!oneTime) {
-        top = markerId++;
-        cond = markerId++;
+        top = relativeId++;
+        cond = relativeId++;
       } else {
         top = -1; // no need to even mark the top
         cond = exit; // when we reach the condition, we just exit
@@ -6346,25 +6346,25 @@ function emterpretify(ast) {
       }
       var ret = [];
       if (!oneTime) {
-        ret.push('marker', top, 0, 0);
+        ret.push('relative', top, 0, 0);
       }
       ret = ret.concat(body);
       if (!oneTime) {
-        ret.push('marker', cond, 0, 0);
+        ret.push('relative', cond, 0, 0);
         ret = ret.concat(condition[1]);
         ret.push('BRT', releaseIfFree(condition[0]), top, 0);
       }
-      ret.push('marker', exit, 0, 0);
+      ret.push('relative', exit, 0, 0);
       return [-1, ret];
     }
 
     function makeWhile(node, label) {
       var infinite = node[1][0] === 'num' && node[1][1] === 1; // trivial infinite loops while(1) {..} do not need condition handling
-      var top = markerId++, exit = markerId++;
+      var top = relativeId++, exit = relativeId++;
       var condition, cond;
       if (!infinite) {
         condition = getReg(node[1]);
-        cond = markerId++;
+        cond = relativeId++;
       } else {
         condition = [-1, []];
         cond = top; // when we reach the condition, we just go right to the top of the loop body
@@ -6379,11 +6379,11 @@ function emterpretify(ast) {
       }
       var ret = [];
       if (!infinite) {
-        ret.push('marker', cond, 0, 0);
+        ret.push('relative', cond, 0, 0);
         ret = ret.concat(condition[1]);
         ret.push('BRF', releaseIfFree(condition[0]), exit, 0);
       }
-      ret = ret.concat(['marker', top, 0, 0]).concat(walkStatements(node[2]));
+      ret = ret.concat(['relative', top, 0, 0]).concat(walkStatements(node[2]));
       ret.push('BR', 0, cond, 0);
       breakStack.pop();
       continueStack.pop();
@@ -6391,13 +6391,13 @@ function emterpretify(ast) {
         delete breakLabels[label];
         delete continueLabels[label];
       }
-      ret.push('marker', exit, 0, 0);
+      ret.push('relative', exit, 0, 0);
       return [-1, ret];
     }
 
     function makeSwitch(node, label) {
       var condition = getReg(node[1]);
-      var exit = markerId++;
+      var exit = relativeId++;
       // parse cases and emit code
       breakStack.push(exit);
       if (label) {
@@ -6422,7 +6422,7 @@ function emterpretify(ast) {
           id: id,
           code: walkStatements(c[1]),
           absolute: absoluteId++,
-          marker: markerId++,
+          relative: relativeId++,
           next: -1 // will be the fall through target
         };
         if (typeof id === 'number') {
@@ -6445,7 +6445,7 @@ function emterpretify(ast) {
           }
           var nextId = getId(cases[i][0]);
           assert(nextId in data);
-          info.next = data[nextId].marker;
+          info.next = data[nextId].relative;
           break;
           // TODO: optimize all this, we don't need a fallthrough branch if we branch anyhow; recurse multiple fallthroughs; etc.
         }
@@ -6454,7 +6454,7 @@ function emterpretify(ast) {
       var range = maxx - minn + 1;
       assert(minn === (minn | 0) && range === (range | 0));
       var defaultAbsolute = data['default'] ? data['default'].absolute : absoluteId++;
-      var defaultMarker = data['default'] ? data['default'].marker : markerId++;
+      var defaultrelative = data['default'] ? data['default'].relative : relativeId++;
       // emit the switch instruction itself
       var tempMin = getFree(), tempRange = getFree();
       var ret = condition[1].concat(makeNum(minn, ASM_INT, tempMin)[1]).concat(makeNum(range, ASM_INT, tempRange)[1]);
@@ -6474,7 +6474,7 @@ function emterpretify(ast) {
       }
       // emit the default TODO: optimize when there is no default
       ret.push('absolute-target', defaultAbsolute, 0, 0);
-      ret.push('marker', defaultMarker, 0, 0);
+      ret.push('relative', defaultrelative, 0, 0);
       if (data['default']) {
         ret = ret.concat(data['default'].code);
       }
@@ -6485,12 +6485,12 @@ function emterpretify(ast) {
         var info = data[j];
         if (info) {
           ret.push('absolute-target', info.absolute, 0, 0);
-          ret.push('marker', info.marker, 0, 0);
+          ret.push('relative', info.relative, 0, 0);
           ret = ret.concat(info.code);
           ret.push('BR', 0, info.next, 0);
         }
       }
-      ret.push('marker', exit, 0, 0);
+      ret.push('relative', exit, 0, 0);
       return [-1, ret];
     }
 
@@ -6555,11 +6555,11 @@ function emterpretify(ast) {
 
     function finalizeJumps(code) {
       assert(code.length / 4 < 32768); // our jumps are 16-bit offsets
-      // first pass, finalize markers. after this, every instruction is in its absolute location
-      var markers = {};
+      // first pass, finalize relatives. after this, every instruction is in its absolute location
+      var relatives = {};
       for (var i = 0; i < code.length; i += 4) {
-        if (code[i] === 'marker') {
-          markers[code[i+1]] = i;
+        if (code[i] === 'relative') {
+          relatives[code[i+1]] = i;
           code.splice(i, 4);
           i -= 4;
         } else if (code[i] === 'absolute-target') {
@@ -6572,7 +6572,7 @@ function emterpretify(ast) {
       for (var i = 0; i < code.length; i += 4) {
         if (code[i] in BRANCHES) {
           var id = code[i+2];
-          var target = markers[id];
+          var target = relatives[id];
           assert(target !== undefined, id);
           var offset = target - i;
           assert(offset % 4 === 0);
