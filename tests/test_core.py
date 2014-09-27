@@ -2165,10 +2165,11 @@ def process(filename):
       self.do_run_from_file(src, output)
 
   def test_inlinejs3(self):
-      test_path = path_from_root('tests', 'core', 'test_inlinejs3')
-      src, output = (test_path + s for s in ('.in', '.out'))
+    if self.is_emterpreter(): return self.skip('debugger keyword is meaningless in emterpreter')
+    test_path = path_from_root('tests', 'core', 'test_inlinejs3')
+    src, output = (test_path + s for s in ('.in', '.out'))
 
-      self.do_run_from_file(src, output)
+    self.do_run_from_file(src, output)
 
   def test_memorygrowth(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('memory growth is only supported with typed arrays mode 2')
