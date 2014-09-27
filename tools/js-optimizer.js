@@ -6418,6 +6418,7 @@ function emterpretify(ast) {
       for (var i = 0; i < cases.length; i++) {
         var c = cases[i];
         var id = getId(c[0]);
+        if (id === 'default') assert(i === cases.length-1, 'if there is a default, it must be last');
         data[id] = {
           i: i, // original index
           id: id,
