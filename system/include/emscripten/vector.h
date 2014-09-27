@@ -7,6 +7,7 @@ extern "C" {
 
 // Support for the JS SIMD API proposal, https://github.com/johnmccutchan/ecmascript_simd
 
+typedef float float32x2 __attribute__((__vector_size__(8), __may_alias__));
 typedef float float32x4 __attribute__((__vector_size__(16), __may_alias__));
 typedef unsigned int int32x4 __attribute__((__vector_size__(16), __may_alias__));
 
