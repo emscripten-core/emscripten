@@ -293,10 +293,10 @@ function emterpret%s%s(pc) {
  var sp = 0, inst = 0, lx = 0, ly = 0, lz = 0;
  sp = EMTSTACKTOP;
  assert(((HEAPU8[pc>>0]>>>0) == %d)|0);
- lx = HEAP8[pc + 1 >> 0] | 0; // num locals
+ lx = HEAPU8[pc + 1 >> 0] | 0; // num locals
  EMTSTACKTOP = EMTSTACKTOP + (lx << 3) | 0;
  assert(((EMTSTACKTOP|0) <= (EMT_STACK_MAX|0))|0);
- ly = HEAP8[pc + 2 >> 0] | 0;
+ ly = HEAPU8[pc + 2 >> 0] | 0;
  while ((ly | 0) < (lx | 0)) { // clear the non-param locals
   HEAPF64[sp + (ly << 3) >> 3] = +0;
   ly = ly + 1 | 0;
