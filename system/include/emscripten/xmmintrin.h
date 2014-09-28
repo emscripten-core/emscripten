@@ -137,6 +137,7 @@ _mm_store_ss(float *__p, __m128 __a)
 static __inline__ void __attribute__((__always_inline__))
 _mm_storeu_ps(float *__p, __m128 __a)
 {
+  // JS-SIMD does not currently require 16-byte alignment.
   *(__m128 *)__p = __a;
 }
 
