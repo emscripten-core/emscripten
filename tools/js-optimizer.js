@@ -5807,6 +5807,9 @@ function emterpretify(ast) {
     function isFree(l) {
       return l >= numLocals;
     }
+    function getFreeOrAssignTo(assignTo) {
+      return assignTo >= 0 ? assignTo : getFree();
+    }
 
     var relativeId = 0;
     var absoluteId = 0;
@@ -5923,10 +5926,10 @@ function emterpretify(ast) {
         case 'binary': {
           if (node[1] === '|' && node[3][0] === 'num' && node[3][1] === 0) {
             // signed-coerced operation
-            return getReg(node[2], dropIt, ASM_INT, ASM_SIGNED);
+            return getReg(node[2], dropIt, ASM_INT, ASM_SIGNED, assignTo);
           } else if (node[1] === '>>>' && node[3][0] === 'num' && node[3][1] === 0) {
             // unsigned-coerced operation
-            return getReg(node[2], dropIt, ASM_INT, ASM_UNSIGNED);
+            return getReg(node[2], dropIt, ASM_INT, ASM_UNSIGNED, assignTo);
           }
 
           // not a simple coercion
@@ -5967,21 +5970,21 @@ function emterpretify(ast) {
                 case 'call': case 'sub': {
                   // the coercion is part of the syntax of these
                   appliedCoercion = true;
-                  return getReg(inner, dropIt, ASM_DOUBLE, ASM_NONSIGNED);
+                  return getReg(inner, dropIt, ASM_DOUBLE, ASM_NONSIGNED, assignTo);
                 }
                 case 'num': {
                   appliedCoercion = true;
-                  return makeNum(inner[1], ASM_DOUBLE);
+                  return makeNum(inner[1], ASM_DOUBLE, assignTo);
                 }
                 case 'unary-prefix': {
                   if (inner[1] === '-' && inner[2][0] === 'num') {
                     appliedCoercion = true;
-                    return makeNum(-inner[2][1], ASM_DOUBLE);
+                    return makeNum(-inner[2][1], ASM_DOUBLE, assignTo);
                   }
                   // otherwise fall through
                 }
                 default: {
-                  return getReg(inner, dropIt, ASM_DOUBLE, ASM_NONSIGNED);
+                  return getReg(inner, dropIt, ASM_DOUBLE, ASM_NONSIGNED, assignTo);
                 }
               }
             })();
@@ -6038,7 +6041,7 @@ function emterpretify(ast) {
           } else {
             assert(typeHint !== ASM_NONE);
             type = typeHint;
-            ret = getFree();
+            ret = getFreeOrAssignTo(assignTo);
           }
           return [ret, makeCall(ret, node, type)];
         }
