@@ -249,8 +249,8 @@ def make_emterpreter(t):
 
       ret = name
       if function_pointer_call:
-        ret += '[' + get_access('HEAP8[pc+4>>0]') + ' & %d]' % (next_power_of_two(asm.tables[name].count(',')+1)-1)
-      ret += '(' + ', '.join([get_coerced_access('HEAP8[pc+%d>>0]' % (i+4+int(function_pointer_call)), s=sig[i+1]) for i in range(len(sig)-1)]) + ')'
+        ret += '[' + get_access('HEAPU8[pc+4>>0]') + ' & %d]' % (next_power_of_two(asm.tables[name].count(',')+1)-1)
+      ret += '(' + ', '.join([get_coerced_access('HEAPU8[pc+%d>>0]' % (i+4+int(function_pointer_call)), s=sig[i+1]) for i in range(len(sig)-1)]) + ')'
       if sig[0] != 'v':
         ret = get_access('lx', sig[0]) + ' = ' + shared.JS.make_coercion(ret, sig[0])
       elif name in actual_return_types and actual_return_types[name] != 'v':
@@ -301,6 +301,7 @@ function emterpret%s%s(pc) {
   HEAPF64[sp + (ly << 3) >> 3] = +0;
   ly = ly + 1 | 0;
  }
+ //print('enter func ' + [pc, HEAPU8[pc + 0],HEAPU8[pc + 1],HEAPU8[pc + 2],HEAPU8[pc + 3],HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]].join(', '));
  while (1) {
   //print('last lx (' + lx + '): ' + [HEAP32[sp + (lx << 3) >> 2]|0, +HEAPF64[sp + (lx << 3) >> 3]]);
   pc = pc + 4 | 0;
