@@ -6558,6 +6558,18 @@ function emterpretify(ast) {
     }
 
     function finalizeJumps(code) {
+      // pre pass, remove unreachable code
+      for (var i = 0; i < code.length; i += 4) {
+        if (code[i] === 'BR' || code[i] === 'BRA') {
+          var j = i + 4;
+          while (code[j] !== 'relative' && code[j] !== 'absolute-target') {
+            j += 4;
+          }
+          if (j > i + 4) {
+            code.splice(i + 4, j - i - 4);
+          }
+        }
+      }
       // first pass, collect and remove markers and absolute targets
       var relatives = {};
       var absolutes = {};
