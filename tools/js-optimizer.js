@@ -5878,7 +5878,7 @@ function emterpretify(ast) {
               reg[1] = reg[1].concat(makeSet(l, releaseIfFree(reg[0]), type));
               return [l, reg[1]];
             } else {
-              var reg = getReg(value);
+              var reg = getReg(value, undefined, undefined, undefined, assignTo);
               var opcode;
               switch(name) {
                 case 'STACKTOP': opcode = 'SETST'; break;
@@ -5954,7 +5954,7 @@ function emterpretify(ast) {
                   node[1] = node[1] === '>=' ? '<=' : '<';
                 }
               }
-              return makeBinary(node, type, sign);
+              return makeBinary(node, type, sign, assignTo);
             }
             default: throw 'ehh';
           }
@@ -6010,7 +6010,7 @@ function emterpretify(ast) {
             }
             return ret;
           } else if (node[1] === '~' && node[2][0] === 'unary-prefix' && node[2][1] === '~') {
-            return makeUnary(['unary-prefix', 'D2I', node[2][2]], ASM_INT, ASM_SIGNED);
+            return makeUnary(['unary-prefix', 'D2I', node[2][2]], ASM_INT, ASM_SIGNED, assignTo);
           }
 
           // not a simple coercion
@@ -6019,15 +6019,15 @@ function emterpretify(ast) {
           switch (node[1]) {
             case '-': {
               if (node[2][0] === 'num') {
-                return makeNum(-node[2][1], ASM_INT);
+                return makeNum(-node[2][1], ASM_INT, assignTo);
               }
               // otherwise fall through
             }
             case '~': {
               var type = detectType(node[2], asmData);
-              return makeUnary(node, type, ASM_SIGNED);
+              return makeUnary(node, type, ASM_SIGNED, assignTo);
             }
-            case '!': return makeUnary(node, ASM_INT, ASM_SIGNED);
+            case '!': return makeUnary(node, ASM_INT, ASM_SIGNED, assignTo);
             default: throw 'ehh';
           }
           throw 'todo';
@@ -6130,7 +6130,7 @@ function emterpretify(ast) {
         case 'seq': {
           var first = getReg(node[1], true); // first output is always dropped
           releaseIfFree(first[0]);
-          var second = getReg(node[2], dropIt); // second output might be dropped
+          var second = getReg(node[2], dropIt, undefined, undefined, assignTo); // second output might be dropped
           return [second[0], first[1].concat(second[1])];
         }
         case 'sub': {
@@ -6146,7 +6146,7 @@ function emterpretify(ast) {
             var bits = Math.pow(2, shifts)*8;
             assert(bits === temp.bits);
             var y = getReg(node[2][2], false, ASM_INT, ASM_SIGNED);
-            var x = getFree(y[0]);
+            var x = assignTo >= 0 ? assignTo : getFree(y[0]);
             y[1].push(opcode, x, releaseIfFree(y[0], x), 0);
             return [x, y[1]];
           } else {
@@ -6213,7 +6213,7 @@ function emterpretify(ast) {
       }
     }
 
-    function makeBinary(node, type, sign) {
+    function makeBinary(node, type, sign, assignTo) {
       var opcode;
       switch(node[1]) {
         case '+': {
@@ -6297,13 +6297,13 @@ function emterpretify(ast) {
       }
       var y = getReg(node[2], undefined, type, sign);
       var z = getReg(node[3], undefined, type, sign);
-      var x = getFree(y[0], z[0]);
+      var x = assignTo >= 0 ? assignTo : getFree(y[0], z[0]);
       y[1] = y[1].concat(z[1]);
       y[1].push(opcode, x, releaseIfFree(y[0], x), releaseIfFree(z[0], x));
       return [x, y[1]];
     }
 
-    function makeUnary(node, type, sign) {
+    function makeUnary(node, type, sign, assignTo) {
       var opcode;
       switch(node[1]) {
         case '-': {
@@ -6318,7 +6318,7 @@ function emterpretify(ast) {
         default: throw 'bad';
       }
       var y = getReg(node[2]);
-      var x = getFree(y[0]);
+      var x = assignTo >= 0 ? assignTo : getFree(y[0]);
       y[1].push(opcode, x, releaseIfFree(y[0], x), 0);
       return [x, y[1]];
     }
