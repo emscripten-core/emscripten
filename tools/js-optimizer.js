@@ -6584,6 +6584,28 @@ function emterpretify(ast) {
           i -= 4;
         }
       }
+      // optimization pass, skip over multiple jumps # TODO: clean up unreachable destinations after this
+      for (var i = 0; i < code.length; i += 4) {
+        if (code[i] === 'BR') {
+          while (1) {
+            var j = relatives[code[i+2]];
+            if (code[j] === 'BR') {
+              code[i+2] = code[j+2];
+            } else {
+              break;
+            }
+          }
+        } else if (code[i] === 'BRA') {
+          while (1) {
+            var j = absolutes[code[i+2]];
+            if (code[j] === 'BRA') {
+              code[i+2] = code[j+2];
+            } else {
+              break;
+            }
+          }
+        }
+      }
       // second pass, find out which relative branches must be converted to absolutes, because they are too big
       var needAbsolute = {}; // old relative id => new absolute id
       for (var i = 0; i < code.length; i += 4) {
