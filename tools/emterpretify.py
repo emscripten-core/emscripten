@@ -261,7 +261,7 @@ def make_emterpreter(t):
       return '     ' + ret + '; break;'
 
     CASES[ROPCODES['CALL']] = 'switch ((inst>>>16)|0) {\n' + \
-      '\n'.join(filter(lambda x: 'None' not in x, ['    case %d: {\n%s\n    }' % (i, make_target_call(i)) for i in range(global_func_id)])) + \
+      '\n'.join(['    case %d: {\n%s\n    }' % (i, make_target_call(i)) for i in range(global_func_id)]) + \
       '\n    default: assert(0);' + \
       '\n   }'
 
@@ -271,7 +271,7 @@ def make_emterpreter(t):
       name = rglobal_vars[i]
       return '     ' + get_access('lx', sig[0]) + ' = ' + name + '; break;'
     CASES[ROPCODES['GETGLBI']] = 'switch (ly|0) {\n' + \
-      '\n'.join(filter(lambda x: 'None' not in x, ['    case %d: {\n%s\n    }' % (i, make_load(i)) for i in range(global_var_id)])) + \
+      '\n'.join(['    case %d: {\n%s\n    }' % (i, make_load(i)) for i in range(global_var_id)]) + \
       '\n    default: assert(0);' + \
       '\n   }'
     def make_store(i):
@@ -279,7 +279,7 @@ def make_emterpreter(t):
       name = rglobal_vars[i]
       return '     ' + name + ' = ' + get_coerced_access('lz', sig[0]) + '; break;'
     CASES[ROPCODES['SETGLBI']] = 'switch ((inst >> 8)&255) {\n' + \
-      '\n'.join(filter(lambda x: 'None' not in x, ['    case %d: {\n%s\n    }' % (i, make_store(i)) for i in range(global_var_id)])) + \
+      '\n'.join(['    case %d: {\n%s\n    }' % (i, make_store(i)) for i in range(global_var_id)]) + \
       '\n    default: assert(0);' + \
       '\n   }'
 
