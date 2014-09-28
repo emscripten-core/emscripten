@@ -5819,9 +5819,10 @@ function emterpretify(ast) {
 
     // returns [l, bytecode] where l is a local register, and bytecode is bytecode to generate it.
     // if dropIt is provided, then the output of this can just be dropped.
+    // if assignTo is provided, then it is where we can assign to, instead of allocating a free reg for that purpose.
     // you *must* call releaseIfFree on the l that is returned; if it is a free local, that will free it.
-    function getReg(node, dropIt, typeHint, signHint) {
-      //printErr('getReg ' + JSON.stringify(node) + ' : ' + astToSrc(node) + ' : ' + [dropIt, typeHint, signHint]);
+    function getReg(node, dropIt, typeHint, signHint, assignTo) {
+      //printErr('getReg ' + JSON.stringify(node) + ' : ' + astToSrc(node) + ' : ' + [dropIt, typeHint, signHint, assignTo]);
       switch(node[0]) {
         case 'name': {
           var name = node[1];
@@ -5850,7 +5851,7 @@ function emterpretify(ast) {
           }
         }
         case 'num': {
-          return makeNum(node[1], ASM_INT);
+          return makeNum(node[1], ASM_INT, assignTo);
         }
         case 'var':
         case 'toplevel': {
@@ -5869,7 +5870,7 @@ function emterpretify(ast) {
               // local
               var l = locals[name];
               var type = getAsmType(name, asmData);
-              var reg = getReg(value, undefined, type);
+              var reg = getReg(value, undefined, type, undefined, l);
               // TODO: detect when the last operation in reg[1] assigns in its arg x, in which case we can avoid the SET and make it assign to us
               reg[1] = reg[1].concat(makeSet(l, releaseIfFree(reg[0]), type));
               return [l, reg[1]];
@@ -6170,6 +6171,7 @@ function emterpretify(ast) {
     }
 
     function makeSet(dst, src, type) {
+      if (dst === src) return [];
       var opcode;
       if (type === ASM_INT) {
         opcode = 'SET';
