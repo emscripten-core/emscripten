@@ -10,6 +10,15 @@ from tools.shared import *
 
 temp_dir = tempfile.mkdtemp()
 
+# System info
+system_info = Popen([path_from_root('emrun'), '--system_info'], stdout=PIPE, stderr=PIPE).communicate()
+
+# Native info
+native_info = Popen(['clang', '-v'], stdout=PIPE, stderr=PIPE).communicate()
+
+# Emscripten info
+emscripten_info = Popen([EMCC, '-v'], stdout=PIPE, stderr=PIPE).communicate()
+
 # Run native build
 out_file = os.path.join(temp_dir, 'benchmark_sse1_native')
 out = Popen([CLANG_CPP, path_from_root('tests', 'benchmark_sse1.cpp'), '-O3', '-o', out_file], stdout=PIPE, stderr=PIPE).communicate()
@@ -19,10 +28,20 @@ print native_results[0]
 # Run emscripten build
 out_file = os.path.join(temp_dir, 'benchmark_sse1_html.html')
 out = Popen([EMCC, path_from_root('tests', 'benchmark_sse1.cpp'), '-O3', '--emrun', '-s', 'TOTAL_MEMORY=536870912', '-o', out_file], stdout=PIPE, stderr=PIPE).communicate()
+
+# Enforce asm.js validation for the output file so that we can capture any validation errors.
+asmjs_validation_status = Popen([PYTHON, path_from_root('tools', 'validate_asmjs.py'), out_file], stdout=PIPE, stderr=PIPE).communicate()
+asmjs_validation_status = asmjs_validation_status[0].strip()
+if 'is not valid asm.js' in asmjs_validation_status:
+	asmjs_validation_status = '<span style="color:red;">' + asmjs_validation_status + '</span>'
+
 # We require running in FF Nightly, since no other browsers support SIMD yet.
 html_results = Popen([path_from_root('emrun'), '--browser=firefox_nightly', out_file], stdout=PIPE, stderr=PIPE).communicate()
 ##html_results = native_results
 print html_results[0]
+
+browser_info = html_results[1]
+browser_info = '<br/>'.join([line for line in browser_info.strip().split('\n') if line.startswith('User Agent')])
 
 shutil.rmtree(temp_dir)
 
@@ -32,11 +51,20 @@ html_results = json.loads(html_results[0])
 native_workload = native_results['workload']
 html_workload = html_results['workload']
 
-html = '''<html><head></head><body>
+html = '''<html><head></head><body><h1>SSE1 JavaScript Benchmark</h1>
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
 <script src="http://code.highcharts.com/highcharts.js"></script>
-<script src="http://code.highcharts.com/modules/exporting.js"></script>
-'''
+<script src="http://code.highcharts.com/modules/exporting.js"></script><b>System Info:</b><br/>
+''' + system_info[0].replace('\n', '<br/>') + '''
+<b>Native Clang Compiler:</b><br/>
+''' + native_info[1].replace('\n', '<br/>') + '''
+<b>Emscripten Compiler:</b><br/>
+''' + emscripten_info[0].replace('\n', '<br/>') + '''
+<b>Browser Information:</b><br/>
+''' + browser_info + '''<br/>
+<b>Benchmark Build Log:</b><br/>
+''' + asmjs_validation_status.replace('\n', '<br/>')
+
 
 charts_native = {}
 charts_html = {}
@@ -60,6 +88,11 @@ def format_comparison(a, b):
 	else: return "<span style='color:red;font-weight:bold;'> {:10.2f}".format(a/b) + 'x SLOWER</span>'
 
 chartNumber = 0
+
+total_time_native_scalar = 0
+total_time_native_simd = 0
+total_time_html_scalar = 0
+total_time_html_simd = 0
 
 for chart_name in charts_native.keys():
 	# Extract data for each chart.
@@ -93,12 +126,16 @@ for chart_name in charts_native.keys():
 			textual_results_html += 'JS SSE1 is ' + format_comparison(hsi, hsc) + ' than JS scalar. &nbsp; &nbsp; &nbsp; &nbsp; <br />'
 			textual_results_html2 += 'JS ' + result['category'] + ': JS scalar is ' + format_comparison(hsc, nsc) + ' than native scalar. &nbsp; &nbsp; &nbsp; &nbsp; <br />'
 			textual_results_html3 += 'JS ' + result['category'] + ': JS SSE1 is ' + format_comparison(hsi, nsi) + ' than native SSE1. &nbsp; &nbsp; &nbsp; &nbsp; <br />'
+			total_time_native_scalar += nsc
+			total_time_native_simd += nsi
+			total_time_html_scalar += hsc
+			total_time_html_simd += hsi
 		else:
 			htmlScalarResults += [str(-1)]
 			htmlSimdResults += [str(-1)]
 
 	chartNumber += 1
-	html += '<div id="chart'+str(chartNumber)+'" style="width:100%; height:400px;"></div>'
+	html += '<div id="chart'+str(chartNumber)+'" style="width:100%; height:400px; margin-top: 100px;"></div>'
 	html += '''<script>$(function () { 
     $('#chart''' + str(chartNumber) + '''').highcharts({
         chart: {
@@ -153,6 +190,60 @@ for chart_name in charts_native.keys():
         }]
     });
 });</script>''' + '<table><tr><td>' + textual_results_native + '</td><td>' + textual_results_html + '</td></tr><tr><td>' + textual_results_html2 + '</td><td>' + textual_results_html3 + '</td></tr></table>'
+
+# Final overall score
+
+html += '<div id="overallscore" style="width:100%; height:400px; margin-top: 100px;"></div>'
+html += '''<script>$(function () { 
+    $('#overallscore').highcharts({
+        chart: {
+            type: 'column'
+        },
+        title: {
+            text: "Overall Execution Time"
+        },
+        xAxis: {
+            categories: ['Total time normalized to native']
+        },
+        yAxis: {
+            min: 0,
+            title: {
+                text: 'Relative time'
+            }
+        },
+        tooltip: {
+            headerFormat: '<span style="font-size:10px">{point.key}</span><table>',
+            pointFormat: '<tr><td style="color:{series.color};padding:0">{series.name}: </td>' +
+                '<td style="padding:0"><b>{point.y:.3f}x</b></td></tr>',
+            footerFormat: '</table>',
+            shared: true,
+            useHTML: true
+        },
+        plotOptions: {
+            column: {
+                pointPadding: 0.2,
+                borderWidth: 0
+            }
+        },
+        series: [{
+            name: 'Native scalar',
+            data: [''' + str(1.0) + ''']
+
+        }, {
+            name: 'Native SSE1',
+            data: [''' + str(total_time_native_simd/total_time_native_scalar) + ''']
+
+        }, {
+            name: 'JS scalar',
+            data: [''' + str(total_time_html_scalar/total_time_native_scalar) + ''']
+
+        }, {
+            name: 'JS SSE1',
+            data: [''' + str(total_time_html_simd/total_time_native_scalar) + ''']
+
+        }]
+    });
+});</script>'''
 
 html += '</body></html>'
 

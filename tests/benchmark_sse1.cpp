@@ -297,5 +297,8 @@ int main()
 	else
 		printf("SSE1 was %.3fx slower than scalar!\n", (double)simdTotalTicks / scalarTotalTicks);
 */
+#ifdef __EMSCRIPTEN__
+	fprintf(stderr,"User Agent: %s\n", emscripten_run_script_string("navigator.userAgent"));
+#endif
 	exit(0);
 }
