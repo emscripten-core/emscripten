@@ -21,6 +21,7 @@ out_file = os.path.join(temp_dir, 'benchmark_sse1_html.html')
 out = Popen([EMCC, path_from_root('tests', 'benchmark_sse1.cpp'), '-O3', '--emrun', '-s', 'TOTAL_MEMORY=536870912', '-o', out_file], stdout=PIPE, stderr=PIPE).communicate()
 # We require running in FF Nightly, since no other browsers support SIMD yet.
 html_results = Popen([path_from_root('emrun'), '--browser=firefox_nightly', out_file], stdout=PIPE, stderr=PIPE).communicate()
+##html_results = native_results
 print html_results[0]
 
 shutil.rmtree(temp_dir)
@@ -54,6 +55,10 @@ def find_result_in_category(results, category):
 			return result
 	return None
 
+def format_comparison(a, b):
+	if a <= b: return "<span style='color:green;font-weight:bold;'> {:10.2f}".format(b/a) + 'x FASTER</span>'
+	else: return "<span style='color:red;font-weight:bold;'> {:10.2f}".format(a/b) + 'x SLOWER</span>'
+
 chartNumber = 0
 
 for chart_name in charts_native.keys():
@@ -65,14 +70,29 @@ for chart_name in charts_native.keys():
 	htmlSimdResults = []
 	native_results = charts_native[chart_name]
 	html_results = charts_html[chart_name]
+	textual_results_native = '<p>'
+	textual_results_html = '<p>'
+	textual_results_html2 = '<p>'
+	textual_results_html3 = '<p>'
 	for result in native_results:
 		categories += ["'" + result['category'] + "'"]
-		nativeScalarResults += [str(result['scalar'])]
-		nativeSimdResults += [str(result['simd'])]
+		nsc = result['scalar']
+		nsi = result['simd']
+		nativeScalarResults += [str(nsc)]
+		nativeSimdResults += [str(nsi)]
 		html_result = find_result_in_category(html_results, result['category'])
+		textual_results_native += 'Native ' + result['category'] + ': ' + "{:10.4f}".format(nsc) + 'ns -> ' + "{:10.4f}".format(nsi) + 'ns. '
+		textual_results_native += 'Native SSE1 is ' + format_comparison(nsi, nsc) + ' than native scalar. &nbsp; &nbsp; &nbsp; &nbsp; <br />'
+
 		if html_result is not None:
-			htmlScalarResults += [str(html_result['scalar'])]
-			htmlSimdResults += [str(html_result['simd'])]
+			hsc = html_result['scalar']
+			htmlScalarResults += [str(hsc)]
+			hsi = html_result['simd']
+			htmlSimdResults += [str(hsi)]
+			textual_results_html += 'JS ' + result['category'] + ': ' + "{:10.4f}".format(hsc) + 'ns -> ' + "{:10.4f}".format(hsi) + 'ns. '
+			textual_results_html += 'JS SSE1 is ' + format_comparison(hsi, hsc) + ' than JS scalar. &nbsp; &nbsp; &nbsp; &nbsp; <br />'
+			textual_results_html2 += 'JS ' + result['category'] + ': JS scalar is ' + format_comparison(hsc, nsc) + ' than native scalar. &nbsp; &nbsp; &nbsp; &nbsp; <br />'
+			textual_results_html3 += 'JS ' + result['category'] + ': JS SSE1 is ' + format_comparison(hsi, nsi) + ' than native SSE1. &nbsp; &nbsp; &nbsp; &nbsp; <br />'
 		else:
 			htmlScalarResults += [str(-1)]
 			htmlSimdResults += [str(-1)]
@@ -132,7 +152,7 @@ for chart_name in charts_native.keys():
 
         }]
     });
-});</script>'''
+});</script>''' + '<table><tr><td>' + textual_results_native + '</td><td>' + textual_results_html + '</td></tr><tr><td>' + textual_results_html2 + '</td><td>' + textual_results_html3 + '</td></tr></table>'
 
 html += '</body></html>'
 

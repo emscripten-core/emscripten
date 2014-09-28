@@ -43,11 +43,7 @@ tick_t ticks_per_sec()
 #error No tick_t
 #endif
 
-#ifdef __EMSCRIPTEN__
-const int N = 1024*1024;
-#else
-const int N = 16*1024*1024;
-#endif
+const int N = 2*1024*1024;
 
 tick_t scalarTotalTicks = 0;
 tick_t simdTotalTicks = 0;
