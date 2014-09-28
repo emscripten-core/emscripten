@@ -6149,7 +6149,7 @@ function emterpretify(ast) {
             var address = node[2][1];
             var shifts = Math.log2(temp.bits/8);
             assert(address === ((address << shifts) >> shifts));
-            var ret = makeNum(address << shifts, ASM_INT, getFree());
+            var ret = makeNum(address << shifts, ASM_INT);
             ret[1].push(opcode, ret[0], ret[0], 0);
             return ret;
           }
