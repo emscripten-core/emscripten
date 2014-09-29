@@ -12,7 +12,7 @@ from tools.shared import *
 # 5: 10 seconds
 DEFAULT_ARG = '2'
 
-TEST_REPS = 2
+TEST_REPS = 1
 
 CORE_BENCHMARKS = True # core benchmarks vs full regression suite
 
@@ -113,8 +113,8 @@ process(sys.argv[1])
                     '-s', 'TOTAL_MEMORY=128*1024*1024',
                     '--profiling',
                     #'--closure', '1',
-                    #'-o', final] + shared_args + emcc_args + self.extra_args, stdout=PIPE, stderr=PIPE, env=self.env).communicate()
-                    '-o', final] + shared_args + emcc_args + self.extra_args, stdout=None, stderr=None, env=self.env).communicate()
+                    '-o', final] + shared_args + emcc_args + self.extra_args, stdout=PIPE, stderr=PIPE, env=self.env).communicate()
+                    #'-o', final] + shared_args + emcc_args + self.extra_args, stdout=None, stderr=None, env=self.env).communicate()
     assert os.path.exists(final), 'Failed to compile file: ' + output[0]
     self.filename = final
 
@@ -141,7 +141,7 @@ try:
     #NativeBenchmarker('clang-3.4', os.path.join(LLVM_3_4, 'clang'), os.path.join(LLVM_3_4, 'clang++')),
     #NativeBenchmarker('gcc', 'gcc', 'g++'),
     #JSBenchmarker('sm-f32', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
-    #JSBenchmarker('sm', SPIDERMONKEY_ENGINE),
+    JSBenchmarker('sm', SPIDERMONKEY_ENGINE),
     #JSBenchmarker('sm-ion',  SPIDERMONKEY_ENGINE + ['--no-asmjs']),
     #JSBenchmarker('sm-baseline',  SPIDERMONKEY_ENGINE + ['--no-asmjs', '--no-ion']),
     JSBenchmarker('sm-emterp', SPIDERMONKEY_ENGINE, ['-s', 'EMTERPRETIFY=1']),
@@ -345,7 +345,7 @@ class benchmark(RunnerCore):
     '''
     self.do_benchmark('copy', src, 'sum:')
 
-  def test_ifs(self):
+  def zzztest_ifs(self):
     src = r'''
       #include <stdio.h>
       #include <stdlib.h>
@@ -390,7 +390,7 @@ class benchmark(RunnerCore):
     '''
     self.do_benchmark('ifs', src, 'ok', reps=TEST_REPS*5)
 
-  def test_conditionals(self):
+  def zzztest_conditionals(self):
     src = r'''
       #include <stdio.h>
       #include <stdlib.h>
