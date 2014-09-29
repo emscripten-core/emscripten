@@ -13,6 +13,8 @@ import asm_module, shared, shutil
 
 EMT_STACK_MAX = 1024*1024
 
+LOG_CODE = os.environ.get('EMCC_LOG_EMTERPRETER_CODE')
+
 # consts
 
 BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64'])
@@ -475,7 +477,7 @@ for i in range(len(lines)):
     if curr is not None:
       assert len(curr) % 4 == 0, curr
       funcs[func] = len(all_code) # no operation here should change the length
-      #print >> sys.stderr, 'raw bytecode for %s:' % func, curr
+      if LOG_CODE: print >> sys.stderr, 'raw bytecode for %s:' % func, curr, 'insts:', len(curr)/4
       process_code(func, curr, absolute_targets)
       #print >> sys.stderr, 'processed bytecode for %s:' % func, curr
       all_code += curr

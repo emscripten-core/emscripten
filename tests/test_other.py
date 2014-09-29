@@ -4239,3 +4239,17 @@ function _main() {
 }
 ''', [], '0\n')
 
+    # codegen log tests
+
+    def do_log_test(source, expected):
+      print 'log test', source, expected
+      try:
+        os.environ['EMCC_LOG_EMTERPRETER_CODE'] = '1'
+        out, err = Popen([PYTHON, EMCC, source, '-O3', '-s', 'EMTERPRETIFY=1'], stderr=PIPE).communicate()
+      finally:
+        del os.environ['EMCC_LOG_EMTERPRETER_CODE']
+      seen = int(err.split('insts: ')[1])
+      assert expected == seen, ['expect', expected, 'but see', seen]
+
+    do_log_test(path_from_root('tests', 'primes.cpp'), 99)
+
