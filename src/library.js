@@ -8766,6 +8766,7 @@ LibraryManager.library = {
     return cache[fullname] = allocate(intArrayFromString(ret + ''), 'i8', ALLOC_NORMAL);
   },
 
+#if RUNNING_FASTCOMP == 0
 #if ASM_JS
 #if ALLOW_MEMORY_GROWTH
   emscripten_replace_memory__asm: true, // this is used inside the asm module
@@ -8787,6 +8788,7 @@ LibraryManager.library = {
   // the codebase still benefits from being in the general asm.js shape,
   // but should not declare itself as validating (which is prevented in ASM_JS == 2).
   {{{ (assert(ASM_JS === 2), DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('emscripten_replace_memory'), '') }}}
+#endif
 #endif
 #endif
 

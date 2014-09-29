@@ -1177,6 +1177,8 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       # calculate exports
       exported_implemented_functions = list(exported_implemented_functions) + metadata['initializers']
       exported_implemented_functions.append('runPostSets')
+      if settings['ALLOW_MEMORY_GROWTH']:
+        exported_implemented_functions.append('_emscripten_replace_memory')
       exports = []
       for export in exported_implemented_functions + asm_runtime_funcs + function_tables:
         exports.append(quote(export) + ": " + export)
@@ -1287,7 +1289,21 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     var nan = +env.NaN, inf = +env.Infinity;
     var tempInt = 0, tempBigInt = 0, tempBigIntP = 0, tempBigIntS = 0, tempBigIntR = 0.0, tempBigIntI = 0, tempBigIntD = 0, tempValue = 0, tempDouble = 0.0;
   ''' + ''.join(['''
-    var tempRet%d = 0;''' % i for i in range(10)]) + '\n' + asm_global_funcs] + ['  var tempFloat = %s;\n' % ('Math_fround(0)' if settings.get('PRECISE_F32') else '0.0')] + (['  const f0 = Math_fround(0);\n'] if settings.get('PRECISE_F32') else []) + ['''
+    var tempRet%d = 0;''' % i for i in range(10)]) + '\n' + asm_global_funcs] + ['  var tempFloat = %s;\n' % ('Math_fround(0)' if settings.get('PRECISE_F32') else '0.0')] + (['  const f0 = Math_fround(0);\n'] if settings.get('PRECISE_F32') else []) + ['' if not settings['ALLOW_MEMORY_GROWTH'] else '''
+  function _emscripten_replace_memory(newBuffer) {
+    if ((byteLength(newBuffer) & 0xffffff || byteLength(newBuffer) <= 0xffffff)) return false;
+    HEAP8 = new Int8View(newBuffer);
+    HEAP16 = new Int16View(newBuffer);
+    HEAP32 = new Int32View(newBuffer);
+    HEAPU8 = new Uint8View(newBuffer);
+    HEAPU16 = new Uint16View(newBuffer);
+    HEAPU32 = new Uint32View(newBuffer);
+    HEAPF32 = new Float32View(newBuffer);
+    HEAPF64 = new Float64View(newBuffer);
+    buffer = newBuffer;
+    return true;
+  }
+'''] + ['''
   // EMSCRIPTEN_START_FUNCS
   function stackAlloc(size) {
     size = size|0;
