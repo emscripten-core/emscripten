@@ -5747,6 +5747,7 @@ function emterpretify(ast) {
   var BRANCHES = {};
   mergeInto(BRANCHES, RELATIVE_BRANCHES);
   mergeInto(BRANCHES, ABSOLUTE_BRANCHES);
+  var UNCONDITIONAL_BRANCHES = set('BR', 'BRA');
 
   var tempBuffer = new ArrayBuffer(8);
   var tempFloat64 = new Float64Array(tempBuffer);
@@ -5765,7 +5766,7 @@ function emterpretify(ast) {
     if (code.length % 4 !== 0) assert(0, JSON.stringify(code));
     var len = code.length;
     for (var i = 0; i < len; i++) {
-      if (typeof code[i] !== 'string' && typeof code[i] !== 'number') {
+      if (typeof code[i] !== 'string' && typeof code[i] !== 'number' && !(typeof code[i] === 'object' && code[i].what)) {
         assert(0, i + ' : ' + JSON.stringify(code));
       }
     }
@@ -5811,8 +5812,14 @@ function emterpretify(ast) {
       return assignTo >= 0 ? assignTo : getFree();
     }
 
-    var relativeId = 0;
+    function getRelative(name) {
+      return { what: 'relative', name: name, uses: 0, replaceWith: null, id: -1 };
+    }
     var absoluteId = 0;
+    function getAbsolute(name) {
+      return { what: 'absolute-target', name: name, uses: 0, replaceWith: null, id: absoluteId++ };
+    }
+
     var absoluteTargets = {};
 
     var breakStack = [];
@@ -6092,14 +6099,14 @@ function emterpretify(ast) {
           return [-1, ['BR', 0, continueLabels[label], 0]];
         }
         case 'if': {
-          var exit = relativeId++;
+          var exit = getRelative('if-exit');
           var condition = getReg(node[1]);
           var ret;
           if (!node[3]) {
             condition[1].push('BRF', releaseIfFree(condition[0]), exit, 0);
             ret = condition[1].concat(walkStatements(node[2]));
           } else {
-            var otherwise = relativeId++;
+            var otherwise = getRelative('if-else');
             condition[1].push('BRF', releaseIfFree(condition[0]), otherwise, 0);
             ret = condition[1].concat(walkStatements(node[2]));
             ret.push('BR', 0, exit, 0, 'relative', otherwise, 0, 0);
@@ -6111,7 +6118,7 @@ function emterpretify(ast) {
         case 'conditional': {
           // TODO: optimize
           // TODO: handle dropIt
-          var otherwise = relativeId++, exit = relativeId++;
+          var otherwise = getRelative('cond-else'), exit = getRelative('cond-exit');
           var temp = getFree();
           var condition = getReg(node[1]);
           var ret = condition[1];
@@ -6326,11 +6333,11 @@ function emterpretify(ast) {
     function makeDo(node, label) {
       var oneTime = node[1][0] === 'num' && node[1][1] === 0; // trivial one-time loops do {..} while(0) do not need condition handling
       // TODO: more testing assert(!oneTime);
-      var exit = relativeId++;
+      var exit = getRelative('do-exit');
       var top, cond;
       if (!oneTime) {
-        top = relativeId++;
-        cond = relativeId++;
+        top = getRelative('do-top');
+        cond = getRelative('do-cond');
       } else {
         top = -1; // no need to even mark the top
         cond = exit; // when we reach the condition, we just exit
@@ -6370,11 +6377,11 @@ function emterpretify(ast) {
 
     function makeWhile(node, label) {
       var infinite = node[1][0] === 'num' && node[1][1] === 1; // trivial infinite loops while(1) {..} do not need condition handling
-      var top = relativeId++, exit = relativeId++;
+      var top = getRelative('while-top'), exit = getRelative('while-exit');
       var condition, cond;
       if (!infinite) {
         condition = getReg(node[1]);
-        cond = relativeId++;
+        cond = getRelative('while-cond');
       } else {
         condition = [-1, []];
         cond = top; // when we reach the condition, we just go right to the top of the loop body
@@ -6407,7 +6414,7 @@ function emterpretify(ast) {
 
     function makeSwitch(node, label) {
       var condition = getReg(node[1]);
-      var exit = relativeId++;
+      var exit = getRelative('switch-exit');
       // parse cases and emit code
       breakStack.push(exit);
       if (label) {
@@ -6431,8 +6438,8 @@ function emterpretify(ast) {
           i: i, // original index
           id: id,
           code: walkStatements(c[1]),
-          absolute: absoluteId++,
-          relative: relativeId++,
+          absolute: getAbsolute('switch-case'),
+          relative: getRelative('switch-case'),
           next: -1 // will be the fall through target
         };
         if (typeof id === 'number') {
@@ -6463,8 +6470,8 @@ function emterpretify(ast) {
       // calculate values
       var range = maxx - minn + 1;
       assert(minn === (minn | 0) && range === (range | 0));
-      var defaultAbsolute = data['default'] ? data['default'].absolute : absoluteId++;
-      var defaultrelative = data['default'] ? data['default'].relative : relativeId++;
+      var defaultAbsolute = data['default'] ? data['default'].absolute : getAbsolute('switch-default');
+      var defaultrelative = data['default'] ? data['default'].relative : getRelative('switch-default');
       // emit the switch instruction itself
       var tempMin = getFree(), tempRange = getFree();
       var ret = condition[1].concat(makeNum(minn, ASM_INT, tempMin)[1]).concat(makeNum(range, ASM_INT, tempRange)[1]);
@@ -6564,100 +6571,122 @@ function emterpretify(ast) {
     }
 
     function finalizeJumps(code) {
-      // pre pass, remove unreachable code
+      /*function dump(name) {
+        printErr('==========');
+        printErr(name);
+        printErr(JSON.stringify(code));
+        printErr('==========');
+      }*/
+      // first pass, collect markers and absolute targets, and their uses
+      function getI(obj) {
+        var i = 0;
+        while (1) { // find the definition, ignoring uses
+          i = code.indexOf(obj, i);
+          assert(i >= 0);
+          if (code[i-1] === 'relative' || code[i-1] === 'absolute-target') return i-1;
+          i++;
+        }
+      }
       for (var i = 0; i < code.length; i += 4) {
-        if (code[i] === 'BR' || code[i] === 'BRA') {
-          var j = i + 4;
-          while (code[j] !== 'relative' && code[j] !== 'absolute-target') {
+        if (code[i] in BRANCHES) {
+          code[i+2].uses++;
+        } else if (code[i] === 'absolute-value') {
+          assert(!(code[i-4] in ABSOLUTE_BRANCHES)); // would already be counted 
+          code[i+1].uses++;
+        }
+      }
+      // optimization pass, skip over multiple jumps
+      function trySkip(what, inst) {
+        // TODO: pass over a relative or absolute-target right here, we have not removed them yet XXX
+        if (code[i] === inst) {
+          while (1) {
+            var j = getI(code[i+2]);
+            assert(code[j] === what);
             j += 4;
+            if (code[j] === inst) {
+              code[i+2].uses--;
+              code[j+2].uses++;
+              code[i+2] = code[j+2];
+            } else {
+              break;
+            }
+          }
+        }
+      }
+      for (var i = 0; i < code.length; i += 4) {
+        trySkip('relative', 'BR');
+        trySkip('absolute-target', 'BRA');
+      }
+      // optimization pass, remove unreachable code
+      for (var i = 0; i < code.length; i += 4) {
+        if (code[i] in UNCONDITIONAL_BRANCHES) {
+          var j = i + 4; // normal forward control flow cannot reach this position
+          while (j < code.length) {
+            if (code[j] === 'relative' || code[j] === 'absolute-target') {
+              var uses = code[j+1].uses;
+              assert(uses >= 0);
+              if (uses > 0) break; // this is reachable
+            }
+            j += 4; // this instr is unreachable
           }
           if (j > i + 4) {
             code.splice(i + 4, j - i - 4);
           }
         }
       }
-      // first pass, collect and remove markers and absolute targets
-      var relatives = {};
-      var absolutes = {};
-      for (var i = 0; i < code.length; i += 4) {
-        if (code[i] === 'relative') {
-          relatives[code[i+1]] = i;
-          code.splice(i, 4);
-          i -= 4;
-        } else if (code[i] === 'absolute-target') {
-          absolutes[code[i+1]] = i;
-          code.splice(i, 4);
-          i -= 4;
-        }
-      }
-      // optimization pass, skip over multiple jumps # TODO: clean up unreachable destinations after this
-      for (var i = 0; i < code.length; i += 4) {
-        if (code[i] === 'BR') {
-          while (1) {
-            var j = relatives[code[i+2]];
-            if (code[j] === 'BR') {
-              code[i+2] = code[j+2];
-            } else {
-              break;
-            }
-          }
-        } else if (code[i] === 'BRA') {
-          while (1) {
-            var j = absolutes[code[i+2]];
-            if (code[j] === 'BRA') {
-              code[i+2] = code[j+2];
-            } else {
-              break;
-            }
-          }
-        }
-      }
       // second pass, find out which relative branches must be converted to absolutes, because they are too big
-      var needAbsolute = {}; // old relative id => new absolute id
       for (var i = 0; i < code.length; i += 4) {
         if (code[i] in RELATIVE_BRANCHES) {
-          var id = code[i+2];
-          var target = relatives[id];
-          var offset = target - i;
+          var obj = code[i+2];
+          var target = getI(obj);
+          var offset = target - i; // overestimate, since there are still 'relative' and 'absolute-target' that will be cleaned up
           var storedOffset = offset >> 2; // offsets are divisible by 4, so we ignore the lower bits
           var maxOffset = storedOffset * 2; // when we convert relative to absolute, we double the size of a branch.
                                             // so worst case, we may double offsets (TODO this could be optimized)
           if ((maxOffset << 16 >> 16) !== maxOffset) {
-            if (!(id in needAbsolute)) {
-              var newId = absoluteId++;
-              needAbsolute[id] = newId;
-              delete relatives[id];
-              absolutes[newId] = target;
-            }
+            obj.replaceWith = getAbsolute('relative-replacement');
           }
         }
       }
       // convert necessary relative branches to absolutes
       for (var i = 0; i < code.length; i += 4) {
         if (code[i] in RELATIVE_BRANCHES) {
-          var id = code[i+2];
-          if (id in needAbsolute) {
+          var obj = code[i+2];
+          if (obj.replaceWith) {
             code[i] += 'A'; // convert branch to absolute
-            code[i+2] = 0; // id is no longer needed
-            code.splice(i+4, 0, 'absolute-value', needAbsolute[id], 0, 0); // add absolute value after first part of branch inst
-            // we have added code, so we must adjust all relatives and absolutes
-            for (var x in relatives) {
-              if (relatives[x] >= i+4) relatives[x] += 4;
-            }
-            for (var x in absolutes) {
-              if (absolutes[x] >= i+4) absolutes[x] += 4;
-            }
+            code[i+2] = 0; // id is no longer needed, 4 extra bytes in the inst will contain the absolute value
+            code.splice(i+4, 0, 'absolute-value', obj.replaceWith, 0, 0); // add absolute value after first part of branch inst
+            obj.replaceWith.uses++;
           }
         }
       }
-      // every instruction is now in its absolute location
-      mergeInto(absoluteTargets, absolutes);
+      // remove relative and absolute placeholders, after which every instruction is now in its absolute location, and we can write out absolutes 
+      for (var i = 0; i < code.length; i += 4) {
+        if (code[i] === 'relative') {
+          code[i+1].id = i; // store the i position in the id
+          assert(i == getI(code[i+1]));
+          code.splice(i, 4);
+          i -= 4;
+        } else if (code[i] === 'absolute-target') {
+          var obj = code[i+1];
+          if (obj.uses > 0) {
+            absoluteTargets[obj.id] = i;
+          }
+          code.splice(i, 4);
+          i -= 4;
+        } else if (code[i] === 'absolute-value') {
+          var obj = code[i+1];
+          assert(obj.uses > 0);
+          code[i+1] = obj.id;
+        }
+      }
       // final pass, finalize relative jumps TODO: optimize jump->jump->x to jump->x
       for (var i = 0; i < code.length; i += 4) {
         if (code[i] in RELATIVE_BRANCHES) {
-          var id = code[i+2];
-          var target = relatives[id];
-          assert(target !== undefined, id);
+          var obj = code[i+2];
+          assert(!obj.replaceWith);
+          var target = obj.id;
+          assert(target >= 0);
           var offset = target - i;
           assert(offset % 4 === 0);
           offset >>= 2;
