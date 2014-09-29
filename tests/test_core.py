@@ -5982,20 +5982,22 @@ def process(filename):
     src = r'''
       #include <stdio.h>
       #include <stdlib.h>
+      #include <emscripten.h>
 
       extern "C" {
         int other_function() { return 5; }
       }
 
       int main() {
-        printf("waka!\n");
+        int x = EM_ASM_INT_V({ return Module._other_function() });
+        printf("waka %d!\n", x);
         return 0;
       }
     '''
     open('exps', 'w').write('["_main","_other_function"]')
 
     self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=@exps']
-    self.do_run(src, '''waka!''')
+    self.do_run(src, '''waka 5!''')
     assert 'other_function' in open('src.cpp.o.js').read()
 
   def test_add_function(self):
