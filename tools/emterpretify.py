@@ -264,28 +264,28 @@ CASES[ROPCODES['LOADU8']] = get_access('lx') + ' = ' + 'HEAPU8[' + get_access('l
 CASES[ROPCODES['LOAD16']] = get_access('lx') + ' = ' + 'HEAP16[' + get_access('ly') + ' >> 1];'
 CASES[ROPCODES['LOADU16']] = get_access('lx') + ' = ' + 'HEAPU16[' + get_access('ly') + ' >> 1];'
 CASES[ROPCODES['LOAD32']] = get_access('lx') + ' = ' + 'HEAP32[' + get_access('ly') + ' >> 2];'
-CASES[ROPCODES['STORE8']] = 'HEAP8[' + get_access('lx') + ' >> 0] = ' + get_coerced_access('ly') + ';';
-CASES[ROPCODES['STORE16']] = 'HEAP16[' + get_access('lx') + ' >> 1] = ' + get_coerced_access('ly') + ';';
-CASES[ROPCODES['STORE32']] = 'HEAP32[' + get_access('lx') + ' >> 2] = ' + get_coerced_access('ly') + ';';
+CASES[ROPCODES['STORE8']] = 'HEAP8[' + get_access('lx') + ' >> 0] = ' + get_coerced_access('ly') + ';'
+CASES[ROPCODES['STORE16']] = 'HEAP16[' + get_access('lx') + ' >> 1] = ' + get_coerced_access('ly') + ';'
+CASES[ROPCODES['STORE32']] = 'HEAP32[' + get_access('lx') + ' >> 2] = ' + get_coerced_access('ly') + ';'
 
 CASES[ROPCODES['LOADF64']] = get_access('lx', s='d') + ' = ' + '+HEAPF64[' + get_access('ly') + ' >> 3];'
-CASES[ROPCODES['STOREF64']] = 'HEAPF64[' + get_access('lx') + ' >> 3] = ' + get_coerced_access('ly', s='d') + ';';
+CASES[ROPCODES['STOREF64']] = 'HEAPF64[' + get_access('lx') + ' >> 3] = ' + get_coerced_access('ly', s='d') + ';'
 CASES[ROPCODES['LOADF32']] = get_access('lx', s='d') + ' = ' + '+HEAPF32[' + get_access('ly') + ' >> 2];'
-CASES[ROPCODES['STOREF32']] = 'HEAPF32[' + get_access('lx') + ' >> 2] = ' + get_coerced_access('ly', s='d') + ';';
+CASES[ROPCODES['STOREF32']] = 'HEAPF32[' + get_access('lx') + ' >> 2] = ' + get_coerced_access('ly', s='d') + ';'
 
 CASES[ROPCODES['LOAD8A']] = get_access('lx') + ' = ' + 'HEAP8[(' + get_coerced_access('ly') + ') + (' + get_coerced_access('lz') + ') >> 0];'
 CASES[ROPCODES['LOADU8A']] = get_access('lx') + ' = ' + 'HEAPU8[(' + get_coerced_access('ly') + ') + (' + get_coerced_access('lz') + ') >> 0];'
 CASES[ROPCODES['LOAD16A']] = get_access('lx') + ' = ' + 'HEAP16[(' + get_coerced_access('ly') + ') + (' + get_coerced_access('lz') + ') >> 1];'
 CASES[ROPCODES['LOADU16A']] = get_access('lx') + ' = ' + 'HEAPU16[(' + get_coerced_access('ly') + ') + (' + get_coerced_access('lz') + ') >> 1];'
 CASES[ROPCODES['LOAD32A']] = get_access('lx') + ' = ' + 'HEAP32[(' + get_coerced_access('ly') + ') + (' + get_coerced_access('lz') + ') >> 2];'
-#CASES[ROPCODES['STORE8A']] = 'HEAP8[' + get_access('lx') + ' >> 0] = ' + get_coerced_access('ly') + ';';
-#CASES[ROPCODES['STORE16A']] = 'HEAP16[' + get_access('lx') + ' >> 1] = ' + get_coerced_access('ly') + ';';
-#CASES[ROPCODES['STORE32A']] = 'HEAP32[' + get_access('lx') + ' >> 2] = ' + get_coerced_access('ly') + ';';
+CASES[ROPCODES['STORE8A']] = 'HEAP8[(' + get_coerced_access('lx') + ') + (' + get_coerced_access('ly') + ') >> 0] = ' + get_coerced_access('lz') + ';'
+CASES[ROPCODES['STORE16A']] = 'HEAP16[(' + get_coerced_access('lx') + ') + (' + get_coerced_access('ly') + ') >> 1] = ' + get_coerced_access('lz') + ';'
+CASES[ROPCODES['STORE32A']] = 'HEAP32[(' + get_coerced_access('lx') + ') + (' + get_coerced_access('ly') + ') >> 2] = ' + get_coerced_access('lz') + ';'
 
 CASES[ROPCODES['LOADF64A']] = get_access('lx', s='d') + ' = ' + '+HEAPF64[(' + get_coerced_access('ly') + ') + (' + get_coerced_access('lz') + ') >> 3];'
-#CASES[ROPCODES['STOREF64A']] = 'HEAPF64[' + get_access('lx') + ' >> 3] = ' + get_coerced_access('ly', s='d') + ';';
+CASES[ROPCODES['STOREF64A']] = 'HEAPF64[(' + get_coerced_access('lx') + ') + (' + get_coerced_access('ly') + ') >> 3] = ' + get_coerced_access('lz', s='d') + ';'
 CASES[ROPCODES['LOADF32A']] = get_access('lx', s='d') + ' = ' + '+HEAPF32[(' + get_coerced_access('ly') + ') + (' + get_coerced_access('lz') + ') >> 2];'
-#CASES[ROPCODES['STOREF32A']] = 'HEAPF32[' + get_access('lx') + ' >> 2] = ' + get_coerced_access('ly', s='d') + ';';
+CASES[ROPCODES['STOREF32A']] = 'HEAPF32[(' + get_coerced_access('lx') + ') + (' + get_coerced_access('ly') + ') >> 2] = ' + get_coerced_access('lz', s='d') + ';'
 
 CASES[ROPCODES['BR']] = 'pc = pc + ((inst >> 16) << 2) | 0; continue;'
 CASES[ROPCODES['BRT']] = 'if (' + get_coerced_access('lx') + ') { pc = pc + ((inst >> 16) << 2) | 0; continue; }'

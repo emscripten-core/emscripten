@@ -5934,11 +5934,25 @@ function emterpretify(ast) {
               assert(shifts >= 0 && shifts <= 3);
               var bits = Math.pow(2, shifts)*8;
               assert(bits === temp.bits);
-              var x = getReg(target[2][2], false, ASM_INT, ASM_SIGNED);
-              var y = getReg(value); // generate y now, not earlier, to not trample x's output reg, which might be a temp
-              var ret = x[1].concat(y[1]);
-              ret.push(opcode, releaseIfFree(x[0]), releaseIfFree(y[0]), 0);
-              return [-1, ret];
+
+
+              var pointer = target[2][2];
+              if (pointer[0] === 'binary' && pointer[1] === '+') {
+                // optimized store + add
+                opcode += 'A';
+                var x = getReg(pointer[2], false, ASM_INT, ASM_SIGNED);
+                var y = getReg(pointer[3], false, ASM_INT, ASM_SIGNED);
+                var z = getReg(value);
+                var ret = x[1].concat(y[1]).concat(z[1]);
+                ret.push(opcode, releaseIfFree(x[0]), releaseIfFree(y[0]), releaseIfFree(z[0]));
+                return [-1, ret];
+              } else {
+                var x = getReg(target[2][2], false, ASM_INT, ASM_SIGNED);
+                var y = getReg(value); // generate y now, not earlier, to not trample x's output reg, which might be a temp
+                var ret = x[1].concat(y[1]);
+                ret.push(opcode, releaseIfFree(x[0]), releaseIfFree(y[0]), 0);
+                return [-1, ret];
+              }
             } else {
               assert(target[2][0] === 'num'); // HEAP32[8] or such
               var address = target[2][1];
@@ -6169,8 +6183,8 @@ function emterpretify(ast) {
             var bits = Math.pow(2, shifts)*8;
             assert(bits === temp.bits);
             var pointer = node[2][2];
-
             if (pointer[0] === 'binary' && pointer[1] === '+') {
+              // optimized load + add
               opcode += 'A';
               var y = getReg(pointer[2], false, ASM_INT, ASM_SIGNED);
               var z = getReg(pointer[3], false, ASM_INT, ASM_SIGNED);
