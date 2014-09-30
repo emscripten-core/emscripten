@@ -6347,8 +6347,14 @@ function emterpretify(ast) {
     }
 
     function makeBranchIfFalse(node, where) {
+      // optimization: x = !y, BRF x => BRT y
+      var opcode = 'BRF';
+      if (node[0] === 'unary-prefix' && node[1] === '!') {
+        node = node[2];
+        opcode = 'BRT';
+      }
       var condition = getReg(node);
-      condition[1].push('BRF', releaseIfFree(condition[0]), where, 0);
+      condition[1].push(opcode, releaseIfFree(condition[0]), where, 0);
       return condition[1];
     }
 
