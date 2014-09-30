@@ -12,7 +12,7 @@ from tools.shared import *
 # 5: 10 seconds
 DEFAULT_ARG = '2'
 
-TEST_REPS = 1
+TEST_REPS = 2
 
 CORE_BENCHMARKS = True # core benchmarks vs full regression suite
 
@@ -111,10 +111,10 @@ process(sys.argv[1])
                     '-O3', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
                     '--memory-init-file', '1', '--js-transform', 'python hardcode.py',
                     '-s', 'TOTAL_MEMORY=128*1024*1024',
-                    '--profiling',
+                    #'--profiling',
                     #'--closure', '1',
-                    '-o', final] + shared_args + emcc_args + self.extra_args, stdout=PIPE, stderr=PIPE, env=self.env).communicate()
-                    #'-o', final] + shared_args + emcc_args + self.extra_args, stdout=None, stderr=None, env=self.env).communicate()
+                    #'-o', final] + shared_args + emcc_args + self.extra_args, stdout=PIPE, stderr=PIPE, env=self.env).communicate()
+                    '-o', final] + shared_args + emcc_args + self.extra_args, stdout=None, stderr=None, env=self.env).communicate()
     assert os.path.exists(final), 'Failed to compile file: ' + output[0]
     self.filename = final
 

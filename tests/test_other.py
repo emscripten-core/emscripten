@@ -4241,15 +4241,20 @@ function _main() {
 
     # codegen log tests
 
-    def do_log_test(source, expected):
+    def do_log_test(source, expected, func):
       print 'log test', source, expected
       try:
         os.environ['EMCC_LOG_EMTERPRETER_CODE'] = '1'
         out, err = Popen([PYTHON, EMCC, source, '-O3', '-s', 'EMTERPRETIFY=1'], stderr=PIPE).communicate()
       finally:
         del os.environ['EMCC_LOG_EMTERPRETER_CODE']
-      seen = int(err.split('insts: ')[1])
+      parts = err.split('insts: ')
+      pre, post = parts[:2]
+      assert func in pre, pre
+      post = post.split('\n')[0]
+      seen = int(post)
       assert expected == seen, ['expect', expected, 'but see', seen]
 
-    do_log_test(path_from_root('tests', 'primes.cpp'), 87)
+    do_log_test(path_from_root('tests', 'primes.cpp'), 87, 'main')
+    do_log_test(path_from_root('tests', 'fannkuch.cpp'), 280, 'fannkuch_worker')
 
