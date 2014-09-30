@@ -882,7 +882,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     global_initializers = ', '.join(map(lambda i: '{ func: function() { %s() } }' % i, metadata['initializers']))
 
     staticbump = mem_init.count(',')+1
-    while staticbump % 8 != 0: staticbump += 1
+    while staticbump % 16 != 0: staticbump += 1
     pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;
   /* global initializers */ __ATINIT__.push(%s);
   %s''' % (staticbump, global_initializers, mem_init)) # XXX wrong size calculation!
