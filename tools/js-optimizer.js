@@ -6121,15 +6121,12 @@ function emterpretify(ast) {
         }
         case 'if': {
           var exit = getRelative('if-exit');
-          var condition = getReg(node[1]);
           var ret;
           if (!node[3]) {
-            condition[1].push('BRF', releaseIfFree(condition[0]), exit, 0);
-            ret = condition[1].concat(walkStatements(node[2]));
+            ret = makeBranchIfFalse(node[1], exit).concat(walkStatements(node[2]));
           } else {
             var otherwise = getRelative('if-else');
-            condition[1].push('BRF', releaseIfFree(condition[0]), otherwise, 0);
-            ret = condition[1].concat(walkStatements(node[2]));
+            ret = makeBranchIfFalse(node[1], otherwise).concat(walkStatements(node[2]));
             ret.push('BR', 0, exit, 0, 'relative', otherwise, 0, 0);
             ret = ret.concat(walkStatements(node[3]));
           }
@@ -6141,11 +6138,9 @@ function emterpretify(ast) {
           // TODO: handle dropIt
           var otherwise = getRelative('cond-else'), exit = getRelative('cond-exit');
           var temp = getFree();
-          var condition = getReg(node[1]);
-          var ret = condition[1];
           var type = detectType(node[2], asmData);
           assert(type !== ASM_NONE);
-          ret.push('BRF', releaseIfFree(condition[0]), otherwise, 0);
+          var ret = makeBranchIfFalse(node[1], otherwise);
           var first = getReg(node[2]);
           ret = ret.concat(first[1]).concat(makeSet(temp, releaseIfFree(first[0]), type)); 
           ret.push('BR', 0, exit, 0);
@@ -6349,6 +6344,12 @@ function emterpretify(ast) {
       var x = assignTo >= 0 ? assignTo : getFree(y[0]);
       y[1].push(opcode, x, releaseIfFree(y[0], x), 0);
       return [x, y[1]];
+    }
+
+    function makeBranchIfFalse(node, where) {
+      var condition = getReg(node);
+      condition[1].push('BRF', releaseIfFree(condition[0]), where, 0);
+      return condition[1];
     }
 
     function makeDo(node, label) {
