@@ -101,30 +101,30 @@ constexpr piecewise_construct_t piecewise_construct = piecewise_construct_t();
 template <class T> class tuple_size;
 template <size_t I, class T> class tuple_element;
 
-template <class T1, class T2> struct tuple_size<std::pair<T1, T2> >;
-template <class T1, class T2> struct tuple_element<0, std::pair<T1, T2> >;
-template <class T1, class T2> struct tuple_element<1, std::pair<T1, T2> >;
+template <class T1, class T2> struct tuple_size<pair<T1, T2> >;
+template <class T1, class T2> struct tuple_element<0, pair<T1, T2> >;
+template <class T1, class T2> struct tuple_element<1, pair<T1, T2> >;
 
 template<size_t I, class T1, class T2>
-    typename tuple_element<I, std::pair<T1, T2> >::type&
-    get(std::pair<T1, T2>&) noexcept; // constexpr in C++14
+    typename tuple_element<I, pair<T1, T2> >::type&
+    get(pair<T1, T2>&) noexcept; // constexpr in C++14
 
 template<size_t I, class T1, class T2>
-    const typename const tuple_element<I, std::pair<T1, T2> >::type&
-    get(const std::pair<T1, T2>&) noexcept; // constexpr in C++14
+    const typename const tuple_element<I, pair<T1, T2> >::type&
+    get(const pair<T1, T2>&) noexcept; // constexpr in C++14
 
 template<size_t I, class T1, class T2>
-    typename tuple_element<I, std::pair<T1, T2> >::type&&
-    get(std::pair<T1, T2>&&) noexcept; // constexpr in C++14
+    typename tuple_element<I, pair<T1, T2> >::type&&
+    get(pair<T1, T2>&&) noexcept; // constexpr in C++14
 
 template<class T1, class T2>
-    constexpr T1& get(std::pair<T1, T2>&) noexcept; // C++14
+    constexpr T1& get(pair<T1, T2>&) noexcept; // C++14
 
 template<size_t I, class T1, class T2>
-    constexpr T1 const& get(std::pair<T1, T2> const &) noexcept; // C++14
+    constexpr T1 const& get(pair<T1, T2> const &) noexcept; // C++14
 
 template<size_t I, class T1, class T2>
-    constexpr T1&& get(std::pair<T1, T2>&&) noexcept; // C++14
+    constexpr T1&& get(pair<T1, T2>&&) noexcept; // C++14
 
 // C++14
 
@@ -345,9 +345,9 @@ struct _LIBCPP_TYPE_VIS_ONLY pair
         _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX11
         pair(_Tuple&& __p)
             : first(_VSTD::forward<typename tuple_element<0,
-                                  typename __make_tuple_types<_Tuple>::type>::type>(get<0>(__p))),
+                                  typename __make_tuple_types<_Tuple>::type>::type>(_VSTD::get<0>(__p))),
               second(_VSTD::forward<typename tuple_element<1,
-                                   typename __make_tuple_types<_Tuple>::type>::type>(get<1>(__p)))
+                                   typename __make_tuple_types<_Tuple>::type>::type>(_VSTD::get<1>(__p)))
             {}
 
 
@@ -465,13 +465,13 @@ swap(pair<_T1, _T2>& __x, pair<_T1, _T2>& __y)
 template <class _Tp> class _LIBCPP_TYPE_VIS_ONLY reference_wrapper;
 
 template <class _Tp>
-struct ___make_pair_return
+struct __make_pair_return_impl
 {
     typedef _Tp type;
 };
 
 template <class _Tp>
-struct ___make_pair_return<reference_wrapper<_Tp>>
+struct __make_pair_return_impl<reference_wrapper<_Tp>>
 {
     typedef _Tp& type;
 };
@@ -479,7 +479,7 @@ struct ___make_pair_return<reference_wrapper<_Tp>>
 template <class _Tp>
 struct __make_pair_return
 {
-    typedef typename ___make_pair_return<typename decay<_Tp>::type>::type type;
+    typedef typename __make_pair_return_impl<typename decay<_Tp>::type>::type type;
 };
 
 template <class _T1, class _T2>

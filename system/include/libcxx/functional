@@ -1221,7 +1221,7 @@ public:
     template <class... _ArgTypes>
        _LIBCPP_INLINE_VISIBILITY
        typename __invoke_return<type, _ArgTypes...>::type
-          operator() (_ArgTypes&&... __args)
+          operator() (_ArgTypes&&... __args) const
           {
               return __invoke(__f_, _VSTD::forward<_ArgTypes>(__args)...);
           }
@@ -1421,7 +1421,7 @@ class _LIBCPP_TYPE_VIS_ONLY function<_Rp(_ArgTypes...)>
         static bool __not_null(_R2 (_Cp::*__p)(_Ap...) const volatile) {return __p;}
     template <class _R2, class ..._Ap>
         _LIBCPP_INLINE_VISIBILITY
-        static bool __not_null(const function<_Rp(_Ap...)>& __p) {return __p;}
+        static bool __not_null(const function<_R2(_Ap...)>& __p) {return !!__p;}
 
     template <class _Fp, bool = !is_same<_Fp, function>::value &&
                                 __invokable<_Fp&, _ArgTypes...>::value>
@@ -1617,21 +1617,22 @@ function<_Rp(_ArgTypes...)>::function(allocator_arg_t, const _Alloc& __a0, _Fp _
     if (__not_null(__f))
     {
         typedef __function::__func<_Fp, _Alloc, _Rp(_ArgTypes...)> _FF;
-        if (sizeof(_FF) <= sizeof(__buf_) && is_nothrow_copy_constructible<_Fp>::value)
+        typedef typename __alloc_traits::template
+#ifndef _LIBCPP_HAS_NO_TEMPLATE_ALIASES
+            rebind_alloc<_FF>
+#else
+            rebind_alloc<_FF>::other
+#endif
+            _Ap;
+        _Ap __a(__a0);
+        if (sizeof(_FF) <= sizeof(__buf_) && 
+            is_nothrow_copy_constructible<_Fp>::value && is_nothrow_copy_constructible<_Ap>::value)
         {
             __f_ = (__base*)&__buf_;
-            ::new (__f_) _FF(_VSTD::move(__f));
+            ::new (__f_) _FF(_VSTD::move(__f), _Alloc(__a));
         }
         else
         {
-            typedef typename __alloc_traits::template
-#ifndef _LIBCPP_HAS_NO_TEMPLATE_ALIASES
-                rebind_alloc<_FF>
-#else
-                rebind_alloc<_FF>::other
-#endif
-                                                         _Ap;
-            _Ap __a(__a0);
             typedef __allocator_destructor<_Ap> _Dp;
             unique_ptr<__base, _Dp> __hold(__a.allocate(1), _Dp(__a, 1));
             ::new (__hold.get()) _FF(_VSTD::move(__f), _Alloc(__a));
@@ -1857,7 +1858,7 @@ inline _LIBCPP_INLINE_VISIBILITY
 typename __invoke_of<_Ti&, _Uj...>::type
 __mu_expand(_Ti& __ti, tuple<_Uj...>& __uj, __tuple_indices<_Indx...>)
 {
-    return __ti(_VSTD::forward<_Uj>(get<_Indx>(__uj))...);
+    return __ti(_VSTD::forward<_Uj>(_VSTD::get<_Indx>(__uj))...);
 }
 
 template <class _Ti, class ..._Uj>
@@ -1892,7 +1893,7 @@ typename enable_if
 __mu(_Ti&, _Uj& __uj)
 {
     const size_t _Indx = is_placeholder<_Ti>::value - 1;
-    return _VSTD::forward<typename tuple_element<_Indx, _Uj>::type>(get<_Indx>(__uj));
+    return _VSTD::forward<typename tuple_element<_Indx, _Uj>::type>(_VSTD::get<_Indx>(__uj));
 }
 
 template <class _Ti, class _Uj>
@@ -2019,7 +2020,7 @@ typename __bind_return<_Fp, _BoundArgs, _Args>::type
 __apply_functor(_Fp& __f, _BoundArgs& __bound_args, __tuple_indices<_Indx...>,
                 _Args&& __args)
 {
-    return __invoke(__f, __mu(get<_Indx>(__bound_args), __args)...);
+    return __invoke(__f, __mu(_VSTD::get<_Indx>(__bound_args), __args)...);
 }
 
 template<class _Fp, class ..._BoundArgs>
