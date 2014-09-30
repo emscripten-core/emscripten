@@ -6168,10 +6168,22 @@ function emterpretify(ast) {
             assert(shifts >= 0 && shifts <= 3);
             var bits = Math.pow(2, shifts)*8;
             assert(bits === temp.bits);
-            var y = getReg(node[2][2], false, ASM_INT, ASM_SIGNED);
-            var x = assignTo >= 0 ? assignTo : getFree(y[0]);
-            y[1].push(opcode, x, releaseIfFree(y[0], x), 0);
-            return [x, y[1]];
+            var pointer = node[2][2];
+
+            if (pointer[0] === 'binary' && pointer[1] === '+') {
+              opcode += 'A';
+              var y = getReg(pointer[2], false, ASM_INT, ASM_SIGNED);
+              var z = getReg(pointer[3], false, ASM_INT, ASM_SIGNED);
+              var x = assignTo >= 0 ? assignTo : getFree(y[0], z[0]);
+              y[1] = y[1].concat(z[1]);
+              y[1].push(opcode, x, releaseIfFree(y[0], x), releaseIfFree(z[0], x));
+              return [x, y[1]];
+            } else {
+              var y = getReg(node[2][2], false, ASM_INT, ASM_SIGNED);
+              var x = assignTo >= 0 ? assignTo : getFree(y[0]);
+              y[1].push(opcode, x, releaseIfFree(y[0], x), 0);
+              return [x, y[1]];
+            }
           } else {
             assert(node[2][0] === 'num'); // HEAP32[8] or such
             var address = node[2][1];
