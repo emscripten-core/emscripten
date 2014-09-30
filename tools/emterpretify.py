@@ -19,109 +19,104 @@ LOG_CODE = os.environ.get('EMCC_LOG_EMTERPRETER_CODE')
 
 BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64'])
 
-OPCODES = { # l, lx, ly etc - one of 256 locals
-  '0':   'SET',     # [lx, ly, 0]          lx = ly (int or float, not double)
-  '1':   'GETST',   # [l, 0, 0]            l = STACKTOP
-  '2':   'SETST',   # [l, 0, 0]            STACKTOP = l
-  '3':   'SETVI',   # [l, vl, vh]          l = v (16-bit signed int)
-  '4':   'SETVIB',  # [l, 0, 0] [..v..]    l = 32-bit int in next 32-bit instruction
-  '5':   'ADD',     # [lx, ly, lz]         lx = ly + lz (32-bit int)
-  '6':   'SUB',     # [lx, ly, lz]         lx = ly - lz (32-bit int)
-  '7':   'MUL',     # [lx, ly, lz]         lx = ly * lz (32-bit int)
-  '8':   'SDIV',    # [lx, ly, lz]         lx = ly / lz (32-bit signed int)
-  '9':   'UDIV',    # [lx, ly, lz]         lx = ly / lz (32-bit unsigned int)
-  '10':  'SMOD',    # [lx, ly, lz]         lx = ly % lz (32-bit signed int)
-  '11':  'UMOD',    # [lx, ly, lz]         lx = ly % lz (32-bit unsigned int)
-  '12':  'NEG',     # [lx, ly, 0]          lx = -ly (int)
-  '13':  'LNOT',    # [lx, ly, 0]          ly = !ly (int)
-  '14':  'BNOT',    # [lx, ly, 0]          ly = ~ly (int)
-  '18':  'EQ',      # [lx, ly, lz]         lx = ly == lz (32-bit int)
-  '19':  'NE',      # [lx, ly, lz]         lx = ly != lz (32-bit int)
-  '20':  'SLT',     # [lx, ly, lz]         lx = ly < lz (32-bit signed)
-  '21':  'ULT',     # [lx, ly, lz]         lx = ly < lz (32-bit unsigned)
-  '22':  'SLE',     # [lx, ly, lz]         lx = ly <= lz (32-bit signed)
-  '23':  'ULE',     # [lx, ly, lz]         lx = ly <= lz (32-bit unsigned)
-  '30':  'AND',     # [lx, ly, lz]         lx = ly & lz
-  '31':  'OR',      # [lx, ly, lz]         lx = ly | lz
-  '32':  'XOR',     # [lx, ly, lz]         lx = ly ^ lz
-  '40':  'SHL',     # [lx, ly, lz]         lx = ly << lz
-  '41':  'ASHR',    # [lx, ly, lz]         lx = ly >> lz
-  '42':  'LSHR',    # [lx, ly, lz]         lx = ly >>> lz
+OPCODES = [ # l, lx, ly etc - one of 256 locals
+  'SET',     # [lx, ly, 0]          lx = ly (int or float, not double)
+  'GETST',   # [l, 0, 0]            l = STACKTOP
+  'SETST',   # [l, 0, 0]            STACKTOP = l
+  'SETVI',   # [l, vl, vh]          l = v (16-bit signed int)
+  'SETVIB',  # [l, 0, 0] [..v..]    l = 32-bit int in next 32-bit instruction
 
-  '60':  'SETD',    # [lx, ly, lz]         lx = ly (double)
-  '61':  'SETVD',   # [lx, vl, vh]         lx = ly (16 bit signed int, converted into double)
-  '62':  'SETVDI',  # [lx, 0, 0] [..v..]   lx = v (32 bit signed int, converted into double)
-  '63':  'SETVDF',  # [lx, 0, 0] [..v..]   lx = v (32 bit float, converted into double)
-  '64':  'SETVDD',  # [lx, 0, 0][.v.][.v.] lx = v (64 bit double)
-  '65':  'ADDD',    # [lx, ly, lz]         lx = ly + lz (double)
-  '66':  'SUBD',    # [lx, ly, lz]         lx = ly - lz (double)
-  '67':  'MULD',    # [lx, ly, lz]         lx = ly * lz (double)
-  '69':  'DIVD',    # [lx, ly, lz]         lx = ly / lz (double)
-  '70':  'MODD',    # [lx, ly, lz]         lx = ly % lz (double)
-  '72':  'NEGD',    # [lx, ly, 0]          lx = -ly (double)
-  '78':  'EQD',     # [lx, ly, lz]         lx = ly == lz (double)
-  '79':  'NED',     # [lx, ly, lz]         lx = ly != lz (double)
-  '80':  'LTD',     # [lx, ly, lz]         lx = ly < lz (signed)
-  '81':  'LED',     # [lx, ly, lz]         lx = ly < lz (double)
-  '82':  'GTD',     # [lx, ly, lz]         lx = ly <= lz (double)
-  '83':  'GED',     # [lx, ly, lz]         lx = ly <= lz (double)
-  '90':  'D2I',     # [lx, ly, 0]          lx = ~~ly (double-to-int)
-  '91':  'SI2D',    # [lx, ly, 0]          lx = +ly (signed int-to-double)
-  '92':  'UI2D',    # [lx, ly, 0]          lx = +ly (unsigned int-to-double)
+  'ADD',     # [lx, ly, lz]         lx = ly + lz (32-bit int)
+  'SUB',     # [lx, ly, lz]         lx = ly - lz (32-bit int)
+  'MUL',     # [lx, ly, lz]         lx = ly * lz (32-bit int)
+  'SDIV',    # [lx, ly, lz]         lx = ly / lz (32-bit signed int)
+  'UDIV',    # [lx, ly, lz]         lx = ly / lz (32-bit unsigned int)
+  'SMOD',    # [lx, ly, lz]         lx = ly % lz (32-bit signed int)
+  'UMOD',    # [lx, ly, lz]         lx = ly % lz (32-bit unsigned int)
+  'NEG',     # [lx, ly, 0]          lx = -ly (int)
+  'LNOT',    # [lx, ly, 0]          ly = !ly (int)
+  'BNOT',    # [lx, ly, 0]          ly = ~ly (int)
+  'EQ',      # [lx, ly, lz]         lx = ly == lz (32-bit int)
+  'NE',      # [lx, ly, lz]         lx = ly != lz (32-bit int)
+  'SLT',     # [lx, ly, lz]         lx = ly < lz (32-bit signed)
+  'ULT',     # [lx, ly, lz]         lx = ly < lz (32-bit unsigned)
+  'SLE',     # [lx, ly, lz]         lx = ly <= lz (32-bit signed)
+  'ULE',     # [lx, ly, lz]         lx = ly <= lz (32-bit unsigned)
+  'AND',     # [lx, ly, lz]         lx = ly & lz
+  'OR',      # [lx, ly, lz]         lx = ly | lz
+  'XOR',     # [lx, ly, lz]         lx = ly ^ lz
+  'SHL',     # [lx, ly, lz]         lx = ly << lz
+  'ASHR',    # [lx, ly, lz]         lx = ly >> lz
+  'LSHR',    # [lx, ly, lz]         lx = ly >>> lz
 
-  '100': 'LOAD8',   # [lx, ly, 0]          lx = HEAP8[ly >> 0]
-  '101': 'LOADU8',  # [lx, ly, 0]          lx = HEAPU8[ly >> 0]
-  '110': 'LOAD16',  # [lx, ly, 0]          lx = HEAP16[ly >> 1]
-  '111': 'LOADU16', # [lx, ly, 0]          lx = HEAPU16[ly >> 1]
-  '120': 'LOAD32',  # [lx, ly, 0]          lx = HEAP32[ly >> 2]   - no need for unsigned version, this is set to a register anyhow
-  '130': 'STORE8',  # [lx, ly, 0]          HEAP8[lx >> 2] = ly
-  '140': 'STORE16', # [lx, ly, 0]          HEAP16[lx >> 2] = ly
-  '150': 'STORE32', # [lx, ly, 0]          HEAP32[lx >> 2] = ly
+  'SETD',    # [lx, ly, lz]         lx = ly (double)
+  'SETVD',   # [lx, vl, vh]         lx = ly (16 bit signed int, converted into double)
+  'SETVDI',  # [lx, 0, 0] [..v..]   lx = v (32 bit signed int, converted into double)
+  'SETVDF',  # [lx, 0, 0] [..v..]   lx = v (32 bit float, converted into double)
+  'SETVDD',  # [lx, 0, 0][.v.][.v.] lx = v (64 bit double)
+  'ADDD',    # [lx, ly, lz]         lx = ly + lz (double)
+  'SUBD',    # [lx, ly, lz]         lx = ly - lz (double)
+  'MULD',    # [lx, ly, lz]         lx = ly * lz (double)
+  'DIVD',    # [lx, ly, lz]         lx = ly / lz (double)
+  'MODD',    # [lx, ly, lz]         lx = ly % lz (double)
+  'NEGD',    # [lx, ly, 0]          lx = -ly (double)
+  'EQD',     # [lx, ly, lz]         lx = ly == lz (double)
+  'NED',     # [lx, ly, lz]         lx = ly != lz (double)
+  'LTD',     # [lx, ly, lz]         lx = ly < lz (signed)
+  'LED',     # [lx, ly, lz]         lx = ly < lz (double)
+  'GTD',     # [lx, ly, lz]         lx = ly <= lz (double)
+  'GED',     # [lx, ly, lz]         lx = ly <= lz (double)
+  'D2I',     # [lx, ly, 0]          lx = ~~ly (double-to-int)
+  'SI2D',    # [lx, ly, 0]          lx = +ly (signed int-to-double)
+  'UI2D',    # [lx, ly, 0]          lx = +ly (unsigned int-to-double)
 
-  '151': 'LOADF64',  # [lx, ly, 0]         lx = HEAPF64[ly >> 3]
-  '152': 'STOREF64', # [lx, ly, 0]         HEAPF64[lx >> 3] = ly
-  '153': 'LOADF32',  # [lx, ly, 0]         lx = HEAPF32[ly >> 3]
-  '154': 'STOREF32', # [lx, ly, 0]         HEAPF32[lx >> 3] = ly
+  'LOAD8',   # [lx, ly, 0]          lx = HEAP8[ly >> 0]
+  'LOADU8',  # [lx, ly, 0]          lx = HEAPU8[ly >> 0]
+  'LOAD16',  # [lx, ly, 0]          lx = HEAP16[ly >> 1]
+  'LOADU16', # [lx, ly, 0]          lx = HEAPU16[ly >> 1]
+  'LOAD32',  # [lx, ly, 0]          lx = HEAP32[ly >> 2]   - no need for unsigned version, this is set to a register anyhow
+  'STORE8',  # [lx, ly, 0]          HEAP8[lx >> 2] = ly
+  'STORE16', # [lx, ly, 0]          HEAP16[lx >> 2] = ly
+  'STORE32', # [lx, ly, 0]          HEAP32[lx >> 2] = ly
 
-  '159': 'BR',      # [0, tl, th]          jump t instructions (multiple of 4)
-  '160': 'BRT',     # [cond, tl, th]       if cond, jump t instructions (multiple of 4)
-  '161': 'BRF',     # [cond, tl, th]       if !cond, jump t instructions (multiple of 4)
-  '169': 'BRA',      # [0, 0, 0] [addr]     jump to addr
-  '170': 'BRTA',     # [cond, 0, 0] [addr]  if cond, jump to addr
-  '171': 'BRFA',     # [cond, 0, 0] [addr]  if !cond, jump to addr
+  'LOADF64',  # [lx, ly, 0]         lx = HEAPF64[ly >> 3]
+  'STOREF64', # [lx, ly, 0]         HEAPF64[lx >> 3] = ly
+  'LOADF32',  # [lx, ly, 0]         lx = HEAPF32[ly >> 3]
+  'STOREF32', # [lx, ly, 0]         HEAPF32[lx >> 3] = ly
 
-  '200': 'GETTDP',  # [l, 0, 0]            l = tempDoublePtr
-  #'201': 'GETPC',   # [l, 0, 0]            l = pc
-  '202': 'GETTR0',  # [l, 0, 0]            l = tempRet0
-  '203': 'SETTR0',  # [l, 0, 0]            tempRet0 = l
-  '240': 'GETGLBI', # [l, vl, vh]          get global value, int, indexed by v
-  '241': 'GETGLBD', # [l, vl, vh]          get global value, double, indexed by v
-  '245': 'SETGLBI', # [vl, vh, l]          set global value, int, indexed by v (v = l)
-  '250': 'CALL',    # [lx, targetl, targeth] [params...]   (lx = ) target(params..) lx's existence and type depend on the target's actual callsig;
+  'BR',      # [0, tl, th]          jump t instructions (multiple of 4)
+  'BRT',     # [cond, tl, th]       if cond, jump t instructions (multiple of 4)
+  'BRF',     # [cond, tl, th]       if !cond, jump t instructions (multiple of 4)
+  'BRA',      # [0, 0, 0] [addr]     jump to addr
+  'BRTA',     # [cond, 0, 0] [addr]  if cond, jump to addr
+  'BRFA',     # [cond, 0, 0] [addr]  if !cond, jump to addr
+
+  'GETTDP',  # [l, 0, 0]            l = tempDoublePtr
+  'GETTR0',  # [l, 0, 0]            l = tempRet0
+  'SETTR0',  # [l, 0, 0]            tempRet0 = l
+  'GETGLBI', # [l, vl, vh]          get global value, int, indexed by v
+  'GETGLBD', # [l, vl, vh]          get global value, double, indexed by v
+  'SETGLBI', # [vl, vh, l]          set global value, int, indexed by v (v = l)
+  'CALL',    # [lx, targetl, targeth] [params...]   (lx = ) target(params..) lx's existence and type depend on the target's actual callsig;
                     #                                 this instruction can take multiple 32-bit instruction chunks
                     #                                 if target is a function table, then the first param is the index of the register holding the function pointer
-  '251': 'SWITCH',  # [lx, ly, lz]         switch (lx) { .. }. followed by a jump table for values in range [ly..ly+lz), after which is the default (which might be empty)
-  '254': 'RET',     # [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
-  '255': 'FUNC',    # [total locals, num params, 0]            function with n locals (each taking 64 bits), of which the first are params
-}
+  'SWITCH',  # [lx, ly, lz]         switch (lx) { .. }. followed by a jump table for values in range [ly..ly+lz), after which is the default (which might be empty)
+  'RET',     # [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
+  'FUNC',    # [total locals, num params, 0]            function with n locals (each taking 64 bits), of which the first are params
+]
 
 def randomize_opcodes():
   global OPCODES
-  keys = OPCODES.keys()
   import random
-  random.shuffle(keys)
-  copy = OPCODES
-  OPCODES = {}
-  for k in range(len(keys)):
-    OPCODES[k] = copy[keys[k]]
+  random.shuffle(opcodes)
   print OPCODES
 #randomize_opcodes()
 
-assert len(OPCODES.values()) == len(set(OPCODES.values())) # no dupe names
+assert len(OPCODES) == len(set(OPCODES)) # no dupe names
 
 ROPCODES = {}
-for o in OPCODES:
-  ROPCODES[OPCODES[o]] = int(o);
+for i in range(len(OPCODES)):
+  ROPCODES[OPCODES[i]] = i
 
 GLOBAL_BASE = 8
 
