@@ -6617,14 +6617,13 @@ function emterpretify(ast) {
         }
       }
       // optimization pass, skip over multiple jumps
-      function trySkip(what, inst) {
-        // TODO: pass over a relative or absolute-target right here, we have not removed them yet XXX
-        if (code[i] === inst) {
+      for (var i = 0; i < code.length; i += 4) {
+        if (code[i] in RELATIVE_BRANCHES) {
           while (1) {
             var j = getI(code[i+2]);
-            assert(code[j] === what);
-            j += 4;
-            if (code[j] === inst) {
+            assert(code[j] === 'relative');
+            while (code[j] === 'relative' || code[j] === 'absolute-target') j += 4; // jump over all NOPs here
+            if (code[j] === 'BR') {
               code[i+2].uses--;
               code[j+2].uses++;
               code[i+2] = code[j+2];
@@ -6633,10 +6632,6 @@ function emterpretify(ast) {
             }
           }
         }
-      }
-      for (var i = 0; i < code.length; i += 4) {
-        trySkip('relative', 'BR');
-        trySkip('absolute-target', 'BRA');
       }
       // optimization pass, remove unreachable code
       for (var i = 0; i < code.length; i += 4) {
