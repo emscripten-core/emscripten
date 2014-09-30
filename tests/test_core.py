@@ -5596,6 +5596,7 @@ def process(filename):
           'quoted', # current fastcomp limitations FIXME
           'atomicrmw_unaligned', # TODO XXX
         ]: continue
+        if self.is_emterpreter() and os.path.basename(shortname) in ['funcptr']: continue # test writes to memory we store out bytecode! test is invalid
 
         if os.path.basename(shortname) in need_no_leave_inputs_raw:
           if self.run_name.startswith('s_'):
