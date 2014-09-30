@@ -6598,6 +6598,20 @@ function emterpretify(ast) {
         printErr(JSON.stringify(code));
         printErr('==========');
       }*/
+      function sanityCheck() {
+        var seenAbsolutes = {}; // every absolute value must have a valid target
+        for (var i = 0; i < code.length; i += 4) {
+          if (code[i] === 'absolute-target') {
+            seenAbsolutes[code[i+1].id] = 1;
+          }
+        }
+        for (var i = 0; i < code.length; i += 4) {
+          if (code[i] === 'absolute-value') {
+            assert(code[i+1].id in seenAbsolutes);
+          }
+        }
+      }
+      sanityCheck();
       // first pass, collect markers and absolute targets, and their uses
       function getI(obj) {
         var i = 0;
@@ -6616,6 +6630,7 @@ function emterpretify(ast) {
           code[i+1].uses++;
         }
       }
+      sanityCheck();
       // optimization pass, skip over multiple jumps
       function skipNOPs(i) {
         while (code[i] === 'relative' || code[i] === 'absolute-target') i += 4; // jump over all NOPs here
@@ -6638,6 +6653,7 @@ function emterpretify(ast) {
           }
         }
       }
+      sanityCheck();
       // optimization pass, remove unreachable code
       function deleteCode(i, num) {
         // drop uses for code we are removing
@@ -6669,6 +6685,7 @@ function emterpretify(ast) {
           }
         }
       }
+      sanityCheck();
       // second pass, find out which relative branches must be converted to absolutes, because they are too big
       for (var i = 0; i < code.length; i += 4) {
         if (code[i] in RELATIVE_BRANCHES) {
@@ -6679,10 +6696,14 @@ function emterpretify(ast) {
           var maxOffset = storedOffset * 2; // when we convert relative to absolute, we double the size of a branch.
                                             // so worst case, we may double offsets (TODO this could be optimized)
           if ((maxOffset << 16 >> 16) !== maxOffset) {
-            obj.replaceWith = getAbsolute('relative-replacement');
+            if (!obj.replaceWith) {
+              obj.replaceWith = getAbsolute('relative-replacement');
+              code.splice(target, 0, 'absolute-target', obj.replaceWith, 0, 0);
+            }
           }
         }
       }
+      sanityCheck();
       // convert necessary relative branches to absolutes
       for (var i = 0; i < code.length; i += 4) {
         if (code[i] in RELATIVE_BRANCHES) {
@@ -6692,9 +6713,12 @@ function emterpretify(ast) {
             code[i+2] = 0; // id is no longer needed, 4 extra bytes in the inst will contain the absolute value
             code.splice(i+4, 0, 'absolute-value', obj.replaceWith, 0, 0); // add absolute value after first part of branch inst
             obj.replaceWith.uses++;
+            obj.uses--;
+            assert(obj.uses >= 0);
           }
         }
       }
+      sanityCheck();
       // remove relative and absolute placeholders, after which every instruction is now in its absolute location, and we can write out absolutes 
       for (var i = 0; i < code.length; i += 4) {
         if (code[i] === 'relative') {
