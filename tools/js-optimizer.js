@@ -6719,7 +6719,7 @@ function emterpretify(ast) {
       // optimization pass, remove unreachable code
       function deleteCode(i, num) {
         // drop uses for code we are removing
-        for (var j = 0; j < num; j += 4) {
+        for (var j = i; j < i + num; j += 4) {
           assert(!(code[j] in ABSOLUTE_BRANCHES));
           if (code[j] in RELATIVE_BRANCHES) {
             code[j+2].uses--;
