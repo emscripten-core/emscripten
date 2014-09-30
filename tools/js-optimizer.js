@@ -6236,12 +6236,30 @@ function emterpretify(ast) {
       }
     }
 
+    function getNum(node) {
+      if (node[0] === 'num') return node[1];
+      if (node[0] === 'unary-prefix' && node[1] === '-' && node[2][0] === 'num') return -node[2][1];
+      return null;
+    }
+
     function makeBinary(node, type, sign, assignTo) {
       var opcode;
+      var numValue = null; // if one operand is a number, we can emit an optimized op
+      var otherValue = null;
       switch(node[1]) {
         case '+': {
-          if (type === ASM_INT) opcode = 'ADD';
-          else if (type === ASM_DOUBLE) opcode = 'ADDD';
+          if (type === ASM_INT) {
+            opcode = 'ADD';
+            numValue = getNum(node[3]);
+            if (numValue !== null) {
+              otherValue = node[2];
+            } else {
+              numValue = getNum(node[2]);
+              if (numValue !== null) {
+                otherValue = node[3];
+              }
+            }
+          } else if (type === ASM_DOUBLE) opcode = 'ADDD';
           break;
         }
         case '-': {
@@ -6318,12 +6336,22 @@ function emterpretify(ast) {
         case '>>>': opcode = 'LSHR'; break;
         default: throw 'bad ' + node[1];
       }
-      var y = getReg(node[2], undefined, type, sign);
-      var z = getReg(node[3], undefined, type, sign);
-      var x = assignTo >= 0 ? assignTo : getFree(y[0], z[0]);
-      y[1] = y[1].concat(z[1]);
-      y[1].push(opcode, x, releaseIfFree(y[0], x), releaseIfFree(z[0], x));
-      return [x, y[1]];
+      var x, y, z;
+      if (numValue === null || (numValue << 24 >> 24 !== numValue)) {
+        y = getReg(node[2], undefined, type, sign);
+        z = getReg(node[3], undefined, type, sign);
+        x = assignTo >= 0 ? assignTo : getFree(y[0], z[0]);
+        y[1] = y[1].concat(z[1]);
+        y[1].push(opcode, x, releaseIfFree(y[0], x), releaseIfFree(z[0], x));
+        return [x, y[1]];
+      } else {
+        // one operand is a small 8-bit signed number, emit an optimized instruction
+        opcode += 'V';
+        y = getReg(otherValue, undefined, type, sign);
+        x = assignTo >= 0 ? assignTo : getFree(y[0]);
+        y[1].push(opcode, x, releaseIfFree(y[0], x), numValue & 255);
+        return [x, y[1]];
+      }
     }
 
     function makeUnary(node, type, sign, assignTo) {

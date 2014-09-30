@@ -49,6 +49,8 @@ OPCODES = [ # l, lx, ly etc - one of 256 locals
   'ASHR',    # [lx, ly, lz]         lx = ly >> lz
   'LSHR',    # [lx, ly, lz]         lx = ly >>> lz
 
+  'ADDV',     # [lx, ly, v]         lx = ly + v (32-bit int, v is 8-bit signed)
+
   'SETD',    # [lx, ly, lz]         lx = ly (double)
   'SETVD',   # [lx, vl, vh]         lx = ly (16 bit signed int, converted into double)
   'SETVDI',  # [lx, 0, 0] [..v..]   lx = v (32 bit signed int, converted into double)
@@ -159,6 +161,7 @@ CASES[ROPCODES['GETST']] = 'HEAP32[sp + (lx << 3) >> 2] = STACKTOP;'
 CASES[ROPCODES['SETST']] = 'STACKTOP = HEAP32[sp + (lx << 3) >> 2]|0;'
 CASES[ROPCODES['SETVI']] = 'HEAP32[sp + (lx << 3) >> 2] = inst >> 16;'
 CASES[ROPCODES['SETVIB']] = 'pc = pc + 4 | 0; ' + get_access('lx') + ' = HEAP32[pc >> 2] | 0;'
+
 CASES[ROPCODES['ADD']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') + (' + get_coerced_access('lz') + ') | 0;'
 CASES[ROPCODES['SUB']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') - (' + get_coerced_access('lz') + ') | 0;'
 CASES[ROPCODES['MUL']] = get_access('lx') + ' = Math_imul(' + get_coerced_access('ly') + ', ' + get_coerced_access('lz') + ') | 0;'
@@ -181,6 +184,8 @@ CASES[ROPCODES['XOR']] = get_access('lx') + ' = (' + get_coerced_access('ly') + 
 CASES[ROPCODES['SHL']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') << (' + get_coerced_access('lz') + ');'
 CASES[ROPCODES['ASHR']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') >> (' + get_coerced_access('lz') + ');'
 CASES[ROPCODES['LSHR']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') >>> (' + get_coerced_access('lz') + ');'
+
+CASES[ROPCODES['ADDV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') + (inst >> 24) | 0;'
 
 CASES[ROPCODES['SETD']] = get_access('lx', s='d') + ' = ' + get_coerced_access('ly', s='d') + ';'
 CASES[ROPCODES['SETVD']] = get_access('lx', s='d') + ' = +(inst >> 16);'
