@@ -6246,30 +6246,47 @@ function emterpretify(ast) {
       var opcode;
       var numValue = null; // if one operand is a number, we can emit an optimized op
       var otherValue = null;
+      var numValueUnsigned = false;
+      function tryNumSymmetrical(unsigned) { // flip operands to find a num
+        numValue = getNum(node[3]);
+        if (numValue !== null) {
+          otherValue = node[2];
+          numValueUnsigned = unsigned;
+        } else {
+          numValue = getNum(node[2]);
+          if (numValue !== null) {
+            otherValue = node[3];
+            numValueUnsigned = unsigned;
+          }
+        }
+      }
+      function tryNumAsymmetrical(unsigned) { // only try on the last operand (still common, e.g. x % 5, y >> 2, z > 0
+        numValue = getNum(node[3]);
+        if (numValue !== null) {
+          otherValue = node[2];
+          numValueUnsigned = unsigned;
+        }
+      }
       switch(node[1]) {
         case '+': {
           if (type === ASM_INT) {
             opcode = 'ADD';
-            numValue = getNum(node[3]);
-            if (numValue !== null) {
-              otherValue = node[2];
-            } else {
-              numValue = getNum(node[2]);
-              if (numValue !== null) {
-                otherValue = node[3];
-              }
-            }
+            tryNumSymmetrical();
           } else if (type === ASM_DOUBLE) opcode = 'ADDD';
           break;
         }
         case '-': {
-          if (type === ASM_INT) opcode = 'SUB';
-          else if (type === ASM_DOUBLE) opcode = 'SUBD';
+          if (type === ASM_INT) {
+            opcode = 'SUB';
+            tryNumAsymmetrical();
+          } else if (type === ASM_DOUBLE) opcode = 'SUBD';
           break;
         }
         case '*': {
-          if (type === ASM_INT) opcode = 'MUL';
-          else if (type === ASM_DOUBLE) opcode = 'MULD';
+          if (type === ASM_INT) {
+            opcode = 'MUL';
+            tryNumSymmetrical();
+          } else if (type === ASM_DOUBLE) opcode = 'MULD';
           break;
         }
         case '/': {
@@ -6277,6 +6294,7 @@ function emterpretify(ast) {
             assert(sign !== ASM_FLEXIBLE);
             if (sign === ASM_SIGNED) opcode = 'SDIV';
             else opcode = 'UDIV';
+            tryNumAsymmetrical(sign === ASM_UNSIGNED);
           }
           else if (type === ASM_DOUBLE) opcode = 'DIVD';
           break;
@@ -6286,6 +6304,7 @@ function emterpretify(ast) {
             assert(sign !== ASM_FLEXIBLE);
             if (sign === ASM_SIGNED) opcode = 'SMOD';
             else opcode = 'UMOD';
+            tryNumAsymmetrical(sign === ASM_UNSIGNED);
           }
           else if (type === ASM_DOUBLE) opcode = 'MODD';
           break;
@@ -6295,6 +6314,7 @@ function emterpretify(ast) {
             if (sign === ASM_FLEXIBLE) sign = ASM_SIGNED; // e.g. two numbers
             if (sign === ASM_SIGNED) opcode = 'SLT';
             else opcode = 'ULT';
+            tryNumAsymmetrical(sign === ASM_UNSIGNED);
           }
           else if (type === ASM_DOUBLE) opcode = 'LTD';
           break;
@@ -6304,6 +6324,7 @@ function emterpretify(ast) {
             if (sign === ASM_FLEXIBLE) sign = ASM_SIGNED; // e.g. two numbers
             if (sign === ASM_SIGNED) opcode = 'SLE';
             else opcode = 'ULE';
+            tryNumAsymmetrical(sign === ASM_UNSIGNED);
           }
           else if (type === ASM_DOUBLE) opcode = 'LED';
           break;
@@ -6319,25 +6340,31 @@ function emterpretify(ast) {
           break;
         }
         case '==': {
-          if (type === ASM_INT) opcode = 'EQ';
-          else if (type === ASM_DOUBLE) opcode = 'EQD';
+          if (type === ASM_INT) {
+            opcode = 'EQ';
+            tryNumSymmetrical();
+          } else if (type === ASM_DOUBLE) opcode = 'EQD';
           break;
         }
         case '!=': {
-          if (type === ASM_INT) opcode = 'NE';
-          else if (type === ASM_DOUBLE) opcode = 'NED';
+          if (type === ASM_INT) {
+            opcode = 'NE';
+            tryNumSymmetrical();
+          } else if (type === ASM_DOUBLE) opcode = 'NED';
           break;
         }
-        case '&': opcode = 'AND'; break;
-        case '|': opcode = 'OR'; break;
-        case '^': opcode = 'XOR'; break;
-        case '<<': opcode = 'SHL'; break;
-        case '>>': opcode = 'ASHR'; break;
-        case '>>>': opcode = 'LSHR'; break;
+        case '&': opcode = 'AND'; tryNumSymmetrical(); break;
+        case '|': opcode = 'OR'; tryNumSymmetrical(); break;
+        case '^': opcode = 'XOR'; tryNumSymmetrical(); break;
+        case '<<': opcode = 'SHL'; tryNumAsymmetrical(true); break;
+        case '>>': opcode = 'ASHR'; tryNumAsymmetrical(true); break;
+        case '>>>': opcode = 'LSHR'; tryNumAsymmetrical(true); break;
         default: throw 'bad ' + node[1];
       }
       var x, y, z;
-      if (numValue === null || (numValue << 24 >> 24 !== numValue)) {
+      var usingNumValue = numValue !== null && ((!numValueUnsigned && ((numValue << 24 >> 24) === numValue)) ||
+                                                ( numValueUnsigned && ((numValue & 255) === numValue)));
+      if (!usingNumValue) {
         y = getReg(node[2], undefined, type, sign);
         z = getReg(node[3], undefined, type, sign);
         x = assignTo >= 0 ? assignTo : getFree(y[0], z[0]);

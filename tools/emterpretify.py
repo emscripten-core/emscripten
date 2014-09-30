@@ -49,7 +49,25 @@ OPCODES = [ # l, lx, ly etc - one of 256 locals
   'ASHR',    # [lx, ly, lz]         lx = ly >> lz
   'LSHR',    # [lx, ly, lz]         lx = ly >>> lz
 
-  'ADDV',     # [lx, ly, v]         lx = ly + v (32-bit int, v is 8-bit signed)
+  'ADDV',    # [lx, ly, v]          lx = ly + v (32-bit int, v is 8-bit signed)
+  'SUBV',
+  'MULV',
+  'SDIVV',
+  'UDIVV',    #                                              (v is 8-bit unsigned)
+  'SMODV',
+  'UMODV',    #                                              (v is 8-bit unsigned)
+  'EQV',
+  'NEV',
+  'SLTV',
+  'ULTV',    #                                               (v is 8-bit unsigned)
+  'SLEV',
+  'ULEV',    #                                               (v is 8-bit unsigned)
+  'ANDV',
+  'ORV',
+  'XORV',
+  'SHLV',    #                                               (v is 8-bit unsigned)
+  'ASHRV',   #                                               (v is 8-bit unsigned)
+  'LSHRV',   #                                               (v is 8-bit unsigned)
 
   'SETD',    # [lx, ly, lz]         lx = ly (double)
   'SETVD',   # [lx, vl, vh]         lx = ly (16 bit signed int, converted into double)
@@ -186,6 +204,24 @@ CASES[ROPCODES['ASHR']] = get_access('lx') + ' = (' + get_coerced_access('ly') +
 CASES[ROPCODES['LSHR']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') >>> (' + get_coerced_access('lz') + ');'
 
 CASES[ROPCODES['ADDV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') + (inst >> 24) | 0;'
+CASES[ROPCODES['SUBV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') - (inst >> 24) | 0;'
+CASES[ROPCODES['MULV']] = get_access('lx') + ' = Math_imul(' + get_coerced_access('ly') + ', inst >> 24) | 0;'
+CASES[ROPCODES['SDIVV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') / (inst >> 24) | 0;'
+CASES[ROPCODES['UDIVV']] = get_access('lx') + ' = (' + get_coerced_access('ly', unsigned=True) + ') / (lz >>> 0) >>> 0;'
+CASES[ROPCODES['SMODV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') % (inst >> 24) | 0;'
+CASES[ROPCODES['UMODV']] = get_access('lx') + ' = (' + get_coerced_access('ly', unsigned=True) + ') % (lz >>> 0) >>> 0;'
+CASES[ROPCODES['EQV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') == (inst >> 24) | 0;'
+CASES[ROPCODES['NEV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') != (inst >> 24) | 0;'
+CASES[ROPCODES['SLTV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') < (inst >> 24) | 0;'
+CASES[ROPCODES['ULTV']] = get_access('lx') + ' = (' + get_coerced_access('ly', unsigned=True) + ') < (lz >>> 0) | 0;'
+CASES[ROPCODES['SLEV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') <= (inst >> 24) | 0;'
+CASES[ROPCODES['ULEV']] = get_access('lx') + ' = (' + get_coerced_access('ly', unsigned=True) + ') <= (lz >>> 0) | 0;'
+CASES[ROPCODES['ANDV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') & (inst >> 24);'
+CASES[ROPCODES['ORV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') | (inst >> 24);'
+CASES[ROPCODES['XORV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') ^ (inst >> 24);'
+CASES[ROPCODES['SHLV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') << lz;'
+CASES[ROPCODES['ASHRV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') >> lz;'
+CASES[ROPCODES['LSHRV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') >>> lz;'
 
 CASES[ROPCODES['SETD']] = get_access('lx', s='d') + ' = ' + get_coerced_access('ly', s='d') + ';'
 CASES[ROPCODES['SETVD']] = get_access('lx', s='d') + ' = +(inst >> 16);'
