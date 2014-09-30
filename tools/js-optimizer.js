@@ -6719,6 +6719,19 @@ function emterpretify(ast) {
         }
       }
       sanityCheck();
+      // optimizations that can only reduce code size
+      for (var i = 0; i < code.length; i += 4) {
+        if (code[i] === 'BRF' && code[i+4] === 'BR') {
+          // if we have a branch-if-false and then a branch, and the BRF jumps to right after the branch, then we can just emit
+          // a BRT. this can happen at the end of while loops, if there is a condition that checks if we should break out
+          if (skipNOPs(i+8) === skipNOPs(getI(code[i+2]))) {
+            code[i] = 'BRT';
+            code[i+2].uses--;
+            code[i+2] = code[i+6];
+            code.splice(i+4, 4);
+          }
+        }
+      }
       // remove relative and absolute placeholders, after which every instruction is now in its absolute location, and we can write out absolutes 
       for (var i = 0; i < code.length; i += 4) {
         if (code[i] === 'relative') {
