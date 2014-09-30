@@ -6609,10 +6609,10 @@ function emterpretify(ast) {
         }
       }
       for (var i = 0; i < code.length; i += 4) {
-        if (code[i] in BRANCHES) {
+        assert(!(code[i] in ABSOLUTE_BRANCHES));
+        if (code[i] in RELATIVE_BRANCHES) {
           code[i+2].uses++;
         } else if (code[i] === 'absolute-value') {
-          assert(!(code[i-4] in ABSOLUTE_BRANCHES)); // would already be counted 
           code[i+1].uses++;
         }
       }
@@ -6629,6 +6629,7 @@ function emterpretify(ast) {
             j = skipNOPs(j);
             if (code[j] === 'BR' && code[i+2] !== code[j+2]) {
               code[i+2].uses--;
+              assert(code[i+2].uses >= 0);
               code[j+2].uses++;
               code[i+2] = code[j+2];
             } else {
@@ -6638,6 +6639,20 @@ function emterpretify(ast) {
         }
       }
       // optimization pass, remove unreachable code
+      function deleteCode(i, num) {
+        // drop uses for code we are removing
+        for (var j = 0; j < num; j += 4) {
+          assert(!(code[j] in ABSOLUTE_BRANCHES));
+          if (code[j] in RELATIVE_BRANCHES) {
+            code[j+2].uses--;
+            assert(code[j+2].uses >= 0);
+          } else if (code[j] === 'absolute-value') {
+            code[j+1].uses--;
+            assert(code[j+1].uses >= 0);
+          }
+        }
+        code.splice(i, num);
+      }
       for (var i = 0; i < code.length; i += 4) {
         if (code[i] in UNCONDITIONAL_BRANCHES) {
           var j = i + 4; // normal forward control flow cannot reach this position
@@ -6650,7 +6665,7 @@ function emterpretify(ast) {
             j += 4; // this instr is unreachable
           }
           if (j > i + 4) {
-            code.splice(i + 4, j - i - 4);
+            deleteCode(i + 4, j - i - 4);
           }
         }
       }
