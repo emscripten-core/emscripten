@@ -125,5 +125,21 @@ function looop() {
  if (a) { if (a) { waka(); } } else { other(); }
  if (a) { if (a) { waka(); } else { wala(); } } else { other(); }
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["finall", "looop"]
+function conditions() {
+ if (!((HEAP32[$incdec_ptr71_i + 8 >> 2] | 0) == 0)) {
+  shoo();
+ }
+ if (x == 0) y();
+ if ((x | 0) == 0) y();
+ if (0 == (y | 0)) z();
+ if (x != 0) y();
+ if ((x | 0) != 0) y();
+ if (0 != (y | 0)) z();
+ if (!((x | 0) == 0)) y();
+ if (!(0 != (x | 0))) y();
+ if (!(s() | 0)) z();
+ if ((x + 4 | 0) != 0) y();
+ if ((x & 4 | 0) != 0) y();
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["finall", "looop", "conditions"]
 

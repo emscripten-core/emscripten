@@ -149,6 +149,8 @@ var CONTINUE_CAPTURERS = LOOP;
 
 var COMMABLE = set('assign', 'binary', 'unary-prefix', 'unary-postfix', 'name', 'num', 'call', 'seq', 'conditional', 'sub');
 
+var CONDITION_CHECKERS = set('if', 'do', 'while', 'switch');
+
 var FUNCTIONS_THAT_ALWAYS_THROW = set('abort', '___resumeException', '___cxa_throw', '___cxa_rethrow');
 
 var UNDEFINED_NODE = ['unary-prefix', 'void', ['num', 0]];
@@ -741,22 +743,6 @@ function simplifyExpressions(ast) {
     }
   }
 
-  // if (x === 0) can be if (!x), etc.
-  function simplifyZeroComp(ast) {
-    traverse(ast, function(node, type) {
-      var binary;
-      if (type === 'if' && (binary = node[1])[0] === 'binary') {
-        if ((binary[1] === '!=' || binary[1] === '!==') && binary[3][0] === 'num' && binary[3][1] === 0) {
-          node[1] = binary[2];
-          return node;
-        } else if ((binary[1] === '==' || binary[1] === '===') && binary[3][0] === 'num' && binary[3][1] === 0) {
-          node[1] = ['unary-prefix', '!', binary[2]];
-          return node;
-        }
-      }
-    });
-  }
-
   function emitsBoolean(node) {
     if (node[0] === 'num') {
       return node[1] === 0 || node[1] === 1;
@@ -824,7 +810,6 @@ function simplifyExpressions(ast) {
     simplifyOps(func);
     simplifyNotComps(func);
     conditionalize(func);
-    // simplifyZeroComp(func); TODO: investigate performance
   });
 }
 
@@ -1407,6 +1392,43 @@ function simplifyNotCompsDirect(node) {
   if (!simplifyNotCompsPass) return node;
 }
 
+var SAFE_TO_DROP_COERCION = set('unary-prefix', 'name', 'num');
+
+function canDropCoercion(node) {
+  if (node[0] in SAFE_TO_DROP_COERCION) return true;
+  if (node[0] === 'binary') {
+    switch (node[1]) {
+      case '>>': case '>>>': case '<<': case '|': case '^': case '&': return true;
+    }
+  }
+  return false;
+}
+
+function simplifyCondition(node) {
+  node = simplifyNotCompsDirect(node);
+  // on integers, if (x == 0) is the same as if (x), and if (x != 0) as if (!x)
+  if (node[0] === 'binary' && (node[1] === '==' || node[1] === '!=')) {
+    var target = null;
+    if (detectType(node[2]) === ASM_INT && node[3][0] === 'num' && node[3][1] === 0) {
+      target = node[2];
+    } else if (detectType(node[3]) === ASM_INT && node[2][0] === 'num' && node[2][1] === 0) {
+      target = node[3];
+    }
+    if (target) {
+      if (target[0] === 'binary' && (target[1] === '|' || target[1] === '>>>') && target[3][0] === 'num' && target[3][1] === 0 &&
+          canDropCoercion(target[2])) {
+        target = target[2]; // drop the coercion, in a condition it is ok to do if (x)
+      }
+      if (node[1] === '==') {
+        return ['unary-prefix', '!', target];
+      } else {
+        return target;
+      }
+    }
+  }
+  return node;
+}
+
 function flipCondition(cond) {
   return simplifyNotCompsDirect(['unary-prefix', '!', cond]);
 }
@@ -1859,7 +1881,7 @@ function detectType(node, asmInfo, inVarDef) {
     }
     case 'call': {
       if (node[1][0] === 'name' && node[1][1] === 'Math_fround') return ASM_FLOAT;
-      break;
+      return ASM_NONE;
     }
     case 'name': {
       if (asmInfo) {
@@ -1881,7 +1903,7 @@ function detectType(node, asmInfo, inVarDef) {
     case 'binary': {
       switch (node[1]) {
         case '+': case '-': return detectType(node[2], asmInfo, inVarDef);
-        case '*': case '/': return ASM_DOUBLE; // uncoerced by |0 etc., these ops are double
+        case '*': case '/': case '%': return ASM_DOUBLE; // uncoerced by |0 etc., these ops are double
         case '|': case '&': case '^': case '<<': case '>>': case '>>>':
         case '==': case '!=': case '<': case '<=': case '>': case '>=': {
           return ASM_INT;
@@ -1894,7 +1916,7 @@ function detectType(node, asmInfo, inVarDef) {
     }
     case 'sub': {
       assert(node[1][0] === 'name');
-      assert(parseHeap(node[1][1]));
+      if (!parseHeap(node[1][1])) return ASM_NONE;
       return parseHeapTemp.float ? ASM_DOUBLE : ASM_INT; // XXX ASM_FLOAT?
     }
   }
@@ -6831,6 +6853,9 @@ function asmLastOpts(ast) {
     traverse(fun, function(node, type) {
       var stats = getStatements(node);
       if (stats) statsStack.push(stats);
+      if (type in CONDITION_CHECKERS) {
+        node[1] = simplifyCondition(node[1]);
+      }
       if (type === 'while' && node[1][0] === 'num' && node[1][1] === 1 && node[2][0] === 'block' && node[2].length == 2) {
         // This is at the end of the pipeline, we can assume all other optimizations are done, and we modify loops
         // into shapes that might confuse other passes

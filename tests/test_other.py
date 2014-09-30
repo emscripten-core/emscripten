@@ -4251,5 +4251,5 @@ function _main() {
       seen = int(err.split('insts: ')[1])
       assert expected == seen, ['expect', expected, 'but see', seen]
 
-    do_log_test(path_from_root('tests', 'primes.cpp'), 97)
+    do_log_test(path_from_root('tests', 'primes.cpp'), 96)
 

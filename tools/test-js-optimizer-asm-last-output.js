@@ -86,4 +86,18 @@ function looop() {
  } else other();
  if (a) if (a) waka(); else wala(); else other();
 }
+function conditions() {
+ if (HEAP32[$incdec_ptr71_i + 8 >> 2] | 0) shoo();
+ if (x == 0) y();
+ if (!x) y();
+ if (!y) z();
+ if (x != 0) y();
+ if (x) y();
+ if (y) z();
+ if (x) y();
+ if (!x) y();
+ if (!(s() | 0)) z();
+ if (x + 4 | 0) y();
+ if (x & 4) y();
+}
 
