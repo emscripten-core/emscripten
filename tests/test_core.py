@@ -6594,6 +6594,7 @@ def process(filename):
         assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
 
   def test_source_map(self):
+    if self.is_emterpreter(): return self.skip('todo')
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip("doesn't pass without typed arrays")
     if NODE_JS not in JS_ENGINES: return self.skip('sourcemapper requires Node to run')
     if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
