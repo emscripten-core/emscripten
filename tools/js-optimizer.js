@@ -6269,11 +6269,18 @@ function emterpretify(ast) {
       }
       switch(node[1]) {
         case '+': {
-          if (type === ASM_INT) {
-            opcode = 'ADD';
-            tryNumSymmetrical();
-          } else if (type === ASM_DOUBLE) opcode = 'ADDD';
-          break;
+          if (node[3][0] === 'unary-prefix' && node[3][1] === '-') {
+            // optimize x + (-y) into x - y
+            node[1] = '-';
+            node[3] = node[3][2];
+            // fall through into '-'
+          } else {
+            if (type === ASM_INT) {
+              opcode = 'ADD';
+              tryNumSymmetrical();
+            } else if (type === ASM_DOUBLE) opcode = 'ADDD';
+            break;
+          }
         }
         case '-': {
           if (type === ASM_INT) {
