@@ -105,6 +105,18 @@ OPCODES = { # l, lx, ly etc - one of 256 locals
   '255': 'FUNC',    # [total locals, num params, 0]            function with n locals (each taking 64 bits), of which the first are params
 }
 
+def randomize_opcodes():
+  global OPCODES
+  keys = OPCODES.keys()
+  import random
+  random.shuffle(keys)
+  copy = OPCODES
+  OPCODES = {}
+  for k in range(len(keys)):
+    OPCODES[k] = copy[keys[k]]
+  print OPCODES
+#randomize_opcodes()
+
 assert len(OPCODES.values()) == len(set(OPCODES.values())) # no dupe names
 
 ROPCODES = {}
