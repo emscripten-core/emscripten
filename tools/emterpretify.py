@@ -364,7 +364,7 @@ def make_emterpreter(t):
 
   def fix_case(case):
     # we increment pc at the top of the loop. cases doing 'continue' really need to decrement it
-    return case.replace('continue;', 'pc = pc - 4 | 0; continue;')
+    return case.replace('continue;', 'CONTINUE').replace('break;', 'continue;').replace('CONTINUE', 'pc = pc - 4 | 0; continue;')
 
   return r'''
 function emterpret%s%s(pc) {
