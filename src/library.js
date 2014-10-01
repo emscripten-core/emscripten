@@ -206,7 +206,26 @@ LibraryManager.library = {
     }
   },
 
-  utimes: function() { throw 'utimes not implemented' },
+  utimes__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
+  utimes: function(path, times) {
+    var time;
+    if (times) {
+      var offset = {{{ C_STRUCTS.timeval.tv_sec }}};
+      time = {{{ makeGetValue('times', 'offset', 'i32') }}} * 1000;
+      offset = {{{ C_STRUCTS.timeval.tv_usec }}};
+      time += {{{ makeGetValue('times', 'offset', 'i32') }}} / 1000;
+    } else {
+      time = Date.now();
+    }
+    path = Pointer_stringify(path);
+    try {
+      FS.utime(path, time, time);
+      return 0;
+    } catch (e) {
+      FS.handleFSError(e);
+      return -1;
+    }
+  },
 
   // ==========================================================================
   // libgen.h
