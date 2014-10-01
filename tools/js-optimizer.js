@@ -6233,7 +6233,10 @@ function emterpretify(ast) {
       return [opcode, dst, src, 0];
     }
 
+    var hoistedNums = {};
+
     function makeNum(value, type, l) {
+      if (value in hoistedNums) return [hoistedNums[value], []];
       if (l === undefined) l = getFree();
       var opcode;
       if (((value << 16) >> 16) === (value | 0) && ((value === (value | 0)) || (type === ASM_INT && value === (value >>> 0))) &&
@@ -6864,6 +6867,39 @@ function emterpretify(ast) {
       }
     }
 
+    function hoistConstants(stats) {
+      // find constants that appear a lot or appear in loops, and hoist them to the top
+      var nums = {};
+      var depth = 0;
+      traverse(stats, function(node, type) {
+        if (type in LOOP && !(node[1] === 'num' && node[2] === 0)) depth++;
+        else if (type === 'unary-prefix' && node[1] === '+' && getNum(node[2]) !== null) return null; // we only care about ints
+        var num = getNum(node);
+        if (num === null) return;
+        nums[num] = (nums[num] || 0) + Math.pow(5, depth);
+        return null; // do not traverse into this node
+      }, function(node, type) {
+        if (type in LOOP && !(node[1] === 'num' && node[2] === 0)) depth--;
+      });
+      var ks = keys(nums);
+      ks.sort(function(x, y) { return nums[y] - nums[x] });
+      var ret = [];
+      var limit = Math.max(numLocals + 3, Math.min(1.1*numLocals, 120));
+      for (var i = 0; i < ks.length && numLocals < limit; i++) {
+        var n = ks[i];
+        if (n >= -127 && n < 128) continue; // constant like these are typically folded into ops anyhow
+        var weight = nums[n];
+        if (weight < 10) continue; // not heavy enough
+        // hoist this num
+        //printErr('hoist ' + [n, weight]);
+        var reg = makeNum(n, ASM_INT);
+        hoistedNums[n] = reg[0];
+        ret = ret.concat(reg[1]);
+        numLocals++; // this will never be freed
+      }
+      return ret;
+    }
+
     // walkFunction main
 
     var ignore = (func[1] in BLACKLIST) || /^dynCall_.*/.test(func[1]);
@@ -6946,6 +6982,9 @@ function emterpretify(ast) {
       func[3].push(['stat', theCall]);
     }
 
+    // do some pre-calculation and optimization
+    var constants = hoistConstants(stats);
+
     // walk all the function to emit bytecode, and add a final ret
     var code = walkStatements(stats);
     assert(code.length % 4 === 0);
@@ -6953,7 +6992,7 @@ function emterpretify(ast) {
       code.push('RET', 0, 0, 0); // final ret for the function
     }
     assert(maxLocal < 255, 'too many locals ' + [maxLocal, numLocals]); // maximum local value is 255, for a total of 256 of them
-    code = ['FUNC', maxLocal+1, func[2].length, 0].concat(code);
+    code = ['FUNC', maxLocal+1, func[2].length, 0].concat(constants).concat(code);
     verifyCode(code);
 
     finalizeJumps(code);
