@@ -74,7 +74,7 @@ const unspecified ignore;
 
 template <class... T> tuple<V...>  make_tuple(T&&...); // constexpr in C++14
 template <class... T> tuple<ATypes...> forward_as_tuple(T&&...) noexcept; // constexpr in C++14
-template <class... T> tuple<T&...> tie(T&...) noexcept;
+template <class... T> tuple<T&...> tie(T&...) noexcept; // constexpr in C++14
 template <class... Tuples> tuple<CTypes...> tuple_cat(Tuples&&... tpls); // constexpr in C++14
   
 // 20.4.1.4, tuple helper classes:
@@ -82,13 +82,15 @@ template <class T> class tuple_size; // undefined
 template <class... T> class tuple_size<tuple<T...>>;
 template <intsize_t I, class T> class tuple_element; // undefined
 template <intsize_t I, class... T> class tuple_element<I, tuple<T...>>;
+template <size_t _Ip, class ..._Tp>
+  using tuple_element_t = typename tuple_element <_Ip, _Tp...>::type; // C++14
 
 // 20.4.1.5, element access:
 template <intsize_t I, class... T>
     typename tuple_element<I, tuple<T...>>::type&
     get(tuple<T...>&) noexcept; // constexpr in C++14
 template <intsize_t I, class... T>
-    typename tuple_element<I, tuple<T...>>::type const&
+    typename const tuple_element<I, tuple<T...>>::type &
     get(const tuple<T...>&) noexcept; // constexpr in C++14
 template <intsize_t I, class... T>
     typename tuple_element<I, tuple<T...>>::type&&
@@ -152,6 +154,11 @@ public:
     typedef typename tuple_element<_Ip, __tuple_types<_Tp...> >::type type;
 };
 
+#if _LIBCPP_STD_VER > 11
+template <size_t _Ip, class ..._Tp>
+using tuple_element_t = typename tuple_element <_Ip, _Tp...>::type;
+#endif
+
 // __tuple_leaf
 
 template <size_t _Ip, class _Hp, bool=is_empty<_Hp>::value
@@ -203,7 +210,13 @@ public:
               "Attempted to default construct a reference element in a tuple");}
 
     template <class _Tp,
-              class = typename enable_if<is_constructible<_Hp, _Tp>::value>::type>
+              class = typename enable_if<
+                  __lazy_and<
+                      __lazy_not<is_same<typename decay<_Tp>::type, __tuple_leaf>>
+                    , is_constructible<_Hp, _Tp>
+                    >::value
+                >::type
+            >
         _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX11
         explicit __tuple_leaf(_Tp&& __t) _NOEXCEPT_((is_nothrow_constructible<_Hp, _Tp>::value))
             : value(_VSTD::forward<_Tp>(__t))
@@ -261,17 +274,8 @@ public:
                                 >::value)),
        "Attempted to construct a reference element in a tuple with an rvalue");}
 
-    _LIBCPP_INLINE_VISIBILITY
-    _LIBCPP_CONSTEXPR_AFTER_CXX11
-    __tuple_leaf(const __tuple_leaf& __t) _NOEXCEPT_(is_nothrow_copy_constructible<_Hp>::value)
-        : value(__t.get())
-        {static_assert(!is_rvalue_reference<_Hp>::value, "Can not copy a tuple with rvalue reference member");}
-
-    _LIBCPP_INLINE_VISIBILITY
-    _LIBCPP_CONSTEXPR_AFTER_CXX11
-    __tuple_leaf(__tuple_leaf&& __t) _NOEXCEPT_(is_nothrow_move_constructible<_Hp>::value)
-        : value(_VSTD::forward<_Hp>(__t.get()))
-        {}
+    __tuple_leaf(const __tuple_leaf& __t) = default;
+    __tuple_leaf(__tuple_leaf&& __t) = default;
 
     template <class _Tp>
         _LIBCPP_INLINE_VISIBILITY
@@ -318,7 +322,13 @@ public:
             : _Hp(__a) {}
 
     template <class _Tp,
-              class = typename enable_if<is_constructible<_Hp, _Tp>::value>::type>
+              class = typename enable_if<
+                  __lazy_and<
+                        __lazy_not<is_same<typename decay<_Tp>::type, __tuple_leaf>>
+                      , is_constructible<_Hp, _Tp>
+                    >::value
+                >::type
+            >
         _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX11
         explicit __tuple_leaf(_Tp&& __t) _NOEXCEPT_((is_nothrow_constructible<_Hp, _Tp>::value))
             : _Hp(_VSTD::forward<_Tp>(__t)) {}
@@ -337,6 +347,9 @@ public:
         _LIBCPP_INLINE_VISIBILITY
         explicit __tuple_leaf(integral_constant<int, 2>, const _Alloc& __a, _Tp&& __t)
             : _Hp(_VSTD::forward<_Tp>(__t), __a) {}
+
+    __tuple_leaf(__tuple_leaf const &) = default;
+    __tuple_leaf(__tuple_leaf &&) = default;
 
     template <class _Tp>
         _LIBCPP_INLINE_VISIBILITY
@@ -541,7 +554,7 @@ public:
         _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX11
         tuple(_Up&&... __u)
             _NOEXCEPT_((
-                is_nothrow_constructible<
+                is_nothrow_constructible<base,
                     typename __make_tuple_indices<sizeof...(_Up)>::type,
                     typename __make_tuple_types<tuple, sizeof...(_Up)>::type,
                     typename __make_tuple_indices<sizeof...(_Tp), sizeof...(_Up)>::type,
@@ -582,7 +595,7 @@ public:
         explicit
         tuple(_Up&&... __u)
             _NOEXCEPT_((
-                is_nothrow_constructible<
+                is_nothrow_constructible<base,
                     typename __make_tuple_indices<sizeof...(_Up)>::type,
                     typename __make_tuple_types<tuple, sizeof...(_Up)>::type,
                     typename __make_tuple_indices<sizeof...(_Tp), sizeof...(_Up)>::type,
@@ -796,7 +809,7 @@ constexpr _T1&& get(tuple<_Args...>&& __tup) noexcept
 // tie
 
 template <class ..._Tp>
-inline _LIBCPP_INLINE_VISIBILITY
+inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX11
 tuple<_Tp&...>
 tie(_Tp&... __t) _NOEXCEPT
 {
@@ -816,13 +829,13 @@ namespace { const __ignore_t<unsigned char> ignore = __ignore_t<unsigned char>()
 template <class _Tp> class _LIBCPP_TYPE_VIS_ONLY reference_wrapper;
 
 template <class _Tp>
-struct ___make_tuple_return
+struct __make_tuple_return_impl
 {
     typedef _Tp type;
 };
 
 template <class _Tp>
-struct ___make_tuple_return<reference_wrapper<_Tp> >
+struct __make_tuple_return_impl<reference_wrapper<_Tp> >
 {
     typedef _Tp& type;
 };
@@ -830,7 +843,7 @@ struct ___make_tuple_return<reference_wrapper<_Tp> >
 template <class _Tp>
 struct __make_tuple_return
 {
-    typedef typename ___make_tuple_return<typename decay<_Tp>::type>::type type;
+    typedef typename __make_tuple_return_impl<typename decay<_Tp>::type>::type type;
 };
 
 template <class... _Tp>
@@ -856,7 +869,7 @@ struct __tuple_equal
     _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX11
     bool operator()(const _Tp& __x, const _Up& __y)
     {
-        return __tuple_equal<_Ip - 1>()(__x, __y) && get<_Ip-1>(__x) == get<_Ip-1>(__y);
+        return __tuple_equal<_Ip - 1>()(__x, __y) && _VSTD::get<_Ip-1>(__x) == _VSTD::get<_Ip-1>(__y);
     }
 };
 
@@ -895,7 +908,7 @@ struct __tuple_less
     bool operator()(const _Tp& __x, const _Up& __y)
     {
         return __tuple_less<_Ip-1>()(__x, __y) ||
-             (!__tuple_less<_Ip-1>()(__y, __x) && get<_Ip-1>(__x) < get<_Ip-1>(__y));
+             (!__tuple_less<_Ip-1>()(__y, __x) && _VSTD::get<_Ip-1>(__x) < _VSTD::get<_Ip-1>(__y));
     }
 };
 
@@ -1044,8 +1057,8 @@ struct __tuple_cat<tuple<_Types...>, __tuple_indices<_I0...>, __tuple_indices<_J
     typename __tuple_cat_return_ref<tuple<_Types...>&&, _Tuple0&&>::type
     operator()(tuple<_Types...> __t, _Tuple0&& __t0)
     {
-        return forward_as_tuple(_VSTD::forward<_Types>(get<_I0>(__t))...,
-                                      get<_J0>(_VSTD::forward<_Tuple0>(__t0))...);
+        return forward_as_tuple(_VSTD::forward<_Types>(_VSTD::get<_I0>(__t))...,
+                                      _VSTD::get<_J0>(_VSTD::forward<_Tuple0>(__t0))...);
     }
 
     template <class _Tuple0, class _Tuple1, class ..._Tuples>
@@ -1060,8 +1073,8 @@ struct __tuple_cat<tuple<_Types...>, __tuple_indices<_I0...>, __tuple_indices<_J
            typename __make_tuple_indices<sizeof ...(_Types) + tuple_size<_T0>::value>::type,
            typename __make_tuple_indices<tuple_size<_T1>::value>::type>()
                            (forward_as_tuple(
-                              _VSTD::forward<_Types>(get<_I0>(__t))...,
-                              get<_J0>(_VSTD::forward<_Tuple0>(__t0))...
+                              _VSTD::forward<_Types>(_VSTD::get<_I0>(__t))...,
+                              _VSTD::get<_J0>(_VSTD::forward<_Tuple0>(__t0))...
                             ),
                             _VSTD::forward<_Tuple1>(__t1),
                             _VSTD::forward<_Tuples>(__tpls)...);
@@ -1090,8 +1103,8 @@ inline _LIBCPP_INLINE_VISIBILITY
 pair<_T1, _T2>::pair(piecewise_construct_t,
                      tuple<_Args1...>& __first_args, tuple<_Args2...>& __second_args,
                      __tuple_indices<_I1...>, __tuple_indices<_I2...>)
-    :  first(_VSTD::forward<_Args1>(get<_I1>( __first_args))...),
-      second(_VSTD::forward<_Args2>(get<_I2>(__second_args))...)
+    :  first(_VSTD::forward<_Args1>(_VSTD::get<_I1>( __first_args))...),
+      second(_VSTD::forward<_Args2>(_VSTD::get<_I2>(__second_args))...)
 {
 }
 

@@ -49,7 +49,7 @@ random_device::operator()()
 random_device::random_device(const string& __token)
     : __f_(open(__token.c_str(), O_RDONLY))
 {
-    if (__f_ <= 0)
+    if (__f_ < 0)
         __throw_system_error(errno, ("random_device failed to open " + __token).c_str());
 }
 
@@ -62,7 +62,22 @@ unsigned
 random_device::operator()()
 {
     unsigned r;
-    read(__f_, &r, sizeof(r));
+    size_t n = sizeof(r);
+    char* p = reinterpret_cast<char*>(&r);
+    while (n > 0)
+    {
+        ssize_t s = read(__f_, p, n);
+        if (s == 0)
+            __throw_system_error(ENODATA, "random_device got EOF");
+        if (s == -1)
+        {
+            if (errno != EINTR)
+                __throw_system_error(errno, "random_device got an unexpected error");
+            continue;
+        }
+        n -= static_cast<size_t>(s);
+        p += static_cast<size_t>(s);
+    }
     return r;
 }
 #endif // defined(_WIN32)
