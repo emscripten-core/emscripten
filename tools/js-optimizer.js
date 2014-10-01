@@ -5947,7 +5947,7 @@ function emterpretify(ast) {
                 // optimized store + add
                 var curr = x[1].slice(x[1].length-4);
                 x[1].splice(x[1].length-4, 4);
-                if (curr[2] !== x[0]) unreleaseIfFree(curr[2]); // make sure these are kept alie during z's operations, we are
+                if (curr[2] !== x[0]) unreleaseIfFree(curr[2]); // make sure these are kept alive during z's operations, we are
                 if (curr[3] !== x[0]) unreleaseIfFree(curr[3]); // putting code in between their definition and use
                 var z = getReg(value);
                 if (x[0] !== curr[2] && x[0] !== curr[3]) releaseIfFree(x[0]);
