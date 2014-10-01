@@ -6962,7 +6962,7 @@ function emterpretify(ast) {
 
     // walkFunction main
 
-    var ignore = (func[1] in BLACKLIST) || /^dynCall_.*/.test(func[1]);
+    var ignore = (func[1] in BLACKLIST) || /^dynCall_.*/.test(func[1]); // TODO: do not convert small funcs || measureSize(func[3]) < 60;
 
     if (ignore) {
       prepDotZero(func);
