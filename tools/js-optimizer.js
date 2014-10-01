@@ -5934,8 +5934,6 @@ function emterpretify(ast) {
               assert(shifts >= 0 && shifts <= 3);
               var bits = Math.pow(2, shifts)*8;
               assert(bits === temp.bits);
-
-
               var pointer = target[2][2];
               if (pointer[0] === 'binary' && pointer[1] === '+') {
                 // optimized store + add
@@ -5946,8 +5944,17 @@ function emterpretify(ast) {
                 var ret = x[1].concat(y[1]).concat(z[1]);
                 ret.push(opcode, releaseIfFree(x[0]), releaseIfFree(y[0]), releaseIfFree(z[0]));
                 return [-1, ret];
+              } else if (value[0] === 'sub' && value[1][0] === 'name' && value[1][1] === heap && value[2][0] === 'binary' && value[2][1] === '>>') {
+                // a copy: store the result of a load, identical heap, identical shifts
+                assert(value[2][3][0] === 'num' && value[2][3][1] === shifts);
+                opcode += 'C';
+                var x = getReg(pointer, false, ASM_INT, ASM_SIGNED);
+                var y = getReg(value[2][2]);
+                var ret = x[1].concat(y[1]);
+                ret.push(opcode, releaseIfFree(x[0]), releaseIfFree(y[0]), 0);
+                return [-1, ret];
               } else {
-                var x = getReg(target[2][2], false, ASM_INT, ASM_SIGNED);
+                var x = getReg(pointer, false, ASM_INT, ASM_SIGNED);
                 var y = getReg(value); // generate y now, not earlier, to not trample x's output reg, which might be a temp
                 var ret = x[1].concat(y[1]);
                 ret.push(opcode, releaseIfFree(x[0]), releaseIfFree(y[0]), 0);

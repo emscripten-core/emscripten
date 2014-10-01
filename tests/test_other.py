@@ -4256,5 +4256,5 @@ function _main() {
       assert expected == seen, ['expect', expected, 'but see', seen]
 
     do_log_test(path_from_root('tests', 'primes.cpp'), 86, 'main')
-    do_log_test(path_from_root('tests', 'fannkuch.cpp'), 242, 'fannkuch_worker')
+    do_log_test(path_from_root('tests', 'fannkuch.cpp'), 240, 'fannkuch_worker')
 
