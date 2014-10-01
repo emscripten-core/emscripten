@@ -6204,7 +6204,9 @@ function emterpretify(ast) {
             var shifts = Math.log2(temp.bits/8);
             assert(address === ((address << shifts) >> shifts));
             var ret = makeNum(address << shifts, ASM_INT);
-            ret[1].push(opcode, ret[0], ret[0], 0);
+            var out = assignTo >= 0 ? assignTo : getFree(ret[0]);
+            ret[1].push(opcode, out, releaseIfFree(ret[0], out), 0);
+            ret[0] = out;
             return ret;
           }
         }
@@ -6236,7 +6238,7 @@ function emterpretify(ast) {
     var hoistedNums = {};
 
     function makeNum(value, type, l) {
-      if (value in hoistedNums) return [hoistedNums[value], []];
+      if (type === ASM_INT && l === undefined && value in hoistedNums) return [hoistedNums[value], []];
       if (l === undefined) l = getFree();
       var opcode;
       if (((value << 16) >> 16) === (value | 0) && ((value === (value | 0)) || (type === ASM_INT && value === (value >>> 0))) &&
@@ -6891,10 +6893,11 @@ function emterpretify(ast) {
         var weight = nums[n];
         if (weight < 10) continue; // not heavy enough
         // hoist this num
-        //printErr('hoist ' + [n, weight]);
         var reg = makeNum(n, ASM_INT);
+        //printErr('hoist ' + [n, weight, reg[0]]);
         hoistedNums[n] = reg[0];
         ret = ret.concat(reg[1]);
+        assert(reg[0] === numLocals);
         numLocals++; // this will never be freed
       }
       return ret;
