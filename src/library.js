@@ -2785,7 +2785,8 @@ LibraryManager.library = {
     // char *tmpnam(char *s);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/tmpnam.html
     // NOTE: The dir and prefix arguments are for internal use only.
-    var folder = FS.findObject(dir || '/tmp');
+    dir = dir || '/tmp';
+    var folder = FS.findObject(dir);
     if (!folder || !folder.isFolder) {
       dir = '/tmp';
       folder = FS.findObject(dir);
@@ -2798,6 +2799,7 @@ LibraryManager.library = {
     var result = dir + '/' + name;
     if (!_tmpnam.buffer) _tmpnam.buffer = _malloc(256);
     if (!s) s = _tmpnam.buffer;
+    assert(result.length <= 255);
     writeAsciiToMemory(result, s);
     return s;
   },
@@ -2812,7 +2814,7 @@ LibraryManager.library = {
     // FILE *tmpfile(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/tmpfile.html
     // TODO: Delete the created file on closing.
-    if (_tmpfile.mode) {
+    if (!_tmpfile.mode) {
       _tmpfile.mode = allocate(intArrayFromString('w+'), 'i8', ALLOC_NORMAL);
     }
     return _fopen(_tmpnam(0), _tmpfile.mode);
@@ -8764,27 +8766,23 @@ LibraryManager.library = {
     return cache[fullname] = allocate(intArrayFromString(ret + ''), 'i8', ALLOC_NORMAL);
   },
 
+#if RUNNING_FASTCOMP == 0
 #if ASM_JS
 #if ALLOW_MEMORY_GROWTH
   emscripten_replace_memory__asm: true, // this is used inside the asm module
   emscripten_replace_memory__sig: 'viiiiiiii', // bogus
-  emscripten_replace_memory: function(_HEAP8, _HEAP16, _HEAP32, _HEAPU8, _HEAPU16, _HEAPU32, _HEAPF32, _HEAPF64) {
-    _HEAP8 = _HEAP8; // fake asm coercions
-    _HEAP16 = _HEAP16;
-    _HEAP32 = _HEAP32;
-    _HEAPU8 = _HEAPU8;
-    _HEAPU16 = _HEAPU16;
-    _HEAPU32 = _HEAPU32;
-    _HEAPF32 = _HEAPF32;
-    _HEAPF64 = _HEAPF64;
-    HEAP8 = _HEAP8; // replace the memory views
-    HEAP16 = _HEAP16;
-    HEAP32 = _HEAP32;
-    HEAPU8 = _HEAPU8;
-    HEAPU16 = _HEAPU16;
-    HEAPU32 = _HEAPU32;
-    HEAPF32 = _HEAPF32;
-    HEAPF64 = _HEAPF64;
+  emscripten_replace_memory: function(newBuffer) {
+    if ((byteLength(newBuffer) & 0xffff) || byteLength(newBuffer) < 0xffff) return false;
+    HEAP8 = new Int8View(newBuffer);
+    HEAP16 = new Int16View(newBuffer);
+    HEAP32 = new Int32View(newBuffer);
+    HEAPU8 = new Uint8View(newBuffer);
+    HEAPU16 = new Uint16View(newBuffer);
+    HEAPU32 = new Uint32View(newBuffer);
+    HEAPF32 = new Float32View(newBuffer);
+    HEAPF64 = new Float64View(newBuffer);
+    buffer = newBuffer;
+    return true;
   },
   // this function is inside the asm block, but prevents validation as asm.js
   // the codebase still benefits from being in the general asm.js shape,
@@ -8792,81 +8790,10 @@ LibraryManager.library = {
   {{{ (assert(ASM_JS === 2), DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('emscripten_replace_memory'), '') }}}
 #endif
 #endif
+#endif
 
   emscripten_debugger: function() {
     debugger;
-  },
-
-  //============================
-  // emscripten vector ops
-  //============================
-
-  emscripten_float32x4_signmask__inline: function(a) {
-    return  a + '.signMask';
-  },
-  
-  emscripten_float32x4_min__inline: function(a, b) {
-    return 'SIMD.float32x4.min(' + a + ', ' + b + ')';
-  },
-  
-  emscripten_float32x4_max__inline: function(a, b) {
-    return 'SIMD.float32x4.max(' + a + ', ' + b + ')';
-  },
-  
-  emscripten_float32x4_sqrt__inline: function(a) {
-    return 'SIMD.float32x4.sqrt(' + a + ')';
-  },
-  
-  emscripten_float32x4_lessThan__inline: function(a, b) {
-    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.lessThan(' + a + ', ' + b + '))';
-  },
-  
-  emscripten_float32x4_lessThanOrEqual__inline: function(a, b) {
-    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.lessThanOrEqual(' + a + ', ' + b + '))';
-  },
-  
-  emscripten_float32x4_equal__inline: function(a, b) {
-    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.equal(' + a + ', ' + b + '))';
-  },
-  
-  emscripten_float32x4_greaterThanOrEqual__inline: function(a, b) {
-    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.greaterThanOrEqual(' + a + ', ' + b + '))';
-  },
-  
-  emscripten_float32x4_greaterThan__inline: function(a, b) {
-    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.greaterThan(' + a + ', ' + b + '))';
-  },
-  
-  emscripten_float32x4_and__inline: function(a, b) {
-    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.and(' + a + ', ' + b + '))';
-  },
-  
-  emscripten_float32x4_andNot__inline: function(a, b) {
-    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.and(SIMD.float32x4.not(' + a + '), ' + b + '))';
-  },
-  
-  emscripten_float32x4_or__inline: function(a, b) {
-    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.or(' + a + ', ' + b + '))';
-  },
-  
-  emscripten_float32x4_xor__inline: function(a, b) {
-    return 'SIMD.float32x4.fromInt32x4Bits(SIMD.float32x4.xor(' + a + ', ' + b + '))';
-  },
-  
-  emscripten_float32x4_fromInt32x4Bits__inline: function(a) {
-      return 'SIMD.float32x4.fromInt32x4Bits(' + a + ')';
-  },
-  
-  emscripten_float32x4_fromInt32x4__inline: function(a) {
-      return 'SIMD.float32x4.fromInt32x4(' + a + ')';
-  },
-  
-  emscripten_int32x4_fromFloat32x4Bits__inline: function(a) {
-      return 'SIMD.int32x4.fromFloat32x4Bits(' + a + ')';
-  },
-  
-  emscripten_int32x4_fromFloat32x4__inline: function(a) {
-      return 'SIMD.int32x4.fromFloat32x4(' + a + ')';
   },
 
   //============================

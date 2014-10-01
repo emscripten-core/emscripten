@@ -19,7 +19,7 @@ Table of Contents
 
 * Browser Execution Environment
 
-* Emscripten File System API
+* Emscripten Asynchronous File System API
 
 * Compiling
 
@@ -242,7 +242,7 @@ Browser Execution Environment
 =============================
 
 Guide material for the following APIs can be found in *Emscripten
-Runtime Environment (wiki-import)*.
+Runtime Environment*.
 
 
 Functions
@@ -446,6 +446,16 @@ void emscripten_force_exit(int status)
       * **status** (*int*) -- The same as for the *libc* function
         exit().
 
+double emscripten_get_device_pixel_ratio(void)
+
+   Returns the value of "window.devicePixelRatio".
+
+   Return type:
+      double
+
+   Returns:
+      The pixel ratio or 1.0 if not supported.
+
 void emscripten_set_canvas_size(int width, int height)
 
    Resizes the pixel width and height of the "<canvas>" element on the
@@ -496,8 +506,8 @@ float emscripten_random(void)
       A random number.
 
 
-Emscripten File System API
-==========================
+Emscripten Asynchronous File System API
+=======================================
 
 
 Typedefs
@@ -1498,8 +1508,10 @@ emscripten_align2_double
 emscripten_align1_double
 
    Unaligned types. These may be used to force LLVM to emit unaligned
-   loads/stores in places in your code where "SAFE_HEAP" found an
+   loads/stores in places in your code where *SAFE_HEAP* found an
    unaligned operation.
+
+   For usage examples see tests/core/test_set_align.c.
 
    Note: It is better to avoid unaligned operations, but if you are
      reading from a packed stream of bytes or such, these types may be

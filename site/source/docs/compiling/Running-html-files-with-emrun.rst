@@ -1,42 +1,49 @@
 .. _Running-html-files-with-emrun:
 
-===========================================
-Running html files with emrun (wiki-import)
-===========================================
+=============================
+Running HTML files with emrun
+=============================
 
-When you target the web with Emscripten via the ``-o out.html`` directive to emcc, Emscripten will generate one or more outfiles with suffixes ``.html, .js, and .data``. Not all web browsers can run the .html file via a ``file://`` URL by double-clicking the html file because of default browser CORS rules (in Chrome, Opera and IE), but you need to deploy the files to a web server first. To solve this, you can use the ``emrun`` command line tool to run your page in a locally launched web server.
+*emrun* is a command line tool that can run generated HTML pages via a locally launched web server. This is helpful when using web browsers that cannot run a generated **.html** file via a ``file://`` URL (e.g. by double-clicking the file) because of the default browser CORS rules.
+
+*emrun* also enables all kinds of command-line automation, for example, integrating unit tests into an Emscripten environment in a project build farm.
 
 Features
 ========
 
-``emrun`` enables the following uses:
+*emrun* supports the following uses:
 
--  Launch your html page in a web browser from command line, behaving as if it was a native executable.
--  Capture application ``stdout`` and ``stderr`` streams during the run, and print them to terminal or log to file.
--  Pass command-line arguments to the application and read them from ``GET`` parameters in the launched URL, or ``argc`` and ``argv`` in main.
--  Detect when application quits via a call to C function ``exit(returncode);`` and pass that return code to terminal.
--  Use a custom browser to run, or even run a browser on an Android device connected to the local computer via adb.
+-  Launch your Emscripten-generated HTML page in a web browser from the command line.
+-  Capture application ``stdout`` and ``stderr`` streams during the run, and print them to a terminal or log them to a file.
+-  Pass command-line arguments to the application and read them from ``GET`` parameters in the launched URL, or ``argc`` and ``argv`` in ``main()``.
+-  Detect when a launched application quits via a call to C's ``exit(returncode)``, then pass the specified return code to the terminal.
+-  Choose which installed browser to run, or even run a browser on an Android device connected to the local computer through *adb*.
 
-To summarize, ``emrun`` is the tool to use for all kinds of command-line automation needs, for example when integrating your unit tests to run in an Emscripten environment in your project build farm.
 
 Quick how-to
 ============
 
-Using ``emrun`` is simple. Here is how:
+Using *emrun* is simple:
 
-1. Rebuild your Emscripten application and add the ``--emrun`` linker flag. This flag injects a piece of code in the generated ``Module`` that is needed to enable the ``stdout``, ``stderr`` and ``exit()`` capture to work. If you skip this step, you can still run any .html file with ``emrun``, but then the capture will just not work.
+#. Rebuild your Emscripten application and add the ``--emrun`` :ref:`linker flag <emcc-emrun>`. 
 
-2. Open a terminal, navigate to the build output directory, and run ``emrun page.html``. This will spawn a new web server to host the page and launch your default system browser to visit that page. ``emrun`` will block until the page calls ``exit(returncode);``, after which it will quit back to shell with the provided process exit code.
+	This flag injects code into the generated :ref:`Module` to enable capture of ``stdout``, ``stderr`` and ``exit()``. 
 
-That's all!
+	.. note:: If you skip this step, you can still run any **.html** file with *emrun*, but the capture will not work.
+
+#. Open a terminal, navigate to the build output directory, and call ``emrun page.html``. 
+
+	This will spawn a new web server to host the page and launch your default system browser to visit that page. *emrun* will block until the page calls ``exit(returncode)``, after which it will quit back to shell with the given process exit code.
+
 
 Choosing the browser to run
 ===========================
 
-``emrun`` provides the ``--browser <filename-or-browser-alias>`` command line option that allows specifying which browser to run. If that flag is not specified, the default system browser is launched. If the parameter to ``--browser`` points to an existing file, then that file is spawned
-as the browser process to run. Additionally, to simplify setup, one can pass predefined alias names of known browsers to ``--browser`` to launch a specific browser. To enumerate the list of detected browser aliases on your system, run the ``--list_browsers`` command, like follows:
+The ``--browser <filename-or-browser-alias>`` command line option allows you to launch an HTML file using a particular browser, by specifying either its "browser alias" or the full path to its executable (if the flag is not specified, the default system browser is launched). 
 
-::
+To enumerate the list of browser aliases on your system, use the ``--list_browsers`` command:
+
+.. code-block:: bash
 
     > emrun --list_browsers
 
@@ -51,70 +58,92 @@ as the browser process to run. Additionally, to simplify setup, one can pass pre
     - iexplore: Microsoft Internet Explorer 11.0.9600.16384
     - opera: Opera 18.0.1284.63
 
-    You can pass the --browser <id> option to launch with the given browser above. Even if your browser was not detected, you can use --browser /path/to/browser/executable to launch with that browser.
+.. note:: For your browser to be detected, it should be installed in the default install location on the system (``%ProgramFiles%`` on Windows and ``/Applications/`` on OSX) or by adding it to the ``PATH`` for the current user.
 
-For your browser to be detected, it should be installed in a default install location on the system (``%ProgramFiles%`` on Windows and ``/Applications/`` on OSX) or by adding it to the ``PATH`` for current user.
+You can pass the ``--browser <alias>`` option to launch with a given browser. For example, to run the *Firefox Nightly* browser you would call:
 
-Then for example to run Firefox Nightly, you would launch ``emrun --browser firefox_nightly page.html``.
+.. code-block:: bash
 
-If you just want to launch a web server, similar to how ``python -m SimpleHTTPServer`` operates, you can pass the ``--no_browser`` command line flag, in which case ``emrun`` will not spawn a browser at all, but simply runs a web server.
+	emrun --browser firefox_nightly page.html
+	
+To launch using a browser's filename use:
+
+.. code-block:: bash
+
+	--browser /path/to/browser/executable page.html
+
+If you just want to launch a web server you can pass the ``--no_browser`` command line flag. In this case *emrun* will run the server without spawning the browser (this is similar to using Python's `SimpleHTTPServer <http://www.pythonforbeginners.com/modules-in-python/how-to-use-simplehttpserver/>`_).
+
+
+Security implications
+=====================
+
+*emrun* spawns its own web server to host the target **.html** file. This has the following security implications:
+
+-  The web server is a generic file server that by default serves all files in the directory where the **.html** file resides, and all directories under that directory tree.
+-  The web server will be visible to other computers on the same network.
+
 
 Controlling web server operation
 ================================
 
-``emrun`` spawns its own web server to host the target html file. You should note the following security implications:
+The following command line flags control how *emrun* spawns the web server: 
 
--  The web server is a generic file server that by default serves all files in the directory where the .html file resides, and all directories under that directory tree.
--  The web server will be visible to other computers on the same network.
+- ``--no_server``: Do not launch a web server. The target file is run via the ``file://`` protocol, if possible. 
+- ``--serve_after_close``: Do not quit *emrun*; continue running the server even after the user closes the web browser. Use this flag when you want to visit the page multiple times or with different browsers during the same run. 
+- ``--serve_after_exit``: Do not quit *emrun*; continue running the server after the page finishes with a call to ``exit(returncode)``. 
+- ``--serve_root <path>``: Specify a custom directory to use as the root directory for the spawned web server. By default, the directory where the **.html** file resides is used. 
+- ``--port <number>``: Specify the web server TCP port. The default port is ``6931``. 
+- ``--silence_timeout <seconds>``: Specify the *emrun* silence timeout. If the application does not print anything to ``stdout`` or ``stderr`` in this many seconds, the page/browser is assumed to be hung, and *emrun* will quit. This is disabled by default. 
+- ``--timeout <seconds>``: Specify the *emrun* timeout. If the whole page run lasts longer than this many seconds, the page/browser is assumed to be hung, and *emrun* will quit. This is disabled by default. 
+- ``--timeout_returncode <code>``: Specifies the process return code that *emrun* quits with if a page run timeout occurs. By default this is ``99999``.
 
-The following command line flags control how ``emrun`` spawns the web server: 
-
-- ``--no_server``: Does not launch a web server at all. The target file is run via ``file://`` protocol, if possible. 
-- ``--serve_after_close``: Does not quit ``emrun`` after the user was detected to close the web browser, but keeps serving. Use this flag for example when you want to visit the page multiple times or with different browsers during the same run. 
-- ``--serve_after_exit``: Does not quit ``emrun`` after the page finishes with a call to ``exit(returncode);``, but keeps serving. 
-- ``--serve_root <path>``: Chooses a custom directory to use as the root directory for the spawned web server. By default, the directory where the .html file resides in is used. 
-- ``--port <number>``: Chooses the TCP port where the web server listens to. The default port is ``6931``. 
-- ``--silence_timeout <seconds>``: If the application does not print anything to ``stdout`` or ``stderr`` in this many seconds, the page/browser is assumed to be hung, and ``emrun`` will quit. Disabled by default. 
-- ``--timeout <seconds>``: If the whole page run lasts longer than this many seconds, the page/browser is assumed to be hung, and ``emrun`` will quit. Disabled by default. 
-- ``--timeout_returncode <code>``: Specifies the process return code that ``emrun`` quits with if a page run timeout occurs. By default ``99999``.
 
 Controlling log output
 ======================
 
-The following command line flags affect messaging to logs:
+The following command line flags affect logging output:
 
--  ``--verbose``: Prints detailed information about ``emrun`` internal steps, for debugging purposes.
--  ``--log_stdout <filename>``: Instead of printing to terminal, writes all ``stdout`` messages from the application to the given file.
--  ``--lot_stderr <filename>``: Same as above, but for the ``stderr`` stream.
--  ``--system_info``: Before launching, prints detailed information about the current system. Useful for automated runs to capture hardware information to logs.
--  ``--browser_info``: Before launching, prints information about which browser is about to be launched.
--  ``--log_html``: If specified, application output is reformatted as html markup friendly.
--  ``--no_emrun_detect``: Hides the friendly reminder message that warns if target .html file is detected to not have been built with ``--emrun``.
+- ``--verbose``: Print detailed information about *emrun* internal steps.
+- ``--log_stdout <filename>``: Write all ``stdout`` messages from the application to the named file (instead of printing to terminal).
+- ``--lot_stderr <filename>``: Write all ``stderr`` messages from the application to the named file (instead of printing to terminal).
+- ``--system_info``: Print detailed information about the current system before launching. This is useful during automated runs when you want to capture hardware information to logs.
+- ``--browser_info``: Print information about which browser is about to be launched.
+- ``--log_html``: Reformat application output as HTML markup.
+- ``--no_emrun_detect``: Hide the warning message that is launched if a target **.html** file is detected to not have been built with ``--emrun``.
+
 
 Cleaning up after the run
 =========================
 
-Especially when automating operation for build servers, it is important to be able to clean up properly after each run. The following command line flags enable this:
+These command line flags allow you to clean up open browser processes before starting a new run — this is important for automated testing on build servers:
 
--  ``--kill_start``: If specified, all instances of the target browser process are terminated before starting the run. Pass this flag if you want to force that no old (hung) instances of the target browser processes could exist at the time of the launch that could interfere with the run. By default disabled.
--  ``--kill_exit``: If specified, all instances of the target browser process are terminated when ``emrun`` quits. Pass this flag to force that browser pages are not left around running when the run is over. By default disabled.
+-  ``--kill_start``: Terminate all instances of the target browser process before starting the run. Pass this flag to ensure that no old (hung) instances of the target browser process exist that could interfere with the current run. This is disabled by default.
+-  ``--kill_exit``: Terminate all instances of the target browser process when *emrun* quits. Pass this flag to ensure that browser pages closed when the run is over. This is disabled by default.
 
-It is important to understand that these operations can cause data loss, since these actions cause processes to be forcibly terminated. Do not pass these flags when running a browser that could have multiple tabs or windows open that you do other work in, since they will all be wiped out. You were warned.
+.. warning:: These operations cause the browser process to be forcibly terminated.  Any windows or tabs you have open will be closed, including any that might contain unsaved data. 
 
 Running web pages on an Android device
 ======================================
 
-It is also possible to use ``emrun`` to automate web browser runs on Android. For that to work, you need 
+*emrun* can automate browser-based testing on Android. 
 
-- An Android phone connected to the local system via USB and its developer mode enabled. No need to root the phone. 
-- The ``adb`` tool installed to the system and present in ``PATH`` environment variable. 
-- Check that adb is working by calling ``adb devices`` to see that your device is listed. 
+For this to work, you need to:
+
+- Connect an Android phone to the local system via USB, with its developer mode enabled. There is no need to root the phone. 
+- Install the *adb* tool on the host system and make sure it is present in the ``PATH`` environment variable. 
+- Check that *adb* is working by calling ``adb devices`` to see that your device is listed. 
 - Install any browser apk to the device that you want to be able to run.
 
-To run on Android, add the ``--android`` command line flag, and use the ``--browser <id>`` command line flag to explicitly choose the browser to run. Omitting ``--browser`` (to launch a default Android browser) is not supported. The following browser ids have been tested to work: ``firefox, firefox_beta, firefox_aurora, firefox_nightly, chrome, chrome_beta, opera``.
+To run on Android, add the ``--android`` command line flag and use the ``--browser <alias>`` command line flag to explicitly choose the correct browser to run. 
 
-The following browser ids are also supported, but have known issues: 
+.. note:: Omitting ``--browser`` (to launch a default Android browser) is not supported. 
+
+The following browser aliases have been tested and shown to work: ``firefox, firefox_beta, firefox_aurora, firefox_nightly, chrome, chrome_beta, opera``.
+
+The following browser aliases are also supported, but have known issues:
+
 - ``opera_mini``: The browser launches, but for some reason it times out when trying to load any page. 
 - ``dolphin``: Works, but does not support WebGL.
 
-Otherwise, ``emrun`` works as usual, and the other command line flags can be combined.
+Otherwise, using *emrun* for browser-based testing on Android is the same as when testing on the host system.

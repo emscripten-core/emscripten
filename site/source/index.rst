@@ -1,19 +1,11 @@
 .. _home-page:
 
-.. Emscripten documentation master file, created by
-   sphinx-quickstart on Tue Jul 01 09:20:29 2014.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 .. only:: sdkbuild
 
 	.. admonition:: Welcome to Emscripten SDK |release|
 
 		This documentation contains everything you need to :ref:`start developing <Tutorial>` with the Emscripten SDK.
 
-.. warning:: This site is still under construction. 
-
-   
 .. raw:: html
    :file: home_page_layout.html
 
@@ -34,7 +26,7 @@ News
 	docs/introducing_emscripten/index
 	docs/getting_started/index
 	docs/porting/index
-	docs/optimizing/index
+	docs/optimizing/Optimizing-Code
 	docs/compiling/index
 	docs/building_from_source/index
 	docs/contributing/index

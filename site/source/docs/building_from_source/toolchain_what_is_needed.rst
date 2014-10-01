@@ -54,7 +54,6 @@ When building Emscripten from source code, whether "manually" or using the SDK, 
 				
 			While this toolchain can in theory also be used to build :ref:`Fastcomp <LLVM-Backend>`, Visual Studio 2010 is recommended (by the LLVM development team).
 
-	.. todo:: Just keeping link here to see if needed. Delete if follow up indicates cmake not needed: 
 		
 - Linux: Install *gcc* and *cmake*:
 	

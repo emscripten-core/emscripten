@@ -83,6 +83,8 @@ Table of Contents
 
 * WebGL context
 
+* CSS
+
 
 How to use this API
 ===================
@@ -411,7 +413,12 @@ EmscriptenKeyboardEvent
       same as "keyCode".
 
       Warning: This attribute is deprecated, you should use the
-        field "key" instead, if available.
+        field "key" instead, if available. Note thought that while
+        this field is deprecated, the cross-browser support for
+        "which" may be better than for the other fields, so
+        experimentation is recommended. Read issue
+        https://github.com/kripken/emscripten/issues/2817 for more
+        information.
 
 
 Callback functions
@@ -545,6 +552,13 @@ EmscriptenMouseEvent
 
       If pointer lock is active, these two extra fields give relative
       mouse movement since the last event.
+
+   long targetX
+   long targetY
+
+      These fields give the mouse coordinates mapped relative to the
+      coordinate space of the target DOM element receiving the input
+      events (Emscripten-specific extension).
 
    long canvasX
    long canvasY
@@ -1827,11 +1841,18 @@ EmscriptenTouchPoint
       Specifies whether this touch point is still above the original
       target on which it was initially pressed.
 
+   long targetX
+   long targetY
+
+      These fields give the touch coordinates mapped relative to the
+      coordinate space of the target DOM element receiving the input
+      events (Emscripten-specific extension).
+
    long canvasX
    long canvasY
 
       The touch coordinates mapped to the Emscripten canvas client
-      area, in pixels.
+      area, in pixels (Emscripten-specific extension).
 
 EmscriptenTouchEvent
 
@@ -2568,3 +2589,50 @@ EM_BOOL emscripten_webgl_enable_extension(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE conte
 
    Return type:
       "EM_BOOL"
+
+
+CSS
+===
+
+
+Functions
+---------
+
+EMSCRIPTEN_RESULT emscripten_set_element_css_size(const char * target, double width, double height)
+
+   Resizes the css width and height of the element specified by
+   "target" on the Emscripten web page.
+
+   Parameters:
+      * **target** (*const char**) -- Element to resize. If 0 is
+        passed, the element specified by "Module.canvas" will be used.
+
+      * **width** (*double*) -- New width of the element.
+
+      * **height** (*double*) -- New height of the element.
+
+   Returns:
+      "EMSCRIPTEN_RESULT_SUCCESS", or one of the other result values.
+
+   Return type:
+      "EMSCRIPTEN_RESULT"
+
+EMSCRIPTEN_RESULT emscripten_get_element_css_size(const char * target, double * width, double * height)
+
+   Gets the current css width and height of the element specified by
+   "target".
+
+   Parameters:
+      * **target** (*const char**) -- Element to get size of. If 0
+        is passed, the element specified by "Module.canvas" will be
+        used.
+
+      * **width** (*double**) -- Width of the element.
+
+      * **height** (*double**) -- Height of the element.
+
+   Returns:
+      "EMSCRIPTEN_RESULT_SUCCESS", or one of the other result values.
+
+   Return type:
+      "EMSCRIPTEN_RESULT"

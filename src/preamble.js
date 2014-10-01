@@ -1013,9 +1013,19 @@ function enlargeMemory() {
   abort('cannot enlarge memory arrays in non-ta2 modes');
 #endif
 #if ASM_JS
-  _emscripten_replace_memory(HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64);
+  var success = _emscripten_replace_memory(buffer);
+  assert(success);
 #endif
 #endif
+}
+#endif
+
+#if ALLOW_MEMORY_GROWTH
+var byteLength;
+try {
+  byteLength = Function.prototype.call.bind(Object.getOwnPropertyDescriptor(ArrayBuffer.prototype, 'byteLength').get);
+} catch(e) { // can fail on older node/v8
+  byteLength = function(buffer) { return buffer.byteLength; };
 }
 #endif
 

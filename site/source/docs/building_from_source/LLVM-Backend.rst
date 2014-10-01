@@ -6,7 +6,6 @@ LLVM Backend ("Fastcomp")
 
 This article introduces *Fastcomp*, Emscripten's LLVM + Clang implementation. It explains how you can obtain the tool, why it replaced the :ref:`original compiler core <original-compiler-core>`, and how you can turn off *Fastcomp* if needed. There is also a :ref:`fastcomp-faq` at the very end for troubleshooting *Fastcomp* problems.
 
-.. todo:: Emscripten tool (emcc) links to original wiki page when you use the wrong clang. Should point to here instead.
 
 Fastcomp overview
 ================

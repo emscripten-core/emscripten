@@ -1852,13 +1852,17 @@ function unVarify(vars, ret) { // transform var x=1, y=2 etc. into (x=1, y=2), i
 var ASM_INT = 0;
 var ASM_DOUBLE = 1;
 var ASM_FLOAT = 2;
-var ASM_NONE = 3;
+var ASM_FLOAT32X4 = 3;
+var ASM_INT32X4 = 4;
+var ASM_NONE = 5;
 
 var ASM_SIG = {
   0: 'i',
   1: 'd',
   2: 'f',
-  3: 'v'
+  3: 'F',
+  4: 'I',
+  5: 'v'
 };
 
 var ASM_FLOAT_ZERO = null; // TODO: share the entire node?
@@ -1879,7 +1883,14 @@ function detectType(node, asmInfo, inVarDef) {
       break;
     }
     case 'call': {
-      if (node[1][0] === 'name' && node[1][1] === 'Math_fround') return ASM_FLOAT;
+      if (node[1][0] === 'name') {
+        switch (node[1][1]) {
+          case 'Math_fround':    return ASM_FLOAT;
+          case 'SIMD_float32x4': return ASM_FLOAT32X4;
+          case 'SIMD_int32x4':   return ASM_INT32X4;
+          default: break;
+        }
+      }
       return ASM_NONE;
     }
     case 'name': {
@@ -1927,8 +1938,10 @@ function makeAsmCoercion(node, type) {
     case ASM_INT: return ['binary', '|', node, ['num', 0]];
     case ASM_DOUBLE: return ['unary-prefix', '+', node];
     case ASM_FLOAT: return ['call', ['name', 'Math_fround'], [node]];
-    case ASM_NONE: return node; // non-validating code, emit nothing
-    default: throw 'whaa?';
+    case ASM_FLOAT32X4: return ['call', ['name', 'SIMD_float32x4'], [node]];
+    case ASM_INT32X4: return ['call', ['name', 'SIMD_int32x4'], [node]];
+    case ASM_NONE:
+    default: return node; // non-validating code, emit nothing XXX this is dangerous, we should only allow this when we know we are not validating
   }
 }
 
@@ -1942,6 +1955,12 @@ function makeAsmVarDef(v, type) {
       } else {
         return [v, ['call', ['name', 'Math_fround'], [['num', 0]]]];
       }
+    }
+    case ASM_FLOAT32X4: {
+      return [v, ['call', ['name', 'SIMD_float32x4'], [['num', 0], ['num', 0], ['num', 0], ['num', 0]]]];
+    }
+    case ASM_INT32X4: {
+      return [v, ['call', ['name', 'SIMD_int32x4'], [['num', 0], ['num', 0], ['num', 0], ['num', 0]]]];
     }
     default: throw 'wha? ' + JSON.stringify([node, type]) + new Error().stack;
   }
@@ -2284,7 +2303,16 @@ function registerize(ast) {
         ret = 'r' + num;
       } else {
         var type = asmData.vars[name];
-        ret = (type ? 'd' : 'i') + num;
+        switch (type) {
+          case ASM_INT:       ret = 'i'; break;
+          case ASM_DOUBLE:    ret = 'd'; break;
+          case ASM_FLOAT:     ret = 'f'; break;
+          case ASM_FLOAT32X4: ret = 'F4'; break;
+          case ASM_INT32X4:   ret = 'I4'; break;
+          case ASM_NONE:      ret = 'Z'; break;
+          default: assert(false, 'type ' + type + ' doesn\'t have a name yet');
+        }
+        ret += num;
         regTypes[ret] = type;
       }
       if (ret in allVars) {
@@ -2397,7 +2425,7 @@ function registerize(ast) {
     // we just use a fresh register to make sure we avoid this, but it could be
     // optimized to check for safe registers (free, and not used in this loop level).
     var varRegs = {}; // maps variables to the register they will use all their life
-    var freeRegsClasses = asm ? [[], [], [], []] : []; // two classes for asm, one otherwise XXX - hardcoded length
+    var freeRegsClasses = asm ? [[], [], [], [], [], []] : []; // two classes for asm, one otherwise XXX - hardcoded length
     var nextReg = 1;
     var fullNames = {};
     var loopRegs = {}; // for each loop nesting level, the list of bound variables
@@ -2543,6 +2571,13 @@ function registerizeHarder(ast) {
 
   traverseGeneratedFunctions(ast, function(fun) {
 
+    // Do not try to process non-validating methods, like the heap replacer
+    var abort = false;
+    traverse(fun, function(node, type) {
+      if (type === 'new') abort = true;
+    });
+    if (abort) return;
+
     var asmData = normalizeAsm(fun);
 
     var localVars = asmData.vars;
@@ -2553,8 +2588,8 @@ function registerizeHarder(ast) {
     // Utilities for allocating register variables.
     // We need distinct register pools for each type of variable.
 
-    var allRegsByType = [{}, {}, {}, {}];
-    var regPrefixByType = ['i', 'd', 'f', 'n'];
+    var allRegsByType = [{}, {}, {}, {}, {}, {}]; // XXX - hardcoded length
+    var regPrefixByType = ['i', 'd', 'f', 'F4', 'I4', 'n'];
     var nextReg = 1;
 
     function createReg(forName) {
@@ -4073,6 +4108,7 @@ function eliminate(ast, memSafe) {
               }
             }
           }
+          tracked = {}; // do not track from inside the switch to outside
         } else {
           if (!(type in ABORTING_ELIMINATOR_SCAN_NODES)) {
             printErr('unfamiliar eliminator scan node: ' + JSON.stringify(node));

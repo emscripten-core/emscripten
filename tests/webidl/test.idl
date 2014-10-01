@@ -8,6 +8,8 @@ interface Parent {
   void parentFunc();
   [Const] Parent getAsConst();
   VoidPtr voidStar(VoidPtr something);
+
+  readonly attribute long immutableAttr;
 };
 
 interface Child1 {
@@ -49,6 +51,7 @@ interface StringUser {
   void StringUser(DOMString str, long i);
   void Print(long anotherInteger, DOMString anotherString);
   void PrintFloat(float f);
+  [Const] DOMString returnAString();
 };
 
 interface RefUser {

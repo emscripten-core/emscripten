@@ -8,6 +8,7 @@ TheModule.print(sme.getVal());
 sme.parentFunc(90);
 TheModule.print(typeof sme.getAsConst());
 TheModule.print(typeof sme.voidStar(sme));
+TheModule.print(sme.get_immutableAttr());
 
 TheModule.print('c1');
 
@@ -100,6 +101,7 @@ TheModule.print('*ok*');
 var suser = new TheModule.StringUser("hello", 43);
 suser.Print(41, "world");
 suser.PrintFloat(12.3456);
+TheModule.print(suser.returnAString());
 
 var bv = new TheModule.RefUser(10);
 var bv2 = new TheModule.RefUser(11);

@@ -4,7 +4,7 @@
 Multimedia and Graphics
 =======================
 
-This section contains articles about integrating graphics and audio with the Emscripten browser environment.
+This section contains articles about Emscripten's support for graphics and audio APIs.
 
 
 .. toctree::

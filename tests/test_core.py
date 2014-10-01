@@ -5118,8 +5118,10 @@ return malloc(size);
 
   def test_simd(self):
     if self.is_emterpreter(): return self.skip('todo')
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+    Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
     test_path = path_from_root('tests', 'core', 'test_simd')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5127,7 +5129,9 @@ return malloc(size);
     self.do_run_from_file(src, output)
 
   def test_simd2(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+    Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
     test_path = path_from_root('tests', 'core', 'test_simd2')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5139,6 +5143,7 @@ return malloc(size);
 
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+    Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
     test_path = path_from_root('tests', 'core', 'test_simd3')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5148,7 +5153,9 @@ return malloc(size);
   def test_simd4(self):
     # test_simd4 is to test phi node handling of SIMD path
     if self.is_emterpreter(): return self.skip('todo')
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+    Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
     test_path = path_from_root('tests', 'core', 'test_simd4')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5157,11 +5164,43 @@ return malloc(size);
 
   def test_simd5(self):
     # test_simd5 is to test shufflevector of SIMD path
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+    Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
     test_path = path_from_root('tests', 'core', 'test_simd5')
     src, output = (test_path + s for s in ('.in', '.out'))
 
+    self.do_run_from_file(src, output)
+
+  def test_simd6(self):
+    # test_simd6 is to test x86 min and max intrinsics on NaN and -0.0
+    if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+    Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
+
+    test_path = path_from_root('tests', 'core', 'test_simd6')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
+
+  def test_simd7(self):
+    # test_simd7 is to test negative zero handling.
+    if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
+
+    test_path = path_from_root('tests', 'core', 'test_simd7')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
+
+  def test_simd_dyncall(self):
+    if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+    Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
+
+    test_path = path_from_root('tests', 'core', 'test_simd_dyncall')
+    src, output = (test_path + s for s in ('.cpp', '.txt'))
     self.do_run_from_file(src, output)
 
   def test_gcc_unmangler(self):
@@ -5958,20 +5997,22 @@ def process(filename):
     src = r'''
       #include <stdio.h>
       #include <stdlib.h>
+      #include <emscripten.h>
 
       extern "C" {
         int other_function() { return 5; }
       }
 
       int main() {
-        printf("waka!\n");
+        int x = EM_ASM_INT_V({ return Module._other_function() });
+        printf("waka %d!\n", x);
         return 0;
       }
     '''
     open('exps', 'w').write('["_main","_other_function"]')
 
     self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=@exps']
-    self.do_run(src, '''waka!''')
+    self.do_run(src, '''waka 5!''')
     assert 'other_function' in open('src.cpp.o.js').read()
 
   def test_add_function(self):

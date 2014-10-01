@@ -1194,7 +1194,7 @@ keydown(100);keyup(100); // trigger the end
   def test_sdl_ogl_proc_alias(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
     self.btest('sdl_ogl_proc_alias.c', reference='screenshot-gray-purple.png', reference_slack=1,
-               args=['-O2', '-g2', '-s', 'INLINING_LIMIT=1', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1', '-s', 'VERBOSE=1'])
+               args=['-O2', '-g2', '-s', 'INLINING_LIMIT=1', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_sdl_fog_simple(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
@@ -1228,6 +1228,7 @@ keydown(100);keyup(100); // trigger the end
 
   def test_glfw(self):
     self.btest('glfw.c', '1', args=['-s', 'LEGACY_GL_EMULATION=1'])
+    self.btest('glfw.c', '1', args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=2'])
 
   def test_egl(self):
     open(os.path.join(self.get_dir(), 'test_egl.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'test_egl.c')).read()))
@@ -1937,7 +1938,7 @@ Module["preRun"].push(function () {
       self.btest(path_from_root('tests', 'test_html5.c'), args=opts, expected='0')
 
   def test_html5_webgl_create_context(self):
-    for opts in [[], ['-O2', '-g1', '--closure', '1']]:
+    for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'FULL_ES2=1']]:
       print opts
       self.btest(path_from_root('tests', 'webgl_create_context.cpp'), args=opts, expected='0')
 
@@ -1992,3 +1993,36 @@ open(filename, 'w').write(replaced)
     with open(os.path.join(self.get_dir(), 'test.txt'), 'w') as f:
       f.write('emscripten')
     self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'ASYNCIFY=1'])
+
+  def test_locate_file(self):
+    self.clear()
+    open('src.cpp', 'w').write(self.with_report_result(r'''
+      #include <stdio.h>
+      #include <string.h>
+      #include <assert.h>
+      int main() {
+        FILE *f = fopen("data.txt", "r");
+        assert(f && "could not open file");
+        char buf[100];
+        int num = fread(buf, 1, 20, f);
+        assert(num == 20 && "could not read 20 bytes");
+        buf[20] = 0;
+        fclose(f);
+        int result = !strcmp("load me right before", buf);
+        printf("|%s| : %d\n", buf, result);
+        REPORT_RESULT();
+        return 0;
+      }
+    '''))
+    open('data.txt', 'w').write('load me right before...')
+    open('pre.js', 'w').write('Module.locateFile = function(x) { return "sub/" + x };')
+    Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=open('data.js', 'w')).communicate()
+    # put pre.js first, then the file packager data, so locateFile is there for the file loading code
+    Popen([PYTHON, EMCC, 'src.cpp', '-O2', '-g', '--pre-js', 'pre.js', '--pre-js', 'data.js', '-o', 'page.html']).communicate()
+    os.mkdir('sub')
+    shutil.move('page.html.mem', os.path.join('sub', 'page.html.mem'))
+    shutil.move('test.data', os.path.join('sub', 'test.data'))
+    self.run_browser('page.html', None, '/report_result?1')
+
+  def test_glfw3(self):
+    self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3'], expected='1')

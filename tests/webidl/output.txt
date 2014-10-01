@@ -3,6 +3,7 @@ Parent:42
 84
 object
 object
+8
 c1
 Parent:7
 Child1:7
@@ -47,6 +48,7 @@ caught: a JSImplementation must implement all functions, you forgot Child2JS::vi
 *ok*
 |hello|43|world|41|
 12.35
+a returned string
 10
 object
 10

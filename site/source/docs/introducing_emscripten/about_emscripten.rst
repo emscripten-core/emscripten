@@ -34,7 +34,7 @@ Practically any **portable** C or C++ codebase can be compiled into JavaScript u
 
 	<div style="clear:both;"></div>
 
-Emscripten generates fast code! Its default output format is `asm.js <http://asmjs.org>`_ , a highly optimizable subset of JavaScript that can execute at close to native speed in many cases (check out the `current benchmark results <http://arewefastyet.com/#machine=11&view=breakdown&suite=asmjs-ubench>`_ or run the `Emscripten benchmark suite <running-emscripten-benchmarks>`_). Optimized Emscripten code has also been `shown to have <http://mozakai.blogspot.com/2011/11/code-size-when-compiling-to-javascript.html>`_ a similar *effective size* to native code, when both are gzipped. 
+Emscripten generates fast code! Its default output format is `asm.js <http://asmjs.org>`_ , a highly optimizable subset of JavaScript that can execute at close to native speed in many cases (check out the `current benchmark results <http://arewefastyet.com/#machine=11&view=breakdown&suite=asmjs-ubench>`_ or run the :ref:`benchmark tests <emscripten-benchmark-tests>` yourself). Optimized Emscripten code has also been `shown to have <http://mozakai.blogspot.com/2011/11/code-size-when-compiling-to-javascript.html>`_ a similar *effective size* to native code, when both are gzipped. 
 
 For a better understanding of just how how fast and fluid Emscripten-ported code can be, check out the `Dead Trigger 2 <http://beta.unity3d.com/jonas/DT2/>`_ and `Angrybots <http://beta.unity3d.com/jonas/AngryBots/>`_ demos above.
 
@@ -64,7 +64,7 @@ Porting code to use Emscripten
 
 Emscripten support for **portable** C/C++ code is fairly comprehensive. Support for the C standard library, C++ standard library, C++ exceptions, etc. is very good. `SDL <https://www.libsdl.org/>`_ support is sufficient to run quite a lot of code. :ref:`OpenGL-support` support is excellent for OpenGL ES 2.0-type code, and acceptable for other types. 
 
-There are differences between the native and `browser environments <emscripten-runtime-environment>`_, which mean some changes usually need to be made to the native code. That said, many applications will only need to change the way they define their main loop, and also modify their :ref:`file handling <file-system-overview>` to adapt to the limitations of the browser/JavaScript. 
+There are differences between the native and :ref:`emscripten-runtime-environment`, which mean some changes usually need to be made to the native code. That said, many applications will only need to change the way they define their main loop, and also modify their :ref:`file handling <file-system-overview>` to adapt to the limitations of the browser/JavaScript. 
 
 There are also limitations that can make some code easier to port — read :ref:`code-portability-guidelines` to determine where you may need to spend more effort.
 

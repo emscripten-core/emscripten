@@ -108,6 +108,30 @@ function switchy() {
   break;
  }
 }
+function switchy2($inFormat) {
+ $inFormat = $inFormat | 0;
+ var label = 0;
+ switch ($inFormat | 0) {
+ case 14:
+  {
+   return 5;
+  }
+ case 10:
+ case 11:
+ case 12:
+ case 22:
+  {
+   label = 4;
+   break;
+  }
+ default:
+  {}
+ }
+ if ((label | 0) == 4) {
+  return 8;
+ }
+ return 1;
+}
 function tempDouble(a) {
  a = +a;
  f(a * a);

@@ -488,8 +488,12 @@ if has_preloaded:
     }
     var PACKAGE_NAME = '%s';
     var REMOTE_PACKAGE_BASE = '%s';
-    var REMOTE_PACKAGE_NAME = typeof Module['locateFilePackage'] === 'function' ?
-                              Module['locateFilePackage'](REMOTE_PACKAGE_BASE) :
+    if (typeof Module['locateFilePackage'] === 'function' && !Module['locateFile']) {
+      Module['locateFile'] = Module['locateFilePackage'];
+      Module.printErr('warning: you defined Module.locateFilePackage, that has been renamed to Module.locateFile (using your locateFilePackage for now)');
+    }
+    var REMOTE_PACKAGE_NAME = typeof Module['locateFile'] === 'function' ?
+                              Module['locateFile'](REMOTE_PACKAGE_BASE) :
                               ((Module['filePackagePrefixURL'] || '') + REMOTE_PACKAGE_BASE);
     var REMOTE_PACKAGE_SIZE = %d;
     var PACKAGE_UUID = '%s';

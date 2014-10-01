@@ -13,6 +13,8 @@ public:
   void parentFunc() {}
   const Parent *getAsConst() { return NULL; }
   void *voidStar(void *something) { return something; }
+
+  const int immutableAttr;
 };
 
 class Child1 : public Parent {
@@ -56,6 +58,7 @@ public:
     printf("|%s|%d|%s|%d|\n", s, i, anotherString, anotherInteger);
   }
   void PrintFloat(float f) { printf("%.2f\n", f); }
+  const char* returnAString() { return "a returned string"; }
 };
 
 struct RefUser {

@@ -378,7 +378,7 @@ class sockets(BrowserCore):
     open(os.path.join(self.get_dir(), 'host_pre.js'), 'w').write('''
       var Module = {
         webrtc: {
-          broker: 'http://localhost:8080',
+          broker: 'http://localhost:8182',
           session: undefined,
           onpeer: function(peer, route) {
             window.open('http://localhost:8888/peer.html?' + route);
@@ -402,7 +402,7 @@ class sockets(BrowserCore):
     open(os.path.join(self.get_dir(), 'peer_pre.js'), 'w').write('''
       var Module = {
         webrtc: {
-          broker: 'http://localhost:8080',
+          broker: 'http://localhost:8182',
           session: window.location.toString().split('?')[1],
           onpeer: function(peer, route) {
             peer.connect(Module['webrtc']['session']);

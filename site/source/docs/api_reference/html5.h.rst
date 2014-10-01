@@ -280,7 +280,7 @@ Struct
 	
 		A system and implementation dependent numeric code identifying the unmodified value of the pressed key; this is usually the same as ``keyCode``.
 		
-		.. warning:: This attribute is deprecated, you should use the field ``key`` instead, if available.
+		.. warning:: This attribute is deprecated, you should use the field ``key`` instead, if available. Note thought that while this field is deprecated, the cross-browser support for ``which`` may be better than for the other fields, so experimentation is recommended. Read issue https://github.com/kripken/emscripten/issues/2817 for more information.
 
 		
 Callback functions
@@ -334,6 +334,8 @@ Defines
 	EMSCRIPTEN_EVENT_MOUSEUP
 	EMSCRIPTEN_EVENT_DBLCLICK
 	EMSCRIPTEN_EVENT_MOUSEMOVE
+	EMSCRIPTEN_EVENT_MOUSEENTER
+	EMSCRIPTEN_EVENT_MOUSELEAVE
 			 
     Emscripten mouse events.
 
@@ -343,7 +345,7 @@ Struct
 
 .. c:type:: EmscriptenMouseEvent
 
-	The event structure passed in `mouse events <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#interface-MouseEvent>`_: `click <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-click>`_, `mousedown <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mousedown>`_, `mouseup <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mouseup>`_, `dblclick <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-dblclick>`_ and `mousemove <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mousemove>`_.
+	The event structure passed in `mouse events <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#interface-MouseEvent>`_: `click <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-click>`_, `mousedown <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mousedown>`_, `mouseup <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mouseup>`_, `dblclick <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-dblclick>`_, `mousemove <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mousemove>`_, `mouseenter <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mouseenter>`_ and `mouseleave <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mouseleave>`_.
 	
 
 	.. c:member:: double timestamp;
@@ -434,6 +436,8 @@ Functions
 	EMSCRIPTEN_RESULT emscripten_set_mouseup_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback)
 	EMSCRIPTEN_RESULT emscripten_set_dblclick_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback)
 	EMSCRIPTEN_RESULT emscripten_set_mousemove_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback)
+	EMSCRIPTEN_RESULT emscripten_set_mouseenter_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback)
+	EMSCRIPTEN_RESULT emscripten_set_mouseleave_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback)
 
 	Registers a callback function for receiving browser-generated `mouse input events <https://developer.mozilla.org/en/DOM/MouseEvent>`_.
 

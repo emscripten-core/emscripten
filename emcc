@@ -816,7 +816,8 @@ try:
             break
         if found: break
       if found: break
-    if not found: logging.warning('emcc: cannot find library "%s"', lib)
+    if not found and lib not in ['GL', 'GLU', 'glut']: # whitelist our default libraries
+      logging.warning('emcc: cannot find library "%s"', lib)
 
   # If not compiling to JS, then we are compiling to an intermediate bitcode objects or library, so
   # ignore dynamic linking, since multiple dynamic linkings can interfere with each other
@@ -1112,8 +1113,9 @@ try:
   # If we were just asked to generate bitcode, stop there
   if final_suffix not in JS_CONTAINING_SUFFIXES:
     if not specified_target:
-      for _, input_file in input_files:
-        safe_move(get_bitcode_file(input_file), unsuffixed_basename(input_file) + final_ending)
+      assert len(temp_files) == len(input_files)
+      for i in range(len(input_files)):
+        safe_move(temp_files[i][1], unsuffixed_basename(input_files[i][1]) + final_ending)
     else:
       if len(input_files) == 1:
         _, input_file = input_files[0]
@@ -1349,8 +1351,12 @@ try:
   js_optimizer_queue = []
   js_optimizer_extra_info = {}
   js_optimizer_queue_history = []
+  js_optimizer_blacklist = (os.environ.get('EMCC_JSOPT_BLACKLIST') or '').split(',')
   def flush_js_optimizer_queue():
     global final, js_optimizer_queue, js_optimizer_extra_info, js_optimizer_queue_history
+
+    js_optimizer_queue = filter(lambda p: p not in js_optimizer_blacklist, js_optimizer_queue)
+
     if len(js_optimizer_extra_info) == 0:
       js_optimizer_extra_info = None
     if len(js_optimizer_queue) > 0 and not(not shared.Settings.ASM_JS and len(js_optimizer_queue) == 1 and js_optimizer_queue[0] == 'last'):

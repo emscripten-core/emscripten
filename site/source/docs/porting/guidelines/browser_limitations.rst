@@ -1,8 +1,8 @@
 .. _Browser-limitations:
 
-===================
-Browser limitations
-===================
+============================
+Specific Browser Limitations
+============================
 
 This page lists some of the differences between the latest versions of the major browsers that are relevant to Emscripten-compiled applications and games:
 
