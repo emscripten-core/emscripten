@@ -4229,6 +4229,12 @@ def process(filename):
   def test_mount(self):
     src = open(path_from_root('tests', 'fs', 'test_mount.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
+  
+  def test_fs_rofs(self):
+    orig_args = self.emcc_args if self.emcc_args else []
+    self.emcc_args = orig_args + ['--js-library', path_from_root('tests', 'fs', 'library_rofs.js')]
+    src = open(path_from_root('tests', 'fs', 'test_rofs.c'), 'r').read()
+    self.do_run(src, 'success', force_c=True)
 
   def test_fwrite_0(self):
     test_path = path_from_root('tests', 'core', 'test_fwrite_0')

@@ -301,7 +301,9 @@ mergeInto(LibraryManager.library, {
         return 0;
       }
       // return 0 if any user, group or owner bits are set.
-      if (perms.indexOf('r') !== -1 && !(node.mode & {{{ cDefine('S_IRUGO') }}})) {
+      if (perms.indexOf('w') !== -1 && node.is_readonly_fs) {
+        return ERRNO_CODES.EROFS;
+      } else if (perms.indexOf('r') !== -1 && !(node.mode & {{{ cDefine('S_IRUGO') }}})) {
         return ERRNO_CODES.EACCES;
       } else if (perms.indexOf('w') !== -1 && !(node.mode & {{{ cDefine('S_IWUGO') }}})) {
         return ERRNO_CODES.EACCES;
@@ -1004,6 +1006,17 @@ mergeInto(LibraryManager.library, {
       if (!created) {
         var err = FS.mayOpen(node, flags);
         if (err) {
+          // for performance reasons we only check the read-only filesystem case
+          // when mayOpen has already returned an error condition.  This requires
+          // that read-only filesystems set the readonly attribute on all files.
+          if ((flags & {{{ cDefine('O_ACCMODE') }}}) != {{{ cDefine('O_RDONLY') }}})
+          {
+            var lookup = FS.lookupPath(path, { parent: true });
+            var parent = lookup.node;
+            if (parent.is_readonly_fs) {
+              throw new FS.ErrnoError(ERRNO_CODES.EROFS);
+            }
+          }
           throw new FS.ErrnoError(err);
         }
       }
