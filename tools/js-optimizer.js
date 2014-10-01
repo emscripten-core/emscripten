@@ -1912,8 +1912,8 @@ function detectType(node, asmInfo, inVarDef) {
     }
     case 'binary': {
       switch (node[1]) {
-        case '+': case '-': return detectType(node[2], asmInfo, inVarDef);
-        case '*': case '/': case '%': return ASM_DOUBLE; // uncoerced by |0 etc., these ops are double
+        case '+': case '-':
+        case '*': case '/': case '%': return detectType(node[2], asmInfo, inVarDef);
         case '|': case '&': case '^': case '<<': case '>>': case '>>>':
         case '==': case '!=': case '<': case '<=': case '>': case '>=': {
           return ASM_INT;
