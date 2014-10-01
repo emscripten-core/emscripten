@@ -5178,6 +5178,7 @@ return malloc(size);
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
+    if self.is_emterpreter(): return self.skip('todo')
 
     test_path = path_from_root('tests', 'core', 'test_simd6')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5198,6 +5199,7 @@ return malloc(size);
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
+    if self.is_emterpreter(): return self.skip('todo')
 
     test_path = path_from_root('tests', 'core', 'test_simd_dyncall')
     src, output = (test_path + s for s in ('.cpp', '.txt'))
