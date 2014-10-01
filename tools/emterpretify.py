@@ -21,8 +21,6 @@ BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memset', 'copyTempDouble', 'co
 
 OPCODES = [ # l, lx, ly etc - one of 256 locals
   'SET',     # [lx, ly, 0]          lx = ly (int or float, not double)
-  'GETST',   # [l, 0, 0]            l = STACKTOP
-  'SETST',   # [l, 0, 0]            STACKTOP = l
   'SETVI',   # [l, vl, vh]          l = v (16-bit signed int)
   'SETVIB',  # [l, 0, 0] [..v..]    l = 32-bit int in next 32-bit instruction
 
@@ -134,6 +132,10 @@ OPCODES = [ # l, lx, ly etc - one of 256 locals
   'CALL',    # [lx, targetl, targeth] [params...]   (lx = ) target(params..) lx's existence and type depend on the target's actual callsig;
                     #                                 this instruction can take multiple 32-bit instruction chunks
                     #                                 if target is a function table, then the first param is the index of the register holding the function pointer
+
+  'GETST',   # [l, 0, 0]            l = STACKTOP
+  'SETST',   # [l, 0, 0]            STACKTOP = l
+
   'SWITCH',  # [lx, ly, lz]         switch (lx) { .. }. followed by a jump table for values in range [ly..ly+lz), after which is the default (which might be empty)
   'RET',     # [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
   'FUNC',    # [total locals, num params, 0]            function with n locals (each taking 64 bits), of which the first are params
