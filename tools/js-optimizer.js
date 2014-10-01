@@ -5979,15 +5979,16 @@ function emterpretify(ast) {
               var pointer = target[2][2];
               var x = getReg(pointer, false, ASM_INT, ASM_SIGNED);
               var xLast = x[1][x[1].length-4];
-              if (xLast === 'ADD') {
+              if (xLast === 'ADD' || xLast === 'ADDV') {
+                var v = xLast === 'ADDV';
                 // optimized store + add
                 var curr = x[1].slice(x[1].length-4);
                 x[1].splice(x[1].length-4, 4);
                 if (curr[2] !== x[0]) unreleaseIfFree(curr[2]); // make sure these are kept alive during z's operations, we are
-                if (curr[3] !== x[0]) unreleaseIfFree(curr[3]); // putting code in between their definition and use
+                if (!v && curr[3] !== x[0]) unreleaseIfFree(curr[3]); // putting code in between their definition and use
                 var z = getReg(value);
-                if (x[0] !== curr[2] && x[0] !== curr[3]) releaseIfFree(x[0]);
-                curr = [opcode + 'A', releaseIfFree(curr[2]), releaseIfFree(curr[3]), releaseIfFree(z[0])];
+                if (x[0] !== curr[2] && (v || x[0] !== curr[3])) releaseIfFree(x[0]);
+                curr = [opcode + 'A' + (v ? 'V' : ''), releaseIfFree(curr[2]), !v ? releaseIfFree(curr[3]) : curr[3], releaseIfFree(z[0])];
                 var ret = x[1].concat(z[1]).concat(curr);
                 return [-1, ret];
               } else if (value[0] === 'sub' && value[1][0] === 'name' && value[1][1] === heap && value[2][0] === 'binary' && value[2][1] === '>>') {
