@@ -210,9 +210,9 @@ LibraryManager.library = {
   utimes: function(path, times) {
     var time;
     if (times) {
-      var offset = {{{ C_STRUCTS.timeval.tv_sec }}};
+      var offset = {{{ C_STRUCTS.timeval.__size__ }}} + {{{ C_STRUCTS.timeval.tv_sec }}};
       time = {{{ makeGetValue('times', 'offset', 'i32') }}} * 1000;
-      offset = {{{ C_STRUCTS.timeval.tv_usec }}};
+      offset = {{{ C_STRUCTS.timeval.__size__ }}} + {{{ C_STRUCTS.timeval.tv_usec }}};
       time += {{{ makeGetValue('times', 'offset', 'i32') }}} / 1000;
     } else {
       time = Date.now();
