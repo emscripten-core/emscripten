@@ -5825,6 +5825,12 @@ function emterpretify(ast) {
       freeLocals.push(l);
       return l;
     }
+    function unreleaseFree(l) {
+      assert(l >= numLocals && l <= maxLocal);
+      var i = freeLocals.indexOf(l);
+      assert(l >= 0);
+      freeLocals.splice(i, 1);
+    }
 
     function isFree(l) {
       return l >= numLocals;
@@ -5935,26 +5941,28 @@ function emterpretify(ast) {
               var bits = Math.pow(2, shifts)*8;
               assert(bits === temp.bits);
               var pointer = target[2][2];
-              if (pointer[0] === 'binary' && pointer[1] === '+') {
+              var x = getReg(pointer, false, ASM_INT, ASM_SIGNED);
+              var xLast = x[1][x[1].length-4];
+              if (xLast === 'ADD') {
                 // optimized store + add
-                opcode += 'A';
-                var x = getReg(pointer[2], false, ASM_INT, ASM_SIGNED);
-                var y = getReg(pointer[3], false, ASM_INT, ASM_SIGNED);
+                var curr = x[1].slice(x[1].length-4);
+                x[1].splice(x[1].length-4, 4);
+                if (curr[2] !== x[0]) unreleaseIfFree(curr[2]); // make sure these are kept alie during z's operations, we are
+                if (curr[3] !== x[0]) unreleaseIfFree(curr[3]); // putting code in between their definition and use
                 var z = getReg(value);
-                var ret = x[1].concat(y[1]).concat(z[1]);
-                ret.push(opcode, releaseIfFree(x[0]), releaseIfFree(y[0]), releaseIfFree(z[0]));
+                if (x[0] !== curr[2] && x[0] !== curr[3]) releaseIfFree(x[0]);
+                curr = [opcode + 'A', releaseIfFree(curr[2]), releaseIfFree(curr[3]), releaseIfFree(z[0])];
+                var ret = x[1].concat(z[1]).concat(curr);
                 return [-1, ret];
               } else if (value[0] === 'sub' && value[1][0] === 'name' && value[1][1] === heap && value[2][0] === 'binary' && value[2][1] === '>>') {
                 // a copy: store the result of a load, identical heap, identical shifts
                 assert(value[2][3][0] === 'num' && value[2][3][1] === shifts);
                 opcode += 'C';
-                var x = getReg(pointer, false, ASM_INT, ASM_SIGNED);
                 var y = getReg(value[2][2]);
                 var ret = x[1].concat(y[1]);
                 ret.push(opcode, releaseIfFree(x[0]), releaseIfFree(y[0]), 0);
                 return [-1, ret];
               } else {
-                var x = getReg(pointer, false, ASM_INT, ASM_SIGNED);
                 var y = getReg(value); // generate y now, not earlier, to not trample x's output reg, which might be a temp
                 var ret = x[1].concat(y[1]);
                 ret.push(opcode, releaseIfFree(x[0]), releaseIfFree(y[0]), 0);
@@ -6231,6 +6239,9 @@ function emterpretify(ast) {
     function releaseIfFree(l, possible) {
       if (l >= numLocals) releaseFree(l, possible);
       return l;
+    }
+    function unreleaseIfFree(l) {
+      if (l >= numLocals) unreleaseFree(l);
     }
 
     function makeSet(dst, src, type) {
