@@ -6237,9 +6237,9 @@ function emterpretify(ast) {
             var pointer = node[2][2];
             var y = getReg(pointer, false, ASM_INT, ASM_SIGNED);
             var yLast = y[1][y[1].length-4];
-            if (yLast === 'ADD') {
+            if (yLast === 'ADD' || yLast === 'ADDV') {
               // optimized load + add
-              y[1][y[1].length-4] = opcode + 'A';
+              y[1][y[1].length-4] = opcode + 'A' + (yLast === 'ADDV' ? 'V' : '');
               if (assignTo >= 0) {
                 releaseIfFree(y[0]);
                 y[1][y[1].length-3] = assignTo;
