@@ -301,6 +301,11 @@ function dumpSrc(ast) {
   printErr(astToSrc(ast));
 }
 
+function overwrite(x, y) {
+  for (var i = 0; i < y.length; i++) x[i] = y[i];
+  x.length = y.length;
+}
+
 // Closure compiler, when inlining, will insert assignments to
 // undefined for the shared variables. However, in compiled code
 // - and in library/shell code too! - we should never rely on
@@ -813,6 +818,129 @@ function simplifyExpressions(ast) {
   });
 }
 
+function localCSE(ast) {
+  // very simple CSE/GVN type optimization, factor out common expressions in a single basic block
+  assert(asm);
+  var MIN_COST = 3;
+  traverseGeneratedFunctions(ast, function(func) {
+    var asmData = normalizeAsm(func);
+    var counter = 0;
+    var optimized = false;
+    traverse(func, function(node, type) {
+      var stats = getStatements(node);
+      if (!stats) return;
+      var exps = {}; // JSON'd expression => [i it first appears on, original node, replacement var, type, sign]
+      var deps = {}; // dependency (local name, or 'memory' or 'global')
+      function invalidate(what) {
+        var list = deps[what];
+        if (!list) return;
+        for (var i = 0; i < list.length; i++) {
+          delete exps[list[i]];
+        }
+        delete deps[what];
+      }
+      function doInvalidations(curr) {
+        return traverse(curr, function(node, type) {
+          if (type in CONTROL_FLOW) {
+            exps = {};
+            deps = {};
+            return true; // abort everything
+          }
+          if (type === 'assign') {
+            var target = node[2];
+            if (target[0] === 'name') {
+              var name = target[1];
+              if (name in asmData.params || name in asmData.vars) {
+                invalidate(name);
+              } else {
+                invalidate('<global>');
+              }
+            } else {
+              assert(target[0] === 'sub');
+              invalidate('<memory>');
+            }
+          }
+          if (type === 'call') {
+            invalidate('<global>');
+            invalidate('<memory>');
+          }
+        });
+      }
+      for (var i = 0; i < stats.length; i++) {
+        var curr = stats[i];
+        // first, look at the entire line and invalidate what we need to
+        if (doInvalidations(curr) === true) {
+          continue; // we saw control flow
+        }
+        // next, process the line and try to find useful expressions
+        var skips = [];
+        traverse(curr, function seekExpressions(node, type) {
+          if (type === 'sub' && node[1][0] === 'name' && node[2][0] === 'binary' && node[2][1] === '>>') {
+            // skip over the shift, we can't cse that
+            skips.push(node[2]);
+            return;
+          }
+          if (type === 'binary' || type === 'unary-prefix') {
+            if (type === 'binary' && skips.indexOf(node) >= 0) return;
+            if (measureCost(node) < MIN_COST) return;
+            var str = JSON.stringify(node);
+            var lookup = exps[str];
+            if (!lookup) {
+              // add ourselves, and set up our deps
+              exps[str] = [i, node, null];
+              traverse(node, function(node, type) {
+                var names = [];
+                if (type === 'name') {
+                  var name = node[1];
+                  if (!(name in asmData.params || name in asmData.vars)) name = '<global>';
+                  names.push(name);
+                } else if (type === 'sub') {
+                  names.push('<memory>');
+                } else if (type === 'call') {
+                  names.push('<memory>');
+                  names.push('<global>');
+                }
+                names.forEach(function(name) {
+                  if (!deps[name]) deps[name] = [];
+                  deps[name].push(str);
+                });
+              });
+            } else {
+              //printErr('CSEing ' + str);
+              optimized = true;
+              var type, sign;
+              // with the original node plus us, this is worth optimizing out
+              if (lookup[2] === null) {
+                // this is the first node after the first. generate the saved var, and optimize out the original
+                lookup[2] = 'CSE$' + (counter++);
+                // ensure an asm coercion
+                type = lookup[3] = detectType(node, asmData);
+                sign = detectSign(node);
+                if (sign === ASM_FLEXIBLE) sign = ASM_SIGNED;
+                lookup[4] = sign;
+                asmData.vars[lookup[2]] = type;
+                overwrite(lookup[1], makeSignedAsmCoercion(['name', lookup[2]], type, sign));
+                stats.splice(lookup[0], 0, ['stat', ['assign', true, ['name', lookup[2]], makeSignedAsmCoercion(node, type, sign)]]);
+                i++;
+              } else {
+                type = lookup[3];
+                sign = lookup[4];
+              }
+              // optimize out ourselves
+              return makeSignedAsmCoercion(['name', lookup[2]], type, sign);
+            }
+          }
+        });
+        // finally, repeat invalidation processing, to not be sensitive to inter-line control flow
+        doInvalidations(curr);
+      }
+    });
+    denormalizeAsm(func, asmData);
+    if (optimized) {
+      simplifyExpressions(func); // remove double coercions, etc.
+    }
+  });
+}
 
 function simplifyIfs(ast) {
   traverseGeneratedFunctions(ast, function(func) {
@@ -1933,6 +2061,13 @@ function detectType(node, asmInfo, inVarDef) {
   assert(0 , 'horrible ' + JSON.stringify(node));
 }
 
+function isAsmCoercion(node) {
+  if (node[0] === 'binary' && ((node[1] === '|' && node[3][0] === 'num' && node[3][1] === 0) ||
+                               (node[1] === '>>>' && node[3][0] === 'num' && node[3][1] === 0))) return true;
+  if (node[0] === 'unary-prefix' && (node[1] === '+' || (node[1] === '~' && node[2][0] === 'unary-prefix' && node[2][1] === '~'))) return true;
+  return false;
+}
+
 function makeAsmCoercion(node, type) {
   switch (type) {
     case ASM_INT: return ['binary', '|', node, ['num', 0]];
@@ -1943,6 +2078,12 @@ function makeAsmCoercion(node, type) {
     case ASM_NONE:
     default: return node; // non-validating code, emit nothing XXX this is dangerous, we should only allow this when we know we are not validating
   }
+}
+
+function makeSignedAsmCoercion(node, type, sign) {
+  if (type !== ASM_INT || sign === ASM_SIGNED) return makeAsmCoercion(node, type);
+  if (sign === ASM_UNSIGNED) return ['binary', '>>>', node, ['num', 0]];
+  assert(0);
 }
 
 function makeAsmVarDef(v, type) {
@@ -2006,6 +2147,7 @@ function detectSign(node) {
         case '>>>': return ASM_UNSIGNED;
         case '+': case '-': return ASM_FLEXIBLE;
         case '*': case '/': return ASM_NONSIGNED; // without a coercion, these are double
+        case '==': case '!=': case '<': case '<=': case '>': case '>=': return ASM_SIGNED;
         default: throw 'yikes ' + node[1];
       }
       break;
@@ -7201,6 +7343,7 @@ var passes = {
   simplifyExpressions: simplifyExpressions,
   optimizeShiftsConservative: optimizeShiftsConservative,
   optimizeShiftsAggressive: optimizeShiftsAggressive,
+  localCSE: localCSE,
   simplifyIfs: simplifyIfs,
   hoistMultiples: hoistMultiples,
   loopOptimizer: loopOptimizer,
