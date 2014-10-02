@@ -1172,6 +1172,12 @@ keydown(100);keyup(100); // trigger the end
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_gl_read.c'), '-o', 'something.html']).communicate()
     self.run_browser('something.html', '.', '/report_result?1')
 
+  def test_sdl_gl_mapbuffers(self):
+    # SDL, OpenGL, readPixels
+    open(os.path.join(self.get_dir(), 'sdl_gl_mapbuffers.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_gl_mapbuffers.c')).read()))
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_gl_mapbuffers.c'), '-o', 'something.html']).communicate()
+    self.run_browser('something.html', '.', '/report_result?1')
+
   def test_sdl_ogl(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
     self.btest('sdl_ogl.c', reference='screenshot-gray-purple.png', reference_slack=1,

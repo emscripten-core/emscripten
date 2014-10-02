@@ -13,6 +13,7 @@ var LibraryGL = {
     counter: 1, // 0 is reserved as 'null' in gl
     lastError: 0,
     buffers: [],
+    mapped_buffers: {},
     programs: [],
     framebuffers: [],
     renderbuffers: [],
@@ -1198,6 +1199,72 @@ var LibraryGL = {
     } else {
       GLctx.bufferData(target, HEAPU8.subarray(data, data+size), usage);
     }
+  },
+
+  glMapBufferRange__sig: 'iiiii',
+  glMapBufferRange: function(target, offset, length, access) {
+    if (access != 0x1A) {
+      Module.printErr("glMapBufferRange is only supported when access is exactly MAP_WRITE|MAP_INVALID_BUFFER_BIT|FLUSH_EXPLICIT_BIT");
+      return 0;
+    }
+
+    switch (target) {
+      case 0x8892: // GL_ARRAY_BUFFER
+      case 0x8893: // GL_ELEMENT_ARRAY_BUFFER
+      case 0x8F36: // GL_COPY_READ_BUFFER
+      case 0x8F37: // GL_COPY_WRITE_BUFFER
+      case 0x88EB: // GL_PIXEL_PACK_BUFFER
+      case 0x88EC: // GL_PIXEL_UNPACK_BUFFER
+      case 0x8C2A: // GL_TEXTURE_BUFFER
+      case 0x8C8E: // GL_TRANSFORM_FEEDBACK_BUFFER
+      case 0x8A11: // GL_UNIFORM_BUFFER
+        break;
+      default:
+        GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+        Module.printErr('GL_INVALID_ENUM in glMapBufferRange');
+        return 0;
+    }
+
+    // Allocate an extra few prefix bytes so we can recall the mapping params
+    // in glUnmapBuffer.
+    var mem = _malloc(length + 8);
+    {{{ makeSetValue('mem', '0', 'offset', 'i32') }}};
+    {{{ makeSetValue('mem', '4', 'length', 'i32') }}};
+    GL.mapped_buffers[target] = mem;
+    return mem + 8;
+  },
+
+  glUnmapBuffer__sig: 'ii',
+  glUnmapBuffer: function(target) {
+    switch (target) {
+      case 0x8892: // GL_ARRAY_BUFFER
+      case 0x8893: // GL_ELEMENT_ARRAY_BUFFER
+      case 0x8F36: // GL_COPY_READ_BUFFER
+      case 0x8F37: // GL_COPY_WRITE_BUFFER
+      case 0x88EB: // GL_PIXEL_PACK_BUFFER
+      case 0x88EC: // GL_PIXEL_UNPACK_BUFFER
+      case 0x8C2A: // GL_TEXTURE_BUFFER
+      case 0x8C8E: // GL_TRANSFORM_FEEDBACK_BUFFER
+      case 0x8A11: // GL_UNIFORM_BUFFER
+        break;
+      default:
+        GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+        Module.printErr('GL_INVALID_ENUM in glUnmapBuffer');
+        return 0;
+    }
+
+    var mem = GL.mapped_buffers[target];
+    if (!mem) {
+      GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+      Module.printError('buffer was never mapped in glUnmapBuffer');
+      return 0;
+    }
+
+    var offset = {{{ makeGetValue('mem', '0', 'i32') }}};
+    var length = {{{ makeGetValue('mem', '4', 'i32') }}};
+    GLctx.bufferSubData(target, offset, HEAPU8.subarray(mem+8, mem+8+length));
+    _free(mem);
+    return 1;
   },
 
   glBufferSubData__sig: 'viiii',
