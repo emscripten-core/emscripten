@@ -4231,10 +4231,12 @@ def process(filename):
     self.do_run(src, 'success', force_c=True)
   
   def test_fs_rofs(self):
+    real_orig_args = self.emcc_args
     orig_args = self.emcc_args if self.emcc_args else []
     self.emcc_args = orig_args + ['--js-library', path_from_root('tests', 'fs', 'library_rofs.js')]
     src = open(path_from_root('tests', 'fs', 'test_rofs.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
+    self.emcc_args = real_orig_args
 
   def test_fwrite_0(self):
     test_path = path_from_root('tests', 'core', 'test_fwrite_0')
