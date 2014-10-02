@@ -7184,14 +7184,14 @@ function emterpretify(ast) {
         switch (type) {
           case ASM_INT:    theName[1] += '_i'; break;
           case ASM_DOUBLE: theName[1] += '_d'; break;
-          case ASM_FLOAT:  theName[1] += '_f'; break;
           default: throw 'bad';
         }
       }
       return node[0] !== 'var';
     });
     if (asmData.ret === undefined) {
-      func[3].push(['stat', theCall]);
+      theName[1] += '_i'; // void funcs reuse _i, and ignore the return value
+      func[3].push(['stat', makeAsmCoercion(theCall, ASM_INT)]);
     }
 
     // do some pre-calculation and optimization

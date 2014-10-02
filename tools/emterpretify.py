@@ -649,7 +649,7 @@ for i in range(len(lines)):
       lines[i] = lines[i].replace(call, '(%s)' % (funcs[func] + code_start))
 
 # finalize funcs JS
-asm.funcs_js = '\n'.join(['\n'.join(lines), make_emterpreter('void'), make_emterpreter('int'), make_emterpreter('double')])
+asm.funcs_js = '\n'.join(['\n'.join(lines), make_emterpreter('int'), make_emterpreter('double')])
 lines = None
 
 # set up emterpreter stack top
