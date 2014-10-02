@@ -36,7 +36,7 @@
   'makeGetValue' statements to read the fields in the C data structures described above.
   Were you to use this code as a starting point and modify these data structures, you
   would also have to change the offsets passed to the makeGetValue statements to
-  match your modifications.  Search for 'makeGetValue' in this file.  The each represent
+  match your modifications.  Search for 'makeGetValue' in this file.  Each represents
   a place where it is offsetting an address to a field in one of these data structures.
 
 */
