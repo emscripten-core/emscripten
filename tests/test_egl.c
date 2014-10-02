@@ -111,9 +111,12 @@ int main(int argc, char *argv[])
     assert(eglGetCurrentSurface(EGL_READ) == EGL_NO_SURFACE);
     assert(eglGetCurrentSurface(EGL_DRAW) == EGL_NO_SURFACE);
 
-    assert(eglSwapInterval(EGL_DISPLAY, 0) == EGL_SUCCESS);
-    assert(eglSwapInterval(EGL_DISPLAY, 1) == EGL_SUCCESS);
-    assert(eglSwapInterval(EGL_DISPLAY, 2) == EGL_SUCCESS);
+    assert(eglSwapInterval(display, 0) == EGL_TRUE);
+    assert(eglGetError() == EGL_SUCCESS);
+    assert(eglSwapInterval(display, 1) == EGL_TRUE);
+    assert(eglGetError() == EGL_SUCCESS);
+    assert(eglSwapInterval(display, 2) == EGL_TRUE);
+    assert(eglGetError() == EGL_SUCCESS);
 
     ret = eglTerminate(display);
     assert(eglGetError() == EGL_SUCCESS);
