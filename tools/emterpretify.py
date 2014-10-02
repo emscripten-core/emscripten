@@ -411,7 +411,10 @@ def make_emterpreter(t):
     # we increment pc at the top of the loop. cases doing 'continue' really need to decrement it
     return case.replace('continue;', 'CONTINUE').replace('break;', 'continue;').replace('CONTINUE', 'pc = pc - 4 | 0; continue;').replace('continue; continue;', 'continue;')
 
-  return r'''
+  def process(code):
+    return code.replace('assert(', '//assert(')
+
+  return process(r'''
 function emterpret%s%s(pc) {
  pc = pc | 0;
  var sp = 0, inst = 0, lx = 0, ly = 0, lz = 0;
@@ -448,7 +451,7 @@ function emterpret%s%s(pc) {
   json.dumps(OPCODES),
   '\n'.join([fix_case('   case %d: %s break;' % (k, CASES[k])) for k in sorted(CASES.keys())]),
   '' if t == 'void' else 'return %s;' % shared.JS.make_initializer(t[0], settings)
-)
+))
 
 # main
 
