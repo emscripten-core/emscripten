@@ -43,12 +43,15 @@ void looper() {
     emscripten_cancel_main_loop();
     emscripten_set_main_loop(looper, 0, 0);
     int ret;
+    int mode,value;
     if (frame % 20 == 0) {
-      ret = emscripten_set_main_loop_interval(-4);
-      assert(emscripten_get_main_loop_interval() == -4);
+      ret = emscripten_set_main_loop_timing(EM_TIMING_RAF, 4);
+      emscripten_get_main_loop_timing(&mode, &value);
+      assert(mode == EM_TIMING_RAF && value == 4);
     } else {
-      ret = emscripten_set_main_loop_interval(-1);
-      assert(emscripten_get_main_loop_interval() == -1);
+      ret = emscripten_set_main_loop_timing(EM_TIMING_RAF, 0);
+      emscripten_get_main_loop_timing(&mode, &value);
+      assert(mode == EM_TIMING_RAF && value == 0);
     }
     assert(ret == 0);
   } else if (frame == 90) {

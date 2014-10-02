@@ -502,14 +502,14 @@ var LibraryEGL = {
   eglWaitGL: 'eglWaitClient',
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglSwapInterval(EGLDisplay dpy, EGLint interval);
-  eglSwapInterval__deps: ['emscripten_set_main_loop_interval'],
+  eglSwapInterval__deps: ['emscripten_set_main_loop_timing'],
   eglSwapInterval: function(display, interval) {
     if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0;
     }
-    if (interval <= 0) _emscripten_set_main_loop_interval(0); // Disable vsync
-    else _emscripten_set_main_loop_interval(-interval); // Use a swap interval.
+    if (interval == 0) _emscripten_set_main_loop_timing(0/*EM_TIMING_SETTIMEOUT*/, 0);
+    else _emscripten_set_main_loop_timing(1/*EM_TIMING_RAF*/, interval);
 
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
     return 1;

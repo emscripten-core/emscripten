@@ -2974,14 +2974,14 @@ var LibrarySDL = {
 
   SDL_GL_DeleteContext: function(context) {},
 
-  SDL_GL_GetSwapInterval__deps: ['emscripten_get_main_loop_interval'],
   SDL_GL_GetSwapInterval: function(state) {
-    return -_emscripten_get_main_loop_interval();
+    if (Browser.mainLoop.timingMode == 1/*EM_TIMING_RAF*/) return Browser.mainLoop.timingValue;
+    else return 0;
   },
 
-  SDL_GL_SetSwapInterval__deps: ['emscripten_set_main_loop_interval'],
+  SDL_GL_SetSwapInterval__deps: ['emscripten_set_main_loop_timing'],
   SDL_GL_SetSwapInterval: function(state) {
-    _emscripten_set_main_loop_interval(-interval);
+    _emscripten_set_main_loop_timing(1/*EM_TIMING_RAF*/, state);
   },
 
   SDL_SetWindowTitle: function(window, title) {

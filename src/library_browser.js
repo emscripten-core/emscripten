@@ -2,7 +2,7 @@
 
 // Utilities for browser environments
 mergeInto(LibraryManager.library, {
-  $Browser__deps: ['$PATH', 'emscripten_set_main_loop', 'emscripten_set_main_loop_interval'],
+  $Browser__deps: ['$PATH', 'emscripten_set_main_loop', 'emscripten_set_main_loop_timing'],
   $Browser__postset: 'Module["requestFullScreen"] = function Module_requestFullScreen(lockPointer, resizeCanvas) { Browser.requestFullScreen(lockPointer, resizeCanvas) };\n' + // exports
                      'Module["requestAnimationFrame"] = function Module_requestAnimationFrame(func) { Browser.requestAnimationFrame(func) };\n' +
                      'Module["setCanvasSize"] = function Module_setCanvasSize(width, height, noUpdates) { Browser.setCanvasSize(width, height, noUpdates) };\n' +
@@ -18,7 +18,8 @@ mergeInto(LibraryManager.library, {
       currentlyRunningMainloop: 0,
       func: null, // The main loop tick function that will be called at each iteration.
       arg: 0, // The argument that will be passed to the main loop. (of type void*)
-      interval: -1, // A positive or zero value denotes a msec value for the desired update rate. A negative value means a swap interval (-1 = every rAF, most often 60fps, -2 = every second rAF, or 30fps, and so on)
+      timingMode: 0,
+      timingValue: 0,
       currentFrameNumber: 0,
       queue: [],
       pause: function() {
@@ -27,9 +28,10 @@ mergeInto(LibraryManager.library, {
       },
       resume: function() {
         Browser.mainLoop.currentlyRunningMainloop++;
-        var interval = Browser.mainLoop.interval;
-        _emscripten_set_main_loop(Browser.mainLoop.func, (interval > 0) ? (1000.0 / interval) : 0, false, Browser.mainLoop.arg);
-        _emscripten_set_main_loop_interval(interval);
+        var timingMode = Browser.mainLoop.timingMode;
+        var timingValue = Browser.mainLoop.timingValue;
+        _emscripten_set_main_loop(Browser.mainLoop.func, 0, false, Browser.mainLoop.arg);
+        _emscripten_set_main_loop_timing(timingMode, timingValue);
       },
       updateStatus: function() {
         if (Module['setStatus']) {
@@ -968,26 +970,28 @@ mergeInto(LibraryManager.library, {
     document.body.appendChild(script);
   },
 
-  emscripten_get_main_loop_interval: function() {
-    return Browser.mainLoop.interval;
+  emscripten_get_main_loop_timing: function(mode, value) {
+    if (mode) {{{ makeSetValue('mode', 0, 'Browser.mainLoop.timingMode', 'i32') }}};
+    if (value) {{{ makeSetValue('value', 0, 'Browser.mainLoop.timingValue', 'i32') }}};
   },
 
-  emscripten_set_main_loop_interval: function(interval) {
-    Browser.mainLoop.interval = interval;
+  emscripten_set_main_loop_timing: function(mode, value) {
+    Browser.mainLoop.timingMode = mode;
+    Browser.mainLoop.timingValue = value;
 
     if (!Browser.mainLoop.func) {
 #if ASSERTIONS
-      console.error('emscripten_set_main_loop_interval: Cannot set swap interval for main loop since a main loop does not exist! Call emscripten_set_main_loop first to set one up.');
+      console.error('emscripten_set_main_loop_timing: Cannot set timing mode for main loop since a main loop does not exist! Call emscripten_set_main_loop first to set one up.');
 #endif
-      return 1; // Return non-zero on failure, can't set swap interval when there is no main loop.
+      return 1; // Return non-zero on failure, can't set timing mode when there is no main loop.
     }
 
-    if (interval >= 0) {
+    if (mode == 0 /*EM_TIMING_SETTIMEOUT*/) {
       Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler() {
-        setTimeout(Browser.mainLoop.runner, interval); // doing this each time means that on exception, we stop
+        setTimeout(Browser.mainLoop.runner, value); // doing this each time means that on exception, we stop
       };
       Browser.mainLoop.method = 'timeout';
-    } else {
+    } else if (mode == 1 /*EM_TIMING_RAF*/) {
       Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler() {
         Browser.requestAnimationFrame(Browser.mainLoop.runner);
       };
@@ -996,7 +1000,7 @@ mergeInto(LibraryManager.library, {
     return 0;
   },
 
-  emscripten_set_main_loop__deps: ['emscripten_set_main_loop_interval'],
+  emscripten_set_main_loop__deps: ['emscripten_set_main_loop_timing'],
   emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop, arg) {
     Module['noExitRuntime'] = true;
 
@@ -1035,7 +1039,7 @@ mergeInto(LibraryManager.library, {
 
       // Implement very basic swap interval control
       Browser.mainLoop.currentFrameNumber = Browser.mainLoop.currentFrameNumber + 1 | 0;
-      if (Browser.mainLoop.interval < 0 && Browser.mainLoop.currentFrameNumber % -Browser.mainLoop.interval != 0) {
+      if (Browser.mainLoop.timingMode == 1/*EM_TIMING_RAF*/ && Browser.mainLoop.timingValue > 1 && Browser.mainLoop.currentFrameNumber % Browser.mainLoop.timingValue != 0) {
         // Not the scheduled time to render this frame - skip.
         Browser.mainLoop.scheduler();
         return;
@@ -1072,8 +1076,8 @@ mergeInto(LibraryManager.library, {
       Browser.mainLoop.scheduler();
     }
 
-    if (fps && fps > 0) _emscripten_set_main_loop_interval(1000.0 / fps);
-    else _emscripten_set_main_loop_interval(-1); // Do rAF by rendering each frame (no decimating)
+    if (fps && fps > 0) _emscripten_set_main_loop_timing(0/*EM_TIMING_SETTIMEOUT*/, 1000.0 / fps);
+    else _emscripten_set_main_loop_timing(1/*EM_TIMING_RAF*/, 1); // Do rAF by rendering each frame (no decimating)
 
     Browser.mainLoop.scheduler();
 
