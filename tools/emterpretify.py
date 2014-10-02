@@ -143,6 +143,9 @@ OPCODES = [ # l, lx, ly etc - one of 256 locals
   'BRTA',     # [cond, 0, 0] [addr]  if cond, jump to addr
   'BRFA',     # [cond, 0, 0] [addr]  if !cond, jump to addr
 
+  'COND',    # [out, cond, x] [y]   out = cond ? x : y, int
+  'CONDD',   # [out, cond, x] [y]   out = cond ? x : y, double
+
   'GETTDP',  # [l, 0, 0]            l = tempDoublePtr
   'GETTR0',  # [l, 0, 0]            l = tempRet0
   'SETTR0',  # [l, 0, 0]            tempRet0 = l
@@ -332,6 +335,9 @@ CASES[ROPCODES['BRF']] = 'if (!(' + get_coerced_access('lx') + ')) { pc = pc + (
 CASES[ROPCODES['BRA']] = 'pc = HEAP32[pc + 4 >> 2] | 0; continue;'
 CASES[ROPCODES['BRTA']] = 'pc = pc + 4 | 0; if (' + get_coerced_access('lx') + ') { pc = HEAP32[pc >> 2] | 0; continue; }'
 CASES[ROPCODES['BRFA']] = 'pc = pc + 4 | 0; if (!(' + get_coerced_access('lx') + ')) { pc = HEAP32[pc >> 2] | 0; continue; }'
+
+CASES[ROPCODES['COND']] = 'pc = pc + 4 | 0; ' + get_access('lx') + ' = (' + get_coerced_access('ly') + ') ? (' + get_coerced_access('lz') + ') : (' + get_coerced_access('(HEAPU8[pc >> 0] | 0)') + ');'
+CASES[ROPCODES['CONDD']] = 'pc = pc + 4 | 0; ' + get_access('lx', s='d') + ' = (' + get_coerced_access('ly') + ') ? (' + get_coerced_access('lz', s='d') + ') : (' + get_coerced_access('(HEAPU8[pc >> 0] | 0)', s='d') + ');'
 
 CASES[ROPCODES['GETTDP']] = 'HEAP32[sp + (lx << 3) >> 2] = tempDoublePtr;'
 #CASES[ROPCODES['GETPC']] = 'HEAP32[sp + (lx << 3) >> 2] = pc;'

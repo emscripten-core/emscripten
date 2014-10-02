@@ -6342,11 +6342,21 @@ function emterpretify(ast) {
           return [-1, ret];
         }
         case 'conditional': {
-          // TODO: optimize
           // TODO: handle dropIt
+          var type = detectType(node[2], asmData);
+          if ((node[2][0] === 'name' || getNum(node[2]) !== null) && 
+              (node[3][0] === 'name' || getNum(node[3]) !== null)) {
+            // this is a simple choice between concrete values, no need for control flow here
+            var out = assignTo >= 0 ? assignTo : getFree();
+            var condition = getReg(node[1]);
+            var ifTrue = getReg(node[2]);
+            var ifFalse = getReg(node[3]);
+            return [out, condition[1].concat(ifTrue[1]).concat(ifFalse[1]).concat(
+              [type === ASM_INT ? 'COND' : 'CONDD', out, releaseIfFree(condition[0]), releaseIfFree(ifTrue[0]), releaseIfFree(ifFalse[0]), 0, 0, 0]
+            )];
+          }
           var otherwise = getRelative('cond-else'), exit = getRelative('cond-exit');
           var temp = getFree();
-          var type = detectType(node[2], asmData);
           assert(type !== ASM_NONE);
           var ret = makeBranchIfFalse(node[1], otherwise);
           var first = getReg(node[2]);
