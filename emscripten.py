@@ -1053,7 +1053,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
                    'load', 'loadX', 'loadXY', 'loadXYZ',
                    'store', 'storeX', 'storeXY', 'storeXYZ']
       simdfloatfuncs = simdfuncs + ['mul', 'div', 'min', 'max', 'sqrt',
-                                    'fromInt32x4', 'fromInt32x44Bits'];
+                                    'fromInt32x4', 'fromInt32x4Bits'];
       simdintfuncs = simdfuncs + ['fromFloat32x4', 'fromFloat32x4Bits'];
       fundamentals = ['Math', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
       if metadata['simd']:
