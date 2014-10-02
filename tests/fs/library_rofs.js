@@ -40,7 +40,6 @@ mergeInto(LibraryManager.library, {
     ops_table: null,
     
     mount: function(mount) {
-    console.log('ROFS.mount');
       if (!ROFS.ops_table) {
         ROFS.ops_table = {
           dir: {
