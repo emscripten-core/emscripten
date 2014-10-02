@@ -1259,6 +1259,7 @@ var LibraryGL = {
       Module.printError('buffer was never mapped in glUnmapBuffer');
       return 0;
     }
+    GL.mapped_buffers[target] = 0;
 
     var offset = {{{ makeGetValue('mem', '0', 'i32') }}};
     var length = {{{ makeGetValue('mem', '4', 'i32') }}};
