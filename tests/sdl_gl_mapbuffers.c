@@ -119,6 +119,7 @@ void Draw ()
      exit(1);
    }
    memcpy(buffer, vVertices, sizeof(vVertices));
+   glFlushMappedBufferRange(GL_ARRAY_BUFFER, 0, sizeof(vVertices));
    glUnmapBuffer(GL_ARRAY_BUFFER);
    
    glViewport ( 0, 0, width, height );
