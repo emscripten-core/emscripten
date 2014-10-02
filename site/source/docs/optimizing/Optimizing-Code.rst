@@ -125,14 +125,12 @@ C++ exceptions are turned off by default in ``-O1`` (and above). This prevents t
 
 To re-enable exceptions in optimized code, run *emcc* with ``-s DISABLE_EXCEPTION_CATCHING=0`` (see `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_).
 
-
-Viewing code optimization passes
---------------------------------
-
-Enable :ref:`debugging-EMCC_DEBUG` to output files for each JavaScript optimization pass.
-
-
 .. _optimizing-code-inlining:
+
+Memory Growth
+-------------
+
+Building with ``-s ALLOW_MEMORY_GROWTH=1`` allows the total amount of memory used to change depending on the demands of the application. This is useful for apps that don't know ahead of time how much they will need, but it disables some optimizations. (Work is ongoing to improve this.)
 
 Inlining
 --------
@@ -143,6 +141,10 @@ Inlining
 
 You can try to avoid this issue by disabling inlining (in specific files or everywhere), or by using :ref:`optimizing-code-outlining`.
 
+Viewing code optimization passes
+--------------------------------
+
+Enable :ref:`debugging-EMCC_DEBUG` to output files for each JavaScript optimization pass.
 
 .. _optimizing-code-unsafe-optimisations:
 
