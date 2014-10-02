@@ -2286,7 +2286,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
 
 int main()
 {
-    int file_size = 0;
+    long file_size = 0;
     int h = open("src.cpp", O_RDONLY, 0666);
     if (0 != h)
     {
@@ -2303,7 +2303,7 @@ int main()
             return 10;
         }
         close(h);
-        printf("File size: %d\n", file_size);
+        printf("File size: %ld\n", file_size);
     }
     else
     {
@@ -2316,7 +2316,7 @@ int main()
     Popen([PYTHON, EMCC, 'src.cpp', '--embed-file', 'src.cpp']).communicate()
     for engine in JS_ENGINES:
       out = run_js('a.out.js', engine=engine, stderr=PIPE, full_output=True)
-      self.assertContained('File size: 722', out)
+      self.assertContained('File size: 724', out)
 
   def test_simd(self):
     if get_clang_version() == '3.2':
@@ -2994,7 +2994,7 @@ int main(int argc, char **argv) {
         fread(&data2, 4, 1, f); // should read 0s, not that int we wrote at an offset
         printf("read: %d\n", data2);
         fseek(f, 0, SEEK_END);
-        int size = ftell(f); // should be 104, not 4
+        long size = ftell(f); // should be 104, not 4
         fclose(f);
         printf("file size is %d\n", size);
       }
@@ -3830,9 +3830,9 @@ Failed to open file for writing: /tmp/file; errno=13; Permission denied
       {
           FILE* fp = fopen("large.txt", "r");
           if (fp) {
-              printf("%d\n", fp);
+              printf("%d\n", (int)fp);
               fseek(fp, 0L, SEEK_END);
-              printf("%d\n", ftell(fp));
+              printf("%ld\n", ftell(fp));
           } else {
               printf("failed to open large file.txt\n");
           }
