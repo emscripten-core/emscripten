@@ -176,7 +176,7 @@ mergeInto(LibraryManager.library, {
   },
   
   rofs_mount__sig: 'vii',
-  rofs_mount__deps: ['$ROFS'],
+  rofs_mount__deps: ['$ROFS', '$FS'],
   rofs_mount: function (pathAddr, root_addr) {
     FS.mount(ROFS, {root_addr: root_addr}, Pointer_stringify(pathAddr));
   }
