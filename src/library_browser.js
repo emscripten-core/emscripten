@@ -30,7 +30,9 @@ mergeInto(LibraryManager.library, {
         Browser.mainLoop.currentlyRunningMainloop++;
         var timingMode = Browser.mainLoop.timingMode;
         var timingValue = Browser.mainLoop.timingValue;
-        _emscripten_set_main_loop(Browser.mainLoop.func, 0, false, Browser.mainLoop.arg);
+        var func = Browser.mainLoop.func;
+        Browser.mainLoop.func = null;
+        _emscripten_set_main_loop(func, 0, false, Browser.mainLoop.arg);
         _emscripten_set_main_loop_timing(timingMode, timingValue);
       },
       updateStatus: function() {
