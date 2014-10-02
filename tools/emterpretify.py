@@ -214,9 +214,9 @@ def get_coerced_access(l, s='i', unsigned=False):
 
 CASES = {}
 CASES[ROPCODES['SET']] = get_access('lx') + ' = ' + get_coerced_access('ly') + ';'
-CASES[ROPCODES['GETST']] = 'HEAP32[sp + (lx << 3) >> 2] = STACKTOP;'
-CASES[ROPCODES['SETST']] = 'STACKTOP = HEAP32[sp + (lx << 3) >> 2]|0;'
-CASES[ROPCODES['SETVI']] = 'HEAP32[sp + (lx << 3) >> 2] = inst >> 16;'
+CASES[ROPCODES['GETST']] = get_access('lx') + ' = STACKTOP;'
+CASES[ROPCODES['SETST']] = 'STACKTOP = ' + get_coerced_access('lx') + ';'
+CASES[ROPCODES['SETVI']] = get_access('lx') + ' = inst >> 16;'
 CASES[ROPCODES['SETVIB']] = 'pc = pc + 4 | 0; ' + get_access('lx') + ' = HEAP32[pc >> 2] | 0;'
 
 CASES[ROPCODES['ADD']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') + (' + get_coerced_access('lz') + ') | 0;'
@@ -338,9 +338,9 @@ CASES[ROPCODES['BRFA']] = 'pc = pc + 4 | 0; if (!(' + get_coerced_access('lx') +
 CASES[ROPCODES['COND']] = 'pc = pc + 4 | 0; ' + get_access('lx') + ' = (' + get_coerced_access('ly') + ') ? (' + get_coerced_access('lz') + ') : (' + get_coerced_access('(HEAPU8[pc >> 0] | 0)') + ');'
 CASES[ROPCODES['CONDD']] = 'pc = pc + 4 | 0; ' + get_access('lx', s='d') + ' = (' + get_coerced_access('ly') + ') ? (' + get_coerced_access('lz', s='d') + ') : (' + get_coerced_access('(HEAPU8[pc >> 0] | 0)', s='d') + ');'
 
-CASES[ROPCODES['GETTDP']] = 'HEAP32[sp + (lx << 3) >> 2] = tempDoublePtr;'
-#CASES[ROPCODES['GETPC']] = 'HEAP32[sp + (lx << 3) >> 2] = pc;'
-CASES[ROPCODES['GETTR0']] = 'HEAP32[sp + (lx << 3) >> 2] = tempRet0;'
+CASES[ROPCODES['GETTDP']] = get_access('lx') + ' = tempDoublePtr;'
+#CASES[ROPCODES['GETPC']] = get_access('lx') + ' = pc;'
+CASES[ROPCODES['GETTR0']] = get_access('lx') + ' = tempRet0;'
 CASES[ROPCODES['SETTR0']] = 'tempRet0 = ' + get_coerced_access('lx') + ';'
 CASES[ROPCODES['SWITCH']] = '''
     lz = ''' + get_coerced_access('lz') + ''';
@@ -358,9 +358,9 @@ def make_emterpreter(t):
   if t == 'void':
     CASES[ROPCODES['RET']] += 'return;'
   elif t == 'int':
-    CASES[ROPCODES['RET']] += 'return HEAP32[sp + (lx << 3) >> 2]|0;'
+    CASES[ROPCODES['RET']] += 'return ' + get_coerced_access('lx') + ';'
   elif t == 'double':
-    CASES[ROPCODES['RET']] += 'return +HEAPF64[sp + (lx << 3) >> 3];'
+    CASES[ROPCODES['RET']] += 'return ' + get_coerced_access('lx', s='d') + ';'
 
   # call is generated using information of actual call patterns
   if ROPCODES['CALL'] not in CASES:
@@ -413,14 +413,13 @@ def make_emterpreter(t):
   def process(code):
     return code.replace('assert(', '//assert(')
 
-  main_loop_prefix = r'''  //print('last lx (' + lx + '): ' + [HEAP32[sp + (lx << 3) >> 2]|0, +HEAPF64[sp + (lx << 3) >> 3]]);
+  main_loop_prefix = r'''  //print('last lx (' + lx + '): ' + [''' + get_coerced_access('lx') + ',' + get_coerced_access('lx', s='d') + ''']);
   pc = pc + 4 | 0;
   inst = HEAP32[pc>>2]|0;
   lx = (inst >> 8) & 255;
   ly = (inst >> 16) & 255;
   lz = inst >>> 24;
   //print([pc, inst&255, %s[inst&255], lx, ly, lz, HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]].join(', '));
-  //printErr('  ' + Array.prototype.slice.call(HEAPU8, sp, sp+8));
 ''' % (json.dumps(OPCODES))
 
   if not INNERTERPRETER_LAST_OPCODE:
@@ -463,7 +462,7 @@ function emterpret%s%s(pc) {
  assert(((EMTSTACKTOP|0) <= (EMT_STACK_MAX|0))|0);
  ly = HEAPU8[pc + 2 >> 0] | 0;
  while ((ly | 0) < (lx | 0)) { // clear the non-param locals
-  HEAPF64[sp + (ly << 3) >> 3] = +0;
+  %s = +0;
   ly = ly + 1 | 0;
  }
  //print('enter func ' + [pc, HEAPU8[pc + 0],HEAPU8[pc + 1],HEAPU8[pc + 2],HEAPU8[pc + 3],HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]].join(', '));
@@ -475,6 +474,7 @@ function emterpret%s%s(pc) {
   '_' if t != 'void' else '',
   '' if t == 'void' else t[0],
   ROPCODES['FUNC'],
+  get_access('ly', s='d'),
   main_loop,
   '' if t == 'void' else 'return %s;' % shared.JS.make_initializer(t[0], settings)
 ))
