@@ -9,8 +9,8 @@
   // points to one of these
   struct ro_file_ent
   {
-    const unsigned char*  file_data;    // ptr to the data of the file
-    size_t                file_data_sz; // size of the data pointed to by file_data
+    const char*  file_data;    // ptr to the data of the file
+    size_t       file_data_sz; // size of the data pointed to by file_data
   };
 
   // struct used when a directory entry is another directory (not a file)
@@ -18,19 +18,26 @@
   // ro_dir_ent.ptr.dir points to a ro_dir (below)
   struct ro_dir_ent
   {
-    const char* d_name;             // the name of the file or directory
+    const char* d_name;                   // the name of the file or directory
     union {
-      const ro_file_ent*   file;    // if this is a file, then the pointer to the ro_file_ent
-      const struct ro_dir* dir;     // otherwise if this another directory, the pointer to that ro_dir
+      const struct ro_file_ent*   file;   // if this is a file, then the pointer to the ro_file_ent
+      const struct ro_dir*        dir;    // otherwise if this another directory, the pointer to that ro_dir
     } ptr;
-    int is_dir;                     // true if this ro_dir_ent is a directory, otherwise false (if it is a file)
+    int is_dir;                           // true if this ro_dir_ent is a directory, otherwise false (if it is a file)
   };
 
   // struct used to represent a directory
   struct ro_dir {
-    size_t              num_ents;   // number of entries (files or other directories) in this directory
-    const rez_dir_ent*  ents;       // pointer to the list of entries in this directory
+    size_t                    num_ents;   // number of entries (files or other directories) in this directory
+    const struct ro_dir_ent*  ents;       // pointer to the list of entries in this directory
   };
+  
+  This is only an _example_ of a way to do this.  The js code below uses several
+  'makeGetValue' statements to read the fields in the C data structures described above.
+  Were you to use this code as a starting point and modify these data structures, you
+  would also have to change the offsets passed to the makeGetValue statements to
+  match your modifications.  Search for 'makeGetValue' in this file.  The each represent
+  a place where it is offsetting an address to a field in one of these data structures.
 
 */
 mergeInto(LibraryManager.library, {
