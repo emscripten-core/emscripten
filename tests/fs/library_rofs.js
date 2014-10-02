@@ -152,15 +152,12 @@ mergeInto(LibraryManager.library, {
         else
           mode = {{{ cDefine('S_IFREG') }}} | 292/*0444*/;
         var node = FS.createNode(parent, d_name, mode, 0);
-        if (is_dir != 0)
-        {
+        if (is_dir != 0) {
           node.node_ops = ROFS.ops_table.dir.node;
           node.stream_ops = ROFS.ops_table.dir.stream;
           node.contents = ['.', '..'];
           ROFS.recursive_mount_dir(ptr, node);
-        }
-        else
-        {
+        } else {
           node.node_ops = ROFS.ops_table.file.node;
           node.stream_ops = ROFS.ops_table.file.stream;
           node.contents = ptr;
