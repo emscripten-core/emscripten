@@ -2398,7 +2398,7 @@ mergeInto(LibraryManager.library, {
 printErr('dir was ' + process.env.EMCC_BUILD_DIR);
 ''')
     out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '--js-library', 'lib.js'], stderr=PIPE).communicate()
-    self.assertContained('dir was ' + os.path.normpath(self.get_dir()), err)
+    self.assertContained('dir was ' + os.path.realpath(os.path.normpath(self.get_dir())), err)
 
   def test_float_h(self):
     process = Popen([PYTHON, EMCC, path_from_root('tests', 'float+.c')], stdout=PIPE, stderr=PIPE)
@@ -3012,7 +3012,7 @@ int main(int argc, char **argv) {
 ''')
 
     Popen([PYTHON, EMCC, 'code.cpp']).communicate()
-    self.assertContained('I am ' + self.get_dir().replace('\\', '/') + '/a.out.js', run_js('a.out.js', engine=NODE_JS).replace('\\', '/'))
+    self.assertContained('I am ' + os.path.realpath(self.get_dir().replace('\\', '/') + '/a.out.js'), run_js('a.out.js', engine=NODE_JS).replace('\\', '/'))
 
   def test_returncode(self):
     open('src.cpp', 'w').write(r'''
