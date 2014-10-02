@@ -62,6 +62,9 @@ struct ro_dir_ent  dir_ents[] = {
 };
 struct ro_dir root_dir = { 3, &dir_ents[0] };
 
+// implemented in library_rofs.js, which must be included
+// in the list of libraries compiled/linked by emcc.  See
+// test_core.py, test_fs_rofs for an example of how to do this.
 void rofs_mount(const char* path, struct ro_dir* root);
 
 int main() {
