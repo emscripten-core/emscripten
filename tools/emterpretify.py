@@ -96,7 +96,6 @@ OPCODES = [ # l, lx, ly etc - one of 256 locals
   'STORE8',  # [lx, ly, 0]          HEAP8[lx >> 2] = ly
   'STORE16', # [lx, ly, 0]          HEAP16[lx >> 2] = ly
   'STORE32', # [lx, ly, 0]          HEAP32[lx >> 2] = ly
-
   'LOADF64',  # [lx, ly, 0]         lx = HEAPF64[ly >> 3]
   'STOREF64', # [lx, ly, 0]         HEAPF64[lx >> 3] = ly
   'LOADF32',  # [lx, ly, 0]         lx = HEAPF32[ly >> 3]
@@ -110,7 +109,6 @@ OPCODES = [ # l, lx, ly etc - one of 256 locals
   'STORE8A',
   'STORE16A',
   'STORE32A',
-
   'LOADF64A',
   'STOREF64A',
   'LOADF32A',
@@ -124,7 +122,6 @@ OPCODES = [ # l, lx, ly etc - one of 256 locals
   'STORE8AV',
   'STORE16AV',
   'STORE32AV',
-
   'LOADF64AV',
   'STOREF64AV',
   'LOADF32AV',
@@ -414,6 +411,12 @@ def make_emterpreter(t):
   def process(code):
     return code.replace('assert(', '//assert(')
 
+  main_loop = r'''  switch (inst&255) {
+%s
+   default: assert(0);
+  }
+''' % ('\n'.join([fix_case('   case %d: %s break;' % (k, CASES[k])) for k in sorted(CASES.keys())]))
+
   return process(r'''
 function emterpret%s%s(pc) {
  pc = pc | 0;
@@ -438,10 +441,7 @@ function emterpret%s%s(pc) {
   lz = inst >>> 24;
   //print([pc, inst&255, %s[inst&255], lx, ly, lz, HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]].join(', '));
   //printErr('  ' + Array.prototype.slice.call(HEAPU8, sp, sp+8));
-  switch (inst&255) {
 %s
-   default: assert(0);
-  }
  }
  %s
 }''' % (
@@ -449,7 +449,7 @@ function emterpret%s%s(pc) {
   '' if t == 'void' else t[0],
   ROPCODES['FUNC'],
   json.dumps(OPCODES),
-  '\n'.join([fix_case('   case %d: %s break;' % (k, CASES[k])) for k in sorted(CASES.keys())]),
+  main_loop,
   '' if t == 'void' else 'return %s;' % shared.JS.make_initializer(t[0], settings)
 ))
 
