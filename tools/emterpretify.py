@@ -11,6 +11,8 @@ import asm_module, shared, shutil
 
 # params
 
+INNERTERPRETER_LAST_OPCODE = 0 # 'CONDD'
+
 EMT_STACK_MAX = 1024*1024
 
 LOG_CODE = os.environ.get('EMCC_LOG_EMTERPRETER_CODE')
@@ -147,7 +149,7 @@ OPCODES = [ # l, lx, ly etc - one of 256 locals
   'GETTR0',  # [l, 0, 0]            l = tempRet0
   'SETTR0',  # [l, 0, 0]            tempRet0 = l
   'GETGLBI', # [l, vl, vh]          get global value, int, indexed by v
-  'GETGLBD', # [l, vl, vh]          get global value, double, indexed by v
+  #'GETGLBD', # [l, vl, vh]          get global value, double, indexed by v
   'SETGLBI', # [vl, vh, l]          set global value, int, indexed by v (v = l)
   'CALL',    # [lx, targetl, targeth] [params...]   (lx = ) target(params..) lx's existence and type depend on the target's actual callsig;
                     #                                 this instruction can take multiple 32-bit instruction chunks
@@ -411,11 +413,44 @@ def make_emterpreter(t):
   def process(code):
     return code.replace('assert(', '//assert(')
 
-  main_loop = r'''  switch (inst&255) {
+  main_loop_prefix = r'''  //print('last lx (' + lx + '): ' + [HEAP32[sp + (lx << 3) >> 2]|0, +HEAPF64[sp + (lx << 3) >> 3]]);
+  pc = pc + 4 | 0;
+  inst = HEAP32[pc>>2]|0;
+  lx = (inst >> 8) & 255;
+  ly = (inst >> 16) & 255;
+  lz = inst >>> 24;
+  //print([pc, inst&255, %s[inst&255], lx, ly, lz, HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]].join(', '));
+  //printErr('  ' + Array.prototype.slice.call(HEAPU8, sp, sp+8));
+''' % (json.dumps(OPCODES))
+
+  if not INNERTERPRETER_LAST_OPCODE:
+    main_loop = main_loop_prefix + r'''
+  switch (inst&255) {
 %s
    default: assert(0);
   }
 ''' % ('\n'.join([fix_case('   case %d: %s break;' % (k, CASES[k])) for k in sorted(CASES.keys())]))
+  else:
+    # emit an inner interpreter (innerterpreter) loop, of trivial opcodes that hopefully the JS engine will implement with no spills
+    assert OPCODES[-1] == 'FUNC' # we don't need to emit that one
+    main_loop = r'''  innerterpreter: while (1) {
+%s
+   switch (inst&255) {
+%s
+%s
+    default: break innerterpreter;
+   }
+  }
+  switch (inst&255) {
+%s
+   default: assert(0);
+  }
+''' % (
+  ' ' + '\n '.join(main_loop_prefix.split('\n')),
+  '\n'.join([fix_case('    case %d: %s break;' % (ROPCODES[k], CASES[ROPCODES[k]])) for k in OPCODES[:-1][:ROPCODES[INNERTERPRETER_LAST_OPCODE]+1]]),
+  '\n'.join([fix_case('    case %d:' % (ROPCODES[k])) for k in OPCODES[:-1][ROPCODES[INNERTERPRETER_LAST_OPCODE]+1:]]),
+  '\n'.join([fix_case('   case %d: %s break;' % (ROPCODES[k], CASES[ROPCODES[k]])) for k in OPCODES[:-1][ROPCODES[INNERTERPRETER_LAST_OPCODE]+1:]])
+)
 
   return process(r'''
 function emterpret%s%s(pc) {
@@ -433,14 +468,6 @@ function emterpret%s%s(pc) {
  }
  //print('enter func ' + [pc, HEAPU8[pc + 0],HEAPU8[pc + 1],HEAPU8[pc + 2],HEAPU8[pc + 3],HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]].join(', '));
  while (1) {
-  //print('last lx (' + lx + '): ' + [HEAP32[sp + (lx << 3) >> 2]|0, +HEAPF64[sp + (lx << 3) >> 3]]);
-  pc = pc + 4 | 0;
-  inst = HEAP32[pc>>2]|0;
-  lx = (inst >> 8) & 255;
-  ly = (inst >> 16) & 255;
-  lz = inst >>> 24;
-  //print([pc, inst&255, %s[inst&255], lx, ly, lz, HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]].join(', '));
-  //printErr('  ' + Array.prototype.slice.call(HEAPU8, sp, sp+8));
 %s
  }
  %s
@@ -448,7 +475,6 @@ function emterpret%s%s(pc) {
   '_' if t != 'void' else '',
   '' if t == 'void' else t[0],
   ROPCODES['FUNC'],
-  json.dumps(OPCODES),
   main_loop,
   '' if t == 'void' else 'return %s;' % shared.JS.make_initializer(t[0], settings)
 ))
