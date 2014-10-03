@@ -7158,16 +7158,41 @@ function emterpretify(ast) {
     }
 
     var stats = getStatements(func);
-    // emit stack assignments, emterpreter assumes params to be in place
     func[3] = [];
+
+    // do some pre-calculation and optimization
+    var constants = hoistConstants(stats);
+
+    // walk all the function to emit bytecode, and add a final ret
+    var code = walkStatements(stats);
+    assert(code.length % 4 === 0);
+    if (code.length < 4 || code[code.length-4] != 'RET') {
+      code.push('RET', 0, 0, 0); // final ret for the function
+    }
+    assert(maxLocal < 255, 'too many locals ' + [maxLocal, numLocals]); // maximum local value is 255, for a total of 256 of them
+    code = ['FUNC', maxLocal+1, func[2].length, 0].concat(constants).concat(code);
+    verifyCode(code);
+
+    finalizeJumps(code);
+
+    // if this is a leaf method (does no calls to other emterpreted code), we can use the zero-stackbase emterpreter
+    var leaf = true;
+    for (var i = 0; i < code.length; i += 4) {
+      if (code[i] === 'CALL' && code[i+2] in EMTERPRETED_FUNCS) {
+        leaf = false;
+        break;
+      }
+    }
+
+    // set up trampoline
     var bump = 0; // we will assert in the emterpreter itself that we did not overflow the emtstack
     func[2].forEach(function(arg) {
       var code;
-      var bumpText = bump ? ' + ' + bump : '';
+      var ptr = leaf ? bump : (bump ? 'EMTSTACKTOP + ' + bump : 'EMTSTACKTOP');
       switch (asmData.params[arg]) {
-        case ASM_INT:    code = 'HEAP32[EMTSTACKTOP' + bumpText + ' >> 2] = ' + arg + ';'; break;
-        case ASM_DOUBLE: code = 'HEAPF64[EMTSTACKTOP' + bumpText + ' >> 3] = ' + arg + ';'; break;
-        case ASM_FLOAT:  code = 'HEAPF32[EMTSTACKTOP' + bumpText + ' >> 2] = ' + arg + ';'; break;
+        case ASM_INT:    code = 'HEAP32[' + ptr + ' >> 2] = ' + arg + ';'; break;
+        case ASM_DOUBLE: code = 'HEAPF64[' + ptr + ' >> 3] = ' + arg + ';'; break;
+        case ASM_FLOAT:  code = 'HEAPF32[' + ptr + ' >> 2] = ' + arg + ';'; break;
         default: throw 'bad';
       }
       func[3].push(srcToAst(code)[1][0]);
@@ -7193,22 +7218,9 @@ function emterpretify(ast) {
       theName[1] += '_i'; // void funcs reuse _i, and ignore the return value
       func[3].push(['stat', makeAsmCoercion(theCall, ASM_INT)]);
     }
+    if (leaf) theName[1] += '_z';
 
-    // do some pre-calculation and optimization
-    var constants = hoistConstants(stats);
-
-    // walk all the function to emit bytecode, and add a final ret
-    var code = walkStatements(stats);
-    assert(code.length % 4 === 0);
-    if (code.length < 4 || code[code.length-4] != 'RET') {
-      code.push('RET', 0, 0, 0); // final ret for the function
-    }
-    assert(maxLocal < 255, 'too many locals ' + [maxLocal, numLocals]); // maximum local value is 255, for a total of 256 of them
-    code = ['FUNC', maxLocal+1, func[2].length, 0].concat(constants).concat(code);
-    verifyCode(code);
-
-    finalizeJumps(code);
-
+    // emit trampoline and bytecode
     print(astToSrc(func) + ' //' + JSON.stringify([code, absoluteTargets]));
   }
   traverseGeneratedFunctions(ast, walkFunction);

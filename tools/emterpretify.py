@@ -352,9 +352,9 @@ CASES[ROPCODES['SWITCH']] = '''
     pc = HEAP32[pc + 4 + (lx << 2) >> 2] | 0; // load from the jump table which is right after this instruction, and set pc
     continue;'''
 
-def make_emterpreter(t):
+def make_emterpreter(t, zero=False):
   # return is specialized per interpreter
-  CASES[ROPCODES['RET']] = 'EMTSTACKTOP = sp; '
+  CASES[ROPCODES['RET']] = 'EMTSTACKTOP = sp; ' if not zero else ''
   if t == 'void':
     CASES[ROPCODES['RET']] += 'return;'
   elif t == 'int':
@@ -411,7 +411,9 @@ def make_emterpreter(t):
     return case.replace('continue;', 'CONTINUE').replace('break;', 'continue;').replace('CONTINUE', 'pc = pc - 4 | 0; continue;').replace('continue; continue;', 'continue;')
 
   def process(code):
-    return code.replace(' assert(', ' //assert(')
+    code = code.replace(' assert(', ' //assert(')
+    if zero: code = code.replace('sp + ', '')
+    return code
 
   main_loop_prefix = r'''  //print('last lx (' + lx + '): ' + [''' + get_coerced_access('lx') + ',' + get_coerced_access('lx', s='d') + ''']);
   pc = pc + 4 | 0;
@@ -452,10 +454,10 @@ def make_emterpreter(t):
 )
 
   return process(r'''
-function emterpret%s%s(pc) {
+function emterpret%s(pc) {
  pc = pc | 0;
- var sp = 0, inst = 0, lx = 0, ly = 0, lz = 0;
- sp = EMTSTACKTOP;
+ var %sinst = 0, lx = 0, ly = 0, lz = 0;
+%s
  assert(((HEAPU8[pc>>0]>>>0) == %d)|0);
  lx = HEAPU8[pc + 1 >> 0] | 0; // num locals
  EMTSTACKTOP = EMTSTACKTOP + (lx << 3) | 0;
@@ -471,8 +473,9 @@ function emterpret%s%s(pc) {
  }
  %s
 }''' % (
-  '_' if t != 'void' else '',
-  '' if t == 'void' else t[0],
+  ('_' if t != 'void' else '') + ('' if t == 'void' else t[0]) + ('' if not zero else '_z'),
+  'sp = 0, ' if not zero else '',
+  ' sp = EMTSTACKTOP;' if not zero else '',
   ROPCODES['FUNC'],
   get_access('ly', s='d'),
   main_loop,
@@ -679,7 +682,7 @@ for i in range(len(lines)):
       lines[i] = lines[i].replace(call, '(%s)' % (funcs[func] + code_start))
 
 # finalize funcs JS
-asm.funcs_js = '\n'.join(['\n'.join(lines), make_emterpreter('int'), make_emterpreter('double')])
+asm.funcs_js = '\n'.join(['\n'.join(lines), make_emterpreter('int'), make_emterpreter('double'), make_emterpreter('int', zero=True), make_emterpreter('double', zero=True)])
 lines = None
 
 # set up emterpreter stack top
