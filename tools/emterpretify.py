@@ -494,9 +494,13 @@ if shared.DEBUG:
 
 asm = asm_module.AsmModule(infile)
 
+# decide which functions will be emterpreted
+
+emterpreted_funcs = [func for func in asm.funcs if func not in BLACKLIST and not func.startswith('dynCall_')]
+
 # process functions, generating bytecode
 temp = infile + '.tmp.js'
-shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'blacklist': list(BLACKLIST), 'opcodes': OPCODES, 'ropcodes': ROPCODES }, output_filename=temp)
+shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'emterpretedFuncs': list(emterpreted_funcs), 'opcodes': OPCODES, 'ropcodes': ROPCODES }, output_filename=temp)
 
 # load the module and modify it
 asm = asm_module.AsmModule(temp)

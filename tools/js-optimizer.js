@@ -5937,7 +5937,7 @@ function pointerMasking(ast) {
 function emterpretify(ast) {
   emitAst = false;
 
-  var BLACKLIST = set(extraInfo.blacklist);
+  var EMTERPRETED_FUNCS = set(extraInfo.emterpretedFuncs);
   var OPCODES = extraInfo.opcodes;
   var ROPCODES = extraInfo.ropcodes;
 
@@ -7114,7 +7114,7 @@ function emterpretify(ast) {
 
     // walkFunction main
 
-    var ignore = (func[1] in BLACKLIST) || /^dynCall_.*/.test(func[1]); // TODO: do not convert small funcs || measureSize(func[3]) < 60;
+    var ignore = !(func[1] in EMTERPRETED_FUNCS);
 
     if (ignore) {
       prepDotZero(func);
@@ -7209,9 +7209,7 @@ function emterpretify(ast) {
 
     finalizeJumps(code);
 
-    //printErr(JSON.stringify(code));
-
-    print(astToSrc(func) + ' //' + JSON.stringify([code,absoluteTargets]));
+    print(astToSrc(func) + ' //' + JSON.stringify([code, absoluteTargets]));
   }
   traverseGeneratedFunctions(ast, walkFunction);
 }
