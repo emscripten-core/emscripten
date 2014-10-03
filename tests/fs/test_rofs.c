@@ -6,32 +6,35 @@
 #include <unistd.h>
 
 // struct used when a directory entry is a file (not another directory)
-// and so has ro_dir_ent.is_dir = false.  In this case, ro_dir_ent.ptr.file
+// and so has ro_dir_ent.is_dir = 0.  In this case, ro_dir_ent.ptr.file
 // points to one of these
-struct ro_file_ent
+struct ro_file
 {
   const char*  file_data;    // ptr to the data of the file
   size_t       file_data_sz; // size of the data pointed to by file_data
 };
 
 // struct used when a directory entry is another directory (not a file)
-// and so has the owning ro_dir_ent.is_dir = true.  In this case
-// ro_dir_ent.ptr.dir points to a ro_dir (below)
-struct ro_dir_ent
-{
-  const char* d_name;                   // the name of the file or directory
-  union {
-    const struct ro_file_ent*   file;   // if this is a file, then the pointer to the ro_file_ent
-    const struct ro_dir*        dir;    // otherwise if this another directory, the pointer to that ro_dir
-  } ptr;
-  int is_dir;                           // true if this ro_dir_ent is a directory, otherwise false (if it is a file)
-};
-
-// struct used to represent a directory
+// and so has the owning ro_dir_ent.is_dir = 1.  In this case
+// ro_dir_ent.ptr.dir points to one of these.
 struct ro_dir {
   size_t                    num_ents;   // number of entries (files or other directories) in this directory
   const struct ro_dir_ent*  ents;       // pointer to the list of entries in this directory
 };
+
+// struct used to represent an entry in a directory.  Each entry
+// can either represent a file or another directory.  If is_dir != 0
+// then it is a directory, otherwise it is a file
+struct ro_dir_ent
+{
+  const char* d_name;               // the name of the file or directory
+  union {
+    const struct ro_file*   file;   // if this is a file, then the pointer to the ro_file
+    const struct ro_dir*    dir;    // otherwise if this a directory, the pointer to that ro_dir
+  } ptr;
+  int is_dir;                       // != 0 if this ro_dir_ent is a directory, otherwise == 0 (if it is a file)
+};
+
 
 #define file1_contents "contents of file1"
 #define file2_contents "contents of file2"
@@ -46,19 +49,19 @@ struct ro_dir {
 //      subdir
 //          file3       -> contains file3_contents
 
-struct ro_file_ent file1_ent = { file1_contents, sizeof(file1_contents) - 1 }; // we'll not include the null byte
-struct ro_file_ent file2_ent = { file2_contents, sizeof(file2_contents) - 1 };
-struct ro_file_ent file3_ent = { file3_contents, sizeof(file3_contents) - 1 };
+struct ro_file file1 = { file1_contents, sizeof(file1_contents) - 1 }; // we'll not include the null byte
+struct ro_file file2 = { file2_contents, sizeof(file2_contents) - 1 };
+struct ro_file file3 = { file3_contents, sizeof(file3_contents) - 1 };
 
 struct ro_dir_ent  subdir_ents[] = {
-  {"file3",{&file3_ent},0}
+  {"file3",{&file3},0}
 };
 struct ro_dir subdir = { 1, &subdir_ents[0] };
 
 struct ro_dir_ent  dir_ents[] = {
-  {"file1",{&file1_ent},0},
-  {"file2",{&file2_ent},0},
-  {"subdir",{(const struct ro_file_ent*)&subdir},1}
+  {"file1",{&file1},0},
+  {"file2",{&file2},0},
+  {"subdir",{(const struct ro_file*)&subdir},1}
 };
 struct ro_dir root_dir = { 3, &dir_ents[0] };
 

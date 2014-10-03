@@ -5,33 +5,35 @@
   by 'root'.  'root' must be the address of a data structure which in C is the root ro_dir below:
     
   // struct used when a directory entry is a file (not another directory)
-  // and so has ro_dir_ent.is_dir = false.  In this case, ro_dir_ent.ptr.file
+  // and so has ro_dir_ent.is_dir = 0.  In this case, ro_dir_ent.ptr.file
   // points to one of these
-  struct ro_file_ent
+  struct ro_file
   {
     const char*  file_data;    // ptr to the data of the file
     size_t       file_data_sz; // size of the data pointed to by file_data
   };
 
   // struct used when a directory entry is another directory (not a file)
-  // and so has the owning ro_dir_ent.is_dir = true.  In this case
-  // ro_dir_ent.ptr.dir points to a ro_dir (below)
-  struct ro_dir_ent
-  {
-    const char* d_name;                   // the name of the file or directory
-    union {
-      const struct ro_file_ent*   file;   // if this is a file, then the pointer to the ro_file_ent
-      const struct ro_dir*        dir;    // otherwise if this another directory, the pointer to that ro_dir
-    } ptr;
-    int is_dir;                           // true if this ro_dir_ent is a directory, otherwise false (if it is a file)
-  };
-
-  // struct used to represent a directory
+  // and so has the owning ro_dir_ent.is_dir != 0.  In this case
+  // ro_dir_ent.ptr.dir points to one of these.
   struct ro_dir {
     size_t                    num_ents;   // number of entries (files or other directories) in this directory
     const struct ro_dir_ent*  ents;       // pointer to the list of entries in this directory
   };
-  
+
+  // struct used to represent an entry in a directory.  Each entry
+  // can either represent a file or another directory.  If is_dir != 0
+  // then it is a directory, otherwise it is a file
+  struct ro_dir_ent
+  {
+    const char* d_name;               // the name of the file or directory
+    union {
+      const struct ro_file*   file;   // if this is a file, then the pointer to the ro_file
+      const struct ro_dir*    dir;    // otherwise if this a directory, the pointer to that ro_dir
+    } ptr;
+    int is_dir;                       // != 0 if this ro_dir_ent is a directory, otherwise == 0 (if it is a file)
+  };
+ 
   This is only an _example_ of a way to do this.  The js code below uses several
   'makeGetValue' statements to read the fields in the C data structures described above.
   Were you to use this code as a starting point and modify these data structures, you
