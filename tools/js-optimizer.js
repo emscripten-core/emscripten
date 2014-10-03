@@ -398,6 +398,10 @@ function parseHeap(name, out) { // XXX this uses parseHeapTemp by default, which
 var USEFUL_BINARY_OPS = set('<<', '>>', '|', '&', '^');
 var COMPARE_OPS = set('<', '<=', '>', '>=', '==', '===', '!=', '!==');
 
+function isFunctionTable(name) {
+  return /^FUNCTION_TABLE.*/.test(name);
+}
+
 function simplifyExpressions(ast) {
   // Simplify common expressions used to perform integer conversion operations
   // in cases where no conversion is needed.
@@ -521,7 +525,7 @@ function simplifyExpressions(ast) {
     traverse(ast, function(node, type) {
       // The "pre" visitor. Useful for detecting trees which should not
       // be simplified.
-      if (type == 'sub' && node[1][0] == 'name' && /^FUNCTION_TABLE.*/.exec(node[1][1])) {
+      if (type == 'sub' && node[1][0] == 'name' && isFunctionTable(node[1][1])) {
         return null; // do not traverse subchildren here, we should not collapse 55 & 126.
       }
     }, function(node, type) {
@@ -6854,6 +6858,7 @@ function emterpretify(ast) {
         // function pointer call through function table
         assert(node[1][0] === 'sub' && node[1][1][0] === 'name');
         target = node[1][1][1];
+        assert(isFunctionTable(target));
         functionPointer = getReg(node[1][2]);
         ret = ret.concat(functionPointer[1]);
       }
@@ -7178,7 +7183,8 @@ function emterpretify(ast) {
     // if this is a leaf method (does no calls to other emterpreted code), we can use the zero-stackbase emterpreter
     var leaf = true;
     for (var i = 0; i < code.length; i += 4) {
-      if (code[i] === 'CALL' && code[i+2] in EMTERPRETED_FUNCS) {
+      // if this is a call to another emterpreted function, or a function pointer (so we can't tell), it isn't a leaf
+      if (code[i] === 'CALL' && ((code[i+2] in EMTERPRETED_FUNCS) || isFunctionTable(code[i+2]))) {
         leaf = false;
         break;
       }
