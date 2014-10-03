@@ -4161,7 +4161,7 @@ pass: error == ENOTDIR
         source = 'src.cpp'
       else:
         source = path_from_root('tests', source)
-      Popen([PYTHON, EMCC, source, '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0']).communicate()
+      Popen([PYTHON, EMCC, source, '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0', '-s', 'GLOBAL_BASE=2048']).communicate()
       Popen([PYTHON, path_from_root('tools', 'emterpretify.py'), 'a.out.js', 'em.out.js']).communicate()
       self.assertContained(output, run_js('a.out.js', args=args))
       self.assertContained(output, run_js('em.out.js', args=args))
@@ -4170,7 +4170,7 @@ pass: error == ENOTDIR
       self.validate_asmjs(out)
 
     # generate default shell for js test
-    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0']).communicate()
+    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0', '-s', 'GLOBAL_BASE=2048']).communicate()
     default = open('a.out.js').read()
     start = default.index('function _main(')
     end = default.index('}', start)

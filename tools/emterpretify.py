@@ -177,7 +177,7 @@ ROPCODES = {}
 for i in range(len(OPCODES)):
   ROPCODES[OPCODES[i]] = i
 
-GLOBAL_BASE = 8
+GLOBAL_BASE = 256*8
 
 # utils
 
@@ -517,7 +517,7 @@ mem_init = map(ord, open(in_mem_file, 'rb').read())
 zero_space = asm.staticbump - len(mem_init)
 assert zero_space >= 0 # can be positive, if we add a bump of zeros
 
-assert 'GLOBAL_BASE: 8,' in asm.pre_js
+assert ('GLOBAL_BASE: %d,' % GLOBAL_BASE) in asm.pre_js, 'we assume a specific global base, and that we can write to all memory below it'
 
 # calculate where code will start
 while len(mem_init) % 8 != 0:
