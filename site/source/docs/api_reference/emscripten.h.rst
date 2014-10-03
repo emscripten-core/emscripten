@@ -185,7 +185,7 @@ Functions
 	
 	.. note:: See :c:func:`emscripten_set_main_loop_expected_blockers`, :c:func:`emscripten_pause_main_loop`, :c:func:`emscripten_resume_main_loop` and :c:func:`emscripten_cancel_main_loop` for information about blocking, pausing, and resuming the main loop.
 
-	.. note:: Calling this function overrides the effect of any previous calls to :c:func:`emscripten_set_main_loop_timing` by applying the swap interval specified by the parameter ``fps``.
+	.. note:: Calling this function overrides the effect of any previous calls to :c:func:`emscripten_set_main_loop_timing` by applying the timing mode specified by the parameter ``fps``. To specify a different timing mode, call the function :c:func:`emscripten_set_main_loop_timing` after setting up the main loop.
 	
 	:param em_callback_func func: C function to set as main event loop.
 	:param int fps: Number of frames per second that the JavaScript will call the function. Setting ``int <=0`` (recommended) uses the browser’s ``requestAnimationFrame`` mechanism to call the function.	
