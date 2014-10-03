@@ -411,7 +411,7 @@ def make_emterpreter(t):
     return case.replace('continue;', 'CONTINUE').replace('break;', 'continue;').replace('CONTINUE', 'pc = pc - 4 | 0; continue;').replace('continue; continue;', 'continue;')
 
   def process(code):
-    return code.replace('assert(', '//assert(')
+    return code.replace(' assert(', ' //assert(')
 
   main_loop_prefix = r'''  //print('last lx (' + lx + '): ' + [''' + get_coerced_access('lx') + ',' + get_coerced_access('lx', s='d') + ''']);
   pc = pc + 4 | 0;
