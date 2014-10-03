@@ -20,7 +20,8 @@ Usage
 Compiler Interaction
 --------------------
 
-When using the tracing API, you should pass ``--tracing`` to ``emcc``. This
+When using the tracing API, you should pass ``--tracing`` to ``emcc`` at each
+compile and link stage. This
 will automatically include the ``library_trace.js`` library file as well as
 set the preprocessor flag ``__EMSCRIPTEN_TRACING__``. If you are invoking
 ``clang`` directly to build your C / C++ code, then you will want to pass
