@@ -782,6 +782,8 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       backend_args += ['-emscripten-assertions=%d' % settings['ASSERTIONS']]
     if settings['ALIASING_FUNCTION_POINTERS'] == 0:
       backend_args += ['-emscripten-no-aliasing-function-pointers']
+    if settings['GLOBAL_BASE'] >= 0:
+      backend_args += ['-emscripten-global-base=%d' % settings['GLOBAL_BASE']]
     backend_args += ['-O' + str(settings['OPT_LEVEL'])]
     backend_args += ['-emscripten-max-setjmps=%d' % settings['MAX_SETJMPS']]
     if DEBUG:

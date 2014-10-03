@@ -69,6 +69,9 @@ var ALLOW_MEMORY_GROWTH = 0; // If false, we abort with an error if we try to al
                              // arrays.
 var MAX_SETJMPS = 20; // size of setjmp table allocated in each function invocation (that has setjmp)
 
+var GLOBAL_BASE = -1; // where global data begins; the start of static memory. -1 means use the
+                      // default, any other value will be used as an override
+
 // Code embetterments
 var MICRO_OPTS = 1; // Various micro-optimizations, like nativizing variables
 var RELOOP = 0; // Recreate js native loops from llvm data
