@@ -6854,6 +6854,15 @@ function emterpretify(ast) {
       if (node[1][0] === 'name') {
         // normal direct call
         target = node[1][1];
+        // special-case some call targets
+        switch (target) {
+          case 'Math_imul': {
+            assert(node[2].length === 2);
+            var mul = makeBinary(['binary', '*', node[2][0], node[2][1]], ASM_INT, ASM_SIGNED, lx);
+            assert(mul[0] === lx);
+            return mul[1];
+          }
+        }
       } else {
         // function pointer call through function table
         assert(node[1][0] === 'sub' && node[1][1][0] === 'name');
