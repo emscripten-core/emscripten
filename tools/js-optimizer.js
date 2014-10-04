@@ -5951,6 +5951,7 @@ function emterpretify(ast) {
   mergeInto(BRANCHES, RELATIVE_BRANCHES);
   mergeInto(BRANCHES, ABSOLUTE_BRANCHES);
   var UNCONDITIONAL_BRANCHES = set('BR', 'BRA');
+  var CONDITION_BRFS = set('LNOTBRF', 'EQBRF', 'NEBRF', 'SLTBRF', 'ULTBRF', 'SLEBRF', 'ULEBRF');
 
   var COMPARISONS = set('LNOT', 'EQ', 'NE', 'SLT', 'ULT', 'SLE', 'ULE');
 
@@ -7038,6 +7039,18 @@ function emterpretify(ast) {
             code[i+2].relativeUses--;
             code[i+2] = code[i+6];
             code.splice(i+4, 4);
+          }
+        } else if (code[i] in CONDITION_BRFS && code[i+8] === 'BR') {
+          // similar optimization, with condition+BRF => condition+BRT
+          if (skipNOPs(i+12) === skipNOPs(getI(code[i+5]))) {
+            code[i] = code[i].substr(0, code[i].length-1) + 'T'; // same condition, swap BRF to BRT
+            code[i+5].absoluteUses--;
+            assert(code[i+5].absoluteUses >= 0);
+            code[i+5] = code[i+10];
+            code[i+5].relativeUses--;
+            assert(code[i+5].relativeUses >= 0);
+            code[i+5].absoluteUses++;
+            code.splice(i+8, 4);
           }
         }
       }
