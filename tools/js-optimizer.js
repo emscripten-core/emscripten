@@ -6712,14 +6712,7 @@ function emterpretify(ast) {
     function makeWhile(node, label) {
       var infinite = node[1][0] === 'num' && node[1][1] === 1; // trivial infinite loops while(1) {..} do not need condition handling
       var top = getRelative('while-top'), exit = getRelative('while-exit');
-      var condition, cond;
-      if (!infinite) {
-        condition = getReg(node[1]);
-        cond = getRelative('while-cond');
-      } else {
-        condition = [-1, []];
-        cond = top; // when we reach the condition, we just go right to the top of the loop body
-      }
+      var cond = !infinite ? getRelative('while-cond') : top;
       breakStack.push(exit);
       continueStack.push(cond);
       if (label) {
@@ -6731,8 +6724,7 @@ function emterpretify(ast) {
       var ret = [];
       if (!infinite) {
         ret.push('relative', cond, 0, 0);
-        ret = ret.concat(condition[1]);
-        ret.push('BRF', releaseIfFree(condition[0]), exit, 0);
+        ret = ret.concat(makeBranchIfFalse(node[1], exit));
       }
       ret = ret.concat(['relative', top, 0, 0]).concat(walkStatements(node[2]));
       ret.push('BR', 0, cond, 0);
