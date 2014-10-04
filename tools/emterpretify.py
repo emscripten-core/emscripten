@@ -71,6 +71,21 @@ OPCODES = [ # l, lx, ly etc - one of 256 locals
   'ASHRV',   #                                               (v is 8-bit unsigned)
   'LSHRV',   #                                               (v is 8-bit unsigned)
 
+  'LNOTBRF',    # [cond] [absolute-target]      cond+branch
+  'EQBRF',
+  'NEBRF',
+  'SLTBRF',
+  'ULTBRF',
+  'SLEBRF',
+  'ULEBRF',
+  'LNOTBRT',
+  'EQBRT',
+  'NEBRT',
+  'SLTBRT',
+  'ULTBRT',
+  'SLEBRT',
+  'ULEBRT',
+
   'SETD',    # [lx, ly, lz]         lx = ly (double)
   'SETVD',   # [lx, vl, vh]         lx = ly (16 bit signed int, converted into double)
   'SETVDI',  # [lx, 0, 0] [..v..]   lx = v (32 bit signed int, converted into double)
@@ -229,14 +244,16 @@ CASES[ROPCODES['UDIV']] = get_access('lx') + ' = (' + get_coerced_access('ly', u
 CASES[ROPCODES['SMOD']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') % (' + get_coerced_access('lz') + ') | 0;'
 CASES[ROPCODES['UMOD']] = get_access('lx') + ' = (' + get_coerced_access('ly', unsigned=True) + ') % (' + get_coerced_access('lz', unsigned=True) + ') >>> 0;'
 CASES[ROPCODES['NEG']] = get_access('lx') + ' = -(' + get_coerced_access('ly') + ');'
-CASES[ROPCODES['LNOT']] = get_access('lx') + ' = !(' + get_coerced_access('ly') + ');'
 CASES[ROPCODES['BNOT']] = get_access('lx') + ' = ~(' + get_coerced_access('ly') + ');'
+
+CASES[ROPCODES['LNOT']] = get_access('lx') + ' = !(' + get_coerced_access('ly') + ');'
 CASES[ROPCODES['EQ']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') == (' + get_coerced_access('lz') + ') | 0;'
 CASES[ROPCODES['NE']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') != (' + get_coerced_access('lz') + ') | 0;'
 CASES[ROPCODES['SLT']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') < (' + get_coerced_access('lz') + ') | 0;'
 CASES[ROPCODES['ULT']] = get_access('lx') + ' = (' + get_coerced_access('ly', unsigned=True) + ') < (' + get_coerced_access('lz', unsigned=True) + ') | 0;'
 CASES[ROPCODES['SLE']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') <= (' + get_coerced_access('lz') + ') | 0;'
 CASES[ROPCODES['ULE']] = get_access('lx') + ' = (' + get_coerced_access('ly', unsigned=True) + ') <= (' + get_coerced_access('lz', unsigned=True) + ') | 0;'
+
 CASES[ROPCODES['AND']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') & (' + get_coerced_access('lz') + ');'
 CASES[ROPCODES['OR']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') | (' + get_coerced_access('lz') + ');'
 CASES[ROPCODES['XOR']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') ^ (' + get_coerced_access('lz') + ');'
@@ -263,6 +280,22 @@ CASES[ROPCODES['XORV']] = get_access('lx') + ' = (' + get_coerced_access('ly') +
 CASES[ROPCODES['SHLV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') << lz;'
 CASES[ROPCODES['ASHRV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') >> lz;'
 CASES[ROPCODES['LSHRV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') >>> lz;'
+
+CASES[ROPCODES['LNOTBRF']] = 'if (' + get_coerced_access('ly') + ') { pc = HEAP32[pc + 4 >> 2] | 0; continue; } else { pc = pc + 4 | 0; }'
+CASES[ROPCODES['EQBRF']] = 'if ((' + get_coerced_access('ly') + ') == (' + get_coerced_access('lz') + ')) { pc = pc + 4 | 0; } else { pc = HEAP32[pc + 4 >> 2] | 0; continue; }'
+CASES[ROPCODES['NEBRF']] = 'if ((' + get_coerced_access('ly') + ') != (' + get_coerced_access('lz') + ')) { pc = pc + 4 | 0; } else { pc = HEAP32[pc + 4 >> 2] | 0; continue; }'
+CASES[ROPCODES['SLTBRF']] = 'if ((' + get_coerced_access('ly') + ') < (' + get_coerced_access('lz') + ')) { pc = pc + 4 | 0; } else { pc = HEAP32[pc + 4 >> 2] | 0; continue; }'
+CASES[ROPCODES['ULTBRF']] = 'if ((' + get_coerced_access('ly', unsigned=True) + ') < (' + get_coerced_access('lz', unsigned=True) + ')) { pc = pc + 4 | 0; } else { pc = HEAP32[pc + 4 >> 2] | 0; continue; }'
+CASES[ROPCODES['SLEBRF']] = 'if ((' + get_coerced_access('ly') + ') <= (' + get_coerced_access('lz') + ')) { pc = pc + 4 | 0; } else { pc = HEAP32[pc + 4 >> 2] | 0; continue; }'
+CASES[ROPCODES['ULEBRF']] = 'if ((' + get_coerced_access('ly', unsigned=True) + ') <= (' + get_coerced_access('lz', unsigned=True) + ')) { pc = pc + 4 | 0; } else { pc = HEAP32[pc + 4 >> 2] | 0; continue; }'
+
+CASES[ROPCODES['LNOTBRT']] = 'if (' + get_coerced_access('ly') + ') { pc = pc + 4 | 0; } else { pc = HEAP32[pc + 4 >> 2] | 0; continue; }'
+CASES[ROPCODES['EQBRT']] = 'if ((' + get_coerced_access('ly') + ') == (' + get_coerced_access('lz') + ')) { pc = HEAP32[pc + 4 >> 2] | 0; continue; } else { pc = pc + 4 | 0; }'
+CASES[ROPCODES['NEBRT']] = 'if ((' + get_coerced_access('ly') + ') != (' + get_coerced_access('lz') + ')) { pc = HEAP32[pc + 4 >> 2] | 0; continue; } else { pc = pc + 4 | 0; }'
+CASES[ROPCODES['SLTBRT']] = 'if ((' + get_coerced_access('ly') + ') < (' + get_coerced_access('lz') + ')) { pc = HEAP32[pc + 4 >> 2] | 0; continue; } else { pc = pc + 4 | 0; }'
+CASES[ROPCODES['ULTBRT']] = 'if ((' + get_coerced_access('ly', unsigned=True) + ') < (' + get_coerced_access('lz', unsigned=True) + ')) { pc = HEAP32[pc + 4 >> 2] | 0; continue; } else { pc = pc + 4 | 0; }'
+CASES[ROPCODES['SLEBRT']] = 'if ((' + get_coerced_access('ly') + ') <= (' + get_coerced_access('lz') + ')) { pc = HEAP32[pc + 4 >> 2] | 0; continue; } else { pc = pc + 4 | 0; }'
+CASES[ROPCODES['ULEBRT']] = 'if ((' + get_coerced_access('ly', unsigned=True) + ') <= (' + get_coerced_access('lz', unsigned=True) + ')) { pc = HEAP32[pc + 4 >> 2] | 0; continue; } else { pc = pc + 4 | 0; }'
 
 CASES[ROPCODES['SETD']] = get_access('lx', s='d') + ' = ' + get_coerced_access('ly', s='d') + ';'
 CASES[ROPCODES['SETVD']] = get_access('lx', s='d') + ' = +(inst >> 16);'

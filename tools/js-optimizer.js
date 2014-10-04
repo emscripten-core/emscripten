@@ -5952,6 +5952,8 @@ function emterpretify(ast) {
   mergeInto(BRANCHES, ABSOLUTE_BRANCHES);
   var UNCONDITIONAL_BRANCHES = set('BR', 'BRA');
 
+  var COMPARISONS = set('LNOT', 'EQ', 'NE', 'SLT', 'ULT', 'SLE', 'ULE');
+
   var tempBuffer = new ArrayBuffer(8);
   var tempFloat64 = new Float64Array(tempBuffer);
   var tempFloat32 = new Float32Array(tempBuffer);
@@ -6660,6 +6662,15 @@ function emterpretify(ast) {
         opcode = 'BRT';
       }
       var condition = getReg(node);
+      if (isFree(condition[0]) && condition[1][condition[1].length-4] in COMPARISONS) {
+        // emit an optimized compare+branch: avoid storing to the free condition[0], and just load the jump address right after us
+        condition[1][condition[1].length-4] += opcode;
+        var absolute = getAbsolute('cond+branch');
+        absolute.replaceWith = where; // there is only a 'relative', not an 'absolute-target', we will add one later
+        condition[1].push('absolute-value', absolute, 0, 0);
+        releaseIfFree(condition[0]);
+        return condition[1];
+      }
       condition[1].push(opcode, releaseIfFree(condition[0]), where, 0);
       return condition[1];
     }
@@ -6913,12 +6924,30 @@ function emterpretify(ast) {
     }
 
     function finalizeJumps(code) {
-      /*function dump(name) {
-        printErr('==========');
-        printErr(name);
-        printErr(JSON.stringify(code));
-        printErr('==========');
-      }*/
+      function getI(obj) {
+        var i = 0;
+        while (i < code.length) { // find the definition, ignoring uses
+          i = code.indexOf(obj, i);
+          if (i < 0) return -1;
+          if (code[i-1] === 'relative' || code[i-1] === 'absolute-target') return i-1;
+          i++;
+        }
+        return -1;
+      }
+      // fill in absolute-targets where needed (optimized condition+branch may lack them)
+      for (var i = 0; i < code.length; i += 4) {
+        if (code[i] === 'absolute-value' && code[i+1].replaceWith) {
+          var absolute = code[i+1];
+          if (getI(absolute) < 0) {
+            var relativeI = getI(absolute.replaceWith);
+            code.splice(relativeI, 0, 'absolute-target', absolute, 0, 0);
+            if (relativeI <= i) i += 4;
+            assert(code[i+1] === absolute); // sanity check on i adjustment
+          }
+          code[i+1].replaceWith = null;
+        }
+      }
+
       function sanityCheck() {
         var seenAbsolutes = {}; // every absolute value must have a valid target
         for (var i = 0; i < code.length; i += 4) {
@@ -6929,20 +6958,12 @@ function emterpretify(ast) {
         for (var i = 0; i < code.length; i += 4) {
           if (code[i] === 'absolute-value') {
             assert(code[i+1].id in seenAbsolutes);
+            assert(!code[i+1].replaceWith);
           }
         }
       }
       sanityCheck();
       // first pass, collect markers and absolute targets, and their uses
-      function getI(obj) {
-        var i = 0;
-        while (1) { // find the definition, ignoring uses
-          i = code.indexOf(obj, i);
-          assert(i >= 0);
-          if (code[i-1] === 'relative' || code[i-1] === 'absolute-target') return i-1;
-          i++;
-        }
-      }
       for (var i = 0; i < code.length; i += 4) {
         assert(!(code[i] in ABSOLUTE_BRANCHES));
         if (code[i] in RELATIVE_BRANCHES) {
