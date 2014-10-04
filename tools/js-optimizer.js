@@ -6664,6 +6664,13 @@ function emterpretify(ast) {
       return condition[1];
     }
 
+    function makeBranchIfTrue(node, where) {
+      if (node[0] === 'unary-prefix' && node[1] === '!') {
+        return makeBranchIfFalse(node[2], where);
+      }
+      return makeBranchIfFalse(['unary-prefix', '!', node], where);
+    }
+
     function makeDo(node, label) {
       var oneTime = node[1][0] === 'num' && node[1][1] === 0; // trivial one-time loops do {..} while(0) do not need condition handling
       // TODO: more testing assert(!oneTime);
@@ -6693,7 +6700,7 @@ function emterpretify(ast) {
       }
       var condition;
       if (!oneTime) {
-        condition = getReg(node[1]);
+        condition = makeBranchIfTrue(node[1], top);
       }
       var ret = [];
       if (!oneTime) {
@@ -6702,8 +6709,7 @@ function emterpretify(ast) {
       ret = ret.concat(body);
       if (!oneTime) {
         ret.push('relative', cond, 0, 0);
-        ret = ret.concat(condition[1]);
-        ret.push('BRT', releaseIfFree(condition[0]), top, 0);
+        ret = ret.concat(condition);
       }
       ret.push('relative', exit, 0, 0);
       return [-1, ret];
