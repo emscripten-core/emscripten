@@ -34,14 +34,16 @@ OPCODES = [ # l, lx, ly etc - one of 256 locals
   'SMOD',    # [lx, ly, lz]         lx = ly % lz (32-bit signed int)
   'UMOD',    # [lx, ly, lz]         lx = ly % lz (32-bit unsigned int)
   'NEG',     # [lx, ly, 0]          lx = -ly (int)
-  'LNOT',    # [lx, ly, 0]          ly = !ly (int)
   'BNOT',    # [lx, ly, 0]          ly = ~ly (int)
+
+  'LNOT',    # [lx, ly, 0]          ly = !ly (int)
   'EQ',      # [lx, ly, lz]         lx = ly == lz (32-bit int)
   'NE',      # [lx, ly, lz]         lx = ly != lz (32-bit int)
   'SLT',     # [lx, ly, lz]         lx = ly < lz (32-bit signed)
   'ULT',     # [lx, ly, lz]         lx = ly < lz (32-bit unsigned)
   'SLE',     # [lx, ly, lz]         lx = ly <= lz (32-bit signed)
   'ULE',     # [lx, ly, lz]         lx = ly <= lz (32-bit unsigned)
+
   'AND',     # [lx, ly, lz]         lx = ly & lz
   'OR',      # [lx, ly, lz]         lx = ly | lz
   'XOR',     # [lx, ly, lz]         lx = ly ^ lz
