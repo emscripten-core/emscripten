@@ -460,8 +460,7 @@ function emterpret%s(pc) {
 %s
  assert(((HEAPU8[pc>>0]>>>0) == %d)|0);
  lx = HEAPU8[pc + 1 >> 0] | 0; // num locals
- EMTSTACKTOP = EMTSTACKTOP + (lx << 3) | 0;
- assert(((EMTSTACKTOP|0) <= (EMT_STACK_MAX|0))|0);
+%s
  ly = HEAPU8[pc + 2 >> 0] | 0;
  while ((ly | 0) < (lx | 0)) { // clear the non-param locals
   %s = +0;
@@ -471,12 +470,15 @@ function emterpret%s(pc) {
  while (1) {
 %s
  }
+ assert(0);
  %s
 }''' % (
   ('_' if t != 'void' else '') + ('' if t == 'void' else t[0]) + ('' if not zero else '_z'),
   'sp = 0, ' if not zero else '',
   ' sp = EMTSTACKTOP;' if not zero else '',
   ROPCODES['FUNC'],
+  ''' EMTSTACKTOP = EMTSTACKTOP + (lx << 3) | 0;
+ assert(((EMTSTACKTOP|0) <= (EMT_STACK_MAX|0))|0);''' if not zero else '',
   get_access('ly', s='d'),
   main_loop,
   '' if t == 'void' else 'return %s;' % shared.JS.make_initializer(t[0], settings)
