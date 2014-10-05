@@ -24,12 +24,12 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
         assert 'EMSCRIPTEN_GENERATED_FUNCTIONS' not in src, 'must not emit this unneeded internal thing'
       else:
         assert 'function emterpret' in src, 'emterpreter should exist'
-        assert 'return emterpret' in src, 'emterpreter should be called'
+        assert ' = emterpret' in src, 'emterpreter should be called'
         # and removing calls to the emterpreter break, so it was being used
         output = open(output).read()
         out1 = run_js('src.cpp.o.js')
         assert output in out1
-        open('src.cpp.o.js', 'w').write(src.replace('return emterpret', 'return no'))
+        open('src.cpp.o.js', 'w').write(src.replace(' = emterpret', ' = no'))
         out2 = run_js('src.cpp.o.js', stderr=PIPE, assert_returncode=None)
         assert output not in out2, out2
         assert out1 != out2

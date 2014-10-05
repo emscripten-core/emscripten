@@ -173,6 +173,10 @@ function astToSrc(ast, minifyWhitespace) {
   });
 }
 
+function srcToStat(src) {
+  return srcToAst(src)[1][0]; // look into toplevel
+}
+
 // Traverses the children of a node. If the traverse function returns an object,
 // replaces the child. If it returns true, stop the traversal and return true.
 function traverseChildren(node, traverse, pre, post) {
@@ -7178,60 +7182,72 @@ function emterpretify(ast) {
     if (code.length < 4 || code[code.length-4] != 'RET') {
       code.push('RET', 0, 0, 0); // final ret for the function
     }
-    assert(maxLocal < 255, 'too many locals ' + [maxLocal, numLocals]); // maximum local value is 255, for a total of 256 of them
-    code = ['FUNC', maxLocal+1, func[2].length, 0].concat(constants).concat(code);
+    // calculate final count of local variables, and emit func header
+    var finalLocals = Math.max(numLocals, maxLocal+1); // if no free locals, then numLocals, else the largest free local says how many
+    assert(finalLocals < 256, 'too many locals ' + [maxLocal, numLocals]); // maximum local value is 255, for a total of 256 of them
+    code = ['FUNC', finalLocals, func[2].length, 0].concat(constants).concat(code);
     verifyCode(code);
 
     finalizeJumps(code);
 
-    // if this is a leaf method (does no calls to other emterpreted code), we can use the zero-stackbase emterpreter
-    var leaf = true;
-    for (var i = 0; i < code.length; i += 4) {
-      // if this is a call to another emterpreted function, or a function pointer (so we can't tell), it isn't a leaf
-      if (code[i] === 'CALL' && ((code[i+2] in EMTERPRETED_FUNCS) || isFunctionTable(code[i+2]))) {
-        leaf = false;
-        break;
-      }
-    }
+    var zero = true;
 
     // set up trampoline
+    asmData.vars = {};
+    if (zero) {
+      // emterpreters run using the stack starting at 0. we must copy it so we can restore it later
+      asmData.vars['sp'] = ASM_INT;
+      func[3].push(srcToStat('sp = EMTSTACKTOP;'));
+      var stackBytes = finalLocals*8;
+      func[3].push(srcToStat('EMTSTACKTOP = EMTSTACKTOP + ' + stackBytes + ' | 0;'));
+      func[3].push(srcToStat('assert(((EMTSTACKTOP|0) <= (EMT_STACK_MAX|0))|0);'));
+      asmData.vars['x'] = ASM_INT;
+      func[3].push(srcToStat('while ((x | 0) < ' + stackBytes + ') { HEAP32[sp + x >> 2] = HEAP32[x >> 2] | 0; x = x + 4 | 0; }'));
+    }
+    // copy our arguments to our stack frame
     var bump = 0; // we will assert in the emterpreter itself that we did not overflow the emtstack
     func[2].forEach(function(arg) {
       var code;
-      var ptr = leaf ? bump : (bump ? 'EMTSTACKTOP + ' + bump : 'EMTSTACKTOP');
       switch (asmData.params[arg]) {
-        case ASM_INT:    code = 'HEAP32[' + ptr + ' >> 2] = ' + arg + ';'; break;
-        case ASM_DOUBLE: code = 'HEAPF64[' + ptr + ' >> 3] = ' + arg + ';'; break;
-        case ASM_FLOAT:  code = 'HEAPF32[' + ptr + ' >> 2] = ' + arg + ';'; break;
+        case ASM_INT:    code = 'HEAP32[' + (zero ? (bump >> 2) : ('EMTSTACKTOP + ' + bump + ' >> 2')) + '] = ' + arg + ';'; break;
+        case ASM_DOUBLE: code = 'HEAPF64[' + (zero ? (bump >> 3) : ('EMTSTACKTOP + ' + bump + ' >> 3')) + '] = ' + arg + ';'; break;
+        case ASM_FLOAT:  code = 'HEAPF32[' + (zero ? (bump >> 2) : ('EMTSTACKTOP + ' + bump + ' >> 2')) + '] = ' + arg + ';'; break;
         default: throw 'bad';
       }
-      func[3].push(srcToAst(code)[1][0]);
+      func[3].push(srcToStat(code));
       bump += 8; // each local is a 64-bit value
     });
-    denormalizeAsm(func, asmData);
+    // prepare the call into the emterpreter
     var theName = ['name', 'emterpret'];
     var theCall = ['call', theName, [['name', 'EMTERPRETER_' + func[1]]]]; // EMTERPRETER_* will be replaced with the absolute bytecode offset later
-    func[3] = func[3].filter(function(node) {
-      if (node[0] === 'return') {
-        assert(asmData.ret !== undefined);
-        var type = detectType(node[1]);
-        node[1] = makeAsmCoercion(theCall, type);
-        switch (type) {
-          case ASM_INT:    theName[1] += '_i'; break;
-          case ASM_DOUBLE: theName[1] += '_d'; break;
-          default: throw 'bad';
-        }
+    // add a return if necessary
+    if (asmData.ret !== undefined) {
+      switch (asmData.ret) {
+        case ASM_INT:    theName[1] += '_i'; break;
+        case ASM_DOUBLE: theName[1] += '_d'; break;
+        default: throw 'bad';
       }
-      return node[0] !== 'var';
-    });
-    if (asmData.ret === undefined) {
+      asmData.vars['ret'] = asmData.ret;
+      func[3].push(['stat', ['assign', true, ['name', 'ret'], makeAsmCoercion(theCall, asmData.ret)]]);
+    } else {
       theName[1] += '_i'; // void funcs reuse _i, and ignore the return value
       func[3].push(['stat', makeAsmCoercion(theCall, ASM_INT)]);
     }
-    if (leaf) theName[1] += '_z';
-
+    if (zero) {
+      theName[1] += '_z';
+      // restore the stack
+      func[3].push(srcToStat('x = 0;'));
+      func[3].push(srcToStat('while ((x | 0) < ' + stackBytes + ') { HEAP32[x >> 2] = HEAP32[sp + x >> 2] | 0; x = x + 4 | 0; }'));
+      func[3].push(srcToStat('EMTSTACKTOP = sp;'));
+    }
+    // add the return
+    if (asmData.ret !== undefined) {
+      func[3].push(['return', makeAsmCoercion(['name', 'ret'], asmData.ret)]);
+    }
     // emit trampoline and bytecode
-    print(astToSrc(func) + ' //' + JSON.stringify([code, absoluteTargets]));
+    denormalizeAsm(func, asmData);
+    prepDotZero(func);
+    print(fixDotZero(astToSrc(func)) + ' //' + JSON.stringify([code, absoluteTargets]));
   }
   traverseGeneratedFunctions(ast, walkFunction);
 }
