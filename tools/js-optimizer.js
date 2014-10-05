@@ -7190,7 +7190,7 @@ function emterpretify(ast) {
 
     finalizeJumps(code);
 
-    var zero = true;
+    var zero = true; // TODO: heuristics
 
     // set up trampoline
     asmData.vars = {};
