@@ -655,6 +655,10 @@ If manually bisecting:
   def test_sdl_swsurface(self):
     self.btest('sdl_swsurface.c', expected='1')
 
+  def test_sdl_surface_lock_opts(self):
+    # Test Emscripten-specific extensions to optimize SDL_LockSurface and SDL_UnlockSurface.
+    self.btest('hello_world_sdl.cpp', reference='htmltest.png', message='You should see "hello, world!" and a colored cube.', args=['-DTEST_SDL_LOCK_OPTS'])
+
   def test_sdl_image(self):
     # load an image file, get pixel data. Also O2 coverage for --preload-file, and memory-init
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.jpg'))
