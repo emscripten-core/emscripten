@@ -449,7 +449,7 @@ def make_emterpreter(t, zero=False):
     if zero: code = code.replace('sp + ', '')
     return code
 
-  main_loop_prefix = r'''  //print('last lx (' + lx + '): ' + [''' + get_coerced_access('lx') + ',' + get_coerced_access('lx', s='d') + ''']);
+  main_loop_prefix = r'''  //if (first) first = false; else print('last lx (' + lx + '): ' + [''' + get_coerced_access('lx') + ',' + get_coerced_access('lx', s='d') + ''']);
   pc = pc + 4 | 0;
   inst = HEAP32[pc>>2]|0;
   lx = (inst >> 8) & 255;
@@ -501,6 +501,7 @@ function emterpret%s(pc) {
  // ly = ly + 1 | 0;
  //}
  //print('enter func ' + [pc, HEAPU8[pc + 0],HEAPU8[pc + 1],HEAPU8[pc + 2],HEAPU8[pc + 3],HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]].join(', '));
+ //var first = true;
  while (1) {
 %s
  }
