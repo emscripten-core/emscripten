@@ -1412,7 +1412,7 @@ try:
       js_optimizer_queue += ['simplifyExpressions']
 
       if shared.Settings.EMTERPRETIFY: # emterpreter code will not run through a JS optimizing JIT, do more work ourselves
-        js_optimizer_queue += ['localCSE']
+        js_optimizer_queue += ['localCSE', 'ensureLabelSet']
 
       if shared.Settings.RELOOP and not shared.Settings.ASM_JS:
         js_optimizer_queue += ['optimizeShiftsAggressive', get_eliminate()] # aggressive shifts optimization requires loops, it breaks on switches

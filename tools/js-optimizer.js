@@ -5941,6 +5941,30 @@ function pointerMasking(ast) {
   });
 }
 
+// Ensures that if label exists, it is assigned an initial value (to not assume the asm declaration has an effect, which we normally do not)
+function ensureLabelSet(ast) {
+  assert(asm);
+  traverseGeneratedFunctions(ast, function(func) {
+    var asmData = normalizeAsm(func);
+    if ('label' in asmData.vars) {
+      var stats = getStatements(func);
+      for (var i = 0; i < stats.length; i++) {
+        var node = stats[i];
+        if (node[0] === 'stat') node = node[1];
+        if (node[0] === 'assign' && node[2][0] === 'name' && node[2][1] === 'label') {
+          break; // all good
+        }
+        if (node[0] === 'label' || (node[0] in CONTROL_FLOW)) {
+          // we haven't seen an assign, and we hit control flow. add an assign
+          stats.splice(i, 0, ['stat', ['assign', true, ['name', 'label'], ['num', 0]]]);
+          break;
+        }
+      }
+    }
+    denormalizeAsm(func, asmData);
+  });
+}
+
 // Converts functions into binary format to be run by an emterpreter
 function emterpretify(ast) {
   emitAst = false;
@@ -7405,6 +7429,7 @@ var passes = {
   safeHeap: safeHeap,
   optimizeFrounds: optimizeFrounds,
   pointerMasking: pointerMasking,
+  ensureLabelSet: ensureLabelSet,
   emterpretify: emterpretify,
   asmLastOpts: asmLastOpts,
 

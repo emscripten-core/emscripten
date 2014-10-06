@@ -1897,6 +1897,8 @@ int f() {
        ['pointerMasking']),
       (path_from_root('tools', 'test-js-optimizer-localCSE.js'), open(path_from_root('tools', 'test-js-optimizer-localCSE-output.js')).read(),
        ['asm', 'localCSE']),
+      (path_from_root('tools', 'test-js-optimizer-ensureLabelSet.js'), open(path_from_root('tools', 'test-js-optimizer-ensureLabelSet-output.js')).read(),
+       ['asm', 'ensureLabelSet']),
     ]:
       print input
       output = Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]

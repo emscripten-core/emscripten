@@ -19,7 +19,7 @@ LOG_CODE = os.environ.get('EMCC_LOG_EMTERPRETER_CODE')
 
 # consts
 
-BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64'])
+BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memmove', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64', '_strncpy', '_strcpy', '_strcat', '_saveSetjmp', '_testSetjmp', '_emscripten_replace_memory', '_bitshift64Shl', '_bitshift64Ashr', '_bitshift64Lshr']) # XXX this list must contain all functions that rely on asm declarations to zero out variables, which means most asm js library functions. we specifically take care of 'label' in compiler-generated functions.
 
 OPCODES = [ # l, lx, ly etc - one of 256 locals
   'SET',     # [lx, ly, 0]          lx = ly (int or float, not double)
@@ -496,10 +496,10 @@ function emterpret%s(pc) {
  lx = HEAPU8[pc + 1 >> 0] | 0; // num locals
 %s
  ly = HEAPU8[pc + 2 >> 0] | 0;
- while ((ly | 0) < (lx | 0)) { // clear the non-param locals
-  %s = +0;
-  ly = ly + 1 | 0;
- }
+ //while ((ly | 0) < (lx | 0)) { // clear the non-param locals - XXX should not be needed, unless we relied on an asm declaration to zero out a variable
+ // %s = +0;
+ // ly = ly + 1 | 0;
+ //}
  //print('enter func ' + [pc, HEAPU8[pc + 0],HEAPU8[pc + 1],HEAPU8[pc + 2],HEAPU8[pc + 3],HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]].join(', '));
  while (1) {
 %s
