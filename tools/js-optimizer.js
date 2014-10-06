@@ -7219,7 +7219,7 @@ function emterpretify(ast) {
     finalizeJumps(code);
 
     // check if this is a leaf method (does no calls to other emterpreted code)
-    var DEFINITE_LEAVES = set('_memcpy', '_memmove', '_memset', '_strlen', '_strncpy', '_strcpy', '_strcat', '_printf', '_puts', '_malloc', '_free'); // things we know for sure are leaves XXX hackish, dangerous
+    var DEFINITE_LEAVES = set('_memcpy', '_memmove', '_memset', '_strlen', '_strncpy', '_strcpy', '_strcat', '_printf', '_puts', '_malloc', '_free'); // things we know for sure are leaves XXX hackish, dangerous. To get more stuff in here, it must be either in a JS library, or blacklisted from the emterpreter, and be known to never reach emterpreted code.
 
     var leaf = true;
     for (var i = 0; i < code.length; i += 4) {
