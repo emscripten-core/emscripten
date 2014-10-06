@@ -1576,8 +1576,12 @@ function simplifyNotComps(ast) {
   simplifyNotCompsPass = false;
 }
 
+function isMathFunc(name) {
+  return /^Math_/.test(name);
+}
+
 function callHasSideEffects(node) { // checks if the call itself (not the args) has side effects (or is not statically known)
-  return !(node[1][0] === 'name' && /^Math_/.test(node[1][1]));
+  return !(node[1][0] === 'name' && isMathFunc(node[1][1]));
 }
 
 function hasSideEffects(node) { // this is 99% incomplete!
@@ -7214,11 +7218,26 @@ function emterpretify(ast) {
 
     finalizeJumps(code);
 
-    var zero = true; // TODO: heuristics
+    // check if this is a leaf method (does no calls to other emterpreted code)
+    var DEFINITE_LEAVES = set('_memcpy', '_memmove', '_memset', '_strlen', '_strncpy', '_strcpy', '_strcat', '_printf', '_puts', '_malloc', '_free'); // things we know for sure are leaves XXX hackish, dangerous
+
+    var leaf = true;
+    for (var i = 0; i < code.length; i += 4) {
+      // if this is a call that can conceivably reach other emterpreted code, it isn't a leaf
+      if (code[i] === 'CALL' && !isMathFunc(code[i+2]) && !(code[i+2] in DEFINITE_LEAVES)) {
+        leaf = false;
+        //printErr('                   NOT leaf ' + func[1] + ' since ' + code[i+2]);
+        break;
+      }
+    }
+    //if (leaf) printErr(func[1]);
+
+    var zero = leaf; // TODO: heuristics
+    var onlyLeavesAreZero = true; // if only leaves are zero, then we do not need to save and restore the stack XXX if this is not true, then setjmp and exceptions can fail, as cleanup is skipped!
 
     // set up trampoline
     asmData.vars = {};
-    if (zero) {
+    if (zero && !onlyLeavesAreZero) {
       // emterpreters run using the stack starting at 0. we must copy it so we can restore it later
       asmData.vars['sp'] = ASM_INT;
       func[3].push(srcToStat('sp = EMTSTACKTOP;'));
@@ -7259,10 +7278,12 @@ function emterpretify(ast) {
     }
     if (zero) {
       theName[1] += '_z';
-      // restore the stack
-      func[3].push(srcToStat('x = 0;'));
-      func[3].push(srcToStat('while ((x | 0) < ' + stackBytes + ') { HEAP32[x >> 2] = HEAP32[sp + x >> 2] | 0; x = x + 4 | 0; }'));
-      func[3].push(srcToStat('EMTSTACKTOP = sp;'));
+      if (!onlyLeavesAreZero) {
+        // restore the stack
+        func[3].push(srcToStat('x = 0;'));
+        func[3].push(srcToStat('while ((x | 0) < ' + stackBytes + ') { HEAP32[x >> 2] = HEAP32[sp + x >> 2] | 0; x = x + 4 | 0; }'));
+        func[3].push(srcToStat('EMTSTACKTOP = sp;'));
+      }
     }
     // add the return
     if (asmData.ret !== undefined) {
