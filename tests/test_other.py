@@ -3012,7 +3012,7 @@ int main(int argc, char **argv) {
 ''')
 
     Popen([PYTHON, EMCC, 'code.cpp']).communicate()
-    self.assertContained('I am ' + os.path.realpath(self.get_dir().replace('\\', '/') + '/a.out.js'), run_js('a.out.js', engine=NODE_JS).replace('\\', '/'))
+    self.assertContained('I am ' + os.path.realpath(self.get_dir()).replace('\\', '/') + '/a.out.js', run_js('a.out.js', engine=NODE_JS).replace('\\', '/'))
 
   def test_returncode(self):
     open('src.cpp', 'w').write(r'''
