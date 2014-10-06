@@ -100,7 +100,7 @@ def run_on_chunk(command):
     # avoid throwing keyboard interrupts from a child process
     raise Exception()
 
-def run_on_js(filename, passes, js_engine, jcache, source_map=False, extra_info=None):
+def run_on_js(filename, passes, js_engine, jcache, source_map=False, extra_info=None, just_concat=False):
   if isinstance(jcache, bool) and jcache: jcache = shared.JCache
   if jcache: shared.JCache.ensure()
 
@@ -327,28 +327,34 @@ EMSCRIPTEN_FUNCS();
   f.write(pre);
   pre = None
 
-  # sort functions by size, to make diffing easier and to improve aot times
-  funcses = []
-  for out_file in filenames:
-    funcses.append(split_funcs(open(out_file).read()))
-  funcs = [item for sublist in funcses for item in sublist]
-  funcses = None
-  def sorter(x, y):
-    diff = len(y[1]) - len(x[1])
-    if diff != 0: return diff
-    if x[0] < y[0]: return 1
-    elif x[0] > y[0]: return -1
-    return 0
-  funcs.sort(sorter)
+  if not just_concat:
+    # sort functions by size, to make diffing easier and to improve aot times
+    funcses = []
+    for out_file in filenames:
+      funcses.append(split_funcs(open(out_file).read()))
+    funcs = [item for sublist in funcses for item in sublist]
+    funcses = None
+    def sorter(x, y):
+      diff = len(y[1]) - len(x[1])
+      if diff != 0: return diff
+      if x[0] < y[0]: return 1
+      elif x[0] > y[0]: return -1
+      return 0
+    funcs.sort(sorter)
 
-  if 'last' in passes and len(funcs) > 0:
-    count = funcs[0][1].count('\n')
-    if count > 3000:
-      print >> sys.stderr, 'warning: Output contains some very large functions (%s lines in %s), consider building source files with -Os or -Oz, and/or trying OUTLINING_LIMIT to break them up (see settings.js; note that the parameter there affects AST nodes, while we measure lines here, so the two may not match up)' % (count, funcs[0][0])
+    if 'last' in passes and len(funcs) > 0:
+      count = funcs[0][1].count('\n')
+      if count > 3000:
+        print >> sys.stderr, 'warning: Output contains some very large functions (%s lines in %s), consider building source files with -Os or -Oz, and/or trying OUTLINING_LIMIT to break them up (see settings.js; note that the parameter there affects AST nodes, while we measure lines here, so the two may not match up)' % (count, funcs[0][0])
 
-  for func in funcs:
-    f.write(func[1])
-  funcs = None
+    for func in funcs:
+      f.write(func[1])
+    funcs = None
+  else:
+    # just concat the outputs
+    for out_file in filenames:
+      f.write(open(out_file).read())
+    assert not jcache
   f.write('\n')
   if jcache:
     for cached in cached_outputs:
@@ -370,9 +376,9 @@ EMSCRIPTEN_FUNCS();
 
   return filename
 
-def run(filename, passes, js_engine=shared.NODE_JS, jcache=False, source_map=False, extra_info=None):
+def run(filename, passes, js_engine=shared.NODE_JS, jcache=False, source_map=False, extra_info=None, just_concat=False):
   js_engine = shared.listify(js_engine)
-  return temp_files.run_and_clean(lambda: run_on_js(filename, passes, js_engine, jcache, source_map, extra_info))
+  return temp_files.run_and_clean(lambda: run_on_js(filename, passes, js_engine, jcache, source_map, extra_info, just_concat))
 
 if __name__ == '__main__':
   last = sys.argv[-1]

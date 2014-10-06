@@ -537,10 +537,11 @@ asm = asm_module.AsmModule(infile)
 # decide which functions will be emterpreted
 
 emterpreted_funcs = [func for func in asm.funcs if func not in BLACKLIST and not func.startswith('dynCall_')]
+exported_emterpreted_funcs = filter(lambda func: func in emterpreted_funcs, [func.split(':')[0] for func in asm.exports])
 
 # process functions, generating bytecode
 temp = infile + '.tmp.js'
-shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'emterpretedFuncs': list(emterpreted_funcs), 'opcodes': OPCODES, 'ropcodes': ROPCODES }, output_filename=temp)
+shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'emterpretedFuncs': list(emterpreted_funcs), 'exportedEmterpretedFuncs': list(exported_emterpreted_funcs), 'opcodes': OPCODES, 'ropcodes': ROPCODES }, output_filename=temp, just_concat=True)
 
 # load the module and modify it
 asm = asm_module.AsmModule(temp)
@@ -660,23 +661,20 @@ for i in range(len(lines)):
   line = lines[i]
   if line.startswith('function ') and '}' not in line:
     assert not func
-    func = line.split(' ')[1].split('(')[0]
-  elif line.startswith('}'):
-    assert func
+  elif line.startswith('// EMTERPRET_INFO '):
     try:
-      curr, absolute_targets = json.loads(line[4:])
-    except:
-      if '[' in line: print >> sys.stderr, 'failed to parse code from', line
-      curr = None
-    if curr is not None:
-      assert len(curr) % 4 == 0, curr
-      funcs[func] = len(all_code) # no operation here should change the length
-      if LOG_CODE: print >> sys.stderr, 'raw bytecode for %s:' % func, curr, 'insts:', len(curr)/4
-      process_code(func, curr, absolute_targets)
-      #print >> sys.stderr, 'processed bytecode for %s:' % func, curr
-      all_code += curr
+      func, curr, absolute_targets = json.loads(line[len('// EMTERPRET_INFO '):])
+    except Exception, e:
+      print >> sys.stderr, 'failed to parse code from', line
+      raise e
+    assert len(curr) % 4 == 0, curr
+    funcs[func] = len(all_code) # no operation here should change the length
+    if LOG_CODE: print >> sys.stderr, 'raw bytecode for %s:' % func, curr, 'insts:', len(curr)/4
+    process_code(func, curr, absolute_targets)
+    #print >> sys.stderr, 'processed bytecode for %s:' % func, curr
+    all_code += curr
     func = None
-    lines[i] = '}'
+    lines[i] = ''
   elif line.startswith('// return type: ['):
     name, ret = line.split('[')[1].split(']')[0].split(',')
     if ret == 'undefined':

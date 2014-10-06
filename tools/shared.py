@@ -1588,8 +1588,8 @@ class Building:
     return opts
 
   @staticmethod
-  def js_optimizer(filename, passes, jcache=False, debug=False, extra_info=None, output_filename=None):
-    ret = js_optimizer.run(filename, passes, listify(NODE_JS), jcache, debug, extra_info)
+  def js_optimizer(filename, passes, jcache=False, debug=False, extra_info=None, output_filename=None, just_concat=False):
+    ret = js_optimizer.run(filename, passes, listify(NODE_JS), jcache, debug, extra_info, just_concat)
     if output_filename:
       safe_move(ret, output_filename)
       ret = output_filename
