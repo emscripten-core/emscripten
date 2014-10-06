@@ -13,6 +13,7 @@ var LibraryGL = {
     counter: 1, // 0 is reserved as 'null' in gl
     lastError: 0,
     buffers: [],
+    mappedBuffers: {},
     programs: [],
     framebuffers: [],
     renderbuffers: [],
@@ -662,6 +663,23 @@ var LibraryGL = {
       }
     },
 #endif
+
+    validateBufferTarget: function(target) {
+      switch (target) {
+        case 0x8892: // GL_ARRAY_BUFFER
+        case 0x8893: // GL_ELEMENT_ARRAY_BUFFER
+        case 0x8F36: // GL_COPY_READ_BUFFER
+        case 0x8F37: // GL_COPY_WRITE_BUFFER
+        case 0x88EB: // GL_PIXEL_PACK_BUFFER
+        case 0x88EC: // GL_PIXEL_UNPACK_BUFFER
+        case 0x8C2A: // GL_TEXTURE_BUFFER
+        case 0x8C8E: // GL_TRANSFORM_FEEDBACK_BUFFER
+        case 0x8A11: // GL_UNIFORM_BUFFER
+          return true;
+        default:
+          return false;
+      }
+    },
     
     // Returns the context handle to the new context.
     createContext: function(canvas, webGLContextAttributes) {
@@ -1203,6 +1221,87 @@ var LibraryGL = {
   glBufferSubData: function(target, offset, size, data) {
     GLctx.bufferSubData(target, offset, HEAPU8.subarray(data, data+size));
   },
+
+#if FULL_ES3
+  glMapBufferRange__sig: 'iiiii',
+  glMapBufferRange: function(target, offset, length, access) {
+    if (access != 0x1A && access != 0xA) {
+      Module.printErr("glMapBufferRange is only supported when access is MAP_WRITE|INVALIDATE_BUFFER");
+      return 0;
+    }
+
+    if (!GL.validateBufferTarget(target)) {
+      GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+      Module.printErr('GL_INVALID_ENUM in glMapBufferRange');
+      return 0;
+    }
+
+    var mem = _malloc(length);
+    if (!mem) return 0;
+
+    GL.mappedBuffers[target] = {
+      offset: offset,
+      length: length,
+      mem: mem,
+      access: access,
+    };
+    return mem;
+  },
+
+  glFlushMappedBufferRange__sig: 'viii',
+  glFlushMappedBufferRange: function(target, offset, length) {
+    if (!GL.validateBufferTarget(target)) {
+      GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+      Module.printErr('GL_INVALID_ENUM in glUnmapBuffer');
+      return 0;
+    }
+
+    var mapping = GL.mappedBuffers[target];
+    if (!mapping) {
+      GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+      Module.printError('buffer was never mapped in glFlushMappedBufferRange');
+      return 0;
+    }
+
+    if (!(mapping.access & 0x10)) {
+      GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+      Module.printError('buffer was not mapped with GL_MAP_FLUSH_EXPLICIT_BIT in glFlushMappedBufferRange');
+      return 0;
+    }
+    if (offset < 0 || length < 0 || offset + length > mapping.length) {
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      Module.printError('invalid range in glFlushMappedBufferRange');
+      return 0;
+    }
+
+    GLctx.bufferSubData(
+      target,
+      mapping.offset,
+      HEAPU8.subarray(mapping.mem + offset, mapping.mem + offset + length));
+  },
+
+  glUnmapBuffer__sig: 'ii',
+  glUnmapBuffer: function(target) {
+    if (!GL.validateBufferTarget(target)) {
+      GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+      Module.printErr('GL_INVALID_ENUM in glUnmapBuffer');
+      return 0;
+    }
+
+    var mapping = GL.mappedBuffers[target];
+    if (!mapping) {
+      GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+      Module.printError('buffer was never mapped in glUnmapBuffer');
+      return 0;
+    }
+    GL.mappedBuffers[target] = null;
+
+    if (!(mapping.access & 0x10)) /* GL_MAP_FLUSH_EXPLICIT_BIT */
+      GLctx.bufferSubData(target, mapping.offset, HEAPU8.subarray(mapping.mem, mapping.mem+mapping.length));
+    _free(mapping.mem);
+    return 1;
+  },
+#endif
 
   glIsBuffer__sig: 'ii',
   glIsBuffer: function(buffer) {
