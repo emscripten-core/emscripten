@@ -258,7 +258,7 @@ var WEBSOCKET_URL = 'ws://'; // A string containing either a WebSocket URL prefi
                              // RFC 6455 URL - "ws[s]:" "//" host [ ":" port ] path [ "?" query ].
                              // In the (default) case of only a prefix being specified the URL will be constructed from
                              // prefix + addr + ':' + port
-                             // where addr and port are derived from the socket connect/bind/accept calls.
+                             // where addr and port are derived from the socket connect/bind/accept calls.read
 var WEBSOCKET_SUBPROTOCOL = 'binary'; // A string containing a comma separated list of WebSocket subprotocols
                                       // as would be present in the Sec-WebSocket-Protocol header.
 
@@ -271,6 +271,7 @@ var GL_TESTING = 0; // When enabled, sets preserveDrawingBuffer in the context, 
 var GL_MAX_TEMP_BUFFER_SIZE = 2097152; // How large GL emulation temp buffers are
 var GL_UNSAFE_OPTS = 1; // Enables some potentially-unsafe optimizations in GL emulation code
 var FULL_ES2 = 0; // Forces support for all GLES2 features, not just the WebGL-friendly subset.
+var FULL_ES3 = 0; // Forces support for all GLES3 features, not just the WebGL2-friendly subset.
 var LEGACY_GL_EMULATION = 0; // Includes code to emulate various desktop GL features. Incomplete but useful
                              // in some cases, see https://github.com/kripken/emscripten/wiki/OpenGL-support
 var GL_FFP_ONLY = 0; // If you specified LEGACY_GL_EMULATION = 1 and only use fixed function pipeline in your code,

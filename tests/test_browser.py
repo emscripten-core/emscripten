@@ -1173,7 +1173,8 @@ keydown(100);keyup(100); // trigger the end
     self.run_browser('something.html', '.', '/report_result?1')
 
   def test_sdl_gl_mapbuffers(self):
-    self.btest('sdl_gl_mapbuffers.c', expected='1', message='You should see a blue triangle.')
+    self.btest('sdl_gl_mapbuffers.c', expected='1', args=['-s', 'FULL_ES3=1'],
+               message='You should see a blue triangle.')
 
   def test_sdl_ogl(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))

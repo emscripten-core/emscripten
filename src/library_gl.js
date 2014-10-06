@@ -1218,6 +1218,12 @@ var LibraryGL = {
     }
   },
 
+  glBufferSubData__sig: 'viiii',
+  glBufferSubData: function(target, offset, size, data) {
+    GLctx.bufferSubData(target, offset, HEAPU8.subarray(data, data+size));
+  },
+
+#if FULL_ES3
   glMapBufferRange__sig: 'iiiii',
   glMapBufferRange: function(target, offset, length, access) {
     if (access != 0x1A && access != 0xA) {
@@ -1296,11 +1302,7 @@ var LibraryGL = {
     _free(mapping.mem);
     return 1;
   },
-
-  glBufferSubData__sig: 'viiii',
-  glBufferSubData: function(target, offset, size, data) {
-    GLctx.bufferSubData(target, offset, HEAPU8.subarray(data, data+size));
-  },
+#endif
 
   glIsBuffer__sig: 'ii',
   glIsBuffer: function(buffer) {
