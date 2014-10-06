@@ -258,7 +258,7 @@ var WEBSOCKET_URL = 'ws://'; // A string containing either a WebSocket URL prefi
                              // RFC 6455 URL - "ws[s]:" "//" host [ ":" port ] path [ "?" query ].
                              // In the (default) case of only a prefix being specified the URL will be constructed from
                              // prefix + addr + ':' + port
-                             // where addr and port are derived from the socket connect/bind/accept calls.read
+                             // where addr and port are derived from the socket connect/bind/accept calls.
 var WEBSOCKET_SUBPROTOCOL = 'binary'; // A string containing a comma separated list of WebSocket subprotocols
                                       // as would be present in the Sec-WebSocket-Protocol header.
 
