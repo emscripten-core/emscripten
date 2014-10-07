@@ -168,7 +168,10 @@ OPCODES = [ # l, lx, ly etc - one of 256 locals
   'GETGLBI', # [l, vl, vh]          get global value, int, indexed by v
   #'GETGLBD', # [l, vl, vh]          get global value, double, indexed by v
   'SETGLBI', # [vl, vh, l]          set global value, int, indexed by v (v = l)
-  'CALL',    # [lx, targetl, targeth] [params...]   (lx = ) target(params..) lx's existence and type depend on the target's actual callsig;
+
+  'INTCALL', # [lx, 0, 0] [target] [params]         (lx = ) target(params..)
+                    #                               Internal, emterpreter-to-emterpreter call. TODO: use those 2 extra bytes?
+  'EXTCALL', # [lx, targetl, targeth] [params...]   (lx = ) target(params..) lx's existence and type depend on the target's actual callsig;
                     #                                 this instruction can take multiple 32-bit instruction chunks
                     #                                 if target is a function table, then the first param is the index of the register holding the function pointer
 
@@ -416,7 +419,7 @@ def make_emterpreter(zero=False):
       ret += '; pc = pc + %d | 0' % (4*((extra+3)>>2))
     return '     ' + ret + '; break;'
 
-  CASES[ROPCODES['CALL']] = 'switch ((inst>>>16)|0) {\n' + \
+  CASES[ROPCODES['EXTCALL']] = 'switch ((inst>>>16)|0) {\n' + \
     '\n'.join(['    case %d: {\n%s\n    }' % (i, make_target_call(i)) for i in range(global_func_id)]) + \
     '\n    default: assert(0);' + \
     '\n   }'
@@ -597,7 +600,7 @@ def process_code(func, code, absolute_targets):
   #print 'processing code', func, absolute_start
   for i in range(len(code)/4):
     j = i*4
-    if code[j] == 'CALL':
+    if code[j] == 'EXTCALL':
       # fix CALL instructions' targets and signatures
       target = code[j+2]
       sig = code[j+3]

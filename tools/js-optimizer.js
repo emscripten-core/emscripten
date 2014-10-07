@@ -6921,7 +6921,7 @@ function emterpretify(ast) {
         assert(curr !== 'v');//, JSON.stringify(param) + ' ==> ' + ASM_SIG[detectType(param, asmData)]);
         sig += curr;
       });
-      ret.push('CALL');
+      ret.push('EXTCALL');
       ret.push(lx);
       ret.push(target);
       assert(sig.indexOf('u') < 0); // no undefined
@@ -7231,7 +7231,7 @@ function emterpretify(ast) {
     var leaf = true;
     for (var i = 0; i < code.length; i += 4) {
       // if this is a call that can conceivably reach other emterpreted code, it isn't a leaf
-      if (code[i] === 'CALL' && !isMathFunc(code[i+2]) && !(code[i+2] in DEFINITE_LEAVES)) {
+      if (code[i] === 'INTCALL' || (code[i] === 'EXTCALL' && !isMathFunc(code[i+2]) && !(code[i+2] in DEFINITE_LEAVES))) {
         leaf = false;
         //printErr('                   NOT leaf ' + func[1] + ' since ' + code[i+2]);
         break;
