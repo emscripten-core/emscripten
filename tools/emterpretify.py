@@ -170,7 +170,7 @@ OPCODES = [ # l, lx, ly etc - one of 256 locals
   'SETGLBI', # [vl, vh, l]          set global value, int, indexed by v (v = l)
 
   'INTCALL', # [lx, 0, 0] [target] [params]         (lx = ) target(params..)
-                    #                               Internal, emterpreter-to-emterpreter call. TODO: use those 2 extra bytes?
+                    #                               Internal, emterpreter-to-emterpreter call.
   'EXTCALL', # [lx, targetl, targeth] [params...]   (lx = ) target(params..) lx's existence and type depend on the target's actual callsig;
                     #                                 this instruction can take multiple 32-bit instruction chunks
                     #                                 if target is a function table, then the first param is the index of the register holding the function pointer
@@ -180,7 +180,7 @@ OPCODES = [ # l, lx, ly etc - one of 256 locals
 
   'SWITCH',  # [lx, ly, lz]         switch (lx) { .. }. followed by a jump table for values in range [ly..ly+lz), after which is the default (which might be empty)
   'RET',     # [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
-  'FUNC',    # [total locals, num params, 0]            function with n locals (each taking 64 bits), of which the first are params
+  'FUNC',    # [total locals, num params, which emterpreter (0 = normal, 1 = zero)]            function with n locals (each taking 64 bits), of which the first are params
 ]
 
 def randomize_opcodes():
@@ -213,26 +213,26 @@ def next_power_of_two(x):
   while ret < x: ret <<= 1
   return ret
 
-def get_access(l, s='i', offset=None):
+def get_access(l, s='i', base='sp', offset=None):
   if offset is not None:
     offset = '+ ' + str(offset) + ' '
   else:
     offset = ''
   if s == 'i':
-    return 'HEAP32[sp + (' + l + ' << 3) ' + offset + '>> 2]'
+    return 'HEAP32[' + str(base) + ' + (' + l + ' << 3) ' + offset + '>> 2]'
   elif s == 'd':
-    return 'HEAPF64[sp + (' + l + ' << 3) ' + offset + '>> 3]'
+    return 'HEAPF64[' + str(base) + ' + (' + l + ' << 3) ' + offset + '>> 3]'
   else:
     assert 0
 
-def get_coerced_access(l, s='i', unsigned=False, offset=None):
+def get_coerced_access(l, s='i', unsigned=False, base='sp', offset=None):
   if s == 'i':
     if not unsigned:
-      return get_access(l, s, offset) + '|0'
+      return get_access(l, s, base, offset) + '|0'
     else:
-      return get_access(l, s, offset) + '>>>0'
+      return get_access(l, s, base, offset) + '>>>0'
   elif s == 'd':
-    return '+' + get_access(l, s, offset)
+    return '+' + get_access(l, s, base, offset)
   else:
     assert 0
 
@@ -384,6 +384,37 @@ CASES[ROPCODES['GETTDP']] = get_access('lx') + ' = tempDoublePtr;'
 #CASES[ROPCODES['GETPC']] = get_access('lx') + ' = pc;'
 CASES[ROPCODES['GETTR0']] = get_access('lx') + ' = tempRet0;'
 CASES[ROPCODES['SETTR0']] = 'tempRet0 = ' + get_coerced_access('lx') + ';'
+
+CASES[ROPCODES['INTCALL']] = '''
+    inst = HEAP32[HEAP32[pc + 4 >> 2] >> 2] | 0; // FUNC inst: ['FUNC', locals, params, which emterp]
+    lz = (inst >>> 16) & 255; // params
+    ly = 0;
+    if ((inst >>> 24) == 0) {
+      while ((ly|0) < (lz|0)) {
+        %s = %s;
+        %s = %s;
+        ly = ly + 1 | 0;
+      }
+      emterpret(HEAP32[pc + 4 >> 2] | 0);
+    } else {
+      while ((ly|0) < (lz|0)) {
+        %s = %s;
+        %s = %s;
+        ly = ly + 1 | 0;
+      }
+      emterpret_z(HEAP32[pc + 4 >> 2] | 0);
+    }
+    %s = HEAP32[EMTSTACKTOP >> 2] | 0;
+    %s = HEAP32[EMTSTACKTOP + 4 >> 2] | 0;
+    pc = pc + (((4 + lz + 3) >> 2) << 2) | 0;
+''' % (
+  get_access('ly', base='EMTSTACKTOP'),     get_coerced_access('HEAPU8[pc + 8 + ly >> 0]'),
+  get_access('ly', base='EMTSTACKTOP', offset=4), get_coerced_access('HEAPU8[pc + 8 + ly >> 0]', offset=4),
+  get_access('ly', base=0),     get_coerced_access('HEAPU8[pc + 8 + ly >> 0]'),
+  get_access('ly', base=0, offset=4), get_coerced_access('HEAPU8[pc + 8 + ly >> 0]', offset=4),
+  get_access('lx'), get_access('lx', offset=4),
+)
+
 CASES[ROPCODES['SWITCH']] = '''
     lz = ''' + get_coerced_access('lz') + ''';
     lx = ((''' + get_coerced_access('lx') + ''') - (''' + get_coerced_access('ly') + ''')) >>> 0; // lx is now relative to the base
@@ -616,8 +647,8 @@ def process_code(func, code, absolute_targets):
       code[j+2] = global_funcs[fullname] & 255
       code[j+3] = global_funcs[fullname] >> 8
       if sig[0] == 'v':
-        assert code[j+1] == -1 # dummy value for assignment
-        code[j+1] = 0 # clear it
+        if code[j+1] == -1: # dummy value for assignment XXX we should not have assignments on void calls
+          code[j+1] = 0 # clear it
       else:
         assert code[j+1] >= 0 # there should be a real target here
     elif code[j] in ['GETGLBI', 'GETGLBD']:
@@ -647,17 +678,6 @@ def process_code(func, code, absolute_targets):
       value = bytify(absolute_value)
       for k in range(4):
         code[j + k] = value[k]
-
-  # finalize instruction string names to opcodes
-  for i in range(len(code)/4):
-    j = i*4
-    if type(code[j]) in (str, unicode):
-      code[j] = ROPCODES[code[j]]
-
-  # sanity checks
-  for i in range(len(code)):
-    v = code[i]
-    assert type(v) == int and v >= 0 and v < 256, [i, v, 'in', code]
 
 actual_return_types = {}
 
@@ -693,6 +713,32 @@ for i in range(len(lines)):
 
 assert global_func_id < 65536, [global_funcs, global_func_id]
 assert global_var_id < 256, [global_vars, global_var_id]
+
+def post_process_code(code):
+  for i in range(len(code)/4):
+    j = i*4
+    if code[j] == 'absolute-funcaddr':
+      # put the 32-bit absolute value of an abolute function here
+      absolute_value = code_start + funcs[code[j+1]]
+      #print '  fixing absolute value', code[j+1], absolute_targets[unicode(code[j+1])], absolute_value
+      assert absolute_value < (1 << 31)
+      assert absolute_value % 4 == 0
+      value = bytify(absolute_value)
+      for k in range(4):
+        code[j + k] = value[k]
+
+  # finalize instruction string names to opcodes
+  for i in range(len(code)/4):
+    j = i*4
+    if type(code[j]) in (str, unicode):
+      code[j] = ROPCODES[code[j]]
+
+  # sanity checks
+  for i in range(len(code)):
+    v = code[i]
+    assert type(v) == int and v >= 0 and v < 256, [i, v, 'in', code]
+
+post_process_code(all_code)
 
 # create new mem init
 mem_init = mem_init + all_code

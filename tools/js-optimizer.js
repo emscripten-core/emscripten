@@ -6316,7 +6316,7 @@ function emterpretify(ast) {
           var ret;
           if (dropIt && (typeHint === undefined || typeHint === ASM_NONE)) {
             type = ASM_NONE;
-            ret = -1;
+            ret = getFreeOrAssignTo(assignTo); // get a register that is ok to write to, even if no return value, to simplify ABI XXX
           } else {
             assert(typeHint !== ASM_NONE);
             type = typeHint;
@@ -6891,6 +6891,7 @@ function emterpretify(ast) {
       var ret = [];
       var target;
       var functionPointer = null;
+      var internal = false;
       if (node[1][0] === 'name') {
         // normal direct call
         target = node[1][1];
@@ -6903,6 +6904,7 @@ function emterpretify(ast) {
             return mul[1];
           }
         }
+        if (target in EMTERPRETED_FUNCS) internal = true;
       } else {
         // function pointer call through function table
         assert(node[1][0] === 'sub' && node[1][1][0] === 'name');
@@ -6921,14 +6923,21 @@ function emterpretify(ast) {
         assert(curr !== 'v');//, JSON.stringify(param) + ' ==> ' + ASM_SIG[detectType(param, asmData)]);
         sig += curr;
       });
-      ret.push('EXTCALL');
+      ret.push(internal ? 'INTCALL' : 'EXTCALL');
       ret.push(lx);
-      ret.push(target);
-      assert(sig.indexOf('u') < 0); // no undefined
-      ret.push(sig);
+      if (!internal) {
+        ret.push(target);
+        assert(sig.indexOf('u') < 0); // no undefined
+        ret.push(sig);
+      } else {
+        ret.push(0, 0);
+      }
       actuals.forEach(function(actual) { releaseIfFree(actual) });
       if (functionPointer) {
         ret.push(releaseIfFree(functionPointer[0]));
+      }
+      if (internal) {
+        ret.push('absolute-funcaddr', target, 0, 0);
       }
       ret = ret.concat(actuals);
       while (ret.length % 4 !== 0) ret.push(0);
@@ -7220,7 +7229,7 @@ function emterpretify(ast) {
     // calculate final count of local variables, and emit func header
     var finalLocals = Math.max(numLocals, maxLocal+1); // if no free locals, then numLocals, else the largest free local says how many
     assert(finalLocals < 256, 'too many locals ' + [maxLocal, numLocals]); // maximum local value is 255, for a total of 256 of them
-    code = ['FUNC', finalLocals, func[2].length, 0].concat(constants).concat(code);
+    code = ['FUNC', finalLocals, func[2].length, 0].concat(constants).concat(code); // last FUNC option is filled in later
     verifyCode(code);
 
     finalizeJumps(code);
@@ -7241,6 +7250,8 @@ function emterpretify(ast) {
 
     var zero = leaf; // TODO: heuristics
     var onlyLeavesAreZero = true; // if only leaves are zero, then we do not need to save and restore the stack XXX if this is not true, then setjmp and exceptions can fail, as cleanup is skipped!
+
+    if (zero) code[3] = 1;
 
     if (1) { //func[1] in EXTERNAL_EMTERPRETED_FUNCS) {
       // this is reachable from outside emterpreter code, set up a trampoline
