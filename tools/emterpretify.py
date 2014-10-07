@@ -534,14 +534,18 @@ if shared.DEBUG:
 
 asm = asm_module.AsmModule(infile)
 
-# decide which functions will be emterpreted
+# decide which functions will be emterpreted, and find which are externally reachable (from outside other emterpreted code; those will need trampolines)
 
-emterpreted_funcs = [func for func in asm.funcs if func not in BLACKLIST and not func.startswith('dynCall_')]
-exported_emterpreted_funcs = filter(lambda func: func in emterpreted_funcs, [func.split(':')[0] for func in asm.exports])
+emterpreted_funcs = set([func for func in asm.funcs if func not in BLACKLIST and not func.startswith('dynCall_')])
+
+tabled_funcs = asm.get_table_funcs()
+exported_funcs = [func.split(':')[0] for func in asm.exports]
+external_emterpreted_funcs = filter(lambda func: func in tabled_funcs or func in exported_funcs, emterpreted_funcs)
+#print >> sys.stderr, emterpreted_funcs, tabled_funcs, external_emterpreted_funcs
 
 # process functions, generating bytecode
 temp = infile + '.tmp.js'
-shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'emterpretedFuncs': list(emterpreted_funcs), 'exportedEmterpretedFuncs': list(exported_emterpreted_funcs), 'opcodes': OPCODES, 'ropcodes': ROPCODES }, output_filename=temp, just_concat=True)
+shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'emterpretedFuncs': list(emterpreted_funcs), 'externalEmterpretedFuncs': list(external_emterpreted_funcs), 'opcodes': OPCODES, 'ropcodes': ROPCODES }, output_filename=temp, just_concat=True)
 
 # load the module and modify it
 asm = asm_module.AsmModule(temp)

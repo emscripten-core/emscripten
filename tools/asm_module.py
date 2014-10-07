@@ -1,5 +1,5 @@
 
-import sys, re
+import sys, re, itertools
 
 import shared, js_optimizer
 
@@ -285,4 +285,8 @@ class AsmModule():
     self.tables_js = '// EMSCRIPTEN_END_FUNCS\n'
     for table, data in self.tables.iteritems():
       self.tables_js += 'var %s = %s;\n' % (table, data)
+
+  def get_table_funcs(self):
+    return set(itertools.chain.from_iterable(map(lambda x: x[1:-1].split(','), self.tables.values())))
+
 

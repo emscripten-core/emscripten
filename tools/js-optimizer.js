@@ -5974,7 +5974,7 @@ function emterpretify(ast) {
   emitAst = false;
 
   var EMTERPRETED_FUNCS = set(extraInfo.emterpretedFuncs);
-  var EXPORTED_EMTERPRETED_FUNCS = set(extraInfo.exportedEmterpretedFuncs);
+  var EXTERNAL_EMTERPRETED_FUNCS = set(extraInfo.externalEmterpretedFuncs);
   var OPCODES = extraInfo.opcodes;
   var ROPCODES = extraInfo.ropcodes;
 
@@ -7236,8 +7236,8 @@ function emterpretify(ast) {
     var zero = leaf; // TODO: heuristics
     var onlyLeavesAreZero = true; // if only leaves are zero, then we do not need to save and restore the stack XXX if this is not true, then setjmp and exceptions can fail, as cleanup is skipped!
 
-    if (1) { //func[1] in EXPORTED_EMTERPRETED_FUNCS) {
-      // set up trampoline
+    if (1) { //func[1] in EXTERNAL_EMTERPRETED_FUNCS) {
+      // this is reachable from outside emterpreter code, set up a trampoline
       asmData.vars = {};
       if (zero && !onlyLeavesAreZero) {
         // emterpreters run using the stack starting at 0. we must copy it so we can restore it later
