@@ -774,7 +774,7 @@ var LibraryGLFW = {
 
   glfwGetProcAddress__deps: ['emscripten_GetProcAddress'],
   glfwGetProcAddress: function(procname) {
-    return _emscripten_GetProcAddress(Pointer_stringify(procname));
+    return _emscripten_GetProcAddress(procname);
   },
 
   glfwSwapInterval__deps: ['emscripten_set_main_loop_timing'],
