@@ -210,22 +210,26 @@ def next_power_of_two(x):
   while ret < x: ret <<= 1
   return ret
 
-def get_access(l, s='i'):
+def get_access(l, s='i', offset=None):
+  if offset is not None:
+    offset = '+ ' + str(offset) + ' '
+  else:
+    offset = ''
   if s == 'i':
-    return 'HEAP32[sp + (' + l + ' << 3) >> 2]'
+    return 'HEAP32[sp + (' + l + ' << 3) ' + offset + '>> 2]'
   elif s == 'd':
-    return 'HEAPF64[sp + (' + l + ' << 3) >> 3]'
+    return 'HEAPF64[sp + (' + l + ' << 3) ' + offset + '>> 3]'
   else:
     assert 0
 
-def get_coerced_access(l, s='i', unsigned=False):
+def get_coerced_access(l, s='i', unsigned=False, offset=None):
   if s == 'i':
     if not unsigned:
-      return get_access(l, s) + '|0'
+      return get_access(l, s, offset) + '|0'
     else:
-      return get_access(l, s) + '>>>0'
+      return get_access(l, s, offset) + '>>>0'
   elif s == 'd':
-    return '+' + get_access(l, s)
+    return '+' + get_access(l, s, offset)
   else:
     assert 0
 
@@ -387,15 +391,10 @@ CASES[ROPCODES['SWITCH']] = '''
     pc = HEAP32[pc + 4 + (lx << 2) >> 2] | 0; // load from the jump table which is right after this instruction, and set pc
     continue;'''
 
-def make_emterpreter(t, zero=False):
+def make_emterpreter(zero=False):
   # return is specialized per interpreter
   CASES[ROPCODES['RET']] = 'EMTSTACKTOP = sp; ' if not zero else ''
-  if t == 'void':
-    CASES[ROPCODES['RET']] += 'return;'
-  elif t == 'int':
-    CASES[ROPCODES['RET']] += 'return ' + get_coerced_access('lx') + ';'
-  elif t == 'double':
-    CASES[ROPCODES['RET']] += 'return ' + get_coerced_access('lx', s='d') + ';'
+  CASES[ROPCODES['RET']] += 'HEAP32[EMTSTACKTOP >> 2] = ' + get_coerced_access('lx') + '; HEAP32[EMTSTACKTOP + 4 >> 2] = ' + get_coerced_access('lx', offset=4) + '; return;'
 
   # call is custom generated using information of actual call patterns, and which emterpreter this is
   def make_target_call(i):
@@ -506,9 +505,8 @@ function emterpret%s(pc) {
 %s
  }
  assert(0);
- %s
 }''' % (
-  ('_' if t != 'void' else '') + ('' if t == 'void' else t[0]) + ('' if not zero else '_z'),
+  '' if not zero else '_z',
   'sp = 0, ' if not zero else '',
   ' sp = EMTSTACKTOP;' if not zero else '',
   ROPCODES['FUNC'],
@@ -516,7 +514,6 @@ function emterpret%s(pc) {
  assert(((EMTSTACKTOP|0) <= (EMT_STACK_MAX|0))|0);''' if not zero else '',
   get_access('ly', s='d'),
   main_loop,
-  '' if t == 'void' else 'return %s;' % shared.JS.make_initializer(t[0], settings)
 ))
 
 # main
@@ -721,7 +718,7 @@ for i in range(len(lines)):
       lines[i] = lines[i].replace(call, '(%s)' % (funcs[func] + code_start))
 
 # finalize funcs JS
-asm.funcs_js = '\n'.join(['\n'.join(lines), make_emterpreter('int'), make_emterpreter('double'), make_emterpreter('int', zero=True), make_emterpreter('double', zero=True)])
+asm.funcs_js = '\n'.join(['\n'.join(lines), make_emterpreter(), make_emterpreter(zero=True)])
 lines = None
 
 # set up emterpreter stack top

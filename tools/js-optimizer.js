@@ -177,6 +177,10 @@ function srcToStat(src) {
   return srcToAst(src)[1][0]; // look into toplevel
 }
 
+function srcToExp(src) {
+  return srcToStat(src)[1];
+}
+
 // Traverses the children of a node. If the traverse function returns an object,
 // replaces the child. If it returns true, stop the traversal and return true.
 function traverseChildren(node, traverse, pre, post) {
@@ -7267,19 +7271,8 @@ function emterpretify(ast) {
       // prepare the call into the emterpreter
       var theName = ['name', 'emterpret'];
       var theCall = ['call', theName, [['name', 'EMTERPRETER_' + func[1]]]]; // EMTERPRETER_* will be replaced with the absolute bytecode offset later
-      // add a return if necessary
-      if (asmData.ret !== undefined) {
-        switch (asmData.ret) {
-          case ASM_INT:    theName[1] += '_i'; break;
-          case ASM_DOUBLE: theName[1] += '_d'; break;
-          default: throw 'bad';
-        }
-        asmData.vars['ret'] = asmData.ret;
-        func[3].push(['stat', ['assign', true, ['name', 'ret'], makeAsmCoercion(theCall, asmData.ret)]]);
-      } else {
-        theName[1] += '_i'; // void funcs reuse _i, and ignore the return value
-        func[3].push(['stat', makeAsmCoercion(theCall, ASM_INT)]);
-      }
+      // add the call
+      func[3].push(['stat', theCall]);
       if (zero) {
         theName[1] += '_z';
         if (!onlyLeavesAreZero) {
@@ -7289,9 +7282,15 @@ function emterpretify(ast) {
           func[3].push(srcToStat('EMTSTACKTOP = sp;'));
         }
       }
-      // add the return
+      // add the return, if necessary
       if (asmData.ret !== undefined) {
-        func[3].push(['return', makeAsmCoercion(['name', 'ret'], asmData.ret)]);
+        var ret;
+        switch (asmData.ret) {
+          case ASM_INT: ret = srcToExp('HEAP32[EMTSTACKTOP >> 2]'); break;
+          case ASM_DOUBLE: ret = srcToExp('HEAPF64[EMTSTACKTOP >> 3]'); break;
+          default: throw 'bad';
+        }
+        func[3].push(['return', makeAsmCoercion(ret, asmData.ret)]);
       }
       // emit trampoline and bytecode
       denormalizeAsm(func, asmData);
