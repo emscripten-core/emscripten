@@ -103,4 +103,8 @@ function iffey() {
  }
  return 0;
 }
+function nops() {
+ var i1 = 0;
+ f(i1);
+}
 

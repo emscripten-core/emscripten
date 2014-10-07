@@ -1672,6 +1672,8 @@ function vacuum(ast) {
       case 'stat': {
         if (node[1][0] === 'block') {
           return node[1];
+        } else if (!hasSideEffects(node[1])) {
+          return emptyNode();
         }
       } break;
       case 'defun': {

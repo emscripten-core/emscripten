@@ -106,5 +106,11 @@ function iffey() {
  }
  return 0;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "_doit", "stackRestore", "switchey", "switchey2", "iffey"]
+function nops() {
+  var x = 0;
+  x | 0;
+  ~x;
+  f(x);
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "_doit", "stackRestore", "switchey", "switchey2", "iffey", "nops"]
 
