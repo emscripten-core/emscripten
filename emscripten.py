@@ -1046,15 +1046,17 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       simdfloattypes = ['float32x4']
       simdinttypes = ['int32x4']
       simdtypes = simdfloattypes + simdinttypes
-      # TODO: Make mul, min and max available for int32x4 too.
+      # TODO: Make mul, min, max, notEqual, lessThanOrEqual, and greaterThanOrEqual
+      # available for int32x4 too.
       simdfuncs = ['add', 'sub',
-                   'equal', 'notEqual', 'lessThan', 'lessThanOrEqual', 'greaterThan', 'greaterThanOrEqual',
+                   'equal', 'lessThan', 'greaterThan',
                    'select', 'and', 'or', 'xor', 'not',
                    'splat', 'shuffle', 'shuffleMix',
                    'withX', 'withY', 'withZ', 'withW',
                    'load', 'store']
       simdfloatfuncs = simdfuncs + ['mul', 'div', 'min', 'max', 'sqrt',
-                                    'fromInt32x4', 'fromInt32x4Bits'];
+                                    'fromInt32x4', 'fromInt32x4Bits',
+                                    'notEqual', 'lessThanOrEqual', 'greaterThanOrEqual'];
       simdintfuncs = simdfuncs + ['fromFloat32x4', 'fromFloat32x4Bits'];
       fundamentals = ['Math', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
       if metadata['simd']:
