@@ -689,7 +689,11 @@ var LibraryGL = {
 #endif
       // Default to creating a WebGL 1.0 context if nothing else is specified.
       if (typeof webGLContextAttributes.majorVersion === 'undefined' && typeof webGLContextAttributes.minorVersion === 'undefined') {
+#if USE_WEBGL2
+        webGLContextAttributes.majorVersion = 2;
+#else
         webGLContextAttributes.majorVersion = 1;
+#endif
         webGLContextAttributes.minorVersion = 0;
       }
       var ctx;
