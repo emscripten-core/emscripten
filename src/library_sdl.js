@@ -15,7 +15,16 @@ var LibrarySDL = {
     defaults: {
       width: 320,
       height: 200,
-      copyOnLock: true
+      // If true, SDL_LockSurface will copy the contents of each surface back to the Emscripten HEAP so that C code can access it. If false,
+      // the surface contents are captured only back to JS code.
+      copyOnLock: true,
+      // If true, SDL_LockSurface will discard the contents of each surface when SDL_LockSurface() is called. This greatly improves performance 
+      // of SDL_LockSurface(). If discardOnLock is true, copyOnLock is ignored.
+      discardOnLock: false,
+      // If true, emulate compatibility with desktop SDL by ignoring alpha on the screen frontbuffer canvas. Setting this to false will improve
+      // performance considerably and enables alpha-blending on the frontbuffer, so be sure to properly write 0xFF alpha for opaque pixels
+      // if you set this to false!
+      opaqueFrontBuffer: true
     },
 
     version: null,
@@ -1440,8 +1449,18 @@ var LibrarySDL = {
 
     if (surf == SDL.screen && Module.screenIsReadOnly && surfData.image) return 0;
 
-    surfData.image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
-    if (surf == SDL.screen) {
+    if (SDL.defaults.discardOnLock) {
+      if (!surfData.image) {
+        surfData.image = surfData.ctx.createImageData(surfData.width, surfData.height);
+      }
+      if (!SDL.defaults.opaqueFrontBuffer) return;
+    } else {
+      surfData.image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
+    }
+
+    // Emulate desktop behavior and kill alpha values on the locked surface. (very costly!) Set SDL.defaults.opaqueFrontBuffer = false
+    // if you don't want this.
+    if (surf == SDL.screen && SDL.defaults.opaqueFrontBuffer) {
       var data = surfData.image.data;
       var num = data.length;
       for (var i = 0; i < num/4; i++) {
@@ -1449,7 +1468,7 @@ var LibrarySDL = {
       }
     }
 
-    if (SDL.defaults.copyOnLock) {
+    if (SDL.defaults.copyOnLock && !SDL.defaults.discardOnLock) {
       // Copy pixel data to somewhere accessible to 'C/C++'
       if (surfData.isFlagSet(0x00200000 /* SDL_HWPALETTE */)) {
         // If this is neaded then
@@ -1524,16 +1543,14 @@ var LibrarySDL = {
         }
       } else {
         var data32 = new Uint32Array(data.buffer);
-        num = data32.length;
-        if (isScreen) {
+        if (isScreen && SDL.defaults.opaqueFrontBuffer) {
+          num = data32.length;
           while (dst < num) {
             // HEAP32[src++] is an optimization. Instead, we could do {{{ makeGetValue('buffer', 'dst', 'i32') }}};
             data32[dst++] = HEAP32[src++] | 0xff000000;
           }
         } else {
-          while (dst < num) {
-            data32[dst++] = HEAP32[src++];
-          }
+          data32.set(HEAP32.subarray(src, src + data32.length));
         }
       }
 #else
