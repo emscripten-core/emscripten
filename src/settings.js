@@ -274,7 +274,7 @@ var GL_TESTING = 0; // When enabled, sets preserveDrawingBuffer in the context, 
 var GL_MAX_TEMP_BUFFER_SIZE = 2097152; // How large GL emulation temp buffers are
 var GL_UNSAFE_OPTS = 1; // Enables some potentially-unsafe optimizations in GL emulation code
 var FULL_ES2 = 0;   // Forces support for all GLES2 features, not just the WebGL-friendly subset.
-var USE_WEBGL2 = 0; // Enables WebGL2 native functions. This mode will also try to grab a WebGL2
+var USE_WEBGL2 = 0; // Enables WebGL2 native functions. This mode will also create a WebGL2
                     // context by default if no version is specified.
 var FULL_ES3 = 0;   // Forces support for all GLES3 features, not just the WebGL2-friendly subset.
 var LEGACY_GL_EMULATION = 0; // Includes code to emulate various desktop GL features. Incomplete but useful

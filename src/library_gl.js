@@ -687,7 +687,6 @@ var LibraryGL = {
       Module.print('(USE_TYPED_ARRAYS needs to be enabled for WebGL)');
       return null;
 #endif
-      // Default to creating a WebGL 1.0 context if nothing else is specified.
       if (typeof webGLContextAttributes.majorVersion === 'undefined' && typeof webGLContextAttributes.minorVersion === 'undefined') {
 #if USE_WEBGL2
         webGLContextAttributes.majorVersion = 2;
@@ -716,7 +715,7 @@ var LibraryGL = {
         }
         if (!ctx) throw ':(';
       } catch (e) {
-        Module.print('Could not create canvas: ' + [errorInfo, e]);
+        Module.print('Could not create canvas: ' + [errorInfo, e, JSON.stringify(webGLContextAttributes)]);
         return 0;
       }
 #if GL_DEBUG
