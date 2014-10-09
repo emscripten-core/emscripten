@@ -807,7 +807,10 @@ var LibraryGL = {
 
       if (!ctx) return 0;
       var handle = GL.getNewId(GL.contexts);
-      var context = { handle: handle };
+      var context = {
+        handle: handle,
+        version: webGLContextAttributes.majorVersion
+      };
       context.GLctx = ctx;
       GL.contexts[handle] = context;
       if (typeof webGLContextAttributes['webGLContextAttributes'] === 'undefined' || webGLContextAttributes.enableExtensionsByDefault) {
@@ -873,7 +876,19 @@ var LibraryGL = {
       // Extension available from Firefox 25 and WebKit
       context.vaoExt = GLctx.getExtension('OES_vertex_array_object');
 
-      context.drawBuffersExt = GLctx.getExtension('WEBGL_draw_buffers');
+      if (context.version === 2) {
+        // drawBuffers is available in WebGL2 by default.
+        context.drawBuffersExt = function(n, bufs) {
+          GLctx.drawBuffers(n, bufs);
+        };
+      } else {
+        var ext = GLctx.getExtension('WEBGL_draw_buffers');
+        if (ext) {
+          context.drawBuffersExt = function(n, bufs) {
+            ext.drawBuffersWEBGL(n, bufs);
+          };
+        }
+      }
 
       // These are the 'safe' feature-enabling extensions that don't add any performance impact related to e.g. debugging, and
       // should be enabled by default so that client GLES2/GL code will not need to go through extra hoops to get its stuff working.
@@ -5694,13 +5709,13 @@ var LibraryGL = {
   glDrawBuffers__sig: 'vii',
   glDrawBuffers: function(n, bufs) {
 #if GL_ASSERTIONS
-    assert(GL.currentContext.drawBuffersExt, 'Must have WEBGL_draw_buffers extension to use drawBuffers');
+    assert(GL.currentContext.drawBuffersExt, 'Must have WebGL2 or WEBGL_draw_buffers extension to use drawBuffers');
 #endif
     var bufArray = [];
     for (var i = 0; i < n; i++)
       bufArray.push({{{ makeGetValue('bufs', 'i*4', 'i32') }}});
 
-    GL.currentContext.drawBuffersExt.drawBuffersWEBGL(bufArray);
+    GL.currentContext.drawBuffersExt(bufArray);
   },
   // signatures of simple pass-through functions, see later
 
