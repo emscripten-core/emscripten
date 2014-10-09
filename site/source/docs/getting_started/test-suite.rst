@@ -31,7 +31,7 @@ You can also use *runner.py* to run different parts of the test suite, or indivi
 
     python tests/runner.py test_hello_world
 	
-Tests in the "core" test suite (``tests/test_core.py``) can be run as above. Other tests may need a prefix, for example ``browser.test_sdl_audio`` for a test in ``tests/test_browser.py``. You can also specify an optional prefix for tests in core, to run them with extra options, for example ``asm2.test_hello_world`` will run ``hello_world`` using ``asm2`` opts (basically ``-O2``). See more examples in :ref:`emscripten-test-suite-list-of-tests`.
+Tests in the "core" test suite (``tests/test_core.py``) can be run as above. Other tests may need a prefix, for example ``browser.test_cubegeom`` for a test in ``tests/test_browser.py``. You can also specify an optional prefix for tests in core, to run them with extra options, for example ``asm2.test_hello_world`` will run ``hello_world`` using ``asm2`` opts (basically ``-O2``). See more examples in :ref:`emscripten-test-suite-list-of-tests`.
 
 Test modes
 ==========
