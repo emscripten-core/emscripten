@@ -19,7 +19,7 @@ LOG_CODE = os.environ.get('EMCC_LOG_EMTERPRETER_CODE')
 
 # consts
 
-BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memmove', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64', '_strncpy', '_strcpy', '_strcat', '_saveSetjmp', '_testSetjmp', '_emscripten_replace_memory', '_bitshift64Shl', '_bitshift64Ashr', '_bitshift64Lshr']) # XXX this list must contain all functions that rely on asm declarations to zero out variables, which means most asm js library functions. we specifically take care of 'label' in compiler-generated functions.
+BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memmove', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64', '_strncpy', '_strcpy', '_strcat', '_saveSetjmp', '_testSetjmp', '_emscripten_replace_memory', '_bitshift64Shl', '_bitshift64Ashr', '_bitshift64Lshr'])
 
 OPCODES = [ # l, lx, ly etc - one of 256 locals
   'SET',     # [lx, ly, 0]          lx = ly (int or float, not double)
@@ -180,7 +180,7 @@ OPCODES = [ # l, lx, ly etc - one of 256 locals
 
   'SWITCH',  # [lx, ly, lz]         switch (lx) { .. }. followed by a jump table for values in range [ly..ly+lz), after which is the default (which might be empty)
   'RET',     # [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
-  'FUNC',    # [total locals, num params, which emterpreter (0 = normal, 1 = zero)]            function with n locals (each taking 64 bits), of which the first are params
+  'FUNC',    # [total locals, num params, which emterpreter (0 = normal, 1 = zero)] [num params + num zero-inits, 0, 0, 0]           function with n locals (each taking 64 bits), of which the first are params
 ]
 
 def randomize_opcodes():
@@ -528,13 +528,15 @@ function emterpret%s(pc) {
  assert(((HEAPU8[pc>>0]>>>0) == %d)|0);
  lx = HEAPU8[pc + 1 >> 0] | 0; // num locals
 %s
- ly = HEAPU8[pc + 2 >> 0] | 0;
- //while ((ly | 0) < (lx | 0)) { // clear the non-param locals - XXX should not be needed, unless we relied on an asm declaration to zero out a variable
- // %s = +0;
- // ly = ly + 1 | 0;
- //}
+ ly = HEAPU8[pc + 2 >> 0] | 0; // first zeroinit (after params)
+ lz = HEAPU8[pc + 4 >> 0] | 0; // offset of last zeroinit
+ while ((ly | 0) < (lz | 0)) { // clear the zeroinits
+  %s = +0;
+  ly = ly + 1 | 0;
+ }
  //print('enter func ' + [pc, HEAPU8[pc + 0],HEAPU8[pc + 1],HEAPU8[pc + 2],HEAPU8[pc + 3],HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]].join(', '));
  //var first = true;
+ pc = pc + 4 | 0;
  while (1) {
 %s
  }

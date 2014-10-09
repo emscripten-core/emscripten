@@ -297,6 +297,112 @@ function astCompare(x, y) {
   return true;
 }
 
+// calls definitely on child nodes that will be called, in order, and calls maybe on nodes that might be called.
+// a(); if (b) c(); d(); will call definitely(a, arg), maybe(c, arg), definitely(d, arg)
+function traverseChildrenInExecutionOrder(node, definitely, maybe, arg) {
+  switch (node[0]) {
+    default: throw '!' + node[0];
+    case 'num': case 'var': case 'name': case 'toplevel': case 'string':
+    case 'break': case 'continue': break; // nodes with no interesting children; they themselves have already been definitely or maybe'd
+    case 'assign': case 'binary': {
+      definitely(node[2], arg);
+      definitely(node[3], arg);
+      break;
+    }
+    case 'sub': case 'seq': {
+      definitely(node[1], arg);
+      definitely(node[2], arg);
+      break;
+    }
+    case 'while': {
+      definitely(node[1], arg);
+      maybe(node[2], arg); // may never enter the loop
+      maybe(node[1], arg); // may enter the loop a second time
+      maybe(node[2], arg);
+      break;
+    }
+    case 'do': {
+      definitely(node[2], arg);
+      maybe(node[1], arg); // may never reach the condition if we break
+      maybe(node[2], arg);
+      maybe(node[1], arg);
+      break;
+    }
+    case 'binary': {
+      definitely(node[2], arg);
+      definitely(node[3], arg);
+      break;
+    }
+    case 'unary-prefix': case 'label': {
+      definitely(node[2], arg);
+      break;
+    }
+    case 'call': {
+      definitely(node[1], arg);
+      var args = node[2];
+      for (var i = 0; i < args.length; i++) {
+        definitely(args[i], arg);
+      }
+      break;
+    }
+    case 'if': case 'conditional': {
+      definitely(node[1], arg);
+      maybe(node[2], arg);
+      if (node[3]) { maybe(node[3], arg); }
+      break;
+    }
+    case 'defun': case 'func': case 'block': {
+      var stats = getStatements(node);
+      if (stats.length === 0) break;
+      for (var i = 0; i < stats.length; i++) {
+        definitely(stats[i], arg);
+        // check if we might break, if we have more to do
+        if (i === stats.length - 1) break;
+        var labels = {};
+        var breakCaptured = 0;
+        var mightBreak = false;
+        traverse(stats[i], function(node, type) {
+          if (type === 'label') labels[node[1]] = true;
+          else if (type in BREAK_CAPTURERS) {
+            breakCaptured++;
+          } else if (type === 'break') {
+            if (node[1]) {
+              // labeled break
+              if (!(node[1] in labels)) mightBreak = true;
+            } else {
+              if (!breakCaptured) mightBreak = true;
+            }
+          }
+        }, function(node, type) {
+          if (type === 'label') delete labels[node[1]];
+          else if (type in BREAK_CAPTURERS) {
+            breakCaptured--;
+          }
+        });
+        if (mightBreak) {
+          // all the rest are in one big maybe
+          return maybe(['block', stats.slice(i+1)], arg);
+        }
+      }
+      break;
+    }
+    case 'stat': case 'return': {
+      definitely(node[1], arg);
+      break;
+    }
+    case 'switch': {
+      definitely(node[1], arg);
+      var cases = node[2];
+      for (var i = 0; i < cases.length; i++) {
+        var c = cases[i];
+        var stats = c[1];
+        var temp = ['block', stats];
+        maybe(temp, arg);
+      }
+    }
+  }
+}
+
 // Passes
 
 // Dump the AST. Useful for debugging. For example,
@@ -5975,6 +6081,33 @@ function ensureLabelSet(ast) {
   });
 }
 
+// finds vars that may not be assigned to. misses out on vars that are assigned to in all branches of an if etc. TODO: optimize
+function findUninitializedVars(func, asmData) {
+  var bad = {};
+  function definitely(node, uninitialized) {
+    if (!node) return;
+    if (node[0] === 'assign' && node[2][0] === 'name') {
+      var name = node[2][1];
+      if (name in uninitialized) {
+        delete uninitialized[name]; // this one is now ok
+      }
+    } else if (node[0] === 'name') {
+      var name = node[1];
+      if (name in uninitialized) {
+        bad[name] = 1;
+        delete uninitialized[name]; // this one is now bad, ignore it
+      }
+    }
+    traverseChildrenInExecutionOrder(node, definitely, maybe, uninitialized);
+  }
+  function maybe(node, uninitialized) {
+    uninitialized = copy(uninitialized); // copy it; changes here will not propagate
+    traverseChildrenInExecutionOrder(node, definitely, maybe, uninitialized);
+  }
+  traverseChildrenInExecutionOrder(func, definitely, maybe, copy(asmData.vars));
+  return bad;
+}
+
 // Converts functions into binary format to be run by an emterpreter
 function emterpretify(ast) {
   emitAst = false;
@@ -7210,6 +7343,24 @@ function emterpretify(ast) {
       assert(numLocals <= 256, 'we need <= 256 locals');
     }
 
+    // put the variables that need a zero-init at the beginning
+    locals = {};
+    numLocals = 0;
+    for (var i in asmData.params) {
+      locals[i] = numLocals++;
+    }
+    var zeroInits = findUninitializedVars(func, asmData);
+    var numZeroInits = 0;
+    for (var zero in zeroInits) {
+      locals[zero] = numLocals++;
+      numZeroInits++;
+    }
+    for (var i in asmData.vars) {
+      if (!(i in zeroInits)) {
+        locals[i] = numLocals++;
+      }
+    }
+
     for (var i = 255; i >= numLocals; i--) {
       freeLocals.push(i);
     }
@@ -7229,7 +7380,7 @@ function emterpretify(ast) {
     // calculate final count of local variables, and emit func header
     var finalLocals = Math.max(numLocals, maxLocal+1); // if no free locals, then numLocals, else the largest free local says how many
     assert(finalLocals < 256, 'too many locals ' + [maxLocal, numLocals]); // maximum local value is 255, for a total of 256 of them
-    code = ['FUNC', finalLocals, func[2].length, 0].concat(constants).concat(code); // last FUNC option is filled in later
+    code = ['FUNC', finalLocals, func[2].length, 0, func[2].length + numZeroInits, 0, 0, 0].concat(constants).concat(code); // 3rd FUNC option is filled in later
     verifyCode(code);
 
     finalizeJumps(code);
