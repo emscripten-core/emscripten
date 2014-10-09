@@ -1039,7 +1039,14 @@ function localCSE(ast) {
                 asmData.vars[lookup[2]] = type;
                 overwrite(lookup[1], makeSignedAsmCoercion(['name', lookup[2]], type, sign));
                 stats.splice(lookup[0], 0, ['stat', ['assign', true, ['name', lookup[2]], makeSignedAsmCoercion(node, type, sign)]]);
-                i++;
+                // adjust indexes after that splice
+                i++; // i must be after lookup[0]
+                for (var e in exps) {
+                  var curr = exps[e];
+                  if (curr[2] === null) {
+                    if (curr[0] >= lookup[0]) curr[0]++;
+                  }
+                }
               } else {
                 type = lookup[3];
                 sign = lookup[4];

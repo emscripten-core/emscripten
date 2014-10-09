@@ -41,4 +41,16 @@ function _i64Subtract(a, b, c, d) {
  h = b - d - (c >>> 0 > a >>> 0 | 0) >>> 0;
  return (tempRet0 = h, a - c >>> 0 | 0) | 0;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["skinning", "_i64Subtract"]
+function cubeMD5mesh() {
+ var $15 = 0, $16 = 0, $18 = 0;
+ var $20 = 0, $22 = +0, $24 = +0, $27 = +0, $29 = +0, $33 = +0, $36 = +0, $43 = +0;
+ $20 = HEAP32[$15 + ($18 * 20 | 0) >> 2] | 0;
+ $22 = +HEAPF32[$16 + ($20 * 28 | 0) + 16 >> 2];
+ $24 = +HEAPF32[$15 + ($18 * 20 | 0) + 16 >> 2];
+ $27 = +HEAPF32[$16 + ($20 * 28 | 0) + 20 >> 2];
+ $29 = +HEAPF32[$15 + ($18 * 20 | 0) + 12 >> 2];
+ $33 = +HEAPF32[$15 + ($18 * 20 | 0) + 8 >> 2];
+ $36 = +HEAPF32[$16 + ($20 * 28 | 0) + 12 >> 2];
+ $43 = +HEAPF32[$16 + ($20 * 28 | 0) + 24 >> 2];
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["skinning", "_i64Subtract", "cubeMD5mesh"]
