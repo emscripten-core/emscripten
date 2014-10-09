@@ -975,13 +975,13 @@ function enlargeMemory() {
 #else
   // TOTAL_MEMORY is the current size of the actual array, and DYNAMICTOP is the new top.
 #if ASSERTIONS
-  Module.printErr('Warning: Enlarging memory arrays, this is not fast! ' + [DYNAMICTOP, TOTAL_MEMORY]);
   assert(DYNAMICTOP >= TOTAL_MEMORY);
   assert(TOTAL_MEMORY > 4); // So the loop below will not be infinite
 #endif
 
-#if EMSCRIPTEN_TRACING
   var OLD_TOTAL_MEMORY = TOTAL_MEMORY;
+
+#if EMSCRIPTEN_TRACING
   // Report old layout one last time
   _emscripten_trace_report_memory_layout();
 #endif
@@ -989,6 +989,12 @@ function enlargeMemory() {
   while (TOTAL_MEMORY <= DYNAMICTOP) { // Simple heuristic.
     TOTAL_MEMORY = alignMemoryPage(2*TOTAL_MEMORY);
   }
+
+  TOTAL_MEMORY = Math.max(TOTAL_MEMORY, 16*1024*1024);
+
+#if ASSERTIONS
+  Module.printErr('Warning: Enlarging memory arrays, this is not fast! ' + [OLD_TOTAL_MEMORY, TOTAL_MEMORY]);
+#endif
 
 #if EMSCRIPTEN_TRACING
   _emscripten_trace_js_log_message("Emscripten", "Enlarging memory arrays from " + OLD_TOTAL_MEMORY + " to " + TOTAL_MEMORY);
@@ -1042,6 +1048,9 @@ while (totalMemory < TOTAL_MEMORY || totalMemory < 2*TOTAL_STACK) {
     totalMemory += 16*1024*1024
   }
 }
+#if ALLOW_MEMORY_GROWTH
+totalMemory = Math.max(totalMemory, 16*1024*1024);
+#endif
 if (totalMemory !== TOTAL_MEMORY) {
   Module.printErr('increasing TOTAL_MEMORY to ' + totalMemory + ' to be compliant with the asm.js spec');
   TOTAL_MEMORY = totalMemory;
