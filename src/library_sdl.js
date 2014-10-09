@@ -460,14 +460,17 @@ var LibrarySDL = {
       } else {
         dr = { x: 0, y: 0, w: -1, h: -1 };
       }
-      var oldAlpha = dstData.ctx.globalAlpha;
-      dstData.ctx.globalAlpha = srcData.alpha/255;
       var blitw, blitr;
       if (scale) {
         blitw = dr.w; blith = dr.h;
       } else {
         blitw = sr.w; blith = sr.h;
       }
+      if (sr.w === 0 || sr.h === 0 || blitw === 0 || blith === 0) {
+        return 0;
+      }
+      var oldAlpha = dstData.ctx.globalAlpha;
+      dstData.ctx.globalAlpha = srcData.alpha/255;
       dstData.ctx.drawImage(srcData.canvas, sr.x, sr.y, sr.w, sr.h, dr.x, dr.y, blitw, blith);
       dstData.ctx.globalAlpha = oldAlpha;
       if (dst != SDL.screen) {
