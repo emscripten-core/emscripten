@@ -7404,7 +7404,7 @@ function emterpretify(ast) {
 
     if (zero) code[3] = 1;
 
-    if (1) { //func[1] in EXTERNAL_EMTERPRETED_FUNCS) {
+    if (func[1] in EXTERNAL_EMTERPRETED_FUNCS) {
       // this is reachable from outside emterpreter code, set up a trampoline
       asmData.vars = {};
       if (zero && !onlyLeavesAreZero) {

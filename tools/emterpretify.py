@@ -389,6 +389,7 @@ CASES[ROPCODES['INTCALL']] = '''
     inst = HEAP32[HEAP32[pc + 4 >> 2] >> 2] | 0; // FUNC inst: ['FUNC', locals, params, which emterp]
     lz = (inst >>> 16) & 255; // params
     ly = 0;
+    assert(((EMTSTACKTOP + 8|0) <= (EMT_STACK_MAX|0))|0); // for return value
     if ((inst >>> 24) == 0) {
       while ((ly|0) < (lz|0)) {
         %s = %s;
