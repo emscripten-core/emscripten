@@ -59,13 +59,13 @@ Within Emscripten compiled code we use :c:func:`emscripten_set_main_loop` to get
 
 .. todo:: Check this statement out: (just call it from JavaScript, all you need is an underscore at the beginning of the name), 
 
-Typically you will have a small section with ``#ifdef EMSCRIPTEN`` for the two cases. For example:
+Typically you will have a small section with ``#ifdef __EMSCRIPTEN__`` for the two cases. For example:
 
 .. code-block:: cpp
 
 	int main() {
 	...
-	#ifdef EMSCRIPTEN
+	#ifdef __EMSCRIPTEN__
 	  // void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_infinite_loop);
 	  emscripten_set_main_loop(one_iter, 60, 1);
 	#else
