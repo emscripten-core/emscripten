@@ -563,6 +563,7 @@ var NO_DYNAMIC_EXECUTION = 0; // When enabled, we do not emit eval() and new Fun
                               // privileged firefox app, etc.)
 
 var EMTERPRETIFY = 0; // Runs tools/emterpretify on the compiler output
+var EMTERPRETIFY_BLACKLIST = []; // Functions to not emterpret, that is, to run normally at full speed
 
 var RUNNING_JS_OPTS = 0; // whether js opts will be run, after the main compiler
 var RUNNING_FASTCOMP = 1; // whether we are running the fastcomp backend

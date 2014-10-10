@@ -558,6 +558,8 @@ function emterpret%s(pc) {
 infile = sys.argv[1]
 outfile = sys.argv[2]
 force_memfile = sys.argv[3] if len(sys.argv) >= 4 else None
+if len(sys.argv) >= 5:
+  BLACKLIST = set(list(BLACKLIST) + json.loads(sys.argv[4]))
 
 #print 'emterpretifying %s to %s' % (infile, outfile)
 

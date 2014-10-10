@@ -1488,10 +1488,11 @@ try:
   if shared.Settings.EMTERPRETIFY:
     logging.debug('emterpretifying')
     assert memory_init_file, 'emterpreter requires a mem init file'
+    import json
     try:
       # move temp js to final position, alongside its mem init file
       shutil.move(final, js_target)
-      execute([shared.PYTHON, shared.path_from_root('tools', 'emterpretify.py'), js_target, final + '.em.js', memfile])
+      execute([shared.PYTHON, shared.path_from_root('tools', 'emterpretify.py'), js_target, final + '.em.js', memfile, json.dumps(shared.Settings.EMTERPRETIFY_BLACKLIST)])
       final = final + '.em.js'
     finally:
       shared.try_delete(js_target)
