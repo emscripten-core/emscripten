@@ -1,11 +1,11 @@
 <script>
   var startTime = Date.now();
-  console.log('start at time 0 = ' + startTime());
+  console.log('start at time 0 = ' + startTime);
 </script>
 <script async src="frames.js"></script>
 <!--
 # build bullet
 EM_SAVE_DIR=1 ./tests/runner.py asm3.test_the_bullet
-./emcc -O3 tests/bullet/Demos/HelloWorld/HelloWorldFrames.cpp /tmp/emscripten_temp/building/bullet/src/BulletDynamics/libBulletDynamics.a /tmp/emscripten_temp/building/bullet/src/BulletCollision/libBulletCollision.a /tmp/emscripten_temp/building/bullet/src/LinearMath/libLinearMath.a -o tests/bullet/Demos/HelloWorld/frames.js -I./tests/bullet/src -profiling
+./emcc -O3 tests/bullet/Demos/HelloWorld/HelloWorldFrames.cpp /tmp/emscripten_temp/building/bullet/src/BulletDynamics/libBulletDynamics.a /tmp/emscripten_temp/building/bullet/src/BulletCollision/libBulletCollision.a /tmp/emscripten_temp/building/bullet/src/LinearMath/libLinearMath.a -o tests/bullet/Demos/HelloWorld/frames.js -I./tests/bullet/src -s TOTAL_MEMORY=60000000
 -->
 

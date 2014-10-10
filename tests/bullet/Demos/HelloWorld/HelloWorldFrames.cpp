@@ -24,6 +24,10 @@ subject to the following restrictions:
 
 btDiscreteDynamicsWorld* dynamicsWorld;
 
+extern "C" {
+void EMSCRIPTEN_KEEPALIVE addBody();
+}
+
 int main(int argc, char** argv)
 {
 
@@ -77,37 +81,7 @@ int main(int argc, char** argv)
 		dynamicsWorld->addRigidBody(body);
 	}
 
-
-  for (int i = 0; i < 100; i++)
-	{
-		//create a dynamic rigidbody
-
-		//btCollisionShape* colShape = new btBoxShape(btVector3(1,1,1));
-		btCollisionShape* colShape = new btSphereShape(btScalar(1.));
-		collisionShapes.push_back(colShape);
-
-		/// Create Dynamic Objects
-		btTransform startTransform;
-		startTransform.setIdentity();
-
-		btScalar	mass(1.f);
-
-		//rigidbody is dynamic if and only if mass is non zero, otherwise static
-		bool isDynamic = (mass != 0.f);
-
-		btVector3 localInertia(0,0,0);
-		if (isDynamic)
-			colShape->calculateLocalInertia(mass,localInertia);
-
-			startTransform.setOrigin(btVector3(2 + 3*i,10,0));
-		
-			//using motionstate is recommended, it provides interpolation capabilities, and only synchronizes 'active' objects
-			btDefaultMotionState* myMotionState = new btDefaultMotionState(startTransform);
-			btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,colShape,localInertia);
-			btRigidBody* body = new btRigidBody(rbInfo);
-
-			dynamicsWorld->addRigidBody(body);
-	}
+  for (int i = 0; i < 20; i++) addBody();
 
   EM_ASM({
     // try to run a max frame rate
@@ -118,8 +92,10 @@ int main(int argc, char** argv)
       var fps = Math.round(1000/(curr - lastTime));
       lastTime = curr;
       console.log('frame ' + [i, fps, curr - startTime]);
+      //for (var j = 0; j < 10; j++) Module._addBody();
       Module._simulate();
-      if (++i === 30) clearInterval(interval);
+      if (i === 30) clearInterval(interval);
+      i++;
     }, 0);
   });
 
@@ -130,12 +106,49 @@ int main(int argc, char** argv)
 
 extern "C" {
 
+void EMSCRIPTEN_KEEPALIVE addBody() {
+	//btCollisionShape* colShape = new btBoxShape(btVector3(1,1,1));
+	btCollisionShape* colShape = new btSphereShape(btScalar(1.));
+
+	/// Create Dynamic Objects
+	btTransform startTransform;
+
+	btScalar	mass(1.f);
+
+	btVector3 localInertia(0,0,0);
+  colShape->calculateLocalInertia(mass,localInertia);
+
+  static int i = 0, j = 0, k = 0, counter = 0;
+  counter++;
+  if (counter % 3 == 0) i++;
+  else if (counter % 3 == 1) j++;
+  else k++;
+
+	{
+		//create a dynamic rigidbody
+
+		startTransform.setIdentity();
+
+		startTransform.setOrigin(btVector3(i*2, 2 + j*2, k*2));
+	
+		//using motionstate is recommended, it provides interpolation capabilities, and only synchronizes 'active' objects
+		btDefaultMotionState* myMotionState = new btDefaultMotionState(startTransform);
+		btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,colShape,localInertia);
+		btRigidBody* body = new btRigidBody(rbInfo);
+
+		dynamicsWorld->addRigidBody(body);
+	}
+}
+
 void EMSCRIPTEN_KEEPALIVE simulate() {
-	dynamicsWorld->stepSimulation(1.f/60.f,10);
+  for (int k = 0; k < 10; k++) {
+  	dynamicsWorld->stepSimulation(1.f/60.f,10);
+  }
 
   static int i = 0;
   if (i++ % 10 == 0) {
-	  //print positions of all objects
+    std::cout << ">>>>>>>>>>>> objs = " << dynamicsWorld->getNumCollisionObjects() << std::endl;
+	  //print positions of an object
 	  for (int j=dynamicsWorld->getNumCollisionObjects()-1; j>=0 ;j--)
 	  {
 		  btCollisionObject* obj = dynamicsWorld->getCollisionObjectArray()[j];
@@ -146,6 +159,7 @@ void EMSCRIPTEN_KEEPALIVE simulate() {
 			  body->getMotionState()->getWorldTransform(trans);
 			  std::cout << ">>>>>>>>>>>>>>>>>>>>> world pos = " << float(trans.getOrigin().getX()) << ", " << float(trans.getOrigin().getY()) << ", " << float(trans.getOrigin().getZ()) << std::endl;
 		  }
+      break;
 	  }
   }
 }
