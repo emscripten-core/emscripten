@@ -288,21 +288,21 @@ CASES[ROPCODES['SHLV']] = get_access('lx') + ' = (' + get_coerced_access('ly') +
 CASES[ROPCODES['ASHRV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') >> lz;'
 CASES[ROPCODES['LSHRV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') >>> lz;'
 
-CASES[ROPCODES['LNOTBRF']] = 'if (' + get_coerced_access('ly') + ') { pc = HEAP32[pc + 4 >> 2] | 0; continue; } else { pc = pc + 4 | 0; }'
-CASES[ROPCODES['EQBRF']] = 'if ((' + get_coerced_access('ly') + ') == (' + get_coerced_access('lz') + ')) { pc = pc + 4 | 0; } else { pc = HEAP32[pc + 4 >> 2] | 0; continue; }'
-CASES[ROPCODES['NEBRF']] = 'if ((' + get_coerced_access('ly') + ') != (' + get_coerced_access('lz') + ')) { pc = pc + 4 | 0; } else { pc = HEAP32[pc + 4 >> 2] | 0; continue; }'
-CASES[ROPCODES['SLTBRF']] = 'if ((' + get_coerced_access('ly') + ') < (' + get_coerced_access('lz') + ')) { pc = pc + 4 | 0; } else { pc = HEAP32[pc + 4 >> 2] | 0; continue; }'
-CASES[ROPCODES['ULTBRF']] = 'if ((' + get_coerced_access('ly', unsigned=True) + ') < (' + get_coerced_access('lz', unsigned=True) + ')) { pc = pc + 4 | 0; } else { pc = HEAP32[pc + 4 >> 2] | 0; continue; }'
-CASES[ROPCODES['SLEBRF']] = 'if ((' + get_coerced_access('ly') + ') <= (' + get_coerced_access('lz') + ')) { pc = pc + 4 | 0; } else { pc = HEAP32[pc + 4 >> 2] | 0; continue; }'
-CASES[ROPCODES['ULEBRF']] = 'if ((' + get_coerced_access('ly', unsigned=True) + ') <= (' + get_coerced_access('lz', unsigned=True) + ')) { pc = pc + 4 | 0; } else { pc = HEAP32[pc + 4 >> 2] | 0; continue; }'
+CASES[ROPCODES['LNOTBRF']] = 'if (' + get_coerced_access('ly') + ') { pc = HEAP32[pc + 4 >> 2] | 0; PROCEED_WITHOUT_PC_BUMP; } else { pc = pc + 4 | 0; }'
+CASES[ROPCODES['EQBRF']] = 'if ((' + get_coerced_access('ly') + ') == (' + get_coerced_access('lz') + ')) { pc = pc + 4 | 0; } else { pc = HEAP32[pc + 4 >> 2] | 0; PROCEED_WITHOUT_PC_BUMP; }'
+CASES[ROPCODES['NEBRF']] = 'if ((' + get_coerced_access('ly') + ') != (' + get_coerced_access('lz') + ')) { pc = pc + 4 | 0; } else { pc = HEAP32[pc + 4 >> 2] | 0; PROCEED_WITHOUT_PC_BUMP; }'
+CASES[ROPCODES['SLTBRF']] = 'if ((' + get_coerced_access('ly') + ') < (' + get_coerced_access('lz') + ')) { pc = pc + 4 | 0; } else { pc = HEAP32[pc + 4 >> 2] | 0; PROCEED_WITHOUT_PC_BUMP; }'
+CASES[ROPCODES['ULTBRF']] = 'if ((' + get_coerced_access('ly', unsigned=True) + ') < (' + get_coerced_access('lz', unsigned=True) + ')) { pc = pc + 4 | 0; } else { pc = HEAP32[pc + 4 >> 2] | 0; PROCEED_WITHOUT_PC_BUMP; }'
+CASES[ROPCODES['SLEBRF']] = 'if ((' + get_coerced_access('ly') + ') <= (' + get_coerced_access('lz') + ')) { pc = pc + 4 | 0; } else { pc = HEAP32[pc + 4 >> 2] | 0; PROCEED_WITHOUT_PC_BUMP; }'
+CASES[ROPCODES['ULEBRF']] = 'if ((' + get_coerced_access('ly', unsigned=True) + ') <= (' + get_coerced_access('lz', unsigned=True) + ')) { pc = pc + 4 | 0; } else { pc = HEAP32[pc + 4 >> 2] | 0; PROCEED_WITHOUT_PC_BUMP; }'
 
-CASES[ROPCODES['LNOTBRT']] = 'if (' + get_coerced_access('ly') + ') { pc = pc + 4 | 0; } else { pc = HEAP32[pc + 4 >> 2] | 0; continue; }'
-CASES[ROPCODES['EQBRT']] = 'if ((' + get_coerced_access('ly') + ') == (' + get_coerced_access('lz') + ')) { pc = HEAP32[pc + 4 >> 2] | 0; continue; } else { pc = pc + 4 | 0; }'
-CASES[ROPCODES['NEBRT']] = 'if ((' + get_coerced_access('ly') + ') != (' + get_coerced_access('lz') + ')) { pc = HEAP32[pc + 4 >> 2] | 0; continue; } else { pc = pc + 4 | 0; }'
-CASES[ROPCODES['SLTBRT']] = 'if ((' + get_coerced_access('ly') + ') < (' + get_coerced_access('lz') + ')) { pc = HEAP32[pc + 4 >> 2] | 0; continue; } else { pc = pc + 4 | 0; }'
-CASES[ROPCODES['ULTBRT']] = 'if ((' + get_coerced_access('ly', unsigned=True) + ') < (' + get_coerced_access('lz', unsigned=True) + ')) { pc = HEAP32[pc + 4 >> 2] | 0; continue; } else { pc = pc + 4 | 0; }'
-CASES[ROPCODES['SLEBRT']] = 'if ((' + get_coerced_access('ly') + ') <= (' + get_coerced_access('lz') + ')) { pc = HEAP32[pc + 4 >> 2] | 0; continue; } else { pc = pc + 4 | 0; }'
-CASES[ROPCODES['ULEBRT']] = 'if ((' + get_coerced_access('ly', unsigned=True) + ') <= (' + get_coerced_access('lz', unsigned=True) + ')) { pc = HEAP32[pc + 4 >> 2] | 0; continue; } else { pc = pc + 4 | 0; }'
+CASES[ROPCODES['LNOTBRT']] = 'if (' + get_coerced_access('ly') + ') { pc = pc + 4 | 0; } else { pc = HEAP32[pc + 4 >> 2] | 0; PROCEED_WITHOUT_PC_BUMP; }'
+CASES[ROPCODES['EQBRT']] = 'if ((' + get_coerced_access('ly') + ') == (' + get_coerced_access('lz') + ')) { pc = HEAP32[pc + 4 >> 2] | 0; PROCEED_WITHOUT_PC_BUMP; } else { pc = pc + 4 | 0; }'
+CASES[ROPCODES['NEBRT']] = 'if ((' + get_coerced_access('ly') + ') != (' + get_coerced_access('lz') + ')) { pc = HEAP32[pc + 4 >> 2] | 0; PROCEED_WITHOUT_PC_BUMP; } else { pc = pc + 4 | 0; }'
+CASES[ROPCODES['SLTBRT']] = 'if ((' + get_coerced_access('ly') + ') < (' + get_coerced_access('lz') + ')) { pc = HEAP32[pc + 4 >> 2] | 0; PROCEED_WITHOUT_PC_BUMP; } else { pc = pc + 4 | 0; }'
+CASES[ROPCODES['ULTBRT']] = 'if ((' + get_coerced_access('ly', unsigned=True) + ') < (' + get_coerced_access('lz', unsigned=True) + ')) { pc = HEAP32[pc + 4 >> 2] | 0; PROCEED_WITHOUT_PC_BUMP; } else { pc = pc + 4 | 0; }'
+CASES[ROPCODES['SLEBRT']] = 'if ((' + get_coerced_access('ly') + ') <= (' + get_coerced_access('lz') + ')) { pc = HEAP32[pc + 4 >> 2] | 0; PROCEED_WITHOUT_PC_BUMP; } else { pc = pc + 4 | 0; }'
+CASES[ROPCODES['ULEBRT']] = 'if ((' + get_coerced_access('ly', unsigned=True) + ') <= (' + get_coerced_access('lz', unsigned=True) + ')) { pc = HEAP32[pc + 4 >> 2] | 0; PROCEED_WITHOUT_PC_BUMP; } else { pc = pc + 4 | 0; }'
 
 CASES[ROPCODES['SETD']] = get_access('lx', s='d') + ' = ' + get_coerced_access('ly', s='d') + ';'
 CASES[ROPCODES['SETVD']] = get_access('lx', s='d') + ' = +(inst >> 16);'
@@ -370,12 +370,12 @@ CASES[ROPCODES['STORE32C']] = 'HEAP32[' + get_access('lx') + ' >> 2] = HEAP32[' 
 CASES[ROPCODES['STOREF32C']] = 'HEAPF32[' + get_access('lx') + ' >> 2] = +HEAPF32[' + get_access('ly') + ' >> 2];'
 CASES[ROPCODES['STOREF64C']] = 'HEAPF64[' + get_access('lx') + ' >> 3] = +HEAPF64[' + get_access('ly') + ' >> 3];'
 
-CASES[ROPCODES['BR']] = 'pc = pc + ((inst >> 16) << 2) | 0; continue;'
-CASES[ROPCODES['BRT']] = 'if (' + get_coerced_access('lx') + ') { pc = pc + ((inst >> 16) << 2) | 0; continue; }'
-CASES[ROPCODES['BRF']] = 'if (!(' + get_coerced_access('lx') + ')) { pc = pc + ((inst >> 16) << 2) | 0; continue; }'
-CASES[ROPCODES['BRA']] = 'pc = HEAP32[pc + 4 >> 2] | 0; continue;'
-CASES[ROPCODES['BRTA']] = 'pc = pc + 4 | 0; if (' + get_coerced_access('lx') + ') { pc = HEAP32[pc >> 2] | 0; continue; }'
-CASES[ROPCODES['BRFA']] = 'pc = pc + 4 | 0; if (!(' + get_coerced_access('lx') + ')) { pc = HEAP32[pc >> 2] | 0; continue; }'
+CASES[ROPCODES['BR']] = 'pc = pc + ((inst >> 16) << 2) | 0; PROCEED_WITHOUT_PC_BUMP;'
+CASES[ROPCODES['BRT']] = 'if (' + get_coerced_access('lx') + ') { pc = pc + ((inst >> 16) << 2) | 0; PROCEED_WITHOUT_PC_BUMP; }'
+CASES[ROPCODES['BRF']] = 'if (!(' + get_coerced_access('lx') + ')) { pc = pc + ((inst >> 16) << 2) | 0; PROCEED_WITHOUT_PC_BUMP; }'
+CASES[ROPCODES['BRA']] = 'pc = HEAP32[pc + 4 >> 2] | 0; PROCEED_WITHOUT_PC_BUMP;'
+CASES[ROPCODES['BRTA']] = 'pc = pc + 4 | 0; if (' + get_coerced_access('lx') + ') { pc = HEAP32[pc >> 2] | 0; PROCEED_WITHOUT_PC_BUMP; }'
+CASES[ROPCODES['BRFA']] = 'pc = pc + 4 | 0; if (!(' + get_coerced_access('lx') + ')) { pc = HEAP32[pc >> 2] | 0; PROCEED_WITHOUT_PC_BUMP; }'
 
 CASES[ROPCODES['COND']] = 'pc = pc + 4 | 0; ' + get_access('lx') + ' = (' + get_coerced_access('ly') + ') ? (' + get_coerced_access('lz') + ') : (' + get_coerced_access('(HEAPU8[pc >> 0] | 0)') + ');'
 CASES[ROPCODES['CONDD']] = 'pc = pc + 4 | 0; ' + get_access('lx', s='d') + ' = (' + get_coerced_access('ly') + ') ? (' + get_coerced_access('lz', s='d') + ') : (' + get_coerced_access('(HEAPU8[pc >> 0] | 0)', s='d') + ');'
@@ -421,10 +421,10 @@ CASES[ROPCODES['SWITCH']] = '''
     lx = ((''' + get_coerced_access('lx') + ''') - (''' + get_coerced_access('ly') + ''')) >>> 0; // lx is now relative to the base
     if ((lx >>> 0) >= (lz >>> 0)) { // is the adjusted value too big?
       pc = (pc + (lz << 2)) | 0; // jump to right after the table, where the default is
-      break; // also increment the pc normally, to skip the switch itself
+      PROCEED_WITH_PC_BUMP; // also increment the pc normally, to skip the switch itself
     }
     pc = HEAP32[pc + 4 + (lx << 2) >> 2] | 0; // load from the jump table which is right after this instruction, and set pc
-    continue;'''
+    PROCEED_WITHOUT_PC_BUMP;'''
 
 def make_emterpreter(zero=False):
   # return is specialized per interpreter
@@ -449,7 +449,7 @@ def make_emterpreter(zero=False):
     extra = len(sig) - 1 + int(function_pointer_call) # [opcode, lx, target, sig], take the usual 4. params are extra
     if extra > 0:
       ret += '; pc = pc + %d | 0' % (4*((extra+3)>>2))
-    return '     ' + ret + '; break;'
+    return '     ' + ret + '; PROCEED_WITH_PC_BUMP;'
 
   CASES[ROPCODES['EXTCALL']] = 'switch ((inst>>>16)|0) {\n' + \
     '\n'.join(['    case %d: {\n%s\n    }' % (i, make_target_call(i)) for i in range(global_func_id)]) + \
@@ -460,7 +460,7 @@ def make_emterpreter(zero=False):
     def make_load(i):
       sig = 'i'
       name = rglobal_vars[i]
-      return '     ' + get_access('lx', sig[0]) + ' = ' + name + '; break;'
+      return '     ' + get_access('lx', sig[0]) + ' = ' + name + '; PROCEED_WITH_PC_BUMP;'
     CASES[ROPCODES['GETGLBI']] = 'switch (ly|0) {\n' + \
       '\n'.join(['    case %d: {\n%s\n    }' % (i, make_load(i)) for i in range(global_var_id)]) + \
       '\n    default: assert(0);' + \
@@ -468,15 +468,15 @@ def make_emterpreter(zero=False):
     def make_store(i):
       sig = 'i'
       name = rglobal_vars[i]
-      return '     ' + name + ' = ' + get_coerced_access('lz', sig[0]) + '; break;'
+      return '     ' + name + ' = ' + get_coerced_access('lz', sig[0]) + '; PROCEED_WITH_PC_BUMP;'
     CASES[ROPCODES['SETGLBI']] = 'switch ((inst >> 8)&255) {\n' + \
       '\n'.join(['    case %d: {\n%s\n    }' % (i, make_store(i)) for i in range(global_var_id)]) + \
       '\n    default: assert(0);' + \
       '\n   }'
 
   def fix_case(case):
-    # we increment pc at the top of the loop. cases doing 'continue' really need to decrement it
-    return case.replace('continue;', 'CONTINUE').replace('break;', 'continue;').replace('CONTINUE', 'pc = pc - 4 | 0; continue;').replace('continue; continue;', 'continue;')
+    # we increment pc at the top of the loop. to avoid a pc bump, we decrement it first; this is rare, most opcodes just continue; this avoids any code at the end of the loop
+    return case.replace('PROCEED_WITH_PC_BUMP', 'continue').replace('PROCEED_WITHOUT_PC_BUMP', 'pc = pc - 4 | 0; continue').replace('continue; continue;', 'continue;')
 
   def process(code):
     code = code.replace(' assert(', ' //assert(')
