@@ -145,6 +145,7 @@ try:
     #JSBenchmarker('sm-ion',  SPIDERMONKEY_ENGINE + ['--no-asmjs']),
     #JSBenchmarker('sm-baseline',  SPIDERMONKEY_ENGINE + ['--no-asmjs', '--no-ion']),
     JSBenchmarker('sm-emterp', SPIDERMONKEY_ENGINE, ['-s', 'EMTERPRETIFY=1']),
+    #JSBenchmarker('sm-emterp-blacklist', SPIDERMONKEY_ENGINE, ['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_BLACKLIST=["__ZN15b2ContactSolver24SolvePositionConstraintsEv", "__ZN24b2PositionSolverManifold10InitializeEP27b2ContactPositionConstraintRK11b2TransformS4_i", "__ZN15b2ContactSolver24SolveVelocityConstraintsEv", "__ZN15b2ContactSolver29InitializeVelocityConstraintsEv", "__ZL16b2EdgeSeparationPK14b2PolygonShapeRK11b2TransformiS1_S4_", "__ZN7b2World8SolveTOIERK10b2TimeStep"]']),
     #JSBenchmarker('sm-interp',  SPIDERMONKEY_ENGINE + ['--no-asmjs', '--no-ion', '--no-baseline']),
     #JSBenchmarker('sm-f32-si', SPIDERMONKEY_ENGINE, ['--profiling', '-s', 'PRECISE_F32=2', '-s', 'SIMPLIFY_IFS=1']),
     #JSBenchmarker('sm-f32-aggro', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2', '-s', 'AGGRESSIVE_VARIABLE_ELIMINATION=1']),
