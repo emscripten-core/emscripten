@@ -769,8 +769,8 @@ for i in range(len(lines)):
     if call in line:
       lines[i] = lines[i].replace(call, '(%s)' % (funcs[func] + code_start))
 
-# finalize funcs JS
-asm.funcs_js = '\n'.join(['\n'.join(filter(lambda line: len(line) > 0, lines)), make_emterpreter(), make_emterpreter(zero=True)]) + '\n'
+# finalize funcs JS (first line has the marker, add emterpreters right after that)
+asm.funcs_js = '\n'.join([lines[0], make_emterpreter(), make_emterpreter(zero=True), '\n'.join(filter(lambda line: len(line) > 0, lines[1:]))]) + '\n'
 lines = None
 
 # set up emterpreter stack top
