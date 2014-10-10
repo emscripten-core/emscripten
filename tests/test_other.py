@@ -4147,12 +4147,21 @@ pass: error == ENOTDIR
         source = 'src.cpp'
       else:
         source = path_from_root('tests', source)
-      Popen([PYTHON, EMCC, source, '-O2', '-s', 'EMTERPRETIFY=1']).communicate()
+      Popen([PYTHON, EMCC, source, '-O2', '-s', 'EMTERPRETIFY=1', '-g2']).communicate()
       self.assertContained(output, run_js('a.out.js', args=args))
       out = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE, args=args, stderr=PIPE, full_output=True)
       self.assertContained(output, out)
       self.validate_asmjs(out)
-      assert 'function emterpret' in open('a.out.js').read()
+      # -g2 enables these
+      src = open('a.out.js').read()
+      assert 'function emterpret' in src, 'emterpreter should exist'
+      # and removing calls to the emterpreter break, so it was being used
+      out1 = run_js('a.out.js')
+      assert output in out1
+      open('a.out.js', 'w').write(src.replace('function emterpret', 'function do_not_find_me'))
+      out2 = run_js('a.out.js', stderr=PIPE, assert_returncode=None)
+      assert output not in out2, out2
+      assert out1 != out2
 
     def do_test(source, args, output):
       print

@@ -1011,7 +1011,7 @@ try:
   if shared.Settings.EMTERPRETIFY:
     shared.Settings.FINALIZE_ASM_JS = 0
     shared.Settings.GLOBAL_BASE = 8*256 # keep enough space at the bottom for a full stack frame
-    debug_level = max(debug_level, 2)
+    shared.Settings.SIMPLIFY_IFS = 0 # this is just harmful for emterpreting
 
   shared.Settings.RUNNING_FASTCOMP = fastcomp
 
@@ -1432,6 +1432,21 @@ try:
     final = shared.Building.closure_compiler(final)
     if DEBUG: save_intermediate('closure')
 
+  def do_minify():
+    global js_optimizer_queue
+
+    if opt_level >= 2:
+      if debug_level < 2 and shared.Settings.ASM_JS and not closure == 2:
+        js_optimizer_queue += ['minifyNames']
+        if emit_symbol_map: js_optimizer_queue += ['symbolMap='+target+'.symbols']
+      if debug_level == 0: js_optimizer_queue += ['minifyWhitespace']
+
+    if shared.Settings.ASM_JS:
+      if closure == 1:
+        js_optimizer_queue += ['closure']
+      elif debug_level <= 2 and not shared.Settings.MAIN_MODULE and shared.Settings.FINALIZE_ASM_JS and not closure:
+        js_optimizer_queue += ['cleanup']
+
   if js_opts:
     if shared.Settings.ASM_JS and shared.Settings.SAFE_HEAP: js_optimizer_queue += ['safeHeap']
 
@@ -1447,18 +1462,10 @@ try:
 
     if shared.Settings.POINTER_MASKING and shared.Settings.ASM_JS: js_optimizer_queue += ['pointerMasking']
 
-    if opt_level >= 2:
-      if debug_level < 2 and shared.Settings.ASM_JS and not closure == 2:
-        js_optimizer_queue += ['minifyNames']
-        if emit_symbol_map: js_optimizer_queue += ['symbolMap='+target+'.symbols']
-      if debug_level == 0: js_optimizer_queue += ['minifyWhitespace']
+    if not shared.Settings.EMTERPRETIFY:
+      do_minify()
 
     if shared.Settings.ASM_JS:
-      if closure == 1:
-        js_optimizer_queue += ['closure']
-      elif debug_level <= 2 and not shared.Settings.MAIN_MODULE and shared.Settings.FINALIZE_ASM_JS and not closure:
-        js_optimizer_queue += ['cleanup']
-
       js_optimizer_queue += ['asmLastOpts']
 
     if shared.Settings.FINALIZE_ASM_JS: js_optimizer_queue += ['last']
@@ -1479,6 +1486,7 @@ try:
   js_target = unsuffixed(target) + '.js'
 
   if shared.Settings.EMTERPRETIFY:
+    logging.debug('emterpretifying')
     assert memory_init_file, 'emterpreter requires a mem init file'
     try:
       # move temp js to final position, alongside its mem init file
@@ -1487,6 +1495,12 @@ try:
       final = final + '.em.js'
     finally:
       shared.try_delete(js_target)
+
+    # minify (if requested) after emterpreter processing, and finalize output
+    shared.Settings.FINALIZE_ASM_JS = 1
+    do_minify()
+    js_optimizer_queue += ['last']
+    flush_js_optimizer_queue()
 
   # Remove some trivial whitespace # TODO: do not run when compress has already been done on all parts of the code
   #src = open(final).read()

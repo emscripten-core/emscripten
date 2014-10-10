@@ -7314,8 +7314,7 @@ function emterpretify(ast) {
     var ignore = !(func[1] in EMTERPRETED_FUNCS);
 
     if (ignore) {
-      prepDotZero(func);
-      print(fixDotZero(astToSrc(func)));
+      print(astToSrc(func));
     }
 
     var asmData = normalizeAsm(func);
@@ -7463,8 +7462,7 @@ function emterpretify(ast) {
       }
       // emit trampoline and bytecode
       denormalizeAsm(func, asmData);
-      prepDotZero(func);
-      print(fixDotZero(astToSrc(func)));
+      print(astToSrc(func));
     }
     print('// EMTERPRET_INFO ' + JSON.stringify([func[1], code, absoluteTargets]));
   }
