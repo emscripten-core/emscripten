@@ -7469,6 +7469,21 @@ function emterpretify(ast) {
   traverseGeneratedFunctions(ast, walkFunction);
 }
 
+// emits which functions are directly reachable from, except for some blacklist
+function findReachable(ast) {
+  var BLACKLIST = set(extraInfo.blacklist);
+  var reachable = {};
+  traverseGeneratedFunctions(ast, function(func) {
+    if (func[1] in BLACKLIST) return;
+    traverse(func, function(node, type) {
+      if (type === 'call' && node[1][0] === 'name') {
+        reachable[node[1][1]] = 1;
+      }
+    });
+  });
+  print('// REACHABLE ' + JSON.stringify(keys(reachable)));
+}
+
 // Last pass utilities
 
 // Change +5 to DOT$ZERO(5). We then textually change 5 to 5.0 (uglify's ast cannot differentiate between 5 and 5.0 directly)
@@ -7624,6 +7639,7 @@ var passes = {
   pointerMasking: pointerMasking,
   ensureLabelSet: ensureLabelSet,
   emterpretify: emterpretify,
+  findReachable: findReachable,
   asmLastOpts: asmLastOpts,
 
   // flags

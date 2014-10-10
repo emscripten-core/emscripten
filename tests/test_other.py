@@ -4138,7 +4138,7 @@ pass: error == ENOTDIR
 
 
   def test_emterpreter(self):
-    def do_emcc_test(source, args, output):
+    def do_emcc_test(source, args, output, emcc_args=[]):
       print
       print 'emcc', source[:40], '\n' in source
       self.clear()
@@ -4147,7 +4147,7 @@ pass: error == ENOTDIR
         source = 'src.cpp'
       else:
         source = path_from_root('tests', source)
-      Popen([PYTHON, EMCC, source, '-O2', '-s', 'EMTERPRETIFY=1', '-g2']).communicate()
+      Popen([PYTHON, EMCC, source, '-O2', '-s', 'EMTERPRETIFY=1', '-g2'] + emcc_args).communicate()
       self.assertContained(output, run_js('a.out.js', args=args))
       out = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE, args=args, stderr=PIPE, full_output=True)
       self.assertContained(output, out)
@@ -4156,10 +4156,10 @@ pass: error == ENOTDIR
       src = open('a.out.js').read()
       assert 'function emterpret' in src, 'emterpreter should exist'
       # and removing calls to the emterpreter break, so it was being used
-      out1 = run_js('a.out.js')
+      out1 = run_js('a.out.js', args=args)
       assert output in out1
       open('a.out.js', 'w').write(src.replace('function emterpret', 'function do_not_find_me'))
-      out2 = run_js('a.out.js', stderr=PIPE, assert_returncode=None)
+      out2 = run_js('a.out.js', args=args, stderr=PIPE, assert_returncode=None)
       assert output not in out2, out2
       assert out1 != out2
 
@@ -4207,6 +4207,9 @@ pass: error == ENOTDIR
     do_test('hello_world.c', [], 'hello, world!')
     do_test('hello_world_loop.cpp', [], 'hello, world!')
     do_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.')
+
+    # do not emterpret main, but still emterpret worker
+    do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-s', 'EMTERPRETIFY_BLACKLIST=["_main"]'])
 
     do_test(r'''
 #include<stdio.h>

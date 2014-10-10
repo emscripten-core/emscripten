@@ -576,11 +576,25 @@ emterpreted_funcs = set([func for func in asm.funcs if func not in BLACKLIST and
 
 tabled_funcs = asm.get_table_funcs()
 exported_funcs = [func.split(':')[0] for func in asm.exports]
-external_emterpreted_funcs = filter(lambda func: func in tabled_funcs or func in exported_funcs, emterpreted_funcs)
-#print >> sys.stderr, emterpreted_funcs, tabled_funcs, external_emterpreted_funcs
+
+temp = infile + '.tmp.js'
+
+# find emterpreted functions reachable by non-emterpreted ones, we will force a trampoline for them later
+
+shared.Building.js_optimizer(infile, ['findReachable'], extra_info={ 'blacklist': list(emterpreted_funcs) }, output_filename=temp, just_concat=True)
+asm = asm_module.AsmModule(temp)
+lines = asm.funcs_js.split('\n')
+
+reachable_funcs = set([])
+for i in range(len(lines)):
+  line = lines[i]
+  if line.startswith('// REACHABLE '):
+    curr = json.loads(line[len('// REACHABLE '):])
+    reachable_funcs = set(list(reachable_funcs) + curr)
+
+external_emterpreted_funcs = filter(lambda func: func in tabled_funcs or func in exported_funcs or func in reachable_funcs, emterpreted_funcs)
 
 # process functions, generating bytecode
-temp = infile + '.tmp.js'
 shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'emterpretedFuncs': list(emterpreted_funcs), 'externalEmterpretedFuncs': list(external_emterpreted_funcs), 'opcodes': OPCODES, 'ropcodes': ROPCODES }, output_filename=temp, just_concat=True)
 
 # load the module and modify it
