@@ -275,6 +275,27 @@ f.close()
   def test_emcc_nonfastcomp(self):
     nonfastcomp(self.test_emcc)
 
+  def test_emcc_cache_flag(self):
+    tempdirname = tempfile.mkdtemp(prefix='emscripten_test_emcache_', dir=TEMP_DIR)
+    try:
+      os.chdir(tempdirname)
+      c_file = os.path.join(tempdirname, 'test.c')
+      cache_dir_name = os.path.join(tempdirname, 'emscripten_cache')
+      assert os.path.exists(cache_dir_name) == False, 'The cache directory %s must not already exist' % cache_dir_name
+      open(c_file, 'w').write(r'''
+        #include <stdio.h>
+        int main() {
+          printf("hello, world!\n");
+          return 0;
+        }
+        ''')
+      Popen([PYTHON, EMCC, c_file, '--cache', cache_dir_name]).communicate()
+      assert os.path.exists(cache_dir_name), 'The cache directory %s must exist after the build' % cache_dir_name
+      assert os.path.exists(os.path.join(cache_dir_name, 'libc.bc')), 'The cache directory must contain a built libc'
+    finally:
+      os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
+      shutil.rmtree(tempdirname)
+
   def test_cmake(self):
     # Test all supported generators.
     if WINDOWS:
