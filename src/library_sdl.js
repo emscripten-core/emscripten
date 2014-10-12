@@ -1093,7 +1093,7 @@ var LibrarySDL = {
         audio.webAudioNode = SDL.audioContext['createBufferSource']();
         audio.webAudioNode['buffer'] = webAudio.decodedBuffer;
         audio.webAudioNode['loop'] = audio.loop;
-        audio.webAudioNode['onended'] = function() { audio.onended(); } // For <media> element compatibility, route the onended signal to the instance.
+        audio.webAudioNode['onended'] = function() { audio['onended'](); } // For <media> element compatibility, route the onended signal to the instance.
 
         audio.webAudioPannerNode = SDL.audioContext['createPanner']();
         audio.webAudioPannerNode['panningModel'] = 'equalpower';
