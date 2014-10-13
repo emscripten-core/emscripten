@@ -1234,7 +1234,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       if not settings['SWAPPABLE_ASM_MODULE']:
         receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables])
       else:
-        receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + s + ' = Module["' + s + '"] = function() { return Module["asm"]["' + s + '"] }' for s in exported_implemented_functions + function_tables])
+        receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + s + ' = Module["' + s + '"] = function() { return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions + function_tables])
 
       # finalize
 
