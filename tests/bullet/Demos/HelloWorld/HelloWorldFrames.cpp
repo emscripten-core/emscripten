@@ -84,19 +84,7 @@ int main(int argc, char** argv)
   for (int i = 0; i < 20; i++) addBody();
 
   EM_ASM({
-    // try to run a max frame rate
-    var i = 0;
-    var lastTime = startTime;
-    var interval = setInterval(function() {
-      var curr = Date.now();
-      var fps = Math.round(1000/(curr - lastTime));
-      lastTime = curr;
-      console.log('frame ' + [i, fps, curr - startTime]);
-      //for (var j = 0; j < 10; j++) Module._addBody();
-      Module._simulate();
-      if (i === 30) clearInterval(interval);
-      i++;
-    }, 0);
+    startSimulation();
   });
 
   emscripten_exit_with_live_runtime();
