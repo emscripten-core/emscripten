@@ -6,6 +6,8 @@ By default it adds a ';' to end the
   var asm = ...
 
 statement. You can add a third param to customize that. If the third param is 'swap-in', it will emit code to swap this asm module in, instead of the default one.
+
+XXX this probably doesn't work with closure compiler advanced yet XXX
 '''
 
 import os, sys
