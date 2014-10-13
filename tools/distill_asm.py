@@ -17,7 +17,7 @@ infile = sys.argv[1]
 outfile = sys.argv[2]
 extra = sys.argv[3] if len(sys.argv) >= 4 else ';'
 
-if extra === 'swap-in':
+if extra == 'swap-in':
   # we do |var asm = | just like the original codebase, so that gets overridden anyhow (assuming global scripts).
   extra = r''' (Module.asmGlobalArg, Module.asmLibraryArg, Module['buffer']);
  // special fixups
