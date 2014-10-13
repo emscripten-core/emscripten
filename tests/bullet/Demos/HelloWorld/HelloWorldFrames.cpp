@@ -41,7 +41,7 @@ void EMSCRIPTEN_KEEPALIVE simulate() {
   if (i % 10 == 0) std::cout << "frame " << i << "starting" << std::endl;
 
   benchmarkDemo3.initPhysics();
-	for (int i = 0; i < 1; i++) {
+	for (int i = 0; i < 15; i++) {
 		benchmarkDemo3.clientMoveAndDisplay();
   }
   benchmarkDemo3.exitPhysics();

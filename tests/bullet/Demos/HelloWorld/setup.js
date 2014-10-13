@@ -9,7 +9,7 @@ function startSimulation() {
     //for (var j = 0; j < 10; j++) Module._addBody();
     if (i === 30) clearInterval(interval);
     i++;
-  }, 0);
+  }, 1);
 }
 
 var startTime = Date.now();

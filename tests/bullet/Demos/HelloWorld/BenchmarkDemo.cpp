@@ -924,7 +924,7 @@ void	BenchmarkDemo::createTest3()
 {
 	setCameraDistance(btScalar(50.));
 
-	int size = 16;
+	int size = 6;
 
 	float sizeX = 1.f;
 	float sizeY = 1.f;
