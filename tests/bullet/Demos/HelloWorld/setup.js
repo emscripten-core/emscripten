@@ -4,7 +4,7 @@ function startSimulation() {
     var pre = Date.now();
     Module._simulate();
     var delta = Date.now() - pre;
-    var fps = Math.round(1000/delta);
+    var fps = (1000/delta).toFixed(2);
     console.log('frame ' + [i, fps, pre - startTime].join(', '));
     //for (var j = 0; j < 10; j++) Module._addBody();
     if (i === 30) clearInterval(interval);
