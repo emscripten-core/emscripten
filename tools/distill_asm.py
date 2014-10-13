@@ -21,7 +21,7 @@ if extra == 'swap-in':
   # we do |var asm = | just like the original codebase, so that gets overridden anyhow (assuming global scripts).
   extra = r''' (Module.asmGlobalArg, Module.asmLibraryArg, Module['buffer']);
  // special fixups
- asm.stackRestore(Module['asm'].stackSave());
+ asm.stackRestore(Module['asm'].stackSave()); // if this fails, make sure the original was built to be swappable (-s SWAPPABLE_ASM_MODULE=1)
  // Finish swap
  Module['asm'] = asm;
  if (Module['onAsmSwap']) Module['onAsmSwap']();
