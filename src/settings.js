@@ -535,6 +535,9 @@ var FINALIZE_ASM_JS = 1; // If 1, will finalize the final emitted code, includin
                          // that prevent later js optimizer passes from running, like
                          // converting +5 into 5.0 (the js optimizer sees 5.0 as just 5).
 
+var SWAPPABLE_ASM_MODULE = 0; // If 1, then all exports from the asm.js module will be accessed
+                              // indirectly, which allow the asm module to be swapped later.
+
 var PGO = 0; // Enables profile-guided optimization in the form of runtime checks for
              // which functions are actually called. Emits a list during shutdown that you
              // can pass to DEAD_FUNCTIONS (you can also emit the list manually by

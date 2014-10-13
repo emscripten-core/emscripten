@@ -1231,7 +1231,10 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 };
 ''' for s in exported_implemented_functions if s not in ['_malloc', '_free', '_memcpy', '_memset']])
 
-      receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables])
+      if not settings['SWAPPABLE_ASM_MODULE']:
+        receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables])
+      else:
+        receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + s + ' = Module["' + s + '"] = function() { return Module["asm"]["' + s + '"] }' for s in exported_implemented_functions + function_tables])
 
       # finalize
 

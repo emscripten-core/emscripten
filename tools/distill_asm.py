@@ -19,10 +19,12 @@ extra = sys.argv[3] if len(sys.argv) >= 4 else ';'
 
 if extra === 'swap-in':
   # we do |var asm = | just like the original codebase, so that gets overridden anyhow (assuming global scripts).
-  # pass in the same arguments, fire the callback if requested
-  # TODO: fix up the asm exports
   extra = r'''
  (Module.asmGlobalArg, Module.asmLibraryArg, Module['buffer']);
+ // special fixups
+ asm.stackRestore(Module['asm'].stackSave());
+ // Finish swap
+ Module['asm'] = asm;
  if (Module['onAsmSwap']) Module['onAsmSwap']();
 '''
 
