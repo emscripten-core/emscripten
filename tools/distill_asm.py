@@ -19,8 +19,7 @@ extra = sys.argv[3] if len(sys.argv) >= 4 else ';'
 
 if extra === 'swap-in':
   # we do |var asm = | just like the original codebase, so that gets overridden anyhow (assuming global scripts).
-  extra = r'''
- (Module.asmGlobalArg, Module.asmLibraryArg, Module['buffer']);
+  extra = r''' (Module.asmGlobalArg, Module.asmLibraryArg, Module['buffer']);
  // special fixups
  asm.stackRestore(Module['asm'].stackSave());
  // Finish swap
