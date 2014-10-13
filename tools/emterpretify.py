@@ -563,8 +563,7 @@ if len(sys.argv) >= 5:
 
 #print 'emterpretifying %s to %s' % (infile, outfile)
 
-if shared.DEBUG:
-  shutil.copyfile(infile, infile + '.save.js')
+shutil.copyfile(infile, infile + '.orig.js')
 
 # final global functions
 
