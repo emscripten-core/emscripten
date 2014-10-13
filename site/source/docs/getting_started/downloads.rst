@@ -136,6 +136,7 @@ Linux
 		# Install cmake
 		sudo apt-get install cmake
 		
+.. note:: You will probably need CMake version 2.8.8 or later.
 		
 - *Python*, *node.js* or *Java* are not provided by *emsdk*. The user is expected to install these beforehand with the *system package manager*:
 
