@@ -1239,11 +1239,16 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
       funcs_js = ['''
   %s
+  Module%s = %s;
+  Module%s = %s;
   // EMSCRIPTEN_START_ASM
   var asm = (function(global, env, buffer) {
     %s
     %s
-  ''' % (asm_setup, "'use asm';" if not metadata.get('hasInlineJS') and not settings['SIDE_MODULE'] and settings['ASM_JS'] == 1 else "'almost asm';", '''
+  ''' % (asm_setup,
+         access_quote('asmGlobalArg'), the_global,
+         access_quote('asmLibraryArg'), sending,
+         "'use asm';" if not metadata.get('hasInlineJS') and not settings['SIDE_MODULE'] and settings['ASM_JS'] == 1 else "'almost asm';", '''
     var HEAP8 = new global%s(buffer);
     var HEAP16 = new global%s(buffer);
     var HEAP32 = new global%s(buffer);
@@ -1369,7 +1374,10 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   // EMSCRIPTEN_END_ASM
   (%s, %s, buffer);
   %s;
-  ''' % (pre_tables + '\n'.join(function_tables_impls) + '\n' + function_tables_defs.replace('\n', '\n  '), exports, the_global, sending, receiving)]
+  ''' % (pre_tables + '\n'.join(function_tables_impls) + '\n' + function_tables_defs.replace('\n', '\n  '), exports,
+         'Module' + access_quote('asmGlobalArg'),
+         'Module' + access_quote('asmLibraryArg'),
+         receiving)]
 
       if not settings.get('SIDE_MODULE'):
         funcs_js.append('''
