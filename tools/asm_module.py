@@ -19,7 +19,10 @@ class AsmModule():
     self.asm_js = self.js[self.start_asm:self.end_asm]
 
     # heap initializer
-    self.staticbump = int(re.search(shared.JS.memory_staticbump_pattern, self.pre_js).group(1))
+    try:
+      self.staticbump = int(re.search(shared.JS.memory_staticbump_pattern, self.pre_js).group(1))
+    except:
+      self.staticbump = 0
     if self.staticbump:
       try:
         self.mem_init_js = re.search(shared.JS.memory_initializer_pattern, self.pre_js).group(0)
