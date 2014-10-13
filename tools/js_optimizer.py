@@ -315,12 +315,12 @@ EMSCRIPTEN_FUNCS();
       subprocess.Popen(js_engine + [JS_OPTIMIZER, cle, 'noPrintMetadata'] + (['minifyWhitespace'] if 'minifyWhitespace' in passes else []), stdout=open(cld, 'w')).communicate()
     temp_files.note(cld)
     coutput = open(cld).read()
-    coutput = coutput.replace('wakaUnknownBefore();', '')
+    coutput = coutput.replace('wakaUnknownBefore();', start_asm)
     after = 'wakaUnknownAfter'
     start = coutput.find(after)
     end = coutput.find(')', start)
-    pre = coutput[:start] + '(function(global,env,buffer) {\n' + start_asm + pre_2[pre_2.find('{')+1:]
-    post = post_1[:post_1.rfind('}')] + '\n' + end_asm + '\n})' + coutput[end+1:]
+    pre = coutput[:start] + '(function(global,env,buffer) {\n' + pre_2[pre_2.find('{')+1:]
+    post = post_1 + end_asm + coutput[end+1:]
 
   filename += '.jo.js'
   f = open(filename, 'w')
