@@ -1064,7 +1064,6 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
           fundamentals += ['SIMD']
       if settings['ALLOW_MEMORY_GROWTH']: fundamentals.append('byteLength')
       math_envs = ['Math.min'] # TODO: move min to maths
-      asm_setup += '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in math_envs])
 
       if settings['PRECISE_F32']: maths += ['Math.fround']
 
