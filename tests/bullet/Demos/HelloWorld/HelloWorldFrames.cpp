@@ -38,7 +38,7 @@ extern "C" {
 
 void EMSCRIPTEN_KEEPALIVE simulate() {
   static int i = 0;
-  if (i % 10 == 0) std::cout << "frame " << i << "starting" << std::endl;
+  if (i % 10 == 0) std::cout << "frame " << i << " starting" << std::endl;
 
   benchmarkDemo3.initPhysics();
 	for (int i = 0; i < 15; i++) {
@@ -46,7 +46,7 @@ void EMSCRIPTEN_KEEPALIVE simulate() {
   }
   benchmarkDemo3.exitPhysics();
 
-  if (i % 10 == 0) std::cout << "frame " << i << "complete" << std::endl;
+  if (i % 10 == 0) std::cout << "frame " << i << " complete" << std::endl;
   i++;
 }
 

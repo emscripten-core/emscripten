@@ -1,0 +1,19 @@
+<script>
+var Module = {
+  onAsmSwap: function() { console.log('asm swapped') }
+};
+
+function getSecond() {
+  // load second module to be swapped in
+  var second = document.createElement('script');
+  second.onload = function() { console.log('loaded second') };
+  second.src = 'frames.emterp.js.second.js';
+  document.body.appendChild(second);
+  console.log('second appended');
+}
+</script>
+
+<script src="setup.js"></script>
+
+<script async src="frames.emterp.js" onload="getSecond()"></script>
+
