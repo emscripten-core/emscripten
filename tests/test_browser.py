@@ -2054,7 +2054,7 @@ Module['_main'] = function() {
   };
 };
 ''')
-    for opts in [['-O2', '-g2']]: #[[], ['-O1'], ['-O2']]:
+    for opts in [[], ['-O1'], ['-O2', '-profiling'], ['-O2']]:
       print opts
       open('second.cpp', 'w').write(self.with_report_result(open(path_from_root('tests', 'asm_swap2.cpp')).read()))
       Popen([PYTHON, EMCC, 'second.cpp'] + opts).communicate()
