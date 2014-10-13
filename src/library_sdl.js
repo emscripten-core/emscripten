@@ -1703,13 +1703,24 @@ var LibrarySDL = {
     return SDL.makeSurface(width, height, 0, false, 'CreateRGBSurfaceFrom', rmask, gmask, bmask, amask);
   },
 
-  SDL_DisplayFormatAlpha: function(surf) {
+  SDL_ConvertSurface: function(surf, format, flags) {
+    if  (format) {
+      SDL.checkPixelFormat(format);
+    }
+
     var oldData = SDL.surfaces[surf];
     var ret = SDL.makeSurface(oldData.width, oldData.height, oldData.flags, false, 'copy:' + oldData.source);
     var newData = SDL.surfaces[ret];
-    //newData.ctx.putImageData(oldData.ctx.getImageData(0, 0, oldData.width, oldData.height), 0, 0);
+    
+    newData.ctx.globalCompositeOperation = "copy";
     newData.ctx.drawImage(oldData.canvas, 0, 0);
+    newData.ctx.globalCompositeOperation = oldData.ctx.globalCompositeOperation;
     return ret;
+  },
+
+  SDL_DisplayFormatAlpha__deps: ['SDL_ConvertSurface'],
+  SDL_DisplayFormatAlpha: function(surf) {
+    return SDL.SDL_ConvertSurface(surf);
   },
 
   SDL_FreeSurface: function(surf) {
@@ -1791,7 +1802,12 @@ var LibrarySDL = {
   },
 
   SDL_SetAlpha: function(surf, flag, alpha) {
-    SDL.surfaces[surf].alpha = alpha;
+    var surfData = SDL.surfaces[surf];
+    surfData.alpha = alpha;
+
+    if (!(flag & 0x00010000)) { // !SDL_SRCALPHA
+      surfData.alpha = 255;
+    }
   },
 
   SDL_SetColorKey: function(surf, flag, key) {
