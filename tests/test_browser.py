@@ -2026,3 +2026,39 @@ open(filename, 'w').write(replaced)
 
   def test_glfw3(self):
     self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3'], expected='1')
+
+  def test_asm_swapping(self):
+    self.clear()
+    open('run.js', 'w').write(r'''
+Module['_main'] = function() {
+  // test proper initial result
+  var result = Module._func();
+  console.log('first: ' + result);
+  if (result !== 10) throw 'bad first result';
+
+  // load second module to be swapped in
+  var second = document.createElement('script');
+  second.onload = function() { console.log('loaded second') };
+  second.src = 'second.js';
+  document.body.appendChild(second);
+  console.log('second appended');
+
+  Module['onAsmSwap'] = function() {
+    console.log('swapped');
+    // verify swapped-in result
+    var result = Module._func();
+    console.log('second: ' + result);
+    if (result !== 22) throw 'bad second result';
+    Module._report(999);
+    console.log('reported');
+  };
+};
+''')
+    for opts in [['-O2', '-g2']]: #[[], ['-O1'], ['-O2']]:
+      print opts
+      open('second.cpp', 'w').write(self.with_report_result(open(path_from_root('tests', 'asm_swap2.cpp')).read()))
+      Popen([PYTHON, EMCC, 'second.cpp'] + opts).communicate()
+      Popen([PYTHON, path_from_root('tools', 'distill_asm.py'), 'a.out.js', 'second.js', 'swap-in']).communicate()
+      assert os.path.exists('second.js')
+      self.btest(path_from_root('tests', 'asm_swap.cpp'), args=['-s', 'SWAPPABLE_ASM_MODULE=1', '-s', 'NO_EXIT_RUNTIME=1', '--pre-js', 'run.js'] + opts, expected='999')
+
