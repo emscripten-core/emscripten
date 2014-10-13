@@ -999,7 +999,7 @@ function enlargeMemory() {
   assert(TOTAL_MEMORY <= Math.pow(2, 30)); // 2^30==1GB is a practical maximum - 2^31 is already close to possible negative numbers etc.
 #if USE_TYPED_ARRAYS == 2
   var oldHEAP8 = HEAP8;
-  var buffer = new ArrayBuffer(TOTAL_MEMORY);
+  var buffer = Module['buffer'] = new ArrayBuffer(TOTAL_MEMORY);
   Module['HEAP8'] = HEAP8 = new Int8Array(buffer);
   Module['HEAP16'] = HEAP16 = new Int16Array(buffer);
   Module['HEAP32'] = HEAP32 = new Int32Array(buffer);
@@ -1092,6 +1092,7 @@ Module['FHEAP'] = FHEAP;
 #endif
 #endif
 #if USE_TYPED_ARRAYS == 2
+Module['buffer'] = buffer;
 Module['HEAP8'] = HEAP8;
 Module['HEAP16'] = HEAP16;
 Module['HEAP32'] = HEAP32;
