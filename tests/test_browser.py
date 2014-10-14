@@ -2060,5 +2060,9 @@ Module['_main'] = function() {
       Popen([PYTHON, EMCC, 'second.cpp'] + opts).communicate()
       Popen([PYTHON, path_from_root('tools', 'distill_asm.py'), 'a.out.js', 'second.js', 'swap-in']).communicate()
       assert os.path.exists('second.js')
+
+      out = run_js('second.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True, assert_returncode=None)
+      self.validate_asmjs(out)
+
       self.btest(path_from_root('tests', 'asm_swap.cpp'), args=['-s', 'SWAPPABLE_ASM_MODULE=1', '-s', 'NO_EXIT_RUNTIME=1', '--pre-js', 'run.js'] + opts, expected='999')
 

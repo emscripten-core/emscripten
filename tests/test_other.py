@@ -4303,3 +4303,10 @@ function _main() {
     do_log_test(path_from_root('tests', 'primes.cpp'), 86, 'main')
     do_log_test(path_from_root('tests', 'fannkuch.cpp'), 234, 'fannkuch_worker')
 
+  def test_emterpreter_swap_orig(self):
+    Popen([PYTHON, EMCC, path_from_root('tests', 'fasta.cpp'), '-s', 'EMTERPRETIFY=1', '-s', 'SWAPPABLE_ASM_MODULE=1', '-O2']).communicate()
+    Popen([PYTHON, path_from_root('tools', 'distill_asm.py'), 'a.out.js.orig.js', 'second.js', 'swap-in']).communicate()
+    assert os.path.exists('second.js')
+    out = run_js('second.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True, assert_returncode=None)
+    self.validate_asmjs(out)
+

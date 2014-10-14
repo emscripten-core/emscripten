@@ -561,8 +561,7 @@ force_memfile = sys.argv[3] if len(sys.argv) >= 4 else None
 if len(sys.argv) >= 5:
   BLACKLIST = set(list(BLACKLIST) + json.loads(sys.argv[4]))
 
-#print 'emterpretifying %s to %s' % (infile, outfile)
-
+shared.logging.debug('saving original (non-emterpreted) code to ' + infile + '.orig.js')
 shutil.copyfile(infile, infile + '.orig.js')
 
 # final global functions

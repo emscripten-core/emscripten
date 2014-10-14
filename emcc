@@ -1498,10 +1498,23 @@ try:
       shared.try_delete(js_target)
 
     # minify (if requested) after emterpreter processing, and finalize output
+    logging.debug('finalizing emterpreted code')
     shared.Settings.FINALIZE_ASM_JS = 1
     do_minify()
     js_optimizer_queue += ['last']
     flush_js_optimizer_queue()
+
+    # finalize the original as well, if we will be swapping it in (TODO: add specific option for this)
+    if shared.Settings.SWAPPABLE_ASM_MODULE:
+      real = final
+      original = js_target + '.orig.js' # the emterpretify tool saves the original here
+      final = original
+      logging.debug('finalizing original (non-emterpreted) code at ' + final)
+      do_minify()
+      js_optimizer_queue += ['last']
+      flush_js_optimizer_queue()
+      safe_move(final, original)
+      final = real
 
   # Remove some trivial whitespace # TODO: do not run when compress has already been done on all parts of the code
   #src = open(final).read()
