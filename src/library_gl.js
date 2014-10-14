@@ -1833,15 +1833,15 @@ var LibraryGL = {
   },
 
   glDeleteShader__sig: 'vi',
-  glDeleteShader: function(shader) {
-    if (!shader) return;
-    var shader = GL.shaders[shader];
+  glDeleteShader: function(id) {
+    if (!id) return;
+    var shader = GL.shaders[id];
     if (!shader) { // glDeleteShader actually signals an error when deleting a nonexisting object, unlike some other GL delete functions.
       GL.recordError(0x0501 /* GL_INVALID_VALUE */);
       return;
     }
-    GLctx.deleteShader(GL.shaders[shader]);
-    GL.shaders[shader] = null;
+    GLctx.deleteShader(shader);
+    GL.shaders[id] = null;
   },
 
   glGetAttachedShaders__sig: 'viiii',
@@ -1994,17 +1994,17 @@ var LibraryGL = {
   },
 
   glDeleteProgram__sig: 'vi',
-  glDeleteProgram: function(program) {
-    if (!program) return;
-    var program = GL.programs[program];
+  glDeleteProgram: function(id) {
+    if (!id) return;
+    var program = GL.programs[id];
     if (!program) { // glDeleteProgram actually signals an error when deleting a nonexisting object, unlike some other GL delete functions.
       GL.recordError(0x0501 /* GL_INVALID_VALUE */);
       return;
     }
     GLctx.deleteProgram(program);
     program.name = 0;
-    GL.programs[program] = null;
-    GL.programInfos[program] = null;
+    GL.programs[id] = null;
+    GL.programInfos[id] = null;
   },
 
   glAttachShader__sig: 'vii',
