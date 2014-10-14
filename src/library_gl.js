@@ -1049,7 +1049,7 @@ var LibraryGL = {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('textures', 'i*4', 'i32') }}};
       var texture = GL.textures[id];
-      if (!texture) continue;
+      if (!texture) continue; // GL spec: "glDeleteTextures silently ignores 0s and names that do not correspond to existing textures".
       GLctx.deleteTexture(texture);
       texture.name = 0;
       GL.textures[id] = null;
@@ -1346,6 +1346,7 @@ var LibraryGL = {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('renderbuffers', 'i*4', 'i32') }}};
       var renderbuffer = GL.renderbuffers[id];
+      if (!renderbuffer) continue; // GL spec: "glDeleteRenderbuffers silently ignores 0s and names that do not correspond to existing renderbuffer objects".
       GLctx.deleteRenderbuffer(renderbuffer);
       renderbuffer.name = 0;
       GL.renderbuffers[id] = null;
@@ -1833,6 +1834,12 @@ var LibraryGL = {
 
   glDeleteShader__sig: 'vi',
   glDeleteShader: function(shader) {
+    if (!shader) return;
+    var shader = GL.shaders[shader];
+    if (!shader) { // glDeleteShader actually signals an error when deleting a nonexisting object, unlike some other GL delete functions.
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
     GLctx.deleteShader(GL.shaders[shader]);
     GL.shaders[shader] = null;
   },
@@ -1988,7 +1995,12 @@ var LibraryGL = {
 
   glDeleteProgram__sig: 'vi',
   glDeleteProgram: function(program) {
+    if (!program) return;
     var program = GL.programs[program];
+    if (!program) { // glDeleteProgram actually signals an error when deleting a nonexisting object, unlike some other GL delete functions.
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
     GLctx.deleteProgram(program);
     program.name = 0;
     GL.programs[program] = null;
@@ -2105,6 +2117,7 @@ var LibraryGL = {
     for (var i = 0; i < n; ++i) {
       var id = {{{ makeGetValue('framebuffers', 'i*4', 'i32') }}};
       var framebuffer = GL.framebuffers[id];
+      if (!framebuffer) continue; // GL spec: "glDeleteFramebuffers silently ignores 0s and names that do not correspond to existing framebuffer objects".
       GLctx.deleteFramebuffer(framebuffer);
       framebuffer.name = 0;
       GL.framebuffers[id] = null;
