@@ -15,8 +15,8 @@
 News
 ====
 
--  `Massive <http://kripken.github.io/Massive/>`_ is a new asm.js benchmark comprised of Emscripten-compiled C/C++ codebases. Please test and give `feedback! <https://github.com/kripken/Massive>`_
--  `Unity <https://unity3d.com/>`_ blogs about WebGL support and launches `two public demos <http://blogs.unity3d.com/2014/04/29/on-the-future-of-web-publishing-in-unity/>`_ (April 29, 2014). See the `Mozilla Blog <https://blog.mozilla.org/blog/2014/03/18/mozilla-and-unity-deliver-award-winning-game-engine-to-the-web/>`_ for more information.
+-  **Humble Bundle** launches the `Humble Mozilla Bundle <https://www.humblebundle.com/?asmjs_bundle&utm_medium=Link&utm_campaign=Humble%20Mozilla%20Bundle>`_, a bunch of games ported to the web using Emscripten, including Super Hexagon, Aaaaaa for the awesome!, Zenbound 2, and FTL. Some technical background on one of the ports, using Unity, can be seen `here <https://hacks.mozilla.org/2014/10/unity-games-in-webgl-owlchemy-labs-conversion-of-aaaaa-to-asm-js/>`_.
+-  **Unity** launches a `benchmark <http://blogs.unity3d.com/2014/10/07/benchmarking-unity-performance-in-webgl/>`_ for their WebGL port. This is an excellent way to measure overall performance of a CPU and GPU intensive codebase ported by Emscripten. Try the benchmark `here <http://beta.unity3d.com/jonas/WebGLBenchmark/>`_
 
 
 
