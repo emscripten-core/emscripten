@@ -558,8 +558,9 @@ function emterpret%s(pc) {
 infile = sys.argv[1]
 outfile = sys.argv[2]
 force_memfile = sys.argv[3] if len(sys.argv) >= 4 else None
-if len(sys.argv) >= 5:
-  BLACKLIST = set(list(BLACKLIST) + json.loads(sys.argv[4]))
+extra_blacklist = json.loads(sys.argv[4]) if len(sys.argv) >= 5 else []
+
+BLACKLIST = set(list(BLACKLIST) + extra_blacklist)
 
 shared.logging.debug('saving original (non-emterpreted) code to ' + infile + '.orig.js')
 shutil.copyfile(infile, infile + '.orig.js')
@@ -567,6 +568,11 @@ shutil.copyfile(infile, infile + '.orig.js')
 # final global functions
 
 asm = asm_module.AsmModule(infile)
+
+# sanity check on blacklist
+
+for func in extra_blacklist:
+  assert func in asm.funcs, 'requested blacklist of %s but it does not exist' % func
 
 # decide which functions will be emterpreted, and find which are externally reachable (from outside other emterpreted code; those will need trampolines)
 
