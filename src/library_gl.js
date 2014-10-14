@@ -1323,6 +1323,42 @@ var LibraryGL = {
   },
 #endif
 
+#if USE_WEBGL2
+  glInvalidateFramebuffer__sig: 'viii',
+  glInvalidateFramebuffer: function(target, numAttachments, attachments) {
+    var list = [];
+    for (var i = 0; i < numAttachments; i++)
+      list.push({{{ makeGetValue('attachments', 'i*4', 'i32') }}});
+
+    GLctx.invalidateFramebuffer(target, list);
+  },
+
+  glInvalidateFramebuffer__sig: 'viiiiiii',
+  glInvalidateFramebuffer: function(target, numAttachments, attachments, x, y, width, height) {
+    var list = [];
+    for (var i = 0; i < numAttachments; i++)
+      list.push({{{ makeGetValue('attachments', 'i*4', 'i32') }}});
+
+    GLctx.invalidateFramebuffer(target, list, x, y, width, height);
+  },
+
+  glTexStorage2D__sig: 'viiiii',
+  glTexStorage2D: function(target, levels, internalformat, width, height) {
+    GLctx.texStorage2D(target, levels, internalformat, width, height);
+  },
+
+  glTexStorage3D__sig: 'viiiiii',
+  glTexStorage3D: function(target, levels, internalformat, width, height, depth) {
+    GLctx.texStorage3D(target, levels, internalformat, width, height, depth);
+  },
+
+  glTexSubImage3D__sig: 'viiiiiiiiiii',
+  glTexSubImage3D: function(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, data) {
+    GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type,
+                        HEAPU8.subarray(data));
+  },
+#endif
+
   glIsBuffer__sig: 'ii',
   glIsBuffer: function(buffer) {
     var b = GL.buffers[buffer];
