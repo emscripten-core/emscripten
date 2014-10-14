@@ -1333,13 +1333,13 @@ var LibraryGL = {
     GLctx.invalidateFramebuffer(target, list);
   },
 
-  glInvalidateFramebuffer__sig: 'viiiiiii',
-  glInvalidateFramebuffer: function(target, numAttachments, attachments, x, y, width, height) {
+  glInvalidateSubFramebuffer__sig: 'viiiiiii',
+  glInvalidateSubFramebuffer: function(target, numAttachments, attachments, x, y, width, height) {
     var list = [];
     for (var i = 0; i < numAttachments; i++)
       list.push({{{ makeGetValue('attachments', 'i*4', 'i32') }}});
 
-    GLctx.invalidateFramebuffer(target, list, x, y, width, height);
+    GLctx.invalidateSubFramebuffer(target, list, x, y, width, height);
   },
 
   glTexStorage2D__sig: 'viiiii',
