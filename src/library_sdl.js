@@ -407,21 +407,18 @@ var LibrarySDL = {
       var endY    = (rH || (fullHeight - startY)) + startY;
       
       var buffer  = surfData.buffer;
-      var data    = surfData.image.data;
-      var colors  = surfData.colors;
+
+      if (!surfData.image.data32) {
+        surfData.image.data32 = new Uint32Array(surfData.image.data.buffer);
+      }
+      var data32   = surfData.image.data32;
+
+      var colors32 = surfData.colors32;
 
       for (var y = startY; y < endY; ++y) {
-        var indexBase = y * fullWidth;
-        var colorBase = indexBase * 4;
+        var base = y * fullWidth;
         for (var x = startX; x < endX; ++x) {
-          // HWPALETTE have only 256 colors (not rgba)
-          var index = {{{ makeGetValue('buffer + indexBase + x', '0', 'i8', null, true) }}} * 3;
-          var colorOffset = colorBase + x * 4;
-
-          data[colorOffset   ] = colors[index   ];
-          data[colorOffset +1] = colors[index +1];
-          data[colorOffset +2] = colors[index +2];
-          data[colorOffset +3] = 255;
+          data32[base + x] = colors32[{{{ makeGetValue('buffer + base + x', '0', 'i8', null, true) }}}];
         }
       }
     },
@@ -1570,12 +1567,12 @@ var LibrarySDL = {
       var height = Module['canvas'].height;
       var s = surfData.buffer;
       var data = surfData.image.data;
-      var colors = surfData.colors;
+      var colors = surfData.colors; // TODO: optimize using colors32
       for (var y = 0; y < height; y++) {
         var base = y*width*4;
         for (var x = 0; x < width; x++) {
           // See comment above about signs
-          var val = {{{ makeGetValue('s++', '0', 'i8', null, true) }}} * 3;
+          var val = {{{ makeGetValue('s++', '0', 'i8', null, true) }}} * 4;
           var start = base + x*4;
           data[start]   = colors[val];
           data[start+1] = colors[val+1];
@@ -1746,8 +1743,7 @@ var LibrarySDL = {
       //in SDL_HWPALETTE color is index (0..255)
       //so we should translate 1 byte value to
       //32 bit canvas
-      var index = color * 3;
-      color = SDL.translateRGBAToColor(surfData.colors[index], surfData.colors[index +1], surfData.colors[index +2], 255);
+      color = surfData.colors32[color];
     }
 
     var r = rect ? SDL.loadRect(rect) : { x: 0, y: 0, w: surfData.width, h: surfData.height };
@@ -1884,14 +1880,17 @@ var LibrarySDL = {
     // often wants to change portion 
     // of palette not all palette.
     if (!surfData.colors) {
-      surfData.colors = new Uint8Array(256 * 3); //256 RGB colors
+      var buffer = new ArrayBuffer(256 * 4); // RGBA, A is unused, but faster this way
+      surfData.colors = new Uint8Array(buffer);
+      surfData.colors32 = new Uint32Array(buffer);
     } 
 
     for (var i = 0; i < nColors; ++i) {
-      var index = (firstColor + i) * 3;
+      var index = (firstColor + i) * 4;
       surfData.colors[index] = {{{ makeGetValue('colors', 'i*4', 'i8', null, true) }}};
       surfData.colors[index + 1] = {{{ makeGetValue('colors', 'i*4 + 1', 'i8', null, true) }}};
       surfData.colors[index + 2] = {{{ makeGetValue('colors', 'i*4 + 2', 'i8', null, true) }}};
+      surfData.colors[index + 3] = 255; // opaque
     }
 
     return 1;
