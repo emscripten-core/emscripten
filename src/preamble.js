@@ -1003,9 +1003,18 @@ function enlargeMemory() {
 #endif
 
   assert(TOTAL_MEMORY <= Math.pow(2, 30)); // 2^30==1GB is a practical maximum - 2^31 is already close to possible negative numbers etc.
+
+#if ASSERTIONS
+  var start = Date.now();
+#endif
+
 #if USE_TYPED_ARRAYS == 2
-  var oldHEAP8 = HEAP8;
-  var buffer = new ArrayBuffer(TOTAL_MEMORY);
+  if (ArrayBuffer.transfer) {
+    buffer = ArrayBuffer.transfer(buffer, TOTAL_MEMORY);
+  } else {
+    var oldHEAP8 = HEAP8;
+    buffer = new ArrayBuffer(TOTAL_MEMORY);
+  }
   Module['HEAP8'] = HEAP8 = new Int8Array(buffer);
   Module['HEAP16'] = HEAP16 = new Int16Array(buffer);
   Module['HEAP32'] = HEAP32 = new Int32Array(buffer);
@@ -1014,7 +1023,9 @@ function enlargeMemory() {
   Module['HEAPU32'] = HEAPU32 = new Uint32Array(buffer);
   Module['HEAPF32'] = HEAPF32 = new Float32Array(buffer);
   Module['HEAPF64'] = HEAPF64 = new Float64Array(buffer);
-  HEAP8.set(oldHEAP8);
+  if (!ArrayBuffer.transfer) {
+    HEAP8.set(oldHEAP8);
+  }
 #else
   abort('cannot enlarge memory arrays in non-ta2 modes');
 #endif
@@ -1022,6 +1033,11 @@ function enlargeMemory() {
   var success = _emscripten_replace_memory(buffer);
   assert(success);
 #endif
+
+#if ASSERTIONS
+  Module.printErr('enlarged memory arrays from ' + OLD_TOTAL_MEMORY + ' to ' + TOTAL_MEMORY + ', took ' + (Date.now() - start) + ' ms (has ArrayBuffer.transfer? ' + (!!ArrayBuffer.transfer));
+#endif
+
 #endif
 }
 #endif
