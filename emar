@@ -14,7 +14,16 @@ DEBUG = os.environ.get('EMCC_DEBUG')
 if DEBUG == "0":
    DEBUG = None
 
-newargs = [shared.LLVM_AR] + sys.argv[1:]
+newargs = [shared.LLVM_AR]
+
+skip = False
+for arg in sys.argv[1:]:
+  if not skip and arg != '--em-config':
+    newargs += [arg]
+  elif arg == '--em-config':
+    skip = True
+  elif skip:
+    skip = False
 
 if DEBUG:
   print >> sys.stderr, 'emar:', sys.argv, '  ==>  ', newargs
