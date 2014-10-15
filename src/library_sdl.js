@@ -421,7 +421,7 @@ var LibrarySDL = {
           data[colorOffset   ] = colors[index   ];
           data[colorOffset +1] = colors[index +1];
           data[colorOffset +2] = colors[index +2];
-          //unused: data[colorOffset +3] = color[index +3];
+          data[colorOffset +3] = 255;
         }
       }
     },
