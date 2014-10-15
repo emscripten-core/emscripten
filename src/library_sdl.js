@@ -15,7 +15,16 @@ var LibrarySDL = {
     defaults: {
       width: 320,
       height: 200,
-      copyOnLock: true
+      // If true, SDL_LockSurface will copy the contents of each surface back to the Emscripten HEAP so that C code can access it. If false,
+      // the surface contents are captured only back to JS code.
+      copyOnLock: true,
+      // If true, SDL_LockSurface will discard the contents of each surface when SDL_LockSurface() is called. This greatly improves performance 
+      // of SDL_LockSurface(). If discardOnLock is true, copyOnLock is ignored.
+      discardOnLock: false,
+      // If true, emulate compatibility with desktop SDL by ignoring alpha on the screen frontbuffer canvas. Setting this to false will improve
+      // performance considerably and enables alpha-blending on the frontbuffer, so be sure to properly write 0xFF alpha for opaque pixels
+      // if you set this to false!
+      opaqueFrontBuffer: true
     },
 
     version: null,
@@ -398,21 +407,18 @@ var LibrarySDL = {
       var endY    = (rH || (fullHeight - startY)) + startY;
       
       var buffer  = surfData.buffer;
-      var data    = surfData.image.data;
-      var colors  = surfData.colors;
+
+      if (!surfData.image.data32) {
+        surfData.image.data32 = new Uint32Array(surfData.image.data.buffer);
+      }
+      var data32   = surfData.image.data32;
+
+      var colors32 = surfData.colors32;
 
       for (var y = startY; y < endY; ++y) {
-        var indexBase = y * fullWidth;
-        var colorBase = indexBase * 4;
+        var base = y * fullWidth;
         for (var x = startX; x < endX; ++x) {
-          // HWPALETTE have only 256 colors (not rgba)
-          var index = {{{ makeGetValue('buffer + indexBase + x', '0', 'i8', null, true) }}} * 3;
-          var colorOffset = colorBase + x * 4;
-
-          data[colorOffset   ] = colors[index   ];
-          data[colorOffset +1] = colors[index +1];
-          data[colorOffset +2] = colors[index +2];
-          //unused: data[colorOffset +3] = color[index +3];
+          data32[base + x] = colors32[{{{ makeGetValue('buffer + base + x', '0', 'i8', null, true) }}}];
         }
       }
     },
@@ -451,14 +457,17 @@ var LibrarySDL = {
       } else {
         dr = { x: 0, y: 0, w: -1, h: -1 };
       }
-      var oldAlpha = dstData.ctx.globalAlpha;
-      dstData.ctx.globalAlpha = srcData.alpha/255;
       var blitw, blitr;
       if (scale) {
         blitw = dr.w; blith = dr.h;
       } else {
         blitw = sr.w; blith = sr.h;
       }
+      if (sr.w === 0 || sr.h === 0 || blitw === 0 || blith === 0) {
+        return 0;
+      }
+      var oldAlpha = dstData.ctx.globalAlpha;
+      dstData.ctx.globalAlpha = srcData.alpha/255;
       dstData.ctx.drawImage(srcData.canvas, sr.x, sr.y, sr.w, sr.h, dr.x, dr.y, blitw, blith);
       dstData.ctx.globalAlpha = oldAlpha;
       if (dst != SDL.screen) {
@@ -1440,8 +1449,18 @@ var LibrarySDL = {
 
     if (surf == SDL.screen && Module.screenIsReadOnly && surfData.image) return 0;
 
-    surfData.image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
-    if (surf == SDL.screen) {
+    if (SDL.defaults.discardOnLock) {
+      if (!surfData.image) {
+        surfData.image = surfData.ctx.createImageData(surfData.width, surfData.height);
+      }
+      if (!SDL.defaults.opaqueFrontBuffer) return;
+    } else {
+      surfData.image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
+    }
+
+    // Emulate desktop behavior and kill alpha values on the locked surface. (very costly!) Set SDL.defaults.opaqueFrontBuffer = false
+    // if you don't want this.
+    if (surf == SDL.screen && SDL.defaults.opaqueFrontBuffer) {
       var data = surfData.image.data;
       var num = data.length;
       for (var i = 0; i < num/4; i++) {
@@ -1449,7 +1468,7 @@ var LibrarySDL = {
       }
     }
 
-    if (SDL.defaults.copyOnLock) {
+    if (SDL.defaults.copyOnLock && !SDL.defaults.discardOnLock) {
       // Copy pixel data to somewhere accessible to 'C/C++'
       if (surfData.isFlagSet(0x00200000 /* SDL_HWPALETTE */)) {
         // If this is neaded then
@@ -1524,16 +1543,14 @@ var LibrarySDL = {
         }
       } else {
         var data32 = new Uint32Array(data.buffer);
-        num = data32.length;
-        if (isScreen) {
+        if (isScreen && SDL.defaults.opaqueFrontBuffer) {
+          num = data32.length;
           while (dst < num) {
             // HEAP32[src++] is an optimization. Instead, we could do {{{ makeGetValue('buffer', 'dst', 'i32') }}};
             data32[dst++] = HEAP32[src++] | 0xff000000;
           }
         } else {
-          while (dst < num) {
-            data32[dst++] = HEAP32[src++];
-          }
+          data32.set(HEAP32.subarray(src, src + data32.length));
         }
       }
 #else
@@ -1550,12 +1567,12 @@ var LibrarySDL = {
       var height = Module['canvas'].height;
       var s = surfData.buffer;
       var data = surfData.image.data;
-      var colors = surfData.colors;
+      var colors = surfData.colors; // TODO: optimize using colors32
       for (var y = 0; y < height; y++) {
         var base = y*width*4;
         for (var x = 0; x < width; x++) {
           // See comment above about signs
-          var val = {{{ makeGetValue('s++', '0', 'i8', null, true) }}} * 3;
+          var val = {{{ makeGetValue('s++', '0', 'i8', null, true) }}} * 4;
           var start = base + x*4;
           data[start]   = colors[val];
           data[start+1] = colors[val+1];
@@ -1683,13 +1700,24 @@ var LibrarySDL = {
     return SDL.makeSurface(width, height, 0, false, 'CreateRGBSurfaceFrom', rmask, gmask, bmask, amask);
   },
 
-  SDL_DisplayFormatAlpha: function(surf) {
+  SDL_ConvertSurface: function(surf, format, flags) {
+    if  (format) {
+      SDL.checkPixelFormat(format);
+    }
+
     var oldData = SDL.surfaces[surf];
     var ret = SDL.makeSurface(oldData.width, oldData.height, oldData.flags, false, 'copy:' + oldData.source);
     var newData = SDL.surfaces[ret];
-    //newData.ctx.putImageData(oldData.ctx.getImageData(0, 0, oldData.width, oldData.height), 0, 0);
+    
+    newData.ctx.globalCompositeOperation = "copy";
     newData.ctx.drawImage(oldData.canvas, 0, 0);
+    newData.ctx.globalCompositeOperation = oldData.ctx.globalCompositeOperation;
     return ret;
+  },
+
+  SDL_DisplayFormatAlpha__deps: ['SDL_ConvertSurface'],
+  SDL_DisplayFormatAlpha: function(surf) {
+    return SDL.SDL_ConvertSurface(surf);
   },
 
   SDL_FreeSurface: function(surf) {
@@ -1715,8 +1743,7 @@ var LibrarySDL = {
       //in SDL_HWPALETTE color is index (0..255)
       //so we should translate 1 byte value to
       //32 bit canvas
-      var index = color * 3;
-      color = SDL.translateRGBAToColor(surfData.colors[index], surfData.colors[index +1], surfData.colors[index +2], 255);
+      color = surfData.colors32[color];
     }
 
     var r = rect ? SDL.loadRect(rect) : { x: 0, y: 0, w: surfData.width, h: surfData.height };
@@ -1771,7 +1798,12 @@ var LibrarySDL = {
   },
 
   SDL_SetAlpha: function(surf, flag, alpha) {
-    SDL.surfaces[surf].alpha = alpha;
+    var surfData = SDL.surfaces[surf];
+    surfData.alpha = alpha;
+
+    if (!(flag & 0x00010000)) { // !SDL_SRCALPHA
+      surfData.alpha = 255;
+    }
   },
 
   SDL_SetColorKey: function(surf, flag, key) {
@@ -1848,14 +1880,17 @@ var LibrarySDL = {
     // often wants to change portion 
     // of palette not all palette.
     if (!surfData.colors) {
-      surfData.colors = new Uint8Array(256 * 3); //256 RGB colors
+      var buffer = new ArrayBuffer(256 * 4); // RGBA, A is unused, but faster this way
+      surfData.colors = new Uint8Array(buffer);
+      surfData.colors32 = new Uint32Array(buffer);
     } 
 
     for (var i = 0; i < nColors; ++i) {
-      var index = (firstColor + i) * 3;
+      var index = (firstColor + i) * 4;
       surfData.colors[index] = {{{ makeGetValue('colors', 'i*4', 'i8', null, true) }}};
       surfData.colors[index + 1] = {{{ makeGetValue('colors', 'i*4 + 1', 'i8', null, true) }}};
       surfData.colors[index + 2] = {{{ makeGetValue('colors', 'i*4 + 2', 'i8', null, true) }}};
+      surfData.colors[index + 3] = 255; // opaque
     }
 
     return 1;
@@ -2974,7 +3009,15 @@ var LibrarySDL = {
 
   SDL_GL_DeleteContext: function(context) {},
 
-  SDL_GL_SetSwapInterval: function(state) {},
+  SDL_GL_GetSwapInterval: function(state) {
+    if (Browser.mainLoop.timingMode == 1/*EM_TIMING_RAF*/) return Browser.mainLoop.timingValue;
+    else return 0;
+  },
+
+  SDL_GL_SetSwapInterval__deps: ['emscripten_set_main_loop_timing'],
+  SDL_GL_SetSwapInterval: function(state) {
+    _emscripten_set_main_loop_timing(1/*EM_TIMING_RAF*/, state);
+  },
 
   SDL_SetWindowTitle: function(window, title) {
     if (title) document.title = Pointer_stringify(title);

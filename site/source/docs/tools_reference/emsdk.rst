@@ -248,27 +248,15 @@ To switch to using the latest upstream git development branch (``incoming``), ru
 ::
 
 	# Install git. Skip if the system already has it.
-	./emsdk install git-1.8.3 
+	./emsdk install git-1.8.3
 	
 	# Clone+pull the latest kripken/emscripten/incoming.
 	./emsdk install sdk-incoming-64bit
 	
-	
-	
 	# Set the "incoming SDK" as the active version.
-	./emsdk activate sdk-incoming-64bit 	
+	./emsdk activate sdk-incoming-64bit
 
 If you want to use the upstream stable branch ``master``, then replace ``-incoming-`` with ``-master-`` in the commands above.
-
-.. note:: On Windows, *git* may fail with the error message: 
-
-	::
-
-		Unable to find remote helper for 'https' when cloning a repository with https:// url. 
-		
-	The workaround is to uninstall git from *emsdk* (``emsdk uninstall git-1.8.3``)  and install `Git for Windows <http://msysgit.github.io>`_. This issue is reported `here <https://github.com/juj/emsdk/issues/13>`_.
-	
-.. todo:: **HamishW** Check whether the bug (https://github.com/juj/emsdk/issues/13) is fixed and remove the above note if it is.
 
 .. _emsdk-howto-use-own-fork:
 	

@@ -2,7 +2,7 @@
 
 // Utilities for browser environments
 mergeInto(LibraryManager.library, {
-  $Browser__deps: ['$PATH'],
+  $Browser__deps: ['$PATH', 'emscripten_set_main_loop', 'emscripten_set_main_loop_timing'],
   $Browser__postset: 'Module["requestFullScreen"] = function Module_requestFullScreen(lockPointer, resizeCanvas) { Browser.requestFullScreen(lockPointer, resizeCanvas) };\n' + // exports
                      'Module["requestAnimationFrame"] = function Module_requestAnimationFrame(func) { Browser.requestAnimationFrame(func) };\n' +
                      'Module["setCanvasSize"] = function Module_setCanvasSize(width, height, noUpdates) { Browser.setCanvasSize(width, height, noUpdates) };\n' +
@@ -13,18 +13,27 @@ mergeInto(LibraryManager.library, {
     mainLoop: {
       scheduler: null,
       method: '',
-      shouldPause: false,
-      paused: false,
+      // Each main loop is numbered with a ID in sequence order. Only one main loop can run at a time. This variable stores the ordinal number of the main loop that is currently
+      // allowed to run. All previous main loops will quit themselves. This is incremented whenever a new main loop is created.
+      currentlyRunningMainloop: 0,
+      func: null, // The main loop tick function that will be called at each iteration.
+      arg: 0, // The argument that will be passed to the main loop. (of type void*)
+      timingMode: 0,
+      timingValue: 0,
+      currentFrameNumber: 0,
       queue: [],
       pause: function() {
-        Browser.mainLoop.shouldPause = true;
+        Browser.mainLoop.scheduler = null;
+        Browser.mainLoop.currentlyRunningMainloop++; // Incrementing this signals the previous main loop that it's now become old, and it must return.
       },
       resume: function() {
-        if (Browser.mainLoop.paused) {
-          Browser.mainLoop.paused = false;
-          Browser.mainLoop.scheduler();
-        }
-        Browser.mainLoop.shouldPause = false;
+        Browser.mainLoop.currentlyRunningMainloop++;
+        var timingMode = Browser.mainLoop.timingMode;
+        var timingValue = Browser.mainLoop.timingValue;
+        var func = Browser.mainLoop.func;
+        Browser.mainLoop.func = null;
+        _emscripten_set_main_loop(func, 0, false, Browser.mainLoop.arg);
+        _emscripten_set_main_loop_timing(timingMode, timingValue);
       },
       updateStatus: function() {
         if (Module['setStatus']) {
@@ -963,12 +972,46 @@ mergeInto(LibraryManager.library, {
     document.body.appendChild(script);
   },
 
+  emscripten_get_main_loop_timing: function(mode, value) {
+    if (mode) {{{ makeSetValue('mode', 0, 'Browser.mainLoop.timingMode', 'i32') }}};
+    if (value) {{{ makeSetValue('value', 0, 'Browser.mainLoop.timingValue', 'i32') }}};
+  },
+
+  emscripten_set_main_loop_timing: function(mode, value) {
+    Browser.mainLoop.timingMode = mode;
+    Browser.mainLoop.timingValue = value;
+
+    if (!Browser.mainLoop.func) {
+#if ASSERTIONS
+      console.error('emscripten_set_main_loop_timing: Cannot set timing mode for main loop since a main loop does not exist! Call emscripten_set_main_loop first to set one up.');
+#endif
+      return 1; // Return non-zero on failure, can't set timing mode when there is no main loop.
+    }
+
+    if (mode == 0 /*EM_TIMING_SETTIMEOUT*/) {
+      Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler() {
+        setTimeout(Browser.mainLoop.runner, value); // doing this each time means that on exception, we stop
+      };
+      Browser.mainLoop.method = 'timeout';
+    } else if (mode == 1 /*EM_TIMING_RAF*/) {
+      Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler() {
+        Browser.requestAnimationFrame(Browser.mainLoop.runner);
+      };
+      Browser.mainLoop.method = 'rAF';
+    }
+    return 0;
+  },
+
+  emscripten_set_main_loop__deps: ['emscripten_set_main_loop_timing'],
   emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop, arg) {
     Module['noExitRuntime'] = true;
 
-    assert(!Browser.mainLoop.scheduler, 'there can only be one main loop function at once: call emscripten_cancel_main_loop to cancel the previous one, if you want to');
+    assert(!Browser.mainLoop.func, 'emscripten_set_main_loop: there can only be one main loop function at once: call emscripten_cancel_main_loop to cancel the previous one before setting a new one with different parameters.');
 
-    Browser.mainLoop.shouldPause = Browser.mainLoop.paused = false; // if we were cancelled or paused, undo that
+    Browser.mainLoop.func = func;
+    Browser.mainLoop.arg = arg;
+
+    var thisMainLoopId = Browser.mainLoop.currentlyRunningMainloop;
 
     Browser.mainLoop.runner = function Browser_mainLoop_runner() {
       if (ABORT) return;
@@ -992,10 +1035,15 @@ mergeInto(LibraryManager.library, {
         setTimeout(Browser.mainLoop.runner, 0);
         return;
       }
-      if (Browser.mainLoop.shouldPause) {
-        // catch pauses from non-main loop sources
-        Browser.mainLoop.paused = true;
-        Browser.mainLoop.shouldPause = false;
+
+      // catch pauses from non-main loop sources
+      if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) return;
+
+      // Implement very basic swap interval control
+      Browser.mainLoop.currentFrameNumber = Browser.mainLoop.currentFrameNumber + 1 | 0;
+      if (Browser.mainLoop.timingMode == 1/*EM_TIMING_RAF*/ && Browser.mainLoop.timingValue > 1 && Browser.mainLoop.currentFrameNumber % Browser.mainLoop.timingValue != 0) {
+        // Not the scheduled time to render this frame - skip.
+        Browser.mainLoop.scheduler();
         return;
       }
 
@@ -1018,31 +1066,21 @@ mergeInto(LibraryManager.library, {
         }
       });
 
+      // catch pauses from the main loop itself
+      if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) return;
+
       // Queue new audio data. This is important to be right after the main loop invocation, so that we will immediately be able
       // to queue the newest produced audio samples.
       // TODO: Consider adding pre- and post- rAF callbacks so that GL.newRenderingFrameStarted() and SDL.audio.queueNewAudioData()
       //       do not need to be hardcoded into this function, but can be more generic.
       if (typeof SDL === 'object' && SDL.audio && SDL.audio.queueNewAudioData) SDL.audio.queueNewAudioData();
 
-      if (Browser.mainLoop.shouldPause) {
-        // catch pauses from the main loop itself
-        Browser.mainLoop.paused = true;
-        Browser.mainLoop.shouldPause = false;
-        return;
-      }
       Browser.mainLoop.scheduler();
     }
-    if (fps && fps > 0) {
-      Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler() {
-        setTimeout(Browser.mainLoop.runner, 1000/fps); // doing this each time means that on exception, we stop
-      };
-      Browser.mainLoop.method = 'timeout';
-    } else {
-      Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler() {
-        Browser.requestAnimationFrame(Browser.mainLoop.runner);
-      };
-      Browser.mainLoop.method = 'rAF';
-    }
+
+    if (fps && fps > 0) _emscripten_set_main_loop_timing(0/*EM_TIMING_SETTIMEOUT*/, 1000.0 / fps);
+    else _emscripten_set_main_loop_timing(1/*EM_TIMING_RAF*/, 1); // Do rAF by rendering each frame (no decimating)
+
     Browser.mainLoop.scheduler();
 
     if (simulateInfiniteLoop) {
@@ -1056,8 +1094,8 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_cancel_main_loop: function() {
-    Browser.mainLoop.scheduler = null;
-    Browser.mainLoop.shouldPause = true;
+    Browser.mainLoop.pause();
+    Browser.mainLoop.func = null;
   },
 
   emscripten_pause_main_loop: function() {

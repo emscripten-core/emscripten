@@ -1725,6 +1725,10 @@ Cache = cache.Cache(debug=DEBUG_CACHE)
 JCache = cache.JCache(Cache)
 chunkify = cache.chunkify
 
+def reconfigure_cache():
+  global Cache
+  Cache = cache.Cache(debug=DEBUG_CACHE)
+
 class JS:
   memory_initializer_pattern = '/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+Runtime\.GLOBAL_BASEH]+)\);'
   no_memory_initializer_pattern = '/\* no memory initializer \*/'

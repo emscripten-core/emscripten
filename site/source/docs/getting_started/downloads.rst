@@ -19,13 +19,13 @@ Download one of the SDK installers below to get started with Emscripten developm
 Windows
 -------
 
-- `Emscripten SDK Web Installer  <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.22.0-web-64bit.exe>`_ (emsdk-1.22.0-web-64bit.exe)
+- `Emscripten SDK Web Installer  <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.25.0-web-64bit.exe>`_ (emsdk-1.25.0-web-64bit.exe)
 		An NSIS installer that fetches and installs the latest Emscripten SDK from the Web. To :ref:`install <windows-installation_instructions-NSIS>`, download and open the file, then follow the installer prompts.
 
-- `Emscripten SDK Offline Installer <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.22.0-full-64bit.exe>`_ (emsdk-1.22.0-full-64bit.exe)
+- `Emscripten SDK Offline Installer <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.25.0-full-64bit.exe>`_ (emsdk-1.25.0-full-64bit.exe)
 		An NSIS installer that bundles together the current Emscripten toolchain as an offline-installable package. To :ref:`install <windows-installation_instructions-NSIS>`, download and open the file, then follow the installer prompts.
 
-- `Portable Emscripten SDK for Windows <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.22.0-portable-64bit.zip>`_ (emsdk-1.22.0-portable-64bit.zip)
+- `Portable Emscripten SDK for Windows <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.25.0-portable-64bit.zip>`_ (emsdk-1.25.0-portable-64bit.zip)
 		A zipped package of the SDK that does not require system installation privileges. Follow the instructions below to :ref:`install the Portable Emscripten SDK on Windows <all-os-installation_instructions-portable-SDK>`.
 
 Linux and Mac OS X
@@ -136,6 +136,7 @@ Linux
 		# Install cmake
 		sudo apt-get install cmake
 		
+.. note:: You will probably need CMake version 2.8.8 or later.
 		
 - *Python*, *node.js* or *Java* are not provided by *emsdk*. The user is expected to install these beforehand with the *system package manager*:
 
@@ -212,6 +213,8 @@ You can always install old SDK and compiler toolchains using a *current SDK*. Se
 
 On Windows, you can also install one of the **old versions** via an offline NSIS installer:
 
+- `emsdk-1.22.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.22.0-full-64bit.exe>`_
+- `emsdk-1.21.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.21.0-full-64bit.exe>`_
 - `emsdk-1.16.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.16.0-full-64bit.exe>`_ (first stable fastcomp release) 
 - `emsdk-1.13.0-full-32bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.13.0-full-64bit.exe>`_ (a unstable first fastcomp release with Clang 3.3)
 - `emsdk-1.12.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.12.0-full-64bit.exe>`_ (the last non-fastcomp version with Clang 3.2)

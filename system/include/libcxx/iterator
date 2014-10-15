@@ -138,6 +138,8 @@ template <class Iterator>
 reverse_iterator<Iterator>
 operator+(typename reverse_iterator<Iterator>::difference_type n, const reverse_iterator<Iterator>& x);
 
+template <class Iterator> reverse_iterator<Iterator> make_reverse_iterator(Iterator i); // C++14
+
 template <class Container>
 class back_insert_iterator
 {
@@ -327,6 +329,7 @@ template <class C> auto crend(const C& c) -> decltype(std::rend(c));          //
 */
 
 #include <__config>
+#include <__functional_base>
 #include <type_traits>
 #include <cstddef>
 #include <iosfwd>
@@ -335,11 +338,7 @@ template <class C> auto crend(const C& c) -> decltype(std::rend(c));          //
 #include <Availability.h>
 #endif
 
-#ifdef _LIBCPP_DEBUG
-#   include <__debug>
-#else
-#   define _LIBCPP_ASSERT(x, m) ((void)0)
-#endif
+#include <__debug>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
@@ -364,10 +363,10 @@ public:
     static const bool value = sizeof(__test<_Tp>(0)) == 1;
 };
 
-template <class _Iter, bool> struct ____iterator_traits {};
+template <class _Iter, bool> struct __iterator_traits_impl {};
 
 template <class _Iter>
-struct ____iterator_traits<_Iter, true>
+struct __iterator_traits_impl<_Iter, true>
 {
     typedef typename _Iter::difference_type   difference_type;
     typedef typename _Iter::value_type        value_type;
@@ -380,7 +379,7 @@ template <class _Iter, bool> struct __iterator_traits {};
 
 template <class _Iter>
 struct __iterator_traits<_Iter, true>
-    :  ____iterator_traits
+    :  __iterator_traits_impl
       <
         _Iter,
         is_convertible<typename _Iter::iterator_category, input_iterator_tag>::value ||
@@ -534,7 +533,7 @@ class _LIBCPP_TYPE_VIS_ONLY reverse_iterator
                       typename iterator_traits<_Iter>::reference>
 {
 private:
-    mutable _Iter __t;
+    mutable _Iter __t;  // no longer used as of LWG #2360, not removed due to ABI break
 protected:
     _Iter current;
 public:
@@ -548,8 +547,8 @@ public:
     template <class _Up> _LIBCPP_INLINE_VISIBILITY reverse_iterator(const reverse_iterator<_Up>& __u)
         : __t(__u.base()), current(__u.base()) {}
     _LIBCPP_INLINE_VISIBILITY _Iter base() const {return current;}
-    _LIBCPP_INLINE_VISIBILITY reference operator*() const {__t = current; return *--__t;}
-    _LIBCPP_INLINE_VISIBILITY pointer  operator->() const {return &(operator*());}
+    _LIBCPP_INLINE_VISIBILITY reference operator*() const {_Iter __tmp = current; return *--__tmp;}
+    _LIBCPP_INLINE_VISIBILITY pointer  operator->() const {return _VSTD::addressof(operator*());}
     _LIBCPP_INLINE_VISIBILITY reverse_iterator& operator++() {--current; return *this;}
     _LIBCPP_INLINE_VISIBILITY reverse_iterator  operator++(int)
         {reverse_iterator __tmp(*this); --current; return __tmp;}
@@ -632,6 +631,15 @@ operator+(typename reverse_iterator<_Iter>::difference_type __n, const reverse_i
     return reverse_iterator<_Iter>(__x.base() - __n);
 }
 
+#if _LIBCPP_STD_VER > 11
+template <class _Iter>
+inline _LIBCPP_INLINE_VISIBILITY
+reverse_iterator<_Iter> make_reverse_iterator(_Iter __i)
+{
+    return reverse_iterator<_Iter>(__i);
+}
+#endif
+
 template <class _Container>
 class _LIBCPP_TYPE_VIS_ONLY back_insert_iterator
     : public iterator<output_iterator_tag,
@@ -645,7 +653,7 @@ protected:
 public:
     typedef _Container container_type;
 
-    _LIBCPP_INLINE_VISIBILITY explicit back_insert_iterator(_Container& __x) : container(&__x) {}
+    _LIBCPP_INLINE_VISIBILITY explicit back_insert_iterator(_Container& __x) : container(_VSTD::addressof(__x)) {}
     _LIBCPP_INLINE_VISIBILITY back_insert_iterator& operator=(const typename _Container::value_type& __value_)
         {container->push_back(__value_); return *this;}
 #ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
@@ -678,7 +686,7 @@ protected:
 public:
     typedef _Container container_type;
 
-    _LIBCPP_INLINE_VISIBILITY explicit front_insert_iterator(_Container& __x) : container(&__x) {}
+    _LIBCPP_INLINE_VISIBILITY explicit front_insert_iterator(_Container& __x) : container(_VSTD::addressof(__x)) {}
     _LIBCPP_INLINE_VISIBILITY front_insert_iterator& operator=(const typename _Container::value_type& __value_)
         {container->push_front(__value_); return *this;}
 #ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
@@ -713,7 +721,7 @@ public:
     typedef _Container container_type;
 
     _LIBCPP_INLINE_VISIBILITY insert_iterator(_Container& __x, typename _Container::iterator __i)
-        : container(&__x), iter(__i) {}
+        : container(_VSTD::addressof(__x)), iter(__i) {}
     _LIBCPP_INLINE_VISIBILITY insert_iterator& operator=(const typename _Container::value_type& __value_)
         {iter = container->insert(iter, __value_); ++iter; return *this;}
 #ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
@@ -1385,6 +1393,22 @@ operator+(typename __wrap_iter<_Iter>::difference_type __n,
     return __x;
 }
 
+template <class _Tp, size_t _Np>
+inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX11
+_Tp*
+begin(_Tp (&__array)[_Np])
+{
+    return __array;
+}
+
+template <class _Tp, size_t _Np>
+inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX11
+_Tp*
+end(_Tp (&__array)[_Np])
+{
+    return __array + _Np;
+}
+
 #if !defined(_LIBCPP_HAS_NO_RVALUE_REFERENCES) && !defined(_LIBCPP_HAS_NO_TRAILING_RETURN)
 
 template <class _Cp>
@@ -1421,18 +1445,46 @@ end(const _Cp& __c) -> decltype(__c.end())
 
 #if _LIBCPP_STD_VER > 11
 
-template <class _Cp>
+template <class _Tp, size_t _Np>
 inline _LIBCPP_INLINE_VISIBILITY
-auto cbegin(const _Cp& __c) -> decltype(begin(__c))
+reverse_iterator<_Tp*> rbegin(_Tp (&__array)[_Np])
 {
-    return __c.begin();
+    return reverse_iterator<_Tp*>(__array + _Np);
+}
+
+template <class _Tp, size_t _Np>
+inline _LIBCPP_INLINE_VISIBILITY
+reverse_iterator<_Tp*> rend(_Tp (&__array)[_Np])
+{
+    return reverse_iterator<_Tp*>(__array);
+}
+
+template <class _Ep>
+inline _LIBCPP_INLINE_VISIBILITY
+reverse_iterator<const _Ep*> rbegin(initializer_list<_Ep> __il)
+{
+    return reverse_iterator<const _Ep*>(__il.end());
+}
+
+template <class _Ep>
+inline _LIBCPP_INLINE_VISIBILITY
+reverse_iterator<const _Ep*> rend(initializer_list<_Ep> __il)
+{
+    return reverse_iterator<const _Ep*>(__il.begin());
 }
 
 template <class _Cp>
-inline _LIBCPP_INLINE_VISIBILITY
+inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX11
+auto cbegin(const _Cp& __c) -> decltype(begin(__c))
+{
+    return begin(__c);
+}
+
+template <class _Cp>
+inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX11
 auto cend(const _Cp& __c) -> decltype(end(__c))
 {
-    return __c.end();
+    return end(__c);
 }
 
 template <class _Cp>
@@ -1515,53 +1567,6 @@ end(const _Cp& __c)
 }
 
 #endif  // !defined(_LIBCPP_HAS_NO_RVALUE_REFERENCES) && !defined(_LIBCPP_HAS_NO_TRAILING_RETURN)
-
-template <class _Tp, size_t _Np>
-inline _LIBCPP_INLINE_VISIBILITY
-_Tp*
-begin(_Tp (&__array)[_Np])
-{
-    return __array;
-}
-
-template <class _Tp, size_t _Np>
-inline _LIBCPP_INLINE_VISIBILITY
-_Tp*
-end(_Tp (&__array)[_Np])
-{
-    return __array + _Np;
-}
-
-#if _LIBCPP_STD_VER > 11
-template <class _Tp, size_t _Np>
-inline _LIBCPP_INLINE_VISIBILITY
-reverse_iterator<_Tp*> rbegin(_Tp (&__array)[_Np])
-{
-    return reverse_iterator<_Tp*>(__array + _Np);
-}
-
-template <class _Tp, size_t _Np>
-inline _LIBCPP_INLINE_VISIBILITY
-reverse_iterator<_Tp*> rend(_Tp (&__array)[_Np])
-{
-    return reverse_iterator<_Tp*>(__array);
-}
-
-template <class _Ep>
-inline _LIBCPP_INLINE_VISIBILITY
-reverse_iterator<const _Ep*> rbegin(initializer_list<_Ep> __il)
-{
-    return reverse_iterator<const _Ep*>(__il.end());
-}
-
-template <class _Ep>
-inline _LIBCPP_INLINE_VISIBILITY
-reverse_iterator<const _Ep*> rend(initializer_list<_Ep> __il)
-{
-    return reverse_iterator<const _Ep*>(__il.begin());
-}
-
-#endif
 
 _LIBCPP_END_NAMESPACE_STD
 

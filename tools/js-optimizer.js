@@ -7498,7 +7498,8 @@ function prepDotZero(ast) {
   });
 }
 function fixDotZero(js) {
-  return js.replace(/DOT\$ZERO\(([-+]?(0x)?[0-9a-f]*\.?[0-9]+([eE][-+]?[0-9]+)?)\)/g, function(m, num) {
+  return js.replace(/-DOT\$ZERO\(-/g, '- DOT$ZERO(-') // avoid x - (-y.0) turning into x--y.0 when minified
+           .replace(/DOT\$ZERO\(([-+]?(0x)?[0-9a-f]*\.?[0-9]+([eE][-+]?[0-9]+)?)\)/g, function(m, num) {
     if (num.substr(0, 2) === '0x' || num.substr(0, 3) === '-0x') {
       var ret = eval(num).toString();
       if (ret.indexOf('.') < 0) return ret + '.0';
@@ -7583,7 +7584,7 @@ function asmLastOpts(ast) {
           }
         } else if (node[1] === '-' && node[3][0] === 'unary-prefix') {
           // avoid X - (-Y) because some minifiers buggily emit X--Y which is invalid as -- can be a unary. Transform to
-         //        X + Y
+          //        X + Y
           if (node[3][1] === '-') { // integer
             node[1] = '+';
             node[3] = node[3][2];

@@ -13,6 +13,7 @@ var LibraryGL = {
     counter: 1, // 0 is reserved as 'null' in gl
     lastError: 0,
     buffers: [],
+    mappedBuffers: {},
     programs: [],
     framebuffers: [],
     renderbuffers: [],
@@ -284,7 +285,6 @@ var LibraryGL = {
     },
 
     computeImageSize: function(width, height, sizePerPixel, alignment) {
-      // FIXME: possible bug with negative x
       function roundedToNextMultipleOf(x, y) {
         return Math.floor((x + y - 1) / y) * y
       }
@@ -663,6 +663,23 @@ var LibraryGL = {
       }
     },
 #endif
+
+    validateBufferTarget: function(target) {
+      switch (target) {
+        case 0x8892: // GL_ARRAY_BUFFER
+        case 0x8893: // GL_ELEMENT_ARRAY_BUFFER
+        case 0x8F36: // GL_COPY_READ_BUFFER
+        case 0x8F37: // GL_COPY_WRITE_BUFFER
+        case 0x88EB: // GL_PIXEL_PACK_BUFFER
+        case 0x88EC: // GL_PIXEL_UNPACK_BUFFER
+        case 0x8C2A: // GL_TEXTURE_BUFFER
+        case 0x8C8E: // GL_TRANSFORM_FEEDBACK_BUFFER
+        case 0x8A11: // GL_UNIFORM_BUFFER
+          return true;
+        default:
+          return false;
+      }
+    },
     
     // Returns the context handle to the new context.
     createContext: function(canvas, webGLContextAttributes) {
@@ -670,9 +687,12 @@ var LibraryGL = {
       Module.print('(USE_TYPED_ARRAYS needs to be enabled for WebGL)');
       return null;
 #endif
-      // Default to creating a WebGL 1.0 context if nothing else is specified.
       if (typeof webGLContextAttributes.majorVersion === 'undefined' && typeof webGLContextAttributes.minorVersion === 'undefined') {
+#if USE_WEBGL2
+        webGLContextAttributes.majorVersion = 2;
+#else
         webGLContextAttributes.majorVersion = 1;
+#endif
         webGLContextAttributes.minorVersion = 0;
       }
       var ctx;
@@ -685,6 +705,8 @@ var LibraryGL = {
         try {
           if (webGLContextAttributes.majorVersion == 1 && webGLContextAttributes.minorVersion == 0) {
             ctx = canvas.getContext("webgl", webGLContextAttributes) || canvas.getContext("experimental-webgl", webGLContextAttributes);
+          } else if (webGLContextAttributes.majorVersion == 2 && webGLContextAttributes.minorVersion == 0) {
+            ctx = canvas.getContext("webgl2", webGLContextAttributes) || canvas.getContext("experimental-webgl2", webGLContextAttributes);
           } else {
             throw 'Unsupported WebGL context version ' + majorVersion + '.' + minorVersion + '!'
           }
@@ -693,7 +715,7 @@ var LibraryGL = {
         }
         if (!ctx) throw ':(';
       } catch (e) {
-        Module.print('Could not create canvas: ' + [errorInfo, e]);
+        Module.print('Could not create canvas: ' + [errorInfo, e, JSON.stringify(webGLContextAttributes)]);
         return 0;
       }
 #if GL_DEBUG
@@ -784,7 +806,10 @@ var LibraryGL = {
 
       if (!ctx) return 0;
       var handle = GL.getNewId(GL.contexts);
-      var context = { handle: handle };
+      var context = {
+        handle: handle,
+        version: webGLContextAttributes.majorVersion
+      };
       context.GLctx = ctx;
       GL.contexts[handle] = context;
       if (typeof webGLContextAttributes['webGLContextAttributes'] === 'undefined' || webGLContextAttributes.enableExtensionsByDefault) {
@@ -850,7 +875,19 @@ var LibraryGL = {
       // Extension available from Firefox 25 and WebKit
       context.vaoExt = GLctx.getExtension('OES_vertex_array_object');
 
-      context.drawBuffersExt = GLctx.getExtension('WEBGL_draw_buffers');
+      if (context.version === 2) {
+        // drawBuffers is available in WebGL2 by default.
+        context.drawBuffersExt = function(n, bufs) {
+          GLctx.drawBuffers(n, bufs);
+        };
+      } else {
+        var ext = GLctx.getExtension('WEBGL_draw_buffers');
+        if (ext) {
+          context.drawBuffersExt = function(n, bufs) {
+            ext.drawBuffersWEBGL(n, bufs);
+          };
+        }
+      }
 
       // These are the 'safe' feature-enabling extensions that don't add any performance impact related to e.g. debugging, and
       // should be enabled by default so that client GLES2/GL code will not need to go through extra hoops to get its stuff working.
@@ -1012,7 +1049,7 @@ var LibraryGL = {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('textures', 'i*4', 'i32') }}};
       var texture = GL.textures[id];
-      if (!texture) continue;
+      if (!texture) continue; // GL spec: "glDeleteTextures silently ignores 0s and names that do not correspond to existing textures".
       GLctx.deleteTexture(texture);
       texture.name = 0;
       GL.textures[id] = null;
@@ -1205,6 +1242,123 @@ var LibraryGL = {
     GLctx.bufferSubData(target, offset, HEAPU8.subarray(data, data+size));
   },
 
+#if FULL_ES3
+  glMapBufferRange__sig: 'iiiii',
+  glMapBufferRange: function(target, offset, length, access) {
+    if (access != 0x1A && access != 0xA) {
+      Module.printErr("glMapBufferRange is only supported when access is MAP_WRITE|INVALIDATE_BUFFER");
+      return 0;
+    }
+
+    if (!GL.validateBufferTarget(target)) {
+      GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+      Module.printErr('GL_INVALID_ENUM in glMapBufferRange');
+      return 0;
+    }
+
+    var mem = _malloc(length);
+    if (!mem) return 0;
+
+    GL.mappedBuffers[target] = {
+      offset: offset,
+      length: length,
+      mem: mem,
+      access: access,
+    };
+    return mem;
+  },
+
+  glFlushMappedBufferRange__sig: 'viii',
+  glFlushMappedBufferRange: function(target, offset, length) {
+    if (!GL.validateBufferTarget(target)) {
+      GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+      Module.printErr('GL_INVALID_ENUM in glUnmapBuffer');
+      return 0;
+    }
+
+    var mapping = GL.mappedBuffers[target];
+    if (!mapping) {
+      GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+      Module.printError('buffer was never mapped in glFlushMappedBufferRange');
+      return 0;
+    }
+
+    if (!(mapping.access & 0x10)) {
+      GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+      Module.printError('buffer was not mapped with GL_MAP_FLUSH_EXPLICIT_BIT in glFlushMappedBufferRange');
+      return 0;
+    }
+    if (offset < 0 || length < 0 || offset + length > mapping.length) {
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      Module.printError('invalid range in glFlushMappedBufferRange');
+      return 0;
+    }
+
+    GLctx.bufferSubData(
+      target,
+      mapping.offset,
+      HEAPU8.subarray(mapping.mem + offset, mapping.mem + offset + length));
+  },
+
+  glUnmapBuffer__sig: 'ii',
+  glUnmapBuffer: function(target) {
+    if (!GL.validateBufferTarget(target)) {
+      GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+      Module.printErr('GL_INVALID_ENUM in glUnmapBuffer');
+      return 0;
+    }
+
+    var mapping = GL.mappedBuffers[target];
+    if (!mapping) {
+      GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+      Module.printError('buffer was never mapped in glUnmapBuffer');
+      return 0;
+    }
+    GL.mappedBuffers[target] = null;
+
+    if (!(mapping.access & 0x10)) /* GL_MAP_FLUSH_EXPLICIT_BIT */
+      GLctx.bufferSubData(target, mapping.offset, HEAPU8.subarray(mapping.mem, mapping.mem+mapping.length));
+    _free(mapping.mem);
+    return 1;
+  },
+#endif
+
+#if USE_WEBGL2
+  glInvalidateFramebuffer__sig: 'viii',
+  glInvalidateFramebuffer: function(target, numAttachments, attachments) {
+    var list = [];
+    for (var i = 0; i < numAttachments; i++)
+      list.push({{{ makeGetValue('attachments', 'i*4', 'i32') }}});
+
+    GLctx.invalidateFramebuffer(target, list);
+  },
+
+  glInvalidateSubFramebuffer__sig: 'viiiiiii',
+  glInvalidateSubFramebuffer: function(target, numAttachments, attachments, x, y, width, height) {
+    var list = [];
+    for (var i = 0; i < numAttachments; i++)
+      list.push({{{ makeGetValue('attachments', 'i*4', 'i32') }}});
+
+    GLctx.invalidateSubFramebuffer(target, list, x, y, width, height);
+  },
+
+  glTexStorage2D__sig: 'viiiii',
+  glTexStorage2D: function(target, levels, internalformat, width, height) {
+    GLctx.texStorage2D(target, levels, internalformat, width, height);
+  },
+
+  glTexStorage3D__sig: 'viiiiii',
+  glTexStorage3D: function(target, levels, internalformat, width, height, depth) {
+    GLctx.texStorage3D(target, levels, internalformat, width, height, depth);
+  },
+
+  glTexSubImage3D__sig: 'viiiiiiiiiii',
+  glTexSubImage3D: function(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, data) {
+    GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type,
+                        HEAPU8.subarray(data));
+  },
+#endif
+
   glIsBuffer__sig: 'ii',
   glIsBuffer: function(buffer) {
     var b = GL.buffers[buffer];
@@ -1228,6 +1382,7 @@ var LibraryGL = {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('renderbuffers', 'i*4', 'i32') }}};
       var renderbuffer = GL.renderbuffers[id];
+      if (!renderbuffer) continue; // GL spec: "glDeleteRenderbuffers silently ignores 0s and names that do not correspond to existing renderbuffer objects".
       GLctx.deleteRenderbuffer(renderbuffer);
       renderbuffer.name = 0;
       GL.renderbuffers[id] = null;
@@ -1714,9 +1869,15 @@ var LibraryGL = {
   },
 
   glDeleteShader__sig: 'vi',
-  glDeleteShader: function(shader) {
-    GLctx.deleteShader(GL.shaders[shader]);
-    GL.shaders[shader] = null;
+  glDeleteShader: function(id) {
+    if (!id) return;
+    var shader = GL.shaders[id];
+    if (!shader) { // glDeleteShader actually signals an error when deleting a nonexisting object, unlike some other GL delete functions.
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+    GLctx.deleteShader(shader);
+    GL.shaders[id] = null;
   },
 
   glGetAttachedShaders__sig: 'viiii',
@@ -1869,12 +2030,17 @@ var LibraryGL = {
   },
 
   glDeleteProgram__sig: 'vi',
-  glDeleteProgram: function(program) {
-    var program = GL.programs[program];
+  glDeleteProgram: function(id) {
+    if (!id) return;
+    var program = GL.programs[id];
+    if (!program) { // glDeleteProgram actually signals an error when deleting a nonexisting object, unlike some other GL delete functions.
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
     GLctx.deleteProgram(program);
     program.name = 0;
-    GL.programs[program] = null;
-    GL.programInfos[program] = null;
+    GL.programs[id] = null;
+    GL.programInfos[id] = null;
   },
 
   glAttachShader__sig: 'vii',
@@ -1987,6 +2153,7 @@ var LibraryGL = {
     for (var i = 0; i < n; ++i) {
       var id = {{{ makeGetValue('framebuffers', 'i*4', 'i32') }}};
       var framebuffer = GL.framebuffers[id];
+      if (!framebuffer) continue; // GL spec: "glDeleteFramebuffers silently ignores 0s and names that do not correspond to existing framebuffer objects".
       GLctx.deleteFramebuffer(framebuffer);
       framebuffer.name = 0;
       GL.framebuffers[id] = null;
@@ -5590,13 +5757,13 @@ var LibraryGL = {
   glDrawBuffers__sig: 'vii',
   glDrawBuffers: function(n, bufs) {
 #if GL_ASSERTIONS
-    assert(GL.currentContext.drawBuffersExt, 'Must have WEBGL_draw_buffers extension to use drawBuffers');
+    assert(GL.currentContext.drawBuffersExt, 'Must have WebGL2 or WEBGL_draw_buffers extension to use drawBuffers');
 #endif
     var bufArray = [];
     for (var i = 0; i < n; i++)
       bufArray.push({{{ makeGetValue('bufs', 'i*4', 'i32') }}});
 
-    GL.currentContext.drawBuffersExt.drawBuffersWEBGL(bufArray);
+    GL.currentContext.drawBuffersExt(bufArray);
   },
   // signatures of simple pass-through functions, see later
 

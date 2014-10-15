@@ -275,6 +275,27 @@ f.close()
   def test_emcc_nonfastcomp(self):
     nonfastcomp(self.test_emcc)
 
+  def test_emcc_cache_flag(self):
+    tempdirname = tempfile.mkdtemp(prefix='emscripten_test_emcache_', dir=TEMP_DIR)
+    try:
+      os.chdir(tempdirname)
+      c_file = os.path.join(tempdirname, 'test.c')
+      cache_dir_name = os.path.join(tempdirname, 'emscripten_cache')
+      assert os.path.exists(cache_dir_name) == False, 'The cache directory %s must not already exist' % cache_dir_name
+      open(c_file, 'w').write(r'''
+        #include <stdio.h>
+        int main() {
+          printf("hello, world!\n");
+          return 0;
+        }
+        ''')
+      Popen([PYTHON, EMCC, c_file, '--cache', cache_dir_name]).communicate()
+      assert os.path.exists(cache_dir_name), 'The cache directory %s must exist after the build' % cache_dir_name
+      assert os.path.exists(os.path.join(cache_dir_name, 'libc.bc')), 'The cache directory must contain a built libc'
+    finally:
+      os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
+      shutil.rmtree(tempdirname)
+
   def test_cmake(self):
     # Test all supported generators.
     if WINDOWS:
@@ -2290,7 +2311,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
 
 int main()
 {
-    int file_size = 0;
+    long file_size = 0;
     int h = open("src.cpp", O_RDONLY, 0666);
     if (0 != h)
     {
@@ -2307,7 +2328,7 @@ int main()
             return 10;
         }
         close(h);
-        printf("File size: %d\n", file_size);
+        printf("File size: %ld\n", file_size);
     }
     else
     {
@@ -2320,7 +2341,7 @@ int main()
     Popen([PYTHON, EMCC, 'src.cpp', '--embed-file', 'src.cpp']).communicate()
     for engine in JS_ENGINES:
       out = run_js('a.out.js', engine=engine, stderr=PIPE, full_output=True)
-      self.assertContained('File size: 722', out)
+      self.assertContained('File size: 724', out)
 
   def test_simd(self):
     if get_clang_version() == '3.2':
@@ -2402,7 +2423,7 @@ mergeInto(LibraryManager.library, {
 printErr('dir was ' + process.env.EMCC_BUILD_DIR);
 ''')
     out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '--js-library', 'lib.js'], stderr=PIPE).communicate()
-    self.assertContained('dir was ' + os.path.normpath(self.get_dir()), err)
+    self.assertContained('dir was ' + os.path.realpath(os.path.normpath(self.get_dir())), err)
 
   def test_float_h(self):
     process = Popen([PYTHON, EMCC, path_from_root('tests', 'float+.c')], stdout=PIPE, stderr=PIPE)
@@ -2998,7 +3019,7 @@ int main(int argc, char **argv) {
         fread(&data2, 4, 1, f); // should read 0s, not that int we wrote at an offset
         printf("read: %d\n", data2);
         fseek(f, 0, SEEK_END);
-        int size = ftell(f); // should be 104, not 4
+        long size = ftell(f); // should be 104, not 4
         fclose(f);
         printf("file size is %d\n", size);
       }
@@ -3016,7 +3037,7 @@ int main(int argc, char **argv) {
 ''')
 
     Popen([PYTHON, EMCC, 'code.cpp']).communicate()
-    self.assertContained('I am ' + self.get_dir().replace('\\', '/') + '/a.out.js', run_js('a.out.js', engine=NODE_JS).replace('\\', '/'))
+    self.assertContained('I am ' + os.path.realpath(self.get_dir()).replace('\\', '/') + '/a.out.js', run_js('a.out.js', engine=NODE_JS).replace('\\', '/'))
 
   def test_returncode(self):
     open('src.cpp', 'w').write(r'''
@@ -3834,9 +3855,9 @@ Failed to open file for writing: /tmp/file; errno=13; Permission denied
       {
           FILE* fp = fopen("large.txt", "r");
           if (fp) {
-              printf("%d\n", fp);
+              printf("%d\n", (int)fp);
               fseek(fp, 0L, SEEK_END);
-              printf("%d\n", ftell(fp));
+              printf("%ld\n", ftell(fp));
           } else {
               printf("failed to open large file.txt\n");
           }

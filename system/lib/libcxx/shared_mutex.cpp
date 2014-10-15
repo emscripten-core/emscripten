@@ -7,12 +7,15 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "__config"
+#ifndef _LIBCPP_HAS_NO_THREADS
+
 #define _LIBCPP_BUILDING_SHARED_MUTEX
 #include "shared_mutex"
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-shared_mutex::shared_mutex()
+shared_timed_mutex::shared_timed_mutex()
     : __state_(0)
 {
 }
@@ -20,7 +23,7 @@ shared_mutex::shared_mutex()
 // Exclusive ownership
 
 void
-shared_mutex::lock()
+shared_timed_mutex::lock()
 {
     unique_lock<mutex> lk(__mut_);
     while (__state_ & __write_entered_)
@@ -31,7 +34,7 @@ shared_mutex::lock()
 }
 
 bool
-shared_mutex::try_lock()
+shared_timed_mutex::try_lock()
 {
     unique_lock<mutex> lk(__mut_);
     if (__state_ == 0)
@@ -43,7 +46,7 @@ shared_mutex::try_lock()
 }
 
 void
-shared_mutex::unlock()
+shared_timed_mutex::unlock()
 {
     lock_guard<mutex> _(__mut_);
     __state_ = 0;
@@ -53,7 +56,7 @@ shared_mutex::unlock()
 // Shared ownership
 
 void
-shared_mutex::lock_shared()
+shared_timed_mutex::lock_shared()
 {
     unique_lock<mutex> lk(__mut_);
     while ((__state_ & __write_entered_) || (__state_ & __n_readers_) == __n_readers_)
@@ -64,7 +67,7 @@ shared_mutex::lock_shared()
 }
 
 bool
-shared_mutex::try_lock_shared()
+shared_timed_mutex::try_lock_shared()
 {
     unique_lock<mutex> lk(__mut_);
     unsigned num_readers = __state_ & __n_readers_;
@@ -79,7 +82,7 @@ shared_mutex::try_lock_shared()
 }
 
 void
-shared_mutex::unlock_shared()
+shared_timed_mutex::unlock_shared()
 {
     lock_guard<mutex> _(__mut_);
     unsigned num_readers = (__state_ & __n_readers_) - 1;
@@ -99,3 +102,5 @@ shared_mutex::unlock_shared()
 
 
 _LIBCPP_END_NAMESPACE_STD
+
+#endif // !_LIBCPP_HAS_NO_THREADS

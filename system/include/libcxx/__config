@@ -19,6 +19,11 @@
 #define _GNUC_VER (__GNUC__ * 100 + __GNUC_MINOR__)
 #endif
 
+#if !_WIN32
+#include <unistd.h>
+#include <errno.h>  // for ELAST on FreeBSD
+#endif
+
 #define _LIBCPP_VERSION 1101
 
 #define _LIBCPP_ABI_VERSION 1
@@ -194,7 +199,7 @@
 #endif
 
 #ifndef _LIBCPP_EXCEPTION_ABI
-#define _LIBCPP_EXCEPTION_ABI _LIBCPP_TYPE_VIS
+#define _LIBCPP_EXCEPTION_ABI __attribute__ ((__visibility__("default")))
 #endif
 
 #ifndef _LIBCPP_ALWAYS_INLINE
@@ -202,6 +207,11 @@
 #endif
 
 #if defined(__clang__)
+
+#if defined(__APPLE__) && !defined(__i386__) && !defined(__x86_64__) &&        \
+    !defined(__arm__)
+#define _LIBCPP_ALTERNATE_STRING_LAYOUT
+#endif
 
 #if __has_feature(cxx_alignas)
 #  define _ALIGNAS_TYPE(x) alignas(x)
@@ -215,7 +225,7 @@
 #define _LIBCPP_HAS_NO_TEMPLATE_ALIASES
 #endif
 
-#ifndef __GXX_EXPERIMENTAL_CXX0X__
+#if __cplusplus < 201103L
 #ifdef __linux__
 #define _LIBCPP_HAS_NO_UNICODE_CHARS
 #else
@@ -308,10 +318,16 @@ typedef __char32_t char32_t;
 #define _LIBCPP_HAS_NO_CONSTEXPR
 #endif
 
+#if !(__has_feature(cxx_relaxed_constexpr))
+#define _LIBCPP_HAS_NO_CXX14_CONSTEXPR
+#endif
+
 #if __ISO_C_VISIBLE >= 2011 || __cplusplus >= 201103L
 #if defined(__FreeBSD__)
 #define _LIBCPP_HAS_QUICK_EXIT
 #define _LIBCPP_HAS_C11_FEATURES
+#elif defined(__ANDROID__)
+#define _LIBCPP_HAS_QUICK_EXIT
 #elif defined(__linux__)
 #include <features.h>
 #if __GLIBC_PREREQ(2, 15)
@@ -326,13 +342,19 @@ typedef __char32_t char32_t;
 #if (__has_feature(cxx_noexcept))
 #  define _NOEXCEPT noexcept
 #  define _NOEXCEPT_(x) noexcept(x)
+#  define _NOEXCEPT_OR_FALSE(x) noexcept(x)
 #else
 #  define _NOEXCEPT throw()
 #  define _NOEXCEPT_(x)
+#  define _NOEXCEPT_OR_FALSE(x) false
 #endif
 
 #if __has_feature(underlying_type)
-#  define _LIBCXX_UNDERLYING_TYPE(T) __underlying_type(T)
+#  define _LIBCPP_UNDERLYING_TYPE(T) __underlying_type(T)
+#endif
+
+#if __has_feature(is_literal)
+#  define _LIBCPP_IS_LITERAL(T) __is_literal(T)
 #endif
 
 // Inline namespaces are available in Clang regardless of C++ dialect.
@@ -345,6 +367,10 @@ namespace std {
   }
 }
 
+#if !defined(_LIBCPP_HAS_NO_ASAN) && !__has_feature(address_sanitizer)
+#define _LIBCPP_HAS_NO_ASAN
+#endif
+
 #elif defined(__GNUC__)
 
 #define _ALIGNAS(x) __attribute__((__aligned__(x)))
@@ -352,15 +378,31 @@ namespace std {
 
 #define _LIBCPP_NORETURN __attribute__((noreturn))
 
+#if _GNUC_VER >= 407
+#define _LIBCPP_UNDERLYING_TYPE(T) __underlying_type(T)
+#define _LIBCPP_IS_LITERAL(T) __is_literal_type(T)
+#endif
+
 #if !__EXCEPTIONS
 #define _LIBCPP_NO_EXCEPTIONS
 #endif
 
 #define _LIBCPP_HAS_NO_TEMPLATE_ALIASES
+
+// constexpr was added to GCC in 4.6.
+#if _GNUC_VER < 406
 #define _LIBCPP_HAS_NO_CONSTEXPR
+// Can only use constexpr in c++11 mode.
+#elif !defined(__GXX_EXPERIMENTAL_CXX0X__) && __cplusplus < 201103L
+#define _LIBCPP_HAS_NO_CONSTEXPR
+#endif
+
+// No version of GCC supports relaxed constexpr rules
+#define _LIBCPP_HAS_NO_CXX14_CONSTEXPR
 
 #define _NOEXCEPT throw()
 #define _NOEXCEPT_(x)
+#define _NOEXCEPT_OR_FALSE(x) false
 
 #ifndef __GXX_EXPERIMENTAL_CXX0X__
 
@@ -374,6 +416,7 @@ namespace std {
 #define _LIBCPP_HAS_NO_VARIADICS
 #define _LIBCPP_HAS_NO_RVALUE_REFERENCES
 #define _LIBCPP_HAS_NO_ALWAYS_INLINE_VARIADICS
+#define _LIBCPP_HAS_NO_STRONG_ENUMS
 
 #else  // __GXX_EXPERIMENTAL_CXX0X__
 
@@ -417,11 +460,16 @@ namespace _LIBCPP_NAMESPACE {
 using namespace _LIBCPP_NAMESPACE __attribute__((__strong__));
 }
 
+#if !defined(_LIBCPP_HAS_NO_ASAN) && !defined(__SANITIZE_ADDRESS__)
+#define _LIBCPP_HAS_NO_ASAN
+#endif
+
 #elif defined(_LIBCPP_MSVC)
 
 #define _LIBCPP_HAS_NO_TEMPLATE_ALIASES
 #define _LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER
 #define _LIBCPP_HAS_NO_CONSTEXPR
+#define _LIBCPP_HAS_NO_CXX14_CONSTEXPR
 #define _LIBCPP_HAS_NO_UNICODE_CHARS
 #define _LIBCPP_HAS_NO_DELETED_FUNCTIONS
 #define _LIBCPP_HAS_NO_DEFAULTED_FUNCTIONS
@@ -430,8 +478,9 @@ using namespace _LIBCPP_NAMESPACE __attribute__((__strong__));
 #define _ALIGNAS(x) __declspec(align(x))
 #define _LIBCPP_HAS_NO_VARIADICS
 
-#define _NOEXCEPT throw()
+#define _NOEXCEPT throw ()
 #define _NOEXCEPT_(x)
+#define _NOEXCEPT_OR_FALSE(x) false
 
 #define _LIBCPP_BEGIN_NAMESPACE_STD namespace std {
 #define _LIBCPP_END_NAMESPACE_STD  }
@@ -440,6 +489,8 @@ using namespace _LIBCPP_NAMESPACE __attribute__((__strong__));
 #  define _LIBCPP_WEAK
 namespace std {
 }
+
+#define _LIBCPP_HAS_NO_ASAN
 
 #elif defined(__IBMCPP__)
 
@@ -450,6 +501,7 @@ namespace std {
 
 #define _NOEXCEPT throw()
 #define _NOEXCEPT_(x)
+#define _NOEXCEPT_OR_FALSE(x) false
 
 #define _LIBCPP_HAS_NO_TEMPLATE_ALIASES
 #define _LIBCPP_HAS_NO_ADVANCED_SFINAE
@@ -472,12 +524,18 @@ namespace std {
   }
 }
 
-#endif // __clang__ || __GNUC___ || _MSC_VER || __IBMCPP__
+#define _LIBCPP_HAS_NO_ASAN
+
+#endif // __clang__ || __GNUC__ || _MSC_VER || __IBMCPP__
 
 #ifdef _LIBCPP_HAS_NO_UNICODE_CHARS
 typedef unsigned short char16_t;
 typedef unsigned int   char32_t;
 #endif  // _LIBCPP_HAS_NO_UNICODE_CHARS
+
+#ifndef __SIZEOF_INT128__
+#define _LIBCPP_HAS_NO_INT128
+#endif
 
 #ifdef _LIBCPP_HAS_NO_STATIC_ASSERT
 
@@ -516,10 +574,18 @@ template <unsigned> struct __static_assert_check {};
 #define __has_feature(__x) 0
 #endif
 
+#ifndef __has_builtin
+#define __has_builtin(__x) 0
+#endif
+
 #if __has_feature(cxx_explicit_conversions) || defined(__IBMCPP__)
 #   define _LIBCPP_EXPLICIT explicit
 #else
 #   define _LIBCPP_EXPLICIT
+#endif
+
+#if !__has_builtin(__builtin_operator_new) || !__has_builtin(__builtin_operator_delete)
+#   define _LIBCPP_HAS_NO_BUILTIN_OPERATOR_NEW_DELETE
 #endif
 
 #ifdef _LIBCPP_HAS_NO_STRONG_ENUMS
@@ -547,16 +613,21 @@ template <unsigned> struct __static_assert_check {};
 #endif
 
 #ifndef _LIBCPP_EXTERN_TEMPLATE
-#define _LIBCPP_EXTERN_TEMPLATE(...)
+#define _LIBCPP_EXTERN_TEMPLATE(...) extern template __VA_ARGS__;
 #endif
 
 #ifndef _LIBCPP_EXTERN_TEMPLATE2
 #define _LIBCPP_EXTERN_TEMPLATE2(...) extern template __VA_ARGS__;
 #endif
 
+#if defined(__APPLE__) && defined(__LP64__) && !defined(__x86_64__)
+#define _LIBCPP_NONUNIQUE_RTTI_BIT (1ULL << 63)
+#endif
+
 #if defined(__APPLE__) || defined(__FreeBSD__) || defined(_WIN32) || defined(__sun__) || defined(__NetBSD__)
 #define _LIBCPP_LOCALE__L_EXTENSIONS 1
 #endif
+
 #ifdef __FreeBSD__
 #define _DECLARE_C99_LDBL_MATH 1
 #endif
@@ -569,10 +640,19 @@ template <unsigned> struct __static_assert_check {};
 #define _LIBCPP_WCTYPE_IS_MASK
 #endif
 
-#if defined(__APPLE__)
-#ifndef _LIBCPP_TRIVIAL_PAIR_COPY_CTOR
-#  define _LIBCPP_TRIVIAL_PAIR_COPY_CTOR 0
-#endif
+#if defined(ELAST)
+#define _LIBCPP_ELAST ELAST
+#elif defined(__linux__)
+#define _LIBCPP_ELAST 4095
+#elif defined(_NEWLIB_VERSION)
+#define _LIBCPP_ELAST __ELASTERROR
+#elif defined(__APPLE__)
+// Not _LIBCPP_ELAST needed on Apple
+#elif defined(__EMSCRIPTEN__)
+#define _LIBCPP_ELAST 256
+#else
+// Warn here so that the person doing the libcxx port has an easier time:
+#warning This platform's ELAST hasn't been ported yet
 #endif
 
 #ifndef _LIBCPP_TRIVIAL_PAIR_COPY_CTOR
@@ -582,8 +662,10 @@ template <unsigned> struct __static_assert_check {};
 #ifndef _LIBCPP_STD_VER
 #  if  __cplusplus <= 201103L
 #    define _LIBCPP_STD_VER 11
+#  elif __cplusplus <= 201402L
+#    define _LIBCPP_STD_VER 14
 #  else
-#    define _LIBCPP_STD_VER 13  // current year, or date of c++14 ratification
+#    define _LIBCPP_STD_VER 15  // current year, or date of c++17 ratification
 #  endif
 #endif  // _LIBCPP_STD_VER
 
@@ -594,21 +676,30 @@ template <unsigned> struct __static_assert_check {};
 #endif
 
 #if _LIBCPP_STD_VER <= 11
-#define _LIBCPP_CONSTEXPR_AFTER_CXX11
 #define _LIBCPP_EXPLICIT_AFTER_CXX11
 #define _LIBCPP_DEPRECATED_AFTER_CXX11
 #else
-#define _LIBCPP_CONSTEXPR_AFTER_CXX11 constexpr
 #define _LIBCPP_EXPLICIT_AFTER_CXX11 explicit
 #define _LIBCPP_DEPRECATED_AFTER_CXX11 [[deprecated]]
+#endif
+
+#if _LIBCPP_STD_VER > 11 && !defined(_LIBCPP_HAS_NO_CXX14_CONSTEXPR)
+#define _LIBCPP_CONSTEXPR_AFTER_CXX11 constexpr
+#else
+#define _LIBCPP_CONSTEXPR_AFTER_CXX11
+#endif
+
+#ifndef _LIBCPP_HAS_NO_ASAN
+extern "C" void __sanitizer_annotate_contiguous_container(
+  const void *, const void *, const void *, const void *);
 #endif
 
 // Try to find out if RTTI is disabled.
 // g++ and cl.exe have RTTI on by default and define a macro when it is.
 // g++ only defines the macro in 4.3.2 and onwards.
 #if !defined(_LIBCPP_NO_RTTI)
-#  if defined(__GNUG__) && (__GNUC__ >= 4 && \
-   (__GNUC_MINOR__ >= 3 || __GNUC_PATCHLEVEL__ >= 2)) && !defined(__GXX_RTTI)
+#  if defined(__GNUG__) && ((__GNUC__ >= 5) || (__GNUC__ == 4 && \
+   (__GNUC_MINOR__ >= 3 || __GNUC_PATCHLEVEL__ >= 2))) && !defined(__GXX_RTTI)
 #    define _LIBCPP_NO_RTTI
 #  elif (defined(_MSC_VER) && !defined(__clang__)) && !defined(_CPPRTTI)
 #    define _LIBCPP_NO_RTTI

@@ -347,7 +347,20 @@ Options that are modified or new in *emcc* are listed below:
 	This will pass ``-v`` to *Clang*, and also enable ``EMCC_DEBUG`` to generate intermediate files for the compiler’s various stages. It will also run Emscripten's internal sanity checks on the toolchain, etc. 
 	
 	.. tip:: ``emcc -v`` is a useful tool for diagnosing errors. It works with or without other arguments. 
-	
+
+.. _emcc-cache:
+
+``--cache``
+  Sets the directory to use as the Emscripten cache. The Emscripten cache
+  is used to store pre-built versions of ``libc``, ``libcxx`` and other
+  libraries.
+
+  If using this in combination with ``--clear-cache``, be sure to specify
+  this argument first.
+
+  The Emscripten cache defaults to being located in the path name stored
+  in the ``EM_CACHE`` environment variable or ``~/.emscripten_cache``.
+
 .. _emcc-clear-cache:
 	 
 ``--clear-cache``

@@ -10,9 +10,167 @@ Not all changes are documented here. In particular, new features, user-oriented 
 Current trunk code
 ------------------
  - To see a list of commits in the active development branch 'incoming', which have not yet been packaged in a release, see
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.22.1...incoming
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.22.1...incoming
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.22.1...incoming
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.25.0...incoming
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.25.0...incoming
+    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.25.0...incoming
+
+v1.25.0: 9/30/2014
+------------------
+ - Fixed a warning message with -s EXPORTED_FUNCTIONS.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.24.1...1.25.0
+    - Emscripten-LLVM: no changes.
+    - Emscripten-Clang: no changes.
+
+v1.24.1: 9/27/2014
+------------------
+ - Fixed issues with the tmpnam and tmpfile functions (#2797, 2798)
+ - Fixed CMake package find code to not search any system directories, because Emscripten is a cross-compiler.
+ - Improved support for the proposed solution for heap resizing.
+ - Fixed an issue where one could not run a main loop without having first a GL context created when -s FULL_ES2 or -s LEGACY_GL_EMULATION were set.
+ - For compatibility, Emscripten will no longer warn about missing library files for -lGL, -lGLU and -lglut libraries, since Emscripten provides the implementation for these without having to explicitly link to anything.
+ - Added support for readonly (const) attributes and automatically call Pointer_stringify on DOMStrings in WebIDL.
+ - Improved SIMD support for the experimental Ecmascript SIMD spec.
+ - Added support for GLFW 3.0.
+ - Added new Emscripten HTML 5 functions emscripten_set_mouseenter_callback() and emscripten_set_mouseleave_callback().
+ - Emscripten now recognizes an environment variable EMCC_JSOPT_BLACKLIST=a,b,c,d which can be used to force-disable Emscripten to skip running specific JS optimization passes. This is intended as a debugging aid to help zoom in on JS optimizer bugs when compiling with -O1 and greater. (#2819)
+ - Fixed a bug where Module['TOTAL_STACK'] was ignored (#2837).
+ - Improved SIMD support for the experimental Ecmascript SIMD spec. Preliminary asm.js validation.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.24.0...1.24.1
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.24.0...1.24.1
+    - Emscripten-Clang: no changes.
+
+v1.24.0: 9/16/2014
+------------------
+ - Renamed the earlier Module.locateFilePackage() to Module.locateFile() added in v1.22.2 to better reflect its extended usage.
+ - Improved exceptions support with exception_ptr.
+ - Fixed a bug where restoring files from IDBFS would not preserve their file modes.
+ - Fixed and issue where one could not pass a null pointer to strftime() function.
+ - Improved SIMD support for the experimental Ecmascript SIMD spec.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.23.5...1.24.0
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.23.5...1.24.0
+    - Emscripten-Clang: no changes.
+
+v1.23.5: 9/12/2014
+------------------
+ - Added new functions emscripten_get_device_pixel_ratio(), emscripten_set_canvas_css_size() and emscripten_get_canvas_css_size() which allow handling High DPI options from C code.
+ - Fixed bugs with timzone-related functions in the JS-implemented C standard library.
+ - Implemented clock_gettime(CLOCK_MONOTONIC) and added a new function emscripten_get_now_is_monotonic() to query whether the JS-provided timer is monotonic or not.
+ - Fixed an issue where the user could not pass --llvm-opts=xxx when also specifying --llvm-lto=2.
+ - Renamed the linker option -profiling to --profiling for consistency. The old form is still supported.
+ - Formalized the set of valid characters to be used in files passed to the file_packager.py (#2765).
+ - Implemented SDL function SDL_BlitScaled.
+ - Fixed a bug with right modifier keys in SDL.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.23.4...1.23.5
+    - Emscripten-LLVM: no changes.
+    - Emscripten-Clang: no changes.
+
+v1.23.4: 9/7/2014
+------------------
+ - Implemented new targetX and targetY fields for native HTML5 mouse and touch events (#2751)
+ - Improved SIMD support for the experimental Ecmascript SIMD spec.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.23.3...1.23.4
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.23.3...1.23.4
+    - Emscripten-Clang: no changes.
+
+v1.23.3: 9/7/2014
+------------------
+ - Removed the scons-tools SCons build system as unused.
+ - Fixed an issue where applications could not handle WebGL context creation failures gracefully.
+ - Fixed a bug where the stringToC function in ccall/cwrap might not allocate enough space to hold unicode strings.
+ - Removed CMake from attempting to link to library -ldl when building projects, by unsetting CMAKE_DL_LIBS.
+ - Fixed a bug where write_sockaddr might return undefined data in its output structure.
+ - Added a new _experimental_ -s POINTER_MASKING=1 linker option that might help JS VMs to optimize asm.js code.
+ - Added first version of a memory tracing API to profile memory usage in Emscripten applications.
+ - Added functions glob and globfree from musl regex library.
+ - Improved SIMD support for the experimental Ecmascript SIMD spec.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.23.2...1.23.3
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.23.2...1.23.3
+    - Emscripten-Clang: no changes.
+
+v1.23.2: 9/2/2014
+------------------
+ - Adjusted the process and group ids reported by the stub library functions to be closer to native unix values.
+ - Set stack to be aligned to 16 bytes. (#2721)
+ - Fixed a compiler error "unresolved symbol: __cxa_decrement_exception_refcount" (#2715)
+ - Added a new warning message that instructs that building .so, .dll and .dylib files is not actually supported, and is faked for compatibility reasons for existing build chains. (#2562)
+ - Fixed problems with SDL mouse scrolling (#2643)
+ - Implemented OpenAL function alSourceRewind.
+ - Removed several old header files from the Emscripten repository that had been included for emulation purposes (zlib.h, png.h, tiff.h, tiffio.h), but their implementation is not included.
+ - Work around an issue in d8 with binary file reading that broke e.g. printf when running in d8. (#2731)
+ - Rigidified the semantics of Module.preRun and Module.postRun: These must always be JS arrays, single functions are not allowed (#2729)
+ - Improved compiler warning diagnostics when generating output that will not validate as asm.js (#2737)
+ - Updated to latest emrun version to enable support for passing arguments with hyphens to the program. (#2742)
+ - Added Bessel math functions of the first kind  (j0, j1, jn) from musl.
+ - Improved SIMD support for the experimental Ecmascript SIMD spec.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.23.1...1.23.2
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.23.1...1.23.2
+    - Emscripten-Clang: no changes.
+
+v1.23.1: 8/26/2014
+------------------
+ - Add support for the Chrome variant of the Gamepad API.
+ - Updates to SIMD.js support.
+ - Implemented glutSetCursor function.
+ - Added new link-time options -s NO_FILESYSTEM=1 and -s NO_BROWSER=1 to enable reducing output file sizes when those functionalities are not necessary.
+ - Added a new option --closure 2 to allow running closure even on the asm.js output.
+ - Fixed a regression bug that broke the use of emscripten_set_socket_error_callback() in emscripten.h
+ - Removed the support for old discontinued Mozilla Audio Data API in src/library_sdl.js.
+ - Removed the support for using Web Audio ScriptProcessorNode to stream audio.
+ - Improved SDL audio streaming by using the main rAF() callback instead of a separate setTimeout() callback to schedule the audio data.
+ - Deprecated compiling without typed arrays support. 
+ - Migrated to using musl PRNG functions. Fixes reported bugs about the quality of randomness (#2341)
+ - Improved SIMD support for the experimental Ecmascript SIMD spec.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.23.0...1.23.1
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.23.0...1.23.1
+    - Emscripten-Clang: no changes.
+
+v1.23.0: 8/21/2014
+------------------
+ - Added support for array attributes in WebIDL bindings.
+ - Allow cloning pointers that are scheduled for deletion in embind, and add support for null in embind_repr().
+ - Fixed possible issues with rounding and flooring operations.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.22.2...1.23.0
+    - Emscripten-LLVM: no changes.
+    - Emscripten-Clang: no changes.
+
+v1.22.2: 8/19/2014
+------------------
+ - Adds stack overflow checks when building with the link flag -s ASSERTIONS=1.
+ - Fix an issue where EM_ASM was not usable with closure when closure removed the Module object (#2639)
+ - The locale "POSIX" is now recognized (#2636)
+ - Fixed a problem with embind on IE11.
+ - Added OpenAL functions alSource3i, alListener3f, alGetEnumValue and alSpeedOfSound and also recognize ALC_MAX_AUXILIARY_SENDS.
+ - Fixed an issue where emcc would create .o files in the current directory when compiling multiple code files simultaneously (#2644)
+ - The -s PROXY_TO_WORKER1= option now looks for a GET option "?noProxy" in the page URL to select at startup time whether proxying should be on or off.
+ - Added new functions emscripten_yield, emscripten_coroutine_create and emscripten_coroutine_next which implement coroutines when building with the -s ASYNCIFY=1 option.
+ - Optimized the size of intermediate generated .o files by omitting LLVM debug info from them when not needed. (#2657)
+ - Fixed WebSocket connection URLs to allow a port number in them, e.g. "server:port/addr" (2610)
+ - Added support for void* to the WebIDL binder, via the identifier VoidPtr.
+ - Optimize emcc to not copy bitcode files around redundantly.
+ - Fix stat() to correctly return ENOTDIR when expected (#2669).
+ - Fixed issues with nested exception catching (#1714).
+ - Increased the minimum size of the Emscripten HEAP to 64k instead of a previous 4k.
+ - The {{{ cDefine('name') }}} macros now raise a compile-time error if the define name is not found, instead of hiding the error message inside the compiled output (#2672)
+ - Fixed an issue where --emrun parameter was not compatible with the -s PROXY_TO_WORKER=1 option.
+ - Improved WebGL support when compiling with the PROXY_TO_WORKER=1 option.
+ - Fixed a regression issue with the handling of running dtors of classes that use virtual inheritance. (#2682)
+ - Added an option Module.locateFilePackage() as a means to customize where data files are found in relative to the running page (#2680). NOTE: This parameter was later renamed to Module.locateFile() instead in release 1.24.0.
+ - Fixed a bug where OpenAL sources would not properly delete.
+ - Fixed a bug with upstream libc++ on std::map, std::multimap and std::unordered_map self-assignment (http://llvm.org/bugs/show_bug.cgi?id=18735)
+ - Allow using __asm__ __volatile__("": : :"memory") as a compile-time reordering barrier (#2647)
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.22.1...1.22.2
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.22.1...1.22.2
+    - Emscripten-Clang: no changes.
 
 v1.22.1: 8/7/2014
 ------------------

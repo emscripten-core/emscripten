@@ -9,8 +9,10 @@
 
 #define _LIBCPP_BUILDING_MEMORY
 #include "memory"
+#ifndef _LIBCPP_HAS_NO_THREADS
 #include "mutex"
 #include "thread"
+#endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -119,7 +121,7 @@ __shared_weak_count::__get_deleter(const type_info&) const _NOEXCEPT
 
 #endif  // _LIBCPP_NO_RTTI
 
-#if __has_feature(cxx_atomic)
+#if __has_feature(cxx_atomic) && !defined(_LIBCPP_HAS_NO_THREADS)
 
 static const std::size_t __sp_mut_count = 16;
 static pthread_mutex_t mut_back_imp[__sp_mut_count] =
@@ -172,7 +174,7 @@ __get_sp_mut(const void* p)
     return muts[hash<const void*>()(p) & (__sp_mut_count-1)];
 }
 
-#endif // __has_feature(cxx_atomic)
+#endif // __has_feature(cxx_atomic) && !_LIBCPP_HAS_NO_THREADS
 
 void
 declare_reachable(void*)
@@ -208,7 +210,7 @@ align(size_t alignment, size_t size, void*& ptr, size_t& space)
     if (size <= space)
     {
         char* p1 = static_cast<char*>(ptr);
-        char* p2 = (char*)((size_t)(p1 + (alignment - 1)) & -alignment);
+        char* p2 = reinterpret_cast<char*>(reinterpret_cast<size_t>(p1 + (alignment - 1)) & -alignment);
         size_t d = static_cast<size_t>(p2 - p1);
         if (d <= space - size)
         {
