@@ -22,6 +22,9 @@ var LibraryGL = {
     shaders: [],
     vaos: [],
     contexts: [],
+#if FULL_ES3
+    tex3DAllocated: [], // texture name => true/false.
+#endif
 
 #if USES_GL_EMULATION
     currArrayBuffer: 0,
@@ -362,6 +365,8 @@ var LibraryGL = {
                 case 0x8CA6: // FRAMEBUFFER_BINDING
                 case 0x8CA7: // RENDERBUFFER_BINDING
                 case 0x8069: // TEXTURE_BINDING_2D
+                case 0x8C1D: // TEXTURE_BINDING_2D_ARRAY
+                case 0x806A: // TEXTURE_BINDING_3D
                 case 0x8514: { // TEXTURE_BINDING_CUBE_MAP
                   ret = 0;
                   break;
@@ -417,6 +422,29 @@ var LibraryGL = {
         default: throw 'internal glGet error, bad type: ' + type;
       }
     },  
+
+#if FULL_ES3
+    // Return the current bound texture on a 3D target.
+    getBoundTexture3D: function(target) {
+      var binding;
+      switch (target) {
+        case 0x8C1A: // GL_TEXTURE_2D_ARRAY
+          binding = 0x8C1D; // GL_TEXTURE_BINDING_2D_ARRAY
+          break;
+        case 0x806F: // GL_TEXTURE_3D
+          binding = 0x806A; // GL_TEXTURE_BINDING_3D
+          break;
+        default:
+          GL.recordError(0x0500 /* GL_INVALID_ENUM */);
+          Module.printError('invalid target');
+          return 0;
+      }
+      var result = GLctx.getParameter(binding);
+      if (!result)
+        return 0;
+      return result.name | 0;
+    },
+#endif
 
     getTexPixelData: function(type, format, width, height, pixels, internalFormat) {
       var sizePerPixel;
@@ -1350,6 +1378,12 @@ var LibraryGL = {
   glTexStorage3D__sig: 'viiiiii',
   glTexStorage3D: function(target, levels, internalformat, width, height, depth) {
     GLctx.texStorage3D(target, levels, internalformat, width, height, depth);
+
+#if FULL_ES3
+    var tex = GL.getBoundTexture3D(target);
+    if (tex !== 0)
+      GL.tex3DAllocated[tex] = true;
+#endif
   },
 
   glTexSubImage3D__sig: 'viiiiiiiiiii',
@@ -1357,6 +1391,46 @@ var LibraryGL = {
     GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type,
                         HEAPU8.subarray(data));
   },
+
+#if FULL_ES3
+  glTexImage3D__sig: 'viiiiiiiiii',
+  glTexImage3D: function(target, level, internalFormat, width, height, depth, border, format, type, data) {
+    var tex = GL.getBoundTexture3D(target);
+    if (tex === 0) {
+      GLctx.recordError(0x502 /* GL_INVALID_OPERATION */);
+      return;
+    }
+    if (level < 0) {
+      GLctx.recordError(0x501 /* GL_INVALID_VALUE */);
+      return;
+    } 
+
+    if (!GL.tex3DAllocated[tex]) {
+      var nlevels = level + 1;
+      var max = Math.max(width, height, depth);
+      while (max != 1) {
+        max = Math.max(1, max >> 1);
+        nlevels++;
+      }
+
+      // If we're first called at level > 0, find the correct dimensions.
+      var width0 = width;
+      var height0 = height;
+      var depth0 = depth;
+      for (var i = level; i > 0; i--) {
+        width0 <<= 1;
+        height0 <<= 1;
+        depth0 <<= 1;
+      }
+
+      GLctx.texStorage3D(target, nlevels, internalFormat, width0, height0, depth0);
+      GL.tex3DAllocated[tex] = true;
+    }
+
+    GLctx.texSubImage3D(target, level, 0, 0, 0, width, height, depth, format, type,
+                        HEAPU8.subarray(data));
+  },
+#endif
 #endif
 
   glIsBuffer__sig: 'ii',
@@ -3589,7 +3663,7 @@ var LibraryGL = {
           if (specifiedMaxTextureImageUnits) {
             maxTexUnits = specifiedMaxTextureImageUnits;
           } else if (gl) {
-            maxTexUnits = gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS);
+            maxTexUnits = gl.getParameter(0x8872 /* MAX_TEXTURE_IMAGE_UNITS */);
           }
 #if ASSERTIONS
           assert(maxTexUnits > 0);
