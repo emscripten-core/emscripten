@@ -653,10 +653,6 @@ try:
     elif newargs[i] == '--emrun':
       emrun = True
       newargs[i] = ''
-    elif newargs[i] == '--em-config':
-      # This option is parsed in tools/shared.py, here only clean it up from being passed to clang.
-      newargs[i] = ''
-      newargs[i+1] = ''
     elif newargs[i] == '--default-obj-ext':
       newargs[i] = ''
       default_object_extension = newargs[i+1]
