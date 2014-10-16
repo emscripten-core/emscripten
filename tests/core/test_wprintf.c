@@ -38,6 +38,8 @@ int main ()
    wprintf(L"str continues with 0x%x\n", *(((int*)str) + 1));
    wprintf(L"str continues with 0x%x\n", *(((int*)str) + 2));
    PrintWide ( str, wcslen(str) );
+   PrintWide ( str, wcslen(str) );
+   PrintWide ( str, wcslen(str) );
 
    wprintf (L"Characters: %lc %lc \n", L'a', 65);
    wprintf (L"Decimals: %d %ld\n", 1977, 650000L);
