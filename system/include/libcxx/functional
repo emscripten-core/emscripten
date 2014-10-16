@@ -476,6 +476,7 @@ POLICY:  For non-variadic implementations, the number of arguments is limited
 #include <exception>
 #include <memory>
 #include <tuple>
+#include <__trace>
 
 #include <__functional_base>
 
@@ -1335,6 +1336,7 @@ __func<_Fp, _Alloc, _Rp(_ArgTypes...)>::__clone() const
     _Ap __a(__f_.second());
     typedef __allocator_destructor<_Ap> _Dp;
     unique_ptr<__func, _Dp> __hold(__a.allocate(1), _Dp(__a, 1));
+    _LIBCPP_TRACE_ANNOTATE_ADDRESS_TYPE(__hold.get(), "std::__func storage");
     ::new (__hold.get()) __func(__f_.first(), _Alloc(__a));
     return __hold.release();
 }
@@ -1601,6 +1603,7 @@ function<_Rp(_ArgTypes...)>::function(_Fp __f,
             _Ap __a;
             typedef __allocator_destructor<_Ap> _Dp;
             unique_ptr<__base, _Dp> __hold(__a.allocate(1), _Dp(__a, 1));
+            _LIBCPP_TRACE_ANNOTATE_ADDRESS_TYPE(__hold.get(), "std::function storage");
             ::new (__hold.get()) _FF(_VSTD::move(__f), allocator<_Fp>(__a));
             __f_ = __hold.release();
         }
@@ -1635,6 +1638,7 @@ function<_Rp(_ArgTypes...)>::function(allocator_arg_t, const _Alloc& __a0, _Fp _
         {
             typedef __allocator_destructor<_Ap> _Dp;
             unique_ptr<__base, _Dp> __hold(__a.allocate(1), _Dp(__a, 1));
+            _LIBCPP_TRACE_ANNOTATE_ADDRESS_TYPE(__hold.get(), "std::function storage");
             ::new (__hold.get()) _FF(_VSTD::move(__f), _Alloc(__a));
             __f_ = __hold.release();
         }

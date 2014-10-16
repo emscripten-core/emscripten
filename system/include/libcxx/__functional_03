@@ -337,6 +337,7 @@ __func<_Fp, _Alloc, _Rp()>::__clone() const
     _Ap __a(__f_.second());
     typedef __allocator_destructor<_Ap> _Dp;
     unique_ptr<__func, _Dp> __hold(__a.allocate(1), _Dp(__a, 1));
+    _LIBCPP_TRACE_ANNOTATE_ADDRESS_TYPE(__hold.get(), "std::func storage");
     ::new (__hold.get()) __func(__f_.first(), _Alloc(__a));
     return __hold.release();
 }
@@ -420,6 +421,7 @@ __func<_Fp, _Alloc, _Rp(_A0)>::__clone() const
     _Ap __a(__f_.second());
     typedef __allocator_destructor<_Ap> _Dp;
     unique_ptr<__func, _Dp> __hold(__a.allocate(1), _Dp(__a, 1));
+    _LIBCPP_TRACE_ANNOTATE_ADDRESS_TYPE(__hold.get(), "std::func storage");
     ::new (__hold.get()) __func(__f_.first(), _Alloc(__a));
     return __hold.release();
 }
@@ -503,6 +505,7 @@ __func<_Fp, _Alloc, _Rp(_A0, _A1)>::__clone() const
     _Ap __a(__f_.second());
     typedef __allocator_destructor<_Ap> _Dp;
     unique_ptr<__func, _Dp> __hold(__a.allocate(1), _Dp(__a, 1));
+    _LIBCPP_TRACE_ANNOTATE_ADDRESS_TYPE(__hold.get(), "std::func storage");
     ::new (__hold.get()) __func(__f_.first(), _Alloc(__a));
     return __hold.release();
 }
@@ -586,6 +589,7 @@ __func<_Fp, _Alloc, _Rp(_A0, _A1, _A2)>::__clone() const
     _Ap __a(__f_.second());
     typedef __allocator_destructor<_Ap> _Dp;
     unique_ptr<__func, _Dp> __hold(__a.allocate(1), _Dp(__a, 1));
+    _LIBCPP_TRACE_ANNOTATE_ADDRESS_TYPE(__hold.get(), "std::func storage");
     ::new (__hold.get()) __func(__f_.first(), _Alloc(__a));
     return __hold.release();
 }
@@ -771,6 +775,7 @@ function<_Rp()>::function(_Fp __f,
             _Ap __a;
             typedef __allocator_destructor<_Ap> _Dp;
             unique_ptr<__base, _Dp> __hold(__a.allocate(1), _Dp(__a, 1));
+            _LIBCPP_TRACE_ANNOTATE_ADDRESS_TYPE(__hold.get(), "std::function storage");
             ::new (__hold.get()) _FF(__f, allocator<_Fp>(__a));
             __f_ = __hold.release();
         }
@@ -804,6 +809,7 @@ function<_Rp()>::function(allocator_arg_t, const _Alloc& __a0, _Fp __f,
             _Ap __a(__a0);
             typedef __allocator_destructor<_Ap> _Dp;
             unique_ptr<__base, _Dp> __hold(__a.allocate(1), _Dp(__a, 1));
+            _LIBCPP_TRACE_ANNOTATE_ADDRESS_TYPE(__hold.get(), "std::function storage");
             ::new (__hold.get()) _FF(__f, _Alloc(__a));
             __f_ = __hold.release();
         }
@@ -1073,6 +1079,7 @@ function<_Rp(_A0)>::function(_Fp __f,
             _Ap __a;
             typedef __allocator_destructor<_Ap> _Dp;
             unique_ptr<__base, _Dp> __hold(__a.allocate(1), _Dp(__a, 1));
+            _LIBCPP_TRACE_ANNOTATE_ADDRESS_TYPE(__hold.get(), "std::function storage");
             ::new (__hold.get()) _FF(__f, allocator<_Fp>(__a));
             __f_ = __hold.release();
         }
@@ -1106,6 +1113,7 @@ function<_Rp(_A0)>::function(allocator_arg_t, const _Alloc& __a0, _Fp __f,
             _Ap __a(__a0);
             typedef __allocator_destructor<_Ap> _Dp;
             unique_ptr<__base, _Dp> __hold(__a.allocate(1), _Dp(__a, 1));
+            _LIBCPP_TRACE_ANNOTATE_ADDRESS_TYPE(__hold.get(), "std::function storage");
             ::new (__hold.get()) _FF(__f, _Alloc(__a));
             __f_ = __hold.release();
         }
@@ -1375,6 +1383,7 @@ function<_Rp(_A0, _A1)>::function(_Fp __f,
             _Ap __a;
             typedef __allocator_destructor<_Ap> _Dp;
             unique_ptr<__base, _Dp> __hold(__a.allocate(1), _Dp(__a, 1));
+            _LIBCPP_TRACE_ANNOTATE_ADDRESS_TYPE(__hold.get(), "std::function storage");
             ::new (__hold.get()) _FF(__f, allocator<_Fp>(__a));
             __f_ = __hold.release();
         }
@@ -1408,6 +1417,7 @@ function<_Rp(_A0, _A1)>::function(allocator_arg_t, const _Alloc& __a0, _Fp __f,
             _Ap __a(__a0);
             typedef __allocator_destructor<_Ap> _Dp;
             unique_ptr<__base, _Dp> __hold(__a.allocate(1), _Dp(__a, 1));
+            _LIBCPP_TRACE_ANNOTATE_ADDRESS_TYPE(__hold.get(), "std::function storage");
             ::new (__hold.get()) _FF(__f, _Alloc(__a));
             __f_ = __hold.release();
         }
@@ -1677,6 +1687,7 @@ function<_Rp(_A0, _A1, _A2)>::function(_Fp __f,
             _Ap __a;
             typedef __allocator_destructor<_Ap> _Dp;
             unique_ptr<__base, _Dp> __hold(__a.allocate(1), _Dp(__a, 1));
+            _LIBCPP_TRACE_ANNOTATE_ADDRESS_TYPE(__hold.get(), "std::function storage");
             ::new (__hold.get()) _FF(__f, allocator<_Fp>(__a));
             __f_ = __hold.release();
         }
@@ -1710,6 +1721,7 @@ function<_Rp(_A0, _A1, _A2)>::function(allocator_arg_t, const _Alloc& __a0, _Fp 
             _Ap __a(__a0);
             typedef __allocator_destructor<_Ap> _Dp;
             unique_ptr<__base, _Dp> __hold(__a.allocate(1), _Dp(__a, 1));
+            _LIBCPP_TRACE_ANNOTATE_ADDRESS_TYPE(__hold.get(), "std::function storage");
             ::new (__hold.get()) _FF(__f, _Alloc(__a));
             __f_ = __hold.release();
         }
