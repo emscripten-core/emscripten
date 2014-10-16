@@ -50,6 +50,8 @@ extern "C" {
 #define EMSCRIPTEN_EVENT_WEBGLCONTEXTRESTORED  32
 #define EMSCRIPTEN_EVENT_MOUSEENTER            33
 #define EMSCRIPTEN_EVENT_MOUSELEAVE            34
+#define EMSCRIPTEN_EVENT_MOUSEOVER             35
+#define EMSCRIPTEN_EVENT_MOUSEOUT              36
 
 #define EMSCRIPTEN_RESULT int
 
@@ -127,6 +129,8 @@ extern EMSCRIPTEN_RESULT emscripten_set_dblclick_callback(const char *target, vo
 extern EMSCRIPTEN_RESULT emscripten_set_mousemove_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback);
 extern EMSCRIPTEN_RESULT emscripten_set_mouseenter_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback);
 extern EMSCRIPTEN_RESULT emscripten_set_mouseleave_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback);
+extern EMSCRIPTEN_RESULT emscripten_set_mouseover_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback);
+extern EMSCRIPTEN_RESULT emscripten_set_mouseout_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback);
 
 extern EMSCRIPTEN_RESULT emscripten_get_mouse_status(EmscriptenMouseEvent *mouseState);
 
