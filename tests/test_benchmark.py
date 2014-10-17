@@ -10,7 +10,7 @@ from tools.shared import *
 # 3: 1 second
 # 4: 5 seconds
 # 5: 10 seconds
-DEFAULT_ARG = '2'
+DEFAULT_ARG = '4'
 
 TEST_REPS = 2
 
@@ -109,12 +109,11 @@ process(sys.argv[1])
     try_delete(final)
     output = Popen([PYTHON, EMCC, filename, #'-O3',
                     '-O3', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
-                    '--memory-init-file', '1', '--js-transform', 'python hardcode.py',
+                    '--memory-init-file', '0', '--js-transform', 'python hardcode.py',
                     '-s', 'TOTAL_MEMORY=128*1024*1024',
                     #'--profiling',
                     #'--closure', '1',
                     '-o', final] + shared_args + emcc_args + self.extra_args, stdout=PIPE, stderr=PIPE, env=self.env).communicate()
-                    #'-o', final] + shared_args + emcc_args + self.extra_args, stdout=None, stderr=None, env=self.env).communicate()
     assert os.path.exists(final), 'Failed to compile file: ' + output[0]
     self.filename = final
 
@@ -135,25 +134,21 @@ try:
   benchmarkers_error = ''
   benchmarkers = [
     #NativeBenchmarker('clang', CLANG_CC, CLANG),
-    #NativeBenchmarker(default_native_name, os.path.join(default_native, 'clang'), os.path.join(default_native, 'clang++')),
+    NativeBenchmarker(default_native_name, os.path.join(default_native, 'clang'), os.path.join(default_native, 'clang++')),
     #NativeBenchmarker('clang-3.2-O3', os.path.join(default_native, 'clang'), os.path.join(default_native, 'clang++'), ['-O3']),
     #NativeBenchmarker('clang-3.3', os.path.join(LLVM_3_3, 'clang'), os.path.join(LLVM_3_3, 'clang++')),
     #NativeBenchmarker('clang-3.4', os.path.join(LLVM_3_4, 'clang'), os.path.join(LLVM_3_4, 'clang++')),
     #NativeBenchmarker('gcc', 'gcc', 'g++'),
-    #JSBenchmarker('sm-f32', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
-    JSBenchmarker('sm', SPIDERMONKEY_ENGINE),
-    #JSBenchmarker('sm-ion',  SPIDERMONKEY_ENGINE + ['--no-asmjs']),
-    #JSBenchmarker('sm-baseline',  SPIDERMONKEY_ENGINE + ['--no-asmjs', '--no-ion']),
-    JSBenchmarker('sm-emterp', SPIDERMONKEY_ENGINE, ['-s', 'EMTERPRETIFY=1']),
-    #JSBenchmarker('sm-emterp-blacklist', SPIDERMONKEY_ENGINE, ['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_BLACKLIST=["__ZN15b2ContactSolver24SolvePositionConstraintsEv", "__ZN24b2PositionSolverManifold10InitializeEP27b2ContactPositionConstraintRK11b2TransformS4_i", "__ZN15b2ContactSolver24SolveVelocityConstraintsEv", "__ZN15b2ContactSolver29InitializeVelocityConstraintsEv", "__ZL16b2EdgeSeparationPK14b2PolygonShapeRK11b2TransformiS1_S4_", "__ZN7b2World8SolveTOIERK10b2TimeStep"]']),
-    #JSBenchmarker('sm-interp',  SPIDERMONKEY_ENGINE + ['--no-asmjs', '--no-ion', '--no-baseline']),
+    JSBenchmarker('sm-f32', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
     #JSBenchmarker('sm-f32-si', SPIDERMONKEY_ENGINE, ['--profiling', '-s', 'PRECISE_F32=2', '-s', 'SIMPLIFY_IFS=1']),
     #JSBenchmarker('sm-f32-aggro', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2', '-s', 'AGGRESSIVE_VARIABLE_ELIMINATION=1']),
     #JSBenchmarker('sm-f32-3.2', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_2 }),
     #JSBenchmarker('sm-f32-3.3', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_3 }),
     #JSBenchmarker('sm-f32-3.4', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2'], env={ 'LLVM': LLVM_3_4 }),
+    #JSBenchmarker('sm-noasm',     SPIDERMONKEY_ENGINE + ['--no-asmjs']),
     #JSBenchmarker('sm-noasm-f32', SPIDERMONKEY_ENGINE + ['--no-asmjs'], ['-s', 'PRECISE_F32=2']),
-    #JSBenchmarker('v8',           V8_ENGINE)
+    #JSBenchmarker('v8',           V8_ENGINE),
+    #JSBenchmarker('sm-emterp', SPIDERMONKEY_ENGINE, ['-s', 'EMTERPRETIFY=1', '--memory-init-file', '1']),
   ]
 except Exception, e:
   benchmarkers_error = str(e)
@@ -213,7 +208,39 @@ class benchmark(RunnerCore):
       b.display(benchmarkers[0])
 
   def test_primes(self):
-    src = open(path_from_root('tests', 'primes.cpp')).read()
+    src = r'''
+      #include<stdio.h>
+      #include<math.h>
+      int main(int argc, char **argv) {
+        int arg = argc > 1 ? argv[1][0] - '0' : 3;
+        switch(arg) {
+          case 0: return 0; break;
+          case 1: arg = 33000; break;
+          case 2: arg = 130000; break;
+          case 3: arg = 220000; break;
+          case 4: arg = 610000; break;
+          case 5: arg = 1010000; break;
+          default: printf("error: %d\\n", arg); return -1;
+        }
+
+        int primes = 0, curri = 2;
+        while (primes < arg) {
+          int ok = true;
+          for (int j = 2; j < sqrtf(curri); j++) {
+            if (curri % j == 0) {
+              ok = false;
+              break;
+            }
+          }
+          if (ok) {
+            primes++;
+          }
+          curri++;
+        }
+        printf("lastprime: %d.\n", curri-1);
+        return 0;
+      }
+    '''
     self.do_benchmark('primes', src, 'lastprime:')
 
   def test_memops(self):
@@ -346,7 +373,7 @@ class benchmark(RunnerCore):
     '''
     self.do_benchmark('copy', src, 'sum:')
 
-  def zzztest_ifs(self):
+  def test_ifs(self):
     src = r'''
       #include <stdio.h>
       #include <stdlib.h>
@@ -391,7 +418,7 @@ class benchmark(RunnerCore):
     '''
     self.do_benchmark('ifs', src, 'ok', reps=TEST_REPS*5)
 
-  def zzztest_conditionals(self):
+  def test_conditionals(self):
     src = r'''
       #include <stdio.h>
       #include <stdlib.h>
@@ -549,13 +576,13 @@ class benchmark(RunnerCore):
                       lib_builder=lib_builder, native_exec=os.path.join('building', 'lua_native', 'src', 'lua'),
                       output_parser=output_parser, args_processor=args_processor)
 
-  def zzztest_zzz_lua_scimark(self):
+  def test_zzz_lua_scimark(self):
     def output_parser(output):
       return 100.0/float(re.search('\nSciMark +([\d\.]+) ', output).group(1))
 
     self.lua('scimark', '[small problem sizes]', output_parser=output_parser)
 
-  def zzztest_zzz_lua_binarytrees(self):
+  def test_zzz_lua_binarytrees(self):
     # js version: ['binarytrees.lua', {0: 0, 1: 9.5, 2: 11.99, 3: 12.85, 4: 14.72, 5: 15.82}[arguments[0]]]
     self.lua('binarytrees', 'long lived tree of depth')
 
