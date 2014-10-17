@@ -839,8 +839,13 @@ var LibraryEmbind = {
     }
 
     var dtorStack = needsDestructorStack ? "destructors" : "null";
-    var args1 = ["Module", "throwBindingError", "invoker", "fn", "runDestructors", "retType", "classParam"];
-    var args2 = [Module, throwBindingError, cppInvokerFunc, cppTargetFunc, runDestructors, argTypes[0], argTypes[1]];
+    var args1 = ["throwBindingError", "invoker", "fn", "runDestructors", "retType", "classParam"];
+    var args2 = [throwBindingError, cppInvokerFunc, cppTargetFunc, runDestructors, argTypes[0], argTypes[1]];
+
+#if EMSCRIPTEN_TRACING
+    args1.push("Module");
+    args2.push(Module);
+#endif
 
 #if EMSCRIPTEN_TRACING
     args1.push("Module");
