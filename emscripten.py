@@ -1303,7 +1303,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
   ''' + ''.join(['''
     var tempRet%d = 0;''' % i for i in range(10)]) + '\n' + asm_global_funcs] + ['  var tempFloat = %s;\n' % ('Math_fround(0)' if settings.get('PRECISE_F32') else '0.0')] + (['  const f0 = Math_fround(0);\n'] if settings.get('PRECISE_F32') else []) + ['' if not settings['ALLOW_MEMORY_GROWTH'] else '''
   function _emscripten_replace_memory(newBuffer) {
-    if ((byteLength(newBuffer) & 0xffffff || byteLength(newBuffer) <= 0xffffff)) return false;
+    if ((byteLength(newBuffer) & 0xffffff || byteLength(newBuffer) <= 0xffffff) || byteLength(newBuffer) > 0x80000000) return false;
     HEAP8 = new Int8View(newBuffer);
     HEAP16 = new Int16View(newBuffer);
     HEAP32 = new Int32View(newBuffer);

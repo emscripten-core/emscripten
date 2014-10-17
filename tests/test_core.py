@@ -5339,9 +5339,6 @@ def process(filename):
   def test_zlib(self):
     if not Settings.USE_TYPED_ARRAYS == 2: return self.skip('works in general, but cached build will be optimized and fail, so disable this')
 
-    if Settings.ASM_JS:
-      self.banned_js_engines = [NODE_JS] # TODO investigate
-
     if self.emcc_args is not None and '-O2' in self.emcc_args and 'ASM_JS=0' not in self.emcc_args: # without asm, closure minifies Math.imul badly
       self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 

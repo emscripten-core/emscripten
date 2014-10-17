@@ -4770,8 +4770,8 @@ function minifyGlobals(ast) {
 
 
 function minifyLocals(ast) {
-  assert(asm)
-  assert(extraInfo && extraInfo.globals)
+  assert(asm);
+  assert(extraInfo && extraInfo.globals);
 
   traverseGeneratedFunctions(ast, function(fun, type) {
 
@@ -4803,7 +4803,7 @@ function minifyLocals(ast) {
 
     // The first time we encounter a local name, we assign it a
     // minified name that's not currently in use.  Allocating on
-    // demand means they're processed in a predicatable order,
+    // demand means they're processed in a predictable order,
     // which is very handy for testing/debugging purposes.
     var nextMinifiedName = 0;
     function getNextMinifiedName() {

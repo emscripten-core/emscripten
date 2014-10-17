@@ -1352,6 +1352,12 @@ var LibraryGL = {
     GLctx.texStorage3D(target, levels, internalformat, width, height, depth);
   },
 
+  glTexImage3D__sig: 'viiiiiiiiii',
+  glTexImage3D: function(target, level, internalFormat, width, height, depth, border, format, type, data) {
+    GLctx.texImage3D(target, level, internalFormat, width, height, depth, border, format, type,
+                     HEAPU8.subarray(data));
+  },
+
   glTexSubImage3D__sig: 'viiiiiiiiiii',
   glTexSubImage3D: function(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, data) {
     GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type,
