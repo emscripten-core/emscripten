@@ -296,6 +296,15 @@ f.close()
       os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
       shutil.rmtree(tempdirname)
 
+  def test_emar_em_config_flag(self):
+    # We expand this in case the EM_CONFIG is ~/.emscripten (default)
+    config = os.path.expanduser(EM_CONFIG)
+    # We pass -version twice to work around the newargs > 2 check in emar
+    (out, err) = Popen([PYTHON, EMAR, '--em-config', config, '-version', '-version'], stdout=PIPE, stderr=PIPE).communicate()
+    assert out
+    assert not err
+    self.assertContained('LLVM', out)
+
   def test_cmake(self):
     # Test all supported generators.
     if WINDOWS:
