@@ -5173,6 +5173,7 @@ return malloc(size);
 
   def test_simd6(self):
     # test_simd6 is to test x86 min and max intrinsics on NaN and -0.0
+    return self.skip('temporarily disabled due to SpiderMonkey bug 1084609')
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
