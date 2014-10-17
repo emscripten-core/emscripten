@@ -713,7 +713,7 @@ Functions
 .. c:function:: void emscripten_worker_respond(char *data, int size)
 	void emscripten_worker_respond_provisionally(char *data, int size)
 
-	Sends a response when in a worker call.
+	Sends a response when in a worker call (that is, when called by the main thread using :c:func:`emscripten_call_worker`).
 	
 	Both functions post a message back to the thread which called the worker. The :c:func:`emscripten_worker_respond_provisionally` variant can be invoked multiple times, which will queue up messages to be posted to the worker’s creator. Eventually, the _respond variant must be invoked, which will disallow further messages and free framework resources previously allocated for this worker call.
 
