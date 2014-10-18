@@ -13,6 +13,17 @@ def call_process(cmd):
   if proc.returncode != 0:
     raise CalledProcessError(proc.returncode, cmd)
 
+CORES = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
+
+def run_commands(commands):
+  cores = min(len(commands), CORES)
+  if cores <= 1:
+    for command in commands:
+      call_process(command)
+  else:
+    pool = multiprocessing.Pool(processes=cores)
+    pool.map(call_process, commands, chunksize=1)
+
 def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   global stdout, stderr
   stdout = stdout_
@@ -41,16 +52,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   gl_symbols = read_symbols(shared.path_from_root('system', 'lib', 'gl.symbols'))
 
   # XXX we should disable EMCC_DEBUG when building libs, just like in the relooper
-
-  def run_commands(commands):
-    cores = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
-    cores = min(len(commands), cores)
-    if cores <= 1:
-      for command in commands:
-        call_process(command)
-    else:
-      pool = multiprocessing.Pool(processes=cores)
-      pool.map(call_process, commands, chunksize=1)
 
   def build_libc(lib_filename, files, lib_opts):
     o_s = []
@@ -573,5 +574,74 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         libfile = shared.Cache.get(name, create)
         ret.append(libfile)
         force = force.union(deps)
+  return ret
+
+#---------------------------------------------------------------------------
+# emscripten-ports library management (https://github.com/emscripten-ports)
+#---------------------------------------------------------------------------
+
+class Ports:
+  @staticmethod
+  def get_dir():
+    dirname = os.environ.get('EM_PORTS') or os.path.expanduser(os.path.join('~', '.emscripten_ports'))
+    shared.safe_ensure_dirs(dirname)
+    return dirname
+
+  @staticmethod
+  def fetch_project(name, url):
+    fullname = os.path.join(Ports.get_dir(), name)
+    logging.debug('including port: ' + name + ' (at ' + fullname + ')')
+
+    if not os.path.exists(fullname + '.zip'):
+      logging.debug('retrieving port: ' + name)
+      import urllib2
+      f = urllib2.urlopen(url)
+      data = f.read()
+      open(fullname + '.zip', 'wb').write(data)
+
+    if not os.path.exists(fullname):
+      logging.debug('unpacking port: ' + name)
+      import zipfile
+      shared.safe_ensure_dirs(fullname)
+      z = zipfile.ZipFile(fullname + '.zip', 'r')
+      try:
+        cwd = os.getcwd()
+        os.chdir(fullname)
+        z.extractall()
+      finally:
+        os.chdir(cwd)
+
+  @staticmethod
+  def build_project(name, subdir, configure, generated_libs):
+    def create():
+      logging.debug('building port: ' + name)
+      port_build_dir = shared.Cache.get_path('ports-builds')
+      shared.safe_ensure_dirs(port_build_dir)
+      libs = shared.Building.build_library(name, port_build_dir, None, generated_libs, source_dir=os.path.join(Ports.get_dir(), name, subdir), copy_project=True,
+                                           configure=configure, make=['make', '-j' + str(CORES)])
+      assert len(libs) == 1
+      return libs[0]
+    return shared.Cache.get(name, create)
+
+  # Libraries
+
+  @staticmethod
+  def get_sdl2():
+    Ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/master.zip')
+    return Ports.build_project('sdl2', 'SDL2-master',
+                               ['sh', './configure', '--host=asmjs-unknown-emscripten', '--disable-assembly', '--disable-threads', '--enable-cpuinfo=false', 'CFLAGS=-O2'],
+                               [os.path.join('build', '.libs', 'libSDL2.a')])
+
+def calculate_ports(settings):
+  ret = []
+
+  ok = False
+  try:
+    if settings.USE_SDL == 2: ret.append(Ports.get_sdl2())
+    ok = True
+  finally:
+    if not ok:
+      logging.error('a problem occurred when using an emscripten-ports library. try to clear ' + Ports.get_dir() + ' and run again')
+
   return ret
 
