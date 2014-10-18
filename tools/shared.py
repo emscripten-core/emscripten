@@ -4,7 +4,7 @@ from tempfile import mkstemp
 from distutils.spawn import find_executable
 import jsrun, cache, tempfiles
 import response_file
-import logging, platform
+import logging, platform, multiprocessing
 
 def listify(x):
   if type(x) is not list: return [x]
@@ -1063,7 +1063,7 @@ class Building:
       raise
     if 'EMMAKEN_JUST_CONFIGURE' in env: del env['EMMAKEN_JUST_CONFIGURE']
     if process.returncode is not 0:
-      logging.error('Configure step failed with non-zero return code ' + str(process.returncode) + '! Command line: ' + str(args))
+      logging.error('Configure step failed with non-zero return code ' + str(process.returncode) + '! Command line: ' + str(args) + ' at ' + os.getcwd())
       raise subprocess.CalledProcessError(cmd=args, returncode=process.returncode)
 
   @staticmethod
