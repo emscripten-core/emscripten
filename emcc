@@ -1071,6 +1071,7 @@ try:
       args = newargs + ['-emit-llvm', '-c', input_file, '-o', output_file]
       if file_ending.endswith(CXX_ENDINGS):
         args += shared.EMSDK_CXX_OPTS
+      args = system_libs.process_args(args, shared.Settings)
       logging.debug("running: " + call + ' ' + ' '.join(args))
       execute([call] + args) # let compiler frontend print directly, so colors are saved (PIPE kills that)
       if not os.path.exists(output_file):
@@ -1162,7 +1163,7 @@ try:
   if not LEAVE_INPUTS_RAW and \
      not shared.Settings.BUILD_AS_SHARED_LIB and \
      not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
-    #extra_files_to_link = system_libs.calculate_ports(shared.Settings)
+    #extra_files_to_link = system_libs.get_ports(shared.Settings)
     extra_files_to_link += system_libs.calculate([f for _, f in sorted(temp_files)] + extra_files_to_link, in_temp, stdout, stderr, forced=forced_stdlibs)
 
   log_time('calculate system libraries')

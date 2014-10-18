@@ -625,23 +625,29 @@ class Ports:
 
   # Libraries
 
-  @staticmethod
-  def get_sdl2():
-    Ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/master.zip')
-    return Ports.build_project('sdl2', 'SDL2-master',
-                               ['sh', './configure', '--host=asmjs-unknown-emscripten', '--disable-assembly', '--disable-threads', '--enable-cpuinfo=false', 'CFLAGS=-O2'],
-                               [os.path.join('build', '.libs', 'libSDL2.a')])
+  class sdl2:
+    @staticmethod
+    def get():
+      Ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/master.zip')
+      return Ports.build_project('sdl2', 'SDL2-master',
+                                 ['sh', './configure', '--host=asmjs-unknown-emscripten', '--disable-assembly', '--disable-threads', '--enable-cpuinfo=false', 'CFLAGS=-O2'],
+                                 [os.path.join('build', '.libs', 'libSDL2.a')])
 
-def calculate_ports(settings):
+def get_ports(settings):
   ret = []
 
   ok = False
   try:
-    if settings.USE_SDL == 2: ret.append(Ports.get_sdl2())
+    if settings.USE_SDL == 2: ret.append(Ports.sdl2.get())
     ok = True
   finally:
     if not ok:
       logging.error('a problem occurred when using an emscripten-ports library. try to clear ' + Ports.get_dir() + ' and run again')
 
   return ret
+
+def process_args(args, settings):
+  if settings.USE_SDL == 1: args += ['-Xclang', '-isystem' + shared.path_from_root('system', 'include', 'SDL')]
+  elif settings.USE_SDL == 2: args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2', 'include')]
+  return args
 
