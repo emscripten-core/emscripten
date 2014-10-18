@@ -580,6 +580,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 # emscripten-ports library management (https://github.com/emscripten-ports)
 #---------------------------------------------------------------------------
 
+import ports
+
 class Ports:
   @staticmethod
   def get_dir():
@@ -623,22 +625,14 @@ class Ports:
       return libs[0]
     return shared.Cache.get(name, create)
 
-  # Libraries
-
-  class sdl2:
-    @staticmethod
-    def get():
-      Ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/master.zip')
-      return Ports.build_project('sdl2', 'SDL2-master',
-                                 ['sh', './configure', '--host=asmjs-unknown-emscripten', '--disable-assembly', '--disable-threads', '--enable-cpuinfo=false', 'CFLAGS=-O2'],
-                                 [os.path.join('build', '.libs', 'libSDL2.a')])
 
 def get_ports(settings):
   ret = []
 
   ok = False
   try:
-    if settings.USE_SDL == 2: ret.append(Ports.sdl2.get())
+    for port in ports.ports:
+      ret += port.get(Ports, settings, shared)
     ok = True
   finally:
     if not ok:
@@ -647,7 +641,7 @@ def get_ports(settings):
   return ret
 
 def process_args(args, settings):
-  if settings.USE_SDL == 1: args += ['-Xclang', '-isystem' + shared.path_from_root('system', 'include', 'SDL')]
-  elif settings.USE_SDL == 2: args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2', 'include')]
+  for port in ports.ports:
+    args = port.process_args(args, settings, shared)
   return args
 
