@@ -567,3 +567,39 @@ fi
 
     self.assertContained('hello, world!', result)
 
+  def test_emcc_ports(self):
+    restore()
+
+    INCLUDING_MESSAGE = 'including port'
+    RETRIEVING_MESSAGE = 'retrieving port'
+    BUILDING_MESSAGE = 'building port'
+
+    from tools import system_libs
+    PORTS_DIR = system_libs.Ports.get_dir()
+
+    for i in [0, 1]:
+      print i
+      try_delete(PORTS_DIR)
+      assert not os.path.exists(PORTS_DIR)
+      if i == 0: Cache.erase() # test with cache erased and without
+
+      # Building a file that doesn't need ports should not trigger anything
+      output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp')])
+      assert INCLUDING_MESSAGE not in output
+      assert RETRIEVING_MESSAGE not in output
+      assert BUILDING_MESSAGE not in output
+      assert not os.path.exists(PORTS_DIR)
+
+      # Building a file that need a port does trigger stuff
+      output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
+      assert INCLUDING_MESSAGE in output, output
+      assert RETRIEVING_MESSAGE in output, output
+      assert BUILDING_MESSAGE in output, output
+      assert os.path.exists(PORTS_DIR)
+
+      # Using it again avoids retrieve and build
+      output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
+      assert INCLUDING_MESSAGE in output, output
+      assert RETRIEVING_MESSAGE not in output, output
+      assert BUILDING_MESSAGE not in output, output
+

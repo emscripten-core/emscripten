@@ -592,17 +592,18 @@ class Ports:
   @staticmethod
   def fetch_project(name, url):
     fullname = os.path.join(Ports.get_dir(), name)
-    logging.debug('including port: ' + name + ' (at ' + fullname + ')')
+    logging.warning('including port: ' + name)
+    logging.debug('    (at ' + fullname + ')')
 
     if not os.path.exists(fullname + '.zip'):
-      logging.debug('retrieving port: ' + name)
+      logging.warning('retrieving port: ' + name + ' from ' + url)
       import urllib2
       f = urllib2.urlopen(url)
       data = f.read()
       open(fullname + '.zip', 'wb').write(data)
 
     if not os.path.exists(fullname):
-      logging.debug('unpacking port: ' + name)
+      logging.warning('unpacking port: ' + name)
       import zipfile
       shared.safe_ensure_dirs(fullname)
       z = zipfile.ZipFile(fullname + '.zip', 'r')
@@ -613,15 +614,20 @@ class Ports:
       finally:
         os.chdir(cwd)
 
+      # we unpacked a new version, clear the build in the cache
+      shared.try_delete(os.path.join(shared.Cache.get_path('ports-builds'), name))
+      shared.try_delete(shared.Cache.get_path(name + '.bc'))
+
   @staticmethod
   def build_project(name, subdir, configure, generated_libs):
     def create():
-      logging.debug('building port: ' + name)
+      logging.warning('building port: ' + name + '...')
       port_build_dir = shared.Cache.get_path('ports-builds')
       shared.safe_ensure_dirs(port_build_dir)
       libs = shared.Building.build_library(name, port_build_dir, None, generated_libs, source_dir=os.path.join(Ports.get_dir(), name, subdir), copy_project=True,
                                            configure=configure, make=['make', '-j' + str(CORES)])
       assert len(libs) == 1
+      logging.warning('    building complete')
       return libs[0]
     return shared.Cache.get(name, create)
 
@@ -636,7 +642,7 @@ def get_ports(settings):
     ok = True
   finally:
     if not ok:
-      logging.error('a problem occurred when using an emscripten-ports library. try to clear ' + Ports.get_dir() + ' and run again')
+      logging.error('a problem occurred when using an emscripten-ports library. try to clear ' + Ports.get_dir() + ', run emcc --clear-cache, and run again')
 
   return ret
 
