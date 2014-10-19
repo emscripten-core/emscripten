@@ -58,10 +58,9 @@ class browser(BrowserCore):
     print 'Running the browser tests. Make sure the browser allows popups from localhost.'
     print
 
-  def test_html(self):
-    # test HTML generation.
-    self.btest('hello_world_sdl.cpp', reference='htmltest.png',
-        message='You should see "hello, world!" and a colored cube.')
+  def test_sdl1(self):
+    self.btest('hello_world_sdl.cpp', reference='htmltest.png')
+    self.btest('hello_world_sdl.cpp', reference='htmltest.png', args=['-s', 'USE_SDL=1']) # is the default anyhow
 
   def test_html_source_map(self):
     cpp_file = os.path.join(self.get_dir(), 'src.cpp')
