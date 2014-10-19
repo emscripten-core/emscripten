@@ -2079,3 +2079,329 @@ Module['_main'] = function() {
 
       self.btest(path_from_root('tests', 'asm_swap.cpp'), args=['-s', 'SWAPPABLE_ASM_MODULE=1', '-s', 'NO_EXIT_RUNTIME=1', '--pre-js', 'run.js'] + opts, expected='999')
 
+  def zzztest_sdl2_image(self):
+    # load an image file, get pixel data. Also O2 coverage for --preload-file, and memory-init
+    shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.jpg'))
+    open(os.path.join(self.get_dir(), 'sdl2_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_image.c')).read()))
+
+    for mem in [0, 1]:
+      for dest, dirname, basename in [('screenshot.jpg',                        '/',       'screenshot.jpg'),
+                                      ('screenshot.jpg@/assets/screenshot.jpg', '/assets', 'screenshot.jpg')]:
+        Popen([
+          PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_image.c'), '-o', 'page.html', '-O2', '--memory-init-file', str(mem),
+          '--preload-file', dest, '-DSCREENSHOT_DIRNAME="' + dirname + '"', '-DSCREENSHOT_BASENAME="' + basename + '"', '-s', 'USE_SDL=2', '-lSDL2_image'
+        ]).communicate()
+        self.run_browser('page.html', '', '/report_result?600')
+
+  def zzztest_sdl2_image_jpeg(self):
+    shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.jpeg'))
+    open(os.path.join(self.get_dir(), 'sdl2_image_jpeg.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_image.c')).read()))
+    Popen([
+      PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_image_jpeg.c'), '-o', 'page.html',
+      '--preload-file', 'screenshot.jpeg', '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpeg"', '-s', 'USE_SDL=2', '-lSDL2_image'
+    ]).communicate()
+    self.run_browser('page.html', '', '/report_result?600')
+
+  def zzztest_sdl2_key(self):
+    for defines in [[]]:
+      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+        Module.postRun = function() {
+          function doOne() {
+            Module._one();
+            setTimeout(doOne, 1000/60);
+          }
+          setTimeout(doOne, 1000/60);
+        }
+
+        function keydown(c) {
+          var event = document.createEvent("KeyboardEvent");
+          event.initKeyEvent("keydown", true, true, window,
+                             0, 0, 0, 0,
+                             c, c);
+          document.dispatchEvent(event);
+        }
+
+        function keyup(c) {
+          var event = document.createEvent("KeyboardEvent");
+          event.initKeyEvent("keyup", true, true, window,
+                             0, 0, 0, 0,
+                             c, c);
+          document.dispatchEvent(event);
+        }
+      ''')
+      open(os.path.join(self.get_dir(), 'sdl2_key.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_key.c')).read()))
+
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_key.c'), '-o', 'page.html'] + defines + ['-s', 'USE_SDL=2','--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''', '-s', 'NO_EXIT_RUNTIME=1']).communicate()
+      self.run_browser('page.html', '', '/report_result?7436429')
+
+  def zzztest_sdl2_text(self):
+    open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+      Module.postRun = function() {
+        function doOne() {
+          Module._one();
+          setTimeout(doOne, 1000/60);
+        }
+        setTimeout(doOne, 1000/60);
+      }
+
+      function simulateKeyEvent(charCode) {
+        var event = document.createEvent("KeyboardEvent");
+        event.initKeyEvent("keypress", true, true, window,
+                           0, 0, 0, 0, 0, charCode);
+        document.body.dispatchEvent(event);
+      }
+    ''')
+    open(os.path.join(self.get_dir(), 'sdl2_text.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_text.c')).read()))
+
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_text.c'), '-o', 'page.html', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''', '-s', 'USE_SDL=2']).communicate()
+    self.run_browser('page.html', '', '/report_result?1')
+
+  def zzztest_sdl2_mouse(self):
+    open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+      function simulateMouseEvent(x, y, button) {
+        var event = document.createEvent("MouseEvents");
+        if (button >= 0) {
+          var event1 = document.createEvent("MouseEvents");
+          event1.initMouseEvent('mousedown', true, true, window,
+                     1, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y,
+                     0, 0, 0, 0,
+                     button, null);
+          Module['canvas'].dispatchEvent(event1);
+          var event2 = document.createEvent("MouseEvents");
+          event2.initMouseEvent('mouseup', true, true, window,
+                     1, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y,
+                     0, 0, 0, 0,
+                     button, null);
+          Module['canvas'].dispatchEvent(event2);
+        } else {
+          var event1 = document.createEvent("MouseEvents");
+          event1.initMouseEvent('mousemove', true, true, window,
+                     0, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y,
+                     0, 0, 0, 0,
+                     0, null);
+          Module['canvas'].dispatchEvent(event1);
+        }
+      }
+      window['simulateMouseEvent'] = simulateMouseEvent;
+    ''')
+    open(os.path.join(self.get_dir(), 'sdl2_mouse.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_mouse.c')).read()))
+
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_mouse.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js', '-s', 'USE_SDL=2']).communicate()
+    self.run_browser('page.html', '', '/report_result?740')
+
+  def zzztest_sdl2_mouse_offsets(self):
+    open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+      function simulateMouseEvent(x, y, button) {
+        var event = document.createEvent("MouseEvents");
+        if (button >= 0) {
+          var event1 = document.createEvent("MouseEvents");
+          event1.initMouseEvent('mousedown', true, true, window,
+                     1, x, y, x, y,
+                     0, 0, 0, 0,
+                     button, null);
+          Module['canvas'].dispatchEvent(event1);
+          var event2 = document.createEvent("MouseEvents");
+          event2.initMouseEvent('mouseup', true, true, window,
+                     1, x, y, x, y,
+                     0, 0, 0, 0,
+                     button, null);
+          Module['canvas'].dispatchEvent(event2);
+        } else {
+          var event1 = document.createEvent("MouseEvents");
+          event1.initMouseEvent('mousemove', true, true, window,
+                     0, x, y, x, y,
+                     0, 0, 0, 0,
+                     0, null);
+          Module['canvas'].dispatchEvent(event1);
+        }
+      }
+      window['simulateMouseEvent'] = simulateMouseEvent;
+    ''')
+    open(os.path.join(self.get_dir(), 'page.html'), 'w').write('''
+      <html>
+        <head>
+          <style type="text/css">
+            html, body { margin: 0; padding: 0; }
+            #container {
+              position: absolute;
+              left: 5px; right: 0;
+              top: 5px; bottom: 0;
+            }
+            #canvas {
+              position: absolute;
+              left: 0; width: 600px;
+              top: 0; height: 450px;
+            }
+            textarea {
+              margin-top: 500px;
+              margin-left: 5px;
+              width: 600px;
+            }
+          </style>
+        </head>
+        <body>
+          <div id="container">
+            <canvas id="canvas"></canvas>
+          </div>
+          <textarea id="output" rows="8"></textarea>
+          <script type="text/javascript">
+            var Module = {
+              canvas: document.getElementById('canvas'),
+              print: (function() {
+                var element = document.getElementById('output');
+                element.value = ''; // clear browser cache
+                return function(text) {
+                  text = Array.prototype.slice.call(arguments).join(' ');
+                  element.value += text + "\\n";
+                  element.scrollTop = element.scrollHeight; // focus on bottom
+                };
+              })()
+            };
+          </script>
+          <script type="text/javascript" src="sdl2_mouse.js"></script>
+        </body>
+      </html>
+    ''')
+    open(os.path.join(self.get_dir(), 'sdl2_mouse.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_mouse.c')).read()))
+
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_mouse.c'), '-O2', '--minify', '0', '-o', 'sdl2_mouse.js', '--pre-js', 'pre.js', '-s', 'USE_SDL=2']).communicate()
+    self.run_browser('page.html', '', '/report_result?600')
+
+  def zzztest_sdl2glshader(self):
+    self.btest('sdl2glshader.c', reference='sdlglshader.png', args=['-s', 'USE_SDL=2', '-O2', '--closure', '1', '-s', 'LEGACY_GL_EMULATION=1'])
+
+  def zzztest_sdl2_canvas_blank(self):
+    self.btest('sdl2_canvas_blank.c', reference='sdl_canvas_blank.png', args=['-s', 'USE_SDL=2'])
+
+  def zzztest_sdl2_canvas_palette(self):
+    self.btest('sdl2_canvas_palette.c', reference='sdl_canvas_palette.png', args=['-s', 'USE_SDL=2'])
+
+  def zzztest_sdl2_canvas_twice(self):
+    self.btest('sdl2_canvas_twice.c', reference='sdl_canvas_twice.png', args=['-s', 'USE_SDL=2'])
+
+  def zzztest_sdl2_gfx_primitives(self):
+    self.btest('sdl2_gfx_primitives.c', args=['-s', 'USE_SDL=2', '-lSDL2_gfx'], reference='sdl_gfx_primitives.png', reference_slack=1)
+
+  def zzztest_sdl2_canvas_palette_2(self):
+    open(os.path.join(self.get_dir(), 'args-r.js'), 'w').write('''
+      Module['arguments'] = ['-r'];
+    ''')
+
+    open(os.path.join(self.get_dir(), 'args-g.js'), 'w').write('''
+      Module['arguments'] = ['-g'];
+    ''')
+
+    open(os.path.join(self.get_dir(), 'args-b.js'), 'w').write('''
+      Module['arguments'] = ['-b'];
+    ''')
+
+    self.btest('sdl2_canvas_palette_2.c', reference='sdl_canvas_palette_r.png', args=['-s', 'USE_SDL=2', '--pre-js', 'args-r.js'])
+    self.btest('sdl2_canvas_palette_2.c', reference='sdl_canvas_palette_g.png', args=['-s', 'USE_SDL=2', '--pre-js', 'args-g.js'])
+    self.btest('sdl2_canvas_palette_2.c', reference='sdl_canvas_palette_b.png', args=['-s', 'USE_SDL=2', '--pre-js', 'args-b.js'])
+
+  def zzztest_sdl2_swsurface(self):
+    self.btest('sdl2_swsurface.c', expected='1', args=['-s', 'USE_SDL=2'])
+
+  def zzztest_sdl2_image_compressed(self):
+    for image, width in [(path_from_root('tests', 'screenshot2.png'), 300),
+                         (path_from_root('tests', 'screenshot.jpg'), 600)]:
+      self.clear()
+      print image
+
+      basename = os.path.basename(image)
+      shutil.copyfile(image, os.path.join(self.get_dir(), basename))
+      open(os.path.join(self.get_dir(), 'sdl2_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_image.c')).read()))
+
+      self.build_native_lzma()
+      Popen([
+        PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_image.c'), '-o', 'page.html',
+        '--preload-file', basename, '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="' + basename + '"', '-s', 'USE_SDL=2', '-lSDL2_image',
+        '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
+                                       path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
+                                       'LZMA.decompress')
+      ]).communicate()
+      shutil.move(os.path.join(self.get_dir(), basename), basename + '.renamedsoitcannotbefound');
+      self.run_browser('page.html', '', '/report_result?' + str(width))
+
+  def zzztest_sdl2_image_prepare(self):
+    # load an image file, get pixel data.
+    shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.not'))
+    self.btest('sdl2_image_prepare.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not', '-s', 'USE_SDL=2', '-lSDL2_image'])
+
+  def zzztest_sdl2_canvas_proxy(self):
+    def post():
+      html = open('test.html').read()
+      html = html.replace('</body>', '''
+<script>
+function assert(x, y) { if (!x) throw 'assertion failed ' + y }
+
+%s
+
+var windowClose = window.close;
+window.close = function() {
+  // wait for rafs to arrive and the screen to update before reftesting
+  setTimeout(function() {
+    doReftest();
+    setTimeout(windowClose, 1000);
+  }, 1000);
+};
+</script>
+</body>''' % open('reftest.js').read())
+      open('test.html', 'w').write(html)
+
+    open('data.txt', 'w').write('datum')
+
+    self.btest('sdl2_canvas_proxy.c', reference='sdl_canvas_proxy.png', args=['-s', 'USE_SDL=2', '--proxy-to-worker', '--preload-file', 'data.txt'], manual_reference=True, post_build=post)
+
+  def zzztest_sdl2_pumpevents(self):
+    # key events should be detected using SDL_PumpEvents
+    open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+      function keydown(c) {
+        var event = document.createEvent("KeyboardEvent");
+        event.initKeyEvent("keydown", true, true, window,
+                           0, 0, 0, 0,
+                           c, c);
+        document.dispatchEvent(event);
+      }
+    ''')
+    self.btest('sdl2_pumpevents.c', expected='7', args=['--pre-js', 'pre.js', '-s', 'USE_SDL=2'])
+
+  def zzztest_sdl2_canvas_size(self):
+    self.btest('sdl2_canvas_size.c', expected='1', args=['-s', 'USE_SDL=2'])
+
+  def zzztest_sdl2_gl_read(self):
+    # SDL, OpenGL, readPixels
+    open(os.path.join(self.get_dir(), 'sdl2_gl_read.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_gl_read.c')).read()))
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_gl_read.c'), '-o', 'something.html', '-s', 'USE_SDL=2']).communicate()
+    self.run_browser('something.html', '.', '/report_result?1')
+
+  def zzztest_sdl2_fog_simple(self):
+    shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
+    self.btest('sdl2_fog_simple.c', reference='screenshot-fog-simple.png',
+      args=['-s', 'USE_SDL=2', '-lSDL2_image','-O2', '--minify', '0', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'],
+      message='You should see an image with fog.')
+
+  def zzztest_sdl2_fog_negative(self):
+    shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
+    self.btest('sdl2_fog_negative.c', reference='screenshot-fog-negative.png',
+      args=['-s', 'USE_SDL=2', '-lSDL2_image','--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'],
+      message='You should see an image with fog.')
+
+  def zzztest_sdl2_fog_density(self):
+    shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
+    self.btest('sdl2_fog_density.c', reference='screenshot-fog-density.png',
+      args=['-s', 'USE_SDL=2', '-lSDL2_image','--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'],
+      message='You should see an image with fog.')
+
+  def zzztest_sdl2_fog_exp2(self):
+    shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
+    self.btest('sdl2_fog_exp2.c', reference='screenshot-fog-exp2.png',
+      args=['-s', 'USE_SDL=2', '-lSDL2_image','--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'],
+      message='You should see an image with fog.')
+
+  def zzztest_sdl2_fog_linear(self):
+    shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
+    self.btest('sdl2_fog_linear.c', reference='screenshot-fog-linear.png', reference_slack=1,
+      args=['-s', 'USE_SDL=2', '-lSDL2_image','--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'],
+      message='You should see an image with fog.')
+
