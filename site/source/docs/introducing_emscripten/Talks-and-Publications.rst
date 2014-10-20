@@ -9,6 +9,7 @@ Presentations
 
 - Slides from CppCon 2014: 
  - `Emscripten & asm.js: C++'s role in the modern web <http://kripken.github.io/mloc_emscripten_talk/cppcon.html>`_ (`kripken <https://github.com/kripken>`_)
+  - `Video of talk <https://www.youtube.com/watch?v=JhMlWj4tCDo&list=UUMlGfpWw-RUdWX_JbLCukXg>`_
  - `Connecting C++ and JavaScript on the Web with Embind <http://chadaustin.me/2014/09/connecting-c-and-javascript-on-the-web-with-embind/>`_ (`chadaustin <https://github.com/chadaustin>`_)
   - `Video of talk <https://www.youtube.com/watch?v=Dsgws5zJiwk&list=UUMlGfpWw-RUdWX_JbLCukXg>`_
 
