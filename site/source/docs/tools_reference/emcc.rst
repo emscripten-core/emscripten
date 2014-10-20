@@ -367,6 +367,13 @@ Options that are modified or new in *emcc* are listed below:
 	Manually clears the cache of compiled Emscripten system libraries (libc++, libc++abi, libc). 
 	
 	This is normally handled automatically, but if you update LLVM in-place (instead of having a different directory for a new version), the caching mechanism can get confused. Clearing the cache can fix weird problems related to cache incompatibilities, like *Clang* failing to link with library files. This also clears other cached data like the jcache and the bootstrapped relooper. After the cache is cleared, this process will exit.
+
+.. _emcc-clear-ports:
+	 
+``--clear-ports``
+	Manually clears the local copies and builds of projects from the Emscripten ports repos (sdl2, etc.)
+	
+	You should only need to do this if a problem happens and you want all ports that you use to be downloaded and built from scratch. After this operation is complete, this process will exit.
 	 
 ``--save-bc PATH``
 	When compiling to JavaScript or HTML, this option will save a copy of the bitcode to the specified path. The bitcode will include all files being linked after link-time optimizations have been performed (if any), including standard libraries.

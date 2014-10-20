@@ -623,10 +623,13 @@ try:
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i] == '--clear-cache':
-      newargs[i] = ''
       logging.warning('clearing cache')
       shared.Cache.erase()
       shared.check_sanity(force=True) # this is a good time for a sanity check
+      sys.exit(0)
+    elif newargs[i] == '--clear-ports':
+      logging.warning('clearing ports')
+      system_libs.Ports.erase()
       sys.exit(0)
     elif newargs[i] == '--save-bc':
       check_bad_eq(newargs[i])

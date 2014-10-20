@@ -579,7 +579,10 @@ fi
 
     for i in [0, 1]:
       print i
-      try_delete(PORTS_DIR)
+      if i == 0:
+        try_delete(PORTS_DIR)
+      else:
+        self.do([PYTHON, EMCC, '--clear-ports'])
       assert not os.path.exists(PORTS_DIR)
       if i == 0: Cache.erase() # test with cache erased and without
 

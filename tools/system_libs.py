@@ -590,6 +590,10 @@ class Ports:
     return dirname
 
   @staticmethod
+  def erase():
+    shared.try_delete(Ports.get_dir())
+
+  @staticmethod
   def fetch_project(name, url):
     fullname = os.path.join(Ports.get_dir(), name)
     logging.warning('including port: ' + name)
@@ -643,7 +647,7 @@ def get_ports(settings):
     ok = True
   finally:
     if not ok:
-      logging.error('a problem occurred when using an emscripten-ports library. try to clear ' + Ports.get_dir() + ', run emcc --clear-cache, and run again')
+      logging.error('a problem occurred when using an emscripten-ports library. try to run  emcc --clear-cache  ,   emcc --clear-ports  , and then run this command again')
 
   return ret
 
