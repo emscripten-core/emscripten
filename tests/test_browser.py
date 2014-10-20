@@ -2134,7 +2134,7 @@ Module['_main'] = function() {
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_key.c'), '-o', 'page.html'] + defines + ['-s', 'USE_SDL=2','--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''', '-s', 'NO_EXIT_RUNTIME=1']).communicate()
       self.run_browser('page.html', '', '/report_result?7436429')
 
-  def zzztest_sdl2_text(self):
+  def test_sdl2_text(self):
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
       Module.postRun = function() {
         function doOne() {
@@ -2156,7 +2156,7 @@ Module['_main'] = function() {
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_text.c'), '-o', 'page.html', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''', '-s', 'USE_SDL=2']).communicate()
     self.run_browser('page.html', '', '/report_result?1')
 
-  def zzztest_sdl2_mouse(self):
+  def test_sdl2_mouse(self):
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
       function simulateMouseEvent(x, y, button) {
         var event = document.createEvent("MouseEvents");
@@ -2189,7 +2189,7 @@ Module['_main'] = function() {
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_mouse.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js', '-s', 'USE_SDL=2']).communicate()
     self.run_browser('page.html', '', '/report_result?740')
 
-  def zzztest_sdl2_mouse_offsets(self):
+  def test_sdl2_mouse_offsets(self):
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
       function simulateMouseEvent(x, y, button) {
         var event = document.createEvent("MouseEvents");
@@ -2267,13 +2267,13 @@ Module['_main'] = function() {
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_mouse.c'), '-O2', '--minify', '0', '-o', 'sdl2_mouse.js', '--pre-js', 'pre.js', '-s', 'USE_SDL=2']).communicate()
     self.run_browser('page.html', '', '/report_result?600')
 
-  def zzztest_sdl2glshader(self):
+  def test_sdl2glshader(self):
     self.btest('sdl2glshader.c', reference='sdlglshader.png', args=['-s', 'USE_SDL=2', '-O2', '--closure', '1', '-s', 'LEGACY_GL_EMULATION=1'])
 
-  def zzztest_sdl2_canvas_blank(self):
+  def test_sdl2_canvas_blank(self):
     self.btest('sdl2_canvas_blank.c', reference='sdl_canvas_blank.png', args=['-s', 'USE_SDL=2'])
 
-  def zzztest_sdl2_canvas_palette(self):
+  def test_sdl2_canvas_palette(self):
     self.btest('sdl2_canvas_palette.c', reference='sdl_canvas_palette.png', args=['-s', 'USE_SDL=2'])
 
   def zzztest_sdl2_canvas_twice(self):
@@ -2282,7 +2282,7 @@ Module['_main'] = function() {
   def zzztest_sdl2_gfx_primitives(self):
     self.btest('sdl2_gfx_primitives.c', args=['-s', 'USE_SDL=2', '-lSDL2_gfx'], reference='sdl_gfx_primitives.png', reference_slack=1)
 
-  def zzztest_sdl2_canvas_palette_2(self):
+  def test_sdl2_canvas_palette_2(self):
     open(os.path.join(self.get_dir(), 'args-r.js'), 'w').write('''
       Module['arguments'] = ['-r'];
     ''')
@@ -2299,7 +2299,7 @@ Module['_main'] = function() {
     self.btest('sdl2_canvas_palette_2.c', reference='sdl_canvas_palette_g.png', args=['-s', 'USE_SDL=2', '--pre-js', 'args-g.js'])
     self.btest('sdl2_canvas_palette_2.c', reference='sdl_canvas_palette_b.png', args=['-s', 'USE_SDL=2', '--pre-js', 'args-b.js'])
 
-  def zzztest_sdl2_swsurface(self):
+  def test_sdl2_swsurface(self):
     self.btest('sdl2_swsurface.c', expected='1', args=['-s', 'USE_SDL=2'])
 
   def zzztest_sdl2_image_compressed(self):
@@ -2353,7 +2353,7 @@ window.close = function() {
 
     self.btest('sdl2_canvas_proxy.c', reference='sdl_canvas_proxy.png', args=['-s', 'USE_SDL=2', '--proxy-to-worker', '--preload-file', 'data.txt'], manual_reference=True, post_build=post)
 
-  def zzztest_sdl2_pumpevents(self):
+  def test_sdl2_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
       function keydown(c) {
@@ -2366,10 +2366,10 @@ window.close = function() {
     ''')
     self.btest('sdl2_pumpevents.c', expected='7', args=['--pre-js', 'pre.js', '-s', 'USE_SDL=2'])
 
-  def zzztest_sdl2_canvas_size(self):
+  def test_sdl2_canvas_size(self):
     self.btest('sdl2_canvas_size.c', expected='1', args=['-s', 'USE_SDL=2'])
 
-  def zzztest_sdl2_gl_read(self):
+  def test_sdl2_gl_read(self):
     # SDL, OpenGL, readPixels
     open(os.path.join(self.get_dir(), 'sdl2_gl_read.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_gl_read.c')).read()))
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_gl_read.c'), '-o', 'something.html', '-s', 'USE_SDL=2']).communicate()
