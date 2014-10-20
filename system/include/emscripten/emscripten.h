@@ -182,10 +182,6 @@ void emscripten_worker_respond_provisionally(char *data, int size);
 
 int emscripten_get_worker_queue_size(worker_handle worker);
 
-#define EMSCRIPTEN_NETWORK_WEBSOCKETS 0
-#define EMSCRIPTEN_NETWORK_WEBRTC     1
-void emscripten_set_network_backend(int backend);
-
 int emscripten_get_compiler_setting(const char *name);
 
 void emscripten_debugger();

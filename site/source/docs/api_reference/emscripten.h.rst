@@ -852,38 +852,6 @@ Functions
 	:rtype: char*
 
 	
-	
-Networking backend
-==================
-
-Defines
--------
-
-.. c:macro:: EMSCRIPTEN_NETWORK_WEBSOCKETS
-
-	Used to select the websockets networking backend in :c:func:`emscripten_set_network_backend`
-
-.. c:macro:: EMSCRIPTEN_NETWORK_WEBRTC
-
-	Used to select the WebRTC networking backend in :c:func:`emscripten_set_network_backend`	
-
-	
-Functions
----------
-
-.. c:function:: void emscripten_set_network_backend(int backend)
-
-	Selects the networking backend to use. 
-	
-	.. note::	
-		- This function must be called before any network functions are called.
-
-	By default Emscripten's socket/networking implementation will use websockets. With this function you can change that to WebRTC.
-	
-	:param int backend: The backend to use. One of :c:macro:`EMSCRIPTEN_NETWORK_WEBSOCKETS` and :c:macro:`EMSCRIPTEN_NETWORK_WEBRTC`
-
-
-	
 .. _emscripten-api-reference-sockets:
 
 Socket event registration
