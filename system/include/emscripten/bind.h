@@ -994,21 +994,6 @@ namespace emscripten {
     };
 
     namespace internal {
-        template<typename T>
-        struct SmartPtrIfNeeded {
-            template<typename U>
-            SmartPtrIfNeeded(U& cls, const char* smartPtrName) {
-                cls.template smart_ptr<T>(smartPtrName);
-            }
-        };
-
-        template<typename T>
-        struct SmartPtrIfNeeded<T*> {
-            template<typename U>
-            SmartPtrIfNeeded(U&, const char*) {
-            }
-        };
-
         template<typename WrapperType>
         val wrapped_extend(const std::string& name, const val& properties) {
             return val::take_ownership(_embind_create_inheriting_constructor(
@@ -1155,11 +1140,10 @@ namespace emscripten {
             return *this;
         }
 
-        template<typename WrapperType, typename PointerType = WrapperType*, typename... ConstructorArgs>
+        template<typename WrapperType, typename... ConstructorArgs>
         EMSCRIPTEN_ALWAYS_INLINE const class_& allow_subclass(
             const char* wrapperClassName,
-            const char* pointerName = "<UnknownPointerName>",
-            ::emscripten::constructor<ConstructorArgs...> = ::emscripten::constructor<ConstructorArgs...>()
+            ::emscripten::constructor<ConstructorArgs...> = ::emscripten::constructor<>()
         ) const {
             using namespace internal;
 
@@ -1168,7 +1152,32 @@ namespace emscripten {
                     wrapper.setNotifyJSOnDestruction(true);
                 }))
                 ;
-            SmartPtrIfNeeded<PointerType> _(cls, pointerName);
+
+            return
+                class_function(
+                    "implement",
+                    &wrapped_new<WrapperType*, WrapperType, val, ConstructorArgs...>,
+                    allow_raw_pointer<ret_val>())
+                .class_function(
+                    "extend",
+                    &wrapped_extend<WrapperType>)
+                ;
+        }
+
+        template<typename WrapperType, typename PointerType, typename... ConstructorArgs>
+        EMSCRIPTEN_ALWAYS_INLINE const class_& allow_subclass(
+            const char* wrapperClassName,
+            const char* pointerName,
+            ::emscripten::constructor<ConstructorArgs...> = ::emscripten::constructor<>()
+        ) const {
+            using namespace internal;
+
+            auto cls = class_<WrapperType, base<ClassType>>(wrapperClassName)
+                .function("notifyOnDestruction", select_overload<void(WrapperType&)>([](WrapperType& wrapper) {
+                    wrapper.setNotifyJSOnDestruction(true);
+                }))
+                .template smart_ptr<PointerType>(pointerName)
+                ;
 
             return
                 class_function(
@@ -1179,14 +1188,6 @@ namespace emscripten {
                     "extend",
                     &wrapped_extend<WrapperType>)
                 ;
-        }
-
-        template<typename WrapperType, typename... ConstructorArgs>
-        EMSCRIPTEN_ALWAYS_INLINE const class_& allow_subclass(
-            const char* wrapperClassName,
-            ::emscripten::constructor<ConstructorArgs...> constructor
-        ) const {
-            return allow_subclass<WrapperType, WrapperType*>(wrapperClassName, "<UnknownPointerName>", constructor);
         }
 
         template<typename ReturnType, typename... Args, typename... Policies>
