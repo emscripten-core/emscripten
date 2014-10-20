@@ -2102,7 +2102,7 @@ Module['_main'] = function() {
     ]).communicate()
     self.run_browser('page.html', '', '/report_result?600')
 
-  def zzztest_sdl2_key(self):
+  def test_sdl2_key(self):
     for defines in [[]]:
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
         Module.postRun = function() {
