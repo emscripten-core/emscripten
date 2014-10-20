@@ -40,7 +40,8 @@ function WebGLWorker() {
     texture2D: null,
     arrayBuffer: null,
     elementArrayBuffer: null,
-    program: null
+    program: null,
+    framebuffer: null
   };
 
   //===========
@@ -511,6 +512,9 @@ function WebGLWorker() {
       case this.CURRENT_PROGRAM: {
         return bindings.program;
       }
+      case this.FRAMEBUFFER_BINDING: {
+        return bindings.framebuffer;
+      }
       default: throw 'TODO: get parameter ' + name + ' : ' + revname(name);
     }
   };
@@ -730,6 +734,10 @@ function WebGLWorker() {
     if (!location) return;
     commandBuffer.push(20, location.id, new Float32Array(data));
   };
+  this.uniform4f = function(location, x, y, z, w) {
+    if (!location) return;
+    commandBuffer.push(21, location.id, new Float32Array([x, y, z, w]));
+  };
   this.uniform4fv = function(location, data) {
     if (!location) return;
     commandBuffer.push(21, location.id, new Float32Array(data));
@@ -904,6 +912,7 @@ function WebGLWorker() {
   };
   this.bindFramebuffer = function(target, framebuffer) {
     commandBuffer.push(57, target, framebuffer ? framebuffer.id : 0);
+    bindings.framebuffer = framebuffer;
   };
   this.framebufferTexture2D = function(target, attachment, textarget, texture, level) {
     commandBuffer.push(58, target, attachment, textarget, texture ? texture.id : 0, level);
