@@ -46,6 +46,13 @@
          T expm1
          T expm1f
          T expm1l
+         T feclearexcept
+         T feraiseexcept
+         T fetestexcept
+         T fegetround
+         T __fesetround
+         T fegetenv
+         T fesetenv
          T fdim
          T fdimf
          T fdiml

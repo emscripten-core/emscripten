@@ -98,6 +98,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
        'isxdigit.c',
        'tolower.c',
       ]],
+      ['fenv', [
+        'fenv.c'
+      ]],
       ['internal', [
        'intscan.c',
        'floatscan.c',
