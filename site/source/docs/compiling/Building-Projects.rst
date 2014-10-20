@@ -130,7 +130,7 @@ For more general information, see the topic :ref:`Debugging`.
 Using libraries
 ===============
 
-Built in support is available for a number of standard libraries: *libc*, *libc++* and *SDL*. These will automatically be linked when you compile code that uses them (you do not even need to add ``-lSDL``).
+Built in support is available for a number of standard libraries: *libc*, *libc++* and *SDL*. These will automatically be linked when you compile code that uses them (you do not even need to add ``-lSDL``, but see below for more SDL-specific details).
 
 If your project uses other libraries, for example `zlib <https://github.com/kripken/emscripten/tree/master/tests/zlib>`_ or *glib*, you will need to build and link them. The normal approach is to build the libraries to bitcode and then compile library and main program bitcode together to JavaScript. 
 
@@ -165,13 +165,30 @@ It is also possible to link the bitcode libraries first, and then compile the co
 
 
 
-SDL Configuration
-=================
+Emscripten Ports
+================
 
-Projects that depend on SDL should use the Emscripten version of *sdl-config*, which is present in `system/bin <https://github.com/kripken/emscripten/blob/master/system/bin/sdl-config>`_. Using the native *sdl-config* may result in compilation or missing-symbol errors.
+Emscripten Ports is a collection of useful libraries, ported to Emscripten. They reside `on github <https://github.com/emscripten-ports>`_, and have integration support in *emcc*. When you request that a port be used, emcc will fetch it from the remote server, set it up and build it locally, then link it with your project, add necessary include to your build commands, etc. For example, SDL2 is in ports, and you can request that it be used with ``-s USE_SDL=2``. For example,
 
-.. note:: Modify the build system to look for files in **emscripten/system** or **emscripten/system/bin** in order to use SDL properly (the approach will be build system-specific).
+.. code-block:: bash
 
+	/emcc tests/sdl2glshader.c -s USE_SDL=2 -s LEGACY_GL_EMULATION=1 -o sdl2.html
+
+You should see some notifications about SDL2 being used, and built if it wasn't previously. You can then view ``sdl2.html`` in your browser.
+
+.. note:: *SDL_image* has also been added to ports, use it with ``-s USE_SDL_IMAGE=2``.
+
+.. note:: Emscripten also has support for older SDL1, which is built in. If you do not specify SDL2 as in the command above, then SDL1 is linked in and the SDL1 include paths are used. SDL1 has support for *sdl-config*, which is present in `system/bin <https://github.com/kripken/emscripten/blob/master/system/bin/sdl-config>`_. Using the native *sdl-config* may result in compilation or missing-symbol errors. You will need to modify the build system to look for files in **emscripten/system** or **emscripten/system/bin** in order to use the Emscripten *sdl-config*.
+
+Adding more ports
+-----------------
+
+Adding more ports is fairly easy. Basically, the steps are
+
+ * Make sure the port is open source and has a suitable license.
+ * Add it to emscripten-ports on github. The ports maintainers can create the repo and add the relevant developers to a team for that repo, so they have write access.
+ * Add a script to handle it under ``tools/ports/`` (see existing code for examples) and use it in ``tools/ports/__init__.py``.
+ * Add testing in the test suite.
 
 
 Build system issues
