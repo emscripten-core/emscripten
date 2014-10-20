@@ -601,11 +601,16 @@ class Ports:
   def get_build_dir():
     return shared.Cache.get_path('ports-builds')
 
+  name_cache = set()
+
   @staticmethod
   def fetch_project(name, url):
     fullname = os.path.join(Ports.get_dir(), name)
-    logging.warning('including port: ' + name)
-    logging.debug('    (at ' + fullname + ')')
+
+    if name not in Ports.name_cache: # only mention each port once in log
+      logging.warning('including port: ' + name)
+      logging.debug('    (at ' + fullname + ')')
+      Ports.name_cache.add(name)
 
     if not os.path.exists(fullname + '.zip'):
       logging.warning('retrieving port: ' + name + ' from ' + url)
