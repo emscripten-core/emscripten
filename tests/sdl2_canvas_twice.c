@@ -30,7 +30,5 @@ int main(int argc, char **argv) {
   SDL_RenderCopy(renderer, screenTexture, NULL, NULL);
   SDL_RenderPresent(renderer);
 
-  while(1) { SDL_WaitEvent(NULL); }
-
   return 0;
 }

@@ -2276,7 +2276,7 @@ Module['_main'] = function() {
   def test_sdl2_canvas_palette(self):
     self.btest('sdl2_canvas_palette.c', reference='sdl_canvas_palette.png', args=['-s', 'USE_SDL=2'])
 
-  def zzztest_sdl2_canvas_twice(self):
+  def test_sdl2_canvas_twice(self):
     self.btest('sdl2_canvas_twice.c', reference='sdl_canvas_twice.png', args=['-s', 'USE_SDL=2'])
 
   def zzztest_sdl2_gfx_primitives(self):

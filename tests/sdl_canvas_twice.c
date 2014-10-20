@@ -20,7 +20,5 @@ int main(int argc, char **argv) {
 
   SDL_Flip(screen);
 
-  while(1) { SDL_WaitEvent(NULL); }
-
   return 0;
 }
