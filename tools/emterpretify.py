@@ -554,251 +554,251 @@ function emterpret%s(pc) {
 ))
 
 # main
+if __name__ == '__main__':
+  infile = sys.argv[1]
+  outfile = sys.argv[2]
+  force_memfile = sys.argv[3] if len(sys.argv) >= 4 else None
+  extra_blacklist = json.loads(sys.argv[4]) if len(sys.argv) >= 5 else []
 
-infile = sys.argv[1]
-outfile = sys.argv[2]
-force_memfile = sys.argv[3] if len(sys.argv) >= 4 else None
-extra_blacklist = json.loads(sys.argv[4]) if len(sys.argv) >= 5 else []
+  BLACKLIST = set(list(BLACKLIST) + extra_blacklist)
 
-BLACKLIST = set(list(BLACKLIST) + extra_blacklist)
+  shared.logging.debug('saving original (non-emterpreted) code to ' + infile + '.orig.js')
+  shutil.copyfile(infile, infile + '.orig.js')
 
-shared.logging.debug('saving original (non-emterpreted) code to ' + infile + '.orig.js')
-shutil.copyfile(infile, infile + '.orig.js')
+  # final global functions
 
-# final global functions
+  asm = asm_module.AsmModule(infile)
 
-asm = asm_module.AsmModule(infile)
+  # sanity check on blacklist
 
-# sanity check on blacklist
+  for func in extra_blacklist:
+    assert func in asm.funcs, 'requested blacklist of %s but it does not exist' % func
 
-for func in extra_blacklist:
-  assert func in asm.funcs, 'requested blacklist of %s but it does not exist' % func
+  # decide which functions will be emterpreted, and find which are externally reachable (from outside other emterpreted code; those will need trampolines)
 
-# decide which functions will be emterpreted, and find which are externally reachable (from outside other emterpreted code; those will need trampolines)
+  emterpreted_funcs = set([func for func in asm.funcs if func not in BLACKLIST and not func.startswith('dynCall_')])
 
-emterpreted_funcs = set([func for func in asm.funcs if func not in BLACKLIST and not func.startswith('dynCall_')])
+  tabled_funcs = asm.get_table_funcs()
+  exported_funcs = [func.split(':')[0] for func in asm.exports]
 
-tabled_funcs = asm.get_table_funcs()
-exported_funcs = [func.split(':')[0] for func in asm.exports]
+  temp = infile + '.tmp.js'
 
-temp = infile + '.tmp.js'
+  # find emterpreted functions reachable by non-emterpreted ones, we will force a trampoline for them later
 
-# find emterpreted functions reachable by non-emterpreted ones, we will force a trampoline for them later
+  shared.Building.js_optimizer(infile, ['findReachable'], extra_info={ 'blacklist': list(emterpreted_funcs) }, output_filename=temp, just_concat=True)
+  asm = asm_module.AsmModule(temp)
+  lines = asm.funcs_js.split('\n')
 
-shared.Building.js_optimizer(infile, ['findReachable'], extra_info={ 'blacklist': list(emterpreted_funcs) }, output_filename=temp, just_concat=True)
-asm = asm_module.AsmModule(temp)
-lines = asm.funcs_js.split('\n')
+  reachable_funcs = set([])
+  for i in range(len(lines)):
+    line = lines[i]
+    if line.startswith('// REACHABLE '):
+      curr = json.loads(line[len('// REACHABLE '):])
+      reachable_funcs = set(list(reachable_funcs) + curr)
 
-reachable_funcs = set([])
-for i in range(len(lines)):
-  line = lines[i]
-  if line.startswith('// REACHABLE '):
-    curr = json.loads(line[len('// REACHABLE '):])
-    reachable_funcs = set(list(reachable_funcs) + curr)
+  external_emterpreted_funcs = filter(lambda func: func in tabled_funcs or func in exported_funcs or func in reachable_funcs, emterpreted_funcs)
 
-external_emterpreted_funcs = filter(lambda func: func in tabled_funcs or func in exported_funcs or func in reachable_funcs, emterpreted_funcs)
+  # process functions, generating bytecode
+  shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'emterpretedFuncs': list(emterpreted_funcs), 'externalEmterpretedFuncs': list(external_emterpreted_funcs), 'opcodes': OPCODES, 'ropcodes': ROPCODES }, output_filename=temp, just_concat=True)
 
-# process functions, generating bytecode
-shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'emterpretedFuncs': list(emterpreted_funcs), 'externalEmterpretedFuncs': list(external_emterpreted_funcs), 'opcodes': OPCODES, 'ropcodes': ROPCODES }, output_filename=temp, just_concat=True)
+  # load the module and modify it
+  asm = asm_module.AsmModule(temp)
 
-# load the module and modify it
-asm = asm_module.AsmModule(temp)
-
-in_mem_file = infile + '.mem'
-in_mem_file_base = os.path.basename(in_mem_file)
-out_mem_file = outfile + '.mem'
-out_mem_file_base = os.path.basename(out_mem_file)
-
-assert in_mem_file_base in asm.pre_js, 'we assume a mem init file for now (looked for %s)' % in_mem_file
-if not force_memfile:
-  asm.pre_js = asm.pre_js.replace(in_mem_file_base, out_mem_file_base)
-  assert os.path.exists(in_mem_file), 'need to find mem file at %s' % in_mem_file
-else:
-  out_mem_file = force_memfile
+  in_mem_file = infile + '.mem'
+  in_mem_file_base = os.path.basename(in_mem_file)
+  out_mem_file = outfile + '.mem'
   out_mem_file_base = os.path.basename(out_mem_file)
-mem_init = map(ord, open(in_mem_file, 'rb').read())
-zero_space = asm.staticbump - len(mem_init)
-assert zero_space >= 0 # can be positive, if we add a bump of zeros
 
-assert ('GLOBAL_BASE: %d,' % GLOBAL_BASE) in asm.pre_js, 'we assume a specific global base, and that we can write to all memory below it'
+  assert in_mem_file_base in asm.pre_js, 'we assume a mem init file for now (looked for %s)' % in_mem_file
+  if not force_memfile:
+    asm.pre_js = asm.pre_js.replace(in_mem_file_base, out_mem_file_base)
+    assert os.path.exists(in_mem_file), 'need to find mem file at %s' % in_mem_file
+  else:
+    out_mem_file = force_memfile
+    out_mem_file_base = os.path.basename(out_mem_file)
+  mem_init = map(ord, open(in_mem_file, 'rb').read())
+  zero_space = asm.staticbump - len(mem_init)
+  assert zero_space >= 0 # can be positive, if we add a bump of zeros
 
-# calculate where code will start
-while len(mem_init) % 8 != 0:
-  mem_init.append(0)
-  asm.staticbump += 1
-code_start = len(mem_init) + GLOBAL_BASE
+  assert ('GLOBAL_BASE: %d,' % GLOBAL_BASE) in asm.pre_js, 'we assume a specific global base, and that we can write to all memory below it'
 
-# parse out bytecode and add to mem init file
-all_code = []
-funcs = {}
-lines = asm.funcs_js.split('\n')
-asm.funcs_js = None
-func = None
+  # calculate where code will start
+  while len(mem_init) % 8 != 0:
+    mem_init.append(0)
+    asm.staticbump += 1
+  code_start = len(mem_init) + GLOBAL_BASE
 
-# first pass, collect and process bytecode
+  # parse out bytecode and add to mem init file
+  all_code = []
+  funcs = {}
+  lines = asm.funcs_js.split('\n')
+  asm.funcs_js = None
+  func = None
 
-global_funcs = {} # 'name|sig' -> id
-global_func_names = {} # id -> name
-global_func_sigs = {} # id -> sig, one name can have multiple sigs
-global_func_id = 0
+  # first pass, collect and process bytecode
 
-global_vars = {}
-rglobal_vars = {}
-global_var_id = 0
+  global_funcs = {} # 'name|sig' -> id
+  global_func_names = {} # id -> name
+  global_func_sigs = {} # id -> sig, one name can have multiple sigs
+  global_func_id = 0
 
-call_sigs = {} # signatures appearing for each call target
-def process_code(func, code, absolute_targets):
-  global global_func_id
-  global global_var_id
-  absolute_start = code_start + len(all_code) # true absolute starting point of this function
-  #print 'processing code', func, absolute_start
-  for i in range(len(code)/4):
-    j = i*4
-    if code[j] == 'EXTCALL':
-      # fix CALL instructions' targets and signatures
-      target = code[j+2]
-      sig = code[j+3]
-      if target not in call_sigs: call_sigs[target] = []
-      sigs = call_sigs[target]
-      if sig not in sigs: sigs.append(sig)
-      fullname = target + '|' + sig
-      if fullname not in global_funcs:
-        global_funcs[fullname] = global_func_id
-        global_func_names[global_func_id] = target
-        global_func_sigs[global_func_id] = sig
-        global_func_id += 1
-      code[j+2] = global_funcs[fullname] & 255
-      code[j+3] = global_funcs[fullname] >> 8
-      if sig[0] == 'v':
-        if code[j+1] == -1: # dummy value for assignment XXX we should not have assignments on void calls
-          code[j+1] = 0 # clear it
-      else:
-        assert code[j+1] >= 0 # there should be a real target here
-    elif code[j] in ['GETGLBI', 'GETGLBD']:
-      # fix global-accessing instructions' targets
-      target = code[j+2]
-      imp = asm.imports[target]
-      assert '|0' in imp or '| 0' in imp or imp == '0'
-      if target not in global_vars:
-        global_vars[target] = global_var_id
-        rglobal_vars[global_var_id] = target
-        global_var_id += 1
-      code[j+2] = global_vars[target]
-    elif code[j] in ['SETGLBI']:
-      # fix global-accessing instructions' targets
-      target = code[j+1]
-      if target not in global_vars:
-        global_vars[target] = global_var_id
-        rglobal_vars[global_var_id] = target
-        global_var_id += 1
-      code[j+1] = global_vars[target]
-    elif code[j] == 'absolute-value':
-      # put the 32-bit absolute value of an abolute target here
-      absolute_value = absolute_start + absolute_targets[unicode(code[j+1])]
-      #print '  fixing absolute value', code[j+1], absolute_targets[unicode(code[j+1])], absolute_value
-      assert absolute_value < (1 << 31)
-      assert absolute_value % 4 == 0
-      value = bytify(absolute_value)
-      for k in range(4):
-        code[j + k] = value[k]
+  global_vars = {}
+  rglobal_vars = {}
+  global_var_id = 0
 
-actual_return_types = {}
+  call_sigs = {} # signatures appearing for each call target
+  def process_code(func, code, absolute_targets):
+    global global_func_id
+    global global_var_id
+    absolute_start = code_start + len(all_code) # true absolute starting point of this function
+    #print 'processing code', func, absolute_start
+    for i in range(len(code)/4):
+      j = i*4
+      if code[j] == 'EXTCALL':
+        # fix CALL instructions' targets and signatures
+        target = code[j+2]
+        sig = code[j+3]
+        if target not in call_sigs: call_sigs[target] = []
+        sigs = call_sigs[target]
+        if sig not in sigs: sigs.append(sig)
+        fullname = target + '|' + sig
+        if fullname not in global_funcs:
+          global_funcs[fullname] = global_func_id
+          global_func_names[global_func_id] = target
+          global_func_sigs[global_func_id] = sig
+          global_func_id += 1
+        code[j+2] = global_funcs[fullname] & 255
+        code[j+3] = global_funcs[fullname] >> 8
+        if sig[0] == 'v':
+          if code[j+1] == -1: # dummy value for assignment XXX we should not have assignments on void calls
+            code[j+1] = 0 # clear it
+        else:
+          assert code[j+1] >= 0 # there should be a real target here
+      elif code[j] in ['GETGLBI', 'GETGLBD']:
+        # fix global-accessing instructions' targets
+        target = code[j+2]
+        imp = asm.imports[target]
+        assert '|0' in imp or '| 0' in imp or imp == '0'
+        if target not in global_vars:
+          global_vars[target] = global_var_id
+          rglobal_vars[global_var_id] = target
+          global_var_id += 1
+        code[j+2] = global_vars[target]
+      elif code[j] in ['SETGLBI']:
+        # fix global-accessing instructions' targets
+        target = code[j+1]
+        if target not in global_vars:
+          global_vars[target] = global_var_id
+          rglobal_vars[global_var_id] = target
+          global_var_id += 1
+        code[j+1] = global_vars[target]
+      elif code[j] == 'absolute-value':
+        # put the 32-bit absolute value of an abolute target here
+        absolute_value = absolute_start + absolute_targets[unicode(code[j+1])]
+        #print '  fixing absolute value', code[j+1], absolute_targets[unicode(code[j+1])], absolute_value
+        assert absolute_value < (1 << 31)
+        assert absolute_value % 4 == 0
+        value = bytify(absolute_value)
+        for k in range(4):
+          code[j + k] = value[k]
 
-for i in range(len(lines)):
-  line = lines[i]
-  if line.startswith('function ') and '}' not in line:
-    assert not func
-  elif line.startswith('// EMTERPRET_INFO '):
-    try:
-      func, curr, absolute_targets = json.loads(line[len('// EMTERPRET_INFO '):])
-    except Exception, e:
-      print >> sys.stderr, 'failed to parse code from', line
-      raise e
-    assert len(curr) % 4 == 0, curr
-    funcs[func] = len(all_code) # no operation here should change the length
-    if LOG_CODE: print >> sys.stderr, 'raw bytecode for %s:' % func, curr, 'insts:', len(curr)/4
-    process_code(func, curr, absolute_targets)
-    #print >> sys.stderr, 'processed bytecode for %s:' % func, curr
-    all_code += curr
-    func = None
-    lines[i] = ''
-  elif line.startswith('// return type: ['):
-    name, ret = line.split('[')[1].split(']')[0].split(',')
-    if ret == 'undefined':
-      actual_return_types[name] = 'v'
-    elif ret == '0':
-      actual_return_types[name] = 'i'
-    elif ret == '1':
-      actual_return_types[name] = 'd'
-    elif ret == '2':
-      actual_return_types[name] = 'f'
-    lines[i] = ''
+  actual_return_types = {}
 
-assert global_func_id < 65536, [global_funcs, global_func_id]
-assert global_var_id < 256, [global_vars, global_var_id]
+  for i in range(len(lines)):
+    line = lines[i]
+    if line.startswith('function ') and '}' not in line:
+      assert not func
+    elif line.startswith('// EMTERPRET_INFO '):
+      try:
+        func, curr, absolute_targets = json.loads(line[len('// EMTERPRET_INFO '):])
+      except Exception, e:
+        print >> sys.stderr, 'failed to parse code from', line
+        raise e
+      assert len(curr) % 4 == 0, curr
+      funcs[func] = len(all_code) # no operation here should change the length
+      if LOG_CODE: print >> sys.stderr, 'raw bytecode for %s:' % func, curr, 'insts:', len(curr)/4
+      process_code(func, curr, absolute_targets)
+      #print >> sys.stderr, 'processed bytecode for %s:' % func, curr
+      all_code += curr
+      func = None
+      lines[i] = ''
+    elif line.startswith('// return type: ['):
+      name, ret = line.split('[')[1].split(']')[0].split(',')
+      if ret == 'undefined':
+        actual_return_types[name] = 'v'
+      elif ret == '0':
+        actual_return_types[name] = 'i'
+      elif ret == '1':
+        actual_return_types[name] = 'd'
+      elif ret == '2':
+        actual_return_types[name] = 'f'
+      lines[i] = ''
 
-def post_process_code(code):
-  for i in range(len(code)/4):
-    j = i*4
-    if code[j] == 'absolute-funcaddr':
-      # put the 32-bit absolute value of an abolute function here
-      absolute_value = code_start + funcs[code[j+1]]
-      #print '  fixing absolute value', code[j+1], absolute_targets[unicode(code[j+1])], absolute_value
-      assert absolute_value < (1 << 31)
-      assert absolute_value % 4 == 0
-      value = bytify(absolute_value)
-      for k in range(4):
-        code[j + k] = value[k]
+  assert global_func_id < 65536, [global_funcs, global_func_id]
+  assert global_var_id < 256, [global_vars, global_var_id]
 
-  # finalize instruction string names to opcodes
-  for i in range(len(code)/4):
-    j = i*4
-    if type(code[j]) in (str, unicode):
-      code[j] = ROPCODES[code[j]]
+  def post_process_code(code):
+    for i in range(len(code)/4):
+      j = i*4
+      if code[j] == 'absolute-funcaddr':
+        # put the 32-bit absolute value of an abolute function here
+        absolute_value = code_start + funcs[code[j+1]]
+        #print '  fixing absolute value', code[j+1], absolute_targets[unicode(code[j+1])], absolute_value
+        assert absolute_value < (1 << 31)
+        assert absolute_value % 4 == 0
+        value = bytify(absolute_value)
+        for k in range(4):
+          code[j + k] = value[k]
 
-  # sanity checks
-  for i in range(len(code)):
-    v = code[i]
-    assert type(v) == int and v >= 0 and v < 256, [i, v, 'in', code]
+    # finalize instruction string names to opcodes
+    for i in range(len(code)/4):
+      j = i*4
+      if type(code[j]) in (str, unicode):
+        code[j] = ROPCODES[code[j]]
 
-post_process_code(all_code)
+    # sanity checks
+    for i in range(len(code)):
+      v = code[i]
+      assert type(v) == int and v >= 0 and v < 256, [i, v, 'in', code]
 
-# create new mem init
-mem_init = mem_init + all_code
-asm.staticbump += len(all_code)
+  post_process_code(all_code)
 
-while len(mem_init) % 8 != 0:
-  mem_init.append(0)
-  asm.staticbump += 1
-stack_start = len(mem_init)
-asm.staticbump += EMT_STACK_MAX
+  # create new mem init
+  mem_init = mem_init + all_code
+  asm.staticbump += len(all_code)
 
-open(out_mem_file, 'wb').write(''.join(map(chr, mem_init)))
+  while len(mem_init) % 8 != 0:
+    mem_init.append(0)
+    asm.staticbump += 1
+  stack_start = len(mem_init)
+  asm.staticbump += EMT_STACK_MAX
 
-# second pass, finalize trampolines
-for i in range(len(lines)):
-  line = lines[i]
-  if line.startswith('function ') and '}' not in line:
-    assert not func
-    func = line.split(' ')[1].split('(')[0]
-  elif line.startswith('}'):
-    assert func
-    func = None
-  elif func and func in funcs:
-    call = '(EMTERPRETER_' + func + ')'
-    if call in line:
-      lines[i] = lines[i].replace(call, '(%s)' % (funcs[func] + code_start))
+  open(out_mem_file, 'wb').write(''.join(map(chr, mem_init)))
 
-# finalize funcs JS (first line has the marker, add emterpreters right after that)
-asm.funcs_js = '\n'.join([lines[0], make_emterpreter(), make_emterpreter(zero=True), '\n'.join(filter(lambda line: len(line) > 0, lines[1:]))]) + '\n'
-lines = None
+  # second pass, finalize trampolines
+  for i in range(len(lines)):
+    line = lines[i]
+    if line.startswith('function ') and '}' not in line:
+      assert not func
+      func = line.split(' ')[1].split('(')[0]
+    elif line.startswith('}'):
+      assert func
+      func = None
+    elif func and func in funcs:
+      call = '(EMTERPRETER_' + func + ')'
+      if call in line:
+        lines[i] = lines[i].replace(call, '(%s)' % (funcs[func] + code_start))
 
-# set up emterpreter stack top
-asm.set_pre_js(js='var EMTSTACKTOP = STATIC_BASE + %s, EMT_STACK_MAX = EMTSTACKTOP + %d;' % (stack_start, EMT_STACK_MAX))
+  # finalize funcs JS (first line has the marker, add emterpreters right after that)
+  asm.funcs_js = '\n'.join([lines[0], make_emterpreter(), make_emterpreter(zero=True), '\n'.join(filter(lambda line: len(line) > 0, lines[1:]))]) + '\n'
+  lines = None
 
-# send EMT vars into asm
-asm.pre_js += 'Module.asmLibraryArg.EMTSTACKTOP = EMTSTACKTOP; Module.asmLibraryArg.EMT_STACK_MAX = EMT_STACK_MAX;\n'
-asm.imports_js += 'var EMTSTACKTOP = env.EMTSTACKTOP|0;\nvar EMT_STACK_MAX = env.EMT_STACK_MAX|0;\n'
+  # set up emterpreter stack top
+  asm.set_pre_js(js='var EMTSTACKTOP = STATIC_BASE + %s, EMT_STACK_MAX = EMTSTACKTOP + %d;' % (stack_start, EMT_STACK_MAX))
 
-asm.write(outfile)
+  # send EMT vars into asm
+  asm.pre_js += 'Module.asmLibraryArg.EMTSTACKTOP = EMTSTACKTOP; Module.asmLibraryArg.EMT_STACK_MAX = EMT_STACK_MAX;\n'
+  asm.imports_js += 'var EMTSTACKTOP = env.EMTSTACKTOP|0;\nvar EMT_STACK_MAX = env.EMT_STACK_MAX|0;\n'
+
+  asm.write(outfile)
 
