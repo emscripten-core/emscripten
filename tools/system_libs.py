@@ -619,7 +619,7 @@ class Ports:
       shared.try_delete(shared.Cache.get_path(name + '.bc'))
 
   @staticmethod
-  def build_project(name, subdir, configure, generated_libs):
+  def build_project(name, subdir, configure, generated_libs, post_create=None):
     def create():
       logging.warning('building port: ' + name + '...')
       port_build_dir = shared.Cache.get_path('ports-builds')
@@ -627,6 +627,7 @@ class Ports:
       libs = shared.Building.build_library(name, port_build_dir, None, generated_libs, source_dir=os.path.join(Ports.get_dir(), name, subdir), copy_project=True,
                                            configure=configure, make=['make', '-j' + str(CORES)])
       assert len(libs) == 1
+      if post_create: post_create()
       logging.warning('    building complete')
       return libs[0]
     return shared.Cache.get(name, create)
@@ -648,6 +649,6 @@ def get_ports(settings):
 
 def process_args(args, settings):
   for port in ports.ports:
-    args = port.process_args(args, settings, shared)
+    args = port.process_args(Ports, args, settings, shared)
   return args
 
