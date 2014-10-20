@@ -584,6 +584,10 @@ import ports
 
 class Ports:
   @staticmethod
+  def run_commands(commands): # make easily available for port objects
+    run_commands(commands)
+
+  @staticmethod
   def get_dir():
     dirname = os.environ.get('EM_PORTS') or os.path.expanduser(os.path.join('~', '.emscripten_ports'))
     shared.safe_ensure_dirs(dirname)
@@ -592,6 +596,10 @@ class Ports:
   @staticmethod
   def erase():
     shared.try_delete(Ports.get_dir())
+
+  @staticmethod
+  def get_build_dir():
+    return shared.Cache.get_path('ports-builds')
 
   @staticmethod
   def fetch_project(name, url):
@@ -619,14 +627,14 @@ class Ports:
         os.chdir(cwd)
 
       # we unpacked a new version, clear the build in the cache
-      shared.try_delete(os.path.join(shared.Cache.get_path('ports-builds'), name))
+      shared.try_delete(os.path.join(Ports.get_build_dir(), name))
       shared.try_delete(shared.Cache.get_path(name + '.bc'))
 
   @staticmethod
   def build_project(name, subdir, configure, generated_libs, post_create=None):
     def create():
       logging.warning('building port: ' + name + '...')
-      port_build_dir = shared.Cache.get_path('ports-builds')
+      port_build_dir = Ports.get_build_dir()
       shared.safe_ensure_dirs(port_build_dir)
       libs = shared.Building.build_library(name, port_build_dir, None, generated_libs, source_dir=os.path.join(Ports.get_dir(), name, subdir), copy_project=True,
                                            configure=configure, make=['make', '-j' + str(CORES)])

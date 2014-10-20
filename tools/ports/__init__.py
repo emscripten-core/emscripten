@@ -1,4 +1,4 @@
-import sdl
+import sdl, sdl_image
 
-ports = [sdl]
+ports = [sdl, sdl_image]
 
