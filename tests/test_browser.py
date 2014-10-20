@@ -2328,7 +2328,7 @@ Module['_main'] = function() {
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.not'))
     self.btest('sdl2_image_prepare.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not', '-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'])
 
-  def zzztest_sdl2_canvas_proxy(self):
+  def zzztest_sdl2_canvas_proxy(self): # TODO passes if you force postRAF to be fired. We need to find a proper place tp do that in SDL2 (SDL1 does it in unlocking of the screen)
     def post():
       html = open('test.html').read()
       html = html.replace('</body>', '''
