@@ -6003,6 +6003,7 @@ def process(filename):
 
       int main() {
         int x = EM_ASM_INT_V({ return Module._other_function() });
+        emscripten_run_script_string(""); // Add a reference to a symbol that exists in src/deps_info.json to uncover issue #2836 in the test suite.
         printf("waka %d!\n", x);
         return 0;
       }
