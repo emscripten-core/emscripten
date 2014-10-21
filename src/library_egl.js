@@ -561,6 +561,10 @@ var LibraryEGL = {
   
   // EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surface);
   eglSwapBuffers: function() {
+#if PROXY_TO_WORKER
+    if (Browser.doSwapBuffers) Browser.doSwapBuffers();
+#endif
+
     if (!EGL.defaultDisplayInitialized) {
       EGL.setErrorCode(0x3001 /* EGL_NOT_INITIALIZED */);
     } else if (!Module.ctx) {
