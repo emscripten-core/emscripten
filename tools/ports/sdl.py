@@ -1,8 +1,10 @@
 import os, shutil
 
+VERSION = 1
+
 def get(ports, settings, shared):
   if settings.USE_SDL == 2:
-    ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/master.zip')
+    ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/master.zip', VERSION)
     def setup_includes():
       # copy includes to a location so they can be used as 'SDL2/'
       include_path = os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2', 'include')

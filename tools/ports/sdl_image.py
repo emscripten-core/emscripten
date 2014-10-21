@@ -1,10 +1,12 @@
 import os, shutil
 
+VERSION = 1
+
 def get(ports, settings, shared):
   if settings.USE_SDL_IMAGE == 2:
     sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
     assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_image'
-    ports.fetch_project('sdl2-image', 'https://github.com/emscripten-ports/SDL2_image/archive/master.zip')
+    ports.fetch_project('sdl2-image', 'https://github.com/emscripten-ports/SDL2_image/archive/master.zip', VERSION)
     def create():
       shutil.copyfile(os.path.join(ports.get_dir(), 'sdl2-image', 'SDL2_image-master', 'SDL_image.h'), os.path.join(ports.get_build_dir(), 'sdl2', 'include', 'SDL_image.h'))
       shutil.copyfile(os.path.join(ports.get_dir(), 'sdl2-image', 'SDL2_image-master', 'SDL_image.h'), os.path.join(ports.get_build_dir(), 'sdl2', 'include', 'SDL2', 'SDL_image.h'))

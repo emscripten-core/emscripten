@@ -604,7 +604,7 @@ class Ports:
   name_cache = set()
 
   @staticmethod
-  def fetch_project(name, url):
+  def fetch_project(name, url, expected_version):
     fullname = os.path.join(Ports.get_dir(), name)
 
     if name not in Ports.name_cache: # only mention each port once in log
@@ -612,14 +612,19 @@ class Ports:
       logging.debug('    (at ' + fullname + ')')
       Ports.name_cache.add(name)
 
-    if not os.path.exists(fullname + '.zip'):
+    class State:
+      retrieved = False
+      unpacked = False
+
+    def retrieve():
       logging.warning('retrieving port: ' + name + ' from ' + url)
       import urllib2
       f = urllib2.urlopen(url)
       data = f.read()
       open(fullname + '.zip', 'wb').write(data)
+      State.retrieved = True
 
-    if not os.path.exists(fullname):
+    def unpack():
       logging.warning('unpacking port: ' + name)
       import zipfile
       shared.safe_ensure_dirs(fullname)
@@ -630,7 +635,37 @@ class Ports:
         z.extractall()
       finally:
         os.chdir(cwd)
+      State.unpacked = True
 
+    def check_version(expected_version):
+      try:
+        ok = False
+        subdir = os.listdir(fullname)[0] # each port has a singleton subdir
+        version = open(os.path.join(fullname, subdir, 'version.txt')).read()
+        version = int(version)
+        ok = True
+      finally:
+        if not ok: logging.error('error when checking port version for ' + name)
+      return version >= expected_version
+
+    # main logic
+
+    if not os.path.exists(fullname + '.zip'):
+      retrieve()
+
+    if not os.path.exists(fullname):
+      unpack()
+
+    if not check_version(expected_version):
+      # fetch a newer version
+      assert not State.retrieved, 'just retrieved port ' + name + ', but not a new enough version?'
+      shared.try_delete(fullname)
+      shared.try_delete(fullname + '.zip')
+      retrieve()
+      assert check_version(expected_version), 'just retrieved replacement port ' + name + ', but not a new enough version?'
+      unpack()
+
+    if State.unpacked:
       # we unpacked a new version, clear the build in the cache
       shared.try_delete(os.path.join(Ports.get_build_dir(), name))
       shared.try_delete(shared.Cache.get_path(name + '.bc'))
