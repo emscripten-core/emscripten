@@ -695,7 +695,7 @@ def get_ports(settings):
     ok = True
   finally:
     if not ok:
-      logging.error('a problem occurred when using an emscripten-ports library. try to run  emcc --clear-cache  ,   emcc --clear-ports  , and then run this command again')
+      logging.error('a problem occurred when using an emscripten-ports library. try to run    emcc --clear-cache --clear-ports    and then run this command again')
 
   return ret
 

@@ -456,6 +456,8 @@ try:
       raise Exception(err_msg)
     return level
 
+  should_exit = False
+
   for i in range(len(newargs)):
     newargs[i] = newargs[i].strip() # On Windows Vista (and possibly others), excessive spaces in the command line leak into the items in this array, so trim e.g. 'foo.cpp ' -> 'foo.cpp'
     if newargs[i].startswith('-O'):
@@ -626,11 +628,11 @@ try:
       logging.warning('clearing cache')
       shared.Cache.erase()
       shared.check_sanity(force=True) # this is a good time for a sanity check
-      sys.exit(0)
+      should_exit = True
     elif newargs[i] == '--clear-ports':
       logging.warning('clearing ports')
       system_libs.Ports.erase()
-      sys.exit(0)
+      should_exit = True
     elif newargs[i] == '--save-bc':
       check_bad_eq(newargs[i])
       save_bc = newargs[i+1]
@@ -662,6 +664,9 @@ try:
       if not default_object_extension.startswith('.'):
         default_object_extension = '.' + default_object_extension
       newargs[i+1] = ''
+
+  if should_exit:
+    sys.exit(0)
 
   newargs = [arg for arg in newargs if arg is not '']
 
