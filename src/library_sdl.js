@@ -1717,7 +1717,7 @@ var LibrarySDL = {
 
   SDL_DisplayFormatAlpha__deps: ['SDL_ConvertSurface'],
   SDL_DisplayFormatAlpha: function(surf) {
-    return SDL.SDL_ConvertSurface(surf);
+    return _SDL_ConvertSurface(surf);
   },
 
   SDL_FreeSurface: function(surf) {
