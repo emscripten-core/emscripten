@@ -570,6 +570,15 @@ fi
   def test_emcc_ports(self):
     restore()
 
+    # listing ports
+
+    out = self.do([PYTHON, EMCC, '--show-ports'])
+    assert 'Available ports:' in out, out
+    assert 'SDL2' in out, out
+    assert 'SDL2_image' in out, out
+
+    # using ports
+
     INCLUDING_MESSAGE = 'including port'
     RETRIEVING_MESSAGE = 'retrieving port'
     BUILDING_MESSAGE = 'building port'

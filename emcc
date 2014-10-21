@@ -633,6 +633,9 @@ try:
       logging.warning('clearing ports')
       system_libs.Ports.erase()
       should_exit = True
+    elif newargs[i] == '--show-ports':
+      system_libs.show_ports()
+      should_exit = True
     elif newargs[i] == '--save-bc':
       check_bad_eq(newargs[i])
       save_bc = newargs[i+1]

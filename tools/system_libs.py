@@ -704,3 +704,8 @@ def process_args(args, settings):
     args = port.process_args(Ports, args, settings, shared)
   return args
 
+def show_ports():
+  print 'Available ports:'
+  for port in ports.ports:
+    print '   ', port.show()
+

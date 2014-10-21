@@ -371,10 +371,17 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-clear-ports:
 	 
 ``--clear-ports``
-	Manually clears the local copies and builds of projects from the Emscripten ports repos (sdl2, etc.)
+	Manually clears the local copies and builds of projects from the Emscripten Ports repos (sdl2, etc.)
 	
 	You should only need to do this if a problem happens and you want all ports that you use to be downloaded and built from scratch. After this operation is complete, this process will exit.
+
+.. _emcc-show-ports:
+
+``--show-ports``
+	Shows the list of available projects in the Emscripten Ports repos. After this operation is complete, this process will exit.
 	 
+.. _emcc-save-bc:
+
 ``--save-bc PATH``
 	When compiling to JavaScript or HTML, this option will save a copy of the bitcode to the specified path. The bitcode will include all files being linked after link-time optimizations have been performed (if any), including standard libraries.
 	

@@ -25,3 +25,6 @@ def process_args(ports, args, settings, shared):
     args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2', 'include')]
   return args
 
+def show():
+  return 'SDL2'
+
