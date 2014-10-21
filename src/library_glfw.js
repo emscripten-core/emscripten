@@ -576,7 +576,7 @@ var LibraryGLFW = {
       if (GLFW.active.id == win.id) {
         if (width == screen.width && height == screen.height) {
           GLFW.requestFullScreen();
-        } else {
+        } else {
           GLFW.cancelFullScreen();
           Browser.setCanvasSize(width, height);
           win.width = width;
