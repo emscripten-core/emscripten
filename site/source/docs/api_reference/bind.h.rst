@@ -710,17 +710,18 @@ Classes
 		.. code-block:: cpp
 	
 			//prototype
-			 template<typename WrapperType, typename PointerType = WrapperType*, typename... ConstructorArgs>
+			 template<typename WrapperType, typename PointerType, typename... ConstructorArgs>
 			EMSCRIPTEN_ALWAYS_INLINE const class_& allow_subclass(
 				const char* wrapperClassName,
-				const char* pointerName = "<UnknownPointerName>",
-				::emscripten::constructor<ConstructorArgs...> = ::emscripten::constructor<ConstructorArgs...>()
+				const char* pointerName,
+				::emscripten::constructor<ConstructorArgs...> = ::emscripten::constructor<>()
 			) const
 	
 		**HamishW** Add description. 
 		
 		:param const char* wrapperClassName: **HamishW** Add description. 
-		:param const char* pointerName: **HamishW** Add description. Note that this has a default value which is dependent on the template typename parameters.
+		:param const char* pointerName: **HamishW** Add description.
+		:param ::emscripten::constructor<ConstructorArgs...> constructor): **HamishW** Add description.
 		:returns: |class_-function-returns|
 
 
@@ -732,7 +733,7 @@ Classes
 			template<typename WrapperType, typename... ConstructorArgs>
 			EMSCRIPTEN_ALWAYS_INLINE const class_& allow_subclass(
 				const char* wrapperClassName,
-				::emscripten::constructor<ConstructorArgs...> constructor
+				::emscripten::constructor<ConstructorArgs...> constructor = ::emscripten::constructor<>()
 			) const
 	
 		**HamishW** Add description. Explain how this constructor differs from other one.
