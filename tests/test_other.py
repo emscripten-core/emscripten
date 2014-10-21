@@ -4168,6 +4168,8 @@ pass: error == ENOTDIR
 
 
   def test_emterpreter(self):
+    if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('test_emterpreter requires SpiderMonkey to run.')
+
     def do_emcc_test(source, args, output, emcc_args=[]):
       print
       print 'emcc', source[:40], '\n' in source
