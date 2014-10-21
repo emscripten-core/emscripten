@@ -51,13 +51,16 @@ LINUX = False
 OSX = False
 if os.name == 'nt':
   WINDOWS = True
-
-  import win32api, _winreg
-  from win32com.client import GetObject
-  from win32api import GetFileVersionInfo, LOWORD, HIWORD
-  import shlex
-  from _winreg import HKEY_CURRENT_USER, OpenKey, QueryValue
-
+  try:
+    import shlex
+    import win32api, _winreg
+    from win32com.client import GetObject
+    from win32api import GetFileVersionInfo, LOWORD, HIWORD
+    from _winreg import HKEY_CURRENT_USER, OpenKey, QueryValue
+  except Exception, e:
+    print >> sys.stderr, str(e)
+    print >> sys.stderr, "Importing Python win32 modules failed! This most likely occurs if you do not have PyWin32 installed! Get it from http://sourceforge.net/projects/pywin32/"
+    sys.exit(1)
 elif platform.system() == 'Linux':
   LINUX = True
 elif platform.mac_ver()[0] != '':
