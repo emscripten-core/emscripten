@@ -4180,9 +4180,9 @@ pass: error == ENOTDIR
       else:
         source = path_from_root('tests', source)
       Popen([PYTHON, EMCC, source, '-O2', '-s', 'EMTERPRETIFY=1', '-g2'] + emcc_args).communicate()
-      self.assertContained(output, run_js('a.out.js', args=args))
+      self.assertTextDataContained(output, run_js('a.out.js', args=args))
       out = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE, args=args, stderr=PIPE, full_output=True)
-      self.assertContained(output, out)
+      self.assertTextDataContained(output, out)
       self.validate_asmjs(out)
       # -g2 enables these
       src = open('a.out.js').read()
@@ -4206,10 +4206,10 @@ pass: error == ENOTDIR
         source = path_from_root('tests', source)
       Popen([PYTHON, EMCC, source, '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0', '-s', 'GLOBAL_BASE=2048']).communicate()
       Popen([PYTHON, path_from_root('tools', 'emterpretify.py'), 'a.out.js', 'em.out.js']).communicate()
-      self.assertContained(output, run_js('a.out.js', args=args))
-      self.assertContained(output, run_js('em.out.js', args=args))
+      self.assertTextDataContained(output, run_js('a.out.js', args=args))
+      self.assertTextDataContained(output, run_js('em.out.js', args=args))
       out = run_js('em.out.js', engine=SPIDERMONKEY_ENGINE, args=args, stderr=PIPE, full_output=True)
-      self.assertContained(output, out)
+      self.assertTextDataContained(output, out)
       self.validate_asmjs(out)
 
     # generate default shell for js test
@@ -4231,8 +4231,8 @@ pass: error == ENOTDIR
       open('a.out.js.mem', 'wb').write(default_mem)
       Popen([PYTHON, path_from_root('tools', 'emterpretify.py'), 'a.out.js', 'em.out.js']).communicate()
       sm_no_warn = filter(lambda x: x != '-w', SPIDERMONKEY_ENGINE)
-      self.assertContained(output, run_js('a.out.js', engine=sm_no_warn, args=args)) # run in spidermonkey for print()
-      self.assertContained(output, run_js('em.out.js', engine=sm_no_warn, args=args))
+      self.assertTextDataContained(output, run_js('a.out.js', engine=sm_no_warn, args=args)) # run in spidermonkey for print()
+      self.assertTextDataContained(output, run_js('em.out.js', engine=sm_no_warn, args=args))
 
     do_emcc_test('hello_world.c', [], 'hello, world!')
 

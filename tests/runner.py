@@ -321,6 +321,11 @@ process(sys.argv[1])
       limit_size(''.join([a.rstrip()+'\n' for a in difflib.unified_diff(x.split('\n'), y.split('\n'), fromfile='expected', tofile='actual')]))
     ))
 
+  def assertTextDataContained(self, text1, text2):
+    text1 = text1.replace('\r\n', '\n')
+    text2 = text2.replace('\r\n', '\n')
+    return self.assertContained(text1, text2)
+
   def assertContained(self, values, string, additional_info=''):
     if type(values) not in [list, tuple]: values = [values]
     for value in values:
