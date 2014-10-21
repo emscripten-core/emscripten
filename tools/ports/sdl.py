@@ -26,5 +26,5 @@ def process_args(ports, args, settings, shared):
   return args
 
 def show():
-  return 'SDL2'
+  return 'SDL2 (zlib license)'
 
