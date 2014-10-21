@@ -4531,8 +4531,6 @@ LibraryManager.library = {
     return divt;
   },
 
-  __fpclassifyd: '__fpclassify', // Needed by tests/python/python.le32.bc
-
   // ==========================================================================
   // sys/utsname.h
   // ==========================================================================
