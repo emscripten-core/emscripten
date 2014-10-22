@@ -916,8 +916,6 @@ try:
   if shared.Settings.ASM_JS:
     assert opt_level >= 1 or fastcomp, 'asm.js requires -O1 or above'
 
-    if bind:
-      shared.Settings.RESERVED_FUNCTION_POINTERS = max(shared.Settings.RESERVED_FUNCTION_POINTERS, 10)
     if shared.Settings.CORRECT_SIGNS != 1:
       logging.warning('setting CORRECT_SIGNS to 1 for asm.js code generation')
       shared.Settings.CORRECT_SIGNS = 1
