@@ -8,7 +8,7 @@ This article introduces *Fastcomp*, Emscripten's LLVM + Clang implementation. It
 
 
 Fastcomp overview
-================
+=================
 
 *Fastcomp* is the default compiler core for Emscripten. Implemented as an :term:`LLVM backend`, its role is to convert the LLVM Intermediate Representation (IR) created by :term:`Clang` (from C/C++) into JavaScript.
 
@@ -26,7 +26,7 @@ Fastcomp is maintained in two repositories:
 Getting Fastcomp
 ================
 
-*Fastcomp* (Clang) is part of the :ref:`Emscripten SDK <sdk-download-and-install>`, and the binaries are automatically provided during installation (except on Linux, where pre-built binaries are not supplied so the SDK builds them for you). 
+*Fastcomp* (Clang) is part of the :ref:`Emscripten SDK <sdk-download-and-install>`, and the binaries are automatically provided during installation (except on Linux, where pre-built binaries are not supplied so the SDK builds them for you).
 
 If you need to build from source you can:
 
@@ -41,9 +41,9 @@ If you need to build from source you can:
 Original compiler core (deprecated)
 ===================================
 
-The original compiler supported dozens of different code generation modes (no-typed arrays, typed arrays in various modes, **asm.js** vs. **non-asm.js**, etc.), many of which were not very efficient. Over time, the compiler became harder to maintain and was susceptible to unpredictable compiler slow-downs. 
+The original compiler supported dozens of different code generation modes (no-typed arrays, typed arrays in various modes, **asm.js** vs. **non-asm.js**, etc.), many of which were not very efficient. Over time, the compiler became harder to maintain and was susceptible to unpredictable compiler slow-downs.
 
-*Fastcomp* was turned on by default in version 1.12.1. The original compiler is now "deprecated". 
+*Fastcomp* was turned on by default in version 1.12.1. The original compiler is now "deprecated".
 
 .. note:: While it is possible to manually disable Fastcomp and build the original compiler from source, this is discouraged.
 
@@ -56,13 +56,13 @@ As a result of the problems with the original compiler, we developed *Fastcomp*,
 - It is much more streamlined than the original compiler. It focuses on **asm.js** code generation, which has been shown to give the best results.
 - It is much faster and has more predictable performance (often 4x faster or more).
 - It requires much less memory.
-- It generates better code because, as an LLVM backend, it integrates more tightly with LLVM. 
+- It generates better code because, as an LLVM backend, it integrates more tightly with LLVM.
 
 
 Are there downsides?
 --------------------
 
-The main downside is that Emscripten can no longer use a stock build of LLVM, because we have made changes that must be built with LLVM. 
+The main downside is that Emscripten can no longer use a stock build of LLVM, because we have made changes that must be built with LLVM.
 
 There are also a few features that were present in the original compiler that are not present in *Fastcomp* (see the next section).
 
@@ -76,18 +76,18 @@ Some features that were present in the original compiler that are not present in
 -  Various deprecated **settings.js** options (``FORCE_ALIGNMENT``, ``HEAP_INIT``, etc.) You should receive a compile-time error if you use a setting which is not supported.
 -  Linking of **asm.js** shared modules. This is not deprecated, but may need to be reconsidered.
 
-	.. note:: Normal static linking as used by almost all projects works fine; it is just specifically the options ``MAIN_MODULE`` and ``SIDE_MODULE`` that do not work. 
+   .. note:: Normal static linking as used by almost all projects works fine; it is just specifically the options ``MAIN_MODULE`` and ``SIDE_MODULE`` that do not work.
 
-	
+
 How to disable Fastcomp
 -----------------------
 
 .. warning:: You should **NOT** disable Fastcomp. If you "really must", then:
 
-	-  The build will be slower, consume more memory, and result in sub-optimal code.
-	-  There are more likely to be bugs, because the old compiler is less tested.
+   -  The build will be slower, consume more memory, and result in sub-optimal code.
+   -  There are more likely to be bugs, because the old compiler is less tested.
 
-The original compiler is still present, and you may want to use it if you need a feature that is not yet present in *Fastcomp*. There should be very few such features, as almost everything that is not deprecated or planned to be rewritten has already been ported. 
+The original compiler is still present, and you may want to use it if you need a feature that is not yet present in *Fastcomp*. There should be very few such features, as almost everything that is not deprecated or planned to be rewritten has already been ported.
 
 However, if you do need to, you can use the old compiler by turning off *Fastcomp*; you do this by setting ``EMCC_FAST_COMPILER=0`` when you build:
 ::
