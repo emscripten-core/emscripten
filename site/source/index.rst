@@ -1,3 +1,5 @@
+.. title:: Main
+
 .. _home-page:
 
 .. only:: sdkbuild
