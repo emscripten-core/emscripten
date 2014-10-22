@@ -213,6 +213,10 @@ var ALIASING_FUNCTION_POINTERS = 0; // Whether to allow function pointers to ali
                                     // a different type. This can greatly decrease table sizes
                                     // in asm.js, but can break code that compares function
                                     // pointers across different types.
+var EMULATE_FUNCTION_POINTER_CASTS = 0; // Allows function pointers to be cast, wraps each
+                                        // call of an incorrect type with a runtime correction.
+                                        // This adds overhead and should not be used normally.
+                                        // It also forces ALIASING_FUNCTION_POINTERS to 0.
 var FUNCTION_POINTER_ALIGNMENT = 2; // Byte alignment of function pointers - we will fill the
                                     // tables with zeros on aligned values. 1 means all values
                                     // are aligned and all will be used (which is optimal).

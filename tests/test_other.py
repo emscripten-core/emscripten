@@ -591,6 +591,7 @@ Build with ASSERTIONS=2 for more info.
       test(['-O1', '-s', 'ASSERTIONS=2'], '''Invalid function pointer '0' called with signature 'v'. Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? Or calling a function with an incorrect type, which will fail? (it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)
 This pointer might make sense in another type signature: i: 0  
 ''') # actually useful identity of the bad pointer, with comparisons to what it would be in other types/tables
+      test(['-O1', '-s', 'EMULATE_FUNCTION_POINTER_CASTS=1'], '''my func\n''') # emulate so it works
 
   def test_l_link(self):
     # Linking with -lLIBNAME and -L/DIRNAME should work
@@ -2934,17 +2935,22 @@ int main() {
 
     for opts in [0, 1, 2]:
       for safe in [0, 1]:
-        cmd = [PYTHON, EMCC, 'src.cpp', '-O' + str(opts), '-s', 'SAFE_HEAP=' + str(safe)]
-        print cmd
-        Popen(cmd).communicate()
-        output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
-        if safe:
-          assert 'Function table mask error' in output, output
-        else:
-          if opts == 0:
-            assert 'Invalid function pointer called' in output, output
+        for emulate in [0, 1]:
+          cmd = [PYTHON, EMCC, 'src.cpp', '-O' + str(opts), '-s', 'SAFE_HEAP=' + str(safe)]
+          if emulate:
+            cmd += ['-s', 'EMULATE_FUNCTION_POINTER_CASTS=1']
+          print cmd
+          Popen(cmd).communicate()
+          output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
+          if emulate:
+            assert 'Hello, world.' in output, output
+          elif safe:
+            assert 'Function table mask error' in output, output
           else:
-            assert 'abort()' in output, output
+            if opts == 0:
+              assert 'Invalid function pointer called' in output, output
+            else:
+              assert 'abort()' in output, output
 
   def test_aliased_func_pointers(self):
     open('src.cpp', 'w').write(r'''

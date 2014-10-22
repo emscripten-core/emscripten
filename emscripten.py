@@ -815,6 +815,16 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     #if DEBUG: print >> sys.stderr, "META", metadata
     #if DEBUG: print >> sys.stderr, "meminit", mem_init
 
+    # if emulating pointer casts, force all tables to the size of the largest
+    if settings['EMULATE_FUNCTION_POINTER_CASTS']:
+      max_size = 0
+      for k, v in metadata['tables'].iteritems():
+        max_size = max(max_size, v.count(',')+1)
+      for k, v in metadata['tables'].iteritems():
+        curr = v.count(',')+1
+        if curr < max_size:
+          metadata['tables'][k] = v.replace(']', (',0'*(max_size - curr)) + ']')
+
     # function table masks
 
     table_sizes = {}
@@ -954,6 +964,19 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     #if DEBUG: outfile.write('// funcs\n')
 
     if settings.get('ASM_JS'):
+      # when emulating function pointer casts, we need to know what is the target of each pointer
+      if settings['EMULATE_FUNCTION_POINTER_CASTS']:
+        function_pointer_targets = {}
+        for sig, table in last_forwarded_json['Functions']['tables'].iteritems():
+          start = table.index('[')
+          end = table.rindex(']')
+          body = table[start+1:end].split(',')
+          parsed = map(lambda x: x.strip(), body)
+          for i in range(len(parsed)):
+            if parsed[i] != '0':
+              assert i not in function_pointer_targets
+              function_pointer_targets[i] = [sig, str(parsed[i])]
+
       # Move preAsms to their right place
       def move_preasm(m):
         contents = m.groups(0)[0]
@@ -978,12 +1001,15 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       if settings['ASSERTIONS'] >= 2:
         debug_tables = {}
 
+      def make_params(sig): return ','.join(['p%d' % p for p in range(len(sig)-1)])
+      def make_coerced_params(sig): return ','.join([shared.JS.make_coercion('p%d', unfloat(sig[p+1]), settings) % p for p in range(len(sig)-1)])
+      def make_coercions(sig): return ';'.join(['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, sig[p+1], settings)) for p in range(len(sig)-1)]) + ';'
+      def make_func(name, code, params, coercions): return 'function %s(%s) { %s %s }' % (name, params, coercions, code)
+
       def make_table(sig, raw):
-        params = ','.join(['p%d' % p for p in range(len(sig)-1)])
-        coerced_params = ','.join([shared.JS.make_coercion('p%d', unfloat(sig[p+1]), settings) % p for p in range(len(sig)-1)])
-        coercions = ';'.join(['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, sig[p+1], settings)) for p in range(len(sig)-1)]) + ';'
-        def make_func(name, code):
-          return 'function %s(%s) { %s %s }' % (name, params, coercions, code)
+        params = make_params(sig)
+        coerced_params = make_coerced_params(sig)
+        coercions = make_coercions(sig)
         def make_bad(target=None):
           i = Counter.i
           Counter.i += 1
@@ -995,7 +1021,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
             code = 'nullFunc_' + sig + '(%d);' % target
           if sig[0] != 'v':
             code += 'return %s' % shared.JS.make_initializer(sig[0], settings) + ';'
-          return name, make_func(name, code)
+          return name, make_func(name, code, params, coercions)
         bad, bad_func = make_bad() # the default bad func
         if settings['ASSERTIONS'] <= 1:
           Counter.pre = [bad_func]
@@ -1013,6 +1039,18 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
           Counter.j += 1
           newline = Counter.j % 30 == 29
           if item == '0':
+            if Counter.j > 1 and settings['EMULATE_FUNCTION_POINTER_CASTS']: # emulate all non-null pointer calls, if asked to
+              proper_sig, proper_target = function_pointer_targets[Counter.j - 1]
+              def make_emulated_param(i):
+                if i >= len(sig): return shared.JS.make_initializer(proper_sig[i], settings) # extra param, just send a zero
+                return shared.JS.make_coercion('p%d' % (i-1), proper_sig[i], settings)
+              proper_code = proper_target + '(' + ','.join(map(lambda i: make_emulated_param(i+1), range(len(proper_sig)-1))) + ')'
+              if proper_sig[0] != 'v':
+                proper_code = 'return %s' % shared.JS.make_coercion(proper_code, sig[0], settings)
+              name = 'fpemu_%s_%d' % (sig, Counter.j-1)
+              wrapper = make_func(name, proper_code, params, coercions)
+              Counter.pre.append(wrapper)
+              return name if not newline else (name + '\n')
             if settings['ASSERTIONS'] <= 1:
               return bad if not newline else (bad + '\n')
             else:
@@ -1030,7 +1068,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
               if sig[0] == 'f': code = '+' + code
               code = 'return ' + shared.JS.make_coercion(code, sig[0], settings)
             code += ';'
-            Counter.pre.append(make_func(item + '__wrapper', code))
+            Counter.pre.append(make_func(item + '__wrapper', code, params, coercions))
             return item + '__wrapper'
           return item if not newline else (item + '\n')
         if settings['ASSERTIONS'] >= 2:

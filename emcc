@@ -989,6 +989,9 @@ try:
   if not fastcomp and shared.Settings.ASSERTIONS and shared.Settings.ALIASING_FUNCTION_POINTERS:
     logging.warning('ALIASING_FUNCTION_POINTERS is on, function pointer comparisons may be invalid across types')
 
+  if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
+    shared.Settings.ALIASING_FUNCTION_POINTERS = 0
+
   if shared.Settings.STB_IMAGE and final_suffix in JS_CONTAINING_SUFFIXES:
     input_files.append((next_arg_index, shared.path_from_root('third_party', 'stb_image.c')))
     next_arg_index += 1
