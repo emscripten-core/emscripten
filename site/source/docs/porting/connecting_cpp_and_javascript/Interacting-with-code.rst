@@ -345,6 +345,12 @@ value as a function pointer, and the JavaScript function you sent to
 
 See `test_add_function in tests/test_core.py`_ for an example.
 
+When using ``Runtime.addFunction``, there is a backing array where these
+functions are stored. This array must be explicitly sized, which can be
+done via a compile-time setting, ``RESERVED_FUNCTION_POINTERS``. For
+example, to reserve space for 20 functions to be added::
+
+    emcc ... -s RESERVED_FUNCTION_POINTERS=20 ...
 
 .. _interacting-with-code-access-memory:
 
