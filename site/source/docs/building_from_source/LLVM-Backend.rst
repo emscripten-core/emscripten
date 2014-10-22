@@ -8,7 +8,7 @@ This article introduces *Fastcomp*, Emscripten's LLVM + Clang implementation. It
 
 
 Fastcomp overview
-================
+=================
 
 *Fastcomp* is the default compiler core for Emscripten. Implemented as an :term:`LLVM backend`, its role is to convert the LLVM Intermediate Representation (IR) created by :term:`Clang` (from C/C++) into JavaScript.
 
