@@ -1,4 +1,4 @@
-import os, shutil
+import os, shutil, logging
 
 VERSION = 1
 
@@ -22,6 +22,9 @@ def get(ports, settings, shared):
   if settings.USE_SDL == 2:
     ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/master.zip', VERSION)
     def create():
+      logging.warning('building port: sdl2')
+      # we are rebuilding SDL, clear dependant projects so they copy in their includes to ours properly
+      ports.clear_project_build('sdl2-image')
       # copy includes to a location so they can be used as 'SDL2/'
       source_include_path = os.path.join(ports.get_dir(), 'sdl2', 'SDL2-master', 'include')
       dest_include_path = os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2', 'include')
@@ -38,7 +41,7 @@ def get(ports, settings, shared):
       for src in srcs:
         o = os.path.join(ports.get_build_dir(), 'sdl2', 'src', src + '.o')
         shared.safe_ensure_dirs(os.path.dirname(o))
-        commands.append([shared.PYTHON, shared.EMCC, os.path.join(ports.get_dir(), 'sdl2', 'SDL2-master', 'src', src), '-O2', '-o', o, '-I' + dest_include_path, '-O2', '-DUSING_GENERATED_CONFIG_H'])
+        commands.append([shared.PYTHON, shared.EMCC, os.path.join(ports.get_dir(), 'sdl2', 'SDL2-master', 'src', src), '-O2', '-o', o, '-I' + dest_include_path, '-O2', '-DUSING_GENERATED_CONFIG_H', '-Wno-warn-absolute-paths'])
         o_s.append(o)
       ports.run_commands(commands)
       final = os.path.join(ports.get_build_dir(), 'sdl2', 'libsdl2.bc')

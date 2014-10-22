@@ -1,4 +1,4 @@
-import os, shutil
+import os, shutil, logging
 
 VERSION = 1
 
@@ -8,6 +8,7 @@ def get(ports, settings, shared):
     assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_image'
     ports.fetch_project('sdl2-image', 'https://github.com/emscripten-ports/SDL2_image/archive/master.zip', VERSION)
     def create():
+      logging.warning('building port: sdl2-image')
       shutil.copyfile(os.path.join(ports.get_dir(), 'sdl2-image', 'SDL2_image-master', 'SDL_image.h'), os.path.join(ports.get_build_dir(), 'sdl2', 'include', 'SDL_image.h'))
       shutil.copyfile(os.path.join(ports.get_dir(), 'sdl2-image', 'SDL2_image-master', 'SDL_image.h'), os.path.join(ports.get_build_dir(), 'sdl2', 'include', 'SDL2', 'SDL_image.h'))
       srcs = 'IMG.c IMG_bmp.c IMG_gif.c IMG_jpg.c IMG_lbm.c IMG_pcx.c IMG_png.c IMG_pnm.c IMG_tga.c IMG_tif.c IMG_xcf.c IMG_xpm.c IMG_xv.c IMG_webp.c IMG_ImageIO.m'.split(' ')

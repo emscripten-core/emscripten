@@ -667,8 +667,7 @@ class Ports:
 
     if State.unpacked:
       # we unpacked a new version, clear the build in the cache
-      shared.try_delete(os.path.join(Ports.get_build_dir(), name))
-      shared.try_delete(shared.Cache.get_path(name + '.bc'))
+      Ports.clear_project_build(name)
 
   @staticmethod
   def build_project(name, subdir, configure, generated_libs, post_create=None):
@@ -680,10 +679,13 @@ class Ports:
                                            configure=configure, make=['make', '-j' + str(CORES)])
       assert len(libs) == 1
       if post_create: post_create()
-      logging.warning('    building complete')
       return libs[0]
     return shared.Cache.get(name, create)
 
+  @staticmethod
+  def clear_project_build(name):
+    shared.try_delete(os.path.join(Ports.get_build_dir(), name))
+    shared.try_delete(shared.Cache.get_path(name + '.bc'))
 
 def get_ports(settings):
   ret = []
