@@ -16,7 +16,7 @@ def get(ports, settings, shared):
       o_s = []
       for src in srcs:
         o = os.path.join(ports.get_build_dir(), 'sdl2-image', src + '.o')
-        commands.append([shared.PYTHON, shared.EMCC, os.path.join(ports.get_dir(), 'sdl2-image', 'SDL2_image-master', src), '-O2', '-s', 'USE_SDL=2', '-o', o])
+        commands.append([shared.PYTHON, shared.EMCC, os.path.join(ports.get_dir(), 'sdl2-image', 'SDL2_image-master', src), '-O2', '-s', 'USE_SDL=2', '-o', o, '-w'])
         o_s.append(o)
       shared.safe_ensure_dirs(os.path.dirname(o_s[0]))
       ports.run_commands(commands)
