@@ -1036,25 +1036,33 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
           implemented_functions.add(curr)
         Counter.j = 0
         def fix_item(item):
+          j = Counter.j
           Counter.j += 1
           newline = Counter.j % 30 == 29
           if item == '0':
-            if Counter.j > 1 and settings['EMULATE_FUNCTION_POINTER_CASTS']: # emulate all non-null pointer calls, if asked to
-              proper_sig, proper_target = function_pointer_targets[Counter.j - 1]
+            if j > 0 and settings['EMULATE_FUNCTION_POINTER_CASTS'] and j in function_pointer_targets: # emulate all non-null pointer calls, if asked to
+              proper_sig, proper_target = function_pointer_targets[j]
               def make_emulated_param(i):
                 if i >= len(sig): return shared.JS.make_initializer(proper_sig[i], settings) # extra param, just send a zero
-                return shared.JS.make_coercion('p%d' % (i-1), proper_sig[i], settings)
+                return shared.JS.make_coercion('p%d' % (i-1), proper_sig[i], settings, convert_from=sig[i])
               proper_code = proper_target + '(' + ','.join(map(lambda i: make_emulated_param(i+1), range(len(proper_sig)-1))) + ')'
               if proper_sig[0] != 'v':
-                proper_code = 'return %s' % shared.JS.make_coercion(proper_code, sig[0], settings)
-              name = 'fpemu_%s_%d' % (sig, Counter.j-1)
+                # proper sig has a return, which the wrapper may or may not use
+                proper_code = shared.JS.make_coercion(proper_code, proper_sig[0], settings)
+                if sig[0] != 'v':
+                  proper_code = 'return ' + proper_code
+              else:
+                # proper sig has no return, we may need a fake return
+                if sig[0] != 'v':
+                  proper_code = 'return ' + shared.JS.make_initializer(sig[0], settings)
+              name = 'fpemu_%s_%d' % (sig, j)
               wrapper = make_func(name, proper_code, params, coercions)
               Counter.pre.append(wrapper)
               return name if not newline else (name + '\n')
             if settings['ASSERTIONS'] <= 1:
               return bad if not newline else (bad + '\n')
             else:
-              specific_bad, specific_bad_func = make_bad(Counter.j-1)
+              specific_bad, specific_bad_func = make_bad(j)
               Counter.pre.append(specific_bad_func)
               return specific_bad if not newline else (specific_bad + '\n')
           if item not in implemented_functions:

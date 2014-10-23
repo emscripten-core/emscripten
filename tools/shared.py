@@ -1762,12 +1762,17 @@ class JS:
     else:
       return '+0'
 
+  FLOAT_SIGS = ['f', 'd']
+
   @staticmethod
-  def make_coercion(value, sig, settings=None, ffi_arg=False, ffi_result=False):
+  def make_coercion(value, sig, settings=None, ffi_arg=False, ffi_result=False, convert_from=None):
     settings = settings or Settings
     if sig == 'i':
+      if convert_from in JS.FLOAT_SIGS: value = '(~~' + value + ')'
       return value + '|0'
-    elif sig == 'f' and settings.get('PRECISE_F32'):
+    if sig in JS.FLOAT_SIGS and convert_from == 'i':
+      value = '(' + value + '|0)'
+    if sig == 'f' and settings.get('PRECISE_F32'):
       if ffi_arg:
         return '+Math_fround(' + value + ')'
       elif ffi_result:
