@@ -640,7 +640,10 @@ class Ports:
     def check_version(expected_version):
       try:
         ok = False
-        subdir = os.listdir(fullname)[0] # each port has a singleton subdir
+        if not os.path.exists(fullname): return False
+        subdir = os.listdir(fullname)
+        if len(subdir) != 1: return False
+        subdir = subdir[0] # each port has a singleton subdir
         f = os.path.join(fullname, subdir, 'version.txt')
         if not os.path.exists(f): return False # no version, need an update
         version = open(f).read()
