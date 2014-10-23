@@ -1423,10 +1423,11 @@ class Building:
         status, symbol = parts
         if status == 'U':
           ret.undefs.append(symbol)
-        elif status != 'C':
-          ret.defs.append(symbol)
-        else:
+        elif status == 'C':
           ret.commons.append(symbol)
+        elif status == status.upper(): # all other uppercase statuses ('T', etc.) are normally defined symbols
+          ret.defs.append(symbol)
+        # otherwise, not something we should notice
     ret.defs = set(ret.defs)
     ret.undefs = set(ret.undefs)
     ret.commons = set(ret.commons)

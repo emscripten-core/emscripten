@@ -4348,3 +4348,38 @@ function _main() {
     out = run_js('second.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True, assert_returncode=None)
     self.validate_asmjs(out)
 
+  def test_link_with_a_static(self):
+    for args in [[], ['-O2']]:
+      print args
+      self.clear()
+      open('x.c', 'w').write(r'''
+int init_weakref(int a, int b) {
+    return a + b;
+}
+''')
+      open('y.c', 'w').write(r'''
+static int init_weakref(void) { // inlined in -O2, not in -O0 where it shows up in llvm-nm as 't'
+    return 150;
+}
+
+int testy(void) {
+    return init_weakref();
+}
+''')
+      open('z.c', 'w').write(r'''
+extern int init_weakref(int, int);
+extern int testy(void);
+
+int main(void) {
+    return testy() + init_weakref(5, 6);
+}
+''')
+      Popen([PYTHON, EMCC, 'x.c', '-o', 'x.o']).communicate()
+      Popen([PYTHON, EMCC, 'y.c', '-o', 'y.o']).communicate()
+      Popen([PYTHON, EMCC, 'z.c', '-o', 'z.o']).communicate()
+      Popen([PYTHON, EMAR, 'rc', 'libtest.a', 'y.o']).communicate()
+      Popen([PYTHON, EMAR, 'rc', 'libtest.a', 'x.o']).communicate()
+      Popen([PYTHON, EMRANLIB, 'libtest.a']).communicate()
+      Popen([PYTHON, EMCC, 'z.o', 'libtest.a'] + args).communicate()
+      out = run_js('a.out.js', assert_returncode=161)
+
