@@ -667,8 +667,8 @@ class Ports:
       shared.try_delete(fullname)
       shared.try_delete(fullname + '.zip')
       retrieve()
-      assert check_version(expected_version), 'just retrieved replacement port ' + name + ', but not a new enough version?'
       unpack()
+      assert check_version(expected_version), 'just retrieved replacement port ' + name + ', but not a new enough version?'
 
     if State.unpacked:
       # we unpacked a new version, clear the build in the cache
