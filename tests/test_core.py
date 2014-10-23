@@ -3778,6 +3778,18 @@ int 123
 ok
 ''', post_build=self.dlfcn_post_build)
 
+  def test_random(self):
+    src = r'''#include <stdlib.h>
+#include <stdio.h>
+
+int main()
+{
+    srandom(0xdeadbeef);
+    printf("%ld", random());
+}
+'''
+    self.do_run(src, '956867869')
+
   def test_rand(self):
     src = r'''#include <stdlib.h>
 #include <stdio.h>

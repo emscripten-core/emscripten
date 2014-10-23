@@ -8900,6 +8900,8 @@ LibraryManager.library = {
   },
 
   // misc shims for musl
+  __lock: function() {},
+  __unlock: function() {},
   __lockfile: function() { return 1 },
   __unlockfile: function(){},
 
