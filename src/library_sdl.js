@@ -1694,10 +1694,31 @@ var LibrarySDL = {
   },
 
   SDL_CreateRGBSurfaceFrom: function(pixels, width, height, depth, pitch, rmask, gmask, bmask, amask) {
-    // TODO: Actually fill pixel data to created surface.
-    // TODO: Take into account depth and pitch parameters.
-    console.log('TODO: Partially unimplemented SDL_CreateRGBSurfaceFrom called!');
-    return SDL.makeSurface(width, height, 0, false, 'CreateRGBSurfaceFrom', rmask, gmask, bmask, amask);
+    var surf = SDL.makeSurface(width, height, 0, false, 'CreateRGBSurfaceFrom', rmask, gmask, bmask, amask);
+
+    if (depth !== 32) {
+      // TODO: Actually fill pixel data to created surface.
+      // TODO: Take into account depth and pitch parameters.
+      console.log('TODO: Partially unimplemented SDL_CreateRGBSurfaceFrom called!');
+      return surf;
+    }
+    
+    var data = SDL.surfaces[surf];
+    var image = data.ctx.createImageData(width, height);
+    var pitchOfDst = width * 4;
+
+    for (var row = 0; row < height; ++row) {
+      var baseOfSrc = row * pitch;
+      var baseOfDst = row * pitchOfDst;
+
+      for (var col = 0; col < width * 4; ++col) {
+        image.data[baseOfDst + col] = {{{ makeGetValue('pixels', 'baseOfDst + col', 'i8', null, true) }}};
+      }
+    }
+
+    data.ctx.putImageData(image, 0, 0);
+ 
+    return surf;
   },
 
   SDL_ConvertSurface: function(surf, format, flags) {
