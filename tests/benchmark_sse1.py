@@ -22,7 +22,8 @@ emscripten_info = Popen([EMCC, '-v'], stdout=PIPE, stderr=PIPE).communicate()
 # Run native build
 out_file = os.path.join(temp_dir, 'benchmark_sse1_native')
 cmd = [CLANG_CPP] + get_clang_native_args() + [path_from_root('tests', 'benchmark_sse1.cpp'), '-O3', '-o', out_file]
-print str(cmd)
+print 'Building native version of the benchmark:'
+print ' '.join(cmd)
 build = Popen(cmd)
 out = build.communicate()
 if build.returncode != 0:
@@ -34,6 +35,8 @@ print native_results[0]
 # Run emscripten build
 out_file = os.path.join(temp_dir, 'benchmark_sse1_html.html')
 cmd = [EMCC, path_from_root('tests', 'benchmark_sse1.cpp'), '-O3', '--emrun', '-s', 'TOTAL_MEMORY=536870912', '-o', out_file]
+print 'Building Emscripten version of the benchmark:'
+print ' '.join(cmd)
 build = Popen(cmd)
 out = build.communicate()
 if build.returncode != 0:
