@@ -1787,7 +1787,7 @@ mergeInto(LibraryManager.library, {
       openRequest.onerror = onerror;
     },
 
-    // asychronously loads a file from IndexedDB.
+    // asynchronously loads a file from IndexedDB.
     loadFilesFromDB: function(paths, onload, onerror) {
       onload = onload || function(){};
       onerror = onerror || function(){};
