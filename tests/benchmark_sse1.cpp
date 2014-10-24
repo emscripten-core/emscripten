@@ -299,6 +299,7 @@ int main()
 */
 #ifdef __EMSCRIPTEN__
 	fprintf(stderr,"User Agent: %s\n", emscripten_run_script_string("navigator.userAgent"));
+	printf("/*Test finished! Now please close Firefox to continue with benchmark_sse1.py.*/\n");
 #endif
 	exit(0);
 }

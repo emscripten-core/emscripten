@@ -46,7 +46,9 @@ if build.returncode != 0:
 # Replace with 'use asm' to get a hint of validation errors, if those exist.
 out_js_file = out_file.replace('.html', '.js')
 js = open(out_js_file, 'r').read()
-open(out_js_file, 'w').write(js.replace('almost asm', 'use asm'))
+if 'almost asm' in js:
+    print 'Replacing "almost asm" with "use asm" in generated output to attempt asm.js and detect errors with asm.js validation.'
+    open(out_js_file, 'w').write(js.replace('almost asm', 'use asm'))
 
 # Enforce asm.js validation for the output file so that we can capture any validation errors.
 asmjs_validation_status = Popen([PYTHON, path_from_root('tools', 'validate_asmjs.py'), out_file], stdout=PIPE, stderr=PIPE).communicate()
@@ -64,8 +66,13 @@ print ' - Make sure that all Firefox debugging, profiling etc. add-ons that migh
 print ''
 print 'Once the test has finished, close the browser application to continue.'
 html_results = Popen([path_from_root('emrun'), '--browser=firefox_nightly', out_file], stdout=PIPE, stderr=PIPE).communicate()
+
+def strip_comments(text):
+    return re.sub('//.*?\n|/\*.*?\*/', '', text, re.S)
+benchmark_results = strip_comments(html_results[0])
+
 ##html_results = native_results
-print html_results[0]
+print benchmark_results
 
 browser_info = html_results[1]
 browser_info = '<br/>'.join([line for line in browser_info.strip().split('\n') if line.startswith('User Agent')])
@@ -73,7 +80,7 @@ browser_info = '<br/>'.join([line for line in browser_info.strip().split('\n') i
 shutil.rmtree(temp_dir)
 
 native_results = json.loads(native_results[0])
-html_results = json.loads(html_results[0])
+html_results = json.loads(benchmark_results)
 
 native_workload = native_results['workload']
 html_workload = html_results['workload']
@@ -91,7 +98,6 @@ html = '''<html><head></head><body><h1>SSE1 JavaScript Benchmark</h1>
 ''' + browser_info + '''<br/>
 <b>Benchmark Build Log:</b><br/>
 ''' + asmjs_validation_status.replace('\n', '<br/>')
-
 
 charts_native = {}
 charts_html = {}
