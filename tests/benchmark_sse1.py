@@ -21,7 +21,13 @@ emscripten_info = Popen([EMCC, '-v'], stdout=PIPE, stderr=PIPE).communicate()
 
 # Run native build
 out_file = os.path.join(temp_dir, 'benchmark_sse1_native')
-out = Popen([CLANG_CPP, path_from_root('tests', 'benchmark_sse1.cpp'), '-O3', '-o', out_file], stdout=PIPE, stderr=PIPE).communicate()
+cmd = [CLANG_CPP] + get_clang_native_args() + [path_from_root('tests', 'benchmark_sse1.cpp'), '-O3', '-o', out_file]
+print str(cmd)
+build = Popen(cmd)
+out = build.communicate()
+if build.returncode != 0:
+    sys.exit(1)
+
 native_results = Popen([out_file], stdout=PIPE, stderr=PIPE).communicate()
 print native_results[0]
 
@@ -248,3 +254,4 @@ html += '''<script>$(function () {
 html += '</body></html>'
 
 open('results_sse1.html', 'w').write(html)
+print 'Wrote ' + len(html) + ' bytes to file results_sse1.html.'
