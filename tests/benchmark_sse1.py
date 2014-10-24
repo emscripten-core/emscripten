@@ -33,7 +33,11 @@ print native_results[0]
 
 # Run emscripten build
 out_file = os.path.join(temp_dir, 'benchmark_sse1_html.html')
-out = Popen([EMCC, path_from_root('tests', 'benchmark_sse1.cpp'), '-O3', '--emrun', '-s', 'TOTAL_MEMORY=536870912', '-o', out_file], stdout=PIPE, stderr=PIPE).communicate()
+cmd = [EMCC, path_from_root('tests', 'benchmark_sse1.cpp'), '-O3', '--emrun', '-s', 'TOTAL_MEMORY=536870912', '-o', out_file]
+build = Popen(cmd)
+out = build.communicate()
+if build.returncode != 0:
+    sys.exit(1)
 
 # Enforce asm.js validation for the output file so that we can capture any validation errors.
 asmjs_validation_status = Popen([PYTHON, path_from_root('tools', 'validate_asmjs.py'), out_file], stdout=PIPE, stderr=PIPE).communicate()
@@ -42,6 +46,13 @@ if 'is not valid asm.js' in asmjs_validation_status:
 	asmjs_validation_status = '<span style="color:red;">' + asmjs_validation_status + '</span>'
 
 # We require running in FF Nightly, since no other browsers support SIMD yet.
+print 'Now launching Firefox to run the browser benchmark. For this to work properly, ensure the following:'
+print ' - Firefox Nightly is installed.'
+print ' - No version of Firefox was running beforehand (autostart conflicts with Firefox profile mechanism).'
+print ' - The slow script dialog in Firefox is disabled.'
+print ' - Make sure that all Firefox debugging, profiling etc. add-ons that might impact performance are disabled (Firebug, Geckoprofiler, ...).'
+print ''
+print 'Once the test has finished, close the browser application to continue.'
 html_results = Popen([path_from_root('emrun'), '--browser=firefox_nightly', out_file], stdout=PIPE, stderr=PIPE).communicate()
 ##html_results = native_results
 print html_results[0]
@@ -254,4 +265,4 @@ html += '''<script>$(function () {
 html += '</body></html>'
 
 open('results_sse1.html', 'w').write(html)
-print 'Wrote ' + len(html) + ' bytes to file results_sse1.html.'
+print 'Wrote ' + str(len(html)) + ' bytes to file results_sse1.html.'
