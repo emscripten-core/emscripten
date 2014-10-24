@@ -435,6 +435,18 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
 
+  def test_struct_varargs(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('struct varargs requires fastcomp')
+    test_path = path_from_root('tests', 'core', 'test_struct_varargs')
+    src, output = (test_path + s for s in ('.c', '.out'))
+    self.do_run_from_file(src, output)
+
+  def zzztest_nested_struct_varargs(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('struct varargs requires fastcomp')
+    test_path = path_from_root('tests', 'core', 'test_nested_struct_varargs')
+    src, output = (test_path + s for s in ('.c', '.out'))
+    self.do_run_from_file(src, output)
+
   def test_i32_mul_precise(self):
     if self.emcc_args == None: return self.skip('needs ta2')
 
