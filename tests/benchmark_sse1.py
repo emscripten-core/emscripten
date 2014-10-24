@@ -42,11 +42,18 @@ out = build.communicate()
 if build.returncode != 0:
     sys.exit(1)
 
+# The output file will have a 'almost asm' annotation, since SIMD is not yet in Nightly, so it won't even attempt to validate.
+# Replace with 'use asm' to get a hint of validation errors, if those exist.
+out_js_file = out_file.replace('.html', '.js')
+js = open(out_js_file, 'r').read()
+open(out_js_file, 'w').write(js.replace('almost asm', 'use asm'))
+
 # Enforce asm.js validation for the output file so that we can capture any validation errors.
 asmjs_validation_status = Popen([PYTHON, path_from_root('tools', 'validate_asmjs.py'), out_file], stdout=PIPE, stderr=PIPE).communicate()
-asmjs_validation_status = asmjs_validation_status[0].strip()
+asmjs_validation_status = (asmjs_validation_status[0].strip() + '\n' + asmjs_validation_status[1].strip()).strip()
 if 'is not valid asm.js' in asmjs_validation_status:
-	asmjs_validation_status = '<span style="color:red;">' + asmjs_validation_status + '</span>'
+    print >> sys.stderr, asmjs_validation_status
+    asmjs_validation_status = '<span style="color:red;">' + asmjs_validation_status + '</span>'
 
 # We require running in FF Nightly, since no other browsers support SIMD yet.
 print 'Now launching Firefox to run the browser benchmark. For this to work properly, ensure the following:'
