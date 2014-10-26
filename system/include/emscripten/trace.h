@@ -34,6 +34,8 @@ void emscripten_trace_record_free(const void *address);
 
 void emscripten_trace_annotate_address_type(const void *address, const char *type);
 
+void emscripten_trace_associate_storage_size(const void *address, int32_t size);
+
 void emscripten_trace_report_memory_layout(void);
 
 void emscripten_trace_report_off_heap_data(void);

@@ -131,6 +131,14 @@ memory, you can annotate the address:
 
   emscripten_trace_annotate_address_type(model, "UI::Model");
 
+Additionally, some applications may want to associate the size
+of additional storage with an allocation. This can be done via
+:c:func:`emscripten_trace_associate_storage_size`:
+
+.. code-block:: c
+
+  emscripten_trace_associate_storage_size(mesh, mesh->GetTotalMemoryUsage());
+
 Overall Memory Usage
 --------------------
 
@@ -413,6 +421,26 @@ Functions
    Annotate an address with the name of the data type that is
    stored there. This is used by the server to help breakdown
    what is in memory.
+
+.. c:function:: void emscripten_trace_associate_storage_size(const void *address, int32_t size)
+
+   :param address: Memory address which should be annotated.
+   :type address: void*
+   :param size: Size of the memory associated with this allocation.
+   :type type: int32_t
+   :rtype: void
+
+   Associate an amount of additional storage with this address. This
+   does not represent the size of the allocation itself, but rather
+   associated memory that should be taken into account when looking
+   at the size of this object.
+
+   This associated storage is application specific in nature.
+
+   An example is when an object contains a vector or string, you may
+   want to be aware of that when analyzing memory usage and this
+   provides a way to let the server be aware of that additional
+   storage.
 
 .. c:function:: void emscripten_trace_report_memory_layout(void)
 

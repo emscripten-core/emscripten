@@ -16,6 +16,7 @@ var LibraryTracing = {
     EVENT_ALLOCATE: 'allocate',
     EVENT_ANNOTATE_TYPE: 'annotate-type',
     EVENT_APPLICATION_NAME: 'application-name',
+    EVENT_ASSOCIATE_STORAGE_SIZE: 'associate-storage-size',
     EVENT_ENTER_CONTEXT: 'enter-context',
     EVENT_EXIT_CONTEXT: 'exit-context',
     EVENT_FRAME_END: 'frame-end',
@@ -181,6 +182,13 @@ var LibraryTracing = {
     if (EmscriptenTrace.enabled) {
       EmscriptenTrace.post([EmscriptenTrace.EVENT_ANNOTATE_TYPE, address,
                             Pointer_stringify(type_name)]);
+    }
+  },
+
+  emscripten_trace_associate_storage_size: function(address, size) {
+    if (EmscriptenTrace.enabled) {
+      EmscriptenTrace.post([EmscriptenTrace.EVENT_ANNOTATE_TYPE,
+                            address, size]);
     }
   },
 
