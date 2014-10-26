@@ -444,15 +444,11 @@ Functions
 
    The current timestamp is associated with this data.
 
-   *This is not yet used on the server side.*
-
 .. c:function:: void emscripten_trace_exit_context(void)
 
    :rtype: void
 
    The current timestamp is associated with this data.
-
-   *This is not yet used on the server side.*
 
 .. c:function:: void emscripten_trace_task_start(int task_id, const char *name);
 
