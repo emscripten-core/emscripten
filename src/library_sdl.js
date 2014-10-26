@@ -2834,6 +2834,8 @@ var LibrarySDL = {
     return fontData.size;
   },
 
+  TTF_FontLineSkip: 'TTF_FontHeight', // XXX
+
   TTF_Quit: function() {
     Module.print('TTF_Quit called (and ignored)');
   },
