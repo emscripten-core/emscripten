@@ -28,6 +28,11 @@ var LibraryTracing = {
     EVENT_REALLOCATE: 'reallocate',
     EVENT_REPORT_ERROR: 'report-error',
     EVENT_SESSION_NAME: 'session-name',
+    EVENT_TASK_ASSOCIATE_DATA: 'task-associate-data',
+    EVENT_TASK_END: 'task-end',
+    EVENT_TASK_RESUME: 'task-resume',
+    EVENT_TASK_START: 'task-start',
+    EVENT_TASK_SUSPEND: 'task-suspend',
     EVENT_USER_NAME: 'user-name',
 
     init: function() {
@@ -240,6 +245,45 @@ var LibraryTracing = {
     if (EmscriptenTrace.enabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_EXIT_CONTEXT, now]);
+    }
+  },
+
+  emscripten_trace_task_start: function(task_id, name) {
+    if (EmscriptenTrace.enabled) {
+      var now = EmscriptenTrace.now();
+      EmscriptenTrace.post([EmscriptenTrace.EVENT_TASK_START,
+                            now, task_id, Pointer_stringify(name)]);
+    }
+  },
+
+  emscripten_trace_task_associate_data: function(key, value) {
+    if (EmscriptenTrace.enabled) {
+      EmscriptenTrace.post([EmscriptenTrace.EVENT_TASK_ASSOCIATE_DATA,
+                            Pointer_stringify(key),
+                            Pointer_stringify(value)]);
+    }
+  },
+
+  emscripten_trace_task_suspend: function(explanation) {
+    if (EmscriptenTrace.enabled) {
+      var now = EmscriptenTrace.now();
+      EmscriptenTrace.post([EmscriptenTrace.EVENT_TASK_SUSPEND,
+                            now, Pointer_stringify(explanation)]);
+    }
+  },
+
+  emscripten_trace_task_resume: function(task_id, explanation) {
+    if (EmscriptenTrace.enabled) {
+      var now = EmscriptenTrace.now();
+      EmscriptenTrace.post([EmscriptenTrace.EVENT_TASK_RESUME,
+                            now, task_id, Pointer_stringify(explanation)]);
+    }
+  },
+
+  emscripten_trace_task_end: function() {
+    if (EmscriptenTrace.enabled) {
+      var now = EmscriptenTrace.now();
+      EmscriptenTrace.post([EmscriptenTrace.EVENT_TASK_END, now]);
     }
   },
 
