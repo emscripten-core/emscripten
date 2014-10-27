@@ -3,6 +3,9 @@
 #include <assert.h>
 #include <emscripten.h>
 
+/* OS X mouse events can have fractional elements; round to multiples of 5 (our values are all multiples of 10) */
+#define SLACK(x) (5*((x+2)/5))
+
 int result = 1;
 
 void one() {
@@ -12,7 +15,12 @@ void one() {
       case SDL_MOUSEMOTION: {
         SDL_MouseMotionEvent *m = (SDL_MouseMotionEvent*)&event;
         assert(m->state == 0);
-        printf("motion: %d,%d  %d,%d\n", m->x, m->y, m->xrel, m->yrel);
+        printf("motion pre : %d,%d  %d,%d\n", m->x, m->y, m->xrel, m->yrel);
+        m->x = SLACK(m->x);
+        m->y = SLACK(m->y);
+        m->xrel = SLACK(m->xrel);
+        m->yrel = SLACK(m->yrel);
+        printf("motion post: %d,%d  %d,%d\n", m->x, m->y, m->xrel, m->yrel);
         result += 2 * (m->x + m->y + m->xrel + m->yrel);
         break;
       }
@@ -22,13 +30,19 @@ void one() {
           REPORT_RESULT();
           emscripten_run_script("throw 'done'");
         }
-        printf("button down: %d,%d  %d,%d\n", m->button, m->state, m->x, m->y);
+        printf("button down pre : %d,%d  %d,%d\n", m->button, m->state, m->x, m->y);
+        m->x = SLACK(m->x);
+        m->y = SLACK(m->y);
+        printf("button down post: %d,%d  %d,%d\n", m->button, m->state, m->x, m->y);
         result += 3 * (m->button + m->state + m->x + m->y);
         break;
       }
       case SDL_MOUSEBUTTONUP: {
         SDL_MouseButtonEvent *m = (SDL_MouseButtonEvent*)&event;
-        printf("button up: %d,%d  %d,%d\n", m->button, m->state, m->x, m->y);
+        printf("button up pre : %d,%d  %d,%d\n", m->button, m->state, m->x, m->y);
+        m->x = SLACK(m->x);
+        m->y = SLACK(m->y);
+        printf("button up post: %d,%d  %d,%d\n", m->button, m->state, m->x, m->y);
         result += 5 * (m->button + m->state + m->x + m->y);
         // Remove another click we want to ignore
         assert(SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_MOUSEBUTTONDOWN, SDL_MOUSEBUTTONDOWN) == 1);
@@ -61,8 +75,8 @@ void main_2(void* arg) {
   emscripten_run_script("window.simulateMouseEvent(10, 20, -1)"); // move from 0,0 to 10,20
   emscripten_run_script("window.simulateMouseEvent(10, 20, 0)"); // click
   emscripten_run_script("window.simulateMouseEvent(10, 20, 0)"); // click some more, but this one should be ignored through PeepEvent
-  emscripten_run_script("window.simulateMouseEvent(30, 77, -1)"); // move some more
-  emscripten_run_script("window.simulateMouseEvent(30, 77, 1)"); // trigger the end
+  emscripten_run_script("window.simulateMouseEvent(30, 70, -1)"); // move some more
+  emscripten_run_script("window.simulateMouseEvent(30, 70, 1)"); // trigger the end
 
   emscripten_set_main_loop(one, 0, 0);
 }
