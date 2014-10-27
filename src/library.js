@@ -5017,6 +5017,13 @@ LibraryManager.library = {
     return 0;
   },
 
+  cfgetospeed: function(termios_p) {
+#if ASSERTIONS
+    Runtime.warnOnce('cfgetospeed() returning a fake value');
+#endif
+    return 15;
+  },
+
   // ==========================================================================
   // time.h
   // ==========================================================================
