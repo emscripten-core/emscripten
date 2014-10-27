@@ -1623,6 +1623,9 @@ void *getBindBuffer() {
   def test_sdl_maprgba(self):
     self.btest('sdl_maprgba.c', reference='sdl_maprgba.png', reference_slack=3)
 
+  def test_sdl_create_rgb_surface_from(self):
+    self.btest('sdl_create_rgb_surface_from.c', reference='sdl_create_rgb_surface_from.png')
+
   def test_sdl_rotozoom(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
     self.btest('sdl_rotozoom.c', reference='sdl_rotozoom.png', args=['--preload-file', 'screenshot.png'], reference_slack=3)
