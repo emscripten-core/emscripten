@@ -37,10 +37,30 @@ _mm_load_ps(const float *__p)
   return *(__m128 *)__p;
 }
 
+static __inline__ __m128 __attribute__((__always_inline__))
+_mm_loadu_ps(const float *__p)
+{
+  struct __unaligned {
+    __m128 __v;
+  } __attribute__((__packed__, __may_alias__));
+
+  return ((struct __unaligned *)__p)->__v;
+}
+
 static __inline__ void __attribute__((__always_inline__))
 _mm_store_ps(float *__p, __m128 __a)
 {
   *(__m128 *)__p = __a;
+}
+
+static __inline__ void __attribute__((__always_inline__))
+_mm_storeu_ps(float *__p, __m128 __a)
+{
+  struct __unaligned {
+    __m128 __v;
+  } __attribute__((__packed__, __may_alias__));
+
+  ((struct __unaligned *)__p)->__v = __a;
 }
 
 static __inline__ int __attribute__((__always_inline__))
