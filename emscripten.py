@@ -916,7 +916,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     global_initializers = ', '.join(map(lambda i: '{ func: function() { %s() } }' % i, metadata['initializers']))
 
     if settings['SIMD'] == 1:
-      pre = open(path_from_root(os.path.join('src', 'simd.js'))).read() + '\n\n' + pre
+      pre = open(path_from_root(os.path.join('src', 'ecmascript_simd.js'))).read() + '\n\n' + pre
 
     staticbump = mem_init.count(',')+1
     while staticbump % 16 != 0: staticbump += 1
