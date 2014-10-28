@@ -1620,6 +1620,9 @@ void *getBindBuffer() {
   def test_sdl_canvas_twice(self):
     self.btest('sdl_canvas_twice.c', reference='sdl_canvas_twice.png')
 
+  def test_sdl_set_clip_rect(self):
+    self.btest('sdl_set_clip_rect.c', reference='sdl_set_clip_rect.png')
+
   def test_sdl_maprgba(self):
     self.btest('sdl_maprgba.c', reference='sdl_maprgba.png', reference_slack=3)
 
