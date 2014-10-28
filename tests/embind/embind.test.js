@@ -476,6 +476,38 @@ module({
             assert.equal(true, cm.emval_test_not(false));
         });
 
+        test("val.is_undefined() is functionnal",function() {
+            assert.equal(true, cm.emval_test_is_undefined(undefined));
+            assert.equal(false, cm.emval_test_is_undefined(true));
+            assert.equal(false, cm.emval_test_is_undefined(false));
+            assert.equal(false, cm.emval_test_is_undefined(null));
+            assert.equal(false, cm.emval_test_is_undefined({}));
+        });
+
+        test("val.is_null() is functionnal",function() {
+            assert.equal(true, cm.emval_test_is_null(null));
+            assert.equal(false, cm.emval_test_is_null(true));
+            assert.equal(false, cm.emval_test_is_null(false));
+            assert.equal(false, cm.emval_test_is_null(undefined));
+            assert.equal(false, cm.emval_test_is_null({}));
+        });
+
+        test("val.is_true() is functionnal",function() {
+            assert.equal(true, cm.emval_test_is_true(true));
+            assert.equal(false, cm.emval_test_is_true(false));
+            assert.equal(false, cm.emval_test_is_true(null));
+            assert.equal(false, cm.emval_test_is_true(undefined));
+            assert.equal(false, cm.emval_test_is_true({}));
+        });
+
+        test("val.is_false() is functionnal",function() {
+            assert.equal(true, cm.emval_test_is_false(false));
+            assert.equal(false, cm.emval_test_is_false(true));
+            assert.equal(false, cm.emval_test_is_false(null));
+            assert.equal(false, cm.emval_test_is_false(undefined));
+            assert.equal(false, cm.emval_test_is_false({}));
+        });
+
         test("can pass booleans as integers", function() {
             assert.equal(1, cm.emval_test_as_unsigned(true));
             assert.equal(0, cm.emval_test_as_unsigned(false));

@@ -12,7 +12,9 @@
 /*global emval_get_global*/
 
 var LibraryEmVal = {
-  $emval_handle_array: [{}], // reserve zero
+  $emval_handle_array: [{},
+    {refcount: 1, value: undefined},{refcount: 1, value: null},
+    {refcount: 1, value: true},{refcount: 1, value: false}], // reserve zero and special values
   $emval_free_list: [],
   $emval_symbols: {}, // address -> string
 
@@ -26,7 +28,7 @@ var LibraryEmVal = {
   $count_emval_handles__deps: ['$emval_handle_array'],
   $count_emval_handles: function() {
     var count = 0;
-    for (var i = 1; i < emval_handle_array.length; ++i) {
+    for (var i = 5; i < emval_handle_array.length; ++i) {
         if (emval_handle_array[i] !== undefined) {
             ++count;
         }
@@ -69,12 +71,21 @@ var LibraryEmVal = {
 
   _emval_register__deps: ['$emval_free_list', '$emval_handle_array', '$init_emval'],
   _emval_register: function(value) {
-    var handle = emval_free_list.length ?
-        emval_free_list.pop() :
-        emval_handle_array.length;
 
-    emval_handle_array[handle] = {refcount: 1, value: value};
-    return handle;
+    switch(value){
+      case undefined :{ emval_handle_array[ 1 ].refcount++; return 1; }
+      case null :{ emval_handle_array[ 2 ].refcount++; return 2; }
+      case true :{ emval_handle_array[ 3 ].refcount++; return 3; }
+      case false :{ emval_handle_array[ 4 ].refcount++; return 4; }
+      default:{
+        var handle = emval_free_list.length ?
+            emval_free_list.pop() :
+            emval_handle_array.length;
+
+        emval_handle_array[handle] = {refcount: 1, value: value};
+        return handle;
+        }
+      }
   },
 
   _emval_incref__deps: ['$emval_handle_array'],
@@ -107,16 +118,6 @@ var LibraryEmVal = {
   _emval_new_object__deps: ['_emval_register'],
   _emval_new_object: function() {
     return __emval_register({});
-  },
-
-  _emval_undefined__deps: ['_emval_register'],
-  _emval_undefined: function() {
-    return __emval_register(undefined);
-  },
-
-  _emval_null__deps: ['_emval_register'],
-  _emval_null: function() {
-    return __emval_register(null);
   },
 
   _emval_new_cstring__deps: ['$getStringOrSymbol', '_emval_register'],

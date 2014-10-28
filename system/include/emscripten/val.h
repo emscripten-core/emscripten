@@ -5,11 +5,20 @@
 #include <array>
 #include <vector>
 
+
 namespace emscripten {
     namespace internal {
         // Implemented in JavaScript.  Don't call these directly.
         extern "C" {
             void _emval_register_symbol(const char*);
+
+            enum
+            {
+                _emval_undefined = 1,
+                _emval_null = 2,
+                _emval_true = 3,
+                _emval_false = 4
+            };
 
             typedef struct _EM_VAL* EM_VAL;
             typedef struct _EM_DESTRUCTORS* EM_DESTRUCTORS;
@@ -24,8 +33,6 @@ namespace emscripten {
 
             EM_VAL _emval_new_array();
             EM_VAL _emval_new_object();
-            EM_VAL _emval_undefined();
-            EM_VAL _emval_null();
             EM_VAL _emval_new_cstring(const char*);
 
             EM_VAL _emval_take_value(TYPEID type, EM_VAR_ARGS argv);
@@ -273,11 +280,13 @@ namespace emscripten {
         }
 
         static val undefined() {
-            return val(internal::_emval_undefined());
+            internal::_emval_incref(internal::EM_VAL(internal::_emval_undefined));
+            return val(internal::EM_VAL(internal::_emval_undefined));
         }
 
         static val null() {
-            return val(internal::_emval_null());
+            internal::_emval_incref(internal::EM_VAL(internal::_emval_null));
+            return val(internal::EM_VAL(internal::_emval_null));
         }
 
         static val take_ownership(internal::EM_VAL e) {
@@ -306,7 +315,7 @@ namespace emscripten {
         val() = delete;
 
         explicit val(const char* v)
-            : handle(internal::_emval_new_cstring(v)) 
+            : handle(internal::_emval_new_cstring(v))
         {}
 
         val(val&& v)
@@ -341,6 +350,22 @@ namespace emscripten {
 
         bool hasOwnProperty(const char* key) const {
             return val::global("Object")["prototype"]["hasOwnProperty"].call<bool>("call", *this, val(key));
+        }
+
+        bool isNull() const {
+            return handle == internal::EM_VAL(internal::_emval_null);
+        }
+
+        bool isUndefined() const {
+            return handle == internal::EM_VAL(internal::_emval_undefined);
+        }
+
+        bool isTrue() const {
+            return handle == internal::EM_VAL(internal::_emval_true);
+        }
+
+        bool isFalse() const {
+            return handle == internal::EM_VAL(internal::_emval_false);
         }
 
         template<typename... Args>
