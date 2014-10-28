@@ -34,6 +34,8 @@ void emscripten_trace_record_free(const void *address);
 
 void emscripten_trace_annotate_address_type(const void *address, const char *type);
 
+void emscripten_trace_associate_storage_size(const void *address, int32_t size);
+
 void emscripten_trace_report_memory_layout(void);
 
 void emscripten_trace_report_off_heap_data(void);
@@ -41,6 +43,16 @@ void emscripten_trace_report_off_heap_data(void);
 void emscripten_trace_enter_context(const char *name);
 
 void emscripten_trace_exit_context(void);
+
+void emscripten_trace_task_start(int task_id, const char *name);
+
+void emscripten_trace_task_associate_data(const char *key, const char *value);
+
+void emscripten_trace_task_suspend(const char *explanation);
+
+void emscripten_trace_task_resume(int task_id, const char *explanation);
+
+void emscripten_trace_task_end(void);
 
 void emscripten_trace_close(void);
 
@@ -62,6 +74,11 @@ void emscripten_trace_close(void);
 #define emscripten_trace_report_off_heap_data()
 #define emscripten_trace_enter_context(name)
 #define emscripten_trace_exit_context()
+#define emscripten_trace_task_start(task_id, taskname)
+#define emscripten_trace_task_associate_data(key, value);
+#define emscripten_trace_task_suspend(explanation);
+#define emscripten_trace_task_resume(task_id, explanation);
+#define emscripten_trace_task_end();
 #define emscripten_trace_close()
 
 #endif
