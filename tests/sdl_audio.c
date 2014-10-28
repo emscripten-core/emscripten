@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
 
   sound = Mix_LoadWAV("sound.ogg");
   assert(sound);
-  
+
   {
       struct stat info;
       int result = stat("noise.ogg", &info);
@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
   
   
   sound2 = Mix_LoadWAV("sound2.wav");
-  assert(sound);
+  assert(sound2);
 
   int channel = play();
   printf( "Pausing Channel %d", channel );
@@ -90,4 +90,3 @@ int main(int argc, char **argv) {
 
   return 0;
 }
-
