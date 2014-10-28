@@ -70,6 +70,14 @@ bool emval_test_is_undefined(val v) {
     return v.isUndefined();
 }
 
+bool emval_test_equals(val v1,val v2) {
+    return v1.equals(v2);
+}
+
+bool emval_test_strictly_equals(val v1, val v2) {
+    return v1.strictlyEquals(v2);
+}
+
 unsigned emval_test_as_unsigned(val v) {
     return v.as<unsigned>();
 }
@@ -1580,6 +1588,8 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("emval_test_is_false", &emval_test_is_false);
     function("emval_test_is_null", &emval_test_is_null);
     function("emval_test_is_undefined", &emval_test_is_undefined);
+    function("emval_test_equals", &emval_test_equals);
+    function("emval_test_strictly_equals", &emval_test_strictly_equals);
 
     function("emval_test_as_unsigned", &emval_test_as_unsigned);
     function("emval_test_get_length", &emval_test_get_length);

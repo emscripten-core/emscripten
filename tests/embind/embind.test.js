@@ -508,6 +508,33 @@ module({
             assert.equal(false, cm.emval_test_is_false({}));
         });
 
+        test("val.equals() is functionnal",function() {
+            values = [undefined, null, true, false, {}];
+
+            for(var i=0;i<values.length;++i){
+                var first = values[i];
+                for(var j=i;j<values.length;++j)
+                {
+                    var second = values[j];
+                    console.log( 'js: '+first+ "=="+second + ':' + (first==second) );
+                    assert.equal((first==second), cm.emval_test_equals(first, second));
+                }
+            }
+        });
+
+        test("val.strictlyEquals() is functionnal",function() {
+            values = [undefined, null, true, false, {}];
+
+            for(var i=0;i<values.length;++i){
+                var first = values[i];
+                for(var j=i;j<values.length;++j)
+                {
+                    var second = values[j];
+                    assert.equal(first===second, cm.emval_test_strictly_equals(first, second));
+                }
+            }
+        });
+
         test("can pass booleans as integers", function() {
             assert.equal(1, cm.emval_test_as_unsigned(true));
             assert.equal(0, cm.emval_test_as_unsigned(false));

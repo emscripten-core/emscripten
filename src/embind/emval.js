@@ -223,6 +223,20 @@ var LibraryEmVal = {
     return returnType['toWireType'](destructors, handle);
   },
 
+  _emval_equals__deps: ['_emval_register', '$requireHandle'],
+  _emval_equals: function(first, second ){
+    first = requireHandle(first);
+    second = requireHandle(second);
+    return __emval_register(first==second);
+  },
+
+  _emval_strictly_equals__deps: ['_emval_register', '$requireHandle'],
+  _emval_strictly_equals: function(first, second ){
+    first = requireHandle(first);
+    second = requireHandle(second);
+    return __emval_register(first===second);
+  },
+
   _emval_call__deps: ['_emval_lookupTypes', '_emval_register', '$requireHandle'],
   _emval_call: function(handle, argCount, argTypes, argv) {
     handle = requireHandle(handle);

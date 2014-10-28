@@ -49,6 +49,9 @@ namespace emscripten {
             void _emval_set_property(EM_VAL object, EM_VAL key, EM_VAL value);
             EM_GENERIC_WIRE_TYPE _emval_as(EM_VAL value, TYPEID returnType, EM_DESTRUCTORS* destructors);
 
+            EM_VAL _emval_equals(EM_VAL first, EM_VAL second);
+            EM_VAL _emval_strictly_equals(EM_VAL first, EM_VAL second);
+
             EM_VAL _emval_call(
                 EM_VAL value,
                 unsigned argCount,
@@ -366,6 +369,14 @@ namespace emscripten {
 
         bool isFalse() const {
             return handle == internal::EM_VAL(internal::_emval_false);
+        }
+
+        bool equals(const val& v) const {
+            return val(internal::_emval_equals(handle, v.handle)).as<bool>();
+        }
+
+        bool strictlyEquals(const val& v) const {
+            return val(internal::_emval_strictly_equals(handle, v.handle)).as<bool>();
         }
 
         template<typename... Args>
