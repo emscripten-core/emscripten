@@ -593,6 +593,7 @@ var USE_SDL = 1; // Specify the SDL version that is being linked against.
                  // 1, the default, is 1.3, which is implemented in JS
                  // 2 is a port of the SDL C code on emscripten-ports
 var USE_SDL_IMAGE = 1; // Specify the SDL_image version that is being linked against. Must match USE_SDL
+var USE_ZLIB = 0; // 1 = use zlib from emscripten-ports
 
 
 // Compiler debugging options
