@@ -13,6 +13,14 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def is_emterpreter(self):
     return 'EMTERPRETIFY=1' in self.emcc_args
 
+  def test_require(self):
+      inname = path_from_root('tests', 'hello_world.c')
+
+      Building.emcc(inname, output_filename='a.out.js')
+      output = Popen([NODE_JS, '-e', 'require("./a.out.js")'], stdout=PIPE, stderr=PIPE).communicate()
+
+      assert output == ('hello, world!\n \n', ''), 'expected no output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % output
+
   def test_hello_world(self):
       test_path = path_from_root('tests', 'core', 'test_hello_world')
       src, output = (test_path + s for s in ('.in', '.out'))
