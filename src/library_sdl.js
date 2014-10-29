@@ -269,6 +269,27 @@ var LibrarySDL = {
       };
     },
 
+    updateRect: function(rect, r) {
+      {{{ makeSetValue('rect', C_STRUCTS.SDL_Rect.x, 'r.x', 'i32') }}};
+      {{{ makeSetValue('rect', C_STRUCTS.SDL_Rect.y, 'r.y', 'i32') }}};
+      {{{ makeSetValue('rect', C_STRUCTS.SDL_Rect.w, 'r.w', 'i32') }}};
+      {{{ makeSetValue('rect', C_STRUCTS.SDL_Rect.h, 'r.h', 'i32') }}};
+    },
+
+    intersectionOfRects: function(first, second) {
+      var leftX = Math.max(first.x, second.x);
+      var leftY = Math.max(first.y, second.y);
+      var rightX = Math.min(first.x + first.w, second.x + second.w);
+      var rightY = Math.min(first.y + first.h, second.y + second.h);
+
+      return {
+        x: leftX,
+        y: leftY,
+        w: Math.max(leftX, rightX) - leftX,
+        h: Math.max(leftY, rightY) - leftY
+      }
+    },
+
     checkPixelFormat: function(fmt) {
 #if ASSERTIONS
       // Canvas screens are always RGBA.
@@ -455,7 +476,20 @@ var LibrarySDL = {
       if (dstrect) {
         dr = SDL.loadRect(dstrect);
       } else {
-        dr = { x: 0, y: 0, w: -1, h: -1 };
+        dr = { x: 0, y: 0, w: srcData.width, h: srcData.height };
+      }
+      if (dstData.clipRect) {
+        var widthScale = (!scale || sr.w === 0) ? 1 : sr.w / dr.w;
+        var heightScale = (!scale || sr.h === 0) ? 1 : sr.h / dr.h;
+        
+        dr = SDL.intersectionOfRects(dstData.clipRect, dr);
+        
+        sr.w = dr.w * widthScale;
+        sr.h = dr.h * heightScale;
+        
+        if (dstrect) {
+          SDL.updateRect(dstrect, dr);
+        }
       }
       var blitw, blitr;
       if (scale) {
@@ -1756,6 +1790,24 @@ var LibrarySDL = {
   SDL_LowerBlit: 'SDL_UpperBlit',
   SDL_LowerBlitScaled: 'SDL_UpperBlitScaled',
 
+  SDL_GetClipRect: function(surf, rect) {
+    assert(rect);
+
+    var surfData = SDL.surfaces[surf];
+    var r = surfData.clipRect || { x: 0, y: 0, w: surfData.width, h: surfData.height };
+    SDL.updateRect(rect, r);
+  },
+
+  SDL_SetClipRect: function(surf, rect) {
+    var surfData = SDL.surfaces[surf];
+
+    if (rect) {
+      surfData.clipRect = SDL.intersectionOfRects({ x: 0, y: 0, w: surfData.width, h: surfData.height }, SDL.loadRect(rect));
+    } else {
+      delete surfData.clipRect;
+    }
+  },
+
   SDL_FillRect: function(surf, rect, color) {
     var surfData = SDL.surfaces[surf];
     assert(!surfData.locked); // but we could unlock and re-lock if we must..
@@ -1768,6 +1820,15 @@ var LibrarySDL = {
     }
 
     var r = rect ? SDL.loadRect(rect) : { x: 0, y: 0, w: surfData.width, h: surfData.height };
+
+    if (surfData.clipRect) {
+      r = SDL.intersectionOfRects(surfData.clipRect, r);
+
+      if (rect) {
+        SDL.updateRect(rect, r);
+      }
+    }
+
     surfData.ctx.save();
     surfData.ctx.fillStyle = SDL.translateColorToCSSRGBA(color);
     surfData.ctx.fillRect(r.x, r.y, r.w, r.h);
