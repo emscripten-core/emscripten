@@ -100,7 +100,7 @@ def run_on_chunk(command):
     # avoid throwing keyboard interrupts from a child process
     raise Exception()
 
-def run_on_js(filename, passes, js_engine, jcache, source_map=False, extra_info=None, just_concat=False):
+def run_on_js(filename, passes, js_engine, jcache, source_map=False, extra_info=None, just_split=False, just_concat=False):
   if isinstance(jcache, bool) and jcache: jcache = shared.JCache
   if jcache: shared.JCache.ensure()
 
@@ -199,7 +199,8 @@ EMSCRIPTEN_FUNCS();
     pre = ''
     post = ''
 
-  def split_funcs(js):
+  def split_funcs(js, just_split=False):
+    if just_split: return map(lambda line: ('(json)', line), js.split('\n'))
     # Pick where to split into chunks, so that (1) they do not oom in node/uglify, and (2) we can run them in parallel
     # If we have metadata, we split only the generated code, and save the pre and post on the side (and do not optimize them)
     parts = map(lambda part: part, js.split('\n}\n'))
@@ -218,7 +219,7 @@ EMSCRIPTEN_FUNCS();
     return funcs
 
   total_size = len(js)
-  funcs = split_funcs(js)
+  funcs = split_funcs(js, just_split)
   js = None
 
   # if we are making source maps, we want our debug numbering to start from the
@@ -228,6 +229,7 @@ EMSCRIPTEN_FUNCS();
   chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
 
   chunks = shared.chunkify(funcs, chunk_size, jcache.get_cachename('jsopt') if jcache else None)
+  chunks = filter(lambda chunk: len(chunk) > 0, chunks)
   if DEBUG and len(chunks) > 0: print >> sys.stderr, 'chunkification: intended size:', chunk_size, 'num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(map(len, chunks)), '-', min(map(len, chunks))
   funcs = None
 
@@ -376,9 +378,9 @@ EMSCRIPTEN_FUNCS();
 
   return filename
 
-def run(filename, passes, js_engine=shared.NODE_JS, jcache=False, source_map=False, extra_info=None, just_concat=False):
+def run(filename, passes, js_engine=shared.NODE_JS, jcache=False, source_map=False, extra_info=None, just_split=False, just_concat=False):
   js_engine = shared.listify(js_engine)
-  return temp_files.run_and_clean(lambda: run_on_js(filename, passes, js_engine, jcache, source_map, extra_info, just_concat))
+  return temp_files.run_and_clean(lambda: run_on_js(filename, passes, js_engine, jcache, source_map, extra_info, just_split, just_concat))
 
 if __name__ == '__main__':
   last = sys.argv[-1]
