@@ -1394,7 +1394,8 @@ try:
       else:
         for i in range(len(js_optimizer_queue)):
           name = js_optimizer_queue[i]
-          passes = add_opt_args([name])
+          passes = [name] if name is not 'pretty' else []
+          passes = add_opt_args(passes)
           if shared.Settings.ASM_JS:
             passes = ['asm'] + passes
           just_split = False
@@ -1421,9 +1422,7 @@ try:
 
     if DEBUG == '2':
       # Clean up the syntax a bit
-      final = shared.Building.js_optimizer(final, [], jcache, debug_level >= 4)
-      js_transform_tempfiles.append(final)
-      if DEBUG: save_intermediate('pretty')
+      js_optimizer_queue += ['pretty']
 
     def get_eliminate():
       if shared.Settings.ALLOW_MEMORY_GROWTH:
