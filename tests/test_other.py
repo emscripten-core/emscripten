@@ -4383,3 +4383,9 @@ int main(void) {
       Popen([PYTHON, EMCC, 'z.o', 'libtest.a'] + args).communicate()
       out = run_js('a.out.js', assert_returncode=161)
 
+  def test_require(self):
+    inname = path_from_root('tests', 'hello_world.c')
+    Building.emcc(inname, output_filename='a.out.js')
+    output = Popen(NODE_JS + ['-e', 'require("./a.out.js")'], stdout=PIPE, stderr=PIPE).communicate()
+    assert output == ('hello, world!\n \n', ''), 'expected no output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % output
+
