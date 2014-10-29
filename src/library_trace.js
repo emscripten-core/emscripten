@@ -187,7 +187,7 @@ var LibraryTracing = {
 
   emscripten_trace_associate_storage_size: function(address, size) {
     if (EmscriptenTrace.enabled) {
-      EmscriptenTrace.post([EmscriptenTrace.EVENT_ANNOTATE_TYPE,
+      EmscriptenTrace.post([EmscriptenTrace.EVENT_ASSOCIATE_STORAGE_SIZE,
                             address, size]);
     }
   },
