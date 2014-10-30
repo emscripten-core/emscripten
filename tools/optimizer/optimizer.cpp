@@ -98,14 +98,20 @@ int main(int argc, char **argv) {
   int result = stat(input, &st);
   assert(result == 0);
   int size = st.st_size;
+  //printf("reading %s, %d bytes\n", input, size);
   char *json = new char[size+1];
   FILE *f = fopen(input, "rb");
-  fread(json, 1, size, f);
+  int num = fread(json, 1, size, f);
+  assert(num == size);
   fclose(f);
   json[size] = 0;
 
+  char *comment = strstr(json, "//");
+  if (comment) *comment = 0; // drop off the comments; TODO: parse extra info
+
   // Parse JSON source into a Document
   doc.Parse(json);
+  assert(!doc.HasParseError());
   delete[] json;
 
   // Run passes on the Document
