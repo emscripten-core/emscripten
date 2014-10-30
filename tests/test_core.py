@@ -4276,8 +4276,13 @@ def process(filename):
       self.do_run_from_file(src, output)
 
   def test_fgetc_ungetc(self):
-    src = open(path_from_root('tests', 'stdio', 'test_fgetc_ungetc.c'), 'r').read()
-    self.do_run(src, 'success', force_c=True)
+    self.clear()
+    if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for inline js')
+    orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
+    for fs in ['MEMFS', 'NODEFS']:
+        src = open(path_from_root('tests', 'stdio', 'test_fgetc_ungetc.c'), 'r').read()
+        Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
+        self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
   def test_fgetc_unsigned(self):
     if self.emcc_args is None: return self.skip('requires emcc')
