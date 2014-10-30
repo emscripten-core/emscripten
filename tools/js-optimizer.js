@@ -7642,6 +7642,7 @@ var passes = {
   emterpretify: emterpretify,
   findReachable: findReachable,
   asmLastOpts: asmLastOpts,
+  noop: function() {},
 
   // flags
   minifyWhitespace: function() { minifyWhitespace = true },
