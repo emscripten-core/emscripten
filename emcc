@@ -1381,14 +1381,14 @@ try:
 
     if len(js_optimizer_queue) > 0 and not(not shared.Settings.ASM_JS and len(js_optimizer_queue) == 1 and js_optimizer_queue[0] == 'last'):
 
-      def run_passes(passes):
+      def run_passes(passes, title, just_split, just_concat):
         global final
         if shared.Settings.ASM_JS:
           passes = ['asm'] + passes
           if shared.Settings.PRECISE_F32:
             passes = ['asmPreciseF32'] + passes
         logging.debug('applying js optimization passes: %s', passes)
-        final = shared.Building.js_optimizer(final, passes, jcache, debug_level >= 4, js_optimizer_extra_info)
+        final = shared.Building.js_optimizer(final, passes, jcache, debug_level >= 4, js_optimizer_extra_info, just_split=just_split, just_concat=just_concat)
         js_transform_tempfiles.append(final)
         if DEBUG: save_intermediate(title)
 
@@ -1403,7 +1403,7 @@ try:
         for p in passes:
           if p not in NATIVE_OPTIMIZER_PASSES:
             if native:
-              chunks.append(curr)
+              chunks.append(['receiveJSON'] + curr + ['emitJSON'])
               curr = []
               native = False
               curr.append('receiveJSON')
@@ -1416,9 +1416,13 @@ try:
             native = True
             curr.append(p)
         if len(curr) > 0:
+          assert not native # FIXME, need to add JSON notes
           chunks.append(curr)
-        for chunk in chunks:
-          run_passes(chunk)
+        if len(chunks) == 1:
+          run_passes(chunks[0], title, just_split=False, just_concat=False)
+        else:
+          for i in range(len(chunks)):
+            run_passes(chunks[i], 'js_opts_' + str(i), just_split='receiveJSON' in chunks[i], just_concat='emitJSON' in chunks[i])
       else:
         for p in passes:
           js_optimizer_queue = [p]
