@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <emscripten.h>
 
 static void create_file(const char *path, const char *buffer, int mode) {
   int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
@@ -17,11 +18,11 @@ static void create_file(const char *path, const char *buffer, int mode) {
 }
 
 void setup() {
-  create_file("file.txt", "cd", 0666);
+  create_file("/tmp/file.txt", "cd", 0666);
 }
 
 void cleanup() {
-  unlink("file.txt");
+  unlink("/tmp/file.txt");
 }
 
 void test() {
@@ -29,7 +30,7 @@ void test() {
   int err;
   char buffer[256];
 
-  file = fopen("file.txt", "r");
+  file = fopen("/tmp/file.txt", "r");
   assert(file);
 
   // pushing EOF always returns EOF
@@ -82,6 +83,11 @@ void test() {
 }
 
 int main() {
+#ifdef NODEFS
+  EM_ASM(FS.mount(NODEFS, { root: '.' }, '/tmp'));
+#elif MEMFS
+  EM_ASM(FS.mount(MEMFS, {}, '/tmp'));
+#endif
   atexit(cleanup);
   signal(SIGABRT, cleanup);
   setup();
