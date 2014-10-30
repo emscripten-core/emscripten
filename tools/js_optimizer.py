@@ -1,5 +1,5 @@
 
-import os, sys, subprocess, multiprocessing, re, string, json
+import os, sys, subprocess, multiprocessing, re, string, json, shutil
 import shared
 
 configuration = shared.configuration
@@ -88,8 +88,13 @@ end_asm_marker = '// EMSCRIPTEN_END_ASM\n'
 
 def run_on_chunk(command):
   try:
-    filename = command[2] # XXX hackish
-    #print >> sys.stderr, 'running js optimizer command', ' '.join(command), '""""', open(filename).read()
+    if JS_OPTIMIZER in command: # XXX hackish
+      index = command.index(JS_OPTIMIZER)
+      filename = command[index + 1]
+    else:
+      filename = command[1]
+    #print >> sys.stderr, 'running js optimizer command', command, filename
+    #shutil.copyfile(filename, '/tmp/emscripten_temp/input.txt')
     output = subprocess.Popen(command, stdout=subprocess.PIPE).communicate()[0]
     assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
     filename = temp_files.get(os.path.basename(filename) + '.jo.js').name
@@ -404,6 +409,5 @@ if __name__ == '__main__':
   else:
     extra_info = None
   out = run(sys.argv[1], sys.argv[2:], extra_info=extra_info)
-  import shutil
   shutil.copyfile(out, sys.argv[1] + '.jsopt.js')
 
