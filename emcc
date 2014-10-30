@@ -1402,15 +1402,17 @@ try:
           just_concat = False
 
           # XXX experimental code to emit JSON in intermediate phases
-          #if i > 0:
-          #  passes = ['receiveJSON'] + passes
-          #  just_split = True
-          #if i <  len(js_optimizer_queue)-1:
-          #  passes += ['emitJSON']
-          #  just_concat = True
+          if i > 0:
+            passes = ['receiveJSON'] + passes
+            just_split = True
+          if i <  len(js_optimizer_queue)-1:
+            passes += ['emitJSON']
+            just_concat = True
 
           logging.debug('applying js optimization pass: %s', passes)
+          t = time.time()
           final = shared.Building.js_optimizer(final, passes, jcache, debug_level >= 4, js_optimizer_extra_info, just_split=just_split, just_concat=just_concat)
+          print >> sys.stderr, 'took', time.time()-t
           js_transform_tempfiles.append(final)
           save_intermediate(name)
       js_optimizer_queue_history += js_optimizer_queue
