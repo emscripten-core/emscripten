@@ -233,6 +233,7 @@ mergeInto(LibraryManager.library, {
         }
       },
       read: function (stream, buffer, offset, length, position) {
+        if (length === 0) return 0; // node errors on 0 length reads
         // FIXME this is terrible.
         var nbuffer = new Buffer(length);
         var res;
