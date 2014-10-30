@@ -1369,7 +1369,6 @@ try:
   js_optimizer_extra_info = {}
   js_optimizer_queue_history = []
   js_optimizer_blacklist = (os.environ.get('EMCC_JSOPT_BLACKLIST') or '').split(',')
-  NATIVE_OPTIMIZER_PASSES = set() # ['optimizeFrounds'])
 
   def flush_js_optimizer_queue(title='js_opts'):
     global final, js_optimizer_queue, js_optimizer_extra_info, js_optimizer_queue_history
@@ -1401,7 +1400,7 @@ try:
         curr = []
         native = False
         for p in passes:
-          if p not in NATIVE_OPTIMIZER_PASSES:
+          if p not in shared.js_optimizer.NATIVE_PASSES:
             if native:
               chunks.append(['receiveJSON'] + curr + ['emitJSON'])
               curr = []

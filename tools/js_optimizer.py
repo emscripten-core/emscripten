@@ -9,6 +9,8 @@ __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 
+NATIVE_PASSES = set() # ['optimizeFrounds'])
+
 JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 
 NUM_CHUNKS_PER_CORE = 3
@@ -273,10 +275,22 @@ EMSCRIPTEN_FUNCS();
     filenames = []
 
   if len(filenames) > 0:
-    # XXX Use '--nocrankshaft' to disable crankshaft to work around v8 bug 1895, needed for older v8/node (node 0.6.8+ should be ok)
-    commands = map(lambda filename: js_engine +
-        [JS_OPTIMIZER, filename, 'noPrintMetadata'] +
-        (['--debug'] if source_map else []) + passes, filenames)
+    if len(NATIVE_PASSES.intersection(passes)) == 0:
+      commands = map(lambda filename: js_engine +
+          [JS_OPTIMIZER, filename, 'noPrintMetadata'] +
+          (['--debug'] if source_map else []) + passes, filenames)
+    else:
+      # use the native optimizer
+      assert not source_map # XXX need to use js optimizer
+      def create_optimizer():
+        shared.logging.debug('building native optimizer')
+        output = shared.Cache.get_path('optimizer.exe')
+        shared.try_delete(output)
+        subprocess.Popen([shared.CLANG, shared.path_from_root('tools', 'optimizer', 'optimizer.cpp'), '-I' + shared.path_from_root('tools', 'optimizer', 'rapidjson'), '-std=c++11', '-o', output]).communicate()
+        assert os.path.exists(output)
+        return output
+      native_optimizer = shared.Cache.get('optimizer.exe', create_optimizer, extension='exe')
+      commands = map(lambda filename: [native_optimizer, filename] + passes, filenames)
     #print [' '.join(command) for command in commands]
 
     cores = min(cores, len(filenames))
