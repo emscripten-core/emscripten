@@ -279,7 +279,6 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
         }
 
-        stream.position = position;
         return position;
       }
     }
