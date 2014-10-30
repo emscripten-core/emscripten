@@ -18,6 +18,17 @@ using namespace rapidjson;
 
 Document doc;
 
+class GlobalStringValue : public Value {
+public:
+  GlobalStringValue(const char *str) : Value(str, strlen(str)) {}
+};
+
+GlobalStringValue RETURN("return"),
+                  CALL("call"),
+                  NAME("name"),
+                  NUM("num"),
+                  MATH_FROUND("Math_fround");
+
 //==================
 // Infrastructure
 //==================
@@ -59,15 +70,15 @@ void optimizeFrounds(Value &ast) {
   // also emit f0 instead of fround(0) (except in returns)
   bool inReturn = false;
   std::function<void (Value&)> fix = [&](Value& node) {
-    bool ret = node[0] == "return";
+    bool ret = node[0] == RETURN;
     if (ret) inReturn = true;
     traverseChildren(node, fix);
     if (ret) inReturn = false;
-    if (node[0] == "call" && node[1][0] == "name" && node[1][1] == "Math_fround") {
+    if (node[0] == CALL && node[1][0] == NAME && node[1][1] == MATH_FROUND) {
       Value& arg = node[2][0];
-      if (arg[0] == "num") {
+      if (arg[0] == NUM) {
         if (!inReturn && arg[1] == 0) node = makeName("f0");
-      } else if (arg[0] == "call" && arg[1][0] == "name" && arg[1][1] == "Math_fround") {
+      } else if (arg[0] == CALL && arg[1][0] == NAME && arg[1][1] == MATH_FROUND) {
         node = arg;
       }
     }
