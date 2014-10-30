@@ -22,6 +22,9 @@ var LibraryGL = {
     shaders: [],
     vaos: [],
     contexts: [],
+#if USE_WEBGL2
+    transformFeedbacks: [],
+#endif
 
 #if USES_GL_EMULATION
     currArrayBuffer: 0,
@@ -1363,6 +1366,102 @@ var LibraryGL = {
     GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type,
                         HEAPU8.subarray(data));
   },
+
+  // Transform Feedback
+  glGenTransformFeedbacks__sig: 'vii',
+  glGenTransformFeedbacks: function(n, ids) {
+    for (var i = 0; i < n; i++) {
+      var id = GL.getNewId(GL.transformFeedbacks);
+      var transformFeedback = GLctx.createTransformFeedback();
+      transformFeedback.name = id;
+      GL.transformFeedbacks[id] = transformFeedback;
+      {{{ makeSetValue('ids', 'i*4', 'id', 'i32') }}};
+    }
+  },
+
+  glDeleteTransformFeedbacks__sig: 'vii',
+  glDeleteTransformFeedbacks: function(n, ids) {
+    for (var i = 0; i < n; i++) {
+      var id = {{{ makeGetValue('ids', 'i*4', 'i32') }}};
+      var transformFeedback = GL.transformFeedbacks[id];
+      if (!transformFeedback) continue; // GL spec: "nused names in ids are ignored, as is the name zero."
+      GLctx.deleteTransformFeedback(transformFeedback);
+      transformFeedback.name = 0;
+      GL.transformFeedback[id] = null;
+    }
+  },
+
+  glIsTransformFeedback__sig: 'ii',
+  glIsTransformFeedback: function(transformFeedback) {
+    var transformFeedback = GL.transformFeedback[transformFeedback];
+    if (!transformFeedback) return 0;
+    return GLctx.isTransformFeedback(transformFeedback);
+  },
+
+  glBindTransformFeedback__sig: 'vii',
+  glBindTransformFeedback: function(target, id) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.transformFeedbacks, id, 'glBindTransformFeedback', 'id');
+#endif
+    var transformFeedback = id ? GL.transformFeedbacks[id] : null;
+    GLctx.bindTransformFeedback(target, transformFeedback);
+  },
+
+  glBeginTransformFeedback__sig: 'vi',
+  glBeginTransformFeedback: function(primitiveMode) {
+    GLctx.beginTransformFeedback(primitiveMode);
+  },
+
+  glEndTransformFeedback__sig: 'v',
+  glEndTransformFeedback: function() {
+    GLctx.endTransformFeedback();
+  },
+
+  glPauseTransformFeedback__sig: 'v',
+  glPauseTransformFeedback: function() {
+    GLctx.pauseTransformFeedback();
+  },
+
+  glResumeTransformFeedback__sig: 'v',
+  glResumeTransformFeedback: function() {
+    GLctx.resumeTransformFeedback();
+  },
+
+  glTransformFeedbackVaryings__sig: 'viiii',
+  glTransformFeedbackVaryings: function(program, count, varyings, bufferMode) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glTransformFeedbackVaryings', 'program');
+#endif
+    program = GL.programs[program];
+    var vars = [];
+    for (var i = 0; i < count; i++)
+      vars.push(Pointer_stringify({{{ makeGetValue('varyings', 'i*4', 'i32') }}}));
+
+    GLctx.transformFeedbackVaryings(program, vars, bufferMode);
+  },
+
+  glGetTransformFeedbackVarying__sig: 'viiiiiii',
+  glGetTransformFeedbackVarying: function(program, index, bufSize, length, size, type, name) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glGetTransformFeedbackVarying', 'program');
+#endif
+    program = GL.programs[program];
+    var info = GLctx.getTransformFeedbackVarying(program, index);
+
+    var infoname = info.name.slice(0, Math.max(0, bufSize - 1));
+    writeStringToMemory(infoname, name);
+
+    if (length) {
+      {{{ makeSetValue('length', '0', 'infoname.length', 'i32') }}};
+    }
+    if (size) {
+      {{{ makeSetValue('size', '0', 'info.size', 'i32') }}};
+    }
+    if (type) {
+      {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
+    }
+  },
+  //
 #endif
 
   glIsBuffer__sig: 'ii',
