@@ -37,7 +37,7 @@ GlobalStringValue RETURN("return"),
 // visit() receives a reference, so it can modify the value being visited directly.
 // TODO: stoppable version of this
 void traverseChildren(Value &node, std::function<void (Value&)> visit) {
-  assert(node.IsArray());
+  if (!node.IsArray()) return;
   int size = node.Size();
   for (int i = 0; i < size; i++) {
     Value &subnode = node[i];
@@ -60,6 +60,7 @@ Value makeName(const char *str) {
 //==================
 
 bool asm_ = false;
+bool preciseF32 = false;
 
 //=====================
 // Optimization passes
@@ -111,7 +112,13 @@ int main(int argc, char **argv) {
   for (int i = 2; i < argc; i++) {
     std::string str(argv[i]);
     if (str == "asm") asm_ = true;
+    else if (str == "asmPreciseF32") preciseF32 = true;
+    else if (str == "receiveJSON" || str == "emitJSON") {} // the default for us
     else if (str == "optimizeFrounds") optimizeFrounds(doc);
+    else {
+      printf("unrecognized argument: %s\n", str.c_str());
+      assert(0);
+    }
   }
 
   // Emit JSON of modified Document
