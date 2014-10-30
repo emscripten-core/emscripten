@@ -4550,10 +4550,11 @@ def process(filename):
   def test_unistd_access(self):
     self.clear()
     if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for inline js')
+    orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
     for fs in ['MEMFS', 'NODEFS']:
       src = open(path_from_root('tests', 'unistd', 'access.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'access.out'), 'r').read()
-      Building.COMPILER_TEST_OPTS += ['-D' + fs]
+      Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_curdir(self):
@@ -4590,10 +4591,11 @@ def process(filename):
   def test_unistd_truncate(self):
     self.clear()
     if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for inline js')
+    orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
     for fs in ['MEMFS', 'NODEFS']:
       src = open(path_from_root('tests', 'unistd', 'truncate.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'truncate.out'), 'r').read()
-      Building.COMPILER_TEST_OPTS += ['-D' + fs]
+      Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_swab(self):
@@ -4619,14 +4621,16 @@ def process(filename):
     self.clear()
     if self.emcc_args is None: return self.skip('requires emcc')
     if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for inline js')
+    orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
     for fs in ['MEMFS', 'NODEFS']:
       src = open(path_from_root('tests', 'unistd', 'unlink.c'), 'r').read()
-      Building.COMPILER_TEST_OPTS += ['-D' + fs]
+      Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
   def test_unistd_links(self):
     self.clear()
     if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for inline js')
+    orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
     for fs in ['MEMFS', 'NODEFS']:
       if WINDOWS and fs == 'NODEFS':
         print >> sys.stderr, 'Skipping NODEFS part of this test for test_unistd_links on Windows, since it would require administrative privileges.'
@@ -4636,7 +4640,7 @@ def process(filename):
         continue
       src = open(path_from_root('tests', 'unistd', 'links.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'links.out'), 'r').read()
-      Building.COMPILER_TEST_OPTS += ['-D' + fs]
+      Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_sleep(self):
@@ -4649,19 +4653,21 @@ def process(filename):
     if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for inline js')
     if self.run_name == 'o2': return self.skip('non-asm optimized builds can fail with inline js')
     if self.emcc_args is None: return self.skip('requires emcc')
+    orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
     for fs in ['MEMFS', 'NODEFS']:
       src = open(path_from_root('tests', 'unistd', 'io.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'io.out'), 'r').read()
-      Building.COMPILER_TEST_OPTS += ['-D' + fs]
+      Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_misc(self):
     if self.emcc_args is None: return self.skip('requires emcc')
     if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for inline js')
+    orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
     for fs in ['MEMFS', 'NODEFS']:
       src = open(path_from_root('tests', 'unistd', 'misc.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'misc.out'), 'r').read()
-      Building.COMPILER_TEST_OPTS += ['-D' + fs]
+      Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_posixtime(self):
