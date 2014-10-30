@@ -1404,6 +1404,10 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.transformFeedbacks, id, 'glBindTransformFeedback', 'id');
 #endif
     var transformFeedback = id ? GL.transformFeedbacks[id] : null;
+    if (id && !transformFeedback) { // Passing an nonexisting or an already deleted id is an error.
+      GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+      return;
+    }
     GLctx.bindTransformFeedback(target, transformFeedback);
   },
 
@@ -1449,19 +1453,16 @@ var LibraryGL = {
     var info = GLctx.getTransformFeedbackVarying(program, index);
 
     var infoname = info.name.slice(0, Math.max(0, bufSize - 1));
-    writeStringToMemory(infoname, name);
+    if (name && bufSize > 0) {
+      writeStringToMemory(infoname, name);
+      if (length) {{{ makeSetValue('length', '0', 'infoname.length', 'i32') }}};
+    } else {
+      if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
+    }
 
-    if (length) {
-      {{{ makeSetValue('length', '0', 'infoname.length', 'i32') }}};
-    }
-    if (size) {
-      {{{ makeSetValue('size', '0', 'info.size', 'i32') }}};
-    }
-    if (type) {
-      {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
-    }
+    if (size) {{{ makeSetValue('size', '0', 'info.size', 'i32') }}};
+    if (type) {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
   },
-  //
 #endif
 
   glIsBuffer__sig: 'ii',
