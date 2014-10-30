@@ -1451,6 +1451,7 @@ var LibraryGL = {
 #endif
     program = GL.programs[program];
     var info = GLctx.getTransformFeedbackVarying(program, index);
+    if (!info) return; // If an error occurred, the return parameters length, size, type and name will be unmodified.
 
     var infoname = info.name.slice(0, Math.max(0, bufSize - 1));
     if (name && bufSize > 0) {
