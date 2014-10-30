@@ -1363,6 +1363,123 @@ var LibraryGL = {
     GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type,
                         HEAPU8.subarray(data));
   },
+
+  glGetIntegeri_v__sig: 'viii',
+  glGetIntegeri_v: function(target, index, data) {
+    var result = GLctx.getIndexedParameter(target, index);
+    var ret;
+    switch (typeof result) {
+      case 'boolean':
+        ret = result ? 1 : 0;
+        break;
+      case 'number':
+        ret = result;
+        break;
+      case 'object':
+        if (result === null) {
+          switch (target) {
+            case 0x8C8F: // TRANSFORM_FEEDBACK_BUFFER_BINDING
+            case 0x8A28: // UNIFORM_BUFFER_BINDING
+              ret = 0;
+              break;
+            default: {
+              GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+              Module.printErr('GL_INVALID_ENUM in glGetIntegeri_v(' + target + ') and it returns null!');
+#endif
+              return;
+            }
+          }
+        } else if (result instanceof WebGLBuffer) {
+          ret = result.name | 0;
+        } else {
+          GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+          Module.printErr('GL_INVALID_ENUM in glGetIntegeri_v: Unknown object returned from WebGL getIndexedParameter(' + target + ')!');
+#endif
+          return;
+        }
+        break;
+      default:
+        GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_ENUM in glGetIntegeri_v: Native code calling glGetIntegeri_v(' + target + ') and it returns ' + result + ' of type ' + typeof(result) + '!');
+#endif
+        return;
+    }
+
+    {{{ makeSetValue('data', '0', 'ret', 'i32') }}};
+  },
+
+  glGetUniformIndices__sig: 'viiii',
+  glGetUniformIndices: function(program, uniformCount, uniformNames, uniformIndices) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glGetUniformIndices', 'program');
+#endif
+    program = GL.programs[program];
+    var names = [];
+    for (var i = 0; i < uniformCount; i++)
+      names.push(Pointer_stringify({{{ makeGetValue('uniformNames', 'i*4', 'i32') }}}));
+
+    var result = GLctx.GetUniformIndices(program, names);
+    var len = result.length;
+    for (var i = 0; i < len; i++) {
+      {{{ makeSetValue('uniformIndices', 'i*4', 'result[i]', 'i32') }}};
+    }
+  },
+
+  glGetUniformBlockIndex__sig: 'iii',
+  glGetUniformBlockIndex: function(program, uniformBlockName) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glGetUniformBlockIndex', 'program');
+#endif
+    program = GL.programs[program];
+    uniformBlockName = Pointer_stringify(uniformBlockName);
+    return GLctx.getUniformBlockIndex(program, uniformBlockName);
+  },
+
+  glGetActiveUniformBlockiv__sig: 'viiii',
+  glGetActiveUniformBlockiv: function(program, uniformBlockIndex, pname, params) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glGetActiveUniformBlockiv', 'program');
+#endif
+    program = GL.programs[program];
+
+    var result = GLctx.getActiveUniformBlockParameter(program, uniformBlockIndex, pname);
+    if (typeof result == 'number') {
+      {{{ makeSetValue('params', '0', 'result', 'i32') }}};
+    } else {
+      for (var i = 0; i < result.length; i++) {
+        {{{ makeSetValue('params', 'i*4', 'result[i]', 'i32') }}};
+      }
+    }
+  },
+
+  glGetActiveUniformBlockName__sig: 'viiiii',
+  glGetActiveUniformBlockName: function(program, uniformBlockIndex, bufSize, length, uniformBlockName) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glGetActiveUniformBlockName', 'program');
+#endif
+    program = GL.programs[program];
+
+    var result = GLctx.getActiveUniformBlockName(program, uniformBlockIndex);
+    var name = result.slice(0, Math.max(0, bufSize - 1));
+    writeStringToMemory(name, uniformBlockName);
+
+    if (length) {
+      {{{ makeSetValue('length', '0', 'name.length', 'i32') }}};
+    }
+  },
+
+  glUniformBlockBinding__sig: 'viii',
+  glUniformBlockBinding: function(program, uniformBlockIndex, uniformBlockBinding) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glUniformBlockBinding', 'program');
+#endif
+    program = GL.programs[program];
+
+    GLctx.uniformBlockBinding(program, uniformBlockIndex, uniformBlockBinding);
+  },
 #endif
 
   glIsBuffer__sig: 'ii',
