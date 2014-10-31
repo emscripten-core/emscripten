@@ -12,7 +12,9 @@
 /*global emval_get_global*/
 
 var LibraryEmVal = {
-  $emval_handle_array: [{}], // reserve zero
+  $emval_handle_array: [{},
+    {value: undefined},{value: null},
+    {value: true},{value: false}], // reserve zero and special values
   $emval_free_list: [],
   $emval_symbols: {}, // address -> string
 
@@ -26,7 +28,7 @@ var LibraryEmVal = {
   $count_emval_handles__deps: ['$emval_handle_array'],
   $count_emval_handles: function() {
     var count = 0;
-    for (var i = 1; i < emval_handle_array.length; ++i) {
+    for (var i = 5; i < emval_handle_array.length; ++i) {
         if (emval_handle_array[i] !== undefined) {
             ++count;
         }
@@ -69,24 +71,33 @@ var LibraryEmVal = {
 
   _emval_register__deps: ['$emval_free_list', '$emval_handle_array', '$init_emval'],
   _emval_register: function(value) {
-    var handle = emval_free_list.length ?
-        emval_free_list.pop() :
-        emval_handle_array.length;
 
-    emval_handle_array[handle] = {refcount: 1, value: value};
-    return handle;
+    switch(value){
+      case undefined :{ return 1; }
+      case null :{ return 2; }
+      case true :{ return 3; }
+      case false :{ return 4; }
+      default:{
+        var handle = emval_free_list.length ?
+            emval_free_list.pop() :
+            emval_handle_array.length;
+
+        emval_handle_array[handle] = {refcount: 1, value: value};
+        return handle;
+        }
+      }
   },
 
   _emval_incref__deps: ['$emval_handle_array'],
   _emval_incref: function(handle) {
-    if (handle) {
+    if (handle > 4) {
         emval_handle_array[handle].refcount += 1;
     }
   },
 
   _emval_decref__deps: ['$emval_free_list', '$emval_handle_array'],
   _emval_decref: function(handle) {
-    if (handle && 0 === --emval_handle_array[handle].refcount) {
+    if (handle > 4 && 0 === --emval_handle_array[handle].refcount) {
         emval_handle_array[handle] = undefined;
         emval_free_list.push(handle);
     }
@@ -107,16 +118,6 @@ var LibraryEmVal = {
   _emval_new_object__deps: ['_emval_register'],
   _emval_new_object: function() {
     return __emval_register({});
-  },
-
-  _emval_undefined__deps: ['_emval_register'],
-  _emval_undefined: function() {
-    return __emval_register(undefined);
-  },
-
-  _emval_null__deps: ['_emval_register'],
-  _emval_null: function() {
-    return __emval_register(null);
   },
 
   _emval_new_cstring__deps: ['$getStringOrSymbol', '_emval_register'],
@@ -220,6 +221,20 @@ var LibraryEmVal = {
     var rd = __emval_register(destructors);
     HEAP32[destructorsRef >> 2] = rd;
     return returnType['toWireType'](destructors, handle);
+  },
+
+  _emval_equals__deps: ['_emval_register', '$requireHandle'],
+  _emval_equals: function(first, second ){
+    first = requireHandle(first);
+    second = requireHandle(second);
+    return first==second;
+  },
+
+  _emval_strictly_equals__deps: ['_emval_register', '$requireHandle'],
+  _emval_strictly_equals: function(first, second ){
+    first = requireHandle(first);
+    second = requireHandle(second);
+    return first===second;
   },
 
   _emval_call__deps: ['_emval_lookupTypes', '_emval_register', '$requireHandle'],
