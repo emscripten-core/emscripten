@@ -13,8 +13,8 @@
 
 var LibraryEmVal = {
   $emval_handle_array: [{},
-    {refcount: 1, value: undefined},{refcount: 1, value: null},
-    {refcount: 1, value: true},{refcount: 1, value: false}], // reserve zero and special values
+    {value: undefined},{value: null},
+    {value: true},{value: false}], // reserve zero and special values
   $emval_free_list: [],
   $emval_symbols: {}, // address -> string
 
@@ -73,10 +73,10 @@ var LibraryEmVal = {
   _emval_register: function(value) {
 
     switch(value){
-      case undefined :{ emval_handle_array[ 1 ].refcount++; return 1; }
-      case null :{ emval_handle_array[ 2 ].refcount++; return 2; }
-      case true :{ emval_handle_array[ 3 ].refcount++; return 3; }
-      case false :{ emval_handle_array[ 4 ].refcount++; return 4; }
+      case undefined :{ return 1; }
+      case null :{ return 2; }
+      case true :{ return 3; }
+      case false :{ return 4; }
       default:{
         var handle = emval_free_list.length ?
             emval_free_list.pop() :
@@ -90,14 +90,14 @@ var LibraryEmVal = {
 
   _emval_incref__deps: ['$emval_handle_array'],
   _emval_incref: function(handle) {
-    if (handle) {
+    if (handle > 4) {
         emval_handle_array[handle].refcount += 1;
     }
   },
 
   _emval_decref__deps: ['$emval_free_list', '$emval_handle_array'],
   _emval_decref: function(handle) {
-    if (handle && 0 === --emval_handle_array[handle].refcount) {
+    if (handle > 4 && 0 === --emval_handle_array[handle].refcount) {
         emval_handle_array[handle] = undefined;
         emval_free_list.push(handle);
     }
@@ -227,14 +227,14 @@ var LibraryEmVal = {
   _emval_equals: function(first, second ){
     first = requireHandle(first);
     second = requireHandle(second);
-    return __emval_register(first==second);
+    return first==second;
   },
 
   _emval_strictly_equals__deps: ['_emval_register', '$requireHandle'],
   _emval_strictly_equals: function(first, second ){
     first = requireHandle(first);
     second = requireHandle(second);
-    return __emval_register(first===second);
+    return first===second;
   },
 
   _emval_call__deps: ['_emval_lookupTypes', '_emval_register', '$requireHandle'],

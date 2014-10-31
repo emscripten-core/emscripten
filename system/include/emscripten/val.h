@@ -12,12 +12,11 @@ namespace emscripten {
         extern "C" {
             void _emval_register_symbol(const char*);
 
-            enum
-            {
-                _emval_undefined = 1,
-                _emval_null = 2,
-                _emval_true = 3,
-                _emval_false = 4
+            enum {
+                _EMVAL_UNDEFINED = 1,
+                _EMVAL_NULL = 2,
+                _EMVAL_TRUE = 3,
+                _EMVAL_FALSE = 4
             };
 
             typedef struct _EM_VAL* EM_VAL;
@@ -49,8 +48,8 @@ namespace emscripten {
             void _emval_set_property(EM_VAL object, EM_VAL key, EM_VAL value);
             EM_GENERIC_WIRE_TYPE _emval_as(EM_VAL value, TYPEID returnType, EM_DESTRUCTORS* destructors);
 
-            EM_VAL _emval_equals(EM_VAL first, EM_VAL second);
-            EM_VAL _emval_strictly_equals(EM_VAL first, EM_VAL second);
+            bool _emval_equals(EM_VAL first, EM_VAL second);
+            bool _emval_strictly_equals(EM_VAL first, EM_VAL second);
 
             EM_VAL _emval_call(
                 EM_VAL value,
@@ -283,13 +282,11 @@ namespace emscripten {
         }
 
         static val undefined() {
-            internal::_emval_incref(internal::EM_VAL(internal::_emval_undefined));
-            return val(internal::EM_VAL(internal::_emval_undefined));
+            return val(internal::EM_VAL(internal::_EMVAL_UNDEFINED));
         }
 
         static val null() {
-            internal::_emval_incref(internal::EM_VAL(internal::_emval_null));
-            return val(internal::EM_VAL(internal::_emval_null));
+            return val(internal::EM_VAL(internal::_EMVAL_NULL));
         }
 
         static val take_ownership(internal::EM_VAL e) {
@@ -356,27 +353,27 @@ namespace emscripten {
         }
 
         bool isNull() const {
-            return handle == internal::EM_VAL(internal::_emval_null);
+            return handle == internal::EM_VAL(internal::_EMVAL_NULL);
         }
 
         bool isUndefined() const {
-            return handle == internal::EM_VAL(internal::_emval_undefined);
+            return handle == internal::EM_VAL(internal::_EMVAL_UNDEFINED);
         }
 
         bool isTrue() const {
-            return handle == internal::EM_VAL(internal::_emval_true);
+            return handle == internal::EM_VAL(internal::_EMVAL_TRUE);
         }
 
         bool isFalse() const {
-            return handle == internal::EM_VAL(internal::_emval_false);
+            return handle == internal::EM_VAL(internal::_EMVAL_FALSE);
         }
 
         bool equals(const val& v) const {
-            return val(internal::_emval_equals(handle, v.handle)).as<bool>();
+            return internal::_emval_equals(handle, v.handle);
         }
 
         bool strictlyEquals(const val& v) const {
-            return val(internal::_emval_strictly_equals(handle, v.handle)).as<bool>();
+            return internal::_emval_strictly_equals(handle, v.handle);
         }
 
         template<typename... Args>
