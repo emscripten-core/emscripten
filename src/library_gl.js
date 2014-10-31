@@ -1384,16 +1384,16 @@ var LibraryGL = {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('ids', 'i*4', 'i32') }}};
       var transformFeedback = GL.transformFeedbacks[id];
-      if (!transformFeedback) continue; // GL spec: "nused names in ids are ignored, as is the name zero."
+      if (!transformFeedback) continue; // GL spec: "unused names in ids are ignored, as is the name zero."
       GLctx.deleteTransformFeedback(transformFeedback);
       transformFeedback.name = 0;
-      GL.transformFeedback[id] = null;
+      GL.transformFeedbacks[id] = null;
     }
   },
 
   glIsTransformFeedback__sig: 'ii',
   glIsTransformFeedback: function(transformFeedback) {
-    var transformFeedback = GL.transformFeedback[transformFeedback];
+    var transformFeedback = GL.transformFeedbacks[transformFeedback];
     if (!transformFeedback) return 0;
     return GLctx.isTransformFeedback(transformFeedback);
   },
