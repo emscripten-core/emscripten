@@ -259,7 +259,7 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
       shutil.copyfile(target, target[:-3])
       target = target[:-3]
     src = open(target).read()
-    full_node = ' '.join(shared.listify(shared.NODE_JS))
+    full_node = ' '.join(shared.NODE_JS)
     if os.path.sep not in full_node:
       full_node = '/usr/bin/' + full_node # TODO: use whereis etc. And how about non-*NIX?
     open(target, 'w').write('#!' + full_node + '\n' + src) # add shebang

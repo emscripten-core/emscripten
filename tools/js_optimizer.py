@@ -379,7 +379,6 @@ EMSCRIPTEN_FUNCS();
   return filename
 
 def run(filename, passes, js_engine=shared.NODE_JS, jcache=False, source_map=False, extra_info=None, just_split=False, just_concat=False):
-  js_engine = shared.listify(js_engine)
   return temp_files.run_and_clean(lambda: run_on_js(filename, passes, js_engine, jcache, source_map, extra_info, just_split, just_concat))
 
 if __name__ == '__main__':

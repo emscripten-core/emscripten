@@ -6,10 +6,6 @@ import jsrun, cache, tempfiles
 import response_file
 import logging, platform, multiprocessing
 
-def listify(x):
-  if type(x) is not list: return [x]
-  return x
-
 # Temp file utilities
 from tempfiles import try_delete
 
@@ -255,12 +251,23 @@ This command will now exit. When you are done editing those paths, re-run it.
 ==============================================================================
 ''' % (EM_CONFIG, CONFIG_FILE, llvm_root, node, __rootpath__)
     sys.exit(0)
+
 try:
   config_text = open(CONFIG_FILE, 'r').read() if CONFIG_FILE else EM_CONFIG
   exec(config_text)
 except Exception, e:
   logging.error('Error in evaluating %s (at %s): %s, text: %s' % (EM_CONFIG, CONFIG_FILE, str(e), config_text))
   sys.exit(1)
+
+def listify(x):
+  if type(x) is not list: return [x]
+  return x
+
+SPIDERMONKEY_ENGINE = listify(SPIDERMONKEY_ENGINE)
+NODE_JS = listify(NODE_JS)
+V8_ENGINE = listify(V8_ENGINE)
+COMPILER_ENGINE = listify(COMPILER_ENGINE)
+JS_ENGINES = [listify(ENGINE) for ENGINE in JS_ENGINES]
 
 try:
   EM_POPEN_WORKAROUND
@@ -344,8 +351,7 @@ EXPECTED_NODE_VERSION = (0,8,0)
 
 def check_node_version():
   try:
-    node = listify(NODE_JS)
-    actual = Popen(node + ['--version'], stdout=PIPE).communicate()[0].strip()
+    actual = Popen(NODE_JS + ['--version'], stdout=PIPE).communicate()[0].strip()
     version = tuple(map(int, actual.replace('v', '').replace('-pre', '').split('.')))
     if version >= EXPECTED_NODE_VERSION:
       return True
@@ -766,7 +772,7 @@ else:
 
 try:
   if SPIDERMONKEY_ENGINE:
-    new_spidermonkey = listify(SPIDERMONKEY_ENGINE)
+    new_spidermonkey = SPIDERMONKEY_ENGINE
     if 'gcparam' not in str(new_spidermonkey):
       new_spidermonkey += ['-e', "gcparam('maxBytes', 1024*1024*1024);"] # Our very large files need lots of gc heap
     if '-w' not in str(new_spidermonkey):
@@ -1600,7 +1606,7 @@ class Building:
 
   @staticmethod
   def js_optimizer(filename, passes, jcache=False, debug=False, extra_info=None, output_filename=None, just_split=False, just_concat=False):
-    ret = js_optimizer.run(filename, passes, listify(NODE_JS), jcache, debug, extra_info, just_split, just_concat)
+    ret = js_optimizer.run(filename, passes, NODE_JS, jcache, debug, extra_info, just_split, just_concat)
     if output_filename:
       safe_move(ret, output_filename)
       ret = output_filename
