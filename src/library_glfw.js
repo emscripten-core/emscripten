@@ -380,7 +380,7 @@ var LibraryGLFW = {
       if (!GLFW.active || !GLFW.active.scrollFunc || event.target != Module['canvas']) return;
 
 #if USE_GLFW == 2
-      Runtime.dynCall('vi', GLFW.mouseWheelFunc, [GLFW.wheelPos]);
+      Runtime.dynCall('vi', GLFW.active.scrollFunc, [GLFW.wheelPos]);
 #endif
 
 #if USE_GLFW == 3
@@ -493,7 +493,7 @@ var LibraryGLFW = {
     setScrollCallback: function(winid, cbfun) {
       var win = GLFW.WindowFromId(winid);
       if (!win) return;
-      win.mouseWheelFunc = cbfun;
+      win.scrollFunc = cbfun;
     },
 
     setWindowSizeCallback: function(winid, cbfun) {
