@@ -23,6 +23,7 @@ var LibraryGL = {
     vaos: [],
     contexts: [],
 #if USE_WEBGL2
+    queries: [],
     transformFeedbacks: [],
 #endif
 
@@ -1365,6 +1366,77 @@ var LibraryGL = {
   glTexSubImage3D: function(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, data) {
     GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type,
                         HEAPU8.subarray(data));
+  },
+
+  // Queries
+  glGenQueries__sig: 'vii',
+  glGenQueries: function(n, ids) {
+    for (var i = 0; i < n; i++) {
+      var id = GL.getNewId(GL.queries);
+      var query = GLctx.createQuery();
+      query.name = id;
+      GL.queries[id] = query;
+      {{{ makeSetValue('ids', 'i*4', 'id', 'i32') }}};
+    }
+  },
+
+  glDeleteQueries__sig: 'vii',
+  glDeleteQueries: function(n, ids) {
+    for (var i = 0; i < n; i++) {
+      var id = {{{ makeGetValue('ids', 'i*4', 'i32') }}};
+      var query = GL.queries[id];
+      if (!query) continue; // GL spec: "unused names in ids are ignored, as is the name zero."
+      GLctx.deleteQuery(query);
+      query.name = 0;
+      GL.queries[id] = null;
+    }
+  },
+
+  glIsQuery__sig: 'ii',
+  glIsQuery: function(id) {
+    var query = GL.queries[query];
+    if (!query) return 0;
+    return GLctx.isQuery(query);
+  },
+
+  glBeginQuery__sig: 'vii',
+  glBeginQuery: function(target, id) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.queries, id, 'glBeginQuery', 'id');
+#endif
+    GLctx.beginQuery(target, id ? GL.queries[id] : null);
+  },
+
+  glEndQuery__sig: 'vi',
+  glEndQuery: function(target) {
+    GLctx.endQuery(target);
+  },
+
+  glGetQueryiv__sig: 'viii',
+  glGetQueryiv: function(target, pname, params) {
+    // Spec doesn't say what happens if params is null
+    if (params) {
+      {{{ makeSetValue('params', '0', 'GLctx.getQuery(target, pname)', 'i32') }}};
+    }
+  },
+
+  glGetQueryObjectuiv__sig: 'viii',
+  glGetQueryObjectuiv: function(id, pname, params) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.queries, id, 'glGetQueryObjectuiv', 'id');
+#endif
+    // Spec doesn't say what happens if params is null
+    if (params) {
+      var query = GL.queries[id];
+      var param = GLctx.getQueryParameter(query, pname);
+      var ret;
+      if (typeof param == 'boolean') {
+        ret = param ? 1 : 0;
+      } else {
+        ret = param;
+      }
+      {{{ makeSetValue('params', '0', 'ret', 'i32') }}};
+    }
   },
 
   // Transform Feedback
