@@ -33,15 +33,27 @@ GlobalStringValue RETURN("return"),
 // Infrastructure
 //==================
 
+void dump(const char *str, Value &node) {
+  StringBuffer buffer;
+  Writer<StringBuffer> writer(buffer);
+  node.Accept(writer);
+  printf("%s: ", str);
+  puts(buffer.GetString());
+}
+
 // Traverses the children of a node.
 // visit() receives a reference, so it can modify the value being visited directly.
 // TODO: stoppable version of this
 void traverseChildren(Value &node, std::function<void (Value&)> visit) {
+  //dump("TC", node);
   if (!node.IsArray()) return;
   int size = node.Size();
+  //printf("size: %d\n", size);
   for (int i = 0; i < size; i++) {
+    //printf("  %d:\n", i);
     Value &subnode = node[i];
-    if (subnode.IsArray()) {
+    if (subnode.IsArray() and subnode.Size() > 0) {
+      //printf("    go\n");
       visit(subnode);
     }
   }
