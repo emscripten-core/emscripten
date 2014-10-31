@@ -1932,8 +1932,22 @@ int f() {
        ['asm', 'ensureLabelSet']),
     ]:
       print input
+      # test calling js optimizer
+      print '  js'
       output = Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
       self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n'))
+      if 0:#len(js_optimizer.NATIVE_PASSES.intersection(passes)) > 0:
+        # test calling native
+        print '  native'
+        self.clear()
+        input_temp = 'temp.js'
+        output_temp = 'output.js'
+        shutil.copyfile(input, input_temp)
+        Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), input_temp, 'emitJSON'], stdin=PIPE, stdout=open(input_temp + '.js', 'w')).communicate()
+        output = Popen([js_optimizer.get_native_optimizer(), input_temp + '.js'] + passes, stdin=PIPE, stdout=open(output_temp, 'w')).communicate()[0]
+        Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), output_temp, 'emitJSON'], stdin=PIPE, stdout=open(output_temp + '.js', 'w')).communicate()
+        output = open(output_temp + '.js').read()
+        self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n'))
 
   def test_m_mm(self):
     open(os.path.join(self.get_dir(), 'foo.c'), 'w').write('''#include <emscripten.h>''')

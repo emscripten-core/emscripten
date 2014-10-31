@@ -134,7 +134,7 @@ int main(int argc, char **argv) {
     else if (str == "receiveJSON" || str == "emitJSON") {} // the default for us
     else if (str == "optimizeFrounds") optimizeFrounds(doc);
     else {
-      printf("unrecognized argument: %s\n", str.c_str());
+      fprintf(stderr, "unrecognized argument: %s\n", str.c_str());
       assert(0);
     }
   }

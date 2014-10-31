@@ -24,6 +24,16 @@ DEBUG = os.environ.get('EMCC_DEBUG')
 func_sig = re.compile('function ([_\w$]+)\(')
 import_sig = re.compile('var ([_\w$]+) *=[^;]+;')
 
+def get_native_optimizer():
+  def create_optimizer():
+    shared.logging.debug('building native optimizer')
+    output = shared.Cache.get_path('optimizer.exe')
+    shared.try_delete(output)
+    subprocess.Popen([shared.CLANG, shared.path_from_root('tools', 'optimizer', 'optimizer.cpp'), '-I' + shared.path_from_root('tools', 'optimizer', 'rapidjson'), '-O2', '-std=c++11', '-o', output]).communicate()
+    assert os.path.exists(output)
+    return output
+  return shared.Cache.get('optimizer.exe', create_optimizer, extension='exe')
+
 class Minifier:
   '''
     asm.js minification support. We calculate minification of
@@ -287,15 +297,7 @@ EMSCRIPTEN_FUNCS();
     else:
       # use the native optimizer
       assert not source_map # XXX need to use js optimizer
-      def create_optimizer():
-        shared.logging.debug('building native optimizer')
-        output = shared.Cache.get_path('optimizer.exe')
-        shared.try_delete(output)
-        subprocess.Popen([shared.CLANG, shared.path_from_root('tools', 'optimizer', 'optimizer.cpp'), '-I' + shared.path_from_root('tools', 'optimizer', 'rapidjson'), '-O2', '-std=c++11', '-o', output]).communicate()
-        assert os.path.exists(output)
-        return output
-      native_optimizer = shared.Cache.get('optimizer.exe', create_optimizer, extension='exe')
-      commands = map(lambda filename: [native_optimizer, filename] + passes, filenames)
+      commands = map(lambda filename: [get_native_optimizer(), filename] + passes, filenames)
     #print [' '.join(command) for command in commands]
 
     cores = min(cores, len(filenames))
