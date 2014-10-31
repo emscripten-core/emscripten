@@ -125,6 +125,16 @@ var LibraryJSEvents = {
 
     isInternetExplorer: function() { return navigator.userAgent.indexOf('MSIE') !== -1 || navigator.appVersion.indexOf('Trident/') > 0; },
 
+    // Removes all event handlers on the given DOM element of the given type. Pass in eventType == undefined/null to remove all event handlers regardless of the type.
+    removeAllHandlersOnTarget: function(target, eventTypeString) {
+      for(var i = 0; i < JSEvents.eventHandlers.length; ++i) {
+        if (JSEvents.eventHandlers[i].target == target && 
+          (!eventType || eventTypeString == JSEvents.eventHandlers[i].eventTypeString)) {
+           JSEvents._removeHandler(i--);
+         }
+      }
+    },
+
     _removeHandler: function(i) {
       var h = JSEvents.eventHandlers[i];
       h.target.removeEventListener(h.eventTypeString, h.eventListenerFunc, h.useCapture);
