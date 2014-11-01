@@ -1936,7 +1936,7 @@ int f() {
       print '  js'
       output = Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
       self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n'))
-      if 0:#len(js_optimizer.NATIVE_PASSES.intersection(passes)) > 0:
+      if len(js_optimizer.NATIVE_PASSES.intersection(passes)) > 0:
         # test calling native
         print '  native'
         self.clear()

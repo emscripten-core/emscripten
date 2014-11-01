@@ -9,7 +9,7 @@ __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 
-NATIVE_PASSES = set(['optimizeFrounds'])
+NATIVE_PASSES = set(['simplifyIfs', 'optimizeFrounds'])
 
 JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 
