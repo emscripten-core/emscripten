@@ -4796,8 +4796,6 @@ PORT: 3979
     self.do_run_from_file(src, output)
 
   def test_jansson(self):
-      return self.skip('currently broken')
-
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
       if Settings.SAFE_HEAP: return self.skip('jansson is not safe-heap safe')
 
@@ -4808,7 +4806,7 @@ PORT: 3979
 
         int main()
         {
-          const char* jsonString = "{\\"key\\": \\"value\\",\\"array\\": [\\"array_item1\\",\\"array_item2\\",\\"array_item3\\"],\\"dict\\":{\\"number\\": 3,\\"float\\": 2.2}}";
+          const char* jsonString = "{\\"key\\": \\"value\\",\\"array\\": [\\"array_item1\\",\\"array_item2\\",\\"array_item3\\"],\\"dict\\":{\\"number\\": 3,\\"float\\": 2.2}, \\"true\\": true, \\"false\\": false}";
 
           json_error_t error;
           json_t *root = json_loadb(jsonString, strlen(jsonString), 0, &error);
@@ -4865,6 +4863,18 @@ PORT: 3979
 
           printf("%i\\n", json_number_value(invalidNode));
 
+          json_t *trueNode = json_object_get(root, "true");
+          if (!json_is_true(trueNode) || json_is_false(trueNode) ||
+              json_is_number(trueNode) || json_is_string(trueNode) ||
+              !json_is_boolean(trueNode))
+            return 0;
+
+          json_t *falseNode = json_object_get(root, "false");
+          if (json_is_true(falseNode) || !json_is_false(falseNode) ||
+              json_is_number(falseNode) || json_is_string(falseNode) ||
+              !json_is_boolean(falseNode))
+            return 0;
+
           json_decref(root);
 
           if(!json_is_object(root))
@@ -4873,7 +4883,7 @@ PORT: 3979
           return 0;
         }
       '''
-      self.do_run(src, 'value\narray_item1\narray_item2\narray_item3\n3\n3.00\n2.20\nJansson: Node with ID `0` not found. Context has `10` nodes.\n0\nJansson: No JSON context.\njansson!')
+      self.do_run(src, 'value\narray_item1\narray_item2\narray_item3\n3\n3.00\n2.20\nJansson: Node with ID `0` not found. Context has `12` nodes.\n0\nJansson: No JSON context.\njansson!')
 
   def test_js_libraries(self):
     if self.emcc_args == None: return self.skip('needs emcc')

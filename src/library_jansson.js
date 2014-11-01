@@ -155,6 +155,27 @@ var LibraryJansson = {
       return (JANSSON.type(nodePtr) === 'number');
     },
 
+    json_is_true: function(nodePtr) {
+      var node = JANSSON.getNodeByPtr(nodePtr);
+      if (!node)
+          return false;
+      return node['node'] === true;
+    },
+
+    json_is_false: function(nodePtr) {
+      var node = JANSSON.getNodeByPtr(nodePtr);
+      if (!node)
+          return false;
+      return node['node'] === false;
+    },
+
+    json_is_boolean: function(nodePtr) {
+      var node = JANSSON.getNodeByPtr(nodePtr);
+      if (!node)
+          return false;
+      return node['node'] === false || node['node'] === true;
+    },
+
     json_is_real: function(nodePtr) {
       return (JANSSON.type(nodePtr) === 'number');
     },
