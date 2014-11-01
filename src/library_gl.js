@@ -1463,11 +1463,8 @@ var LibraryGL = {
       GL.recordError(0x0501 /* GL_INVALID_VALUE */);
       return;
     }
-#endif
-#if GL_ASSERTIONS
     GL.validateGLObjectID(GL.queries, id, 'glGetQueryObjectuiv', 'id');
 #endif
-    // Spec doesn't say what happens if params is null
     var query = GL.queries[id];
     var param = GLctx.getQueryParameter(query, pname);
     var ret;
@@ -1674,8 +1671,6 @@ var LibraryGL = {
       GL.recordError(0x0501 /* GL_INVALID_VALUE */);
       return;
     }
-#endif
-#if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetActiveUniformBlockiv', 'program');
 #endif
     program = GL.programs[program];
@@ -1791,8 +1786,6 @@ var LibraryGL = {
       GL.recordError(0x0501 /* GL_INVALID_VALUE */);
       return;
     }
-#endif
-#if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetUniformfv', 'program');
     GL.validateGLObjectID(GL.uniforms, location, 'glGetUniformfv', 'location');
 #endif
@@ -1816,8 +1809,6 @@ var LibraryGL = {
       GL.recordError(0x0501 /* GL_INVALID_VALUE */);
       return;
     }
-#endif
-#if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetUniformiv', 'program');
     GL.validateGLObjectID(GL.uniforms, location, 'glGetUniformiv', 'location');
 #endif
@@ -2375,8 +2366,6 @@ var LibraryGL = {
       GL.recordError(0x0501 /* GL_INVALID_VALUE */);
       return;
     }
-#endif
-#if GL_ASSERTIONS
     GL.validateGLObjectID(GL.shaders, shader, 'glGetShaderiv', 'shader');
 #endif
     if (pname == 0x8B84) { // GL_INFO_LOG_LENGTH
@@ -2399,8 +2388,6 @@ var LibraryGL = {
       GL.recordError(0x0501 /* GL_INVALID_VALUE */);
       return;
     }
-#endif
-#if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetProgramiv', 'program');
 #endif
     if (pname == 0x8B84) { // GL_INFO_LOG_LENGTH
