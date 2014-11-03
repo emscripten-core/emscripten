@@ -385,20 +385,9 @@ namespace emscripten {
 
         template<typename... Args>
         val new_(Args&&... args) const {
-            using namespace internal;
-
-            WithPolicies<>::ArgTypeList<Args...> argList;
-            WireTypePack<Args...> argv(std::forward<Args>(args)...);
-            // todo: this is awfully similar to operator(), can we
-            // merge them somehow?
-            return val(
-                _emval_new(
-                    handle,
-                    argList.getCount(),
-                    argList.getTypes(),
-                    argv));
+            return internalCall(internal::_emval_new,std::forward<Args>(args)...);
         }
-        
+
         template<typename T>
         val operator[](const T& key) const {
             return val(internal::_emval_get_property(handle, val(key).handle));
@@ -416,16 +405,7 @@ namespace emscripten {
 
         template<typename... Args>
         val operator()(Args&&... args) {
-            using namespace internal;
-
-            WithPolicies<>::ArgTypeList<Args...> argList;
-            WireTypePack<Args...> argv(std::forward<Args>(args)...);
-            return val(
-                _emval_call(
-                    handle,
-                    argList.getCount(),
-                    argList.getTypes(),
-                    argv));
+            return internalCall(internal::_emval_call, std::forward<Args>(args)...);
         }
 
         template<typename ReturnValue, typename... Args>
@@ -465,6 +445,20 @@ namespace emscripten {
 
         internal::EM_VAL __get_handle() const {
             return handle;
+        }
+
+        template<typename Implementation, typename... Args>
+        val internalCall(Implementation impl, Args&&... args)const {
+            using namespace internal;
+
+            WithPolicies<>::ArgTypeList<Args...> argList;
+            WireTypePack<Args...> argv(std::forward<Args>(args)...);
+            return val(
+                impl(
+                    handle,
+                    argList.getCount(),
+                    argList.getTypes(),
+                    argv));
         }
 
         internal::EM_VAL handle;
