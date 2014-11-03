@@ -581,6 +581,10 @@ module({
             cm.emval_test_take_and_return_std_string_const_ref("foobar");
         });
 
+        test("can get global", function(){
+            assert.equal((new Function("return this;"))(), cm.embind_test_getglobal());
+        });
+
         test("can create new object", function() {
             assert.deepEqual({}, cm.embind_test_new_Object());
         });

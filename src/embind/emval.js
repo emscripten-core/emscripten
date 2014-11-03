@@ -188,8 +188,12 @@ var LibraryEmVal = {
   $emval_get_global: function() { return (function(){return Function;})()('return this')(); },
   _emval_get_global__deps: ['_emval_register', '$getStringOrSymbol', '$emval_get_global'],
   _emval_get_global: function(name) {
-    name = getStringOrSymbol(name);
-    return __emval_register(emval_get_global()[name]);
+    if(name===0){
+      return __emval_register(emval_get_global());
+    } else {
+      name = getStringOrSymbol(name);
+      return __emval_register(emval_get_global()[name]);
+    }
   },
 
   _emval_get_module_property__deps: ['$getStringOrSymbol', '_emval_register'],

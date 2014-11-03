@@ -300,7 +300,7 @@ namespace emscripten {
             return val(e);
         }
 
-        static val global(const char* name) {
+        static val global(const char* name = 0) {
             return val(internal::_emval_get_global(name));
         }
 
