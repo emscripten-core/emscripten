@@ -7,7 +7,14 @@
 
 
 namespace emscripten {
+
+    class val;
+
     namespace internal {
+
+        template<typename WrapperType>
+        val wrapped_extend(const std::string&, const val&);
+
         // Implemented in JavaScript.  Don't call these directly.
         extern "C" {
             void _emval_register_symbol(const char*);
@@ -443,11 +450,6 @@ namespace emscripten {
             return fromGenericWireType<T>(result);
         }
 
-        // private: TODO: use a friend?
-        internal::EM_VAL __get_handle() const {
-            return handle;
-        }
-
         val typeof() const {
             return val(_emval_typeof(handle));
         }
@@ -457,6 +459,13 @@ namespace emscripten {
         explicit val(internal::EM_VAL handle)
             : handle(handle)
         {}
+
+        template<typename WrapperType>
+        friend val internal::wrapped_extend(const std::string& , const val& );
+
+        internal::EM_VAL __get_handle() const {
+            return handle;
+        }
 
         internal::EM_VAL handle;
 
