@@ -18,13 +18,14 @@ struct Value;
 // Reference to a value. Simple shared_ptr, plus [] operator for convenience - we work on lots of arrays
 class Ref : public std::shared_ptr<Value> {
 public:
+  Ref() {
+    reset();
+  }
   Ref(Value *v) {
     reset(v);
   }
 
-  Ref& operator[](unsigned x) {
-    return (*this)[x];
-  }
+  Ref& operator[](unsigned x);
 
   // special convenience for comparison to string, which is by value
   bool operator==(const char *str);
@@ -292,7 +293,11 @@ struct ArrayValue : public Value {
   }
 };
 
-//
+// Ref methods
+
+Ref& Ref::operator[](unsigned x) {
+  return (*get())[x];
+}
 
 bool Ref::operator==(const char *str) {
   return get()->isString() && get()->getString() == str;

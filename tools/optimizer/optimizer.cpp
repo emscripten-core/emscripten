@@ -15,7 +15,7 @@
 // Globals
 //==================
 
-Value doc;
+Ref doc;
 
 //==================
 // Infrastructure
@@ -352,7 +352,7 @@ void simplifyIfs(Ref ast) {
           Ref other = stats[stats->size()-1];
           if (other[0] != "if") {
             // our if block does not end with an if. perhaps if have an else we can flip
-            if (node->size() >= 4 && node[3][0] == "block") {
+            if (node->size() >= 4 && node[3][0] == "block") { // XXX node[3] is false, not an array
               stats = node[3][1];
               if (stats->size() == 0) break;
               other = stats[stats->size()-1];
@@ -535,11 +535,9 @@ int main(int argc, char **argv) {
   char *comment = strstr(json, "//");
   if (comment) *comment = 0; // drop off the comments; TODO: parse extra info
 
-  // Parse JSON source into a Document
-  doc.parse(json);
-/*
-  doc.Parse(json);
-  assert(!doc.HasParseError());
+  // Parse JSON source into the document
+  doc = new Value();
+  doc->parse(json);
   delete[] json;
 
   // Run passes on the Document
@@ -555,9 +553,9 @@ int main(int argc, char **argv) {
       assert(0);
     }
   }
-*/
+
   // Emit JSON of modified Document
-  doc.stringify(std::cout);
+  doc->stringify(std::cout);
 
   return 0;
 }
