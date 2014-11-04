@@ -87,7 +87,7 @@ struct Value {
   }
   Value& set(double n) {
     free();
-    type = Null;
+    type = Number;
     num = n;
     return *this;
   }
@@ -230,7 +230,7 @@ struct Value {
     } else {
       // Number
       char *after;
-      num = strtod(curr, &after);
+      set(strtod(curr, &after));
       curr = after;
     }
     return curr;
