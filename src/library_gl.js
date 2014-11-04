@@ -6051,6 +6051,33 @@ var LibraryGL = {
     GLctx.vertexAttribPointer(index, size, type, normalized, stride, ptr);
   },
 
+#if USE_WEBGL2
+  glVertexAttribIPointer__sig: 'viiiii',
+  glVertexAttribIPointer: function(index, size, type, stride, ptr) {
+#if FULL_ES3
+    var cb = GL.currentContext.clientBuffers[index];
+#if ASSERTIONS
+    assert(cb, index);
+#endif
+    if (!GL.currArrayBuffer) {
+      cb.size = size;
+      cb.type = type;
+      cb.normalized = false;
+      cb.stride = stride;
+      cb.ptr = ptr;
+      cb.clientside = true;
+      return;
+    }
+    cb.clientside = false;
+#endif
+#if GL_ASSERTIONS
+    GL.validateVertexAttribPointer(size, type, stride, ptr);
+#endif
+    GLctx.vertexAttribIPointer(index, size, type, stride, ptr);
+  },
+// ~USE_WEBGL2
+#endif
+
   glEnableVertexAttribArray__sig: 'vi',
   glEnableVertexAttribArray: function(index) {
 #if FULL_ES2
