@@ -1644,7 +1644,7 @@ var LibraryGL = {
     for (var i = 0; i < uniformCount; i++)
       names.push(Pointer_stringify({{{ makeGetValue('uniformNames', 'i*4', 'i32') }}}));
 
-    var result = GLctx.GetUniformIndices(program, names);
+    var result = GLctx.getUniformIndices(program, names);
     var len = result.length;
     for (var i = 0; i < len; i++) {
       {{{ makeSetValue('uniformIndices', 'i*4', 'result[i]', 'i32') }}};
