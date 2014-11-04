@@ -8,11 +8,15 @@
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include <memory>
 #include <vector>
 #include <ostream>
 #include <iomanip>
+
+#define err(str) fprintf(stderr, str "\n");
+#define errv(str, ...) fprintf(stderr, str "\n", __VA_ARGS__);
 
 struct Value;
 

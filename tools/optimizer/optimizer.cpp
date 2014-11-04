@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <sys/stat.h>
 #include <assert.h>
 #include <string.h>
@@ -21,9 +20,6 @@ Ref doc;
 //==================
 // Infrastructure
 //==================
-
-#define err(str) fprintf(stderr, str "\n");
-#define errv(str, ...) fprintf(stderr, str "\n", __VA_ARGS__);
 
 void dump(const char *str, Ref node, bool pretty=false) {
   std::cerr << str << ": ";

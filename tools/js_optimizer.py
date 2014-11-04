@@ -290,7 +290,7 @@ EMSCRIPTEN_FUNCS();
     filenames = []
 
   if len(filenames) > 0:
-    if len(NATIVE_PASSES.intersection(passes)) == 0:
+    if len(NATIVE_PASSES.intersection(passes)) != len(passes):
       commands = map(lambda filename: js_engine +
           [JS_OPTIMIZER, filename, 'noPrintMetadata'] +
           (['--debug'] if source_map else []) + passes, filenames)
