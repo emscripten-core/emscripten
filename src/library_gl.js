@@ -1634,6 +1634,13 @@ var LibraryGL = {
   glGetUniformIndices: function(program, uniformCount, uniformNames, uniformIndices) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetUniformIndices', 'program');
+    if (!uniformIndices) {
+      // GLES2 specification does not specify how to behave if uniformIndices is a null pointer. Since calling this function does not make sense
+      // if uniformIndices == null, issue a GL error to notify user about it. 
+      Module.printErr('GL_INVALID_VALUE in glGetUniformIndices(program=' + program + ', uniformCount=' + uniformCount + ', uniformNames=' + uniformNames + ', uniformIndices=0): Function called with null out pointer!');
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
 #endif
     if (uniformCount > 0 && (uniformNames == 0 || uniformIndices == 0)) {
       GL.recordError(0x0501 /* GL_INVALID_VALUE */);
@@ -1645,6 +1652,8 @@ var LibraryGL = {
       names.push(Pointer_stringify({{{ makeGetValue('uniformNames', 'i*4', 'i32') }}}));
 
     var result = GLctx.getUniformIndices(program, names);
+    if (!result) return; // GL spec: If an error is generated, nothing is written out to uniformIndices.
+
     var len = result.length;
     for (var i = 0; i < len; i++) {
       {{{ makeSetValue('uniformIndices', 'i*4', 'result[i]', 'i32') }}};
@@ -1655,16 +1664,31 @@ var LibraryGL = {
   glGetActiveUniformsiv: function(program, uniformCount, uniformIndices, pname, params) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetActiveUniformsiv', 'program');
+    if (!params) {
+      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+      // if params == null, issue a GL error to notify user about it. 
+      Module.printErr('GL_INVALID_VALUE in glGetActiveUniformsiv(program=' + program + ', uniformCount=' + uniformCount + ', uniformIndices=' + uniformIndices + ', pname=' + pname + ', params=0): Function called with null out pointer!');
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
 #endif
+    if (uniformCount > 0 && uniformIndices == 0) {
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
     program = GL.programs[program];
     var ids = [];
-    for (var i = 0; i < uniformCount; i++)
+    for (var i = 0; i < uniformCount; i++) {
       ids.push({{{ makeGetValue('uniformIndices', 'i*4', 'i32') }}});
+    }
 
     var result = GLctx.getActiveUniforms(program, ids, pname);
+    if (!result) return; // GL spec: If an error is generated, nothing is written out to params.
+
     var len = result.length;
-    for (var i = 0; i < len; i++)
+    for (var i = 0; i < len; i++) {
       {{{ makeSetValue('params', 'i*4', 'result[i]', 'i32') }}};
+    }
   },
 
   glGetUniformBlockIndex__sig: 'iii',
