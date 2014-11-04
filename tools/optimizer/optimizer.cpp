@@ -23,6 +23,7 @@ Ref doc;
 //==================
 
 #define err(str) fprintf(stderr, str "\n");
+#define errv(str, ...) fprintf(stderr, str "\n", __VA_ARGS__);
 
 void dump(const char *str, Ref node, bool pretty=false) {
   std::cerr << str << ": ";
@@ -290,22 +291,22 @@ Ref simplifyNotCompsDirect(Ref node) {
         case '<': {
           if (op == "<")  { op->set(">="); break; }
           if (op == "<=") { op->set(">"); break; }
-          assert(0);
+          return node;
         }
         case '>': {
           if (op == ">")  { op->set("<="); break; }
           if (op == ">=") { op->set("<"); break; }
-          assert(0);
+          return node;
         }
         case '=': {
           if (op == "==") { op->set("!="); break; }
-          assert(0);
+          return node;
         }
         case '!': {
           if (op == "!=") { op->set("=="); break; }
-          assert(0);
+          return node;
         }
-        default: assert(0);
+        default: return node;
       }
       return make3("binary", op, node[2][2], node[2][3]);
     } else if (node[2][0] == "unary-prefix" && node[2][1] == "!") {
@@ -447,7 +448,7 @@ void simplifyIfs(Ref ast) {
       traversePrePost(func, [&inLoop, &labelAssigns, &labelChecks](Ref  node) {
         if (node[0] == "while") inLoop++;
         Ref stats = getStatements(node);
-        if (!stats->isNull()) {
+        if (!stats->isNull() && stats->size() > 0) {
           for (int i = 0; i < stats->size()-1; i++) {
             Ref pre = stats[i];
             Ref post = stats[i+1];
