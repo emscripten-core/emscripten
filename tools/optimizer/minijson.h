@@ -296,9 +296,10 @@ struct Value {
     return arr->size();
   }
 
-  Ref& operator[](unsigned x) {
+  Ref& operator[](unsigned x) { // tolerant, returns Null on out of bounds access. makes it convenient to check e.g. [3] on an if node
+    static Ref null = new Value(); // TODO: freeze this
     assert(isArray());
-    assert(x < arr->size());
+    if (x >= arr->size()) return null;
     return (*arr)[x];
   }
 
