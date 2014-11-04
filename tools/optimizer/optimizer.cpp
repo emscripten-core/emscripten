@@ -24,6 +24,7 @@ Ref doc;
 void dump(const char *str, Ref node) {
   std::cerr << str << ": ";
   node->stringify(std::cerr);
+  std::cerr << std::endl;
 }
 
 int parseInt(const char *str) {
@@ -352,7 +353,7 @@ void simplifyIfs(Ref ast) {
           Ref other = stats[stats->size()-1];
           if (other[0] != "if") {
             // our if block does not end with an if. perhaps if have an else we can flip
-            if (node->size() >= 4 && node[3][0] == "block") { // XXX node[3] is false, not an array
+            if (!!node[3] && node[3][0] == "block") {
               stats = node[3][1];
               if (stats->size() == 0) break;
               other = stats[stats->size()-1];
@@ -556,6 +557,7 @@ int main(int argc, char **argv) {
 
   // Emit JSON of modified Document
   doc->stringify(std::cout);
+  std::cout << std::endl;
 
   return 0;
 }

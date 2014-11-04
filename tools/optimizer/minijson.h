@@ -27,9 +27,10 @@ public:
 
   Ref& operator[](unsigned x);
 
-  // special convenience for comparison to string, which is by value
-  bool operator==(const char *str);
+  // special conveniences
+  bool operator==(const char *str); // comparison to string, which is by value
   bool operator!=(const char *str);
+  bool operator!(); // check if null, in effect
 };
 
 typedef std::vector<Ref> ArrayStorage;
@@ -305,5 +306,9 @@ bool Ref::operator==(const char *str) {
 
 bool Ref::operator!=(const char *str) {
   return get()->isString() ? get()->getString() != str : true;
+}
+
+bool Ref::operator!() {
+  return get()->isNull();
 }
 
