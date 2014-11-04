@@ -21,6 +21,8 @@ Ref doc;
 // Infrastructure
 //==================
 
+#define err(str, ...) fprintf(stderr, ...);
+
 void dump(const char *str, Ref node) {
   std::cerr << str << ": ";
   node->stringify(std::cerr);
@@ -369,11 +371,11 @@ void simplifyIfs(Ref ast) {
           // we can handle elses, but must be fully identical
           if (!!node[3] || !!other[3]) {
             if (!node[3]) break;
-            if (node[3]->deepCompare(other[3])) {
+            if (!node[3]->deepCompare(other[3])) {
               // the elses are different, but perhaps if we flipped a condition we can do better
               if (node[3]->deepCompare(other[2])) {
                 // flip other. note that other may not have had an else! add one if so; we will eliminate such things later
-                if (!(other->size() >= 4)) other->push_back(makeBlock());
+                if (!other[3]) other[3] = makeBlock();
                 other[1] = flipCondition(other[1]);
                 Ref temp = other[2];
                 other[2] = other[3];
@@ -386,7 +388,7 @@ void simplifyIfs(Ref ast) {
             bool ok = true;
             for (int i = 0; i < stats->size()-1; i++) {
               Ref curr = deStat(stats[i]);
-              if (commable(curr)) ok = false;
+              if (!commable(curr)) ok = false;
             }
             if (!ok) break;
             for (int i = stats->size()-2; i >= 0; i--) {
