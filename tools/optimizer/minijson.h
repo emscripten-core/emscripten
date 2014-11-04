@@ -30,6 +30,7 @@ public:
   // special conveniences
   bool operator==(const char *str); // comparison to string, which is by value
   bool operator!=(const char *str);
+  bool operator==(double d) { assert(0); } // prevent Ref == number, which is potentially ambiguous; use ->getNumber() == number
   bool operator!(); // check if null, in effect
 };
 
@@ -288,6 +289,11 @@ struct Value {
   void push_back(Ref r) {
     assert(isArray());
     arr->push_back(r);
+  }
+
+  void splice(int x, int num) {
+    assert(isArray());
+    arr->erase(arr->begin() + x, arr->begin() + x + num);
   }
 
   // Null operations

@@ -21,7 +21,7 @@ Ref doc;
 // Infrastructure
 //==================
 
-#define err(str) fprintf(stderr, str);
+#define err(str) fprintf(stderr, str "\n");
 
 void dump(const char *str, Ref node) {
   std::cerr << str << ": ";
@@ -318,10 +318,6 @@ Ref flipCondition(Ref cond) {
   return simplifyNotCompsDirect(make2("unary-prefix", "!", cond));
 }
 
-void splice(Ref node, int index) { // removes an element from the middle of an array
-assert(0);//  node.Erase(node.Begin() + index);
-}
-
 // Checks
 
 bool commable(Ref  node) { // TODO: hashing
@@ -454,32 +450,32 @@ void simplifyIfs(Ref ast) {
           for (int i = 0; i < stats->size()-1; i++) {
             Ref pre = stats[i];
             Ref post = stats[i+1];
-            if (pre[0] == "if" && pre->size() >= 4 && post[0] == "if" && post->size() < 4) {
+            if (pre[0] == "if" && !!pre[3] && post[0] == "if" && !post[3]) {
               Ref postCond = post[1];
               if (postCond[0] == "binary" && postCond[1] == "==" &&
                   postCond[2][0] == "binary" && postCond[2][1] == "|" &&
                   postCond[2][2][0] == "name" && postCond[2][2][1] == "label" &&
-                  postCond[2][3][0] == "num" && postCond[2][3][1] == 0 &&
+                  postCond[2][3][0] == "num" && postCond[2][3][1]->getNumber() == 0 &&
                   postCond[3][0] == "num") {
-                Ref postValue = postCond[3][1];
+                double postValue = postCond[3][1]->getNumber();
                 Ref preElse = pre[3];
-                if (labelAssigns[postValue->getNumber()] == 1 && labelChecks[postValue->getNumber()] == 1 && preElse[0] == "block" && preElse->size() >= 2 && preElse[1]->size() == 1) {
+                if (labelAssigns[postValue] == 1 && labelChecks[postValue] == 1 && preElse[0] == "block" && preElse->size() >= 2 && preElse[1]->size() == 1) {
                   Ref preStat = preElse[1][0];
                   if (preStat[0] == "stat" && preStat[1][0] == "assign" &&
                       preStat[1][1]->isBool(true) && preStat[1][2][0] == "name" && preStat[1][2][1] == "label" &&
-                      preStat[1][3][0] == "num" && preStat[1][3][1] == postValue) {
+                      preStat[1][3][0] == "num" && preStat[1][3][1]->getNumber() == postValue) {
                     // Conditions match, just need to make sure the post clears label
                     if (post[2][0] == "block" && post[2]->size() >= 2 && post[2][1]->size() > 0) {
                       Ref postStat = post[2][1][0];
                       bool haveClear =
                         postStat[0] == "stat" && postStat[1][0] == "assign" &&
                         postStat[1][1]->isBool(true) && postStat[1][2][0] == "name" && postStat[1][2][1] == "label" &&
-                        postStat[1][3][0] == "num" && postStat[1][3][1] == 0;
+                        postStat[1][3][0] == "num" && postStat[1][3][1]->getNumber() == 0;
                       if (!inLoop || haveClear) {
                         // Everything lines up, do it
                         pre[3] = post[2];
-                        if (haveClear) splice(pre[3][1], 0); // remove the label clearing
-                        splice(stats, i+1); // remove the post entirely
+                        if (haveClear) pre[3][1]->splice(0, 1); // remove the label clearing
+                        stats->splice(i+1, 1); // remove the post entirely
                       }
                     }
                   }
@@ -491,6 +487,7 @@ void simplifyIfs(Ref ast) {
       }, [&inLoop](Ref  node) {
         if (node[0] == "while") inLoop--;
       });
+      assert(inLoop == 0);
     }
   });
 }
@@ -507,7 +504,7 @@ void optimizeFrounds(Ref ast) {
     if (node[0] == "call" && node[1][0] == "name" && node[1][1] == "Math_fround") {
       Ref arg = node[2][0];
       if (arg[0] == "num") {
-        if (!inReturn && arg[1] == 0) node = makeName("f0");
+        if (!inReturn && arg[1]->getNumber() == 0) node = makeName("f0");
       } else if (arg[0] == "call" && arg[1][0] == "name" && arg[1][1] == "Math_fround") {
         node = arg;
       }
