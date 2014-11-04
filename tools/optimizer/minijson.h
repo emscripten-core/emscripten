@@ -12,6 +12,7 @@
 #include <memory>
 #include <vector>
 #include <ostream>
+#include <iomanip>
 
 struct Value;
 
@@ -253,7 +254,7 @@ struct Value {
         os << '"' << *str << '"';
         break;
       case Number:
-        os << num;
+        os << std::setprecision(17) << num; // doubles can have 17 digits of precision
         break;
       case Array:
         os << '[';
