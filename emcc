@@ -1415,14 +1415,18 @@ try:
             native = True
             curr.append(p)
         if len(curr) > 0:
-          assert not native # FIXME, need to add JSON notes
+          if native:
+            curr = ['receiveJSON'] + curr + ['emitJSON']
           chunks.append(curr)
+          if native:
+            chunks.append(['receiveJSON'])
         if len(chunks) == 1:
           run_passes(chunks[0], title, just_split=False, just_concat=False)
         else:
           for i in range(len(chunks)):
             run_passes(chunks[i], 'js_opts_' + str(i), just_split='receiveJSON' in chunks[i], just_concat='emitJSON' in chunks[i])
       else:
+        # DEBUG 2, run each pass seperately
         for p in passes:
           js_optimizer_queue = [p]
           flush_js_optimizer_queue(p)
