@@ -2,6 +2,7 @@
 #include <sys/stat.h>
 #include <assert.h>
 #include <string.h>
+#include <math.h>
 
 #include <string>
 #include <map>
@@ -23,9 +24,9 @@ Ref doc;
 
 #define err(str) fprintf(stderr, str "\n");
 
-void dump(const char *str, Ref node) {
+void dump(const char *str, Ref node, bool pretty=false) {
   std::cerr << str << ": ";
-  node->stringify(std::cerr);
+  node->stringify(std::cerr, pretty);
   std::cerr << std::endl;
 }
 
@@ -198,7 +199,7 @@ AsmType detectType(Ref node, AsmInfo *asmInfo=nullptr, bool inVarDef=false) {
   switch (node[0]->getString()[0]) {
     case 'n': {
       if (node[0] == "num") {
-        if (strchr(node[1]->getCString(), '.')) return ASM_DOUBLE;
+        if (fmod(node[1]->getNumber(), 1) != 0) return ASM_DOUBLE;
         return ASM_INT;
       } else if (node[0] == "name") {
         if (asmInfo) {
