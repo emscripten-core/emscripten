@@ -187,7 +187,7 @@ struct Value {
     if (type != Array) return false; // Array is the only one where deep compare differs makes sense, others are shallow and were already tested
     if (arr->size() != other.arr->size()) return false;
     for (unsigned i = 0; i < arr->size(); i++) {
-      if ((*arr)[i] != (*other.arr)[i]) return false;
+      if (!(*arr)[i]->deepCompare((*other.arr)[i])) return false;
     }
     return true;
   }

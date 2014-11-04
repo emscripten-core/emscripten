@@ -21,7 +21,7 @@ Ref doc;
 // Infrastructure
 //==================
 
-#define err(str, ...) fprintf(stderr, ...);
+#define err(str) fprintf(stderr, str);
 
 void dump(const char *str, Ref node) {
   std::cerr << str << ": ";
@@ -400,7 +400,7 @@ void simplifyIfs(Ref ast) {
             stats = body[1] = temp;
           }
           if (stats->size() != 1) break;
-          if (node->size() >= 4) simplifiedAnElse = true;
+          if (!!node[3]) simplifiedAnElse = true;
           node[1] = make3("conditional", node[1], other[1], makeNum(0));
           body = node[2] = other[2];
         }
