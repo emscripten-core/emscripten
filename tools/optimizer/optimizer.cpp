@@ -367,11 +367,11 @@ void simplifyIfs(Ref ast) {
             } else break;
           }
           // we can handle elses, but must be fully identical
-          if (node->size() >= 4 || other->size() >= 4) {
-            if (!(node->size() >= 4)) break;
-            if (node[3] != other[3]) {
+          if (!!node[3] || !!other[3]) {
+            if (!node[3]) break;
+            if (node[3]->deepCompare(other[3])) {
               // the elses are different, but perhaps if we flipped a condition we can do better
-              if (node[3] == other[2]) {
+              if (node[3]->deepCompare(other[2])) {
                 // flip other. note that other may not have had an else! add one if so; we will eliminate such things later
                 if (!(other->size() >= 4)) other->push_back(makeBlock());
                 other[1] = flipCondition(other[1]);
@@ -413,12 +413,12 @@ void simplifyIfs(Ref ast) {
       // we must leave it
       bool abort = false;
 
-      std::unordered_map<std::string, int> labelAssigns;
+      std::unordered_map<int, int> labelAssigns;
 
       traversePre(func, [&labelAssigns, &abort](Ref  node) {
         if (node[0] == "assign" && node[2][0] == "name" && node[2][1] == "label") {
           if (node[3][0] == "num") {
-            std::string value = node[3][1]->getString();
+            int value = node[3][1]->getNumber();
             labelAssigns[value] = labelAssigns[value] + 1;
           } else {
             // label is assigned a dynamic value (like from indirectbr), we cannot do anything
@@ -428,13 +428,13 @@ void simplifyIfs(Ref ast) {
       });
       if (abort) return;
 
-      std::unordered_map<std::string, int> labelChecks;
+      std::unordered_map<int, int> labelChecks;
 
       traversePre(func, [&labelChecks, &abort](Ref  node) {
         if (node[0] == "binary" && node[1] == "==" && node[2][0] == "binary" && node[2][1] == "|" &&
             node[2][2][0] == "name" && node[2][2][1] == "label") {
           if (node[3][0] == "num") {
-            std::string value = node[3][1]->getString();
+            int value = node[3][1]->getNumber();
             labelChecks[value] = labelChecks[value] + 1;
           } else {
             // label is checked vs a dynamic value (like from indirectbr), we cannot do anything
@@ -461,7 +461,7 @@ void simplifyIfs(Ref ast) {
                   postCond[3][0] == "num") {
                 Ref postValue = postCond[3][1];
                 Ref preElse = pre[3];
-                if (labelAssigns[postValue->getString()] == 1 && labelChecks[postValue->getString()] == 1 && preElse[0] == "block" && preElse->size() >= 2 && preElse[1]->size() == 1) {
+                if (labelAssigns[postValue->getNumber()] == 1 && labelChecks[postValue->getNumber()] == 1 && preElse[0] == "block" && preElse->size() >= 2 && preElse[1]->size() == 1) {
                   Ref preStat = preElse[1][0];
                   if (preStat[0] == "stat" && preStat[1][0] == "assign" &&
                       preStat[1][1]->isBool(true) && preStat[1][2][0] == "name" && preStat[1][2][1] == "label" &&
