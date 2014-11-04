@@ -1910,6 +1910,8 @@ int f() {
        ['asm', 'simplifyExpressions']),
       (path_from_root('tools', 'test-js-optimizer-asm-pre-f32.js'), open(path_from_root('tools', 'test-js-optimizer-asm-pre-output-f32.js')).read(),
        ['asm', 'asmPreciseF32', 'simplifyExpressions', 'optimizeFrounds']),
+      (path_from_root('tools', 'test-js-optimizer-asm-pre-f32.js'), open(path_from_root('tools', 'test-js-optimizer-asm-pre-output-f32-nosimp.js')).read(),
+       ['asm', 'asmPreciseF32', 'optimizeFrounds']),
       (path_from_root('tools', 'test-js-optimizer-asm-last.js'), open(path_from_root('tools', 'test-js-optimizer-asm-last-output.js')).read(),
        ['asm', 'asmLastOpts', 'last']),
       (path_from_root('tools', 'test-js-optimizer-asm-relocate.js'), open(path_from_root('tools', 'test-js-optimizer-asm-relocate-output.js')).read(),
@@ -1936,7 +1938,7 @@ int f() {
       print '  js'
       output = Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
       self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n'))
-      if len(js_optimizer.NATIVE_PASSES.intersection(passes)) > 0:
+      if len(js_optimizer.NATIVE_PASSES.intersection(passes)) == len(passes):
         # test calling native
         print '  native'
         self.clear()

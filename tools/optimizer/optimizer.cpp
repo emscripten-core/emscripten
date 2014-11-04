@@ -506,9 +506,9 @@ void optimizeFrounds(Ref ast) {
     if (node[0] == "call" && node[1][0] == "name" && node[1][1] == "Math_fround") {
       Ref arg = node[2][0];
       if (arg[0] == "num") {
-        if (!inReturn && arg[1]->getNumber() == 0) node = makeName("f0");
+        if (!inReturn && arg[1]->getNumber() == 0) *node = *makeName("f0");
       } else if (arg[0] == "call" && arg[1][0] == "name" && arg[1][1] == "Math_fround") {
-        node = arg;
+        *node = *arg;
       }
     }
   };
