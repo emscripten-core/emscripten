@@ -1651,6 +1651,22 @@ var LibraryGL = {
     }
   },
 
+  glGetActiveUniformsiv__sig: 'viiiii',
+  glGetActiveUniformsiv: function(program, uniformCount, uniformIndices, pname, params) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glGetActiveUniformsiv', 'program');
+#endif
+    program = GL.programs[program];
+    var ids = [];
+    for (var i = 0; i < uniformCount; i++)
+      ids.push({{{ makeGetValue('uniformIndices', 'i*4', 'i32') }}});
+
+    var result = GLctx.getActiveUniforms(program, ids, pname);
+    var len = result.length;
+    for (var i = 0; i < len; i++)
+      {{{ makeSetValue('params', 'i*4', 'result[i]', 'i32') }}};
+  },
+
   glGetUniformBlockIndex__sig: 'iii',
   glGetUniformBlockIndex: function(program, uniformBlockName) {
 #if GL_ASSERTIONS
