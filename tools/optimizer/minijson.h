@@ -171,15 +171,23 @@ struct Value {
       case Number:
         return num == other.num;
       case Array:
-        if (arr->size() != other.arr->size()) return false;
-        for (unsigned i = 0; i < arr->size(); i++) {
-          if ((*arr)[i] != (*other.arr)[i]) return false;
-        }
-        break;
+        return this == &other; // if you want a deep compare, use deepCompare
       case Null:
         break;
       case Bool:
         return boo == other.boo;
+    }
+    return true;
+  }
+
+  bool deepCompare(Ref ref) {
+    Value& other = *ref;
+    if (*this == other) return true; // either same pointer, or identical value type (string, number, null or bool)
+    if (type != other.type) return false;
+    if (type != Array) return false; // Array is the only one where deep compare differs makes sense, others are shallow and were already tested
+    if (arr->size() != other.arr->size()) return false;
+    for (unsigned i = 0; i < arr->size(); i++) {
+      if ((*arr)[i] != (*other.arr)[i]) return false;
     }
     return true;
   }
