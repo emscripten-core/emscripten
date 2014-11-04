@@ -245,7 +245,9 @@ struct Value {
     return curr;
   }
 
-  void stringify(std::ostream &os) {
+  void stringify(std::ostream &os, bool pretty=false) {
+    static int indent = 0;
+    #define indentify() { for (int i = 0; i < indent; i++) os << "  "; }
     switch (type) {
       case String:
         os << '"' << *str << '"';
@@ -255,10 +257,23 @@ struct Value {
         break;
       case Array:
         os << '[';
-        for (unsigned i = 0; i < arr->size(); i++) {
-          if (i > 0) os << ", ";
-          (*arr)[i]->stringify(os);
+        if (pretty) {
+          os << std::endl;
+          indent++;
         }
+        for (unsigned i = 0; i < arr->size(); i++) {
+          if (i > 0) {
+            os << ", ";
+            if (pretty) os << std::endl;
+          }
+          indentify();
+          (*arr)[i]->stringify(os, pretty);
+        }
+        if (pretty) {
+          os << std::endl;
+          indent--;
+        }
+        indentify();
         os << ']';
         break;
       case Null:
@@ -283,6 +298,7 @@ struct Value {
 
   Ref& operator[](unsigned x) {
     assert(isArray());
+    assert(x < arr->size());
     return (*arr)[x];
   }
 
