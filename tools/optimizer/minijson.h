@@ -15,9 +15,25 @@
 
 struct Value;
 
-typedef std::shared_ptr<Value> Ref;
+// Reference to a value. Simple shared_ptr, plus [] operator for convenience - we work on lots of arrays
+class Ref : public std::shared_ptr<Value> {
+public:
+  Ref(Value *v) {
+    reset(v);
+  }
+
+  Ref& operator[](unsigned x) {
+    return (*this)[x];
+  }
+
+  // special convenience for comparison to string, which is by value
+  bool operator==(const char *str);
+  bool operator!=(const char *str);
+};
+
 typedef std::vector<Ref> ArrayStorage;
 
+// Main value type
 struct Value {
   enum Type {
     String = 0,
@@ -29,7 +45,7 @@ struct Value {
 
   Type type;
 
-  union {
+  union { // TODO: optimize
     std::string *str;
     double num;
     ArrayStorage *arr;
@@ -38,19 +54,17 @@ struct Value {
 
   // constructors all copy their input
   Value() : type(Null), num(0) {}
-  Value(const char *s) : type(Null) {
+  explicit Value(const char *s) : type(Null) {
     set(s);
   }
-  Value(double n) : type(Null) {
+  explicit Value(double n) : type(Null) {
     set(n);
   }
-  Value(ArrayStorage &a) : type(Null) {
+  explicit Value(ArrayStorage &a) : type(Null) {
     setArray();
     *arr = a;
   }
-  Value(bool b) : type(Null) {
-    setBool(b);
-  }
+  // no bool constructor - would endanger the double one (int might convert the wrong way)
 
   ~Value() {
     free();
@@ -63,35 +77,66 @@ struct Value {
     num = 0;
   }
 
-  void set(const char *s) {
+  Value& set(const char *s) {
     free();
     type = String;
     str = new std::string(s);
+    return *this;
   }
-  void set(double n) {
+  Value& set(double n) {
     free();
     type = Null;
     num = n;
+    return *this;
   }
-  void set(ArrayStorage &a) {
+  Value& set(ArrayStorage &a) {
     free();
     type = Array;
     arr = new ArrayStorage();
     *arr = a;
+    return *this;
   }
-  void setArray() {
+  Value& setArray() {
     free();
     type = Array;
     arr = new ArrayStorage();
+    return *this;
   }
-  void setNull() {
+  Value& setNull() {
     free();
     type = Null;
+    return *this;
   }
-  void setBool(bool b) {
+  Value& setBool(bool b) { // Bool in the name, as otherwise might overload over int
     free();
     type = Bool;
     boo = b;
+    return *this;
+  }
+
+  bool isString() { return type == String; }
+  bool isNumber() { return type == Number; }
+  bool isArray()  { return type == Array; }
+  bool isNull()   { return type == Null; }
+  bool isBool()   { return type == Bool; }
+
+  bool isBool(bool b) { return type == Bool && b == boo; } // avoid overloading == as it might overload over int
+
+  std::string& getString() {
+    assert(isString());
+    return *str;
+  }
+  const char* getCString() {
+    assert(isString());
+    return str->c_str();
+  }
+  double& getNumber() {
+    assert(isNumber());
+    return num;
+  }
+  bool& getBool() {
+    assert(isBool());
+    return boo;
   }
 
   Value& operator=(const Value& other) {
@@ -213,5 +258,47 @@ struct Value {
         break;
     }
   }
+
+  // String operations
+
+  // Number operations
+
+  // Array operations
+
+  unsigned size() {
+    assert(isArray());
+    return arr->size();
+  }
+
+  Ref& operator[](unsigned x) {
+    assert(isArray());
+    return (*arr)[x];
+  }
+
+  void push_back(Ref r) {
+    assert(isArray());
+    arr->push_back(r);
+  }
+
+  // Null operations
+
+  // Bool operations
 };
+
+// Convenience class to construct arrays
+struct ArrayValue : public Value {
+  ArrayValue() {
+    setArray();
+  }
+};
+
+//
+
+bool Ref::operator==(const char *str) {
+  return get()->isString() && get()->getString() == str;
+}
+
+bool Ref::operator!=(const char *str) {
+  return get()->isString() ? get()->getString() != str : true;
+}
 

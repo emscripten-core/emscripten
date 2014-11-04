@@ -7,54 +7,23 @@
 #include <map>
 #include <unordered_map>
 #include <functional>
+#include <iostream>
 
-#define RAPIDJSON_HAS_CXX11_RVALUE_REFS 1
-#include "rapidjson/document.h"
-#include "rapidjson/writer.h"
-#include "rapidjson/stringbuffer.h"
-
-using namespace rapidjson;
+#include "minijson.h"
 
 //==================
 // Globals
 //==================
 
-Document doc;
-
-class GlobalStringValue : public Value {
-public:
-  GlobalStringValue(const char *str) : Value(str, strlen(str)) {}
-};
-
-GlobalStringValue RETURN("return"),
-                  STAT("stat"),
-                  CALL("call"),
-                  NAME("name"),
-                  NUM("num"),
-                  SUB("sub"),
-                  ASSIGN("assign"),
-                  UNARY_PREFIX("unary-prefix"),
-                  BINARY("binary"),
-                  CONDITIONAL("conditional"),
-                  SEQ("seq"),
-                  WHILE("while"),
-                  IF("if"),
-                  BLOCK("block"),
-                  LABEL("label"),
-                  TOPLEVEL("toplevel"),
-                  DEFUN("defun"),
-                  BANG("!"),
-                  MATH_FROUND("Math_fround");
+Value doc;
 
 //==================
 // Infrastructure
 //==================
 
-void dump(const char *str, Value &node) {
-  StringBuffer buffer;
-  Writer<StringBuffer> writer(buffer);
-  node.Accept(writer);
-  fprintf(stderr, "%s: %s\n", str, buffer.GetString());
+void dump(const char *str, Ref node) {
+  std::cerr << str << ": ";
+  node->stringify(std::cerr);
 }
 
 int parseInt(const char *str) {
@@ -72,15 +41,15 @@ int parseInt(const char *str) {
 // visit() receives a reference, so it can modify the value being visited directly.
 //       N.B. we allow replacing arrays in place, and consider strings immutable!
 // TODO: stoppable version of this
-void traverseChildren(Value &node, std::function<void (Value&)> visit) {
+void traverseChildren(Ref node, std::function<void (Ref)> visit) {
   //dump("TC", node);
-  if (!node.IsArray()) return;
-  int size = node.Size();
+  if (!node->isArray()) return;
+  int size = node->size();
   //printf("size: %d\n", size);
   for (int i = 0; i < size; i++) {
     //printf("  %d:\n", i);
-    Value &subnode = node[i];
-    if (subnode.IsArray() and subnode.Size() > 0) {
+    Ref subnode = node[i];
+    if (subnode->isArray() and subnode->size() > 0) {
       //printf("    go\n");
       visit(subnode);
     }
@@ -88,96 +57,97 @@ void traverseChildren(Value &node, std::function<void (Value&)> visit) {
 }
 
 // Traverse, calling visit before the children
-void traversePre(Value &node, std::function<void (Value&)> visit) {
+void traversePre(Ref node, std::function<void (Ref)> visit) {
   visit(node);
-  traverseChildren(node, [&visit](Value& node) {
+  traverseChildren(node, [&visit](Ref  node) {
     traversePre(node, visit);
   });
 }
 
 // Traverse, calling visitPre before the children and visitPost after
-void traversePrePost(Value &node, std::function<void (Value&)> visitPre, std::function<void (Value&)> visitPost) {
+void traversePrePost(Ref node, std::function<void (Ref)> visitPre, std::function<void (Ref)> visitPost) {
   visitPre(node);
-  traverseChildren(node, [&visitPre, &visitPost](Value& node) {
+  traverseChildren(node, [&visitPre, &visitPost](Ref  node) {
     traversePrePost(node, visitPre, visitPost);
   });
   visitPost(node);
 }
 
 // Traverses all the top-level functions in the document
-void traverseFunctions(Value &ast, std::function<void (Value&)> visit) {
-  if (ast[0] == TOPLEVEL) {
-    Value& stats = ast[1];
-    for (int i = 0; i < stats.Size(); i++) {
-      Value& curr = stats[i];
-      if (curr[0] == DEFUN) visit(curr);
+void traverseFunctions(Ref ast, std::function<void (Ref)> visit) {
+  if (ast[0] == "toplevel") {
+    Ref stats = ast[1];
+    for (int i = 0; i < stats->size(); i++) {
+      Ref curr = stats[i];
+      if (curr[0] == "defun") visit(curr);
     }
-  } else if (ast[0] == DEFUN) {
+  } else if (ast[0] == "defun") {
     visit(ast);
   }
 }
 
-Value& deStat(Value& node) {
-  if (node[0] == STAT) return node[1];
+Ref deStat(Ref  node) {
+  if (node[0]->getString() =="stat") return node[1];
   return node;
 }
 
-Value& getStatements(Value& node) {
-  if (node[0] == DEFUN) {
+Ref getStatements(Ref  node) {
+  if (node[0] == "defun") {
     return node[3];
-  } else if (node[0] == BLOCK) {
+  } else if (node[0] == "block") {
     return node[1];
   } else {
-    return Value().SetNull();
+    return new Value();
   }
 }
 
-// Constructions
+// Constructions TODO: share common constructions, and assert they remain frozen
 
-Value makeName(const char *str) {
-  Value ret;
-  ret.SetArray();
-  ret.PushBack(NAME, doc.GetAllocator());
-  ret.PushBack(Value().SetString(str, strlen(str)), doc.GetAllocator());
+Ref makeName(const char *str) {
+  Ref ret(new ArrayValue());
+  ret->push_back(new Value("name"));
+  ret->push_back(new Value(str));
   return ret;
 }
 
-Value makeNum(double x) {
-  Value ret;
-  ret.SetArray();
-  ret.PushBack(NUM, doc.GetAllocator());
-  ret.PushBack(Value(x), doc.GetAllocator());
+Ref makeNum(double x) {
+  Ref ret(new ArrayValue());
+  ret->push_back(new Value("num"));
+  ret->push_back(new Value(x));
   return ret;
 }
 
-Value makeBlock() {
-  Value ret;
-  ret.SetArray();
-  ret.PushBack(BLOCK, doc.GetAllocator());
-  ret.PushBack(Value().SetArray(), doc.GetAllocator());
+Ref makeBlock() {
+  Ref ret(new ArrayValue());
+  ret->push_back(new Value("block"));
+  ret->push_back(new ArrayValue());
   return ret;
 }
 
-Value make2(Value& type, Value&& a, Value&& b) {
-  Value ret;
-  ret.SetArray();
-  ret.PushBack(type, doc.GetAllocator());
-  ret.PushBack(a, doc.GetAllocator());
-  ret.PushBack(b, doc.GetAllocator());
+Ref make2(const char* type, const char *a, Ref b) {
+  Ref ret(new ArrayValue());
+  ret->push_back(new Value(type));
+  ret->push_back(new Value(a));
+  ret->push_back(b);
   return ret;
 }
-#define mmake2(a, b, c) make2(a, std::move(b), std::move(c))
 
-Value make3(Value& type, Value&& a, Value&& b, Value&& c) {
-  Value ret;
-  ret.SetArray();
-  ret.PushBack(type, doc.GetAllocator());
-  ret.PushBack(a, doc.GetAllocator());
-  ret.PushBack(b, doc.GetAllocator());
-  ret.PushBack(c, doc.GetAllocator());
+Ref make2(const char* type, Ref a, Ref b) {
+  Ref ret(new ArrayValue());
+  ret->push_back(new Value(type));
+  ret->push_back(a);
+  ret->push_back(b);
   return ret;
 }
-#define mmake3(a, b, c, d) make3(a, std::move(b), std::move(c), std::move(d))
+
+Ref make3(const char *type, Ref a, Ref b, Ref c) {
+  Ref ret(new ArrayValue());
+  ret->push_back(new Value(type));
+  ret->push_back(a);
+  ret->push_back(b);
+  ret->push_back(c);
+  return ret;
+}
 
 // Types
 
@@ -221,15 +191,15 @@ HeapInfo parseHeap(const char *name) {
   return ret;
 }
 
-AsmType detectType(Value& node, AsmInfo *asmInfo=nullptr, bool inVarDef=false) {
-  switch (node[0].GetString()[0]) {
+AsmType detectType(Ref node, AsmInfo *asmInfo=nullptr, bool inVarDef=false) {
+  switch (node[0]->getString()[0]) {
     case 'n': {
-      if (node[0] == NUM) {
-        if (strchr(node[1].GetString(), '.')) return ASM_DOUBLE;
+      if (node[0] == "num") {
+        if (strchr(node[1]->getCString(), '.')) return ASM_DOUBLE;
         return ASM_INT;
-      } else if (node[0] == NAME) {
+      } else if (node[0] == "name") {
         if (asmInfo) {
-          AsmType ret = asmInfo->getType(node[1].GetString());
+          AsmType ret = asmInfo->getType(node[1]->getString());
           if (ret != ASM_NONE) return ret;
         }
         if (!inVarDef) {
@@ -248,8 +218,8 @@ AsmType detectType(Value& node, AsmInfo *asmInfo=nullptr, bool inVarDef=false) {
       break;
     }
     case 'u': {
-      if (node[0] == UNARY_PREFIX) {
-        switch (node[1].GetString()[0]) {
+      if (node[0] == "unary-prefix") {
+        switch (node[1]->getString()[0]) {
           case '+': return ASM_DOUBLE;
           case '-': return detectType(node[2], asmInfo, inVarDef);
           case '!': case '~': return ASM_INT;
@@ -259,22 +229,22 @@ AsmType detectType(Value& node, AsmInfo *asmInfo=nullptr, bool inVarDef=false) {
       break;
     }
     case 'c': {
-      if (node[0] == CALL) {
-        if (node[1][0] == NAME) {
-          Value& name = node[1][1];
+      if (node[0] == "call") {
+        if (node[1][0] == "name") {
+          std::string& name = node[1][1]->getString();
           if (name == "Math_fround") return ASM_FLOAT;
           else if (name == "SIMD_float32x4") return ASM_FLOAT32X4;
           else if (name == "SIMD_int32x4") return ASM_INT32X4;
         }
         return ASM_NONE;
-      } else if (node[0] == CONDITIONAL) {
+      } else if (node[0] == "conditional") {
         return detectType(node[2], asmInfo, inVarDef);
       }
       break;
     }
     case 'b': {
-      if (node[0] == BINARY) {
-        switch (node[1].GetString()[0]) {
+      if (node[0] == "binary") {
+        switch (node[1]->getString()[0]) {
           case '+': case '-':
           case '*': case '/': case '%': return detectType(node[2], asmInfo, inVarDef);
           case '|': case '&': case '^': case '<': case '>': // handles <<, >>, >>=, <=, >=
@@ -286,11 +256,11 @@ AsmType detectType(Value& node, AsmInfo *asmInfo=nullptr, bool inVarDef=false) {
       break;
     }
     case 's': {
-      if (node[0] == SEQ) {
+      if (node[0] == "seq") {
         return detectType(node[2], asmInfo, inVarDef);
-      } else if (node[0] == SUB) {
-        assert(node[1][0] == NAME);
-        HeapInfo info = parseHeap(node[1][1].GetString());
+      } else if (node[0] == "sub") {
+        assert(node[1][0] == "name");
+        HeapInfo info = parseHeap(node[1][1]->getCString());
         if (info.valid) return ASM_NONE;
         return info.floaty ? ASM_DOUBLE : ASM_INT; // XXX ASM_FLOAT?
       }
@@ -307,52 +277,52 @@ AsmType detectType(Value& node, AsmInfo *asmInfo=nullptr, bool inVarDef=false) {
 // we then get
 //   if (!(x < 5))
 // or such. Simplifying these saves space and time.
-Value simplifyNotCompsDirect(Value node) {
-  if (node[0] == UNARY_PREFIX && node[1] == BANG) {
+Ref simplifyNotCompsDirect(Ref node) {
+  if (node[0] == "unary-prefix" && node[1] == "!") {
     // de-morgan's laws do not work on floats, due to nans >:(
-    if (node[2][0] == BINARY && (detectType(node[2][2]) == ASM_INT && detectType(node[2][3]) == ASM_INT)) {
-      Value &op = node[2][1];
-      switch(op.GetString()[0]) {
+    if (node[2][0] == "binary" && (detectType(node[2][2]) == ASM_INT && detectType(node[2][3]) == ASM_INT)) {
+      Ref op = node[2][1];
+      switch(op->getCString()[0]) {
         case '<': {
-          if (op == "<")  { op.SetString(">="); break; }
-          if (op == "<=") { op.SetString(">"); break; }
+          if (op == "<")  { op->set(">="); break; }
+          if (op == "<=") { op->set(">"); break; }
           assert(0);
         }
         case '>': {
-          if (op == ">")  { op.SetString("<="); break; }
-          if (op == ">=") { op.SetString("<"); break; }
+          if (op == ">")  { op->set("<="); break; }
+          if (op == ">=") { op->set("<"); break; }
           assert(0);
         }
         case '=': {
-          if (op == "==") { op.SetString("!="); break; }
+          if (op == "==") { op->set("!="); break; }
           assert(0);
         }
         case '!': {
-          if (op == "!=") { op.SetString("=="); break; }
+          if (op == "!=") { op->set("=="); break; }
           assert(0);
         }
         default: assert(0);
       }
-      return mmake3(BINARY, op, node[2][2], node[2][3]);
-    } else if (node[2][0] == UNARY_PREFIX && node[2][1] == '!') {
-      return std::move(node[2][2]);
+      return make3("binary", op, node[2][2], node[2][3]);
+    } else if (node[2][0] == "unary-prefix" && node[2][1] == "!") {
+      return node[2][2];
     }
   }
-  return std::move(node);
+  return node;
 }
 
-Value flipCondition(Value& cond) {
-  return simplifyNotCompsDirect(mmake2(UNARY_PREFIX, BANG, cond));
+Ref flipCondition(Ref cond) {
+  return simplifyNotCompsDirect(make2("unary-prefix", "!", cond));
 }
 
-void splice(Value& node, int index) { // removes an element from the middle of an array
-  node.Erase(node.Begin() + index);
+void splice(Ref node, int index) { // removes an element from the middle of an array
+assert(0);//  node.Erase(node.Begin() + index);
 }
 
 // Checks
 
-bool commable(Value& node) { // TODO: hashing
-  std::string type = node[0].GetString();
+bool commable(Ref  node) { // TODO: hashing
+  std::string type = node[0]->getString();
   if (type == "assign" || type == "binary" || type == "unary-prefix" || type == "unary-postfix" || type == "name" || type == "num" || type == "call" || type == "seq" || type == "conditional" || type == "sub") return true;
   return false;
 }
@@ -367,26 +337,26 @@ bool preciseF32 = false;
 // Optimization passes
 //=====================
 
-void simplifyIfs(Value& ast) {
-  traverseFunctions(ast, [](Value& func) {
+void simplifyIfs(Ref ast) {
+  traverseFunctions(ast, [](Ref func) {
     bool simplifiedAnElse = false;
 
-    traversePre(func, [&simplifiedAnElse](Value& node) {
+    traversePre(func, [&simplifiedAnElse](Ref  node) {
       // simplify   if (x) { if (y) { .. } }   to   if (x ? y : 0) { .. }
-      if (node[0] == IF) {
-        Value& body = node[2];
+      if (node[0] == "if") {
+        Ref body = node[2];
         // recurse to handle chains
-        while (body[0] == BLOCK) {
-          Value& stats = body[1];
-          if (stats.Size() == 0) break;
-          Value& other = stats[stats.Size()-1];
-          if (other[0] != IF) {
+        while (body[0] == "block") {
+          Ref stats = body[1];
+          if (stats->size() == 0) break;
+          Ref other = stats[stats->size()-1];
+          if (other[0] != "if") {
             // our if block does not end with an if. perhaps if have an else we can flip
-            if (node.Size() >= 4 && node[3][0] == BLOCK) {
+            if (node->size() >= 4 && node[3][0] == "block") {
               stats = node[3][1];
-              if (stats.Size() == 0) break;
-              other = stats[stats.Size()-1];
-              if (other[0] == IF) {
+              if (stats->size() == 0) break;
+              other = stats[stats->size()-1];
+              if (other[0] == "if") {
                 // flip node
                 node[1] = flipCondition(node[1]);
                 node[2] = node[3];
@@ -396,41 +366,40 @@ void simplifyIfs(Value& ast) {
             } else break;
           }
           // we can handle elses, but must be fully identical
-          if (node.Size() >= 4 || other.Size() >= 4) {
-            if (!(node.Size() >= 4)) break;
+          if (node->size() >= 4 || other->size() >= 4) {
+            if (!(node->size() >= 4)) break;
             if (node[3] != other[3]) {
               // the elses are different, but perhaps if we flipped a condition we can do better
               if (node[3] == other[2]) {
                 // flip other. note that other may not have had an else! add one if so; we will eliminate such things later
-                if (!(other.Size() >= 4)) other.PushBack(makeBlock(), doc.GetAllocator());
+                if (!(other->size() >= 4)) other->push_back(makeBlock());
                 other[1] = flipCondition(other[1]);
-                Value& temp = other[2];
+                Ref temp = other[2];
                 other[2] = other[3];
                 other[3] = temp;
               } else break;
             }
           }
-          if (stats.Size() > 1) {
+          if (stats->size() > 1) {
             // try to commaify - turn everything between the ifs into a comma operator inside the second if
             bool ok = true;
-            for (int i = 0; i < stats.Size()-1; i++) {
-              Value& curr = deStat(stats[i]);
+            for (int i = 0; i < stats->size()-1; i++) {
+              Ref curr = deStat(stats[i]);
               if (commable(curr)) ok = false;
             }
             if (!ok) break;
-            for (int i = stats.Size()-2; i >= 0; i--) {
-              Value& curr = deStat(stats[i]);
-              other[1] = mmake2(SEQ, curr, other[1]);
+            for (int i = stats->size()-2; i >= 0; i--) {
+              Ref curr = deStat(stats[i]);
+              other[1] = make2("seq", curr, other[1]);
             }
-            Value temp;
-            temp.SetArray();
-            temp.PushBack(other, doc.GetAllocator());
+            Ref temp = new ArrayValue();
+            temp->push_back(other);
             stats = body[1] = temp;
           }
-          if (stats.Size() != 1) break;
-          if (node.Size() >= 4) simplifiedAnElse = true;
-          node[1] = mmake3(CONDITIONAL, node[1], other[1], makeNum(0));
-          body = node[2] = other[2]; // XXX
+          if (stats->size() != 1) break;
+          if (node->size() >= 4) simplifiedAnElse = true;
+          node[1] = make3("conditional", node[1], other[1], makeNum(0));
+          body = node[2] = other[2];
         }
       }
     });
@@ -445,10 +414,10 @@ void simplifyIfs(Value& ast) {
 
       std::unordered_map<std::string, int> labelAssigns;
 
-      traversePre(func, [&labelAssigns, &abort](Value& node) {
-        if (node[0] == ASSIGN && node[2][0] == NAME && node[2][1] == LABEL) {
-          if (node[3][0] == NUM) {
-            std::string value = node[3][1].GetString();
+      traversePre(func, [&labelAssigns, &abort](Ref  node) {
+        if (node[0] == "assign" && node[2][0] == "name" && node[2][1] == "label") {
+          if (node[3][0] == "num") {
+            std::string value = node[3][1]->getString();
             labelAssigns[value] = labelAssigns[value] + 1;
           } else {
             // label is assigned a dynamic value (like from indirectbr), we cannot do anything
@@ -460,11 +429,11 @@ void simplifyIfs(Value& ast) {
 
       std::unordered_map<std::string, int> labelChecks;
 
-      traversePre(func, [&labelChecks, &abort](Value& node) {
-        if (node[0] == BINARY && node[1] == "==" && node[2][0] == BINARY && node[2][1] == '|' &&
-            node[2][2][0] == NAME && node[2][2][1] == LABEL) {
-          if (node[3][0] == NUM) {
-            std::string value = node[3][1].GetString();
+      traversePre(func, [&labelChecks, &abort](Ref  node) {
+        if (node[0] == "binary" && node[1] == "==" && node[2][0] == "binary" && node[2][1] == "|" &&
+            node[2][2][0] == "name" && node[2][2][1] == "label") {
+          if (node[3][0] == "num") {
+            std::string value = node[3][1]->getString();
             labelChecks[value] = labelChecks[value] + 1;
           } else {
             // label is checked vs a dynamic value (like from indirectbr), we cannot do anything
@@ -475,34 +444,34 @@ void simplifyIfs(Value& ast) {
       if (abort) return;
 
       int inLoop = 0; // when in a loop, we do not emit   label = 0;   in the relooper as there is no need
-      traversePrePost(func, [&inLoop, &labelAssigns, &labelChecks](Value& node) {
-        if (node[0] == WHILE) inLoop++;
-        Value& stats = getStatements(node);
-        if (!stats.IsNull()) {
-          for (int i = 0; i < stats.Size()-1; i++) {
-            Value& pre = stats[i];
-            Value& post = stats[i+1];
-            if (pre[0] == IF && pre.Size() >= 4 && post[0] == IF && post.Size() < 4) {
-              Value& postCond = post[1];
-              if (postCond[0] == BINARY && postCond[1] == "==" &&
-                  postCond[2][0] == BINARY && postCond[2][1] == "|" &&
-                  postCond[2][2][0] == NAME && postCond[2][2][1] == LABEL &&
-                  postCond[2][3][0] == NUM && postCond[2][3][1] == 0 &&
-                  postCond[3][0] == NUM) {
-                Value& postValue = postCond[3][1];
-                Value& preElse = pre[3];
-                if (labelAssigns[postValue.GetString()] == 1 && labelChecks[postValue.GetString()] == 1 && preElse[0] == BLOCK && preElse.Size() >= 2 && preElse[1].Size() == 1) {
-                  Value& preStat = preElse[1][0];
-                  if (preStat[0] == STAT && preStat[1][0] == ASSIGN &&
-                      preStat[1][1] == true && preStat[1][2][0] == NAME && preStat[1][2][1] == LABEL &&
-                      preStat[1][3][0] == NUM && preStat[1][3][1] == postValue) {
+      traversePrePost(func, [&inLoop, &labelAssigns, &labelChecks](Ref  node) {
+        if (node[0] == "while") inLoop++;
+        Ref stats = getStatements(node);
+        if (!stats->isNull()) {
+          for (int i = 0; i < stats->size()-1; i++) {
+            Ref pre = stats[i];
+            Ref post = stats[i+1];
+            if (pre[0] == "if" && pre->size() >= 4 && post[0] == "if" && post->size() < 4) {
+              Ref postCond = post[1];
+              if (postCond[0] == "binary" && postCond[1] == "==" &&
+                  postCond[2][0] == "binary" && postCond[2][1] == "|" &&
+                  postCond[2][2][0] == "name" && postCond[2][2][1] == "label" &&
+                  postCond[2][3][0] == "num" && postCond[2][3][1] == 0 &&
+                  postCond[3][0] == "num") {
+                Ref postValue = postCond[3][1];
+                Ref preElse = pre[3];
+                if (labelAssigns[postValue->getString()] == 1 && labelChecks[postValue->getString()] == 1 && preElse[0] == "block" && preElse->size() >= 2 && preElse[1]->size() == 1) {
+                  Ref preStat = preElse[1][0];
+                  if (preStat[0] == "stat" && preStat[1][0] == "assign" &&
+                      preStat[1][1]->isBool(true) && preStat[1][2][0] == "name" && preStat[1][2][1] == "label" &&
+                      preStat[1][3][0] == "num" && preStat[1][3][1] == postValue) {
                     // Conditions match, just need to make sure the post clears label
-                    if (post[2][0] == BLOCK && post[2].Size() >= 2 && post[2][1].Size() > 0) {
-                      Value& postStat = post[2][1][0];
+                    if (post[2][0] == "block" && post[2]->size() >= 2 && post[2][1]->size() > 0) {
+                      Ref postStat = post[2][1][0];
                       bool haveClear =
-                        postStat[0] == STAT && postStat[1][0] == ASSIGN &&
-                        postStat[1][1] == true && postStat[1][2][0] == NAME && postStat[1][2][1] == LABEL &&
-                        postStat[1][3][0] == NUM && postStat[1][3][1] == 0;
+                        postStat[0] == "stat" && postStat[1][0] == "assign" &&
+                        postStat[1][1]->isBool(true) && postStat[1][2][0] == "name" && postStat[1][2][1] == "label" &&
+                        postStat[1][3][0] == "num" && postStat[1][3][1] == 0;
                       if (!inLoop || haveClear) {
                         // Everything lines up, do it
                         pre[3] = post[2];
@@ -516,27 +485,27 @@ void simplifyIfs(Value& ast) {
             }
           }
         }
-      }, [&inLoop](Value& node) {
-        if (node[0] == WHILE) inLoop--;
+      }, [&inLoop](Ref  node) {
+        if (node[0] == "while") inLoop--;
       });
     }
   });
 }
 
-void optimizeFrounds(Value &ast) {
+void optimizeFrounds(Ref ast) {
   // collapse fround(fround(..)), which can happen due to elimination
   // also emit f0 instead of fround(0) (except in returns)
   bool inReturn = false;
-  std::function<void (Value&)> fix = [&](Value& node) {
-    bool ret = node[0] == RETURN;
+  std::function<void (Ref)> fix = [&](Ref  node) {
+    bool ret = node[0] == "return";
     if (ret) inReturn = true;
     traverseChildren(node, fix);
     if (ret) inReturn = false;
-    if (node[0] == CALL && node[1][0] == NAME && node[1][1] == MATH_FROUND) {
-      Value& arg = node[2][0];
-      if (arg[0] == NUM) {
+    if (node[0] == "call" && node[1][0] == "name" && node[1][1] == "Math_fround") {
+      Ref arg = node[2][0];
+      if (arg[0] == "num") {
         if (!inReturn && arg[1] == 0) node = makeName("f0");
-      } else if (arg[0] == CALL && arg[1][0] == NAME && arg[1][1] == MATH_FROUND) {
+      } else if (arg[0] == "call" && arg[1][0] == "name" && arg[1][1] == "Math_fround") {
         node = arg;
       }
     }
@@ -567,6 +536,8 @@ int main(int argc, char **argv) {
   if (comment) *comment = 0; // drop off the comments; TODO: parse extra info
 
   // Parse JSON source into a Document
+  doc.parse(json);
+/*
   doc.Parse(json);
   assert(!doc.HasParseError());
   delete[] json;
@@ -584,12 +555,9 @@ int main(int argc, char **argv) {
       assert(0);
     }
   }
-
+*/
   // Emit JSON of modified Document
-  StringBuffer buffer;
-  Writer<StringBuffer> writer(buffer);
-  doc.Accept(writer);
-  puts(buffer.GetString());
+  doc.stringify(std::cout);
 
   return 0;
 }
