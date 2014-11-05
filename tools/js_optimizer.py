@@ -9,7 +9,7 @@ __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 
-NATIVE_PASSES = set(['asm', 'asmPreciseF32', 'simplifyIfs', 'optimizeFrounds'])
+NATIVE_PASSES = set(['asm', 'asmPreciseF32', 'receiveJSON', 'emitJSON', 'simplifyIfs', 'optimizeFrounds'])
 
 JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 
@@ -33,6 +33,9 @@ def get_native_optimizer():
     assert os.path.exists(output)
     return output
   return shared.Cache.get('optimizer.exe', create_optimizer, extension='exe')
+
+def use_native(passes, source_map=False):
+  return (not source_map) and len(NATIVE_PASSES.intersection(passes)) == len(passes)
 
 class Minifier:
   '''
@@ -290,7 +293,7 @@ EMSCRIPTEN_FUNCS();
     filenames = []
 
   if len(filenames) > 0:
-    if len(NATIVE_PASSES.intersection(passes)) != len(passes):
+    if not use_native(passes, source_map):
       commands = map(lambda filename: js_engine +
           [JS_OPTIMIZER, filename, 'noPrintMetadata'] +
           (['--debug'] if source_map else []) + passes, filenames)
