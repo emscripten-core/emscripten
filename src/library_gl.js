@@ -1487,6 +1487,12 @@ var LibraryGL = {
     {{{ makeSetValue('params', '0', 'ret', 'i32') }}};
   },
 
+  // Renderbuffer objects
+  glRenderbufferStorageMultisample__sig: 'viiiii',
+  glRenderbufferStorageMultisample: function(target, samples, internalformat, width, height) {
+    GLctx.renderbufferStorageMultisample(target, samples, internalformat, width, height);
+  },
+
   // Transform Feedback
   glGenTransformFeedbacks__sig: 'vii',
   glGenTransformFeedbacks: function(n, ids) {
