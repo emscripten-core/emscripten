@@ -4,7 +4,6 @@
  * Uses shared_ptr for simplicity, basically everywhere. TODO: measure impact
  */
 
-#include <ctype.h>
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
@@ -199,7 +198,8 @@ struct Value {
   }
 
   char* parse(char* curr) {
-    #define skip() { while (*curr && isspace(*curr)) curr++; }
+    #define is_json_space(x) (x == 32 || x == 9 || x == 10 || x == 13) /* space, tab, linefeed/newline, or return */
+    #define skip() { while (*curr && is_json_space(*curr)) curr++; }
     skip();
     if (*curr == '"') {
       // String
