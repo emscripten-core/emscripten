@@ -24,6 +24,7 @@ var LibraryGL = {
     contexts: [],
 #if USE_WEBGL2
     queries: [],
+    samplers: [],
     transformFeedbacks: [],
 #endif
 
@@ -1491,6 +1492,109 @@ var LibraryGL = {
   glRenderbufferStorageMultisample__sig: 'viiiii',
   glRenderbufferStorageMultisample: function(target, samples, internalformat, width, height) {
     GLctx.renderbufferStorageMultisample(target, samples, internalformat, width, height);
+  },
+
+  // Sampler objects
+  glGenSamplers__sig: 'vii',
+  glGenSamplers: function(n, samplers) {
+    for (var i = 0; i < n; i++) {
+      var id = GL.getNewId(GL.samplers);
+      var sampler = GLctx.createSampler();
+      sampler.name = id;
+      GL.samplers[id] = sampler;
+      {{{ makeSetValue('samplers', 'i*4', 'id', 'i32') }}};
+    }
+  },
+
+  glDeleteSamplers__sig: 'vii',
+  glDeleteSamplers: function(n, samplers) {
+    for (var i = 0; i < n; i++) {
+      var id = {{{ makeGetValue('samplers', 'i*4', 'i32') }}};
+      var sampler = GL.samplers[id];
+      if (!sampler) continue;
+      GLctx.deleteSampler(sampler);
+      sampler.name = 0;
+      GL.samplers[id] = null;
+    }
+  },
+
+  glIsSampler__sig: 'ii',
+  glIsSampler: function(id) {
+    var sampler = GL.samplers[id];
+    if (!sampler) return 0;
+    return GLctx.isSampler(sampler);
+  },
+
+  glBindSampler__sig: 'vii',
+  glBindSampler: function(unit, sampler) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
+#endif
+    GLctx.bindSampler(unit, sampler ? GL.samplers[sampler] : null);
+  },
+
+  glSamplerParameterf__sig: 'viif',
+  glSamplerParameterf: function(sampler, pname, param) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
+#endif
+    GLctx.samplerParameterf(sampler ? GL.samplers[sampler] : null, pname, param);
+  },
+
+  glSamplerParameteri__sig: 'viii',
+  glSamplerParameteri: function(sampler, pname, param) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
+#endif
+    GLctx.samplerParameteri(sampler ? GL.samplers[sampler] : null, pname, param);
+  },
+
+  glSamplerParameterfv__sig: 'viii',
+  glSamplerParameterfv: function(sampler, pname, params) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
+#endif
+    var param = {{{ makeGetValue('params', '0', 'float') }}};
+    GLctx.samplerParameterf(sampler ? GL.samplers[sampler] : null, pname, param);
+  },
+
+  glSamplerParameteriv__sig: 'viii',
+  glSamplerParameteriv: function(sampler, pname, params) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
+#endif
+    var param = {{{ makeGetValue('params', '0', 'i32') }}};
+    GLctx.samplerParameteri(sampler ? GL.samplers[sampler] : null, pname, param);
+  },
+
+  glGetSamplerParameterfv__sig: 'viii',
+  glGetSamplerParameterfv: function(sampler, pname, params) {
+#if GL_ASSERTIONS
+    if (!params) {
+      // GLES3 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+      // if p == null, issue a GL error to notify user about it.
+      Module.printErr('GL_INVALID_VALUE in glGetSamplerParameterfv(sampler=' + sampler +', pname=' + pname + ', params=0): Function called with null out pointer!');
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+#endif
+    sampler = GL.samplers[sampler];
+    {{{ makeSetValue('params', '0', 'GLctx.getSamplerParameter(sampler, pname)', 'float') }}};
+  },
+
+  glGetSamplerParameteriv__sig: 'viii',
+  glGetSamplerParameteriv: function(sampler, pname, params) {
+#if GL_ASSERTIONS
+    if (!params) {
+      // GLES3 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+      // if p == null, issue a GL error to notify user about it.
+      Module.printErr('GL_INVALID_VALUE in glGetSamplerParameteriv(sampler=' + sampler +', pname=' + pname + ', params=0): Function called with null out pointer!');
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+#endif
+    sampler = GL.samplers[sampler];
+    {{{ makeSetValue('params', '0', 'GLctx.getSamplerParameter(sampler, pname)', 'i32') }}};
   },
 
   // Transform Feedback
