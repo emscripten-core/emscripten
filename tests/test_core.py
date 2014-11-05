@@ -5233,6 +5233,17 @@ return malloc(size);
 
     self.do_run_from_file(src, output)
 
+  def test_simd8(self):
+    # test_simd8 is to test unaligned load and store
+    Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
+    if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
+
+    test_path = path_from_root('tests', 'core', 'test_simd8')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
+
   def test_simd_dyncall(self):
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
