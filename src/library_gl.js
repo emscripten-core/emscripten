@@ -1395,6 +1395,17 @@ var LibraryGL = {
                         HEAPU8.subarray(data));
   },
 
+  // Framebuffer objects
+  glBlitFramebuffer__sig: 'viiiiiiiiii',
+  glBlitFramebuffer: function(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter) {
+    GLctx.blitFramebuffer(srcX0, srcY0, srxC1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter);
+  },
+
+  glReadBuffer__sig: 'vi',
+  glReadBuffer: function(src) {
+    GLctx.readBuffer(src);
+  },
+
   // Queries
   glGenQueries__sig: 'vii',
   glGenQueries: function(n, ids) {
@@ -5965,7 +5976,9 @@ var LibraryGL = {
   glRotatef: 'glRotated',
 
   glDrawBuffer: function() { throw 'glDrawBuffer: TODO' },
+#if !USE_WEBGL2
   glReadBuffer: function() { throw 'glReadBuffer: TODO' },
+#endif
 
   glLightfv: function() { throw 'glLightfv: TODO' },
   glLightModelfv: function() { throw 'glLightModelfv: TODO' },
