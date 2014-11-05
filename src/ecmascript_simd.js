@@ -58,8 +58,19 @@ _SIMD_PRIVATE.maxNum = function(x, y) {
 
 // Type checking functions.
 
-_SIMD_PRIVATE.isArrayBuffer = function(o) {
-  return (o instanceof ArrayBuffer);
+_SIMD_PRIVATE.isTypedArray = function(o) {
+  return (o instanceof Int8Array) ||
+         (o instanceof Uint8Array) ||
+         (o instanceof Uint8ClampedArray) ||
+         (o instanceof Int16Array) ||
+         (o instanceof Uint16Array) ||
+         (o instanceof Int32Array) ||
+         (o instanceof Uint32Array) ||
+         (o instanceof Float32Array) ||
+         (o instanceof Float64Array) ||
+         (o instanceof Int32x4Array) ||
+         (o instanceof Float32x4Array) ||
+         (o instanceof Float64x2Array);
 }
 
 _SIMD_PRIVATE.isNumber = function(o) {
@@ -1229,21 +1240,20 @@ if (typeof SIMD.float32x4.sqrt === "undefined") {
 if (typeof SIMD.float32x4.swizzle === "undefined") {
   /**
     * @param {float32x4} t An instance of float32x4 to be swizzled.
-    * @param {integer} mask One of the 256 swizzle masks, for example, SIMD.XXXX.
+    * @param {integer} x - Index for lane x
+    * @param {integer} y - Index for lane y
+    * @param {integer} z - Index for lane z
+    * @param {integer} w - Index for lane w
     * @return {float32x4} New instance of float32x4 with lanes swizzled.
     */
-  SIMD.float32x4.swizzle = function(t, mask) {
+  SIMD.float32x4.swizzle = function(t, x, y, z, w) {
     t = SIMD.float32x4(t);
-    var _x = (mask) & 0x3;
-    var _y = (mask >> 2) & 0x3;
-    var _z = (mask >> 4) & 0x3;
-    var _w = (mask >> 6) & 0x3;
     _SIMD_PRIVATE._f32x4[0] = t.x;
     _SIMD_PRIVATE._f32x4[1] = t.y;
     _SIMD_PRIVATE._f32x4[2] = t.z;
     _SIMD_PRIVATE._f32x4[3] = t.w;
     var storage = _SIMD_PRIVATE._f32x4;
-    return SIMD.float32x4(storage[_x], storage[_y], storage[_z], storage[_w]);
+    return SIMD.float32x4(storage[x], storage[y], storage[z], storage[w]);
   }
 }
 
@@ -1514,177 +1524,231 @@ if (typeof SIMD.float32x4.not === "undefined") {
 
 if (typeof SIMD.float32x4.load === "undefined") {
   /**
-    * @param {ArrayBuffer} buffer An instance of ArrayBuffer.
-    * @param {Number} byteOffset An instance of Number.
+    * @param {Typed array} tarray An instance of a typed array.
+    * @param {Number} index An instance of Number.
     * @return {float32x4} New instance of float32x4.
     */
-  SIMD.float32x4.load = function(buffer, byteOffset) {
-    if (!_SIMD_PRIVATE.isArrayBuffer(buffer))
-      throw new TypeError("The 1st argument must be an ArrayBuffer.");
-    if (!_SIMD_PRIVATE.isNumber(byteOffset))
+  SIMD.float32x4.load = function(tarray, index) {
+    if (!_SIMD_PRIVATE.isTypedArray(tarray))
+      throw new TypeError("The 1st argument must be a typed array.");
+    if (!_SIMD_PRIVATE.isNumber(index))
       throw new TypeError("The 2nd argument must be a Number.");
-    if (byteOffset < 0 || (byteOffset + 16) > buffer.byteLength)
-      throw new RangeError("The value of byteOffset is invalid.");
-    var i8a = new Int8Array(buffer, byteOffset, 16);
-    for (var i = 0; i < 16; i++)
-      _SIMD_PRIVATE._i8x16[i] = i8a[i];
-    return SIMD.float32x4(_SIMD_PRIVATE._f32x4[0], _SIMD_PRIVATE._f32x4[1],
-                          _SIMD_PRIVATE._f32x4[2], _SIMD_PRIVATE._f32x4[3]);
+    var bpe = tarray.BYTES_PER_ELEMENT;
+    if (index < 0 || (index * bpe + 16) > tarray.byteLength)
+      throw new RangeError("The value of index is invalid.");
+    var f32temp = _SIMD_PRIVATE._f32x4;
+    var array = bpe == 1 ? _SIMD_PRIVATE._i8x16 :
+                bpe == 2 ? _SIMD_PRIVATE._i16x8 :
+                bpe == 4 ? (tarray instanceof Float32Array ? f32temp : _SIMD_PRIVATE._i32x4) :
+                _SIMD_PRIVATE._f64x2;
+    var n = 16 / bpe;
+    for (var i = 0; i < n; ++i)
+      array[i] = tarray[index + i];
+    return SIMD.float32x4(f32temp[0], f32temp[1], f32temp[2], f32temp[3]);
   }
 }
 
 if (typeof SIMD.float32x4.loadX === "undefined") {
   /**
-    * @param {ArrayBuffer} buffer An instance of ArrayBuffer.
-    * @param {Number} byteOffset An instance of Number.
+    * @param {Typed array} tarray An instance of a typed array.
+    * @param {Number} index An instance of Number.
     * @return {float32x4} New instance of float32x4.
     */
-  SIMD.float32x4.loadX = function(buffer, byteOffset) {
-    if (!_SIMD_PRIVATE.isArrayBuffer(buffer))
-      throw new TypeError("The 1st argument must be an ArrayBuffer.");
-    if (!_SIMD_PRIVATE.isNumber(byteOffset))
+  SIMD.float32x4.loadX = function(tarray, index) {
+    if (!_SIMD_PRIVATE.isTypedArray(tarray))
+      throw new TypeError("The 1st argument must be a typed array.");
+    if (!_SIMD_PRIVATE.isNumber(index))
       throw new TypeError("The 2nd argument must be a Number.");
-    if (byteOffset < 0 || (byteOffset + 4) > buffer.byteLength)
-      throw new RangeError("The value of byteOffset is invalid.");
-    var i8a = new Int8Array(buffer, byteOffset, 4);
-    for (var i = 0; i < 4; i++)
-      _SIMD_PRIVATE._i8x16[i] = i8a[i];
-    return SIMD.float32x4(_SIMD_PRIVATE._f32x4[0], 0.0, 0.0, 0.0);
+    var bpe = tarray.BYTES_PER_ELEMENT;
+    if (index < 0 || (index * bpe + 4) > tarray.byteLength)
+      throw new RangeError("The value of index is invalid.");
+    var f32temp = _SIMD_PRIVATE._f32x4;
+    var array = bpe == 1 ? _SIMD_PRIVATE._i8x16 :
+                bpe == 2 ? _SIMD_PRIVATE._i16x8 :
+                bpe == 4 ? (tarray instanceof Float32Array ? f32temp : _SIMD_PRIVATE._i32x4) :
+                _SIMD_PRIVATE._f64x2;
+    var n = 4 / bpe;
+    for (var i = 0; i < n; ++i)
+      array[i] = tarray[index + i];
+    return SIMD.float32x4(f32temp[0], 0.0, 0.0, 0.0);
   }
 }
 
 if (typeof SIMD.float32x4.loadXY === "undefined") {
   /**
-    * @param {ArrayBuffer} buffer An instance of ArrayBuffer.
-    * @param {Number} byteOffset An instance of Number.
+    * @param {Typed array} tarray An instance of a typed array.
+    * @param {Number} index An instance of Number.
     * @return {float32x4} New instance of float32x4.
     */
-  SIMD.float32x4.loadXY = function(buffer, byteOffset) {
-    if (!_SIMD_PRIVATE.isArrayBuffer(buffer))
-      throw new TypeError("The 1st argument must be an ArrayBuffer.");
-    if (!_SIMD_PRIVATE.isNumber(byteOffset))
+  SIMD.float32x4.loadXY = function(tarray, index) {
+    if (!_SIMD_PRIVATE.isTypedArray(tarray))
+      throw new TypeError("The 1st argument must be a typed array.");
+    if (!_SIMD_PRIVATE.isNumber(index))
       throw new TypeError("The 2nd argument must be a Number.");
-    if (byteOffset < 0 || (byteOffset + 8) > buffer.byteLength)
-      throw new RangeError("The value of byteOffset is invalid.");
-    var i8a = new Int8Array(buffer, byteOffset, 8);
-    for (var i = 0; i < 8; i++)
-      _SIMD_PRIVATE._i8x16[i] = i8a[i];
-    return SIMD.float32x4(_SIMD_PRIVATE._f32x4[0], _SIMD_PRIVATE._f32x4[1], 0.0, 0.0);
+    var bpe = tarray.BYTES_PER_ELEMENT;
+    if (index < 0 || (index * bpe + 8) > tarray.byteLength)
+      throw new RangeError("The value of index is invalid.");
+    var f32temp = _SIMD_PRIVATE._f32x4;
+    var array = bpe == 1 ? _SIMD_PRIVATE._i8x16 :
+                bpe == 2 ? _SIMD_PRIVATE._i16x8 :
+                bpe == 4 ? (tarray instanceof Float32Array ? f32temp : _SIMD_PRIVATE._i32x4) :
+                _SIMD_PRIVATE._f64x2;
+    var n = 8 / bpe;
+    for (var i = 0; i < n; ++i)
+      array[i] = tarray[index + i];
+    return SIMD.float32x4(f32temp[0], f32temp[1], 0.0, 0.0);
   }
 }
 
 if (typeof SIMD.float32x4.loadXYZ === "undefined") {
   /**
-    * @param {ArrayBuffer} buffer An instance of ArrayBuffer.
-    * @param {Number} byteOffset An instance of Number.
+    * @param {Typed array} tarray An instance of a typed array.
+    * @param {Number} index An instance of Number.
     * @return {float32x4} New instance of float32x4.
     */
-  SIMD.float32x4.loadXYZ = function(buffer, byteOffset) {
-    if (!_SIMD_PRIVATE.isArrayBuffer(buffer))
-      throw new TypeError("The 1st argument must be an ArrayBuffer.");
-    if (!_SIMD_PRIVATE.isNumber(byteOffset))
+  SIMD.float32x4.loadXYZ = function(tarray, index) {
+    if (!_SIMD_PRIVATE.isTypedArray(tarray))
+      throw new TypeError("The 1st argument must be a typed array.");
+    if (!_SIMD_PRIVATE.isNumber(index))
       throw new TypeError("The 2nd argument must be a Number.");
-    if (byteOffset < 0 || (byteOffset + 12) > buffer.byteLength)
-      throw new RangeError("The value of byteOffset is invalid.");
-    var i8a = new Int8Array(buffer, byteOffset, 12);
-    for (var i = 0; i < 12; i++)
-      _SIMD_PRIVATE._i8x16[i] = i8a[i];
-    return SIMD.float32x4(_SIMD_PRIVATE._f32x4[0], _SIMD_PRIVATE._f32x4[1],
-                          _SIMD_PRIVATE._f32x4[2], 0.0);
+    var bpe = tarray.BYTES_PER_ELEMENT;
+    if (index < 0 || (index * bpe + 12) > tarray.byteLength)
+      throw new RangeError("The value of index is invalid.");
+    var f32temp = _SIMD_PRIVATE._f32x4;
+    var array = bpe == 1 ? _SIMD_PRIVATE._i8x16 :
+                bpe == 2 ? _SIMD_PRIVATE._i16x8 :
+                bpe == 4 ? (tarray instanceof Float32Array ? f32temp : _SIMD_PRIVATE._i32x4) :
+                _SIMD_PRIVATE._f64x2;
+    var n = 12 / bpe;
+    for (var i = 0; i < n; ++i)
+      array[i] = tarray[index + i];
+    return SIMD.float32x4(f32temp[0], f32temp[1], f32temp[2], 0.0);
   }
 }
 
 if (typeof SIMD.float32x4.store === "undefined") {
   /**
-    * @param {ArrayBuffer} buffer An instance of ArrayBuffer.
-    * @param {Number} byteOffset An instance of Number.
+    * @param {Typed array} tarray An instance of a typed array.
+    * @param {Number} index An instance of Number.
     * @param {float32x4} value An instance of float32x4.
     * @return {void}
     */
-  SIMD.float32x4.store = function(buffer, byteOffset, value) {
-    if (!_SIMD_PRIVATE.isArrayBuffer(buffer))
-      throw new TypeError("The 1st argument must be an ArrayBuffer.");
-    if (!_SIMD_PRIVATE.isNumber(byteOffset))
+  SIMD.float32x4.store = function(tarray, index, value) {
+    if (!_SIMD_PRIVATE.isTypedArray(tarray))
+      throw new TypeError("The 1st argument must be a typed array.");
+    if (!_SIMD_PRIVATE.isNumber(index))
       throw new TypeError("The 2nd argument must be a Number.");
-    if (byteOffset < 0 || (byteOffset + 16) > buffer.byteLength)
-      throw new RangeError("The value of byteOffset is invalid.");
+    var bpe = tarray.BYTES_PER_ELEMENT;
+    if (index < 0 || (index * bpe + 16) > tarray.byteLength)
+      throw new RangeError("The value of index is invalid.");
     value = SIMD.float32x4(value);
     _SIMD_PRIVATE._f32x4[0] = value.x;
     _SIMD_PRIVATE._f32x4[1] = value.y;
     _SIMD_PRIVATE._f32x4[2] = value.z;
     _SIMD_PRIVATE._f32x4[3] = value.w;
-    var i8a = new Int8Array(buffer, byteOffset, 16);
-    for (var i = 0; i < 16; i++)
-      i8a[i] = _SIMD_PRIVATE._i8x16[i];
+    var array = bpe == 1 ? _SIMD_PRIVATE._i8x16 :
+                bpe == 2 ? _SIMD_PRIVATE._i16x8 :
+                bpe == 4 ? (tarray instanceof Float32Array ? _SIMD_PRIVATE._f32x4 : _SIMD_PRIVATE._i32x4) :
+                _SIMD_PRIVATE._f64x2;
+    var n = 16 / bpe;
+    for (var i = 0; i < n; ++i)
+      tarray[index + i] = array[i];
   }
 }
 
 if (typeof SIMD.float32x4.storeX === "undefined") {
   /**
-    * @param {ArrayBuffer} buffer An instance of ArrayBuffer.
-    * @param {Number} byteOffset An instance of Number.
+    * @param {Typed array} tarray An instance of a typed array.
+    * @param {Number} index An instance of Number.
     * @param {float32x4} value An instance of float32x4.
     * @return {void}
     */
-  SIMD.float32x4.storeX = function(buffer, byteOffset, value) {
-    if (!_SIMD_PRIVATE.isArrayBuffer(buffer))
-      throw new TypeError("The 1st argument must be an ArrayBuffer.");
-    if (!_SIMD_PRIVATE.isNumber(byteOffset))
+  SIMD.float32x4.storeX = function(tarray, index, value) {
+    if (!_SIMD_PRIVATE.isTypedArray(tarray))
+      throw new TypeError("The 1st argument must be a typed array.");
+    if (!_SIMD_PRIVATE.isNumber(index))
       throw new TypeError("The 2nd argument must be a Number.");
-    if (byteOffset < 0 || (byteOffset + 4) > buffer.byteLength)
-      throw new RangeError("The value of byteOffset is invalid.");
+    var bpe = tarray.BYTES_PER_ELEMENT;
+    if (index < 0 || (index * bpe + 4) > tarray.byteLength)
+      throw new RangeError("The value of index is invalid.");
     value = SIMD.float32x4(value);
-    _SIMD_PRIVATE._f32x4[0] = value.x;
-    var i8a = new Int8Array(buffer, byteOffset, 4);
-    for (var i = 0; i < 4; i++)
-      i8a[i] = _SIMD_PRIVATE._i8x16[i];
+    if (bpe == 8) {
+      // tarray's elements are too wide. Just create a new view; this is rare.
+      var view = new Float32Array(tarray.buffer, tarray.byteOffset + index * 8, 1);
+      view[0] = value.x;
+    } else {
+      _SIMD_PRIVATE._f32x4[0] = value.x;
+      var array = bpe == 1 ? _SIMD_PRIVATE._i8x16 :
+                  bpe == 2 ? _SIMD_PRIVATE._i16x8 :
+                  (tarray instanceof Float32Array ? _SIMD_PRIVATE._f32x4 : _SIMD_PRIVATE._i32x4);
+      var n = 4 / bpe;
+      for (var i = 0; i < n; ++i)
+        tarray[index + i] = array[i];
+    }
   }
 }
 
 if (typeof SIMD.float32x4.storeXY === "undefined") {
   /**
-    * @param {ArrayBuffer} buffer An instance of ArrayBuffer.
-    * @param {Number} byteOffset An instance of Number.
+    * @param {Typed array} tarray An instance of a typed array.
+    * @param {Number} index An instance of Number.
     * @param {float32x4} value An instance of float32x4.
     * @return {void}
     */
-  SIMD.float32x4.storeXY = function(buffer, byteOffset, value) {
-    if (!_SIMD_PRIVATE.isArrayBuffer(buffer))
-      throw new TypeError("The 1st argument must be an ArrayBuffer.");
-    if (!_SIMD_PRIVATE.isNumber(byteOffset))
+  SIMD.float32x4.storeXY = function(tarray, index, value) {
+    if (!_SIMD_PRIVATE.isTypedArray(tarray))
+      throw new TypeError("The 1st argument must be a typed array.");
+    if (!_SIMD_PRIVATE.isNumber(index))
       throw new TypeError("The 2nd argument must be a Number.");
-    if (byteOffset < 0 || (byteOffset + 8) > buffer.byteLength)
-      throw new RangeError("The value of byteOffset is invalid.");
+    var bpe = tarray.BYTES_PER_ELEMENT;
+    if (index < 0 || (index * bpe + 8) > tarray.byteLength)
+      throw new RangeError("The value of index is invalid.");
     value = SIMD.float32x4(value);
     _SIMD_PRIVATE._f32x4[0] = value.x;
     _SIMD_PRIVATE._f32x4[1] = value.y;
-    var i8a = new Int8Array(buffer, byteOffset, 8);
-    for (var i = 0; i < 8; i++)
-      i8a[i] = _SIMD_PRIVATE._i8x16[i];
+    var array = bpe == 1 ? _SIMD_PRIVATE._i8x16 :
+                bpe == 2 ? _SIMD_PRIVATE._i16x8 :
+                bpe == 4 ? (tarray instanceof Float32Array ? _SIMD_PRIVATE._f32x4 : _SIMD_PRIVATE._i32x4) :
+                _SIMD_PRIVATE._f64x2;
+    var n = 8 / bpe;
+    for (var i = 0; i < n; ++i)
+      tarray[index + i] = array[i];
   }
 }
 
 if (typeof SIMD.float32x4.storeXYZ === "undefined") {
   /**
-    * @param {ArrayBuffer} buffer An instance of ArrayBuffer.
-    * @param {Number} byteOffset An instance of Number.
+    * @param {Typed array} tarray An instance of a typed array.
+    * @param {Number} index An instance of Number.
     * @param {float32x4} value An instance of float32x4.
     * @return {void}
     */
-  SIMD.float32x4.storeXYZ = function(buffer, byteOffset, value) {
-    if (!_SIMD_PRIVATE.isArrayBuffer(buffer))
-      throw new TypeError("The 1st argument must be an ArrayBuffer.");
-    if (!_SIMD_PRIVATE.isNumber(byteOffset))
+  SIMD.float32x4.storeXYZ = function(tarray, index, value) {
+    if (!_SIMD_PRIVATE.isTypedArray(tarray))
+      throw new TypeError("The 1st argument must be a typed array.");
+    if (!_SIMD_PRIVATE.isNumber(index))
       throw new TypeError("The 2nd argument must be a Number.");
-    if (byteOffset < 0 || (byteOffset + 12) > buffer.byteLength)
-      throw new RangeError("The value of byteOffset is invalid.");
+    var bpe = tarray.BYTES_PER_ELEMENT;
+    if (index < 0 || (index * bpe + 12) > tarray.byteLength)
+      throw new RangeError("The value of index is invalid.");
     value = SIMD.float32x4(value);
-    _SIMD_PRIVATE._f32x4[0] = value.x;
-    _SIMD_PRIVATE._f32x4[1] = value.y;
-    _SIMD_PRIVATE._f32x4[2] = value.z;
-    var i8a = new Int8Array(buffer, byteOffset, 12);
-    for (var i = 0; i < 12; i++)
-      i8a[i] = _SIMD_PRIVATE._i8x16[i];
+    if (bpe == 8) {
+      // tarray's elements are too wide. Just create a new view; this is rare.
+      var view = new Float32Array(tarray.buffer, tarray.byteOffset + index * 8, 3);
+      view[0] = value.x;
+      view[1] = value.y;
+      view[2] = value.z;
+    } else {
+      _SIMD_PRIVATE._f32x4[0] = value.x;
+      _SIMD_PRIVATE._f32x4[1] = value.y;
+      _SIMD_PRIVATE._f32x4[2] = value.z;
+      var array = bpe == 1 ? _SIMD_PRIVATE._i8x16 :
+                  bpe == 2 ? _SIMD_PRIVATE._i16x8 :
+                  (tarray instanceof Float32Array ? _SIMD_PRIVATE._f32x4 : _SIMD_PRIVATE._i32x4);
+      var n = 12 / bpe;
+      for (var i = 0; i < n; ++i)
+        tarray[index + i] = array[i];
+    }
   }
 }
 
@@ -1874,17 +1938,16 @@ if (typeof SIMD.float64x2.sqrt === "undefined") {
 if (typeof SIMD.float64x2.swizzle === "undefined") {
   /**
     * @param {float64x2} t An instance of float64x2 to be swizzled.
-    * @param {integer} mask One of the 4 swizzle masks, for example, SIMD.XY.
+    * @param {integer} x - Index for lane x
+    * @param {integer} y - Index for lane y
     * @return {float64x2} New instance of float64x2 with lanes swizzled.
     */
-  SIMD.float64x2.swizzle = function(t, mask) {
+  SIMD.float64x2.swizzle = function(t, x, y) {
     t = SIMD.float64x2(t);
-    var _x = (mask) & 0x1;
-    var _y = (mask >> 1) & 0x1;
     var storage = _SIMD_PRIVATE._f64x2;
     storage[0] = t.x;
     storage[1] = t.y;
-    return SIMD.float64x2(storage[_x], storage[_y]);
+    return SIMD.float64x2(storage[x], storage[y]);
   }
 }
 
@@ -2056,86 +2119,108 @@ if (typeof SIMD.float64x2.select === "undefined") {
 
 if (typeof SIMD.float64x2.load === "undefined") {
   /**
-    * @param {ArrayBuffer} buffer An instance of ArrayBuffer.
-    * @param {Number} byteOffset An instance of Number.
+    * @param {Typed array} tarray An instance of a typed array.
+    * @param {Number} index An instance of Number.
     * @return {float64x2} New instance of float64x2.
     */
-  SIMD.float64x2.load = function(buffer, byteOffset) {
-    if (!_SIMD_PRIVATE.isArrayBuffer(buffer))
-      throw new TypeError("The 1st argument must be an ArrayBuffer.");
-    if (!_SIMD_PRIVATE.isNumber(byteOffset))
+  SIMD.float64x2.load = function(tarray, index) {
+    if (!_SIMD_PRIVATE.isTypedArray(tarray))
+      throw new TypeError("The 1st argument must be a typed array.");
+    if (!_SIMD_PRIVATE.isNumber(index))
       throw new TypeError("The 2nd argument must be a Number.");
-    if (byteOffset < 0 || (byteOffset + 16) > buffer.byteLength)
-      throw new RangeError("The value of byteOffset is invalid.");
-    var i8a = new Int8Array(buffer, byteOffset, 16);
-    for (var i = 0; i < 16; i++)
-      _SIMD_PRIVATE._i8x16[i] = i8a[i];
-    return SIMD.float64x2(_SIMD_PRIVATE._f64x2[0], _SIMD_PRIVATE._f64x2[1]);
+    var bpe = tarray.BYTES_PER_ELEMENT;
+    if (index < 0 || (index * bpe + 16) > tarray.byteLength)
+      throw new RangeError("The value of index is invalid.");
+    var f64temp = _SIMD_PRIVATE._f64x2;
+    var array = bpe == 1 ? _SIMD_PRIVATE._i8x16 :
+                bpe == 2 ? _SIMD_PRIVATE._i16x8 :
+                bpe == 4 ? (tarray instanceof Float32Array ? _SIMD_PRIVATE._f32x4 : _SIMD_PRIVATE._i32x4) :
+                f64temp;
+    var n = 16 / bpe;
+    for (var i = 0; i < n; ++i)
+      array[i] = tarray[index + i];
+    return SIMD.float64x2(f64temp[0], f64temp[1]);
   }
 }
 
 if (typeof SIMD.float64x2.loadX === "undefined") {
   /**
-    * @param {ArrayBuffer} buffer An instance of ArrayBuffer.
-    * @param {Number} byteOffset An instance of Number.
+    * @param {Typed array} tarray An instance of a typed array.
+    * @param {Number} index An instance of Number.
     * @return {float64x2} New instance of float64x2.
     */
-  SIMD.float64x2.loadX = function(buffer, byteOffset) {
-    if (!_SIMD_PRIVATE.isArrayBuffer(buffer))
-      throw new TypeError("The 1st argument must be an ArrayBuffer.");
-    if (!_SIMD_PRIVATE.isNumber(byteOffset))
+  SIMD.float64x2.loadX = function(tarray, index) {
+    if (!_SIMD_PRIVATE.isTypedArray(tarray))
+      throw new TypeError("The 1st argument must be a typed array.");
+    if (!_SIMD_PRIVATE.isNumber(index))
       throw new TypeError("The 2nd argument must be a Number.");
-    if (byteOffset < 0 || (byteOffset + 8) > buffer.byteLength)
-      throw new RangeError("The value of byteOffset is invalid.");
-    var i8a = new Int8Array(buffer, byteOffset, 8);
-    for (var i = 0; i < 8; i++)
-      _SIMD_PRIVATE._i8x16[i] = i8a[i];
-    return SIMD.float64x2(_SIMD_PRIVATE._f64x2[0], 0.0);
+    var bpe = tarray.BYTES_PER_ELEMENT;
+    if (index < 0 || (index * bpe + 8) > tarray.byteLength)
+      throw new RangeError("The value of index is invalid.");
+    var f64temp = _SIMD_PRIVATE._f64x2;
+    var array = bpe == 1 ? _SIMD_PRIVATE._i8x16 :
+                bpe == 2 ? _SIMD_PRIVATE._i16x8 :
+                bpe == 4 ? (tarray instanceof Float32Array ? _SIMD_PRIVATE._f32x4 : _SIMD_PRIVATE._i32x4) :
+                f64temp;
+    var n = 8 / bpe;
+    for (var i = 0; i < n; ++i)
+      array[i] = tarray[index + i];
+    return SIMD.float64x2(f64temp[0], 0.0);
   }
 }
 
 if (typeof SIMD.float64x2.store === "undefined") {
   /**
-    * @param {ArrayBuffer} f64a An instance of ArrayBuffer.
-    * @param {Number} byteOffset An instance of Number.
+    * @param {Typed array} tarray An instance of a typed array.
+    * @param {Number} index An instance of Number.
     * @param {float64x2} value An instance of float64x2.
     * @return {void}
     */
-  SIMD.float64x2.store = function(buffer, byteOffset, value) {
-    if (!_SIMD_PRIVATE.isArrayBuffer(buffer))
-      throw new TypeError("The 1st argument must be an ArrayBuffer.");
-    if (!_SIMD_PRIVATE.isNumber(byteOffset))
+  SIMD.float64x2.store = function(tarray, index, value) {
+    if (!_SIMD_PRIVATE.isTypedArray(tarray))
+      throw new TypeError("The 1st argument must be a typed array.");
+    if (!_SIMD_PRIVATE.isNumber(index))
       throw new TypeError("The 2nd argument must be a Number.");
-    if (byteOffset < 0 || (byteOffset + 16) > buffer.byteLength)
-      throw new RangeError("The value of byteOffset is invalid.");
+    var bpe = tarray.BYTES_PER_ELEMENT;
+    if (index < 0 || (index * bpe + 16) > tarray.byteLength)
+      throw new RangeError("The value of index is invalid.");
     value = SIMD.float64x2(value);
     _SIMD_PRIVATE._f64x2[0] = value.x;
     _SIMD_PRIVATE._f64x2[1] = value.y;
-    var i8a = new Int8Array(buffer, byteOffset, 16);
-    for (var i = 0; i < 16; i++)
-      i8a[i] = _SIMD_PRIVATE._i8x16[i];
+    var array = bpe == 1 ? _SIMD_PRIVATE._i8x16 :
+                bpe == 2 ? _SIMD_PRIVATE._i16x8 :
+                bpe == 4 ? (tarray instanceof Float32Array ? _SIMD_PRIVATE._f32x4 : _SIMD_PRIVATE._i32x4) :
+                _SIMD_PRIVATE._f64x2;
+    var n = 16 / bpe;
+    for (var i = 0; i < n; ++i)
+      tarray[index + i] = array[i];
   }
 }
 
 if (typeof SIMD.float64x2.storeX === "undefined") {
   /**
-    * @param {ArrayBuffer} f64a An instance of ArrayBuffer.
-    * @param {Number} byteOffset An instance of Number.
+    * @param {Typed array} tarray An instance of a typed array.
+    * @param {Number} index An instance of Number.
     * @param {float64x2} value An instance of float64x2.
     * @return {void}
     */
-  SIMD.float64x2.storeX = function(buffer, byteOffset, value) {
-    if (!_SIMD_PRIVATE.isArrayBuffer(buffer))
-      throw new TypeError("The 1st argument must be an ArrayBuffer.");
-    if (!_SIMD_PRIVATE.isNumber(byteOffset))
+  SIMD.float64x2.storeX = function(tarray, index, value) {
+    if (!_SIMD_PRIVATE.isTypedArray(tarray))
+      throw new TypeError("The 1st argument must be a typed array.");
+    if (!_SIMD_PRIVATE.isNumber(index))
       throw new TypeError("The 2nd argument must be a Number.");
-    if (byteOffset < 0 || (byteOffset + 8) > buffer.byteLength)
-      throw new RangeError("The value of byteOffset is invalid.");
+    var bpe = tarray.BYTES_PER_ELEMENT;
+    if (index < 0 || (index * bpe + 8) > tarray.byteLength)
+      throw new RangeError("The value of index is invalid.");
     value = SIMD.float64x2(value);
     _SIMD_PRIVATE._f64x2[0] = value.x;
-    var i8a = new Int8Array(buffer, byteOffset, 8);
-    for (var i = 0; i < 8; i++)
-      i8a[i] = _SIMD_PRIVATE._i8x16[i];
+    var array = bpe == 1 ? _SIMD_PRIVATE._i8x16 :
+                bpe == 2 ? _SIMD_PRIVATE._i16x8 :
+                bpe == 4 ? (tarray instanceof Float32Array ? _SIMD_PRIVATE._f32x4 : _SIMD_PRIVATE._i32x4) :
+                _SIMD_PRIVATE._f64x2;
+    var n = 8 / bpe;
+    for (var i = 0; i < n; ++i)
+      tarray[index + i] = array[i];
   }
 }
 
@@ -2243,21 +2328,20 @@ if (typeof SIMD.int32x4.mul === "undefined") {
 if (typeof SIMD.int32x4.swizzle === "undefined") {
   /**
     * @param {int32x4} t An instance of float32x4 to be swizzled.
-    * @param {integer} mask One of the 256 swizzle masks, for example, SIMD.XXXX.
+    * @param {integer} x - Index for lane x
+    * @param {integer} y - Index for lane y
+    * @param {integer} z - Index for lane z
+    * @param {integer} w - Index for lane w
     * @return {int32x4} New instance of float32x4 with lanes swizzled.
     */
-  SIMD.int32x4.swizzle = function(t, mask) {
+  SIMD.int32x4.swizzle = function(t, x, y, z, w) {
     t = SIMD.int32x4(t);
-    var _x = (mask) & 0x3;
-    var _y = (mask >> 2) & 0x3;
-    var _z = (mask >> 4) & 0x3;
-    var _w = (mask >> 6) & 0x3;
     var storage = _SIMD_PRIVATE._i32x4;
     storage[0] = t.x;
     storage[1] = t.y;
     storage[2] = t.z;
     storage[3] = t.w;
-    return SIMD.int32x4(storage[_x], storage[_y], storage[_z], storage[_w]);
+    return SIMD.int32x4(storage[x], storage[y], storage[z], storage[w]);
   }
 }
 
@@ -2607,7 +2691,7 @@ if (typeof SIMD.int32x4.shiftLeftByScalar === "undefined") {
   SIMD.int32x4.shiftLeftByScalar = function(a, bits) {
     a = SIMD.int32x4(a);
     if (bits>>>0 >= 32)
-      return SIMD.int32x4.zero();
+      return SIMD.int32x4.splat(0.0);
     var x = a.x << bits;
     var y = a.y << bits;
     var z = a.z << bits;
@@ -2625,7 +2709,7 @@ if (typeof SIMD.int32x4.shiftRightLogicalByScalar === "undefined") {
   SIMD.int32x4.shiftRightLogicalByScalar = function(a, bits) {
     a = SIMD.int32x4(a);
     if (bits>>>0 >= 32)
-      return SIMD.int32x4.zero();
+      return SIMD.int32x4.splat(0.0);
     var x = a.x >>> bits;
     var y = a.y >>> bits;
     var z = a.z >>> bits;
@@ -2708,177 +2792,231 @@ if (typeof SIMD.int32x4.shiftRightArithmetic === "undefined") {
 
 if (typeof SIMD.int32x4.load === "undefined") {
   /**
-    * @param {ArrayBuffer} buffer An instance of ArrayBuffer.
-    * @param {Number} byteOffset An instance of Number.
+    * @param {Typed array} tarray An instance of a typed array.
+    * @param {Number} index An instance of Number.
     * @return {int32x4} New instance of int32x4.
     */
-  SIMD.int32x4.load = function(buffer, byteOffset) {
-    if (!_SIMD_PRIVATE.isArrayBuffer(buffer))
-      throw new TypeError("The 1st argument must be an ArrayBuffer.");
-    if (!_SIMD_PRIVATE.isNumber(byteOffset))
+  SIMD.int32x4.load = function(tarray, index) {
+    if (!_SIMD_PRIVATE.isTypedArray(tarray))
+      throw new TypeError("The 1st argument must be a typed array.");
+    if (!_SIMD_PRIVATE.isNumber(index))
       throw new TypeError("The 2nd argument must be a Number.");
-    if (byteOffset < 0 || (byteOffset + 16) > buffer.byteLength)
-      throw new RangeError("The value of byteOffset is invalid.");
-    var i8a = new Int8Array(buffer, byteOffset, 16);
-    for (var i = 0; i < 16; i++)
-      _SIMD_PRIVATE._i8x16[i] = i8a[i];
-    return SIMD.int32x4(_SIMD_PRIVATE._i32x4[0], _SIMD_PRIVATE._i32x4[1],
-                        _SIMD_PRIVATE._i32x4[2], _SIMD_PRIVATE._i32x4[3]);
+    var bpe = tarray.BYTES_PER_ELEMENT;
+    if (index < 0 || (index * bpe + 16) > tarray.byteLength)
+      throw new RangeError("The value of index is invalid.");
+    var i32temp = _SIMD_PRIVATE._i32x4;
+    var array = bpe == 1 ? _SIMD_PRIVATE._i8x16 :
+                bpe == 2 ? _SIMD_PRIVATE._i16x8 :
+                bpe == 4 ? (tarray instanceof Float32Array ? _SIMD_PRIVATE._f32x4 : i32temp) :
+                _SIMD_PRIVATE._f64x2;
+    var n = 16 / bpe;
+    for (var i = 0; i < n; ++i)
+      array[i] = tarray[index + i];
+    return SIMD.int32x4(i32temp[0], i32temp[1], i32temp[2], i32temp[3]);
   }
 }
 
 if (typeof SIMD.int32x4.loadX === "undefined") {
   /**
-    * @param {ArrayBuffer} buffer An instance of ArrayBuffer.
-    * @param {Number} byteOffset An instance of Number.
+    * @param {Typed array} tarray An instance of a typed array.
+    * @param {Number} index An instance of Number.
     * @return {int32x4} New instance of int32x4.
     */
-  SIMD.int32x4.loadX = function(buffer, byteOffset) {
-    if (!_SIMD_PRIVATE.isArrayBuffer(buffer))
-      throw new TypeError("The 1st argument must be an ArrayBuffer.");
-    if (!_SIMD_PRIVATE.isNumber(byteOffset))
+  SIMD.int32x4.loadX = function(tarray, index) {
+    if (!_SIMD_PRIVATE.isTypedArray(tarray))
+      throw new TypeError("The 1st argument must be a typed array.");
+    if (!_SIMD_PRIVATE.isNumber(index))
       throw new TypeError("The 2nd argument must be a Number.");
-    if (byteOffset < 0 || (byteOffset + 4) > buffer.byteLength)
-      throw new RangeError("The value of byteOffset is invalid.");
-    var i8a = new Int8Array(buffer, byteOffset, 4);
-    for (var i = 0; i < 4; i++)
-      _SIMD_PRIVATE._i8x16[i] = i8a[i];
-    return SIMD.int32x4(_SIMD_PRIVATE._i32x4[0], 0, 0, 0);
+    var bpe = tarray.BYTES_PER_ELEMENT;
+    if (index < 0 || (index * bpe + 4) > tarray.byteLength)
+      throw new RangeError("The value of index is invalid.");
+    var i32temp = _SIMD_PRIVATE._i32x4;
+    var array = bpe == 1 ? _SIMD_PRIVATE._i8x16 :
+                bpe == 2 ? _SIMD_PRIVATE._i16x8 :
+                bpe == 4 ? (tarray instanceof Float32Array ? _SIMD_PRIVATE._f32x4 : i32temp) :
+                _SIMD_PRIVATE._f64x2;
+    var n = 4 / bpe;
+    for (var i = 0; i < n; ++i)
+      array[i] = tarray[index + i];
+    return SIMD.int32x4(i32temp[0], 0, 0, 0);
   }
 }
 
 if (typeof SIMD.int32x4.loadXY === "undefined") {
   /**
-    * @param {ArrayBuffer} buffer An instance of ArrayBuffer.
-    * @param {Number} byteOffset An instance of Number.
+    * @param {Typed array} tarray An instance of a typed array.
+    * @param {Number} index An instance of Number.
     * @return {int32x4} New instance of int32x4.
     */
-  SIMD.int32x4.loadXY = function(buffer, byteOffset) {
-    if (!_SIMD_PRIVATE.isArrayBuffer(buffer))
-      throw new TypeError("The 1st argument must be an ArrayBuffer.");
-    if (!_SIMD_PRIVATE.isNumber(byteOffset))
+  SIMD.int32x4.loadXY = function(tarray, index) {
+    if (!_SIMD_PRIVATE.isTypedArray(tarray))
+      throw new TypeError("The 1st argument must be a typed array.");
+    if (!_SIMD_PRIVATE.isNumber(index))
       throw new TypeError("The 2nd argument must be a Number.");
-    if (byteOffset < 0 || (byteOffset + 8) > buffer.byteLength)
-      throw new RangeError("The value of byteOffset is invalid.");
-    var i8a = new Int8Array(buffer, byteOffset, 8);
-    for (var i = 0; i < 8; i++)
-      _SIMD_PRIVATE._i8x16[i] = i8a[i];
-    return SIMD.int32x4(_SIMD_PRIVATE._i32x4[0], _SIMD_PRIVATE._i32x4[1], 0, 0);
+    var bpe = tarray.BYTES_PER_ELEMENT;
+    if (index < 0 || (index * bpe + 8) > tarray.byteLength)
+      throw new RangeError("The value of index is invalid.");
+    var i32temp = _SIMD_PRIVATE._i32x4;
+    var array = bpe == 1 ? _SIMD_PRIVATE._i8x16 :
+                bpe == 2 ? _SIMD_PRIVATE._i16x8 :
+                bpe == 4 ? (tarray instanceof Float32Array ? _SIMD_PRIVATE._f32x4 : i32temp) :
+                _SIMD_PRIVATE._f64x2;
+    var n = 8 / bpe;
+    for (var i = 0; i < n; ++i)
+      array[i] = tarray[index + i];
+    return SIMD.int32x4(i32temp[0], i32temp[1], 0, 0);
   }
 }
 
 if (typeof SIMD.int32x4.loadXYZ === "undefined") {
   /**
-    * @param {ArrayBuffer} buffer An instance of ArrayBuffer.
-    * @param {Number} byteOffset An instance of Number.
+    * @param {Typed array} tarray An instance of a typed array.
+    * @param {Number} index An instance of Number.
     * @return {int32x4} New instance of int32x4.
     */
-  SIMD.int32x4.loadXYZ = function(buffer, byteOffset) {
-    if (!_SIMD_PRIVATE.isArrayBuffer(buffer))
-      throw new TypeError("The 1st argument must be an ArrayBuffer.");
-    if (!_SIMD_PRIVATE.isNumber(byteOffset))
+  SIMD.int32x4.loadXYZ = function(tarray, index) {
+    if (!_SIMD_PRIVATE.isTypedArray(tarray))
+      throw new TypeError("The 1st argument must be a typed array.");
+    if (!_SIMD_PRIVATE.isNumber(index))
       throw new TypeError("The 2nd argument must be a Number.");
-    if (byteOffset < 0 || (byteOffset + 12) > buffer.byteLength)
-      throw new RangeError("The value of byteOffset is invalid.");
-    var i8a = new Int8Array(buffer, byteOffset, 12);
-    for (var i = 0; i < 12; i++)
-      _SIMD_PRIVATE._i8x16[i] = i8a[i];
-    return SIMD.int32x4(_SIMD_PRIVATE._i32x4[0], _SIMD_PRIVATE._i32x4[1],
-                        _SIMD_PRIVATE._i32x4[2], 0);
+    var bpe = tarray.BYTES_PER_ELEMENT;
+    if (index < 0 || (index * bpe + 12) > tarray.byteLength)
+      throw new RangeError("The value of index is invalid.");
+    var i32temp = _SIMD_PRIVATE._i32x4;
+    var array = bpe == 1 ? _SIMD_PRIVATE._i8x16 :
+                bpe == 2 ? _SIMD_PRIVATE._i16x8 :
+                bpe == 4 ? (tarray instanceof Float32Array ? _SIMD_PRIVATE._f32x4 : i32temp) :
+                _SIMD_PRIVATE._f64x2;
+    var n = 12 / bpe;
+    for (var i = 0; i < n; ++i)
+      array[i] = tarray[index + i];
+    return SIMD.int32x4(i32temp[0], i32temp[1], i32temp[2], 0);
   }
 }
 
 if (typeof SIMD.int32x4.store === "undefined") {
   /**
-    * @param {ArrayBuffer} buffer An instance of ArrayBuffer.
-    * @param {Number} byteOffset An instance of Number.
+    * @param {Typed array} tarray An instance of a typed array.
+    * @param {Number} index An instance of Number.
     * @param {int32x4} value An instance of int32x4.
     * @return {void}
     */
-  SIMD.int32x4.store = function(buffer, byteOffset, value) {
-    if (!_SIMD_PRIVATE.isArrayBuffer(buffer))
-      throw new TypeError("The 1st argument must be an ArrayBuffer.");
-    if (!_SIMD_PRIVATE.isNumber(byteOffset))
+  SIMD.int32x4.store = function(tarray, index, value) {
+    if (!_SIMD_PRIVATE.isTypedArray(tarray))
+      throw new TypeError("The 1st argument must be a typed array.");
+    if (!_SIMD_PRIVATE.isNumber(index))
       throw new TypeError("The 2nd argument must be a Number.");
-    if (byteOffset < 0 || (byteOffset + 16) > buffer.byteLength)
-      throw new RangeError("The value of byteOffset is invalid.");
+    var bpe = tarray.BYTES_PER_ELEMENT;
+    if (index < 0 || (index * bpe + 16) > tarray.byteLength)
+      throw new RangeError("The value of index is invalid.");
     value = SIMD.int32x4(value);
     _SIMD_PRIVATE._i32x4[0] = value.x;
     _SIMD_PRIVATE._i32x4[1] = value.y;
     _SIMD_PRIVATE._i32x4[2] = value.z;
     _SIMD_PRIVATE._i32x4[3] = value.w;
-    var i8a = new Int8Array(buffer, byteOffset, 16);
-    for (var i = 0; i < 16; i++)
-      i8a[i] = _SIMD_PRIVATE._i8x16[i];
+    var array = bpe == 1 ? _SIMD_PRIVATE._i8x16 :
+                bpe == 2 ? _SIMD_PRIVATE._i16x8 :
+                bpe == 4 ? (tarray instanceof Float32Array ? _SIMD_PRIVATE._f32x4 : _SIMD_PRIVATE._i32x4) :
+                _SIMD_PRIVATE._f64x2;
+    var n = 16 / bpe;
+    for (var i = 0; i < n; ++i)
+      tarray[index + i] = array[i];
   }
 }
 
 if (typeof SIMD.int32x4.storeX === "undefined") {
   /**
-    * @param {ArrayBuffer} buffer An instance of ArrayBuffer.
-    * @param {Number} byteOffset An instance of Number.
+    * @param {Typed array} tarray An instance of a typed array.
+    * @param {Number} index An instance of Number.
     * @param {int32x4} value An instance of int32x4.
     * @return {void}
     */
-  SIMD.int32x4.storeX = function(buffer, byteOffset, value) {
-    if (!_SIMD_PRIVATE.isArrayBuffer(buffer))
-      throw new TypeError("The 1st argument must be an ArrayBuffer.");
-    if (!_SIMD_PRIVATE.isNumber(byteOffset))
+  SIMD.int32x4.storeX = function(tarray, index, value) {
+    if (!_SIMD_PRIVATE.isTypedArray(tarray))
+      throw new TypeError("The 1st argument must be a typed array.");
+    if (!_SIMD_PRIVATE.isNumber(index))
       throw new TypeError("The 2nd argument must be a Number.");
-    if (byteOffset < 0 || (byteOffset + 4) > buffer.byteLength)
-      throw new RangeError("The value of byteOffset is invalid.");
+    var bpe = tarray.BYTES_PER_ELEMENT;
+    if (index < 0 || (index * bpe + 4) > tarray.byteLength)
+      throw new RangeError("The value of index is invalid.");
     value = SIMD.int32x4(value);
-    _SIMD_PRIVATE._i32x4[0] = value.x;
-    var i8a = new Int8Array(buffer, byteOffset, 4);
-    for (var i = 0; i < 4; i++)
-      i8a[i] = _SIMD_PRIVATE._i8x16[i];
+    if (bpe == 8) {
+      // tarray's elements are too wide. Just create a new view; this is rare.
+      var view = new Int32Array(tarray.buffer, tarray.byteOffset + index * 8, 1);
+      view[0] = value.x;
+    } else {
+      _SIMD_PRIVATE._i32x4[0] = value.x;
+      var array = bpe == 1 ? _SIMD_PRIVATE._i8x16 :
+                  bpe == 2 ? _SIMD_PRIVATE._i16x8 :
+                  (tarray instanceof Float32Array ? _SIMD_PRIVATE._f32x4 : _SIMD_PRIVATE._i32x4);
+      var n = 4 / bpe;
+      for (var i = 0; i < n; ++i)
+        tarray[index + i] = array[i];
+    }
   }
 }
 
 if (typeof SIMD.int32x4.storeXY === "undefined") {
   /**
-    * @param {ArrayBuffer} buffer An instance of ArrayBuffer.
-    * @param {Number} byteOffset An instance of Number.
+    * @param {Typed array} tarray An instance of a typed array.
+    * @param {Number} index An instance of Number.
     * @param {int32x4} value An instance of int32x4.
     * @return {void}
     */
-  SIMD.int32x4.storeXY = function(buffer, byteOffset, value) {
-    if (!_SIMD_PRIVATE.isArrayBuffer(buffer))
-      throw new TypeError("The 1st argument must be an ArrayBuffer.");
-    if (!_SIMD_PRIVATE.isNumber(byteOffset))
+  SIMD.int32x4.storeXY = function(tarray, index, value) {
+    if (!_SIMD_PRIVATE.isTypedArray(tarray))
+      throw new TypeError("The 1st argument must be a typed array.");
+    if (!_SIMD_PRIVATE.isNumber(index))
       throw new TypeError("The 2nd argument must be a Number.");
-    if (byteOffset < 0 || (byteOffset + 8) > buffer.byteLength)
-      throw new RangeError("The value of byteOffset is invalid.");
+    var bpe = tarray.BYTES_PER_ELEMENT;
+    if (index < 0 || (index * bpe + 8) > tarray.byteLength)
+      throw new RangeError("The value of index is invalid.");
     value = SIMD.int32x4(value);
     _SIMD_PRIVATE._i32x4[0] = value.x;
     _SIMD_PRIVATE._i32x4[1] = value.y;
-    var i8a = new Int8Array(buffer, byteOffset, 8);
-    for (var i = 0; i < 8; i++)
-      i8a[i] = _SIMD_PRIVATE._i8x16[i];
+    var array = bpe == 1 ? _SIMD_PRIVATE._i8x16 :
+                bpe == 2 ? _SIMD_PRIVATE._i16x8 :
+                bpe == 4 ? (tarray instanceof Float32Array ? _SIMD_PRIVATE._f32x4 : _SIMD_PRIVATE._i32x4) :
+                _SIMD_PRIVATE._f64x2;
+    var n = 8 / bpe;
+    for (var i = 0; i < n; ++i)
+      tarray[index + i] = array[i];
   }
 }
 
 if (typeof SIMD.int32x4.storeXYZ === "undefined") {
   /**
-    * @param {ArrayBuffer} buffer An instance of ArrayBuffer.
-    * @param {Number} byteOffset An instance of Number.
+    * @param {Typed array} tarray An instance of a typed array.
+    * @param {Number} index An instance of Number.
     * @param {int32x4} value An instance of int32x4.
     * @return {void}
     */
-  SIMD.int32x4.storeXYZ = function(buffer, byteOffset, value) {
-    if (!_SIMD_PRIVATE.isArrayBuffer(buffer))
-      throw new TypeError("The 1st argument must be an ArrayBuffer.");
-    if (!_SIMD_PRIVATE.isNumber(byteOffset))
+  SIMD.int32x4.storeXYZ = function(tarray, index, value) {
+    if (!_SIMD_PRIVATE.isTypedArray(tarray))
+      throw new TypeError("The 1st argument must be a typed array.");
+    if (!_SIMD_PRIVATE.isNumber(index))
       throw new TypeError("The 2nd argument must be a Number.");
-    if (byteOffset < 0 || (byteOffset + 12) > buffer.byteLength)
-      throw new RangeError("The value of byteOffset is invalid.");
+    var bpe = tarray.BYTES_PER_ELEMENT;
+    if (index < 0 || (index * bpe + 12) > tarray.byteLength)
+      throw new RangeError("The value of index is invalid.");
     value = SIMD.int32x4(value);
-    _SIMD_PRIVATE._i32x4[0] = value.x;
-    _SIMD_PRIVATE._i32x4[1] = value.y;
-    _SIMD_PRIVATE._i32x4[2] = value.z;
-    var i8a = new Int8Array(buffer, byteOffset, 12);
-    for (var i = 0; i < 12; i++)
-      i8a[i] = _SIMD_PRIVATE._i8x16[i];
+    if (bpe == 8) {
+      // tarray's elements are too wide. Just create a new view; this is rare.
+      var view = new Int32Array(tarray.buffer, tarray.byteOffset + index * 8, 3);
+      view[0] = value.x;
+      view[1] = value.y;
+      view[2] = value.z;
+    } else {
+      _SIMD_PRIVATE._i32x4[0] = value.x;
+      _SIMD_PRIVATE._i32x4[1] = value.y;
+      _SIMD_PRIVATE._i32x4[2] = value.z;
+      var array = bpe == 1 ? _SIMD_PRIVATE._i8x16 :
+                  bpe == 2 ? _SIMD_PRIVATE._i16x8 :
+                  (tarray instanceof Float32Array ? _SIMD_PRIVATE._f32x4 : _SIMD_PRIVATE._i32x4);
+      var n = 12 / bpe;
+      for (var i = 0; i < n; ++i)
+        tarray[index + i] = array[i];
+    }
   }
 }
 
@@ -3366,47 +3504,62 @@ if (typeof SIMD.int16x8.shiftRightArithmetic === "undefined") {
 
 if (typeof SIMD.int16x8.load === "undefined") {
   /**
-    * @param {ArrayBuffer} buffer An instance of ArrayBuffer.
-    * @param {Number} byteOffset An instance of Number.
+    * @param {Typed array} tarray An instance of a typed array.
+    * @param {Number} index An instance of Number.
     * @return {int16x8} New instance of int16x8.
     */
-  SIMD.int16x8.load = function(buffer, byteOffset) {
-    if (!_SIMD_PRIVATE.isArrayBuffer(buffer))
-      throw new TypeError("The 1st argument must be an ArrayBuffer.");
-    if (!_SIMD_PRIVATE.isNumber(byteOffset))
+  SIMD.int16x8.load = function(tarray, index) {
+    if (!_SIMD_PRIVATE.isTypedArray(tarray))
+      throw new TypeError("The 1st argument must be a typed array.");
+    if (!_SIMD_PRIVATE.isNumber(index))
       throw new TypeError("The 2nd argument must be a Number.");
-    if (byteOffset < 0 || (byteOffset + 16) > buffer.byteLength)
-      throw new RangeError("The value of byteOffset is invalid.");
-    var i16a = new Int16Array(buffer, byteOffset, 8);
-    return SIMD.int16x8(i16a[0], i16a[1], i16a[2], i16a[3],
-                        i16a[4], i16a[5], i16a[6], i16a[7]);
+    var bpe = tarray.BYTES_PER_ELEMENT;
+    if (index < 0 || (index * bpe + 16) > tarray.byteLength)
+      throw new RangeError("The value of index is invalid.");
+    var i16temp = _SIMD_PRIVATE._i16x8;
+    var array = bpe == 1 ? _SIMD_PRIVATE._i8x16 :
+                bpe == 2 ? i16temp :
+                bpe == 4 ? (tarray instanceof Float32Array ? _SIMD_PRIVATE._f32x4 : _SIMD_PRIVATE._i32x4) :
+                _SIMD_PRIVATE._f64x2;
+    var n = 16 / bpe;
+    for (var i = 0; i < n; ++i)
+      array[i] = tarray[index + i];
+    return SIMD.int16x8(i16temp[0], i16temp[1], i16temp[2], i16temp[3],
+                        i16temp[4], i16temp[5], i16temp[6], i16temp[7]);
   }
 }
 
 if (typeof SIMD.int16x8.store === "undefined") {
   /**
-    * @param {ArrayBuffer} buffer An instance of ArrayBuffer.
-    * @param {Number} byteOffset An instance of Number.
+    * @param {Typed array} tarray An instance of a typed array.
+    * @param {Number} index An instance of Number.
     * @param {int16x8} value An instance of int16x8.
     * @return {void}
     */
-  SIMD.int16x8.store = function(buffer, byteOffset, value) {
-    if (!_SIMD_PRIVATE.isArrayBuffer(buffer))
-      throw new TypeError("The 1st argument must be an ArrayBuffer.");
-    if (!_SIMD_PRIVATE.isNumber(byteOffset))
+  SIMD.int16x8.store = function(tarray, index, value) {
+    if (!_SIMD_PRIVATE.isTypedArray(tarray))
+      throw new TypeError("The 1st argument must be a typed array.");
+    if (!_SIMD_PRIVATE.isNumber(index))
       throw new TypeError("The 2nd argument must be a Number.");
-    if (byteOffset < 0 || (byteOffset + 16) > buffer.byteLength)
-      throw new RangeError("The value of byteOffset is invalid.");
+    var bpe = tarray.BYTES_PER_ELEMENT;
+    if (index < 0 || (index * bpe + 16) > tarray.byteLength)
+      throw new RangeError("The value of index is invalid.");
     value = SIMD.int16x8(value);
-    var i16a = new Int16Array(buffer, byteOffset, 8);
-    i16a[0] = value.s0;
-    i16a[1] = value.s1;
-    i16a[2] = value.s2;
-    i16a[3] = value.s3;
-    i16a[4] = value.s4;
-    i16a[5] = value.s5;
-    i16a[6] = value.s6;
-    i16a[7] = value.s7;
+    _SIMD_PRIVATE._i16x8[0] = value.s0;
+    _SIMD_PRIVATE._i16x8[1] = value.s1;
+    _SIMD_PRIVATE._i16x8[2] = value.s2;
+    _SIMD_PRIVATE._i16x8[3] = value.s3;
+    _SIMD_PRIVATE._i16x8[4] = value.s4;
+    _SIMD_PRIVATE._i16x8[5] = value.s5;
+    _SIMD_PRIVATE._i16x8[6] = value.s6;
+    _SIMD_PRIVATE._i16x8[7] = value.s7;
+    var array = bpe == 1 ? _SIMD_PRIVATE._i8x16 :
+                bpe == 2 ? _SIMD_PRIVATE._i16x8 :
+                bpe == 4 ? (tarray instanceof Float32Array ? _SIMD_PRIVATE._f32x4 : _SIMD_PRIVATE._i32x4) :
+                _SIMD_PRIVATE._f64x2;
+    var n = 16 / bpe;
+    for (var i = 0; i < n; ++i)
+      tarray[index + i] = array[i];
   }
 }
 
@@ -4140,57 +4293,72 @@ if (typeof SIMD.int8x16.shiftRightArithmetic === "undefined") {
 
 if (typeof SIMD.int8x16.load === "undefined") {
   /**
-    * @param {ArrayBuffer} buffer An instance of ArrayBuffer.
-    * @param {Number} byteOffset An instance of Number.
+    * @param {Typed array} tarray An instance of a typed array.
+    * @param {Number} index An instance of Number.
     * @return {int8x16} New instance of int8x16.
     */
-  SIMD.int8x16.load = function(buffer, byteOffset) {
-    if (!_SIMD_PRIVATE.isArrayBuffer(buffer))
-      throw new TypeError("The 1st argument must be an ArrayBuffer.");
-    if (!_SIMD_PRIVATE.isNumber(byteOffset))
+  SIMD.int8x16.load = function(tarray, index) {
+    if (!_SIMD_PRIVATE.isTypedArray(tarray))
+      throw new TypeError("The 1st argument must be a typed array.");
+    if (!_SIMD_PRIVATE.isNumber(index))
       throw new TypeError("The 2nd argument must be a Number.");
-    if (byteOffset < 0 || (byteOffset + 16) > buffer.byteLength)
-      throw new RangeError("The value of byteOffset is invalid.");
-    var i8a = new Int8Array(buffer, byteOffset, 16);
-    return SIMD.int8x16(i8a[0], i8a[1], i8a[2], i8a[3],
-                        i8a[4], i8a[5], i8a[6], i8a[7],
-                        i8a[8], i8a[9], i8a[10], i8a[11],
-                        i8a[12], i8a[13], i8a[14], i8a[15]);
+    var bpe = tarray.BYTES_PER_ELEMENT;
+    if (index < 0 || (index * bpe + 16) > tarray.byteLength)
+      throw new RangeError("The value of index is invalid.");
+    var i8temp = _SIMD_PRIVATE._i16x8;
+    var array = bpe == 1 ? i8temp :
+                bpe == 2 ? _SIMD_PRIVATE._i16x8 :
+                bpe == 4 ? (tarray instanceof Float32Array ? _SIMD_PRIVATE._f32x4 : _SIMD_PRIVATE._i32x4) :
+                _SIMD_PRIVATE._f64x2;
+    var n = 16 / bpe;
+    for (var i = 0; i < n; ++i)
+      array[i] = tarray[index + i];
+    return SIMD.int8x16(i8temp[0], i8temp[1], i8temp[2], i8temp[3],
+                        i8temp[4], i8temp[5], i8temp[6], i8temp[7],
+                        i8temp[8], i8temp[9], i8temp[10], i8temp[11],
+                        i8temp[12], i8temp[13], i8temp[14], i8temp[15]);
   }
 }
 
 if (typeof SIMD.int8x16.store === "undefined") {
   /**
-    * @param {ArrayBuffer} buffer An instance of ArrayBuffer.
-    * @param {Number} byteOffset An instance of Number.
+    * @param {Typed array} tarray An instance of a typed array.
+    * @param {Number} index An instance of Number.
     * @param {int8x16} value An instance of int8x16.
     * @return {void}
     */
-  SIMD.int8x16.store = function(buffer, byteOffset, value) {
-    if (!_SIMD_PRIVATE.isArrayBuffer(buffer))
-      throw new TypeError("The 1st argument must be an ArrayBuffer.");
-    if (!_SIMD_PRIVATE.isNumber(byteOffset))
+  SIMD.int8x16.store = function(tarray, index, value) {
+    if (!_SIMD_PRIVATE.isTypedArray(tarray))
+      throw new TypeError("The 1st argument must be a typed array.");
+    if (!_SIMD_PRIVATE.isNumber(index))
       throw new TypeError("The 2nd argument must be a Number.");
-    if (byteOffset < 0 || (byteOffset + 16) > buffer.byteLength)
-      throw new RangeError("The value of byteOffset is invalid.");
+    var bpe = tarray.BYTES_PER_ELEMENT;
+    if (index < 0 || (index * bpe + 16) > tarray.byteLength)
+      throw new RangeError("The value of index is invalid.");
     value = SIMD.int8x16(value);
-    var i8a = new Int8Array(buffer, byteOffset, 16);
-    i8a[0] = value.s0;
-    i8a[1] = value.s1;
-    i8a[2] = value.s2;
-    i8a[3] = value.s3;
-    i8a[4] = value.s4;
-    i8a[5] = value.s5;
-    i8a[6] = value.s6;
-    i8a[7] = value.s7;
-    i8a[8] = value.s8;
-    i8a[9] = value.s9;
-    i8a[10] = value.s10;
-    i8a[11] = value.s11;
-    i8a[12] = value.s12;
-    i8a[13] = value.s13;
-    i8a[14] = value.s14;
-    i8a[15] = value.s15;
+    _SIMD_PRIVATE._i8x16[0] = value.s0;
+    _SIMD_PRIVATE._i8x16[1] = value.s1;
+    _SIMD_PRIVATE._i8x16[2] = value.s2;
+    _SIMD_PRIVATE._i8x16[3] = value.s3;
+    _SIMD_PRIVATE._i8x16[4] = value.s4;
+    _SIMD_PRIVATE._i8x16[5] = value.s5;
+    _SIMD_PRIVATE._i8x16[6] = value.s6;
+    _SIMD_PRIVATE._i8x16[7] = value.s7;
+    _SIMD_PRIVATE._i8x16[8] = value.s8;
+    _SIMD_PRIVATE._i8x16[9] = value.s9;
+    _SIMD_PRIVATE._i8x16[10] = value.s10;
+    _SIMD_PRIVATE._i8x16[11] = value.s11;
+    _SIMD_PRIVATE._i8x16[12] = value.s12;
+    _SIMD_PRIVATE._i8x16[13] = value.s13;
+    _SIMD_PRIVATE._i8x16[14] = value.s14;
+    _SIMD_PRIVATE._i8x16[15] = value.s15;
+    var array = bpe == 1 ? _SIMD_PRIVATE._i8x16 :
+                bpe == 2 ? _SIMD_PRIVATE._i16x8 :
+                bpe == 4 ? (tarray instanceof Float32Array ? _SIMD_PRIVATE._f32x4 : _SIMD_PRIVATE._i32x4) :
+                _SIMD_PRIVATE._f64x2;
+    var n = 16 / bpe;
+    for (var i = 0; i < n; ++i)
+      tarray[index + i] = array[i];
   }
 }
 
