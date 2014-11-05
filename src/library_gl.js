@@ -1630,6 +1630,25 @@ var LibraryGL = {
     {{{ makeSetValue('data', '0', 'ret', 'i32') }}};
   },
 
+  // Uniform Buffer objects
+  glBindBufferBase__sig: 'viii',
+  glBindBufferBase: function(target, index, buffer) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.buffers, buffer, 'glBindBufferBase', 'buffer');
+#endif
+    var bufferObj = buffer ? GL.buffers[buffer] : null;
+    GLctx.bindBufferBase(target, index, bufferObj);
+  },
+
+  glBindBufferRange__sig: 'viiiii',
+  glBindBufferRange: function(target, index, buffer, offset, ptrsize) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.buffers, buffer, 'glBindBufferRange', 'buffer');
+#endif
+    var bufferObj = buffer ? GL.buffers[buffer] : null;
+    GLctx.bindBufferRange(target, index, bufferObj, offset, ptrsize);
+  },
+
   glGetUniformIndices__sig: 'viiii',
   glGetUniformIndices: function(program, uniformCount, uniformNames, uniformIndices) {
 #if GL_ASSERTIONS
