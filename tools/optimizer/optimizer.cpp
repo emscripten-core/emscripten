@@ -1,5 +1,4 @@
 #include <sys/stat.h>
-#include <assert.h>
 #include <string.h>
 #include <math.h>
 #include <stdint.h>
@@ -8,7 +7,6 @@
 #include <map>
 #include <unordered_set>
 #include <unordered_map>
-#include <iostream>
 
 #include "minijson.h"
 
@@ -21,12 +19,6 @@ Ref doc;
 //==================
 // Infrastructure
 //==================
-
-void dump(const char *str, Ref node, bool pretty=false) {
-  std::cerr << str << ": ";
-  node->stringify(std::cerr, pretty);
-  std::cerr << std::endl;
-}
 
 int parseInt(const char *str) {
   int ret = *str - '0';
@@ -448,7 +440,8 @@ AsmData normalizeAsm(Ref func) {
     if (node[0] != "stat" || node[1][0] != "assign" || node[1][2][0] != "name") break;
     node = node[1];
     Ref name = node[2][1];
-    if (!!func[2] && func[2]->indexOf(name) < 0) break; // not an assign into a parameter, but a global
+    int index = func[2]->indexOf(name);
+    if (index < 0) break; // not an assign into a parameter, but a global
     std::string& str = name->getString();
     if (data.params.count(str) > 0) break; // already done that param, must be starting function body
     data.params[str] = func[2]->indexOf(name);
@@ -477,9 +470,10 @@ AsmData normalizeAsm(Ref func) {
   outside:
   // look for other var definitions and collect them
   while (i < stats->size()) {
-    traversePre(stats[i], [](Ref node) {
+    traversePre(stats[i], [&](Ref node) {
       Ref type = node[0];
       if (type == "var") {
+        dump("bad, seeing a var in need of fixing", func);
         assert(0); //, 'should be no vars to fix! ' + func[1] + ' : ' + JSON.stringify(node));
       }
     });
@@ -776,7 +770,6 @@ void simplifyExpressions(Ref ast) {
     };
 
     removeMultipleOrZero();
-    return;
 
     // & and heap-related optimizations
 

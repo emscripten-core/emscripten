@@ -12,13 +12,17 @@
 #include <memory>
 #include <vector>
 #include <ostream>
+#include <iostream>
 #include <iomanip>
 #include <functional>
 
 #define err(str) fprintf(stderr, str "\n");
 #define errv(str, ...) fprintf(stderr, str "\n", __VA_ARGS__);
 
+class Ref;
 struct Value;
+
+void dump(const char *str, Ref node, bool pretty=false);
 
 // Reference to a value. Simple shared_ptr, plus [] operator for convenience - we work on lots of arrays
 class Ref : public std::shared_ptr<Value> {
@@ -36,6 +40,7 @@ public:
   bool operator==(const char *str); // comparison to string, which is by value
   bool operator!=(const char *str);
   bool operator==(double d) { assert(0); } // prevent Ref == number, which is potentially ambiguous; use ->getNumber() == number
+  bool operator==(Ref other);
   bool operator!(); // check if null, in effect
 };
 
@@ -387,7 +392,19 @@ bool Ref::operator!=(const char *str) {
   return get()->isString() ? get()->getString() != str : true;
 }
 
+bool Ref::operator==(Ref other) {
+  return **this == *other;
+}
+
 bool Ref::operator!() {
   return get()->isNull();
+}
+
+// dump
+
+void dump(const char *str, Ref node, bool pretty) {
+  std::cerr << str << ": ";
+  node->stringify(std::cerr, pretty);
+  std::cerr << std::endl;
 }
 
