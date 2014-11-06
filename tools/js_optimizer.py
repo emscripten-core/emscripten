@@ -293,7 +293,7 @@ EMSCRIPTEN_FUNCS();
     filenames = []
 
   if len(filenames) > 0:
-    if not use_native(passes, source_map):
+    if not use_native(passes, source_map) or 'receiveJSON' not in passes or 'emitJSON' not in passes:
       commands = map(lambda filename: js_engine +
           [JS_OPTIMIZER, filename, 'noPrintMetadata'] +
           (['--debug'] if source_map else []) + passes, filenames)
@@ -403,6 +403,8 @@ EMSCRIPTEN_FUNCS();
   return filename
 
 def run(filename, passes, js_engine=shared.NODE_JS, jcache=False, source_map=False, extra_info=None, just_split=False, just_concat=False):
+  if 'receiveJSON' in passes: just_split = True
+  if 'emitJSON' in passes: just_concat = True
   js_engine = shared.listify(js_engine)
   return temp_files.run_and_clean(lambda: run_on_js(filename, passes, js_engine, jcache, source_map, extra_info, just_split, just_concat))
 
