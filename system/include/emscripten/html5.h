@@ -256,11 +256,17 @@ extern EMSCRIPTEN_RESULT emscripten_get_fullscreen_status(EmscriptenFullscreenCh
 #define EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_STDDEF 1
 #define EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF  2
 
+#define EMSCRIPTEN_FULLSCREEN_FILTERING int
+#define EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT 0
+#define EMSCRIPTEN_FULLSCREEN_FILTERING_NEAREST 1
+#define EMSCRIPTEN_FULLSCREEN_FILTERING_BILINEAR 2
+
 typedef EM_BOOL (*em_canvasresized_callback_func)(int eventType, const void *reserved, void *userData);
 
 typedef struct EmscriptenFullscreenStrategy {
   EMSCRIPTEN_FULLSCREEN_SCALE scaleMode;
   EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE canvasResolutionScaleMode;
+  EMSCRIPTEN_FULLSCREEN_FILTERING filteringMode;
   em_canvasresized_callback_func canvasResizedCallback;
   void *canvasResizedCallbackUserData;
 } EmscriptenFullscreenStrategy;

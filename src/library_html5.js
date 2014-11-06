@@ -618,6 +618,11 @@ var LibraryJSEvents = {
       target.style.width = cssWidth + 'px';
       target.style.height = cssHeight + 'px';
 
+      if (strategy.filteringMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_FILTERING_NEAREST') }}}) {
+        target.style.imageRendering = '-moz-crisp-edges';
+        target.style['-ms-interpolation-mode'] = 'nearest-neighbor';
+      }
+
       var dpiScale = (strategy.canvasResolutionScaleMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF') }}}) ? window.devicePixelRatio : 1;
       if (strategy.canvasResolutionScaleMode != {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE') }}}) {
         target.width = cssWidth * dpiScale;
@@ -1218,7 +1223,10 @@ var LibraryJSEvents = {
     var oldDocumentBodyMargin = document.body.style.margin;
     var oldDocumentOverflow = document.documentElement.style.overflow; // Chrome, Firefox
     var oldDocumentScroll = document.body.scroll; // IE
-    function restoreOldStyle() {
+    var oldImageRendering = canvas.style.imageRendering;
+    var oldInterpolationMode = canvas.style['-ms-interpolation-mode'];
+
+  function restoreOldStyle() {
       var fullscreenElement = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
       if (!fullscreenElement) {
         document.removeEventListener('fullscreenchange', restoreOldStyle);
@@ -1247,6 +1255,8 @@ var LibraryJSEvents = {
         document.body.style.margin = oldDocumentBodyMargin;
         document.documentElement.style.overflow = oldDocumentOverflow; // Chrome, Firefox
         document.body.scroll = oldDocumentScroll; // IE
+        canvas.style.imageRendering = oldImageRendering;
+        canvas.style['-ms-interpolation-mode'] = oldInterpolationMode;
         if (canvas.GLctxObject) canvas.GLctxObject.GLctx.viewport(0, 0, oldWidth, oldHeight);
 
         if (__currentFullscreenStrategy.canvasResizedCallback) {
@@ -1400,6 +1410,7 @@ var LibraryJSEvents = {
     // These options perform no added logic, but just bare request fullscreen.
     strategy.scaleMode = {{{ cDefine('EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT') }}};
     strategy.canvasResolutionScaleMode = {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE') }}};
+    strategy.filteringMode = {{{ cDefine('EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT') }}};
     strategy.deferUntilInEventHandler = deferUntilInEventHandler;
 
     return _emscripten_do_request_fullscreen(target, strategy);
@@ -1410,6 +1421,7 @@ var LibraryJSEvents = {
     var strategy = {};
     strategy.scaleMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.scaleMode, 'i32') }}};
     strategy.canvasResolutionScaleMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResolutionScaleMode, 'i32') }}};
+    strategy.filteringMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.filteringMode, 'i32') }}};
     strategy.deferUntilInEventHandler = deferUntilInEventHandler;
     strategy.canvasResizedCallback = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallback, 'i32') }}};
     strategy.canvasResizedCallbackUserData = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallbackUserData, 'i32') }}};
@@ -1427,6 +1439,7 @@ var LibraryJSEvents = {
     var strategy = {};
     strategy.scaleMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.scaleMode, 'i32') }}};
     strategy.canvasResolutionScaleMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResolutionScaleMode, 'i32') }}};
+    strategy.filteringMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.filteringMode, 'i32') }}};
     strategy.canvasResizedCallback = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallback, 'i32') }}};
     strategy.canvasResizedCallbackUserData = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallbackUserData, 'i32') }}};
     strategy.target = target;

@@ -1174,7 +1174,10 @@
             "EMSCRIPTEN_FULLSCREEN_SCALE_CENTER",
             "EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE",
             "EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_STDDEF",
-            "EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF"
+            "EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF",
+            "EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT",
+            "EMSCRIPTEN_FULLSCREEN_FILTERING_NEAREST",
+            "EMSCRIPTEN_FULLSCREEN_FILTERING_BILINEAR"
         ],
         "structs": {
             "EmscriptenKeyboardEvent": [
@@ -1332,6 +1335,7 @@
             "EmscriptenFullscreenStrategy": [
               "scaleMode",
               "canvasResolutionScaleMode",
+              "filteringMode",
               "canvasResizedCallback",
               "canvasResizedCallbackUserData"
             ]
