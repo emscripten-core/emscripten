@@ -479,7 +479,7 @@ Ref makeAsmVarDef(const std::string& v_, AsmType type) {
       if (ASM_FLOAT_ZERO.size() > 0) {
         val = makeName(ASM_FLOAT_ZERO.c_str());
       } else {
-        return make2("call", makeName("Math_fround"), &(new ArrayValue())->push_back(makeNum(0)));
+        val = make2("call", makeName("Math_fround"), &(new ArrayValue())->push_back(makeNum(0)));
       }
       break;
     }

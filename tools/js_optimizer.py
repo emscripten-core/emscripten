@@ -106,7 +106,7 @@ def run_on_chunk(command):
       filename = command[index + 1]
     else:
       filename = command[1]
-    #print >> sys.stderr, 'running js optimizer command', command, filename
+    #print >> sys.stderr, 'running js optimizer command', ' '.join(map(lambda c: c if c != filename else 'input.txt', command))
     #shutil.copyfile(filename, '/tmp/emscripten_temp/input.txt')
     output = subprocess.Popen(command, stdout=subprocess.PIPE).communicate()[0]
     assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
