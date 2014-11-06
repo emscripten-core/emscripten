@@ -912,7 +912,7 @@ void simplifyExpressions(Ref ast) {
           int ii = 5-i;
           for (int j = 2; j <= 3; j++) {
             if (node[i][0] == "num" && node[ii][0] == "binary" && node[ii][1] == "+" && node[ii][j][0] == "num") {
-              node[ii][j][1]->setNumber(int(node[ii][j][1]) + int(node[i][1]->getNumber()));
+              node[ii][j][1]->setNumber(int(node[ii][j][1]->getNumber()) + int(node[i][1]->getNumber()));
               safeCopy(node, node[ii]);
               return;
             }
