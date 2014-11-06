@@ -1156,6 +1156,7 @@
             "EMSCRIPTEN_EVENT_MOUSELEAVE",
             "EMSCRIPTEN_EVENT_MOUSEOVER",
             "EMSCRIPTEN_EVENT_MOUSEOUT",
+            "EMSCRIPTEN_EVENT_CANVASRESIZED",
 
             "EMSCRIPTEN_RESULT_SUCCESS",
             "EMSCRIPTEN_RESULT_DEFERRED",
@@ -1330,7 +1331,9 @@
             ],
             "EmscriptenFullscreenStrategy": [
               "scaleMode",
-              "canvasResolutionScaleMode"
+              "canvasResolutionScaleMode",
+              "canvasResizedCallback",
+              "canvasResizedCallbackUserData"
             ]
         }
     }

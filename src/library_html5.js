@@ -650,6 +650,11 @@ var LibraryJSEvents = {
           return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
         }
       }
+
+      if (strategy.canvasResizedCallback) {
+        Runtime.dynCall('iiii', strategy.canvasResizedCallback, [{{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, strategy.canvasResizedCallbackUserData]);
+      }
+
       return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
     },
 
@@ -1243,6 +1248,11 @@ var LibraryJSEvents = {
         document.documentElement.style.overflow = oldDocumentOverflow; // Chrome, Firefox
         document.body.scroll = oldDocumentScroll; // IE
         if (canvas.GLctxObject) canvas.GLctxObject.GLctx.viewport(0, 0, oldWidth, oldHeight);
+
+        if (__currentFullscreenStrategy.canvasResizedCallback) {
+          Runtime.dynCall('iiii', __currentFullscreenStrategy.canvasResizedCallback, [{{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, __currentFullscreenStrategy.canvasResizedCallbackUserData]);
+        }
+
       }
     }
     document.addEventListener('fullscreenchange', restoreOldStyle);
@@ -1350,6 +1360,10 @@ var LibraryJSEvents = {
       var b = (window.innerWidth - w) / 2;
       __setLetterbox(canvas, topMargin, b);
     }
+
+    if (!inCenteredWithoutScalingFullscreenMode && __currentFullscreenStrategy.canvasResizedCallback) {
+      Runtime.dynCall('iiii', __currentFullscreenStrategy.canvasResizedCallback, [{{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, __currentFullscreenStrategy.canvasResizedCallbackUserData]);
+    }
   },
 
   // https://developer.mozilla.org/en-US/docs/Web/Guide/API/DOM/Using_full_screen_mode  
@@ -1391,12 +1405,15 @@ var LibraryJSEvents = {
     return _emscripten_do_request_fullscreen(target, strategy);
   },
 
-  emscripten_request_fullscreen_strategy__deps: ['emscripten_do_request_fullscreen'],
+  emscripten_request_fullscreen_strategy__deps: ['emscripten_do_request_fullscreen', '_currentFullscreenStrategy'],
   emscripten_request_fullscreen_strategy: function(target, deferUntilInEventHandler, fullscreenStrategy) {
     var strategy = {};
     strategy.scaleMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.scaleMode, 'i32') }}};
     strategy.canvasResolutionScaleMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResolutionScaleMode, 'i32') }}};
     strategy.deferUntilInEventHandler = deferUntilInEventHandler;
+    strategy.canvasResizedCallback = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallback, 'i32') }}};
+    strategy.canvasResizedCallbackUserData = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallbackUserData, 'i32') }}};
+    __currentFullscreenStrategy = strategy;
 
     return _emscripten_do_request_fullscreen(target, strategy);
   },
@@ -1410,6 +1427,8 @@ var LibraryJSEvents = {
     var strategy = {};
     strategy.scaleMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.scaleMode, 'i32') }}};
     strategy.canvasResolutionScaleMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResolutionScaleMode, 'i32') }}};
+    strategy.canvasResizedCallback = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallback, 'i32') }}};
+    strategy.canvasResizedCallbackUserData = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallbackUserData, 'i32') }}};
     strategy.target = target;
     strategy.softFullscreen = true;
 
@@ -1421,14 +1440,22 @@ var LibraryJSEvents = {
 
     var hiddenElements = __hideEverythingExceptGivenElement(target);
 
-    function restoreWindowedState() { 
+    function restoreWindowedState() {
       restoreOldStyle();
       __restoreHiddenElements(hiddenElements);
       window.removeEventListener('resize', __softFullscreenResizeWebGLRenderTarget);
+      if (strategy.canvasResizedCallback) {
+        Runtime.dynCall('iiii', strategy.canvasResizedCallback, [{{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, strategy.canvasResizedCallbackUserData]);
+      }
     }
     __restoreOldWindowedStyle = restoreWindowedState;
     __currentFullscreenStrategy = strategy;
     window.addEventListener('resize', __softFullscreenResizeWebGLRenderTarget);
+
+    // Inform the caller that the canvas size has changed.
+    if (strategy.canvasResizedCallback) {
+      Runtime.dynCall('iiii', strategy.canvasResizedCallback, [{{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, strategy.canvasResizedCallbackUserData]);
+    }
 
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
@@ -1457,6 +1484,11 @@ var LibraryJSEvents = {
     } else {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
+
+    if (strategy.canvasResizedCallback) {
+      Runtime.dynCall('iiii', strategy.canvasResizedCallback, [{{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, strategy.canvasResizedCallbackUserData]);
+    }
+
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 

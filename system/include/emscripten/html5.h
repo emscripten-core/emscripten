@@ -52,6 +52,7 @@ extern "C" {
 #define EMSCRIPTEN_EVENT_MOUSELEAVE            34
 #define EMSCRIPTEN_EVENT_MOUSEOVER             35
 #define EMSCRIPTEN_EVENT_MOUSEOUT              36
+#define EMSCRIPTEN_EVENT_CANVASRESIZED         37
 
 #define EMSCRIPTEN_RESULT int
 
@@ -255,9 +256,13 @@ extern EMSCRIPTEN_RESULT emscripten_get_fullscreen_status(EmscriptenFullscreenCh
 #define EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_STDDEF 1
 #define EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF  2
 
+typedef EM_BOOL (*em_canvasresized_callback_func)(int eventType, const void *reserved, void *userData);
+
 typedef struct EmscriptenFullscreenStrategy {
   EMSCRIPTEN_FULLSCREEN_SCALE scaleMode;
   EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE canvasResolutionScaleMode;
+  em_canvasresized_callback_func canvasResizedCallback;
+  void *canvasResizedCallbackUserData;
 } EmscriptenFullscreenStrategy;
 
 extern EMSCRIPTEN_RESULT emscripten_request_fullscreen(const char *target, EM_BOOL deferUntilInEventHandler);

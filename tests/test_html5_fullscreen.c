@@ -115,12 +115,23 @@ void draw()
   glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 
+EM_BOOL on_canvassize_changed(int eventType, const void *reserved, void *userData)
+{
+  int w, h, fs;
+  emscripten_get_canvas_size(&w, &h, &fs);
+  double cssW, cssH;
+  emscripten_get_element_css_size(0, &cssW, &cssH);
+  printf("Canvas resized: WebGL RTT size: %dx%d, canvas CSS size: %02gx%02g\n", w, h, cssW, cssH);
+  return 0;
+}
+
 void requestFullscreen(int scaleMode, int canvasResolutionScaleMode)
 {
   EmscriptenFullscreenStrategy s;
   memset(&s, 0, sizeof(s));
   s.scaleMode = scaleMode;
   s.canvasResolutionScaleMode = canvasResolutionScaleMode;
+  s.canvasResizedCallback = on_canvassize_changed;
   EMSCRIPTEN_RESULT ret = emscripten_request_fullscreen_strategy(0, 1, &s);
   TEST_RESULT(requestFullscreen);
 }
@@ -131,6 +142,7 @@ void enterSoftFullscreen(int scaleMode, int canvasResolutionScaleMode)
   memset(&s, 0, sizeof(s));
   s.scaleMode = scaleMode;
   s.canvasResolutionScaleMode = canvasResolutionScaleMode;
+  s.canvasResizedCallback = on_canvassize_changed;
   EMSCRIPTEN_RESULT ret = emscripten_enter_soft_fullscreen(0, &s);
   TEST_RESULT(enterSoftFullscreen);
 }
