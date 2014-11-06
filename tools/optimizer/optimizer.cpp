@@ -500,7 +500,7 @@ void denormalizeAsm(Ref func, AsmData& data) {
   // calculate variable definitions
   Ref varDefs = new ArrayValue();
   for (auto v : data.types) {
-    varDefs->push_back(makeAsmVarDef(v.first, v.second));
+    if (data.params.count(v.first) == 0) varDefs->push_back(makeAsmVarDef(v.first, v.second));
   }
   // each param needs a line; reuse emptyNodes as much as we can
   int numParams = data.params.size();
