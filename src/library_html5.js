@@ -1422,8 +1422,9 @@ var LibraryJSEvents = {
     var hiddenElements = __hideEverythingExceptGivenElement(target);
 
     function restoreWindowedState() { 
-        restoreOldStyle();
-        __restoreHiddenElements(hiddenElements);
+      restoreOldStyle();
+      __restoreHiddenElements(hiddenElements);
+      window.removeEventListener('resize', __softFullscreenResizeWebGLRenderTarget);
     }
     __restoreOldWindowedStyle = restoreWindowedState;
     __currentFullscreenStrategy = strategy;
