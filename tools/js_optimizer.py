@@ -9,7 +9,7 @@ __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 
-NATIVE_PASSES = set(['asm', 'asmPreciseF32', 'receiveJSON', 'emitJSON', 'simplifyIfs', 'optimizeFrounds'])
+NATIVE_PASSES = set(['asm', 'asmPreciseF32', 'receiveJSON', 'emitJSON', 'simplifyExpressions', 'simplifyIfs', 'optimizeFrounds'])
 
 JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 
@@ -29,7 +29,7 @@ def get_native_optimizer():
     shared.logging.debug('building native optimizer')
     output = shared.Cache.get_path('optimizer.exe')
     shared.try_delete(output)
-    subprocess.Popen([shared.CLANG, shared.path_from_root('tools', 'optimizer', 'optimizer.cpp'), '-I' + shared.path_from_root('tools', 'optimizer', 'rapidjson'), '-O2', '-std=c++11', '-o', output]).communicate()
+    subprocess.Popen([shared.CLANG, shared.path_from_root('tools', 'optimizer', 'optimizer.cpp'), '-I' + shared.path_from_root('tools', 'optimizer', 'rapidjson'), '-O2', '-std=c++11', '-o', output, '-g']).communicate()
     assert os.path.exists(output)
     return output
   return shared.Cache.get('optimizer.exe', create_optimizer, extension='exe')

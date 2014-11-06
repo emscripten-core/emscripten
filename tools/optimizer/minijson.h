@@ -13,6 +13,7 @@
 #include <vector>
 #include <ostream>
 #include <iomanip>
+#include <functional>
 
 #define err(str) fprintf(stderr, str "\n");
 #define errv(str, ...) fprintf(stderr, str "\n", __VA_ARGS__);
@@ -62,10 +63,13 @@ struct Value {
   // constructors all copy their input
   Value() : type(Null), num(0) {}
   explicit Value(const char *s) : type(Null) {
-    set(s);
+    setString(s);
+  }
+  explicit Value(const std::string& s) : type(Null) {
+    setString(s.c_str());
   }
   explicit Value(double n) : type(Null) {
-    set(n);
+    setNumber(n);
   }
   explicit Value(ArrayStorage &a) : type(Null) {
     setArray();
@@ -84,19 +88,22 @@ struct Value {
     num = 0;
   }
 
-  Value& set(const char *s) {
+  Value& setString(const char *s) {
     free();
     type = String;
     str = new std::string(s);
     return *this;
   }
-  Value& set(double n) {
+  Value& setString(const std::string& s) {
+    return setString(s.c_str());
+  }
+  Value& setNumber(double n) {
     free();
     type = Number;
     num = n;
     return *this;
   }
-  Value& set(ArrayStorage &a) {
+  Value& setArray(ArrayStorage &a) {
     free();
     type = Array;
     arr = new ArrayStorage();
@@ -141,6 +148,10 @@ struct Value {
     assert(isNumber());
     return num;
   }
+  ArrayStorage& getArray() {
+    assert(isArray());
+    return *arr;
+  }
   bool& getBool() {
     assert(isBool());
     return boo;
@@ -150,13 +161,13 @@ struct Value {
     free();
     switch (other.type) {
       case String:
-        set(other.str->c_str());
+        setString(other.str->c_str());
         break;
       case Number:
-        set(other.num);
+        setNumber(other.num);
         break;
       case Array:
-        set(*other.arr);
+        setArray(*other.arr);
         break;
       case Null:
         setNull();
@@ -207,7 +218,7 @@ struct Value {
       char *close = strchr(curr, '"');
       assert(close);
       *close = 0;
-      set(curr);
+      setString(curr);
       *close = '"';
       curr = close+1;
     } else if (*curr == '[') {
@@ -244,7 +255,7 @@ struct Value {
     } else {
       // Number
       char *after;
-      set(strtod(curr, &after));
+      setNumber(strtod(curr, &after));
       curr = after;
     }
     return curr;
@@ -301,6 +312,17 @@ struct Value {
     return arr->size();
   }
 
+  void setSize(unsigned size) {
+    assert(isArray());
+    unsigned old = arr->size();
+    if (old != size) arr->resize(size);
+    if (old < size) {
+      for (unsigned i = old; i < size; i++) {
+        (*arr)[i] = new Value();
+      }
+    }
+  }
+
   Ref& operator[](unsigned x) { // tolerant, returns Null on out of bounds access. makes it convenient to check e.g. [3] on an if node
     static Ref null = new Value(); // TODO: freeze this
     assert(isArray());
@@ -308,15 +330,36 @@ struct Value {
     return (*arr)[x];
   }
 
-  void push_back(Ref r) {
+  Value& push_back(Ref r) {
     assert(isArray());
     arr->push_back(r);
+    return *this;
   }
 
   void splice(int x, int num) {
     assert(isArray());
     arr->erase(arr->begin() + x, arr->begin() + x + num);
   }
+
+  void insert(int x, int num) {
+    arr->insert(arr->begin() + x, num, Ref());
+  }
+
+  int indexOf(Ref other) {
+    assert(isArray());
+    for (unsigned i = 0; i < arr->size(); i++) {
+      if (other == (*arr)[i]) return i;
+    }
+    return -1;
+  }
+
+  /*
+  void forEach(std::function<void (Ref)> func) {
+    for (unsigned i = 0; i < arr->size(); i++) {
+      func((*arr)[i]);
+    }
+  }
+  */
 
   // Null operations
 
