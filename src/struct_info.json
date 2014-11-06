@@ -1165,7 +1165,15 @@
             "EMSCRIPTEN_RESULT_INVALID_PARAM",
             "EMSCRIPTEN_RESULT_NOT_SUPPORTED",
             "EMSCRIPTEN_RESULT_FAILED",
-            "EMSCRIPTEN_RESULT_NO_DATA"
+            "EMSCRIPTEN_RESULT_NO_DATA",
+
+            "EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT",
+            "EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH",
+            "EMSCRIPTEN_FULLSCREEN_SCALE_ASPECT",
+            "EMSCRIPTEN_FULLSCREEN_SCALE_CENTER",
+            "EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE",
+            "EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_STDDEF",
+            "EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF"
         ],
         "structs": {
             "EmscriptenKeyboardEvent": [
@@ -1319,6 +1327,10 @@
               "majorVersion",
               "minorVersion",
               "enableExtensionsByDefault"
+            ],
+            "EmscriptenFullscreenStrategy": [
+              "scaleMode",
+              "canvasResolutionScaleMode"
             ]
         }
     }
