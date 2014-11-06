@@ -159,7 +159,7 @@ var LibraryEmVal = {
         functionBody +=
             "var argType"+i+" = requireRegisteredType(HEAP32[(argTypes >> 2) + "+i+"], \"parameter "+i+"\");\n" +
             "var arg"+i+" = argType"+i+".readValueFromPointer(args);\n" +
-            "args += argType"+i+".argPackAdvance;\n";
+            "args += argType"+i+"['argPackAdvance'];\n";
     }
     functionBody +=
         "var obj = new constructor("+argsList+");\n" +
@@ -246,7 +246,7 @@ var LibraryEmVal = {
     for (var i = 0; i < argCount; ++i) {
         var type = types[i];
         args[i] = type['readValueFromPointer'](argv);
-        argv += type.argPackAdvance;
+        argv += type['argPackAdvance'];
     }
 
     var rv = handle.apply(undefined, args);
@@ -307,7 +307,7 @@ var LibraryEmVal = {
     for (var i = 0; i < argCount - 1; ++i) {
         functionBody +=
         "    var arg" + i + " = argType" + i + ".readValueFromPointer(args" + (offset ? ("+"+offset) : "") + ");\n";
-        offset += types[i + 1].argPackAdvance;
+        offset += types[i + 1]['argPackAdvance'];
     }
     functionBody +=
         "    var rv = handle[name](" + argsList + ");\n";
