@@ -140,7 +140,7 @@ struct HeapInfo {
 
 HeapInfo parseHeap(const char *name) {
   HeapInfo ret;
-  if (!strncmp(name, "HEAP", 4)) {
+  if (name[0] != 'H' || name[1] != 'E' || name[2] != 'A' || name[3] != 'P') {
     ret.valid = false;
     return ret;
   }
