@@ -1055,6 +1055,22 @@ Defines
 	Specifies that the Emscripten runtime should resize the canvas render target size to match 1:1 with the physical screen resolution on the device. This corresponds to high
 	definition displays on retina iOS and other mobile and desktop devices with high DPI. Use this mode to match and render 1:1 to the native display resolution.
 
+.. c:macro:: EMSCRIPTEN_FULLSCREEN_FILTERING
+
+	An enum-like type that specifies what kind of image filtering algorithm to apply to the element when it is presented in fullscreen mode.
+
+.. c:macro:: EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT
+
+	Specifies that the image filtering mode should not be changed from the existing setting in the CSS style.
+
+.. c:macro:: EMSCRIPTEN_FULLSCREEN_FILTERING_NEAREST
+
+	Applies a CSS style to the element that displays the content using a nearest-neighbor image filtering algorithm in fullscreen mode.
+
+.. c:macro:: EMSCRIPTEN_FULLSCREEN_FILTERING_BILINEAR
+
+	Applies a CSS style to the element that displays the content using a bilinear image filtering algorithm in fullscreen mode. This is the default browser behavior.
+
 Struct
 ------
 
@@ -1111,6 +1127,18 @@ Struct
 
 		Specifies how the render target size (the pixel resolution) of the target element is adjusted when displayed in fullscreen mode.
 
+	.. c:member:: EMSCRIPTEN_FULLSCREEN_FILTERING filteringMode
+
+		Specifies the image filtering algorithm to apply to the element in fullscreen mode.
+
+	.. c:member:: em_canvasresized_callback_func canvasResizedCallback
+
+		If nonzero, points to a user-provided callback function which will be called whenever either the CSS or the canvas render target size changes. Use this callback to reliably
+		obtain information about canvas resize events.
+
+	.. c:member:: void *canvasResizedCallbackUserData
+
+		Stores a custom data field which will be passed to all calls to the user-provided callback function.
 		
 Callback functions
 ------------------
