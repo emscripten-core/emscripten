@@ -1680,7 +1680,10 @@ class Building:
   @staticmethod
   def is_bitcode(filename):
     # look for magic signature
-    b = open(filename, 'r').read(4)
+    f = open(filename, 'r')
+    b = f.read(4)
+    f.close()
+    if len(b) < 4: return False
     if b[0] == 'B' and b[1] == 'C':
       return True
     # look for ar signature
