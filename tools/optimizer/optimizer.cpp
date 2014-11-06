@@ -669,7 +669,7 @@ void simplifyExpressions(Ref ast) {
   auto simplifyIntegerConversions = [](Ref ast) {
     traversePre(ast, [](Ref node) {
       Ref type = node[0];
-      if (type == "binary"    && node[1]    == ">>" && node[3][0] == "num" &&
+      if (type == "binary"       && node[1]    == ">>" && node[3][0] == "num" &&
           node[2][0] == "binary" && node[2][1] == "<<" && node[2][3][0] == "num" && node[3][1]->getNumber() == node[2][3][1]->getNumber()) {
         // Transform (x&A)<<B>>B to X&A.
         Ref innerNode = node[2][2];
@@ -1032,7 +1032,7 @@ void simplifyExpressions(Ref ast) {
   std::function<bool (Ref)> emitsBoolean = [&emitsBoolean](Ref node) {
     std::string& type = node[0]->getString();
     if (type == "num") {
-      return node[1]->getNumber() == 0 || node[1] == 1;
+      return node[1]->getNumber() == 0 || node[1]->getNumber() == 1;
     }
     if (type == "binary") return COMPARE_OPS.has(node[1]);
     if (type == "unary-prefix") return node[1] == "!";
@@ -1094,10 +1094,10 @@ void simplifyExpressions(Ref ast) {
   };
 
   traverseFunctions(ast, [&](Ref func) {
-    //simplifyIntegerConversions(func);
+    simplifyIntegerConversions(func);
     simplifyOps(func);
     //simplifyNotComps(func); // XXX broken in JS, should be a traverse, call that, assign on the node if return is different than itself
-    //conditionalize(func);
+    conditionalize(func);
   });
 }
 
