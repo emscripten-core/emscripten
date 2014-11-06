@@ -1272,7 +1272,9 @@ try:
 
   # Emscripten
   logging.debug('LLVM => JS')
-  for lib in library_files: js_libraries.extend(shared.Building.extract_jslibs(lib))
+  for lib in library_files:
+    if shared.Building.is_ar(lib):
+      js_libraries.extend(filter(shared.Building.is_jslibrary, shared.Building.ar_contents(lib)))
   extra_args = [] if not js_libraries else ['--libraries', ','.join(map(os.path.abspath, js_libraries))]
   final = shared.Building.emscripten(final, append_ext=False, extra_args=extra_args)
   if DEBUG: save_intermediate('original')

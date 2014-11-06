@@ -1219,7 +1219,6 @@ class Building:
     # For a simple application, this would just be "main".
     unresolved_symbols = set([func[1:] for func in Settings.EXPORTED_FUNCTIONS])
     resolved_symbols = set()
-    temp_dirs = []
     def make_paths_absolute(f):
       if f.startswith('-'): # skip flags
         return f
@@ -1228,8 +1227,6 @@ class Building:
     files = map(make_paths_absolute, files)
     # Paths of already included object files from archives.
     added_contents = set()
-    # Map of archive name to list of extracted object file paths.
-    ar_contents = {}
     has_ar = False
     for f in files:
       if not f.startswith('-'):
@@ -1258,46 +1255,6 @@ class Building:
         actual_files.append(f)
       return do_add
 
-    def get_archive_contents(f):
-      if f in ar_contents:
-        return ar_contents[f]
-
-      cwd = os.getcwd()
-      try:
-        emscripten_temp_dir = get_emscripten_temp_dir()
-        temp_dir = os.path.join(emscripten_temp_dir, 'ar_output_' + str(os.getpid()) + '_' + str(len(temp_dirs)))
-        temp_dirs.append(temp_dir)
-        safe_ensure_dirs(temp_dir)
-        os.chdir(temp_dir)
-        contents = filter(lambda x: len(x) > 0, Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].split('\n'))
-        # llvm-ar appears to just use basenames inside archives. as a result, files with the same basename
-        # will trample each other when we extract them. to help warn of such situations, we warn if there
-        # are duplicate entries in the archive
-        if len(contents) != len(set(contents)):
-          logging.warning('loading from archive %s, which has duplicate entries (files with identical base names). this is dangerous as only the last will be taken into account, and you may see surprising undefined symbols later. you should rename source files to avoid this problem (or avoid .a archives, and just link bitcode together to form libraries for later linking)' % f)
-          warned = set()
-          for i in range(len(contents)):
-            curr = contents[i]
-            if curr not in warned and curr in contents[i+1:]:
-              logging.warning('   duplicate: %s' % curr)
-              warned.add(curr)
-        if len(contents) == 0:
-          logging.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f)
-        else:
-          for content in contents: # ar will silently fail if the directory for the file does not exist, so make all the necessary directories
-            dirname = os.path.dirname(content)
-            if dirname:
-              safe_ensure_dirs(dirname)
-          Popen([LLVM_AR, 'xo', f], stdout=PIPE).communicate() # if absolute paths, files will appear there. otherwise, in this directory
-          contents = map(lambda content: os.path.join(temp_dir, content), contents)
-          contents = filter(os.path.exists, map(os.path.abspath, contents))
-          contents = filter(Building.is_bitcode, contents)
-        ar_contents[f] = contents
-      finally:
-        os.chdir(cwd)
-
-      return contents
-
     # Traverse a single archive. The object files are repeatedly scanned for
     # newly satisfied symbols until no new symbols are found. Returns true if
     # any object files were added to the link.
@@ -1305,7 +1262,7 @@ class Building:
       added_any_objects = False
       loop_again = True
       logging.debug('considering archive %s' % (f))
-      contents = get_archive_contents(f)
+      contents = filter(Building.is_bitcode, Building.ar_contents(f))
       while loop_again: # repeatedly traverse until we have everything we need
         loop_again = False
         for content in contents:
@@ -1394,8 +1351,6 @@ class Building:
       os.unlink(response_file)
 
     assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
-    for temp_dir in temp_dirs:
-      try_delete(temp_dir)
 
   # Emscripten optimizations that we run on the .ll file
   @staticmethod
@@ -1612,90 +1567,95 @@ class Building:
   @staticmethod
   def is_ar(filename):
     try:
-      if Building._is_ar_cache.get(filename):
+      if filename in Building._is_ar_cache:
         return Building._is_ar_cache[filename]
-      b = open(filename, 'r').read(8)
-      sigcheck = b[0] == '!' and b[1] == '<' and \
-                 b[2] == 'a' and b[3] == 'r' and \
-                 b[4] == 'c' and b[5] == 'h' and \
-                 b[6] == '>' and ord(b[7]) == 10
+      with open(filename, 'r') as f:
+        b = f.read(8)
+        sigcheck = len(b) == 8 and \
+                   b[0] == '!' and b[1] == '<' and \
+                   b[2] == 'a' and b[3] == 'r' and \
+                   b[4] == 'c' and b[5] == 'h' and \
+                   b[6] == '>' and ord(b[7]) == 10
       Building._is_ar_cache[filename] = sigcheck
       return sigcheck
     except Exception, e:
       logging.debug('Building.is_ar failed to test whether file \'%s\' is a llvm archive file! Failed on exception: %s' % (filename, e))
       return False
 
-  @staticmethod
-  def extract_jslibs(archive):
-    try:
-      if not Building.is_ar(archive): return []
-      b = open(archive, 'r')
-      if not b.read(8): return [] # skip global header
-      jsfiles = []
-      tmpdir = os.path.join(EMSCRIPTEN_TEMP_DIR,'jsobjs')
-      if not os.path.exists(tmpdir): os.mkdir(tmpdir)
-      while True:
-        file_header = b.read(60)
-        if not file_header:
-          return jsfiles
-
-        file_size = int(file_header[48:58])
-        raw_file_size = (file_size+1) if (file_size % 2) else file_size
-        magic = file_header[58:60]
-        if magic[0] != '`' or ord(magic[1]) != 10:
-          raise Exception('ar magic incorrect - lost synchronisation during parse?')
-        file_name = file_header[0:16].strip()
-        if file_name.startswith('#1/'):
-          name_len = int(file_name[3:])
-          file_name = b.read(name_len)
-          file_size -= name_len
-          raw_file_size -= name_len
-        file_name = os.path.join(tmpdir,os.path.basename(file_name))
-        split_name = (file_name,'')
-        if file_name.endswith(('.jso')):
-          split_name = (file_name[:-4],'.jso')
-        elif file_name.endswith(('.jso.o')):
-          split_name = (file_name[:-6],'.jso.o')
-        else:
-          b.seek(raw_file_size, os.SEEK_CUR)
-          continue
-
-        file_contents = b.read(file_size)
-        b.seek(raw_file_size - file_size, os.SEEK_CUR)
-        if not 'LibraryManager' in file_contents: # emscripten's js library magic
-          continue
-        if os.path.exists(file_name):
-          i = 1
-          while True:
-            file_name = split_name[0] + str(i) + split_name[1]
-            if not os.path.exists(file_name): break
-            i += 1
-        with open(file_name, 'w') as f:
-          f.write(file_contents)
-        jsfiles.append(file_name)
-    except Exception, e:
-      logging.warning('Failed to parse ar file \'%s\'! Error: %s' % (archive, e))
-      return []
-
+  _is_bitcode_cache = {}
   @staticmethod
   def is_bitcode(filename):
-    # look for magic signature
-    f = open(filename, 'r')
-    b = f.read(4)
-    f.close()
-    if len(b) < 4: return False
-    if b[0] == 'B' and b[1] == 'C':
-      return True
-    # look for ar signature
-    elif Building.is_ar(filename):
-      return True
-    # on OS X, there is a 20-byte prefix
-    elif ord(b[0]) == 222 and ord(b[1]) == 192 and ord(b[2]) == 23 and ord(b[3]) == 11:
-      b = open(filename, 'r').read(24)
-      return b[20] == 'B' and b[21] == 'C'
+    try:
+      if filename in Building._is_bitcode_cache:
+        return Building._is_bitcode_cache[filename]
+      sigcheck = False
+      # look for magic signature
+      with open(filename, 'r') as f:
+        b = f.read(4)
+        if len(b) < 4: return False
+        if len(b) >= 2 and b[0] == 'B' and b[1] == 'C':
+          sigcheck = True
+        # look for ar signature
+        elif Building.is_ar(filename):
+          sigcheck = True
+        # on OS X, there is a 20-byte prefix
+        elif len(b) == 4 and ord(b[0]) == 222 and ord(b[1]) == 192 and \
+                             ord(b[2]) == 23 and ord(b[3]) == 11:
+          b = f.read(18)
+          sigcheck = len(b) == 18 and b[16] == 'B' and b[17] == 'C'
+      Building._is_bitcode_cache[filename] = sigcheck
+      return sigcheck
+    except Exception, e:
+      logging.debug('Building.is_bitcode failed on file \'%s\'! Failed on exception: %s' % (filename, e))
+      return False
 
+  @staticmethod
+  def is_jslibrary(filename):
+    if not filename.endswith(('.jso','.jso.o')):
+      return False
+    try:
+      with open(filename, 'r') as f:
+        contents = f.read(2048)
+        return 'LibraryManager' in contents
+    except Exception, e:
+      logging.debug('Building.is_jslibrary failed on file \'%s\'! Failed on exception: %s' % (filename, e))
     return False
 
+  _ar_contents_cache = {}
+  @staticmethod
+  def ar_contents(filename):
+    '''
+     ar_contents() is a utility to unpack ar archives. It extracts the archive
+     into a temporary directory, and returns a list of absolute paths to the
+     extracted files.
+    '''
+    f = os.path.abspath(filename)
+    if f in Building._ar_contents_cache:
+      return Building._ar_contents_cache[f]
+
+    cwd = os.getcwd()
+    try:
+      emscripten_temp_dir = get_emscripten_temp_dir()
+      temp_dir = os.path.join(emscripten_temp_dir, 'ar_output_' + str(os.getpid()) + '_' + str(len(Building._ar_contents_cache)))
+      safe_ensure_dirs(temp_dir)
+      os.chdir(temp_dir)
+      contents = filter(lambda x: len(x) > 0, Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].split('\n'))
+      if len(contents) == 0:
+        logging.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f)
+      else:
+        for content in contents: # ar will silently fail if the directory for the file does not exist, so make all the necessary directories
+          dirname = os.path.dirname(content)
+          if dirname:
+            safe_ensure_dirs(dirname)
+        Popen([LLVM_AR, 'xo', f], stdout=PIPE).communicate() # if absolute paths, files will appear there. otherwise, in this directory
+        contents = map(lambda content: os.path.join(temp_dir, content), contents)
+        contents = filter(os.path.exists, map(os.path.abspath, contents))
+      Building._ar_contents_cache[f] = contents
+    finally:
+      os.chdir(cwd)
+
+    return contents
+  
   @staticmethod
   def ensure_struct_info(info_path):
     if os.path.exists(info_path): return
