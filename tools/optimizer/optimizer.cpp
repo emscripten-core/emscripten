@@ -118,18 +118,166 @@ enum AsmType {
   ASM_NONE = 5
 };
 
+// forward decls
+struct AsmData;
+AsmType detectType(Ref node, AsmData *asmData=nullptr, bool inVarDef=false);
+Ref makeEmpty();
+bool isEmpty(Ref node);
+Ref makeAsmVarDef(const std::string& v_, AsmType type);
+Ref makeNum(double x);
+Ref makeName(const std::string& str);
+Ref makeAsmCoercion(Ref node, AsmType type);
+Ref make1(const char* type, Ref a);
+Ref make3(const char *type, Ref a, Ref b, Ref c);
+
 struct AsmData {
-  std::map<std::string, int> params; // name => index
-  std::map<std::string, AsmType> types; // name => type
+  struct Local {
+    AsmType type;
+    bool param; // false if a var
+  };
+  typedef std::map<std::string, Local> Locals;
+
+  Locals locals;
+  std::vector<Locals::iterator> params; // in order
+  std::vector<Locals::iterator> vars; // in order
   AsmType ret;
 
-  AsmData() : ret(ASM_NONE) {}
+  Ref func;
 
-  AsmType getType(std::string name) {
-    auto ret = types.find(name);
-    if (ret != types.end()) return ret->second;
+  AsmType getType(const std::string& name) {
+    auto ret = locals.find(name);
+    if (ret != locals.end()) return ret->second.type;
     return ASM_NONE;
   }
+  void setType(const std::string& name, AsmType type) {
+    locals[name].type = type;
+  }
+
+  bool isLocal(const std::string& name) {
+    return locals.count(name) > 0;
+  }
+
+  AsmData(Ref f) {
+    func = f;
+
+    // process initial params
+    Ref stats = func[3];
+    int i = 0;
+    while (i < stats->size()) {
+      Ref node = stats[i];
+      if (node[0] != "stat" || node[1][0] != "assign" || node[1][2][0] != "name") break;
+      node = node[1];
+      Ref name = node[2][1];
+      int index = func[2]->indexOf(name);
+      if (index < 0) break; // not an assign into a parameter, but a global
+      std::string& str = name->getString();
+      if (locals.count(str) > 0) break; // already done that param, must be starting function body
+      locals[str] = { detectType(node[3]), true };
+      params.push_back(locals.find(str));
+      stats[i] = makeEmpty();
+      i++;
+    }
+    // process initial variable definitions
+    while (i < stats->size()) {
+      Ref node = stats[i];
+      if (node[0] != "var") break;
+      for (int j = 0; j < node[1]->size(); j++) {
+        Ref v = node[1][j];
+        std::string name = v[0]->getString();
+        Ref value = v[1];
+        if (locals.count(name) == 0) {
+          locals[name] = { detectType(value, nullptr, true), false };
+          vars.push_back(locals.find(name));
+          v->setSize(1); // make an un-assigning var
+        } else {
+          assert(j == 0); // cannot break in the middle
+          goto outside;
+        }
+      }
+      i++;
+    }
+    outside:
+    // look for other var definitions and collect them
+    while (i < stats->size()) {
+      traversePre(stats[i], [&](Ref node) {
+        Ref type = node[0];
+        if (type == "var") {
+          dump("bad, seeing a var in need of fixing", func);
+          assert(0); //, 'should be no vars to fix! ' + func[1] + ' : ' + JSON.stringify(node));
+        }
+      });
+      i++;
+    }
+    // look for final "return" statement to get return type.
+    Ref retStmt = stats[stats->size() - 1];
+    if (!!retStmt && retStmt[0] == "return" && !!retStmt[1]) {
+      ret = detectType(retStmt[1]);
+    } else {
+      ret = ASM_NONE;
+    }
+  }
+
+  void denormalize() {
+    Ref stats = func[3];
+    // Remove var definitions, if any
+    for (int i = 0; i < stats->size(); i++) {
+      if (stats[i][0] == "var") {
+        stats[i] = makeEmpty();
+      } else {
+        if (!isEmpty(stats[i])) break;
+      }
+    }
+    // calculate variable definitions
+    Ref varDefs = new ArrayValue();
+    for (auto v : vars) {
+      varDefs->push_back(makeAsmVarDef(v->first, v->second.type));
+    }
+    // each param needs a line; reuse emptyNodes as much as we can
+    int numParams = params.size();
+    int emptyNodes = 0;
+    while (emptyNodes < stats->size()) {
+      if (!isEmpty(stats[emptyNodes])) break;
+      emptyNodes++;
+    }
+    int neededEmptyNodes = numParams + (varDefs->size() ? 1 : 0); // params plus one big var if there are vars
+    if (neededEmptyNodes > emptyNodes) {
+      stats->insert(0, neededEmptyNodes - emptyNodes);
+    } else if (neededEmptyNodes < emptyNodes) {
+      stats->splice(0, emptyNodes - neededEmptyNodes);
+    }
+    // add param coercions
+    int next = 0;
+    for (auto param : func[2]->getArray()) {
+      std::string& str = param->getString();
+      stats[next++] = make1("stat", make3("assign", &(new Value())->setBool(true), makeName(str), makeAsmCoercion(makeName(str), locals[str].type)));
+    }
+    if (varDefs->size()) {
+      stats[next] = make1("var", varDefs);
+    }
+    /*
+    if (inlines.length > 0) {
+      var i = 0;
+      traverse(func, function(node, type) {
+        if (type == "call" && node[1][0] == "name" && node[1][1] == 'inlinejs') {
+          node[1] = inlines[i++]; // swap back in the body
+        }
+      });
+    }
+    */
+    // ensure that there's a final "return" statement if needed.
+    if (ret != ASM_NONE) {
+      Ref retStmt = stats[stats->size() - 1];
+      if (!retStmt || retStmt[0]->getString() != "return") {
+        Ref retVal = makeNum(0);
+        if (ret != ASM_INT) {
+          retVal = makeAsmCoercion(retVal, ret);
+        }
+        stats->push_back(make1("return", retVal));
+      }
+    }
+    //printErr('denormalized \n\n' + astToSrc(func) + '\n\n');
+  }
+
 };
 
 struct HeapInfo {
@@ -162,7 +310,7 @@ bool isInteger32(double x) {
 
 std::string ASM_FLOAT_ZERO;
 
-AsmType detectType(Ref node, AsmData *asmData=nullptr, bool inVarDef=false) {
+AsmType detectType(Ref node, AsmData *asmData, bool inVarDef) {
   switch (node[0]->getString()[0]) {
     case 'n': {
       if (node[0] == "num") {
@@ -417,136 +565,6 @@ bool hasSideEffects(Ref node) { // this is 99% incomplete!
 }
 
 // Transforms
-/*
-struct AsmData {
-  std::map<std::string, int> params; // name => index
-  std::map<std::string, AsmType> types; // name => type
-  type ret
-
-  AsmType getType(std::string name) {
-    auto ret = types.find(name);
-    if (ret != types.end()) return ret->second;
-    return ASM_NONE;
-  }
-};
-*/
-AsmData normalizeAsm(Ref func) {
-  AsmData data;
-  // process initial params
-  Ref stats = func[3];
-  int i = 0;
-  while (i < stats->size()) {
-    Ref node = stats[i];
-    if (node[0] != "stat" || node[1][0] != "assign" || node[1][2][0] != "name") break;
-    node = node[1];
-    Ref name = node[2][1];
-    int index = func[2]->indexOf(name);
-    if (index < 0) break; // not an assign into a parameter, but a global
-    std::string& str = name->getString();
-    if (data.params.count(str) > 0) break; // already done that param, must be starting function body
-    data.params[str] = func[2]->indexOf(name);
-    data.types[str] = detectType(node[3]);
-    stats[i] = makeEmpty();
-    i++;
-  }
-  // process initial variable definitions
-  while (i < stats->size()) {
-    Ref node = stats[i];
-    if (node[0] != "var") break;
-    for (int j = 0; j < node[1]->size(); j++) {
-      Ref v = node[1][j];
-      std::string name = v[0]->getString();
-      Ref value = v[1];
-      if (!data.types.count(name)) {
-        data.types[name] = detectType(value, nullptr, true);
-        v->setSize(1); // make an un-assigning var
-      } else {
-        assert(j == 0); // cannot break in the middle
-        goto outside;
-      }
-    }
-    i++;
-  }
-  outside:
-  // look for other var definitions and collect them
-  while (i < stats->size()) {
-    traversePre(stats[i], [&](Ref node) {
-      Ref type = node[0];
-      if (type == "var") {
-        dump("bad, seeing a var in need of fixing", func);
-        assert(0); //, 'should be no vars to fix! ' + func[1] + ' : ' + JSON.stringify(node));
-      }
-    });
-    i++;
-  }
-  // look for final "return" statement to get return type.
-  Ref retStmt = stats[stats->size() - 1];
-  if (!!retStmt && retStmt[0] == "return" && !!retStmt[1]) {
-    data.ret = detectType(retStmt[1]);
-  }
-  return data;
-}
-
-void denormalizeAsm(Ref func, AsmData& data) {
-  Ref stats = func[3];
-  // Remove var definitions, if any
-  for (int i = 0; i < stats->size(); i++) {
-    if (stats[i][0] == "var") {
-      stats[i] = makeEmpty();
-    } else {
-      if (!isEmpty(stats[i])) break;
-    }
-  }
-  // calculate variable definitions
-  Ref varDefs = new ArrayValue();
-  for (auto v : data.types) {
-    if (data.params.count(v.first) == 0) varDefs->push_back(makeAsmVarDef(v.first, v.second));
-  }
-  // each param needs a line; reuse emptyNodes as much as we can
-  int numParams = data.params.size();
-  int emptyNodes = 0;
-  while (emptyNodes < stats->size()) {
-    if (!isEmpty(stats[emptyNodes])) break;
-    emptyNodes++;
-  }
-  int neededEmptyNodes = numParams + (varDefs->size() ? 1 : 0); // params plus one big var if there are vars
-  if (neededEmptyNodes > emptyNodes) {
-    stats->insert(0, neededEmptyNodes - emptyNodes);
-  } else if (neededEmptyNodes < emptyNodes) {
-    stats->splice(0, emptyNodes - neededEmptyNodes);
-  }
-  // add param coercions
-  int next = 0;
-  for (auto param : func[2]->getArray()) {
-    std::string& str = param->getString();
-    stats[next++] = make1("stat", make3("assign", &(new Value())->setBool(true), makeName(str), makeAsmCoercion(makeName(str), data.types[str])));
-  }
-  if (varDefs->size()) {
-    stats[next] = make1("var", varDefs);
-  }
-  /*
-  if (data.inlines.length > 0) {
-    var i = 0;
-    traverse(func, function(node, type) {
-      if (type == "call" && node[1][0] == "name" && node[1][1] == 'inlinejs') {
-        node[1] = data.inlines[i++]; // swap back in the body
-      }
-    });
-  }
-  */
-  // ensure that there's a final "return" statement if needed.
-  if (data.ret != ASM_NONE) {
-    Ref retStmt = stats[stats->size() - 1];
-    if (!retStmt || retStmt[0]->getString() != "return") {
-      Ref retVal = makeNum(0);
-      if (data.ret != ASM_INT) {
-        retVal = makeAsmCoercion(retVal, data.ret);
-      }
-      stats->push_back(make1("return", retVal));
-    }
-  }
-  //printErr('denormalized \n\n' + astToSrc(func) + '\n\n');
-}
 
 // We often have branchings that are simplified so one end vanishes, and
 // we then get
@@ -907,7 +925,7 @@ void simplifyExpressions(Ref ast) {
     if (rerunOrZeroPass) removeMultipleOrZero();
 
     if (hasTempDoublePtr) {
-      AsmData asmData = normalizeAsm(ast);
+      AsmData asmData(ast);
       traversePre(ast, [](Ref node) {
         Ref type = node[0];
         if (type == "assign") {
@@ -1002,7 +1020,7 @@ void simplifyExpressions(Ref ast) {
         if (info.define_HEAP32*info.define_HEAPF32 == 0 && info.use_HEAP32*info.use_HEAPF32 == 0 &&
             info.define_HEAP32+info.define_HEAPF32 > 0  && info.use_HEAP32+info.use_HEAPF32 > 0 &&
             info.define_HEAP32*info.use_HEAP32 == 0 && info.define_HEAPF32*info.use_HEAPF32 == 0 &&
-            asmData.types.count(v) && info.namings == info.define_HEAP32+info.define_HEAPF32+info.use_HEAP32+info.use_HEAPF32) {
+            asmData.isLocal(v) && info.namings == info.define_HEAP32+info.define_HEAPF32+info.use_HEAP32+info.use_HEAPF32) {
           std::string correct = info.use_HEAP32 ? "HEAPF32" : "HEAP32";
           for (auto define : info.defines) {
             define[3] = define[3][1][3];
@@ -1017,15 +1035,15 @@ void simplifyExpressions(Ref ast) {
             use[2][1][1]->setString(correct);
           }
           AsmType correctType;
-          switch(asmData.types[v]) {
+          switch(asmData.getType(v)) {
             case ASM_INT: correctType = preciseF32 ? ASM_FLOAT : ASM_DOUBLE; break;
             case ASM_FLOAT: case ASM_DOUBLE: correctType = ASM_INT; break;
             default: {} // pass
           }
-          asmData.types[v] = correctType;
+          asmData.setType(v, correctType);
         }
       }
-      denormalizeAsm(ast, asmData);
+      asmData.denormalize();
     }
   };
 
