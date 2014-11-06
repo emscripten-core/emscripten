@@ -391,6 +391,7 @@ var cwrap, ccall;
     return ret;
   }
 
+#if NO_DYNAMIC_EXECUTION == 0
   var sourceRegex = /^function\s*\(([^)]*)\)\s*{\s*([^*]*?)[\s;]*(?:return\s*(.*?)[;\s]*)?}$/;
   function parseJSFunc(jsfunc) {
     // Match the body and the return value of a javascript function source
@@ -449,12 +450,17 @@ var cwrap, ccall;
       funcstr += JSsource['stackRestore'].body + ';';
     }
     funcstr += 'return ret})';
-#if NO_DYNAMIC_EXECUTION == 0
     return eval(funcstr);
-#else
-    abort('NO_DYNAMIC_EXECUTION was set, cannot eval - ccall is not functional');
-#endif
   };
+#else
+    // NO_DYNAMIC_EXECUTION is on, so we can't use the fast version of cwrap.
+    // Fall back to returning a bound version of ccall.
+    cwrap = function cwrap(ident, returnType, argTypes) {
+       return function() {
+         return ccall(ident, returnType, argTypes, arguments);
+       }
+    }
+#endif
 })();
 Module["cwrap"] = cwrap;
 Module["ccall"] = ccall;
