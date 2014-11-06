@@ -1096,7 +1096,12 @@ void simplifyExpressions(Ref ast) {
   traverseFunctions(ast, [&](Ref func) {
     simplifyIntegerConversions(func);
     simplifyOps(func);
-    //simplifyNotComps(func); // XXX broken in JS, should be a traverse, call that, assign on the node if return is different than itself
+    traversePre(func, [](Ref node) {
+      Ref ret = simplifyNotCompsDirect(node);
+      if (ret.get() != node.get()) { // if we received a different pointer in return, then we need to copy the new value
+        safeCopy(node, ret);
+      }
+    });
     conditionalize(func);
   });
 }
