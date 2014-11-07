@@ -813,9 +813,11 @@ var LibraryGL = {
       var handle = GL.getNewId(GL.contexts);
       var context = {
         handle: handle,
-        version: webGLContextAttributes.majorVersion
+        version: webGLContextAttributes.majorVersion,
+        GLctx: ctx
       };
-      context.GLctx = ctx;
+      // Store the created context object so that we can access the context given a canvas without having to pass the parameters again.
+      ctx.canvas.GLctxObject = context;
       GL.contexts[handle] = context;
       if (typeof webGLContextAttributes['webGLContextAttributes'] === 'undefined' || webGLContextAttributes.enableExtensionsByDefault) {
         GL.initExtensions(context);
@@ -837,6 +839,7 @@ var LibraryGL = {
 
     deleteContext: function(contextHandle) {
       if (GL.currentContext === GL.contexts[contextHandle]) GL.currentContext = 0;
+      if (GL.contexts[contextHandle]) GL.contexts[contextHandle].GLctx.canvas.GLctxObject = undefined; // Make sure the canvas object no longer refers to the context object so there are no GC surprises.
       GL.contexts[contextHandle] = null;
     },
 

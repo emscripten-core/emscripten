@@ -52,6 +52,7 @@ extern "C" {
 #define EMSCRIPTEN_EVENT_MOUSELEAVE            34
 #define EMSCRIPTEN_EVENT_MOUSEOVER             35
 #define EMSCRIPTEN_EVENT_MOUSEOUT              36
+#define EMSCRIPTEN_EVENT_CANVASRESIZED         37
 
 #define EMSCRIPTEN_RESULT int
 
@@ -121,7 +122,7 @@ typedef struct EmscriptenMouseEvent {
 } EmscriptenMouseEvent;
 
 
-typedef EM_BOOL (*em_mouse_callback_func)(int eventType, const EmscriptenMouseEvent *keyEvent, void *userData);
+typedef EM_BOOL (*em_mouse_callback_func)(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData);
 extern EMSCRIPTEN_RESULT emscripten_set_click_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback);
 extern EMSCRIPTEN_RESULT emscripten_set_mousedown_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback);
 extern EMSCRIPTEN_RESULT emscripten_set_mouseup_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback);
@@ -147,7 +148,7 @@ typedef struct EmscriptenWheelEvent {
 } EmscriptenWheelEvent;
 
 
-typedef EM_BOOL (*em_wheel_callback_func)(int eventType, const EmscriptenWheelEvent *keyEvent, void *userData);
+typedef EM_BOOL (*em_wheel_callback_func)(int eventType, const EmscriptenWheelEvent *wheelEvent, void *userData);
 extern EMSCRIPTEN_RESULT emscripten_set_wheel_callback(const char *target, void *userData, EM_BOOL useCapture, em_wheel_callback_func callback);
 
 typedef struct EmscriptenUiEvent {
@@ -163,7 +164,7 @@ typedef struct EmscriptenUiEvent {
 } EmscriptenUiEvent;
 
 
-typedef EM_BOOL (*em_ui_callback_func)(int eventType, const EmscriptenUiEvent *keyEvent, void *userData);
+typedef EM_BOOL (*em_ui_callback_func)(int eventType, const EmscriptenUiEvent *uiEvent, void *userData);
 extern EMSCRIPTEN_RESULT emscripten_set_resize_callback(const char *target, void *userData, EM_BOOL useCapture, em_ui_callback_func callback);
 extern EMSCRIPTEN_RESULT emscripten_set_scroll_callback(const char *target, void *userData, EM_BOOL useCapture, em_ui_callback_func callback);
 
@@ -172,7 +173,7 @@ typedef struct EmscriptenFocusEvent {
   EM_UTF8 id[128];
 } EmscriptenFocusEvent;
 
-typedef EM_BOOL (*em_focus_callback_func)(int eventType, const EmscriptenFocusEvent *keyEvent, void *userData);
+typedef EM_BOOL (*em_focus_callback_func)(int eventType, const EmscriptenFocusEvent *focusEvent, void *userData);
 extern EMSCRIPTEN_RESULT emscripten_set_blur_callback(const char *target, void *userData, EM_BOOL useCapture, em_focus_callback_func callback);
 extern EMSCRIPTEN_RESULT emscripten_set_focus_callback(const char *target, void *userData, EM_BOOL useCapture, em_focus_callback_func callback);
 extern EMSCRIPTEN_RESULT emscripten_set_focusin_callback(const char *target, void *userData, EM_BOOL useCapture, em_focus_callback_func callback);
@@ -187,7 +188,7 @@ typedef struct EmscriptenDeviceOrientationEvent {
 } EmscriptenDeviceOrientationEvent;
 
 
-typedef EM_BOOL (*em_deviceorientation_callback_func)(int eventType, const EmscriptenDeviceOrientationEvent *keyEvent, void *userData);
+typedef EM_BOOL (*em_deviceorientation_callback_func)(int eventType, const EmscriptenDeviceOrientationEvent *deviceOrientationEvent, void *userData);
 extern EMSCRIPTEN_RESULT emscripten_set_deviceorientation_callback(void *userData, EM_BOOL useCapture, em_deviceorientation_callback_func callback);
 extern EMSCRIPTEN_RESULT emscripten_get_deviceorientation_status(EmscriptenDeviceOrientationEvent *orientationState);
 
@@ -206,7 +207,7 @@ typedef struct EmscriptenDeviceMotionEvent {
 } EmscriptenDeviceMotionEvent;
 
 
-typedef EM_BOOL (*em_devicemotion_callback_func)(int eventType, const EmscriptenDeviceMotionEvent *keyEvent, void *userData);
+typedef EM_BOOL (*em_devicemotion_callback_func)(int eventType, const EmscriptenDeviceMotionEvent *deviceMotionEvent, void *userData);
 extern EMSCRIPTEN_RESULT emscripten_set_devicemotion_callback(void *userData, EM_BOOL useCapture, em_devicemotion_callback_func callback);
 extern EMSCRIPTEN_RESULT emscripten_get_devicemotion_status(EmscriptenDeviceMotionEvent *motionState);
 
@@ -221,7 +222,7 @@ typedef struct EmscriptenOrientationChangeEvent {
 } EmscriptenOrientationChangeEvent;
 
 
-typedef EM_BOOL (*em_orientationchange_callback_func)(int eventType, const EmscriptenOrientationChangeEvent *keyEvent, void *userData);
+typedef EM_BOOL (*em_orientationchange_callback_func)(int eventType, const EmscriptenOrientationChangeEvent *orientationChangeEvent, void *userData);
 extern EMSCRIPTEN_RESULT emscripten_set_orientationchange_callback(void *userData, EM_BOOL useCapture, em_orientationchange_callback_func callback);
 extern EMSCRIPTEN_RESULT emscripten_get_orientation_status(EmscriptenOrientationChangeEvent *orientationStatus);
 extern EMSCRIPTEN_RESULT emscripten_lock_orientation(int allowedOrientations);
@@ -239,14 +240,45 @@ typedef struct EmscriptenFullscreenChangeEvent {
 } EmscriptenFullscreenChangeEvent;
 
 
-typedef EM_BOOL (*em_fullscreenchange_callback_func)(int eventType, const EmscriptenFullscreenChangeEvent *keyEvent, void *userData);
+typedef EM_BOOL (*em_fullscreenchange_callback_func)(int eventType, const EmscriptenFullscreenChangeEvent *fullscreenChangeEvent, void *userData);
 extern EMSCRIPTEN_RESULT emscripten_set_fullscreenchange_callback(const char *target, void *userData, EM_BOOL useCapture, em_fullscreenchange_callback_func callback);
 
 extern EMSCRIPTEN_RESULT emscripten_get_fullscreen_status(EmscriptenFullscreenChangeEvent *fullscreenStatus);
 
+#define EMSCRIPTEN_FULLSCREEN_SCALE int
+#define EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT 0
+#define EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH 1
+#define EMSCRIPTEN_FULLSCREEN_SCALE_ASPECT  2
+#define EMSCRIPTEN_FULLSCREEN_SCALE_CENTER  3
+
+#define EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE int
+#define EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE   0
+#define EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_STDDEF 1
+#define EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF  2
+
+#define EMSCRIPTEN_FULLSCREEN_FILTERING int
+#define EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT 0
+#define EMSCRIPTEN_FULLSCREEN_FILTERING_NEAREST 1
+#define EMSCRIPTEN_FULLSCREEN_FILTERING_BILINEAR 2
+
+typedef EM_BOOL (*em_canvasresized_callback_func)(int eventType, const void *reserved, void *userData);
+
+typedef struct EmscriptenFullscreenStrategy {
+  EMSCRIPTEN_FULLSCREEN_SCALE scaleMode;
+  EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE canvasResolutionScaleMode;
+  EMSCRIPTEN_FULLSCREEN_FILTERING filteringMode;
+  em_canvasresized_callback_func canvasResizedCallback;
+  void *canvasResizedCallbackUserData;
+} EmscriptenFullscreenStrategy;
+
 extern EMSCRIPTEN_RESULT emscripten_request_fullscreen(const char *target, EM_BOOL deferUntilInEventHandler);
+extern EMSCRIPTEN_RESULT emscripten_request_fullscreen_strategy(const char *target, EM_BOOL deferUntilInEventHandler, const EmscriptenFullscreenStrategy *fullscreenStrategy);
 
 extern EMSCRIPTEN_RESULT emscripten_exit_fullscreen(void);
+
+extern EMSCRIPTEN_RESULT emscripten_enter_soft_fullscreen(const char *target, const EmscriptenFullscreenStrategy *fullscreenStrategy);
+
+extern EMSCRIPTEN_RESULT emscripten_exit_soft_fullscreen(void);
 
 typedef struct EmscriptenPointerlockChangeEvent {
   EM_BOOL isActive;
@@ -255,7 +287,7 @@ typedef struct EmscriptenPointerlockChangeEvent {
 } EmscriptenPointerlockChangeEvent;
 
 
-typedef EM_BOOL (*em_pointerlockchange_callback_func)(int eventType, const EmscriptenPointerlockChangeEvent *keyEvent, void *userData);
+typedef EM_BOOL (*em_pointerlockchange_callback_func)(int eventType, const EmscriptenPointerlockChangeEvent *pointerlockChangeEvent, void *userData);
 extern EMSCRIPTEN_RESULT emscripten_set_pointerlockchange_callback(const char *target, void *userData, EM_BOOL useCapture, em_pointerlockchange_callback_func callback);
 
 extern EMSCRIPTEN_RESULT emscripten_get_pointerlock_status(EmscriptenPointerlockChangeEvent *pointerlockStatus);
@@ -274,7 +306,7 @@ typedef struct EmscriptenVisibilityChangeEvent {
   int visibilityState;
 } EmscriptenVisibilityChangeEvent;
 
-typedef EM_BOOL (*em_visibilitychange_callback_func)(int eventType, const EmscriptenVisibilityChangeEvent *keyEvent, void *userData);
+typedef EM_BOOL (*em_visibilitychange_callback_func)(int eventType, const EmscriptenVisibilityChangeEvent *visibilityChangeEvent, void *userData);
 extern EMSCRIPTEN_RESULT emscripten_set_visibilitychange_callback(void *userData, EM_BOOL useCapture, em_visibilitychange_callback_func callback);
 
 extern EMSCRIPTEN_RESULT emscripten_get_visibility_status(EmscriptenVisibilityChangeEvent *visibilityStatus);
@@ -307,7 +339,7 @@ typedef struct EmscriptenTouchEvent {
 } EmscriptenTouchEvent;
 
 
-typedef EM_BOOL (*em_touch_callback_func)(int eventType, const EmscriptenTouchEvent *keyEvent, void *userData);
+typedef EM_BOOL (*em_touch_callback_func)(int eventType, const EmscriptenTouchEvent *touchEvent, void *userData);
 extern EMSCRIPTEN_RESULT emscripten_set_touchstart_callback(const char *target, void *userData, EM_BOOL useCapture, em_touch_callback_func callback);
 extern EMSCRIPTEN_RESULT emscripten_set_touchend_callback(const char *target, void *userData, EM_BOOL useCapture, em_touch_callback_func callback);
 extern EMSCRIPTEN_RESULT emscripten_set_touchmove_callback(const char *target, void *userData, EM_BOOL useCapture, em_touch_callback_func callback);
@@ -328,7 +360,7 @@ typedef struct EmscriptenGamepadEvent {
 } EmscriptenGamepadEvent;
 
 
-typedef EM_BOOL (*em_gamepad_callback_func)(int eventType, const EmscriptenGamepadEvent *keyEvent, void *userData);
+typedef EM_BOOL (*em_gamepad_callback_func)(int eventType, const EmscriptenGamepadEvent *gamepadEvent, void *userData);
 extern EMSCRIPTEN_RESULT emscripten_set_gamepadconnected_callback(void *userData, EM_BOOL useCapture, em_gamepad_callback_func callback);
 extern EMSCRIPTEN_RESULT emscripten_set_gamepaddisconnected_callback(void *userData, EM_BOOL useCapture, em_gamepad_callback_func callback);
 
@@ -342,7 +374,7 @@ typedef struct EmscriptenBatteryEvent {
   EM_BOOL charging;
 } EmscriptenBatteryEvent;
 
-typedef EM_BOOL (*em_battery_callback_func)(int eventType, const EmscriptenBatteryEvent *keyEvent, void *userData);
+typedef EM_BOOL (*em_battery_callback_func)(int eventType, const EmscriptenBatteryEvent *batteryEvent, void *userData);
 extern EMSCRIPTEN_RESULT emscripten_set_batterychargingchange_callback(void *userData, em_battery_callback_func callback);
 extern EMSCRIPTEN_RESULT emscripten_set_batterylevelchange_callback(void *userData, em_battery_callback_func callback);
 
