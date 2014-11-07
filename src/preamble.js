@@ -1181,11 +1181,6 @@ function preMain() {
 }
 
 function exitRuntime() {
-#if ASSERTIONS
-  if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
-    Module.printErr('Exiting runtime. Any attempt to access the compiled C code may fail from now. If you want to keep the runtime alive, set Module["noExitRuntime"] = true or build with -s NO_EXIT_RUNTIME=1');
-  }
-#endif
   callRuntimeCallbacks(__ATEXIT__);
   runtimeExited = true;
 }
