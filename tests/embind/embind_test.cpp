@@ -910,6 +910,23 @@ std::unique_ptr<ValHolder> emval_test_return_unique_ptr() {
     return std::unique_ptr<ValHolder>(new ValHolder(val::object()));
 }
 
+class UniquePtrLifetimeMock {
+public:
+    UniquePtrLifetimeMock(val l) : logger(l) {
+        logger(std::string("(constructor)"));
+    }
+    ~UniquePtrLifetimeMock() {
+        logger(std::string("(destructor)"));
+    }
+
+private:
+    val logger;
+};
+
+std::unique_ptr<UniquePtrLifetimeMock> emval_test_return_unique_ptr_lifetime(val logger) {
+    return std::unique_ptr<UniquePtrLifetimeMock>(new UniquePtrLifetimeMock(logger));
+}
+
 std::shared_ptr<ValHolder> emval_test_return_shared_ptr() {
     return std::shared_ptr<ValHolder>(new ValHolder(val::object()));
 }
@@ -1956,6 +1973,9 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("emval_test_call_function", &emval_test_call_function);
 
     function("emval_test_return_unique_ptr", &emval_test_return_unique_ptr);
+
+    class_<UniquePtrLifetimeMock>("UniquePtrLifetimeMock");
+    function("emval_test_return_unique_ptr_lifetime", &emval_test_return_unique_ptr_lifetime);
 
     function("emval_test_return_shared_ptr", &emval_test_return_shared_ptr);
     function("emval_test_return_empty_shared_ptr", &emval_test_return_empty_shared_ptr);
