@@ -4,6 +4,8 @@
  * Uses shared_ptr for simplicity, basically everywhere. TODO: measure impact
  */
 
+//#define NDEBUG
+
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>

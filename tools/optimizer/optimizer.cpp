@@ -4,7 +4,6 @@
 #include <stdint.h>
 
 #include <string>
-#include <map>
 #include <unordered_set>
 #include <unordered_map>
 
@@ -135,7 +134,7 @@ struct AsmData {
     AsmType type;
     bool param; // false if a var
   };
-  typedef std::map<std::string, Local> Locals;
+  typedef std::unordered_map<std::string, Local> Locals;
 
   Locals locals;
   std::vector<Locals::iterator> params; // in order
@@ -971,7 +970,7 @@ void simplifyExpressions(Ref ast) {
 
         BitcastData() : define_HEAP32(0), define_HEAPF32(0), use_HEAP32(0), use_HEAPF32(0), namings(0), ok(false) {}
       };
-      std::map<std::string, BitcastData> bitcastVars;
+      std::unordered_map<std::string, BitcastData> bitcastVars;
       traversePre(ast, [&bitcastVars](Ref node) {
         if (node[0] == "assign" && node[1]->isBool(true) && node[2][0] == "name") {
           Ref value = node[3];
