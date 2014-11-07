@@ -1415,7 +1415,7 @@ var LibraryJSEvents = {
     return _emscripten_do_request_fullscreen(target, strategy);
   },
 
-  emscripten_request_fullscreen_strategy__deps: ['emscripten_do_request_fullscreen', '_currentFullscreenStrategy'],
+  emscripten_request_fullscreen_strategy__deps: ['emscripten_do_request_fullscreen', '_currentFullscreenStrategy', '_registerRestoreOldStyle'],
   emscripten_request_fullscreen_strategy: function(target, deferUntilInEventHandler, fullscreenStrategy) {
     var strategy = {};
     strategy.scaleMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.scaleMode, 'i32') }}};
@@ -1480,6 +1480,7 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  emscripten_exit_fullscreen__deps: ['_currentFullscreenStrategy'],
   emscripten_exit_fullscreen: function() {
     if (typeof JSEvents.fullscreenEnabled() === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     // Make sure no queued up calls will fire after this.
@@ -1497,8 +1498,8 @@ var LibraryJSEvents = {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
 
-    if (strategy.canvasResizedCallback) {
-      Runtime.dynCall('iiii', strategy.canvasResizedCallback, [{{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, strategy.canvasResizedCallbackUserData]);
+    if (__currentFullscreenStrategy.canvasResizedCallback) {
+      Runtime.dynCall('iiii', __currentFullscreenStrategy.canvasResizedCallback, [{{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, __currentFullscreenStrategy.canvasResizedCallbackUserData]);
     }
 
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
