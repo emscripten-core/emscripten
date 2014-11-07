@@ -448,10 +448,16 @@ try:
 
   settings_changes = []
 
-  def validate_arg_level(level_string, max_level, err_msg):
+  def validate_arg_level(level_string, max_level, err_msg, clamp=False):
     try:
       level = int(level_string)
-      assert 0 <= level <= max_level
+      assert 0 <= level
+      if clamp:
+        if level > max_level:
+          logging.warning(err_msg + '; clamped to ' + str(max_level))
+          level = max_level
+      else:
+        assert level <= max_level
     except:
       raise Exception(err_msg)
     return level
@@ -471,7 +477,7 @@ try:
         llvm_opts = ['-Oz']
         requested_level = 2
         settings_changes.append('INLINING_LIMIT=25')
-      opt_level = validate_arg_level(requested_level, 3, 'Invalid optimization level: ' + newargs[i])
+      opt_level = validate_arg_level(requested_level, 3, 'Invalid optimization level: ' + newargs[i], clamp=True)
       # We leave the -O option in place so that the clang front-end runs in that
       # optimization mode, but we disable the actual optimization passes, as we'll
       # run them seperately.
