@@ -1226,7 +1226,7 @@ var LibraryJSEvents = {
     var oldImageRendering = canvas.style.imageRendering;
     var oldInterpolationMode = canvas.style['-ms-interpolation-mode'];
 
-  function restoreOldStyle() {
+    function restoreOldStyle() {
       var fullscreenElement = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
       if (!fullscreenElement) {
         document.removeEventListener('fullscreenchange', restoreOldStyle);
@@ -1262,7 +1262,6 @@ var LibraryJSEvents = {
         if (__currentFullscreenStrategy.canvasResizedCallback) {
           Runtime.dynCall('iiii', __currentFullscreenStrategy.canvasResizedCallback, [{{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, __currentFullscreenStrategy.canvasResizedCallbackUserData]);
         }
-
       }
     }
     document.addEventListener('fullscreenchange', restoreOldStyle);
@@ -1300,7 +1299,7 @@ var LibraryJSEvents = {
     }
   },
 
-  // Add letterboxes to a fullscreen element cross-browser way.
+  // Add letterboxes to a fullscreen element in a cross-browser way.
   _setLetterbox__deps: ['$JSEvents'],
   _setLetterbox: function(element, topBottom, leftRight) {
     if (JSEvents.isInternetExplorer()) {
