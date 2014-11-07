@@ -24,6 +24,7 @@ var LibraryGL = {
     contexts: [],
 #if USE_WEBGL2
     queries: [],
+    samplers: [],
     transformFeedbacks: [],
 #endif
 
@@ -1395,6 +1396,17 @@ var LibraryGL = {
                         HEAPU8.subarray(data));
   },
 
+  // Framebuffer objects
+  glBlitFramebuffer__sig: 'viiiiiiiiii',
+  glBlitFramebuffer: function(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter) {
+    GLctx.blitFramebuffer(srcX0, srcY0, srxC1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter);
+  },
+
+  glReadBuffer__sig: 'vi',
+  glReadBuffer: function(src) {
+    GLctx.readBuffer(src);
+  },
+
   // Queries
   glGenQueries__sig: 'vii',
   glGenQueries: function(n, ids) {
@@ -1474,6 +1486,115 @@ var LibraryGL = {
       ret = param;
     }
     {{{ makeSetValue('params', '0', 'ret', 'i32') }}};
+  },
+
+  // Renderbuffer objects
+  glRenderbufferStorageMultisample__sig: 'viiiii',
+  glRenderbufferStorageMultisample: function(target, samples, internalformat, width, height) {
+    GLctx.renderbufferStorageMultisample(target, samples, internalformat, width, height);
+  },
+
+  // Sampler objects
+  glGenSamplers__sig: 'vii',
+  glGenSamplers: function(n, samplers) {
+    for (var i = 0; i < n; i++) {
+      var id = GL.getNewId(GL.samplers);
+      var sampler = GLctx.createSampler();
+      sampler.name = id;
+      GL.samplers[id] = sampler;
+      {{{ makeSetValue('samplers', 'i*4', 'id', 'i32') }}};
+    }
+  },
+
+  glDeleteSamplers__sig: 'vii',
+  glDeleteSamplers: function(n, samplers) {
+    for (var i = 0; i < n; i++) {
+      var id = {{{ makeGetValue('samplers', 'i*4', 'i32') }}};
+      var sampler = GL.samplers[id];
+      if (!sampler) continue;
+      GLctx.deleteSampler(sampler);
+      sampler.name = 0;
+      GL.samplers[id] = null;
+    }
+  },
+
+  glIsSampler__sig: 'ii',
+  glIsSampler: function(id) {
+    var sampler = GL.samplers[id];
+    if (!sampler) return 0;
+    return GLctx.isSampler(sampler);
+  },
+
+  glBindSampler__sig: 'vii',
+  glBindSampler: function(unit, sampler) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
+#endif
+    GLctx.bindSampler(unit, sampler ? GL.samplers[sampler] : null);
+  },
+
+  glSamplerParameterf__sig: 'viif',
+  glSamplerParameterf: function(sampler, pname, param) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
+#endif
+    GLctx.samplerParameterf(sampler ? GL.samplers[sampler] : null, pname, param);
+  },
+
+  glSamplerParameteri__sig: 'viii',
+  glSamplerParameteri: function(sampler, pname, param) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
+#endif
+    GLctx.samplerParameteri(sampler ? GL.samplers[sampler] : null, pname, param);
+  },
+
+  glSamplerParameterfv__sig: 'viii',
+  glSamplerParameterfv: function(sampler, pname, params) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
+#endif
+    var param = {{{ makeGetValue('params', '0', 'float') }}};
+    GLctx.samplerParameterf(sampler ? GL.samplers[sampler] : null, pname, param);
+  },
+
+  glSamplerParameteriv__sig: 'viii',
+  glSamplerParameteriv: function(sampler, pname, params) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
+#endif
+    var param = {{{ makeGetValue('params', '0', 'i32') }}};
+    GLctx.samplerParameteri(sampler ? GL.samplers[sampler] : null, pname, param);
+  },
+
+  glGetSamplerParameterfv__sig: 'viii',
+  glGetSamplerParameterfv: function(sampler, pname, params) {
+#if GL_ASSERTIONS
+    if (!params) {
+      // GLES3 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+      // if p == null, issue a GL error to notify user about it.
+      Module.printErr('GL_INVALID_VALUE in glGetSamplerParameterfv(sampler=' + sampler +', pname=' + pname + ', params=0): Function called with null out pointer!');
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+#endif
+    sampler = GL.samplers[sampler];
+    {{{ makeSetValue('params', '0', 'GLctx.getSamplerParameter(sampler, pname)', 'float') }}};
+  },
+
+  glGetSamplerParameteriv__sig: 'viii',
+  glGetSamplerParameteriv: function(sampler, pname, params) {
+#if GL_ASSERTIONS
+    if (!params) {
+      // GLES3 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+      // if p == null, issue a GL error to notify user about it.
+      Module.printErr('GL_INVALID_VALUE in glGetSamplerParameteriv(sampler=' + sampler +', pname=' + pname + ', params=0): Function called with null out pointer!');
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+#endif
+    sampler = GL.samplers[sampler];
+    {{{ makeSetValue('params', '0', 'GLctx.getSamplerParameter(sampler, pname)', 'i32') }}};
   },
 
   // Transform Feedback
@@ -1628,6 +1749,25 @@ var LibraryGL = {
     }
 
     {{{ makeSetValue('data', '0', 'ret', 'i32') }}};
+  },
+
+  // Uniform Buffer objects
+  glBindBufferBase__sig: 'viii',
+  glBindBufferBase: function(target, index, buffer) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.buffers, buffer, 'glBindBufferBase', 'buffer');
+#endif
+    var bufferObj = buffer ? GL.buffers[buffer] : null;
+    GLctx.bindBufferBase(target, index, bufferObj);
+  },
+
+  glBindBufferRange__sig: 'viiiii',
+  glBindBufferRange: function(target, index, buffer, offset, ptrsize) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.buffers, buffer, 'glBindBufferRange', 'buffer');
+#endif
+    var bufferObj = buffer ? GL.buffers[buffer] : null;
+    GLctx.bindBufferRange(target, index, bufferObj, offset, ptrsize);
   },
 
   glGetUniformIndices__sig: 'viiii',
@@ -5946,7 +6086,9 @@ var LibraryGL = {
   glRotatef: 'glRotated',
 
   glDrawBuffer: function() { throw 'glDrawBuffer: TODO' },
+#if !USE_WEBGL2
   glReadBuffer: function() { throw 'glReadBuffer: TODO' },
+#endif
 
   glLightfv: function() { throw 'glLightfv: TODO' },
   glLightModelfv: function() { throw 'glLightModelfv: TODO' },
