@@ -453,13 +453,13 @@ var cwrap, ccall;
     return eval(funcstr);
   };
 #else
-    // NO_DYNAMIC_EXECUTION is on, so we can't use the fast version of cwrap.
-    // Fall back to returning a bound version of ccall.
-    cwrap = function cwrap(ident, returnType, argTypes) {
-       return function() {
-         return ccall(ident, returnType, argTypes, arguments);
-       }
-    }
+  // NO_DYNAMIC_EXECUTION is on, so we can't use the fast version of cwrap.
+  // Fall back to returning a bound version of ccall.
+  cwrap = function cwrap(ident, returnType, argTypes) {
+     return function() {
+       return ccall(ident, returnType, argTypes, arguments);
+     }
+  }
 #endif
 })();
 Module["cwrap"] = cwrap;
