@@ -25,7 +25,7 @@ struct Value;
 
 void dump(const char *str, Ref node, bool pretty=false);
 
-// Reference to a value. Simple shared_ptr, plus [] operator for convenience - we work on lots of arrays
+// Reference to a value, plus some operators for convenience
 struct Ref {
   Value* inst;
 
