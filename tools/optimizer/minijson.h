@@ -45,7 +45,19 @@ struct Ref {
   bool operator!(); // check if null, in effect
 };
 
-typedef std::vector<Ref> ArrayStorage;
+// Arena allocation, free it all on process exit
+
+struct Arena {
+  #define CHUNK_SIZE 1000
+  std::vector<Value*> chunks;
+  int index; // in last chunk
+
+  Arena() : index(0) {}
+
+  Ref alloc();
+};
+
+Arena arena;
 
 // Main value type
 struct Value {
@@ -58,6 +70,8 @@ struct Value {
   };
 
   Type type;
+
+  typedef std::vector<Ref> ArrayStorage;
 
   union { // TODO: optimize
     std::string *str;
@@ -233,7 +247,7 @@ struct Value {
       skip();
       setArray();
       while (*curr != ']') {
-        Ref temp(new Value);
+        Ref temp = arena.alloc();
         arr->push_back(temp);
         curr = temp->parse(curr);
         skip();
@@ -324,13 +338,13 @@ struct Value {
     if (old != size) arr->resize(size);
     if (old < size) {
       for (unsigned i = old; i < size; i++) {
-        (*arr)[i] = new Value();
+        (*arr)[i] = arena.alloc();
       }
     }
   }
 
   Ref& operator[](unsigned x) { // tolerant, returns Null on out of bounds access. makes it convenient to check e.g. [3] on an if node
-    static Ref null = new Value(); // TODO: freeze this
+    static Ref null = arena.alloc(); // TODO: freeze this
     assert(isArray());
     if (x >= arr->size()) return null;
     return (*arr)[x];
@@ -372,13 +386,6 @@ struct Value {
   // Bool operations
 };
 
-// Convenience class to construct arrays
-struct ArrayValue : public Value {
-  ArrayValue() {
-    setArray();
-  }
-};
-
 // Ref methods
 
 Ref& Ref::operator[](unsigned x) {
@@ -399,6 +406,16 @@ bool Ref::operator==(Ref other) {
 
 bool Ref::operator!() {
   return get()->isNull();
+}
+
+// Arena methods
+
+Ref Arena::alloc() {
+  if (chunks.size() == 0 || index == CHUNK_SIZE) {
+    chunks.push_back(new Value[CHUNK_SIZE]);
+    index = 0;
+  }
+  return &chunks.back()[index++];
 }
 
 // dump

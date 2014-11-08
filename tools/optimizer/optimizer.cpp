@@ -102,7 +102,7 @@ Ref getStatements(Ref node) {
   } else if (node[0] == "block") {
     return node[1];
   } else {
-    return new Value();
+    return arena.alloc();
   }
 }
 
@@ -123,6 +123,7 @@ AsmType detectType(Ref node, AsmData *asmData=nullptr, bool inVarDef=false);
 Ref makeEmpty();
 bool isEmpty(Ref node);
 Ref makeAsmVarDef(const std::string& v_, AsmType type);
+Ref makeArray();
 Ref makeNum(double x);
 Ref makeName(const std::string& str);
 Ref makeAsmCoercion(Ref node, AsmType type);
@@ -227,7 +228,7 @@ struct AsmData {
       }
     }
     // calculate variable definitions
-    Ref varDefs = new ArrayValue();
+    Ref varDefs = makeArray();
     for (auto v : vars) {
       varDefs->push_back(makeAsmVarDef(v->first, v->second.type));
     }
@@ -248,7 +249,7 @@ struct AsmData {
     int next = 0;
     for (auto param : func[2]->getArray()) {
       std::string& str = param->getString();
-      stats[next++] = make1("stat", make3("assign", &(new Value())->setBool(true), makeName(str), makeAsmCoercion(makeName(str), locals[str].type)));
+      stats[next++] = make1("stat", make3("assign", &(arena.alloc())->setBool(true), makeName(str), makeAsmCoercion(makeName(str), locals[str].type)));
     }
     if (varDefs->size()) {
       stats[next] = make1("var", varDefs);
@@ -388,31 +389,43 @@ AsmType detectType(Ref node, AsmData *asmData, bool inVarDef) {
 
 // Constructions TODO: share common constructions, and assert they remain frozen
 
+Ref makeArray() {
+  return &arena.alloc()->setArray();
+}
+
+Ref makeString(const char *s) {
+  return &arena.alloc()->setString(s);
+}
+
+Ref makeString(const std::string& s) {
+  return &arena.alloc()->setString(s);
+}
+
 Ref makeEmpty() {
-  Ref ret(new ArrayValue());
-  ret->push_back(new Value("toplevel"));
-  ret->push_back(new ArrayValue());
+  Ref ret(makeArray());
+  ret->push_back(makeString("toplevel"));
+  ret->push_back(makeArray());
   return ret;
 }
 
 Ref makePair(Ref x, Ref y) {
-  Ref ret = new ArrayValue();
+  Ref ret = makeArray();
   ret->push_back(x);
   ret->push_back(y);
   return ret;
 };
 
 Ref makeNum(double x) {
-  Ref ret(new ArrayValue());
-  ret->push_back(new Value("num"));
-  ret->push_back(new Value(x));
+  Ref ret(makeArray());
+  ret->push_back(makeString("num"));
+  ret->push_back(&arena.alloc()->setNumber(x));
   return ret;
 }
 
 Ref makeName(const char *str) {
-  Ref ret(new ArrayValue());
-  ret->push_back(new Value("name"));
-  ret->push_back(new Value(str));
+  Ref ret(makeArray());
+  ret->push_back(makeString("name"));
+  ret->push_back(makeString(str));
   return ret;
 }
 
@@ -421,47 +434,47 @@ Ref makeName(const std::string& str) {
 }
 
 Ref makeBlock() {
-  Ref ret(new ArrayValue());
-  ret->push_back(new Value("block"));
-  ret->push_back(new ArrayValue());
+  Ref ret(makeArray());
+  ret->push_back(makeString("block"));
+  ret->push_back(makeArray());
   return ret;
 }
 
 Ref make1(const char* type, Ref a) {
-  Ref ret(new ArrayValue());
-  ret->push_back(new Value(type));
+  Ref ret(makeArray());
+  ret->push_back(makeString(type));
   ret->push_back(a);
   return ret;
 }
 
 Ref make2(const char* type, const char *a, Ref b) {
-  Ref ret(new ArrayValue());
-  ret->push_back(new Value(type));
-  ret->push_back(new Value(a));
+  Ref ret(makeArray());
+  ret->push_back(makeString(type));
+  ret->push_back(makeString(a));
   ret->push_back(b);
   return ret;
 }
 
 Ref make2(const char* type, Ref a, Ref b) {
-  Ref ret(new ArrayValue());
-  ret->push_back(new Value(type));
+  Ref ret(makeArray());
+  ret->push_back(makeString(type));
   ret->push_back(a);
   ret->push_back(b);
   return ret;
 }
 
 Ref make3(const char *type, const char *a, Ref b, Ref c) {
-  Ref ret(new ArrayValue());
-  ret->push_back(new Value(type));
-  ret->push_back(new Value(a));
+  Ref ret(makeArray());
+  ret->push_back(makeString(type));
+  ret->push_back(makeString(a));
   ret->push_back(b);
   ret->push_back(c);
   return ret;
 }
 
 Ref make3(const char *type, Ref a, Ref b, Ref c) {
-  Ref ret(new ArrayValue());
-  ret->push_back(new Value(type));
+  Ref ret(makeArray());
+  ret->push_back(makeString(type));
   ret->push_back(a);
   ret->push_back(b);
   ret->push_back(c);
@@ -469,7 +482,7 @@ Ref make3(const char *type, Ref a, Ref b, Ref c) {
 }
 
 Ref makeAsmVarDef(const std::string& v_, AsmType type) {
-  Ref v = new Value(v_);
+  Ref v = makeString(v_);
   Ref val;
   switch (type) {
     case ASM_INT: val = makeNum(0); break;
@@ -478,16 +491,16 @@ Ref makeAsmVarDef(const std::string& v_, AsmType type) {
       if (ASM_FLOAT_ZERO.size() > 0) {
         val = makeName(ASM_FLOAT_ZERO.c_str());
       } else {
-        val = make2("call", makeName("Math_fround"), &(new ArrayValue())->push_back(makeNum(0)));
+        val = make2("call", makeName("Math_fround"), &(makeArray())->push_back(makeNum(0)));
       }
       break;
     }
     case ASM_FLOAT32X4: {
-      val = make2("call", makeName("SIMD_float32x4"), &(new ArrayValue())->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
+      val = make2("call", makeName("SIMD_float32x4"), &(makeArray())->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
       break;
     }
     case ASM_INT32X4: {
-      val = make2("call", makeName("SIMD_int32x4"), &(new ArrayValue())->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
+      val = make2("call", makeName("SIMD_int32x4"), &(makeArray())->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
       break;
     }
     default: assert(0);
@@ -499,9 +512,9 @@ Ref makeAsmCoercion(Ref node, AsmType type) {
   switch (type) {
     case ASM_INT: return make3("binary", "|", node, makeNum(0));
     case ASM_DOUBLE: return make2("unary-prefix", "+", node);
-    case ASM_FLOAT: return make2("call", makeName("Math_fround"), &(new ArrayValue())->push_back(node));
-    case ASM_FLOAT32X4: return make2("call", makeName("SIMD_float32x4"), &(new ArrayValue())->push_back(node));
-    case ASM_INT32X4: return make2("call", makeName("SIMD_int32x4"), &(new ArrayValue())->push_back(node));
+    case ASM_FLOAT: return make2("call", makeName("Math_fround"), &(makeArray())->push_back(node));
+    case ASM_FLOAT32X4: return make2("call", makeName("SIMD_float32x4"), &(makeArray())->push_back(node));
+    case ASM_INT32X4: return make2("call", makeName("SIMD_int32x4"), &(makeArray())->push_back(node));
     case ASM_NONE:
     default: return node; // non-validating code, emit nothing XXX this is dangerous, we should only allow this when we know we are not validating
   }
@@ -1178,7 +1191,7 @@ void simplifyIfs(Ref ast) {
               Ref curr = deStat(stats[i]);
               other[1] = make2("seq", curr, other[1]);
             }
-            Ref temp = new ArrayValue();
+            Ref temp = makeArray();
             temp->push_back(other);
             stats = body[1] = temp;
           }
@@ -1323,7 +1336,7 @@ int main(int argc, char **argv) {
   if (comment) *comment = 0; // drop off the comments; TODO: parse extra info
 
   // Parse JSON source into the document
-  doc = new Value();
+  doc = arena.alloc();
   doc->parse(json);
   delete[] json;
 
