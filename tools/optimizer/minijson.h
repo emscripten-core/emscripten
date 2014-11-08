@@ -11,7 +11,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include <memory>
 #include <vector>
 #include <ostream>
 #include <iostream>
@@ -27,15 +26,15 @@ struct Value;
 void dump(const char *str, Ref node, bool pretty=false);
 
 // Reference to a value. Simple shared_ptr, plus [] operator for convenience - we work on lots of arrays
-class Ref : public std::shared_ptr<Value> {
-public:
-  Ref() {
-    reset();
-  }
-  Ref(Value *v) {
-    reset(v);
-  }
+struct Ref {
+  Value* inst;
 
+  Ref(Value *v=nullptr) : inst(v) {}
+
+  Value* get() { return inst; }
+
+  Value& operator*() { return *inst; }
+  Value* operator->() { return inst; }
   Ref& operator[](unsigned x);
 
   // special conveniences
