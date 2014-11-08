@@ -44,37 +44,63 @@ std::string getIntStr(int x) {
 
 // Traverses the children of a node.
 // visit() receives a reference, so it can modify the value being visited directly.
-//       N.B. we allow replacing arrays in place, and consider strings immutable!
-// TODO: stoppable version of this
 void traverseChildren(Ref node, std::function<void (Ref)> visit) {
-  //dump("TC", node);
   if (!node->isArray()) return;
   int size = node->size();
-  //printf("size: %d\n", size);
   for (int i = 0; i < size; i++) {
-    //printf("  %d:\n", i);
     Ref subnode = node[i];
     if (subnode->isArray() and subnode->size() > 0) {
-      //printf("    go\n");
       visit(subnode);
     }
   }
 }
 
+struct TraverseInfo {
+  Ref node;
+  int index;
+};
+
+#define visitable(node) (node->isArray() and node->size() > 0)
+
 // Traverse, calling visit before the children
 void traversePre(Ref node, std::function<void (Ref)> visit) {
   visit(node);
-  traverseChildren(node, [&visit](Ref node) {
-    traversePre(node, visit);
-  });
+  std::vector<TraverseInfo> stack;
+  stack.push_back({ node, 0 });
+  while (stack.size() > 0) {
+    TraverseInfo& top = stack.back();
+    if (top.index < top.node->size()) {
+      Ref sub = top.node[top.index];
+      top.index++;
+      if (visitable(sub)) {
+        visit(sub);
+        stack.push_back({ sub, 0 });
+      }
+    } else {
+      stack.pop_back();
+    }
+  }
 }
 
 // Traverse, calling visitPre before the children and visitPost after
 void traversePrePost(Ref node, std::function<void (Ref)> visitPre, std::function<void (Ref)> visitPost) {
   visitPre(node);
-  traverseChildren(node, [&visitPre, &visitPost](Ref node) {
-    traversePrePost(node, visitPre, visitPost);
-  });
+  std::vector<TraverseInfo> stack;
+  stack.push_back({ node, 0 });
+  while (stack.size() > 0) {
+    TraverseInfo& top = stack.back();
+    if (top.index < top.node->size()) {
+      Ref sub = top.node[top.index];
+      top.index++;
+      if (visitable(sub)) {
+        visitPre(sub);
+        stack.push_back({ sub, 0 });
+      }
+    } else {
+      visitPost(top.node);
+      stack.pop_back();
+    }
+  }
   visitPost(node);
 }
 
