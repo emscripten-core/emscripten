@@ -42,19 +42,6 @@ std::string getIntStr(int x) {
 
 // Traversals
 
-// Traverses the children of a node.
-// visit() receives a reference, so it can modify the value being visited directly.
-void traverseChildren(Ref node, std::function<void (Ref)> visit) {
-  if (!node->isArray()) return;
-  int size = node->size();
-  for (int i = 0; i < size; i++) {
-    Ref subnode = node[i];
-    if (subnode->isArray() and subnode->size() > 0) {
-      visit(subnode);
-    }
-  }
-}
-
 struct TraverseInfo {
   Ref node;
   int index;
@@ -95,6 +82,29 @@ void traversePrePost(Ref node, std::function<void (Ref)> visitPre, std::function
       if (visitable(sub)) {
         visitPre(sub);
         stack.push_back({ sub, 0 });
+      }
+    } else {
+      visitPost(top.node);
+      stack.pop_back();
+    }
+  }
+  visitPost(node);
+}
+
+// Traverse, calling visitPre before the children and visitPost after. If pre returns false, do not traverse children
+void traversePrePostConditional(Ref node, std::function<bool (Ref)> visitPre, std::function<void (Ref)> visitPost) {
+  if (!visitPre(node)) return;
+  std::vector<TraverseInfo> stack;
+  stack.push_back({ node, 0 });
+  while (stack.size() > 0) {
+    TraverseInfo& top = stack.back();
+    if (top.index < top.node->size()) {
+      Ref sub = top.node[top.index];
+      top.index++;
+      if (visitable(sub)) {
+        if (visitPre(sub)) {
+          stack.push_back({ sub, 0 });
+        }
       }
     } else {
       visitPost(top.node);
@@ -831,17 +841,18 @@ void simplifyExpressions(Ref ast) {
 
     bool hasTempDoublePtr = false, rerunOrZeroPass = false;
 
-    std::function<void (Ref node)> andHeapOpts = [&hasTempDoublePtr, &rerunOrZeroPass, &andHeapOpts](Ref node) {
+    traversePrePostConditional(ast, [](Ref node) {
       // Detect trees which should not
       // be simplified.
-      Ref type = node[0];
-      if (type == "sub" && node[1][0] == "name" && isFunctionTable(node[1][1])) {
-        return; // do not traverse subchildren here, we should not collapse 55 & 126.
+      if (node[0] == "sub" && node[1][0] == "name" && isFunctionTable(node[1][1])) {
+        return false; // do not traverse subchildren here, we should not collapse 55 & 126.
       }
-      traverseChildren(node, andHeapOpts);
+      return true;
+    }, [&hasTempDoublePtr, &rerunOrZeroPass](Ref node) {
       // Simplifications are done now so
       // that we simplify a node's operands before the node itself. This allows
       // optimizations to cascade.
+      Ref type = node[0];
       if (type == "name") {
         if (node[1] == "tempDoublePtr") hasTempDoublePtr = true;
       } else if (type == "binary" && node[1] == "&" && node[3][0] == "num") {
@@ -957,8 +968,7 @@ void simplifyExpressions(Ref ast) {
           }
         }
       }
-    };
-    traverseChildren(ast, andHeapOpts);
+    });
 
     if (rerunOrZeroPass) removeMultipleOrZero();
 
@@ -1321,12 +1331,12 @@ void simplifyIfs(Ref ast) {
 void optimizeFrounds(Ref ast) {
   // collapse fround(fround(..)), which can happen due to elimination
   // also emit f0 instead of fround(0) (except in returns)
-  bool inReturn = false;
-  std::function<void (Ref)> fix = [&](Ref node) {
-    bool ret = node[0] == "return";
-    if (ret) inReturn = true;
-    traverseChildren(node, fix);
-    if (ret) inReturn = false;
+  bool inReturn = false, currIsReturn = false;
+  traversePrePost(ast, [&](Ref node) {
+    currIsReturn = node[0] == "return";
+    if (currIsReturn) inReturn = true;
+  }, [&](Ref node) {
+    if (currIsReturn) inReturn = false;
     if (node[0] == "call" && node[1][0] == "name" && node[1][1] == "Math_fround") {
       Ref arg = node[2][0];
       if (arg[0] == "num") {
@@ -1335,8 +1345,7 @@ void optimizeFrounds(Ref ast) {
         safeCopy(node, arg);
       }
     }
-  };
-  traverseChildren(ast, fix);
+  });
 }
 
 //==================
