@@ -394,7 +394,7 @@ var LibraryGLFW = {
         sy = event.deltaY;
       }
 
-      Runtime.dynCall('viii', GLFW.active.scrollFunc, [GLFW.active.id, sx, sy]);
+      Runtime.dynCall('vidd', GLFW.active.scrollFunc, [GLFW.active.id, sx, sy]);
 #endif
 
       event.preventDefault();
