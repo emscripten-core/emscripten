@@ -4,8 +4,6 @@
 #include <stdint.h>
 
 #include <string>
-#include <unordered_set>
-#include <unordered_map>
 
 #include "minijson.h"
 
@@ -28,13 +26,12 @@ int parseInt(const char *str) {
   return ret;
 }
 
-std::string getIntStr(int x) {
+const char *getHeapStr(int x, bool unsign) {
   switch (x) {
-    case 1: return "1";
-    case 8: return "8";
-    case 16: return "16";
-    case 32: return "32";
-    case 64: return "64";
+    case 8: return unsign ? "HEAPU8" : "HEAP8";
+    case 16: return unsign ? "HEAPU16" : "HEAP16";
+    case 32: return unsign ? "HEAPU32" : "HEAP32";
+    case 64: return unsign ? "HEAPU64" : "HEAP64";
   }
   assert(0);
   return ":(";
@@ -128,7 +125,7 @@ void traverseFunctions(Ref ast, std::function<void (Ref)> visit) {
 }
 
 Ref deStat(Ref node) {
-  if (node[0]->getString() =="stat") return node[1];
+  if (node[0] == "stat") return node[1];
   return node;
 }
 
@@ -206,7 +203,7 @@ struct AsmData {
       Ref name = node[2][1];
       int index = func[2]->indexOf(name);
       if (index < 0) break; // not an assign into a parameter, but a global
-      std::string& str = name->getString();
+      std::string str = name->getString();
       if (locals.count(str) > 0) break; // already done that param, must be starting function body
       locals[str] = { detectType(node[3]), true };
       params.push_back(locals.find(str));
@@ -284,7 +281,7 @@ struct AsmData {
     // add param coercions
     int next = 0;
     for (auto param : func[2]->getArray()) {
-      std::string& str = param->getString();
+      std::string str = param->getString();
       stats[next++] = make1("stat", make3("assign", &(arena.alloc())->setBool(true), makeName(str), makeAsmCoercion(makeName(str), locals[str].type)));
     }
     if (varDefs->size()) {
@@ -303,7 +300,7 @@ struct AsmData {
     // ensure that there's a final "return" statement if needed.
     if (ret != ASM_NONE) {
       Ref retStmt = stats[stats->size() - 1];
-      if (!retStmt || retStmt[0]->getString() != "return") {
+      if (!retStmt || retStmt[0] != "return") {
         Ref retVal = makeNum(0);
         if (ret != ASM_INT) {
           retVal = makeAsmCoercion(retVal, ret);
@@ -383,7 +380,7 @@ AsmType detectType(Ref node, AsmData *asmData, bool inVarDef) {
     case 'c': {
       if (node[0] == "call") {
         if (node[1][0] == "name") {
-          std::string& name = node[1][1]->getString();
+          std::string name = node[1][1]->getString();
           if (name == "Math_fround") return ASM_FLOAT;
           else if (name == "SIMD_float32x4") return ASM_FLOAT32X4;
           else if (name == "SIMD_int32x4") return ASM_INT32X4;
@@ -412,7 +409,7 @@ AsmType detectType(Ref node, AsmData *asmData, bool inVarDef) {
         return detectType(node[2], asmData, inVarDef);
       } else if (node[0] == "sub") {
         assert(node[1][0] == "name");
-        HeapInfo info = parseHeap(node[1][1]->getCString());
+        HeapInfo info = parseHeap(node[1][1]->getString());
         if (info.valid) return ASM_NONE;
         return info.floaty ? ASM_DOUBLE : ASM_INT; // XXX ASM_FLOAT?
       }
@@ -434,7 +431,7 @@ Ref makeString(const char *s) {
 }
 
 Ref makeString(const std::string& s) {
-  return &arena.alloc()->setString(s);
+  return &arena.alloc()->setString(s.c_str());
 }
 
 Ref makeEmpty() {
@@ -575,7 +572,7 @@ bool isMathFunc(const char *name) {
 }
 
 bool isMathFunc(Ref value) {
-  return value->isString() && isMathFunc(value->getString().c_str());
+  return value->isString() && isMathFunc(value->getString());
 }
 
 bool callHasSideEffects(Ref node) { // checks if the call itself (not the args) has side effects (or is not statically known)
@@ -583,7 +580,7 @@ bool callHasSideEffects(Ref node) { // checks if the call itself (not the args) 
 }
 
 bool hasSideEffects(Ref node) { // this is 99% incomplete!
-  std::string& type = node[0]->getString();
+  std::string type = node[0]->getString();
   switch (type[0]) {
     case 'n':
       if (type == "num" || type == "name") return false;
@@ -623,7 +620,7 @@ Ref simplifyNotCompsDirect(Ref node) {
     // de-morgan's laws do not work on floats, due to nans >:(
     if (node[2][0] == "binary" && (detectType(node[2][2]) == ASM_INT && detectType(node[2][3]) == ASM_INT)) {
       Ref op = node[2][1];
-      switch(op->getCString()[0]) {
+      switch(op->getString()[0]) {
         case '<': {
           if (op == "<")  { op->setString(">="); break; }
           if (op == "<=") { op->setString(">"); break; }
@@ -708,7 +705,7 @@ public:
     return count(str) > 0;
   }
   bool has(Ref node) {
-    return has(node->getString().c_str());
+    return has(node->getString());
   }
 };
 
@@ -726,7 +723,7 @@ bool isFunctionTable(const char *name) {
 }
 
 bool isFunctionTable(Ref value) {
-  return value->isString() && isFunctionTable(value->getString().c_str());
+  return value->isString() && isFunctionTable(value->getString());
 }
 
 void simplifyExpressions(Ref ast) {
@@ -868,11 +865,11 @@ void simplifyExpressions(Ref ast) {
           node[2] = input[2];
         } else if (input[0] == "sub" && input[1][0] == "name") {
           // HEAP8[..] & 255 => HEAPU8[..]
-          HeapInfo hi = parseHeap(input[1][1]->getCString());
+          HeapInfo hi = parseHeap(input[1][1]->getString());
           if (hi.valid) {
             if (isInteger32(amount) && amount == powl(2, hi.bits)-1) {
               if (!hi.unsign) {
-                input[1][1]->setString("HEAPU" + getIntStr(hi.bits)); // make unsigned
+                input[1][1]->setString(getHeapStr(hi.bits, true)); // make unsigned
               }
               // we cannot return HEAPU8 without a coercion, but at least we do HEAP8 & 255 => HEAPU8 | 0
               node[1]->setString("|");
@@ -895,9 +892,9 @@ void simplifyExpressions(Ref ast) {
         // collapse HEAPU?8[..] << 24 >> 24 etc. into HEAP8[..] | 0
         double amount = node[3][1]->getNumber();
         if (amount == node[2][3][1]->getNumber()) {
-          HeapInfo hi = parseHeap(node[2][2][1][1]->getCString());
+          HeapInfo hi = parseHeap(node[2][2][1][1]->getString());
           if (hi.valid && hi.bits == 32 - amount) {
-            node[2][2][1][1]->setString("HEAP" + getIntStr(hi.bits));
+            node[2][2][1][1]->setString(getHeapStr(hi.bits, false));
             node[1]->setString("|");
             node[2] = node[2][2];
             node[3][1]->setNumber(0);
@@ -1080,7 +1077,7 @@ void simplifyExpressions(Ref ast) {
             // do we want a simplifybitops on the new values here?
           }
           for (auto use : info.uses) {
-            use[2][1][1]->setString(correct);
+            use[2][1][1]->setString(correct.c_str());
           }
           AsmType correctType;
           switch(asmData.getType(v)) {
@@ -1096,7 +1093,7 @@ void simplifyExpressions(Ref ast) {
   };
 
   std::function<bool (Ref)> emitsBoolean = [&emitsBoolean](Ref node) {
-    std::string& type = node[0]->getString();
+    std::string type = node[0]->getString();
     if (type == "num") {
       return node[1]->getNumber() == 0 || node[1]->getNumber() == 1;
     }
@@ -1373,7 +1370,7 @@ int main(int argc, char **argv) {
   // Parse JSON source into the document
   doc = arena.alloc();
   doc->parse(json);
-  delete[] json;
+  // do not free json, it's contents are used as strings
 
   // Run passes on the Document
   for (int i = 2; i < argc; i++) {

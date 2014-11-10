@@ -16,10 +16,13 @@
 #include <iostream>
 #include <iomanip>
 #include <functional>
+#include <unordered_set>
+#include <unordered_map>
 
 #define err(str) fprintf(stderr, str "\n");
 #define errv(str, ...) fprintf(stderr, str "\n", __VA_ARGS__);
 
+struct IString;
 class Ref;
 struct Value;
 
@@ -40,6 +43,8 @@ struct Ref {
   // special conveniences
   bool operator==(const char *str); // comparison to string, which is by value
   bool operator!=(const char *str);
+  bool operator==(const IString &str);
+  bool operator!=(const IString &str);
   bool operator==(double d) { assert(0); } // prevent Ref == number, which is potentially ambiguous; use ->getNumber() == number
   bool operator==(Ref other);
   bool operator!(); // check if null, in effect
@@ -59,6 +64,58 @@ struct Arena {
 
 Arena arena;
 
+// Interned String type, 100% interned on creation. Comparisons are always just a pointer comparison
+
+struct IString {
+  const char *str;
+
+  class IStringHash : public std::hash<const char *> {
+  public:
+    size_t operator()(const char *str) const { // TODO: optimize?
+      uint64_t ret = 0;
+      while (*str) {
+        ret = (ret*6364136223846793005ULL) + *str;
+        str++;
+      }
+      return (size_t)ret;
+    }
+  };
+  class IStringEqual : public std::equal_to<const char *> {
+  public:
+    bool operator()(const char * const &x, const char * const &y) const {
+      return strcmp(x, y) == 0;
+    }
+  };
+  typedef std::unordered_set<const char *, IStringHash, IStringEqual> StringSet;
+  static StringSet strings;
+
+  IString() : str(nullptr) {}
+  IString(const char *s) {
+    set(s);
+  }
+
+  void set(const char *s) {
+    auto result = strings.insert(s); // if already present, does nothing
+    //errv("insert IString? %s : %d (size: %u)\n", s, result.second, strings.size());
+    str = *(result.first);
+  }
+
+  void set(const IString &s) {
+    str = s.str;
+  }
+
+  bool operator==(const IString& other) {
+    assert((str == other.str) == !strcmp(str, other.str));
+    return str == other.str; // fast!
+  }
+  bool operator!=(const IString& other) {
+    assert((str == other.str) == !strcmp(str, other.str));
+    return str != other.str; // fast!
+  }
+};
+
+IString::StringSet IString::strings;
+
 // Main value type
 struct Value {
   enum Type {
@@ -74,7 +131,7 @@ struct Value {
   typedef std::vector<Ref> ArrayStorage;
 
   union { // TODO: optimize
-    std::string *str;
+    IString str;
     double num;
     ArrayStorage *arr;
     bool boo;
@@ -84,9 +141,6 @@ struct Value {
   Value() : type(Null), num(0) {}
   explicit Value(const char *s) : type(Null) {
     setString(s);
-  }
-  explicit Value(const std::string& s) : type(Null) {
-    setString(s.c_str());
   }
   explicit Value(double n) : type(Null) {
     setNumber(n);
@@ -102,8 +156,7 @@ struct Value {
   }
 
   void free() {
-    if (type == String) delete str;
-    else if (type == Array) delete arr;
+    if (type == Array) delete arr;
     type = Null;
     num = 0;
   }
@@ -111,11 +164,14 @@ struct Value {
   Value& setString(const char *s) {
     free();
     type = String;
-    str = new std::string(s);
+    str.set(s);
     return *this;
   }
-  Value& setString(const std::string& s) {
-    return setString(s.c_str());
+  Value& setString(const IString &s) {
+    free();
+    type = String;
+    str.set(s);
+    return *this;
   }
   Value& setNumber(double n) {
     free();
@@ -156,13 +212,9 @@ struct Value {
 
   bool isBool(bool b) { return type == Bool && b == boo; } // avoid overloading == as it might overload over int
 
-  std::string& getString() {
+  const char* getString() {
     assert(isString());
-    return *str;
-  }
-  const char* getCString() {
-    assert(isString());
-    return str->c_str();
+    return str.str;
   }
   double& getNumber() {
     assert(isNumber());
@@ -181,7 +233,7 @@ struct Value {
     free();
     switch (other.type) {
       case String:
-        setString(other.str->c_str());
+        setString(other.str);
         break;
       case Number:
         setNumber(other.num);
@@ -203,7 +255,7 @@ struct Value {
     if (type != other.type) return false;
     switch (other.type) {
       case String:
-        return *str == *(other.str);
+        return str == other.str;
       case Number:
         return num == other.num;
       case Array:
@@ -237,9 +289,8 @@ struct Value {
       curr++;
       char *close = strchr(curr, '"');
       assert(close);
-      *close = 0;
+      *close = 0; // end this string, and reuse it straight from the input
       setString(curr);
-      *close = '"';
       curr = close+1;
     } else if (*curr == '[') {
       // Array
@@ -286,7 +337,7 @@ struct Value {
     #define indentify() { for (int i = 0; i < indent; i++) os << "  "; }
     switch (type) {
       case String:
-        os << '"' << *str << '"';
+        os << '"' << str.str << '"';
         break;
       case Number:
         os << std::setprecision(17) << num; // doubles can have 17 digits of precision
@@ -393,11 +444,19 @@ Ref& Ref::operator[](unsigned x) {
 }
 
 bool Ref::operator==(const char *str) {
-  return get()->isString() && get()->getString() == str;
+  return get()->isString() && !strcmp(get()->str.str, str);
 }
 
 bool Ref::operator!=(const char *str) {
-  return get()->isString() ? get()->getString() != str : true;
+  return get()->isString() ? strcmp(get()->str.str, str) : true;
+}
+
+bool Ref::operator==(const IString &str) {
+  return get()->isString() && get()->str == str;
+}
+
+bool Ref::operator!=(const IString &str) {
+  return get()->isString() && get()->str != str;
 }
 
 bool Ref::operator==(Ref other) {
