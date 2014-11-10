@@ -487,13 +487,13 @@ var LibraryGLFW = {
     setCursorPosCallback: function(winid, cbfun) {
       var win = GLFW.WindowFromId(winid);
       if (!win) return;
-      win.mousePosFunc = cbfun;
+      win.cursorPosFunc = cbfun;
     },
 
     setScrollCallback: function(winid, cbfun) {
       var win = GLFW.WindowFromId(winid);
       if (!win) return;
-      win.mouseWheelFunc = cbfun;
+      win.scrollFunc = cbfun;
     },
 
     setWindowSizeCallback: function(winid, cbfun) {
