@@ -380,7 +380,7 @@ var LibraryGLFW = {
       if (!GLFW.active || !GLFW.active.scrollFunc || event.target != Module['canvas']) return;
 
 #if USE_GLFW == 2
-      Runtime.dynCall('vi', GLFW.mouseWheelFunc, [GLFW.wheelPos]);
+      Runtime.dynCall('vi', GLFW.active.scrollFunc, [GLFW.wheelPos]);
 #endif
 
 #if USE_GLFW == 3
