@@ -111,6 +111,14 @@ struct IString {
     assert((str == other.str) == !strcmp(str, other.str));
     return str != other.str; // fast!
   }
+
+  char operator[](int x) {
+    return str[x];
+  }
+
+  const char *c_str() { return str; }
+
+  bool isNull() { return str == nullptr; }
 };
 
 IString::StringSet IString::strings;
@@ -211,9 +219,13 @@ struct Value {
 
   bool isBool(bool b) { return type == Bool && b == boo; } // avoid overloading == as it might overload over int
 
-  const char* getString() {
+  const char* getCString() {
     assert(isString());
     return str.str;
+  }
+  IString& getIString() {
+    assert(isString());
+    return str;
   }
   double& getNumber() {
     assert(isNumber());

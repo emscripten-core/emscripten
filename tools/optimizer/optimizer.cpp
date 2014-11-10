@@ -13,6 +13,60 @@
 
 Ref doc;
 
+IString TOPLEVEL("toplevel"),
+        DEFUN("defun"),
+        BLOCK("block"),
+        STAT("stat"),
+        ASSIGN("assign"),
+        NAME("name"),
+        VAR("var"),
+        CONDITIONAL("conditional"),
+        BINARY("binary"),
+        RETURN("return"),
+        IF("if"),
+        WHILE("while"),
+        SEQ("seq"),
+        SUB("sub"),
+        CALL("call"),
+        NUM("num"),
+        LABEL("label"),
+        STRING("string"),
+        INF("inf"),
+        NaN("nan"),
+        TEMP_RET0("tempRet0"),
+        UNARY_PREFIX("unary-prefix"),
+        MATH_FROUND("Math_fround"),
+        SIMD_FLOAT32X4("SIMD_float32x4"),
+        SIMD_INT32X4("SIMD_int32x4"),
+        PLUS("+"),
+        MINUS("-"),
+        OR("|"),
+        AND("&"),
+        XOR("^"),
+        L_NOT("!"),
+        B_NOT("~"),
+        LT("<"),
+        GE(">="),
+        LE("<="),
+        GT(">"),
+        EQ("=="),
+        NE("!="),
+        DIV("/"),
+        MOD("%"),
+        RSHIFT(">>"),
+        LSHIFT("<<"),
+        TRSHIFT(">>>"),
+        TEMP_DOUBLE_PTR("tempDoublePtr"),
+        HEAP8("HEAP8"),
+        HEAP16("HEAP16"),
+        HEAP32("HEAP32"),
+        HEAPF32("HEAPF32"),
+        HEAPU8("HEAPU8"),
+        HEAPU16("HEAPU16"),
+        HEAPU32("HEAPU32"),
+        HEAPF64("HEAPF64"),
+        F0("f0");
+
 //==================
 // Infrastructure
 //==================
@@ -26,12 +80,11 @@ int parseInt(const char *str) {
   return ret;
 }
 
-const char *getHeapStr(int x, bool unsign) {
+IString getHeapStr(int x, bool unsign) {
   switch (x) {
-    case 8: return unsign ? "HEAPU8" : "HEAP8";
-    case 16: return unsign ? "HEAPU16" : "HEAP16";
-    case 32: return unsign ? "HEAPU32" : "HEAP32";
-    case 64: return unsign ? "HEAPU64" : "HEAP64";
+    case 8: return unsign ? HEAPU8 : HEAP8;
+    case 16: return unsign ? HEAPU16 : HEAP16;
+    case 32: return unsign ? HEAPU32 : HEAP32;
   }
   assert(0);
   return ":(";
@@ -113,26 +166,26 @@ void traversePrePostConditional(Ref node, std::function<bool (Ref)> visitPre, st
 
 // Traverses all the top-level functions in the document
 void traverseFunctions(Ref ast, std::function<void (Ref)> visit) {
-  if (ast[0] == "toplevel") {
+  if (ast[0] == TOPLEVEL) {
     Ref stats = ast[1];
     for (int i = 0; i < stats->size(); i++) {
       Ref curr = stats[i];
-      if (curr[0] == "defun") visit(curr);
+      if (curr[0] == DEFUN) visit(curr);
     }
-  } else if (ast[0] == "defun") {
+  } else if (ast[0] == DEFUN) {
     visit(ast);
   }
 }
 
 Ref deStat(Ref node) {
-  if (node[0] == "stat") return node[1];
+  if (node[0] == STAT) return node[1];
   return node;
 }
 
 Ref getStatements(Ref node) {
-  if (node[0] == "defun") {
+  if (node[0] == DEFUN) {
     return node[3];
-  } else if (node[0] == "block") {
+  } else if (node[0] == BLOCK) {
     return node[1];
   } else {
     return arena.alloc();
@@ -158,10 +211,10 @@ bool isEmpty(Ref node);
 Ref makeAsmVarDef(const std::string& v_, AsmType type);
 Ref makeArray();
 Ref makeNum(double x);
-Ref makeName(const std::string& str);
+Ref makeName(IString str);
 Ref makeAsmCoercion(Ref node, AsmType type);
-Ref make1(const char* type, Ref a);
-Ref make3(const char *type, Ref a, Ref b, Ref c);
+Ref make1(IString type, Ref a);
+Ref make3(IString type, Ref a, Ref b, Ref c);
 
 struct AsmData {
   struct Local {
@@ -198,12 +251,12 @@ struct AsmData {
     int i = 0;
     while (i < stats->size()) {
       Ref node = stats[i];
-      if (node[0] != "stat" || node[1][0] != "assign" || node[1][2][0] != "name") break;
+      if (node[0] != STAT || node[1][0] != ASSIGN || node[1][2][0] != NAME) break;
       node = node[1];
       Ref name = node[2][1];
       int index = func[2]->indexOf(name);
       if (index < 0) break; // not an assign into a parameter, but a global
-      std::string str = name->getString();
+      std::string str = name->getCString();
       if (locals.count(str) > 0) break; // already done that param, must be starting function body
       locals[str] = { detectType(node[3]), true };
       params.push_back(locals.find(str));
@@ -213,10 +266,10 @@ struct AsmData {
     // process initial variable definitions
     while (i < stats->size()) {
       Ref node = stats[i];
-      if (node[0] != "var") break;
+      if (node[0] != VAR) break;
       for (int j = 0; j < node[1]->size(); j++) {
         Ref v = node[1][j];
-        std::string name = v[0]->getString();
+        std::string name = v[0]->getCString();
         Ref value = v[1];
         if (locals.count(name) == 0) {
           locals[name] = { detectType(value, nullptr, true), false };
@@ -234,16 +287,16 @@ struct AsmData {
     while (i < stats->size()) {
       traversePre(stats[i], [&](Ref node) {
         Ref type = node[0];
-        if (type == "var") {
+        if (type == VAR) {
           dump("bad, seeing a var in need of fixing", func);
           assert(0); //, 'should be no vars to fix! ' + func[1] + ' : ' + JSON.stringify(node));
         }
       });
       i++;
     }
-    // look for final "return" statement to get return type.
+    // look for final RETURN statement to get return type.
     Ref retStmt = stats[stats->size() - 1];
-    if (!!retStmt && retStmt[0] == "return" && !!retStmt[1]) {
+    if (!!retStmt && retStmt[0] == RETURN && !!retStmt[1]) {
       ret = detectType(retStmt[1]);
     } else {
       ret = ASM_NONE;
@@ -254,7 +307,7 @@ struct AsmData {
     Ref stats = func[3];
     // Remove var definitions, if any
     for (int i = 0; i < stats->size(); i++) {
-      if (stats[i][0] == "var") {
+      if (stats[i][0] == VAR) {
         stats[i] = makeEmpty();
       } else {
         if (!isEmpty(stats[i])) break;
@@ -281,31 +334,31 @@ struct AsmData {
     // add param coercions
     int next = 0;
     for (auto param : func[2]->getArray()) {
-      std::string str = param->getString();
-      stats[next++] = make1("stat", make3("assign", &(arena.alloc())->setBool(true), makeName(str), makeAsmCoercion(makeName(str), locals[str].type)));
+      std::string str = param->getCString();
+      stats[next++] = make1(STAT, make3(ASSIGN, &(arena.alloc())->setBool(true), makeName(str.c_str()), makeAsmCoercion(makeName(str.c_str()), locals[str].type)));
     }
     if (varDefs->size()) {
-      stats[next] = make1("var", varDefs);
+      stats[next] = make1(VAR, varDefs);
     }
     /*
     if (inlines.length > 0) {
       var i = 0;
       traverse(func, function(node, type) {
-        if (type == "call" && node[1][0] == "name" && node[1][1] == 'inlinejs') {
+        if (type == CALL && node[1][0] == NAME && node[1][1] == 'inlinejs') {
           node[1] = inlines[i++]; // swap back in the body
         }
       });
     }
     */
-    // ensure that there's a final "return" statement if needed.
+    // ensure that there's a final RETURN statement if needed.
     if (ret != ASM_NONE) {
       Ref retStmt = stats[stats->size() - 1];
-      if (!retStmt || retStmt[0] != "return") {
+      if (!retStmt || retStmt[0] != RETURN) {
         Ref retVal = makeNum(0);
         if (ret != ASM_INT) {
           retVal = makeAsmCoercion(retVal, ret);
         }
-        stats->push_back(make1("return", retVal));
+        stats->push_back(make1(RETURN, retVal));
       }
     }
     //printErr('denormalized \n\n' + astToSrc(func) + '\n\n');
@@ -341,34 +394,34 @@ bool isInteger32(double x) {
   return isInteger(x) && (x == (int32_t)x || x == (uint32_t)x);
 }
 
-std::string ASM_FLOAT_ZERO;
+IString ASM_FLOAT_ZERO;
 
 AsmType detectType(Ref node, AsmData *asmData, bool inVarDef) {
-  switch (node[0]->getString()[0]) {
+  switch (node[0]->getCString()[0]) {
     case 'n': {
-      if (node[0] == "num") {
+      if (node[0] == NUM) {
         if (!isInteger(node[1]->getNumber())) return ASM_DOUBLE;
         return ASM_INT;
-      } else if (node[0] == "name") {
+      } else if (node[0] == NAME) {
         if (asmData) {
-          AsmType ret = asmData->getType(node[1]->getString());
+          AsmType ret = asmData->getType(node[1]->getCString());
           if (ret != ASM_NONE) return ret;
         }
         if (!inVarDef) {
-          if (node[1] == "inf" || node[1] == "nan") return ASM_DOUBLE;
-          if (node[1] == "tempRet0") return ASM_INT;
+          if (node[1] == INF || node[1] == NaN) return ASM_DOUBLE;
+          if (node[1] == TEMP_RET0) return ASM_INT;
           return ASM_NONE;
         }
         // We are in a variable definition, where Math_fround(0) optimized into a global constant becomes f0 = Math_fround(0)
-        if (ASM_FLOAT_ZERO.size() == 0) ASM_FLOAT_ZERO = node[1]->getString();
-        else assert(ASM_FLOAT_ZERO == node[1]->getString());
+        if (ASM_FLOAT_ZERO.isNull()) ASM_FLOAT_ZERO = node[1]->getIString();
+        else assert(node[1] == ASM_FLOAT_ZERO);
         return ASM_FLOAT;
       }
       break;
     }
     case 'u': {
-      if (node[0] == "unary-prefix") {
-        switch (node[1]->getString()[0]) {
+      if (node[0] == UNARY_PREFIX) {
+        switch (node[1]->getCString()[0]) {
           case '+': return ASM_DOUBLE;
           case '-': return detectType(node[2], asmData, inVarDef);
           case '!': case '~': return ASM_INT;
@@ -378,22 +431,22 @@ AsmType detectType(Ref node, AsmData *asmData, bool inVarDef) {
       break;
     }
     case 'c': {
-      if (node[0] == "call") {
-        if (node[1][0] == "name") {
-          std::string name = node[1][1]->getString();
-          if (name == "Math_fround") return ASM_FLOAT;
-          else if (name == "SIMD_float32x4") return ASM_FLOAT32X4;
-          else if (name == "SIMD_int32x4") return ASM_INT32X4;
+      if (node[0] == CALL) {
+        if (node[1][0] == NAME) {
+          IString name = node[1][1]->getIString();
+          if (name == MATH_FROUND) return ASM_FLOAT;
+          else if (name == SIMD_FLOAT32X4) return ASM_FLOAT32X4;
+          else if (name == SIMD_INT32X4) return ASM_INT32X4;
         }
         return ASM_NONE;
-      } else if (node[0] == "conditional") {
+      } else if (node[0] == CONDITIONAL) {
         return detectType(node[2], asmData, inVarDef);
       }
       break;
     }
     case 'b': {
-      if (node[0] == "binary") {
-        switch (node[1]->getString()[0]) {
+      if (node[0] == BINARY) {
+        switch (node[1]->getCString()[0]) {
           case '+': case '-':
           case '*': case '/': case '%': return detectType(node[2], asmData, inVarDef);
           case '|': case '&': case '^': case '<': case '>': // handles <<, >>, >>=, <=, >=
@@ -405,11 +458,11 @@ AsmType detectType(Ref node, AsmData *asmData, bool inVarDef) {
       break;
     }
     case 's': {
-      if (node[0] == "seq") {
+      if (node[0] == SEQ) {
         return detectType(node[2], asmData, inVarDef);
-      } else if (node[0] == "sub") {
-        assert(node[1][0] == "name");
-        HeapInfo info = parseHeap(node[1][1]->getString());
+      } else if (node[0] == SUB) {
+        assert(node[1][0] == NAME);
+        HeapInfo info = parseHeap(node[1][1]->getCString());
         if (info.valid) return ASM_NONE;
         return info.floaty ? ASM_DOUBLE : ASM_INT; // XXX ASM_FLOAT?
       }
@@ -426,17 +479,13 @@ Ref makeArray() {
   return &arena.alloc()->setArray();
 }
 
-Ref makeString(const char *s) {
+Ref makeString(const IString& s) {
   return &arena.alloc()->setString(s);
-}
-
-Ref makeString(const std::string& s) {
-  return &arena.alloc()->setString(s.c_str());
 }
 
 Ref makeEmpty() {
   Ref ret(makeArray());
-  ret->push_back(makeString("toplevel"));
+  ret->push_back(makeString(TOPLEVEL));
   ret->push_back(makeArray());
   return ret;
 }
@@ -450,37 +499,33 @@ Ref makePair(Ref x, Ref y) {
 
 Ref makeNum(double x) {
   Ref ret(makeArray());
-  ret->push_back(makeString("num"));
+  ret->push_back(makeString(NUM));
   ret->push_back(&arena.alloc()->setNumber(x));
   return ret;
 }
 
-Ref makeName(const char *str) {
+Ref makeName(IString str) {
   Ref ret(makeArray());
-  ret->push_back(makeString("name"));
+  ret->push_back(makeString(NAME));
   ret->push_back(makeString(str));
   return ret;
 }
 
-Ref makeName(const std::string& str) {
-  return makeName(str.c_str());
-}
-
 Ref makeBlock() {
   Ref ret(makeArray());
-  ret->push_back(makeString("block"));
+  ret->push_back(makeString(BLOCK));
   ret->push_back(makeArray());
   return ret;
 }
 
-Ref make1(const char* type, Ref a) {
+Ref make1(IString type, Ref a) {
   Ref ret(makeArray());
   ret->push_back(makeString(type));
   ret->push_back(a);
   return ret;
 }
 
-Ref make2(const char* type, const char *a, Ref b) {
+Ref make2(IString type, IString a, Ref b) {
   Ref ret(makeArray());
   ret->push_back(makeString(type));
   ret->push_back(makeString(a));
@@ -488,7 +533,7 @@ Ref make2(const char* type, const char *a, Ref b) {
   return ret;
 }
 
-Ref make2(const char* type, Ref a, Ref b) {
+Ref make2(IString type, Ref a, Ref b) {
   Ref ret(makeArray());
   ret->push_back(makeString(type));
   ret->push_back(a);
@@ -496,7 +541,7 @@ Ref make2(const char* type, Ref a, Ref b) {
   return ret;
 }
 
-Ref make3(const char *type, const char *a, Ref b, Ref c) {
+Ref make3(IString type, IString a, Ref b, Ref c) {
   Ref ret(makeArray());
   ret->push_back(makeString(type));
   ret->push_back(makeString(a));
@@ -505,7 +550,7 @@ Ref make3(const char *type, const char *a, Ref b, Ref c) {
   return ret;
 }
 
-Ref make3(const char *type, Ref a, Ref b, Ref c) {
+Ref make3(IString type, Ref a, Ref b, Ref c) {
   Ref ret(makeArray());
   ret->push_back(makeString(type));
   ret->push_back(a);
@@ -515,25 +560,25 @@ Ref make3(const char *type, Ref a, Ref b, Ref c) {
 }
 
 Ref makeAsmVarDef(const std::string& v_, AsmType type) {
-  Ref v = makeString(v_);
+  Ref v = makeString(IString(v_.c_str()));
   Ref val;
   switch (type) {
     case ASM_INT: val = makeNum(0); break;
-    case ASM_DOUBLE: val = make2("unary-prefix", "+", makeNum(0)); break;
+    case ASM_DOUBLE: val = make2(UNARY_PREFIX, PLUS, makeNum(0)); break;
     case ASM_FLOAT: {
-      if (ASM_FLOAT_ZERO.size() > 0) {
-        val = makeName(ASM_FLOAT_ZERO.c_str());
+      if (!ASM_FLOAT_ZERO.isNull()) {
+        val = makeName(ASM_FLOAT_ZERO);
       } else {
-        val = make2("call", makeName("Math_fround"), &(makeArray())->push_back(makeNum(0)));
+        val = make2(CALL, makeName(MATH_FROUND), &(makeArray())->push_back(makeNum(0)));
       }
       break;
     }
     case ASM_FLOAT32X4: {
-      val = make2("call", makeName("SIMD_float32x4"), &(makeArray())->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
+      val = make2(CALL, makeName(SIMD_FLOAT32X4), &(makeArray())->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
       break;
     }
     case ASM_INT32X4: {
-      val = make2("call", makeName("SIMD_int32x4"), &(makeArray())->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
+      val = make2(CALL, makeName(SIMD_INT32X4), &(makeArray())->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
       break;
     }
     default: assert(0);
@@ -543,11 +588,11 @@ Ref makeAsmVarDef(const std::string& v_, AsmType type) {
 
 Ref makeAsmCoercion(Ref node, AsmType type) {
   switch (type) {
-    case ASM_INT: return make3("binary", "|", node, makeNum(0));
-    case ASM_DOUBLE: return make2("unary-prefix", "+", node);
-    case ASM_FLOAT: return make2("call", makeName("Math_fround"), &(makeArray())->push_back(node));
-    case ASM_FLOAT32X4: return make2("call", makeName("SIMD_float32x4"), &(makeArray())->push_back(node));
-    case ASM_INT32X4: return make2("call", makeName("SIMD_int32x4"), &(makeArray())->push_back(node));
+    case ASM_INT: return make3(BINARY, OR, node, makeNum(0));
+    case ASM_DOUBLE: return make2(UNARY_PREFIX, PLUS, node);
+    case ASM_FLOAT: return make2(CALL, makeName(MATH_FROUND), &(makeArray())->push_back(node));
+    case ASM_FLOAT32X4: return make2(CALL, makeName(SIMD_FLOAT32X4), &(makeArray())->push_back(node));
+    case ASM_INT32X4: return make2(CALL, makeName(SIMD_INT32X4), &(makeArray())->push_back(node));
     case ASM_NONE:
     default: return node; // non-validating code, emit nothing XXX this is dangerous, we should only allow this when we know we are not validating
   }
@@ -556,12 +601,12 @@ Ref makeAsmCoercion(Ref node, AsmType type) {
 // Checks
 
 bool isEmpty(Ref node) {
-  return node->size() == 2 && node[0] == "toplevel" && node[1]->size() == 0;
+  return node->size() == 2 && node[0] == TOPLEVEL && node[1]->size() == 0;
 }
 
 bool commable(Ref node) { // TODO: hashing
-  std::string type = node[0]->getString();
-  if (type == "assign" || type == "binary" || type == "unary-prefix" || type == "unary-postfix" || type == "name" || type == "num" || type == "call" || type == "seq" || type == "conditional" || type == "sub") return true;
+  IString type = node[0]->getIString();
+  if (type == ASSIGN || type == BINARY || type == UNARY_PREFIX || type == NAME || type == NUM || type == CALL || type == SEQ || type == CONDITIONAL || type == SUB) return true;
   return false;
 }
 
@@ -572,38 +617,38 @@ bool isMathFunc(const char *name) {
 }
 
 bool isMathFunc(Ref value) {
-  return value->isString() && isMathFunc(value->getString());
+  return value->isString() && isMathFunc(value->getCString());
 }
 
 bool callHasSideEffects(Ref node) { // checks if the call itself (not the args) has side effects (or is not statically known)
-  return !(node[1][0] == "name" && isMathFunc(node[1][1]));
+  return !(node[1][0] == NAME && isMathFunc(node[1][1]));
 }
 
 bool hasSideEffects(Ref node) { // this is 99% incomplete!
-  std::string type = node[0]->getString();
+  IString type = node[0]->getIString();
   switch (type[0]) {
     case 'n':
-      if (type == "num" || type == "name") return false;
+      if (type == NUM || type == NAME) return false;
       break;
     case 's':
-      if (type == "string") return false;
-      if (type == "sub") return hasSideEffects(node[1]) || hasSideEffects(node[2]);
+      if (type == STRING) return false;
+      if (type == SUB) return hasSideEffects(node[1]) || hasSideEffects(node[2]);
       break;
     case 'u':
-      if (type == "unary-prefix") return hasSideEffects(node[2]);
+      if (type == UNARY_PREFIX) return hasSideEffects(node[2]);
       break;
     case 'b':
-      if (type == "binary") return hasSideEffects(node[2]) || hasSideEffects(node[3]);
+      if (type == BINARY) return hasSideEffects(node[2]) || hasSideEffects(node[3]);
       break;
     case 'c':
-      if (type == "call") {
+      if (type == CALL) {
         if (callHasSideEffects(node)) return true;
         // This is a statically known call, with no side effects. only args can side effect us
         for (auto arg : node[2]->getArray()) {
           if (hasSideEffects(arg)) return true;
         }
         return false;
-      } else if (type == "conditional") return hasSideEffects(node[1]) || hasSideEffects(node[2]) || hasSideEffects(node[3]); 
+      } else if (type == CONDITIONAL) return hasSideEffects(node[1]) || hasSideEffects(node[2]) || hasSideEffects(node[3]); 
       break;
   }
   return true;
@@ -616,33 +661,33 @@ bool hasSideEffects(Ref node) { // this is 99% incomplete!
 //   if (!(x < 5))
 // or such. Simplifying these saves space and time.
 Ref simplifyNotCompsDirect(Ref node) {
-  if (node[0] == "unary-prefix" && node[1] == "!") {
+  if (node[0] == UNARY_PREFIX && node[1] == L_NOT) {
     // de-morgan's laws do not work on floats, due to nans >:(
-    if (node[2][0] == "binary" && (detectType(node[2][2]) == ASM_INT && detectType(node[2][3]) == ASM_INT)) {
+    if (node[2][0] == BINARY && (detectType(node[2][2]) == ASM_INT && detectType(node[2][3]) == ASM_INT)) {
       Ref op = node[2][1];
-      switch(op->getString()[0]) {
+      switch(op->getCString()[0]) {
         case '<': {
-          if (op == "<")  { op->setString(">="); break; }
-          if (op == "<=") { op->setString(">"); break; }
+          if (op == LT)  { op->setString(GE); break; }
+          if (op == LE) { op->setString(GE); break; }
           return node;
         }
         case '>': {
-          if (op == ">")  { op->setString("<="); break; }
-          if (op == ">=") { op->setString("<"); break; }
+          if (op == GE)  { op->setString(LE); break; }
+          if (op == GE) { op->setString(LT); break; }
           return node;
         }
         case '=': {
-          if (op == "==") { op->setString("!="); break; }
+          if (op == EQ) { op->setString(NE); break; }
           return node;
         }
         case '!': {
-          if (op == "!=") { op->setString("=="); break; }
+          if (op == NE) { op->setString(EQ); break; }
           return node;
         }
         default: return node;
       }
-      return make3("binary", op, node[2][2], node[2][3]);
-    } else if (node[2][0] == "unary-prefix" && node[2][1] == "!") {
+      return make3(BINARY, op, node[2][2], node[2][3]);
+    } else if (node[2][0] == UNARY_PREFIX && node[2][1] == L_NOT) {
       return node[2][2];
     }
   }
@@ -650,7 +695,7 @@ Ref simplifyNotCompsDirect(Ref node) {
 }
 
 Ref flipCondition(Ref cond) {
-  return simplifyNotCompsDirect(make2("unary-prefix", "!", cond));
+  return simplifyNotCompsDirect(make2(UNARY_PREFIX, L_NOT, cond));
 }
 
 void safeCopy(Ref target, Ref source) { // safely copy source onto target, even if source is a subnode of target
@@ -664,13 +709,13 @@ int measureCost(Ref ast) {
   int size = 0;
   traversePre(ast, [&size](Ref node) {
     Ref type = node[0];
-    if (type == "num" || type == "unary-prefix") size--;
-    else if (type == "binary") {
-      if (node[3][0] == "num" && node[3][1]->getNumber() == 0) size--;
-      else if (node[1] == "/" || node[1] == "%") size += 2;
+    if (type == NUM || type == UNARY_PREFIX) size--;
+    else if (type == BINARY) {
+      if (node[3][0] == NUM && node[3][1]->getNumber() == 0) size--;
+      else if (node[1] == DIV || node[1] == MOD) size += 2;
     }
-    else if (type == "call" && !callHasSideEffects(node)) size -= 2;
-    else if (type == "sub") size++;
+    else if (type == CALL && !callHasSideEffects(node)) size -= 2;
+    else if (type == SUB) size++;
     size++;
   });
   return size;
@@ -705,7 +750,7 @@ public:
     return count(str) > 0;
   }
   bool has(Ref node) {
-    return has(node->getString());
+    return has(node->getCString());
   }
 };
 
@@ -723,7 +768,7 @@ bool isFunctionTable(const char *name) {
 }
 
 bool isFunctionTable(Ref value) {
-  return value->isString() && isFunctionTable(value->getString());
+  return value->isString() && isFunctionTable(value->getCString());
 }
 
 void simplifyExpressions(Ref ast) {
@@ -732,27 +777,27 @@ void simplifyExpressions(Ref ast) {
   auto simplifyIntegerConversions = [](Ref ast) {
     traversePre(ast, [](Ref node) {
       Ref type = node[0];
-      if (type == "binary"       && node[1]    == ">>" && node[3][0] == "num" &&
-          node[2][0] == "binary" && node[2][1] == "<<" && node[2][3][0] == "num" && node[3][1]->getNumber() == node[2][3][1]->getNumber()) {
+      if (type == BINARY       && node[1]    == RSHIFT && node[3][0] == NUM &&
+          node[2][0] == BINARY && node[2][1] == LSHIFT && node[2][3][0] == NUM && node[3][1]->getNumber() == node[2][3][1]->getNumber()) {
         // Transform (x&A)<<B>>B to X&A.
         Ref innerNode = node[2][2];
         double shifts = node[3][1]->getNumber();
-        if (innerNode[0] == "binary" && innerNode[1] == "&" && innerNode[3][0] == "num") {
+        if (innerNode[0] == BINARY && innerNode[1] == AND && innerNode[3][0] == NUM) {
           double mask = innerNode[3][1]->getNumber();
           if (isInteger32(mask) && isInteger32(shifts) && ((int(mask) << int(shifts)) >> int(shifts)) == int(mask)) {
             safeCopy(node, innerNode);
             return;
           }
         }
-      } else if (type == "binary" && BITWISE.has(node[1])) {
+      } else if (type == BINARY && BITWISE.has(node[1])) {
         for (int i = 2; i <= 3; i++) {
           Ref subNode = node[i];
-          if (subNode[0] == "binary" && subNode[1] == "&" && subNode[3][0] == "num" && subNode[3][1]->getNumber() == 1) {
+          if (subNode[0] == BINARY && subNode[1] == AND && subNode[3][0] == NUM && subNode[3][1]->getNumber() == 1) {
             // Rewrite (X < Y) & 1 to X < Y , when it is going into a bitwise operator. We could
             // remove even more (just replace &1 with |0, then subsequent passes could remove the |0)
             // but v8 issue #2513 means the code would then run very slowly in chrome.
             Ref input = subNode[2];
-            if (input[0] == "binary" && COMPARE_OPS.has(input[1])) {
+            if (input[0] == BINARY && COMPARE_OPS.has(input[1])) {
               safeCopy(node[i], input);
             }
           }
@@ -775,21 +820,21 @@ void simplifyExpressions(Ref ast) {
         std::vector<int> stack;
         std::function<void (Ref)> process = [&stack, &rerun, &process, &ast](Ref node) {
           Ref type = node[0];
-          if (type == "binary" && node[1] == "|") {
-            if (node[2][0] == "num" && node[3][0] == "num") {
+          if (type == BINARY && node[1] == OR) {
+            if (node[2][0] == NUM && node[3][0] == NUM) {
               node[2][1]->setNumber(int(node[2][1]->getNumber()) | int(node[3][1]->getNumber()));
               stack.push_back(0);
               safeCopy(node, node[2]);
               return;
             }
             bool go = false;
-            if (node[2][0] == "num" && node[2][1]->getNumber() == 0) {
+            if (node[2][0] == NUM && node[2][1]->getNumber() == 0) {
               // canonicalize order
               Ref temp = node[3];
               node[3] = node[2];
               node[2] = temp;
               go = true;
-            } else if (node[3][0] == "num" && node[3][1]->getNumber() == 0) {
+            } else if (node[3][0] == NUM && node[3][1]->getNumber() == 0) {
               go = true;
             }
             if (!go) {
@@ -799,11 +844,11 @@ void simplifyExpressions(Ref ast) {
             // We might be able to remove this correction
             for (int i = stack.size()-1; i >= 0; i--) {
               if (stack[i] >= 1) {
-                if (stack[stack.size()-1] < 2 && node[2][0] == "call") break; // we can only remove multiple |0s on these
+                if (stack[stack.size()-1] < 2 && node[2][0] == CALL) break; // we can only remove multiple |0s on these
                 if (stack[stack.size()-1] < 1 && (COERCION_REQUIRING_OPS.has(node[2][0]) ||
-                                                 (node[2][0] == "binary" && COERCION_REQUIRING_BINARIES.has(node[2][1])))) break; // we can remove |0 or >>2
+                                                 (node[2][0] == BINARY && COERCION_REQUIRING_BINARIES.has(node[2][1])))) break; // we can remove |0 or >>2
                 // we will replace ourselves with the non-zero side. Recursively process that node.
-                Ref result = node[2][0] == "num" && node[2][1]->getNumber() == 0 ? node[3] : node[2], other;
+                Ref result = node[2][0] == NUM && node[2][1]->getNumber() == 0 ? node[3] : node[2], other;
                 // replace node in-place
                 safeCopy(node, result);
                 rerun = true;
@@ -815,11 +860,11 @@ void simplifyExpressions(Ref ast) {
             }
             stack.push_back(2); // From here on up, no need for this kind of correction, it's done at the top
                            // (Add this at the end, so it is only added if we did not remove it)
-          } else if (type == "binary" && USEFUL_BINARY_OPS.has(node[1])) {
+          } else if (type == BINARY && USEFUL_BINARY_OPS.has(node[1])) {
             stack.push_back(1);
-          } else if ((type == "binary" && SAFE_BINARY_OPS.has(node[1])) || type == "num" || type == "name") {
+          } else if ((type == BINARY && SAFE_BINARY_OPS.has(node[1])) || type == NUM || type == NAME) {
             stack.push_back(0); // This node is safe in that it does not interfere with this optimization
-          } else if (type == "unary-prefix" && node[1] == "~") {
+          } else if (type == UNARY_PREFIX && node[1] == B_NOT) {
             stack.push_back(1);
           } else {
             stack.push_back(-1); // This node is dangerous! Give up if you see this before you see '1'
@@ -841,7 +886,7 @@ void simplifyExpressions(Ref ast) {
     traversePrePostConditional(ast, [](Ref node) {
       // Detect trees which should not
       // be simplified.
-      if (node[0] == "sub" && node[1][0] == "name" && isFunctionTable(node[1][1])) {
+      if (node[0] == SUB && node[1][0] == NAME && isFunctionTable(node[1][1])) {
         return false; // do not traverse subchildren here, we should not collapse 55 & 126.
       }
       return true;
@@ -850,106 +895,106 @@ void simplifyExpressions(Ref ast) {
       // that we simplify a node's operands before the node itself. This allows
       // optimizations to cascade.
       Ref type = node[0];
-      if (type == "name") {
-        if (node[1] == "tempDoublePtr") hasTempDoublePtr = true;
-      } else if (type == "binary" && node[1] == "&" && node[3][0] == "num") {
-        if (node[2][0] == "num") {
+      if (type == NAME) {
+        if (node[1] == TEMP_DOUBLE_PTR) hasTempDoublePtr = true;
+      } else if (type == BINARY && node[1] == AND && node[3][0] == NUM) {
+        if (node[2][0] == NUM) {
           safeCopy(node, makeNum(int(node[2][1]->getNumber()) & int(node[3][1]->getNumber())));
           return;
         }
         Ref input = node[2];
         double amount = node[3][1]->getNumber();
-        if (input[0] == "binary" && input[1] == "&" && input[3][0] == "num") {
+        if (input[0] == BINARY && input[1] == AND && input[3][0] == NUM) {
           // Collapse X & 255 & 1
           node[3][1]->setNumber(int(amount) & int(input[3][1]->getNumber()));
           node[2] = input[2];
-        } else if (input[0] == "sub" && input[1][0] == "name") {
+        } else if (input[0] == SUB && input[1][0] == NAME) {
           // HEAP8[..] & 255 => HEAPU8[..]
-          HeapInfo hi = parseHeap(input[1][1]->getString());
+          HeapInfo hi = parseHeap(input[1][1]->getCString());
           if (hi.valid) {
             if (isInteger32(amount) && amount == powl(2, hi.bits)-1) {
               if (!hi.unsign) {
                 input[1][1]->setString(getHeapStr(hi.bits, true)); // make unsigned
               }
               // we cannot return HEAPU8 without a coercion, but at least we do HEAP8 & 255 => HEAPU8 | 0
-              node[1]->setString("|");
+              node[1]->setString(OR);
               node[3][1]->setNumber(0);
               return;
             }
           }
         }
-      } else if (type == "binary" && node[1] == "^") {
+      } else if (type == BINARY && node[1] == XOR) {
         // LLVM represents bitwise not as xor with -1. Translate it back to an actual bitwise not.
-        if (node[3][0] == "unary-prefix" && node[3][1] == "-" && node[3][2][0] == "num" &&
+        if (node[3][0] == UNARY_PREFIX && node[3][1] == MINUS && node[3][2][0] == NUM &&
             node[3][2][1]->getNumber() == 1 &&
-            !(node[2][0] == "unary-prefix" && node[2][1] == "~")) { // avoid creating ~~~ which is confusing for asm given the role of ~~
-          safeCopy(node, make2("unary-prefix", "~", node[2]));
+            !(node[2][0] == UNARY_PREFIX && node[2][1] == B_NOT)) { // avoid creating ~~~ which is confusing for asm given the role of ~~
+          safeCopy(node, make2(UNARY_PREFIX, B_NOT, node[2]));
           return;
         }
-      } else if (type       == "binary" && node[1]    == ">>" && node[3][0]    == "num" &&
-                 node[2][0] == "binary" && node[2][1] == "<<" && node[2][3][0] == "num" &&
-                 node[2][2][0] == "sub" && node[2][2][1][0] == "name") {
+      } else if (type       == BINARY && node[1]    == RSHIFT && node[3][0]    == NUM &&
+                 node[2][0] == BINARY && node[2][1] == LSHIFT && node[2][3][0] == NUM &&
+                 node[2][2][0] == SUB && node[2][2][1][0] == NAME) {
         // collapse HEAPU?8[..] << 24 >> 24 etc. into HEAP8[..] | 0
         double amount = node[3][1]->getNumber();
         if (amount == node[2][3][1]->getNumber()) {
-          HeapInfo hi = parseHeap(node[2][2][1][1]->getString());
+          HeapInfo hi = parseHeap(node[2][2][1][1]->getCString());
           if (hi.valid && hi.bits == 32 - amount) {
             node[2][2][1][1]->setString(getHeapStr(hi.bits, false));
-            node[1]->setString("|");
+            node[1]->setString(OR);
             node[2] = node[2][2];
             node[3][1]->setNumber(0);
             rerunOrZeroPass = true;
             return;
           }
         }
-      } else if (type == "assign") {
+      } else if (type == ASSIGN) {
         // optimizations for assigning into HEAP32 specifically
-        if (node[1]->isBool(true) && node[2][0] == "sub" && node[2][1][0] == "name") {
-          if (node[2][1][1] == "HEAP32") {
+        if (node[1]->isBool(true) && node[2][0] == SUB && node[2][1][0] == NAME) {
+          if (node[2][1][1] == HEAP32) {
             // HEAP32[..] = x | 0 does not need the | 0 (unless it is a mandatory |0 of a call)
-            if (node[3][0] == "binary" && node[3][1] == "|") {
-              if (node[3][2][0] == "num" && node[3][2][1]->getNumber() == 0 && node[3][3][0] != "call") {
+            if (node[3][0] == BINARY && node[3][1] == OR) {
+              if (node[3][2][0] == NUM && node[3][2][1]->getNumber() == 0 && node[3][3][0] != CALL) {
                 node[3] = node[3][3];
-              } else if (node[3][3][0] == "num" && node[3][3][1]->getNumber() == 0 && node[3][2][0] != "call") {
+              } else if (node[3][3][0] == NUM && node[3][3][1]->getNumber() == 0 && node[3][2][0] != CALL) {
                 node[3] = node[3][2];
               }
             }
-          } else if (node[2][1][1] == "HEAP8") {
+          } else if (node[2][1][1] == HEAP8) {
             // HEAP8[..] = x & 0xff does not need the & 0xff
-            if (node[3][0] == "binary" && node[3][1] == "&" && node[3][3][0] == "num" && node[3][3][1]->getNumber() == 0xff) {
+            if (node[3][0] == BINARY && node[3][1] == AND && node[3][3][0] == NUM && node[3][3][1]->getNumber() == 0xff) {
               node[3] = node[3][2];
             }
-          } else if (node[2][1][1] == "HEAP16") {
+          } else if (node[2][1][1] == HEAP16) {
             // HEAP16[..] = x & 0xffff does not need the & 0xffff
-            if (node[3][0] == "binary" && node[3][1] == "&" && node[3][3][0] == "num" && node[3][3][1]->getNumber() == 0xffff) {
+            if (node[3][0] == BINARY && node[3][1] == AND && node[3][3][0] == NUM && node[3][3][1]->getNumber() == 0xffff) {
               node[3] = node[3][2];
             }
           }
         }
         Ref value = node[3];
-        if (value[0] == "binary" && value[1] == "|") {
+        if (value[0] == BINARY && value[1] == OR) {
           // canonicalize order of |0 to end
-          if (value[2][0] == "num" && value[2][1]->getNumber() == 0) {
+          if (value[2][0] == NUM && value[2][1]->getNumber() == 0) {
             Ref temp = value[2];
             value[2] = value[3];
             value[3] = temp;
           }
           // if a seq ends in an |0, remove an external |0
           // note that it is only safe to do this in assigns, like we are doing here (return (x, y|0); is not valid)
-          if (value[2][0] == "seq" && value[2][2][0] == "binary" && USEFUL_BINARY_OPS.has(value[2][2][1])) {
+          if (value[2][0] == SEQ && value[2][2][0] == BINARY && USEFUL_BINARY_OPS.has(value[2][2][1])) {
             node[3] = value[2];
           }
         }
-      } else if (type == "binary" && node[1] == ">>" && node[2][0] == "num" && node[3][0] == "num") {
+      } else if (type == BINARY && node[1] == RSHIFT && node[2][0] == NUM && node[3][0] == NUM) {
         // optimize num >> num, in asm we need this since we do not run optimizeShifts
-        node[0]->setString("num");
+        node[0]->setString(NUM);
         node[1]->setNumber(int(node[2][1]->getNumber()) >> int(node[3][1]->getNumber()));
         node->setSize(2);
         return;
-      } else if (type == "binary" && node[1] == "+") {
+      } else if (type == BINARY && node[1] == PLUS) {
         // The most common mathop is addition, e.g. in getelementptr done repeatedly. We can join all of those,
         // by doing (num+num) ==> newnum, and (name+num)+num = name+newnum
-        if (node[2][0] == "num" && node[3][0] == "num") {
+        if (node[2][0] == NUM && node[3][0] == NUM) {
           node[2][1]->setNumber(int(node[2][1]->getNumber()) + int(node[3][1]->getNumber()));
           safeCopy(node, node[2]);
           return;
@@ -957,7 +1002,7 @@ void simplifyExpressions(Ref ast) {
         for (int i = 2; i <= 3; i++) {
           int ii = 5-i;
           for (int j = 2; j <= 3; j++) {
-            if (node[i][0] == "num" && node[ii][0] == "binary" && node[ii][1] == "+" && node[ii][j][0] == "num") {
+            if (node[i][0] == NUM && node[ii][0] == BINARY && node[ii][1] == PLUS && node[ii][j][0] == NUM) {
               node[ii][j][1]->setNumber(int(node[ii][j][1]->getNumber()) + int(node[i][1]->getNumber()));
               safeCopy(node, node[ii]);
               return;
@@ -973,34 +1018,34 @@ void simplifyExpressions(Ref ast) {
       AsmData asmData(ast);
       traversePre(ast, [](Ref node) {
         Ref type = node[0];
-        if (type == "assign") {
-          if (node[1]->isBool(true) && node[2][0] == "sub" && node[2][1][0] == "name" && node[2][1][1] == "HEAP32") {
+        if (type == ASSIGN) {
+          if (node[1]->isBool(true) && node[2][0] == SUB && node[2][1][0] == NAME && node[2][1][1] == HEAP32) {
             // remove bitcasts that are now obviously pointless, e.g.
             // HEAP32[$45 >> 2] = HEAPF32[tempDoublePtr >> 2] = ($14 < $28 ? $14 : $28) - $42, HEAP32[tempDoublePtr >> 2] | 0;
             Ref value = node[3];
-            if (value[0] == "seq" && value[1][0] == "assign" && value[1][2][0] == "sub" && value[1][2][1][0] == "name" && value[1][2][1][1] == "HEAPF32" &&
-                value[1][2][2][0] == "binary" && value[1][2][2][2][0] == "name" && value[1][2][2][2][1] == "tempDoublePtr") {
+            if (value[0] == SEQ && value[1][0] == ASSIGN && value[1][2][0] == SUB && value[1][2][1][0] == NAME && value[1][2][1][1] == HEAPF32 &&
+                value[1][2][2][0] == BINARY && value[1][2][2][2][0] == NAME && value[1][2][2][2][1] == TEMP_DOUBLE_PTR) {
               // transform to HEAPF32[$45 >> 2] = ($14 < $28 ? $14 : $28) - $42;
-              node[2][1][1]->setString("HEAPF32");
+              node[2][1][1]->setString(HEAPF32);
               node[3] = value[1][3];
             }
           }
-        } else if (type == "seq") {
+        } else if (type == SEQ) {
           // (HEAP32[tempDoublePtr >> 2] = HEAP32[$37 >> 2], +HEAPF32[tempDoublePtr >> 2])
           //   ==>
           // +HEAPF32[$37 >> 2]
-          if (node[0] == "seq" && node[1][0] == "assign" && node[1][2][0] == "sub" && node[1][2][1][0] == "name" &&
-              (node[1][2][1][1] == "HEAP32" || node[1][2][1][1] == "HEAPF32") &&
-              node[1][2][2][0] == "binary" && node[1][2][2][2][0] == "name" && node[1][2][2][2][1] == "tempDoublePtr" &&
-              node[1][3][0] == "sub" && node[1][3][1][0] == "name" && (node[1][3][1][1] == "HEAP32" || node[1][3][1][1] == "HEAPF32") &&
-              node[2][0] != "seq") { // avoid (x, y, z) which can be used for tempDoublePtr on doubles for alignment fixes
-            if (node[1][2][1][1] == "HEAP32") {
-              node[1][3][1][1]->setString("HEAPF32");
+          if (node[0] == SEQ && node[1][0] == ASSIGN && node[1][2][0] == SUB && node[1][2][1][0] == NAME &&
+              (node[1][2][1][1] == HEAP32 || node[1][2][1][1] == HEAPF32) &&
+              node[1][2][2][0] == BINARY && node[1][2][2][2][0] == NAME && node[1][2][2][2][1] == TEMP_DOUBLE_PTR &&
+              node[1][3][0] == SUB && node[1][3][1][0] == NAME && (node[1][3][1][1] == HEAP32 || node[1][3][1][1] == HEAPF32) &&
+              node[2][0] != SEQ) { // avoid (x, y, z) which can be used for tempDoublePtr on doubles for alignment fixes
+            if (node[1][2][1][1] == HEAP32) {
+              node[1][3][1][1]->setString(HEAPF32);
               safeCopy(node, makeAsmCoercion(node[1][3], detectType(node[2])));
               return;
             } else {
-              node[1][3][1][1]->setString("HEAP32");
-              safeCopy(node, make3("binary", "|", node[1][3], makeNum(0)));
+              node[1][3][1][1]->setString(HEAP32);
+              safeCopy(node, make3(BINARY, OR, node[1][3], makeNum(0)));
               return;
             }
           }
@@ -1018,17 +1063,17 @@ void simplifyExpressions(Ref ast) {
       };
       std::unordered_map<std::string, BitcastData> bitcastVars;
       traversePre(ast, [&bitcastVars](Ref node) {
-        if (node[0] == "assign" && node[1]->isBool(true) && node[2][0] == "name") {
+        if (node[0] == ASSIGN && node[1]->isBool(true) && node[2][0] == NAME) {
           Ref value = node[3];
-          if (value[0] == "seq" && value[1][0] == "assign" && value[1][2][0] == "sub" && value[1][2][1][0] == "name" &&
-              (value[1][2][1][1] == "HEAP32" || value[1][2][1][1] == "HEAPF32") &&
-              value[1][2][2][0] == "binary" && value[1][2][2][2][0] == "name" && value[1][2][2][2][1] == "tempDoublePtr") {
-            std::string name = node[2][1]->getString();
-            std::string heap = value[1][2][1][1]->getString();
-            if (heap == "HEAP32") {
+          if (value[0] == SEQ && value[1][0] == ASSIGN && value[1][2][0] == SUB && value[1][2][1][0] == NAME &&
+              (value[1][2][1][1] == HEAP32 || value[1][2][1][1] == HEAPF32) &&
+              value[1][2][2][0] == BINARY && value[1][2][2][2][0] == NAME && value[1][2][2][2][1] == TEMP_DOUBLE_PTR) {
+            std::string name = node[2][1]->getCString();
+            std::string heap = value[1][2][1][1]->getCString();
+            if (heap[4] == '3') { // "HEAP32"
               bitcastVars[name].define_HEAP32++;
             } else {
-              assert(heap == "HEAPF32");
+              assert(heap[4] == 'F'); // HEAPF32
               bitcastVars[name].define_HEAPF32++;
             }
             bitcastVars[name].defines.push_back(node);
@@ -1038,16 +1083,16 @@ void simplifyExpressions(Ref ast) {
       });
       traversePre(ast, [&bitcastVars](Ref node) {
         Ref type = node[0];
-        if (type == "name" && bitcastVars[node[1]->getString()].ok) {
-          bitcastVars[node[1]->getString()].namings++;
-        } else if (type == "assign" && node[1]->isBool(true)) {
+        if (type == NAME && bitcastVars[node[1]->getCString()].ok) {
+          bitcastVars[node[1]->getCString()].namings++;
+        } else if (type == ASSIGN && node[1]->isBool(true)) {
           Ref value = node[3];
-          if (value[0] == "name") {
-            std::string name = value[1]->getString();
+          if (value[0] == NAME) {
+            std::string name = value[1]->getCString();
             if (bitcastVars[name].ok) {
               Ref target = node[2];
-              if (target[0] == "sub" && target[1][0] == "name" && (target[1][1] == "HEAP32" || target[1][1] == "HEAPF32")) {
-                if (target[1][1] == "HEAP32") {
+              if (target[0] == SUB && target[1][0] == NAME && (target[1][1] == HEAP32 || target[1][1] == HEAPF32)) {
+                if (target[1][1] == HEAP32) {
                   bitcastVars[name].use_HEAP32++;
                 } else {
                   bitcastVars[name].use_HEAPF32++;
@@ -1066,12 +1111,13 @@ void simplifyExpressions(Ref ast) {
             info.define_HEAP32+info.define_HEAPF32 > 0  && info.use_HEAP32+info.use_HEAPF32 > 0 &&
             info.define_HEAP32*info.use_HEAP32 == 0 && info.define_HEAPF32*info.use_HEAPF32 == 0 &&
             asmData.isLocal(v) && info.namings == info.define_HEAP32+info.define_HEAPF32+info.use_HEAP32+info.use_HEAPF32) {
-          std::string correct = info.use_HEAP32 ? "HEAPF32" : "HEAP32";
+          std::string correct = (info.use_HEAP32 ? HEAPF32 : HEAP32).c_str();
           for (auto define : info.defines) {
             define[3] = define[3][1][3];
-            if (correct == "HEAP32") {
-              define[3] = make3("binary", "|", define[3], makeNum(0));
+            if (correct[4] == '3') { // HEAP32
+              define[3] = make3(BINARY, OR, define[3], makeNum(0));
             } else {
+              assert(correct[4] == 'F'); // HEAPF32
               define[3] = makeAsmCoercion(define[3], preciseF32 ? ASM_FLOAT : ASM_DOUBLE);
             }
             // do we want a simplifybitops on the new values here?
@@ -1093,13 +1139,13 @@ void simplifyExpressions(Ref ast) {
   };
 
   std::function<bool (Ref)> emitsBoolean = [&emitsBoolean](Ref node) {
-    std::string type = node[0]->getString();
-    if (type == "num") {
+    IString type = node[0]->getIString();
+    if (type == NUM) {
       return node[1]->getNumber() == 0 || node[1]->getNumber() == 1;
     }
-    if (type == "binary") return COMPARE_OPS.has(node[1]);
-    if (type == "unary-prefix") return node[1] == "!";
-    if (type == "conditional") return emitsBoolean(node[2]) && emitsBoolean(node[3]);
+    if (type == BINARY) return COMPARE_OPS.has(node[1]);
+    if (type == UNARY_PREFIX) return node[1] == L_NOT;
+    if (type == CONDITIONAL) return emitsBoolean(node[2]) && emitsBoolean(node[3]);
     return false;
   };
 
@@ -1109,7 +1155,7 @@ void simplifyExpressions(Ref ast) {
   auto conditionalize = [&emitsBoolean](Ref ast) {
     const int MIN_COST = 7;
     traversePre(ast, [&emitsBoolean](Ref node) {
-      if (node[0] == "binary" && (node[1] == "|" || node[1] == "&") && node[3][0] != "num" && node[2][0] != "num") {
+      if (node[0] == BINARY && (node[1] == OR || node[1] == AND) && node[3][0] != NUM && node[2][0] != NUM) {
         // logical operator on two non-numerical values
         Ref left = node[2];
         Ref right = node[3];
@@ -1139,12 +1185,12 @@ void simplifyExpressions(Ref ast) {
         }
         // worth it, perform conditionalization
         Ref ret;
-        if (node[1] == "|") {
-          ret = make3("conditional", left, makeNum(1), right);
+        if (node[1] == OR) {
+          ret = make3(CONDITIONAL, left, makeNum(1), right);
         } else { // &
-          ret = make3("conditional", left, right, makeNum(0));
+          ret = make3(CONDITIONAL, left, right, makeNum(0));
         }
-        if (left[0] == "unary-prefix" && left[1] == "!") {
+        if (left[0] == UNARY_PREFIX && left[1] == L_NOT) {
           ret[1] = flipCondition(left);
           Ref temp = ret[2];
           ret[2] = ret[3];
@@ -1175,20 +1221,20 @@ void simplifyIfs(Ref ast) {
 
     traversePre(func, [&simplifiedAnElse](Ref node) {
       // simplify   if (x) { if (y) { .. } }   to   if (x ? y : 0) { .. }
-      if (node[0] == "if") {
+      if (node[0] == IF) {
         Ref body = node[2];
         // recurse to handle chains
-        while (body[0] == "block") {
+        while (body[0] == BLOCK) {
           Ref stats = body[1];
           if (stats->size() == 0) break;
           Ref other = stats[stats->size()-1];
-          if (other[0] != "if") {
+          if (other[0] != IF) {
             // our if block does not end with an if. perhaps if have an else we can flip
-            if (!!node[3] && node[3][0] == "block") {
+            if (!!node[3] && node[3][0] == BLOCK) {
               stats = node[3][1];
               if (stats->size() == 0) break;
               other = stats[stats->size()-1];
-              if (other[0] == "if") {
+              if (other[0] == IF) {
                 // flip node
                 node[1] = flipCondition(node[1]);
                 node[2] = node[3];
@@ -1222,7 +1268,7 @@ void simplifyIfs(Ref ast) {
             if (!ok) break;
             for (int i = stats->size()-2; i >= 0; i--) {
               Ref curr = deStat(stats[i]);
-              other[1] = make2("seq", curr, other[1]);
+              other[1] = make2(SEQ, curr, other[1]);
             }
             Ref temp = makeArray();
             temp->push_back(other);
@@ -1230,7 +1276,7 @@ void simplifyIfs(Ref ast) {
           }
           if (stats->size() != 1) break;
           if (!!node[3]) simplifiedAnElse = true;
-          node[1] = make3("conditional", node[1], other[1], makeNum(0));
+          node[1] = make3(CONDITIONAL, node[1], other[1], makeNum(0));
           body = node[2] = other[2];
         }
       }
@@ -1247,8 +1293,8 @@ void simplifyIfs(Ref ast) {
       std::unordered_map<int, int> labelAssigns;
 
       traversePre(func, [&labelAssigns, &abort](Ref node) {
-        if (node[0] == "assign" && node[2][0] == "name" && node[2][1] == "label") {
-          if (node[3][0] == "num") {
+        if (node[0] == ASSIGN && node[2][0] == NAME && node[2][1] == LABEL) {
+          if (node[3][0] == NUM) {
             int value = node[3][1]->getNumber();
             labelAssigns[value] = labelAssigns[value] + 1;
           } else {
@@ -1262,9 +1308,9 @@ void simplifyIfs(Ref ast) {
       std::unordered_map<int, int> labelChecks;
 
       traversePre(func, [&labelChecks, &abort](Ref node) {
-        if (node[0] == "binary" && node[1] == "==" && node[2][0] == "binary" && node[2][1] == "|" &&
-            node[2][2][0] == "name" && node[2][2][1] == "label") {
-          if (node[3][0] == "num") {
+        if (node[0] == BINARY && node[1] == EQ && node[2][0] == BINARY && node[2][1] == OR &&
+            node[2][2][0] == NAME && node[2][2][1] == LABEL) {
+          if (node[3][0] == NUM) {
             int value = node[3][1]->getNumber();
             labelChecks[value] = labelChecks[value] + 1;
           } else {
@@ -1277,33 +1323,33 @@ void simplifyIfs(Ref ast) {
 
       int inLoop = 0; // when in a loop, we do not emit   label = 0;   in the relooper as there is no need
       traversePrePost(func, [&inLoop, &labelAssigns, &labelChecks](Ref node) {
-        if (node[0] == "while") inLoop++;
+        if (node[0] == WHILE) inLoop++;
         Ref stats = getStatements(node);
         if (!stats->isNull() && stats->size() > 0) {
           for (int i = 0; i < stats->size()-1; i++) {
             Ref pre = stats[i];
             Ref post = stats[i+1];
-            if (pre[0] == "if" && !!pre[3] && post[0] == "if" && !post[3]) {
+            if (pre[0] == IF && !!pre[3] && post[0] == IF && !post[3]) {
               Ref postCond = post[1];
-              if (postCond[0] == "binary" && postCond[1] == "==" &&
-                  postCond[2][0] == "binary" && postCond[2][1] == "|" &&
-                  postCond[2][2][0] == "name" && postCond[2][2][1] == "label" &&
-                  postCond[2][3][0] == "num" && postCond[2][3][1]->getNumber() == 0 &&
-                  postCond[3][0] == "num") {
+              if (postCond[0] == BINARY && postCond[1] == EQ &&
+                  postCond[2][0] == BINARY && postCond[2][1] == OR &&
+                  postCond[2][2][0] == NAME && postCond[2][2][1] == LABEL &&
+                  postCond[2][3][0] == NUM && postCond[2][3][1]->getNumber() == 0 &&
+                  postCond[3][0] == NUM) {
                 double postValue = postCond[3][1]->getNumber();
                 Ref preElse = pre[3];
-                if (labelAssigns[postValue] == 1 && labelChecks[postValue] == 1 && preElse[0] == "block" && preElse->size() >= 2 && preElse[1]->size() == 1) {
+                if (labelAssigns[postValue] == 1 && labelChecks[postValue] == 1 && preElse[0] == BLOCK && preElse->size() >= 2 && preElse[1]->size() == 1) {
                   Ref preStat = preElse[1][0];
-                  if (preStat[0] == "stat" && preStat[1][0] == "assign" &&
-                      preStat[1][1]->isBool(true) && preStat[1][2][0] == "name" && preStat[1][2][1] == "label" &&
-                      preStat[1][3][0] == "num" && preStat[1][3][1]->getNumber() == postValue) {
+                  if (preStat[0] == STAT && preStat[1][0] == ASSIGN &&
+                      preStat[1][1]->isBool(true) && preStat[1][2][0] == NAME && preStat[1][2][1] == LABEL &&
+                      preStat[1][3][0] == NUM && preStat[1][3][1]->getNumber() == postValue) {
                     // Conditions match, just need to make sure the post clears label
-                    if (post[2][0] == "block" && post[2]->size() >= 2 && post[2][1]->size() > 0) {
+                    if (post[2][0] == BLOCK && post[2]->size() >= 2 && post[2][1]->size() > 0) {
                       Ref postStat = post[2][1][0];
                       bool haveClear =
-                        postStat[0] == "stat" && postStat[1][0] == "assign" &&
-                        postStat[1][1]->isBool(true) && postStat[1][2][0] == "name" && postStat[1][2][1] == "label" &&
-                        postStat[1][3][0] == "num" && postStat[1][3][1]->getNumber() == 0;
+                        postStat[0] == STAT && postStat[1][0] == ASSIGN &&
+                        postStat[1][1]->isBool(true) && postStat[1][2][0] == NAME && postStat[1][2][1] == LABEL &&
+                        postStat[1][3][0] == NUM && postStat[1][3][1]->getNumber() == 0;
                       if (!inLoop || haveClear) {
                         // Everything lines up, do it
                         pre[3] = post[2];
@@ -1318,7 +1364,7 @@ void simplifyIfs(Ref ast) {
           }
         }
       }, [&inLoop](Ref node) {
-        if (node[0] == "while") inLoop--;
+        if (node[0] == WHILE) inLoop--;
       });
       assert(inLoop == 0);
     }
@@ -1330,15 +1376,15 @@ void optimizeFrounds(Ref ast) {
   // also emit f0 instead of fround(0) (except in returns)
   bool inReturn = false, currIsReturn = false;
   traversePrePost(ast, [&](Ref node) {
-    currIsReturn = node[0] == "return";
+    currIsReturn = node[0] == RETURN;
     if (currIsReturn) inReturn = true;
   }, [&](Ref node) {
     if (currIsReturn) inReturn = false;
-    if (node[0] == "call" && node[1][0] == "name" && node[1][1] == "Math_fround") {
+    if (node[0] == CALL && node[1][0] == NAME && node[1][1] == MATH_FROUND) {
       Ref arg = node[2][0];
-      if (arg[0] == "num") {
-        if (!inReturn && arg[1]->getNumber() == 0) *node = *makeName("f0");
-      } else if (arg[0] == "call" && arg[1][0] == "name" && arg[1][1] == "Math_fround") {
+      if (arg[0] == NUM) {
+        if (!inReturn && arg[1]->getNumber() == 0) *node = *makeName(F0);
+      } else if (arg[0] == CALL && arg[1][0] == NAME && arg[1][1] == MATH_FROUND) {
         safeCopy(node, arg);
       }
     }
