@@ -1,5 +1,4 @@
 #include <sys/stat.h>
-#include <string.h>
 #include <math.h>
 #include <stdint.h>
 
@@ -208,7 +207,7 @@ struct AsmData;
 AsmType detectType(Ref node, AsmData *asmData=nullptr, bool inVarDef=false);
 Ref makeEmpty();
 bool isEmpty(Ref node);
-Ref makeAsmVarDef(const std::string& v_, AsmType type);
+Ref makeAsmVarDef(const IString& v, AsmType type);
 Ref makeArray();
 Ref makeNum(double x);
 Ref makeName(IString str);
@@ -221,7 +220,7 @@ struct AsmData {
     AsmType type;
     bool param; // false if a var
   };
-  typedef std::unordered_map<std::string, Local> Locals;
+  typedef std::unordered_map<IString, Local> Locals;
 
   Locals locals;
   std::vector<Locals::iterator> params; // in order
@@ -230,16 +229,16 @@ struct AsmData {
 
   Ref func;
 
-  AsmType getType(const std::string& name) {
+  AsmType getType(const IString& name) {
     auto ret = locals.find(name);
     if (ret != locals.end()) return ret->second.type;
     return ASM_NONE;
   }
-  void setType(const std::string& name, AsmType type) {
+  void setType(const IString& name, AsmType type) {
     locals[name].type = type;
   }
 
-  bool isLocal(const std::string& name) {
+  bool isLocal(const IString& name) {
     return locals.count(name) > 0;
   }
 
@@ -256,7 +255,7 @@ struct AsmData {
       Ref name = node[2][1];
       int index = func[2]->indexOf(name);
       if (index < 0) break; // not an assign into a parameter, but a global
-      std::string str = name->getCString();
+      IString& str = name->getIString();
       if (locals.count(str) > 0) break; // already done that param, must be starting function body
       locals[str] = { detectType(node[3]), true };
       params.push_back(locals.find(str));
@@ -269,7 +268,7 @@ struct AsmData {
       if (node[0] != VAR) break;
       for (int j = 0; j < node[1]->size(); j++) {
         Ref v = node[1][j];
-        std::string name = v[0]->getCString();
+        IString& name = v[0]->getIString();
         Ref value = v[1];
         if (locals.count(name) == 0) {
           locals[name] = { detectType(value, nullptr, true), false };
@@ -334,7 +333,7 @@ struct AsmData {
     // add param coercions
     int next = 0;
     for (auto param : func[2]->getArray()) {
-      std::string str = param->getCString();
+      IString str = param->getIString();
       stats[next++] = make1(STAT, make3(ASSIGN, &(arena.alloc())->setBool(true), makeName(str.c_str()), makeAsmCoercion(makeName(str.c_str()), locals[str].type)));
     }
     if (varDefs->size()) {
@@ -559,8 +558,7 @@ Ref make3(IString type, Ref a, Ref b, Ref c) {
   return ret;
 }
 
-Ref makeAsmVarDef(const std::string& v_, AsmType type) {
-  Ref v = makeString(IString(v_.c_str()));
+Ref makeAsmVarDef(const IString& v, AsmType type) {
   Ref val;
   switch (type) {
     case ASM_INT: val = makeNum(0); break;
@@ -583,7 +581,7 @@ Ref makeAsmVarDef(const std::string& v_, AsmType type) {
     }
     default: assert(0);
   }
-  return makePair(v, val);
+  return makePair(&(arena.alloc()->setString(v)), val);
 }
 
 Ref makeAsmCoercion(Ref node, AsmType type) {
@@ -731,7 +729,7 @@ bool preciseF32 = false;
 // Optimization passes
 //=====================
 
-class StringSet : public std::unordered_set<std::string> {
+class StringSet : public std::unordered_set<IString> {
 public:
   StringSet(const char *init) { // comma-delimited list
     int size = strlen(init);
@@ -746,11 +744,8 @@ public:
     }
   }
 
-  bool has(const char *str) {
-    return count(str) > 0;
-  }
   bool has(Ref node) {
-    return has(node->getCString());
+    return count(node->getIString()) > 0;
   }
 };
 
@@ -1061,19 +1056,19 @@ void simplifyExpressions(Ref ast) {
 
         BitcastData() : define_HEAP32(0), define_HEAPF32(0), use_HEAP32(0), use_HEAPF32(0), namings(0), ok(false) {}
       };
-      std::unordered_map<std::string, BitcastData> bitcastVars;
+      std::unordered_map<IString, BitcastData> bitcastVars;
       traversePre(ast, [&bitcastVars](Ref node) {
         if (node[0] == ASSIGN && node[1]->isBool(true) && node[2][0] == NAME) {
           Ref value = node[3];
           if (value[0] == SEQ && value[1][0] == ASSIGN && value[1][2][0] == SUB && value[1][2][1][0] == NAME &&
               (value[1][2][1][1] == HEAP32 || value[1][2][1][1] == HEAPF32) &&
               value[1][2][2][0] == BINARY && value[1][2][2][2][0] == NAME && value[1][2][2][2][1] == TEMP_DOUBLE_PTR) {
-            std::string name = node[2][1]->getCString();
-            std::string heap = value[1][2][1][1]->getCString();
-            if (heap[4] == '3') { // "HEAP32"
+            IString name = node[2][1]->getIString();
+            IString heap = value[1][2][1][1]->getIString();
+            if (heap == HEAP32) {
               bitcastVars[name].define_HEAP32++;
             } else {
-              assert(heap[4] == 'F'); // HEAPF32
+              assert(heap == HEAPF32);
               bitcastVars[name].define_HEAPF32++;
             }
             bitcastVars[name].defines.push_back(node);
@@ -1088,7 +1083,7 @@ void simplifyExpressions(Ref ast) {
         } else if (type == ASSIGN && node[1]->isBool(true)) {
           Ref value = node[3];
           if (value[0] == NAME) {
-            std::string name = value[1]->getCString();
+            IString name = value[1]->getIString();
             if (bitcastVars[name].ok) {
               Ref target = node[2];
               if (target[0] == SUB && target[1][0] == NAME && (target[1][1] == HEAP32 || target[1][1] == HEAPF32)) {
@@ -1104,20 +1099,20 @@ void simplifyExpressions(Ref ast) {
         }
       });
       for (auto iter : bitcastVars) {
-        const std::string& v = iter.first;
+        const IString& v = iter.first;
         BitcastData& info = iter.second;
         // good variables define only one type, use only one type, have definitions and uses, and define as a different type than they use
         if (info.define_HEAP32*info.define_HEAPF32 == 0 && info.use_HEAP32*info.use_HEAPF32 == 0 &&
             info.define_HEAP32+info.define_HEAPF32 > 0  && info.use_HEAP32+info.use_HEAPF32 > 0 &&
             info.define_HEAP32*info.use_HEAP32 == 0 && info.define_HEAPF32*info.use_HEAPF32 == 0 &&
-            asmData.isLocal(v) && info.namings == info.define_HEAP32+info.define_HEAPF32+info.use_HEAP32+info.use_HEAPF32) {
-          std::string correct = (info.use_HEAP32 ? HEAPF32 : HEAP32).c_str();
+            asmData.isLocal(v.c_str()) && info.namings == info.define_HEAP32+info.define_HEAPF32+info.use_HEAP32+info.use_HEAPF32) {
+          IString& correct = info.use_HEAP32 ? HEAPF32 : HEAP32;
           for (auto define : info.defines) {
             define[3] = define[3][1][3];
-            if (correct[4] == '3') { // HEAP32
+            if (correct == HEAP32) {
               define[3] = make3(BINARY, OR, define[3], makeNum(0));
             } else {
-              assert(correct[4] == 'F'); // HEAPF32
+              assert(correct == HEAPF32);
               define[3] = makeAsmCoercion(define[3], preciseF32 ? ASM_FLOAT : ASM_DOUBLE);
             }
             // do we want a simplifybitops on the new values here?
@@ -1126,12 +1121,12 @@ void simplifyExpressions(Ref ast) {
             use[2][1][1]->setString(correct.c_str());
           }
           AsmType correctType;
-          switch(asmData.getType(v)) {
+          switch(asmData.getType(v.c_str())) {
             case ASM_INT: correctType = preciseF32 ? ASM_FLOAT : ASM_DOUBLE; break;
             case ASM_FLOAT: case ASM_DOUBLE: correctType = ASM_INT; break;
             default: {} // pass
           }
-          asmData.setType(v, correctType);
+          asmData.setType(v.c_str(), correctType);
         }
       }
       asmData.denormalize();
@@ -1394,6 +1389,8 @@ void optimizeFrounds(Ref ast) {
 //==================
 // Main
 //==================
+
+#include <string.h> // only use this for param checking
 
 int main(int argc, char **argv) {
   // Read input file

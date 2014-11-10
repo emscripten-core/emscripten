@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <vector>
 #include <ostream>
@@ -68,24 +69,28 @@ Arena arena;
 struct IString {
   const char *str;
 
-  class IStringHash : public std::hash<const char *> {
+  static size_t hash_c(const char *str) { // TODO: optimize?
+    uint64_t ret = 0;
+    while (*str) {
+      ret = (ret*6364136223846793005ULL) + *str;
+      str++;
+    }
+    return (size_t)ret;
+  }
+
+  class CStringHash : public std::hash<const char *> {
   public:
-    size_t operator()(const char *str) const { // TODO: optimize?
-      uint64_t ret = 0;
-      while (*str) {
-        ret = (ret*6364136223846793005ULL) + *str;
-        str++;
-      }
-      return (size_t)ret;
+    size_t operator()(const char *str) const {
+      return IString::hash_c(str);
     }
   };
-  class IStringEqual : public std::equal_to<const char *> {
+  class CStringEqual : public std::equal_to<const char *> {
   public:
-    bool operator()(const char * const &x, const char * const &y) const {
+    bool operator()(const char *x, const char *y) const {
       return strcmp(x, y) == 0;
     }
   };
-  typedef std::unordered_set<const char *, IStringHash, IStringEqual> StringSet;
+  typedef std::unordered_set<const char *, CStringHash, CStringEqual> StringSet;
   static StringSet strings;
 
   IString() : str(nullptr) {}
@@ -103,11 +108,11 @@ struct IString {
     str = s.str;
   }
 
-  bool operator==(const IString& other) {
+  bool operator==(const IString& other) const {
     assert((str == other.str) == !strcmp(str, other.str));
     return str == other.str; // fast!
   }
-  bool operator!=(const IString& other) {
+  bool operator!=(const IString& other) const {
     assert((str == other.str) == !strcmp(str, other.str));
     return str != other.str; // fast!
   }
@@ -116,12 +121,30 @@ struct IString {
     return str[x];
   }
 
-  const char *c_str() { return str; }
+  const char *c_str() const { return str; }
 
   bool isNull() { return str == nullptr; }
 };
 
 IString::StringSet IString::strings;
+
+// Utilities for creating hashmaps/sets over IStrings
+
+namespace std {
+
+  template <> struct hash<IString> : public unary_function<IString, size_t> {
+    size_t operator()(const IString& str) const {
+      return IString::hash_c(str.c_str());
+    }
+  };
+
+  template <> struct equal_to<IString> : public binary_function<IString, IString, bool> {
+    bool operator()(const IString& x, const IString& y) const {
+      return x == y;
+    }
+  };
+
+}
 
 // Main value type
 struct Value {
