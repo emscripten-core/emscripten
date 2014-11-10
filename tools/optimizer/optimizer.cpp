@@ -470,6 +470,7 @@ AsmType detectType(Ref node, AsmData *asmData, bool inVarDef) {
   }
   dump("horrible", node);
   assert(0);
+  return ASM_NONE;
 }
 
 // Constructions TODO: share common constructions, and assert they remain frozen

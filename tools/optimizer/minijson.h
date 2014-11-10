@@ -45,7 +45,7 @@ struct Ref {
   bool operator!=(const char *str);
   bool operator==(const IString &str);
   bool operator!=(const IString &str);
-  bool operator==(double d) { assert(0); } // prevent Ref == number, which is potentially ambiguous; use ->getNumber() == number
+  bool operator==(double d) { assert(0); return false; } // prevent Ref == number, which is potentially ambiguous; use ->getNumber() == number
   bool operator==(Ref other);
   bool operator!(); // check if null, in effect
 };
@@ -100,7 +100,6 @@ struct IString {
 
   void set(const char *s) {
     auto result = strings.insert(s); // if already present, does nothing
-    //errv("insert IString? %s : %d (size: %u)\n", s, result.second, strings.size());
     str = *(result.first);
   }
 
@@ -109,11 +108,11 @@ struct IString {
   }
 
   bool operator==(const IString& other) const {
-    assert((str == other.str) == !strcmp(str, other.str));
+    //assert((str == other.str) == !strcmp(str, other.str));
     return str == other.str; // fast!
   }
   bool operator!=(const IString& other) const {
-    assert((str == other.str) == !strcmp(str, other.str));
+    //assert((str == other.str) == !strcmp(str, other.str));
     return str != other.str; // fast!
   }
 
