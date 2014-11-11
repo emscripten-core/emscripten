@@ -2046,6 +2046,9 @@ open(filename, 'w').write(replaced)
   def test_glfw3(self):
     self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3'], expected='1')
 
+  def test_glfw3_events(self):    
+    self.btest(path_from_root('tests', 'glfw3_events.c'), args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3'], expected='1')
+
   def test_asm_swapping(self):
     self.clear()
     open('run.js', 'w').write(r'''
