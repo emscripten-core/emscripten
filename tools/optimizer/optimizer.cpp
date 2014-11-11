@@ -70,6 +70,10 @@ IString TOPLEVEL("toplevel"),
 // Infrastructure
 //==================
 
+int jsD2I(double x) {
+  return (int)((int64_t)x);
+}
+
 int parseInt(const char *str) {
   int ret = *str - '0';
   while (*(++str)) {
@@ -780,7 +784,7 @@ void simplifyExpressions(Ref ast) {
         double shifts = node[3][1]->getNumber();
         if (innerNode[0] == BINARY && innerNode[1] == AND && innerNode[3][0] == NUM) {
           double mask = innerNode[3][1]->getNumber();
-          if (isInteger32(mask) && isInteger32(shifts) && ((int(mask) << int(shifts)) >> int(shifts)) == int(mask)) {
+          if (isInteger32(mask) && isInteger32(shifts) && ((jsD2I(mask) << jsD2I(shifts)) >> jsD2I(shifts)) == jsD2I(mask)) {
             safeCopy(node, innerNode);
             return;
           }
@@ -818,7 +822,7 @@ void simplifyExpressions(Ref ast) {
           Ref type = node[0];
           if (type == BINARY && node[1] == OR) {
             if (node[2][0] == NUM && node[3][0] == NUM) {
-              node[2][1]->setNumber(int(node[2][1]->getNumber()) | int(node[3][1]->getNumber()));
+              node[2][1]->setNumber(jsD2I(node[2][1]->getNumber()) | jsD2I(node[3][1]->getNumber()));
               stack.push_back(0);
               safeCopy(node, node[2]);
               return;
@@ -895,14 +899,14 @@ void simplifyExpressions(Ref ast) {
         if (node[1] == TEMP_DOUBLE_PTR) hasTempDoublePtr = true;
       } else if (type == BINARY && node[1] == AND && node[3][0] == NUM) {
         if (node[2][0] == NUM) {
-          safeCopy(node, makeNum(int(node[2][1]->getNumber()) & int(node[3][1]->getNumber())));
+          safeCopy(node, makeNum(jsD2I(node[2][1]->getNumber()) & jsD2I(node[3][1]->getNumber())));
           return;
         }
         Ref input = node[2];
         double amount = node[3][1]->getNumber();
         if (input[0] == BINARY && input[1] == AND && input[3][0] == NUM) {
           // Collapse X & 255 & 1
-          node[3][1]->setNumber(int(amount) & int(input[3][1]->getNumber()));
+          node[3][1]->setNumber(jsD2I(amount) & jsD2I(input[3][1]->getNumber()));
           node[2] = input[2];
         } else if (input[0] == SUB && input[1][0] == NAME) {
           // HEAP8[..] & 255 => HEAPU8[..]
@@ -984,14 +988,14 @@ void simplifyExpressions(Ref ast) {
       } else if (type == BINARY && node[1] == RSHIFT && node[2][0] == NUM && node[3][0] == NUM) {
         // optimize num >> num, in asm we need this since we do not run optimizeShifts
         node[0]->setString(NUM);
-        node[1]->setNumber(int(node[2][1]->getNumber()) >> int(node[3][1]->getNumber()));
+        node[1]->setNumber(jsD2I(node[2][1]->getNumber()) >> jsD2I(node[3][1]->getNumber()));
         node->setSize(2);
         return;
       } else if (type == BINARY && node[1] == PLUS) {
         // The most common mathop is addition, e.g. in getelementptr done repeatedly. We can join all of those,
         // by doing (num+num) ==> newnum, and (name+num)+num = name+newnum
         if (node[2][0] == NUM && node[3][0] == NUM) {
-          node[2][1]->setNumber(int(node[2][1]->getNumber()) + int(node[3][1]->getNumber()));
+          node[2][1]->setNumber(jsD2I(node[2][1]->getNumber()) + jsD2I(node[3][1]->getNumber()));
           safeCopy(node, node[2]);
           return;
         }
@@ -999,7 +1003,7 @@ void simplifyExpressions(Ref ast) {
           int ii = 5-i;
           for (int j = 2; j <= 3; j++) {
             if (node[i][0] == NUM && node[ii][0] == BINARY && node[ii][1] == PLUS && node[ii][j][0] == NUM) {
-              node[ii][j][1]->setNumber(int(node[ii][j][1]->getNumber()) + int(node[i][1]->getNumber()));
+              node[ii][j][1]->setNumber(jsD2I(node[ii][j][1]->getNumber()) + jsD2I(node[i][1]->getNumber()));
               safeCopy(node, node[ii]);
               return;
             }
