@@ -497,7 +497,7 @@ bool Ref::operator==(Ref other) {
 }
 
 bool Ref::operator!() {
-  return get()->isNull();
+  return !get() || get()->isNull();
 }
 
 // Arena methods
