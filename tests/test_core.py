@@ -5238,6 +5238,7 @@ return malloc(size);
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
+    if self.is_emterpreter(): return self.skip('todo')
 
     test_path = path_from_root('tests', 'core', 'test_simd8')
     src, output = (test_path + s for s in ('.in', '.out'))
