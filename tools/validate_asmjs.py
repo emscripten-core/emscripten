@@ -14,18 +14,9 @@
 import subprocess, sys, re, tempfile, os, time
 import shared
 
-# Looks up SpiderMonkey engine using the variable SPIDERMONKEY_ENGINE in ~/.emscripten, and if not set up there, via PATH.
-def find_spidermonkey_engine():
-  sm_engine = shared.SPIDERMONKEY_ENGINE if hasattr(shared, 'SPIDERMONKEY_ENGINE') else ['']
-  if not sm_engine or len(sm_engine[0]) == 0 or not os.path.exists(sm_engine[0]):
-    sm_engine[0] = shared.Building.which('js')
-    if sm_engine[0] == None:
-      return ['js-not-found']
-  return sm_engine
-
 # Given a .js file, returns True/False depending on if that file is valid asm.js
 def validate_asmjs_jsfile(filename, muteOutput):
-  cmd = find_spidermonkey_engine() + ['-c', filename]
+  cmd = shared.SPIDERMONKEY_ENGINE + ['-c', filename]
   if cmd[0] == 'js-not-found':
     print >> sys.stderr, 'Could not find SpiderMonkey engine! Please set tis location to SPIDERMONKEY_ENGINE in your ~/.emscripten configuration file!'
     return False
