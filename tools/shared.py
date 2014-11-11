@@ -309,6 +309,23 @@ def check_llvm_version():
   except Exception, e:
     logging.warning('Could not verify LLVM version: %s' % str(e))
 
+# look for emscripten-version.txt files under or alongside the llvm source dir
+def get_fastcomp_src_dir():
+  d = LLVM_ROOT
+  emroot = path_from_root() # already abspath
+  # look for version file in llvm repo, making sure not to mistake the emscripten repo for it
+  while d != os.path.dirname(d):
+    d = os.path.abspath(d)
+    # when the build directory lives below the source directory
+    if os.path.exists(os.path.join(d, 'emscripten-version.txt')) and not d == emroot:
+      return d
+    # when the build directory lives alongside the source directory
+    elif os.path.exists(os.path.join(d, 'src', 'emscripten-version.txt')) and not os.path.join(d, 'src') == emroot:
+      return os.path.join(d, 'src')
+    else:
+      d = os.path.dirname(d)
+  return None
+
 def check_fastcomp():
   try:
     llc_version_info = Popen([LLVM_COMPILER, '--version'], stdout=PIPE).communicate()[0]
@@ -321,27 +338,20 @@ def check_fastcomp():
       logging.critical('you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see https://github.com/kripken/emscripten/wiki/LLVM-Backend')
       return False
 
-    # look for a source tree under the llvm binary directory. if there is one, look for emscripten-version.txt files
-    seen = False
-    d = os.path.dirname(LLVM_COMPILER)
-    while d != os.path.dirname(d):
-      # look for version file in llvm repo, making sure not to mistake the emscripten repo for it
-      if os.path.exists(os.path.join(d, 'emscripten-version.txt')) and not os.path.abspath(d) == os.path.abspath(path_from_root()):
-        seen = True
-        llvm_version = open(os.path.join(d, 'emscripten-version.txt')).read().strip()
-        if os.path.exists(os.path.join(d, 'tools', 'clang', 'emscripten-version.txt')):
-          clang_version = open(os.path.join(d, 'tools', 'clang', 'emscripten-version.txt')).read().strip()
-        elif os.path.exists(os.path.join(d, 'tools', 'clang')):
-          clang_version = '?' # Looks like the LLVM compiler tree has an old checkout from the time before it contained a version.txt: Should update!
-        else:
-          clang_version = llvm_version # This LLVM compiler tree does not have a tools/clang, so it's probably an out-of-source build directory. No need for separate versioning.
-        if EMSCRIPTEN_VERSION != llvm_version or EMSCRIPTEN_VERSION != clang_version:
-          logging.error('Emscripten, llvm and clang versions do not match, this is dangerous (%s, %s, %s)', EMSCRIPTEN_VERSION, llvm_version, clang_version)
-          logging.error('Make sure to use the same branch in each repo, and to be up-to-date on each. See https://github.com/kripken/emscripten/wiki/LLVM-Backend')
-        break
-      d = os.path.dirname(d)
-    if not seen:
-      logging.warning('did not see a source tree above the LLVM root directory (guessing based on directory of %s), could not verify version numbers match' % LLVM_COMPILER)
+    d = get_fastcomp_src_dir()
+    if d is not None:
+      llvm_version = open(os.path.join(d, 'emscripten-version.txt')).read().strip()
+      if os.path.exists(os.path.join(d, 'tools', 'clang', 'emscripten-version.txt')):
+        clang_version = open(os.path.join(d, 'tools', 'clang', 'emscripten-version.txt')).read().strip()
+      elif os.path.exists(os.path.join(d, 'tools', 'clang')):
+        clang_version = '?' # Looks like the LLVM compiler tree has an old checkout from the time before it contained a version.txt: Should update!
+      else:
+        clang_version = llvm_version # This LLVM compiler tree does not have a tools/clang, so it's probably an out-of-source build directory. No need for separate versioning.
+      if EMSCRIPTEN_VERSION != llvm_version or EMSCRIPTEN_VERSION != clang_version:
+        logging.error('Emscripten, llvm and clang versions do not match, this is dangerous (%s, %s, %s)', EMSCRIPTEN_VERSION, llvm_version, clang_version)
+        logging.error('Make sure to use the same branch in each repo, and to be up-to-date on each. See https://github.com/kripken/emscripten/wiki/LLVM-Backend')
+    else:
+      logging.warning('did not see a source tree above or next to the LLVM root directory (guessing based on directory of %s), could not verify version numbers match' % LLVM_COMPILER)
     return True
   except Exception, e:
     logging.warning('could not check fastcomp: %s' % str(e))
