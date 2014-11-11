@@ -36,6 +36,7 @@ IString TOPLEVEL("toplevel"),
         NaN("nan"),
         TEMP_RET0("tempRet0"),
         UNARY_PREFIX("unary-prefix"),
+        UNARY_POSTFIX("unary-postfix"),
         MATH_FROUND("Math_fround"),
         SIMD_FLOAT32X4("SIMD_float32x4"),
         SIMD_INT32X4("SIMD_int32x4"),
@@ -891,9 +892,20 @@ void eliminate(Ref ast, bool memSafe=false) {
 
     // examine body and note locals
     traversePre(func, [&](Ref node) {
-      IString type = node[0]->getIString();
-      assert(type != VAR);
-      if (type == NAME) {
+      Ref type = node[0];
+      if (type == VAR) {
+        Ref node1 = node[1];
+        for (int i = 0; i < node1->size(); i++) {
+          Ref node1i = node1[i];
+          IString name = node1i[0]->getIString();
+          Ref value = node1i[1];
+          if (!!value) {
+            definitions[name]++;
+            if (!values.has(name)) values[name] = value;
+          }
+          uses[name];
+        }
+      } else if (type == NAME) {
         IString& name = node[1]->getIString();
         uses[name]++;// = uses[name] + 1;
       } else if (type == ASSIGN) {
@@ -928,8 +940,10 @@ void eliminate(Ref ast, bool memSafe=false) {
         potentials.insert(name);
       } else if (uses[name] == 0 && definitions[name] <= 1) { // no uses, no def or 1 def (cannot operate on phis, and the llvm optimizer will remove unneeded phis anyhow) (no definition means it is a function parameter, or a local with just |var x;| but no defining assignment)
         bool sideEffects = false;
-        Ref value = values[name];
-        if (!!value) {
+        auto val = values.find(name);
+        Ref value;
+        if (val != values.end()) {
+          value = val->second;
           // TODO: merge with other side effect code
           // First, pattern-match
           //  (HEAP32[((tempDoublePtr)>>2)]=((HEAP32[(($_sroa_0_0__idx1)>>2)])|0),HEAP32[(((tempDoublePtr)+(4))>>2)]=((HEAP32[((($_sroa_0_0__idx1)+(4))>>2)])|0),(+(HEAPF64[(tempDoublePtr)>>3])))
@@ -997,10 +1011,11 @@ void eliminate(Ref ast, bool memSafe=false) {
       Tracking& track = tracked[name];
       track.usesGlobals = false;
       track.usesMemory = false;
+      track.defNode = defNode;
       track.doesCall = false;
       bool ignoreName = false; // one-time ignorings of names, as first op in sub and call
       traversePre(value, [&](Ref node) {
-        IString type = node[0]->getIString();
+        Ref type = node[0];
         if (type == NAME) {
           if (!ignoreName) {
             IString name = node[1]->getIString();
@@ -1072,7 +1087,7 @@ void eliminate(Ref ast, bool memSafe=false) {
       bool allowTracking = true; // false inside an if; also prevents recursing in an if
       std::function<void (Ref, bool, bool)> traverseInOrder = [&](Ref node, bool ignoreSub, bool ignoreName) {
         if (abort) return;
-        IString type = node[0]->getIString();
+        Ref type = node[0];
         if (type == ASSIGN) {
           Ref target = node[2];
           Ref value = node[3];
@@ -1173,7 +1188,7 @@ void eliminate(Ref ast, bool memSafe=false) {
               callsInvalidated = true;
             }
           }
-        } else if (type == UNARY_PREFIX) { //|| type == 'unary-postfix') {
+        } else if (type == UNARY_PREFIX || type == UNARY_POSTFIX) {
           traverseInOrder(node[2], false, false);
         } else if (IGNORABLE_ELIMINATOR_SCAN_NODES.has(type)) {
         } else if (type == CALL) {
@@ -1239,8 +1254,7 @@ void eliminate(Ref ast, bool memSafe=false) {
           traverseInOrder(node[3], false, false);
         } else if (type == SWITCH) {
           traverseInOrder(node[1], false, false);
-          StringSet originalTracked;
-          for (auto t : tracked) originalTracked.insert(t.first);
+          Tracked originalTracked = tracked;
           Ref cases = node[2];
           for (int i = 0; i < cases->size(); i++) {
             Ref c = cases[i];
@@ -1250,15 +1264,7 @@ void eliminate(Ref ast, bool memSafe=false) {
               traverseInOrder(stats[j], false, false);
             }
             // We cannot track from one switch case into another, undo all new trackings TODO: general framework here, use in if-else as well
-            for (auto t : tracked) {
-              IString name = t.first;
-              if (!originalTracked.has(name)) {
-                Tracking& info = tracked[name];
-                if (info.usesGlobals || info.usesMemory || info.deps.size() > 0) {
-                  tracked.erase(name);
-                }
-              }
-            }
+            tracked = originalTracked; // TODO: don't do this on the last one
           }
           tracked.clear(); // do not track from inside the switch to outside
         } else {
@@ -1276,8 +1282,10 @@ void eliminate(Ref ast, bool memSafe=false) {
       //printErr('elim!!!!! ' + name);
       // yes, eliminate!
       varsToRemove[name] = 2; // both assign and var definitions can have other vars we must clean up
+      assert(tracked.has(name));
       Tracking& info = tracked[name];
       Ref defNode = info.defNode;
+      assert(!!defNode);
       if (!sideEffectFree.has(name)) {
         assert(defNode[0] != VAR);
         // assign
@@ -1302,7 +1310,7 @@ void eliminate(Ref ast, bool memSafe=false) {
       tracked.clear();
       for (int i = 0; i < stats->size(); i++) {
         Ref node = deStat(stats[i]);
-        IString type = node[0]->getIString();
+        Ref type = node[0];
         if (type == RETURN && i < stats->size()-1) {
           stats->setSize(i+1); // remove any code after a return
         }
@@ -1320,8 +1328,15 @@ void eliminate(Ref ast, bool memSafe=false) {
     // clean up vars, and loop variable elimination
     traversePre(func, [&](Ref node) {
       // pre
-      IString type = node[0]->getIString();
-      assert(type != VAR);
+      Ref type = node[0];
+      /*if (type === VAR) {
+        node[1] = node[1].filter(function(pair) { return !varsToRemove[pair[0]] });
+        if (node[1].length === 0) {
+          // wipe out an empty |var;|
+          node[0] = 'toplevel';
+          node[1] = [];
+        }
+      } else */
       if (type == ASSIGN && node[1]->isBool(true) && node[2][0] == NAME && node[3][0] == NAME && node[2][1] == node[3][1]) {
         // elimination led to X = X, which we can just remove
         safeCopy(node, makeEmpty());
@@ -1906,7 +1921,7 @@ void simplifyExpressions(Ref ast) {
   };
 
   std::function<bool (Ref)> emitsBoolean = [&emitsBoolean](Ref node) {
-    IString type = node[0]->getIString();
+    Ref type = node[0];
     if (type == NUM) {
       return node[1]->getNumber() == 0 || node[1]->getNumber() == 1;
     }
