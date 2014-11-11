@@ -70,8 +70,12 @@ if (ENVIRONMENT_IS_NODE) {
     globalEval(read(f));
   };
 
-  if (process['argv'].length > 1)
+  if (process['argv'].length > 1) {
     Module['thisProgram'] = process['argv'][1].replace(/\\/g, '/');
+  } else {
+    Module['thisProgram'] = 'unknown-program';
+  }
+
   Module['arguments'] = process['argv'].slice(2);
 
   if (typeof module !== 'undefined') {
