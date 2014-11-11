@@ -1297,6 +1297,21 @@ module({
             });
         });
 
+        test("returned unique_ptr does not call destructor", function() {
+            var logged = "";
+            var c = new cm.emval_test_return_unique_ptr_lifetime(function (s) { logged += s; });
+            assert.equal("(constructor)", logged);
+            c.delete();
+        });
+
+        test("returned unique_ptr calls destructor on delete", function() {
+            var logged = "";
+            var c = new cm.emval_test_return_unique_ptr_lifetime(function (s) { logged += s; });
+            logged = "";
+            c.delete();
+            assert.equal("(destructor)", logged);
+        });
+
         test("StringHolder", function() {
             var a = new cm.StringHolder("foobar");
             assert.equal("foobar", a.get());
