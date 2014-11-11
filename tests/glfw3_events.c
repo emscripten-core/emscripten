@@ -119,7 +119,7 @@ int main()
 #ifdef REPORT_RESULT  
     result = g_state == success;
     REPORT_RESULT();
-#elif
+#else
     printf("%d == %d = %d", g_state, success, g_state == success);
 #endif
 
