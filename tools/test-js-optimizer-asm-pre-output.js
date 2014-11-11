@@ -600,5 +600,6 @@ function conditionalizeMe() {
 }
 function bignum() {
  HEAP32[20] = -1515870811;
+ if (($2814 | 0) < 0) return;
 }
 

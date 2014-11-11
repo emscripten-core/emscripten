@@ -671,11 +671,11 @@ Ref simplifyNotCompsDirect(Ref node) {
       switch(op->getCString()[0]) {
         case '<': {
           if (op == LT)  { op->setString(GE); break; }
-          if (op == LE) { op->setString(GE); break; }
+          if (op == LE) { op->setString(GT); break; }
           return node;
         }
         case '>': {
-          if (op == GE)  { op->setString(LE); break; }
+          if (op == GT)  { op->setString(LE); break; }
           if (op == GE) { op->setString(LT); break; }
           return node;
         }
