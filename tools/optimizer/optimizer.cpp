@@ -227,8 +227,8 @@ struct AsmData {
   typedef std::unordered_map<IString, Local> Locals;
 
   Locals locals;
-  std::vector<Locals::iterator> params; // in order
-  std::vector<Locals::iterator> vars; // in order
+  std::vector<IString> params; // in order
+  std::vector<IString> vars; // in order
   AsmType ret;
 
   Ref func;
@@ -262,7 +262,7 @@ struct AsmData {
       IString& str = name->getIString();
       if (locals.count(str) > 0) break; // already done that param, must be starting function body
       locals[str] = { detectType(node[3]), true };
-      params.push_back(locals.find(str));
+      params.push_back(str);
       stats[i] = makeEmpty();
       i++;
     }
@@ -276,7 +276,7 @@ struct AsmData {
         Ref value = v[1];
         if (locals.count(name) == 0) {
           locals[name] = { detectType(value, nullptr, true), false };
-          vars.push_back(locals.find(name));
+          vars.push_back(name);
           v->setSize(1); // make an un-assigning var
         } else {
           assert(j == 0); // cannot break in the middle
@@ -319,7 +319,7 @@ struct AsmData {
     // calculate variable definitions
     Ref varDefs = makeArray();
     for (auto v : vars) {
-      varDefs->push_back(makeAsmVarDef(v->first, v->second.type));
+      varDefs->push_back(makeAsmVarDef(v, locals[v].type));
     }
     // each param needs a line; reuse emptyNodes as much as we can
     int numParams = params.size();
@@ -367,6 +367,15 @@ struct AsmData {
     //printErr('denormalized \n\n' + astToSrc(func) + '\n\n');
   }
 
+  void deleteVar(IString name) {
+    locals.erase(name);
+    for (int i = 0; i < vars.size(); i++) {
+      if (vars[i] == name) {
+        vars.erase(vars.begin() + i);
+        break;
+      }
+    }
+  }
 };
 
 struct HeapInfo {
