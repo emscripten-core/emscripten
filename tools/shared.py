@@ -263,9 +263,19 @@ def listify(x):
   if type(x) is not list: return [x]
   return x
 
-SPIDERMONKEY_ENGINE = listify(SPIDERMONKEY_ENGINE)
-NODE_JS = listify(NODE_JS)
-V8_ENGINE = listify(V8_ENGINE)
+try:
+  SPIDERMONKEY_ENGINE = listify(SPIDERMONKEY_ENGINE)
+except:
+  pass
+try:
+  NODE_JS = listify(NODE_JS)
+except:
+  pass
+try:
+  V8_ENGINE = listify(V8_ENGINE)
+except:
+  pass
+
 COMPILER_ENGINE = listify(COMPILER_ENGINE)
 JS_ENGINES = [listify(ENGINE) for ENGINE in JS_ENGINES]
 
