@@ -430,7 +430,7 @@ f.close()
 
               # Run through node, if CMake produced a .js file.
               if cmake_outputs[i].endswith('.js'):
-                ret = Popen(listify(NODE_JS) + [tempdirname + '/' + cmake_outputs[i]], stdout=PIPE).communicate()[0]
+                ret = Popen(NODE_JS + [tempdirname + '/' + cmake_outputs[i]], stdout=PIPE).communicate()[0]
                 self.assertTextDataIdentical(open(cmakelistsdir + '/out.txt', 'r').read().strip(), ret.strip())
             finally:
               os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
@@ -1238,7 +1238,7 @@ int f() {
     ''')
     open('my_test.input', 'w').write('abc')
     Building.emcc('main.cpp', ['--embed-file', 'my_test.input'], output_filename='a.out.js')
-    self.assertContained('zyx', Popen(listify(JS_ENGINES[0]) + ['a.out.js'], stdout=PIPE, stderr=PIPE).communicate()[0])
+    self.assertContained('zyx', Popen(JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).communicate()[0])
 
   def test_abspaths(self):
     # Includes with absolute paths are generally dangerous, things like -I/usr/.. will get to system local headers, not our portable ones.
@@ -1932,7 +1932,7 @@ int f() {
        ['asm', 'ensureLabelSet']),
     ]:
       print input
-      output = Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
+      output = Popen(NODE_JS + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
       self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n'))
 
   def test_m_mm(self):
@@ -3063,7 +3063,6 @@ int main(int argc, char **argv) {
     ''')
     Popen([PYTHON, EMCC, 'src.cpp']).communicate()
     for engine in JS_ENGINES:
-      engine = listify(engine)
       print engine
       process = Popen(engine + ['a.out.js'], stdout=PIPE, stderr=PIPE)
       output = process.communicate()
@@ -4386,6 +4385,6 @@ int main(void) {
   def test_require(self):
     inname = path_from_root('tests', 'hello_world.c')
     Building.emcc(inname, output_filename='a.out.js')
-    output = Popen(listify(NODE_JS) + ['-e', 'require("./a.out.js")'], stdout=PIPE, stderr=PIPE).communicate()
+    output = Popen(NODE_JS + ['-e', 'require("./a.out.js")'], stdout=PIPE, stderr=PIPE).communicate()
     assert output == ('hello, world!\n \n', ''), 'expected no output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % output
 
