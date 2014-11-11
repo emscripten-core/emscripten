@@ -1938,7 +1938,7 @@ int f() {
       print '  js'
       output = Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
       self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n'))
-      if js_optimizer.use_native(passes):
+      if js_optimizer.use_native(passes) and 'asm' in passes:
         # test calling native
         print '  native'
         self.clear()
