@@ -121,6 +121,10 @@ struct IString {
     return str[x];
   }
 
+  bool operator!() { // no string, or empty string
+    return !str || str[0] == 0;
+  }
+
   const char *c_str() const { return str; }
 
   bool isNull() { return str == nullptr; }
@@ -465,6 +469,16 @@ struct Value {
       if (other == (*arr)[i]) return i;
     }
     return -1;
+  }
+
+  Ref map(std::function<Ref (Ref node)> func) {
+    assert(isArray());
+    Ref ret = arena.alloc();
+    ret->setArray();
+    for (unsigned i = 0; i < arr->size(); i++) {
+      ret->push_back(func((*arr)[i]));
+    }
+    return ret;
   }
 
   /*

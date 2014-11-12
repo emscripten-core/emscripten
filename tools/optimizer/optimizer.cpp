@@ -25,6 +25,7 @@ IString TOPLEVEL("toplevel"),
         IF("if"),
         WHILE("while"),
         DO("do"),
+        FOR("for"),
         SEQ("seq"),
         SUB("sub"),
         CALL("call"),
@@ -270,7 +271,7 @@ enum AsmType {
   ASM_FLOAT = 2,
   ASM_FLOAT32X4 = 3,
   ASM_INT32X4 = 4,
-  ASM_NONE = 5
+  ASM_NONE = 5 // number of types
 };
 
 // forward decls
@@ -311,6 +312,9 @@ struct AsmData {
 
   bool isLocal(const IString& name) {
     return locals.count(name) > 0;
+  }
+  bool isParam(const IString& name) {
+    return isLocal(name) && locals[name].param;
   }
   bool isVar(const IString& name) {
     return isLocal(name) && !locals[name].param;
@@ -415,7 +419,7 @@ struct AsmData {
       stats[next] = make1(VAR, varDefs);
     }
     /*
-    if (inlines.length > 0) {
+    if (inlines->size() > 0) {
       var i = 0;
       traverse(func, function(node, type) {
         if (type == CALL && node[1][0] == NAME && node[1][1] == 'inlinejs') {
@@ -438,6 +442,10 @@ struct AsmData {
     //printErr('denormalized \n\n' + astToSrc(func) + '\n\n');
   }
 
+  void addParam(IString name, AsmType type) {
+    locals[name] = { type, true };
+    params.push_back(name);
+  }
   void addVar(IString name, AsmType type) {
     locals[name] = { type, false };
     vars.push_back(name);
@@ -835,6 +843,24 @@ void removeAllEmptySubNodes(Ref ast) {
   });
 }
 
+Ref unVarify(Ref vars) { // transform var x=1, y=2 etc. into (x=1, y=2), i.e., the same assigns, but without a var definition
+  Ref ret;
+  ret->push_back(makeString(STAT));
+  if (vars->size() == 1) {
+    ret->push_back(make3(ASSIGN, &(arena.alloc())->setBool(true), makeName(vars[0][0]->getIString()), vars[0][1]));
+  } else {
+    ret->push_back(makeArray());
+    Ref curr = ret[1];
+    for (int i = 0; i < vars->size()-1; i++) {
+      curr->push_back(makeString(SEQ));
+      curr->push_back(make3(ASSIGN, &(arena.alloc())->setBool(true), makeName(vars[i][0]->getIString()), vars[i][1]));
+      if (i != vars->size()-2) curr = curr[2] = makeArray();
+    }
+    curr[2] = make3(ASSIGN, &(arena.alloc())->setBool(true), makeName(vars[vars->size()-1][0]->getIString()), vars[vars->size()-1][1]);
+  }
+  return ret;
+}
+
 // Calculations
 
 int measureCost(Ref ast) {
@@ -898,6 +924,8 @@ StringSet USEFUL_BINARY_OPS("<< >> | & ^"),
           COERCION_REQUIRING_BINARIES("* / %"); // binary ops that in asm must be coerced
 
 StringSet ASSOCIATIVE_BINARIES("+ * | & ^"),
+          CONTROL_FLOW("do while for if switch"),
+          LOOP("do while for"),
           NAME_OR_NUM("name num");
 
 bool isFunctionTable(const char *name) {
@@ -966,6 +994,11 @@ public:
 };
 
 class StringRefMap : public std::unordered_map<IString, Ref> {
+public:
+  HASES
+};
+
+class StringTypeMap : public std::unordered_map<IString, AsmType> {
 public:
   HASES
 };
@@ -1437,9 +1470,9 @@ void eliminate(Ref ast, bool memSafe=false) {
     traversePrePost(func, [&](Ref node) {
       // pre
       Ref type = node[0];
-      /*if (type === VAR) {
+      /*if (type == VAR) {
         node[1] = node[1].filter(function(pair) { return !varsToRemove[pair[0]] });
-        if (node[1].length === 0) {
+        if (node[1]->size() == 0) {
           // wipe out an empty |var;|
           node[0] = 'toplevel';
           node[1] = [];
@@ -2278,6 +2311,245 @@ void optimizeFrounds(Ref ast) {
   });
 }
 
+// Very simple 'registerization', coalescing of variables into a smaller number.
+void registerize(Ref ast) {
+  traverseFunctions(ast, [](Ref fun) {
+    AsmData asmData(fun);
+    // Add parameters as a first (fake) var (with assignment), so they get taken into consideration
+    // note: params are special, they can never share a register between them (see later)
+    if (!!fun[2] && fun[2]->size()) {
+      Ref assign = makeNum(0);
+      fun[3]->insert(0, make1(VAR, fun[2]->map([&assign](Ref param) {
+        return &(makeArray()->push_back(param).push_back(assign));
+      })));
+    }
+    // Replace all var definitions with assignments; we will add var definitions at the top after we registerize
+    StringSet allVars;
+    traversePre(fun, [&](Ref node) {
+      Ref type = node[0];
+      if (type == VAR) {
+        Ref vars = node[1]; // XXX.filter(function(varr) { return varr[1] });
+        if (vars->size() > 0) {
+          safeCopy(node, unVarify(vars));
+        } else {
+          safeCopy(node, makeEmpty());
+        }
+      } else if (type == NAME) {
+        allVars.insert(node[1]->getIString());
+      }
+    });
+    removeAllEmptySubNodes(fun); // vacuum?
+    StringTypeMap regTypes; // reg name -> type
+    auto getNewRegName = [&](int num, IString name) {
+      std::string str;
+      AsmType type = asmData.getType(name);
+      switch (type) {
+        case ASM_INT:       str = "i"; break;
+        case ASM_DOUBLE:    str = "d"; break;
+        case ASM_FLOAT:     str = "f"; break;
+        case ASM_FLOAT32X4: str = "F4"; break;
+        case ASM_INT32X4:   str = "I4"; break;
+        case ASM_NONE:      str = "Z"; break;
+        default: assert(0); // type doesn't have a name yet
+      }
+      str += num;
+      IString ret(strdupe(str.c_str())); // likely interns a new string; leaks the dupe if not
+      regTypes[ret] = type;
+      assert(!allVars.has(ret)); // register must not shadow non-local name
+      return ret;
+    };
+    // Find the # of uses of each variable.
+    // While doing so, check if all a variable's uses are dominated in a simple
+    // way by a simple assign, if so, then we can assign its register to it
+    // just for its definition to its last use, and not to the entire toplevel loop,
+    // we call such variables "optimizable"
+    StringIntMap varUses;
+    int level = 1;
+    std::unordered_map<int, StringSet> levelDominations; // level => set of dominated variables XXX vector?
+    StringIntMap varLevels;
+    StringSet possibles;
+    StringSet unoptimizables;
+    auto purgeLevel = [&]() {
+      // Invalidate all dominating on this level, further users make it unoptimizable
+      for (auto name : levelDominations[level]) {
+        varLevels[name] = 0;
+      }
+      levelDominations[level].clear();
+      level--;
+    };
+    std::function<bool (Ref node)> possibilifier = [&](Ref node) {
+      Ref type = node[0];
+      if (type == NAME) {
+        IString name = node[1]->getIString();
+        if (asmData.isLocal(name)) {
+          varUses[name]++;
+          if (possibles.has(name) && !varLevels[name]) unoptimizables.insert(name); // used outside of simple domination
+        }
+      } else if (type == ASSIGN && node[1]->isBool(true)) {
+        if (!!node[2] && node[2][0] == NAME) {
+          IString name = node[2][1]->getIString();
+          // if local and not yet used, this might be optimizable if we dominate
+          // all other uses
+          if (asmData.isLocal(name) && !varUses[name] && !varLevels[name]) {
+            possibles.insert(name);
+            varLevels[name] = level;
+            levelDominations[level].insert(name);
+          }
+        }
+      } else if (CONTROL_FLOW.has(type)) {
+        // recurse children, in the context of a loop
+        if (type == WHILE || type == DO) {
+          traversePrePostConditional(node[1], possibilifier, [](Ref node){});
+          level++;
+          traversePrePostConditional(node[2], possibilifier, [](Ref node){});
+          purgeLevel();
+        } else if (type == FOR) {
+          traversePrePostConditional(node[1], possibilifier, [](Ref node){});
+          for (int i = 2; i <= 4; i++) {
+            level++;
+            traversePrePostConditional(node[i], possibilifier, [](Ref node){});
+            purgeLevel();
+          }
+        } else if (type == IF) {
+          traversePrePostConditional(node[1], possibilifier, [](Ref node){});
+          level++;
+          traversePrePostConditional(node[2], possibilifier, [](Ref node){});
+          purgeLevel();
+          if (!!node[3]) {
+            level++;
+            traversePrePostConditional(node[3], possibilifier, [](Ref node){});
+            purgeLevel();
+          }
+        } else if (type == SWITCH) {
+          traversePrePostConditional(node[1], possibilifier, [](Ref node){});
+          Ref cases = node[2];
+          for (int i = 0; i < cases->size(); i++) {
+            level++;
+            traversePrePostConditional(cases[i][1], possibilifier, [](Ref node){});
+            purgeLevel();
+          }
+        } else assert(0);;
+        return false; // prevent recursion into children, which we already did
+      }
+      return true;
+    };
+    traversePrePostConditional(fun, possibilifier, [](Ref node){});
+
+    StringSet optimizables;
+    for (auto possible : possibles) {
+      if (!unoptimizables.has(possible)) optimizables.insert(possible);
+    }
+
+    // Go through the function's code, assigning 'registers'.
+    // The only tricky bit is to keep variables locked on a register through loops,
+    // since they can potentially be returned to. Optimizable variables lock onto
+    // loops that they enter, unoptimizable variables lock in a conservative way
+    // into the topmost loop.
+    // Note that we cannot lock onto a variable in a loop if it was used and free'd
+    // before! (then they could overwrite us in the early part of the loop). For now
+    // we just use a fresh register to make sure we avoid this, but it could be
+    // optimized to check for safe registers (free, and not used in this loop level).
+    StringStringMap varRegs; // maps variables to the register they will use all their life
+    typedef std::vector<IString> StringVec;
+    std::vector<StringVec> freeRegsClasses;
+    freeRegsClasses.resize(ASM_NONE);
+    int nextReg = 1;
+    StringVec fullNames;
+    fullNames.push_back(EMPTY); // names start at 1
+    std::vector<StringVec> loopRegs; // for each loop nesting level, the list of bound variables
+    int loops = 0; // 0 is toplevel, 1 is first loop, etc
+    StringSet activeOptimizables;
+    StringIntMap optimizableLoops;
+    StringSet paramRegs; // true if the register is used by a parameter (and so needs no def at start of function; also cannot
+                         // be shared with another param, each needs its own)
+    auto decUse = [&](IString name) {
+      if (!varUses[name]) return false; // no uses left, or not a relevant variable
+      if (optimizables.has(name)) activeOptimizables.insert(name);
+      IString reg = varRegs[name];
+      assert(asmData.isLocal(name));
+      StringVec& freeRegs = freeRegsClasses[asmData.getType(name)];
+      if (!reg) {
+        // acquire register
+        if (optimizables.has(name) && freeRegs.size() > 0 &&
+            !(asmData.isParam(name) && paramRegs.has(freeRegs.back()))) { // do not share registers between parameters
+          reg = freeRegs.back();
+          freeRegs.pop_back();
+        } else {
+          fullNames[nextReg] = reg = getNewRegName(nextReg, name);
+          if (asmData.isParam(name)) paramRegs.insert(reg);
+          nextReg++;
+        }
+        varRegs[name] = reg;
+      }
+      varUses[name]--;
+      assert(varUses[name] >= 0);
+      if (varUses[name] == 0) {
+        if (optimizables.has(name)) activeOptimizables.erase(name);
+        // If we are not in a loop, or we are optimizable and not bound to a loop
+        // (we might have been in one but left it), we can free the register now.
+        if (loops == 0 || (optimizables.has(name) && !optimizableLoops.has(name))) {
+          // free register
+          freeRegs.push_back(reg);
+        } else {
+          // when the relevant loop is exited, we will free the register
+          int relevantLoop = optimizables.has(name) ? (optimizableLoops[name] ? optimizableLoops[name] : 1) : 1;
+          if (loopRegs.size() <= relevantLoop) loopRegs.resize(relevantLoop);
+          loopRegs[relevantLoop].push_back(reg);
+        }
+      }
+      return true;
+    };
+    traversePrePost(fun, [&](Ref node) { // XXX we rely on traversal order being the same as execution order here
+      Ref type = node[0];
+      if (type == NAME) {
+        IString name = node[1]->getIString();
+        if (decUse(name)) {
+          node[1]->setString(varRegs[name]);
+        }
+      } else if (LOOP.has(type)) {
+        loops++;
+        // Active optimizables lock onto this loop, if not locked onto one that encloses this one
+        for (auto name : activeOptimizables) {
+          if (!optimizableLoops[name]) {
+            optimizableLoops[name] = loops;
+          }
+        }
+      }
+    }, [&](Ref node) {
+      Ref type = node[0];
+      if (LOOP.has(type)) {
+        // Free registers that were locked to this loop
+        if (loopRegs[loops].size() > 0) {
+          for (auto loopReg : loopRegs[loops]) {
+            freeRegsClasses[regTypes[loopReg]].push_back(loopReg);
+          }
+          loopRegs[loops].clear();
+        }
+        loops--;
+      }
+    });
+    if (!!fun[2] && fun[2]->size()) {
+      fun[2]->setSize(0); // clear params, we will fill with registers
+      fun[3]->splice(0, 1); // remove fake initial var
+    }
+
+    asmData.locals.clear();
+    asmData.params.clear();
+    asmData.vars.clear();
+    for (int i = 1; i < nextReg; i++) {
+      IString reg = fullNames[i];
+      AsmType type = regTypes[reg];
+      if (!paramRegs.has(reg)) {
+        asmData.addVar(reg, type);
+      } else {
+        asmData.addParam(reg, type);
+        fun[2]->push_back(makeString(reg));
+      }
+    }
+    asmData.denormalize();
+  });
+}
+
 //==================
 // Main
 //==================
@@ -2318,6 +2590,7 @@ int main(int argc, char **argv) {
     else if (str == "simplifyExpressions") simplifyExpressions(doc);
     else if (str == "optimizeFrounds") optimizeFrounds(doc);
     else if (str == "simplifyIfs") simplifyIfs(doc);
+    else if (str == "registerize") registerize(doc);
     else {
       fprintf(stderr, "unrecognized argument: %s\n", str.c_str());
       assert(0);
