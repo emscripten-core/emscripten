@@ -439,6 +439,12 @@ struct Value {
     arr->push_back(r);
     return *this;
   }
+  Ref pop_back() {
+    assert(isArray());
+    Ref ret = arr->back();
+    arr->pop_back();
+    return ret;
+  }
 
   void splice(int x, int num) {
     assert(isArray());
@@ -447,6 +453,9 @@ struct Value {
 
   void insert(int x, int num) {
     arr->insert(arr->begin() + x, num, Ref());
+  }
+  void insert(int x, Ref node) {
+    arr->insert(arr->begin() + x, 1, node);
   }
 
   int indexOf(Ref other) {

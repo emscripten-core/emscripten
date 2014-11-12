@@ -30,6 +30,8 @@ IString TOPLEVEL("toplevel"),
         CALL("call"),
         NUM("num"),
         LABEL("label"),
+        BREAK("break"),
+        CONTINUE("continue"),
         SWITCH("switch"),
         STRING("string"),
         INF("inf"),
@@ -73,6 +75,14 @@ IString TOPLEVEL("toplevel"),
 //==================
 // Infrastructure
 //==================
+
+template<class T, class V>
+int indexOf(T list, V value) {
+  for (int i = 0; i < list.size(); i++) {
+    if (list[i] == value) return i;
+  }
+  return -1;
+}
 
 int jsD2I(double x) {
   return (int)((int64_t)x);
@@ -369,6 +379,11 @@ struct AsmData {
       }
     }
     //printErr('denormalized \n\n' + astToSrc(func) + '\n\n');
+  }
+
+  void addVar(IString name, AsmType type) {
+    locals[name] = { type, false };
+    vars.push_back(name);
   }
 
   void deleteVar(IString name) {
@@ -670,6 +685,24 @@ bool hasSideEffects(Ref node) { // this is 99% incomplete!
   return true;
 }
 
+// checks if a node has just basic operations, nothing with side effects nor that can notice side effects, which
+// implies we can move it around in the code
+bool triviallySafeToMove(Ref node, AsmData& asmData) {
+  bool ok = true;
+  traversePre(node, [&](Ref node) {
+    Ref type = node[0];
+    if (type == STAT || type == BINARY || type == UNARY_PREFIX || type == ASSIGN || type == NUM) return;
+    else if (type == NAME) {
+      if (!asmData.isLocal(node[1]->getIString())) ok = false;
+    } else if (type == CALL) {
+      if (callHasSideEffects(node)) ok = false;
+    } else {
+      ok = false;
+    }  
+  });
+  return ok;
+}
+
 // Transforms
 
 // We often have branchings that are simplified so one end vanishes, and
@@ -719,26 +752,26 @@ void safeCopy(Ref target, Ref source) { // safely copy source onto target, even 
   *target = *temp;
 }
 
+void clearEmptyNodes(Ref arr) {
+  int skip = 0;
+  for (int i = 0; i < arr->size(); i++) {
+    if (skip) {
+      arr[i-skip] = arr[i];
+    }
+    if (isEmpty(deStat(arr[i]))) {
+      skip++;
+    }
+  }
+  if (skip) arr->setSize(arr->size() - skip);
+}
+
 void removeAllEmptySubNodes(Ref ast) {
   traversePre(ast, [](Ref node) {
     int index = -1;
     if (node[0] == DEFUN) {
-      index = 3;
+      clearEmptyNodes(node[3]);
     } else if (node[0] == BLOCK && !!node[1]) {
-      index = 1;
-    }
-    if (index > 0) {
-      Ref arr = node[index];
-      int skip = 0;
-      for (int i = 0; i < arr->size(); i++) {
-        if (skip) {
-          arr[i-skip] = arr[i];
-        }
-        if (isEmpty(deStat(arr[i]))) {
-          skip++;
-        }
-      }
-      if (skip) arr->setSize(arr->size() - skip);
+      clearEmptyNodes(node[1]);
     } else if (node[0] == SEQ && isEmpty(node[1])) {
       safeCopy(node, node[2]);
     }
@@ -866,6 +899,11 @@ bool isTempDoublePtrAccess(Ref node) { // these are used in bitcasts; they are n
 }
 
 class StringIntMap : public std::unordered_map<IString, int> {
+public:
+  HASES
+};
+
+class StringStringMap : public std::unordered_map<IString, IString> {
 public:
   HASES
 };
@@ -1323,10 +1361,11 @@ void eliminate(Ref ast, bool memSafe=false) {
       }
     });
 
-    //var seenUses = {}, helperReplacements = {}; // for looper-helper optimization
+    StringIntMap seenUses;
+    StringStringMap helperReplacements; // for looper-helper optimization
 
     // clean up vars, and loop variable elimination
-    traversePre(func, [&](Ref node) {
+    traversePrePost(func, [&](Ref node) {
       // pre
       Ref type = node[0];
       /*if (type === VAR) {
@@ -1341,68 +1380,68 @@ void eliminate(Ref ast, bool memSafe=false) {
         // elimination led to X = X, which we can just remove
         safeCopy(node, makeEmpty());
       }
-    }); /*, function(node, type) {
+    }, [&](Ref node) {
       // post
+      Ref type = node[0];
       if (type == NAME) {
-        var name = node[1];
-        if (name in helperReplacements) {
-          node[1] = helperReplacements[name];
+        IString name = node[1]->getIString();
+        if (helperReplacements.has(name)) {
+          node[1]->setString(helperReplacements[name]);
           return; // no need to track this anymore, we can't loop-optimize more than once
         }
         // track how many uses we saw. we need to know when a variable is no longer used (hence we run this in the post)
-        if (!(name in seenUses)) {
+        if (seenUses.has(name)) {
           seenUses[name] = 1;
         } else {
           seenUses[name]++;
         }
       } else if (type == WHILE) {
-        if (!asm) return;
         // try to remove loop helper variables specifically
-        var stats = node[2][1];
-        var last = stats[stats.length-1];
-        if (last && last[0] == IF && last[2][0] == BLOCK && last[3] && last[3][0] == BLOCK) {
-          var ifTrue = last[2];
-          var ifFalse = last[3];
+        Ref stats = node[2][1];
+        Ref last = stats[stats->size()-1];
+        if (!!last && last[0] == IF && last[2][0] == BLOCK && !!last[3] && last[3][0] == BLOCK) {
+          Ref ifTrue = last[2];
+          Ref ifFalse = last[3];
           clearEmptyNodes(ifTrue[1]);
           clearEmptyNodes(ifFalse[1]);
-          var flip = false;
-          if (ifFalse[1][0] && ifFalse[1][ifFalse[1].length-1][0] == 'break') { // canonicalize break in the if-true
-            var temp = ifFalse;
+          bool flip = false;
+          if (!!ifFalse[1][0] && ifFalse[1][ifFalse[1]->size()-1][0] == BREAK) { // canonicalize break in the if-true
+            Ref temp = ifFalse;
             ifFalse = ifTrue;
             ifTrue = temp;
             flip = true;
           }
-          if (ifTrue[1][0] && ifTrue[1][ifTrue[1].length-1][0] == 'break') {
-            var assigns = ifFalse[1];
+          if (!!ifTrue[1][0] && ifTrue[1][ifTrue[1]->size()-1][0] == BREAK) {
+            Ref assigns = ifFalse[1];
             clearEmptyNodes(assigns);
-            var loopers = [], helpers = [];
-            for (var i = 0; i < assigns.length; i++) {
+            std::vector<IString> loopers, helpers;
+            for (int i = 0; i < assigns->size(); i++) {
               if (assigns[i][0] == STAT && assigns[i][1][0] == ASSIGN) {
-                var assign = assigns[i][1];
-                if (assign[1] == true && assign[2][0] == NAME && assign[3][0] == NAME) {
-                  var looper = assign[2][1];
-                  var helper = assign[3][1];
+                Ref assign = assigns[i][1];
+                if (assign[1]->isBool(true) && assign[2][0] == NAME && assign[3][0] == NAME) {
+                  IString looper = assign[2][1]->getIString();
+                  IString helper = assign[3][1]->getIString();
                   if (definitions[helper] == 1 && seenUses[looper] == namings[looper] &&
-                      !helperReplacements[helper] && !helperReplacements[looper]) {
-                    loopers.push(looper);
-                    helpers.push(helper);
+                      !helperReplacements.has(helper) && !helperReplacements.has(looper)) {
+                    loopers.push_back(looper);
+                    helpers.push_back(helper);
                   }
                 }
               }
             }
             // remove loop vars that are used in the rest of the else
-            for (var i = 0; i < assigns.length; i++) {
+            for (int i = 0; i < assigns->size(); i++) {
               if (assigns[i][0] == STAT && assigns[i][1][0] == ASSIGN) {
-                var assign = assigns[i][1];
-                if (!(assign[1] == true && assign[2][0] == NAME && assign[3][0] == NAME) || loopers.indexOf(assign[2][1]) < 0) {
+                Ref assign = assigns[i][1];
+                if (!(assign[1]->isBool(true) && assign[2][0] == NAME && assign[3][0] == NAME) || indexOf(loopers, assign[2][1]->getIString()) < 0) {
                   // this is not one of the loop assigns
-                  traverse(assign, function(node, type) {
-                    if (type == NAME) {
-                      var index = loopers.indexOf(node[1]);
-                      if (index < 0) index = helpers.indexOf(node[1]);
+                  traversePre(assign, [&](Ref node) {
+                    if (node[0] == NAME) {
+                      int index = indexOf(loopers, node[1]->getIString());
+                      if (index < 0) index = indexOf(helpers, node[1]->getIString());
                       if (index >= 0) {
-                        loopers.splice(index, 1);
-                        helpers.splice(index, 1);
+                        loopers.erase(loopers.begin() + index);
+                        helpers.erase(helpers.begin() + index);
                       }
                     }
                   });
@@ -1410,28 +1449,28 @@ void eliminate(Ref ast, bool memSafe=false) {
               }
             }
             // remove loop vars that are used in the if
-            traverse(ifTrue, function(node, type) {
-              if (type == NAME) {
-                var index = loopers.indexOf(node[1]);
-                if (index < 0) index = helpers.indexOf(node[1]);
+            traversePre(ifTrue, [&](Ref node) {
+              if (node[0] == NAME) {
+                int index = indexOf(loopers, node[1]->getIString());
+                if (index < 0) index = indexOf(helpers, node[1]->getIString());
                 if (index >= 0) {
-                  loopers.splice(index, 1);
-                  helpers.splice(index, 1);
+                  loopers.erase(loopers.begin() + index);
+                  helpers.erase(helpers.begin() + index);
                 }
               }
             });
-            if (loopers.length == 0) return;
-            for (var l = 0; l < loopers.length; l++) {
-              var looper = loopers[l];
-              var helper = helpers[l];
+            if (loopers.size() == 0) return;
+            for (int l = 0; l < loopers.size(); l++) {
+              IString looper = loopers[l];
+              IString helper = helpers[l];
               // the remaining issue is whether loopers are used after the assignment to helper and before the last line (where we assign to it)
-              var found = -1;
-              for (var i = stats.length-2; i >= 0; i--) {
-                var curr = stats[i];
+              int found = -1;
+              for (int i = stats->size()-2; i >= 0; i--) {
+                Ref curr = stats[i];
                 if (curr[0] == STAT && curr[1][0] == ASSIGN) {
-                  var currAssign = curr[1];
-                  if (currAssign[1] == true && currAssign[2][0] == NAME) {
-                    var to = currAssign[2][1];
+                  Ref currAssign = curr[1];
+                  if (currAssign[1]->isBool(true) && currAssign[2][0] == NAME) {
+                    IString to = currAssign[2][1]->getIString();
                     if (to == helper) {
                       found = i;
                       break;
@@ -1446,17 +1485,17 @@ void eliminate(Ref ast, bool memSafe=false) {
               // first, see if the looper and helpers overlap. Note that we check for this looper, compared to
               // *ALL* the helpers. Helpers will be replaced by loopers as we eliminate them, potentially
               // causing conflicts, so any helper is a concern.
-              var firstLooperUsage = -1;
-              var lastLooperUsage = -1;
-              var firstHelperUsage = -1;
-              for (var i = found+1; i < stats.length; i++) {
-                var curr = i < stats.length-1 ? stats[i] : last[1]; // on the last line, just look in the condition
-                traverse(curr, function(node, type) {
-                  if (type == NAME) {
+              int firstLooperUsage = -1;
+              int lastLooperUsage = -1;
+              int firstHelperUsage = -1;
+              for (int i = found+1; i < stats->size(); i++) {
+                Ref curr = i < stats->size()-1 ? stats[i] : last[1]; // on the last line, just look in the condition
+                traversePre(curr, [&](Ref node) {
+                  if (node[0] == NAME) {
                     if (node[1] == looper) {
                       if (firstLooperUsage < 0) firstLooperUsage = i;
                       lastLooperUsage = i;
-                    } else if (helpers.indexOf(node[1]) >= 0) {
+                    } else if (indexOf(helpers, node[1]->getIString()) >= 0) {
                       if (firstHelperUsage < 0) firstHelperUsage = i;
                     }
                   }
@@ -1464,72 +1503,73 @@ void eliminate(Ref ast, bool memSafe=false) {
               }
               if (firstLooperUsage >= 0) {
                 // the looper is used, we cannot simply merge the two variables
-                if ((firstHelperUsage < 0 || firstHelperUsage > lastLooperUsage) && lastLooperUsage+1 < stats.length && triviallySafeToMove(stats[found], asmData) &&
+                if ((firstHelperUsage < 0 || firstHelperUsage > lastLooperUsage) && lastLooperUsage+1 < stats->size() && triviallySafeToMove(stats[found], asmData) &&
                     seenUses[helper] == namings[helper]) {
                   // the helper is not used, or it is used after the last use of the looper, so they do not overlap,
                   // and the last looper usage is not on the last line (where we could not append after it), and the
                   // helper is not used outside of the loop.
                   // just move the looper definition to after the looper's last use
-                  stats.splice(lastLooperUsage+1, 0, stats[found]);
-                  stats.splice(found, 1);
+                  stats->insert(lastLooperUsage+1, stats[found]);
+                  stats->splice(found, 1);
                 } else {
                   // they overlap, we can still proceed with the loop optimization, but we must introduce a
                   // loop temp helper variable
-                  var temp = looper + '$looptemp';
-                  assert(!(temp in asmData.vars)); 
-                  for (var i = firstLooperUsage; i <= lastLooperUsage; i++) {
-                    var curr = i < stats.length-1 ? stats[i] : last[1]; // on the last line, just look in the condition
-                    traverse(curr, function looperToLooptemp(node, type) {
-                      if (type == NAME) {
+                  IString temp((std::string(looper.c_str()) + "$looptemp").c_str());
+                  assert(!asmData.isLocal(temp));
+                  for (int i = firstLooperUsage; i <= lastLooperUsage; i++) {
+                    Ref curr = i < stats->size()-1 ? stats[i] : last[1]; // on the last line, just look in the condition
+
+                    std::function<bool (Ref)> looperToLooptemp = [&](Ref node) {
+                      if (node[0] == NAME) {
                         if (node[1] == looper) {
-                          node[1] = temp;
+                          node[1]->setString(temp);
                         }
-                      } else if (type == ASSIGN && node[2][0] == NAME) {
+                      } else if (node[0] == ASSIGN && node[2][0] == NAME) {
                         // do not traverse the assignment target, phi assignments to the loop variable must remain
-                        traverse(node[3], looperToLooptemp);
-                        return null;
+                        traversePrePostConditional(node[3], looperToLooptemp, [](Ref node){});
+                        return false;
                       }
-                    });
+                      return true;
+                    };
+                    traversePrePostConditional(curr, looperToLooptemp, [](Ref node){});
                   }
-                  asmData.vars[temp] = asmData.vars[looper];
-                  stats.splice(found, 0, [STAT, [ASSIGN, true, [NAME, temp], [NAME, looper]]]);
+                  asmData.addVar(temp, asmData.getType(looper));
+                  stats->insert(found, make1(STAT, make3(ASSIGN, &(arena.alloc())->setBool(true), makeName(temp), makeName(looper))));
                 }
               }
             }
-            for (var l = 0; l < helpers.length; l++) {
-              for (var k = 0; k < helpers.length; k++) {
+            for (int l = 0; l < helpers.size(); l++) {
+              for (int k = 0; k < helpers.size(); k++) {
                 if (l != k && helpers[l] == helpers[k]) return; // it is complicated to handle a shared helper, abort
               }
             }
             // hurrah! this is safe to do
-            //printErr("ELIM LOOP VAR " + JSON.stringify(loopers) + ' :: ' + JSON.stringify(helpers));
-            for (var l = 0; l < loopers.length; l++) {
-              var looper = loopers[l];
-              var helper = helpers[l];
+            for (int l = 0; l < loopers.size(); l++) {
+              IString looper = loopers[l];
+              IString helper = helpers[l];
               varsToRemove[helper] = 2;
-              traverse(node, function(node, type) { // replace all appearances of helper with looper
-                if (type == NAME && node[1] == helper) node[1] = looper;
+              traversePre(node, [&](Ref node) { // replace all appearances of helper with looper
+                if (node[0] == NAME && node[1] == helper) node[1]->setString(looper);
               });
               helperReplacements[helper] = looper; // replace all future appearances of helper with looper
               helperReplacements[looper] = looper; // avoid any further attempts to optimize looper in this manner (seenUses is wrong anyhow, too)
             }
             // simplify the if. we remove the if branch, leaving only the else
             if (flip) {
-              last[1] = simplifyNotCompsDirect([UNARY_PREFIX, '!', last[1]]);
-              var temp = last[2];
+              last[1] = simplifyNotCompsDirect(make2(UNARY_PREFIX, L_NOT, last[1]));
+              Ref temp = last[2];
               last[2] = last[3];
               last[3] = temp;
             }
-            if (loopers.length == assigns.length) {
-              last.pop();
+            if (loopers.size() == assigns->size()) {
+              last->pop_back();
             } else {
-              var elseStats = getStatements(last[3]);
-              for (var i = 0; i < elseStats.length; i++) {
-                var stat = elseStats[i];
-                if (stat[0] == STAT) stat = stat[1];
+              Ref elseStats = getStatements(last[3]);
+              for (int i = 0; i < elseStats->size(); i++) {
+                Ref stat = deStat(elseStats[i]);
                 if (stat[0] == ASSIGN && stat[2][0] == NAME) {
-                  if (loopers.indexOf(stat[2][1]) >= 0) {
-                    elseStats[i] = emptyNode();
+                  if (indexOf(loopers, stat[2][1]->getIString()) >= 0) {
+                    elseStats[i] = makeEmpty();
                   }
                 }
               }
@@ -1537,7 +1577,7 @@ void eliminate(Ref ast, bool memSafe=false) {
           }
         }
       }
-    }); */
+    });
 
     for (auto v : varsToRemove) {
       if (v.second == 2) asmData.deleteVar(v.first);
