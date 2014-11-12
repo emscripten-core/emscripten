@@ -120,12 +120,59 @@ struct TraverseInfo {
   int index;
 };
 
+template <class T, int init>
+struct StackedStack { // a stack, on the stack
+  T stackStorage[init];
+  T* storage;
+  int used, available; // used amount, available amount
+  bool alloced;
+
+  StackedStack() : used(0), available(init), alloced(false) {
+    storage = stackStorage;
+  }
+  ~StackedStack() {
+    if (alloced) free(storage);
+  }
+
+  int size() { return used; }
+
+  void push_back(const T& t) {
+    assert(used <= available);
+    if (used == available) {
+      available *= 2;
+      if (!alloced) {
+        T* old = storage;
+        storage = (T*)malloc(sizeof(T)*available);
+        memcpy(storage, old, sizeof(T)*used);
+        alloced = true;
+      } else {
+        storage = (T*)realloc(storage, sizeof(T)*available);
+      }
+    }
+    assert(used < available);
+    assert(storage);
+    storage[used++] = t;
+  }
+
+  T& back() {
+    assert(used > 0);
+    return storage[used-1];
+  }
+
+  void pop_back() {
+    assert(used > 0);
+    used--;
+  }
+};
+
 #define visitable(node) (node->isArray() and node->size() > 0)
+
+#define TRAV_STACK 40
 
 // Traverse, calling visit before the children
 void traversePre(Ref node, std::function<void (Ref)> visit) {
   visit(node);
-  std::vector<TraverseInfo> stack;
+  StackedStack<TraverseInfo, TRAV_STACK> stack;
   stack.push_back({ node, 0 });
   while (1) {
     TraverseInfo& top = stack.back();
