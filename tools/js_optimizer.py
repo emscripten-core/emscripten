@@ -29,7 +29,7 @@ def get_native_optimizer():
     shared.logging.debug('building native optimizer')
     output = shared.Cache.get_path('optimizer.exe')
     shared.try_delete(output)
-    subprocess.Popen([shared.CLANG, shared.path_from_root('tools', 'optimizer', 'optimizer.cpp'), '-O3', '-std=c++11', '-o', output]).communicate() # , '-g', '-fno-omit-frame-pointer'
+    subprocess.Popen([shared.CLANG, shared.path_from_root('tools', 'optimizer', 'optimizer.cpp'), '-O3', '-std=c++11', '-fno-exceptions', '-fno-rtti', '-o', output]).communicate() # , '-g', '-fno-omit-frame-pointer'
     assert os.path.exists(output)
     return output
   return shared.Cache.get('optimizer.exe', create_optimizer, extension='exe')
