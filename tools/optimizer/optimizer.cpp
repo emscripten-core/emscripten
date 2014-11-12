@@ -265,6 +265,9 @@ struct AsmData {
   bool isLocal(const IString& name) {
     return locals.count(name) > 0;
   }
+  bool isVar(const IString& name) {
+    return isLocal(name) && !locals[name].param;
+  }
 
   AsmData(Ref f) {
     func = f;
@@ -358,6 +361,7 @@ struct AsmData {
     int next = 0;
     for (auto param : func[2]->getArray()) {
       IString str = param->getIString();
+      assert(locals.count(str) > 0);
       stats[next++] = make1(STAT, make3(ASSIGN, &(arena.alloc())->setBool(true), makeName(str.c_str()), makeAsmCoercion(makeName(str.c_str()), locals[str].type)));
     }
     if (varDefs->size()) {
@@ -1594,7 +1598,7 @@ void eliminate(Ref ast, bool memSafe=false) {
     });
 
     for (auto v : varsToRemove) {
-      if (v.second == 2) asmData.deleteVar(v.first);
+      if (v.second == 2 && asmData.isVar(v.first)) asmData.deleteVar(v.first);
     }
 
     asmData.denormalize();
