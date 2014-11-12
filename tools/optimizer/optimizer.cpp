@@ -88,6 +88,12 @@ int jsD2I(double x) {
   return (int)((int64_t)x);
 }
 
+char *strdupe(const char *str) {
+  char *ret = (char *)malloc(strlen(str)+1); // leaked!
+  strcpy(ret, str);
+  return ret;
+}
+
 int parseInt(const char *str) {
   int ret = *str - '0';
   while (*(++str)) {
@@ -1390,11 +1396,7 @@ void eliminate(Ref ast, bool memSafe=false) {
           return; // no need to track this anymore, we can't loop-optimize more than once
         }
         // track how many uses we saw. we need to know when a variable is no longer used (hence we run this in the post)
-        if (seenUses.has(name)) {
-          seenUses[name] = 1;
-        } else {
-          seenUses[name]++;
-        }
+        seenUses[name]++;
       } else if (type == WHILE) {
         // try to remove loop helper variables specifically
         Ref stats = node[2][1];
@@ -1514,7 +1516,7 @@ void eliminate(Ref ast, bool memSafe=false) {
                 } else {
                   // they overlap, we can still proceed with the loop optimization, but we must introduce a
                   // loop temp helper variable
-                  IString temp((std::string(looper.c_str()) + "$looptemp").c_str());
+                  IString temp(strdupe((std::string(looper.c_str()) + "$looptemp").c_str()));
                   assert(!asmData.isLocal(temp));
                   for (int i = firstLooperUsage; i <= lastLooperUsage; i++) {
                     Ref curr = i < stats->size()-1 ? stats[i] : last[1]; // on the last line, just look in the condition
