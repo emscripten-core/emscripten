@@ -1047,6 +1047,7 @@ void eliminate(Ref ast, bool memSafe=false) {
       HASES
     };
     Tracked tracked;
+    #define dumpTracked() { errv("tracking %d", tracked.size()); for (auto t : tracked) errv("... %s", t.first.c_str()); }
 
     bool globalsInvalidated = false; // do not repeat invalidations, until we track something new
     bool memoryInvalidated = false;
@@ -1308,7 +1309,18 @@ void eliminate(Ref ast, bool memSafe=false) {
               traverseInOrder(stats[j], false, false);
             }
             // We cannot track from one switch case into another, undo all new trackings TODO: general framework here, use in if-else as well
-            tracked = originalTracked; // TODO: don't do this on the last one
+            std::vector<IString> toDelete;
+            for (auto t : tracked) {
+              if (!originalTracked.has(t.first)) {
+                Tracking& info = tracked[t.first];
+                if (info.usesGlobals || info.usesMemory || info.deps.size() > 0) {
+                  toDelete.push_back(t.first);
+                }
+              }
+            }
+            for (auto t : toDelete) {
+              tracked.erase(t);
+            }
           }
           tracked.clear(); // do not track from inside the switch to outside
         } else {
