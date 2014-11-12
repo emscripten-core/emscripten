@@ -476,7 +476,7 @@ module({
             assert.equal(true, cm.emval_test_not(false));
         });
 
-        test("val.is_undefined() is functionnal",function() {
+        test("val.is_undefined() is functional",function() {
             assert.equal(true, cm.emval_test_is_undefined(undefined));
             assert.equal(false, cm.emval_test_is_undefined(true));
             assert.equal(false, cm.emval_test_is_undefined(false));
@@ -484,7 +484,7 @@ module({
             assert.equal(false, cm.emval_test_is_undefined({}));
         });
 
-        test("val.is_null() is functionnal",function() {
+        test("val.is_null() is functional",function() {
             assert.equal(true, cm.emval_test_is_null(null));
             assert.equal(false, cm.emval_test_is_null(true));
             assert.equal(false, cm.emval_test_is_null(false));
@@ -492,7 +492,7 @@ module({
             assert.equal(false, cm.emval_test_is_null({}));
         });
 
-        test("val.is_true() is functionnal",function() {
+        test("val.is_true() is functional",function() {
             assert.equal(true, cm.emval_test_is_true(true));
             assert.equal(false, cm.emval_test_is_true(false));
             assert.equal(false, cm.emval_test_is_true(null));
@@ -500,7 +500,7 @@ module({
             assert.equal(false, cm.emval_test_is_true({}));
         });
 
-        test("val.is_false() is functionnal",function() {
+        test("val.is_false() is functional",function() {
             assert.equal(true, cm.emval_test_is_false(false));
             assert.equal(false, cm.emval_test_is_false(true));
             assert.equal(false, cm.emval_test_is_false(null));
@@ -508,8 +508,8 @@ module({
             assert.equal(false, cm.emval_test_is_false({}));
         });
 
-        test("val.equals() is functionnal",function() {
-            values = [undefined, null, true, false, {}];
+        test("val.equals() is functional",function() {
+            var values = [undefined, null, true, false, {}];
 
             for(var i=0;i<values.length;++i){
                 var first = values[i];
@@ -522,8 +522,8 @@ module({
             }
         });
 
-        test("val.strictlyEquals() is functionnal",function() {
-            values = [undefined, null, true, false, {}];
+        test("val.strictlyEquals() is functional", function() {
+            var values = [undefined, null, true, false, {}];
 
             for(var i=0;i<values.length;++i){
                 var first = values[i];
