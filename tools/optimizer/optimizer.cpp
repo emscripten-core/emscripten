@@ -174,7 +174,7 @@ void traversePre(Ref node, std::function<void (Ref)> visit) {
   visit(node);
   StackedStack<TraverseInfo, TRAV_STACK> stack;
   stack.push_back({ node, 0 });
-  while (1) {
+  while (stack.size() > 0) {
     TraverseInfo& top = stack.back();
     if (top.index < top.node->size()) {
       Ref sub = top.node[top.index];
@@ -184,7 +184,6 @@ void traversePre(Ref node, std::function<void (Ref)> visit) {
         stack.push_back({ sub, 0 });
       }
     } else {
-      if (stack.size() == 1) break;
       stack.pop_back();
     }
   }
@@ -193,7 +192,7 @@ void traversePre(Ref node, std::function<void (Ref)> visit) {
 // Traverse, calling visitPre before the children and visitPost after
 void traversePrePost(Ref node, std::function<void (Ref)> visitPre, std::function<void (Ref)> visitPost) {
   visitPre(node);
-  std::vector<TraverseInfo> stack;
+  StackedStack<TraverseInfo, TRAV_STACK> stack;
   stack.push_back({ node, 0 });
   while (stack.size() > 0) {
     TraverseInfo& top = stack.back();
@@ -215,7 +214,7 @@ void traversePrePost(Ref node, std::function<void (Ref)> visitPre, std::function
 // Traverse, calling visitPre before the children and visitPost after. If pre returns false, do not traverse children
 void traversePrePostConditional(Ref node, std::function<bool (Ref)> visitPre, std::function<void (Ref)> visitPost) {
   if (!visitPre(node)) return;
-  std::vector<TraverseInfo> stack;
+  StackedStack<TraverseInfo, TRAV_STACK> stack;
   stack.push_back({ node, 0 });
   while (stack.size() > 0) {
     TraverseInfo& top = stack.back();
