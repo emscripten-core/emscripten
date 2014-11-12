@@ -1290,10 +1290,10 @@ EMSCRIPTEN_BINDINGS(interface_tests) {
         .smart_ptr<std::shared_ptr<AbstractClass>>("shared_ptr<AbstractClass>")
         .allow_subclass<AbstractClassWrapper>("AbstractClassWrapper")
         .function("abstractMethod", &AbstractClass::abstractMethod, pure_virtual())
-        // The select_overload is necessary because, otherwise, the C++ compiler
+        // The optional_override is necessary because, otherwise, the C++ compiler
         // cannot deduce the signature of the lambda function.
         .function("optionalMethod", optional_override(
-            [](AbstractClass& this_, std::string s) {
+            [](AbstractClass& this_, const std::string& s) {
                 return this_.AbstractClass::optionalMethod(s);
             }
         ))
@@ -2137,6 +2137,8 @@ public:
         return staticValue;
     }
 };
+
+int MultipleOverloads::staticValue = 0;
 
 class MultipleOverloadsDerived : public MultipleOverloads {
 public:
