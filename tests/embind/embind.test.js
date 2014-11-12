@@ -516,8 +516,8 @@ module({
                 for(var j=i;j<values.length;++j)
                 {
                     var second = values[j];
-                    console.log( 'js: '+first+ "=="+second + ':' + (first==second) );
-                    assert.equal((first==second), cm.emval_test_equals(first, second));
+                    /*jshint eqeqeq:false*/
+                    assert.equal((first == second), cm.emval_test_equals(first, second));
                 }
             }
         });
