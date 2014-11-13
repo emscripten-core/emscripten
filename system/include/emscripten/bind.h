@@ -919,6 +919,10 @@ namespace emscripten {
             return wrapped.call<ReturnType>(name, std::forward<Args>(args)...);
         }
 
+        val get_wrapped() const {
+            return wrapped;
+        }
+
     private:
         val wrapped;
     };
