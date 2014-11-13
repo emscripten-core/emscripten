@@ -237,6 +237,7 @@ void traversePrePostConditional(Ref node, std::function<bool (Ref)> visitPre, st
 
 // Traverses all the top-level functions in the document
 void traverseFunctions(Ref ast, std::function<void (Ref)> visit) {
+  if (!ast || ast->size() == 0) return;
   if (ast[0] == TOPLEVEL) {
     Ref stats = ast[1];
     for (int i = 0; i < stats->size(); i++) {
@@ -860,7 +861,7 @@ void removeAllUselessSubNodes(Ref ast) {
     int index = -1;
     if (node[0] == DEFUN) {
       clearUselessNodes(node[3]);
-    } else if (node[0] == BLOCK && !!node[1]) {
+    } else if (node[0] == BLOCK && node->size() > 1 && !!node[1]) {
       clearUselessNodes(node[1]);
     } else if (node[0] == SEQ && isEmpty(node[1])) {
       safeCopy(node, node[2]);
