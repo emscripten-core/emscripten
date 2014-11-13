@@ -2617,7 +2617,7 @@ void ensureMinifiedNames(int n) { // make sure the nth index in minifiedNames ex
     for (int i = 1; i < minifiedState.size(); i++) {
       name += VALID_MIN_LATERS[minifiedState[i]];
     }
-    IString str(name.c_str());
+    IString str(strdupe(name.c_str())); // leaked!
     if (!RESERVED.has(str)) minifiedNames.push_back(str);
     // increment the state
     int i = 0;
@@ -2727,14 +2727,13 @@ void minifyLocals(Ref ast) {
         }
       } else if (type == LABEL) {
         IString name = node[1]->getIString();
-        if (!newLabels[name]) {
+        if (!newLabels.has(name)) {
           newLabels[name] = getNextMinifiedLabel();
         }
         node[1]->setString(newLabels[name]);
-      } else if ((type == BREAK || type == CONTINUE) && node->size() > 1) {
-        IString name = node[1]->getIString();
-        if (!!name) {
-          name = newLabels[name];
+      } else if (type == BREAK || type == CONTINUE) {
+        if (node->size() > 1 && !!node[1]) {
+          node[1]->setString(newLabels[node[1]->getIString()]);
         }
       }
     });
