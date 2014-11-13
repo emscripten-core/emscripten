@@ -1461,9 +1461,9 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/usleep.html
     // We're single-threaded, so use a busy loop. Super-ugly.
     var msec = useconds / 1000;
-    if (ENVIRONMENT_IS_WEB && window['performance'] && window['performance']['now']) {
-      var start = window['performance']['now']();
-      while (window['performance']['now']() - start < msec) {
+    if ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && self['performance'] && self['performance']['now']) {
+      var start = self['performance']['now']();
+      while (self['performance']['now']() - start < msec) {
         // Do nothing.
       }
     } else {
@@ -8565,8 +8565,8 @@ LibraryManager.library = {
         }
       } else if (typeof dateNow !== 'undefined') {
         _emscripten_get_now.actual = dateNow;
-      } else if (ENVIRONMENT_IS_WEB && window['performance'] && window['performance']['now']) {
-        _emscripten_get_now.actual = function _emscripten_get_now_actual() { return window['performance']['now'](); };
+      } else if ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && self['performance'] && self['performance']['now']) {
+        _emscripten_get_now.actual = function _emscripten_get_now_actual() { return self['performance']['now'](); };
       } else {
         _emscripten_get_now.actual = Date.now;
       }
@@ -8578,7 +8578,7 @@ LibraryManager.library = {
     if (ENVIRONMENT_IS_NODE) {
       return 1; // nanoseconds
     } else if (typeof dateNow !== 'undefined' ||
-               (ENVIRONMENT_IS_WEB && window['performance'] && window['performance']['now'])) {
+               ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && self['performance'] && self['performance']['now'])) {
       return 1000; // microseconds (1/1000 of a millisecond)
     } else {
       return 1000*1000; // milliseconds
@@ -8590,7 +8590,7 @@ LibraryManager.library = {
     // return whether emscripten_get_now is guaranteed monotonic; the Date.now
     // implementation is not :(
     return ENVIRONMENT_IS_NODE || (typeof dateNow !== 'undefined') ||
-        (ENVIRONMENT_IS_WEB && window['performance'] && window['performance']['now']);
+        ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && self['performance'] && self['performance']['now']);
   },
 
   // Returns [parentFuncArguments, functionName, paramListName]

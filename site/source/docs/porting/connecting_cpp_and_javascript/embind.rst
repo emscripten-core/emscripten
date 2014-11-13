@@ -421,7 +421,7 @@ implemented in JavaScript.
     EMSCRIPTEN_BINDINGS(interface) {
         class_<Interface>("Interface")
             .function("invoke", &Interface::invoke, pure_virtual())
-            .allow_subclass<InterfaceWrapper>()
+            .allow_subclass<InterfaceWrapper>("InterfaceWrapper")
             ;
     }
 
@@ -500,7 +500,7 @@ implementation:
 
     EMSCRIPTEN_BINDINGS(interface) {
         class_<Base>("Base")
-            .allow_subclass<BaseWrapper>()
+            .allow_subclass<BaseWrapper>("BaseWrapper")
             .function("invoke", optional_override([](Base& self, const std::string& str) {
                 return self.Base::invoke(str);
             }))

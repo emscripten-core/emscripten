@@ -1068,6 +1068,15 @@ var LibrarySDL = {
       return ret;
     },
 
+    setPannerPosition: function(info, x, y, z) {
+      if (!info) return 0;
+      if (info.audio) {
+        if (info.audio.webAudioPannerNode)
+            info.audio.webAudioPannerNode['setPosition'](x, y, z);
+      }
+      return ret;
+    },
+
     // Plays out an SDL audio resource that was loaded with the Mix_Load APIs, when using Web Audio..
     playWebAudio: function(audio) {
       if (!audio) return;
@@ -1084,13 +1093,19 @@ var LibrarySDL = {
         audio.webAudioNode = SDL.audioContext['createBufferSource']();
         audio.webAudioNode['buffer'] = webAudio.decodedBuffer;
         audio.webAudioNode['loop'] = audio.loop;
-        audio.webAudioNode['onended'] = function() { audio.onended(); } // For <media> element compatibility, route the onended signal to the instance.
+        audio.webAudioNode['onended'] = function() { audio['onended'](); } // For <media> element compatibility, route the onended signal to the instance.
+
+        audio.webAudioPannerNode = SDL.audioContext['createPanner']();
+        audio.webAudioPannerNode['panningModel'] = 'equalpower';
 
         // Add an intermediate gain node to control volume.
         audio.webAudioGainNode = SDL.audioContext['createGain']();
         audio.webAudioGainNode['gain']['value'] = audio.volume;
-        audio.webAudioNode['connect'](audio.webAudioGainNode);
+
+        audio.webAudioNode['connect'](audio.webAudioPannerNode);
+        audio.webAudioPannerNode['connect'](audio.webAudioGainNode);
         audio.webAudioGainNode['connect'](SDL.audioContext['destination']);
+
         audio.webAudioNode['start'](0, audio.currentPosition);
         audio.startTime = SDL.audioContext['currentTime'] - audio.currentPosition;
       } catch(e) {
@@ -2496,8 +2511,18 @@ var LibrarySDL = {
     return SDL.setGetVolume(SDL.channels[channel], volume);
   },
 
-  Mix_SetPanning: function() {
-    return 0; // error
+// Note: Mix_SetPanning requires WebAudio (file loaded from memory).
+  Mix_SetPanning: function(channel, left, right) {
+    // SDL API uses [0-255], while PannerNode has an (x, y, z) position.
+
+    // Normalizing.
+    left /= 255;
+    right /= 255;
+
+    // Set the z coordinate a little forward, otherwise there won't be any
+    // smooth transition between left and right.
+    SDL.setPannerPosition(SDL.channels[channel], right - left, 0, 0.1);
+    return 1;
   },
 
   Mix_LoadWAV_RW: function(rwopsID, freesrc) {
@@ -3328,4 +3353,3 @@ var LibrarySDL = {
 
 autoAddDeps(LibrarySDL, '$SDL');
 mergeInto(LibraryManager.library, LibrarySDL);
-

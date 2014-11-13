@@ -20,7 +20,7 @@ class interactive(BrowserCore):
     print
 
   def test_html5_fullscreen(self):
-    self.btest(path_from_root('tests', 'test_html5_fullscreen.c'), expected='0')
+    self.btest(path_from_root('tests', 'test_html5_fullscreen.c'), expected='0', args=['-s', 'EXPORTED_FUNCTIONS=["_requestFullscreen","_enterSoftFullscreen","_main"]'])
 
   def test_html5_mouse(self):
     self.btest(path_from_root('tests', 'test_html5_mouse.c'), expected='0')
@@ -60,6 +60,14 @@ class interactive(BrowserCore):
     open(os.path.join(self.get_dir(), 'sdl_audio_mix.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_audio_mix.c')).read()))
 
     Popen([PYTHON, EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio_mix.c'), '--preload-file', 'sound.ogg', '--preload-file', 'music.ogg', '--preload-file', 'noise.ogg', '-o', 'page.html']).communicate()
+    self.run_browser('page.html', '', '/report_result?1')
+
+  def test_sdl_audio_panning(self):
+    shutil.copyfile(path_from_root('tests', 'sounds', 'the_entertainer.wav'), os.path.join(self.get_dir(), 'the_entertainer.wav'))
+    open(os.path.join(self.get_dir(), 'sdl_audio_panning.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_audio_panning.c')).read()))
+
+    # use closure to check for a possible bug with closure minifying away newer Audio() attributes
+    Popen([PYTHON, EMCC, '-O2', '--closure', '1', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio_panning.c'), '--preload-file', 'the_entertainer.wav', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play"]']).communicate()
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl_audio_beeps(self):

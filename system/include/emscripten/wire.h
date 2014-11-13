@@ -340,14 +340,14 @@ namespace emscripten {
 
         template<typename T>
         struct GenericBindingType<std::unique_ptr<T>> {
-            typedef typename BindingType<T>::WireType WireType;
+            typedef typename BindingType<T*>::WireType WireType;
 
             static WireType toWireType(std::unique_ptr<T> p) {
-                return BindingType<T>::toWireType(*p);
+                return BindingType<T*>::toWireType(p.release());
             }
 
             static std::unique_ptr<T> fromWireType(WireType wt) {
-                return std::unique_ptr<T>(new T(std::move(BindingType<T>::fromWireType(wt))));
+                return std::unique_ptr<T>(BindingType<T*>::fromWireType(wt));
             }
         };
 

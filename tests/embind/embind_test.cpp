@@ -54,6 +54,30 @@ bool emval_test_not(bool b) {
     return !b;
 }
 
+bool emval_test_is_true(val v) {
+    return v.isTrue();
+}
+
+bool emval_test_is_false(val v) {
+    return v.isFalse();
+}
+
+bool emval_test_is_null(val v) {
+    return v.isNull();
+}
+
+bool emval_test_is_undefined(val v) {
+    return v.isUndefined();
+}
+
+bool emval_test_equals(val v1,val v2) {
+    return v1.equals(v2);
+}
+
+bool emval_test_strictly_equals(val v1, val v2) {
+    return v1.strictlyEquals(v2);
+}
+
 unsigned emval_test_as_unsigned(val v) {
     return v.as<unsigned>();
 }
@@ -886,6 +910,23 @@ std::unique_ptr<ValHolder> emval_test_return_unique_ptr() {
     return std::unique_ptr<ValHolder>(new ValHolder(val::object()));
 }
 
+class UniquePtrLifetimeMock {
+public:
+    UniquePtrLifetimeMock(val l) : logger(l) {
+        logger(std::string("(constructor)"));
+    }
+    ~UniquePtrLifetimeMock() {
+        logger(std::string("(destructor)"));
+    }
+
+private:
+    val logger;
+};
+
+std::unique_ptr<UniquePtrLifetimeMock> emval_test_return_unique_ptr_lifetime(val logger) {
+    return std::unique_ptr<UniquePtrLifetimeMock>(new UniquePtrLifetimeMock(logger));
+}
+
 std::shared_ptr<ValHolder> emval_test_return_shared_ptr() {
     return std::shared_ptr<ValHolder>(new ValHolder(val::object()));
 }
@@ -1098,6 +1139,10 @@ void test_string_with_vec(const std::string& p1, std::vector<std::string>& v1) {
     printf("%s\n", p1.c_str());
 }
 
+val embind_test_getglobal() {
+    return val::global();
+}
+
 val embind_test_new_Object() {
     return val::global("Object").new_();
 }
@@ -1249,10 +1294,10 @@ EMSCRIPTEN_BINDINGS(interface_tests) {
         .smart_ptr<std::shared_ptr<AbstractClass>>("shared_ptr<AbstractClass>")
         .allow_subclass<AbstractClassWrapper>("AbstractClassWrapper")
         .function("abstractMethod", &AbstractClass::abstractMethod, pure_virtual())
-        // The select_overload is necessary because, otherwise, the C++ compiler
+        // The optional_override is necessary because, otherwise, the C++ compiler
         // cannot deduce the signature of the lambda function.
         .function("optionalMethod", optional_override(
-            [](AbstractClass& this_, std::string s) {
+            [](AbstractClass& this_, const std::string& s) {
                 return this_.AbstractClass::optionalMethod(s);
             }
         ))
@@ -1559,6 +1604,13 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("emval_test_passthrough", &emval_test_passthrough);
     function("emval_test_return_void", &emval_test_return_void);
     function("emval_test_not", &emval_test_not);
+
+    function("emval_test_is_true", &emval_test_is_true);
+    function("emval_test_is_false", &emval_test_is_false);
+    function("emval_test_is_null", &emval_test_is_null);
+    function("emval_test_is_undefined", &emval_test_is_undefined);
+    function("emval_test_equals", &emval_test_equals);
+    function("emval_test_strictly_equals", &emval_test_strictly_equals);
 
     function("emval_test_as_unsigned", &emval_test_as_unsigned);
     function("emval_test_get_length", &emval_test_get_length);
@@ -1926,6 +1978,9 @@ EMSCRIPTEN_BINDINGS(tests) {
 
     function("emval_test_return_unique_ptr", &emval_test_return_unique_ptr);
 
+    class_<UniquePtrLifetimeMock>("UniquePtrLifetimeMock");
+    function("emval_test_return_unique_ptr_lifetime", &emval_test_return_unique_ptr_lifetime);
+
     function("emval_test_return_shared_ptr", &emval_test_return_shared_ptr);
     function("emval_test_return_empty_shared_ptr", &emval_test_return_empty_shared_ptr);
     function("emval_test_is_shared_ptr_null", &emval_test_is_shared_ptr_null);
@@ -1949,6 +2004,8 @@ EMSCRIPTEN_BINDINGS(tests) {
 
     register_map<std::string, int>("StringIntMap");
     function("embind_test_get_string_int_map", embind_test_get_string_int_map);
+
+    function("embind_test_getglobal", &embind_test_getglobal);
 
     function("embind_test_new_Object", &embind_test_new_Object);
     function("embind_test_new_factory", &embind_test_new_factory);
@@ -2086,6 +2143,8 @@ public:
         return staticValue;
     }
 };
+
+int MultipleOverloads::staticValue = 0;
 
 class MultipleOverloadsDerived : public MultipleOverloads {
 public:

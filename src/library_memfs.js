@@ -335,8 +335,6 @@ mergeInto(LibraryManager.library, {
         if (position < 0) {
           throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
         }
-        stream.ungotten = [];
-        stream.position = position;
         return position;
       },
       allocate: function(stream, offset, length) {
