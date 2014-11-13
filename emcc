@@ -1389,7 +1389,7 @@ try:
         logging.debug('applying js optimization passes: %s', passes)
         final = shared.Building.js_optimizer(final, passes, jcache, debug_level >= 4, js_optimizer_extra_info, just_split=just_split, just_concat=just_concat)
         js_transform_tempfiles.append(final)
-        if DEBUG: save_intermediate(title)
+        if DEBUG: save_intermediate(title, suffix='js' if 'emitJSON' not in passes else 'json')
 
       passes = js_optimizer_queue[:]
 
