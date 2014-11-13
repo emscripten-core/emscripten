@@ -1946,6 +1946,11 @@ int f() {
         output_temp = 'output.js'
         shutil.copyfile(input, input_temp)
         Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), input_temp, 'emitJSON'], stdin=PIPE, stdout=open(input_temp + '.js', 'w')).communicate()
+        original = open(input).read()
+        if '// EXTRA_INFO:' in original:
+          json = open(input_temp + '.js').read()
+          json += '\n' + original[original.find('// EXTRA_INFO:'):]
+          open(input_temp + '.js', 'w').write(json)
         output = Popen([js_optimizer.get_native_optimizer(), input_temp + '.js'] + passes, stdin=PIPE, stdout=open(output_temp, 'w')).communicate()[0]
         Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), output_temp, 'receiveJSON'], stdin=PIPE, stdout=open(output_temp + '.js', 'w')).communicate()
         output = open(output_temp + '.js').read()

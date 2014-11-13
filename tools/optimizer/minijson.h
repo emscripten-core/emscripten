@@ -40,6 +40,7 @@ struct Ref {
   Value& operator*() { return *inst; }
   Value* operator->() { return inst; }
   Ref& operator[](unsigned x);
+  Ref& operator[](IString x);
 
   // special conveniences
   bool operator==(const char *str); // comparison to string, which is by value
@@ -591,11 +592,20 @@ struct Value {
     assert(isObject());
     return (*obj)[x];
   }
+
+  bool has(IString x) {
+    assert(isObject());
+    return obj->count(x) > 0;
+  }
 };
 
 // Ref methods
 
 Ref& Ref::operator[](unsigned x) {
+  return (*get())[x];
+}
+
+Ref& Ref::operator[](IString x) {
   return (*get())[x];
 }
 

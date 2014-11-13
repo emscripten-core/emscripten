@@ -6,6 +6,8 @@
 
 #include "minijson.h"
 
+typedef std::vector<IString> StringVec;
+
 //==================
 // Globals
 //==================
@@ -2401,7 +2403,7 @@ void registerize(Ref ast) {
       temp[written] = 0;
       IString ret(temp); // likely interns a new string; leaks if not XXX FIXME
       regTypes[ret] = type;
-      assert(!allVars.has(ret)); // register must not shadow non-local name
+      assert(!allVars.has(ret) || asmData.isLocal(ret)); // register must not shadow non-local name
       return ret;
     };
     // Find the # of uses of each variable.
@@ -2496,7 +2498,6 @@ void registerize(Ref ast) {
     // we just use a fresh register to make sure we avoid this, but it could be
     // optimized to check for safe registers (free, and not used in this loop level).
     StringStringMap varRegs; // maps variables to the register they will use all their life
-    typedef std::vector<IString> StringVec;
     std::vector<StringVec> freeRegsClasses;
     freeRegsClasses.resize(ASM_NONE);
     int nextReg = 1;
@@ -2597,6 +2598,149 @@ void registerize(Ref ast) {
   });
 }
 
+// minified names generation
+StringSet RESERVED("do if in for new try var env let");
+const char *VALID_MIN_INITS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_$";
+const char *VALID_MIN_LATERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_$0123456789";
+
+StringVec minifiedNames;
+std::vector<int> minifiedState;
+
+void ensureMinifiedNames(int n) { // make sure the nth index in minifiedNames exists. done 100% deterministically
+  static int VALID_MIN_INITS_LEN = strlen(VALID_MIN_INITS);
+  static int VALID_MIN_LATERS_LEN = strlen(VALID_MIN_LATERS);
+
+  while (minifiedNames.size() < n+1) {
+    // generate the current name
+    std::string name;
+    name += VALID_MIN_INITS[minifiedState[0]];
+    for (int i = 1; i < minifiedState.size(); i++) {
+      name += VALID_MIN_LATERS[minifiedState[i]];
+    }
+    IString str(name.c_str());
+    if (!RESERVED.has(str)) minifiedNames.push_back(str);
+    // increment the state
+    int i = 0;
+    while (1) {
+      minifiedState[i]++;
+      if (minifiedState[i] < (i == 0 ? VALID_MIN_INITS_LEN : VALID_MIN_LATERS_LEN)) break;
+      // overflow
+      minifiedState[i] = 0;
+      i++;
+      if (i == minifiedState.size()) minifiedState.push_back(-1); // will become 0 after increment in next loop head
+    }
+  }
+}
+
+void minifyLocals(Ref ast) {
+  assert(!!extraInfo);
+  IString GLOBALS("globals");
+  assert(extraInfo->has(GLOBALS));
+  Ref globals = extraInfo[GLOBALS];
+
+  if (minifiedState.size() == 0) minifiedState.push_back(0);
+
+  traverseFunctions(ast, [&globals](Ref fun) {
+    // Analyse the asmjs to figure out local variable names,
+    // but operate on the original source tree so that we don't
+    // miss any global names in e.g. variable initializers.
+    AsmData asmData(fun);
+    asmData.denormalize(); // TODO: we can avoid modifying at all here - we just need a list of local vars+params
+
+    StringStringMap newNames;
+    StringSet usedNames;
+
+    // Find all the globals that we need to minify using
+    // pre-assigned names.  Don't actually minify them yet
+    // as that might interfere with local variable names.
+    traversePre(fun, [&](Ref node) {
+      if (node[0] == NAME) {
+        IString name = node[1]->getIString();
+        if (!asmData.isLocal(name)) {
+          IString minified = globals[name]->getIString();
+          if (!!minified) {
+            newNames[name] = minified;
+            usedNames.insert(minified);
+          }
+        }
+      }
+    });
+
+    // The first time we encounter a local name, we assign it a
+    // minified name that's not currently in use.  Allocating on
+    // demand means they're processed in a predictable order,
+    // which is very handy for testing/debugging purposes.
+    int nextMinifiedName = 0;
+    auto getNextMinifiedName = [&]() {
+      IString minified;
+      while (1) {
+        ensureMinifiedNames(nextMinifiedName);
+        minified = minifiedNames[nextMinifiedName++];
+        // TODO: we can probably remove !isLocalName here
+        if (!usedNames.has(minified) && !asmData.isLocal(minified)) {
+          return minified;
+        }
+      }
+    };
+
+    // We can also minify loop labels, using a separate namespace
+    // to the variable declarations.
+    StringStringMap newLabels;
+    int nextMinifiedLabel = 0;
+    auto getNextMinifiedLabel = [&]() {
+      ensureMinifiedNames(nextMinifiedLabel);
+      return minifiedNames[nextMinifiedLabel++];
+    };
+
+    // Traverse and minify all names.
+    if (globals->has(fun[1]->getIString())) {
+      fun[1]->setString(globals[fun[1]->getIString()]->getIString());
+      assert(!!fun[1]);
+    }
+    if (!!fun[2]) {
+      for (int i = 0; i < fun[2]->size(); i++) {
+        IString minified = getNextMinifiedName();
+        newNames[fun[2][i]->getIString()] = minified;
+        fun[2][i]->setString(minified);
+      }
+    }
+    traversePre(fun[3], [&](Ref node) {
+      Ref type = node[0];
+      if (type == NAME) {
+        IString name = node[1]->getIString();
+        IString minified = newNames[name];
+        if (!!minified) {
+          node[1]->setString(minified);
+        } else if (asmData.isLocal(name)) {
+          minified = getNextMinifiedName();
+          newNames[name] = minified;
+          node[1]->setString(minified);
+        }
+      } else if (type == VAR) {
+        for (int i = 0; i < node[1]->size(); i++) {
+          Ref defn = node[1][i];
+          IString name = defn[0]->getIString();
+          if (!(newNames.has(name))) {
+            newNames[name] = getNextMinifiedName();
+          }
+          defn[0]->setString(newNames[name]);
+        }
+      } else if (type == LABEL) {
+        IString name = node[1]->getIString();
+        if (!newLabels[name]) {
+          newLabels[name] = getNextMinifiedLabel();
+        }
+        node[1]->setString(newLabels[name]);
+      } else if ((type == BREAK || type == CONTINUE) && node->size() > 1) {
+        IString name = node[1]->getIString();
+        if (!!name) {
+          name = newLabels[name];
+        }
+      }
+    });
+  });
+}
+
 //==================
 // Main
 //==================
@@ -2624,8 +2768,6 @@ int main(int argc, char **argv) {
   if (extraInfoStart) {
     extraInfo = arena.alloc();
     extraInfo->parse(extraInfoStart + 14);
-    extraInfo->stringify(std::cout, true);
-    std::cout << "............\n";
   }
 
   // Parse JSON source into the document
@@ -2645,6 +2787,7 @@ int main(int argc, char **argv) {
     else if (str == "optimizeFrounds") optimizeFrounds(doc);
     else if (str == "simplifyIfs") simplifyIfs(doc);
     else if (str == "registerize") registerize(doc);
+    else if (str == "minifyLocals") minifyLocals(doc);
     else {
       fprintf(stderr, "unrecognized argument: %s\n", str.c_str());
       assert(0);
