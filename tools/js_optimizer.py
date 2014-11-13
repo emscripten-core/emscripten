@@ -34,8 +34,11 @@ def get_native_optimizer():
     return output
   return shared.Cache.get('optimizer.exe', create_optimizer, extension='exe')
 
-def use_native(passes, source_map=False):
-  return (not source_map) and len(NATIVE_PASSES.intersection(passes)) == len(passes)
+# Check if we should run a pass or set of passes natively. if a set of passes, they must all be valid to run in the native optimizer at once.
+def use_native(x, source_map=False):
+  if source_map: return False;
+  if type(x) == str: return x in NATIVE_PASSES
+  return len(NATIVE_PASSES.intersection(x)) == len(x) and 'asm' in x
 
 class Minifier:
   '''

@@ -1400,7 +1400,7 @@ try:
         curr = []
         native = False
         for p in passes:
-          if not shared.js_optimizer.use_native([p], source_map=debug_level >= 4):
+          if not shared.js_optimizer.use_native(p, source_map=debug_level >= 4):
             if native:
               chunks.append(['receiveJSON'] + curr + ['emitJSON'])
               curr = []
