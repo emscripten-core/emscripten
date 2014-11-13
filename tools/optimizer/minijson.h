@@ -432,10 +432,9 @@ struct Value {
     }
   }
 
-  Ref& operator[](unsigned x) { // tolerant, returns Null on out of bounds access. makes it convenient to check e.g. [3] on an if node
-    static Ref null = arena.alloc(); // TODO: freeze this
+  Ref& operator[](unsigned x) {
     assert(isArray());
-    if (x >= arr->size()) return null;
+    assert(x < arr->size());
     return (*arr)[x];
   }
 
@@ -449,6 +448,12 @@ struct Value {
     Ref ret = arr->back();
     arr->pop_back();
     return ret;
+  }
+
+  Ref back() {
+    assert(isArray());
+    if (arr->size() == 0) return nullptr;
+    return arr->back();
   }
 
   void splice(int x, int num) {
@@ -549,7 +554,8 @@ Ref Arena::alloc() {
 
 void dump(const char *str, Ref node, bool pretty) {
   std::cerr << str << ": ";
-  node->stringify(std::cerr, pretty);
+  if (!!node) node->stringify(std::cerr, pretty);
+  else std::cerr << "(nullptr)";
   std::cerr << std::endl;
 }
 

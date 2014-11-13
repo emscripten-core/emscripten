@@ -172,6 +172,7 @@ struct StackedStack { // a stack, on the stack
 
 // Traverse, calling visit before the children
 void traversePre(Ref node, std::function<void (Ref)> visit) {
+  if (!visitable(node)) return;
   visit(node);
   StackedStack<TraverseInfo, TRAV_STACK> stack;
   stack.push_back({ node, 0 });
@@ -192,6 +193,7 @@ void traversePre(Ref node, std::function<void (Ref)> visit) {
 
 // Traverse, calling visitPre before the children and visitPost after
 void traversePrePost(Ref node, std::function<void (Ref)> visitPre, std::function<void (Ref)> visitPost) {
+  if (!visitable(node)) return;
   visitPre(node);
   StackedStack<TraverseInfo, TRAV_STACK> stack;
   stack.push_back({ node, 0 });
@@ -214,6 +216,7 @@ void traversePrePost(Ref node, std::function<void (Ref)> visitPre, std::function
 
 // Traverse, calling visitPre before the children and visitPost after. If pre returns false, do not traverse children
 void traversePrePostConditional(Ref node, std::function<bool (Ref)> visitPre, std::function<void (Ref)> visitPost) {
+  if (!visitable(node)) return;
   if (!visitPre(node)) return;
   StackedStack<TraverseInfo, TRAV_STACK> stack;
   stack.push_back({ node, 0 });
@@ -258,7 +261,7 @@ Ref getStatements(Ref node) {
   if (node[0] == DEFUN) {
     return node[3];
   } else if (node[0] == BLOCK) {
-    return node[1];
+    return node->size() > 1 ? node[1] : nullptr;
   } else {
     return arena.alloc();
   }
@@ -373,7 +376,7 @@ struct AsmData {
       i++;
     }
     // look for final RETURN statement to get return type.
-    Ref retStmt = stats[stats->size() - 1];
+    Ref retStmt = stats->back();
     if (!!retStmt && retStmt[0] == RETURN && !!retStmt[1]) {
       ret = detectType(retStmt[1]);
     } else {
@@ -431,7 +434,7 @@ struct AsmData {
     */
     // ensure that there's a final RETURN statement if needed.
     if (ret != ASM_NONE) {
-      Ref retStmt = stats[stats->size() - 1];
+      Ref retStmt = stats->back();
       if (!retStmt || retStmt[0] != RETURN) {
         Ref retVal = makeNum(0);
         if (ret != ASM_INT) {
@@ -849,7 +852,7 @@ void removeAllEmptySubNodes(Ref ast) {
     int index = -1;
     if (node[0] == DEFUN) {
       clearEmptyNodes(node[3]);
-    } else if (node[0] == BLOCK && !!node[1]) {
+    } else if (node[0] == BLOCK && node->size() > 1 && !!node[1]) {
       clearEmptyNodes(node[1]);
     } else if (node[0] == SEQ && isEmpty(node[1])) {
       safeCopy(node, node[2]);
@@ -880,9 +883,12 @@ Ref unVarify(Ref vars) { // transform var x=1, y=2 etc. into (x=1, y=2), i.e., t
     for (int i = 0; i < vars->size()-1; i++) {
       curr->push_back(makeString(SEQ));
       curr->push_back(make3(ASSIGN, &(arena.alloc())->setBool(true), makeName(vars[i][0]->getIString()), vars[i][1]));
-      if (i != vars->size()-2) curr = curr[2] = makeArray();
+      if (i != vars->size()-2) {
+        curr->push_back(makeArray());
+        curr = curr[2];
+      }
     }
-    curr->push_back(make3(ASSIGN, &(arena.alloc())->setBool(true), makeName(vars[vars->size()-1][0]->getIString()), vars[vars->size()-1][1]));
+    curr->push_back(make3(ASSIGN, &(arena.alloc())->setBool(true), makeName(vars->back()[0]->getIString()), vars->back()[1]));
   }
   return ret;
 }
@@ -1060,8 +1066,8 @@ void eliminate(Ref ast, bool memSafe=false) {
         for (int i = 0; i < node1->size(); i++) {
           Ref node1i = node1[i];
           IString name = node1i[0]->getIString();
-          Ref value = node1i[1];
-          if (!!value) {
+          Ref value;
+          if (node1i->size() > 1 && !!(value = node1i[1])) {
             definitions[name]++;
             if (!values.has(name)) values[name] = value;
           }
@@ -1309,8 +1315,8 @@ void eliminate(Ref ast, bool memSafe=false) {
           Ref vars = node[1];
           for (int i = 0; i < vars->size(); i++) {
             IString name = vars[i][0]->getIString();
-            Ref value = vars[i][1];
-            if (!!value) {
+            Ref value;
+            if (vars[i]->size() > 1 && !!(value = vars[i][1])) {
               traverseInOrder(value, false, false);
               if (potentials.has(name) && allowTracking) {
                 track(name, value, node);
@@ -1386,7 +1392,7 @@ void eliminate(Ref ast, bool memSafe=false) {
             tracked.clear();
           }
         } else if (type == BLOCK) {
-          Ref stats = node[1];
+          Ref stats = getStatements(node);
           if (!!stats) {
             for (int i = 0; i < stats->size(); i++) {
               traverseInOrder(stats[i], false, false);
@@ -1530,20 +1536,20 @@ void eliminate(Ref ast, bool memSafe=false) {
       } else if (type == WHILE) {
         // try to remove loop helper variables specifically
         Ref stats = node[2][1];
-        Ref last = stats[stats->size()-1];
+        Ref last = stats->back();
         if (!!last && last[0] == IF && last[2][0] == BLOCK && !!last[3] && last[3][0] == BLOCK) {
           Ref ifTrue = last[2];
           Ref ifFalse = last[3];
           clearEmptyNodes(ifTrue[1]);
           clearEmptyNodes(ifFalse[1]);
           bool flip = false;
-          if (!!ifFalse[1][0] && ifFalse[1][ifFalse[1]->size()-1][0] == BREAK) { // canonicalize break in the if-true
+          if (ifFalse[1]->size() > 0 && !!ifFalse[1][0] && !!ifFalse[1]->back() && ifFalse[1]->back()[0] == BREAK) { // canonicalize break in the if-true
             Ref temp = ifFalse;
             ifFalse = ifTrue;
             ifTrue = temp;
             flip = true;
           }
-          if (!!ifTrue[1][0] && ifTrue[1][ifTrue[1]->size()-1][0] == BREAK) {
+          if (ifTrue[1]->size() > 0 && !!ifTrue[1][0] && !!ifTrue[1]->back() && ifTrue[1]->back()[0] == BREAK) {
             Ref assigns = ifFalse[1];
             clearEmptyNodes(assigns);
             std::vector<IString> loopers, helpers;
@@ -1798,8 +1804,8 @@ void simplifyExpressions(Ref ast) {
             // We might be able to remove this correction
             for (int i = stack.size()-1; i >= 0; i--) {
               if (stack[i] >= 1) {
-                if (stack[stack.size()-1] < 2 && node[2][0] == CALL) break; // we can only remove multiple |0s on these
-                if (stack[stack.size()-1] < 1 && (COERCION_REQUIRING_OPS.has(node[2][0]) ||
+                if (stack.back() < 2 && node[2][0] == CALL) break; // we can only remove multiple |0s on these
+                if (stack.back() < 1 && (COERCION_REQUIRING_OPS.has(node[2][0]) ||
                                                  (node[2][0] == BINARY && COERCION_REQUIRING_BINARIES.has(node[2][1])))) break; // we can remove |0 or >>2
                 // we will replace ourselves with the non-zero side. Recursively process that node.
                 Ref result = node[2][0] == NUM && node[2][1]->getNumber() == 0 ? node[3] : node[2], other;
@@ -2181,13 +2187,13 @@ void simplifyIfs(Ref ast) {
         while (body[0] == BLOCK) {
           Ref stats = body[1];
           if (stats->size() == 0) break;
-          Ref other = stats[stats->size()-1];
+          Ref other = stats->back();
           if (other[0] != IF) {
             // our if block does not end with an if. perhaps if have an else we can flip
-            if (!!node[3] && node[3][0] == BLOCK) {
+            if (node->size() > 3 && !!node[3] && node[3][0] == BLOCK) {
               stats = node[3][1];
               if (stats->size() == 0) break;
-              other = stats[stats->size()-1];
+              other = stats->back();
               if (other[0] == IF) {
                 // flip node
                 node[1] = flipCondition(node[1]);
@@ -2279,11 +2285,11 @@ void simplifyIfs(Ref ast) {
       traversePrePost(func, [&inLoop, &labelAssigns, &labelChecks](Ref node) {
         if (node[0] == WHILE) inLoop++;
         Ref stats = getStatements(node);
-        if (!stats->isNull() && stats->size() > 0) {
+        if (!!stats && stats->size() > 0) {
           for (int i = 0; i < stats->size()-1; i++) {
             Ref pre = stats[i];
             Ref post = stats[i+1];
-            if (pre[0] == IF && !!pre[3] && post[0] == IF && !post[3]) {
+            if (pre[0] == IF && pre->size() > 3 && !!pre[3] && post[0] == IF && (post->size() <= 3 || !post[3])) {
               Ref postCond = post[1];
               if (postCond[0] == BINARY && postCond[1] == EQ &&
                   postCond[2][0] == BINARY && postCond[2][1] == OR &&
@@ -2455,7 +2461,7 @@ void registerize(Ref ast) {
           level++;
           traversePrePostConditional(node[2], possibilifier, [](Ref node){});
           purgeLevel();
-          if (!!node[3]) {
+          if (node->size() > 3 && !!node[3]) {
             level++;
             traversePrePostConditional(node[3], possibilifier, [](Ref node){});
             purgeLevel();
