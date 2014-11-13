@@ -856,7 +856,7 @@ Ref unVarify(Ref vars) { // transform var x=1, y=2 etc. into (x=1, y=2), i.e., t
       curr->push_back(make3(ASSIGN, &(arena.alloc())->setBool(true), makeName(vars[i][0]->getIString()), vars[i][1]));
       if (i != vars->size()-2) curr = curr[2] = makeArray();
     }
-    curr[2] = make3(ASSIGN, &(arena.alloc())->setBool(true), makeName(vars[vars->size()-1][0]->getIString()), vars[vars->size()-1][1]);
+    curr->push_back(make3(ASSIGN, &(arena.alloc())->setBool(true), makeName(vars[vars->size()-1][0]->getIString()), vars[vars->size()-1][1]));
   }
   return ret;
 }
@@ -2325,10 +2325,12 @@ void registerize(Ref ast) {
     AsmData asmData(fun);
     // Add parameters as a first (fake) var (with assignment), so they get taken into consideration
     // note: params are special, they can never share a register between them (see later)
+    Ref fake;
     if (!!fun[2] && fun[2]->size()) {
       Ref assign = makeNum(0);
+      // TODO: will be an isEmpty here, can reuse it.
       fun[3]->insert(0, make1(VAR, fun[2]->map([&assign](Ref param) {
-        return &(makeArray()->push_back(param)); // push_back(assign)
+        return &(makeArray()->push_back(param).push_back(assign));
       })));
     }
     // Replace all var definitions with assignments; we will add var definitions at the top after we registerize
@@ -2336,9 +2338,12 @@ void registerize(Ref ast) {
     traversePre(fun, [&](Ref node) {
       Ref type = node[0];
       if (type == VAR) {
-        Ref vars = node[1]; // XXX.filter(function(varr) { return varr[1] });
-        for (int i = 0; i < vars->size(); i++) assert(vars[i]->size() == 1);
-        safeCopy(node, makeEmpty());
+        Ref vars = node[1]->filter([](Ref varr) { return varr->size() > 1; });
+        if (vars->size() >= 1) {
+          safeCopy(node, unVarify(vars));
+        } else {
+          safeCopy(node, makeEmpty());
+        }
       } else if (type == NAME) {
         allVars.insert(node[1]->getIString());
       }

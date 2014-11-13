@@ -481,6 +481,17 @@ struct Value {
     return ret;
   }
 
+  Ref filter(std::function<bool (Ref node)> func) {
+    assert(isArray());
+    Ref ret = arena.alloc();
+    ret->setArray();
+    for (unsigned i = 0; i < arr->size(); i++) {
+      Ref curr = (*arr)[i];
+      if (func(curr)) ret->push_back(curr);
+    }
+    return ret;
+  }
+
   /*
   void forEach(std::function<void (Ref)> func) {
     for (unsigned i = 0; i < arr->size(); i++) {
