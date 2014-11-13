@@ -2559,7 +2559,7 @@ void registerize(Ref ast) {
       Ref type = node[0];
       if (LOOP.has(type)) {
         // Free registers that were locked to this loop
-        if (loopRegs[loops].size() > 0) {
+        if (loopRegs.size() > loops && loopRegs[loops].size() > 0) {
           for (auto loopReg : loopRegs[loops]) {
             freeRegsClasses[regTypes[loopReg]].push_back(loopReg);
           }
