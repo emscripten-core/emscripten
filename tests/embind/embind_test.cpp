@@ -1139,6 +1139,10 @@ void test_string_with_vec(const std::string& p1, std::vector<std::string>& v1) {
     printf("%s\n", p1.c_str());
 }
 
+val embind_test_getglobal() {
+    return val::global();
+}
+
 val embind_test_new_Object() {
     return val::global("Object").new_();
 }
@@ -2000,6 +2004,8 @@ EMSCRIPTEN_BINDINGS(tests) {
 
     register_map<std::string, int>("StringIntMap");
     function("embind_test_get_string_int_map", embind_test_get_string_int_map);
+
+    function("embind_test_getglobal", &embind_test_getglobal);
 
     function("embind_test_new_Object", &embind_test_new_Object);
     function("embind_test_new_factory", &embind_test_new_factory);

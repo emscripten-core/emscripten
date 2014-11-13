@@ -7,7 +7,14 @@
 
 
 namespace emscripten {
+
+    class val;
+
     namespace internal {
+
+        template<typename WrapperType>
+        val wrapped_extend(const std::string&, const val&);
+
         // Implemented in JavaScript.  Don't call these directly.
         extern "C" {
             void _emval_register_symbol(const char*);
@@ -293,7 +300,7 @@ namespace emscripten {
             return val(e);
         }
 
-        static val global(const char* name) {
+        static val global(const char* name = 0) {
             return val(internal::_emval_get_global(name));
         }
 
@@ -378,20 +385,9 @@ namespace emscripten {
 
         template<typename... Args>
         val new_(Args&&... args) const {
-            using namespace internal;
-
-            WithPolicies<>::ArgTypeList<Args...> argList;
-            WireTypePack<Args...> argv(std::forward<Args>(args)...);
-            // todo: this is awfully similar to operator(), can we
-            // merge them somehow?
-            return val(
-                _emval_new(
-                    handle,
-                    argList.getCount(),
-                    argList.getTypes(),
-                    argv));
+            return internalCall(internal::_emval_new,std::forward<Args>(args)...);
         }
-        
+
         template<typename T>
         val operator[](const T& key) const {
             return val(internal::_emval_get_property(handle, val(key).handle));
@@ -409,16 +405,7 @@ namespace emscripten {
 
         template<typename... Args>
         val operator()(Args&&... args) {
-            using namespace internal;
-
-            WithPolicies<>::ArgTypeList<Args...> argList;
-            WireTypePack<Args...> argv(std::forward<Args>(args)...);
-            return val(
-                _emval_call(
-                    handle,
-                    argList.getCount(),
-                    argList.getTypes(),
-                    argv));
+            return internalCall(internal::_emval_call, std::forward<Args>(args)...);
         }
 
         template<typename ReturnValue, typename... Args>
@@ -443,11 +430,6 @@ namespace emscripten {
             return fromGenericWireType<T>(result);
         }
 
-        // private: TODO: use a friend?
-        internal::EM_VAL __get_handle() const {
-            return handle;
-        }
-
         val typeof() const {
             return val(_emval_typeof(handle));
         }
@@ -457,6 +439,27 @@ namespace emscripten {
         explicit val(internal::EM_VAL handle)
             : handle(handle)
         {}
+
+        template<typename WrapperType>
+        friend val internal::wrapped_extend(const std::string& , const val& );
+
+        internal::EM_VAL __get_handle() const {
+            return handle;
+        }
+
+        template<typename Implementation, typename... Args>
+        val internalCall(Implementation impl, Args&&... args)const {
+            using namespace internal;
+
+            WithPolicies<>::ArgTypeList<Args...> argList;
+            WireTypePack<Args...> argv(std::forward<Args>(args)...);
+            return val(
+                impl(
+                    handle,
+                    argList.getCount(),
+                    argList.getTypes(),
+                    argv));
+        }
 
         internal::EM_VAL handle;
 
