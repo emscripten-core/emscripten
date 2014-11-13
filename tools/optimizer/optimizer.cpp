@@ -10,7 +10,7 @@
 // Globals
 //==================
 
-Ref doc;
+Ref doc, extraInfo;
 
 IString TOPLEVEL("toplevel"),
         DEFUN("defun"),
@@ -2619,7 +2619,14 @@ int main(int argc, char **argv) {
   json[size] = 0;
 
   char *comment = strstr(json, "//");
+  char *extraInfoStart = strstr(json, "// EXTRA_INFO:");
   if (comment) *comment = 0; // drop off the comments; TODO: parse extra info
+  if (extraInfoStart) {
+    extraInfo = arena.alloc();
+    extraInfo->parse(extraInfoStart + 14);
+    extraInfo->stringify(std::cout, true);
+    std::cout << "............\n";
+  }
 
   // Parse JSON source into the document
   doc = arena.alloc();

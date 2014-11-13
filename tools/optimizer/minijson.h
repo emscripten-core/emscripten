@@ -157,18 +157,21 @@ struct Value {
     Number = 1,
     Array = 2,
     Null = 3,
-    Bool = 4
+    Bool = 4,
+    Object = 5
   };
 
   Type type;
 
   typedef std::vector<Ref> ArrayStorage;
+  typedef std::unordered_map<IString, Ref> ObjectStorage;
 
   union { // TODO: optimize
     IString str;
     double num;
     ArrayStorage *arr;
     bool boo;
+    ObjectStorage *obj;
   };
 
   // constructors all copy their input
@@ -191,6 +194,7 @@ struct Value {
 
   void free() {
     if (type == Array) delete arr;
+    else if (type == Object) delete obj;
     type = Null;
     num = 0;
   }
@@ -237,12 +241,19 @@ struct Value {
     boo = b;
     return *this;
   }
+  Value& setObject() {
+    free();
+    type = Object;
+    obj = new ObjectStorage();
+    return *this;
+  }
 
   bool isString() { return type == String; }
   bool isNumber() { return type == Number; }
   bool isArray()  { return type == Array; }
   bool isNull()   { return type == Null; }
   bool isBool()   { return type == Bool; }
+  bool isObject()  { return type == Object; }
 
   bool isBool(bool b) { return type == Bool && b == boo; } // avoid overloading == as it might overload over int
 
@@ -285,6 +296,8 @@ struct Value {
       case Bool:
         setBool(other.boo);
         break;
+      case Object:
+        assert(0); // TODO
     }
     return *this;
   }
@@ -302,6 +315,8 @@ struct Value {
         break;
       case Bool:
         return boo == other.boo;
+      case Object:
+        return this == &other; // if you want a deep compare, use deepCompare
     }
     return true;
   }
@@ -310,12 +325,21 @@ struct Value {
     Value& other = *ref;
     if (*this == other) return true; // either same pointer, or identical value type (string, number, null or bool)
     if (type != other.type) return false;
-    if (type != Array) return false; // Array is the only one where deep compare differs makes sense, others are shallow and were already tested
-    if (arr->size() != other.arr->size()) return false;
-    for (unsigned i = 0; i < arr->size(); i++) {
-      if (!(*arr)[i]->deepCompare((*other.arr)[i])) return false;
+    if (type == Array) {
+      if (arr->size() != other.arr->size()) return false;
+      for (unsigned i = 0; i < arr->size(); i++) {
+        if (!(*arr)[i]->deepCompare((*other.arr)[i])) return false;
+      }
+      return true;
+    } else if (type == Object) {
+      if (obj->size() != other.obj->size()) return false;
+      for (auto i : *obj) {
+        if (other.obj->count(i.first) == 0) return false;
+        if (i.second->deepCompare((*other.obj)[i.first])) return false;
+      }
+      return true;
     }
-    return true;
+    return false;
   }
 
   char* parse(char* curr) {
@@ -361,6 +385,33 @@ struct Value {
       assert(strncmp(curr, "false", 5) == 0);
       setBool(false);
       curr += 5;
+    } else if (*curr == '{') {
+      // Object
+      curr++;
+      skip();
+      setObject();
+      while (*curr != '}') {
+        assert(*curr == '"');
+        curr++;
+        char *close = strchr(curr, '"');
+        assert(close);
+        *close = 0; // end this string, and reuse it straight from the input
+        IString key(curr);
+        curr = close+1;
+        skip();
+        assert(*curr == ':');
+        curr++;
+        skip();
+        Ref value = arena.alloc();
+        curr = value->parse(curr);
+        (*obj)[key] = value;
+        skip();
+        if (*curr == '}') break;
+        assert(*curr == ',');
+        curr++;
+        skip();
+      }
+      curr++;
     } else {
       // Number
       char *after;
@@ -406,6 +457,31 @@ struct Value {
         break;
       case Bool:
         os << (boo ? "true" : "false");
+        break;
+      case Object:
+        os << '{';
+        if (pretty) {
+          os << std::endl;
+          indent++;
+        }
+        bool first = true;
+        for (auto i : *obj) {
+          if (first) {
+            first = false;
+          } else {
+            os << ", ";
+            if (pretty) os << std::endl;
+          }
+          indentify();
+          os << '"' << i.first.c_str() << "\": ";
+          i.second->stringify(os, pretty);
+        }
+        if (pretty) {
+          os << std::endl;
+          indent--;
+        }
+        indentify();
+        os << '}';
         break;
     }
   }
@@ -508,6 +584,13 @@ struct Value {
   // Null operations
 
   // Bool operations
+
+  // Object operations
+
+  Ref& operator[](IString x) {
+    assert(isObject());
+    return (*obj)[x];
+  }
 };
 
 // Ref methods
