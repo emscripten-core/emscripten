@@ -844,7 +844,7 @@ void removeAllEmptySubNodes(Ref ast) {
 }
 
 Ref unVarify(Ref vars) { // transform var x=1, y=2 etc. into (x=1, y=2), i.e., the same assigns, but without a var definition
-  Ref ret;
+  Ref ret = makeArray();
   ret->push_back(makeString(STAT));
   if (vars->size() == 1) {
     ret->push_back(make3(ASSIGN, &(arena.alloc())->setBool(true), makeName(vars[0][0]->getIString()), vars[0][1]));
@@ -894,7 +894,7 @@ bool preciseF32 = false;
     return count(str) > 0; \
   } \
   bool has(Ref node) { \
-    return count(node->getIString()) > 0; \
+    return node->isString() && count(node->getIString()) > 0; \
   }
 
 class StringSet : public std::unordered_set<IString> {
@@ -914,6 +914,14 @@ public:
   }
 
   HASES
+
+  void dump() {
+    err("===");
+    for (auto str : *this) {
+      errv("%s", str.c_str());
+    }
+    err("===");
+  }
 };
 
 StringSet USEFUL_BINARY_OPS("<< >> | & ^"),
@@ -2320,7 +2328,7 @@ void registerize(Ref ast) {
     if (!!fun[2] && fun[2]->size()) {
       Ref assign = makeNum(0);
       fun[3]->insert(0, make1(VAR, fun[2]->map([&assign](Ref param) {
-        return &(makeArray()->push_back(param).push_back(assign));
+        return &(makeArray()->push_back(param)); // push_back(assign)
       })));
     }
     // Replace all var definitions with assignments; we will add var definitions at the top after we registerize
@@ -2329,11 +2337,8 @@ void registerize(Ref ast) {
       Ref type = node[0];
       if (type == VAR) {
         Ref vars = node[1]; // XXX.filter(function(varr) { return varr[1] });
-        if (vars->size() > 0) {
-          safeCopy(node, unVarify(vars));
-        } else {
-          safeCopy(node, makeEmpty());
-        }
+        for (int i = 0; i < vars->size(); i++) assert(vars[i]->size() == 1);
+        safeCopy(node, makeEmpty());
       } else if (type == NAME) {
         allVars.insert(node[1]->getIString());
       }
@@ -2341,7 +2346,7 @@ void registerize(Ref ast) {
     removeAllEmptySubNodes(fun); // vacuum?
     StringTypeMap regTypes; // reg name -> type
     auto getNewRegName = [&](int num, IString name) {
-      std::string str;
+      const char *str;
       AsmType type = asmData.getType(name);
       switch (type) {
         case ASM_INT:       str = "i"; break;
@@ -2352,8 +2357,12 @@ void registerize(Ref ast) {
         case ASM_NONE:      str = "Z"; break;
         default: assert(0); // type doesn't have a name yet
       }
-      str += num;
-      IString ret(strdupe(str.c_str())); // likely interns a new string; leaks the dupe if not
+      int size = strlen(str) + int(ceil(log10(num))) + 3;
+      char *temp = (char*)malloc(size);
+      int written = sprintf(temp, "%s%d", str, num);
+      assert(written < size);
+      temp[written] = 0;
+      IString ret(temp); // likely interns a new string; leaks if not XXX FIXME
       regTypes[ret] = type;
       assert(!allVars.has(ret)); // register must not shadow non-local name
       return ret;
@@ -2475,9 +2484,10 @@ void registerize(Ref ast) {
           reg = freeRegs.back();
           freeRegs.pop_back();
         } else {
-          fullNames[nextReg] = reg = getNewRegName(nextReg, name);
+          assert(fullNames.size() == nextReg);
+          reg = getNewRegName(nextReg++, name);
+          fullNames.push_back(reg);
           if (asmData.isParam(name)) paramRegs.insert(reg);
-          nextReg++;
         }
         varRegs[name] = reg;
       }
@@ -2493,7 +2503,7 @@ void registerize(Ref ast) {
         } else {
           // when the relevant loop is exited, we will free the register
           int relevantLoop = optimizables.has(name) ? (optimizableLoops[name] ? optimizableLoops[name] : 1) : 1;
-          if (loopRegs.size() <= relevantLoop) loopRegs.resize(relevantLoop);
+          if (loopRegs.size() <= relevantLoop+1) loopRegs.resize(relevantLoop+1);
           loopRegs[relevantLoop].push_back(reg);
         }
       }
