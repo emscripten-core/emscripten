@@ -582,6 +582,7 @@ module({
         });
 
         test("can get global", function(){
+            /*jshint evil:true*/
             assert.equal((new Function("return this;"))(), cm.embind_test_getglobal());
         });
 
