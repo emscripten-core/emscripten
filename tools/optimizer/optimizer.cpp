@@ -829,6 +829,19 @@ void clearEmptyNodes(Ref arr) {
   }
   if (skip) arr->setSize(arr->size() - skip);
 }
+void clearUselessNodes(Ref arr) {
+  int skip = 0;
+  for (int i = 0; i < arr->size(); i++) {
+    Ref curr = arr[i];
+    if (skip) {
+      arr[i-skip] = curr;
+    }
+    if (isEmpty(deStat(curr)) || (curr[0] == STAT && !hasSideEffects(curr[1]))) {
+      skip++;
+    }
+  }
+  if (skip) arr->setSize(arr->size() - skip);
+}
 
 void removeAllEmptySubNodes(Ref ast) {
   traversePre(ast, [](Ref node) {
@@ -837,6 +850,18 @@ void removeAllEmptySubNodes(Ref ast) {
       clearEmptyNodes(node[3]);
     } else if (node[0] == BLOCK && !!node[1]) {
       clearEmptyNodes(node[1]);
+    } else if (node[0] == SEQ && isEmpty(node[1])) {
+      safeCopy(node, node[2]);
+    }
+  });
+}
+void removeAllUselessSubNodes(Ref ast) {
+  traversePre(ast, [](Ref node) {
+    int index = -1;
+    if (node[0] == DEFUN) {
+      clearUselessNodes(node[3]);
+    } else if (node[0] == BLOCK && !!node[1]) {
+      clearUselessNodes(node[1]);
     } else if (node[0] == SEQ && isEmpty(node[1])) {
       safeCopy(node, node[2]);
     }
@@ -2348,7 +2373,7 @@ void registerize(Ref ast) {
         allVars.insert(node[1]->getIString());
       }
     });
-    removeAllEmptySubNodes(fun); // vacuum?
+    removeAllUselessSubNodes(fun); // vacuum?
     StringTypeMap regTypes; // reg name -> type
     auto getNewRegName = [&](int num, IString name) {
       const char *str;
