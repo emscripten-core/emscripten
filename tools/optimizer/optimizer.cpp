@@ -2657,8 +2657,9 @@ void minifyLocals(Ref ast) {
       if (node[0] == NAME) {
         IString name = node[1]->getIString();
         if (!asmData.isLocal(name)) {
-          IString minified = globals[name]->getIString();
-          if (!!minified) {
+          if (globals->has(name)) {
+            IString minified = globals[name]->getIString();
+            assert(!!minified);
             newNames[name] = minified;
             usedNames.insert(minified);
           }
