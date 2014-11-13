@@ -245,12 +245,17 @@ EMSCRIPTEN_FUNCS();
   # if we are making source maps, we want our debug numbering to start from the
   # top of the file, so avoid breaking the JS into chunks
   cores = 1 if source_map else int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
-  intended_num_chunks = int(round(cores * NUM_CHUNKS_PER_CORE))
-  chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
 
-  chunks = shared.chunkify(funcs, chunk_size, jcache.get_cachename('jsopt') if jcache else None)
+  if not just_split:
+    intended_num_chunks = int(round(cores * NUM_CHUNKS_PER_CORE))
+    chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
+    chunks = shared.chunkify(funcs, chunk_size, jcache.get_cachename('jsopt') if jcache else None)
+  else:
+    # keep same chunks as before
+    chunks = map(lambda f: f[1], funcs)
+
   chunks = filter(lambda chunk: len(chunk) > 0, chunks)
-  if DEBUG and len(chunks) > 0: print >> sys.stderr, 'chunkification: intended size:', chunk_size, 'num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(map(len, chunks)), '-', min(map(len, chunks))
+  if DEBUG and len(chunks) > 0: print >> sys.stderr, 'chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(map(len, chunks)), '-', min(map(len, chunks))
   funcs = None
 
   if jcache:
@@ -306,12 +311,12 @@ EMSCRIPTEN_FUNCS();
     cores = min(cores, len(filenames))
     if len(chunks) > 1 and cores >= 2:
       # We can parallelize
-      if DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks of size %d, using %d cores  (total: %.2f MB)' % (len(chunks), chunk_size, cores, total_size/(1024*1024.))
+      if DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, total_size/(1024*1024.))
       pool = multiprocessing.Pool(processes=cores)
       filenames = pool.map(run_on_chunk, commands, chunksize=1)
     else:
       # We can't parallize, but still break into chunks to avoid uglify/node memory issues
-      if len(chunks) > 1 and DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks of size %d' % (len(chunks), chunk_size)
+      if len(chunks) > 1 and DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks' % (len(chunks))
       filenames = [run_on_chunk(command) for command in commands]
   else:
     filenames = []
