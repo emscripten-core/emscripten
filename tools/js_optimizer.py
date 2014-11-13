@@ -24,6 +24,8 @@ DEBUG = os.environ.get('EMCC_DEBUG')
 func_sig = re.compile('function ([_\w$]+)\(')
 import_sig = re.compile('var ([_\w$]+) *=[^;]+;')
 
+NATIVE_OPTIMIZER = os.environ.get('EMCC_NATIVE_OPTIMIZER')
+
 def get_native_optimizer():
   def create_optimizer():
     shared.logging.debug('building native optimizer')
@@ -36,7 +38,8 @@ def get_native_optimizer():
 
 # Check if we should run a pass or set of passes natively. if a set of passes, they must all be valid to run in the native optimizer at once.
 def use_native(x, source_map=False):
-  if source_map: return False;
+  if source_map: return False
+  if not NATIVE_OPTIMIZER or NATIVE_OPTIMIZER == '0': return False
   if type(x) == str: return x in NATIVE_PASSES
   return len(NATIVE_PASSES.intersection(x)) == len(x) and 'asm' in x
 
