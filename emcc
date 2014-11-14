@@ -1369,6 +1369,7 @@ try:
   js_optimizer_extra_info = {}
   js_optimizer_queue_history = []
   js_optimizer_blacklist = (os.environ.get('EMCC_JSOPT_BLACKLIST') or '').split(',')
+  minify_whitespace = False
 
   def flush_js_optimizer_queue(title='js_opts'):
     global final, js_optimizer_queue, js_optimizer_extra_info, js_optimizer_queue_history
@@ -1381,11 +1382,13 @@ try:
     if len(js_optimizer_queue) > 0 and not(not shared.Settings.ASM_JS and len(js_optimizer_queue) == 1 and js_optimizer_queue[0] == 'last'):
 
       def run_passes(passes, title, just_split, just_concat):
-        global final
+        global final, minify_whitespace
         if shared.Settings.ASM_JS:
           passes = ['asm'] + passes
           if shared.Settings.PRECISE_F32:
             passes = ['asmPreciseF32'] + passes
+        if minify_whitespace:
+          passes += ['minifyWhitespace']
         logging.debug('applying js optimization passes: %s', passes)
         final = shared.Building.js_optimizer(final, passes, jcache, debug_level >= 4, js_optimizer_extra_info, just_split=just_split, just_concat=just_concat)
         js_transform_tempfiles.append(final)
@@ -1483,7 +1486,9 @@ try:
       if debug_level < 2 and shared.Settings.ASM_JS and not closure == 2:
         js_optimizer_queue += ['minifyNames']
         if emit_symbol_map: js_optimizer_queue += ['symbolMap='+target+'.symbols']
-      if debug_level == 0: js_optimizer_queue += ['minifyWhitespace']
+      if debug_level == 0:
+        global minify_whitespace
+        minify_whitespace = True
 
     if shared.Settings.ASM_JS:
       if closure == 1:
