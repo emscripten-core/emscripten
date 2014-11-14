@@ -1382,11 +1382,13 @@ try:
     if len(js_optimizer_queue) > 0 and not(not shared.Settings.ASM_JS and len(js_optimizer_queue) == 1 and js_optimizer_queue[0] == 'last'):
 
       def run_passes(passes, title, just_split, just_concat):
-        global final, minify_whitespace
+        global final, minify_whitespace, emit_symbol_map, target
         if shared.Settings.ASM_JS:
           passes = ['asm'] + passes
           if shared.Settings.PRECISE_F32:
             passes = ['asmPreciseF32'] + passes
+        if emit_symbol_map and 'minifyNames' in passes:
+          passes += ['symbolMap='+target+'.symbols']
         if minify_whitespace:
           passes += ['minifyWhitespace']
         logging.debug('applying js optimization passes: %s', passes)
@@ -1485,7 +1487,6 @@ try:
     if opt_level >= 2:
       if debug_level < 2 and shared.Settings.ASM_JS and not closure == 2:
         js_optimizer_queue += ['minifyNames']
-        if emit_symbol_map: js_optimizer_queue += ['symbolMap='+target+'.symbols']
       if debug_level == 0:
         global minify_whitespace
         minify_whitespace = True
