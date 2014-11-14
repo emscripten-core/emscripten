@@ -6733,6 +6733,7 @@ def process(filename):
       # optimizer can deal with both types.
       out_file = re.sub(' *//[@#].*$', '', out_file, flags=re.MULTILINE)
       def clean(code):
+        code = code.replace('// EMSCRIPTEN_GENERATED_FUNCTIONS: ["_malloc","__Z3foov","_free","_main"]', '')
         code = re.sub(';', ';\n', code) # put statements each on a new line
         code = re.sub(r'\n+[ \n]*\n+', '\n', code)
         code = re.sub(' L\d+ ?:', '', code) # ignore labels; they can change in each compile
