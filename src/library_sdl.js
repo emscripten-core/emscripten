@@ -2914,6 +2914,7 @@ var LibrarySDL = {
   TTF_RenderText_Blended: 'TTF_RenderText_Solid', // XXX ignore blending vs. solid
   TTF_RenderText_Shaded: 'TTF_RenderText_Solid', // XXX ignore blending vs. solid
   TTF_RenderUTF8_Solid: 'TTF_RenderText_Solid',
+  TTF_SizeUTF8: 'TTF_SizeText',
 
   TTF_SizeText: function(font, text, w, h) {
     var fontData = SDL.fonts[font];
