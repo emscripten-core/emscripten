@@ -312,6 +312,7 @@ EMSCRIPTEN_FUNCS();
           (['--debug'] if source_map else []) + passes, filenames)
     else:
       # use the native optimizer
+      shared.logging.debug('js optimizer using native')
       assert not source_map # XXX need to use js optimizer
       commands = map(lambda filename: [get_native_optimizer(), filename] + passes, filenames)
     #print [' '.join(command) for command in commands]
