@@ -22,6 +22,7 @@ WINDOWS = sys.platform.startswith('win')
 DEBUG = os.environ.get('EMCC_DEBUG')
 
 func_sig = re.compile('function ([_\w$]+)\(')
+func_sig_json = re.compile('\["defun", ?"([_\w$]+)",')
 import_sig = re.compile('var ([_\w$]+) *=[^;]+;')
 
 NATIVE_OPTIMIZER = os.environ.get('EMCC_NATIVE_OPTIMIZER')
@@ -66,6 +67,8 @@ class Minifier:
     # Find all globals in the JS functions code
 
     self.globs = [m.group(1) for m in func_sig.finditer(self.js)]
+    if len(self.globs) == 0:
+      self.globs = [m.group(1) for m in func_sig_json.finditer(self.js)]
 
     temp_file = temp_files.get('.minifyglobals.js').name
     f = open(temp_file, 'w')
