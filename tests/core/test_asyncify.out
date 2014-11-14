@@ -1,0 +1,39 @@
+Running test_basic:
+-----
+HelloWorld!99
+-----
+
+Running test_return_value:
+-----
+Got async return 27
+-----
+
+Running test_exceptions1:
+-----
+caught exception 1, stack leaked = 0
+caught exception 2, stack leaked = 0
+-----
+
+Running test_exceptions2:
+-----
+caught exception 1, stack leaked = 0
+caught exception 2, stack leaked = 0
+-----
+
+Running test_async_free:
+-----
+free'd ctx after sync call, no invoke
+free'd ctx after sync call, invoked and caught exception
+-----
+
+Running test_async_realloc_after_exception:
+-----
+realloc'd OK
+-----
+
+Running test_async_realloc_after_struct:
+-----
+i = 17, j = 1
+i = 17, j = 1
+realloc'd OK
+-----
