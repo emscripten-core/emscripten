@@ -4403,6 +4403,7 @@ function eliminate(ast, memSafe) {
       var info = tracked[name];
       delete tracked[name];
       var defNode = info.defNode;
+      var value;
       if (!sideEffectFree[name]) {
         if (defNode[0] === 'var') {
           defNode[1].forEach(function(pair) {
@@ -7642,6 +7643,7 @@ var passes = {
   emterpretify: emterpretify,
   findReachable: findReachable,
   asmLastOpts: asmLastOpts,
+  noop: function() {},
 
   // flags
   minifyWhitespace: function() { minifyWhitespace = true },

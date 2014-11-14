@@ -1369,49 +1369,67 @@ try:
   js_optimizer_extra_info = {}
   js_optimizer_queue_history = []
   js_optimizer_blacklist = (os.environ.get('EMCC_JSOPT_BLACKLIST') or '').split(',')
-  def flush_js_optimizer_queue():
+
+  def flush_js_optimizer_queue(title='js_opts'):
     global final, js_optimizer_queue, js_optimizer_extra_info, js_optimizer_queue_history
 
     js_optimizer_queue = filter(lambda p: p not in js_optimizer_blacklist, js_optimizer_queue)
 
-    if len(js_optimizer_extra_info) == 0:
+    if js_optimizer_extra_info is not None and len(js_optimizer_extra_info) == 0:
       js_optimizer_extra_info = None
+
     if len(js_optimizer_queue) > 0 and not(not shared.Settings.ASM_JS and len(js_optimizer_queue) == 1 and js_optimizer_queue[0] == 'last'):
 
-      def add_opt_args(args):
+      def run_passes(passes, title, just_split, just_concat):
+        global final
         if shared.Settings.ASM_JS:
-          args = ['asm'] + args
+          passes = ['asm'] + passes
           if shared.Settings.PRECISE_F32:
-            args = ['asmPreciseF32'] + args
-        return args
-
-      if DEBUG != '2':
-        js_optimizer_queue = add_opt_args(js_optimizer_queue)
-        logging.debug('applying js optimization passes: %s', js_optimizer_queue)
-        final = shared.Building.js_optimizer(final, js_optimizer_queue, jcache, debug_level >= 4, js_optimizer_extra_info)
+            passes = ['asmPreciseF32'] + passes
+        logging.debug('applying js optimization passes: %s', passes)
+        final = shared.Building.js_optimizer(final, passes, jcache, debug_level >= 4, js_optimizer_extra_info, just_split=just_split, just_concat=just_concat)
         js_transform_tempfiles.append(final)
-        if DEBUG: save_intermediate('js_opts')
+        if DEBUG: save_intermediate(title, suffix='js' if 'emitJSON' not in passes else 'json')
+
+      passes = js_optimizer_queue[:]
+
+      if DEBUG != '2' or len(passes) < 2:
+        # by assumption, our input is JS, and our output is JS. If a pass is going to run in the native optimizer in C++, then we
+        # must give it JSON and receive from it JSON
+        chunks = []
+        curr = []
+        native = False
+        for p in passes:
+          if not shared.js_optimizer.use_native(p, source_map=debug_level >= 4):
+            if native:
+              chunks.append(['receiveJSON'] + curr + ['emitJSON'])
+              curr = []
+              native = False
+              curr.append('receiveJSON')
+            curr.append(p)
+          else: # p is native
+            if not native:
+              curr.append('emitJSON')
+              chunks.append(curr)
+              curr = []
+            native = True
+            curr.append(p)
+        if len(curr) > 0:
+          if native:
+            curr = ['receiveJSON'] + curr + ['emitJSON']
+          chunks.append(curr)
+          if native:
+            chunks.append(['receiveJSON'])
+        if len(chunks) == 1:
+          run_passes(chunks[0], title, just_split=False, just_concat=False)
+        else:
+          for i in range(len(chunks)):
+            run_passes(chunks[i], 'js_opts_' + str(i), just_split='receiveJSON' in chunks[i], just_concat='emitJSON' in chunks[i])
       else:
-        for i in range(len(js_optimizer_queue)):
-          name = js_optimizer_queue[i]
-          passes = add_opt_args([name])
-          if shared.Settings.ASM_JS:
-            passes = ['asm'] + passes
-          just_split = False
-          just_concat = False
-
-          # XXX experimental code to emit JSON in intermediate phases
-          #if i > 0:
-          #  passes = ['receiveJSON'] + passes
-          #  just_split = True
-          #if i <  len(js_optimizer_queue)-1:
-          #  passes += ['emitJSON']
-          #  just_concat = True
-
-          logging.debug('applying js optimization pass: %s', passes)
-          final = shared.Building.js_optimizer(final, passes, jcache, debug_level >= 4, js_optimizer_extra_info, just_split=just_split, just_concat=just_concat)
-          js_transform_tempfiles.append(final)
-          save_intermediate(name)
+        # DEBUG 2, run each pass seperately
+        for p in passes:
+          js_optimizer_queue = [p]
+          flush_js_optimizer_queue(p)
       js_optimizer_queue_history += js_optimizer_queue
       js_optimizer_queue = []
     js_optimizer_extra_info = {}
@@ -1421,9 +1439,7 @@ try:
 
     if DEBUG == '2':
       # Clean up the syntax a bit
-      final = shared.Building.js_optimizer(final, [], jcache, debug_level >= 4)
-      js_transform_tempfiles.append(final)
-      if DEBUG: save_intermediate('pretty')
+      js_optimizer_queue += ['noop']
 
     def get_eliminate():
       if shared.Settings.ALLOW_MEMORY_GROWTH:

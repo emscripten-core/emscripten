@@ -1,5 +1,5 @@
 
-import os, sys, subprocess, multiprocessing, re, string, json
+import os, sys, subprocess, multiprocessing, re, string, json, shutil
 import shared
 
 configuration = shared.configuration
@@ -8,6 +8,8 @@ temp_files = configuration.get_temp_files()
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
+
+NATIVE_PASSES = set(['asm', 'asmPreciseF32', 'receiveJSON', 'emitJSON', 'eliminate', 'eliminateMemSafe', 'simplifyExpressions', 'simplifyIfs', 'optimizeFrounds', 'registerize', 'minifyNames', 'minifyLocals'])
 
 JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 
@@ -21,6 +23,25 @@ DEBUG = os.environ.get('EMCC_DEBUG')
 
 func_sig = re.compile('function ([_\w$]+)\(')
 import_sig = re.compile('var ([_\w$]+) *=[^;]+;')
+
+NATIVE_OPTIMIZER = os.environ.get('EMCC_NATIVE_OPTIMIZER')
+
+def get_native_optimizer():
+  def create_optimizer():
+    shared.logging.debug('building native optimizer')
+    output = shared.Cache.get_path('optimizer.exe')
+    shared.try_delete(output)
+    subprocess.Popen([shared.CLANG, shared.path_from_root('tools', 'optimizer', 'optimizer.cpp'), '-O3', '-std=c++11', '-fno-exceptions', '-fno-rtti', '-o', output]).communicate() # , '-g', '-fno-omit-frame-pointer'
+    assert os.path.exists(output)
+    return output
+  return shared.Cache.get('optimizer.exe', create_optimizer, extension='exe')
+
+# Check if we should run a pass or set of passes natively. if a set of passes, they must all be valid to run in the native optimizer at once.
+def use_native(x, source_map=False):
+  if source_map: return False
+  if not NATIVE_OPTIMIZER or NATIVE_OPTIMIZER == '0': return False
+  if type(x) == str: return x in NATIVE_PASSES
+  return len(NATIVE_PASSES.intersection(x)) == len(x) and 'asm' in x
 
 class Minifier:
   '''
@@ -86,8 +107,15 @@ end_asm_marker = '// EMSCRIPTEN_END_ASM\n'
 
 def run_on_chunk(command):
   try:
-    filename = command[2] # XXX hackish
-    #print >> sys.stderr, 'running js optimizer command', ' '.join(command), '""""', open(filename).read()
+    if JS_OPTIMIZER in command: # XXX hackish
+      index = command.index(JS_OPTIMIZER)
+      filename = command[index + 1]
+    else:
+      filename = command[1]
+    #saved = 'save_' + os.path.basename(filename)
+    #while os.path.exists(saved): saved = 'input' + str(int(saved.replace('input', '').replace('.txt', ''))+1) + '.txt'
+    #print >> sys.stderr, 'running js optimizer command', ' '.join(map(lambda c: c if c != filename else saved, command))
+    #shutil.copyfile(filename, os.path.join('/tmp/emscripten_temp', saved))
     output = subprocess.Popen(command, stdout=subprocess.PIPE).communicate()[0]
     assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
     filename = temp_files.get(os.path.basename(filename) + '.jo.js').name
@@ -225,12 +253,17 @@ EMSCRIPTEN_FUNCS();
   # if we are making source maps, we want our debug numbering to start from the
   # top of the file, so avoid breaking the JS into chunks
   cores = 1 if source_map else int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
-  intended_num_chunks = int(round(cores * NUM_CHUNKS_PER_CORE))
-  chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
 
-  chunks = shared.chunkify(funcs, chunk_size, jcache.get_cachename('jsopt') if jcache else None)
+  if not just_split:
+    intended_num_chunks = int(round(cores * NUM_CHUNKS_PER_CORE))
+    chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
+    chunks = shared.chunkify(funcs, chunk_size, jcache.get_cachename('jsopt') if jcache else None)
+  else:
+    # keep same chunks as before
+    chunks = map(lambda f: f[1], funcs)
+
   chunks = filter(lambda chunk: len(chunk) > 0, chunks)
-  if DEBUG and len(chunks) > 0: print >> sys.stderr, 'chunkification: intended size:', chunk_size, 'num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(map(len, chunks)), '-', min(map(len, chunks))
+  if DEBUG and len(chunks) > 0: print >> sys.stderr, 'chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(map(len, chunks)), '-', min(map(len, chunks))
   funcs = None
 
   if jcache:
@@ -273,21 +306,26 @@ EMSCRIPTEN_FUNCS();
     filenames = []
 
   if len(filenames) > 0:
-    # XXX Use '--nocrankshaft' to disable crankshaft to work around v8 bug 1895, needed for older v8/node (node 0.6.8+ should be ok)
-    commands = map(lambda filename: js_engine +
-        [JS_OPTIMIZER, filename, 'noPrintMetadata'] +
-        (['--debug'] if source_map else []) + passes, filenames)
+    if not use_native(passes, source_map) or 'receiveJSON' not in passes or 'emitJSON' not in passes:
+      commands = map(lambda filename: js_engine +
+          [JS_OPTIMIZER, filename, 'noPrintMetadata'] +
+          (['--debug'] if source_map else []) + passes, filenames)
+    else:
+      # use the native optimizer
+      shared.logging.debug('js optimizer using native')
+      assert not source_map # XXX need to use js optimizer
+      commands = map(lambda filename: [get_native_optimizer(), filename] + passes, filenames)
     #print [' '.join(command) for command in commands]
 
     cores = min(cores, len(filenames))
     if len(chunks) > 1 and cores >= 2:
       # We can parallelize
-      if DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks of size %d, using %d cores  (total: %.2f MB)' % (len(chunks), chunk_size, cores, total_size/(1024*1024.))
+      if DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, total_size/(1024*1024.))
       pool = multiprocessing.Pool(processes=cores)
       filenames = pool.map(run_on_chunk, commands, chunksize=1)
     else:
       # We can't parallize, but still break into chunks to avoid uglify/node memory issues
-      if len(chunks) > 1 and DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks of size %d' % (len(chunks), chunk_size)
+      if len(chunks) > 1 and DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks' % (len(chunks))
       filenames = [run_on_chunk(command) for command in commands]
   else:
     filenames = []
@@ -379,6 +417,9 @@ EMSCRIPTEN_FUNCS();
   return filename
 
 def run(filename, passes, js_engine=shared.NODE_JS, jcache=False, source_map=False, extra_info=None, just_split=False, just_concat=False):
+  if 'receiveJSON' in passes: just_split = True
+  if 'emitJSON' in passes: just_concat = True
+  js_engine = shared.listify(js_engine)
   return temp_files.run_and_clean(lambda: run_on_js(filename, passes, js_engine, jcache, source_map, extra_info, just_split, just_concat))
 
 if __name__ == '__main__':
@@ -389,6 +430,5 @@ if __name__ == '__main__':
   else:
     extra_info = None
   out = run(sys.argv[1], sys.argv[2:], extra_info=extra_info)
-  import shutil
   shutil.copyfile(out, sys.argv[1] + '.jsopt.js')
 
