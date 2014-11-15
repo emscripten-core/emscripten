@@ -4407,3 +4407,18 @@ int main(void) {
     output = Popen(NODE_JS + ['-e', 'require("./a.out.js")'], stdout=PIPE, stderr=PIPE).communicate()
     assert output == ('hello, world!\n \n', ''), 'expected no output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % output
 
+  def test_native_optimizer(self):
+    old_debug = os.environ.get('EMCC_DEBUG')
+    old_native = os.environ.get('EMCC_NATIVE_OPTIMIZER')
+    try:
+      os.environ['EMCC_DEBUG'] = '1'
+      os.environ['EMCC_NATIVE_OPTIMIZER'] = '1'
+      out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2'], stderr=PIPE).communicate()
+    finally:
+      if old_debug: os.environ['EMCC_DEBUG'] = old_debug
+      else: del os.environ['EMCC_DEBUG']
+      if old_native: os.environ['EMCC_NATIVE_OPTIMIZER'] = old_native
+      else: del os.environ['EMCC_NATIVE_OPTIMIZER']
+    self.assertContained('js optimizer using native', err)
+    self.assertContained('hello, world!', run_js('a.out.js'))
+
