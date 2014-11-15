@@ -2788,6 +2788,7 @@ int main(int argc, char **argv) {
     else if (str == "simplifyIfs") simplifyIfs(doc);
     else if (str == "registerize") registerize(doc);
     else if (str == "minifyLocals") minifyLocals(doc);
+    else if (str == "minifyWhitespace") {}
     else {
       fprintf(stderr, "unrecognized argument: %s\n", str.c_str());
       assert(0);
