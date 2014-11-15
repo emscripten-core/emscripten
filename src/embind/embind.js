@@ -901,6 +901,21 @@ var LibraryEmbind = {
   $requireFunction__deps: ['$readLatin1String', '$throwBindingError'],
   $requireFunction: function(signature, rawFunction) {
     signature = readLatin1String(signature);
+
+    function makeDynCaller(dynCall) {
+        var args = [];
+        for (var i = 1; i < signature.length; ++i) {
+            args.push('a' + i);
+        }
+
+        var name = 'dynCall_' + signature + '_' + rawFunction;
+        var body = 'return function ' + name + '(' + args.join(', ') + ') {\n';
+        body    += '    return dynCall(rawFunction' + (args.length ? ', ' : '') + args.join(', ') + ');\n';
+        body    += '};\n';
+
+        return (new Function('dynCall', 'rawFunction', body))(dynCall, rawFunction);
+    }
+
     var fp;
     // asm.js does not define FUNCTION_TABLE
     if (typeof FUNCTION_TABLE === "undefined") {
@@ -913,9 +928,6 @@ var LibraryEmbind = {
         // This has three main penalties:
         // - dynCall is another function call in the path from JavaScript to C++.
         // - JITs may not predict through the function table indirection at runtime.
-        // - Function.prototype.bind generally benchmarks poorly relative to
-        //   function objects, but using 'arguments' would confound JITs and
-        //   possibly allocate.
         var dc = asm['dynCall_' + signature];
         if (dc === undefined) {
             // We will always enter this branch if the signature
@@ -927,7 +939,7 @@ var LibraryEmbind = {
                 throwBindingError("No dynCall invoker for signature: " + signature);
             }
         }
-        fp = dc.bind(undefined, rawFunction);
+        fp = makeDynCaller(dc);
     } else {
         fp = FUNCTION_TABLE[rawFunction];
     }
