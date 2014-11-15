@@ -397,6 +397,8 @@ var EXPORT_ALL = 0; // If true, we export all the symbols. Note that this does *
                     // still eliminate functions as dead. This just exports them on the Module object.
 var EXPORT_BINDINGS = 0; // Export all bindings generator functions (prefixed with emscripten_bind_). This
                          // is necessary to use the WebIDL binder or bindings generator with asm.js
+var EXPORT_FUNCTION_TABLES = 0; // If true, export all the functions appearing in a function table, and the
+                                // tables themselves.
 var RETAIN_COMPILER_SETTINGS = 0; // Remembers the values of these settings, and makes them accessible
                                   // through Runtime.getCompilerSetting and emscripten_get_compiler_setting.
                                   // To see what is retained, look for compilerSettings in the generated code.

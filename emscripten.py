@@ -935,6 +935,11 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     all_exported_functions = set(settings['EXPORTED_FUNCTIONS']) # both asm.js and otherwise
     for additional_export in settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE']: # additional functions to export from asm, if they are implemented
       all_exported_functions.add('_' + additional_export)
+    if settings['EXPORT_FUNCTION_TABLES']:
+      for table in last_forwarded_json['Functions']['tables'].values():
+        for func in table.split('[')[1].split(']')[0].split(','):
+          if func[0] == '_':
+            all_exported_functions.add(func)
     exported_implemented_functions = set(metadata['exports'])
     export_bindings = settings['EXPORT_BINDINGS']
     export_all = settings['EXPORT_ALL']
@@ -1279,6 +1284,11 @@ return real_''' + s + '''.apply(null, arguments);
       receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables])
     else:
       receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + s + ' = Module["' + s + '"] = function() { return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions + function_tables])
+
+    if settings['EXPORT_FUNCTION_TABLES']:
+      receiving += '\n'
+      for table in last_forwarded_json['Functions']['tables'].values():
+        receiving += table + '\n'
 
     # finalize
 
