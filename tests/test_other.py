@@ -4420,5 +4420,6 @@ int main(void) {
       if old_native: os.environ['EMCC_NATIVE_OPTIMIZER'] = old_native
       else: del os.environ['EMCC_NATIVE_OPTIMIZER']
     self.assertContained('js optimizer using native', err)
+    assert os.path.exists('a.out.js'), err
     self.assertContained('hello, world!', run_js('a.out.js'))
 
