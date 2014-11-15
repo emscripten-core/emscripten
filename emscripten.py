@@ -1288,6 +1288,8 @@ return real_''' + s + '''.apply(null, arguments);
     if settings['EXPORT_FUNCTION_TABLES']:
       receiving += '\n'
       for table in last_forwarded_json['Functions']['tables'].values():
+        tableName = table.split()[1]
+        table = table.replace('var ' + tableName, 'var ' + tableName + ' = Module["' + tableName + '"]')
         receiving += table + '\n'
 
     # finalize

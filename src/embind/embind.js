@@ -917,8 +917,11 @@ var LibraryEmbind = {
     }
 
     var fp;
-    // asm.js does not define FUNCTION_TABLE
-    if (typeof FUNCTION_TABLE === "undefined") {
+    if (Module['FUNCTION_TABLE_' + signature] !== undefined) {
+        fp = Module['FUNCTION_TABLE_' + signature][rawFunction];
+    } else if (typeof FUNCTION_TABLE !== "undefined") {
+        fp = FUNCTION_TABLE[rawFunction];
+    } else {
         // asm.js does not give direct access to the function tables,
         // and thus we must go through the dynCall interface which allows
         // calling into a signature's function table by pointer value.
@@ -940,8 +943,6 @@ var LibraryEmbind = {
             }
         }
         fp = makeDynCaller(dc);
-    } else {
-        fp = FUNCTION_TABLE[rawFunction];
     }
 
     if (typeof fp !== "function") {
