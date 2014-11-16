@@ -1,7 +1,6 @@
-#include <math.h>
-#include <stdint.h>
-#include <stdio.h>
-
+#include <cstdint>
+#include <cstdio>
+#include <cmath>
 #include <string>
 
 #include "minijson.h"
