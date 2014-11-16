@@ -1,6 +1,6 @@
-#include <sys/stat.h>
 #include <math.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include <string>
 
@@ -2749,14 +2749,12 @@ void minifyLocals(Ref ast) {
 
 int main(int argc, char **argv) {
   // Read input file
-  char *input = argv[1];
-  struct stat st;
-  int result = stat(input, &st);
-  assert(result == 0);
-  int size = st.st_size;
-  //printf("reading %s, %d bytes\n", input, size);
+  FILE *f = fopen(argv[1], "r");
+  assert(f);
+  fseek(f, 0, SEEK_END);
+  int size = ftell(f);
   char *json = new char[size+1];
-  FILE *f = fopen(input, "rb");
+  rewind(f);
   int num = fread(json, 1, size, f);
   assert(num == size);
   fclose(f);
