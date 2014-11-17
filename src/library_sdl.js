@@ -2927,6 +2927,27 @@ var LibrarySDL = {
     return 0;
   },
 
+  TTF_GlyphMetrics: function(font, ch, minx, maxx, miny, maxy, advance) {
+    var fontData = SDL.fonts[font];
+    var width = SDL.estimateTextWidth(fontData,  String.fromCharCode(ch));
+    
+    if (advance) {
+      {{{ makeSetValue('advance', '0', 'width', 'i32') }}};
+    }
+    if (minx) {
+      {{{ makeSetValue('minx', '0', '0', 'i32') }}}; 
+    }
+    if (maxx) {
+      {{{ makeSetValue('maxx', '0', 'width', 'i32') }}}; 
+    }
+    if (miny) {
+      {{{ makeSetValue('miny', '0', '0', 'i32') }}}; 
+    }
+    if (maxy) {
+      {{{ makeSetValue('maxy', '0', 'fontData.size', 'i32') }}}; 
+    }
+  },
+
   TTF_FontAscent: function(font) {
     var fontData = SDL.fonts[font];
     return (fontData.size*0.98)|0; // XXX
