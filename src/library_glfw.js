@@ -704,7 +704,7 @@ var LibraryGLFW = {
   glfwInit: function() {
     if (GLFW.windows) return 1; // GL_TRUE
 
-    GLFW.initalTime = GLFW.getTime();
+    GLFW.initialTime = GLFW.getTime();
     GLFW.hints = GLFW.defaultHints;
     GLFW.windows = new Array()
     GLFW.active = null;
