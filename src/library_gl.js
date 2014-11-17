@@ -76,7 +76,7 @@ var LibraryGL = {
         GL.lastError = errorCode;
       }
     },
-    // Get a new ID for a texture/buffer/etc., while keeping the table dense and fast. Creation is farely rare so it is worth optimizing lookups later.
+    // Get a new ID for a texture/buffer/etc., while keeping the table dense and fast. Creation is fairly rare so it is worth optimizing lookups later.
     getNewId: function(table) {
       var ret = GL.counter++;
       for (var i = table.length; i < ret; i++) {
