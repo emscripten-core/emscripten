@@ -4423,3 +4423,13 @@ int main(void) {
     assert os.path.exists('a.out.js'), err
     self.assertContained('hello, world!', run_js('a.out.js'))
 
+  def test_emconfigure_js_o(self):
+    # issue 2994
+    try:
+      os.environ['EMCONFIGURE_JS'] = '1'
+      Popen([PYTHON, path_from_root('emconfigure'), EMCC, '-c', '-o', 'a.o', path_from_root('tests', 'hello_world.c')]).communicate()
+      Popen([PYTHON, EMCC, 'a.o']).communicate()
+      assert 'hello, world!' in run_js(self.in_dir('a.out.js'))
+    finally:
+      del os.environ['EMCONFIGURE_JS']
+

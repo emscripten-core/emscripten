@@ -247,10 +247,8 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
           cmd[i+1] += '.js'
         target = cmd[i+1]
         break
-    print 't1', target
     if not target:
       target = 'a.out.js'
-    print 't2', target, only_object
     os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = '1'
     ret = subprocess.call(cmd)
     os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = ''
@@ -258,13 +256,14 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
     if target.endswith('.js'):
       shutil.copyfile(target, target[:-3])
       target = target[:-3]
-    src = open(target).read()
-    full_node = ' '.join(shared.NODE_JS)
-    if os.path.sep not in full_node:
-      full_node = '/usr/bin/' + full_node # TODO: use whereis etc. And how about non-*NIX?
-    open(target, 'w').write('#!' + full_node + '\n' + src) # add shebang
-    import stat
-    os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable
+    if not target.endswith(BITCODE_ENDINGS):
+      src = open(target).read()
+      full_node = ' '.join(shared.NODE_JS)
+      if os.path.sep not in full_node:
+        full_node = '/usr/bin/' + full_node # TODO: use whereis etc. And how about non-*NIX?
+      open(target, 'w').write('#!' + full_node + '\n' + src) # add shebang
+      import stat
+      os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable
     exit(ret)
 
 if os.environ.get('EMMAKEN_COMPILER'):
