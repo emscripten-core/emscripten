@@ -4407,7 +4407,7 @@ int main(void) {
     output = Popen(NODE_JS + ['-e', 'require("./a.out.js")'], stdout=PIPE, stderr=PIPE).communicate()
     assert output == ('hello, world!\n \n', ''), 'expected no output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % output
 
-  def zzztest_native_optimizer(self):
+  def test_native_optimizer(self):
     old_debug = os.environ.get('EMCC_DEBUG')
     old_native = os.environ.get('EMCC_NATIVE_OPTIMIZER')
     try:

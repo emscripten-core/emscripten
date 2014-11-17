@@ -32,9 +32,14 @@ def get_native_optimizer():
     shared.logging.debug('building native optimizer')
     output = shared.Cache.get_path('optimizer.exe')
     shared.try_delete(output)
-    subprocess.Popen([shared.CLANG, shared.path_from_root('tools', 'optimizer', 'optimizer.cpp'), '-O3', '-std=c++11', '-fno-exceptions', '-fno-rtti', '-o', output]).communicate() # , '-g', '-fno-omit-frame-pointer'
-    assert os.path.exists(output)
-    return output
+    errs = []
+    for compiler in [shared.CLANG, 'g++', 'clang++']: # try our clang first, otherwise hope for a system compiler in the path
+      shared.logging.debug('  using ' + compiler)
+      out, err = subprocess.Popen([shared.CLANG, shared.path_from_root('tools', 'optimizer', 'optimizer.cpp'), '-O3', '-std=c++11', '-fno-exceptions', '-fno-rtti', '-o', output], stderr=subprocess.PIPE).communicate()
+      # for profiling/debugging: '-g', '-fno-omit-frame-pointer'
+      if os.path.exists(output): return output
+      errs.append(err)
+    raise Exception('failed to build native optimizer, errors from each attempt: ' + '\n=================\n'.join(errs))
   return shared.Cache.get('optimizer.exe', create_optimizer, extension='exe')
 
 # Check if we should run a pass or set of passes natively. if a set of passes, they must all be valid to run in the native optimizer at once.
