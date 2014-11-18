@@ -1104,7 +1104,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
                  'splat', 'swizzle', 'shuffle',
                  'withX', 'withY', 'withZ', 'withW',
                  'load', 'store']
-    simdfloatfuncs = simdfuncs + ['mul', 'div', 'min', 'max', 'sqrt',
+    simdfloatfuncs = simdfuncs + ['mul', 'div', 'min', 'max', 'sqrt', 'neg',
                                   'fromInt32x4', 'fromInt32x4Bits',
                                   'notEqual', 'lessThanOrEqual', 'greaterThanOrEqual'];
     simdintfuncs = simdfuncs + ['fromFloat32x4', 'fromFloat32x4Bits'];

@@ -294,7 +294,7 @@ if EM_POPEN_WORKAROUND and os.name == 'nt':
 
 # Expectations
 
-EXPECTED_LLVM_VERSION = (3,3)
+EXPECTED_LLVM_VERSION = (3,4)
 
 actual_clang_version = None
 
@@ -1385,8 +1385,12 @@ class Building:
     if type(opts) is int:
       opts = Building.pick_llvm_opts(opts)
     #opts += ['-debug-pass=Arguments']
-    if get_clang_version() == '3.4' and not Settings.SIMD:
-      opts += ['-disable-loop-vectorization', '-disable-slp-vectorization'] # llvm 3.4 has these on by default
+    if get_clang_version() >= '3.4':
+      if not Settings.SIMD:
+        opts += ['-disable-vectorize']
+      else:
+        opts += ['-bb-vectorize-vector-bits=128', '-force-vector-width=4']
+
     logging.debug('emcc: LLVM opts: ' + ' '.join(opts))
     target = out or (filename + '.opt.bc')
     output = Popen([LLVM_OPT, filename] + opts + ['-o', target], stdout=PIPE).communicate()[0]

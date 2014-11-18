@@ -912,6 +912,9 @@ try:
       fastcomp_opts += ['-emscripten-asyncify-functions=' + ','.join(shared.Settings.ASYNCIFY_FUNCTIONS)]
       fastcomp_opts += ['-emscripten-asyncify-whitelist=' + ','.join(shared.Settings.ASYNCIFY_WHITELIST)]
 
+  else: # non-fastcomp
+    logging.warning('Using old (non-fastcomp) compiler due to EMCC_FAST_COMPILER=0 in the env. This is dangerous, as there are known bugs, and this code path is no longer maintained. Please use emscripten in the default configuration (i.e., do not disable fastcomp)')
+
   if shared.Settings.ASM_JS:
     assert opt_level >= 1 or fastcomp, 'asm.js requires -O1 or above'
 

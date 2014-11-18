@@ -4970,20 +4970,11 @@ int main(void) {
 
   def test_fannkuch(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('musl libc needs ta2')
-    try:
-      if self.run_name == 'slow2' or self.run_name == 'slow2asm':
-        old_target = os.environ.get('EMCC_LLVM_TARGET') or ''
-        os.environ['EMCC_LLVM_TARGET'] = "asmjs-unknown-emscripten" # testing for asm-emscripten target on non-fastcomp
-      results = [ (1,0), (2,1), (3,2), (4,4), (5,7), (6,10), (7, 16), (8,22) ]
-      for i, j in results:
-        src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read()
-        self.do_run(src, 'Pfannkuchen(%d) = %d.' % (i,j), [str(i)], no_build=i>1)
-    finally:
-      if self.run_name == 'slow2' or self.run_name == 'slow2asm':
-        if old_target:
-          os.environ['EMCC_LLVM_TARGET'] = old_target
-        else:
-          del os.environ['EMCC_LLVM_TARGET']
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
+    results = [ (1,0), (2,1), (3,2), (4,4), (5,7), (6,10), (7, 16), (8,22) ]
+    for i, j in results:
+      src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read()
+      self.do_run(src, 'Pfannkuchen(%d) = %d.' % (i,j), [str(i)], no_build=i>1)
 
   def test_raytrace(self):
       if self.emcc_args is None: return self.skip('requires emcc')
@@ -5359,6 +5350,7 @@ def process(filename):
     # gcc -O3 -I/home/alon/Dev/emscripten/tests/sqlite -ldl src.c
     if self.emcc_args is None: return self.skip('Very slow without ta2, and we would also need to include dlmalloc manually without emcc')
     if not self.is_emscripten_abi(): return self.skip('fails on x86 due to a legalization issue on llvm 3.3')
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('requires fastcomp')
     if Settings.QUANTUM_SIZE == 1: return self.skip('TODO FIXME')
     self.banned_js_engines = [NODE_JS] # OOM in older node
     if '-O' not in str(self.emcc_args):
@@ -5746,7 +5738,10 @@ def process(filename):
           '18.cpp', '15.c', '21.c'
         ]: continue # works only in fastcomp
         if x == 'lto' and self.run_name == 'default' and os.path.basename(name) in [
-          '19.c'
+          '19.c', '18.cpp'
+        ]: continue # LLVM LTO bug
+        if x == 'lto' and os.path.basename(name) in [
+          '21.c'
         ]: continue # LLVM LTO bug
 
         print name
@@ -6777,6 +6772,7 @@ def process(filename):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip("doesn't pass without typed arrays")
     if '-g4' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g4')
     if NODE_JS not in JS_ENGINES: return self.skip('sourcemapper requires Node to run')
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('requires fastcomp')
 
     src = '''
       #include <stdio.h>

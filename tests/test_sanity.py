@@ -450,17 +450,6 @@ fi
               assert os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size > 1000000, 'libc++ is big'
               assert os.stat(basebc_name).st_size > 1000000, 'libc++ is indeed big'
               assert os.stat(dcebc_name).st_size < os.stat(basebc_name).st_size*0.666, 'Dead code elimination must remove most of libc++'
-            # should only have metadata in -O0, not 1 and 2
-            if i > 0:
-              ll = None
-              for ll_name in ll_names:
-                if os.path.exists(ll_name):
-                  check_call([LLVM_DIS, ll_name, '-o', ll_name + '.ll'])
-                  ll = open(ll_name + '.ll').read()
-                  break
-              assert ll
-              print 'metas:', ll.count('\n!')
-              assert ll.count('\n!') < 25 # a few lines are left even in -O1 and -O2
       finally:
         del os.environ['EMCC_DEBUG']
 

@@ -2374,19 +2374,8 @@ int main()
       self.assertContained('File size: 724', out)
 
   def test_simd(self):
-    if get_clang_version() == '3.2':
-      simd_args = ['-O3', '-vectorize', '-vectorize-loops']
-    elif get_clang_version() == '3.3':
-      simd_args = ['-O3', '-vectorize-loops', '-vectorize-slp-aggressive', '-bb-vectorize-aligned-only'] # XXX this generates <2 x float> , '-vectorize-slp']
-    elif get_clang_version() == '3.4':
-      simd_args = ['-O3'] # vectorization on by default, SIMD=1 makes us not disable it
-    else:
-      raise Exception('unknown llvm version')
-
-    simd_args += ['-bb-vectorize-vector-bits=128', '-force-vector-width=4']
-
-    self.clear()
-    Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-s', 'SIMD=1', '-DSP', '--llvm-opts', str(simd_args), '-s', 'PRECISE_F32=1']).communicate()
+    assert get_clang_version() == '3.4'
+    Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-s', 'SIMD=1', '-DSP', '-s', 'PRECISE_F32=1']).communicate()
     self.assertContained('Unrolled Single  Precision', run_js('a.out.js'))
 
   def test_dependency_file(self):
@@ -2612,7 +2601,7 @@ int main(int argc, char **argv) {
         exit = 1-no_exit
         assert 'coming around' in output
         assert ('going away' in output) == exit, 'destructors should not run if no exit'
-        assert ('_ZN5WasteILi2EED1Ev' in src) == exit, 'destructors should not appear if no exit'
+        assert ('_ZN5WasteILi2EED' in src) == exit, 'destructors should not appear if no exit'
         assert ('atexit(' in src) == exit, 'atexit should not appear or be called'
 
   def test_os_oz(self):
@@ -3529,7 +3518,7 @@ main()
     ''')
     Popen([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'SAFE_HEAP=1']).communicate()
     assert os.path.exists('a.out.js') # build should succeed
-    self.assertContained('segmentation fault loading 4 bytes from address 0', run_js('a.out.js', assert_returncode=None, stderr=PIPE)) # program should segfault
+    self.assertContained(('trap!', 'segmentation fault loading 4 bytes from address 0'), run_js('a.out.js', assert_returncode=None, stderr=PIPE)) # program should segfault
 
   def test_only_force_stdlibs(self):
     def test(name):
