@@ -4427,7 +4427,7 @@ int main(void) {
     # issue 2994
     try:
       os.environ['EMCONFIGURE_JS'] = '1'
-      Popen([PYTHON, path_from_root('emconfigure'), EMCC, '-c', '-o', 'a.o', path_from_root('tests', 'hello_world.c')]).communicate()
+      Popen([PYTHON, path_from_root('emconfigure'), PYTHON, EMCC, '-c', '-o', 'a.o', path_from_root('tests', 'hello_world.c')]).communicate()
       Popen([PYTHON, EMCC, 'a.o']).communicate()
       assert 'hello, world!' in run_js(self.in_dir('a.out.js'))
     finally:
