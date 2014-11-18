@@ -229,7 +229,9 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
         yield el
       idx += 1
 
-  cmd = [compiler] + list(filter_emscripten_options(sys.argv[1:]))
+  if compiler == shared.EMCC: compiler = [shared.PYTHON, shared.EMCC]
+  else: compiler = [compiler] 
+  cmd = compiler + list(filter_emscripten_options(sys.argv[1:]))
   if not use_js: cmd += shared.EMSDK_OPTS + ['-D__EMSCRIPTEN__', '-DEMSCRIPTEN']
   if use_js: cmd += ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'] # configure tests should fail when an undefined symbol exists
 
