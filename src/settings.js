@@ -254,7 +254,7 @@ var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js). 
                        // want it back. A simple way to set it in C++ is
                        //   emscripten_run_script("Runtime.debug = ...;");
 var SOCKET_DEBUG = 0; // Log out socket/network data transfer.
-var SOCKET_WEBRTC = 0; // Select socket backend, either webrtc or websockets.
+var SOCKET_WEBRTC = 0; // Select socket backend, either webrtc or websockets. XXX webrtc is not currently tested, may be broken
 
 // As well as being configurable at compile time via the "-s" option the WEBSOCKET_URL and WEBSOCKET_SUBPROTOCOL
 // settings may configured at run time via the Module object e.g.
@@ -397,6 +397,8 @@ var EXPORT_ALL = 0; // If true, we export all the symbols. Note that this does *
                     // still eliminate functions as dead. This just exports them on the Module object.
 var EXPORT_BINDINGS = 0; // Export all bindings generator functions (prefixed with emscripten_bind_). This
                          // is necessary to use the WebIDL binder or bindings generator with asm.js
+var EXPORT_FUNCTION_TABLES = 0; // If true, export all the functions appearing in a function table, and the
+                                // tables themselves.
 var RETAIN_COMPILER_SETTINGS = 0; // Remembers the values of these settings, and makes them accessible
                                   // through Runtime.getCompilerSetting and emscripten_get_compiler_setting.
                                   // To see what is retained, look for compilerSettings in the generated code.
@@ -593,6 +595,7 @@ var USE_SDL = 1; // Specify the SDL version that is being linked against.
                  // 1, the default, is 1.3, which is implemented in JS
                  // 2 is a port of the SDL C code on emscripten-ports
 var USE_SDL_IMAGE = 1; // Specify the SDL_image version that is being linked against. Must match USE_SDL
+var USE_ZLIB = 0; // 1 = use zlib from emscripten-ports
 
 
 // Compiler debugging options

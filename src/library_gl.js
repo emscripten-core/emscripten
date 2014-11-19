@@ -22,6 +22,11 @@ var LibraryGL = {
     shaders: [],
     vaos: [],
     contexts: [],
+#if USE_WEBGL2
+    queries: [],
+    samplers: [],
+    transformFeedbacks: [],
+#endif
 
 #if USES_GL_EMULATION
     currArrayBuffer: 0,
@@ -71,7 +76,7 @@ var LibraryGL = {
         GL.lastError = errorCode;
       }
     },
-    // Get a new ID for a texture/buffer/etc., while keeping the table dense and fast. Creation is farely rare so it is worth optimizing lookups later.
+    // Get a new ID for a texture/buffer/etc., while keeping the table dense and fast. Creation is fairly rare so it is worth optimizing lookups later.
     getNewId: function(table) {
       var ret = GL.counter++;
       for (var i = table.length; i < ret; i++) {
@@ -808,9 +813,11 @@ var LibraryGL = {
       var handle = GL.getNewId(GL.contexts);
       var context = {
         handle: handle,
-        version: webGLContextAttributes.majorVersion
+        version: webGLContextAttributes.majorVersion,
+        GLctx: ctx
       };
-      context.GLctx = ctx;
+      // Store the created context object so that we can access the context given a canvas without having to pass the parameters again.
+      if (ctx.canvas) ctx.canvas.GLctxObject = context;
       GL.contexts[handle] = context;
       if (typeof webGLContextAttributes['webGLContextAttributes'] === 'undefined' || webGLContextAttributes.enableExtensionsByDefault) {
         GL.initExtensions(context);
@@ -832,6 +839,8 @@ var LibraryGL = {
 
     deleteContext: function(contextHandle) {
       if (GL.currentContext === GL.contexts[contextHandle]) GL.currentContext = 0;
+      if (typeof JSEvents === 'object') JSEvents.removeAllHandlersOnTarget(GL.contexts[contextHandle].canvas); // Release all JS event handlers on the DOM element that the GL context is associated with since the context is now deleted.
+      if (GL.contexts[contextHandle] && GL.contexts[contextHandle].GLctx.canvas) GL.contexts[contextHandle].GLctx.canvas.GLctxObject = undefined; // Make sure the canvas object no longer refers to the context object so there are no GC surprises.
       GL.contexts[contextHandle] = null;
     },
 
@@ -1152,11 +1161,29 @@ var LibraryGL = {
 
   glGetTexParameterfv__sig: 'viii',
   glGetTexParameterfv: function(target, pname, params) {
+#if GL_ASSERTIONS
+    if (!params) {
+      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+      // if p == null, issue a GL error to notify user about it. 
+      Module.printErr('GL_INVALID_VALUE in glGetTexParameterfv(target=' + target +', pname=' + pname + ', params=0): Function called with null out pointer!');
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+#endif
     {{{ makeSetValue('params', '0', 'GLctx.getTexParameter(target, pname)', 'float') }}};
   },
 
   glGetTexParameteriv__sig: 'viii',
   glGetTexParameteriv: function(target, pname, params) {
+#if GL_ASSERTIONS
+    if (!params) {
+      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+      // if p == null, issue a GL error to notify user about it. 
+      Module.printErr('GL_INVALID_VALUE in glGetTexParameteriv(target=' + target +', pname=' + pname + ', params=0): Function called with null out pointer!');
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+#endif
     {{{ makeSetValue('params', '0', 'GLctx.getTexParameter(target, pname)', 'i32') }}};
   },
 
@@ -1211,6 +1238,15 @@ var LibraryGL = {
 
   glGetBufferParameteriv__sig: 'viii',
   glGetBufferParameteriv: function(target, value, data) {
+#if GL_ASSERTIONS
+    if (!data) {
+      // GLES2 specification does not specify how to behave if data is a null pointer. Since calling this function does not make sense
+      // if data == null, issue a GL error to notify user about it. 
+      Module.printErr('GL_INVALID_VALUE in glGetBufferParameteriv(target=' + target + ', value=' + value + ', data=0): Function called with null out pointer!');
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+#endif
     {{{ makeSetValue('data', '0', 'GLctx.getBufferParameter(target, value)', 'i32') }}};
   },
 
@@ -1363,6 +1399,506 @@ var LibraryGL = {
     GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type,
                         HEAPU8.subarray(data));
   },
+
+  // Framebuffer objects
+  glBlitFramebuffer__sig: 'viiiiiiiiii',
+  glBlitFramebuffer: function(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter) {
+    GLctx.blitFramebuffer(srcX0, srcY0, srxC1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter);
+  },
+
+  glReadBuffer__sig: 'vi',
+  glReadBuffer: function(src) {
+    GLctx.readBuffer(src);
+  },
+
+  // Queries
+  glGenQueries__sig: 'vii',
+  glGenQueries: function(n, ids) {
+    for (var i = 0; i < n; i++) {
+      var id = GL.getNewId(GL.queries);
+      var query = GLctx.createQuery();
+      query.name = id;
+      GL.queries[id] = query;
+      {{{ makeSetValue('ids', 'i*4', 'id', 'i32') }}};
+    }
+  },
+
+  glDeleteQueries__sig: 'vii',
+  glDeleteQueries: function(n, ids) {
+    for (var i = 0; i < n; i++) {
+      var id = {{{ makeGetValue('ids', 'i*4', 'i32') }}};
+      var query = GL.queries[id];
+      if (!query) continue; // GL spec: "unused names in ids are ignored, as is the name zero."
+      GLctx.deleteQuery(query);
+      query.name = 0;
+      GL.queries[id] = null;
+    }
+  },
+
+  glIsQuery__sig: 'ii',
+  glIsQuery: function(id) {
+    var query = GL.queries[query];
+    if (!query) return 0;
+    return GLctx.isQuery(query);
+  },
+
+  glBeginQuery__sig: 'vii',
+  glBeginQuery: function(target, id) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.queries, id, 'glBeginQuery', 'id');
+#endif
+    GLctx.beginQuery(target, id ? GL.queries[id] : null);
+  },
+
+  glEndQuery__sig: 'vi',
+  glEndQuery: function(target) {
+    GLctx.endQuery(target);
+  },
+
+  glGetQueryiv__sig: 'viii',
+  glGetQueryiv: function(target, pname, params) {
+#if GL_ASSERTIONS
+    if (!params) {
+      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+      // if p == null, issue a GL error to notify user about it. 
+      Module.printErr('GL_INVALID_VALUE in glGetQueryiv(target=' + target +', pname=' + pname + ', params=0): Function called with null out pointer!');
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+#endif
+    {{{ makeSetValue('params', '0', 'GLctx.getQuery(target, pname)', 'i32') }}};
+  },
+
+  glGetQueryObjectuiv__sig: 'viii',
+  glGetQueryObjectuiv: function(id, pname, params) {
+#if GL_ASSERTIONS
+    if (!params) {
+      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+      // if p == null, issue a GL error to notify user about it. 
+      Module.printErr('GL_INVALID_VALUE in glGetQueryObjectuiv(id=' + id +', pname=' + pname + ', params=0): Function called with null out pointer!');
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+    GL.validateGLObjectID(GL.queries, id, 'glGetQueryObjectuiv', 'id');
+#endif
+    var query = GL.queries[id];
+    var param = GLctx.getQueryParameter(query, pname);
+    var ret;
+    if (typeof param == 'boolean') {
+      ret = param ? 1 : 0;
+    } else {
+      ret = param;
+    }
+    {{{ makeSetValue('params', '0', 'ret', 'i32') }}};
+  },
+
+  // Renderbuffer objects
+  glRenderbufferStorageMultisample__sig: 'viiiii',
+  glRenderbufferStorageMultisample: function(target, samples, internalformat, width, height) {
+    GLctx.renderbufferStorageMultisample(target, samples, internalformat, width, height);
+  },
+
+  // Sampler objects
+  glGenSamplers__sig: 'vii',
+  glGenSamplers: function(n, samplers) {
+    for (var i = 0; i < n; i++) {
+      var id = GL.getNewId(GL.samplers);
+      var sampler = GLctx.createSampler();
+      sampler.name = id;
+      GL.samplers[id] = sampler;
+      {{{ makeSetValue('samplers', 'i*4', 'id', 'i32') }}};
+    }
+  },
+
+  glDeleteSamplers__sig: 'vii',
+  glDeleteSamplers: function(n, samplers) {
+    for (var i = 0; i < n; i++) {
+      var id = {{{ makeGetValue('samplers', 'i*4', 'i32') }}};
+      var sampler = GL.samplers[id];
+      if (!sampler) continue;
+      GLctx.deleteSampler(sampler);
+      sampler.name = 0;
+      GL.samplers[id] = null;
+    }
+  },
+
+  glIsSampler__sig: 'ii',
+  glIsSampler: function(id) {
+    var sampler = GL.samplers[id];
+    if (!sampler) return 0;
+    return GLctx.isSampler(sampler);
+  },
+
+  glBindSampler__sig: 'vii',
+  glBindSampler: function(unit, sampler) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
+#endif
+    GLctx.bindSampler(unit, sampler ? GL.samplers[sampler] : null);
+  },
+
+  glSamplerParameterf__sig: 'viif',
+  glSamplerParameterf: function(sampler, pname, param) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
+#endif
+    GLctx.samplerParameterf(sampler ? GL.samplers[sampler] : null, pname, param);
+  },
+
+  glSamplerParameteri__sig: 'viii',
+  glSamplerParameteri: function(sampler, pname, param) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
+#endif
+    GLctx.samplerParameteri(sampler ? GL.samplers[sampler] : null, pname, param);
+  },
+
+  glSamplerParameterfv__sig: 'viii',
+  glSamplerParameterfv: function(sampler, pname, params) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
+#endif
+    var param = {{{ makeGetValue('params', '0', 'float') }}};
+    GLctx.samplerParameterf(sampler ? GL.samplers[sampler] : null, pname, param);
+  },
+
+  glSamplerParameteriv__sig: 'viii',
+  glSamplerParameteriv: function(sampler, pname, params) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
+#endif
+    var param = {{{ makeGetValue('params', '0', 'i32') }}};
+    GLctx.samplerParameteri(sampler ? GL.samplers[sampler] : null, pname, param);
+  },
+
+  glGetSamplerParameterfv__sig: 'viii',
+  glGetSamplerParameterfv: function(sampler, pname, params) {
+#if GL_ASSERTIONS
+    if (!params) {
+      // GLES3 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+      // if p == null, issue a GL error to notify user about it.
+      Module.printErr('GL_INVALID_VALUE in glGetSamplerParameterfv(sampler=' + sampler +', pname=' + pname + ', params=0): Function called with null out pointer!');
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+#endif
+    sampler = GL.samplers[sampler];
+    {{{ makeSetValue('params', '0', 'GLctx.getSamplerParameter(sampler, pname)', 'float') }}};
+  },
+
+  glGetSamplerParameteriv__sig: 'viii',
+  glGetSamplerParameteriv: function(sampler, pname, params) {
+#if GL_ASSERTIONS
+    if (!params) {
+      // GLES3 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+      // if p == null, issue a GL error to notify user about it.
+      Module.printErr('GL_INVALID_VALUE in glGetSamplerParameteriv(sampler=' + sampler +', pname=' + pname + ', params=0): Function called with null out pointer!');
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+#endif
+    sampler = GL.samplers[sampler];
+    {{{ makeSetValue('params', '0', 'GLctx.getSamplerParameter(sampler, pname)', 'i32') }}};
+  },
+
+  // Transform Feedback
+  glGenTransformFeedbacks__sig: 'vii',
+  glGenTransformFeedbacks: function(n, ids) {
+    for (var i = 0; i < n; i++) {
+      var id = GL.getNewId(GL.transformFeedbacks);
+      var transformFeedback = GLctx.createTransformFeedback();
+      transformFeedback.name = id;
+      GL.transformFeedbacks[id] = transformFeedback;
+      {{{ makeSetValue('ids', 'i*4', 'id', 'i32') }}};
+    }
+  },
+
+  glDeleteTransformFeedbacks__sig: 'vii',
+  glDeleteTransformFeedbacks: function(n, ids) {
+    for (var i = 0; i < n; i++) {
+      var id = {{{ makeGetValue('ids', 'i*4', 'i32') }}};
+      var transformFeedback = GL.transformFeedbacks[id];
+      if (!transformFeedback) continue; // GL spec: "unused names in ids are ignored, as is the name zero."
+      GLctx.deleteTransformFeedback(transformFeedback);
+      transformFeedback.name = 0;
+      GL.transformFeedbacks[id] = null;
+    }
+  },
+
+  glIsTransformFeedback__sig: 'ii',
+  glIsTransformFeedback: function(transformFeedback) {
+    var transformFeedback = GL.transformFeedbacks[transformFeedback];
+    if (!transformFeedback) return 0;
+    return GLctx.isTransformFeedback(transformFeedback);
+  },
+
+  glBindTransformFeedback__sig: 'vii',
+  glBindTransformFeedback: function(target, id) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.transformFeedbacks, id, 'glBindTransformFeedback', 'id');
+#endif
+    var transformFeedback = id ? GL.transformFeedbacks[id] : null;
+    if (id && !transformFeedback) { // Passing an nonexisting or an already deleted id is an error.
+      GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+      return;
+    }
+    GLctx.bindTransformFeedback(target, transformFeedback);
+  },
+
+  glBeginTransformFeedback__sig: 'vi',
+  glBeginTransformFeedback: function(primitiveMode) {
+    GLctx.beginTransformFeedback(primitiveMode);
+  },
+
+  glEndTransformFeedback__sig: 'v',
+  glEndTransformFeedback: function() {
+    GLctx.endTransformFeedback();
+  },
+
+  glPauseTransformFeedback__sig: 'v',
+  glPauseTransformFeedback: function() {
+    GLctx.pauseTransformFeedback();
+  },
+
+  glResumeTransformFeedback__sig: 'v',
+  glResumeTransformFeedback: function() {
+    GLctx.resumeTransformFeedback();
+  },
+
+  glTransformFeedbackVaryings__sig: 'viiii',
+  glTransformFeedbackVaryings: function(program, count, varyings, bufferMode) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glTransformFeedbackVaryings', 'program');
+#endif
+    program = GL.programs[program];
+    var vars = [];
+    for (var i = 0; i < count; i++)
+      vars.push(Pointer_stringify({{{ makeGetValue('varyings', 'i*4', 'i32') }}}));
+
+    GLctx.transformFeedbackVaryings(program, vars, bufferMode);
+  },
+
+  glGetTransformFeedbackVarying__sig: 'viiiiiii',
+  glGetTransformFeedbackVarying: function(program, index, bufSize, length, size, type, name) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glGetTransformFeedbackVarying', 'program');
+#endif
+    program = GL.programs[program];
+    var info = GLctx.getTransformFeedbackVarying(program, index);
+    if (!info) return; // If an error occurred, the return parameters length, size, type and name will be unmodified.
+
+    var infoname = info.name.slice(0, Math.max(0, bufSize - 1));
+    if (name && bufSize > 0) {
+      writeStringToMemory(infoname, name);
+      if (length) {{{ makeSetValue('length', '0', 'infoname.length', 'i32') }}};
+    } else {
+      if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
+    }
+
+    if (size) {{{ makeSetValue('size', '0', 'info.size', 'i32') }}};
+    if (type) {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
+  },
+
+  glGetIntegeri_v__sig: 'viii',
+  glGetIntegeri_v: function(target, index, data) {
+#if GL_ASSERTIONS
+    if (!data) {
+      // GLES2 specification does not specify how to behave if data is a null pointer. Since calling this function does not make sense
+      // if data == null, issue a GL error to notify user about it. 
+      Module.printErr('GL_INVALID_VALUE in glGetIntegeri_v(target=' + target + ', index=' + index + ', data=0): Function called with null out pointer!');
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+#endif
+    var result = GLctx.getIndexedParameter(target, index);
+    var ret;
+    switch (typeof result) {
+      case 'boolean':
+        ret = result ? 1 : 0;
+        break;
+      case 'number':
+        ret = result;
+        break;
+      case 'object':
+        if (result === null) {
+          switch (target) {
+            case 0x8C8F: // TRANSFORM_FEEDBACK_BUFFER_BINDING
+            case 0x8A28: // UNIFORM_BUFFER_BINDING
+              ret = 0;
+              break;
+            default: {
+              GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+              Module.printErr('GL_INVALID_ENUM in glGetIntegeri_v(' + target + ') and it returns null!');
+#endif
+              return;
+            }
+          }
+        } else if (result instanceof WebGLBuffer) {
+          ret = result.name | 0;
+        } else {
+          GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+          Module.printErr('GL_INVALID_ENUM in glGetIntegeri_v: Unknown object returned from WebGL getIndexedParameter(' + target + ')!');
+#endif
+          return;
+        }
+        break;
+      default:
+        GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_ENUM in glGetIntegeri_v: Native code calling glGetIntegeri_v(' + target + ') and it returns ' + result + ' of type ' + typeof(result) + '!');
+#endif
+        return;
+    }
+
+    {{{ makeSetValue('data', '0', 'ret', 'i32') }}};
+  },
+
+  // Uniform Buffer objects
+  glBindBufferBase__sig: 'viii',
+  glBindBufferBase: function(target, index, buffer) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.buffers, buffer, 'glBindBufferBase', 'buffer');
+#endif
+    var bufferObj = buffer ? GL.buffers[buffer] : null;
+    GLctx.bindBufferBase(target, index, bufferObj);
+  },
+
+  glBindBufferRange__sig: 'viiiii',
+  glBindBufferRange: function(target, index, buffer, offset, ptrsize) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.buffers, buffer, 'glBindBufferRange', 'buffer');
+#endif
+    var bufferObj = buffer ? GL.buffers[buffer] : null;
+    GLctx.bindBufferRange(target, index, bufferObj, offset, ptrsize);
+  },
+
+  glGetUniformIndices__sig: 'viiii',
+  glGetUniformIndices: function(program, uniformCount, uniformNames, uniformIndices) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glGetUniformIndices', 'program');
+    if (!uniformIndices) {
+      // GLES2 specification does not specify how to behave if uniformIndices is a null pointer. Since calling this function does not make sense
+      // if uniformIndices == null, issue a GL error to notify user about it. 
+      Module.printErr('GL_INVALID_VALUE in glGetUniformIndices(program=' + program + ', uniformCount=' + uniformCount + ', uniformNames=' + uniformNames + ', uniformIndices=0): Function called with null out pointer!');
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+#endif
+    if (uniformCount > 0 && (uniformNames == 0 || uniformIndices == 0)) {
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+    program = GL.programs[program];
+    var names = [];
+    for (var i = 0; i < uniformCount; i++)
+      names.push(Pointer_stringify({{{ makeGetValue('uniformNames', 'i*4', 'i32') }}}));
+
+    var result = GLctx.getUniformIndices(program, names);
+    if (!result) return; // GL spec: If an error is generated, nothing is written out to uniformIndices.
+
+    var len = result.length;
+    for (var i = 0; i < len; i++) {
+      {{{ makeSetValue('uniformIndices', 'i*4', 'result[i]', 'i32') }}};
+    }
+  },
+
+  glGetActiveUniformsiv__sig: 'viiiii',
+  glGetActiveUniformsiv: function(program, uniformCount, uniformIndices, pname, params) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glGetActiveUniformsiv', 'program');
+    if (!params) {
+      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+      // if params == null, issue a GL error to notify user about it. 
+      Module.printErr('GL_INVALID_VALUE in glGetActiveUniformsiv(program=' + program + ', uniformCount=' + uniformCount + ', uniformIndices=' + uniformIndices + ', pname=' + pname + ', params=0): Function called with null out pointer!');
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+#endif
+    if (uniformCount > 0 && uniformIndices == 0) {
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+    program = GL.programs[program];
+    var ids = [];
+    for (var i = 0; i < uniformCount; i++) {
+      ids.push({{{ makeGetValue('uniformIndices', 'i*4', 'i32') }}});
+    }
+
+    var result = GLctx.getActiveUniforms(program, ids, pname);
+    if (!result) return; // GL spec: If an error is generated, nothing is written out to params.
+
+    var len = result.length;
+    for (var i = 0; i < len; i++) {
+      {{{ makeSetValue('params', 'i*4', 'result[i]', 'i32') }}};
+    }
+  },
+
+  glGetUniformBlockIndex__sig: 'iii',
+  glGetUniformBlockIndex: function(program, uniformBlockName) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glGetUniformBlockIndex', 'program');
+#endif
+    program = GL.programs[program];
+    uniformBlockName = Pointer_stringify(uniformBlockName);
+    return GLctx.getUniformBlockIndex(program, uniformBlockName);
+  },
+
+  glGetActiveUniformBlockiv__sig: 'viiii',
+  glGetActiveUniformBlockiv: function(program, uniformBlockIndex, pname, params) {
+#if GL_ASSERTIONS
+    if (!params) {
+      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+      // if params == null, issue a GL error to notify user about it. 
+      Module.printErr('GL_INVALID_VALUE in glGetActiveUniformBlockiv(program=' + program + ', uniformBlockIndex=' + uniformBlockIndex + ', pname=' + pname + ', params=0): Function called with null out pointer!');
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+    GL.validateGLObjectID(GL.programs, program, 'glGetActiveUniformBlockiv', 'program');
+#endif
+    program = GL.programs[program];
+
+    var result = GLctx.getActiveUniformBlockParameter(program, uniformBlockIndex, pname);
+    if (!result) return; // If an error occurs, nothing will be written to params.
+    if (typeof result == 'number') {
+      {{{ makeSetValue('params', '0', 'result', 'i32') }}};
+    } else {
+      for (var i = 0; i < result.length; i++) {
+        {{{ makeSetValue('params', 'i*4', 'result[i]', 'i32') }}};
+      }
+    }
+  },
+
+  glGetActiveUniformBlockName__sig: 'viiiii',
+  glGetActiveUniformBlockName: function(program, uniformBlockIndex, bufSize, length, uniformBlockName) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glGetActiveUniformBlockName', 'program');
+#endif
+    program = GL.programs[program];
+
+    var result = GLctx.getActiveUniformBlockName(program, uniformBlockIndex);
+    if (!result) return; // If an error occurs, nothing will be written to uniformBlockName or length.
+    var name = result.slice(0, Math.max(0, bufSize - 1));
+    if (uniformBlockName && bufSize > 0) {
+      writeStringToMemory(name, uniformBlockName);
+      if (length) {{{ makeSetValue('length', '0', 'name.length', 'i32') }}};
+    } else {
+      if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
+    }
+  },
+
+  glUniformBlockBinding__sig: 'viii',
+  glUniformBlockBinding: function(program, uniformBlockIndex, uniformBlockBinding) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glUniformBlockBinding', 'program');
+#endif
+    program = GL.programs[program];
+
+    GLctx.uniformBlockBinding(program, uniformBlockIndex, uniformBlockBinding);
+  },
+
+// ~USE_WEBGL2
 #endif
 
   glIsBuffer__sig: 'ii',
@@ -1405,6 +1941,15 @@ var LibraryGL = {
 
   glGetRenderbufferParameteriv__sig: 'viii',
   glGetRenderbufferParameteriv: function(target, pname, params) {
+#if GL_ASSERTIONS
+    if (!params) {
+      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+      // if params == null, issue a GL error to notify user about it. 
+      Module.printErr('GL_INVALID_VALUE in glGetRenderbufferParameteriv(target=' + target + ', pname=' + pname + ', params=0): Function called with null out pointer!');
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+#endif
     {{{ makeSetValue('params', '0', 'GLctx.getRenderbufferParameter(target, pname)', 'i32') }}};
   },
 
@@ -1418,6 +1963,13 @@ var LibraryGL = {
   glGetUniformfv__sig: 'viii',
   glGetUniformfv: function(program, location, params) {
 #if GL_ASSERTIONS
+    if (!params) {
+      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+      // if params == null, issue a GL error to notify user about it. 
+      Module.printErr('GL_INVALID_VALUE in glGetUniformfv(program=' + program + ', location=' + location + ', params=0): Function called with null out pointer!');
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
     GL.validateGLObjectID(GL.programs, program, 'glGetUniformfv', 'program');
     GL.validateGLObjectID(GL.uniforms, location, 'glGetUniformfv', 'location');
 #endif
@@ -1434,6 +1986,13 @@ var LibraryGL = {
   glGetUniformiv__sig: 'viii',
   glGetUniformiv: function(program, location, params) {
 #if GL_ASSERTIONS
+    if (!params) {
+      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+      // if params == null, issue a GL error to notify user about it. 
+      Module.printErr('GL_INVALID_VALUE in glGetUniformiv(program=' + program + ', location=' + location + ', params=0): Function called with null out pointer!');
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
     GL.validateGLObjectID(GL.programs, program, 'glGetUniformiv', 'program');
     GL.validateGLObjectID(GL.uniforms, location, 'glGetUniformiv', 'location');
 #endif
@@ -1483,6 +2042,15 @@ var LibraryGL = {
 
   glGetVertexAttribfv__sig: 'viii',
   glGetVertexAttribfv: function(index, pname, params) {
+#if GL_ASSERTIONS
+    if (!params) {
+      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+      // if params == null, issue a GL error to notify user about it. 
+      Module.printErr('GL_INVALID_VALUE in glGetVertexAttribfv(index=' + index + ', pname=' + pname + ', params=0): Function called with null out pointer!');
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+#endif
 #if FULL_ES2
     if (GL.currentContext.clientBuffers[index].enabled) {
       Module.printErr("glGetVertexAttribfv on client-side array: not supported, bad data returned");
@@ -1500,6 +2068,15 @@ var LibraryGL = {
 
   glGetVertexAttribiv__sig: 'viii',
   glGetVertexAttribiv: function(index, pname, params) {
+#if GL_ASSERTIONS
+    if (!params) {
+      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+      // if params == null, issue a GL error to notify user about it. 
+      Module.printErr('GL_INVALID_VALUE in glGetVertexAttribiv(index=' + index + ', pname=' + pname + ', params=0): Function called with null out pointer!');
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+#endif
 #if FULL_ES2
     if (GL.currentContext.clientBuffers[index].enabled) {
       Module.printErr("glGetVertexAttribiv on client-side array: not supported, bad data returned");
@@ -1517,6 +2094,15 @@ var LibraryGL = {
 
   glGetVertexAttribPointerv__sig: 'viii',
   glGetVertexAttribPointerv: function(index, pname, pointer) {
+#if GL_ASSERTIONS
+    if (!pointer) {
+      // GLES2 specification does not specify how to behave if pointer is a null pointer. Since calling this function does not make sense
+      // if pointer == null, issue a GL error to notify user about it. 
+      Module.printErr('GL_INVALID_VALUE in glGetVertexAttribPointerv(index=' + index + ', pname=' + pname + ', pointer=0): Function called with null out pointer!');
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+#endif
 #if FULL_ES2
     if (GL.currentContext.clientBuffers[index].enabled) {
       Module.printErr("glGetVertexAttribPointer on client-side array: not supported, bad data returned");
@@ -1532,19 +2118,18 @@ var LibraryGL = {
 #endif
     program = GL.programs[program];
     var info = GLctx.getActiveUniform(program, index);
+    if (!info) return; // If an error occurs, nothing will be written to length, size, type and name.
 
     var infoname = info.name.slice(0, Math.max(0, bufSize - 1));
-    writeStringToMemory(infoname, name);
+    if (bufSize > 0 && name) {
+      writeStringToMemory(infoname, name);
+      if (length) {{{ makeSetValue('length', '0', 'infoname.length', 'i32') }}};
+    } else {
+      if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
+    }
 
-    if (length) {
-      {{{ makeSetValue('length', '0', 'infoname.length', 'i32') }}};
-    }
-    if (size) {
-      {{{ makeSetValue('size', '0', 'info.size', 'i32') }}};
-    }
-    if (type) {
-      {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
-    }
+    if (size) {{{ makeSetValue('size', '0', 'info.size', 'i32') }}};
+    if (type) {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
   },
 
   glUniform1f__sig: 'vif',
@@ -1852,19 +2437,18 @@ var LibraryGL = {
 #endif
     program = GL.programs[program];
     var info = GLctx.getActiveAttrib(program, index);
+    if (!info) return; // If an error occurs, nothing will be written to length, size and type and name.
 
     var infoname = info.name.slice(0, Math.max(0, bufSize - 1));
-    writeStringToMemory(infoname, name);
+    if (bufSize > 0 && name) {
+      writeStringToMemory(infoname, name);
+      if (length) {{{ makeSetValue('length', '0', 'infoname.length', 'i32') }}};
+    } else {
+      if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
+    }
 
-    if (length) {
-      {{{ makeSetValue('length', '0', 'infoname.length', 'i32') }}};
-    }
-    if (size) {
-      {{{ makeSetValue('size', '0', 'info.size', 'i32') }}};
-    }
-    if (type) {
-      {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
-    }
+    if (size) {{{ makeSetValue('size', '0', 'info.size', 'i32') }}};
+    if (type) {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
   },
 
   glCreateShader__sig: 'ii',
@@ -1921,10 +2505,13 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.shaders, shader, 'glGetShaderSource', 'shader');
 #endif
     var result = GLctx.getShaderSource(GL.shaders[shader]);
+    if (!result) return; // If an error occurs, nothing will be written to length or source.
     result = result.slice(0, Math.max(0, bufSize - 1));
-    writeStringToMemory(result, source);
-    if (length) {
-      {{{ makeSetValue('length', '0', 'result.length', 'i32') }}};
+    if (bufSize > 0 && source) {
+      writeStringToMemory(result, source);
+      if (length) {{{ makeSetValue('length', '0', 'result.length', 'i32') }}};
+    } else {
+      if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
     }
   },
 
@@ -1945,20 +2532,29 @@ var LibraryGL = {
     // Work around a bug in Chromium which causes getShaderInfoLog to return null
     if (!log) log = '(unknown error)';
     log = log.substr(0, maxLength - 1);
-    writeStringToMemory(log, infoLog);
-    if (length) {
-      {{{ makeSetValue('length', '0', 'log.length', 'i32') }}}
+    if (maxLength > 0 && infoLog) {
+      writeStringToMemory(log, infoLog);
+      if (length) {{{ makeSetValue('length', '0', 'log.length', 'i32') }}};
+    } else {
+      if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
     }
   },
 
   glGetShaderiv__sig: 'viii',
   glGetShaderiv : function(shader, pname, p) {
 #if GL_ASSERTIONS
+    if (!p) {
+      // GLES2 specification does not specify how to behave if p is a null pointer. Since calling this function does not make sense
+      // if p == null, issue a GL error to notify user about it. 
+      Module.printErr('GL_INVALID_VALUE in glGetShaderiv(shader=' + shader + ', pname=' + pname + ', p=0): Function called with null out pointer!');
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
     GL.validateGLObjectID(GL.shaders, shader, 'glGetShaderiv', 'shader');
 #endif
     if (pname == 0x8B84) { // GL_INFO_LOG_LENGTH
       var log = GLctx.getShaderInfoLog(GL.shaders[shader]);
-      // Work around a bug in Chromium which causes getShaderInfoLog to return null
+      // Work around a bug in Chromium which causes getShaderInfoLog to return null: https://code.google.com/p/chromium/issues/detail?id=111337
       if (!log) log = '(unknown error)';
       {{{ makeSetValue('p', '0', 'log.length + 1', 'i32') }}};
     } else {
@@ -1969,6 +2565,13 @@ var LibraryGL = {
   glGetProgramiv__sig: 'viii',
   glGetProgramiv : function(program, pname, p) {
 #if GL_ASSERTIONS
+    if (!p) {
+      // GLES2 specification does not specify how to behave if p is a null pointer. Since calling this function does not make sense
+      // if p == null, issue a GL error to notify user about it. 
+      Module.printErr('GL_INVALID_VALUE in glGetProgramiv(program=' + program + ', pname=' + pname + ', p=0): Function called with null out pointer!');
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
     GL.validateGLObjectID(GL.programs, program, 'glGetProgramiv', 'program');
 #endif
     if (pname == 0x8B84) { // GL_INFO_LOG_LENGTH
@@ -2092,14 +2695,18 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.programs, program, 'glGetProgramInfoLog', 'program');
 #endif
     var log = GLctx.getProgramInfoLog(GL.programs[program]);
-    // Work around a bug in Chromium which causes getProgramInfoLog to return null
-    if (!log) {
-      log = "";
-    }
+    // Work around a bug in Chromium which causes getProgramInfoLog to return null: https://code.google.com/p/chromium/issues/detail?id=111337
+    // Note that this makes glGetProgramInfoLog behavior to be inconsistent. If an error occurs, GL functions should not write anything
+    // to the output parameters, however with this workaround in place, we will always write an empty string out to 'infoLog', even if an
+    // error did occur.
+    if (!log) log = "";
+
     log = log.substr(0, maxLength - 1);
-    writeStringToMemory(log, infoLog);
-    if (length) {
-      {{{ makeSetValue('length', '0', 'log.length', 'i32') }}}
+    if (maxLength > 0 && infoLog) {
+      writeStringToMemory(log, infoLog);
+      if (length) {{{ makeSetValue('length', '0', 'log.length', 'i32') }}};
+    } else {
+      if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
     }
   },
 
@@ -5483,7 +6090,9 @@ var LibraryGL = {
   glRotatef: 'glRotated',
 
   glDrawBuffer: function() { throw 'glDrawBuffer: TODO' },
+#if !USE_WEBGL2
   glReadBuffer: function() { throw 'glReadBuffer: TODO' },
+#endif
 
   glLightfv: function() { throw 'glLightfv: TODO' },
   glLightModelfv: function() { throw 'glLightModelfv: TODO' },
@@ -5627,6 +6236,33 @@ var LibraryGL = {
 #endif
     GLctx.vertexAttribPointer(index, size, type, normalized, stride, ptr);
   },
+
+#if USE_WEBGL2
+  glVertexAttribIPointer__sig: 'viiiii',
+  glVertexAttribIPointer: function(index, size, type, stride, ptr) {
+#if FULL_ES3
+    var cb = GL.currentContext.clientBuffers[index];
+#if ASSERTIONS
+    assert(cb, index);
+#endif
+    if (!GL.currArrayBuffer) {
+      cb.size = size;
+      cb.type = type;
+      cb.normalized = false;
+      cb.stride = stride;
+      cb.ptr = ptr;
+      cb.clientside = true;
+      return;
+    }
+    cb.clientside = false;
+#endif
+#if GL_ASSERTIONS
+    GL.validateVertexAttribPointer(size, type, stride, ptr);
+#endif
+    GLctx.vertexAttribIPointer(index, size, type, stride, ptr);
+  },
+// ~USE_WEBGL2
+#endif
 
   glEnableVertexAttribArray__sig: 'vi',
   glEnableVertexAttribArray: function(index) {

@@ -4403,6 +4403,7 @@ function eliminate(ast, memSafe) {
       var info = tracked[name];
       delete tracked[name];
       var defNode = info.defNode;
+      var value;
       if (!sideEffectFree[name]) {
         if (defNode[0] === 'var') {
           defNode[1].forEach(function(pair) {
@@ -7611,7 +7612,7 @@ function asmLastOpts(ast) {
 
 // Passes table
 
-var minifyWhitespace = false, printMetadata = true, asm = false, asmPreciseF32 = false, last = false;
+var minifyWhitespace = false, printMetadata = true, asm = false, asmPreciseF32 = false, emitJSON = false, last = false;
 
 var passes = {
   // passes
@@ -7642,12 +7643,15 @@ var passes = {
   emterpretify: emterpretify,
   findReachable: findReachable,
   asmLastOpts: asmLastOpts,
+  noop: function() {},
 
   // flags
   minifyWhitespace: function() { minifyWhitespace = true },
   noPrintMetadata: function() { printMetadata = false },
   asm: function() { asm = true },
   asmPreciseF32: function() { asmPreciseF32 = true },
+  emitJSON: function() { emitJSON = true },
+  receiveJSON: function() { }, // handled in a special way, before passes are run
   last: function() { last = true },
 };
 
@@ -7664,13 +7668,22 @@ arguments_ = arguments_.filter(function (arg) {
 
 
 var src = read(arguments_[0]);
-var ast = srcToAst(src);
-//printErr(JSON.stringify(ast)); throw 1;
 generatedFunctions = src.lastIndexOf(GENERATED_FUNCTIONS_MARKER) >= 0;
 var extraInfoStart = src.lastIndexOf('// EXTRA_INFO:')
 if (extraInfoStart > 0) extraInfo = JSON.parse(src.substr(extraInfoStart + 14));
 //printErr(JSON.stringify(extraInfo));
 
+var ast;
+if (arguments_.indexOf('receiveJSON') < 0) {
+  ast = srcToAst(src);
+} else {
+  var commentStart = src.indexOf('//');
+  if (commentStart >= 0) {
+    src = src.substr(0, commentStart); // JSON.parse will error on a trailing comment
+  }
+  ast = JSON.parse(src);
+}
+//printErr('ast: ' + JSON.stringify(ast));
 
 var emitAst = true;
 
@@ -7690,19 +7703,22 @@ if (asm && last) {
 }
 
 if (emitAst) {
-  var js = astToSrc(ast, minifyWhitespace), old;
-  if (asm && last) {
-    js = fixDotZero(js);
+  if (!emitJSON) {
+    var js = astToSrc(ast, minifyWhitespace), old;
+    if (asm && last) {
+      js = fixDotZero(js);
+    }
+    // remove unneeded newlines+spaces, and print
+    do {
+      old = js;
+      js = js.replace(/\n *\n/g, '\n');
+    } while (js != old);
+    print(js);
+    print('\n');
+    print(suffix);
+  } else {
+    print(JSON.stringify(ast));
   }
-
-  // remove unneeded newlines+spaces, and print
-  do {
-    old = js;
-    js = js.replace(/\n *\n/g, '\n');
-  } while (js != old);
-  print(js);
-  print('\n');
-  print(suffix);
 } else {
   //print('/* not printing ast */');
 }

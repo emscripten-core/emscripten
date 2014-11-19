@@ -131,6 +131,14 @@ memory, you can annotate the address:
 
   emscripten_trace_annotate_address_type(model, "UI::Model");
 
+Additionally, some applications may want to associate the size
+of additional storage with an allocation. This can be done via
+:c:func:`emscripten_trace_associate_storage_size`:
+
+.. code-block:: c
+
+  emscripten_trace_associate_storage_size(mesh, mesh->GetTotalMemoryUsage());
+
 Overall Memory Usage
 --------------------
 
@@ -163,6 +171,49 @@ memory usage over time. Logging messages for things that may
 cause large amounts of memory activity, like loading a new
 model or game asset, is very useful when analyzing memory
 usage behavior patterns.
+
+Tasks
+-----
+
+Specific tasks can be recorded and analyzed. A task is typically
+a unit of work that is not repeating. It may be suspended or
+blocked due to having portions performed asynchronously.
+
+An example of a task is loading an asset which usually involves
+chains of callbacks.
+
+The application should keep track of task IDs (integers) and
+ensure that they are unique.
+
+The task ID need not be passed to every trace call involving
+tasks as most calls operate on the current task.
+
+Tasks can be started and stopped with:
+
+.. code-block:: c
+
+  emscripten_trace_task_start(taskID, name);
+  emscripten_trace_task_end();
+
+If a task is suspended / blocked, this can be noted via:
+
+.. code-block:: c
+
+  emscripten_trace_task_suspend("loading via HTTP");
+
+And when it is resumed:
+
+.. code-block:: c
+
+  emscripten_trace_task_resume(taskID, "parsing");
+
+It is common to need to associate additional data with the
+current task for use when examining task data later. An example
+of this would be the URL of an asset that was loaded:
+
+.. code-block:: c
+
+  emscripten_trace_task_associate_data("url", url);
 
 Reporting Errors
 ----------------
@@ -371,6 +422,26 @@ Functions
    stored there. This is used by the server to help breakdown
    what is in memory.
 
+.. c:function:: void emscripten_trace_associate_storage_size(const void *address, int32_t size)
+
+   :param address: Memory address which should be annotated.
+   :type address: void*
+   :param size: Size of the memory associated with this allocation.
+   :type type: int32_t
+   :rtype: void
+
+   Associate an amount of additional storage with this address. This
+   does not represent the size of the allocation itself, but rather
+   associated memory that should be taken into account when looking
+   at the size of this object.
+
+   This associated storage is application specific in nature.
+
+   An example is when an object contains a vector or string, you may
+   want to be aware of that when analyzing memory usage and this
+   provides a way to let the server be aware of that additional
+   storage.
+
 .. c:function:: void emscripten_trace_report_memory_layout(void)
 
    :rtype: void
@@ -401,15 +472,72 @@ Functions
 
    The current timestamp is associated with this data.
 
-   *This is not yet used on the server side.*
-
 .. c:function:: void emscripten_trace_exit_context(void)
 
    :rtype: void
 
    The current timestamp is associated with this data.
 
-   *This is not yet used on the server side.*
+.. c:function:: void emscripten_trace_task_start(int task_id, const char *name);
+
+   :param task_id: Task ID
+   :type task_id: int
+   :param name: Task name
+   :type name: const char*
+   :rtype: void
+
+   A task is initiated. The task ID should be unique over the lifetime of
+   the application. It should be managed / tracked by the application.
+
+   The current timestamp is associated with this data.
+
+.. c:function:: void emscripten_trace_task_associate_data(const char *key, const char *value);
+
+   :param key: Key
+   :type key: const char*
+   :param value: Value
+   :type value: const char*
+   :rtype: void
+
+   Associate a key / value pair with the current task.
+
+.. c:function:: void emscripten_trace_task_suspend(const char *explanation);
+
+   :param explanation: Why the task is suspending.
+   :type explanation: const char*
+   :rtype: void
+
+   The current task is suspended.
+
+   The explanation should indicate why the task is being suspended
+   so that this information can be made available when viewing the
+   task's history.
+
+   The current timestamp is associated with this data.
+
+.. c:function:: void emscripten_trace_task_resume(int task_id, const char *explanation);
+
+   :param task_id: Task ID
+   :type task_id: int
+   :param explanation: Why the task is being resumed.
+   :type explanation: const char*
+   :rtype: void
+
+   The task identified by ``task_id`` is resumed and made the current task.
+
+   The explanation should indicate what the task is being resumed to do
+   so that this information can be made available when viewing the task's
+   history.
+
+   The current timestamp is associated with this data.
+
+.. c:function:: void emscripten_trace_task_end(void);
+
+   :rtype: void
+
+   The current task is ended.
+
+   The current timestamp is associated with this data.
 
 .. c:function:: void emscripten_trace_close(void)
 

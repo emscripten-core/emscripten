@@ -1,6 +1,6 @@
 import os, shutil, logging
 
-VERSION = 2
+VERSION = 3
 
 def get(ports, settings, shared):
   if settings.USE_SDL_IMAGE == 2:

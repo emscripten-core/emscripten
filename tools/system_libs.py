@@ -11,7 +11,8 @@ def call_process(cmd):
   proc = Popen(cmd, stdout=stdout, stderr=stderr)
   proc.communicate()
   if proc.returncode != 0:
-    raise CalledProcessError(proc.returncode, cmd)
+    # Deliberately do not use CalledProcessError, see issue #2944
+    raise Exception('Command \'%s\' returned non-zero exit status %s' % (cmd, proc.returncode))
 
 CORES = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
 

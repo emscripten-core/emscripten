@@ -468,7 +468,9 @@ process(sys.argv[1])
     # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
     if js_engines is None:
       js_engines = JS_ENGINES
-    js_engines = filter(lambda engine: engine not in self.banned_js_engines, js_engines)
+    for engine in js_engines: assert type(engine) == list
+    for engine in self.banned_js_engines: assert type(engine) == list
+    js_engines = filter(lambda engine: engine[0] not in map(lambda engine: engine[0], self.banned_js_engines), js_engines)
     if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
     for engine in js_engines:
       js_output = self.run_generated_code(engine, filename + '.o.js', args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)

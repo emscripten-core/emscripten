@@ -1068,7 +1068,9 @@ mergeInto(LibraryManager.library, {
       if (!stream.seekable || !stream.stream_ops.llseek) {
         throw new FS.ErrnoError(ERRNO_CODES.ESPIPE);
       }
-      return stream.stream_ops.llseek(stream, offset, whence);
+      stream.position = stream.stream_ops.llseek(stream, offset, whence);
+      stream.ungotten = [];
+      return stream.position;
     },
     read: function(stream, buffer, offset, length, position) {
       if (length < 0 || position < 0) {

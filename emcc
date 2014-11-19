@@ -229,7 +229,9 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
         yield el
       idx += 1
 
-  cmd = [compiler] + list(filter_emscripten_options(sys.argv[1:]))
+  if compiler == shared.EMCC: compiler = [shared.PYTHON, shared.EMCC]
+  else: compiler = [compiler] 
+  cmd = compiler + list(filter_emscripten_options(sys.argv[1:]))
   if not use_js: cmd += shared.EMSDK_OPTS + ['-D__EMSCRIPTEN__', '-DEMSCRIPTEN']
   if use_js: cmd += ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'] # configure tests should fail when an undefined symbol exists
 
@@ -247,10 +249,8 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
           cmd[i+1] += '.js'
         target = cmd[i+1]
         break
-    print 't1', target
     if not target:
       target = 'a.out.js'
-    print 't2', target, only_object
     os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = '1'
     ret = subprocess.call(cmd)
     os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = ''
@@ -258,13 +258,14 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
     if target.endswith('.js'):
       shutil.copyfile(target, target[:-3])
       target = target[:-3]
-    src = open(target).read()
-    full_node = ' '.join(shared.listify(shared.NODE_JS))
-    if os.path.sep not in full_node:
-      full_node = '/usr/bin/' + full_node # TODO: use whereis etc. And how about non-*NIX?
-    open(target, 'w').write('#!' + full_node + '\n' + src) # add shebang
-    import stat
-    os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable
+    if not target.endswith(BITCODE_ENDINGS):
+      src = open(target).read()
+      full_node = ' '.join(shared.NODE_JS)
+      if os.path.sep not in full_node:
+        full_node = '/usr/bin/' + full_node # TODO: use whereis etc. And how about non-*NIX?
+      open(target, 'w').write('#!' + full_node + '\n' + src) # add shebang
+      import stat
+      os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable
     exit(ret)
 
 if os.environ.get('EMMAKEN_COMPILER'):
@@ -1048,6 +1049,7 @@ try:
     args = newargs + shared.EMSDK_CXX_OPTS + headers
     if specified_target:
       args += ['-o', specified_target]
+    args = system_libs.process_args(args, shared.Settings)
     logging.debug("running (for precompiled headers): " + call + ' ' + ' '.join(args))
     execute([call] + args) # let compiler frontend print directly, so colors are saved (PIPE kills that)
     sys.exit(0)
@@ -1368,37 +1370,72 @@ try:
   js_optimizer_extra_info = {}
   js_optimizer_queue_history = []
   js_optimizer_blacklist = (os.environ.get('EMCC_JSOPT_BLACKLIST') or '').split(',')
-  def flush_js_optimizer_queue():
+  minify_whitespace = False
+
+  def flush_js_optimizer_queue(title='js_opts'):
     global final, js_optimizer_queue, js_optimizer_extra_info, js_optimizer_queue_history
 
     js_optimizer_queue = filter(lambda p: p not in js_optimizer_blacklist, js_optimizer_queue)
 
-    if len(js_optimizer_extra_info) == 0:
+    if js_optimizer_extra_info is not None and len(js_optimizer_extra_info) == 0:
       js_optimizer_extra_info = None
+
     if len(js_optimizer_queue) > 0 and not(not shared.Settings.ASM_JS and len(js_optimizer_queue) == 1 and js_optimizer_queue[0] == 'last'):
 
-      def add_opt_args(args):
+      def run_passes(passes, title, just_split, just_concat):
+        global final, minify_whitespace, emit_symbol_map, target
         if shared.Settings.ASM_JS:
-          args = ['asm'] + args
+          passes = ['asm'] + passes
           if shared.Settings.PRECISE_F32:
-            args = ['asmPreciseF32'] + args
-        return args
-
-      if DEBUG != '2':
-        js_optimizer_queue = add_opt_args(js_optimizer_queue)
-        logging.debug('applying js optimization passes: %s', js_optimizer_queue)
-        final = shared.Building.js_optimizer(final, js_optimizer_queue, jcache, debug_level >= 4, js_optimizer_extra_info)
+            passes = ['asmPreciseF32'] + passes
+        if emit_symbol_map and 'minifyNames' in passes:
+          passes += ['symbolMap='+target+'.symbols']
+        if minify_whitespace:
+          passes += ['minifyWhitespace']
+        logging.debug('applying js optimization passes: %s', passes)
+        final = shared.Building.js_optimizer(final, passes, jcache, debug_level >= 4, js_optimizer_extra_info, just_split=just_split, just_concat=just_concat)
         js_transform_tempfiles.append(final)
-        if DEBUG: save_intermediate('js_opts')
+        if DEBUG: save_intermediate(title, suffix='js' if 'emitJSON' not in passes else 'json')
+
+      passes = js_optimizer_queue[:]
+
+      if DEBUG != '2' or len(passes) < 2:
+        # by assumption, our input is JS, and our output is JS. If a pass is going to run in the native optimizer in C++, then we
+        # must give it JSON and receive from it JSON
+        chunks = []
+        curr = []
+        native = False
+        for p in passes:
+          if not shared.js_optimizer.use_native(p, source_map=debug_level >= 4):
+            if native:
+              chunks.append(['receiveJSON'] + curr + ['emitJSON'])
+              curr = []
+              native = False
+              curr.append('receiveJSON')
+            curr.append(p)
+          else: # p is native
+            if not native:
+              curr.append('emitJSON')
+              chunks.append(curr)
+              curr = []
+            native = True
+            curr.append(p)
+        if len(curr) > 0:
+          if native:
+            curr = ['receiveJSON'] + curr + ['emitJSON']
+          chunks.append(curr)
+          if native:
+            chunks.append(['receiveJSON'])
+        if len(chunks) == 1:
+          run_passes(chunks[0], title, just_split=False, just_concat=False)
+        else:
+          for i in range(len(chunks)):
+            run_passes(chunks[i], 'js_opts_' + str(i), just_split='receiveJSON' in chunks[i], just_concat='emitJSON' in chunks[i])
       else:
-        for name in js_optimizer_queue:
-          passes = add_opt_args([name])
-          if shared.Settings.ASM_JS:
-            passes = ['asm'] + passes
-          logging.debug('applying js optimization pass: %s', passes)
-          final = shared.Building.js_optimizer(final, passes, jcache, debug_level >= 4, js_optimizer_extra_info)
-          js_transform_tempfiles.append(final)
-          save_intermediate(name)
+        # DEBUG 2, run each pass seperately
+        for p in passes:
+          js_optimizer_queue = [p]
+          flush_js_optimizer_queue(p)
       js_optimizer_queue_history += js_optimizer_queue
       js_optimizer_queue = []
     js_optimizer_extra_info = {}
@@ -1408,9 +1445,7 @@ try:
 
     if DEBUG == '2':
       # Clean up the syntax a bit
-      final = shared.Building.js_optimizer(final, [], jcache, debug_level >= 4)
-      js_transform_tempfiles.append(final)
-      if DEBUG: save_intermediate('pretty')
+      js_optimizer_queue += ['noop']
 
     def get_eliminate():
       if shared.Settings.ALLOW_MEMORY_GROWTH:
@@ -1453,8 +1488,9 @@ try:
     if opt_level >= 2:
       if debug_level < 2 and shared.Settings.ASM_JS and not closure == 2:
         js_optimizer_queue += ['minifyNames']
-        if emit_symbol_map: js_optimizer_queue += ['symbolMap='+target+'.symbols']
-      if debug_level == 0: js_optimizer_queue += ['minifyWhitespace']
+      if debug_level == 0:
+        global minify_whitespace
+        minify_whitespace = True
 
     if shared.Settings.ASM_JS:
       if closure == 1:

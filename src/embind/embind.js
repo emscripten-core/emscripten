@@ -769,7 +769,7 @@ var LibraryEmbind = {
      * isn't very helpful.  Using IMVU.createNamedFunction addresses the issue.  Doublely-unfortunately, there's no way
      * to write a test for this behavior.  -NRD 2013.02.22
      */
-    var dummy = createNamedFunction(constructor.name, function(){});
+    var dummy = createNamedFunction(constructor.name || 'unknownFunctionName', function(){});
     dummy.prototype = constructor.prototype;
     var obj = new dummy;
 
@@ -901,9 +901,27 @@ var LibraryEmbind = {
   $requireFunction__deps: ['$readLatin1String', '$throwBindingError'],
   $requireFunction: function(signature, rawFunction) {
     signature = readLatin1String(signature);
+
+    function makeDynCaller(dynCall) {
+        var args = [];
+        for (var i = 1; i < signature.length; ++i) {
+            args.push('a' + i);
+        }
+
+        var name = 'dynCall_' + signature + '_' + rawFunction;
+        var body = 'return function ' + name + '(' + args.join(', ') + ') {\n';
+        body    += '    return dynCall(rawFunction' + (args.length ? ', ' : '') + args.join(', ') + ');\n';
+        body    += '};\n';
+
+        return (new Function('dynCall', 'rawFunction', body))(dynCall, rawFunction);
+    }
+
     var fp;
-    // asm.js does not define FUNCTION_TABLE
-    if (typeof FUNCTION_TABLE === "undefined") {
+    if (Module['FUNCTION_TABLE_' + signature] !== undefined) {
+        fp = Module['FUNCTION_TABLE_' + signature][rawFunction];
+    } else if (typeof FUNCTION_TABLE !== "undefined") {
+        fp = FUNCTION_TABLE[rawFunction];
+    } else {
         // asm.js does not give direct access to the function tables,
         // and thus we must go through the dynCall interface which allows
         // calling into a signature's function table by pointer value.
@@ -913,9 +931,6 @@ var LibraryEmbind = {
         // This has three main penalties:
         // - dynCall is another function call in the path from JavaScript to C++.
         // - JITs may not predict through the function table indirection at runtime.
-        // - Function.prototype.bind generally benchmarks poorly relative to
-        //   function objects, but using 'arguments' would confound JITs and
-        //   possibly allocate.
         var dc = asm['dynCall_' + signature];
         if (dc === undefined) {
             // We will always enter this branch if the signature
@@ -927,9 +942,7 @@ var LibraryEmbind = {
                 throwBindingError("No dynCall invoker for signature: " + signature);
             }
         }
-        fp = dc.bind(undefined, rawFunction);
-    } else {
-        fp = FUNCTION_TABLE[rawFunction];
+        fp = makeDynCaller(dc);
     }
 
     if (typeof fp !== "function") {

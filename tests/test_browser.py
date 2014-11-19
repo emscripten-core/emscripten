@@ -1620,6 +1620,9 @@ void *getBindBuffer() {
   def test_sdl_canvas_twice(self):
     self.btest('sdl_canvas_twice.c', reference='sdl_canvas_twice.png')
 
+  def test_sdl_set_clip_rect(self):
+    self.btest('sdl_set_clip_rect.c', reference='sdl_set_clip_rect.png')
+
   def test_sdl_maprgba(self):
     self.btest('sdl_maprgba.c', reference='sdl_maprgba.png', reference_slack=3)
 
@@ -2042,6 +2045,9 @@ open(filename, 'w').write(replaced)
 
   def test_glfw3(self):
     self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3'], expected='1')
+
+  def test_glfw3_events(self):
+    self.btest(path_from_root('tests', 'glfw3_events.c'), args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3'], expected='1')
 
   def test_asm_swapping(self):
     self.clear()

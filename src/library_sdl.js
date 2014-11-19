@@ -269,6 +269,27 @@ var LibrarySDL = {
       };
     },
 
+    updateRect: function(rect, r) {
+      {{{ makeSetValue('rect', C_STRUCTS.SDL_Rect.x, 'r.x', 'i32') }}};
+      {{{ makeSetValue('rect', C_STRUCTS.SDL_Rect.y, 'r.y', 'i32') }}};
+      {{{ makeSetValue('rect', C_STRUCTS.SDL_Rect.w, 'r.w', 'i32') }}};
+      {{{ makeSetValue('rect', C_STRUCTS.SDL_Rect.h, 'r.h', 'i32') }}};
+    },
+
+    intersectionOfRects: function(first, second) {
+      var leftX = Math.max(first.x, second.x);
+      var leftY = Math.max(first.y, second.y);
+      var rightX = Math.min(first.x + first.w, second.x + second.w);
+      var rightY = Math.min(first.y + first.h, second.y + second.h);
+
+      return {
+        x: leftX,
+        y: leftY,
+        w: Math.max(leftX, rightX) - leftX,
+        h: Math.max(leftY, rightY) - leftY
+      }
+    },
+
     checkPixelFormat: function(fmt) {
 #if ASSERTIONS
       // Canvas screens are always RGBA.
@@ -455,7 +476,20 @@ var LibrarySDL = {
       if (dstrect) {
         dr = SDL.loadRect(dstrect);
       } else {
-        dr = { x: 0, y: 0, w: -1, h: -1 };
+        dr = { x: 0, y: 0, w: srcData.width, h: srcData.height };
+      }
+      if (dstData.clipRect) {
+        var widthScale = (!scale || sr.w === 0) ? 1 : sr.w / dr.w;
+        var heightScale = (!scale || sr.h === 0) ? 1 : sr.h / dr.h;
+        
+        dr = SDL.intersectionOfRects(dstData.clipRect, dr);
+        
+        sr.w = dr.w * widthScale;
+        sr.h = dr.h * heightScale;
+        
+        if (dstrect) {
+          SDL.updateRect(dstrect, dr);
+        }
       }
       var blitw, blitr;
       if (scale) {
@@ -1034,6 +1068,15 @@ var LibrarySDL = {
       return ret;
     },
 
+    setPannerPosition: function(info, x, y, z) {
+      if (!info) return 0;
+      if (info.audio) {
+        if (info.audio.webAudioPannerNode)
+            info.audio.webAudioPannerNode['setPosition'](x, y, z);
+      }
+      return ret;
+    },
+
     // Plays out an SDL audio resource that was loaded with the Mix_Load APIs, when using Web Audio..
     playWebAudio: function(audio) {
       if (!audio) return;
@@ -1050,13 +1093,19 @@ var LibrarySDL = {
         audio.webAudioNode = SDL.audioContext['createBufferSource']();
         audio.webAudioNode['buffer'] = webAudio.decodedBuffer;
         audio.webAudioNode['loop'] = audio.loop;
-        audio.webAudioNode['onended'] = function() { audio.onended(); } // For <media> element compatibility, route the onended signal to the instance.
+        audio.webAudioNode['onended'] = function() { audio['onended'](); } // For <media> element compatibility, route the onended signal to the instance.
+
+        audio.webAudioPannerNode = SDL.audioContext['createPanner']();
+        audio.webAudioPannerNode['panningModel'] = 'equalpower';
 
         // Add an intermediate gain node to control volume.
         audio.webAudioGainNode = SDL.audioContext['createGain']();
         audio.webAudioGainNode['gain']['value'] = audio.volume;
-        audio.webAudioNode['connect'](audio.webAudioGainNode);
+
+        audio.webAudioNode['connect'](audio.webAudioPannerNode);
+        audio.webAudioPannerNode['connect'](audio.webAudioGainNode);
         audio.webAudioGainNode['connect'](SDL.audioContext['destination']);
+
         audio.webAudioNode['start'](0, audio.currentPosition);
         audio.startTime = SDL.audioContext['currentTime'] - audio.currentPosition;
       } catch(e) {
@@ -1756,6 +1805,24 @@ var LibrarySDL = {
   SDL_LowerBlit: 'SDL_UpperBlit',
   SDL_LowerBlitScaled: 'SDL_UpperBlitScaled',
 
+  SDL_GetClipRect: function(surf, rect) {
+    assert(rect);
+
+    var surfData = SDL.surfaces[surf];
+    var r = surfData.clipRect || { x: 0, y: 0, w: surfData.width, h: surfData.height };
+    SDL.updateRect(rect, r);
+  },
+
+  SDL_SetClipRect: function(surf, rect) {
+    var surfData = SDL.surfaces[surf];
+
+    if (rect) {
+      surfData.clipRect = SDL.intersectionOfRects({ x: 0, y: 0, w: surfData.width, h: surfData.height }, SDL.loadRect(rect));
+    } else {
+      delete surfData.clipRect;
+    }
+  },
+
   SDL_FillRect: function(surf, rect, color) {
     var surfData = SDL.surfaces[surf];
     assert(!surfData.locked); // but we could unlock and re-lock if we must..
@@ -1768,6 +1835,15 @@ var LibrarySDL = {
     }
 
     var r = rect ? SDL.loadRect(rect) : { x: 0, y: 0, w: surfData.width, h: surfData.height };
+
+    if (surfData.clipRect) {
+      r = SDL.intersectionOfRects(surfData.clipRect, r);
+
+      if (rect) {
+        SDL.updateRect(rect, r);
+      }
+    }
+
     surfData.ctx.save();
     surfData.ctx.fillStyle = SDL.translateColorToCSSRGBA(color);
     surfData.ctx.fillRect(r.x, r.y, r.w, r.h);
@@ -2435,8 +2511,18 @@ var LibrarySDL = {
     return SDL.setGetVolume(SDL.channels[channel], volume);
   },
 
-  Mix_SetPanning: function() {
-    return 0; // error
+// Note: Mix_SetPanning requires WebAudio (file loaded from memory).
+  Mix_SetPanning: function(channel, left, right) {
+    // SDL API uses [0-255], while PannerNode has an (x, y, z) position.
+
+    // Normalizing.
+    left /= 255;
+    right /= 255;
+
+    // Set the z coordinate a little forward, otherwise there won't be any
+    // smooth transition between left and right.
+    SDL.setPannerPosition(SDL.channels[channel], right - left, 0, 0.1);
+    return 1;
   },
 
   Mix_LoadWAV_RW: function(rwopsID, freesrc) {
@@ -2828,6 +2914,7 @@ var LibrarySDL = {
   TTF_RenderText_Blended: 'TTF_RenderText_Solid', // XXX ignore blending vs. solid
   TTF_RenderText_Shaded: 'TTF_RenderText_Solid', // XXX ignore blending vs. solid
   TTF_RenderUTF8_Solid: 'TTF_RenderText_Solid',
+  TTF_SizeUTF8: 'TTF_SizeText',
 
   TTF_SizeText: function(font, text, w, h) {
     var fontData = SDL.fonts[font];
@@ -2838,6 +2925,27 @@ var LibrarySDL = {
       {{{ makeSetValue('h', '0', 'fontData.size', 'i32') }}};
     }
     return 0;
+  },
+
+  TTF_GlyphMetrics: function(font, ch, minx, maxx, miny, maxy, advance) {
+    var fontData = SDL.fonts[font];
+    var width = SDL.estimateTextWidth(fontData,  String.fromCharCode(ch));
+    
+    if (advance) {
+      {{{ makeSetValue('advance', '0', 'width', 'i32') }}};
+    }
+    if (minx) {
+      {{{ makeSetValue('minx', '0', '0', 'i32') }}}; 
+    }
+    if (maxx) {
+      {{{ makeSetValue('maxx', '0', 'width', 'i32') }}}; 
+    }
+    if (miny) {
+      {{{ makeSetValue('miny', '0', '0', 'i32') }}}; 
+    }
+    if (maxy) {
+      {{{ makeSetValue('maxy', '0', 'fontData.size', 'i32') }}}; 
+    }
   },
 
   TTF_FontAscent: function(font) {
@@ -3267,4 +3375,3 @@ var LibrarySDL = {
 
 autoAddDeps(LibrarySDL, '$SDL');
 mergeInto(LibraryManager.library, LibrarySDL);
-

@@ -391,6 +391,7 @@ var cwrap, ccall;
     return ret;
   }
 
+#if NO_DYNAMIC_EXECUTION == 0
   var sourceRegex = /^function\s*\(([^)]*)\)\s*{\s*([^*]*?)[\s;]*(?:return\s*(.*?)[;\s]*)?}$/;
   function parseJSFunc(jsfunc) {
     // Match the body and the return value of a javascript function source
@@ -449,12 +450,21 @@ var cwrap, ccall;
       funcstr += JSsource['stackRestore'].body + ';';
     }
     funcstr += 'return ret})';
-#if NO_DYNAMIC_EXECUTION == 0
     return eval(funcstr);
-#else
-    abort('NO_DYNAMIC_EXECUTION was set, cannot eval - ccall is not functional');
-#endif
   };
+#else
+  // NO_DYNAMIC_EXECUTION is on, so we can't use the fast version of cwrap.
+  // Fall back to returning a bound version of ccall.
+  cwrap = function cwrap(ident, returnType, argTypes) {
+    return function() {
+#if ASSERTIONS
+      Runtime.warnOnce('NO_DYNAMIC_EXECUTION was set, '
+                     + 'using slow cwrap implementation');
+#endif
+      return ccall(ident, returnType, argTypes, arguments);
+    }
+  }
+#endif
 })();
 Module["cwrap"] = cwrap;
 Module["ccall"] = ccall;
@@ -634,7 +644,7 @@ function allocate(slab, types, allocator, ptr) {
 Module['allocate'] = allocate;
 
 function Pointer_stringify(ptr, /* optional */ length) {
-  if (length === 0) return '';
+  if (length === 0 || !ptr) return '';
   // TODO: use TextDecoder
   // Find the length, and check for UTF while doing so
   var hasUtf = false;
@@ -1181,11 +1191,6 @@ function preMain() {
 }
 
 function exitRuntime() {
-#if ASSERTIONS
-  if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
-    Module.printErr('Exiting runtime. Any attempt to access the compiled C code may fail from now. If you want to keep the runtime alive, set Module["noExitRuntime"] = true or build with -s NO_EXIT_RUNTIME=1');
-  }
-#endif
   callRuntimeCallbacks(__ATEXIT__);
   runtimeExited = true;
 }

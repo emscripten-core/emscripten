@@ -33,7 +33,9 @@ class Cache:
     if os.path.exists(cachename):
       return cachename
     self.ensure()
-    shutil.copyfile(creator(), cachename)
+    temp = creator()
+    if temp != cachename:
+      shutil.copyfile(temp, cachename)
     return cachename
 
 # JS-specific cache. We cache the results of compilation and optimization,

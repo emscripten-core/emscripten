@@ -476,6 +476,65 @@ module({
             assert.equal(true, cm.emval_test_not(false));
         });
 
+        test("val.is_undefined() is functional",function() {
+            assert.equal(true, cm.emval_test_is_undefined(undefined));
+            assert.equal(false, cm.emval_test_is_undefined(true));
+            assert.equal(false, cm.emval_test_is_undefined(false));
+            assert.equal(false, cm.emval_test_is_undefined(null));
+            assert.equal(false, cm.emval_test_is_undefined({}));
+        });
+
+        test("val.is_null() is functional",function() {
+            assert.equal(true, cm.emval_test_is_null(null));
+            assert.equal(false, cm.emval_test_is_null(true));
+            assert.equal(false, cm.emval_test_is_null(false));
+            assert.equal(false, cm.emval_test_is_null(undefined));
+            assert.equal(false, cm.emval_test_is_null({}));
+        });
+
+        test("val.is_true() is functional",function() {
+            assert.equal(true, cm.emval_test_is_true(true));
+            assert.equal(false, cm.emval_test_is_true(false));
+            assert.equal(false, cm.emval_test_is_true(null));
+            assert.equal(false, cm.emval_test_is_true(undefined));
+            assert.equal(false, cm.emval_test_is_true({}));
+        });
+
+        test("val.is_false() is functional",function() {
+            assert.equal(true, cm.emval_test_is_false(false));
+            assert.equal(false, cm.emval_test_is_false(true));
+            assert.equal(false, cm.emval_test_is_false(null));
+            assert.equal(false, cm.emval_test_is_false(undefined));
+            assert.equal(false, cm.emval_test_is_false({}));
+        });
+
+        test("val.equals() is functional",function() {
+            var values = [undefined, null, true, false, {}];
+
+            for(var i=0;i<values.length;++i){
+                var first = values[i];
+                for(var j=i;j<values.length;++j)
+                {
+                    var second = values[j];
+                    /*jshint eqeqeq:false*/
+                    assert.equal((first == second), cm.emval_test_equals(first, second));
+                }
+            }
+        });
+
+        test("val.strictlyEquals() is functional", function() {
+            var values = [undefined, null, true, false, {}];
+
+            for(var i=0;i<values.length;++i){
+                var first = values[i];
+                for(var j=i;j<values.length;++j)
+                {
+                    var second = values[j];
+                    assert.equal(first===second, cm.emval_test_strictly_equals(first, second));
+                }
+            }
+        });
+
         test("can pass booleans as integers", function() {
             assert.equal(1, cm.emval_test_as_unsigned(true));
             assert.equal(0, cm.emval_test_as_unsigned(false));
@@ -520,6 +579,10 @@ module({
 
         test("no memory leak when passing strings in by const reference", function() {
             cm.emval_test_take_and_return_std_string_const_ref("foobar");
+        });
+
+        test("can get global", function(){
+            assert.equal((new Function("return this;"))(), cm.embind_test_getglobal());
         });
 
         test("can create new object", function() {
@@ -1236,6 +1299,21 @@ module({
             assert.throws(cm.BindingError, function() {
                 a.delete();
             });
+        });
+
+        test("returned unique_ptr does not call destructor", function() {
+            var logged = "";
+            var c = new cm.emval_test_return_unique_ptr_lifetime(function (s) { logged += s; });
+            assert.equal("(constructor)", logged);
+            c.delete();
+        });
+
+        test("returned unique_ptr calls destructor on delete", function() {
+            var logged = "";
+            var c = new cm.emval_test_return_unique_ptr_lifetime(function (s) { logged += s; });
+            logged = "";
+            c.delete();
+            assert.equal("(destructor)", logged);
         });
 
         test("StringHolder", function() {

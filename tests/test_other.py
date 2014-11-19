@@ -192,11 +192,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         (['-O2'], lambda generated: '// The Module object' not in generated, 'with opts, no comments in shell code'),
         (['-O2', '-g2'], lambda generated: '// The Module object' not in generated, 'with -g2, no comments in shell code'),
         (['-O2', '-g3'], lambda generated: '// The Module object' in generated, 'with -g3, yes comments in shell code'),
-        (['-O2', '--profiling'], lambda generated: '// The Module object' in generated or os.environ.get('EMCC_FAST_COMPILER') == '0', 'with --profiling, yes comments in shell code (in fastcomp)'),
       ]:
         print params, text
         self.clear()
-        if os.environ.get('EMCC_FAST_COMPILER') != '0' and ['disable typed arrays', 'typed arrays 1 selected']: continue
+        if os.environ.get('EMCC_FAST_COMPILER') != '0' and text in ['disable typed arrays', 'typed arrays 1 selected']: continue
         output = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world_loop.cpp'), '-o', 'a.out.js'] + params, stdout=PIPE, stderr=PIPE).communicate()
         assert len(output[0]) == 0, output[0]
         assert os.path.exists('a.out.js'), '\n'.join(output)
@@ -430,7 +429,7 @@ f.close()
 
               # Run through node, if CMake produced a .js file.
               if cmake_outputs[i].endswith('.js'):
-                ret = Popen(listify(NODE_JS) + [tempdirname + '/' + cmake_outputs[i]], stdout=PIPE).communicate()[0]
+                ret = Popen(NODE_JS + [tempdirname + '/' + cmake_outputs[i]], stdout=PIPE).communicate()[0]
                 self.assertTextDataIdentical(open(cmakelistsdir + '/out.txt', 'r').read().strip(), ret.strip())
             finally:
               os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
@@ -1238,7 +1237,7 @@ int f() {
     ''')
     open('my_test.input', 'w').write('abc')
     Building.emcc('main.cpp', ['--embed-file', 'my_test.input'], output_filename='a.out.js')
-    self.assertContained('zyx', Popen(listify(JS_ENGINES[0]) + ['a.out.js'], stdout=PIPE, stderr=PIPE).communicate()[0])
+    self.assertContained('zyx', Popen(JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).communicate()[0])
 
   def test_abspaths(self):
     # Includes with absolute paths are generally dangerous, things like -I/usr/.. will get to system local headers, not our portable ones.
@@ -1910,6 +1909,8 @@ int f() {
        ['asm', 'simplifyExpressions']),
       (path_from_root('tools', 'test-js-optimizer-asm-pre-f32.js'), open(path_from_root('tools', 'test-js-optimizer-asm-pre-output-f32.js')).read(),
        ['asm', 'asmPreciseF32', 'simplifyExpressions', 'optimizeFrounds']),
+      (path_from_root('tools', 'test-js-optimizer-asm-pre-f32.js'), open(path_from_root('tools', 'test-js-optimizer-asm-pre-output-f32-nosimp.js')).read(),
+       ['asm', 'asmPreciseF32', 'optimizeFrounds']),
       (path_from_root('tools', 'test-js-optimizer-asm-last.js'), open(path_from_root('tools', 'test-js-optimizer-asm-last-output.js')).read(),
        ['asm', 'asmLastOpts', 'last']),
       (path_from_root('tools', 'test-js-optimizer-asm-relocate.js'), open(path_from_root('tools', 'test-js-optimizer-asm-relocate-output.js')).read(),
@@ -1931,9 +1932,28 @@ int f() {
       (path_from_root('tools', 'test-js-optimizer-ensureLabelSet.js'), open(path_from_root('tools', 'test-js-optimizer-ensureLabelSet-output.js')).read(),
        ['asm', 'ensureLabelSet']),
     ]:
-      print input
-      output = Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
+      print input, passes
+      # test calling js optimizer
+      print '  js'
+      output = Popen(NODE_JS + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
       self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n'))
+      if js_optimizer.use_native(passes):
+        # test calling native
+        print '  native'
+        self.clear()
+        input_temp = 'temp.js'
+        output_temp = 'output.js'
+        shutil.copyfile(input, input_temp)
+        Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), input_temp, 'emitJSON'], stdin=PIPE, stdout=open(input_temp + '.js', 'w')).communicate()
+        original = open(input).read()
+        if '// EXTRA_INFO:' in original:
+          json = open(input_temp + '.js').read()
+          json += '\n' + original[original.find('// EXTRA_INFO:'):]
+          open(input_temp + '.js', 'w').write(json)
+        output = Popen([js_optimizer.get_native_optimizer(), input_temp + '.js'] + passes, stdin=PIPE, stdout=open(output_temp, 'w')).communicate()[0]
+        Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), output_temp, 'receiveJSON'], stdin=PIPE, stdout=open(output_temp + '.js', 'w')).communicate()
+        output = open(output_temp + '.js').read()
+        self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n'))
 
   def test_m_mm(self):
     open(os.path.join(self.get_dir(), 'foo.c'), 'w').write('''#include <emscripten.h>''')
@@ -2750,8 +2770,7 @@ int main()
         assert ('''unexpected argument type float at index 1 in call to 'doit', should be i32''' in stderr) == asserts, stderr
 
   def test_llvm_lit(self):
-    llvm_src = LLVM_ROOT
-    while not os.path.exists(os.path.join(llvm_src, 'emscripten-version.txt')): llvm_src = os.path.dirname(llvm_src)
+    llvm_src = get_fastcomp_src_dir()
     cmd = [os.path.join(LLVM_ROOT, 'llvm-lit'), '-v', os.path.join(llvm_src, 'test', 'CodeGen', 'JS')]
     print cmd
     p = Popen(cmd)
@@ -3063,7 +3082,6 @@ int main(int argc, char **argv) {
     ''')
     Popen([PYTHON, EMCC, 'src.cpp']).communicate()
     for engine in JS_ENGINES:
-      engine = listify(engine)
       print engine
       process = Popen(engine + ['a.out.js'], stdout=PIPE, stderr=PIPE)
       output = process.communicate()
@@ -4382,4 +4400,36 @@ int main(void) {
       Popen([PYTHON, EMRANLIB, 'libtest.a']).communicate()
       Popen([PYTHON, EMCC, 'z.o', 'libtest.a'] + args).communicate()
       out = run_js('a.out.js', assert_returncode=161)
+
+  def test_require(self):
+    inname = path_from_root('tests', 'hello_world.c')
+    Building.emcc(inname, output_filename='a.out.js')
+    output = Popen(NODE_JS + ['-e', 'require("./a.out.js")'], stdout=PIPE, stderr=PIPE).communicate()
+    assert output == ('hello, world!\n \n', ''), 'expected no output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % output
+
+  def test_native_optimizer(self):
+    old_debug = os.environ.get('EMCC_DEBUG')
+    old_native = os.environ.get('EMCC_NATIVE_OPTIMIZER')
+    try:
+      os.environ['EMCC_DEBUG'] = '1'
+      os.environ['EMCC_NATIVE_OPTIMIZER'] = '1'
+      out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2'], stderr=PIPE).communicate()
+    finally:
+      if old_debug: os.environ['EMCC_DEBUG'] = old_debug
+      else: del os.environ['EMCC_DEBUG']
+      if old_native: os.environ['EMCC_NATIVE_OPTIMIZER'] = old_native
+      else: del os.environ['EMCC_NATIVE_OPTIMIZER']
+    self.assertContained('js optimizer using native', err)
+    assert os.path.exists('a.out.js'), err
+    self.assertContained('hello, world!', run_js('a.out.js'))
+
+  def test_emconfigure_js_o(self):
+    # issue 2994
+    try:
+      os.environ['EMCONFIGURE_JS'] = '1'
+      Popen([PYTHON, path_from_root('emconfigure'), PYTHON, EMCC, '-c', '-o', 'a.o', path_from_root('tests', 'hello_world.c')]).communicate()
+      Popen([PYTHON, EMCC, 'a.o']).communicate()
+      assert 'hello, world!' in run_js(self.in_dir('a.out.js'))
+    finally:
+      del os.environ['EMCONFIGURE_JS']
 
