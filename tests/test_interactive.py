@@ -20,7 +20,7 @@ class interactive(BrowserCore):
     print
 
   def test_html5_fullscreen(self):
-    self.btest(path_from_root('tests', 'test_html5_fullscreen.c'), expected='0', args=['-s', 'EXPORTED_FUNCTIONS=["_requestFullscreen","_enterSoftFullscreen","_main"]'])
+    self.btest(path_from_root('tests', 'test_html5_fullscreen.c'), expected='0', args=['-s', 'EXPORTED_FUNCTIONS=["_requestFullscreen","_enterSoftFullscreen","_main"]', '--shell-file', path_from_root('tests', 'test_html5_fullscreen.html')])
 
   def test_html5_mouse(self):
     self.btest(path_from_root('tests', 'test_html5_mouse.c'), expected='0')
