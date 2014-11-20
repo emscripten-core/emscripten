@@ -27,7 +27,7 @@ void pan() {
   int panning = Mix_SetPanning(channel, left, right);
   assert(panning != 0);
 
-  if (frames > 30 * 100)
+  if (frames > 30 * 10)
       done();
 }
 

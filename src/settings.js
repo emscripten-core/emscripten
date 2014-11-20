@@ -254,7 +254,7 @@ var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js). 
                        // want it back. A simple way to set it in C++ is
                        //   emscripten_run_script("Runtime.debug = ...;");
 var SOCKET_DEBUG = 0; // Log out socket/network data transfer.
-var SOCKET_WEBRTC = 0; // Select socket backend, either webrtc or websockets.
+var SOCKET_WEBRTC = 0; // Select socket backend, either webrtc or websockets. XXX webrtc is not currently tested, may be broken
 
 // As well as being configurable at compile time via the "-s" option the WEBSOCKET_URL and WEBSOCKET_SUBPROTOCOL
 // settings may configured at run time via the Module object e.g.
