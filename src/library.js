@@ -2439,7 +2439,10 @@ LibraryManager.library = {
   fflush: function(stream) {
     // int fflush(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fflush.html
-    // we don't currently perform any user-space buffering of data
+    stream = FS.getStreamFromPtr(stream);
+    if (stream.stream_ops.flush) {
+      stream.stream_ops.flush(stream);
+    }
   },
   fgetc__deps: ['$FS', 'fread'],
   fgetc__postset: '_fgetc.ret = allocate([0], "i8", ALLOC_STATIC);',

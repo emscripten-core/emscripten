@@ -41,9 +41,10 @@ mergeInto(LibraryManager.library, {
       },
       close: function(stream) {
         // flush any pending line data
-        if (stream.tty.output.length) {
-          stream.tty.ops.put_char(stream.tty, {{{ charCode('\n') }}});
-        }
+        stream.tty.ops.flush(stream.tty);
+      },
+      flush: function(stream) {
+        stream.tty.ops.flush(stream.tty);
       },
       read: function(stream, buffer, offset, length, pos /* ignored */) {
         if (!stream.tty || !stream.tty.ops.get_char) {
@@ -123,6 +124,12 @@ mergeInto(LibraryManager.library, {
         }
         return tty.input.shift();
       },
+      flush: function(tty) {
+        if (tty.output && tty.output.length > 0) {
+          Module['print'](tty.output.join(''));
+          tty.output = [];
+        }
+      },
       put_char: function(tty, val) {
         if (val === null || val === {{{ charCode('\n') }}}) {
           Module['print'](tty.output.join(''));
@@ -140,7 +147,13 @@ mergeInto(LibraryManager.library, {
         } else {
           tty.output.push(TTY.utf8.processCChar(val));
         }
-      }
+      },
+      flush: function(tty) {
+        if (tty.output && tty.output.length > 0) {
+          Module['printErr'](tty.output.join(''));
+          tty.output = [];
+        }
+      }      
     }
   }
 });
