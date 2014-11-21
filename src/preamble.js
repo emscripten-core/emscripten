@@ -907,7 +907,7 @@ function demangle(func) {
       return ret + flushList();
     }
   }
-  var final = func;
+  var parsed = func;
   try {
     // Special-case the entry point, since its name differs from other name mangling.
     if (func == 'Object._main' || func == '_main') {
@@ -921,14 +921,14 @@ function demangle(func) {
       case 'n': return 'operator new()';
       case 'd': return 'operator delete()';
     }
-    final = parse();
+    parsed = parse();
   } catch(e) {
-    final += '?';
+    parsed += '?';
   }
-  if (final.indexOf('?') >= 0 && !hasLibcxxabi) {
+  if (parsed.indexOf('?') >= 0 && !hasLibcxxabi) {
     Runtime.warnOnce('warning: a problem occurred in builtin C++ name demangling; build with  -s DEMANGLE_SUPPORT=1  to link in libcxxabi demangling');
   }
-  return final;
+  return parsed;
 }
 
 function demangleAll(text) {
