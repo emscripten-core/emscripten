@@ -1069,12 +1069,12 @@ var LibrarySDL = {
     },
 
     setPannerPosition: function(info, x, y, z) {
-      if (!info) return 0;
+      if (!info) return;
       if (info.audio) {
-        if (info.audio.webAudioPannerNode)
-            info.audio.webAudioPannerNode['setPosition'](x, y, z);
+        if (info.audio.webAudioPannerNode) {
+          info.audio.webAudioPannerNode['setPosition'](x, y, z);
+        }
       }
-      return ret;
     },
 
     // Plays out an SDL audio resource that was loaded with the Mix_Load APIs, when using Web Audio..
