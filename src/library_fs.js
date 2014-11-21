@@ -214,11 +214,11 @@ mergeInto(LibraryManager.library, {
             set: function(val) { val ? this.mode |= writeMode : this.mode &= ~writeMode; }
           },
           isFolder: {
-            get: function() { return FS.isDir(this.mode); },
+            get: function() { return FS.isDir(this.mode); }
           },
           isDevice: {
-            get: function() { return FS.isChrdev(this.mode); },
-          },
+            get: function() { return FS.isChrdev(this.mode); }
+          }
         });
       }
 

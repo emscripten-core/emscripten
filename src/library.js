@@ -5332,7 +5332,7 @@ LibraryManager.library = {
       '%R': '%H:%M',                    // Replaced by the time in 24-hour notation
       '%T': '%H:%M:%S',                 // Replaced by the time
       '%x': '%m/%d/%y',                 // Replaced by the locale's appropriate date representation
-      '%X': '%H:%M:%S',                 // Replaced by the locale's appropriate date representation
+      '%X': '%H:%M:%S'                  // Replaced by the locale's appropriate date representation
     };
     for (var rule in EXPANSION_RULES_1) {
       pattern = pattern.replace(new RegExp(rule, 'g'), EXPANSION_RULES_1[rule]);

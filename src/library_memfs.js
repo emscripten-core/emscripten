@@ -55,7 +55,7 @@ mergeInto(LibraryManager.library, {
               setattr: MEMFS.node_ops.setattr
             },
             stream: FS.chrdev_stream_ops
-          },
+          }
         };
       }
       var node = FS.createNode(parent, name, mode, dev);
