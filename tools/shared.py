@@ -301,8 +301,9 @@ actual_clang_version = None
 def get_clang_version():
   global actual_clang_version
   if actual_clang_version is None:
-    ver = Popen([CLANG, '-v'], stderr=PIPE).communicate()[1].split('\n')[0].split(' ')
-    actual_clang_version = ver[ver.index('version')+1]
+    response = Popen([CLANG, '-v'], stderr=PIPE).communicate()[1]
+    m = re.search(r'[Vv]ersion\s+(\d+\.\d+)', response)
+    actual_clang_version = m and m.group(1)
   return actual_clang_version
 
 def check_clang_version():
