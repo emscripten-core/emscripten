@@ -492,7 +492,7 @@ Functions
 		- *(void*)* : A pointer to ``arg`` (user defined data).
 
 
-.. c:function:: int emscripten_async_wget2(const char* url, const char* file,  const char* requesttype, const char* param, void *arg, em_async_wget2_onload_func onload, em_async_wget2_onstatus_func onerror, em_async_wget2_onstatus_func onprogress)
+.. c:function:: int emscripten_async_wget2(const char* url, const char* file,  const char* requesttype, const char* param, const char* additionalHeader, void *arg, em_async_wget2_onload_func onload, em_async_wget2_onstatus_func onerror, em_async_wget2_onstatus_func onprogress)
 		 
 	Loads a file from a URL asynchronously. 
 	
@@ -510,6 +510,8 @@ Functions
 	:type requesttype: const char* 	
 	:param param: Request parameters for POST requests (see ``requesttype``). The parameters are specified in the same way as they would be in the URL for an equivalent GET request: e.g. ``key=value&key2=value2``.
 	:type param: const char*
+    :param additionalHeader: Request header entries as a Json formatted string for any request type.
+    :type additionalHeader: const char*
 	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
 	:param em_async_wget2_onload_func onload: Callback on successful load of the file. The callback function parameter values are:	
 	
@@ -529,7 +531,7 @@ Functions
 	:returns: A handle to request (``int``) that can be used to :c:func:`abort <emscripten_async_wget2_abort>` the request.
 	
 	
-.. c:function:: int emscripten_async_wget2_data(const char* url, const char* requesttype, const char* param, void *arg, int free, em_async_wget2_data_onload_func onload, em_async_wget2_data_onerror_func onerror, em_async_wget2_data_onprogress_func onprogress)
+.. c:function:: int emscripten_async_wget2_data(const char* url, const char* requesttype, const char* param, const char* additionalHeader, void *arg, int free, em_async_wget2_data_onload_func onload, em_async_wget2_data_onerror_func onerror, em_async_wget2_data_onprogress_func onprogress)
 		 
 	Loads a buffer from a URL asynchronously. 
 	
@@ -547,6 +549,8 @@ Functions
 	:type requesttype: const char*	
 	:param param: Request parameters for POST requests (see ``requesttype``). The parameters are specified in the same way as they would be in the URL for an equivalent GET request: e.g. ``key=value&key2=value2``.
 	:type param: const char*
+    :param additionalHeader: Request header entries as a Json formatted string for any request type.
+    :type additionalHeader: const char*
 	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
 	:param const int free: Tells the runtime whether to free the returned buffer after ``onload`` is complete. If ``false`` freeing the buffer is the receiver's responsibility.
 	:type free: const int
