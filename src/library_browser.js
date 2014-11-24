@@ -758,7 +758,7 @@ mergeInto(LibraryManager.library, {
     }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
   },
 
-  emscripten_async_wget2: function(url, file, request, param, arg, onload, onerror, onprogress) {
+  emscripten_async_wget2: function(url, file, request, param, additionalHeader, arg, onload, onerror, onprogress) {
     var _url = Pointer_stringify(url);
     var _file = Pointer_stringify(file);
     var _request = Pointer_stringify(request);
@@ -812,6 +812,13 @@ mergeInto(LibraryManager.library, {
       http.channel.redirectionLimit = 0;
     } catch (ex) { /* whatever */ }
 
+    try {
+      var additionalHeaderObject = JSON.parse(Pointer_stringify(additionalHeader));
+      for (var entry in additionalHeaderObject) {
+        http.setRequestHeader(entry, additionalHeaderObject[entry]);
+      }
+    } catch (ex) { }
+
     if (_request == "POST") {
       //Send the proper header information along with the request
       http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
@@ -827,7 +834,7 @@ mergeInto(LibraryManager.library, {
     return handle;
   },
 
-  emscripten_async_wget2_data: function(url, request, param, arg, free, onload, onerror, onprogress) {
+  emscripten_async_wget2_data: function(url, request, param, additionalHeader, arg, free, onload, onerror, onprogress) {
     var _url = Pointer_stringify(url);
     var _request = Pointer_stringify(request);
     var _param = Pointer_stringify(param);
@@ -840,7 +847,7 @@ mergeInto(LibraryManager.library, {
 
     // LOAD
     http.onload = function http_onload(e) {
-      if (http.status == 200 || _url.substr(0,4).toLowerCase() != "http") {
+      if (http.status == 200 || http.status == 206 || _url.substr(0,4).toLowerCase() != "http") {
         var byteArray = new Uint8Array(http.response);
         var buffer = _malloc(byteArray.length);
         HEAPU8.set(byteArray, buffer);
@@ -875,6 +882,13 @@ mergeInto(LibraryManager.library, {
       if (http.channel instanceof Ci.nsIHttpChannel)
       http.channel.redirectionLimit = 0;
     } catch (ex) { /* whatever */ }
+
+    try {
+      var additionalHeaderObject = JSON.parse(Pointer_stringify(additionalHeader));
+      for (var entry in additionalHeaderObject) {
+        http.setRequestHeader(entry, additionalHeaderObject[entry]);
+      }
+    } catch (ex) { }
 
     if (_request == "POST") {
       //Send the proper header information along with the request
