@@ -324,6 +324,9 @@ var LibraryGL = {
 #endif
           }
           return; // Do not write anything to the out pointer, since no binary formats are supported.
+#if USE_WEBGL2
+        case 0x87FE: // GL_NUM_PROGRAM_BINARY_FORMATS
+#endif
         case 0x8DF9: // GL_NUM_SHADER_BINARY_FORMATS
           ret = 0;
           break;
