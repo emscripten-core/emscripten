@@ -2439,10 +2439,14 @@ LibraryManager.library = {
   fflush: function(stream) {
     // int fflush(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fflush.html
+
+    /*
+    // Disabled, see https://github.com/kripken/emscripten/issues/2770
     stream = FS.getStreamFromPtr(stream);
     if (stream.stream_ops.flush) {
       stream.stream_ops.flush(stream);
     }
+    */
   },
   fgetc__deps: ['$FS', 'fread'],
   fgetc__postset: '_fgetc.ret = allocate([0], "i8", ALLOC_STATIC);',

@@ -76,6 +76,7 @@
       var Module = {
         gotStdout: false,
         gotStderr: false,
+        gotStdCerr: false,
         preRun: [],
         postRun: [],
 
@@ -97,7 +98,7 @@
             //text = text.replace(/>/g, "&gt;");
             //text = text.replace('\n', '<br>', 'g');
             console.log(text);
-            if (text == 'hello!') { Module.gotStdout = true; if (Module.gotStderr) Module.reportSuccess(); }
+            if (text == 'hello!') { Module.gotStdout = true; if (Module.gotStderr && Module.gotStdCerr) Module.reportSuccess(); }
             if (element) {
               element.value += text + "\n";
               element.scrollTop = element.scrollHeight; // focus on bottom
@@ -106,7 +107,8 @@
         })(),
         printErr: function(text) {
           text = Array.prototype.slice.call(arguments).join(' ');
-          if (text == 'hello from stderr too!') { Module.gotStderr = true; if (Module.gotStdout) Module.reportSuccess(); }
+          if (text == 'hello from stderr too!') { Module.gotStderr = true; if (Module.gotStdout && Module.gotStdCerr) Module.reportSuccess(); }
+          if (text == 'std::cerr in two parts.') { Module.gotStdCerr = true; if (Module.gotStdout && Module.gotStderr) Module.reportSuccess(); }
           if (0) { // XXX disabled for safety typeof dump == 'function') {
             dump(text + '\n'); // fast, straight to the real console
           } else {

@@ -1139,6 +1139,7 @@ keydown(100);keyup(100); // trigger the end
     self.btest('emscripten_get_now.cpp', '1')
 
   def test_fflush(self):
+    return self.skip('Skipping due to https://github.com/kripken/emscripten/issues/2770')
     self.btest('test_fflush.cpp', '0', args=['-s', 'NO_EXIT_RUNTIME=1', '--shell-file', path_from_root('tests', 'test_fflush.html')])
 
   def test_file_db(self):
