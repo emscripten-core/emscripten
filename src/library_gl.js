@@ -813,6 +813,10 @@ var LibraryGL = {
       // possible GL_DEBUG entry point: ctx = wrapDebugGL(ctx);
 
       if (!ctx) return 0;
+      return GL.registerContext(ctx, webGLContextAttributes);
+    },
+
+    registerContext: function(ctx, webGLContextAttributes) {
       var handle = GL.getNewId(GL.contexts);
       var context = {
         handle: handle,
