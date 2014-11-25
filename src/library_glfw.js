@@ -799,7 +799,7 @@ var LibraryGLFW = {
   glfwGetMonitors: function(count) {
     setValue(count, 1, 'i32');
     if (!GLFW.monitors) {
-      GLFW.monitors = allocate(Int32Array([1]), 'i32', ALLOC_NORMAL);
+      GLFW.monitors = allocate([1, 0, 0 , 0], 'i32', ALLOC_NORMAL);
     }
     return GLFW.monitors;
   },
