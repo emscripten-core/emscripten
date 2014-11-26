@@ -329,7 +329,8 @@ process(sys.argv[1])
   def assertContained(self, values, string, additional_info=''):
     if type(values) not in [list, tuple]: values = [values]
     for value in values:
-      if type(string) is not str: string = string()
+      if type(value) is unicode: string = string.decode('UTF-8') # If we have any non-ASCII chars in the expected string, treat the test string from ASCII as UTF8 as well.
+      if type(string) is not str and type(string) is not unicode: string = string()
       if value in string: return # success
     raise Exception("Expected to find '%s' in '%s', diff:\n\n%s\n%s" % (
       limit_size(values[0]), limit_size(string),
