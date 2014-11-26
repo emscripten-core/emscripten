@@ -4931,6 +4931,20 @@ PORT: 3979
     self.emcc_args += ['--js-library', os.path.join(self.get_dir(), 'mylib1.js'), '--js-library', os.path.join(self.get_dir(), 'mylib2.js')]
     self.do_run(open(os.path.join(self.get_dir(), 'main.cpp'), 'r').read(), 'hello from lib!\n*32*\n')
 
+  def test_unicode_js_library(self):
+    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
+      #include <stdio.h>
+      extern "C" {
+        extern void printey();
+      }
+      int main() {
+        printey();
+        return 0;
+      }
+    ''')
+    self.emcc_args += ['--js-library', path_from_root('tests', 'unicode_library.js')]
+    self.do_run(open(os.path.join(self.get_dir(), 'main.cpp'), 'r').read(), u'Unicode snowman \u2603 says hello!')
+
   def test_constglobalunion(self):
     if self.emcc_args is None: return self.skip('needs emcc')
     self.emcc_args += ['-s', 'EXPORT_ALL=1']
