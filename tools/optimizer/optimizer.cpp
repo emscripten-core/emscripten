@@ -855,7 +855,10 @@ int measureCost(Ref ast) {
 // Params
 //==================
 
-bool preciseF32 = false;
+bool preciseF32 = false,
+     receiveJSON = false,
+     emitJSON = false,
+     minifyWhitespace = false;
 
 //=====================
 // Optimization passes
@@ -2675,6 +2678,16 @@ void minifyLocals(Ref ast) {
 #include <string.h> // only use this for param checking
 
 int main(int argc, char **argv) {
+  // Read directives
+  for (int i = 2; i < argc; i++) {
+    std::string str(argv[i]);
+    if (str == "asm") {} // the only possibility for us
+    else if (str == "asmPreciseF32") preciseF32 = true;
+    else if (str == "receiveJSON") receiveJSON = true;
+    else if (str == "emitJSON") emitJSON = true;
+    else if (str == "minifyWhitespace") minifyWhitespace = true;
+  }
+
   // Read input file
   FILE *f = fopen(argv[1], "r");
   assert(f);
@@ -2704,8 +2717,8 @@ int main(int argc, char **argv) {
   for (int i = 2; i < argc; i++) {
     std::string str(argv[i]);
     if (str == "asm") {} // the default for us
-    else if (str == "asmPreciseF32") preciseF32 = true;
-    else if (str == "receiveJSON" || str == "emitJSON") {} // the default for us
+    else if (str == "asmPreciseF32") {}
+    else if (str == "receiveJSON" || str == "emitJSON") {}
     else if (str == "eliminate") eliminate(doc);
     else if (str == "eliminateMemSafe") eliminateMemSafe(doc);
     else if (str == "simplifyExpressions") simplifyExpressions(doc);
