@@ -395,10 +395,22 @@ class Parser {
         if (next.str == CASE) {
           src += next.size;
           src = skipSpace(src);
+          NodeRef arg;
           Frag value(src);
-          assert(value.type == NUMBER);
-          Builder::appendCaseToSwitch(ret, value.num);
-          src += value.size;
+          if (value.type == NUMBER) {
+            arg = parseFrag(value);
+            src += value.size;
+          } else {
+            assert(value.type == OPERATOR);
+            assert(value.str == MINUS);
+            src += value.size;
+            src = skipSpace(src);
+            Frag value2(src);
+            assert(value2.type == NUMBER);
+            arg = Builder::makePrefix(MINUS, parseFrag(value2));
+            src += value2.size;
+          }
+          Builder::appendCaseToSwitch(ret, arg);
           src = skipSpace(src);
           assert(*src == ':');
           src++;
