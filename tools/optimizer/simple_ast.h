@@ -1,10 +1,3 @@
-/*
- * Extremely minimal JSON, just enough to manipulate an AST in the format the JS optimizer wants: arrays, strings, numbers, bools (no objects, no non-ascii, etc.).
- * Optimized for fast parsing and also manipulation of the AST.
- * Uses shared_ptr for simplicity, basically everywhere. TODO: measure impact
- */
-
-//#define NDEBUG
 
 #include <assert.h>
 #include <stdlib.h>
@@ -19,11 +12,14 @@
 #include <unordered_set>
 #include <unordered_map>
 
+#include "parser.h"
+
 #define err(str) fprintf(stderr, str "\n");
 #define errv(str, ...) fprintf(stderr, str "\n", __VA_ARGS__);
 #define printErr err
 
-struct IString;
+using namespace cashew;
+
 class Ref;
 struct Value;
 
@@ -64,92 +60,7 @@ struct Arena {
   Ref alloc();
 };
 
-Arena arena;
-
-// Interned String type, 100% interned on creation. Comparisons are always just a pointer comparison
-
-struct IString {
-  const char *str;
-
-  static size_t hash_c(const char *str) { // TODO: optimize?
-    uint64_t ret = 0;
-    while (*str) {
-      ret = (ret*6364136223846793005ULL) + *str;
-      str++;
-    }
-    return (size_t)ret;
-  }
-
-  class CStringHash : public std::hash<const char *> {
-  public:
-    size_t operator()(const char *str) const {
-      return IString::hash_c(str);
-    }
-  };
-  class CStringEqual : public std::equal_to<const char *> {
-  public:
-    bool operator()(const char *x, const char *y) const {
-      return strcmp(x, y) == 0;
-    }
-  };
-  typedef std::unordered_set<const char *, CStringHash, CStringEqual> StringSet;
-  static StringSet strings;
-
-  IString() : str(nullptr) {}
-  IString(const char *s) {
-    set(s);
-  }
-
-  void set(const char *s) {
-    auto result = strings.insert(s); // if already present, does nothing
-    str = *(result.first);
-  }
-
-  void set(const IString &s) {
-    str = s.str;
-  }
-
-  bool operator==(const IString& other) const {
-    //assert((str == other.str) == !strcmp(str, other.str));
-    return str == other.str; // fast!
-  }
-  bool operator!=(const IString& other) const {
-    //assert((str == other.str) == !strcmp(str, other.str));
-    return str != other.str; // fast!
-  }
-
-  char operator[](int x) {
-    return str[x];
-  }
-
-  bool operator!() { // no string, or empty string
-    return !str || str[0] == 0;
-  }
-
-  const char *c_str() const { return str; }
-
-  bool isNull() { return str == nullptr; }
-};
-
-IString::StringSet IString::strings;
-
-// Utilities for creating hashmaps/sets over IStrings
-
-namespace std {
-
-  template <> struct hash<IString> : public unary_function<IString, size_t> {
-    size_t operator()(const IString& str) const {
-      return IString::hash_c(str.c_str());
-    }
-  };
-
-  template <> struct equal_to<IString> : public binary_function<IString, IString, bool> {
-    bool operator()(const IString& x, const IString& y) const {
-      return x == y;
-    }
-  };
-
-}
+extern Arena arena;
 
 // Main value type
 struct Value {
@@ -433,6 +344,10 @@ struct Value {
         os << std::setprecision(17) << num; // doubles can have 17 digits of precision
         break;
       case Array:
+        if (arr->size() == 0) {
+          os << "[]";
+          break;
+        }
         os << '[';
         if (pretty) {
           os << std::endl;
@@ -440,8 +355,8 @@ struct Value {
         }
         for (unsigned i = 0; i < arr->size(); i++) {
           if (i > 0) {
-            os << ", ";
-            if (pretty) os << std::endl;
+            if (pretty) os << "," << std::endl;
+            else os << ", ";
           }
           indentify();
           (*arr)[i]->stringify(os, pretty);
@@ -599,56 +514,194 @@ struct Value {
   }
 };
 
-// Ref methods
+// cashew builder
 
-Ref& Ref::operator[](unsigned x) {
-  return (*get())[x];
-}
-
-Ref& Ref::operator[](IString x) {
-  return (*get())[x];
-}
-
-bool Ref::operator==(const char *str) {
-  return get()->isString() && !strcmp(get()->str.str, str);
-}
-
-bool Ref::operator!=(const char *str) {
-  return get()->isString() ? strcmp(get()->str.str, str) : true;
-}
-
-bool Ref::operator==(const IString &str) {
-  return get()->isString() && get()->str == str;
-}
-
-bool Ref::operator!=(const IString &str) {
-  return get()->isString() && get()->str != str;
-}
-
-bool Ref::operator==(Ref other) {
-  return **this == *other;
-}
-
-bool Ref::operator!() {
-  return !get() || get()->isNull();
-}
-
-// Arena methods
-
-Ref Arena::alloc() {
-  if (chunks.size() == 0 || index == CHUNK_SIZE) {
-    chunks.push_back(new Value[CHUNK_SIZE]);
-    index = 0;
+struct ValueBuilder {
+  static Ref makeRawString(const IString& s) {
+    return &arena.alloc()->setString(s);
   }
-  return &chunks.back()[index++];
-}
 
-// dump
+  static Ref makeArray() {
+    return &arena.alloc()->setArray();
+  }
 
-void dump(const char *str, Ref node, bool pretty) {
-  std::cerr << str << ": ";
-  if (!!node) node->stringify(std::cerr, pretty);
-  else std::cerr << "(nullptr)";
-  std::cerr << std::endl;
-}
+  static Ref makeNull() {
+    return &arena.alloc()->setNull();
+  }
+
+  static Ref makeToplevel() {
+    return &makeArray()->push_back(makeRawString(TOPLEVEL))
+                        .push_back(makeArray());
+  }
+
+  static Ref makeString(IString str) {
+    return &makeArray()->push_back(makeRawString(STRING))
+                        .push_back(makeRawString(str));
+  }
+
+  static Ref makeBlock() {
+    return &makeArray()->push_back(makeRawString(BLOCK))
+                        .push_back(makeArray());
+  }
+
+  static Ref makeName(IString name) {
+    return &makeArray()->push_back(makeRawString(NAME))
+                        .push_back(makeRawString(name));
+  }
+
+  static void appendToBlock(Ref block, Ref element) {
+    if (block[0] == BLOCK || block[0] == TOPLEVEL) {
+      block[1]->push_back(element);
+    } else if (block[0] == DEFUN) {
+      block[3]->push_back(element);
+    } else assert(0);
+  }
+
+  static Ref makeCall(Ref target) {
+    return &makeArray()->push_back(makeRawString(CALL))
+                        .push_back(target)
+                        .push_back(makeArray());
+  }
+
+  static void appendToCall(Ref call, Ref element) {
+    assert(call[0] == CALL);
+    call[2]->push_back(element);
+  }
+
+  static Ref makeStatement(Ref contents) {
+    return &makeArray()->push_back(makeRawString(STAT))
+                        .push_back(contents);
+  }
+
+  static Ref makeNumber(double num) {
+    return &makeArray()->push_back(makeRawString(NUM))
+                        .push_back(&arena.alloc()->setNumber(num));
+  }
+
+  static Ref makeBinary(Ref left, IString op, Ref right) {
+    if (op == SET) {
+      return &makeArray()->push_back(makeRawString(ASSIGN))
+                          .push_back(&arena.alloc()->setBool(true))
+                          .push_back(left)
+                          .push_back(right);
+    } else if (op == COMMA) {
+      return &makeArray()->push_back(makeRawString(SEQ))
+                          .push_back(left)
+                          .push_back(right);
+    } else {
+      return &makeArray()->push_back(makeRawString(BINARY))
+                          .push_back(makeRawString(op))
+                          .push_back(left)
+                          .push_back(right);
+    }
+  }
+
+  static Ref makePrefix(IString op, Ref right) {
+    return &makeArray()->push_back(makeRawString(UNARY_PREFIX))
+                        .push_back(makeRawString(op))
+                        .push_back(right);
+  }
+
+  static Ref makeFunction(IString name) {
+    return &makeArray()->push_back(makeRawString(DEFUN))
+                        .push_back(makeRawString(name))
+                        .push_back(makeArray())
+                        .push_back(makeArray());
+  }
+
+  static void appendArgumentToFunction(Ref func, IString arg) {
+    assert(func[0] == DEFUN);
+    func[2]->push_back(makeRawString(arg));
+  }
+
+  static Ref makeVar() {
+    return &makeArray()->push_back(makeRawString(VAR))
+                        .push_back(makeArray());
+  }
+
+  static void appendToVar(Ref var, IString name, Ref value) {
+    assert(var[0] == VAR);
+    Ref array = &makeArray()->push_back(makeRawString(name));
+    if (!!value) array->push_back(value);
+    var[1]->push_back(array);
+  }
+
+  static Ref makeReturn(Ref value) {
+    Ref ret = &makeArray()->push_back(makeRawString(RETURN));
+    if (!!value) ret->push_back(value);
+    return ret;
+  }
+
+  static Ref makeIndexing(Ref target, Ref index) {
+    return &makeArray()->push_back(makeRawString(SUB))
+                        .push_back(target)
+                        .push_back(index);
+  }
+
+  static Ref makeIf(Ref condition, Ref ifTrue, Ref ifFalse) {
+    Ref ret = &makeArray()->push_back(makeRawString(IF))
+                           .push_back(condition)
+                          .push_back(ifTrue);
+    if (!!ifFalse) ret->push_back(ifFalse);
+    return ret;
+  }
+
+  static Ref makeConditional(Ref condition, Ref ifTrue, Ref ifFalse) {
+    return &makeArray()->push_back(makeRawString(CONDITIONAL))
+                        .push_back(condition)
+                        .push_back(ifTrue)
+                        .push_back(ifFalse);
+  }
+
+  static Ref makeDo(Ref body, Ref condition) {
+    return &makeArray()->push_back(makeRawString(DO))
+                        .push_back(condition)
+                        .push_back(body);
+  }
+
+  static Ref makeWhile(Ref condition, Ref body) {
+    return &makeArray()->push_back(makeRawString(WHILE))
+                        .push_back(condition)
+                        .push_back(body);
+  }
+
+  static Ref makeBreak(IString label) {
+    Ref ret = &makeArray()->push_back(makeRawString(BREAK));
+    if (!!label) ret->push_back(makeRawString(label));
+    return ret;
+  }
+
+  static Ref makeContinue(IString label) {
+    Ref ret = &makeArray()->push_back(makeRawString(CONTINUE));
+    if (!!label) ret->push_back(makeRawString(label));
+    return ret;
+  }
+
+  static Ref makeLabel(IString name, Ref body) {
+    return &makeArray()->push_back(makeRawString(LABEL))
+                        .push_back(makeRawString(name))
+                        .push_back(body);
+  }
+
+  static Ref makeSwitch(Ref input) {
+    return &makeArray()->push_back(makeRawString(SWITCH))
+                        .push_back(input)
+                        .push_back(makeArray());
+  }
+
+  static void appendCaseToSwitch(Ref switch_, double arg) {
+    assert(switch_[0] == SWITCH);
+    switch_[2]->push_back(&makeArray()->push_back(makeNumber(arg)).push_back(makeArray()));
+  }
+
+  static void appendDefaultToSwitch(Ref switch_) {
+    assert(switch_[0] == SWITCH);
+    switch_[2]->push_back(&makeArray()->push_back(makeNull()).push_back(makeArray()));
+  }
+
+  static void appendCodeToSwitch(Ref switch_, Ref code) {
+    assert(switch_[0] == SWITCH);
+    switch_[2]->back()->back()->push_back(code);
+  }
+};
 

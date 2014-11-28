@@ -3,7 +3,7 @@
 #include <cmath>
 #include <string>
 
-#include "minijson.h"
+#include "simple_ast.h"
 
 typedef std::vector<IString> StringVec;
 
@@ -12,67 +12,6 @@ typedef std::vector<IString> StringVec;
 //==================
 
 Ref doc, extraInfo;
-
-IString TOPLEVEL("toplevel"),
-        DEFUN("defun"),
-        BLOCK("block"),
-        STAT("stat"),
-        ASSIGN("assign"),
-        NAME("name"),
-        VAR("var"),
-        CONDITIONAL("conditional"),
-        BINARY("binary"),
-        RETURN("return"),
-        IF("if"),
-        WHILE("while"),
-        DO("do"),
-        FOR("for"),
-        SEQ("seq"),
-        SUB("sub"),
-        CALL("call"),
-        NUM("num"),
-        LABEL("label"),
-        BREAK("break"),
-        CONTINUE("continue"),
-        SWITCH("switch"),
-        STRING("string"),
-        INF("inf"),
-        NaN("nan"),
-        TEMP_RET0("tempRet0"),
-        UNARY_PREFIX("unary-prefix"),
-        UNARY_POSTFIX("unary-postfix"),
-        MATH_FROUND("Math_fround"),
-        SIMD_FLOAT32X4("SIMD_float32x4"),
-        SIMD_INT32X4("SIMD_int32x4"),
-        PLUS("+"),
-        MINUS("-"),
-        OR("|"),
-        AND("&"),
-        XOR("^"),
-        L_NOT("!"),
-        B_NOT("~"),
-        LT("<"),
-        GE(">="),
-        LE("<="),
-        GT(">"),
-        EQ("=="),
-        NE("!="),
-        DIV("/"),
-        MOD("%"),
-        RSHIFT(">>"),
-        LSHIFT("<<"),
-        TRSHIFT(">>>"),
-        TEMP_DOUBLE_PTR("tempDoublePtr"),
-        HEAP8("HEAP8"),
-        HEAP16("HEAP16"),
-        HEAP32("HEAP32"),
-        HEAPF32("HEAPF32"),
-        HEAPU8("HEAPU8"),
-        HEAPU16("HEAPU16"),
-        HEAPU32("HEAPU32"),
-        HEAPF64("HEAPF64"),
-        F0("f0"),
-        EMPTY("");
 
 //==================
 // Infrastructure
@@ -930,21 +869,10 @@ bool preciseF32 = false;
     return node->isString() && count(node->getIString()) > 0; \
   }
 
-class StringSet : public std::unordered_set<IString> {
+class StringSet : public cashew::IStringSet {
 public:
   StringSet() {}
-  StringSet(const char *init) { // comma-delimited list
-    int size = strlen(init);
-    char *curr = (char*)malloc(size+1); // leaked!
-    strcpy(curr, init);
-    while (1) {
-      char *end = strchr(curr, ' ');
-      if (end) *end = 0;
-      insert(curr);
-      if (!end) break;
-      curr = end + 1;
-    }
-  }
+  StringSet(const char *str) : IStringSet(str) {}
 
   HASES
 

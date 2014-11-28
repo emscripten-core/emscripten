@@ -35,7 +35,12 @@ def get_native_optimizer():
     errs = []
     for compiler in [shared.CLANG, 'g++', 'clang++']: # try our clang first, otherwise hope for a system compiler in the path
       shared.logging.debug('  using ' + compiler)
-      out, err = subprocess.Popen([compiler, shared.path_from_root('tools', 'optimizer', 'optimizer.cpp'), '-O3', '-std=c++11', '-fno-exceptions', '-fno-rtti', '-o', output], stderr=subprocess.PIPE).communicate()
+      out, err = subprocess.Popen([compiler,
+                                   shared.path_from_root('tools', 'optimizer', 'istring.cpp'),
+                                   shared.path_from_root('tools', 'optimizer', 'parser.cpp'),
+                                   shared.path_from_root('tools', 'optimizer', 'simple_ast.cpp'),
+                                   shared.path_from_root('tools', 'optimizer', 'optimizer.cpp'),
+                                   '-O3', '-std=c++11', '-fno-exceptions', '-fno-rtti', '-o', output], stderr=subprocess.PIPE).communicate()
       # for profiling/debugging: '-g', '-fno-omit-frame-pointer'
       if os.path.exists(output): return output
       errs.append(err)
