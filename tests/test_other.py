@@ -1939,7 +1939,12 @@ int f() {
       self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n'))
       if js_optimizer.use_native(passes):
         # test calling native
-        print '  native'
+        def check_json():
+          Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), output_temp, 'receiveJSON'], stdin=PIPE, stdout=open(output_temp + '.js', 'w')).communicate()
+          output = open(output_temp + '.js').read()
+          self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n'))
+
+        print '  native (receiveJSON)'
         self.clear()
         input_temp = 'temp.js'
         output_temp = 'output.js'
@@ -1951,9 +1956,11 @@ int f() {
           json += '\n' + original[original.find('// EXTRA_INFO:'):]
           open(input_temp + '.js', 'w').write(json)
         output = Popen([js_optimizer.get_native_optimizer(), input_temp + '.js'] + passes + ['receiveJSON', 'emitJSON'], stdin=PIPE, stdout=open(output_temp, 'w')).communicate()[0]
-        Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), output_temp, 'receiveJSON'], stdin=PIPE, stdout=open(output_temp + '.js', 'w')).communicate()
-        output = open(output_temp + '.js').read()
-        self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n'))
+        check_json()
+
+        print '  native (parsing JS)'
+        output = Popen([js_optimizer.get_native_optimizer(), input] + passes + ['emitJSON'], stdin=PIPE, stdout=open(output_temp, 'w')).communicate()[0]
+        check_json()
 
   def test_m_mm(self):
     open(os.path.join(self.get_dir(), 'foo.c'), 'w').write('''#include <emscripten.h>''')
