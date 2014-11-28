@@ -1950,7 +1950,7 @@ int f() {
           json = open(input_temp + '.js').read()
           json += '\n' + original[original.find('// EXTRA_INFO:'):]
           open(input_temp + '.js', 'w').write(json)
-        output = Popen([js_optimizer.get_native_optimizer(), input_temp + '.js'] + passes, stdin=PIPE, stdout=open(output_temp, 'w')).communicate()[0]
+        output = Popen([js_optimizer.get_native_optimizer(), input_temp + '.js'] + passes + ['receiveJSON', 'emitJSON'], stdin=PIPE, stdout=open(output_temp, 'w')).communicate()[0]
         Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), output_temp, 'receiveJSON'], stdin=PIPE, stdout=open(output_temp + '.js', 'w')).communicate()
         output = open(output_temp + '.js').read()
         self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n'))

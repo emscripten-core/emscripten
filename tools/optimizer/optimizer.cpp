@@ -2693,25 +2693,30 @@ int main(int argc, char **argv) {
   assert(f);
   fseek(f, 0, SEEK_END);
   int size = ftell(f);
-  char *json = new char[size+1];
+  char *input = new char[size+1];
   rewind(f);
-  int num = fread(json, 1, size, f);
+  int num = fread(input, 1, size, f);
   assert(num == size);
   fclose(f);
-  json[size] = 0;
+  input[size] = 0;
 
-  char *comment = strstr(json, "//");
-  char *extraInfoStart = strstr(json, "// EXTRA_INFO:");
+  char *comment = strstr(input, "//");
+  char *extraInfoStart = strstr(input, "// EXTRA_INFO:");
   if (comment) *comment = 0; // drop off the comments; TODO: parse extra info
   if (extraInfoStart) {
     extraInfo = arena.alloc();
     extraInfo->parse(extraInfoStart + 14);
   }
 
-  // Parse JSON source into the document
-  doc = arena.alloc();
-  doc->parse(json);
-  // do not free json, it's contents are used as strings
+  if (receiveJSON) {
+    // Parse JSON source into the document
+    doc = arena.alloc();
+    doc->parse(input);
+  } else {
+    cashew::Parser<Ref, ValueBuilder> builder;
+    doc = builder.parseToplevel(input);
+  }
+  // do not free input, its contents are used as strings
 
   // Run passes on the Document
   for (int i = 2; i < argc; i++) {
