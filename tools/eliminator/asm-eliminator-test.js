@@ -112,7 +112,7 @@ function exc($this) {
   __ZNSt3__114__shared_count12__add_sharedEv($6);
   return;
  } else {
-  $8$0 = ___cxa_find_matching_catch(HEAP32[(_llvm_eh_exception.buf & 16777215) >> 2] | 0, HEAP32[(_llvm_eh_exception.buf + 4 & 16777215) >> 2] | 0, []);
+  $8$0 = ___cxa_find_matching_catch(HEAP32[(_llvm_eh_exception_buf & 16777215) >> 2] | 0, HEAP32[(_llvm_eh_exception_buf + 4 & 16777215) >> 2] | 0);
   $8$1 = tempRet0;
   $9 = $8$0;
   ___cxa_call_unexpected($9);
