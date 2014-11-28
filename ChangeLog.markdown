@@ -10,9 +10,98 @@ Not all changes are documented here. In particular, new features, user-oriented 
 Current trunk code
 ------------------
  - To see a list of commits in the active development branch 'incoming', which have not yet been packaged in a release, see
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.25.0...incoming
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.25.0...incoming
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.25.0...incoming
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.27.1...incoming
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.27.1...incoming
+    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.27.1...incoming
+
+v1.27.1: 11/20/2014
+-------------------
+ - Migrated to upstream PNaCl LLVM+Clang 3.4 from the previous 3.3.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.27.0...1.27.1
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.27.0...1.27.1
+    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.27.0...1.27.1
+
+v1.27.0: 11/20/2014
+-------------------
+ - Added new work in progress option -s NATIVE_OPTIMIZER=1 that migrates optimizer code from JS to C++ for better performance.
+ - Fixed an embind issue when compiling with closure (#2974)
+ - Fixed an embind issue with unique_ptr (#2979)
+ - Fixed a bug with new GL context initialization in proxy to worker mode.
+ - Fixed an issue where GL context event handlers would leak after a GL context has been freed.
+ - Optimized embind operation in Chrome by avoiding using Function.prototype.bind().
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.26.1...1.27.0
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.26.1...1.27.0
+    - Emscripten-Clang: no changes.
+
+v1.26.1: 11/7/2014
+------------------
+ - Fixed emscripten::val handle for special js values (#2930)
+ - Implemented SDL 1.2 SDL_SetClipRect / SDL_GetClipRect (#2931)
+ - Added support for building zlib from Emscripten Ports with linker flag -s USE_ZLIB=1.
+ - Improved experimental GLES3 support.
+ - Fixed issues with llseek (#2945)
+ - Enable using emscripten_get_now() in web workers (#2953)
+ - Added stricter input data validation in GL code.
+ - Added new HTML5 C API for managing fullscreen mode transitions to resolve cross-browser issue #2556 (#2975)
+ - Fixed an issue with using structs in va_args (#2923)
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.26.0...1.26.1
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.26.0...1.26.1
+    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.26.0...1.26.1
+
+v1.26.0: 10/29/2014
+-------------------
+ - Fixed an issue where emar would forward --em-config to llvm-ar (#2886)
+ - Added a new "emterpreter" feature that allows running Emscripten compiled code in interpreted form until asm.js compilation is ready (-s EMTERPRETIFY=1).
+    - For more information, see https://groups.google.com/d/msg/emscripten-discuss/vhaPL9kULxk/_eD2G06eucwJ
+ - Added new "Emscripten Ports" architecture that enables building SDL2 with -s USE_SDL=2 command line flag.
+ - Added support for SDL 1.2 SDL_CreateRGBSurfaceFrom() function.
+ - Improved experimental SIMD support.
+ - Use only minimum necessary digits to print floating point literals in generated JS code for smaller code output.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.25.2...1.26.0
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.25.2...1.26.0
+    - Emscripten-Clang: no changes.
+
+v1.25.2: 10/16/2014
+-------------------
+ - Fixed a bug in tmpfile() function not allocating the mode argument correctly.
+ - Fixed a bug with handling empty files in IDBFS (#2845)
+ - Added an implementation of the utimes() function (#2845)
+ - Added experimental WebGL 2.0 support with the linker flag -s USE_WEBGL2=1. (#2873)
+ - Fixed a UnboundTypeError occurring in embind (#2875)
+ - Fixed an error "IndexSizeError: Index or size is negative or greater than the allowed amount" being thrown by Emscripten SDL 1.2 surface blit code. (#2879)
+ - Fixed a JS minifier issue that generated "x--y from x - -y" (#2869)
+ - Added a new emcc command line flag "--cache <dir>" to control the location of the Emscripten cache directory (#2816)
+ - Implemented SDL_ConvertSurface() and added support for SDL_SRCALPHA in SDL_SetAlpha (#2871)
+ - Fixed issues with the GL library handling of invalid input values.
+ - Optimized SDL copyIndexedColorData function (#2890)
+ - Implemented GLES3 emulation for glMapBufferRange() for upcoming WebGL 2 support, using the -s FULL_ES3=1 linker option.
+ - Fixed a bug where setting up and cancelling the main loop multiple times would stack up the main loop to be called too frequently (#2839)
+ - Introduced a new API emscripten_set_main_loop_timing() for managing the Emscripten main loop calling frequency (#2839)
+ - Added new optimization flags SDL.discardOnLock and SDL.opaqueFrontBuffer to Emscripten SDL 1.2 SDL_LockSurface() and SDL_UnlockSurface() (#2870)
+ - Fixed a bug with glfwGetProcAddress().
+ - Added option to customize GLOBAL_BASE (the starting address of global variables in the Emscripten HEAP).
+ - Added the ability to register mouseover and mouseout events from the HTML5 API.
+ - Improved experimental SIMD support.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.25.1...1.25.2
+    - Emscripten-LLVM: no changes.
+    - Emscripten-Clang: no changes.
+
+v1.25.1: 10/1/2014
+------------------
+ - Updated heap resize support code when -s ALLOW_MEMORY_GROWTH=1 is defined.
+ - Updated libc++ to new version from upstream svn revision 218372, 2014-09-24.
+ - Fixed a bug where building on Windows might generate output JS files with incorrect syntax (emscripten-fastcomp #52)
+ - Improved experimental SIMD support.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.25.0...1.25.1
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.25.0...1.25.1
+    - Emscripten-Clang: no changes.
+
 
 v1.25.0: 9/30/2014
 ------------------
