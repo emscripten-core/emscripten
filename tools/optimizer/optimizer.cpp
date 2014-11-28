@@ -2700,12 +2700,11 @@ int main(int argc, char **argv) {
   fclose(f);
   input[size] = 0;
 
-  char *comment = strstr(input, "//");
   char *extraInfoStart = strstr(input, "// EXTRA_INFO:");
-  if (comment) *comment = 0; // drop off the comments; TODO: parse extra info
   if (extraInfoStart) {
     extraInfo = arena.alloc();
     extraInfo->parse(extraInfoStart + 14);
+    *extraInfoStart = 0; // ignore extra info when parsing
   }
 
   if (receiveJSON) {
