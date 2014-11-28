@@ -140,7 +140,7 @@ function switchy() {
    yes = 111;
    yes = yes*2;
    print(yes);
-   yes--;
+   yes = yes + 1;
    print(yes/2);
    continue;
   case 3:
