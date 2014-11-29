@@ -40,7 +40,12 @@ var LibraryPThread = {
     },
 
     freeThreadData: function(pthread) {
-      if (pthread.threadBlock) _free(pthread.threadBlock);
+      if (pthread.threadBlock) {
+        var tlsMemory = {{{ makeGetValue('pthread.threadBlock', C_STRUCTS.pthread.tsd, 'i32') }}};
+        {{{ makeSetValue('pthread.threadBlock', C_STRUCTS.pthread.tsd, 0, 'i32') }}};
+        _free(pthread.tlsMemory);
+        _free(pthread.threadBlock);
+      }
       pthread.threadBlock = 0;
       if (pthread.allocatedOwnStack && pthread.stackBase) _free(pthread.stackBase);
       pthread.stackBase = 0;
@@ -134,6 +139,11 @@ var LibraryPThread = {
     if (allocatedOwnStack) { 
       stackBase = _malloc(stackSize); // Allocate a stack if the user doesn't want to place the stack in a custom memory area.
     }
+    // Allocate memory for thread-local storage and initialize it to zero.
+    var tlsMemory = _malloc({{{ cDefine('PTHREAD_KEYS_MAX') }}} * 4);
+    for(var i = 0; i < {{{ cDefine('PTHREAD_KEYS_MAX') }}}; ++i)
+      {{{ makeSetValue('tlsMemory', 'i*4', 0, 'i32') }}};
+
     var pthread = PThread.pthreads[threadId] = { // Create a pthread info object to represent this thread.
       worker: worker,
       thread: threadId,
@@ -142,8 +152,12 @@ var LibraryPThread = {
       allocatedOwnStack: allocatedOwnStack,
       threadBlock: _malloc({{{ C_STRUCTS.pthread.__size__ }}}) // Info area for this thread in Emscripten HEAP (shared)
     };
-    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0) // threadStatus <- 0, meaning not yet exited.
-    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, 0) // threadExitCode <- 0.
+    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0); // threadStatus <- 0, meaning not yet exited.
+    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, 0); // threadExitCode <- 0.
+    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.tsd }}} ) >> 2, tlsMemory); // Init thread-local-storage memory array.
+    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.tsd_used }}} ) >> 2, 0); // Mark initial status to unused.
+
+
     worker.pthread = pthread;
 
     // Ask the worker to start executing its pthread entry point function.
@@ -253,10 +267,10 @@ var LibraryPThread = {
   },
 
   // pthread internal self() function which returns a pointer to the C control block for the thread.
-  // pthread_self() and _pthread_self() are separate so that we can ensure that each thread gets its unique ID
+  // pthread_self() and __pthread_self() are separate so that we can ensure that each thread gets its unique ID
   // using an incremented running counter, which helps in debugging.
-  _pthread_self: function() {
-    if (ENVIRONMENT_IS_PTHREAD) return PThread.pthreads[selfThreadId].threadBlock;
+  __pthread_self: function() {
+    if (ENVIRONMENT_IS_PTHREAD) return threadBlock;
     return 0; // Main JS thread
   },
 

@@ -155,6 +155,13 @@
         }
     }, 
     {
+        "file": "libc/limits.h",
+        "defines": [
+            "PTHREAD_KEYS_MAX"
+        ],
+        "structs": {}
+    },
+    {
         "file": "libc/sys/utsname.h", 
         "defines": [],
         "structs": {
@@ -1385,7 +1392,9 @@
         "structs": {
             "pthread": [
               "threadStatus",
-              "threadExitCode"
+              "threadExitCode",
+              "tsd",
+              "tsd_used"
             ]
         },
         "defines": []
