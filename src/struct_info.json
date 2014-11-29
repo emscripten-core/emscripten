@@ -1379,5 +1379,15 @@
 	      { "angularAcceleration": [ "x", "y", "z", "w" ] }
 	    ]
         }
+    },
+    {
+        "file": "../lib/libc/musl/src/internal/pthread_impl.h",
+        "structs": {
+            "pthread": [
+              "threadStatus",
+              "threadExitCode"
+            ]
+        },
+        "defines": []
     }
  ]

@@ -59,7 +59,7 @@ this.onmessage = function(e) {
       result = asm.dynCall_ii(e.data.start_routine, e.data.arg); // pthread entry points are always of signature 'void *ThreadMain(void *arg)'
     } catch(e) {
       if (e === 'Canceled!') {
-        Atomics.store(HEAPU32, threadBlock >> 2, 1);
+        Atomics.store(HEAPU32, threadBlock >> 2, 1); // threadStatus <- 1. The thread is no longer running.
         PThread.runExitHandlers();
         threadBlock = selfThreadId = 0;
         postMessage({ cmd: 'cancel' });

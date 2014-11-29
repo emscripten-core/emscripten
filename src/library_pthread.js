@@ -31,10 +31,10 @@ var LibraryPThread = {
       if (threadBlock) { // If we haven't yet exited?
         var tb = threadBlock;
         threadBlock = 0;
-        Atomics.store(HEAPU32, tb + 4 >> 2, exitCode);
+        Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, exitCode);
         // When we publish this, the main thread is free to deallocate the thread object and we are done.
         // Therefore set threadBlock = 0; above to 'release' the object in this worker thread.
-        Atomics.store(HEAPU32, tb >> 2, 1);
+        Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 1);
         postMessage({ cmd: 'exit' });
       }
     },
@@ -140,10 +140,10 @@ var LibraryPThread = {
       stackBase: stackBase,
       stackSize: stackSize,
       allocatedOwnStack: allocatedOwnStack,
-      threadBlock: _malloc(8) // Info area for this thread in Emscripten HEAP (shared)
+      threadBlock: _malloc({{{ C_STRUCTS.pthread.__size__ }}}) // Info area for this thread in Emscripten HEAP (shared)
     };
-    Atomics.store(HEAPU32, pthread.threadBlock >> 2, 0) // threadStatus <- 0, meaning not yet exited.
-    Atomics.store(HEAPU32, pthread.threadBlock + 4 >> 2, 0) // threadExitCode <- 0.
+    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0) // threadStatus <- 0, meaning not yet exited.
+    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, 0) // threadExitCode <- 0.
     worker.pthread = pthread;
 
     // Ask the worker to start executing its pthread entry point function.
@@ -168,9 +168,9 @@ var LibraryPThread = {
     var worker = pthread.worker;
     for(;;) {
       assert(pthread.threadBlock);
-      var threadStatus = Atomics.load(HEAPU32, pthread.threadBlock >> 2);
+      var threadStatus = Atomics.load(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
       if (threadStatus == 1) { // Exited?
-        var threadExitCode = Atomics.load(HEAPU32, pthread.threadBlock + 4 >> 2);
+        var threadExitCode = Atomics.load(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2);
         if (status) {
           {{{ makeSetValue('status', 0, 'threadExitCode', 'i32') }}};
         }
@@ -210,7 +210,7 @@ var LibraryPThread = {
       return 1;
     }
     assert(pthread.threadBlock);
-    Atomics.store(HEAPU32, pthread.threadBlock >> 2, 2); // Signal the thread that it needs to cancel itself.
+    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 2); // Signal the thread that it needs to cancel itself.
     pthread.worker.postMessage({ cmd: 'cancel' });
     return 0;
   },
@@ -218,7 +218,7 @@ var LibraryPThread = {
   pthread_testcancel: function() {
     if (!ENVIRONMENT_IS_PTHREAD) return;
     assert(threadBlock);
-    var canceled = Atomics.load(HEAPU32, threadBlock >> 2);
+    var canceled = Atomics.load(HEAPU32, (threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
     if (canceled == 2) throw 'Canceled!';
   },
 
@@ -246,9 +246,18 @@ var LibraryPThread = {
     PThread.threadExit(status);
   },
 
+  // Public pthread_self() function which returns a unique ID for the thread.
   pthread_self: function() {
     if (ENVIRONMENT_IS_PTHREAD) return selfThreadId;
     return 1; // Main JS thread
+  },
+
+  // pthread internal self() function which returns a pointer to the C control block for the thread.
+  // pthread_self() and _pthread_self() are separate so that we can ensure that each thread gets its unique ID
+  // using an incremented running counter, which helps in debugging.
+  _pthread_self: function() {
+    if (ENVIRONMENT_IS_PTHREAD) return PThread.pthreads[selfThreadId].threadBlock;
+    return 0; // Main JS thread
   },
 
   pthread_once: function(once_control, init_routine) {

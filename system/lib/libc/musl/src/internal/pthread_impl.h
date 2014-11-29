@@ -17,6 +17,12 @@
 #define pthread __pthread
 
 struct pthread {
+// XXX Emscripten: Need some custom thread control structures.
+#ifdef __EMSCRIPTEN__
+	int threadStatus; // 0: thread not exited, 1: exited.
+	int threadExitCode; // Thread exit code.
+#endif
+
 	struct pthread *self;
 	void **dtv, *unused1, *unused2;
 	uintptr_t sysinfo;
@@ -132,5 +138,10 @@ void __restore_sigs(void *);
 
 #define DEFAULT_STACK_SIZE 81920
 #define DEFAULT_GUARD_SIZE PAGE_SIZE
+
+#ifdef __EMSCRIPTEN__
+// XXX Emscripten specific:
+struct pthread *__pthread_self(void);
+#endif
 
 #endif
