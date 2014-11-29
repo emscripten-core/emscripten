@@ -630,7 +630,12 @@ class Parser {
     if (!block) block = Builder::makeBlock();
     while (*src) {
       src = skipSpace(src);
-      if (*src == 0 || hasChar(seps, *src)) break; // XXX handle ;;
+      if (*src == 0) break;
+      if (*src == ';') {
+        src++; // skip a statement in this block
+        continue;
+      }
+      if (hasChar(seps, *src)) break;
       if (!!keywordSep) {
         Frag next(src);
         if (next.type == KEYWORD && next.str == keywordSep) break;
