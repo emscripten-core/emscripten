@@ -317,7 +317,7 @@ EMSCRIPTEN_FUNCS();
     filenames = []
 
   if len(filenames) > 0:
-    if not use_native(passes, source_map) or 'receiveJSON' not in passes or 'emitJSON' not in passes:
+    if not use_native(passes, source_map) or 'emitJSON' not in passes:
       commands = map(lambda filename: js_engine +
           [JS_OPTIMIZER, filename, 'noPrintMetadata'] +
           (['--debug'] if source_map else []) + passes, filenames)

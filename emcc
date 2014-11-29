@@ -1432,6 +1432,10 @@ try:
         if len(chunks) == 1:
           run_passes(chunks[0], title, just_split=False, just_concat=False)
         else:
+          # we use JSON between the native and js optimizers, but can parse in native directly
+          if chunks[0] == ['emitJSON']:
+            chunks = chunks[1:]
+            chunks[0] = filter(lambda p: p != 'receiveJSON', chunks[0])
           for i in range(len(chunks)):
             run_passes(chunks[i], 'js_opts_' + str(i), just_split='receiveJSON' in chunks[i], just_concat='emitJSON' in chunks[i])
       else:
