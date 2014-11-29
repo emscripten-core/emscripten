@@ -2574,6 +2574,10 @@ window.close = function() {
     for arg in [[], ['-DUSE_C_VOLATILE']]:
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_volatile.cpp'), expected='1', args=['-lpthread'] + arg)
 
-  # Test that basic thread creation works.
+  # Test thread-specific data (TLS).
   def test_pthread_thread_local_storage(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_thread_local_storage.cpp'), expected='0', args=['-lpthread'])
+
+  # Test the pthread condition variable creation and waiting.
+  def test_pthread_condition_variable(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_condition_variable.cpp'), expected='0', args=['-lpthread'])
