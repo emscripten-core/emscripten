@@ -100,7 +100,7 @@ struct Init {
     operatorClasses.push_back(OperatorClass("|",         false, OperatorClass::Binary));
     operatorClasses.push_back(OperatorClass("? :",       true,  OperatorClass::Tertiary));
     operatorClasses.push_back(OperatorClass("=",         true,  OperatorClass::Binary));
-    operatorClasses.push_back(OperatorClass(",",         false, OperatorClass::Binary));
+    operatorClasses.push_back(OperatorClass(",",         true, OperatorClass::Binary));
   }
 };
 

@@ -516,7 +516,9 @@ struct Value {
 
 // cashew builder
 
-struct ValueBuilder {
+class ValueBuilder {
+  static IStringSet statable;
+
   static Ref makeRawString(const IString& s) {
     return &arena.alloc()->setString(s);
   }
@@ -529,6 +531,7 @@ struct ValueBuilder {
     return &arena.alloc()->setNull();
   }
 
+public:
   static Ref makeToplevel() {
     return &makeArray()->push_back(makeRawString(TOPLEVEL))
                         .push_back(makeArray());
@@ -569,8 +572,12 @@ struct ValueBuilder {
   }
 
   static Ref makeStatement(Ref contents) {
-    return &makeArray()->push_back(makeRawString(STAT))
-                        .push_back(contents);
+    if (statable.has(contents[0]->getIString())) {
+      return &makeArray()->push_back(makeRawString(STAT))
+                          .push_back(contents);
+    } else {
+      return contents; // only very specific things actually need to be stat'ed
+    }
   }
 
   static Ref makeNumber(double num) {
@@ -663,15 +670,11 @@ struct ValueBuilder {
   }
 
   static Ref makeBreak(IString label) {
-    Ref ret = &makeArray()->push_back(makeRawString(BREAK));
-    if (!!label) ret->push_back(makeRawString(label));
-    return ret;
+    return &makeArray()->push_back(makeRawString(BREAK)).push_back(!!label ? makeRawString(label) : makeNull());
   }
 
   static Ref makeContinue(IString label) {
-    Ref ret = &makeArray()->push_back(makeRawString(CONTINUE));
-    if (!!label) ret->push_back(makeRawString(label));
-    return ret;
+    return &makeArray()->push_back(makeRawString(CONTINUE)).push_back(!!label ? makeRawString(label) : makeNull());
   }
 
   static Ref makeLabel(IString name, Ref body) {
@@ -696,9 +699,16 @@ struct ValueBuilder {
     switch_[2]->push_back(&makeArray()->push_back(makeNull()).push_back(makeArray()));
   }
 
-  static void appendCodeToSwitch(Ref switch_, Ref code) {
+  static void appendCodeToSwitch(Ref switch_, Ref code, bool explicitBlock) {
     assert(switch_[0] == SWITCH);
-    switch_[2]->back()->back()->push_back(code);
+    assert(code[0] == BLOCK);
+    if (!explicitBlock) {
+      for (int i = 0; i < code[1]->size(); i++) {
+        switch_[2]->back()->back()->push_back(code[1][i]);
+      }
+    } else {
+      switch_[2]->back()->back()->push_back(code);
+    }
   }
 };
 

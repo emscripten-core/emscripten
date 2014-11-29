@@ -372,12 +372,14 @@ class Parser {
   NodeRef parseBreak(Frag& frag, char*& src, const char* seps) {
     src = skipSpace(src);
     Frag next(src);
+    if (next.type == IDENT) src += next.size;
     return Builder::makeBreak(next.type == IDENT ? next.str : IString());
   }
 
   NodeRef parseContinue(Frag& frag, char*& src, const char* seps) {
     src = skipSpace(src);
     Frag next(src);
+    if (next.type == IDENT) src += next.size;
     return Builder::makeContinue(next.type == IDENT ? next.str : IString());
   }
 
@@ -426,7 +428,9 @@ class Parser {
         // otherwise, may be some keyword that happens to start a block (e.g. case 1: _return_ 5)
       }
       // not case X: or default: or }, so must be some code
-      Builder::appendCodeToSwitch(ret, parseMaybeBracketedBlock(src, ";}", CASE));
+      src = skipSpace(src);
+      bool explicitBlock = *src == '{';
+      Builder::appendCodeToSwitch(ret, parseMaybeBracketedBlock(src, ";}", CASE), explicitBlock);
     }
     src = skipSpace(src);
     assert(*src == '}');
