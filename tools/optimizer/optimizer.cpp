@@ -898,7 +898,10 @@ StringSet USEFUL_BINARY_OPS("<< >> | & ^"),
 StringSet ASSOCIATIVE_BINARIES("+ * | & ^"),
           CONTROL_FLOW("do while for if switch"),
           LOOP("do while for"),
-          NAME_OR_NUM("name num");
+          NAME_OR_NUM("name num"),
+          CONDITION_CHECKERS("if do while switch"),
+          SAFE_TO_DROP_COERCION("unary-prefix name num");
+
 
 bool isFunctionTable(const char *name) {
   static const char *functionTable = "FUNCTION_TABLE";
@@ -908,6 +911,45 @@ bool isFunctionTable(const char *name) {
 
 bool isFunctionTable(Ref value) {
   return value->isString() && isFunctionTable(value->getCString());
+}
+
+// Internal utilities
+
+bool canDropCoercion(Ref node) {
+  if (SAFE_TO_DROP_COERCION.has(node[0])) return true;
+  if (node[0] == BINARY) {
+    switch (node[1]->getCString()[0]) {
+      case '>': return node[1] == RSHIFT || node[1] == TRSHIFT;
+      case '<': return node[1] == LSHIFT;
+      case '|': case '^': case '&': return true;
+    }
+  }
+  return false;
+}
+
+Ref simplifyCondition(Ref node) {
+  node = simplifyNotCompsDirect(node);
+  // on integers, if (x == 0) is the same as if (x), and if (x != 0) as if (!x)
+  if (node[0] == BINARY && (node[1] == EQ || node[1] == NE)) {
+    Ref target;
+    if (detectType(node[2]) == ASM_INT && node[3][0] == NUM && node[3][1]->getNumber() == 0) {
+      target = node[2];
+    } else if (detectType(node[3]) == ASM_INT && node[2][0] == NUM && node[2][1]->getNumber() == 0) {
+      target = node[3];
+    }
+    if (!!target) {
+      if (target[0] == BINARY && (target[1] == OR || target[1] == TRSHIFT) && target[3][0] == NUM && target[3][1]->getNumber() == 0 &&
+          canDropCoercion(target[2])) {
+        target = target[2]; // drop the coercion, in a condition it is ok to do if (x)
+      }
+      if (node[1] == EQ) {
+        return make2(UNARY_PREFIX, L_NOT, target);
+      } else {
+        return target;
+      }
+    }
+  }
+  return node;
 }
 
 // Passes
@@ -2671,6 +2713,106 @@ void minifyLocals(Ref ast) {
   });
 }
 
+void asmLastOpts(Ref ast) {
+  std::vector<Ref> statsStack;
+  traverseFunctions(ast, [&](Ref fun) {
+    traversePrePost(fun, [&](Ref node) {
+      Ref type = node[0];
+      Ref stats = getStatements(node);
+      if (!!stats) statsStack.push_back(stats);
+      if (CONDITION_CHECKERS.has(type)) {
+        node[1] = simplifyCondition(node[1]);
+      }
+      if (type == WHILE && node[1][0] == NUM && node[1][1]->getNumber() == 1 && node[2][0] == BLOCK && node[2]->size() == 2) {
+        // This is at the end of the pipeline, we can assume all other optimizations are done, and we modify loops
+        // into shapes that might confuse other passes
+
+        // while (1) { .. if (..) { break } } ==> do { .. } while(..)
+        Ref stats = node[2][1];
+        Ref last = stats->back();
+        if (!!last && last[0] == IF && !last[3] && last[2][0] == BLOCK && !!last[2][1][0]) {
+          Ref lastStats = last[2][1];
+          int lastNum = lastStats->size();
+          Ref lastLast = lastStats[lastNum-1];
+          if (!(lastLast[0] == BREAK && !lastLast[1])) return;// if not a simple break, dangerous
+          for (int i = 0; i < lastNum; i++) {
+            if (lastStats[i][0] != STAT && lastStats[i][0] != BREAK) return; // something dangerous
+          }
+          // ok, a bunch of statements ending in a break
+          bool abort = false;
+          int stack = 0;
+          int breaks = 0;
+          traversePrePost(stats, [&](Ref node) {
+            Ref type = node[0];
+            if (type == CONTINUE) {
+              if (stack == 0 || !!node[1]) { // abort if labeled (we do not analyze labels here yet), or a continue directly on us
+                abort = true;
+              }
+            } else if (type == BREAK) {
+              if (stack == 0 || !!node[1]) { // relevant if labeled (we do not analyze labels here yet), or a break directly on us
+                breaks++;
+              }
+            } else if (LOOP.has(type)) {
+              stack++;
+            }
+          }, [&](Ref node) {
+            if (LOOP.has(node[0])) {
+              stack--;
+            }
+          });
+          if (abort) return;
+          assert(breaks > 0);
+          if (lastStats->size() > 1 && breaks != 1) return; // if we have code aside from the break, we can only move it out if there is just one break
+          // start to optimize
+          if (lastStats->size() > 1) {
+            Ref parent = statsStack.back();
+            int me = parent->indexOf(node);
+            if (me < 0) return; // not always directly on a stats, could be in a label for example
+            parent->insert(me+1, lastStats->size()-1);
+            for (int i = 0; i < lastStats->size()-1; i++) {
+              parent[me+1+i] = lastStats[i];
+            }
+          }
+          Ref conditionToBreak = last[1];
+          stats->pop_back();
+          node[0]->setString(DO);
+          node[1] = simplifyNotCompsDirect(make2(UNARY_PREFIX, L_NOT, conditionToBreak));
+        }
+      } else if (type == BINARY) {
+        if (node[1] == AND) {
+          if (node[3][0] == UNARY_PREFIX && node[3][1] == MINUS && node[3][2][0] == NUM && node[3][2][1]->getNumber() == 1) {
+            // Change &-1 into |0, at this point the hint is no longer needed
+            node[1]->setString(OR);
+            node[3] = node[3][2];
+            node[3][1] = 0;
+          }
+        } else if (node[1] == MINUS && node[3][0] == UNARY_PREFIX) {
+          // avoid X - (-Y) because some minifiers buggily emit X--Y which is invalid as -- can be a unary. Transform to
+          //        X + Y
+          if (node[3][1] == MINUS) { // integer
+            node[1]->setString(PLUS);
+            node[3] = node[3][2];
+          } else if (node[3][1] == PLUS) { // float
+            if (node[3][2][0] == UNARY_PREFIX && node[3][2][1] == MINUS) {
+              node[1]->setString(PLUS);
+              node[3][2] = node[3][2][2];
+            }
+          }
+        }
+      }
+    }, [&](Ref node) {
+      Ref stats = getStatements(node);
+      if (!!stats) statsStack.pop_back();
+    });
+    // convert  { singleton }  into  singleton
+    traversePre(fun, [](Ref node) {
+      if (node[0] == BLOCK && !!node[1] && node[1]->size() == 1) {
+        safeCopy(node, node[1][0]);
+      }
+    });
+  });
+}
+
 //==================
 // Main
 //==================
@@ -2731,6 +2873,7 @@ int main(int argc, char **argv) {
     else if (str == "registerize") registerize(doc);
     else if (str == "minifyLocals") minifyLocals(doc);
     else if (str == "minifyWhitespace") {}
+    else if (str == "asmLastOpts") asmLastOpts(doc);
     else {
       fprintf(stderr, "unrecognized argument: %s\n", str.c_str());
       assert(0);
