@@ -13,9 +13,6 @@
 
 // TEMP: Fastcomp backend doesn't implement these as atomic, so #define these to library
 //       implementations that are properly atomic. TODO: Implement these in fastcomp.
-#define __sync_val_compare_and_swap emscripten_atomic_cas_u32
-#define __sync_bool_compare_and_swap atomic_bool_cas_u32
-#define __sync_synchronize emscripten_atomic_fence
 #define __sync_lock_test_and_set(...) emscripten_atomic_fence()
 #define __sync_lock_release(...) emscripten_atomic_fence()
 
@@ -79,6 +76,7 @@ int main()
 		for(int x = 0; x < 100; ++x) // Test a few times for robustness, since this test is so short-lived.
 		{
 			nand_and_fetch_data = 0;
+			__sync_synchronize(); // This has no effect in this code, but called in here just to test that the compiler generates a valid expression for this.
 			for(int i = 0; i < oddNThreads; ++i) pthread_create(&thread[i], NULL, thread_nand_and_fetch, (void*)-1);
 			for(int i = 0; i < oddNThreads; ++i) pthread_join(thread[i], NULL);
 			assert(nand_and_fetch_data == -1);
