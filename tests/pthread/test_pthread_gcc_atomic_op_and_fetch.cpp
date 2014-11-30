@@ -11,40 +11,6 @@
 
 #define T int
 
-// TEMP: Fastcomp Clang does not implement the __sync_op_and_fetch builtin functions as atomic, but
-//       generates non-atomic operations. As a hack to make this test pass, route these to library-
-//       implemented functions, which are atomic proper. TODO: Implement support in fastcomp to
-//       generate atomic ops from these builtins.
-#define __sync_add_and_fetch emscripten_atomic_add_fetch_u32
-#define __sync_sub_and_fetch emscripten_atomic_sub_fetch_u32
-#define __sync_or_and_fetch emscripten_atomic_or_fetch_u32
-#define __sync_and_and_fetch emscripten_atomic_and_fetch_u32
-#define __sync_xor_and_fetch emscripten_atomic_xor_fetch_u32
-T emscripten_atomic_add_fetch_u32(T *ptr, T x)
-{
-	T old = emscripten_atomic_add_u32(ptr, x);
-	return old + x;
-}
-T emscripten_atomic_sub_fetch_u32(T *ptr, T x)
-{
-	T old = emscripten_atomic_sub_u32(ptr, x);
-	return old - x;
-}
-T emscripten_atomic_or_fetch_u32(T *ptr, T x)
-{
-	T old = emscripten_atomic_or_u32(ptr, x);
-	return old | x;
-}
-T emscripten_atomic_and_fetch_u32(T *ptr, T x)
-{
-	T old = emscripten_atomic_and_u32(ptr, x);
-	return old & x;
-}
-T emscripten_atomic_xor_fetch_u32(T *ptr, T x)
-{
-	T old = emscripten_atomic_xor_u32(ptr, x);
-	return old ^ x;
-}
 // TEMP to make this test pass:
 // Our Clang backend doesn't define this builtin function, so implement it ourselves.
 // The current Atomics spec doesn't have the nand atomic op either, so must use a cas loop.
