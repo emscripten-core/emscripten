@@ -61,6 +61,7 @@ extern IString TOPLEVEL,
                NE,
                DIV,
                MOD,
+               MUL,
                RSHIFT,
                LSHIFT,
                TRSHIFT,
@@ -78,11 +79,16 @@ extern IString TOPLEVEL,
                FUNCTION,
                OPEN_PAREN,
                OPEN_BRACE,
+               OPEN_CURLY,
                COMMA,
                QUESTION,
                COLON,
                CASE,
                DEFAULT,
+               DOT,
+               NEW,
+               ARRAY,
+               OBJECT,
                SET;
 
 extern IStringSet keywords, allOperators;
@@ -191,18 +197,35 @@ class Parser {
         assert(src > start);
         type = NUMBER;
       } else if (hasChar(OPERATOR_INITS, *src)) {
-        for (int i = 0; i < MAX_OPERATOR_SIZE; i++) {
-          if (!start[i]) break;
-          char temp = start[i+1];
-          start[i+1] = 0;
-          if (allOperators.has(start)) {
-            str.set(start, false);
-            src = start + i + 1;
-          }
-          start[i+1] = temp;
+        switch (*src) {
+          case '!': str = src[1] == '=' ? str = NE : str = L_NOT; break;
+          case '%': str = MOD; break;
+          case '&': str = AND; break;
+          case '*': str = MUL; break;
+          case '+': str = PLUS; break;
+          case ',': str = COMMA; break;
+          case '-': str = MINUS; break;
+          case '.': str = DOT; break;
+          case '/': str = DIV; break;
+          case ':': str = COLON; break;
+          case '<': str = src[1] == '<' ? LSHIFT : (src[1] == '=' ? LE : LT); break;
+          case '=': str = src[1] == '=' ? EQ : SET; break;
+          case '>': str = src[1] == '>' ? (src[2] == '>' ? TRSHIFT : RSHIFT) : (src[1] == '=' ? GE : GT); break;
+          case '?': str = QUESTION; break;
+          case '^': str = XOR; break;
+          case '|': str = OR; break;
+          case '~': str = B_NOT; break;
         }
-        type = OPERATOR;
         assert(!str.isNull());
+        size = strlen(str.str);
+#ifndef NDEBUG
+        char temp = start[size];
+        start[size] = 0;
+        assert(strcmp(str.str, start) == 0);
+        start[size] = temp;
+#endif
+        type = OPERATOR;
+        return;
       } else if (hasChar(SEPARATORS, *src)) {
         type = SEPARATOR;
         char temp = src[1];
@@ -237,6 +260,8 @@ class Parser {
       }
       case SEPARATOR: {
         if (frag.str == OPEN_PAREN) return parseExpression(parseAfterParen(src), src, seps);
+        if (frag.str == OPEN_BRACE) return parseExpression(parseAfterBrace(src), src, seps);
+        if (frag.str == OPEN_CURLY) return parseExpression(parseAfterCurly(src), src, seps);
         assert(0);
       }
       case OPERATOR: {
@@ -266,6 +291,7 @@ class Parser {
     else if (frag.str == BREAK) return parseBreak(frag, src, seps);
     else if (frag.str == CONTINUE) return parseContinue(frag, src, seps);
     else if (frag.str == SWITCH) return parseSwitch(frag, src, seps);
+    else if (frag.str == NEW) return parseNew(frag, src, seps);
     dump(frag.str.str, src);
     assert(0);
   }
@@ -438,6 +464,10 @@ class Parser {
     return ret;
   }
 
+  NodeRef parseNew(Frag& frag, char*& src, const char* seps) {
+    return Builder::makeNew(parseElement(src, seps));
+  }
+
   NodeRef parseAfterIdent(Frag& frag, char*& src, const char* seps) {
     assert(!isSpace(*src));
     if (*src == '(') return parseExpression(parseCall(parseFrag(frag), src), src, seps);
@@ -446,6 +476,7 @@ class Parser {
       src++;
       return Builder::makeLabel(frag.str, parseElement(src, seps));
     }
+    if (*src == '.') return parseExpression(parseDotting(parseFrag(frag), src), src, seps);
     return parseExpression(parseFrag(frag), src, seps);
   }
 
@@ -485,6 +516,15 @@ class Parser {
     return ret;
   }
 
+  NodeRef parseDotting(NodeRef target, char*& src) {
+    assert(*src == '.');
+    src++;
+    Frag key(src);
+    assert(key.type == IDENT);
+    src += key.size;
+    return Builder::makeDot(target, key.str);
+  }
+
   NodeRef parseAfterParen(char*& src) {
     expressionPartsStack.resize(expressionPartsStack.size()+1);
     src = skipSpace(src);
@@ -494,6 +534,52 @@ class Parser {
     src++;
     assert(expressionPartsStack.back().size() == 0);
     expressionPartsStack.pop_back();
+    return ret;
+  }
+
+  NodeRef parseAfterBrace(char*& src) {
+    expressionPartsStack.resize(expressionPartsStack.size()+1);
+    NodeRef ret = Builder::makeArray();
+    while (1) {
+      src = skipSpace(src);
+      assert(*src);
+      if (*src == ']') break;
+      NodeRef element = parseElement(src, ",]");
+      Builder::appendToArray(ret, element);
+      src = skipSpace(src);
+      if (*src == ',') {
+        src++;
+        continue;
+      } else assert(*src == ']');
+    }
+    assert(*src == ']');
+    src++;
+    return ret;
+  }
+
+  NodeRef parseAfterCurly(char*& src) {
+    expressionPartsStack.resize(expressionPartsStack.size()+1);
+    NodeRef ret = Builder::makeObject();
+    while (1) {
+      src = skipSpace(src);
+      assert(*src);
+      if (*src == '}') break;
+      Frag key(src);
+      assert(key.type == IDENT || key.type == STRING);
+      src += key.size;
+      src = skipSpace(src);
+      assert(*src == ':');
+      src++;
+      NodeRef value = parseElement(src, ",}");
+      Builder::appendToObject(ret, key.str, value);
+      src = skipSpace(src);
+      if (*src == ',') {
+        src++;
+        continue;
+      } else assert(*src == '}');
+    }
+    assert(*src == '}');
+    src++;
     return ret;
   }
 
@@ -557,7 +643,10 @@ class Parser {
           initial = parseCall(initial.getNode(), src);
         } else if (*src == '[') {
           initial = parseIndexing(initial.getNode(), src);
-        } else assert(0);
+        } else {
+          dump("bad parseExpression state", src);
+          assert(0);
+        }
         return parseExpression(initial, src, seps);
       }
     } else {

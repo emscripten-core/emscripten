@@ -523,7 +523,7 @@ class ValueBuilder {
     return &arena.alloc()->setString(s);
   }
 
-  static Ref makeArray() {
+  static Ref makeRawArray() {
     return &arena.alloc()->setArray();
   }
 
@@ -533,23 +533,23 @@ class ValueBuilder {
 
 public:
   static Ref makeToplevel() {
-    return &makeArray()->push_back(makeRawString(TOPLEVEL))
-                        .push_back(makeArray());
+    return &makeRawArray()->push_back(makeRawString(TOPLEVEL))
+                           .push_back(makeRawArray());
   }
 
   static Ref makeString(IString str) {
-    return &makeArray()->push_back(makeRawString(STRING))
-                        .push_back(makeRawString(str));
+    return &makeRawArray()->push_back(makeRawString(STRING))
+                           .push_back(makeRawString(str));
   }
 
   static Ref makeBlock() {
-    return &makeArray()->push_back(makeRawString(BLOCK))
-                        .push_back(makeArray());
+    return &makeRawArray()->push_back(makeRawString(BLOCK))
+                           .push_back(makeRawArray());
   }
 
   static Ref makeName(IString name) {
-    return &makeArray()->push_back(makeRawString(NAME))
-                        .push_back(makeRawString(name));
+    return &makeRawArray()->push_back(makeRawString(NAME))
+                           .push_back(makeRawString(name));
   }
 
   static void appendToBlock(Ref block, Ref element) {
@@ -561,9 +561,9 @@ public:
   }
 
   static Ref makeCall(Ref target) {
-    return &makeArray()->push_back(makeRawString(CALL))
-                        .push_back(target)
-                        .push_back(makeArray());
+    return &makeRawArray()->push_back(makeRawString(CALL))
+                           .push_back(target)
+                           .push_back(makeRawArray());
   }
 
   static void appendToCall(Ref call, Ref element) {
@@ -573,47 +573,47 @@ public:
 
   static Ref makeStatement(Ref contents) {
     if (statable.has(contents[0]->getIString())) {
-      return &makeArray()->push_back(makeRawString(STAT))
-                          .push_back(contents);
+      return &makeRawArray()->push_back(makeRawString(STAT))
+                             .push_back(contents);
     } else {
       return contents; // only very specific things actually need to be stat'ed
     }
   }
 
   static Ref makeNumber(double num) {
-    return &makeArray()->push_back(makeRawString(NUM))
-                        .push_back(&arena.alloc()->setNumber(num));
+    return &makeRawArray()->push_back(makeRawString(NUM))
+                           .push_back(&arena.alloc()->setNumber(num));
   }
 
   static Ref makeBinary(Ref left, IString op, Ref right) {
     if (op == SET) {
-      return &makeArray()->push_back(makeRawString(ASSIGN))
-                          .push_back(&arena.alloc()->setBool(true))
-                          .push_back(left)
-                          .push_back(right);
+      return &makeRawArray()->push_back(makeRawString(ASSIGN))
+                             .push_back(&arena.alloc()->setBool(true))
+                             .push_back(left)
+                             .push_back(right);
     } else if (op == COMMA) {
-      return &makeArray()->push_back(makeRawString(SEQ))
-                          .push_back(left)
-                          .push_back(right);
+      return &makeRawArray()->push_back(makeRawString(SEQ))
+                             .push_back(left)
+                             .push_back(right);
     } else {
-      return &makeArray()->push_back(makeRawString(BINARY))
-                          .push_back(makeRawString(op))
-                          .push_back(left)
-                          .push_back(right);
+      return &makeRawArray()->push_back(makeRawString(BINARY))
+                             .push_back(makeRawString(op))
+                             .push_back(left)
+                             .push_back(right);
     }
   }
 
   static Ref makePrefix(IString op, Ref right) {
-    return &makeArray()->push_back(makeRawString(UNARY_PREFIX))
-                        .push_back(makeRawString(op))
-                        .push_back(right);
+    return &makeRawArray()->push_back(makeRawString(UNARY_PREFIX))
+                           .push_back(makeRawString(op))
+                           .push_back(right);
   }
 
   static Ref makeFunction(IString name) {
-    return &makeArray()->push_back(makeRawString(DEFUN))
-                        .push_back(makeRawString(name))
-                        .push_back(makeArray())
-                        .push_back(makeArray());
+    return &makeRawArray()->push_back(makeRawString(DEFUN))
+                           .push_back(makeRawString(name))
+                           .push_back(makeRawArray())
+                           .push_back(makeRawArray());
   }
 
   static void appendArgumentToFunction(Ref func, IString arg) {
@@ -622,81 +622,81 @@ public:
   }
 
   static Ref makeVar() {
-    return &makeArray()->push_back(makeRawString(VAR))
-                        .push_back(makeArray());
+    return &makeRawArray()->push_back(makeRawString(VAR))
+                           .push_back(makeRawArray());
   }
 
   static void appendToVar(Ref var, IString name, Ref value) {
     assert(var[0] == VAR);
-    Ref array = &makeArray()->push_back(makeRawString(name));
+    Ref array = &makeRawArray()->push_back(makeRawString(name));
     if (!!value) array->push_back(value);
     var[1]->push_back(array);
   }
 
   static Ref makeReturn(Ref value) {
-    return &makeArray()->push_back(makeRawString(RETURN)).push_back(!!value ? value : makeNull());
+    return &makeRawArray()->push_back(makeRawString(RETURN)).push_back(!!value ? value : makeNull());
   }
 
   static Ref makeIndexing(Ref target, Ref index) {
-    return &makeArray()->push_back(makeRawString(SUB))
-                        .push_back(target)
-                        .push_back(index);
+    return &makeRawArray()->push_back(makeRawString(SUB))
+                           .push_back(target)
+                           .push_back(index);
   }
 
   static Ref makeIf(Ref condition, Ref ifTrue, Ref ifFalse) {
-    return &makeArray()->push_back(makeRawString(IF))
-                        .push_back(condition)
-                        .push_back(ifTrue)
-                        .push_back(!!ifFalse ? ifFalse : makeNull());
+    return &makeRawArray()->push_back(makeRawString(IF))
+                           .push_back(condition)
+                           .push_back(ifTrue)
+                           .push_back(!!ifFalse ? ifFalse : makeNull());
   }
 
   static Ref makeConditional(Ref condition, Ref ifTrue, Ref ifFalse) {
-    return &makeArray()->push_back(makeRawString(CONDITIONAL))
-                        .push_back(condition)
-                        .push_back(ifTrue)
-                        .push_back(ifFalse);
+    return &makeRawArray()->push_back(makeRawString(CONDITIONAL))
+                           .push_back(condition)
+                           .push_back(ifTrue)
+                           .push_back(ifFalse);
   }
 
   static Ref makeDo(Ref body, Ref condition) {
-    return &makeArray()->push_back(makeRawString(DO))
-                        .push_back(condition)
-                        .push_back(body);
+    return &makeRawArray()->push_back(makeRawString(DO))
+                           .push_back(condition)
+                           .push_back(body);
   }
 
   static Ref makeWhile(Ref condition, Ref body) {
-    return &makeArray()->push_back(makeRawString(WHILE))
-                        .push_back(condition)
-                        .push_back(body);
+    return &makeRawArray()->push_back(makeRawString(WHILE))
+                           .push_back(condition)
+                           .push_back(body);
   }
 
   static Ref makeBreak(IString label) {
-    return &makeArray()->push_back(makeRawString(BREAK)).push_back(!!label ? makeRawString(label) : makeNull());
+    return &makeRawArray()->push_back(makeRawString(BREAK)).push_back(!!label ? makeRawString(label) : makeNull());
   }
 
   static Ref makeContinue(IString label) {
-    return &makeArray()->push_back(makeRawString(CONTINUE)).push_back(!!label ? makeRawString(label) : makeNull());
+    return &makeRawArray()->push_back(makeRawString(CONTINUE)).push_back(!!label ? makeRawString(label) : makeNull());
   }
 
   static Ref makeLabel(IString name, Ref body) {
-    return &makeArray()->push_back(makeRawString(LABEL))
-                        .push_back(makeRawString(name))
-                        .push_back(body);
+    return &makeRawArray()->push_back(makeRawString(LABEL))
+                           .push_back(makeRawString(name))
+                           .push_back(body);
   }
 
   static Ref makeSwitch(Ref input) {
-    return &makeArray()->push_back(makeRawString(SWITCH))
-                        .push_back(input)
-                        .push_back(makeArray());
+    return &makeRawArray()->push_back(makeRawString(SWITCH))
+                           .push_back(input)
+                           .push_back(makeRawArray());
   }
 
   static void appendCaseToSwitch(Ref switch_, Ref arg) {
     assert(switch_[0] == SWITCH);
-    switch_[2]->push_back(&makeArray()->push_back(arg).push_back(makeArray()));
+    switch_[2]->push_back(&makeRawArray()->push_back(arg).push_back(makeRawArray()));
   }
 
   static void appendDefaultToSwitch(Ref switch_) {
     assert(switch_[0] == SWITCH);
-    switch_[2]->push_back(&makeArray()->push_back(makeNull()).push_back(makeArray()));
+    switch_[2]->push_back(&makeRawArray()->push_back(makeNull()).push_back(makeRawArray()));
   }
 
   static void appendCodeToSwitch(Ref switch_, Ref code, bool explicitBlock) {
@@ -709,6 +709,38 @@ public:
     } else {
       switch_[2]->back()->back()->push_back(code);
     }
+  }
+
+  static Ref makeDot(Ref obj, IString key) {
+    return &makeRawArray()->push_back(makeRawString(DOT))
+                           .push_back(obj)
+                           .push_back(makeRawString(key));
+  }
+
+  static Ref makeNew(Ref call) {
+    return &makeRawArray()->push_back(makeRawString(NEW))
+                           .push_back(call);
+  }
+
+  static Ref makeArray() {
+    return &makeRawArray()->push_back(makeRawString(ARRAY))
+                           .push_back(makeRawArray());
+  }
+
+  static void appendToArray(Ref array, Ref element) {
+    assert(array[0] == ARRAY);
+    array[1]->push_back(element);
+  }
+
+  static Ref makeObject() {
+    return &makeRawArray()->push_back(makeRawString(OBJECT))
+                           .push_back(makeRawArray());
+  }
+
+  static void appendToObject(Ref array, IString key, Ref value) {
+    assert(array[0] == OBJECT);
+    array[1]->push_back(&makeRawArray()->push_back(makeRawString(key))
+                                        .push_back(value));
   }
 };
 
