@@ -58,5 +58,5 @@ void dump(const char *str, Ref node, bool pretty) {
 
 // ValueBuilder
 
-IStringSet ValueBuilder::statable("assign call binary unary-prefix");
+IStringSet ValueBuilder::statable("assign call binary unary-prefix if");
 
