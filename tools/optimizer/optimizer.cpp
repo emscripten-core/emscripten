@@ -2730,7 +2730,7 @@ void asmLastOpts(Ref ast) {
         // while (1) { .. if (..) { break } } ==> do { .. } while(..)
         Ref stats = node[2][1];
         Ref last = stats->back();
-        if (!!last && last[0] == IF && !last[3] && last[2][0] == BLOCK && !!last[2][1][0]) {
+        if (!!last && last[0] == IF && (last->size() < 4 || !last[3]) && last[2][0] == BLOCK && !!last[2][1][0]) {
           Ref lastStats = last[2][1];
           int lastNum = lastStats->size();
           Ref lastLast = lastStats[lastNum-1];
@@ -2763,6 +2763,7 @@ void asmLastOpts(Ref ast) {
           if (abort) return;
           assert(breaks > 0);
           if (lastStats->size() > 1 && breaks != 1) return; // if we have code aside from the break, we can only move it out if there is just one break
+          if (statsStack.size() < 1) return; // no chance we have this stats on hand
           // start to optimize
           if (lastStats->size() > 1) {
             Ref parent = statsStack.back();
@@ -2784,7 +2785,7 @@ void asmLastOpts(Ref ast) {
             // Change &-1 into |0, at this point the hint is no longer needed
             node[1]->setString(OR);
             node[3] = node[3][2];
-            node[3][1] = 0;
+            node[3][1]->setNumber(0);
           }
         } else if (node[1] == MINUS && node[3][0] == UNARY_PREFIX) {
           // avoid X - (-Y) because some minifiers buggily emit X--Y which is invalid as -- can be a unary. Transform to
@@ -2801,8 +2802,10 @@ void asmLastOpts(Ref ast) {
         }
       }
     }, [&](Ref node) {
-      Ref stats = getStatements(node);
-      if (!!stats) statsStack.pop_back();
+      if (statsStack.size() > 0) {
+        Ref stats = getStatements(node);
+        if (!!stats) statsStack.pop_back();
+      }
     });
     // convert  { singleton }  into  singleton
     traversePre(fun, [](Ref node) {
