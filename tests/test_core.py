@@ -5904,19 +5904,19 @@ def process(filename):
       Module.print(multi(2, 1.4, 3, 'atr'));
       Module.print(multi(8, 5.4, 4, 'bret'));
       Module.print('*');
-      // part 3: avoid stack explosion
+      // part 3: avoid stack explosion and check it's restored correctly
       for (var i = 0; i < TOTAL_STACK/60; i++) {
         ccall('multi', 'number', ['number', 'number', 'number', 'string'], [0, 0, 0, '123456789012345678901234567890123456789012345678901234567890']);
       }
       Module.print('stack is ok.');
+      ccall('call_ccall_again', null);
     });
     Module.callMain();
   \'\'\'
   open(filename, 'w').write(src)
 '''
 
-    Settings.EXPORTED_FUNCTIONS += ['_get_int', '_get_float', '_get_string', '_print_int', '_print_float', '_print_string', '_multi', '_pointer', '_malloc']
-
+    Settings.EXPORTED_FUNCTIONS += ['_get_int', '_get_float', '_get_string', '_print_int', '_print_float', '_print_string', '_multi', '_pointer', '_call_ccall_again', '_malloc']
     test_path = path_from_root('tests', 'core', 'test_ccall')
     src, output = (test_path + s for s in ('.in', '.out'))
 

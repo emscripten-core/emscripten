@@ -340,14 +340,7 @@ function getCFunc(ident) {
 
 var cwrap, ccall;
 (function(){
-  var stack = 0;
   var JSfuncs = {
-    'stackSave' : function() {
-      stack = Runtime.stackSave();
-    },
-    'stackRestore' : function() {
-      Runtime.stackRestore(stack);
-    },
     // type conversion from js to c
     'arrayToC' : function(arr) {
       var ret = Runtime.stackAlloc(arr.length);
@@ -371,6 +364,7 @@ var cwrap, ccall;
   ccall = function ccallFunc(ident, returnType, argTypes, args) {
     var func = getCFunc(ident);
     var cArgs = [];
+    var stack = 0;
 #if ASSERTIONS
     assert(returnType !== 'array', 'Return type should not be "array".');
 #endif
@@ -387,7 +381,7 @@ var cwrap, ccall;
     }
     var ret = func.apply(null, cArgs);
     if (returnType === 'string') ret = Pointer_stringify(ret);
-    if (stack !== 0) JSfuncs['stackRestore']();
+    if (stack !== 0) Runtime.stackRestore(stack);
     return ret;
   }
 
@@ -425,7 +419,7 @@ var cwrap, ccall;
     if (!numericArgs) {
       // Generate the code needed to convert the arguments from javascript
       // values to pointers
-      funcstr += JSsource['stackSave'].body + ';';
+      funcstr += 'var stack = Runtime.stackSave();';
       for (var i = 0; i < nargs; i++) {
         var arg = argNames[i], type = argTypes[i];
         if (type === 'number') continue;
@@ -447,7 +441,7 @@ var cwrap, ccall;
     }
     if (!numericArgs) {
       // If we had a stack, restore it
-      funcstr += JSsource['stackRestore'].body + ';';
+      funcstr += 'Runtime.stackRestore(stack);';
     }
     funcstr += 'return ret})';
     return eval(funcstr);
