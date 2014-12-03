@@ -3,7 +3,6 @@
 
 #include <vector.h>
 
-typedef float32x2 __m64;
 typedef float32x4 __m128;
 typedef int32x4 __v4si;
 typedef float32x4 __v4sf;
@@ -47,13 +46,13 @@ _mm_load_ps(const float *__p)
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
-_mm_loadl_pi(__m128 __a, const __m64 *__p)
+_mm_loadl_pi(__m128 __a, const void /*__m64*/ *__p)
 {
   return (__m128){ ((const float*)__p)[0], ((const float*)__p)[1], __a[2], __a[3] };
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
-_mm_loadh_pi(__m128 __a, const __m64 *__p)
+_mm_loadh_pi(__m128 __a, const void /*__m64*/ *__p)
 {
   return (__m128){ __a[0], __a[1], ((const float*)__p)[0], ((const float*)__p)[1] };
 }
@@ -88,14 +87,14 @@ _mm_load_ss(const float *__p)
 }
 
 static __inline__ void __attribute__((__always_inline__))
-_mm_storel_pi(__m64 *__p, __m128 __a)
+_mm_storel_pi(void /*__m64*/ *__p, __m128 __a)
 {
   ((float*)__p)[0] = __a[0];
   ((float*)__p)[1] = __a[1];
 }
 
 static __inline__ void __attribute__((__always_inline__))
-_mm_storeh_pi(__m64 *__p, __m128 __a)
+_mm_storeh_pi(void /*__m64*/ *__p, __m128 __a)
 {
   ((float*)__p)[0] = __a[2];
   ((float*)__p)[1] = __a[3];
