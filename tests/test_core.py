@@ -5161,6 +5161,7 @@ return malloc(size);
   # Tests the full SSE1 API.
   def test_sse1(self):
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+    Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
