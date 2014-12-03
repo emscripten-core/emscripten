@@ -435,13 +435,7 @@ _mm_xor_ps(__m128 __a, __m128 __b)
   return emscripten_float32x4_xor(__a, __b);
 }
 
-static __inline__ __m128 __attribute__((__always_inline__))
-__internal_not_ss(__m128 __a)
-{
-  unsigned int __x = 0xFFFFFFFFU;
-  return _mm_xor_ps(__a, _mm_set_ss(*(float*)&__x));
-}
-
+// TODO: Use SIMD.float32x4.notEqual
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_cmpneq_ps(__m128 __a, __m128 __b)
 {
@@ -451,7 +445,7 @@ _mm_cmpneq_ps(__m128 __a, __m128 __b)
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_cmpneq_ss(__m128 __a, __m128 __b)
 {
-  return __internal_not_ss(_mm_cmpeq_ss(__a, __b));
+  return _mm_move_ss(__a, _mm_cmpneq_ps(__a, __b));
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
@@ -463,7 +457,7 @@ _mm_cmpnge_ps(__m128 __a, __m128 __b)
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_cmpnge_ss(__m128 __a, __m128 __b)
 {
-  return __internal_not_ss(_mm_cmpge_ss(__a, __b));
+  return _mm_move_ss(__a, _mm_cmpnge_ps(__a, __b));
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
@@ -475,7 +469,7 @@ _mm_cmpngt_ps(__m128 __a, __m128 __b)
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_cmpngt_ss(__m128 __a, __m128 __b)
 {
-  return __internal_not_ss(_mm_cmpgt_ss(__a, __b));
+  return _mm_move_ss(__a, _mm_cmpngt_ps(__a, __b));
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
@@ -487,7 +481,7 @@ _mm_cmpnle_ps(__m128 __a, __m128 __b)
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_cmpnle_ss(__m128 __a, __m128 __b)
 {
-  return __internal_not_ss(_mm_cmple_ss(__a, __b));
+  return _mm_move_ss(__a, _mm_cmpnle_ps(__a, __b));
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
@@ -499,7 +493,7 @@ _mm_cmpnlt_ps(__m128 __a, __m128 __b)
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_cmpnlt_ss(__m128 __a, __m128 __b)
 {
-  return __internal_not_ss(_mm_cmplt_ss(__a, __b));
+  return _mm_move_ss(__a, _mm_cmpnlt_ps(__a, __b));
 }
 
 static __inline__ int __attribute__((__always_inline__))
