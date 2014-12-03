@@ -8,15 +8,15 @@ typedef int32x4 __v4si;
 typedef float32x4 __v4sf;
 
 static __inline__ __m128 __attribute__((__always_inline__))
-_mm_set_ps(float __w, float __z, float __y, float __x)
+_mm_set_ps(float __z, float __y, float __x, float __w)
 {
-  return (__m128){ __x, __y, __z, __w };
+  return (__m128){ __w, __x, __y, __z };
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
-_mm_setr_ps(float __x, float __y, float __z, float __w)
+_mm_setr_ps(float __z, float __y, float __x, float __w)
 {
-  return (__m128){ __x, __y, __z, __w };
+  return (__m128){ __z, __y, __x, __w };
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
