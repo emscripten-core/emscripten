@@ -242,6 +242,7 @@ _mm_max_ss(__m128 __a, __m128 __b)
   return _mm_move_ss(__a, _mm_max_ps(__a, __b));
 }
 
+// TODO: we should re-evaluate rcpps, rsqrtps, and friends once we figure out what we're doing with SIMD.float32x4.reciprocal, SIMD.float32x4.reciprocalSqrt, and friends in SIMD.js.
 #define _mm_rcp_ps(__a) (_mm_set1_ps(1.0f) / (__a))
 
 static __inline__ __m128 __attribute__((__always_inline__))
@@ -370,30 +371,6 @@ _mm_cmpgt_ss(__m128 __a, __m128 __b)
   return _mm_move_ss(__a, _mm_cmpgt_ps(__a, __b));
 }
 
-static __inline__ __m128 __attribute__((__always_inline__))
-_mm_cmpnlt_ps(__m128 __a, __m128 __b)
-{
-  return emscripten_float32x4_not(emscripten_float32x4_lessThan(__a, __b));
-}
-
-static __inline__ __m128 __attribute__((__always_inline__))
-_mm_cmpnlt_ss(__m128 __a, __m128 __b)
-{
-  return _mm_move_ss(__a, _mm_cmpnlt_ps(__a, __b));
-}
-
-static __inline__ __m128 __attribute__((__always_inline__))
-_mm_cmpnle_ps(__m128 __a, __m128 __b)
-{
-  return emscripten_float32x4_not(emscripten_float32x4_lessThanOrEqual(__a, __b));
-}
-
-static __inline__ __m128 __attribute__((__always_inline__))
-_mm_cmpnle_ss(__m128 __a, __m128 __b)
-{
-  return _mm_move_ss(__a, _mm_cmpnle_ps(__a, __b));
-}
-
 static __inline__ int __internal_isnan(float __f)
 {
   return (*(unsigned int*)&__f << 1) > 0xFF000000u;
@@ -465,30 +442,137 @@ __internal_not_ss(__m128 __a)
   return _mm_xor_ps(__a, _mm_set_ss(*(float*)&__x));
 }
 
-#define _mm_cmpneq_ps(__a, __b) emscripten_float32x4_not(_mm_cmpeq_ps((__a), (__b)))
-#define _mm_cmpneq_ss(__a, __b) __internal_not_ss(_mm_cmpeq_ss((__a), (__b)))
-#define _mm_cmpnge_ps(__a, __b) emscripten_float32x4_not(_mm_cmpge_ps((__a), (__b)))
-#define _mm_cmpnge_ss(__a, __b) __internal_not_ss(_mm_cmpge_ss((__a), (__b)))
-#define _mm_cmpngt_ps(__a, __b) emscripten_float32x4_not(_mm_cmpgt_ps((__a), (__b)))
-#define _mm_cmpngt_ss(__a, __b) __internal_not_ss(_mm_cmpgt_ss((__a), (__b)))
-#define _mm_cmpnle_ps(__a, __b) emscripten_float32x4_not(_mm_cmple_ps((__a), (__b)))
-#define _mm_cmpnle_ss(__a, __b) __internal_not_ss(_mm_cmple_ss((__a), (__b)))
-#define _mm_cmpnlt_ps(__a, __b) emscripten_float32x4_not(_mm_cmplt_ps((__a), (__b)))
-#define _mm_cmpnlt_ss(__a, __b) __internal_not_ss(_mm_cmplt_ss((__a), (__b)))
+static __inline__ __m128 __attribute__((__always_inline__))
+_mm_cmpneq_ps(__m128 __a, __m128 __b)
+{
+  return emscripten_float32x4_not(_mm_cmpeq_ps(__a, __b));
+}
 
-#define _mm_comieq_ss(__a, __b) ((__a)[0] == (__b)[0])
-#define _mm_comige_ss(__a, __b) ((__a)[0] >= (__b)[0])
-#define _mm_comigt_ss(__a, __b) ((__a)[0] > (__b)[0])
-#define _mm_comile_ss(__a, __b) ((__a)[0] <= (__b)[0])
-#define _mm_comilt_ss(__a, __b) ((__a)[0] < (__b)[0])
-#define _mm_comineq_ss(__a, __b) ((__a)[0] != (__b)[0])
+static __inline__ __m128 __attribute__((__always_inline__))
+_mm_cmpneq_ss(__m128 __a, __m128 __b)
+{
+  return __internal_not_ss(_mm_cmpeq_ss(__a, __b));
+}
 
-#define _mm_ucomieq_ss(__a, __b) ((__a)[0] == (__b)[0])
-#define _mm_ucomige_ss(__a, __b) ((__a)[0] >= (__b)[0])
-#define _mm_ucomigt_ss(__a, __b) ((__a)[0] > (__b)[0])
-#define _mm_ucomile_ss(__a, __b) ((__a)[0] <= (__b)[0])
-#define _mm_ucomilt_ss(__a, __b) ((__a)[0] < (__b)[0])
-#define _mm_ucomineq_ss(__a, __b) ((__a)[0] != (__b)[0])
+static __inline__ __m128 __attribute__((__always_inline__))
+_mm_cmpnge_ps(__m128 __a, __m128 __b)
+{
+  return emscripten_float32x4_not(_mm_cmpge_ps(__a, __b));
+}
+
+static __inline__ __m128 __attribute__((__always_inline__))
+_mm_cmpnge_ss(__m128 __a, __m128 __b)
+{
+  return __internal_not_ss(_mm_cmpge_ss(__a, __b));
+}
+
+static __inline__ __m128 __attribute__((__always_inline__))
+_mm_cmpngt_ps(__m128 __a, __m128 __b)
+{
+  return emscripten_float32x4_not(_mm_cmpgt_ps(__a, __b));
+}
+
+static __inline__ __m128 __attribute__((__always_inline__))
+_mm_cmpngt_ss(__m128 __a, __m128 __b)
+{
+  return __internal_not_ss(_mm_cmpgt_ss(__a, __b));
+}
+
+static __inline__ __m128 __attribute__((__always_inline__))
+_mm_cmpnle_ps(__m128 __a, __m128 __b)
+{
+  return emscripten_float32x4_not(_mm_cmple_ps(__a, __b));
+}
+
+static __inline__ __m128 __attribute__((__always_inline__))
+_mm_cmpnle_ss(__m128 __a, __m128 __b)
+{
+  return __internal_not_ss(_mm_cmple_ss(__a, __b));
+}
+
+static __inline__ __m128 __attribute__((__always_inline__))
+_mm_cmpnlt_ps(__m128 __a, __m128 __b)
+{
+  return emscripten_float32x4_not(_mm_cmplt_ps(__a, __b));
+}
+
+static __inline__ __m128 __attribute__((__always_inline__))
+_mm_cmpnlt_ss(__m128 __a, __m128 __b)
+{
+  return __internal_not_ss(_mm_cmplt_ss(__a, __b));
+}
+
+static __inline__ int __attribute__((__always_inline__))
+_mm_comieq_ss(__m128 __a, __m128 __b)
+{
+  return __a[0] == __b[0];
+}
+
+static __inline__ int __attribute__((__always_inline__))
+_mm_comige_ss(__m128 __a, __m128 __b)
+{
+  return __a[0] >= __b[0];
+}
+
+static __inline__ int __attribute__((__always_inline__))
+_mm_comigt_ss(__m128 __a, __m128 __b)
+{
+  return __a[0] > __b[0];
+}
+
+static __inline__ int __attribute__((__always_inline__))
+_mm_comile_ss(__m128 __a, __m128 __b)
+{
+  return __a[0] <= __b[0];
+}
+
+static __inline__ int __attribute__((__always_inline__))
+_mm_comilt_ss(__m128 __a, __m128 __b)
+{
+  return __a[0] < __b[0];
+}
+
+static __inline__ int __attribute__((__always_inline__))
+_mm_comineq_ss(__m128 __a, __m128 __b)
+{
+  return __a[0] != __b[0];
+}
+
+static __inline__ int __attribute__((__always_inline__))
+_mm_ucomieq_ss(__m128 __a, __m128 __b)
+{
+  return __a[0] == __b[0];
+}
+
+static __inline__ int __attribute__((__always_inline__))
+_mm_ucomige_ss(__m128 __a, __m128 __b)
+{
+  return __a[0] >= __b[0];
+}
+
+static __inline__ int __attribute__((__always_inline__))
+_mm_ucomigt_ss(__m128 __a, __m128 __b)
+{
+  return __a[0] > __b[0];
+}
+
+static __inline__ int __attribute__((__always_inline__))
+_mm_ucomile_ss(__m128 __a, __m128 __b)
+{
+  return __a[0] <= __b[0];
+}
+
+static __inline__ int __attribute__((__always_inline__))
+_mm_ucomilt_ss(__m128 __a, __m128 __b)
+{
+  return __a[0] < __b[0];
+}
+
+static __inline__ int __attribute__((__always_inline__))
+_mm_ucomineq_ss(__m128 __a, __m128 __b)
+{
+  return __a[0] != __b[0];
+}
 
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_cvtsi32_ss(__m128 __a, int __b)
