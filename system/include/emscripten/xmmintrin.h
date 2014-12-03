@@ -3,6 +3,11 @@
 
 #include <vector.h>
 
+// Emscripten SIMD support doesn't support MMX/float32x2/__m64.
+// However, we support loading and storing 2-vectors, so
+// treat "__m64 *" as "void *" for that purpose.
+typedef void __m64;
+
 typedef float32x4 __m128;
 typedef int32x4 __v4si;
 typedef float32x4 __v4sf;
@@ -83,6 +88,7 @@ _mm_load_ps1(const float *__p)
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_load_ss(const float *__p)
 {
+  // TODO: This actually corresponds to the SIMD.float32x4.loadX function in SIMD.js. Use that instead.
   return (__m128){ *__p, 0.0f, 0.0f, 0.0f };
 }
 
@@ -108,22 +114,27 @@ _mm_store_ps(float *__p, __m128 __a)
 // No NTA cache hint available.
 #define _mm_stream_ps _mm_store_ps
 
+#define _MM_SHUFFLE(w, z, y, x) (((w) << 6) | ((z) << 4) | ((y) << 2) | (x))
+
+// This is defined as a macro because __builtin_shufflevector requires its
+// mask argument to be a compile-time constant.
+#define _mm_shuffle_ps(a, b, mask) \
+  ((__m128)__builtin_shufflevector((a), (b), \
+                                  (((mask) >> 0) & 0x3) + 0, \
+                                  (((mask) >> 2) & 0x3) + 0, \
+                                  (((mask) >> 4) & 0x3) + 4, \
+                                  (((mask) >> 6) & 0x3) + 4))
+
 static __inline__ void __attribute__((__always_inline__))
 _mm_storer_ps(float *__p, __m128 __a)
 {
-  __p[0] = __a[3];
-  __p[1] = __a[2];
-  __p[2] = __a[1];
-  __p[3] = __a[0];
+  _mm_store_ps(__p, _mm_shuffle_ps(__a, __a, _MM_SHUFFLE(0, 1, 2, 3)));
 }
 
 static __inline__ void __attribute__((__always_inline__))
 _mm_store_ps1(float *__p, __m128 __a)
 {
-  __p[0] = __a[0];
-  __p[1] = __a[0];
-  __p[2] = __a[0];
-  __p[3] = __a[0];
+  _mm_store_ps(__p, _mm_shuffle_ps(__a, __a, _MM_SHUFFLE(0, 0, 0, 0)));
 }
 #define _mm_store1_ps _mm_store_ps1
 
@@ -258,17 +269,6 @@ _mm_rsqrt_ss(__m128 __a)
 {
   return _mm_move_ss(__a, _mm_rsqrt_ps(__a));
 }
-
-// This is defined as a macro because __builtin_shufflevector requires its
-// mask argument to be a compile-time constant.
-#define _mm_shuffle_ps(a, b, mask) \
-  ((__m128)__builtin_shufflevector((a), (b), \
-                                  (((mask) >> 0) & 0x3) + 0, \
-                                  (((mask) >> 2) & 0x3) + 0, \
-                                  (((mask) >> 4) & 0x3) + 4, \
-                                  (((mask) >> 6) & 0x3) + 4))
-
-#define _MM_SHUFFLE(w, z, y, x) (((w) << 6) | ((z) << 4) | ((y) << 2) | (x))
 
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_unpackhi_ps(__m128 __a, __m128 __b)
