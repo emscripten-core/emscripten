@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 
 #include <vector>
 #include <ostream>
@@ -511,6 +512,550 @@ struct Value {
   bool has(IString x) {
     assert(isObject());
     return obj->count(x) > 0;
+  }
+};
+
+// AST traversals
+
+// Traverse, calling visit before the children
+void traversePre(Ref node, std::function<void (Ref)> visit);
+
+// Traverse, calling visitPre before the children and visitPost after
+void traversePrePost(Ref node, std::function<void (Ref)> visitPre, std::function<void (Ref)> visitPost);
+
+// Traverse, calling visitPre before the children and visitPost after. If pre returns false, do not traverse children
+void traversePrePostConditional(Ref node, std::function<bool (Ref)> visitPre, std::function<void (Ref)> visitPost);
+
+// Traverses all the top-level functions in the document
+void traverseFunctions(Ref ast, std::function<void (Ref)> visit);
+
+// JS printer
+
+struct JSPrinter {
+  bool pretty, finalize;
+
+  char *buffer;
+  int size, used;
+
+  int indent;
+
+  Ref ast;
+
+  JSPrinter(bool pretty_, bool finalize_, Ref ast_) : pretty(pretty_), finalize(finalize_), buffer(0), size(0), used(0), indent(0), ast(ast_) {
+    scan();
+  }
+
+  void printAst() {
+    print(ast);
+    buffer[used] = 0;
+  }
+
+  // Scanning
+
+  bool capturesOperators(Ref node) {
+    Ref type = node[0];
+    return type == CALL || type == ARRAY || type == OBJECT || type == SEQ;
+  }
+
+  int getPrecedence(Ref node) {
+    Ref type = node[0];
+    assert(type == BINARY || type == UNARY_PREFIX);
+    return OperatorClass::getPrecedence(type == BINARY ? OperatorClass::Binary : OperatorClass::Prefix, node[1]->getIString());
+  }
+
+  std::unordered_set<void*> needsParens;
+
+  bool needParens(Ref node) {
+    return needsParens.count((void*)node.inst) > 0;
+  }
+
+  void scan() {
+    // calculate who need parens
+    std::vector<Ref> stack; // stack of relevant nodes for parens
+    traversePrePost(ast, [&](Ref node) {
+      Ref type = node[0];
+      if (type == BINARY || type == UNARY_PREFIX) {
+        // check if an ancestor forces us to need parens
+        int currPrecedence = getPrecedence(node);
+        for (int i = stack.size()-1; i >= 0; i--) {
+          Ref ancestor = stack[i];
+          if (!ancestor) break; // something captures here
+          if (currPrecedence >= getPrecedence(ancestor)) { // TODO: associativity etc.
+            // we need to capture here
+            needsParens.insert((void*)node.inst);
+            stack.push_back(nullptr);
+            return;
+          }
+        }
+        // no parens needed
+        stack.push_back(node);
+      } else if (capturesOperators(node)) {
+        stack.push_back(nullptr);
+      }
+    }, [&](Ref node) {
+      Ref type = node[0];
+      if (type == BINARY || type == UNARY_PREFIX || capturesOperators(node)) {
+        assert(stack.size() > 0);
+        assert(!stack.back() || stack.back() == node);
+        stack.pop_back();
+      }
+    });
+    assert(stack.size() == 0);
+  }
+
+  // Utils
+
+  void ensure(int safety=100) {
+    if (size < used + safety) {
+      size = std::max(1024, size*2) + safety;
+      if (!buffer) {
+        buffer = (char*)malloc(size);
+      } else {
+        buffer = (char*)realloc(buffer, size);
+      }
+    }
+  }
+
+  void emit(char c) {
+    ensure(1);
+    buffer[used++] = c;
+  }
+
+  void emit(const char *s) {
+    int len = strlen(s);
+    ensure(len);
+    strcpy(buffer + used, s);
+    used += len;
+  }
+
+  void newline() {
+    if (!pretty) return;
+    emit('\n');
+    for (int i = 0; i < indent; i++) emit(' ');
+  }
+
+  void space() {
+    if (pretty) emit(' ');
+  }
+
+  void print(Ref node) {
+    ensure();
+    IString type = node[0]->getIString();
+    //fprintf(stderr, "printing %s\n", type.str);
+    switch (type.str[0]) {
+      case 'a': {
+        if (type == ASSIGN) printAssign(node);
+        else if (type == ARRAY) printArray(node);
+        else assert(0);
+        break;
+      }
+      case 'b': {
+        if (type == BINARY) printBinary(node);
+        else if (type == BLOCK) printBlock(node);
+        else if (type == BREAK) printBreak(node);
+        else assert(0);
+        break;
+      }
+      case 'c': {
+        if (type == CALL) printCall(node);
+        else if (type == CONDITIONAL) printConditional(node);
+        else if (type == CONTINUE) printContinue(node);
+        else assert(0);
+        break;
+      }
+      case 'd': {
+        if (type == DEFUN) printDefun(node);
+        else if (type == DO) printDo(node);
+        else if (type == DOT) printDot(node);
+        else assert(0);
+        break;
+      }
+      case 'i': {
+        if (type == IF) printIf(node);
+        else assert(0);
+        break;
+      }
+      case 'l': {
+        if (type == LABEL) printLabel(node);
+        else assert(0);
+        break;
+      }
+      case 'n': {
+        if (type == NAME) printName(node);
+        else if (type == NUM) printNum(node);
+        else if (type == NEW) printNew(node);
+        else assert(0);
+        break;
+      }
+      case 'o': {
+        if (type == OBJECT) printObject(node);
+        break;
+      }
+      case 'r': {
+        if (type == RETURN) printReturn(node);
+        else assert(0);
+        break;
+      }
+      case 's': {
+        if (type == STAT) printStat(node);
+        else if (type == SUB) printSub(node);
+        else if (type == SEQ) printSeq(node);
+        else if (type == SWITCH) printSwitch(node);
+        else if (type == STRING) printString(node);
+        else assert(0);
+        break;
+      }
+      case 't': {
+        if (type == TOPLEVEL) printToplevel(node);
+        else assert(0);
+        break;
+      }
+      case 'u': {
+        if (type == UNARY_PREFIX) printUnaryPrefix(node);
+        else assert(0);
+        break;
+      }
+      case 'v': {
+        if (type == VAR) printVar(node);
+        else assert(0);
+        break;
+      }
+      case 'w': {
+        if (type == WHILE) printWhile(node);
+        else assert(0);
+        break;
+      }
+      default: {
+        printf("cannot yet print %s\n", type.str);
+        assert(0);
+      }
+    }
+  }
+
+  void printStats(Ref stats) {
+    for (int i = 0; i < stats->size(); i++) {
+      if (i > 0) newline();
+      print(stats[i]);
+    }
+  }
+
+  void printArgs(Ref args) {
+    for (int i = 0; i < args->size(); i++) {
+      if (i > 0) (pretty ? emit(", ") : emit(','));
+      print(args[i]);
+    }
+  }
+
+  void printToplevel(Ref node) {
+    printStats(node[1]);
+  }
+
+  void printBlock(Ref node) {
+    emit('{');
+    indent++;
+    newline();
+    printStats(node[1]);
+    indent--;
+    newline();
+    emit('}');
+  }
+
+  void printDefun(Ref node) {
+    emit("function ");
+    emit(node[1]->getCString());
+    emit('(');
+    Ref args = node[2];
+    for (int i = 0; i < args->size(); i++) {
+      if (i > 0) (pretty ? emit(", ") : emit(','));
+      emit(args[i]->getCString());
+    }
+    emit(')');
+    space();
+    emit('{');
+    indent++;
+    newline();
+    printStats(node[3]);
+    indent--;
+    newline();
+    emit('}');
+    newline();
+  }
+
+  void printStat(Ref node) {
+    print(node[1]);
+    emit(';');
+  }
+
+  void printAssign(Ref node) {
+    print(node[2]);
+    space();
+    emit('=');
+    space();
+    print(node[3]);
+  }
+
+  void printName(Ref node) {
+    emit(node[1]->getCString());
+  }
+
+  void printNum(Ref node) {
+    double d = node[1]->getNumber();
+    static char buffer[50];
+    int n;
+    if (fmod(d, 1) == 0) {
+      n = snprintf(buffer, 45, "%.0f", d);
+    } else {
+      n = snprintf(buffer, 45, "%.17f", d);
+    }
+    assert(n < 40);
+    emit(buffer);
+  }
+
+  void printString(Ref node) {
+    emit('"');
+    emit(node[1]->getCString());
+    emit('"');
+  }
+
+  // checks if node or any of its children has lower precedence
+  bool hasLowerPrecedence(OperatorClass::Type type, IString op, Ref node) {
+    int prec = OperatorClass::getPrecedence(type, op);
+    // TODO: aborting
+    int has = false;
+    traversePre(node, [&](Ref node) {
+      Ref type = node[0];
+      if (type == BINARY ) {
+        if (OperatorClass::getPrecedence(OperatorClass::Binary, node[1]->getIString()) > prec) has = true;
+      } else if (type == UNARY_PREFIX) {
+        if (OperatorClass::getPrecedence(OperatorClass::Prefix, node[1]->getIString()) > prec) has = true;
+      }
+    });
+    return has;
+  }
+
+  void printBinary(Ref node) {
+    bool parens = needParens(node);
+    if (parens) emit('(');
+    print(node[2]);
+    space();
+    emit(node[1]->getCString());
+    space();
+    print(node[3]);
+    if (parens) emit(')');
+  }
+
+  void printConditional(Ref node) {
+    // TODO: optimize out parens
+    emit('(');
+    print(node[1]);
+    emit(')');
+    space();
+    emit('?');
+    space();
+    emit('(');
+    print(node[2]);
+    emit(')');
+    space();
+    emit(':');
+    space();
+    emit('(');
+    print(node[3]);
+    emit(')');
+  }
+
+  void printCall(Ref node) {
+    print(node[1]);
+    emit('(');
+    Ref args = node[2];
+    for (int i = 0; i < args->size(); i++) {
+      if (i > 0) (pretty ? emit(", ") : emit(','));
+      print(args[i]);
+    }
+    emit(')');
+  }
+
+  void printSeq(Ref node) {
+    // TODO: optimize out parens
+    emit('(');
+    print(node[1]);
+    emit(',');
+    space();
+    print(node[2]);
+    emit(')');
+  }
+
+  void printDot(Ref node) {
+    print(node[1]);
+    emit('.');
+    emit(node[2]->getCString());
+  }
+
+  void printSwitch(Ref node) {
+    emit("switch");
+    space();
+    emit('(');
+    print(node[1]);
+    emit(')');
+    space();
+    emit('{');
+    indent++;
+    newline();
+    Ref cases = node[2];
+    for (int i = 0; i < cases->size(); i++) {
+      Ref c = cases[i];
+      if (!!c[0]) {
+        emit("default:");
+      } else {
+        emit("case ");
+        print(c[0]);
+        emit(':');
+      }
+      space();
+      indent++;
+      newline();
+      printStats(c[1]);
+      indent--;
+      newline();
+    }
+    indent--;
+    emit('}');
+  }
+
+  void printSub(Ref node) {
+    print(node[1]);
+    emit('[');
+    print(node[2]);
+    emit(']');
+  }
+
+  void printUnaryPrefix(Ref node) {
+    bool parens = needParens(node);
+    if (parens) emit('(');
+    emit(node[1]->getCString());
+    print(node[2]);
+    if (parens) emit(')');
+  }
+
+  void printVar(Ref node) {
+    emit("var ");
+    Ref args = node[1];
+    for (int i = 0; i < args->size(); i++) {
+      if (i > 0) (pretty ? emit(", ") : emit(','));
+      emit(args[i][0]->getCString());
+      if (args[i]->size() > 1) {
+        space();
+        emit('=');
+        space();
+        print(args[i][1]);
+      }
+    }
+    emit(';');
+  }
+
+  void printIf(Ref node) {
+    emit("if");
+    space();
+    emit('(');
+    print(node[1]);
+    emit(')');
+    space();
+    print(node[2]);
+    if (!!node[3]) {
+      space();
+      emit("else");
+      space();
+      print(node[3]);
+    }
+  }
+
+  void printDo(Ref node) {
+    emit("do");
+    space();
+    emit('(');
+    print(node[1]);
+    emit(')');
+    space();
+    print(node[2]);
+  }
+
+  void printWhile(Ref node) {
+    emit("while");
+    space();
+    emit('(');
+    print(node[1]);
+    emit(')');
+    space();
+    print(node[2]);
+  }
+
+  void printLabel(Ref node) {
+    emit(node[1]->getCString());
+    emit(':');
+    space();
+    emit('(');
+  }
+
+  void printReturn(Ref node) {
+    emit("return");
+    if (!!node[1]) {
+      emit(' ');
+      print(node[1]);
+    }
+    emit(';');
+  }
+
+  void printBreak(Ref node) {
+    emit("break");
+    if (!!node[1]) {
+      emit(' ');
+      emit(node[1]->getCString());
+    }
+    emit(';');
+  }
+
+  void printContinue(Ref node) {
+    emit("continue");
+    if (!!node[1]) {
+      emit(' ');
+      emit(node[1]->getCString());
+    }
+    emit(';');
+  }
+
+  void printNew(Ref node) {
+    emit("new ");
+    print(node[1]);
+  }
+
+  void printArray(Ref node) {
+    emit('[');
+    Ref args = node[1];
+    for (int i = 0; i < args->size(); i++) {
+      if (i > 0) (pretty ? emit(", ") : emit(','));
+      print(args[i]);
+    }
+    emit(']');
+  }
+
+  void printObject(Ref node) {
+    emit('{');
+    indent++;
+    newline();
+    Ref args = node[1];
+    for (int i = 0; i < args->size(); i++) {
+      if (i > 0) {
+        pretty ? emit(", ") : emit(',');
+        newline();
+      }
+      emit('"');
+      emit(args[i][0]->getCString());
+      emit("\":");
+      space();
+      print(args[i][1]);
+    }
+    indent--;
+    newline();
+    emit('}');
   }
 };
 

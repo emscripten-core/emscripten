@@ -76,7 +76,8 @@ IString TOPLEVEL("toplevel"),
         COLON(":"),
         CASE("case"),
         DEFAULT("default"),
-        DOT("."),
+        DOT("dot"),
+        PERIOD("."),
         NEW("new"),
         ARRAY("array"),
         OBJECT("object"),
@@ -91,6 +92,8 @@ const char *OPERATOR_INITS = "+-*/%<>&^|~=!,?:.",
 int MAX_OPERATOR_SIZE = 3;
 
 std::vector<OperatorClass> operatorClasses;
+
+static std::vector<std::unordered_map<IString, int>> precedences;
 
 struct Init {
   Init() {
@@ -107,10 +110,22 @@ struct Init {
     operatorClasses.push_back(OperatorClass("? :",       true,  OperatorClass::Tertiary));
     operatorClasses.push_back(OperatorClass("=",         true,  OperatorClass::Binary));
     operatorClasses.push_back(OperatorClass(",",         true,  OperatorClass::Binary));
+
+    precedences.resize(OperatorClass::Tertiary + 1);
+
+    for (int prec = 0; prec < operatorClasses.size(); prec++) {
+      for (auto curr : operatorClasses[prec].ops) {
+        precedences[operatorClasses[prec].type][curr] = prec;
+      }
+    }
   }
 };
 
 Init init;
+
+int OperatorClass::getPrecedence(Type type, IString op) {
+  return precedences[type][op];
+}
 
 } // namespace cashew
 

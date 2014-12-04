@@ -86,6 +86,7 @@ extern IString TOPLEVEL,
                CASE,
                DEFAULT,
                DOT,
+               PERIOD,
                NEW,
                ARRAY,
                OBJECT,
@@ -110,9 +111,12 @@ struct OperatorClass {
   Type type;
 
   OperatorClass(const char* o, bool r, Type t) : ops(o), rtl(r), type(t) {}
+
+  static int getPrecedence(Type type, IString op);
 };
 
 extern std::vector<OperatorClass> operatorClasses;
+
 
 // parser
 
@@ -205,7 +209,7 @@ class Parser {
           case '+': str = PLUS; break;
           case ',': str = COMMA; break;
           case '-': str = MINUS; break;
-          case '.': str = DOT; break;
+          case '.': str = PERIOD; break;
           case '/': str = DIV; break;
           case ':': str = COLON; break;
           case '<': str = src[1] == '<' ? LSHIFT : (src[1] == '=' ? LE : LT); break;
