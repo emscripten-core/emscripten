@@ -57,6 +57,10 @@ if 'is not valid asm.js' in asmjs_validation_status:
     print >> sys.stderr, asmjs_validation_status
     asmjs_validation_status = '<span style="color:red;">' + asmjs_validation_status + '</span>'
 
+browser = 'firefox_nightly'
+if len(sys.argv) > 1 and sys.argv[1].startswith('--browser='):
+  browser = sys.argv[1][len('--browser='):].strip()
+
 # We require running in FF Nightly, since no other browsers support SIMD yet.
 print 'Now launching Firefox to run the browser benchmark. For this to work properly, ensure the following:'
 print ' - Firefox Nightly is installed.'
@@ -65,7 +69,11 @@ print ' - The slow script dialog in Firefox is disabled.'
 print ' - Make sure that all Firefox debugging, profiling etc. add-ons that might impact performance are disabled (Firebug, Geckoprofiler, ...).'
 print ''
 print 'Once the test has finished, close the browser application to continue.'
-html_results = Popen([path_from_root('emrun'), '--browser=firefox_nightly', out_file], stdout=PIPE, stderr=PIPE).communicate()
+html_results = Popen([path_from_root('emrun'), '--browser=' + browser, out_file], stdout=PIPE, stderr=PIPE).communicate()
+
+if not html_results or not html_results[0].strip():
+    print 'Running Firefox Nightly failed! Please rerun with the command line parameter --browser=/path/to/firefox/nightly/firefox'
+    sys.exit(1)
 
 def strip_comments(text):
     return re.sub('//.*?\n|/\*.*?\*/', '', text, re.S)
