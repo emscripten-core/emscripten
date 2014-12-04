@@ -903,7 +903,7 @@ struct JSPrinter {
     Ref cases = node[2];
     for (int i = 0; i < cases->size(); i++) {
       Ref c = cases[i];
-      if (!!c[0]) {
+      if (!c[0]) {
         emit("default:");
       } else {
         emit("case ");
@@ -960,7 +960,7 @@ struct JSPrinter {
     emit(')');
     space();
     print(node[2]);
-    if (!!node[3]) {
+    if (node->size() >= 4 && !!node[3]) {
       space();
       emit("else");
       space();

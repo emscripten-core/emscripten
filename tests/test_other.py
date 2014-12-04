@@ -1938,7 +1938,11 @@ int f() {
       # test calling js optimizer
       print '  js'
       output = Popen(NODE_JS + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
-      self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n'))
+
+      def check_js(js):
+        self.assertIdentical(expected, js.replace('\r\n', '\n').replace('\n\n', '\n'))
+      check_js(output)
+
       if js_optimizer.use_native(passes):
         # test calling native
         def check_json():
@@ -1963,6 +1967,10 @@ int f() {
         print '  native (parsing JS)'
         output = Popen([js_optimizer.get_native_optimizer(), input] + passes + ['emitJSON'], stdin=PIPE, stdout=open(output_temp, 'w')).communicate()[0]
         check_json()
+
+        print '  native (emitting JS)'
+        output = Popen([js_optimizer.get_native_optimizer(), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
+        check_js(output)
 
   def test_m_mm(self):
     open(os.path.join(self.get_dir(), 'foo.c'), 'w').write('''#include <emscripten.h>''')

@@ -720,7 +720,8 @@ int measureCost(Ref ast) {
 bool preciseF32 = false,
      receiveJSON = false,
      emitJSON = false,
-     minifyWhitespace = false;
+     minifyWhitespace = false,
+     last = false;
 
 //=====================
 // Optimization passes
@@ -2693,6 +2694,7 @@ int main(int argc, char **argv) {
     else if (str == "receiveJSON") receiveJSON = true;
     else if (str == "emitJSON") emitJSON = true;
     else if (str == "minifyWhitespace") minifyWhitespace = true;
+    else if (str == "last") last = true;
   }
 
   // Read input file
@@ -2745,9 +2747,15 @@ int main(int argc, char **argv) {
     }
   }
 
-  // Emit JSON of modified Document
-  doc->stringify(std::cout);
-  std::cout << std::endl;
+  // Emit
+  if (emitJSON) {
+    doc->stringify(std::cout);
+    std::cout << "\n";
+  } else {
+    JSPrinter jser(!minifyWhitespace, last, doc);
+    jser.printAst();
+    std::cout << jser.buffer << "\n";
+  }
 
   return 0;
 }
