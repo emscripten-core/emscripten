@@ -49,6 +49,9 @@ caught: a JSImplementation must implement all functions, you forgot Child2JS::vi
 |hello|43|world|41|
 12.35
 a returned string
+C string address: "string A" 0xa30
+C string address: "string B" 0xa40
+C string address: "string A" 0xa30
 10
 object
 10
