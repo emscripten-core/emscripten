@@ -12,6 +12,13 @@
 #define aligned_alloc(align, size) malloc(size) // Hack for missing function. Works for now since Emscripten does not care about alignment.
 #endif
 
+#ifdef __UNIX__
+#include <time.h>
+#include <errno.h>
+#include <string.h>
+#include <sys/time.h>
+#endif
+
 #ifdef __APPLE__
 #include <mach/mach_time.h>
 #define aligned_alloc(align, size) malloc(size)
@@ -39,6 +46,14 @@ tick_t ticks_per_sec()
 	mach_timebase_info(&timeBaseInfo);
 	return 1000000000ULL * (uint64_t)timeBaseInfo.denom / (uint64_t)timeBaseInfo.numer;
 }
+#elif defined(_POSIX_MONOTONIC_CLOCK)
+	timespec t;
+	clock_gettime(CLOCK_MONOTONIC, &t);
+	return (tick_t)t.tv_sec * 1000 * 1000 * 1000 + (tick_t)t.tv_nsec;
+#elif defined(_POSIX_C_SOURCE)
+	timeval t;
+	gettimeofday(&t, NULL);
+	return (tick_t)t.tv_sec * 1000 * 1000 + (tick_t)t.tv_usec;
 #else
 #error No tick_t
 #endif
