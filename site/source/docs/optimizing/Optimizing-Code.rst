@@ -66,7 +66,7 @@ By default Emscripten emits the static memory initialization code inside the **.
 
 The ``--memory-init-file 1`` :ref:`emcc option <emcc-memory-init-file>` causes the compiler to emit this code in a separate binary file with suffix **.mem**. The **.mem** file is loaded (asynchronously) by the main **.js** file before ``main()`` is called and compiled code is able to run. 
 
-.. note: From Emscripten 1.21.1 this setting is enabled by default for ``-O2`` builds (and above). 
+  .. note:: From Emscripten 1.21.1 this setting is enabled by default for fully optimized builds, that is, ``-O2`` and above. 
 
 
 .. _optimizing-code-oz-os:
