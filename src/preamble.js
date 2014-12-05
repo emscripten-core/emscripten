@@ -341,6 +341,15 @@ function getCFunc(ident) {
 var cwrap, ccall;
 (function(){
   var JSfuncs = {
+    // Helpers for cwrap -- it can't refer to Runtime directly because it might
+    // be renamed by closure, instead it calls JSfuncs['stackSave'].body to find
+    // out what the minified function name is.
+    'stackSave': function() {
+      Runtime.stackSave()
+    },
+    'stackRestore': function() {
+      Runtime.stackRestore()
+    },
     // type conversion from js to c
     'arrayToC' : function(arr) {
       var ret = Runtime.stackAlloc(arr.length);
@@ -419,7 +428,7 @@ var cwrap, ccall;
     if (!numericArgs) {
       // Generate the code needed to convert the arguments from javascript
       // values to pointers
-      funcstr += 'var stack = Runtime.stackSave();';
+      funcstr += 'var stack = ' + JSsource['stackSave'].body + ';';
       for (var i = 0; i < nargs; i++) {
         var arg = argNames[i], type = argTypes[i];
         if (type === 'number') continue;
@@ -441,7 +450,7 @@ var cwrap, ccall;
     }
     if (!numericArgs) {
       // If we had a stack, restore it
-      funcstr += 'Runtime.stackRestore(stack);';
+      funcstr += JSsource['stackRestore'].body.replace('()', '(stack)') + ';';
     }
     funcstr += 'return ret})';
     return eval(funcstr);
