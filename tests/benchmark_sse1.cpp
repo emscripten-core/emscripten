@@ -17,6 +17,7 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/time.h>
+#define tick_t unsigned long long
 #endif
 
 #ifdef __APPLE__
