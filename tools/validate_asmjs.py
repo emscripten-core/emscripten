@@ -17,7 +17,7 @@ import shared
 # Given a .js file, returns True/False depending on if that file is valid asm.js
 def validate_asmjs_jsfile(filename, muteOutput):
   cmd = shared.SPIDERMONKEY_ENGINE + ['-c', filename]
-  if cmd[0] == 'js-not-found':
+  if not shared.SPIDERMONKEY_ENGINE or cmd[0] == 'js-not-found' or len(cmd[0].strip()) == 0:
     print >> sys.stderr, 'Could not find SpiderMonkey engine! Please set tis location to SPIDERMONKEY_ENGINE in your ~/.emscripten configuration file!'
     return False
   try:
