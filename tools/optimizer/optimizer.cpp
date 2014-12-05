@@ -2754,7 +2754,7 @@ int main(int argc, char **argv) {
   } else {
     JSPrinter jser(!minifyWhitespace, last, doc);
     jser.printAst();
-    std::cout << jser.buffer << "\n";
+    std::cout << jser.buffer << "\n\n";
   }
 
   return 0;
