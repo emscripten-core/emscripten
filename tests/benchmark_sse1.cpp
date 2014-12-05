@@ -12,7 +12,7 @@
 #define aligned_alloc(align, size) malloc(size) // Hack for missing function. Works for now since Emscripten does not care about alignment.
 #endif
 
-#if defined(__unix__)
+#if defined(__unix__) && !defined(__EMSCRIPTEN__) // Native build without Emscripten.
 #include <time.h>
 #include <errno.h>
 #include <string.h>
