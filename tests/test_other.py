@@ -1913,7 +1913,7 @@ int f() {
        ['asm', 'asmPreciseF32', 'optimizeFrounds']),
       (path_from_root('tools', 'test-js-optimizer-asm-last.js'), [open(path_from_root('tools', 'test-js-optimizer-asm-lastOpts-output.js')).read(), open(path_from_root('tools', 'test-js-optimizer-asm-lastOpts-output2.js')).read()],
        ['asm', 'asmLastOpts']),
-      (path_from_root('tools', 'test-js-optimizer-asm-last.js'), open(path_from_root('tools', 'test-js-optimizer-asm-last-output.js')).read(),
+      (path_from_root('tools', 'test-js-optimizer-asm-last.js'), [open(path_from_root('tools', 'test-js-optimizer-asm-last-output.js')).read(), open(path_from_root('tools', 'test-js-optimizer-asm-last-output2.js')).read()],
        ['asm', 'asmLastOpts', 'last']),
       (path_from_root('tools', 'test-js-optimizer-asm-relocate.js'), open(path_from_root('tools', 'test-js-optimizer-asm-relocate-output.js')).read(),
        ['asm', 'relocate']),
@@ -1935,12 +1935,16 @@ int f() {
        ['asm', 'ensureLabelSet']),
     ]:
       print input, passes
+
+      if type(expected) == str: expected = [expected]
+      expected = map(lambda out: out.replace('\n\n', '\n').replace('\n\n', '\n'), expected)
+
       # test calling js optimizer
       print '  js'
       output = Popen(NODE_JS + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
 
       def check_js(js):
-        self.assertIdentical(expected, js.replace('\r\n', '\n').replace('\n\n', '\n'))
+        self.assertIdentical(expected, js.replace('\r\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n'))
       check_js(output)
 
       if js_optimizer.use_native(passes):
@@ -1948,9 +1952,8 @@ int f() {
         def check_json():
           Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), output_temp, 'receiveJSON'], stdin=PIPE, stdout=open(output_temp + '.js', 'w')).communicate()
           output = open(output_temp + '.js').read()
-          self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n'))
+          self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n'))
 
-        print '  native (receiveJSON)'
         self.clear()
         input_temp = 'temp.js'
         output_temp = 'output.js'
@@ -1961,12 +1964,15 @@ int f() {
           json = open(input_temp + '.js').read()
           json += '\n' + original[original.find('// EXTRA_INFO:'):]
           open(input_temp + '.js', 'w').write(json)
-        output = Popen([js_optimizer.get_native_optimizer(), input_temp + '.js'] + passes + ['receiveJSON', 'emitJSON'], stdin=PIPE, stdout=open(output_temp, 'w')).communicate()[0]
-        check_json()
 
-        print '  native (parsing JS)'
-        output = Popen([js_optimizer.get_native_optimizer(), input] + passes + ['emitJSON'], stdin=PIPE, stdout=open(output_temp, 'w')).communicate()[0]
-        check_json()
+        if 'last' not in passes: # last is only relevant when we emit JS
+          print '  native (receiveJSON)'
+          output = Popen([js_optimizer.get_native_optimizer(), input_temp + '.js'] + passes + ['receiveJSON', 'emitJSON'], stdin=PIPE, stdout=open(output_temp, 'w')).communicate()[0]
+          check_json()
+
+          print '  native (parsing JS)'
+          output = Popen([js_optimizer.get_native_optimizer(), input] + passes + ['emitJSON'], stdin=PIPE, stdout=open(output_temp, 'w')).communicate()[0]
+          check_json()
 
         print '  native (emitting JS)'
         output = Popen([js_optimizer.get_native_optimizer(), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]

@@ -562,6 +562,7 @@ struct JSPrinter {
   }
 
   void emit(char c) {
+    if (!pretty && c == '}' && buffer[used-1] == ';') used--; // optimize ;} into }, the ; is not separating anything
     ensure(1);
     buffer[used++] = c;
   }
@@ -785,7 +786,7 @@ struct JSPrinter {
         assert(d >= 0);
         unsigned long long uu = (unsigned long long)d;
         if (uu == d) {
-          snprintf(buffer, 45, e ? "0x%llx" : "%llu", uu);
+          snprintf(buffer, 45, (e && !finalize) ? "0x%llx" : "%llu", uu);
           sscanf(buffer, "%lf", &temp);
         } else {
           // too large for a machine integer, just use floats
@@ -911,6 +912,33 @@ struct JSPrinter {
   }
 
   void printUnaryPrefix(Ref node) {
+    if ((buffer[used-1] == '-' && node[1] == MINUS) ||
+        (buffer[used-1] == '+' && node[1] == PLUS && !finalize)) {
+      emit(' '); // cannot join - and - to --, looks like the -- operator
+    }
+    if (finalize && node[1] == PLUS && (node[2][0] == NUM ||
+                                       (node[2][0] == UNARY_PREFIX && node[2][1] == MINUS && node[2][2][0] == NUM))) {
+      // emit a finalized number
+      char *curr = buffer + used;
+      print(node[2]);
+      buffer[used] = 0;
+      if (strchr(curr, '.')) return; // already a decimal point, all good
+      char *e = strchr(curr, 'e');
+      if (!e) {
+        emit(".0");
+        return;
+      }
+      ensure(3);
+      char *end = strchr(curr, 0);
+      while (end >= e) {
+        end[2] = end[0];
+        end--;
+      }
+      e[0] = '.';
+      e[1] = '0';
+      used += 2;
+      return;
+    }
     emit(node[1]->getCString());
     printChild(node[2], node, 1);
   }

@@ -2741,6 +2741,7 @@ int main(int argc, char **argv) {
     else if (str == "minifyLocals") minifyLocals(doc);
     else if (str == "minifyWhitespace") {}
     else if (str == "asmLastOpts") asmLastOpts(doc);
+    else if (str == "last") {}
     else {
       fprintf(stderr, "unrecognized argument: %s\n", str.c_str());
       assert(0);
@@ -2754,7 +2755,7 @@ int main(int argc, char **argv) {
   } else {
     JSPrinter jser(!minifyWhitespace, last, doc);
     jser.printAst();
-    std::cout << jser.buffer << "\n\n";
+    std::cout << jser.buffer << "\n";
   }
 
   return 0;
