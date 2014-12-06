@@ -226,7 +226,6 @@ int main()
 
 	// SSE1 Compare instructions:
 	// a = [8, 6, 4, 2], b = [1, 2, 3, 4]
-#ifndef __EMSCRIPTEN__ // TODO: Currently disabled, since these fail due to https://github.com/kripken/emscripten/issues/2841
 	aeqi(_mm_cmpeq_ps(a, _mm_set_ps(8.f, 0.f, 4.f, 0.f)), 0xFFFFFFFF, 0, 0xFFFFFFFF, 0); // 4-wide cmp ==
 	aeqi(_mm_cmpeq_ss(a, _mm_set_ps(8.f, 0.f, 4.f, 2.f)), fcastu(8.f), fcastu(6.f), fcastu(4.f), 0xFFFFFFFF); // scalar cmp ==, pass three highest unchanged.
 	aeqi(_mm_cmpge_ps(a, _mm_set_ps(8.f, 7.f, 3.f, 5.f)), 0xFFFFFFFF, 0, 0xFFFFFFFF, 0); // 4-wide cmp >=
@@ -247,7 +246,7 @@ int main()
 	aeqi(_mm_cmpnle_ss(a, _mm_set_ps(8.f, 7.f, 3.f, 0.f)), fcastu(8.f), fcastu(6.f), fcastu(4.f), 0xFFFFFFFF); // scalar cmp not <=, pass three highest unchanged.
 	aeqi(_mm_cmpnlt_ps(a, _mm_set_ps(8.f, 7.f, 3.f, 5.f)), 0xFFFFFFFF, 0, 0xFFFFFFFF, 0); // 4-wide cmp not <
 	aeqi(_mm_cmpnlt_ss(a, _mm_set_ps(8.f, 7.f, 3.f, 2.f)), fcastu(8.f), fcastu(6.f), fcastu(4.f), 0xFFFFFFFF); // scalar cmp not <, pass three highest unchanged.
-#endif
+
 	__m128 nan1 = get_nan1(); // [NAN, 0, 0, NAN]
 	__m128 nan2 = get_nan2(); // [NAN, NAN, 0, 0]
 	aeqi(_mm_cmpord_ps(nan1, nan2), 0, 0, 0xFFFFFFFF, 0); // 4-wide test if both operands are not nan.
