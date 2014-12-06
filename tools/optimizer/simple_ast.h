@@ -541,66 +541,11 @@ struct JSPrinter {
 
   Ref ast;
 
-  JSPrinter(bool pretty_, bool finalize_, Ref ast_) : pretty(pretty_), finalize(finalize_), buffer(0), size(0), used(0), indent(0), ast(ast_) {
-    scan();
-  }
+  JSPrinter(bool pretty_, bool finalize_, Ref ast_) : pretty(pretty_), finalize(finalize_), buffer(0), size(0), used(0), indent(0), ast(ast_) {}
 
   void printAst() {
     print(ast);
     buffer[used] = 0;
-  }
-
-  // Scanning
-
-  bool capturesOperators(Ref node) {
-    Ref type = node[0];
-    return type == CALL || type == ARRAY || type == OBJECT || type == SEQ;
-  }
-
-  int getPrecedence(Ref node) {
-    Ref type = node[0];
-    assert(type == BINARY || type == UNARY_PREFIX);
-    return OperatorClass::getPrecedence(type == BINARY ? OperatorClass::Binary : OperatorClass::Prefix, node[1]->getIString());
-  }
-
-  std::unordered_set<void*> needsParens;
-
-  bool needParens(Ref node) {
-    return needsParens.count((void*)node.inst) > 0;
-  }
-
-  void scan() {
-    // calculate who need parens
-    std::vector<Ref> stack; // stack of relevant nodes for parens
-    traversePrePost(ast, [&](Ref node) {
-      Ref type = node[0];
-      if (type == BINARY || type == UNARY_PREFIX) {
-        // check if an ancestor forces us to need parens
-        int currPrecedence = getPrecedence(node);
-        for (int i = stack.size()-1; i >= 0; i--) {
-          Ref ancestor = stack[i];
-          if (!ancestor) break; // something captures here
-          if (currPrecedence >= getPrecedence(ancestor)) { // TODO: associativity etc.
-            // we need to capture here
-            needsParens.insert((void*)node.inst);
-            stack.push_back(nullptr);
-            return;
-          }
-        }
-        // no parens needed
-        stack.push_back(node);
-      } else if (capturesOperators(node)) {
-        stack.push_back(nullptr);
-      }
-    }, [&](Ref node) {
-      Ref type = node[0];
-      if (type == BINARY || type == UNARY_PREFIX || capturesOperators(node)) {
-        assert(stack.size() > 0);
-        assert(!stack.back() || stack.back() == node);
-        stack.pop_back();
-      }
-    });
-    assert(stack.size() == 0);
   }
 
   // Utils
@@ -733,16 +678,14 @@ struct JSPrinter {
   }
 
   void printStats(Ref stats) {
+    bool first = true;
     for (int i = 0; i < stats->size(); i++) {
-      if (i > 0) newline();
-      print(stats[i]);
-    }
-  }
-
-  void printArgs(Ref args) {
-    for (int i = 0; i < args->size(); i++) {
-      if (i > 0) (pretty ? emit(", ") : emit(','));
-      print(args[i]);
+      Ref curr = stats[i];
+      if (!isNothing(curr)) {
+        if (first) first = false;
+        else newline();
+        print(stats[i]);
+      }
     }
   }
 
@@ -751,6 +694,10 @@ struct JSPrinter {
   }
 
   void printBlock(Ref node) {
+    if (node[1]->size() == 0) {
+      emit("{}");
+      return;
+    }
     emit('{');
     indent++;
     newline();
@@ -781,17 +728,23 @@ struct JSPrinter {
     newline();
   }
 
+  bool isNothing(Ref node) {
+    return (node[0] == TOPLEVEL && node[1]->size() == 0) || (node[0] == STAT && isNothing(node[1]));
+  }
+
   void printStat(Ref node) {
-    print(node[1]);
-    emit(';');
+    if (!isNothing(node[1])) {
+      print(node[1]);
+      if (buffer[used-1] != ';') emit(';');
+    }
   }
 
   void printAssign(Ref node) {
-    print(node[2]);
+    printChild(node[2], node, -1);
     space();
     emit('=');
     space();
-    print(node[3]);
+    printChild(node[3], node, 1);
   }
 
   void printName(Ref node) {
@@ -800,15 +753,92 @@ struct JSPrinter {
 
   void printNum(Ref node) {
     double d = node[1]->getNumber();
-    static char buffer[50];
-    int n;
-    if (fmod(d, 1) == 0) {
-      n = snprintf(buffer, 45, "%.0f", d);
-    } else {
-      n = snprintf(buffer, 45, "%.17f", d);
+    bool neg = d < 0;
+    if (neg) d = -d;
+    // try to emit the fewest necessary characters
+    bool integer = fmod(d, 1) == 0;
+    static char storage_f[50], storage_e[50]; // f is normal, e is scientific for float, x for integer
+    for (int e = 0; e <= 1; e++) {
+      char *buffer = e ? storage_e : storage_f;
+      double temp;
+      if (!integer) {
+        static char format[6];
+        for (int i = 0; i <= 18; i++) {
+          format[0] = '%';
+          format[1] = '.';
+          if (i < 10) {
+            format[2] = '0' + i;
+            format[3] = e ? 'e' : 'f';
+            format[4] = 0;
+          } else {
+            format[2] = '1';
+            format[3] = '0' + (i - 10);
+            format[4] = e ? 'e' : 'f';
+            format[5] = 0;
+          }
+          snprintf(buffer, 45, format, d);
+          sscanf(buffer, "%lf", &temp);
+          if (temp == d) break;
+        }
+      } else {
+        // integer
+        assert(d >= 0);
+        unsigned long long uu = (unsigned long long)d;
+        if (uu == d) {
+          snprintf(buffer, 45, e ? "0x%llx" : "%llu", uu);
+          sscanf(buffer, "%lf", &temp);
+        } else {
+          // too large for a machine integer, just use floats
+          snprintf(buffer, 45, "%.0f", d);
+          sscanf(buffer, "%lf", &temp);
+        }
+      }
+      assert(temp == d);
+      char *dot = strchr(buffer, '.');
+      if (dot) {
+        // remove trailing zeros
+        char *end = dot+1;
+        while (*end >= '0' && *end <= '9') end++;
+        end--;
+        while (*end == '0') {
+          char *copy = end;
+          do {
+            copy[0] = copy[1];
+          } while (*copy++ != 0);
+          end--;
+        }
+        // remove preceding zeros
+        while (*buffer == '0') {
+          char *copy = buffer;
+          do {
+            copy[0] = copy[1];
+          } while (*copy++ != 0);
+        }
+      } else if (!integer || !e) {
+        // no dot. try to change 12345000 => 12345e3
+        char *end = strchr(buffer, 0);
+        end--;
+        char *test = end;
+        while (*test == '0' && test > buffer) test--;
+        int num = end - test;
+        if (num >= 3) {
+          test++;
+          test[0] = 'e';
+          if (num < 10) {
+            test[1] = '0' + num;
+            test[2] = 0;
+          } else {
+            assert(num < 100);
+            test[1] = '1';
+            test[2] = '0' + (num - 10);
+            test[3] = 0;
+          }
+        }
+      }
     }
-    assert(n < 40);
-    emit(buffer);
+    //fprintf(stderr, "options:\n%s\n%s\n", storage_e, storage_f);
+    if (neg) emit('-');
+    emit(strlen(storage_e) < strlen(storage_f) ? storage_e : storage_f);
   }
 
   void printString(Ref node) {
@@ -817,71 +847,102 @@ struct JSPrinter {
     emit('"');
   }
 
-  // checks if node or any of its children has lower precedence
-  bool hasLowerPrecedence(OperatorClass::Type type, IString op, Ref node) {
-    int prec = OperatorClass::getPrecedence(type, op);
-    // TODO: aborting
-    int has = false;
-    traversePre(node, [&](Ref node) {
-      Ref type = node[0];
-      if (type == BINARY ) {
-        if (OperatorClass::getPrecedence(OperatorClass::Binary, node[1]->getIString()) > prec) has = true;
-      } else if (type == UNARY_PREFIX) {
-        if (OperatorClass::getPrecedence(OperatorClass::Prefix, node[1]->getIString()) > prec) has = true;
-      }
-    });
-    return has;
+  // Parens optimizing
+
+  bool capturesOperators(Ref node) {
+    Ref type = node[0];
+    return type == CALL || type == ARRAY || type == OBJECT || type == SEQ;
   }
 
-  void printBinary(Ref node) {
-    bool parens = needParens(node);
+  int getPrecedence(Ref node, bool parent) {
+    Ref type = node[0];
+    if (type == BINARY || type == UNARY_PREFIX) {
+      return OperatorClass::getPrecedence(type == BINARY ? OperatorClass::Binary : OperatorClass::Prefix, node[1]->getIString());
+    } else if (type == SEQ) {
+      return OperatorClass::getPrecedence(OperatorClass::Binary, COMMA);
+    } else if (type == CALL) {
+      return parent ? OperatorClass::getPrecedence(OperatorClass::Binary, COMMA) : -1; // call arguments are split by commas, but call itself is safe
+    } else if (type == ASSIGN) {
+      return OperatorClass::getPrecedence(OperatorClass::Binary, SET);
+    } else if (type == CONDITIONAL) {
+      return OperatorClass::getPrecedence(OperatorClass::Tertiary, QUESTION);
+    }
+    // otherwise, this is something that fixes precedence explicitly, and we can ignore
+    return -1; // XXX
+  }
+
+  // check whether we need parens for the child, when rendered in the parent
+  // @param childPosition -1 means it is printed to the left of parent, 0 means "anywhere", 1 means right
+  bool needParens(Ref parent, Ref child, int childPosition) {
+    int parentPrecedence = getPrecedence(parent, true);
+    int childPrecedence = getPrecedence(child, false);
+
+    if (childPrecedence > parentPrecedence) return true;  // child is definitely a danger
+    if (childPrecedence < parentPrecedence) return false; //          definitely cool
+    // equal precedence, so associativity (rtl/ltr) is what matters
+    // (except for some exceptions, where multiple operators can combine into confusion)
+    if (parent[0] == UNARY_PREFIX) {
+      assert(child[0] == UNARY_PREFIX);
+      if ((parent[1] == PLUS || parent[1] == MINUS) && child[1] == parent[1]) {
+        // cannot emit ++x when we mean +(+x)
+        return true;
+      }
+    }
+    if (childPosition == 0) return true; // child could be anywhere, so always paren
+    if (childPrecedence < 0) return false; // both precedences are safe
+    // check if child is on the dangerous side
+    if (OperatorClass::getRtl(parentPrecedence)) return childPosition < 0;
+    else return childPosition > 0;
+  }
+
+  void printChild(Ref child, Ref parent, int childPosition=0) {
+    bool parens = needParens(parent, child, childPosition);
     if (parens) emit('(');
-    print(node[2]);
-    space();
-    emit(node[1]->getCString());
-    space();
-    print(node[3]);
+    print(child);
     if (parens) emit(')');
   }
 
+  void printBinary(Ref node) {
+    printChild(node[2], node, -1);
+    space();
+    emit(node[1]->getCString());
+    space();
+    printChild(node[3], node, 1);
+  }
+
+  void printUnaryPrefix(Ref node) {
+    emit(node[1]->getCString());
+    printChild(node[2], node, 1);
+  }
+
   void printConditional(Ref node) {
-    // TODO: optimize out parens
-    emit('(');
-    print(node[1]);
-    emit(')');
+    printChild(node[1], node, -1);
     space();
     emit('?');
     space();
-    emit('(');
-    print(node[2]);
-    emit(')');
+    printChild(node[2], node, 0);
     space();
     emit(':');
     space();
-    emit('(');
-    print(node[3]);
-    emit(')');
+    printChild(node[3], node, 1);
   }
 
   void printCall(Ref node) {
-    print(node[1]);
+    printChild(node[1], node, 0);
     emit('(');
     Ref args = node[2];
     for (int i = 0; i < args->size(); i++) {
       if (i > 0) (pretty ? emit(", ") : emit(','));
-      print(args[i]);
+      printChild(args[i], node, 0);
     }
     emit(')');
   }
 
   void printSeq(Ref node) {
-    // TODO: optimize out parens
-    emit('(');
-    print(node[1]);
+    printChild(node[1], node, -1);
     emit(',');
     space();
-    print(node[2]);
-    emit(')');
+    printChild(node[2], node, 1);
   }
 
   void printDot(Ref node) {
@@ -898,7 +959,6 @@ struct JSPrinter {
     emit(')');
     space();
     emit('{');
-    indent++;
     newline();
     Ref cases = node[2];
     for (int i = 0; i < cases->size(); i++) {
@@ -910,30 +970,22 @@ struct JSPrinter {
         print(c[0]);
         emit(':');
       }
-      space();
       indent++;
       newline();
+      int curr = used;
       printStats(c[1]);
       indent--;
-      newline();
+      if (curr != used) newline();
+      else used--; // avoid the extra indentation we added tentatively
     }
-    indent--;
     emit('}');
   }
 
   void printSub(Ref node) {
-    print(node[1]);
+    printChild(node[1], node, -1);
     emit('[');
     print(node[2]);
     emit(']');
-  }
-
-  void printUnaryPrefix(Ref node) {
-    bool parens = needParens(node);
-    if (parens) emit('(');
-    emit(node[1]->getCString());
-    print(node[2]);
-    if (parens) emit(')');
   }
 
   void printVar(Ref node) {
@@ -959,8 +1011,21 @@ struct JSPrinter {
     print(node[1]);
     emit(')');
     space();
+    // special case: we need braces to save us from ambiguity, if () { if () } else. otherwise else binds to inner if
+    bool hasElse = node->size() >= 4 && !!node[3];
+    bool needBraces = node[2][0] == IF && (node[2]->size() == 3 || !node[2][3]) && hasElse;
+    if (needBraces) {
+      emit('{');
+      indent++;
+      newline();
+    }
     print(node[2]);
-    if (node->size() >= 4 && !!node[3]) {
+    if (needBraces) {
+      indent--;
+      newline();
+      emit('}');
+    }
+    if (hasElse) {
       space();
       emit("else");
       space();
@@ -971,11 +1036,14 @@ struct JSPrinter {
   void printDo(Ref node) {
     emit("do");
     space();
+    print(node[2]);
+    space();
+    emit("while");
+    space();
     emit('(');
     print(node[1]);
     emit(')');
-    space();
-    print(node[2]);
+    emit(';');
   }
 
   void printWhile(Ref node) {
@@ -990,9 +1058,10 @@ struct JSPrinter {
 
   void printLabel(Ref node) {
     emit(node[1]->getCString());
+    space();
     emit(':');
     space();
-    emit('(');
+    print(node[2]);
   }
 
   void printReturn(Ref node) {

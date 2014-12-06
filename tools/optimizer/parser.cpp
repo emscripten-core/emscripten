@@ -93,7 +93,7 @@ int MAX_OPERATOR_SIZE = 3;
 
 std::vector<OperatorClass> operatorClasses;
 
-static std::vector<std::unordered_map<IString, int>> precedences;
+static std::vector<std::unordered_map<IString, int>> precedences; // op, type => prec
 
 struct Init {
   Init() {
@@ -125,6 +125,10 @@ Init init;
 
 int OperatorClass::getPrecedence(Type type, IString op) {
   return precedences[type][op];
+}
+
+bool OperatorClass::getRtl(int prec) {
+  return operatorClasses[prec].rtl;
 }
 
 } // namespace cashew
