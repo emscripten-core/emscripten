@@ -71,6 +71,7 @@ IString TOPLEVEL("toplevel"),
         OPEN_PAREN("("),
         OPEN_BRACE("["),
         OPEN_CURLY("{"),
+        CLOSE_CURLY("}"),
         COMMA(","),
         QUESTION("?"),
         COLON(":"),
@@ -87,7 +88,7 @@ IStringSet keywords("var function if else do while for break continue return swi
            allOperators(". ! ~ - + * / % + - << >> >>> < <= > >= == != & ^ | ? : = ,");
 
 const char *OPERATOR_INITS = "+-*/%<>&^|~=!,?:.",
-           *SEPARATORS = "([;{";
+           *SEPARATORS = "([;{}";
 
 int MAX_OPERATOR_SIZE = 3;
 
@@ -130,6 +131,9 @@ int OperatorClass::getPrecedence(Type type, IString op) {
 bool OperatorClass::getRtl(int prec) {
   return operatorClasses[prec].rtl;
 }
+
+bool isIdentInit(char x) { return (x >= 'a' && x <= 'z') || (x >= 'A' && x <= 'Z') || x == '_' || x == '$'; }
+bool isIdentPart(char x) { return isIdentInit(x) || (x >= '0' && x <= '9'); }
 
 } // namespace cashew
 

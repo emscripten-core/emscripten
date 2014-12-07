@@ -80,6 +80,7 @@ extern IString TOPLEVEL,
                OPEN_PAREN,
                OPEN_BRACE,
                OPEN_CURLY,
+               CLOSE_CURLY,
                COMMA,
                QUESTION,
                COLON,
@@ -118,6 +119,8 @@ struct OperatorClass {
 
 extern std::vector<OperatorClass> operatorClasses;
 
+extern bool isIdentInit(char x);
+extern bool isIdentPart(char x);
 
 // parser
 
@@ -147,9 +150,6 @@ class Parser {
     }
     return curr;
   }
-
-  static bool isIdentInit(char x) { return (x >= 'a' && x <= 'z') || (x >= 'A' && x <= 'Z') || x == '_' || x == '$'; }
-  static bool isIdentPart(char x) { return isIdentInit(x) || (x >= '0' && x <= '9'); }
 
   static bool isDigit(char x) { return x >= '0' && x <= '9'; }
 
@@ -362,10 +362,10 @@ class Parser {
 
   NodeRef parseReturn(Frag& frag, char*& src, const char* seps) {
     src = skipSpace(src);
-    NodeRef value = *src != ';' ? parseElement(src, ";") : nullptr;
+    NodeRef value = !hasChar(seps, *src) ? parseElement(src, seps) : nullptr;
     src = skipSpace(src);
-    assert(*src == ';');
-    src++;
+    assert(hasChar(seps, *src));
+    if (*src == ';') src++;
     return Builder::makeReturn(value);
   }
 
@@ -734,12 +734,7 @@ class Parser {
         Frag next(src);
         if (next.type == KEYWORD && next.str == keywordSep) break;
       }
-      NodeRef element = parseElement(src, seps);
-      src = skipSpace(src);
-      if (*src && *src == ';') {
-        element = Builder::makeStatement(element);
-        src++;
-      }
+      NodeRef element = parseElementOrStatement(src, seps);
       Builder::appendToBlock(block, element);
     }
     return block;
@@ -756,9 +751,19 @@ class Parser {
     return block;
   }
 
+  NodeRef parseElementOrStatement(char*& src, const char *seps) {
+    NodeRef ret = parseElement(src, seps);
+    src = skipSpace(src);
+    if (*src == ';') {
+      ret = Builder::makeStatement(ret);
+      src++;
+    }
+    return ret;
+  }
+
   NodeRef parseMaybeBracketed(char*& src, const char *seps) {
     src = skipSpace(src);
-    return *src == '{' ? parseBracketedBlock(src) : parseElement(src, seps);
+    return *src == '{' ? parseBracketedBlock(src) : parseElementOrStatement(src, seps);
   }
 
   NodeRef parseMaybeBracketedBlock(char*& src, const char *seps, IString keywordSep=IString()) {
@@ -792,11 +797,14 @@ class Parser {
     */
     printf("%s:\n==========\n", where);
     int newlinesLeft = 2;
+    int charsLeft = 200;
     while (*curr) {
       if (*curr == '\n') {
         newlinesLeft--;
         if (newlinesLeft == 0) break;
       }
+      charsLeft--;
+      if (charsLeft == 0) break;
       printf("%c", *curr++);
     }
     printf("\n\n");

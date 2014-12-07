@@ -538,10 +538,11 @@ struct JSPrinter {
   int size, used;
 
   int indent;
+  bool possibleSpace; // add a space to separate identifiers
 
   Ref ast;
 
-  JSPrinter(bool pretty_, bool finalize_, Ref ast_) : pretty(pretty_), finalize(finalize_), buffer(0), size(0), used(0), indent(0), ast(ast_) {}
+  JSPrinter(bool pretty_, bool finalize_, Ref ast_) : pretty(pretty_), finalize(finalize_), buffer(0), size(0), used(0), indent(0), possibleSpace(false), ast(ast_) {}
 
   void printAst() {
     print(ast);
@@ -562,12 +563,14 @@ struct JSPrinter {
   }
 
   void emit(char c) {
+    maybeSpace(c);
     if (!pretty && c == '}' && buffer[used-1] == ';') used--; // optimize ;} into }, the ; is not separating anything
     ensure(1);
     buffer[used++] = c;
   }
 
   void emit(const char *s) {
+    maybeSpace(*s);
     int len = strlen(s);
     ensure(len);
     strcpy(buffer + used, s);
@@ -582,6 +585,18 @@ struct JSPrinter {
 
   void space() {
     if (pretty) emit(' ');
+  }
+
+  void safeSpace() {
+    if (pretty) emit(' ');
+    else possibleSpace = true;
+  }
+
+  void maybeSpace(char s) {
+    if (possibleSpace) {
+      possibleSpace = false;
+      if (isIdentPart(s)) emit(' ');
+    }
   }
 
   void print(Ref node) {
@@ -759,6 +774,7 @@ struct JSPrinter {
     // try to emit the fewest necessary characters
     bool integer = fmod(d, 1) == 0;
     static char storage_f[50], storage_e[50]; // f is normal, e is scientific for float, x for integer
+    double err_f, err_e;
     for (int e = 0; e <= 1; e++) {
       char *buffer = e ? storage_e : storage_f;
       double temp;
@@ -779,6 +795,7 @@ struct JSPrinter {
           }
           snprintf(buffer, 45, format, d);
           sscanf(buffer, "%lf", &temp);
+          //errv("%.18f, %.18e   =>   %s   =>   %.18f, %.18e   (%d), ", d, d, buffer, temp, temp, temp == d);
           if (temp == d) break;
         }
       } else {
@@ -794,7 +811,8 @@ struct JSPrinter {
           sscanf(buffer, "%lf", &temp);
         }
       }
-      assert(temp == d);
+      (e ? err_e : err_f) = fabs(temp - d);
+      //assert(temp == d);
       char *dot = strchr(buffer, '.');
       if (dot) {
         // remove trailing zeros
@@ -808,6 +826,7 @@ struct JSPrinter {
           } while (*copy++ != 0);
           end--;
         }
+        //errv("%.18f  =>   %s", d, buffer);
         // remove preceding zeros
         while (*buffer == '0') {
           char *copy = buffer;
@@ -815,6 +834,7 @@ struct JSPrinter {
             copy[0] = copy[1];
           } while (*copy++ != 0);
         }
+        //errv("%.18f ===>  %s", d, buffer);
       } else if (!integer || !e) {
         // no dot. try to change 12345000 => 12345e3
         char *end = strchr(buffer, 0);
@@ -839,7 +859,11 @@ struct JSPrinter {
     }
     //fprintf(stderr, "options:\n%s\n%s\n", storage_e, storage_f);
     if (neg) emit('-');
-    emit(strlen(storage_e) < strlen(storage_f) ? storage_e : storage_f);
+    if (err_e == err_f) {
+      emit(strlen(storage_e) < strlen(storage_f) ? storage_e : storage_f);
+    } else {
+      emit(err_e < err_f ? storage_e : storage_f);
+    }
   }
 
   void printString(Ref node) {
@@ -912,10 +936,6 @@ struct JSPrinter {
   }
 
   void printUnaryPrefix(Ref node) {
-    if ((buffer[used-1] == '-' && node[1] == MINUS) ||
-        (buffer[used-1] == '+' && node[1] == PLUS && !finalize)) {
-      emit(' '); // cannot join - and - to --, looks like the -- operator
-    }
     if (finalize && node[1] == PLUS && (node[2][0] == NUM ||
                                        (node[2][0] == UNARY_PREFIX && node[2][1] == MINUS && node[2][2][0] == NUM))) {
       // emit a finalized number
@@ -938,6 +958,10 @@ struct JSPrinter {
       e[1] = '0';
       used += 2;
       return;
+    }
+    if ((buffer[used-1] == '-' && node[1] == MINUS) ||
+        (buffer[used-1] == '+' && node[1] == PLUS)) {
+      emit(' '); // cannot join - and - to --, looks like the -- operator
     }
     emit(node[1]->getCString());
     printChild(node[2], node, 1);
@@ -998,13 +1022,17 @@ struct JSPrinter {
         print(c[0]);
         emit(':');
       }
-      indent++;
-      newline();
-      int curr = used;
-      printStats(c[1]);
-      indent--;
-      if (curr != used) newline();
-      else used--; // avoid the extra indentation we added tentatively
+      if (c[1]->size() > 0) {
+        indent++;
+        newline();
+        int curr = used;
+        printStats(c[1]);
+        indent--;
+        if (curr != used) newline();
+        else used--; // avoid the extra indentation we added tentatively
+      } else {
+        newline();
+      }
     }
     emit('}');
   }
@@ -1034,7 +1062,7 @@ struct JSPrinter {
 
   void printIf(Ref node) {
     emit("if");
-    space();
+    safeSpace();
     emit('(');
     print(node[1]);
     emit(')');
@@ -1056,14 +1084,14 @@ struct JSPrinter {
     if (hasElse) {
       space();
       emit("else");
-      space();
+      safeSpace();
       print(node[3]);
     }
   }
 
   void printDo(Ref node) {
     emit("do");
-    space();
+    safeSpace();
     print(node[2]);
     space();
     emit("while");
