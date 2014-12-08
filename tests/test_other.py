@@ -4420,20 +4420,25 @@ int main(void) {
     assert output == ('hello, world!\n \n', ''), 'expected no output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % output
 
   def test_native_optimizer(self):
-    old_debug = os.environ.get('EMCC_DEBUG')
-    old_native = os.environ.get('EMCC_NATIVE_OPTIMIZER')
-    try:
-      os.environ['EMCC_DEBUG'] = '1'
-      os.environ['EMCC_NATIVE_OPTIMIZER'] = '1'
-      out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2'], stderr=PIPE).communicate()
-    finally:
-      if old_debug: os.environ['EMCC_DEBUG'] = old_debug
-      else: del os.environ['EMCC_DEBUG']
-      if old_native: os.environ['EMCC_NATIVE_OPTIMIZER'] = old_native
-      else: del os.environ['EMCC_NATIVE_OPTIMIZER']
-    self.assertContained('js optimizer using native', err)
-    assert os.path.exists('a.out.js'), err
-    self.assertContained('hello, world!', run_js('a.out.js'))
+    def test(args, expected):
+      print args, expected
+      old_debug = os.environ.get('EMCC_DEBUG')
+      old_native = os.environ.get('EMCC_NATIVE_OPTIMIZER')
+      try:
+        os.environ['EMCC_DEBUG'] = '1'
+        os.environ['EMCC_NATIVE_OPTIMIZER'] = '1'
+        out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2',] + args, stderr=PIPE).communicate()
+      finally:
+        if old_debug: os.environ['EMCC_DEBUG'] = old_debug
+        else: del os.environ['EMCC_DEBUG']
+        if old_native: os.environ['EMCC_NATIVE_OPTIMIZER'] = old_native
+        else: del os.environ['EMCC_NATIVE_OPTIMIZER']
+      assert err.count('js optimizer using native') == expected, [err, expected]
+      assert os.path.exists('a.out.js'), err
+      self.assertContained('hello, world!', run_js('a.out.js'))
+
+    test([], 1)
+    test(['-s', 'OUTLINING_LIMIT=100000'], 2) # 2, because we run them before and after outline, which is non-native
 
   def test_emconfigure_js_o(self):
     # issue 2994
