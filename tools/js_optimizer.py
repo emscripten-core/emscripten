@@ -28,22 +28,33 @@ import_sig = re.compile('var ([_\w$]+) *=[^;]+;')
 NATIVE_OPTIMIZER = os.environ.get('EMCC_NATIVE_OPTIMIZER')
 
 def get_native_optimizer():
+  FAIL_MARKER = shared.Cache.get_path('optimizer.building_failed')
+  if os.path.exists(FAIL_MARKER):
+    shared.logging.debug('seeing that optimizer could not be built')
+    return None
+
   def get_optimizer(name, args):
-    def create_optimizer():
-      shared.logging.debug('building native optimizer: ' + name)
-      output = shared.Cache.get_path(name)
-      shared.try_delete(output)
-      for compiler in [shared.CLANG, 'g++', 'clang++']: # try our clang first, otherwise hope for a system compiler in the path
-        shared.logging.debug('  using ' + compiler)
-        out, err = subprocess.Popen([compiler,
-                                     shared.path_from_root('tools', 'optimizer', 'istring.cpp'),
-                                     shared.path_from_root('tools', 'optimizer', 'parser.cpp'),
-                                     shared.path_from_root('tools', 'optimizer', 'simple_ast.cpp'),
-                                     shared.path_from_root('tools', 'optimizer', 'optimizer.cpp'),
-                                     '-O3', '-std=c++11', '-fno-exceptions', '-fno-rtti', '-o', output] + args).communicate()
-        if os.path.exists(output): return output
-      raise Exception('failed to build native optimizer')
-    return shared.Cache.get(name, create_optimizer, extension='exe')
+    class NativeOptimizerCreationException(Exception): pass
+    try:
+      def create_optimizer():
+        shared.logging.debug('building native optimizer: ' + name)
+        output = shared.Cache.get_path(name)
+        shared.try_delete(output)
+        for compiler in [shared.CLANG, 'g++', 'clang++']: # try our clang first, otherwise hope for a system compiler in the path
+          shared.logging.debug('  using ' + compiler)
+          out, err = subprocess.Popen([compiler,
+                                       shared.path_from_root('tools', 'optimizer', 'istring.cpp'),
+                                       shared.path_from_root('tools', 'optimizer', 'parser.cpp'),
+                                       shared.path_from_root('tools', 'optimizer', 'simple_ast.cpp'),
+                                       shared.path_from_root('tools', 'optimizer', 'optimizer.cpp'),
+                                       '-O3', '-std=c++11', '-fno-exceptions', '-fno-rtti', '-o', output] + args).communicate()
+          if os.path.exists(output): return output
+        raise NativeOptimizerCreationException()
+      return shared.Cache.get(name, create_optimizer, extension='exe')
+    except NativeOptimizerCreationException, e:
+      shared.logging.debug('failed to build native optimizer')
+      open(FAIL_MARKER, 'w').write(':(')
+      return None
 
   if NATIVE_OPTIMIZER == '1':
     return get_optimizer('optimizer.exe', [])
@@ -324,7 +335,7 @@ EMSCRIPTEN_FUNCS();
     filenames = []
 
   if len(filenames) > 0:
-    if not use_native(passes, source_map):
+    if not use_native(passes, source_map) or not get_native_optimizer():
       commands = map(lambda filename: js_engine +
           [JS_OPTIMIZER, filename, 'noPrintMetadata'] +
           (['--debug'] if source_map else []) + passes, filenames)
