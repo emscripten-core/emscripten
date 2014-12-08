@@ -521,6 +521,9 @@ var LibraryGL = {
         case 0x8D61 /* GL_HALF_FLOAT_OES */:
           switch (format) {
             case 0x1903 /* GL_RED */:
+            case 0x1909 /* GL_LUMINANCE */:
+            case 0x1906 /* GL_ALPHA */:
+            case 0x190A /* GL_LUMINANCE_ALPHA */:
               sizePerPixel = 2;
               break;
             case 0x8277 /* GL_RG */:
