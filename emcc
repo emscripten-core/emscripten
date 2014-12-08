@@ -1408,11 +1408,11 @@ try:
         chunks = []
         curr = []
         for p in passes:
-          if len(chunks) == 0:
+          if len(curr) == 0:
             curr.append(p)
           else:
             native = shared.js_optimizer.use_native(p, source_map=debug_level >= 4)
-            last_native = shared.js_optimizer.use_native(chunks[-1][-1], source_map=debug_level >= 4)
+            last_native = shared.js_optimizer.use_native(curr[-1], source_map=debug_level >= 4)
             if native == last_native:
               curr.append(p)
             else:
