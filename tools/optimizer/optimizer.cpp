@@ -2742,6 +2742,7 @@ int main(int argc, char **argv) {
     else if (str == "minifyWhitespace") {}
     else if (str == "asmLastOpts") asmLastOpts(doc);
     else if (str == "last") {}
+    else if (str == "noop") {}
     else {
       fprintf(stderr, "unrecognized argument: %s\n", str.c_str());
       assert(0);
