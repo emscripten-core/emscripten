@@ -425,6 +425,8 @@ def generate_sanity():
 
 def check_sanity(force=False):
   try:
+    if os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
+      return
     reason = None
     if not CONFIG_FILE:
       return # config stored directly in EM_CONFIG => skip sanity checks
