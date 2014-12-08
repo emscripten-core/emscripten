@@ -5528,7 +5528,7 @@ function outline(ast) {
       if (codeInfo.hasReturn) {
         reps.push(makeIf(
           makeComparison(makeAsmCoercion(['name', 'tempValue'], ASM_INT), '==', ['num', CONTROL_RETURN_VOID]),
-          [['stat', ['return']]]
+          [['stat', ['return', null]]]
         ));
       }
       for (var returnType in codeInfo.hasReturnType) {
@@ -5540,7 +5540,7 @@ function outline(ast) {
       if (codeInfo.hasBreak) {
         reps.push(makeIf(
           makeComparison(makeAsmCoercion(['name', 'tempValue'], ASM_INT), '==', ['num', CONTROL_BREAK]),
-          [['stat', ['break']]]
+          [['stat', ['break', null]]]
         ));
         if (keys(codeInfo.breaks).length > 0) {
           reps.push(makeIf(
@@ -5555,7 +5555,7 @@ function outline(ast) {
       if (codeInfo.hasContinue) {
         reps.push(makeIf(
           makeComparison(makeAsmCoercion(['name', 'tempValue'], ASM_INT), '==', ['num', CONTROL_CONTINUE]),
-          [['stat', ['continue']]]
+          [['stat', ['continue', null]]]
         ));
         if (keys(codeInfo.continues).length > 0) {
           reps.push(makeIf(
