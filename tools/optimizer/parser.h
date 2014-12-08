@@ -686,12 +686,12 @@ class Parser {
               // we must be at  X ? Y : Z
               //                      ^
               //dumpParts(parts, i);
-              assert(op == COLON);
+              if (op != COLON) continue;
               assert(i < parts.size()-1 && i >= 3);
-              assert(parts[i-2].getOp() == QUESTION);
+              if (parts[i-2].getOp() != QUESTION) continue; // e.g. x ? y ? 1 : 0 : 2
               parts[i-3] = Builder::makeConditional(parts[i-3].getNode(), parts[i-1].getNode(), parts[i+1].getNode());
               parts.erase(parts.begin() + i - 2, parts.begin() + i + 2);
-              i -= 2; // with the other i--, that puts us right on the result here
+              i = parts.size(); // basically a reset, due to things like x ? y ? 1 : 0 : 2
             } // TODO: postfix
           }
         } else {
