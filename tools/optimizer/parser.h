@@ -137,7 +137,7 @@ class Parser {
       if (curr[0] == '/' && curr[1] == '/') {
         curr += 2;
         while (*curr && *curr != '\n') curr++;
-        curr++;
+        if (*curr) curr++;
         continue;
       }
       if (curr[0] == '/' && curr[1] == '*') {

@@ -773,7 +773,8 @@ struct JSPrinter {
     if (neg) d = -d;
     // try to emit the fewest necessary characters
     bool integer = fmod(d, 1) == 0;
-    static char storage_f[50], storage_e[50]; // f is normal, e is scientific for float, x for integer
+    #define BUFFERSIZE 1000
+    static char storage_f[BUFFERSIZE], storage_e[BUFFERSIZE]; // f is normal, e is scientific for float, x for integer
     double err_f, err_e;
     for (int e = 0; e <= 1; e++) {
       char *buffer = e ? storage_e : storage_f;
@@ -793,7 +794,7 @@ struct JSPrinter {
             format[4] = e ? 'e' : 'f';
             format[5] = 0;
           }
-          snprintf(buffer, 45, format, d);
+          snprintf(buffer, BUFFERSIZE-1, format, d);
           sscanf(buffer, "%lf", &temp);
           //errv("%.18f, %.18e   =>   %s   =>   %.18f, %.18e   (%d), ", d, d, buffer, temp, temp, temp == d);
           if (temp == d) break;
@@ -803,15 +804,17 @@ struct JSPrinter {
         assert(d >= 0);
         unsigned long long uu = (unsigned long long)d;
         if (uu == d) {
-          snprintf(buffer, 45, (e && !finalize) ? "0x%llx" : "%llu", uu);
+          snprintf(buffer, BUFFERSIZE-1, (e && !finalize) ? "0x%llx" : "%llu", uu);
           sscanf(buffer, "%lf", &temp);
         } else {
           // too large for a machine integer, just use floats
-          snprintf(buffer, 45, "%.0f", d);
+          snprintf(buffer, BUFFERSIZE-1, e ? "%e" : "%.0f", d); // even on integers, e with a dot is useful, e.g. 1.2e+200
           sscanf(buffer, "%lf", &temp);
         }
+        //errv("%.18f, %.18e   =>   %s   =>   %.18f, %.18e, %llu   (%d)\n", d, d, buffer, temp, temp, uu, temp == d);
       }
       (e ? err_e : err_f) = fabs(temp - d);
+      //errv("current attempt: %.18f  =>  %s", d, buffer);
       //assert(temp == d);
       char *dot = strchr(buffer, '.');
       if (dot) {
@@ -850,14 +853,15 @@ struct JSPrinter {
             test[2] = 0;
           } else {
             assert(num < 100);
-            test[1] = '1';
-            test[2] = '0' + (num - 10);
+            test[1] = '0' + (num / 10);
+            test[2] = '0' + (num % 10);
             test[3] = 0;
           }
         }
       }
+      //errv("..current attempt: %.18f  =>  %s", d, buffer);
     }
-    //fprintf(stderr, "options:\n%s\n%s\n", storage_e, storage_f);
+    //fprintf(stderr, "options:\n%s\n%s\n (first? %d)\n", storage_e, storage_f, strlen(storage_e) < strlen(storage_f));
     if (neg) emit('-');
     if (err_e == err_f) {
       emit(strlen(storage_e) < strlen(storage_f) ? storage_e : storage_f);
