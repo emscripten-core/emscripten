@@ -502,6 +502,11 @@ var LibraryGL = {
             case 0x1908 /* GL_RGBA */:
               sizePerPixel = 4*4;
               break;
+            case 0x1909 /* GL_LUMINANCE */:
+            case 0x1906 /* GL_ALPHA */:
+            case 0x190A /* GL_LUMINANCE_ALPHA */:
+              sizePerPixel = 1*4;
+              break;
             default:
               GL.recordError(0x0500); // GL_INVALID_ENUM
 #if GL_ASSERTIONS
@@ -512,7 +517,6 @@ var LibraryGL = {
                 internalFormat: 0x0
               };
           }
-          internalFormat = GLctx.RGBA;
           break;
         case 0x8D61 /* GL_HALF_FLOAT_OES */:
           switch (format) {
