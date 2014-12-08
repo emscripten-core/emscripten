@@ -274,6 +274,7 @@ class Parser {
       }
       default: /* dump("parseElement", src); printf("bad frag type: %d\n", frag.type); */ assert(0);
     }
+    return nullptr;
   }
 
   NodeRef parseFrag(Frag& frag) {
@@ -283,6 +284,7 @@ class Parser {
       case NUMBER: return Builder::makeNumber(frag.num);
       default: assert(0);
     }
+    return nullptr;
   }
 
   NodeRef parseAfterKeyword(Frag& frag, char*& src, const char* seps) {
@@ -299,6 +301,7 @@ class Parser {
     else if (frag.str == NEW) return parseNew(frag, src, seps);
     dump(frag.str.str, src);
     assert(0);
+    return nullptr;
   }
 
   NodeRef parseFunction(Frag& frag, char*& src, const char* seps) {

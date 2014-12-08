@@ -28,22 +28,29 @@ import_sig = re.compile('var ([_\w$]+) *=[^;]+;')
 NATIVE_OPTIMIZER = os.environ.get('EMCC_NATIVE_OPTIMIZER')
 
 def get_native_optimizer():
-  def create_optimizer():
-    shared.logging.debug('building native optimizer')
-    output = shared.Cache.get_path('optimizer.exe')
-    shared.try_delete(output)
-    for compiler in [shared.CLANG, 'g++', 'clang++']: # try our clang first, otherwise hope for a system compiler in the path
-      shared.logging.debug('  using ' + compiler)
-      out, err = subprocess.Popen([compiler,
-                                   shared.path_from_root('tools', 'optimizer', 'istring.cpp'),
-                                   shared.path_from_root('tools', 'optimizer', 'parser.cpp'),
-                                   shared.path_from_root('tools', 'optimizer', 'simple_ast.cpp'),
-                                   shared.path_from_root('tools', 'optimizer', 'optimizer.cpp'),
-                                   '-O3', '-std=c++11', '-fno-exceptions', '-fno-rtti', '-o', output]).communicate()
-      # for profiling/debugging: '-g', '-fno-omit-frame-pointer'
-      if os.path.exists(output): return output
-    raise Exception('failed to build native optimizer')
-  return shared.Cache.get('optimizer.exe', create_optimizer, extension='exe')
+  def get_optimizer(name, args):
+    def create_optimizer():
+      shared.logging.debug('building native optimizer: ' + name)
+      output = shared.Cache.get_path(name)
+      shared.try_delete(output)
+      for compiler in [shared.CLANG, 'g++', 'clang++']: # try our clang first, otherwise hope for a system compiler in the path
+        shared.logging.debug('  using ' + compiler)
+        out, err = subprocess.Popen([compiler,
+                                     shared.path_from_root('tools', 'optimizer', 'istring.cpp'),
+                                     shared.path_from_root('tools', 'optimizer', 'parser.cpp'),
+                                     shared.path_from_root('tools', 'optimizer', 'simple_ast.cpp'),
+                                     shared.path_from_root('tools', 'optimizer', 'optimizer.cpp'),
+                                     '-O3', '-std=c++11', '-fno-exceptions', '-fno-rtti', '-o', output] + args).communicate()
+        if os.path.exists(output): return output
+      raise Exception('failed to build native optimizer')
+    return shared.Cache.get(name, create_optimizer, extension='exe')
+
+  if NATIVE_OPTIMIZER == '1':
+    return get_optimizer('optimizer.exe', [])
+  elif NATIVE_OPTIMIZER == '2':
+    return get_optimizer('optimizer.2.exe', ['-DNDEBUG'])
+  elif NATIVE_OPTIMIZER == 'g':
+    return get_optimizer('optimizer.g.exe', ['-O0', '-g', '-fno-omit-frame-pointer'])
 
 # Check if we should run a pass or set of passes natively. if a set of passes, they must all be valid to run in the native optimizer at once.
 def use_native(x, source_map=False):
