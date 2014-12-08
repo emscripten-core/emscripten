@@ -4450,3 +4450,35 @@ int main(void) {
     finally:
       del os.environ['EMCONFIGURE_JS']
 
+  def test_emcc_c_multi(self):
+    lib = r'''
+      int mult() { return 1; }
+    '''
+
+    lib_name = 'libA.c'
+    open(lib_name, 'w').write(lib)
+    main = r'''
+      #include <stdio.h>
+      int mult();
+      int main() {
+        printf("result: %d\n", mult());
+        return 0;
+      }
+    '''
+    main_name = 'main.c'
+    open(main_name, 'w').write(main)
+
+    if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+    try:
+      os.environ['EMCC_DEBUG'] = '1'
+      out, err = Popen([PYTHON, EMCC, '-O2', '-c', main_name, lib_name], stderr=PIPE).communicate()
+    finally:
+      del os.environ['EMCC_DEBUG']
+
+    assert err.count('-disable-vectorize') == 2, err # specified twice, once per file
+    assert err.count('emcc: LLVM opts: -O3 -disable-vectorize') == 2, err # exactly once per invocation of optimizer
+
+    Popen([PYTHON, EMCC, main_name.replace('.c', '.o'), lib_name.replace('.c', '.o')]).communicate()
+
+    self.assertContained('result: 1', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
