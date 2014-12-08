@@ -5887,6 +5887,8 @@ def process(filename):
   ### Integration tests
 
   def test_ccall(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
+
     post = '''
 def process(filename):
   src = \'\'\'
