@@ -8572,7 +8572,7 @@ LibraryManager.library = {
         }
       } else if (typeof dateNow !== 'undefined') {
         _emscripten_get_now.actual = dateNow;
-      } else if ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && self['performance'] && self['performance']['now']) {
+      } else if (self['performance'] && typeof self['performance']['now'] === 'function') {
         _emscripten_get_now.actual = function _emscripten_get_now_actual() { return self['performance']['now'](); };
       } else {
         _emscripten_get_now.actual = Date.now;
