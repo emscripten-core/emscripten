@@ -8572,8 +8572,10 @@ LibraryManager.library = {
         }
       } else if (typeof dateNow !== 'undefined') {
         _emscripten_get_now.actual = dateNow;
-      } else if (self['performance'] && typeof self['performance']['now'] === 'function') {
+      } else if (typeof self === 'object' && self['performance'] && typeof self['performance']['now'] === 'function') {
         _emscripten_get_now.actual = function _emscripten_get_now_actual() { return self['performance']['now'](); };
+      } else if (typeof performance === 'object' && typeof performance['now'] === 'function') {
+        _emscripten_get_now.actual = function _emscripten_get_now_actual() { return performance['now'](); };
       } else {
         _emscripten_get_now.actual = Date.now;
       }
