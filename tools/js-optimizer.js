@@ -353,7 +353,7 @@ function traverseChildrenInExecutionOrder(node, definitely, maybe, arg) {
     }
     case 'defun': case 'func': case 'block': {
       var stats = getStatements(node);
-      if (stats.length === 0) break;
+      if (!stats || stats.length === 0) break;
       for (var i = 0; i < stats.length; i++) {
         definitely(stats[i], arg);
         // check if we might break, if we have more to do
