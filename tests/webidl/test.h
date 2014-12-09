@@ -59,6 +59,10 @@ public:
   }
   void PrintFloat(float f) { printf("%.2f\n", f); }
   const char* returnAString() { return "a returned string"; }
+
+  void PrintCStringAddress(const char* s) {
+    printf("C string address: \"%s\" %p\n", s, s);
+  }
 };
 
 struct RefUser {

@@ -103,6 +103,11 @@ suser.Print(41, "world");
 suser.PrintFloat(12.3456);
 TheModule.print(suser.returnAString());
 
+// Verify that subsequent calls with the same string value re-use the string storage.
+suser.PrintCStringAddress("string A");
+suser.PrintCStringAddress("string B");
+suser.PrintCStringAddress("string A");
+
 var bv = new TheModule.RefUser(10);
 var bv2 = new TheModule.RefUser(11);
 TheModule.print(bv2.getValue(bv));
