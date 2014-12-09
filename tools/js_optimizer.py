@@ -28,6 +28,8 @@ import_sig = re.compile('var ([_\w$]+) *=[^;]+;')
 NATIVE_OPTIMIZER = os.environ.get('EMCC_NATIVE_OPTIMIZER')
 
 def get_native_optimizer():
+  if os.environ.get('EMCC_FAST_COMPILER') == '0': return None # need fastcomp for native optimizer
+
   FAIL_MARKER = shared.Cache.get_path('optimizer.building_failed')
   if os.path.exists(FAIL_MARKER):
     shared.logging.debug('seeing that optimizer could not be built')
