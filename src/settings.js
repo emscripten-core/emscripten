@@ -315,7 +315,7 @@ var EXCEPTION_CATCHING_WHITELIST = [];  // Enables catching exception in the lis
 var ASYNCIFY = 0; // Whether to enable asyncify transformation
                   // This allows to inject some async functions to the C code that appear to be sync
                   // e.g. emscripten_sleep
-var ASYNCIFY_FUNCTIONS = ['emscripten_sleep', // Functions that call any funcion in the list, directly or indirectly
+var ASYNCIFY_FUNCTIONS = ['emscripten_sleep', // Functions that call any function in the list, directly or indirectly
                           'emscripten_wget',  // will be transformed
                           'emscripten_yield'];
 var ASYNCIFY_WHITELIST = ['qsort',   // Functions in this list are never considered async, even if they appear in ASYNCIFY_FUNCTIONS
