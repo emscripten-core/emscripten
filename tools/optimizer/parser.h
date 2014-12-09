@@ -464,7 +464,7 @@ class Parser {
       // not case X: or default: or }, so must be some code
       src = skipSpace(src);
       bool explicitBlock = *src == '{';
-      Builder::appendCodeToSwitch(ret, parseMaybeBracketedBlock(src, ";}", CASE), explicitBlock);
+      Builder::appendCodeToSwitch(ret, parseMaybeBracketedBlock(src, ";}", CASE, DEFAULT), explicitBlock);
     }
     src = skipSpace(src);
     assert(*src == '}');
@@ -722,7 +722,7 @@ class Parser {
   }
 
   // Parses a block of code (e.g. a bunch of statements inside {,}, or the top level of o file)
-  NodeRef parseBlock(char*& src, NodeRef block=nullptr, const char* seps=";", IString keywordSep=IString()) {
+  NodeRef parseBlock(char*& src, NodeRef block=nullptr, const char* seps=";", IString keywordSep1=IString(), IString keywordSep2=IString()) {
     //dump("parseBlock", src);
     if (!block) block = Builder::makeBlock();
     while (*src) {
@@ -733,9 +733,13 @@ class Parser {
         continue;
       }
       if (hasChar(seps, *src)) break;
-      if (!!keywordSep) {
+      if (!!keywordSep1) {
         Frag next(src);
-        if (next.type == KEYWORD && next.str == keywordSep) break;
+        if (next.type == KEYWORD && next.str == keywordSep1) break;
+      }
+      if (!!keywordSep2) {
+        Frag next(src);
+        if (next.type == KEYWORD && next.str == keywordSep2) break;
       }
       NodeRef element = parseElementOrStatement(src, seps);
       Builder::appendToBlock(block, element);
@@ -769,9 +773,9 @@ class Parser {
     return *src == '{' ? parseBracketedBlock(src) : parseElementOrStatement(src, seps);
   }
 
-  NodeRef parseMaybeBracketedBlock(char*& src, const char *seps, IString keywordSep=IString()) {
+  NodeRef parseMaybeBracketedBlock(char*& src, const char *seps, IString keywordSep1=IString(), IString keywordSep2=IString()) {
     src = skipSpace(src);
-    return *src == '{' ? parseBracketedBlock(src) : parseBlock(src, nullptr, seps, keywordSep);
+    return *src == '{' ? parseBracketedBlock(src) : parseBlock(src, nullptr, seps, keywordSep1, keywordSep2);
   }
 
   NodeRef parseParenned(char*& src) {

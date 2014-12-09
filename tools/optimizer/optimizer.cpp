@@ -2672,7 +2672,7 @@ void asmLastOpts(Ref ast) {
     });
     // convert  { singleton }  into  singleton
     traversePre(fun, [](Ref node) {
-      if (node[0] == BLOCK && !!node[1] && node[1]->size() == 1) {
+      if (node[0] == BLOCK && !!getStatements(node) && node[1]->size() == 1) {
         safeCopy(node, node[1][0]);
       }
     });

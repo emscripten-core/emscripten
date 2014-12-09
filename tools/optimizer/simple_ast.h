@@ -710,7 +710,7 @@ struct JSPrinter {
   }
 
   void printBlock(Ref node) {
-    if (node[1]->size() == 0) {
+    if (node->size() == 1 || node[1]->size() == 0) {
       emit("{}");
       return;
     }
