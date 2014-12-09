@@ -52,7 +52,7 @@ interface StringUser {
   void Print(long anotherInteger, DOMString anotherString);
   void PrintFloat(float f);
   [Const] DOMString returnAString();
-  void PrintCStringAddress(DOMString str);
+  void CompareCStringAddress(DOMString str1, DOMString str2);
 };
 
 interface RefUser {
