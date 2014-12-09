@@ -99,6 +99,7 @@ static std::vector<std::unordered_map<IString, int>> precedences; // op, type =>
 struct Init {
   Init() {
     // operators, rtl, type
+    operatorClasses.push_back(OperatorClass(".",         false, OperatorClass::Binary));
     operatorClasses.push_back(OperatorClass("! ~ + -",   true,  OperatorClass::Prefix));
     operatorClasses.push_back(OperatorClass("* / %",     false, OperatorClass::Binary));
     operatorClasses.push_back(OperatorClass("+ -",       false, OperatorClass::Binary));

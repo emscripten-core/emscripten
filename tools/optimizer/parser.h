@@ -616,14 +616,14 @@ class Parser {
   std::vector<ExpressionParts> expressionPartsStack;
 
   void dumpParts(ExpressionParts& parts, int i) {
-    printf("expressionparts: %d,%d (at %d)\n", parts.size(), parts.size(), i);
+    printf("expressionparts: %d (at %d)\n", parts.size(), i);
     printf("| ");
     for (int i = 0; i < parts.size(); i++) {
       if (parts[i].isNode) {
         parts[i].getNode()->stringify(std::cout);
-        printf(" ");
+        printf("    ");
       } else {
-        printf("_%s_ ", parts[i].getOp().str);
+        printf("    _%s_    ", parts[i].getOp().str);
       }
     }
     printf("|\n");

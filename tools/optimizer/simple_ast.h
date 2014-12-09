@@ -1269,6 +1269,11 @@ public:
       return &makeRawArray()->push_back(makeRawString(SEQ))
                              .push_back(left)
                              .push_back(right);
+    } else if (op == PERIOD) {
+      assert(right[0] == NAME);
+      return &makeRawArray()->push_back(makeRawString(DOT))
+                             .push_back(left)
+                             .push_back(makeRawString(right[1]->getIString()));
     } else {
       return &makeRawArray()->push_back(makeRawString(BINARY))
                              .push_back(makeRawString(op))
