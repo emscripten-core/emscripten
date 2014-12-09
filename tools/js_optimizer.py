@@ -145,8 +145,10 @@ def run_on_chunk(command):
       while os.path.exists(saved): saved = 'input' + str(int(saved.replace('input', '').replace('.txt', ''))+1) + '.txt'
       print >> sys.stderr, 'running js optimizer command', ' '.join(map(lambda c: c if c != filename else saved, command))
       shutil.copyfile(filename, os.path.join('/tmp/emscripten_temp', saved))
-    output = subprocess.Popen(command, stdout=subprocess.PIPE).communicate()[0]
-    assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
+    proc = subprocess.Popen(command, stdout=subprocess.PIPE)
+    output = proc.communicate()[0]
+    assert proc.returncode == 0, 'Error in optimizer: ' + output
+    assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in optimizer: ' + output
     filename = temp_files.get(os.path.basename(filename) + '.jo.js').name
     f = open(filename, 'w')
     f.write(output)
