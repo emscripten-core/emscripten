@@ -43,7 +43,6 @@ def get_native_optimizer():
         for compiler in [shared.CLANG, 'g++', 'clang++']: # try our clang first, otherwise hope for a system compiler in the path
           shared.logging.debug('  using ' + compiler)
           out, err = subprocess.Popen([compiler,
-                                       shared.path_from_root('tools', 'optimizer', 'istring.cpp'),
                                        shared.path_from_root('tools', 'optimizer', 'parser.cpp'),
                                        shared.path_from_root('tools', 'optimizer', 'simple_ast.cpp'),
                                        shared.path_from_root('tools', 'optimizer', 'optimizer.cpp'),

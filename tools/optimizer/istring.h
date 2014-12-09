@@ -35,8 +35,6 @@ struct IString {
       return strcmp(x, y) == 0;
     }
   };
-  typedef std::unordered_set<const char *, CStringHash, CStringEqual> StringSet;
-  static StringSet strings;
 
   IString() : str(nullptr) {}
   IString(const char *s, bool reuse=true) { // if reuse=true, then input is assumed to remain alive; not copied
@@ -44,19 +42,22 @@ struct IString {
   }
 
   void set(const char *s, bool reuse=true) {
+    typedef std::unordered_set<const char *, CStringHash, CStringEqual> StringSet;
+    static StringSet* strings = new StringSet();
+
     if (reuse) {
-      auto result = strings.insert(s); // if already present, does nothing
+      auto result = strings->insert(s); // if already present, does nothing
       str = *(result.first);
     } else {
-      auto existing = strings.find(s);
-      if (existing == strings.end()) {
+      auto existing = strings->find(s);
+      if (existing == strings->end()) {
         char *copy = (char*)malloc(strlen(s)+1); // XXX leaked
         strcpy(copy, s);
         s = copy;
       } else {
         s = *existing;
       }
-      strings.insert(s);
+      strings->insert(s);
       str = s;
     }
   }
