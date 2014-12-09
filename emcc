@@ -475,7 +475,7 @@ try:
       opt_level = validate_arg_level(requested_level, 3, 'Invalid optimization level: ' + newargs[i])
       # We leave the -O option in place so that the clang front-end runs in that
       # optimization mode, but we disable the actual optimization passes, as we'll
-      # run them seperately.
+      # run them separately.
       newargs.append('-mllvm')
       newargs.append('-disable-llvm-optzns')
     elif newargs[i].startswith('--js-opts'):
@@ -1427,7 +1427,7 @@ try:
           for i in range(len(chunks)):
             run_passes(chunks[i], 'js_opts_' + str(i), just_split='receiveJSON' in chunks[i], just_concat='emitJSON' in chunks[i])
       else:
-        # DEBUG 2, run each pass seperately
+        # DEBUG 2, run each pass separately
         for p in passes:
           js_optimizer_queue = [p]
           flush_js_optimizer_queue(p)
