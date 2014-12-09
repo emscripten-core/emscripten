@@ -1379,9 +1379,11 @@ namespace emscripten {
         typedef std::vector<T> VecType;
 
         void (VecType::*push_back)(const T&) = &VecType::push_back;
+        void (VecType::*resize)(const size_t) = &VecType::resize;
         return class_<std::vector<T>>(name)
             .template constructor<>()
             .function("push_back", push_back)
+            .function("resize", resize)
             .function("size", &VecType::size)
             .function("get", &internal::VectorAccess<VecType>::get)
             .function("set", &internal::VectorAccess<VecType>::set)
