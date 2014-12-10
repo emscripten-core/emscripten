@@ -765,6 +765,8 @@ StringSet ASSOCIATIVE_BINARIES("+ * | & ^"),
           CONDITION_CHECKERS("if do while switch"),
           SAFE_TO_DROP_COERCION("unary-prefix name num");
 
+StringSet BREAK_CAPTURERS("do while for switch"),
+          FUNCTIONS_THAT_ALWAYS_THROW("abort ___resumeException ___cxa_throw ___cxa_rethrow");
 
 bool isFunctionTable(const char *name) {
   static const char *functionTable = "FUNCTION_TABLE";
@@ -1351,7 +1353,7 @@ void eliminate(Ref ast, bool memSafe=false) {
         node[1] = node[1].filter(function(pair) { return !varsToRemove[pair[0]] });
         if (node[1]->size() == 0) {
           // wipe out an empty |var;|
-          node[0] = 'toplevel';
+          node[0] = TOPLEVEL;
           node[1] = [];
         }
       } else */
@@ -2606,7 +2608,7 @@ void registerizeHarder(Ref ast) {
         nextLoopLabel = NULL_STR;
       }
       // An unlabelled CONTINUE should jump to innermost loop,
-      // ignoring any nested 'switch' statements.
+      // ignoring any nested SWITCH statements.
       if (onContinue < 0 && prevLabels.count(NULL_STR) > 0) {
         newLabels[NULL_STR].co = prevLabels[NULL_STR].co;
       }
@@ -2636,7 +2638,7 @@ void registerizeHarder(Ref ast) {
           assert(0); // 'unknown jump node type');
         }
       }
-      currEntryJunction = nullptr;
+      currEntryJunction = -1;
     };
 
     auto addUseNode = [&](Ref node) {
@@ -2665,354 +2667,312 @@ void registerizeHarder(Ref ast) {
       }
     };
 
-    function lookThroughCasts(node) {
+    auto lookThroughCasts = [&](Ref node) {
       // Look through value-preserving casts, like "x | 0" => "x"
-      if (node[0] == 'binary' && node[1] == '|') {
-        if (node[3][0] == 'num' && node[3][1] == 0) {
+      if (node[0] == BINARY && node[1] == OR) {
+        if (node[3][0] == NUM && node[3][1] == 0) {
             return lookThroughCasts(node[2]);
         }
       }
       return node;
-    }
+    };
 
-    function addBlockLabel(node) {
-      assert(nextBasicBlock.nodes.length == 0, 'cant add label to an in-progress basic block')
-      if (node[0] == 'num') {
-        nextBasicBlock.labels[node[1]] = 1;
+    auto addBlockLabel = [&](Ref node) {
+      assert(nextBasicBlock->nodes.size() == 0); // 'cant add label to an in-progress basic block')
+      if (node[0] == NUM) {
+        nextBasicBlock->labels.insert(node[1]); // XXX?
       }
-    }
+    };
 
-    function isTrueNode(node) {
+    auto isTrueNode = [&](Ref node) {
       // Check if the given node is statically truthy.
-      return (node[0] == 'num' && node[1] != 0);
-    }
+      return (node[0] == NUM && node[1]->getNumber() != 0);
+    };
 
-    function isFalseNode(node) {
+    auto isFalseNode = [&](Ref node) {
       // Check if the given node is statically falsy.
-      return (node[0] == 'num' && node[1] == 0);
-    }
+      return (node[0] == NUM && node[1]->getNumber() == 0);
+    };
 
-    function morphNode(node, newNode) {
-      // In-place morph a node into some other type of node.
-      var i = 0;
-      while (i < node.length && i < newNode.length) {
-        node[i] = newNode[i];
-        i++;
-      }
-      while (i < newNode.length) {
-        node.push(newNode[i]);
-        i++;
-      }
-      if (node.length > newNode.length) {
-        node.length = newNode.length;
-      }
-    }
-
-    function buildFlowGraph(node) {
+    std::function<void (Ref)> buildFlowGraph = [&](Ref node) {
       // Recursive function to build up the flow-graph.
       // It walks the tree in execution order, calling the above state-management
       // functions at appropriate points in the traversal.
-      var type = node[0];
+      Ref type = node[0];
   
       // Any code traversed without an active entry junction must be dead,
       // as the resulting block could never be entered. Let's remove it.
-      if (currEntryJunction == null && junctions.length > 0) {
-        morphNode(node, ['block', []]);
+      if (currEntryJunction < 0 && junctions.size() > 0) {
+        safeCopy(node, makeBlock());
         return;
       }
  
       // Traverse each node type according to its particular control-flow semantics.
-      switch (type) {
-        case 'defun':
-          var jEntry = markJunction();
-          assert(jEntry == ENTRY_JUNCTION);
-          var jExit = addJunction();
-          assert(jExit == EXIT_JUNCTION);
-          for (var i = 0; i < node[3].length; i++) {
-            buildFlowGraph(node[3][i]);
-          }
-          joinJunction(jExit);
-          break;
-        case 'if':
-          isInExpr++;
-          buildFlowGraph(node[1]);
-          isInExpr--;
-          var jEnter = markJunction();
-          var jExit = addJunction();
-          if (node[2]) {
-            // Detect and mark "if (label == N) { <labelled block> }".
-            if (node[1][0] == 'binary' && node[1][1] == '==') {
-              var lhs = lookThroughCasts(node[1][2]);
-              if (lhs[0] == NAME && lhs[1] == 'label') {
-                addBlockLabel(lookThroughCasts(node[1][3]));
-              }
+      // TODO: switchify this
+      if (type == DEFUN) {
+        var jEntry = markJunction();
+        assert(jEntry == ENTRY_JUNCTION);
+        int jExit = addJunction();
+        assert(jExit == EXIT_JUNCTION);
+        for (var i = 0; i < node[3].length; i++) {
+          buildFlowGraph(node[3][i]);
+        }
+        joinJunction(jExit);
+      } else if (type == IF) {
+        isInExpr++;
+        buildFlowGraph(node[1]);
+        isInExpr--;
+        int jEnter = markJunction();
+        int jExit = addJunction();
+        if (!!node[2]) {
+          // Detect and mark "if (label == N) { <labelled block> }".
+          if (node[1][0] == BINARY && node[1][1] == EQ) {
+            Ref lhs = lookThroughCasts(node[1][2]);
+            if (lhs[0] == NAME && lhs[1] == LABEL) {
+              addBlockLabel(lookThroughCasts(node[1][3]));
             }
+          }
+          buildFlowGraph(node[2]);
+        }
+        joinJunction(jExit);
+        setJunction(jEnter);
+        if (!!node[3]) {
+          buildFlowGraph(node[3]);
+        }
+        joinJunction(jExit);
+      } else if (type == CONDITIONAL) {
+        isInExpr++;
+        // If the conditional has no side-effects, we can treat it as a single
+        // block, which might open up opportunities to remove it entirely.
+        if (!hasSideEffects(node)) {
+          buildFlowGraph(node[1]);
+          if (!!node[2]) {
+            buildFlowGraph(node[2]);
+          }
+          if (!!node[3]) {
+            buildFlowGraph(node[3]);
+          }
+        } else {
+          buildFlowGraph(node[1]);
+          int jEnter = markJunction();
+          int jExit = addJunction();
+          if (!!node[2]) {
             buildFlowGraph(node[2]);
           }
           joinJunction(jExit);
           setJunction(jEnter);
-          if (node[3]) {
+          if (!!node[3]) {
             buildFlowGraph(node[3]);
           }
           joinJunction(jExit);
-          break;
-        case 'conditional':
-          isInExpr++;
-          // If the conditional has no side-effects, we can treat it as a single
-          // block, which might open up opportunities to remove it entirely.
-          if (!hasSideEffects(node)) {
-            buildFlowGraph(node[1]);
-            if (node[2]) {
-              buildFlowGraph(node[2]);
-            }
-            if (node[3]) {
-              buildFlowGraph(node[3]);
-            }
-          } else {
-            buildFlowGraph(node[1]);
-            var jEnter = markJunction();
-            var jExit = addJunction();
-            if (node[2]) {
-              buildFlowGraph(node[2]);
-            }
-            joinJunction(jExit);
-            setJunction(jEnter);
-            if (node[3]) {
-              buildFlowGraph(node[3]);
-            }
-            joinJunction(jExit);
-          }
-          isInExpr--;
-          break;
-        case 'while':
-          // Special-case "while (1) {}" to use fewer junctions,
-          // since emscripten generates a lot of these.
-          if (isTrueNode(node[1])) {
-            var jLoop = markJunction();
-            var jExit = addJunction();
-            pushActiveLabels(jLoop, jExit);
-            buildFlowGraph(node[2]);
-            popActiveLabels();
-            joinJunction(jLoop);
-            setJunction(jExit);
-          } else {
-            var jCond = markJunction();
-            var jLoop = addJunction();
-            var jExit = addJunction();
-            isInExpr++;
-            buildFlowGraph(node[1]);
-            isInExpr--;
-            joinJunction(jLoop);
-            pushActiveLabels(jCond, jExit);
-            buildFlowGraph(node[2]);
-            popActiveLabels();
-            joinJunction(jCond);
-            // An empty basic-block linking condition exit to loop exit.
-            setJunction(jLoop);
-            joinJunction(jExit);
-          }
-          break;
-        case 'do':
-          // Special-case "do {} while (1)" and "do {} while (0)" to use
-          // fewer junctions, since emscripten generates a lot of these.
-          if (isFalseNode(node[1])) {
-            var jExit = addJunction();
-            pushActiveLabels(jExit, jExit);
-            buildFlowGraph(node[2]);
-            popActiveLabels();
-            joinJunction(jExit);
-          } else if (isTrueNode(node[1])) {
-            var jLoop = markJunction();
-            var jExit = addJunction();
-            pushActiveLabels(jLoop, jExit);
-            buildFlowGraph(node[2]);
-            popActiveLabels();
-            joinJunction(jLoop);
-            setJunction(jExit);
-          } else {
-            var jLoop = markJunction();
-            var jCond = addJunction();
-            var jCondExit = addJunction();
-            var jExit = addJunction();
-            pushActiveLabels(jCond, jExit);
-            buildFlowGraph(node[2]);
-            popActiveLabels();
-            joinJunction(jCond);
-            isInExpr++;
-            buildFlowGraph(node[1]);
-            isInExpr--;
-            joinJunction(jCondExit);
-            joinJunction(jLoop);
-            setJunction(jCondExit);
-            joinJunction(jExit)
-          }
-          break;
-        case 'for':
-          var jTest = addJunction();
-          var jBody = addJunction();
-          var jStep = addJunction();
-          var jExit = addJunction();
-          buildFlowGraph(node[1]);
-          joinJunction(jTest);
-          isInExpr++;
+        }
+        isInExpr--;
+      } else if (type == WHILE) {
+        // Special-case "while (1) {}" to use fewer junctions,
+        // since emscripten generates a lot of these.
+        if (isTrueNode(node[1])) {
+          int jLoop = markJunction();
+          int jExit = addJunction();
+          pushActiveLabels(jLoop, jExit);
           buildFlowGraph(node[2]);
-          isInExpr--;
-          joinJunction(jBody);
-          pushActiveLabels(jStep, jExit);
-          buildFlowGraph(node[4]);
           popActiveLabels();
-          joinJunction(jStep);
-          buildFlowGraph(node[3]);
-          joinJunction(jTest);
-          setJunction(jBody);
-          joinJunction(jExit);
-          break;
-        case 'label':
-          assert(node[2][0] in BREAK_CAPTURERS, 'label on non-loop, non-switch statement')
-          nextLoopLabel = node[1];
-          buildFlowGraph(node[2]);
-          break;
-        case 'switch':
-          // Emscripten generates switch statements of a very limited
-          // form: all case clauses are numeric literals, and all
-          // case bodies end with a (maybe implicit) break.  So it's
-          // basically equivalent to a multi-way 'if' statement.
+          joinJunction(jLoop);
+          setJunction(jExit);
+        } else {
+          var jCond = markJunction();
+          int jLoop = addJunction();
+          int jExit = addJunction();
           isInExpr++;
           buildFlowGraph(node[1]);
           isInExpr--;
-          var condition = lookThroughCasts(node[1]);
-          var jCheckExit = markJunction();
-          var jExit = addJunction();
-          pushActiveLabels(null, jExit);
-          var hasDefault = false;
-          for (var i=0; i<node[2].length; i++) {
-            setJunction(jCheckExit);
-            // All case clauses are either 'default' or a numeric literal.
-            if (!node[2][i][0]) {
-              hasDefault = true;
-            } else {
-              // Detect switches dispatching to labelled blocks.
-              if (condition[0] == NAME && condition[1] == 'label') {
-                addBlockLabel(lookThroughCasts(node[2][i][0]));
-              }
-            }
-            for (var j = 0; j < node[2][i][1].length; j++) {
-              buildFlowGraph(node[2][i][1][j]);
-            }
-            // Control flow will never actually reach the end of the case body.
-            // If there's live code here, assume it jumps to case exit.
-            if (currEntryJunction !== null && nextBasicBlock.nodes.length > 0) {
-              if (node[2][i][0]) {
-                markNonLocalJump(RETURN);
-              } else {
-                joinJunction(jExit);
-              }
-            }
-          }
-          // If there was no default case, we also need an empty block
-          // linking straight from the test evaluation to the exit.
-          if (!hasDefault) {
-            setJunction(jCheckExit);
-          }
+          joinJunction(jLoop);
+          pushActiveLabels(jCond, jExit);
+          buildFlowGraph(node[2]);
+          popActiveLabels();
+          joinJunction(jCond);
+          // An empty basic-block linking condition exit to loop exit.
+          setJunction(jLoop);
           joinJunction(jExit);
-          popActiveLabels()
-          break;
-        case RETURN:
-          if (node[1]) {
-            isInExpr++;
-            buildFlowGraph(node[1]);
-            isInExpr--;
-          }
-          markNonLocalJump(type);
-          break;
-        case BREAK:
-        case CONTINUE:
-          markNonLocalJump(type, node[1]);
-          break;
-        case ASSIGN:
+        }
+      } else if (type == DO) {
+        // Special-case "do {} while (1)" and "do {} while (0)" to use
+        // fewer junctions, since emscripten generates a lot of these.
+        if (isFalseNode(node[1])) {
+          int jExit = addJunction();
+          pushActiveLabels(jExit, jExit);
+          buildFlowGraph(node[2]);
+          popActiveLabels();
+          joinJunction(jExit);
+        } else if (isTrueNode(node[1])) {
+          int jLoop = markJunction();
+          int jExit = addJunction();
+          pushActiveLabels(jLoop, jExit);
+          buildFlowGraph(node[2]);
+          popActiveLabels();
+          joinJunction(jLoop);
+          setJunction(jExit);
+        } else {
+          int jLoop = markJunction();
+          int jCond = addJunction();
+          int jCondExit = addJunction();
+          int jExit = addJunction();
+          pushActiveLabels(jCond, jExit);
+          buildFlowGraph(node[2]);
+          popActiveLabels();
+          joinJunction(jCond);
           isInExpr++;
-          buildFlowGraph(node[3]);
+          buildFlowGraph(node[1]);
           isInExpr--;
-          if (node[1] == true && node[2][0] == NAME) {
-            addKillNode(node);
+          joinJunction(jCondExit);
+          joinJunction(jLoop);
+          setJunction(jCondExit);
+          joinJunction(jExit)
+        }
+      } else if (type == FOR) {
+        int jTest = addJunction();
+        int jBody = addJunction();
+        int jStep = addJunction();
+        int jExit = addJunction();
+        buildFlowGraph(node[1]);
+        joinJunction(jTest);
+        isInExpr++;
+        buildFlowGraph(node[2]);
+        isInExpr--;
+        joinJunction(jBody);
+        pushActiveLabels(jStep, jExit);
+        buildFlowGraph(node[4]);
+        popActiveLabels();
+        joinJunction(jStep);
+        buildFlowGraph(node[3]);
+        joinJunction(jTest);
+        setJunction(jBody);
+        joinJunction(jExit);
+      } else if (type == LABEL) {
+        assert(BREAK_CAPTURERS.has(node[2][0])); // 'label on non-loop, non-switch statement')
+        nextLoopLabel = node[1];
+        buildFlowGraph(node[2]);
+      } else if (type == SWITCH) {
+        // Emscripten generates switch statements of a very limited
+        // form: all case clauses are numeric literals, and all
+        // case bodies end with a (maybe implicit) break.  So it's
+        // basically equivalent to a multi-way IF statement.
+        isInExpr++;
+        buildFlowGraph(node[1]);
+        isInExpr--;
+        Ref condition = lookThroughCasts(node[1]);
+        int jCheckExit = markJunction();
+        int jExit = addJunction();
+        pushActiveLabels(-1, jExit);
+        bool hasDefault = false;
+        for (int i = 0; i < node[2]->size(); i++) {
+          setJunction(jCheckExit);
+          // All case clauses are either 'default' or a numeric literal.
+          if (!node[2][i][0]) {
+            hasDefault = true;
           } else {
-            buildFlowGraph(node[2]);
-          }
-          break;
-        case NAME:
-          addUseNode(node);
-          break;
-        case 'block':
-        case 'toplevel':
-          if (node[1]) {
-            for (var i = 0; i < node[1].length; i++) {
-              buildFlowGraph(node[1][i]);
+            // Detect switches dispatching to labelled blocks.
+            if (condition[0] == NAME && condition[1] == LABEL) {
+              addBlockLabel(lookThroughCasts(node[2][i][0]));
             }
           }
-          break;
-        case 'stat':
-          buildFlowGraph(node[1]);
-          break;
-        case 'unary-prefix':
-        case 'unary-postfix':
-          isInExpr++;
-          buildFlowGraph(node[2]);
-          isInExpr--;
-          break;
-        case 'binary':
-          isInExpr++;
-          buildFlowGraph(node[2]);
-          buildFlowGraph(node[3]);
-          isInExpr--;
-          break;
-        case 'call':
-          isInExpr++;
-          buildFlowGraph(node[1]);
-          if (node[2]) {
-            for (var i = 0; i < node[2].length; i++) {
-              buildFlowGraph(node[2][i]);
-            }
+          for (int j = 0; j < node[2][i][1]->size(); j++) {
+            buildFlowGraph(node[2][i][1][j]);
           }
-          isInExpr--;
-          // If the call is statically known to throw,
-          // treat it as a jump to function exit.
-          if (!isInExpr && node[1][0] == NAME) {
-            if (node[1][1] in FUNCTIONS_THAT_ALWAYS_THROW) {
+          // Control flow will never actually reach the end of the case body.
+          // If there's live code here, assume it jumps to case exit.
+          if (currEntryJunction >= 0 && nextBasicBlock->nodes.size() > 0) {
+            if (!!node[2][i][0]) {
               markNonLocalJump(RETURN);
+            } else {
+              joinJunction(jExit);
             }
           }
-          break;
-        case 'seq':
-        case 'sub':
+        }
+        // If there was no default case, we also need an empty block
+        // linking straight from the test evaluation to the exit.
+        if (!hasDefault) {
+          setJunction(jCheckExit);
+        }
+        joinJunction(jExit);
+        popActiveLabels()
+      } else if (type == RETURN) {
+        if (!!node[1]) {
           isInExpr++;
           buildFlowGraph(node[1]);
+          isInExpr--;
+        }
+        markNonLocalJump(type);
+      } else if (type == BREAK || type == CONTINUE) {
+        markNonLocalJump(type, node[1]);
+      } else if (type == ASSIGN) {
+        isInExpr++;
+        buildFlowGraph(node[3]);
+        isInExpr--;
+        if (node[1]->isBool(true) && node[2][0] == NAME) {
+          addKillNode(node);
+        } else {
           buildFlowGraph(node[2]);
-          isInExpr--;
-          break;
-        case 'dot':
-        case 'throw':
-          isInExpr++;
-          buildFlowGraph(node[1]);
-          isInExpr--;
-          break;
-        case 'num':
-        case 'string':
-        case 'var':
-          break;
-        default:
-          printErr(JSON.stringify(node));
-          assert(false, 'unsupported node type: ' + type);
+        }
+      } else if (type == NAME) {
+        addUseNode(node);
+      } else if (type == BLOCK || type == TOPLEVEL) {
+        if (!!node[1]) {
+          for (int i = 0; i < node[1]->size(); i++) {
+            buildFlowGraph(node[1][i]);
+          }
+        }
+      } else if (type == STAT) {
+        buildFlowGraph(node[1]);
+      } else if (type == UNARY_PREFIX || type == UNARY_POSTFIX) {
+        isInExpr++;
+        buildFlowGraph(node[2]);
+        isInExpr--;
+      } else if (type == BINARY) {
+        isInExpr++;
+        buildFlowGraph(node[2]);
+        buildFlowGraph(node[3]);
+        isInExpr--;
+      } else if (type == CALL) {
+        isInExpr++;
+        buildFlowGraph(node[1]);
+        if (!!node[2]) {
+          for (int i = 0; i < node[2]->size(); i++) {
+            buildFlowGraph(node[2][i]);
+          }
+        }
+        isInExpr--;
+        // If the call is statically known to throw,
+        // treat it as a jump to function exit.
+        if (!isInExpr && node[1][0] == NAME) {
+          if (FUNCTIONS_THAT_ALWAYS_THROW.has(node[1][1])) {
+            markNonLocalJump(RETURN);
+          }
+        }
+      } else if (type == SEQ || type == SUB) {:
+        isInExpr++;
+        buildFlowGraph(node[1]);
+        buildFlowGraph(node[2]);
+        isInExpr--;
+      } else if (type == DOT || type == THROW) {
+        isInExpr++;
+        buildFlowGraph(node[1]);
+        isInExpr--;
+      } else if (type == NUM || type == STRING || type == VAR) {
+        // nada
+      } else {
+        assert(0); // 'unsupported node type: ' + type);
       }
-    }
+    };
+
     buildFlowGraph(fun);
 
-    assert(setSize(junctions[ENTRY_JUNCTION].inblocks) == 0, 'function entry must have no incoming blocks');
-    assert(setSize(junctions[EXIT_JUNCTION].outblocks) == 0, 'function exit must have no outgoing blocks');
-    assert(blocks[ENTRY_BLOCK].entry == ENTRY_JUNCTION, 'block zero must be the initial block');
+    assert(junctions[ENTRY_JUNCTION].inblocks.size() == 0); // 'function entry must have no incoming blocks');
+    assert(junctions[EXIT_JUNCTION].outblocks.size() == 0); // 'function exit must have no outgoing blocks');
+    assert(blocks[ENTRY_BLOCK].entry == ENTRY_JUNCTION); //, 'block zero must be the initial block');
 
-    // Fix up implicit jumps done by assigning to the 'label' variable.
-    // If a block ends with an assignment to 'label' and there's another block
-    // with that value of 'label' as precondition, we tweak the flow graph so
+    // Fix up implicit jumps done by assigning to the LABEL variable.
+    // If a block ends with an assignment to LABEL and there's another block
+    // with that value of LABEL as precondition, we tweak the flow graph so
     // that the former jumps straight to the later.
 
     var labelledBlocks = {};
@@ -3033,12 +2993,12 @@ void registerizeHarder(Ref ast) {
         labelledBlocks[labelVal] = block;
       }
       // Does it assign a specific label value at exit?
-      if ('label' in block.kill) {
+      if (LABEL in block.kill) {
         var finalNode = block.nodes[block.nodes.length - 1];
-        if (finalNode[0] == ASSIGN && finalNode[2][1] == 'label') {
+        if (finalNode[0] == ASSIGN && finalNode[2][1] == LABEL) {
           // If labels are computed dynamically then all bets are off.
           // This can happen due to indirect branching in llvm output.
-          if (finalNode[3][0] !== 'num') {
+          if (finalNode[3][0] !== NUM) {
             labelledBlocks = {};
             labelledJumps = [];
             break FINDLABELLEDBLOCKS;
@@ -3049,8 +3009,8 @@ void registerizeHarder(Ref ast) {
           // then all bets are off.  This can happen e.g. due to outlining
           // saving/restoring label to the stack.
           for (var j = 0; j < block.nodes.length - 1; j++) {
-            if (block.nodes[j][0] == ASSIGN && block.nodes[j][2][1] == 'label') {
-              if (block.nodes[j][3][0] !== 'num' && block.nodes[j][3][1] !== 0) {
+            if (block.nodes[j][0] == ASSIGN && block.nodes[j][2][1] == LABEL) {
+              if (block.nodes[j][3][0] !== NUM && block.nodes[j][3][1] !== 0) {
                 labelledBlocks = {};
                 labelledJumps = [];
                 break FINDLABELLEDBLOCKS;
@@ -3067,9 +3027,9 @@ void registerizeHarder(Ref ast) {
       delete junctions[block.entry].outblocks[block.id];
       block.entry = addJunction();
       junctions[block.entry].outblocks[block.id] = 1;
-      // Add a fake use of 'label' to keep it alive in predecessor.
-      block.use['label'] = 1;
-      block.nodes.unshift([NAME, 'label']);
+      // Add a fake use of LABEL to keep it alive in predecessor.
+      block.use[LABEL] = 1;
+      block.nodes.unshift([NAME, LABEL]);
       block.isexpr.unshift(1);
     }
     for (var i = 0; i < labelledJumps.length; i++) {
@@ -3197,7 +3157,7 @@ void registerizeHarder(Ref ast) {
                   numUsesInExpr++;
                 }
               });
-              morphNode(node, ['block', []]);
+              morphNode(node, [BLOCK, []]);
               j = j - numUsesInExpr;
               removeUnusedNodes(j, 1 + numUsesInExpr);
             }
@@ -3393,7 +3353,7 @@ void registerizeHarder(Ref ast) {
       var block = blocks[i];
       if (block.nodes.length == 0) continue;
       var jEnter = junctions[block.entry];
-      var jExit = junctions[block.exit];
+      int jExit = junctions[block.exit];
       // Mark the point at which each input reg becomes dead.
       // Variables alive before this point must not be assigned
       // to that register.
@@ -3499,7 +3459,7 @@ void registerizeHarder(Ref ast) {
           if (block.isexpr[maybeRemoveNodes[j][0]]) {
             morphNode(node, node[2]);
           } else {
-            morphNode(node, ['block', []]);
+            morphNode(node, [BLOCK, []]);
           }
         }
       }
