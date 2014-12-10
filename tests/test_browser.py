@@ -1502,6 +1502,9 @@ keydown(100);keyup(100); // trigger the end
   def test_gl_glteximage(self):
     self.btest('gl_teximage.c', '1')
 
+  def test_gl_textures(self):
+    self.btest('gl_textures.cpp', '0')
+
   def test_gl_ps(self):
     # pointers and a shader
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
