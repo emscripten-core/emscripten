@@ -49,6 +49,8 @@ void Init()
   if (glfwInit() != GL_TRUE)
     Shut_Down(1);
 
+  glfwEnable(GLFW_KEY_REPEAT); // test for issue #3059
+
   int red_bits = glfwGetWindowParam(GLFW_RED_BITS);
   glfwOpenWindowHint(GLFW_RED_BITS, 8);
   assert(glfwGetWindowParam(GLFW_RED_BITS) == 8);
