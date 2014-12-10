@@ -2516,6 +2516,7 @@ void registerizeHarder(Ref ast) {
     struct Junction {
       int id;
       std::unordered_set<int> inblocks, outblocks;
+      StringSet live;
       Junction(int id_) : id(id_) {}
     };
     struct Node {
@@ -2975,44 +2976,45 @@ void registerizeHarder(Ref ast) {
     // with that value of LABEL as precondition, we tweak the flow graph so
     // that the former jumps straight to the later.
 
-    var labelledBlocks = {};
-    var labelledJumps = [];
+    std::unordered_map<IString, Block*> labelledBlocks;
+    typedef std::pair(Ref, Block*) Jump;
+    std::vector<Jump> labelledJumps;
     FINDLABELLEDBLOCKS:
-    for (var i = 0; i < blocks.length; i++) {
-      var block = blocks[i];
+    for (int i = 0; i < blocks.size(); i++) {
+      Block* block = blocks[i];
       // Does it have any labels as preconditions to its entry?
-      for (var labelVal in block.labels) {
+      for (auto labelVal : block->labels) {
         // If there are multiple blocks with the same label, all bets are off.
         // This seems to happen sometimes for short blocks that end with a return.
         // TODO: it should be safe to merge the duplicates if they're identical.
-        if (labelVal in labelledBlocks) {
-          labelledBlocks = {};
-          labelledJumps = [];
+        if (labelledBlocks.count(labelVal) > 0) {
+          labelledBlocks.clear();
+          labelledJumps.clear();
           break FINDLABELLEDBLOCKS;
         }
         labelledBlocks[labelVal] = block;
       }
       // Does it assign a specific label value at exit?
-      if (LABEL in block.kill) {
-        var finalNode = block.nodes[block.nodes.length - 1];
+      if (block.kill.has(LABEL)) {
+        var finalNode = block->nodes.back();
         if (finalNode[0] == ASSIGN && finalNode[2][1] == LABEL) {
           // If labels are computed dynamically then all bets are off.
           // This can happen due to indirect branching in llvm output.
-          if (finalNode[3][0] !== NUM) {
-            labelledBlocks = {};
-            labelledJumps = [];
+          if (finalNode[3][0] != NUM) {
+            labelledBlocks.clear();
+            labelledJumps.clear();
             break FINDLABELLEDBLOCKS;
           }
-          labelledJumps.push([finalNode[3][1], block]);
+          labelledJumps.push(Jump(finalNode[3][1], block));
         } else { 
           // If label is assigned a non-zero value elsewhere in the block
           // then all bets are off.  This can happen e.g. due to outlining
           // saving/restoring label to the stack.
-          for (var j = 0; j < block.nodes.length - 1; j++) {
+          for (int j = 0; j < block->nodes.size() - 1; j++) {
             if (block.nodes[j][0] == ASSIGN && block.nodes[j][2][1] == LABEL) {
-              if (block.nodes[j][3][0] !== NUM && block.nodes[j][3][1] !== 0) {
-                labelledBlocks = {};
-                labelledJumps = [];
+              if (block.nodes[j][3][0] != NUM && block.nodes[j][3][1]->getNumber() != 0) {
+                labelledBlocks.clear();
+                labelledJumps.clear();
                 break FINDLABELLEDBLOCKS;
               }
             }
@@ -3020,31 +3022,29 @@ void registerizeHarder(Ref ast) {
         }
       }
     }
-    for (var labelVal in labelledBlocks) {
-      var block = labelledBlocks[labelVal];
+    for (auto labelVal : labelledBlocks) {
+      var block = labelVal.second;
       // Disconnect it from the graph, and create a
       // new junction for jumps targetting this label.
-      delete junctions[block.entry].outblocks[block.id];
+      junctions[block.entry].outblocks.erase(block.id);
       block.entry = addJunction();
-      junctions[block.entry].outblocks[block.id] = 1;
+      junctions[block.entry].outblocks.insert(block.id);
       // Add a fake use of LABEL to keep it alive in predecessor.
-      block.use[LABEL] = 1;
-      block.nodes.unshift([NAME, LABEL]);
-      block.isexpr.unshift(1);
+      block.use.insert(LABEL);
+      block.nodes.insert(block.nodes.begin(), makeName(LABEL));
+      block.isexpr.insert(block.isexpr(), 1);
     }
-    for (var i = 0; i < labelledJumps.length; i++) {
-      var labelVal = labelledJumps[i][0];
-      var block = labelledJumps[i][1];
-      var targetBlock = labelledBlocks[labelVal];
+    for (int i = 0; i < labelledJumps.size(); i++) {
+      auto labelVal = labelledJumps[i].first;
+      auto block = labelledJumps[i].second;
+      Block* targetBlock = labelledBlocks[labelVal];
       if (targetBlock) {
         // Redirect its exit to entry of the target block.
-        delete junctions[block.exit].inblocks[block.id];
-        block.exit = targetBlock.entry;
-        junctions[block.exit].inblocks[block.id] = 1;
+        junctions[block->exit].inblocks.erase(block->id);
+        block->exit = targetBlock->entry;
+        junctions[block->exit].inblocks.inasert(block->id);
       }
     }
-    labelledBlocks = null;
-    labelledJumps = null;
 
     // Do a backwards data-flow analysis to determine the set of live
     // variables at each junction, and to use this information to eliminate
@@ -3053,23 +3053,23 @@ void registerizeHarder(Ref ast) {
     // junction.  The outer phase uses this to try to eliminate redundant
     // stores in each basic block, which might in turn affect liveness info.
 
-    function analyzeJunction(junc) {
+    auto analyzeJunction = [&](Junction& junc) {
       // Update the live set for this junction.
-      var live = {};
-      for (var b in junc.outblocks) {
-        var block = blocks[b];
-        var liveSucc = junctions[block.exit].live || {};
-        for (var name in liveSucc) {
-          if (!(name in block.kill)) {
-            live[name] = 1;
+      StringSet& live = junc.live;
+      std::unordered_set<int> live;
+      for (auto b : junc.outblocks) {
+        Block* block = blocks[b];
+        StringSet& liveSucc = junctions[block->exit].live;
+        for (auto name : liveSucc) {
+          if (!block->kill.has(name)) {
+            live.insert(name);
           }
         }
-        for (var name in block.use) {
-          live[name] = 1;
+        for (auto name : block->use) {
+          live.insert(name);
         }
       }
-      junc.live = live;
-    }
+    };
 
     function analyzeBlock(block) {
       // Update information about the behaviour of the block.
@@ -3270,7 +3270,7 @@ void registerizeHarder(Ref ast) {
           }
           // It links with any linkages in the outgoing blocks.
           var linkName = block.link[name];
-          if (linkName && linkName !== name) {
+          if (linkName && linkName != name) {
             if (!junctionVariables[linkName]) initializeJunctionVariable(linkName);
             junctionVariables[name].link[linkName] = 1;
             junctionVariables[linkName].link[name] = 1;
@@ -3306,7 +3306,7 @@ void registerizeHarder(Ref ast) {
       // and propagate that choice throughout the graph.
       // Returns true if successful, false if there was a conflict.
       var jv = junctionVariables[name];
-      if (jv.reg !== null) {
+      if (jv.reg != null) {
         return jv.reg == reg;
       }
       if (jv.excl[reg]) {
@@ -3329,7 +3329,7 @@ void registerizeHarder(Ref ast) {
     for (var i = 0; i < sortedJunctionVariables.length; i++) {
       var name = sortedJunctionVariables[i];
       // It may already be assigned due to linked-variable propagation.
-      if (junctionVariables[name].reg !== null) {
+      if (junctionVariables[name].reg != null) {
         continue NEXTVARIABLE;
       }
       // Try to use existing registers first.
@@ -3364,7 +3364,7 @@ void registerizeHarder(Ref ast) {
         if (!(name in block.kill)) {
           inputVars[name] = 1;
           var reg = junctionVariables[name].reg;
-          assert(reg !== null, 'input variable doesnt have a register');
+          assert(reg != null, 'input variable doesnt have a register');
           inputDeadLoc[reg] = block.firstDeadLoc[name];
           inputVarsByReg[reg] = name;
         }
@@ -3373,7 +3373,7 @@ void registerizeHarder(Ref ast) {
         if (!(name in inputVars)) {
           inputVars[name] = 1;
           var reg = junctionVariables[name].reg;
-          assert(reg !== null, 'input variable doesnt have a register');
+          assert(reg != null, 'input variable doesnt have a register');
           inputDeadLoc[reg] = block.firstDeadLoc[name];
           inputVarsByReg[reg] = name;
         }
@@ -3388,7 +3388,7 @@ void registerizeHarder(Ref ast) {
       // Begin with all live vars assigned per the exit junction.
       for (var name in jExit.live) {
         var reg = junctionVariables[name].reg;
-        assert(reg !== null, 'output variable doesnt have a register');
+        assert(reg != null, 'output variable doesnt have a register');
         assignedRegs[name] = reg;
         delete freeRegsByType[localVars[name]][reg];
       }
@@ -3424,7 +3424,7 @@ void registerizeHarder(Ref ast) {
                 reg = freeRegs[k];
                 // Check for conflict with input registers.
                 if (block.firstKillLoc[name] <= inputDeadLoc[reg]) {
-                  if (name !== inputVarsByReg[reg]) {
+                  if (name != inputVarsByReg[reg]) {
                     continue;
                   }
                 }
