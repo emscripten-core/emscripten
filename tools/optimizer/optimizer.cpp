@@ -2189,6 +2189,32 @@ void optimizeFrounds(Ref ast) {
 }
 
 // Very simple 'registerization', coalescing of variables into a smaller number.
+
+const char* getRegPrefix(AsmType type) {
+  switch (type) {
+    case ASM_INT:       return"i"; break;
+    case ASM_DOUBLE:    return "d"; break;
+    case ASM_FLOAT:     return "f"; break;
+    case ASM_FLOAT32X4: return "F4"; break;
+    case ASM_INT32X4:   return "I4"; break;
+    case ASM_NONE:      return "Z"; break;
+    default: assert(0); // type doesn't have a name yet
+  }
+  return nullptr;
+}
+
+IString getRegName(AsmType type, int num) {
+  const char* str = getRegPrefix(type);
+  int size = strlen(str) + int(ceil(log10(num))) + 3;
+  char temp[size];
+  int written = sprintf(temp, "%s%d", str, num);
+  assert(written < size);
+  temp[written] = 0;
+  IString ret;
+  ret.set(temp, false);
+  return ret;
+}
+
 void registerize(Ref ast) {
   traverseFunctions(ast, [](Ref fun) {
     AsmData asmData(fun);
@@ -2222,23 +2248,9 @@ void registerize(Ref ast) {
     auto getNewRegName = [&](int num, IString name) {
       const char *str;
       AsmType type = asmData.getType(name);
-      switch (type) {
-        case ASM_INT:       str = "i"; break;
-        case ASM_DOUBLE:    str = "d"; break;
-        case ASM_FLOAT:     str = "f"; break;
-        case ASM_FLOAT32X4: str = "F4"; break;
-        case ASM_INT32X4:   str = "I4"; break;
-        case ASM_NONE:      str = "Z"; break;
-        default: assert(0); // type doesn't have a name yet
-      }
-      int size = strlen(str) + int(ceil(log10(num))) + 3;
-      char *temp = (char*)malloc(size);
-      int written = sprintf(temp, "%s%d", str, num);
-      assert(written < size);
-      temp[written] = 0;
-      IString ret(temp); // likely interns a new string; leaks if not XXX FIXME
-      regTypes[ret] = type;
+      IString ret = getRegName(type, num);
       assert(!allVars.has(ret) || asmData.isLocal(ret)); // register must not shadow non-local name
+      regTypes[ret] = type;
       return ret;
     };
     // Find the # of uses of each variable.
@@ -2432,6 +2444,1082 @@ void registerize(Ref ast) {
     asmData.denormalize();
   });
 }
+
+// Assign variables to 'registers', coalescing them onto a smaller number of shared
+// variables.
+//
+// This does the same job as 'registerize' above, but burns a lot more cycles trying
+// to reduce the total number of register variables.  Key points about the operation:
+//
+//   * we decompose the AST into a flow graph and perform a full liveness
+//     analysis, to determine which variables are live at each point.
+//
+//   * variables that are live concurrently are assigned to different registers.
+//
+//   * variables that are linked via 'x=y' style statements are assigned the same
+//     register if possible, so that the redundant assignment can be removed.
+//     (e.g. assignments used to pass state around through loops).
+//
+//   * any code that cannot be reached through the flow-graph is removed.
+//     (e.g. redundant break statements like 'break L123; break;').
+//
+//   * any assignments that we can prove are not subsequently used are removed.
+//     (e.g. unnecessary assignments to the 'label' variable).
+//
+/*
+void registerizeHarder(Ref ast) {
+  traverseFunctions(ast, [](Ref fun) {
+
+    // Do not try to process non-validating methods, like the heap replacer
+    bool abort = false;
+    traverse(fun, function(node, type) {
+      if (type === NEW) abort = true;
+    });
+    if (abort) return;
+
+    AsmData asmData(fun);
+
+    // Utilities for allocating register variables.
+    // We need distinct register pools for each type of variable.
+
+    std::vector<StringStringMap> allRegsByType;
+    allRegsByType.resize(ASM_NONE+1);
+    int nextReg = 1;
+
+    auto createReg = [&](IString forName) {
+      // Create a new register of type suitable for the given variable name.
+      AsmType type = asmData.getType(forName);
+      StringIntMap& allRegs = allRegsByType[type];
+      reg = nextReg++;
+      allRegs[reg] = getRegName(type, reg);
+      return reg;
+    };
+
+    // Traverse the tree in execution order and synthesize a basic flow-graph.
+    // It's convenient to build a kind of "dual" graph where the nodes identify
+    // the junctions between blocks  at which control-flow may branch, and each
+    // basic block is an edge connecting two such junctions.
+    // For each junction we store:
+    //    * set of blocks that originate at the junction
+    //    * set of blocks that terminate at the junction
+    // For each block we store:
+    //    * a single entry junction
+    //    * a single exit junction
+    //    * a 'use' and 'kill' set of names for the block
+    //    * full sequence of 'name' and 'assign' nodes in the block
+    //    * whether each such node appears as part of a larger expression
+    //      (and therefore cannot be safely eliminated)
+    //    * set of labels that can be used to jump to this block
+
+    var junctions = [];
+    var blocks = [];
+    var currEntryJunction = null;
+    var nextBasicBlock = null;
+    var isInExpr = 0;
+    var activeLabels = [{}];
+    var nextLoopLabel = null;
+
+    var ENTRY_JUNCTION = 0;
+    var EXIT_JUNCTION = 1;
+    var ENTRY_BLOCK = 0;
+
+    function addJunction() {
+      // Create a new junction, without inserting it into the graph.
+      // This is useful for e.g. pre-allocating an exit node.
+      var id = junctions.length;
+      junctions[id] = {id: id, inblocks: {}, outblocks: {}};
+      return id;
+    }
+
+    function markJunction(id) {
+      // Mark current traversal location as a junction.
+      // This makes a new basic block exiting at this position.
+      if (id === undefined || id === null) {
+        id = addJunction();
+      }
+      joinJunction(id, true);
+      return id;
+    }
+
+    function setJunction(id, force) {
+      // Set the next entry junction to the given id.
+      // This can be used to enter at a previously-declared point.
+      // You can't return to a junction with no incoming blocks
+      // unless the 'force' parameter is specified.
+      assert(nextBasicBlock.nodes.length === 0, 'refusing to abandon an in-progress basic block')
+      if (force || setSize(junctions[id].inblocks) > 0) {
+        currEntryJunction = id;
+      } else {
+        currEntryJunction = null;
+      }
+    }
+
+    function joinJunction(id, force) {
+      // Complete the pending basic block by exiting at this position.
+      // This can be used to exit at a previously-declared point.
+      if (currEntryJunction !== null) {
+        nextBasicBlock.id = blocks.length;
+        nextBasicBlock.entry = currEntryJunction;
+        nextBasicBlock.exit = id;
+        junctions[currEntryJunction].outblocks[nextBasicBlock.id] = 1;
+        junctions[id].inblocks[nextBasicBlock.id] = 1;
+        blocks.push(nextBasicBlock);
+      } 
+      nextBasicBlock = { id: null, entry: null, exit: null, labels: {}, nodes: [], isexpr: [], use: {}, kill: {} };
+      setJunction(id, force);
+      return id;
+    }
+
+    function pushActiveLabels(onContinue, onBreak) {
+      // Push the target junctions for continuing/breaking a loop.
+      // This should be called before traversing into a loop.
+      var prevLabels = activeLabels[activeLabels.length-1];
+      var newLabels = copy(prevLabels);
+      newLabels[null] = [onContinue, onBreak];
+      if (nextLoopLabel) {
+        newLabels[nextLoopLabel] = [onContinue, onBreak];
+        nextLoopLabel = null;
+      }
+      // An unlabelled 'continue' should jump to innermost loop,
+      // ignoring any nested 'switch' statements.
+      if (onContinue === null && prevLabels[null]) {
+        newLabels[null][0] = prevLabels[null][0];
+      }
+      activeLabels.push(newLabels);
+    }
+
+    function popActiveLabels() {
+      // Pop the target junctions for continuing/breaking a loop.
+      // This should be called after traversing into a loop.
+      activeLabels.pop();
+    }
+
+    function markNonLocalJump(type, label) {
+      // Complete a block via  'return', 'break' or 'continue'.
+      // This joins the targetted junction and then sets the current junction to null.
+      // Any code traversed before we get back an existing junction is dead code.
+      if (type === 'return') {
+        joinJunction(EXIT_JUNCTION);
+      } else {
+        label = label ? label : null;
+        var targets = activeLabels[activeLabels.length-1][label];
+        assert(targets, 'jump to unknown label');
+        if (type === 'continue') {
+          joinJunction(targets[0]);
+        } else if (type === 'break') {
+          joinJunction(targets[1]);
+        } else {
+          assert(false, 'unknown jump node type');
+        }
+      }
+      currEntryJunction = null;
+    }
+
+    function addUseNode(node) {
+      // Mark a use of the given name node in the current basic block.
+      assert(node[0] === 'name', 'not a use node');
+      var name = node[1];
+      if (name in localVars) {
+        nextBasicBlock.nodes.push(node);
+        nextBasicBlock.isexpr.push(isInExpr);
+        if (!nextBasicBlock.kill[name]) {
+          nextBasicBlock.use[name] = 1;
+        }
+      }
+    }
+
+    function addKillNode(node) {
+      // Mark an assignment to the given name node in the current basic block.
+      assert(node[0] === 'assign', 'not a kill node');
+      assert(node[1] === true, 'not a kill node');
+      assert(node[2][0] === 'name', 'not a kill node');
+      var name = node[2][1];
+      if (name in localVars) {
+        nextBasicBlock.nodes.push(node);
+        nextBasicBlock.isexpr.push(isInExpr);
+        nextBasicBlock.kill[name] = 1;
+      }
+    }
+
+    function lookThroughCasts(node) {
+      // Look through value-preserving casts, like "x | 0" => "x"
+      if (node[0] === 'binary' && node[1] === '|') {
+        if (node[3][0] === 'num' && node[3][1] === 0) {
+            return lookThroughCasts(node[2]);
+        }
+      }
+      return node;
+    }
+
+    function addBlockLabel(node) {
+      assert(nextBasicBlock.nodes.length === 0, 'cant add label to an in-progress basic block')
+      if (node[0] === 'num') {
+        nextBasicBlock.labels[node[1]] = 1;
+      }
+    }
+
+    function isTrueNode(node) {
+      // Check if the given node is statically truthy.
+      return (node[0] === 'num' && node[1] != 0);
+    }
+
+    function isFalseNode(node) {
+      // Check if the given node is statically falsy.
+      return (node[0] === 'num' && node[1] == 0);
+    }
+
+    function morphNode(node, newNode) {
+      // In-place morph a node into some other type of node.
+      var i = 0;
+      while (i < node.length && i < newNode.length) {
+        node[i] = newNode[i];
+        i++;
+      }
+      while (i < newNode.length) {
+        node.push(newNode[i]);
+        i++;
+      }
+      if (node.length > newNode.length) {
+        node.length = newNode.length;
+      }
+    }
+
+    function buildFlowGraph(node) {
+      // Recursive function to build up the flow-graph.
+      // It walks the tree in execution order, calling the above state-management
+      // functions at appropriate points in the traversal.
+      var type = node[0];
+  
+      // Any code traversed without an active entry junction must be dead,
+      // as the resulting block could never be entered. Let's remove it.
+      if (currEntryJunction === null && junctions.length > 0) {
+        morphNode(node, ['block', []]);
+        return;
+      }
+ 
+      // Traverse each node type according to its particular control-flow semantics.
+      switch (type) {
+        case 'defun':
+          var jEntry = markJunction();
+          assert(jEntry === ENTRY_JUNCTION);
+          var jExit = addJunction();
+          assert(jExit === EXIT_JUNCTION);
+          for (var i = 0; i < node[3].length; i++) {
+            buildFlowGraph(node[3][i]);
+          }
+          joinJunction(jExit);
+          break;
+        case 'if':
+          isInExpr++;
+          buildFlowGraph(node[1]);
+          isInExpr--;
+          var jEnter = markJunction();
+          var jExit = addJunction();
+          if (node[2]) {
+            // Detect and mark "if (label == N) { <labelled block> }".
+            if (node[1][0] === 'binary' && node[1][1] === '==') {
+              var lhs = lookThroughCasts(node[1][2]);
+              if (lhs[0] === 'name' && lhs[1] === 'label') {
+                addBlockLabel(lookThroughCasts(node[1][3]));
+              }
+            }
+            buildFlowGraph(node[2]);
+          }
+          joinJunction(jExit);
+          setJunction(jEnter);
+          if (node[3]) {
+            buildFlowGraph(node[3]);
+          }
+          joinJunction(jExit);
+          break;
+        case 'conditional':
+          isInExpr++;
+          // If the conditional has no side-effects, we can treat it as a single
+          // block, which might open up opportunities to remove it entirely.
+          if (!hasSideEffects(node)) {
+            buildFlowGraph(node[1]);
+            if (node[2]) {
+              buildFlowGraph(node[2]);
+            }
+            if (node[3]) {
+              buildFlowGraph(node[3]);
+            }
+          } else {
+            buildFlowGraph(node[1]);
+            var jEnter = markJunction();
+            var jExit = addJunction();
+            if (node[2]) {
+              buildFlowGraph(node[2]);
+            }
+            joinJunction(jExit);
+            setJunction(jEnter);
+            if (node[3]) {
+              buildFlowGraph(node[3]);
+            }
+            joinJunction(jExit);
+          }
+          isInExpr--;
+          break;
+        case 'while':
+          // Special-case "while (1) {}" to use fewer junctions,
+          // since emscripten generates a lot of these.
+          if (isTrueNode(node[1])) {
+            var jLoop = markJunction();
+            var jExit = addJunction();
+            pushActiveLabels(jLoop, jExit);
+            buildFlowGraph(node[2]);
+            popActiveLabels();
+            joinJunction(jLoop);
+            setJunction(jExit);
+          } else {
+            var jCond = markJunction();
+            var jLoop = addJunction();
+            var jExit = addJunction();
+            isInExpr++;
+            buildFlowGraph(node[1]);
+            isInExpr--;
+            joinJunction(jLoop);
+            pushActiveLabels(jCond, jExit);
+            buildFlowGraph(node[2]);
+            popActiveLabels();
+            joinJunction(jCond);
+            // An empty basic-block linking condition exit to loop exit.
+            setJunction(jLoop);
+            joinJunction(jExit);
+          }
+          break;
+        case 'do':
+          // Special-case "do {} while (1)" and "do {} while (0)" to use
+          // fewer junctions, since emscripten generates a lot of these.
+          if (isFalseNode(node[1])) {
+            var jExit = addJunction();
+            pushActiveLabels(jExit, jExit);
+            buildFlowGraph(node[2]);
+            popActiveLabels();
+            joinJunction(jExit);
+          } else if (isTrueNode(node[1])) {
+            var jLoop = markJunction();
+            var jExit = addJunction();
+            pushActiveLabels(jLoop, jExit);
+            buildFlowGraph(node[2]);
+            popActiveLabels();
+            joinJunction(jLoop);
+            setJunction(jExit);
+          } else {
+            var jLoop = markJunction();
+            var jCond = addJunction();
+            var jCondExit = addJunction();
+            var jExit = addJunction();
+            pushActiveLabels(jCond, jExit);
+            buildFlowGraph(node[2]);
+            popActiveLabels();
+            joinJunction(jCond);
+            isInExpr++;
+            buildFlowGraph(node[1]);
+            isInExpr--;
+            joinJunction(jCondExit);
+            joinJunction(jLoop);
+            setJunction(jCondExit);
+            joinJunction(jExit)
+          }
+          break;
+        case 'for':
+          var jTest = addJunction();
+          var jBody = addJunction();
+          var jStep = addJunction();
+          var jExit = addJunction();
+          buildFlowGraph(node[1]);
+          joinJunction(jTest);
+          isInExpr++;
+          buildFlowGraph(node[2]);
+          isInExpr--;
+          joinJunction(jBody);
+          pushActiveLabels(jStep, jExit);
+          buildFlowGraph(node[4]);
+          popActiveLabels();
+          joinJunction(jStep);
+          buildFlowGraph(node[3]);
+          joinJunction(jTest);
+          setJunction(jBody);
+          joinJunction(jExit);
+          break;
+        case 'label':
+          assert(node[2][0] in BREAK_CAPTURERS, 'label on non-loop, non-switch statement')
+          nextLoopLabel = node[1];
+          buildFlowGraph(node[2]);
+          break;
+        case 'switch':
+          // Emscripten generates switch statements of a very limited
+          // form: all case clauses are numeric literals, and all
+          // case bodies end with a (maybe implicit) break.  So it's
+          // basically equivalent to a multi-way 'if' statement.
+          isInExpr++;
+          buildFlowGraph(node[1]);
+          isInExpr--;
+          var condition = lookThroughCasts(node[1]);
+          var jCheckExit = markJunction();
+          var jExit = addJunction();
+          pushActiveLabels(null, jExit);
+          var hasDefault = false;
+          for (var i=0; i<node[2].length; i++) {
+            setJunction(jCheckExit);
+            // All case clauses are either 'default' or a numeric literal.
+            if (!node[2][i][0]) {
+              hasDefault = true;
+            } else {
+              // Detect switches dispatching to labelled blocks.
+              if (condition[0] === 'name' && condition[1] === 'label') {
+                addBlockLabel(lookThroughCasts(node[2][i][0]));
+              }
+            }
+            for (var j = 0; j < node[2][i][1].length; j++) {
+              buildFlowGraph(node[2][i][1][j]);
+            }
+            // Control flow will never actually reach the end of the case body.
+            // If there's live code here, assume it jumps to case exit.
+            if (currEntryJunction !== null && nextBasicBlock.nodes.length > 0) {
+              if (node[2][i][0]) {
+                markNonLocalJump('return');
+              } else {
+                joinJunction(jExit);
+              }
+            }
+          }
+          // If there was no default case, we also need an empty block
+          // linking straight from the test evaluation to the exit.
+          if (!hasDefault) {
+            setJunction(jCheckExit);
+          }
+          joinJunction(jExit);
+          popActiveLabels()
+          break;
+        case 'return':
+          if (node[1]) {
+            isInExpr++;
+            buildFlowGraph(node[1]);
+            isInExpr--;
+          }
+          markNonLocalJump(type);
+          break;
+        case 'break':
+        case 'continue':
+          markNonLocalJump(type, node[1]);
+          break;
+        case 'assign':
+          isInExpr++;
+          buildFlowGraph(node[3]);
+          isInExpr--;
+          if (node[1] === true && node[2][0] === 'name') {
+            addKillNode(node);
+          } else {
+            buildFlowGraph(node[2]);
+          }
+          break;
+        case 'name':
+          addUseNode(node);
+          break;
+        case 'block':
+        case 'toplevel':
+          if (node[1]) {
+            for (var i = 0; i < node[1].length; i++) {
+              buildFlowGraph(node[1][i]);
+            }
+          }
+          break;
+        case 'stat':
+          buildFlowGraph(node[1]);
+          break;
+        case 'unary-prefix':
+        case 'unary-postfix':
+          isInExpr++;
+          buildFlowGraph(node[2]);
+          isInExpr--;
+          break;
+        case 'binary':
+          isInExpr++;
+          buildFlowGraph(node[2]);
+          buildFlowGraph(node[3]);
+          isInExpr--;
+          break;
+        case 'call':
+          isInExpr++;
+          buildFlowGraph(node[1]);
+          if (node[2]) {
+            for (var i = 0; i < node[2].length; i++) {
+              buildFlowGraph(node[2][i]);
+            }
+          }
+          isInExpr--;
+          // If the call is statically known to throw,
+          // treat it as a jump to function exit.
+          if (!isInExpr && node[1][0] === 'name') {
+            if (node[1][1] in FUNCTIONS_THAT_ALWAYS_THROW) {
+              markNonLocalJump('return');
+            }
+          }
+          break;
+        case 'seq':
+        case 'sub':
+          isInExpr++;
+          buildFlowGraph(node[1]);
+          buildFlowGraph(node[2]);
+          isInExpr--;
+          break;
+        case 'dot':
+        case 'throw':
+          isInExpr++;
+          buildFlowGraph(node[1]);
+          isInExpr--;
+          break;
+        case 'num':
+        case 'string':
+        case 'var':
+          break;
+        default:
+          printErr(JSON.stringify(node));
+          assert(false, 'unsupported node type: ' + type);
+      }
+    }
+    buildFlowGraph(fun);
+
+    assert(setSize(junctions[ENTRY_JUNCTION].inblocks) === 0, 'function entry must have no incoming blocks');
+    assert(setSize(junctions[EXIT_JUNCTION].outblocks) === 0, 'function exit must have no outgoing blocks');
+    assert(blocks[ENTRY_BLOCK].entry === ENTRY_JUNCTION, 'block zero must be the initial block');
+
+    // Fix up implicit jumps done by assigning to the 'label' variable.
+    // If a block ends with an assignment to 'label' and there's another block
+    // with that value of 'label' as precondition, we tweak the flow graph so
+    // that the former jumps straight to the later.
+
+    var labelledBlocks = {};
+    var labelledJumps = [];
+    FINDLABELLEDBLOCKS:
+    for (var i = 0; i < blocks.length; i++) {
+      var block = blocks[i];
+      // Does it have any labels as preconditions to its entry?
+      for (var labelVal in block.labels) {
+        // If there are multiple blocks with the same label, all bets are off.
+        // This seems to happen sometimes for short blocks that end with a return.
+        // TODO: it should be safe to merge the duplicates if they're identical.
+        if (labelVal in labelledBlocks) {
+          labelledBlocks = {};
+          labelledJumps = [];
+          break FINDLABELLEDBLOCKS;
+        }
+        labelledBlocks[labelVal] = block;
+      }
+      // Does it assign a specific label value at exit?
+      if ('label' in block.kill) {
+        var finalNode = block.nodes[block.nodes.length - 1];
+        if (finalNode[0] === 'assign' && finalNode[2][1] === 'label') {
+          // If labels are computed dynamically then all bets are off.
+          // This can happen due to indirect branching in llvm output.
+          if (finalNode[3][0] !== 'num') {
+            labelledBlocks = {};
+            labelledJumps = [];
+            break FINDLABELLEDBLOCKS;
+          }
+          labelledJumps.push([finalNode[3][1], block]);
+        } else { 
+          // If label is assigned a non-zero value elsewhere in the block
+          // then all bets are off.  This can happen e.g. due to outlining
+          // saving/restoring label to the stack.
+          for (var j = 0; j < block.nodes.length - 1; j++) {
+            if (block.nodes[j][0] === 'assign' && block.nodes[j][2][1] === 'label') {
+              if (block.nodes[j][3][0] !== 'num' && block.nodes[j][3][1] !== 0) {
+                labelledBlocks = {};
+                labelledJumps = [];
+                break FINDLABELLEDBLOCKS;
+              }
+            }
+          }
+        }
+      }
+    }
+    for (var labelVal in labelledBlocks) {
+      var block = labelledBlocks[labelVal];
+      // Disconnect it from the graph, and create a
+      // new junction for jumps targetting this label.
+      delete junctions[block.entry].outblocks[block.id];
+      block.entry = addJunction();
+      junctions[block.entry].outblocks[block.id] = 1;
+      // Add a fake use of 'label' to keep it alive in predecessor.
+      block.use['label'] = 1;
+      block.nodes.unshift(['name', 'label']);
+      block.isexpr.unshift(1);
+    }
+    for (var i = 0; i < labelledJumps.length; i++) {
+      var labelVal = labelledJumps[i][0];
+      var block = labelledJumps[i][1];
+      var targetBlock = labelledBlocks[labelVal];
+      if (targetBlock) {
+        // Redirect its exit to entry of the target block.
+        delete junctions[block.exit].inblocks[block.id];
+        block.exit = targetBlock.entry;
+        junctions[block.exit].inblocks[block.id] = 1;
+      }
+    }
+    labelledBlocks = null;
+    labelledJumps = null;
+
+    // Do a backwards data-flow analysis to determine the set of live
+    // variables at each junction, and to use this information to eliminate
+    // any unused assignments.
+    // We run two nested phases.  The inner phase builds the live set for each
+    // junction.  The outer phase uses this to try to eliminate redundant
+    // stores in each basic block, which might in turn affect liveness info.
+
+    function analyzeJunction(junc) {
+      // Update the live set for this junction.
+      var live = {};
+      for (var b in junc.outblocks) {
+        var block = blocks[b];
+        var liveSucc = junctions[block.exit].live || {};
+        for (var name in liveSucc) {
+          if (!(name in block.kill)) {
+            live[name] = 1;
+          }
+        }
+        for (var name in block.use) {
+          live[name] = 1;
+        }
+      }
+      junc.live = live;
+    }
+
+    function analyzeBlock(block) {
+      // Update information about the behaviour of the block.
+      // This includes the standard 'use' and 'kill' information,
+      // plus a 'link' set naming values that flow through from entry
+      // to exit, possibly changing names via simple 'x=y' assignments.
+      // As we go, we eliminate assignments if the variable is not
+      // subsequently used.
+      var live = copy(junctions[block.exit].live);
+      var use = {};
+      var kill = {};
+      var link = {};
+      var lastUseLoc = {};
+      var firstDeadLoc = {};
+      var firstKillLoc = {};
+      var lastKillLoc = {};
+      for (var name in live) {
+        link[name] = name;
+        lastUseLoc[name] = block.nodes.length;
+        firstDeadLoc[name] = block.nodes.length;
+      }
+      for (var j = block.nodes.length - 1; j >=0 ; j--) {
+        var node = block.nodes[j];
+        if (node[0] === 'name') {
+          var name = node[1];
+          live[name] = 1;
+          use[name] = j;
+          if (lastUseLoc[name] === undefined) {
+            lastUseLoc[name] = j;
+            firstDeadLoc[name] = j;
+          }
+        } else {
+          var name = node[2][1];
+          // We only keep assignments if they will be subsequently used.
+          if (name in live) {
+            kill[name] = 1;
+            delete use[name];
+            delete live[name];
+            firstDeadLoc[name] = j;
+            firstKillLoc[name] = j;
+            if (lastUseLoc[name] === undefined) {
+              lastUseLoc[name] = j;
+            }
+            if (lastKillLoc[name] === undefined) {
+              lastKillLoc[name] = j;
+            }
+            // If it's an "x=y" and "y" is not live, then we can create a
+            // flow-through link from "y" to "x".  If not then there's no
+            // flow-through link for "x".
+            var oldLink = link[name];
+            if (oldLink) {
+              delete link[name];
+              if (node[3][0] === 'name') {
+                if (node[3][1] in localVars) {
+                  link[node[3][1]] = oldLink;
+                }
+              }
+            }
+          } else {
+            // The result of this assignment is never used, so delete it.
+            // We may need to keep the RHS for its value or its side-effects.
+            function removeUnusedNodes(j, n) {
+              for (var name in lastUseLoc) {
+                lastUseLoc[name] -= n;
+              }
+              for (var name in firstKillLoc) {
+                firstKillLoc[name] -= n;
+              }
+              for (var name in lastKillLoc) {
+                lastKillLoc[name] -= n;
+              }
+              for (var name in firstDeadLoc) {
+                firstDeadLoc[name] -= n;
+              }
+              block.nodes.splice(j, n);
+              block.isexpr.splice(j, n);
+            }
+            if (block.isexpr[j] || hasSideEffects(node[3])) {
+              morphNode(node, node[3]);
+              removeUnusedNodes(j, 1);
+            } else {
+              var numUsesInExpr = 0;
+              traverse(node[3], function(node, type) {
+                if (type === 'name' && node[1] in localVars) {
+                  numUsesInExpr++;
+                }
+              });
+              morphNode(node, ['block', []]);
+              j = j - numUsesInExpr;
+              removeUnusedNodes(j, 1 + numUsesInExpr);
+            }
+          }
+        }
+      }
+      block.use = use;
+      block.kill = kill;
+      block.link = link;
+      block.lastUseLoc = lastUseLoc;
+      block.firstDeadLoc = firstDeadLoc;
+      block.firstKillLoc = firstKillLoc;
+      block.lastKillLoc = lastKillLoc;
+    }
+
+    var jWorklistMap = { EXIT_JUNCTION: 1 };
+    var jWorklist = [EXIT_JUNCTION];
+    var bWorklistMap = {};
+    var bWorklist = [];
+
+    // Be sure to visit every junction at least once.
+    // This avoids missing some vars because we disconnected them
+    // when processing the labelled jumps.
+    for (var i = junctions.length - 1; i >= EXIT_JUNCTION; i--) {
+      jWorklistMap[i] = 1;
+      jWorklist.push(i);
+    }
+
+    while (jWorklist.length > 0) {
+      // Iterate on just the junctions until we get stable live sets.
+      // The first run of this loop will grow the live sets to their maximal size.
+      // Subsequent runs will shrink them based on eliminated in-block uses.
+      while (jWorklist.length > 0) {
+        var junc = junctions[jWorklist.pop()];
+        delete jWorklistMap[junc.id];
+        var oldLive = junc.live || null;
+        analyzeJunction(junc);
+        if (!sortedJsonCompare(oldLive, junc.live)) {
+          // Live set changed, updated predecessor blocks and junctions.
+          for (var b in junc.inblocks) {
+            if (!(b in bWorklistMap)) {
+              bWorklistMap[b] = 1;
+              bWorklist.push(b);
+            }
+            var jPred = blocks[b].entry;
+            if (!(jPred in jWorklistMap)) {
+              jWorklistMap[jPred] = 1;
+              jWorklist.push(jPred);
+            }
+          }
+        }
+      }
+      // Now update the blocks based on the calculated live sets.
+      while (bWorklist.length > 0) {
+        var block = blocks[bWorklist.pop()];
+        delete bWorklistMap[block.id];
+        var oldUse = block.use;
+        analyzeBlock(block);
+        if (!sortedJsonCompare(oldUse, block.use)) {
+          // The use set changed, re-process the entry junction.
+          if (!(block.entry in jWorklistMap)) {
+            jWorklistMap[block.entry] = 1;
+            jWorklist.push(block.entry);
+          }
+        }
+      }
+    }
+
+    // Insist that all function parameters are alive at function entry.
+    // This ensures they will be assigned independent registers, even
+    // if they happen to be unused.
+
+    for (var name in asmData.params) {
+      junctions[ENTRY_JUNCTION].live[name] = 1;
+    }
+
+    // For variables that are live at one or more junctions, we assign them
+    // a consistent register for the entire scope of the function.  Find pairs
+    // of variable that cannot use the same register (the "conflicts") as well
+    // as pairs of variables that we'd like to have share the same register
+    // (the "links").
+
+    var junctionVariables = {};
+
+    function initializeJunctionVariable(name) {
+      junctionVariables[name] = { conf: {}, link: {}, excl: {}, reg: null };
+    }
+
+    for (var i = 0; i < junctions.length; i++) {
+      var junc = junctions[i];
+      for (var name in junc.live) {
+        if (!junctionVariables[name]) initializeJunctionVariable(name);
+        // It conflicts with all other names live at this junction.
+        for (var otherName in junc.live) {
+          if (otherName == name) continue;
+          junctionVariables[name].conf[otherName] = 1;
+        }
+        for (var b in junc.outblocks) {
+          // It conflits with any output vars of successor blocks,
+          // if they're assigned before it goes dead in that block.
+          block = blocks[b];
+          var jSucc = junctions[block.exit];
+          for (var otherName in jSucc.live) {
+            if (junc.live[otherName]) continue;
+            if (block.lastKillLoc[otherName] < block.firstDeadLoc[name]) {
+              if (!junctionVariables[otherName]) initializeJunctionVariable(otherName);
+              junctionVariables[name].conf[otherName] = 1;
+              junctionVariables[otherName].conf[name] = 1;
+            }
+          }
+          // It links with any linkages in the outgoing blocks.
+          var linkName = block.link[name];
+          if (linkName && linkName !== name) {
+            if (!junctionVariables[linkName]) initializeJunctionVariable(linkName);
+            junctionVariables[name].link[linkName] = 1;
+            junctionVariables[linkName].link[name] = 1;
+          }
+        }
+      }
+    }
+
+    // Attempt to sort the junction variables to heuristically reduce conflicts.
+    // Simple starting point: handle the most-conflicted variables first.
+    // This seems to work pretty well.
+
+    var sortedJunctionVariables = keys(junctionVariables);
+    sortedJunctionVariables.sort(function(name1, name2) {
+      var jv1 = junctionVariables[name1];
+      var jv2 = junctionVariables[name2];
+      if (jv1.numConfs === undefined) {
+        jv1.numConfs = setSize(jv1.conf);
+      }
+      if (jv2.numConfs === undefined) {
+        jv2.numConfs = setSize(jv2.conf);
+      }
+      return jv2.numConfs - jv1.numConfs;
+    });
+
+    // We can now assign a register to each junction variable.
+    // Process them in order, trying available registers until we find
+    // one that works, and propagating the choice to linked/conflicted
+    // variables as we go.
+
+    function tryAssignRegister(name, reg) {
+      // Try to assign the given register to the given variable,
+      // and propagate that choice throughout the graph.
+      // Returns true if successful, false if there was a conflict.
+      var jv = junctionVariables[name];
+      if (jv.reg !== null) {
+        return jv.reg === reg;
+      }
+      if (jv.excl[reg]) {
+        return false;
+      }
+      jv.reg = reg;
+      // Exclude use of this register at all conflicting variables.
+      for (var confName in jv.conf) {
+        junctionVariables[confName].excl[reg] = 1;
+      }
+      // Try to propagate it into linked variables.
+      // It's not an error if we can't.
+      for (var linkName in jv.link) {
+        tryAssignRegister(linkName, reg);
+      }
+      return true;
+    }
+
+    NEXTVARIABLE:
+    for (var i = 0; i < sortedJunctionVariables.length; i++) {
+      var name = sortedJunctionVariables[i];
+      // It may already be assigned due to linked-variable propagation.
+      if (junctionVariables[name].reg !== null) {
+        continue NEXTVARIABLE;
+      }
+      // Try to use existing registers first.
+      var allRegs = allRegsByType[localVars[name]];
+      for (var reg in allRegs) {
+        if (tryAssignRegister(name, reg)) {
+          continue NEXTVARIABLE;
+        }
+      }
+      // They're all taken, create a new one.
+      tryAssignRegister(name, createReg(name));
+    }
+
+    // Each basic block can now be processed in turn.
+    // There may be internal-use-only variables that still need a register
+    // assigned, but they can be treated just for this block.  We know
+    // that all inter-block variables are in a good state thanks to
+    // junction variable consistency.
+
+    for (var i = 0; i < blocks.length; i++) {
+      var block = blocks[i];
+      if (block.nodes.length === 0) continue;
+      var jEnter = junctions[block.entry];
+      var jExit = junctions[block.exit];
+      // Mark the point at which each input reg becomes dead.
+      // Variables alive before this point must not be assigned
+      // to that register.
+      var inputVars = {}
+      var inputDeadLoc = {};
+      var inputVarsByReg = {};
+      for (var name in jExit.live) {
+        if (!(name in block.kill)) {
+          inputVars[name] = 1;
+          var reg = junctionVariables[name].reg;
+          assert(reg !== null, 'input variable doesnt have a register');
+          inputDeadLoc[reg] = block.firstDeadLoc[name];
+          inputVarsByReg[reg] = name;
+        }
+      }
+      for (var name in block.use) {
+        if (!(name in inputVars)) {
+          inputVars[name] = 1;
+          var reg = junctionVariables[name].reg;
+          assert(reg !== null, 'input variable doesnt have a register');
+          inputDeadLoc[reg] = block.firstDeadLoc[name];
+          inputVarsByReg[reg] = name;
+        }
+      }
+      assert(setSize(setSub(inputVars, jEnter.live)) == 0);
+      // Scan through backwards, allocating registers on demand.
+      // Be careful to avoid conflicts with the input registers.
+      // We consume free registers in last-used order, which helps to
+      // eliminate "x=y" assignments that are the last use of "y".
+      var assignedRegs = {};
+      var freeRegsByType = copy(allRegsByType);
+      // Begin with all live vars assigned per the exit junction.
+      for (var name in jExit.live) {
+        var reg = junctionVariables[name].reg;
+        assert(reg !== null, 'output variable doesnt have a register');
+        assignedRegs[name] = reg;
+        delete freeRegsByType[localVars[name]][reg];
+      }
+      for (var j = 0; j < freeRegsByType.length; j++) {
+        freeRegsByType[j] = keys(freeRegsByType[j]);
+      }
+      // Scan through the nodes in sequence, modifying each node in-place
+      // and grabbing/freeing registers as needed.
+      var maybeRemoveNodes = [];
+      for (var j = block.nodes.length - 1; j >= 0; j--) {
+        var node = block.nodes[j];
+        var name = node[0] === 'assign' ? node[2][1] : node[1];
+        var allRegs = allRegsByType[localVars[name]];
+        var freeRegs = freeRegsByType[localVars[name]];
+        var reg = assignedRegs[name];
+        if (node[0] === 'name') {
+          // A use.  Grab a register if it doesn't have one.
+          if (!reg) {
+            if (name in inputVars && j <= block.firstDeadLoc[name]) {
+              // Assignment to an input variable, must use pre-assigned reg.
+              reg = junctionVariables[name].reg;
+              assignedRegs[name] = reg;
+              for (var k = freeRegs.length - 1; k >= 0; k--) {
+                if (freeRegs[k] === reg) {
+                  freeRegs.splice(k, 1);
+                  break;
+                }
+              }
+            } else {
+              // Try to use one of the existing free registers.
+              // It must not conflict with an input register.
+              for (var k = freeRegs.length - 1; k >= 0; k--) {
+                reg = freeRegs[k];
+                // Check for conflict with input registers.
+                if (block.firstKillLoc[name] <= inputDeadLoc[reg]) {
+                  if (name !== inputVarsByReg[reg]) {
+                    continue;
+                  }
+                }
+                // Found one!
+                assignedRegs[name] = reg;
+                freeRegs.splice(k, 1);
+                break;
+              }
+              // If we didn't find a suitable register, create a new one.
+              if (!assignedRegs[name]) {
+                reg = createReg(name);
+                assignedRegs[name] = reg;
+              }
+            }
+          }
+          node[1] = allRegs[reg];
+        } else {
+          // A kill. This frees the assigned register.
+          assert(reg, 'live variable doesnt have a reg?')
+          node[2][1] = allRegs[reg];
+          freeRegs.push(reg);
+          delete assignedRegs[name];
+          if (node[3][0] === 'name' && node[3][1] in localVars) {
+            maybeRemoveNodes.push([j, node]);
+          }
+        }
+      }
+      // If we managed to create an "x=x" assignments, remove them.
+      for (var j = 0; j < maybeRemoveNodes.length; j++) {
+        var node = maybeRemoveNodes[j][1];
+        if (node[2][1] === node[3][1]) {
+          if (block.isexpr[maybeRemoveNodes[j][0]]) {
+            morphNode(node, node[2]);
+          } else {
+            morphNode(node, ['block', []]);
+          }
+        }
+      }
+    }
+
+    // Assign registers to function params based on entry junction
+
+    var paramRegs = {}
+    if (fun[2]) {
+      for (var i = 0; i < fun[2].length; i++) {
+        var allRegs = allRegsByType[localVars[fun[2][i]]];
+        fun[2][i] = allRegs[junctionVariables[fun[2][i]].reg];
+        paramRegs[fun[2][i]] = 1;
+      }
+    }
+
+    // That's it!
+    // Re-construct the function with appropriate variable definitions.
+ 
+    var finalAsmData = {
+      params: {},
+      vars: {},
+      inlines: asmData.inlines,
+      ret: asmData.ret,
+    };
+    for (var i = 1; i < nextReg; i++) {
+      var reg;
+      for (var type=0; type<allRegsByType.length; type++) {
+        reg = allRegsByType[type][i];
+        if (reg) break;
+      }
+      if (!paramRegs[reg]) {
+        finalAsmData.vars[reg] = type;
+      } else {
+        finalAsmData.params[reg] = type;
+      }
+    }
+    denormalizeAsm(fun, finalAsmData);
+
+    vacuum(fun);
+
+  });
+}
+*/
 
 // minified names generation
 StringSet RESERVED("do if in for new try var env let");
@@ -2738,6 +3826,7 @@ int main(int argc, char **argv) {
     else if (str == "optimizeFrounds") optimizeFrounds(doc);
     else if (str == "simplifyIfs") simplifyIfs(doc);
     else if (str == "registerize") registerize(doc);
+    //else if (str == "registerizeHarder") registerizeHarder(doc);
     else if (str == "minifyLocals") minifyLocals(doc);
     else if (str == "minifyWhitespace") {}
     else if (str == "asmLastOpts") asmLastOpts(doc);
