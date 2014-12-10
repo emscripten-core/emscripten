@@ -1387,6 +1387,7 @@ class Building:
   def llvm_opt(filename, opts, out=None):
     if type(opts) is int:
       opts = Building.pick_llvm_opts(opts)
+    opts = opts[:]
     #opts += ['-debug-pass=Arguments']
     if get_clang_version() >= '3.4':
       if not Settings.SIMD:
