@@ -1188,12 +1188,12 @@ var LibraryGLFW = {
     _sleep(time);
   },
 
-  glfwEnable: function(token) {
+  glfwEnable: function(target) {
     target = GLFW.GLFW2ParamToGLFW3Param(target);
     GLFW.hints[target] = false;
   },
 
-  glfwDisable: function(token) {
+  glfwDisable: function(target) {
     target = GLFW.GLFW2ParamToGLFW3Param(target);
     GLFW.hints[target] = true;
   },
