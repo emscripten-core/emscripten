@@ -333,6 +333,10 @@ function traverseChildrenInExecutionOrder(node, definitely, maybe, arg) {
       definitely(node[3], arg);
       break;
     }
+    case 'dot': {
+      definitely(node[1], arg);
+      break;
+    }
     case 'unary-prefix': case 'label': {
       definitely(node[2], arg);
       break;
