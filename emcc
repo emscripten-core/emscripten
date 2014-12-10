@@ -932,7 +932,7 @@ try:
       js_opts = True
       logging.warning('enabling js opts to allow SAFE_HEAP to work properly')
 
-    if shared.Settings.ALLOW_MEMORY_GROWTH:
+    if shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.ASM_JS != 2:
       logging.warning('Disabling asm.js validation for memory growth (memory can grow, but you lose some amount of speed)');
       shared.Settings.ASM_JS = 2
 
