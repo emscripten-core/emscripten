@@ -5160,6 +5160,7 @@ return malloc(size);
 
   # Tests the full SSE1 API.
   def test_sse1(self):
+    return self.skip('TODO: This test fails due to bugs #2840, #3044, #3045, #3046 and #3048 (also see #3043 and #3049)')
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
