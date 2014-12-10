@@ -617,3 +617,79 @@ fi
 
       second_use()
 
+  def test_native_optimizer(self):
+    restore()
+    Cache.erase()
+
+    def build():
+      return self.check_working([EMCC, '-O2', 'tests/hello_world.c'], 'running js post-opts')
+
+    def test():
+      self.assertContained('hello, world!', run_js('a.out.js'))
+
+    try:
+      os.environ['EMCC_DEBUG'] = '1'
+
+      # basic usage or lack of usage
+      for native in [None, 0, 1]:
+        print native
+        try:
+          if native is not None: os.environ['EMCC_NATIVE_OPTIMIZER'] = str(native)
+          output = build()
+          assert ('js optimizer using native' in output) == (not not native)
+          test()
+          if native:
+            assert 'building native optimizer' in output
+            # compile again, no rebuild of optimizer
+            output = build()
+            assert 'building native optimizer' not in output
+            assert 'js optimizer using native' in output
+            test()
+        finally:
+          if native is not None: del os.environ['EMCC_NATIVE_OPTIMIZER']
+
+      # force a build failure, see we fall back to non-native
+
+      Cache.erase()
+
+      try:
+        os.environ['EMCC_NATIVE_OPTIMIZER'] = '1'
+
+        try:
+          # break it
+          f = path_from_root('tools', 'optimizer', 'optimizer.cpp')
+          src = open(f).read()
+          bad = src.replace('main', '!waka waka<')
+          assert bad != src
+          open(f, 'w').write(bad)
+          # first try
+          output = build()
+          assert 'failed to build native optimizer' in output, output
+          assert 'js optimizer using native' not in output
+          test() # still works, without native optimizer
+          # second try, see previous failure
+          output = build()
+          assert 'failed to build native optimizer' not in output
+          assert 'seeing that optimizer could not be built' in output
+          test() # still works, without native optimizer
+          # clear cache, try again
+          Cache.erase()
+          output = build()
+          assert 'failed to build native optimizer' in output
+          test() # still works, without native optimizer
+        finally:
+          open(f, 'w').write(src)
+
+        Cache.erase()
+
+        # now it should work again
+        output = build()
+        assert 'js optimizer using native' in output
+        test() # still works, without native optimizer
+
+      finally:
+        os.environ['EMCC_NATIVE_OPTIMIZER'] = '0'
+
+    finally:
+      del os.environ['EMCC_DEBUG']
+
