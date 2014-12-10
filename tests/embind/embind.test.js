@@ -918,23 +918,23 @@ module({
             vec.delete();
         });
 
-        test("resize appends the default value", function() {
+        test("resize appends the given value", function() {
             var vec = cm.emval_test_return_vector();
 
-            vec.resize(5);
+            vec.resize(5, 42);
             assert.equal(5, vec.size());
             assert.equal(10, vec.get(0));
             assert.equal(20, vec.get(1));
             assert.equal(30, vec.get(2));
-            assert.equal(0, vec.get(3));
-            assert.equal(0, vec.get(4));
+            assert.equal(42, vec.get(3));
+            assert.equal(42, vec.get(4));
             vec.delete();
         });
 
         test("resize preserves content when shrinking", function() {
             var vec = cm.emval_test_return_vector();
 
-            vec.resize(2);
+            vec.resize(2, 42);
             assert.equal(2, vec.size());
             assert.equal(10, vec.get(0));
             assert.equal(20, vec.get(1));
