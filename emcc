@@ -860,6 +860,11 @@ try:
   # Apply optimization level settings
   shared.Settings.apply_opt_level(opt_level, noisy=True)
 
+  fastcomp = os.environ.get('EMCC_FAST_COMPILER') != '0'
+  if fastcomp:
+    # Set ASM_JS default here so that we can override it from the command line.
+    shared.Settings.ASM_JS = 1 if opt_level > 0 else 2
+
   # Apply -s settings in newargs here (after optimization levels, so they can override them)
   for change in settings_changes:
     key, value = change.split('=')
@@ -871,11 +876,9 @@ try:
     if key == 'EXPORTED_FUNCTIONS':
       shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = shared.Settings.EXPORTED_FUNCTIONS[:] # used for warnings in emscripten.py
 
-  fastcomp = os.environ.get('EMCC_FAST_COMPILER') != '0'
-
   if fastcomp:
-    shared.Settings.ASM_JS = 1 if opt_level > 0 else 2
     try:
+      assert shared.Settings.ASM_JS > 0, 'ASM_JS must be enabled in fastcomp'
       assert shared.Settings.UNALIGNED_MEMORY == 0, 'forced unaligned memory not supported in fastcomp'
       assert shared.Settings.CHECK_HEAP_ALIGN == 0, 'check heap align not supported in fastcomp - use SAFE_HEAP instead'
       assert shared.Settings.SAFE_DYNCALLS == 0, 'safe dyncalls not supported in fastcomp'
