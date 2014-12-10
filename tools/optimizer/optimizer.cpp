@@ -2473,7 +2473,7 @@ void registerizeHarder(Ref ast) {
     // Do not try to process non-validating methods, like the heap replacer
     bool abort = false;
     traverse(fun, function(node, type) {
-      if (type === NEW) abort = true;
+      if (type == NEW) abort = true;
     });
     if (abort) return;
 
@@ -2506,145 +2506,169 @@ void registerizeHarder(Ref ast) {
     //    * a single entry junction
     //    * a single exit junction
     //    * a 'use' and 'kill' set of names for the block
-    //    * full sequence of 'name' and 'assign' nodes in the block
+    //    * full sequence of NAME and ASSIGN nodes in the block
     //    * whether each such node appears as part of a larger expression
     //      (and therefore cannot be safely eliminated)
     //    * set of labels that can be used to jump to this block
 
-    var junctions = [];
-    var blocks = [];
-    var currEntryJunction = null;
-    var nextBasicBlock = null;
-    var isInExpr = 0;
-    var activeLabels = [{}];
-    var nextLoopLabel = null;
+    struct Junction {
+      int id;
+      std::unordered_set<int> inblocks, outblocks;
+      Junction(int id_) : id(id_) {}
+    };
+    struct Node {
+    };
+    struct Block {
+      int id, entry, exit;
+      StringSet labels;
+      std::vector<Node> nodes;
+      std::vector<bool> isexpr;
+      StringSet use;
+      StringSet kill;
+      Block() : id(-1), entry(-1), exit(-1) {}
+    };
+    struct ContinueBreak {
+      int co, br;
+      BreakContinue(int co_, int br_) : co(co_), br(br_) {}
+    };
+    typedef std::unordered_map<IString, ContinueBreak> LabelState;
 
-    var ENTRY_JUNCTION = 0;
-    var EXIT_JUNCTION = 1;
-    var ENTRY_BLOCK = 0;
+    std::vector<Junction> junctions;
+    std::vector<Block*> blocks;
+    int currEntryJunction = -1;
+    Block* nextBasicBlock = nullptr;
+    bool isInExpr = 0;
+    std::vector<LabelState> activeLabels;
+    IString nextLoopLabel;
 
-    function addJunction() {
+    const int ENTRY_JUNCTION = 0;
+    const int EXIT_JUNCTION = 1;
+    const int ENTRY_BLOCK = 0;
+
+    auto addJunction = [&]() {
       // Create a new junction, without inserting it into the graph.
       // This is useful for e.g. pre-allocating an exit node.
-      var id = junctions.length;
-      junctions[id] = {id: id, inblocks: {}, outblocks: {}};
+      int id = junctions.size();
+      junctions.push_back(Junction(id));
       return id;
-    }
+    };
 
-    function markJunction(id) {
+    auto markJunction = [&](int id=-1) {
       // Mark current traversal location as a junction.
       // This makes a new basic block exiting at this position.
-      if (id === undefined || id === null) {
+      if (id < 0) {
         id = addJunction();
       }
       joinJunction(id, true);
       return id;
-    }
+    };
 
-    function setJunction(id, force) {
+    auto setJunction = [&](int id, bool force) {
       // Set the next entry junction to the given id.
       // This can be used to enter at a previously-declared point.
       // You can't return to a junction with no incoming blocks
       // unless the 'force' parameter is specified.
-      assert(nextBasicBlock.nodes.length === 0, 'refusing to abandon an in-progress basic block')
-      if (force || setSize(junctions[id].inblocks) > 0) {
+      assert(nextBasicBlock.nodes.size() == 0); // refusing to abandon an in-progress basic block
+      if (force || junctions[id].inblocks.size() > 0) {
         currEntryJunction = id;
       } else {
-        currEntryJunction = null;
+        currEntryJunction = -1;
       }
-    }
+    };
 
-    function joinJunction(id, force) {
+    auto joinJunction = [&](int id, bool force) {
       // Complete the pending basic block by exiting at this position.
       // This can be used to exit at a previously-declared point.
-      if (currEntryJunction !== null) {
-        nextBasicBlock.id = blocks.length;
-        nextBasicBlock.entry = currEntryJunction;
-        nextBasicBlock.exit = id;
-        junctions[currEntryJunction].outblocks[nextBasicBlock.id] = 1;
-        junctions[id].inblocks[nextBasicBlock.id] = 1;
-        blocks.push(nextBasicBlock);
+      if (currEntryJunction >= 0) {
+        assert(nextBasicBlock);
+        nextBasicBlock->id = blocks.size();
+        nextBasicBlock->entry = currEntryJunction;
+        nextBasicBlock->exit = id;
+        junctions[currEntryJunction].outblocks.insert(nextBasicBlock.id);
+        junctions[id].inblocks.insert(nextBasicBlock.id);
+        blocks.push_back(nextBasicBlock);
       } 
-      nextBasicBlock = { id: null, entry: null, exit: null, labels: {}, nodes: [], isexpr: [], use: {}, kill: {} };
+      nextBasicBlock = new Block();
       setJunction(id, force);
       return id;
-    }
+    };
 
-    function pushActiveLabels(onContinue, onBreak) {
+    IString NULL_STR;
+
+    auto pushActiveLabels = [&](int onContinue, int onBreak) {
       // Push the target junctions for continuing/breaking a loop.
       // This should be called before traversing into a loop.
-      var prevLabels = activeLabels[activeLabels.length-1];
-      var newLabels = copy(prevLabels);
-      newLabels[null] = [onContinue, onBreak];
-      if (nextLoopLabel) {
-        newLabels[nextLoopLabel] = [onContinue, onBreak];
-        nextLoopLabel = null;
+      LabelState& prevLabels = activeLabels.back();
+      LabelState newLabels = prevLabels;
+      newLabels[NULL_STR] = ContinueBreak(onContinue, onBreak);
+      if (!!nextLoopLabel) {
+        newLabels[nextLoopLabel] = ContinueBreak(onContinue, onBreak);
+        nextLoopLabel = NULL_STR;
       }
-      // An unlabelled 'continue' should jump to innermost loop,
+      // An unlabelled CONTINUE should jump to innermost loop,
       // ignoring any nested 'switch' statements.
-      if (onContinue === null && prevLabels[null]) {
-        newLabels[null][0] = prevLabels[null][0];
+      if (onContinue < 0 && prevLabels.count(NULL_STR) > 0) {
+        newLabels[NULL_STR].co = prevLabels[NULL_STR].co;
       }
-      activeLabels.push(newLabels);
-    }
+      activeLabels.push_back(newLabels);
+    };
 
-    function popActiveLabels() {
+    auto popActiveLabels = [&]() {
       // Pop the target junctions for continuing/breaking a loop.
       // This should be called after traversing into a loop.
-      activeLabels.pop();
-    }
+      activeLabels.pop_back();
+    };
 
-    function markNonLocalJump(type, label) {
-      // Complete a block via  'return', 'break' or 'continue'.
+    auto markNonLocalJump = [&](AsmType type, IString label) {
+      // Complete a block via  RETURN, BREAK or CONTINUE.
       // This joins the targetted junction and then sets the current junction to null.
       // Any code traversed before we get back an existing junction is dead code.
-      if (type === 'return') {
+      if (type == RETURN) {
         joinJunction(EXIT_JUNCTION);
       } else {
-        label = label ? label : null;
-        var targets = activeLabels[activeLabels.length-1][label];
-        assert(targets, 'jump to unknown label');
-        if (type === 'continue') {
-          joinJunction(targets[0]);
-        } else if (type === 'break') {
-          joinJunction(targets[1]);
+        assert(activeLabels.back().count(label) > 0); // 'jump to unknown label');
+        auto targets = activeLabels.back()[label];
+        if (type == CONTINUE) {
+          joinJunction(targets.co);
+        } else if (type == BREAK) {
+          joinJunction(targets.br);
         } else {
-          assert(false, 'unknown jump node type');
+          assert(0); // 'unknown jump node type');
         }
       }
-      currEntryJunction = null;
-    }
+      currEntryJunction = nullptr;
+    };
 
-    function addUseNode(node) {
+    auto addUseNode = [&](Ref node) {
       // Mark a use of the given name node in the current basic block.
-      assert(node[0] === 'name', 'not a use node');
-      var name = node[1];
-      if (name in localVars) {
-        nextBasicBlock.nodes.push(node);
-        nextBasicBlock.isexpr.push(isInExpr);
-        if (!nextBasicBlock.kill[name]) {
-          nextBasicBlock.use[name] = 1;
+      assert(node[0] == NAME); // 'not a use node');
+      Ref name = node[1];
+      if (asmData.isLocal(name)) {
+        nextBasicBlock->nodes.push_back(node);
+        nextBasicBlock->isexpr.push_back(isInExpr);
+        if (nextBasicBlock->kill.count(name) == 0) {
+          nextBasicBlock->use.insert(name);
         }
       }
-    }
+    };
 
-    function addKillNode(node) {
+    auto addKillNode = [&](Ref node) {
       // Mark an assignment to the given name node in the current basic block.
-      assert(node[0] === 'assign', 'not a kill node');
-      assert(node[1] === true, 'not a kill node');
-      assert(node[2][0] === 'name', 'not a kill node');
-      var name = node[2][1];
-      if (name in localVars) {
-        nextBasicBlock.nodes.push(node);
-        nextBasicBlock.isexpr.push(isInExpr);
-        nextBasicBlock.kill[name] = 1;
+      assert(node[0] == ASSIGN); //, 'not a kill node');
+      assert(node[1]->isBool(true)); // 'not a kill node');
+      assert(node[2][0] == NAME); //, 'not a kill node');
+      Ref name = node[2][1];
+      if (asmData.isLocal(name)) {
+        nextBasicBlock->nodes.push_back(node);
+        nextBasicBlock->isexpr.push_back(isInExpr);
+        nextBasicBlock->kill.insert(name);
       }
-    }
+    };
 
     function lookThroughCasts(node) {
       // Look through value-preserving casts, like "x | 0" => "x"
-      if (node[0] === 'binary' && node[1] === '|') {
-        if (node[3][0] === 'num' && node[3][1] === 0) {
+      if (node[0] == 'binary' && node[1] == '|') {
+        if (node[3][0] == 'num' && node[3][1] == 0) {
             return lookThroughCasts(node[2]);
         }
       }
@@ -2652,20 +2676,20 @@ void registerizeHarder(Ref ast) {
     }
 
     function addBlockLabel(node) {
-      assert(nextBasicBlock.nodes.length === 0, 'cant add label to an in-progress basic block')
-      if (node[0] === 'num') {
+      assert(nextBasicBlock.nodes.length == 0, 'cant add label to an in-progress basic block')
+      if (node[0] == 'num') {
         nextBasicBlock.labels[node[1]] = 1;
       }
     }
 
     function isTrueNode(node) {
       // Check if the given node is statically truthy.
-      return (node[0] === 'num' && node[1] != 0);
+      return (node[0] == 'num' && node[1] != 0);
     }
 
     function isFalseNode(node) {
       // Check if the given node is statically falsy.
-      return (node[0] === 'num' && node[1] == 0);
+      return (node[0] == 'num' && node[1] == 0);
     }
 
     function morphNode(node, newNode) {
@@ -2692,7 +2716,7 @@ void registerizeHarder(Ref ast) {
   
       // Any code traversed without an active entry junction must be dead,
       // as the resulting block could never be entered. Let's remove it.
-      if (currEntryJunction === null && junctions.length > 0) {
+      if (currEntryJunction == null && junctions.length > 0) {
         morphNode(node, ['block', []]);
         return;
       }
@@ -2701,9 +2725,9 @@ void registerizeHarder(Ref ast) {
       switch (type) {
         case 'defun':
           var jEntry = markJunction();
-          assert(jEntry === ENTRY_JUNCTION);
+          assert(jEntry == ENTRY_JUNCTION);
           var jExit = addJunction();
-          assert(jExit === EXIT_JUNCTION);
+          assert(jExit == EXIT_JUNCTION);
           for (var i = 0; i < node[3].length; i++) {
             buildFlowGraph(node[3][i]);
           }
@@ -2717,9 +2741,9 @@ void registerizeHarder(Ref ast) {
           var jExit = addJunction();
           if (node[2]) {
             // Detect and mark "if (label == N) { <labelled block> }".
-            if (node[1][0] === 'binary' && node[1][1] === '==') {
+            if (node[1][0] == 'binary' && node[1][1] == '==') {
               var lhs = lookThroughCasts(node[1][2]);
-              if (lhs[0] === 'name' && lhs[1] === 'label') {
+              if (lhs[0] == NAME && lhs[1] == 'label') {
                 addBlockLabel(lookThroughCasts(node[1][3]));
               }
             }
@@ -2868,7 +2892,7 @@ void registerizeHarder(Ref ast) {
               hasDefault = true;
             } else {
               // Detect switches dispatching to labelled blocks.
-              if (condition[0] === 'name' && condition[1] === 'label') {
+              if (condition[0] == NAME && condition[1] == 'label') {
                 addBlockLabel(lookThroughCasts(node[2][i][0]));
               }
             }
@@ -2879,7 +2903,7 @@ void registerizeHarder(Ref ast) {
             // If there's live code here, assume it jumps to case exit.
             if (currEntryJunction !== null && nextBasicBlock.nodes.length > 0) {
               if (node[2][i][0]) {
-                markNonLocalJump('return');
+                markNonLocalJump(RETURN);
               } else {
                 joinJunction(jExit);
               }
@@ -2893,7 +2917,7 @@ void registerizeHarder(Ref ast) {
           joinJunction(jExit);
           popActiveLabels()
           break;
-        case 'return':
+        case RETURN:
           if (node[1]) {
             isInExpr++;
             buildFlowGraph(node[1]);
@@ -2901,21 +2925,21 @@ void registerizeHarder(Ref ast) {
           }
           markNonLocalJump(type);
           break;
-        case 'break':
-        case 'continue':
+        case BREAK:
+        case CONTINUE:
           markNonLocalJump(type, node[1]);
           break;
-        case 'assign':
+        case ASSIGN:
           isInExpr++;
           buildFlowGraph(node[3]);
           isInExpr--;
-          if (node[1] === true && node[2][0] === 'name') {
+          if (node[1] == true && node[2][0] == NAME) {
             addKillNode(node);
           } else {
             buildFlowGraph(node[2]);
           }
           break;
-        case 'name':
+        case NAME:
           addUseNode(node);
           break;
         case 'block':
@@ -2952,9 +2976,9 @@ void registerizeHarder(Ref ast) {
           isInExpr--;
           // If the call is statically known to throw,
           // treat it as a jump to function exit.
-          if (!isInExpr && node[1][0] === 'name') {
+          if (!isInExpr && node[1][0] == NAME) {
             if (node[1][1] in FUNCTIONS_THAT_ALWAYS_THROW) {
-              markNonLocalJump('return');
+              markNonLocalJump(RETURN);
             }
           }
           break;
@@ -2982,9 +3006,9 @@ void registerizeHarder(Ref ast) {
     }
     buildFlowGraph(fun);
 
-    assert(setSize(junctions[ENTRY_JUNCTION].inblocks) === 0, 'function entry must have no incoming blocks');
-    assert(setSize(junctions[EXIT_JUNCTION].outblocks) === 0, 'function exit must have no outgoing blocks');
-    assert(blocks[ENTRY_BLOCK].entry === ENTRY_JUNCTION, 'block zero must be the initial block');
+    assert(setSize(junctions[ENTRY_JUNCTION].inblocks) == 0, 'function entry must have no incoming blocks');
+    assert(setSize(junctions[EXIT_JUNCTION].outblocks) == 0, 'function exit must have no outgoing blocks');
+    assert(blocks[ENTRY_BLOCK].entry == ENTRY_JUNCTION, 'block zero must be the initial block');
 
     // Fix up implicit jumps done by assigning to the 'label' variable.
     // If a block ends with an assignment to 'label' and there's another block
@@ -3011,7 +3035,7 @@ void registerizeHarder(Ref ast) {
       // Does it assign a specific label value at exit?
       if ('label' in block.kill) {
         var finalNode = block.nodes[block.nodes.length - 1];
-        if (finalNode[0] === 'assign' && finalNode[2][1] === 'label') {
+        if (finalNode[0] == ASSIGN && finalNode[2][1] == 'label') {
           // If labels are computed dynamically then all bets are off.
           // This can happen due to indirect branching in llvm output.
           if (finalNode[3][0] !== 'num') {
@@ -3025,7 +3049,7 @@ void registerizeHarder(Ref ast) {
           // then all bets are off.  This can happen e.g. due to outlining
           // saving/restoring label to the stack.
           for (var j = 0; j < block.nodes.length - 1; j++) {
-            if (block.nodes[j][0] === 'assign' && block.nodes[j][2][1] === 'label') {
+            if (block.nodes[j][0] == ASSIGN && block.nodes[j][2][1] == 'label') {
               if (block.nodes[j][3][0] !== 'num' && block.nodes[j][3][1] !== 0) {
                 labelledBlocks = {};
                 labelledJumps = [];
@@ -3045,7 +3069,7 @@ void registerizeHarder(Ref ast) {
       junctions[block.entry].outblocks[block.id] = 1;
       // Add a fake use of 'label' to keep it alive in predecessor.
       block.use['label'] = 1;
-      block.nodes.unshift(['name', 'label']);
+      block.nodes.unshift([NAME, 'label']);
       block.isexpr.unshift(1);
     }
     for (var i = 0; i < labelledJumps.length; i++) {
@@ -3109,11 +3133,11 @@ void registerizeHarder(Ref ast) {
       }
       for (var j = block.nodes.length - 1; j >=0 ; j--) {
         var node = block.nodes[j];
-        if (node[0] === 'name') {
+        if (node[0] == NAME) {
           var name = node[1];
           live[name] = 1;
           use[name] = j;
-          if (lastUseLoc[name] === undefined) {
+          if (lastUseLoc[name] == undefined) {
             lastUseLoc[name] = j;
             firstDeadLoc[name] = j;
           }
@@ -3126,10 +3150,10 @@ void registerizeHarder(Ref ast) {
             delete live[name];
             firstDeadLoc[name] = j;
             firstKillLoc[name] = j;
-            if (lastUseLoc[name] === undefined) {
+            if (lastUseLoc[name] == undefined) {
               lastUseLoc[name] = j;
             }
-            if (lastKillLoc[name] === undefined) {
+            if (lastKillLoc[name] == undefined) {
               lastKillLoc[name] = j;
             }
             // If it's an "x=y" and "y" is not live, then we can create a
@@ -3138,7 +3162,7 @@ void registerizeHarder(Ref ast) {
             var oldLink = link[name];
             if (oldLink) {
               delete link[name];
-              if (node[3][0] === 'name') {
+              if (node[3][0] == NAME) {
                 if (node[3][1] in localVars) {
                   link[node[3][1]] = oldLink;
                 }
@@ -3169,7 +3193,7 @@ void registerizeHarder(Ref ast) {
             } else {
               var numUsesInExpr = 0;
               traverse(node[3], function(node, type) {
-                if (type === 'name' && node[1] in localVars) {
+                if (type == NAME && node[1] in localVars) {
                   numUsesInExpr++;
                 }
               });
@@ -3303,10 +3327,10 @@ void registerizeHarder(Ref ast) {
     sortedJunctionVariables.sort(function(name1, name2) {
       var jv1 = junctionVariables[name1];
       var jv2 = junctionVariables[name2];
-      if (jv1.numConfs === undefined) {
+      if (jv1.numConfs == undefined) {
         jv1.numConfs = setSize(jv1.conf);
       }
-      if (jv2.numConfs === undefined) {
+      if (jv2.numConfs == undefined) {
         jv2.numConfs = setSize(jv2.conf);
       }
       return jv2.numConfs - jv1.numConfs;
@@ -3323,7 +3347,7 @@ void registerizeHarder(Ref ast) {
       // Returns true if successful, false if there was a conflict.
       var jv = junctionVariables[name];
       if (jv.reg !== null) {
-        return jv.reg === reg;
+        return jv.reg == reg;
       }
       if (jv.excl[reg]) {
         return false;
@@ -3367,7 +3391,7 @@ void registerizeHarder(Ref ast) {
 
     for (var i = 0; i < blocks.length; i++) {
       var block = blocks[i];
-      if (block.nodes.length === 0) continue;
+      if (block.nodes.length == 0) continue;
       var jEnter = junctions[block.entry];
       var jExit = junctions[block.exit];
       // Mark the point at which each input reg becomes dead.
@@ -3416,11 +3440,11 @@ void registerizeHarder(Ref ast) {
       var maybeRemoveNodes = [];
       for (var j = block.nodes.length - 1; j >= 0; j--) {
         var node = block.nodes[j];
-        var name = node[0] === 'assign' ? node[2][1] : node[1];
+        var name = node[0] == ASSIGN ? node[2][1] : node[1];
         var allRegs = allRegsByType[localVars[name]];
         var freeRegs = freeRegsByType[localVars[name]];
         var reg = assignedRegs[name];
-        if (node[0] === 'name') {
+        if (node[0] == NAME) {
           // A use.  Grab a register if it doesn't have one.
           if (!reg) {
             if (name in inputVars && j <= block.firstDeadLoc[name]) {
@@ -3428,7 +3452,7 @@ void registerizeHarder(Ref ast) {
               reg = junctionVariables[name].reg;
               assignedRegs[name] = reg;
               for (var k = freeRegs.length - 1; k >= 0; k--) {
-                if (freeRegs[k] === reg) {
+                if (freeRegs[k] == reg) {
                   freeRegs.splice(k, 1);
                   break;
                 }
@@ -3463,7 +3487,7 @@ void registerizeHarder(Ref ast) {
           node[2][1] = allRegs[reg];
           freeRegs.push(reg);
           delete assignedRegs[name];
-          if (node[3][0] === 'name' && node[3][1] in localVars) {
+          if (node[3][0] == NAME && node[3][1] in localVars) {
             maybeRemoveNodes.push([j, node]);
           }
         }
@@ -3471,7 +3495,7 @@ void registerizeHarder(Ref ast) {
       // If we managed to create an "x=x" assignments, remove them.
       for (var j = 0; j < maybeRemoveNodes.length; j++) {
         var node = maybeRemoveNodes[j][1];
-        if (node[2][1] === node[3][1]) {
+        if (node[2][1] == node[3][1]) {
           if (block.isexpr[maybeRemoveNodes[j][0]]) {
             morphNode(node, node[2]);
           } else {
@@ -3519,7 +3543,7 @@ void registerizeHarder(Ref ast) {
 
   });
 }
-*/
+*/ // end registerizeHarder
 
 // minified names generation
 StringSet RESERVED("do if in for new try var env let");
