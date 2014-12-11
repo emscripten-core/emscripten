@@ -77,7 +77,7 @@ static void glut_draw_callback(void) {
     glActiveTexture(GL_TEXTURE0);
     updateFloatTexture(); //we change the texture each time to create the effect (it is just for the test)
     glBindTexture(GL_TEXTURE_2D, nodeTexture);
-    glUniform1i(nodeSamplerLocation, GL_TEXTURE0);
+    glUniform1i(nodeSamplerLocation, 0);
     glEnableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, indicesVBO);
     glVertexAttribPointer(0, 1, GL_FLOAT, GL_FALSE, 0, NULL);
