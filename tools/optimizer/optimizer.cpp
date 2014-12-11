@@ -3305,40 +3305,40 @@ void registerizeHarder(Ref ast) {
     // one that works, and propagating the choice to linked/conflicted
     // variables as we go.
 
-    function tryAssignRegister(name, reg) {
+    auto tryAssignRegister = [&](IString name, IString reg) {
       // Try to assign the given register to the given variable,
       // and propagate that choice throughout the graph.
       // Returns true if successful, false if there was a conflict.
-      var jv = junctionVariables[name];
-      if (jv.reg != null) {
+      JuncVar& jv = junctionVariables[name];
+      if (!!jv.reg) {
         return jv.reg == reg;
       }
-      if (jv.excl[reg]) {
+      if (jv.excl.has(reg)) {
         return false;
       }
       jv.reg = reg;
       // Exclude use of this register at all conflicting variables.
-      for (var confName in jv.conf) {
-        junctionVariables[confName].excl[reg] = 1;
+      for (auto confName : jv.conf) {
+        junctionVariables[confName].excl.insert(reg);
       }
       // Try to propagate it into linked variables.
       // It's not an error if we can't.
-      for (var linkName in jv.link) {
+      for (auto linkName : jv.link) {
         tryAssignRegister(linkName, reg);
       }
       return true;
-    }
+    };
 
     NEXTVARIABLE:
-    for (var i = 0; i < sortedJunctionVariables.length; i++) {
-      var name = sortedJunctionVariables[i];
+    for (int i = 0; i < sortedJunctionVariables.size(); i++) {
+      IString name = sortedJunctionVariables[i];
       // It may already be assigned due to linked-variable propagation.
-      if (junctionVariables[name].reg != null) {
+      if (!!junctionVariables[name].reg) {
         continue NEXTVARIABLE;
       }
       // Try to use existing registers first.
-      var allRegs = allRegsByType[localVars[name]];
-      for (var reg in allRegs) {
+      auto& allRegs = allRegsByType[asmData.getType(name)];
+      for (auto reg : allRegs) {
         if (tryAssignRegister(name, reg)) {
           continue NEXTVARIABLE;
         }
@@ -3353,92 +3353,95 @@ void registerizeHarder(Ref ast) {
     // that all inter-block variables are in a good state thanks to
     // junction variable consistency.
 
-    for (var i = 0; i < blocks.length; i++) {
-      var block = blocks[i];
-      if (block.nodes.length == 0) continue;
-      var jEnter = junctions[block.entry];
-      int jExit = junctions[block.exit];
+    for (int i = 0; i < blocks.size(); i++) {
+      Block* block = blocks[i];
+      if (block->nodes.size() == 0) continue;
+      int jEnter = junctions[block->entry];
+      int jExit = junctions[block->exit];
       // Mark the point at which each input reg becomes dead.
       // Variables alive before this point must not be assigned
       // to that register.
-      var inputVars = {}
-      var inputDeadLoc = {};
-      var inputVarsByReg = {};
-      for (var name in jExit.live) {
-        if (!(name in block.kill)) {
-          inputVars[name] = 1;
-          var reg = junctionVariables[name].reg;
-          assert(reg != null, 'input variable doesnt have a register');
-          inputDeadLoc[reg] = block.firstDeadLoc[name];
+      StringSet inputVars;
+      std::unordered_set<int> inputDeadLoc;
+      StringSet inputVarsByReg;
+      for (auto name : jExit.live) {
+        if (!block->kill.has(name)) {
+          inputVars.insert(name);
+          IString reg = junctionVariables[name].reg;
+          assert(!!reg); // 'input variable doesnt have a register');
+          inputDeadLoc[reg] = block->firstDeadLoc[name];
           inputVarsByReg[reg] = name;
         }
       }
-      for (var name in block.use) {
-        if (!(name in inputVars)) {
-          inputVars[name] = 1;
-          var reg = junctionVariables[name].reg;
-          assert(reg != null, 'input variable doesnt have a register');
-          inputDeadLoc[reg] = block.firstDeadLoc[name];
+      for (auto name : block->use) {
+        if (!inputVars.has(name)) {
+          inputVars.insert(name);
+          IString reg = junctionVariables[name].reg;
+          assert(!!reg); // 'input variable doesnt have a register');
+          inputDeadLoc[reg] = block->firstDeadLoc[name];
           inputVarsByReg[reg] = name;
         }
       }
-      assert(setSize(setSub(inputVars, jEnter.live)) == 0);
+      // TODO assert(setSize(setSub(inputVars, jEnter.live)) == 0);
       // Scan through backwards, allocating registers on demand.
       // Be careful to avoid conflicts with the input registers.
       // We consume free registers in last-used order, which helps to
       // eliminate "x=y" assignments that are the last use of "y".
-      var assignedRegs = {};
-      var freeRegsByType = copy(allRegsByType);
-      // Begin with all live vars assigned per the exit junction.
-      for (var name in jExit.live) {
-        var reg = junctionVariables[name].reg;
-        assert(reg != null, 'output variable doesnt have a register');
-        assignedRegs[name] = reg;
-        delete freeRegsByType[localVars[name]][reg];
+      StringSet assignedRegs = {};
+      std::vector<StringVec> freeRegsByType;
+      freeRegsByType.resize(allRegsByType.size());
+      for (int j = 0; j < freeRegsByType.size(); j++) {
+        for (auto pair : allRegsByType[j]) {
+          freeRegsByType[j].push_back(pair.first);
+        }
       }
-      for (var j = 0; j < freeRegsByType.length; j++) {
-        freeRegsByType[j] = keys(freeRegsByType[j]);
+      // Begin with all live vars assigned per the exit junction.
+      for (auto name : jExit.live) {
+        IString reg = junctionVariables[name].reg;
+        assert(!!reg); // 'output variable doesnt have a register');
+        assignedRegs[name] = reg;
+        freeRegsByType[localVars[name]].erase(reg); // XXX assert?
       }
       // Scan through the nodes in sequence, modifying each node in-place
       // and grabbing/freeing registers as needed.
-      var maybeRemoveNodes = [];
-      for (var j = block.nodes.length - 1; j >= 0; j--) {
-        var node = block.nodes[j];
-        var name = node[0] == ASSIGN ? node[2][1] : node[1];
-        var allRegs = allRegsByType[localVars[name]];
-        var freeRegs = freeRegsByType[localVars[name]];
-        var reg = assignedRegs[name];
+      std::vector<std::pair<int, Ref>> maybeRemoveNodes;
+      for (int j = block->nodes.size() - 1; j >= 0; j--) {
+        Ref node = block.nodes[j];
+        IString name = (node[0] == ASSIGN ? node[2][1] : node[1])->getIString();
+        StringStringMap& allRegs = allRegsByType[asmData.getType(name)];
+        StringSet& freeRegs = freeRegsByType[asmData.getType(name)];
+        IString reg = assignedRegs[name];
         if (node[0] == NAME) {
           // A use.  Grab a register if it doesn't have one.
           if (!reg) {
-            if (name in inputVars && j <= block.firstDeadLoc[name]) {
+            if (inputVars.has(name) && j <= block->firstDeadLoc[name]) {
               // Assignment to an input variable, must use pre-assigned reg.
               reg = junctionVariables[name].reg;
               assignedRegs[name] = reg;
-              for (var k = freeRegs.length - 1; k >= 0; k--) {
+              for (int k = freeRegs.size() - 1; k >= 0; k--) {
                 if (freeRegs[k] == reg) {
-                  freeRegs.splice(k, 1);
+                  freeRegs.erase(freeRegs.begin() + k);
                   break;
                 }
               }
             } else {
               // Try to use one of the existing free registers.
               // It must not conflict with an input register.
-              for (var k = freeRegs.length - 1; k >= 0; k--) {
+              for (int k = freeRegs.size() - 1; k >= 0; k--) {
                 reg = freeRegs[k];
                 // Check for conflict with input registers.
-                if (block.firstKillLoc[name] <= inputDeadLoc[reg]) {
+                if (block->firstKillLoc[name] <= inputDeadLoc[reg]) {
                   if (name != inputVarsByReg[reg]) {
                     continue;
                   }
                 }
                 // Found one!
                 assignedRegs[name] = reg;
-                freeRegs.splice(k, 1);
+                freeRegs.erase(freeRegs.begin() + k);
                 break;
               }
               // If we didn't find a suitable register, create a new one.
-              if (!assignedRegs[name]) {
+              if (!assignedRegs.has(name)) {
                 reg = createReg(name);
                 assignedRegs[name] = reg;
               }
@@ -3447,23 +3450,23 @@ void registerizeHarder(Ref ast) {
           node[1] = allRegs[reg];
         } else {
           // A kill. This frees the assigned register.
-          assert(reg, 'live variable doesnt have a reg?')
+          assert(!!reg); //, 'live variable doesnt have a reg?')
           node[2][1] = allRegs[reg];
-          freeRegs.push(reg);
-          delete assignedRegs[name];
-          if (node[3][0] == NAME && node[3][1] in localVars) {
-            maybeRemoveNodes.push([j, node]);
+          freeRegs.push_back(reg);
+          assignedRegs.erase(name);
+          if (node[3][0] == NAME && asmData.isLocal(node[3][1])) {
+            maybeRemoveNodes.push(std::pair<int, Ref>(j, node));
           }
         }
       }
       // If we managed to create an "x=x" assignments, remove them.
-      for (var j = 0; j < maybeRemoveNodes.length; j++) {
-        var node = maybeRemoveNodes[j][1];
+      for (int j = 0; j < maybeRemoveNodes.size(); j++) {
+        Ref node = maybeRemoveNodes[j].second;
         if (node[2][1] == node[3][1]) {
-          if (block.isexpr[maybeRemoveNodes[j][0]]) {
-            morphNode(node, node[2]);
+          if (block->isexpr[maybeRemoveNodes[j].first]) {
+            safeCopy(node, node[2]);
           } else {
-            morphNode(node, [BLOCK, []]);
+            safeCopy(node, makeBlock());
           }
         }
       }

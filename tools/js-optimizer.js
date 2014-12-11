@@ -3755,7 +3755,7 @@ function registerizeHarder(ast) {
       // Mark the point at which each input reg becomes dead.
       // Variables alive before this point must not be assigned
       // to that register.
-      var inputVars = {}
+      var inputVars = {};
       var inputDeadLoc = {};
       var inputVarsByReg = {};
       for (var name in jExit.live) {
@@ -3865,7 +3865,7 @@ function registerizeHarder(ast) {
 
     // Assign registers to function params based on entry junction
 
-    var paramRegs = {}
+    var paramRegs = {};
     if (fun[2]) {
       for (var i = 0; i < fun[2].length; i++) {
         var allRegs = allRegsByType[localVars[fun[2][i]]];
