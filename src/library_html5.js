@@ -207,6 +207,10 @@ var LibraryJSEvents = {
       JSEvents.registerOrRemoveHandler(eventHandler);
     },
 
+    getBoundingClientRectOrZeros: function(target) {
+      return target.getBoundingClientRect ? target.getBoundingClientRect() : { left: 0, top: 0 };
+    },
+
     // Copies mouse event data from the given JS mouse event 'e' to the specified Emscripten mouse event structure in the HEAP.
     // eventStruct: the structure to populate.
     // e: The JS mouse event to read data from.
@@ -235,7 +239,7 @@ var LibraryJSEvents = {
         {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasY, '0', 'i32') }}};
       }
       if (target) {
-        var rect = (target === window) ? { left: 0, top: 0 } : target.getBoundingClientRect();
+        var rect = JSEvents.getBoundingClientRectOrZeros(target);
         {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetX, 'e.clientX - rect.left', 'i32') }}};
         {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetY, 'e.clientY - rect.top', 'i32') }}};        
       } else { // No specific target passed, return 0.
@@ -810,7 +814,7 @@ var LibraryJSEvents = {
         {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.metaKey, 'e.metaKey', 'i32') }}};
         ptr += {{{ C_STRUCTS.EmscriptenTouchEvent.touches }}}; // Advance to the start of the touch array.
         var canvasRect = Module['canvas'] ? Module['canvas'].getBoundingClientRect() : undefined;
-        var targetRect = (target === window) ? { left: 0, top: 0 } : target.getBoundingClientRect();
+        var targetRect = JSEvents.getBoundingClientRectOrZeros(target);
         var numTouches = 0;
         for(var i in touches) {
           var t = touches[i];
