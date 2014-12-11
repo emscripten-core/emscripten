@@ -62,6 +62,13 @@ static void updateFloatTexture() {
     }
     glBindTexture(GL_TEXTURE_2D, nodeTexture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, nbNodes, 1, 0, GL_RGBA, GL_FLOAT, data);
+#ifdef __EMSCRIPTEN__ // In GLES2 and WebGL1, we must use unsized texture internal formats.
+    const GLenum internalFormat = GL_RGBA;
+#else
+    // In desktop GL, we can also use sized internal formats.
+    const GLenum internalFormat = GL_RGBA32F;
+#endif
+    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, nbNodes, 1, 0, GL_RGBA, GL_FLOAT, data);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glBindTexture(GL_TEXTURE_2D, NULL);
@@ -122,9 +129,11 @@ static void gl_init(void) {
     /* Get the locations of the uniforms so we can access them */
     nodeSamplerLocation      = glGetUniformLocation(program, "nodeInfo");
     glBindAttribLocation(program, 0, "indices");
+#ifndef __EMSCRIPTEN__ // GLES2 & WebGL do not have these, only pre 3.0 desktop GL and compatibility mode GL3.0+ GL do.
     //Enable glPoint size in shader, always enable in Open Gl ES 2.
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
     glEnable(GL_POINT_SPRITE);
+#endif
 }
 int main(int argc, char *argv[]) {
     glutInit(&argc, argv);
