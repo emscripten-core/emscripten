@@ -1878,7 +1878,7 @@ LibraryManager.library = {
           }
           unget();
         }
-        if (buffer.length === 0) return 0;  // Failure.
+        if (buffer.length === 0) return fields; // Stop here.
         if (suppressAssignment) continue;
 
         var text = buffer.join('');

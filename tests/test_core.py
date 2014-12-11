@@ -4347,6 +4347,35 @@ def process(filename):
     self.emcc_args += ['--embed-file', 'three_numbers.txt']
     self.do_run(src, 'match = 3\nx = -1.0, y = 0.1, z = -0.1\n')
 
+  def test_fscanf_2(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
+
+    open('a.txt', 'w').write('''1/2/3 4/5/6 7/8/9
+''')
+    self.emcc_args += ['--embed-file', 'a.txt']
+    self.do_run(r'''#include <cstdio>
+#include <iostream>
+
+using namespace std;
+
+int
+main( int argv, char ** argc ) {
+    cout << "fscanf test" << endl;
+
+    FILE * file;
+    file = fopen("a.txt", "rb");
+    int vertexIndex[4];
+    int normalIndex[4];
+    int uvIndex[4];
+
+    int matches = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexIndex[0], &uvIndex[0], &normalIndex[0], &vertexIndex    [1], &uvIndex[1], &normalIndex[1], &vertexIndex[2], &uvIndex[2], &normalIndex[2], &vertexIndex[3], &uvIndex[3], &normalIndex[3]); 
+
+    cout << matches << endl;
+
+    return 0;
+}
+''', 'fscanf test\n9\n')
+
   def test_fileno(self):
     if self.emcc_args is None: return self.skip('requires emcc')
     open(os.path.join(self.get_dir(), 'empty.txt'), 'w').write('')
