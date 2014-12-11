@@ -2711,11 +2711,11 @@ void registerizeHarder(Ref ast) {
       // Traverse each node type according to its particular control-flow semantics.
       // TODO: switchify this
       if (type == DEFUN) {
-        var jEntry = markJunction();
+        int jEntry = markJunction();
         assert(jEntry == ENTRY_JUNCTION);
         int jExit = addJunction();
         assert(jExit == EXIT_JUNCTION);
-        for (var i = 0; i < node[3].length; i++) {
+        for (int i = 0; i < node[3].length; i++) {
           buildFlowGraph(node[3][i]);
         }
         joinJunction(jExit);
@@ -2780,7 +2780,7 @@ void registerizeHarder(Ref ast) {
           joinJunction(jLoop);
           setJunction(jExit);
         } else {
-          var jCond = markJunction();
+          int jCond = markJunction();
           int jLoop = addJunction();
           int jExit = addJunction();
           isInExpr++;
@@ -2996,7 +2996,7 @@ void registerizeHarder(Ref ast) {
       }
       // Does it assign a specific label value at exit?
       if (block.kill.has(LABEL)) {
-        var finalNode = block->nodes.back();
+        Ref finalNode = block->nodes.back();
         if (finalNode[0] == ASSIGN && finalNode[2][1] == LABEL) {
           // If labels are computed dynamically then all bets are off.
           // This can happen due to indirect branching in llvm output.
@@ -3023,7 +3023,7 @@ void registerizeHarder(Ref ast) {
       }
     }
     for (auto labelVal : labelledBlocks) {
-      var block = labelVal.second;
+      Block* block = labelVal.second;
       // Disconnect it from the graph, and create a
       // new junction for jumps targetting this label.
       junctions[block.entry].outblocks.erase(block.id);
@@ -3245,40 +3245,44 @@ void registerizeHarder(Ref ast) {
     // as pairs of variables that we'd like to have share the same register
     // (the "links").
 
-    var junctionVariables = {};
+    struct JuncVar {
+      StringSet conf, link, excl;
+      IString reg;
+    };
+    std::unordered_map<IString, JuncVar> junctionVariables;
 
-    function initializeJunctionVariable(name) {
-      junctionVariables[name] = { conf: {}, link: {}, excl: {}, reg: null };
-    }
+    auto initializeJunctionVariable = [&](IString name) {
+      junctionVariables[name] = JuncVar(); // XXX
+    };
 
-    for (var i = 0; i < junctions.length; i++) {
-      var junc = junctions[i];
-      for (var name in junc.live) {
-        if (!junctionVariables[name]) initializeJunctionVariable(name);
+    for (int i = 0; i < junctions.size(); i++) {
+      Junction& junc = junctions[i];
+      for (auto name : junc.live) {
+        if (junctionVariables.count(name) == 0) initializeJunctionVariable(name);
         // It conflicts with all other names live at this junction.
-        for (var otherName in junc.live) {
+        for (auto otherName : junc.live) {
           if (otherName == name) continue;
-          junctionVariables[name].conf[otherName] = 1;
+          junctionVariables[name].conf.insert(otherName);
         }
-        for (var b in junc.outblocks) {
-          // It conflits with any output vars of successor blocks,
+        for (auto b : junc.outblocks) {
+          // It conflicts with any output vars of successor blocks,
           // if they're assigned before it goes dead in that block.
-          block = blocks[b];
-          var jSucc = junctions[block.exit];
-          for (var otherName in jSucc.live) {
-            if (junc.live[otherName]) continue;
-            if (block.lastKillLoc[otherName] < block.firstDeadLoc[name]) {
-              if (!junctionVariables[otherName]) initializeJunctionVariable(otherName);
-              junctionVariables[name].conf[otherName] = 1;
-              junctionVariables[otherName].conf[name] = 1;
+          Block* block = blocks[b];
+          Junction& jSucc = junctions[block->exit];
+          for (jSucc.live.has(otherName)) {
+            if (junc.live.has(otherName)) continue;
+            if (block->lastKillLoc[otherName] < block->firstDeadLoc[name]) {
+              if (junctionVariables.count(otherName) == 0) initializeJunctionVariable(otherName);
+              junctionVariables[name].conf.insert(otherName);
+              junctionVariables[otherName].conf.insert(name);
             }
           }
           // It links with any linkages in the outgoing blocks.
-          var linkName = block.link[name];
-          if (linkName && linkName != name) {
-            if (!junctionVariables[linkName]) initializeJunctionVariable(linkName);
-            junctionVariables[name].link[linkName] = 1;
-            junctionVariables[linkName].link[name] = 1;
+          IString linkName = block->link[name];
+          if (!!linkName && linkName != name) {
+            if (junctionVariables.count(linkName) == 0) initializeJunctionVariable(linkName);
+            junctionVariables[name].link.insert(linkName);
+            junctionVariables[linkName].link.insert(name);
           }
         }
       }
@@ -3288,17 +3292,12 @@ void registerizeHarder(Ref ast) {
     // Simple starting point: handle the most-conflicted variables first.
     // This seems to work pretty well.
 
-    var sortedJunctionVariables = keys(junctionVariables);
-    sortedJunctionVariables.sort(function(name1, name2) {
-      var jv1 = junctionVariables[name1];
-      var jv2 = junctionVariables[name2];
-      if (jv1.numConfs == undefined) {
-        jv1.numConfs = setSize(jv1.conf);
-      }
-      if (jv2.numConfs == undefined) {
-        jv2.numConfs = setSize(jv2.conf);
-      }
-      return jv2.numConfs - jv1.numConfs;
+    StringVec sortedJunctionVariables;
+    for (auto pair : junctionVariables) {
+      sortedJunctionVariables.push_back(pair->first);
+    }
+    std::sort(sortedJunctionVariables.begin(), sortedJunctionVariables.end(), [](const IString name1, const IString name2) {
+      return junctionVariables[name2].conf.size() < junctionVariables[name1].conf.size(); //XXX
     });
 
     // We can now assign a register to each junction variable.

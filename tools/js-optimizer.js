@@ -3654,9 +3654,9 @@ function registerizeHarder(ast) {
           junctionVariables[name].conf[otherName] = 1;
         }
         for (var b in junc.outblocks) {
-          // It conflits with any output vars of successor blocks,
+          // It conflicts with any output vars of successor blocks,
           // if they're assigned before it goes dead in that block.
-          block = blocks[b];
+          var block = blocks[b];
           var jSucc = junctions[block.exit];
           for (var otherName in jSucc.live) {
             if (junc.live[otherName]) continue;
