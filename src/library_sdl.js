@@ -491,7 +491,7 @@ var LibrarySDL = {
           SDL.updateRect(dstrect, dr);
         }
       }
-      var blitw, blitr;
+      var blitw, blith;
       if (scale) {
         blitw = dr.w; blith = dr.h;
       } else {
