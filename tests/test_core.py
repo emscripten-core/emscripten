@@ -7232,7 +7232,7 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
   return TT
 
 # Main test modes
-default = make_run("default", compiler=CLANG, emcc_args=[])
+default = make_run("default", compiler=CLANG, emcc_args=["-s", "ASM_JS=2"])
 asm1 = make_run("asm1", compiler=CLANG, emcc_args=["-O1"])
 asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2"])
 asm3 = make_run("asm3", compiler=CLANG, emcc_args=["-O3"])
