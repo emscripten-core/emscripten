@@ -2484,14 +2484,15 @@ void registerizeHarder(Ref ast) {
     // Utilities for allocating register variables.
     // We need distinct register pools for each type of variable.
 
-    std::vector<StringStringMap> allRegsByType;
+    typedef std::unordered_map<int, IString> IntStringMap;
+    std::vector<IntStringMap> allRegsByType;
     allRegsByType.resize(ASM_NONE+1);
     int nextReg = 1;
 
     auto createReg = [&](IString forName) {
       // Create a new register of type suitable for the given variable name.
       AsmType type = asmData.getType(forName);
-      StringIntMap& allRegs = allRegsByType[type];
+      StringStringMap& allRegs = allRegsByType[type];
       reg = nextReg++;
       allRegs[reg] = getRegName(type, reg);
       return reg;
@@ -3474,40 +3475,37 @@ void registerizeHarder(Ref ast) {
 
     // Assign registers to function params based on entry junction
 
-    var paramRegs = {}
-    if (fun[2]) {
-      for (var i = 0; i < fun[2].length; i++) {
-        var allRegs = allRegsByType[localVars[fun[2][i]]];
-        fun[2][i] = allRegs[junctionVariables[fun[2][i]].reg];
-        paramRegs[fun[2][i]] = 1;
+    StringSet paramRegs;
+    if (!!fun[2]) {
+      for (int i = 0; i < fun[2]->size(); i++) {
+        auto& allRegs = allRegsByType[asmData.getType(fun[2][i])];
+        fun[2][i]->setString(allRegs[junctionVariables[fun[2][i]].reg]);
+        paramRegs.insert(fun[2][i]->getIString());
       }
     }
 
     // That's it!
     // Re-construct the function with appropriate variable definitions.
- 
-    var finalAsmData = {
-      params: {},
-      vars: {},
-      inlines: asmData.inlines,
-      ret: asmData.ret,
-    };
-    for (var i = 1; i < nextReg; i++) {
-      var reg;
-      for (var type=0; type<allRegsByType.length; type++) {
-        reg = allRegsByType[type][i];
-        if (reg) break;
-      }
-      if (!paramRegs[reg]) {
-        finalAsmData.vars[reg] = type;
-      } else {
-        finalAsmData.params[reg] = type;
+
+    asmData.locals.clear();
+    asmData.params.clear();
+    asmData.vars.clear();
+    for (int i = 1; i < nextReg; i++) {
+      for (int type = 0; type < allRegsByType.size(); type++) {
+        if (allRegsByType[type].count(i) > 0) {
+          IString reg = allRegsByType[type][i];
+          if (!paramRegs.has(reg)) {
+            asmData.addVar(reg, type);
+          } else {
+            asmData.addParam(reg, type);
+          }
+          break;
+        }
       }
     }
-    denormalizeAsm(fun, finalAsmData);
+    asmData.denormalize();
 
-    vacuum(fun);
-
+    removeAllUselessSubNodes(fun); // XXX vacuum?    vacuum(fun);
   });
 }
 */ // end registerizeHarder
