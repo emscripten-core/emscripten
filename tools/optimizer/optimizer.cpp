@@ -3071,59 +3071,59 @@ void registerizeHarder(Ref ast) {
       }
     };
 
-    function analyzeBlock(block) {
+    auto analyzeBlock = [&](Block* block) {
       // Update information about the behaviour of the block.
       // This includes the standard 'use' and 'kill' information,
       // plus a 'link' set naming values that flow through from entry
       // to exit, possibly changing names via simple 'x=y' assignments.
       // As we go, we eliminate assignments if the variable is not
       // subsequently used.
-      var live = copy(junctions[block.exit].live);
-      var use = {};
-      var kill = {};
-      var link = {};
-      var lastUseLoc = {};
-      var firstDeadLoc = {};
-      var firstKillLoc = {};
-      var lastKillLoc = {};
-      for (var name in live) {
+      auto live = junctions[block.exit].live;
+      StringSet use;
+      StringSet kill;
+      StringStringMap link;
+      StringIntMap lastUseLoc;
+      StringIntMap firstDeadLoc;
+      StringIntMap firstKillLoc;
+      StringIntMap lastKillLoc;
+      for (auto name : live) {
         link[name] = name;
-        lastUseLoc[name] = block.nodes.length;
-        firstDeadLoc[name] = block.nodes.length;
+        lastUseLoc[name] = block->nodes.size();
+        firstDeadLoc[name] = block->nodes.size();
       }
-      for (var j = block.nodes.length - 1; j >=0 ; j--) {
-        var node = block.nodes[j];
+      for (int j = block->nodes.size() - 1; j >= 0 ; j--) {
+        Ref node = block->nodes[j];
         if (node[0] == NAME) {
-          var name = node[1];
-          live[name] = 1;
+          IString name = node[1]->getIString();
+          live.insert(name);
           use[name] = j;
-          if (lastUseLoc[name] == undefined) {
+          if (lastUseLoc.count(name) == 0) {
             lastUseLoc[name] = j;
             firstDeadLoc[name] = j;
           }
         } else {
-          var name = node[2][1];
+          IString name = node[2][1]->getIString();
           // We only keep assignments if they will be subsequently used.
-          if (name in live) {
-            kill[name] = 1;
-            delete use[name];
-            delete live[name];
+          if (live.has(name)) {
+            kill.insert(name);
+            use.erase(name);
+            live.erase(name);
             firstDeadLoc[name] = j;
             firstKillLoc[name] = j;
-            if (lastUseLoc[name] == undefined) {
+            if (lastUseLoc.count(name) == 0) {
               lastUseLoc[name] = j;
             }
-            if (lastKillLoc[name] == undefined) {
+            if (lastKillLoc.count(name) == 0) {
               lastKillLoc[name] = j;
             }
             // If it's an "x=y" and "y" is not live, then we can create a
             // flow-through link from "y" to "x".  If not then there's no
             // flow-through link for "x".
-            var oldLink = link[name];
-            if (oldLink) {
-              delete link[name];
+            if (link.has(name)) {
+              IString oldLink = link[name];
+              link.erase(name);
               if (node[3][0] == NAME) {
-                if (node[3][1] in localVars) {
+                if (asmData.isLocal(node[3][1])) {
                   link[node[3][1]] = oldLink;
                 }
               }
@@ -3131,39 +3131,40 @@ void registerizeHarder(Ref ast) {
           } else {
             // The result of this assignment is never used, so delete it.
             // We may need to keep the RHS for its value or its side-effects.
-            function removeUnusedNodes(j, n) {
-              for (var name in lastUseLoc) {
+            auto removeUnusedNodes = [&](int j, int n) {
+              for (auto name : lastUseLoc) {
                 lastUseLoc[name] -= n;
               }
-              for (var name in firstKillLoc) {
+              for (auto name : firstKillLoc) {
                 firstKillLoc[name] -= n;
               }
-              for (var name in lastKillLoc) {
+              for (auto name : lastKillLoc) {
                 lastKillLoc[name] -= n;
               }
-              for (var name in firstDeadLoc) {
+              for (auto name : firstDeadLoc) {
                 firstDeadLoc[name] -= n;
               }
-              block.nodes.splice(j, n);
-              block.isexpr.splice(j, n);
+              block->nodes.erase(block->nodes.begin() + j, block->nodes.begin() + j + n);
+              block->isexpr.erase(block->isexpr.begin() + j, block->isexpr.begin() + j + n);
             }
             if (block.isexpr[j] || hasSideEffects(node[3])) {
-              morphNode(node, node[3]);
+              safeCopy(node, node[3]);
               removeUnusedNodes(j, 1);
             } else {
-              var numUsesInExpr = 0;
-              traverse(node[3], function(node, type) {
-                if (type == NAME && node[1] in localVars) {
+              int numUsesInExpr = 0;
+              traversePre(node[3], [&](Ref node) {
+                if (node[0] == NAME && asmData.isLocal(node[1])) {
                   numUsesInExpr++;
                 }
               });
-              morphNode(node, [BLOCK, []]);
+              morphNode(node, makeBlock());
               j = j - numUsesInExpr;
               removeUnusedNodes(j, 1 + numUsesInExpr);
             }
           }
         }
       }
+      // XXX efficiency
       block.use = use;
       block.kill = kill;
       block.link = link;
@@ -3171,56 +3172,60 @@ void registerizeHarder(Ref ast) {
       block.firstDeadLoc = firstDeadLoc;
       block.firstKillLoc = firstKillLoc;
       block.lastKillLoc = lastKillLoc;
-    }
+    };
 
-    var jWorklistMap = { EXIT_JUNCTION: 1 };
-    var jWorklist = [EXIT_JUNCTION];
-    var bWorklistMap = {};
-    var bWorklist = [];
+    std::unordered_set<int> jWorklistMap;
+    jWorklistMap.insert(EXIT_JUNCTION);
+    std::vector<int> jWorklist;
+    jWorklist.push_back(EXIT_JUNCTION);
+    std::unordered_set<int> bWorklistMap;
+    std::vector<int> bWorklist;
 
     // Be sure to visit every junction at least once.
     // This avoids missing some vars because we disconnected them
     // when processing the labelled jumps.
-    for (var i = junctions.length - 1; i >= EXIT_JUNCTION; i--) {
-      jWorklistMap[i] = 1;
-      jWorklist.push(i);
+    for (int i = junctions.size() - 1; i >= EXIT_JUNCTION; i--) {
+      jWorklistMap.insert(i);
+      jWorklist.push_back(i);
     }
 
-    while (jWorklist.length > 0) {
+    while (jWorklist.size() > 0) {
       // Iterate on just the junctions until we get stable live sets.
       // The first run of this loop will grow the live sets to their maximal size.
       // Subsequent runs will shrink them based on eliminated in-block uses.
-      while (jWorklist.length > 0) {
-        var junc = junctions[jWorklist.pop()];
-        delete jWorklistMap[junc.id];
-        var oldLive = junc.live || null;
+      while (jWorklist.size() > 0) {
+        Junction& junc = junctions[jWorklist.back()];
+        jWorklist.pop_back();
+        jWorklistMap.erase(junc.id);
+        StringSet oldLive = junc.live; // copy it here, to check for changes later
         analyzeJunction(junc);
-        if (!sortedJsonCompare(oldLive, junc.live)) {
+        if (oldLive != junc.live) {
           // Live set changed, updated predecessor blocks and junctions.
-          for (var b in junc.inblocks) {
-            if (!(b in bWorklistMap)) {
-              bWorklistMap[b] = 1;
-              bWorklist.push(b);
+          for (auto b : junc.inblocks) {
+            if (bWorklistMap.count(b) == 0) {
+              bWorklistMap.insert(b)
+              bWorklist.push_back(b);
             }
-            var jPred = blocks[b].entry;
-            if (!(jPred in jWorklistMap)) {
-              jWorklistMap[jPred] = 1;
-              jWorklist.push(jPred);
+            int jPred = blocks[b].entry;
+            if (jWorklistMap.count(jPred) == 0) {
+              jWorklistMap.insert(jPred);
+              jWorklist.push_back(jPred);
             }
           }
         }
       }
       // Now update the blocks based on the calculated live sets.
-      while (bWorklist.length > 0) {
-        var block = blocks[bWorklist.pop()];
-        delete bWorklistMap[block.id];
-        var oldUse = block.use;
+      while (bWorklist.size() > 0) {
+        Block* block = blocks[bWorklist.back()];
+        bWorklist.pop_back();
+        bWorklistMap.erase(block->id);
+        StringSet oldUse = block->use;
         analyzeBlock(block);
-        if (!sortedJsonCompare(oldUse, block.use)) {
+        if (oldUse != block->use) {
           // The use set changed, re-process the entry junction.
-          if (!(block.entry in jWorklistMap)) {
-            jWorklistMap[block.entry] = 1;
-            jWorklist.push(block.entry);
+          if (jWorklistMap.count(block->entry) == 0) {
+            jWorklistMap.insert(block.entry);
+            jWorklist.push_back(block.entry);
           }
         }
       }
@@ -3230,8 +3235,8 @@ void registerizeHarder(Ref ast) {
     // This ensures they will be assigned independent registers, even
     // if they happen to be unused.
 
-    for (var name in asmData.params) {
-      junctions[ENTRY_JUNCTION].live[name] = 1;
+    for (auto name : asmData.params) {
+      junctions[ENTRY_JUNCTION].live.insert(name);
     }
 
     // For variables that are live at one or more junctions, we assign them
