@@ -527,6 +527,11 @@ var LibraryGLFW = {
     },
 
     getCursorPos: function(winid, x, y) {
+      setValue(x, Browser.mouseX, 'double');
+      setValue(y, Browser.mouseY, 'double');
+    },
+
+    getMousePos: function(winid, x, y) {
       setValue(x, Browser.mouseX, 'i32');
       setValue(y, Browser.mouseY, 'i32');
     },
@@ -1145,7 +1150,7 @@ var LibraryGLFW = {
   },
 
   glfwGetMousePos: function(x, y) {
-    GLFW.getCursorPos(GLFW.active.id, x, y);
+    GLFW.getMousePos(GLFW.active.id, x, y);
   },
 
   glfwSetMousePos: function(x, y) {
