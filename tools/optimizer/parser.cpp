@@ -82,6 +82,7 @@ IString TOPLEVEL("toplevel"),
         NEW("new"),
         ARRAY("array"),
         OBJECT("object"),
+        THROW("throw"),
         SET("=");
 
 IStringSet keywords("var function if else do while for break continue return switch case default throw try catch finally true false null new"),
@@ -115,7 +116,7 @@ struct Init {
 
     precedences.resize(OperatorClass::Tertiary + 1);
 
-    for (int prec = 0; prec < operatorClasses.size(); prec++) {
+    for (size_t prec = 0; prec < operatorClasses.size(); prec++) {
       for (auto curr : operatorClasses[prec].ops) {
         precedences[operatorClasses[prec].type][curr] = prec;
       }
