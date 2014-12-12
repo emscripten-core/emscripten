@@ -2530,13 +2530,14 @@ void registerizeHarder(Ref ast) {
       int id;
       std::unordered_set<int> inblocks, outblocks;
       StringSet live;
-      Junction(int id_) : id(id_) {}
+      bool checkedLive;
+      Junction(int id_) : id(id_), checkedLive(false) {}
     };
     struct Node {
     };
     struct Block {
       int id, entry, exit;
-      StringSet labels;
+      std::unordered_set<int> labels;
       std::vector<Ref> nodes;
       std::vector<bool> isexpr;
       StringIntMap use;
@@ -2562,6 +2563,7 @@ void registerizeHarder(Ref ast) {
     Block* nextBasicBlock = nullptr;
     int isInExpr = 0;
     std::vector<LabelState> activeLabels;
+    activeLabels.resize(1);
     IString nextLoopLabel;
 
     const int ENTRY_JUNCTION = 0;
@@ -2618,22 +2620,21 @@ void registerizeHarder(Ref ast) {
       return id;
     };
 
-    IString NULL_STR;
-
     auto pushActiveLabels = [&](int onContinue, int onBreak) {
       // Push the target junctions for continuing/breaking a loop.
       // This should be called before traversing into a loop.
+      assert(activeLabels.size() > 0);
       LabelState& prevLabels = activeLabels.back();
       LabelState newLabels = prevLabels;
-      newLabels[NULL_STR] = ContinueBreak(onContinue, onBreak);
+      newLabels[EMPTY] = ContinueBreak(onContinue, onBreak);
       if (!!nextLoopLabel) {
         newLabels[nextLoopLabel] = ContinueBreak(onContinue, onBreak);
-        nextLoopLabel = NULL_STR;
+        nextLoopLabel = EMPTY;
       }
       // An unlabelled CONTINUE should jump to innermost loop,
       // ignoring any nested SWITCH statements.
-      if (onContinue < 0 && prevLabels.count(NULL_STR) > 0) {
-        newLabels[NULL_STR].co = prevLabels[NULL_STR].co;
+      if (onContinue < 0 && prevLabels.count(EMPTY) > 0) {
+        newLabels[EMPTY].co = prevLabels[EMPTY].co;
       }
       activeLabels.push_back(newLabels);
     };
@@ -2651,6 +2652,7 @@ void registerizeHarder(Ref ast) {
       if (type == RETURN) {
         joinJunction(EXIT_JUNCTION, false);
       } else {
+        assert(activeLabels.size() > 0);
         assert(activeLabels.back().count(label) > 0); // 'jump to unknown label');
         auto targets = activeLabels.back()[label];
         if (type == CONTINUE) {
@@ -2703,7 +2705,7 @@ void registerizeHarder(Ref ast) {
     auto addBlockLabel = [&](Ref node) {
       assert(nextBasicBlock->nodes.size() == 0); // 'cant add label to an in-progress basic block')
       if (node[0] == NUM) {
-        nextBasicBlock->labels.insert(node[1]->getIString()); // XXX?
+        nextBasicBlock->labels.insert(node[1]->getNumber());
       }
     };
 
@@ -2726,7 +2728,7 @@ void registerizeHarder(Ref ast) {
       // Any code traversed without an active entry junction must be dead,
       // as the resulting block could never be entered. Let's remove it.
       if (currEntryJunction < 0 && junctions.size() > 0) {
-        safeCopy(node, makeBlock());
+        safeCopy(node, makeEmpty());
         return;
       }
  
@@ -2759,7 +2761,7 @@ void registerizeHarder(Ref ast) {
         }
         joinJunction(jExit, false);
         setJunction(jEnter, false);
-        if (!!node[3]) {
+        if (node->size() > 3 && !!node[3]) {
           buildFlowGraph(node[3]);
         }
         joinJunction(jExit, false);
@@ -2905,7 +2907,7 @@ void registerizeHarder(Ref ast) {
           // If there's live code here, assume it jumps to case exit.
           if (currEntryJunction >= 0 && nextBasicBlock->nodes.size() > 0) {
             if (!!node[2][i][0]) {
-              markNonLocalJump(RETURN, IString());
+              markNonLocalJump(RETURN, EMPTY);
             } else {
               joinJunction(jExit, false);
             }
@@ -2924,9 +2926,9 @@ void registerizeHarder(Ref ast) {
           buildFlowGraph(node[1]);
           isInExpr--;
         }
-        markNonLocalJump(type->getIString(), IString());
+        markNonLocalJump(type->getIString(), EMPTY);
       } else if (type == BREAK || type == CONTINUE) {
-        markNonLocalJump(type->getIString(), node[1]->getIString());
+        markNonLocalJump(type->getIString(), !!node[1] ? node[1]->getIString() : EMPTY);
       } else if (type == ASSIGN) {
         isInExpr++;
         buildFlowGraph(node[3]);
@@ -2968,7 +2970,7 @@ void registerizeHarder(Ref ast) {
         // treat it as a jump to function exit.
         if (!isInExpr && node[1][0] == NAME) {
           if (FUNCTIONS_THAT_ALWAYS_THROW.has(node[1][1])) {
-            markNonLocalJump(RETURN, IString());
+            markNonLocalJump(RETURN, EMPTY);
           }
         }
       } else if (type == SEQ || type == SUB) {
@@ -2998,7 +3000,7 @@ void registerizeHarder(Ref ast) {
     // with that value of LABEL as precondition, we tweak the flow graph so
     // that the former jumps straight to the later.
 
-    std::unordered_map<IString, Block*> labelledBlocks;
+    std::unordered_map<int, Block*> labelledBlocks;
     typedef std::pair<Ref, Block*> Jump;
     std::vector<Jump> labelledJumps;
 
@@ -3034,7 +3036,7 @@ void registerizeHarder(Ref ast) {
           // saving/restoring label to the stack.
           for (int j = 0; j < block->nodes.size() - 1; j++) {
             if (block->nodes[j][0] == ASSIGN && block->nodes[j][2][1] == LABEL) {
-              if (block->nodes[j][3][0] != NUM && block->nodes[j][3][1]->getNumber() != 0) {
+              if (block->nodes[j][3][0] != NUM || block->nodes[j][3][1]->getNumber() != 0) {
                 labelledBlocks.clear();
                 labelledJumps.clear();
                 goto AFTER_FINDLABELLEDBLOCKS;
@@ -3062,7 +3064,7 @@ void registerizeHarder(Ref ast) {
     for (int i = 0; i < labelledJumps.size(); i++) {
       auto labelVal = labelledJumps[i].first;
       auto block = labelledJumps[i].second;
-      Block* targetBlock = labelledBlocks[labelVal->getIString()];
+      Block* targetBlock = labelledBlocks[labelVal->getNumber()];
       if (targetBlock) {
         // Redirect its exit to entry of the target block.
         junctions[block->exit].inblocks.erase(block->id);
@@ -3094,6 +3096,7 @@ void registerizeHarder(Ref ast) {
         }
       }
       junc.live = live;
+      junc.checkedLive = true;
     };
 
     auto analyzeBlock = [&](Block* block) {
@@ -3182,7 +3185,7 @@ void registerizeHarder(Ref ast) {
                   numUsesInExpr++;
                 }
               });
-              safeCopy(node, makeBlock());
+              safeCopy(node, makeEmpty());
               j = j - numUsesInExpr;
               removeUnusedNodes(j, 1 + numUsesInExpr);
             }
@@ -3223,8 +3226,9 @@ void registerizeHarder(Ref ast) {
         jWorklist.pop_back();
         jWorklistMap.erase(junc.id);
         StringSet oldLive = junc.live; // copy it here, to check for changes later
+        bool oldChecked = junc.checkedLive;
         analyzeJunction(junc);
-        if (oldLive != junc.live) {
+        if (oldChecked != junc.checkedLive || oldLive != junc.live) {
           // Live set changed, updated predecessor blocks and junctions.
           for (auto b : junc.inblocks) {
             if (bWorklistMap.count(b) == 0) {
@@ -3324,7 +3328,8 @@ void registerizeHarder(Ref ast) {
       sortedJunctionVariables.push_back(pair.first);
     }
     std::sort(sortedJunctionVariables.begin(), sortedJunctionVariables.end(), [&](const IString name1, const IString name2) {
-      return junctionVariables[name2].conf.size() < junctionVariables[name1].conf.size(); //XXX
+      //return strcmp(name1.str, name2.str) > 0;// XXX junctionVariables[name1].conf.size() > junctionVariables[name2].conf.size();
+      return junctionVariables[name1].conf.size() < junctionVariables[name2].conf.size();
     });
 
     // We can now assign a register to each junction variable.
@@ -3355,11 +3360,10 @@ void registerizeHarder(Ref ast) {
       }
       return true;
     };
-
     for (int i = 0; i < sortedJunctionVariables.size(); i++) {
       IString name = sortedJunctionVariables[i];
       // It may already be assigned due to linked-variable propagation.
-      if (!!junctionVariables[name].reg) {
+      if (junctionVariables[name].reg > 0) {
         continue;
       }
       // Try to use existing registers first.
@@ -3444,7 +3448,7 @@ void registerizeHarder(Ref ast) {
         int reg = assignedRegs[name]; // XXX may insert a zero
         if (node[0] == NAME) {
           // A use.  Grab a register if it doesn't have one.
-          if (!reg) {
+          if (reg <= 0) {
             if (inputVars.has(name) && j <= block->firstDeadLoc[name]) {
               // Assignment to an input variable, must use pre-assigned reg.
               reg = junctionVariables[name].reg;
@@ -3468,11 +3472,12 @@ void registerizeHarder(Ref ast) {
                 }
                 // Found one!
                 assignedRegs[name] = reg;
+                assert(reg > 0);
                 freeRegs.erase(freeRegs.begin() + k);
                 break;
               }
               // If we didn't find a suitable register, create a new one.
-              if (!assignedRegs.has(name)) {
+              if (assignedRegs[name] <= 0) {
                 reg = createReg(name);
                 assignedRegs[name] = reg;
               }
@@ -3481,7 +3486,7 @@ void registerizeHarder(Ref ast) {
           node[1]->setString(allRegs[reg]);
         } else {
           // A kill. This frees the assigned register.
-          assert(!!reg); //, 'live variable doesnt have a reg?')
+          assert(reg > 0); //, 'live variable doesnt have a reg?')
           node[2][1]->setString(allRegs[reg]);
           freeRegs.push_back(reg);
           assignedRegs.erase(name);
@@ -3497,7 +3502,7 @@ void registerizeHarder(Ref ast) {
           if (block->isexpr[maybeRemoveNodes[j].first]) {
             safeCopy(node, node[2]);
           } else {
-            safeCopy(node, makeBlock());
+            safeCopy(node, makeEmpty());
           }
         }
       }
@@ -3845,7 +3850,7 @@ int main(int argc, char **argv) {
     else if (str == "optimizeFrounds") optimizeFrounds(doc);
     else if (str == "simplifyIfs") simplifyIfs(doc);
     else if (str == "registerize") registerize(doc);
-    //else if (str == "registerizeHarder") registerizeHarder(doc);
+    else if (str == "registerizeHarder") registerizeHarder(doc);
     else if (str == "minifyLocals") minifyLocals(doc);
     else if (str == "minifyWhitespace") {}
     else if (str == "asmLastOpts") asmLastOpts(doc);

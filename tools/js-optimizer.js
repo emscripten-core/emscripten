@@ -3408,7 +3408,7 @@ function registerizeHarder(ast) {
           // saving/restoring label to the stack.
           for (var j = 0; j < block.nodes.length - 1; j++) {
             if (block.nodes[j][0] === 'assign' && block.nodes[j][2][1] === 'label') {
-              if (block.nodes[j][3][0] !== 'num' && block.nodes[j][3][1] !== 0) {
+              if (block.nodes[j][3][0] !== 'num' || block.nodes[j][3][1] !== 0) {
                 labelledBlocks = {};
                 labelledJumps = [];
                 break FINDLABELLEDBLOCKS;

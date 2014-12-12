@@ -307,8 +307,12 @@ class Parser {
 
   NodeRef parseFunction(Frag& frag, char*& src, const char* seps) {
     Frag name(src);
-    assert(name.type == IDENT);
-    src += name.size;
+    if (name.type == IDENT) {
+      src += name.size;
+    } else {
+      assert(name.type == SEPARATOR && name.str[0] == '(');
+      name.str = IString();
+    }
     NodeRef ret = Builder::makeFunction(name.str);
     src = skipSpace(src);
     assert(*src == '(');
@@ -667,7 +671,7 @@ class Parser {
       ExpressionParts& parts = expressionPartsStack.back(); // |parts| may have been invalidated by that call
       // we are the toplevel. sort it all out
       // collapse right to left, highest priority first
-      //dumpParts(parts);
+      //dumpParts(parts, 0);
       for (auto ops : operatorClasses) {
         if (ops.rtl) {
           // right to left
