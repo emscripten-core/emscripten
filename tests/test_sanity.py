@@ -149,12 +149,12 @@ class sanity(RunnerCore):
     f = open(CONFIG_FILE, 'a')
     f.write('CLOSURE_COMPILER = "/tmp/nowhere/nothingtoseehere/kjadsfkjwelkjsdfkqgas/nonexistent.txt"\n')
     f.close()
-    output = self.check_working([EMCC, '-O2', '-s', 'ASM_JS=0', '--closure', '1', 'tests/hello_world.cpp'], CLOSURE_FATAL)
+    output = self.check_working([EMCC, '-O2', '-s', '--closure', '1', 'tests/hello_world.cpp'], CLOSURE_FATAL)
 
     # With a working path, all is well
     restore()
     try_delete('a.out.js')
-    output = self.check_working([EMCC, '-O2', '-s', 'ASM_JS=0', '--closure', '1', 'tests/hello_world.cpp'], '')
+    output = self.check_working([EMCC, '-O2', '-s', '--closure', '1', 'tests/hello_world.cpp'], '')
     assert os.path.exists('a.out.js'), output
 
   def test_llvm(self):
