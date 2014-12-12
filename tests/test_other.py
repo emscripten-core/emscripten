@@ -118,13 +118,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         (['-o', 'something.js', '-O2'],                   2, None, 0, 1),
         (['-o', 'something.js', '-O2', '-g'],             2, None, 0, 0),
         (['-o', 'something.js', '-Os'],                   2, None, 0, 1),
-        (['-o', 'something.js', '-O3', '-s', 'ASM_JS=0'], 3, None, 0, 1),
+        (['-o', 'something.js', '-O3'],                   3, None, 0, 1),
         # and, test compiling to bitcode first
         (['-o', 'something.bc'], 0, [],      0, 0),
         (['-o', 'something.bc', '-O0'], 0, [], 0, 0),
         (['-o', 'something.bc', '-O1'], 1, ['-O1'], 0, 0),
         (['-o', 'something.bc', '-O2'], 2, ['-O2'], 0, 0),
-        (['-o', 'something.bc', '-O3'], 3, ['-O3', '-s', 'ASM_JS=0'], 0, 0),
+        (['-o', 'something.bc', '-O3'], 3, ['-O3'], 0, 0),
         (['-O1', '-o', 'something.bc'], 1, [], 0, 0),
       ]:
         print params, opt_level, bc_params, closure, has_malloc
