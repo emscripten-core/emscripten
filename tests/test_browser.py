@@ -758,7 +758,7 @@ window.close = function() {
     self.btest('sdl_canvas_proxy.c', reference='sdl_canvas_proxy.png', args=['--proxy-to-worker', '--preload-file', 'data.txt'], manual_reference=True, post_build=self.post_manual_reftest)
 
   def test_glgears_proxy(self):
-    self.btest('hello_world_gles_proxy.c', reference='gears.png', args=['--proxy-to-worker', '-s', 'GL_TESTING=1'], manual_reference=True, post_build=self.post_manual_reftest)
+    self.btest('hello_world_gles_proxy.c', reference='gears.png', args=['--proxy-to-worker', '-s', 'GL_TESTING=1', '-DSTATIC_GEARS=1'], manual_reference=True, post_build=self.post_manual_reftest)
 
     # test noProxy option applied at runtime
 
