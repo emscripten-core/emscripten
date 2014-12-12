@@ -2872,7 +2872,7 @@ function registerizeHarder(ast) {
     function createReg(forName) {
       // Create a new register of type suitable for the given variable name.
       var allRegs = allRegsByType[localVars[forName]];
-      reg = nextReg++;
+      var reg = nextReg++;
       allRegs[reg] = regPrefixByType[localVars[forName]] + reg;
       return reg;
     }
@@ -3027,7 +3027,7 @@ function registerizeHarder(ast) {
       // Look through value-preserving casts, like "x | 0" => "x"
       if (node[0] === 'binary' && node[1] === '|') {
         if (node[3][0] === 'num' && node[3][1] === 0) {
-            return lookThroughCasts(node[2]);
+          return lookThroughCasts(node[2]);
         }
       }
       return node;
@@ -3202,7 +3202,7 @@ function registerizeHarder(ast) {
             joinJunction(jCondExit);
             joinJunction(jLoop);
             setJunction(jCondExit);
-            joinJunction(jExit)
+            joinJunction(jExit);
           }
           break;
         case 'for':
@@ -3273,7 +3273,7 @@ function registerizeHarder(ast) {
             setJunction(jCheckExit);
           }
           joinJunction(jExit);
-          popActiveLabels()
+          popActiveLabels();
           break;
         case 'return':
           if (node[1]) {
