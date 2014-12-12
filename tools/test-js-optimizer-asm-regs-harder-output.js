@@ -116,7 +116,7 @@ function linkedVars() {
  while (1) {
   i2 = 9;
   i1 = 5;
-  while (i2 > 0 || i1 > 0) {
+  while (i2 > 0 | i1 > 0) {
    if (i2 < i1) {
     i2 = i2 - 1;
    } else {
