@@ -40,6 +40,7 @@
 
 #define _GNU_SOURCE
 
+#include <assert.h>
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -613,10 +614,18 @@ gears_idle(void)
    static double tRot0 = -1.0, tRate0 = -1.0;
    double dt, t = glutGet(GLUT_ELAPSED_TIME) / 1000.0;
 
+#ifdef STATIC_GEARS
+   assert(t - tRot0 > 0); // Test that time does advance even though we are rendering a static image.
+#endif
+
    if (tRot0 < 0.0)
       tRot0 = t;
    dt = t - tRot0;
    tRot0 = t;
+
+#ifdef STATIC_GEARS
+   dt = t = 0.0; // Render the gears in a static position.
+#endif
 
    /* advance rotation for next frame */
    angle += 70.0 * dt;  /* 70 degrees per second */
