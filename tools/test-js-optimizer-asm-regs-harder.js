@@ -108,7 +108,7 @@ function iffey() {
 }
 function labelledJump(x) {
  x = x | 0;
- var label = 0
+ var label = 0;
  // y and z don't conflict, but only if you know about labelled jumps.
  var y = 0, z = 0;
  y = 2;
@@ -129,7 +129,7 @@ function linkedVars() {
  while (1) {
   outer1 = 9;
   outer2 = 5;
-  while (outer1 > 0 || outer2 > 0) {
+  while ((outer1 > 0) | (outer2 > 0)) {
    // All these copy assignment should be eliminated by var sharing.
    inner1_0 = outer1;
    inner2_0 = outer2;

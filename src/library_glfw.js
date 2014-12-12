@@ -527,6 +527,11 @@ var LibraryGLFW = {
     },
 
     getCursorPos: function(winid, x, y) {
+      setValue(x, Browser.mouseX, 'double');
+      setValue(y, Browser.mouseY, 'double');
+    },
+
+    getMousePos: function(winid, x, y) {
       setValue(x, Browser.mouseX, 'i32');
       setValue(y, Browser.mouseY, 'i32');
     },
@@ -799,7 +804,7 @@ var LibraryGLFW = {
   glfwGetMonitors: function(count) {
     setValue(count, 1, 'i32');
     if (!GLFW.monitors) {
-      GLFW.monitors = allocate(Int32Array([1]), 'i32', ALLOC_NORMAL);
+      GLFW.monitors = allocate([1, 0, 0, 0], 'i32', ALLOC_NORMAL);
     }
     return GLFW.monitors;
   },
@@ -1145,7 +1150,7 @@ var LibraryGLFW = {
   },
 
   glfwGetMousePos: function(x, y) {
-    GLFW.getCursorPos(GLFW.active.id, x, y);
+    GLFW.getMousePos(GLFW.active.id, x, y);
   },
 
   glfwSetMousePos: function(x, y) {
@@ -1188,12 +1193,12 @@ var LibraryGLFW = {
     _sleep(time);
   },
 
-  glfwEnable: function(token) {
+  glfwEnable: function(target) {
     target = GLFW.GLFW2ParamToGLFW3Param(target);
     GLFW.hints[target] = false;
   },
 
-  glfwDisable: function(token) {
+  glfwDisable: function(target) {
     target = GLFW.GLFW2ParamToGLFW3Param(target);
     GLFW.hints[target] = true;
   },

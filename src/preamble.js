@@ -340,13 +340,15 @@ function getCFunc(ident) {
 
 var cwrap, ccall;
 (function(){
-  var stack = 0;
   var JSfuncs = {
-    'stackSave' : function() {
-      stack = Runtime.stackSave();
+    // Helpers for cwrap -- it can't refer to Runtime directly because it might
+    // be renamed by closure, instead it calls JSfuncs['stackSave'].body to find
+    // out what the minified function name is.
+    'stackSave': function() {
+      Runtime.stackSave()
     },
-    'stackRestore' : function() {
-      Runtime.stackRestore(stack);
+    'stackRestore': function() {
+      Runtime.stackRestore()
     },
     // type conversion from js to c
     'arrayToC' : function(arr) {
@@ -371,6 +373,7 @@ var cwrap, ccall;
   ccall = function ccallFunc(ident, returnType, argTypes, args) {
     var func = getCFunc(ident);
     var cArgs = [];
+    var stack = 0;
 #if ASSERTIONS
     assert(returnType !== 'array', 'Return type should not be "array".');
 #endif
@@ -387,7 +390,7 @@ var cwrap, ccall;
     }
     var ret = func.apply(null, cArgs);
     if (returnType === 'string') ret = Pointer_stringify(ret);
-    if (stack !== 0) JSfuncs['stackRestore']();
+    if (stack !== 0) Runtime.stackRestore(stack);
     return ret;
   }
 
@@ -425,7 +428,7 @@ var cwrap, ccall;
     if (!numericArgs) {
       // Generate the code needed to convert the arguments from javascript
       // values to pointers
-      funcstr += JSsource['stackSave'].body + ';';
+      funcstr += 'var stack = ' + JSsource['stackSave'].body + ';';
       for (var i = 0; i < nargs; i++) {
         var arg = argNames[i], type = argTypes[i];
         if (type === 'number') continue;
@@ -447,7 +450,7 @@ var cwrap, ccall;
     }
     if (!numericArgs) {
       // If we had a stack, restore it
-      funcstr += JSsource['stackRestore'].body + ';';
+      funcstr += JSsource['stackRestore'].body.replace('()', '(stack)') + ';';
     }
     funcstr += 'return ret})';
     return eval(funcstr);
@@ -907,7 +910,7 @@ function demangle(func) {
       return ret + flushList();
     }
   }
-  var final = func;
+  var parsed = func;
   try {
     // Special-case the entry point, since its name differs from other name mangling.
     if (func == 'Object._main' || func == '_main') {
@@ -921,14 +924,14 @@ function demangle(func) {
       case 'n': return 'operator new()';
       case 'd': return 'operator delete()';
     }
-    final = parse();
+    parsed = parse();
   } catch(e) {
-    final += '?';
+    parsed += '?';
   }
-  if (final.indexOf('?') >= 0 && !hasLibcxxabi) {
+  if (parsed.indexOf('?') >= 0 && !hasLibcxxabi) {
     Runtime.warnOnce('warning: a problem occurred in builtin C++ name demangling; build with  -s DEMANGLE_SUPPORT=1  to link in libcxxabi demangling');
   }
-  return final;
+  return parsed;
 }
 
 function demangleAll(text) {

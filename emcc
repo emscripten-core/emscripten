@@ -475,7 +475,7 @@ try:
       opt_level = validate_arg_level(requested_level, 3, 'Invalid optimization level: ' + newargs[i])
       # We leave the -O option in place so that the clang front-end runs in that
       # optimization mode, but we disable the actual optimization passes, as we'll
-      # run them seperately.
+      # run them separately.
       newargs.append('-mllvm')
       newargs.append('-disable-llvm-optzns')
     elif newargs[i].startswith('--js-opts'):
@@ -860,6 +860,11 @@ try:
   # Apply optimization level settings
   shared.Settings.apply_opt_level(opt_level, noisy=True)
 
+  fastcomp = os.environ.get('EMCC_FAST_COMPILER') != '0'
+  if fastcomp:
+    # Set ASM_JS default here so that we can override it from the command line.
+    shared.Settings.ASM_JS = 1 if opt_level > 0 else 2
+
   # Apply -s settings in newargs here (after optimization levels, so they can override them)
   for change in settings_changes:
     key, value = change.split('=')
@@ -871,11 +876,9 @@ try:
     if key == 'EXPORTED_FUNCTIONS':
       shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = shared.Settings.EXPORTED_FUNCTIONS[:] # used for warnings in emscripten.py
 
-  fastcomp = os.environ.get('EMCC_FAST_COMPILER') != '0'
-
   if fastcomp:
-    shared.Settings.ASM_JS = 1 if opt_level > 0 else 2
     try:
+      assert shared.Settings.ASM_JS > 0, 'ASM_JS must be enabled in fastcomp'
       assert shared.Settings.UNALIGNED_MEMORY == 0, 'forced unaligned memory not supported in fastcomp'
       assert shared.Settings.CHECK_HEAP_ALIGN == 0, 'check heap align not supported in fastcomp - use SAFE_HEAP instead'
       assert shared.Settings.SAFE_DYNCALLS == 0, 'safe dyncalls not supported in fastcomp'
@@ -914,6 +917,9 @@ try:
       fastcomp_opts += ['-emscripten-asyncify-functions=' + ','.join(shared.Settings.ASYNCIFY_FUNCTIONS)]
       fastcomp_opts += ['-emscripten-asyncify-whitelist=' + ','.join(shared.Settings.ASYNCIFY_WHITELIST)]
 
+  else: # non-fastcomp
+    logging.warning('Using old (non-fastcomp) compiler due to EMCC_FAST_COMPILER=0 in the env. This is dangerous, as there are known bugs, and this code path is no longer maintained. Please use emscripten in the default configuration (i.e., do not disable fastcomp)')
+
   if shared.Settings.ASM_JS:
     assert opt_level >= 1 or fastcomp, 'asm.js requires -O1 or above'
 
@@ -929,7 +935,7 @@ try:
       js_opts = True
       logging.warning('enabling js opts to allow SAFE_HEAP to work properly')
 
-    if shared.Settings.ALLOW_MEMORY_GROWTH:
+    if shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.ASM_JS != 2:
       logging.warning('Disabling asm.js validation for memory growth (memory can grow, but you lose some amount of speed)');
       shared.Settings.ASM_JS = 2
 
@@ -1390,7 +1396,7 @@ try:
             passes = ['asmPreciseF32'] + passes
         if emit_symbol_map and 'minifyNames' in passes:
           passes += ['symbolMap='+target+'.symbols']
-        if minify_whitespace:
+        if minify_whitespace and 'last' in passes:
           passes += ['minifyWhitespace']
         logging.debug('applying js optimization passes: %s', passes)
         final = shared.Building.js_optimizer(final, passes, jcache, debug_level >= 4, js_optimizer_extra_info, just_split=just_split, just_concat=just_concat)
@@ -1404,35 +1410,27 @@ try:
         # must give it JSON and receive from it JSON
         chunks = []
         curr = []
-        native = False
         for p in passes:
-          if not shared.js_optimizer.use_native(p, source_map=debug_level >= 4):
-            if native:
-              chunks.append(['receiveJSON'] + curr + ['emitJSON'])
-              curr = []
-              native = False
-              curr.append('receiveJSON')
+          if len(curr) == 0:
             curr.append(p)
-          else: # p is native
-            if not native:
+          else:
+            native = shared.js_optimizer.use_native(p, source_map=debug_level >= 4)
+            last_native = shared.js_optimizer.use_native(curr[-1], source_map=debug_level >= 4)
+            if native == last_native:
+              curr.append(p)
+            else:
               curr.append('emitJSON')
               chunks.append(curr)
-              curr = []
-            native = True
-            curr.append(p)
+              curr = ['receiveJSON', p]
         if len(curr) > 0:
-          if native:
-            curr = ['receiveJSON'] + curr + ['emitJSON']
           chunks.append(curr)
-          if native:
-            chunks.append(['receiveJSON'])
         if len(chunks) == 1:
           run_passes(chunks[0], title, just_split=False, just_concat=False)
         else:
           for i in range(len(chunks)):
             run_passes(chunks[i], 'js_opts_' + str(i), just_split='receiveJSON' in chunks[i], just_concat='emitJSON' in chunks[i])
       else:
-        # DEBUG 2, run each pass seperately
+        # DEBUG 2, run each pass separately
         for p in passes:
           js_optimizer_queue = [p]
           flush_js_optimizer_queue(p)

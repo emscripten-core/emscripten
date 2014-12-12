@@ -582,6 +582,7 @@ module({
         });
 
         test("can get global", function(){
+            /*jshint evil:true*/
             assert.equal((new Function("return this;"))(), cm.embind_test_getglobal());
         });
 
@@ -914,6 +915,29 @@ module({
             var str = vec.get(0);
             assert.equal('string #1', str.get());
             str.delete();
+            vec.delete();
+        });
+
+        test("resize appends the given value", function() {
+            var vec = cm.emval_test_return_vector();
+
+            vec.resize(5, 42);
+            assert.equal(5, vec.size());
+            assert.equal(10, vec.get(0));
+            assert.equal(20, vec.get(1));
+            assert.equal(30, vec.get(2));
+            assert.equal(42, vec.get(3));
+            assert.equal(42, vec.get(4));
+            vec.delete();
+        });
+
+        test("resize preserves content when shrinking", function() {
+            var vec = cm.emval_test_return_vector();
+
+            vec.resize(2, 42);
+            assert.equal(2, vec.size());
+            assert.equal(10, vec.get(0));
+            assert.equal(20, vec.get(1));
             vec.delete();
         });
     });

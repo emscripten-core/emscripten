@@ -333,6 +333,10 @@ function traverseChildrenInExecutionOrder(node, definitely, maybe, arg) {
       definitely(node[3], arg);
       break;
     }
+    case 'dot': {
+      definitely(node[1], arg);
+      break;
+    }
     case 'unary-prefix': case 'label': {
       definitely(node[2], arg);
       break;
@@ -353,7 +357,7 @@ function traverseChildrenInExecutionOrder(node, definitely, maybe, arg) {
     }
     case 'defun': case 'func': case 'block': {
       var stats = getStatements(node);
-      if (stats.length === 0) break;
+      if (!stats || stats.length === 0) break;
       for (var i = 0; i < stats.length; i++) {
         definitely(stats[i], arg);
         // check if we might break, if we have more to do
@@ -2868,7 +2872,7 @@ function registerizeHarder(ast) {
     function createReg(forName) {
       // Create a new register of type suitable for the given variable name.
       var allRegs = allRegsByType[localVars[forName]];
-      reg = nextReg++;
+      var reg = nextReg++;
       allRegs[reg] = regPrefixByType[localVars[forName]] + reg;
       return reg;
     }
@@ -3023,7 +3027,7 @@ function registerizeHarder(ast) {
       // Look through value-preserving casts, like "x | 0" => "x"
       if (node[0] === 'binary' && node[1] === '|') {
         if (node[3][0] === 'num' && node[3][1] === 0) {
-            return lookThroughCasts(node[2]);
+          return lookThroughCasts(node[2]);
         }
       }
       return node;
@@ -3198,7 +3202,7 @@ function registerizeHarder(ast) {
             joinJunction(jCondExit);
             joinJunction(jLoop);
             setJunction(jCondExit);
-            joinJunction(jExit)
+            joinJunction(jExit);
           }
           break;
         case 'for':
@@ -3269,7 +3273,7 @@ function registerizeHarder(ast) {
             setJunction(jCheckExit);
           }
           joinJunction(jExit);
-          popActiveLabels()
+          popActiveLabels();
           break;
         case 'return':
           if (node[1]) {
@@ -3650,9 +3654,9 @@ function registerizeHarder(ast) {
           junctionVariables[name].conf[otherName] = 1;
         }
         for (var b in junc.outblocks) {
-          // It conflits with any output vars of successor blocks,
+          // It conflicts with any output vars of successor blocks,
           // if they're assigned before it goes dead in that block.
-          block = blocks[b];
+          var block = blocks[b];
           var jSucc = junctions[block.exit];
           for (var otherName in jSucc.live) {
             if (junc.live[otherName]) continue;
@@ -3751,7 +3755,7 @@ function registerizeHarder(ast) {
       // Mark the point at which each input reg becomes dead.
       // Variables alive before this point must not be assigned
       // to that register.
-      var inputVars = {}
+      var inputVars = {};
       var inputDeadLoc = {};
       var inputVarsByReg = {};
       for (var name in jExit.live) {
@@ -3861,7 +3865,7 @@ function registerizeHarder(ast) {
 
     // Assign registers to function params based on entry junction
 
-    var paramRegs = {}
+    var paramRegs = {};
     if (fun[2]) {
       for (var i = 0; i < fun[2].length; i++) {
         var allRegs = allRegsByType[localVars[fun[2][i]]];
@@ -5367,7 +5371,7 @@ function outline(ast) {
     return ['assign', true, dst, src];
   }
   function makeStackAccess(type, pos) { // TODO: float64, not 32
-    return ['sub', ['name', type == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', pos]], ['num', '2']]];
+    return ['sub', ['name', type == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', pos]], ['num', 2]]];
   }
   function makeIf(cond, then, else_) {
     var ret = ['if', cond, ['block', then]];
@@ -5427,7 +5431,7 @@ function outline(ast) {
     var sortedWrites = keys(codeInfo.writes).sort(orderFunc);
     sortedReadsAndWrites.forEach(function(v) {
       if (!(v in owned)) {
-        reps.push(['stat', ['assign', true, ['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
+        reps.push(['stat', ['assign', true, ['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', 2]]], ['name', v]]]);
       }
     });
     // wipe out control variable
@@ -5438,7 +5442,7 @@ function outline(ast) {
     // add unspills
     sortedWrites.forEach(function(v) {
       if (!(v in owned)) {
-        reps.push(['stat', ['assign', true, ['name', v], makeAsmCoercion(['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], getAsmType(v, asmData))]]);
+        reps.push(['stat', ['assign', true, ['name', v], makeAsmCoercion(['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', 2]]], getAsmType(v, asmData))]]);
       }
     });
 
@@ -5528,7 +5532,7 @@ function outline(ast) {
       if (codeInfo.hasReturn) {
         reps.push(makeIf(
           makeComparison(makeAsmCoercion(['name', 'tempValue'], ASM_INT), '==', ['num', CONTROL_RETURN_VOID]),
-          [['stat', ['return']]]
+          [['stat', ['return', null]]]
         ));
       }
       for (var returnType in codeInfo.hasReturnType) {
@@ -5540,7 +5544,7 @@ function outline(ast) {
       if (codeInfo.hasBreak) {
         reps.push(makeIf(
           makeComparison(makeAsmCoercion(['name', 'tempValue'], ASM_INT), '==', ['num', CONTROL_BREAK]),
-          [['stat', ['break']]]
+          [['stat', ['break', null]]]
         ));
         if (keys(codeInfo.breaks).length > 0) {
           reps.push(makeIf(
@@ -5555,7 +5559,7 @@ function outline(ast) {
       if (codeInfo.hasContinue) {
         reps.push(makeIf(
           makeComparison(makeAsmCoercion(['name', 'tempValue'], ASM_INT), '==', ['num', CONTROL_CONTINUE]),
-          [['stat', ['continue']]]
+          [['stat', ['continue', null]]]
         ));
         if (keys(codeInfo.continues).length > 0) {
           reps.push(makeIf(
@@ -5572,12 +5576,12 @@ function outline(ast) {
     sortedReadsAndWrites.reverse();
     sortedReadsAndWrites.forEach(function(v) {
       if (!(v in owned)) {
-        code.unshift(['stat', ['assign', true, ['name', v], makeAsmCoercion(['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], getAsmType(v, asmData))]]);
+        code.unshift(['stat', ['assign', true, ['name', v], makeAsmCoercion(['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', 2]]], getAsmType(v, asmData))]]);
       }
     });
     sortedWrites.forEach(function(v) {
       if (!(v in owned)) {
-        code.push(['stat', ['assign', true, ['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
+        code.push(['stat', ['assign', true, ['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', 2]]], ['name', v]]]);
       }
     });
     // finalize
@@ -5940,19 +5944,19 @@ function safeHeap(ast) {
         // SAFE_HEAP_STORE(ptr, value, bytes, isFloat) 
         switch (heap) {
           case 'HEAP8':   case 'HEAPU8': {
-            return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_INT), ['num', 1], ['num', '0']]];
+            return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_INT), ['num', 1], ['num', 0]]];
           }
           case 'HEAP16':  case 'HEAPU16': {
-            return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_INT), ['num', 2], ['num', '0']]];
+            return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_INT), ['num', 2], ['num', 0]]];
           }
           case 'HEAP32':  case 'HEAPU32': {
-            return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_INT), ['num', 4], ['num', '0']]];
+            return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_INT), ['num', 4], ['num', 0]]];
           }
           case 'HEAPF32': {
-            return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_DOUBLE), ['num', 4], ['num', '1']]];
+            return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_DOUBLE), ['num', 4], ['num', 1]]];
           }
           case 'HEAPF64': {
-            return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_DOUBLE), ['num', 8], ['num', '1']]];
+            return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_DOUBLE), ['num', 8], ['num', 1]]];
           }
           default: throw 'bad heap ' + heap;
         }
@@ -5966,28 +5970,28 @@ function safeHeap(ast) {
         // SAFE_HEAP_LOAD(ptr, bytes, isFloat) 
         switch (heap) {
           case 'HEAP8': {
-            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 1], ['num', '0'], ['num', '0']]], ASM_INT);
+            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 1], ['num', 0], ['num', 0]]], ASM_INT);
           }
           case 'HEAPU8': {
-            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 1], ['num', '0'], ['num', '1']]], ASM_INT);
+            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 1], ['num', 0], ['num', 1]]], ASM_INT);
           }
           case 'HEAP16': {
-            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 2], ['num', '0'], ['num', '0']]], ASM_INT);
+            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 2], ['num', 0], ['num', 0]]], ASM_INT);
           }
           case 'HEAPU16': {
-            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 2], ['num', '0'], ['num', '1']]], ASM_INT);
+            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 2], ['num', 0], ['num', 1]]], ASM_INT);
           }
           case 'HEAP32': {
-            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', '0'], ['num', '0']]], ASM_INT);
+            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', 0], ['num', 0]]], ASM_INT);
           }
           case 'HEAPU32': {
-            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', '0'], ['num', '1']]], ASM_INT);
+            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', 0], ['num', 1]]], ASM_INT);
           }
           case 'HEAPF32': {
-            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', '1'], ['num', '0']]], ASM_DOUBLE);
+            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', 1], ['num', 0]]], ASM_DOUBLE);
           }
           case 'HEAPF64': {
-            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 8], ['num', '1'], ['num', '0']]], ASM_DOUBLE);
+            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 8], ['num', 1], ['num', 0]]], ASM_DOUBLE);
           }
           default: throw 'bad heap ' + heap;
         }

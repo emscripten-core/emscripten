@@ -1878,7 +1878,7 @@ LibraryManager.library = {
           }
           unget();
         }
-        if (buffer.length === 0) return 0;  // Failure.
+        if (buffer.length === 0) return fields; // Stop here.
         if (suppressAssignment) continue;
 
         var text = buffer.join('');
@@ -2439,7 +2439,14 @@ LibraryManager.library = {
   fflush: function(stream) {
     // int fflush(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fflush.html
-    // we don't currently perform any user-space buffering of data
+
+    /*
+    // Disabled, see https://github.com/kripken/emscripten/issues/2770
+    stream = FS.getStreamFromPtr(stream);
+    if (stream.stream_ops.flush) {
+      stream.stream_ops.flush(stream);
+    }
+    */
   },
   fgetc__deps: ['$FS', 'fread'],
   fgetc__postset: '_fgetc.ret = allocate([0], "i8", ALLOC_STATIC);',
@@ -5329,7 +5336,7 @@ LibraryManager.library = {
       '%R': '%H:%M',                    // Replaced by the time in 24-hour notation
       '%T': '%H:%M:%S',                 // Replaced by the time
       '%x': '%m/%d/%y',                 // Replaced by the locale's appropriate date representation
-      '%X': '%H:%M:%S',                 // Replaced by the locale's appropriate date representation
+      '%X': '%H:%M:%S'                  // Replaced by the locale's appropriate date representation
     };
     for (var rule in EXPANSION_RULES_1) {
       pattern = pattern.replace(new RegExp(rule, 'g'), EXPANSION_RULES_1[rule]);
@@ -8565,8 +8572,10 @@ LibraryManager.library = {
         }
       } else if (typeof dateNow !== 'undefined') {
         _emscripten_get_now.actual = dateNow;
-      } else if ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && self['performance'] && self['performance']['now']) {
+      } else if (typeof self === 'object' && self['performance'] && typeof self['performance']['now'] === 'function') {
         _emscripten_get_now.actual = function _emscripten_get_now_actual() { return self['performance']['now'](); };
+      } else if (typeof performance === 'object' && typeof performance['now'] === 'function') {
+        _emscripten_get_now.actual = function _emscripten_get_now_actual() { return performance['now'](); };
       } else {
         _emscripten_get_now.actual = Date.now;
       }

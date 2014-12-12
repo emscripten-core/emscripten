@@ -118,13 +118,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         (['-o', 'something.js', '-O2'],                   2, None, 0, 1),
         (['-o', 'something.js', '-O2', '-g'],             2, None, 0, 0),
         (['-o', 'something.js', '-Os'],                   2, None, 0, 1),
-        (['-o', 'something.js', '-O3', '-s', 'ASM_JS=0'], 3, None, 0, 1),
+        (['-o', 'something.js', '-O3'],                   3, None, 0, 1),
         # and, test compiling to bitcode first
         (['-o', 'something.bc'], 0, [],      0, 0),
         (['-o', 'something.bc', '-O0'], 0, [], 0, 0),
         (['-o', 'something.bc', '-O1'], 1, ['-O1'], 0, 0),
         (['-o', 'something.bc', '-O2'], 2, ['-O2'], 0, 0),
-        (['-o', 'something.bc', '-O3'], 3, ['-O3', '-s', 'ASM_JS=0'], 0, 0),
+        (['-o', 'something.bc', '-O3'], 3, ['-O3'], 0, 0),
         (['-O1', '-o', 'something.bc'], 1, [], 0, 0),
       ]:
         print params, opt_level, bc_params, closure, has_malloc
@@ -1905,13 +1905,15 @@ int f() {
        ['asm', 'registerizeHarder']),
       (path_from_root('tools', 'test-js-optimizer-asm-regs-min.js'), open(path_from_root('tools', 'test-js-optimizer-asm-regs-min-output.js')).read(),
        ['asm', 'registerize', 'minifyLocals']),
-      (path_from_root('tools', 'test-js-optimizer-asm-pre.js'), open(path_from_root('tools', 'test-js-optimizer-asm-pre-output.js')).read(),
+      (path_from_root('tools', 'test-js-optimizer-asm-pre.js'), [open(path_from_root('tools', 'test-js-optimizer-asm-pre-output.js')).read(), open(path_from_root('tools', 'test-js-optimizer-asm-pre-output2.js')).read()],
        ['asm', 'simplifyExpressions']),
       (path_from_root('tools', 'test-js-optimizer-asm-pre-f32.js'), open(path_from_root('tools', 'test-js-optimizer-asm-pre-output-f32.js')).read(),
        ['asm', 'asmPreciseF32', 'simplifyExpressions', 'optimizeFrounds']),
       (path_from_root('tools', 'test-js-optimizer-asm-pre-f32.js'), open(path_from_root('tools', 'test-js-optimizer-asm-pre-output-f32-nosimp.js')).read(),
        ['asm', 'asmPreciseF32', 'optimizeFrounds']),
-      (path_from_root('tools', 'test-js-optimizer-asm-last.js'), open(path_from_root('tools', 'test-js-optimizer-asm-last-output.js')).read(),
+      (path_from_root('tools', 'test-js-optimizer-asm-last.js'), [open(path_from_root('tools', 'test-js-optimizer-asm-lastOpts-output.js')).read(), open(path_from_root('tools', 'test-js-optimizer-asm-lastOpts-output2.js')).read()],
+       ['asm', 'asmLastOpts']),
+      (path_from_root('tools', 'test-js-optimizer-asm-last.js'), [open(path_from_root('tools', 'test-js-optimizer-asm-last-output.js')).read(), open(path_from_root('tools', 'test-js-optimizer-asm-last-output2.js')).read()],
        ['asm', 'asmLastOpts', 'last']),
       (path_from_root('tools', 'test-js-optimizer-asm-relocate.js'), open(path_from_root('tools', 'test-js-optimizer-asm-relocate-output.js')).read(),
        ['asm', 'relocate']),
@@ -1933,13 +1935,25 @@ int f() {
        ['asm', 'ensureLabelSet']),
     ]:
       print input, passes
+
+      if type(expected) == str: expected = [expected]
+      expected = map(lambda out: out.replace('\n\n', '\n').replace('\n\n', '\n'), expected)
+
       # test calling js optimizer
       print '  js'
       output = Popen(NODE_JS + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
-      self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n'))
+
+      def check_js(js):
+        self.assertIdentical(expected, js.replace('\r\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n'))
+      check_js(output)
+
       if js_optimizer.use_native(passes):
         # test calling native
-        print '  native'
+        def check_json():
+          Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), output_temp, 'receiveJSON'], stdin=PIPE, stdout=open(output_temp + '.js', 'w')).communicate()
+          output = open(output_temp + '.js').read()
+          self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n'))
+
         self.clear()
         input_temp = 'temp.js'
         output_temp = 'output.js'
@@ -1950,10 +1964,19 @@ int f() {
           json = open(input_temp + '.js').read()
           json += '\n' + original[original.find('// EXTRA_INFO:'):]
           open(input_temp + '.js', 'w').write(json)
-        output = Popen([js_optimizer.get_native_optimizer(), input_temp + '.js'] + passes, stdin=PIPE, stdout=open(output_temp, 'w')).communicate()[0]
-        Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), output_temp, 'receiveJSON'], stdin=PIPE, stdout=open(output_temp + '.js', 'w')).communicate()
-        output = open(output_temp + '.js').read()
-        self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n'))
+
+        if 'last' not in passes: # last is only relevant when we emit JS
+          print '  native (receiveJSON)'
+          output = Popen([js_optimizer.get_native_optimizer(), input_temp + '.js'] + passes + ['receiveJSON', 'emitJSON'], stdin=PIPE, stdout=open(output_temp, 'w')).communicate()[0]
+          check_json()
+
+          print '  native (parsing JS)'
+          output = Popen([js_optimizer.get_native_optimizer(), input] + passes + ['emitJSON'], stdin=PIPE, stdout=open(output_temp, 'w')).communicate()[0]
+          check_json()
+
+        print '  native (emitting JS)'
+        output = Popen([js_optimizer.get_native_optimizer(), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
+        check_js(output)
 
   def test_m_mm(self):
     open(os.path.join(self.get_dir(), 'foo.c'), 'w').write('''#include <emscripten.h>''')
@@ -2374,19 +2397,8 @@ int main()
       self.assertContained('File size: 724', out)
 
   def test_simd(self):
-    if get_clang_version() == '3.2':
-      simd_args = ['-O3', '-vectorize', '-vectorize-loops']
-    elif get_clang_version() == '3.3':
-      simd_args = ['-O3', '-vectorize-loops', '-vectorize-slp-aggressive', '-bb-vectorize-aligned-only'] # XXX this generates <2 x float> , '-vectorize-slp']
-    elif get_clang_version() == '3.4':
-      simd_args = ['-O3'] # vectorization on by default, SIMD=1 makes us not disable it
-    else:
-      raise Exception('unknown llvm version')
-
-    simd_args += ['-bb-vectorize-vector-bits=128', '-force-vector-width=4']
-
-    self.clear()
-    Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-s', 'SIMD=1', '-DSP', '--llvm-opts', str(simd_args), '-s', 'PRECISE_F32=1']).communicate()
+    assert get_clang_version() == '3.4'
+    Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-s', 'SIMD=1', '-DSP', '-s', 'PRECISE_F32=1']).communicate()
     self.assertContained('Unrolled Single  Precision', run_js('a.out.js'))
 
   def test_dependency_file(self):
@@ -2612,7 +2624,7 @@ int main(int argc, char **argv) {
         exit = 1-no_exit
         assert 'coming around' in output
         assert ('going away' in output) == exit, 'destructors should not run if no exit'
-        assert ('_ZN5WasteILi2EED1Ev' in src) == exit, 'destructors should not appear if no exit'
+        assert ('_ZN5WasteILi2EED' in src) == exit, 'destructors should not appear if no exit'
         assert ('atexit(' in src) == exit, 'atexit should not appear or be called'
 
   def test_os_oz(self):
@@ -3529,7 +3541,7 @@ main()
     ''')
     Popen([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'SAFE_HEAP=1']).communicate()
     assert os.path.exists('a.out.js') # build should succeed
-    self.assertContained('segmentation fault loading 4 bytes from address 0', run_js('a.out.js', assert_returncode=None, stderr=PIPE)) # program should segfault
+    self.assertContained(('trap!', 'segmentation fault loading 4 bytes from address 0'), run_js('a.out.js', assert_returncode=None, stderr=PIPE)) # program should segfault
 
   def test_only_force_stdlibs(self):
     def test(name):
@@ -4408,20 +4420,25 @@ int main(void) {
     assert output == ('hello, world!\n \n', ''), 'expected no output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % output
 
   def test_native_optimizer(self):
-    old_debug = os.environ.get('EMCC_DEBUG')
-    old_native = os.environ.get('EMCC_NATIVE_OPTIMIZER')
-    try:
-      os.environ['EMCC_DEBUG'] = '1'
-      os.environ['EMCC_NATIVE_OPTIMIZER'] = '1'
-      out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2'], stderr=PIPE).communicate()
-    finally:
-      if old_debug: os.environ['EMCC_DEBUG'] = old_debug
-      else: del os.environ['EMCC_DEBUG']
-      if old_native: os.environ['EMCC_NATIVE_OPTIMIZER'] = old_native
-      else: del os.environ['EMCC_NATIVE_OPTIMIZER']
-    self.assertContained('js optimizer using native', err)
-    assert os.path.exists('a.out.js'), err
-    self.assertContained('hello, world!', run_js('a.out.js'))
+    def test(args, expected):
+      print args, expected
+      old_debug = os.environ.get('EMCC_DEBUG')
+      old_native = os.environ.get('EMCC_NATIVE_OPTIMIZER')
+      try:
+        os.environ['EMCC_DEBUG'] = '1'
+        os.environ['EMCC_NATIVE_OPTIMIZER'] = '1'
+        out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2',] + args, stderr=PIPE).communicate()
+      finally:
+        if old_debug: os.environ['EMCC_DEBUG'] = old_debug
+        else: del os.environ['EMCC_DEBUG']
+        if old_native: os.environ['EMCC_NATIVE_OPTIMIZER'] = old_native
+        else: del os.environ['EMCC_NATIVE_OPTIMIZER']
+      assert err.count('js optimizer using native') == expected, [err, expected]
+      assert os.path.exists('a.out.js'), err
+      self.assertContained('hello, world!', run_js('a.out.js'))
+
+    test([], 1)
+    test(['-s', 'OUTLINING_LIMIT=100000'], 2) # 2, because we run them before and after outline, which is non-native
 
   def test_emconfigure_js_o(self):
     # issue 2994
@@ -4432,4 +4449,47 @@ int main(void) {
       assert 'hello, world!' in run_js(self.in_dir('a.out.js'))
     finally:
       del os.environ['EMCONFIGURE_JS']
+
+  def test_emcc_c_multi(self):
+    def test(args, llvm_opts=None):
+      print args
+      lib = r'''
+        int mult() { return 1; }
+      '''
+
+      lib_name = 'libA.c'
+      open(lib_name, 'w').write(lib)
+      main = r'''
+        #include <stdio.h>
+        int mult();
+        int main() {
+          printf("result: %d\n", mult());
+          return 0;
+        }
+      '''
+      main_name = 'main.c'
+      open(main_name, 'w').write(main)
+
+      if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+      try:
+        os.environ['EMCC_DEBUG'] = '1'
+        out, err = Popen([PYTHON, EMCC, '-c', main_name, lib_name] + args, stderr=PIPE).communicate()
+      finally:
+        del os.environ['EMCC_DEBUG']
+
+      if args:
+        assert err.count('-disable-vectorize') == 2, err # specified twice, once per file
+
+        assert err.count('emcc: LLVM opts: ' + llvm_opts + ' -disable-vectorize') == 2, err # exactly once per invocation of optimizer
+      else:
+        assert err.count('-disable-vectorize') == 0, err # no optimizations
+
+      Popen([PYTHON, EMCC, main_name.replace('.c', '.o'), lib_name.replace('.c', '.o')]).communicate()
+
+      self.assertContained('result: 1', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
+    test([])
+    test(['-O2'], '-O3')
+    test(['-Oz'], '-Oz')
+    test(['-Os'], '-Os')
 

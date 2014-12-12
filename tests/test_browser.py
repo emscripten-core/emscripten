@@ -758,7 +758,7 @@ window.close = function() {
     self.btest('sdl_canvas_proxy.c', reference='sdl_canvas_proxy.png', args=['--proxy-to-worker', '--preload-file', 'data.txt'], manual_reference=True, post_build=self.post_manual_reftest)
 
   def test_glgears_proxy(self):
-    self.btest('hello_world_gles_proxy.c', reference='gears.png', args=['--proxy-to-worker', '-s', 'GL_TESTING=1'], manual_reference=True, post_build=self.post_manual_reftest)
+    self.btest('hello_world_gles_proxy.c', reference='gears.png', args=['--proxy-to-worker', '-s', 'GL_TESTING=1', '-DSTATIC_GEARS=1'], manual_reference=True, post_build=self.post_manual_reftest)
 
     # test noProxy option applied at runtime
 
@@ -1138,6 +1138,10 @@ keydown(100);keyup(100); // trigger the end
   def test_emscripten_get_now(self):
     self.btest('emscripten_get_now.cpp', '1')
 
+  def test_fflush(self):
+    return self.skip('Skipping due to https://github.com/kripken/emscripten/issues/2770')
+    self.btest('test_fflush.cpp', '0', args=['-s', 'NO_EXIT_RUNTIME=1', '--shell-file', path_from_root('tests', 'test_fflush.html')])
+
   def test_file_db(self):
     secret = str(time.time())
     open('moar.txt', 'w').write(secret)
@@ -1497,6 +1501,9 @@ keydown(100);keyup(100); // trigger the end
 
   def test_gl_glteximage(self):
     self.btest('gl_teximage.c', '1')
+
+  def test_gl_textures(self):
+    self.btest('gl_textures.cpp', '0')
 
   def test_gl_ps(self):
     # pointers and a shader

@@ -149,12 +149,12 @@ class sanity(RunnerCore):
     f = open(CONFIG_FILE, 'a')
     f.write('CLOSURE_COMPILER = "/tmp/nowhere/nothingtoseehere/kjadsfkjwelkjsdfkqgas/nonexistent.txt"\n')
     f.close()
-    output = self.check_working([EMCC, '-O2', '-s', 'ASM_JS=0', '--closure', '1', 'tests/hello_world.cpp'], CLOSURE_FATAL)
+    output = self.check_working([EMCC, '-O2', '-s', '--closure', '1', 'tests/hello_world.cpp'], CLOSURE_FATAL)
 
     # With a working path, all is well
     restore()
     try_delete('a.out.js')
-    output = self.check_working([EMCC, '-O2', '-s', 'ASM_JS=0', '--closure', '1', 'tests/hello_world.cpp'], '')
+    output = self.check_working([EMCC, '-O2', '-s', '--closure', '1', 'tests/hello_world.cpp'], '')
     assert os.path.exists('a.out.js'), output
 
   def test_llvm(self):
@@ -450,17 +450,6 @@ fi
               assert os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size > 1000000, 'libc++ is big'
               assert os.stat(basebc_name).st_size > 1000000, 'libc++ is indeed big'
               assert os.stat(dcebc_name).st_size < os.stat(basebc_name).st_size*0.666, 'Dead code elimination must remove most of libc++'
-            # should only have metadata in -O0, not 1 and 2
-            if i > 0:
-              ll = None
-              for ll_name in ll_names:
-                if os.path.exists(ll_name):
-                  check_call([LLVM_DIS, ll_name, '-o', ll_name + '.ll'])
-                  ll = open(ll_name + '.ll').read()
-                  break
-              assert ll
-              print 'metas:', ll.count('\n!')
-              assert ll.count('\n!') < 25 # a few lines are left even in -O1 and -O2
       finally:
         del os.environ['EMCC_DEBUG']
 
@@ -627,4 +616,80 @@ fi
       assert os.path.exists(PORTS_DIR)
 
       second_use()
+
+  def test_native_optimizer(self):
+    restore()
+    Cache.erase()
+
+    def build():
+      return self.check_working([EMCC, '-O2', 'tests/hello_world.c'], 'running js post-opts')
+
+    def test():
+      self.assertContained('hello, world!', run_js('a.out.js'))
+
+    try:
+      os.environ['EMCC_DEBUG'] = '1'
+
+      # basic usage or lack of usage
+      for native in [None, 0, 1]:
+        print native
+        try:
+          if native is not None: os.environ['EMCC_NATIVE_OPTIMIZER'] = str(native)
+          output = build()
+          assert ('js optimizer using native' in output) == (not not native)
+          test()
+          if native:
+            assert 'building native optimizer' in output
+            # compile again, no rebuild of optimizer
+            output = build()
+            assert 'building native optimizer' not in output
+            assert 'js optimizer using native' in output
+            test()
+        finally:
+          if native is not None: del os.environ['EMCC_NATIVE_OPTIMIZER']
+
+      # force a build failure, see we fall back to non-native
+
+      Cache.erase()
+
+      try:
+        os.environ['EMCC_NATIVE_OPTIMIZER'] = '1'
+
+        try:
+          # break it
+          f = path_from_root('tools', 'optimizer', 'optimizer.cpp')
+          src = open(f).read()
+          bad = src.replace('main', '!waka waka<')
+          assert bad != src
+          open(f, 'w').write(bad)
+          # first try
+          output = build()
+          assert 'failed to build native optimizer' in output, output
+          assert 'js optimizer using native' not in output
+          test() # still works, without native optimizer
+          # second try, see previous failure
+          output = build()
+          assert 'failed to build native optimizer' not in output
+          assert 'seeing that optimizer could not be built' in output
+          test() # still works, without native optimizer
+          # clear cache, try again
+          Cache.erase()
+          output = build()
+          assert 'failed to build native optimizer' in output
+          test() # still works, without native optimizer
+        finally:
+          open(f, 'w').write(src)
+
+        Cache.erase()
+
+        # now it should work again
+        output = build()
+        assert 'js optimizer using native' in output
+        test() # still works, without native optimizer
+
+      finally:
+        os.environ['EMCC_NATIVE_OPTIMIZER'] = '0'
+
+    finally:
+      del os.environ['EMCC_DEBUG']
 

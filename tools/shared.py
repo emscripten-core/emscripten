@@ -294,15 +294,16 @@ if EM_POPEN_WORKAROUND and os.name == 'nt':
 
 # Expectations
 
-EXPECTED_LLVM_VERSION = (3,3)
+EXPECTED_LLVM_VERSION = (3,4)
 
 actual_clang_version = None
 
 def get_clang_version():
   global actual_clang_version
   if actual_clang_version is None:
-    ver = Popen([CLANG, '-v'], stderr=PIPE).communicate()[1].split('\n')[0].split(' ')
-    actual_clang_version = ver[ver.index('version')+1]
+    response = Popen([CLANG, '-v'], stderr=PIPE).communicate()[1]
+    m = re.search(r'[Vv]ersion\s+(\d+\.\d+)', response)
+    actual_clang_version = m and m.group(1)
   return actual_clang_version
 
 def check_clang_version():
@@ -424,6 +425,8 @@ def generate_sanity():
 
 def check_sanity(force=False):
   try:
+    if os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
+      return
     reason = None
     if not CONFIG_FILE:
       return # config stored directly in EM_CONFIG => skip sanity checks
@@ -1384,9 +1387,14 @@ class Building:
   def llvm_opt(filename, opts, out=None):
     if type(opts) is int:
       opts = Building.pick_llvm_opts(opts)
+    opts = opts[:]
     #opts += ['-debug-pass=Arguments']
-    if get_clang_version() == '3.4' and not Settings.SIMD:
-      opts += ['-disable-loop-vectorization', '-disable-slp-vectorization'] # llvm 3.4 has these on by default
+    if get_clang_version() >= '3.4':
+      if not Settings.SIMD:
+        opts += ['-disable-vectorize']
+      else:
+        opts += ['-bb-vectorize-vector-bits=128', '-force-vector-width=4']
+
     logging.debug('emcc: LLVM opts: ' + ' '.join(opts))
     target = out or (filename + '.opt.bc')
     output = Popen([LLVM_OPT, filename] + opts + ['-o', target], stdout=PIPE).communicate()[0]

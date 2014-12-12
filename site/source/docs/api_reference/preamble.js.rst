@@ -43,7 +43,7 @@ Calling compiled C functions from JavaScript
 		
 			::
 
-				-s EXPORTED_FUNCTIONS='["_main", "_myfunc"]'
+				-s EXPORTED_FUNCTIONS="['_main', '_myfunc']"
 			
 			Exported functions can be called as normal: ::
 			
@@ -87,7 +87,7 @@ Calling compiled C functions from JavaScript
 		
 			::
 
-				-s EXPORTED_FUNCTIONS='["_main", "_myfunc"]'
+				-s EXPORTED_FUNCTIONS="['_main', '_myfunc']"
 			
 			Exported functions can be called as normal: ::
 			

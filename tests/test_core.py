@@ -4347,6 +4347,35 @@ def process(filename):
     self.emcc_args += ['--embed-file', 'three_numbers.txt']
     self.do_run(src, 'match = 3\nx = -1.0, y = 0.1, z = -0.1\n')
 
+  def test_fscanf_2(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
+
+    open('a.txt', 'w').write('''1/2/3 4/5/6 7/8/9
+''')
+    self.emcc_args += ['--embed-file', 'a.txt']
+    self.do_run(r'''#include <cstdio>
+#include <iostream>
+
+using namespace std;
+
+int
+main( int argv, char ** argc ) {
+    cout << "fscanf test" << endl;
+
+    FILE * file;
+    file = fopen("a.txt", "rb");
+    int vertexIndex[4];
+    int normalIndex[4];
+    int uvIndex[4];
+
+    int matches = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexIndex[0], &uvIndex[0], &normalIndex[0], &vertexIndex    [1], &uvIndex[1], &normalIndex[1], &vertexIndex[2], &uvIndex[2], &normalIndex[2], &vertexIndex[3], &uvIndex[3], &normalIndex[3]); 
+
+    cout << matches << endl;
+
+    return 0;
+}
+''', 'fscanf test\n9\n')
+
   def test_fileno(self):
     if self.emcc_args is None: return self.skip('requires emcc')
     open(os.path.join(self.get_dir(), 'empty.txt'), 'w').write('')
@@ -4931,6 +4960,20 @@ PORT: 3979
     self.emcc_args += ['--js-library', os.path.join(self.get_dir(), 'mylib1.js'), '--js-library', os.path.join(self.get_dir(), 'mylib2.js')]
     self.do_run(open(os.path.join(self.get_dir(), 'main.cpp'), 'r').read(), 'hello from lib!\n*32*\n')
 
+  def test_unicode_js_library(self):
+    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
+      #include <stdio.h>
+      extern "C" {
+        extern void printey();
+      }
+      int main() {
+        printey();
+        return 0;
+      }
+    ''')
+    self.emcc_args += ['--js-library', path_from_root('tests', 'unicode_library.js')]
+    self.do_run(open(os.path.join(self.get_dir(), 'main.cpp'), 'r').read(), u'Unicode snowman \u2603 says hello!')
+
   def test_constglobalunion(self):
     if self.emcc_args is None: return self.skip('needs emcc')
     self.emcc_args += ['-s', 'EXPORT_ALL=1']
@@ -4970,20 +5013,11 @@ int main(void) {
 
   def test_fannkuch(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('musl libc needs ta2')
-    try:
-      if self.run_name == 'slow2' or self.run_name == 'slow2asm':
-        old_target = os.environ.get('EMCC_LLVM_TARGET') or ''
-        os.environ['EMCC_LLVM_TARGET'] = "asmjs-unknown-emscripten" # testing for asm-emscripten target on non-fastcomp
-      results = [ (1,0), (2,1), (3,2), (4,4), (5,7), (6,10), (7, 16), (8,22) ]
-      for i, j in results:
-        src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read()
-        self.do_run(src, 'Pfannkuchen(%d) = %d.' % (i,j), [str(i)], no_build=i>1)
-    finally:
-      if self.run_name == 'slow2' or self.run_name == 'slow2asm':
-        if old_target:
-          os.environ['EMCC_LLVM_TARGET'] = old_target
-        else:
-          del os.environ['EMCC_LLVM_TARGET']
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
+    results = [ (1,0), (2,1), (3,2), (4,4), (5,7), (6,10), (7, 16), (8,22) ]
+    for i, j in results:
+      src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read()
+      self.do_run(src, 'Pfannkuchen(%d) = %d.' % (i,j), [str(i)], no_build=i>1)
 
   def test_raytrace(self):
       if self.emcc_args is None: return self.skip('requires emcc')
@@ -5153,6 +5187,17 @@ return malloc(size);
       main = main[:main.find('\n}')]
       assert main.count('\n') <= 7, ('must not emit too many postSets: %d' % main.count('\n')) + ' : ' + main
 
+  # Tests the full SSE1 API.
+  def test_sse1(self):
+    return self.skip('TODO: This test fails due to bugs #2840, #3044, #3045, #3046 and #3048 (also see #3043 and #3049)')
+    if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
+    Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
+
+    orig_args = self.emcc_args
+    for mode in [[], ['-s', 'SIMD=1']]:
+      self.emcc_args = orig_args + mode
+      self.do_run(open(path_from_root('tests', 'test_sse1.cpp'), 'r').read(), 'Success!')
+
   def test_simd(self):
     if self.is_emterpreter(): return self.skip('todo')
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
@@ -5225,8 +5270,10 @@ return malloc(size);
 
   def test_simd7(self):
     # test_simd7 is to test negative zero handling.
+
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
+    if self.is_emterpreter(): return self.skip('todo')
 
     test_path = path_from_root('tests', 'core', 'test_simd7')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5359,6 +5406,7 @@ def process(filename):
     # gcc -O3 -I/home/alon/Dev/emscripten/tests/sqlite -ldl src.c
     if self.emcc_args is None: return self.skip('Very slow without ta2, and we would also need to include dlmalloc manually without emcc')
     if not self.is_emscripten_abi(): return self.skip('fails on x86 due to a legalization issue on llvm 3.3')
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('requires fastcomp')
     if Settings.QUANTUM_SIZE == 1: return self.skip('TODO FIXME')
     self.banned_js_engines = [NODE_JS] # OOM in older node
     if '-O' not in str(self.emcc_args):
@@ -5743,10 +5791,13 @@ def process(filename):
         #if os.path.basename(name) != '4.c': continue
         if 'newfail' in name: continue
         if os.environ.get('EMCC_FAST_COMPILER') == '0' and os.path.basename(name) in [
-          '18.cpp', '15.c', '21.c'
+          '18.cpp', '15.c', '21.c', '22.c'
         ]: continue # works only in fastcomp
         if x == 'lto' and self.run_name == 'default' and os.path.basename(name) in [
-          '19.c'
+          '19.c', '18.cpp'
+        ]: continue # LLVM LTO bug
+        if x == 'lto' and os.path.basename(name) in [
+          '21.c'
         ]: continue # LLVM LTO bug
 
         print name
@@ -5868,6 +5919,8 @@ def process(filename):
   ### Integration tests
 
   def test_ccall(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
+
     post = '''
 def process(filename):
   src = \'\'\'
@@ -5895,19 +5948,19 @@ def process(filename):
       Module.print(multi(2, 1.4, 3, 'atr'));
       Module.print(multi(8, 5.4, 4, 'bret'));
       Module.print('*');
-      // part 3: avoid stack explosion
+      // part 3: avoid stack explosion and check it's restored correctly
       for (var i = 0; i < TOTAL_STACK/60; i++) {
         ccall('multi', 'number', ['number', 'number', 'number', 'string'], [0, 0, 0, '123456789012345678901234567890123456789012345678901234567890']);
       }
       Module.print('stack is ok.');
+      ccall('call_ccall_again', null);
     });
     Module.callMain();
   \'\'\'
   open(filename, 'w').write(src)
 '''
 
-    Settings.EXPORTED_FUNCTIONS += ['_get_int', '_get_float', '_get_string', '_print_int', '_print_float', '_print_string', '_multi', '_pointer', '_malloc']
-
+    Settings.EXPORTED_FUNCTIONS += ['_get_int', '_get_float', '_get_string', '_print_int', '_print_float', '_print_string', '_multi', '_pointer', '_call_ccall_again', '_malloc']
     test_path = path_from_root('tests', 'core', 'test_ccall')
     src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -6777,6 +6830,7 @@ def process(filename):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip("doesn't pass without typed arrays")
     if '-g4' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g4')
     if NODE_JS not in JS_ENGINES: return self.skip('sourcemapper requires Node to run')
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('requires fastcomp')
 
     src = '''
       #include <stdio.h>
@@ -7207,7 +7261,7 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
   return TT
 
 # Main test modes
-default = make_run("default", compiler=CLANG, emcc_args=[])
+default = make_run("default", compiler=CLANG, emcc_args=["-s", "ASM_JS=2"])
 asm1 = make_run("asm1", compiler=CLANG, emcc_args=["-O1"])
 asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2"])
 asm3 = make_run("asm3", compiler=CLANG, emcc_args=["-O3"])
