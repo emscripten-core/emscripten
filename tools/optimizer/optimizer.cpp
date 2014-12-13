@@ -3309,11 +3309,13 @@ void registerizeHarder(Ref ast) {
             }
           }
           // It links with any linkages in the outgoing blocks.
-          IString linkName = block->link[name];
-          if (!!linkName && linkName != name) {
-            if (junctionVariables.count(linkName) == 0) initializeJunctionVariable(linkName);
-            junctionVariables[name].link.insert(linkName);
-            junctionVariables[linkName].link.insert(name);
+          if (block->link.has(name)) {
+            IString linkName = block->link[name];
+            if (linkName != name) {
+              if (junctionVariables.count(linkName) == 0) initializeJunctionVariable(linkName);
+              junctionVariables[name].link.insert(linkName);
+              junctionVariables[linkName].link.insert(name);
+            }
           }
         }
       }

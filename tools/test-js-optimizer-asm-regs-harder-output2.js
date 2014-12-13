@@ -1,42 +1,46 @@
-function asm(d1, i2) {
- d1 = +d1;
- i2 = i2 | 0;
- i2 = d1 + d1 | 0;
- d1 = d(Math_max(10, Math_min(5, f())));
- i2 = i2 + 2 | 0;
- print(i2);
- d1 = d1 * 5;
- return d1;
+function asm(d2, i1) {
+ d2 = +d2;
+ i1 = i1 | 0;
+ i1 = d2 + d2 | 0;
+ d2 = d(Math_max(10, Math_min(5, f())));
+ i1 = i1 + 2 | 0;
+ print(i1);
+ d2 = d2 * 5;
+ return d2;
 }
-function _doit(i3, i1, i2) {
+
+function _doit(i2, i3, i1) {
+ i2 = i2 | 0;
  i3 = i3 | 0;
  i1 = i1 | 0;
- i2 = i2 | 0;
  var i4 = 0;
  i4 = STACKTOP;
- _printf(__str | 0, (tempInt = STACKTOP, STACKTOP = STACKTOP + 8 | 0, HEAP32[(tempInt & 16777215) >> 2] = i1, HEAP32[(tempInt + 4 & 16777215) >> 2] = i2, tempInt));
+ _printf(__str | 0, (tempInt = STACKTOP, STACKTOP = STACKTOP + 8 | 0, HEAP32[(tempInt & 16777215) >> 2] = i3, HEAP32[(tempInt + 4 & 16777215) >> 2] = i1, tempInt));
  STACKTOP = i4;
  return 0 | 0;
 }
+
 function stackRestore(i1) {
  i1 = i1 | 0;
  STACKTOP = i1;
 }
-function switchey(d1, i2) {
- d1 = +d1;
- i2 = i2 | 0;
- switch (d1 | 0) {
+
+function switchey(d2, i1) {
+ d2 = +d2;
+ i1 = i1 | 0;
+ switch (d2 | 0) {
  case 0:
-  i2 = d1 + d1 | 0;
-  d1 = d(Math_max(10, Math_min(5, f())));
-  i2 = i2 + 2 | 0;
-  print(i2);
-  d1 = d1 * 5;
-  return d1;
+  i1 = d2 + d2 | 0;
+  d2 = d(Math_max(10, Math_min(5, f())));
+  i1 = i1 + 2 | 0;
+  print(i1);
+  d2 = d2 * 5;
+  return d2;
  case 1:
   return 20;
  }
 }
+
 function switchey2() {
  var i1 = 0, i2 = 0, i3 = 0, i4 = 0, i5 = 0, d6 = +0, d7 = +0;
  i4 = STACKTOP;
@@ -70,6 +74,7 @@ function switchey2() {
  }
  return 0;
 }
+
 function iffey() {
  var i1 = 0, i2 = 0, i3 = 0, i4 = 0, i5 = 0, d6 = +0, d7 = +0;
  i4 = STACKTOP;
@@ -97,6 +102,7 @@ function iffey() {
  }
  return 0;
 }
+
 function labelledJump(i2) {
  i2 = i2 | 0;
  var i1 = 0, i3 = 0;
@@ -112,6 +118,7 @@ function labelledJump(i2) {
  }
  return i2;
 }
+
 function linkedVars() {
  var i1 = 0, i2 = 0;
  while (1) {
@@ -130,9 +137,10 @@ function linkedVars() {
  }
  return i2 + i1;
 }
-function deadCondExpr(i2) {
- i2 = i2 | 0;
- var i1 = 0;
- return i1 | 0;
+
+function deadCondExpr(i1) {
+ i1 = i1 | 0;
+ var i2 = 0;
+ return i2 | 0;
 }
 
