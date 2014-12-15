@@ -96,7 +96,7 @@ JavaScript is usually run in the sandboxed environment of a web browser, without
 Files that you want to access should be :ref:`preloaded <emcc-preload-file>` or :ref:`embedded <emcc-embed-file>` into the virtual file system. Preloading (or embedding) generates a virtual file system that corresponds to the file system structure at *compile* time, *relative to the current directory*. 
 
 
-The `hello_world_file.cpp <https://github.com/kripken/emscripten/blob/master/tests/hello_world.cpp>`_ example shows how to load a file (both the test code and the file to be loaded shown below):
+The `hello_world_file.cpp <https://github.com/kripken/emscripten/blob/master/tests/hello_world_file.cpp>`_ example shows how to load a file (both the test code and the file to be loaded shown below):
 
 .. include:: ../../../../tests/hello_world_file.cpp
    :literal:
