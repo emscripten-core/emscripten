@@ -8,12 +8,12 @@ function asm(d1, i2) {
  d1 = d1 * 5;
  return d1;
 }
-function _doit(i3, i2, i1) {
+function _doit(i3, i1, i2) {
  i3 = i3 | 0;
- i2 = i2 | 0;
  i1 = i1 | 0;
+ i2 = i2 | 0;
  i3 = STACKTOP;
- _printf(__str | 0, (tempInt = STACKTOP, STACKTOP = STACKTOP + 8 | 0, HEAP32[(tempInt & 16777215) >> 2] = i2, HEAP32[(tempInt + 4 & 16777215) >> 2] = i1, tempInt));
+ _printf(__str | 0, (tempInt = STACKTOP, STACKTOP = STACKTOP + 8 | 0, HEAP32[(tempInt & 16777215) >> 2] = i1, HEAP32[(tempInt + 4 & 16777215) >> 2] = i2, tempInt));
  STACKTOP = i3;
  return 0 | 0;
 }
@@ -114,20 +114,20 @@ function labelledJump(i2) {
 function linkedVars() {
  var i1 = 0, i2 = 0;
  while (1) {
-  i2 = 9;
-  i1 = 5;
-  while (i2 > 0 | i1 > 0) {
-   if (i2 < i1) {
-    i2 = i2 - 1;
-   } else {
+  i1 = 9;
+  i2 = 5;
+  while (i1 > 0 | i2 > 0) {
+   if (i1 < i2) {
     i1 = i1 - 1;
+   } else {
+    i2 = i2 - 1;
    }
   }
-  if (i2 < i1) {
+  if (i1 < i2) {
    break;
   }
  }
- return i2 + i1;
+ return i1 + i2;
 }
 function deadCondExpr(i2) {
  i2 = i2 | 0;

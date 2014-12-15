@@ -14,13 +14,13 @@ namespace cashew {
 struct IString {
   const char *str;
 
-  static size_t hash_c(const char *str) { // TODO: optimize?
-    uint64_t ret = 0;
-    while (*str) {
-      ret = (ret*6364136223846793005ULL) + *str;
-      str++;
+  static size_t hash_c(const char *str) { // see http://www.cse.yorku.ca/~oz/hash.html
+    unsigned int hash = 5381;
+    int c;
+    while ((c = *str++)) {
+      hash = ((hash << 5) + hash) ^ c;
     }
-    return (size_t)ret;
+    return (size_t)hash;
   }
 
   class CStringHash : public std::hash<const char *> {
@@ -74,6 +74,9 @@ struct IString {
     //assert((str == other.str) == !strcmp(str, other.str));
     return str != other.str; // fast!
   }
+  bool operator<(const IString& other) const {
+    return strcmp(str ? str : "", other.str ? other.str : "") < 0;
+  }
 
   char operator[](int x) {
     return str[x];
@@ -96,7 +99,8 @@ namespace std {
 
 template <> struct hash<cashew::IString> : public unary_function<cashew::IString, size_t> {
   size_t operator()(const cashew::IString& str) const {
-    return cashew::IString::hash_c(str.c_str());
+    size_t hash = size_t(str.str);
+    return hash = ((hash << 5) + hash) ^ 5381; /* (hash * 33) ^ c */
   }
 };
 
