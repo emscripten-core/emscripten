@@ -2512,7 +2512,7 @@ void registerizeHarder(Ref ast) {
 
     // Traverse the tree in execution order and synthesize a basic flow-graph.
     // It's convenient to build a kind of "dual" graph where the nodes identify
-    // the junctions between blocks  at which control-flow may branch, and each
+    // the junctions between blocks at which control-flow may branch, and each
     // basic block is an edge connecting two such junctions.
     // For each junction we store:
     //    * set of blocks that originate at the junction
@@ -2646,9 +2646,9 @@ void registerizeHarder(Ref ast) {
     };
 
     auto markNonLocalJump = [&](IString type, IString label) {
-      // Complete a block via  RETURN, BREAK or CONTINUE.
+      // Complete a block via RETURN, BREAK or CONTINUE.
       // This joins the targetted junction and then sets the current junction to null.
-      // Any code traversed before we get back an existing junction is dead code.
+      // Any code traversed before we get back to an existing junction is dead code.
       if (type == RETURN) {
         joinJunction(EXIT_JUNCTION, false);
       } else {
@@ -3467,9 +3467,11 @@ void registerizeHarder(Ref ast) {
               for (int k = freeRegs.size() - 1; k >= 0; k--) {
                 reg = freeRegs[k];
                 // Check for conflict with input registers.
-                if (block->firstKillLoc[name] <= inputDeadLoc[reg]) {
-                  if (name != inputVarsByReg[reg]) {
-                    continue;
+                if (inputDeadLoc.count(reg) > 0) {
+                  if (block->firstKillLoc[name] <= inputDeadLoc[reg]) {
+                    if (name != inputVarsByReg[reg]) {
+                      continue;
+                    }
                   }
                 }
                 // Found one!
@@ -3497,7 +3499,7 @@ void registerizeHarder(Ref ast) {
           }
         }
       }
-      // If we managed to create an "x=x" assignments, remove them.
+      // If we managed to create any "x=x" assignments, remove them.
       for (int j = 0; j < maybeRemoveNodes.size(); j++) {
         Ref node = maybeRemoveNodes[j].second;
         if (node[2][1] == node[3][1]) {
