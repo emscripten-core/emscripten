@@ -1096,8 +1096,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     simdfloattypes = ['float32x4']
     simdinttypes = ['int32x4']
     simdtypes = simdfloattypes + simdinttypes
-    # TODO: mul
-    simdfuncs = ['add', 'sub', 'neg',
+    simdfuncs = ['add', 'sub', 'neg', 'mul',
                  'equal', 'lessThan', 'greaterThan',
                  'notEqual', 'lessThanOrEqual', 'greaterThanOrEqual',
                  'select', 'and', 'or', 'xor', 'not',
@@ -1105,11 +1104,13 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
                  'withX', 'withY', 'withZ', 'withW',
                  'load', 'store']
     # TODO: fromInt32x4
-    simdfloatfuncs = simdfuncs + ['mul', 'div', 'min', 'max', 'minNum', 'maxNum', 'sqrt',
+    simdfloatfuncs = simdfuncs + ['div', 'min', 'max', 'minNum', 'maxNum', 'sqrt',
                                   'abs', 'fromInt32x4Bits'];
     # TODO: fromFloat32x4
-    # TODO: shiftLeftByScalar, shiftRightArithmeticByScalar, shiftLeftArithmeticByScalar
-    simdintfuncs = simdfuncs + ['fromFloat32x4Bits'];
+    simdintfuncs = simdfuncs + ['fromFloat32x4Bits',
+                                'shiftRightArithmeticByScalar',
+                                'shiftRightLogicalByScalar',
+                                'shiftLeftByScalar'];
     fundamentals = ['Math', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
     if metadata['simd']:
         fundamentals += ['SIMD']
