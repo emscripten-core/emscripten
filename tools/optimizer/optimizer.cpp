@@ -3467,9 +3467,11 @@ void registerizeHarder(Ref ast) {
               for (int k = freeRegs.size() - 1; k >= 0; k--) {
                 reg = freeRegs[k];
                 // Check for conflict with input registers.
-                if (block->firstKillLoc[name] <= inputDeadLoc[reg]) {
-                  if (name != inputVarsByReg[reg]) {
-                    continue;
+                if (inputDeadLoc.count(reg) > 0) {
+                  if (block->firstKillLoc[name] <= inputDeadLoc[reg]) {
+                    if (name != inputVarsByReg[reg]) {
+                      continue;
+                    }
                   }
                 }
                 // Found one!

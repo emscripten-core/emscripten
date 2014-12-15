@@ -13,10 +13,9 @@ function _doit(i2, i3, i1) {
  i2 = i2 | 0;
  i3 = i3 | 0;
  i1 = i1 | 0;
- var i4 = 0;
- i4 = STACKTOP;
+ i2 = STACKTOP;
  _printf(__str | 0, (tempInt = STACKTOP, STACKTOP = STACKTOP + 8 | 0, HEAP32[(tempInt & 16777215) >> 2] = i3, HEAP32[(tempInt + 4 & 16777215) >> 2] = i1, tempInt));
- STACKTOP = i4;
+ STACKTOP = i2;
  return 0 | 0;
 }
 
