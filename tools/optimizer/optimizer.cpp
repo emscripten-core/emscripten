@@ -3291,10 +3291,8 @@ void registerizeHarder(Ref ast) {
       for (auto name : junc.live) {
         if (junctionVariables.count(name) == 0) initializeJunctionVariable(name);
         // It conflicts with all other names live at this junction.
-        for (auto otherName : junc.live) {
-          if (otherName == name) continue;
-          junctionVariables[name].conf.insert(otherName);
-        }
+        junctionVariables[name].conf.insert(junc.live.begin(), junc.live.end());
+        junctionVariables[name].conf.erase(name); // except for itself, of course
         for (auto b : junc.outblocks) {
           // It conflicts with any output vars of successor blocks,
           // if they're assigned before it goes dead in that block.
