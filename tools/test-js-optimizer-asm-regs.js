@@ -111,6 +111,23 @@ function nops() {
   x | 0;
   ~x;
   f(x);
+  // vaccuming
+  if (cheez) {
+   doIt();
+  } else {
+   doIt();
+  }
+  if (cheez) {
+   doIt();
+  } else {}
+  if (cheez) {} else {
+   doIt();
+  }
+  if (cheez) {} else {
+   doIt();
+  }
+  if (cheez) {} else {}
+  if (doIt()) {} else {}
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "_doit", "stackRestore", "switchey", "switchey2", "iffey", "nops"]
 

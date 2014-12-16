@@ -1951,16 +1951,19 @@ int f() {
               return map(fix, src)
             src = '\n'.join(filter(lambda line: 'var ' not in line, src.split('\n'))) # ignore vars
             def reorder(func):
-              # emit EYE_ONE always before EYE_TWO, replaceing i1,i2 or i2,i1
-              i1 = 'i1'
-              i2 = 'i2'
-              if i1 not in func or i2 not in func: return func
-              ok = func.index(i1) < func.index(i2)
-              if not ok:
-                i1 = 'i2'
-                i2 = 'i1'
-              func = func.replace(i1, 'EYE_ONE').replace(i2, 'EYE_TWO')
-              assert func.index('EYE_ONE') < func.index('EYE_TWO')
+              def swap(func, i1, i2):
+                # emit EYE_ONE always before EYE_TWO, replacing i1,i2 or i2,i1 etc
+                if i1 not in func or i2 not in func: return func
+                ok = func.index(i1) < func.index(i2)
+                if not ok:
+                  temp = i1
+                  i1 = i2
+                  i2 = temp
+                func = func.replace(i1, 'EYE_ONE').replace(i2, 'EYE_TWO')
+                assert func.index('EYE_ONE') < func.index('EYE_TWO')
+                return func
+              func = swap(func, 'i1', 'i2')
+              func = swap(func, 'i4', 'i5')
               return func
             src = 'function '.join(map(reorder, src.split('function ')))
             return src
