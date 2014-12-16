@@ -943,8 +943,10 @@ struct JSPrinter {
     if (finalize && node[1] == PLUS && (node[2][0] == NUM ||
                                        (node[2][0] == UNARY_PREFIX && node[2][1] == MINUS && node[2][2][0] == NUM))) {
       // emit a finalized number
-      char *curr = buffer + used;
+      int last = used;
       print(node[2]);
+      ensure(1); // we temporarily append a 0
+      char *curr = buffer + last; // ensure might invalidate
       buffer[used] = 0;
       if (strchr(curr, '.')) return; // already a decimal point, all good
       char *e = strchr(curr, 'e');
@@ -953,6 +955,7 @@ struct JSPrinter {
         return;
       }
       ensure(3);
+      curr = buffer + last; // ensure might invalidate
       char *end = strchr(curr, 0);
       while (end >= e) {
         end[2] = end[0];
