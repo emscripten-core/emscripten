@@ -1943,16 +1943,38 @@ int f() {
       print '  js'
       output = Popen(NODE_JS + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
 
-      def check_js(js):
+      def check_js(js, expected):
+        if 'registerizeHarder' in passes:
+          # registerizeHarder is hard to test, as names vary by chance, nondeterminstically FIXME
+          def fix(src):
+            if type(src) is list:
+              return map(fix, src)
+            src = '\n'.join(filter(lambda line: 'var ' not in line, src.split('\n'))) # ignore vars
+            def reorder(func):
+              # emit EYE_ONE always before EYE_TWO, replaceing i1,i2 or i2,i1
+              i1 = 'i1'
+              i2 = 'i2'
+              if i1 not in func or i2 not in func: return func
+              ok = func.index(i1) < func.index(i2)
+              if not ok:
+                i1 = 'i2'
+                i2 = 'i1'
+              func = func.replace(i1, 'EYE_ONE').replace(i2, 'EYE_TWO')
+              assert func.index('EYE_ONE') < func.index('EYE_TWO')
+              return func
+            src = 'function '.join(map(reorder, src.split('function ')))
+            return src
+          js = fix(js)
+          expected = fix(expected)
         self.assertIdentical(expected, js.replace('\r\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n'))
-      check_js(output)
+      check_js(output, expected)
 
       if js_optimizer.use_native(passes):
         # test calling native
         def check_json():
           Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), output_temp, 'receiveJSON'], stdin=PIPE, stdout=open(output_temp + '.js', 'w')).communicate()
           output = open(output_temp + '.js').read()
-          self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n'))
+          check_js(output, expected)
 
         self.clear()
         input_temp = 'temp.js'
@@ -1976,7 +1998,7 @@ int f() {
 
         print '  native (emitting JS)'
         output = Popen([js_optimizer.get_native_optimizer(), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
-        check_js(output)
+        check_js(output, expected)
 
   def test_m_mm(self):
     open(os.path.join(self.get_dir(), 'foo.c'), 'w').write('''#include <emscripten.h>''')
