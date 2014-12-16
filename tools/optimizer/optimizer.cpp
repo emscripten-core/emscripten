@@ -516,7 +516,8 @@ Ref makeAsmCoercion(Ref node, AsmType type) {
 // Checks
 
 bool isEmpty(Ref node) {
-  return node->size() == 2 && node[0] == TOPLEVEL && node[1]->size() == 0;
+  return (node->size() == 2 && node[0] == TOPLEVEL && node[1]->size() == 0) ||
+          (node->size() > 0 && node[0] == BLOCK && (!node[1] || node[1]->size() == 0));
 }
 
 bool commable(Ref node) { // TODO: hashing
@@ -664,7 +665,6 @@ void clearUselessNodes(Ref arr) {
 
 void removeAllEmptySubNodes(Ref ast) {
   traversePre(ast, [](Ref node) {
-    int index = -1;
     if (node[0] == DEFUN) {
       clearEmptyNodes(node[3]);
     } else if (node[0] == BLOCK && node->size() > 1 && !!node[1]) {
@@ -675,14 +675,30 @@ void removeAllEmptySubNodes(Ref ast) {
   });
 }
 void removeAllUselessSubNodes(Ref ast) {
-  traversePre(ast, [](Ref node) {
-    int index = -1;
-    if (node[0] == DEFUN) {
+  traversePrePost(ast, [](Ref node) {
+    Ref type = node[0];
+    if (type == DEFUN) {
       clearUselessNodes(node[3]);
-    } else if (node[0] == BLOCK && node->size() > 1 && !!node[1]) {
+    } else if (type == BLOCK && node->size() > 1 && !!node[1]) {
       clearUselessNodes(node[1]);
-    } else if (node[0] == SEQ && isEmpty(node[1])) {
+    } else if (type == SEQ && isEmpty(node[1])) {
       safeCopy(node, node[2]);
+    }
+  }, [](Ref node) {
+    Ref type = node[0];
+    if (type == IF) {
+      bool empty2 = isEmpty(node[2]), has3 = node->size() == 4 && !!node[3], empty3 = !has3 || isEmpty(node[3]);
+      if (!empty2 && empty3 && has3) { // empty else clauses
+        node->setSize(3);
+      } else if (empty2 && !empty3) { // empty if blocks
+        safeCopy(node, make2(IF, make2(UNARY_PREFIX, L_NOT, node[1]), node[3]));
+      } else if (empty2 && empty3) {
+        if (hasSideEffects(node[1])) {
+          safeCopy(node, make1(STAT, node[1]));
+        } else {
+          safeCopy(node, makeEmpty());
+        }
+      }
     }
   });
 }

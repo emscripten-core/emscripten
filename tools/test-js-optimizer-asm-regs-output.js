@@ -106,5 +106,20 @@ function iffey() {
 function nops() {
  var i1 = 0;
  f(i1);
+ if (cheez) {
+  doIt();
+ } else {
+  doIt();
+ }
+ if (cheez) {
+  doIt();
+ }
+ if (!cheez) {
+  doIt();
+ }
+ if (!cheez) {
+  doIt();
+ }
+ doIt();
 }
 
