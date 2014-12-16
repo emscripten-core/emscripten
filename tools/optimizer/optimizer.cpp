@@ -3283,7 +3283,7 @@ void registerizeHarder(Ref ast) {
     std::unordered_map<IString, JuncVar> junctionVariables;
 
     auto initializeJunctionVariable = [&](IString name) {
-      junctionVariables[name] = JuncVar(); // XXX
+      junctionVariables[name].conf.reserve(asmData.locals.size());
     };
 
     for (int i = 0; i < junctions.size(); i++) {
