@@ -13,6 +13,16 @@
 #define _GNU_SOURCE
 #include "libm.h"
 
+#ifdef __EMSCRIPTEN__
+#include <math.h>
+
+// XXX Emscripten: Use the browser-optimized versions of sin and cos, since they are faster.
+void sincos(double x, double *s, double *c)
+{
+	*s = sin(x);
+	*c = cos(x);
+}
+#else
 void sincos(double x, double *sin, double *cos)
 {
 	double y[2], s, c;
@@ -67,3 +77,4 @@ void sincos(double x, double *sin, double *cos)
 		break;
 	}
 }
+#endif
