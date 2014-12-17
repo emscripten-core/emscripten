@@ -3345,7 +3345,9 @@ void registerizeHarder(Ref ast) {
     }
     std::sort(sortedJunctionVariables.begin(), sortedJunctionVariables.end(), [&](const IString name1, const IString name2) {
       //return strcmp(name1.str, name2.str) > 0;// XXX junctionVariables[name1].conf.size() > junctionVariables[name2].conf.size();
-      return junctionVariables[name1].conf.size() < junctionVariables[name2].conf.size();
+      if (junctionVariables[name1].conf.size() < junctionVariables[name2].conf.size()) return true;
+      if (junctionVariables[name1].conf.size() == junctionVariables[name2].conf.size()) return name1 < name2;
+      return false;
     });
 
     // We can now assign a register to each junction variable.

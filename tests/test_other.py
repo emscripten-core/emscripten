@@ -1944,6 +1944,7 @@ int f() {
       output = Popen(NODE_JS + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
 
       def check_js(js, expected):
+        #print >> sys.stderr, 'chak\n==========================\n', js, '\n===========================\n'
         if 'registerizeHarder' in passes:
           # registerizeHarder is hard to test, as names vary by chance, nondeterminstically FIXME
           def fix(src):
@@ -1951,19 +1952,18 @@ int f() {
               return map(fix, src)
             src = '\n'.join(filter(lambda line: 'var ' not in line, src.split('\n'))) # ignore vars
             def reorder(func):
-              def swap(func, i1, i2):
+              def swap(func, stuff):
                 # emit EYE_ONE always before EYE_TWO, replacing i1,i2 or i2,i1 etc
-                if i1 not in func or i2 not in func: return func
-                ok = func.index(i1) < func.index(i2)
-                if not ok:
-                  temp = i1
-                  i1 = i2
-                  i2 = temp
-                func = func.replace(i1, 'EYE_ONE').replace(i2, 'EYE_TWO')
-                assert func.index('EYE_ONE') < func.index('EYE_TWO')
+                for i in stuff:
+                  if i not in func: return func
+                indexes = map(lambda i: [i, func.index(i)], stuff)
+                indexes.sort(lambda x, y: x[1] - y[1])
+                for j in range(len(indexes)):
+                  func = func.replace(indexes[j][0], 'STD_' + str(j))
                 return func
-              func = swap(func, 'i1', 'i2')
-              func = swap(func, 'i4', 'i5')
+              func = swap(func, ['i1', 'i2', 'i3'])
+              func = swap(func, ['i1', 'i2'])
+              func = swap(func, ['i4', 'i5'])
               return func
             src = 'function '.join(map(reorder, src.split('function ')))
             return src
@@ -4391,10 +4391,11 @@ function _main() {
       assert func in pre, pre
       post = post.split('\n')[0]
       seen = int(post)
+      print '  seen', seen
       assert expected == seen or seen in expected, ['expect', expected, 'but see', seen]
 
     do_log_test(path_from_root('tests', 'primes.cpp'), 86, 'main')
-    do_log_test(path_from_root('tests', 'fannkuch.cpp'), range(234, 239), 'fannkuch_worker')
+    do_log_test(path_from_root('tests', 'fannkuch.cpp'), 234, 'fannkuch_worker')
 
     # test non-native as well, registerizeHarder can be a little more efficient here
     old_native = os.environ.get('EMCC_NATIVE_OPTIMIZER')
