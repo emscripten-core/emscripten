@@ -254,7 +254,7 @@ if (typeof SIMD.float32x4.fromUnsignedInt32x4 === "undefined") {
     * @param {int32x4} t An instance of int32x4.
     * @return {float32x4} An unsigned integer to float conversion copy of t.
     */
-  SIMD.float32x4.fromInt32x4 = function(t) {
+  SIMD.float32x4.fromUnsignedInt32x4 = function(t) {
     t = SIMD.int32x4(t);
     return SIMD.float32x4(t.x>>>0, t.y>>>0, t.z>>>0, t.w>>>0);
   }
@@ -385,7 +385,7 @@ if (typeof SIMD.float64x2.fromUnsignedInt32x4 === "undefined") {
     * @param {int32x4} t An instance of int32x4.
     * @return {float64x2} A float64x2 with .x>>>0 and .y>>>0 from t
     */
-  SIMD.float64x2.fromInt32x4 = function(t) {
+  SIMD.float64x2.fromUnsignedInt32x4 = function(t) {
     t = SIMD.int32x4(t);
     return SIMD.float64x2(t.x>>>0, t.y>>>0);
   }
@@ -534,7 +534,7 @@ if (typeof SIMD.int32x4.fromFloat32x4ToUnsigned === "undefined") {
     * @param {float32x4} t An instance of float32x4.
     * @return {int32x4} with an unsigned integer to float conversion of t.
     */
-  SIMD.int32x4.fromFloat32x4 = function(t) {
+  SIMD.int32x4.fromFloat32x4ToUnsigned = function(t) {
     t = SIMD.float32x4(t);
     return SIMD.int32x4(t.x>>>0, t.y>>>0, t.z>>>0, t.w>>>0);
   }
@@ -556,7 +556,7 @@ if (typeof SIMD.int32x4.fromFloat64x2ToUnsigned === "undefined") {
     * @param {float64x2} t An instance of float64x2.
     * @return {int32x4}  An int32x4 with .x>>>0 and .y>>>0 from t
     */
-  SIMD.int32x4.fromFloat64x2 = function(t) {
+  SIMD.int32x4.fromFloat64x2ToUnsigned = function(t) {
     t = SIMD.float64x2(t);
     return SIMD.int32x4(t.x>>>0, t.y>>>0, 0, 0);
   }
@@ -567,7 +567,7 @@ if (typeof SIMD.int32x4.fromInt16x8 === "undefined") {
     * @param {int16x8} t An instance of int16x8.
     * @return {int32x4} with the s0, s1, s2, and s3 from t, sign-extended
     */
-  SIMD.int32x4.fromFloat32x4 = function(t) {
+  SIMD.int32x4.fromInt16x8 = function(t) {
     t = SIMD.int16x8(t);
     return SIMD.int32x4(t.s0, t.s1, t.s2, t.s3);
   }
@@ -578,8 +578,8 @@ if (typeof SIMD.int32x4.fromUnsignedInt8x16 === "undefined") {
     * @param {int8x16} t An instance of int8x16.
     * @return {int32x4} with the s0, s1, s2, and s3 from t, zero-extended
     */
-  SIMD.int32x4.fromFloat32x4 = function(t) {
-    t = SIMD.intint8x16(t);
+  SIMD.int32x4.fromUnsignedInt8x16 = function(t) {
+    t = SIMD.int8x16(t);
     return SIMD.int32x4(t.s0>>>0, t.s1>>>0, t.s2>>>0, t.s3>>>0);
   }
 }
@@ -589,7 +589,7 @@ if (typeof SIMD.int32x4.fromUnsignedInt16x8 === "undefined") {
     * @param {int16x8} t An instance of int16x8.
     * @return {int32x4} with the s0, s1, s2, and s3 from t, zero-extended
     */
-  SIMD.int32x4.fromFloat32x4 = function(t) {
+  SIMD.int32x4.fromUnsignedInt16x8 = function(t) {
     t = SIMD.int16x8(t);
     return SIMD.int32x4(t.s0>>>0, t.s1>>>0, t.s2>>>0, t.s3>>>0);
   }
@@ -600,8 +600,8 @@ if (typeof SIMD.int32x4.fromInt8x16 === "undefined") {
     * @param {int8x16} t An instance of int8x16.
     * @return {int32x4} with the s0, s1, s2, and s3 from t
     */
-  SIMD.int32x4.fromFloat32x4 = function(t) {
-    t = SIMD.intint8x16(t);
+  SIMD.int32x4.fromInt8x16 = function(t) {
+    t = SIMD.int8x16(t);
     return SIMD.int32x4(t.s0, t.s1, t.s2, t.s3);
   }
 }
