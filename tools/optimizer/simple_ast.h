@@ -79,8 +79,8 @@ struct Value {
   typedef std::vector<Ref> ArrayStorage;
   typedef std::unordered_map<IString, Ref> ObjectStorage;
 
+  IString str;
   union { // TODO: optimize
-    IString str;
     double num;
     ArrayStorage *arr;
     bool boo;
