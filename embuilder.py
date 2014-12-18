@@ -33,6 +33,16 @@ Available operations and tasks:
         zlib
         sdl2
         sdl2-image
+
+It is also possible to build native_optimizer manually by using CMake. To
+do that, run
+
+   1. cd $EMSCRIPTEN/tools/optimizer
+   2. cmake . -DCMAKE_BUILD_TYPE=Release
+   3. make (or mingw32-make/vcbuild/msbuild on Windows)
+
+and set up the location to the native optimizer in ~/.emscripten
+
 '''
   sys.exit(0)
 
