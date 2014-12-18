@@ -2596,7 +2596,7 @@ void registerizeHarder(Ref ast) {
 
     std::function<int (int, bool)> joinJunction;
 
-    auto markJunction = [&](int id=-1) {
+    auto markJunction = [&](int id) {
       // Mark current traversal location as a junction.
       // This makes a new basic block exiting at this position.
       if (id < 0) {
@@ -2751,7 +2751,7 @@ void registerizeHarder(Ref ast) {
       // Traverse each node type according to its particular control-flow semantics.
       // TODO: switchify this
       if (type == DEFUN) {
-        int jEntry = markJunction();
+        int jEntry = markJunction(-1);
         assert(jEntry == ENTRY_JUNCTION);
         int jExit = addJunction();
         assert(jExit == EXIT_JUNCTION);
@@ -2763,7 +2763,7 @@ void registerizeHarder(Ref ast) {
         isInExpr++;
         buildFlowGraph(node[1]);
         isInExpr--;
-        int jEnter = markJunction();
+        int jEnter = markJunction(-1);
         int jExit = addJunction();
         if (!!node[2]) {
           // Detect and mark "if (label == N) { <labelled block> }".
@@ -2795,7 +2795,7 @@ void registerizeHarder(Ref ast) {
           }
         } else {
           buildFlowGraph(node[1]);
-          int jEnter = markJunction();
+          int jEnter = markJunction(-1);
           int jExit = addJunction();
           if (!!node[2]) {
             buildFlowGraph(node[2]);
@@ -2812,7 +2812,7 @@ void registerizeHarder(Ref ast) {
         // Special-case "while (1) {}" to use fewer junctions,
         // since emscripten generates a lot of these.
         if (isTrueNode(node[1])) {
-          int jLoop = markJunction();
+          int jLoop = markJunction(-1);
           int jExit = addJunction();
           pushActiveLabels(jLoop, jExit);
           buildFlowGraph(node[2]);
@@ -2820,7 +2820,7 @@ void registerizeHarder(Ref ast) {
           joinJunction(jLoop, false);
           setJunction(jExit, false);
         } else {
-          int jCond = markJunction();
+          int jCond = markJunction(-1);
           int jLoop = addJunction();
           int jExit = addJunction();
           isInExpr++;
@@ -2845,7 +2845,7 @@ void registerizeHarder(Ref ast) {
           popActiveLabels();
           joinJunction(jExit, false);
         } else if (isTrueNode(node[1])) {
-          int jLoop = markJunction();
+          int jLoop = markJunction(-1);
           int jExit = addJunction();
           pushActiveLabels(jLoop, jExit);
           buildFlowGraph(node[2]);
@@ -2853,7 +2853,7 @@ void registerizeHarder(Ref ast) {
           joinJunction(jLoop, false);
           setJunction(jExit, false);
         } else {
-          int jLoop = markJunction();
+          int jLoop = markJunction(-1);
           int jCond = addJunction();
           int jCondExit = addJunction();
           int jExit = addJunction();
@@ -2901,7 +2901,7 @@ void registerizeHarder(Ref ast) {
         buildFlowGraph(node[1]);
         isInExpr--;
         Ref condition = lookThroughCasts(node[1]);
-        int jCheckExit = markJunction();
+        int jCheckExit = markJunction(-1);
         int jExit = addJunction();
         pushActiveLabels(-1, jExit);
         bool hasDefault = false;
