@@ -1,3 +1,5 @@
+#!/usr/bin/env python2
+
 '''
 Tool to manage building of various useful things, such as libc, libc++, native optimizer, as well as fetch and build ports like zlib and sdl2
 '''
