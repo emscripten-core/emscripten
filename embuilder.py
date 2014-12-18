@@ -34,7 +34,7 @@ Available operations and tasks:
         sdl2
         sdl2-image
 '''
-  sys.exit(1)
+  sys.exit(0)
 
 temp_files = shared.configuration.get_temp_files()
 

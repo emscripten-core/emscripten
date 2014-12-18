@@ -695,3 +695,33 @@ fi
     finally:
       del os.environ['EMCC_DEBUG']
 
+  def test_embuilder(self):
+    restore()
+
+    for command, expected, success, result_libs in [
+      ([PYTHON, 'embuilder.py'], ['Emscripten System Builder Tool', 'build libc', 'native_optimizer'], True, []),
+      ([PYTHON, 'embuilder.py', 'build', 'waka'], 'ERROR', False, []),
+      ([PYTHON, 'embuilder.py', 'build', 'libc'], ['building and verifying libc', 'success'], True, ['libc.bc']),
+      ([PYTHON, 'embuilder.py', 'build', 'libcxx'], ['success'], True, ['libcxx.bc']),
+      ([PYTHON, 'embuilder.py', 'build', 'libcxxabi'], ['success'], True, ['libcxxabi.bc']),
+      ([PYTHON, 'embuilder.py', 'build', 'gl'], ['success'], True, ['gl.bc']),
+      ([PYTHON, 'embuilder.py', 'build', 'struct_info'], ['success'], True, ['struct_info.compiled.json']),
+      ([PYTHON, 'embuilder.py', 'build', 'native_optimizer'], ['success'], True, ['optimizer.exe']),
+      ([PYTHON, 'embuilder.py', 'build', 'zlib'], ['building and verifying zlib', 'success'], True, [os.path.join('ports-builds', 'zlib', 'libz.a')]),
+      ([PYTHON, 'embuilder.py', 'build', 'sdl2'], ['success'], True, [os.path.join('ports-builds', 'sdl2', 'libsdl2.bc')]),
+      ([PYTHON, 'embuilder.py', 'build', 'sdl2-image'], ['success'], True, [os.path.join('ports-builds', 'sdl2-image', 'libsdl2_image.bc')]),
+    ]:
+      print command
+      Cache.erase()
+
+      proc = Popen(command, stdout=PIPE, stderr=STDOUT)
+      out, err = proc.communicate()
+      assert (proc.returncode == 0) == success, out
+      if type(expected) == str: expected = [expected]
+      for ex in expected:
+        print '    seek', ex
+        assert ex in out, out
+      for lib in result_libs:
+        print '    verify', lib
+        assert os.path.exists(Cache.get_path(lib))
+
