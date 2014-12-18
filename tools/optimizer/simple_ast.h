@@ -15,6 +15,8 @@
 
 #include "parser.h"
 
+#include "snprintf.h"
+
 #define err(str) fprintf(stderr, str "\n");
 #define errv(str, ...) fprintf(stderr, str "\n", __VA_ARGS__);
 #define printErr err
