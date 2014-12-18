@@ -1981,9 +1981,9 @@ void simplifyExpressions(Ref ast) {
   //   expensive | cheap     can be turned into cheap     ? 1 : expensive,
   // so that we can avoid the expensive computation, if it has no side effects.
   auto conditionalize = [&emitsBoolean](Ref ast) {
-    const int MIN_COST = 7;
     traversePre(ast, [&emitsBoolean](Ref node) {
-      if (node[0] == BINARY && (node[1] == OR || node[1] == AND) && node[3][0] != NUM && node[2][0] != NUM) {
+        const int MIN_COST = 7;
+        if (node[0] == BINARY && (node[1] == OR || node[1] == AND) && node[3][0] != NUM && node[2][0] != NUM) {
         // logical operator on two non-numerical values
         Ref left = node[2];
         Ref right = node[3];
