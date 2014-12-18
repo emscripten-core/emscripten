@@ -82,8 +82,13 @@ struct Value {
   typedef std::vector<Ref> ArrayStorage;
   typedef std::unordered_map<IString, Ref> ObjectStorage;
 
+#ifdef _MSC_VER // MSVC does not allow unrestricted unions: http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2008/n2544.pdf
   IString str;
+#endif
   union { // TODO: optimize
+#ifndef _MSC_VER
+    IString str;
+#endif
     double num;
     ArrayStorage *arr;
     bool boo;
