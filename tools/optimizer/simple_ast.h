@@ -23,7 +23,7 @@
 
 using namespace cashew;
 
-class Ref;
+struct Ref;
 struct Value;
 
 void dump(const char *str, Ref node, bool pretty=false);
