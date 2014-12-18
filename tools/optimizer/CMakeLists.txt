@@ -15,6 +15,10 @@ if (IS_GCC_LIKE)
 	set(cFlags "-std=c++11 -fno-exceptions -fno-rtti")
 endif()
 
+if (MSVC)
+	set(cFlags "${cFlags} -D_CRT_SECURE_NO_WARNINGS=1")
+endif()
+
 set(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} ${cFlags}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${cFlags}")
 
