@@ -631,12 +631,12 @@ fi
 
       # basic usage or lack of usage
       for native in [None, 0, 1]:
-        print native
+        print 'phase 1, part', native
         Cache.erase()
         try:
           if native is not None: os.environ['EMCC_NATIVE_OPTIMIZER'] = str(native)
           output = build()
-          assert ('js optimizer using native' in output) == (not not (native or native is None))
+          assert ('js optimizer using native' in output) == (not not (native or native is None)), output
           test()
           if native or native is None: # None means use the default, which is to use the native optimizer
             assert 'building native optimizer' in output
@@ -650,39 +650,52 @@ fi
 
       # force a build failure, see we fall back to non-native
 
-      Cache.erase()
-
       try:
-        # break it
-        f = path_from_root('tools', 'optimizer', 'optimizer.cpp')
-        src = open(f).read()
-        bad = src.replace('main', '!waka waka<')
-        assert bad != src
-        open(f, 'w').write(bad)
-        # first try
-        output = build()
-        assert 'failed to build native optimizer' in output, output
-        assert 'js optimizer using native' not in output
-        test() # still works, without native optimizer
-        # second try, see previous failure
-        output = build()
-        assert 'failed to build native optimizer' not in output
-        assert 'seeing that optimizer could not be built' in output
-        test() # still works, without native optimizer
-        # clear cache, try again
-        Cache.erase()
-        output = build()
-        assert 'failed to build native optimizer' in output
-        test() # still works, without native optimizer
+        for native in [1, 'g']:
+          print 'phase 2, part', native
+          Cache.erase()
+          os.environ['EMCC_NATIVE_OPTIMIZER'] = str(native)
+
+          try:
+            # break it
+            f = path_from_root('tools', 'optimizer', 'optimizer.cpp')
+            src = open(f).read()
+            bad = src.replace('main', '!waka waka<')
+            assert bad != src
+            open(f, 'w').write(bad)
+            # first try
+            output = build()
+            assert 'failed to build native optimizer' in output, output
+            if native == 1:
+              assert 'to see compiler errors, build with EMCC_NATIVE_OPTIMIZER=g' in output
+              assert 'waka waka' not in output
+            else:
+              assert 'output from attempt' in output, output
+              assert 'waka waka' in output, output
+            assert 'js optimizer using native' not in output
+            test() # still works, without native optimizer
+            # second try, see previous failure
+            output = build()
+            assert 'failed to build native optimizer' not in output
+            assert 'seeing that optimizer could not be built' in output
+            test() # still works, without native optimizer
+            # clear cache, try again
+            Cache.erase()
+            output = build()
+            assert 'failed to build native optimizer' in output
+            test() # still works, without native optimizer
+          finally:
+            open(f, 'w').write(src)
+
+          Cache.erase()
+
+          # now it should work again
+          output = build()
+          assert 'js optimizer using native' in output
+          test() # still works
+
       finally:
-        open(f, 'w').write(src)
-
-      Cache.erase()
-
-      # now it should work again
-      output = build()
-      assert 'js optimizer using native' in output
-      test() # still works
+        del os.environ['EMCC_NATIVE_OPTIMIZER']
 
     finally:
       del os.environ['EMCC_DEBUG']
