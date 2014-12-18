@@ -2223,7 +2223,7 @@ void optimizeFrounds(Ref ast) {
 
 const char* getRegPrefix(AsmType type) {
   switch (type) {
-    case ASM_INT:       return"i"; break;
+    case ASM_INT:       return "i"; break;
     case ASM_DOUBLE:    return "d"; break;
     case ASM_FLOAT:     return "f"; break;
     case ASM_FLOAT32X4: return "F4"; break;
@@ -2236,7 +2236,7 @@ const char* getRegPrefix(AsmType type) {
 
 IString getRegName(AsmType type, int num) {
   const char* str = getRegPrefix(type);
-  int size = strlen(str) + int(ceil(log10(num))) + 3;
+  const int size = 256;
   char temp[size];
   int written = sprintf(temp, "%s%d", str, num);
   assert(written < size);
