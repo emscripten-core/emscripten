@@ -94,7 +94,7 @@ extern IString TOPLEVEL,
                THROW,
                SET;
 
-extern IStringSet keywords, allOperators;
+extern IStringSet keywords;
 
 extern const char *OPERATOR_INITS, *SEPARATORS;
 
@@ -672,7 +672,7 @@ class Parser {
       // we are the toplevel. sort it all out
       // collapse right to left, highest priority first
       //dumpParts(parts, 0);
-      for (auto ops : operatorClasses) {
+      for (auto& ops : operatorClasses) {
         if (ops.rtl) {
           // right to left
           for (int i = parts.size()-1; i >= 0; i--) {
