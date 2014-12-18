@@ -713,7 +713,7 @@ class Ports:
     fullname = os.path.join(Ports.get_dir(), name)
 
     if name not in Ports.name_cache: # only mention each port once in log
-      logging.warning('including port: ' + name)
+      logging.debug('including port: ' + name)
       logging.debug('    (at ' + fullname + ')')
       Ports.name_cache.add(name)
 

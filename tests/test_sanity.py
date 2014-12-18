@@ -568,7 +568,6 @@ fi
 
     # using ports
 
-    INCLUDING_MESSAGE = 'including port'
     RETRIEVING_MESSAGE = 'retrieving port'
     BUILDING_MESSAGE = 'building port'
 
@@ -586,14 +585,12 @@ fi
 
       # Building a file that doesn't need ports should not trigger anything
       output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp')])
-      assert INCLUDING_MESSAGE not in output
       assert RETRIEVING_MESSAGE not in output
       assert BUILDING_MESSAGE not in output
       assert not os.path.exists(PORTS_DIR)
 
       # Building a file that need a port does trigger stuff
       output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
-      assert INCLUDING_MESSAGE in output, output
       assert RETRIEVING_MESSAGE in output, output
       assert BUILDING_MESSAGE in output, output
       assert os.path.exists(PORTS_DIR)
@@ -601,7 +598,6 @@ fi
       def second_use():
         # Using it again avoids retrieve and build
         output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
-        assert INCLUDING_MESSAGE in output, output
         assert RETRIEVING_MESSAGE not in output, output
         assert BUILDING_MESSAGE not in output, output
 
@@ -610,7 +606,6 @@ fi
       # if the version isn't sufficient, we retrieve and rebuild
       open(os.path.join(PORTS_DIR, 'sdl2', 'SDL2-master', 'version.txt'), 'w').write('1') # current is >= 2, so this is too old
       output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
-      assert INCLUDING_MESSAGE in output, output
       assert RETRIEVING_MESSAGE in output, output
       assert BUILDING_MESSAGE in output, output
       assert os.path.exists(PORTS_DIR)
