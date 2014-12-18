@@ -110,7 +110,7 @@ struct StackedStack { // a stack, on the stack
   }
 };
 
-#define visitable(node) (node->isArray() and node->size() > 0)
+#define visitable(node) (node->isArray() && node->size() > 0)
 
 #define TRAV_STACK 40
 
