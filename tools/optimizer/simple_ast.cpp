@@ -16,7 +16,7 @@ bool Ref::operator==(const char *str) {
 }
 
 bool Ref::operator!=(const char *str) {
-  return get()->isString() ? strcmp(get()->str.str, str) : true;
+  return get()->isString() ? !!strcmp(get()->str.str, str) : true;
 }
 
 bool Ref::operator==(const IString &str) {
