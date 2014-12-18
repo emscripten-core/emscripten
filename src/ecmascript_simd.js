@@ -19,8 +19,11 @@
 */
 
 if (typeof SIMD === "undefined") {
-  // SIMD module.
-  var SIMD = {};
+  // SIMD module. We don't use the var keyword here, so that we put the
+  // SIMD object in the global scope even if this polyfill code is included
+  // within some other scope. The theory is that we're anticipating a
+  // future where SIMD is predefined in the global scope.
+  SIMD = {};
 }
 
 // private stuff.
