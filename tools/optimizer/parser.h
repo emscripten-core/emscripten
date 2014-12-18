@@ -167,10 +167,14 @@ class Parser {
   };
 
   struct Frag {
+#ifndef _MSC_VER // MSVC does not allow unrestricted unions: http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2008/n2544.pdf
     union {
+#endif
       IString str;
       double num;
+#ifndef _MSC_VER
     };
+#endif
     int size;
     FragType type;
 
@@ -598,10 +602,14 @@ class Parser {
 
   struct ExpressionElement {
     bool isNode;
-    union {
+#ifndef _MSC_VER // MSVC does not allow unrestricted unions: http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2008/n2544.pdf
+	union {
+#endif
       NodeRef node;
       IString op;
+#ifndef _MSC_VER
     };
+#endif
     ExpressionElement(NodeRef n) : isNode(true), node(n) {}
     ExpressionElement(IString o) : isNode(false), op(o) {}
 
