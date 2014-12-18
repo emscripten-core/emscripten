@@ -2277,7 +2277,6 @@ void registerize(Ref ast) {
     removeAllUselessSubNodes(fun); // vacuum?
     StringTypeMap regTypes; // reg name -> type
     auto getNewRegName = [&](int num, IString name) {
-      const char *str;
       AsmType type = asmData.getType(name);
       IString ret = getRegName(type, num);
       assert(!allVars.has(ret) || asmData.isLocal(ret)); // register must not shadow non-local name
