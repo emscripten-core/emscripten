@@ -30,6 +30,11 @@ NATIVE_OPTIMIZER = os.environ.get('EMCC_NATIVE_OPTIMIZER') or '1' # use native o
 def get_native_optimizer():
   if os.environ.get('EMCC_FAST_COMPILER') == '0': return None # need fastcomp for native optimizer
 
+  # Allow users to override the location of the optimizer executable by setting an environment variable EMSCRIPTEN_NATIVE_OPTIMIZER=/path/to/optimizer(.exe)
+  if os.environ.get('EMSCRIPTEN_NATIVE_OPTIMIZER') and len(os.environ.get('EMSCRIPTEN_NATIVE_OPTIMIZER')) > 0: return os.environ.get('EMSCRIPTEN_NATIVE_OPTIMIZER')
+  # Also, allow specifying the location of the optimizer in .emscripten configuration file under EMSCRIPTEN_NATIVE_OPTIMIZER='/path/to/optimizer'
+  if hasattr(shared, 'EMSCRIPTEN_NATIVE_OPTIMIZER') and len(shared.EMSCRIPTEN_NATIVE_OPTIMIZER) > 0: return shared.EMSCRIPTEN_NATIVE_OPTIMIZER
+
   FAIL_MARKER = shared.Cache.get_path('optimizer.building_failed')
   if os.path.exists(FAIL_MARKER):
     shared.logging.debug('seeing that optimizer could not be built (run emcc --clear-cache or erase "optimizer.building_failed" in cache dir to retry)')

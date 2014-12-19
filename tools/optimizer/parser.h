@@ -178,7 +178,7 @@ class Parser {
     int size;
     FragType type;
 
-    Frag(char* src) {
+    explicit Frag(char* src) {
       assert(!isSpace(*src));
       char *start = src;
       if (isIdentInit(*src)) {
@@ -203,7 +203,14 @@ class Parser {
         src = end+1;
         type = STRING;
       } else if (isDigit(*src) || (src[0] == '.' && isDigit(src[1]))) {
-        num = strtod(start, &src);
+        if (src[0] == '0' && (src[1] == 'x' || src[1] == 'X')) {
+          // Explicitly parse hex numbers of form "0x...", because strtod
+          // supports hex number strings only in C++11, and Visual Studio 2013 does
+          // not yet support that functionality.
+          num = (double)strtoul(start, &src, 0);
+        } else {
+          num = strtod(start, &src);
+        }
         assert(src > start);
         type = NUMBER;
       } else if (hasChar(OPERATOR_INITS, *src)) {

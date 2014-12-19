@@ -121,7 +121,7 @@ public:
   IStringSet() {}
   IStringSet(const char *init) { // comma-delimited list
     int size = strlen(init);
-    char *curr = (char*)malloc(size+1); // leaked!
+    char *curr = new char[size+1]; // leaked!
     strcpy(curr, init);
     while (1) {
       char *end = strchr(curr, ' ');

@@ -108,6 +108,8 @@ Ref make3(IString type, Ref a, Ref b, Ref c);
 
 struct AsmData {
   struct Local {
+    Local(){}
+    Local(AsmType type, bool param):type(type), param(param) {}
     AsmType type;
     bool param; // false if a var
   };
@@ -154,7 +156,7 @@ struct AsmData {
       if (index < 0) break; // not an assign into a parameter, but a global
       IString& str = name->getIString();
       if (locals.count(str) > 0) break; // already done that param, must be starting function body
-      locals[str] = { detectType(node[3]), true };
+      locals[str] = Local(detectType(node[3]), true);
       params.push_back(str);
       stats[i] = makeEmpty();
       i++;
@@ -168,7 +170,7 @@ struct AsmData {
         IString& name = v[0]->getIString();
         Ref value = v[1];
         if (locals.count(name) == 0) {
-          locals[name] = { detectType(value, nullptr, true), false };
+          locals[name] = Local(detectType(value, nullptr, true), false);
           vars.push_back(name);
           v->setSize(1); // make an un-assigning var
         } else {
@@ -262,11 +264,11 @@ struct AsmData {
   }
 
   void addParam(IString name, AsmType type) {
-    locals[name] = { type, true };
+    locals[name] = Local(type, true);
     params.push_back(name);
   }
   void addVar(IString name, AsmType type) {
-    locals[name] = { type, false };
+    locals[name] = Local(type, false);
     vars.push_back(name);
   }
 
@@ -1700,6 +1702,7 @@ void simplifyExpressions(Ref ast) {
         };
 
         traversePrePost(ast, process, [&stack](Ref Node) {
+          assert(!stack.empty());
           stack.pop_back();
         });
       }
@@ -2687,7 +2690,7 @@ void registerizeHarder(Ref ast) {
       IString name = node[1]->getIString();
       if (asmData.isLocal(name)) {
         nextBasicBlock->nodes.push_back(node);
-        nextBasicBlock->isexpr.push_back(bool(isInExpr));
+        nextBasicBlock->isexpr.push_back(isInExpr != 0);
         if (nextBasicBlock->kill.count(name) == 0) {
           nextBasicBlock->use[name] = 1;
         }
@@ -2702,7 +2705,7 @@ void registerizeHarder(Ref ast) {
       IString name = node[2][1]->getIString();
       if (asmData.isLocal(name)) {
         nextBasicBlock->nodes.push_back(node);
-        nextBasicBlock->isexpr.push_back(bool(isInExpr));
+        nextBasicBlock->isexpr.push_back(isInExpr != 0);
         nextBasicBlock->kill.insert(name);
       }
     };
@@ -3829,7 +3832,7 @@ int main(int argc, char **argv) {
   }
 
   // Read input file
-  FILE *f = fopen(argv[1], "r");
+  FILE *f = fopen(argv[1], "rb");
   assert(f);
   fseek(f, 0, SEEK_END);
   int size = ftell(f);
