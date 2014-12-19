@@ -1960,7 +1960,7 @@ void simplifyExpressions(Ref ast) {
           switch(asmData.getType(v.c_str())) {
             case ASM_INT: correctType = preciseF32 ? ASM_FLOAT : ASM_DOUBLE; break;
             case ASM_FLOAT: case ASM_DOUBLE: correctType = ASM_INT; break;
-            default: {} // pass
+            default: assert(0);
           }
           asmData.setType(v.c_str(), correctType);
         }
