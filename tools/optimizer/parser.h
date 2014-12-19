@@ -178,7 +178,7 @@ class Parser {
     int size;
     FragType type;
 
-    Frag(char* src) {
+    explicit Frag(char* src) {
       assert(!isSpace(*src));
       char *start = src;
       if (isIdentInit(*src)) {
