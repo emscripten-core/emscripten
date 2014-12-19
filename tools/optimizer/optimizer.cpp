@@ -3829,7 +3829,7 @@ int main(int argc, char **argv) {
   }
 
   // Read input file
-  FILE *f = fopen(argv[1], "r");
+  FILE *f = fopen(argv[1], "rb");
   assert(f);
   fseek(f, 0, SEEK_END);
   int size = ftell(f);
