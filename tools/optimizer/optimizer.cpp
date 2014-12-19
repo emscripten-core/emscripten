@@ -108,8 +108,8 @@ Ref make3(IString type, Ref a, Ref b, Ref c);
 
 struct AsmData {
   struct Local {
-    Local(){}
-    Local(AsmType type, bool param):type(type), param(param) {}
+    Local() {}
+    Local(AsmType type, bool param) : type(type), param(param) {}
     AsmType type;
     bool param; // false if a var
   };

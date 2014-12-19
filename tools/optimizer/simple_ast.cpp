@@ -61,8 +61,8 @@ void dump(const char *str, Ref node, bool pretty) {
 // Traversals
 
 struct TraverseInfo {
-  TraverseInfo(){}
-  TraverseInfo(Ref node, int index):node(node), index(index){}
+  TraverseInfo() {}
+  TraverseInfo(Ref node, int index) : node(node), index(index) {}
   Ref node;
   int index;
 };
