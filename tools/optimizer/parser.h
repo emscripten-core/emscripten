@@ -167,10 +167,14 @@ class Parser {
   };
 
   struct Frag {
+#ifndef _MSC_VER // MSVC does not allow unrestricted unions: http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2008/n2544.pdf
     union {
+#endif
       IString str;
       double num;
+#ifndef _MSC_VER
     };
+#endif
     int size;
     FragType type;
 
@@ -598,10 +602,14 @@ class Parser {
 
   struct ExpressionElement {
     bool isNode;
-    union {
+#ifndef _MSC_VER // MSVC does not allow unrestricted unions: http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2008/n2544.pdf
+	union {
+#endif
       NodeRef node;
       IString op;
+#ifndef _MSC_VER
     };
+#endif
     ExpressionElement(NodeRef n) : isNode(true), node(n) {}
     ExpressionElement(IString o) : isNode(false), op(o) {}
 
@@ -679,11 +687,11 @@ class Parser {
             if (parts[i].isNode) continue;
             IString op = parts[i].getOp();
             if (!ops.ops.has(op)) continue;
-            if (ops.type == OperatorClass::Binary && i > 0 && i < parts.size()-1) {
+            if (ops.type == OperatorClass::Binary && i > 0 && i < (int)parts.size()-1) {
               parts[i] = Builder::makeBinary(parts[i-1].getNode(), op, parts[i+1].getNode());
               parts.erase(parts.begin() + i + 1);
               parts.erase(parts.begin() + i - 1);
-            } else if (ops.type == OperatorClass::Prefix && i < parts.size()-1) {
+            } else if (ops.type == OperatorClass::Prefix && i < (int)parts.size()-1) {
               if (i > 0 && parts[i-1].isNode) continue; // cannot apply prefix operator if it would join two nodes
               parts[i] = Builder::makePrefix(op, parts[i+1].getNode());
               parts.erase(parts.begin() + i + 1);
@@ -692,7 +700,7 @@ class Parser {
               //                      ^
               //dumpParts(parts, i);
               if (op != COLON) continue;
-              assert(i < parts.size()-1 && i >= 3);
+              assert(i < (int)parts.size()-1 && i >= 3);
               if (parts[i-2].getOp() != QUESTION) continue; // e.g. x ? y ? 1 : 0 : 2
               parts[i-3] = Builder::makeConditional(parts[i-3].getNode(), parts[i-1].getNode(), parts[i+1].getNode());
               parts.erase(parts.begin() + i - 2, parts.begin() + i + 2);
@@ -701,16 +709,16 @@ class Parser {
           }
         } else {
           // left to right
-          for (int i = 0; i < parts.size(); i++) {
+          for (int i = 0; i < (int)parts.size(); i++) {
             if (parts[i].isNode) continue;
             IString op = parts[i].getOp();
             if (!ops.ops.has(op)) continue;
-            if (ops.type == OperatorClass::Binary && i > 0 && i < parts.size()-1) {
+            if (ops.type == OperatorClass::Binary && i > 0 && i < (int)parts.size()-1) {
               parts[i] = Builder::makeBinary(parts[i-1].getNode(), op, parts[i+1].getNode());
               parts.erase(parts.begin() + i + 1);
               parts.erase(parts.begin() + i - 1);
               i--;
-            } else if (ops.type == OperatorClass::Prefix && i < parts.size()-1) {
+            } else if (ops.type == OperatorClass::Prefix && i < (int)parts.size()-1) {
               if (i > 0 && parts[i-1].isNode) continue; // cannot apply prefix operator if it would join two nodes
               parts[i] = Builder::makePrefix(op, parts[i+1].getNode());
               parts.erase(parts.begin() + i + 1);

@@ -10,10 +10,13 @@
 #include <iostream>
 #include <iomanip>
 #include <functional>
+#include <algorithm>
 #include <unordered_set>
 #include <unordered_map>
 
 #include "parser.h"
+
+#include "snprintf.h"
 
 #define err(str) fprintf(stderr, str "\n");
 #define errv(str, ...) fprintf(stderr, str "\n", __VA_ARGS__);
@@ -21,7 +24,7 @@
 
 using namespace cashew;
 
-class Ref;
+struct Ref;
 struct Value;
 
 void dump(const char *str, Ref node, bool pretty=false);
@@ -79,8 +82,13 @@ struct Value {
   typedef std::vector<Ref> ArrayStorage;
   typedef std::unordered_map<IString, Ref> ObjectStorage;
 
+#ifdef _MSC_VER // MSVC does not allow unrestricted unions: http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2008/n2544.pdf
+  IString str;
+#endif
   union { // TODO: optimize
+#ifndef _MSC_VER
     IString str;
+#endif
     double num;
     ArrayStorage *arr;
     bool boo;
@@ -695,7 +703,7 @@ struct JSPrinter {
 
   void printStats(Ref stats) {
     bool first = true;
-    for (int i = 0; i < stats->size(); i++) {
+    for (size_t i = 0; i < stats->size(); i++) {
       Ref curr = stats[i];
       if (!isNothing(curr)) {
         if (first) first = false;
@@ -728,7 +736,7 @@ struct JSPrinter {
     emit(node[1]->getCString());
     emit('(');
     Ref args = node[2];
-    for (int i = 0; i < args->size(); i++) {
+    for (size_t i = 0; i < args->size(); i++) {
       if (i > 0) (pretty ? emit(", ") : emit(','));
       emit(args[i]->getCString());
     }
@@ -990,7 +998,7 @@ struct JSPrinter {
     printChild(node[1], node, 0);
     emit('(');
     Ref args = node[2];
-    for (int i = 0; i < args->size(); i++) {
+    for (size_t i = 0; i < args->size(); i++) {
       if (i > 0) (pretty ? emit(", ") : emit(','));
       printChild(args[i], node, 0);
     }
@@ -1020,7 +1028,7 @@ struct JSPrinter {
     emit('{');
     newline();
     Ref cases = node[2];
-    for (int i = 0; i < cases->size(); i++) {
+    for (size_t i = 0; i < cases->size(); i++) {
       Ref c = cases[i];
       if (!c[0]) {
         emit("default:");
@@ -1054,7 +1062,7 @@ struct JSPrinter {
   void printVar(Ref node) {
     emit("var ");
     Ref args = node[1];
-    for (int i = 0; i < args->size(); i++) {
+    for (size_t i = 0; i < args->size(); i++) {
       if (i > 0) (pretty ? emit(", ") : emit(','));
       emit(args[i][0]->getCString());
       if (args[i]->size() > 1) {
@@ -1162,7 +1170,7 @@ struct JSPrinter {
   void printArray(Ref node) {
     emit('[');
     Ref args = node[1];
-    for (int i = 0; i < args->size(); i++) {
+    for (size_t i = 0; i < args->size(); i++) {
       if (i > 0) (pretty ? emit(", ") : emit(','));
       print(args[i]);
     }
@@ -1174,7 +1182,7 @@ struct JSPrinter {
     indent++;
     newline();
     Ref args = node[1];
-    for (int i = 0; i < args->size(); i++) {
+    for (size_t i = 0; i < args->size(); i++) {
       if (i > 0) {
         pretty ? emit(", ") : emit(',');
         newline();
@@ -1385,7 +1393,7 @@ public:
     assert(switch_[0] == SWITCH);
     assert(code[0] == BLOCK);
     if (!explicitBlock) {
-      for (int i = 0; i < code[1]->size(); i++) {
+      for (size_t i = 0; i < code[1]->size(); i++) {
         switch_[2]->back()->back()->push_back(code[1][i]);
       }
     } else {

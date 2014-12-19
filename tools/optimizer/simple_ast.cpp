@@ -16,7 +16,7 @@ bool Ref::operator==(const char *str) {
 }
 
 bool Ref::operator!=(const char *str) {
-  return get()->isString() ? strcmp(get()->str.str, str) : true;
+  return get()->isString() ? !!strcmp(get()->str.str, str) : true;
 }
 
 bool Ref::operator==(const IString &str) {
@@ -110,7 +110,7 @@ struct StackedStack { // a stack, on the stack
   }
 };
 
-#define visitable(node) (node->isArray() and node->size() > 0)
+#define visitable(node) (node->isArray() && node->size() > 0)
 
 #define TRAV_STACK 40
 
@@ -122,7 +122,7 @@ void traversePre(Ref node, std::function<void (Ref)> visit) {
   stack.push_back({ node, 0 });
   while (stack.size() > 0) {
     TraverseInfo& top = stack.back();
-    if (top.index < top.node->size()) {
+    if (top.index < (int)top.node->size()) {
       Ref sub = top.node[top.index];
       top.index++;
       if (visitable(sub)) {
@@ -143,7 +143,7 @@ void traversePrePost(Ref node, std::function<void (Ref)> visitPre, std::function
   stack.push_back({ node, 0 });
   while (stack.size() > 0) {
     TraverseInfo& top = stack.back();
-    if (top.index < top.node->size()) {
+    if (top.index < (int)top.node->size()) {
       Ref sub = top.node[top.index];
       top.index++;
       if (visitable(sub)) {
@@ -166,7 +166,7 @@ void traversePrePostConditional(Ref node, std::function<bool (Ref)> visitPre, st
   stack.push_back({ node, 0 });
   while (stack.size() > 0) {
     TraverseInfo& top = stack.back();
-    if (top.index < top.node->size()) {
+    if (top.index < (int)top.node->size()) {
       Ref sub = top.node[top.index];
       top.index++;
       if (visitable(sub)) {
@@ -187,7 +187,7 @@ void traverseFunctions(Ref ast, std::function<void (Ref)> visit) {
   if (!ast || ast->size() == 0) return;
   if (ast[0] == TOPLEVEL) {
     Ref stats = ast[1];
-    for (int i = 0; i < stats->size(); i++) {
+    for (size_t i = 0; i < stats->size(); i++) {
       Ref curr = stats[i];
       if (curr[0] == DEFUN) visit(curr);
     }
