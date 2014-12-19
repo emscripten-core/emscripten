@@ -1688,6 +1688,34 @@ int main () {
 
       self.do_run_from_file(src, output)
 
+  def test_complex(self):
+    self.do_run(r'''
+#include <complex.h>
+#include <stdio.h>
+
+int main(int argc, char**argv)
+{
+   float complex z1 = 1.0 + 3.0 * I;
+   printf("value = real %.2f imag %.2f\n",creal(z1),cimag(z1));
+   float abs_value = cabsf(z1);
+   printf("abs = %.2f\n",abs_value);
+   float complex z2 =  conjf(z1); 
+   printf("value = real %.2f imag %.2f\n",creal(z2),cimag(z2));
+   float complex z3 =  cexpf(z1); 
+   printf("value = real %.2f imag %.2f\n",creal(z3),cimag(z3));
+   float complex z4 =  conj(z1); 
+   printf("value = real %.2f imag %.2f\n",creal(z4),cimag(z4));
+   float complex z5 =  cargf(z1); 
+   printf("value = real %.2f imag %.2f\n",creal(z5),cimag(z5));
+   return 0;
+}
+''', '''value = real 1.00 imag 3.00
+abs = 3.16
+value = real 1.00 imag -3.00
+value = real -2.69 imag 0.38
+value = real 1.00 imag -3.00
+value = real 1.25 imag 0.00''', force_c=True)
+
   def test_segfault(self):
     if self.emcc_args is None: return self.skip('SAFE_HEAP without ta2 means we check types too, which hide segfaults')
 
