@@ -553,13 +553,13 @@ _mm_ucomigt_ss(__m128 __a, __m128 __b)
 static __inline__ int __attribute__((__always_inline__))
 _mm_ucomile_ss(__m128 __a, __m128 __b)
 {
-  return __a[0] <= __b[0];
+  return !(__a[0] > __b[0]);
 }
 
 static __inline__ int __attribute__((__always_inline__))
 _mm_ucomilt_ss(__m128 __a, __m128 __b)
 {
-  return __a[0] < __b[0];
+  return !(__a[0] >= __b[0]);
 }
 
 static __inline__ int __attribute__((__always_inline__))
