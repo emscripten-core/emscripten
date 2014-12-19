@@ -1702,6 +1702,7 @@ void simplifyExpressions(Ref ast) {
         };
 
         traversePrePost(ast, process, [&stack](Ref Node) {
+          assert(!stack.empty());
           stack.pop_back();
         });
       }
