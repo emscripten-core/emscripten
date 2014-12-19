@@ -199,6 +199,13 @@ struct Value {
     return boo;
   }
 
+  int getInteger() { // convenience function to get a known integer
+    assert(fmod(getNumber(), 1) == 0);
+    int ret = int(getNumber());
+    assert(double(ret) == getNumber()); // no loss in conversion
+    return ret;
+  }
+
   Value& operator=(const Value& other) {
     free();
     switch (other.type) {

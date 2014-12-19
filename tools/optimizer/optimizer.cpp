@@ -2123,7 +2123,7 @@ void simplifyIfs(Ref ast) {
       traversePre(func, [&labelAssigns, &abort](Ref node) {
         if (node[0] == ASSIGN && node[2][0] == NAME && node[2][1] == LABEL) {
           if (node[3][0] == NUM) {
-            int value = node[3][1]->getNumber();
+            int value = node[3][1]->getInteger();
             labelAssigns[value] = labelAssigns[value] + 1;
           } else {
             // label is assigned a dynamic value (like from indirectbr), we cannot do anything
@@ -2139,7 +2139,7 @@ void simplifyIfs(Ref ast) {
         if (node[0] == BINARY && node[1] == EQ && node[2][0] == BINARY && node[2][1] == OR &&
             node[2][2][0] == NAME && node[2][2][1] == LABEL) {
           if (node[3][0] == NUM) {
-            int value = node[3][1]->getNumber();
+            int value = node[3][1]->getInteger();
             labelChecks[value] = labelChecks[value] + 1;
           } else {
             // label is checked vs a dynamic value (like from indirectbr), we cannot do anything
@@ -2164,7 +2164,7 @@ void simplifyIfs(Ref ast) {
                   postCond[2][2][0] == NAME && postCond[2][2][1] == LABEL &&
                   postCond[2][3][0] == NUM && postCond[2][3][1]->getNumber() == 0 &&
                   postCond[3][0] == NUM) {
-                double postValue = postCond[3][1]->getNumber();
+                int postValue = postCond[3][1]->getInteger();
                 Ref preElse = pre[3];
                 if (labelAssigns[postValue] == 1 && labelChecks[postValue] == 1 && preElse[0] == BLOCK && preElse->size() >= 2 && preElse[1]->size() == 1) {
                   Ref preStat = preElse[1][0];
@@ -2687,7 +2687,7 @@ void registerizeHarder(Ref ast) {
       IString name = node[1]->getIString();
       if (asmData.isLocal(name)) {
         nextBasicBlock->nodes.push_back(node);
-        nextBasicBlock->isexpr.push_back(isInExpr);
+        nextBasicBlock->isexpr.push_back(bool(isInExpr));
         if (nextBasicBlock->kill.count(name) == 0) {
           nextBasicBlock->use[name] = 1;
         }
@@ -2702,7 +2702,7 @@ void registerizeHarder(Ref ast) {
       IString name = node[2][1]->getIString();
       if (asmData.isLocal(name)) {
         nextBasicBlock->nodes.push_back(node);
-        nextBasicBlock->isexpr.push_back(isInExpr);
+        nextBasicBlock->isexpr.push_back(bool(isInExpr));
         nextBasicBlock->kill.insert(name);
       }
     };
@@ -2720,7 +2720,7 @@ void registerizeHarder(Ref ast) {
     auto addBlockLabel = [&](Ref node) {
       assert(nextBasicBlock->nodes.size() == 0); // 'cant add label to an in-progress basic block')
       if (node[0] == NUM) {
-        nextBasicBlock->labels.insert(node[1]->getNumber());
+        nextBasicBlock->labels.insert(node[1]->getInteger());
       }
     };
 
@@ -3079,7 +3079,7 @@ void registerizeHarder(Ref ast) {
     for (size_t i = 0; i < labelledJumps.size(); i++) {
       auto labelVal = labelledJumps[i].first;
       auto block = labelledJumps[i].second;
-      Block* targetBlock = labelledBlocks[labelVal->getNumber()];
+      Block* targetBlock = labelledBlocks[labelVal->getInteger()];
       if (targetBlock) {
         // Redirect its exit to entry of the target block.
         junctions[block->exit].inblocks.erase(block->id);
