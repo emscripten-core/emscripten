@@ -2,6 +2,8 @@
 
 # Note: If you put paths relative to the home directory, do not forget os.path.expanduser
 
+# Note: On Windows, remember to escape backslashes! I.e. EMSCRIPTEN_ROOT='c:\emscripten\' is not valid, but EMSCRIPTEN_ROOT='c:\\emscripten\\' and EMSCRIPTEN_ROOT='c:/emscripten/' are.
+
 import os
 
 # this helps projects using emscripten find it
