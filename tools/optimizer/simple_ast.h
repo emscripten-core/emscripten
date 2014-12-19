@@ -572,7 +572,13 @@ struct JSPrinter {
       if (!buffer) {
         buffer = (char*)malloc(size);
       } else {
-        buffer = (char*)realloc(buffer, size);
+        char *buf = (char*)realloc(buffer, size);
+        if (!buf) {
+          free(buffer);
+          printf("Out of memory allocating %d bytes for output buffer!", size);
+          assert(0);
+        }
+        buffer = buf;
       }
     }
   }
