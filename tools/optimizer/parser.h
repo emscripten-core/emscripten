@@ -207,7 +207,15 @@ class Parser {
           // Explicitly parse hex numbers of form "0x...", because strtod
           // supports hex number strings only in C++11, and Visual Studio 2013 does
           // not yet support that functionality.
-          num = (double)strtoul(start, &src, 0);
+          src += 2;
+          num = 0;
+          while (1) {
+            if (*src >= '0' && *src <= '9') { num *= 16; num += *src - '0'; }
+            else if (*src >= 'a' && *src <= 'f') { num *= 16; num += *src - 'a' + 10; }
+            else if (*src >= 'A' && *src <= 'F') { num *= 16; num += *src - 'F' + 10; }
+            else break;
+            src++;
+          }
         } else {
           num = strtod(start, &src);
         }
@@ -822,7 +830,7 @@ class Parser {
     for (int i = 0; i < (curr - allSource); i++) printf(" ");
     printf("^\n=============\n");
     */
-    printf("%s:\n==========\n", where);
+    fprintf(stderr, "%s:\n==========\n", where);
     int newlinesLeft = 2;
     int charsLeft = 200;
     while (*curr) {
@@ -832,9 +840,9 @@ class Parser {
       }
       charsLeft--;
       if (charsLeft == 0) break;
-      printf("%c", *curr++);
+      fprintf(stderr, "%c", *curr++);
     }
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
   }
 
 public:
