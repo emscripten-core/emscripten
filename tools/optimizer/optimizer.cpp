@@ -2687,7 +2687,7 @@ void registerizeHarder(Ref ast) {
       IString name = node[1]->getIString();
       if (asmData.isLocal(name)) {
         nextBasicBlock->nodes.push_back(node);
-        nextBasicBlock->isexpr.push_back(bool(isInExpr));
+        nextBasicBlock->isexpr.push_back(isInExpr != 0);
         if (nextBasicBlock->kill.count(name) == 0) {
           nextBasicBlock->use[name] = 1;
         }
@@ -2702,7 +2702,7 @@ void registerizeHarder(Ref ast) {
       IString name = node[2][1]->getIString();
       if (asmData.isLocal(name)) {
         nextBasicBlock->nodes.push_back(node);
-        nextBasicBlock->isexpr.push_back(bool(isInExpr));
+        nextBasicBlock->isexpr.push_back(isInExpr != 0);
         nextBasicBlock->kill.insert(name);
       }
     };
