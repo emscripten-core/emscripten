@@ -157,7 +157,6 @@ void traversePrePost(Ref node, std::function<void (Ref)> visitPre, std::function
       stack.pop_back();
     }
   }
-  visitPost(node);
 }
 
 // Traverse, calling visitPre before the children and visitPost after. If pre returns false, do not traverse children
@@ -181,7 +180,6 @@ void traversePrePostConditional(Ref node, std::function<bool (Ref)> visitPre, st
       stack.pop_back();
     }
   }
-  visitPost(node);
 }
 
 // Traverses all the top-level functions in the document

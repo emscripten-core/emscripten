@@ -613,4 +613,6 @@ function bignum() {
  HEAP32[20] = 2779096485 | 0;
  if (!(($2814 | 0) >= 0)) return;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "rett", "ret2t", "retf", "i32_8", "tempDoublePtr", "boxx", "_main", "badf", "badf2", "fcomp", "conditionalizeMe", "bignum"]
+function empty() {
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "rett", "ret2t", "retf", "i32_8", "tempDoublePtr", "boxx", "_main", "badf", "badf2", "fcomp", "conditionalizeMe", "bignum", "empty"]

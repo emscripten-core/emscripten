@@ -755,6 +755,10 @@ struct JSPrinter {
     }
     emit(')');
     space();
+    if (node->size() == 3 || node[3]->size() == 0) {
+      emit("{}");
+      return;
+    }
     emit('{');
     indent++;
     newline();
