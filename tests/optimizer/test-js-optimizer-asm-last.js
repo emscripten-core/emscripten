@@ -33,6 +33,9 @@ function finall(x) {
  a = +0x3ce7184d470dd60000;
  f(g() & -1);
  x = 1.7976931348623157e+308;
+ a = 9007199254740992; // 2^53, the largest integer that can be represented in a double such that all smaller integers are also representable.
+ a = 9007199254740993; // 2^53 + 1 cannot be represented as double.
+ a = 9007199254740994; // This is again representable as double.
  return +12e10;
 }
 function looop() {
