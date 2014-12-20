@@ -829,8 +829,15 @@ struct JSPrinter {
         assert(d >= 0);
         unsigned long long uu = (unsigned long long)d;
         if (uu == d) {
-          snprintf(buffer, BUFFERSIZE-1, (e && !finalize) ? "0x%llx" : "%llu", uu);
-          sscanf(buffer, "%lf", &temp);
+          bool asHex = e && !finalize;
+          snprintf(buffer, BUFFERSIZE-1, asHex ? "0x%llx" : "%llu", uu);
+          if (asHex) {
+            unsigned long long tempULL;
+            sscanf(buffer, "%llx", &tempULL);
+            temp = (double)tempULL;
+          } else {
+            sscanf(buffer, "%lf", &temp);
+          }
         } else {
           // too large for a machine integer, just use floats
           snprintf(buffer, BUFFERSIZE-1, e ? "%e" : "%.0f", d); // even on integers, e with a dot is useful, e.g. 1.2e+200
