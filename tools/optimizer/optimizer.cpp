@@ -3896,7 +3896,6 @@ int main(int argc, char **argv) {
     jser.printAst();
     std::cout << jser.buffer << "\n";
   }
-
   return 0;
 }
 
