@@ -32,6 +32,7 @@ function finall(x) {
  a = -0xde0b6b000000000;
  a = +0x3ce7184d470dd60000;
  f(g() | 0);
+ x = 1.7976931348623157e+308;
  return +12e10;
 }
 function looop() {

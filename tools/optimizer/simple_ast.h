@@ -868,7 +868,8 @@ struct JSPrinter {
         char *end = strchr(buffer, 0);
         end--;
         char *test = end;
-        while (*test == '0' && test > buffer) test--;
+        // remove zeros, and also doubles can use at most 24 digits, we can truncate any extras even if not zero
+        while ((*test == '0' || test - buffer > 24) && test > buffer) test--;
         int num = end - test;
         if (num >= 3) {
           test++;
