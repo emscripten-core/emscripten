@@ -300,4 +300,6 @@ function asmy() {
   print("fleefl");
  }
 }
-
+function dblMax() {
+ var x = +1.7976931348623157e+308;
+}
