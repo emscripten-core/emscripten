@@ -3832,16 +3832,19 @@ int main(int argc, char **argv) {
   }
 
   // Read input file
-  FILE *f = fopen(argv[1], "rb");
+  FILE *f = fopen(argv[1], "r");
   assert(f);
   fseek(f, 0, SEEK_END);
   int size = ftell(f);
   char *input = new char[size+1];
   rewind(f);
   int num = fread(input, 1, size, f);
-  assert(num == size);
+  // On Windows, ftell() gives the byte position (\r\n counts as two bytes), but when
+  // reading, fread() returns the number of characters read (\r\n is read as one char \n, and counted as one),
+  // so return value of fread can be less than size reported by ftell, and that is normal.
+  assert((num > 0 || size == 0) && num <= size);
   fclose(f);
-  input[size] = 0;
+  input[num] = 0;
 
   char *extraInfoStart = strstr(input, "// EXTRA_INFO:");
   if (extraInfoStart) {
@@ -3893,7 +3896,6 @@ int main(int argc, char **argv) {
     jser.printAst();
     std::cout << jser.buffer << "\n";
   }
-
   return 0;
 }
 
