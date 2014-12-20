@@ -876,11 +876,16 @@ struct JSPrinter {
           if (num < 10) {
             test[1] = '0' + num;
             test[2] = 0;
-          } else {
-            assert(num < 100);
+          } else if (num < 100) {
             test[1] = '0' + (num / 10);
             test[2] = '0' + (num % 10);
             test[3] = 0;
+          } else {
+            assert(num < 1000);
+            test[1] = '0' + (num / 100);
+            test[2] = '0' + (num % 100) / 10;
+            test[3] = '0' + (num % 10);
+            test[4] = 0;
           }
         }
       }
