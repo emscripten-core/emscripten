@@ -107,6 +107,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
        'shgetc.c',
       ]],
       ['math', [
+       '__expo2.c',
+       '__expo2f.c',
        '__fpclassify.c',
        '__fpclassifyf.c',
        '__fpclassifyl.c',
