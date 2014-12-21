@@ -5298,6 +5298,7 @@ return malloc(size);
 
   def test_simd7(self):
     # test_simd7 is to test negative zero handling.
+    return self.skip('see issue #3103')
 
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
