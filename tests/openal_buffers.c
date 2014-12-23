@@ -25,6 +25,7 @@ unsigned int frequency = 0;
 unsigned int bits = 0;
 ALenum format = 0;
 ALuint source = 0;
+float pitch = 1.3f;
 
 void iter() {
   ALuint buffer = 0;
@@ -32,6 +33,7 @@ void iter() {
   ALint buffersWereQueued = 0;
   ALint buffersQueued = 0;
   ALint state;
+  float testPitch;
 
   alGetSourcei(source, AL_BUFFERS_PROCESSED, &buffersProcessed);
 
@@ -65,6 +67,13 @@ void iter() {
 
     offset += len;
   }
+
+  pitch *= .999;
+  if (pitch < 0.5f)
+    pitch = 0.5f;
+  alSourcef(source, AL_PITCH, pitch);
+  alGetSourcef(source, AL_PITCH, &testPitch);
+  assert(pitch == testPitch);
 
   // Exit once we've processed the entire clip.
   if (offset >= size) {
