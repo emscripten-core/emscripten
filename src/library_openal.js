@@ -533,26 +533,27 @@ var LibraryOpenAL = {
       }
       src.playbackRate = value;
 
-      var currentTime = AL.currentContext.ctx.currentTime;
-      // update currently playing entry
-      var entry = src.queue[src.buffersPlayed];
-      if (entry.src) {
+      if (src.state === 0x1012 /* AL_PLAYING */) {
+        // update currently playing entry
+        var entry = src.queue[src.buffersPlayed];
+        var currentTime = AL.currentContext.ctx.currentTime;
         var oldrate = entry.src.playbackRate.value;
         var offset = currentTime - src.bufferPosition;
         entry.src.duration = (entry.src.duration - offset) * oldrate / src.playbackRate;
         entry.src.playbackRate.value = src.playbackRate;
-      }
-      src.bufferPosition = currentTime;
-      // stop other buffers
-      for (var k = src.buffersPlayed + 1; k < src.queue.length; k++) {
-        var entry = src.queue[k];
-        if (entry.src) {
-          entry.src.stop();
-          entry.src = null;
+        src.bufferPosition = currentTime;
+
+        // stop other buffers
+        for (var k = src.buffersPlayed + 1; k < src.queue.length; k++) {
+          var entry = src.queue[k];
+          if (entry.src) {
+            entry.src.stop();
+            entry.src = null;
+          }
         }
+        // update the source to reschedule buffers with the new playbackRate
+        AL.updateSource(src);
       }
-      // update the source to reschedule buffers with the new playbackRate
-      AL.updateSource(src);
       break;
     case 0x100A /* AL_GAIN */:
       src.gain.gain.value = value;
