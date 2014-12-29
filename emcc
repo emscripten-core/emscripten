@@ -1127,7 +1127,7 @@ try:
         if file_ending.endswith(SOURCE_ENDINGS):
           temp_file = temp_files[pos][1]
           logging.debug('optimizing %s', input_file)
-          #if DEBUG: shutil.copyfile(temp_file, os.path.join(TEMP_DIR, 'to_opt.bc') # useful when LLVM opt aborts
+          #if DEBUG: shutil.copyfile(temp_file, os.path.join(shared.configuration.CANONICAL_TEMP_DIR, 'to_opt.bc')) # useful when LLVM opt aborts
           new_temp_file = in_temp(unsuffixed(uniquename(temp_file)) + '.o')
           shared.Building.llvm_opt(temp_file, llvm_opts, new_temp_file)
           temp_files[pos] = (temp_files[pos][0], new_temp_file)

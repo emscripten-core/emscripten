@@ -1427,11 +1427,11 @@ int main(int argc, char **argv)
       disabled_size = len(open('src.cpp.o.js').read())
       shutil.copyfile('src.cpp.o.js', 'disabled.js')
 
-      assert size - empty_size > 1000, [empty_size, size] # big change when we disable entirely
-      assert size - fake_size > 1000, [fake_size, size]
-      assert abs(empty_size - fake_size) < 100, [empty_size, fake_size]
-      assert empty_size - disabled_size < 100, [empty_size, disabled_size] # full disable removes a tiny bit more
-      assert fake_size - disabled_size < 100, [disabled_size, fake_size]
+      assert size - empty_size > 0.005*size, [empty_size, size] # big change when we disable entirely
+      assert size - fake_size > 0.005*size, [fake_size, size]
+      assert abs(empty_size - fake_size) < 0.007*size, [empty_size, fake_size]
+      assert empty_size - disabled_size < 0.007*size, [empty_size, disabled_size] # full disable removes a little bit more
+      assert fake_size - disabled_size < 0.007*size, [disabled_size, fake_size]
 
   def test_exceptions_white_list_2(self):
     if self.emcc_args is None: return self.skip('requires emcc')
@@ -5823,7 +5823,8 @@ def process(filename):
           '18.cpp', '15.c', '21.c', '22.c'
         ]: continue # works only in fastcomp
         if x == 'lto' and self.run_name == 'default' and os.path.basename(name) in [
-          '19.c', '18.cpp'
+          '19.c', '18.cpp',
+          '8.c' # pnacl legalization issue, see https://code.google.com/p/nativeclient/issues/detail?id=4027
         ]: continue # LLVM LTO bug
         if x == 'lto' and os.path.basename(name) in [
           '21.c'
@@ -7300,7 +7301,6 @@ asm3i = make_run("asm3i", compiler=CLANG, emcc_args=["-O3", '-s', 'EMTERPRETIFY=
 
 # Legacy test modes - 
 asm2nn = make_run("asm2nn", compiler=CLANG, emcc_args=["-O2"], env={"EMCC_NATIVE_OPTIMIZER": "0"})
-slow2 = make_run("slow2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=0"], env={"EMCC_FAST_COMPILER": "0"})
 
 del T # T is just a shape for the specific subclasses, we don't test it itself
 

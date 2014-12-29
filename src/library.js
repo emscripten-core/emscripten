@@ -4292,6 +4292,10 @@ LibraryManager.library = {
 
   llvm_nacl_atomic_store_i32__inline: true,
 
+  llvm_nacl_atomic_cmpxchg_i8__inline: true,
+  llvm_nacl_atomic_cmpxchg_i16__inline: true,
+  llvm_nacl_atomic_cmpxchg_i32__inline: true,
+
   // gnu atomics
 
   __atomic_is_lock_free: function(size, ptr) {

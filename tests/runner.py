@@ -50,7 +50,7 @@ except:
 
 # Core test runner class, shared between normal tests and benchmarks
 checked_sanity = False
-test_modes = ['default', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g', 'asm3i', 'asm2nn', 'slow2']
+test_modes = ['default', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g', 'asm3i', 'asm2nn']
 test_index = 0
 
 class RunnerCore(unittest.TestCase):

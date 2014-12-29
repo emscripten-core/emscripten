@@ -1895,6 +1895,7 @@ void *getBindBuffer() {
     self.btest('http.cpp', expected='0', args=['-I' + path_from_root('tests')])
 
   def test_module(self):
+    return self.skip('non-fastcomp is deprecated and fails in 3.5')
     def nfc():
       Popen([PYTHON, EMCC, path_from_root('tests', 'browser_module.cpp'), '-o', 'module.js', '-O2', '-s', 'SIDE_MODULE=1', '-s', 'DLOPEN_SUPPORT=1', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two"]']).communicate()
       self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE=1', '-s', 'DLOPEN_SUPPORT=1'], expected='8')
