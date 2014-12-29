@@ -6385,8 +6385,8 @@ LibraryManager.library = {
   // TODO: Implement for real.
   getrlimit: function(resource, rlp) {
     // int getrlimit(int resource, struct rlimit *rlp);
-    {{{ makeSetValue('rlp', C_STRUCTS.rlimit.rlim_cur, '-1', 'i32') }}}  // RLIM_INFINITY
-    {{{ makeSetValue('rlp', C_STRUCTS.rlimit.rlim_max, '-1', 'i32') }}}  // RLIM_INFINITY
+    {{{ makeSetValue('rlp', C_STRUCTS.rlimit.rlim_cur, '-1', 'i32') }}};  // RLIM_INFINITY
+    {{{ makeSetValue('rlp', C_STRUCTS.rlimit.rlim_max, '-1', 'i32') }}};  // RLIM_INFINITY
     return 0;
   },
   setrlimit: function(resource, rlp) {
