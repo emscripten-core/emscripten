@@ -482,6 +482,8 @@ fi
     try_delete(CANONICAL_TEMP_DIR)
 
   def test_relooper(self):
+    return self.skip('non-fastcomp is deprecated and fails in 3.5')
+
     assert os.environ.get('EMCC_FAST_COMPILER') is None
 
     try:

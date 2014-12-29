@@ -273,6 +273,7 @@ f.close()
     # TODO: deprecate llvm optimizations, dlmalloc, etc. in emscripten.py.
 
   def test_emcc_nonfastcomp(self):
+    return self.skip('non-fastcomp is deprecated and fails in 3.5')
     nonfastcomp(self.test_emcc)
 
   def test_emcc_cache_flag(self):
@@ -482,6 +483,7 @@ f.close()
     self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_unaligned_memory(self):
+    return self.skip('non-fastcomp is deprecated and fails in 3.5')
     def test():
       open(os.path.join(self.get_dir(), 'test.cpp'), 'w').write(r'''
         #include <stdio.h>
@@ -508,6 +510,7 @@ f.close()
     nonfastcomp(test)
 
   def test_unaligned_memory_2(self):
+    return self.skip('non-fastcomp is deprecated and fails in 3.5')
     def test():
       open(os.path.join(self.get_dir(), 'test.cpp'), 'w').write(r'''
         #include <string>
@@ -623,6 +626,7 @@ This pointer might make sense in another type signature: i: 0
     assert not os.path.exists('a.out') and not os.path.exists('a.exe'), 'Must not leave unneeded linker stubs'
 
   def test_static_link(self):
+    return self.skip('non-fastcomp is deprecated and fails in 3.5')
     def nonfc():
       if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('todo in fastcomp')
 
@@ -2012,6 +2016,8 @@ int f() {
       assert 'error' not in err, 'Unexpected stderr: ' + err
 
   def test_chunking(self):
+    return self.skip('non-fastcomp is deprecated and fails in 3.5')
+
     def nonfc():
       if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('not relevant for fastcomp, only checks js compiler chunking')
       if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
@@ -2423,7 +2429,7 @@ int main()
       self.assertContained('File size: 724', out)
 
   def test_simd(self):
-    assert get_clang_version() == '3.4'
+    assert get_clang_version() == '3.5'
     Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-s', 'SIMD=1', '-DSP', '-s', 'PRECISE_F32=1']).communicate()
     self.assertContained('Unrolled Single  Precision', run_js('a.out.js'))
 
