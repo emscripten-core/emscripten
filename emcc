@@ -1235,6 +1235,11 @@ try:
       if not shared.Building.can_inline(): link_opts.append('-disable-inlining')
       # do not internalize in std-link-opts - it ignores internalize-public-api-list - and add a manual internalize
       link_opts += ['-disable-internalize'] + shared.Building.get_safe_internalize() + ['-std-link-opts']
+      # execute it now, so it is done entirely before we get to the stage of legalization etc.
+      shared.Building.llvm_opt(final, pre_fastcomp_opts + link_opts)
+      if DEBUG: save_intermediate('lto', 'bc')
+      pre_fastcomp_opts = []
+      link_opts = []
     else:
       # At minimum remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
       link_opts += shared.Building.get_safe_internalize() + ['-globaldce']
