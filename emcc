@@ -865,6 +865,8 @@ try:
     # Set ASM_JS default here so that we can override it from the command line.
     shared.Settings.ASM_JS = 1 if opt_level > 0 else 2
 
+  pre_fastcomp_opts = []
+
   # Apply -s settings in newargs here (after optimization levels, so they can override them)
   for change in settings_changes:
     key, value = change.split('=')
@@ -902,7 +904,6 @@ try:
       logging.warning('jcache is deprecated and not supported in fastcomp (you should not need it anyhow), disabling')
       jcache = False
 
-    pre_fastcomp_opts = []
     fastcomp_opts = []
     if shared.Settings.NO_EXIT_RUNTIME:
       pre_fastcomp_opts += ['-emscripten-no-exit-runtime']
