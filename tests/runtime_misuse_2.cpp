@@ -20,8 +20,3 @@ void free(void*) { // free is valid to call even after the runtime closes, so us
 
 }
 
-int main() {
-  EM_ASM( myJSCallback() ); // calls a global JS func
-  return 0;
-}
-

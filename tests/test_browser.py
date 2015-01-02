@@ -1850,15 +1850,34 @@ void *getBindBuffer() {
       setTimeout(Module['_free'], 1000); // free is valid to call even after the runtime closes
     '''
 
-    print 'mem init, so async, call too early'
-    open(os.path.join(self.get_dir(), 'post.js'), 'w').write(post_prep + post_test + post_hook)
-    self.btest('runtime_misuse.cpp', expected='600', args=['--post-js', 'post.js', '--memory-init-file', '1'])
-    print 'sync startup, call too late'
-    open(os.path.join(self.get_dir(), 'post.js'), 'w').write(post_prep + 'Module.postRun.push(function() { ' + post_test + ' });' + post_hook);
-    self.btest('runtime_misuse.cpp', expected='600', args=['--post-js', 'post.js', '--memory-init-file', '0'])
-    print 'sync, runtime still alive, so all good'
-    open(os.path.join(self.get_dir(), 'post.js'), 'w').write(post_prep + 'expected_ok = true; Module.postRun.push(function() { ' + post_test + ' });' + post_hook);
-    self.btest('runtime_misuse.cpp', expected='606', args=['--post-js', 'post.js', '--memory-init-file', '0', '-s', 'NO_EXIT_RUNTIME=1'])
+    open('pre_main.js', 'w').write(r'''
+      Module._main = function(){
+        myJSCallback();
+        return 0;
+      };
+    ''')
+
+    open('pre_runtime.js', 'w').write(r'''
+      Module.onRuntimeInitialized = function(){
+        myJSCallback();
+      };
+    ''')
+
+    for filename, extra_args, second_code in [
+      ('runtime_misuse.cpp', [], 600),
+      ('runtime_misuse_2.cpp', ['--pre-js', 'pre_main.js'], 600),
+      ('runtime_misuse_2.cpp', ['--pre-js', 'pre_runtime.js'], 601) # 601, because no main means we *do* run another call after exit()
+    ]:
+      print '\n', filename, extra_args
+      print 'mem init, so async, call too early'
+      open(os.path.join(self.get_dir(), 'post.js'), 'w').write(post_prep + post_test + post_hook)
+      self.btest(filename, expected='600', args=['--post-js', 'post.js', '--memory-init-file', '1'] + extra_args)
+      print 'sync startup, call too late'
+      open(os.path.join(self.get_dir(), 'post.js'), 'w').write(post_prep + 'Module.postRun.push(function() { ' + post_test + ' });' + post_hook);
+      self.btest(filename, expected=str(second_code), args=['--post-js', 'post.js', '--memory-init-file', '0'] + extra_args)
+      print 'sync, runtime still alive, so all good'
+      open(os.path.join(self.get_dir(), 'post.js'), 'w').write(post_prep + 'expected_ok = true; Module.postRun.push(function() { ' + post_test + ' });' + post_hook);
+      self.btest(filename, expected='606', args=['--post-js', 'post.js', '--memory-init-file', '0', '-s', 'NO_EXIT_RUNTIME=1'] + extra_args)
 
   def test_worker_api(self):
     Popen([PYTHON, EMCC, path_from_root('tests', 'worker_api_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]']).communicate()

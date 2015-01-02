@@ -207,6 +207,11 @@ or
 
 What happens in practice is that when code is ready to be run, we check for ``Module._main``. If present, we call it. If a ``main()`` function was compiled from C, it will be there (and it will be a JavaScript function). But, you can also just define a JavaScript function there, either will work.
 
+Another option is to define an ``onRuntimeInitialized`` function,
+
+  Module['onRuntimeInitialized'] = function() { ... };
+
+That method will be called when the runtime is ready and it is ok for you to call compiled code. In practice, that is exactly the same time at which ``main()`` would be called, so ``onRuntimeInitialized`` doesn't let you do anything new, but it can be convenient in some cases - for example, if you use ``onRuntimeInitialized`` and don't define a ``main()`` function, then the runtime will not be shut down after ``main()`` exits, and you can keep calling compiled methods (you can also have a ``main()`` and build with ``-s NO_EXIT_RUNTIME=1`` to keep the runtime from being shut down). Thus, for libraries, ``onRuntimeInitialized`` can be convenient.
 
 .. _faq-dead-code-elimination:
 
