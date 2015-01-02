@@ -56,8 +56,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   def build_libc(lib_filename, files, lib_opts):
     o_s = []
-    prev_cxx = os.environ.get('EMMAKEN_CXX')
-    if prev_cxx: os.environ['EMMAKEN_CXX'] = ''
     musl_internal_includes = ['-I', shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal'), '-I', shared.path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'js')]
     commands = []
     # Hide several musl warnings that produce a lot of spam to unit test build server logs.
@@ -68,7 +66,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes + default_opts + c_opts + lib_opts)
       o_s.append(o)
     run_commands(commands)
-    if prev_cxx: os.environ['EMMAKEN_CXX'] = prev_cxx
     shared.Building.link(o_s, in_temp(lib_filename))
     return in_temp(lib_filename)
 
@@ -647,11 +644,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   # gl
   def create_gl():
-    prev_cxx = os.environ.get('EMMAKEN_CXX')
-    if prev_cxx: os.environ['EMMAKEN_CXX'] = ''
     o = in_temp('gl.o')
     check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'gl.c'), '-o', o])
-    if prev_cxx: os.environ['EMMAKEN_CXX'] = prev_cxx
     return o
 
   # Setting this in the environment will avoid checking dependencies and make building big projects a little faster

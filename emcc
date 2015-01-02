@@ -104,6 +104,9 @@ if DEBUG and LEAVE_INPUTS_RAW: logging.warning('leaving inputs raw')
 stdout = PIPE if not DEBUG else None # suppress output of child processes
 stderr = PIPE if not DEBUG else None # unless we are in DEBUG mode
 
+EMCC_CXX = '--emscripten-cxx' in sys.argv
+sys.argv = filter(lambda x: x != '--emscripten-cxx', sys.argv)
+
 shared.check_sanity(force=DEBUG)
 
 # Handle some global flags
@@ -126,8 +129,6 @@ while response_file:
       break
 
 if len(sys.argv) == 1 or '--help' in sys.argv:
-  this = os.path.basename('em++' if os.environ.get('EMMAKEN_CXX') else 'emcc')
-
   # Documentation for emcc and its options must be updated in: 
   #    site/source/docs/tools_reference/emcc.rst
   # A prebuilt local version of the documentation is available at: 
@@ -212,7 +213,7 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
       if debug_configure: open(tempout, 'a').write('Forcing clang since uses fopen to write\n')
 
   compiler = os.environ.get('CONFIGURE_CC') or (shared.CLANG if not use_js else shared.EMCC) # if CONFIGURE_CC is defined, use that. let's you use local gcc etc. if you need that
-  if not ('CXXCompiler' in ' '.join(sys.argv) or os.environ.get('EMMAKEN_CXX')):
+  if not ('CXXCompiler' in ' '.join(sys.argv) or EMCC_CXX):
     compiler = shared.to_cc(compiler)
 
   def filter_emscripten_options(argv):
@@ -276,7 +277,7 @@ else:
 CC = shared.to_cc(CXX)
 
 # If we got here from a redirection through emmakenxx.py, then force a C++ compiler here
-if os.environ.get('EMMAKEN_CXX'):
+if EMCC_CXX:
   CC = CXX
 
 CC_ADDITIONAL_ARGS = shared.COMPILER_OPTS
