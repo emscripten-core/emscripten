@@ -48,6 +48,7 @@ while 1:
   print '1) Generate source'
   extra_args = []
   if random.random() < 0.5: extra_args += ['--no-math64']
+  if random.random() < 0.5: extra_args += ['--float']
   suffix = '.c'
   COMP = shared.CLANG_CC
   if random.random() < 0.5:
@@ -95,7 +96,7 @@ while 1:
   def try_js(args):
     shared.try_delete(filename + '.js')
     print '(compile)'
-    shared.check_execute([shared.PYTHON, shared.EMCC, opts, fullname, '-o', filename + '.js'] + CSMITH_CFLAGS + args)
+    shared.check_execute([shared.PYTHON, shared.EMCC, opts, fullname, '-o', filename + '.js', '-s', 'PRECISE_F32=1'] + CSMITH_CFLAGS + args)
     assert os.path.exists(filename + '.js')
     print '(run)'
     js = shared.run_js(filename + '.js', engine=engine1, check_timeout=True, assert_returncode=None, cwd='/tmp/emscripten_temp')
