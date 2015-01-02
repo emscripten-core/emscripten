@@ -574,43 +574,46 @@ fi
     from tools import system_libs
     PORTS_DIR = system_libs.Ports.get_dir()
 
-    for i in [0, 1]:
-      print i
-      if i == 0:
-        try_delete(PORTS_DIR)
-      else:
-        self.do([PYTHON, EMCC, '--clear-ports'])
-      assert not os.path.exists(PORTS_DIR)
-      if i == 0: Cache.erase() # test with cache erased and without
+    for compiler in [EMCC, EMXX]:
+      print compiler
 
-      # Building a file that doesn't need ports should not trigger anything
-      output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp')])
-      assert RETRIEVING_MESSAGE not in output
-      assert BUILDING_MESSAGE not in output
-      assert not os.path.exists(PORTS_DIR)
+      for i in [0, 1]:
+        print i
+        if i == 0:
+          try_delete(PORTS_DIR)
+        else:
+          self.do([PYTHON, compiler, '--clear-ports'])
+        assert not os.path.exists(PORTS_DIR)
+        if i == 0: Cache.erase() # test with cache erased and without
 
-      # Building a file that need a port does trigger stuff
-      output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
-      assert RETRIEVING_MESSAGE in output, output
-      assert BUILDING_MESSAGE in output, output
-      assert os.path.exists(PORTS_DIR)
+        # Building a file that doesn't need ports should not trigger anything
+        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp')])
+        assert RETRIEVING_MESSAGE not in output
+        assert BUILDING_MESSAGE not in output
+        assert not os.path.exists(PORTS_DIR)
 
-      def second_use():
-        # Using it again avoids retrieve and build
-        output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
-        assert RETRIEVING_MESSAGE not in output, output
-        assert BUILDING_MESSAGE not in output, output
+        # Building a file that need a port does trigger stuff
+        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
+        assert RETRIEVING_MESSAGE in output, output
+        assert BUILDING_MESSAGE in output, output
+        assert os.path.exists(PORTS_DIR)
 
-      second_use()
+        def second_use():
+          # Using it again avoids retrieve and build
+          output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
+          assert RETRIEVING_MESSAGE not in output, output
+          assert BUILDING_MESSAGE not in output, output
 
-      # if the version isn't sufficient, we retrieve and rebuild
-      open(os.path.join(PORTS_DIR, 'sdl2', 'SDL2-master', 'version.txt'), 'w').write('1') # current is >= 2, so this is too old
-      output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
-      assert RETRIEVING_MESSAGE in output, output
-      assert BUILDING_MESSAGE in output, output
-      assert os.path.exists(PORTS_DIR)
+        second_use()
 
-      second_use()
+        # if the version isn't sufficient, we retrieve and rebuild
+        open(os.path.join(PORTS_DIR, 'sdl2', 'SDL2-master', 'version.txt'), 'w').write('1') # current is >= 2, so this is too old
+        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
+        assert RETRIEVING_MESSAGE in output, output
+        assert BUILDING_MESSAGE in output, output
+        assert os.path.exists(PORTS_DIR)
+
+        second_use()
 
   def test_native_optimizer(self):
     restore()
