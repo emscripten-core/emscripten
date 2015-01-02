@@ -98,7 +98,7 @@ while 1:
     print '(compile)'
     shared.check_execute([shared.PYTHON, shared.EMCC, opts, fullname, '-o', filename + '.js', '-s', 'PRECISE_F32=1'] + CSMITH_CFLAGS + args)
     assert os.path.exists(filename + '.js')
-    print '(run)'
+    print '(run in %s)' % engine1
     js = shared.run_js(filename + '.js', engine=engine1, check_timeout=True, assert_returncode=None, cwd='/tmp/emscripten_temp')
     js = js.split('\n')[0] + '\n' # remove any extra printed stuff (node workarounds)
     assert correct1 == js or correct2 == js, ''.join([a.rstrip()+'\n' for a in difflib.unified_diff(correct1.split('\n'), js.split('\n'), fromfile='expected', tofile='actual')])
