@@ -78,11 +78,11 @@ struct IString {
     return strcmp(str ? str : "", other.str ? other.str : "") < 0;
   }
 
-  char operator[](int x) {
+  char operator[](int x) const {
     return str[x];
   }
 
-  bool operator!() { // no string, or empty string
+  bool operator!() const { // no string, or empty string
     return !str || str[0] == 0;
   }
 

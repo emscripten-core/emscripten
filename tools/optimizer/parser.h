@@ -5,6 +5,7 @@
 
 #include <vector>
 #include <iostream>
+#include <algorithm>
 
 #include <stdio.h>
 
@@ -162,8 +163,9 @@ class Parser {
     OPERATOR = 1,
     IDENT = 2,
     STRING = 3, // without quotes
-    NUMBER = 4,
-    SEPARATOR = 5
+    INT = 4,
+    DOUBLE = 5,
+    SEPARATOR = 6
   };
 
   struct Frag {
@@ -177,6 +179,10 @@ class Parser {
 #endif
     int size;
     FragType type;
+
+    bool isNumber() const {
+      return type == INT || type == DOUBLE;
+    }
 
     explicit Frag(char* src) {
       assert(!isSpace(*src));
@@ -216,11 +222,12 @@ class Parser {
             else break;
             src++;
           }
+          type = INT;
         } else {
           num = strtod(start, &src);
+          type = std::find(start, src, '.') == src ? INT : DOUBLE;
         }
         assert(src > start);
-        type = NUMBER;
       } else if (hasChar(OPERATOR_INITS, *src)) {
         switch (*src) {
           case '!': str = src[1] == '=' ? NE : L_NOT; break;
@@ -278,7 +285,8 @@ class Parser {
       }
       case IDENT:
       case STRING:
-      case NUMBER: {
+      case INT:
+      case DOUBLE: {
         src = skipSpace(src);
         if (frag.type == IDENT) return parseAfterIdent(frag, src, seps);
         else return parseExpression(parseFrag(frag), src, seps);
@@ -301,7 +309,8 @@ class Parser {
     switch (frag.type) {
       case IDENT:  return Builder::makeName(frag.str);
       case STRING: return Builder::makeString(frag.str);
-      case NUMBER: return Builder::makeNumber(frag.num);
+      case INT:    return Builder::makeInt(uint32_t(frag.num));
+      case DOUBLE: return Builder::makeDouble(frag.num);
       default: assert(0);
     }
     return nullptr;
@@ -457,7 +466,7 @@ class Parser {
           src = skipSpace(src);
           NodeRef arg;
           Frag value(src);
-          if (value.type == NUMBER) {
+          if (value.isNumber()) {
             arg = parseFrag(value);
             src += value.size;
           } else {
@@ -466,7 +475,7 @@ class Parser {
             src += value.size;
             src = skipSpace(src);
             Frag value2(src);
-            assert(value2.type == NUMBER);
+            assert(value2.isNumber());
             arg = Builder::makePrefix(MINUS, parseFrag(value2));
             src += value2.size;
           }

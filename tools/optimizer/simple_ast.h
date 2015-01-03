@@ -1295,9 +1295,12 @@ public:
     }
   }
 
-  static Ref makeNumber(double num) {
+  static Ref makeDouble(double num) {
     return &makeRawArray()->push_back(makeRawString(NUM))
                            .push_back(&arena.alloc()->setNumber(num));
+  }
+  static Ref makeInt(uint32_t num) {
+    return makeDouble(double(num));
   }
 
   static Ref makeBinary(Ref left, IString op, Ref right) {
