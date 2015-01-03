@@ -48,7 +48,7 @@ while 1:
   print '1) Generate source'
   extra_args = []
   if random.random() < 0.5: extra_args += ['--no-math64']
-  if random.random() < 0.5: extra_args += ['--float']
+  #if random.random() < 0.5: extra_args += ['--float'] # XXX hits undefined behavior on float=>int conversions (too big to fit)
   suffix = '.c'
   COMP = shared.CLANG_CC
   if random.random() < 0.5:
