@@ -5,7 +5,6 @@
 
 #include <vector>
 #include <iostream>
-#include <algorithm>
 
 #include <stdio.h>
 
@@ -157,6 +156,10 @@ class Parser {
 
   static bool hasChar(const char* list, char x) { while (*list) if (*list++ == x) return true; return false; }
 
+  static bool is32Bit(double x) {
+    return x == (int)x || x == (unsigned int)x;
+  }
+
   // An atomic fragment of something. Stops at a natural boundary.
   enum FragType {
     KEYWORD = 0,
@@ -222,11 +225,10 @@ class Parser {
             else break;
             src++;
           }
-          type = INT;
         } else {
           num = strtod(start, &src);
-          type = std::find(start, src, '.') == src ? INT : DOUBLE;
         }
+        type = is32Bit(num) ? INT : DOUBLE;
         assert(src > start);
       } else if (hasChar(OPERATOR_INITS, *src)) {
         switch (*src) {
