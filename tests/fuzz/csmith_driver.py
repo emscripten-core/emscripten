@@ -13,6 +13,7 @@ from subprocess import check_call, Popen, PIPE, STDOUT, CalledProcessError
 sys.path += [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'tools')]
 import shared
 
+# can add flags like --no-threads --ion-offthread-compile=off
 engine1 = eval('shared.' + sys.argv[1]) if len(sys.argv) > 1 else shared.JS_ENGINES[0]
 engine2 = shared.SPIDERMONKEY_ENGINE if os.path.exists(shared.SPIDERMONKEY_ENGINE[0]) else None
 

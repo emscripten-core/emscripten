@@ -10,7 +10,7 @@ gcc $@ -m32 -I/home/alon/Dev/csmith/runtime -o n1.out &> /dev/null
 #EMCC_FAST_COMPILER=0 ~/Dev/emscripten/emcc $@ -I/home/alon/Dev/csmith/runtime -o js.out.js &> /dev/null
 #EMCC_FAST_COMPILER=0~/Dev/emscripten/emcc $@ -s UNALIGNED_MEMORY=1 -I/home/alon/Dev/csmith/runtime -o ua.out.js &> /dev/null
 #EMCC_FAST_COMPILER=0~/Dev/emscripten/emcc $@ -s SAFE_HEAP=1 -I/home/alon/Dev/csmith/runtime -o sh.out.js &> /dev/null
-~/Dev/emscripten/emcc $@ -I/home/alon/Dev/csmith/runtime -s PRECISE_F32=1 -o fc.out.js &> /dev/null
+~/Dev/emscripten/emcc $@ -I/home/alon/Dev/csmith/runtime -s PRECISE_F32=1 -o fc.out.js --memory-init-file 0 -profiling &> /dev/null
 ~/Dev/emscripten/emcc $@ -s SAFE_HEAP=1 -I/home/alon/Dev/csmith/runtime -s PRECISE_F32=1 -o fc-sh.out.js &> /dev/null
 echo "run n1"
 ./n1.out &> n1
