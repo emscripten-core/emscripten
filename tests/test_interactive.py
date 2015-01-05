@@ -107,3 +107,8 @@ class interactive(BrowserCore):
       assert os.path.exists(program)
       Popen([PYTHON, EMCC, '-O2', program, '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should hear "Hello World!"')
+
+  def test_html5_audio(self):
+    shutil.copyfile(path_from_root('tests', 'sounds', 'alarmvictory_1.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
+    self.btest('html5_audio.c', '1', args=['--preload-file', 'sound.ogg'],)
+

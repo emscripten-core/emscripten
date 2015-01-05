@@ -426,6 +426,27 @@ extern EM_BOOL emscripten_is_webgl_context_lost(const char *target);
 extern EMSCRIPTEN_RESULT emscripten_set_element_css_size(const char *target, double width, double height);
 extern EMSCRIPTEN_RESULT emscripten_get_element_css_size(const char *target, double *width, double *height);
 
+typedef int EMSCRIPTEN_AUDIO_INSTANCE;
+typedef void (*em_audio_channel_callback)(void *userData);
+
+extern EMSCRIPTEN_RESULT emscripten_audio_init(void);
+extern EMSCRIPTEN_AUDIO_INSTANCE emscripten_audio_load_pcm(int channels, int length, int sampleRate, float *ptr);
+extern EMSCRIPTEN_AUDIO_INSTANCE emscripten_audio_load(void *ptr, int length);
+extern void emscripten_audio_free(EMSCRIPTEN_AUDIO_INSTANCE instance);
+extern EMSCRIPTEN_AUDIO_INSTANCE emscripten_audio_create_channel(em_audio_channel_callback callback, void* userData);
+extern void emscripten_audio_play(EMSCRIPTEN_AUDIO_INSTANCE bufferInstance, EMSCRIPTEN_AUDIO_INSTANCE channelInstance);
+extern void emscripten_audio_set_paused(EMSCRIPTEN_AUDIO_INSTANCE channelInstance, int paused);
+extern void emscripten_audio_set_loop(EMSCRIPTEN_AUDIO_INSTANCE channelInstance, int loop);
+extern void emscripten_audio_set_3d(EMSCRIPTEN_AUDIO_INSTANCE channelInstance, int threeD);
+extern void emscripten_audio_stop(EMSCRIPTEN_AUDIO_INSTANCE channelInstance);
+extern void emscripten_audio_set_position(EMSCRIPTEN_AUDIO_INSTANCE channelInstance, double x, double y, double z);
+extern void emscripten_audio_set_velocity(EMSCRIPTEN_AUDIO_INSTANCE channelInstance, double x, double y, double z);
+extern void emscripten_audio_set_volume(EMSCRIPTEN_AUDIO_INSTANCE channelInstance, double v);
+extern void emscripten_audio_set_listener_position(double x, double y, double z);
+extern void emscripten_audio_set_listener_velocity(double x, double y, double z);
+extern void emscripten_audio_set_listener_orientation(double x, double y, double z, double xUp, double yUp, double zUp);
+extern EMSCRIPTEN_RESULT emscripten_audio_get_load_state(EMSCRIPTEN_AUDIO_INSTANCE bufferInstance);
+
 #ifdef __cplusplus
 } // ~extern "C"
 #endif

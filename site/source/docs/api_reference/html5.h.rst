@@ -2050,7 +2050,114 @@ Functions
 	:returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
 	:rtype: |EMSCRIPTEN_RESULT|
 
+
+Audio
+=====
+
+``emscripten_audio_*`` provides a simple interface to Web Audio functionality in modern browsers. This is lower-level than e.g. SDL audio, but gives you more direct control.
+
+The API is mostly very direct and obvious, except for the fact that some parts of Web Audio are asynchronous. See notes in :c:func:`emscripten_audio_play`.
+
+Defines
+-------
+
+.. c:type:: EMSCRIPTEN_AUDIO_INSTANCE
+
+	An integer that represents a handle to Emscripten Audio object (either a channel or a buffer).
+
+.. c:function:: em_audio_channel_callback
+
+  Represents a callback function for channel creation. Receives one parameter, a ``void*``.	
 	
+	
+Functions
+---------
+
+.. c:function:: EMSCRIPTEN_RESULT emscripten_audio_init()
+
+	Initializes audio. This must be called before any other ``emscripten_audio_*`` calls.
+
+	:rtype: |EMSCRIPTEN_RESULT|
+
+.. c:function:: EMSCRIPTEN_AUDIO_INSTANCE emscripten_audio_load_pcm(int channels, int length, int sampleRate, float *ptr)
+
+	Loads raw PCM audio data in 32-bit float format.
+
+	:param int channels: Number of channels
+	:param int length: Length of the audio
+	:param int sampleRate: Sample rate
+	:param int ptr: Pointer to the raw data
+	:rtype: |EMSCRIPTEN_AUDIO_INSTANCE|
+
+.. c:function:: EMSCRIPTEN_AUDIO_INSTANCE emscripten_audio_load(void *ptr, int length)
+
+	Loads audio data in a standard binary format that the browser can understand.
+
+	:param int ptr: Pointer to the raw data
+	:param int length: Length of the audio
+	:rtype: |EMSCRIPTEN_AUDIO_INSTANCE|
+	
+.. c:function:: void emscripten_audio_free(EMSCRIPTEN_AUDIO_INSTANCE instance)
+
+	Frees an audio instance (a channel or a buffer) that was previously created.
+
+.. c:function:: EMSCRIPTEN_AUDIO_INSTANCE emscripten_audio_create_channel(em_audio_channel_callback callback, void* userData)
+
+	Creates a channel. Calls the callback with ``userData`` when a buffer completes playing.
+
+.. c:function:: void emscripten_audio_play(EMSCRIPTEN_AUDIO_INSTANCE bufferInstance, EMSCRIPTEN_AUDIO_INSTANCE channelInstance)
+
+	Plays a buffer of audio in a channel. Due to asynchronous decoding of audio, this may fail
+  if you call it too early. You can call ``emscripten_audio_get_load_state`` to know when it is
+  ok to play a buffer.
+
+.. c:function:: void emscripten_audio_set_paused(EMSCRIPTEN_AUDIO_INSTANCE channelInstance, int paused)
+
+	Pauses or unpauses a channel.
+
+.. c:function:: void emscripten_audio_set_loop(EMSCRIPTEN_AUDIO_INSTANCE channelInstance, int loop)
+
+	Sets whether a channel should loop.
+
+.. c:function:: void emscripten_audio_set_3d(EMSCRIPTEN_AUDIO_INSTANCE channelInstance, int threeD)
+
+	Sets whether a channel is 3D.
+
+.. c:function:: void emscripten_audio_stop(EMSCRIPTEN_AUDIO_INSTANCE channelInstance)
+
+	Stops a channel from playing.
+
+.. c:function:: void emscripten_audio_set_position(EMSCRIPTEN_AUDIO_INSTANCE channelInstance, double x, double y, double z)
+
+	Sets the position of a channel in space.
+
+.. c:function:: void emscripten_audio_set_velocity(EMSCRIPTEN_AUDIO_INSTANCE channelInstance, double x, double y, double z)
+
+	Sets the velocity of a channel.
+
+.. c:function:: void emscripten_audio_set_volume(EMSCRIPTEN_AUDIO_INSTANCE channelInstance, double v)
+
+	Sets the volume of a channel.
+
+.. c:function:: void emscripten_audio_set_listener_position(double x, double y, double z)
+
+	Sets the position in space of the listener.
+
+.. c:function:: void emscripten_audio_set_listener_velocity(double x, double y, double z)
+
+	Sets the velocity of the listener.
+
+.. c:function:: void emscripten_audio_set_listener_orientation(double x, double y, double z, double xUp, double yUp, double zUp)
+
+	Sets the orientation of the listener.
+
+.. c:function:: EMSCRIPTEN_RESULT emscripten_audio_get_load_state(EMSCRIPTEN_AUDIO_INSTANCE bufferInstance)
+
+	Checks if a buffer is ready to be played. This will return :c:data:`EMSCRIPTEN_RESULT_SUCCESS` if it is in fact ready, or :c:data:`EMSCRIPTEN_RESULT_DEFERRED` if not. If instead an error occurred, :c:data:`EMSCRIPTEN_RESULT_FAILED` will be returned.
+
+
+
+
 	
 .. COMMENT (not rendered): Section below is automated copy and replace text.
 
@@ -2059,6 +2166,7 @@ Functions
 .. |EMSCRIPTEN_RESULT| replace:: :c:type:`EMSCRIPTEN_RESULT`
 .. |EM_BOOL| replace:: :c:type:`EM_BOOL`
 .. |EMSCRIPTEN_WEBGL_CONTEXT_HANDLE| replace:: :c:type:`EMSCRIPTEN_WEBGL_CONTEXT_HANDLE`
+.. |EMSCRIPTEN_AUDIO_INSTANCE| replace:: :c:type:`EMSCRIPTEN_AUDIO_INSTANCE`
 
 
 .. COMMENT (not rendered): Following values are common to many functions, and currently only updated in one place (here).
