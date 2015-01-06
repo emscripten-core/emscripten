@@ -4,23 +4,35 @@
 #include <emscripten.h>
 #include <html5.h>
 #include <sys/stat.h>
+#include <math.h>
 
-EMSCRIPTEN_AUDIO_INSTANCE sound3, channel;
+EMSCRIPTEN_AUDIO_INSTANCE sound3, channel, noisey;
 
-int did = 0;
-
-void done(void* x) {
-  assert(did);
+void done() {
   printf("test is done\n");
   int result = 1;
   REPORT_RESULT();
 }
 
+int state = 0;
+
 void did_play(void* arg) {
-  printf("got a channel.\n");
-  assert(123 == (int)arg);
-  did = 1;
-  printf("did play\n");
+  if (state == 0) {
+    assert(123 == (int)arg);
+    printf("did play of a nice sound, now here is some artificial nonsense\n");
+    float samples[44000];
+    for (int i = 0; i < 44000; i++) {
+      samples[i] = sqrtf(((float)((i*i) % 4000))/4000);
+    }
+    noisey = emscripten_audio_load_pcm(1, 44000, 22000, samples);
+    printf("noisey instance: %d\n", noisey);
+    EMSCRIPTEN_RESULT status = emscripten_audio_get_load_state(noisey);
+    assert(status == EMSCRIPTEN_RESULT_SUCCESS);
+    emscripten_audio_play(noisey, channel);
+    state = 1;
+  } else if (state == 1) {
+    done();
+  }
 }
 
 void loop() {
@@ -30,8 +42,6 @@ void loop() {
 
   emscripten_audio_play(sound3, channel);
   printf("you should now hear a sound.\n");
-
-  emscripten_async_call(done, NULL, 6000);
 
   emscripten_cancel_main_loop();
 }
@@ -56,7 +66,6 @@ int main(int argc, char **argv) {
   assert(status == EMSCRIPTEN_RESULT_DEFERRED);
 
   channel = emscripten_audio_create_channel(did_play, (void*)123);
-
   emscripten_set_main_loop(loop, 0, 0);
 
   return 0;
