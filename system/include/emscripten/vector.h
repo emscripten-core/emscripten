@@ -42,6 +42,11 @@ int32x4 emscripten_int32x4_select(int32x4 __a, int32x4 __b, int32x4 __c) __attri
 float32x4 emscripten_float32x4_fromInt32x4Bits(int32x4 __a) __attribute__((__nothrow__, __const__));
 float32x4 emscripten_float32x4_fromInt32x4(int32x4 __a) __attribute__((__nothrow__, __const__));
 
+float32x4 emscripten_float32x4_loadx(const void *__p) __attribute__((__nothrow__, __const__));
+float32x4 emscripten_float32x4_loadxy(const void *__p) __attribute__((__nothrow__, __const__));
+void emscripten_float32x4_storex(const void *__p, float32x4 __a) __attribute__((__nothrow__));
+void emscripten_float32x4_storexy(const void *__p, float32x4 __a) __attribute__((__nothrow__));
+
 #ifdef __cplusplus
 }
 #endif
