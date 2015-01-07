@@ -3346,7 +3346,10 @@ void registerizeHarder(Ref ast) {
       sortedJunctionVariables.push_back(pair.first);
     }
     std::sort(sortedJunctionVariables.begin(), sortedJunctionVariables.end(), [&](const IString name1, const IString name2) {
-      //return strcmp(name1.str, name2.str) > 0;// XXX junctionVariables[name1].conf.size() > junctionVariables[name2].conf.size();
+      //// sort params first
+      //if (asmData.isParam(name1) && !asmData.isParam(name2)) return true;
+      //if (!asmData.isParam(name1) && asmData.isParam(name2)) return false;
+      // sort by # of conflicts
       if (junctionVariables[name1].conf.size() < junctionVariables[name2].conf.size()) return true;
       if (junctionVariables[name1].conf.size() == junctionVariables[name2].conf.size()) return name1 < name2;
       return false;
