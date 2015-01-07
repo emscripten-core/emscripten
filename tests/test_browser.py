@@ -123,6 +123,7 @@ If manually bisecting:
       os.chdir(cwd)
 
   def test_split(self):
+    return self.skip('non-fastcomp is deprecated and fails in 3.5')
     def nfc():
       # test HTML generation.
       self.reftest(path_from_root('tests', 'htmltest.png'))
@@ -218,6 +219,7 @@ If manually bisecting:
     nonfastcomp(nfc)
 
   def test_split_in_source_filenames(self):
+    return self.skip('non-fastcomp is deprecated and fails in 3.5')
     def nfc():
       self.reftest(path_from_root('tests', 'htmltest.png'))
       output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.js', '-g', '--split', '100', '--pre-js', 'reftest.js']).communicate()
