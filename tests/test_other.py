@@ -1,4 +1,4 @@
-import multiprocessing, os, re, shutil, subprocess, sys
+import multiprocessing, os, pipes, re, shutil, subprocess, sys
 import glob
 import tools.shared
 from tools.shared import *
@@ -2066,16 +2066,19 @@ int f() {
     assert 'If you see this - the world is all right!' in output
 
   def test_embind(self):
+    environ = os.environ.copy()
+    environ['EMCC_CLOSURE_ARGS'] = environ.get('EMCC_CLOSURE_ARGS', '') + " --externs " + pipes.quote(path_from_root('tests', 'embind', 'underscore-externs.js'))
     for args, fail in [
       ([], True), # without --bind, we fail
       (['--bind'], False),
       (['--bind', '-O1'], False),
       (['--bind', '-O2'], False),
+      (['--bind', '-O2', '--closure', '1'], False),
     ]:
       print args, fail
       self.clear()
       try_delete(self.in_dir('a.out.js'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'embind', 'embind_test.cpp'), '--post-js', path_from_root('tests', 'embind', 'underscore-1.4.2.js'), '--post-js', path_from_root('tests', 'embind', 'imvu_test_adapter.js'), '--post-js', path_from_root('tests', 'embind', 'embind.test.js')] + args, stderr=PIPE if fail else None).communicate()
+      Popen([PYTHON, EMCC, path_from_root('tests', 'embind', 'embind_test.cpp'), '--post-js', path_from_root('tests', 'embind', 'underscore-1.4.2.js'), '--post-js', path_from_root('tests', 'embind', 'imvu_test_adapter.js'), '--post-js', path_from_root('tests', 'embind', 'embind.test.js')] + args, stderr=PIPE if fail else None, env=environ).communicate()
       assert os.path.exists(self.in_dir('a.out.js')) == (not fail)
       if not fail:
         output = run_js(self.in_dir('a.out.js'), stdout=PIPE, stderr=PIPE, full_output=True, assert_returncode=0)
