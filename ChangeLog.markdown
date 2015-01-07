@@ -14,6 +14,27 @@ Current trunk code
     - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.27.1...incoming
     - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.27.1...incoming
 
+v1.28.3: 01/04/2015
+-------------------
+ - embuilder.py tool
+ - Many fixes for native optimizer on Windows
+ - Perform LLVM LTO in a separate invocation of opt, so that it does not mix with legalization and other stuff we do at link time
+
+v1.28.2: 12/17/2014
+-------------------
+ - Enable native optimizer by default
+ - Disable slow2asm legacy testing (asm.js mode in pre-fastcomp)
+
+v1.28.1: 12/15/2014
+-------------------
+ - Use a lot more MUSL math functions
+
+v1.28.0: 12/12/2014
+-------------------
+
+v1.27.2: 12/10/2014
+-------------------
+
 v1.27.1: 11/20/2014
 -------------------
  - Migrated to upstream PNaCl LLVM+Clang 3.4 from the previous 3.3.

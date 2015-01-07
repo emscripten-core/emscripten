@@ -1688,6 +1688,34 @@ int main () {
 
       self.do_run_from_file(src, output)
 
+  def test_complex(self):
+    self.do_run(r'''
+#include <complex.h>
+#include <stdio.h>
+
+int main(int argc, char**argv)
+{
+   float complex z1 = 1.0 + 3.0 * I;
+   printf("value = real %.2f imag %.2f\n",creal(z1),cimag(z1));
+   float abs_value = cabsf(z1);
+   printf("abs = %.2f\n",abs_value);
+   float complex z2 =  conjf(z1); 
+   printf("value = real %.2f imag %.2f\n",creal(z2),cimag(z2));
+   float complex z3 =  cexpf(z1); 
+   printf("value = real %.2f imag %.2f\n",creal(z3),cimag(z3));
+   float complex z4 =  conj(z1); 
+   printf("value = real %.2f imag %.2f\n",creal(z4),cimag(z4));
+   float complex z5 =  cargf(z1); 
+   printf("value = real %.2f imag %.2f\n",creal(z5),cimag(z5));
+   return 0;
+}
+''', '''value = real 1.00 imag 3.00
+abs = 3.16
+value = real 1.00 imag -3.00
+value = real -2.69 imag 0.38
+value = real 1.00 imag -3.00
+value = real 1.25 imag 0.00''', force_c=True)
+
   def test_segfault(self):
     if self.emcc_args is None: return self.skip('SAFE_HEAP without ta2 means we check types too, which hide segfaults')
 
@@ -5270,6 +5298,7 @@ return malloc(size);
 
   def test_simd7(self):
     # test_simd7 is to test negative zero handling.
+    return self.skip('see issue #3103')
 
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
@@ -5783,7 +5812,7 @@ def process(filename):
   def test_fuzz(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
 
-    Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'fuzz'), '-Wno-warn-absolute-paths']
+    Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'fuzz', 'include'), '-Wno-warn-absolute-paths']
 
     def run_all(x):
       print x
@@ -7270,8 +7299,8 @@ asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTI
 asm3i = make_run("asm3i", compiler=CLANG, emcc_args=["-O3", '-s', 'EMTERPRETIFY=1'])
 
 # Legacy test modes - 
+asm2nn = make_run("asm2nn", compiler=CLANG, emcc_args=["-O2"], env={"EMCC_NATIVE_OPTIMIZER": "0"})
 slow2 = make_run("slow2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=0"], env={"EMCC_FAST_COMPILER": "0"})
-slow2asm = make_run("slow2asm", compiler=CLANG, emcc_args=["-O2"], env={"EMCC_FAST_COMPILER": "0"})
 
 del T # T is just a shape for the specific subclasses, we don't test it itself
 

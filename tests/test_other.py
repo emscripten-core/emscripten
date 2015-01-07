@@ -168,7 +168,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # emcc -s RELOOP=1 src.cpp ==> should pass -s to emscripten.py. --typed-arrays is a convenient alias for -s USE_TYPED_ARRAYS
       for params, test, text in [
         (['-O2'], lambda generated: 'function intArrayToString' in generated, 'shell has unminified utilities'),
-        (['-O2', '--closure', '1'], lambda generated: 'function intArrayToString' not in generated, 'closure minifies the shell'),
+        (['-O2', '--closure', '1'], lambda generated: 'function intArrayToString' not in generated and ';function' in generated, 'closure minifies the shell, removes whitespace'),
+        (['-O2', '--closure', '1', '-g1'], lambda generated: 'function intArrayToString' not in generated and ';function' not in generated, 'closure minifies the shell, -g1 makes it keep whitespace'),
         (['-O2'], lambda generated: 'var b=0' in generated and not 'function _main' in generated, 'registerize/minify is run by default in -O2'),
         (['-O2', '--minify', '0'], lambda generated: 'var b = 0' in generated and not 'function _main' in generated, 'minify is cancelled, but not registerize'),
         (['-O2', '--js-opts', '0'], lambda generated: 'var b=0' not in generated and 'var b = 0' not in generated and 'function _main' in generated, 'js opts are cancelled'),
@@ -1881,57 +1882,57 @@ int f() {
 
   def test_js_optimizer(self):
     for input, expected, passes in [
-      (path_from_root('tools', 'test-js-optimizer.js'), open(path_from_root('tools', 'test-js-optimizer-output.js')).read(),
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-output.js')).read(),
        ['hoistMultiples', 'removeAssignsToUndefined', 'simplifyExpressions']),
-      (path_from_root('tools', 'test-js-optimizer-t2c.js'), open(path_from_root('tools', 'test-js-optimizer-t2c-output.js')).read(),
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer-t2c.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-t2c-output.js')).read(),
        ['simplifyExpressions', 'optimizeShiftsConservative']),
-      (path_from_root('tools', 'test-js-optimizer-t2.js'), open(path_from_root('tools', 'test-js-optimizer-t2-output.js')).read(),
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer-t2.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-t2-output.js')).read(),
        ['simplifyExpressions', 'optimizeShiftsAggressive']),
-      (path_from_root('tools', 'test-js-optimizer-t3.js'), open(path_from_root('tools', 'test-js-optimizer-t3-output.js')).read(),
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer-t3.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-t3-output.js')).read(),
        ['optimizeShiftsAggressive']),
-      (path_from_root('tools', 'test-js-optimizer-si.js'), open(path_from_root('tools', 'test-js-optimizer-si-output.js')).read(),
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer-si.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-si-output.js')).read(),
        ['simplifyIfs']),
-      (path_from_root('tools', 'test-js-optimizer-regs.js'), open(path_from_root('tools', 'test-js-optimizer-regs-output.js')).read(),
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer-regs.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-regs-output.js')).read(),
        ['registerize']),
-      (path_from_root('tools', 'eliminator', 'eliminator-test.js'), open(path_from_root('tools', 'eliminator', 'eliminator-test-output.js')).read(),
+      (path_from_root('tests', 'optimizer', 'eliminator-test.js'), open(path_from_root('tests', 'optimizer', 'eliminator-test-output.js')).read(),
        ['eliminate']),
-      (path_from_root('tools', 'eliminator', 'safe-eliminator-test.js'), open(path_from_root('tools', 'eliminator', 'safe-eliminator-test-output.js')).read(),
+      (path_from_root('tests', 'optimizer', 'safe-eliminator-test.js'), open(path_from_root('tests', 'optimizer', 'safe-eliminator-test-output.js')).read(),
        ['eliminateMemSafe']),
-      (path_from_root('tools', 'eliminator', 'asm-eliminator-test.js'), open(path_from_root('tools', 'eliminator', 'asm-eliminator-test-output.js')).read(),
+      (path_from_root('tests', 'optimizer', 'asm-eliminator-test.js'), open(path_from_root('tests', 'optimizer', 'asm-eliminator-test-output.js')).read(),
        ['asm', 'eliminate']),
-      (path_from_root('tools', 'test-js-optimizer-asm-regs.js'), open(path_from_root('tools', 'test-js-optimizer-asm-regs-output.js')).read(),
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-regs.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-regs-output.js')).read(),
        ['asm', 'registerize']),
-      (path_from_root('tools', 'test-js-optimizer-asm-regs-harder.js'), open(path_from_root('tools', 'test-js-optimizer-asm-regs-harder-output.js')).read(),
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-regs-harder.js'), [open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-regs-harder-output.js')).read(), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-regs-harder-output2.js')).read(), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-regs-harder-output3.js')).read()],
        ['asm', 'registerizeHarder']),
-      (path_from_root('tools', 'test-js-optimizer-asm-regs-min.js'), open(path_from_root('tools', 'test-js-optimizer-asm-regs-min-output.js')).read(),
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-regs-min.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-regs-min-output.js')).read(),
        ['asm', 'registerize', 'minifyLocals']),
-      (path_from_root('tools', 'test-js-optimizer-asm-pre.js'), [open(path_from_root('tools', 'test-js-optimizer-asm-pre-output.js')).read(), open(path_from_root('tools', 'test-js-optimizer-asm-pre-output2.js')).read()],
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-pre.js'), [open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-pre-output.js')).read(), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-pre-output2.js')).read()],
        ['asm', 'simplifyExpressions']),
-      (path_from_root('tools', 'test-js-optimizer-asm-pre-f32.js'), open(path_from_root('tools', 'test-js-optimizer-asm-pre-output-f32.js')).read(),
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-pre-f32.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-pre-output-f32.js')).read(),
        ['asm', 'asmPreciseF32', 'simplifyExpressions', 'optimizeFrounds']),
-      (path_from_root('tools', 'test-js-optimizer-asm-pre-f32.js'), open(path_from_root('tools', 'test-js-optimizer-asm-pre-output-f32-nosimp.js')).read(),
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-pre-f32.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-pre-output-f32-nosimp.js')).read(),
        ['asm', 'asmPreciseF32', 'optimizeFrounds']),
-      (path_from_root('tools', 'test-js-optimizer-asm-last.js'), [open(path_from_root('tools', 'test-js-optimizer-asm-lastOpts-output.js')).read(), open(path_from_root('tools', 'test-js-optimizer-asm-lastOpts-output2.js')).read()],
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-last.js'), [open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-lastOpts-output.js')).read(), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-lastOpts-output2.js')).read(), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-lastOpts-output3.js')).read()],
        ['asm', 'asmLastOpts']),
-      (path_from_root('tools', 'test-js-optimizer-asm-last.js'), [open(path_from_root('tools', 'test-js-optimizer-asm-last-output.js')).read(), open(path_from_root('tools', 'test-js-optimizer-asm-last-output2.js')).read()],
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-last.js'), [open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-last-output.js')).read(), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-last-output2.js')).read(), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-last-output3.js')).read()],
        ['asm', 'asmLastOpts', 'last']),
-      (path_from_root('tools', 'test-js-optimizer-asm-relocate.js'), open(path_from_root('tools', 'test-js-optimizer-asm-relocate-output.js')).read(),
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-relocate.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-relocate-output.js')).read(),
        ['asm', 'relocate']),
-      (path_from_root('tools', 'test-js-optimizer-asm-outline1.js'), open(path_from_root('tools', 'test-js-optimizer-asm-outline1-output.js')).read(),
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-outline1.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-outline1-output.js')).read(),
        ['asm', 'outline']),
-      (path_from_root('tools', 'test-js-optimizer-asm-outline2.js'), open(path_from_root('tools', 'test-js-optimizer-asm-outline2-output.js')).read(),
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-outline2.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-outline2-output.js')).read(),
        ['asm', 'outline']),
-      (path_from_root('tools', 'test-js-optimizer-asm-outline3.js'), open(path_from_root('tools', 'test-js-optimizer-asm-outline3-output.js')).read(),
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-outline3.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-outline3-output.js')).read(),
        ['asm', 'outline']),
-      (path_from_root('tools', 'test-js-optimizer-asm-minlast.js'), open(path_from_root('tools', 'test-js-optimizer-asm-minlast-output.js')).read(),
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-minlast.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-minlast-output.js')).read(),
        ['asm', 'minifyWhitespace', 'asmLastOpts', 'last']),
-      (path_from_root('tools', 'test-js-optimizer-shiftsAggressive.js'), open(path_from_root('tools', 'test-js-optimizer-shiftsAggressive-output.js')).read(),
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer-shiftsAggressive.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-shiftsAggressive-output.js')).read(),
        ['asm', 'aggressiveVariableElimination']),
-      (path_from_root('tools', 'test-js-optimizer-pointerMask.js'), open(path_from_root('tools', 'test-js-optimizer-pointerMask-output.js')).read(),
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer-pointerMask.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-pointerMask-output.js')).read(),
        ['pointerMasking']),
-      (path_from_root('tools', 'test-js-optimizer-localCSE.js'), open(path_from_root('tools', 'test-js-optimizer-localCSE-output.js')).read(),
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer-localCSE.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-localCSE-output.js')).read(),
        ['asm', 'localCSE']),
-      (path_from_root('tools', 'test-js-optimizer-ensureLabelSet.js'), open(path_from_root('tools', 'test-js-optimizer-ensureLabelSet-output.js')).read(),
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer-ensureLabelSet.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-ensureLabelSet-output.js')).read(),
        ['asm', 'ensureLabelSet']),
     ]:
       print input, passes
@@ -1943,16 +1944,41 @@ int f() {
       print '  js'
       output = Popen(NODE_JS + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
 
-      def check_js(js):
+      def check_js(js, expected):
+        #print >> sys.stderr, 'chak\n==========================\n', js, '\n===========================\n'
+        if 'registerizeHarder' in passes:
+          # registerizeHarder is hard to test, as names vary by chance, nondeterminstically FIXME
+          def fix(src):
+            if type(src) is list:
+              return map(fix, src)
+            src = '\n'.join(filter(lambda line: 'var ' not in line, src.split('\n'))) # ignore vars
+            def reorder(func):
+              def swap(func, stuff):
+                # emit EYE_ONE always before EYE_TWO, replacing i1,i2 or i2,i1 etc
+                for i in stuff:
+                  if i not in func: return func
+                indexes = map(lambda i: [i, func.index(i)], stuff)
+                indexes.sort(lambda x, y: x[1] - y[1])
+                for j in range(len(indexes)):
+                  func = func.replace(indexes[j][0], 'STD_' + str(j))
+                return func
+              func = swap(func, ['i1', 'i2', 'i3'])
+              func = swap(func, ['i1', 'i2'])
+              func = swap(func, ['i4', 'i5'])
+              return func
+            src = 'function '.join(map(reorder, src.split('function ')))
+            return src
+          js = fix(js)
+          expected = fix(expected)
         self.assertIdentical(expected, js.replace('\r\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n'))
-      check_js(output)
+      check_js(output, expected)
 
-      if js_optimizer.use_native(passes):
+      if js_optimizer.use_native(passes) and js_optimizer.get_native_optimizer():
         # test calling native
         def check_json():
           Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), output_temp, 'receiveJSON'], stdin=PIPE, stdout=open(output_temp + '.js', 'w')).communicate()
           output = open(output_temp + '.js').read()
-          self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n'))
+          check_js(output, expected)
 
         self.clear()
         input_temp = 'temp.js'
@@ -1976,7 +2002,7 @@ int f() {
 
         print '  native (emitting JS)'
         output = Popen([js_optimizer.get_native_optimizer(), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
-        check_js(output)
+        check_js(output, expected)
 
   def test_m_mm(self):
     open(os.path.join(self.get_dir(), 'foo.c'), 'w').write('''#include <emscripten.h>''')
@@ -4366,10 +4392,20 @@ function _main() {
       assert func in pre, pre
       post = post.split('\n')[0]
       seen = int(post)
-      assert expected == seen, ['expect', expected, 'but see', seen]
+      print '  seen', seen
+      assert expected == seen or seen in expected, ['expect', expected, 'but see', seen]
 
     do_log_test(path_from_root('tests', 'primes.cpp'), 86, 'main')
     do_log_test(path_from_root('tests', 'fannkuch.cpp'), 234, 'fannkuch_worker')
+
+    # test non-native as well, registerizeHarder can be a little more efficient here
+    old_native = os.environ.get('EMCC_NATIVE_OPTIMIZER')
+    try:
+      os.environ['EMCC_NATIVE_OPTIMIZER'] = '0'
+      do_log_test(path_from_root('tests', 'fannkuch.cpp'), 234, 'fannkuch_worker')
+    finally:
+      if old_native: os.environ['EMCC_NATIVE_OPTIMIZER'] = old_native
+      else: del os.environ['EMCC_NATIVE_OPTIMIZER']
 
   def test_emterpreter_swap_orig(self):
     Popen([PYTHON, EMCC, path_from_root('tests', 'fasta.cpp'), '-s', 'EMTERPRETIFY=1', '-s', 'SWAPPABLE_ASM_MODULE=1', '-O2']).communicate()

@@ -13,6 +13,7 @@ from subprocess import check_call, Popen, PIPE, STDOUT, CalledProcessError
 sys.path += [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'tools')]
 import shared
 
+# can add flags like --no-threads --ion-offthread-compile=off
 engine1 = eval('shared.' + sys.argv[1]) if len(sys.argv) > 1 else shared.JS_ENGINES[0]
 engine2 = shared.SPIDERMONKEY_ENGINE if os.path.exists(shared.SPIDERMONKEY_ENGINE[0]) else None
 
@@ -48,6 +49,7 @@ while 1:
   print '1) Generate source'
   extra_args = []
   if random.random() < 0.5: extra_args += ['--no-math64']
+  #if random.random() < 0.5: extra_args += ['--float'] # XXX hits undefined behavior on float=>int conversions (too big to fit)
   suffix = '.c'
   COMP = shared.CLANG_CC
   if random.random() < 0.5:
@@ -95,9 +97,9 @@ while 1:
   def try_js(args):
     shared.try_delete(filename + '.js')
     print '(compile)'
-    shared.check_execute([shared.PYTHON, shared.EMCC, opts, fullname, '-o', filename + '.js'] + CSMITH_CFLAGS + args)
+    shared.check_execute([shared.PYTHON, shared.EMCC, opts, fullname, '-o', filename + '.js', '-s', 'PRECISE_F32=1'] + CSMITH_CFLAGS + args)
     assert os.path.exists(filename + '.js')
-    print '(run)'
+    print '(run in %s)' % engine1
     js = shared.run_js(filename + '.js', engine=engine1, check_timeout=True, assert_returncode=None, cwd='/tmp/emscripten_temp')
     js = js.split('\n')[0] + '\n' # remove any extra printed stuff (node workarounds)
     assert correct1 == js or correct2 == js, ''.join([a.rstrip()+'\n' for a in difflib.unified_diff(correct1.split('\n'), js.split('\n'), fromfile='expected', tofile='actual')])

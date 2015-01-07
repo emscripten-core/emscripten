@@ -104,6 +104,9 @@ if DEBUG and LEAVE_INPUTS_RAW: logging.warning('leaving inputs raw')
 stdout = PIPE if not DEBUG else None # suppress output of child processes
 stderr = PIPE if not DEBUG else None # unless we are in DEBUG mode
 
+EMCC_CXX = '--emscripten-cxx' in sys.argv
+sys.argv = filter(lambda x: x != '--emscripten-cxx', sys.argv)
+
 shared.check_sanity(force=DEBUG)
 
 # Handle some global flags
@@ -126,8 +129,6 @@ while response_file:
       break
 
 if len(sys.argv) == 1 or '--help' in sys.argv:
-  this = os.path.basename('em++' if os.environ.get('EMMAKEN_CXX') else 'emcc')
-
   # Documentation for emcc and its options must be updated in: 
   #    site/source/docs/tools_reference/emcc.rst
   # A prebuilt local version of the documentation is available at: 
@@ -212,7 +213,7 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
       if debug_configure: open(tempout, 'a').write('Forcing clang since uses fopen to write\n')
 
   compiler = os.environ.get('CONFIGURE_CC') or (shared.CLANG if not use_js else shared.EMCC) # if CONFIGURE_CC is defined, use that. let's you use local gcc etc. if you need that
-  if not ('CXXCompiler' in ' '.join(sys.argv) or os.environ.get('EMMAKEN_CXX')):
+  if not ('CXXCompiler' in ' '.join(sys.argv) or EMCC_CXX):
     compiler = shared.to_cc(compiler)
 
   def filter_emscripten_options(argv):
@@ -276,7 +277,7 @@ else:
 CC = shared.to_cc(CXX)
 
 # If we got here from a redirection through emmakenxx.py, then force a C++ compiler here
-if os.environ.get('EMMAKEN_CXX'):
+if EMCC_CXX:
   CC = CXX
 
 CC_ADDITIONAL_ARGS = shared.COMPILER_OPTS
@@ -830,7 +831,7 @@ try:
             break
         if found: break
       if found: break
-    if not found and lib not in ['GL', 'GLU', 'glut']: # whitelist our default libraries
+    if not found and lib not in ['GL', 'GLU', 'glut', 'SDL']: # whitelist our default libraries
       logging.warning('emcc: cannot find library "%s"', lib)
 
   # If not compiling to JS, then we are compiling to an intermediate bitcode objects or library, so
@@ -864,6 +865,8 @@ try:
   if fastcomp:
     # Set ASM_JS default here so that we can override it from the command line.
     shared.Settings.ASM_JS = 1 if opt_level > 0 else 2
+
+  pre_fastcomp_opts = []
 
   # Apply -s settings in newargs here (after optimization levels, so they can override them)
   for change in settings_changes:
@@ -902,7 +905,6 @@ try:
       logging.warning('jcache is deprecated and not supported in fastcomp (you should not need it anyhow), disabling')
       jcache = False
 
-    pre_fastcomp_opts = []
     fastcomp_opts = []
     if shared.Settings.NO_EXIT_RUNTIME:
       pre_fastcomp_opts += ['-emscripten-no-exit-runtime']
@@ -1235,6 +1237,11 @@ try:
       if not shared.Building.can_inline(): link_opts.append('-disable-inlining')
       # do not internalize in std-link-opts - it ignores internalize-public-api-list - and add a manual internalize
       link_opts += ['-disable-internalize'] + shared.Building.get_safe_internalize() + ['-std-link-opts']
+      # execute it now, so it is done entirely before we get to the stage of legalization etc.
+      shared.Building.llvm_opt(final, pre_fastcomp_opts + link_opts)
+      if DEBUG: save_intermediate('lto', 'bc')
+      pre_fastcomp_opts = []
+      link_opts = []
     else:
       # At minimum remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
       link_opts += shared.Building.get_safe_internalize() + ['-globaldce']

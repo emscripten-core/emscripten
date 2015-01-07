@@ -56,8 +56,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   def build_libc(lib_filename, files, lib_opts):
     o_s = []
-    prev_cxx = os.environ.get('EMMAKEN_CXX')
-    if prev_cxx: os.environ['EMMAKEN_CXX'] = ''
     musl_internal_includes = ['-I', shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal'), '-I', shared.path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'js')]
     commands = []
     # Hide several musl warnings that produce a lot of spam to unit test build server logs.
@@ -68,7 +66,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes + default_opts + c_opts + lib_opts)
       o_s.append(o)
     run_commands(commands)
-    if prev_cxx: os.environ['EMMAKEN_CXX'] = prev_cxx
     shared.Building.link(o_s, in_temp(lib_filename))
     return in_temp(lib_filename)
 
@@ -98,17 +95,123 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
        'isxdigit.c',
        'tolower.c',
       ]],
+      ['fenv', [
+        'fenv.c'
+      ]],
       ['internal', [
        'intscan.c',
        'floatscan.c',
        'shgetc.c',
       ]],
       ['math', [
+       '__expo2.c',
+       '__expo2f.c',
+       '__fpclassify.c',
+       '__fpclassifyf.c',
+       '__fpclassifyl.c',
+       '__signbit.c',
+       '__signbitf.c',
+       '__signbitl.c',
+       'acosh.c',
+       'acoshf.c',
+       'acoshl.c',
+       'asinh.c',
+       'asinhf.c',
+       'asinhl.c',
+       'atanh.c',
+       'atanhf.c',
+       'atanhl.c',
+       'cbrt.c',
+       'cbrtf.c',
+       'cbrtl.c',
+       'copysign.c',
+       'copysignf.c',
+       'copysignl.c',
+       'cosh.c',
+       'coshf.c',
+       'coshl.c',
+       'exp2.c',
+       'exp2f.c',
+       'exp2l.c',
+       'expm1.c',
+       'expm1f.c',
+       'expm1l.c',
+       'fdim.c',
+       'fdimf.c',
+       'fdiml.c',
+       'finite.c',
+       'finitef.c',
+       'fma.c',
+       'fmaf.c',
+       'fmal.c',
+       'fmax.c',
+       'fmaxf.c',
+       'fmaxl.c',
+       'fmin.c',
+       'fminf.c',
+       'fminl.c',
+       'fmod.c',
+       'fmodf.c',
+       'fmodl.c',
        'frexp.c',
        'frexpf.c',
        'frexpl.c',
+       'hypot.c',
+       'hypotf.c',
+       'hypotl.c',
+       'llrint.c',
+       'llrintf.c',
+       'llrintl.c',
+       'llround.c',
+       'llroundf.c',
+       'llroundl.c',
+       'log10.c',
+       'log10f.c',
+       'log10l.c',
+       'log1p.c',
+       'log1pf.c',
+       'log1pl.c',
+       'log2.c',
+       'log2f.c',
+       'log2l.c',
+       'lrint.c',
+       'lrintf.c',
+       'lrintl.c',
+       'lround.c',
+       'lroundf.c',
+       'lroundl.c',
+       'modf.c',
+       'modff.c',
+       'modfl.c',
+       'nan.c',
+       'nanf.c',
+       'nanl.c',
+       'nearbyint.c',
+       'nearbyintf.c',
+       'nearbyintl.c',
+       'remainder.c',
+       'remainderf.c',
+       'remainderl.c',
+       'rint.c',
+       'rintf.c',
+       'rintl.c',
+       'round.c',
+       'roundf.c',
+       'roundl.c',
        'scalbn.c',
        'scalbnl.c',
+       'sincos.c',
+       'sincosf.c',
+       'sincosl.c',
+       'sinh.c',
+       'sinhf.c',
+       'sinhl.c',
+       'tanh.c',
+       'tanhf.c',
+       'tanhl.c',
+       'trunc.c',
+       'truncf.c',
+       'truncl.c',
       ]],
       ['multibyte', [
        'wctomb.c',
@@ -343,6 +446,76 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
          'wcstod.c',
          'wcstol.c',
        ]],
+       ['complex', [
+         'cabs.c',
+         'cabsf.c',
+         'cabsl.c',
+         'cacos.c',
+         'cacosf.c',
+         'cacosh.c',
+         'cacoshf.c',
+         'cacoshl.c',
+         'cacosl.c',
+         'carg.c',
+         'cargf.c',
+         'cargl.c',
+         'casin.c',
+         'casinf.c',
+         'casinh.c',
+         'casinhf.c',
+         'casinhl.c',
+         'casinl.c',
+         'catan.c',
+         'catanf.c',
+         'catanh.c',
+         'catanhf.c',
+         'catanhl.c',
+         'catanl.c',
+         'ccos.c',
+         'ccosf.c',
+         'ccosh.c',
+         'ccoshf.c',
+         'ccoshl.c',
+         'ccosl.c',
+         '__cexp.c',
+         'cexp.c',
+         '__cexpf.c',
+         'cexpf.c',
+         'cexpl.c',
+         'cimag.c',
+         'cimagf.c',
+         'cimagl.c',
+         'clog.c',
+         'clogf.c',
+         'clogl.c',
+         'conj.c',
+         'conjf.c',
+         'conjl.c',
+         'cpow.c',
+         'cpowf.c',
+         'cpowl.c',
+         'cproj.c',
+         'cprojf.c',
+         'cprojl.c',
+         'creal.c',
+         'crealf.c',
+         'creall.c',
+         'csin.c',
+         'csinf.c',
+         'csinh.c',
+         'csinhf.c',
+         'csinhl.c',
+         'csinl.c',
+         'csqrt.c',
+         'csqrtf.c',
+         'csqrtl.c',
+         'ctan.c',
+         'ctanf.c',
+         'ctanh.c',
+         'ctanhf.c',
+         'ctanhl.c',
+         'ctanl.c'
+       ]],
        ['string', [
          'bcmp.c',
          'bcopy.c',
@@ -471,11 +644,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   # gl
   def create_gl():
-    prev_cxx = os.environ.get('EMMAKEN_CXX')
-    if prev_cxx: os.environ['EMMAKEN_CXX'] = ''
     o = in_temp('gl.o')
     check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'gl.c'), '-o', o])
-    if prev_cxx: os.environ['EMMAKEN_CXX'] = prev_cxx
     return o
 
   # Setting this in the environment will avoid checking dependencies and make building big projects a little faster
@@ -609,7 +779,7 @@ class Ports:
     fullname = os.path.join(Ports.get_dir(), name)
 
     if name not in Ports.name_cache: # only mention each port once in log
-      logging.warning('including port: ' + name)
+      logging.debug('including port: ' + name)
       logging.debug('    (at ' + fullname + ')')
       Ports.name_cache.add(name)
 

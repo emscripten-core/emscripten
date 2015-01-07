@@ -9,7 +9,7 @@ char* EMSCRIPTEN_KEEPALIVE note(int n) {
   EM_ASM_({ Module.print([$0, $1]) }, n, noted);
   noted += n;
   EM_ASM_({ Module.print(['noted is now', $0]) }, noted);
-  return "silly-string";
+  return (char*)"silly-string";
 }
 
 void free(void*) { // free is valid to call even after the runtime closes, so useful as a hack here for this test

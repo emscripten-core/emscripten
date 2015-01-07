@@ -10,10 +10,13 @@
 #include <iostream>
 #include <iomanip>
 #include <functional>
+#include <algorithm>
 #include <unordered_set>
 #include <unordered_map>
 
 #include "parser.h"
+
+#include "snprintf.h"
 
 #define err(str) fprintf(stderr, str "\n");
 #define errv(str, ...) fprintf(stderr, str "\n", __VA_ARGS__);
@@ -21,7 +24,7 @@
 
 using namespace cashew;
 
-class Ref;
+struct Ref;
 struct Value;
 
 void dump(const char *str, Ref node, bool pretty=false);
@@ -79,8 +82,13 @@ struct Value {
   typedef std::vector<Ref> ArrayStorage;
   typedef std::unordered_map<IString, Ref> ObjectStorage;
 
+#ifdef _MSC_VER // MSVC does not allow unrestricted unions: http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2008/n2544.pdf
+  IString str;
+#endif
   union { // TODO: optimize
+#ifndef _MSC_VER
     IString str;
+#endif
     double num;
     ArrayStorage *arr;
     bool boo;
@@ -189,6 +197,13 @@ struct Value {
   bool& getBool() {
     assert(isBool());
     return boo;
+  }
+
+  int getInteger() { // convenience function to get a known integer
+    assert(fmod(getNumber(), 1) == 0);
+    int ret = int(getNumber());
+    assert(double(ret) == getNumber()); // no loss in conversion
+    return ret;
   }
 
   Value& operator=(const Value& other) {
@@ -557,7 +572,13 @@ struct JSPrinter {
       if (!buffer) {
         buffer = (char*)malloc(size);
       } else {
-        buffer = (char*)realloc(buffer, size);
+        char *buf = (char*)realloc(buffer, size);
+        if (!buf) {
+          free(buffer);
+          printf("Out of memory allocating %d bytes for output buffer!", size);
+          assert(0);
+        }
+        buffer = buf;
       }
     }
   }
@@ -695,7 +716,7 @@ struct JSPrinter {
 
   void printStats(Ref stats) {
     bool first = true;
-    for (int i = 0; i < stats->size(); i++) {
+    for (size_t i = 0; i < stats->size(); i++) {
       Ref curr = stats[i];
       if (!isNothing(curr)) {
         if (first) first = false;
@@ -728,12 +749,16 @@ struct JSPrinter {
     emit(node[1]->getCString());
     emit('(');
     Ref args = node[2];
-    for (int i = 0; i < args->size(); i++) {
+    for (size_t i = 0; i < args->size(); i++) {
       if (i > 0) (pretty ? emit(", ") : emit(','));
       emit(args[i]->getCString());
     }
     emit(')');
     space();
+    if (node->size() == 3 || node[3]->size() == 0) {
+      emit("{}");
+      return;
+    }
     emit('{');
     indent++;
     newline();
@@ -804,8 +829,15 @@ struct JSPrinter {
         assert(d >= 0);
         unsigned long long uu = (unsigned long long)d;
         if (uu == d) {
-          snprintf(buffer, BUFFERSIZE-1, (e && !finalize) ? "0x%llx" : "%llu", uu);
-          sscanf(buffer, "%lf", &temp);
+          bool asHex = e && !finalize;
+          snprintf(buffer, BUFFERSIZE-1, asHex ? "0x%llx" : "%llu", uu);
+          if (asHex) {
+            unsigned long long tempULL;
+            sscanf(buffer, "%llx", &tempULL);
+            temp = (double)tempULL;
+          } else {
+            sscanf(buffer, "%lf", &temp);
+          }
         } else {
           // too large for a machine integer, just use floats
           snprintf(buffer, BUFFERSIZE-1, e ? "%e" : "%.0f", d); // even on integers, e with a dot is useful, e.g. 1.2e+200
@@ -843,7 +875,8 @@ struct JSPrinter {
         char *end = strchr(buffer, 0);
         end--;
         char *test = end;
-        while (*test == '0' && test > buffer) test--;
+        // remove zeros, and also doubles can use at most 24 digits, we can truncate any extras even if not zero
+        while ((*test == '0' || test - buffer > 24) && test > buffer) test--;
         int num = end - test;
         if (num >= 3) {
           test++;
@@ -851,11 +884,16 @@ struct JSPrinter {
           if (num < 10) {
             test[1] = '0' + num;
             test[2] = 0;
-          } else {
-            assert(num < 100);
+          } else if (num < 100) {
             test[1] = '0' + (num / 10);
             test[2] = '0' + (num % 10);
             test[3] = 0;
+          } else {
+            assert(num < 1000);
+            test[1] = '0' + (num / 100);
+            test[2] = '0' + (num % 100) / 10;
+            test[3] = '0' + (num % 10);
+            test[4] = 0;
           }
         }
       }
@@ -943,8 +981,10 @@ struct JSPrinter {
     if (finalize && node[1] == PLUS && (node[2][0] == NUM ||
                                        (node[2][0] == UNARY_PREFIX && node[2][1] == MINUS && node[2][2][0] == NUM))) {
       // emit a finalized number
-      char *curr = buffer + used;
+      int last = used;
       print(node[2]);
+      ensure(1); // we temporarily append a 0
+      char *curr = buffer + last; // ensure might invalidate
       buffer[used] = 0;
       if (strchr(curr, '.')) return; // already a decimal point, all good
       char *e = strchr(curr, 'e');
@@ -953,6 +993,7 @@ struct JSPrinter {
         return;
       }
       ensure(3);
+      curr = buffer + last; // ensure might invalidate
       char *end = strchr(curr, 0);
       while (end >= e) {
         end[2] = end[0];
@@ -987,7 +1028,7 @@ struct JSPrinter {
     printChild(node[1], node, 0);
     emit('(');
     Ref args = node[2];
-    for (int i = 0; i < args->size(); i++) {
+    for (size_t i = 0; i < args->size(); i++) {
       if (i > 0) (pretty ? emit(", ") : emit(','));
       printChild(args[i], node, 0);
     }
@@ -1017,7 +1058,7 @@ struct JSPrinter {
     emit('{');
     newline();
     Ref cases = node[2];
-    for (int i = 0; i < cases->size(); i++) {
+    for (size_t i = 0; i < cases->size(); i++) {
       Ref c = cases[i];
       if (!c[0]) {
         emit("default:");
@@ -1051,7 +1092,7 @@ struct JSPrinter {
   void printVar(Ref node) {
     emit("var ");
     Ref args = node[1];
-    for (int i = 0; i < args->size(); i++) {
+    for (size_t i = 0; i < args->size(); i++) {
       if (i > 0) (pretty ? emit(", ") : emit(','));
       emit(args[i][0]->getCString());
       if (args[i]->size() > 1) {
@@ -1159,7 +1200,7 @@ struct JSPrinter {
   void printArray(Ref node) {
     emit('[');
     Ref args = node[1];
-    for (int i = 0; i < args->size(); i++) {
+    for (size_t i = 0; i < args->size(); i++) {
       if (i > 0) (pretty ? emit(", ") : emit(','));
       print(args[i]);
     }
@@ -1171,7 +1212,7 @@ struct JSPrinter {
     indent++;
     newline();
     Ref args = node[1];
-    for (int i = 0; i < args->size(); i++) {
+    for (size_t i = 0; i < args->size(); i++) {
       if (i > 0) {
         pretty ? emit(", ") : emit(',');
         newline();
@@ -1254,9 +1295,12 @@ public:
     }
   }
 
-  static Ref makeNumber(double num) {
+  static Ref makeDouble(double num) {
     return &makeRawArray()->push_back(makeRawString(NUM))
                            .push_back(&arena.alloc()->setNumber(num));
+  }
+  static Ref makeInt(uint32_t num) {
+    return makeDouble(double(num));
   }
 
   static Ref makeBinary(Ref left, IString op, Ref right) {
@@ -1382,7 +1426,7 @@ public:
     assert(switch_[0] == SWITCH);
     assert(code[0] == BLOCK);
     if (!explicitBlock) {
-      for (int i = 0; i < code[1]->size(); i++) {
+      for (size_t i = 0; i < code[1]->size(); i++) {
         switch_[2]->back()->back()->push_back(code[1][i]);
       }
     } else {

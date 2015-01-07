@@ -1660,6 +1660,7 @@ class Building:
     if pretty: args += ['--formatting', 'PRETTY_PRINT']
     if os.environ.get('EMCC_CLOSURE_ARGS'):
       args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))
+    logging.debug('closure compiler: ' + ' '.join(args))
     process = Popen(args, stdout=PIPE, stderr=STDOUT)
     cc_output = process.communicate()[0]
     if process.returncode != 0 or not os.path.exists(filename + '.cc.js'):

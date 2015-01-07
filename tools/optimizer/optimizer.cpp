@@ -20,7 +20,7 @@ Ref doc, extraInfo;
 
 template<class T, class V>
 int indexOf(T list, V value) {
-  for (int i = 0; i < list.size(); i++) {
+  for (size_t i = 0; i < list.size(); i++) {
     if (list[i] == value) return i;
   }
   return -1;
@@ -108,6 +108,8 @@ Ref make3(IString type, Ref a, Ref b, Ref c);
 
 struct AsmData {
   struct Local {
+    Local() {}
+    Local(AsmType type, bool param) : type(type), param(param) {}
     AsmType type;
     bool param; // false if a var
   };
@@ -144,7 +146,7 @@ struct AsmData {
 
     // process initial params
     Ref stats = func[3];
-    int i = 0;
+    size_t i = 0;
     while (i < stats->size()) {
       Ref node = stats[i];
       if (node[0] != STAT || node[1][0] != ASSIGN || node[1][2][0] != NAME) break;
@@ -154,7 +156,7 @@ struct AsmData {
       if (index < 0) break; // not an assign into a parameter, but a global
       IString& str = name->getIString();
       if (locals.count(str) > 0) break; // already done that param, must be starting function body
-      locals[str] = { detectType(node[3]), true };
+      locals[str] = Local(detectType(node[3]), true);
       params.push_back(str);
       stats[i] = makeEmpty();
       i++;
@@ -163,12 +165,12 @@ struct AsmData {
     while (i < stats->size()) {
       Ref node = stats[i];
       if (node[0] != VAR) break;
-      for (int j = 0; j < node[1]->size(); j++) {
+      for (size_t j = 0; j < node[1]->size(); j++) {
         Ref v = node[1][j];
         IString& name = v[0]->getIString();
         Ref value = v[1];
         if (locals.count(name) == 0) {
-          locals[name] = { detectType(value, nullptr, true), false };
+          locals[name] = Local(detectType(value, nullptr, true), false);
           vars.push_back(name);
           v->setSize(1); // make an un-assigning var
         } else {
@@ -202,7 +204,7 @@ struct AsmData {
   void denormalize() {
     Ref stats = func[3];
     // Remove var definitions, if any
-    for (int i = 0; i < stats->size(); i++) {
+    for (size_t i = 0; i < stats->size(); i++) {
       if (stats[i][0] == VAR) {
         stats[i] = makeEmpty();
       } else {
@@ -215,13 +217,13 @@ struct AsmData {
       varDefs->push_back(makeAsmVarDef(v, locals[v].type));
     }
     // each param needs a line; reuse emptyNodes as much as we can
-    int numParams = params.size();
-    int emptyNodes = 0;
+    size_t numParams = params.size();
+    size_t emptyNodes = 0;
     while (emptyNodes < stats->size()) {
       if (!isEmpty(stats[emptyNodes])) break;
       emptyNodes++;
     }
-    int neededEmptyNodes = numParams + (varDefs->size() ? 1 : 0); // params plus one big var if there are vars
+    size_t neededEmptyNodes = numParams + (varDefs->size() ? 1 : 0); // params plus one big var if there are vars
     if (neededEmptyNodes > emptyNodes) {
       stats->insert(0, neededEmptyNodes - emptyNodes);
     } else if (neededEmptyNodes < emptyNodes) {
@@ -262,17 +264,17 @@ struct AsmData {
   }
 
   void addParam(IString name, AsmType type) {
-    locals[name] = { type, true };
+    locals[name] = Local(type, true);
     params.push_back(name);
   }
   void addVar(IString name, AsmType type) {
-    locals[name] = { type, false };
+    locals[name] = Local(type, false);
     vars.push_back(name);
   }
 
   void deleteVar(IString name) {
     locals.erase(name);
-    for (int i = 0; i < vars.size(); i++) {
+    for (size_t i = 0; i < vars.size(); i++) {
       if (vars[i] == name) {
         vars.erase(vars.begin() + i);
         break;
@@ -516,7 +518,8 @@ Ref makeAsmCoercion(Ref node, AsmType type) {
 // Checks
 
 bool isEmpty(Ref node) {
-  return node->size() == 2 && node[0] == TOPLEVEL && node[1]->size() == 0;
+  return (node->size() == 2 && node[0] == TOPLEVEL && node[1]->size() == 0) ||
+          (node->size() > 0 && node[0] == BLOCK && (!node[1] || node[1]->size() == 0));
 }
 
 bool commable(Ref node) { // TODO: hashing
@@ -638,7 +641,7 @@ void safeCopy(Ref target, Ref source) { // safely copy source onto target, even 
 
 void clearEmptyNodes(Ref arr) {
   int skip = 0;
-  for (int i = 0; i < arr->size(); i++) {
+  for (size_t i = 0; i < arr->size(); i++) {
     if (skip) {
       arr[i-skip] = arr[i];
     }
@@ -650,7 +653,7 @@ void clearEmptyNodes(Ref arr) {
 }
 void clearUselessNodes(Ref arr) {
   int skip = 0;
-  for (int i = 0; i < arr->size(); i++) {
+  for (size_t i = 0; i < arr->size(); i++) {
     Ref curr = arr[i];
     if (skip) {
       arr[i-skip] = curr;
@@ -664,7 +667,6 @@ void clearUselessNodes(Ref arr) {
 
 void removeAllEmptySubNodes(Ref ast) {
   traversePre(ast, [](Ref node) {
-    int index = -1;
     if (node[0] == DEFUN) {
       clearEmptyNodes(node[3]);
     } else if (node[0] == BLOCK && node->size() > 1 && !!node[1]) {
@@ -675,14 +677,30 @@ void removeAllEmptySubNodes(Ref ast) {
   });
 }
 void removeAllUselessSubNodes(Ref ast) {
-  traversePre(ast, [](Ref node) {
-    int index = -1;
-    if (node[0] == DEFUN) {
+  traversePrePost(ast, [](Ref node) {
+    Ref type = node[0];
+    if (type == DEFUN) {
       clearUselessNodes(node[3]);
-    } else if (node[0] == BLOCK && node->size() > 1 && !!node[1]) {
+    } else if (type == BLOCK && node->size() > 1 && !!node[1]) {
       clearUselessNodes(node[1]);
-    } else if (node[0] == SEQ && isEmpty(node[1])) {
+    } else if (type == SEQ && isEmpty(node[1])) {
       safeCopy(node, node[2]);
+    }
+  }, [](Ref node) {
+    Ref type = node[0];
+    if (type == IF) {
+      bool empty2 = isEmpty(node[2]), has3 = node->size() == 4 && !!node[3], empty3 = !has3 || isEmpty(node[3]);
+      if (!empty2 && empty3 && has3) { // empty else clauses
+        node->setSize(3);
+      } else if (empty2 && !empty3) { // empty if blocks
+        safeCopy(node, make2(IF, make2(UNARY_PREFIX, L_NOT, node[1]), node[3]));
+      } else if (empty2 && empty3) {
+        if (hasSideEffects(node[1])) {
+          safeCopy(node, make1(STAT, node[1]));
+        } else {
+          safeCopy(node, makeEmpty());
+        }
+      }
     }
   });
 }
@@ -695,7 +713,7 @@ Ref unVarify(Ref vars) { // transform var x=1, y=2 etc. into (x=1, y=2), i.e., t
   } else {
     ret->push_back(makeArray());
     Ref curr = ret[1];
-    for (int i = 0; i < vars->size()-1; i++) {
+    for (size_t i = 0; i+1 < vars->size(); i++) {
       curr->push_back(makeString(SEQ));
       curr->push_back(make3(ASSIGN, &(arena.alloc())->setBool(true), makeName(vars[i][0]->getIString()), vars[i][1]));
       if (i != vars->size()-2) {
@@ -915,7 +933,7 @@ void eliminate(Ref ast, bool memSafe=false) {
       Ref type = node[0];
       if (type == VAR) {
         Ref node1 = node[1];
-        for (int i = 0; i < node1->size(); i++) {
+        for (size_t i = 0; i < node1->size(); i++) {
           Ref node1i = node1[i];
           IString name = node1i[0]->getIString();
           Ref value;
@@ -1077,7 +1095,7 @@ void eliminate(Ref ast, bool memSafe=false) {
           temp.push_back(name); \
         } \
       } \
-      for (int i = 0; i < temp.size(); i++) { \
+      for (size_t i = 0; i < temp.size(); i++) { \
         tracked.erase(temp[i]); \
       } \
     };
@@ -1094,7 +1112,7 @@ void eliminate(Ref ast, bool memSafe=false) {
           temp.push_back(name);
         }
       }
-      for (int i = 0; i < temp.size(); i++) {
+      for (size_t i = 0; i < temp.size(); i++) {
         tracked.erase(temp[i]);
       }
     };
@@ -1165,7 +1183,7 @@ void eliminate(Ref ast, bool memSafe=false) {
           }
         } else if (type == VAR) {
           Ref vars = node[1];
-          for (int i = 0; i < vars->size(); i++) {
+          for (size_t i = 0; i < vars->size(); i++) {
             IString name = vars[i][0]->getIString();
             Ref value;
             if (vars[i]->size() > 1 && !!(value = vars[i][1])) {
@@ -1215,7 +1233,7 @@ void eliminate(Ref ast, bool memSafe=false) {
         } else if (type == CALL) {
           traverseInOrder(node[1], false, true);
           Ref args = node[2];
-          for (int i = 0; i < args->size(); i++) {
+          for (size_t i = 0; i < args->size(); i++) {
             traverseInOrder(args[i], false, false);
           }
           if (callHasSideEffects(node)) {
@@ -1246,7 +1264,7 @@ void eliminate(Ref ast, bool memSafe=false) {
         } else if (type == BLOCK) {
           Ref stats = getStatements(node);
           if (!!stats) {
-            for (int i = 0; i < stats->size(); i++) {
+            for (size_t i = 0; i < stats->size(); i++) {
               traverseInOrder(stats[i], false, false);
             }
           }
@@ -1277,11 +1295,11 @@ void eliminate(Ref ast, bool memSafe=false) {
           traverseInOrder(node[1], false, false);
           Tracked originalTracked = tracked;
           Ref cases = node[2];
-          for (int i = 0; i < cases->size(); i++) {
+          for (size_t i = 0; i < cases->size(); i++) {
             Ref c = cases[i];
             assert(c[0]->isNull() || c[0][0] == NUM || (c[0][0] == UNARY_PREFIX && c[0][2][0] == NUM));
             Ref stats = c[1];
-            for (int j = 0; j < stats->size(); j++) {
+            for (size_t j = 0; j < stats->size(); j++) {
               traverseInOrder(stats[j], false, false);
             }
             // We cannot track from one switch case into another, undo all new trackings TODO: general framework here, use in if-else as well
@@ -1340,10 +1358,10 @@ void eliminate(Ref ast, bool memSafe=false) {
       }
       if (!stats) return;
       tracked.clear();
-      for (int i = 0; i < stats->size(); i++) {
+      for (size_t i = 0; i < stats->size(); i++) {
         Ref node = deStat(stats[i]);
         Ref type = node[0];
-        if (type == RETURN && i < stats->size()-1) {
+        if (type == RETURN && i+1 < stats->size()) {
           stats->setSize(i+1); // remove any code after a return
         }
         // Check for things that affect elimination
@@ -1405,7 +1423,7 @@ void eliminate(Ref ast, bool memSafe=false) {
             Ref assigns = ifFalse[1];
             clearEmptyNodes(assigns);
             std::vector<IString> loopers, helpers;
-            for (int i = 0; i < assigns->size(); i++) {
+            for (size_t i = 0; i < assigns->size(); i++) {
               if (assigns[i][0] == STAT && assigns[i][1][0] == ASSIGN) {
                 Ref assign = assigns[i][1];
                 if (assign[1]->isBool(true) && assign[2][0] == NAME && assign[3][0] == NAME) {
@@ -1420,7 +1438,7 @@ void eliminate(Ref ast, bool memSafe=false) {
               }
             }
             // remove loop vars that are used in the rest of the else
-            for (int i = 0; i < assigns->size(); i++) {
+            for (size_t i = 0; i < assigns->size(); i++) {
               if (assigns[i][0] == STAT && assigns[i][1][0] == ASSIGN) {
                 Ref assign = assigns[i][1];
                 if (!(assign[1]->isBool(true) && assign[2][0] == NAME && assign[3][0] == NAME) || indexOf(loopers, assign[2][1]->getIString()) < 0) {
@@ -1450,12 +1468,12 @@ void eliminate(Ref ast, bool memSafe=false) {
               }
             });
             if (loopers.size() == 0) return;
-            for (int l = 0; l < loopers.size(); l++) {
+            for (size_t l = 0; l < loopers.size(); l++) {
               IString looper = loopers[l];
               IString helper = helpers[l];
               // the remaining issue is whether loopers are used after the assignment to helper and before the last line (where we assign to it)
               int found = -1;
-              for (int i = stats->size()-2; i >= 0; i--) {
+              for (int i = (int)stats->size()-2; i >= 0; i--) {
                 Ref curr = stats[i];
                 if (curr[0] == STAT && curr[1][0] == ASSIGN) {
                   Ref currAssign = curr[1];
@@ -1478,8 +1496,8 @@ void eliminate(Ref ast, bool memSafe=false) {
               int firstLooperUsage = -1;
               int lastLooperUsage = -1;
               int firstHelperUsage = -1;
-              for (int i = found+1; i < stats->size(); i++) {
-                Ref curr = i < stats->size()-1 ? stats[i] : last[1]; // on the last line, just look in the condition
+              for (int i = found+1; i < (int)stats->size(); i++) {
+                Ref curr = i < (int)stats->size()-1 ? stats[i] : last[1]; // on the last line, just look in the condition
                 traversePre(curr, [&](Ref node) {
                   if (node[0] == NAME) {
                     if (node[1] == looper) {
@@ -1493,7 +1511,7 @@ void eliminate(Ref ast, bool memSafe=false) {
               }
               if (firstLooperUsage >= 0) {
                 // the looper is used, we cannot simply merge the two variables
-                if ((firstHelperUsage < 0 || firstHelperUsage > lastLooperUsage) && lastLooperUsage+1 < stats->size() && triviallySafeToMove(stats[found], asmData) &&
+                if ((firstHelperUsage < 0 || firstHelperUsage > lastLooperUsage) && lastLooperUsage+1 < (int)stats->size() && triviallySafeToMove(stats[found], asmData) &&
                     seenUses[helper] == namings[helper]) {
                   // the helper is not used, or it is used after the last use of the looper, so they do not overlap,
                   // and the last looper usage is not on the last line (where we could not append after it), and the
@@ -1507,7 +1525,7 @@ void eliminate(Ref ast, bool memSafe=false) {
                   IString temp(strdupe((std::string(looper.c_str()) + "$looptemp").c_str()));
                   assert(!asmData.isLocal(temp));
                   for (int i = firstLooperUsage; i <= lastLooperUsage; i++) {
-                    Ref curr = i < stats->size()-1 ? stats[i] : last[1]; // on the last line, just look in the condition
+                    Ref curr = i < (int)stats->size()-1 ? stats[i] : last[1]; // on the last line, just look in the condition
 
                     std::function<bool (Ref)> looperToLooptemp = [&](Ref node) {
                       if (node[0] == NAME) {
@@ -1528,13 +1546,13 @@ void eliminate(Ref ast, bool memSafe=false) {
                 }
               }
             }
-            for (int l = 0; l < helpers.size(); l++) {
-              for (int k = 0; k < helpers.size(); k++) {
+            for (size_t l = 0; l < helpers.size(); l++) {
+              for (size_t k = 0; k < helpers.size(); k++) {
                 if (l != k && helpers[l] == helpers[k]) return; // it is complicated to handle a shared helper, abort
               }
             }
             // hurrah! this is safe to do
-            for (int l = 0; l < loopers.size(); l++) {
+            for (size_t l = 0; l < loopers.size(); l++) {
               IString looper = loopers[l];
               IString helper = helpers[l];
               varsToRemove[helper] = 2;
@@ -1555,7 +1573,7 @@ void eliminate(Ref ast, bool memSafe=false) {
               last->pop_back();
             } else {
               Ref elseStats = getStatements(last[3]);
-              for (int i = 0; i < elseStats->size(); i++) {
+              for (size_t i = 0; i < elseStats->size(); i++) {
                 Ref stat = deStat(elseStats[i]);
                 if (stat[0] == ASSIGN && stat[2][0] == NAME) {
                   if (indexOf(loopers, stat[2][1]->getIString()) >= 0) {
@@ -1683,7 +1701,8 @@ void simplifyExpressions(Ref ast) {
           }
         };
 
-        traversePrePost(ast, process, [&stack](Ref Node) {
+        traversePrePost(ast, process, [&stack](Ref node) {
+          assert(!stack.empty());
           stack.pop_back();
         });
       }
@@ -1941,7 +1960,7 @@ void simplifyExpressions(Ref ast) {
           switch(asmData.getType(v.c_str())) {
             case ASM_INT: correctType = preciseF32 ? ASM_FLOAT : ASM_DOUBLE; break;
             case ASM_FLOAT: case ASM_DOUBLE: correctType = ASM_INT; break;
-            default: {} // pass
+            default: assert(0);
           }
           asmData.setType(v.c_str(), correctType);
         }
@@ -1965,9 +1984,9 @@ void simplifyExpressions(Ref ast) {
   //   expensive | cheap     can be turned into cheap     ? 1 : expensive,
   // so that we can avoid the expensive computation, if it has no side effects.
   auto conditionalize = [&emitsBoolean](Ref ast) {
-    const int MIN_COST = 7;
     traversePre(ast, [&emitsBoolean](Ref node) {
-      if (node[0] == BINARY && (node[1] == OR || node[1] == AND) && node[3][0] != NUM && node[2][0] != NUM) {
+        const int MIN_COST = 7;
+        if (node[0] == BINARY && (node[1] == OR || node[1] == AND) && node[3][0] != NUM && node[2][0] != NUM) {
         // logical operator on two non-numerical values
         Ref left = node[2];
         Ref right = node[3];
@@ -2073,7 +2092,7 @@ void simplifyIfs(Ref ast) {
           if (stats->size() > 1) {
             // try to commaify - turn everything between the ifs into a comma operator inside the second if
             bool ok = true;
-            for (int i = 0; i < stats->size()-1; i++) {
+            for (size_t i = 0; i+1 < stats->size(); i++) {
               Ref curr = deStat(stats[i]);
               if (!commable(curr)) ok = false;
             }
@@ -2107,7 +2126,7 @@ void simplifyIfs(Ref ast) {
       traversePre(func, [&labelAssigns, &abort](Ref node) {
         if (node[0] == ASSIGN && node[2][0] == NAME && node[2][1] == LABEL) {
           if (node[3][0] == NUM) {
-            int value = node[3][1]->getNumber();
+            int value = node[3][1]->getInteger();
             labelAssigns[value] = labelAssigns[value] + 1;
           } else {
             // label is assigned a dynamic value (like from indirectbr), we cannot do anything
@@ -2123,7 +2142,7 @@ void simplifyIfs(Ref ast) {
         if (node[0] == BINARY && node[1] == EQ && node[2][0] == BINARY && node[2][1] == OR &&
             node[2][2][0] == NAME && node[2][2][1] == LABEL) {
           if (node[3][0] == NUM) {
-            int value = node[3][1]->getNumber();
+            int value = node[3][1]->getInteger();
             labelChecks[value] = labelChecks[value] + 1;
           } else {
             // label is checked vs a dynamic value (like from indirectbr), we cannot do anything
@@ -2138,7 +2157,7 @@ void simplifyIfs(Ref ast) {
         if (node[0] == WHILE) inLoop++;
         Ref stats = getStatements(node);
         if (!!stats && stats->size() > 0) {
-          for (int i = 0; i < stats->size()-1; i++) {
+          for (int i = 0; i < (int)stats->size()-1; i++) {
             Ref pre = stats[i];
             Ref post = stats[i+1];
             if (pre[0] == IF && pre->size() > 3 && !!pre[3] && post[0] == IF && (post->size() <= 3 || !post[3])) {
@@ -2148,7 +2167,7 @@ void simplifyIfs(Ref ast) {
                   postCond[2][2][0] == NAME && postCond[2][2][1] == LABEL &&
                   postCond[2][3][0] == NUM && postCond[2][3][1]->getNumber() == 0 &&
                   postCond[3][0] == NUM) {
-                double postValue = postCond[3][1]->getNumber();
+                int postValue = postCond[3][1]->getInteger();
                 Ref preElse = pre[3];
                 if (labelAssigns[postValue] == 1 && labelChecks[postValue] == 1 && preElse[0] == BLOCK && preElse->size() >= 2 && preElse[1]->size() == 1) {
                   Ref preStat = preElse[1][0];
@@ -2207,7 +2226,7 @@ void optimizeFrounds(Ref ast) {
 
 const char* getRegPrefix(AsmType type) {
   switch (type) {
-    case ASM_INT:       return"i"; break;
+    case ASM_INT:       return "i"; break;
     case ASM_DOUBLE:    return "d"; break;
     case ASM_FLOAT:     return "f"; break;
     case ASM_FLOAT32X4: return "F4"; break;
@@ -2220,7 +2239,7 @@ const char* getRegPrefix(AsmType type) {
 
 IString getRegName(AsmType type, int num) {
   const char* str = getRegPrefix(type);
-  int size = strlen(str) + int(ceil(log10(num))) + 3;
+  const int size = 256;
   char temp[size];
   int written = sprintf(temp, "%s%d", str, num);
   assert(written < size);
@@ -2261,7 +2280,6 @@ void registerize(Ref ast) {
     removeAllUselessSubNodes(fun); // vacuum?
     StringTypeMap regTypes; // reg name -> type
     auto getNewRegName = [&](int num, IString name) {
-      const char *str;
       AsmType type = asmData.getType(name);
       IString ret = getRegName(type, num);
       assert(!allVars.has(ret) || asmData.isLocal(ret)); // register must not shadow non-local name
@@ -2333,7 +2351,7 @@ void registerize(Ref ast) {
         } else if (type == SWITCH) {
           traversePrePostConditional(node[1], possibilifier, [](Ref node){});
           Ref cases = node[2];
-          for (int i = 0; i < cases->size(); i++) {
+          for (size_t i = 0; i < cases->size(); i++) {
             level++;
             traversePrePostConditional(cases[i][1], possibilifier, [](Ref node){});
             purgeLevel();
@@ -2403,7 +2421,7 @@ void registerize(Ref ast) {
         } else {
           // when the relevant loop is exited, we will free the register
           int relevantLoop = optimizables.has(name) ? (optimizableLoops[name] ? optimizableLoops[name] : 1) : 1;
-          if (loopRegs.size() <= relevantLoop+1) loopRegs.resize(relevantLoop+1);
+          if ((int)loopRegs.size() <= relevantLoop+1) loopRegs.resize(relevantLoop+1);
           loopRegs[relevantLoop].push_back(reg);
         }
       }
@@ -2429,7 +2447,7 @@ void registerize(Ref ast) {
       Ref type = node[0];
       if (LOOP.has(type)) {
         // Free registers that were locked to this loop
-        if (loopRegs.size() > loops && loopRegs[loops].size() > 0) {
+        if ((int)loopRegs.size() > loops && loopRegs[loops].size() > 0) {
           for (auto loopReg : loopRegs[loops]) {
             freeRegsClasses[regTypes[loopReg]].push_back(loopReg);
           }
@@ -2512,7 +2530,7 @@ void registerizeHarder(Ref ast) {
 
     // Traverse the tree in execution order and synthesize a basic flow-graph.
     // It's convenient to build a kind of "dual" graph where the nodes identify
-    // the junctions between blocks  at which control-flow may branch, and each
+    // the junctions between blocks at which control-flow may branch, and each
     // basic block is an edge connecting two such junctions.
     // For each junction we store:
     //    * set of blocks that originate at the junction
@@ -2530,13 +2548,14 @@ void registerizeHarder(Ref ast) {
       int id;
       std::unordered_set<int> inblocks, outblocks;
       StringSet live;
-      Junction(int id_) : id(id_) {}
+      bool checkedLive;
+      Junction(int id_) : id(id_), checkedLive(false) {}
     };
     struct Node {
     };
     struct Block {
       int id, entry, exit;
-      StringSet labels;
+      std::unordered_set<int> labels;
       std::vector<Ref> nodes;
       std::vector<bool> isexpr;
       StringIntMap use;
@@ -2562,6 +2581,7 @@ void registerizeHarder(Ref ast) {
     Block* nextBasicBlock = nullptr;
     int isInExpr = 0;
     std::vector<LabelState> activeLabels;
+    activeLabels.resize(1);
     IString nextLoopLabel;
 
     const int ENTRY_JUNCTION = 0;
@@ -2578,7 +2598,7 @@ void registerizeHarder(Ref ast) {
 
     std::function<int (int, bool)> joinJunction;
 
-    auto markJunction = [&](int id=-1) {
+    auto markJunction = [&](int id) {
       // Mark current traversal location as a junction.
       // This makes a new basic block exiting at this position.
       if (id < 0) {
@@ -2618,22 +2638,21 @@ void registerizeHarder(Ref ast) {
       return id;
     };
 
-    IString NULL_STR;
-
     auto pushActiveLabels = [&](int onContinue, int onBreak) {
       // Push the target junctions for continuing/breaking a loop.
       // This should be called before traversing into a loop.
+      assert(activeLabels.size() > 0);
       LabelState& prevLabels = activeLabels.back();
       LabelState newLabels = prevLabels;
-      newLabels[NULL_STR] = ContinueBreak(onContinue, onBreak);
+      newLabels[EMPTY] = ContinueBreak(onContinue, onBreak);
       if (!!nextLoopLabel) {
         newLabels[nextLoopLabel] = ContinueBreak(onContinue, onBreak);
-        nextLoopLabel = NULL_STR;
+        nextLoopLabel = EMPTY;
       }
       // An unlabelled CONTINUE should jump to innermost loop,
       // ignoring any nested SWITCH statements.
-      if (onContinue < 0 && prevLabels.count(NULL_STR) > 0) {
-        newLabels[NULL_STR].co = prevLabels[NULL_STR].co;
+      if (onContinue < 0 && prevLabels.count(EMPTY) > 0) {
+        newLabels[EMPTY].co = prevLabels[EMPTY].co;
       }
       activeLabels.push_back(newLabels);
     };
@@ -2645,12 +2664,13 @@ void registerizeHarder(Ref ast) {
     };
 
     auto markNonLocalJump = [&](IString type, IString label) {
-      // Complete a block via  RETURN, BREAK or CONTINUE.
+      // Complete a block via RETURN, BREAK or CONTINUE.
       // This joins the targetted junction and then sets the current junction to null.
-      // Any code traversed before we get back an existing junction is dead code.
+      // Any code traversed before we get back to an existing junction is dead code.
       if (type == RETURN) {
         joinJunction(EXIT_JUNCTION, false);
       } else {
+        assert(activeLabels.size() > 0);
         assert(activeLabels.back().count(label) > 0); // 'jump to unknown label');
         auto targets = activeLabels.back()[label];
         if (type == CONTINUE) {
@@ -2670,7 +2690,7 @@ void registerizeHarder(Ref ast) {
       IString name = node[1]->getIString();
       if (asmData.isLocal(name)) {
         nextBasicBlock->nodes.push_back(node);
-        nextBasicBlock->isexpr.push_back(isInExpr);
+        nextBasicBlock->isexpr.push_back(isInExpr != 0);
         if (nextBasicBlock->kill.count(name) == 0) {
           nextBasicBlock->use[name] = 1;
         }
@@ -2685,7 +2705,7 @@ void registerizeHarder(Ref ast) {
       IString name = node[2][1]->getIString();
       if (asmData.isLocal(name)) {
         nextBasicBlock->nodes.push_back(node);
-        nextBasicBlock->isexpr.push_back(isInExpr);
+        nextBasicBlock->isexpr.push_back(isInExpr != 0);
         nextBasicBlock->kill.insert(name);
       }
     };
@@ -2703,7 +2723,7 @@ void registerizeHarder(Ref ast) {
     auto addBlockLabel = [&](Ref node) {
       assert(nextBasicBlock->nodes.size() == 0); // 'cant add label to an in-progress basic block')
       if (node[0] == NUM) {
-        nextBasicBlock->labels.insert(node[1]->getIString()); // XXX?
+        nextBasicBlock->labels.insert(node[1]->getInteger());
       }
     };
 
@@ -2726,18 +2746,18 @@ void registerizeHarder(Ref ast) {
       // Any code traversed without an active entry junction must be dead,
       // as the resulting block could never be entered. Let's remove it.
       if (currEntryJunction < 0 && junctions.size() > 0) {
-        safeCopy(node, makeBlock());
+        safeCopy(node, makeEmpty());
         return;
       }
  
       // Traverse each node type according to its particular control-flow semantics.
       // TODO: switchify this
       if (type == DEFUN) {
-        int jEntry = markJunction();
+        int jEntry = markJunction(-1);
         assert(jEntry == ENTRY_JUNCTION);
         int jExit = addJunction();
         assert(jExit == EXIT_JUNCTION);
-        for (int i = 0; i < node[3]->size(); i++) {
+        for (size_t i = 0; i < node[3]->size(); i++) {
           buildFlowGraph(node[3][i]);
         }
         joinJunction(jExit, false);
@@ -2745,7 +2765,7 @@ void registerizeHarder(Ref ast) {
         isInExpr++;
         buildFlowGraph(node[1]);
         isInExpr--;
-        int jEnter = markJunction();
+        int jEnter = markJunction(-1);
         int jExit = addJunction();
         if (!!node[2]) {
           // Detect and mark "if (label == N) { <labelled block> }".
@@ -2759,7 +2779,7 @@ void registerizeHarder(Ref ast) {
         }
         joinJunction(jExit, false);
         setJunction(jEnter, false);
-        if (!!node[3]) {
+        if (node->size() > 3 && !!node[3]) {
           buildFlowGraph(node[3]);
         }
         joinJunction(jExit, false);
@@ -2777,7 +2797,7 @@ void registerizeHarder(Ref ast) {
           }
         } else {
           buildFlowGraph(node[1]);
-          int jEnter = markJunction();
+          int jEnter = markJunction(-1);
           int jExit = addJunction();
           if (!!node[2]) {
             buildFlowGraph(node[2]);
@@ -2794,7 +2814,7 @@ void registerizeHarder(Ref ast) {
         // Special-case "while (1) {}" to use fewer junctions,
         // since emscripten generates a lot of these.
         if (isTrueNode(node[1])) {
-          int jLoop = markJunction();
+          int jLoop = markJunction(-1);
           int jExit = addJunction();
           pushActiveLabels(jLoop, jExit);
           buildFlowGraph(node[2]);
@@ -2802,7 +2822,7 @@ void registerizeHarder(Ref ast) {
           joinJunction(jLoop, false);
           setJunction(jExit, false);
         } else {
-          int jCond = markJunction();
+          int jCond = markJunction(-1);
           int jLoop = addJunction();
           int jExit = addJunction();
           isInExpr++;
@@ -2827,7 +2847,7 @@ void registerizeHarder(Ref ast) {
           popActiveLabels();
           joinJunction(jExit, false);
         } else if (isTrueNode(node[1])) {
-          int jLoop = markJunction();
+          int jLoop = markJunction(-1);
           int jExit = addJunction();
           pushActiveLabels(jLoop, jExit);
           buildFlowGraph(node[2]);
@@ -2835,7 +2855,7 @@ void registerizeHarder(Ref ast) {
           joinJunction(jLoop, false);
           setJunction(jExit, false);
         } else {
-          int jLoop = markJunction();
+          int jLoop = markJunction(-1);
           int jCond = addJunction();
           int jCondExit = addJunction();
           int jExit = addJunction();
@@ -2883,11 +2903,11 @@ void registerizeHarder(Ref ast) {
         buildFlowGraph(node[1]);
         isInExpr--;
         Ref condition = lookThroughCasts(node[1]);
-        int jCheckExit = markJunction();
+        int jCheckExit = markJunction(-1);
         int jExit = addJunction();
         pushActiveLabels(-1, jExit);
         bool hasDefault = false;
-        for (int i = 0; i < node[2]->size(); i++) {
+        for (size_t i = 0; i < node[2]->size(); i++) {
           setJunction(jCheckExit, false);
           // All case clauses are either 'default' or a numeric literal.
           if (!node[2][i][0]) {
@@ -2898,14 +2918,14 @@ void registerizeHarder(Ref ast) {
               addBlockLabel(lookThroughCasts(node[2][i][0]));
             }
           }
-          for (int j = 0; j < node[2][i][1]->size(); j++) {
+          for (size_t j = 0; j < node[2][i][1]->size(); j++) {
             buildFlowGraph(node[2][i][1][j]);
           }
           // Control flow will never actually reach the end of the case body.
           // If there's live code here, assume it jumps to case exit.
           if (currEntryJunction >= 0 && nextBasicBlock->nodes.size() > 0) {
             if (!!node[2][i][0]) {
-              markNonLocalJump(RETURN, IString());
+              markNonLocalJump(RETURN, EMPTY);
             } else {
               joinJunction(jExit, false);
             }
@@ -2924,9 +2944,9 @@ void registerizeHarder(Ref ast) {
           buildFlowGraph(node[1]);
           isInExpr--;
         }
-        markNonLocalJump(type->getIString(), IString());
+        markNonLocalJump(type->getIString(), EMPTY);
       } else if (type == BREAK || type == CONTINUE) {
-        markNonLocalJump(type->getIString(), node[1]->getIString());
+        markNonLocalJump(type->getIString(), !!node[1] ? node[1]->getIString() : EMPTY);
       } else if (type == ASSIGN) {
         isInExpr++;
         buildFlowGraph(node[3]);
@@ -2940,7 +2960,7 @@ void registerizeHarder(Ref ast) {
         addUseNode(node);
       } else if (type == BLOCK || type == TOPLEVEL) {
         if (!!node[1]) {
-          for (int i = 0; i < node[1]->size(); i++) {
+          for (size_t i = 0; i < node[1]->size(); i++) {
             buildFlowGraph(node[1][i]);
           }
         }
@@ -2959,7 +2979,7 @@ void registerizeHarder(Ref ast) {
         isInExpr++;
         buildFlowGraph(node[1]);
         if (!!node[2]) {
-          for (int i = 0; i < node[2]->size(); i++) {
+          for (size_t i = 0; i < node[2]->size(); i++) {
             buildFlowGraph(node[2][i]);
           }
         }
@@ -2968,7 +2988,7 @@ void registerizeHarder(Ref ast) {
         // treat it as a jump to function exit.
         if (!isInExpr && node[1][0] == NAME) {
           if (FUNCTIONS_THAT_ALWAYS_THROW.has(node[1][1])) {
-            markNonLocalJump(RETURN, IString());
+            markNonLocalJump(RETURN, EMPTY);
           }
         }
       } else if (type == SEQ || type == SUB) {
@@ -2998,11 +3018,11 @@ void registerizeHarder(Ref ast) {
     // with that value of LABEL as precondition, we tweak the flow graph so
     // that the former jumps straight to the later.
 
-    std::unordered_map<IString, Block*> labelledBlocks;
+    std::unordered_map<int, Block*> labelledBlocks;
     typedef std::pair<Ref, Block*> Jump;
     std::vector<Jump> labelledJumps;
 
-    for (int i = 0; i < blocks.size(); i++) {
+    for (size_t i = 0; i < blocks.size(); i++) {
       Block* block = blocks[i];
       // Does it have any labels as preconditions to its entry?
       for (auto labelVal : block->labels) {
@@ -3032,9 +3052,9 @@ void registerizeHarder(Ref ast) {
           // If label is assigned a non-zero value elsewhere in the block
           // then all bets are off.  This can happen e.g. due to outlining
           // saving/restoring label to the stack.
-          for (int j = 0; j < block->nodes.size() - 1; j++) {
+          for (size_t j = 0; j < block->nodes.size() - 1; j++) {
             if (block->nodes[j][0] == ASSIGN && block->nodes[j][2][1] == LABEL) {
-              if (block->nodes[j][3][0] != NUM && block->nodes[j][3][1]->getNumber() != 0) {
+              if (block->nodes[j][3][0] != NUM || block->nodes[j][3][1]->getNumber() != 0) {
                 labelledBlocks.clear();
                 labelledJumps.clear();
                 goto AFTER_FINDLABELLEDBLOCKS;
@@ -3059,10 +3079,10 @@ void registerizeHarder(Ref ast) {
       block->nodes.insert(block->nodes.begin(), makeName(LABEL));
       block->isexpr.insert(block->isexpr.begin(), 1);
     }
-    for (int i = 0; i < labelledJumps.size(); i++) {
+    for (size_t i = 0; i < labelledJumps.size(); i++) {
       auto labelVal = labelledJumps[i].first;
       auto block = labelledJumps[i].second;
-      Block* targetBlock = labelledBlocks[labelVal->getIString()];
+      Block* targetBlock = labelledBlocks[labelVal->getInteger()];
       if (targetBlock) {
         // Redirect its exit to entry of the target block.
         junctions[block->exit].inblocks.erase(block->id);
@@ -3094,6 +3114,7 @@ void registerizeHarder(Ref ast) {
         }
       }
       junc.live = live;
+      junc.checkedLive = true;
     };
 
     auto analyzeBlock = [&](Block* block) {
@@ -3182,7 +3203,7 @@ void registerizeHarder(Ref ast) {
                   numUsesInExpr++;
                 }
               });
-              safeCopy(node, makeBlock());
+              safeCopy(node, makeEmpty());
               j = j - numUsesInExpr;
               removeUnusedNodes(j, 1 + numUsesInExpr);
             }
@@ -3223,8 +3244,9 @@ void registerizeHarder(Ref ast) {
         jWorklist.pop_back();
         jWorklistMap.erase(junc.id);
         StringSet oldLive = junc.live; // copy it here, to check for changes later
+        bool oldChecked = junc.checkedLive;
         analyzeJunction(junc);
-        if (oldLive != junc.live) {
+        if (oldChecked != junc.checkedLive || oldLive != junc.live) {
           // Live set changed, updated predecessor blocks and junctions.
           for (auto b : junc.inblocks) {
             if (bWorklistMap.count(b) == 0) {
@@ -3279,18 +3301,16 @@ void registerizeHarder(Ref ast) {
     std::unordered_map<IString, JuncVar> junctionVariables;
 
     auto initializeJunctionVariable = [&](IString name) {
-      junctionVariables[name] = JuncVar(); // XXX
+      junctionVariables[name].conf.reserve(asmData.locals.size());
     };
 
-    for (int i = 0; i < junctions.size(); i++) {
+    for (size_t i = 0; i < junctions.size(); i++) {
       Junction& junc = junctions[i];
       for (auto name : junc.live) {
         if (junctionVariables.count(name) == 0) initializeJunctionVariable(name);
         // It conflicts with all other names live at this junction.
-        for (auto otherName : junc.live) {
-          if (otherName == name) continue;
-          junctionVariables[name].conf.insert(otherName);
-        }
+        junctionVariables[name].conf.insert(junc.live.begin(), junc.live.end()); // XXX this operation is very expensive
+        junctionVariables[name].conf.erase(name); // except for itself, of course
         for (auto b : junc.outblocks) {
           // It conflicts with any output vars of successor blocks,
           // if they're assigned before it goes dead in that block.
@@ -3305,11 +3325,13 @@ void registerizeHarder(Ref ast) {
             }
           }
           // It links with any linkages in the outgoing blocks.
-          IString linkName = block->link[name];
-          if (!!linkName && linkName != name) {
-            if (junctionVariables.count(linkName) == 0) initializeJunctionVariable(linkName);
-            junctionVariables[name].link.insert(linkName);
-            junctionVariables[linkName].link.insert(name);
+          if (block->link.has(name)) {
+            IString linkName = block->link[name];
+            if (linkName != name) {
+              if (junctionVariables.count(linkName) == 0) initializeJunctionVariable(linkName);
+              junctionVariables[name].link.insert(linkName);
+              junctionVariables[linkName].link.insert(name);
+            }
           }
         }
       }
@@ -3324,7 +3346,10 @@ void registerizeHarder(Ref ast) {
       sortedJunctionVariables.push_back(pair.first);
     }
     std::sort(sortedJunctionVariables.begin(), sortedJunctionVariables.end(), [&](const IString name1, const IString name2) {
-      return junctionVariables[name2].conf.size() < junctionVariables[name1].conf.size(); //XXX
+      //return strcmp(name1.str, name2.str) > 0;// XXX junctionVariables[name1].conf.size() > junctionVariables[name2].conf.size();
+      if (junctionVariables[name1].conf.size() < junctionVariables[name2].conf.size()) return true;
+      if (junctionVariables[name1].conf.size() == junctionVariables[name2].conf.size()) return name1 < name2;
+      return false;
     });
 
     // We can now assign a register to each junction variable.
@@ -3355,11 +3380,10 @@ void registerizeHarder(Ref ast) {
       }
       return true;
     };
-
-    for (int i = 0; i < sortedJunctionVariables.size(); i++) {
+    for (size_t i = 0; i < sortedJunctionVariables.size(); i++) {
       IString name = sortedJunctionVariables[i];
       // It may already be assigned due to linked-variable propagation.
-      if (!!junctionVariables[name].reg) {
+      if (junctionVariables[name].reg > 0) {
         continue;
       }
       // Try to use existing registers first.
@@ -3382,7 +3406,7 @@ void registerizeHarder(Ref ast) {
     // that all inter-block variables are in a good state thanks to
     // junction variable consistency.
 
-    for (int i = 0; i < blocks.size(); i++) {
+    for (size_t i = 0; i < blocks.size(); i++) {
       Block* block = blocks[i];
       if (block->nodes.size() == 0) continue;
       Junction& jEnter = junctions[block->entry];
@@ -3428,7 +3452,7 @@ void registerizeHarder(Ref ast) {
       }
       std::vector<std::vector<int>> freeRegsByType;
       freeRegsByType.resize(freeRegsByTypePre.size());
-      for (int j = 0; j < freeRegsByTypePre.size(); j++) {
+      for (size_t j = 0; j < freeRegsByTypePre.size(); j++) {
         for (auto pair : freeRegsByTypePre[j]) {
           freeRegsByType[j].push_back(pair.first);
         }
@@ -3444,7 +3468,7 @@ void registerizeHarder(Ref ast) {
         int reg = assignedRegs[name]; // XXX may insert a zero
         if (node[0] == NAME) {
           // A use.  Grab a register if it doesn't have one.
-          if (!reg) {
+          if (reg <= 0) {
             if (inputVars.has(name) && j <= block->firstDeadLoc[name]) {
               // Assignment to an input variable, must use pre-assigned reg.
               reg = junctionVariables[name].reg;
@@ -3461,18 +3485,21 @@ void registerizeHarder(Ref ast) {
               for (int k = freeRegs.size() - 1; k >= 0; k--) {
                 reg = freeRegs[k];
                 // Check for conflict with input registers.
-                if (block->firstKillLoc[name] <= inputDeadLoc[reg]) {
-                  if (name != inputVarsByReg[reg]) {
-                    continue;
+                if (inputDeadLoc.count(reg) > 0) {
+                  if (block->firstKillLoc[name] <= inputDeadLoc[reg]) {
+                    if (name != inputVarsByReg[reg]) {
+                      continue;
+                    }
                   }
                 }
                 // Found one!
                 assignedRegs[name] = reg;
+                assert(reg > 0);
                 freeRegs.erase(freeRegs.begin() + k);
                 break;
               }
               // If we didn't find a suitable register, create a new one.
-              if (!assignedRegs.has(name)) {
+              if (assignedRegs[name] <= 0) {
                 reg = createReg(name);
                 assignedRegs[name] = reg;
               }
@@ -3481,7 +3508,7 @@ void registerizeHarder(Ref ast) {
           node[1]->setString(allRegs[reg]);
         } else {
           // A kill. This frees the assigned register.
-          assert(!!reg); //, 'live variable doesnt have a reg?')
+          assert(reg > 0); //, 'live variable doesnt have a reg?')
           node[2][1]->setString(allRegs[reg]);
           freeRegs.push_back(reg);
           assignedRegs.erase(name);
@@ -3490,14 +3517,14 @@ void registerizeHarder(Ref ast) {
           }
         }
       }
-      // If we managed to create an "x=x" assignments, remove them.
-      for (int j = 0; j < maybeRemoveNodes.size(); j++) {
+      // If we managed to create any "x=x" assignments, remove them.
+      for (size_t j = 0; j < maybeRemoveNodes.size(); j++) {
         Ref node = maybeRemoveNodes[j].second;
         if (node[2][1] == node[3][1]) {
           if (block->isexpr[maybeRemoveNodes[j].first]) {
             safeCopy(node, node[2]);
           } else {
-            safeCopy(node, makeBlock());
+            safeCopy(node, makeEmpty());
           }
         }
       }
@@ -3507,7 +3534,7 @@ void registerizeHarder(Ref ast) {
 
     StringSet paramRegs;
     if (!!fun[2]) {
-      for (int i = 0; i < fun[2]->size(); i++) {
+      for (size_t i = 0; i < fun[2]->size(); i++) {
         auto& allRegs = allRegsByType[asmData.getType(fun[2][i]->getIString())];
         fun[2][i]->setString(allRegs[junctionVariables[fun[2][i]->getIString()].reg]);
         paramRegs.insert(fun[2][i]->getIString());
@@ -3521,7 +3548,7 @@ void registerizeHarder(Ref ast) {
     asmData.params.clear();
     asmData.vars.clear();
     for (int i = 1; i < nextReg; i++) {
-      for (int type = 0; type < allRegsByType.size(); type++) {
+      for (size_t type = 0; type < allRegsByType.size(); type++) {
         if (allRegsByType[type].count(i) > 0) {
           IString reg = allRegsByType[type][i];
           if (!paramRegs.has(reg)) {
@@ -3552,11 +3579,11 @@ void ensureMinifiedNames(int n) { // make sure the nth index in minifiedNames ex
   static int VALID_MIN_INITS_LEN = strlen(VALID_MIN_INITS);
   static int VALID_MIN_LATERS_LEN = strlen(VALID_MIN_LATERS);
 
-  while (minifiedNames.size() < n+1) {
+  while ((int)minifiedNames.size() < n+1) {
     // generate the current name
     std::string name;
     name += VALID_MIN_INITS[minifiedState[0]];
-    for (int i = 1; i < minifiedState.size(); i++) {
+    for (size_t i = 1; i < minifiedState.size(); i++) {
       name += VALID_MIN_LATERS[minifiedState[i]];
     }
     IString str(strdupe(name.c_str())); // leaked!
@@ -3641,7 +3668,7 @@ void minifyLocals(Ref ast) {
       assert(!!fun[1]);
     }
     if (!!fun[2]) {
-      for (int i = 0; i < fun[2]->size(); i++) {
+      for (size_t i = 0; i < fun[2]->size(); i++) {
         IString minified = getNextMinifiedName();
         newNames[fun[2][i]->getIString()] = minified;
         fun[2][i]->setString(minified);
@@ -3660,7 +3687,7 @@ void minifyLocals(Ref ast) {
           node[1]->setString(minified);
         }
       } else if (type == VAR) {
-        for (int i = 0; i < node[1]->size(); i++) {
+        for (size_t i = 0; i < node[1]->size(); i++) {
           Ref defn = node[1][i];
           IString name = defn[0]->getIString();
           if (!(newNames.has(name))) {
@@ -3740,7 +3767,7 @@ void asmLastOpts(Ref ast) {
             int me = parent->indexOf(node);
             if (me < 0) return; // not always directly on a stats, could be in a label for example
             parent->insert(me+1, lastStats->size()-1);
-            for (int i = 0; i < lastStats->size()-1; i++) {
+            for (size_t i = 0; i+1 < lastStats->size(); i++) {
               parent[me+1+i] = lastStats[i];
             }
           }
@@ -3812,9 +3839,12 @@ int main(int argc, char **argv) {
   char *input = new char[size+1];
   rewind(f);
   int num = fread(input, 1, size, f);
-  assert(num == size);
+  // On Windows, ftell() gives the byte position (\r\n counts as two bytes), but when
+  // reading, fread() returns the number of characters read (\r\n is read as one char \n, and counted as one),
+  // so return value of fread can be less than size reported by ftell, and that is normal.
+  assert((num > 0 || size == 0) && num <= size);
   fclose(f);
-  input[size] = 0;
+  input[num] = 0;
 
   char *extraInfoStart = strstr(input, "// EXTRA_INFO:");
   if (extraInfoStart) {
@@ -3845,7 +3875,7 @@ int main(int argc, char **argv) {
     else if (str == "optimizeFrounds") optimizeFrounds(doc);
     else if (str == "simplifyIfs") simplifyIfs(doc);
     else if (str == "registerize") registerize(doc);
-    //else if (str == "registerizeHarder") registerizeHarder(doc);
+    else if (str == "registerizeHarder") registerizeHarder(doc);
     else if (str == "minifyLocals") minifyLocals(doc);
     else if (str == "minifyWhitespace") {}
     else if (str == "asmLastOpts") asmLastOpts(doc);
@@ -3866,7 +3896,6 @@ int main(int argc, char **argv) {
     jser.printAst();
     std::cout << jser.buffer << "\n";
   }
-
   return 0;
 }
 

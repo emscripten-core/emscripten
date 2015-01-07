@@ -2879,7 +2879,7 @@ function registerizeHarder(ast) {
 
     // Traverse the tree in execution order and synthesize a basic flow-graph.
     // It's convenient to build a kind of "dual" graph where the nodes identify
-    // the junctions between blocks  at which control-flow may branch, and each
+    // the junctions between blocks at which control-flow may branch, and each
     // basic block is an edge connecting two such junctions.
     // For each junction we store:
     //    * set of blocks that originate at the junction
@@ -2977,9 +2977,9 @@ function registerizeHarder(ast) {
     }
 
     function markNonLocalJump(type, label) {
-      // Complete a block via  'return', 'break' or 'continue'.
+      // Complete a block via 'return', 'break' or 'continue'.
       // This joins the targetted junction and then sets the current junction to null.
-      // Any code traversed before we get back an existing junction is dead code.
+      // Any code traversed before we get back to an existing junction is dead code.
       if (type === 'return') {
         joinJunction(EXIT_JUNCTION);
       } else {
@@ -3408,7 +3408,7 @@ function registerizeHarder(ast) {
           // saving/restoring label to the stack.
           for (var j = 0; j < block.nodes.length - 1; j++) {
             if (block.nodes[j][0] === 'assign' && block.nodes[j][2][1] === 'label') {
-              if (block.nodes[j][3][0] !== 'num' && block.nodes[j][3][1] !== 0) {
+              if (block.nodes[j][3][0] !== 'num' || block.nodes[j][3][1] !== 0) {
                 labelledBlocks = {};
                 labelledJumps = [];
                 break FINDLABELLEDBLOCKS;
@@ -3850,7 +3850,7 @@ function registerizeHarder(ast) {
           }
         }
       }
-      // If we managed to create an "x=x" assignments, remove them.
+      // If we managed to create any "x=x" assignments, remove them.
       for (var j = 0; j < maybeRemoveNodes.length; j++) {
         var node = maybeRemoveNodes[j][1];
         if (node[2][1] === node[3][1]) {

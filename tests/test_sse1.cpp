@@ -270,10 +270,12 @@ int main()
 	// exception when one of the input operands is either a QNaN or a SNaN.
 #ifndef __EMSCRIPTEN__ // TODO: Fix ucomi support in SSE to treat NaNs properly.
 	Assert(_mm_ucomieq_ss(a, b) == 0); Assert(_mm_ucomieq_ss(a, a) == 1); Assert(_mm_ucomieq_ss(a, nan1) == 1);
+#endif
 	Assert(_mm_ucomige_ss(a, b) == 0); Assert(_mm_ucomige_ss(a, a) == 1); Assert(_mm_ucomige_ss(a, nan1) == 0);
 	Assert(_mm_ucomigt_ss(b, a) == 1); Assert(_mm_ucomigt_ss(a, a) == 0); Assert(_mm_ucomigt_ss(a, nan1) == 0);
 	Assert(_mm_ucomile_ss(b, a) == 0); Assert(_mm_ucomile_ss(a, a) == 1); Assert(_mm_ucomile_ss(a, nan1) == 1);
 	Assert(_mm_ucomilt_ss(a, b) == 1); Assert(_mm_ucomilt_ss(a, a) == 0); Assert(_mm_ucomilt_ss(a, nan1) == 1);
+#ifndef __EMSCRIPTEN__ // TODO: Fix ucomi support in SSE to treat NaNs properly.
 	Assert(_mm_ucomineq_ss(a, b) == 1); Assert(_mm_ucomineq_ss(a, a) == 0); Assert(_mm_ucomineq_ss(a, nan1) == 0);
 #endif
 

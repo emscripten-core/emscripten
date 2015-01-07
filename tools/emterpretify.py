@@ -772,6 +772,8 @@ if __name__ == '__main__':
     asm.staticbump += 1
   stack_start = len(mem_init)
   asm.staticbump += EMT_STACK_MAX
+  while asm.staticbump % 8 != 0:
+    asm.staticbump += 1
 
   open(out_mem_file, 'wb').write(''.join(map(chr, mem_init)))
 

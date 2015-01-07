@@ -85,8 +85,7 @@ IString TOPLEVEL("toplevel"),
         THROW("throw"),
         SET("=");
 
-IStringSet keywords("var function if else do while for break continue return switch case default throw try catch finally true false null new"),
-           allOperators(". ! ~ - + * / % + - << >> >>> < <= > >= == != & ^ | ? : = ,");
+IStringSet keywords("var function if else do while for break continue return switch case default throw try catch finally true false null new");
 
 const char *OPERATOR_INITS = "+-*/%<>&^|~=!,?:.",
            *SEPARATORS = "([;{}";

@@ -568,58 +568,55 @@ fi
 
     # using ports
 
-    INCLUDING_MESSAGE = 'including port'
     RETRIEVING_MESSAGE = 'retrieving port'
     BUILDING_MESSAGE = 'building port'
 
     from tools import system_libs
     PORTS_DIR = system_libs.Ports.get_dir()
 
-    for i in [0, 1]:
-      print i
-      if i == 0:
-        try_delete(PORTS_DIR)
-      else:
-        self.do([PYTHON, EMCC, '--clear-ports'])
-      assert not os.path.exists(PORTS_DIR)
-      if i == 0: Cache.erase() # test with cache erased and without
+    for compiler in [EMCC, EMXX]:
+      print compiler
 
-      # Building a file that doesn't need ports should not trigger anything
-      output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp')])
-      assert INCLUDING_MESSAGE not in output
-      assert RETRIEVING_MESSAGE not in output
-      assert BUILDING_MESSAGE not in output
-      assert not os.path.exists(PORTS_DIR)
+      for i in [0, 1]:
+        print i
+        if i == 0:
+          try_delete(PORTS_DIR)
+        else:
+          self.do([PYTHON, compiler, '--clear-ports'])
+        assert not os.path.exists(PORTS_DIR)
+        if i == 0: Cache.erase() # test with cache erased and without
 
-      # Building a file that need a port does trigger stuff
-      output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
-      assert INCLUDING_MESSAGE in output, output
-      assert RETRIEVING_MESSAGE in output, output
-      assert BUILDING_MESSAGE in output, output
-      assert os.path.exists(PORTS_DIR)
+        # Building a file that doesn't need ports should not trigger anything
+        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp')])
+        assert RETRIEVING_MESSAGE not in output
+        assert BUILDING_MESSAGE not in output
+        assert not os.path.exists(PORTS_DIR)
 
-      def second_use():
-        # Using it again avoids retrieve and build
-        output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
-        assert INCLUDING_MESSAGE in output, output
-        assert RETRIEVING_MESSAGE not in output, output
-        assert BUILDING_MESSAGE not in output, output
+        # Building a file that need a port does trigger stuff
+        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
+        assert RETRIEVING_MESSAGE in output, output
+        assert BUILDING_MESSAGE in output, output
+        assert os.path.exists(PORTS_DIR)
 
-      second_use()
+        def second_use():
+          # Using it again avoids retrieve and build
+          output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
+          assert RETRIEVING_MESSAGE not in output, output
+          assert BUILDING_MESSAGE not in output, output
 
-      # if the version isn't sufficient, we retrieve and rebuild
-      open(os.path.join(PORTS_DIR, 'sdl2', 'SDL2-master', 'version.txt'), 'w').write('1') # current is >= 2, so this is too old
-      output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
-      assert INCLUDING_MESSAGE in output, output
-      assert RETRIEVING_MESSAGE in output, output
-      assert BUILDING_MESSAGE in output, output
-      assert os.path.exists(PORTS_DIR)
+        second_use()
 
-      second_use()
+        # if the version isn't sufficient, we retrieve and rebuild
+        open(os.path.join(PORTS_DIR, 'sdl2', 'SDL2-master', 'version.txt'), 'w').write('1') # current is >= 2, so this is too old
+        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
+        assert RETRIEVING_MESSAGE in output, output
+        assert BUILDING_MESSAGE in output, output
+        assert os.path.exists(PORTS_DIR)
+
+        second_use()
 
   def test_native_optimizer(self):
     restore()
-    Cache.erase()
 
     def build():
       return self.check_working([EMCC, '-O2', 'tests/hello_world.c'], 'running js post-opts')
@@ -632,13 +629,14 @@ fi
 
       # basic usage or lack of usage
       for native in [None, 0, 1]:
-        print native
+        print 'phase 1, part', native
+        Cache.erase()
         try:
           if native is not None: os.environ['EMCC_NATIVE_OPTIMIZER'] = str(native)
           output = build()
-          assert ('js optimizer using native' in output) == (not not native)
+          assert ('js optimizer using native' in output) == (not not (native or native is None)), output
           test()
-          if native:
+          if native or native is None: # None means use the default, which is to use the native optimizer
             assert 'building native optimizer' in output
             # compile again, no rebuild of optimizer
             output = build()
@@ -650,46 +648,83 @@ fi
 
       # force a build failure, see we fall back to non-native
 
-      Cache.erase()
-
       try:
-        os.environ['EMCC_NATIVE_OPTIMIZER'] = '1'
-
-        try:
-          # break it
-          f = path_from_root('tools', 'optimizer', 'optimizer.cpp')
-          src = open(f).read()
-          bad = src.replace('main', '!waka waka<')
-          assert bad != src
-          open(f, 'w').write(bad)
-          # first try
-          output = build()
-          assert 'failed to build native optimizer' in output, output
-          assert 'js optimizer using native' not in output
-          test() # still works, without native optimizer
-          # second try, see previous failure
-          output = build()
-          assert 'failed to build native optimizer' not in output
-          assert 'seeing that optimizer could not be built' in output
-          test() # still works, without native optimizer
-          # clear cache, try again
+        for native in [1, 'g']:
+          print 'phase 2, part', native
           Cache.erase()
+          os.environ['EMCC_NATIVE_OPTIMIZER'] = str(native)
+
+          try:
+            # break it
+            f = path_from_root('tools', 'optimizer', 'optimizer.cpp')
+            src = open(f).read()
+            bad = src.replace('main', '!waka waka<')
+            assert bad != src
+            open(f, 'w').write(bad)
+            # first try
+            output = build()
+            assert 'failed to build native optimizer' in output, output
+            if native == 1:
+              assert 'to see compiler errors, build with EMCC_NATIVE_OPTIMIZER=g' in output
+              assert 'waka waka' not in output
+            else:
+              assert 'output from attempt' in output, output
+              assert 'waka waka' in output, output
+            assert 'js optimizer using native' not in output
+            test() # still works, without native optimizer
+            # second try, see previous failure
+            output = build()
+            assert 'failed to build native optimizer' not in output
+            assert 'seeing that optimizer could not be built' in output
+            test() # still works, without native optimizer
+            # clear cache, try again
+            Cache.erase()
+            output = build()
+            assert 'failed to build native optimizer' in output
+            test() # still works, without native optimizer
+          finally:
+            open(f, 'w').write(src)
+
+          Cache.erase()
+
+          # now it should work again
           output = build()
-          assert 'failed to build native optimizer' in output
-          test() # still works, without native optimizer
-        finally:
-          open(f, 'w').write(src)
-
-        Cache.erase()
-
-        # now it should work again
-        output = build()
-        assert 'js optimizer using native' in output
-        test() # still works, without native optimizer
+          assert 'js optimizer using native' in output
+          test() # still works
 
       finally:
-        os.environ['EMCC_NATIVE_OPTIMIZER'] = '0'
+        del os.environ['EMCC_NATIVE_OPTIMIZER']
 
     finally:
       del os.environ['EMCC_DEBUG']
+
+  def test_embuilder(self):
+    restore()
+
+    for command, expected, success, result_libs in [
+      ([PYTHON, 'embuilder.py'], ['Emscripten System Builder Tool', 'build libc', 'native_optimizer'], True, []),
+      ([PYTHON, 'embuilder.py', 'build', 'waka'], 'ERROR', False, []),
+      ([PYTHON, 'embuilder.py', 'build', 'libc'], ['building and verifying libc', 'success'], True, ['libc.bc']),
+      ([PYTHON, 'embuilder.py', 'build', 'libcxx'], ['success'], True, ['libcxx.bc']),
+      ([PYTHON, 'embuilder.py', 'build', 'libcxxabi'], ['success'], True, ['libcxxabi.bc']),
+      ([PYTHON, 'embuilder.py', 'build', 'gl'], ['success'], True, ['gl.bc']),
+      ([PYTHON, 'embuilder.py', 'build', 'struct_info'], ['success'], True, ['struct_info.compiled.json']),
+      ([PYTHON, 'embuilder.py', 'build', 'native_optimizer'], ['success'], True, ['optimizer.exe']),
+      ([PYTHON, 'embuilder.py', 'build', 'zlib'], ['building and verifying zlib', 'success'], True, [os.path.join('ports-builds', 'zlib', 'libz.a')]),
+      ([PYTHON, 'embuilder.py', 'build', 'sdl2'], ['success'], True, [os.path.join('ports-builds', 'sdl2', 'libsdl2.bc')]),
+      ([PYTHON, 'embuilder.py', 'build', 'sdl2-image'], ['success'], True, [os.path.join('ports-builds', 'sdl2-image', 'libsdl2_image.bc')]),
+    ]:
+      print command
+      Cache.erase()
+
+      proc = Popen(command, stdout=PIPE, stderr=STDOUT)
+      out, err = proc.communicate()
+      assert (proc.returncode == 0) == success, out
+      if type(expected) == str: expected = [expected]
+      for ex in expected:
+        print '    seek', ex
+        assert ex in out, out
+      for lib in result_libs:
+        print '    verify', lib
+        assert os.path.exists(Cache.get_path(lib))
 

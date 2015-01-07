@@ -9,7 +9,7 @@ __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 
-NATIVE_PASSES = set(['asm', 'asmPreciseF32', 'receiveJSON', 'emitJSON', 'eliminate', 'eliminateMemSafe', 'simplifyExpressions', 'simplifyIfs', 'optimizeFrounds', 'registerize', 'minifyNames', 'minifyLocals', 'minifyWhitespace', 'cleanup', 'asmLastOpts', 'last', 'noop'])
+NATIVE_PASSES = set(['asm', 'asmPreciseF32', 'receiveJSON', 'emitJSON', 'eliminate', 'eliminateMemSafe', 'simplifyExpressions', 'simplifyIfs', 'optimizeFrounds', 'registerize', 'registerizeHarder', 'minifyNames', 'minifyLocals', 'minifyWhitespace', 'cleanup', 'asmLastOpts', 'last', 'noop', 'closure'])
 
 JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 
@@ -25,18 +25,25 @@ func_sig = re.compile('function ([_\w$]+)\(')
 func_sig_json = re.compile('\["defun", ?"([_\w$]+)",')
 import_sig = re.compile('var ([_\w$]+) *=[^;]+;')
 
-NATIVE_OPTIMIZER = os.environ.get('EMCC_NATIVE_OPTIMIZER')
+NATIVE_OPTIMIZER = os.environ.get('EMCC_NATIVE_OPTIMIZER') or '1' # use native optimizer by default, unless disabled by EMCC_NATIVE_OPTIMIZER=0 in the env
 
 def get_native_optimizer():
   if os.environ.get('EMCC_FAST_COMPILER') == '0': return None # need fastcomp for native optimizer
 
+  # Allow users to override the location of the optimizer executable by setting an environment variable EMSCRIPTEN_NATIVE_OPTIMIZER=/path/to/optimizer(.exe)
+  if os.environ.get('EMSCRIPTEN_NATIVE_OPTIMIZER') and len(os.environ.get('EMSCRIPTEN_NATIVE_OPTIMIZER')) > 0: return os.environ.get('EMSCRIPTEN_NATIVE_OPTIMIZER')
+  # Also, allow specifying the location of the optimizer in .emscripten configuration file under EMSCRIPTEN_NATIVE_OPTIMIZER='/path/to/optimizer'
+  if hasattr(shared, 'EMSCRIPTEN_NATIVE_OPTIMIZER') and len(shared.EMSCRIPTEN_NATIVE_OPTIMIZER) > 0: return shared.EMSCRIPTEN_NATIVE_OPTIMIZER
+
   FAIL_MARKER = shared.Cache.get_path('optimizer.building_failed')
   if os.path.exists(FAIL_MARKER):
-    shared.logging.debug('seeing that optimizer could not be built')
+    shared.logging.debug('seeing that optimizer could not be built (run emcc --clear-cache or erase "optimizer.building_failed" in cache dir to retry)')
     return None
 
-  def get_optimizer(name, args):
+  def get_optimizer(name, args, handle_build_errors=None):
     class NativeOptimizerCreationException(Exception): pass
+    outs = []
+    errs = []
     try:
       def create_optimizer():
         shared.logging.debug('building native optimizer: ' + name)
@@ -45,11 +52,13 @@ def get_native_optimizer():
         for compiler in [shared.CLANG, 'g++', 'clang++']: # try our clang first, otherwise hope for a system compiler in the path
           shared.logging.debug('  using ' + compiler)
           try:
-            subprocess.Popen([compiler,
-                              shared.path_from_root('tools', 'optimizer', 'parser.cpp'),
-                              shared.path_from_root('tools', 'optimizer', 'simple_ast.cpp'),
-                              shared.path_from_root('tools', 'optimizer', 'optimizer.cpp'),
-                              '-O3', '-std=c++11', '-fno-exceptions', '-fno-rtti', '-o', output] + args).communicate()
+            out, err = subprocess.Popen([compiler,
+                                         shared.path_from_root('tools', 'optimizer', 'parser.cpp'),
+                                         shared.path_from_root('tools', 'optimizer', 'simple_ast.cpp'),
+                                         shared.path_from_root('tools', 'optimizer', 'optimizer.cpp'),
+                                         '-O3', '-std=c++11', '-fno-exceptions', '-fno-rtti', '-o', output] + args, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+            outs.append(out)
+            errs.append(err)
           except OSError:
             if compiler == shared.CLANG: raise # otherwise, OSError is likely due to g++ or clang++ not being in the path
           if os.path.exists(output): return output
@@ -57,15 +66,22 @@ def get_native_optimizer():
       return shared.Cache.get(name, create_optimizer, extension='exe')
     except NativeOptimizerCreationException, e:
       shared.logging.debug('failed to build native optimizer')
+      handle_build_errors(outs, errs)
       open(FAIL_MARKER, 'w').write(':(')
       return None
 
+  def ignore_build_errors(outs, errs):
+    shared.logging.debug('to see compiler errors, build with EMCC_NATIVE_OPTIMIZER=g')
+  def show_build_errors(outs, errs):
+    for i in range(len(outs)):
+      shared.logging.debug('output from attempt ' + str(i) + ': ' + outs[i] + '\n===========\n' + errs[i])
+
   if NATIVE_OPTIMIZER == '1':
-    return get_optimizer('optimizer.exe', [])
+    return get_optimizer('optimizer.exe', [], ignore_build_errors)
   elif NATIVE_OPTIMIZER == '2':
-    return get_optimizer('optimizer.2.exe', ['-DNDEBUG'])
+    return get_optimizer('optimizer.2.exe', ['-DNDEBUG'], ignore_build_errors)
   elif NATIVE_OPTIMIZER == 'g':
-    return get_optimizer('optimizer.g.exe', ['-O0', '-g', '-fno-omit-frame-pointer'])
+    return get_optimizer('optimizer.g.exe', ['-O0', '-g', '-fno-omit-frame-pointer'], show_build_errors)
 
 # Check if we should run a pass or set of passes natively. if a set of passes, they must all be valid to run in the native optimizer at once.
 def use_native(x, source_map=False):
@@ -150,12 +166,16 @@ def run_on_chunk(command):
       while os.path.exists(saved): saved = 'input' + str(int(saved.replace('input', '').replace('.txt', ''))+1) + '.txt'
       print >> sys.stderr, 'running js optimizer command', ' '.join(map(lambda c: c if c != filename else saved, command))
       shutil.copyfile(filename, os.path.join('/tmp/emscripten_temp', saved))
+    verbose_level = int(os.getenv('EM_BUILD_VERBOSE')) if os.getenv('EM_BUILD_VERBOSE') != None else 0
+    if verbose_level >= 3: print >> sys.stderr, str(command)
     proc = subprocess.Popen(command, stdout=subprocess.PIPE)
     output = proc.communicate()[0]
     assert proc.returncode == 0, 'Error in optimizer: ' + output
     assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in optimizer: ' + output
     filename = temp_files.get(os.path.basename(filename) + '.jo.js').name
-    f = open(filename, 'w')
+    # Important to write out in binary mode, because the data we are writing contains Windows line endings '\r\n' because it was PIPED from console.
+    # Otherwise writing \r\n to ascii mode file will result in Windows amplifying \n to \r\n, generating bad \r\r\n line endings.
+    f = open(filename, 'wb')
     f.write(output)
     f.close()
     if DEBUG and not shared.WINDOWS: print >> sys.stderr, '.' # Skip debug progress indicator on Windows, since it doesn't buffer well with multiple threads printing to console.

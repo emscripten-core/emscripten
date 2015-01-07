@@ -142,9 +142,9 @@ function run(args) {
       Module.printErr('pre-main prep time: ' + (Date.now() - preloadStartTime) + ' ms');
     }
 
-    if (Module['_main'] && shouldRunNow) {
-      Module['callMain'](args);
-    }
+    if (Module['onRuntimeInitialized']) Module['onRuntimeInitialized']();
+
+    if (Module['_main'] && shouldRunNow) Module['callMain'](args);
 
     postRun();
   }

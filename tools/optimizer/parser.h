@@ -94,7 +94,7 @@ extern IString TOPLEVEL,
                THROW,
                SET;
 
-extern IStringSet keywords, allOperators;
+extern IStringSet keywords;
 
 extern const char *OPERATOR_INITS, *SEPARATORS;
 
@@ -156,25 +156,38 @@ class Parser {
 
   static bool hasChar(const char* list, char x) { while (*list) if (*list++ == x) return true; return false; }
 
+  static bool is32Bit(double x) {
+    return x == (int)x || x == (unsigned int)x;
+  }
+
   // An atomic fragment of something. Stops at a natural boundary.
   enum FragType {
     KEYWORD = 0,
     OPERATOR = 1,
     IDENT = 2,
     STRING = 3, // without quotes
-    NUMBER = 4,
-    SEPARATOR = 5
+    INT = 4,
+    DOUBLE = 5,
+    SEPARATOR = 6
   };
 
   struct Frag {
+#ifndef _MSC_VER // MSVC does not allow unrestricted unions: http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2008/n2544.pdf
     union {
+#endif
       IString str;
       double num;
+#ifndef _MSC_VER
     };
+#endif
     int size;
     FragType type;
 
-    Frag(char* src) {
+    bool isNumber() const {
+      return type == INT || type == DOUBLE;
+    }
+
+    explicit Frag(char* src) {
       assert(!isSpace(*src));
       char *start = src;
       if (isIdentInit(*src)) {
@@ -199,9 +212,24 @@ class Parser {
         src = end+1;
         type = STRING;
       } else if (isDigit(*src) || (src[0] == '.' && isDigit(src[1]))) {
-        num = strtod(start, &src);
+        if (src[0] == '0' && (src[1] == 'x' || src[1] == 'X')) {
+          // Explicitly parse hex numbers of form "0x...", because strtod
+          // supports hex number strings only in C++11, and Visual Studio 2013 does
+          // not yet support that functionality.
+          src += 2;
+          num = 0;
+          while (1) {
+            if (*src >= '0' && *src <= '9') { num *= 16; num += *src - '0'; }
+            else if (*src >= 'a' && *src <= 'f') { num *= 16; num += *src - 'a' + 10; }
+            else if (*src >= 'A' && *src <= 'F') { num *= 16; num += *src - 'F' + 10; }
+            else break;
+            src++;
+          }
+        } else {
+          num = strtod(start, &src);
+        }
+        type = is32Bit(num) ? INT : DOUBLE;
         assert(src > start);
-        type = NUMBER;
       } else if (hasChar(OPERATOR_INITS, *src)) {
         switch (*src) {
           case '!': str = src[1] == '=' ? NE : L_NOT; break;
@@ -259,7 +287,8 @@ class Parser {
       }
       case IDENT:
       case STRING:
-      case NUMBER: {
+      case INT:
+      case DOUBLE: {
         src = skipSpace(src);
         if (frag.type == IDENT) return parseAfterIdent(frag, src, seps);
         else return parseExpression(parseFrag(frag), src, seps);
@@ -282,7 +311,8 @@ class Parser {
     switch (frag.type) {
       case IDENT:  return Builder::makeName(frag.str);
       case STRING: return Builder::makeString(frag.str);
-      case NUMBER: return Builder::makeNumber(frag.num);
+      case INT:    return Builder::makeInt(uint32_t(frag.num));
+      case DOUBLE: return Builder::makeDouble(frag.num);
       default: assert(0);
     }
     return nullptr;
@@ -307,8 +337,12 @@ class Parser {
 
   NodeRef parseFunction(Frag& frag, char*& src, const char* seps) {
     Frag name(src);
-    assert(name.type == IDENT);
-    src += name.size;
+    if (name.type == IDENT) {
+      src += name.size;
+    } else {
+      assert(name.type == SEPARATOR && name.str[0] == '(');
+      name.str = IString();
+    }
     NodeRef ret = Builder::makeFunction(name.str);
     src = skipSpace(src);
     assert(*src == '(');
@@ -434,7 +468,7 @@ class Parser {
           src = skipSpace(src);
           NodeRef arg;
           Frag value(src);
-          if (value.type == NUMBER) {
+          if (value.isNumber()) {
             arg = parseFrag(value);
             src += value.size;
           } else {
@@ -443,7 +477,7 @@ class Parser {
             src += value.size;
             src = skipSpace(src);
             Frag value2(src);
-            assert(value2.type == NUMBER);
+            assert(value2.isNumber());
             arg = Builder::makePrefix(MINUS, parseFrag(value2));
             src += value2.size;
           }
@@ -594,10 +628,14 @@ class Parser {
 
   struct ExpressionElement {
     bool isNode;
-    union {
+#ifndef _MSC_VER // MSVC does not allow unrestricted unions: http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2008/n2544.pdf
+	union {
+#endif
       NodeRef node;
       IString op;
+#ifndef _MSC_VER
     };
+#endif
     ExpressionElement(NodeRef n) : isNode(true), node(n) {}
     ExpressionElement(IString o) : isNode(false), op(o) {}
 
@@ -667,19 +705,19 @@ class Parser {
       ExpressionParts& parts = expressionPartsStack.back(); // |parts| may have been invalidated by that call
       // we are the toplevel. sort it all out
       // collapse right to left, highest priority first
-      //dumpParts(parts);
-      for (auto ops : operatorClasses) {
+      //dumpParts(parts, 0);
+      for (auto& ops : operatorClasses) {
         if (ops.rtl) {
           // right to left
           for (int i = parts.size()-1; i >= 0; i--) {
             if (parts[i].isNode) continue;
             IString op = parts[i].getOp();
             if (!ops.ops.has(op)) continue;
-            if (ops.type == OperatorClass::Binary && i > 0 && i < parts.size()-1) {
+            if (ops.type == OperatorClass::Binary && i > 0 && i < (int)parts.size()-1) {
               parts[i] = Builder::makeBinary(parts[i-1].getNode(), op, parts[i+1].getNode());
               parts.erase(parts.begin() + i + 1);
               parts.erase(parts.begin() + i - 1);
-            } else if (ops.type == OperatorClass::Prefix && i < parts.size()-1) {
+            } else if (ops.type == OperatorClass::Prefix && i < (int)parts.size()-1) {
               if (i > 0 && parts[i-1].isNode) continue; // cannot apply prefix operator if it would join two nodes
               parts[i] = Builder::makePrefix(op, parts[i+1].getNode());
               parts.erase(parts.begin() + i + 1);
@@ -688,7 +726,7 @@ class Parser {
               //                      ^
               //dumpParts(parts, i);
               if (op != COLON) continue;
-              assert(i < parts.size()-1 && i >= 3);
+              assert(i < (int)parts.size()-1 && i >= 3);
               if (parts[i-2].getOp() != QUESTION) continue; // e.g. x ? y ? 1 : 0 : 2
               parts[i-3] = Builder::makeConditional(parts[i-3].getNode(), parts[i-1].getNode(), parts[i+1].getNode());
               parts.erase(parts.begin() + i - 2, parts.begin() + i + 2);
@@ -697,16 +735,16 @@ class Parser {
           }
         } else {
           // left to right
-          for (int i = 0; i < parts.size(); i++) {
+          for (int i = 0; i < (int)parts.size(); i++) {
             if (parts[i].isNode) continue;
             IString op = parts[i].getOp();
             if (!ops.ops.has(op)) continue;
-            if (ops.type == OperatorClass::Binary && i > 0 && i < parts.size()-1) {
+            if (ops.type == OperatorClass::Binary && i > 0 && i < (int)parts.size()-1) {
               parts[i] = Builder::makeBinary(parts[i-1].getNode(), op, parts[i+1].getNode());
               parts.erase(parts.begin() + i + 1);
               parts.erase(parts.begin() + i - 1);
               i--;
-            } else if (ops.type == OperatorClass::Prefix && i < parts.size()-1) {
+            } else if (ops.type == OperatorClass::Prefix && i < (int)parts.size()-1) {
               if (i > 0 && parts[i-1].isNode) continue; // cannot apply prefix operator if it would join two nodes
               parts[i] = Builder::makePrefix(op, parts[i+1].getNode());
               parts.erase(parts.begin() + i + 1);
@@ -803,7 +841,7 @@ class Parser {
     for (int i = 0; i < (curr - allSource); i++) printf(" ");
     printf("^\n=============\n");
     */
-    printf("%s:\n==========\n", where);
+    fprintf(stderr, "%s:\n==========\n", where);
     int newlinesLeft = 2;
     int charsLeft = 200;
     while (*curr) {
@@ -813,9 +851,9 @@ class Parser {
       }
       charsLeft--;
       if (charsLeft == 0) break;
-      printf("%c", *curr++);
+      fprintf(stderr, "%c", *curr++);
     }
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
   }
 
 public:

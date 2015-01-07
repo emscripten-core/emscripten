@@ -16,7 +16,7 @@ bool Ref::operator==(const char *str) {
 }
 
 bool Ref::operator!=(const char *str) {
-  return get()->isString() ? strcmp(get()->str.str, str) : true;
+  return get()->isString() ? !!strcmp(get()->str.str, str) : true;
 }
 
 bool Ref::operator==(const IString &str) {
@@ -61,6 +61,8 @@ void dump(const char *str, Ref node, bool pretty) {
 // Traversals
 
 struct TraverseInfo {
+  TraverseInfo() {}
+  TraverseInfo(Ref node, int index) : node(node), index(index) {}
   Ref node;
   int index;
 };
@@ -110,7 +112,7 @@ struct StackedStack { // a stack, on the stack
   }
 };
 
-#define visitable(node) (node->isArray() and node->size() > 0)
+#define visitable(node) (node->isArray() && node->size() > 0)
 
 #define TRAV_STACK 40
 
@@ -119,15 +121,15 @@ void traversePre(Ref node, std::function<void (Ref)> visit) {
   if (!visitable(node)) return;
   visit(node);
   StackedStack<TraverseInfo, TRAV_STACK> stack;
-  stack.push_back({ node, 0 });
+  stack.push_back(TraverseInfo(node, 0));
   while (stack.size() > 0) {
     TraverseInfo& top = stack.back();
-    if (top.index < top.node->size()) {
+    if (top.index < (int)top.node->size()) {
       Ref sub = top.node[top.index];
       top.index++;
       if (visitable(sub)) {
         visit(sub);
-        stack.push_back({ sub, 0 });
+        stack.push_back(TraverseInfo(sub, 0));
       }
     } else {
       stack.pop_back();
@@ -140,22 +142,21 @@ void traversePrePost(Ref node, std::function<void (Ref)> visitPre, std::function
   if (!visitable(node)) return;
   visitPre(node);
   StackedStack<TraverseInfo, TRAV_STACK> stack;
-  stack.push_back({ node, 0 });
+  stack.push_back(TraverseInfo(node, 0));
   while (stack.size() > 0) {
     TraverseInfo& top = stack.back();
-    if (top.index < top.node->size()) {
+    if (top.index < (int)top.node->size()) {
       Ref sub = top.node[top.index];
       top.index++;
       if (visitable(sub)) {
         visitPre(sub);
-        stack.push_back({ sub, 0 });
+        stack.push_back(TraverseInfo(sub, 0));
       }
     } else {
       visitPost(top.node);
       stack.pop_back();
     }
   }
-  visitPost(node);
 }
 
 // Traverse, calling visitPre before the children and visitPost after. If pre returns false, do not traverse children
@@ -163,15 +164,15 @@ void traversePrePostConditional(Ref node, std::function<bool (Ref)> visitPre, st
   if (!visitable(node)) return;
   if (!visitPre(node)) return;
   StackedStack<TraverseInfo, TRAV_STACK> stack;
-  stack.push_back({ node, 0 });
+  stack.push_back(TraverseInfo(node, 0));
   while (stack.size() > 0) {
     TraverseInfo& top = stack.back();
-    if (top.index < top.node->size()) {
+    if (top.index < (int)top.node->size()) {
       Ref sub = top.node[top.index];
       top.index++;
       if (visitable(sub)) {
         if (visitPre(sub)) {
-          stack.push_back({ sub, 0 });
+          stack.push_back(TraverseInfo(sub, 0));
         }
       }
     } else {
@@ -179,7 +180,6 @@ void traversePrePostConditional(Ref node, std::function<bool (Ref)> visitPre, st
       stack.pop_back();
     }
   }
-  visitPost(node);
 }
 
 // Traverses all the top-level functions in the document
@@ -187,7 +187,7 @@ void traverseFunctions(Ref ast, std::function<void (Ref)> visit) {
   if (!ast || ast->size() == 0) return;
   if (ast[0] == TOPLEVEL) {
     Ref stats = ast[1];
-    for (int i = 0; i < stats->size(); i++) {
+    for (size_t i = 0; i < stats->size(); i++) {
       Ref curr = stats[i];
       if (curr[0] == DEFUN) visit(curr);
     }

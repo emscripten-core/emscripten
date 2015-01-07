@@ -53,19 +53,24 @@ _mm_load_ps(const float *__p)
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_loadl_pi(__m128 __a, const void /*__m64*/ *__p)
 {
+  // TODO: This actually corresponds to the SIMD.float32x4.loadXY function in
+  // SIMD.js. Use that instead.
   return (__m128){ ((const float*)__p)[0], ((const float*)__p)[1], __a[2], __a[3] };
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_loadh_pi(__m128 __a, const void /*__m64*/ *__p)
 {
+  // TODO: Due to alignment masking, this would probably be faster as a loadXY
+  // followed by a shuffle.
   return (__m128){ __a[0], __a[1], ((const float*)__p)[0], ((const float*)__p)[1] };
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_loadr_ps(const float *__p)
 {
-  return (__m128){ ((const float*)__p)[3], ((const float*)__p)[2], ((const float*)__p)[1], ((const float*)__p)[0] };
+  __m128 __v = _mm_load_ps(__p);
+  return __builtin_shufflevector(__v, __v, 3, 2, 1, 0);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
@@ -81,20 +86,24 @@ _mm_loadu_ps(const float *__p)
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_load_ps1(const float *__p)
 {
-  return (__m128){ *__p, *__p, *__p, *__p };
+  float __s = *__p;
+  return (__m128){ __s, __s, __s, __s };
 }
 #define _mm_load1_ps _mm_load_ps1
 
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_load_ss(const float *__p)
 {
-  // TODO: This actually corresponds to the SIMD.float32x4.loadX function in SIMD.js. Use that instead.
+  // TODO: This actually corresponds to the SIMD.float32x4.loadX function in
+  // SIMD.js. Use that instead.
   return (__m128){ *__p, 0.0f, 0.0f, 0.0f };
 }
 
 static __inline__ void __attribute__((__always_inline__))
 _mm_storel_pi(void /*__m64*/ *__p, __m128 __a)
 {
+  // TODO: This actually corresponds to the SIMD.float32x4.storeXY function in
+  // SIMD.js. Use that instead.
   ((float*)__p)[0] = __a[0];
   ((float*)__p)[1] = __a[1];
 }
@@ -102,6 +111,8 @@ _mm_storel_pi(void /*__m64*/ *__p, __m128 __a)
 static __inline__ void __attribute__((__always_inline__))
 _mm_storeh_pi(void /*__m64*/ *__p, __m128 __a)
 {
+  // TODO: Due to alignment masking, on x64 this would be faster as a sizzle
+  // and a storeXY, so we should use that instead.
   ((float*)__p)[0] = __a[2];
   ((float*)__p)[1] = __a[3];
 }
@@ -371,44 +382,26 @@ _mm_cmpgt_ss(__m128 __a, __m128 __b)
   return _mm_move_ss(__a, _mm_cmpgt_ps(__a, __b));
 }
 
-static __inline__ int __internal_isnan(float __f)
-{
-  return (*(unsigned int*)&__f << 1) > 0xFF000000u;
-}
-
 static __inline__ __m128 __attribute__((__always_inline__)) _mm_cmpord_ps(__m128 __a, __m128 __b)
 {
-  unsigned int r[4];
-  r[0] = (!__internal_isnan(__a[0]) && !__internal_isnan(__b[0])) ? 0xFFFFFFFFU : 0;
-  r[1] = (!__internal_isnan(__a[1]) && !__internal_isnan(__b[1])) ? 0xFFFFFFFFU : 0;
-  r[2] = (!__internal_isnan(__a[2]) && !__internal_isnan(__b[2])) ? 0xFFFFFFFFU : 0;
-  r[3] = (!__internal_isnan(__a[3]) && !__internal_isnan(__b[3])) ? 0xFFFFFFFFU : 0;
-  return _mm_loadu_ps((float*)r);
+  return emscripten_float32x4_and(emscripten_float32x4_equal(__a, __a),
+                                  emscripten_float32x4_equal(__b, __b));
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__)) _mm_cmpord_ss(__m128 __a, __m128 __b)
 {
-  unsigned int r = (!__internal_isnan(__a[0]) && !__internal_isnan(__b[0])) ? 0xFFFFFFFFU : 0;
-  return _mm_move_ss(__a, _mm_set_ss(*(float*)&r));
+  return _mm_move_ss(__a, _mm_cmpord_ps(__a, __b));
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__)) _mm_cmpunord_ps(__m128 __a, __m128 __b)
 {
-  union {
-    unsigned int r[4];
-    __m128 m;
-  } u;
-  u.r[0] = (__internal_isnan(__a[0]) || __internal_isnan(__b[0])) ? 0xFFFFFFFFU : 0;
-  u.r[1] = (__internal_isnan(__a[1]) || __internal_isnan(__b[1])) ? 0xFFFFFFFFU : 0;
-  u.r[2] = (__internal_isnan(__a[2]) || __internal_isnan(__b[2])) ? 0xFFFFFFFFU : 0;
-  u.r[3] = (__internal_isnan(__a[3]) || __internal_isnan(__b[3])) ? 0xFFFFFFFFU : 0;
-  return u.m;
+  return emscripten_float32x4_or(emscripten_float32x4_notEqual(__a, __a),
+                                 emscripten_float32x4_notEqual(__b, __b));
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__)) _mm_cmpunord_ss(__m128 __a, __m128 __b)
 {
-  unsigned int r = (__internal_isnan(__a[0]) || __internal_isnan(__b[0])) ? 0xFFFFFFFFU : 0;
-  return _mm_move_ss(__a, _mm_set_ss(*(float*)&r));
+  return _mm_move_ss(__a, _mm_cmpunord_ps(__a, __b));
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
@@ -435,11 +428,10 @@ _mm_xor_ps(__m128 __a, __m128 __b)
   return emscripten_float32x4_xor(__a, __b);
 }
 
-// TODO: Use SIMD.float32x4.notEqual
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_cmpneq_ps(__m128 __a, __m128 __b)
 {
-  return emscripten_float32x4_not(_mm_cmpeq_ps(__a, __b));
+  return emscripten_float32x4_notEqual(__a, __b);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
@@ -553,13 +545,13 @@ _mm_ucomigt_ss(__m128 __a, __m128 __b)
 static __inline__ int __attribute__((__always_inline__))
 _mm_ucomile_ss(__m128 __a, __m128 __b)
 {
-  return __a[0] <= __b[0];
+  return !(__a[0] > __b[0]);
 }
 
 static __inline__ int __attribute__((__always_inline__))
 _mm_ucomilt_ss(__m128 __a, __m128 __b)
 {
-  return __a[0] < __b[0];
+  return !(__a[0] >= __b[0]);
 }
 
 static __inline__ int __attribute__((__always_inline__))
