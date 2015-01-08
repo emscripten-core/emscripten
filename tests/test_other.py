@@ -2084,9 +2084,29 @@ int f() {
       print args, fail
       self.clear()
       try_delete(self.in_dir('a.out.js'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'embind', 'embind_test.cpp'), '--post-js', path_from_root('tests', 'embind', 'underscore-1.4.2.js'), '--post-js', path_from_root('tests', 'embind', 'imvu_test_adapter.js'), '--post-js', path_from_root('tests', 'embind', 'embind.test.js')] + args, stderr=PIPE if fail else None, env=environ).communicate()
+      
+      testFiles = [
+        path_from_root('tests', 'embind', 'underscore-1.4.2.js'),
+        path_from_root('tests', 'embind', 'imvu_test_adapter.js'),
+        path_from_root('tests', 'embind', 'embind.test.js'),
+      ]
+
+      Popen(
+        [ PYTHON,
+          EMCC,
+          path_from_root('tests', 'embind', 'embind_test.cpp'),
+          '--pre-js', path_from_root('tests', 'embind', 'test.pre.js'),
+          '--post-js', path_from_root('tests', 'embind', 'test.post.js'),
+        ] + args,
+        stderr=PIPE if fail else None,
+        env=environ).communicate()
+
       assert os.path.exists(self.in_dir('a.out.js')) == (not fail)
       if not fail:
+        with open(self.in_dir('a.out.js'), 'ab') as f:
+          for tf in testFiles:
+            f.write(open(tf, 'rb').read())
+
         output = run_js(self.in_dir('a.out.js'), stdout=PIPE, stderr=PIPE, full_output=True, assert_returncode=0)
         assert "FAIL" not in output, output
 
