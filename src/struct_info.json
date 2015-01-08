@@ -1340,5 +1340,43 @@
               "canvasResizedCallbackUserData"
             ]
         }
+    },
+    // ===========================================
+    // emscripten WebVR library
+    // ===========================================
+    {
+        "file": "emscripten/vr.h",
+        "defines": [],
+        "structs": {
+            "WebVRFieldOfView": [
+              "upDegrees",
+              "rightDegrees",
+              "downDegrees",
+              "leftDegrees"
+            ],
+            "WebVRPoint": [
+              "x",
+              "y",
+              "z",
+              "w"
+	    ],
+            "WebVRIntRect": [
+              "x",
+              "y",
+              "width",
+              "height"
+            ],
+	    "WebVRPositionState": [
+	      "timeStamp",
+	      "hasPosition",
+	      { "position": [ "x", "y", "z", "w" ] },
+	      { "linearVelocity": [ "x", "y", "z", "w" ] },
+	      { "linearAcceleration": [ "x", "y", "z", "w" ] },
+	      "hasOrientation",
+	      { "orientation": [ "x", "y", "z", "w" ] },
+	      { "angularVelocity": [ "x", "y", "z", "w" ] },
+	      { "angularAcceleration": [ "x", "y", "z", "w" ] }
+	    ]
+        }
     }
  ]
