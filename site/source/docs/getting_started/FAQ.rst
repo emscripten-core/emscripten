@@ -37,8 +37,8 @@ In most cases you will be able to use your project's current build system with E
 
 
 
-Why is code compilation so slow?
-================================
+Why is code compilation slow?
+=============================
 
 Emscripten makes some trade-offs that make the generated code faster and smaller, at the cost of longer compilation times. For example, we build parts of the standard library along with your code, which enables some additional optimizations, but takes a little longer to compile.
 
@@ -60,6 +60,7 @@ The main tips for improving build time are:
 	- Emscripten can run some passes in parallel (specifically, the JavaScript optimisations). Increasing the number of cores results in an almost linear improvement. 
 	- Emscripten will automatically use more cores if they are available. You can control how many cores are used  with ``EMCC_CORES=N`` (this is useful if you have many cores but relatively less memory).
 
+- Make sure that the native optimizer is being used, which greatly speeds up optimized builds as of 1.28.2. ``EMCC_DEBUG=1`` output should not report errors about the native optimizer failing to build or not being used because of a previous failed build (if it previously failed, do ``emcc --clear-cache`` then compile your file again, and the optimizer will be automatically rebuilt).
 
 	
 Why does my code run slowly?
@@ -70,8 +71,8 @@ Make sure you optimize code by building with ``-O2`` (even more :ref:`aggressive
 .. note: This is necessary both for each source file, and for the final stage of linking and compiling to JavaScript. For more information see :ref:`Building-Projects` and :ref:`Optimizing-Code`.
 
 
-Why is my compiled code so big?
-===============================
+Why is my compiled code big?
+============================
 
 Make sure you build with ``-O2`` so code is optimized and minified. You should also set up gzip compression on your webserver, which all browsers now support.
 
@@ -146,7 +147,9 @@ How do I link against system libraries like SDL, boost, etc.?
 
 System libraries that are included with Emscripten are automatically linked when you compile (just the necessary parts). This includes *libc*, *libc++* (C++ standard library) and :term:`SDL`.
 
-Libraries not included with Emscripten (like Boost) must be compiled and linked with the program just as if they were a module in the project. For example, see how `BananaBread links in libz <https://github.com/kripken/BananaBread/blob/master/cube2/src/web/Makefile>`_. 
+Libraries not included with Emscripten (like Boost) must be compiled and linked with the program just as if they were a module in the project.
+
+There is a set of libraries ported to Emscripten for convenient use, Emscripten Ports. See :ref:`Building-Projects`
 
 Another option is to implement needed C APIs as JavaScript librarys (see ``--js-library`` in :ref:`emcc <emcc-js-library>` and :ref:`implement-c-in-javascript`). Emscripten itself does this for *libc* (not including *malloc*) and :term:`SDL` (but not *libc++* or *malloc*).  
 
@@ -154,6 +157,14 @@ Another option is to implement needed C APIs as JavaScript librarys (see ``--js-
 
 	- Unlike other compilers, you don't need ``-lSDL`` to include SDL (specifying it will do no harm).
 	- In the specific case of *Boost*, if you only need the boost headers then you don't need to compile anything.
+
+
+What are my options for audio playback?
+=======================================
+
+Emscripten has partial support for SDL (1, not 2) audio, and OpenAL.
+
+To use SDL audio, include it as ``#include <SDL/SDL_mixer.h>``. You can use it that way alongside SDL1, SDL2, or another library for platform integration.
 
 
 How can my compiled program access files?
