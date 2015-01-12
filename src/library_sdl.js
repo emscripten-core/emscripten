@@ -2291,11 +2291,10 @@ var LibrarySDL = {
       SDL.audio.queueNewAudioData = function SDL_queueNewAudioData() {
         if (!SDL.audio) return;
 
-        var secsUntilNextPlayStart = SDL.audio.nextPlayTime - SDL.audioContext['currentTime'];
-
         for(var i = 0; i < SDL.audio.numSimultaneouslyQueuedBuffers; ++i) {
           // Only queue new data if we don't have enough audio data already in queue. Otherwise skip this time slot
           // and wait to queue more in the next time the callback is run.
+          var secsUntilNextPlayStart = SDL.audio.nextPlayTime - SDL.audioContext['currentTime'];
           if (secsUntilNextPlayStart >= SDL.audio.bufferingDelay + SDL.audio.bufferDurationSecs*SDL.audio.numSimultaneouslyQueuedBuffers) return;
 
           // Ask SDL audio data from the user code.
