@@ -1034,6 +1034,7 @@ try:
     shared.Settings.FINALIZE_ASM_JS = 0
     shared.Settings.GLOBAL_BASE = 8*256 # keep enough space at the bottom for a full stack frame
     shared.Settings.SIMPLIFY_IFS = 0 # this is just harmful for emterpreting
+    shared.Settings.EXPORTED_FUNCTIONS += ['emterpret']
 
   shared.Settings.RUNNING_FASTCOMP = fastcomp
 

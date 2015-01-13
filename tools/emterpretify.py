@@ -19,9 +19,25 @@ LOG_CODE = os.environ.get('EMCC_LOG_EMTERPRETER_CODE')
 
 ZERO = False
 
+ASYNC = True
+
+ASSERTIONS = True
+
+def handle_arg(arg):
+  global ZERO, ASYNC, ASSERTIONS
+  if '=' in arg:
+    l, r = arg.split('=')
+    if l == 'ZERO': ZERO = int(r)
+    elif l == 'ASYNC': ASYNC = int(r)
+    elif l == 'ASSERTIONS': ASSERTIONS = int(r)
+    return False
+  return True
+
+sys.argv = filter(handle_arg, sys.argv)
+
 # consts
 
-BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memmove', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64', '_strncpy', '_strcpy', '_strcat', '_saveSetjmp', '_testSetjmp', '_emscripten_replace_memory', '_bitshift64Shl', '_bitshift64Ashr', '_bitshift64Lshr'])
+BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memmove', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64', '_strncpy', '_strcpy', '_strcat', '_saveSetjmp', '_testSetjmp', '_emscripten_replace_memory', '_bitshift64Shl', '_bitshift64Ashr', '_bitshift64Lshr', 'setAsyncState', 'emtStackSave'])
 
 OPCODES = [ # l, lx, ly etc - one of 256 locals
   'SET',     # [lx, ly, 0]          lx = ly (int or float, not double)
@@ -387,6 +403,24 @@ CASES[ROPCODES['GETTDP']] = get_access('lx') + ' = tempDoublePtr;'
 CASES[ROPCODES['GETTR0']] = get_access('lx') + ' = tempRet0;'
 CASES[ROPCODES['SETTR0']] = 'tempRet0 = ' + get_coerced_access('lx') + ';'
 
+# stacktop handling: if allowing async, the very bottom will contain the function being executed,
+#                    for stack trace reconstruction. We store [pc of function, curr pc]
+#                    where curr pc is the current position in that function, when asyncing
+#                    The effective sp, where locals reside, is 8 above that.
+
+def push_stacktop(zero):
+  return (' sp = EMTSTACKTOP;' if not ASYNC else ' sp = EMTSTACKTOP + 8 | 0;') if not zero else ''
+
+def pop_stacktop(zero):
+  return '//Module.print("exit");\n' + ((' EMTSTACKTOP = sp; ' if not ASYNC else 'EMTSTACKTOP = sp - 8 | 0; ') if not zero else '')
+
+def handle_async_pre_call():
+  return 'HEAP32[sp - 4 >> 2] = pc;' if ASYNC else ''
+
+def handle_async_post_call():
+  assert not ZERO
+  return 'if ((asyncState|0) == 1) { ' + pop_stacktop(zero=False) + ' return }\n' if ASYNC else '' # save pc and exit immediately if currently saving state
+
 CASES[ROPCODES['INTCALL']] = '''
     inst = HEAP32[HEAP32[pc + 4 >> 2] >> 2] | 0; // FUNC inst: ['FUNC', locals, params, which emterp]
     lz = (inst >>> 16) & 255; // params
@@ -398,15 +432,19 @@ CASES[ROPCODES['INTCALL']] = '''
         %s = %s;
         ly = ly + 1 | 0;
       }
+      %s
       emterpret(HEAP32[pc + 4 >> 2] | 0);
+      %s
     %s
     %s = HEAP32[EMTSTACKTOP >> 2] | 0;
     %s = HEAP32[EMTSTACKTOP + 4 >> 2] | 0;
     pc = pc + (((4 + lz + 3) >> 2) << 2) | 0;
 ''' % (
   'if ((inst >>> 24) == 0) {' if ZERO else '',
-  get_access('ly', base='EMTSTACKTOP'),     get_coerced_access('HEAPU8[pc + 8 + ly >> 0]'),
-  get_access('ly', base='EMTSTACKTOP', offset=4), get_coerced_access('HEAPU8[pc + 8 + ly >> 0]', offset=4),
+  get_access('ly', base='EMTSTACKTOP', offset=8 if ASYNC else 0),  get_coerced_access('HEAPU8[pc + 8 + ly >> 0]'),
+  get_access('ly', base='EMTSTACKTOP', offset=12 if ASYNC else 4), get_coerced_access('HEAPU8[pc + 8 + ly >> 0]', offset=4),
+  handle_async_pre_call(),
+  handle_async_post_call(),
   ('''} else {
       while ((ly|0) < (lz|0)) {
         %s = %s;
@@ -433,7 +471,7 @@ CASES[ROPCODES['SWITCH']] = '''
 
 def make_emterpreter(zero=False):
   # return is specialized per interpreter
-  CASES[ROPCODES['RET']] = 'EMTSTACKTOP = sp; ' if not zero else ''
+  CASES[ROPCODES['RET']] = pop_stacktop(zero)
   CASES[ROPCODES['RET']] += 'HEAP32[EMTSTACKTOP >> 2] = ' + get_coerced_access('lx') + '; HEAP32[EMTSTACKTOP + 4 >> 2] = ' + get_coerced_access('lx', offset=4) + '; return;'
 
   # call is custom generated using information of actual call patterns, and which emterpreter this is
@@ -451,6 +489,10 @@ def make_emterpreter(zero=False):
       ret = get_access('lx', sig[0]) + ' = ' + shared.JS.make_coercion(ret, sig[0])
     elif name in actual_return_types and actual_return_types[name] != 'v':
       ret = shared.JS.make_coercion(ret, actual_return_types[name]) # return value ignored, but need a coercion
+    if ASYNC:
+      # TODO: support return values (need to save all returns to a temp location, then use only if not saving async state)
+      if sig[0] == 'v':
+        ret = handle_async_pre_call() + ret + '; ' +  handle_async_post_call()
     extra = len(sig) - 1 + int(function_pointer_call) # [opcode, lx, target, sig], take the usual 4. params are extra
     if extra > 0:
       ret += '; pc = pc + %d | 0' % (4*((extra+3)>>2))
@@ -484,7 +526,7 @@ def make_emterpreter(zero=False):
     return case.replace('PROCEED_WITH_PC_BUMP', 'continue').replace('PROCEED_WITHOUT_PC_BUMP', 'pc = pc - 4 | 0; continue').replace('continue; continue;', 'continue;')
 
   def process(code):
-    code = code.replace(' assert(', ' //assert(')
+    if not ASSERTIONS: code = code.replace(' assert(', ' //assert(')
     if zero: code = code.replace('sp + ', '')
     return code
 
@@ -528,8 +570,10 @@ def make_emterpreter(zero=False):
 
   return process(r'''
 function emterpret%s(pc) {
+ //Module.print('emterpret: ' + pc + ',' + EMTSTACKTOP);
  pc = pc | 0;
  var %sinst = 0, lx = 0, ly = 0, lz = 0;
+%s
 %s
  assert(((HEAPU8[pc>>0]>>>0) == %d)|0);
  lx = HEAPU8[pc + 1 >> 0] | 0; // num locals
@@ -540,6 +584,7 @@ function emterpret%s(pc) {
   %s = +0;
   ly = ly + 1 | 0;
  }
+%s
  //print('enter func ' + [pc, HEAPU8[pc + 0],HEAPU8[pc + 1],HEAPU8[pc + 2],HEAPU8[pc + 3],HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]].join(', '));
  //var first = true;
  pc = pc + 4 | 0;
@@ -550,11 +595,14 @@ function emterpret%s(pc) {
 }''' % (
   '' if not zero else '_z',
   'sp = 0, ' if not zero else '',
-  ' sp = EMTSTACKTOP;' if not zero else '',
+  '' if not ASYNC else 'HEAP32[EMTSTACKTOP>>2] = pc;\n if ((asyncState|0) == 1) asyncState = 0;\n', # other code running between a save and resume can see state 1, just reset
+                                                                                                # (optimally we should flip it to 0 at the bottom of the saving stack)
+  push_stacktop(zero),
   ROPCODES['FUNC'],
-  ''' EMTSTACKTOP = EMTSTACKTOP + (lx << 3) | 0;
- assert(((EMTSTACKTOP|0) <= (EMT_STACK_MAX|0))|0);''' if not zero else '',
+  (''' EMTSTACKTOP = EMTSTACKTOP + (lx ''' + (' + 1 ' if ASYNC else '') + '''<< 3) | 0;
+ assert(((EMTSTACKTOP|0) <= (EMT_STACK_MAX|0))|0);\n''' + (' if ((asyncState|0) != 2) {' if ASYNC else '')) if not zero else '',
   get_access('ly', s='d'),
+  ' } else { pc = (HEAP32[sp - 4 >> 2] | 0) - 8 | 0; }' if ASYNC else '',
   main_loop,
 ))
 
@@ -604,7 +652,7 @@ if __name__ == '__main__':
   external_emterpreted_funcs = filter(lambda func: func in tabled_funcs or func in exported_funcs or func in reachable_funcs, emterpreted_funcs)
 
   # process functions, generating bytecode
-  shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'emterpretedFuncs': list(emterpreted_funcs), 'externalEmterpretedFuncs': list(external_emterpreted_funcs), 'opcodes': OPCODES, 'ropcodes': ROPCODES }, output_filename=temp, just_concat=True)
+  shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'emterpretedFuncs': list(emterpreted_funcs), 'externalEmterpretedFuncs': list(external_emterpreted_funcs), 'opcodes': OPCODES, 'ropcodes': ROPCODES, 'ASYNC': ASYNC }, output_filename=temp, just_concat=True)
 
   # load the module and modify it
   asm = asm_module.AsmModule(temp)

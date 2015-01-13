@@ -185,9 +185,56 @@ mergeInto(LibraryManager.library, {
     ___async = 1;
   }
 #else // ASYNCIFY
+
+#if EMTERPRETIFY
+
+  // Emterpreter sync=>async support
+  //
+  // The idea here is that almost all interpreter frames are already on the stack (the
+  // emterpreter stack), so it's easy to save a callstack and reload it, we just need
+  // to also save the pc.
+  // Saving state keeps the pc right before the current call. That means when we reload,
+  // we are going to re-call in the exact same way as before - including the final call
+  // to the async function here! Therefore sleep etc. detect the state, so they know
+  // if they are the first call or the second. The second typically does nothing, but
+  // if there is a return value it could return it, etc. (TODO: support return values)
+  $EmterpreterAsync: {
+    state: 0, // 0 - nothing
+              // 1 - saving
+              // 2 - loading
+    setState: function(s) {
+      this.state = s;
+      asm.setAsyncState(s);
+    },
+  },
+
+  emscripten_sleep__deps: ['$EmterpreterAsync'],
+  emscripten_sleep: function(ms) {
+    if (EmterpreterAsync.state === 0) {
+      // save the stack we want to resume. this lets other code run in between
+      // XXX this assumes that this stack top never ever leak! exceptions might violate that
+      var stack = new Int32Array(HEAP32.subarray(EMTSTACKTOP>>2, asm.emtStackSave()>>2));
+      Browser.safeSetTimeout(function resume() {
+        assert(EmterpreterAsync.state === 1);
+        // copy the stack back in and resume
+        HEAP32.set(stack, EMTSTACKTOP>>2);
+        EmterpreterAsync.setState(2);
+        asm.emterpret(stack[0]); // pc of the first function, from which we can reconstruct the rest, is at position 0 on the stack
+      }, ms);
+      EmterpreterAsync.setState(1);
+    } else {
+      // nothing to do here, the stack was just recreated. reset the state.
+      assert(EmterpreterAsync.state === 2);
+      EmterpreterAsync.setState(0);
+    }
+  },
+
+#else
   emscripten_sleep: function() {
     throw 'Please compile your program with -s ASYNCIFY=1 in order to use asynchronous operations like emscripten_sleep';
   },
+#endif
+
   emscripten_coroutine_create: function() {
     throw 'Please compile your program with -s ASYNCIFY=1 in order to use asynchronous operations like emscripten_coroutine_create';
   },

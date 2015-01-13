@@ -1181,6 +1181,9 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       basic_vars += ['___async', '___async_unwind', '___async_retval', '___async_cur_frame']
       asm_runtime_funcs += ['setAsync']
 
+    if settings.get('EMTERPRETIFY'):
+      asm_runtime_funcs += ['emterpret', 'setAsyncState', 'emtStackSave']
+
     # function tables
     function_tables = ['dynCall_' + table for table in last_forwarded_json['Functions']['tables']]
     function_tables_impls = []
@@ -1357,7 +1360,11 @@ var asm = (function(global, env, buffer) {
   var nan = +env.NaN, inf = +env.Infinity;
   var tempInt = 0, tempBigInt = 0, tempBigIntP = 0, tempBigIntS = 0, tempBigIntR = 0.0, tempBigIntI = 0, tempBigIntD = 0, tempValue = 0, tempDouble = 0.0;
 ''' + ''.join(['''
-  var tempRet%d = 0;''' % i for i in range(10)]) + '\n' + asm_global_funcs] + ['  var tempFloat = %s;\n' % ('Math_fround(0)' if settings.get('PRECISE_F32') else '0.0')] + (['  const f0 = Math_fround(0);\n'] if settings.get('PRECISE_F32') else []) + ['' if not settings['ALLOW_MEMORY_GROWTH'] else '''
+  var tempRet%d = 0;''' % i for i in range(10)]) + '\n' + asm_global_funcs] + \
+  ['  var tempFloat = %s;\n' % ('Math_fround(0)' if settings.get('PRECISE_F32') else '0.0')] + \
+  ['  var asyncState = 0;\n' if settings.get('EMTERPRETIFY') else ''] + \
+  (['  const f0 = Math_fround(0);\n'] if settings.get('PRECISE_F32') else []) + \
+  ['' if not settings['ALLOW_MEMORY_GROWTH'] else '''
 function _emscripten_replace_memory(newBuffer) {
   if ((byteLength(newBuffer) & 0xffffff || byteLength(newBuffer) <= 0xffffff) || byteLength(newBuffer) > 0x80000000) return false;
   HEAP8 = new Int8View(newBuffer);
@@ -1392,7 +1399,15 @@ function stackRestore(top) {
 ''' + ('''
 function setAsync() {
   ___async = 1;
-}''' if need_asyncify else '') + '''
+}''' if need_asyncify else '') + ('''
+function setAsyncState(x) {
+  x = x | 0;
+  asyncState = x;
+}
+function emtStackSave() {
+  return EMTSTACKTOP|0;
+}
+''' if settings['EMTERPRETIFY'] else '') + '''
 function setThrew(threw, value) {
   threw = threw|0;
   value = value|0;
