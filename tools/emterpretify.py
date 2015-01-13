@@ -536,7 +536,7 @@ def make_emterpreter(zero=False):
   lx = (inst >> 8) & 255;
   ly = (inst >> 16) & 255;
   lz = inst >>> 24;
-  //print([pc, inst&255, %s[inst&255], lx, ly, lz, HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]].join(', '));
+  //Module.print([pc, inst&255, %s[inst&255], lx, ly, lz, HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]].join(', '));
 ''' % (json.dumps(OPCODES))
 
   if not INNERTERPRETER_LAST_OPCODE:
@@ -657,12 +657,18 @@ if __name__ == '__main__':
   # load the module and modify it
   asm = asm_module.AsmModule(temp)
 
+  # find memfile. can be x.js.mem or x.html.mem
   in_mem_file = infile + '.mem'
   in_mem_file_base = os.path.basename(in_mem_file)
   out_mem_file = outfile + '.mem'
   out_mem_file_base = os.path.basename(out_mem_file)
+  if in_mem_file_base not in asm.pre_js:
+    in_mem_file = (infile + '.mem').replace('.js.mem', '.html.mem')
+    in_mem_file_base = os.path.basename(in_mem_file)
+    out_mem_file = (outfile + '.mem').replace('.js.mem', '.html.mem')
+    out_mem_file_base = os.path.basename(out_mem_file)
+    assert in_mem_file_base in asm.pre_js, 'we assume a mem init file for now (looked for %s)' % in_mem_file
 
-  assert in_mem_file_base in asm.pre_js, 'we assume a mem init file for now (looked for %s)' % in_mem_file
   if not force_memfile:
     asm.pre_js = asm.pre_js.replace(in_mem_file_base, out_mem_file_base)
     assert os.path.exists(in_mem_file), 'need to find mem file at %s' % in_mem_file
