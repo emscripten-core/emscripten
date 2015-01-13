@@ -27,6 +27,23 @@ import_sig = re.compile('var ([_\w$]+) *=[^;]+;')
 
 NATIVE_OPTIMIZER = os.environ.get('EMCC_NATIVE_OPTIMIZER') or '1' # use native optimizer by default, unless disabled by EMCC_NATIVE_OPTIMIZER=0 in the env
 
+def find_msbuild(sln_file, make_env):
+  search_paths_vs2013 = [os.path.join(os.environ['ProgramFiles'], 'MSBuild/12.0/Bin/amd64'),
+                        os.path.join(os.environ['ProgramFiles(x86)'], 'MSBuild/12.0/Bin/amd64'),
+                        os.path.join(os.environ['ProgramFiles'], 'MSBuild/12.0/Bin'),
+                        os.path.join(os.environ['ProgramFiles(x86)'], 'MSBuild/12.0/Bin'),]
+  search_paths_old = [os.path.join(os.environ["WINDIR"], 'Microsoft.NET/Framework/v4.0.30319')]
+  contents = open(sln_file, 'r').read()
+  if '# Visual Studio Express 2013' in contents or '# Visual Studio 2013' in contents:
+    search_paths = search_paths_vs2013 + search_paths_old
+    make_env['VCTargetsPath'] = os.path.join(os.environ['ProgramFiles(x86)'], 'MSBuild/Microsoft.Cpp/v4.0/V120')
+  else:
+    search_paths = search_paths_old + search_paths_vs2013
+  for path in search_paths:
+    p = os.path.join(path, 'MSBuild.exe')
+    if os.path.isfile(p): return [p, make_env]
+  return [None, make_env]
+
 def get_native_optimizer():
   if os.environ.get('EMCC_FAST_COMPILER') == '0': return None # need fastcomp for native optimizer
 
@@ -45,6 +62,58 @@ def get_native_optimizer():
     outs = []
     errs = []
     try:
+      def create_optimizer_cmake():
+        shared.logging.debug('building native optimizer via CMake: ' + name)
+        output = shared.Cache.get_path(name)
+        shared.try_delete(output)
+
+        if NATIVE_OPTIMIZER == '1':
+          cmake_build_type = 'RelWithDebInfo'
+        elif NATIVE_OPTIMIZER == '2':
+          cmake_build_type = 'Release'
+        elif NATIVE_OPTIMIZER == 'g':
+          cmake_build_type = 'Debug'
+
+        build_path = shared.Cache.get_path('optimizer_build_' + cmake_build_type)
+        shared.try_delete(os.path.join(build_path, 'CMakeCache.txt'))
+
+        log_output = None if DEBUG else subprocess.PIPE
+        if not os.path.exists(build_path):
+          os.mkdir(build_path)
+
+        if WINDOWS:
+          cmake_generators = ['Visual Studio 12 Win64', 'Visual Studio 12', 'Visual Studio 11 Win64', 'Visual Studio 11', 'MinGW Makefiles', 'Unix Makefiles']
+        else:
+          cmake_generators = ['Unix Makefiles']
+
+        for cmake_generator in cmake_generators:
+          proc = subprocess.Popen(['cmake', '-G', cmake_generator, '-DCMAKE_BUILD_TYPE='+cmake_build_type, shared.path_from_root('tools', 'optimizer')], cwd=build_path, stdin=log_output, stdout=log_output, stderr=log_output)
+          proc.communicate()
+          make_env = os.environ.copy()
+          if proc.returncode == 0:
+            if 'Visual Studio' in cmake_generator:
+              ret = find_msbuild(os.path.join(build_path, 'asmjs_optimizer.sln'), make_env)
+              make = [ret[0], '/t:Build', '/p:Configuration='+cmake_build_type, '/nologo', '/verbosity:minimal', 'asmjs_optimizer.sln']
+              make_env = ret[1]
+            elif 'MinGW' in cmake_generator:
+              make = ['mingw32-make']
+            else:
+              make = ['make']
+
+            proc = subprocess.Popen(make, cwd=build_path, stdin=log_output, stdout=log_output, stderr=log_output, env=make_env)
+            proc.communicate()
+            if proc.returncode == 0:
+              if WINDOWS and 'Visual Studio' in cmake_generator:
+                shutil.copyfile(os.path.join(build_path, cmake_build_type, 'optimizer.exe'), output)
+              else:
+                shutil.copyfile(os.path.join(build_path, 'optimizer'), output)
+              return output
+            else:
+              shared.try_delete(os.path.join(build_path, 'CMakeCache.txt'))
+              # Proceed to next iteration of the loop to try next possible CMake generator.
+
+        raise NativeOptimizerCreationException()
+
       def create_optimizer():
         shared.logging.debug('building native optimizer: ' + name)
         output = shared.Cache.get_path(name)
@@ -63,7 +132,12 @@ def get_native_optimizer():
             if compiler == shared.CLANG: raise # otherwise, OSError is likely due to g++ or clang++ not being in the path
           if os.path.exists(output): return output
         raise NativeOptimizerCreationException()
-      return shared.Cache.get(name, create_optimizer, extension='exe')
+
+      use_cmake_to_configure = WINDOWS # Currently only Windows uses CMake to drive the optimizer build, but set this to True to use on other platforms as well.
+      if use_cmake_to_configure:
+        return shared.Cache.get(name, create_optimizer_cmake, extension='exe')
+      else:
+        return shared.Cache.get(name, create_optimizer, extension='exe')
     except NativeOptimizerCreationException, e:
       shared.logging.debug('failed to build native optimizer')
       handle_build_errors(outs, errs)
