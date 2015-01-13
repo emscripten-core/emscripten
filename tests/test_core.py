@@ -7136,10 +7136,9 @@ def process(filename):
       assert "low = 5678" in out
       assert "high = 1234" in out
 
-  def test_asyncify(self):
-    if not Settings.ASM_JS: return self.skip('asyncify requires asm.js')
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('asyncify requires fastcomp')
-    if self.is_emterpreter(): return self.skip('todo')
+  def test_async(self):
+    if not Settings.ASM_JS: return self.skip('async requires asm.js')
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('async requires fastcomp')
 
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
 
@@ -7159,7 +7158,12 @@ int main() {
   printf("%d\n", i);
 }
 '''
-    Settings.ASYNCIFY = 1;
+
+    if not self.is_emterpreter():
+      Settings.ASYNCIFY = 1
+    else:
+      pass # emterpreter supports such things natively
+
     self.do_run(src, 'HelloWorld!99');
 
   def test_coroutine(self):
