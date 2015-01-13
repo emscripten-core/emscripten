@@ -17,6 +17,8 @@ EMT_STACK_MAX = 1024*1024
 
 LOG_CODE = os.environ.get('EMCC_LOG_EMTERPRETER_CODE')
 
+ZERO = False
+
 # consts
 
 BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memmove', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64', '_strncpy', '_strcpy', '_strcat', '_saveSetjmp', '_testSetjmp', '_emscripten_replace_memory', '_bitshift64Shl', '_bitshift64Ashr', '_bitshift64Lshr'])
@@ -390,29 +392,32 @@ CASES[ROPCODES['INTCALL']] = '''
     lz = (inst >>> 16) & 255; // params
     ly = 0;
     assert(((EMTSTACKTOP + 8|0) <= (EMT_STACK_MAX|0))|0); // for return value
-    if ((inst >>> 24) == 0) {
+    %s
       while ((ly|0) < (lz|0)) {
         %s = %s;
         %s = %s;
         ly = ly + 1 | 0;
       }
       emterpret(HEAP32[pc + 4 >> 2] | 0);
-    } else {
+    %s
+    %s = HEAP32[EMTSTACKTOP >> 2] | 0;
+    %s = HEAP32[EMTSTACKTOP + 4 >> 2] | 0;
+    pc = pc + (((4 + lz + 3) >> 2) << 2) | 0;
+''' % (
+  'if ((inst >>> 24) == 0) {' if ZERO else '',
+  get_access('ly', base='EMTSTACKTOP'),     get_coerced_access('HEAPU8[pc + 8 + ly >> 0]'),
+  get_access('ly', base='EMTSTACKTOP', offset=4), get_coerced_access('HEAPU8[pc + 8 + ly >> 0]', offset=4),
+  ('''} else {
       while ((ly|0) < (lz|0)) {
         %s = %s;
         %s = %s;
         ly = ly + 1 | 0;
       }
       emterpret_z(HEAP32[pc + 4 >> 2] | 0);
-    }
-    %s = HEAP32[EMTSTACKTOP >> 2] | 0;
-    %s = HEAP32[EMTSTACKTOP + 4 >> 2] | 0;
-    pc = pc + (((4 + lz + 3) >> 2) << 2) | 0;
-''' % (
-  get_access('ly', base='EMTSTACKTOP'),     get_coerced_access('HEAPU8[pc + 8 + ly >> 0]'),
-  get_access('ly', base='EMTSTACKTOP', offset=4), get_coerced_access('HEAPU8[pc + 8 + ly >> 0]', offset=4),
-  get_access('ly', base=0),     get_coerced_access('HEAPU8[pc + 8 + ly >> 0]'),
-  get_access('ly', base=0, offset=4), get_coerced_access('HEAPU8[pc + 8 + ly >> 0]', offset=4),
+    }''' % (
+      get_access('ly', base=0),     get_coerced_access('HEAPU8[pc + 8 + ly >> 0]'),
+      get_access('ly', base=0, offset=4), get_coerced_access('HEAPU8[pc + 8 + ly >> 0]', offset=4),
+  )) if ZERO else '',
   get_access('lx'), get_access('lx', offset=4),
 )
 
@@ -792,7 +797,7 @@ if __name__ == '__main__':
         lines[i] = lines[i].replace(call, '(%s)' % (funcs[func] + code_start))
 
   # finalize funcs JS (first line has the marker, add emterpreters right after that)
-  asm.funcs_js = '\n'.join([lines[0], make_emterpreter(), make_emterpreter(zero=True), '\n'.join(filter(lambda line: len(line) > 0, lines[1:]))]) + '\n'
+  asm.funcs_js = '\n'.join([lines[0], make_emterpreter(), make_emterpreter(zero=True) if ZERO else '', '\n'.join(filter(lambda line: len(line) > 0, lines[1:]))]) + '\n'
   lines = None
 
   # set up emterpreter stack top

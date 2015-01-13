@@ -7410,7 +7410,7 @@ function emterpretify(ast) {
     }
     //if (leaf) printErr(func[1]);
 
-    var zero = leaf; // TODO: heuristics
+    var zero = false; // leaf; // TODO: heuristics
     var onlyLeavesAreZero = true; // if only leaves are zero, then we do not need to save and restore the stack XXX if this is not true, then setjmp and exceptions can fail, as cleanup is skipped!
 
     if (zero) code[3] = 1;
