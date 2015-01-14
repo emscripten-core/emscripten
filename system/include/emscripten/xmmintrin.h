@@ -53,7 +53,7 @@ _mm_load_ps(const float *__p)
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_loadl_pi(__m128 __a, const void /*__m64*/ *__p)
 {
-  return __builtin_shufflevector(emscripten_float32x4_loadxy(__p), __a, 0, 1, 4, 5);
+  return __builtin_shufflevector(emscripten_float32x4_loadxy(__p), __a, 0, 1, 6, 7);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
