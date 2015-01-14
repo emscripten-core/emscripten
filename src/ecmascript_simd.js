@@ -3147,6 +3147,28 @@ if (typeof SIMD.int16x8.lessThan === "undefined") {
   }
 }
 
+if (typeof SIMD.int16x8.lessThanOrEqual === "undefined") {
+  /**
+    * @param {int16x8} t An instance of int16x8.
+    * @param {int16x8} other An instance of int16x8.
+    * @return {int16x8} true or false in each lane depending on
+    * the result of t <= other.
+    */
+  SIMD.int16x8.lessThanOrEqual = function(t, other) {
+    t = SIMD.int16x8(t);
+    other = SIMD.int16x8(other);
+    var cs0 = t.s0 <= other.s0;
+    var cs1 = t.s1 <= other.s1;
+    var cs2 = t.s2 <= other.s2;
+    var cs3 = t.s3 <= other.s3;
+    var cs4 = t.s4 <= other.s4;
+    var cs5 = t.s5 <= other.s5;
+    var cs6 = t.s6 <= other.s6;
+    var cs7 = t.s7 <= other.s7;
+    return SIMD.int16x8.bool(cs0, cs1, cs2, cs3, cs4, cs5, cs6, cs7);
+  }
+}
+
 if (typeof SIMD.int16x8.shiftLeftByScalar === "undefined") {
   /**
     * @param {int16x8} a An instance of int16x8.
