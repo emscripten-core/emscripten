@@ -215,6 +215,19 @@ if (typeof SIMD.float32x4 === "undefined") {
   Object.defineProperty(SIMD.float32x4.prototype, 'w', {
     get: function() { return this.w_; }
   });
+
+  /**
+    * Extract the sign bit from each lane return them in the first 4 bits.
+    */
+  Object.defineProperty(SIMD.float32x4.prototype, 'signMask', {
+    get: function() {
+      var mx = (this.x < 0.0 || 1/this.x === -Infinity);
+      var my = (this.y < 0.0 || 1/this.y === -Infinity);
+      var mz = (this.z < 0.0 || 1/this.z === -Infinity);
+      var mw = (this.w < 0.0 || 1/this.w === -Infinity);
+      return mx | my << 1 | mz << 2 | mw << 3;
+    }
+  });
 }
 
 if (typeof SIMD.float32x4.splat === "undefined") {
@@ -336,6 +349,17 @@ if (typeof SIMD.float64x2 === "undefined") {
 
   Object.defineProperty(SIMD.float64x2.prototype, 'y', {
     get: function() { return this.y_; }
+  });
+
+  /**
+    * Extract the sign bit from each lane return them in the first 2 bits.
+    */
+  Object.defineProperty(SIMD.float64x2.prototype, 'signMask', {
+    get: function() {
+      var mx = (this.x < 0.0 || 1/this.x === -Infinity);
+      var my = (this.y < 0.0 || 1/this.y === -Infinity);
+      return mx | my << 1;
+    }
   });
 }
 
@@ -469,6 +493,35 @@ if (typeof SIMD.int32x4 === "undefined") {
 
   Object.defineProperty(SIMD.int32x4.prototype, 'w', {
     get: function() { return this.w_; }
+  });
+
+  Object.defineProperty(SIMD.int32x4.prototype, 'flagX', {
+    get: function() { return _SIMD_PRIVATE.tobool(this.x); }
+  });
+
+  Object.defineProperty(SIMD.int32x4.prototype, 'flagY', {
+    get: function() { return _SIMD_PRIVATE.tobool(this.y); }
+  });
+
+  Object.defineProperty(SIMD.int32x4.prototype, 'flagZ', {
+    get: function() { return _SIMD_PRIVATE.tobool(this.z); }
+  });
+
+  Object.defineProperty(SIMD.int32x4.prototype, 'flagW', {
+    get: function() { return _SIMD_PRIVATE.tobool(this.w); }
+  });
+
+  /**
+    * Extract the sign bit from each lane return them in the first 4 bits.
+    */
+  Object.defineProperty(SIMD.int32x4.prototype, 'signMask', {
+    get: function() {
+      var mx = _SIMD_PRIVATE.tobool(this.x);
+      var my = _SIMD_PRIVATE.tobool(this.y);
+      var mz = _SIMD_PRIVATE.tobool(this.z);
+      var mw = _SIMD_PRIVATE.tobool(this.w);
+      return mx | my << 1 | mz << 2 | mw << 3;
+    }
   });
 }
 
@@ -700,6 +753,24 @@ if (typeof SIMD.int16x8 === "undefined") {
   Object.defineProperty(SIMD.int16x8.prototype, 's7', {
     get: function() { return this.s7_; }
   });
+
+  /**
+    * Extract the sign bit from each lane return them in the first 8 bits.
+    */
+  Object.defineProperty(SIMD.int16x8.prototype, 'signMask', {
+    get: function() {
+      var ms0 = (this.s0 & 0x8000) >>> 15;
+      var ms1 = (this.s1 & 0x8000) >>> 15;
+      var ms2 = (this.s2 & 0x8000) >>> 15;
+      var ms3 = (this.s3 & 0x8000) >>> 15;
+      var ms4 = (this.s4 & 0x8000) >>> 15;
+      var ms5 = (this.s5 & 0x8000) >>> 15;
+      var ms6 = (this.s6 & 0x8000) >>> 15;
+      var ms7 = (this.s7 & 0x8000) >>> 15;
+      return ms0 | ms1 << 1 | ms2 << 2 | ms3 << 3 |
+             ms4 << 4 | ms5 << 5 | ms6 << 6 | ms7 << 7;
+    }
+  });
 }
 
 if (typeof SIMD.int16x8.bool === "undefined") {
@@ -899,6 +970,34 @@ if (typeof SIMD.int8x16 === "undefined") {
 
   Object.defineProperty(SIMD.int8x16.prototype, 's15', {
     get: function() { return this.s15_; }
+  });
+
+  /**
+    * Extract the sign bit from each lane return them in the first 16 bits.
+    */
+  Object.defineProperty(SIMD.int8x16.prototype, 'signMask', {
+    get: function() {
+      var ms0 = (this.s0 & 0x80) >>> 7;
+      var ms1 = (this.s1 & 0x80) >>> 7;
+      var ms2 = (this.s2 & 0x80) >>> 7;
+      var ms3 = (this.s3 & 0x80) >>> 7;
+      var ms4 = (this.s4 & 0x80) >>> 7;
+      var ms5 = (this.s5 & 0x80) >>> 7;
+      var ms6 = (this.s6 & 0x80) >>> 7;
+      var ms7 = (this.s7 & 0x80) >>> 7;
+      var ms8 = (this.s8 & 0x80) >>> 7;
+      var ms9 = (this.s9 & 0x80) >>> 7;
+      var ms10 = (this.s10 & 0x80) >>> 7;
+      var ms11 = (this.s11 & 0x80) >>> 7;
+      var ms12 = (this.s12 & 0x80) >>> 7;
+      var ms13 = (this.s13 & 0x80) >>> 7;
+      var ms14 = (this.s14 & 0x80) >>> 7;
+      var ms15 = (this.s15 & 0x80) >>> 7;
+      return ms0 | ms1 << 1 | ms2 << 2 | ms3 << 3 |
+             ms4 << 4 | ms5 << 5 | ms6 << 6 | ms7 << 7 |
+             ms8 << 8 | ms9 << 9 | ms10 << 10 | ms11 << 11 |
+             ms12 << 12 | ms13 << 13 | ms14 << 14 | ms15 << 15;
+    }
   });
 }
 
@@ -2500,62 +2599,6 @@ if (typeof SIMD.int32x4.withW === "undefined") {
     */
   SIMD.int32x4.withW = function(t, w) {
     t = SIMD.int32x4(t);
-    return SIMD.int32x4(t.x, t.y, t.z, w);
-  }
-}
-
-if (typeof SIMD.int32x4.withFlagX === "undefined") {
-  /**
-    * @param {int32x4} t An instance of int32x4.
-    * @param {boolean} x flag used for x lane.
-    * @return {int32x4} New instance of int32x4 with the values in t and
-    * x lane replaced with {x}.
-    */
-  SIMD.int32x4.withFlagX = function(t, flagX) {
-    t = SIMD.int32x4(t);
-    var x = flagX ? 0xFFFFFFFF : 0x0;
-    return SIMD.int32x4(x, t.y, t.z, t.w);
-  }
-}
-
-if (typeof SIMD.int32x4.withFlagY === "undefined") {
-  /**
-    * @param {int32x4} t An instance of int32x4.
-    * @param {boolean} y flag used for y lane.
-    * @return {int32x4} New instance of int32x4 with the values in t and
-    * y lane replaced with {y}.
-    */
-  SIMD.int32x4.withFlagY = function(t, flagY) {
-    t = SIMD.int32x4(t);
-    var y = flagY ? 0xFFFFFFFF : 0x0;
-    return SIMD.int32x4(t.x, y, t.z, t.w);
-  }
-}
-
-if (typeof SIMD.int32x4.withFlagZ === "undefined") {
-  /**
-    * @param {int32x4} t An instance of int32x4.
-    * @param {boolean} z flag used for z lane.
-    * @return {int32x4} New instance of int32x4 with the values in t and
-    * z lane replaced with {z}.
-    */
-  SIMD.int32x4.withFlagZ = function(t, flagZ) {
-    t = SIMD.int32x4(t);
-    var z = flagZ ? 0xFFFFFFFF : 0x0;
-    return SIMD.int32x4(t.x, t.y, z, t.w);
-  }
-}
-
-if (typeof SIMD.int32x4.withFlagW === "undefined") {
-  /**
-    * @param {int32x4} t An instance of int32x4.
-    * @param {boolean} w flag used for w lane.
-    * @return {int32x4} New instance of int32x4 with the values in t and
-    * w lane replaced with {w}.
-    */
-  SIMD.int32x4.withFlagW = function(t, flagW) {
-    t = SIMD.int32x4(t);
-    var w = flagW ? 0xFFFFFFFF : 0x0;
     return SIMD.int32x4(t.x, t.y, t.z, w);
   }
 }
@@ -4512,117 +4555,4 @@ if (typeof SIMD.int8x16.unsignedSaturatingSub === "undefined") {
                         Math.max(Math.min(a.s14 - b.s14, 255), 0),
                         Math.max(Math.min(a.s15 - b.s15, 255), 0));
   }
-}
-
-// TODO: Profile signMaskPolyfill to avoid conflicting with the builtin signMask,
-// which isn't completely functional yet.
-if (typeof SIMD.float32x4.signMaskPolyfill === "undefined") {
-  /**
-    * Extract the sign bit from each lane return them in the first 4 bits.
-    */
-  Object.defineProperty(SIMD.float32x4.prototype, 'signMaskPolyfill', {
-    get: function() {
-      var mx = (this.x < 0.0 || 1/this.x === -Infinity) ? 1 : 0;
-      var my = (this.y < 0.0 || 1/this.y === -Infinity) ? 1 : 0;
-      var mz = (this.z < 0.0 || 1/this.z === -Infinity) ? 1 : 0;
-      var mw = (this.w < 0.0 || 1/this.w === -Infinity) ? 1 : 0;
-      return mx | my << 1 | mz << 2 | mw << 3;
-    }
-  });
-}
-
-if (typeof SIMD.float64x2.signMaskPolyfill === "undefined") {
-  /**
-    * Extract the sign bit from each lane return them in the first 2 bits.
-    */
-  Object.defineProperty(SIMD.float64x2.prototype, 'signMaskPolyfill', {
-    get: function() {
-      var mx = (this.x < 0.0 || 1/this.x === -Infinity) ? 1 : 0;
-      var my = (this.y < 0.0 || 1/this.y === -Infinity) ? 1 : 0;
-      return mx | my << 1;
-    }
-  });
-}
-
-if (typeof SIMD.int32x4.flagX === "undefined") {
-  Object.defineProperty(SIMD.int32x4.prototype, 'flagX', {
-    get: function() { return this.x != 0x0; }
-  });
-
-  Object.defineProperty(SIMD.int32x4.prototype, 'flagY', {
-    get: function() { return this.y != 0x0; }
-  });
-
-  Object.defineProperty(SIMD.int32x4.prototype, 'flagZ', {
-    get: function() { return this.z != 0x0; }
-  });
-
-  Object.defineProperty(SIMD.int32x4.prototype, 'flagW', {
-    get: function() { return this.w != 0x0; }
-  });
-}
-
-if (typeof SIMD.int32x4.signMaskPolyfill === "undefined") {
-  /**
-    * Extract the sign bit from each lane return them in the first 4 bits.
-    */
-  Object.defineProperty(SIMD.int32x4.prototype, 'signMaskPolyfill', {
-    get: function() {
-      var mx = (this.x & 0x80000000) >>> 31;
-      var my = (this.y & 0x80000000) >>> 31;
-      var mz = (this.z & 0x80000000) >>> 31;
-      var mw = (this.w & 0x80000000) >>> 31;
-      return mx | my << 1 | mz << 2 | mw << 3;
-    }
-  });
-}
-
-if (typeof SIMD.int16x8.signMaskPolyfill === "undefined") {
-  /**
-    * Extract the sign bit from each lane return them in the first 8 bits.
-    */
-  Object.defineProperty(SIMD.int16x8.prototype, 'signMaskPolyfill', {
-    get: function() {
-      var ms0 = (this.s0 & 0x8000) >>> 15;
-      var ms1 = (this.s1 & 0x8000) >>> 15;
-      var ms2 = (this.s2 & 0x8000) >>> 15;
-      var ms3 = (this.s3 & 0x8000) >>> 15;
-      var ms4 = (this.s4 & 0x8000) >>> 15;
-      var ms5 = (this.s5 & 0x8000) >>> 15;
-      var ms6 = (this.s6 & 0x8000) >>> 15;
-      var ms7 = (this.s7 & 0x8000) >>> 15;
-      return ms0 | ms1 << 1 | ms2 << 2 | ms3 << 3 |
-             ms4 << 4 | ms5 << 5 | ms6 << 6 | ms7 << 7;
-    }
-  });
-}
-
-if (typeof SIMD.int8x16.signMaskPolyfill === "undefined") {
-  /**
-    * Extract the sign bit from each lane return them in the first 16 bits.
-    */
-  Object.defineProperty(SIMD.int8x16.prototype, 'signMaskPolyfill', {
-    get: function() {
-      var ms0 = (this.s0 & 0x80) >>> 7;
-      var ms1 = (this.s1 & 0x80) >>> 7;
-      var ms2 = (this.s2 & 0x80) >>> 7;
-      var ms3 = (this.s3 & 0x80) >>> 7;
-      var ms4 = (this.s4 & 0x80) >>> 7;
-      var ms5 = (this.s5 & 0x80) >>> 7;
-      var ms6 = (this.s6 & 0x80) >>> 7;
-      var ms7 = (this.s7 & 0x80) >>> 7;
-      var ms8 = (this.s8 & 0x80) >>> 7;
-      var ms9 = (this.s9 & 0x80) >>> 7;
-      var ms10 = (this.s10 & 0x80) >>> 7;
-      var ms11 = (this.s11 & 0x80) >>> 7;
-      var ms12 = (this.s12 & 0x80) >>> 7;
-      var ms13 = (this.s13 & 0x80) >>> 7;
-      var ms14 = (this.s14 & 0x80) >>> 7;
-      var ms15 = (this.s15 & 0x80) >>> 7;
-      return ms0 | ms1 << 1 | ms2 << 2 | ms3 << 3 |
-             ms4 << 4 | ms5 << 5 | ms6 << 6 | ms7 << 7;
-             ms8 << 8 | ms9 << 9 | ms10 << 10 | ms11 << 11;
-             ms12 << 12 | ms13 << 13 | ms14 << 14 | ms15 << 15;
-    }
-  });
 }
