@@ -186,7 +186,7 @@ mergeInto(LibraryManager.library, {
   }
 #else // ASYNCIFY
 
-#if EMTERPRETIFY
+#if EMTERPRETIFY_ASYNC
 
   // Emterpreter sync=>async support
   //

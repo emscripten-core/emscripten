@@ -7162,7 +7162,7 @@ int main() {
     if not self.is_emterpreter():
       Settings.ASYNCIFY = 1
     else:
-      pass # emterpreter supports such things natively
+      Settings.EMTERPRETIFY_ASYNC = 1
 
     self.do_run(src, 'HelloWorld!99');
 
