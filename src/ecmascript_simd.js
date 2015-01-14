@@ -64,8 +64,11 @@ _SIMD_PRIVATE.isTypedArray = function(o) {
          (o instanceof Float32Array) ||
          (o instanceof Float64Array) ||
          (o instanceof Int32x4Array) ||
-         (o instanceof Float32x4Array) ||
-         (o instanceof Float64x2Array);
+         (o instanceof Float32x4Array);
+}
+
+_SIMD_PRIVATE.isArrayBuffer = function(o) {
+  return (o instanceof ArrayBuffer);
 }
 
 _SIMD_PRIVATE.minNum = function(x, y) {
@@ -3788,5 +3791,356 @@ if (typeof SIMD.int8x16.store === "undefined") {
     var n = 16 / bpe;
     for (var i = 0; i < n; ++i)
       tarray[index + i] = array[i];
+  }
+}
+
+if (typeof Float32x4Array === "undefined") {
+  Float32x4Array = function(a, b, c) {
+    if (_SIMD_PRIVATE.isNumber(a)) {
+      this.storage_ = new Float32Array(a*4);
+      this.length_ = a;
+      this.byteOffset_ = 0;
+      return;
+    } else if (_SIMD_PRIVATE.isTypedArray(a)) {
+      if (!(a instanceof Float32x4Array)) {
+        throw "Copying typed array of non-Float32x4Array is unimplemented.";
+      }
+      this.storage_ = new Float32Array(a.length * 4);
+      this.length_ = a.length;
+      this.byteOffset_ = 0;
+      // Copy floats.
+      for (var i = 0; i < a.length*4; i++) {
+        this.storage_[i] = a.storage_[i];
+      }
+    } else if (_SIMD_PRIVATE.isArrayBuffer(a)) {
+      if ((b != undefined) && (b % Float32x4Array.BYTES_PER_ELEMENT) != 0) {
+        throw "byteOffset must be a multiple of 16.";
+      }
+      if (c != undefined) {
+        c *= 4;
+        this.storage_ = new Float32Array(a, b, c);
+      }
+      else {
+        // Note: new Float32Array(a, b) is NOT equivalent to new Float32Array(a, b, undefined)
+        this.storage_ = new Float32Array(a, b);
+      }
+      this.length_ = this.storage_.length / 4;
+      this.byteOffset_ = b != undefined ? b : 0;
+    } else {
+      throw "Unknown type of first argument.";
+    }
+  }
+
+  Object.defineProperty(Float32x4Array.prototype, 'length', {
+    get: function() { return this.length_; }
+  });
+
+  Object.defineProperty(Float32x4Array.prototype, 'byteLength', {
+    get: function() { return this.length_ * Float32x4Array.BYTES_PER_ELEMENT; }
+  });
+
+  Object.defineProperty(Float32x4Array, 'BYTES_PER_ELEMENT', {
+    get: function() { return 16; }
+  });
+
+  Object.defineProperty(Float32x4Array.prototype, 'BYTES_PER_ELEMENT', {
+    get: function() { return 16; }
+  });
+
+  Object.defineProperty(Float32x4Array.prototype, 'byteOffset', {
+    get: function() { return this.byteOffset_; }
+  });
+
+  Object.defineProperty(Float32x4Array.prototype, 'buffer', {
+    get: function() { return this.storage_.buffer; }
+  });
+
+  Float32x4Array.prototype.getAt = function(i) {
+    if (i < 0) {
+      throw "Index must be >= 0.";
+    }
+    if (i >= this.length) {
+      throw "Index out of bounds.";
+    }
+    var x = this.storage_[i*4+0];
+    var y = this.storage_[i*4+1];
+    var z = this.storage_[i*4+2];
+    var w = this.storage_[i*4+3];
+    return SIMD.float32x4(x, y, z, w);
+  }
+
+  Float32x4Array.prototype.setAt = function(i, v) {
+    if (i < 0) {
+      throw "Index must be >= 0.";
+    }
+    if (i >= this.length) {
+      throw "Index out of bounds.";
+    }
+    if (!(v instanceof SIMD.float32x4)) {
+      throw "Value is not a float32x4.";
+    }
+    this.storage_[i*4+0] = v.x;
+    this.storage_[i*4+1] = v.y;
+    this.storage_[i*4+2] = v.z;
+    this.storage_[i*4+3] = v.w;
+  }
+}
+
+if (typeof Int32x4Array === "undefined") {
+  Int32x4Array = function(a, b, c) {
+    if (_SIMD_PRIVATE.isNumber(a)) {
+      this.storage_ = new Int32Array(a*4);
+      this.length_ = a;
+      this.byteOffset_ = 0;
+      return;
+    } else if (_SIMD_PRIVATE.isTypedArray(a)) {
+      if (!(a instanceof Int32x4Array)) {
+        throw "Copying typed array of non-Int32x4Array is unimplemented.";
+      }
+      this.storage_ = new Int32Array(a.length * 4);
+      this.length_ = a.length;
+      this.byteOffset_ = 0;
+      // Copy ints.
+      for (var i = 0; i < a.length*4; i++) {
+        this.storage_[i] = a.storage_[i];
+      }
+    } else if (_SIMD_PRIVATE.isArrayBuffer(a)) {
+      if ((b != undefined) && (b % Int32x4Array.BYTES_PER_ELEMENT) != 0) {
+        throw "byteOffset must be a multiple of 16.";
+      }
+      if (c != undefined) {
+        c *= 4;
+        this.storage_ = new Int32Array(a, b, c);
+      }
+      else {
+        // Note: new Int32Array(a, b) is NOT equivalent to new Int32Array(a, b, undefined)
+        this.storage_ = new Int32Array(a, b);
+      }
+      this.length_ = this.storage_.length / 4;
+      this.byteOffset_ = b != undefined ? b : 0;
+    } else {
+      throw "Unknown type of first argument.";
+    }
+  }
+
+  Object.defineProperty(Int32x4Array.prototype, 'length', {
+    get: function() { return this.length_; }
+  });
+
+  Object.defineProperty(Int32x4Array.prototype, 'byteLength', {
+    get: function() { return this.length_ * Int32x4Array.BYTES_PER_ELEMENT; }
+  });
+
+  Object.defineProperty(Int32x4Array, 'BYTES_PER_ELEMENT', {
+    get: function() { return 16; }
+  });
+
+  Object.defineProperty(Int32x4Array.prototype, 'BYTES_PER_ELEMENT', {
+    get: function() { return 16; }
+  });
+
+  Object.defineProperty(Int32x4Array.prototype, 'byteOffset', {
+    get: function() { return this.byteOffset_; }
+  });
+
+  Object.defineProperty(Int32x4Array.prototype, 'buffer', {
+    get: function() { return this.storage_.buffer; }
+  });
+
+  Int32x4Array.prototype.getAt = function(i) {
+    if (i < 0) {
+      throw "Index must be >= 0.";
+    }
+    if (i >= this.length) {
+      throw "Index out of bounds.";
+    }
+    var x = this.storage_[i*4+0];
+    var y = this.storage_[i*4+1];
+    var z = this.storage_[i*4+2];
+    var w = this.storage_[i*4+3];
+    return SIMD.int32x4(x, y, z, w);
+  }
+
+  Int32x4Array.prototype.setAt = function(i, v) {
+    if (i < 0) {
+      throw "Index must be >= 0.";
+    }
+    if (i >= this.length) {
+      throw "Index out of bounds.";
+    }
+    if (!(v instanceof SIMD.int32x4)) {
+      throw "Value is not a int32x4.";
+    }
+    this.storage_[i*4+0] = v.x;
+    this.storage_[i*4+1] = v.y;
+    this.storage_[i*4+2] = v.z;
+    this.storage_[i*4+3] = v.w;
+  }
+
+  _SIMD_PRIVATE.isDataView = function(v) {
+    return v instanceof DataView;
+  }
+
+  DataView.prototype.getFloat32x4 = function(byteOffset, littleEndian) {
+    if (!_SIMD_PRIVATE.isDataView(this))
+      throw new TypeError("This is not a DataView.");
+    if (byteOffset < 0 || (byteOffset + 16) > this.buffer.byteLength)
+      throw new RangeError("The value of byteOffset is invalid.");
+    if (typeof littleEndian === 'undefined')
+      littleEndian = false;
+    return SIMD.float32x4(this.getFloat32(byteOffset, littleEndian),
+                          this.getFloat32(byteOffset + 4, littleEndian),
+                          this.getFloat32(byteOffset + 8, littleEndian),
+                          this.getFloat32(byteOffset + 12, littleEndian));
+  }
+
+  DataView.prototype.getFloat64x2 = function(byteOffset, littleEndian) {
+    if (!_SIMD_PRIVATE.isDataView(this))
+      throw new TypeError("This is not a DataView.");
+    if (byteOffset < 0 || (byteOffset + 16) > this.buffer.byteLength)
+      throw new RangeError("The value of byteOffset is invalid.");
+    if (typeof littleEndian === 'undefined')
+      littleEndian = false;
+    return SIMD.float64x2(this.getFloat64(byteOffset, littleEndian),
+                          this.getFloat64(byteOffset + 8, littleEndian));
+  }
+
+  DataView.prototype.getInt32x4 = function(byteOffset, littleEndian) {
+    if (!_SIMD_PRIVATE.isDataView(this))
+      throw new TypeError("This is not a DataView.");
+    if (byteOffset < 0 || (byteOffset + 16) > this.buffer.byteLength)
+      throw new RangeError("The value of byteOffset is invalid.");
+    if (typeof littleEndian === 'undefined')
+      littleEndian = false;
+    return SIMD.int32x4(this.getInt32(byteOffset, littleEndian),
+                        this.getInt32(byteOffset + 4, littleEndian),
+                        this.getInt32(byteOffset + 8, littleEndian),
+                        this.getInt32(byteOffset + 12, littleEndian));
+  }
+
+  DataView.prototype.getInt16x8 = function(byteOffset, littleEndian) {
+    if (!_SIMD_PRIVATE.isDataView(this))
+      throw new TypeError("This is not a DataView.");
+    if (byteOffset < 0 || (byteOffset + 16) > this.buffer.byteLength)
+      throw new RangeError("The value of byteOffset is invalid.");
+    if (typeof littleEndian === 'undefined')
+      littleEndian = false;
+    return SIMD.int16x8(this.getInt16(byteOffset, littleEndian),
+                        this.getInt16(byteOffset + 2, littleEndian),
+                        this.getInt16(byteOffset + 4, littleEndian),
+                        this.getInt16(byteOffset + 6, littleEndian),
+                        this.getInt16(byteOffset + 8, littleEndian),
+                        this.getInt16(byteOffset + 10, littleEndian),
+                        this.getInt16(byteOffset + 12, littleEndian),
+                        this.getInt16(byteOffset + 14, littleEndian));
+  }
+
+  DataView.prototype.getInt8x16 = function(byteOffset, littleEndian) {
+    if (!_SIMD_PRIVATE.isDataView(this))
+      throw new TypeError("This is not a DataView.");
+    if (byteOffset < 0 || (byteOffset + 16) > this.buffer.byteLength)
+      throw new RangeError("The value of byteOffset is invalid.");
+    if (typeof littleEndian === 'undefined')
+      littleEndian = false;
+    return SIMD.int8x16(this.getInt8(byteOffset, littleEndian),
+                        this.getInt8(byteOffset + 1, littleEndian),
+                        this.getInt8(byteOffset + 2, littleEndian),
+                        this.getInt8(byteOffset + 3, littleEndian),
+                        this.getInt8(byteOffset + 4, littleEndian),
+                        this.getInt8(byteOffset + 5, littleEndian),
+                        this.getInt8(byteOffset + 6, littleEndian),
+                        this.getInt8(byteOffset + 7, littleEndian),
+                        this.getInt8(byteOffset + 8, littleEndian),
+                        this.getInt8(byteOffset + 9, littleEndian),
+                        this.getInt8(byteOffset + 10, littleEndian),
+                        this.getInt8(byteOffset + 11, littleEndian),
+                        this.getInt8(byteOffset + 12, littleEndian),
+                        this.getInt8(byteOffset + 13, littleEndian),
+                        this.getInt8(byteOffset + 14, littleEndian),
+                        this.getInt8(byteOffset + 15, littleEndian));
+  }
+
+  DataView.prototype.setFloat32x4 = function(byteOffset, value, littleEndian) {
+    if (!_SIMD_PRIVATE.isDataView(this))
+      throw new TypeError("This is not a DataView.");
+    if (byteOffset < 0 || (byteOffset + 16) > this.buffer.byteLength)
+      throw new RangeError("The value of byteOffset is invalid.");
+    value = SIMD.float32x4(value);
+    if (typeof littleEndian === 'undefined')
+      littleEndian = false;
+    this.setFloat32(byteOffset, value.x, littleEndian);
+    this.setFloat32(byteOffset + 4, value.y, littleEndian);
+    this.setFloat32(byteOffset + 8, value.z, littleEndian);
+    this.setFloat32(byteOffset + 12, value.w, littleEndian);
+  }
+
+  DataView.prototype.setFloat64x2 = function(byteOffset, value, littleEndian) {
+    if (!_SIMD_PRIVATE.isDataView(this))
+      throw new TypeError("This is not a DataView.");
+    if (byteOffset < 0 || (byteOffset + 16) > this.buffer.byteLength)
+      throw new RangeError("The value of byteOffset is invalid.");
+    value = SIMD.float64x2(value);
+    if (typeof littleEndian === 'undefined')
+      littleEndian = false;
+    this.setFloat64(byteOffset, value.x, littleEndian);
+    this.setFloat64(byteOffset + 8, value.y, littleEndian);
+  }
+
+  DataView.prototype.setInt32x4 = function(byteOffset, value, littleEndian) {
+    if (!_SIMD_PRIVATE.isDataView(this))
+      throw new TypeError("This is not a DataView.");
+    if (byteOffset < 0 || (byteOffset + 16) > this.buffer.byteLength)
+      throw new RangeError("The value of byteOffset is invalid.");
+    value = SIMD.int32x4(value);
+    if (typeof littleEndian === 'undefined')
+      littleEndian = false;
+    this.setInt32(byteOffset, value.x, littleEndian);
+    this.setInt32(byteOffset + 4, value.y, littleEndian);
+    this.setInt32(byteOffset + 8, value.z, littleEndian);
+    this.setInt32(byteOffset + 12, value.w, littleEndian);
+  }
+
+  DataView.prototype.setInt16x8 = function(byteOffset, value, littleEndian) {
+    if (!_SIMD_PRIVATE.isDataView(this))
+      throw new TypeError("This is not a DataView.");
+    if (byteOffset < 0 || (byteOffset + 16) > this.buffer.byteLength)
+      throw new RangeError("The value of byteOffset is invalid.");
+    value = SIMD.int16x8(value);
+    if (typeof littleEndian === 'undefined')
+      littleEndian = false;
+    this.setInt16(byteOffset, value.s0, littleEndian);
+    this.setInt16(byteOffset + 2, value.s1, littleEndian);
+    this.setInt16(byteOffset + 4, value.s2, littleEndian);
+    this.setInt16(byteOffset + 6, value.s3, littleEndian);
+    this.setInt16(byteOffset + 8, value.s4, littleEndian);
+    this.setInt16(byteOffset + 10, value.s5, littleEndian);
+    this.setInt16(byteOffset + 12, value.s6, littleEndian);
+    this.setInt16(byteOffset + 14, value.s7, littleEndian);
+  }
+
+  DataView.prototype.setInt8x16 = function(byteOffset, value, littleEndian) {
+    if (!_SIMD_PRIVATE.isDataView(this))
+      throw new TypeError("This is not a DataView.");
+    if (byteOffset < 0 || (byteOffset + 16) > this.buffer.byteLength)
+      throw new RangeError("The value of byteOffset is invalid.");
+    value = SIMD.int8x16(value);
+    if (typeof littleEndian === 'undefined')
+      littleEndian = false;
+    this.setInt8(byteOffset, value.s0, littleEndian);
+    this.setInt8(byteOffset + 1, value.s1, littleEndian);
+    this.setInt8(byteOffset + 2, value.s2, littleEndian);
+    this.setInt8(byteOffset + 3, value.s3, littleEndian);
+    this.setInt8(byteOffset + 4, value.s4, littleEndian);
+    this.setInt8(byteOffset + 5, value.s5, littleEndian);
+    this.setInt8(byteOffset + 6, value.s6, littleEndian);
+    this.setInt8(byteOffset + 7, value.s7, littleEndian);
+    this.setInt8(byteOffset + 8, value.s8, littleEndian);
+    this.setInt8(byteOffset + 9, value.s9, littleEndian);
+    this.setInt8(byteOffset + 10, value.s10, littleEndian);
+    this.setInt8(byteOffset + 11, value.s11, littleEndian);
+    this.setInt8(byteOffset + 12, value.s12, littleEndian);
+    this.setInt8(byteOffset + 13, value.s13, littleEndian);
+    this.setInt8(byteOffset + 14, value.s14, littleEndian);
+    this.setInt8(byteOffset + 15, value.s15, littleEndian);
   }
 }
