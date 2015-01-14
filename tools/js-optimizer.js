@@ -6128,6 +6128,7 @@ function emterpretify(ast) {
   var EXTERNAL_EMTERPRETED_FUNCS = set(extraInfo.externalEmterpretedFuncs);
   var OPCODES = extraInfo.opcodes;
   var ROPCODES = extraInfo.ropcodes;
+  var ASYNC = extraInfo.ASYNC;
 
   var RELATIVE_BRANCHES = set('BR', 'BRT', 'BRF');
   var ABSOLUTE_BRANCHES = set('BRA', 'BRTA', 'BRFA');
@@ -7410,7 +7411,7 @@ function emterpretify(ast) {
     }
     //if (leaf) printErr(func[1]);
 
-    var zero = leaf; // TODO: heuristics
+    var zero = false; // leaf; // TODO: heuristics
     var onlyLeavesAreZero = true; // if only leaves are zero, then we do not need to save and restore the stack XXX if this is not true, then setjmp and exceptions can fail, as cleanup is skipped!
 
     if (zero) code[3] = 1;
@@ -7429,7 +7430,7 @@ function emterpretify(ast) {
         func[3].push(srcToStat('while ((x | 0) < ' + stackBytes + ') { HEAP32[sp + x >> 2] = HEAP32[x >> 2] | 0; x = x + 4 | 0; }'));
       }
       // copy our arguments to our stack frame
-      var bump = 0; // we will assert in the emterpreter itself that we did not overflow the emtstack
+      var bump = ASYNC ? 8 : 0; // we will assert in the emterpreter itself that we did not overflow the emtstack
       func[2].forEach(function(arg) {
         var code;
         switch (asmData.params[arg]) {

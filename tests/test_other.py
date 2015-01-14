@@ -4296,7 +4296,7 @@ pass: error == ENOTDIR
       else:
         source = path_from_root('tests', source)
       Popen([PYTHON, EMCC, source, '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0', '-s', 'GLOBAL_BASE=2048']).communicate()
-      Popen([PYTHON, path_from_root('tools', 'emterpretify.py'), 'a.out.js', 'em.out.js']).communicate()
+      Popen([PYTHON, path_from_root('tools', 'emterpretify.py'), 'a.out.js', 'em.out.js', 'ASYNC=0']).communicate()
       self.assertTextDataContained(output, run_js('a.out.js', args=args))
       self.assertTextDataContained(output, run_js('em.out.js', args=args))
       out = run_js('em.out.js', engine=SPIDERMONKEY_ENGINE, args=args, stderr=PIPE, full_output=True)
@@ -4320,7 +4320,7 @@ pass: error == ENOTDIR
       source = default.replace('{{{MAIN}}}', source)
       open('a.out.js', 'w').write(source)
       open('a.out.js.mem', 'wb').write(default_mem)
-      Popen([PYTHON, path_from_root('tools', 'emterpretify.py'), 'a.out.js', 'em.out.js']).communicate()
+      Popen([PYTHON, path_from_root('tools', 'emterpretify.py'), 'a.out.js', 'em.out.js', 'ASYNC=0']).communicate()
       sm_no_warn = filter(lambda x: x != '-w', SPIDERMONKEY_ENGINE)
       self.assertTextDataContained(output, run_js('a.out.js', engine=sm_no_warn, args=args)) # run in spidermonkey for print()
       self.assertTextDataContained(output, run_js('em.out.js', engine=sm_no_warn, args=args))

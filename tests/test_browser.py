@@ -2444,3 +2444,9 @@ window.close = function() {
       args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2','--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'],
       message='You should see an image with fog.')
 
+  def test_emterpreter_async(self):
+    self.btest('emterpreter_async.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O3', '-g2'])
+
+  def test_emterpreter_async_2(self):
+    self.btest('emterpreter_async_2.cpp', '47', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O3', '-g2'])
+
