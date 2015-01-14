@@ -1245,8 +1245,7 @@ if (typeof SIMD.float32x4.swizzle === "undefined") {
   }
 }
 
-if (typeof SIMD.float32x4.shuffle === "undefined" ||
-    typeof SIMD.float32x4.shuffleMix !== "undefined") {
+if (typeof SIMD.float32x4.shuffle === "undefined") {
 
   _SIMD_PRIVATE._f32x8 = new Float32Array(8);
 
@@ -1977,8 +1976,7 @@ if (typeof SIMD.float64x2.swizzle === "undefined") {
   }
 }
 
-if (typeof SIMD.float64x2.shuffle === "undefined" ||
-    typeof SIMD.float64x2.shuffleMix !== "undefined") {
+if (typeof SIMD.float64x2.shuffle === "undefined") {
 
   _SIMD_PRIVATE._f64x4 = new Float64Array(4);
 
@@ -2392,8 +2390,7 @@ if (typeof SIMD.int32x4.swizzle === "undefined") {
   }
 }
 
-if (typeof SIMD.int32x4.shuffle === "undefined" ||
-    typeof SIMD.int32x4.shuffleMix !== "undefined") {
+if (typeof SIMD.int32x4.shuffle === "undefined") {
 
   _SIMD_PRIVATE._i32x8 = new Int32Array(8);
 
