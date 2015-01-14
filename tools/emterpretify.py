@@ -427,11 +427,13 @@ CASES[ROPCODES['INTCALL']] = '''
     ly = 0;
     assert(((EMTSTACKTOP + 8|0) <= (EMT_STACK_MAX|0))|0); // for return value
     %s
+     %s
       while ((ly|0) < (lz|0)) {
         %s = %s;
         %s = %s;
         ly = ly + 1 | 0;
       }
+      %s
       %s
       emterpret(HEAP32[pc + 4 >> 2] | 0);
       %s
@@ -441,8 +443,10 @@ CASES[ROPCODES['INTCALL']] = '''
     pc = pc + (((4 + lz + 3) >> 2) << 2) | 0;
 ''' % (
   'if ((inst >>> 24) == 0) {' if ZERO else '',
+  'if ((asyncState|0) != 2) {' if ASYNC else '',
   get_access('ly', base='EMTSTACKTOP', offset=8 if ASYNC else 0),  get_coerced_access('HEAPU8[pc + 8 + ly >> 0]'),
   get_access('ly', base='EMTSTACKTOP', offset=12 if ASYNC else 4), get_coerced_access('HEAPU8[pc + 8 + ly >> 0]', offset=4),
+  '}' if ASYNC else '',
   handle_async_pre_call(),
   handle_async_post_call(),
   ('''} else {
