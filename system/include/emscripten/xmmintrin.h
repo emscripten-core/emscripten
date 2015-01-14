@@ -53,13 +53,21 @@ _mm_load_ps(const float *__p)
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_loadl_pi(__m128 __a, const void /*__m64*/ *__p)
 {
+#if 0 // TODO: Re-enable these when we have full support
   return __builtin_shufflevector(emscripten_float32x4_loadxy(__p), __a, 0, 1, 4, 5);
+#else
+  return (__m128){ ((const float*)__p)[0], ((const float*)__p)[1], __a[2], __a[3] };
+#endif
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_loadh_pi(__m128 __a, const void /*__m64*/ *__p)
 {
+#if 0 // TODO: Re-enable these when we have full support
   return __builtin_shufflevector(__a, emscripten_float32x4_loadxy(__p), 0, 1, 4, 5);
+#else
+  return (__m128){ __a[0], __a[1], ((const float*)__p)[0], ((const float*)__p)[1] };
+#endif
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
@@ -90,19 +98,33 @@ _mm_load_ps1(const float *__p)
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_load_ss(const float *__p)
 {
+#if 0 // TODO: Re-enable these when we have full support
   return emscripten_float32x4_loadx(__p);
+#else
+  return (__m128){ *__p, 0.0f, 0.0f, 0.0f };
+#endif
 }
 
 static __inline__ void __attribute__((__always_inline__))
 _mm_storel_pi(void /*__m64*/ *__p, __m128 __a)
 {
+#if 0 // TODO: Re-enable these when we have full support
   emscripten_float32x4_storexy(__p, __a);
+#else
+  ((float*)__p)[0] = __a[0];
+  ((float*)__p)[1] = __a[1];
+#endif
 }
 
 static __inline__ void __attribute__((__always_inline__))
 _mm_storeh_pi(void /*__m64*/ *__p, __m128 __a)
 {
+#if 0 // TODO: Re-enable these when we have full support
   emscripten_float32x4_storexy(__p, __builtin_shufflevector(__a, __a, 2, 3, 0, 1));
+#else
+  ((float*)__p)[0] = __a[2];
+  ((float*)__p)[1] = __a[3];
+#endif
 }
 
 static __inline__ void __attribute__((__always_inline__))
@@ -140,7 +162,11 @@ _mm_store_ps1(float *__p, __m128 __a)
 static __inline__ void __attribute__((__always_inline__))
 _mm_store_ss(float *__p, __m128 __a)
 {
+#if 0 // TODO: Re-enable these when we have full support
   emscripten_float32x4_storex(__p, __a);
+#else
+  *__p = __a[0];
+#endif
 }
 
 static __inline__ void __attribute__((__always_inline__))
