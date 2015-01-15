@@ -4264,7 +4264,7 @@ pass: error == ENOTDIR
     def do_emcc_test(source, args, output, emcc_args=[]):
       print
       print 'emcc', source[:40], '\n' in source
-      self.clear()
+      try_delete('a.out.js')
       if '\n' in source:
         open('src.cpp', 'w').write(source)
         source = 'src.cpp'
@@ -4355,7 +4355,13 @@ pass: error == ENOTDIR
     assert 'emterpret' not in get_func(src, '_main'), 'main is NOT emterpreted, it was  blacklisted'
     assert 'emterpret' in get_func(src, '_atoi'), 'atoi is emterpreted'
 
-    do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-s', 'EMTERPRETIFY_BLACKLIST=["_main", "_atoi"]']) # blacklist main and ato
+    do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-s', 'EMTERPRETIFY_BLACKLIST=["_main", "_atoi"]']) # blacklist main and atoi
+    src = open('a.out.js').read()
+    assert 'emterpret' not in get_func(src, '_main'), 'main is NOT emterpreted, it was  blacklisted'
+    assert 'emterpret' not in get_func(src, '_atoi'), 'atoi is NOT emterpreted either'
+
+    open('blacklist.txt', 'w').write('["_main", "_atoi"]')
+    do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-s', 'EMTERPRETIFY_BLACKLIST=@blacklist.txt']) # blacklist main and atoi with a @response file
     src = open('a.out.js').read()
     assert 'emterpret' not in get_func(src, '_main'), 'main is NOT emterpreted, it was  blacklisted'
     assert 'emterpret' not in get_func(src, '_atoi'), 'atoi is NOT emterpreted either'
