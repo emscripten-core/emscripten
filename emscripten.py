@@ -1182,7 +1182,9 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       asm_runtime_funcs += ['setAsync']
 
     if settings.get('EMTERPRETIFY'):
-      asm_runtime_funcs += ['emterpret', 'setAsyncState', 'emtStackSave']
+      asm_runtime_funcs += ['emterpret']
+      if settings.get('EMTERPRETIFY_ASYNC'):
+        asm_runtime_funcs += ['setAsyncState', 'emtStackSave']
 
     # function tables
     function_tables = ['dynCall_' + table for table in last_forwarded_json['Functions']['tables']]
@@ -1362,7 +1364,7 @@ var asm = (function(global, env, buffer) {
 ''' + ''.join(['''
   var tempRet%d = 0;''' % i for i in range(10)]) + '\n' + asm_global_funcs] + \
   ['  var tempFloat = %s;\n' % ('Math_fround(0)' if settings.get('PRECISE_F32') else '0.0')] + \
-  ['  var asyncState = 0;\n' if settings.get('EMTERPRETIFY') else ''] + \
+  ['  var asyncState = 0;\n' if settings.get('EMTERPRETIFY_ASYNC') else ''] + \
   (['  const f0 = Math_fround(0);\n'] if settings.get('PRECISE_F32') else []) + \
   ['' if not settings['ALLOW_MEMORY_GROWTH'] else '''
 function _emscripten_replace_memory(newBuffer) {
@@ -1407,7 +1409,7 @@ function setAsyncState(x) {
 function emtStackSave() {
   return EMTSTACKTOP|0;
 }
-''' if settings['EMTERPRETIFY'] else '') + '''
+''' if settings['EMTERPRETIFY_ASYNC'] else '') + '''
 function setThrew(threw, value) {
   threw = threw|0;
   value = value|0;
