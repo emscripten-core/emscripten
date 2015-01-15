@@ -788,6 +788,36 @@ class Ports:
       unpacked = False
 
     def retrieve():
+      # if EMCC_LOCAL_PORTS is set, we use a local directory as our ports. This is useful
+      # for testing. This env var should be in format
+      #     name=dir|subdir,name=dir|subdir
+      # e.g.
+      #     sdl2=/home/username/dev/ports/SDL2|SDL2-master
+      # so you could run
+      #     EMCC_LOCAL_PORTS="sdl2=/home/username/dev/ports/SDL2|SDL2-master" ./tests/runner.py browser.test_sdl2_mouse
+      local_ports = os.environ.get('EMCC_LOCAL_PORTS')
+      if local_ports:
+        local_ports = map(lambda pair: pair.split('='), local_ports.split(','))
+        for local in local_ports:
+          if name == local[0]:
+            path, subdir = local[1].split('|')
+            logging.warning('grabbing local port: ' + name + ' from ' + path + ', into ' + subdir)
+            # zip up the directory, so it looks the same as if we downloaded a zip from the remote server
+            import zipfile
+            z = zipfile.ZipFile(fullname + '.zip', 'w')
+            def add_dir(p):
+              for f in os.listdir(p):
+                full = os.path.join(p, f)
+                if os.path.isdir(full):
+                  add_dir(full)
+                else:
+                  if not f.startswith('.'): # ignore hidden files, including .git/ etc.
+                    z.write(full, os.path.join(subdir, os.path.relpath(full, path)))
+            add_dir(path)
+            z.close()
+            State.retrieved = True
+            return
+      # retrieve from remote server
       logging.warning('retrieving port: ' + name + ' from ' + url)
       import urllib2
       f = urllib2.urlopen(url)
