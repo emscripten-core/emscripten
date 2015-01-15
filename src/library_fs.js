@@ -1174,11 +1174,7 @@ mergeInto(LibraryManager.library, {
       var buf = new Uint8Array(length);
       FS.read(stream, buf, 0, length, 0);
       if (opts.encoding === 'utf8') {
-        ret = '';
-        var utf8 = new Runtime.UTF8Processor();
-        for (var i = 0; i < length; i++) {
-          ret += utf8.processCChar(buf[i]);
-        }
+        ret = UTF8ArrayToString(buf, 0);
       } else if (opts.encoding === 'binary') {
         ret = buf;
       }
@@ -1194,9 +1190,9 @@ mergeInto(LibraryManager.library, {
       }
       var stream = FS.open(path, opts.flags, opts.mode);
       if (opts.encoding === 'utf8') {
-        var utf8 = new Runtime.UTF8Processor();
-        var buf = new Uint8Array(utf8.processJSString(data));
-        FS.write(stream, buf, 0, buf.length, 0, opts.canOwn);
+        var buf = new Uint8Array(4*data.length+1);
+        var actualNumBytes = stringToUTF8Array(data, buf, 0, buf.length);
+        FS.write(stream, buf, 0, actualNumBytes, 0, opts.canOwn);
       } else if (opts.encoding === 'binary') {
         FS.write(stream, data, 0, data.length, 0, opts.canOwn);
       }

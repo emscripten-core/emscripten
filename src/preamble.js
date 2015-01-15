@@ -707,32 +707,32 @@ function stringToAscii(str, outPtr) {
 }
 Module['stringToAscii'] = stringToAscii;
 
-// Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the emscripten HEAP, returns
+// Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the a given array that contains uint8 values, returns
 // a copy of that string as a Javascript String object.
 
-function UTF8ToString(ptr) {
+function UTF8ArrayToString(u8Array, idx) {
   var u0, u1, u2, u3, u4, u5;
 
   var str = '';
   while (1) {
-    u0 = {{{ makeGetValue('ptr++', 0, 'i8') }}};
+    u0 = u8Array[idx++];
     if (!u0) return str;
     if (!(u0 & 0x80)) { str += String.fromCharCode(u0); continue; }
-    u1 = {{{ makeGetValue('ptr++', 0, 'i8') }}} & 63;
+    u1 = u8Array[idx++] & 63;
     if ((u0 & 0xE0) == 0xC0) { str += String.fromCharCode(((u0 & 31) << 6) | u1); continue; }
-    u2 = {{{ makeGetValue('ptr++', 0, 'i8') }}} & 63;
+    u2 = u8Array[idx++] & 63;
     if ((u0 & 0xF0) == 0xE0) {
       u0 = ((u0 & 15) << 12) | (u1 << 6) | u2;
     } else {
-      u3 = {{{ makeGetValue('ptr++', 0, 'i8') }}} & 63;
+      u3 = u8Array[idx++] & 63;
       if ((u0 & 0xF8) == 0xF0) {
         u0 = ((u0 & 7) << 18) | (u1 << 12) | (u2 << 6) | u3;
       } else {
-        u4 = {{{ makeGetValue('ptr++', 0, 'i8') }}} & 63;
+        u4 = u8Array[idx++] & 63;
         if ((u0 & 0xFC) == 0xF8) {
           u0 = ((u0 & 3) << 24) | (u1 << 18) | (u2 << 12) | (u3 << 6) | u4;
         } else {
-          u5 = {{{ makeGetValue('ptr++', 0, 'i8') }}} & 63;
+          u5 = u8Array[idx++] & 63;
           u0 = ((u0 & 1) << 30) | (u1 << 24) | (u2 << 18) | (u3 << 12) | (u4 << 6) | u5;
         }
       }
@@ -745,47 +745,84 @@ function UTF8ToString(ptr) {
     }
   }
 }
+Module['UTF8ArrayToString'] = UTF8ArrayToString;
+
+// Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the emscripten HEAP, returns
+// a copy of that string as a Javascript String object.
+
+function UTF8ToString(ptr) {
+  return UTF8ArrayToString(HEAPU8, ptr);
+}
 Module['UTF8ToString'] = UTF8ToString;
 
-// Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
-// null-terminated and encoded in UTF8 form. The copy will require at most str.length*6+1 bytes of space in the HEAP.
+// Copies the given Javascript String object 'str' to the given byte array at address 'outIdx',
+// encoded in UTF8 form and null-terminated. The copy will require at most str.length*4+1 bytes of space in the HEAP.
+// Parameters:
+//   str: the Javascript string to copy.
+//   outU8Array: the array to copy to. Each index in this array is assumed to be one 8-byte element.
+//   outIdx: The starting offset in the array to begin the copying.
+//   maxBytesToWrite: The maximum number of bytes this function can write to the array. This count should include the null 
+//                    terminator, i.e. if maxBytesToWrite=1, only the null terminator will be written and nothing else.
+//                    maxBytesToWrite=0 does not write any bytes to the output, not even the null terminator.
+// Returns the number of bytes written, EXCLUDING the null terminator.
 
-function stringToUTF8(str, outPtr) {
+function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite) {
+  if (!(maxBytesToWrite > 0)) // Parameter maxBytesToWrite is not optional. Negative values, 0, null, undefined and false each don't write out any bytes.
+    return 0;
+
+  var startIdx = outIdx;
+  var endIdx = outIdx + maxBytesToWrite - 1; // -1 for string null terminator.
   for (var i = 0; i < str.length; ++i) {
     // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! So decode UTF16->UTF32->UTF8.
     var u = str.charCodeAt(i); // possibly a lead surrogate
     if (u >= 0xD800 && u <= 0xDFFF) u = 0x10000 + ((u & 0x3FF) << 10) | (str.charCodeAt(++i) & 0x3FF);
     if (u <= 0x7F) {
-      {{{ makeSetValue('outPtr++', 0, 'u', 'i8') }}};
+      if (outIdx >= endIdx) break;
+      outU8Array[outIdx++] = u;
     } else if (u <= 0x7FF) {
-      {{{ makeSetValue('outPtr++', 0, '0xC0 | (u >> 6)', 'i8') }}};
-      {{{ makeSetValue('outPtr++', 0, '0x80 | (u & 63)', 'i8') }}};
+      if (outIdx + 1 >= endIdx) break;
+      outU8Array[outIdx++] = 0xC0 | (u >> 6);
+      outU8Array[outIdx++] = 0x80 | (u & 63);
     } else if (u <= 0xFFFF) {
-      {{{ makeSetValue('outPtr++', 0, '0xE0 | (u >> 12)', 'i8') }}};
-      {{{ makeSetValue('outPtr++', 0, '0x80 | ((u >> 6) & 63)', 'i8') }}};
-      {{{ makeSetValue('outPtr++', 0, '0x80 | (u & 63)', 'i8') }}};
+      if (outIdx + 2 >= endIdx) break;
+      outU8Array[outIdx++] = 0xE0 | (u >> 12);
+      outU8Array[outIdx++] = 0x80 | ((u >> 6) & 63);
+      outU8Array[outIdx++] = 0x80 | (u & 63);
     } else if (u <= 0x1FFFFF) {
-      {{{ makeSetValue('outPtr++', 0, '0xF0 | (u >> 18)', 'i8') }}};
-      {{{ makeSetValue('outPtr++', 0, '0x80 | ((u >> 12) & 63)', 'i8') }}};
-      {{{ makeSetValue('outPtr++', 0, '0x80 | ((u >> 6) & 63)', 'i8') }}};
-      {{{ makeSetValue('outPtr++', 0, '0x80 | (u & 63)', 'i8') }}};
+      if (outIdx + 3 >= endIdx) break;
+      outU8Array[outIdx++] = 0xF0 | (u >> 18);
+      outU8Array[outIdx++] = 0x80 | ((u >> 12) & 63);
+      outU8Array[outIdx++] = 0x80 | ((u >> 6) & 63);
+      outU8Array[outIdx++] = 0x80 | (u & 63);
     } else if (u <= 0x3FFFFFF) {
-      {{{ makeSetValue('outPtr++', 0, '0xF8 | (u >> 24)', 'i8') }}};
-      {{{ makeSetValue('outPtr++', 0, '0x80 | ((u >> 18) & 63)', 'i8') }}};
-      {{{ makeSetValue('outPtr++', 0, '0x80 | ((u >> 12) & 63)', 'i8') }}};
-      {{{ makeSetValue('outPtr++', 0, '0x80 | ((u >> 6) & 63)', 'i8') }}};
-      {{{ makeSetValue('outPtr++', 0, '0x80 | (u & 63)', 'i8') }}};
+      if (outIdx + 4 >= endIdx) break;
+      outU8Array[outIdx++] = 0xF8 | (u >> 24);
+      outU8Array[outIdx++] = 0x80 | ((u >> 18) & 63);
+      outU8Array[outIdx++] = 0x80 | ((u >> 12) & 63);
+      outU8Array[outIdx++] = 0x80 | ((u >> 6) & 63);
+      outU8Array[outIdx++] = 0x80 | (u & 63);
     } else {
-      {{{ makeSetValue('outPtr++', 0, '0xFC | (u >> 30)', 'i8') }}};
-      {{{ makeSetValue('outPtr++', 0, '0x80 | ((u >> 24) & 63)', 'i8') }}};
-      {{{ makeSetValue('outPtr++', 0, '0x80 | ((u >> 18) & 63)', 'i8') }}};
-      {{{ makeSetValue('outPtr++', 0, '0x80 | ((u >> 12) & 63)', 'i8') }}};
-      {{{ makeSetValue('outPtr++', 0, '0x80 | ((u >> 6) & 63)', 'i8') }}};
-      {{{ makeSetValue('outPtr++', 0, '0x80 | (u & 63)', 'i8') }}};
+      if (outIdx + 5 >= endIdx) break;
+      outU8Array[outIdx++] = 0xFC | (u >> 30);
+      outU8Array[outIdx++] = 0x80 | ((u >> 24) & 63);
+      outU8Array[outIdx++] = 0x80 | ((u >> 18) & 63);
+      outU8Array[outIdx++] = 0x80 | ((u >> 12) & 63);
+      outU8Array[outIdx++] = 0x80 | ((u >> 6) & 63);
+      outU8Array[outIdx++] = 0x80 | (u & 63);
     }
   }
-  // Null-terminate the pointer to the HEAP.
-  {{{ makeSetValue('outPtr', 0, 0, 'i8') }}};
+  // Null-terminate the pointer to the buffer.
+  outU8Array[outIdx] = 0;
+  return outIdx - startIdx;
+}
+Module['stringToUTF8Array'] = stringToUTF8Array;
+
+// Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
+// null-terminated and encoded in UTF8 form. The copy will require at most str.length*6+1 bytes of space in the HEAP.
+// Returns the number of bytes written, EXCLUDING the null terminator.
+
+function stringToUTF8(str, outPtr, maxBytesToWrite) {
+  return stringToUTF8Array(str, HEAPU8, outPtr, maxBytesToWrite);
 }
 Module['stringToUTF8'] = stringToUTF8;
 
@@ -1337,14 +1374,11 @@ Module['addOnPostRun'] = Module.addOnPostRun = addOnPostRun;
 
 
 function intArrayFromString(stringy, dontAddNull, length /* optional */) {
-  var ret = (new Runtime.UTF8Processor()).processJSString(stringy);
-  if (length) {
-    ret.length = length;
-  }
-  if (!dontAddNull) {
-    ret.push(0);
-  }
-  return ret;
+  var len = length > 0 ? length : stringy.length*4+1;
+  var u8array = new Uint8Array(len);
+  var numBytesWritten = stringToUTF8Array(stringy, u8array, 0, u8array.length);
+  u8array.length = dontAddNull ? numBytesWritten : (dontAddNull+1);
+  return u8array;
 }
 Module['intArrayFromString'] = intArrayFromString;
 
