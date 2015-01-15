@@ -147,7 +147,11 @@ if (settings_file) {
     var value = settings[key];
     if (value[0] == '@') {
       // response file type thing, workaround for large inputs: value is @path-to-file
-      value = JSON.parse(read(value.substr(1)));
+      try {
+        value = JSON.parse(read(value.substr(1)));
+      } catch(e) {
+        // continue normally; assume it is not a response file
+      }
     }
     eval(key + ' = ' + JSON.stringify(value));
   }
