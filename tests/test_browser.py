@@ -2444,6 +2444,9 @@ window.close = function() {
       args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2','--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'],
       message='You should see an image with fog.')
 
+  def test_sdl2_unwasteful(self):
+    self.btest('sdl2_unwasteful.cpp', expected='1', args=['-s', 'USE_SDL=2', '-O1'])
+
   def test_emterpreter_async(self):
     self.btest('emterpreter_async.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O3', '-g2'])
 
