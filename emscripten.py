@@ -1402,6 +1402,11 @@ function stackRestore(top) {
 function setAsync() {
   ___async = 1;
 }''' if need_asyncify else '') + ('''
+function emterpret(pc) { // this will be replaced when the emterpreter code is generated; adding it here allows validation until then
+  pc = pc | 0;
+  assert(0);
+}
+''' if settings['EMTERPRETIFY'] else '') + ('''
 function setAsyncState(x) {
   x = x | 0;
   asyncState = x;

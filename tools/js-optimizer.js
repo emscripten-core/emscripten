@@ -6164,6 +6164,12 @@ function emterpretify(ast) {
   }
 
   function walkFunction(func) {
+    if (func[1] === 'emterpret') {
+      // we will replace the stand-in, do not emit anything for it here
+      func[0] = 'toplevel';
+      func[1] = [];
+      return;
+    }
 
     var freeLocals = [];
     var maxLocal = 0;
