@@ -20,7 +20,8 @@ int main() {
   EM_ASM_INT({
     var str = Module.UTF8ToString($0);
     Module.print(str);
-    Module.stringToUTF8(str, $1, $2);
+    var numBytesWritten = Module.stringToUTF8(str, $1, $2);
+    if (numBytesWritten != 12) throw 'stringToUTF8 wrote an invalid length ' + numBytesWritten;
   }, asciiString, asciiString3, 128);
   assert(!strcmp(asciiString, asciiString3));
 
@@ -29,7 +30,8 @@ int main() {
   EM_ASM_INT({
     var str = Module.UTF8ToString($0);
     Module.print(str);
-    Module.stringToUTF8(str, $1, $2);
+    var numBytesWritten = Module.stringToUTF8(str, $1, $2);
+    if (numBytesWritten != 69) throw 'stringToUTF8 wrote an invalid length ' + numBytesWritten;
   }, utf8String, utf8String2, 128);
   assert(strlen(utf8String) == strlen(utf8String2));
   for(int i = 0; i < strlen(utf8String)+1; ++i)
@@ -41,7 +43,8 @@ int main() {
   EM_ASM_INT({
     var str = Module.UTF8ToString($0);
     Module.print(str);
-    Module.stringToUTF8(str, $1, $2);
+    var numBytesWritten = Module.stringToUTF8(str, $1, $2);
+    if (numBytesWritten != 9) throw 'stringToUTF8 wrote an invalid length ' + numBytesWritten;
   }, utf8String, utf8String2, 10);
   assert(strlen(utf8String2) == 9);
 
@@ -49,7 +52,8 @@ int main() {
   EM_ASM_INT({
     var str = Module.UTF8ToString($0);
     Module.print(str);
-    Module.stringToUTF8(str, $1, $2);
+    var numBytesWritten = Module.stringToUTF8(str, $1, $2);
+    if (numBytesWritten != 0) throw 'stringToUTF8 wrote an invalid length ' + numBytesWritten;
   }, utf8String, utf8String2, 1);
   assert(utf8String2[0] == 0);
 
@@ -58,7 +62,8 @@ int main() {
   EM_ASM_INT({
     var str = Module.UTF8ToString($0);
     Module.print(str);
-    Module.stringToUTF8(str, $1, $2);
+    var numBytesWritten = Module.stringToUTF8(str, $1, $2);
+    if (numBytesWritten != 0) throw 'stringToUTF8 wrote an invalid length ' + numBytesWritten;
   }, utf8String, utf8String2, 0);
   assert(utf8String2[0] == 'X');
 
