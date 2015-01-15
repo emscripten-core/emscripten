@@ -70,6 +70,8 @@ LIB_PREFIXES = ('', 'lib')
 
 JS_CONTAINING_SUFFIXES = ('js', 'html')
 
+DEFERRED_REPONSE_FILES = ('EMTERPRETIFY_BLACKLIST',)
+
 # Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc opt
 # levels 2 and 3 (emcc 3 is unsafe opts, so unsuitable for the only level to get
 # llvm opt level 3, and speed-wise emcc level 2 is already the slowest/most optimizing
@@ -872,7 +874,10 @@ try:
   for change in settings_changes:
     key, value = change.split('=')
     if value[0] == '@':
-      value = open(value[1:]).read()
+      if key not in DEFERRED_REPONSE_FILES:
+        value = open(value[1:]).read()
+      else:
+        value = '"' + value + '"'
     else:
       value = value.replace('\\', '\\\\')
     exec('shared.Settings.' + key + ' = ' + value)

@@ -615,7 +615,15 @@ if __name__ == '__main__':
   infile = sys.argv[1]
   outfile = sys.argv[2]
   force_memfile = sys.argv[3] if len(sys.argv) >= 4 else None
-  extra_blacklist = json.loads(sys.argv[4]) if len(sys.argv) >= 5 else []
+
+  extra_blacklist = []
+  if len(sys.argv) >= 5:
+    temp = sys.argv[4]
+    if temp[0] == '"':
+      # response file
+      assert temp[1] == '@'
+      temp = open(temp[2:-1]).read()
+    extra_blacklist = json.loads(temp)
 
   BLACKLIST = set(list(BLACKLIST) + extra_blacklist)
 
