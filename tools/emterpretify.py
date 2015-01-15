@@ -19,9 +19,9 @@ LOG_CODE = os.environ.get('EMCC_LOG_EMTERPRETER_CODE')
 
 ZERO = False
 
-ASYNC = True
+ASYNC = False
 
-ASSERTIONS = True
+ASSERTIONS = False
 
 def handle_arg(arg):
   global ZERO, ASYNC, ASSERTIONS
