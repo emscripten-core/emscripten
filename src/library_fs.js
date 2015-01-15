@@ -1190,7 +1190,7 @@ mergeInto(LibraryManager.library, {
       }
       var stream = FS.open(path, opts.flags, opts.mode);
       if (opts.encoding === 'utf8') {
-        var buf = new Uint8Array(4*data.length+1);
+        var buf = new Uint8Array(lengthBytesUTF8(data.length)+1);
         var actualNumBytes = stringToUTF8Array(data, buf, 0, buf.length);
         FS.write(stream, buf, 0, actualNumBytes, 0, opts.canOwn);
       } else if (opts.encoding === 'binary') {
