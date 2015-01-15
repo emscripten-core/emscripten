@@ -4331,8 +4331,34 @@ pass: error == ENOTDIR
     do_test('hello_world_loop.cpp', [], 'hello, world!')
     do_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.')
 
-    # do not emterpret main, but still emterpret worker
-    do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-s', 'EMTERPRETIFY_BLACKLIST=["_main"]'])
+    # blacklisting checks
+
+    def get_func(src, name):
+      start = src.index('function ' + name + '(')
+      t = start
+      n = 0
+      while True:
+        if src[t] == '{': n += 1
+        elif src[t] == '}':
+          n -= 1
+          if n == 0: return src[start:t+1]
+        t += 1
+        assert t < len(src)
+
+    do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', [])
+    src = open('a.out.js').read()
+    assert 'emterpret' in get_func(src, '_main'), 'main is emterpreted'
+    assert 'function _atoi(' not in src, 'atoi is emterpreted and does not even have a trampoline, since only other emterpreted can reach it'
+
+    do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-s', 'EMTERPRETIFY_BLACKLIST=["_main"]']) # blacklist main
+    src = open('a.out.js').read()
+    assert 'emterpret' not in get_func(src, '_main'), 'main is NOT emterpreted, it was  blacklisted'
+    assert 'emterpret' in get_func(src, '_atoi'), 'atoi is emterpreted'
+
+    do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-s', 'EMTERPRETIFY_BLACKLIST=["_main", "_atoi"]']) # blacklist main and ato
+    src = open('a.out.js').read()
+    assert 'emterpret' not in get_func(src, '_main'), 'main is NOT emterpreted, it was  blacklisted'
+    assert 'emterpret' not in get_func(src, '_atoi'), 'atoi is NOT emterpreted either'
 
     do_test(r'''
 #include<stdio.h>
