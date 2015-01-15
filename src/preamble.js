@@ -1420,9 +1420,9 @@ Module['addOnPostRun'] = Module.addOnPostRun = addOnPostRun;
 
 function intArrayFromString(stringy, dontAddNull, length /* optional */) {
   var len = length > 0 ? length : stringy.length*4+1;
-  var u8array = new Uint8Array(len);
+  var u8array = new Array(len);
   var numBytesWritten = stringToUTF8Array(stringy, u8array, 0, u8array.length);
-  u8array.length = dontAddNull ? numBytesWritten : (dontAddNull+1);
+  u8array.length = dontAddNull ? numBytesWritten : (numBytesWritten+1);
   return u8array;
 }
 Module['intArrayFromString'] = intArrayFromString;
