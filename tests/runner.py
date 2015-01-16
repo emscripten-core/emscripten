@@ -884,16 +884,16 @@ js optimizer phase.
     for m in modules:
       if hasattr(m, 'default'):
         sys.argv = [sys.argv[0]]
+        tests = filter(lambda t: t.startswith('test_'), dir(getattr(m, 'default')))
         print
-        for i in range(num):
-          tests = filter(lambda t: t.startswith('test_'), dir(getattr(m, 'default')))
+        chosen = set()
+        while len(chosen) < num:
           test = random.choice(tests)
           mode = random.choice(test_modes)
           print '* ' + mode + '.' + test
-          sys.argv.append(mode + '.' + test) 
-
+          chosen.add(mode + '.' + test)
+        sys.argv += list(chosen)
         std = 0.5/math.sqrt(num)
-
         print
         print 'running those %d randomly-selected tests. if they all pass, then there is a greater than 95%% chance that at least %.2f%% of the test suite will pass ' % (num, 100.0-100.0*std)
         print
