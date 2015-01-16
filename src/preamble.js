@@ -650,7 +650,7 @@ function Pointer_stringify(ptr, /* optional */ length) {
   if (length === 0 || !ptr) return '';
   // TODO: use TextDecoder
   // Find the length, and check for UTF while doing so
-  var hasUtf = false;
+  var hasUtf = 0;
   var t;
   var i = 0;
   while (1) {
@@ -658,8 +658,8 @@ function Pointer_stringify(ptr, /* optional */ length) {
     assert(ptr + i < TOTAL_MEMORY);
 #endif
     t = {{{ makeGetValue('ptr', 'i', 'i8', 0, 1) }}};
-    if (t >= 128) hasUtf = true;
-    else if (t == 0 && !length) break;
+    hasUtf |= t;
+    if (t == 0 && !length) break;
     i++;
     if (length && i == length) break;
   }
@@ -667,8 +667,8 @@ function Pointer_stringify(ptr, /* optional */ length) {
 
   var ret = '';
 
+  if (hasUtf < 128) {
 #if USE_TYPED_ARRAYS == 2
-  if (!hasUtf) {
     var MAX_CHUNK = 1024; // split up into chunks, because .apply on a huge string can overflow the stack
     var curr;
     while (length > 0) {
@@ -678,20 +678,191 @@ function Pointer_stringify(ptr, /* optional */ length) {
       length -= MAX_CHUNK;
     }
     return ret;
-  }
+#else
+    return Module['AsciiToString'](ptr);
 #endif
-
-  var utf8 = new Runtime.UTF8Processor();
-  for (i = 0; i < length; i++) {
-#if ASSERTIONS
-    assert(ptr + i < TOTAL_MEMORY);
-#endif
-    t = {{{ makeGetValue('ptr', 'i', 'i8', 0, 1) }}};
-    ret += utf8.processCChar(t);
   }
-  return ret;
+  return Module['UTF8ToString'](ptr);
 }
 Module['Pointer_stringify'] = Pointer_stringify;
+
+// Given a pointer 'ptr' to a null-terminated ASCII-encoded string in the emscripten HEAP, returns
+// a copy of that string as a Javascript String object.
+
+function AsciiToString(ptr) {
+  var str = '';
+  while (1) {
+    var ch = {{{ makeGetValue('ptr++', 0, 'i8') }}};
+    if (!ch) return str;
+    str += String.fromCharCode(ch);
+  }
+}
+Module['AsciiToString'] = AsciiToString;
+
+// Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
+// null-terminated and encoded in ASCII form. The copy will require at most str.length+1 bytes of space in the HEAP.
+
+function stringToAscii(str, outPtr) {
+  return writeAsciiToMemory(str, outPtr, false);
+}
+Module['stringToAscii'] = stringToAscii;
+
+// Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the a given array that contains uint8 values, returns
+// a copy of that string as a Javascript String object.
+
+function UTF8ArrayToString(u8Array, idx) {
+  var u0, u1, u2, u3, u4, u5;
+
+  var str = '';
+  while (1) {
+    // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description and https://www.ietf.org/rfc/rfc2279.txt and https://tools.ietf.org/html/rfc3629
+    u0 = u8Array[idx++];
+    if (!u0) return str;
+    if (!(u0 & 0x80)) { str += String.fromCharCode(u0); continue; }
+    u1 = u8Array[idx++] & 63;
+    if ((u0 & 0xE0) == 0xC0) { str += String.fromCharCode(((u0 & 31) << 6) | u1); continue; }
+    u2 = u8Array[idx++] & 63;
+    if ((u0 & 0xF0) == 0xE0) {
+      u0 = ((u0 & 15) << 12) | (u1 << 6) | u2;
+    } else {
+      u3 = u8Array[idx++] & 63;
+      if ((u0 & 0xF8) == 0xF0) {
+        u0 = ((u0 & 7) << 18) | (u1 << 12) | (u2 << 6) | u3;
+      } else {
+        u4 = u8Array[idx++] & 63;
+        if ((u0 & 0xFC) == 0xF8) {
+          u0 = ((u0 & 3) << 24) | (u1 << 18) | (u2 << 12) | (u3 << 6) | u4;
+        } else {
+          u5 = u8Array[idx++] & 63;
+          u0 = ((u0 & 1) << 30) | (u1 << 24) | (u2 << 18) | (u3 << 12) | (u4 << 6) | u5;
+        }
+      }
+    }
+    if (u0 < 0x10000) {
+      str += String.fromCharCode(u0);
+    } else {
+      var ch = u0 - 0x10000;
+      str += String.fromCharCode(0xD800 | (ch >> 10), 0xDC00 | (ch & 0x3FF));
+    }
+  }
+}
+Module['UTF8ArrayToString'] = UTF8ArrayToString;
+
+// Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the emscripten HEAP, returns
+// a copy of that string as a Javascript String object.
+
+function UTF8ToString(ptr) {
+  return UTF8ArrayToString(HEAPU8, ptr);
+}
+Module['UTF8ToString'] = UTF8ToString;
+
+// Copies the given Javascript String object 'str' to the given byte array at address 'outIdx',
+// encoded in UTF8 form and null-terminated. The copy will require at most str.length*4+1 bytes of space in the HEAP.
+// Use the function lengthBytesUTF8() to compute the exact number of bytes (excluding null terminator) that this function will write.
+// Parameters:
+//   str: the Javascript string to copy.
+//   outU8Array: the array to copy to. Each index in this array is assumed to be one 8-byte element.
+//   outIdx: The starting offset in the array to begin the copying.
+//   maxBytesToWrite: The maximum number of bytes this function can write to the array. This count should include the null 
+//                    terminator, i.e. if maxBytesToWrite=1, only the null terminator will be written and nothing else.
+//                    maxBytesToWrite=0 does not write any bytes to the output, not even the null terminator.
+// Returns the number of bytes written, EXCLUDING the null terminator.
+
+function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite) {
+  if (!(maxBytesToWrite > 0)) // Parameter maxBytesToWrite is not optional. Negative values, 0, null, undefined and false each don't write out any bytes.
+    return 0;
+
+  var startIdx = outIdx;
+  var endIdx = outIdx + maxBytesToWrite - 1; // -1 for string null terminator.
+  for (var i = 0; i < str.length; ++i) {
+    // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! So decode UTF16->UTF32->UTF8.
+    // See http://unicode.org/faq/utf_bom.html#utf16-3
+    // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description and https://www.ietf.org/rfc/rfc2279.txt and https://tools.ietf.org/html/rfc3629
+    var u = str.charCodeAt(i); // possibly a lead surrogate
+    if (u >= 0xD800 && u <= 0xDFFF) u = 0x10000 + ((u & 0x3FF) << 10) | (str.charCodeAt(++i) & 0x3FF);
+    if (u <= 0x7F) {
+      if (outIdx >= endIdx) break;
+      outU8Array[outIdx++] = u;
+    } else if (u <= 0x7FF) {
+      if (outIdx + 1 >= endIdx) break;
+      outU8Array[outIdx++] = 0xC0 | (u >> 6);
+      outU8Array[outIdx++] = 0x80 | (u & 63);
+    } else if (u <= 0xFFFF) {
+      if (outIdx + 2 >= endIdx) break;
+      outU8Array[outIdx++] = 0xE0 | (u >> 12);
+      outU8Array[outIdx++] = 0x80 | ((u >> 6) & 63);
+      outU8Array[outIdx++] = 0x80 | (u & 63);
+    } else if (u <= 0x1FFFFF) {
+      if (outIdx + 3 >= endIdx) break;
+      outU8Array[outIdx++] = 0xF0 | (u >> 18);
+      outU8Array[outIdx++] = 0x80 | ((u >> 12) & 63);
+      outU8Array[outIdx++] = 0x80 | ((u >> 6) & 63);
+      outU8Array[outIdx++] = 0x80 | (u & 63);
+    } else if (u <= 0x3FFFFFF) {
+      if (outIdx + 4 >= endIdx) break;
+      outU8Array[outIdx++] = 0xF8 | (u >> 24);
+      outU8Array[outIdx++] = 0x80 | ((u >> 18) & 63);
+      outU8Array[outIdx++] = 0x80 | ((u >> 12) & 63);
+      outU8Array[outIdx++] = 0x80 | ((u >> 6) & 63);
+      outU8Array[outIdx++] = 0x80 | (u & 63);
+    } else {
+      if (outIdx + 5 >= endIdx) break;
+      outU8Array[outIdx++] = 0xFC | (u >> 30);
+      outU8Array[outIdx++] = 0x80 | ((u >> 24) & 63);
+      outU8Array[outIdx++] = 0x80 | ((u >> 18) & 63);
+      outU8Array[outIdx++] = 0x80 | ((u >> 12) & 63);
+      outU8Array[outIdx++] = 0x80 | ((u >> 6) & 63);
+      outU8Array[outIdx++] = 0x80 | (u & 63);
+    }
+  }
+  // Null-terminate the pointer to the buffer.
+  outU8Array[outIdx] = 0;
+  return outIdx - startIdx;
+}
+Module['stringToUTF8Array'] = stringToUTF8Array;
+
+// Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
+// null-terminated and encoded in UTF8 form. The copy will require at most str.length*4+1 bytes of space in the HEAP.
+// Use the function lengthBytesUTF8() to compute the exact number of bytes (excluding null terminator) that this function will write.
+// Returns the number of bytes written, EXCLUDING the null terminator.
+
+function stringToUTF8(str, outPtr, maxBytesToWrite) {
+#if ASSERTIONS
+  assert(typeof maxBytesToWrite == 'number', 'stringToUTF8(str, outPtr, maxBytesToWrite) is missing the third parameter that specifies the length of the output buffer!');
+#endif
+  return stringToUTF8Array(str, HEAPU8, outPtr, maxBytesToWrite);
+}
+Module['stringToUTF8'] = stringToUTF8;
+
+// Returns the number of bytes the given Javascript string takes if encoded as a UTF8 byte array, EXCLUDING the null terminator byte.
+
+function lengthBytesUTF8(str) {
+  var len = 0;
+  for (var i = 0; i < str.length; ++i) {
+    // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! So decode UTF16->UTF32->UTF8.
+    // See http://unicode.org/faq/utf_bom.html#utf16-3
+    var u = str.charCodeAt(i); // possibly a lead surrogate
+    if (u >= 0xD800 && u <= 0xDFFF) u = 0x10000 + ((u & 0x3FF) << 10) | (str.charCodeAt(++i) & 0x3FF);
+    if (u <= 0x7F) {
+      ++len;
+    } else if (u <= 0x7FF) {
+      len += 2;
+    } else if (u <= 0xFFFF) {
+      len += 3;
+    } else if (u <= 0x1FFFFF) {
+      len += 4;
+    } else if (u <= 0x3FFFFFF) {
+      len += 5;
+    } else {
+      len += 6;
+    }
+  }
+  return len;
+}
+Module['lengthBytesUTF8'] = lengthBytesUTF8;
+
+// Given a pointer 'ptr' to a null-terminated UTF16LE-encoded string in the emscripten HEAP, returns
+// a copy of that string as a Javascript String object.
 
 function UTF16ToString(ptr) {
   var i = 0;
@@ -708,18 +879,47 @@ function UTF16ToString(ptr) {
 }
 Module['UTF16ToString'] = UTF16ToString;
 
+// Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
+// null-terminated and encoded in UTF16 form. The copy will require at most str.length*4+2 bytes of space in the HEAP.
+// Use the function lengthBytesUTF16() to compute the exact number of bytes (excluding null terminator) that this function will write.
+// Parameters:
+//   str: the Javascript string to copy.
+//   outPtr: Byte address in Emscripten HEAP where to write the string to.
+//   maxBytesToWrite: The maximum number of bytes this function can write to the array. This count should include the null 
+//                    terminator, i.e. if maxBytesToWrite=2, only the null terminator will be written and nothing else.
+//                    maxBytesToWrite<2 does not write any bytes to the output, not even the null terminator.
+// Returns the number of bytes written, EXCLUDING the null terminator.
 
-function stringToUTF16(str, outPtr) {
-  for(var i = 0; i < str.length; ++i) {
+function stringToUTF16(str, outPtr, maxBytesToWrite) {
+#if ASSERTIONS
+  assert(typeof maxBytesToWrite == 'number', 'stringToUTF16(str, outPtr, maxBytesToWrite) is missing the third parameter that specifies the length of the output buffer!');
+#endif
+  // Backwards compatibility: if max bytes is not specified, assume unsafe unbounded write is allowed.
+  if (maxBytesToWrite === undefined) {
+    maxBytesToWrite = 0x7FFFFFFF;
+  }
+  if (maxBytesToWrite < 2) return 0;
+  maxBytesToWrite -= 2; // Null terminator.
+  var startPtr = outPtr;
+  var numCharsToWrite = (maxBytesToWrite < str.length*2) ? (maxBytesToWrite / 2) : str.length;
+  for (var i = 0; i < numCharsToWrite; ++i) {
     // charCodeAt returns a UTF-16 encoded code unit, so it can be directly written to the HEAP.
     var codeUnit = str.charCodeAt(i); // possibly a lead surrogate
-    {{{ makeSetValue('outPtr', 'i*2', 'codeUnit', 'i16') }}};
+    {{{ makeSetValue('outPtr', 0, 'codeUnit', 'i16') }}};
+    outPtr += 2;
   }
   // Null-terminate the pointer to the HEAP.
-  {{{ makeSetValue('outPtr', 'str.length*2', 0, 'i16') }}};
+  {{{ makeSetValue('outPtr', 0, 0, 'i16') }}};
+  return outPtr - startPtr;
 }
 Module['stringToUTF16'] = stringToUTF16;
 
+// Returns the number of bytes the given Javascript string takes if encoded as a UTF16 byte array, EXCLUDING the null terminator byte.
+
+function lengthBytesUTF16(str) {
+  return str.length*2;
+}
+Module['lengthBytesUTF16'] = lengthBytesUTF16;
 
 function UTF32ToString(ptr) {
   var i = 0;
@@ -731,6 +931,7 @@ function UTF32ToString(ptr) {
       return str;
     ++i;
     // Gotcha: fromCharCode constructs a character from a UTF-16 encoded code (pair), not from a Unicode code point! So encode the code point to UTF-16 for constructing.
+    // See http://unicode.org/faq/utf_bom.html#utf16-3
     if (utf32 >= 0x10000) {
       var ch = utf32 - 0x10000;
       str += String.fromCharCode(0xD800 | (ch >> 10), 0xDC00 | (ch & 0x3FF));
@@ -741,23 +942,61 @@ function UTF32ToString(ptr) {
 }
 Module['UTF32ToString'] = UTF32ToString;
 
+// Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
+// null-terminated and encoded in UTF32 form. The copy will require at most str.length*4+4 bytes of space in the HEAP.
+// Use the function lengthBytesUTF32() to compute the exact number of bytes (excluding null terminator) that this function will write.
+// Parameters:
+//   str: the Javascript string to copy.
+//   outPtr: Byte address in Emscripten HEAP where to write the string to.
+//   maxBytesToWrite: The maximum number of bytes this function can write to the array. This count should include the null 
+//                    terminator, i.e. if maxBytesToWrite=4, only the null terminator will be written and nothing else.
+//                    maxBytesToWrite<4 does not write any bytes to the output, not even the null terminator.
+// Returns the number of bytes written, EXCLUDING the null terminator.
 
-function stringToUTF32(str, outPtr) {
-  var iChar = 0;
-  for(var iCodeUnit = 0; iCodeUnit < str.length; ++iCodeUnit) {
+function stringToUTF32(str, outPtr, maxBytesToWrite) {
+#if ASSERTIONS
+  assert(typeof maxBytesToWrite == 'number', 'stringToUTF32(str, outPtr, maxBytesToWrite) is missing the third parameter that specifies the length of the output buffer!');
+#endif
+  // Backwards compatibility: if max bytes is not specified, assume unsafe unbounded write is allowed.
+  if (maxBytesToWrite === undefined) {
+    maxBytesToWrite = 0x7FFFFFFF;
+  }
+  if (maxBytesToWrite < 4) return 0;
+  var startPtr = outPtr;
+  var endPtr = startPtr + maxBytesToWrite - 4;
+  for (var i = 0; i < str.length; ++i) {
     // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! We must decode the string to UTF-32 to the heap.
-    var codeUnit = str.charCodeAt(iCodeUnit); // possibly a lead surrogate
+    // See http://unicode.org/faq/utf_bom.html#utf16-3
+    var codeUnit = str.charCodeAt(i); // possibly a lead surrogate
     if (codeUnit >= 0xD800 && codeUnit <= 0xDFFF) {
-      var trailSurrogate = str.charCodeAt(++iCodeUnit);
+      var trailSurrogate = str.charCodeAt(++i);
       codeUnit = 0x10000 + ((codeUnit & 0x3FF) << 10) | (trailSurrogate & 0x3FF);
     }
-    {{{ makeSetValue('outPtr', 'iChar*4', 'codeUnit', 'i32') }}};
-    ++iChar;
+    {{{ makeSetValue('outPtr', 0, 'codeUnit', 'i32') }}};
+    outPtr += 4;
+    if (outPtr + 4 > endPtr) break;
   }
   // Null-terminate the pointer to the HEAP.
-  {{{ makeSetValue('outPtr', 'iChar*4', 0, 'i32') }}};
+  {{{ makeSetValue('outPtr', 0, 0, 'i32') }}};
+  return outPtr - startPtr;
 }
 Module['stringToUTF32'] = stringToUTF32;
+
+// Returns the number of bytes the given Javascript string takes if encoded as a UTF16 byte array, EXCLUDING the null terminator byte.
+
+function lengthBytesUTF32(str) {
+  var len = 0;
+  for (var i = 0; i < str.length; ++i) {
+    // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! We must decode the string to UTF-32 to the heap.
+    // See http://unicode.org/faq/utf_bom.html#utf16-3
+    var codeUnit = str.charCodeAt(i);
+    if (codeUnit >= 0xD800 && codeUnit <= 0xDFFF) ++i; // possibly a lead surrogate, so skip over the tail surrogate.
+    len += 4;
+  }
+
+  return len;
+}
+Module['lengthBytesUTF32'] = lengthBytesUTF32;
 
 function demangle(func) {
   var hasLibcxxabi = !!Module['___cxa_demangle'];
@@ -1238,14 +1477,11 @@ Module['addOnPostRun'] = Module.addOnPostRun = addOnPostRun;
 
 
 function intArrayFromString(stringy, dontAddNull, length /* optional */) {
-  var ret = (new Runtime.UTF8Processor()).processJSString(stringy);
-  if (length) {
-    ret.length = length;
-  }
-  if (!dontAddNull) {
-    ret.push(0);
-  }
-  return ret;
+  var len = length > 0 ? length : lengthBytesUTF8(stringy)+1;
+  var u8array = new Array(len);
+  var numBytesWritten = stringToUTF8Array(stringy, u8array, 0, u8array.length);
+  if (dontAddNull) u8array.length = numBytesWritten;
+  return u8array;
 }
 Module['intArrayFromString'] = intArrayFromString;
 
@@ -1278,19 +1514,20 @@ Module['writeStringToMemory'] = writeStringToMemory;
 
 function writeArrayToMemory(array, buffer) {
   for (var i = 0; i < array.length; i++) {
-    {{{ makeSetValue('buffer', 'i', 'array[i]', 'i8') }}};
+    {{{ makeSetValue('buffer++', 0, 'array[i]', 'i8') }}};
   }
 }
 Module['writeArrayToMemory'] = writeArrayToMemory;
 
 function writeAsciiToMemory(str, buffer, dontAddNull) {
-  for (var i = 0; i < str.length; i++) {
+  for (var i = 0; i < str.length; ++i) {
 #if ASSERTIONS
     assert(str.charCodeAt(i) === str.charCodeAt(i)&0xff);
 #endif
-    {{{ makeSetValue('buffer', 'i', 'str.charCodeAt(i)', 'i8') }}};
+    {{{ makeSetValue('buffer++', 0, 'str.charCodeAt(i)', 'i8') }}};
   }
-  if (!dontAddNull) {{{ makeSetValue('buffer', 'str.length', 0, 'i8') }}};
+  // Null-terminate the pointer to the HEAP.
+  if (!dontAddNull) {{{ makeSetValue('buffer', 0, 0, 'i8') }}};
 }
 Module['writeAsciiToMemory'] = writeAsciiToMemory;
 

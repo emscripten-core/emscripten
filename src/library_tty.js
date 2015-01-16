@@ -1,8 +1,7 @@
 mergeInto(LibraryManager.library, {
   $TTY__deps: ['$FS'],
   $TTY__postset: '__ATINIT__.unshift({ func: function() { TTY.init() } });' +
-                 '__ATEXIT__.push({ func: function() { TTY.shutdown() } });' +
-                 'TTY.utf8 = new Runtime.UTF8Processor();',
+                 '__ATEXIT__.push({ func: function() { TTY.shutdown() } });',
   $TTY: {
     ttys: [],
     init: function () {
@@ -124,36 +123,36 @@ mergeInto(LibraryManager.library, {
         }
         return tty.input.shift();
       },
-      flush: function(tty) {
-        if (tty.output && tty.output.length > 0) {
-          Module['print'](tty.output.join(''));
-          tty.output = [];
-        }
-      },
       put_char: function(tty, val) {
         if (val === null || val === {{{ charCode('\n') }}}) {
-          Module['print'](tty.output.join(''));
+          Module['print'](UTF8ArrayToString(tty.output, 0));
           tty.output = [];
         } else {
-          tty.output.push(TTY.utf8.processCChar(val));
+          if (val != 0) tty.output.push(val); // val == 0 would cut text output off in the middle.
+        }
+      },
+      flush: function(tty) {
+        if (tty.output && tty.output.length > 0) {
+          Module['print'](UTF8ArrayToString(tty.output, 0));
+          tty.output = [];
         }
       }
     },
     default_tty1_ops: {
       put_char: function(tty, val) {
         if (val === null || val === {{{ charCode('\n') }}}) {
-          Module['printErr'](tty.output.join(''));
+          Module['printErr'](UTF8ArrayToString(tty.output, 0));
           tty.output = [];
         } else {
-          tty.output.push(TTY.utf8.processCChar(val));
+          if (val != 0) tty.output.push(val);
         }
       },
       flush: function(tty) {
         if (tty.output && tty.output.length > 0) {
-          Module['printErr'](tty.output.join(''));
+          Module['printErr'](UTF8ArrayToString(tty.output, 0));
           tty.output = [];
         }
-      }      
+      }
     }
   }
 });
