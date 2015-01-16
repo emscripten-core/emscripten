@@ -1105,6 +1105,11 @@ struct JSPrinter {
     emit(';');
   }
 
+  static bool ifHasElse(Ref node) {
+    assert(node[0] == IF);
+    return node->size() >= 4 && !!node[3];
+  }
+
   void printIf(Ref node) {
     emit("if");
     safeSpace();
@@ -1113,8 +1118,26 @@ struct JSPrinter {
     emit(')');
     space();
     // special case: we need braces to save us from ambiguity, if () { if () } else. otherwise else binds to inner if
-    bool hasElse = node->size() >= 4 && !!node[3];
-    bool needBraces = node[2][0] == IF && (node[2]->size() == 3 || !node[2][3]) && hasElse;
+    // also need to recurse for                                if () { if () { } else { if () } else
+    // (note that this is only a problem if the if body has a single element in it, not a block or such, as then
+    // the block would be braced)
+    bool needBraces = false;
+    bool hasElse = ifHasElse(node);
+    if (hasElse) {
+      Ref child = node[2];
+      while (child[0] == IF) {
+        Ref last = ifHasElse(child) ? child[3] : child[2];
+        if (last[0] == IF) {
+          child = last;
+          continue;
+        }
+        // we are at the top, the one dangerous to be confused with us
+        if (!ifHasElse(child)) {
+          needBraces = true;
+        }
+        break;
+      }
+    }
     if (needBraces) {
       emit('{');
       indent++;
