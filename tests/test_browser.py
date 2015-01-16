@@ -997,7 +997,7 @@ keydown(100);keyup(100); // trigger the end
                 var element = document.getElementById('output');
                 element.value = ''; // clear browser cache
                 return function(text) {
-                  text = Array.prototype.slice.call(arguments).join(' ');
+                  if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
                   element.value += text + "\\n";
                   element.scrollTop = element.scrollHeight; // focus on bottom
                 };
@@ -2289,7 +2289,7 @@ Module['_main'] = function() {
                 var element = document.getElementById('output');
                 element.value = ''; // clear browser cache
                 return function(text) {
-                  text = Array.prototype.slice.call(arguments).join(' ');
+                  if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
                   element.value += text + "\\n";
                   element.scrollTop = element.scrollHeight; // focus on bottom
                 };
