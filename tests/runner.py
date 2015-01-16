@@ -895,8 +895,13 @@ js optimizer phase.
         sys.argv += list(chosen)
         std = 0.5/math.sqrt(num)
         print
-        print 'running those %d randomly-selected tests. if they all pass, then there is a greater than 95%% chance that at least %.2f%% of the test suite will pass ' % (num, 100.0-100.0*std)
+        print 'running those %d randomly-selected tests. if they all pass, then there is a greater than 95%% chance that at least %.2f%% of the test suite will pass' % (num, 100.0-100.0*std)
         print
+
+        import atexit
+        def show():
+          print 'if all tests passed then there is a greater than 95%% chance that at least %.2f%% of the test suite will pass' % (100.0-100.0*std)
+        atexit.register(show)
 
   # Filter and load tests from the discovered modules
   loader = unittest.TestLoader()
