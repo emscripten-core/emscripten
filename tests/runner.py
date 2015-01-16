@@ -16,7 +16,7 @@ so you may prefer to use fewer cores here.
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer, multiprocessing, functools, stat, string
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer, multiprocessing, functools, stat, string, random
 
 # Setup
 
@@ -873,6 +873,30 @@ js optimizer phase.
 
 '''
     time.sleep(2)
+
+  # If we asked to run random tests, do that
+  first = sys.argv[1]
+  if first.startswith('random'):
+    num = 1
+    first = first[6:]
+    if len(first) > 0:
+      num = int(first)
+    for m in modules:
+      if hasattr(m, 'default'):
+        sys.argv = [sys.argv[0]]
+        print
+        for i in range(num):
+          tests = filter(lambda t: t.startswith('test_'), dir(getattr(m, 'default')))
+          test = random.choice(tests)
+          mode = random.choice(test_modes)
+          print '* ' + mode + '.' + test
+          sys.argv.append(mode + '.' + test) 
+
+        std = 0.5/math.sqrt(num)
+
+        print
+        print 'running those %d randomly-selected tests. if they all pass, then there is a greater than 95%% chance that at least %.2f%% of the test suite will pass ' % (num, 100.0-100.0*std)
+        print
 
   # Filter and load tests from the discovered modules
   loader = unittest.TestLoader()
