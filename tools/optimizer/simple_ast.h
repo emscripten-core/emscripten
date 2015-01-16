@@ -1121,21 +1121,18 @@ struct JSPrinter {
     // also need to recurse for                                if () { if () { } else { if () } else
     // (note that this is only a problem if the if body has a single element in it, not a block or such, as then
     // the block would be braced)
+    // this analysis is a little conservative - it assumes any child if could be confused with us, which implies
+    // all other braces vanished (the worst case for us, we are not saved by other braces).
     bool needBraces = false;
     bool hasElse = ifHasElse(node);
     if (hasElse) {
       Ref child = node[2];
       while (child[0] == IF) {
-        Ref last = ifHasElse(child) ? child[3] : child[2];
-        if (last[0] == IF) {
-          child = last;
-          continue;
-        }
-        // we are at the top, the one dangerous to be confused with us
         if (!ifHasElse(child)) {
           needBraces = true;
+          break;
         }
-        break;
+        child = child[3]; // continue into the else
       }
     }
     if (needBraces) {
