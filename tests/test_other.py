@@ -4333,7 +4333,15 @@ pass: error == ENOTDIR
     do_test('hello_world_loop.cpp', [], 'hello, world!')
     do_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.')
 
-    # blacklisting checks
+    print 'profiling'
+
+    do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-g2'])
+    normal = open('a.out.js').read()
+    do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-g2', '--profiling'])
+    profiling = open('a.out.js').read()
+    assert len(profiling) > len(normal) + 1000, [len(profiling), len(normal)] # should be much larger
+
+    print 'blacklisting'
 
     def get_func(src, name):
       start = src.index('function ' + name + '(')
