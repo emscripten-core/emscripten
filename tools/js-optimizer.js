@@ -6129,6 +6129,7 @@ function emterpretify(ast) {
   var OPCODES = extraInfo.opcodes;
   var ROPCODES = extraInfo.ropcodes;
   var ASYNC = extraInfo.ASYNC;
+  var PROFILING = extraInfo.PROFILING;
 
   var RELATIVE_BRANCHES = set('BR', 'BRT', 'BRF');
   var ABSOLUTE_BRANCHES = set('BRA', 'BRTA', 'BRFA');
@@ -7056,7 +7057,7 @@ function emterpretify(ast) {
             return mul[1];
           }
         }
-        if (target in EMTERPRETED_FUNCS) internal = true;
+        if ((target in EMTERPRETED_FUNCS) && !PROFILING) internal = true;
       } else {
         // function pointer call through function table
         assert(node[1][0] === 'sub' && node[1][1][0] === 'name');
@@ -7422,7 +7423,7 @@ function emterpretify(ast) {
 
     if (zero) code[3] = 1;
 
-    if (func[1] in EXTERNAL_EMTERPRETED_FUNCS) {
+    if ((func[1] in EXTERNAL_EMTERPRETED_FUNCS) || PROFILING) {
       // this is reachable from outside emterpreter code, set up a trampoline
       asmData.vars = {};
       if (zero && !onlyLeavesAreZero) {
