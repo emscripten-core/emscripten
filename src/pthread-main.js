@@ -57,6 +57,9 @@ this.onmessage = function(e) {
     var result = 0;
     try {
       result = asm.dynCall_ii(e.data.start_routine, e.data.arg); // pthread entry points are always of signature 'void *ThreadMain(void *arg)'
+      // TODO: Some code in the wild has instead signatures of form 'void *ThreadMain()', and in native code, it works.
+      // Uncommenting the following will make the correct function call to a signature of that form, but how to figure this out dynamically?
+      //      result = asm.dynCall_i(e.data.start_routine);
     } catch(e) {
       if (e === 'Canceled!') {
         Atomics.store(HEAPU32, threadBlock >> 2, 1); // threadStatus <- 1. The thread is no longer running.
