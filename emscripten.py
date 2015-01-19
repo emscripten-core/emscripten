@@ -716,7 +716,8 @@ var asm = (function(global, env, buffer) {
        access_quote('asmGlobalArg'), the_global,
        access_quote('asmLibraryArg'), sending,
        "'use asm';" if not metadata.get('hasInlineJS') and settings['ASM_JS'] == 1 else "'almost asm';", '''
-  if (typeof SharedArrayBuffer != 'undefined') {
+  // TODO: Enable the following if() conditional to a linker flag. (-lpthread?)
+  //if (typeof SharedArrayBuffer != 'undefined') {
     var HEAP8 = new global%s(buffer);
     var HEAP16 = new global%s(buffer);
     var HEAP32 = new global%s(buffer);
@@ -725,7 +726,7 @@ var asm = (function(global, env, buffer) {
     var HEAPU32 = new global%s(buffer);
     var HEAPF32 = new global%s(buffer);
     var HEAPF64 = new global%s(buffer);
-  } else {
+  /*} else {
     var HEAP8 = new global%s(buffer);
     var HEAP16 = new global%s(buffer);
     var HEAP32 = new global%s(buffer);
@@ -734,7 +735,7 @@ var asm = (function(global, env, buffer) {
     var HEAPU32 = new global%s(buffer);
     var HEAPF32 = new global%s(buffer);
     var HEAPF64 = new global%s(buffer);
-  }
+  }*/
 ''' % (access_quote('SharedInt8Array'),
      access_quote('SharedInt16Array'),
      access_quote('SharedInt32Array'),
