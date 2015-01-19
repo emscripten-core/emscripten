@@ -1,3 +1,7 @@
+// Async support
+//
+// Two experiments in async support: ASYNCIFY, and EMTERPRETIFY_ASYNC
+
 mergeInto(LibraryManager.library, {
 #if ASYNCIFY
 /*
@@ -214,11 +218,13 @@ mergeInto(LibraryManager.library, {
       // save the stack we want to resume. this lets other code run in between
       // XXX this assumes that this stack top never ever leak! exceptions might violate that
       var stack = new Int32Array(HEAP32.subarray(EMTSTACKTOP>>2, asm.emtStackSave()>>2));
+      var stacktop = asm.stackSave();
       Browser.safeSetTimeout(function resume() {
         assert(EmterpreterAsync.state === 1);
         // copy the stack back in and resume
         HEAP32.set(stack, EMTSTACKTOP>>2);
         EmterpreterAsync.setState(2);
+        assert(stacktop === asm.stackSave()); // nothing should have modified the stack meanwhile
         asm.emterpret(stack[0]); // pc of the first function, from which we can reconstruct the rest, is at position 0 on the stack
       }, ms);
       EmterpreterAsync.setState(1);
@@ -231,18 +237,18 @@ mergeInto(LibraryManager.library, {
 
 #else
   emscripten_sleep: function() {
-    throw 'Please compile your program with -s ASYNCIFY=1 in order to use asynchronous operations like emscripten_sleep';
+    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_sleep';
   },
 #endif
 
   emscripten_coroutine_create: function() {
-    throw 'Please compile your program with -s ASYNCIFY=1 in order to use asynchronous operations like emscripten_coroutine_create';
+    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_coroutine_create';
   },
   emscripten_coroutine_next: function() {
-    throw 'Please compile your program with -s ASYNCIFY=1 in order to use asynchronous operations like emscripten_coroutine_next';
+    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_coroutine_next';
   },
   emscripten_yield: function() {
-    throw 'Please compile your program with -s ASYNCIFY=1 in order to use asynchronous operations like emscripten_yield';
+    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_yield';
   }
 #endif
 });
