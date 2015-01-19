@@ -493,13 +493,29 @@ def make_emterpreter(zero=False):
       ret += '[' + get_access('HEAPU8[pc+4>>0]') + ' & %d]' % (next_power_of_two(asm.tables[name].count(',')+1)-1)
     ret += '(' + ', '.join([get_coerced_access('HEAPU8[pc+%d>>0]' % (i+4+int(function_pointer_call)), s=sig[i+1]) for i in range(len(sig)-1)]) + ')'
     if sig[0] != 'v':
-      ret = get_access('lx', sig[0]) + ' = ' + shared.JS.make_coercion(ret, sig[0])
+      ret = ' = ' + shared.JS.make_coercion(ret, sig[0])
+      if not ASYNC:
+        ret = get_access('lx', sig[0]) + ret
+      else:
+        # we cannot save the return value immediately! if we are saving the stack, it is meaningless, and would corrupt a local stack variable
+        if sig[0] == 'i':
+          ret = 'lz ' + ret
+        else:
+          assert sig[0] == 'd'
+          ret = 'ld ' + ret
     elif name in actual_return_types and actual_return_types[name] != 'v':
       ret = shared.JS.make_coercion(ret, actual_return_types[name]) # return value ignored, but need a coercion
     if ASYNC:
-      # TODO: support return values (need to save all returns to a temp location, then use only if not saving async state)
-      if sig[0] == 'v':
-        ret = handle_async_pre_call() + ret + '; ' +  handle_async_post_call()
+      # check if we are asyncing, and if not, it is ok to save the return value
+      ret = handle_async_pre_call() + ret + '; ' +  handle_async_post_call()
+      if sig[0] != 'v':
+        ret += ' else ' + get_access('lx', sig[0]) + ' = ';
+        if sig[0] == 'i':
+          ret += 'lz'
+        else:
+          assert sig[0] == 'd'
+          ret += 'ld '
+        ret += ';'
     extra = len(sig) - 1 + int(function_pointer_call) # [opcode, lx, target, sig], take the usual 4. params are extra
     if extra > 0:
       ret += '; pc = pc + %d | 0' % (4*((extra+3)>>2))
@@ -582,6 +598,7 @@ function emterpret%s(pc) {
  var %sinst = 0, lx = 0, ly = 0, lz = 0;
 %s
 %s
+%s
  assert(((HEAPU8[pc>>0]>>>0) == %d)|0);
  lx = HEAPU8[pc + 1 >> 0] | 0; // num locals
 %s
@@ -602,6 +619,7 @@ function emterpret%s(pc) {
 }''' % (
   '' if not zero else '_z',
   'sp = 0, ' if not zero else '',
+  '' if not ASYNC else 'var ld = +0;',
   '' if not ASYNC else 'HEAP32[EMTSTACKTOP>>2] = pc;\n if ((asyncState|0) == 1) asyncState = 0;\n', # other code running between a save and resume can see state 1, just reset
                                                                                                 # (optimally we should flip it to 0 at the bottom of the saving stack)
   push_stacktop(zero),
