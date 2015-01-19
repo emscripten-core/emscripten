@@ -742,7 +742,6 @@ try:
   next_arg_index = len(newargs)
 
   if pthreads:
-    pre_js += open(shared.path_from_root('src', 'atomics_polyfill.js')).read() + '\n'
     settings_changes.append('USE_PTHREADS=1')
     js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
 
