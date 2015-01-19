@@ -2447,6 +2447,9 @@ window.close = function() {
   def test_sdl2_unwasteful(self):
     self.btest('sdl2_unwasteful.cpp', expected='1', args=['-s', 'USE_SDL=2', '-O1'])
 
+  def test_sdl2_canvas_write(self):
+    self.btest('sdl2_canvas_write.cpp', expected='0', args=['-s', 'USE_SDL=2'])
+
   def test_emterpreter_async(self):
     self.btest('emterpreter_async.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O3', '-g2'])
 
