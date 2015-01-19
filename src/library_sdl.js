@@ -1594,9 +1594,43 @@ var LibrarySDL = {
         var data32 = new Uint32Array(data.buffer);
         if (isScreen && SDL.defaults.opaqueFrontBuffer) {
           num = data32.length;
-          while (dst < num) {
-            // HEAP32[src++] is an optimization. Instead, we could do {{{ makeGetValue('buffer', 'dst', 'i32') }}};
-            data32[dst++] = HEAP32[src++] | 0xff000000;
+          // logically we need to do
+          //      while (dst < num) {
+          //          data32[dst++] = HEAP32[src++] | 0xff000000
+          //      }
+          // the following code is faster though, because
+          // .set() is almost free - easily 10x faster due to
+          // native memcpy efficiencies, and the remaining loop
+          // just stores, not load + store, so it is faster
+          data32.set(HEAP32.subarray(src, src + num));
+          var data8 = new Uint8Array(data.buffer);
+          var i = 3;
+          var j = i + 4*num;
+          if (num % 8 == 0) {
+            // unrolling gives big speedups
+            while (i < j) {
+              data8[i] = 0xff;
+              i = i + 4 | 0;
+              data8[i] = 0xff;
+              i = i + 4 | 0;
+              data8[i] = 0xff;
+              i = i + 4 | 0;
+              data8[i] = 0xff;
+              i = i + 4 | 0;
+              data8[i] = 0xff;
+              i = i + 4 | 0;
+              data8[i] = 0xff;
+              i = i + 4 | 0;
+              data8[i] = 0xff;
+              i = i + 4 | 0;
+              data8[i] = 0xff;
+              i = i + 4 | 0;
+            }
+           } else {
+            while (i < j) {
+              data8[i] = 0xff;
+              i = i + 4 | 0;
+            }
           }
         } else {
           data32.set(HEAP32.subarray(src, src + data32.length));
