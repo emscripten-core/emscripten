@@ -323,61 +323,6 @@ var LibraryPThread = {
     if (execute) routine();
   },
 
-  // Compares the given memory address to 'oldVal', and if equal, replaces the contents with 'newVal'.
-  // Returns the value that was stored in the memory location before this operation took place.
-  emscripten_atomic_cas_u8: function(addr, oldVal, newVal) { return Atomics.compareExchange(HEAPU8, addr, oldVal, newVal); },
-  emscripten_atomic_cas_u16: function(addr, oldVal, newVal) { return Atomics.compareExchange(HEAPU16, addr >> 1, oldVal, newVal); },
-  emscripten_atomic_cas_u32: function(addr, oldVal, newVal) { return Atomics.compareExchange(HEAPU32, addr >> 2, oldVal, newVal); },
-  emscripten_atomic_cas_f32: function(addr, oldVal, newVal) { return Atomics.compareExchange(HEAPF32, addr >> 2, oldVal, newVal); },
-  emscripten_atomic_cas_f64: function(addr, oldVal, newVal) { return Atomics.compareExchange(HEAPF64, addr >> 3, oldVal, newVal); },
-
-  emscripten_atomic_load_u8: function(addr) { return Atomics.load(HEAP8, addr); },
-  emscripten_atomic_load_u16: function(addr) { return Atomics.load(HEAP16, addr >> 1); },
-  emscripten_atomic_load_u32: function(addr) { return Atomics.load(HEAP32, addr >> 2); },
-  emscripten_atomic_load_f32: function(addr) { return Atomics.load(HEAPF32, addr >> 2); },
-  emscripten_atomic_load_f64: function(addr) { return Atomics.load(HEAPF64, addr >> 3); },
-
-  // Returns the value stored (coerced to the target type).
-  emscripten_atomic_store_u8: function(addr, val) { return Atomics.store(HEAU8, addr, val); },
-  emscripten_atomic_store_u16: function(addr, val) { return Atomics.store(HEAP16, addr >> 1, val); },
-  emscripten_atomic_store_u32: function(addr, val) { return Atomics.store(HEAP32, addr >> 2, val); },
-  emscripten_atomic_store_f32: function(addr, val) { return Atomics.store(HEAPF32, addr >> 2, val); },
-  emscripten_atomic_store_f64: function(addr, val) { return Atomics.store(HEAPF64, addr >> 3, val); },
-
-  // void return
-  emscripten_atomic_fence: function() { Atomics.fence(); },
-
-  // add, sub, and, or and xor return old value in the memory location.
-  emscripten_atomic_add_u8: function(addr, val) { return Atomics.add(HEAP8, addr, val); },
-  emscripten_atomic_add_u16: function(addr, val) { return Atomics.add(HEAP16, addr >> 1, val); },
-  emscripten_atomic_add_u32: function(addr, val) { return Atomics.add(HEAP32, addr >> 2, val); },
-  emscripten_atomic_add_f32: function(addr, val) { return Atomics.add(HEAPF32, addr >> 2, val); },
-  emscripten_atomic_add_f64: function(addr, val) { return Atomics.add(HEAPF64, addr >> 3, val); },
-
-  emscripten_atomic_sub_u8: function(addr, val) { return Atomics.sub(HEAP8, addr, val); },
-  emscripten_atomic_sub_u16: function(addr, val) { return Atomics.sub(HEAP16, addr >> 1, val); },
-  emscripten_atomic_sub_u32: function(addr, val) { return Atomics.sub(HEAP32, addr >> 2, val); },
-  emscripten_atomic_sub_f32: function(addr, val) { return Atomics.sub(HEAPF32, addr >> 2, val); },
-  emscripten_atomic_sub_f64: function(addr, val) { return Atomics.sub(HEAPF64, addr >> 3, val); },
-
-  emscripten_atomic_and_u8: function(addr, val) { return Atomics.and(HEAP8, addr, val); },
-  emscripten_atomic_and_u16: function(addr, val) { return Atomics.and(HEAP16, addr >> 1, val); },
-  emscripten_atomic_and_u32: function(addr, val) { return Atomics.and(HEAP32, addr >> 2, val); },
-  emscripten_atomic_and_f32: function(addr, val) { return Atomics.and(HEAPF32, addr >> 2, val); },
-  emscripten_atomic_and_f64: function(addr, val) { return Atomics.and(HEAPF64, addr >> 3, val); },
-
-  emscripten_atomic_or_u8: function(addr, val) { return Atomics.or(HEAP8, addr, val); },
-  emscripten_atomic_or_u16: function(addr, val) { return Atomics.or(HEAP16, addr >> 1, val); },
-  emscripten_atomic_or_u32: function(addr, val) { return Atomics.or(HEAP32, addr >> 2, val); },
-  emscripten_atomic_or_f32: function(addr, val) { return Atomics.or(HEAPF32, addr >> 2, val); },
-  emscripten_atomic_or_f64: function(addr, val) { return Atomics.or(HEAPF64, addr >> 3, val); },
-
-  emscripten_atomic_xor_u8: function(addr, val) { return Atomics.xor(HEAP8, addr, val); },
-  emscripten_atomic_xor_u16: function(addr, val) { return Atomics.xor(HEAP16, addr >> 1, val); },
-  emscripten_atomic_xor_u32: function(addr, val) { return Atomics.xor(HEAP32, addr >> 2, val); },
-  emscripten_atomic_xor_f32: function(addr, val) { return Atomics.xor(HEAPF32, addr >> 2, val); },
-  emscripten_atomic_xor_f64: function(addr, val) { return Atomics.xor(HEAPF64, addr >> 3, val); },
-
   // Futex API
   emscripten_futex_wait: function(addr, val, timeout) {
     assert(addr);
