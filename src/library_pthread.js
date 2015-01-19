@@ -383,8 +383,8 @@ var LibraryPThread = {
     assert(addr);
     var ret = Atomics.futexWait(HEAP32, addr >> 2, val, timeout);
     if (ret === Atomics.OK) return 0;
-    if (ret === Atomics.TIMEDOUT) return 1;
-    if (ret === Atomics.NOTEQUAL) return 2;
+    if (ret === Atomics.NOTEQUAL) return -1;
+    if (ret === Atomics.TIMEDOUT) return -2;
     throw 'Atomics.futexWait returned an unexpected value ' + ret;
   },
 /*
