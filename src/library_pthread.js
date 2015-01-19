@@ -387,7 +387,7 @@ var LibraryPThread = {
     if (ret === Atomics.NOTEQUAL) return 2;
     throw 'Atomics.futexWait returned an unexpected value ' + ret;
   },
-
+/*
   emscripten_futex_wait_callback: function(addr, val, timeout, callback) {
     var callback = function(result) {
       var res = -1;
@@ -402,19 +402,20 @@ var LibraryPThread = {
     if (ret === Atomics.NOTEQUAL) return 2;
     throw 'Atomics.futexWaitCallback returned an unexpected value ' + ret;
   },
-
+*/
   // Returns the number of threads woken up.
   emscripten_futex_wake: function(addr, count) {
     assert(addr);
     return Atomics.futexWake(HEAP32, addr >> 2, count);
   },
-
+/*
   // Returns the number of threads woken up.
   emscripten_futex_requeue: function(addr1, count, addr2, guardval) {
     assert(addr1);
     assert(addr2);
     return Atomics.futexRequeue(HEAP32, addr1 >> 2, count, addr2 >> 2, guardval);
   }
+*/
 };
 
 autoAddDeps(LibraryPThread, '$PThread');
