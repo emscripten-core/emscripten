@@ -1,7 +1,14 @@
 // 'use strict'
 var funs = {
+  _sigalrm_handler: 0,
+
+  signal__deps: ['_sigalrm_handler'],
   signal: function(sig, func) {
-    Module.printErr('Calling stub instead of signal()');
+    if (sig == 14 /*SIGALRM*/) {
+      __sigalrm_handler = func;
+    } else {
+      Module.printErr('Calling stub instead of signal()');
+    }
     return 0;
   },
   sigemptyset: function(set) {
@@ -71,12 +78,12 @@ var funs = {
     return -1;
   },
 
+  // http://pubs.opengroup.org/onlinepubs/000095399/functions/alarm.html
+  alarm__deps: ['_sigalrm_handler'],
   alarm: function(seconds) {
-    // unsigned alarm(unsigned seconds);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/alarm.html
-    // We don't support signals, and there's no way to indicate failure, so just
-    // fail silently.
-    throw 'alarm() is not implemented yet';
+    setTimeout(function() {
+      if (__sigalrm_handler) Runtime.dynCall('vi', __sigalrm_handler, [0]);
+    }, seconds*1000);
   },
   ualarm: function() {
     throw 'ualarm() is not implemented yet';
