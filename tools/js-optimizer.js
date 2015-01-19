@@ -7438,6 +7438,7 @@ function emterpretify(ast) {
       }
       // copy our arguments to our stack frame
       var bump = ASYNC ? 8 : 0; // we will assert in the emterpreter itself that we did not overflow the emtstack
+      var argStats = [];
       func[2].forEach(function(arg) {
         var code;
         switch (asmData.params[arg]) {
@@ -7446,9 +7447,13 @@ function emterpretify(ast) {
           case ASM_FLOAT:  code = 'HEAPF32[' + (zero ? (bump >> 2) : ('EMTSTACKTOP + ' + bump + ' >> 2')) + '] = ' + arg + ';'; break;
           default: throw 'bad';
         }
-        func[3].push(srcToStat(code));
+        argStats.push(srcToStat(code));
         bump += 8; // each local is a 64-bit value
       });
+      if (ASYNC) {
+        argStats = [['if', srcToExp('(asyncState|0) != 2'), ['block', argStats]]];
+      }
+      func[3] = func[3].concat(argStats);
       // prepare the call into the emterpreter
       var theName = ['name', 'emterpret'];
       var theCall = ['call', theName, [['name', 'EMTERPRETER_' + func[1]]]]; // EMTERPRETER_* will be replaced with the absolute bytecode offset later
