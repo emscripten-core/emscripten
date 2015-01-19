@@ -19,7 +19,7 @@ int pthread_mutex_lock(pthread_mutex_t *m)
 }
 
 int pthread_mutex_unlock(pthread_mutex_t *mutex)
-{	
+{
 	if (emscripten_atomic_sub_u32((uint32_t*)&mutex->_m_lock, 1) != 1)
 	{
 		emscripten_atomic_store_u32((uint32_t*)&mutex->_m_lock, 0);
@@ -54,5 +54,17 @@ int pthread_mutex_timedlock(pthread_mutex_t *restrict m, const struct timespec *
 		}
 	} while((c = emscripten_atomic_cas_u32(&m->_m_lock, 0, 2)));
 
+	return 0;
+}
+
+int sched_get_priority_max(int policy)
+{
+	// Web workers do not support prioritizing threads.
+	return 0;
+}
+
+int sched_get_priority_min(int policy)
+{
+	// Web workers do not support prioritizing threads.
 	return 0;
 }
