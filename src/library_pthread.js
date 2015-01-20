@@ -152,6 +152,7 @@ var LibraryPThread = {
       allocatedOwnStack: allocatedOwnStack,
       schedPolicy: 0,
       schedPrio: 0,
+      joinable: {{{ makeGetValue('attr', 3/*_a_detach*/, 'i32') }}},
       threadBlock: _malloc({{{ C_STRUCTS.pthread.__size__ }}}) // Info area for this thread in Emscripten HEAP (shared)
     };
     Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0); // threadStatus <- 0, meaning not yet exited.
@@ -179,8 +180,11 @@ var LibraryPThread = {
     var pthread = PThread.pthreads[thread];
     if (!pthread) {
       Module['printErr']('PThread ' + thread + ' does not exist!');
-      return 1;
+      return ERRNO_CODES.ESRCH;
     }
+    if (!ENVIRONMENT_IS_PTHREAD && thread == 1) return ERRNO_CODES.EDEADLK; // The main thread is attempting to join itself?
+    if (ENVIRONMENT_IS_PTHREAD && selfThreadId == THREAD) return ERRNO_CODES.EDEADLK; // A non-main thread is attempting to join itself?
+    if (!pthread.joinable) return ERRNO_CODES.EINVAL; // The thread was not created as a joinable one.
     var worker = pthread.worker;
     for(;;) {
       assert(pthread.threadBlock);
@@ -190,6 +194,7 @@ var LibraryPThread = {
         if (status) {
           {{{ makeSetValue('status', 0, 'threadExitCode', 'i32') }}};
         }
+        pthread.joinable = 0;
         PThread.freeThreadData(pthread);
         worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
         PThread.unusedWorkerPool.push(worker);
