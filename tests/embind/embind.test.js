@@ -1,6 +1,7 @@
 module({
     Emscripten: '../../../../build/embind_test.js',
 }, function(imports) {
+    /*jshint sub:true */
     var cm = imports.Emscripten;
 
     var CheckForLeaks = fixture("check for leaks", function() {
