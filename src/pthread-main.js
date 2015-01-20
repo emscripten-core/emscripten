@@ -15,6 +15,8 @@ var STACK_BASE = 0;
 var STACKTOP = 0;
 var STACK_MAX = 0;
 
+var ENVIRONMENT_IS_PTHREAD = true;
+
 // Cannot use console.log or console.error in a web worker, since that would risk a browser deadlock! https://bugzilla.mozilla.org/show_bug.cgi?id=1049091
 // Therefore implement custom logging facility for threads running in a worker, which queue the messages to main thread to print.
 var Module = {};
