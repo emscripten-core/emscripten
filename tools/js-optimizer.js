@@ -6368,8 +6368,21 @@ function emterpretify(ast) {
 
           if (dropIt) {
             // a pointless thing we can drop entirely
-            assert(!hasSideEffects(node));
-            return [-1, []];
+            var ret = [-1, []];
+            if (hasSideEffects(node)) {
+              // something here has side effects, emit it but drop the result
+              if (hasSideEffects(node[2])) {
+                var left = getReg(node[2]);
+                releaseIfFree(left[0]);
+                ret[1] = left[1];
+              }
+              if (hasSideEffects(node[3])) {
+                var right = getReg(node[3]);
+                releaseIfFree(right[0]);
+                ret[1] = ret[1].concat(right[1]);
+              }
+            }
+            return ret;
           }
 
           switch (node[1]) {

@@ -4449,6 +4449,15 @@ function _main() {
 }
 ''', [], '0\n')
 
+    do_js_test('effectless expressions, with a subeffect', r'''
+function _main() {
+  (print (123) | 0) != 0;
+  print (456) | 0;
+  0 != (print (789) | 0);
+  0 | (print (159) | 0);
+}
+''', [], '123\n456\n789\n159\n')
+
     # codegen log tests
 
     def do_log_test(source, expected, func):
