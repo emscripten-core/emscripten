@@ -59,12 +59,22 @@ int pthread_mutex_timedlock(pthread_mutex_t *restrict m, const struct timespec *
 
 int sched_get_priority_max(int policy)
 {
-	// Web workers do not support prioritizing threads.
-	return 0;
+	// Web workers do not actually support prioritizing threads,
+	// but mimic values that Linux apparently reports, see
+	// http://man7.org/linux/man-pages/man2/sched_get_priority_min.2.html
+	if (policy == SCHED_FIFO || policy == SCHED_RR)
+		return 99;
+	else
+		return 0;
 }
 
 int sched_get_priority_min(int policy)
 {
-	// Web workers do not support prioritizing threads.
-	return 0;
+	// Web workers do not actually support prioritizing threads,
+	// but mimic values that Linux apparently reports, see
+	// http://man7.org/linux/man-pages/man2/sched_get_priority_min.2.html
+	if (policy == SCHED_FIFO || policy == SCHED_RR)
+		return 1;
+	else
+		return 0;
 }
