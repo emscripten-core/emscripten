@@ -152,7 +152,7 @@ var LibraryPThread = {
       allocatedOwnStack: allocatedOwnStack,
       schedPolicy: 0,
       schedPrio: 0,
-      joinable: {{{ makeGetValue('attr', 3/*_a_detach*/, 'i32') }}},
+      joinable: {{{ makeGetValue('attr', 3/*_a_detach*/, 'i32') }}} == 0/*PTHREAD_CREATE_JOINABLE*/,
       threadBlock: _malloc({{{ C_STRUCTS.pthread.__size__ }}}) // Info area for this thread in Emscripten HEAP (shared)
     };
     Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0); // threadStatus <- 0, meaning not yet exited.
