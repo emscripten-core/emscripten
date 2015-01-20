@@ -150,6 +150,8 @@ var LibraryPThread = {
       stackBase: stackBase,
       stackSize: stackSize,
       allocatedOwnStack: allocatedOwnStack,
+      schedPolicy: 0,
+      schedPrio: 0,
       threadBlock: _malloc({{{ C_STRUCTS.pthread.__size__ }}}) // Info area for this thread in Emscripten HEAP (shared)
     };
     Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0); // threadStatus <- 0, meaning not yet exited.
@@ -278,12 +280,18 @@ var LibraryPThread = {
   },
 
   pthread_getschedparam: function(thread, policy, schedparam) {
-    // TODO
+    var threadInfo = PThread.pthreads[thread];
+    if (!threadInfo) return ERRNO_CODES.ESRCH;
+    {{{ makeSetValue('policy', 0, 'threadInfo.schedPolicy', 'i32') }}};
+    {{{ makeSetValue('schedparam', 0, 'threadInfo.schedParam', 'i32') }}};
     return 0;
   },
 
   pthread_setschedparam: function(thread, policy, schedparam) {
-    // TODO
+    var threadInfo = PThread.pthreads[thread];
+    if (!threadInfo) return ERRNO_CODES.ESRCH;
+    threadInfo.schedPolicy = policy;
+    threadInfo.schedPrio = {{{ makeGetValue('schedparam', 0, 'i32') }}};
     return 0;
   },
 
