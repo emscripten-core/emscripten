@@ -312,7 +312,9 @@ var LibraryPThread = {
   },
 
   pthread_setschedprio: function(thread, prio) {
-    // no-op: Can this be implemented?
+    var threadInfo = PThread.pthreads[thread];
+    if (!threadInfo) return ERRNO_CODES.ESRCH;
+    threadInfo.schedPrio = prio;
     return 0;
   },
 
