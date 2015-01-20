@@ -276,9 +276,6 @@ var LibraryPThread = {
     return 0; // Main JS thread
   },
 
-  pthread_once: function(once_control, init_routine) {
-  },
-
   pthread_getschedparam: function(thread, policy, schedparam) {
     var threadInfo = PThread.pthreads[thread];
     if (!threadInfo) return ERRNO_CODES.ESRCH;
