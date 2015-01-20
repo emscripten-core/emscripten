@@ -113,6 +113,51 @@ var LibraryPThread = {
     }
   },
 
+  _spawn_thread: function(thread, threadParams) {
+    if (ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! _spawn_thread() should only ever be called from main JS thread!';
+
+    var worker = PThread.getNewWorker();
+    if (worker.pthread !== undefined) throw 'Internal error!';
+    PThread.runningWorkers.push(worker); // TODO: The list of threads is local to the parent thread, atm only the parent can access the threads it spawned!
+    var threadId = PThread.pthreadIdCounter++;
+    {{{ makeSetValue('thread', 0, 'threadId', 'i32') }}};
+
+    // Allocate memory for thread-local storage and initialize it to zero.
+    var tlsMemory = _malloc({{{ cDefine('PTHREAD_KEYS_MAX') }}} * 4);
+    for(var i = 0; i < {{{ cDefine('PTHREAD_KEYS_MAX') }}}; ++i)
+      {{{ makeSetValue('tlsMemory', 'i*4', 0, 'i32') }}};
+
+    var pthread = PThread.pthreads[threadId] = { // Create a pthread info object to represent this thread.
+      worker: worker,
+      thread: threadId,
+      stackBase: threadParams.stackBase,
+      stackSize: threadParams.stackSize,
+      allocatedOwnStack: threadParams.allocatedOwnStack,
+      schedPolicy: threadParams.schedPolicy,
+      schedPrio: threadParams.schedPrio,
+      joinable: threadParams.joinable,
+      threadBlock: _malloc({{{ C_STRUCTS.pthread.__size__ }}}) // Info area for this thread in Emscripten HEAP (shared)
+    };
+    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0); // threadStatus <- 0, meaning not yet exited.
+    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, 0); // threadExitCode <- 0.
+    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.tsd }}} ) >> 2, tlsMemory); // Init thread-local-storage memory array.
+    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.tsd_used }}} ) >> 2, 0); // Mark initial status to unused.
+
+    worker.pthread = pthread;
+
+    // Ask the worker to start executing its pthread entry point function.
+    worker.postMessage({
+      cmd: 'run',
+      start_routine: threadParams.startRoutine,
+      arg: threadParams.arg,
+      threadBlock: pthread.threadBlock,
+      selfThreadId: threadId,
+      stackBase: threadParams.stackBase,
+      stackSize: threadParams.stackSize
+    });
+  },
+
+  pthread_create__deps: ['_spawn_thread'],
   pthread_create: function(thread, attr, start_routine, arg) {
     if (!HEAPU8.buffer instanceof SharedArrayBuffer) {
       Module['printErr']('Current environment does not support SharedArrayBuffer, pthreads are not available!');
@@ -122,12 +167,6 @@ var LibraryPThread = {
       Module['printErr']('pthread_create called with a null thread pointer!');
       return 1;
     }
-    var worker = PThread.getNewWorker();
-    if (worker.pthread !== undefined) throw 'Internal error!';
-    PThread.runningWorkers.push(worker); // TODO: The list of threads is local to the parent thread, atm only the parent can access the threads it spawned!
-    var threadId = PThread.pthreadIdCounter++;
-    {{{ makeSetValue('thread', 0, 'threadId', 'i32') }}};
-
     var stackSize = 0;
     var stackBase = 0;
     if (attr) {
@@ -136,43 +175,20 @@ var LibraryPThread = {
     }
     stackSize += 81920 /*DEFAULT_STACK_SIZE*/;
     var allocatedOwnStack = !stackBase;
-    if (allocatedOwnStack) { 
-      stackBase = _malloc(stackSize); // Allocate a stack if the user doesn't want to place the stack in a custom memory area.
-    }
-    // Allocate memory for thread-local storage and initialize it to zero.
-    var tlsMemory = _malloc({{{ cDefine('PTHREAD_KEYS_MAX') }}} * 4);
-    for(var i = 0; i < {{{ cDefine('PTHREAD_KEYS_MAX') }}}; ++i)
-      {{{ makeSetValue('tlsMemory', 'i*4', 0, 'i32') }}};
+    if (allocatedOwnStack) stackBase = _malloc(stackSize); // Allocate a stack if the user doesn't want to place the stack in a custom memory area.
 
-    var pthread = PThread.pthreads[threadId] = { // Create a pthread info object to represent this thread.
-      worker: worker,
-      thread: threadId,
+    var threadParams = {
       stackBase: stackBase,
       stackSize: stackSize,
       allocatedOwnStack: allocatedOwnStack,
       schedPolicy: 0,
       schedPrio: 0,
       joinable: {{{ makeGetValue('attr', 3/*_a_detach*/, 'i32') }}} == 0/*PTHREAD_CREATE_JOINABLE*/,
-      threadBlock: _malloc({{{ C_STRUCTS.pthread.__size__ }}}) // Info area for this thread in Emscripten HEAP (shared)
-    };
-    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0); // threadStatus <- 0, meaning not yet exited.
-    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, 0); // threadExitCode <- 0.
-    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.tsd }}} ) >> 2, tlsMemory); // Init thread-local-storage memory array.
-    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.tsd_used }}} ) >> 2, 0); // Mark initial status to unused.
-
-
-    worker.pthread = pthread;
-
-    // Ask the worker to start executing its pthread entry point function.
-    worker.postMessage({
-      cmd: 'run',
-      start_routine: start_routine,
+      startRoutine: start_routine,
       arg: arg,
-      threadBlock: pthread.threadBlock,
-      selfThreadId: threadId,
-      stackBase: stackBase,
-      stackSize: stackSize
-    });
+    };
+    __spawn_thread(thread, threadParams);
+
     return 0;
   },
 
