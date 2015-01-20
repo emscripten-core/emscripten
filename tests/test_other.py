@@ -4609,3 +4609,29 @@ int main(void) {
     test(['-Oz'], '-Oz')
     test(['-Os'], '-Os')
 
+  def test_export_all_3142(self):
+    open('src.cpp', 'w').write(r'''
+typedef unsigned int Bit32u;
+
+struct S_Descriptor {
+    Bit32u limit_0_15   :16;
+    Bit32u base_0_15    :16;
+    Bit32u base_16_23   :8;
+};
+
+class Descriptor
+{
+public:
+    Descriptor() { saved.fill[0]=saved.fill[1]=0; }
+    union {
+        S_Descriptor seg;
+        Bit32u fill[2];
+    } saved;
+};
+
+Descriptor desc;
+    ''')
+    try_delete('a.out.js')
+    Popen([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'EXPORT_ALL=1']).communicate()
+    assert os.path.exists('a.out.js')
+
