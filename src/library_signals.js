@@ -103,6 +103,10 @@ var funs = {
     Module.printErr('Calling stub instead of pause()');
     ___setErrNo(ERRNO_CODES.EINTR);
     return -1;
+  },
+  sigpending: function(set) {
+    {{{ makeSetValue('set', 0, 0, 'i32') }}};
+    return 0;
   }
   //signalfd
   //ppoll
@@ -113,7 +117,6 @@ var funs = {
   //sigblock
   //sigsetmask
   //siggetmask
-  //sigpending
   //sigsuspend
   //bsd_signal
   //siginterrupt

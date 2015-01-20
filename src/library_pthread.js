@@ -330,6 +330,12 @@ var LibraryPThread = {
     if (execute) routine();
   },
 
+  // pthread_sigmask - examine and change mask of blocked signals
+  pthread_sigmask: function(how, set, oldset) {
+    // No-op.
+    return 0;
+  },
+
   // Futex API
   emscripten_futex_wait: function(addr, val, timeout) {
     assert(addr);
