@@ -183,7 +183,7 @@ var LibraryPThread = {
       allocatedOwnStack: allocatedOwnStack,
       schedPolicy: 0,
       schedPrio: 0,
-      joinable: {{{ makeGetValue('attr', 3/*_a_detach*/, 'i32') }}} == 0/*PTHREAD_CREATE_JOINABLE*/,
+      joinable: {{{ makeGetValue('attr', 12/*_a_detach*/, 'i32') }}} == 0/*PTHREAD_CREATE_JOINABLE*/,
       startRoutine: start_routine,
       arg: arg,
     };
