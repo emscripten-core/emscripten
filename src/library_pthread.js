@@ -229,7 +229,7 @@ var LibraryPThread = {
     var pthread = PThread.pthreads[thread];
     if (!pthread) {
       Module['printErr']('PThread ' + thread + ' does not exist!');
-      return 1;
+      return ERRNO_CODES.ESRCH;
     }
     if (signal != 0) {
       pthread.worker.terminate();
@@ -246,7 +246,7 @@ var LibraryPThread = {
     var pthread = PThread.pthreads[thread];
     if (!pthread) {
       Module['printErr']('PThread ' + thread + ' does not exist!');
-      return 1;
+      return ERRNO_CODES.ESRCH;
     }
     assert(pthread.threadBlock);
     Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 2); // Signal the thread that it needs to cancel itself.
