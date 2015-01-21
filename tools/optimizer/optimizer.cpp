@@ -2205,16 +2205,21 @@ void simplifyIfs(Ref ast) {
 void optimizeFrounds(Ref ast) {
   // collapse fround(fround(..)), which can happen due to elimination
   // also emit f0 instead of fround(0) (except in returns)
-  bool inReturn = false, currIsReturn = false;
+  int inReturn = 0;
   traversePrePost(ast, [&](Ref node) {
-    currIsReturn = node[0] == RETURN;
-    if (currIsReturn) inReturn = true;
+    if (node[0] == RETURN) {
+      inReturn++;
+    }
   }, [&](Ref node) {
-    if (currIsReturn) inReturn = false;
+    if (node[0] == RETURN) {
+      inReturn--;
+    }
     if (node[0] == CALL && node[1][0] == NAME && node[1][1] == MATH_FROUND) {
       Ref arg = node[2][0];
       if (arg[0] == NUM) {
-        if (!inReturn && arg[1]->getNumber() == 0) *node = *makeName(F0);
+        if (!inReturn && arg[1]->getInteger() == 0) {
+          safeCopy(node, makeName(F0));
+        }
       } else if (arg[0] == CALL && arg[1][0] == NAME && arg[1][1] == MATH_FROUND) {
         safeCopy(node, arg);
       }
