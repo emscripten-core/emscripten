@@ -1,16 +1,16 @@
 import os, shutil, logging
 
-VERSION = 4
+TAG = 'version_4'
 
 def get_with_configure(ports, settings, shared): # not currently used; no real need for configure on emscripten users' machines!
   if settings.USE_SDL == 2:
-    ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/master.zip', VERSION)
+    ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip')
     def setup_includes():
       # copy includes to a location so they can be used as 'SDL2/'
       include_path = os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2', 'include')
       shared.try_delete(os.path.join(include_path, 'SDL2'))
       shutil.copytree(include_path, os.path.join(include_path, 'SDL2'))
-    ret = [ports.build_project('sdl2', 'SDL2-master',
+    ret = [ports.build_project('sdl2', 'SDL2-' + TAG,
                                ['sh', './configure', '--host=asmjs-unknown-emscripten', '--disable-assembly', '--disable-threads', '--enable-cpuinfo=false', 'CFLAGS=-O2'],
                                [os.path.join('build', '.libs', 'libSDL2.a')],
                                setup_includes)]
@@ -20,13 +20,13 @@ def get_with_configure(ports, settings, shared): # not currently used; no real n
 
 def get(ports, settings, shared):
   if settings.USE_SDL == 2:
-    ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/master.zip', VERSION)
+    ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip')
     def create():
       logging.warning('building port: sdl2')
       # we are rebuilding SDL, clear dependant projects so they copy in their includes to ours properly
       ports.clear_project_build('sdl2-image')
       # copy includes to a location so they can be used as 'SDL2/'
-      source_include_path = os.path.join(ports.get_dir(), 'sdl2', 'SDL2-master', 'include')
+      source_include_path = os.path.join(ports.get_dir(), 'sdl2', 'SDL2-' + TAG + '', 'include')
       dest_include_path = os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2', 'include')
       shared.try_delete(dest_include_path)
       shutil.copytree(source_include_path, dest_include_path)
@@ -41,7 +41,7 @@ def get(ports, settings, shared):
       for src in srcs:
         o = os.path.join(ports.get_build_dir(), 'sdl2', 'src', src + '.o')
         shared.safe_ensure_dirs(os.path.dirname(o))
-        commands.append([shared.PYTHON, shared.EMCC, os.path.join(ports.get_dir(), 'sdl2', 'SDL2-master', 'src', src), '-O2', '-o', o, '-I' + dest_include_path, '-O2', '-DUSING_GENERATED_CONFIG_H', '-Wno-warn-absolute-paths', '-w'])
+        commands.append([shared.PYTHON, shared.EMCC, os.path.join(ports.get_dir(), 'sdl2', 'SDL2-' + TAG, 'src', src), '-O2', '-o', o, '-I' + dest_include_path, '-O2', '-DUSING_GENERATED_CONFIG_H', '-Wno-warn-absolute-paths', '-w'])
         o_s.append(o)
       ports.run_commands(commands)
       final = os.path.join(ports.get_build_dir(), 'sdl2', 'libsdl2.bc')

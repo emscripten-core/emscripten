@@ -775,7 +775,7 @@ class Ports:
   name_cache = set()
 
   @staticmethod
-  def fetch_project(name, url, expected_version):
+  def fetch_project(name, url):
     fullname = os.path.join(Ports.get_dir(), name)
 
     if name not in Ports.name_cache: # only mention each port once in log
@@ -838,22 +838,6 @@ class Ports:
         os.chdir(cwd)
       State.unpacked = True
 
-    def check_version(expected_version):
-      try:
-        ok = False
-        if not os.path.exists(fullname): return False
-        subdir = os.listdir(fullname)
-        if len(subdir) != 1: return False
-        subdir = subdir[0] # each port has a singleton subdir
-        f = os.path.join(fullname, subdir, 'version.txt')
-        if not os.path.exists(f): return False # no version, need an update
-        version = open(f).read()
-        version = int(version)
-        ok = True
-      finally:
-        if not ok: logging.error('error when checking port version for ' + name)
-      return version >= expected_version
-
     # main logic
 
     if not os.path.exists(fullname + '.zip'):
@@ -861,15 +845,6 @@ class Ports:
 
     if not os.path.exists(fullname):
       unpack()
-
-    if not check_version(expected_version):
-      # fetch a newer version
-      assert not State.retrieved, 'just retrieved port ' + name + ', but not a new enough version?'
-      shared.try_delete(fullname)
-      shared.try_delete(fullname + '.zip')
-      retrieve()
-      unpack()
-      assert check_version(expected_version), 'just retrieved replacement port ' + name + ', but not a new enough version?'
 
     if State.unpacked:
       # we unpacked a new version, clear the build in the cache

@@ -608,15 +608,6 @@ fi
 
         second_use()
 
-        # if the version isn't sufficient, we retrieve and rebuild
-        open(os.path.join(PORTS_DIR, 'sdl2', 'SDL2-master', 'version.txt'), 'w').write('1') # current is >= 2, so this is too old
-        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
-        assert RETRIEVING_MESSAGE in output, output
-        assert BUILDING_MESSAGE in output, output
-        assert os.path.exists(PORTS_DIR)
-
-        second_use()
-
   def test_native_optimizer(self):
     restore()
 
