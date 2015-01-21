@@ -169,9 +169,11 @@ var LibraryPThread = {
     }
     var stackSize = 0;
     var stackBase = 0;
+    var joinable = true; // Default thread attr is PTHREAD_CREATE_JOINABLE.
     if (attr) {
       stackSize = {{{ makeGetValue('attr', 0, 'i32') }}};
       stackBase = {{{ makeGetValue('attr', 8, 'i32') }}};
+      joinable = {{{ makeGetValue('attr', 12/*_a_detach*/, 'i32') }}} == 0/*PTHREAD_CREATE_JOINABLE*/;
     }
     stackSize += 81920 /*DEFAULT_STACK_SIZE*/;
     var allocatedOwnStack = !stackBase;
@@ -181,9 +183,9 @@ var LibraryPThread = {
       stackBase: stackBase,
       stackSize: stackSize,
       allocatedOwnStack: allocatedOwnStack,
-      schedPolicy: 0,
+      schedPolicy: 0 /*SCHED_OTHER*/,
       schedPrio: 0,
-      joinable: {{{ makeGetValue('attr', 12/*_a_detach*/, 'i32') }}} == 0/*PTHREAD_CREATE_JOINABLE*/,
+      joinable: joinable,
       startRoutine: start_routine,
       arg: arg,
     };
