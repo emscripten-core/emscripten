@@ -2514,73 +2514,73 @@ window.close = function() {
 
   # Test that the emscripten_ atomics api functions work.
   def test_pthread_atomics(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-lpthread'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test the old GCC atomic __sync_fetch_and_op builtin operations.
   def test_pthread_gcc_atomic_fetch_and_op(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_fetch_and_op.cpp'), expected='0', args=['-lpthread'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_fetch_and_op.cpp'), expected='0', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test the old GCC atomic __sync_op_and_fetch builtin operations.
   def test_pthread_gcc_atomic_op_and_fetch(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_op_and_fetch.cpp'), expected='0', args=['-lpthread'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_op_and_fetch.cpp'), expected='0', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Tests the rest of the remaining GCC atomics after the two above tests.
   def test_pthread_gcc_atomics(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomics.cpp'), expected='0', args=['-lpthread'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomics.cpp'), expected='0', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test that basic thread creation works.
   def test_pthread_create(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=['-lpthread'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test that main thread can wait for a pthread to finish via pthread_join().
   def test_pthread_join(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_join.cpp'), expected='6765', args=['-lpthread'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_join.cpp'), expected='6765', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test pthread_cancel() operation
   def test_pthread_cancel(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_cancel.cpp'), expected='1', args=['-lpthread'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_cancel.cpp'), expected='1', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test pthread_kill() operation
   def test_pthread_kill(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_kill.cpp'), expected='0', args=['-lpthread'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_kill.cpp'), expected='0', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test that pthread cleanup stack (pthread_cleanup_push/_pop) works.
   def test_pthread_cleanup(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_cleanup.cpp'), expected='907640832', args=['-lpthread'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_cleanup.cpp'), expected='907640832', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Tests the pthread mutex api.
   def test_pthread_mutex(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_mutex.cpp'), expected='50', args=['-lpthread'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_mutex.cpp'), expected='50', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test that memory allocation is thread-safe.
   def test_pthread_malloc(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc.cpp'), expected='0', args=['-lpthread'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc.cpp'), expected='0', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test that the pthread_barrier API works ok.
   def test_pthread_barrier(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_barrier.cpp'), expected='0', args=['-lpthread'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_barrier.cpp'), expected='0', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test the pthread_once() function.
   def test_pthread_once(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_once.cpp'), expected='0', args=['-lpthread'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_once.cpp'), expected='0', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test against a certain thread exit time handling bug by spawning tons of threads.
   def test_pthread_spawns(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_spawns.cpp'), expected='0', args=['-lpthread'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_spawns.cpp'), expected='0', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # It is common for code to flip volatile global vars for thread control. This is a bit lax, but nevertheless, test whether that
   # kind of scheme will work with Emscripten as well.
   def test_pthread_volatile(self):
     for arg in [[], ['-DUSE_C_VOLATILE']]:
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_volatile.cpp'), expected='1', args=['-lpthread'] + arg)
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_volatile.cpp'), expected='1', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'] + arg)
 
   # Test thread-specific data (TLS).
   def test_pthread_thread_local_storage(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_thread_local_storage.cpp'), expected='0', args=['-lpthread'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_thread_local_storage.cpp'), expected='0', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test the pthread condition variable creation and waiting.
   def test_pthread_condition_variable(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_condition_variable.cpp'), expected='0', args=['-lpthread'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_condition_variable.cpp'), expected='0', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test that it is possible to send a signal via calling alarm(timeout), which in turn calls to the signal handler set by signal(SIGALRM, func);
   def test_sigalrm(self):
