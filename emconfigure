@@ -20,6 +20,17 @@ import os, sys
 from tools import shared
 from subprocess import CalledProcessError
 
+if len(sys.argv) < 2 or 'configure' not in sys.argv[1]:
+  print >> sys.stderr, '''
+emconfigure is a helper for configure, setting various environment
+variables so that emcc etc. are used.
+
+TYPICAL USAGE:   emconfigure ./configure [FLAGS]
+
+warning: you do not seem to have 'configure' as the first argument
+
+'''
+
 try:
 	shared.Building.configure(sys.argv[1:])
 except CalledProcessError, e:

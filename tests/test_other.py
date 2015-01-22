@@ -4692,3 +4692,18 @@ Descriptor desc;
         break
     assert change > 0 and change <= n
 
+  def test_emmake_emconfigure(self):
+    def check(what, args, fail=True):
+      print what, args, fail
+      our, err = Popen([PYTHON, path_from_root(what)] + args, stdout=PIPE, stderr=PIPE).communicate()
+      assert ('is a helper for' in err) == fail
+      assert ('USAGE' in err) == fail
+      assert ('warning: you do not seem to have' in err) == fail
+    check('emmake', [])
+    check('emconfigure', [])
+    check('emmake', ['--version'])
+    check('emconfigure', ['--version'])
+    check('emmake', ['make'], fail=False)
+    check('emconfigure', ['configure'], fail=False)
+    check('emconfigure', ['./configure'], fail=False)
+

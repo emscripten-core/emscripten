@@ -325,6 +325,7 @@ class sockets(BrowserCore):
         self.btest(os.path.join('sockets', 'test_sockets_select_server_closes_connection_client_rw.c'), expected='266', args=[sockets_include, '-DSOCKK=%d' % harness.listen_port])
 
   def test_enet(self):
+    # this is also a good test of raw usage of emconfigure and emmake
     try_delete(self.in_dir('enet'))
     shutil.copytree(path_from_root('tests', 'enet'), self.in_dir('enet'))
     pwd = os.getcwd()
