@@ -285,6 +285,10 @@ var LibraryPThread = {
   },
 
   pthread_exit: function(status) {
+    if (!ENVIRONMENT_IS_PTHREAD) {
+      Module['printErr']('Warning: pthread_exit was called from the main thread that was not spawned via pthread_create(). (TODO)');
+      return;
+    }
     PThread.threadExit(status);
   },
 
