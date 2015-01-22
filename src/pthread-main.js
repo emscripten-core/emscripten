@@ -67,13 +67,13 @@ this.onmessage = function(e) {
     } catch(e) {
       Atomics.store(HEAPU32, (threadBlock + 0 /*{{{ C_STRUCTS.pthread.threadStatus }}}*/ ) >> 2, 1); // Mark the thread as no longer running.
       if (e === 'Canceled!') {
-        Atomics.store(HEAPU32, (pthread.threadBlock + 4 /*{{{ C_STRUCTS.pthread.threadExitCode }}}*/ ) >> 2, -1 /*PTHREAD_CANCELED*/);
+        Atomics.store(HEAPU32, (threadBlock + 4 /*{{{ C_STRUCTS.pthread.threadExitCode }}}*/ ) >> 2, -1 /*PTHREAD_CANCELED*/);
         PThread.runExitHandlers();
         threadBlock = selfThreadId = 0;
         postMessage({ cmd: 'cancel' });
         return;
       } else {
-        Atomics.store(HEAPU32, (pthread.threadBlock + 4 /*{{{ C_STRUCTS.pthread.threadExitCode }}}*/ ) >> 2, -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
+        Atomics.store(HEAPU32, (threadBlock + 4 /*{{{ C_STRUCTS.pthread.threadExitCode }}}*/ ) >> 2, -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
         throw e;
       }
     }
