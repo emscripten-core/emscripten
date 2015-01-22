@@ -18,6 +18,9 @@ var LibraryPThread = {
         }
       }
       PThread.exitHandlers = null;
+
+      // Call into the musl function that runs destructors of all thread-specific data.
+      ___pthread_tsd_run_dtors();
     },
 
     // Called when we are performing a pthread_exit(), either explicitly called by programmer,
