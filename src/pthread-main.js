@@ -63,7 +63,7 @@ this.onmessage = function(e) {
       if (typeof asm['dynCall_ii'] !== 'undefined')
         result = asm.dynCall_ii(e.data.start_routine, e.data.arg); // pthread entry points are always of signature 'void *ThreadMain(void *arg)'
       else
-        result = asm.dynCall_i(e.data.start_routine); // pthread entry points are always of signature 'void *ThreadMain(void *arg)'
+        result = asm.dynCall_i(e.data.start_routine); // as a hack, try signature 'i' as fallback.
     } catch(e) {
       Atomics.store(HEAPU32, (threadBlock + 0 /*{{{ C_STRUCTS.pthread.threadStatus }}}*/ ) >> 2, 1); // Mark the thread as no longer running.
       if (e === 'Canceled!') {
