@@ -510,7 +510,8 @@ EMSCRIPTEN_FUNCS();
       if x[0] < y[0]: return 1
       elif x[0] > y[0]: return -1
       return 0
-    funcs.sort(sorter)
+    if not os.environ.get('EMCC_NO_OPT_SORT'):
+      funcs.sort(sorter)
 
     if 'last' in passes and len(funcs) > 0:
       count = funcs[0][1].count('\n')
