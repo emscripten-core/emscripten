@@ -41,6 +41,7 @@ sys.argv = filter(handle_arg, sys.argv)
 # consts
 
 BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memmove', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64', '_strncpy', '_strcpy', '_strcat', '_saveSetjmp', '_testSetjmp', '_emscripten_replace_memory', '_bitshift64Shl', '_bitshift64Ashr', '_bitshift64Lshr', 'setAsyncState', 'emtStackSave'])
+WHITELIST = []
 
 OPCODES = [ # l, lx, ly etc - one of 256 locals
   'SET',     # [lx, ly, 0]          lx = ly (int or float, not double)
@@ -645,6 +646,13 @@ if __name__ == '__main__':
       assert temp[1] == '@'
       temp = open(temp[2:-1]).read()
     extra_blacklist = json.loads(temp)
+    if len(sys.argv) >= 6:
+      temp = sys.argv[5]
+      if temp[0] == '"':
+        # response file
+        assert temp[1] == '@'
+        temp = open(temp[2:-1]).read()
+      WHITELIST = json.loads(temp)
 
   BLACKLIST = set(list(BLACKLIST) + extra_blacklist)
 
@@ -655,10 +663,14 @@ if __name__ == '__main__':
 
   asm = asm_module.AsmModule(infile)
 
-  # sanity check on blacklist
+  # process blacklist
 
   for func in extra_blacklist:
     assert func in asm.funcs, 'requested blacklist of %s but it does not exist' % func
+
+  if len(WHITELIST) > 0:
+    # we are using a whitelist: fill the blacklist with everything not whitelisted
+    BLACKLIST = set([func for func in asm.funcs if func not in WHITELIST])
 
   # decide which functions will be emterpreted, and find which are externally reachable (from outside other emterpreted code; those will need trampolines)
 

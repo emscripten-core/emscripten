@@ -4378,6 +4378,29 @@ pass: error == ENOTDIR
     assert 'emterpret' not in get_func(src, '_main'), 'main is NOT emterpreted, it was  blacklisted'
     assert 'emterpret' not in get_func(src, '_atoi'), 'atoi is NOT emterpreted either'
 
+    print 'whitelisting'
+
+    do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-s', 'EMTERPRETIFY_WHITELIST=[]'])
+    src = open('a.out.js').read()
+    assert 'emterpret' in get_func(src, '_main'), 'main is emterpreted'
+    assert 'function _atoi(' not in src, 'atoi is emterpreted and does not even have a trampoline, since only other emterpreted can reach it'
+
+    do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-s', 'EMTERPRETIFY_WHITELIST=["_main"]'])
+    src = open('a.out.js').read()
+    assert 'emterpret' in get_func(src, '_main')
+    assert 'emterpret' not in get_func(src, '_atoi'), 'atoi is not in whitelist, so it is not emterpreted'
+
+    do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-s', 'EMTERPRETIFY_WHITELIST=["_main", "_atoi"]'])
+    src = open('a.out.js').read()
+    assert 'emterpret' in get_func(src, '_main')
+    assert 'function _atoi(' not in src, 'atoi is emterpreted and does not even have a trampoline, since only other emterpreted can reach it'
+
+    open('whitelist.txt', 'w').write('["_main"]')
+    do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-s', 'EMTERPRETIFY_WHITELIST=@whitelist.txt'])
+    src = open('a.out.js').read()
+    assert 'emterpret' in get_func(src, '_main')
+    assert 'emterpret' not in get_func(src, '_atoi'), 'atoi is not in whitelist, so it is not emterpreted'
+
     do_test(r'''
 #include<stdio.h>
 

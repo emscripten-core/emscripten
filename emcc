@@ -70,7 +70,7 @@ LIB_PREFIXES = ('', 'lib')
 
 JS_CONTAINING_SUFFIXES = ('js', 'html')
 
-DEFERRED_REPONSE_FILES = ('EMTERPRETIFY_BLACKLIST',)
+DEFERRED_REPONSE_FILES = ('EMTERPRETIFY_BLACKLIST', 'EMTERPRETIFY_WHITELIST')
 
 # Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc opt
 # levels 2 and 3 (emcc 3 is unsafe opts, so unsuitable for the only level to get
@@ -1555,7 +1555,7 @@ try:
     try:
       # move temp js to final position, alongside its mem init file
       shutil.move(final, js_target)
-      args = [shared.PYTHON, shared.path_from_root('tools', 'emterpretify.py'), js_target, final + '.em.js', memfile, json.dumps(shared.Settings.EMTERPRETIFY_BLACKLIST)]
+      args = [shared.PYTHON, shared.path_from_root('tools', 'emterpretify.py'), js_target, final + '.em.js', memfile, json.dumps(shared.Settings.EMTERPRETIFY_BLACKLIST), json.dumps(shared.Settings.EMTERPRETIFY_WHITELIST)]
       if shared.Settings.EMTERPRETIFY_ASYNC:
         args += ['ASYNC=1']
       if profiling:

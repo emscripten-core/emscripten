@@ -576,6 +576,8 @@ var NO_DYNAMIC_EXECUTION = 0; // When enabled, we do not emit eval() and new Fun
 
 var EMTERPRETIFY = 0; // Runs tools/emterpretify on the compiler output
 var EMTERPRETIFY_BLACKLIST = []; // Functions to not emterpret, that is, to run normally at full speed
+var EMTERPRETIFY_WHITELIST = []; // If this contains any functions, then only the functions in this list
+                                 // are emterpreted (as if all the rest are blacklisted; this overrides the BLACKLIST)
 var EMTERPRETIFY_ASYNC = 0; // Allows sync code in the emterpreter, by saving the call stack, doing an async delay, and resuming it
 
 var RUNNING_JS_OPTS = 0; // whether js opts will be run, after the main compiler
