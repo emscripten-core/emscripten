@@ -27,6 +27,23 @@ import_sig = re.compile('var ([_\w$]+) *=[^;]+;')
 
 NATIVE_OPTIMIZER = os.environ.get('EMCC_NATIVE_OPTIMIZER') or '1' # use native optimizer by default, unless disabled by EMCC_NATIVE_OPTIMIZER=0 in the env
 
+def split_funcs(js, just_split=False, know_generated=True):
+  if just_split: return map(lambda line: ('(json)', line), js.split('\n'))
+  parts = map(lambda part: part, js.split('\n}\n'))
+  funcs = []
+  for i in range(len(parts)):
+    func = parts[i]
+    if i < len(parts)-1: func += '\n}\n' # last part needs no }
+    m = func_sig.search(func)
+    if m:
+      ident = m.group(1)
+    else:
+      if know_generated: continue # ignore whitespace
+      ident = 'anon_%d' % i
+    assert ident
+    funcs.append((ident, func))
+  return funcs
+
 def find_msbuild(sln_file, make_env):
   search_paths_vs2013 = [os.path.join(os.environ['ProgramFiles'], 'MSBuild/12.0/Bin/amd64'),
                         os.path.join(os.environ['ProgramFiles(x86)'], 'MSBuild/12.0/Bin/amd64'),
@@ -357,27 +374,8 @@ EMSCRIPTEN_FUNCS();
     pre = ''
     post = ''
 
-  def split_funcs(js, just_split=False):
-    if just_split: return map(lambda line: ('(json)', line), js.split('\n'))
-    # Pick where to split into chunks, so that (1) they do not oom in node/uglify, and (2) we can run them in parallel
-    # If we have metadata, we split only the generated code, and save the pre and post on the side (and do not optimize them)
-    parts = map(lambda part: part, js.split('\n}\n'))
-    funcs = []
-    for i in range(len(parts)):
-      func = parts[i]
-      if i < len(parts)-1: func += '\n}\n' # last part needs no }
-      m = func_sig.search(func)
-      if m:
-        ident = m.group(1)
-      else:
-        if know_generated: continue # ignore whitespace
-        ident = 'anon_%d' % i
-      assert ident
-      funcs.append((ident, func))
-    return funcs
-
   total_size = len(js)
-  funcs = split_funcs(js, just_split)
+  funcs = split_funcs(js, just_split, know_generated)
   js = None
 
   # if we are making source maps, we want our debug numbering to start from the
@@ -501,7 +499,7 @@ EMSCRIPTEN_FUNCS();
     # sort functions by size, to make diffing easier and to improve aot times
     funcses = []
     for out_file in filenames:
-      funcses.append(split_funcs(open(out_file).read()))
+      funcses.append(split_funcs(open(out_file).read(), False, know_generated))
     funcs = [item for sublist in funcses for item in sublist]
     funcses = None
     def sorter(x, y):

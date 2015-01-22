@@ -292,4 +292,16 @@ class AsmModule():
   def get_table_funcs(self):
     return set(itertools.chain.from_iterable(map(lambda x: map(lambda y: y.strip(), x[1:-1].split(',')), self.tables.values())))
 
+  def get_funcs_map(self):
+    funcs = js_optimizer.split_funcs(self.funcs_js)
+    ret = {}
+    for name, content in funcs:
+      ret[name] = content
+    return ret
+
+  def apply_funcs_map(self, funcs_map): # assumes self.funcs is the set of funcs, in the right order
+    jses = []
+    for f in self.funcs:
+      jses.append(funcs_map[f])
+    self.funcs_js = '\n'.join(jses)
 
