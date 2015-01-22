@@ -4505,6 +4505,7 @@ LibraryManager.library = {
   fabs: 'Math_abs',
   fabsf: 'Math_abs',
   fabsl: 'Math_abs',
+  llvm_fabs_f64: 'Math_abs',
   ceil: 'Math_ceil',
   ceilf: 'Math_ceil',
   ceill: 'Math_ceil',
@@ -8724,6 +8725,11 @@ LibraryManager.library = {
   __unlock: function() {},
   __lockfile: function() { return 1 },
   __unlockfile: function(){},
+
+  // ubsan (undefined behavior sanitizer) support
+  __ubsan_handle_float_cast_overflow: function(id, post) {
+    abort('Undefined behavior! ubsan_handle_float_cast_overflow: ' + [id, post]);
+  },
 
   // misc definitions to avoid unnecessary unresolved symbols from fastcomp
   emscripten_prep_setjmp: true,
