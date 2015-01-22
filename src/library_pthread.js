@@ -353,8 +353,7 @@ var LibraryPThread = {
   },
 
   pthread_getcpuclockid: function(thread, clock_id) {
-    // TODO
-    return 0;
+    return ERRNO_CODES.ENOENT; // pthread API recommends returning this error when "Per-thread CPU time clocks are not supported by the system."
   },
 
   pthread_setschedprio: function(thread, prio) {
