@@ -1394,7 +1394,8 @@
               "threadStatus",
               "threadExitCode",
               "tsd",
-              "tsd_used"
+              "tsd_used",
+              "detached"
             ]
         },
         "defines": []

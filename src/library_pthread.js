@@ -135,11 +135,11 @@ var LibraryPThread = {
       allocatedOwnStack: threadParams.allocatedOwnStack,
       schedPolicy: threadParams.schedPolicy,
       schedPrio: threadParams.schedPrio,
-      joinable: threadParams.joinable,
       threadBlock: _malloc({{{ C_STRUCTS.pthread.__size__ }}}) // Info area for this thread in Emscripten HEAP (shared)
     };
     Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0); // threadStatus <- 0, meaning not yet exited.
     Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, 0); // threadExitCode <- 0.
+    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, threadParams.detached);
     Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.tsd }}} ) >> 2, tlsMemory); // Init thread-local-storage memory array.
     Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.tsd_used }}} ) >> 2, 0); // Mark initial status to unused.
 
@@ -169,11 +169,11 @@ var LibraryPThread = {
     }
     var stackSize = 0;
     var stackBase = 0;
-    var joinable = true; // Default thread attr is PTHREAD_CREATE_JOINABLE.
+    var detached = 0; // Default thread attr is PTHREAD_CREATE_JOINABLE, i.e. start as not detached.
     if (attr) {
       stackSize = {{{ makeGetValue('attr', 0, 'i32') }}};
       stackBase = {{{ makeGetValue('attr', 8, 'i32') }}};
-      joinable = {{{ makeGetValue('attr', 12/*_a_detach*/, 'i32') }}} == 0/*PTHREAD_CREATE_JOINABLE*/;
+      detached = {{{ makeGetValue('attr', 12/*_a_detach*/, 'i32') }}} != 0/*PTHREAD_CREATE_JOINABLE*/;
     }
     stackSize += 81920 /*DEFAULT_STACK_SIZE*/;
     var allocatedOwnStack = !stackBase;
@@ -185,7 +185,7 @@ var LibraryPThread = {
       allocatedOwnStack: allocatedOwnStack,
       schedPolicy: 0 /*SCHED_OTHER*/,
       schedPrio: 0,
-      joinable: joinable,
+      detached: detached,
       startRoutine: start_routine,
       arg: arg,
     };
@@ -202,17 +202,18 @@ var LibraryPThread = {
     }
     if (!ENVIRONMENT_IS_PTHREAD && thread == 1) return ERRNO_CODES.EDEADLK; // The main thread is attempting to join itself?
     if (ENVIRONMENT_IS_PTHREAD && selfThreadId == THREAD) return ERRNO_CODES.EDEADLK; // A non-main thread is attempting to join itself?
-    if (!pthread.joinable) return ERRNO_CODES.EINVAL; // The thread was not created as a joinable one.
+    assert(pthread.threadBlock);
+    var detached = Atomics.load(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.detached }}} ) >> 2);
+    if (detached) return ERRNO_CODES.EINVAL; // The thread is already detached, can no longer join it!
     var worker = pthread.worker;
     for(;;) {
-      assert(pthread.threadBlock);
       var threadStatus = Atomics.load(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
       if (threadStatus == 1) { // Exited?
         var threadExitCode = Atomics.load(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2);
         if (status) {
           {{{ makeSetValue('status', 0, 'threadExitCode', 'i32') }}};
         }
-        pthread.joinable = 0;
+        Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, 1); // Mark the thread as detached.
         PThread.freeThreadData(pthread);
         worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
         PThread.unusedWorkerPool.push(worker);
@@ -272,16 +273,29 @@ var LibraryPThread = {
   },
 
   pthread_detach: function(thread) {
-    var pthread = PThread.pthreads[thread];
-    if (!pthread) {
-      Module['printErr']('PThread ' + thread + ' does not exist!');
-      return ERRNO_CODES.ESRCH;
+    var tb;
+    if (ENVIRONMENT_IS_PTHREAD) {
+      if (thread != selfThreadId) {
+        Module['printErr']('TODO: Currently non-main threads can only detach themselves!');
+        return ERRNO_CODES.ESRCH;
+      }
+      if (!threadBlock) {
+        Module['printErr']('PThread ' + thread + ' does not exist!');
+        return ERRNO_CODES.ESRCH;
+      }
+      tb = threadBlock;
     }
-    if (pthread.joinable) {
-      pthread.joinable = false;
-      return 0;
+    else {
+      var pthread = PThread.pthreads[thread];
+      if (!pthread) {
+        Module['printErr']('PThread ' + thread + ' does not exist!');
+        return ERRNO_CODES.ESRCH;
+      }
+      tb = pthread.threadBlock;
     }
-    return ERRNO_CODES.EINVAL; // thread does not refer to a joinable thread.
+    // Follow musl convention: detached:0 means not detached, 1 means the thread was created as detached, and 2 means that the thread was detached via pthread_detach.
+    var wasDetached = Atomics.compareExchange(HEAPU32, (tb + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, 0, 2);
+    return wasDetached ? ERRNO_CODES.EINVAL : 0;
   },
 
   pthread_exit: function(status) {
