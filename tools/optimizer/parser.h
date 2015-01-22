@@ -517,7 +517,14 @@ class Parser {
     if (*src == '[') return parseExpression(parseIndexing(parseFrag(frag), src), src, seps);
     if (*src == ':' && expressionPartsStack.back().size() == 0) {
       src++;
-      return Builder::makeLabel(frag.str, parseElement(src, seps));
+      src = skipSpace(src);
+      NodeRef inner;
+      if (*src == '{') { // context lets us know this is not an object, but a block
+        inner = parseBracketedBlock(src);
+      } else {
+        inner = parseElement(src, seps);
+      }
+      return Builder::makeLabel(frag.str, inner);
     }
     if (*src == '.') return parseExpression(parseDotting(parseFrag(frag), src), src, seps);
     return parseExpression(parseFrag(frag), src, seps);
