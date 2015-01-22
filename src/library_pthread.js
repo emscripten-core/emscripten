@@ -249,7 +249,7 @@ var LibraryPThread = {
       Module['printErr']('PThread ' + thread + ' does not exist!');
       return ERRNO_CODES.ESRCH;
     }
-    if (!thread.threadBlock) return ERRNO_CODES.EINVAL; // Trying to cancel a thread that is no longer running.
+    if (!pthread.threadBlock) return ERRNO_CODES.EINVAL; // Trying to cancel a thread that is no longer running.
     Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 2); // Signal the thread that it needs to cancel itself.
     pthread.worker.postMessage({ cmd: 'cancel' });
     return 0;
