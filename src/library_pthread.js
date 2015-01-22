@@ -136,8 +136,6 @@ var LibraryPThread = {
       stackBase: threadParams.stackBase,
       stackSize: threadParams.stackSize,
       allocatedOwnStack: threadParams.allocatedOwnStack,
-      schedPolicy: threadParams.schedPolicy,
-      schedPrio: threadParams.schedPrio,
       threadBlock: _malloc({{{ C_STRUCTS.pthread.__size__ }}}) // Info area for this thread in Emscripten HEAP (shared)
     };
     Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0); // threadStatus <- 0, meaning not yet exited.
@@ -145,6 +143,12 @@ var LibraryPThread = {
     Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, threadParams.detached);
     Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.tsd }}} ) >> 2, tlsMemory); // Init thread-local-storage memory array.
     Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.tsd_used }}} ) >> 2, 0); // Mark initial status to unused.
+
+    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.attr }}}) >> 2, threadParams.stackSize);
+    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.attr }}} + 8) >> 2, threadParams.stackBase);
+    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.attr }}} + 12) >> 2, threadParams.detached);
+    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.attr }}} + 20) >> 2, threadParams.schedPolicy);
+    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.attr }}} + 24) >> 2, threadParams.schedPrio);
 
     worker.pthread = pthread;
 
@@ -173,10 +177,14 @@ var LibraryPThread = {
     var stackSize = 0;
     var stackBase = 0;
     var detached = 0; // Default thread attr is PTHREAD_CREATE_JOINABLE, i.e. start as not detached.
+    var schedPolicy = 0; /*SCHED_OTHER*/
+    var schedPrio = 0;
     if (attr) {
       stackSize = {{{ makeGetValue('attr', 0, 'i32') }}};
       stackBase = {{{ makeGetValue('attr', 8, 'i32') }}};
       detached = {{{ makeGetValue('attr', 12/*_a_detach*/, 'i32') }}} != 0/*PTHREAD_CREATE_JOINABLE*/;
+      schedPolicy = {{{ makeGetValue('attr', 20/*_a_policy*/, 'i32') }}};
+      schedPrio = {{{ makeGetValue('attr', 24/*_a_prio*/, 'i32') }}};
     }
     stackSize += 81920 /*DEFAULT_STACK_SIZE*/;
     var allocatedOwnStack = !stackBase;
@@ -186,8 +194,8 @@ var LibraryPThread = {
       stackBase: stackBase,
       stackSize: stackSize,
       allocatedOwnStack: allocatedOwnStack,
-      schedPolicy: 0 /*SCHED_OTHER*/,
-      schedPrio: 0,
+      schedPolicy: schedPolicy,
+      schedPrio: schedPrio,
       detached: detached,
       startRoutine: start_routine,
       arg: arg,
@@ -326,18 +334,51 @@ var LibraryPThread = {
   },
 
   pthread_getschedparam: function(thread, policy, schedparam) {
-    var threadInfo = PThread.pthreads[thread];
-    if (!threadInfo) return ERRNO_CODES.ESRCH;
-    {{{ makeSetValue('policy', 0, 'threadInfo.schedPolicy', 'i32') }}};
-    {{{ makeSetValue('schedparam', 0, 'threadInfo.schedParam', 'i32') }}};
+    var tb;
+    if (ENVIRONMENT_IS_PTHREAD) {
+      if (thread != selfThreadId) {
+        Module['printErr']('TODO: Currently non-main threads can only pthread_getschedparam themselves!');
+        return ERRNO_CODES.ESRCH;
+      }
+      if (!threadBlock) {
+        Module['printErr']('PThread ' + thread + ' does not exist!');
+        return ERRNO_CODES.ESRCH;
+      }
+      tb = threadBlock;
+    } else {
+      var threadInfo = PThread.pthreads[thread];
+      if (!threadInfo) return ERRNO_CODES.ESRCH;
+      tb = threadInfo.threadBlock;
+    }
+
+    var schedPolicy = Atomics.load(HEAPU32, (tb + {{{ C_STRUCTS.pthread.attr }}} + 20 ) >> 2);
+    var schedPrio = Atomics.load(HEAPU32, (tb + {{{ C_STRUCTS.pthread.attr }}} + 24 ) >> 2);
+
+    {{{ makeSetValue('policy', 0, 'schedPolicy', 'i32') }}};
+    {{{ makeSetValue('schedparam', 0, 'schedPrio', 'i32') }}};
     return 0;
   },
 
   pthread_setschedparam: function(thread, policy, schedparam) {
-    var threadInfo = PThread.pthreads[thread];
-    if (!threadInfo) return ERRNO_CODES.ESRCH;
-    threadInfo.schedPolicy = policy;
-    threadInfo.schedPrio = {{{ makeGetValue('schedparam', 0, 'i32') }}};
+    var tb;
+    if (ENVIRONMENT_IS_PTHREAD) {
+      if (thread != selfThreadId) {
+        Module['printErr']('TODO: Currently non-main threads can only pthread_setschedparam themselves!');
+        return ERRNO_CODES.ESRCH;
+      }
+      if (!threadBlock) {
+        Module['printErr']('PThread ' + thread + ' does not exist!');
+        return ERRNO_CODES.ESRCH;
+      }
+      tb = threadBlock;
+    } else {
+      var threadInfo = PThread.pthreads[thread];
+      if (!threadInfo) return ERRNO_CODES.ESRCH;
+      tb = threadInfo.threadBlock;
+    }
+
+    Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.attr }}} + 20) >> 2, policy);
+    Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.attr }}} + 24) >> 2, {{{ makeGetValue('schedparam', 0, 'i32') }}});
     return 0;
   },
 
@@ -357,9 +398,24 @@ var LibraryPThread = {
   },
 
   pthread_setschedprio: function(thread, prio) {
-    var threadInfo = PThread.pthreads[thread];
-    if (!threadInfo) return ERRNO_CODES.ESRCH;
-    threadInfo.schedPrio = prio;
+    var tb;
+    if (ENVIRONMENT_IS_PTHREAD) {
+      if (thread != selfThreadId) {
+        Module['printErr']('TODO: Currently non-main threads can only pthread_setschedprio themselves!');
+        return ERRNO_CODES.ESRCH;
+      }
+      if (!threadBlock) {
+        Module['printErr']('PThread ' + thread + ' does not exist!');
+        return ERRNO_CODES.ESRCH;
+      }
+      tb = threadBlock;
+    } else {
+      var threadInfo = PThread.pthreads[thread];
+      if (!threadInfo) return ERRNO_CODES.ESRCH;
+      tb = threadInfo.threadBlock;
+    }
+
+    Atomics.store(HEAPU32, (threadInfo.threadBlock + {{{ C_STRUCTS.pthread.attr }}} + 24) >> 2, prio);
     return 0;
   },
 
