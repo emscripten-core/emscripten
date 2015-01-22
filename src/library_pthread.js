@@ -275,10 +275,13 @@ var LibraryPThread = {
     var pthread = PThread.pthreads[thread];
     if (!pthread) {
       Module['printErr']('PThread ' + thread + ' does not exist!');
-      return 1;
+      return ERRNO_CODES.ESRCH;
     }
-    // No-op.    
-    return 0;
+    if (pthread.joinable) {
+      pthread.joinable = false;
+      return 0;
+    }
+    return ERRNO_CODES.EINVAL; // thread does not refer to a joinable thread.
   },
 
   pthread_exit: function(status) {
