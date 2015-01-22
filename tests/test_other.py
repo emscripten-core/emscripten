@@ -2617,11 +2617,11 @@ int main() {
 
     # also verify that the gch is actually used
     err = Popen([PYTHON, EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).communicate()
-    assert '*** PCH/Modules Loaded:\nModule: header.h.gch' in err[1], err[1]
+    self.assertTextDataContained('*** PCH/Modules Loaded:\nModule: header.h.gch', err[1])
     # and sanity check it is not mentioned when not
     try_delete('header.h.gch')
     err = Popen([PYTHON, EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).communicate()
-    assert '*** PCH/Modules Loaded:\nModule: header.h.gch' not in err[1], err[1]
+    assert '*** PCH/Modules Loaded:\nModule: header.h.gch' not in err[1].replace('\r\n', '\n'), err[1]
 
     # with specified target via -o
     try_delete('header.h.gch')
