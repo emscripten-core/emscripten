@@ -20,7 +20,7 @@ var LibraryPThread = {
       PThread.exitHandlers = null;
 
       // Call into the musl function that runs destructors of all thread-specific data.
-      ___pthread_tsd_run_dtors();
+      if (ENVIRONMENT_IS_PTHREAD && threadBlock) ___pthread_tsd_run_dtors();
     },
 
     // Called when we are performing a pthread_exit(), either explicitly called by programmer,
@@ -127,8 +127,9 @@ var LibraryPThread = {
 
     // Allocate memory for thread-local storage and initialize it to zero.
     var tlsMemory = _malloc({{{ cDefine('PTHREAD_KEYS_MAX') }}} * 4);
-    for(var i = 0; i < {{{ cDefine('PTHREAD_KEYS_MAX') }}}; ++i)
+    for(var i = 0; i < {{{ cDefine('PTHREAD_KEYS_MAX') }}}; ++i) {
       {{{ makeSetValue('tlsMemory', 'i*4', 0, 'i32') }}};
+    }
 
     var pthread = PThread.pthreads[threadId] = { // Create a pthread info object to represent this thread.
       worker: worker,
@@ -138,6 +139,7 @@ var LibraryPThread = {
       allocatedOwnStack: threadParams.allocatedOwnStack,
       threadBlock: _malloc({{{ C_STRUCTS.pthread.__size__ }}}) // Info area for this thread in Emscripten HEAP (shared)
     };
+    for(var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}}; ++i) HEAPU8[pthread.threadBlock + i] = 0; // zero-initialize thread structure.
     Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0); // threadStatus <- 0, meaning not yet exited.
     Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, 0); // threadExitCode <- 0.
     Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, threadParams.detached);
