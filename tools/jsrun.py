@@ -20,6 +20,26 @@ def timeout_run(proc, timeout=None, note='unnamed process', full_output=False):
 def run_js(filename, engine=None, args=[], check_timeout=False, stdin=None, stdout=PIPE, stderr=None, cwd=None, full_output=False, assert_returncode=0, error_limit=-1):
   if type(engine) is not list:
     engine = [engine]
+
+  #  # code to serlialize out the test suite files
+  #  # XXX make sure to disable memory init files, and clear out the base_dir. you may also need to manually grab e.g. paper.pdf.js from a run of test_poppler
+  #  import shutil, json
+  #  base_dir = '/tmp/emscripten_suite'
+  #  if not os.path.exists(base_dir):
+  #    os.makedirs(base_dir)
+  #  commands_file = os.path.join(base_dir, 'commands.txt')
+  #  commands = ''
+  #  if os.path.exists(commands_file):
+  #    commands = open(commands_file).read()
+  #  i = 0
+  #  while True:
+  #    curr = os.path.join(base_dir, str(i) + '.js')
+  #    if not os.path.exists(curr): break
+  #    i += 1
+  #  shutil.copyfile(filename, curr)
+  #  commands += os.path.basename(curr) + ',' + json.dumps(args) + '\n'
+  #  open(commands_file, 'w').write(commands)
+
   command = engine + [filename] + (['--'] if 'd8' in engine[0] or 'jsc' in engine[0] else []) + args
   try:
     if cwd is not None: os.environ['EMCC_BUILD_DIR'] = os.getcwd()
