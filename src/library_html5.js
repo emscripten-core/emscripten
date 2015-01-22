@@ -1536,10 +1536,10 @@ var LibraryJSEvents = {
   },
 
   emscripten_get_pointerlock_status: function(pointerlockStatus) {
+    if (pointerlockStatus) JSEvents.fillPointerlockChangeEventData(pointerlockStatus);
     if (!document.body.requestPointerLock && !document.body.mozRequestPointerLock && !document.body.webkitRequestPointerLock && !document.body.msRequestPointerLock) {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
-    JSEvents.fillPointerlockChangeEventData(pointerlockStatus);  
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
