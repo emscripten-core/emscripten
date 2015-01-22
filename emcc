@@ -743,6 +743,8 @@ try:
 
   if pthreads:
     settings_changes.append('USE_PTHREADS=1')
+    if not any(s.startswith('PTHREAD_POOL_SIZE=') for s in settings_changes):
+      settings_changes.append('PTHREAD_POOL_SIZE=0')
     js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
 
     def add_sources_in_dir(d):

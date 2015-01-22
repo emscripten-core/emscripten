@@ -520,6 +520,8 @@ var ORIGINAL_EXPORTED_FUNCTIONS = [];
 // If you modify the headers, just clear your cache and emscripten libc should see
 // the new values.
 
-var USE_PTHREADS = 0;
+var USE_PTHREADS = 0; // If true, enables support for pthreads. Do not set this manually, but use -lpthread flag to control whether this is on or off.
+
+var PTHREAD_POOL_SIZE = 0; // Specifies the number of web workers that are preallocated before runtime is initialized. If 0, workers are created on demand.
 
 // Reserved: variables containing POINTER_MASKING.
