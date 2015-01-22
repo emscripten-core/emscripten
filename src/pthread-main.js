@@ -65,13 +65,15 @@ this.onmessage = function(e) {
       else
         result = asm.dynCall_i(e.data.start_routine); // pthread entry points are always of signature 'void *ThreadMain(void *arg)'
     } catch(e) {
+      Atomics.store(HEAPU32, (threadBlock + 0 /*{{{ C_STRUCTS.pthread.threadStatus }}}*/ ) >> 2, 1); // Mark the thread as no longer running.
       if (e === 'Canceled!') {
-        Atomics.store(HEAPU32, threadBlock >> 2, 1); // threadStatus <- 1. The thread is no longer running.
+        Atomics.store(HEAPU32, (pthread.threadBlock + 4 /*{{{ C_STRUCTS.pthread.threadExitCode }}}*/ ) >> 2, -1 /*PTHREAD_CANCELED*/);
         PThread.runExitHandlers();
         threadBlock = selfThreadId = 0;
         postMessage({ cmd: 'cancel' });
         return;
       } else {
+        Atomics.store(HEAPU32, (pthread.threadBlock + 4 /*{{{ C_STRUCTS.pthread.threadExitCode }}}*/ ) >> 2, -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
         throw e;
       }
     }
