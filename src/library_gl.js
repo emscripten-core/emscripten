@@ -988,8 +988,16 @@ var LibraryGL = {
   glGenTextures__sig: 'vii',
   glGenTextures: function(n, textures) {
     for (var i = 0; i < n; i++) {
-      var id = GL.getNewId(GL.textures);
       var texture = GLctx.createTexture();
+      if (!texture) {
+        GL.recordError(0x0502 /* GL_INVALID_OPERATION */); // GLES + EGL specs don't specify what should happen here, so best to issue an error and create IDs with 0.
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_OPERATION in glGenTextures: GLctx.createTexture returned null - most likely GL context is lost!');
+#endif
+        while(i < n) {{{ makeSetValue('textures', 'i++*4', 0, 'i32') }}};
+        return;
+      }
+      var id = GL.getNewId(GL.textures);
       texture.name = id;
       GL.textures[id] = texture;
       {{{ makeSetValue('textures', 'i*4', 'id', 'i32') }}};
@@ -1129,8 +1137,16 @@ var LibraryGL = {
   glGenBuffers__sig: 'vii',
   glGenBuffers: function(n, buffers) {
     for (var i = 0; i < n; i++) {
-      var id = GL.getNewId(GL.buffers);
       var buffer = GLctx.createBuffer();
+      if (!buffer) {
+        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_OPERATION in glGenBuffers: GLctx.createBuffer returned null - most likely GL context is lost!');
+#endif
+        while(i < n) {{{ makeSetValue('buffers', 'i++*4', 0, 'i32') }}};
+        return;
+      }
+      var id = GL.getNewId(GL.buffers);
       buffer.name = id;
       GL.buffers[id] = buffer;
       {{{ makeSetValue('buffers', 'i*4', 'id', 'i32') }}};
@@ -1335,8 +1351,16 @@ var LibraryGL = {
   glGenQueries__sig: 'vii',
   glGenQueries: function(n, ids) {
     for (var i = 0; i < n; i++) {
-      var id = GL.getNewId(GL.queries);
       var query = GLctx.createQuery();
+      if (!query) {
+        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_OPERATION in glGenQueries: GLctx.createQuery returned null - most likely GL context is lost!');
+#endif
+        while(i < n) {{{ makeSetValue('ids', 'i++*4', 0, 'i32') }}};
+        return;
+      }
+      var id = GL.getNewId(GL.queries);
       query.name = id;
       GL.queries[id] = query;
       {{{ makeSetValue('ids', 'i*4', 'id', 'i32') }}};
@@ -1422,8 +1446,16 @@ var LibraryGL = {
   glGenSamplers__sig: 'vii',
   glGenSamplers: function(n, samplers) {
     for (var i = 0; i < n; i++) {
-      var id = GL.getNewId(GL.samplers);
       var sampler = GLctx.createSampler();
+      if (!sampler) {
+        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_OPERATION in glGenSamplers: GLctx.createSampler returned null - most likely GL context is lost!');
+#endif
+        while(i < n) {{{ makeSetValue('samplers', 'i++*4', 0, 'i32') }}};
+        return;
+      }
+      var id = GL.getNewId(GL.samplers);
       sampler.name = id;
       GL.samplers[id] = sampler;
       {{{ makeSetValue('samplers', 'i*4', 'id', 'i32') }}};
@@ -1525,8 +1557,16 @@ var LibraryGL = {
   glGenTransformFeedbacks__sig: 'vii',
   glGenTransformFeedbacks: function(n, ids) {
     for (var i = 0; i < n; i++) {
-      var id = GL.getNewId(GL.transformFeedbacks);
       var transformFeedback = GLctx.createTransformFeedback();
+      if (!transformFeedback) {
+        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_OPERATION in glGenTransformFeedbacks: GLctx.createTransformFeedback returned null - most likely GL context is lost!');
+#endif
+        while(i < n) {{{ makeSetValue('ids', 'i++*4', 0, 'i32') }}};
+        return;
+      }
+      var id = GL.getNewId(GL.transformFeedbacks);
       transformFeedback.name = id;
       GL.transformFeedbacks[id] = transformFeedback;
       {{{ makeSetValue('ids', 'i*4', 'id', 'i32') }}};
@@ -1831,8 +1871,16 @@ var LibraryGL = {
   glGenRenderbuffers__sig: 'vii',
   glGenRenderbuffers: function(n, renderbuffers) {
     for (var i = 0; i < n; i++) {
-      var id = GL.getNewId(GL.renderbuffers);
       var renderbuffer = GLctx.createRenderbuffer();
+      if (!renderbuffer) {
+        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_OPERATION in glGenRenderbuffers: GLctx.createRenderbuffer returned null - most likely GL context is lost!');
+#endif
+        while(i < n) {{{ makeSetValue('renderbuffers', 'i++*4', 0, 'i32') }}};
+        return;
+      }
+      var id = GL.getNewId(GL.renderbuffers);
       renderbuffer.name = id;
       GL.renderbuffers[id] = renderbuffer;
       {{{ makeSetValue('renderbuffers', 'i*4', 'id', 'i32') }}};
@@ -2673,8 +2721,16 @@ var LibraryGL = {
   glGenFramebuffers__sig: 'vii',
   glGenFramebuffers: function(n, ids) {
     for (var i = 0; i < n; ++i) {
-      var id = GL.getNewId(GL.framebuffers);
       var framebuffer = GLctx.createFramebuffer();
+      if (!framebuffer) {
+        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_OPERATION in glGenFramebuffers: GLctx.createFramebuffer returned null - most likely GL context is lost!');
+#endif
+        while(i < n) {{{ makeSetValue('ids', 'i++*4', 0, 'i32') }}};
+        return;
+      }
+      var id = GL.getNewId(GL.framebuffers);
       framebuffer.name = id;
       GL.framebuffers[id] = framebuffer;
       {{{ makeSetValue('ids', 'i*4', 'id', 'i32') }}};
@@ -2737,8 +2793,16 @@ var LibraryGL = {
 #endif
 
     for(var i = 0; i < n; i++) {
-      var id = GL.getNewId(GL.vaos);
       var vao = GL.currentContext.vaoExt.createVertexArrayOES();
+      if (!vao) {
+        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_OPERATION in glGenVertexArrays: GLctx.vao.createVertexArrayOES returned null - most likely GL context is lost!');
+#endif
+        while(i < n) {{{ makeSetValue('arrays', 'i++*4', 0, 'i32') }}};
+        return;
+      }
+      var id = GL.getNewId(GL.vaos);
       vao.name = id;
       GL.vaos[id] = vao;
       {{{ makeSetValue('arrays', 'i*4', 'id', 'i32') }}};
