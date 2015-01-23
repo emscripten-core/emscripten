@@ -441,6 +441,11 @@ var LibraryPThread = {
     return 0;
   },
 
+  pthread_atfork: function(prepare, parent, child) {
+    Module['printErr']('fork() is not supported: pthread_atfork is a no-op.');
+    return 0;
+  },
+
   // Futex API
   emscripten_futex_wait: function(addr, val, timeout) {
     assert(addr);
