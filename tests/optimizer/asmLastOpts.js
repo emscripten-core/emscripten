@@ -84,6 +84,32 @@ function moar() {
   continue L;
   print(5);
  } while(0);
+ moar();
+ L: do {
+  print(5);
+  break;
+  print(5);
+ } while(0);
+ L: do {
+  print(5);
+  while (1) {
+   break;
+  }
+  print(5);
+ } while(0);
+ moar2();
+ L: do {
+  print(5);
+  continue;
+  print(5);
+ } while(0);
+ L: do {
+  print(5);
+  while (1) {
+   continue;
+  }
+  print(5);
+ } while(0);
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["test", "moar"]
 

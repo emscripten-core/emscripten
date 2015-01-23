@@ -797,6 +797,7 @@ StringSet ASSOCIATIVE_BINARIES("+ * | & ^"),
           SAFE_TO_DROP_COERCION("unary-prefix name num");
 
 StringSet BREAK_CAPTURERS("do while for switch"),
+          CONTINUE_CAPTURERS("do while for"),
           FUNCTIONS_THAT_ALWAYS_THROW("abort ___resumeException ___cxa_throw ___cxa_rethrow");
 
 bool isFunctionTable(const char *name) {
@@ -3822,12 +3823,33 @@ void asmLastOpts(Ref ast) {
     traversePre(fun, [](Ref node) {
       if (node[0] == LABEL && node[1]->isString() /* careful of var label = 5 */ &&
           node[2][0] == DO && node[2][1][0] == NUM && node[2][1][1]->getNumber() == 0 && node[2][2][0] == BLOCK) {
-        // there shouldn't be any continues on this, but check just to be sure
+        // there shouldn't be any continues on this, not direct break or continue
         IString label = node[1]->getIString();
         bool abort = false;
-        traversePre(node[2][2], [&](Ref node) {
-          if (node[0] == CONTINUE && node[1]->getIString() == label) {
+        int breakCaptured = 0, continueCaptured = 0;
+        traversePrePost(node[2][2], [&](Ref node) {
+          if (node[0] == CONTINUE) {
+            if (!node[1] && !continueCaptured) {
+              abort = true;
+            } else if (node[1]->isString() && node[1]->getIString() == label) {
+              abort = true;
+            }
+          }
+          if (node[0] == BREAK && !node[1] && !breakCaptured) {
             abort = true;
+          }
+          if (BREAK_CAPTURERS.has(node[0])) {
+            breakCaptured++;
+          }
+          if (CONTINUE_CAPTURERS.has(node[0])) {
+            continueCaptured++;
+          }
+        }, [&](Ref node) {
+          if (BREAK_CAPTURERS.has(node[0])) {
+            breakCaptured--;
+          }
+          if (CONTINUE_CAPTURERS.has(node[0])) {
+            continueCaptured--;
           }
         });
         if (abort) return;
