@@ -4712,4 +4712,5 @@ Descriptor desc;
     check('emmake', ['make'], fail=False)
     check('emconfigure', ['configure'], fail=False)
     check('emconfigure', ['./configure'], fail=False)
+    check('emconfigure', ['cmake'], fail=False)
 
