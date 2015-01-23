@@ -5,6 +5,7 @@
 
 #include <vector>
 #include <iostream>
+#include <algorithm>
 
 #include <stdio.h>
 
@@ -228,7 +229,12 @@ class Parser {
         } else {
           num = strtod(start, &src);
         }
-        type = is32Bit(num) ? INT : DOUBLE;
+        // asm.js must have a '.' for double values. however, we also tolerate
+        // uglify's tendency to emit without a '.' (and fix it later with a +).
+        // for valid asm.js input, the '.' should be enough, and for uglify
+        // in the emscripten optimizer pipeline, we use simple_ast where INT/DOUBLE
+        // is quite the same at this point anyhow
+        type = (std::find(start, src, '.') == src && is32Bit(num)) ? INT : DOUBLE;
         assert(src > start);
       } else if (hasChar(OPERATOR_INITS, *src)) {
         switch (*src) {
