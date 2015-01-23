@@ -1979,7 +1979,13 @@ int f() {
           js = fix(js)
           expected = fix(expected)
         self.assertIdentical(expected, js.replace('\r\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n'))
-      check_js(output, expected)
+
+      if input not in [ # blacklist of tests that are native-optimizer only
+        path_from_root('tests', 'optimizer', 'asmLastOpts.js')
+      ]:
+        check_js(output, expected)
+      else:
+        print '(skip non-native)'
 
       if js_optimizer.use_native(passes) and js_optimizer.get_native_optimizer():
         # test calling native

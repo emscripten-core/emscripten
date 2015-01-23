@@ -3818,6 +3818,22 @@ void asmLastOpts(Ref ast) {
         safeCopy(node, node[1][0]);
       }
     });
+    // convert L: do { .. } while(0) into L: { .. }
+    traversePre(fun, [](Ref node) {
+      if (node[0] == LABEL && node[1]->isString() /* careful of var label = 5 */ &&
+          node[2][0] == DO && node[2][1][0] == NUM && node[2][1][1]->getNumber() == 0 && node[2][2][0] == BLOCK) {
+        // there shouldn't be any continues on this, but check just to be sure
+        IString label = node[1]->getIString();
+        bool abort = false;
+        traversePre(node[2][2], [&](Ref node) {
+          if (node[0] == CONTINUE && node[1]->getIString() == label) {
+            abort = true;
+          }
+        });
+        if (abort) return;
+        safeCopy(node[2], node[2][2]);
+      }
+    });
   });
 }
 

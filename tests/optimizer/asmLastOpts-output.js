@@ -20,4 +20,27 @@ function test() {
   if (c) d();
  } else e(); else f();
 }
+function moar() {
+ L : do print(5); while (0);
+ L : {
+  print(5);
+  print(5);
+ }
+ L : do print(5); while (x | 0);
+ L : do {
+  print(5);
+  print(5);
+ } while (x | 0);
+ later();
+ L : {
+  print(5);
+  break L;
+  print(5);
+ }
+ L : do {
+  print(5);
+  continue L;
+  print(5);
+ } while (0);
+}
 
