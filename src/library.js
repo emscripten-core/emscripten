@@ -3797,39 +3797,16 @@ LibraryManager.library = {
 #endif
   },
 
-  llvm_ctlz_i32__deps: [function() {
-    function ctlz(x) {
-      for (var i = 0; i < 8; i++) {
-        if (x & (1 << (7-i))) {
-          return i;
-        }
-      }
-      return 8;
-    }
-    return 'var ctlz_i8 = allocate([' + range(256).map(function(x) { return ctlz(x) }).join(',') + '], "i8", ALLOC_STATIC);';
-  }],
-  llvm_ctlz_i32__asm: true,
-  llvm_ctlz_i32__sig: 'ii',
-  llvm_ctlz_i32: function(x) {
-    x = x|0;
-    var ret = 0;
-    ret = {{{ makeGetValueAsm('ctlz_i8', 'x >>> 24', 'i8') }}};
-    if ((ret|0) < 8) return ret|0;
-    ret = {{{ makeGetValueAsm('ctlz_i8', '(x >> 16)&0xff', 'i8') }}};
-    if ((ret|0) < 8) return (ret + 8)|0;
-    ret = {{{ makeGetValueAsm('ctlz_i8', '(x >> 8)&0xff', 'i8') }}};
-    if ((ret|0) < 8) return (ret + 16)|0;
-    return ({{{ makeGetValueAsm('ctlz_i8', 'x&0xff', 'i8') }}} + 24)|0;
-  },
-
-  llvm_ctlz_i64__deps: ['llvm_ctlz_i32'],
+  llvm_ctlz_i64__asm: true,
+  llvm_ctlz_i64__sig: 'iii',
   llvm_ctlz_i64: function(l, h) {
-    var ret = _llvm_ctlz_i32(h);
-    if (ret == 32) ret += _llvm_ctlz_i32(l);
-#if USE_TYPED_ARRAYS == 2
-    {{{ makeStructuralReturn(['ret', '0']) }}};
-#else
-    return ret;
+    l = l | 0;
+    h = h | 0;
+    var ret = 0;
+    ret = Math_clz32(h) | 0;
+    if ((ret | 0) == 32) ret = ret + (Math_clz32(l) | 0) | 0;
+    tempRet0 = 0;
+    return ret | 0;
 #endif
   },
 
@@ -8754,6 +8731,7 @@ LibraryManager.library = {
   UItoD: true,
   BItoD: true,
   llvm_dbg_value: true,
+  llvm_ctlz_i32: true,
 };
 
 function autoAddDeps(object, name) {

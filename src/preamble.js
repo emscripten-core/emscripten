@@ -1562,6 +1562,15 @@ if (!Math['fround']) Math['fround'] = function(x) { return x };
 Math.fround = Math['fround'];
 #endif
 
+if (!Math['clz32']) Math['clz32'] = function(x) {
+  x = x >>> 0;
+  for (var i = 0; i < 32; i++) {
+    if (x & (1 << (31 - i))) return i;
+  }
+  return 32;
+};
+Math.clz32 = Math['clz32']
+
 var Math_abs = Math.abs;
 var Math_cos = Math.cos;
 var Math_sin = Math.sin;
@@ -1579,6 +1588,7 @@ var Math_pow = Math.pow;
 var Math_imul = Math.imul;
 var Math_fround = Math.fround;
 var Math_min = Math.min;
+var Math_clz32 = Math.clz32;
 
 // A counter of dependencies for calling run(). If we need to
 // do asynchronous work before running, increment this and

@@ -1092,7 +1092,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     function_tables_defs = '\n'.join([info[0] for info in infos]) + '\n// EMSCRIPTEN_END_FUNCS\n' + '\n'.join([info[1] for info in infos])
 
     asm_setup = ''
-    maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min']]
+    maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'clz32']]
     simdfloattypes = ['float32x4']
     simdinttypes = ['int32x4']
     simdtypes = simdfloattypes + simdinttypes
@@ -1160,12 +1160,10 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     basic_float_vars = []
 
     if metadata.get('preciseI64MathUsed'):
-      basic_vars += ['cttz_i8', 'ctlz_i8']
+      basic_vars += ['cttz_i8']
     else:
       if forwarded_json['Functions']['libraryFunctions'].get('_llvm_cttz_i32'):
         basic_vars += ['cttz_i8']
-      if forwarded_json['Functions']['libraryFunctions'].get('_llvm_ctlz_i32'):
-        basic_vars += ['ctlz_i8']
 
     if settings.get('DLOPEN_SUPPORT'):
       for sig in last_forwarded_json['Functions']['tables'].iterkeys():
