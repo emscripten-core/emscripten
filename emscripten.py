@@ -1109,7 +1109,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
                                 'shiftRightArithmeticByScalar',
                                 'shiftRightLogicalByScalar',
                                 'shiftLeftByScalar'];
-    fundamentals = ['Math', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
+    fundamentals = ['Math', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array', 'NaN', 'Infinity']
     if metadata['simd']:
         fundamentals += ['SIMD']
     if settings['ALLOW_MEMORY_GROWTH']: fundamentals.append('byteLength')
@@ -1157,7 +1157,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
                      '"); ' + extra + ' abort(x) }\n'
 
     basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
-    basic_float_vars = ['NaN', 'Infinity']
+    basic_float_vars = []
 
     if metadata.get('preciseI64MathUsed'):
       basic_vars += ['cttz_i8', 'ctlz_i8']
@@ -1354,14 +1354,14 @@ var asm = (function(global, env, buffer) {
      access_quote('Uint16Array'),
      access_quote('Uint32Array'),
      access_quote('Float32Array'),
-     access_quote('Float64Array'))) + '\n' + asm_global_vars + '''
+     access_quote('Float64Array'))) + '\n' + asm_global_vars + ('''
   var __THREW__ = 0;
   var threwValue = 0;
   var setjmpId = 0;
   var undef = 0;
-  var nan = +env.NaN, inf = +env.Infinity;
+  var nan = global%s, inf = global%s;
   var tempInt = 0, tempBigInt = 0, tempBigIntP = 0, tempBigIntS = 0, tempBigIntR = 0.0, tempBigIntI = 0, tempBigIntD = 0, tempValue = 0, tempDouble = 0.0;
-''' + ''.join(['''
+''' % (access_quote('NaN'), access_quote('Infinity'))) + ''.join(['''
   var tempRet%d = 0;''' % i for i in range(10)]) + '\n' + asm_global_funcs] + \
   ['  var tempFloat = %s;\n' % ('Math_fround(0)' if settings.get('PRECISE_F32') else '0.0')] + \
   ['  var asyncState = 0;\n' if settings.get('EMTERPRETIFY_ASYNC') else ''] + \
