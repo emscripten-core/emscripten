@@ -1092,7 +1092,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     function_tables_defs = '\n'.join([info[0] for info in infos]) + '\n// EMSCRIPTEN_END_FUNCS\n' + '\n'.join([info[1] for info in infos])
 
     asm_setup = ''
-    maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul']]
+    maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min']]
     simdfloattypes = ['float32x4']
     simdinttypes = ['int32x4']
     simdtypes = simdfloattypes + simdinttypes
@@ -1113,7 +1113,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     if metadata['simd']:
         fundamentals += ['SIMD']
     if settings['ALLOW_MEMORY_GROWTH']: fundamentals.append('byteLength')
-    math_envs = ['Math.min'] # TODO: move min to maths
+    math_envs = []
 
     if settings['PRECISE_F32']: maths += ['Math.fround']
 
