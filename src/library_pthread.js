@@ -1,5 +1,10 @@
 var LibraryPThread = {
   $PThread: {
+    MAIN_THREAD_ID: 1, // A special constant that identifies the main JS thread ID.
+    mainThreadInfo: {
+      schedPolicy: 0/*SCHED_OTHER*/,
+      schedPrio: 0
+    },
     // Since creating a new Web Worker is so heavy (it must reload the whole compiled script page!), maintain a pool of such
     // workers that have already parsed and loaded the scripts.
     unusedWorkerPool: [],
@@ -335,6 +340,8 @@ var LibraryPThread = {
   },
 
   pthread_getschedparam: function(thread, policy, schedparam) {
+    if (!policy && !schedparam) return ERRNO_CODES.EINVAL;
+
     var tb;
     if (ENVIRONMENT_IS_PTHREAD) {
       if (thread != selfThreadId) {
@@ -347,6 +354,11 @@ var LibraryPThread = {
       }
       tb = threadBlock;
     } else {
+      if (thread == PThread.MAIN_THREAD_ID) {
+        if (policy) {{{ makeSetValue('policy', 0, 'PThread.mainThreadInfo.schedPolicy', 'i32') }}};
+        if (schedparam) {{{ makeSetValue('schedparam', 0, 'PThread.mainThreadInfo.schedPrio', 'i32') }}};
+        return 0;
+      }
       var threadInfo = PThread.pthreads[thread];
       if (!threadInfo) return ERRNO_CODES.ESRCH;
       tb = threadInfo.threadBlock;
@@ -355,12 +367,14 @@ var LibraryPThread = {
     var schedPolicy = Atomics.load(HEAPU32, (tb + {{{ C_STRUCTS.pthread.attr }}} + 20 ) >> 2);
     var schedPrio = Atomics.load(HEAPU32, (tb + {{{ C_STRUCTS.pthread.attr }}} + 24 ) >> 2);
 
-    {{{ makeSetValue('policy', 0, 'schedPolicy', 'i32') }}};
-    {{{ makeSetValue('schedparam', 0, 'schedPrio', 'i32') }}};
+    if (policy) {{{ makeSetValue('policy', 0, 'schedPolicy', 'i32') }}};
+    if (schedparam) {{{ makeSetValue('schedparam', 0, 'schedPrio', 'i32') }}};
     return 0;
   },
 
   pthread_setschedparam: function(thread, policy, schedparam) {
+    if (!schedparam) return ERRNO_CODES.EINVAL;
+
     var tb;
     if (ENVIRONMENT_IS_PTHREAD) {
       if (thread != selfThreadId) {
@@ -373,6 +387,11 @@ var LibraryPThread = {
       }
       tb = threadBlock;
     } else {
+      if (thread == PThread.MAIN_THREAD_ID) {
+        PThread.mainThreadInfo.schedPolicy = policy;
+        PThread.mainThreadInfo.schedPrio = {{{ makeGetValue('schedparam', 0, 'i32') }}};
+        return 0;
+      }
       var threadInfo = PThread.pthreads[thread];
       if (!threadInfo) return ERRNO_CODES.ESRCH;
       tb = threadInfo.threadBlock;
@@ -411,6 +430,10 @@ var LibraryPThread = {
       }
       tb = threadBlock;
     } else {
+      if (thread == PThread.MAIN_THREAD_ID) {
+        PThread.mainThreadInfo.schedPrio = {{{ makeGetValue('prio', 0, 'i32') }}};
+        return 0;
+      }
       var threadInfo = PThread.pthreads[thread];
       if (!threadInfo) return ERRNO_CODES.ESRCH;
       tb = threadInfo.threadBlock;
