@@ -608,6 +608,25 @@ fi
 
         second_use()
 
+        # if the version isn't sufficient, we retrieve and rebuild
+        subdir = os.listdir(os.path.join(PORTS_DIR, 'sdl2'))[0]
+        os.rename(os.path.join(PORTS_DIR, 'sdl2', subdir), os.path.join(PORTS_DIR, 'sdl2', 'old-subdir'))
+        import zipfile
+        z = zipfile.ZipFile(os.path.join(PORTS_DIR, 'sdl2' + '.zip'), 'w')
+        if not os.path.exists('old-sub'):
+          os.mkdir('old-sub')
+        open(os.path.join('old-sub', 'a.txt'), 'w').write('waka')
+        open(os.path.join('old-sub', 'b.txt'), 'w').write('waka')
+        z.write(os.path.join('old-sub', 'a.txt'))
+        z.write(os.path.join('old-sub', 'b.txt'))
+        z.close()
+        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
+        assert RETRIEVING_MESSAGE in output, output
+        assert BUILDING_MESSAGE in output, output
+        assert os.path.exists(PORTS_DIR)
+
+        second_use()
+
   def test_native_optimizer(self):
     restore()
 

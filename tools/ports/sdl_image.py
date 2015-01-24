@@ -6,7 +6,7 @@ def get(ports, settings, shared):
   if settings.USE_SDL_IMAGE == 2:
     sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
     assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_image'
-    ports.fetch_project('sdl2-image', 'https://github.com/emscripten-ports/SDL2_image/archive/' + TAG + '.zip')
+    ports.fetch_project('sdl2-image', 'https://github.com/emscripten-ports/SDL2_image/archive/' + TAG + '.zip', 'SDL2_image-' + TAG)
     def create():
       logging.warning('building port: sdl2-image')
       shutil.copyfile(os.path.join(ports.get_dir(), 'sdl2-image', 'SDL2_image-' + TAG, 'SDL_image.h'), os.path.join(ports.get_build_dir(), 'sdl2', 'include', 'SDL_image.h'))

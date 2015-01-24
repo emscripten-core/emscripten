@@ -1,4 +1,4 @@
-import os, json, logging
+import os, json, logging, zipfile
 import shared
 from subprocess import Popen, CalledProcessError
 import multiprocessing
@@ -775,7 +775,7 @@ class Ports:
   name_cache = set()
 
   @staticmethod
-  def fetch_project(name, url):
+  def fetch_project(name, url, subdir):
     fullname = os.path.join(Ports.get_dir(), name)
 
     if name not in Ports.name_cache: # only mention each port once in log
@@ -803,7 +803,6 @@ class Ports:
             path, subdir = local[1].split('|')
             logging.warning('grabbing local port: ' + name + ' from ' + path + ', into ' + subdir)
             # zip up the directory, so it looks the same as if we downloaded a zip from the remote server
-            import zipfile
             z = zipfile.ZipFile(fullname + '.zip', 'w')
             def add_dir(p):
               for f in os.listdir(p):
@@ -825,9 +824,17 @@ class Ports:
       open(fullname + '.zip', 'wb').write(data)
       State.retrieved = True
 
+    def check_tag():
+      # find subdir/version.txt
+      z = zipfile.ZipFile(fullname + '.zip', 'r')
+      names = z.namelist()
+      if not (names[0].startswith(subdir + '/') or names[0].startswith(subdir + '\\')):
+        # current zip file is old, force a retrieve
+        return False
+      return True
+
     def unpack():
       logging.warning('unpacking port: ' + name)
-      import zipfile
       shared.safe_ensure_dirs(fullname)
       z = zipfile.ZipFile(fullname + '.zip', 'r')
       try:
@@ -844,6 +851,13 @@ class Ports:
       retrieve()
 
     if not os.path.exists(fullname):
+      unpack()
+
+    if not check_tag():
+      logging.warning('local copy of port is too old, retrieving from remote server')
+      shared.try_delete(fullname)
+      shared.try_delete(fullname + '.zip')
+      retrieve()
       unpack()
 
     if State.unpacked:
