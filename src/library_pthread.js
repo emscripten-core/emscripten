@@ -171,7 +171,7 @@ var LibraryPThread = {
     });
   },
 
-  pthread_create__deps: ['_spawn_thread'],
+  pthread_create__deps: ['_spawn_thread', 'pthread_getschedparam', 'pthread_self'],
   pthread_create: function(thread, attr, start_routine, arg) {
     if (!HEAPU8.buffer instanceof SharedArrayBuffer) {
       Module['printErr']('Current environment does not support SharedArrayBuffer, pthreads are not available!');
