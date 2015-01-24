@@ -190,8 +190,19 @@ var LibraryPThread = {
       stackSize = {{{ makeGetValue('attr', 0, 'i32') }}};
       stackBase = {{{ makeGetValue('attr', 8, 'i32') }}};
       detached = {{{ makeGetValue('attr', 12/*_a_detach*/, 'i32') }}} != 0/*PTHREAD_CREATE_JOINABLE*/;
-      schedPolicy = {{{ makeGetValue('attr', 20/*_a_policy*/, 'i32') }}};
-      schedPrio = {{{ makeGetValue('attr', 24/*_a_prio*/, 'i32') }}};
+      var inheritSched = {{{ makeGetValue('attr', 16/*_a_sched*/, 'i32') }}} == 0/*PTHREAD_INHERIT_SCHED*/;
+      if (inheritSched) {
+        var prevSchedPolicy = {{{ makeGetValue('attr', 20/*_a_policy*/, 'i32') }}};
+        var prevSchedPrio = {{{ makeGetValue('attr', 24/*_a_prio*/, 'i32') }}};
+        _pthread_getschedparam(_pthread_self(), attr + 20, attr + 24);
+        schedPolicy = {{{ makeGetValue('attr', 20/*_a_policy*/, 'i32') }}};
+        schedPrio = {{{ makeGetValue('attr', 24/*_a_prio*/, 'i32') }}};
+        {{{ makeSetValue('attr', 20/*_a_policy*/, 'prevSchedPolicy', 'i32') }}};
+        {{{ makeSetValue('attr', 24/*_a_prio*/, 'prevSchedPrio', 'i32') }}};
+      } else {
+        schedPolicy = {{{ makeGetValue('attr', 20/*_a_policy*/, 'i32') }}};
+        schedPrio = {{{ makeGetValue('attr', 24/*_a_prio*/, 'i32') }}};
+      }
     }
     stackSize += 81920 /*DEFAULT_STACK_SIZE*/;
     var allocatedOwnStack = !stackBase;
