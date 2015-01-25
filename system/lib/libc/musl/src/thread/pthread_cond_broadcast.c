@@ -26,7 +26,11 @@ int pthread_cond_broadcast(pthread_cond_t *c)
 	c->_c_waiters2 = 0;
 
 #ifdef __EMSCRIPTEN__
-	emscripten_futex_requeue(&c->_c_seq, !m->_m_type || (m->_m_lock&INT_MAX)!=pthread_self()->tid, &m->_m_lock, INT_MAX);
+	int futexResult;
+	do {
+		futexResult = emscripten_futex_wake_or_requeue(&c->_c_seq, !m->_m_type || (m->_m_lock&INT_MAX)!=pthread_self()->tid,
+			c->_c_seq, &m->_m_lock);
+	} while(futexResult == -EAGAIN);
 #else
 	/* Perform the futex requeue, waking one waiter unless we know
 	 * that the calling thread holds the mutex. */

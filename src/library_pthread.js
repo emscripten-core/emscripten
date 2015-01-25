@@ -542,7 +542,7 @@ var LibraryPThread = {
 
   // pthread_sigmask - examine and change mask of blocked signals
   pthread_sigmask: function(how, set, oldset) {
-    // No-op.
+    Module['printErr']('pthread_sigmask() is not supported: this is a no-op.');
     return 0;
   },
 
@@ -551,44 +551,35 @@ var LibraryPThread = {
     return 0;
   },
 
-  // Futex API
+  // Returns 0 on success, or one of the values -ETIMEDOUT, -EWOULDBLOCK or -EINVAL on error.
   emscripten_futex_wait: function(addr, val, timeout) {
-    assert(addr);
-    var ret = Atomics.futexWait(HEAP32, addr >> 2, val, timeout);
-    if (ret === Atomics.OK) return 0;
-    if (ret === Atomics.NOTEQUAL) return -1;
-    if (ret === Atomics.TIMEDOUT) return -2;
+    if (addr <= 0 || addr > HEAP8.length || addr&3 != 0) return -{{{ cDefine('EINVAL') }}};
+    var ret = Atomics.futexWait(HEAP32, addr >> 2, val, timeout < 0x7fffffff ? timeout : Number.POSITIVE_INFINITY);
+    if (ret == Atomics.TIMEDOUT) return -{{{ cDefine('ETIMEDOUT') }}};
+    if (ret == Atomics.NOTEQUAL) return -{{{ cDefine('EWOULDBLOCK') }}};
+    if (ret == 0) return 0;
     throw 'Atomics.futexWait returned an unexpected value ' + ret;
   },
-/*
-  emscripten_futex_wait_callback: function(addr, val, timeout, callback) {
-    var callback = function(result) {
-      var res = -1;
-      if (result === Atomics.OK) res = 0;
-      else if (result === Atomics.TIMEDOUT) res = 1;
-      else throw 'Atomics.futexWaitCallback returned an unexpected value ' + result;
-      asm.dynCall_vi(callback, res);
-    };
-    var ret = Atomics.futexWaitCallback(HEAP32, addr >> 2, val, timeout, callback);
-    if (ret === Atomics.OK) return 0;
-    if (ret === Atomics.TIMEDOUT) return 1;
-    if (ret === Atomics.NOTEQUAL) return 2;
-    throw 'Atomics.futexWaitCallback returned an unexpected value ' + ret;
-  },
-*/
-  // Returns the number of threads woken up.
+
+  // Returns the number of threads (>= 0) woken up, or the value -EINVAL on error.
   emscripten_futex_wake: function(addr, count) {
-    assert(addr);
-    return Atomics.futexWake(HEAP32, addr >> 2, count);
+    if (addr <= 0 || addr > HEAP8.length || addr&3 != 0 || count < 0) return -{{{ cDefine('EINVAL') }}};
+    var ret = Atomics.futexWake(HEAP32, addr >> 2, count);
+    if (ret >= 0) return ret;
+    throw 'Atomics.futexWake returned an unexpected value ' + ret;
   },
-/*
-  // Returns the number of threads woken up.
-  emscripten_futex_requeue: function(addr1, count, addr2, guardval) {
-    assert(addr1);
-    assert(addr2);
-    return Atomics.futexRequeue(HEAP32, addr1 >> 2, count, addr2 >> 2, guardval);
+
+  // Returns the number of threads (>= 0) woken up, or one of the values -EINVAL or -EAGAIN on error.
+  emscripten_futex_wake_or_requeue: function(addr, count, cmpValue, addr2) {
+    if (addr <= 0 || addr2 <= 0 || addr >= HEAP8.length || addr2 >= HEAP8.length || count < 0
+      || addr&3 != 0 || addr2&3 != 0) {
+      return -{{{ cDefine('EINVAL') }}};
+    }
+    var ret = Atomics.futexWakeOrRequeue(HEAP32, addr >> 2, count, cmpValue, addr >> 2);
+    if (ret == Atomics.NOTEQUAL) return -{{{ cDefine('EAGAIN') }}};
+    if (ret >= 0) return ret;
+    throw 'Atomics.futexWakeOrRequeue returned an unexpected value ' + ret;
   }
-*/
 };
 
 autoAddDeps(LibraryPThread, '$PThread');
