@@ -53,6 +53,7 @@ this.onmessage = function(e) {
       FS.createStandardStreams(); // pthread workers don't run prerun handlers, so initialize TTY filesystem manually so that printf() et al. works.
     }
     threadBlock = e.data.threadBlock;
+    tempDoublePtr = Runtime.alignMemory(threadBlock + 8/*tempDoublePtr*/, 8);
     assert(threadBlock);
     selfThreadId = e.data.selfThreadId;
     assert(selfThreadId);

@@ -216,8 +216,8 @@ var LibraryPThread = {
       }
     }
     stackSize += 81920 /*DEFAULT_STACK_SIZE*/;
-    var allocatedOwnStack = stackBase != 0;
-    if (!allocatedOwnStack) {
+    var allocatedOwnStack = stackBase == 0; // If allocatedOwnStack == true, then the pthread impl maintains the stack allocation.
+    if (allocatedOwnStack) {
       stackBase = _malloc(stackSize); // Allocate a stack if the user doesn't want to place the stack in a custom memory area.
     } else {
       // Musl stores the stack base address assuming stack grows downwards, so adjust it to Emscripten convention that the
