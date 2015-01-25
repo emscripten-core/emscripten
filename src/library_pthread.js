@@ -291,6 +291,10 @@ var LibraryPThread = {
       Module['printErr']('PThread ' + thread + ' does not exist!');
       return ERRNO_CODES.ESRCH;
     }
+    if (!pthread.threadBlock) {
+      Module['printErr']('PThread ' + thread + ' has already finished execution!');
+      return ERRNO_CODES.ESRCH;
+    }
     if (signal != 0) {
       pthread.worker.terminate();
       PThread.freeThreadData(pthread);
