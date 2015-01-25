@@ -213,8 +213,8 @@ var LibraryPThread = {
       }
     }
     stackSize += 81920 /*DEFAULT_STACK_SIZE*/;
-    var allocatedOwnStack = !stackBase;
-    if (allocatedOwnStack) stackBase = _malloc(stackSize); // Allocate a stack if the user doesn't want to place the stack in a custom memory area.
+    var allocatedOwnStack = stackBase != 0;
+    if (!allocatedOwnStack) stackBase = _malloc(stackSize); // Allocate a stack if the user doesn't want to place the stack in a custom memory area.
 
     var threadParams = {
       stackBase: stackBase,
