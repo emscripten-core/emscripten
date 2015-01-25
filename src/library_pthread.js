@@ -248,9 +248,7 @@ var LibraryPThread = {
       var threadStatus = Atomics.load(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
       if (threadStatus == 1) { // Exited?
         var threadExitCode = Atomics.load(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2);
-        if (status) {
-          {{{ makeSetValue('status', 0, 'threadExitCode', 'i32') }}};
-        }
+        if (status) {{{ makeSetValue('status', 0, 'threadExitCode', 'i32') }}};
         Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, 1); // Mark the thread as detached.
         PThread.freeThreadData(pthread);
         worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
@@ -258,9 +256,9 @@ var LibraryPThread = {
         PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker.pthread), 1); // Not a running Worker anymore.
         return 0;
       } else if (threadStatus != 0) {
-        // Thread was canceled. It is an error to first pthread_cancel() a thread and then later pthread_join() on it.
-        Module['printErr']('Attempted to join thread ' + thread + ', which has been previously canceled!');
-        return 1; 
+        // Thread was canceled, so it should return with exit code PTHREAD_CANCELED.
+        if (status) {{{ makeSetValue('status', 0, -1/*PTHREAD_CANCELED*/, 'i32') }}};
+        return 0;
       }
     }
   },
