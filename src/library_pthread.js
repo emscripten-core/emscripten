@@ -294,7 +294,7 @@ var LibraryPThread = {
 
   pthread_testcancel: function() {
     if (!ENVIRONMENT_IS_PTHREAD) return;
-    assert(threadBlock);
+    if (!threadBlock) return;
     var canceled = Atomics.load(HEAPU32, (threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
     if (canceled == 2) throw 'Canceled!';
   },
