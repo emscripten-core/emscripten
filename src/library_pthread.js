@@ -220,6 +220,7 @@ var LibraryPThread = {
       // Musl stores the stack base address assuming stack grows downwards, so adjust it to Emscripten convention that the
       // stack grows upwards instead.
       stackBase -= stackSize;
+      assert(stackBase > 0);
     }
 
     var threadParams = {
