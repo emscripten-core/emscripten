@@ -282,6 +282,7 @@ var LibraryPThread = {
 
   pthread_kill: function(thread, signal) {
     if (thread == PThread.MAIN_THREAD_ID) {
+      if (signal == 0) return 0; // signal == 0 is a no-op.
       Module['printErr']('Main thread (id=' + thread + ') cannot be killed with pthread_kill!');
       return ERRNO_CODES.ESRCH;
     }
