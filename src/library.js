@@ -19,11 +19,11 @@
 
 LibraryManager.library = {
   // keep this low in memory, because we flatten arrays with them in them
-  stdin: 'ENVIRONMENT_IS_PTHREAD?0:allocate(1, "i32*", ALLOC_STATIC)',
-  stdout: 'ENVIRONMENT_IS_PTHREAD?0:allocate(1, "i32*", ALLOC_STATIC)',
-  stderr: 'ENVIRONMENT_IS_PTHREAD?0:allocate(1, "i32*", ALLOC_STATIC)',
-  _impure_ptr: 'ENVIRONMENT_IS_PTHREAD?0:allocate(1, "i32*", ALLOC_STATIC)',
-  __dso_handle: 'ENVIRONMENT_IS_PTHREAD?0:allocate(1, "i32*", ALLOC_STATIC)',
+  stdin: 'ENVIRONMENT_IS_PTHREAD?-1:allocate(1, "i32*", ALLOC_STATIC)',
+  stdout: 'ENVIRONMENT_IS_PTHREAD?-1:allocate(1, "i32*", ALLOC_STATIC)',
+  stderr: 'ENVIRONMENT_IS_PTHREAD?-1:allocate(1, "i32*", ALLOC_STATIC)',
+  _impure_ptr: 'ENVIRONMENT_IS_PTHREAD?-1:allocate(1, "i32*", ALLOC_STATIC)',
+  __dso_handle: 'ENVIRONMENT_IS_PTHREAD?-1:allocate(1, "i32*", ALLOC_STATIC)',
   $PROCINFO: {
     // permissions
     /*

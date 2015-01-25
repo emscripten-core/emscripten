@@ -175,7 +175,10 @@ var LibraryPThread = {
       threadBlock: pthread.threadBlock,
       selfThreadId: threadId,
       stackBase: threadParams.stackBase,
-      stackSize: threadParams.stackSize
+      stackSize: threadParams.stackSize,
+      stdin: _stdin,
+      stdout: _stdout,
+      stderr: _stderr
     });
   },
 
