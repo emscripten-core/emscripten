@@ -242,11 +242,6 @@ var LibraryPThread = {
   },
 
   pthread_join: function(thread, status) {
-    var pthread = PThread.pthreads[thread];
-    if (!pthread) {
-      Module['printErr']('PThread ' + thread + ' does not exist!');
-      return ERRNO_CODES.ESRCH;
-    }
     if (!ENVIRONMENT_IS_PTHREAD && thread == 1) {
       Module['printErr']('Main thread ' + thread + ' is attempting to join to itself!');
       return ERRNO_CODES.EDEADLK; // The main thread is attempting to join itself?
@@ -255,7 +250,15 @@ var LibraryPThread = {
       Module['printErr']('PThread ' + thread + ' is attempting to join to itself!');
       return ERRNO_CODES.EDEADLK; // A non-main thread is attempting to join itself?
     }
-    assert(pthread.threadBlock);
+    var pthread = PThread.pthreads[thread];
+    if (!pthread) {
+      Module['printErr']('PThread ' + thread + ' does not exist!');
+      return ERRNO_CODES.ESRCH;
+    }
+    if (!pthread.threadBlock) {
+      Module['printErr']('PThread ' + thread + ' is not running anymore!');
+      return ERRNO_CODES.ESRCH;
+    }
     var detached = Atomics.load(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.detached }}} ) >> 2);
     if (detached) {
       Module['printErr']('Attempted to join thread ' + thread + ', which was already detached!');
