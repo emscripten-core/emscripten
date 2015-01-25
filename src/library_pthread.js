@@ -23,8 +23,8 @@ var LibraryPThread = {
         while (PThread.exitHandlers.length > 0) {
           PThread.exitHandlers.pop()();
         }
+        PThread.exitHandlers = null;
       }
-      PThread.exitHandlers = null;
 
       // Call into the musl function that runs destructors of all thread-specific data.
       if (ENVIRONMENT_IS_PTHREAD && threadBlock) ___pthread_tsd_run_dtors();
@@ -39,18 +39,18 @@ var LibraryPThread = {
       if (!ENVIRONMENT_IS_PTHREAD) return 0;
 
       if (threadBlock) { // If we haven't yet exited?
-        var tb = threadBlock;
-        threadBlock = 0;
-        Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, exitCode);
+        Atomics.store(HEAPU32, (threadBlock + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, exitCode);
         // When we publish this, the main thread is free to deallocate the thread object and we are done.
         // Therefore set threadBlock = 0; above to 'release' the object in this worker thread.
-        Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 1);
+        Atomics.store(HEAPU32, (threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 1);
+        threadBlock = 0;
         postMessage({ cmd: 'exit' });
       }
     },
 
     threadCancel: function() {
       PThread.runExitHandlers();
+      Atomics.store(HEAPU32, (threadBlock + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, -1/*PTHREAD_CANCELED*/);
       threadBlock = selfThreadId = 0; // Not hosting a pthread anymore in this worker, reset the info structures to null.
       postMessage({ cmd: 'cancelDone' });
     },
@@ -273,10 +273,6 @@ var LibraryPThread = {
         PThread.unusedWorkerPool.push(worker);
         PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker.pthread), 1); // Not a running Worker anymore.
         return 0;
-      } else if (threadStatus != 0) {
-        // Thread was canceled, so it should return with exit code PTHREAD_CANCELED.
-        if (status) {{{ makeSetValue('status', 0, -1/*PTHREAD_CANCELED*/, 'i32') }}};
-        return 0;
       }
     }
   },
@@ -313,7 +309,7 @@ var LibraryPThread = {
       return ERRNO_CODES.ESRCH;
     }
     if (!pthread.threadBlock) return ERRNO_CODES.ESRCH; // Trying to cancel a thread that is no longer running.
-    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 2); // Signal the thread that it needs to cancel itself.
+    Atomics.compareExchange(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0, 2); // Signal the thread that it needs to cancel itself.
     pthread.worker.postMessage({ cmd: 'cancel' });
     return 0;
   },
