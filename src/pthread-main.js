@@ -43,7 +43,7 @@ this.onmessage = function(e) {
   if (e.data.cmd == 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
     buffer = e.data.buffer;
     importScripts(e.data.url);
-    FS.init(); // pthread workers don't run prerun handlers, so initialize filesystem manually so that printf() et al. works.
+    FS.createStandardStreams(); // pthread workers don't run prerun handlers, so initialize TTY filesystem manually so that printf() et al. works.
     postMessage({ cmd: 'loaded' });
   } else if (e.data.cmd == 'run') { // This worker was idle, and now should start executing its pthread entry point.
     threadBlock = e.data.threadBlock;
