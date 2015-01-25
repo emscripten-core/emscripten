@@ -67,10 +67,7 @@ this.onmessage = function(e) {
     } catch(e) {
       Atomics.store(HEAPU32, (threadBlock + 0 /*{{{ C_STRUCTS.pthread.threadStatus }}}*/ ) >> 2, 1); // Mark the thread as no longer running.
       if (e === 'Canceled!') {
-        Atomics.store(HEAPU32, (threadBlock + 4 /*{{{ C_STRUCTS.pthread.threadExitCode }}}*/ ) >> 2, -1 /*PTHREAD_CANCELED*/);
-        PThread.runExitHandlers();
-        threadBlock = selfThreadId = 0;
-        postMessage({ cmd: 'cancel' });
+        PThread.threadCancel();
         return;
       } else {
         Atomics.store(HEAPU32, (threadBlock + 4 /*{{{ C_STRUCTS.pthread.threadExitCode }}}*/ ) >> 2, -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
@@ -81,10 +78,8 @@ this.onmessage = function(e) {
     // (This is a no-op if explicit pthread_exit() had been called prior.)
     PThread.threadExit(result);
   } else if (e.data.cmd == 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
-    if (threadBlock) {
-      PThread.runExitHandlers();      
-      threadBlock = selfThreadId = 0; // Not hosting a pthread anymore in this worker, reset the info structures to null.
-      postMessage({ cmd: 'cancel' });
+    if (threadBlock && PThread.thisThreadCancelState == 0/*PTHREAD_CANCEL_ENABLE*/) {
+      PThread.threadCancel();
     }
   } else {
     Module['printErr']('pthread-main.js received unknown command ' + e.data.cmd);

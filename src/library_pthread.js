@@ -5,6 +5,8 @@ var LibraryPThread = {
       schedPolicy: 0/*SCHED_OTHER*/,
       schedPrio: 0
     },
+    thisThreadCancelState: 0, // 0: PTHREAD_CANCEL_ENABLE is the default for all threads. (1: PTHREAD_CANCEL_DISABLE is the other option)
+    thisThreadCancelType: 0, // 0: PTHREAD_CANCEL_DEFERRED is the default for all threads. (1: PTHREAD_CANCEL_ASYNCHRONOUS is the other option)
     // Since creating a new Web Worker is so heavy (it must reload the whole compiled script page!), maintain a pool of such
     // workers that have already parsed and loaded the scripts.
     unusedWorkerPool: [],
@@ -47,6 +49,12 @@ var LibraryPThread = {
       }
     },
 
+    threadCancel: function() {
+      PThread.runExitHandlers();
+      threadBlock = selfThreadId = 0; // Not hosting a pthread anymore in this worker, reset the info structures to null.
+      postMessage({ cmd: 'cancelDone' });
+    },
+
     freeThreadData: function(pthread) {
       if (pthread.threadBlock) {
         var tlsMemory = {{{ makeGetValue('pthread.threadBlock', C_STRUCTS.pthread.tsd, 'i32') }}};
@@ -87,7 +95,7 @@ var LibraryPThread = {
             Module['printErr']('Thread ' + e.data.threadId + ': ' + e.data.text);
           } else if (e.data.cmd == 'exit') {
             // todo 
-          } else if (e.data.cmd == 'cancel') {
+          } else if (e.data.cmd == 'cancelDone') {
               PThread.freeThreadData(worker.pthread);
               worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
               PThread.unusedWorkerPool.push(worker);
@@ -264,6 +272,10 @@ var LibraryPThread = {
   },
 
   pthread_kill: function(thread, signal) {
+    if (thread == PThread.MAIN_THREAD_ID) {
+      Module['printErr']('Main thread (id=' + thread + ') cannot be killed with pthread_kill!');
+      return ERRNO_CODES.ESRCH;
+    }
     var pthread = PThread.pthreads[thread];
     if (!pthread) {
       Module['printErr']('PThread ' + thread + ' does not exist!');
@@ -281,12 +293,16 @@ var LibraryPThread = {
   },
 
   pthread_cancel: function(thread) {
+    if (thread == PThread.MAIN_THREAD_ID) {
+      Module['printErr']('Main thread (id=' + thread + ') cannot be canceled!');
+      return ERRNO_CODES.ESRCH;
+    }
     var pthread = PThread.pthreads[thread];
     if (!pthread) {
       Module['printErr']('PThread ' + thread + ' does not exist!');
       return ERRNO_CODES.ESRCH;
     }
-    if (!pthread.threadBlock) return ERRNO_CODES.EINVAL; // Trying to cancel a thread that is no longer running.
+    if (!pthread.threadBlock) return ERRNO_CODES.ESRCH; // Trying to cancel a thread that is no longer running.
     Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 2); // Signal the thread that it needs to cancel itself.
     pthread.worker.postMessage({ cmd: 'cancel' });
     return 0;
@@ -295,17 +311,31 @@ var LibraryPThread = {
   pthread_testcancel: function() {
     if (!ENVIRONMENT_IS_PTHREAD) return;
     if (!threadBlock) return;
+    if (PThread.thisThreadCancelState != 0/*PTHREAD_CANCEL_ENABLE*/) return;
     var canceled = Atomics.load(HEAPU32, (threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
     if (canceled == 2) throw 'Canceled!';
   },
 
   pthread_setcancelstate: function(state, oldstate) {
-    // TODO
+    if (state != 0 && state != 1) return ERRNO_CODES.EINVAL;
+    if (oldstate) {{{ makeSetValue('oldstate', 0, 'PThread.thisThreadCancelState', 'i32') }}};
+    PThread.thisThreadCancelState = state;
+
+    if (PThread.thisThreadCancelState == 0/*PTHREAD_CANCEL_ENABLE*/ && ENVIRONMENT_IS_PTHREAD) {
+      // If we are re-enabling cancellation, immediately test whether this thread has been queued to be cancelled,
+      // and if so, do it.
+      var canceled = Atomics.load(HEAPU32, (threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
+      if (canceled == 2) {
+        throw 'Canceled!';
+      }
+    }
     return 0;
   },
 
   pthread_setcanceltype: function(type, oldtype) {
-    // TODO
+    if (type != 0 && type != 1) return ERRNO_CODES.EINVAL;
+    if (oldtype) {{{ makeSetValue('oldtype', 0, 'PThread.thisThreadCancelType', 'i32') }}};
+    PThread.thisThreadCancelType = type;
     return 0;
   },
 
