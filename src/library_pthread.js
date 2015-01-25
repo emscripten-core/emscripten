@@ -214,7 +214,13 @@ var LibraryPThread = {
     }
     stackSize += 81920 /*DEFAULT_STACK_SIZE*/;
     var allocatedOwnStack = stackBase != 0;
-    if (!allocatedOwnStack) stackBase = _malloc(stackSize); // Allocate a stack if the user doesn't want to place the stack in a custom memory area.
+    if (!allocatedOwnStack) {
+      stackBase = _malloc(stackSize); // Allocate a stack if the user doesn't want to place the stack in a custom memory area.
+    } else {
+      // Musl stores the stack base address assuming stack grows downwards, so adjust it to Emscripten convention that the
+      // stack grows upwards instead.
+      stackBase -= stackSize;
+    }
 
     var threadParams = {
       stackBase: stackBase,
