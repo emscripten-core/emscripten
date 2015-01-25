@@ -1460,6 +1460,9 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/sleep.html
     return _usleep(seconds * 1e6);
   },
+#if USE_PTHREADS
+  usleep__deps: ['pthread_testcancel'],
+#endif
   usleep: function(useconds) {
     // int usleep(useconds_t useconds);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/usleep.html
@@ -1469,13 +1472,26 @@ LibraryManager.library = {
       var start = self['performance']['now']();
       while (self['performance']['now']() - start < msec) {
         // Do nothing.
+#if USE_PTHREADS
+        // In order to be able to cancel threads that have busy loops in them,
+        // since web workers do not support interrupting execution with signals,
+        // use a cooperative method of testing cancellation while sleeping.
+        _pthread_testcancel();
+#endif
       }
     } else {
       var start = Date.now();
       while (Date.now() - start < msec) {
         // Do nothing.
+#if USE_PTHREADS
+        _pthread_testcancel();
+#endif
       }
     }
+#if USE_PTHREADS
+    // And once here, in case the loop body happens to never execute even a single tick.
+    _pthread_testcancel();
+#endif
     return 0;
   },
   swab: function(src, dest, nbytes) {
