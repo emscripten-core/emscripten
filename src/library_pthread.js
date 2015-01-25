@@ -229,11 +229,20 @@ var LibraryPThread = {
       Module['printErr']('PThread ' + thread + ' does not exist!');
       return ERRNO_CODES.ESRCH;
     }
-    if (!ENVIRONMENT_IS_PTHREAD && thread == 1) return ERRNO_CODES.EDEADLK; // The main thread is attempting to join itself?
-    if (ENVIRONMENT_IS_PTHREAD && selfThreadId == THREAD) return ERRNO_CODES.EDEADLK; // A non-main thread is attempting to join itself?
+    if (!ENVIRONMENT_IS_PTHREAD && thread == 1) {
+      Module['printErr']('Main thread ' + thread + ' is attempting to join to itself!');
+      return ERRNO_CODES.EDEADLK; // The main thread is attempting to join itself?
+    }
+    if (ENVIRONMENT_IS_PTHREAD && selfThreadId == THREAD) {
+      Module['printErr']('PThread ' + thread + ' is attempting to join to itself!');
+      return ERRNO_CODES.EDEADLK; // A non-main thread is attempting to join itself?
+    }
     assert(pthread.threadBlock);
     var detached = Atomics.load(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.detached }}} ) >> 2);
-    if (detached) return ERRNO_CODES.EINVAL; // The thread is already detached, can no longer join it!
+    if (detached) {
+      Module['printErr']('Attempted to join thread ' + thread + ', which was already detached!');
+      return ERRNO_CODES.EINVAL; // The thread is already detached, can no longer join it!
+    }
     var worker = pthread.worker;
     for(;;) {
       var threadStatus = Atomics.load(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
@@ -250,6 +259,7 @@ var LibraryPThread = {
         return 0;
       } else if (threadStatus != 0) {
         // Thread was canceled. It is an error to first pthread_cancel() a thread and then later pthread_join() on it.
+        Module['printErr']('Attempted to join thread ' + thread + ', which has been previously canceled!');
         return 1; 
       }
     }
