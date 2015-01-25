@@ -331,9 +331,12 @@ var LibraryPThread = {
     if (oldstate) {{{ makeSetValue('oldstate', 0, 'PThread.thisThreadCancelState', 'i32') }}};
     PThread.thisThreadCancelState = state;
 
-    if (PThread.thisThreadCancelState == 0/*PTHREAD_CANCEL_ENABLE*/ && ENVIRONMENT_IS_PTHREAD) {
+    if (PThread.thisThreadCancelState == 0/*PTHREAD_CANCEL_ENABLE*/
+      && PThread.thisThreadCancelType == 1/*PTHREAD_CANCEL_ASYNCHRONOUS*/ && ENVIRONMENT_IS_PTHREAD) {
       // If we are re-enabling cancellation, immediately test whether this thread has been queued to be cancelled,
-      // and if so, do it.
+      // and if so, do it. However, we can only do this if the cancel state of current thread is
+      // PTHREAD_CANCEL_ASYNCHRONOUS, since this function pthread_setcancelstate() is not a cancellation point.
+      // See http://man7.org/linux/man-pages/man7/pthreads.7.html
       var canceled = Atomics.load(HEAPU32, (threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
       if (canceled == 2) {
         throw 'Canceled!';
