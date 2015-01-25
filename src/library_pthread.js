@@ -464,8 +464,16 @@ var LibraryPThread = {
       tb = threadInfo.threadBlock;
     }
 
+    var newSchedPrio = {{{ makeGetValue('schedparam', 0, 'i32') }}};
+    if (newSchedPrio < 0) return ERRNO_CODES.EINVAL;
+    if (policy == 1/*SCHED_FIFO*/ || policy == 2/*SCHED_RR*/) {
+      if (newSchedPrio > 99) return ERRNO_CODES.EINVAL;
+    } else {
+      if (newSchedPrio > 1) return ERRNO_CODES.EINVAL;
+    }
+
     Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.attr }}} + 20) >> 2, policy);
-    Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.attr }}} + 24) >> 2, {{{ makeGetValue('schedparam', 0, 'i32') }}});
+    Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.attr }}} + 24) >> 2, newSchedPrio);
     return 0;
   },
 
@@ -504,6 +512,13 @@ var LibraryPThread = {
       var threadInfo = PThread.pthreads[thread];
       if (!threadInfo) return ERRNO_CODES.ESRCH;
       tb = threadInfo.threadBlock;
+    }
+
+    if (prio < 0) return ERRNO_CODES.EINVAL;
+    if (policy == 1/*SCHED_FIFO*/ || policy == 2/*SCHED_RR*/) {
+      if (prio > 99) return ERRNO_CODES.EINVAL;
+    } else {
+      if (prio > 1) return ERRNO_CODES.EINVAL;
     }
 
     Atomics.store(HEAPU32, (threadInfo.threadBlock + {{{ C_STRUCTS.pthread.attr }}} + 24) >> 2, prio);
