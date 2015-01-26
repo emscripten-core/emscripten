@@ -1325,7 +1325,7 @@ mergeInto(LibraryManager.library, {
       });
     },
     shouldMountRootNodeFS: function() {
-      return (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_NODEWEBKIT) && Module['MOUNT_ROOT_NODEFS'];
+      return (ENVIRONMENT_IS_NODE) && Module['MOUNT_ROOT_NODEFS'];
     },
     staticInit: function() {
       FS.ensureErrnoError();
