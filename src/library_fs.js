@@ -1266,20 +1266,22 @@ mergeInto(LibraryManager.library, {
       // default tty devices. however, if the standard streams
       // have been overwritten we create a unique device for
       // them instead.
-      if (Module['stdin']) {
-        FS.createDevice('/dev', 'stdin', Module['stdin']);
-      } else {
-        FS.symlink('/dev/tty', '/dev/stdin');
-      }
-      if (Module['stdout']) {
-        FS.createDevice('/dev', 'stdout', null, Module['stdout']);
-      } else {
-        FS.symlink('/dev/tty', '/dev/stdout');
-      }
-      if (Module['stderr']) {
-        FS.createDevice('/dev', 'stderr', null, Module['stderr']);
-      } else {
-        FS.symlink('/dev/tty1', '/dev/stderr');
+      if (!FS.shouldMountRootNodeFS()) {
+        if (Module['stdin']) {
+          FS.createDevice('/dev', 'stdin', Module['stdin']);
+        } else {
+          FS.symlink('/dev/tty', '/dev/stdin');
+        }
+        if (Module['stdout']) {
+          FS.createDevice('/dev', 'stdout', null, Module['stdout']);
+        } else {
+          FS.symlink('/dev/tty', '/dev/stdout');
+        }
+        if (Module['stderr']) {
+          FS.createDevice('/dev', 'stderr', null, Module['stderr']);
+        } else {
+          FS.symlink('/dev/tty1', '/dev/stderr');
+        }
       }
 
       // open default streams for the stdin, stdout and stderr devices
@@ -1322,15 +1324,21 @@ mergeInto(LibraryManager.library, {
         FS.genericErrors[code].stack = '<generic error, no stack>';
       });
     },
+    shouldMountRootNodeFS: function() {
+      return (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_NODEWEBKIT) && Module['MOUNT_ROOT_NODEFS'];
+    },
     staticInit: function() {
       FS.ensureErrnoError();
 
       FS.nameTable = new Array(4096);
 
-      FS.mount(MEMFS, {}, '/');
-
-      FS.createDefaultDirectories();
-      FS.createDefaultDevices();
+      if (FS.shouldMountRootNodeFS()) {
+        // will mount it in NODEFS.staticInit()
+      } else {
+        FS.mount(MEMFS, {}, '/');
+        FS.createDefaultDirectories();
+        FS.createDefaultDevices();
+      }
     },
     init: function(input, output, error) {
       assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
