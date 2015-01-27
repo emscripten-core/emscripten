@@ -1250,6 +1250,56 @@ int main()
 
     self.do_run(src, r'''d is at 24''')
 
+  def test_setjmp_noleak(self):
+    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('non-fastcomp do not hit the limit.')
+
+    src = r'''
+#include <setjmp.h>
+#include <stdio.h>
+#include <assert.h>
+
+jmp_buf env;
+
+void luaWork(int d){
+  int x;
+  printf("d is at %d\n", d);
+
+  longjmp(env, 1);
+}
+
+#include <malloc.h>
+#include <stdlib.h>
+
+void dump() {
+  struct mallinfo m = mallinfo();
+  printf("dump: %d , %d\n", m.arena, m.uordblks);
+}
+
+void work(int n)
+{
+  printf("work %d\n", n);
+  dump();
+
+  if(!setjmp(env)){
+    luaWork(n);
+  }
+
+  if (n > 0) work(n-1);
+}
+
+int main() {
+  struct mallinfo m1 = mallinfo();
+  dump();
+  work(10);
+  dump();
+  struct mallinfo m2 = mallinfo();
+  assert(m1.arena == m2.arena && m1.uordblks == m2.uordblks);
+  printf("ok.\n");
+}
+'''
+
+    self.do_run(src, r'''ok.''')
+
   def test_exceptions(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")
       if self.emcc_args is None: return self.skip('need emcc to add in libcxx properly')
