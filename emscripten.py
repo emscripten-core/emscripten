@@ -785,7 +785,6 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     if settings['GLOBAL_BASE'] >= 0:
       backend_args += ['-emscripten-global-base=%d' % settings['GLOBAL_BASE']]
     backend_args += ['-O' + str(settings['OPT_LEVEL'])]
-    backend_args += ['-emscripten-max-setjmps=%d' % settings['MAX_SETJMPS']]
     if DEBUG:
       logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))
       t = time.time()

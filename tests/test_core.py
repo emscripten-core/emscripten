@@ -1216,11 +1216,9 @@ base align: 0, 0, 0, 0'''])
         return 0;
       }
     '''
-    for maxx in [Settings.MAX_SETJMPS/2, Settings.MAX_SETJMPS, 2*Settings.MAX_SETJMPS]:
-      Settings.MAX_SETJMPS = maxx
-      for num in [maxx, maxx+1]:
-        print maxx, num
-        self.do_run(src.replace('NUM', str(num)), '0\n' * num if num <= Settings.MAX_SETJMPS or not Settings.ASM_JS else 'build with a higher value for MAX_SETJMPS')
+    for num in [1, 5, 20, 1000]:
+      print num
+      self.do_run(src.replace('NUM', str(num)), '0\n' * num)
 
   def test_setjmp_many_2(self):
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('non-fastcomp do not hit the limit.')
@@ -1250,8 +1248,7 @@ int main()
 }
 '''
 
-    self.do_run(src, r'''d is at 19
-too many setjmps in a function call, build with a higher value for MAX_SETJMPS''')
+    self.do_run(src, r'''d is at 24''')
 
   def test_exceptions(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")

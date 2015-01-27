@@ -5763,39 +5763,45 @@ LibraryManager.library = {
 
   saveSetjmp__asm: true,
   saveSetjmp__sig: 'iii',
-  saveSetjmp__deps: ['putchar'],
-  saveSetjmp: function(env, label, table) {
+  saveSetjmp__deps: ['realloc'],
+  saveSetjmp: function(env, label, table, size) {
     // Not particularly fast: slow table lookup of setjmpId to label. But setjmp
     // prevents relooping anyhow, so slowness is to be expected. And typical case
     // is 1 setjmp per invocation, or less.
     env = env|0;
     label = label|0;
     table = table|0;
+    size = size|0;
     var i = 0;
     setjmpId = (setjmpId+1)|0;
     {{{ makeSetValueAsm('env', '0', 'setjmpId', 'i32') }}};
-    while ((i|0) < {{{ MAX_SETJMPS }}}) {
+    while ((i|0) < (size|0)) {
       if ({{{ makeGetValueAsm('table', '(i<<3)', 'i32') }}} == 0) {
         {{{ makeSetValueAsm('table', '(i<<3)', 'setjmpId', 'i32') }}};
         {{{ makeSetValueAsm('table', '(i<<3)+4', 'label', 'i32') }}};
         // prepare next slot
         {{{ makeSetValueAsm('table', '(i<<3)+8', '0', 'i32') }}};
-        return 0;
+        tempRet0 = size;
+        return table | 0;
       }
       i = i+1|0;
     }
-    {{{ makePrintChars('too many setjmps in a function call, build with a higher value for MAX_SETJMPS') }}};
-    abort(0);
-    return 0;
+    // grow the table
+    size = (size*2)|0;
+    table = _realloc(table|0, 8*(size+1|0)|0) | 0;
+    table = _saveSetjmp(env|0, label|0, table|0, size|0) | 0;
+    tempRet0 = size;
+    return table | 0;
   },
 
   testSetjmp__asm: true,
   testSetjmp__sig: 'iii',
-  testSetjmp: function(id, table) {
+  testSetjmp: function(id, table, size) {
     id = id|0;
     table = table|0;
+    size = size|0;
     var i = 0, curr = 0;
-    while ((i|0) < {{{ MAX_SETJMPS }}}) {
+    while ((i|0) < (size|0)) {
       curr = {{{ makeGetValueAsm('table', '(i<<3)', 'i32') }}};
       if ((curr|0) == 0) break;
       if ((curr|0) == (id|0)) {
@@ -8710,6 +8716,7 @@ LibraryManager.library = {
 
   // misc definitions to avoid unnecessary unresolved symbols from fastcomp
   emscripten_prep_setjmp: true,
+  emscripten_cleanup_setjmp: true,
   emscripten_check_longjmp: true,
   emscripten_get_longjmp_result: true,
   emscripten_setjmp: true,
