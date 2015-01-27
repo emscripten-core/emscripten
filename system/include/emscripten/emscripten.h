@@ -24,6 +24,10 @@ extern "C" {
 #include <SDL/SDL.h> /* for SDL_Delay in async_call */
 #endif
 
+#if __EMSCRIPTEN__
+// This version of emscripten has <emscripten/vr.h> and associated support
+#define EMSCRIPTEN_HAS_VR_SUPPORT 1
+#endif
 
 /* Typedefs */
 
