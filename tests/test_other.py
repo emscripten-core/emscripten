@@ -1942,6 +1942,8 @@ int f() {
        ['asm', 'localCSE']),
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-ensureLabelSet.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-ensureLabelSet-output.js')).read(),
        ['asm', 'ensureLabelSet']),
+      (path_from_root('tests', 'optimizer', '3154.js'), open(path_from_root('tests', 'optimizer', '3154-output.js')).read(),
+       ['asm', 'eliminate', 'registerize', 'asmLastOpts', 'last']),
     ]:
       print input, passes
 
@@ -1981,7 +1983,8 @@ int f() {
         self.assertIdentical(expected, js.replace('\r\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n'))
 
       if input not in [ # blacklist of tests that are native-optimizer only
-        path_from_root('tests', 'optimizer', 'asmLastOpts.js')
+        path_from_root('tests', 'optimizer', 'asmLastOpts.js'),
+        path_from_root('tests', 'optimizer', '3154.js')
       ]:
         check_js(output, expected)
       else:

@@ -727,7 +727,14 @@ struct JSPrinter {
   }
 
   void printToplevel(Ref node) {
-    printStats(node[1]);
+    if (node[1]->size() > 0) {
+      printStats(node[1]);
+    } else {
+      // this is an empty toplevel. this should normally not happen, but
+      // can occur in very un-LLVM-optimized code. emit a ; because otherwise
+      // we can end up with e.g. if ()  else f() (nothing in the if-true block)
+      emit(';');
+    }
   }
 
   void printBlock(Ref node) {
