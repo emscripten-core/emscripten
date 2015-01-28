@@ -1412,7 +1412,7 @@ try:
           passes += ['symbolMap='+target+'.symbols']
         if minify_whitespace and 'last' in passes:
           passes += ['minifyWhitespace']
-        logging.debug('applying js optimization passes: %s', passes)
+        logging.debug('applying js optimization passes: %s', ' '.join(passes))
         final = shared.Building.js_optimizer(final, passes, jcache, debug_level >= 4, js_optimizer_extra_info, just_split=just_split, just_concat=just_concat)
         js_transform_tempfiles.append(final)
         if DEBUG: save_intermediate(title, suffix='js' if 'emitJSON' not in passes else 'json')
