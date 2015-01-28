@@ -4675,31 +4675,37 @@ Descriptor desc;
     assert ' = f0;' in src or ' = f0,' in src
 
   def test_merge_pair(self):
-    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-O1', '-profiling', '-o', 'left.js']).communicate()
-    src = open('left.js').read()
-    open('right.js', 'w').write(src.replace('function _main() {', 'function _main() { Module.print("replaced"); '))
+    def test(filename, full):
+      print '----', filename, full
+      Popen([PYTHON, EMCC, path_from_root('tests', filename), '-O1', '-profiling', '-o', 'left.js']).communicate()
+      src = open('left.js').read()
+      open('right.js', 'w').write(src.replace('function _main() {', 'function _main() { Module.print("replaced"); '))
 
-    self.assertContained('hello, world!', run_js('left.js'))
-    self.assertContained('hello, world!', run_js('right.js'))
-    self.assertNotContained('replaced', run_js('left.js'))
-    self.assertContained('replaced', run_js('right.js'))
+      self.assertContained('hello, world!', run_js('left.js'))
+      self.assertContained('hello, world!', run_js('right.js'))
+      self.assertNotContained('replaced', run_js('left.js'))
+      self.assertContained('replaced', run_js('right.js'))
 
-    n = src.count('function _')
+      n = src.count('function _')
 
-    def has(i):
-      Popen([PYTHON, path_from_root('tools', 'merge_pair.py'), 'left.js', 'right.js', str(i), 'out.js']).communicate()
-      return 'replaced' in run_js('out.js')
+      def has(i):
+        Popen([PYTHON, path_from_root('tools', 'merge_pair.py'), 'left.js', 'right.js', str(i), 'out.js']).communicate()
+        return 'replaced' in run_js('out.js')
 
-    assert not has(0), 'same as left'
-    assert has(n), 'same as right'
-    assert has(n+5), 'same as right, big number is still ok'
+      assert not has(0), 'same as left'
+      assert has(n), 'same as right'
+      assert has(n+5), 'same as right, big number is still ok'
 
-    change = -1
-    for i in range(n):
-      if has(i):
-        change = i
-        break
-    assert change > 0 and change <= n
+      if full:
+        change = -1
+        for i in range(n):
+          if has(i):
+            change = i
+            break
+        assert change > 0 and change <= n
+
+    test('hello_world.cpp', True)
+    test('hello_libcxx.cpp', False)
 
   def test_emmake_emconfigure(self):
     def check(what, args, fail=True):
