@@ -21,6 +21,7 @@ ZERO = False
 ASYNC = False
 ASSERTIONS = False
 PROFILING = False
+SWAPPABLE = False
 
 def handle_arg(arg):
   global ZERO, ASYNC, ASSERTIONS, PROFILING
@@ -33,7 +34,12 @@ def handle_arg(arg):
     return False
   return True
 
-if os.environ.get('EMCC_DEBUG'):
+DEBUG = os.environ.get('EMCC_DEBUG')
+
+config = shared.Configuration()
+temp_files = config.get_temp_files()
+
+if DEBUG:
   print >> sys.stderr, 'running emterpretify on', sys.argv
 
 sys.argv = filter(handle_arg, sys.argv)
@@ -646,6 +652,7 @@ if __name__ == '__main__':
       assert temp[1] == '@'
       temp = open(temp[2:-1]).read()
     extra_blacklist = json.loads(temp)
+
     if len(sys.argv) >= 6:
       temp = sys.argv[5]
       if temp[0] == '"':
@@ -654,10 +661,15 @@ if __name__ == '__main__':
         temp = open(temp[2:-1]).read()
       WHITELIST = json.loads(temp)
 
+      if len(sys.argv) >= 7:
+        SWAPPABLE = int(sys.argv[6])
+
   BLACKLIST = set(list(BLACKLIST) + extra_blacklist)
 
-  shared.logging.debug('saving original (non-emterpreted) code to ' + infile + '.orig.js')
-  shutil.copyfile(infile, infile + '.orig.js')
+  if DEBUG or SWAPPABLE:
+    orig = infile + '.orig.js'
+    shared.logging.debug('saving original (non-emterpreted) code to ' + orig)
+    shutil.copyfile(infile, orig)
 
   # final global functions
 
@@ -679,7 +691,7 @@ if __name__ == '__main__':
   tabled_funcs = asm.get_table_funcs()
   exported_funcs = [func.split(':')[0] for func in asm.exports]
 
-  temp = infile + '.tmp.js'
+  temp = temp_files.get('.js').name # infile + '.tmp.js'
 
   # find emterpreted functions reachable by non-emterpreted ones, we will force a trampoline for them later
 
