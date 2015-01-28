@@ -302,6 +302,7 @@ class AsmModule():
   def apply_funcs_map(self, funcs_map): # assumes self.funcs is the set of funcs, in the right order
     jses = []
     for f in self.funcs:
-      jses.append(funcs_map[f])
+      if f in funcs_map: # TODO: fix
+        jses.append(funcs_map[f])
     self.funcs_js = '\n'.join(jses)
 

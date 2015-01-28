@@ -30,7 +30,8 @@ n = min(n, len(funcs))
 
 for i in range(n):
   f = funcs[i]
-  left_map[f] = right_map[f]
+  if f in right_map: # TODO: fix
+    left_map[f] = right_map[f]
 print 'merging in the first %d from the second file' % n
 
 left_asm.apply_funcs_map(left_map)
