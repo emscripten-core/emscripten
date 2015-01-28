@@ -7112,7 +7112,7 @@ function emterpretify(ast) {
 
     function walkStatements(stats) {
       if (!stats) return [];
-      if (stats[0] === 'block') stats = stats[1];
+      if (stats[0] === 'block') return walkStatements(stats[1]);
       if (typeof stats[0] === 'string') stats = [stats];
       var ret = [];
       stats.forEach(function(stat) {
