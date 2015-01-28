@@ -985,8 +985,6 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       return ''
     funcs_js[1] = re.sub(r'/\* PRE_ASM \*/(.*)\n', lambda m: move_preasm(m), funcs_js[1])
 
-    funcs_js += ['\n// EMSCRIPTEN_END_FUNCS\n']
-
     class Counter:
       i = 0
       j = 0
@@ -1088,7 +1086,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     infos = [make_table(sig, raw) for sig, raw in last_forwarded_json['Functions']['tables'].iteritems()]
     Counter.pre = []
 
-    function_tables_defs = '\n'.join([info[0] for info in infos]) + '\n// EMSCRIPTEN_END_FUNCS\n' + '\n'.join([info[1] for info in infos])
+    function_tables_defs = '\n'.join([info[0] for info in infos]) + '\n\n// EMSCRIPTEN_END_FUNCS\n' + '\n'.join([info[1] for info in infos])
 
     asm_setup = ''
     maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'clz32']]
@@ -1193,21 +1191,21 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       coerced_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i], settings) for i in range(1, len(sig))])
       ret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('FUNCTION_TABLE_%s[index&{{{ FTM_%s }}}](%s)' % (sig, sig, coerced_args), sig[0], settings)
       function_tables_impls.append('''
-  function dynCall_%s(index%s%s) {
-    index = index|0;
-    %s
-    %s;
-  }
+function dynCall_%s(index%s%s) {
+  index = index|0;
+  %s
+  %s;
+}
 ''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, ret))
 
       ffi_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i], settings, ffi_arg=True) for i in range(1, len(sig))])
       for i in range(settings['RESERVED_FUNCTION_POINTERS']):
         jsret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('jsCall(%d%s%s)' % (i, ',' if ffi_args else '', ffi_args), sig[0], settings, ffi_result=True)
         function_tables_impls.append('''
-  function jsCall_%s_%s(%s) {
-    %s
-    %s;
-  }
+function jsCall_%s_%s(%s) {
+  %s
+  %s;
+}
 
 ''' % (sig, i, args, arg_coercions, jsret))
       shared.Settings.copy(settings)
@@ -1453,7 +1451,7 @@ function getTempRet0() {
 // EMSCRIPTEN_END_ASM
 (%s, %s, buffer);
 %s;
-''' % (pre_tables + '\n'.join(function_tables_impls) + '\n' + function_tables_defs.replace('\n', '\n  '), exports,
+''' % (pre_tables + '\n'.join(function_tables_impls) + '\n' + function_tables_defs, exports,
        'Module' + access_quote('asmGlobalArg'),
        'Module' + access_quote('asmLibraryArg'),
        receiving)]
