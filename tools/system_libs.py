@@ -313,6 +313,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         'wctrans.c',
         'wcwidth.c',
        ]],
+       ['dirent', [
+        'alphasort.c',
+        'scandir.c',
+       ]],
        ['legacy', [
         'err.c',
        ]],
