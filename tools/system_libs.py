@@ -1,4 +1,4 @@
-import os, json, logging, zipfile
+import os, json, logging, zipfile, glob
 import shared
 from subprocess import Popen, CalledProcessError
 import multiprocessing
@@ -268,6 +268,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     ]
     for directory, sources in musl_files:
       libc_files += [os.path.join('libc', 'musl', 'src', directory, source) for source in sources]
+
+    # Add pthread files.
+    libc_files += [os.path.join('pthread', 'library_pthread.c')]
+    libc_files += glob.glob(shared.path_from_root('system/lib/libc/musl/src/thread/*.c'))
     return build_libc(libname, libc_files, ['-O2'])
 
   # libcextra

@@ -690,7 +690,6 @@ try:
     elif newargs[i] == '-lpthread':
       newargs[i] = ''
       pthreads = True
-      default_cxx_std = False
 
   if should_exit:
     sys.exit(0)
@@ -746,18 +745,6 @@ try:
     if not any(s.startswith('PTHREAD_POOL_SIZE=') for s in settings_changes):
       settings_changes.append('PTHREAD_POOL_SIZE=0')
     js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
-
-    def add_sources_in_dir(d):
-      global next_arg_index
-      for subdir, dirs, files in os.walk(d):
-        for file in files:
-          input_files.append((next_arg_index, subdir+'/'+file))
-          next_arg_index += 1
-
-    add_sources_in_dir(shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'thread'))
-    add_sources_in_dir(shared.path_from_root('system', 'lib', 'pthread'))
-    newargs += ['-I' + shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal')]
-    newargs += ['-x', 'c']
 
   has_source_inputs = False
   has_header_inputs = False
