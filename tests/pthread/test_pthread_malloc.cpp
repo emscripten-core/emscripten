@@ -40,7 +40,7 @@ int main()
   int result = 0;
   for(int i = 0; i < NUM_THREADS; ++i) {
     int res = 0;
-    pthread_join(thr[i], (void*)&res);
+    pthread_join(thr[i], (void**)&res);
     result += res;
   }
 
