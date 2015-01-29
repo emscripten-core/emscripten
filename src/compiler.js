@@ -331,12 +331,12 @@ try {
     }
   }
 } catch(err) {
-  if (err.indexOf('Aborting compilation due to previous errors') != -1) {
+  if (err.toString().indexOf('Aborting compilation due to previous errors') != -1) {
     // Compiler failed on user error, print out the error message.
     printErr(err + ' | ' + err.stack);
   } else {
     // Compiler failed on internal compiler error!
-    printErr('Internal compiler error in src/compiler.js! Please raise a bug report at https://github.com/kripken/emscripten/issues/ with a log of the build and the input files used to run. Exception message: ' + err + ' | ' + err.stack);
+    printErr('Internal compiler error in src/compiler.js! Please raise a bug report at https://github.com/kripken/emscripten/issues/ with a log of the build and the input files used to run. Exception message: "' + err + '" | ' + err.stack);
   }
 
   if (ENVIRONMENT_IS_NODE) {
