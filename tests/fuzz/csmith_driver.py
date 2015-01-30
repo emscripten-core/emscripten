@@ -53,6 +53,7 @@ while 1:
   print '1) Generate source'
   extra_args = []
   if random.random() < 0.5: extra_args += ['--no-math64']
+  extra_args += ['--no-bitfields'] # due to pnacl bug 4027, "LLVM ERROR: can't convert calls with illegal types"
   #if random.random() < 0.5: extra_args += ['--float'] # XXX hits undefined behavior on float=>int conversions (too big to fit)
   suffix = '.c'
   COMP = shared.CLANG_CC
