@@ -3994,7 +3994,7 @@ Failed to open file for writing: /tmp/file; errno=13; Permission denied
   def test_embed_file_large(self):
     # If such long files are encoded on one line,
     # they overflow the interpreter's limit
-    large_size = int(40e6)
+    large_size = int(1500000)
     open('large.txt', 'w').write('x' * large_size)
     open('src.cpp', 'w').write(r'''
       #include <stdio.h>
