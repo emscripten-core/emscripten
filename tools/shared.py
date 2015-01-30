@@ -1258,7 +1258,7 @@ class Building:
         # will trample each other when we extract them. to help warn of such situations, we warn if there
         # are duplicate entries in the archive
         if len(contents) != len(set(contents)):
-          logging.warning('loading from archive %s, which has duplicate entries (files with identical names). this is dangerous as only the last will be taken into account, and you may see surprising undefined symbols later. run |llvm-ar t archive.a| to see the list of entries' % f)
+          logging.warning('loading from archive %s, which has duplicate entries (files with identical base names). this is dangerous as only the last will be taken into account, and you may see surprising undefined symbols later. you should rename source files to avoid this problem (or avoid .a archives, and just link bitcode together to form libraries for later linking)' % f)
           warned = set()
           for i in range(len(contents)):
             curr = contents[i]

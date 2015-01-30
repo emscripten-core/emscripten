@@ -1451,6 +1451,41 @@ int f() {
 
     self.assertContained('a\nb\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+  def test_dup_o_in_one_a(self):
+    open('common.c', 'w').write(r'''
+      #include <stdio.h>
+      void a(void) {
+        printf("a\n");
+      }
+    ''')
+    Popen([PYTHON, EMCC, 'common.c', '-c', '-o', 'common.o']).communicate()
+
+    try:
+      os.makedirs(os.path.join(self.get_dir(), 'libdir'));
+    except:
+      pass
+    open(os.path.join('libdir', 'common.c'), 'w').write(r'''
+      #include <stdio.h>
+      void b(void) {
+        printf("b...\n");
+      }
+    ''')
+    Popen([PYTHON, EMCC, os.path.join('libdir', 'common.c'), '-c', '-o', os.path.join('libdir', 'common.o')]).communicate()
+
+    Popen([PYTHON, EMAR, 'rc', 'liba.a', 'common.o', os.path.join('libdir', 'common.o')]).communicate()
+
+    open('main.c', 'w').write(r'''
+      void a(void);
+      void b(void);
+      int main() {
+        a();
+        b();
+      }
+    ''')
+    out, err = Popen([PYTHON, EMCC, 'main.c', '-L.', '-la'], stderr=PIPE).communicate()
+    assert 'loading from archive /tmp/emscripten_temp/liba.a, which has duplicate entries' in err
+    assert 'duplicate: common.o' in err
+
   def test_export_in_a(self):
     export_name = 'this_is_an_entry_point'
 
