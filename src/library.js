@@ -150,7 +150,7 @@ LibraryManager.library = {
     }
     {{{ makeSetValue('entry', C_STRUCTS.dirent.d_ino, 'id', 'i32') }}};
     {{{ makeSetValue('entry', C_STRUCTS.dirent.d_off, 'stream.position', 'i32') }}};
-    {{{ makeSetValue('entry', C_STRUCTS.dirent.d_reclen, 'name.length + 1', 'i32') }}};
+    {{{ makeSetValue('entry', C_STRUCTS.dirent.d_reclen, C_STRUCTS.dirent.__size__, 'i32') }}};
     for (var i = 0; i < name.length; i++) {
       {{{ makeSetValue('entry + ' + C_STRUCTS.dirent.d_name, 'i', 'name.charCodeAt(i)', 'i8') }}};
     }

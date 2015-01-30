@@ -71,12 +71,15 @@ void test() {
   ent = readdir(dir);
   assert(!strcmp(ent->d_name, "."));
   assert(ent->d_type & DT_DIR);
+  assert(ent->d_reclen == sizeof(*ent));
   ent = readdir(dir);
   assert(!strcmp(ent->d_name, ".."));
   assert(ent->d_type & DT_DIR);
+  assert(ent->d_reclen == sizeof(*ent));
   ent = readdir(dir);
   assert(!strcmp(ent->d_name, "file.txt"));
   assert(ent->d_type & DT_REG);
+  assert(ent->d_reclen == sizeof(*ent));
   ent = readdir(dir);
   assert(!ent);
 
