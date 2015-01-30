@@ -127,11 +127,29 @@ void test() {
   puts("success");
 }
 
+void test_scandir() {
+  struct dirent **namelist;
+  int n;
+
+  n = scandir(".", &namelist, NULL, alphasort);
+  printf("n: %d\n", n);
+  if (n < 0)
+    return;
+  else {
+    while (n--) {
+      printf("name: %s\n", namelist[n]->d_name);
+      free(namelist[n]);
+    }
+    free(namelist);
+  }
+}
+
 int main() {
   printf("SIGILL: %s\n", strsignal(SIGILL));
   atexit(cleanup);
   signal(SIGABRT, cleanup);
   setup();
   test();
+  test_scandir();
   return EXIT_SUCCESS;
 }

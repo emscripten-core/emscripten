@@ -4477,7 +4477,17 @@ main( int argv, char ** argc ) {
     if self.emcc_args is None: return self.skip('requires emcc')
     self.banned_js_engines = [V8_ENGINE] # stderr printing limitations in v8
     src = open(path_from_root('tests', 'dirent', 'test_readdir.c'), 'r').read()
-    self.do_run(src, 'SIGILL: Illegal instruction\nsuccess', force_c=True)
+    self.do_run(src, '''SIGILL: Illegal instruction
+success
+n: 7
+name: tmp
+name: nocanread
+name: home
+name: foobar
+name: dev
+name: ..
+name: .
+''', force_c=True)
 
   def test_readdir_empty(self):
     src = open(path_from_root('tests', 'dirent', 'test_readdir_empty.c'), 'r').read()
