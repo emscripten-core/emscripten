@@ -21,6 +21,7 @@
          T __wcscoll_l
          T __wcsxfrm_l
          W __wctype_l
+         T alphasort
          T asprintf
          T atoll
          T bcmp
@@ -137,6 +138,7 @@
          T regfree
          T rindex
          T scalbnf
+         T scandir
          D signgam
          T sscanf
          T stpcpy
