@@ -681,6 +681,14 @@ class Parser {
     printf("|\n");
   }
 
+  NodeRef makeBinary(NodeRef left, IString op, NodeRef right) {
+    if (op == PERIOD) {
+      return Builder::makeDot(left, right);
+    } else {
+      return Builder::makeBinary(left, op ,right);
+    }
+  }
+
   NodeRef parseExpression(ExpressionElement initial, char*&src, const char* seps) {
     //dump("parseExpression", src);
     ExpressionParts& parts = expressionPartsStack.back();
@@ -727,7 +735,7 @@ class Parser {
             IString op = parts[i].getOp();
             if (!ops.ops.has(op)) continue;
             if (ops.type == OperatorClass::Binary && i > 0 && i < (int)parts.size()-1) {
-              parts[i] = Builder::makeBinary(parts[i-1].getNode(), op, parts[i+1].getNode());
+              parts[i] = makeBinary(parts[i-1].getNode(), op, parts[i+1].getNode());
               parts.erase(parts.begin() + i + 1);
               parts.erase(parts.begin() + i - 1);
             } else if (ops.type == OperatorClass::Prefix && i < (int)parts.size()-1) {
@@ -753,7 +761,7 @@ class Parser {
             IString op = parts[i].getOp();
             if (!ops.ops.has(op)) continue;
             if (ops.type == OperatorClass::Binary && i > 0 && i < (int)parts.size()-1) {
-              parts[i] = Builder::makeBinary(parts[i-1].getNode(), op, parts[i+1].getNode());
+              parts[i] = makeBinary(parts[i-1].getNode(), op, parts[i+1].getNode());
               parts.erase(parts.begin() + i + 1);
               parts.erase(parts.begin() + i - 1);
               i--;
