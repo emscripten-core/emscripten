@@ -888,6 +888,7 @@ try:
     try:
       assert shared.Settings.ASM_JS > 0, 'ASM_JS must be enabled in fastcomp'
       assert shared.Settings.UNALIGNED_MEMORY == 0, 'forced unaligned memory not supported in fastcomp'
+      assert shared.Settings.FORCE_ALIGNED_MEMORY == 0, 'forced aligned memory is not supported in fastcomp'
       assert shared.Settings.CHECK_HEAP_ALIGN == 0, 'check heap align not supported in fastcomp - use SAFE_HEAP instead'
       assert shared.Settings.SAFE_DYNCALLS == 0, 'safe dyncalls not supported in fastcomp'
       assert shared.Settings.ASM_HEAP_LOG == 0, 'asm heap log not supported in fastcomp'
