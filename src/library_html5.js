@@ -633,8 +633,14 @@ var LibraryJSEvents = {
       target.style.height = cssHeight + 'px';
 
       if (strategy.filteringMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_FILTERING_NEAREST') }}}) {
+        target.style.msInterpolationMode = 'nearest-neighbor';
+        target.style.imageRendering = 'optimizeSpeed';
         target.style.imageRendering = '-moz-crisp-edges';
-        target.style['-ms-interpolation-mode'] = 'nearest-neighbor';
+        target.style.imageRendering = '-o-crisp-edges';
+        target.style.imageRendering = '-webkit-optimize-contrast';
+        target.style.imageRendering = 'optimize-contrast';
+        target.style.imageRendering = 'crisp-edges';
+        target.style.imageRendering = 'pixelated';
       }
 
       var dpiScale = (strategy.canvasResolutionScaleMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF') }}}) ? window.devicePixelRatio : 1;
