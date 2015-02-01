@@ -819,6 +819,11 @@ class Parser {
   }
 
   NodeRef parseElementOrStatement(char*& src, const char *seps) {
+    src = skipSpace(src);
+    if (*src == ';') {
+      src++;
+      return Builder::makeBlock(); // we don't need the brackets here, but oh well
+    }
     NodeRef ret = parseElement(src, seps);
     src = skipSpace(src);
     if (*src == ';') {
