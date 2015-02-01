@@ -1483,8 +1483,9 @@ int f() {
       }
     ''')
     out, err = Popen([PYTHON, EMCC, 'main.c', '-L.', '-la'], stderr=PIPE).communicate()
-    assert 'loading from archive /tmp/emscripten_temp/liba.a, which has duplicate entries' in err
-    assert 'duplicate: common.o' in err
+    assert 'loading from archive' in err, err
+    assert 'which has duplicate entries' in err, err
+    assert 'duplicate: common.o' in err, err
 
   def test_export_in_a(self):
     export_name = 'this_is_an_entry_point'
