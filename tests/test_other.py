@@ -4759,3 +4759,14 @@ Descriptor desc;
     check('emconfigure', ['./configure'], fail=False)
     check('emconfigure', ['cmake'], fail=False)
 
+  def test_sdl2_config(self):
+    for args, expected in [
+      [['--version'], '2.0.0'],
+      [['--cflags'], '-s USE_SDL=2'],
+      [['--libs'], '-s USE_SDL=2'],
+      [['--cflags', '--libs'], '-s USE_SDL=2'],
+    ]:
+      print args, expected
+      out, err = Popen([PYTHON, path_from_root('system', 'bin', 'sdl2-config')] + args, stdout=PIPE, stderr=PIPE).communicate()
+      assert expected in out, out
+
