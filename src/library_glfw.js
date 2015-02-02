@@ -255,10 +255,10 @@ var LibraryGLFW = {
 
     getModBits: function(win) {
       var mod = 0;
-      if (win.keys[0x10]) mod |= 0x0001; // GLFW_MOD_SHIFT
-      if (win.keys[0x11]) mod |= 0x0002; // GLFW_MOD_CONTROL
-      if (win.keys[0x12]) mod |= 0x0004; // GLFW_MOD_ALT
-      if (win.keys[0x5B]) mod |= 0x0008; // GLFW_MOD_SUPER
+      if (win.keys[340]) mod |= 0x0001; // GLFW_MOD_SHIFT
+      if (win.keys[341]) mod |= 0x0002; // GLFW_MOD_CONTROL
+      if (win.keys[342]) mod |= 0x0004; // GLFW_MOD_ALT
+      if (win.keys[343]) mod |= 0x0008; // GLFW_MOD_SUPER
       return mod;
     },
 
