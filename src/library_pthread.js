@@ -408,6 +408,13 @@ var LibraryPThread = {
     if (!PThread.mainThreadBlock) {
       PThread.mainThreadBlock = _malloc({{{ C_STRUCTS.pthread.__size__ }}});
       _memset(PThread.mainThreadBlock, 0, {{{ C_STRUCTS.pthread.__size__ }}});
+
+      // Allocate memory for thread-local storage and initialize it to zero.
+      var tlsMemory = _malloc({{{ cDefine('PTHREAD_KEYS_MAX') }}} * 4);
+      for(var i = 0; i < {{{ cDefine('PTHREAD_KEYS_MAX') }}}; ++i) {
+        {{{ makeSetValue('tlsMemory', 'i*4', 0, 'i32') }}};
+      }
+      Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.tsd }}} ) >> 2, tlsMemory); // Init thread-local-storage memory array.
     }
     return PThread.mainThreadBlock; // Main JS thread
   },
