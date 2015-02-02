@@ -235,7 +235,7 @@ class CheerpBenchmarker(Benchmarker):
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     suffix = filename.split('.')[-1]
-    cheerp_temp = filename + '.cheerp.' + suffix
+    cheerp_temp = filename[:-len(suffix)-1] + '.cheerp.' + suffix
     code = open(filename).read()
     if 'int main()' in code:
       main_args = ''
@@ -281,7 +281,7 @@ class CheerpBenchmarker(Benchmarker):
         'CHEERP_PREFIX': CHEERP_BIN + '../',
       })
     # cheerp_args += ['-cheerp-pretty-code'] # get function names, like emcc --profiling
-    final = os.path.dirname(filename) + os.path.sep + 'cheerp_' + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
+    final = os.path.dirname(filename) + os.path.sep + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
     final = final.replace('.cpp', '')
     try_delete(final)
     dirs_to_delete = []
@@ -292,14 +292,14 @@ class CheerpBenchmarker(Benchmarker):
         '-cheerp-wasm-loader=' + final,
         cheerp_temp,
         '-Wno-writable-strings', # for how we set up webMain
-        '-o', final + '.wasm'
+        '-o', final.replace('.js', '.wasm')
       ] + shared_args
       # print(' '.join(cmd))
       run_process(cmd)
       self.filename = final
       Building.get_binaryen()
       if self.binaryen_opts:
-        run_binaryen_opts(final + '.wasm', self.binaryen_opts)
+        run_binaryen_opts(final.replace('.js', '.wasm'), self.binaryen_opts)
     finally:
       for dir_ in dirs_to_delete:
         try_delete(dir_)
@@ -308,7 +308,7 @@ class CheerpBenchmarker(Benchmarker):
     return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True, assert_returncode=None)
 
   def get_output_files(self):
-    return [self.filename, self.filename + '.wasm']
+    return [self.filename, self.filename.replace('.js', '.wasm')]
 
   def cleanup(self):
     pass
@@ -348,6 +348,7 @@ try:
   if os.path.exists(CHEERP_BIN):
     benchmarkers += [
       # CheerpBenchmarker('cheerp-sm-wasm', SPIDERMONKEY_ENGINE + ['--no-wasm-baseline']),
+      # CheerpBenchmarker('cheerp-v8-wasm', V8_ENGINE),
     ]
 except Exception as e:
   benchmarkers_error = str(e)
