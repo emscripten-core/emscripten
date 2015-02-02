@@ -5159,7 +5159,13 @@ LibraryManager.library = {
     {{{ makeSetValue('res', C_STRUCTS.timespec.tv_nsec, 'nsec', 'i32') }}} // resolution is nanoseconds
     return 0;
   },
-
+  clock_getcpuclockid__deps: ['emscripten_get_now_is_monotonic', '$PROCINFO'],
+  clock_getcpuclockid: function(pid, clk_id) {
+    if (pid < 0) return ERRNO_CODES.ESRCH;
+    if (pid != 0 && pid != PROCINFO.pid) return ERRNO_CODES.ENOSYS;
+    if (clk_id) {{{ makeSetValue('clk_id', 0, 2/*CLOCK_PROCESS_CPUTIME_ID*/, 'i32') }}};
+    return 0;
+  },
   // http://pubs.opengroup.org/onlinepubs/000095399/basedefs/sys/time.h.html
   gettimeofday: function(ptr) {
     var now = Date.now();
