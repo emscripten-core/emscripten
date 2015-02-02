@@ -2586,6 +2586,10 @@ window.close = function() {
   def test_pthread_printf(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_printf.cpp'), expected='0', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=1'])
 
+  # Test that the main thread is able to use pthread_set/getspecific.
+  def test_pthread_setspecific_mainthread(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_setspecific_mainthread.cpp'), expected='0', args=['-lpthread'])
+
   # Test that it is possible to send a signal via calling alarm(timeout), which in turn calls to the signal handler set by signal(SIGALRM, func);
   def test_sigalrm(self):
     self.btest(path_from_root('tests', 'sigalrm.cpp'), expected='0')
