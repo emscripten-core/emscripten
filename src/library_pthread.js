@@ -12,6 +12,8 @@ var LibraryPThread = {
     unusedWorkerPool: [],
     // The currently executing pthreads.
     runningWorkers: [],
+    // Points to a pthread_t structure in the Emscripten main heap, allocated on demand if/when first needed.
+    mainThreadBlock: 0,
     // Maps pthread_t to pthread info objects
     pthreads: {},
     pthreadIdCounter: 2, // 0: invalid thread, 1: main JS UI thread, 2+: IDs for pthreads
@@ -403,7 +405,11 @@ var LibraryPThread = {
   // using an incremented running counter, which helps in debugging.
   __pthread_self: function() {
     if (ENVIRONMENT_IS_PTHREAD) return threadBlock;
-    return 0; // Main JS thread
+    if (!PThread.mainThreadBlock) {
+      PThread.mainThreadBlock = _malloc({{{ C_STRUCTS.pthread.__size__ }}});
+      _memset(PThread.mainThreadBlock, 0, {{{ C_STRUCTS.pthread.__size__ }}});
+    }
+    return PThread.mainThreadBlock; // Main JS thread
   },
 
   pthread_getschedparam: function(thread, policy, schedparam) {
