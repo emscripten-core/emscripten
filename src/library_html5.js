@@ -633,7 +633,6 @@ var LibraryJSEvents = {
       target.style.height = cssHeight + 'px';
 
       if (strategy.filteringMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_FILTERING_NEAREST') }}}) {
-        target.style.msInterpolationMode = 'nearest-neighbor';
         target.style.imageRendering = 'optimizeSpeed';
         target.style.imageRendering = '-moz-crisp-edges';
         target.style.imageRendering = '-o-crisp-edges';
@@ -1244,7 +1243,6 @@ var LibraryJSEvents = {
     var oldDocumentOverflow = document.documentElement.style.overflow; // Chrome, Firefox
     var oldDocumentScroll = document.body.scroll; // IE
     var oldImageRendering = canvas.style.imageRendering;
-    var oldInterpolationMode = canvas.style['-ms-interpolation-mode'];
 
     function restoreOldStyle() {
       var fullscreenElement = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
@@ -1276,7 +1274,6 @@ var LibraryJSEvents = {
         document.documentElement.style.overflow = oldDocumentOverflow; // Chrome, Firefox
         document.body.scroll = oldDocumentScroll; // IE
         canvas.style.imageRendering = oldImageRendering;
-        canvas.style['-ms-interpolation-mode'] = oldInterpolationMode;
         if (canvas.GLctxObject) canvas.GLctxObject.GLctx.viewport(0, 0, oldWidth, oldHeight);
 
         if (__currentFullscreenStrategy.canvasResizedCallback) {
