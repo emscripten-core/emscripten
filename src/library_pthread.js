@@ -441,6 +441,13 @@ var LibraryPThread = {
 
   pthread_setschedparam: function(thread, policy, schedparam) {
     if (!schedparam) return ERRNO_CODES.EINVAL;
+    var newSchedPrio = {{{ makeGetValue('schedparam', 0, 'i32') }}};
+    if (newSchedPrio < 0) return ERRNO_CODES.EINVAL;
+    if (policy == 1/*SCHED_FIFO*/ || policy == 2/*SCHED_RR*/) {
+      if (newSchedPrio > 99) return ERRNO_CODES.EINVAL;
+    } else {
+      if (newSchedPrio > 1) return ERRNO_CODES.EINVAL;
+    }
 
     var tb;
     if (ENVIRONMENT_IS_PTHREAD) {
@@ -462,14 +469,6 @@ var LibraryPThread = {
       var threadInfo = PThread.pthreads[thread];
       if (!threadInfo) return ERRNO_CODES.ESRCH;
       tb = threadInfo.threadBlock;
-    }
-
-    var newSchedPrio = {{{ makeGetValue('schedparam', 0, 'i32') }}};
-    if (newSchedPrio < 0) return ERRNO_CODES.EINVAL;
-    if (policy == 1/*SCHED_FIFO*/ || policy == 2/*SCHED_RR*/) {
-      if (newSchedPrio > 99) return ERRNO_CODES.EINVAL;
-    } else {
-      if (newSchedPrio > 1) return ERRNO_CODES.EINVAL;
     }
 
     Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.attr }}} + 20) >> 2, policy);
@@ -494,6 +493,7 @@ var LibraryPThread = {
 
   pthread_setschedprio: function(thread, prio) {
     var tb;
+    if (prio < 0) return ERRNO_CODES.EINVAL;
     if (ENVIRONMENT_IS_PTHREAD) {
       if (thread != selfThreadId) {
         Module['printErr']('TODO: Currently non-main threads can only pthread_setschedprio themselves!');
@@ -506,6 +506,11 @@ var LibraryPThread = {
       tb = threadBlock;
     } else {
       if (thread == PThread.MAIN_THREAD_ID) {
+        if (PThread.mainThreadInfo.schedPolicy == 1/*SCHED_FIFO*/ || PThread.mainThreadInfo.schedPolicy == 2/*SCHED_RR*/) {
+          if (prio > 99) return ERRNO_CODES.EINVAL;
+        } else {
+          if (prio > 1) return ERRNO_CODES.EINVAL;
+        }
         PThread.mainThreadInfo.schedPrio = {{{ makeGetValue('prio', 0, 'i32') }}};
         return 0;
       }
@@ -513,15 +518,15 @@ var LibraryPThread = {
       if (!threadInfo) return ERRNO_CODES.ESRCH;
       tb = threadInfo.threadBlock;
     }
+    var schedPolicy = Atomics.load(HEAPU32, (tb + {{{ C_STRUCTS.pthread.attr }}} + 20 ) >> 2);
 
-    if (prio < 0) return ERRNO_CODES.EINVAL;
-    if (policy == 1/*SCHED_FIFO*/ || policy == 2/*SCHED_RR*/) {
+    if (schedPolicy == 1/*SCHED_FIFO*/ || schedPolicy == 2/*SCHED_RR*/) {
       if (prio > 99) return ERRNO_CODES.EINVAL;
     } else {
       if (prio > 1) return ERRNO_CODES.EINVAL;
     }
 
-    Atomics.store(HEAPU32, (threadInfo.threadBlock + {{{ C_STRUCTS.pthread.attr }}} + 24) >> 2, prio);
+    Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.attr }}} + 24) >> 2, prio);
     return 0;
   },
 
