@@ -4,7 +4,6 @@
 #include "../internal/pthread_impl.h"
 #include <assert.h>
 
-#if 0
 int pthread_mutex_lock(pthread_mutex_t *m)
 {
 	int c = emscripten_atomic_cas_u32(&m->_m_lock, 0, 1);
@@ -57,7 +56,7 @@ int pthread_mutex_timedlock(pthread_mutex_t *restrict m, const struct timespec *
 
 	return 0;
 }
-#endif
+
 int sched_get_priority_max(int policy)
 {
 	// Web workers do not actually support prioritizing threads,
