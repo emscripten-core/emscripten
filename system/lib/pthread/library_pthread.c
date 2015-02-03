@@ -4,6 +4,13 @@
 #include "../internal/pthread_impl.h"
 #include <assert.h>
 
+static void __pthread_mutex_locked(pthread_mutex_t *mutex)
+{
+	// The lock is now ours, mark this thread as the owner of this lock.
+	assert(mutex->_m_lock == 0);
+	mutex->_m_lock = __pthread_self()->tid;
+}
+
 int pthread_mutex_lock(pthread_mutex_t *mutex)
 {
 	assert(__pthread_self() != 0);
@@ -27,10 +34,7 @@ int pthread_mutex_lock(pthread_mutex_t *mutex)
 		} while((c = emscripten_atomic_cas_u32(&mutex->_m_addr, 0, 2)));
 	}
 
-	// The lock is now ours, mark this thread as the owner of this lock.
-	assert(mutex->_m_lock == 0);
-	mutex->_m_lock = __pthread_self()->tid;
-
+	__pthread_mutex_locked(mutex);
 	return 0;
 }
 
@@ -67,8 +71,10 @@ int pthread_mutex_trylock(pthread_mutex_t *mutex)
 		}
 	}
 
-	if (emscripten_atomic_cas_u32(&mutex->_m_addr, 0, 1) == 0)
+	if (emscripten_atomic_cas_u32(&mutex->_m_addr, 0, 1) == 0) {
+		__pthread_mutex_locked(mutex);
 		return 0;
+	}
 	else
 		return EBUSY;
 }
@@ -93,13 +99,14 @@ int pthread_mutex_timedlock(pthread_mutex_t *restrict mutex, const struct timesp
 			if (c == 2 || emscripten_atomic_cas_u32(&mutex->_m_addr, 1, 2) != 0)
 			{
 				int ret = emscripten_futex_wait(&mutex->_m_addr, 2, nsecs);
-				if (ret == 0) return 0;
+				if (ret == 0) break;
 				else return ETIMEDOUT;
 
 			}
 		} while((c = emscripten_atomic_cas_u32(&mutex->_m_addr, 0, 2)));
 	}
 
+	__pthread_mutex_locked(mutex);
 	return 0;
 }
 
