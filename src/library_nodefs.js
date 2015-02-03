@@ -5,6 +5,9 @@ mergeInto(LibraryManager.library, {
     isWindows: false,
     staticInit: function() {
       NODEFS.isWindows = !!process.platform.match(/^win/);
+      if (FS.shouldMountRootNodeFS()) {
+        FS.mount(NODEFS, { root: '/' }, '/');
+      }
     },
     mount: function (mount) {
       assert(ENVIRONMENT_IS_NODE);
