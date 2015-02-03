@@ -1555,7 +1555,6 @@ LibraryManager.library = {
       case {{{ cDefine('_SC_THREAD_CPUTIME') }}}:
       case {{{ cDefine('_SC_THREAD_PRIO_INHERIT') }}}:
       case {{{ cDefine('_SC_THREAD_PRIO_PROTECT') }}}:
-      case {{{ cDefine('_SC_THREAD_PRIORITY_SCHEDULING') }}}:
       case {{{ cDefine('_SC_THREAD_PROCESS_SHARED') }}}:
       case {{{ cDefine('_SC_THREAD_SAFE_FUNCTIONS') }}}:
       case {{{ cDefine('_SC_THREADS') }}}:
@@ -1569,6 +1568,8 @@ LibraryManager.library = {
       case {{{ cDefine('_SC_2_SW_DEV') }}}:
       case {{{ cDefine('_SC_2_VERSION') }}}:
         return 200809;
+      case {{{ cDefine('_SC_THREAD_PRIORITY_SCHEDULING') }}}:
+        return 0;
       case {{{ cDefine('_SC_MQ_OPEN_MAX') }}}:
       case {{{ cDefine('_SC_XOPEN_STREAMS') }}}:
       case {{{ cDefine('_SC_XBS5_LP64_OFF64') }}}:
