@@ -1,4 +1,5 @@
 var LibraryPThread = {
+  $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock();',
   $PThread: {
     MAIN_THREAD_ID: 1, // A special constant that identifies the main JS thread ID.
     mainThreadInfo: {
@@ -13,7 +14,19 @@ var LibraryPThread = {
     // The currently executing pthreads.
     runningWorkers: [],
     // Points to a pthread_t structure in the Emscripten main heap, allocated on demand if/when first needed.
-    mainThreadBlock: 0,
+    // mainThreadBlock: undefined,
+    initMainThreadBlock: function() {
+      if (ENVIRONMENT_IS_PTHREAD) return undefined;
+      PThread.mainThreadBlock = allocate({{{ C_STRUCTS.pthread.__size__ }}}, "i32*", ALLOC_STATIC);
+      for(var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}}/4; ++i) HEAPU32[PThread.mainThreadBlock/4+i] = 0;
+
+      // Allocate memory for thread-local storage.
+      var tlsMemory = allocate({{{ cDefine('PTHREAD_KEYS_MAX') }}} * 4, "i32*", ALLOC_STATIC);
+      for(var i = 0; i < {{{ cDefine('PTHREAD_KEYS_MAX') }}}; ++i) HEAPU32[tlsMemory/4+i] = 0;
+      Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.tsd }}} ) >> 2, tlsMemory); // Init thread-local-storage memory array.
+      Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.tid }}} ) >> 2, PThread.mainThreadBlock); // Main thread ID.
+      Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.pid }}} ) >> 2, PROCINFO.pid); // Process ID.
+    },
     // Maps pthread_t to pthread info objects
     pthreads: {},
     pthreadIdCounter: 2, // 0: invalid thread, 1: main JS UI thread, 2+: IDs for pthreads
@@ -160,6 +173,8 @@ var LibraryPThread = {
     Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, threadParams.detached);
     Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.tsd }}} ) >> 2, tlsMemory); // Init thread-local-storage memory array.
     Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.tsd_used }}} ) >> 2, 0); // Mark initial status to unused.
+    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.tid }}} ) >> 2, pthread.threadBlock); // Main thread ID.
+    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.pid }}} ) >> 2, PROCINFO.pid); // Process ID.
 
     Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.attr }}}) >> 2, threadParams.stackSize);
     Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.attr }}} + 8) >> 2, threadParams.stackBase);
@@ -403,20 +418,10 @@ var LibraryPThread = {
   // pthread internal self() function which returns a pointer to the C control block for the thread.
   // pthread_self() and __pthread_self() are separate so that we can ensure that each thread gets its unique ID
   // using an incremented running counter, which helps in debugging.
+  __pthread_self__deps: ['$PROCINFO'],
   __pthread_self: function() {
     if (ENVIRONMENT_IS_PTHREAD) return threadBlock;
-    if (!PThread.mainThreadBlock) {
-      PThread.mainThreadBlock = _malloc({{{ C_STRUCTS.pthread.__size__ }}});
-      _memset(PThread.mainThreadBlock, 0, {{{ C_STRUCTS.pthread.__size__ }}});
-
-      // Allocate memory for thread-local storage and initialize it to zero.
-      var tlsMemory = _malloc({{{ cDefine('PTHREAD_KEYS_MAX') }}} * 4);
-      for(var i = 0; i < {{{ cDefine('PTHREAD_KEYS_MAX') }}}; ++i) {
-        {{{ makeSetValue('tlsMemory', 'i*4', 0, 'i32') }}};
-      }
-      Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.tsd }}} ) >> 2, tlsMemory); // Init thread-local-storage memory array.
-    }
-    return PThread.mainThreadBlock; // Main JS thread
+    return PThread.mainThreadBlock; // Main JS thread.
   },
 
   pthread_getschedparam: function(thread, policy, schedparam) {

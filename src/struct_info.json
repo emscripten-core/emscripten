@@ -1396,7 +1396,9 @@
               "tsd",
               "tsd_used",
               "detached",
-              "attr"
+              "attr",
+              "tid",
+              "pid"
             ]
         },
         "defines": []
