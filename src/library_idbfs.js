@@ -54,7 +54,9 @@ mergeInto(LibraryManager.library, {
           fileStore = db.createObjectStore(IDBFS.DB_STORE_NAME);
         }
 
-        fileStore.createIndex('timestamp', 'timestamp', { unique: false });
+        if (!fileStore.indexNames.contains('timestamp')) {
+          fileStore.createIndex('timestamp', 'timestamp', { unique: false });
+        }
       };
       req.onsuccess = function() {
         db = req.result;
