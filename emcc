@@ -1547,6 +1547,21 @@ try:
 
   log_time('js opts')
 
+  if shared.Settings.MODULARIZE:
+    logging.debug('Modularizing, assigning to var ' + shared.Settings.EXPORT_NAME)
+    src = open(final).read()
+    final = final + '.modular.js'
+    f = open(final, 'w')
+    f.write('var ' + shared.Settings.EXPORT_NAME + ' = function(Module) {\n')
+    f.write('  Module = Module || {};\n')
+    f.write('\n')
+    f.write(src)
+    f.write('\n')
+    f.write('  return Module;\n')
+    f.write('}\n')
+    f.close()
+    src = None
+
   js_target = unsuffixed(target) + '.js'
 
   if shared.Settings.EMTERPRETIFY:

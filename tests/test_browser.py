@@ -2462,3 +2462,33 @@ window.close = function() {
   def test_emterpreter_async_virtual_2(self):
     self.btest('emterpreter_async_virtual_2.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O3', '-s', 'ASSERTIONS=1', '-s', 'SAFE_HEAP=1', '-profiling'])
 
+  def test_modularize(self):
+    for opts in [[], ['-O1'], ['-O2', '-profiling'], ['-O2']]:
+      for args, code in [
+        ([], 'Module();'), # defaults
+        (['-s', 'EXPORT_NAME="HelloWorld"'], '''
+          if (typeof Module !== "undefined") throw "what?!"; // do not pollute the global scope, we are modularized!
+          HelloWorld();
+        '''), # use EXPORT_NAME
+        (['-s', 'EXPORT_NAME="HelloWorld"'], '''
+          var hello = HelloWorld({ noInitialRun: true, onRuntimeInitialized: function() {
+            setTimeout(function() { hello._main(); }); // must be async, because onRuntimeInitialized may be called synchronously, so |hello| is not yet set!
+          } });
+        '''), # pass in a Module option (which prevents main(), which we then invoke ourselves)
+        (['-s', 'EXPORT_NAME="HelloWorld"', '--memory-init-file', '0'], '''
+          var hello = HelloWorld({ noInitialRun: true});
+          hello._main();
+        '''), # similar, but without a mem init file, everything is sync and simple
+      ]:
+        print 'test on', opts, args, code
+        src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
+        open('test.c', 'w').write(self.with_report_result(src))
+        Popen([PYTHON, EMCC, 'test.c', '-s', 'MODULARIZE=1'] + args + opts).communicate()
+        open('a.html', 'w').write('''
+          <script src="a.out.js"></script>
+          <script>
+            %s
+          </script>
+        ''' % code)
+        self.run_browser('a.html', '...', '/report_result?0')
+

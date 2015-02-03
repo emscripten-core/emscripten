@@ -535,6 +535,29 @@ var HEADLESS = 0; // If 1, will include shim code that tries to 'fake' a browser
 var DETERMINISTIC = 0; // If 1, we force Date.now(), Math.random, etc. to return deterministic
                        // results. Good for comparing builds for debugging purposes (and nothing else)
 
+var MODULARIZE = 0; // By default we emit all code in a straightforward way into the output
+                    // .js file. That means that if you load that in a script tag in a web
+                    // page, it will use the global scope. With MODULARIZE set, we will instead emit
+                    //
+                    //   var EXPORT_NAME = function(Module) {
+                    //     Module = Module || {};
+                    //     // .. all the emitted code from emscripten ..
+                    //     return Module;
+                    //   };
+                    //
+                    // where EXPORT_NAME is from the option of the same name (so, by default
+                    // it will be var Module = ..., and so you should change EXPORT_NAME if
+                    // you want more than one module in the same web page).
+                    //
+                    // You can then use this by something like
+                    //
+                    //   var instance = EXPORT_NAME();
+                    //
+                    // or
+                    //
+                    //   var instance = EXPORT_NAME({ option: value, ... });
+                    //
+
 var BENCHMARK = 0; // If 1, will just time how long main() takes to execute, and not
                    // print out anything at all whatsoever. This is useful for benchmarking.
 
