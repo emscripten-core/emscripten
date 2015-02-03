@@ -6,6 +6,15 @@
 
 int pthread_mutex_lock(pthread_mutex_t *mutex)
 {
+	assert(__pthread_self() != 0);
+	assert(__pthread_self()->tid != 0);
+
+	if (mutex->_m_lock == __pthread_self()->tid && (mutex->_m_type&3) == PTHREAD_MUTEX_RECURSIVE) {
+		if ((unsigned)mutex->_m_count >= INT_MAX) return EAGAIN;
+		++mutex->_m_count;
+		return 0;
+	}
+
 	int c = emscripten_atomic_cas_u32(&mutex->_m_addr, 0, 1);
 	if (c != 0) {
 		do {
@@ -15,8 +24,6 @@ int pthread_mutex_lock(pthread_mutex_t *mutex)
 	}
 
 	// The lock is now ours, mark this thread as the owner of this lock.
-	assert(__pthread_self() != 0);
-	assert(__pthread_self()->tid != 0);
 	assert(mutex->_m_lock == 0);
 	mutex->_m_lock = __pthread_self()->tid;
 
@@ -27,8 +34,17 @@ int pthread_mutex_unlock(pthread_mutex_t *mutex)
 {
 	assert(__pthread_self() != 0);
 	assert(__pthread_self()->tid == mutex->_m_lock);
-	mutex->_m_lock = 0;
 
+	if (mutex->_m_type != PTHREAD_MUTEX_NORMAL) {
+		if (!mutex->_m_lock) return EPERM;
+		if (mutex->_m_lock != __pthread_self()->tid) return EPERM;
+		if ((mutex->_m_type&3) == PTHREAD_MUTEX_RECURSIVE && mutex->_m_count) {
+			--mutex->_m_count;
+			return 0;
+		}
+	}
+
+	mutex->_m_lock = 0;
 	if (emscripten_atomic_sub_u32((uint32_t*)&mutex->_m_addr, 1) != 1)
 	{
 		emscripten_atomic_store_u32((uint32_t*)&mutex->_m_addr, 0);
@@ -39,6 +55,12 @@ int pthread_mutex_unlock(pthread_mutex_t *mutex)
 
 int pthread_mutex_trylock(pthread_mutex_t *mutex)
 {
+	if (mutex->_m_lock == __pthread_self()->tid && (mutex->_m_type&3) == PTHREAD_MUTEX_RECURSIVE) {
+		if ((unsigned)mutex->_m_count >= INT_MAX) return EAGAIN;
+		++mutex->_m_count;
+		return 0;
+	}
+
 	if (emscripten_atomic_cas_u32(&mutex->_m_addr, 0, 1) == 0)
 		return 0;
 	else
@@ -47,21 +69,26 @@ int pthread_mutex_trylock(pthread_mutex_t *mutex)
 
 int pthread_mutex_timedlock(pthread_mutex_t *restrict mutex, const struct timespec *restrict at)
 {
+	if (mutex->_m_lock == __pthread_self()->tid && (mutex->_m_type&3) == PTHREAD_MUTEX_RECURSIVE) {
+		if ((unsigned)mutex->_m_count >= INT_MAX) return EAGAIN;
+		++mutex->_m_count;
+		return 0;
+	}
+
 	double nsecs;
 	int c = emscripten_atomic_cas_u32(&mutex->_m_addr, 0, 1);
-	if (c == 0)
-		return 0;
-	nsecs = at->tv_sec * 1e9 + (double)at->tv_nsec;
+	if (c != 0) {
+		nsecs = at->tv_sec * 1e9 + (double)at->tv_nsec;
+		do {
+			if (c == 2 || emscripten_atomic_cas_u32(&mutex->_m_addr, 1, 2) != 0)
+			{
+				int ret = emscripten_futex_wait(&mutex->_m_addr, 2, nsecs);
+				if (ret == 0) return 0;
+				else return ETIMEDOUT;
 
-	do {
-		if (c == 2 || emscripten_atomic_cas_u32(&mutex->_m_addr, 1, 2) != 0)
-		{
-			int ret = emscripten_futex_wait(&mutex->_m_addr, 2, nsecs);
-			if (ret == 0) return 0;
-			else return ETIMEDOUT;
-
-		}
-	} while((c = emscripten_atomic_cas_u32(&mutex->_m_addr, 0, 2)));
+			}
+		} while((c = emscripten_atomic_cas_u32(&mutex->_m_addr, 0, 2)));
+	}
 
 	return 0;
 }
