@@ -1341,7 +1341,12 @@ FHEAP = new Float64Array(TOTAL_MEMORY);
 #endif
 #endif
 #if USE_TYPED_ARRAYS == 2
-var buffer = new ArrayBuffer(TOTAL_MEMORY);
+var buffer;
+#if ALLOW_MEMORY_SHARING
+if (Module['buffer']) buffer = Module['buffer'];
+else
+#endif
+buffer = new ArrayBuffer(TOTAL_MEMORY);
 HEAP8 = new Int8Array(buffer);
 HEAP16 = new Int16Array(buffer);
 HEAP32 = new Int32Array(buffer);

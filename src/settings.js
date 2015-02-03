@@ -67,6 +67,16 @@ var ALLOW_MEMORY_GROWTH = 0; // If false, we abort with an error if we try to al
                              // that case we must be careful about optimizations, in particular the
                              // eliminator). Note that memory growth is only supported with typed
                              // arrays.
+var ALLOW_MEMORY_SHARING = 0; // Accept an *existing* buffer for our memory, on Module['buffer']. This
+                              // lets you use the same ArrayBuffer for multiple emscripten-compiled
+                              // programs running on the same page. THIS IS VERY DANGEROUS! If you
+                              // malloc in one and free in another, for example, literally anything
+                              // can happen.
+                              // You should use this in conjunction with GLOBAL_BASE to set where
+                              // this program's memory will begin TODO: a setting to define the
+                              // top of memory too.
+                              // This is not compatible with full asm.js optimizations.
+                              // This is an experimental option and not ready for serious use.
 
 var GLOBAL_BASE = -1; // where global data begins; the start of static memory. -1 means use the
                       // default, any other value will be used as an override
