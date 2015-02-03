@@ -9,10 +9,14 @@ int pthread_mutex_lock(pthread_mutex_t *mutex)
 	assert(__pthread_self() != 0);
 	assert(__pthread_self()->tid != 0);
 
-	if (mutex->_m_lock == __pthread_self()->tid && (mutex->_m_type&3) == PTHREAD_MUTEX_RECURSIVE) {
-		if ((unsigned)mutex->_m_count >= INT_MAX) return EAGAIN;
-		++mutex->_m_count;
-		return 0;
+	if (mutex->_m_lock == __pthread_self()->tid) {
+		if ((mutex->_m_type&3) == PTHREAD_MUTEX_RECURSIVE) {
+			if ((unsigned)mutex->_m_count >= INT_MAX) return EAGAIN;
+			++mutex->_m_count;
+			return 0;
+		} else if ((mutex->_m_type&3) == PTHREAD_MUTEX_ERRORCHECK) {
+			return EDEADLK;
+		}
 	}
 
 	int c = emscripten_atomic_cas_u32(&mutex->_m_addr, 0, 1);
@@ -55,10 +59,14 @@ int pthread_mutex_unlock(pthread_mutex_t *mutex)
 
 int pthread_mutex_trylock(pthread_mutex_t *mutex)
 {
-	if (mutex->_m_lock == __pthread_self()->tid && (mutex->_m_type&3) == PTHREAD_MUTEX_RECURSIVE) {
-		if ((unsigned)mutex->_m_count >= INT_MAX) return EAGAIN;
-		++mutex->_m_count;
-		return 0;
+	if (mutex->_m_lock == __pthread_self()->tid) {
+		if ((mutex->_m_type&3) == PTHREAD_MUTEX_RECURSIVE) {
+			if ((unsigned)mutex->_m_count >= INT_MAX) return EAGAIN;
+			++mutex->_m_count;
+			return 0;
+		} else if ((mutex->_m_type&3) == PTHREAD_MUTEX_ERRORCHECK) {
+			return EDEADLK;
+		}
 	}
 
 	if (emscripten_atomic_cas_u32(&mutex->_m_addr, 0, 1) == 0)
@@ -69,10 +77,14 @@ int pthread_mutex_trylock(pthread_mutex_t *mutex)
 
 int pthread_mutex_timedlock(pthread_mutex_t *restrict mutex, const struct timespec *restrict at)
 {
-	if (mutex->_m_lock == __pthread_self()->tid && (mutex->_m_type&3) == PTHREAD_MUTEX_RECURSIVE) {
-		if ((unsigned)mutex->_m_count >= INT_MAX) return EAGAIN;
-		++mutex->_m_count;
-		return 0;
+	if (mutex->_m_lock == __pthread_self()->tid) {
+		if ((mutex->_m_type&3) == PTHREAD_MUTEX_RECURSIVE) {
+			if ((unsigned)mutex->_m_count >= INT_MAX) return EAGAIN;
+			++mutex->_m_count;
+			return 0;
+		} else if ((mutex->_m_type&3) == PTHREAD_MUTEX_ERRORCHECK) {
+			return EDEADLK;
+		}
 	}
 
 	double nsecs;
