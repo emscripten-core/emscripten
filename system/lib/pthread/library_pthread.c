@@ -102,7 +102,7 @@ int pthread_mutex_timedlock(pthread_mutex_t *restrict mutex, const struct timesp
 		do {
 			if (c == 2 || emscripten_atomic_cas_u32(&mutex->_m_addr, 1, 2) != 0)
 			{
-				if (at->tv_nsec < 0 || at->tv_nsec > 1000000000) return EINVAL;
+				if (at->tv_nsec < 0 || at->tv_nsec >= 1000000000) return EINVAL;
 				struct timeval t;
 				gettimeofday(&t, NULL);
 				double cur_t = t.tv_sec * 1e9 + t.tv_usec * 1e3;
