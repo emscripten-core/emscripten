@@ -248,7 +248,7 @@ var LibraryPThread = {
       Module['printErr']('Main thread ' + thread + ' is attempting to join to itself!');
       return ERRNO_CODES.EDEADLK; // The main thread is attempting to join itself?
     }
-    if (ENVIRONMENT_IS_PTHREAD && selfThreadId == THREAD) {
+    if (ENVIRONMENT_IS_PTHREAD && selfThreadId == thread) {
       Module['printErr']('PThread ' + thread + ' is attempting to join to itself!');
       return ERRNO_CODES.EDEADLK; // A non-main thread is attempting to join itself?
     }
