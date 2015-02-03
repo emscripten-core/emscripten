@@ -395,6 +395,7 @@ try:
   debug_level = 0
   requested_debug = ''
   profiling = False
+  profiling_funcs = False
   tracing = False
   emit_symbol_map = False
   js_opts = None
@@ -535,6 +536,9 @@ try:
     elif newargs[i] == '-profiling' or newargs[i] == '--profiling':
       debug_level = 2
       profiling = True
+      newargs[i] = ''
+    elif newargs[i] == '-profiling-funcs' or newargs[i] == '--profiling-funcs':
+      profiling_funcs = True
       newargs[i] = ''
     elif newargs[i] == '--tracing':
       tracing = True
@@ -1411,6 +1415,8 @@ try:
             passes = ['asmPreciseF32'] + passes
         if emit_symbol_map and 'minifyNames' in passes:
           passes += ['symbolMap='+target+'.symbols']
+        if profiling_funcs and 'minifyNames' in passes:
+          passes += ['profilingFuncs']
         if minify_whitespace and 'last' in passes:
           passes += ['minifyWhitespace']
         logging.debug('applying js optimization passes: %s', ' '.join(passes))

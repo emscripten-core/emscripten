@@ -192,6 +192,7 @@ class Minifier:
     self.js = js
     self.js_engine = js_engine
     self.symbols_file = None
+    self.profiling_funcs = False
 
   def minify_shell(self, shell, minify_whitespace, source_map=False):
     # Run through js-optimizer.js to find and minify the global symbols
@@ -203,9 +204,12 @@ class Minifier:
 
     # Find all globals in the JS functions code
 
-    self.globs = [m.group(1) for m in func_sig.finditer(self.js)]
-    if len(self.globs) == 0:
-      self.globs = [m.group(1) for m in func_sig_json.finditer(self.js)]
+    if not self.profiling_funcs:
+      self.globs = [m.group(1) for m in func_sig.finditer(self.js)]
+      if len(self.globs) == 0:
+        self.globs = [m.group(1) for m in func_sig_json.finditer(self.js)]
+    else:
+      self.globs = []
 
     temp_file = temp_files.get('.minifyglobals.js').name
     f = open(temp_file, 'w')
@@ -354,6 +358,9 @@ EMSCRIPTEN_FUNCS();
       def check_symbol_mapping(p):
         if p.startswith('symbolMap='):
           minifier.symbols_file = p.split('=')[1]
+          return False
+        if p == 'profilingFuncs':
+          minifier.profiling_funcs = True
           return False
         return True
       passes = filter(check_symbol_mapping, passes)
