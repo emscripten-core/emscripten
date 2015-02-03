@@ -15,7 +15,7 @@ int pthread_mutex_lock(pthread_mutex_t *mutex)
 	}
 
 	// The lock is now ours, mark this thread as the owner of this lock.
-	assert(__pthread_self() != 0;
+	assert(__pthread_self() != 0);
 	assert(__pthread_self()->tid != 0);
 	assert(mutex->_m_lock == 0);
 	mutex->_m_lock = __pthread_self()->tid;
