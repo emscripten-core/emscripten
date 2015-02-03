@@ -1,18 +1,21 @@
 #include <pthread.h>
 #include <emscripten/threading.h>
 #include <emscripten.h>
+#include <sys/time.h>
 #include "../internal/pthread_impl.h"
 #include <assert.h>
 
-static void __pthread_mutex_locked(pthread_mutex_t *mutex)
+static void inline __pthread_mutex_locked(pthread_mutex_t *mutex)
 {
 	// The lock is now ours, mark this thread as the owner of this lock.
+	assert(mutex);
 	assert(mutex->_m_lock == 0);
 	mutex->_m_lock = __pthread_self()->tid;
 }
 
 int pthread_mutex_lock(pthread_mutex_t *mutex)
 {
+	if (!mutex) return EINVAL;
 	assert(__pthread_self() != 0);
 	assert(__pthread_self()->tid != 0);
 
@@ -40,6 +43,7 @@ int pthread_mutex_lock(pthread_mutex_t *mutex)
 
 int pthread_mutex_unlock(pthread_mutex_t *mutex)
 {
+	if (!mutex) return EINVAL;
 	assert(__pthread_self() != 0);
 
 	if (mutex->_m_type != PTHREAD_MUTEX_NORMAL) {
@@ -61,6 +65,7 @@ int pthread_mutex_unlock(pthread_mutex_t *mutex)
 
 int pthread_mutex_trylock(pthread_mutex_t *mutex)
 {
+	if (!mutex) return EINVAL;
 	if (mutex->_m_lock == __pthread_self()->tid) {
 		if ((mutex->_m_type&3) == PTHREAD_MUTEX_RECURSIVE) {
 			if ((unsigned)mutex->_m_count >= INT_MAX) return EAGAIN;
@@ -81,6 +86,7 @@ int pthread_mutex_trylock(pthread_mutex_t *mutex)
 
 int pthread_mutex_timedlock(pthread_mutex_t *restrict mutex, const struct timespec *restrict at)
 {
+	if (!mutex || !at) return EINVAL;
 	if (mutex->_m_lock == __pthread_self()->tid) {
 		if ((mutex->_m_type&3) == PTHREAD_MUTEX_RECURSIVE) {
 			if ((unsigned)mutex->_m_count >= INT_MAX) return EAGAIN;
@@ -91,13 +97,18 @@ int pthread_mutex_timedlock(pthread_mutex_t *restrict mutex, const struct timesp
 		}
 	}
 
-	double nsecs;
 	int c = emscripten_atomic_cas_u32(&mutex->_m_addr, 0, 1);
 	if (c != 0) {
-		nsecs = at->tv_sec * 1e9 + (double)at->tv_nsec;
 		do {
 			if (c == 2 || emscripten_atomic_cas_u32(&mutex->_m_addr, 1, 2) != 0)
 			{
+				if (at->tv_nsec < 0 || at->tv_nsec > 1000000000) return EINVAL;
+				struct timeval t;
+				gettimeofday(&t, NULL);
+				double cur_t = t.tv_sec * 1e9 + t.tv_usec * 1e3;
+				double at_t = at->tv_sec * 1e9 + at->tv_nsec;
+				double nsecs = at_t - cur_t;
+				if (nsecs <= 0) return ETIMEDOUT;
 				int ret = emscripten_futex_wait(&mutex->_m_addr, 2, nsecs);
 				if (ret == 0) break;
 				else return ETIMEDOUT;

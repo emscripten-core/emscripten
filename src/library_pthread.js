@@ -588,7 +588,7 @@ var LibraryPThread = {
   // Returns 0 on success, or one of the values -ETIMEDOUT, -EWOULDBLOCK or -EINVAL on error.
   emscripten_futex_wait: function(addr, val, timeout) {
     if (addr <= 0 || addr > HEAP8.length || addr&3 != 0) return -{{{ cDefine('EINVAL') }}};
-    var ret = Atomics.futexWait(HEAP32, addr >> 2, val, timeout < 0x7fffffff ? timeout : Number.POSITIVE_INFINITY);
+    var ret = Atomics.futexWait(HEAP32, addr >> 2, val, timeout);
     if (ret == Atomics.TIMEDOUT) return -{{{ cDefine('ETIMEDOUT') }}};
     if (ret == Atomics.NOTEQUAL) return -{{{ cDefine('EWOULDBLOCK') }}};
     if (ret == 0) return 0;
