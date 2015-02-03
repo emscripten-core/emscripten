@@ -500,6 +500,17 @@ var LibraryPThread = {
     return 0;
   },
 
+  pthread_mutexattr_getprioceiling: function(attr, prioceiling) {
+    // Not supported either in Emscripten or musl, return a faked value.
+    if (prioceiling) {{{ makeSetValue('prioceiling', 0, 99, 'i32') }}};
+    return 0;
+  },
+
+  pthread_mutexattr_setprioceiling: function(attr, prioceiling) {
+    // Not supported either in Emscripten or musl, return an error.
+    return ERRNO_CODES.EPERM;
+  },
+
   pthread_getcpuclockid: function(thread, clock_id) {
     return ERRNO_CODES.ENOENT; // pthread API recommends returning this error when "Per-thread CPU time clocks are not supported by the system."
   },
