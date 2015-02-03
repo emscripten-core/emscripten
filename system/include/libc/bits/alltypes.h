@@ -88,7 +88,11 @@ typedef struct { union { int __i[9]; unsigned __s[9]; } __u; } pthread_attr_t;
 #endif
 
 #if defined(__NEED_pthread_mutex_t) && !defined(__DEFINED_pthread_mutex_t)
+#ifdef __EMSCRIPTEN__
+typedef struct { union { int __i[7]; void *__p[7]; } __u; } pthread_mutex_t;
+#else
 typedef struct { union { int __i[6]; void *__p[6]; } __u; } pthread_mutex_t;
+#endif
 #define __DEFINED_pthread_mutex_t
 #endif
 
