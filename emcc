@@ -1558,7 +1558,7 @@ try:
     f.write(src)
     f.write('\n')
     f.write('  return Module;\n')
-    f.write('}\n')
+    f.write('};\n')
     f.close()
     src = None
 
