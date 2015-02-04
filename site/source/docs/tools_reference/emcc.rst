@@ -173,7 +173,10 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-profiling: 
 
 ``--profiling``
-	Use reasonable defaults when emitting JavaScript to make the build useful for profiling. This sets ``-g2`` (preserve function names) and may also enable optimizations that affect performance and otherwise might not be performed in ``-g2``.
+	Use reasonable defaults when emitting JavaScript to make the build readable but still useful for profiling. This sets ``-g2`` (preserve whitespace and function names) and may also enable optimizations that affect performance and otherwise might not be performed in ``-g2``.
+
+``--profiling-funcs``
+	Preserve function names in profiling, but otherwise minify whitespace and names as we normally do in optimized builds. This is useful if you want to look at profiler results based on function names, but do *not* intend to read the emitted code.
 
 ``--tracing``
   Enable the :ref:`Emscripten Tracing API <trace-h>`.
