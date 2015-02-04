@@ -153,7 +153,7 @@ var LibraryPThread = {
 
     var pthread = PThread.pthreads[pthread_ptr];
     var worker = pthread.worker;
-    PThread.freeThreadData(pthread_ptr);
+    PThread.freeThreadData(pthread);
     worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
     PThread.unusedWorkerPool.push(worker);
     PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker.pthread), 1); // Not a running Worker anymore.
