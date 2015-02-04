@@ -99,7 +99,11 @@ var LibraryPThread = {
         var worker = new Worker('pthread-main.js');
 
         worker.onmessage = function(e) {
-          if (e.data.cmd == 'loaded') {
+          if (e.data.cmd == 'spawnThread') {
+            __spawn_thread(e.data);
+          } else if (e.data.cmd == 'cleanupThread') {
+            __cleanup_thread(e.data.thread);
+          } else if (e.data.cmd == 'loaded') {
             ++numWorkersLoaded;
             if (numWorkersLoaded == numWorkers && onFinishedLoading) {
               onFinishedLoading();
@@ -144,14 +148,26 @@ var LibraryPThread = {
     }
   },
 
-  _spawn_thread: function(thread, threadParams) {
+  _cleanup_thread: function(pthread_ptr) {
+    if (ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! _cleanup_thread() should only ever be called from main JS thread!';
+
+    var pthread = PThread.pthreads[pthread_ptr];
+    var worker = pthread.worker;
+    PThread.freeThreadData(pthread_ptr);
+    worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
+    PThread.unusedWorkerPool.push(worker);
+    PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker.pthread), 1); // Not a running Worker anymore.
+  },
+
+  _spawn_thread: function(threadParams) {
     if (ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! _spawn_thread() should only ever be called from main JS thread!';
 
     var worker = PThread.getNewWorker();
     if (worker.pthread !== undefined) throw 'Internal error!';
+    if (!threadParams.pthread_ptr) throw 'Internal error, no pthread ptr!';
     PThread.runningWorkers.push(worker); // TODO: The list of threads is local to the parent thread, atm only the parent can access the threads it spawned!
-    var threadId = PThread.pthreadIdCounter++;
-    {{{ makeSetValue('thread', 0, 'threadId', 'i32') }}};
+    //var threadId = threadParams.pthread_ptr;//PThread.pthreadIdCounter++;
+//    {{{ makeSetValue('threadParams.pthread_ptr', 0, 'threadId', 'i32') }}};
 
     // Allocate memory for thread-local storage and initialize it to zero.
     var tlsMemory = _malloc({{{ cDefine('PTHREAD_KEYS_MAX') }}} * 4);
@@ -159,13 +175,13 @@ var LibraryPThread = {
       {{{ makeSetValue('tlsMemory', 'i*4', 0, 'i32') }}};
     }
 
-    var pthread = PThread.pthreads[threadId] = { // Create a pthread info object to represent this thread.
+    var pthread = PThread.pthreads[threadParams.pthread_ptr] = { // Create a pthread info object to represent this thread.
       worker: worker,
-      thread: threadId,
+      thread: threadParams.pthread_ptr,
       stackBase: threadParams.stackBase,
       stackSize: threadParams.stackSize,
       allocatedOwnStack: threadParams.allocatedOwnStack,
-      threadBlock: _malloc({{{ C_STRUCTS.pthread.__size__ }}}) // Info area for this thread in Emscripten HEAP (shared)
+      threadBlock: threadParams.pthread_ptr /*_malloc({{{ C_STRUCTS.pthread.__size__ }}})*/ // Info area for this thread in Emscripten HEAP (shared)
     };
     for(var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}}; ++i) HEAPU8[pthread.threadBlock + i] = 0; // zero-initialize thread structure.
     Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0); // threadStatus <- 0, meaning not yet exited.
@@ -189,8 +205,8 @@ var LibraryPThread = {
       cmd: 'run',
       start_routine: threadParams.startRoutine,
       arg: threadParams.arg,
-      threadBlock: pthread.threadBlock,
-      selfThreadId: threadId,
+      threadBlock: threadParams.pthread_ptr,
+      selfThreadId: threadParams.pthread_ptr, // TODO: Remove this since thread ID is now the same as the thread address.
       stackBase: threadParams.stackBase,
       stackSize: threadParams.stackSize,
       stdin: _stdin,
@@ -200,12 +216,12 @@ var LibraryPThread = {
   },
 
   pthread_create__deps: ['_spawn_thread', 'pthread_getschedparam', 'pthread_self'],
-  pthread_create: function(thread, attr, start_routine, arg) {
+  pthread_create: function(pthread_ptr, attr, start_routine, arg) {
     if (!HEAPU8.buffer instanceof SharedArrayBuffer) {
       Module['printErr']('Current environment does not support SharedArrayBuffer, pthreads are not available!');
       return 1;
     }
-    if (!thread) {
+    if (!pthread_ptr) {
       Module['printErr']('pthread_create called with a null thread pointer!');
       return 1;
     }
@@ -243,6 +259,10 @@ var LibraryPThread = {
       assert(stackBase > 0);
     }
 
+    // Allocate thread block (pthread_t structure).
+    var threadBlock = _malloc({{{ C_STRUCTS.pthread.__size__ }}});
+    {{{ makeSetValue('pthread_ptr', 0, 'threadBlock', 'i32') }}};
+
     var threadParams = {
       stackBase: stackBase,
       stackSize: stackSize,
@@ -251,13 +271,25 @@ var LibraryPThread = {
       schedPrio: schedPrio,
       detached: detached,
       startRoutine: start_routine,
+      pthread_ptr: threadBlock,
       arg: arg,
     };
-    __spawn_thread(thread, threadParams);
+
+    if (ENVIRONMENT_IS_WORKER) {
+      // The prepopulated pool of web workers that can host pthreads is stored in the main JS thread. Therefore if a
+      // pthread is attempting to spawn a new thread, the thread creation must be deferred to the main JS thread.
+      threadParams.cmd = 'spawnThread';
+      postMessage(threadParams);
+    } else {
+      // We are the main thread, so we have the pthread warmup pool in this thread and can fire off JS thread creation
+      // directly ourselves.
+      __spawn_thread(threadParams);
+    }
 
     return 0;
   },
 
+  pthread_join__deps: ['_cleanup_thread'],
   pthread_join: function(thread, status) {
     if (!ENVIRONMENT_IS_PTHREAD && thread == 1) {
       Module['printErr']('Main thread ' + thread + ' is attempting to join to itself!');
@@ -267,6 +299,7 @@ var LibraryPThread = {
       Module['printErr']('PThread ' + thread + ' is attempting to join to itself!');
       return ERRNO_CODES.EDEADLK; // A non-main thread is attempting to join itself?
     }
+    /*
     var pthread = PThread.pthreads[thread];
     if (!pthread) {
       Module['printErr']('PThread ' + thread + ' does not exist!');
@@ -276,22 +309,22 @@ var LibraryPThread = {
       Module['printErr']('PThread ' + thread + ' is not running anymore!');
       return ERRNO_CODES.ESRCH;
     }
-    var detached = Atomics.load(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.detached }}} ) >> 2);
+    */
+    var detached = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2);
     if (detached) {
       Module['printErr']('Attempted to join thread ' + thread + ', which was already detached!');
       return ERRNO_CODES.EINVAL; // The thread is already detached, can no longer join it!
     }
-    var worker = pthread.worker;
+    //var worker = pthread.worker;
     for(;;) {
-      var threadStatus = Atomics.load(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
+      var threadStatus = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
       if (threadStatus == 1) { // Exited?
-        var threadExitCode = Atomics.load(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2);
+        var threadExitCode = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2);
         if (status) {{{ makeSetValue('status', 0, 'threadExitCode', 'i32') }}};
-        Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, 1); // Mark the thread as detached.
-        PThread.freeThreadData(pthread);
-        worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
-        PThread.unusedWorkerPool.push(worker);
-        PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker.pthread), 1); // Not a running Worker anymore.
+        Atomics.store(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, 1); // Mark the thread as detached.
+
+        if (!ENVIRONMENT_IS_WORKER) __cleanup_thread(thread);
+        else postMessage({ cmd: 'cleanupThread', thread: thread});
         return 0;
       }
     }
