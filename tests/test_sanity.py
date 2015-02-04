@@ -264,7 +264,7 @@ class sanity(RunnerCore):
 
     restore()
 
-    self.check_working([EMCC, 'tests/hello_world.cpp', '-s', 'INIT_HEAP=1'], '''Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended, see https://github.com/kripken/emscripten/wiki/LLVM-Backend''')
+    self.check_working([EMCC, 'tests/hello_world.cpp', '-s', 'INIT_HEAP=1'], '''Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended''')
 
   def test_node(self):
     NODE_WARNING = 'node version appears too old'
