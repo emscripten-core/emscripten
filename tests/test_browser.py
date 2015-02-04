@@ -2532,6 +2532,10 @@ window.close = function() {
   def test_pthread_create(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
 
+  # Test that a pthread can spawn another pthread of its own.
+  def test_pthread_create_pthread(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_create_pthread.cpp'), expected='1', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=2'])
+
   # Test that main thread can wait for a pthread to finish via pthread_join().
   def test_pthread_join(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_join.cpp'), expected='6765', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
