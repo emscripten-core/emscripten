@@ -8,6 +8,12 @@
 
 #define NUM_THREADS 8
 
+volatile unsigned char globalUchar = 0;
+volatile unsigned short globalUshort = 0;
+volatile unsigned int globalUint = 0;
+volatile float globalFloat = 0.0f;
+volatile double globalDouble = 0.0;
+
 const int N = 10;
 int sharedData[N] = {};
 
@@ -20,6 +26,11 @@ struct Test
 void *ThreadMain(void *arg)
 {
 	assert(pthread_self() != 0);
+	assert(globalUchar == 5);
+	assert(globalUshort == 5);
+	assert(globalUint == 5);
+	assert(globalFloat == 5.0f);
+	assert(globalDouble == 5.0);
 	struct Test *t = (struct Test*)arg;
 	EM_ASM_INT( { Module['print']('Thread ' + $0 + ' for test ' + $1 + ': starting computation.'); }, t->threadId, t->op);
 
@@ -82,6 +93,11 @@ void RunTest(int test)
 
 int main()
 {
+	globalUchar = 5;
+	globalUshort = 5;
+	globalUint = 5;
+	globalFloat = 5.0f;
+	globalDouble = 5.0;
 	malloc(4); // Work around bug https://github.com/kripken/emscripten/issues/2621
 
 	for(int i = 0; i < 6; ++i)
