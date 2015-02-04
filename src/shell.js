@@ -14,10 +14,14 @@
 // before the code. Then that object will be used in the code, and you
 // can continue to use Module afterwards as well.
 var Module;
+#if EXPORT_NAME != noexport
 #if CLOSURE_COMPILER
 if (!Module) Module = eval('(function() { try { return {{{ EXPORT_NAME }}} || {} } catch(e) { return {} } })()');
 #else
 if (!Module) Module = (typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_NAME }}} : null) || {};
+#endif
+#else
+if (!Module) Module = {};
 #endif
 
 // Sometimes an existing Module object exists with properties
@@ -114,7 +118,9 @@ else if (ENVIRONMENT_IS_SHELL) {
     Module['arguments'] = arguments;
   }
 
+#if EXPORT_NAME != noexport
   this['{{{ EXPORT_NAME }}}'] = Module;
+#endif
 
 #if CLOSURE_COMPILER
   eval("if (typeof gc === 'function' && gc.toString().indexOf('[native code]') > 0) var gc = undefined"); // wipe out the SpiderMonkey shell 'gc' function, which can confuse closure (uses it as a minified name, and it is then initted to a non-falsey value unexpectedly)
@@ -149,11 +155,13 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
     }));
   }
 
+#if EXPORT_NAME != noexport
   if (ENVIRONMENT_IS_WEB) {
     window['{{{ EXPORT_NAME }}}'] = Module;
   } else {
     Module['load'] = importScripts;
   }
+#endif
 }
 else {
   // Unreachable because SHELL is dependant on the others

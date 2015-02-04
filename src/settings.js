@@ -590,7 +590,8 @@ var NECESSARY_BLOCKADDRS = []; // List of (function, block) for all block addres
 var JS_CHUNK_SIZE = 10240; // Used as a maximum size before breaking up expressions and lines into smaller pieces
 
 var EXPORT_NAME = 'Module'; // Global variable to export the module as for environments without a standardized module
-                            // loading system (e.g. the browser and SM shell).
+                            // loading system (e.g. the browser and SM shell).  Set to 'noexport' to disable exporting
+                            // as a global variable.
 
 var NO_DYNAMIC_EXECUTION = 0; // When enabled, we do not emit eval() and new Function(), which disables some functionality
                               // (causing runtime errors if attempted to be used), but allows the emitted code to be
