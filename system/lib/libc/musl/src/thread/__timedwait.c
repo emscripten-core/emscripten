@@ -2,12 +2,17 @@
 #include <time.h>
 #include <errno.h>
 #ifdef __EMSCRIPTEN__
+#include <math.h>
 #include <emscripten/threading.h>
 #include <emscripten/emscripten.h>
 #else
 #include "futex.h"
 #endif
 #include "syscall.h"
+
+#ifdef __EMSCRIPTEN__
+double _pthread_nsecs_until(const struct timespec *restrict at);
+#endif
 
 static int do_wait(volatile int *addr, int val,
 	clockid_t clk, const struct timespec *at, int priv)
@@ -28,10 +33,8 @@ static int do_wait(volatile int *addr, int val,
 	}
 
 #ifdef __EMSCRIPTEN__
-	double timeout = top->tv_sec * 1000000000.0 + top->tv_nsec;
-	if (timeout > 1 * 1000000000.0) timeout = 1 * 1000000000.0;
-	EM_ASM_INT( { Module['printErr']('Wait ' + $0 + '.') }, timeout);
-	r = emscripten_futex_wait((void*)addr, val, timeout);
+	double waitNsecs = at ? _pthread_nsecs_until(at) : INFINITY;
+	r = emscripten_futex_wait((void*)addr, val, waitNsecs);
 #else
 	r = -__syscall_cp(SYS_futex, addr, FUTEX_WAIT, val, top);
 #endif

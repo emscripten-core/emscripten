@@ -100,7 +100,7 @@ int pthread_mutex_trylock(pthread_mutex_t *mutex)
 		return EBUSY;
 }
 
-static double _pthread_nsecs_until(const struct timespec *restrict at)
+double _pthread_nsecs_until(const struct timespec *restrict at)
 {
 	struct timeval t;
 	gettimeofday(&t, NULL);
