@@ -7,8 +7,6 @@ var LibraryPThread = {
       schedPolicy: 0/*SCHED_OTHER*/,
       schedPrio: 0
     },
-    thisThreadCancelState: 0, // 0: PTHREAD_CANCEL_ENABLE is the default for all threads. (1: PTHREAD_CANCEL_DISABLE is the other option)
-    thisThreadCancelType: 0, // 0: PTHREAD_CANCEL_DEFERRED is the default for all threads. (1: PTHREAD_CANCEL_ASYNCHRONOUS is the other option)
     // Since creating a new Web Worker is so heavy (it must reload the whole compiled script page!), maintain a pool of such
     // workers that have already parsed and loaded the scripts.
     unusedWorkerPool: [],
@@ -402,40 +400,6 @@ var LibraryPThread = {
     Atomics.compareExchange(HEAPU32, (thread + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0, 2); // Signal the thread that it needs to cancel itself.
     if (!ENVIRONMENT_IS_WORKER) __cancel_thread(thread);
     else postMessage({ cmd: 'cancelThread', thread: thread});
-    return 0;
-  },
-
-  pthread_testcancel: function() {
-    if (!ENVIRONMENT_IS_PTHREAD) return;
-    if (!threadBlock) return;
-    if (PThread.thisThreadCancelState != 0/*PTHREAD_CANCEL_ENABLE*/) return;
-    var canceled = Atomics.load(HEAPU32, (threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
-    if (canceled == 2) throw 'Canceled!';
-  },
-
-  pthread_setcancelstate: function(state, oldstate) {
-    if (state != 0 && state != 1) return ERRNO_CODES.EINVAL;
-    if (oldstate) {{{ makeSetValue('oldstate', 0, 'PThread.thisThreadCancelState', 'i32') }}};
-    PThread.thisThreadCancelState = state;
-
-    if (PThread.thisThreadCancelState == 0/*PTHREAD_CANCEL_ENABLE*/
-      && PThread.thisThreadCancelType == 1/*PTHREAD_CANCEL_ASYNCHRONOUS*/ && ENVIRONMENT_IS_PTHREAD) {
-      // If we are re-enabling cancellation, immediately test whether this thread has been queued to be cancelled,
-      // and if so, do it. However, we can only do this if the cancel state of current thread is
-      // PTHREAD_CANCEL_ASYNCHRONOUS, since this function pthread_setcancelstate() is not a cancellation point.
-      // See http://man7.org/linux/man-pages/man7/pthreads.7.html
-      var canceled = Atomics.load(HEAPU32, (threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
-      if (canceled == 2) {
-        throw 'Canceled!';
-      }
-    }
-    return 0;
-  },
-
-  pthread_setcanceltype: function(type, oldtype) {
-    if (type != 0 && type != 1) return ERRNO_CODES.EINVAL;
-    if (oldtype) {{{ makeSetValue('oldtype', 0, 'PThread.thisThreadCancelType', 'i32') }}};
-    PThread.thisThreadCancelType = type;
     return 0;
   },
 
