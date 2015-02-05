@@ -1,5 +1,6 @@
 var LibraryPThread = {
   $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock();',
+  $PThread__deps: ['$PROCINFO'],
   $PThread: {
     MAIN_THREAD_ID: 1, // A special constant that identifies the main JS thread ID.
     mainThreadInfo: {
@@ -458,18 +459,10 @@ var LibraryPThread = {
 
   // Public pthread_self() function which returns a unique ID for the thread.
   pthread_self: function() {
-    if (ENVIRONMENT_IS_PTHREAD) return selfThreadId;
-    return 1; // Main JS thread
-  },
-
-  // pthread internal self() function which returns a pointer to the C control block for the thread.
-  // pthread_self() and __pthread_self() are separate so that we can ensure that each thread gets its unique ID
-  // using an incremented running counter, which helps in debugging.
-  __pthread_self__deps: ['$PROCINFO'],
-  __pthread_self: function() {
     if (ENVIRONMENT_IS_PTHREAD) return threadBlock;
     return PThread.mainThreadBlock; // Main JS thread.
   },
+  __pthread_self: 'pthread_self',
 
   pthread_getschedparam: function(thread, policy, schedparam) {
     if (!policy && !schedparam) return ERRNO_CODES.EINVAL;
