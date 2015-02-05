@@ -450,12 +450,10 @@ var LibraryPThread = {
     return wasDetached ? (threadStatus == 0/*running*/ ? ERRNO_CODES.EINVAL : ERRNO_CODES.ESRCH) : 0;
   },
 
+  pthread_exit__deps: ['exit'],
   pthread_exit: function(status) {
-    if (!ENVIRONMENT_IS_PTHREAD) {
-      Module['printErr']('Warning: pthread_exit was called from the main thread that was not spawned via pthread_create(). (TODO)');
-      return;
-    }
-    PThread.threadExit(status);
+    if (!ENVIRONMENT_IS_PTHREAD) _exit(status);
+    else PThread.threadExit(status);
   },
 
   // Public pthread_self() function which returns a unique ID for the thread.
