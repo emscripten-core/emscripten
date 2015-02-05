@@ -205,7 +205,7 @@ int usleep(unsigned usec)
 		if (nsecsToSleep > 1e6) {
 			if (nsecsToSleep > 100 * 1000 * 1000) nsecsToSleep = 100 * 1000 * 1000;
 			pthread_testcancel();
-			emscripten_futex_wait(&dummyZeroAddress, 1, nsecsToSleep);
+			emscripten_futex_wait(&dummyZeroAddress, 0, nsecsToSleep);
 		}
 		now = emscripten_get_now();
 	}
