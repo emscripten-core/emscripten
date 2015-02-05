@@ -151,6 +151,68 @@ var LibraryIDBStore = {
       if (oncheck) Runtime.dynCall('vii', oncheck, [arg, exists]);
     });
   },
+
+#if EMTERPRETIFY_ASYNC
+  emscripten_idb_load__deps: ['$EmterpreterAsync'],
+  emscripten_idb_load: function(db, id, pbuffer, pnum, perror) {
+    EmterpreterAsync.handle(function(resume) {
+      IDBStore.getFile(Pointer_stringify(db), Pointer_stringify(id), function(error, byteArray) {
+        if (error) {
+          {{{ makeSetValueAsm('perror', 0, '1', 'i32') }}};
+          resume();
+          return;
+        }
+        var buffer = _malloc(byteArray.length); // must be freed by the caller!
+        HEAPU8.set(byteArray, buffer);
+        {{{ makeSetValueAsm('pbuffer', 0, 'buffer', 'i32') }}};
+        {{{ makeSetValueAsm('pnum',    0, 'byteArray.length', 'i32') }}};
+        {{{ makeSetValueAsm('perror',  0, '0', 'i32') }}};
+        resume();
+      });
+    });
+  },
+  emscripten_idb_store__deps: ['$EmterpreterAsync'],
+  emscripten_idb_store: function(db, id, ptr, num, perror) {
+    EmterpreterAsync.handle(function(resume) {
+      IDBStore.setFile(Pointer_stringify(db), Pointer_stringify(id), new Uint8Array(HEAPU8.subarray(ptr, ptr+num)), function(error) {
+        {{{ makeSetValueAsm('perror', 0, '!!error', 'i32') }}};
+        resume();
+      });
+    });
+  },
+  emscripten_idb_delete__deps: ['$EmterpreterAsync'],
+  emscripten_idb_delete: function(db, id, perror) {
+    EmterpreterAsync.handle(function(resume) {
+      IDBStore.deleteFile(Pointer_stringify(db), Pointer_stringify(id), function(error) {
+        {{{ makeSetValueAsm('perror', 0, '!!error', 'i32') }}};
+        resume();
+      });
+    });
+  },
+  emscripten_idb_exists__deps: ['$EmterpreterAsync'],
+  emscripten_idb_exists: function(db, id, pexists, perror) {
+    EmterpreterAsync.handle(function(resume) {
+      IDBStore.existsFile(Pointer_stringify(db), Pointer_stringify(id), function(error, exists) {
+        {{{ makeSetValueAsm('pexists', 0, '!!exists', 'i32') }}};
+        {{{ makeSetValueAsm('perror',  0, '!!error', 'i32') }}};
+        resume();
+      });
+    });
+  },
+#else
+  emscripten_idb_load: function() {
+    throw 'Please compile your program with async support in order to use synchronous operations like emscripten_idb_load, etc.';
+  },
+  emscripten_idb_store: function() {
+    throw 'Please compile your program with async support in order to use synchronous operations like emscripten_idb_store, etc.';
+  },
+  emscripten_idb_delete: function() {
+    throw 'Please compile your program with async support in order to use synchronous operations like emscripten_idb_delete, etc.';
+  },
+  emscripten_idb_exists: function() {
+    throw 'Please compile your program with async support in order to use synchronous operations like emscripten_idb_exists, etc.';
+  },
+#endif
 };
 
 autoAddDeps(LibraryIDBStore, '$IDBStore');

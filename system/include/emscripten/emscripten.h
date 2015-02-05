@@ -173,6 +173,11 @@ void emscripten_idb_async_delete(const char *db_name, const char *file_id, void*
 typedef void (*em_idb_exists_func)(void*, int);
 void emscripten_idb_async_exists(const char *db_name, const char *file_id, void* arg, em_idb_exists_func oncheck, em_arg_callback_func onerror);
 
+void emscripten_idb_load(const char *db_name, const char *file_id, void** pbuffer, int* num, int *error);
+void emscripten_idb_store(const char *db_name, const char *file_id, void* ptr, int num, int *error);
+void emscripten_idb_delete(const char *db_name, const char *file_id, int *error);
+void emscripten_idb_exists(const char *db_name, const char *file_id, int* exists, int *error);
+
 // other async utilities
 
 int emscripten_async_prepare(const char* file, em_str_callback_func onload, em_str_callback_func onerror);
