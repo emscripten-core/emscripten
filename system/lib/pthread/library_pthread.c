@@ -8,7 +8,7 @@
 
 int _pthread_getcanceltype()
 {
-	return __pthread_self()->cancelasync;
+	return pthread_self()->cancelasync;
 }
 
 static void inline __pthread_mutex_locked(pthread_mutex_t *mutex)
@@ -16,7 +16,7 @@ static void inline __pthread_mutex_locked(pthread_mutex_t *mutex)
 	// The lock is now ours, mark this thread as the owner of this lock.
 	assert(mutex);
 	assert(mutex->_m_lock == 0);
-	mutex->_m_lock = __pthread_self()->tid;
+	mutex->_m_lock = pthread_self()->tid;
 	if (_pthread_getcanceltype() == PTHREAD_CANCEL_ASYNCHRONOUS) pthread_testcancel();
 }
 
@@ -34,10 +34,10 @@ double _pthread_nsecs_until(const struct timespec *restrict at)
 int pthread_mutex_lock(pthread_mutex_t *mutex)
 {
 	if (!mutex) return EINVAL;
-	assert(__pthread_self() != 0);
-	assert(__pthread_self()->tid != 0);
+	assert(pthread_self() != 0);
+	assert(pthread_self()->tid != 0);
 
-	if (mutex->_m_lock == __pthread_self()->tid) {
+	if (mutex->_m_lock == pthread_self()->tid) {
 		if ((mutex->_m_type&3) == PTHREAD_MUTEX_RECURSIVE) {
 			if ((unsigned)mutex->_m_count >= INT_MAX) return EAGAIN;
 			++mutex->_m_count;
@@ -71,10 +71,10 @@ int pthread_mutex_lock(pthread_mutex_t *mutex)
 int pthread_mutex_unlock(pthread_mutex_t *mutex)
 {
 	if (!mutex) return EINVAL;
-	assert(__pthread_self() != 0);
+	assert(pthread_self() != 0);
 
 	if (mutex->_m_type != PTHREAD_MUTEX_NORMAL) {
-		if (mutex->_m_lock != __pthread_self()->tid) return EPERM;
+		if (mutex->_m_lock != pthread_self()->tid) return EPERM;
 		if ((mutex->_m_type&3) == PTHREAD_MUTEX_RECURSIVE && mutex->_m_count) {
 			--mutex->_m_count;
 			return 0;
@@ -93,7 +93,7 @@ int pthread_mutex_unlock(pthread_mutex_t *mutex)
 int pthread_mutex_trylock(pthread_mutex_t *mutex)
 {
 	if (!mutex) return EINVAL;
-	if (mutex->_m_lock == __pthread_self()->tid) {
+	if (mutex->_m_lock == pthread_self()->tid) {
 		if ((mutex->_m_type&3) == PTHREAD_MUTEX_RECURSIVE) {
 			if ((unsigned)mutex->_m_count >= INT_MAX) return EAGAIN;
 			++mutex->_m_count;
@@ -114,7 +114,7 @@ int pthread_mutex_trylock(pthread_mutex_t *mutex)
 int pthread_mutex_timedlock(pthread_mutex_t *restrict mutex, const struct timespec *restrict at)
 {
 	if (!mutex || !at) return EINVAL;
-	if (mutex->_m_lock == __pthread_self()->tid) {
+	if (mutex->_m_lock == pthread_self()->tid) {
 		if ((mutex->_m_type&3) == PTHREAD_MUTEX_RECURSIVE) {
 			if ((unsigned)mutex->_m_count >= INT_MAX) return EAGAIN;
 			++mutex->_m_count;
@@ -179,7 +179,7 @@ int sched_get_priority_min(int policy)
 int pthread_setcancelstate(int new, int *old)
 {
 	if (new > 1U) return EINVAL;
-	struct pthread *self = __pthread_self();
+	struct pthread *self = pthread_self();
 	if (old) *old = self->canceldisable;
 	self->canceldisable = new;
 	return 0;
@@ -187,7 +187,7 @@ int pthread_setcancelstate(int new, int *old)
 
 void pthread_testcancel()
 {
-	struct pthread *self = __pthread_self();
+	struct pthread *self = pthread_self();
 	if (self->canceldisable) return;
 	if (self->threadStatus == 2/*canceled*/) {
 		EM_ASM( throw 'Canceled!'; );

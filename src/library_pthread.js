@@ -447,7 +447,6 @@ var LibraryPThread = {
     if (ENVIRONMENT_IS_PTHREAD) return threadBlock;
     return PThread.mainThreadBlock; // Main JS thread.
   },
-  __pthread_self: 'pthread_self',
 
   pthread_getschedparam: function(thread, policy, schedparam) {
     if (!policy && !schedparam) return ERRNO_CODES.EINVAL;

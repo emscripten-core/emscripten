@@ -2,6 +2,6 @@
 
 void *pthread_getspecific(pthread_key_t k)
 {
-	struct pthread *self = __pthread_self();
+	struct pthread *self = pthread_self();
 	return self->tsd[k];
 }

@@ -145,9 +145,4 @@ void __restore_sigs(void *);
 #define DEFAULT_STACK_SIZE 81920
 #define DEFAULT_GUARD_SIZE PAGE_SIZE
 
-#ifdef __EMSCRIPTEN__
-// XXX Emscripten specific:
-struct pthread *__pthread_self(void);
-#endif
-
 #endif

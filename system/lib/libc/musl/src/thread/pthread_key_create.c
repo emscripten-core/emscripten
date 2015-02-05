@@ -43,7 +43,7 @@ void EMSCRIPTEN_KEEPALIVE __pthread_tsd_run_dtors()
 void __pthread_tsd_run_dtors()
 #endif
 {
-	pthread_t self = __pthread_self();
+	pthread_t self = pthread_self();
 	int i, j, not_finished = self->tsd_used;
 	for (j=0; not_finished && j<PTHREAD_DESTRUCTOR_ITERATIONS; j++) {
 		not_finished = 0;
