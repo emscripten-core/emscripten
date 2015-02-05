@@ -318,6 +318,10 @@ var LibraryPThread = {
 
   pthread_join__deps: ['_cleanup_thread'],
   pthread_join: function(thread, status) {
+    if (!thread) {
+      Module['printErr']('pthread_join attempted on a null thread pointer!');
+      return ERRNO_CODES.ESRCH;
+    }
     if (ENVIRONMENT_IS_PTHREAD && selfThreadId == thread) {
       Module['printErr']('PThread ' + thread + ' is attempting to join to itself!');
       return ERRNO_CODES.EDEADLK;
@@ -360,7 +364,7 @@ var LibraryPThread = {
       return ERRNO_CODES.ESRCH;
     }
     if (!thread) {
-      Module['printErr']('PThread ' + thread + ' does not exist!');
+      Module['printErr']('pthread_kill attempted on a null thread pointer!');
       return ERRNO_CODES.ESRCH;
     }
     var self = {{{ makeGetValue('thread', C_STRUCTS.pthread.self, 'i32') }}};
@@ -382,7 +386,7 @@ var LibraryPThread = {
       return ERRNO_CODES.ESRCH;
     }
     if (!thread) {
-      Module['printErr']('PThread ' + thread + ' does not exist!');
+      Module['printErr']('pthread_cancel attempted on a null thread pointer!');
       return ERRNO_CODES.ESRCH;
     }
     var self = {{{ makeGetValue('thread', C_STRUCTS.pthread.self, 'i32') }}};
@@ -431,29 +435,18 @@ var LibraryPThread = {
   },
 
   pthread_detach: function(thread) {
-    var tb;
-    if (ENVIRONMENT_IS_PTHREAD) {
-      if (thread != selfThreadId) {
-        Module['printErr']('TODO: Currently non-main threads can only detach themselves!');
-        return ERRNO_CODES.ESRCH;
-      }
-      if (!threadBlock) {
-        Module['printErr']('PThread ' + thread + ' does not exist!');
-        return ERRNO_CODES.ESRCH;
-      }
-      tb = threadBlock;
+    if (!thread) {
+      Module['printErr']('pthread_detach attempted on a null thread pointer!');
+      return ERRNO_CODES.ESRCH;
     }
-    else {
-      var pthread = PThread.pthreads[thread];
-      if (!pthread) {
-        Module['printErr']('PThread ' + thread + ' does not exist!');
-        return ERRNO_CODES.ESRCH;
-      }
-      tb = pthread.threadBlock;
+    var self = {{{ makeGetValue('thread', C_STRUCTS.pthread.self, 'i32') }}};
+    if (self != thread) {
+      Module['printErr']('pthread_detach attempted on thread ' + thread + ', which does not point to a valid thread, or does not exist anymore!');
+      return ERRNO_CODES.ESRCH;
     }
-    var threadStatus = Atomics.load(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
+    var threadStatus = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
     // Follow musl convention: detached:0 means not detached, 1 means the thread was created as detached, and 2 means that the thread was detached via pthread_detach.
-    var wasDetached = Atomics.compareExchange(HEAPU32, (tb + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, 0, 2);
+    var wasDetached = Atomics.compareExchange(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, 0, 2);
     return wasDetached ? (threadStatus == 0/*running*/ ? ERRNO_CODES.EINVAL : ERRNO_CODES.ESRCH) : 0;
   },
 
