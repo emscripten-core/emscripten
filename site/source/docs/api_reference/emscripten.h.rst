@@ -483,13 +483,13 @@ Functions
 	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
 	:param em_async_wget_onload_func onload: Callback on successful load of the URL into the buffer. The callback function parameter values are:	
 	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
+		- *(void*)* : Equal to ``arg`` (user defined data).
 		- *(void*)* : A pointer to a buffer with the data. Note that, as with the worker API, the data buffer only lives during the callback; it must be used or copied during that time.
 		- *(int)* : The size of the buffer, in bytes. 
 	
 	:param em_arg_callback_func onerror: Callback in the event of failure. The callback function parameter values are:	
 	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
+		- *(void*)* : Equal to ``arg`` (user defined data).
 
 
 .. c:function:: int emscripten_async_wget2(const char* url, const char* file,  const char* requesttype, const char* param, void *arg, em_async_wget2_onload_func onload, em_async_wget2_onstatus_func onerror, em_async_wget2_onstatus_func onprogress)
@@ -513,17 +513,17 @@ Functions
 	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
 	:param em_async_wget2_onload_func onload: Callback on successful load of the file. The callback function parameter values are:	
 	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
+		- *(void*)* : Equal to ``arg`` (user defined data).
 		- *(const char*)* : The ``file`` passed to the original call.
 		
 	:param em_async_wget2_onstatus_func onerror: Callback in the event of failure. The callback function parameter values are:	
 	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
+		- *(void*)* : Equal to ``arg`` (user defined data).
 		- *(int)* : The HTTP status code.
 		
 	:param em_async_wget2_onstatus_func onprogress: Callback during load of the file. The callback function parameter values are:	
 	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
+		- *(void*)* : Equal to ``arg`` (user defined data).
 		- *(int)* : The progress (percentage completed).
 
 	:returns: A handle to request (``int``) that can be used to :c:func:`abort <emscripten_async_wget2_abort>` the request.
@@ -552,19 +552,19 @@ Functions
 	:type free: const int
 	:param em_async_wget2_data_onload_func onload: Callback on successful load of the file. The callback function parameter values are:
 	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
+		- *(void*)* : Equal to ``arg`` (user defined data).
 		- *(void*)* : A pointer to the buffer in memory. 
 		- *(unsigned)* : The size of the buffer (in bytes).
 		
 	:param em_async_wget2_data_onerror_func onerror: Callback in the event of failure. The callback function parameter values are:	
 	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
+		- *(void*)* : Equal to ``arg`` (user defined data).
 		- *(int)* : The HTTP error code. 
 		- *(const char*)* : A string with the status description.
 		
 	:param em_async_wget2_data_onprogress_func onprogress: Callback called (regularly) during load of the file to update progress. The callback function parameter values are:	
 	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
+		- *(void*)* : Equal to ``arg`` (user defined data).
 		- *(int)* : The number of bytes loaded.  
 		- *(int)* : The total size of the data in bytes, or zero if the size is unavailable.
 
@@ -592,12 +592,12 @@ Functions
 	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
 	:param em_async_prepare_data_onload_func onload: Callback on successful preparation of the file. The callback function parameter values are:	
 	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
+		- *(void*)* : Equal to ``arg`` (user defined data).
 		- *(const char*)* : A 'fake' filename which you can pass into ``IMG_Load``. See above for more information.
 		
 	:param em_arg_callback_func onerror: Callback in the event of failure. The callback function parameter value is:
 	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
+		- *(void*)* : Equal to ``arg`` (user defined data).
 
 
 Emscripten Asynchronous IndexedDB API
@@ -616,13 +616,13 @@ Emscripten Asynchronous IndexedDB API
 	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
 	:param em_async_wget_onload_func onload: Callback on successful load of the URL into the buffer. The callback function parameter values are:	
 	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
+		- *(void*)* : Equal to ``arg`` (user defined data).
 		- *(void*)* : A pointer to a buffer with the data. Note that, as with the worker API, the data buffer only lives during the callback; it must be used or copied during that time.
 		- *(int)* : The size of the buffer, in bytes. 
 	
 	:param em_arg_callback_func onerror: Callback in the event of failure. The callback function parameter values are:	
 	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
+		- *(void*)* : Equal to ``arg`` (user defined data).
 
 .. c:function:: void emscripten_idb_async_store(const char *db_name, const char *file_id, void* ptr, int num, void* arg, em_arg_callback_func onstore, em_arg_callback_func onerror);
 		 
@@ -637,11 +637,11 @@ Emscripten Asynchronous IndexedDB API
 	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
 	:param em_async_wget_onload_func onload: Callback on successful load of the URL into the buffer. The callback function parameter values are:	
 	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
+		- *(void*)* : Equal to ``arg`` (user defined data).
 	
 	:param em_arg_callback_func onerror: Callback in the event of failure. The callback function parameter values are:	
 	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
+		- *(void*)* : Equal to ``arg`` (user defined data).
 	
 .. c:function:: void emscripten_idb_async_delete(const char *db_name, const char *file_id, void* arg, em_arg_callback_func ondelete, em_arg_callback_func onerror)
 		 
@@ -654,12 +654,29 @@ Emscripten Asynchronous IndexedDB API
 	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
 	:param em_arg_callback_func ondelete: Callback on successful delete
 
-		- *(void*)* : A pointer to ``arg`` (user defined data).
+		- *(void*)* : Equal to ``arg`` (user defined data).
 	
 	:param em_arg_callback_func onerror: Callback in the event of failure. The callback function parameter values are:	
 	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
+		- *(void*)* : Equal to ``arg`` (user defined data).
 
+.. c:function:: void emscripten_idb_async_exists(const char *db_name, const char *file_id, void* arg, em_arg_callback_func oncheck, em_arg_callback_func onerror)
+		 
+	Checks if data with a certain ID exists in the local IndexedDB storage asynchronously.
+	
+	When the data has been checked then the ``oncheck`` callback will be called. If any error occurred ``onerror`` will be called.
+	
+	:param db_name: The IndexedDB database.
+	:param file_id: The identifier of the data.
+	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
+	:param em_arg_callback_func oncheck: Callback on successful check, with arguments
+
+		- *(void*)* : Equal to ``arg`` (user defined data).
+		- *int* : Whether the file exists or not.
+	
+	:param em_arg_callback_func onerror: Callback in the event of failure. The callback function parameter values are:	
+	
+		- *(void*)* : Equal to ``arg`` (user defined data).
 
 
 
@@ -767,7 +784,7 @@ Functions
 	
 		- *(char*)* : The ``data`` pointer provided in :c:func:`emscripten_call_worker`.
 		- *(int)* : The ``size`` of the block of data.	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
+		- *(void*)* : Equal to ``arg`` (user defined data).
 
 	:param void* arg: An argument (user data) to be passed to the callback
 

@@ -39,6 +39,22 @@ void onbadload(void* arg, void* ptr, int num)
   REPORT_RESULT();
 }
 
+void oncheck(void* arg, int exists)
+{
+  assert(expected == (int)arg);
+  printf("exists? %d\n", exists);
+  assert(exists);
+  REPORT_RESULT();
+}
+
+void onchecknope(void* arg, int exists)
+{
+  assert(expected == (int)arg);
+  printf("exists (hopefully not)? %d\n", exists);
+  assert(!exists);
+  REPORT_RESULT();
+}
+
 void test() {
   result = STAGE;
 #if STAGE == 0
@@ -56,6 +72,12 @@ void test() {
   expected = 55;
   emscripten_idb_async_load(DB, "the_secret", (void*)expected, onbadload, ok);
   printf("loading, should fail as we deleted\n");
+#elif STAGE == 4
+  expected = 66;
+  emscripten_idb_async_exists(DB, "the_secret", (void*)expected, oncheck, onerror);
+#elif STAGE == 5
+  expected = 77;
+  emscripten_idb_async_exists(DB, "the_secret", (void*)expected, onchecknope, onerror);
 #else
   assert(0);
 #endif

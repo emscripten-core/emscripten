@@ -1163,7 +1163,7 @@ keydown(100);keyup(100); // trigger the end
 
   def test_idbstore(self):
     secret = str(time.time())
-    for stage in [0, 1, 2, 3, 0, 1, 2, 0, 0, 1]:
+    for stage in [0, 1, 2, 3, 0, 1, 2, 0, 0, 1, 4, 2, 5]:
       self.clear()
       self.btest(path_from_root('tests', 'idbstore.c'), str(stage), force_c=True, args=['-DSTAGE=' + str(stage), '-DSECRET=\"' + secret + '\"'])
 

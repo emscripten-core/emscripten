@@ -98,6 +98,17 @@ var LibraryIDBStore = {
         };
       });
     },
+    existsFile: function(dbName, id, callback) {
+      IDBStore.getStore(dbName, 'readonly', function(err, store) {
+        var req = store.count(id);
+        req.onsuccess = function(event) {
+          callback(null, event.target.result > 0);
+        };
+        req.onerror = function(error) {
+          errback(error);
+        };
+      });
+    },
   },
 
   emscripten_idb_async_load: function(db, id, arg, onload, onerror) {
@@ -129,6 +140,15 @@ var LibraryIDBStore = {
         return;
       }
       if (ondelete) Runtime.dynCall('vi', ondelete, [arg]);
+    });
+  },
+  emscripten_idb_async_exists: function(db, id, arg, oncheck, onerror) {
+    IDBStore.existsFile(Pointer_stringify(db), Pointer_stringify(id), function(error, exists) {
+      if (error) {
+        if (onerror) Runtime.dynCall('vi', onerror, [arg]);
+        return;
+      }
+      if (oncheck) Runtime.dynCall('vii', oncheck, [arg, exists]);
     });
   },
 };
