@@ -61,7 +61,7 @@ var LibraryPThread = {
         // When we publish this, the main thread is free to deallocate the thread object and we are done.
         // Therefore set threadBlock = 0; above to 'release' the object in this worker thread.
         Atomics.store(HEAPU32, (threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 1);
-        _emscripten_futex_wake(threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}}, -1); // wake all threads
+        _emscripten_futex_wake(threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}}, {{{ cDefine('INT_MAX') }}});
         threadBlock = 0;
         postMessage({ cmd: 'exit' });
       }
@@ -582,9 +582,8 @@ var LibraryPThread = {
   },
 
   // Returns the number of threads (>= 0) woken up, or the value -EINVAL on error.
-  // Pass count == -1 to wake up all threads.
+  // Pass count == INT_MAX to wake up all threads.
   emscripten_futex_wake: function(addr, count) {
-    if (count == -1) count = 9999;
     if (addr <= 0 || addr > HEAP8.length || addr&3 != 0 || count < 0) return -{{{ cDefine('EINVAL') }}};
     var ret = Atomics.futexWake(HEAP32, addr >> 2, count);
     if (ret >= 0) return ret;

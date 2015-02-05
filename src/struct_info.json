@@ -14,7 +14,14 @@
                 "d_name"
             ]
         }
-    }, 
+    },
+    {
+        "file": "libc/limits.h",
+        "defines": [
+            "INT_MAX"
+        ],
+        "structs": {}
+    },
     {
         "file": "libc/utime.h", 
         "defines": [],
