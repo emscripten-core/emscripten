@@ -23,7 +23,7 @@ var LibraryPThread = {
 
       // The pthread struct has a field that points to itself - this is used as a magic ID to detect whether the pthread_t
       // structure is 'alive'.
-      {{{ makeSetValue('PThread.threadBlock', C_STRUCTS.pthread.self, 'PThread.threadBlock', 'i32') }}};
+      {{{ makeSetValue('PThread.mainThreadBlock', C_STRUCTS.pthread.self, 'PThread.mainThreadBlock', 'i32') }}};
 
       // Allocate memory for thread-local storage.
       var tlsMemory = allocate({{{ cDefine('PTHREAD_KEYS_MAX') }}} * 4, "i32*", ALLOC_STATIC);
