@@ -92,6 +92,12 @@ struct __timer {
 #define _c_destroy __u.__i[8]
 #define _rw_lock __u.__i[0]
 #define _rw_waiters __u.__i[1]
+#ifdef __EMSCRIPTEN__
+// XXX Emscripten: The spec allows detecting when multiple write locks would deadlock, so use an extra field
+// _rw_wr_owner to record which thread owns the write lock in order to avoid hangs.
+// Points to the pthread that currently has the write lock.
+#define _rw_wr_owner __u.__i[2]
+#endif
 #define _b_lock __u.__i[0]
 #define _b_waiters __u.__i[1]
 #define _b_limit __u.__i[2]
