@@ -30,6 +30,7 @@ void test() {
   printf("loaded %s\n", ptr);
   assert(num == strlen(SECRET)+1);
   assert(strcmp(ptr, SECRET) == 0);
+  free(buffer);
   sum++;
 
   printf("deleting the_secret\n");

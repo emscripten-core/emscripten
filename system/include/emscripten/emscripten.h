@@ -146,7 +146,6 @@ float emscripten_random(void);
 
 // wget
 
-void emscripten_wget(const char* url, const char* file);
 void emscripten_async_wget(const char* url, const char* file, em_str_callback_func onload, em_str_callback_func onerror);
 
 typedef void (*em_async_wget_onload_func)(void*, void*, int);
@@ -165,6 +164,14 @@ int emscripten_async_wget2_data(const char* url, const char* requesttype, const 
 
 void emscripten_async_wget2_abort(int handle);
 
+// wget "sync" (ASYNCIFY)
+
+void emscripten_wget(const char* url, const char* file);
+
+// wget data "sync" (EMTERPRETIFY_ASYNC)
+
+void emscripten_wget_data(const char* url, void** pbuffer, int* num, int *error);
+
 // IDB
 
 void emscripten_idb_async_load(const char *db_name, const char *file_id, void* arg, em_async_wget_onload_func onload, em_arg_callback_func onerror);
@@ -172,6 +179,8 @@ void emscripten_idb_async_store(const char *db_name, const char *file_id, void* 
 void emscripten_idb_async_delete(const char *db_name, const char *file_id, void* arg, em_arg_callback_func ondelete, em_arg_callback_func onerror);
 typedef void (*em_idb_exists_func)(void*, int);
 void emscripten_idb_async_exists(const char *db_name, const char *file_id, void* arg, em_idb_exists_func oncheck, em_arg_callback_func onerror);
+
+// IDB "sync" (EMTERPRETIFY_ASYNC)
 
 void emscripten_idb_load(const char *db_name, const char *file_id, void** pbuffer, int* num, int *error);
 void emscripten_idb_store(const char *db_name, const char *file_id, void* ptr, int num, int *error);

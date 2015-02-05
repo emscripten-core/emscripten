@@ -2053,6 +2053,11 @@ open(filename, 'w').write(replaced)
       f.write('emscripten')
     self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'ASYNCIFY=1'])
 
+  def test_wget_data(self):
+    with open(os.path.join(self.get_dir(), 'test.txt'), 'w') as f:
+      f.write('emscripten')
+    self.btest(path_from_root('tests', 'test_wget_data.c'), expected='1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O2', '-g2'])
+
   def test_locate_file(self):
     self.clear()
     open('src.cpp', 'w').write(self.with_report_result(r'''
