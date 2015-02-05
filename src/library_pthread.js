@@ -103,6 +103,8 @@ var LibraryPThread = {
             __spawn_thread(e.data);
           } else if (e.data.cmd == 'cleanupThread') {
             __cleanup_thread(e.data.thread);
+          } else if (e.data.cmd == 'killThread') {
+            __kill_thread(e.data.thread);
           } else if (e.data.cmd == 'loaded') {
             ++numWorkersLoaded;
             if (numWorkersLoaded == numWorkers && onFinishedLoading) {
@@ -148,6 +150,18 @@ var LibraryPThread = {
     }
   },
 
+  _kill_thread: function(pthread_ptr) {
+    if (ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! _kill_thread() can only ever be called from main JS thread!';
+    if (!pthread_ptr) throw 'Internal Error! Null pthread_ptr in _kill_thread!';
+    {{{ makeSetValue('pthread_ptr', C_STRUCTS.pthread.self, 0, 'i32') }}};
+    var pthread = PThread.pthreads[pthread_ptr];
+    pthread.worker.terminate();
+    PThread.freeThreadData(pthread);
+    // The worker was completely nuked (not just the pthread execution it was hosting), so remove it from running workers
+    // but don't put it back to the pool.
+    PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(pthread.worker.pthread), 1); // Not a running Worker anymore.
+    pthread.worker.pthread = undefined;
+  },
   _cleanup_thread: function(pthread_ptr) {
     if (ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! _cleanup_thread() can only ever be called from main JS thread!';
     if (!pthread_ptr) throw 'Internal Error! Null pthread_ptr in _cleanup_thread!';
@@ -304,7 +318,7 @@ var LibraryPThread = {
     }
     var self = {{{ makeGetValue('thread', C_STRUCTS.pthread.self, 'i32') }}};
     if (self != thread) {
-      Module['printErr']('pthread_join attempted on thread ' + thread + ', which does not exist anymore! (self: ' + self + ')');
+      Module['printErr']('pthread_join attempted on thread ' + thread + ', which does not point to a valid thread, or does not exist anymore!');
       return ERRNO_CODES.ESRCH;
     }
 
@@ -327,6 +341,7 @@ var LibraryPThread = {
     }
   },
 
+  pthread_kill__deps: ['_kill_thread'],
   pthread_kill: function(thread, signal) {
     if (signal < 0 || signal >= 65/*_NSIG*/) return ERRNO_CODES.EINVAL;
     if (thread == PThread.MAIN_THREAD_ID) {
@@ -334,22 +349,18 @@ var LibraryPThread = {
       Module['printErr']('Main thread (id=' + thread + ') cannot be killed with pthread_kill!');
       return ERRNO_CODES.ESRCH;
     }
-    var pthread = PThread.pthreads[thread];
-    if (!pthread) {
+    if (!thread) {
       Module['printErr']('PThread ' + thread + ' does not exist!');
       return ERRNO_CODES.ESRCH;
     }
-    if (!pthread.threadBlock) {
-      Module['printErr']('PThread ' + thread + ' has already finished execution!');
+    var self = {{{ makeGetValue('thread', C_STRUCTS.pthread.self, 'i32') }}};
+    if (self != thread) {
+      Module['printErr']('pthread_kill attempted on thread ' + thread + ', which does not point to a valid thread, or does not exist anymore!');
       return ERRNO_CODES.ESRCH;
     }
     if (signal != 0) {
-      pthread.worker.terminate();
-      PThread.freeThreadData(pthread);
-      // The worker was completely nuked (not just the pthread execution it was hosting), so remove it from running workers
-      // but don't put it back to the pool.
-      PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(pthread.worker.pthread), 1); // Not a running Worker anymore.
-      pthread.worker.pthread = undefined;
+      if (!ENVIRONMENT_IS_WORKER) __kill_thread(thread);
+      else postMessage({ cmd: 'killThread', thread: thread});
     }
     return 0;
   },
