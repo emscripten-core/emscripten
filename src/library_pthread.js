@@ -105,6 +105,8 @@ var LibraryPThread = {
             __cleanup_thread(e.data.thread);
           } else if (e.data.cmd == 'killThread') {
             __kill_thread(e.data.thread);
+          } else if (e.data.cmd == 'cancelThread') {
+            __cancel_thread(e.data.thread);
           } else if (e.data.cmd == 'loaded') {
             ++numWorkersLoaded;
             if (numWorkersLoaded == numWorkers && onFinishedLoading) {
@@ -162,6 +164,7 @@ var LibraryPThread = {
     PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(pthread.worker.pthread), 1); // Not a running Worker anymore.
     pthread.worker.pthread = undefined;
   },
+
   _cleanup_thread: function(pthread_ptr) {
     if (ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! _cleanup_thread() can only ever be called from main JS thread!';
     if (!pthread_ptr) throw 'Internal Error! Null pthread_ptr in _cleanup_thread!';
@@ -172,6 +175,13 @@ var LibraryPThread = {
     worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
     PThread.unusedWorkerPool.push(worker);
     PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker.pthread), 1); // Not a running Worker anymore.
+  },
+
+  _cancel_thread: function(pthread_ptr) {
+    if (ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! _cancel_thread() can only ever be called from main JS thread!';
+    if (!pthread_ptr) throw 'Internal Error! Null pthread_ptr in _cancel_thread!';
+    var pthread = PThread.pthreads[pthread_ptr];
+    pthread.worker.postMessage({ cmd: 'cancel' });
   },
 
   _spawn_thread: function(threadParams) {
@@ -365,19 +375,24 @@ var LibraryPThread = {
     return 0;
   },
 
+  pthread_cancel__deps: ['_cancel_thread'],
   pthread_cancel: function(thread) {
     if (thread == PThread.MAIN_THREAD_ID) {
       Module['printErr']('Main thread (id=' + thread + ') cannot be canceled!');
       return ERRNO_CODES.ESRCH;
     }
-    var pthread = PThread.pthreads[thread];
-    if (!pthread) {
+    if (!thread) {
       Module['printErr']('PThread ' + thread + ' does not exist!');
       return ERRNO_CODES.ESRCH;
     }
-    if (!pthread.threadBlock) return ERRNO_CODES.ESRCH; // Trying to cancel a thread that is no longer running.
-    Atomics.compareExchange(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0, 2); // Signal the thread that it needs to cancel itself.
-    pthread.worker.postMessage({ cmd: 'cancel' });
+    var self = {{{ makeGetValue('thread', C_STRUCTS.pthread.self, 'i32') }}};
+    if (self != thread) {
+      Module['printErr']('pthread_cancel attempted on thread ' + thread + ', which does not point to a valid thread, or does not exist anymore!');
+      return ERRNO_CODES.ESRCH;
+    }
+    Atomics.compareExchange(HEAPU32, (thread + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0, 2); // Signal the thread that it needs to cancel itself.
+    if (!ENVIRONMENT_IS_WORKER) __cancel_thread(thread);
+    else postMessage({ cmd: 'cancelThread', thread: thread});
     return 0;
   },
 
