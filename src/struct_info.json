@@ -1399,7 +1399,8 @@
               "detached",
               "attr",
               "tid",
-              "pid"
+              "pid",
+              "canceldisable"
             ]
         },
         "defines": []

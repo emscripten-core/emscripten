@@ -74,6 +74,7 @@ var LibraryPThread = {
     },
 
     freeThreadData: function(pthread) {
+      if (!pthread) return;
       if (pthread.threadBlock) {
         var tlsMemory = {{{ makeGetValue('pthread.threadBlock', C_STRUCTS.pthread.tsd, 'i32') }}};
         {{{ makeSetValue('pthread.threadBlock', C_STRUCTS.pthread.tsd, 0, 'i32') }}};
@@ -319,7 +320,18 @@ var LibraryPThread = {
     return 0;
   },
 
-  pthread_join__deps: ['_cleanup_thread'],
+  // TODO HACK! Remove this function, it is a JS side copy of the function pthread_testcancel() in library_pthread.c.
+  // Just call pthread_testcancel() everywhere.
+  _pthread_testcancel_js: function() {
+    if (!ENVIRONMENT_IS_PTHREAD) return;
+    if (!threadBlock) return;
+    var cancelDisabled = Atomics.load(HEAPU32, (threadBlock + {{{ C_STRUCTS.pthread.canceldisable }}} ) >> 2);
+    if (cancelDisabled) return;
+    var canceled = Atomics.load(HEAPU32, (threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
+    if (canceled == 2) throw 'Canceled!';
+  },
+
+  pthread_join__deps: ['_cleanup_thread', '_pthread_testcancel_js'],
   pthread_join: function(thread, status) {
     if (!thread) {
       Module['printErr']('pthread_join attempted on a null thread pointer!');
@@ -355,6 +367,10 @@ var LibraryPThread = {
         else postMessage({ cmd: 'cleanupThread', thread: thread});
         return 0;
       }
+      // TODO HACK! Replace the _js variant with just _pthread_testcancel:
+      //_pthread_testcancel();
+      __pthread_testcancel_js();
+      _emscripten_futex_wait(thread + {{{ C_STRUCTS.pthread.threadStatus }}}, 1, 100 * 1000 * 1000);
     }
   },
 
