@@ -211,6 +211,7 @@ mergeInto(LibraryManager.library, {
       asm.setAsyncState(s);
     },
     handle: function(doAsyncOp) {
+      Module['noExitRuntime'] = true;
       if (EmterpreterAsync.state === 0) {
         // save the stack we want to resume. this lets other code run in between
         // XXX this assumes that this stack top never ever leak! exceptions might violate that

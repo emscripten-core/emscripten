@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <stdlib.h>
 
 #include <emscripten.h>
 
@@ -51,7 +52,14 @@ void test() {
   REPORT_RESULT();
 }
 
+void never() {
+  EM_ASM({ alert('this should never be reached! runtime must not be shut down!') });
+  assert(0);
+  while (1) {}
+}
+
 int main() {
+  atexit(never);
   test();
   return 0;
 }
