@@ -1393,6 +1393,7 @@
             "pthread": [
               "threadStatus",
               "threadExitCode",
+              "self",
               "tsd",
               "tsd_used",
               "detached",

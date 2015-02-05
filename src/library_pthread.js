@@ -149,8 +149,9 @@ var LibraryPThread = {
   },
 
   _cleanup_thread: function(pthread_ptr) {
-    if (ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! _cleanup_thread() should only ever be called from main JS thread!';
-
+    if (ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! _cleanup_thread() can only ever be called from main JS thread!';
+    if (!pthread_ptr) throw 'Internal Error! Null pthread_ptr in _cleanup_thread!';
+    {{{ makeSetValue('pthread_ptr', C_STRUCTS.pthread.self, 0, 'i32') }}};
     var pthread = PThread.pthreads[pthread_ptr];
     var worker = pthread.worker;
     PThread.freeThreadData(pthread);
@@ -160,14 +161,12 @@ var LibraryPThread = {
   },
 
   _spawn_thread: function(threadParams) {
-    if (ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! _spawn_thread() should only ever be called from main JS thread!';
+    if (ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! _spawn_thread() can only ever be called from main JS thread!';
 
     var worker = PThread.getNewWorker();
     if (worker.pthread !== undefined) throw 'Internal error!';
     if (!threadParams.pthread_ptr) throw 'Internal error, no pthread ptr!';
-    PThread.runningWorkers.push(worker); // TODO: The list of threads is local to the parent thread, atm only the parent can access the threads it spawned!
-    //var threadId = threadParams.pthread_ptr;//PThread.pthreadIdCounter++;
-//    {{{ makeSetValue('threadParams.pthread_ptr', 0, 'threadId', 'i32') }}};
+    PThread.runningWorkers.push(worker);
 
     // Allocate memory for thread-local storage and initialize it to zero.
     var tlsMemory = _malloc({{{ cDefine('PTHREAD_KEYS_MAX') }}} * 4);
@@ -177,13 +176,12 @@ var LibraryPThread = {
 
     var pthread = PThread.pthreads[threadParams.pthread_ptr] = { // Create a pthread info object to represent this thread.
       worker: worker,
-      thread: threadParams.pthread_ptr,
       stackBase: threadParams.stackBase,
       stackSize: threadParams.stackSize,
       allocatedOwnStack: threadParams.allocatedOwnStack,
-      threadBlock: threadParams.pthread_ptr /*_malloc({{{ C_STRUCTS.pthread.__size__ }}})*/ // Info area for this thread in Emscripten HEAP (shared)
+      thread: threadParams.pthread_ptr,
+      threadBlock: threadParams.pthread_ptr // Info area for this thread in Emscripten HEAP (shared)
     };
-    for(var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}}; ++i) HEAPU8[pthread.threadBlock + i] = 0; // zero-initialize thread structure.
     Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0); // threadStatus <- 0, meaning not yet exited.
     Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, 0); // threadExitCode <- 0.
     Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, threadParams.detached);
@@ -261,7 +259,12 @@ var LibraryPThread = {
 
     // Allocate thread block (pthread_t structure).
     var threadBlock = _malloc({{{ C_STRUCTS.pthread.__size__ }}});
+    for(var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}} >> 2; ++i) HEAPU32[(threadBlock>>2) + i] = 0; // zero-initialize thread structure.
     {{{ makeSetValue('pthread_ptr', 0, 'threadBlock', 'i32') }}};
+
+    // The pthread struct has a field that points to itself - this is used as a magic ID to detect whether the pthread_t
+    // structure is 'alive'.
+    {{{ makeSetValue('threadBlock', C_STRUCTS.pthread.self, 'threadBlock', 'i32') }}};
 
     var threadParams = {
       stackBase: stackBase,
@@ -291,31 +294,25 @@ var LibraryPThread = {
 
   pthread_join__deps: ['_cleanup_thread'],
   pthread_join: function(thread, status) {
-    if (!ENVIRONMENT_IS_PTHREAD && thread == 1) {
-      Module['printErr']('Main thread ' + thread + ' is attempting to join to itself!');
-      return ERRNO_CODES.EDEADLK; // The main thread is attempting to join itself?
-    }
     if (ENVIRONMENT_IS_PTHREAD && selfThreadId == thread) {
       Module['printErr']('PThread ' + thread + ' is attempting to join to itself!');
-      return ERRNO_CODES.EDEADLK; // A non-main thread is attempting to join itself?
+      return ERRNO_CODES.EDEADLK;
     }
-    /*
-    var pthread = PThread.pthreads[thread];
-    if (!pthread) {
-      Module['printErr']('PThread ' + thread + ' does not exist!');
+    else if (!ENVIRONMENT_IS_PTHREAD && PThread.mainThreadBlock == thread) {
+      Module['printErr']('Main thread ' + thread + ' is attempting to join to itself!');
+      return ERRNO_CODES.EDEADLK;
+    }
+    var self = {{{ makeGetValue('thread', C_STRUCTS.pthread.self, 'i32') }}};
+    if (self != thread) {
+      Module['printErr']('pthread_join attempted on thread ' + thread + ', which does not exist anymore! (self: ' + self + ')');
       return ERRNO_CODES.ESRCH;
     }
-    if (!pthread.threadBlock) {
-      Module['printErr']('PThread ' + thread + ' is not running anymore!');
-      return ERRNO_CODES.ESRCH;
-    }
-    */
+
     var detached = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2);
     if (detached) {
       Module['printErr']('Attempted to join thread ' + thread + ', which was already detached!');
       return ERRNO_CODES.EINVAL; // The thread is already detached, can no longer join it!
     }
-    //var worker = pthread.worker;
     for(;;) {
       var threadStatus = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
       if (threadStatus == 1) { // Exited?
