@@ -4,6 +4,8 @@
 
 #include "pthread_impl.h"
 
+int _pthread_isduecanceled(struct pthread *pthread_ptr);
+
 void __wait(volatile int *addr, volatile int *waiters, int val, int priv)
 {
 	int spins=10000;
@@ -15,7 +17,21 @@ void __wait(volatile int *addr, volatile int *waiters, int val, int priv)
 	if (waiters) a_inc(waiters);
 	while (*addr==val) {
 #ifdef __EMSCRIPTEN__
-		emscripten_futex_wait((void*)addr, val, INFINITY);
+		if (pthread_self()->cancelasync == PTHREAD_CANCEL_ASYNCHRONOUS) {
+			// Must wait in slices in case this thread is cancelled in between.
+			int e;
+			do {
+				if (_pthread_isduecanceled(pthread_self())) {
+					if (waiters) a_dec(waiters);
+					return;
+				}
+				e = emscripten_futex_wait((void*)addr, val, 100*1000*1000);
+			} while(e == -ETIMEDOUT);
+		} else {
+			// Can wait in one go.
+			pthread_testcancel();
+			emscripten_futex_wait((void*)addr, val, INFINITY);
+		}
 #else
 		__syscall(SYS_futex, addr, FUTEX_WAIT|priv, val, 0);
 #endif

@@ -185,11 +185,16 @@ int pthread_setcancelstate(int new, int *old)
 	return 0;
 }
 
+int _pthread_isduecanceled(struct pthread *pthread_ptr)
+{
+	return pthread_ptr->threadStatus == 2/*canceled*/;
+}
+
 void pthread_testcancel()
 {
 	struct pthread *self = pthread_self();
 	if (self->canceldisable) return;
-	if (self->threadStatus == 2/*canceled*/) {
+	if (_pthread_isduecanceled(self)) {
 		EM_ASM( throw 'Canceled!'; );
 	}
 }

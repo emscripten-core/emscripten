@@ -5,6 +5,7 @@
 #include <math.h>
 #include <emscripten/threading.h>
 #include <emscripten/emscripten.h>
+#include "pthread_impl.h"
 #else
 #include "futex.h"
 #endif
@@ -12,6 +13,7 @@
 
 #ifdef __EMSCRIPTEN__
 double _pthread_nsecs_until(const struct timespec *restrict at);
+int _pthread_isduecanceled(struct pthread *pthread_ptr);
 #endif
 
 static int do_wait(volatile int *addr, int val,
@@ -33,8 +35,23 @@ static int do_wait(volatile int *addr, int val,
 	}
 
 #ifdef __EMSCRIPTEN__
-	double waitNsecs = at ? _pthread_nsecs_until(at) : INFINITY;
-	r = emscripten_futex_wait((void*)addr, val, waitNsecs);
+	if (pthread_self()->cancelasync == PTHREAD_CANCEL_ASYNCHRONOUS) {
+		do {
+			if (_pthread_isduecanceled(pthread_self())) return EINTR;
+			// Must wait in slices in case this thread is cancelled in between.
+			double waitNsecs = at ? _pthread_nsecs_until(at) : INFINITY;
+			if (waitNsecs <= 0) {
+				r = ETIMEDOUT;
+				break;
+			}
+			if (waitNsecs > 100 * 1000 * 1000) waitNsecs = 100 * 1000 * 1000;
+			r = -emscripten_futex_wait((void*)addr, val, waitNsecs);
+		} while(r == ETIMEDOUT);
+	} else {
+		// Can wait in one go.
+		double waitNsecs = at ? _pthread_nsecs_until(at) : INFINITY;
+		r = -emscripten_futex_wait((void*)addr, val, waitNsecs);
+	}
 #else
 	r = -__syscall_cp(SYS_futex, addr, FUTEX_WAIT, val, top);
 #endif
@@ -56,5 +73,9 @@ int __timedwait(volatile int *addr, int val,
 	pthread_cleanup_pop(0);
 	if (!cleanup) pthread_setcancelstate(cs, 0);
 
+#ifdef __EMSCRIPTEN__
+	// XXX Emscripten: since we don't have signals, cooperatively test cancellation.
+	pthread_testcancel();
+#endif
 	return r;
 }
