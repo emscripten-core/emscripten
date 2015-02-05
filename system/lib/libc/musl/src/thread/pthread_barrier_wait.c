@@ -1,3 +1,7 @@
+#ifdef __EMSCRIPTEN__
+#include <math.h>
+#endif
+
 #include "pthread_impl.h"
 
 void __vm_lock_impl(int);
@@ -88,7 +92,7 @@ int pthread_barrier_wait(pthread_barrier_t *b)
 		a_inc(&inst->finished);
 		while (inst->finished == 1) {
 #ifdef __EMSCRIPTEN__
-			emscripten_futex_wait(&inst->finished, 1, 0);
+			emscripten_futex_wait(&inst->finished, 1, INFINITY);
 #else
 			__syscall(SYS_futex, &inst->finished, FUTEX_WAIT,1,0);
 #endif

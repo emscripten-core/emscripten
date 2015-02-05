@@ -20,6 +20,17 @@ static void inline __pthread_mutex_locked(pthread_mutex_t *mutex)
 	if (_pthread_getcanceltype() == PTHREAD_CANCEL_ASYNCHRONOUS) pthread_testcancel();
 }
 
+double _pthread_nsecs_until(const struct timespec *restrict at)
+{
+	struct timeval t;
+	gettimeofday(&t, NULL);
+	double cur_t = t.tv_sec * 1e9 + t.tv_usec * 1e3;
+	double at_t = at->tv_sec * 1e9 + at->tv_nsec;
+	double nsecs = at_t - cur_t;
+	return nsecs;
+}
+
+#if 0
 int pthread_mutex_lock(pthread_mutex_t *mutex)
 {
 	if (!mutex) return EINVAL;
@@ -100,16 +111,6 @@ int pthread_mutex_trylock(pthread_mutex_t *mutex)
 		return EBUSY;
 }
 
-double _pthread_nsecs_until(const struct timespec *restrict at)
-{
-	struct timeval t;
-	gettimeofday(&t, NULL);
-	double cur_t = t.tv_sec * 1e9 + t.tv_usec * 1e3;
-	double at_t = at->tv_sec * 1e9 + at->tv_nsec;
-	double nsecs = at_t - cur_t;
-	return nsecs;
-}
-
 int pthread_mutex_timedlock(pthread_mutex_t *restrict mutex, const struct timespec *restrict at)
 {
 	if (!mutex || !at) return EINVAL;
@@ -151,6 +152,7 @@ int pthread_mutex_timedlock(pthread_mutex_t *restrict mutex, const struct timesp
 	__pthread_mutex_locked(mutex);
 	return 0;
 }
+#endif
 
 int sched_get_priority_max(int policy)
 {

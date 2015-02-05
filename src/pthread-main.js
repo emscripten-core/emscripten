@@ -74,6 +74,7 @@ this.onmessage = function(e) {
         result = asm.dynCall_i(e.data.start_routine); // as a hack, try signature 'i' as fallback.
     } catch(e) {
       Atomics.store(HEAPU32, (threadBlock + 0 /*{{{ C_STRUCTS.pthread.threadStatus }}}*/ ) >> 2, 1); // Mark the thread as no longer running.
+      _emscripten_futex_wake(threadBlock + 0 /*{{{ C_STRUCTS.pthread.threadStatus }}}*/, 9999); // wake all threads
       if (e === 'Canceled!') {
         PThread.threadCancel();
         return;
