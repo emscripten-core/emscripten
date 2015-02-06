@@ -75,7 +75,7 @@ int __timedwait(volatile int *addr, int val,
 
 #ifdef __EMSCRIPTEN__
 	// XXX Emscripten: since we don't have signals, cooperatively test cancellation.
-	pthread_testcancel();
+	if (pthread_self()->cancelasync == PTHREAD_CANCEL_ASYNCHRONOUS) pthread_testcancel();
 #endif
 	return r;
 }

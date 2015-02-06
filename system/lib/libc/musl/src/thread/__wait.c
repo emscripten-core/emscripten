@@ -29,7 +29,6 @@ void __wait(volatile int *addr, volatile int *waiters, int val, int priv)
 			} while(e == -ETIMEDOUT);
 		} else {
 			// Can wait in one go.
-			pthread_testcancel();
 			emscripten_futex_wait((void*)addr, val, INFINITY);
 		}
 #else

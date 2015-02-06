@@ -209,7 +209,7 @@ int usleep(unsigned usec)
 		double nsecsToSleep = (target - now) * 1e6;
 		if (nsecsToSleep > 1e6) {
 			if (nsecsToSleep > 100 * 1000 * 1000) nsecsToSleep = 100 * 1000 * 1000;
-			pthread_testcancel();
+			pthread_testcancel(); // pthreads spec: usleep is a cancellation point, so it must test if this thread is cancelled during the sleep.
 			emscripten_futex_wait(&dummyZeroAddress, 0, nsecsToSleep);
 		}
 		now = emscripten_get_now();
