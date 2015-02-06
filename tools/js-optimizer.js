@@ -7452,7 +7452,8 @@ function emterpretify(ast) {
     // calculate final count of local variables, and emit func header
     var finalLocals = Math.max(numLocals, maxLocal+1, withSlowLocals);
     assert(finalLocals < 65535, 'too many locals ' + [maxLocal, numLocals, withSlowLocals]);
-    code = ['FUNC', func[2].length, finalLocals & 255, finalLocals >>> 8, 0, func[2].length + numZeroInits, 0, 0].concat(constants).concat(code);
+    var lastZeroInit = func[2].length + numZeroInits;
+    code = ['FUNC', func[2].length, finalLocals & 255, finalLocals >>> 8, 0, 0, lastZeroInit & 255, lastZeroInit >>> 8].concat(constants).concat(code);
     verifyCode(code);
 
     finalizeJumps(code);

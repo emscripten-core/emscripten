@@ -208,7 +208,7 @@ OPCODES = [ # l, lx, ly etc - one of 256 locals
 
   'SWITCH',  # [lx, ly, lz]         switch (lx) { .. }. followed by a jump table for values in range [ly..ly+lz), after which is the default (which might be empty)
   'RET',     # [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
-  'FUNC',    # [num params, total locals (low 8 bits), total locals (high 8 bits)] [which emterpreter (0 = normal, 1 = zero), num params + num zero-inits, 0, 0]           function with n locals (each taking 64 bits), of which the first are params
+  'FUNC',    # [num params, total locals (low 8 bits), total locals (high 8 bits)] [which emterpreter (0 = normal, 1 = zero), 0, last zeroinit = num params + num zero-inits (low 8), (high 8)]           function with n locals (each taking 64 bits), of which the first are params
              # this is read in the emterpreter prelude, and also in intcalls
 
   # slow locals support - copying from/to slow locals
@@ -622,7 +622,7 @@ function emterpret%s(pc) {
  lx = HEAPU16[pc + 2 >> 1] | 0; // num locals
 %s
  ly = HEAPU8[pc + 1 >> 0] | 0; // first zeroinit (after params)
- lz = HEAPU8[pc + 5 >> 0] | 0; // offset of last zeroinit
+ lz = HEAPU16[pc + 6 >> 1] | 0; // offset of last zeroinit
  while ((ly | 0) < (lz | 0)) { // clear the zeroinits
   %s = +0;
   ly = ly + 1 | 0;
