@@ -7402,10 +7402,10 @@ function emterpretify(ast) {
 
     countLocals();
     if (numLocals >= FAST_LOCALS) {
-      printErr('warning: ' + numLocals + ' locals in ' + func[1] + ', which is very high, trying to reduce');
+      //printErr('warning: ' + numLocals + ' locals in ' + func[1] + ', which is very high, trying to reduce');
       aggressiveVariableEliminationInternal(func, asmData);
       countLocals();
-      printErr('...number of locals is now ' + numLocals);
+      //printErr('...number of locals is now ' + numLocals);
     }
 
     // put the variables that need a zero-init at the beginning
