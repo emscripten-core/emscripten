@@ -73,13 +73,13 @@ this.onmessage = function(e) {
       else
         result = asm.dynCall_i(e.data.start_routine); // as a hack, try signature 'i' as fallback.
     } catch(e) {
-      Atomics.store(HEAPU32, (threadBlock + 0 /*{{{ C_STRUCTS.pthread.threadStatus }}}*/ ) >> 2, 1); // Mark the thread as no longer running.
-      _emscripten_futex_wake(threadBlock + 0 /*{{{ C_STRUCTS.pthread.threadStatus }}}*/, 9999); // wake all threads
       if (e === 'Canceled!') {
         PThread.threadCancel();
         return;
       } else {
         Atomics.store(HEAPU32, (threadBlock + 4 /*{{{ C_STRUCTS.pthread.threadExitCode }}}*/ ) >> 2, -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
+        Atomics.store(HEAPU32, (threadBlock + 0 /*{{{ C_STRUCTS.pthread.threadStatus }}}*/ ) >> 2, 1); // Mark the thread as no longer running.
+        _emscripten_futex_wake(threadBlock + 0 /*{{{ C_STRUCTS.pthread.threadStatus }}}*/, 0x7FFFFFFF/*INT_MAX*/); // wake all threads
         throw e;
       }
     }

@@ -35,9 +35,14 @@ static int do_wait(volatile int *addr, int val,
 	}
 
 #ifdef __EMSCRIPTEN__
-	if (pthread_self()->cancelasync == PTHREAD_CANCEL_ASYNCHRONOUS) {
+	if (1 || pthread_self()->cancelasync == PTHREAD_CANCEL_ASYNCHRONOUS) {
 		do {
-			if (_pthread_isduecanceled(pthread_self())) return EINTR;
+			if (_pthread_isduecanceled(pthread_self())) {
+				// Emscripten-specific return value: The wait was canceled by user calling
+				// pthread_cancel() for this thread, and the caller needs to cooperatively
+				// cancel execution.
+				return ECANCELED;
+			}
 			// Must wait in slices in case this thread is cancelled in between.
 			double waitNsecs = at ? _pthread_nsecs_until(at) : INFINITY;
 			if (waitNsecs <= 0) {
@@ -73,9 +78,5 @@ int __timedwait(volatile int *addr, int val,
 	pthread_cleanup_pop(0);
 	if (!cleanup) pthread_setcancelstate(cs, 0);
 
-#ifdef __EMSCRIPTEN__
-	// XXX Emscripten: since we don't have signals, cooperatively test cancellation.
-	if (pthread_self()->cancelasync == PTHREAD_CANCEL_ASYNCHRONOUS) pthread_testcancel();
-#endif
 	return r;
 }

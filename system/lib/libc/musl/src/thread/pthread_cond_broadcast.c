@@ -8,6 +8,13 @@ int pthread_cond_broadcast(pthread_cond_t *c)
 
 	a_inc(&c->_c_seq);
 
+#ifdef __EMSCRIPTEN__
+	// XXX Emscripten: TODO: This is suboptimal but works naively correctly for now. The Emscripten-specific code path below
+	// has a bug and does not work for some reason. Figure it out and remove this code block.
+	__wake(&c->_c_seq, -1, 0);
+	return 0;
+#endif
+
 	/* If cond var is process-shared, simply wake all waiters. */
 	if (c->_c_mutex == (void *)-1) {
 		__wake(&c->_c_seq, -1, 0);
@@ -28,6 +35,7 @@ int pthread_cond_broadcast(pthread_cond_t *c)
 #ifdef __EMSCRIPTEN__
 	int futexResult;
 	do {
+		// XXX Emscripten: Bug, this does not work correctly.
 		futexResult = emscripten_futex_wake_or_requeue(&c->_c_seq, !m->_m_type || (m->_m_lock&INT_MAX)!=pthread_self()->tid,
 			c->_c_seq, &m->_m_lock);
 	} while(futexResult == -EAGAIN);
