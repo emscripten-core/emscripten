@@ -6678,6 +6678,7 @@ function emterpretify(ast) {
     }
 
     function makeSet(dst, src, type) {
+      assert(dst < 256 && src < 256);
       if (dst === src) return [];
       var opcode;
       if (type === ASM_INT) {

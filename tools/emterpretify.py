@@ -842,7 +842,7 @@ if __name__ == '__main__':
       except Exception, e:
         print >> sys.stderr, 'failed to parse code from', line
         raise e
-      assert len(curr) % 4 == 0, curr
+      assert len(curr) % 4 == 0, len(curr)
       funcs[func] = len(all_code) # no operation here should change the length
       if LOG_CODE: print >> sys.stderr, 'raw bytecode for %s:' % func, curr, 'insts:', len(curr)/4
       process_code(func, curr, absolute_targets)
@@ -887,7 +887,7 @@ if __name__ == '__main__':
     # sanity checks
     for i in range(len(code)):
       v = code[i]
-      assert type(v) == int and v >= 0 and v < 256, [i, v, 'in', code]
+      assert type(v) == int and v >= 0 and v < 256, [i, v, 'in', code[i-5:i+5], ROPCODES]
 
   post_process_code(all_code)
 
