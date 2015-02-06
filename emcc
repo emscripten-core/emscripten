@@ -1539,7 +1539,7 @@ try:
     if not shared.Settings.EMTERPRETIFY:
       do_minify()
 
-    if shared.Settings.ASM_JS:
+    if opt_level >= 2 and shared.Settings.ASM_JS:
       js_optimizer_queue += ['asmLastOpts']
 
     if shared.Settings.FINALIZE_ASM_JS: js_optimizer_queue += ['last']
