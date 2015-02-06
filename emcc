@@ -1047,6 +1047,9 @@ try:
     shared.Settings.SIMPLIFY_IFS = 0 # this is just harmful for emterpreting
     shared.Settings.RUNNING_JS_OPTS = 1 # even if we run no other JS opts, we will run this one
     shared.Settings.EXPORTED_FUNCTIONS += ['emterpret']
+    if not memory_init_file:
+      logging.warning('enabling --memory-init-file for emterpreter')
+      memory_init_file = True
 
   shared.Settings.RUNNING_FASTCOMP = fastcomp
 
