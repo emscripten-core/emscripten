@@ -5302,6 +5302,7 @@ return malloc(size);
     self.do_run_from_file(src, output)
 
   def test_simd2(self):
+    if self.is_emterpreter(): return self.skip('todo')
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
