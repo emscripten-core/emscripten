@@ -1019,6 +1019,7 @@ class Building:
     env['PKG_CONFIG_LIBDIR'] = path_from_root('system', 'local', 'lib', 'pkgconfig') + os.path.pathsep + path_from_root('system', 'lib', 'pkgconfig')
     env['PKG_CONFIG_PATH'] = os.environ.get ('EM_PKG_CONFIG_PATH') or ''
     env['EMSCRIPTEN'] = path_from_root()
+    env['PATH'] = path_from_root('system', 'bin') + os.pathsep + env['PATH']
     return env
 
   # Finds the given executable 'program' in PATH. Operates like the Unix tool 'which'.
