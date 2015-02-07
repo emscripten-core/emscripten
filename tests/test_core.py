@@ -4044,7 +4044,6 @@ Have even and odd!
 
   def test_printf(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('i64 mode 1 requires ta2')
-    if self.is_emterpreter(): return self.skip('todo')
     self.banned_js_engines = [NODE_JS, V8_ENGINE] # SpiderMonkey and V8 do different things to float64 typed arrays, un-NaNing, etc.
     src = open(path_from_root('tests', 'printf', 'test.c'), 'r').read()
     expected = [open(path_from_root('tests', 'printf', 'output.txt'), 'r').read(),
