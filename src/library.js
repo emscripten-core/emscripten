@@ -8733,8 +8733,12 @@ LibraryManager.library = {
 function autoAddDeps(object, name) {
   name = [name];
   for (var item in object) {
-    if (item.substr(-6) != '__deps' && !object[item + '__deps']) {
-      object[item + '__deps'] = name;
+    if (item.substr(-6) != '__deps') {
+      if (!object[item + '__deps']) {
+        object[item + '__deps'] = name;
+      } else {
+        object[item + '__deps'].push(name[0]); // add to existing list
+      }
     }
   }
 }

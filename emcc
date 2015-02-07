@@ -946,7 +946,7 @@ try:
 
     if shared.Settings.SAFE_HEAP and not js_opts:
       js_opts = True
-      logging.warning('enabling js opts to allow SAFE_HEAP to work properly')
+      logging.warning('enabling js opts for SAFE_HEAP')
 
     if shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.ASM_JS != 2:
       logging.warning('Disabling asm.js validation for memory growth (memory can grow, but you lose some amount of speed)');
@@ -1035,17 +1035,23 @@ try:
 
   assert not (bind and shared.Settings.NO_DYNAMIC_EXECUTION), 'NO_DYNAMIC_EXECUTION disallows embind'
 
-  if proxy_to_worker:
-    shared.Settings.PROXY_TO_WORKER = 1
-
-  if js_opts:
-    shared.Settings.RUNNING_JS_OPTS = 1
-
   if shared.Settings.EMTERPRETIFY:
     shared.Settings.FINALIZE_ASM_JS = 0
     shared.Settings.GLOBAL_BASE = 8*256 # keep enough space at the bottom for a full stack frame
     shared.Settings.SIMPLIFY_IFS = 0 # this is just harmful for emterpreting
     shared.Settings.EXPORTED_FUNCTIONS += ['emterpret']
+    if not js_opts:
+      js_opts = True
+      logging.warning('enabling js opts for EMTERPRETIFY')
+    if not memory_init_file:
+      logging.warning('enabling --memory-init-file for EMTERPRETIFY')
+      memory_init_file = True
+
+  if proxy_to_worker:
+    shared.Settings.PROXY_TO_WORKER = 1
+
+  if js_opts:
+    shared.Settings.RUNNING_JS_OPTS = 1
 
   shared.Settings.RUNNING_FASTCOMP = fastcomp
 
@@ -1535,7 +1541,7 @@ try:
     if not shared.Settings.EMTERPRETIFY:
       do_minify()
 
-    if shared.Settings.ASM_JS:
+    if opt_level >= 2 and shared.Settings.ASM_JS:
       js_optimizer_queue += ['asmLastOpts']
 
     if shared.Settings.FINALIZE_ASM_JS: js_optimizer_queue += ['last']
@@ -1580,7 +1586,7 @@ try:
       args = [shared.PYTHON, shared.path_from_root('tools', 'emterpretify.py'), js_target, final + '.em.js', memfile, json.dumps(shared.Settings.EMTERPRETIFY_BLACKLIST), json.dumps(shared.Settings.EMTERPRETIFY_WHITELIST), str(shared.Settings.SWAPPABLE_ASM_MODULE)]
       if shared.Settings.EMTERPRETIFY_ASYNC:
         args += ['ASYNC=1']
-      if profiling:
+      if profiling or profiling_funcs:
         args += ['PROFILING=1']
       execute(args)
       final = final + '.em.js'

@@ -50,7 +50,7 @@ except:
 
 # Core test runner class, shared between normal tests and benchmarks
 checked_sanity = False
-test_modes = ['default', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g', 'asm3i', 'asm2nn']
+test_modes = ['default', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g', 'asm1i', 'asm3i', 'asm2nn']
 test_index = 0
 
 class RunnerCore(unittest.TestCase):
@@ -245,7 +245,7 @@ process(sys.argv[1])
       if '--memory-init-file' in self.emcc_args:
         memory_init_file = int(self.emcc_args[self.emcc_args.index('--memory-init-file')+1])
       else:
-        memory_init_file = '-O2' in self.emcc_args or '-O3' in self.emcc_args
+        memory_init_file = '-O2' in self.emcc_args or '-O3' in self.emcc_args or self.is_emterpreter()
       src = open(filename + '.o.js').read()
       if memory_init_file:
         # side memory init file, or an empty one in the js

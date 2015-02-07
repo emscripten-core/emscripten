@@ -747,6 +747,29 @@ mergeInto(LibraryManager.library, {
     );
   },
 
+#if EMTERPRETIFY_ASYNC
+  emscripten_wget_data__deps: ['$EmterpreterAsync'],
+  emscripten_wget_data: function(url, pbuffer, pnum, perror) {
+    EmterpreterAsync.handle(function(resume) {
+      Browser.asyncLoad(Pointer_stringify(url), function(byteArray) {
+        var buffer = _malloc(byteArray.length); // must be freed by caller!
+        HEAPU8.set(byteArray, buffer);
+        {{{ makeSetValueAsm('pbuffer', 0, 'buffer', 'i32') }}};
+        {{{ makeSetValueAsm('pnum',  0, 'byteArray.length', 'i32') }}};
+        {{{ makeSetValueAsm('perror',  0, '0', 'i32') }}};
+        resume();
+      }, function() {
+        {{{ makeSetValueAsm('perror',  0, '1', 'i32') }}};
+        resume();
+      }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
+    });
+  },
+#else
+  emscripten_wget_data: function(url, file) {
+    throw 'Please compile your program with -s EMTERPRETER_ASYNC=1 in order to use asynchronous operations like emscripten_wget_data';
+  },
+#endif
+
   emscripten_async_wget_data: function(url, arg, onload, onerror) {
     Browser.asyncLoad(Pointer_stringify(url), function(byteArray) {
       var buffer = _malloc(byteArray.length);

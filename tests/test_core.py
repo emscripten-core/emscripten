@@ -4044,7 +4044,6 @@ Have even and odd!
 
   def test_printf(self):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('i64 mode 1 requires ta2')
-    if self.is_emterpreter(): return self.skip('todo')
     self.banned_js_engines = [NODE_JS, V8_ENGINE] # SpiderMonkey and V8 do different things to float64 typed arrays, un-NaNing, etc.
     src = open(path_from_root('tests', 'printf', 'test.c'), 'r').read()
     expected = [open(path_from_root('tests', 'printf', 'output.txt'), 'r').read(),
@@ -5302,6 +5301,7 @@ return malloc(size);
     self.do_run_from_file(src, output)
 
   def test_simd2(self):
+    if self.is_emterpreter(): return self.skip('todo')
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
@@ -7364,6 +7364,7 @@ asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2"])
 asm3 = make_run("asm3", compiler=CLANG, emcc_args=["-O3"])
 asm2f = make_run("asm2f", compiler=CLANG, emcc_args=["-O2", "-s", "PRECISE_F32=1"])
 asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "-s", "SAFE_HEAP=1"])
+asm1i = make_run("asm1i", compiler=CLANG, emcc_args=["-O1", '-s', 'EMTERPRETIFY=1'])
 asm3i = make_run("asm3i", compiler=CLANG, emcc_args=["-O3", '-s', 'EMTERPRETIFY=1'])
 
 # Legacy test modes - 

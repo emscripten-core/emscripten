@@ -201,7 +201,7 @@ mergeInto(LibraryManager.library, {
   // we are going to re-call in the exact same way as before - including the final call
   // to the async function here! Therefore sleep etc. detect the state, so they know
   // if they are the first call or the second. The second typically does nothing, but
-  // if there is a return value it could return it, etc. (TODO: support return values)
+  // if there is a return value it could return it, etc.
   $EmterpreterAsync: {
     state: 0, // 0 - nothing
               // 1 - saving
@@ -210,29 +210,35 @@ mergeInto(LibraryManager.library, {
       this.state = s;
       asm.setAsyncState(s);
     },
+    handle: function(doAsyncOp) {
+      Module['noExitRuntime'] = true;
+      if (EmterpreterAsync.state === 0) {
+        // save the stack we want to resume. this lets other code run in between
+        // XXX this assumes that this stack top never ever leak! exceptions might violate that
+        var stack = new Int32Array(HEAP32.subarray(EMTSTACKTOP>>2, asm.emtStackSave()>>2));
+        var stacktop = asm.stackSave();
+        doAsyncOp(function resume() {
+          assert(EmterpreterAsync.state === 1);
+          // copy the stack back in and resume
+          HEAP32.set(stack, EMTSTACKTOP>>2);
+          EmterpreterAsync.setState(2);
+          assert(stacktop === asm.stackSave()); // nothing should have modified the stack meanwhile
+          asm.emterpret(stack[0]); // pc of the first function, from which we can reconstruct the rest, is at position 0 on the stack
+        });
+        EmterpreterAsync.setState(1);
+      } else {
+        // nothing to do here, the stack was just recreated. reset the state.
+        assert(EmterpreterAsync.state === 2);
+        EmterpreterAsync.setState(0);
+      }
+    }
   },
 
   emscripten_sleep__deps: ['$EmterpreterAsync'],
   emscripten_sleep: function(ms) {
-    if (EmterpreterAsync.state === 0) {
-      // save the stack we want to resume. this lets other code run in between
-      // XXX this assumes that this stack top never ever leak! exceptions might violate that
-      var stack = new Int32Array(HEAP32.subarray(EMTSTACKTOP>>2, asm.emtStackSave()>>2));
-      var stacktop = asm.stackSave();
-      Browser.safeSetTimeout(function resume() {
-        assert(EmterpreterAsync.state === 1);
-        // copy the stack back in and resume
-        HEAP32.set(stack, EMTSTACKTOP>>2);
-        EmterpreterAsync.setState(2);
-        assert(stacktop === asm.stackSave()); // nothing should have modified the stack meanwhile
-        asm.emterpret(stack[0]); // pc of the first function, from which we can reconstruct the rest, is at position 0 on the stack
-      }, ms);
-      EmterpreterAsync.setState(1);
-    } else {
-      // nothing to do here, the stack was just recreated. reset the state.
-      assert(EmterpreterAsync.state === 2);
-      EmterpreterAsync.setState(0);
-    }
+    EmterpreterAsync.handle(function(resume) {
+      Browser.safeSetTimeout(resume, ms);
+    });
   },
 
 #else

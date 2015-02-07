@@ -1161,6 +1161,17 @@ keydown(100);keyup(100); // trigger the end
       self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=mode + ['-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''])
       self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=mode + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''])
 
+  def test_idbstore(self):
+    secret = str(time.time())
+    for stage in [0, 1, 2, 3, 0, 1, 2, 0, 0, 1, 4, 2, 5]:
+      self.clear()
+      self.btest(path_from_root('tests', 'idbstore.c'), str(stage), force_c=True, args=['-DSTAGE=' + str(stage), '-DSECRET=\"' + secret + '\"'])
+
+  def test_idbstore_sync(self):
+    secret = str(time.time())
+    self.clear()
+    self.btest(path_from_root('tests', 'idbstore_sync.c'), '6', force_c=True, args=['-DSECRET=\"' + secret + '\"', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '--memory-init-file', '1', '-O3', '-g2'])
+
   def test_force_exit(self):
     self.btest('force_exit.c', force_c=True, expected='17')
 
@@ -2042,6 +2053,11 @@ open(filename, 'w').write(replaced)
       f.write('emscripten')
     self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'ASYNCIFY=1'])
 
+  def test_wget_data(self):
+    with open(os.path.join(self.get_dir(), 'test.txt'), 'w') as f:
+      f.write('emscripten')
+    self.btest(path_from_root('tests', 'test_wget_data.c'), expected='1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O2', '-g2'])
+
   def test_locate_file(self):
     self.clear()
     open('src.cpp', 'w').write(self.with_report_result(r'''
@@ -2461,6 +2477,9 @@ window.close = function() {
 
   def test_emterpreter_async_virtual_2(self):
     self.btest('emterpreter_async_virtual_2.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O3', '-s', 'ASSERTIONS=1', '-s', 'SAFE_HEAP=1', '-profiling'])
+
+  def zzztest_emterpreter_async_bad(self):
+    self.btest('emterpreter_async_bad.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O1', '-s', 'EMTERPRETIFY_BLACKLIST=["_middle"]'])
 
   def test_modularize(self):
     for opts in [[], ['-O1'], ['-O2', '-profiling'], ['-O2']]:

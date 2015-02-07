@@ -114,7 +114,7 @@ OPCODES = [ # l, lx, ly etc - one of 256 locals
   'SLEBRT',
   'ULEBRT',
 
-  'SETD',    # [lx, ly, lz]         lx = ly (double)
+  'SETD',    # [lx, ly, 0]          lx = ly (double)
   'SETVD',   # [lx, vl, vh]         lx = ly (16 bit signed int, converted into double)
   'SETVDI',  # [lx, 0, 0] [..v..]   lx = v (32 bit signed int, converted into double)
   'SETVDF',  # [lx, 0, 0] [..v..]   lx = v (32 bit float, converted into double)
@@ -208,7 +208,14 @@ OPCODES = [ # l, lx, ly etc - one of 256 locals
 
   'SWITCH',  # [lx, ly, lz]         switch (lx) { .. }. followed by a jump table for values in range [ly..ly+lz), after which is the default (which might be empty)
   'RET',     # [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
-  'FUNC',    # [total locals, num params, which emterpreter (0 = normal, 1 = zero)] [num params + num zero-inits, 0, 0, 0]           function with n locals (each taking 64 bits), of which the first are params
+  'FUNC',    # [num params, total locals (low 8 bits), total locals (high 8 bits)] [which emterpreter (0 = normal, 1 = zero), 0, last zeroinit = num params + num zero-inits (low 8), (high 8)]           function with n locals (each taking 64 bits), of which the first are params
+             # this is read in the emterpreter prelude, and also in intcalls
+
+  # slow locals support - copying from/to slow locals
+  'FSLOW',     # [lx, lyl, lyh]       lx = ly (int or float, not double; ly = lyl,lyh
+  'FSLOWD',    # [lx, lyl, lyh]       lx = ly (double)
+  'TSLOW',     # [lxl, lxh, ly]       lx = ly (int or float, not double; lx = lxl,lxh
+  'TSLOWD',    # [lxl, lxh, ly]       lx = ly (double; lx = lxl,lxh)
 ]
 
 def randomize_opcodes():
@@ -432,8 +439,7 @@ def handle_async_post_call():
   return 'if ((asyncState|0) == 1) { ' + pop_stacktop(zero=False) + ' return }\n' if ASYNC else '' # save pc and exit immediately if currently saving state
 
 CASES[ROPCODES['INTCALL']] = '''
-    inst = HEAP32[HEAP32[pc + 4 >> 2] >> 2] | 0; // FUNC inst: ['FUNC', locals, params, which emterp]
-    lz = (inst >>> 16) & 255; // params
+    lz = HEAPU8[(HEAP32[pc + 4 >> 2] | 0) + 1 | 0] | 0; // FUNC inst, see definition above; we read params here
     ly = 0;
     assert(((EMTSTACKTOP + 8|0) <= (EMT_STACK_MAX|0))|0); // for return value
     %s
@@ -452,7 +458,7 @@ CASES[ROPCODES['INTCALL']] = '''
     %s = HEAP32[EMTSTACKTOP + 4 >> 2] | 0;
     pc = pc + (((4 + lz + 3) >> 2) << 2) | 0;
 ''' % (
-  'if ((inst >>> 24) == 0) {' if ZERO else '',
+  'if ((HEAPU8[(HEAP32[pc + 4 >> 2] | 0) + 4 | 0] | 0) == 0) {' if ZERO else '',
   'if ((asyncState|0) != 2) {' if ASYNC else '',
   get_access('ly', base='EMTSTACKTOP', offset=8 if ASYNC else 0),  get_coerced_access('HEAPU8[pc + 8 + ly >> 0]'),
   get_access('ly', base='EMTSTACKTOP', offset=12 if ASYNC else 4), get_coerced_access('HEAPU8[pc + 8 + ly >> 0]', offset=4),
@@ -482,6 +488,12 @@ CASES[ROPCODES['SWITCH']] = '''
     }
     pc = HEAP32[pc + 4 + (lx << 2) >> 2] | 0; // load from the jump table which is right after this instruction, and set pc
     PROCEED_WITHOUT_PC_BUMP;'''
+
+CASES[ROPCODES['FSLOW']] = get_access('lx') + ' = ' + get_coerced_access('inst >>> 16') + ';'
+CASES[ROPCODES['FSLOWD']] = get_access('lx', s='d') + ' = ' + get_coerced_access('inst >>> 16', s='d') + ';'
+CASES[ROPCODES['TSLOW']] = get_access('inst >>> 16') + ' = ' + get_coerced_access('lx') + ';'
+CASES[ROPCODES['TSLOWD']] = get_access('inst >>> 16', s='d') + ' = ' + get_coerced_access('lx', s='d') + ';'
+
 
 def make_emterpreter(zero=False):
   # return is specialized per interpreter
@@ -607,10 +619,10 @@ function emterpret%s(pc) {
 %s
 %s
  assert(((HEAPU8[pc>>0]>>>0) == %d)|0);
- lx = HEAPU8[pc + 1 >> 0] | 0; // num locals
+ lx = HEAPU16[pc + 2 >> 1] | 0; // num locals
 %s
- ly = HEAPU8[pc + 2 >> 0] | 0; // first zeroinit (after params)
- lz = HEAPU8[pc + 4 >> 0] | 0; // offset of last zeroinit
+ ly = HEAPU8[pc + 1 >> 0] | 0; // first zeroinit (after params)
+ lz = HEAPU16[pc + 6 >> 1] | 0; // offset of last zeroinit
  while ((ly | 0) < (lz | 0)) { // clear the zeroinits
   %s = +0;
   ly = ly + 1 | 0;
@@ -830,7 +842,7 @@ if __name__ == '__main__':
       except Exception, e:
         print >> sys.stderr, 'failed to parse code from', line
         raise e
-      assert len(curr) % 4 == 0, curr
+      assert len(curr) % 4 == 0, len(curr)
       funcs[func] = len(all_code) # no operation here should change the length
       if LOG_CODE: print >> sys.stderr, 'raw bytecode for %s:' % func, curr, 'insts:', len(curr)/4
       process_code(func, curr, absolute_targets)
@@ -875,7 +887,7 @@ if __name__ == '__main__':
     # sanity checks
     for i in range(len(code)):
       v = code[i]
-      assert type(v) == int and v >= 0 and v < 256, [i, v, 'in', code]
+      assert type(v) == int and v >= 0 and v < 256, [i, v, 'in', code[i-5:i+5], ROPCODES]
 
   post_process_code(all_code)
 

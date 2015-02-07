@@ -2299,7 +2299,7 @@ function detectSign(node) {
     case 'num': {
       var value = node[1];
       if (value < 0) return ASM_SIGNED;
-      if (value > (-1>>>0)) return ASM_NONSIGNED;
+      if (value > (-1>>>0) || value % 1 !== 0) return ASM_NONSIGNED;
       if (value === (value | 0)) return ASM_FLEXIBLE;
       return ASM_UNSIGNED;
     }
@@ -6141,6 +6141,9 @@ function emterpretify(ast) {
 
   var COMPARISONS = set('LNOT', 'EQ', 'NE', 'SLT', 'ULT', 'SLE', 'ULE');
 
+  var FAST_LOCALS = 200; // any local over this will be copied to a fast local first. hopefully,
+                         // fast local + temp variables end up less than 256, because that's all we can do!
+
   var tempBuffer = new ArrayBuffer(8);
   var tempFloat64 = new Float64Array(tempBuffer);
   var tempFloat32 = new Float32Array(tempBuffer);
@@ -6237,7 +6240,23 @@ function emterpretify(ast) {
       switch(node[0]) {
         case 'name': {
           var name = node[1];
-          if (name in locals) return [locals[name], []];
+          if (name in locals) {
+            var l = locals[name];
+            if (l < FAST_LOCALS) {
+              return [l, []];
+            } else {
+              assert(l < 65535);
+              var t = getFree();
+              var type = getAsmType(name, asmData);
+              var op;
+              switch (type) {
+                case ASM_INT:    op = 'FSLOW'; break;
+                case ASM_DOUBLE: op = 'FSLOWD'; break;
+                default: throw 'bad';
+              }
+              return [t, [op, t, l & 255, l >>> 8]];
+            }
+          }
           // this is a global
           switch(name) {
             case 'STACKTOP': {
@@ -6281,10 +6300,26 @@ function emterpretify(ast) {
               // local
               var l = locals[name];
               var type = getAsmType(name, asmData);
-              var reg = getReg(value, undefined, type, undefined, l);
-              // TODO: detect when the last operation in reg[1] assigns in its arg x, in which case we can avoid the SET and make it assign to us
-              reg[1] = reg[1].concat(makeSet(l, releaseIfFree(reg[0]), type));
-              return [l, reg[1]];
+              if (l < FAST_LOCALS) {
+                var reg = getReg(value, undefined, type, undefined, l);
+                // TODO: detect when the last operation in reg[1] assigns in its arg x, in which case we can avoid the SET and make it assign to us
+                reg[1] = reg[1].concat(makeSet(l, releaseIfFree(reg[0]), type));
+                return [l, reg[1]];
+              } else {
+                assert(l < 65535);
+                var t = getFree();
+                var type = getAsmType(name, asmData);
+                var op;
+                switch (type) {
+                  case ASM_INT:    op = 'TSLOW'; break;
+                  case ASM_DOUBLE: op = 'TSLOWD'; break;
+                  default: throw 'bad';
+                }
+                var reg = getReg(value, undefined, type, undefined, t);
+                reg[1] = reg[1].concat(makeSet(t, releaseIfFree(reg[0], t), type))
+                               .concat([op, t, l & 255, l >>> 8]);
+                return [t, reg[1]];
+              }
             } else {
               var reg = getReg(value, undefined, undefined, undefined, assignTo);
               var opcode;
@@ -6643,6 +6678,7 @@ function emterpretify(ast) {
     }
 
     function makeSet(dst, src, type) {
+      assert(dst < 256 && src < 256);
       if (dst === src) return [];
       var opcode;
       if (type === ASM_INT) {
@@ -7353,26 +7389,24 @@ function emterpretify(ast) {
     //printErr('emterpretifying ' + func[1]);
 
     var locals = {};
-    var numLocals = 0;
+    var numLocals = 0; // ignores slow locals, they are over 255 and not directly accessible
 
-    function parseLocals() {
-      locals = {};
+    function countLocals() {
       numLocals = 0;
       for (var i in asmData.params) {
-        locals[i] = numLocals++;
+        numLocals++;
       }
       for (var i in asmData.vars) {
-        locals[i] = numLocals++;
+        numLocals++;
       }
     }
 
-    parseLocals();
-    if (numLocals >= 200) {
-      printErr(numLocals + ' locals in ' + func[1] + ', which is very high, trying to reduce');
+    countLocals();
+    if (numLocals >= FAST_LOCALS) {
+      //printErr('warning: ' + numLocals + ' locals in ' + func[1] + ', which is very high, trying to reduce');
       aggressiveVariableEliminationInternal(func, asmData);
-      parseLocals();
-      printErr('number of locals is now ' + numLocals);
-      assert(numLocals <= 256, 'we need <= 256 locals');
+      countLocals();
+      //printErr('...number of locals is now ' + numLocals);
     }
 
     // put the variables that need a zero-init at the beginning
@@ -7381,18 +7415,23 @@ function emterpretify(ast) {
     for (var i in asmData.params) {
       locals[i] = numLocals++;
     }
+    assert(numLocals <= FAST_LOCALS, 'way too many params!');
+    assert(FAST_LOCALS < 256); // sanity
     var zeroInits = findUninitializedVars(func, asmData);
     var numZeroInits = 0;
     for (var zero in zeroInits) {
       locals[zero] = numLocals++;
+      if (numLocals === FAST_LOCALS) numLocals = 256; // jump over the temps, remaining locals are slow locals
       numZeroInits++;
     }
     for (var i in asmData.vars) {
       if (!(i in zeroInits)) {
-        locals[i] = numLocals++;
+        locals[i] = numLocals++; // TODO: sort by frequency of appearance, so common ones are fast, rare are slow
+        if (numLocals === FAST_LOCALS) numLocals = 256; // jump over the temps, remaining locals are slow locals
       }
     }
-
+    var withSlowLocals = numLocals;
+    numLocals = Math.min(numLocals, FAST_LOCALS); // ignore the slow locals
     for (var i = 255; i >= numLocals; i--) {
       freeLocals.push(i);
     }
@@ -7402,6 +7441,7 @@ function emterpretify(ast) {
 
     // do some pre-calculation and optimization
     var constants = hoistConstants(stats);
+    assert(numLocals < 225); // leave plenty of room for temps
 
     // walk all the function to emit bytecode, and add a final ret
     var code = walkStatements(stats);
@@ -7410,9 +7450,10 @@ function emterpretify(ast) {
       code.push('RET', 0, 0, 0); // final ret for the function
     }
     // calculate final count of local variables, and emit func header
-    var finalLocals = Math.max(numLocals, maxLocal+1); // if no free locals, then numLocals, else the largest free local says how many
-    assert(finalLocals < 256, 'too many locals ' + [maxLocal, numLocals]); // maximum local value is 255, for a total of 256 of them
-    code = ['FUNC', finalLocals, func[2].length, 0, func[2].length + numZeroInits, 0, 0, 0].concat(constants).concat(code); // 3rd FUNC option is filled in later
+    var finalLocals = Math.max(numLocals, maxLocal+1, withSlowLocals);
+    assert(finalLocals < 65535, 'too many locals ' + [maxLocal, numLocals, withSlowLocals]);
+    var lastZeroInit = func[2].length + numZeroInits;
+    code = ['FUNC', func[2].length, finalLocals & 255, finalLocals >>> 8, 0, 0, lastZeroInit & 255, lastZeroInit >>> 8].concat(constants).concat(code);
     verifyCode(code);
 
     finalizeJumps(code);
