@@ -203,10 +203,15 @@ function exit(status) {
 }
 Module['exit'] = Module.exit = exit;
 
-function abort(text) {
-  if (text) {
-    Module.print(text);
-    Module.printErr(text);
+var abortDecorators = [];
+
+function abort(what) {
+  if (what !== undefined) {
+    Module.print(what);
+    Module.printErr(what);
+    what = JSON.stringify(what)
+  } else {
+    what = '';
   }
 
   ABORT = true;
@@ -218,7 +223,11 @@ function abort(text) {
   var extra = '';
 #endif
 
-  throw 'abort() at ' + stackTrace() + extra;
+  var output = 'abort(' + what + ') at ' + stackTrace() + extra;
+  abortDecorators.forEach(function(decorator) {
+    output = decorator(output, what);
+  });
+  throw output;
 }
 Module['abort'] = Module.abort = abort;
 

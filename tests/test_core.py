@@ -2849,7 +2849,7 @@ The current type of b is: 9
         return *(volatile char *)0;
       }
       '''
-    self.do_run(src, 'fault on write to 0' if not Settings.ASM_JS else 'abort()')
+    self.do_run(src, 'abort()' if self.run_name != 'asm2g' else 'abort("segmentation fault')
 
   def test_trickystring(self):
     test_path = path_from_root('tests', 'core', 'test_trickystring')
