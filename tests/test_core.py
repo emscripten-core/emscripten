@@ -7322,9 +7322,9 @@ int main(int argc, char **argv) {
               typeof STACKTOP === 'number' &&
               typeof DYNAMIC_BASE === 'number' &&
               typeof DYNAMICTOP === 'number') {
-             console.log('able to run memprof');
+             Module.print('able to run memprof');
            } else {
-             console.log('missing the required variables to run memprof');
+             Module.print('missing the required variables to run memprof');
            }
         }
       });
