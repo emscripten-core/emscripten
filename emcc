@@ -186,9 +186,11 @@ CONFIGURE_CONFIG = (os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in 
 CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(sys.argv)# or 'CMakeCCompilerId' in ' '.join(sys.argv)
 if CONFIGURE_CONFIG or CMAKE_CONFIG:
   debug_configure = 0 # XXX use this to debug configure stuff. ./configure's generally hide our normal output including stderr so we write to a file
-  use_js = os.environ.get('EMCONFIGURE_JS') # whether we fake configure tests using clang - the local, native compiler - or not. if not we generate JS and use node with a shebang
-                   # neither approach is perfect, you can try both, but may need to edit configure scripts in some cases
-                   # XXX False is not fully tested yet
+
+  # whether we fake configure tests using clang - the local, native compiler - or not. if not we generate JS and use node with a shebang
+  # neither approach is perfect, you can try both, but may need to edit configure scripts in some cases
+  # by default we configure in js, which can break on local filesystem access, etc., but is otherwise accurate
+  use_js = os.environ.get('EMCONFIGURE_JS') or 1
 
   if debug_configure:
     tempout = '/tmp/emscripten_temp/out'
