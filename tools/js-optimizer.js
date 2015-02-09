@@ -6130,6 +6130,7 @@ function emterpretify(ast) {
   var ROPCODES = extraInfo.ropcodes;
   var ASYNC = extraInfo.ASYNC;
   var PROFILING = extraInfo.PROFILING;
+  var ASSERTIONS = extraInfo.ASSERTIONS;
 
   var RELATIVE_BRANCHES = set('BR', 'BRT', 'BRF');
   var ABSOLUTE_BRANCHES = set('BRA', 'BRTA', 'BRFA');
@@ -7376,6 +7377,33 @@ function emterpretify(ast) {
     var ignore = !(func[1] in EMTERPRETED_FUNCS);
 
     if (ignore) {
+      // we are not emterpreting this function
+      if (ASYNC && ASSERTIONS) {
+        // we need to be careful to never enter non-emterpreted code while doing an async save/restore,
+        // which is what happens if non-emterpreted code is on the stack while we attempt to save
+
+        traverse(func, function(node, type) {}, function(node, type) { // post-traversal
+          var callType = ASM_NONE;
+          var temp = null;
+          if (type === 'binary' && node[1] === '|' && node[3][0] === 'num' && node[3][1] === 0 &&
+              node[2][0] === 'call') {
+            // int-coerced call
+            callType = ASM_INT;
+            temp = 'tempInt';
+          } else if (type === 'unary-prefix' && node[1] === '+' && node[2][0] === 'call') {
+            // double-coerced call
+            callType = ASM_DOUBLE;
+            temp = 'tempDouble';
+          }
+          if (callType !== ASM_NONE && (node[2][1] !== 'name' || !isMathFunc(node[2][1][0]))) {
+            // assign to temp, assert, return proper value:     temp = call() , (asyncState ? abort() : temp)
+            node[2] = ['seq',
+              ['assign', null, ['name', temp], makeAsmCoercion(node[2], callType)],
+              ['conditional', ['name', 'asyncState'], makeAsmCoercion(['call', ['name', 'abort'], [['num', '-12']]], ASM_INT), ['name', temp]]
+            ];
+          }
+        });
+      }
       print(astToSrc(func));
     }
 
