@@ -4773,4 +4773,7 @@ Descriptor desc;
       print args, expected
       out, err = Popen([PYTHON, path_from_root('system', 'bin', 'sdl2-config')] + args, stdout=PIPE, stderr=PIPE).communicate()
       assert expected in out, out
+      print 'via emmake'
+      out, err = Popen([PYTHON, path_from_root('emmake'), 'sdl2-config'] + args, stdout=PIPE, stderr=PIPE).communicate()
+      assert expected in out, out
 
