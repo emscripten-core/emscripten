@@ -3,7 +3,7 @@
 // Utilities for browser environments
 mergeInto(LibraryManager.library, {
   $Browser__deps: ['$PATH', 'emscripten_set_main_loop', 'emscripten_set_main_loop_timing'],
-  $Browser__postset: 'Module["requestFullScreen"] = function Module_requestFullScreen(lockPointer, resizeCanvas) { Browser.requestFullScreen(lockPointer, resizeCanvas) };\n' + // exports
+  $Browser__postset: 'Module["requestFullScreen"] = function Module_requestFullScreen(lockPointer, resizeCanvas, vrDevice) { Browser.requestFullScreen(lockPointer, resizeCanvas, vrDevice) };\n' + // exports
                      'Module["requestAnimationFrame"] = function Module_requestAnimationFrame(func) { Browser.requestAnimationFrame(func) };\n' +
                      'Module["setCanvasSize"] = function Module_setCanvasSize(width, height, noUpdates) { Browser.setCanvasSize(width, height, noUpdates) };\n' +
                      'Module["pauseMainLoop"] = function Module_pauseMainLoop() { Browser.mainLoop.pause() };\n' +
@@ -314,11 +314,13 @@ mergeInto(LibraryManager.library, {
     fullScreenHandlersInstalled: false,
     lockPointer: undefined,
     resizeCanvas: undefined,
-    requestFullScreen: function(lockPointer, resizeCanvas) {
+    requestFullScreen: function(lockPointer, resizeCanvas, vrDevice) {
       Browser.lockPointer = lockPointer;
       Browser.resizeCanvas = resizeCanvas;
+      Browser.vrDevice = vrDevice;
       if (typeof Browser.lockPointer === 'undefined') Browser.lockPointer = true;
       if (typeof Browser.resizeCanvas === 'undefined') Browser.resizeCanvas = false;
+      if (typeof Browser.vrDevice === 'undefined') Browser.vrDevice = null;
 
       var canvas = Module['canvas'];
       function fullScreenChange() {
@@ -363,13 +365,18 @@ mergeInto(LibraryManager.library, {
       var canvasContainer = document.createElement("div");
       canvas.parentNode.insertBefore(canvasContainer, canvas);
       canvasContainer.appendChild(canvas);
-      
+
       // use parent of canvas as full screen root to allow aspect ratio correction (Firefox stretches the root to screen size)
       canvasContainer.requestFullScreen = canvasContainer['requestFullScreen'] ||
                                           canvasContainer['mozRequestFullScreen'] ||
                                           canvasContainer['msRequestFullscreen'] ||
                                          (canvasContainer['webkitRequestFullScreen'] ? function() { canvasContainer['webkitRequestFullScreen'](Element['ALLOW_KEYBOARD_INPUT']) } : null);
-      canvasContainer.requestFullScreen();
+
+      if (vrDevice) {
+        canvasContainer.requestFullScreen({ vrDisplay: vrDevice });
+      } else {
+        canvasContainer.requestFullScreen();
+      }
     },
 
     nextRAF: 0,
