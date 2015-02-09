@@ -721,7 +721,7 @@ if __name__ == '__main__':
   external_emterpreted_funcs = filter(lambda func: func in tabled_funcs or func in exported_funcs or func in reachable_funcs, emterpreted_funcs)
 
   # process functions, generating bytecode
-  shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'emterpretedFuncs': list(emterpreted_funcs), 'externalEmterpretedFuncs': list(external_emterpreted_funcs), 'opcodes': OPCODES, 'ropcodes': ROPCODES, 'ASYNC': ASYNC, 'PROFILING': PROFILING }, output_filename=temp, just_concat=True)
+  shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'emterpretedFuncs': list(emterpreted_funcs), 'externalEmterpretedFuncs': list(external_emterpreted_funcs), 'opcodes': OPCODES, 'ropcodes': ROPCODES, 'ASYNC': ASYNC, 'PROFILING': PROFILING, 'ASSERTIONS': ASSERTIONS }, output_filename=temp, just_concat=True)
 
   # load the module and modify it
   asm = asm_module.AsmModule(temp)

@@ -1592,6 +1592,8 @@ try:
         args += ['ASYNC=1']
       if profiling or profiling_funcs:
         args += ['PROFILING=1']
+      if shared.Settings.ASSERTIONS:
+        args += ['ASSERTIONS=1']
       execute(args)
       final = final + '.em.js'
     finally:
