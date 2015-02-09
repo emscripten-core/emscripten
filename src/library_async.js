@@ -203,10 +203,22 @@ mergeInto(LibraryManager.library, {
   // if they are the first call or the second. The second typically does nothing, but
   // if there is a return value it could return it, etc.
   $EmterpreterAsync: {
+    initted: false,
     state: 0, // 0 - nothing
               // 1 - saving
               // 2 - loading
+    ensureInit: function() {
+      if (this.initted) return;
+      this.initted = true;
+      abortDecorators.push(function(output, what) {
+        if (what == -12 && EmterpreterAsync.state !== 0) {
+          return output + '\nThis error happened during an emterpreter-async save or load of the stack. Was there non-emterpreted code on the stack during save (which is unallowed)?';
+        }
+        return output;
+      });
+    },
     setState: function(s) {
+      this.ensureInit();
       this.state = s;
       asm.setAsyncState(s);
     },
