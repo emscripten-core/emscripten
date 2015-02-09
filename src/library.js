@@ -1953,6 +1953,9 @@ LibraryManager.library = {
   },
   fclose__deps: ['close', 'fileno'],
   fclose: function(stream) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_DEFERRED_FCLOSE') }}}, stream);
+#endif
     // int fclose(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fclose.html
     var fd = _fileno(stream);
@@ -2053,6 +2056,9 @@ LibraryManager.library = {
   },
   fgets__deps: ['fgetc'],
   fgets: function(s, n, stream) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_DEFERRED_FGETS') }}}, s, n, stream);
+#endif
     // char *fgets(char *restrict s, int n, FILE *restrict stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fgets.html
     var streamObj = FS.getStreamFromPtr(stream);
@@ -2093,6 +2099,9 @@ LibraryManager.library = {
   funlockfile: 'ftrylockfile',
   fopen__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'open'],
   fopen: function(filename, mode) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_DEFERRED_FOPEN') }}}, filename, mode);
+#endif
     // FILE *fopen(const char *restrict filename, const char *restrict mode);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fopen.html
     var flags;
@@ -2154,6 +2163,9 @@ LibraryManager.library = {
   putchar_unlocked: 'putchar',
   fputs__deps: ['write', 'strlen', 'fileno'],
   fputs: function(s, stream) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_DEFERRED_FPUTS') }}}, s, stream);
+#endif
     // int fputs(const char *restrict s, FILE *restrict stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fputs.html
     var fd = _fileno(stream);

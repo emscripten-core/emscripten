@@ -216,3 +216,85 @@ int usleep(unsigned usec)
 	}
 	return 0;
 }
+
+static void _do_call(em_queued_call *q)
+{
+	switch(q->function)
+	{
+		case EM_DEFERRED_FOPEN: q->returnValue.vp = (void*)fopen(q->args[0].cp, q->args[1].cp); break;
+		case EM_DEFERRED_FGETS: q->returnValue.cp = fgets(q->args[0].cp, q->args[1].i, (FILE*)q->args[2].vp); break;
+		case EM_DEFERRED_FPUTS: q->returnValue.i = fputs(q->args[0].cp, (FILE*)q->args[1].vp); break;
+		case EM_DEFERRED_FCLOSE: q->returnValue.i = fclose((FILE*)q->args[0].vp); break;
+		default: assert(0 && "Invalid Emscripten pthread _do_call opcode!");
+	}
+	q->operationDone = 1;
+	emscripten_futex_wake(&q->operationDone, INT_MAX);
+}
+
+#define CALL_QUEUE_SIZE 128
+static em_queued_call **call_queue = 0;
+static int call_queue_length = 0; // Shared data synchronized by call_queue_lock.
+static pthread_mutex_t call_queue_lock = PTHREAD_MUTEX_INITIALIZER;
+
+void EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread(em_queued_call *call)
+{
+	assert(call);
+	if (emscripten_is_main_runtime_thread()) {
+		_do_call(call);
+		return;
+	}
+	pthread_mutex_lock(&call_queue_lock);
+	if (!call_queue) call_queue = malloc(sizeof(em_queued_call*) * CALL_QUEUE_SIZE); // Shared data synchronized by call_queue_lock.
+	// Note: currently call_queue_length can be at most the number of pthreads that are currently running, so the queue can never get
+	// full. However if/when the queue is extended to be asynchronous for void-returning functions later, this will need to be revised.
+	assert(call_queue_length < CALL_QUEUE_SIZE);
+	call_queue[call_queue_length] = call;
+	++call_queue_length;
+	pthread_mutex_unlock(&call_queue_lock);
+	int r;
+	do {
+		r = emscripten_futex_wait(&call->operationDone, 0, INFINITY);
+	} while(r != 0 && call->operationDone == 0);
+}
+
+void * EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_1(int function, void *arg1)
+{
+	em_queued_call q = { function, 0 };
+	q.args[0].vp = arg1;
+	q.returnValue.vp = 0;
+	emscripten_sync_run_in_main_thread(&q);
+	return q.returnValue.vp;
+}
+
+void * EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_2(int function, void *arg1, void *arg2)
+{
+	em_queued_call q = { function, 0 };
+	q.args[0].vp = arg1;
+	q.args[1].vp = arg2;
+	q.returnValue.vp = 0;
+	emscripten_sync_run_in_main_thread(&q);
+	return q.returnValue.vp;
+}
+
+void * EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_3(int function, void *arg1, void *arg2, void *arg3)
+{
+	em_queued_call q = { function, 0 };
+	q.args[0].vp = arg1;
+	q.args[1].vp = arg2;
+	q.args[2].vp = arg3;
+	q.returnValue.vp = 0;
+	emscripten_sync_run_in_main_thread(&q);
+	return q.returnValue.vp;
+}
+
+void EMSCRIPTEN_KEEPALIVE emscripten_main_thread_process_queued_calls()
+{
+	assert(emscripten_is_main_runtime_thread() && "emscripten_main_thread_process_queued_calls must be called from the main thread!");
+	if (!emscripten_is_main_runtime_thread()) return;
+
+	pthread_mutex_lock(&call_queue_lock);
+	for(int i = 0; i < call_queue_length; ++i)
+		_do_call(call_queue[i]);
+	call_queue_length = 0;
+	pthread_mutex_unlock(&call_queue_lock);
+}

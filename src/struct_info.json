@@ -1395,6 +1395,14 @@
         }
     },
     {
+        "file": "emscripten/threading.h",
+        "structs": {},
+        "defines": ["EM_DEFERRED_FOPEN",
+            "EM_DEFERRED_FGETS",
+            "EM_DEFERRED_FPUTS",
+            "EM_DEFERRED_FCLOSE"]
+    },
+    {
         "file": "../lib/libc/musl/src/internal/pthread_impl.h",
         "structs": {
             "pthread": [

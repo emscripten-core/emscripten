@@ -378,6 +378,8 @@ var LibraryPThread = {
       // TODO HACK! Replace the _js variant with just _pthread_testcancel:
       //_pthread_testcancel();
       __pthread_testcancel_js();
+      // In Main runtime thread, assist pthreads in performing operations that they need to access the Emscripten main runtime for.
+      if (!ENVIRONMENT_IS_PTHREAD) _emscripten_main_thread_process_queued_calls();
       _emscripten_futex_wait(thread + {{{ C_STRUCTS.pthread.threadStatus }}}, threadStatus, 100 * 1000 * 1000);
     }
   },
@@ -453,6 +455,14 @@ var LibraryPThread = {
   pthread_self: function() {
     if (ENVIRONMENT_IS_PTHREAD) return threadBlock;
     return PThread.mainThreadBlock; // Main JS thread.
+  },
+
+  emscripten_is_main_runtime_thread: function() {
+    return !ENVIRONMENT_IS_PTHREAD;
+  },
+
+  emscripten_is_main_browser_thread: function() {
+    return !ENVIRONMENT_IS_WORKER;
   },
 
   pthread_getschedparam: function(thread, policy, schedparam) {
