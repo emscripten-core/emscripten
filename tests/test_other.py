@@ -10,7 +10,7 @@ class other(RunnerCore):
       return self.get_library('zlib', os.path.join('libz.a'), configure=['emconfigure.bat'], configure_args=['cmake', '.', '-DBUILD_SHARED_LIBS=OFF'], make=['mingw32-make'], make_args=[])
     else:
       return self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'])
-    
+
   def test_emcc(self):
     for compiler in [EMCC, EMXX]:
       shortcompiler = os.path.basename(compiler)
@@ -328,7 +328,7 @@ f.close()
 
     configurations = { 'MinGW Makefiles'     : { 'prebuild': check_makefile,
                                                  'build'   : ['mingw32-make'],
-                                                 
+
                        },
                        'NMake Makefiles'     : { 'detect'  : nmake_detect_error,
                                                  'prebuild': check_makefile,
@@ -396,7 +396,7 @@ f.close()
               os.chdir(tempdirname)
 
               verbose_level = int(os.getenv('EM_BUILD_VERBOSE')) if os.getenv('EM_BUILD_VERBOSE') != None else 0
-              
+
               # Run Cmake
               if invoke_method == 'cmake':
                 # Test invoking cmake directly.
@@ -1007,7 +1007,7 @@ This pointer might make sense in another type signature: i: 0
     try_delete(os.path.join(self.get_dir(), 'foobar'))
     try_delete(os.path.join(self.get_dir(), 'foobar.xxx'))
     try_delete(os.path.join(self.get_dir(), 'foobar.c'))
-    
+
   def test_multiply_defined_libsymbols(self):
     lib = "int mult() { return 1; }"
     lib_name = os.path.join(self.get_dir(), 'libA.c')
@@ -1220,12 +1220,18 @@ int f() {
   def test_stdin(self):
     Building.emcc(path_from_root('tests', 'module', 'test_stdin.c'), output_filename='a.out.js')
     open('in.txt', 'w').write('abcdef\nghijkl')
+    exe = os.path.join(self.get_dir(), 'a.out.js')
 
     for engine in JS_ENGINES:
       print >> sys.stderr, engine
-      if engine == NODE_JS: continue # FIXME
       if engine == V8_ENGINE: continue # no stdin support in v8 shell
-      self.assertContained('abcdef\nghijkl\neof', run_js(os.path.join(self.get_dir(), 'a.out.js'), engine=engine, stdin=open('in.txt')))
+      # work around a bug in python's subprocess module
+      # (we'd use run_js() normally)
+      if os.name == 'nt': # windows
+        os.system('type "in.txt" | {} >out.txt'.format(' '.join(make_js_command(exe, engine))))
+      else: # posix
+        os.system('cat in.txt | {} > out.txt'.format(' '.join(make_js_command(exe, engine))))
+      self.assertContained('abcdef\nghijkl\neof', open('out.txt').read())
 
   def test_ungetc_fscanf(self):
     open('main.cpp', 'w').write(r'''
@@ -2910,7 +2916,7 @@ int main()
     out, err = Popen([PYTHON, EMCC, 'a.bc'], stdout=PIPE, stderr=PIPE).communicate()
     assert 'warning' in err, err
     assert 'incorrect target triple' in err, err
-  
+
   def test_valid_abspath(self):
     # Test whether abspath warning appears
     abs_include_path = os.path.abspath(self.get_dir())
@@ -2925,7 +2931,7 @@ int main()
     out, err = process.communicate()
     warning = '-I or -L of an absolute path "-I%s" encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript). Pass \'-Wno-warn-absolute-paths\' to emcc to hide this warning.' % abs_include_path
     assert(warning not in err)
-    
+
     # Hide warning for this include path
     process = Popen([PYTHON, EMCC, '--valid-abspath', abs_include_path,'-I%s' % abs_include_path, path_from_root('tests', 'hello_world.c')], stdout=PIPE, stderr=PIPE)
     out, err = process.communicate()
@@ -3119,7 +3125,7 @@ int main(int argc, char **argv) {
 
     sizes_ii = {}
     sizes_dd = {}
-  
+
     for alias in [None, 0, 1]:
       cmd = [PYTHON, EMCC, 'src.cpp', '-O1']
       if alias is not None:

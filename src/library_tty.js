@@ -95,13 +95,28 @@ mergeInto(LibraryManager.library, {
         if (!tty.input.length) {
           var result = null;
           if (ENVIRONMENT_IS_NODE) {
-            result = process['stdin']['read']();
-            if (!result) {
-              if (process['stdin']['_readableState'] && process['stdin']['_readableState']['ended']) {
-                return null;  // EOF
-              }
-              return undefined;  // no data available
+            // we will read data by chunks of BUFSIZE
+            var BUFSIZE = 256;
+            var buf = new Buffer(BUFSIZE);
+            var bytesRead = 0;
+
+            var fd = process.stdin.fd;
+            // Linux and Mac cannot use process.stdin.fd (which isn't set up as sync)
+            var usingDevice = false;
+            try {
+              fd = fs.openSync('/dev/stdin', 'r');
+              usingDevice = true;
+            } catch (e) {}
+
+            bytesRead = fs.readSync(fd, buf, 0, BUFSIZE, null);
+
+            if (usingDevice) { fs.closeSync(fd); }
+            if (bytesRead > 0) {
+              result = buf.slice(0, bytesRead).toString('utf-8');
+            } else {
+              result = null;
             }
+
           } else if (typeof window != 'undefined' &&
             typeof window.prompt == 'function') {
             // Browser.
