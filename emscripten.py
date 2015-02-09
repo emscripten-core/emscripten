@@ -1275,7 +1275,7 @@ function jsCall_%s_%s(%s) {
       # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
       # some support code like malloc TODO: verify that malloc is actually safe to use that way
       receiving = '\n'.join(['var real_' + s + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {
-assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called), see http://kripken.github.io/emscripten-site/docs/getting_started/FAQ.html#how-can-i-tell-when-the-page-is-fully-loaded-and-it-is-safe-to-call-compiled-functions');
 assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
 return real_''' + s + '''.apply(null, arguments);
 };
