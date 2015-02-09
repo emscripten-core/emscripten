@@ -433,6 +433,7 @@ var LibraryGL = {
         case 0x1906 /* GL_ALPHA */:
         case 0x1909 /* GL_LUMINANCE */:
         case 0x1902 /* GL_DEPTH_COMPONENT */:
+        case 0x1903 /* GL_RED */:
           numChannels = 1;
           break;
         case 0x190A /* GL_LUMINANCE_ALPHA */:
