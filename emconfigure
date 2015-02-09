@@ -24,11 +24,11 @@ from subprocess import CalledProcessError
 if len(sys.argv) < 2 or ('configure' not in sys.argv[1] and 'cmake' not in sys.argv[1]):
   print >> sys.stderr, '''
 emconfigure is a helper for configure, setting various environment
-variables so that emcc etc. are used.
+variables so that emcc etc. are used. Typical usage:
 
-TYPICAL USAGE:   emconfigure ./configure [FLAGS]
+  emconfigure ./configure [FLAGS]
 
-warning: you do not seem to have 'configure' as the first argument
+(but you can run any command instead of configure)
 
 '''
 

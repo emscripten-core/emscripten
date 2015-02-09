@@ -25,11 +25,11 @@ from subprocess import CalledProcessError
 if len(sys.argv) < 2 or sys.argv[1] != 'make':
   print >> sys.stderr, '''
 emmake is a helper for make, setting various environment
-variables so that emcc etc. are used.
+variables so that emcc etc. are used. Typical usage:
 
-USAGE:   emmake make [FLAGS]
+  emmake make [FLAGS]
 
-warning: you do not seem to have 'make' as the first argument
+(but you can run any command instead of make)
 
 '''
 
