@@ -6120,6 +6120,13 @@ function findUninitializedVars(func, asmData) {
   return bad;
 }
 
+function trample(x, y) { // x = y, by trampling it
+  for (var i = 0; i < y.length; i++) {
+    x[i] = y[i];
+  }
+  x.length = y.length;
+}
+
 // Converts functions into binary format to be run by an emterpreter
 function emterpretify(ast) {
   emitAst = false;
@@ -6130,6 +6137,7 @@ function emterpretify(ast) {
   var ROPCODES = extraInfo.ropcodes;
   var ASYNC = extraInfo.ASYNC;
   var PROFILING = extraInfo.PROFILING;
+  var ASSERTIONS = extraInfo.ASSERTIONS;
 
   var RELATIVE_BRANCHES = set('BR', 'BRT', 'BRF');
   var ABSOLUTE_BRANCHES = set('BRA', 'BRTA', 'BRFA');
@@ -7376,6 +7384,63 @@ function emterpretify(ast) {
     var ignore = !(func[1] in EMTERPRETED_FUNCS);
 
     if (ignore) {
+      // we are not emterpreting this function
+      if (ASYNC && ASSERTIONS) {
+        // we need to be careful to never enter non-emterpreted code while doing an async save/restore,
+        // which is what happens if non-emterpreted code is on the stack while we attempt to save
+
+        // add asserts right after each call
+        var stack = [];
+        traverse(func, function(node, type) {
+          stack.push(node);
+        }, function(node, type) { // post-traversal
+          stack.pop();
+          if (type !== 'call') return;
+          if (node[1][0] === 'name' && isMathFunc(node[1][1])) return;
+          var callType = ASM_NONE;
+          var parent = stack[stack.length-1];
+          if (parent) {
+            var temp = null;
+            if (parent[0] === 'binary' && parent[1] === '|' && parent[3][0] === 'num' && parent[3][1] === 0 &&
+                parent[2] === node) {
+              // int-coerced call
+              callType = ASM_INT;
+              temp = 'tempInt';
+            } else if (parent[0] === 'unary-prefix' && parent[1] === '+' && parent[2] === node) {
+              // double-coerced call
+              callType = ASM_DOUBLE;
+              temp = 'tempDouble';
+            }
+            // XXX fails on other coercions of odd types, like float32, simd, etc!
+            if (temp) {
+              // assign to temp, assert, return proper value:     temp = call() , (asyncState ? abort() : temp)
+              trample(node, ['seq',
+                ['assign', null, ['name', temp], makeAsmCoercion(copy(node), callType)],
+                ['conditional', ['name', 'asyncState'], makeAsmCoercion(['call', ['name', 'abort'], [['num', '-12']]], ASM_INT), ['name', temp]]
+              ]);
+              return;
+            }
+          }
+          // no important parent
+          trample(node, ['seq',
+            copy(node),
+            ['conditional', ['name', 'asyncState'], makeAsmCoercion(['call', ['name', 'abort'], [['num', '-12']]], ASM_INT), ['num', 0]]
+          ]);
+        });
+        // add an assert in the prelude of the function
+        var stats = getStatements(func);
+        for (var i = 0; i < stats.length; i++) {
+          var node = stats[i];
+          if (node[0] == 'stat') node = node[1];
+          if (node[0] !== 'var' && node[0] !== 'assign') {
+            stats.splice(i, 0, ['stat', 
+              ['conditional', ['name', 'asyncState'], makeAsmCoercion(['call', ['name', 'abort'], [['num', '-12']]], ASM_INT), ['num', 0]]
+            ]);
+            break;
+          }
+        }
+        // perhaps also add at loop headers? TODO
+      }
       print(astToSrc(func));
     }
 

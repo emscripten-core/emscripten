@@ -4632,13 +4632,15 @@ int main(void) {
 
   def test_emconfigure_js_o(self):
     # issue 2994
-    try:
-      os.environ['EMCONFIGURE_JS'] = '1'
-      Popen([PYTHON, path_from_root('emconfigure'), PYTHON, EMCC, '-c', '-o', 'a.o', path_from_root('tests', 'hello_world.c')]).communicate()
-      Popen([PYTHON, EMCC, 'a.o']).communicate()
-      assert 'hello, world!' in run_js(self.in_dir('a.out.js'))
-    finally:
-      del os.environ['EMCONFIGURE_JS']
+    for i in [0, 1]:
+      print i
+      try:
+        os.environ['EMCONFIGURE_JS'] = str(i)
+        Popen([PYTHON, path_from_root('emconfigure'), PYTHON, EMCC, '-c', '-o', 'a.o', path_from_root('tests', 'hello_world.c')]).communicate()
+        Popen([PYTHON, EMCC, 'a.o']).communicate()
+        assert 'hello, world!' in run_js(self.in_dir('a.out.js'))
+      finally:
+        del os.environ['EMCONFIGURE_JS']
 
   def test_emcc_c_multi(self):
     def test(args, llvm_opts=None):

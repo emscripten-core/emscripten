@@ -2849,7 +2849,7 @@ The current type of b is: 9
         return *(volatile char *)0;
       }
       '''
-    self.do_run(src, 'fault on write to 0' if not Settings.ASM_JS else 'abort()')
+    self.do_run(src, 'abort()' if self.run_name != 'asm2g' else 'abort("segmentation fault')
 
   def test_trickystring(self):
     test_path = path_from_root('tests', 'core', 'test_trickystring')
@@ -5255,6 +5255,8 @@ return malloc(size);
     if self.emcc_args is None: return self.skip('requires emcc')
     if self.run_name == 'o2':
       self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+    if self.is_emterpreter():
+      self.emcc_args += ['-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'ASSERTIONS=1'] # some additional coverage
 
     Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS) # remove -g, so we have one test without it by default
     if self.emcc_args is None: Settings.SAFE_HEAP = 0 # Has some actual loads of unwritten-to places, in the C++ code...

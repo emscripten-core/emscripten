@@ -65,6 +65,9 @@ class RunnerCore(unittest.TestCase):
   def skipme(self): # used by tests we ask on the commandline to be skipped, see right before call to unittest.main
     return self.skip('requested to be skipped')
 
+  def is_emterpreter(self):
+    return False
+
   def setUp(self):
     Settings.reset()
     self.banned_js_engines = []

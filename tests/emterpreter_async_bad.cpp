@@ -4,9 +4,7 @@
 
 extern "C" {
 
-int result = 1;
-
-void finish() {
+void EMSCRIPTEN_KEEPALIVE finish(int result) {
   REPORT_RESULT();
 }
 
@@ -18,7 +16,7 @@ void __attribute__((noinline)) run_loop() {
     printf("frame: %d\n", ++counter);
     emscripten_sleep(100);
     if (counter == 10) {
-      finish();
+      finish(123); // this should not happen, we should fail!
       break;
     }
   }
@@ -28,10 +26,17 @@ void __attribute__((noinline)) middle() {
   run_loop();
   printf("after run_loop, counter: %d\n", counter);
   assert(counter == 10);
-  result = 99;
+  assert(0); // we should never get here!
 }
 
 int main() {
+  EM_ASM({
+    window.onerror = function(err) {
+      assert(err.toString().indexOf('This error happened during an emterpreter-async save or load of the stack') > 0, 'expect good error message');
+      Module._finish(1);
+    };
+  });
+
   middle();
 }
 
