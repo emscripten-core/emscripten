@@ -265,7 +265,7 @@ int emscripten_asm_const_int(const char *code, ...);
 double emscripten_asm_const_double(const char *code, ...);
 
 #if __EMSCRIPTEN__
-void emscripten_sleep(unsigned int ms);
+void emscripten_sleep(unsigned int ms, int interruptible);
 #else
 #define emscripten_sleep SDL_Delay
 #endif

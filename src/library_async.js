@@ -52,10 +52,49 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  emscripten_sleep__deps: ['emscripten_async_resume'],
-  emscripten_sleep: function(ms) {
+  __emscripten_sleep_timer: null,
+  __emscripten_sleep_interruptible: false,
+  emscripten_sleep__deps: ['__emscripten_sleep_timer', '__emscripten_sleep_interruptible',
+                           'emscripten_async_resume'],
+  emscripten_sleep: function(ms, interruptible) {
+#if ASSERTIONS
+    assert(___emscripten_sleep_timer === null);
+#endif
     asm.setAsync(); // tell the scheduler that we have a callback on hold
-    Browser.safeSetTimeout(_emscripten_async_resume, ms);
+    if (interruptible === undefined) interruptible = false;
+    ___emscripten_sleep_interruptible = !!interruptible;
+    if (ms < 0) return;
+    ___emscripten_sleep_timer = setTimeout(function() {
+      ___emscripten_sleep_timer = null;
+      if (!ABORT) _emscripten_async_resume();
+    }, ms);
+  },
+
+  // emscripten_wake_sleep() should not be called from within the C event loop
+  // directly.  It's there for use by JavaScript callbacks, such as WebSocket or
+  // XHR onmessage handlers, so that they can wake up the C application's
+  // asynchronous main loop, which might look like this with ASYNCIFY:
+  //
+  //   int main() {
+  //     try {
+  //       start_the_app();
+  //       while (true) {
+  //         emscripten_sleep(get_next_event_delay(), 1);
+  //         check_io_and_handle_input();
+  //         check_time_and_handle_expired();
+  //       }
+  //     } catch (std::exception& e) { fprintf(stderr, "error: %s\n", e.what()); }
+  //     return 1;
+  //   }
+  emscripten_wake_sleep__deps: ['__emscripten_sleep_timer', 'emscripten_async_resume'],
+  emscripten_wake_sleep: function() {
+    if (___emscripten_sleep_timer !== null && ___emscripten_sleep_interruptible) {
+      clearTimeout(___emscripten_sleep_timer);
+      ___emscripten_sleep_timer = null;
+      _emscripten_async_resume();
+      return true;
+    }
+    return false;
   },
 
   emscripten_alloc_async_context__deps: ['__async_cur_frame'],
