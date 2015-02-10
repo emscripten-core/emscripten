@@ -207,12 +207,13 @@ mergeInto(LibraryManager.library, {
     state: 0, // 0 - nothing
               // 1 - saving
               // 2 - loading
+    saveStack: '',
     ensureInit: function() {
       if (this.initted) return;
       this.initted = true;
       abortDecorators.push(function(output, what) {
         if (what == -12 && EmterpreterAsync.state !== 0) {
-          return output + '\nThis error happened during an emterpreter-async save or load of the stack. Was there non-emterpreted code on the stack during save (which is unallowed)?';
+          return output + '\nThis error happened during an emterpreter-async save or load of the stack. Was there non-emterpreted code on the stack during save (which is unallowed)? This is what the stack looked like when we tried to save it: ' + EmterpreterAsync.saveStack;
         }
         return output;
       });
@@ -233,11 +234,15 @@ mergeInto(LibraryManager.library, {
           assert(EmterpreterAsync.state === 1);
           // copy the stack back in and resume
           HEAP32.set(stack, EMTSTACKTOP>>2);
-          EmterpreterAsync.setState(2);
+#if ASSERTIONS
+          EmterpreterAsync.setState(0); // set it to 0 just so stackSave is ok to run
           assert(stacktop === asm.stackSave()); // nothing should have modified the stack meanwhile
+#endif
+          EmterpreterAsync.setState(2);
           asm.emterpret(stack[0]); // pc of the first function, from which we can reconstruct the rest, is at position 0 on the stack
         });
         EmterpreterAsync.setState(1);
+        this.saveStack = stackTrace();
       } else {
         // nothing to do here, the stack was just recreated. reset the state.
         assert(EmterpreterAsync.state === 2);
