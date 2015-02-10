@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <emscripten.h>
+#include <unistd.h>
 
 #define NUM_THREADS 8
 
@@ -14,10 +15,15 @@ pthread_mutex_t lock;
 
 void sleep(int msecs)
 {
+#ifdef DEADLOCK_TEST
+	// Test code to showcase bug https://bugzilla.mozilla.org/show_bug.cgi?id=1131757
 	double t0 = emscripten_get_now();
 	double t1 = t0 + (double)msecs;
 	while(emscripten_get_now() < t1)
 		;
+#else
+	usleep(msecs*1000);
+#endif
 }
 void *ThreadMain(void *arg)
 {
