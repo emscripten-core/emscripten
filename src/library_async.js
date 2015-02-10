@@ -211,12 +211,14 @@ mergeInto(LibraryManager.library, {
     ensureInit: function() {
       if (this.initted) return;
       this.initted = true;
+#if ASSERTIONS
       abortDecorators.push(function(output, what) {
         if (what == -12 && EmterpreterAsync.state !== 0) {
           return output + '\nThis error happened during an emterpreter-async save or load of the stack. Was there non-emterpreted code on the stack during save (which is unallowed)? This is what the stack looked like when we tried to save it: ' + EmterpreterAsync.saveStack;
         }
         return output;
       });
+#endif
     },
     setState: function(s) {
       this.ensureInit();
@@ -242,7 +244,9 @@ mergeInto(LibraryManager.library, {
           asm.emterpret(stack[0]); // pc of the first function, from which we can reconstruct the rest, is at position 0 on the stack
         });
         EmterpreterAsync.setState(1);
+#if ASSERTIONS
         this.saveStack = stackTrace();
+#endif
       } else {
         // nothing to do here, the stack was just recreated. reset the state.
         assert(EmterpreterAsync.state === 2);
