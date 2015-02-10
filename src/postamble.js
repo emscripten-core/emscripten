@@ -166,7 +166,7 @@ Module['run'] = Module.run = run;
 function exit(status) {
   if (Module['noExitRuntime']) {
 #if ASSERTIONS
-    Module.printErr('exit(' + status + ') called, but noExitRuntime, so not exiting');
+    Module.printErr('exit(' + status + ') called, but noExitRuntime, so not exiting (you can use emscripten_force_exit, if you want to force a true shutdown)');
 #endif
     return;
   }
