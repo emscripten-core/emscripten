@@ -7385,9 +7385,11 @@ function emterpretify(ast) {
 
     if (ignore) {
       // we are not emterpreting this function
-      if (ASYNC && ASSERTIONS) {
+      if (ASYNC && ASSERTIONS && !/^dynCall_/.test(func[1])) {
         // we need to be careful to never enter non-emterpreted code while doing an async save/restore,
-        // which is what happens if non-emterpreted code is on the stack while we attempt to save
+        // which is what happens if non-emterpreted code is on the stack while we attempt to save.
+        // note that we special-case dynCall, which *can* be on the stack, they are just bridges; what
+        // matters is where they go
 
         // add asserts right after each call
         var stack = [];

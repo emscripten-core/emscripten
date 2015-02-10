@@ -202,6 +202,7 @@ mergeInto(LibraryManager.library, {
   // to the async function here! Therefore sleep etc. detect the state, so they know
   // if they are the first call or the second. The second typically does nothing, but
   // if there is a return value it could return it, etc.
+  $EmterpreterAsync__deps: ['$Browser'],
   $EmterpreterAsync: {
     initted: false,
     state: 0, // 0 - nothing
@@ -241,12 +242,20 @@ mergeInto(LibraryManager.library, {
           assert(stacktop === asm.stackSave()); // nothing should have modified the stack meanwhile
 #endif
           EmterpreterAsync.setState(2);
+          // Resume the main loop
+          if (Browser.mainLoop.func) {
+            Browser.mainLoop.resume();
+          }
           asm.emterpret(stack[0]); // pc of the first function, from which we can reconstruct the rest, is at position 0 on the stack
         });
         EmterpreterAsync.setState(1);
 #if ASSERTIONS
         this.saveStack = stackTrace();
 #endif
+        // Pause the main loop, until we resume
+        if (Browser.mainLoop.func) {
+          Browser.mainLoop.pause();
+        }
       } else {
         // nothing to do here, the stack was just recreated. reset the state.
         assert(EmterpreterAsync.state === 2);
