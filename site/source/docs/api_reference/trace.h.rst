@@ -29,14 +29,6 @@ set the preprocessor flag ``__EMSCRIPTEN_TRACING__``. If you are invoking
 flag ``__EMSCRIPTEN_TRACING__`` is not defined, the tracing API implementation
 will be provided by inlined empty stubs.
 
-Also, since enabling tracing modifies the implementation of ``dlmalloc.c``
-in the ``libc`` implementation, it is advised that you manually clear your
-cache before switching to using the tracing API. If you do not do this, then
-you will not get full allocation details recorded.  You can clear the cache
-with this ``emcc`` command::
-
-    emcc --clear-cache
-
 Initialization and Teardown
 ---------------------------
 

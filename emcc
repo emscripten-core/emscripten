@@ -689,6 +689,13 @@ try:
     pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
     post_js += open(shared.path_from_root('src', 'emrun_postjs.js')).read() + '\n'
 
+  if tracing:
+    dlMallocPath = shared.path_from_root('system/lib', 'dlmalloc.c')
+    if not newargs.__contains__(dlMallocPath):
+      tempDLMalloc = in_temp('dlmalloc.bc')
+      subprocess.call([shared.EMCC, dlMallocPath, '-o', tempDLMalloc, '--tracing'])
+      newargs.append(tempDLMalloc)
+
   if js_opts is None: js_opts = opt_level >= 2
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
   if opt_level == 0: debug_level = max(3, debug_level)
