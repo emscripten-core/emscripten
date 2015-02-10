@@ -595,7 +595,7 @@ var LibraryPThread = {
     if (addr <= 0 || addr > HEAP8.length || addr&3 != 0) return -{{{ cDefine('EINVAL') }}};
 //    dump('futex_wait addr:' + addr + ' by thread: ' + _pthread_self() + (ENVIRONMENT_IS_PTHREAD?'(pthread)':'') + '\n');
     var ret = Atomics.futexWait(HEAP32, addr >> 2, val, timeout);
-//    dump('futex_wait done\n');
+//    dump('futex_wait done by thread: ' + _pthread_self() + (ENVIRONMENT_IS_PTHREAD?'(pthread)':'') + '\n');
     if (ret == Atomics.TIMEDOUT) return -{{{ cDefine('ETIMEDOUT') }}};
     if (ret == Atomics.NOTEQUAL) return -{{{ cDefine('EWOULDBLOCK') }}};
     if (ret == 0) return 0;
