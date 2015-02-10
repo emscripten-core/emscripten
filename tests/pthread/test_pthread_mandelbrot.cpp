@@ -4,6 +4,7 @@
 #include <SDL/SDL.h>
 #include <pthread.h>
 #include <assert.h>
+#include <unistd.h>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -11,19 +12,92 @@
 #include <emscripten/html5.h>
 #endif
 
-/*volatile*/ int smallestIterOut = 0x7FFFFFFF;
+// h: 0,360
+// s: 0,1
+// v: 0,1
+void HSVtoRGB(float *r, float *g, float *b, float h, float s, float v)
+{
+  int i;
+  float f, p, q, t;
+  if (s == 0)
+  {
+    // achromatic (grey)
+    *r = *g = *b = v;
+    return;
+  }
+  h /= 60;      // sector 0 to 5
+  i = floor(h);
+  f = h - i;      // factorial part of h
+  p = v * (1 - s);
+  q = v * (1 - s * f);
+  t = v * (1 - s * (1 - f));
+  switch(i)
+  {
+  case 0:
+    *r = v;
+    *g = t;
+    *b = p;
+    break;
+  case 1:
+    *r = q;
+    *g = v;
+    *b = p;
+    break;
+  case 2:
+    *r = p;
+    *g = v;
+    *b = t;
+    break;
+  case 3:
+    *r = p;
+    *g = q;
+    *b = v;
+    break;
+  case 4:
+    *r = t;
+    *g = p;
+    *b = v;
+    break;
+  default:    // case 5:
+    *r = v;
+    *g = p;
+    *b = q;
+    break;
+  }
+}
+
+int smallestIterOut = 0x7FFFFFFF;
 uint32_t ColorMap(int iter)
 {
-//  if (iter < smallestIterOut)
-//    smallestIterOut = iter;
-  unsigned int i = (iter/*-smallestIterOut*/)*10;
+//  int si = smallestIterOut;
+//  if (iter < si)
+//    emscripten_atomic_cas_u32(&smallestIterOut, si, iter);
+
+  float r,g,b;
+  float h=(float)iter;
+  //h = sqrtf(h);
+  h = log(h)*10.f;
+  h = fmod(h, 360.f);
+  float s = 0.5f;
+  float v = 0.5f;
+  HSVtoRGB(&r, &g, &b, h, s, v);
+  int R = r*255.f;
+  int G = g*255.f;
+  int B = b*255.f;
+  return 0xFF000000 | (B) | (G << 8) | (R << 16);
+
+
+  /*
+  unsigned int i = (iter)*10;
+//  unsigned int i = (iter-si)*10;
   if (i > 255) i = 255;
   i = 255 - i;
   if (i < 30) i = 30;
   return 0xFF000000 | (i) | (i << 8) | (i << 16);
+  */
 }
 
-void ComputeMandelbrot(float *src, uint32_t *dst, int strideSrc, int strideDst, int x, int y, int w, int h, float left, float top, float incrX, float incrY, int numItersBefore, int numIters)
+int ComputeMandelbrot(float *src, uint32_t *dst, int strideSrc, int strideDst, int x, int y, int w, int h, float left, float top, float incrX, float incrY, int numItersBefore, int numIters)
 {
   for(int Y = y; Y < y+h; ++Y)
   {
@@ -44,6 +118,12 @@ void ComputeMandelbrot(float *src, uint32_t *dst, int strideSrc, int strideDst, 
           float new_real = v_real*v_real - v_imag*v_imag + real;
           v_imag = 2.f * v_real * v_imag + imag;
           v_real = new_real;
+
+/*
+          new_real = v_real*v_real - v_imag*v_imag + real;
+          v_imag = 2.f * v_real * v_imag + imag;
+          v_real = new_real;
+*/
           if (v_real*v_real + v_imag*v_imag > 4.f)
           {
             d[X] = ColorMap(numItersBefore + i);
@@ -57,10 +137,11 @@ void ComputeMandelbrot(float *src, uint32_t *dst, int strideSrc, int strideDst, 
       real += incrX;
     }
   }
+  return h*w*numIters;
 }
 
-const int W = 384;
-const int H = 384;
+const int W = 800;
+const int H = 500;
 SDL_Surface *screen = 0;
 
 int framesRendered = 0;
@@ -69,10 +150,12 @@ double lastFPSPrint = 0.0;
 float incrX = 3.f / W;
 float incrY = 3.f / W;
 float left = -2.f;
-float top = -1.5f;
+float top = 0.f - incrY*H/2.f;
+
+unsigned long numIters = 0;
 
 volatile int numItersBefore = 0;
-const int numItersPerFrame = 100;
+const int numItersPerFrame = 50;
 
 #define NUM_THREADS 8
 const int numTasks = NUM_THREADS;
@@ -81,7 +164,9 @@ float mandel[W*H*2] = {};
 uint32_t outputImage[W*H];
 
 pthread_t thread[NUM_THREADS];
+double timeSpentInMandelbrot[NUM_THREADS] = {};
 
+int tasksDone = 0;
 int tasksPending[NUM_THREADS] = {};
 void *mandelbrot_thread(void *arg)
 {
@@ -89,17 +174,20 @@ void *mandelbrot_thread(void *arg)
 
   for(;;)
   {
-    int oldVal = emscripten_atomic_cas_u32(&tasksPending[idx], 1, 2);
-    if (oldVal == 1)
-      ComputeMandelbrot(mandel, outputImage, sizeof(float)*2*W, sizeof(uint32_t)*W, W*idx/numTasks, 0, W/numTasks, H, left, top, incrX, incrY, numItersBefore, numItersPerFrame);
-    emscripten_atomic_cas_u32(&tasksPending[idx], 2, 3);
+    emscripten_futex_wait(&tasksPending[idx], 0, INFINITY);
+    emscripten_atomic_store_u32(&tasksPending[idx], 0);
+    double t0 = emscripten_get_now();
+    int ni = ComputeMandelbrot(mandel, outputImage, sizeof(float)*2*W, sizeof(uint32_t)*W, W*idx/numTasks, 0, W/numTasks, H, left, top, incrX, incrY, numItersBefore, numItersPerFrame);
+    emscripten_atomic_add_u32(&numIters, ni);
+    double t1 = emscripten_get_now();
+    timeSpentInMandelbrot[idx] += t1-t0;
+    emscripten_atomic_add_u32(&tasksDone, 1);
+    emscripten_futex_wake(&tasksDone, 9999);
   }
-
-//  pthread_exit(0);
 }
 
-float hScroll = 0.f;
-float vScroll = 0.f;
+float hScroll = 0;
+float vScroll = 0;
 float zoom = 0.f;
 
 //#define NO_SDL
@@ -150,8 +238,8 @@ void main_tick()
   // ctrXNew == ctrX
   // left + incrX * W / 2.f == leftNew + incrXNew * W / 2.f
   // leftNew = left + (incrX - incrXNew) * W / 2.f;
-  float incrXNew = incrX + dt * zoom / 1000000.0;
-  float incrYNew = incrY + dt * zoom / 1000000.0;
+  float incrXNew = incrX + dt * zoom * incrX / 1000.0;
+  float incrYNew = incrY + dt * zoom * incrX / 1000.0;
 
   left += (incrX - incrXNew) * W / 2.f;
   top += (incrY - incrYNew) * H / 2.f;
@@ -167,42 +255,42 @@ void main_tick()
     smallestIterOut = 0x7FFFFFFF;
     memset(mandel, 0, sizeof(mandel));
   }
-  emscripten_atomic_fence();
-#if 0
+#ifdef SINGLETHREADED
   // Single-threaded
   for(int i = 0; i < numTasks; ++i)
   {
-//    ComputeMandelbrot(mandel, outputImage, sizeof(float)*2*W, sizeof(uint32_t)*W, W*i/numTasks, 0, W/numTasks, H, left, top, incrX, incrY, numItersBefore, numItersPerFrame);
+    double t0 = emscripten_get_now();
+    numIters += ComputeMandelbrot(mandel, outputImage, sizeof(float)*2*W, sizeof(uint32_t)*W, W*i/numTasks, 0, W/numTasks, H, left, top, incrX, incrY, numItersBefore, numItersPerFrame);
+    double t1 = emscripten_get_now();
+    timeSpentInMandelbrot[0] += t1-t0;
   }
-#endif
+#else
+  emscripten_atomic_fence();
 
   // Register tasks.
+  emscripten_atomic_store_u32(&tasksDone, 0);
+  emscripten_atomic_fence();
   for(int i = 0; i < NUM_THREADS; ++i)
   {
-    for(;;)
-    {
-      int oldVal = emscripten_atomic_cas_u32(&tasksPending[i], 0, 1);
-      if (oldVal == 0)
-        break;
-    }
+      emscripten_atomic_store_u32(&tasksPending[i], 1);
+      emscripten_futex_wake(&tasksPending[i], 999);
   }
-
   // Wait for each task to finish.
-  for(int i = 0; i < NUM_THREADS; ++i)
+  for(;;)
   {
-    for(;;)
-    {
-      int oldVal = emscripten_atomic_cas_u32(&tasksPending[i], 3, 0);
-      if (oldVal == 3)
-        break;
-    }
+    int td = tasksDone;
+    if (td >= NUM_THREADS)
+      break;
+    emscripten_futex_wait(&tasksDone, td, INFINITY);
+    emscripten_main_thread_process_queued_calls();
   }
+#endif
 
   numItersBefore += numItersPerFrame;
 #ifndef NO_SDL
   memcpy(screen->pixels, outputImage, sizeof(outputImage));
   if (SDL_MUSTLOCK(screen)) SDL_UnlockSurface(screen);
-  SDL_Flip(screen); 
+  SDL_Flip(screen);
 #endif
 
   ++framesRendered;
@@ -210,10 +298,19 @@ void main_tick()
   if (t - lastFPSPrint > 1000.0)
   {
     double msecsPerFrame = (t - lastFPSPrint) / framesRendered;
+    double mbTime = 0.0;
+    for(int i = 0; i < NUM_THREADS; ++i)
+    {
+      mbTime += timeSpentInMandelbrot[i];
+      timeSpentInMandelbrot[i] = 0;
+    }
+    mbTime /= NUM_THREADS;
     double fps = 1000.0 / msecsPerFrame;
-    printf("%.2f msecs/frame, FPS: %.2f\n", msecsPerFrame, fps);
+    printf("%.2f msecs/frame, FPS: %.2f. %f iters/second. Time spent in Mandelbrot: %f secs. (%.2f%%)\n", msecsPerFrame, fps, numIters * 1000.0 / (t-lastFPSPrint),
+      mbTime/1000.0, mbTime * 100.0 / (t-lastFPSPrint));
     lastFPSPrint = t;
     framesRendered = 0;
+    numIters = 0;
   }
 }
 
@@ -237,7 +334,6 @@ int main(int argc, char** argv)
   EM_ASM("SDL.defaults.copyOnLock = false; SDL.defaults.discardOnLock = true; SDL.defaults.opaqueFrontBuffer = false;");
 
   emscripten_set_main_loop(main_tick, 0, 0);
-//  SDL_Quit();
 
   return 0;
 }
