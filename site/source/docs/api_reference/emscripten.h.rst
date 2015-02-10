@@ -1073,6 +1073,27 @@ Typedefs
 	
 	.. note:: It is better to avoid unaligned operations, but if you are reading from a packed stream of bytes or such, these types may be useful!
 
+
+Emterpreter-Async functions
+===========================
+
+Emterpreter-async functions are asynchronous functions that appear synchronously in C, the linker flags `-s EMTERPRETIFY -s EMTERPRETIFY_ASYNC=1` are required to use these functions. See `Emterpreter <https://github.com/kripken/emscripten/wiki/Emterpreter>`_ for more details.
+
+Functions
+---------
+
+.. c:function:: void emscripten_sleep(unsigned int ms)
+
+	Sleep for `ms` milliseconds. This is a normal "synchronous" sleep, which blocks all other operations while it runs. In other words, if
+	there are other async events waiting to happen, they will not happen during this sleep, which makes sense as conceptually this code is
+	on the stack (that's how it looks in the C source code). If you do want things to happen while sleeping, see ``emscripten_sleep_with_yield``.
+
+.. c:function:: void emscripten_sleep_with_yield(unsigned int ms)
+
+	Sleep for `ms` milliseconds, while allowing other asynchronous operations, e.g. caused by ``emscripten_async_call``, to run normally, during
+	this sleep. Note that this method **does** still block the main loop, as otherwise it could recurse, if you are calling this method from it.
+	Even so, you should use this method carefully: the order of execution is potentially very confusing this way.
+
 		
 Asyncify functions
 ==================
@@ -1084,12 +1105,12 @@ Typedefs
 
 .. c:type:: emscripten_coroutine
 
-    A handle to the strcture used by coroutine supporting functions.
+    A handle to the structure used by coroutine supporting functions.
 
 Functions
 ---------
 
-.. c::function:: void emscripten_sleep(unsinged int ms)
+.. c::function:: void emscripten_sleep(unsigned int ms)
 
     Sleep for `ms` milliseconds.
 
@@ -1107,3 +1128,4 @@ Functions
 
     This function should only be called in a coroutine created by `emscripten_coroutine_create`, when it called, the coroutine is paused and the caller will continue.
     
+

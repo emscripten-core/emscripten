@@ -7219,10 +7219,10 @@ int main() {
   printf("Hello");
   emscripten_async_call(f, &i, 1);
   printf("World");
-  emscripten_sleep(100);
-  printf("%d\n", i);
+  emscripten_%s(100);
+  printf("%%d\n", i);
 }
-'''
+''' % ('sleep_with_yield' if self.is_emterpreter() else 'sleep')
 
     if not self.is_emterpreter():
       Settings.ASYNCIFY = 1
