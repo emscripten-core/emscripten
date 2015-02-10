@@ -486,3 +486,58 @@ void EMSCRIPTEN_KEEPALIVE emscripten_main_thread_process_queued_calls()
 	call_queue_length = 0;
 	pthread_mutex_unlock(&call_queue_lock);
 }
+
+float EMSCRIPTEN_KEEPALIVE _Atomics_load_HEAPF32_emulated(void *addr)
+{
+	union {
+		float f;
+		uint32_t u;
+	} u;
+	u.u = emscripten_atomic_load_u32(addr);
+	return u.f;
+}
+
+double EMSCRIPTEN_KEEPALIVE _Atomics_load_HEAPF64_emulated(void *addr)
+{
+	union {
+		double d;
+		uint32_t u[2];
+	} u;
+
+	for(;;) {
+		u.u[0] = emscripten_atomic_load_u32(addr);
+		u.u[1] = emscripten_atomic_load_u32((void*)((uintptr_t)addr + 4));
+		uint32_t low2 = emscripten_atomic_load_u32(addr);
+		if (u.u[0] == low2) {
+			return u.d;
+		}
+	}
+}
+
+void EMSCRIPTEN_KEEPALIVE _Atomics_store_HEAPF32_emulated(void *addr, float val)
+{
+	union {
+		float f;
+		uint32_t u;
+	} u;
+	u.f = val;
+	emscripten_atomic_store_u32(addr, u.u);
+}
+
+void EMSCRIPTEN_KEEPALIVE _Atomics_store_HEAPF64_emulated(void *addr, double val)
+{
+	union {
+		double d;
+		uint32_t u[2];
+	} u;
+	u.d = val;
+
+	for(;;) {
+		emscripten_atomic_store_u32(addr, u.u[0]);
+		emscripten_atomic_store_u32((void*)((uintptr_t)addr + 4), u.u[1]);
+		uint32_t low2 = emscripten_atomic_load_u32(addr);
+		if (u.u[0] == low2) {
+			return;
+		}
+	}
+}
