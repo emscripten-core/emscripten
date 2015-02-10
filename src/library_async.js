@@ -247,6 +247,10 @@ mergeInto(LibraryManager.library, {
             Browser.mainLoop.resume();
           }
           asm.emterpret(stack[0]); // pc of the first function, from which we can reconstruct the rest, is at position 0 on the stack
+          if (EmterpreterAsync.state === 0) {
+            // if we did *not* do another async operation, then we know that nothing is conceptually on the stack now, and we can re-allow async callbacks as well as run the queued ones right now
+            Browser.resumeAsyncCallbacks();
+          }
         });
         EmterpreterAsync.setState(1);
 #if ASSERTIONS
@@ -256,6 +260,7 @@ mergeInto(LibraryManager.library, {
         if (Browser.mainLoop.func) {
           Browser.mainLoop.pause();
         }
+        Browser.pauseAsyncCallbacks();
       } else {
         // nothing to do here, the stack was just recreated. reset the state.
         assert(EmterpreterAsync.state === 2);
@@ -267,7 +272,10 @@ mergeInto(LibraryManager.library, {
   emscripten_sleep__deps: ['$EmterpreterAsync'],
   emscripten_sleep: function(ms) {
     EmterpreterAsync.handle(function(resume) {
-      Browser.safeSetTimeout(resume, ms);
+      setTimeout(function() {
+        if (ABORT) return; // do this manually; we can't call into Browser.safeSetTimeout, because that is paused/resumed!
+        resume();
+      }, ms);
     });
   },
 
