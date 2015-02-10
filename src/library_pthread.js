@@ -111,7 +111,10 @@ var LibraryPThread = {
         var worker = new Worker('pthread-main.js');
 
         worker.onmessage = function(e) {
-          if (e.data.cmd == 'spawnThread') {
+          if (e.data.cmd == 'processQueuedMainThreadWork') {
+            // TODO: Must post message to main Emscripten thread in PROXY_TO_WORKER mode.
+            _emscripten_main_thread_process_queued_calls();
+          } if (e.data.cmd == 'spawnThread') {
             __spawn_thread(e.data);
           } else if (e.data.cmd == 'cleanupThread') {
             __cleanup_thread(e.data.thread);
@@ -619,7 +622,7 @@ var LibraryPThread = {
     if (ret == Atomics.NOTEQUAL) return -{{{ cDefine('EAGAIN') }}};
     if (ret >= 0) return ret;
     throw 'Atomics.futexWakeOrRequeue returned an unexpected value ' + ret;
-  }
+  },
 };
 
 autoAddDeps(LibraryPThread, '$PThread');

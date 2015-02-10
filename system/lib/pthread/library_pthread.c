@@ -396,6 +396,9 @@ void EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread(em_queued_call *cal
 	assert(call_queue_length < CALL_QUEUE_SIZE);
 	call_queue[call_queue_length] = call;
 	++call_queue_length;
+	if (call_queue_length == 1) {
+		EM_ASM(postMessage({ cmd: 'processQueuedMainThreadWork' }));
+	}
 	pthread_mutex_unlock(&call_queue_lock);
 	int r;
 	do {
@@ -428,6 +431,45 @@ void * EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_3(int function, v
 	q.args[0].vp = arg1;
 	q.args[1].vp = arg2;
 	q.args[2].vp = arg3;
+	q.returnValue.vp = 0;
+	emscripten_sync_run_in_main_thread(&q);
+	return q.returnValue.vp;
+}
+
+void * EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_4(int function, void *arg1, void *arg2, void *arg3, void *arg4)
+{
+	em_queued_call q = { function, 0 };
+	q.args[0].vp = arg1;
+	q.args[1].vp = arg2;
+	q.args[2].vp = arg3;
+	q.args[3].vp = arg4;
+	q.returnValue.vp = 0;
+	emscripten_sync_run_in_main_thread(&q);
+	return q.returnValue.vp;
+}
+
+void * EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_5(int function, void *arg1, void *arg2, void *arg3, void *arg4, void *arg5)
+{
+	em_queued_call q = { function, 0 };
+	q.args[0].vp = arg1;
+	q.args[1].vp = arg2;
+	q.args[2].vp = arg3;
+	q.args[3].vp = arg4;
+	q.args[4].vp = arg5;
+	q.returnValue.vp = 0;
+	emscripten_sync_run_in_main_thread(&q);
+	return q.returnValue.vp;
+}
+
+void * EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_6(int function, void *arg1, void *arg2, void *arg3, void *arg4, void *arg5, void *arg6)
+{
+	em_queued_call q = { function, 0 };
+	q.args[0].vp = arg1;
+	q.args[1].vp = arg2;
+	q.args[2].vp = arg3;
+	q.args[3].vp = arg4;
+	q.args[4].vp = arg5;
+	q.args[5].vp = arg6;
 	q.returnValue.vp = 0;
 	emscripten_sync_run_in_main_thread(&q);
 	return q.returnValue.vp;
