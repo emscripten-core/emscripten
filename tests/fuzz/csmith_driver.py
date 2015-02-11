@@ -159,5 +159,5 @@ while 1:
       fails += 1
       shutil.copyfile(fullname, 'newfail%d.c' % fails)
       continue
-    print '[asm.js validation ok]'
+    print '[asm.js validation ok in %s]' % str(engine2)
 
