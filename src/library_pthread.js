@@ -81,6 +81,32 @@ var LibraryPThread = {
       postMessage({ cmd: 'cancelDone' });
     },
 
+    terminateAllThreads: function() {
+      for(var t in PThread.pthreads) {
+        var pthread = PThread.pthreads[t];
+        if (pthread) {
+          PThread.freeThreadData(pthread);
+          if (pthread.worker) pthread.worker.terminate();
+        }
+      }
+      PThread.pthreads = {};
+      for(var t in PThread.unusedWorkerPool) {
+        var pthread = PThread.unusedWorkerPool[t];
+        if (pthread) {
+          PThread.freeThreadData(pthread);
+          if (pthread.worker) pthread.worker.terminate();
+        }
+      }
+      PThread.unusedWorkerPool = [];
+      for(var t in PThread.runningWorkers) {
+        var pthread = PThread.runningWorkers[t];
+        if (pthread) {
+          PThread.freeThreadData(pthread);
+          if (pthread.worker) pthread.worker.terminate();
+        }
+      }
+      PThread.runningWorkers = [];
+    },
     freeThreadData: function(pthread) {
       if (!pthread) return;
       if (pthread.threadBlock) {

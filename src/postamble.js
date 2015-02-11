@@ -191,6 +191,10 @@ function exit(status, implicit) {
     Module.printErr('exit(' + status + ') called, but noExitRuntime, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)');
 #endif
   } else {
+#if USE_PTHREADS
+    PThread.terminateAllThreads();
+#endif
+
     ABORT = true;
     EXITSTATUS = status;
     STACKTOP = initialStackTop;
