@@ -1077,10 +1077,10 @@ Typedefs
 Emterpreter-Async functions
 ===========================
 
-Emterpreter-async functions are asynchronous functions that appear synchronously in C, the linker flags `-s EMTERPRETIFY -s EMTERPRETIFY_ASYNC=1` are required to use these functions. See `Emterpreter <https://github.com/kripken/emscripten/wiki/Emterpreter>`_ for more details.
+Emterpreter-async functions are asynchronous functions that appear synchronously in C, the linker flags ``-s EMTERPRETIFY -s EMTERPRETIFY_ASYNC=1`` are required to use these functions. See `Emterpreter <https://github.com/kripken/emscripten/wiki/Emterpreter>`_ for more details.
 
-Functions
----------
+Sleeping
+--------
 
 .. c:function:: void emscripten_sleep(unsigned int ms)
 
@@ -1093,6 +1093,60 @@ Functions
 	Sleep for `ms` milliseconds, while allowing other asynchronous operations, e.g. caused by ``emscripten_async_call``, to run normally, during
 	this sleep. Note that this method **does** still block the main loop, as otherwise it could recurse, if you are calling this method from it.
 	Even so, you should use this method carefully: the order of execution is potentially very confusing this way.
+
+Network
+-------
+
+.. c:function:: void emscripten_wget_data(const char* url, void** pbuffer, int* pnum, int *perror);
+
+	Synchronously fetches data off the network, and stores it to a buffer in memory, which is allocated for you. **You must free the buffer, or it will leak!**
+
+	:param url: The URL to fetch from
+	:param pbuffer: An out parameter that will be filled with a pointer to a buffer containing the data that is downloaded. This space has been malloced for you, **and you must free it, or it will leak!**
+	:param pnum: An out parameter that will be filled with the size of the downloaded data.
+	:param perror: An out parameter that will be filled with a non-zero value if an error occurred.
+
+IndexedDB
+---------
+
+.. c:function:: void emscripten_idb_load(const char *db_name, const char *file_id, void** pbuffer, int* pnum, int *perror);
+
+	Synchronously fetches data from IndexedDB, and stores it to a buffer in memory, which is allocated for you. **You must free the buffer, or it will leak!**
+
+	:param db_name: The name of the database to load from
+	:param file_id: The name of the file to load
+	:param pbuffer: An out parameter that will be filled with a pointer to a buffer containing the data that is downloaded. This space has been malloced for you, **and you must free it, or it will leak!**
+	:param pnum: An out parameter that will be filled with the size of the downloaded data.
+	:param perror: An out parameter that will be filled with a non-zero value if an error occurred.
+
+.. c:function:: void emscripten_idb_store(const char *db_name, const char *file_id, void* ptr, int num, int *perror);
+
+	Synchronously stores data to IndexedDB.
+
+	:param db_name: The name of the database to store to
+	:param file_id: The name of the file to store
+	:param buffer: A pointer to the data to store
+	:param num: How many bytes to store
+	:param perror: An out parameter that will be filled with a non-zero value if an error occurred.
+
+.. c:function:: void emscripten_idb_delete(const char *db_name, const char *file_id, int *perror);
+
+	Synchronously deletes data from IndexedDB.
+
+	:param db_name: The name of the database to delete from
+	:param file_id: The name of the file to delete
+	:param perror: An out parameter that will be filled with a non-zero value if an error occurred.
+
+.. c:function:: void emscripten_idb_exists(const char *db_name, const char *file_id, int* pexists, int *perror);
+
+	Synchronously checks if a file exists in IndexedDB.
+
+	:param db_name: The name of the database to check in
+	:param file_id: The name of the file to check
+	:param perror: An out parameter that will be filled with a non-zero value if the file exists in that database.
+	:param perror: An out parameter that will be filled with a non-zero value if an error occurred.
+
+.. c:function:: void emscripten_idb_load(const char *db_name, const char *file_id, void** pbuffer, int* pnum, int *perror);
 
 		
 Asyncify functions

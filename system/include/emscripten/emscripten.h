@@ -174,7 +174,7 @@ void emscripten_wget(const char* url, const char* file);
 
 // wget data "sync" (EMTERPRETIFY_ASYNC)
 
-void emscripten_wget_data(const char* url, void** pbuffer, int* num, int *error);
+void emscripten_wget_data(const char* url, void** pbuffer, int* pnum, int *perror);
 
 // IDB
 
@@ -186,10 +186,10 @@ void emscripten_idb_async_exists(const char *db_name, const char *file_id, void*
 
 // IDB "sync" (EMTERPRETIFY_ASYNC)
 
-void emscripten_idb_load(const char *db_name, const char *file_id, void** pbuffer, int* num, int *error);
-void emscripten_idb_store(const char *db_name, const char *file_id, void* ptr, int num, int *error);
-void emscripten_idb_delete(const char *db_name, const char *file_id, int *error);
-void emscripten_idb_exists(const char *db_name, const char *file_id, int* exists, int *error);
+void emscripten_idb_load(const char *db_name, const char *file_id, void** pbuffer, int* pnum, int *perror);
+void emscripten_idb_store(const char *db_name, const char *file_id, void* buffer, int num, int *perror);
+void emscripten_idb_delete(const char *db_name, const char *file_id, int *perror);
+void emscripten_idb_exists(const char *db_name, const char *file_id, int* pexists, int *perror);
 
 // other async utilities
 
