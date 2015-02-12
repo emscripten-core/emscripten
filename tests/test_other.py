@@ -4532,6 +4532,13 @@ function _main() {
 }
 ''', [], '123\n456\n789\n159\n')
 
+    do_js_test('effectless unary', r'''
+function _main() {
+  !(0 != 0);
+  !(print (123) | 0);
+}
+''', [], '123\n')
+
     # codegen log tests
 
     def do_log_test(source, expected, func):

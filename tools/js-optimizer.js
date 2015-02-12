@@ -6502,7 +6502,18 @@ function emterpretify(ast) {
           }
 
           // not a simple coercion
-          assert(!dropIt);
+
+          if (dropIt) {
+            // a pointless thing we can drop entirely
+            var ret = [-1, []];
+            if (hasSideEffects(node)) {
+              // emit it but drop the result
+              var child = getReg(node[2]);
+              releaseIfFree(child[0]);
+              ret[1] = child[1];
+            }
+            return ret;
+          }
 
           switch (node[1]) {
             case '-': {
