@@ -5250,8 +5250,6 @@ return malloc(size);
     if self.emcc_args is None: return self.skip('requires emcc')
     if self.run_name == 'o2':
       self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
-    if self.is_emterpreter():
-      self.emcc_args += ['-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'ASSERTIONS=1'] # some additional coverage
 
     Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS) # remove -g, so we have one test without it by default
     if self.emcc_args is None: Settings.SAFE_HEAP = 0 # Has some actual loads of unwritten-to places, in the C++ code...
@@ -5273,6 +5271,11 @@ return malloc(size);
       main = generated[generated.find('function runPostSets'):]
       main = main[:main.find('\n}')]
       assert main.count('\n') <= 7, ('must not emit too many postSets: %d' % main.count('\n')) + ' : ' + main
+
+    if self.is_emterpreter():
+      print 'emterpreter/async/assertions' # extra coverage
+      self.emcc_args += ['-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'ASSERTIONS=1']
+      self.do_run(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
   # Tests the full SSE1 API.
   def test_sse1(self):
