@@ -22,15 +22,17 @@ ASYNC = False
 ASSERTIONS = False
 PROFILING = False
 SWAPPABLE = False
+FROUND = False
 
 def handle_arg(arg):
-  global ZERO, ASYNC, ASSERTIONS, PROFILING
+  global ZERO, ASYNC, ASSERTIONS, PROFILING, FROUND
   if '=' in arg:
     l, r = arg.split('=')
     if l == 'ZERO': ZERO = int(r)
     elif l == 'ASYNC': ASYNC = int(r)
     elif l == 'ASSERTIONS': ASSERTIONS = int(r)
     elif l == 'PROFILING': PROFILING = int(r)
+    elif l == 'FROUND': FROUND = int(r)
     return False
   return True
 
@@ -41,6 +43,9 @@ temp_files = config.get_temp_files()
 
 if DEBUG:
   print >> sys.stderr, 'running emterpretify on', sys.argv
+
+if FROUND:
+  shared.Settings.PRECISE_F32 = 1
 
 sys.argv = filter(handle_arg, sys.argv)
 
@@ -218,6 +223,11 @@ OPCODES = [ # l, lx, ly etc - one of 256 locals
   'TSLOWD',    # [lxl, lxh, ly]       lx = ly (double; lx = lxl,lxh)
 ]
 
+if FROUND:
+  OPCODES.append(
+    'FROUND',    # [lx, ly]         lx = Math.fround(ly), rounds doubles to floats
+  )
+
 def randomize_opcodes():
   global OPCODES
   import random
@@ -255,7 +265,7 @@ def get_access(l, s='i', base='sp', offset=None):
     offset = ''
   if s == 'i':
     return 'HEAP32[' + str(base) + ' + (' + l + ' << 3) ' + offset + '>> 2]'
-  elif s == 'd':
+  elif s == 'd' or s == 'f':
     return 'HEAPF64[' + str(base) + ' + (' + l + ' << 3) ' + offset + '>> 3]'
   else:
     assert 0
@@ -266,7 +276,7 @@ def get_coerced_access(l, s='i', unsigned=False, base='sp', offset=None):
       return get_access(l, s, base, offset) + '|0'
     else:
       return get_access(l, s, base, offset) + '>>>0'
-  elif s == 'd':
+  elif s == 'd' or s == 'f':
     return '+' + get_access(l, s, base, offset)
   else:
     assert 0
@@ -419,6 +429,9 @@ CASES[ROPCODES['GETTDP']] = get_access('lx') + ' = tempDoublePtr;'
 #CASES[ROPCODES['GETPC']] = get_access('lx') + ' = pc;'
 CASES[ROPCODES['GETTR0']] = get_access('lx') + ' = tempRet0;'
 CASES[ROPCODES['SETTR0']] = 'tempRet0 = ' + get_coerced_access('lx') + ';'
+
+if FROUND:
+  CASES[ROPCODES['FROUND']] = get_access('lx', s='d') + ' = Math_fround(' + get_coerced_access('ly', s='d') + ');'
 
 # stacktop handling: if allowing async, the very bottom will contain the function being executed,
 #                    for stack trace reconstruction. We store [pc of function, curr pc]

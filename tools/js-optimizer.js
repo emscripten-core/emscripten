@@ -2307,6 +2307,14 @@ function detectSign(node) {
     case 'conditional': case 'seq': {
       return detectSign(node[2]);
     }
+    case 'call': {
+      if (node[1][0] === 'name') {
+        switch (node[1][1]) {
+          case 'Math_fround': return ASM_NONSIGNED
+          default: break;
+        }
+      }
+    }
   }
   assert(0 , 'badd ' + JSON.stringify(node));
 }
@@ -6165,12 +6173,12 @@ function emterpretify(ast) {
     return Array.prototype.slice.call(tempUint8, 0, 8);
   }
 
-  function verifyCode(code) {
+  function verifyCode(code, stat) {
     if (code.length % 4 !== 0) assert(0, JSON.stringify(code));
     var len = code.length;
     for (var i = 0; i < len; i++) {
       if (typeof code[i] !== 'string' && typeof code[i] !== 'number' && !(typeof code[i] === 'object' && code[i].what)) {
-        assert(0, i + ' : ' + JSON.stringify(code));
+        assert(0, i + ' : ' + JSON.stringify(code) + ' from ' + JSON.stringify(stat));
       }
     }
   }
@@ -6861,6 +6869,7 @@ function emterpretify(ast) {
         case '>>>': opcode = 'LSHR'; tryNumAsymmetrical(true); break;
         default: throw 'bad ' + node[1];
       }
+      if (!opcode) assert(0, JSON.stringify([node, type, sign]));
       var x, y, z;
       var usingNumValue = numValue !== null && ((!numValueUnsigned && ((numValue << 24 >> 24) === numValue)) ||
                                                 ( numValueUnsigned && ((numValue & 255) === numValue)));
@@ -7113,6 +7122,13 @@ function emterpretify(ast) {
             assert(mul[0] === lx);
             return mul[1];
           }
+          case 'Math_fround': {
+            assert(node[2].length === 1);
+            var child = getReg(node[2][0], undefined, ASM_DOUBLE, ASM_NONSIGNED, lx);
+            child[1].push('FROUND', lx, child[0], 0);
+            releaseIfFree(child[0], lx);
+            return child[1];
+          }
         }
         if ((target in EMTERPRETED_FUNCS) && !PROFILING) internal = true;
       } else {
@@ -7167,7 +7183,7 @@ function emterpretify(ast) {
         if (freeLocals.length !== before) assert(0, [before, freeLocals.length] + ' due to ' + astToSrc(stat)); // the statement is done - nothing should still be held on to
         var curr = raw[1];
         //printErr('stat: ' + JSON.stringify(curr));
-        verifyCode(curr);
+        verifyCode(curr, stat);
         ret = ret.concat(curr);
       });
       return ret;
@@ -7455,6 +7471,39 @@ function emterpretify(ast) {
 
     //printErr('emterpretifying ' + func[1]);
 
+    // we implement floats as doubles, and just decrease precision when fround is called. flip floats to doubles, but we
+    // must restore this at the end when we emit the trampolines
+    var trueParams = asmData.params;
+    asmData.params = {};
+    for (var t in trueParams) {
+      if (trueParams[t] === ASM_FLOAT) {
+        asmData.params[t] = ASM_DOUBLE;
+      } else {
+        asmData.params[t] = trueParams[t];
+      }
+    }
+    var trueVars = asmData.vars;
+    asmData.vars = {};
+    for (var t in trueVars) {
+      if (trueVars[t] === ASM_FLOAT) {
+        asmData.vars[t] = ASM_DOUBLE;
+      } else {
+        asmData.vars[t] = trueVars[t];
+      }
+    }
+    traverse(func, function() {} , function(node, type) {
+      // Math_fround(x) => +Math_fround(+x), so that see no float types on temp values; types are double or int, and fround is just a function we emit
+      if (type === 'call' && node[1][0] === 'name' && node[1][1] === 'Math_fround') {
+        assert(node[2].length === 1);
+        old = ['call', node[1], [['unary-prefix', '+', node[2][0]]]];
+        node[0] = 'unary-prefix';
+        node[1] = '+';
+        node[2] = old;
+      }
+    });
+
+    // consider locals
+
     var locals = {};
     var numLocals = 0; // ignores slow locals, they are over 255 and not directly accessible
 
@@ -7546,6 +7595,7 @@ function emterpretify(ast) {
 
     if ((func[1] in EXTERNAL_EMTERPRETED_FUNCS) || PROFILING) {
       // this is reachable from outside emterpreter code, set up a trampoline
+      asmData.params = trueParams; // restore them, we altered float=>double
       asmData.vars = {};
       if (zero && !onlyLeavesAreZero) {
         // emterpreters run using the stack starting at 0. we must copy it so we can restore it later
@@ -7564,8 +7614,8 @@ function emterpretify(ast) {
         var code;
         switch (asmData.params[arg]) {
           case ASM_INT:    code = 'HEAP32[' + (zero ? (bump >> 2) : ('EMTSTACKTOP + ' + bump + ' >> 2')) + '] = ' + arg + ';'; break;
+          case ASM_FLOAT:
           case ASM_DOUBLE: code = 'HEAPF64[' + (zero ? (bump >> 3) : ('EMTSTACKTOP + ' + bump + ' >> 3')) + '] = ' + arg + ';'; break;
-          case ASM_FLOAT:  code = 'HEAPF32[' + (zero ? (bump >> 2) : ('EMTSTACKTOP + ' + bump + ' >> 2')) + '] = ' + arg + ';'; break;
           default: throw 'bad';
         }
         argStats.push(srcToStat(code));
@@ -7594,6 +7644,7 @@ function emterpretify(ast) {
         var ret;
         switch (asmData.ret) {
           case ASM_INT: ret = srcToExp('HEAP32[EMTSTACKTOP >> 2]'); break;
+          case ASM_FLOAT:
           case ASM_DOUBLE: ret = srcToExp('HEAPF64[EMTSTACKTOP >> 3]'); break;
           default: throw 'bad';
         }
