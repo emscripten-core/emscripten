@@ -15,8 +15,9 @@ pthread_mutex_t lock;
 
 void sleep(int msecs)
 {
-#ifdef DEADLOCK_TEST
-	// Test code to showcase bug https://bugzilla.mozilla.org/show_bug.cgi?id=1131757
+	// Test two different variants of sleeping to verify
+	// against bug https://bugzilla.mozilla.org/show_bug.cgi?id=1131757
+#ifdef SPINLOCK_TEST
 	double t0 = emscripten_get_now();
 	double t1 = t0 + (double)msecs;
 	while(emscripten_get_now() < t1)
