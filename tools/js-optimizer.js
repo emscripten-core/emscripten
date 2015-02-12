@@ -6289,6 +6289,7 @@ function emterpretify(ast) {
             }
             case 'inf': return makeNum(Infinity, ASM_DOUBLE);
             case 'nan': return makeNum(NaN, ASM_DOUBLE);
+            case 'debugger': return [-1, []]; // nothing to do here (should we?)
             default: {
               var x = getFree();
               // we assert in the python driver that these are ints
