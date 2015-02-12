@@ -508,6 +508,10 @@ CASES[ROPCODES['TSLOW']] = get_access('inst >>> 16') + ' = ' + get_coerced_acces
 CASES[ROPCODES['TSLOWD']] = get_access('inst >>> 16', s='d') + ' = ' + get_coerced_access('lx', s='d') + ';'
 
 
+opcode_used = {}
+for opcode in OPCODES:
+  opcode_used[opcode] = False
+
 def make_emterpreter(zero=False):
   # return is specialized per interpreter
   CASES[ROPCODES['RET']] = pop_stacktop(zero)
@@ -600,7 +604,7 @@ def make_emterpreter(zero=False):
 %s
    default: assert(0);
   }
-''' % ('\n'.join([fix_case('   case %d: %s break;' % (k, CASES[k])) for k in sorted(CASES.keys())]))
+''' % ('\n'.join([fix_case('   case %d: %s break;' % (k, CASES[k])) for k in sorted(CASES.keys()) if opcode_used[OPCODES[k]]]))
   else:
     # emit an inner interpreter (innerterpreter) loop, of trivial opcodes that hopefully the JS engine will implement with no spills
     assert OPCODES[-1] == 'FUNC' # we don't need to emit that one
@@ -895,6 +899,7 @@ if __name__ == '__main__':
     for i in range(len(code)/4):
       j = i*4
       if type(code[j]) in (str, unicode):
+        opcode_used[code[j]] = True
         code[j] = ROPCODES[code[j]]
 
     # sanity checks
