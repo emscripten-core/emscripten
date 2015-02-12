@@ -2257,7 +2257,6 @@ def process(filename):
     self.do_run_from_file(src, output)
 
   def test_memorygrowth(self):
-    if self.is_emterpreter(): return self.skip('todo')
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('memory growth is only supported with typed arrays mode 2')
     self.banned_js_engines = [V8_ENGINE] # stderr printing limitations in v8
 
