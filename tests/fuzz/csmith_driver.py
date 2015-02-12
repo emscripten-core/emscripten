@@ -105,7 +105,12 @@ while 1:
     if random.random() < 0.5:
       js_args += ['-s', 'EMTERPRETIFY=1']
       if random.random() < 0.5:
-        js_args += ['-s', 'EMTERPRETIFY_BLACKLIST=["_main"]']
+        if random.random() < 0.5:
+          js_args += ['-s', 'EMTERPRETIFY_BLACKLIST=["_main"]'] # blacklist main and all inlined into it, but interpret the rest, tests mixing
+        else:
+          js_args += ['-s', 'EMTERPRETIFY_WHITELIST=["_main"]'] # the opposite direction
+        if random.random() < 0.25:
+          js_args += ['-s', 'INLINING_LIMIT=1'] # inline nothing, for more main->other interaction
       if random.random() < 0.5:
         js_args += ['-s', 'EMTERPRETIFY_ASYNC=1']
     print '(compile)', ' '.join(js_args)
