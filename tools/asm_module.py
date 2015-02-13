@@ -43,9 +43,18 @@ class AsmModule():
     self.pre_imports_js = self.js[self.start_asm:first_var]
     self.imports_js = self.js[first_var:self.start_funcs]
     self.imports = {}
-    for imp in js_optimizer.import_sig.finditer(self.imports_js):
-      key, value = imp.group(0).split('var ')[1][:-1].split('=', 1)
-      self.imports[key.strip()] = value.strip()
+    for i in js_optimizer.import_sig.finditer(self.imports_js):
+      imp = i.group(0).split('var ')[1][:-1]
+      if ',' not in imp:
+        key, value = imp.split('=', 1)
+        self.imports[key.strip()] = value.strip()
+      else:
+        for part in imp.split(','):
+          assert part.count('(') == part.count(')') # we must not break ',' in func(x, y)!
+          assert part.count('=') == 1
+          key, value = part.split('=')
+          self.imports[key.strip()] = value.strip()
+
     #print >> sys.stderr, 'imports', self.imports
 
     # funcs
