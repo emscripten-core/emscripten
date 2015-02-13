@@ -9,6 +9,11 @@ what is going on inside of your application, in particular with respect to
 memory usage (which is otherwise not available to traditional browser
 performance tools).
 
+The tracing API can talk to a custom collection server (see `Running the Server`_
+for more details) or it can talk with the `Google Web Tracing Framework`_.
+When talking with the `Google Web Tracing Framework`_, a subset of the data
+available is collected.
+
 
 .. contents:: table of contents
    :local:
@@ -45,6 +50,14 @@ To initialize the tracing API, you call :c:func:`emscripten_trace_configure`:
 .. code-block:: c
 
   emscripten_trace_configure("http://127.0.0.1:5000/", "MyApplication");
+
+If you are simply going to use the tracing API with the `Google Web Tracing
+Framework`_, then you can just call :c:func:`emscripten_trace_configure_for_google_wtf`
+instead:
+
+.. code-block:: c
+
+  emscripten_trace_configure_for_google_wtf();
 
 If you have the concept of a username or have some other way to identify
 a given user of the application, then passing that to the tracing API
@@ -289,6 +302,15 @@ Functions
 
    In most cases, the ``collector_url`` will be ``http://127.0.0.1:5000/``.
 
+.. c:function:: void emscripten_configure_for_google_wtf(void)
+
+   :rtype: void
+
+   Configure tracing to communicate with the `Google Web Tracing Framework`_.
+
+   Not all features of the tracing are available within the Google WTF
+   tools. (Currently, only contexts, log messages and marks.)
+
 .. c:function:: void emscripten_trace_set_enabled(bool enabled)
 
    :param enabled: Whether or not tracing is enabled.
@@ -352,6 +374,17 @@ Functions
 
    *The server doesn't yet do enough with this data. This will improve
    in the future.*
+
+.. c:function:: void emscripten_trace_mark(const char *message)
+
+   :param message: The name of the mark begin emitted.
+   :type message: const char *
+   :rtype: void
+
+   Record a mark in the timeline. This is primary for use with the
+   `Google Web Tracing Framework`_.
+
+   The current timestamp is associated with this data.
 
 .. c:function:: void emscripten_trace_report_error(const char *error)
 
@@ -548,3 +581,4 @@ Functions
 
 .. _emscripten-trace-collector: https://github.com/waywardmonkeys/emscripten-trace-collector
 .. _README.rst: https://github.com/waywardmonkeys/emscripten-trace-collector/blob/master/README.rst
+.. _Google Web Tracing Framework: http://google.github.io/tracing-framework/

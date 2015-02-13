@@ -12,6 +12,8 @@ extern "C" {
 
 void emscripten_trace_configure(const char *collector_url, const char *application);
 
+void emscripten_trace_configure_for_google_wtf(void);
+
 void emscripten_trace_configure_for_test(void);
 
 void emscripten_trace_set_enabled(bool enabled);
@@ -21,6 +23,8 @@ void emscripten_trace_set_session_username(const char *username);
 void emscripten_trace_record_frame_start(void);
 
 void emscripten_trace_record_frame_end(void);
+
+void emscripten_trace_mark(const char *message);
 
 void emscripten_trace_log_message(const char *channel, const char *message);
 
@@ -59,11 +63,13 @@ void emscripten_trace_close(void);
 #else
 
 #define emscripten_trace_configure(collector_url, application)
+#define emscripten_trace_configure_for_google_wtf()
 #define emscripten_trace_configure_for_test()
 #define emscripten_trace_set_enabled(enabled)
 #define emscripten_trace_set_session_username(username)
 #define emscripten_trace_record_frame_start()
 #define emscripten_trace_record_frame_end()
+#define emscripten_trace_mark(message)
 #define emscripten_trace_log_message(channel, message)
 #define emscripten_trace_report_error(error)
 #define emscripten_trace_record_allocation(address, size)
