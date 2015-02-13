@@ -570,7 +570,7 @@ def make_emterpreter(zero=False):
 
     def make_getglb(suffix, t):
       CASES[ROPCODES['GETGLB' + suffix]] = 'switch (ly|0) {\n' + \
-        '\n'.join(['    case %d: {\n%s\n    }' % (i, make_load(i, t)) for i in range(global_var_id)]) + \
+        '\n'.join(['    case %d: {\n%s\n    }' % (i, make_load(i, t)) for i in range(global_var_id) if global_var_types[rglobal_vars[i]] == t]) + \
         '\n    default: assert(0);' + \
         '\n   }'
 
@@ -583,7 +583,7 @@ def make_emterpreter(zero=False):
 
     def make_setglb(suffix, t):
       CASES[ROPCODES['SETGLB' + suffix]] = 'switch ((inst >> 8)&255) {\n' + \
-        '\n'.join(['    case %d: {\n%s\n    }' % (i, make_store(i, t)) for i in range(global_var_id)]) + \
+        '\n'.join(['    case %d: {\n%s\n    }' % (i, make_store(i, t)) for i in range(global_var_id) if global_var_types[rglobal_vars[i]] == t]) + \
         '\n    default: assert(0);' + \
         '\n   }'
 
