@@ -799,12 +799,30 @@ if __name__ == '__main__':
 
   global_vars = {}
   rglobal_vars = {}
+  global_var_types = {}
   global_var_id = 0
+
+  def note_global(target, j, code):
+    global global_var_id
+    imp = asm.imports[target]
+    ty = asm.get_import_type(imp)
+    assert ty in ['i', 'd']
+    if code[j] == 'GETGLBI' and ty == 'd':
+      # the js optimizer doesn't know all types, we must fix it up here
+      assert '.0' in imp or '+' in imp, imp
+      code[j] = 'GETGLBD'
+      ty = 'd'
+    if target not in global_vars:
+      global_vars[target] = global_var_id
+      rglobal_vars[global_var_id] = target
+      global_var_id += 1
+      global_var_types[target] = ty
+    else:
+      assert global_var_types[target] == ty
 
   call_sigs = {} # signatures appearing for each call target
   def process_code(func, code, absolute_targets):
     global global_func_id
-    global global_var_id
     absolute_start = code_start + len(all_code) # true absolute starting point of this function
     #print 'processing code', func, absolute_start
     for i in range(len(code)/4):
@@ -832,23 +850,12 @@ if __name__ == '__main__':
       elif code[j] in ['GETGLBI', 'GETGLBD']:
         # fix global-accessing instructions' targets
         target = code[j+2]
-        imp = asm.imports[target]
-        if code[j] == 'GETGLBI' and not ('|0' in imp or '| 0' in imp or imp == '0'):
-          # the js optimizer doesn't know all types, we must fix it up here
-          assert '.0' in imp or '+' in imp
-          code[j] = 'GETGLBD'
-        if target not in global_vars:
-          global_vars[target] = global_var_id
-          rglobal_vars[global_var_id] = target
-          global_var_id += 1
+        note_global(target, j, code)
         code[j+2] = global_vars[target]
       elif code[j] in ['SETGLBI', 'SETGLBD']:
         # fix global-accessing instructions' targets
         target = code[j+1]
-        if target not in global_vars:
-          global_vars[target] = global_var_id
-          rglobal_vars[global_var_id] = target
-          global_var_id += 1
+        note_global(target, j, code)
         code[j+1] = global_vars[target]
       elif code[j] == 'absolute-value':
         # put the 32-bit absolute value of an abolute target here

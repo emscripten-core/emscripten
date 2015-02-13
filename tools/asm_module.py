@@ -315,3 +315,11 @@ class AsmModule():
         jses.append(funcs_map[f])
     self.funcs_js = '\n'.join(jses)
 
+  def get_import_type(self, imp):
+    if '|0' in imp or '| 0' in imp or imp == '0':
+      return 'i'
+    elif '.0' in imp or '+' in imp:
+      return 'd'
+    else:
+      return '?'
+
