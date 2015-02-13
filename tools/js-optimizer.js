@@ -7013,6 +7013,20 @@ function emterpretify(ast) {
     }
 
     function makeSwitch(node, label) {
+      var cases = node[2];
+      // there must be one non-default case, otherwise we add a fake one
+      var normals = 0;
+      for (var i = 0; i < cases.length; i++) {
+        var c = cases[i];
+        var id = getId(c[0]);
+        if (id !== 'default') normals++;
+      }
+      if (normals === 0) {
+        // ignore the condition, we must always reach the default
+        node[1] = ['seq', node[1], ['num', 0]]; // always 0
+        cases.unshift([['num', 1], ['block', []]]); // a block for 1, which is never hit
+      }
+      // now the switch is normalized and has one non-default case, proceed
       var condition = getReg(node[1]);
       var exit = getMarker('switch-exit');
       // parse cases and emit code
@@ -7022,7 +7036,6 @@ function emterpretify(ast) {
         breakLabels[label] = exit;
       }
       var data = {};
-      var cases = node[2];
       var minn = Infinity, maxx = -Infinity;
       function getId(raw) {
         if (raw === null) return 'default';
