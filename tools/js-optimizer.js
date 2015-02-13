@@ -6567,6 +6567,8 @@ function emterpretify(ast) {
             return makeWhile(inner, name);
           } else if (inner[0] === 'switch') {
             return makeSwitch(inner, name);
+          } else if (inner[0] === 'block') {
+            return makeDo(['do', ['num', 0], inner], name);
           }
           throw 'sigh ' + inner[0];
         }
