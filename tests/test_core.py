@@ -5461,7 +5461,6 @@ def process(filename):
 
     # Main
     for outlining in [0, 5000]:
-      if outlining and self.is_emterpreter(): continue
       Settings.OUTLINING_LIMIT = outlining
       print >> sys.stderr, 'outlining:', outlining
       self.do_run(open(path_from_root('tests', 'freetype', 'main.c'), 'r').read(),
