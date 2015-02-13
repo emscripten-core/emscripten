@@ -6292,7 +6292,7 @@ function emterpretify(ast) {
             case 'debugger': return [-1, []]; // nothing to do here (should we?)
             default: {
               var x = getFree();
-              // we assert in the python driver that these are ints
+              // We actually do not know the type here, and even hints won't help for global1 = global2. We swap GETGLBI to D in emterpretify.py as needed.
               return [x, ['GETGLBI', x, name, 0]];
             }
           }
@@ -6345,8 +6345,8 @@ function emterpretify(ast) {
                 case 'tempRet0': opcode = 'SETTR0'; break;
                 default: {
                   var type = detectType(value, asmData);
-                  assert(type === ASM_INT);
-                  reg[1].push('SETGLBI', name, 0, reg[0]);
+                  assert(type === ASM_INT || type === ASM_DOUBLE);
+                  reg[1].push(type === ASM_INT ? 'SETGLBI' : 'SETGLBD', name, 0, reg[0]);
                   return reg; // caller will free reg[0] if necessary
                 }
               }

@@ -199,8 +199,9 @@ OPCODES = [ # l, lx, ly etc - one of 256 locals
   'GETTR0',  # [l, 0, 0]            l = tempRet0
   'SETTR0',  # [l, 0, 0]            tempRet0 = l
   'GETGLBI', # [l, vl, vh]          get global value, int, indexed by v
-  #'GETGLBD', # [l, vl, vh]          get global value, double, indexed by v
+  'GETGLBD', # [l, vl, vh]          get global value, double, indexed by v
   'SETGLBI', # [vl, vh, l]          set global value, int, indexed by v (v = l)
+  'SETGLBD', # [vl, vh, l]          set global value, double, indexed by v (v = l)
 
   'INTCALL', # [lx, 0, 0] [target] [params]         (lx = ) target(params..)
                     #                               Internal, emterpreter-to-emterpreter call.
@@ -563,22 +564,31 @@ def make_emterpreter(zero=False):
     '\n   }'
 
   if ROPCODES['GETGLBI'] not in CASES:
-    def make_load(i):
-      sig = 'i'
+    def make_load(i, t):
       name = rglobal_vars[i]
-      return '     ' + get_access('lx', sig[0]) + ' = ' + name + '; PROCEED_WITH_PC_BUMP;'
-    CASES[ROPCODES['GETGLBI']] = 'switch (ly|0) {\n' + \
-      '\n'.join(['    case %d: {\n%s\n    }' % (i, make_load(i)) for i in range(global_var_id)]) + \
-      '\n    default: assert(0);' + \
-      '\n   }'
-    def make_store(i):
-      sig = 'i'
+      return '     ' + get_access('lx', t) + ' = ' + name + '; PROCEED_WITH_PC_BUMP;'
+
+    def make_getglb(suffix, t):
+      CASES[ROPCODES['GETGLB' + suffix]] = 'switch (ly|0) {\n' + \
+        '\n'.join(['    case %d: {\n%s\n    }' % (i, make_load(i, t)) for i in range(global_var_id)]) + \
+        '\n    default: assert(0);' + \
+        '\n   }'
+
+    make_getglb('I', 'i')
+    make_getglb('D', 'd')
+
+    def make_store(i, t):
       name = rglobal_vars[i]
-      return '     ' + name + ' = ' + get_coerced_access('lz', sig[0]) + '; PROCEED_WITH_PC_BUMP;'
-    CASES[ROPCODES['SETGLBI']] = 'switch ((inst >> 8)&255) {\n' + \
-      '\n'.join(['    case %d: {\n%s\n    }' % (i, make_store(i)) for i in range(global_var_id)]) + \
-      '\n    default: assert(0);' + \
-      '\n   }'
+      return '     ' + name + ' = ' + get_coerced_access('lz', t) + '; PROCEED_WITH_PC_BUMP;'
+
+    def make_setglb(suffix, t):
+      CASES[ROPCODES['SETGLB' + suffix]] = 'switch ((inst >> 8)&255) {\n' + \
+        '\n'.join(['    case %d: {\n%s\n    }' % (i, make_store(i, t)) for i in range(global_var_id)]) + \
+        '\n    default: assert(0);' + \
+        '\n   }'
+
+    make_setglb('I', 'i')
+    make_setglb('D', 'd')
 
   def fix_case(case):
     # we increment pc at the top of the loop. to avoid a pc bump, we decrement it first; this is rare, most opcodes just continue; this avoids any code at the end of the loop
@@ -823,13 +833,16 @@ if __name__ == '__main__':
         # fix global-accessing instructions' targets
         target = code[j+2]
         imp = asm.imports[target]
-        assert '|0' in imp or '| 0' in imp or imp == '0'
+        if code[j] == 'GETGLBI' and not ('|0' in imp or '| 0' in imp or imp == '0'):
+          # the js optimizer doesn't know all types, we must fix it up here
+          assert '.0' in imp or '+' in imp
+          code[j] = 'GETGLBD'
         if target not in global_vars:
           global_vars[target] = global_var_id
           rglobal_vars[global_var_id] = target
           global_var_id += 1
         code[j+2] = global_vars[target]
-      elif code[j] in ['SETGLBI']:
+      elif code[j] in ['SETGLBI', 'SETGLBD']:
         # fix global-accessing instructions' targets
         target = code[j+1]
         if target not in global_vars:
