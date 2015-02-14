@@ -1099,7 +1099,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
                  'select', 'and', 'or', 'xor', 'not',
                  'splat', 'swizzle', 'shuffle',
                  'withX', 'withY', 'withZ', 'withW',
-                 'load', 'store']
+                 'load', 'store', 'loadX', 'storeX', 'loadXY', 'storeXY', 'loadXYZ', 'storeXYZ']
     simdfloatfuncs = simdfuncs + ['div', 'min', 'max', 'minNum', 'maxNum', 'sqrt',
                                   'abs', 'fromInt32x4', 'fromInt32x4Bits'];
     simdintfuncs = simdfuncs + ['fromFloat32x4', 'fromFloat32x4Bits',
