@@ -525,12 +525,24 @@ def make_emterpreter(zero=False):
 
     function_pointer_call = name.startswith('FUNCTION_TABLE_')
 
+    # our local registers are never true floats, and we just do fround calls to ensure correctness, not caring
+    # about performance. but when coercing to outside of the emterpreter, we need to know the true sig,
+    # and must use frounds
+    true_sig = sig
+    if function_pointer_call:
+      true_sig = name.split('_')[-1]
+
+    def fix_coercion(value, s):
+      if s == 'f':
+        value = 'Math_fround(' + value + ')'
+      return value
+
     ret = name
     if function_pointer_call:
       ret += '[' + get_access('HEAPU8[pc+4>>0]') + ' & %d]' % (next_power_of_two(asm.tables[name].count(',')+1)-1)
-    ret += '(' + ', '.join([get_coerced_access('HEAPU8[pc+%d>>0]' % (i+4+int(function_pointer_call)), s=sig[i+1]) for i in range(len(sig)-1)]) + ')'
+    ret += '(' + ', '.join([fix_coercion(get_coerced_access('HEAPU8[pc+%d>>0]' % (i+4+int(function_pointer_call)), s=sig[i+1]), true_sig[i+1]) for i in range(len(sig)-1)]) + ')'
     if sig[0] != 'v':
-      ret = ' = ' + shared.JS.make_coercion(ret, sig[0])
+      ret = ' = ' + shared.JS.make_coercion(fix_coercion(ret, true_sig[0]), sig[0])
       if not ASYNC:
         ret = get_access('lx', sig[0]) + ret
       else:
