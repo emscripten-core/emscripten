@@ -4643,9 +4643,13 @@ int main(void) {
       print i
       try:
         os.environ['EMCONFIGURE_JS'] = str(i)
+        self.clear()
         Popen([PYTHON, path_from_root('emconfigure'), PYTHON, EMCC, '-c', '-o', 'a.o', path_from_root('tests', 'hello_world.c')]).communicate()
         Popen([PYTHON, EMCC, 'a.o']).communicate()
-        assert 'hello, world!' in run_js(self.in_dir('a.out.js'))
+        if i == 0:
+          assert not os.path.exists('a.out.js') # native .o, not bitcode!
+        else:
+          assert 'hello, world!' in run_js(self.in_dir('a.out.js'))
       finally:
         del os.environ['EMCONFIGURE_JS']
 
