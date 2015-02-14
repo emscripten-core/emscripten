@@ -2341,6 +2341,14 @@ function getCombinedSign(node1, node2, hint) {
   assert(0, JSON.stringify([node1, '      ', node2, sign1, sign2, hint]));
 }
 
+function getSignature(func, asmData) {
+  var ret = asmData.ret >= 0 ? ASM_SIG[asmData.ret] : 'v';
+  for (var i = 0; i < func[2].length; i++) {
+    ret += ASM_SIG[asmData.params[func[2][i]]];
+  }
+  return ret;
+}
+
 function normalizeAsm(func) {
   //printErr('pre-normalize \n\n' + astToSrc(func) + '\n\n');
   var data = {
@@ -7490,7 +7498,7 @@ function emterpretify(ast) {
     }
 
     var asmData = normalizeAsm(func);
-    print('// return type: [' + func[1] + ',' + asmData.ret + ']');
+    print('// return type: [' + func[1] + ',' + getSignature(func, asmData) + ']');
 
     if (ignore) {
       return;

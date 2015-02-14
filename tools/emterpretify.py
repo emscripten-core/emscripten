@@ -552,8 +552,8 @@ def make_emterpreter(zero=False):
         else:
           assert sig[0] == 'd'
           ret = 'ld ' + ret
-    elif name in actual_return_types and actual_return_types[name] != 'v':
-      ret = shared.JS.make_coercion(ret, actual_return_types[name]) # return value ignored, but need a coercion
+    elif name in actual_sigs and actual_sigs[name][0] != 'v':
+      ret = shared.JS.make_coercion(ret, actual_sigs[name][0]) # return value ignored, but need a coercion
     if ASYNC:
       # check if we are asyncing, and if not, it is ok to save the return value
       ret = handle_async_pre_call() + ret + '; ' +  handle_async_post_call()
@@ -879,7 +879,7 @@ if __name__ == '__main__':
         for k in range(4):
           code[j + k] = value[k]
 
-  actual_return_types = {}
+  actual_sigs = {}
 
   for i in range(len(lines)):
     line = lines[i]
@@ -900,15 +900,8 @@ if __name__ == '__main__':
       func = None
       lines[i] = ''
     elif line.startswith('// return type: ['):
-      name, ret = line.split('[')[1].split(']')[0].split(',')
-      if ret == 'undefined':
-        actual_return_types[name] = 'v'
-      elif ret == '0':
-        actual_return_types[name] = 'i'
-      elif ret == '1':
-        actual_return_types[name] = 'd'
-      elif ret == '2':
-        actual_return_types[name] = 'f'
+      name, sig = line.split('[')[1].split(']')[0].split(',')
+      actual_sigs[name] = sig
       lines[i] = ''
 
   assert global_func_id < 65536, [global_funcs, global_func_id]
