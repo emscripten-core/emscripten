@@ -5347,7 +5347,6 @@ return malloc(size);
 
   def test_simd6(self):
     # test_simd6 is to test x86 min and max intrinsics on NaN and -0.0
-    return self.skip('temporarily disabled due to SpiderMonkey bug 1084609')
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     if self.is_emterpreter(): return self.skip('todo')
@@ -5359,8 +5358,6 @@ return malloc(size);
 
   def test_simd7(self):
     # test_simd7 is to test negative zero handling.
-    return self.skip('see issue #3103')
-
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     if self.is_emterpreter(): return self.skip('todo')
 
