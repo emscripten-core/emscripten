@@ -316,9 +316,23 @@ class AsmModule():
     self.funcs_js = '\n'.join(jses)
 
   def get_import_type(self, imp):
-    if '|0' in imp or '| 0' in imp or imp == '0':
+    def is_int(x):
+      try:
+        int(x)
+        return True
+      except:
+        return False
+
+    def is_float(x):
+      try:
+        float(x)
+        return True
+      except:
+        return False
+
+    if '|0' in imp or '| 0' in imp or (is_int(imp) and not '.0' in imp or '+' in imp):
       return 'i'
-    elif '.0' in imp or '+' in imp:
+    elif '.0' in imp or '+' in imp or is_float(imp):
       return 'd'
     else:
       return '?'

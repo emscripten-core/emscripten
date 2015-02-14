@@ -820,7 +820,7 @@ if __name__ == '__main__':
     global global_var_id
     imp = asm.imports[target]
     ty = asm.get_import_type(imp)
-    assert ty in ['i', 'd']
+    assert ty in ['i', 'd'], target
     if code[j] == 'GETGLBI' and ty == 'd':
       # the js optimizer doesn't know all types, we must fix it up here
       assert '.0' in imp or '+' in imp, imp
