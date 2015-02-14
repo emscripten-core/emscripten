@@ -531,6 +531,8 @@ def make_emterpreter(zero=False):
     true_sig = sig
     if function_pointer_call:
       true_sig = name.split('_')[-1]
+    elif name in actual_sigs:
+      true_sig = actual_sigs[name]
 
     def fix_coercion(value, s):
       if s == 'f':
