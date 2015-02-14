@@ -1801,6 +1801,31 @@ void *getBindBuffer() {
     # otherwise, we just overwrite
     self.btest('mem_init.cpp', expected='3', args=['--pre-js', 'pre.js', '--post-js', 'post.js', '--memory-init-file', '1', '-s', 'ASSERTIONS=0'])
 
+  def test_mem_init_request(self):
+    def test(what, status):
+      print what, status
+      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+        var xhr = Module.memoryInitializerRequest = new XMLHttpRequest();
+        xhr.open('GET', "''' + what + '''", true);
+        xhr.responseType = 'arraybuffer';
+        xhr.send(null);
+
+        window.onerror = function() {
+          Module.print('fail!');
+          var xhr = new XMLHttpRequest();
+          xhr.open('GET', 'http://localhost:8888/report_result?0');
+          xhr.onload = function() {
+            console.log('close!');
+            window.close();
+          };
+          xhr.send();
+        };
+      ''')
+      self.btest('mem_init_request.cpp', expected=status, args=['--pre-js', 'pre.js', '--memory-init-file', '1'])
+
+    test('test.html.mem', '1')
+    test('nothing.nowhere', '0')
+
   def test_runtime_misuse(self):
     post_prep = '''
       var expected_ok = false;
