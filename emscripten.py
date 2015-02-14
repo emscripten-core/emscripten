@@ -1093,7 +1093,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     simdfloattypes = ['float32x4']
     simdinttypes = ['int32x4']
     simdtypes = simdfloattypes + simdinttypes
-    simdfuncs = ['add', 'sub', 'neg', 'mul',
+    simdfuncs = ['check', 'add', 'sub', 'neg', 'mul',
                  'equal', 'lessThan', 'greaterThan',
                  'notEqual', 'lessThanOrEqual', 'greaterThanOrEqual',
                  'select', 'and', 'or', 'xor', 'not',
