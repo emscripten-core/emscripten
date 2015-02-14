@@ -1594,6 +1594,8 @@ try:
         args += ['PROFILING=1']
       if shared.Settings.ASSERTIONS:
         args += ['ASSERTIONS=1']
+      if shared.Settings.PRECISE_F32:
+        args += ['FROUND=1']
       execute(args)
       final = final + '.em.js'
     finally:

@@ -482,8 +482,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_float32_precise(self):
-    if self.is_emterpreter(): return self.skip('todo')
-
     Settings.PRECISE_F32 = 1
     test_path = path_from_root('tests', 'core', 'test_float32_precise')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -2253,14 +2251,12 @@ def process(filename):
       self.do_run_from_file(src, output)
 
   def test_inlinejs3(self):
-    if self.is_emterpreter(): return self.skip('debugger keyword is meaningless in emterpreter')
     test_path = path_from_root('tests', 'core', 'test_inlinejs3')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
 
   def test_memorygrowth(self):
-    if self.is_emterpreter(): return self.skip('todo')
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('memory growth is only supported with typed arrays mode 2')
     self.banned_js_engines = [V8_ENGINE] # stderr printing limitations in v8
 
@@ -5124,7 +5120,6 @@ int main(void) {
       for precision in [0, 1, 2]:
         Settings.PRECISE_F32 = precision
         for t in ['float', 'double']:
-          if self.is_emterpreter() and precision > 0: continue
           print precision, t
           src = open(path_from_root('tests', 'fasta.cpp'), 'r').read().replace('double', t)
           for i, j in results:
@@ -5255,8 +5250,6 @@ return malloc(size);
     if self.emcc_args is None: return self.skip('requires emcc')
     if self.run_name == 'o2':
       self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
-    if self.is_emterpreter():
-      self.emcc_args += ['-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'ASSERTIONS=1'] # some additional coverage
 
     Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS) # remove -g, so we have one test without it by default
     if self.emcc_args is None: Settings.SAFE_HEAP = 0 # Has some actual loads of unwritten-to places, in the C++ code...
@@ -5278,6 +5271,11 @@ return malloc(size);
       main = generated[generated.find('function runPostSets'):]
       main = main[:main.find('\n}')]
       assert main.count('\n') <= 7, ('must not emit too many postSets: %d' % main.count('\n')) + ' : ' + main
+
+    if self.is_emterpreter():
+      print 'emterpreter/async/assertions' # extra coverage
+      self.emcc_args += ['-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'ASSERTIONS=1']
+      self.do_run(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
   # Tests the full SSE1 API.
   def test_sse1(self):
@@ -5463,7 +5461,6 @@ def process(filename):
 
     # Main
     for outlining in [0, 5000]:
-      if outlining and self.is_emterpreter(): continue
       Settings.OUTLINING_LIMIT = outlining
       print >> sys.stderr, 'outlining:', outlining
       self.do_run(open(path_from_root('tests', 'freetype', 'main.c'), 'r').read(),
@@ -6963,7 +6960,9 @@ def process(filename):
     self.build(src, dirname, os.path.join(dirname, 'src.cpp'), post_build=(None, post))
 
   def test_emscripten_log(self):
-    if self.is_emterpreter(): return self.skip('todo')
+    if self.is_emterpreter():
+      self.emcc_args += ['--profiling-funcs'] # without this, stack traces are not useful (we jump emterpret=>emterpret)
+      Building.COMPILER_TEST_OPTS += ['-DEMTERPRETER'] # even so, we get extra emterpret() calls on the stack
     if Settings.ASM_JS:
       # XXX Does not work in SpiderMonkey since callstacks cannot be captured when running in asm.js, see https://bugzilla.mozilla.org/show_bug.cgi?id=947996
       self.banned_js_engines = [SPIDERMONKEY_ENGINE] 

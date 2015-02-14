@@ -4390,7 +4390,7 @@ pass: error == ENOTDIR
     normal = open('a.out.js').read()
     do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-g2', '--profiling'])
     profiling = open('a.out.js').read()
-    assert len(profiling) > len(normal) + 1000, [len(profiling), len(normal)] # should be much larger
+    assert len(profiling) > len(normal) + 500, [len(profiling), len(normal)] # should be much larger
 
     print 'blacklisting'
 
