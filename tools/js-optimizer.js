@@ -7541,6 +7541,7 @@ function emterpretify(ast) {
 
     var locals = {};
     var numLocals = 0; // ignores slow locals, they are over 255 and not directly accessible
+    var numVars = 0;
 
     function countLocals() {
       numLocals = 0;
@@ -7549,6 +7550,7 @@ function emterpretify(ast) {
       }
       for (var i in asmData.vars) {
         numLocals++;
+        numVars++;
       }
     }
 
@@ -7567,8 +7569,13 @@ function emterpretify(ast) {
       locals[i] = numLocals++;
     }
     assert(numLocals <= FAST_LOCALS, 'way too many params!');
-    assert(FAST_LOCALS < 256); // sanity
-    var zeroInits = findUninitializedVars(func, asmData);
+    assert(FAST_LOCALS < 256);
+    var zeroInits;
+    if (numVars < FAST_LOCALS*2) {
+      zeroInits = findUninitializedVars(func, asmData);
+    } else {
+      zeroInits = copy(asmData.vars); // give up - tons of vars, this will be slow anyhow, and findUninitializedVars is non-linear so can be very slow on massive function
+    }
     var numZeroInits = 0;
     for (var zero in zeroInits) {
       locals[zero] = numLocals++;
