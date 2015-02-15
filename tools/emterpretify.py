@@ -977,3 +977,5 @@ if __name__ == '__main__':
 
   asm.write(outfile)
 
+temp_files.clean()
+
