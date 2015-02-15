@@ -2077,6 +2077,8 @@ open(filename, 'w').write(replaced)
     with open(os.path.join(self.get_dir(), 'test.txt'), 'w') as f:
       f.write('emscripten')
     self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'ASYNCIFY=1'])
+    print 'asyncify+emterpreter'
+    self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'ASYNCIFY=1', '-s', 'EMTERPRETIFY=1'])
 
   def test_wget_data(self):
     with open(os.path.join(self.get_dir(), 'test.txt'), 'w') as f:

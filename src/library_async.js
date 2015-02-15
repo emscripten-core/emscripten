@@ -95,7 +95,7 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
     assert((((___async_cur_frame + 8)|0) == (ctx|0))|0);
 #endif
-    stackRestore(___async_cur_frame);
+    stackRestore(___async_cur_frame | 0);
     ___async_cur_frame = {{{ makeGetValueAsm('___async_cur_frame', 0, 'i32') }}};
   },
 
