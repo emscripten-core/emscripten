@@ -972,7 +972,7 @@ if __name__ == '__main__':
   asm.set_pre_js(js='var EMTSTACKTOP = STATIC_BASE + %s, EMT_STACK_MAX = EMTSTACKTOP + %d;' % (stack_start, EMT_STACK_MAX))
 
   # send EMT vars into asm
-  asm.pre_js += 'Module.asmLibraryArg.EMTSTACKTOP = EMTSTACKTOP; Module.asmLibraryArg.EMT_STACK_MAX = EMT_STACK_MAX;\n'
+  asm.pre_js += "Module.asmLibraryArg['EMTSTACKTOP'] = EMTSTACKTOP; Module.asmLibraryArg['EMT_STACK_MAX'] = EMT_STACK_MAX;\n"
   asm.imports_js += 'var EMTSTACKTOP = env.EMTSTACKTOP|0;\nvar EMT_STACK_MAX = env.EMT_STACK_MAX|0;\n'
 
   asm.write(outfile)

@@ -6058,7 +6058,7 @@ def process(filename):
 
     self.do_run_from_file(src, output, post_build=post)
 
-    if self.emcc_args is not None and '-O2' in self.emcc_args:
+    if self.emcc_args is not None and ('-O2' in self.emcc_args or self.is_emterpreter()):
       print 'with closure'
       self.emcc_args += ['--closure', '1']
       self.do_run_from_file(src, output, post_build=post)
