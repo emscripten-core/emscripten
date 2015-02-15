@@ -4539,6 +4539,12 @@ function _main() {
 }
 ''', [], '123\n')
 
+    do_js_test('flexible mod', r'''
+function _main() {
+  print(1 % 16);
+}
+''', [], '1\n')
+
     # codegen log tests
 
     def do_log_test(source, expected, func):

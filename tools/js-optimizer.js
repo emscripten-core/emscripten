@@ -6821,7 +6821,7 @@ function emterpretify(ast) {
         }
         case '/': {
           if (type === ASM_INT) {
-            assert(sign !== ASM_FLEXIBLE);
+            if (sign === ASM_FLEXIBLE) sign = ASM_SIGNED;
             if (sign === ASM_SIGNED) opcode = 'SDIV';
             else opcode = 'UDIV';
             tryNumAsymmetrical(sign === ASM_UNSIGNED);
@@ -6831,7 +6831,7 @@ function emterpretify(ast) {
         }
         case '%': {
           if (type === ASM_INT) {
-            assert(sign !== ASM_FLEXIBLE);
+            if (sign === ASM_FLEXIBLE) sign = ASM_SIGNED;
             if (sign === ASM_SIGNED) opcode = 'SMOD';
             else opcode = 'UMOD';
             tryNumAsymmetrical(sign === ASM_UNSIGNED);
