@@ -1863,6 +1863,11 @@ value = real 1.25 imag 0.00''', force_c=True)
 
     self.do_run_from_file(src, output)
 
+    if self.is_emterpreter():
+      print 'emterpreter f32'
+      Settings.PRECISE_F32 = 1
+      self.do_run_from_file(src, output)
+
   def test_funcptrfunc(self):
     test_path = path_from_root('tests', 'core', 'test_funcptrfunc')
     src, output = (test_path + s for s in ('.in', '.out'))
