@@ -843,7 +843,7 @@ try:
             break
         if found: break
       if found: break
-    if not found and lib not in ['GL', 'GLU', 'glut', 'SDL']: # whitelist our default libraries
+    if not found and lib not in ['GL', 'GLU', 'glut', 'm', 'SDL']: # whitelist our default libraries
       logging.warning('emcc: cannot find library "%s"', lib)
 
   # If not compiling to JS, then we are compiling to an intermediate bitcode objects or library, so
