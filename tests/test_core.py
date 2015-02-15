@@ -5414,6 +5414,9 @@ return malloc(size);
 
     total_memory = Settings.TOTAL_MEMORY
 
+    if self.is_emterpreter():
+      Settings.PRECISE_F32 = 1
+
     for aggro in ([0, 1] if Settings.ASM_JS and '-O2' in self.emcc_args else [0]):
       for masking in ([0, 1] if Settings.ASM_JS and '-O2' in self.emcc_args and os.environ.get('EMCC_FAST_COMPILER') != '0' else [0]):
         Settings.AGGRESSIVE_VARIABLE_ELIMINATION = aggro
