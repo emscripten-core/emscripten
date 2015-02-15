@@ -388,6 +388,8 @@ def log_time(name):
   logging.debug('emcc step "%s" took %.2f seconds', name, now - log_time_last)
   log_time_last = now
 
+misc_temp_files = shared.configuration.get_temp_files()
+
 try:
   call = CXX if use_cxx else CC
 
@@ -1430,7 +1432,9 @@ try:
         if minify_whitespace and 'last' in passes:
           passes += ['minifyWhitespace']
         logging.debug('applying js optimization passes: %s', ' '.join(passes))
+        misc_temp_files.note(final)
         final = shared.Building.js_optimizer(final, passes, jcache, debug_level >= 4, js_optimizer_extra_info, just_split=just_split, just_concat=just_concat)
+        misc_temp_files.note(final)
         js_transform_tempfiles.append(final)
         if DEBUG: save_intermediate(title, suffix='js' if 'emitJSON' not in passes else 'json')
 
@@ -1818,4 +1822,5 @@ finally:
       pass
   else:
     logging.info('emcc saved files are in:' + temp_dir)
+  misc_temp_files.clean()
 
