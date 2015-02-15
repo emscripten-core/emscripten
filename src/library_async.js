@@ -81,7 +81,7 @@ mergeInto(LibraryManager.library, {
   emscripten_realloc_async_context: function(len) {
     len = len|0;
     // assuming that we have on the stacktop
-    stackRestore(___async_cur_frame);
+    stackRestore(___async_cur_frame | 0);
     return ((stackAlloc((len + 8)|0)|0) + 8)|0;
   },
 
