@@ -1697,7 +1697,9 @@ var LibrarySDL = {
 #endif
 
   SDL_WM_SetCaption: function(title, icon) {
-    title = title && Pointer_stringify(title);
+    if (title && typeof Module['setWindowTitle'] !== 'undefined') {
+      Module['setWindowTitle'](Pointer_stringify(title));
+    }
     icon = icon && Pointer_stringify(icon);
   },
 
