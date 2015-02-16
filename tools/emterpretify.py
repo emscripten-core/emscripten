@@ -23,9 +23,10 @@ ASSERTIONS = False
 PROFILING = False
 SWAPPABLE = False
 FROUND = False
+ADVISE = False
 
 def handle_arg(arg):
-  global ZERO, ASYNC, ASSERTIONS, PROFILING, FROUND
+  global ZERO, ASYNC, ASSERTIONS, PROFILING, FROUND, ADVISE
   if '=' in arg:
     l, r = arg.split('=')
     if l == 'ZERO': ZERO = int(r)
@@ -33,6 +34,7 @@ def handle_arg(arg):
     elif l == 'ASSERTIONS': ASSERTIONS = int(r)
     elif l == 'PROFILING': PROFILING = int(r)
     elif l == 'FROUND': FROUND = int(r)
+    elif l == 'ADVISE': ADVISE = int(r)
     return False
   return True
 
@@ -53,6 +55,8 @@ sys.argv = filter(handle_arg, sys.argv)
 
 BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memmove', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64', '_strncpy', '_strcpy', '_strcat', '_saveSetjmp', '_testSetjmp', '_emscripten_replace_memory', '_bitshift64Shl', '_bitshift64Ashr', '_bitshift64Lshr', 'setAsyncState', 'emtStackSave'])
 WHITELIST = []
+
+SYNC_FUNCS = set(['_emscripten_sleep', '_emscripten_sleep_with_yield', '_emscripten_wget_data', '_emscripten_idb_load', '_emscripten_idb_store', '_emscripten_idb_delete'])
 
 OPCODES = [ # l, lx, ly etc - one of 256 locals
   'SET',     # [lx, ly, 0]          lx = ly (int or float, not double)
@@ -716,6 +720,40 @@ if __name__ == '__main__':
 
       if len(sys.argv) >= 7:
         SWAPPABLE = int(sys.argv[6])
+
+  if ADVISE:
+    temp = temp_files.get('.js').name
+    shared.Building.js_optimizer(infile, ['dumpCallGraph'], output_filename=temp, just_concat=True)
+    asm = asm_module.AsmModule(temp)
+    lines = asm.funcs_js.split('\n')
+    can_call = {}
+    for i in range(len(lines)):
+      line = lines[i]
+      if line.startswith('// REACHABLE '):
+        curr = json.loads(line[len('// REACHABLE '):])
+        func = curr[0]
+        targets = curr[2]
+        can_call[func] = set(targets)
+    print 'can call', can_call
+    reachable_from = {}
+    for func, targets in can_call.iteritems():
+      for target in targets:
+        if target not in reachable_from:
+          reachable_from[target] = set()
+        reachable_from[target].add(func)
+    print 'reachable from', reachable_from
+    # find all functions that can reach the sync funcs, which are those that can be on the stack during an async save/load, and hence must all be emterpreted
+    to_check = list(SYNC_FUNCS)
+    advised = set()
+    while len(to_check) > 0:
+      curr = to_check.pop()
+      if curr in reachable_from:
+        for reacher in reachable_from[curr]:
+          if reacher not in advised:
+            advised.add(str(reacher))
+            to_check.append(reacher)
+    print "-s EMTERPRETIFY_ASYNC_WHITELIST='" + str(sorted(list(advised))).replace("'", '"') + "'"
+    sys.exit(0)
 
   BLACKLIST = set(list(BLACKLIST) + extra_blacklist)
 

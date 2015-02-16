@@ -7716,6 +7716,26 @@ function findReachable(ast) {
   print('// REACHABLE ' + JSON.stringify(keys(reachable)));
 }
 
+// emits call graph information
+function dumpCallGraph(ast) {
+  traverseGeneratedFunctions(ast, function(func) {
+    var reachable = {};
+    traverse(func, function(node, type) {
+      if (type === 'call') {
+        if (node[1][0] === 'name') {
+          reachable[node[1][1]] = 1;
+        } else {
+          // (FUNCTION_TABLE[..])(..)
+          assert(node[1][0] === 'sub')
+          assert(node[1][1][0] === 'name');
+          reachable[node[1][1][1]] = 1;
+        }
+      }
+    });
+    print('// REACHABLE ' + JSON.stringify([func[1], ' => ', keys(reachable)]));
+  });
+}
+
 // Last pass utilities
 
 // Change +5 to DOT$ZERO(5). We then textually change 5 to 5.0 (uglify's ast cannot differentiate between 5 and 5.0 directly)
@@ -7873,6 +7893,7 @@ var passes = {
   ensureLabelSet: ensureLabelSet,
   emterpretify: emterpretify,
   findReachable: findReachable,
+  dumpCallGraph: dumpCallGraph,
   asmLastOpts: asmLastOpts,
   noop: function() {},
 
