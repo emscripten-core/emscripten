@@ -722,6 +722,7 @@ if __name__ == '__main__':
         SWAPPABLE = int(sys.argv[6])
 
   if ADVISE:
+    # Advise the user on which functions should likely be emterpreted
     temp = temp_files.get('.js').name
     shared.Building.js_optimizer(infile, ['dumpCallGraph'], output_filename=temp, just_concat=True)
     asm = asm_module.AsmModule(temp)
@@ -734,14 +735,17 @@ if __name__ == '__main__':
         func = curr[0]
         targets = curr[2]
         can_call[func] = set(targets)
-    print 'can call', can_call
+    # TODO function tables too - treat a function all as a function that can call anything in it, which is effectively what it is
+    # Note: We ignore calls in from outside the asm module, so you could do emterpreted => outside => emterpreted, and we would
+    #       miss the first one there. But this is acceptable to do, because we can't save such a stack anyhow, due to the outside!
+    #print 'can call', can_call, '\n!!!\n', asm.tables, '!'
     reachable_from = {}
     for func, targets in can_call.iteritems():
       for target in targets:
         if target not in reachable_from:
           reachable_from[target] = set()
         reachable_from[target].add(func)
-    print 'reachable from', reachable_from
+    #print 'reachable from', reachable_from
     # find all functions that can reach the sync funcs, which are those that can be on the stack during an async save/load, and hence must all be emterpreted
     to_check = list(SYNC_FUNCS)
     advised = set()
@@ -752,7 +756,8 @@ if __name__ == '__main__':
           if reacher not in advised:
             advised.add(str(reacher))
             to_check.append(reacher)
-    print "-s EMTERPRETIFY_ASYNC_WHITELIST='" + str(sorted(list(advised))).replace("'", '"') + "'"
+    print "Suggested list of functions to run in the emterpreter:"
+    print "  -s EMTERPRETIFY_WHITELIST='" + str(sorted(list(advised))).replace("'", '"') + "'"
     sys.exit(0)
 
   BLACKLIST = set(list(BLACKLIST) + extra_blacklist)

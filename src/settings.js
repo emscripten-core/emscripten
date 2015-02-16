@@ -602,6 +602,10 @@ var EMTERPRETIFY_BLACKLIST = []; // Functions to not emterpret, that is, to run 
 var EMTERPRETIFY_WHITELIST = []; // If this contains any functions, then only the functions in this list
                                  // are emterpreted (as if all the rest are blacklisted; this overrides the BLACKLIST)
 var EMTERPRETIFY_ASYNC = 0; // Allows sync code in the emterpreter, by saving the call stack, doing an async delay, and resuming it
+var EMTERPRETIFY_ADVISE = 0; // Performs a static analysis to suggest which functions should be run in the emterpreter, as it
+                             // appears they can be on the stack when a sync function is called in the EMTERPRETIFY_ASYNC option.
+                             // After showing the suggested list, compilation will halt. You can apply the provided list as an
+                             // emcc argument when compiling later.
 
 var RUNNING_JS_OPTS = 0; // whether js opts will be run, after the main compiler
 var RUNNING_FASTCOMP = 1; // whether we are running the fastcomp backend
