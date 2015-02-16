@@ -512,10 +512,15 @@ CASES[ROPCODES['FSLOWD']] = get_access('lx', s='d') + ' = ' + get_coerced_access
 CASES[ROPCODES['TSLOW']] = get_access('inst >>> 16') + ' = ' + get_coerced_access('lx') + ';'
 CASES[ROPCODES['TSLOWD']] = get_access('inst >>> 16', s='d') + ' = ' + get_coerced_access('lx', s='d') + ';'
 
-
 opcode_used = {}
 for opcode in OPCODES:
   opcode_used[opcode] = False
+
+def is_function_table(name):
+  return name.startswith('FUNCTION_TABLE_')
+
+def is_dyn_call(func):
+  return func.startswith('dynCall_')
 
 def make_emterpreter(zero=False):
   # return is specialized per interpreter
@@ -527,7 +532,7 @@ def make_emterpreter(zero=False):
     name = global_func_names[i]
     sig = global_func_sigs[i]
 
-    function_pointer_call = name.startswith('FUNCTION_TABLE_')
+    function_pointer_call = is_function_table(name)
 
     # our local registers are never true floats, and we just do fround calls to ensure correctness, not caring
     # about performance. but when coercing to outside of the emterpreter, we need to know the true sig,
@@ -735,7 +740,10 @@ if __name__ == '__main__':
         func = curr[0]
         targets = curr[2]
         can_call[func] = set(targets)
-    # TODO function tables too - treat a function all as a function that can call anything in it, which is effectively what it is
+    # function tables too - treat a function all as a function that can call anything in it, which is effectively what it is
+    for name, funcs in asm.tables.iteritems():
+      can_call[name] = set(funcs[1:-1].split(','))
+    #print can_call
     # Note: We ignore calls in from outside the asm module, so you could do emterpreted => outside => emterpreted, and we would
     #       miss the first one there. But this is acceptable to do, because we can't save such a stack anyhow, due to the outside!
     #print 'can call', can_call, '\n!!!\n', asm.tables, '!'
@@ -754,7 +762,7 @@ if __name__ == '__main__':
       if curr in reachable_from:
         for reacher in reachable_from[curr]:
           if reacher not in advised:
-            advised.add(str(reacher))
+            if not is_dyn_call(reacher) and not is_function_table(reacher): advised.add(str(reacher))
             to_check.append(reacher)
     print "Suggested list of functions to run in the emterpreter:"
     print "  -s EMTERPRETIFY_WHITELIST='" + str(sorted(list(advised))).replace("'", '"') + "'"
@@ -782,7 +790,7 @@ if __name__ == '__main__':
 
   # decide which functions will be emterpreted, and find which are externally reachable (from outside other emterpreted code; those will need trampolines)
 
-  emterpreted_funcs = set([func for func in asm.funcs if func not in BLACKLIST and not func.startswith('dynCall_')])
+  emterpreted_funcs = set([func for func in asm.funcs if func not in BLACKLIST and not is_dyn_call(func)])
 
   tabled_funcs = asm.get_table_funcs()
   exported_funcs = [func.split(':')[0] for func in asm.exports]
