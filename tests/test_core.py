@@ -7241,7 +7241,6 @@ int main() {
   def test_coroutine(self):
     if not Settings.ASM_JS: return self.skip('asyncify requires asm.js')
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('asyncify requires fastcomp')
-    if self.is_emterpreter(): return self.skip('todo')
 
     src = r'''
 #include <stdio.h>
