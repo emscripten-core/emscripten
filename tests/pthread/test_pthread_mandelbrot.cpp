@@ -155,19 +155,22 @@ float top = 0.f - incrY*H/2.f;
 unsigned long numIters = 0;
 
 volatile int numItersBefore = 0;
-const int numItersPerFrame = 50;
+int numItersPerFrame = 10;
 
-#define NUM_THREADS 8
-const int numTasks = NUM_THREADS;
+#define MAX_NUM_THREADS 8
+#define NUM_THREADS 2
+int numTasks = NUM_THREADS;
 
 float mandel[W*H*2] = {};
 uint32_t outputImage[W*H];
 
-pthread_t thread[NUM_THREADS];
-double timeSpentInMandelbrot[NUM_THREADS] = {};
+pthread_t thread[MAX_NUM_THREADS];
+double timeSpentInMandelbrot[MAX_NUM_THREADS] = {};
+
+bool use_sse = true;
 
 int tasksDone = 0;
-int tasksPending[NUM_THREADS] = {};
+int tasksPending[MAX_NUM_THREADS] = {};
 void *mandelbrot_thread(void *arg)
 {
   int idx = (int)arg;
@@ -194,8 +197,55 @@ float zoom = 0.f;
 
 double prevT = 0;
 
+void register_tasks()
+{
+#ifdef SINGLETHREADED
+  // Single-threaded
+  for(int i = 0; i < numTasks; ++i)
+  {
+    double t0 = emscripten_get_now();
+    numIters += ComputeMandelbrot(mandel, outputImage, sizeof(float)*2*W, sizeof(uint32_t)*W, W*i/numTasks, 0, W/numTasks, H, left, top, incrX, incrY, numItersBefore, numItersPerFrame);
+    double t1 = emscripten_get_now();
+    timeSpentInMandelbrot[0] += t1-t0;
+  }
+#else
+  emscripten_atomic_fence();
+
+  numTasks = EM_ASM_INT_V(return parseInt(document.getElementById('num_threads').value));
+  if (numTasks < 1) numTasks = 1;
+  if (numTasks > MAX_NUM_THREADS) numTasks = MAX_NUM_THREADS;
+
+  // Register tasks.
+  emscripten_atomic_store_u32(&tasksDone, 0);
+  emscripten_atomic_fence();
+  for(int i = 0; i < numTasks; ++i)
+  {
+      emscripten_atomic_store_u32(&tasksPending[i], 1);
+      emscripten_futex_wake(&tasksPending[i], 999);
+  }
+#endif
+}
+
+void wait_tasks()
+{
+#ifndef SINGLETHREADED
+  // Wait for each task to finish.
+  for(;;)
+  {
+    int td = tasksDone;
+    if (td >= numTasks)
+      break;
+    emscripten_futex_wait(&tasksDone, td, INFINITY);
+    emscripten_main_thread_process_queued_calls();
+  }
+#endif
+}
+
 void main_tick()
 {
+  wait_tasks();
+  numItersBefore += numItersPerFrame;
+
   double t = emscripten_get_now();
   double dt = t - prevT;
 
@@ -225,73 +275,54 @@ void main_tick()
         break;
     }
   }
-
-  if (SDL_MUSTLOCK(screen)) SDL_LockSurface(screen);
 #endif
 
   prevT = t;
-  top += dt * vScroll * incrX / 5.f;
-  left += dt * hScroll * incrY / 5.f;
-
-  // ctrX = left + incrX * W / 2.f;
-  // ctrXNew = leftNew + incrXNew * W / 2.f;
-  // ctrXNew == ctrX
-  // left + incrX * W / 2.f == leftNew + incrXNew * W / 2.f
-  // leftNew = left + (incrX - incrXNew) * W / 2.f;
-  float incrXNew = incrX + dt * zoom * incrX / 1000.0;
-  float incrYNew = incrY + dt * zoom * incrX / 1000.0;
-
-  left += (incrX - incrXNew) * W / 2.f;
-  top += (incrY - incrYNew) * H / 2.f;
-
-  incrX = incrXNew;
-  incrY = incrYNew;
-
-  if (hScroll != 0.f || vScroll != 0.f || zoom != 0.f)
+  if (numItersBefore > 2*numItersPerFrame)
   {
-    for(int i = 0; i < W*H; ++i)
-      outputImage[i] = 0xFF000000;
-    numItersBefore = 0;
-    smallestIterOut = 0x7FFFFFFF;
-    memset(mandel, 0, sizeof(mandel));
-  }
-#ifdef SINGLETHREADED
-  // Single-threaded
-  for(int i = 0; i < numTasks; ++i)
-  {
-    double t0 = emscripten_get_now();
-    numIters += ComputeMandelbrot(mandel, outputImage, sizeof(float)*2*W, sizeof(uint32_t)*W, W*i/numTasks, 0, W/numTasks, H, left, top, incrX, incrY, numItersBefore, numItersPerFrame);
-    double t1 = emscripten_get_now();
-    timeSpentInMandelbrot[0] += t1-t0;
-  }
-#else
-  emscripten_atomic_fence();
+    top += dt * vScroll * incrX / 5.f;
+    left += dt * hScroll * incrY / 5.f;
 
-  // Register tasks.
-  emscripten_atomic_store_u32(&tasksDone, 0);
-  emscripten_atomic_fence();
-  for(int i = 0; i < NUM_THREADS; ++i)
-  {
-      emscripten_atomic_store_u32(&tasksPending[i], 1);
-      emscripten_futex_wake(&tasksPending[i], 999);
-  }
-  // Wait for each task to finish.
-  for(;;)
-  {
-    int td = tasksDone;
-    if (td >= NUM_THREADS)
-      break;
-    emscripten_futex_wait(&tasksDone, td, INFINITY);
-    emscripten_main_thread_process_queued_calls();
-  }
-#endif
+    // ctrX = left + incrX * W / 2.f;
+    // ctrXNew = leftNew + incrXNew * W / 2.f;
+    // ctrXNew == ctrX
+    // left + incrX * W / 2.f == leftNew + incrXNew * W / 2.f
+    // leftNew = left + (incrX - incrXNew) * W / 2.f;
+    float incrXNew = incrX + dt * zoom * incrX / 1000.0;
+    float incrYNew = incrY + dt * zoom * incrX / 1000.0;
 
-  numItersBefore += numItersPerFrame;
+    left += (incrX - incrXNew) * W / 2.f;
+    top += (incrY - incrYNew) * H / 2.f;
+
+    incrX = incrXNew;
+    incrY = incrYNew;
+  }
+
 #ifndef NO_SDL
-  memcpy(screen->pixels, outputImage, sizeof(outputImage));
-  if (SDL_MUSTLOCK(screen)) SDL_UnlockSurface(screen);
-  SDL_Flip(screen);
+  if (numItersBefore > 2*numItersPerFrame)
+  {
+    if (SDL_MUSTLOCK(screen)) SDL_LockSurface(screen);
+    memcpy(screen->pixels, outputImage, sizeof(outputImage));
+    if (SDL_MUSTLOCK(screen)) SDL_UnlockSurface(screen);
+    SDL_Flip(screen);
+  }
 #endif
+
+  if (numItersBefore > 2*numItersPerFrame)
+  {
+    if (hScroll != 0.f || vScroll != 0.f || zoom != 0.f)
+    {
+      for(int i = 0; i < W*H; ++i)
+        outputImage[i] = 0xFF000000;
+      numItersBefore = 0;
+      smallestIterOut = 0x7FFFFFFF;
+      memset(mandel, 0, sizeof(mandel));
+    }
+  }
+
+  numItersPerFrame = EM_ASM_INT_V(return parseInt(document.getElementById('updates_per_frame').value););
+  if (numItersPerFrame < 10) numItersPerFrame = 10;
+  if (numItersPerFrame > 2000) numItersPerFrame = 2000;
 
   ++framesRendered;
   t = emscripten_get_now();
@@ -299,19 +330,35 @@ void main_tick()
   {
     double msecsPerFrame = (t - lastFPSPrint) / framesRendered;
     double mbTime = 0.0;
-    for(int i = 0; i < NUM_THREADS; ++i)
+    for(int i = 0; i < numTasks; ++i)
     {
       mbTime += timeSpentInMandelbrot[i];
       timeSpentInMandelbrot[i] = 0;
     }
-    mbTime /= NUM_THREADS;
+    mbTime /= numTasks;
     double fps = 1000.0 / msecsPerFrame;
-    printf("%.2f msecs/frame, FPS: %.2f. %f iters/second. Time spent in Mandelbrot: %f secs. (%.2f%%)\n", msecsPerFrame, fps, numIters * 1000.0 / (t-lastFPSPrint),
+    double itersPerSecond = numIters * 1000.0 / (t-lastFPSPrint);
+    char str[256];
+    if (itersPerSecond > 0.9 * 1000 * 1000 * 1000)
+      sprintf(str, "%.3fG iterations/second", itersPerSecond / 1000000000.0);
+    else if (itersPerSecond > 0.9 * 1000 * 1000)
+      sprintf(str, "%.3fM iterations/second", itersPerSecond / 1000000.0);
+    else if (itersPerSecond > 0.9 * 1000)
+      sprintf(str, "%.3fK iterations/second", itersPerSecond / 1000.0);
+    else if (itersPerSecond > 1000)
+      sprintf(str, "%.3f iterations/second", itersPerSecond / 1000.0);
+    char str2[256];
+    sprintf(str2, "document.getElementById('performance').innerHTML = '%s';", str);
+    emscripten_run_script_string(str2);
+    //EM_ASM({document.getElementById('performance').innerHTML = $0;}, str);
+    printf("%.2f msecs/frame, FPS: %.2f. %f iters/second. Time spent in Mandelbrot: %f secs. (%.2f%%)\n", msecsPerFrame, fps, itersPerSecond,
       mbTime/1000.0, mbTime * 100.0 / (t-lastFPSPrint));
     lastFPSPrint = t;
     framesRendered = 0;
     numIters = 0;
   }
+
+  register_tasks();
 }
 
 int main(int argc, char** argv)
@@ -321,7 +368,7 @@ int main(int argc, char** argv)
   for(int i = 0; i < W*H; ++i)
     outputImage[i] = 0xFF000000;
 
-  for(int i = 0; i < numTasks; ++i)
+  for(int i = 0; i < MAX_NUM_THREADS; ++i)
   {
     pthread_attr_t attr;
     pthread_attr_init(&attr);
@@ -333,8 +380,8 @@ int main(int argc, char** argv)
 
   EM_ASM("SDL.defaults.copyOnLock = false; SDL.defaults.discardOnLock = true; SDL.defaults.opaqueFrontBuffer = false;");
 
+  register_tasks();
   emscripten_set_main_loop(main_tick, 0, 0);
 
   return 0;
 }
-
