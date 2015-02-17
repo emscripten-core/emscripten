@@ -4574,13 +4574,6 @@ function _main() {
       if old_native: os.environ['EMCC_NATIVE_OPTIMIZER'] = old_native
       else: del os.environ['EMCC_NATIVE_OPTIMIZER']
 
-  def test_emterpreter_swap_orig(self):
-    Popen([PYTHON, EMCC, path_from_root('tests', 'fasta.cpp'), '-s', 'EMTERPRETIFY=1', '-s', 'SWAPPABLE_ASM_MODULE=1', '-O2']).communicate()
-    Popen([PYTHON, path_from_root('tools', 'distill_asm.py'), 'a.out.js.orig.js', 'second.js', 'swap-in']).communicate()
-    assert os.path.exists('second.js')
-    out = run_js('second.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True, assert_returncode=None)
-    self.validate_asmjs(out)
-
   def test_emterpreter_advise(self):
     out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'emterpreter_advise.cpp'), '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_ADVISE=1'], stdout=PIPE).communicate()
     self.assertContained('-s EMTERPRETIFY_WHITELIST=\'["__Z6middlev", "__Z7sleeperv", "__Z8recurserv", "_main"]\'', out)
