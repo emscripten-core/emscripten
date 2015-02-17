@@ -766,6 +766,7 @@ if __name__ == '__main__':
             to_check.append(reacher)
     print "Suggested list of functions to run in the emterpreter:"
     print "  -s EMTERPRETIFY_WHITELIST='" + str(sorted(list(advised))).replace("'", '"') + "'"
+    print "(%d%% out of %d functions)" % (int((100.0*len(advised))/len(can_call)), len(can_call))
     sys.exit(0)
 
   BLACKLIST = set(list(BLACKLIST) + extra_blacklist)
