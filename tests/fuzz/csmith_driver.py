@@ -114,6 +114,7 @@ while 1:
       if random.random() < 0.5:
         js_args += ['-s', 'EMTERPRETIFY_ASYNC=1']
     print '(compile)', ' '.join(js_args)
+    open(fullname, 'a').write('\n// ' + ' '.join(js_args) + '\n\n')
     shared.check_execute(js_args)
     assert os.path.exists(filename + '.js')
     print '(run in %s)' % engine1
