@@ -4802,3 +4802,16 @@ Descriptor desc;
       out, err = Popen([PYTHON, path_from_root('emmake'), 'sdl2-config'] + args, stdout=PIPE, stderr=PIPE).communicate()
       assert expected in out, out
 
+  def test_warn_toomany_vars(self):
+    for source, warn in [
+      (path_from_root('tests', 'hello_world.c'), False),
+      (path_from_root('tests', 'hello_libcxx.cpp'), False),
+      (path_from_root('tests', 'printf', 'test.c'), True)
+    ]:
+      for opts in [0, 1, 2, 3, 's', 'z']:
+        print source, opts
+        self.clear()
+        out, err = Popen([PYTHON, EMCC, source, '-O' + str(opts)], stderr=PIPE).communicate()
+        assert os.path.exists('a.out.js')
+        assert ('emitted code will contain very large numbers of local variables' in err) == (warn and (opts in [0, 1]))
+
