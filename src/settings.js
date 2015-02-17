@@ -606,6 +606,8 @@ var EMTERPRETIFY_ADVISE = 0; // Performs a static analysis to suggest which func
                              // appears they can be on the stack when a sync function is called in the EMTERPRETIFY_ASYNC option.
                              // After showing the suggested list, compilation will halt. You can apply the provided list as an
                              // emcc argument when compiling later.
+                             // Note that this depends on things like inlining. If you run this with different inlining than
+                             // when you use the list, it might not work.
 
 var RUNNING_JS_OPTS = 0; // whether js opts will be run, after the main compiler
 var RUNNING_FASTCOMP = 1; // whether we are running the fastcomp backend
