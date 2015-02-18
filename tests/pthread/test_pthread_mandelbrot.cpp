@@ -476,22 +476,24 @@ void main_tick()
     double itersPerSecond = numItersAllThreads * 1000.0 / (t-lastFPSPrint);
     char str[256];
     const char *suffix = "";
-    double itersNum = itersPerSecond;
+    static double ItersSmoothed = 0;
+    ItersSmoothed = ItersSmoothed * 0.8 + itersPerSecond * 0.2;
+    double itersNum = ItersSmoothed;
 
-    if (itersPerSecond > 0.9 * 1000 * 1000 * 1000)
+    if (ItersSmoothed > 0.9 * 1000 * 1000 * 1000)
     {
       suffix = "G";
-      itersNum = itersPerSecond / 1000000000.0;
+      itersNum = ItersSmoothed / 1000000000.0;
     }
-    else if (itersPerSecond > 0.9 * 1000 * 1000)
+    else if (ItersSmoothed > 0.9 * 1000 * 1000)
     {
       suffix = "M";
-      itersNum = itersPerSecond / 1000000.0;
+      itersNum = ItersSmoothed / 1000000.0;
     }
-    else if (itersPerSecond > 0.9 * 1000)
+    else if (ItersSmoothed > 0.9 * 1000)
     {
       suffix = "K";
-      itersNum = itersPerSecond / 1000.0;
+      itersNum = ItersSmoothed / 1000.0;
     }
     double cpuUsageSeconds = mbTime/1000.0;
     double cpuUsageRatio = mbTime * 100.0 / (t-lastFPSPrint);
