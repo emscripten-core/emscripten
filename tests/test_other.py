@@ -4808,3 +4808,17 @@ Descriptor desc;
         assert os.path.exists('a.out.js')
         assert ('emitted code will contain very large numbers of local variables' in err) == (warn and (opts in [0, 1]))
 
+  def test_module_onexit(self):
+    open('src.cpp', 'w').write(r'''
+#include <emscripten.h>
+int main() {
+  EM_ASM({
+    Module.onExit = function(status) { Module.print('exiting now, status ' + status) };
+  });
+  return 14;
+}
+    ''')
+    try_delete('a.out.js')
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    self.assertContained('exiting now, status 14', run_js('a.out.js', assert_returncode=14))
+

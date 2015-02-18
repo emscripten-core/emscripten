@@ -201,6 +201,8 @@ function exit(status) {
   // exit the runtime
   exitRuntime();
 
+  if (Module['onExit']) Module['onExit'](status);
+
 #if NODE_STDOUT_FLUSH_WORKAROUND
   if (ENVIRONMENT_IS_NODE) {
     // Work around a node.js bug where stdout buffer is not flushed at process exit:
