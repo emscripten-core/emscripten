@@ -1032,7 +1032,13 @@ if __name__ == '__main__':
 
   # send EMT vars into asm
   asm.pre_js += "Module.asmLibraryArg['EMTSTACKTOP'] = EMTSTACKTOP; Module.asmLibraryArg['EMT_STACK_MAX'] = EMT_STACK_MAX;\n"
-  asm.imports_js += 'var EMTSTACKTOP = env.EMTSTACKTOP|0;\nvar EMT_STACK_MAX = env.EMT_STACK_MAX|0;\n'
+  extra_vars = 'var EMTSTACKTOP = env.EMTSTACKTOP|0;\nvar EMT_STACK_MAX = env.EMT_STACK_MAX|0;\n'
+  first_func = asm.imports_js.find('function ')
+  if first_func < 0:
+    asm.imports_js += extra_vars
+  else:
+    # imports contains a function (not a true asm function, hidden from opt passes) that we must not be before
+    asm.imports_js = asm.imports_js[:first_func] + '\n' + extra_vars + '\n' + asm.imports_js[first_func:]
 
   asm.write(outfile)
 
