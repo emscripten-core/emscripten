@@ -5285,7 +5285,6 @@ return malloc(size);
   # Tests the full SSE1 API.
   def test_sse1(self):
     return self.skip('TODO: This test fails due to bugs #2840, #3044, #3045, #3046 and #3048 (also see #3043 and #3049)')
-    if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
     orig_args = self.emcc_args
@@ -5297,7 +5296,6 @@ return malloc(size);
     if self.is_emterpreter(): return self.skip('todo')
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
-    if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
     test_path = path_from_root('tests', 'core', 'test_simd')
@@ -5308,7 +5306,6 @@ return malloc(size);
   def test_simd2(self):
     if self.is_emterpreter(): return self.skip('todo')
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
-    if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
     test_path = path_from_root('tests', 'core', 'test_simd2')
@@ -5320,7 +5317,6 @@ return malloc(size);
     return self.skip('FIXME: this appears to be broken')
 
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
-    if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
     test_path = path_from_root('tests', 'core', 'test_simd3')
@@ -5332,7 +5328,6 @@ return malloc(size);
     # test_simd4 is to test phi node handling of SIMD path
     if self.is_emterpreter(): return self.skip('todo')
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
-    if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
     test_path = path_from_root('tests', 'core', 'test_simd4')
@@ -5343,7 +5338,6 @@ return malloc(size);
   def test_simd5(self):
     # test_simd5 is to test shufflevector of SIMD path
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
-    if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
     test_path = path_from_root('tests', 'core', 'test_simd5')
@@ -5354,7 +5348,6 @@ return malloc(size);
   def test_simd6(self):
     # test_simd6 is to test x86 min and max intrinsics on NaN and -0.0
     return self.skip('temporarily disabled due to SpiderMonkey bug 1084609')
-    if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     if self.is_emterpreter(): return self.skip('todo')
@@ -5368,7 +5361,6 @@ return malloc(size);
     # test_simd7 is to test negative zero handling.
     return self.skip('see issue #3103')
 
-    if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     if self.is_emterpreter(): return self.skip('todo')
 
@@ -5380,7 +5372,6 @@ return malloc(size);
   def test_simd8(self):
     # test_simd8 is to test unaligned load and store
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
-    if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     if self.is_emterpreter(): return self.skip('todo')
 
@@ -5390,7 +5381,6 @@ return malloc(size);
     self.do_run_from_file(src, output)
 
   def test_simd_dyncall(self):
-    if Settings.ASM_JS: Settings.ASM_JS = 2 # does not validate
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     if self.is_emterpreter(): return self.skip('todo')
