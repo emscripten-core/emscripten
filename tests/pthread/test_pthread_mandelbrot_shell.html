@@ -13,7 +13,7 @@
 
       .emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
       div.emscripten { text-align: center; }      
-      div.emscripten_border { border: 1px solid black; }
+      div.emscripten_border { border: 1px solid black; background: black;}
       /* the canvas *must not* have any border or padding, or mouse coords will be wrong */
       canvas.emscripten { border: 0px none; }
 
@@ -1206,13 +1206,14 @@
       <progress value="0" max="100" id="progress" hidden=1></progress>
     </div>
 
-    
+    <div style='margin-left: auto; margin-right: auto; width: 100%; text-align: center;'>Use the arrow keys to navigate the fractal, and keys A/Z to zoom in and out.</div>
     <div class="emscripten_border">
       <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
     </div>
 
     Updates per frame:<input type="number" id="updates_per_frame" value=50 min=10 max=2000> <br />
     # of threads:<input type="number" id="num_threads" value=4 min=1 max=16> <br />
+    Use SSE: <input type="checkbox" id='use_sse'> <br />
     Performance: <span id='performance'>-</span><br />
 
     <textarea id="output" rows="8" style='display:none'></textarea>

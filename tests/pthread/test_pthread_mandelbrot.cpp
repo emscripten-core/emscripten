@@ -8,8 +8,10 @@
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
-#include <emscripten/threading.h>
 #include <emscripten/html5.h>
+#ifndef SINGLETHREADED
+#include <emscripten/threading.h>
+#endif
 #endif
 
 #include <xmmintrin.h>
@@ -78,7 +80,7 @@ uint32_t ColorMap(int iter)
   float r,g,b;
   float h=(float)iter;
   //h = sqrtf(h);
-  h = log(h)*10.f;
+  h = log(h)*100.f;
   h = fmod(h, 360.f);
   float s = 0.5f;
   float v = 0.5f;
@@ -143,6 +145,30 @@ int ComputeMandelbrot(float *srcReal, float *srcImag, uint32_t *dst, int strideS
   return h*w*numIters;
 }
 
+// Not strictly correct anyzero_ps, but faster, and depends on that color alpha channel is always either 0xFF or 0.
+int anyzero_ps(__m128 m)
+{
+  __m128 y = _mm_shuffle_ps(m, m, _MM_SHUFFLE(2,3,0,1));
+  m = _mm_and_ps(m, y);
+  __m128 z = _mm_movehl_ps(m, m);
+  m = _mm_and_ps(m, z);
+  return _mm_ucomieq_ss(m, _mm_setzero_ps());
+}
+
+int any_ps(__m128 m)
+{
+  __m128 y = _mm_shuffle_ps(m, m, _MM_SHUFFLE(2,3,0,1));
+  m = _mm_or_ps(m, y);
+  __m128 z = _mm_movehl_ps(m, m);
+  m = _mm_or_ps(m, z);  
+  return _mm_ucomineq_ss(m, _mm_setzero_ps());
+}
+
+int xnotzero_ss(__m128 m) { return _mm_ucomineq_ss(m, _mm_setzero_ps()); }
+int ynotzero_ss(__m128 m) { return _mm_ucomineq_ss(_mm_shuffle_ps(m, m, _MM_SHUFFLE(1,1,1,1)), _mm_setzero_ps()); }
+int znotzero_ss(__m128 m) { return _mm_ucomineq_ss(_mm_movehl_ps(m, m), _mm_setzero_ps()); }
+int wnotzero_ss(__m128 m) { return _mm_ucomineq_ss(_mm_shuffle_ps(m, m, _MM_SHUFFLE(3,3,3,3)), _mm_setzero_ps()); }
+
 int ComputeMandelbrot_SSE(float *srcReal, float *srcImag, uint32_t *dst, int strideSrc, int strideDst, int x, int y, int w, int h, float left, float top, float incrX, float incrY, int numItersBefore, int numIters)
 {
   for(int Y = y; Y < y+h; ++Y)
@@ -163,47 +189,68 @@ int ComputeMandelbrot_SSE(float *srcReal, float *srcImag, uint32_t *dst, int str
       {
         __m128 v_imag = _mm_loadu_ps(si+X);
 //        float v_imag = si[X];
-        for(int i = 0; i < numIters; ++i)
-        {
-          // (x+yi)^2 = x^2 - y^2 + 2xyi
-          // ||x_+yi||^2 = x^2+y^2
-          //float new_real = v_real*v_real - v_imag*v_imag + real;
-          __m128 new_real = _mm_add_ps(_mm_sub_ps(_mm_mul_ps(v_real, v_real), _mm_mul_ps(v_imag, v_imag)), Real);
-          //v_imag = 2.f * v_real * v_imag + imag;
-          __m128 v_ri = _mm_mul_ps(v_real, v_imag);
-          v_imag = _mm_add_ps(_mm_add_ps(v_ri, v_ri), Imag);
-          v_real = new_real;
 
-/*
-          new_real = v_real*v_real - v_imag*v_imag + real;
-          v_imag = 2.f * v_real * v_imag + imag;
-          v_real = new_real;
-*/
-          __m128 len = _mm_add_ps(_mm_mul_ps(v_real, v_real), _mm_mul_ps(v_imag, v_imag));
-          __m128 diverged = _mm_cmpgt_ps(len, four);
-          _mm_storeu_ps((float*)d+X, diverged);
-          /*
-          if (v_real*v_real + v_imag*v_imag > 4.f)
+        __m128 oldColor = _mm_loadu_ps((float*)d+X);
+        if (anyzero_ps(oldColor))
+        //if (d[X] == 0 || d[X+1] == 0 || d[X+2] == 0 || d[X+3] == 0)
+        {
+          __m128 oldIterating = _mm_cmpeq_ps(oldColor, _mm_setzero_ps());
+          for(int i = 0; i < numIters; ++i)
           {
-            d[X] = ColorMap(numItersBefore + i);
-            v_real = INFINITY;
-            break;
+            // (x+yi)^2 = x^2 - y^2 + 2xyi
+            // ||x_+yi||^2 = x^2+y^2
+            //float new_real = v_real*v_real - v_imag*v_imag + real;
+            __m128 new_real = _mm_add_ps(_mm_sub_ps(_mm_mul_ps(v_real, v_real), _mm_mul_ps(v_imag, v_imag)), Real);
+            //v_imag = 2.f * v_real * v_imag + imag;
+            __m128 v_ri = _mm_mul_ps(v_real, v_imag);
+            v_imag = _mm_add_ps(_mm_add_ps(v_ri, v_ri), Imag);
+            v_real = new_real;
+
+  /*
+            new_real = v_real*v_real - v_imag*v_imag + real;
+            v_imag = 2.f * v_real * v_imag + imag;
+            v_real = new_real;
+  */
+            __m128 len = _mm_add_ps(_mm_mul_ps(v_real, v_real), _mm_mul_ps(v_imag, v_imag));
+            __m128 diverged = _mm_cmpgt_ps(len, four);
+            __m128 divergedNow = _mm_and_ps(diverged, oldIterating);
+            oldIterating = _mm_andnot_ps(divergedNow, oldIterating);
+            //__m128 diverged = _mm_cmpge_ps(len, _mm_set1_ps(0)); 
+            //__m128 old = _mm_loadu_ps((float*)d+X);
+
+            if (any_ps(divergedNow))
+            {
+              uint32_t color = ColorMap(numItersBefore + i);
+              if (xnotzero_ss(divergedNow)) d[X] = color;
+              if (ynotzero_ss(divergedNow)) d[X+1] = color;
+              if (znotzero_ss(divergedNow)) d[X+2] = color;
+              if (wnotzero_ss(divergedNow)) d[X+3] = color;
+//              _mm_storeu_ps((float*)d+X, _mm_or_ps(old, diverged));
+            }
+            /*
+            if (v_real*v_real + v_imag*v_imag > 4.f)
+            {
+              d[X] = ColorMap(numItersBefore + i);
+              v_real = INFINITY;
+              break;
+            }
+            */
           }
-          */
+          //sr[X] = v_real;
+          //si[X] = v_imag;
+          _mm_storeu_ps(sr+X, v_real);
+          _mm_storeu_ps(si+X, v_imag);
         }
-        //sr[X] = v_real;
-        //si[X] = v_imag;
-        _mm_storeu_ps(sr+X, v_real);
-        _mm_storeu_ps(si+X, v_imag);
       }
       real += incrX*4;
+      Real = _mm_set_ps(real + 3*incrX, real + 2*incrX, real + incrX, real);
     }
   }
   return h*w*numIters;
 }
 
-const int W = 800;
-const int H = 500;
+const int W = 512;
+const int H = 512;
 SDL_Surface *screen = 0;
 
 int framesRendered = 0;
@@ -234,6 +281,7 @@ bool use_sse = true;
 
 int tasksDone = 0;
 int tasksPending[MAX_NUM_THREADS] = {};
+#ifndef SINGLETHREADED
 void *mandelbrot_thread(void *arg)
 {
   int idx = (int)arg;
@@ -256,6 +304,7 @@ void *mandelbrot_thread(void *arg)
     emscripten_futex_wake(&tasksDone, 9999);
   }
 }
+#endif
 
 float hScroll = 0;
 float vScroll = 0;
@@ -267,12 +316,17 @@ double prevT = 0;
 
 void register_tasks()
 {
+    numTasks = EM_ASM_INT_V(return parseInt(document.getElementById('num_threads').value));
+
 #ifdef SINGLETHREADED
   // Single-threaded
   for(int i = 0; i < numTasks; ++i)
   {
     double t0 = emscripten_get_now();
-    numIters += ComputeMandelbrot(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, W*i/numTasks, 0, W/numTasks, H, left, top, incrX, incrY, numItersBefore, numItersPerFrame);
+    if (use_sse)
+      numIters[0] += ComputeMandelbrot_SSE(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, W*i/numTasks, 0, W/numTasks, H, left, top, incrX, incrY, numItersBefore, numItersPerFrame);
+    else
+      numIters[0] += ComputeMandelbrot(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, W*i/numTasks, 0, W/numTasks, H, left, top, incrX, incrY, numItersBefore, numItersPerFrame);
     double t1 = emscripten_get_now();
     timeSpentInMandelbrot[0] += t1-t0;
   }
@@ -345,8 +399,10 @@ void main_tick()
   }
 #endif
 
+  float iterSize = 1.f / (incrX < incrY ? incrX : incrY);
+  int minItersBeforeDisplaying = 50 + (int)(iterSize / 250.f);
   prevT = t;
-  if (numItersBefore > 2*numItersPerFrame)
+  if (numItersBefore >= minItersBeforeDisplaying)
   {
     top += dt * vScroll * incrX / 5.f;
     left += dt * hScroll * incrY / 5.f;
@@ -359,15 +415,18 @@ void main_tick()
     float incrXNew = incrX + dt * zoom * incrX / 1000.0;
     float incrYNew = incrY + dt * zoom * incrX / 1000.0;
 
-    left += (incrX - incrXNew) * W / 2.f;
-    top += (incrY - incrYNew) * H / 2.f;
+    if (incrXNew > 1.f / 200000.f && incrYNew > 1.f / 200000.f)
+    {
+      left += (incrX - incrXNew) * W / 2.f;
+      top += (incrY - incrYNew) * H / 2.f;
 
-    incrX = incrXNew;
-    incrY = incrYNew;
+      incrX = incrXNew;
+      incrY = incrYNew;
+    }
   }
 
 #ifndef NO_SDL
-  if (numItersBefore > 2*numItersPerFrame)
+  if (numItersBefore >= minItersBeforeDisplaying)
   {
     if (SDL_MUSTLOCK(screen)) SDL_LockSurface(screen);
     memcpy(screen->pixels, outputImage, sizeof(outputImage));
@@ -376,18 +435,21 @@ void main_tick()
   }
 #endif
 
-  if (numItersBefore > 2*numItersPerFrame)
+  int new_use_sse = EM_ASM_INT_V(return document.getElementById('use_sse').checked);
+
+  if (numItersBefore >= minItersBeforeDisplaying || new_use_sse != use_sse)
   {
-    if (hScroll != 0.f || vScroll != 0.f || zoom != 0.f)
+    if (hScroll != 0.f || vScroll != 0.f || zoom != 0.f || new_use_sse != use_sse)
     {
       for(int i = 0; i < W*H; ++i)
-        outputImage[i] = 0xFF000000;
+        outputImage[i] = 0x00000000;
       numItersBefore = 0;
       smallestIterOut = 0x7FFFFFFF;
       memset(mandelReal, 0, sizeof(mandelReal));
       memset(mandelImag, 0, sizeof(mandelImag));
     }
   }
+  use_sse = new_use_sse;
 
   numItersPerFrame = EM_ASM_INT_V(return parseInt(document.getElementById('updates_per_frame').value););
   if (numItersPerFrame < 10) numItersPerFrame = 10;
@@ -407,24 +469,30 @@ void main_tick()
       numItersAllThreads += numIters[i];
       numIters[i] = 0;
     }
+#ifndef SINGLETHREADED
     mbTime /= numTasks;
+#endif
     double fps = 1000.0 / msecsPerFrame;
     double itersPerSecond = numItersAllThreads * 1000.0 / (t-lastFPSPrint);
     char str[256];
+    const char *suffix = "";
+
     if (itersPerSecond > 0.9 * 1000 * 1000 * 1000)
-      sprintf(str, "%.3fG iterations/second", itersPerSecond / 1000000000.0);
+      suffix = "G";
     else if (itersPerSecond > 0.9 * 1000 * 1000)
-      sprintf(str, "%.3fM iterations/second", itersPerSecond / 1000000.0);
+      suffix = "M";
     else if (itersPerSecond > 0.9 * 1000)
-      sprintf(str, "%.3fK iterations/second", itersPerSecond / 1000.0);
-    else if (itersPerSecond > 1000)
-      sprintf(str, "%.3f iterations/second", itersPerSecond / 1000.0);
+      suffix = "K";
+    double cpuUsageSeconds = mbTime/1000.0;
+    double cpuUsageRatio = mbTime * 100.0 / (t-lastFPSPrint);
+    sprintf(str, "%.3f%s iterations/second. FPS: %.2f. CPU usage: %.2f%%", itersPerSecond / 1000000000.0, suffix, fps, cpuUsageRatio);
+//    sprintf(str, "%.3f%s iterations/second. FPS: %.2f. Zoom: %f", itersPerSecond / 1000000000.0, suffix, fps, 1.f / (incrX < incrY ? incrX : incrY));
     char str2[256];
     sprintf(str2, "document.getElementById('performance').innerHTML = '%s';", str);
     emscripten_run_script_string(str2);
     //EM_ASM({document.getElementById('performance').innerHTML = $0;}, str);
     printf("%.2f msecs/frame, FPS: %.2f. %f iters/second. Time spent in Mandelbrot: %f secs. (%.2f%%)\n", msecsPerFrame, fps, itersPerSecond,
-      mbTime/1000.0, mbTime * 100.0 / (t-lastFPSPrint));
+      cpuUsageSeconds, cpuUsageRatio);
     lastFPSPrint = t;
     framesRendered = 0;
   }
@@ -437,8 +505,9 @@ int main(int argc, char** argv)
   SDL_Init(SDL_INIT_VIDEO);
   screen = SDL_SetVideoMode(W, H, 32, SDL_SWSURFACE);
   for(int i = 0; i < W*H; ++i)
-    outputImage[i] = 0xFF000000;
+    outputImage[i] = 0x00000000;
 
+#ifndef SINGLETHREADED
   for(int i = 0; i < MAX_NUM_THREADS; ++i)
   {
     pthread_attr_t attr;
@@ -448,6 +517,7 @@ int main(int argc, char** argv)
     assert(rc == 0);
     pthread_attr_destroy(&attr);
   }
+#endif
 
   EM_ASM("SDL.defaults.copyOnLock = false; SDL.defaults.discardOnLock = true; SDL.defaults.opaqueFrontBuffer = false;");
 
