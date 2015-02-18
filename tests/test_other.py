@@ -1984,6 +1984,8 @@ int f() {
        ['asm', 'ensureLabelSet']),
       (path_from_root('tests', 'optimizer', '3154.js'), open(path_from_root('tests', 'optimizer', '3154-output.js')).read(),
        ['asm', 'eliminate', 'registerize', 'asmLastOpts', 'last']),
+      (path_from_root('tests', 'optimizer', 'simd.js'), open(path_from_root('tests', 'optimizer', 'simd-output.js')).read(),
+       ['asm', 'eliminate']), # eliminate, just enough to trigger asm normalization/denormalization
     ]:
       print input, passes
 

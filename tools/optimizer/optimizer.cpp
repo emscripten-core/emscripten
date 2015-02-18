@@ -14,6 +14,9 @@ typedef std::vector<IString> StringVec;
 
 Ref doc, extraInfo;
 
+IString SIMD_INT32X4_CHECK("SIMD_int32x4_check"),
+        SIMD_FLOAT32X4_CHECK("SIMD_float32x4_check");
+
 //==================
 // Infrastructure
 //==================
@@ -352,8 +355,8 @@ AsmType detectType(Ref node, AsmData *asmData, bool inVarDef) {
         if (node[1][0] == NAME) {
           IString name = node[1][1]->getIString();
           if (name == MATH_FROUND) return ASM_FLOAT;
-          else if (name == SIMD_FLOAT32X4) return ASM_FLOAT32X4;
-          else if (name == SIMD_INT32X4) return ASM_INT32X4;
+          else if (name == SIMD_FLOAT32X4 || name == SIMD_FLOAT32X4_CHECK) return ASM_FLOAT32X4;
+          else if (name == SIMD_INT32X4   || name == SIMD_INT32X4_CHECK) return ASM_INT32X4;
         }
         return ASM_NONE;
       } else if (node[0] == CONDITIONAL) {
@@ -508,8 +511,8 @@ Ref makeAsmCoercion(Ref node, AsmType type) {
     case ASM_INT: return make3(BINARY, OR, node, makeNum(0));
     case ASM_DOUBLE: return make2(UNARY_PREFIX, PLUS, node);
     case ASM_FLOAT: return make2(CALL, makeName(MATH_FROUND), &(makeArray())->push_back(node));
-    case ASM_FLOAT32X4: return make2(CALL, makeName(SIMD_FLOAT32X4), &(makeArray())->push_back(node));
-    case ASM_INT32X4: return make2(CALL, makeName(SIMD_INT32X4), &(makeArray())->push_back(node));
+    case ASM_FLOAT32X4: return make2(CALL, makeName(SIMD_FLOAT32X4_CHECK), &(makeArray())->push_back(node));
+    case ASM_INT32X4: return make2(CALL, makeName(SIMD_INT32X4_CHECK), &(makeArray())->push_back(node));
     case ASM_NONE:
     default: return node; // non-validating code, emit nothing XXX this is dangerous, we should only allow this when we know we are not validating
   }
