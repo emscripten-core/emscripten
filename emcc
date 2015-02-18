@@ -1603,6 +1603,8 @@ try:
         args += ['ASSERTIONS=1']
       if shared.Settings.PRECISE_F32:
         args += ['FROUND=1']
+      if shared.Settings.ALLOW_MEMORY_GROWTH:
+        args += ['MEMORY_SAFE=1']
       execute(args)
       final = final + '.em.js'
     finally:

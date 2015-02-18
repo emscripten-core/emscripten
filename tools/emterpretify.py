@@ -24,9 +24,10 @@ PROFILING = False
 SWAPPABLE = False
 FROUND = False
 ADVISE = False
+MEMORY_SAFE = False
 
 def handle_arg(arg):
-  global ZERO, ASYNC, ASSERTIONS, PROFILING, FROUND, ADVISE
+  global ZERO, ASYNC, ASSERTIONS, PROFILING, FROUND, ADVISE, MEMORY_SAFE
   if '=' in arg:
     l, r = arg.split('=')
     if l == 'ZERO': ZERO = int(r)
@@ -35,6 +36,7 @@ def handle_arg(arg):
     elif l == 'PROFILING': PROFILING = int(r)
     elif l == 'FROUND': FROUND = int(r)
     elif l == 'ADVISE': ADVISE = int(r)
+    elif l == 'MEMORY_SAFE': MEMORY_SAFE = int(r)
     return False
   return True
 
@@ -286,6 +288,11 @@ def get_coerced_access(l, s='i', unsigned=False, base='sp', offset=None):
   else:
     assert 0
 
+def make_assign(left, right, temp): # safely assign, taking into account memory safety
+  if not MEMORY_SAFE:
+    return left + ' = ' + right + ';'
+  return temp + ' = ' + right + '; ' + left + ' = ' + temp + ';'
+
 CASES = {}
 CASES[ROPCODES['SET']] = get_access('lx') + ' = ' + get_coerced_access('ly') + ';'
 CASES[ROPCODES['GETST']] = get_access('lx') + ' = STACKTOP;'
@@ -295,7 +302,7 @@ CASES[ROPCODES['SETVIB']] = 'pc = pc + 4 | 0; ' + get_access('lx') + ' = HEAP32[
 
 CASES[ROPCODES['ADD']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') + (' + get_coerced_access('lz') + ') | 0;'
 CASES[ROPCODES['SUB']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') - (' + get_coerced_access('lz') + ') | 0;'
-CASES[ROPCODES['MUL']] = get_access('lx') + ' = Math_imul(' + get_coerced_access('ly') + ', ' + get_coerced_access('lz') + ') | 0;'
+CASES[ROPCODES['MUL']] = make_assign(get_access('lx'), 'Math_imul(' + get_coerced_access('ly') + ', ' + get_coerced_access('lz') + ') | 0', 'ly')
 CASES[ROPCODES['SDIV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') / (' + get_coerced_access('lz') + ') | 0;'
 CASES[ROPCODES['UDIV']] = get_access('lx') + ' = (' + get_coerced_access('ly', unsigned=True) + ') / (' + get_coerced_access('lz', unsigned=True) + ') >>> 0;'
 CASES[ROPCODES['SMOD']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') % (' + get_coerced_access('lz') + ') | 0;'
@@ -553,16 +560,16 @@ def make_emterpreter(zero=False):
       ret += '[' + get_access('HEAPU8[pc+4>>0]') + ' & %d]' % (next_power_of_two(asm.tables[name].count(',')+1)-1)
     ret += '(' + ', '.join([fix_coercion(get_coerced_access('HEAPU8[pc+%d>>0]' % (i+4+int(function_pointer_call)), s=sig[i+1]), true_sig[i+1]) for i in range(len(sig)-1)]) + ')'
     if sig[0] != 'v':
-      ret = ' = ' + shared.JS.make_coercion(fix_coercion(ret, true_sig[0]), sig[0])
+      ret = shared.JS.make_coercion(fix_coercion(ret, true_sig[0]), sig[0])
       if not ASYNC:
-        ret = get_access('lx', sig[0]) + ret
+        ret = make_assign(get_access('lx', sig[0]), ret, 'ly' if sig[0] == 'i' else 'ld')
       else:
         # we cannot save the return value immediately! if we are saving the stack, it is meaningless, and would corrupt a local stack variable
         if sig[0] == 'i':
-          ret = 'lz ' + ret
+          ret = 'lz = ' + ret
         else:
           assert sig[0] == 'd'
-          ret = 'ld ' + ret
+          ret = 'ld = ' + ret
     elif name in actual_sigs and actual_sigs[name][0] != 'v':
       ret = shared.JS.make_coercion(ret, actual_sigs[name][0]) # return value ignored, but need a coercion
     if ASYNC:
@@ -688,7 +695,7 @@ function emterpret%s(pc) {
 }''' % (
   '' if not zero else '_z',
   'sp = 0, ' if not zero else '',
-  '' if not ASYNC else 'var ld = +0;',
+  '' if not ASYNC and not MEMORY_SAFE else 'var ld = +0;',
   '' if not ASYNC else 'HEAP32[EMTSTACKTOP>>2] = pc;\n if ((asyncState|0) == 1) asyncState = 0;\n', # other code running between a save and resume can see state 1, just reset
                                                                                                 # (optimally we should flip it to 0 at the bottom of the saving stack)
   push_stacktop(zero),
