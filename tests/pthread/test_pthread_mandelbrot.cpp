@@ -79,9 +79,12 @@ uint32_t ColorMap(int iter)
 
   float r,g,b;
   float h=(float)iter;
-  //h = sqrtf(h);
   h = log(h)*100.f;
-  h = fmod(h, 360.f);
+  if (h < 0.f) h = 0.f;
+
+  //h = fmod(h, 360.f); // fmod gives weird graphical artifacts?
+  if (h >= 360.f) h -= ((int)(h / 360.f)) * 360.f;
+
   float s = 0.5f;
   float v = 0.5f;
   HSVtoRGB(&r, &g, &b, h, s, v);
@@ -90,33 +93,32 @@ uint32_t ColorMap(int iter)
   int B = b*255.f;
   return 0xFF000000 | (B) | (G << 8) | (R << 16);
 
-
-  /*
+/*
   unsigned int i = (iter)*10;
 //  unsigned int i = (iter-si)*10;
   if (i > 255) i = 255;
   i = 255 - i;
   if (i < 30) i = 30;
   return 0xFF000000 | (i) | (i << 8) | (i << 16);
-  */
+*/
 }
 
-int ComputeMandelbrot(float *srcReal, float *srcImag, uint32_t *dst, int strideSrc, int strideDst, int x, int y, int w, int h, float left, float top, float incrX, float incrY, int numItersBefore, int numIters)
+unsigned long long ComputeMandelbrot(float *srcReal, float *srcImag, uint32_t *dst, int strideSrc, int strideDst, int x, int y, int yIncr, int w, int h, float left, float top, float incrX, float incrY, unsigned int numItersBefore, unsigned int numIters)
 {
-  for(int Y = y; Y < y+h; ++Y)
+  for(int Y = y; Y < h; Y += yIncr)
   {
     float *sr = (float*)((uintptr_t)srcReal + strideSrc * Y) + x;
     float *si = (float*)((uintptr_t)srcImag + strideSrc * Y) + x;
     uint32_t *d = (uint32_t*)((uintptr_t)dst + strideDst * Y) + x;
     float imag = top + Y * incrY;
-    float real = left + x * incrX;
     for(int X = 0; X < w; ++X)
     {
+      float real = left + (x + X) * incrX;
       float v_real = sr[X];
       if (v_real != INFINITY)
       {
         float v_imag = si[X];
-        for(int i = 0; i < numIters; ++i)
+        for(unsigned int i = 0; i < numIters; ++i)
         {
           // (x+yi)^2 = x^2 - y^2 + 2xyi
           // ||x_+yi||^2 = x^2+y^2
@@ -139,10 +141,9 @@ int ComputeMandelbrot(float *srcReal, float *srcImag, uint32_t *dst, int strideS
         sr[X] = v_real;
         si[X] = v_imag;
       }
-      real += incrX;
     }
   }
-  return h*w*numIters;
+  return (unsigned long long)((h-y)/yIncr)*w*numIters;
 }
 
 // Not strictly correct anyzero_ps, but faster, and depends on that color alpha channel is always either 0xFF or 0.
@@ -169,20 +170,20 @@ int ynotzero_ss(__m128 m) { return _mm_ucomineq_ss(_mm_shuffle_ps(m, m, _MM_SHUF
 int znotzero_ss(__m128 m) { return _mm_ucomineq_ss(_mm_movehl_ps(m, m), _mm_setzero_ps()); }
 int wnotzero_ss(__m128 m) { return _mm_ucomineq_ss(_mm_shuffle_ps(m, m, _MM_SHUFFLE(3,3,3,3)), _mm_setzero_ps()); }
 
-int ComputeMandelbrot_SSE(float *srcReal, float *srcImag, uint32_t *dst, int strideSrc, int strideDst, int x, int y, int w, int h, float left, float top, float incrX, float incrY, int numItersBefore, int numIters)
+unsigned long long ComputeMandelbrot_SSE(float *srcReal, float *srcImag, uint32_t *dst, int strideSrc, int strideDst, int x, int y, int yIncr, int w, int h, float left, float top, float incrX, float incrY, unsigned int numItersBefore, unsigned int numIters)
 {
-  for(int Y = y; Y < y+h; ++Y)
+  for(int Y = y; Y < h; Y += yIncr)
   {
     float *sr = (float*)((uintptr_t)srcReal + strideSrc * Y) + x;
     float *si = (float*)((uintptr_t)srcImag + strideSrc * Y) + x;
     uint32_t *d = (uint32_t*)((uintptr_t)dst + strideDst * Y) + x;
     float imag = top + Y * incrY;
     __m128 Imag = _mm_set1_ps(imag);
-    float real = left + x * incrX;
-    __m128 Real = _mm_set_ps(real + 3*incrX, real + 2*incrX, real + incrX, real);
     __m128 four = _mm_set1_ps(4.f);
     for(int X = 0; X < w; X += 4)
     {
+      float real = left + (x + X) * incrX;
+      __m128 Real = _mm_set_ps(real + 3*incrX, real + 2*incrX, real + incrX, real);
       __m128 v_real = _mm_loadu_ps(sr+X);
 //      float v_real = sr[X];
 //      if (v_real != INFINITY)
@@ -195,7 +196,7 @@ int ComputeMandelbrot_SSE(float *srcReal, float *srcImag, uint32_t *dst, int str
         //if (d[X] == 0 || d[X+1] == 0 || d[X+2] == 0 || d[X+3] == 0)
         {
           __m128 oldIterating = _mm_cmpeq_ps(oldColor, _mm_setzero_ps());
-          for(int i = 0; i < numIters; ++i)
+          for(unsigned int i = 0; i < numIters; ++i)
           {
             // (x+yi)^2 = x^2 - y^2 + 2xyi
             // ||x_+yi||^2 = x^2+y^2
@@ -242,11 +243,11 @@ int ComputeMandelbrot_SSE(float *srcReal, float *srcImag, uint32_t *dst, int str
           _mm_storeu_ps(si+X, v_imag);
         }
       }
-      real += incrX*4;
-      Real = _mm_set_ps(real + 3*incrX, real + 2*incrX, real + incrX, real);
+//      real += incrX*4;
+//      Real = _mm_set_ps(real + 3*incrX, real + 2*incrX, real + incrX, real);
     }
   }
-  return h*w*numIters;
+  return (unsigned long long)((h-y)/yIncr)*w*numIters;
 }
 
 const int W = 512;
@@ -261,9 +262,8 @@ float incrY = 3.f / W;
 float left = -2.f;
 float top = 0.f - incrY*H/2.f;
 
-
-volatile int numItersBefore = 0;
-int numItersPerFrame = 10;
+volatile unsigned int numItersDoneOnCanvas = 0;
+unsigned int numItersPerFrame = 10;
 
 #define MAX_NUM_THREADS 16
 #define NUM_THREADS 2
@@ -293,9 +293,9 @@ void *mandelbrot_thread(void *arg)
     double t0 = emscripten_get_now();
     int ni;
     if (use_sse)
-      ni = ComputeMandelbrot_SSE(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, W*idx/numTasks, 0, W/numTasks, H, left, top, incrX, incrY, numItersBefore, numItersPerFrame);
+      ni = ComputeMandelbrot_SSE(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, 0, idx, numTasks, W, H, left, top, incrX, incrY, numItersDoneOnCanvas, numItersPerFrame);
     else
-      ni = ComputeMandelbrot(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, W*idx/numTasks, 0, W/numTasks, H, left, top, incrX, incrY, numItersBefore, numItersPerFrame);
+      ni = ComputeMandelbrot(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, 0, idx, numTasks, W, H, left, top, incrX, incrY, numItersDoneOnCanvas, numItersPerFrame);
     //emscripten_atomic_add_u32(&numIters, ni);
     double t1 = emscripten_get_now();
     numIters[idx] += ni;
@@ -324,9 +324,9 @@ void register_tasks()
   {
     double t0 = emscripten_get_now();
     if (use_sse)
-      numIters[0] += ComputeMandelbrot_SSE(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, W*i/numTasks, 0, W/numTasks, H, left, top, incrX, incrY, numItersBefore, numItersPerFrame);
+      numIters[0] += ComputeMandelbrot_SSE(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, W*i/numTasks, 0, 1, W/numTasks, H, left, top, incrX, incrY, numItersDoneOnCanvas, numItersPerFrame);
     else
-      numIters[0] += ComputeMandelbrot(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, W*i/numTasks, 0, W/numTasks, H, left, top, incrX, incrY, numItersBefore, numItersPerFrame);
+      numIters[0] += ComputeMandelbrot(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, W*i/numTasks, 0, 1, W/numTasks, H, left, top, incrX, incrY, numItersDoneOnCanvas, numItersPerFrame);
     double t1 = emscripten_get_now();
     timeSpentInMandelbrot[0] += t1-t0;
   }
@@ -366,7 +366,7 @@ void wait_tasks()
 void main_tick()
 {
   wait_tasks();
-  numItersBefore += numItersPerFrame;
+  numItersDoneOnCanvas += numItersPerFrame;
 
   double t = emscripten_get_now();
   double dt = t - prevT;
@@ -400,9 +400,9 @@ void main_tick()
 #endif
 
   float iterSize = 1.f / (incrX < incrY ? incrX : incrY);
-  int minItersBeforeDisplaying = 50 + (int)(iterSize / 250.f);
+  unsigned int minItersBeforeDisplaying = 50 + (int)(iterSize / 10000.f);
   prevT = t;
-  if (numItersBefore >= minItersBeforeDisplaying)
+  if (numItersDoneOnCanvas >= minItersBeforeDisplaying)
   {
     top += dt * vScroll * incrX / 5.f;
     left += dt * hScroll * incrY / 5.f;
@@ -415,7 +415,7 @@ void main_tick()
     float incrXNew = incrX + dt * zoom * incrX / 1000.0;
     float incrYNew = incrY + dt * zoom * incrX / 1000.0;
 
-    if (incrXNew > 1.f / 200000.f && incrYNew > 1.f / 200000.f)
+    if (incrXNew > 1.f / 20000000.f && incrYNew > 1.f / 20000000.f) // Stop zooming in when single-precision floating point accuracy starts to visibly break apart.
     {
       left += (incrX - incrXNew) * W / 2.f;
       top += (incrY - incrYNew) * H / 2.f;
@@ -426,7 +426,7 @@ void main_tick()
   }
 
 #ifndef NO_SDL
-  if (numItersBefore >= minItersBeforeDisplaying)
+  if (numItersDoneOnCanvas >= minItersBeforeDisplaying)
   {
     if (SDL_MUSTLOCK(screen)) SDL_LockSurface(screen);
     memcpy(screen->pixels, outputImage, sizeof(outputImage));
@@ -437,13 +437,13 @@ void main_tick()
 
   int new_use_sse = EM_ASM_INT_V(return document.getElementById('use_sse').checked);
 
-  if (numItersBefore >= minItersBeforeDisplaying || new_use_sse != use_sse)
+  if (numItersDoneOnCanvas >= minItersBeforeDisplaying || new_use_sse != use_sse)
   {
     if (hScroll != 0.f || vScroll != 0.f || zoom != 0.f || new_use_sse != use_sse)
     {
       for(int i = 0; i < W*H; ++i)
         outputImage[i] = 0x00000000;
-      numItersBefore = 0;
+      numItersDoneOnCanvas = 0;
       smallestIterOut = 0x7FFFFFFF;
       memset(mandelReal, 0, sizeof(mandelReal));
       memset(mandelImag, 0, sizeof(mandelImag));
@@ -453,7 +453,7 @@ void main_tick()
 
   numItersPerFrame = EM_ASM_INT_V(return parseInt(document.getElementById('updates_per_frame').value););
   if (numItersPerFrame < 10) numItersPerFrame = 10;
-  if (numItersPerFrame > 2000) numItersPerFrame = 2000;
+  if (numItersPerFrame > 50000) numItersPerFrame = 50000;
 
   ++framesRendered;
   t = emscripten_get_now();
@@ -476,17 +476,27 @@ void main_tick()
     double itersPerSecond = numItersAllThreads * 1000.0 / (t-lastFPSPrint);
     char str[256];
     const char *suffix = "";
+    double itersNum = itersPerSecond;
 
     if (itersPerSecond > 0.9 * 1000 * 1000 * 1000)
+    {
       suffix = "G";
+      itersNum = itersPerSecond / 1000000000.0;
+    }
     else if (itersPerSecond > 0.9 * 1000 * 1000)
+    {
       suffix = "M";
+      itersNum = itersPerSecond / 1000000.0;
+    }
     else if (itersPerSecond > 0.9 * 1000)
+    {
       suffix = "K";
+      itersNum = itersPerSecond / 1000.0;
+    }
     double cpuUsageSeconds = mbTime/1000.0;
     double cpuUsageRatio = mbTime * 100.0 / (t-lastFPSPrint);
-    sprintf(str, "%.3f%s iterations/second. FPS: %.2f. CPU usage: %.2f%%", itersPerSecond / 1000000000.0, suffix, fps, cpuUsageRatio);
-//    sprintf(str, "%.3f%s iterations/second. FPS: %.2f. Zoom: %f", itersPerSecond / 1000000000.0, suffix, fps, 1.f / (incrX < incrY ? incrX : incrY));
+    sprintf(str, "%.3f%s iterations/second. FPS: %.2f. CPU usage: %.2f%%", itersNum, suffix, fps, cpuUsageRatio);
+//    sprintf(str, "%.3f%s iterations/second. FPS: %.2f. Zoom: %f", itersNum, suffix, fps, 1.f / (incrX < incrY ? incrX : incrY));
     char str2[256];
     sprintf(str2, "document.getElementById('performance').innerHTML = '%s';", str);
     emscripten_run_script_string(str2);
