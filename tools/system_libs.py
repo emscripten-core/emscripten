@@ -796,9 +796,9 @@ class Ports:
       # for testing. This env var should be in format
       #     name=dir|subdir,name=dir|subdir
       # e.g.
-      #     sdl2=/home/username/dev/ports/SDL2|SDL2-master
+      #     sdl2=/home/username/dev/ports/SDL2|SDL2-version_5
       # so you could run
-      #     EMCC_LOCAL_PORTS="sdl2=/home/username/dev/ports/SDL2|SDL2-master" ./tests/runner.py browser.test_sdl2_mouse
+      #     EMCC_LOCAL_PORTS="sdl2=/home/alon/Dev/ports/SDL2|SDL2-version_5" ./tests/runner.py browser.test_sdl2_mouse
       local_ports = os.environ.get('EMCC_LOCAL_PORTS')
       if local_ports:
         local_ports = map(lambda pair: pair.split('='), local_ports.split(','))
@@ -858,7 +858,7 @@ class Ports:
       unpack()
 
     if not check_tag():
-      logging.warning('local copy of port is too old, retrieving from remote server')
+      logging.warning('local copy of port is not correct, retrieving from remote server')
       shared.try_delete(fullname)
       shared.try_delete(fullname + '.zip')
       retrieve()
