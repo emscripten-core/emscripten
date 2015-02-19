@@ -263,16 +263,21 @@ def listify(x):
   if type(x) is not list: return [x]
   return x
 
+def fix_js_engine(old, new):
+  global JS_ENGINES
+  JS_ENGINES = map(lambda x: new if x == old else x, JS_ENGINES)
+  return new
+
 try:
-  SPIDERMONKEY_ENGINE = listify(SPIDERMONKEY_ENGINE)
+  SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, listify(SPIDERMONKEY_ENGINE))
 except:
   pass
 try:
-  NODE_JS = listify(NODE_JS)
+  NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
 except:
   pass
 try:
-  V8_ENGINE = listify(V8_ENGINE)
+  V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
 except:
   pass
 
@@ -800,8 +805,7 @@ try:
       new_spidermonkey += ['-e', "gcparam('maxBytes', 1024*1024*1024);"] # Our very large files need lots of gc heap
     if '-w' not in str(new_spidermonkey):
       new_spidermonkey += ['-w']
-    JS_ENGINES = map(lambda x: new_spidermonkey if x == SPIDERMONKEY_ENGINE else x, JS_ENGINES)
-    SPIDERMONKEY_ENGINE = new_spidermonkey
+    SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
 except NameError:
   pass
 
