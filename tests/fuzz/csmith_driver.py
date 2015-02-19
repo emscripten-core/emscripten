@@ -103,6 +103,8 @@ while 1:
     shared.try_delete(filename + '.js')
     js_args = [shared.PYTHON, shared.EMCC, opts] + llvm_opts + [fullname, '-o', filename + '.js'] + CSMITH_CFLAGS + args
     if random.random() < 0.5:
+      js_args += ['-s', 'ALLOW_MEMORY_GROWTH=0']
+    if random.random() < 0.5:
       js_args += ['-s', 'EMTERPRETIFY=1']
       if random.random() < 0.5:
         if random.random() < 0.5:
