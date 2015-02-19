@@ -144,10 +144,11 @@ mergeInto(LibraryManager.library, {
   emscripten_coroutine_next__deps: ['__async_cur_frame', '__async', 'emscripten_async_resume', 'free'],
   emscripten_coroutine_next: function(coroutine) {
     coroutine = coroutine|0;
-    var coroutine_not_finished = 0;
+    var coroutine_not_finished = 0, temp = 0;
     // switch context
     {{{ makeSetValueAsm('coroutine', 0, '___async_cur_frame', 'i32') }}};
-    {{{ makeSetValueAsm('coroutine', 4, 'stackSave()|0', 'i32') }}};
+    temp = stackSave() | 0;
+    {{{ makeSetValueAsm('coroutine', 4, 'temp', 'i32') }}};
     {{{ makeSetValueAsm('coroutine', 8, 'STACK_MAX', 'i32') }}};
     ___async_cur_frame = {{{ makeGetValueAsm('coroutine', 12, 'i32') }}};
     stackRestore({{{ makeGetValueAsm('coroutine', 16, 'i32') }}});
@@ -165,7 +166,8 @@ mergeInto(LibraryManager.library, {
 
     // switch context
     {{{ makeSetValueAsm('coroutine', 12, '___async_cur_frame', 'i32') }}};
-    {{{ makeSetValueAsm('coroutine', 16, 'stackSave()|0', 'i32') }}};
+    temp = stackSave() | 0;
+    {{{ makeSetValueAsm('coroutine', 16, 'temp', 'i32') }}};
     ___async_cur_frame = {{{ makeGetValueAsm('coroutine', 0, 'i32') }}};
     stackRestore({{{ makeGetValueAsm('coroutine', 4, 'i32') }}});
     STACK_MAX = {{{ makeGetValueAsm('coroutine', 8, 'i32') }}};
