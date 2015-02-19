@@ -40,7 +40,7 @@ If the output contains warnings about missing tools, see :ref:`verifying-the-ems
 Running Emscripten
 ==================
 
-You can now compile your first C++ file to JavaScript.
+You can now compile your first C/C++ file to JavaScript.
 
 First, lets have a look at the file to be compiled: **hello_world.c**. This is the simplest test code in the SDK, and as you can see, all it does is print "hello, world!" to the console and then exit.
 
@@ -48,7 +48,7 @@ First, lets have a look at the file to be compiled: **hello_world.c**. This is t
    :literal:
 
 
-To build the JavaScript version of this code, simply specify the C++ file after *emcc*: ::
+To build the JavaScript version of this code, simply specify the C/C++ file after *emcc* (use *em++* to force compilation as C++): ::
 
 	./emcc tests/hello_world.c
 
