@@ -2265,6 +2265,8 @@ def process(filename):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('memory growth is only supported with typed arrays mode 2')
     self.banned_js_engines = [V8_ENGINE] # stderr printing limitations in v8
 
+    Settings.ALLOW_MEMORY_GROWTH = 0 # start with 0
+
     # With typed arrays in particular, it is dangerous to use more memory than TOTAL_MEMORY,
     # since we then need to enlarge the heap(s).
     src = r'''
@@ -5767,6 +5769,11 @@ def process(filename):
       try_delete(CANONICAL_TEMP_DIR)
     else:
       print >> sys.stderr, 'not doing debug check'
+
+    if Settings.ALLOW_MEMORY_GROWTH == 1: # extra testing
+      print >> sys.stderr, 'no memory growth'
+      Settings.ALLOW_MEMORY_GROWTH = 0
+      do_test()
 
   def test_python(self):
     if self.emcc_args is None: return self.skip('requires emcc')
