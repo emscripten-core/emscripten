@@ -327,7 +327,7 @@ CASES[ROPCODES['LSHR']] = get_access('lx') + ' = (' + get_coerced_access('ly') +
 
 CASES[ROPCODES['ADDV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') + (inst >> 24) | 0;'
 CASES[ROPCODES['SUBV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') - (inst >> 24) | 0;'
-CASES[ROPCODES['MULV']] = get_access('lx') + ' = Math_imul(' + get_coerced_access('ly') + ', inst >> 24) | 0;'
+CASES[ROPCODES['MULV']] = make_assign(get_access('lx'), 'Math_imul(' + get_coerced_access('ly') + ', inst >> 24) | 0', 'ly')
 CASES[ROPCODES['SDIVV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') / (inst >> 24) | 0;'
 CASES[ROPCODES['UDIVV']] = get_access('lx') + ' = (' + get_coerced_access('ly', unsigned=True) + ') / (lz >>> 0) >>> 0;'
 CASES[ROPCODES['SMODV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') % (inst >> 24) | 0;'
