@@ -1112,7 +1112,9 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     if settings['ALLOW_MEMORY_GROWTH']: fundamentals.append('byteLength')
     math_envs = []
 
-    if settings['PRECISE_F32']: maths += ['Math.fround']
+    provide_fround = settings['PRECISE_F32'] or settings['SIMD']
+
+    if provide_fround: maths += ['Math.fround']
 
     basic_funcs = ['abort', 'assert'] + [m.replace('.', '_') for m in math_envs]
     if settings['RESERVED_FUNCTION_POINTERS'] > 0: basic_funcs.append('jsCall')
@@ -1358,9 +1360,9 @@ var asm = (function(global, env, buffer) {
   var tempInt = 0, tempBigInt = 0, tempBigIntP = 0, tempBigIntS = 0, tempBigIntR = 0.0, tempBigIntI = 0, tempBigIntD = 0, tempValue = 0, tempDouble = 0.0;
 ''' % (access_quote('NaN'), access_quote('Infinity'))) + ''.join(['''
   var tempRet%d = 0;''' % i for i in range(10)]) + '\n' + asm_global_funcs] + \
-  ['  var tempFloat = %s;\n' % ('Math_fround(0)' if settings.get('PRECISE_F32') else '0.0')] + \
+  ['  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround else '0.0')] + \
   ['  var asyncState = 0;\n' if settings.get('EMTERPRETIFY_ASYNC') else ''] + \
-  (['  const f0 = Math_fround(0);\n'] if settings.get('PRECISE_F32') else []) + \
+  (['  const f0 = Math_fround(0);\n'] if provide_fround else []) + \
   ['' if not settings['ALLOW_MEMORY_GROWTH'] else '''
 function _emscripten_replace_memory(newBuffer) {
   if ((byteLength(newBuffer) & 0xffffff || byteLength(newBuffer) <= 0xffffff) || byteLength(newBuffer) > 0x80000000) return false;
