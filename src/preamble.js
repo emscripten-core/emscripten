@@ -1560,6 +1560,10 @@ if (!Math['fround']) {
 if (!Math['fround']) Math['fround'] = function(x) { return x };
 #endif
 Math.fround = Math['fround'];
+#else
+#if SIMD
+if (!Math['fround']) Math['fround'] = function(x) { return x };
+#endif
 #endif
 
 if (!Math['clz32']) Math['clz32'] = function(x) {
