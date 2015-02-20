@@ -194,9 +194,13 @@ function getSafeHeapType(bytes, isFloat) {
   }
 }
 
+#if SAFE_HEAP_LOG
+var SAFE_HEAP_COUNTER = 0;
+#endif
+
 function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
 #if SAFE_HEAP_LOG
-  Module.print('SAFE_HEAP store: ' + [dest, value, bytes, isFloat]);
+  Module.print('SAFE_HEAP store: ' + [dest, value, bytes, isFloat, SAFE_HEAP_COUNTER++]);
 #endif
   if (dest <= 0) abort('segmentation fault storing ' + bytes + ' bytes to address ' + dest);
   if (dest % bytes !== 0) abort('alignment error storing to address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
@@ -214,7 +218,7 @@ function SAFE_HEAP_LOAD(dest, bytes, isFloat, unsigned) {
   var ret = getValue(dest, type, 1);
   if (unsigned) ret = unSign(ret, parseInt(type.substr(1)), 1);
 #if SAFE_HEAP_LOG
-  Module.print('SAFE_HEAP load: ' + [dest, ret, bytes, isFloat, unsigned]);
+  Module.print('SAFE_HEAP load: ' + [dest, ret, bytes, isFloat, unsigned, SAFE_HEAP_COUNTER++]);
 #endif
   return ret;
 }
