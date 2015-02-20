@@ -1234,12 +1234,13 @@ try:
   log_time('link')
 
   if DEBUG:
-    logging.debug('saving intermediate processing steps to %s', shared.EMSCRIPTEN_TEMP_DIR)
+    emscripten_temp_dir = shared.get_emscripten_temp_dir()
+    logging.debug('saving intermediate processing steps to %s', emscripten_temp_dir)
 
     intermediate_counter = 0
     def save_intermediate(name=None, suffix='js'):
       global intermediate_counter
-      shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-%d%s.%s' % (intermediate_counter, '' if name is None else '-' + name, suffix)))
+      shutil.copyfile(final, os.path.join(emscripten_temp_dir, 'emcc-%d%s.%s' % (intermediate_counter, '' if name is None else '-' + name, suffix)))
       intermediate_counter += 1
 
     if not LEAVE_INPUTS_RAW: save_intermediate('basebc', 'bc')
@@ -1374,7 +1375,7 @@ try:
         open(memfile, 'wb').write(''.join(map(lambda x: chr(int(x or '0')), s.split(','))))
         if DEBUG:
           # Copy into temp dir as well, so can be run there too
-          shared.safe_copy(memfile, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, os.path.basename(memfile)))
+          shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
         return 'var memoryInitializer = "%s";' % os.path.basename(memfile)
       src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
       open(final + '.mem.js', 'w').write(src)
