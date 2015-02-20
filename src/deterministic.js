@@ -19,3 +19,11 @@ function hashMemory(id) {
   printErr(id + ':' + ret);
 }
 
+function hashString(s) {
+  var ret = 0;
+  for (var i = 0; i < s.length; i++) {
+    ret = (ret*17 + s.charCodeAt(i))|0;
+  }
+  return ret;
+}
+
