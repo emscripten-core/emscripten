@@ -7570,7 +7570,7 @@ function emterpretify(ast) {
     for (var i in asmData.params) {
       locals[i] = numLocals++;
     }
-    assert(numLocals <= FAST_LOCALS, 'way too many params!');
+    assert(numLocals < FAST_LOCALS, 'way too many params!');
     assert(FAST_LOCALS < 256);
     var zeroInits;
     if (numVars < FAST_LOCALS*2) {
