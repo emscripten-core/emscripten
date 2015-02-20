@@ -617,6 +617,18 @@ def safe_ensure_dirs(dirname):
     # handle this atomically in Python 2.x.
     # There is an additional option for Python 3.x, though.
 
+# Returns a path to EMSCRIPTEN_TEMP_DIR, creating one if it didn't exist.
+def get_emscripten_temp_dir():
+  global configuration, EMSCRIPTEN_TEMP_DIR
+  if not EMSCRIPTEN_TEMP_DIR:
+    EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=configuration.TEMP_DIR)
+    def prepare_to_clean_temp(d):
+      def clean_temp():
+        try_delete(d)
+      atexit.register(clean_temp)
+    prepare_to_clean_temp(EMSCRIPTEN_TEMP_DIR) # this global var might change later
+  return EMSCRIPTEN_TEMP_DIR
+
 class Configuration:
   def __init__(self, environ=os.environ):
     self.DEBUG = environ.get('EMCC_DEBUG')
@@ -647,7 +659,7 @@ class Configuration:
 
   def get_temp_files(self):
     return tempfiles.TempFiles(
-      tmp=self.TEMP_DIR if not self.DEBUG else self.EMSCRIPTEN_TEMP_DIR,
+      tmp=self.TEMP_DIR if not self.DEBUG else get_emscripten_temp_dir(),
       save_debug_files=os.environ.get('EMCC_DEBUG_SAVE'))
 
 def apply_configuration():
@@ -665,14 +677,6 @@ def set_logging():
   logger = logging.getLogger()
   logger.setLevel(logging.DEBUG if os.environ.get('EMCC_DEBUG') else logging.INFO)
 set_logging()
-
-if not EMSCRIPTEN_TEMP_DIR:
-  EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=configuration.TEMP_DIR)
-  def prepare_to_clean_temp(d):
-    def clean_temp():
-      try_delete(d)
-    atexit.register(clean_temp)
-  prepare_to_clean_temp(EMSCRIPTEN_TEMP_DIR) # this global var might change later
 
 # EM_CONFIG stuff
 
@@ -1254,7 +1258,8 @@ class Building:
 
       cwd = os.getcwd()
       try:
-        temp_dir = os.path.join(EMSCRIPTEN_TEMP_DIR, 'ar_output_' + str(os.getpid()) + '_' + str(len(temp_dirs)))
+        emscripten_temp_dir = get_emscripten_temp_dir()
+        temp_dir = os.path.join(emscripten_temp_dir, 'ar_output_' + str(os.getpid()) + '_' + str(len(temp_dirs)))
         temp_dirs.append(temp_dir)
         safe_ensure_dirs(temp_dir)
         os.chdir(temp_dir)
