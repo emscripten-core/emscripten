@@ -2266,6 +2266,9 @@ var LibrarySDL = {
 
   // SDL_Audio
 
+#if EMTERPRETIFY_ASYNC
+  SDL_OpenAudio__deps: ['$EmterpreterAsync'],
+#endif
   SDL_OpenAudio: function(desired, obtained) {
     try {
       SDL.audio = {
@@ -2346,6 +2349,14 @@ var LibrarySDL = {
           SDL.audio.pushAudio(SDL.audio.buffer, SDL.audio.bufferSize);
         }
       } 
+
+#if EMTERPRETIFY_ASYNC
+      var yieldCallback = function() {
+        if (SDL.audio && SDL.audio.queueNewAudioData) SDL.audio.queueNewAudioData();
+      };
+      SDL.audio.yieldCallback = yieldCallback;
+      EmterpreterAsync.yieldCallbacks.push(yieldCallback);
+#endif
 
       // Create a callback function that will be routinely called to ask more audio data from the user application.
       SDL.audio.caller = function SDL_audioCaller() {
@@ -2484,6 +2495,11 @@ var LibrarySDL = {
   SDL_CloseAudio__deps: ['SDL_PauseAudio', 'free'],
   SDL_CloseAudio: function() {
     if (SDL.audio) {
+#if EMTERPRETIFY_ASYNC
+      EmterpreterAsync.yieldCallbacks = EmterpreterAsync.yieldCallbacks.filter(function(callback) {
+        return callback !== SDL.audio.yieldCallback;
+      });
+#endif
       _SDL_PauseAudio(1);
       _free(SDL.audio.buffer);
       SDL.audio = null;

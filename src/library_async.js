@@ -211,6 +211,8 @@ mergeInto(LibraryManager.library, {
               // 1 - saving
               // 2 - loading
     saveStack: '',
+    yieldCallbacks: [],
+
     ensureInit: function() {
       if (this.initted) return;
       this.initted = true;
@@ -262,7 +264,14 @@ mergeInto(LibraryManager.library, {
         if (Browser.mainLoop.func) {
           Browser.mainLoop.pause();
         }
-        if (!yieldDuring) Browser.pauseAsyncCallbacks();
+        if (yieldDuring) {
+          // allow async callbacks, and also make sure to call the specified yield callbacks
+          EmterpreterAsync.yieldCallbacks.forEach(function(func) {
+            func();
+          });
+        } else {
+          Browser.pauseAsyncCallbacks();
+        }
       } else {
         // nothing to do here, the stack was just recreated. reset the state.
         assert(EmterpreterAsync.state === 2);
