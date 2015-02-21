@@ -721,42 +721,23 @@ var asm = (function(global, env, buffer) {
        access_quote('asmGlobalArg'), the_global,
        access_quote('asmLibraryArg'), sending,
        "'use asm';" if not metadata.get('hasInlineJS') and settings['ASM_JS'] == 1 else "'almost asm';", '''
-  // TODO: Enable the following if() conditional to a linker flag. (-lpthread?)
-  //if (typeof SharedArrayBuffer != 'undefined') {
-    var HEAP8 = new global%s(buffer);
-    var HEAP16 = new global%s(buffer);
-    var HEAP32 = new global%s(buffer);
-    var HEAPU8 = new global%s(buffer);
-    var HEAPU16 = new global%s(buffer);
-    var HEAPU32 = new global%s(buffer);
-    var HEAPF32 = new global%s(buffer);
-    var HEAPF64 = new global%s(buffer);
-  /*} else {
-    var HEAP8 = new global%s(buffer);
-    var HEAP16 = new global%s(buffer);
-    var HEAP32 = new global%s(buffer);
-    var HEAPU8 = new global%s(buffer);
-    var HEAPU16 = new global%s(buffer);
-    var HEAPU32 = new global%s(buffer);
-    var HEAPF32 = new global%s(buffer);
-    var HEAPF64 = new global%s(buffer);
-  }*/
-''' % (access_quote('SharedInt8Array'),
-     access_quote('SharedInt16Array'),
-     access_quote('SharedInt32Array'),
-     access_quote('SharedUint8Array'),
-     access_quote('SharedUint16Array'),
-     access_quote('SharedUint32Array'),
-     access_quote('SharedFloat32Array'),
-     access_quote('SharedFloat64Array'),
-     access_quote('Int8Array'),
-     access_quote('Int16Array'),
-     access_quote('Int32Array'),
-     access_quote('Uint8Array'),
-     access_quote('Uint16Array'),
-     access_quote('Uint32Array'),
-     access_quote('Float32Array'),
-     access_quote('Float64Array')) if not settings['ALLOW_MEMORY_GROWTH'] else '''
+  var HEAP8 = new global%s(buffer);
+  var HEAP16 = new global%s(buffer);
+  var HEAP32 = new global%s(buffer);
+  var HEAPU8 = new global%s(buffer);
+  var HEAPU16 = new global%s(buffer);
+  var HEAPU32 = new global%s(buffer);
+  var HEAPF32 = new global%s(buffer);
+  var HEAPF64 = new global%s(buffer);
+''' % (access_quote('SharedInt8Array' if settings['USE_PTHREADS'] else 'Int8Array'),
+     access_quote('SharedInt16Array' if settings['USE_PTHREADS'] else 'Int16Array'),
+     access_quote('SharedInt32Array' if settings['USE_PTHREADS'] else 'Int32Array'),
+     access_quote('SharedUint8Array' if settings['USE_PTHREADS'] else 'Uint8Array'),
+     access_quote('SharedUint16Array' if settings['USE_PTHREADS'] else 'Uint16Array'),
+     access_quote('SharedUint32Array' if settings['USE_PTHREADS'] else 'Uint32Array'),
+     access_quote('SharedFloat32Array' if settings['USE_PTHREADS'] else 'Float32Array'),
+     access_quote('SharedFloat64Array' if settings['USE_PTHREADS'] else 'Float64Array'))
+     if not settings['ALLOW_MEMORY_GROWTH'] else '''
   var Int8View = global%s;
   var Int16View = global%s;
   var Int32View = global%s;
