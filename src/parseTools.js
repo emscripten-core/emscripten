@@ -53,7 +53,10 @@ function preprocess(text) {
             }
           }
         } else if (line[2] == 'n') { // include
-          var included = read(line.substr(line.indexOf(' ')+1));
+          var filename = line.substr(line.indexOf(' ')+1);
+          if (filename.indexOf('"') == 0)
+            filename = filename.substr(1, filename.length - 2);
+          var included = read(filename);
           ret += '\n' + preprocess(included) + '\n'
         }
       } else if (line[2] == 'l') { // else
