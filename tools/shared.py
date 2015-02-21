@@ -1885,5 +1885,16 @@ def safe_copy(src, dst):
   if dst == '/dev/null': return
   shutil.copyfile(src, dst)
 
-import js_optimizer
+def read_and_preprocess(filename):
+  f = open(filename, 'r').read()
+  pos = 0
+  include_pattern = re.compile('^#include\s*["<](.*)[">]\s?$', re.MULTILINE)
+  while(1):
+    m = include_pattern.search(f, pos)
+    if not m:
+      return f
+    included_file = open(os.path.join(os.path.dirname(filename), m.groups(0)[0]), 'r').read()
 
+    f = f[:m.start(0)] + included_file + f[m.end(0):]
+
+import js_optimizer
