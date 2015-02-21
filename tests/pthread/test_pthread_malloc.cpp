@@ -3,6 +3,7 @@
 #include <emscripten/threading.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #define NUM_THREADS 8
 #define N 6
@@ -43,6 +44,7 @@ int main()
     pthread_join(thr[i], (void**)&res);
     result += res;
   }
+  printf("Test finished with result %d\n", result);
 
 #ifdef REPORT_RESULT
   REPORT_RESULT();
