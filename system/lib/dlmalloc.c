@@ -9,14 +9,11 @@
 /* XXX Emscripten Tracing API. This defines away the code if tracing is disabled. */
 #include <emscripten/trace.h>
 
-/* Make malloc() and free() threadsafe by securing the memory allocations with pthread mutexes.
-  TODO: This has the issue that it is unconditional and cannot be aware of -s USE_PTHREADS=0/1. so
-  even non-pthreads-builds get this in. We need to build libc separately for pthreads and non-pthreads
-  to toggle this (and have a define like the currently commented out USE_PTHREADS below)! */
-// #if USE_PTHREADS
+/* Make malloc() and free() threadsafe by securing the memory allocations with pthread mutexes. */
+#if __EMSCRIPTEN_PTHREADS__
 #define USE_LOCKS 1
 #define USE_SPIN_LOCKS 0 // Ensure we use pthread_mutex_t.
-//#endif
+#endif
 
 #endif
 
