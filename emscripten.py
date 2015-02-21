@@ -462,7 +462,9 @@ function _emscripten_asm_const_%d(%s) {
                                 'shiftRightArithmeticByScalar',
                                 'shiftRightLogicalByScalar',
                                 'shiftLeftByScalar'];
-    fundamentals = ['Atomics', 'Math', 'SharedInt8Array', 'SharedInt16Array', 'SharedInt32Array', 'SharedUint8Array', 'SharedUint16Array', 'SharedUint32Array', 'SharedFloat32Array', 'SharedFloat64Array', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array', 'NaN', 'Infinity']
+    fundamentals = ['Math', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array', 'NaN', 'Infinity']
+    if settings['USE_PTHREADS']:
+      fundamentals += ['Atomics', 'SharedInt8Array', 'SharedInt16Array', 'SharedInt32Array', 'SharedUint8Array', 'SharedUint16Array', 'SharedUint32Array', 'SharedFloat32Array', 'SharedFloat64Array']
     if metadata['simd']:
         fundamentals += ['SIMD']
     if settings['ALLOW_MEMORY_GROWTH']: fundamentals.append('byteLength')
