@@ -7578,12 +7578,12 @@ function emterpretify(ast) {
     } else {
       zeroInits = copy(asmData.vars); // give up - tons of vars, this will be slow anyhow, and findUninitializedVars is non-linear so can be very slow on massive function
     }
-    var numZeroInits = 0;
     for (var zero in zeroInits) {
       locals[zero] = numLocals++;
       if (numLocals === FAST_LOCALS) numLocals = 256; // jump over the temps, remaining locals are slow locals
-      numZeroInits++;
     }
+    var lastZeroInit = func[2].length + numLocals; // may be higher than func[2].length + numZeroInits, due to jumping over temps
+                                                   // this means if we have very many zeroinits, we end up zeroing out the temps, oh well
     for (var i in asmData.vars) {
       if (!(i in zeroInits)) {
         locals[i] = numLocals++; // TODO: sort by frequency of appearance, so common ones are fast, rare are slow
@@ -7612,7 +7612,6 @@ function emterpretify(ast) {
     // calculate final count of local variables, and emit func header
     var finalLocals = Math.max(numLocals, maxLocal+1, withSlowLocals);
     assert(finalLocals < 65535, 'too many locals ' + [maxLocal, numLocals, withSlowLocals]);
-    var lastZeroInit = func[2].length + numZeroInits;
     code = ['FUNC', func[2].length, finalLocals & 255, finalLocals >>> 8, 0, 0, lastZeroInit & 255, lastZeroInit >>> 8].concat(constants).concat(code);
     verifyCode(code);
 
