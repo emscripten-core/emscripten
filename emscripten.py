@@ -65,6 +65,8 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     backend_args = [backend_compiler, infile, '-march=js', '-filetype=asm', '-o', temp_js]
     if settings['PRECISE_F32']:
       backend_args += ['-emscripten-precise-f32']
+    if settings['USE_PTHREADS']:
+      backend_args += ['-emscripten-enable-pthreads']
     if settings['WARN_UNALIGNED']:
       backend_args += ['-emscripten-warn-unaligned']
     if settings['RESERVED_FUNCTION_POINTERS'] > 0:
