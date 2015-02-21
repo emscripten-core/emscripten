@@ -51,6 +51,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   libcxx_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'symbols'), exclude=libc_symbols)
   libcxxabi_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols'), exclude=libc_symbols)
   gl_symbols = read_symbols(shared.path_from_root('system', 'lib', 'gl.symbols'))
+  pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads.symbols'))
 
   # XXX we should disable EMCC_DEBUG when building libs, just like in the relooper
 
@@ -269,10 +270,13 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     for directory, sources in musl_files:
       libc_files += [os.path.join('libc', 'musl', 'src', directory, source) for source in sources]
 
-    # Add pthread files.
-    libc_files += [os.path.join('pthread', 'library_pthread.c')]
-    libc_files += glob.glob(shared.path_from_root('system/lib/libc/musl/src/thread/*.c'))
     return build_libc(libname, libc_files, ['-O2'])
+
+  def create_pthreads():
+    # Add pthread files.
+    pthreads_files = [os.path.join('pthread', 'library_pthread.c')]
+    pthreads_files += glob.glob(shared.path_from_root('system/lib/libc/musl/src/thread/*.c'))
+    return build_libc('pthreads.bc', pthreads_files, ['-O2'])
 
   # libcextra
   def create_libcextra(libname):
@@ -706,6 +710,11 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   for symbols in symbolses:
     all_needed.difference_update(symbols.defs)
 
+  # malloc dependency is force-added, so when using pthreads, it must be force-added
+  # as well, since malloc needs to be thread-safe, so it depends on mutexes.
+  if shared.Settings.USE_PTHREADS:
+    force.add('pthreads')
+
   # Go over libraries to figure out which we must include
   def maybe_noexcept(name):
     if shared.Settings.DISABLE_EXCEPTION_CATCHING:
@@ -717,7 +726,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                                                                          ('libcextra', 'bc', create_libcextra, libcextra_symbols, ['libc'],                   False),
                                                                          ('libcxxabi', 'bc', create_libcxxabi, libcxxabi_symbols, ['libc'],                   False),
                                                                          ('gl',        'bc', create_gl,        gl_symbols,        ['libc'],                   False),
-                                                                         ('libc',      'bc', create_libc,      libc_symbols,      [],                         False)]:
+                                                                         ('libc',      'bc', create_libc,      libc_symbols,      [],                         False),
+                                                                         ('pthreads',  'bc', create_pthreads,  pthreads_symbols,  ['libc'],                   False)]:
     force_this = force_all or shortname in force
     if can_noexcept: shortname = maybe_noexcept(shortname)
     if force_this:
