@@ -745,6 +745,8 @@ try:
     if not any(s.startswith('PTHREAD_POOL_SIZE=') for s in settings_changes):
       settings_changes.append('PTHREAD_POOL_SIZE=0')
     js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
+  else:
+    js_libraries.append(shared.path_from_root('src', 'library_pthread_stub.js'))
   if 'USE_PTHREADS=1' in settings_changes:
     newargs.append('-D__EMSCRIPTEN_PTHREADS__=1')
 
