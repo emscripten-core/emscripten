@@ -119,7 +119,27 @@ var LibraryPThreadStub = {
   pthread_cond_signal: function() {},
   pthread_equal: function() {},
   pthread_join: function() {},
-  pthread_detach: function() {}
+  pthread_detach: function() {},
+
+  // When pthreads is not enabled, we can't use the Atomics futex api to do proper sleeps, so simulate a busy spin wait loop instead.
+  usleep: function(useconds) {
+    // int usleep(useconds_t useconds);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/usleep.html
+    // We're single-threaded, so use a busy loop. Super-ugly.
+    var msec = useconds / 1000;
+    if ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && self['performance'] && self['performance']['now']) {
+      var start = self['performance']['now']();
+      while (self['performance']['now']() - start < msec) {
+        // Do nothing.
+      }
+    } else {
+      var start = Date.now();
+      while (Date.now() - start < msec) {
+        // Do nothing.
+      }
+    }
+    return 0;
+  }
 };
 
 mergeInto(LibraryManager.library, LibraryPThreadStub);
