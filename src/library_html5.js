@@ -266,7 +266,7 @@ var LibraryJSEvents = {
 
       var eventHandler = {
         target: target,
-        allowsDeferredCalls: eventTypeString != 'mousemove', // Mouse move events do not allow fullscreen/pointer lock requests to be handled in them!
+        allowsDeferredCalls: eventTypeString != 'mousemove' && eventTypeString != 'mouseenter' && eventTypeString != 'mouseleave', // Mouse move events do not allow fullscreen/pointer lock requests to be handled in them!
         eventTypeString: eventTypeString,
         callbackfunc: callbackfunc,
         handlerFunc: handlerFunc,
