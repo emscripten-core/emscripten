@@ -103,16 +103,16 @@ while 1:
     shared.try_delete(filename + '.js')
     js_args = [shared.PYTHON, shared.EMCC, opts] + llvm_opts + [fullname, '-o', filename + '.js'] + CSMITH_CFLAGS + args
     if random.random() < 0.5:
-      js_args += ['-s', 'ALLOW_MEMORY_GROWTH=0']
-    if random.random() < 0.5:
+      js_args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
+    if random.random() < 0.25:
+      js_args += ['-s', 'INLINING_LIMIT=1'] # inline nothing, for more call interaction
+    if random.random() < 0.333:
       js_args += ['-s', 'EMTERPRETIFY=1']
       if random.random() < 0.5:
         if random.random() < 0.5:
           js_args += ['-s', 'EMTERPRETIFY_BLACKLIST=["_main"]'] # blacklist main and all inlined into it, but interpret the rest, tests mixing
         else:
           js_args += ['-s', 'EMTERPRETIFY_WHITELIST=["_main"]'] # the opposite direction
-        if random.random() < 0.25:
-          js_args += ['-s', 'INLINING_LIMIT=1'] # inline nothing, for more main->other interaction
       if random.random() < 0.5:
         js_args += ['-s', 'EMTERPRETIFY_ASYNC=1']
     print '(compile)', ' '.join(js_args)
