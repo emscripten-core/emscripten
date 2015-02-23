@@ -65,8 +65,9 @@ var ALLOW_MEMORY_GROWTH = 0; // If false, we abort with an error if we try to al
                              // runtime, seamlessly and dynamically. This has a performance cost though,
                              // both during the actual growth and in general (the latter is because in
                              // that case we must be careful about optimizations, in particular the
-                             // eliminator). Note that memory growth is only supported with typed
-                             // arrays.
+                             // eliminator).
+                             // See https://code.google.com/p/v8/issues/detail?id=3907 regarding
+                             // memory growth performance in chrome.
 
 var GLOBAL_BASE = -1; // where global data begins; the start of static memory. -1 means use the
                       // default, any other value will be used as an override
