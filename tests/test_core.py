@@ -2265,7 +2265,7 @@ def process(filename):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('memory growth is only supported with typed arrays mode 2')
     self.banned_js_engines = [V8_ENGINE] # stderr printing limitations in v8
 
-    Settings.ALLOW_MEMORY_GROWTH = 0 # start with 0
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0'] # start with 0
 
     # With typed arrays in particular, it is dangerous to use more memory than TOTAL_MEMORY,
     # since we then need to enlarge the heap(s).
@@ -2312,7 +2312,7 @@ def process(filename):
     fail = open('src.cpp.o.js').read()
 
     # Win with it
-    Settings.ALLOW_MEMORY_GROWTH = 1
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
     self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
     win = open('src.cpp.o.js').read()
 
