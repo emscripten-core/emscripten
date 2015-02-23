@@ -2648,17 +2648,6 @@ function getTypeFromHeap(suffix) {
   }
 }
 
-// Generates code that prints without printf(), but just putchar (so can be directly inline in asm.js)
-function makePrintChars(s, sep) {
-  sep = sep || ';';
-  var ret = '';
-  for (var i = 0; i < s.length; i++) {
-    ret += '_putchar(' + s.charCodeAt(i) + ')' + sep;
-  }
-  ret += '_putchar(10)';
-  return ret;
-}
-
 function parseAlign(text) { // parse ", align \d+"
   if (!text) return QUANTUM_SIZE;
   return parseInt(text.substr(8));
