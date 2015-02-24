@@ -31,7 +31,7 @@ shared.DEFAULT_TIMEOUT = 5
 
 tried = 0
 
-notes = { 'invalid': 0, 'unaligned': 0, 'embug': 0 }
+notes = { 'invalid': 0, 'embug': 0 }
 
 fails = 0
 
@@ -55,6 +55,7 @@ while 1:
   if random.random() < 0.5: extra_args += ['--no-math64']
   extra_args += ['--no-bitfields'] # due to pnacl bug 4027, "LLVM ERROR: can't convert calls with illegal types"
   #if random.random() < 0.5: extra_args += ['--float'] # XXX hits undefined behavior on float=>int conversions (too big to fit)
+  if random.random() < 0.5: extra_args += ['--max-funcs', str(random.randint(10, 30))]
   suffix = '.c'
   COMP = shared.CLANG_CC
   if random.random() < 0.5:
@@ -99,7 +100,7 @@ while 1:
 
   print '4) Compile JS-ly and compare'
 
-  def try_js(args):
+  def try_js(args=[]):
     shared.try_delete(filename + '.js')
     js_args = [shared.PYTHON, shared.EMCC, opts] + llvm_opts + [fullname, '-o', filename + '.js'] + CSMITH_CFLAGS + args
     if random.random() < 0.5:
@@ -117,49 +118,38 @@ while 1:
         js_args += ['-s', 'EMTERPRETIFY_ASYNC=1']
     print '(compile)', ' '.join(js_args)
     open(fullname, 'a').write('\n// ' + ' '.join(js_args) + '\n\n')
-    shared.check_execute(js_args)
-    assert os.path.exists(filename + '.js')
-    print '(run in %s)' % engine1
+    try:
+      shared.check_execute(js_args)
+      assert os.path.exists(filename + '.js')
+      return True
+    except:
+      return False
+
+  def execute_js(engine):
+    print '(run in %s)' % engine
     js = shared.run_js(filename + '.js', engine=engine1, check_timeout=True, assert_returncode=None, cwd='/tmp/emscripten_temp')
     js = js.split('\n')[0] + '\n' # remove any extra printed stuff (node workarounds)
-    assert correct1 == js or correct2 == js, ''.join([a.rstrip()+'\n' for a in difflib.unified_diff(correct1.split('\n'), js.split('\n'), fromfile='expected', tofile='actual')])
+    return correct1 == js or correct2 == js
 
-  # Try normally, then try unaligned because csmith does generate nonportable code that requires x86 alignment
-  ok = False
-  normal = True
-  for args, note in [([], None)]:#, (['-s', 'UNALIGNED_MEMORY=1'], 'unaligned')]:
-    try:
-      try_js(args)
-      ok = True
-      if note:
-        notes[note] += 1
-      break
-    except Exception, e:
-      print e
-      normal = False
-  #open('testcase%d.js' % tried, 'w').write(
-  #  open(filename + '.js').read().replace('  var ret = run();', '  var ret = run(["1"]);')
-  #)
-  if not ok:
+  def fail():
+    global fails
     print "EMSCRIPTEN BUG"
     notes['embug'] += 1
     fails += 1
     shutil.copyfile(fullname, 'newfail%d%s%s%s' % (fails, opts.replace('-', '_'), ' '.join(llvm_opts).replace('-', '_').replace(' ', ''), suffix))
-    continue
-  #if not ok:
-  #  try: # finally, try with safe heap. if that is triggered, this is nonportable code almost certainly
-  #    try_js(['-s', 'SAFE_HEAP=1'])
-  #  except Exception, e:
-  #    print e
-  #    js = shared.run_js(filename + '.js', stderr=PIPE, full_output=True, assert_returncode=None)
-  #  print js
-  #  if 'SAFE_HEAP' in js:
-  #    notes['safeheap'] += 1
-  #  else:
-  #    break
 
-  # This is ok. Try in secondary JS engine too
-  if opts != '-O0' and engine2 and normal:
+  if not try_js():
+    fail()
+    continue
+  if not execute_js(engine1):
+    fail()
+    continue
+  if engine2 and not execute_js(engine2):
+    fail()
+    continue
+
+  # This is ok. Try validation in secondary JS engine
+  if opts != '-O0' and engine2:
     try:
       js2 = shared.run_js(filename + '.js', stderr=PIPE, engine=engine2 + ['-w'], full_output=True, check_timeout=True, assert_returncode=None)
     except:
