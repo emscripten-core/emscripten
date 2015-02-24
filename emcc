@@ -187,9 +187,13 @@ CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(sys.argv)# or 'CMak
 if CONFIGURE_CONFIG or CMAKE_CONFIG:
   debug_configure = 0 # XXX use this to debug configure stuff. ./configure's generally hide our normal output including stderr so we write to a file
 
-  # whether we fake configure tests using clang - the local, native compiler - or not. if not we generate JS and use node with a shebang
-  # neither approach is perfect, you can try both, but may need to edit configure scripts in some cases
-  # by default we configure in js, which can break on local filesystem access, etc., but is otherwise accurate
+  # Whether we fake configure tests using clang - the local, native compiler - or not. if not we generate JS and use node with a shebang
+  # Beither approach is perfect, you can try both, but may need to edit configure scripts in some cases
+  # By default we configure in js, which can break on local filesystem access, etc., but is otherwise accurate so we
+  # disable this if we think we have to. A value of '2' here will force JS checks in all cases. In summary:
+  # 0 - use native compilation for configure checks
+  # 1 - use js when we think it will work
+  # 2 - always use js for configure checks
   use_js = int(os.environ.get('EMCONFIGURE_JS') or 1)
 
   if debug_configure:
@@ -199,7 +203,7 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
 
   src = None
   for arg in sys.argv:
-    if arg.endswith('.c'):
+    if arg.endswith(SOURCE_ENDINGS):
       try:
         src = open(arg).read()
         if debug_configure: open(tempout, 'a').write('============= ' + arg + '\n' + src + '\n=============\n\n')
@@ -207,13 +211,13 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
         pass
     elif arg.endswith('.s'):
       if debug_configure: open(tempout, 'a').write('(compiling .s assembly, must use clang\n')
-      use_js = 0
+      if use_js == 1: use_js = 0
     elif arg == '-E':
-      use_js = 0
+      if use_js == 1: use_js = 0
 
   if src:
     if 'fopen' in src and '"w"' in src:
-      use_js = 0 # we cannot write to files from js!
+      if use_js == 1: use_js = 0 # we cannot write to files from js!
       if debug_configure: open(tempout, 'a').write('Forcing clang since uses fopen to write\n')
 
   compiler = os.environ.get('CONFIGURE_CC') or (shared.CLANG if not use_js else shared.EMCC) # if CONFIGURE_CC is defined, use that. let's you use local gcc etc. if you need that
