@@ -358,6 +358,8 @@ if has_preloaded:
     data.write(curr)
   data.close()
   # TODO: sha256sum on data_target
+  if start > 256*1024*1024:
+    print >> sys.stderr, 'warning: file packager is creating an asset bundle of %d MB. this is very large, and browsers might have trouble loading it. see https://hacks.mozilla.org/2015/02/synchronous-execution-and-filesystem-access-in-emscripten/' % (start/(1024*1024))
   if Compression.on:
     Compression.compress(data_target)
 

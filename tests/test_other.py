@@ -4832,3 +4832,12 @@ int main() {
     Popen([PYTHON, EMCC, 'src.cpp']).communicate()
     self.assertContained('exiting now, status 14', run_js('a.out.js', assert_returncode=14))
 
+  def test_file_packager_huge(self):
+    open('huge.dat', 'w').write('a'*(1024*1024*257))
+    open('tiny.dat', 'w').write('a')
+    out, err = Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'tiny.dat'], stdout=PIPE, stderr=PIPE).communicate()
+    assert err == '', err
+    out, err = Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'huge.dat'], stdout=PIPE, stderr=PIPE).communicate()
+    assert 'warning: file packager is creating an asset bundle of 257 MB. this is very large, and browsers might have trouble loading it' in err, err
+    self.clear()
+
