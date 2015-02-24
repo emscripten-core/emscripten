@@ -63,6 +63,8 @@ This prints "hello, world!" to the console, as expected.
 
 .. tip:: If an error occurs when calling *emcc*, run it with the ``-v`` option to print out a lot of useful debug information.
 
+.. note:: In this section, and later on, we run some files from the ``tests/`` folder. That folder contains files for the Emscripten test suite. Some can be run standalone, but others must be run through the test harness itself, see :ref:`emscripten-test-suite` for more information.
+
 
 
 Generating HTML
