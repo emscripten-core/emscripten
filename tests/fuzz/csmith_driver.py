@@ -25,7 +25,7 @@ CSMITH_PATH = os.environ.get('CSMITH_PATH')
 assert CSMITH_PATH, 'Please set the environment variable CSMITH_PATH.'
 CSMITH_CFLAGS = ['-I', os.path.join(CSMITH_PATH, 'runtime')]
 
-filename = os.path.join(shared.CANONICAL_TEMP_DIR, 'fuzzcode')
+filename = os.path.join(os.getcwd(), 'fuzzcode' + str(os.getpid()) + '_')
 
 shared.DEFAULT_TIMEOUT = 5
 
@@ -127,7 +127,7 @@ while 1:
 
   def execute_js(engine):
     print '(run in %s)' % engine
-    js = shared.run_js(filename + '.js', engine=engine1, check_timeout=True, assert_returncode=None, cwd='/tmp/emscripten_temp')
+    js = shared.run_js(filename + '.js', engine=engine1, check_timeout=True, assert_returncode=None)
     js = js.split('\n')[0] + '\n' # remove any extra printed stuff (node workarounds)
     return correct1 == js or correct2 == js
 
