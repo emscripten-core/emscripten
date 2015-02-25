@@ -1670,7 +1670,7 @@ var LibraryJSEvents = {
     if (index < 0 || index >= gamepads.length) {
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
     }
-    if (typeof gamepads[index] === 'undefined') {
+    if (!gamepads[index]) {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NO_DATA') }}};
     }
     JSEvents.fillGamepadEventData(gamepadState, gamepads[index]);
