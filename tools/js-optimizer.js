@@ -7471,7 +7471,7 @@ function emterpretify(ast) {
               // assign to temp, assert, return proper value:     temp = call() , (asyncState ? abort() : temp)
               trample(node, ['seq',
                 ['assign', null, ['name', temp], makeAsmCoercion(copy(node), callType)],
-                ['conditional', ['name', 'asyncState'], makeAsmCoercion(['call', ['name', 'abort'], [['num', '-12']]], ASM_INT), ['name', temp]]
+                ['conditional', ['name', 'asyncState'], makeAsmCoercion(['call', ['name', 'abort'], [['num', '-12']]], callType), ['name', temp]]
               ]);
               return;
             }
