@@ -5268,7 +5268,10 @@ return malloc(size);
     if Settings.USE_TYPED_ARRAYS == 2:
       Settings.CORRECT_SIGNS = 1
 
-    self.do_run(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
+    def test():
+      self.do_run(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
+
+    test()
 
     assert 'asm1' in test_modes
     if self.run_name == 'asm1':
@@ -5282,7 +5285,10 @@ return malloc(size);
     if self.is_emterpreter():
       print 'emterpreter/async/assertions' # extra coverage
       self.emcc_args += ['-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'ASSERTIONS=1']
-      self.do_run(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
+      test()
+      print 'emterpreter/async/assertions/whitelist'
+      self.emcc_args += ['-s', 'EMTERPRETIFY_WHITELIST=["_frexpl"]'] # test double call assertions
+      test()
 
   # Tests the full SSE1 API.
   def test_sse1(self):
