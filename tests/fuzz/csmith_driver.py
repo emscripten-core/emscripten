@@ -25,7 +25,7 @@ CSMITH_PATH = os.environ.get('CSMITH_PATH')
 assert CSMITH_PATH, 'Please set the environment variable CSMITH_PATH.'
 CSMITH_CFLAGS = ['-I', os.path.join(CSMITH_PATH, 'runtime')]
 
-filename = os.path.join(os.getcwd(), 'fuzzcode' + str(os.getpid()) + '_')
+filename = os.path.join(os.getcwd(), 'temp_fuzzcode' + str(os.getpid()) + '_')
 
 shared.DEFAULT_TIMEOUT = 5
 
