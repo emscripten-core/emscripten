@@ -150,7 +150,7 @@ LibraryManager.library = {
     }
     {{{ makeSetValue('entry', C_STRUCTS.dirent.d_ino, 'id', 'i32') }}};
     {{{ makeSetValue('entry', C_STRUCTS.dirent.d_off, 'stream.position', 'i32') }}};
-    {{{ makeSetValue('entry', C_STRUCTS.dirent.d_reclen, 'name.length + 1', 'i32') }}};
+    {{{ makeSetValue('entry', C_STRUCTS.dirent.d_reclen, C_STRUCTS.dirent.__size__, 'i32') }}};
     for (var i = 0; i < name.length; i++) {
       {{{ makeSetValue('entry + ' + C_STRUCTS.dirent.d_name, 'i', 'name.charCodeAt(i)', 'i8') }}};
     }
@@ -3797,39 +3797,16 @@ LibraryManager.library = {
 #endif
   },
 
-  llvm_ctlz_i32__deps: [function() {
-    function ctlz(x) {
-      for (var i = 0; i < 8; i++) {
-        if (x & (1 << (7-i))) {
-          return i;
-        }
-      }
-      return 8;
-    }
-    return 'var ctlz_i8 = allocate([' + range(256).map(function(x) { return ctlz(x) }).join(',') + '], "i8", ALLOC_STATIC);';
-  }],
-  llvm_ctlz_i32__asm: true,
-  llvm_ctlz_i32__sig: 'ii',
-  llvm_ctlz_i32: function(x) {
-    x = x|0;
-    var ret = 0;
-    ret = {{{ makeGetValueAsm('ctlz_i8', 'x >>> 24', 'i8') }}};
-    if ((ret|0) < 8) return ret|0;
-    ret = {{{ makeGetValueAsm('ctlz_i8', '(x >> 16)&0xff', 'i8') }}};
-    if ((ret|0) < 8) return (ret + 8)|0;
-    ret = {{{ makeGetValueAsm('ctlz_i8', '(x >> 8)&0xff', 'i8') }}};
-    if ((ret|0) < 8) return (ret + 16)|0;
-    return ({{{ makeGetValueAsm('ctlz_i8', 'x&0xff', 'i8') }}} + 24)|0;
-  },
-
-  llvm_ctlz_i64__deps: ['llvm_ctlz_i32'],
+  llvm_ctlz_i64__asm: true,
+  llvm_ctlz_i64__sig: 'iii',
   llvm_ctlz_i64: function(l, h) {
-    var ret = _llvm_ctlz_i32(h);
-    if (ret == 32) ret += _llvm_ctlz_i32(l);
-#if USE_TYPED_ARRAYS == 2
-    {{{ makeStructuralReturn(['ret', '0']) }}};
-#else
-    return ret;
+    l = l | 0;
+    h = h | 0;
+    var ret = 0;
+    ret = Math_clz32(h) | 0;
+    if ((ret | 0) == 32) ret = ret + (Math_clz32(l) | 0) | 0;
+    tempRet0 = 0;
+    return ret | 0;
 #endif
   },
 
@@ -4292,6 +4269,10 @@ LibraryManager.library = {
 
   llvm_nacl_atomic_store_i32__inline: true,
 
+  llvm_nacl_atomic_cmpxchg_i8__inline: true,
+  llvm_nacl_atomic_cmpxchg_i16__inline: true,
+  llvm_nacl_atomic_cmpxchg_i32__inline: true,
+
   // gnu atomics
 
   __atomic_is_lock_free: function(size, ptr) {
@@ -4501,6 +4482,7 @@ LibraryManager.library = {
   fabs: 'Math_abs',
   fabsf: 'Math_abs',
   fabsl: 'Math_abs',
+  llvm_fabs_f64: 'Math_abs',
   ceil: 'Math_ceil',
   ceilf: 'Math_ceil',
   ceill: 'Math_ceil',
@@ -5766,54 +5748,49 @@ LibraryManager.library = {
 
   // ==========================================================================
   // setjmp.h
-  //
-  // Basic support for setjmp/longjmp: enough to run the wikipedia example and
-  // hopefully handle most normal behavior. We do not support cases where
-  // longjmp behavior is undefined (for example, if the setjmp function returns
-  // before longjmp is called).
-  //
-  // Note that we need to emulate functions that use setjmp, and also to create
-  // a new label we can return to. Emulation make such functions slower, this
-  // can be alleviated by making a new function containing just the setjmp
-  // related functionality so the slowdown is more limited - you may need
-  // to prevent inlining to keep this isolated, try __attribute__((noinline))
   // ==========================================================================
 
   saveSetjmp__asm: true,
   saveSetjmp__sig: 'iii',
-  saveSetjmp__deps: ['putchar'],
-  saveSetjmp: function(env, label, table) {
+  saveSetjmp__deps: ['realloc'],
+  saveSetjmp: function(env, label, table, size) {
     // Not particularly fast: slow table lookup of setjmpId to label. But setjmp
     // prevents relooping anyhow, so slowness is to be expected. And typical case
     // is 1 setjmp per invocation, or less.
     env = env|0;
     label = label|0;
     table = table|0;
+    size = size|0;
     var i = 0;
     setjmpId = (setjmpId+1)|0;
     {{{ makeSetValueAsm('env', '0', 'setjmpId', 'i32') }}};
-    while ((i|0) < {{{ MAX_SETJMPS }}}) {
+    while ((i|0) < (size|0)) {
       if ({{{ makeGetValueAsm('table', '(i<<3)', 'i32') }}} == 0) {
         {{{ makeSetValueAsm('table', '(i<<3)', 'setjmpId', 'i32') }}};
         {{{ makeSetValueAsm('table', '(i<<3)+4', 'label', 'i32') }}};
         // prepare next slot
         {{{ makeSetValueAsm('table', '(i<<3)+8', '0', 'i32') }}};
-        return 0;
+        tempRet0 = size;
+        return table | 0;
       }
       i = i+1|0;
     }
-    {{{ makePrintChars('too many setjmps in a function call, build with a higher value for MAX_SETJMPS') }}};
-    abort(0);
-    return 0;
+    // grow the table
+    size = (size*2)|0;
+    table = _realloc(table|0, 8*(size+1|0)|0) | 0;
+    table = _saveSetjmp(env|0, label|0, table|0, size|0) | 0;
+    tempRet0 = size;
+    return table | 0;
   },
 
   testSetjmp__asm: true,
   testSetjmp__sig: 'iii',
-  testSetjmp: function(id, table) {
+  testSetjmp: function(id, table, size) {
     id = id|0;
     table = table|0;
+    size = size|0;
     var i = 0, curr = 0;
-    while ((i|0) < {{{ MAX_SETJMPS }}}) {
+    while ((i|0) < (size|0)) {
       curr = {{{ makeGetValueAsm('table', '(i<<3)', 'i32') }}};
       if ((curr|0) == 0) break;
       if ((curr|0) == (id|0)) {
@@ -8721,8 +8698,14 @@ LibraryManager.library = {
   __lockfile: function() { return 1 },
   __unlockfile: function(){},
 
+  // ubsan (undefined behavior sanitizer) support
+  __ubsan_handle_float_cast_overflow: function(id, post) {
+    abort('Undefined behavior! ubsan_handle_float_cast_overflow: ' + [id, post]);
+  },
+
   // misc definitions to avoid unnecessary unresolved symbols from fastcomp
   emscripten_prep_setjmp: true,
+  emscripten_cleanup_setjmp: true,
   emscripten_check_longjmp: true,
   emscripten_get_longjmp_result: true,
   emscripten_setjmp: true,
@@ -8744,13 +8727,18 @@ LibraryManager.library = {
   UItoD: true,
   BItoD: true,
   llvm_dbg_value: true,
+  llvm_ctlz_i32: true,
 };
 
 function autoAddDeps(object, name) {
   name = [name];
   for (var item in object) {
-    if (item.substr(-6) != '__deps' && !object[item + '__deps']) {
-      object[item + '__deps'] = name;
+    if (item.substr(-6) != '__deps') {
+      if (!object[item + '__deps']) {
+        object[item + '__deps'] = name;
+      } else {
+        object[item + '__deps'].push(name[0]); // add to existing list
+      }
     }
   }
 }

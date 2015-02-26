@@ -17,10 +17,11 @@ int main() {
 		utf32 *memory = new utf32[wstr.length()+1];
 
 		EM_ASM_INT({
-      var str = Module.UTF32ToString($0);
+			var str = Module.UTF32ToString($0);
 			Module.print(str);
-			Module.stringToUTF32(str, $1);
-		}, wstr.c_str(), memory);
+			var numBytesWritten = Module.stringToUTF32(str, $1, $2);
+			if (numBytesWritten != 23*4) throw 'stringToUTF32 wrote an invalid length ' + numBytesWritten;
+		}, wstr.c_str(), memory, (wstr.length()+1)*sizeof(utf32));
 
 		// Compare memory to confirm that the string is intact after taking a route through JS side.
 		const utf32 *srcPtr = reinterpret_cast<const utf32 *>(wstr.c_str());
@@ -29,15 +30,25 @@ int main() {
 			if (srcPtr[i] == 0)
 				break;
 		}
+
+		EM_ASM_INT({
+			var str = Module.UTF32ToString($0);
+			Module.print(str);
+			var numBytesWritten = Module.stringToUTF32(str, $1, $2);
+			if (numBytesWritten != 5*4) throw 'stringToUTF32 wrote an invalid length ' + numBytesWritten;
+		}, wstr.c_str(), memory, 6*sizeof(utf32));
+		assert(memory[5] == 0);
+
 		delete[] memory;
 	} else { // sizeof(wchar_t) == 2, and we're building with -fshort-wchar.
 		utf16 *memory = new utf16[2*wstr.length()+1];
 
 		EM_ASM_INT({
-      var str = Module.UTF16ToString($0);
+			var str = Module.UTF16ToString($0);
 			Module.print(str);
-			Module.stringToUTF16(str, $1);
-    }, wstr.c_str(), memory);
+			var numBytesWritten = Module.stringToUTF16(str, $1, $2);
+			if (numBytesWritten != 25*2) throw 'stringToUTF16 wrote an invalid length ' + numBytesWritten;
+		}, wstr.c_str(), memory, (2*wstr.length()+1)*sizeof(utf16));
 
 		// Compare memory to confirm that the string is intact after taking a route through JS side.
 		const utf16 *srcPtr = reinterpret_cast<const utf16 *>(wstr.c_str());
@@ -46,6 +57,15 @@ int main() {
 			if (srcPtr[i] == 0)
 				break;
 		}
+
+		EM_ASM_INT({
+			var str = Module.UTF16ToString($0);
+			Module.print(str);
+			var numBytesWritten = Module.stringToUTF16(str, $1, $2);
+			if (numBytesWritten != 5*2) throw 'stringToUTF16 wrote an invalid length ' + numBytesWritten;
+		}, wstr.c_str(), memory, 6*sizeof(utf16));
+		assert(memory[5] == 0);
+		
 		delete[] memory;
 	}
 

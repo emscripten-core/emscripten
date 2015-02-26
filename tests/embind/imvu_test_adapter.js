@@ -1,6 +1,6 @@
 /* The embind test suite (embind.test.js) is configured to be runnable in two different testing engines:
    - The Emscripten python test runner (open-source in emscripten repository) and
-   - The IMVU test runner (closed-source in IMVU repository)
+   - The IMVU test runner (open-source via imvujs, available at https://github.com/imvu/imvujs)
 
    Embind (and its tests) were originally developed in IMVU repository, which is the reason for two testing architectures.
    This adapter file is used when the embind tests are run as part of the Emscripten test runner, to provide the necessary glue code to adapt the tests to Emscripten runner.
@@ -83,6 +83,7 @@ function module(ignore, func) {
             }
             return false;
         } catch (e) {
+            console.error(e.stack);
             console.error('error:', e);
             return {stack: e.stack, e: e};
         }
@@ -211,7 +212,7 @@ function module(ignore, func) {
         */
     };
 
-//    var assert = {
+    var assert = {};
 
         ////////////////////////////////////////////////////////////////////////////////
         // GENERAL STATUS
@@ -550,6 +551,7 @@ function module(ignore, func) {
         }
     }
 
+  (function() {
     var g = 'undefined' === typeof window ? global : window;
 
     // synonyms
@@ -593,7 +595,7 @@ function module(ignore, func) {
     g.requestAnimationFrame = function() {
         throw new AssertionError("Don't call requestAnimationFrame in tests.  Use fakes.");
     };
-//})();
+  })();
 
 // Emscripten runner starts all tests from this function.
 // IMVU runner uses a separate runner & reporting mechanism.

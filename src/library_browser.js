@@ -3,7 +3,7 @@
 // Utilities for browser environments
 mergeInto(LibraryManager.library, {
   $Browser__deps: ['$PATH', 'emscripten_set_main_loop', 'emscripten_set_main_loop_timing'],
-  $Browser__postset: 'Module["requestFullScreen"] = function Module_requestFullScreen(lockPointer, resizeCanvas) { Browser.requestFullScreen(lockPointer, resizeCanvas) };\n' + // exports
+  $Browser__postset: 'Module["requestFullScreen"] = function Module_requestFullScreen(lockPointer, resizeCanvas, vrDevice) { Browser.requestFullScreen(lockPointer, resizeCanvas, vrDevice) };\n' + // exports
                      'Module["requestAnimationFrame"] = function Module_requestAnimationFrame(func) { Browser.requestAnimationFrame(func) };\n' +
                      'Module["setCanvasSize"] = function Module_setCanvasSize(width, height, noUpdates) { Browser.setCanvasSize(width, height, noUpdates) };\n' +
                      'Module["pauseMainLoop"] = function Module_pauseMainLoop() { Browser.mainLoop.pause() };\n' +
@@ -314,11 +314,13 @@ mergeInto(LibraryManager.library, {
     fullScreenHandlersInstalled: false,
     lockPointer: undefined,
     resizeCanvas: undefined,
-    requestFullScreen: function(lockPointer, resizeCanvas) {
+    requestFullScreen: function(lockPointer, resizeCanvas, vrDevice) {
       Browser.lockPointer = lockPointer;
       Browser.resizeCanvas = resizeCanvas;
+      Browser.vrDevice = vrDevice;
       if (typeof Browser.lockPointer === 'undefined') Browser.lockPointer = true;
       if (typeof Browser.resizeCanvas === 'undefined') Browser.resizeCanvas = false;
+      if (typeof Browser.vrDevice === 'undefined') Browser.vrDevice = null;
 
       var canvas = Module['canvas'];
       function fullScreenChange() {
@@ -363,13 +365,18 @@ mergeInto(LibraryManager.library, {
       var canvasContainer = document.createElement("div");
       canvas.parentNode.insertBefore(canvasContainer, canvas);
       canvasContainer.appendChild(canvas);
-      
+
       // use parent of canvas as full screen root to allow aspect ratio correction (Firefox stretches the root to screen size)
       canvasContainer.requestFullScreen = canvasContainer['requestFullScreen'] ||
                                           canvasContainer['mozRequestFullScreen'] ||
                                           canvasContainer['msRequestFullscreen'] ||
                                          (canvasContainer['webkitRequestFullScreen'] ? function() { canvasContainer['webkitRequestFullScreen'](Element['ALLOW_KEYBOARD_INPUT']) } : null);
-      canvasContainer.requestFullScreen();
+
+      if (vrDevice) {
+        canvasContainer.requestFullScreen({ vrDisplay: vrDevice });
+      } else {
+        canvasContainer.requestFullScreen();
+      }
     },
 
     nextRAF: 0,
@@ -411,22 +418,53 @@ mergeInto(LibraryManager.library, {
       };
     },
 
-    // abort-aware versions
+    // abort and pause-aware versions TODO: build main loop on top of this?
+
+    allowAsyncCallbacks: true,
+    queuedAsyncCallbacks: [],
+
+    pauseAsyncCallbacks: function() {
+      Browser.allowAsyncCallbacks = false;
+    },
+    resumeAsyncCallbacks: function() { // marks future callbacks as ok to execute, and synchronously runs any remaining ones right now
+      Browser.allowAsyncCallbacks = true;
+      if (Browser.queuedAsyncCallbacks.length > 0) {
+        var callbacks = Browser.queuedAsyncCallbacks;
+        Browser.queuedAsyncCallbacks = [];
+        callbacks.forEach(function(func) {
+          func();
+        });
+      }
+    },
+
     safeRequestAnimationFrame: function(func) {
       return Browser.requestAnimationFrame(function() {
-        if (!ABORT) func();
+        if (ABORT) return;
+        if (Browser.allowAsyncCallbacks) {
+          func();
+        } else {
+          Browser.queuedAsyncCallbacks.push(func);
+        }
       });
     },
     safeSetTimeout: function(func, timeout) {
       Module['noExitRuntime'] = true;
       return setTimeout(function() {
-        if (!ABORT) func();
+        if (ABORT) return;
+        if (Browser.allowAsyncCallbacks) {
+          func();
+        } else {
+          Browser.queuedAsyncCallbacks.push(func);
+        }
       }, timeout);
     },
     safeSetInterval: function(func, timeout) {
       Module['noExitRuntime'] = true;
       return setInterval(function() {
-        if (!ABORT) func();
+        if (ABORT) return;
+        if (Browser.allowAsyncCallbacks) {
+          func();
+        } // drop it on the floor otherwise, next interval will kick in
       }, timeout);
     },
 
@@ -746,6 +784,29 @@ mergeInto(LibraryManager.library, {
       }
     );
   },
+
+#if EMTERPRETIFY_ASYNC
+  emscripten_wget_data__deps: ['$EmterpreterAsync'],
+  emscripten_wget_data: function(url, pbuffer, pnum, perror) {
+    EmterpreterAsync.handle(function(resume) {
+      Browser.asyncLoad(Pointer_stringify(url), function(byteArray) {
+        var buffer = _malloc(byteArray.length); // must be freed by caller!
+        HEAPU8.set(byteArray, buffer);
+        {{{ makeSetValueAsm('pbuffer', 0, 'buffer', 'i32') }}};
+        {{{ makeSetValueAsm('pnum',  0, 'byteArray.length', 'i32') }}};
+        {{{ makeSetValueAsm('perror',  0, '0', 'i32') }}};
+        resume();
+      }, function() {
+        {{{ makeSetValueAsm('perror',  0, '1', 'i32') }}};
+        resume();
+      }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
+    });
+  },
+#else
+  emscripten_wget_data: function(url, file) {
+    throw 'Please compile your program with -s EMTERPRETER_ASYNC=1 in order to use asynchronous operations like emscripten_wget_data';
+  },
+#endif
 
   emscripten_async_wget_data: function(url, arg, onload, onerror) {
     Browser.asyncLoad(Pointer_stringify(url), function(byteArray) {

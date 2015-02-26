@@ -10,14 +10,14 @@
 
 volatile __m128 negzero;
 volatile __m128 zero;
-volatile __m128 nan;
+volatile __m128 nan_;
 volatile __m128 one;
 
 int main() {
   negzero = _mm_set1_ps(-0.0);
   zero = _mm_set1_ps(0.0);
   one = _mm_set1_ps(1.0);
-  nan = _mm_set1_ps(__builtin_nan(""));
+  nan_ = _mm_set1_ps(__builtin_nan(""));
 
   __m128 expected, result;
 
@@ -29,12 +29,12 @@ int main() {
   expected = negzero;
   assert(memcmp(&result, &expected, sizeof(__m128)) == 0);
 
-  result = _mm_max_ps(nan, zero);
+  result = _mm_max_ps(nan_, zero);
   expected = zero;
   assert(memcmp(&result, &expected, sizeof(__m128)) == 0);
 
-  result = _mm_max_ps(zero, nan);
-  expected = nan;
+  result = _mm_max_ps(zero, nan_);
+  expected = nan_;
   assert(memcmp(&result, &expected, sizeof(__m128)) == 0);
 
   result = _mm_max_ps(zero, one);
@@ -49,12 +49,12 @@ int main() {
   expected = negzero;
   assert(memcmp(&result, &expected, sizeof(__m128)) == 0);
 
-  result = _mm_min_ps(nan, zero);
+  result = _mm_min_ps(nan_, zero);
   expected = zero;
   assert(memcmp(&result, &expected, sizeof(__m128)) == 0);
 
-  result = _mm_min_ps(zero, nan);
-  expected = nan;
+  result = _mm_min_ps(zero, nan_);
+  expected = nan_;
   assert(memcmp(&result, &expected, sizeof(__m128)) == 0);
 
   result = _mm_min_ps(zero, one);

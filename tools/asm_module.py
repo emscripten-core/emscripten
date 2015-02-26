@@ -43,9 +43,18 @@ class AsmModule():
     self.pre_imports_js = self.js[self.start_asm:first_var]
     self.imports_js = self.js[first_var:self.start_funcs]
     self.imports = {}
-    for imp in js_optimizer.import_sig.finditer(self.imports_js):
-      key, value = imp.group(0).split('var ')[1][:-1].split('=', 1)
-      self.imports[key.strip()] = value.strip()
+    for i in js_optimizer.import_sig.finditer(self.imports_js):
+      imp = i.group(0).split('var ')[1][:-1]
+      if ',' not in imp:
+        key, value = imp.split('=', 1)
+        self.imports[key.strip()] = value.strip()
+      else:
+        for part in imp.split(','):
+          assert part.count('(') == part.count(')') # we must not break ',' in func(x, y)!
+          assert part.count('=') == 1
+          key, value = part.split('=')
+          self.imports[key.strip()] = value.strip()
+
     #print >> sys.stderr, 'imports', self.imports
 
     # funcs
@@ -292,4 +301,39 @@ class AsmModule():
   def get_table_funcs(self):
     return set(itertools.chain.from_iterable(map(lambda x: map(lambda y: y.strip(), x[1:-1].split(',')), self.tables.values())))
 
+  def get_funcs_map(self):
+    funcs = js_optimizer.split_funcs(self.funcs_js)
+    ret = {}
+    for name, content in funcs:
+      ret[name] = content
+    return ret
+
+  def apply_funcs_map(self, funcs_map): # assumes self.funcs is the set of funcs, in the right order
+    jses = []
+    for f in self.funcs:
+      if f in funcs_map: # TODO: fix
+        jses.append(funcs_map[f])
+    self.funcs_js = '\n'.join(jses)
+
+  def get_import_type(self, imp):
+    def is_int(x):
+      try:
+        int(x)
+        return True
+      except:
+        return False
+
+    def is_float(x):
+      try:
+        float(x)
+        return True
+      except:
+        return False
+
+    if '|0' in imp or '| 0' in imp or (is_int(imp) and not '.0' in imp or '+' in imp):
+      return 'i'
+    elif '.0' in imp or '+' in imp or is_float(imp):
+      return 'd'
+    else:
+      return '?'
 

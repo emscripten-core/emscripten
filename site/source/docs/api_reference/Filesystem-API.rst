@@ -174,7 +174,7 @@ File system API
 	A real example of this functionality can be seen in `test_idbfs_sync.c <https://github.com/kripken/emscripten/blob/master/tests/fs/test_idbfs_sync.c>`_.
 
 	:param bool populate: ``true`` to initialize Emscripten's file system data with the data from the file system's persistent source, and ``false`` to save Emscripten`s file system data to the file system's persistent source.
-	:param callback: A notification callback function that is invoked on completion of the synchronization.
+	:param callback: A notification callback function that is invoked on completion of the synchronization. If an error occurred, it will be provided as a parameter to this function.
 
 
 .. js:function:: FS.mkdir(path, mode)

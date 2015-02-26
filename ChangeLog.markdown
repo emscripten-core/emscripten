@@ -14,6 +14,13 @@ Current trunk code
     - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.27.1...incoming
     - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.27.1...incoming
 
+v1.29.1: 01/07/2015
+-------------------
+ - Migrated to upstream PNaCl LLVM+Clang 3.5 from the previous 3.4.
+
+v1.29.0: 01/07/2015
+-------------------
+
 v1.28.3: 01/04/2015
 -------------------
  - embuilder.py tool

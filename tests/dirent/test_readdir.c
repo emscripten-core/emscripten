@@ -71,12 +71,15 @@ void test() {
   ent = readdir(dir);
   assert(!strcmp(ent->d_name, "."));
   assert(ent->d_type & DT_DIR);
+  assert(ent->d_reclen == sizeof(*ent));
   ent = readdir(dir);
   assert(!strcmp(ent->d_name, ".."));
   assert(ent->d_type & DT_DIR);
+  assert(ent->d_reclen == sizeof(*ent));
   ent = readdir(dir);
   assert(!strcmp(ent->d_name, "file.txt"));
   assert(ent->d_type & DT_REG);
+  assert(ent->d_reclen == sizeof(*ent));
   ent = readdir(dir);
   assert(!ent);
 
@@ -124,11 +127,29 @@ void test() {
   puts("success");
 }
 
+void test_scandir() {
+  struct dirent **namelist;
+  int n;
+
+  n = scandir(".", &namelist, NULL, alphasort);
+  printf("n: %d\n", n);
+  if (n < 0)
+    return;
+  else {
+    while (n--) {
+      printf("name: %s\n", namelist[n]->d_name);
+      free(namelist[n]);
+    }
+    free(namelist);
+  }
+}
+
 int main() {
   printf("SIGILL: %s\n", strsignal(SIGILL));
   atexit(cleanup);
   signal(SIGABRT, cleanup);
   setup();
   test();
+  test_scandir();
   return EXIT_SUCCESS;
 }

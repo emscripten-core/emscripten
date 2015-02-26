@@ -16,7 +16,7 @@ so you may prefer to use fewer cores here.
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer, multiprocessing, functools, stat, string
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer, multiprocessing, functools, stat, string, random
 
 # Setup
 
@@ -50,7 +50,7 @@ except:
 
 # Core test runner class, shared between normal tests and benchmarks
 checked_sanity = False
-test_modes = ['default', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g', 'asm3i', 'asm2nn', 'slow2']
+test_modes = ['default', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g', 'asm1i', 'asm3i', 'asm2nn']
 test_index = 0
 
 class RunnerCore(unittest.TestCase):
@@ -64,6 +64,9 @@ class RunnerCore(unittest.TestCase):
 
   def skipme(self): # used by tests we ask on the commandline to be skipped, see right before call to unittest.main
     return self.skip('requested to be skipped')
+
+  def is_emterpreter(self):
+    return False
 
   def setUp(self):
     Settings.reset()
@@ -245,7 +248,7 @@ process(sys.argv[1])
       if '--memory-init-file' in self.emcc_args:
         memory_init_file = int(self.emcc_args[self.emcc_args.index('--memory-init-file')+1])
       else:
-        memory_init_file = '-O2' in self.emcc_args or '-O3' in self.emcc_args
+        memory_init_file = '-O2' in self.emcc_args or '-O3' in self.emcc_args or self.is_emterpreter()
       src = open(filename + '.o.js').read()
       if memory_init_file:
         # side memory init file, or an empty one in the js
@@ -388,7 +391,7 @@ process(sys.argv[1])
     for name in os.listdir(self.get_dir()):
       try_delete(os.path.join(self.get_dir(), name) if not in_curr else name)
     emcc_debug = os.environ.get('EMCC_DEBUG')
-    if emcc_debug and not in_curr:
+    if emcc_debug and not in_curr and EMSCRIPTEN_TEMP_DIR:
       for name in os.listdir(EMSCRIPTEN_TEMP_DIR):
         try_delete(os.path.join(EMSCRIPTEN_TEMP_DIR, name))
 
@@ -723,6 +726,7 @@ class BrowserCore(RunnerCore):
         args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
     all_args = [PYTHON, EMCC, temp_filepath, '-o', outfile] + args
     #print 'all args:', all_args
+    try_delete(outfile)
     Popen(all_args).communicate()
     assert os.path.exists(outfile)
     if post_build: post_build()
@@ -873,6 +877,35 @@ js optimizer phase.
 
 '''
     time.sleep(2)
+
+  # If we asked to run random tests, do that
+  first = sys.argv[1]
+  if first.startswith('random'):
+    num = 1
+    first = first[6:]
+    if len(first) > 0:
+      num = int(first)
+    for m in modules:
+      if hasattr(m, 'default'):
+        sys.argv = [sys.argv[0]]
+        tests = filter(lambda t: t.startswith('test_'), dir(getattr(m, 'default')))
+        print
+        chosen = set()
+        while len(chosen) < num:
+          test = random.choice(tests)
+          mode = random.choice(test_modes)
+          print '* ' + mode + '.' + test
+          chosen.add(mode + '.' + test)
+        sys.argv += list(chosen)
+        std = 0.5/math.sqrt(num)
+        print
+        print 'running those %d randomly-selected tests. if they all pass, then there is a greater than 95%% chance that at least %.2f%% of the test suite will pass' % (num, 100.0-100.0*std)
+        print
+
+        import atexit
+        def show():
+          print 'if all tests passed then there is a greater than 95%% chance that at least %.2f%% of the test suite will pass' % (100.0-100.0*std)
+        atexit.register(show)
 
   # Filter and load tests from the discovered modules
   loader = unittest.TestLoader()

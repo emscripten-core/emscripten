@@ -17,9 +17,48 @@ EMT_STACK_MAX = 1024*1024
 
 LOG_CODE = os.environ.get('EMCC_LOG_EMTERPRETER_CODE')
 
+ZERO = False
+ASYNC = False
+ASSERTIONS = False
+PROFILING = False
+SWAPPABLE = False
+FROUND = False
+ADVISE = False
+MEMORY_SAFE = False
+
+def handle_arg(arg):
+  global ZERO, ASYNC, ASSERTIONS, PROFILING, FROUND, ADVISE, MEMORY_SAFE
+  if '=' in arg:
+    l, r = arg.split('=')
+    if l == 'ZERO': ZERO = int(r)
+    elif l == 'ASYNC': ASYNC = int(r)
+    elif l == 'ASSERTIONS': ASSERTIONS = int(r)
+    elif l == 'PROFILING': PROFILING = int(r)
+    elif l == 'FROUND': FROUND = int(r)
+    elif l == 'ADVISE': ADVISE = int(r)
+    elif l == 'MEMORY_SAFE': MEMORY_SAFE = int(r)
+    return False
+  return True
+
+DEBUG = os.environ.get('EMCC_DEBUG')
+
+config = shared.Configuration()
+temp_files = config.get_temp_files()
+
+if DEBUG:
+  print >> sys.stderr, 'running emterpretify on', sys.argv
+
+if FROUND:
+  shared.Settings.PRECISE_F32 = 1
+
+sys.argv = filter(handle_arg, sys.argv)
+
 # consts
 
-BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memmove', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64', '_strncpy', '_strcpy', '_strcat', '_saveSetjmp', '_testSetjmp', '_emscripten_replace_memory', '_bitshift64Shl', '_bitshift64Ashr', '_bitshift64Lshr'])
+BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memmove', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64', '_strncpy', '_strcpy', '_strcat', '_saveSetjmp', '_testSetjmp', '_emscripten_replace_memory', '_bitshift64Shl', '_bitshift64Ashr', '_bitshift64Lshr', 'setAsyncState', 'emtStackSave'])
+WHITELIST = []
+
+SYNC_FUNCS = set(['_emscripten_sleep', '_emscripten_sleep_with_yield', '_emscripten_wget_data', '_emscripten_idb_load', '_emscripten_idb_store', '_emscripten_idb_delete'])
 
 OPCODES = [ # l, lx, ly etc - one of 256 locals
   'SET',     # [lx, ly, 0]          lx = ly (int or float, not double)
@@ -86,7 +125,7 @@ OPCODES = [ # l, lx, ly etc - one of 256 locals
   'SLEBRT',
   'ULEBRT',
 
-  'SETD',    # [lx, ly, lz]         lx = ly (double)
+  'SETD',    # [lx, ly, 0]          lx = ly (double)
   'SETVD',   # [lx, vl, vh]         lx = ly (16 bit signed int, converted into double)
   'SETVDI',  # [lx, 0, 0] [..v..]   lx = v (32 bit signed int, converted into double)
   'SETVDF',  # [lx, 0, 0] [..v..]   lx = v (32 bit float, converted into double)
@@ -166,8 +205,9 @@ OPCODES = [ # l, lx, ly etc - one of 256 locals
   'GETTR0',  # [l, 0, 0]            l = tempRet0
   'SETTR0',  # [l, 0, 0]            tempRet0 = l
   'GETGLBI', # [l, vl, vh]          get global value, int, indexed by v
-  #'GETGLBD', # [l, vl, vh]          get global value, double, indexed by v
+  'GETGLBD', # [l, vl, vh]          get global value, double, indexed by v
   'SETGLBI', # [vl, vh, l]          set global value, int, indexed by v (v = l)
+  'SETGLBD', # [vl, vh, l]          set global value, double, indexed by v (v = l)
 
   'INTCALL', # [lx, 0, 0] [target] [params]         (lx = ) target(params..)
                     #                               Internal, emterpreter-to-emterpreter call.
@@ -180,8 +220,20 @@ OPCODES = [ # l, lx, ly etc - one of 256 locals
 
   'SWITCH',  # [lx, ly, lz]         switch (lx) { .. }. followed by a jump table for values in range [ly..ly+lz), after which is the default (which might be empty)
   'RET',     # [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
-  'FUNC',    # [total locals, num params, which emterpreter (0 = normal, 1 = zero)] [num params + num zero-inits, 0, 0, 0]           function with n locals (each taking 64 bits), of which the first are params
+  'FUNC',    # [num params, total locals (low 8 bits), total locals (high 8 bits)] [which emterpreter (0 = normal, 1 = zero), 0, last zeroinit = num params + num zero-inits (low 8), (high 8)]           function with n locals (each taking 64 bits), of which the first are params
+             # this is read in the emterpreter prelude, and also in intcalls
+
+  # slow locals support - copying from/to slow locals
+  'FSLOW',     # [lx, lyl, lyh]       lx = ly (int or float, not double; ly = lyl,lyh
+  'FSLOWD',    # [lx, lyl, lyh]       lx = ly (double)
+  'TSLOW',     # [lxl, lxh, ly]       lx = ly (int or float, not double; lx = lxl,lxh
+  'TSLOWD',    # [lxl, lxh, ly]       lx = ly (double; lx = lxl,lxh)
 ]
+
+if FROUND:
+  OPCODES.append(
+    'FROUND',    # [lx, ly]         lx = Math.fround(ly), rounds doubles to floats
+  )
 
 def randomize_opcodes():
   global OPCODES
@@ -220,7 +272,7 @@ def get_access(l, s='i', base='sp', offset=None):
     offset = ''
   if s == 'i':
     return 'HEAP32[' + str(base) + ' + (' + l + ' << 3) ' + offset + '>> 2]'
-  elif s == 'd':
+  elif s == 'd' or s == 'f':
     return 'HEAPF64[' + str(base) + ' + (' + l + ' << 3) ' + offset + '>> 3]'
   else:
     assert 0
@@ -231,10 +283,15 @@ def get_coerced_access(l, s='i', unsigned=False, base='sp', offset=None):
       return get_access(l, s, base, offset) + '|0'
     else:
       return get_access(l, s, base, offset) + '>>>0'
-  elif s == 'd':
+  elif s == 'd' or s == 'f':
     return '+' + get_access(l, s, base, offset)
   else:
     assert 0
+
+def make_assign(left, right, temp): # safely assign, taking into account memory safety
+  if not MEMORY_SAFE:
+    return left + ' = ' + right + ';'
+  return temp + ' = ' + right + '; ' + left + ' = ' + temp + ';'
 
 CASES = {}
 CASES[ROPCODES['SET']] = get_access('lx') + ' = ' + get_coerced_access('ly') + ';'
@@ -245,7 +302,7 @@ CASES[ROPCODES['SETVIB']] = 'pc = pc + 4 | 0; ' + get_access('lx') + ' = HEAP32[
 
 CASES[ROPCODES['ADD']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') + (' + get_coerced_access('lz') + ') | 0;'
 CASES[ROPCODES['SUB']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') - (' + get_coerced_access('lz') + ') | 0;'
-CASES[ROPCODES['MUL']] = get_access('lx') + ' = Math_imul(' + get_coerced_access('ly') + ', ' + get_coerced_access('lz') + ') | 0;'
+CASES[ROPCODES['MUL']] = make_assign(get_access('lx'), 'Math_imul(' + get_coerced_access('ly') + ', ' + get_coerced_access('lz') + ') | 0', 'ly')
 CASES[ROPCODES['SDIV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') / (' + get_coerced_access('lz') + ') | 0;'
 CASES[ROPCODES['UDIV']] = get_access('lx') + ' = (' + get_coerced_access('ly', unsigned=True) + ') / (' + get_coerced_access('lz', unsigned=True) + ') >>> 0;'
 CASES[ROPCODES['SMOD']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') % (' + get_coerced_access('lz') + ') | 0;'
@@ -270,7 +327,7 @@ CASES[ROPCODES['LSHR']] = get_access('lx') + ' = (' + get_coerced_access('ly') +
 
 CASES[ROPCODES['ADDV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') + (inst >> 24) | 0;'
 CASES[ROPCODES['SUBV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') - (inst >> 24) | 0;'
-CASES[ROPCODES['MULV']] = get_access('lx') + ' = Math_imul(' + get_coerced_access('ly') + ', inst >> 24) | 0;'
+CASES[ROPCODES['MULV']] = make_assign(get_access('lx'), 'Math_imul(' + get_coerced_access('ly') + ', inst >> 24) | 0', 'ly')
 CASES[ROPCODES['SDIVV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') / (inst >> 24) | 0;'
 CASES[ROPCODES['UDIVV']] = get_access('lx') + ' = (' + get_coerced_access('ly', unsigned=True) + ') / (lz >>> 0) >>> 0;'
 CASES[ROPCODES['SMODV']] = get_access('lx') + ' = (' + get_coerced_access('ly') + ') % (inst >> 24) | 0;'
@@ -385,34 +442,65 @@ CASES[ROPCODES['GETTDP']] = get_access('lx') + ' = tempDoublePtr;'
 CASES[ROPCODES['GETTR0']] = get_access('lx') + ' = tempRet0;'
 CASES[ROPCODES['SETTR0']] = 'tempRet0 = ' + get_coerced_access('lx') + ';'
 
+if FROUND:
+  CASES[ROPCODES['FROUND']] = get_access('lx', s='d') + ' = Math_fround(' + get_coerced_access('ly', s='d') + ');'
+
+# stacktop handling: if allowing async, the very bottom will contain the function being executed,
+#                    for stack trace reconstruction. We store [pc of function, curr pc]
+#                    where curr pc is the current position in that function, when asyncing
+#                    The effective sp, where locals reside, is 8 above that.
+
+def push_stacktop(zero):
+  return (' sp = EMTSTACKTOP;' if not ASYNC else ' sp = EMTSTACKTOP + 8 | 0;') if not zero else ''
+
+def pop_stacktop(zero):
+  return '//Module.print("exit");\n' + ((' EMTSTACKTOP = sp; ' if not ASYNC else 'EMTSTACKTOP = sp - 8 | 0; ') if not zero else '')
+
+def handle_async_pre_call():
+  return 'HEAP32[sp - 4 >> 2] = pc;' if ASYNC else ''
+
+def handle_async_post_call():
+  assert not ZERO
+  return 'if ((asyncState|0) == 1) { ' + pop_stacktop(zero=False) + ' return }\n' if ASYNC else '' # save pc and exit immediately if currently saving state
+
 CASES[ROPCODES['INTCALL']] = '''
-    inst = HEAP32[HEAP32[pc + 4 >> 2] >> 2] | 0; // FUNC inst: ['FUNC', locals, params, which emterp]
-    lz = (inst >>> 16) & 255; // params
+    lz = HEAPU8[(HEAP32[pc + 4 >> 2] | 0) + 1 | 0] | 0; // FUNC inst, see definition above; we read params here
     ly = 0;
     assert(((EMTSTACKTOP + 8|0) <= (EMT_STACK_MAX|0))|0); // for return value
-    if ((inst >>> 24) == 0) {
+    %s
+     %s
       while ((ly|0) < (lz|0)) {
         %s = %s;
         %s = %s;
         ly = ly + 1 | 0;
       }
+      %s
+      %s
       emterpret(HEAP32[pc + 4 >> 2] | 0);
-    } else {
+      %s
+    %s
+    %s = HEAP32[EMTSTACKTOP >> 2] | 0;
+    %s = HEAP32[EMTSTACKTOP + 4 >> 2] | 0;
+    pc = pc + (((4 + lz + 3) >> 2) << 2) | 0;
+''' % (
+  'if ((HEAPU8[(HEAP32[pc + 4 >> 2] | 0) + 4 | 0] | 0) == 0) {' if ZERO else '',
+  'if ((asyncState|0) != 2) {' if ASYNC else '',
+  get_access('ly', base='EMTSTACKTOP', offset=8 if ASYNC else 0),  get_coerced_access('HEAPU8[pc + 8 + ly >> 0]'),
+  get_access('ly', base='EMTSTACKTOP', offset=12 if ASYNC else 4), get_coerced_access('HEAPU8[pc + 8 + ly >> 0]', offset=4),
+  '}' if ASYNC else '',
+  handle_async_pre_call(),
+  handle_async_post_call(),
+  ('''} else {
       while ((ly|0) < (lz|0)) {
         %s = %s;
         %s = %s;
         ly = ly + 1 | 0;
       }
       emterpret_z(HEAP32[pc + 4 >> 2] | 0);
-    }
-    %s = HEAP32[EMTSTACKTOP >> 2] | 0;
-    %s = HEAP32[EMTSTACKTOP + 4 >> 2] | 0;
-    pc = pc + (((4 + lz + 3) >> 2) << 2) | 0;
-''' % (
-  get_access('ly', base='EMTSTACKTOP'),     get_coerced_access('HEAPU8[pc + 8 + ly >> 0]'),
-  get_access('ly', base='EMTSTACKTOP', offset=4), get_coerced_access('HEAPU8[pc + 8 + ly >> 0]', offset=4),
-  get_access('ly', base=0),     get_coerced_access('HEAPU8[pc + 8 + ly >> 0]'),
-  get_access('ly', base=0, offset=4), get_coerced_access('HEAPU8[pc + 8 + ly >> 0]', offset=4),
+    }''' % (
+      get_access('ly', base=0),     get_coerced_access('HEAPU8[pc + 8 + ly >> 0]'),
+      get_access('ly', base=0, offset=4), get_coerced_access('HEAPU8[pc + 8 + ly >> 0]', offset=4),
+  )) if ZERO else '',
   get_access('lx'), get_access('lx', offset=4),
 )
 
@@ -426,9 +514,24 @@ CASES[ROPCODES['SWITCH']] = '''
     pc = HEAP32[pc + 4 + (lx << 2) >> 2] | 0; // load from the jump table which is right after this instruction, and set pc
     PROCEED_WITHOUT_PC_BUMP;'''
 
+CASES[ROPCODES['FSLOW']] = get_access('lx') + ' = ' + get_coerced_access('inst >>> 16') + ';'
+CASES[ROPCODES['FSLOWD']] = get_access('lx', s='d') + ' = ' + get_coerced_access('inst >>> 16', s='d') + ';'
+CASES[ROPCODES['TSLOW']] = get_access('inst >>> 16') + ' = ' + get_coerced_access('lx') + ';'
+CASES[ROPCODES['TSLOWD']] = get_access('inst >>> 16', s='d') + ' = ' + get_coerced_access('lx', s='d') + ';'
+
+opcode_used = {}
+for opcode in OPCODES:
+  opcode_used[opcode] = False
+
+def is_function_table(name):
+  return name.startswith('FUNCTION_TABLE_')
+
+def is_dyn_call(func):
+  return func.startswith('dynCall_')
+
 def make_emterpreter(zero=False):
   # return is specialized per interpreter
-  CASES[ROPCODES['RET']] = 'EMTSTACKTOP = sp; ' if not zero else ''
+  CASES[ROPCODES['RET']] = pop_stacktop(zero)
   CASES[ROPCODES['RET']] += 'HEAP32[EMTSTACKTOP >> 2] = ' + get_coerced_access('lx') + '; HEAP32[EMTSTACKTOP + 4 >> 2] = ' + get_coerced_access('lx', offset=4) + '; return;'
 
   # call is custom generated using information of actual call patterns, and which emterpreter this is
@@ -436,16 +539,50 @@ def make_emterpreter(zero=False):
     name = global_func_names[i]
     sig = global_func_sigs[i]
 
-    function_pointer_call = name.startswith('FUNCTION_TABLE_')
+    function_pointer_call = is_function_table(name)
+
+    # our local registers are never true floats, and we just do fround calls to ensure correctness, not caring
+    # about performance. but when coercing to outside of the emterpreter, we need to know the true sig,
+    # and must use frounds
+    true_sig = sig
+    if function_pointer_call:
+      true_sig = name.split('_')[-1]
+    elif name in actual_sigs:
+      true_sig = actual_sigs[name]
+
+    def fix_coercion(value, s):
+      if s == 'f':
+        value = 'Math_fround(' + value + ')'
+      return value
 
     ret = name
     if function_pointer_call:
       ret += '[' + get_access('HEAPU8[pc+4>>0]') + ' & %d]' % (next_power_of_two(asm.tables[name].count(',')+1)-1)
-    ret += '(' + ', '.join([get_coerced_access('HEAPU8[pc+%d>>0]' % (i+4+int(function_pointer_call)), s=sig[i+1]) for i in range(len(sig)-1)]) + ')'
+    ret += '(' + ', '.join([fix_coercion(get_coerced_access('HEAPU8[pc+%d>>0]' % (i+4+int(function_pointer_call)), s=sig[i+1]), true_sig[i+1]) for i in range(len(sig)-1)]) + ')'
     if sig[0] != 'v':
-      ret = get_access('lx', sig[0]) + ' = ' + shared.JS.make_coercion(ret, sig[0])
-    elif name in actual_return_types and actual_return_types[name] != 'v':
-      ret = shared.JS.make_coercion(ret, actual_return_types[name]) # return value ignored, but need a coercion
+      ret = shared.JS.make_coercion(fix_coercion(ret, true_sig[0]), sig[0])
+      if not ASYNC:
+        ret = make_assign(get_access('lx', sig[0]), ret, 'ly' if sig[0] == 'i' else 'ld')
+      else:
+        # we cannot save the return value immediately! if we are saving the stack, it is meaningless, and would corrupt a local stack variable
+        if sig[0] == 'i':
+          ret = 'lz = ' + ret
+        else:
+          assert sig[0] == 'd'
+          ret = 'ld = ' + ret
+    elif name in actual_sigs and actual_sigs[name][0] != 'v':
+      ret = shared.JS.make_coercion(ret, actual_sigs[name][0]) # return value ignored, but need a coercion
+    if ASYNC:
+      # check if we are asyncing, and if not, it is ok to save the return value
+      ret = handle_async_pre_call() + ret + '; ' +  handle_async_post_call()
+      if sig[0] != 'v':
+        ret += ' else ' + get_access('lx', sig[0]) + ' = ';
+        if sig[0] == 'i':
+          ret += 'lz'
+        else:
+          assert sig[0] == 'd'
+          ret += 'ld '
+        ret += ';'
     extra = len(sig) - 1 + int(function_pointer_call) # [opcode, lx, target, sig], take the usual 4. params are extra
     if extra > 0:
       ret += '; pc = pc + %d | 0' % (4*((extra+3)>>2))
@@ -457,29 +594,38 @@ def make_emterpreter(zero=False):
     '\n   }'
 
   if ROPCODES['GETGLBI'] not in CASES:
-    def make_load(i):
-      sig = 'i'
+    def make_load(i, t):
       name = rglobal_vars[i]
-      return '     ' + get_access('lx', sig[0]) + ' = ' + name + '; PROCEED_WITH_PC_BUMP;'
-    CASES[ROPCODES['GETGLBI']] = 'switch (ly|0) {\n' + \
-      '\n'.join(['    case %d: {\n%s\n    }' % (i, make_load(i)) for i in range(global_var_id)]) + \
-      '\n    default: assert(0);' + \
-      '\n   }'
-    def make_store(i):
-      sig = 'i'
+      return '     ' + get_access('lx', t) + ' = ' + name + '; PROCEED_WITH_PC_BUMP;'
+
+    def make_getglb(suffix, t):
+      CASES[ROPCODES['GETGLB' + suffix]] = 'switch (ly|0) {\n' + \
+        '\n'.join(['    case %d: {\n%s\n    }' % (i, make_load(i, t)) for i in range(global_var_id) if global_var_types[rglobal_vars[i]] == t]) + \
+        '\n    default: assert(0);' + \
+        '\n   }'
+
+    make_getglb('I', 'i')
+    make_getglb('D', 'd')
+
+    def make_store(i, t):
       name = rglobal_vars[i]
-      return '     ' + name + ' = ' + get_coerced_access('lz', sig[0]) + '; PROCEED_WITH_PC_BUMP;'
-    CASES[ROPCODES['SETGLBI']] = 'switch ((inst >> 8)&255) {\n' + \
-      '\n'.join(['    case %d: {\n%s\n    }' % (i, make_store(i)) for i in range(global_var_id)]) + \
-      '\n    default: assert(0);' + \
-      '\n   }'
+      return '     ' + name + ' = ' + get_coerced_access('lz', t) + '; PROCEED_WITH_PC_BUMP;'
+
+    def make_setglb(suffix, t):
+      CASES[ROPCODES['SETGLB' + suffix]] = 'switch ((inst >> 8)&255) {\n' + \
+        '\n'.join(['    case %d: {\n%s\n    }' % (i, make_store(i, t)) for i in range(global_var_id) if global_var_types[rglobal_vars[i]] == t]) + \
+        '\n    default: assert(0);' + \
+        '\n   }'
+
+    make_setglb('I', 'i')
+    make_setglb('D', 'd')
 
   def fix_case(case):
     # we increment pc at the top of the loop. to avoid a pc bump, we decrement it first; this is rare, most opcodes just continue; this avoids any code at the end of the loop
     return case.replace('PROCEED_WITH_PC_BUMP', 'continue').replace('PROCEED_WITHOUT_PC_BUMP', 'pc = pc - 4 | 0; continue').replace('continue; continue;', 'continue;')
 
   def process(code):
-    code = code.replace(' assert(', ' //assert(')
+    if not ASSERTIONS: code = code.replace(' assert(', ' //assert(')
     if zero: code = code.replace('sp + ', '')
     return code
 
@@ -489,7 +635,7 @@ def make_emterpreter(zero=False):
   lx = (inst >> 8) & 255;
   ly = (inst >> 16) & 255;
   lz = inst >>> 24;
-  //print([pc, inst&255, %s[inst&255], lx, ly, lz, HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]].join(', '));
+  //Module.print([pc, inst&255, %s[inst&255], lx, ly, lz, HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]].join(', '));
 ''' % (json.dumps(OPCODES))
 
   if not INNERTERPRETER_LAST_OPCODE:
@@ -498,7 +644,7 @@ def make_emterpreter(zero=False):
 %s
    default: assert(0);
   }
-''' % ('\n'.join([fix_case('   case %d: %s break;' % (k, CASES[k])) for k in sorted(CASES.keys())]))
+''' % ('\n'.join([fix_case('   case %d: %s break;' % (k, CASES[k])) for k in sorted(CASES.keys()) if opcode_used[OPCODES[k]]]))
   else:
     # emit an inner interpreter (innerterpreter) loop, of trivial opcodes that hopefully the JS engine will implement with no spills
     assert OPCODES[-1] == 'FUNC' # we don't need to emit that one
@@ -523,18 +669,22 @@ def make_emterpreter(zero=False):
 
   return process(r'''
 function emterpret%s(pc) {
+ //Module.print('emterpret: ' + pc + ',' + EMTSTACKTOP);
  pc = pc | 0;
  var %sinst = 0, lx = 0, ly = 0, lz = 0;
 %s
- assert(((HEAPU8[pc>>0]>>>0) == %d)|0);
- lx = HEAPU8[pc + 1 >> 0] | 0; // num locals
 %s
- ly = HEAPU8[pc + 2 >> 0] | 0; // first zeroinit (after params)
- lz = HEAPU8[pc + 4 >> 0] | 0; // offset of last zeroinit
+%s
+ assert(((HEAPU8[pc>>0]>>>0) == %d)|0);
+ lx = HEAPU16[pc + 2 >> 1] | 0; // num locals
+%s
+ ly = HEAPU8[pc + 1 >> 0] | 0; // first zeroinit (after params)
+ lz = HEAPU16[pc + 6 >> 1] | 0; // offset of last zeroinit
  while ((ly | 0) < (lz | 0)) { // clear the zeroinits
   %s = +0;
   ly = ly + 1 | 0;
  }
+%s
  //print('enter func ' + [pc, HEAPU8[pc + 0],HEAPU8[pc + 1],HEAPU8[pc + 2],HEAPU8[pc + 3],HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]].join(', '));
  //var first = true;
  pc = pc + 4 | 0;
@@ -545,11 +695,15 @@ function emterpret%s(pc) {
 }''' % (
   '' if not zero else '_z',
   'sp = 0, ' if not zero else '',
-  ' sp = EMTSTACKTOP;' if not zero else '',
+  '' if not ASYNC and not MEMORY_SAFE else 'var ld = +0;',
+  '' if not ASYNC else 'HEAP32[EMTSTACKTOP>>2] = pc;\n if ((asyncState|0) == 1) asyncState = 0;\n', # other code running between a save and resume can see state 1, just reset
+                                                                                                # (optimally we should flip it to 0 at the bottom of the saving stack)
+  push_stacktop(zero),
   ROPCODES['FUNC'],
-  ''' EMTSTACKTOP = EMTSTACKTOP + (lx << 3) | 0;
- assert(((EMTSTACKTOP|0) <= (EMT_STACK_MAX|0))|0);''' if not zero else '',
+  (''' EMTSTACKTOP = EMTSTACKTOP + (lx ''' + (' + 1 ' if ASYNC else '') + '''<< 3) | 0;
+ assert(((EMTSTACKTOP|0) <= (EMT_STACK_MAX|0))|0);\n''' + (' if ((asyncState|0) != 2) {' if ASYNC else '')) if not zero else '',
   get_access('ly', s='d'),
+  ' } else { pc = (HEAP32[sp - 4 >> 2] | 0) - 8 | 0; }' if ASYNC else '',
   main_loop,
 ))
 
@@ -558,30 +712,108 @@ if __name__ == '__main__':
   infile = sys.argv[1]
   outfile = sys.argv[2]
   force_memfile = sys.argv[3] if len(sys.argv) >= 4 else None
-  extra_blacklist = json.loads(sys.argv[4]) if len(sys.argv) >= 5 else []
+
+  extra_blacklist = []
+  if len(sys.argv) >= 5:
+    temp = sys.argv[4]
+    if temp[0] == '"':
+      # response file
+      assert temp[1] == '@'
+      temp = open(temp[2:-1]).read()
+    extra_blacklist = json.loads(temp)
+
+    if len(sys.argv) >= 6:
+      temp = sys.argv[5]
+      if temp[0] == '"':
+        # response file
+        assert temp[1] == '@'
+        temp = open(temp[2:-1]).read()
+      WHITELIST = json.loads(temp)
+
+      if len(sys.argv) >= 7:
+        SWAPPABLE = int(sys.argv[6])
+
+  if ADVISE:
+    # Advise the user on which functions should likely be emterpreted
+    temp = temp_files.get('.js').name
+    shared.Building.js_optimizer(infile, ['dumpCallGraph'], output_filename=temp, just_concat=True)
+    asm = asm_module.AsmModule(temp)
+    lines = asm.funcs_js.split('\n')
+    can_call = {}
+    for i in range(len(lines)):
+      line = lines[i]
+      if line.startswith('// REACHABLE '):
+        curr = json.loads(line[len('// REACHABLE '):])
+        func = curr[0]
+        targets = curr[2]
+        can_call[func] = set(targets)
+    # function tables too - treat a function all as a function that can call anything in it, which is effectively what it is
+    for name, funcs in asm.tables.iteritems():
+      can_call[name] = set(funcs[1:-1].split(','))
+    #print can_call
+    # Note: We ignore calls in from outside the asm module, so you could do emterpreted => outside => emterpreted, and we would
+    #       miss the first one there. But this is acceptable to do, because we can't save such a stack anyhow, due to the outside!
+    #print 'can call', can_call, '\n!!!\n', asm.tables, '!'
+    reachable_from = {}
+    for func, targets in can_call.iteritems():
+      for target in targets:
+        if target not in reachable_from:
+          reachable_from[target] = set()
+        reachable_from[target].add(func)
+    #print 'reachable from', reachable_from
+    # find all functions that can reach the sync funcs, which are those that can be on the stack during an async save/load, and hence must all be emterpreted
+    to_check = list(SYNC_FUNCS)
+    advised = set()
+    while len(to_check) > 0:
+      curr = to_check.pop()
+      if curr in reachable_from:
+        for reacher in reachable_from[curr]:
+          if reacher not in advised:
+            if not is_dyn_call(reacher) and not is_function_table(reacher): advised.add(str(reacher))
+            to_check.append(reacher)
+    print "Suggested list of functions to run in the emterpreter:"
+    print "  -s EMTERPRETIFY_WHITELIST='" + str(sorted(list(advised))).replace("'", '"') + "'"
+    print "(%d%% out of %d functions)" % (int((100.0*len(advised))/len(can_call)), len(can_call))
+    sys.exit(0)
 
   BLACKLIST = set(list(BLACKLIST) + extra_blacklist)
 
-  shared.logging.debug('saving original (non-emterpreted) code to ' + infile + '.orig.js')
-  shutil.copyfile(infile, infile + '.orig.js')
+  if DEBUG or SWAPPABLE:
+    orig = infile + '.orig.js'
+    shared.logging.debug('saving original (non-emterpreted) code to ' + orig)
+    shutil.copyfile(infile, orig)
 
   # final global functions
 
   asm = asm_module.AsmModule(infile)
 
-  # sanity check on blacklist
+  # process blacklist
 
   for func in extra_blacklist:
     assert func in asm.funcs, 'requested blacklist of %s but it does not exist' % func
 
+  ## debugging
+  #import hashlib
+  #def hash(s):
+  #  hash_object = hashlib.sha256(s)
+  #  return int(hash_object.hexdigest(), 16)
+  #if len(WHITELIST) == 0 and len(extra_blacklist) == 0:
+  #  WHITELIST = set([func for func in asm.funcs if func[0] == '_' and hash(func) % 3 == 1])
+  #  print >> sys.stderr, 'manual whitelist', len(WHITELIST), '/', len(asm.funcs)
+  ##
+
+  if len(WHITELIST) > 0:
+    # we are using a whitelist: fill the blacklist with everything not whitelisted
+    BLACKLIST = set([func for func in asm.funcs if func not in WHITELIST])
+
   # decide which functions will be emterpreted, and find which are externally reachable (from outside other emterpreted code; those will need trampolines)
 
-  emterpreted_funcs = set([func for func in asm.funcs if func not in BLACKLIST and not func.startswith('dynCall_')])
+  emterpreted_funcs = set([func for func in asm.funcs if func not in BLACKLIST and not is_dyn_call(func)])
 
   tabled_funcs = asm.get_table_funcs()
   exported_funcs = [func.split(':')[0] for func in asm.exports]
 
-  temp = infile + '.tmp.js'
+  temp = temp_files.get('.js').name # infile + '.tmp.js'
 
   # find emterpreted functions reachable by non-emterpreted ones, we will force a trampoline for them later
 
@@ -599,17 +831,23 @@ if __name__ == '__main__':
   external_emterpreted_funcs = filter(lambda func: func in tabled_funcs or func in exported_funcs or func in reachable_funcs, emterpreted_funcs)
 
   # process functions, generating bytecode
-  shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'emterpretedFuncs': list(emterpreted_funcs), 'externalEmterpretedFuncs': list(external_emterpreted_funcs), 'opcodes': OPCODES, 'ropcodes': ROPCODES }, output_filename=temp, just_concat=True)
+  shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'emterpretedFuncs': list(emterpreted_funcs), 'externalEmterpretedFuncs': list(external_emterpreted_funcs), 'opcodes': OPCODES, 'ropcodes': ROPCODES, 'ASYNC': ASYNC, 'PROFILING': PROFILING, 'ASSERTIONS': ASSERTIONS }, output_filename=temp, just_concat=True)
 
   # load the module and modify it
   asm = asm_module.AsmModule(temp)
 
+  # find memfile. can be x.js.mem or x.html.mem
   in_mem_file = infile + '.mem'
   in_mem_file_base = os.path.basename(in_mem_file)
   out_mem_file = outfile + '.mem'
   out_mem_file_base = os.path.basename(out_mem_file)
+  if in_mem_file_base not in asm.pre_js:
+    in_mem_file = (infile + '.mem').replace('.js.mem', '.html.mem')
+    in_mem_file_base = os.path.basename(in_mem_file)
+    out_mem_file = (outfile + '.mem').replace('.js.mem', '.html.mem')
+    out_mem_file_base = os.path.basename(out_mem_file)
+    assert in_mem_file_base in asm.pre_js, 'we assume a mem init file for now (looked for %s)' % in_mem_file
 
-  assert in_mem_file_base in asm.pre_js, 'we assume a mem init file for now (looked for %s)' % in_mem_file
   if not force_memfile:
     asm.pre_js = asm.pre_js.replace(in_mem_file_base, out_mem_file_base)
     assert os.path.exists(in_mem_file), 'need to find mem file at %s' % in_mem_file
@@ -644,12 +882,30 @@ if __name__ == '__main__':
 
   global_vars = {}
   rglobal_vars = {}
+  global_var_types = {}
   global_var_id = 0
+
+  def note_global(target, j, code):
+    global global_var_id
+    imp = asm.imports[target]
+    ty = asm.get_import_type(imp)
+    assert ty in ['i', 'd'], target
+    if code[j] == 'GETGLBI' and ty == 'd':
+      # the js optimizer doesn't know all types, we must fix it up here
+      assert '.0' in imp or '+' in imp, imp
+      code[j] = 'GETGLBD'
+      ty = 'd'
+    if target not in global_vars:
+      global_vars[target] = global_var_id
+      rglobal_vars[global_var_id] = target
+      global_var_id += 1
+      global_var_types[target] = ty
+    else:
+      assert global_var_types[target] == ty
 
   call_sigs = {} # signatures appearing for each call target
   def process_code(func, code, absolute_targets):
     global global_func_id
-    global global_var_id
     absolute_start = code_start + len(all_code) # true absolute starting point of this function
     #print 'processing code', func, absolute_start
     for i in range(len(code)/4):
@@ -677,20 +933,12 @@ if __name__ == '__main__':
       elif code[j] in ['GETGLBI', 'GETGLBD']:
         # fix global-accessing instructions' targets
         target = code[j+2]
-        imp = asm.imports[target]
-        assert '|0' in imp or '| 0' in imp or imp == '0'
-        if target not in global_vars:
-          global_vars[target] = global_var_id
-          rglobal_vars[global_var_id] = target
-          global_var_id += 1
+        note_global(target, j, code)
         code[j+2] = global_vars[target]
-      elif code[j] in ['SETGLBI']:
+      elif code[j] in ['SETGLBI', 'SETGLBD']:
         # fix global-accessing instructions' targets
         target = code[j+1]
-        if target not in global_vars:
-          global_vars[target] = global_var_id
-          rglobal_vars[global_var_id] = target
-          global_var_id += 1
+        note_global(target, j, code)
         code[j+1] = global_vars[target]
       elif code[j] == 'absolute-value':
         # put the 32-bit absolute value of an abolute target here
@@ -702,7 +950,7 @@ if __name__ == '__main__':
         for k in range(4):
           code[j + k] = value[k]
 
-  actual_return_types = {}
+  actual_sigs = {}
 
   for i in range(len(lines)):
     line = lines[i]
@@ -714,7 +962,7 @@ if __name__ == '__main__':
       except Exception, e:
         print >> sys.stderr, 'failed to parse code from', line
         raise e
-      assert len(curr) % 4 == 0, curr
+      assert len(curr) % 4 == 0, len(curr)
       funcs[func] = len(all_code) # no operation here should change the length
       if LOG_CODE: print >> sys.stderr, 'raw bytecode for %s:' % func, curr, 'insts:', len(curr)/4
       process_code(func, curr, absolute_targets)
@@ -723,15 +971,8 @@ if __name__ == '__main__':
       func = None
       lines[i] = ''
     elif line.startswith('// return type: ['):
-      name, ret = line.split('[')[1].split(']')[0].split(',')
-      if ret == 'undefined':
-        actual_return_types[name] = 'v'
-      elif ret == '0':
-        actual_return_types[name] = 'i'
-      elif ret == '1':
-        actual_return_types[name] = 'd'
-      elif ret == '2':
-        actual_return_types[name] = 'f'
+      name, sig = line.split('[')[1].split(']')[0].split(',')
+      actual_sigs[name] = sig
       lines[i] = ''
 
   assert global_func_id < 65536, [global_funcs, global_func_id]
@@ -754,12 +995,13 @@ if __name__ == '__main__':
     for i in range(len(code)/4):
       j = i*4
       if type(code[j]) in (str, unicode):
+        opcode_used[code[j]] = True
         code[j] = ROPCODES[code[j]]
 
     # sanity checks
     for i in range(len(code)):
       v = code[i]
-      assert type(v) == int and v >= 0 and v < 256, [i, v, 'in', code]
+      assert type(v) == int and v >= 0 and v < 256, [i, v, 'in', code[i-5:i+5], ROPCODES]
 
   post_process_code(all_code)
 
@@ -792,15 +1034,23 @@ if __name__ == '__main__':
         lines[i] = lines[i].replace(call, '(%s)' % (funcs[func] + code_start))
 
   # finalize funcs JS (first line has the marker, add emterpreters right after that)
-  asm.funcs_js = '\n'.join([lines[0], make_emterpreter(), make_emterpreter(zero=True), '\n'.join(filter(lambda line: len(line) > 0, lines[1:]))]) + '\n'
+  asm.funcs_js = '\n'.join([lines[0], make_emterpreter(), make_emterpreter(zero=True) if ZERO else '', '\n'.join(filter(lambda line: len(line) > 0, lines[1:]))]) + '\n'
   lines = None
 
   # set up emterpreter stack top
   asm.set_pre_js(js='var EMTSTACKTOP = STATIC_BASE + %s, EMT_STACK_MAX = EMTSTACKTOP + %d;' % (stack_start, EMT_STACK_MAX))
 
   # send EMT vars into asm
-  asm.pre_js += 'Module.asmLibraryArg.EMTSTACKTOP = EMTSTACKTOP; Module.asmLibraryArg.EMT_STACK_MAX = EMT_STACK_MAX;\n'
-  asm.imports_js += 'var EMTSTACKTOP = env.EMTSTACKTOP|0;\nvar EMT_STACK_MAX = env.EMT_STACK_MAX|0;\n'
+  asm.pre_js += "Module.asmLibraryArg['EMTSTACKTOP'] = EMTSTACKTOP; Module.asmLibraryArg['EMT_STACK_MAX'] = EMT_STACK_MAX;\n"
+  extra_vars = 'var EMTSTACKTOP = env.EMTSTACKTOP|0;\nvar EMT_STACK_MAX = env.EMT_STACK_MAX|0;\n'
+  first_func = asm.imports_js.find('function ')
+  if first_func < 0:
+    asm.imports_js += extra_vars
+  else:
+    # imports contains a function (not a true asm function, hidden from opt passes) that we must not be before
+    asm.imports_js = asm.imports_js[:first_func] + '\n' + extra_vars + '\n' + asm.imports_js[first_func:]
 
   asm.write(outfile)
+
+temp_files.clean()
 

@@ -454,7 +454,7 @@ Functions
 
 	In addition to fetching the URL from the network, the contents are prepared so that the data is usable in ``IMG_Load`` and so forth (we asynchronously do the work to make the browser decode the image or audio etc.).
 
-	When file is ready the ``onload`` callback will be called. If any error occurs ``onerror`` will be called. The callbacks are called with the file as their argument.
+	When the file is ready the ``onload`` callback will be called. If any error occurs ``onerror`` will be called. The callbacks are called with the file as their argument.
 	
 	:param const char* url: The URL to load.
 	:param const char* file: The name of the file created and loaded from the URL. If the file already exists it will be overwritten.
@@ -476,20 +476,20 @@ Functions
 
 	Instead of writing to a file, this function writes to a buffer directly in memory. This avoids the overhead of using the emulated file system; note however that since files are not used, it cannot do the 'prepare' stage to set things up for ``IMG_Load`` and so forth (``IMG_Load`` etc. work on files).
 
-	When file is ready then the ``onload`` callback will be called. If any error occurred ``onerror`` will be called. The callbacks are called with the file as their argument.
+	When the file is ready then the ``onload`` callback will be called. If any error occurred ``onerror`` will be called.
 	
 	:param url: The URL of the file to load.
 	:type url: const char* 
 	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
 	:param em_async_wget_onload_func onload: Callback on successful load of the URL into the buffer. The callback function parameter values are:	
 	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
+		- *(void*)* : Equal to ``arg`` (user defined data).
 		- *(void*)* : A pointer to a buffer with the data. Note that, as with the worker API, the data buffer only lives during the callback; it must be used or copied during that time.
 		- *(int)* : The size of the buffer, in bytes. 
 	
 	:param em_arg_callback_func onerror: Callback in the event of failure. The callback function parameter values are:	
 	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
+		- *(void*)* : Equal to ``arg`` (user defined data).
 
 
 .. c:function:: int emscripten_async_wget2(const char* url, const char* file,  const char* requesttype, const char* param, void *arg, em_async_wget2_onload_func onload, em_async_wget2_onstatus_func onerror, em_async_wget2_onstatus_func onprogress)
@@ -513,17 +513,17 @@ Functions
 	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
 	:param em_async_wget2_onload_func onload: Callback on successful load of the file. The callback function parameter values are:	
 	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
+		- *(void*)* : Equal to ``arg`` (user defined data).
 		- *(const char*)* : The ``file`` passed to the original call.
 		
 	:param em_async_wget2_onstatus_func onerror: Callback in the event of failure. The callback function parameter values are:	
 	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
+		- *(void*)* : Equal to ``arg`` (user defined data).
 		- *(int)* : The HTTP status code.
 		
 	:param em_async_wget2_onstatus_func onprogress: Callback during load of the file. The callback function parameter values are:	
 	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
+		- *(void*)* : Equal to ``arg`` (user defined data).
 		- *(int)* : The progress (percentage completed).
 
 	:returns: A handle to request (``int``) that can be used to :c:func:`abort <emscripten_async_wget2_abort>` the request.
@@ -552,19 +552,19 @@ Functions
 	:type free: const int
 	:param em_async_wget2_data_onload_func onload: Callback on successful load of the file. The callback function parameter values are:
 	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
+		- *(void*)* : Equal to ``arg`` (user defined data).
 		- *(void*)* : A pointer to the buffer in memory. 
 		- *(unsigned)* : The size of the buffer (in bytes).
 		
 	:param em_async_wget2_data_onerror_func onerror: Callback in the event of failure. The callback function parameter values are:	
 	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
+		- *(void*)* : Equal to ``arg`` (user defined data).
 		- *(int)* : The HTTP error code. 
 		- *(const char*)* : A string with the status description.
 		
 	:param em_async_wget2_data_onprogress_func onprogress: Callback called (regularly) during load of the file to update progress. The callback function parameter values are:	
 	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
+		- *(void*)* : Equal to ``arg`` (user defined data).
 		- *(int)* : The number of bytes loaded.  
 		- *(int)* : The total size of the data in bytes, or zero if the size is unavailable.
 
@@ -578,7 +578,108 @@ Functions
 	:param int handle: A handle to request to be aborted.
 
 
+.. c:function:: void emscripten_async_prepare_data(char* data, int size, const char *suffix, void *arg, em_async_prepare_data_onload_func onload, em_arg_callback_func onerror)
+		 
+	Prepares a buffer of data asynchronously. This is a "data" version of :c:func:`emscripten_async_prepare`, which receives raw data as input instead of a filename (this can prevent the need to write data to a file first). 
 	
+	When file is loaded then the ``onload`` callback will be called. If any error occurs ``onerror`` will be called.
+	
+	``onload`` also receives a second parameter, which is a 'fake' filename which you can pass into ``IMG_Load`` (it is not an actual file, but it identifies this image for ``IMG_Load`` to be able to process it). Note that the user of this API is responsible for ``free()`` ing the memory allocated for the fake filename.
+
+	:param char* data: The buffer of data to prepare.
+	:param suffix: The file suffix, e.g. 'png' or 'jpg'.
+	:type suffix: const char* 
+	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
+	:param em_async_prepare_data_onload_func onload: Callback on successful preparation of the file. The callback function parameter values are:	
+	
+		- *(void*)* : Equal to ``arg`` (user defined data).
+		- *(const char*)* : A 'fake' filename which you can pass into ``IMG_Load``. See above for more information.
+		
+	:param em_arg_callback_func onerror: Callback in the event of failure. The callback function parameter value is:
+	
+		- *(void*)* : Equal to ``arg`` (user defined data).
+
+
+Emscripten Asynchronous IndexedDB API
+=====================================
+
+  IndexedDB is a browser API that lets you store data persistently, that is, you can save data there and load it later when the user re-visits the web page. IDBFS provides one way to use IndexedDB, through the Emscripten filesystem layer. The ``emscripten_idb_*`` methods listed here provide an alternative API, directly to IndexedDB, thereby avoiding the overhead of the filesystem layer.
+
+.. c:function:: void emscripten_idb_async_load(const char *db_name, const char *file_id, void* arg, em_async_wget_onload_func onload, em_arg_callback_func onerror)
+		 
+	Loads data from local IndexedDB storage asynchronously. This allows use of persistent data, without the overhead of the filesystem layer.
+	
+	When the data is ready then the ``onload`` callback will be called. If any error occurred ``onerror`` will be called.
+	
+	:param db_name: The IndexedDB database from which to load.
+	:param file_id: The identifier of the data to load.
+	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
+	:param em_async_wget_onload_func onload: Callback on successful load of the URL into the buffer. The callback function parameter values are:	
+	
+		- *(void*)* : Equal to ``arg`` (user defined data).
+		- *(void*)* : A pointer to a buffer with the data. Note that, as with the worker API, the data buffer only lives during the callback; it must be used or copied during that time.
+		- *(int)* : The size of the buffer, in bytes. 
+	
+	:param em_arg_callback_func onerror: Callback in the event of failure. The callback function parameter values are:	
+	
+		- *(void*)* : Equal to ``arg`` (user defined data).
+
+.. c:function:: void emscripten_idb_async_store(const char *db_name, const char *file_id, void* ptr, int num, void* arg, em_arg_callback_func onstore, em_arg_callback_func onerror);
+		 
+	Stores data to local IndexedDB storage asynchronously. This allows use of persistent data, without the overhead of the filesystem layer.
+	
+	When the data has been stored then the ``onstore`` callback will be called. If any error occurred ``onerror`` will be called.
+	
+	:param db_name: The IndexedDB database from which to load.
+	:param file_id: The identifier of the data to load.
+	:param ptr: A pointer to the data to store.
+	:param num: How many bytes to store.
+	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
+	:param em_async_wget_onload_func onload: Callback on successful load of the URL into the buffer. The callback function parameter values are:	
+	
+		- *(void*)* : Equal to ``arg`` (user defined data).
+	
+	:param em_arg_callback_func onerror: Callback in the event of failure. The callback function parameter values are:	
+	
+		- *(void*)* : Equal to ``arg`` (user defined data).
+	
+.. c:function:: void emscripten_idb_async_delete(const char *db_name, const char *file_id, void* arg, em_arg_callback_func ondelete, em_arg_callback_func onerror)
+		 
+	Deletes data from local IndexedDB storage asynchronously.
+	
+	When the data has been deleted then the ``ondelete`` callback will be called. If any error occurred ``onerror`` will be called.
+	
+	:param db_name: The IndexedDB database.
+	:param file_id: The identifier of the data.
+	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
+	:param em_arg_callback_func ondelete: Callback on successful delete
+
+		- *(void*)* : Equal to ``arg`` (user defined data).
+	
+	:param em_arg_callback_func onerror: Callback in the event of failure. The callback function parameter values are:	
+	
+		- *(void*)* : Equal to ``arg`` (user defined data).
+
+.. c:function:: void emscripten_idb_async_exists(const char *db_name, const char *file_id, void* arg, em_arg_callback_func oncheck, em_arg_callback_func onerror)
+		 
+	Checks if data with a certain ID exists in the local IndexedDB storage asynchronously.
+	
+	When the data has been checked then the ``oncheck`` callback will be called. If any error occurred ``onerror`` will be called.
+	
+	:param db_name: The IndexedDB database.
+	:param file_id: The identifier of the data.
+	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
+	:param em_arg_callback_func oncheck: Callback on successful check, with arguments
+
+		- *(void*)* : Equal to ``arg`` (user defined data).
+		- *int* : Whether the file exists or not.
+	
+	:param em_arg_callback_func onerror: Callback in the event of failure. The callback function parameter values are:	
+	
+		- *(void*)* : Equal to ``arg`` (user defined data).
+
+
+
 .. c:function:: int emscripten_async_prepare(const char* file, em_str_callback_func onload, em_str_callback_func onerror)
 		 
 	Prepares a file asynchronously.
@@ -599,29 +700,6 @@ Functions
 		
 	:return: 0 if successful, -1 if the file does not exist
 	:rtype: int
-
-
-
-.. c:function:: void emscripten_async_prepare_data(char* data, int size, const char *suffix, void *arg, em_async_prepare_data_onload_func onload, em_arg_callback_func onerror)
-		 
-	Prepares a buffer of data asynchronously. This is a "data" version of :c:func:`emscripten_async_prepare`, which receives raw data as input instead of a filename (this can prevent the need to write data to a file first). 
-	
-	When file is loaded then the ``onload`` callback will be called. If any error occurs ``onerror`` will be called.
-	
-	``onload`` also receives a second parameter, which is a 'fake' filename which you can pass into ``IMG_Load`` (it is not an actual file, but it identifies this image for ``IMG_Load`` to be able to process it). Note that the user of this API is responsible for ``free()`` ing the memory allocated for the fake filename.
-
-	:param char* data: The buffer of data to prepare.
-	:param suffix: The file suffix, e.g. 'png' or 'jpg'.
-	:type suffix: const char* 
-	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
-	:param em_async_prepare_data_onload_func onload: Callback on successful preparation of the file. The callback function parameter values are:	
-	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
-		- *(const char*)* : A 'fake' filename which you can pass into ``IMG_Load``. See above for more information.
-		
-	:param em_arg_callback_func onerror: Callback in the event of failure. The callback function parameter value is:
-	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
 
 
 
@@ -706,7 +784,7 @@ Functions
 	
 		- *(char*)* : The ``data`` pointer provided in :c:func:`emscripten_call_worker`.
 		- *(int)* : The ``size`` of the block of data.	
-		- *(void*)* : A pointer to ``arg`` (user defined data).
+		- *(void*)* : Equal to ``arg`` (user defined data).
 
 	:param void* arg: An argument (user data) to be passed to the callback
 
@@ -995,6 +1073,81 @@ Typedefs
 	
 	.. note:: It is better to avoid unaligned operations, but if you are reading from a packed stream of bytes or such, these types may be useful!
 
+
+Emterpreter-Async functions
+===========================
+
+Emterpreter-async functions are asynchronous functions that appear synchronously in C, the linker flags ``-s EMTERPRETIFY -s EMTERPRETIFY_ASYNC=1`` are required to use these functions. See `Emterpreter <https://github.com/kripken/emscripten/wiki/Emterpreter>`_ for more details.
+
+Sleeping
+--------
+
+.. c:function:: void emscripten_sleep(unsigned int ms)
+
+	Sleep for `ms` milliseconds. This is a normal "synchronous" sleep, which blocks all other operations while it runs. In other words, if
+	there are other async events waiting to happen, they will not happen during this sleep, which makes sense as conceptually this code is
+	on the stack (that's how it looks in the C source code). If you do want things to happen while sleeping, see ``emscripten_sleep_with_yield``.
+
+.. c:function:: void emscripten_sleep_with_yield(unsigned int ms)
+
+	Sleep for `ms` milliseconds, while allowing other asynchronous operations, e.g. caused by ``emscripten_async_call``, to run normally, during
+	this sleep. Note that this method **does** still block the main loop, as otherwise it could recurse, if you are calling this method from it.
+	Even so, you should use this method carefully: the order of execution is potentially very confusing this way.
+
+Network
+-------
+
+.. c:function:: void emscripten_wget_data(const char* url, void** pbuffer, int* pnum, int *perror);
+
+	Synchronously fetches data off the network, and stores it to a buffer in memory, which is allocated for you. **You must free the buffer, or it will leak!**
+
+	:param url: The URL to fetch from
+	:param pbuffer: An out parameter that will be filled with a pointer to a buffer containing the data that is downloaded. This space has been malloced for you, **and you must free it, or it will leak!**
+	:param pnum: An out parameter that will be filled with the size of the downloaded data.
+	:param perror: An out parameter that will be filled with a non-zero value if an error occurred.
+
+IndexedDB
+---------
+
+.. c:function:: void emscripten_idb_load(const char *db_name, const char *file_id, void** pbuffer, int* pnum, int *perror);
+
+	Synchronously fetches data from IndexedDB, and stores it to a buffer in memory, which is allocated for you. **You must free the buffer, or it will leak!**
+
+	:param db_name: The name of the database to load from
+	:param file_id: The name of the file to load
+	:param pbuffer: An out parameter that will be filled with a pointer to a buffer containing the data that is downloaded. This space has been malloced for you, **and you must free it, or it will leak!**
+	:param pnum: An out parameter that will be filled with the size of the downloaded data.
+	:param perror: An out parameter that will be filled with a non-zero value if an error occurred.
+
+.. c:function:: void emscripten_idb_store(const char *db_name, const char *file_id, void* ptr, int num, int *perror);
+
+	Synchronously stores data to IndexedDB.
+
+	:param db_name: The name of the database to store to
+	:param file_id: The name of the file to store
+	:param buffer: A pointer to the data to store
+	:param num: How many bytes to store
+	:param perror: An out parameter that will be filled with a non-zero value if an error occurred.
+
+.. c:function:: void emscripten_idb_delete(const char *db_name, const char *file_id, int *perror);
+
+	Synchronously deletes data from IndexedDB.
+
+	:param db_name: The name of the database to delete from
+	:param file_id: The name of the file to delete
+	:param perror: An out parameter that will be filled with a non-zero value if an error occurred.
+
+.. c:function:: void emscripten_idb_exists(const char *db_name, const char *file_id, int* pexists, int *perror);
+
+	Synchronously checks if a file exists in IndexedDB.
+
+	:param db_name: The name of the database to check in
+	:param file_id: The name of the file to check
+	:param perror: An out parameter that will be filled with a non-zero value if the file exists in that database.
+	:param perror: An out parameter that will be filled with a non-zero value if an error occurred.
+
+.. c:function:: void emscripten_idb_load(const char *db_name, const char *file_id, void** pbuffer, int* pnum, int *perror);
+
 		
 Asyncify functions
 ==================
@@ -1006,12 +1159,12 @@ Typedefs
 
 .. c:type:: emscripten_coroutine
 
-    A handle to the strcture used by coroutine supporting functions.
+    A handle to the structure used by coroutine supporting functions.
 
 Functions
 ---------
 
-.. c::function:: void emscripten_sleep(unsinged int ms)
+.. c::function:: void emscripten_sleep(unsigned int ms)
 
     Sleep for `ms` milliseconds.
 
@@ -1029,3 +1182,4 @@ Functions
 
     This function should only be called in a coroutine created by `emscripten_coroutine_create`, when it called, the coroutine is paused and the caller will continue.
     
+

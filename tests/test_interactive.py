@@ -107,3 +107,6 @@ class interactive(BrowserCore):
       assert os.path.exists(program)
       Popen([PYTHON, EMCC, '-O2', program, '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should hear "Hello World!"')
+
+  def test_vr(self):
+    self.btest(path_from_root('tests', 'test_vr.c'), expected='0')

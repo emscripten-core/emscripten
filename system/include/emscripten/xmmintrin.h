@@ -53,17 +53,13 @@ _mm_load_ps(const float *__p)
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_loadl_pi(__m128 __a, const void /*__m64*/ *__p)
 {
-  // TODO: This actually corresponds to the SIMD.float32x4.loadXY function in
-  // SIMD.js. Use that instead.
-  return (__m128){ ((const float*)__p)[0], ((const float*)__p)[1], __a[2], __a[3] };
+  return __builtin_shufflevector(emscripten_float32x4_loadxy(__p), __a, 0, 1, 6, 7);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_loadh_pi(__m128 __a, const void /*__m64*/ *__p)
 {
-  // TODO: Due to alignment masking, this would probably be faster as a loadXY
-  // followed by a shuffle.
-  return (__m128){ __a[0], __a[1], ((const float*)__p)[0], ((const float*)__p)[1] };
+  return __builtin_shufflevector(__a, emscripten_float32x4_loadxy(__p), 0, 1, 4, 5);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
@@ -94,27 +90,19 @@ _mm_load_ps1(const float *__p)
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_load_ss(const float *__p)
 {
-  // TODO: This actually corresponds to the SIMD.float32x4.loadX function in
-  // SIMD.js. Use that instead.
-  return (__m128){ *__p, 0.0f, 0.0f, 0.0f };
+  return emscripten_float32x4_loadx(__p);
 }
 
 static __inline__ void __attribute__((__always_inline__))
 _mm_storel_pi(void /*__m64*/ *__p, __m128 __a)
 {
-  // TODO: This actually corresponds to the SIMD.float32x4.storeXY function in
-  // SIMD.js. Use that instead.
-  ((float*)__p)[0] = __a[0];
-  ((float*)__p)[1] = __a[1];
+  emscripten_float32x4_storexy(__p, __a);
 }
 
 static __inline__ void __attribute__((__always_inline__))
 _mm_storeh_pi(void /*__m64*/ *__p, __m128 __a)
 {
-  // TODO: Due to alignment masking, on x64 this would be faster as a sizzle
-  // and a storeXY, so we should use that instead.
-  ((float*)__p)[0] = __a[2];
-  ((float*)__p)[1] = __a[3];
+  emscripten_float32x4_storexy(__p, __builtin_shufflevector(__a, __a, 2, 3, 0, 1));
 }
 
 static __inline__ void __attribute__((__always_inline__))
@@ -152,7 +140,7 @@ _mm_store_ps1(float *__p, __m128 __a)
 static __inline__ void __attribute__((__always_inline__))
 _mm_store_ss(float *__p, __m128 __a)
 {
-  *__p = __a[0];
+  emscripten_float32x4_storex(__p, __a);
 }
 
 static __inline__ void __attribute__((__always_inline__))

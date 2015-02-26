@@ -87,6 +87,7 @@ struct IString {
   }
 
   const char *c_str() const { return str; }
+  bool equals(const char *other) const { return !strcmp(str, other); }
 
   bool isNull() { return str == nullptr; }
 };

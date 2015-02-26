@@ -44,7 +44,7 @@ When submitting patches, please:
 
 - Make pull requests to **incoming**, not master.  
 - Do not include merge commits in pull requests; include only commits with the new relevant code.
-- :ref:`Run all the automatic tests <emscripten-test-suite>` and make sure they pass.  Some tests might not be required for very simple patches (for example, when just adding tests for new library functions).
+- :ref:`Run all the automatic tests <emscripten-test-suite>` and make sure they pass.  Some tests might not be required for very simple patches (for example, when just adding tests for new library functions). If you don't have time to run all the tests, at least run a random subset of them (say, 100), see that link.
 - "Add an automatic test to `tests/runner.py <https://github.com/kripken/emscripten/blob/master/tests/runner.py>`_ if you add any new functionality or fix a bug.
 - Record the tests that were run in the pull request or issue.
 

@@ -65,9 +65,9 @@ var ALLOW_MEMORY_GROWTH = 0; // If false, we abort with an error if we try to al
                              // runtime, seamlessly and dynamically. This has a performance cost though,
                              // both during the actual growth and in general (the latter is because in
                              // that case we must be careful about optimizations, in particular the
-                             // eliminator). Note that memory growth is only supported with typed
-                             // arrays.
-var MAX_SETJMPS = 20; // size of setjmp table allocated in each function invocation (that has setjmp)
+                             // eliminator).
+                             // See https://code.google.com/p/v8/issues/detail?id=3907 regarding
+                             // memory growth performance in chrome.
 
 var GLOBAL_BASE = -1; // where global data begins; the start of static memory. -1 means use the
                       // default, any other value will be used as an override
@@ -134,7 +134,8 @@ var PRECISE_F32 = 0; // 0: Use JS numbers for floating-point values. These are 6
                      //    polyfill in cases where engine support is not present. In addition, we can
                      //    remove the empty polyfill calls themselves on the client when generating html,
                      //    which should mean that this gives you the best of both worlds of 0 and 1, and is
-                     //    therefore recommended.
+                     //    therefore recommended, *unless* you need a guarantee of proper float32 precision
+                     //    (in that case, use option 1).
                      // XXX Note: To optimize float32-using code, we use the 'const' keyword in the emitted
                      //           code. This allows us to avoid unnecessary calls to Math.fround, which would
                      //           slow down engines not yet supporting that function. 'const' is present in
@@ -535,6 +536,29 @@ var HEADLESS = 0; // If 1, will include shim code that tries to 'fake' a browser
 var DETERMINISTIC = 0; // If 1, we force Date.now(), Math.random, etc. to return deterministic
                        // results. Good for comparing builds for debugging purposes (and nothing else)
 
+var MODULARIZE = 0; // By default we emit all code in a straightforward way into the output
+                    // .js file. That means that if you load that in a script tag in a web
+                    // page, it will use the global scope. With MODULARIZE set, we will instead emit
+                    //
+                    //   var EXPORT_NAME = function(Module) {
+                    //     Module = Module || {};
+                    //     // .. all the emitted code from emscripten ..
+                    //     return Module;
+                    //   };
+                    //
+                    // where EXPORT_NAME is from the option of the same name (so, by default
+                    // it will be var Module = ..., and so you should change EXPORT_NAME if
+                    // you want more than one module in the same web page).
+                    //
+                    // You can then use this by something like
+                    //
+                    //   var instance = EXPORT_NAME();
+                    //
+                    // or
+                    //
+                    //   var instance = EXPORT_NAME({ option: value, ... });
+                    //
+
 var BENCHMARK = 0; // If 1, will just time how long main() takes to execute, and not
                    // print out anything at all whatsoever. This is useful for benchmarking.
 
@@ -576,6 +600,15 @@ var NO_DYNAMIC_EXECUTION = 0; // When enabled, we do not emit eval() and new Fun
 
 var EMTERPRETIFY = 0; // Runs tools/emterpretify on the compiler output
 var EMTERPRETIFY_BLACKLIST = []; // Functions to not emterpret, that is, to run normally at full speed
+var EMTERPRETIFY_WHITELIST = []; // If this contains any functions, then only the functions in this list
+                                 // are emterpreted (as if all the rest are blacklisted; this overrides the BLACKLIST)
+var EMTERPRETIFY_ASYNC = 0; // Allows sync code in the emterpreter, by saving the call stack, doing an async delay, and resuming it
+var EMTERPRETIFY_ADVISE = 0; // Performs a static analysis to suggest which functions should be run in the emterpreter, as it
+                             // appears they can be on the stack when a sync function is called in the EMTERPRETIFY_ASYNC option.
+                             // After showing the suggested list, compilation will halt. You can apply the provided list as an
+                             // emcc argument when compiling later.
+                             // Note that this depends on things like inlining. If you run this with different inlining than
+                             // when you use the list, it might not work.
 
 var RUNNING_JS_OPTS = 0; // whether js opts will be run, after the main compiler
 var RUNNING_FASTCOMP = 1; // whether we are running the fastcomp backend

@@ -2098,29 +2098,29 @@ var LibraryEmbind = {
         Object.defineProperty(this, '__parent', {
             value: wrapperPrototype
         });
-        this.__construct.apply(this, arraySlice.call(arguments));
+        this["__construct"].apply(this, arraySlice.call(arguments));
     });
 
     // It's a little nasty that we're modifying the wrapper prototype here.
 
-    wrapperPrototype.__construct = function __construct() {
+    wrapperPrototype["__construct"] = function __construct() {
         if (this === wrapperPrototype) {
             throwBindingError("Pass correct 'this' to __construct");
         }
 
-        var inner = baseConstructor.implement.apply(
+        var inner = baseConstructor["implement"].apply(
             undefined,
             [this].concat(arraySlice.call(arguments)));
         var $$ = inner.$$;
-        inner.notifyOnDestruction();
+        inner["notifyOnDestruction"]();
         $$.preservePointerOnDelete = true;
-        Object.defineProperty(this, '$$', {
+        Object.defineProperties(this, { $$: {
             value: $$
-        });
+        }});
         registerInheritedInstance(registeredClass, $$.ptr, this);
     };
 
-    wrapperPrototype.__destruct = function __destruct() {
+    wrapperPrototype["__destruct"] = function __destruct() {
         if (this === wrapperPrototype) {
             throwBindingError("Pass correct 'this' to __destruct");
         }

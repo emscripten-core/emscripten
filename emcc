@@ -55,7 +55,7 @@ from tools.response_file import read_response_file
 
 # endings = dot + a suffix, safe to test by  filename.endswith(endings)
 C_ENDINGS = ('.c', '.C')
-CXX_ENDINGS = ('.cpp', '.cxx', '.cc', '.CPP', '.CXX', '.CC')
+CXX_ENDINGS = ('.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.CC', '.C++')
 OBJC_ENDINGS = ('.m',)
 OBJCXX_ENDINGS = ('.mm',)
 SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS
@@ -69,6 +69,8 @@ SUPPORTED_LINKER_FLAGS = ('--start-group', '-(', '--end-group', '-)')
 LIB_PREFIXES = ('', 'lib')
 
 JS_CONTAINING_SUFFIXES = ('js', 'html')
+
+DEFERRED_REPONSE_FILES = ('EMTERPRETIFY_BLACKLIST', 'EMTERPRETIFY_WHITELIST')
 
 # Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc opt
 # levels 2 and 3 (emcc 3 is unsafe opts, so unsuitable for the only level to get
@@ -184,9 +186,15 @@ CONFIGURE_CONFIG = (os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in 
 CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(sys.argv)# or 'CMakeCCompilerId' in ' '.join(sys.argv)
 if CONFIGURE_CONFIG or CMAKE_CONFIG:
   debug_configure = 0 # XXX use this to debug configure stuff. ./configure's generally hide our normal output including stderr so we write to a file
-  use_js = os.environ.get('EMCONFIGURE_JS') # whether we fake configure tests using clang - the local, native compiler - or not. if not we generate JS and use node with a shebang
-                   # neither approach is perfect, you can try both, but may need to edit configure scripts in some cases
-                   # XXX False is not fully tested yet
+
+  # Whether we fake configure tests using clang - the local, native compiler - or not. if not we generate JS and use node with a shebang
+  # Beither approach is perfect, you can try both, but may need to edit configure scripts in some cases
+  # By default we configure in js, which can break on local filesystem access, etc., but is otherwise accurate so we
+  # disable this if we think we have to. A value of '2' here will force JS checks in all cases. In summary:
+  # 0 - use native compilation for configure checks
+  # 1 - use js when we think it will work
+  # 2 - always use js for configure checks
+  use_js = int(os.environ.get('EMCONFIGURE_JS') or 1)
 
   if debug_configure:
     tempout = '/tmp/emscripten_temp/out'
@@ -195,7 +203,7 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
 
   src = None
   for arg in sys.argv:
-    if arg.endswith('.c'):
+    if arg.endswith(SOURCE_ENDINGS):
       try:
         src = open(arg).read()
         if debug_configure: open(tempout, 'a').write('============= ' + arg + '\n' + src + '\n=============\n\n')
@@ -203,13 +211,13 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
         pass
     elif arg.endswith('.s'):
       if debug_configure: open(tempout, 'a').write('(compiling .s assembly, must use clang\n')
-      use_js = 0
+      if use_js == 1: use_js = 0
     elif arg == '-E':
-      use_js = 0
+      if use_js == 1: use_js = 0
 
   if src:
     if 'fopen' in src and '"w"' in src:
-      use_js = 0 # we cannot write to files from js!
+      if use_js == 1: use_js = 0 # we cannot write to files from js!
       if debug_configure: open(tempout, 'a').write('Forcing clang since uses fopen to write\n')
 
   compiler = os.environ.get('CONFIGURE_CC') or (shared.CLANG if not use_js else shared.EMCC) # if CONFIGURE_CC is defined, use that. let's you use local gcc etc. if you need that
@@ -255,7 +263,9 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
     os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = '1'
     ret = subprocess.call(cmd)
     os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = ''
-    if not os.path.exists(target): exit(1)
+    if not os.path.exists(target): exit(ret) # note that emcc -c will cause target to have the wrong value here;
+                                             # but then, we don't care about bitcode outputs anyhow, below, so
+                                             # skipping to exit(ret) is fine
     if target.endswith('.js'):
       shutil.copyfile(target, target[:-3])
       target = target[:-3]
@@ -382,6 +392,8 @@ def log_time(name):
   logging.debug('emcc step "%s" took %.2f seconds', name, now - log_time_last)
   log_time_last = now
 
+misc_temp_files = shared.configuration.get_temp_files()
+
 try:
   call = CXX if use_cxx else CC
 
@@ -393,6 +405,7 @@ try:
   debug_level = 0
   requested_debug = ''
   profiling = False
+  profiling_funcs = False
   tracing = False
   emit_symbol_map = False
   js_opts = None
@@ -533,6 +546,9 @@ try:
     elif newargs[i] == '-profiling' or newargs[i] == '--profiling':
       debug_level = 2
       profiling = True
+      newargs[i] = ''
+    elif newargs[i] == '-profiling-funcs' or newargs[i] == '--profiling-funcs':
+      profiling_funcs = True
       newargs[i] = ''
     elif newargs[i] == '--tracing':
       tracing = True
@@ -831,7 +847,7 @@ try:
             break
         if found: break
       if found: break
-    if not found and lib not in ['GL', 'GLU', 'glut', 'SDL']: # whitelist our default libraries
+    if not found and lib not in ['GL', 'GLU', 'glut', 'm', 'SDL']: # whitelist our default libraries
       logging.warning('emcc: cannot find library "%s"', lib)
 
   # If not compiling to JS, then we are compiling to an intermediate bitcode objects or library, so
@@ -872,7 +888,10 @@ try:
   for change in settings_changes:
     key, value = change.split('=')
     if value[0] == '@':
-      value = open(value[1:]).read()
+      if key not in DEFERRED_REPONSE_FILES:
+        value = open(value[1:]).read()
+      else:
+        value = '"' + value + '"'
     else:
       value = value.replace('\\', '\\\\')
     exec('shared.Settings.' + key + ' = ' + value)
@@ -883,6 +902,7 @@ try:
     try:
       assert shared.Settings.ASM_JS > 0, 'ASM_JS must be enabled in fastcomp'
       assert shared.Settings.UNALIGNED_MEMORY == 0, 'forced unaligned memory not supported in fastcomp'
+      assert shared.Settings.FORCE_ALIGNED_MEMORY == 0, 'forced aligned memory is not supported in fastcomp'
       assert shared.Settings.CHECK_HEAP_ALIGN == 0, 'check heap align not supported in fastcomp - use SAFE_HEAP instead'
       assert shared.Settings.SAFE_DYNCALLS == 0, 'safe dyncalls not supported in fastcomp'
       assert shared.Settings.ASM_HEAP_LOG == 0, 'asm heap log not supported in fastcomp'
@@ -897,8 +917,9 @@ try:
       assert not shared.Settings.RUNTIME_TYPE_INFO, 'RUNTIME_TYPE_INFO is not supported in fastcomp'
       assert not shared.Settings.CORRUPTION_CHECK, 'CORRUPTION_CHECK is not supported in asm.js mode, which is what fastcomp can emit (you can use non-asm.js mode in non-fastcomp)'
       assert not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE, 'Linking modules is not supported in fastcomp'
+      assert not shared.Settings.DLOPEN_SUPPORT, 'dlopen() is not supported yet in fastcomp'
     except Exception, e:
-      logging.error('Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended, see https://github.com/kripken/emscripten/wiki/LLVM-Backend')
+      logging.error('Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
       raise e
 
     if jcache:
@@ -935,11 +956,7 @@ try:
 
     if shared.Settings.SAFE_HEAP and not js_opts:
       js_opts = True
-      logging.warning('enabling js opts to allow SAFE_HEAP to work properly')
-
-    if shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.ASM_JS != 2:
-      logging.warning('Disabling asm.js validation for memory growth (memory can grow, but you lose some amount of speed)');
-      shared.Settings.ASM_JS = 2
+      logging.warning('enabling js opts for SAFE_HEAP')
 
   if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2 or shared.Settings.SAFE_HEAP >= 2:
     debug_level = 4 # must keep debug info to do line-by-line operations
@@ -1024,16 +1041,24 @@ try:
 
   assert not (bind and shared.Settings.NO_DYNAMIC_EXECUTION), 'NO_DYNAMIC_EXECUTION disallows embind'
 
+  if shared.Settings.EMTERPRETIFY:
+    shared.Settings.FINALIZE_ASM_JS = 0
+    shared.Settings.GLOBAL_BASE = 8*256 # keep enough space at the bottom for a full stack frame
+    shared.Settings.SIMPLIFY_IFS = 0 # this is just harmful for emterpreting
+    shared.Settings.EXPORTED_FUNCTIONS += ['emterpret']
+    if not js_opts:
+      js_opts = True
+      logging.warning('enabling js opts for EMTERPRETIFY')
+    if not memory_init_file:
+      logging.warning('enabling --memory-init-file for EMTERPRETIFY')
+      memory_init_file = True
+    assert closure is not 2, 'EMTERPRETIFY requires valid asm.js, and is incompatible with closure 2 which disables that'
+
   if proxy_to_worker:
     shared.Settings.PROXY_TO_WORKER = 1
 
   if js_opts:
     shared.Settings.RUNNING_JS_OPTS = 1
-
-  if shared.Settings.EMTERPRETIFY:
-    shared.Settings.FINALIZE_ASM_JS = 0
-    shared.Settings.GLOBAL_BASE = 8*256 # keep enough space at the bottom for a full stack frame
-    shared.Settings.SIMPLIFY_IFS = 0 # this is just harmful for emterpreting
 
   shared.Settings.RUNNING_FASTCOMP = fastcomp
 
@@ -1127,7 +1152,7 @@ try:
         if file_ending.endswith(SOURCE_ENDINGS):
           temp_file = temp_files[pos][1]
           logging.debug('optimizing %s', input_file)
-          #if DEBUG: shutil.copyfile(temp_file, os.path.join(TEMP_DIR, 'to_opt.bc') # useful when LLVM opt aborts
+          #if DEBUG: shutil.copyfile(temp_file, os.path.join(shared.configuration.CANONICAL_TEMP_DIR, 'to_opt.bc')) # useful when LLVM opt aborts
           new_temp_file = in_temp(unsuffixed(uniquename(temp_file)) + '.o')
           shared.Building.llvm_opt(temp_file, llvm_opts, new_temp_file)
           temp_files[pos] = (temp_files[pos][0], new_temp_file)
@@ -1213,12 +1238,13 @@ try:
   log_time('link')
 
   if DEBUG:
-    logging.debug('saving intermediate processing steps to %s', shared.EMSCRIPTEN_TEMP_DIR)
+    emscripten_temp_dir = shared.get_emscripten_temp_dir()
+    logging.debug('saving intermediate processing steps to %s', emscripten_temp_dir)
 
     intermediate_counter = 0
     def save_intermediate(name=None, suffix='js'):
       global intermediate_counter
-      shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-%d%s.%s' % (intermediate_counter, '' if name is None else '-' + name, suffix)))
+      shutil.copyfile(final, os.path.join(emscripten_temp_dir, 'emcc-%d%s.%s' % (intermediate_counter, '' if name is None else '-' + name, suffix)))
       intermediate_counter += 1
 
     if not LEAVE_INPUTS_RAW: save_intermediate('basebc', 'bc')
@@ -1353,7 +1379,7 @@ try:
         open(memfile, 'wb').write(''.join(map(lambda x: chr(int(x or '0')), s.split(','))))
         if DEBUG:
           # Copy into temp dir as well, so can be run there too
-          shared.safe_copy(memfile, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, os.path.basename(memfile)))
+          shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
         return 'var memoryInitializer = "%s";' % os.path.basename(memfile)
       src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
       open(final + '.mem.js', 'w').write(src)
@@ -1403,10 +1429,14 @@ try:
             passes = ['asmPreciseF32'] + passes
         if emit_symbol_map and 'minifyNames' in passes:
           passes += ['symbolMap='+target+'.symbols']
+        if profiling_funcs and 'minifyNames' in passes:
+          passes += ['profilingFuncs']
         if minify_whitespace and 'last' in passes:
           passes += ['minifyWhitespace']
-        logging.debug('applying js optimization passes: %s', passes)
+        logging.debug('applying js optimization passes: %s', ' '.join(passes))
+        misc_temp_files.note(final)
         final = shared.Building.js_optimizer(final, passes, jcache, debug_level >= 4, js_optimizer_extra_info, just_split=just_split, just_concat=just_concat)
+        misc_temp_files.note(final)
         js_transform_tempfiles.append(final)
         if DEBUG: save_intermediate(title, suffix='js' if 'emitJSON' not in passes else 'json')
 
@@ -1521,7 +1551,7 @@ try:
     if not shared.Settings.EMTERPRETIFY:
       do_minify()
 
-    if shared.Settings.ASM_JS:
+    if opt_level >= 2 and shared.Settings.ASM_JS:
       js_optimizer_queue += ['asmLastOpts']
 
     if shared.Settings.FINALIZE_ASM_JS: js_optimizer_queue += ['last']
@@ -1539,6 +1569,21 @@ try:
 
   log_time('js opts')
 
+  if shared.Settings.MODULARIZE:
+    logging.debug('Modularizing, assigning to var ' + shared.Settings.EXPORT_NAME)
+    src = open(final).read()
+    final = final + '.modular.js'
+    f = open(final, 'w')
+    f.write('var ' + shared.Settings.EXPORT_NAME + ' = function(Module) {\n')
+    f.write('  Module = Module || {};\n')
+    f.write('\n')
+    f.write(src)
+    f.write('\n')
+    f.write('  return Module;\n')
+    f.write('};\n')
+    f.close()
+    src = None
+
   js_target = unsuffixed(target) + '.js'
 
   if shared.Settings.EMTERPRETIFY:
@@ -1548,10 +1593,27 @@ try:
     try:
       # move temp js to final position, alongside its mem init file
       shutil.move(final, js_target)
-      execute([shared.PYTHON, shared.path_from_root('tools', 'emterpretify.py'), js_target, final + '.em.js', memfile, json.dumps(shared.Settings.EMTERPRETIFY_BLACKLIST)])
+      args = [shared.PYTHON, shared.path_from_root('tools', 'emterpretify.py'), js_target, final + '.em.js', memfile, json.dumps(shared.Settings.EMTERPRETIFY_BLACKLIST), json.dumps(shared.Settings.EMTERPRETIFY_WHITELIST), str(shared.Settings.SWAPPABLE_ASM_MODULE)]
+      if shared.Settings.EMTERPRETIFY_ASYNC:
+        args += ['ASYNC=1']
+      if shared.Settings.EMTERPRETIFY_ADVISE:
+        args += ['ADVISE=1']
+      if profiling or profiling_funcs:
+        args += ['PROFILING=1']
+      if shared.Settings.ASSERTIONS:
+        args += ['ASSERTIONS=1']
+      if shared.Settings.PRECISE_F32:
+        args += ['FROUND=1']
+      if shared.Settings.ALLOW_MEMORY_GROWTH:
+        args += ['MEMORY_SAFE=1']
+      execute(args)
       final = final + '.em.js'
     finally:
       shared.try_delete(js_target)
+
+    if shared.Settings.EMTERPRETIFY_ADVISE:
+      logging.warning('halting compilation due to EMTERPRETIFY_ADVISE')
+      sys.exit(0)
 
     # minify (if requested) after emterpreter processing, and finalize output
     logging.debug('finalizing emterpreted code')
@@ -1770,4 +1832,5 @@ finally:
       pass
   else:
     logging.info('emcc saved files are in:' + temp_dir)
+  misc_temp_files.clean()
 

@@ -5,6 +5,7 @@
 
 #include <vector>
 #include <iostream>
+#include <algorithm>
 
 #include <stdio.h>
 
@@ -228,7 +229,12 @@ class Parser {
         } else {
           num = strtod(start, &src);
         }
-        type = is32Bit(num) ? INT : DOUBLE;
+        // asm.js must have a '.' for double values. however, we also tolerate
+        // uglify's tendency to emit without a '.' (and fix it later with a +).
+        // for valid asm.js input, the '.' should be enough, and for uglify
+        // in the emscripten optimizer pipeline, we use simple_ast where INT/DOUBLE
+        // is quite the same at this point anyhow
+        type = (std::find(start, src, '.') == src && is32Bit(num)) ? INT : DOUBLE;
         assert(src > start);
       } else if (hasChar(OPERATOR_INITS, *src)) {
         switch (*src) {
@@ -517,7 +523,14 @@ class Parser {
     if (*src == '[') return parseExpression(parseIndexing(parseFrag(frag), src), src, seps);
     if (*src == ':' && expressionPartsStack.back().size() == 0) {
       src++;
-      return Builder::makeLabel(frag.str, parseElement(src, seps));
+      src = skipSpace(src);
+      NodeRef inner;
+      if (*src == '{') { // context lets us know this is not an object, but a block
+        inner = parseBracketedBlock(src);
+      } else {
+        inner = parseElement(src, seps);
+      }
+      return Builder::makeLabel(frag.str, inner);
     }
     if (*src == '.') return parseExpression(parseDotting(parseFrag(frag), src), src, seps);
     return parseExpression(parseFrag(frag), src, seps);
@@ -668,6 +681,14 @@ class Parser {
     printf("|\n");
   }
 
+  NodeRef makeBinary(NodeRef left, IString op, NodeRef right) {
+    if (op == PERIOD) {
+      return Builder::makeDot(left, right);
+    } else {
+      return Builder::makeBinary(left, op ,right);
+    }
+  }
+
   NodeRef parseExpression(ExpressionElement initial, char*&src, const char* seps) {
     //dump("parseExpression", src);
     ExpressionParts& parts = expressionPartsStack.back();
@@ -714,7 +735,7 @@ class Parser {
             IString op = parts[i].getOp();
             if (!ops.ops.has(op)) continue;
             if (ops.type == OperatorClass::Binary && i > 0 && i < (int)parts.size()-1) {
-              parts[i] = Builder::makeBinary(parts[i-1].getNode(), op, parts[i+1].getNode());
+              parts[i] = makeBinary(parts[i-1].getNode(), op, parts[i+1].getNode());
               parts.erase(parts.begin() + i + 1);
               parts.erase(parts.begin() + i - 1);
             } else if (ops.type == OperatorClass::Prefix && i < (int)parts.size()-1) {
@@ -740,7 +761,7 @@ class Parser {
             IString op = parts[i].getOp();
             if (!ops.ops.has(op)) continue;
             if (ops.type == OperatorClass::Binary && i > 0 && i < (int)parts.size()-1) {
-              parts[i] = Builder::makeBinary(parts[i-1].getNode(), op, parts[i+1].getNode());
+              parts[i] = makeBinary(parts[i-1].getNode(), op, parts[i+1].getNode());
               parts.erase(parts.begin() + i + 1);
               parts.erase(parts.begin() + i - 1);
               i--;
@@ -798,6 +819,11 @@ class Parser {
   }
 
   NodeRef parseElementOrStatement(char*& src, const char *seps) {
+    src = skipSpace(src);
+    if (*src == ';') {
+      src++;
+      return Builder::makeBlock(); // we don't need the brackets here, but oh well
+    }
     NodeRef ret = parseElement(src, seps);
     src = skipSpace(src);
     if (*src == ';') {

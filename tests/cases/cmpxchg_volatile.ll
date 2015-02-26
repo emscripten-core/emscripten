@@ -152,9 +152,10 @@ _ZNVKSt3__113__atomic_baseIcLb0EEcvcEv.exit120:   ; preds = %seqcst.i.i119, %acq
 monotonic.i99:                                    ; preds = %_ZNVKSt3__113__atomic_baseIcLb0EEcvcEv.exit120
   %17 = load i8* %14, align 1
   %18 = load i8* %.atomictmp.i94, align 1
-  %19 = cmpxchg volatile i8* %__a_.i97, i8 %17, i8 %18 monotonic
-  store i8 %19, i8* %14, align 1
-  %20 = icmp eq i8 %19, %17
+  %19 = cmpxchg volatile i8* %__a_.i97, i8 %17, i8 %18 monotonic monotonic
+  %a19 = extractvalue { i8, i1 } %19, 0
+  store i8 %a19, i8* %14, align 1
+  %20 = icmp eq i8 %a19, %17
   %frombool.i98 = zext i1 %20 to i8
   store i8 %frombool.i98, i8* %.atomicdst.i95
   br label %_ZNVSt3__113__atomic_baseIcLb0EE21compare_exchange_weakERccNS_12memory_orderE.exit109
@@ -162,9 +163,10 @@ monotonic.i99:                                    ; preds = %_ZNVKSt3__113__atom
 acquire.i101:                                     ; preds = %_ZNVKSt3__113__atomic_baseIcLb0EEcvcEv.exit120, %_ZNVKSt3__113__atomic_baseIcLb0EEcvcEv.exit120
   %21 = load i8* %14, align 1
   %22 = load i8* %.atomictmp.i94, align 1
-  %23 = cmpxchg volatile i8* %__a_.i97, i8 %21, i8 %22 acquire
-  store i8 %23, i8* %14, align 1
-  %24 = icmp eq i8 %23, %21
+  %23 = cmpxchg volatile i8* %__a_.i97, i8 %21, i8 %22 acquire acquire
+  %a23 = extractvalue { i8, i1 } %23, 0
+  store i8 %a23, i8* %14, align 1
+  %24 = icmp eq i8 %a23, %21
   %frombool2.i100 = zext i1 %24 to i8
   store i8 %frombool2.i100, i8* %.atomicdst.i95
   br label %_ZNVSt3__113__atomic_baseIcLb0EE21compare_exchange_weakERccNS_12memory_orderE.exit109
@@ -172,9 +174,10 @@ acquire.i101:                                     ; preds = %_ZNVKSt3__113__atom
 release.i103:                                     ; preds = %_ZNVKSt3__113__atomic_baseIcLb0EEcvcEv.exit120
   %25 = load i8* %14, align 1
   %26 = load i8* %.atomictmp.i94, align 1
-  %27 = cmpxchg volatile i8* %__a_.i97, i8 %25, i8 %26 release
-  store i8 %27, i8* %14, align 1
-  %28 = icmp eq i8 %27, %25
+  %27 = cmpxchg volatile i8* %__a_.i97, i8 %25, i8 %26 release acquire
+  %a27 = extractvalue { i8, i1 } %27, 0
+  store i8 %a27, i8* %14, align 1
+  %28 = icmp eq i8 %a27, %25
   %frombool3.i102 = zext i1 %28 to i8
   store i8 %frombool3.i102, i8* %.atomicdst.i95
   br label %_ZNVSt3__113__atomic_baseIcLb0EE21compare_exchange_weakERccNS_12memory_orderE.exit109
@@ -182,9 +185,10 @@ release.i103:                                     ; preds = %_ZNVKSt3__113__atom
 acqrel.i105:                                      ; preds = %_ZNVKSt3__113__atomic_baseIcLb0EEcvcEv.exit120
   %29 = load i8* %14, align 1
   %30 = load i8* %.atomictmp.i94, align 1
-  %31 = cmpxchg volatile i8* %__a_.i97, i8 %29, i8 %30 acq_rel
-  store i8 %31, i8* %14, align 1
-  %32 = icmp eq i8 %31, %29
+  %31 = cmpxchg volatile i8* %__a_.i97, i8 %29, i8 %30 acq_rel acquire
+  %a31 = extractvalue { i8, i1 } %31, 0
+  store i8 %a31, i8* %14, align 1
+  %32 = icmp eq i8 %a31, %29
   %frombool4.i104 = zext i1 %32 to i8
   store i8 %frombool4.i104, i8* %.atomicdst.i95
   br label %_ZNVSt3__113__atomic_baseIcLb0EE21compare_exchange_weakERccNS_12memory_orderE.exit109
@@ -192,9 +196,10 @@ acqrel.i105:                                      ; preds = %_ZNVKSt3__113__atom
 seqcst.i107:                                      ; preds = %_ZNVKSt3__113__atomic_baseIcLb0EEcvcEv.exit120
   %33 = load i8* %14, align 1
   %34 = load i8* %.atomictmp.i94, align 1
-  %35 = cmpxchg volatile i8* %__a_.i97, i8 %33, i8 %34 seq_cst
-  store i8 %35, i8* %14, align 1
-  %36 = icmp eq i8 %35, %33
+  %35 = cmpxchg volatile i8* %__a_.i97, i8 %33, i8 %34 seq_cst acquire
+  %a35 = extractvalue { i8, i1 } %35, 0
+  store i8 %a35, i8* %14, align 1
+  %36 = icmp eq i8 %a35, %33
   %frombool5.i106 = zext i1 %36 to i8
   store i8 %frombool5.i106, i8* %.atomicdst.i95
   br label %_ZNVSt3__113__atomic_baseIcLb0EE21compare_exchange_weakERccNS_12memory_orderE.exit109
@@ -293,9 +298,10 @@ cond.end12:                                       ; preds = %cond.false11, %cond
 monotonic.i69:                                    ; preds = %cond.end12
   %50 = load i8* %47, align 1
   %51 = load i8* %.atomictmp.i64, align 1
-  %52 = cmpxchg volatile i8* %__a_.i67, i8 %50, i8 %51 monotonic
-  store i8 %52, i8* %47, align 1
-  %53 = icmp eq i8 %52, %50
+  %52 = cmpxchg volatile i8* %__a_.i67, i8 %50, i8 %51 monotonic monotonic
+  %a52 = extractvalue { i8, i1 } %52, 0
+  store i8 %a52, i8* %47, align 1
+  %53 = icmp eq i8 %a52, %50
   %frombool.i68 = zext i1 %53 to i8
   store i8 %frombool.i68, i8* %.atomicdst.i65
   br label %_ZNVSt3__113__atomic_baseIcLb0EE21compare_exchange_weakERccNS_12memory_orderE.exit
@@ -303,9 +309,10 @@ monotonic.i69:                                    ; preds = %cond.end12
 acquire.i71:                                      ; preds = %cond.end12, %cond.end12
   %54 = load i8* %47, align 1
   %55 = load i8* %.atomictmp.i64, align 1
-  %56 = cmpxchg volatile i8* %__a_.i67, i8 %54, i8 %55 acquire
-  store i8 %56, i8* %47, align 1
-  %57 = icmp eq i8 %56, %54
+  %56 = cmpxchg volatile i8* %__a_.i67, i8 %54, i8 %55 acquire acquire
+  %a56 = extractvalue { i8, i1 } %56, 0
+  store i8 %a56, i8* %47, align 1
+  %57 = icmp eq i8 %a56, %54
   %frombool2.i70 = zext i1 %57 to i8
   store i8 %frombool2.i70, i8* %.atomicdst.i65
   br label %_ZNVSt3__113__atomic_baseIcLb0EE21compare_exchange_weakERccNS_12memory_orderE.exit
@@ -313,9 +320,10 @@ acquire.i71:                                      ; preds = %cond.end12, %cond.e
 release.i73:                                      ; preds = %cond.end12
   %58 = load i8* %47, align 1
   %59 = load i8* %.atomictmp.i64, align 1
-  %60 = cmpxchg volatile i8* %__a_.i67, i8 %58, i8 %59 release
-  store i8 %60, i8* %47, align 1
-  %61 = icmp eq i8 %60, %58
+  %60 = cmpxchg volatile i8* %__a_.i67, i8 %58, i8 %59 release acquire
+  %a60 = extractvalue { i8, i1 } %60, 0
+  store i8 %a60, i8* %47, align 1
+  %61 = icmp eq i8 %a60, %58
   %frombool3.i72 = zext i1 %61 to i8
   store i8 %frombool3.i72, i8* %.atomicdst.i65
   br label %_ZNVSt3__113__atomic_baseIcLb0EE21compare_exchange_weakERccNS_12memory_orderE.exit
@@ -323,9 +331,10 @@ release.i73:                                      ; preds = %cond.end12
 acqrel.i75:                                       ; preds = %cond.end12
   %62 = load i8* %47, align 1
   %63 = load i8* %.atomictmp.i64, align 1
-  %64 = cmpxchg volatile i8* %__a_.i67, i8 %62, i8 %63 acq_rel
-  store i8 %64, i8* %47, align 1
-  %65 = icmp eq i8 %64, %62
+  %64 = cmpxchg volatile i8* %__a_.i67, i8 %62, i8 %63 acq_rel acquire
+  %a64 = extractvalue { i8, i1 } %64, 0
+  store i8 %a64, i8* %47, align 1
+  %65 = icmp eq i8 %a64, %62
   %frombool4.i74 = zext i1 %65 to i8
   store i8 %frombool4.i74, i8* %.atomicdst.i65
   br label %_ZNVSt3__113__atomic_baseIcLb0EE21compare_exchange_weakERccNS_12memory_orderE.exit
@@ -333,9 +342,10 @@ acqrel.i75:                                       ; preds = %cond.end12
 seqcst.i77:                                       ; preds = %cond.end12
   %66 = load i8* %47, align 1
   %67 = load i8* %.atomictmp.i64, align 1
-  %68 = cmpxchg volatile i8* %__a_.i67, i8 %66, i8 %67 seq_cst
-  store i8 %68, i8* %47, align 1
-  %69 = icmp eq i8 %68, %66
+  %68 = cmpxchg volatile i8* %__a_.i67, i8 %66, i8 %67 seq_cst acquire
+  %a68 = extractvalue { i8, i1 } %68, 0
+  store i8 %a68, i8* %47, align 1
+  %69 = icmp eq i8 %a68, %66
   %frombool5.i76 = zext i1 %69 to i8
   store i8 %frombool5.i76, i8* %.atomicdst.i65
   br label %_ZNVSt3__113__atomic_baseIcLb0EE21compare_exchange_weakERccNS_12memory_orderE.exit
@@ -435,9 +445,10 @@ cond.end29:                                       ; preds = %cond.false28, %cond
 monotonic.i:                                      ; preds = %cond.end29
   %83 = load i8* %80, align 1
   %84 = load i8* %.atomictmp.i, align 1
-  %85 = cmpxchg volatile i8* %__a_.i, i8 %83, i8 %84 monotonic
-  store i8 %85, i8* %80, align 1
-  %86 = icmp eq i8 %85, %83
+  %85 = cmpxchg volatile i8* %__a_.i, i8 %83, i8 %84 monotonic monotonic
+  %a85 = extractvalue { i8, i1 } %85, 0
+  store i8 %a85, i8* %80, align 1
+  %86 = icmp eq i8 %a85, %83
   %frombool.i = zext i1 %86 to i8
   store i8 %frombool.i, i8* %.atomicdst.i
   br label %_ZNVSt3__113__atomic_baseIcLb0EE23compare_exchange_strongERccNS_12memory_orderE.exit
@@ -445,9 +456,10 @@ monotonic.i:                                      ; preds = %cond.end29
 acquire.i:                                        ; preds = %cond.end29, %cond.end29
   %87 = load i8* %80, align 1
   %88 = load i8* %.atomictmp.i, align 1
-  %89 = cmpxchg volatile i8* %__a_.i, i8 %87, i8 %88 acquire
-  store i8 %89, i8* %80, align 1
-  %90 = icmp eq i8 %89, %87
+  %89 = cmpxchg volatile i8* %__a_.i, i8 %87, i8 %88 acquire monotonic
+  %a89 = extractvalue { i8, i1 } %89, 0
+  store i8 %a89, i8* %80, align 1
+  %90 = icmp eq i8 %a89, %87
   %frombool2.i = zext i1 %90 to i8
   store i8 %frombool2.i, i8* %.atomicdst.i
   br label %_ZNVSt3__113__atomic_baseIcLb0EE23compare_exchange_strongERccNS_12memory_orderE.exit
@@ -455,9 +467,10 @@ acquire.i:                                        ; preds = %cond.end29, %cond.e
 release.i:                                        ; preds = %cond.end29
   %91 = load i8* %80, align 1
   %92 = load i8* %.atomictmp.i, align 1
-  %93 = cmpxchg volatile i8* %__a_.i, i8 %91, i8 %92 release
-  store i8 %93, i8* %80, align 1
-  %94 = icmp eq i8 %93, %91
+  %93 = cmpxchg volatile i8* %__a_.i, i8 %91, i8 %92 release acquire
+  %a93 = extractvalue { i8, i1 } %93, 0
+  store i8 %a93, i8* %80, align 1
+  %94 = icmp eq i8 %a93, %91
   %frombool3.i = zext i1 %94 to i8
   store i8 %frombool3.i, i8* %.atomicdst.i
   br label %_ZNVSt3__113__atomic_baseIcLb0EE23compare_exchange_strongERccNS_12memory_orderE.exit
@@ -465,9 +478,10 @@ release.i:                                        ; preds = %cond.end29
 acqrel.i:                                         ; preds = %cond.end29
   %95 = load i8* %80, align 1
   %96 = load i8* %.atomictmp.i, align 1
-  %97 = cmpxchg volatile i8* %__a_.i, i8 %95, i8 %96 acq_rel
-  store i8 %97, i8* %80, align 1
-  %98 = icmp eq i8 %97, %95
+  %97 = cmpxchg volatile i8* %__a_.i, i8 %95, i8 %96 acq_rel acquire
+  %a97 = extractvalue { i8, i1 } %97, 0
+  store i8 %a97, i8* %80, align 1
+  %98 = icmp eq i8 %a97, %95
   %frombool4.i = zext i1 %98 to i8
   store i8 %frombool4.i, i8* %.atomicdst.i
   br label %_ZNVSt3__113__atomic_baseIcLb0EE23compare_exchange_strongERccNS_12memory_orderE.exit
@@ -475,9 +489,10 @@ acqrel.i:                                         ; preds = %cond.end29
 seqcst.i:                                         ; preds = %cond.end29
   %99 = load i8* %80, align 1
   %100 = load i8* %.atomictmp.i, align 1
-  %101 = cmpxchg volatile i8* %__a_.i, i8 %99, i8 %100 seq_cst
-  store i8 %101, i8* %80, align 1
-  %102 = icmp eq i8 %101, %99
+  %101 = cmpxchg volatile i8* %__a_.i, i8 %99, i8 %100 seq_cst acquire
+  %a101 = extractvalue { i8, i1 } %101, 0
+  store i8 %a101, i8* %80, align 1
+  %102 = icmp eq i8 %a101, %99
   %frombool5.i = zext i1 %102 to i8
   store i8 %frombool5.i, i8* %.atomicdst.i
   br label %_ZNVSt3__113__atomic_baseIcLb0EE23compare_exchange_strongERccNS_12memory_orderE.exit

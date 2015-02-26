@@ -123,6 +123,7 @@ If manually bisecting:
       os.chdir(cwd)
 
   def test_split(self):
+    return self.skip('non-fastcomp is deprecated and fails in 3.5')
     def nfc():
       # test HTML generation.
       self.reftest(path_from_root('tests', 'htmltest.png'))
@@ -218,6 +219,7 @@ If manually bisecting:
     nonfastcomp(nfc)
 
   def test_split_in_source_filenames(self):
+    return self.skip('non-fastcomp is deprecated and fails in 3.5')
     def nfc():
       self.reftest(path_from_root('tests', 'htmltest.png'))
       output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.js', '-g', '--split', '100', '--pre-js', 'reftest.js']).communicate()
@@ -995,7 +997,7 @@ keydown(100);keyup(100); // trigger the end
                 var element = document.getElementById('output');
                 element.value = ''; // clear browser cache
                 return function(text) {
-                  text = Array.prototype.slice.call(arguments).join(' ');
+                  if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
                   element.value += text + "\\n";
                   element.scrollTop = element.scrollHeight; // focus on bottom
                 };
@@ -1158,6 +1160,17 @@ keydown(100);keyup(100); // trigger the end
       secret = str(time.time())
       self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=mode + ['-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''])
       self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=mode + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''])
+
+  def test_idbstore(self):
+    secret = str(time.time())
+    for stage in [0, 1, 2, 3, 0, 1, 2, 0, 0, 1, 4, 2, 5]:
+      self.clear()
+      self.btest(path_from_root('tests', 'idbstore.c'), str(stage), force_c=True, args=['-DSTAGE=' + str(stage), '-DSECRET=\"' + secret + '\"'])
+
+  def test_idbstore_sync(self):
+    secret = str(time.time())
+    self.clear()
+    self.btest(path_from_root('tests', 'idbstore_sync.c'), '6', force_c=True, args=['-DSECRET=\"' + secret + '\"', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '--memory-init-file', '1', '-O3', '-g2'])
 
   def test_force_exit(self):
     self.btest('force_exit.c', force_c=True, expected='17')
@@ -1788,6 +1801,31 @@ void *getBindBuffer() {
     # otherwise, we just overwrite
     self.btest('mem_init.cpp', expected='3', args=['--pre-js', 'pre.js', '--post-js', 'post.js', '--memory-init-file', '1', '-s', 'ASSERTIONS=0'])
 
+  def test_mem_init_request(self):
+    def test(what, status):
+      print what, status
+      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+        var xhr = Module.memoryInitializerRequest = new XMLHttpRequest();
+        xhr.open('GET', "''' + what + '''", true);
+        xhr.responseType = 'arraybuffer';
+        xhr.send(null);
+
+        window.onerror = function() {
+          Module.print('fail!');
+          var xhr = new XMLHttpRequest();
+          xhr.open('GET', 'http://localhost:8888/report_result?0');
+          xhr.onload = function() {
+            console.log('close!');
+            window.close();
+          };
+          xhr.send();
+        };
+      ''')
+      self.btest('mem_init_request.cpp', expected=status, args=['--pre-js', 'pre.js', '--memory-init-file', '1'])
+
+    test('test.html.mem', '1')
+    test('nothing.nowhere', '0')
+
   def test_runtime_misuse(self):
     post_prep = '''
       var expected_ok = false;
@@ -1895,6 +1933,7 @@ void *getBindBuffer() {
     self.btest('http.cpp', expected='0', args=['-I' + path_from_root('tests')])
 
   def test_module(self):
+    return self.skip('non-fastcomp is deprecated and fails in 3.5')
     def nfc():
       Popen([PYTHON, EMCC, path_from_root('tests', 'browser_module.cpp'), '-o', 'module.js', '-O2', '-s', 'SIDE_MODULE=1', '-s', 'DLOPEN_SUPPORT=1', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two"]']).communicate()
       self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE=1', '-s', 'DLOPEN_SUPPORT=1'], expected='8')
@@ -2038,6 +2077,13 @@ open(filename, 'w').write(replaced)
     with open(os.path.join(self.get_dir(), 'test.txt'), 'w') as f:
       f.write('emscripten')
     self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'ASYNCIFY=1'])
+    print 'asyncify+emterpreter'
+    self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'ASYNCIFY=1', '-s', 'EMTERPRETIFY=1'])
+
+  def test_wget_data(self):
+    with open(os.path.join(self.get_dir(), 'test.txt'), 'w') as f:
+      f.write('emscripten')
+    self.btest(path_from_root('tests', 'test_wget_data.c'), expected='1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O2', '-g2'])
 
   def test_locate_file(self):
     self.clear()
@@ -2286,7 +2332,7 @@ Module['_main'] = function() {
                 var element = document.getElementById('output');
                 element.value = ''; // clear browser cache
                 return function(text) {
-                  text = Array.prototype.slice.call(arguments).join(' ');
+                  if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
                   element.value += text + "\\n";
                   element.scrollTop = element.scrollHeight; // focus on bottom
                 };
@@ -2440,4 +2486,73 @@ window.close = function() {
     self.btest('sdl2_fog_linear.c', reference='screenshot-fog-linear.png', reference_slack=1,
       args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2','--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'],
       message='You should see an image with fog.')
+
+  def test_sdl2_unwasteful(self):
+    self.btest('sdl2_unwasteful.cpp', expected='1', args=['-s', 'USE_SDL=2', '-O1'])
+
+  def test_sdl2_canvas_write(self):
+    self.btest('sdl2_canvas_write.cpp', expected='0', args=['-s', 'USE_SDL=2'])
+
+  def test_emterpreter_async(self):
+    for opts in [0, 1, 2, 3]:
+      print opts
+      self.btest('emterpreter_async.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-g2'])
+
+  def test_emterpreter_async_2(self):
+    self.btest('emterpreter_async_2.cpp', '47', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O3'])
+
+  def test_emterpreter_async_virtual(self):
+    for opts in [0, 1, 2, 3]:
+      print opts
+      self.btest('emterpreter_async_virtual.cpp', '5', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-profiling'])
+
+  def test_emterpreter_async_virtual_2(self):
+    for opts in [0, 1, 2, 3]:
+      print opts
+      self.btest('emterpreter_async_virtual_2.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-s', 'ASSERTIONS=1', '-s', 'SAFE_HEAP=1', '-profiling'])
+
+  def test_emterpreter_async_bad(self):
+    for opts in [0, 1, 2, 3]:
+      print opts
+      self.btest('emterpreter_async_bad.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-s', 'EMTERPRETIFY_BLACKLIST=["_middle"]', '-s', 'ASSERTIONS=1'])
+
+  def test_emterpreter_async_mainloop(self):
+    for opts in [0, 1, 2, 3]:
+      print opts
+      self.btest('emterpreter_async_mainloop.cpp', '121', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts)])
+
+  def test_emterpreter_async_with_manual(self):
+    for opts in [0, 1, 2, 3]:
+      print opts
+      self.btest('emterpreter_async_with_manual.cpp', '121', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-s', 'EMTERPRETIFY_BLACKLIST=["_acall"]'])
+
+  def test_modularize(self):
+    for opts in [[], ['-O1'], ['-O2', '-profiling'], ['-O2']]:
+      for args, code in [
+        ([], 'Module();'), # defaults
+        (['-s', 'EXPORT_NAME="HelloWorld"'], '''
+          if (typeof Module !== "undefined") throw "what?!"; // do not pollute the global scope, we are modularized!
+          HelloWorld();
+        '''), # use EXPORT_NAME
+        (['-s', 'EXPORT_NAME="HelloWorld"'], '''
+          var hello = HelloWorld({ noInitialRun: true, onRuntimeInitialized: function() {
+            setTimeout(function() { hello._main(); }); // must be async, because onRuntimeInitialized may be called synchronously, so |hello| is not yet set!
+          } });
+        '''), # pass in a Module option (which prevents main(), which we then invoke ourselves)
+        (['-s', 'EXPORT_NAME="HelloWorld"', '--memory-init-file', '0'], '''
+          var hello = HelloWorld({ noInitialRun: true});
+          hello._main();
+        '''), # similar, but without a mem init file, everything is sync and simple
+      ]:
+        print 'test on', opts, args, code
+        src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
+        open('test.c', 'w').write(self.with_report_result(src))
+        Popen([PYTHON, EMCC, 'test.c', '-s', 'MODULARIZE=1'] + args + opts).communicate()
+        open('a.html', 'w').write('''
+          <script src="a.out.js"></script>
+          <script>
+            %s
+          </script>
+        ''' % code)
+        self.run_browser('a.html', '...', '/report_result?0')
 

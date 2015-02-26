@@ -263,16 +263,21 @@ def listify(x):
   if type(x) is not list: return [x]
   return x
 
+def fix_js_engine(old, new):
+  global JS_ENGINES
+  JS_ENGINES = map(lambda x: new if x == old else x, JS_ENGINES)
+  return new
+
 try:
-  SPIDERMONKEY_ENGINE = listify(SPIDERMONKEY_ENGINE)
+  SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, listify(SPIDERMONKEY_ENGINE))
 except:
   pass
 try:
-  NODE_JS = listify(NODE_JS)
+  NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
 except:
   pass
 try:
-  V8_ENGINE = listify(V8_ENGINE)
+  V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
 except:
   pass
 
@@ -294,7 +299,7 @@ if EM_POPEN_WORKAROUND and os.name == 'nt':
 
 # Expectations
 
-EXPECTED_LLVM_VERSION = (3,4)
+EXPECTED_LLVM_VERSION = (3,5)
 
 actual_clang_version = None
 
@@ -612,6 +617,18 @@ def safe_ensure_dirs(dirname):
     # handle this atomically in Python 2.x.
     # There is an additional option for Python 3.x, though.
 
+# Returns a path to EMSCRIPTEN_TEMP_DIR, creating one if it didn't exist.
+def get_emscripten_temp_dir():
+  global configuration, EMSCRIPTEN_TEMP_DIR
+  if not EMSCRIPTEN_TEMP_DIR:
+    EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=configuration.TEMP_DIR)
+    def prepare_to_clean_temp(d):
+      def clean_temp():
+        try_delete(d)
+      atexit.register(clean_temp)
+    prepare_to_clean_temp(EMSCRIPTEN_TEMP_DIR) # this global var might change later
+  return EMSCRIPTEN_TEMP_DIR
+
 class Configuration:
   def __init__(self, environ=os.environ):
     self.DEBUG = environ.get('EMCC_DEBUG')
@@ -642,7 +659,7 @@ class Configuration:
 
   def get_temp_files(self):
     return tempfiles.TempFiles(
-      tmp=self.TEMP_DIR if not self.DEBUG else self.EMSCRIPTEN_TEMP_DIR,
+      tmp=self.TEMP_DIR if not self.DEBUG else get_emscripten_temp_dir(),
       save_debug_files=os.environ.get('EMCC_DEBUG_SAVE'))
 
 def apply_configuration():
@@ -660,14 +677,6 @@ def set_logging():
   logger = logging.getLogger()
   logger.setLevel(logging.DEBUG if os.environ.get('EMCC_DEBUG') else logging.INFO)
 set_logging()
-
-if not EMSCRIPTEN_TEMP_DIR:
-  EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=configuration.TEMP_DIR)
-  def prepare_to_clean_temp(d):
-    def clean_temp():
-      try_delete(d)
-    atexit.register(clean_temp)
-  prepare_to_clean_temp(EMSCRIPTEN_TEMP_DIR) # this global var might change later
 
 # EM_CONFIG stuff
 
@@ -800,8 +809,7 @@ try:
       new_spidermonkey += ['-e', "gcparam('maxBytes', 1024*1024*1024);"] # Our very large files need lots of gc heap
     if '-w' not in str(new_spidermonkey):
       new_spidermonkey += ['-w']
-    JS_ENGINES = map(lambda x: new_spidermonkey if x == SPIDERMONKEY_ENGINE else x, JS_ENGINES)
-    SPIDERMONKEY_ENGINE = new_spidermonkey
+    SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
 except NameError:
   pass
 
@@ -1019,6 +1027,7 @@ class Building:
     env['PKG_CONFIG_LIBDIR'] = path_from_root('system', 'local', 'lib', 'pkgconfig') + os.path.pathsep + path_from_root('system', 'lib', 'pkgconfig')
     env['PKG_CONFIG_PATH'] = os.environ.get ('EM_PKG_CONFIG_PATH') or ''
     env['EMSCRIPTEN'] = path_from_root()
+    env['PATH'] = path_from_root('system', 'bin') + os.pathsep + env['PATH']
     return env
 
   # Finds the given executable 'program' in PATH. Operates like the Unix tool 'which'.
@@ -1249,11 +1258,23 @@ class Building:
 
       cwd = os.getcwd()
       try:
-        temp_dir = os.path.join(EMSCRIPTEN_TEMP_DIR, 'ar_output_' + str(os.getpid()) + '_' + str(len(temp_dirs)))
+        emscripten_temp_dir = get_emscripten_temp_dir()
+        temp_dir = os.path.join(emscripten_temp_dir, 'ar_output_' + str(os.getpid()) + '_' + str(len(temp_dirs)))
         temp_dirs.append(temp_dir)
         safe_ensure_dirs(temp_dir)
         os.chdir(temp_dir)
         contents = filter(lambda x: len(x) > 0, Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].split('\n'))
+        # llvm-ar appears to just use basenames inside archives. as a result, files with the same basename
+        # will trample each other when we extract them. to help warn of such situations, we warn if there
+        # are duplicate entries in the archive
+        if len(contents) != len(set(contents)):
+          logging.warning('loading from archive %s, which has duplicate entries (files with identical base names). this is dangerous as only the last will be taken into account, and you may see surprising undefined symbols later. you should rename source files to avoid this problem (or avoid .a archives, and just link bitcode together to form libraries for later linking)' % f)
+          warned = set()
+          for i in range(len(contents)):
+            curr = contents[i]
+            if curr not in warned and curr in contents[i+1:]:
+              logging.warning('   duplicate: %s' % curr)
+              warned.add(curr)
         if len(contents) == 0:
           logging.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f)
         else:

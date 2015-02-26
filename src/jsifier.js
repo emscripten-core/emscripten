@@ -1861,7 +1861,7 @@ function JSify(data, functionsOnly) {
       if (!INCLUDE_FULL_LIBRARY && !SIDE_MODULE && !BUILD_AS_SHARED_LIB) {
         // first row are utilities called from generated code, second are needed from fastLong
         ['i64Add', 'i64Subtract', 'bitshift64Shl', 'bitshift64Lshr', 'bitshift64Ashr',
-         'llvm_ctlz_i32', 'llvm_cttz_i32'].forEach(function(ident) {
+         'llvm_cttz_i32'].forEach(function(ident) {
           var finalName = '_' + ident;
           if (!Functions.libraryFunctions[finalName] || (phase == 'glue' && ident[0] === 'l' && !addedLibraryItems[ident])) { // TODO: one-by-one in fastcomp glue mode
             print(processLibraryFunction(LibraryManager.library[ident], ident, finalName)); // must be first to be close to generated code

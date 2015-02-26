@@ -458,7 +458,9 @@ var LibraryManager = {
       'library_glew.js',
       'library_html5.js',
       'library_signals.js',
-      'library_async.js'
+      'library_idbstore.js',
+      'library_async.js',
+      'library_vr.js'
     ]).concat(additionalLibraries);
 
     for (var i = 0; i < libraries.length; i++) {

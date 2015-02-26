@@ -14,6 +14,9 @@ typedef std::vector<IString> StringVec;
 
 Ref doc, extraInfo;
 
+IString SIMD_INT32X4_CHECK("SIMD_int32x4_check"),
+        SIMD_FLOAT32X4_CHECK("SIMD_float32x4_check");
+
 //==================
 // Infrastructure
 //==================
@@ -352,8 +355,8 @@ AsmType detectType(Ref node, AsmData *asmData, bool inVarDef) {
         if (node[1][0] == NAME) {
           IString name = node[1][1]->getIString();
           if (name == MATH_FROUND) return ASM_FLOAT;
-          else if (name == SIMD_FLOAT32X4) return ASM_FLOAT32X4;
-          else if (name == SIMD_INT32X4) return ASM_INT32X4;
+          else if (name == SIMD_FLOAT32X4 || name == SIMD_FLOAT32X4_CHECK) return ASM_FLOAT32X4;
+          else if (name == SIMD_INT32X4   || name == SIMD_INT32X4_CHECK) return ASM_INT32X4;
         }
         return ASM_NONE;
       } else if (node[0] == CONDITIONAL) {
@@ -508,8 +511,8 @@ Ref makeAsmCoercion(Ref node, AsmType type) {
     case ASM_INT: return make3(BINARY, OR, node, makeNum(0));
     case ASM_DOUBLE: return make2(UNARY_PREFIX, PLUS, node);
     case ASM_FLOAT: return make2(CALL, makeName(MATH_FROUND), &(makeArray())->push_back(node));
-    case ASM_FLOAT32X4: return make2(CALL, makeName(SIMD_FLOAT32X4), &(makeArray())->push_back(node));
-    case ASM_INT32X4: return make2(CALL, makeName(SIMD_INT32X4), &(makeArray())->push_back(node));
+    case ASM_FLOAT32X4: return make2(CALL, makeName(SIMD_FLOAT32X4_CHECK), &(makeArray())->push_back(node));
+    case ASM_INT32X4: return make2(CALL, makeName(SIMD_INT32X4_CHECK), &(makeArray())->push_back(node));
     case ASM_NONE:
     default: return node; // non-validating code, emit nothing XXX this is dangerous, we should only allow this when we know we are not validating
   }
@@ -797,6 +800,7 @@ StringSet ASSOCIATIVE_BINARIES("+ * | & ^"),
           SAFE_TO_DROP_COERCION("unary-prefix name num");
 
 StringSet BREAK_CAPTURERS("do while for switch"),
+          CONTINUE_CAPTURERS("do while for"),
           FUNCTIONS_THAT_ALWAYS_THROW("abort ___resumeException ___cxa_throw ___cxa_rethrow");
 
 bool isFunctionTable(const char *name) {
@@ -2205,16 +2209,21 @@ void simplifyIfs(Ref ast) {
 void optimizeFrounds(Ref ast) {
   // collapse fround(fround(..)), which can happen due to elimination
   // also emit f0 instead of fround(0) (except in returns)
-  bool inReturn = false, currIsReturn = false;
+  int inReturn = 0;
   traversePrePost(ast, [&](Ref node) {
-    currIsReturn = node[0] == RETURN;
-    if (currIsReturn) inReturn = true;
+    if (node[0] == RETURN) {
+      inReturn++;
+    }
   }, [&](Ref node) {
-    if (currIsReturn) inReturn = false;
+    if (node[0] == RETURN) {
+      inReturn--;
+    }
     if (node[0] == CALL && node[1][0] == NAME && node[1][1] == MATH_FROUND) {
       Ref arg = node[2][0];
       if (arg[0] == NUM) {
-        if (!inReturn && arg[1]->getNumber() == 0) *node = *makeName(F0);
+        if (!inReturn && arg[1]->getInteger() == 0) {
+          safeCopy(node, makeName(F0));
+        }
       } else if (arg[0] == CALL && arg[1][0] == NAME && arg[1][1] == MATH_FROUND) {
         safeCopy(node, arg);
       }
@@ -3346,7 +3355,10 @@ void registerizeHarder(Ref ast) {
       sortedJunctionVariables.push_back(pair.first);
     }
     std::sort(sortedJunctionVariables.begin(), sortedJunctionVariables.end(), [&](const IString name1, const IString name2) {
-      //return strcmp(name1.str, name2.str) > 0;// XXX junctionVariables[name1].conf.size() > junctionVariables[name2].conf.size();
+      //// sort params first
+      //if (asmData.isParam(name1) && !asmData.isParam(name2)) return true;
+      //if (!asmData.isParam(name1) && asmData.isParam(name2)) return false;
+      // sort by # of conflicts
       if (junctionVariables[name1].conf.size() < junctionVariables[name2].conf.size()) return true;
       if (junctionVariables[name1].conf.size() == junctionVariables[name2].conf.size()) return name1 < name2;
       return false;
@@ -3808,6 +3820,43 @@ void asmLastOpts(Ref ast) {
     traversePre(fun, [](Ref node) {
       if (node[0] == BLOCK && !!getStatements(node) && node[1]->size() == 1) {
         safeCopy(node, node[1][0]);
+      }
+    });
+    // convert L: do { .. } while(0) into L: { .. }
+    traversePre(fun, [](Ref node) {
+      if (node[0] == LABEL && node[1]->isString() /* careful of var label = 5 */ &&
+          node[2][0] == DO && node[2][1][0] == NUM && node[2][1][1]->getNumber() == 0 && node[2][2][0] == BLOCK) {
+        // there shouldn't be any continues on this, not direct break or continue
+        IString label = node[1]->getIString();
+        bool abort = false;
+        int breakCaptured = 0, continueCaptured = 0;
+        traversePrePost(node[2][2], [&](Ref node) {
+          if (node[0] == CONTINUE) {
+            if (!node[1] && !continueCaptured) {
+              abort = true;
+            } else if (node[1]->isString() && node[1]->getIString() == label) {
+              abort = true;
+            }
+          }
+          if (node[0] == BREAK && !node[1] && !breakCaptured) {
+            abort = true;
+          }
+          if (BREAK_CAPTURERS.has(node[0])) {
+            breakCaptured++;
+          }
+          if (CONTINUE_CAPTURERS.has(node[0])) {
+            continueCaptured++;
+          }
+        }, [&](Ref node) {
+          if (BREAK_CAPTURERS.has(node[0])) {
+            breakCaptured--;
+          }
+          if (CONTINUE_CAPTURERS.has(node[0])) {
+            continueCaptured--;
+          }
+        });
+        if (abort) return;
+        safeCopy(node[2], node[2][2]);
       }
     });
   });

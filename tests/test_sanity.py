@@ -264,7 +264,7 @@ class sanity(RunnerCore):
 
     restore()
 
-    self.check_working([EMCC, 'tests/hello_world.cpp', '-s', 'INIT_HEAP=1'], '''Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended, see https://github.com/kripken/emscripten/wiki/LLVM-Backend''')
+    self.check_working([EMCC, 'tests/hello_world.cpp', '-s', 'INIT_HEAP=1'], '''Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended''')
 
   def test_node(self):
     NODE_WARNING = 'node version appears too old'
@@ -482,6 +482,8 @@ fi
     try_delete(CANONICAL_TEMP_DIR)
 
   def test_relooper(self):
+    return self.skip('non-fastcomp is deprecated and fails in 3.5')
+
     assert os.environ.get('EMCC_FAST_COMPILER') is None
 
     try:
@@ -607,7 +609,17 @@ fi
         second_use()
 
         # if the version isn't sufficient, we retrieve and rebuild
-        open(os.path.join(PORTS_DIR, 'sdl2', 'SDL2-master', 'version.txt'), 'w').write('1') # current is >= 2, so this is too old
+        subdir = os.listdir(os.path.join(PORTS_DIR, 'sdl2'))[0]
+        os.rename(os.path.join(PORTS_DIR, 'sdl2', subdir), os.path.join(PORTS_DIR, 'sdl2', 'old-subdir'))
+        import zipfile
+        z = zipfile.ZipFile(os.path.join(PORTS_DIR, 'sdl2' + '.zip'), 'w')
+        if not os.path.exists('old-sub'):
+          os.mkdir('old-sub')
+        open(os.path.join('old-sub', 'a.txt'), 'w').write('waka')
+        open(os.path.join('old-sub', 'b.txt'), 'w').write('waka')
+        z.write(os.path.join('old-sub', 'a.txt'))
+        z.write(os.path.join('old-sub', 'b.txt'))
+        z.close()
         output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
         assert RETRIEVING_MESSAGE in output, output
         assert BUILDING_MESSAGE in output, output

@@ -24,6 +24,10 @@ extern "C" {
 #include <SDL/SDL.h> /* for SDL_Delay in async_call */
 #endif
 
+#if __EMSCRIPTEN__
+// This version of emscripten has <emscripten/vr.h> and associated support
+#define EMSCRIPTEN_HAS_VR_SUPPORT 1
+#endif
 
 /* Typedefs */
 
@@ -144,9 +148,8 @@ static inline double emscripten_get_now(void) {
 
 float emscripten_random(void);
 
+// wget
 
-
-void emscripten_wget(const char* url, const char* file);
 void emscripten_async_wget(const char* url, const char* file, em_str_callback_func onload, em_str_callback_func onerror);
 
 typedef void (*em_async_wget_onload_func)(void*, void*, int);
@@ -164,6 +167,31 @@ typedef void (*em_async_wget2_data_onprogress_func)(unsigned, void*, int, int);
 int emscripten_async_wget2_data(const char* url, const char* requesttype, const char* param, void *arg, int free, em_async_wget2_data_onload_func onload, em_async_wget2_data_onerror_func onerror, em_async_wget2_data_onprogress_func onprogress);
 
 void emscripten_async_wget2_abort(int handle);
+
+// wget "sync" (ASYNCIFY)
+
+void emscripten_wget(const char* url, const char* file);
+
+// wget data "sync" (EMTERPRETIFY_ASYNC)
+
+void emscripten_wget_data(const char* url, void** pbuffer, int* pnum, int *perror);
+
+// IDB
+
+void emscripten_idb_async_load(const char *db_name, const char *file_id, void* arg, em_async_wget_onload_func onload, em_arg_callback_func onerror);
+void emscripten_idb_async_store(const char *db_name, const char *file_id, void* ptr, int num, void* arg, em_arg_callback_func onstore, em_arg_callback_func onerror);
+void emscripten_idb_async_delete(const char *db_name, const char *file_id, void* arg, em_arg_callback_func ondelete, em_arg_callback_func onerror);
+typedef void (*em_idb_exists_func)(void*, int);
+void emscripten_idb_async_exists(const char *db_name, const char *file_id, void* arg, em_idb_exists_func oncheck, em_arg_callback_func onerror);
+
+// IDB "sync" (EMTERPRETIFY_ASYNC)
+
+void emscripten_idb_load(const char *db_name, const char *file_id, void** pbuffer, int* pnum, int *perror);
+void emscripten_idb_store(const char *db_name, const char *file_id, void* buffer, int num, int *perror);
+void emscripten_idb_delete(const char *db_name, const char *file_id, int *perror);
+void emscripten_idb_exists(const char *db_name, const char *file_id, int* pexists, int *perror);
+
+// other async utilities
 
 int emscripten_async_prepare(const char* file, em_str_callback_func onload, em_str_callback_func onerror);
 
@@ -238,6 +266,7 @@ double emscripten_asm_const_double(const char *code, ...);
 
 #if __EMSCRIPTEN__
 void emscripten_sleep(unsigned int ms);
+void emscripten_sleep_with_yield(unsigned int ms);
 #else
 #define emscripten_sleep SDL_Delay
 #endif

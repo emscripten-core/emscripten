@@ -155,8 +155,8 @@ function ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem) {
         $_0$0 = $n_sroa_1_4_extract_trunc >>> ((_llvm_cttz_i32($d_sroa_1_4_extract_trunc | 0) | 0) >>> 0);
         return (tempRet0 = $_0$1, $_0$0) | 0;
       }
-      $49 = _llvm_ctlz_i32($d_sroa_1_4_extract_trunc | 0) | 0;
-      $51 = $49 - (_llvm_ctlz_i32($n_sroa_1_4_extract_trunc | 0) | 0) | 0;
+      $49 = Math_clz32($d_sroa_1_4_extract_trunc | 0) | 0;
+      $51 = $49 - (Math_clz32($n_sroa_1_4_extract_trunc | 0) | 0) | 0;
       if ($51 >>> 0 <= 30) {
         $57 = $51 + 1 | 0;
         $58 = 31 - $51 | 0;
@@ -179,8 +179,8 @@ function ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem) {
       return (tempRet0 = $_0$1, $_0$0) | 0;
     } else {
       if (!$17) {
-        $117 = _llvm_ctlz_i32($d_sroa_1_4_extract_trunc | 0) | 0;
-        $119 = $117 - (_llvm_ctlz_i32($n_sroa_1_4_extract_trunc | 0) | 0) | 0;
+        $117 = Math_clz32($d_sroa_1_4_extract_trunc | 0) | 0;
+        $119 = $117 - (Math_clz32($n_sroa_1_4_extract_trunc | 0) | 0) | 0;
         if ($119 >>> 0 <= 31) {
           $125 = $119 + 1 | 0;
           $126 = 31 - $119 | 0;
@@ -205,8 +205,8 @@ function ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem) {
       }
       $66 = $d_sroa_0_0_extract_trunc - 1 | 0;
       if (($66 & $d_sroa_0_0_extract_trunc | 0) != 0) {
-        $86 = (_llvm_ctlz_i32($d_sroa_0_0_extract_trunc | 0) | 0) + 33 | 0;
-        $88 = $86 - (_llvm_ctlz_i32($n_sroa_1_4_extract_trunc | 0) | 0) | 0;
+        $86 = (Math_clz32($d_sroa_0_0_extract_trunc | 0) | 0) + 33 | 0;
+        $88 = $86 - (Math_clz32($n_sroa_1_4_extract_trunc | 0) | 0) | 0;
         $89 = 64 - $88 | 0;
         $91 = 32 - $88 | 0;
         $92 = $91 >> 31;
