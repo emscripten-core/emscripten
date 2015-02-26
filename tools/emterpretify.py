@@ -792,6 +792,16 @@ if __name__ == '__main__':
   for func in extra_blacklist:
     assert func in asm.funcs, 'requested blacklist of %s but it does not exist' % func
 
+  ## debugging
+  #import hashlib
+  #def hash(s):
+  #  hash_object = hashlib.sha256(s)
+  #  return int(hash_object.hexdigest(), 16)
+  #if len(WHITELIST) == 0 and len(extra_blacklist) == 0:
+  #  WHITELIST = set([func for func in asm.funcs if func[0] == '_' and hash(func) % 3 == 1])
+  #  print >> sys.stderr, 'manual whitelist', len(WHITELIST), '/', len(asm.funcs)
+  ##
+
   if len(WHITELIST) > 0:
     # we are using a whitelist: fill the blacklist with everything not whitelisted
     BLACKLIST = set([func for func in asm.funcs if func not in WHITELIST])
