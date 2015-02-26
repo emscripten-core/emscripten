@@ -136,7 +136,7 @@ while 1:
     print "EMSCRIPTEN BUG"
     notes['embug'] += 1
     fails += 1
-    shutil.copyfile(fullname, 'newfail%d%s%s%s' % (fails, opts.replace('-', '_'), ' '.join(llvm_opts).replace('-', '_').replace(' ', ''), suffix))
+    shutil.copyfile(fullname, 'newfail%d_%d%s%s%s' % (os.getpid(), fails, opts.replace('-', '_'), ' '.join(llvm_opts).replace('-', '_').replace(' ', ''), suffix))
 
   if not try_js():
     fail()
