@@ -805,8 +805,6 @@ else:
 try:
   if SPIDERMONKEY_ENGINE:
     new_spidermonkey = SPIDERMONKEY_ENGINE
-    if 'gcparam' not in str(new_spidermonkey):
-      new_spidermonkey += ['-e', "gcparam('maxBytes', 1024*1024*1024);"] # Our very large files need lots of gc heap
     if '-w' not in str(new_spidermonkey):
       new_spidermonkey += ['-w']
     SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
