@@ -1223,10 +1223,11 @@ int f() {
     exe = os.path.join(self.get_dir(), 'a.out.js')
 
     for engine in JS_ENGINES:
-      print >> sys.stderr, engine
       if engine == V8_ENGINE: continue # no stdin support in v8 shell
+      print >> sys.stderr, engine
       # work around a bug in python's subprocess module
       # (we'd use run_js() normally)
+      try_delete('out.txt')
       if os.name == 'nt': # windows
         os.system('type "in.txt" | {} >out.txt'.format(' '.join(make_js_command(exe, engine))))
       else: # posix
