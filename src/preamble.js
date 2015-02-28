@@ -1304,6 +1304,7 @@ function enlargeMemory() {
 var byteLength;
 try {
   byteLength = Function.prototype.call.bind(Object.getOwnPropertyDescriptor(ArrayBuffer.prototype, 'byteLength').get);
+  byteLength(new ArrayBuffer(4)); // can fail on older ie
 } catch(e) { // can fail on older node/v8
   byteLength = function(buffer) { return buffer.byteLength; };
 }
