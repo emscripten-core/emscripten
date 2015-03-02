@@ -1670,9 +1670,16 @@ var LibraryJSEvents = {
     if (index < 0 || index >= gamepads.length) {
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
     }
-    if (typeof gamepads[index] === 'undefined') {
+    // For previously disconnected gamepads there should be a null at the index.
+    // This is because gamepads must keep their original position in the array.
+    // For example, removing the first of two gamepads produces [null, gamepad].
+    // Older implementations of the Gamepad API used undefined instead of null.
+    // The following check works because null and undefined evaluate to false.
+    if (!gamepads[index]) {
+      // There is a "false" but no gamepad at index because it was disconnected.
       return {{{ cDefine('EMSCRIPTEN_RESULT_NO_DATA') }}};
     }
+    // There should be a gamepad at index which can be queried.
     JSEvents.fillGamepadEventData(gamepadState, gamepads[index]);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
