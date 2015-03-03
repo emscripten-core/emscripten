@@ -740,3 +740,50 @@ fi
         print '    verify', lib
         assert os.path.exists(Cache.get_path(lib))
 
+  def test_d8_path(self):
+    """ Test that running JS commands works for node, d8, and jsc and is not path dependent """
+    # Fake some JS engines
+    restore()
+
+    sample_script = path_from_root('tests', 'print_args.js')
+
+    # Note that the path contains 'd8'.
+    test_path = path_from_root('tests', 'fake', 'abcd8765')
+    if not os.path.exists(test_path):
+      os.makedirs(test_path)
+
+    try:
+      os.environ['EM_IGNORE_SANITY'] = '1'
+      jsengines = [('d8',     V8_ENGINE),
+                   ('d8_g',   V8_ENGINE),
+                   ('jsc',    SPIDERMONKEY_ENGINE),
+                   ('node',   NODE_JS),
+                   ('nodejs', NODE_JS)]
+      for filename, engine in jsengines:
+        if type(engine) is list:
+          engine = engine[0]
+        if engine == '':
+            print 'WARNING: Not testing engine %s, not configured.' % (filename)
+            continue
+
+        test_engine_path = os.path.join(test_path, filename)
+        f = open(test_engine_path, 'w')
+        f.write('#!/bin/sh\n')
+        f.write('%s $@\n' % (engine))
+        f.close()
+        os.chmod(test_engine_path, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+
+        try:
+          out = jsrun.run_js(sample_script, engine=test_engine_path, args=['--foo'], full_output=True, assert_returncode=0)
+        except Exception as e:
+          if 'd8' in filename:
+            assert False, 'Your d8 version does not correctly parse command-line arguments, please upgrade or delete from ~/.emscripten config file: %s' % (e)
+          else:
+            assert False, 'Error running script command: %s' % (e)
+
+        self.assertEqual('0: --foo', out.strip())
+
+    finally:
+      del os.environ['EM_IGNORE_SANITY']
+
+
