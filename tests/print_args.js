@@ -2,7 +2,7 @@
 // Used in test_sanity.py
 
 var print = print || console.log;
-var args = []
+var args = [];
 
 if (typeof process !== 'undefined') {
   // Use process global in node
