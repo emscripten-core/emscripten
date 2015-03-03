@@ -756,7 +756,7 @@ fi
       os.environ['EM_IGNORE_SANITY'] = '1'
       jsengines = [('d8',     V8_ENGINE),
                    ('d8_g',   V8_ENGINE),
-                   ('jsc',    SPIDERMONKEY_ENGINE),
+                   ('js',     SPIDERMONKEY_ENGINE),
                    ('node',   NODE_JS),
                    ('nodejs', NODE_JS)]
       for filename, engine in jsengines:
@@ -765,6 +765,8 @@ fi
         if engine == '':
             print 'WARNING: Not testing engine %s, not configured.' % (filename)
             continue
+
+        print filename, engine
 
         test_engine_path = os.path.join(test_path, filename)
         f = open(test_engine_path, 'w')
