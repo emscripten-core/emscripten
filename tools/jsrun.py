@@ -20,7 +20,17 @@ def timeout_run(proc, timeout=None, note='unnamed process', full_output=False):
 def make_command(filename, engine=None, args=[]):
   if type(engine) is not list:
     engine = [engine]
-  return engine + [filename] + (['--'] if 'd8' in engine[0] or 'jsc' in engine[0] else []) + args
+  # Emscripten supports multiple javascript runtimes.  The default is nodejs but
+  # it can also use d8 (the v8 engine shell) or jsc (JavaScript Core aka
+  # Safari).  Both d8 and jsc require a '--' to delimit arguments to be passed
+  # to the executed script from d8/jsc options.  Node does not require a
+  # delimeter--arguments after the filename are passed to the script.
+  #
+  # Check only the last part of the engine path to ensure we don't accidentally
+  # label a path to nodejs containing a 'd8' as spidermonkey instead.
+  jsengine = os.path.split(engine[0])[-1]
+  # Use "'d8' in" because the name can vary, e.g. d8_g, d8, etc.
+  return engine + [filename] + (['--'] if 'd8' in jsengine or 'jsc' in jsengine else []) + args
 
 def run_js(filename, engine=None, args=[], check_timeout=False, stdin=None, stdout=PIPE, stderr=None, cwd=None, full_output=False, assert_returncode=0, error_limit=-1):
   #  # code to serialize out the test suite files
