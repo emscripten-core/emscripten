@@ -403,6 +403,7 @@ try:
 
   opt_level = 0
   debug_level = 0
+  shrink_level = 0
   requested_debug = ''
   profiling = False
   profiling_funcs = False
@@ -481,10 +482,12 @@ try:
       if requested_level == 's':
         llvm_opts = ['-Os']
         requested_level = 2
+        shrink_level = 1
         settings_changes.append('INLINING_LIMIT=50')
       elif requested_level == 'z':
         llvm_opts = ['-Oz']
         requested_level = 2
+        shrink_level = 2
         settings_changes.append('INLINING_LIMIT=25')
       opt_level = validate_arg_level(requested_level, 3, 'Invalid optimization level: ' + newargs[i])
       # We leave the -O option in place so that the clang front-end runs in that
@@ -1541,7 +1544,7 @@ try:
       js_optimizer_extra_info['sizeToOutline'] = shared.Settings.OUTLINING_LIMIT
 
     if opt_level >= 2 and (not closure or shared.Settings.ASM_JS or closure == 2) and shared.Settings.RELOOP and debug_level < 3:
-      if shared.Settings.ASM_JS and opt_level >= 3:
+      if shared.Settings.ASM_JS and (opt_level >= 3 or shrink_level > 0):
         js_optimizer_queue += ['registerizeHarder']
       else:
         js_optimizer_queue += ['registerize']

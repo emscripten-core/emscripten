@@ -2758,6 +2758,10 @@ int main(int argc, char **argv) {
         print args, expect
         output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).communicate()
         self.assertContained(expect, err)
+        if '-O3' in args or '-Oz' in args or '-Os' in args:
+          self.assertContained('registerizeHarder', err)
+        else:
+          self.assertNotContained('registerizeHarder', err)
         self.assertContained('hello, world!', run_js('a.out.js'))
     finally:
       del os.environ['EMCC_DEBUG']
