@@ -212,6 +212,7 @@ mergeInto(LibraryManager.library, {
               // 2 - loading
     saveStack: '',
     yieldCallbacks: [],
+    postAsync: null,
 
     ensureInit: function() {
       if (this.initted) return;
@@ -237,7 +238,7 @@ mergeInto(LibraryManager.library, {
         // XXX this assumes that this stack top never ever leak! exceptions might violate that
         var stack = new Int32Array(HEAP32.subarray(EMTSTACKTOP>>2, asm.emtStackSave()>>2));
         var stacktop = asm.stackSave();
-        doAsyncOp(function resume() {
+        doAsyncOp(function resume(post) {
           assert(EmterpreterAsync.state === 1);
           // copy the stack back in and resume
           HEAP32.set(stack, EMTSTACKTOP>>2);
@@ -250,6 +251,8 @@ mergeInto(LibraryManager.library, {
           if (Browser.mainLoop.func) {
             Browser.mainLoop.resume();
           }
+          assert(!EmterpreterAsync.postAsync);
+          EmterpreterAsync.postAsync = post || null;
           asm.emterpret(stack[0]); // pc of the first function, from which we can reconstruct the rest, is at position 0 on the stack
           if (!yieldDuring && EmterpreterAsync.state === 0) {
             // if we did *not* do another async operation, then we know that nothing is conceptually on the stack now, and we can re-allow async callbacks as well as run the queued ones right now
@@ -276,6 +279,10 @@ mergeInto(LibraryManager.library, {
         // nothing to do here, the stack was just recreated. reset the state.
         assert(EmterpreterAsync.state === 2);
         EmterpreterAsync.setState(0);
+        if (EmterpreterAsync.postAsync) {
+          EmterpreterAsync.postAsync();
+          EmterpreterAsync.postAsync = null;
+        }
       }
     }
   },

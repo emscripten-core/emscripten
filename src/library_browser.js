@@ -790,12 +790,14 @@ mergeInto(LibraryManager.library, {
   emscripten_wget_data: function(url, pbuffer, pnum, perror) {
     EmterpreterAsync.handle(function(resume) {
       Browser.asyncLoad(Pointer_stringify(url), function(byteArray) {
-        var buffer = _malloc(byteArray.length); // must be freed by caller!
-        HEAPU8.set(byteArray, buffer);
-        {{{ makeSetValueAsm('pbuffer', 0, 'buffer', 'i32') }}};
-        {{{ makeSetValueAsm('pnum',  0, 'byteArray.length', 'i32') }}};
-        {{{ makeSetValueAsm('perror',  0, '0', 'i32') }}};
-        resume();
+        resume(function() {
+          // can only allocate the buffer after the resume, not during an asyncing
+          var buffer = _malloc(byteArray.length); // must be freed by caller!
+          HEAPU8.set(byteArray, buffer);
+          {{{ makeSetValueAsm('pbuffer', 0, 'buffer', 'i32') }}};
+          {{{ makeSetValueAsm('pnum',  0, 'byteArray.length', 'i32') }}};
+          {{{ makeSetValueAsm('perror',  0, '0', 'i32') }}};
+        });
       }, function() {
         {{{ makeSetValueAsm('perror',  0, '1', 'i32') }}};
         resume();
