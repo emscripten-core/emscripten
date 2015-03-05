@@ -975,7 +975,12 @@ if __name__ == '__main__':
       actual_sigs[name] = sig
       lines[i] = ''
 
-  assert global_func_id < 65536, [global_funcs, global_func_id]
+  if global_func_id >= 65536:
+    msg = 'Too many extcall-able global functions (%d) for emterpreter bytecode' % global_func_id
+    if PROFILING:
+      msg += '\nDue to --profiling or --profiling-funcs being on, all emterpreter calls are extcalls. Building without those flags might avoid this problem.'
+    raise Exception(msg)
+
   assert global_var_id < 256, [global_vars, global_var_id]
 
   def post_process_code(code):
