@@ -190,6 +190,7 @@ var LibrarySDL = {
       220: 92, // back slash
       221: 93, // close square bracket
       222: 39, // quote
+      224: 227 | 1<<10, // meta (command/windows)      
     },
 
     scanCodes: { // SDL keycode ==> SDL scancode. See SDL_scancode.h
