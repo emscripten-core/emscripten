@@ -952,7 +952,7 @@ var LibraryGL = {
       case 0x1F03 /* GL_EXTENSIONS */:
         var exts = GLctx.getSupportedExtensions();
         var gl_exts = [];
-        for (i in exts) {
+        for (var i in exts) {
           gl_exts.push(exts[i]);
           gl_exts.push("GL_" + exts[i]);
         }
