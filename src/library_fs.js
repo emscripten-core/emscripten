@@ -1097,6 +1097,7 @@ mergeInto(LibraryManager.library, {
       return bytesRead;
     },
     write: function(stream, buffer, offset, length, position, canOwn) {
+      // console.log('FS.write', offset, length, position);
       if (length < 0 || position < 0) {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
@@ -1153,6 +1154,18 @@ mergeInto(LibraryManager.library, {
         throw new FS.ErrnoError(ERRNO_CODES.ENODEV);
       }
       return stream.stream_ops.mmap(stream, buffer, offset, length, position, prot, flags);
+    },
+    msync: function(stream, map, len, flags) {
+      if (!stream.stream_ops.msync) {
+        return 0;
+      }
+      return stream.stream_ops.msync(map, len, flags);
+    },
+    munmap: function(stream, map, num) {
+      if (!stream.stream_ops.msync) {
+        return 0;
+      }
+      return stream.stream_ops.munmap(map, num);
     },
     ioctl: function(stream, cmd, arg) {
       if (!stream.stream_ops.ioctl) {

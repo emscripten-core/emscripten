@@ -1,8 +1,8 @@
 // === Preamble library stuff ===
 
-// Documentation for the public APIs defined in this file must be updated in: 
+// Documentation for the public APIs defined in this file must be updated in:
 //    site/source/docs/api_reference/preamble.js.rst
-// A prebuilt local version of the documentation is available at: 
+// A prebuilt local version of the documentation is available at:
 //    site/build/text/docs/api_reference/preamble.js.txt
 // You can also build docs locally as HTML or other formats in site/
 // An online HTML version (which may be of a different version of Emscripten)
@@ -369,7 +369,7 @@ var cwrap, ccall;
   // For fast lookup of conversion functions
   var toC = {'string' : JSfuncs['stringToC'], 'array' : JSfuncs['arrayToC']};
 
-  // C calling interface. 
+  // C calling interface.
   ccall = function ccallFunc(ident, returnType, argTypes, args) {
     var func = getCFunc(ident);
     var cArgs = [];
@@ -410,7 +410,7 @@ var cwrap, ccall;
     }
   }
 
-  
+
   cwrap = function cwrap(ident, returnType, argTypes) {
     argTypes = argTypes || [];
     var cfunc = getCFunc(ident);
@@ -977,6 +977,10 @@ var FHEAP;
 #if USE_TYPED_ARRAYS == 2
 var HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32, HEAPF64;
 #endif
+#if PROXY_HEAP
+var RAWHEAP8, RAWHEAPU8, RAWHEAP16, RAWHEAPU16, RAWHEAP32, RAWHEAPU32, RAWHEAPF32, RAWHEAPF64;
+var MAPPED_MEMORY = {};
+#endif
 
 var STATIC_BASE = 0, STATICTOP = 0, staticSealed = false; // static area
 var STACK_BASE = 0, STACKTOP = 0, STACK_MAX = 0; // stack area
@@ -1026,10 +1030,26 @@ function enlargeMemory() {
   if (ArrayBuffer.transfer) {
     buffer = ArrayBuffer.transfer(buffer, TOTAL_MEMORY);
   } else {
+#if PROXY_HEAP
+    var oldHEAP8 = RAWHEAP8;
+#else
     var oldHEAP8 = HEAP8;
+#endif
     buffer = new ArrayBuffer(TOTAL_MEMORY);
   }
   Module['buffer'] = buffer;
+#if PROXY_HEAP
+  RAWHEAP8 = new Int8Array(buffer);
+  RAWHEAP16 = new Int16Array(buffer);
+  RAWHEAP32 = new Int32Array(buffer);
+  RAWHEAPU8 = new Uint8Array(buffer);
+  RAWHEAPU16 = new Uint16Array(buffer);
+  RAWHEAPU32 = new Uint32Array(buffer);
+  RAWHEAPF32 = new Float32Array(buffer);
+  RAWHEAPF64 = new Float64Array(buffer);
+
+  proxyRawHeap();
+#else
   Module['HEAP8'] = HEAP8 = new Int8Array(buffer);
   Module['HEAP16'] = HEAP16 = new Int16Array(buffer);
   Module['HEAP32'] = HEAP32 = new Int32Array(buffer);
@@ -1038,6 +1058,7 @@ function enlargeMemory() {
   Module['HEAPU32'] = HEAPU32 = new Uint32Array(buffer);
   Module['HEAPF32'] = HEAPF32 = new Float32Array(buffer);
   Module['HEAPF64'] = HEAPF64 = new Float64Array(buffer);
+#endif
   if (!ArrayBuffer.transfer) {
     HEAP8.set(oldHEAP8);
   }
@@ -1141,6 +1162,70 @@ Module['HEAPU16'] = HEAPU16;
 Module['HEAPU32'] = HEAPU32;
 Module['HEAPF32'] = HEAPF32;
 Module['HEAPF64'] = HEAPF64;
+#endif
+
+#if PROXY_HEAP
+assert(typeof Proxy !== 'undefined', 'Proxy is not available in global scope');
+
+function createNewProxy(target, bytes, fnName) {
+  var options = {
+      get: function(receiver, key) {
+        // console.log('get', target+'', key.toString(16));
+        // are we in mapped memory?
+        if (MAPPED_MEMORY[key * bytes]) {
+          if (typeof MAPPED_MEMORY[key * bytes]['get' + fnName] !== 'function') {
+            throw 'Mapped memory at ' + (key * bytes) + ' cannot handle get' + fnName;
+          }
+          return MAPPED_MEMORY[key * bytes]['get' + fnName](key * bytes);
+        }
+
+        return target[key];
+      },
+      set: function(receiver, key, value) {
+        if (MAPPED_MEMORY[key * bytes]) {
+          if (typeof MAPPED_MEMORY[key * bytes]['set' + fnName] !== 'function') {
+            throw 'Mapped memory at ' + (key * bytes) + ' cannot handle set' + fnName;
+          }
+          return MAPPED_MEMORY[key * bytes]['set' + fnName](key * bytes, value);
+        }
+        
+        target[key] = value;
+      }
+    };
+
+  // annoying that node/io uses different proxies
+  if (Proxy.create) {
+    var p = Proxy.create(options);
+    p.subarray = target.subarray.bind(target);
+    p.set = target.set.bind(target);
+    return p;
+  }
+  return new Proxy(target, options);
+}
+
+// We wrap everything in a proxy...
+
+function proxyRawHeap() {
+  Module['HEAP8']   = HEAP8   = createNewProxy(RAWHEAP8, 1, 'i8');
+  Module['HEAP16']  = HEAP16  = createNewProxy(RAWHEAP16, 2, 'i16');
+  Module['HEAP32']  = HEAP32  = createNewProxy(RAWHEAP32, 4, 'i32');
+  Module['HEAPU8']  = HEAPU8  = createNewProxy(RAWHEAPU8, 1, 'u8');
+  Module['HEAPU16'] = HEAPU16 = createNewProxy(RAWHEAPU16, 2, 'u16');
+  Module['HEAPU32'] = HEAPU32 = createNewProxy(RAWHEAPU32, 4, 'u32');
+  Module['HEAPF32'] = HEAPF32 = createNewProxy(RAWHEAPF32, 4, 'f32');
+  Module['HEAPF64'] = HEAPF64 = createNewProxy(RAWHEAPF64, 8, 'f64');
+}
+RAWHEAP8   = HEAP8;
+RAWHEAP16  = HEAP16;
+RAWHEAP32  = HEAP32;
+RAWHEAPU8  = HEAPU8;
+RAWHEAPU16 = HEAPU16;
+RAWHEAPU32 = HEAPU32;
+RAWHEAPF32 = HEAPF32;
+RAWHEAPF64 = HEAPF64;
+proxyRawHeap();
+
+HEAP8[1000] = 7;
 #endif
 
 function callRuntimeCallbacks(callbacks) {
@@ -1282,6 +1367,26 @@ function writeArrayToMemory(array, buffer) {
   }
 }
 Module['writeArrayToMemory'] = writeArrayToMemory;
+
+/* I think this file is compiled from somewhere, but don't know the source
+ * Maps are objects that have not-yet-defined values.
+ * It has:
+ *  - length: number of bytes to allocate
+ *  - geti8()
+ *  - geti16()
+ *  - geti32()
+ * It calls these functions to obtain the value, instead of direct access
+ */
+function writeMapToMemory(map, buffer) {
+  var ptr;
+  for (var i = 0; i < map.length; i++) {
+    ptr = (((buffer)+(i)));
+
+    // should do ranges...
+    MAPPED_MEMORY[ptr] = map;
+  }
+}
+Module['writeMapToMemory'] = writeMapToMemory;
 
 function writeAsciiToMemory(str, buffer, dontAddNull) {
   for (var i = 0; i < str.length; i++) {

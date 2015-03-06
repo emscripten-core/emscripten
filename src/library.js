@@ -2997,7 +2997,7 @@ LibraryManager.library = {
       }
     }
 
-    _mmap.mappings[ptr] = { malloc: ptr, num: num, allocated: allocated };
+    _mmap.mappings[ptr] = { malloc: ptr, num: num, allocated: allocated, fd: fd };
     return ptr;
   },
 
@@ -3011,6 +3011,7 @@ LibraryManager.library = {
       if (info.allocated) {
         _free(info.malloc);
       }
+      return FS.munmap(FS.getStream(info.fd), info, num);
     }
     return 0;
   },
@@ -3027,8 +3028,16 @@ LibraryManager.library = {
   msync: function(addr, len, flags) {
     // int msync(void *addr, size_t len, int flags);
     // http://pubs.opengroup.org/onlinepubs/009696799/functions/msync.html
-    // Pretend to succeed
-    return 0;
+    try {
+      var map = _mmap.mappings[addr];
+      var stream = FS.getStream(map.fd);
+      console.log('msync', map);
+      var res = FS.msync(stream, map, len, flags);
+      return res;
+    } catch (e) {
+      FS.handleFSError(e);
+      return -1;
+    }
   },
 
   // ==========================================================================

@@ -1324,7 +1324,7 @@ var asm = (function(global, env, buffer) {
      access_quote('Uint16Array'),
      access_quote('Uint32Array'),
      access_quote('Float32Array'),
-     access_quote('Float64Array')) if not settings['ALLOW_MEMORY_GROWTH'] else '''
+     access_quote('Float64Array')) if not settings['PROXY_HEAP'] and not settings['ALLOW_MEMORY_GROWTH'] else '''
   var Int8View = global%s;
   var Int16View = global%s;
   var Int32View = global%s;
@@ -1349,7 +1349,7 @@ var asm = (function(global, env, buffer) {
      access_quote('Uint16Array'),
      access_quote('Uint32Array'),
      access_quote('Float32Array'),
-     access_quote('Float64Array'))) + '\n' + asm_global_vars + '''
+     access_quote('Float64Array')) if settings['ALLOW_MEMORY_GROWTH'] else '') + '\n' + asm_global_vars + '''
   var __THREW__ = 0;
   var threwValue = 0;
   var setjmpId = 0;
