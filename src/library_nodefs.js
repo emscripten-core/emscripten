@@ -11,7 +11,7 @@ mergeInto(LibraryManager.library, {
       return NODEFS.createNode(null, '/', NODEFS.getMode(mount.opts.root), 0);
     },
     createNode: function (parent, name, mode, dev) {
-      if (!FS.isDir(mode) && !FS.isFile(mode) && !FS.isLink(mode)) {
+      if (!FS.isDir(mode) && !FS.isFile(mode) && !FS.isLink(mode) && !FS.isChrdev(mode)) {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
       var node = FS.createNode(parent, name, mode);
@@ -24,7 +24,7 @@ mergeInto(LibraryManager.library, {
       try {
         stat = fs.lstatSync(path);
         if (NODEFS.isWindows) {
-          // On Windows, directories return permission bits 'rw-rw-rw-', even though they have 'rwxrwxrwx', so 
+          // On Windows, directories return permission bits 'rw-rw-rw-', even though they have 'rwxrwxrwx', so
           // propagate write bits to execute bits.
           stat.mode = stat.mode | ((stat.mode & 146) >> 1);
         }
@@ -214,7 +214,7 @@ mergeInto(LibraryManager.library, {
       open: function (stream) {
         var path = NODEFS.realPath(stream.node);
         try {
-          if (FS.isFile(stream.node.mode)) {
+          if (FS.isFile(stream.node.mode) || FS.isChrdev(stream.node.mode)) {
             stream.nfd = fs.openSync(path, NODEFS.flagsToPermissionString(stream.flags));
           }
         } catch (e) {
@@ -224,7 +224,7 @@ mergeInto(LibraryManager.library, {
       },
       close: function (stream) {
         try {
-          if (FS.isFile(stream.node.mode) && stream.nfd) {
+          if ((FS.isFile(stream.node.mode) || FS.isChrdev(stream.node.mode)) && stream.nfd) {
             fs.closeSync(stream.nfd);
           }
         } catch (e) {
@@ -233,6 +233,7 @@ mergeInto(LibraryManager.library, {
         }
       },
       read: function (stream, buffer, offset, length, position) {
+        // console.log('NODEFS read', offset, length, position);
         if (length === 0) return 0; // node errors on 0 length reads
         // FIXME this is terrible.
         var nbuffer = new Buffer(length);
@@ -280,6 +281,80 @@ mergeInto(LibraryManager.library, {
         }
 
         return position;
+      },
+      node_mmap: null,
+      _mmapLookup: {},
+      mmap: function(stream, buffer, offset, length, position, prot, flags) {
+        var self = this;
+        try {
+          if (!this.node_mmap) {
+            this.node_mmap = require("emscripten-node-mmap");
+          }
+        }
+        catch (ex) {
+          console.error(ex);
+          throw 'For mmap to work with NODEFS, install emscripten-node-mmap in ' + PATH.join(__dirname, 'node_modules');
+        }
+
+        // ??? how does offset fit into this?
+        var mapPtr = this.node_mmap.mmap(length, prot, flags, stream.nfd, position);
+        
+        console.log('realPtr', mapPtr);
+
+        if (!mapPtr) {
+          return -1;
+        }
+
+        // now malloc in emscripten
+        var ptr = _malloc(length);
+        
+        var memoryMap = {
+          length: length,
+          getPtr: function(aPtr) {
+            var offset = aPtr - ptr;
+            var realPtr = Number(mapPtr) + offset;
+            return realPtr.toString(16);
+          },
+          geti8: function(aPtr) {
+            return self.node_mmap.geti8(this.getPtr(aPtr));
+          },
+          geti16: function(aPtr) {
+            return self.node_mmap.geti16(this.getPtr(aPtr));
+          },
+          geti32: function(aPtr) {
+            return self.node_mmap.geti32(this.getPtr(aPtr));
+          },
+          seti8: function(aPtr, aValue) {
+            return self.node_mmap.seti8(this.getPtr(aPtr), aValue);
+          },
+          seti16: function(aPtr, aValue) {
+            return self.node_mmap.seti16(this.getPtr(aPtr), aValue);
+          },
+          seti32: function(aPtr, aValue) {
+            return self.node_mmap.seti32(this.getPtr(aPtr), aValue);
+          },
+          // todo: others
+        };
+        
+        writeMapToMemory(memoryMap, ptr);
+
+        this._mmapLookup[ptr] = mapPtr;
+
+        return { ptr: ptr, allocated: true };
+      },
+      msync: function(map, length, flags) {
+        var realPtr = this._mmapLookup[map.malloc];
+        return this.node_mmap.msync(realPtr, length, flags);
+      },
+      munmap: function(map, length) {
+        var realPtr = this._mmapLookup[map.malloc];
+
+        // fails for some reason, why??
+        // _free(map.malloc);
+
+        delete this._mmapLookup[map.malloc];
+
+        return this.node_mmap.munmap(realPtr, length);
       }
     }
   }
