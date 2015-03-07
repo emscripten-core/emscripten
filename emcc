@@ -1070,6 +1070,10 @@ try:
       memory_init_file = True
     assert closure is not 2, 'EMTERPRETIFY requires valid asm.js, and is incompatible with closure 2 which disables that'
 
+  if shared.Settings.DEAD_FUNCTIONS and not js_opts:
+    js_opts = True
+    logging.warning('enabling js opts for DEAD_FUNCTIONS')
+
   if proxy_to_worker:
     shared.Settings.PROXY_TO_WORKER = 1
 
@@ -1490,6 +1494,10 @@ try:
       js_optimizer_queue_history += js_optimizer_queue
       js_optimizer_queue = []
     js_optimizer_extra_info = {}
+
+  if shared.Settings.DEAD_FUNCTIONS:
+    js_optimizer_queue += ['eliminateDeadFuncs']
+    js_optimizer_extra_info['dead_functions'] = shared.Settings.DEAD_FUNCTIONS
 
   if opt_level >= 1 and js_opts:
     logging.debug('running js post-opts')

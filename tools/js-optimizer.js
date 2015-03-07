@@ -7916,6 +7916,23 @@ function asmLastOpts(ast) {
   });
 }
 
+// Contrary to the name this does not eliminate actual dead functions, only
+// those marked as such with DEAD_FUNCTIONS
+function eliminateDeadFuncs(ast) {
+  assert(asm);
+  assert(extraInfo && extraInfo.dead_functions);
+  var deadFunctions = set(extraInfo.dead_functions);
+  traverseGeneratedFunctions(ast, function (fun, type) {
+    if (!(fun[1] in deadFunctions)) {
+      return;
+    }
+    var asmData = normalizeAsm(fun);
+    fun[3] = [['stat', ['call', ['name', 'abort'], [['num', -1]]]]];
+    asmData.vars = {};
+    denormalizeAsm(fun, asmData);
+  });
+}
+
 // Passes table
 
 var minifyWhitespace = false, printMetadata = true, asm = false, asmPreciseF32 = false, emitJSON = false, last = false;
@@ -7936,6 +7953,7 @@ var passes = {
   loopOptimizer: loopOptimizer,
   registerize: registerize,
   registerizeHarder: registerizeHarder,
+  eliminateDeadFuncs: eliminateDeadFuncs,
   eliminate: eliminate,
   eliminateMemSafe: eliminateMemSafe,
   aggressiveVariableElimination: aggressiveVariableElimination,

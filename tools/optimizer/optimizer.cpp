@@ -3869,6 +3869,29 @@ void asmLastOpts(Ref ast) {
   });
 }
 
+// Contrary to the name this does not eliminate actual dead functions, only
+// those marked as such with DEAD_FUNCTIONS
+void eliminateDeadFuncs(Ref ast) {
+  assert(!!extraInfo);
+  IString DEAD_FUNCTIONS("dead_functions");
+  IString ABORT("abort");
+  assert(extraInfo->has(DEAD_FUNCTIONS));
+  StringSet deadFunctions;
+  for (size_t i = 0; i < extraInfo[DEAD_FUNCTIONS]->size(); i++) {
+    deadFunctions.insert(extraInfo[DEAD_FUNCTIONS][i]->getIString());
+  }
+  traverseFunctions(ast, [&](Ref fun) {
+    if (!deadFunctions.has(fun[1].get()->getIString())) {
+      return;
+    }
+    AsmData asmData(fun);
+    fun[3]->setSize(1);
+    fun[3][0] = make1(STAT, make2(CALL, makeName(ABORT), &(makeArray())->push_back(makeNum(-1))));
+    asmData.vars.clear();
+    asmData.denormalize();
+  });
+}
+
 //==================
 // Main
 //==================
@@ -3925,6 +3948,7 @@ int main(int argc, char **argv) {
     if (str == "asm") {} // the default for us
     else if (str == "asmPreciseF32") {}
     else if (str == "receiveJSON" || str == "emitJSON") {}
+    else if (str == "eliminateDeadFuncs") eliminateDeadFuncs(doc);
     else if (str == "eliminate") eliminate(doc);
     else if (str == "eliminateMemSafe") eliminateMemSafe(doc);
     else if (str == "simplifyExpressions") simplifyExpressions(doc);
