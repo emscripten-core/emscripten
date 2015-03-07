@@ -3028,7 +3028,7 @@ int main()
         printf("and that's that\n");
         return 0;
       }
-    ''', [3, 1, 1])
+    ''', [2, 1, 1])
 
     test(r'''
       #include <stdio.h>
