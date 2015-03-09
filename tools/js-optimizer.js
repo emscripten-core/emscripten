@@ -7666,7 +7666,10 @@ function emterpretify(ast) {
         bump += 8; // each local is a 64-bit value
       });
       if (ASYNC) {
-        argStats = [['if', srcToExp('(asyncState|0) != 2'), ['block', argStats]]];
+        argStats = [['if', srcToExp('(asyncState|0) == 0'), ['block', argStats]]];
+        if (ASSERTIONS) {
+          argStats[0].push(['if', srcToExp('(asyncState|0) == 1'), srcToStat('abort(-12) | 0')]);
+        }
       }
       func[3] = func[3].concat(argStats);
       // prepare the call into the emterpreter
