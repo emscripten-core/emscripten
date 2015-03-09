@@ -272,6 +272,7 @@ mergeInto(LibraryManager.library, {
           EmterpreterAsync.yieldCallbacks.forEach(function(func) {
             func();
           });
+          Browser.resumeAsyncCallbacks(); // if we were paused (e.g. we are after a sleep), then since we are now yielding, it is safe to call callbacks
         } else {
           Browser.pauseAsyncCallbacks();
         }
