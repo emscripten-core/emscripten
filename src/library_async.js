@@ -243,7 +243,6 @@ mergeInto(LibraryManager.library, {
           // copy the stack back in and resume
           HEAP32.set(stack, EMTSTACKTOP>>2);
 #if ASSERTIONS
-          EmterpreterAsync.setState(0); // set it to 0 just so stackSave is ok to run
           assert(stacktop === asm.stackSave()); // nothing should have modified the stack meanwhile
 #endif
           EmterpreterAsync.setState(2);

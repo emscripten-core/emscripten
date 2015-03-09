@@ -6156,6 +6156,7 @@ function emterpretify(ast) {
   var ASYNC = extraInfo.ASYNC;
   var PROFILING = extraInfo.PROFILING;
   var ASSERTIONS = extraInfo.ASSERTIONS;
+  var yieldFuncs = set(extraInfo.yieldFuncs);
 
   var RELATIVE_BRANCHES = set('BR', 'BRT', 'BRF');
   var ABSOLUTE_BRANCHES = set('BRA', 'BRTA', 'BRFA');
@@ -7438,7 +7439,7 @@ function emterpretify(ast) {
 
     if (ignore) {
       // we are not emterpreting this function
-      if (ASYNC && ASSERTIONS && !/^dynCall_/.test(func[1])) {
+      if (ASYNC && ASSERTIONS && !/^dynCall_/.test(func[1]) && !(func[1] in yieldFuncs)) {
         // we need to be careful to never enter non-emterpreted code while doing an async save/restore,
         // which is what happens if non-emterpreted code is on the stack while we attempt to save.
         // note that we special-case dynCall, which *can* be on the stack, they are just bridges; what

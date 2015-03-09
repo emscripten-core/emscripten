@@ -57,6 +57,7 @@ sys.argv = filter(handle_arg, sys.argv)
 
 BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memmove', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64', '_strncpy', '_strcpy', '_strcat', '_saveSetjmp', '_testSetjmp', '_emscripten_replace_memory', '_bitshift64Shl', '_bitshift64Ashr', '_bitshift64Lshr', 'setAsyncState', 'emtStackSave'])
 WHITELIST = []
+YIELDLIST = ['stackSave'] # functions which are ok to run while doing a sleep_with_yield.
 
 SYNC_FUNCS = set(['_emscripten_sleep', '_emscripten_sleep_with_yield', '_emscripten_wget_data', '_emscripten_idb_load', '_emscripten_idb_store', '_emscripten_idb_delete'])
 
@@ -696,8 +697,7 @@ function emterpret%s(pc) {
   '' if not zero else '_z',
   'sp = 0, ' if not zero else '',
   '' if not ASYNC and not MEMORY_SAFE else 'var ld = +0;',
-  '' if not ASYNC else 'HEAP32[EMTSTACKTOP>>2] = pc;\n if ((asyncState|0) == 1) asyncState = 0;\n', # other code running between a save and resume can see state 1, just reset
-                                                                                                # (optimally we should flip it to 0 at the bottom of the saving stack)
+  '' if not ASYNC else 'HEAP32[EMTSTACKTOP>>2] = pc;\n',
   push_stacktop(zero),
   ROPCODES['FUNC'],
   (''' EMTSTACKTOP = EMTSTACKTOP + (lx ''' + (' + 1 ' if ASYNC else '') + '''<< 3) | 0;
@@ -831,7 +831,7 @@ if __name__ == '__main__':
   external_emterpreted_funcs = filter(lambda func: func in tabled_funcs or func in exported_funcs or func in reachable_funcs, emterpreted_funcs)
 
   # process functions, generating bytecode
-  shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'emterpretedFuncs': list(emterpreted_funcs), 'externalEmterpretedFuncs': list(external_emterpreted_funcs), 'opcodes': OPCODES, 'ropcodes': ROPCODES, 'ASYNC': ASYNC, 'PROFILING': PROFILING, 'ASSERTIONS': ASSERTIONS }, output_filename=temp, just_concat=True)
+  shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'emterpretedFuncs': list(emterpreted_funcs), 'externalEmterpretedFuncs': list(external_emterpreted_funcs), 'opcodes': OPCODES, 'ropcodes': ROPCODES, 'ASYNC': ASYNC, 'PROFILING': PROFILING, 'ASSERTIONS': ASSERTIONS, 'yieldFuncs': YIELDLIST }, output_filename=temp, just_concat=True)
 
   # load the module and modify it
   asm = asm_module.AsmModule(temp)
