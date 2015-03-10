@@ -57,7 +57,7 @@ sys.argv = filter(handle_arg, sys.argv)
 
 BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memmove', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64', '_strncpy', '_strcpy', '_strcat', '_saveSetjmp', '_testSetjmp', '_emscripten_replace_memory', '_bitshift64Shl', '_bitshift64Ashr', '_bitshift64Lshr', 'setAsyncState', 'emtStackSave'])
 WHITELIST = []
-YIELDLIST = ['stackSave'] # functions which are ok to run while doing a sleep_with_yield.
+YIELDLIST = ['stackSave', 'stackRestore', 'setThrew'] # functions which are ok to run while doing a sleep_with_yield.
 
 SYNC_FUNCS = set(['_emscripten_sleep', '_emscripten_sleep_with_yield', '_emscripten_wget_data', '_emscripten_idb_load', '_emscripten_idb_store', '_emscripten_idb_delete'])
 
@@ -731,7 +731,15 @@ if __name__ == '__main__':
       WHITELIST = json.loads(temp)
 
       if len(sys.argv) >= 7:
-        SWAPPABLE = int(sys.argv[6])
+        temp = sys.argv[6]
+        if temp[0] == '"':
+          # response file
+          assert temp[1] == '@'
+          temp = open(temp[2:-1]).read()
+        YIELDLIST = YIELDLIST + json.loads(temp)
+
+        if len(sys.argv) >= 8:
+          SWAPPABLE = int(sys.argv[7])
 
   if ADVISE:
     # Advise the user on which functions should likely be emterpreted

@@ -7667,7 +7667,7 @@ function emterpretify(ast) {
       });
       if (ASYNC) {
         argStats = [['if', srcToExp('(asyncState|0) == 0'), ['block', argStats]]];
-        if (ASSERTIONS) {
+        if (ASSERTIONS && !(func[1] in yieldFuncs)) {
           argStats[0].push(['if', srcToExp('(asyncState|0) == 1'), srcToStat('abort(-12) | 0')]);
         }
       }
