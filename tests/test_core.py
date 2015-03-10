@@ -984,6 +984,26 @@ align 16: 0
 align 32: 0
 base align: 0, 0, 0, 0'''])
 
+  def test_stack_restore(self):
+    if self.is_emterpreter(): return self.skip('generated code not available in emterpreter')
+    self.emcc_args += ['-g3'] # to be able to find the generated code
+    test_path = path_from_root('tests', 'core', 'test_stack_restore')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.do_run_from_file(src, output)
+
+    generated = open('src.cpp.o.js').read()
+
+    def ensure_stack_restore_count(function_name, expected_count):
+      code = generated[generated.find(function_name):]
+      code = code[:code.find('\n}') + 2]
+      actual_count = code.count('STACKTOP = sp')
+      assert actual_count == expected_count, ('Expected %d stack restorations, got %d' % (expected_count, actual_count)) + ': ' + code
+
+    ensure_stack_restore_count('function _no_stack_usage', 0)
+    ensure_stack_restore_count('function _alloca_gets_restored', 1)
+    ensure_stack_restore_count('function _stack_usage', 1)
+
   def test_strings(self):
       if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
       test_path = path_from_root('tests', 'core', 'test_strings')
