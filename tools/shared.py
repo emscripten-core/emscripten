@@ -930,7 +930,9 @@ class Settings2(type):
       # Apply additional settings. First -O, then -s
       for i in range(len(args)):
         if args[i].startswith('-O'):
-          level = eval(args[i][2])
+          v = args[i][2]
+          if v in ['s', 'z']: v = '2'
+          level = eval(v)
           self.apply_opt_level(level)
       for i in range(len(args)):
         if args[i] == '-s':

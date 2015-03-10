@@ -5905,10 +5905,12 @@ def process(filename):
         if os.environ.get('EMCC_FAST_COMPILER') == '0' and os.path.basename(name) in [
           '18.cpp', '15.c', '21.c', '22.c'
         ]: continue # works only in fastcomp
-        if x == 'lto' and self.run_name == 'default' and os.path.basename(name) in [
-          '19.c', '18.cpp',
+        if x == 'lto' and self.run_name in ['default', 'asm2f'] and os.path.basename(name) in [
           '8.c' # pnacl legalization issue, see https://code.google.com/p/nativeclient/issues/detail?id=4027
-        ]: continue # LLVM LTO bug
+        ]: continue
+        if x == 'lto' and self.run_name == 'default' and os.path.basename(name) in [
+          '19.c', '18.cpp', # LLVM LTO bug
+        ]: continue
         if x == 'lto' and os.path.basename(name) in [
           '21.c'
         ]: continue # LLVM LTO bug
@@ -7417,7 +7419,7 @@ default = make_run("default", compiler=CLANG, emcc_args=["-s", "ASM_JS=2"])
 asm1 = make_run("asm1", compiler=CLANG, emcc_args=["-O1"])
 asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2"])
 asm3 = make_run("asm3", compiler=CLANG, emcc_args=["-O3"])
-asm2f = make_run("asm2f", compiler=CLANG, emcc_args=["-O2", "-s", "PRECISE_F32=1", "-s", "ALLOW_MEMORY_GROWTH=1"])
+asm2f = make_run("asm2f", compiler=CLANG, emcc_args=["-Oz", "-s", "PRECISE_F32=1", "-s", "ALLOW_MEMORY_GROWTH=1"])
 asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "-s", "SAFE_HEAP=1"])
 asm1i = make_run("asm1i", compiler=CLANG, emcc_args=["-O1", '-s', 'EMTERPRETIFY=1'])
 asm3i = make_run("asm3i", compiler=CLANG, emcc_args=["-O3", '-s', 'EMTERPRETIFY=1'])
