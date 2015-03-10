@@ -264,6 +264,18 @@ process(sys.argv[1])
     err = '\n'.join(filter(lambda line: 'uccessfully compiled asm.js code' not in line, err.split('\n')))
     return err
 
+  def get_func(self, src, name):
+    start = src.index('function ' + name + '(')
+    t = start
+    n = 0
+    while True:
+      if src[t] == '{': n += 1
+      elif src[t] == '}':
+        n -= 1
+        if n == 0: return src[start:t+1]
+      t += 1
+      assert t < len(src)
+
   def run_generated_code(self, engine, filename, args=[], check_timeout=True, output_nicerizer=None, assert_returncode=0):
     stdout = os.path.join(self.get_dir(), 'stdout') # use files, as PIPE can get too full and hang us
     stderr = os.path.join(self.get_dir(), 'stderr')

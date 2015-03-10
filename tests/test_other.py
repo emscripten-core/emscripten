@@ -4407,61 +4407,49 @@ pass: error == ENOTDIR
 
     print 'blacklisting'
 
-    def get_func(src, name):
-      start = src.index('function ' + name + '(')
-      t = start
-      n = 0
-      while True:
-        if src[t] == '{': n += 1
-        elif src[t] == '}':
-          n -= 1
-          if n == 0: return src[start:t+1]
-        t += 1
-        assert t < len(src)
-
     do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', [])
     src = open('a.out.js').read()
-    assert 'emterpret' in get_func(src, '_main'), 'main is emterpreted'
+    assert 'emterpret' in self.get_func(src, '_main'), 'main is emterpreted'
     assert 'function _atoi(' not in src, 'atoi is emterpreted and does not even have a trampoline, since only other emterpreted can reach it'
 
     do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-s', 'EMTERPRETIFY_BLACKLIST=["_main"]']) # blacklist main
     src = open('a.out.js').read()
-    assert 'emterpret' not in get_func(src, '_main'), 'main is NOT emterpreted, it was  blacklisted'
-    assert 'emterpret' in get_func(src, '_atoi'), 'atoi is emterpreted'
+    assert 'emterpret' not in self.get_func(src, '_main'), 'main is NOT emterpreted, it was  blacklisted'
+    assert 'emterpret' in self.get_func(src, '_atoi'), 'atoi is emterpreted'
 
     do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-s', 'EMTERPRETIFY_BLACKLIST=["_main", "_atoi"]']) # blacklist main and atoi
     src = open('a.out.js').read()
-    assert 'emterpret' not in get_func(src, '_main'), 'main is NOT emterpreted, it was  blacklisted'
-    assert 'emterpret' not in get_func(src, '_atoi'), 'atoi is NOT emterpreted either'
+    assert 'emterpret' not in self.get_func(src, '_main'), 'main is NOT emterpreted, it was  blacklisted'
+    assert 'emterpret' not in self.get_func(src, '_atoi'), 'atoi is NOT emterpreted either'
 
     open('blacklist.txt', 'w').write('["_main", "_atoi"]')
     do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-s', 'EMTERPRETIFY_BLACKLIST=@blacklist.txt']) # blacklist main and atoi with a @response file
     src = open('a.out.js').read()
-    assert 'emterpret' not in get_func(src, '_main'), 'main is NOT emterpreted, it was  blacklisted'
-    assert 'emterpret' not in get_func(src, '_atoi'), 'atoi is NOT emterpreted either'
+    assert 'emterpret' not in self.get_func(src, '_main'), 'main is NOT emterpreted, it was  blacklisted'
+    assert 'emterpret' not in self.get_func(src, '_atoi'), 'atoi is NOT emterpreted either'
 
     print 'whitelisting'
 
     do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-s', 'EMTERPRETIFY_WHITELIST=[]'])
     src = open('a.out.js').read()
-    assert 'emterpret' in get_func(src, '_main'), 'main is emterpreted'
+    assert 'emterpret' in self.get_func(src, '_main'), 'main is emterpreted'
     assert 'function _atoi(' not in src, 'atoi is emterpreted and does not even have a trampoline, since only other emterpreted can reach it'
 
     do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-s', 'EMTERPRETIFY_WHITELIST=["_main"]'])
     src = open('a.out.js').read()
-    assert 'emterpret' in get_func(src, '_main')
-    assert 'emterpret' not in get_func(src, '_atoi'), 'atoi is not in whitelist, so it is not emterpreted'
+    assert 'emterpret' in self.get_func(src, '_main')
+    assert 'emterpret' not in self.get_func(src, '_atoi'), 'atoi is not in whitelist, so it is not emterpreted'
 
     do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-s', 'EMTERPRETIFY_WHITELIST=["_main", "_atoi"]'])
     src = open('a.out.js').read()
-    assert 'emterpret' in get_func(src, '_main')
+    assert 'emterpret' in self.get_func(src, '_main')
     assert 'function _atoi(' not in src, 'atoi is emterpreted and does not even have a trampoline, since only other emterpreted can reach it'
 
     open('whitelist.txt', 'w').write('["_main"]')
     do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-s', 'EMTERPRETIFY_WHITELIST=@whitelist.txt'])
     src = open('a.out.js').read()
-    assert 'emterpret' in get_func(src, '_main')
-    assert 'emterpret' not in get_func(src, '_atoi'), 'atoi is not in whitelist, so it is not emterpreted'
+    assert 'emterpret' in self.get_func(src, '_main')
+    assert 'emterpret' not in self.get_func(src, '_atoi'), 'atoi is not in whitelist, so it is not emterpreted'
 
     do_test(r'''
 #include<stdio.h>
@@ -4851,4 +4839,56 @@ int main() {
     out, err = Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'huge.dat'], stdout=PIPE, stderr=PIPE).communicate()
     assert 'warning: file packager is creating an asset bundle of 257 MB. this is very large, and browsers might have trouble loading it' in err, err
     self.clear()
+
+  def test_nosplit(self): # relooper shouldn't split nodes if -Os or -Oz
+    open('src.cpp', 'w').write(r'''
+      #include <stdio.h>
+      int main(int argc, char **argv) {
+        if (argc == 1) {
+          printf("1\n");
+          printf("1\n");
+          printf("1\n");
+          printf("1\n");
+        } else if (argc/2 == 2) {
+          printf("1\n");
+          printf("1\n");
+          printf("1\n");
+          printf("1\n");
+          printf("2\n");
+        } else if (argc/3 == 3) {
+          printf("1\n");
+          printf("3\n");
+          printf("1\n");
+          printf("1\n");
+          printf("1\n");
+        } else if (argc/4 == 4) {
+          printf("4\n");
+          printf("1\n");
+          printf("1\n");
+          printf("1\n");
+        } else if (argc/5 == 5) {
+          printf("five\n");
+          printf("1\n");
+          printf("1\n");
+          printf("1\n");
+          printf("1\n");
+          printf("1\n");
+          printf("1\n");
+          printf("1\n");
+        }
+        printf("hai\n");
+        return 5;
+      }
+    ''')
+    def test(opts, expected):
+      Popen([PYTHON, EMCC, 'src.cpp', '--profiling'] + opts).communicate()
+      src = open('a.out.js').read()
+      main = self.get_func(src, '_main')
+      rets = main.count('return ')
+      print opts, rets
+      assert rets == expected
+    test(['-O1'], 6)
+    test(['-O2'], 6)
+    test(['-Os'], 1)
+    test(['-Oz'], 1)
 
