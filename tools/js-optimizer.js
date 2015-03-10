@@ -677,6 +677,13 @@ function simplifyExpressions(ast) {
               return input;
             }
           }
+        } else if (input[0] === 'binary' && input[1] === '>>' &&
+                   input[2][0] === 'binary' && input[2][1] === '<<' &&
+                   input[2][3][0] === 'num' && input[3][0] === 'num' &&
+                   input[2][3][1] === input[3][1] &&
+                   ((-1 >>> input[3][1]) & amount == (-1 >>> input[3][1]))) {
+            // x << 24 >> 24 & 255 => x & 255
+            return ['binary', '&', input[2][2], node[3]];
         }
       } else if (type === 'binary' && node[1] === '^') {
         // LLVM represents bitwise not as xor with -1. Translate it back to an actual bitwise not.

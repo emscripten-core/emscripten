@@ -111,6 +111,12 @@ function sign_extension_simplification() {
  if ((HEAP32[$5 & 16777215] & 32768) << 16 >> 16 == 0) {
   print(5);
  }
+ if ((HEAP32[$5 & 16777215] << 24 >> 24 & 255) == 0) {
+  print(5);
+ }
+ if ((HEAP32[$5 & 16777215] << 23 >> 23 & 255) == 0) {
+  print(5);
+ }
 }
 function compare_result_simplification() {
  f(((a > b)&1) + 1 | 0);

@@ -1757,6 +1757,13 @@ void simplifyExpressions(Ref ast) {
               return;
             }
           }
+        } else if (input[0] == BINARY && input[1] == RSHIFT &&
+                   input[2][0] == BINARY && input[2][1] == LSHIFT &&
+                   input[2][3][0] == NUM && input[3][0] == NUM &&
+                   input[2][3][1]->getInteger() == input[3][1]->getInteger() &&
+                   (((-1u >> input[3][1]->getInteger()) & jsD2I(amount)) == (-1u >> input[3][1]->getInteger()))) {
+            // x << 24 >> 24 & 255 => x & 255
+            return safeCopy(node, make3(BINARY, AND, input[2][2], node[3]));
         }
       } else if (type == BINARY && node[1] == XOR) {
         // LLVM represents bitwise not as xor with -1. Translate it back to an actual bitwise not.
