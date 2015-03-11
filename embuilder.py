@@ -155,6 +155,8 @@ if operation == 'build':
       build_port('sdl2', 'libsdl2.bc', ['-s', 'USE_SDL=2'])
     elif what == 'sdl2-image':
       build_port('sdl2-image', 'libsdl2_image.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'])
+    elif what == 'sdl2-net':
+      build_port('sdl2-net', 'libsdl2_net.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'])
     elif what == 'freetype':
       build_port('freetype', 'libfreetype.a', ['-s', 'USE_FREETYPE=1'])
     elif what == 'sdl2-ttf':
