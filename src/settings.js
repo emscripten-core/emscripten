@@ -602,8 +602,13 @@ var EMTERPRETIFY = 0; // Runs tools/emterpretify on the compiler output
 var EMTERPRETIFY_BLACKLIST = []; // Functions to not emterpret, that is, to run normally at full speed
 var EMTERPRETIFY_WHITELIST = []; // If this contains any functions, then only the functions in this list
                                  // are emterpreted (as if all the rest are blacklisted; this overrides the BLACKLIST)
-var EMTERPRETIFY_YIELDLIST = []; // A list of functions that are allowed to run during emscripten_sleep_with_yield. This
-                                 // prevents ASSERTIONS builds from erroring on them.
+var EMTERPRETIFY_YIELDLIST = []; // A list of functions that are allowed to run during while sleeping. Typically this is
+                                 // during  emscripten_sleep_with_yield  , but also you may need to add methods to this list
+                                 // for things like event handling (an SDL EventHandler will be called from the event, directly -
+                                 // if we do that later, you lose out on the whole point of an EventHandler, which is to let
+                                 // you react to key presses in order to launch fullscreen, etc.).
+                                 // Functions in the yield list do not trigger asserts checking on running during a sleep,
+                                 // in ASSERTIONS builds, 
 var EMTERPRETIFY_ASYNC = 0; // Allows sync code in the emterpreter, by saving the call stack, doing an async delay, and resuming it
 var EMTERPRETIFY_ADVISE = 0; // Performs a static analysis to suggest which functions should be run in the emterpreter, as it
                              // appears they can be on the stack when a sync function is called in the EMTERPRETIFY_ASYNC option.
