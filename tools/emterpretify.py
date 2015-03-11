@@ -57,7 +57,7 @@ sys.argv = filter(handle_arg, sys.argv)
 
 BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memmove', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64', '_strncpy', '_strcpy', '_strcat', '_saveSetjmp', '_testSetjmp', '_emscripten_replace_memory', '_bitshift64Shl', '_bitshift64Ashr', '_bitshift64Lshr', 'setAsyncState', 'emtStackSave'])
 WHITELIST = []
-YIELDLIST = ['stackSave', 'stackRestore', 'stackAlloc', 'setThrew'] # functions which are ok to run while doing a sleep_with_yield.
+YIELDLIST = ['stackSave', 'stackRestore', 'stackAlloc', 'setThrew', '_memset'] # functions which are ok to run while doing a sleep_with_yield.
 
 SYNC_FUNCS = set(['_emscripten_sleep', '_emscripten_sleep_with_yield', '_emscripten_wget_data', '_emscripten_idb_load', '_emscripten_idb_store', '_emscripten_idb_delete'])
 
