@@ -681,7 +681,7 @@ function simplifyExpressions(ast) {
                    input[2][0] === 'binary' && input[2][1] === '<<' &&
                    input[2][3][0] === 'num' && input[3][0] === 'num' &&
                    input[2][3][1] === input[3][1] &&
-                   ((-1 >>> input[3][1]) & amount == (-1 >>> input[3][1]))) {
+                   (~(-1 >>> input[3][1]) & amount) == 0) {
             // x << 24 >> 24 & 255 => x & 255
             return ['binary', '&', input[2][2], node[3]];
         }
