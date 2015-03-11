@@ -7673,14 +7673,12 @@ function emterpretify(ast) {
         bump += 8; // each local is a 64-bit value
       });
       if (ASYNC) {
-        if (func[1] in yieldFuncs) {
-          argStats = [['if', srcToExp('(asyncState|0) != 2'), ['block', argStats]]]; // tolerate 1 here, which is during a sleep, as this is a yield func
-        } else {
-          argStats = [['if', srcToExp('(asyncState|0) == 0'), ['block', argStats]]];
-        }
+        argStats.push(['if', srcToExp('(asyncState|0) == 1'), srcToStat('asyncState = 3;')]); // we know we are during a sleep, mark the state
         if (ASSERTIONS && !(func[1] in yieldFuncs)) {
-          argStats[0].push(['if', srcToExp('(asyncState|0) == 1'), srcToStat('abort(-12) | 0')]);
+          argStats.push(['if', srcToExp('((asyncState|0) == 1) | ((asyncState|0) == 3)'), srcToStat('abort(-12) | 0')]); // if *not* a yield func, we should never get here (trampoline entry)
+                                                                                                                         // while sleeping (3, or 1 which has not yet been turned into a 3)
         }
+        argStats = [['if', srcToExp('(asyncState|0) != 2'), ['block', argStats]]]; // 2 means restore, so do not trample the stack
       }
       func[3] = func[3].concat(argStats);
       // prepare the call into the emterpreter

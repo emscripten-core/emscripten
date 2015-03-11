@@ -207,9 +207,10 @@ mergeInto(LibraryManager.library, {
   $EmterpreterAsync__deps: ['$Browser'],
   $EmterpreterAsync: {
     initted: false,
-    state: 0, // 0 - nothing
-              // 1 - saving
-              // 2 - loading
+    state: 0, // 0 - nothing/normal
+              // 1 - saving the stack: functions should all be in emterpreter, and should all save&exit/return
+              // 2 - restoring the stack: functions should all be in emterpreter, and should all restore&continue
+              // 3 - during sleep. this is between 1 and 2. at this time it is ok to call yield funcs
     saveStack: '',
     yieldCallbacks: [],
     postAsync: null,
@@ -238,8 +239,25 @@ mergeInto(LibraryManager.library, {
         // XXX this assumes that this stack top never ever leak! exceptions might violate that
         var stack = new Int32Array(HEAP32.subarray(EMTSTACKTOP>>2, asm.emtStackSave()>>2));
         var stacktop = asm.stackSave();
+
+        var resumedCallbacksForYield = false;
+        function resumeCallbacksForYield() {
+          if (resumedCallbacksForYield) return;
+          resumedCallbacksForYield = true;
+          // allow async callbacks, and also make sure to call the specified yield callbacks. we must
+          // do this when nothing is on the stack, i.e. after it unwound
+          EmterpreterAsync.yieldCallbacks.forEach(function(func) {
+            func();
+          });
+          Browser.resumeAsyncCallbacks(); // if we were paused (e.g. we are after a sleep), then since we are now yielding, it is safe to call callbacks
+        }
+
         doAsyncOp(function resume(post) {
-          assert(EmterpreterAsync.state === 1);
+          assert(EmterpreterAsync.state === 1 || EmterpreterAsync.state === 3);
+          EmterpreterAsync.setState(3);
+          if (yieldDuring) {
+            resumeCallbacksForYield();
+          }
           // copy the stack back in and resume
           HEAP32.set(stack, EMTSTACKTOP>>2);
 #if ASSERTIONS
@@ -267,11 +285,10 @@ mergeInto(LibraryManager.library, {
           Browser.mainLoop.pause();
         }
         if (yieldDuring) {
-          // allow async callbacks, and also make sure to call the specified yield callbacks
-          EmterpreterAsync.yieldCallbacks.forEach(function(func) {
-            func();
-          });
-          Browser.resumeAsyncCallbacks(); // if we were paused (e.g. we are after a sleep), then since we are now yielding, it is safe to call callbacks
+          // do this when we are not on the stack, i.e., the stack unwound. we might be too late, in which case we do it in resume()
+          setTimeout(function() {
+            resumeCallbacksForYield();
+          }, 0);
         } else {
           Browser.pauseAsyncCallbacks();
         }

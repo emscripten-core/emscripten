@@ -62,14 +62,22 @@ int main(int argc, char **argv) {
 
 #ifdef TEST_EMSCRIPTEN_SDL_SETEVENTHANDLER
   emscripten_SDL_SetEventHandler(EventHandler, 0);
-#else
-  if (argc == 1337) one(); // keep it alive
 #endif
+
+  emscripten_set_main_loop(one, 0, 0);
 
   emscripten_run_script("keydown(1250);keydown(38);keyup(38);keyup(1250);"); // alt, up
   emscripten_run_script("keydown(1248);keydown(1249);keydown(40);keyup(40);keyup(1249);keyup(1248);"); // ctrl, shift, down
   emscripten_run_script("keydown(37);keyup(37);"); // left
   emscripten_run_script("keydown(39);keyup(39);"); // right
+
+#ifdef TEST_SLEEP
+  printf("sleep...\n");
+  emscripten_sleep(2000);
+  //emscripten_sleep_with_yield(1);
+  printf("rise!\n");
+#endif
+
   emscripten_run_script("keydown(65);keyup(65);"); // a
   emscripten_run_script("keydown(66);keyup(66);"); // b
   emscripten_run_script("keydown(100);keyup(100);"); // trigger the end

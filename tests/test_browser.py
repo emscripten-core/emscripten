@@ -803,36 +803,43 @@ window.close = function() {
 
 
   def test_sdl_key(self):
-    for defines in [[], ['-DTEST_EMSCRIPTEN_SDL_SETEVENTHANDLER']]:
-      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
-        Module.postRun = function() {
-          function doOne() {
-            Module._one();
-            setTimeout(doOne, 1000/60);
-          }
-          setTimeout(doOne, 1000/60);
-        }
+    for delay in [0, 1]:
+      for defines in [
+        [],
+        ['-DTEST_EMSCRIPTEN_SDL_SETEVENTHANDLER']
+      ]:
+        for emterps in [
+          [],
+          ['-DTEST_SLEEP', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'ASSERTIONS=1', '-s', 'EMTERPRETIFY_YIELDLIST=["_EventHandler"]', '-s', "SAFE_HEAP=1"]
+        ]:
+          print delay, defines, emterps
+          open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+            function keydown(c) {
+             %s
+              //Module.print('push keydown');
+              var event = document.createEvent("KeyboardEvent");
+              event.initKeyEvent("keydown", true, true, window,
+                                 0, 0, 0, 0,
+                                 c, c);
+              document.dispatchEvent(event);
+             %s
+            }
 
-        function keydown(c) {
-          var event = document.createEvent("KeyboardEvent");
-          event.initKeyEvent("keydown", true, true, window,
-                             0, 0, 0, 0,
-                             c, c);
-          document.dispatchEvent(event);
-        }
+            function keyup(c) {
+             %s
+              //Module.print('push keyup');
+              var event = document.createEvent("KeyboardEvent");
+              event.initKeyEvent("keyup", true, true, window,
+                                 0, 0, 0, 0,
+                                 c, c);
+              document.dispatchEvent(event);
+             %s
+            }
+          ''' % ('setTimeout(function() {' if delay else '', '}, 1);' if delay else '', 'setTimeout(function() {' if delay else '', '}, 1);' if delay else ''))
+          open(os.path.join(self.get_dir(), 'sdl_key.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_key.c')).read()))
 
-        function keyup(c) {
-          var event = document.createEvent("KeyboardEvent");
-          event.initKeyEvent("keyup", true, true, window,
-                             0, 0, 0, 0,
-                             c, c);
-          document.dispatchEvent(event);
-        }
-      ''')
-      open(os.path.join(self.get_dir(), 'sdl_key.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_key.c')).read()))
-
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_key.c'), '-o', 'page.html'] + defines + ['--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''', '-s', 'NO_EXIT_RUNTIME=1']).communicate()
-      self.run_browser('page.html', '', '/report_result?223092870')
+          Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_key.c'), '-o', 'page.html'] + defines + emterps + ['--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main']''', '-s', 'NO_EXIT_RUNTIME=1']).communicate()
+          self.run_browser('page.html', '', '/report_result?223092870')
 
   def test_sdl_key_proxy(self):
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
@@ -2500,7 +2507,7 @@ window.close = function() {
       self.btest('emterpreter_async.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-g2'])
 
   def test_emterpreter_async_2(self):
-    self.btest('emterpreter_async_2.cpp', '47', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O3'])
+    self.btest('emterpreter_async_2.cpp', '58', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O3'])
 
   def test_emterpreter_async_virtual(self):
     for opts in [0, 1, 2, 3]:
@@ -2531,7 +2538,7 @@ window.close = function() {
     self.btest('emterpreter_async_sleep2.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Oz'])
 
   def test_sdl_audio_beep_sleep(self):
-    self.btest('sdl_audio_beep_sleep.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Os', '-s', 'ASSERTIONS=1', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-profiling', '-s', 'EMTERPRETIFY_YIELDLIST=["__Z14audio_callbackPvPhi", "__ZN6Beeper15generateSamplesIhEEvPT_i"]', '-s', 'SAFE_HEAP=1'])
+    self.btest('sdl_audio_beep_sleep.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Os', '-s', 'ASSERTIONS=1', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-profiling', '-s', 'EMTERPRETIFY_YIELDLIST=["__Z14audio_callbackPvPhi", "__ZN6Beeper15generateSamplesIhEEvPT_i", "__ZN6Beeper15generateSamplesIsEEvPT_i"]', '-s', 'SAFE_HEAP=1'])
 
   def test_mainloop_reschedule(self):
     self.btest('mainloop_reschedule.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Os'])
