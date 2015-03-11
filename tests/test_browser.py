@@ -2507,7 +2507,7 @@ window.close = function() {
       self.btest('emterpreter_async.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-g2'])
 
   def test_emterpreter_async_2(self):
-    self.btest('emterpreter_async_2.cpp', '58', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O3'])
+    self.btest('emterpreter_async_2.cpp', '40', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O3'])
 
   def test_emterpreter_async_virtual(self):
     for opts in [0, 1, 2, 3]:

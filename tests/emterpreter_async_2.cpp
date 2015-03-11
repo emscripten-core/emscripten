@@ -13,6 +13,7 @@ int calc(int x) {
       if (*b == '\n') newlines++;
       b++;
     }
+    if (newlines > 40) newlines = 40;
     printf("stack: %s => %d, sleeping...\n", buffer, newlines);
     emscripten_sleep(1000);
     printf("..and we're back, returning %d!\n", newlines);
