@@ -32,8 +32,9 @@ mergeInto(LibraryManager.library, {
         var timingValue = Browser.mainLoop.timingValue;
         var func = Browser.mainLoop.func;
         Browser.mainLoop.func = null;
-        _emscripten_set_main_loop(func, 0, false, Browser.mainLoop.arg);
+        _emscripten_set_main_loop(func, 0, false, Browser.mainLoop.arg, true /* do not set timing and call scheduler, we will do it on the next lines */);
         _emscripten_set_main_loop_timing(timingMode, timingValue);
+        Browser.mainLoop.scheduler();
       },
       updateStatus: function() {
         if (Module['setStatus']) {
@@ -1066,7 +1067,7 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_set_main_loop__deps: ['emscripten_set_main_loop_timing'],
-  emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop, arg) {
+  emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop, arg, noSetTiming) {
     Module['noExitRuntime'] = true;
 
     assert(!Browser.mainLoop.func, 'emscripten_set_main_loop: there can only be one main loop function at once: call emscripten_cancel_main_loop to cancel the previous one before setting a new one with different parameters.');
@@ -1141,10 +1142,12 @@ mergeInto(LibraryManager.library, {
       Browser.mainLoop.scheduler();
     }
 
-    if (fps && fps > 0) _emscripten_set_main_loop_timing(0/*EM_TIMING_SETTIMEOUT*/, 1000.0 / fps);
-    else _emscripten_set_main_loop_timing(1/*EM_TIMING_RAF*/, 1); // Do rAF by rendering each frame (no decimating)
+    if (!noSetTiming) {
+      if (fps && fps > 0) _emscripten_set_main_loop_timing(0/*EM_TIMING_SETTIMEOUT*/, 1000.0 / fps);
+      else _emscripten_set_main_loop_timing(1/*EM_TIMING_RAF*/, 1); // Do rAF by rendering each frame (no decimating)
 
-    Browser.mainLoop.scheduler();
+      Browser.mainLoop.scheduler();
+    }
 
     if (simulateInfiniteLoop) {
       throw 'SimulateInfiniteLoop';
