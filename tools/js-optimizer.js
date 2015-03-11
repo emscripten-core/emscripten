@@ -7673,7 +7673,11 @@ function emterpretify(ast) {
         bump += 8; // each local is a 64-bit value
       });
       if (ASYNC) {
-        argStats = [['if', srcToExp('(asyncState|0) == 0'), ['block', argStats]]];
+        if (func[1] in yieldFuncs) {
+          argStats = [['if', srcToExp('(asyncState|0) != 2'), ['block', argStats]]]; // tolerate 1 here, which is during a sleep, as this is a yield func
+        } else {
+          argStats = [['if', srcToExp('(asyncState|0) == 0'), ['block', argStats]]];
+        }
         if (ASSERTIONS && !(func[1] in yieldFuncs)) {
           argStats[0].push(['if', srcToExp('(asyncState|0) == 1'), srcToStat('abort(-12) | 0')]);
         }
