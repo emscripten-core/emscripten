@@ -3041,7 +3041,7 @@ int main()
         printf("and that's that\n");
         return 0;
       }
-    ''', [3, 1, 1])
+    ''', [2, 1, 1])
 
   def test_symbol_map(self):
     for m in [0, 1]:
