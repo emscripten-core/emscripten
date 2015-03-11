@@ -95,7 +95,8 @@ var LibrarySDL = {
     
     eventHandler: null,
     eventHandlerContext: null,
-    
+    eventHandlerTemp: 0,
+
     keyCodes: { // DOM code ==> SDL code. See https://developer.mozilla.org/en/Document_Object_Model_%28DOM%29/KeyboardEvent and SDL_keycode.h
       // For keys that don't have unicode value, we map DOM codes with the corresponding scan codes + 1024 (using "| 1 << 10")
       16: 225 | 1<<10, // shift
@@ -842,11 +843,8 @@ var LibrarySDL = {
     flushEventsToHandler: function() {
       if (!SDL.eventHandler) return;
 
-      // All SDLEvents take the same amount of memory
-      var sdlEventPtr = allocate({{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}}, "i8", ALLOC_STACK);
-
-      while (SDL.pollEvent(sdlEventPtr)) {
-        Runtime.dynCall('iii', SDL.eventHandler, [SDL.eventHandlerContext, sdlEventPtr]);
+      while (SDL.pollEvent(SDL.eventHandlerTemp)) {
+        Runtime.dynCall('iii', SDL.eventHandler, [SDL.eventHandlerContext, SDL.eventHandlerTemp]);
       }
     },
 
@@ -2011,6 +2009,9 @@ var LibrarySDL = {
   emscripten_SDL_SetEventHandler: function(handler, userdata) {
     SDL.eventHandler = handler;
     SDL.eventHandlerContext = userdata;
+
+    // All SDLEvents take the same amount of memory
+    if (!SDL.eventHandlerTemp) SDL.eventHandlerTemp = _malloc({{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}});
   },
 
   SDL_SetColors: function(surf, colors, firstColor, nColors) {
