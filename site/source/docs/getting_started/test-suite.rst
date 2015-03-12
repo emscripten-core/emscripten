@@ -73,6 +73,9 @@ The core test modes are documented at the end of `/tests/test_core.py <https://g
 
 .. _emscripten-test-suite-modes:
 
+The core tests are the bulk of the entire test suite, in both number and time to run. To speed them up, you can run them in parallel using `/tests/parallel_test_core.py <https://github.com/kripken/emscripten/blob/master/tests/parallel_test_core.py>`_. That runs the test modes using a python process pool, emitting their outputs and stderrs to ``*.out, *.err`` for each mode.
+
+
 Non-core test modes
 ===================
 
