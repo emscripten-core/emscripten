@@ -1777,8 +1777,8 @@ var LibrarySDL = {
 
   SDL_SetError: function() {},
 
-  SDL_Malloc: 'malloc',
-  SDL_Free: 'free',
+  SDL_malloc: 'malloc',
+  SDL_free: 'free',
 
   SDL_CreateRGBSurface: function(flags, width, height, depth, rmask, gmask, bmask, amask) {
     return SDL.makeSurface(width, height, flags, false, 'CreateRGBSurface', rmask, gmask, bmask, amask);
