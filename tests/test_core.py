@@ -5754,7 +5754,8 @@ def process(filename):
     do_test()
 
     # some test coverage for EMCC_DEBUG 1 and 2
-    if self.emcc_args and '-O2' in self.emcc_args and 'EMCC_DEBUG' not in os.environ and '-g' in self.emcc_args:
+    assert 'asm2g' in test_modes
+    if self.run_name == 'asm2g':
       shutil.copyfile('src.c.o.js', 'release.js')
       try:
         os.environ['EMCC_DEBUG'] = '1'
@@ -6925,20 +6926,23 @@ def process(filename):
       # ensure that all the 'meaningful' lines in the original code get mapped
       assert seen_lines.issuperset([6, 7, 11, 12])
 
-    # EMCC_DEBUG=2 causes lots of intermediate files to be written, and so
-    # serves as a stress test for source maps because it needs to correlate
-    # line numbers across all those files.
-    old_emcc_debug = os.environ.get('EMCC_DEBUG', None)
-    os.environ.pop('EMCC_DEBUG', None)
-    try:
-      build_and_check()
-      os.environ['EMCC_DEBUG'] = '2'
-      build_and_check()
-    finally:
-      if old_emcc_debug is not None:
-        os.environ['EMCC_DEBUG'] = old_emcc_debug
-      else:
-        os.environ.pop('EMCC_DEBUG', None)
+    build_and_check()
+
+    assert 'asm2g' in test_modes
+    if self.run_name == 'asm2g':
+      # EMCC_DEBUG=2 causes lots of intermediate files to be written, and so
+      # serves as a stress test for source maps because it needs to correlate
+      # line numbers across all those files.
+      old_emcc_debug = os.environ.get('EMCC_DEBUG', None)
+      os.environ.pop('EMCC_DEBUG', None)
+      try:
+        os.environ['EMCC_DEBUG'] = '2'
+        build_and_check()
+      finally:
+        if old_emcc_debug is not None:
+          os.environ['EMCC_DEBUG'] = old_emcc_debug
+        else:
+          os.environ.pop('EMCC_DEBUG', None)
 
   def test_exception_source_map(self):
     if self.is_emterpreter(): return self.skip('todo')
