@@ -276,6 +276,29 @@ f.close()
     # TODO: test normal project linking, static and dynamic: get_library should not need to be told what to link!
     # TODO: deprecate llvm optimizations, dlmalloc, etc. in emscripten.py.
 
+  def test_emcc_nonfastcomp_fails(self):
+    open(os.path.join(self.get_dir(), 'test.c'), 'w').write(r'''
+      int main() {
+        return 0;
+      }
+    ''')
+    def check_errors(command):
+      process = Popen(command, stdout=PIPE, stderr=PIPE)
+      stdout, stderr = process.communicate()
+      self.assertEqual(stdout, '')
+      self.assertIn('Non-fastcomp compiler is no longer available', stderr)
+      self.assertEqual(process.returncode, 1)
+    def check_success(command):
+      process = Popen(command, stdout=PIPE, stderr=PIPE)
+      stdout, stderr = process.communicate()
+      self.assertEqual(stderr, '')
+      self.assertEqual(process.returncode, 0)
+    nonfastcomp(lambda: check_success([PYTHON, EMCC, '--version']))
+    nonfastcomp(lambda: check_success([PYTHON, EMCC, '--help']))
+    nonfastcomp(lambda: check_errors([PYTHON, EMCC, '-v']))
+    nonfastcomp(lambda: check_errors([PYTHON, EMCC, os.path.join(self.get_dir(), 'test.c')]))
+    self.assertFalse(os.path.exists('a.out.js'))
+
   def test_emcc_nonfastcomp(self):
     return self.skip('non-fastcomp is deprecated and fails in 3.5')
     nonfastcomp(self.test_emcc)
