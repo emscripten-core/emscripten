@@ -19,6 +19,7 @@ The whole core test suite can be run using the script `tests/runner.py <https://
 	
 .. note:: 
 
+	- The core test suite is not the entire test suite, see :ref:`emscripten-test-suite-modes`
 	- This may take several hours.
 	- :term:`Node.js` cannot run all of the tests in the suite; if you need to run them all, you should get a recent trunk version of the `SpiderMonkey <https://developer.mozilla.org/en-US/docs/Mozilla/Projects/SpiderMonkey/Introduction_to_the_JavaScript_shell>`_ shell. On Windows you can install and activate *SpiderMonkey* using the :ref:`emsdk`.
 
@@ -44,30 +45,38 @@ You can run a random subset of the test suite, using something like
 
 Replace ``100`` with another number as you prefer. This will run that number of random tests, and tell you the statistical likelihood of almost all the test suite passing assuming those tests do. This works just like election surveys do - given a small sample, we can predict fairly well that so-and-so percent of the public will vote for candidate A. In our case, the "candidates" are pass or fail, and we can predict how much of the test suite will pass given that sample. Assuming the sample tests all pass, we can say with high likelihood that most of the test suite will in fact pass. (Of course, this is no guarantee, and even a single test failure is serious, however, this gives a quick estimate that your patch does not cause significant and obvious breakage.)
 
+Core test modes
+===============
 
-Test modes
-==========
-
-By default tests are run without optimizations. You can specify a *mode* prefix (e.g. ``asm1.``) to compile a test with optimisations:
+By default, calling the test runner without arguments will run the core test suite
 
 .. code-block:: bash
 
-	# Run test in asm1 mode	(-O1 optimizations).
+    python tests/runner.py
+
+The core test suite includes ``default`` (no optimizations), ``asm1`` (``-O1`` optimizations), and a bunch of other optimization and compiler flags, each of which is a different "mode". The core test suite is the bulk of the entire test suite, and it runs each test in each of those modes.
+
+You can also run a specific mode or test in a mode, or a specific test across all modes:
+
+.. code-block:: bash
+
+	# Run all tests in asm1 mode	(-O1 optimizations).
+	python tests/runner.py asm1
+
+	# Run one test in asm1 mode	(-O1 optimizations).
 	python tests/runner.py asm1.test_hello_world   
 	
-	# Run test in all modes.
+	# Run one test in all modes.
 	python tests/runner.py ALL.test_hello_world 
 
-Some of the main modes are:
+The core test modes are documented at the end of `/tests/test_core.py <https://github.com/kripken/emscripten/blob/master/tests/test_core.py#L7099>`_.
 
-- ``ALL``: Run test in all modes.
-- ``asm1``: Compile test with :ref:`-O1 <emcc-O1>` optimizations.
-- ``asm2``: Compile test with :ref:`-O2 <emcc-O2>` optimizations.
-- ``asm3``: Compile test with :ref:`-O3 <emcc-O3>` optimizations.
-- ``asm2f``: Compile test with :ref:`-O2 <emcc-O2>` and ``-s PRECISE_F32=1``.
-- ``asm2g``: Compile test with :ref:`-O2 <emcc-O2>`  optimizations, :ref:`-g <emcc-g>`, ``-s ASSERTIONS=1`` and ``-s SAFE_HEAP=1``.
+.. _emscripten-test-suite-modes:
 
-Modes are documented at the end of `/tests/test_core.py <https://github.com/kripken/emscripten/blob/master/tests/test_core.py#L7099>`_.
+Non-core test modes
+===================
+
+The main non-core test modes are ``other, browser, sockets, interactive, sanity``. See :ref:`emscripten-test-suite-list-of-tests` for how to run them.
 
 
 .. _emscripten-benchmark-tests:
@@ -128,7 +137,6 @@ Below is a list of some common tests/example commands. These include a comment e
 
 	# Run all benchmarks. Note that you can also run specific tests (benchmark.test_*)	
 	python tests/runner.py benchmark                
-
 
 
 Debugging test failures
