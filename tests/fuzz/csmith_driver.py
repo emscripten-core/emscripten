@@ -136,7 +136,7 @@ while 1:
     print "EMSCRIPTEN BUG"
     notes['embug'] += 1
     fails += 1
-    shutil.copyfile(fullname, 'newfail%d_%d%s%s%s' % (os.getpid(), fails, opts.replace('-', '_'), ' '.join(llvm_opts).replace('-', '_').replace(' ', ''), suffix))
+    shutil.copyfile(fullname, 'newfail_%d_%d' % (os.getpid(), fails))
 
   if not try_js():
     fail()
@@ -160,8 +160,7 @@ while 1:
     if 'warning: Successfully compiled asm.js code' not in js2:
       print "ODIN VALIDATION BUG"
       notes['embug'] += 1
-      fails += 1
-      shutil.copyfile(fullname, 'newfail%d.c' % fails)
+      fail()
       continue
     print '[asm.js validation ok in %s]' % str(engine2)
 
