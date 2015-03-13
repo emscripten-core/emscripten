@@ -123,6 +123,41 @@ These command line flags allow you to clean up open browser processes before sta
 
 .. warning:: These operations cause the browser process to be forcibly terminated.  Any windows or tabs you have open will be closed, including any that might contain unsaved data. 
 
+
+Running web pages in Firefox
+============================
+
+When running web pages via ``emrun`` using Firefox, you may want to set one or more of the following browser prefs: ::
+
+  ; Make sure to unblock popups being spawned from http://localhost/.
+  browser.popups.showPopupBlocker;false
+
+  ; Don't ask the user to change the default browser when spawning the browser.
+  browser.shell.checkDefaultBrowser;false
+
+  ; Don't autorestore previous tabs, just open the one from the command line.
+  browser.sessionstore.resume_from_crash;false
+  services.sync.prefs.sync.browser.sessionstore.restore_on_demand;false
+  browser.sessionstore.restore_on_demand;false
+
+  ; Don't bring up the modal "Start in Safe Mode" dialog after browser is killed, since
+  ; that is an expected path for --kill_start and --kill_exit options.
+  browser.sessionstore.max_resumed_crashes;-1
+  toolkip.startup.max_resumed_crashes;-1
+
+  ; Don't fail on long-running scripts, but have emrun instead control execution termination.
+  dom.max_script_run_time;-1
+  dom.max_chrome_script_run_time;-1
+
+  ; Accelerate browser update background timer tick so that autoupdates take place as quickly as possible.
+  ; This is useful for continous integration servers wanting to always test the latest browser version.
+  app.update.download.backgroundInterval;1
+
+  ; Always run in private browsing mode to avoid caching any pages (but also disables IndexedDB persistency!).
+  browser.privatebrowsing.autostart;true
+
+To set a Firefox browser pref, navigate to the page ``about:config`` in the browser navigation bar.
+
 Running web pages on an Android device
 ======================================
 
