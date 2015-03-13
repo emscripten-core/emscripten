@@ -2514,7 +2514,7 @@ int main()
       self.assertContained('File size: 724', out)
 
   def test_simd(self):
-    assert get_clang_version() == '3.5'
+    assert get_clang_version() == '3.6'
     Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-s', 'SIMD=1', '-DSP', '-s', 'PRECISE_F32=1']).communicate()
     self.assertContained('Unrolled Single  Precision', run_js('a.out.js'))
 
