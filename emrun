@@ -72,12 +72,17 @@ elif platform.mac_ver()[0] != '':
 if not WINDOWS and not LINUX and not OSX:
   raise Exception("Unknown OS!")
 
+# Returns wallclock time in seconds.
+def tick():
+  # Would like to return time.clock() since it's apparently better for precision, but it is broken on OSX 10.10 and Python 2.7.8.
+  return time.time()
+
 # Absolute wallclock time in seconds specifying when the previous HTTP stdout message from
 # the page was received.
-last_message_time = time.clock()
+last_message_time = tick()
 
 # Absolute wallclock time in seconds telling when we launched emrun.
-page_start_time = time.clock()
+page_start_time = tick()
 
 # Stores the time of most recent http page serve.
 page_last_served_time = None
@@ -102,7 +107,7 @@ def logi(msg):
     else:
       print >> sys.stdout, msg
     sys.stdout.flush()
-    last_message_time = time.clock()
+    last_message_time = tick()
 
 # Prints a verbose log message to stdout channel. Only shown if run with --verbose.
 def logv(msg):
@@ -114,7 +119,7 @@ def logv(msg):
       else:
         print >> sys.stdout, msg
       sys.stdout.flush()
-      last_message_time = time.clock()
+      last_message_time = tick()
 
 # Prints an error message to stderr channel.
 def loge(msg):
@@ -125,7 +130,7 @@ def loge(msg):
     else:
       print >> sys.stderr, msg
     sys.stderr.flush()
-    last_message_time = time.clock()
+    last_message_time = tick()
 
 def format_eol(msg):
   if WINDOWS:
@@ -138,7 +143,7 @@ def browser_logi(msg):
   msg = format_eol(msg)
   print >> browser_stdout_handle, msg
   browser_stdout_handle.flush()
-  last_message_time = time.clock()
+  last_message_time = tick()
 
 # Prints a message to the browser stderr output stream.
 def browser_loge(msg):
@@ -146,7 +151,7 @@ def browser_loge(msg):
   msg = format_eol(msg)
   print >> browser_stderr_handle, msg
   browser_stderr_handle.flush()
-  last_message_time = time.clock()
+  last_message_time = tick()
   
 # Unquotes a unicode string. (translates ascii-encoded utf string back to utf)
 def unquote_u(source):
@@ -228,7 +233,7 @@ class HTTPWebServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
   def print_timed_out_messages(self):
     global last_message_time
     with http_mutex:
-      now = time.clock()
+      now = tick()
       max_message_queue_time = 5
       if len(self.http_message_queue) > 0 and now - last_message_time > max_message_queue_time:
         self.print_next_message()
@@ -263,12 +268,14 @@ class HTTPWebServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
     self.is_running = True
     self.timeout = timeout
     while self.is_running:
-      now = time.clock()
+      now = tick()
       # Did user close browser?
       if not emrun_options.serve_after_close and browser_process and browser_process.poll() != None:
         if not have_received_messages:
           emrun_options.serve_after_close = True
           logv('Warning: emrun got detached from the target browser process. Cannot detect when user closes the browser. Behaving as if --serve_after_close was passed in.')
+          if not emrun_options.browser:
+            logv('Try passing the --browser=/path/to/browser option to avoid this from occurring. See https://github.com/kripken/emscripten/issues/3234 for more discussion.')
         else:
           self.shutdown()
           logv('Browser process has quit. Shutting down web server.. Pass --serve_after_close to keep serving the page even after the browser closes.')
@@ -351,7 +358,7 @@ class HTTPHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     self.send_header('Cache-Control','no-cache, must-revalidate')
     self.send_header('Expires','-1')
     self.end_headers()
-    page_last_served_time = time.clock()
+    page_last_served_time = tick()
     return f
 
   def log_request(self, code):
@@ -848,7 +855,7 @@ def main():
     help='If true, any previously running instances of the target browser are killed before starting.')
 
   parser.add_option('--kill_exit', dest='kill_on_exit', action='store_true', default=False,
-    help='If true, the spawned browser process is forcibly killed when it calls exit().')
+    help='If true, the spawned browser process is forcibly killed when it calls exit(). Note: Using this option may require explicitly passing the option --browser=/path/to/browser, to avoid emrun being detached from the browser process it spawns.')
 
   parser.add_option('--no_server', dest='no_server', action='store_true', default=False,
     help='If specified, a HTTP web server is not launched to host the page to run.')
@@ -1096,6 +1103,8 @@ def main():
   if browser_process and browser_process.poll() == None:
     options.serve_after_close = True
     logv('Warning: emrun got detached from the target browser process. Cannot detect when user closes the browser. Behaving as if --serve_after_close was passed in.')
+    if not options.browser:
+      logv('Try passing the --browser=/path/to/browser option to avoid this from occurring. See https://github.com/kripken/emscripten/issues/3234 for more discussion.')
   
   if not options.no_server:
     try:
