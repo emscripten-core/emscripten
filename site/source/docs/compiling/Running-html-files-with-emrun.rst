@@ -119,7 +119,7 @@ Cleaning up after the run
 These command line flags allow you to clean up open browser processes before starting a new run — this is important for automated testing on build servers:
 
 -  ``--kill_start``: Terminate all instances of the target browser process before starting the run. Pass this flag to ensure that no old (hung) instances of the target browser process exist that could interfere with the current run. This is disabled by default.
--  ``--kill_exit``: Terminate all instances of the target browser process when *emrun* quits. Pass this flag to ensure that browser pages closed when the run is over. This is disabled by default.
+-  ``--kill_exit``: Terminate all instances of the target browser process when *emrun* quits. Pass this flag to ensure that browser pages closed when the run is over. This is disabled by default. Note that it may be necessary to explicitly use the ``--browser=/path/to/browser`` command line option when using ``--kill_exit``, or otherwise the termination might not function properly.
 
 .. warning:: These operations cause the browser process to be forcibly terminated.  Any windows or tabs you have open will be closed, including any that might contain unsaved data. 
 
