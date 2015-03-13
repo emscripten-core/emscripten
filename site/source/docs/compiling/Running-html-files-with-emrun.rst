@@ -146,8 +146,8 @@ When running web pages via ``emrun`` using Firefox, you may want to set one or m
   toolkip.startup.max_resumed_crashes;-1
 
   ; Don't fail on long-running scripts, but have emrun instead control execution termination.
-  dom.max_script_run_time;-1
-  dom.max_chrome_script_run_time;-1
+  dom.max_script_run_time;0
+  dom.max_chrome_script_run_time;0
 
   ; Accelerate browser update background timer tick so that autoupdates take place as quickly as possible.
   ; This is useful for continous integration servers wanting to always test the latest browser version.
