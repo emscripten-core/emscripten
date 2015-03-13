@@ -40,12 +40,12 @@ diff n1 bc
 #diff n1 sh | grep -v warning
 #echo "js/fc"
 #diff fc js | grep -v warning
-#echo "js/fc-sh"
-#diff fc-sh js | grep -v warning
 echo "native/fc"
 grep -v warning fc > fclean
-diff n1 fclean | grep -v warning
+diff -U5 n1 fclean | grep -v warning
 echo "native2/fc"
 grep -v warning fc > fclean
-diff n2 fclean | grep -v warning
+diff -U5 n2 fclean | grep -v warning
+echo "js/fc-sh"
+diff -U5 fc fc-sh | grep -v warning
 
