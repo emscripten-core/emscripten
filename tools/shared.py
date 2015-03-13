@@ -219,7 +219,7 @@ else:
     config_file = '\n'.join(config_file)
     # autodetect some default paths
     config_file = config_file.replace('\'{{{ EMSCRIPTEN_ROOT }}}\'', repr(__rootpath__))
-    llvm_root = os.path.dirname(find_executable('llvm-dis') or '/usr/bin/llvm-dis')
+    llvm_root = subprocess.check_output(['llvm-config', '--bindir']).strip()
     config_file = config_file.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
     node = find_executable('node') or find_executable('nodejs') or 'node'
     config_file = config_file.replace('\'{{{ NODE }}}\'', repr(node))
