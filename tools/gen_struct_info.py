@@ -77,19 +77,23 @@ The JSON output format is based on the return value of Runtime.generateStructInf
 
 import sys, os, re, json, argparse, tempfile, subprocess
 import shared
+
+DEBUG = os.environ.get('EMCC_DEBUG')
+if DEBUG == "0":
+  DEBUG = None
+
 QUIET = (__name__ != '__main__')
 
 def show(msg):
-  global QUIET
-  if not QUIET:
-    sys.stderr.write(msg + '\n')
+  global QUIET, DEBUG
+  if DEBUG or not QUIET:
+    sys.stderr.write('gen_struct_info: ' + msg + '\n')
 
 # Try to load pycparser.
 try:
   import pycparser
 except ImportError:
-  # The import failed, warn the user.
-  show('WARN: pycparser isn\'t available. I won\'t be able to parse C files, only .json files.')
+  # The import failed
   
   def parse_header(path, cpp_opts):
     # Tell the user how to get pycparser, if he or she tries to parse a C file.
