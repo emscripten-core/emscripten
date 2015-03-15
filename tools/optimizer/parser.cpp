@@ -12,6 +12,7 @@ IString TOPLEVEL("toplevel"),
         ASSIGN("assign"),
         NAME("name"),
         VAR("var"),
+        CONST("const"),
         CONDITIONAL("conditional"),
         BINARY("binary"),
         RETURN("return"),
@@ -85,7 +86,7 @@ IString TOPLEVEL("toplevel"),
         THROW("throw"),
         SET("=");
 
-IStringSet keywords("var function if else do while for break continue return switch case default throw try catch finally true false null new");
+IStringSet keywords("var const function if else do while for break continue return switch case default throw try catch finally true false null new");
 
 const char *OPERATOR_INITS = "+-*/%<>&^|~=!,?:.",
            *SEPARATORS = "([;{}";

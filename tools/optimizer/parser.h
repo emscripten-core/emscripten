@@ -22,6 +22,7 @@ extern IString TOPLEVEL,
                ASSIGN,
                NAME,
                VAR,
+               CONST,
                CONDITIONAL,
                BINARY,
                RETURN,
@@ -328,6 +329,7 @@ class Parser {
     src = skipSpace(src);
     if (frag.str == FUNCTION) return parseFunction(frag, src, seps);
     else if (frag.str == VAR) return parseVar(frag, src, seps);
+    else if (frag.str == CONST) return parseVar(frag, src, seps);
     else if (frag.str == RETURN) return parseReturn(frag, src, seps);
     else if (frag.str == IF) return parseIf(frag, src, seps);
     else if (frag.str == DO) return parseDo(frag, src, seps);
@@ -376,7 +378,7 @@ class Parser {
   }
 
   NodeRef parseVar(Frag& frag, char*& src, const char* seps) {
-    NodeRef ret = Builder::makeVar();
+    NodeRef ret = Builder::makeVar(frag.str == CONST);
     while (1) {
       src = skipSpace(src);
       if (*src == ';') break;
