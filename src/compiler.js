@@ -214,15 +214,20 @@ if (phase == 'pre') {
 
 if (VERBOSE) printErr('VERBOSE is on, this generates a lot of output and can slow down compilation');
 
-// Load struct and define information.
-//try {
-  var temp = JSON.parse(read(STRUCT_INFO));
-//} catch(e) {
-//  printErr('cannot load struct info at ' + STRUCT_INFO + ' : ' + e + ', trying in current dir');
-//  temp = JSON.parse(read('struct_info.compiled.json'));
-//}
-C_STRUCTS = temp.structs;
-C_DEFINES = temp.defines;
+if (!BOOTSTRAPPING_STRUCT_INFO) {
+  // Load struct and define information.
+  //try {
+    var temp = JSON.parse(read(STRUCT_INFO));
+  //} catch(e) {
+  //  printErr('cannot load struct info at ' + STRUCT_INFO + ' : ' + e + ', trying in current dir');
+  //  temp = JSON.parse(read('struct_info.compiled.json'));
+  //}
+  C_STRUCTS = temp.structs;
+  C_DEFINES = temp.defines;
+} else {
+  C_STRUCTS = {};
+  C_DEFINES = {};
+}
 
 // Load compiler code
 

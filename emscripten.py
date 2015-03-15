@@ -983,7 +983,8 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
       contents = m.groups(0)[0]
       outfile.write(contents + '\n')
       return ''
-    funcs_js[1] = re.sub(r'/\* PRE_ASM \*/(.*)\n', lambda m: move_preasm(m), funcs_js[1])
+    if not settings['BOOTSTRAPPING_STRUCT_INFO']:
+      funcs_js[1] = re.sub(r'/\* PRE_ASM \*/(.*)\n', lambda m: move_preasm(m), funcs_js[1])
 
     class Counter:
       i = 0
@@ -1551,8 +1552,10 @@ def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG, DEBU
   settings.setdefault('STRUCT_INFO', cache.get_path('struct_info.compiled.json'))
   struct_info = settings.get('STRUCT_INFO')
 
-  if not os.path.exists(struct_info):
+  if not os.path.exists(struct_info) and not settings.get('BOOTSTRAPPING_STRUCT_INFO'):
+    if DEBUG: logging.debug('  emscript: bootstrapping struct info...')
     shared.Building.ensure_struct_info(struct_info)
+    if DEBUG: logging.debug('  emscript: bootstrapping struct info complete')
 
   emscript(args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine,
            jcache=jcache, temp_files=temp_files, DEBUG=DEBUG, DEBUG_CACHE=DEBUG_CACHE)
