@@ -93,7 +93,9 @@ struct StackedStack { // a stack, on the stack
         memcpy(storage, old, sizeof(T)*used);
         alloced = true;
       } else {
-        storage = (T*)realloc(storage, sizeof(T)*available);
+        T *newStorage = (T*)realloc(storage, sizeof(T)*available);
+        assert(newStorage);
+        storage = newStorage;
       }
     }
     assert(used < available);
