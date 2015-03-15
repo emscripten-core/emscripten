@@ -772,7 +772,9 @@ def get_bullet_library(runner_core, use_cmake):
                       os.path.join('src', 'LinearMath', 'libLinearMath.a')]
   else:
     configure_commands = ['sh', './configure']
-    configure_args = ['--disable-demos','--disable-dependency-tracking']
+    # Force a nondefault --host= so that the configure script will interpret that we are doing cross-compilation
+    # and skip attempting to run the generated executable with './a.out', which would fail since we are building a .js file.
+    configure_args = ['--host=i686-pc-linux-gnu', '--disable-demos','--disable-dependency-tracking']
     generated_libs = [os.path.join('src', '.libs', 'libBulletDynamics.a'),
                       os.path.join('src', '.libs', 'libBulletCollision.a'),
                       os.path.join('src', '.libs', 'libLinearMath.a')]
