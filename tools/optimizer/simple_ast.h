@@ -571,6 +571,10 @@ struct JSPrinter {
       size = std::max(1024, size*2) + safety;
       if (!buffer) {
         buffer = (char*)malloc(size);
+        if (!buffer) {
+          printf("Out of memory allocating %d bytes for output buffer!", size);
+          assert(0);
+        }
       } else {
         char *buf = (char*)realloc(buffer, size);
         if (!buf) {
@@ -593,7 +597,7 @@ struct JSPrinter {
   void emit(const char *s) {
     maybeSpace(*s);
     int len = strlen(s);
-    ensure(len);
+    ensure(len+1);
     strcpy(buffer + used, s);
     used += len;
   }
