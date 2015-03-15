@@ -427,6 +427,7 @@ var LibraryManager = {
 
     var libraries = [
       'library.js',
+      'library_formatString.js'
     ];
     if (!NO_FILESYSTEM) {
       libraries = libraries.concat([
