@@ -2998,7 +2998,7 @@ int main()
         }
         return 0;
       }
-    ''', [8, 5, 5])
+    ''', [8, [5,7], [5,7]])
 
     test(r'''
       #include <stdio.h>
