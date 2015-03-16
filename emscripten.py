@@ -1528,6 +1528,9 @@ Runtime.getTempRet0 = asm['getTempRet0'];
 
 if os.environ.get('EMCC_FAST_COMPILER') != '0':
   emscript = emscript_fast
+else:
+  logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
+  sys.exit(1)
 
 def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG, DEBUG_CACHE):
   # Prepare settings for serialization to JSON.

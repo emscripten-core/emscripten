@@ -109,7 +109,8 @@ stderr = PIPE if not DEBUG else None # unless we are in DEBUG mode
 EMCC_CXX = '--emscripten-cxx' in sys.argv
 sys.argv = filter(lambda x: x != '--emscripten-cxx', sys.argv)
 
-shared.check_sanity(force=DEBUG)
+if len(sys.argv) != 1 and '--help' not in sys.argv and sys.argv[1] != '--version':
+  shared.check_sanity(force=DEBUG)
 
 # Handle some global flags
 
@@ -944,7 +945,8 @@ try:
       fastcomp_opts += ['-emscripten-asyncify-whitelist=' + ','.join(shared.Settings.ASYNCIFY_WHITELIST)]
 
   else: # non-fastcomp
-    logging.warning('Using old (non-fastcomp) compiler due to EMCC_FAST_COMPILER=0 in the env. This is dangerous, as there are known bugs, and this code path is no longer maintained. Please use emscripten in the default configuration (i.e., do not disable fastcomp)')
+    logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
+    sys.exit(1)
 
   if shared.Settings.ASM_JS:
     assert opt_level >= 1 or fastcomp, 'asm.js requires -O1 or above'
