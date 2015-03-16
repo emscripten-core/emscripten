@@ -2964,12 +2964,13 @@ int main()
         [['--profiling', '-g2'], nums[2]]
       ]:
         print opts, ifs
+        if type(ifs) == int: ifs = [ifs]
         try_delete('a.out.js')
         Popen([PYTHON, EMCC, 'src.c', '-O2'] + opts, stdout=PIPE).communicate()
         src = open('a.out.js').read()
         main = src[src.find('function _main'):src.find('\n}', src.find('function _main'))]
         actual_ifs = main.count('if (')
-        assert ifs == actual_ifs, main + ' : ' + str([ifs, actual_ifs])
+        assert actual_ifs in ifs, main + ' : ' + str([ifs, actual_ifs])
         #print main
 
     test(r'''
@@ -3028,7 +3029,7 @@ int main()
         printf("and that's that\n");
         return 0;
       }
-    ''', [2, 1, 1])
+    ''', [[3,2], 1, 1])
 
     test(r'''
       #include <stdio.h>
@@ -3041,7 +3042,7 @@ int main()
         printf("and that's that\n");
         return 0;
       }
-    ''', [2, 1, 1])
+    ''', [[3,2], 1, 1])
 
   def test_symbol_map(self):
     for m in [0, 1]:
