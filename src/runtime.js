@@ -195,6 +195,21 @@ var Runtime = {
 
   STACK_ALIGN: {{{ STACK_ALIGN }}},
 
+  // This must be called before reading a double or i64 vararg. It will bump the pointer properly.
+  // It also does an assert on i32 values, so it's nice to call it before all varargs calls.
+  prepVararg: function(ptr, type) {
+    if (type === 'double' || type === 'i64') {
+      // move so the load is aligned
+      if (ptr & 7) {
+        assert((ptr & 7) === 4);
+        ptr += 4;
+      }
+    } else {
+      assert((ptr & 3) === 0);
+    }
+    return ptr;
+  },
+
   // type can be a native type or a struct (or null, for structs we only look at size here)
   getAlignSize: function(type, size, vararg) {
     // we align i64s and doubles on 64-bit boundaries, unlike x86

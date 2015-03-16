@@ -1706,6 +1706,7 @@ LibraryManager.library = {
     mainLoop:
     for (var formatIndex = 0; formatIndex < format.length;) {
       if (format[formatIndex] === '%' && format[formatIndex+1] == 'n') {
+        argIndex = Runtime.prepVararg(argIndex, '*');
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
         argIndex += Runtime.getAlignSize('void*', null, true);
         {{{ makeSetValue('argPtr', 0, 'soFar', 'i32') }}};
@@ -1723,6 +1724,7 @@ LibraryManager.library = {
             if (maxx != sub) maxx = 0;
           }
           if (maxx) {
+            argIndex = Runtime.prepVararg(argIndex, '*');
             var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
             argIndex += Runtime.getAlignSize('void*', null, true);
             fields++;
@@ -1754,6 +1756,7 @@ LibraryManager.library = {
             scanList = scanList.replace(middleDashMatch[1] + '-' + middleDashMatch[2], expanded);
           }
 
+          argIndex = Runtime.prepVararg(argIndex, '*');
           var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
           argIndex += Runtime.getAlignSize('void*', null, true);
           fields++;
@@ -1882,6 +1885,7 @@ LibraryManager.library = {
         if (suppressAssignment) continue;
 
         var text = buffer.join('');
+        argIndex = Runtime.prepVararg(argIndex, '*');
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
         argIndex += Runtime.getAlignSize('void*', null, true);
         var base = 10;
@@ -7872,6 +7876,7 @@ LibraryManager.library = {
 
   emscripten_jcache_printf___deps: ['_formatString'],
   emscripten_jcache_printf_: function(varargs) {
+    // XXX this is probably broken
     var MAX = 10240;
     if (!_emscripten_jcache_printf_.buffer) {
       _emscripten_jcache_printf_.buffer = _malloc(MAX);

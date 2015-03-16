@@ -5,42 +5,28 @@ mergeInto(LibraryManager.library, {
   // Returns the resulting string string as a character array.
   _formatString__deps: ['strlen', '_reallyNegative'],
   _formatString: function(format, varargs) {
+    assert((varargs & 7) === 0);
     var textIndex = format;
     var argIndex = 0;
     function getNextArg(type) {
       // NOTE: Explicitly ignoring type safety. Otherwise this fails:
       //       int x = 4; printf("%c\n", (char)x);
       var ret;
+      argIndex = Runtime.prepVararg(argIndex, type);
       if (type === 'double') {
-#if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN == 2
         ret = {{{ makeGetValue('varargs', 'argIndex', 'double', undefined, undefined, true, 4) }}};
-#else
-        ret = {{{ makeGetValue('varargs', 'argIndex', 'double', undefined, undefined, true) }}};
-#endif
-#if USE_TYPED_ARRAYS == 2
+        argIndex += 8;
       } else if (type == 'i64') {
-#if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN == 1
-        ret = [{{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}},
-               {{{ makeGetValue('varargs', 'argIndex+8', 'i32', undefined, undefined, true) }}}];
-        argIndex += {{{ STACK_ALIGN }}}; // each 32-bit chunk is in a 64-bit block
-#else
         ret = [{{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true, 4) }}},
                {{{ makeGetValue('varargs', 'argIndex+4', 'i32', undefined, undefined, true, 4) }}}];
-#endif
 
-#else
-      } else if (type == 'i64') {
-        ret = {{{ makeGetValue('varargs', 'argIndex', 'i64', undefined, undefined, true) }}};
-#endif
+        argIndex += 8;
       } else {
+        assert((argIndex & 3) === 0);
         type = 'i32'; // varargs are always i32, i64, or double
         ret = {{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}};
+        argIndex += 4;
       }
-#if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN == 2
-      argIndex += Runtime.getNativeFieldSize(type);
-#else
-      argIndex += Math.max(Runtime.getNativeFieldSize(type), Runtime.getAlignSize(type, null, true));
-#endif
       return ret;
     }
 
