@@ -1761,7 +1761,7 @@ void simplifyExpressions(Ref ast) {
                    input[2][0] == BINARY && input[2][1] == LSHIFT &&
                    input[2][3][0] == NUM && input[3][0] == NUM &&
                    input[2][3][1]->getInteger() == input[3][1]->getInteger() &&
-                   (~(-1u >> input[3][1]->getInteger()) & jsD2I(amount)) == 0) {
+                   (~(0xFFFFFFFFu >> input[3][1]->getInteger()) & jsD2I(amount)) == 0) {
             // x << 24 >> 24 & 255 => x & 255
             return safeCopy(node, make3(BINARY, AND, input[2][2], node[3]));
         }
