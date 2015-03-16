@@ -4402,9 +4402,10 @@ pass: error == ENOTDIR
 
     do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-g2'])
     normal = open('a.out.js').read()
+    shutil.copyfile('a.out.js', 'last.js')
     do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-g2', '--profiling'])
     profiling = open('a.out.js').read()
-    assert len(profiling) > len(normal) + 500, [len(profiling), len(normal)] # should be much larger
+    assert len(profiling) > len(normal) + 300, [len(profiling), len(normal)] # should be much larger
 
     print 'blacklisting'
 
@@ -4562,7 +4563,7 @@ function _main() {
       post = post.split('\n')[0]
       seen = int(post)
       print '  seen', seen, ', expected ', expected, type(seen), type(expected)
-      assert expected == seen or seen in expected, ['expect', expected, 'but see', seen]
+      assert expected == seen or (seen in expected if type(expected) in [list, tuple] else False), ['expect', expected, 'but see', seen]
 
     do_log_test(path_from_root('tests', 'primes.cpp'), 86, 'main')
     do_log_test(path_from_root('tests', 'fannkuch.cpp'), 230, 'fannkuch_worker')
