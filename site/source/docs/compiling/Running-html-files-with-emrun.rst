@@ -156,6 +156,10 @@ When running web pages via ``emrun`` using Firefox, you may want to set one or m
   ; Always run in private browsing mode to avoid caching any pages (but also disables IndexedDB persistency!).
   browser.privatebrowsing.autostart;true
 
+  ; When switching between multiple Firefox browser versions/channels, suppress showing the first time welcome page.
+  startup.homepage_override_url;about:blank
+  startup.homepage_welcome_url;about:blank
+
 To set a Firefox browser pref, navigate to the page ``about:config`` in the browser navigation bar.
 
 Running web pages on an Android device
