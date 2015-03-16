@@ -109,7 +109,7 @@ stderr = PIPE if not DEBUG else None # unless we are in DEBUG mode
 EMCC_CXX = '--emscripten-cxx' in sys.argv
 sys.argv = filter(lambda x: x != '--emscripten-cxx', sys.argv)
 
-if len(sys.argv) != 1 and '--help' not in sys.argv and sys.argv[1] != '--version':
+if len(sys.argv) <= 1 or ('--help' not in sys.argv and len(sys.argv) >= 2 and sys.argv[1] != '--version'):
   shared.check_sanity(force=DEBUG)
 
 # Handle some global flags
