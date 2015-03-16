@@ -9,9 +9,6 @@
 // TODO: Share EMPTY_NODE instead of emptyNode that constructs?
 //==============================================================================
 
-if (!Math.log2) Math.log2 = function log2(x) {
-  return Math.log(x) / Math.LN2;
-};
 if (!Math.fround) {
   var froundBuffer = new Float32Array(1);
   Math.fround = function(x) { froundBuffer[0] = x; return froundBuffer[0] };
@@ -6152,6 +6149,15 @@ function trample(x, y) { // x = y, by trampling it
   x.length = y.length;
 }
 
+function ilog2(x) {
+  x = Math.round(x);
+  if (x === 1) return 0;
+  if (x === 2) return 1;
+  if (x === 4) return 2;
+  if (x === 8) return 3;
+  throw 'ilog2 is not smart enough for ' + x;
+}
+
 // Converts functions into binary format to be run by an emterpreter
 function emterpretify(ast) {
   emitAst = false;
@@ -6416,7 +6422,7 @@ function emterpretify(ast) {
             } else {
               assert(target[2][0] === 'num'); // HEAP32[8] or such
               var address = target[2][1];
-              var shifts = Math.log2(temp.bits/8);
+              var shifts = ilog2(temp.bits/8);
               assert(address === ((address << shifts) >> shifts));
               var x = makeNum(address << shifts, ASM_INT);
               var y = getReg(value);
@@ -6699,7 +6705,7 @@ function emterpretify(ast) {
           } else {
             assert(node[2][0] === 'num'); // HEAP32[8] or such
             var address = node[2][1];
-            var shifts = Math.log2(temp.bits/8);
+            var shifts = ilog2(temp.bits/8);
             assert(address === ((address << shifts) >> shifts));
             var ret = makeNum(address << shifts, ASM_INT);
             var out = assignTo >= 0 ? assignTo : getFree(ret[0]);
