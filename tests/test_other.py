@@ -4933,3 +4933,41 @@ int main() {
     # just care about message regarding allocating over 1GB of memory
     self.assertContained('''Warning: Enlarging memory arrays, this is not fast! 16777216,1543503872\n''', output)
 
+  def test_failing_alloc(self):
+    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
+#include <stdio.h>
+#include <stdlib.h>
+#include <vector>
+#include <assert.h>
+
+#define CHUNK_SIZE (10*1024*1024)
+
+int main() {
+  std::vector<void*> allocs;
+  bool has = false;
+  while (1) {
+    printf("trying an allocation\n");
+    void* curr = malloc(CHUNK_SIZE);
+    if (!curr) break;
+    has = true;
+    printf("allocated another chunk, %d so far\n", allocs.size());
+    allocs.push_back(curr);
+  }
+  assert(has);
+  printf("an allocation failed!\n");
+  while (1) {
+    void *curr = allocs.back();
+    allocs.pop_back();
+    free(curr);
+    printf("freed one\n");
+    if (malloc(CHUNK_SIZE)) break;
+  }
+  printf("managed another malloc!\n");
+}
+    ''')
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'ALLOW_MEMORY_GROWTH=1']).communicate()[1]
+    assert os.path.exists('a.out.js')
+    output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
+    # just care about message regarding allocating over 1GB of memory
+    self.assertContained('''managed another malloc!\n''', output)
+

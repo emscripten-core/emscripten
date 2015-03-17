@@ -1249,7 +1249,7 @@ function enlargeMemory() {
 
   var LIMIT = Math.pow(2, 31); // 2GB is a practical maximum, as we use signed ints as pointers
                                // and JS engines seem unhappy to give us 2GB arrays currently
-  assert(DYNAMICTOP < LIMIT);
+  if (DYNAMICTOP >= LIMIT) return false;
 
   while (TOTAL_MEMORY <= DYNAMICTOP) { // Simple heuristic.
     if (TOTAL_MEMORY < LIMIT/2) {
@@ -1257,13 +1257,13 @@ function enlargeMemory() {
     } else {
       var last = TOTAL_MEMORY;
       TOTAL_MEMORY = alignMemoryPage((3*TOTAL_MEMORY + LIMIT)/4); // add smaller increments towards 2GB, which we cannot reach
-      assert(TOTAL_MEMORY > last);
+      if (TOTAL_MEMORY <= last) return false;
     }
   }
 
   TOTAL_MEMORY = Math.max(TOTAL_MEMORY, 16*1024*1024);
 
-  assert(TOTAL_MEMORY < LIMIT);
+  if (TOTAL_MEMORY >= LIMIT) return false;
 
 #if ASSERTIONS
   Module.printErr('Warning: Enlarging memory arrays, this is not fast! ' + [OLD_TOTAL_MEMORY, TOTAL_MEMORY]);
@@ -1279,13 +1279,22 @@ function enlargeMemory() {
   var start = Date.now();
 #endif
 
-#if USE_TYPED_ARRAYS == 2
-  if (ArrayBuffer.transfer) {
-    buffer = ArrayBuffer.transfer(buffer, TOTAL_MEMORY);
-  } else {
-    var oldHEAP8 = HEAP8;
-    buffer = new ArrayBuffer(TOTAL_MEMORY);
+  try {
+    if (ArrayBuffer.transfer) {
+      buffer = ArrayBuffer.transfer(buffer, TOTAL_MEMORY);
+    } else {
+      var oldHEAP8 = HEAP8;
+      buffer = new ArrayBuffer(TOTAL_MEMORY);
+    }
+  } catch(e) {
+    return false;
   }
+
+  var success = _emscripten_replace_memory(buffer);
+  if (!success) return false;
+
+  // everything worked
+
   Module['buffer'] = buffer;
   Module['HEAP8'] = HEAP8 = new Int8Array(buffer);
   Module['HEAP16'] = HEAP16 = new Int16Array(buffer);
@@ -1298,18 +1307,12 @@ function enlargeMemory() {
   if (!ArrayBuffer.transfer) {
     HEAP8.set(oldHEAP8);
   }
-#else
-  abort('cannot enlarge memory arrays in non-ta2 modes');
-#endif
-#if ASM_JS
-  var success = _emscripten_replace_memory(buffer);
-  assert(success);
-#endif
 
 #if ASSERTIONS
   Module.printErr('enlarged memory arrays from ' + OLD_TOTAL_MEMORY + ' to ' + TOTAL_MEMORY + ', took ' + (Date.now() - start) + ' ms (has ArrayBuffer.transfer? ' + (!!ArrayBuffer.transfer) + ')');
 #endif
 
+  return true;
 #endif
 }
 #endif
