@@ -1722,6 +1722,7 @@ var LibraryJSEvents = {
     {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault, 1, 'i32') }}};
   },
 
+  emscripten_webgl_create_context__deps: ['$GL'],
   emscripten_webgl_create_context: function(target, attributes) {
     var contextAttributes = {};
     contextAttributes.alpha = !!{{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.alpha, 'i32') }}};
