@@ -6354,7 +6354,6 @@ def process(filename):
     ''')
     src = r'''
       #include <stdio.h>
-      #include <SDL/SDL.h>
       #include <emscripten/bind.h>
       using namespace emscripten;
       float lerp(float a, float b, float t) {
