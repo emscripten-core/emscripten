@@ -2582,3 +2582,12 @@ window.close = function() {
         ''' % code)
         self.run_browser('a.html', '...', '/report_result?0')
 
+  def test_webidl(self):
+    # see original in test_core.py
+    output = Popen([PYTHON, path_from_root('tools', 'webidl_binder.py'),
+                            path_from_root('tests', 'webidl', 'test.idl'),
+                            'glue']).communicate()[0]
+    assert os.path.exists('glue.cpp')
+    assert os.path.exists('glue.js')
+    self.btest(os.path.join('webidl', 'test.cpp'), '1', args=['--post-js', 'glue.js', '-I' + path_from_root('tests', 'webidl'), '-DBROWSER'])
+
