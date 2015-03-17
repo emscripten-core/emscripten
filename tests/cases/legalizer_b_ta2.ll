@@ -92,7 +92,7 @@ entry:
   store i128 %ored, i128* %bundled, align 4
   call i32 (i8*)* @puts(i8* %buffer)
 
-  %ander = bitcast i128 18402271027389267967 to i128
+  %ander = add i128 18402271027389267967, 0
   %anded = and i128 %loaded, %ander ; variable
   store i128 %anded, i128* %bundled, align 4
   call i32 (i8*)* @puts(i8* %buffer)

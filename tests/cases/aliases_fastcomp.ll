@@ -4,9 +4,9 @@ target triple = "asmjs-unknown-emscripten"
 
 @.str = private unnamed_addr constant [18 x i8] c"hello, world! %d\0A\00", align 1 ; [#uses=1 type=[18 x i8]*]
 
-@othername = alias internal void (i32)* @doit
-@othername2 = alias internal void (i32)* @othername
-@othername3 = alias internal void (i32)* @othername2
+@othername = internal alias void (i32)* @doit
+@othername2 = internal alias void (i32)* @othername
+@othername3 = internal alias void (i32)* @othername2
 
 @value = global i32 17
 @value2 = alias i32* @value

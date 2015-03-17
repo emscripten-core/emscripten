@@ -4,7 +4,7 @@ target triple = "i386-pc-linux-gnu"
 
 @.str = private unnamed_addr constant [15 x i8] c"hello, world!\0A\00", align 1 ; [#uses=1 type=[15 x i8]*]
 
-@othername = alias internal void ()* @doit
+@othername = internal alias void ()* @doit
 
 define internal void @doit() unnamed_addr nounwind align 2 {
   %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0 type=i32]
