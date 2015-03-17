@@ -707,10 +707,6 @@ try:
   if opt_level == 0: debug_level = max(3, debug_level)
   if memory_init_file is None: memory_init_file = opt_level >= 2
 
-  if llvm_lto is None and bind:
-    logging.debug('running lto for embind') # XXX this is a workaround for a pointer issue
-    llvm_lto = 1
-
   # TODO: support source maps with js_transform
   if js_transform and debug_level >= 4:
     logging.warning('disabling source maps because a js transform is being done')
