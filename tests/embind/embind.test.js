@@ -732,6 +732,20 @@ module({
             assert.throws(TypeError, function() { cm.unsigned_long_to_string(4294967296); });
         });
 
+        test("unsigned values are correctly returned when stored in memory", function() {
+            cm.store_unsigned_char(255);
+            assert.equal(255, cm.load_unsigned_char());
+
+            cm.store_unsigned_short(32768);
+            assert.equal(32768, cm.load_unsigned_short());
+
+            cm.store_unsigned_int(2147483648);
+            assert.equal(2147483648, cm.load_unsigned_int());
+
+            cm.store_unsigned_long(2147483648);
+            assert.equal(2147483648, cm.load_unsigned_long());
+        });
+
         test("throws appropriate type error when attempting to coerce null to int", function() {
             var e = assert.throws(TypeError, function() {
                 cm.int_to_string(null);
