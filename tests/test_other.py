@@ -4916,3 +4916,20 @@ int main() {
     test(['-Os'], 1)
     test(['-Oz'], 1)
 
+  def test_massive_alloc(self):
+    if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('cannot run without spidermonkey, node cannnot alloc huge arrays')
+
+    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+  return (int)malloc(1024*1024*1400);
+}
+    ''')
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'ALLOW_MEMORY_GROWTH=1']).communicate()[1]
+    assert os.path.exists('a.out.js')
+    output = run_js('a.out.js', stderr=PIPE, full_output=True, engine=SPIDERMONKEY_ENGINE, assert_returncode=None)
+    # just care about message regarding allocating over 1GB of memory
+    self.assertContained('''Warning: Enlarging memory arrays, this is not fast! 16777216,1543503872\n''', output)
+

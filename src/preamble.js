@@ -1206,8 +1206,12 @@ Module['stackTrace'] = stackTrace;
 // Memory management
 
 var PAGE_SIZE = 4096;
+
 function alignMemoryPage(x) {
-  return (x+4095)&-4096;
+  if (x % 4096 > 0) {
+    x += (4096 - (x % 4096));
+  }
+  return x;
 }
 
 var HEAP;
@@ -1243,11 +1247,23 @@ function enlargeMemory() {
   _emscripten_trace_report_memory_layout();
 #endif
 
+  var LIMIT = Math.pow(2, 31); // 2GB is a practical maximum, as we use signed ints as pointers
+                               // and JS engines seem unhappy to give us 2GB arrays currently
+  assert(DYNAMICTOP < LIMIT);
+
   while (TOTAL_MEMORY <= DYNAMICTOP) { // Simple heuristic.
-    TOTAL_MEMORY = alignMemoryPage(2*TOTAL_MEMORY);
+    if (TOTAL_MEMORY < LIMIT/2) {
+      TOTAL_MEMORY = alignMemoryPage(2*TOTAL_MEMORY); // double until 1GB
+    } else {
+      var last = TOTAL_MEMORY;
+      TOTAL_MEMORY = alignMemoryPage((3*TOTAL_MEMORY + LIMIT)/4); // add smaller increments towards 2GB, which we cannot reach
+      assert(TOTAL_MEMORY > last);
+    }
   }
 
   TOTAL_MEMORY = Math.max(TOTAL_MEMORY, 16*1024*1024);
+
+  assert(TOTAL_MEMORY < LIMIT);
 
 #if ASSERTIONS
   Module.printErr('Warning: Enlarging memory arrays, this is not fast! ' + [OLD_TOTAL_MEMORY, TOTAL_MEMORY]);
@@ -1258,8 +1274,6 @@ function enlargeMemory() {
   // And now report the new layout
   _emscripten_trace_report_memory_layout();
 #endif
-
-  assert(TOTAL_MEMORY <= Math.pow(2, 30)); // 2^30==1GB is a practical maximum - 2^31 is already close to possible negative numbers etc.
 
 #if ASSERTIONS
   var start = Date.now();
