@@ -866,13 +866,15 @@ var LibraryGL = {
         return ret;
       }
 
- 
-      GLctx.getSupportedExtensions().forEach(function(ext) {
-        ext = ext.replace('MOZ_', '').replace('WEBKIT_', '');
-        if (automaticallyEnabledExtensions.indexOf(ext) != -1) {
-          GLctx.getExtension(ext); // Calling .getExtension enables that extension permanently, no need to store the return value to be enabled.
-        }
-      });
+      var exts = GLctx.getSupportedExtensions();
+      if (exts && exts.length > 0) {
+        GLctx.getSupportedExtensions().forEach(function(ext) {
+          ext = ext.replace('MOZ_', '').replace('WEBKIT_', '');
+          if (automaticallyEnabledExtensions.indexOf(ext) != -1) {
+            GLctx.getExtension(ext); // Calling .getExtension enables that extension permanently, no need to store the return value to be enabled.
+          }
+        });
+      }
     },
 
     // In WebGL, uniforms in a shader program are accessed through an opaque object type 'WebGLUniformLocation'.
