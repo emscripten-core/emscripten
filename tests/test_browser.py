@@ -2035,7 +2035,7 @@ Module["preRun"].push(function () {
       self.btest(path_from_root('tests', 'webgl_create_context.cpp'), args=opts, expected='0')
 
   def test_html5_webgl_destroy_context(self):
-    for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'FULL_ES2=1']]:
+    for opts in [[], ['-O2', '-g1'], ['-s', 'FULL_ES2=1']]:
       print opts
       self.btest(path_from_root('tests', 'webgl_destroy_context.cpp'), args=opts + ['--shell-file', path_from_root('tests/webgl_destroy_context_shell.html'), '-s', 'NO_EXIT_RUNTIME=1'], expected='0')
 
