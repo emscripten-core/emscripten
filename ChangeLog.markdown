@@ -60,6 +60,15 @@ v1.29.10: 2/19/2015
 
 v1.29.9: 2/9/2015
 -------------------
+ - Documented FORCE_ALIGNED_MEMORY to be no longer supported.
+ - Fixes issues with native optimizer handling of "if () else {}" statements. (#3129)
+ - Improved cross-browser support for EMSCRIPTEN_FULLSCREEN_FILTERING_NEAREST. (#3165)
+ - Added new linker option --profiling-funcs, which generates output that is otherwise minified, except that function names are kept intact, for use in profilers and getting descriptive call stacks.
+ - The Module object is no longer written in global scope. (#3167)
+ - Added new emscripten_idb_* API. (#3169)
+ - Added new function emscripten_wget_data().
+ - Add support for GL_RED with GLES3/WebGL2. (#3176)
+ - Added basic WebVR support. (#3177)
  - Full list of changes:
     - Emscripten: https://github.com/kripken/emscripten/compare/1.29.8...1.29.9
     - Emscripten-LLVM: no changes.
