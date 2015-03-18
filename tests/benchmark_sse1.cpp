@@ -25,6 +25,11 @@
 #define aligned_alloc(align, size) malloc(size)
 #endif
 
+#ifdef WIN32
+#include <Windows.h>
+#define tick_t unsigned long long
+#define aligned_alloc _aligned_malloc
+#endif
 
 // Scalar horizonal max across four lanes.
 float hmax(__m128 m)
@@ -68,6 +73,19 @@ inline tick_t tick()
 tick_t ticks_per_sec()
 {
 	return 1000 * 1000;
+}
+#elif defined(WIN32)
+inline tick_t tick()
+{
+	LARGE_INTEGER ddwTimer;
+	QueryPerformanceCounter(&ddwTimer);
+	return ddwTimer.QuadPart;
+}
+tick_t ticks_per_sec()
+{
+	LARGE_INTEGER ddwTimerFrequency;
+	QueryPerformanceFrequency(&ddwTimerFrequency);
+	return ddwTimerFrequency.QuadPart;
 }
 #else
 #error No tick_t
