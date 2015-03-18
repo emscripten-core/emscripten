@@ -574,6 +574,9 @@ def get_clang_native_args():
     sdk_path = osx_find_native_sdk_path()
     if sdk_path:
       CACHED_CLANG_NATIVE_ARGS = ['-isysroot', osx_find_native_sdk_path()]
+  elif os.name == 'nt':
+    CACHED_CLANG_NATIVE_ARGS = ['-DWIN32']
+    # TODO: If Windows.h et al. are needed, will need to add something like '-isystemC:/Program Files (x86)/Microsoft SDKs/Windows/v7.1A/Include'.
   return CACHED_CLANG_NATIVE_ARGS
 
 CLANG_CC=os.path.expanduser(build_clang_tool_path('clang'))
