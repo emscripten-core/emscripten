@@ -4720,12 +4720,14 @@ int main(void) {
       finally:
         del os.environ['EMCC_DEBUG']
 
-      if args:
-        assert err.count('-disable-vectorize') == 2, err # specified twice, once per file
+      VECTORIZE = '-disable-loop-vectorization'
 
-        assert err.count('emcc: LLVM opts: ' + llvm_opts + ' -disable-vectorize') == 2, err # exactly once per invocation of optimizer
+      if args:
+        assert err.count(VECTORIZE) == 2, err # specified twice, once per file
+
+        assert err.count('emcc: LLVM opts: ' + llvm_opts + ' ' + VECTORIZE) == 2, err # exactly once per invocation of optimizer
       else:
-        assert err.count('-disable-vectorize') == 0, err # no optimizations
+        assert err.count(VECTORIZE) == 0, err # no optimizations
 
       Popen([PYTHON, EMCC, main_name.replace('.c', '.o'), lib_name.replace('.c', '.o')]).communicate()
 
