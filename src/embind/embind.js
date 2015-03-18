@@ -523,12 +523,21 @@ var LibraryEmbind = {
     }
 
     var shift = getShiftFromSize(size);
+    
+    var fromWireType = function(value) {
+        return value;
+    };
+    
+    if (minRange === 0) {
+        var bitshift = 32 - 8*size;
+        fromWireType = function(value) {
+            return (value << bitshift) >>> bitshift;
+        };
+    }
 
     registerType(primitiveType, {
         name: name,
-        'fromWireType': function(value) {
-            return value;
-        },
+        'fromWireType': fromWireType,
         'toWireType': function(destructors, value) {
             // todo: Here we have an opportunity for -O3 level "unsafe" optimizations: we could
             // avoid the following two if()s and assume value is of proper type.

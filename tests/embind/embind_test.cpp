@@ -1585,6 +1585,43 @@ std::string unsigned_long_to_string(unsigned long val) {
     return str;
 }
 
+//test loading unsigned value from memory
+static unsigned char uchar;
+void store_unsigned_char(unsigned char arg) {
+	uchar = arg;
+}
+
+unsigned char load_unsigned_char() {
+	return uchar;
+}
+
+static unsigned short ushort;
+void store_unsigned_short(unsigned short arg) {
+	ushort = arg;
+}
+
+unsigned short load_unsigned_short() {
+	return ushort;
+}
+
+static unsigned int uint;
+void store_unsigned_int(unsigned int arg) {
+	uint = arg;
+}
+
+unsigned int load_unsigned_int() {
+	return uint;
+}
+
+static unsigned long ulong;
+void store_unsigned_long(unsigned long arg) {
+	ulong = arg;
+}
+
+unsigned long load_unsigned_long() {
+	return ulong;
+}
+
 EMSCRIPTEN_BINDINGS(tests) {
     register_vector<int>("IntegerVector");
     register_vector<char>("CharVector");
@@ -2047,6 +2084,15 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("unsigned_int_to_string", &unsigned_int_to_string);
     function("long_to_string", &long_to_string);
     function("unsigned_long_to_string", &unsigned_long_to_string);
+
+    function("store_unsigned_char", &store_unsigned_char);
+    function("load_unsigned_char", &load_unsigned_char);
+    function("store_unsigned_short", &store_unsigned_short);
+    function("load_unsigned_short", &load_unsigned_short);
+    function("store_unsigned_int", &store_unsigned_int);
+    function("load_unsigned_int", &load_unsigned_int);
+    function("store_unsigned_long", &store_unsigned_long);
+    function("load_unsigned_long", &load_unsigned_long);
 }
 
 int overloaded_function(int i) {
