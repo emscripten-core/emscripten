@@ -8,7 +8,6 @@
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
-#define _mm_storeu_ps _mm_store_ps // Hack for missing function. Works for now since Emscripten does not care about alignment.
 #define aligned_alloc(align, size) malloc(size) // Hack for missing function. Works for now since Emscripten does not care about alignment.
 #endif
 
