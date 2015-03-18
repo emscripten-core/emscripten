@@ -1493,12 +1493,16 @@ try:
       js_optimizer_queue += [get_eliminate()]
 
       if shared.Settings.AGGRESSIVE_VARIABLE_ELIMINATION:
+        # note that this happens before registerize/minification, which can obfuscate the name of 'label', which is tricky
         js_optimizer_queue += ['aggressiveVariableElimination']
 
       js_optimizer_queue += ['simplifyExpressions']
 
-      if shared.Settings.EMTERPRETIFY: # emterpreter code will not run through a JS optimizing JIT, do more work ourselves
+      if shared.Settings.EMTERPRETIFY:
+        # emterpreter code will not run through a JS optimizing JIT, do more work ourselves
         js_optimizer_queue += ['localCSE']
+        # add explicit label setting, as we will run aggressiveVariableElimination late, *after* 'label' is no longer notable by name
+        js_optimizer_queue += ['safeLabelSetting']
 
       if shared.Settings.RELOOP and not shared.Settings.ASM_JS:
         js_optimizer_queue += ['optimizeShiftsAggressive', get_eliminate()] # aggressive shifts optimization requires loops, it breaks on switches

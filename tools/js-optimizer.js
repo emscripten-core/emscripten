@@ -1075,6 +1075,30 @@ function localCSE(ast) {
   });
 }
 
+function safeLabelSetting(ast) {
+  // Add an assign to label, if it exists, so that even after we minify/registerize variable names, we can tell if any vars use the asm init value of 0 - none will, so it's easy to tell
+  assert(asm);
+  traverseGeneratedFunctions(ast, function(func) {
+    var asmData = normalizeAsm(func);
+    if ('label' in asmData.vars) {
+      var stats = getStatements(func);
+      var seenVar = false;
+      for (var i = 0; i < stats.length; i++) {
+        var curr = stats[i];
+        if (curr[0] === 'stat') curr = curr[1];
+        if (curr[0] === 'var') {
+          seenVar = true;
+        } else if (seenVar && curr[0] !== 'var') {
+          // first location after the vars
+          stats.splice(i+1, 0, ['stat', ['assign', true, ['name', 'label'], ['num', 0]]]);
+          break;
+        }
+      }
+    }
+    denormalizeAsm(func, asmData);
+  });
+}
+
 function simplifyIfs(ast) {
   traverseGeneratedFunctions(ast, function(func) {
     var simplifiedAnElse = false;
@@ -6326,7 +6350,7 @@ function emterpretify(ast) {
         }
         case 'var':
         case 'toplevel': {
-          assert(dropIt);
+          assert(dropIt || isEmptyNode(node));
           return [-1, []]; // empty node
         }
         case 'stat': return getReg(node[1], dropIt);
@@ -7229,7 +7253,7 @@ function emterpretify(ast) {
       stats.forEach(function(stat) {
         var before = freeLocals.length;
         var raw = getReg(stat, true);
-        //printErr('raw: ' + JSON.stringify(raw));
+        //printErr('raw: ' + JSON.stringify(stat));
         releaseIfFree(raw[0]);
         if (freeLocals.length !== before) assert(0, [before, freeLocals.length] + ' due to ' + astToSrc(stat)); // the statement is done - nothing should still be held on to
         var curr = raw[1];
@@ -7895,6 +7919,7 @@ var passes = {
   optimizeShiftsConservative: optimizeShiftsConservative,
   optimizeShiftsAggressive: optimizeShiftsAggressive,
   localCSE: localCSE,
+  safeLabelSetting: safeLabelSetting,
   simplifyIfs: simplifyIfs,
   hoistMultiples: hoistMultiples,
   loopOptimizer: loopOptimizer,
