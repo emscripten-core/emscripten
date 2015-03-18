@@ -8,7 +8,8 @@
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
-#define aligned_alloc(align, size) malloc(size) // Hack for missing function. Works for now since Emscripten does not care about alignment.
+// This test never frees, so we can be carefree and just round up to be aligned.
+#define aligned_alloc(align, size) (void*)(((uintptr_t)malloc((size) + ((align)-1)) + ((align)-1)) & (~((align)-1)))
 #endif
 
 #if defined(__unix__) && !defined(__EMSCRIPTEN__) // Native build without Emscripten.
