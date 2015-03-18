@@ -163,6 +163,7 @@ def unquote_u(source):
 # Returns whether the browser page we spawned is still running.
 # (note, not perfect atm, in case we are running in detached mode)
 def is_browser_process_alive():
+  global browser_process
   return browser_process and browser_process.poll() == None
   
 # Kills browser_process and processname_killed_atexit.
@@ -172,9 +173,11 @@ def kill_browser_process():
     try:
       logv('Terminating browser process..')
       browser_process.kill()
-    except:
-      pass
+    except Exception, e:
+      logv('Failed with error ' + str(e) + '!')
     browser_process = None
+    processname_killed_atexit = ''
+    return
   if len(processname_killed_atexit) > 0:
     if emrun_options.android:
       logv("Terminating Android app '" + processname_killed_atexit + "'.")
@@ -270,15 +273,17 @@ class HTTPWebServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
     while self.is_running:
       now = tick()
       # Did user close browser?
-      if not emrun_options.serve_after_close and browser_process and browser_process.poll() != None:
-        if not have_received_messages:
-          emrun_options.serve_after_close = True
-          logv('Warning: emrun got detached from the target browser process. Cannot detect when user closes the browser. Behaving as if --serve_after_close was passed in.')
-          if not emrun_options.browser:
-            logv('Try passing the --browser=/path/to/browser option to avoid this from occurring. See https://github.com/kripken/emscripten/issues/3234 for more discussion.')
-        else:
-          self.shutdown()
-          logv('Browser process has quit. Shutting down web server.. Pass --serve_after_close to keep serving the page even after the browser closes.')
+      if browser_process:
+        browser_quit_code = browser_process.poll()
+        if not emrun_options.serve_after_close and browser_quit_code != None:
+          if not have_received_messages:
+            emrun_options.serve_after_close = True
+            logv('Warning: emrun got detached from the target browser process (the process quit with code ' + str(browser_quit_code) + '). Cannot detect when user closes the browser. Behaving as if --serve_after_close was passed in.')
+            if not emrun_options.browser:
+              logv('Try passing the --browser=/path/to/browser option to avoid this from occurring. See https://github.com/kripken/emscripten/issues/3234 for more discussion.')
+          else:
+            self.shutdown()
+            logv('Browser process has quit. Shutting down web server.. Pass --serve_after_close to keep serving the page even after the browser closes.')
 
       # Serve HTTP
       self.handle_request()
@@ -356,6 +361,7 @@ class HTTPHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     self.send_header("Content-Length", str(fs[6]))
     self.send_header("Last-Modified", self.date_time_string(fs.st_mtime))
     self.send_header('Cache-Control','no-cache, must-revalidate')
+    self.send_header('Connection','close')
     self.send_header('Expires','-1')
     self.end_headers()
     page_last_served_time = tick()
@@ -424,6 +430,7 @@ class HTTPHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     self.send_response(200)
     self.send_header("Content-type", "text/plain")
     self.send_header('Cache-Control','no-cache, must-revalidate')
+    self.send_header('Connection','close')
     self.send_header('Expires','-1')
     self.end_headers()
     self.wfile.write('OK')
@@ -1020,7 +1027,15 @@ def main():
       browser = [ADB, 'shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-n', browser_app, '-d', url]
       processname_killed_atexit = browser_app[:browser_app.find('/')]
   else: #Launching a web page on local system.
+    if options.browser:
+      # Be resilient to quotes and whitespace
+      options.browser = options.browser.strip()
+      if (options.browser.startswith('"') and options.browser.endswith('"')) or (options.browser.startswith("'") and options.browser.endswith("'")):
+        options.browser = options.browser[1:-1].strip()
     browser = find_browser(str(options.browser))
+    if not browser:
+      loge('Unable to find browser "' + str(options.browser) + '"! Check the correctness of the passed --browser=xxx parameter!')
+      return 1
     browser_exe = browser[0]
     browser_args = []
 
@@ -1100,17 +1115,19 @@ def main():
     if options.android:
       browser_process = None
 
-  if browser_process and browser_process.poll() == None:
-    options.serve_after_close = True
-    logv('Warning: emrun got detached from the target browser process. Cannot detect when user closes the browser. Behaving as if --serve_after_close was passed in.')
-    if not options.browser:
-      logv('Try passing the --browser=/path/to/browser option to avoid this from occurring. See https://github.com/kripken/emscripten/issues/3234 for more discussion.')
+  if browser_process:
+    premature_quit_code = browser_process.poll()
+    if premature_quit_code != None:
+      options.serve_after_close = True
+      logv('Warning: emrun got immediately detached from the target browser process (the process quit with exit code ' + str(premature_quit_code) + '). Cannot detect when user closes the browser. Behaving as if --serve_after_close was passed in.')
+      if not options.browser:
+        logv('Try passing the --browser=/path/to/browser option to avoid this from occurring. See https://github.com/kripken/emscripten/issues/3234 for more discussion.')
   
   if not options.no_server:
     try:
       httpd.serve_forever()
     except KeyboardInterrupt:
-      httpd.server_close()
+      pass
     httpd.server_close()
 
     logv('Closed web server.')

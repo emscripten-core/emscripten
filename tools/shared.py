@@ -459,8 +459,12 @@ def check_sanity(force=False):
     # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
     check_llvm_version()
     check_node_version()
-    if os.environ.get('EMCC_FAST_COMPILER') != '0':
-      fastcomp_ok = check_fastcomp()
+
+    if os.environ.get('EMCC_FAST_COMPILER') == '0':
+      logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
+      sys.exit(1)
+
+    fastcomp_ok = check_fastcomp()
 
     if os.environ.get('EM_IGNORE_SANITY'):
       logging.info('EM_IGNORE_SANITY set, ignoring sanity checks')
@@ -570,6 +574,9 @@ def get_clang_native_args():
     sdk_path = osx_find_native_sdk_path()
     if sdk_path:
       CACHED_CLANG_NATIVE_ARGS = ['-isysroot', osx_find_native_sdk_path()]
+  elif os.name == 'nt':
+    CACHED_CLANG_NATIVE_ARGS = ['-DWIN32']
+    # TODO: If Windows.h et al. are needed, will need to add something like '-isystemC:/Program Files (x86)/Microsoft SDKs/Windows/v7.1A/Include'.
   return CACHED_CLANG_NATIVE_ARGS
 
 CLANG_CC=os.path.expanduser(build_clang_tool_path('clang'))
@@ -711,9 +718,7 @@ except:
 # Target choice. Must be synced with src/settings.js (TARGET_*)
 def get_llvm_target():
   if os.environ.get('EMCC_FAST_COMPILER') == '0':
-    if not os.environ.get('EMCC_LLVM_TARGET'):
-      os.environ['EMCC_LLVM_TARGET'] = 'le32-unknown-nacl'
-    return os.environ.get('EMCC_LLVM_TARGET')
+    return 'unavailable-non-fastcomp'
   return os.environ.get('EMCC_LLVM_TARGET') or 'asmjs-unknown-emscripten'
 LLVM_TARGET = get_llvm_target()
 

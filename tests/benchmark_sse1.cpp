@@ -8,8 +8,8 @@
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
-#define _mm_storeu_ps _mm_store_ps // Hack for missing function. Works for now since Emscripten does not care about alignment.
-#define aligned_alloc(align, size) malloc(size) // Hack for missing function. Works for now since Emscripten does not care about alignment.
+// This test never frees, so we can be carefree and just round up to be aligned.
+#define aligned_alloc(align, size) (void*)(((uintptr_t)malloc((size) + ((align)-1)) + ((align)-1)) & (~((align)-1)))
 #endif
 
 #if defined(__unix__) && !defined(__EMSCRIPTEN__) // Native build without Emscripten.
@@ -22,9 +22,14 @@
 
 #ifdef __APPLE__
 #include <mach/mach_time.h>
-#define aligned_alloc(align, size) malloc(size)
+#define aligned_alloc(align, size) malloc((size))
 #endif
 
+#ifdef WIN32
+#include <Windows.h>
+#define tick_t unsigned long long
+#define aligned_alloc(align, size) _aligned_malloc((size), (align))
+#endif
 
 // Scalar horizonal max across four lanes.
 float hmax(__m128 m)
@@ -68,6 +73,19 @@ inline tick_t tick()
 tick_t ticks_per_sec()
 {
 	return 1000 * 1000;
+}
+#elif defined(WIN32)
+inline tick_t tick()
+{
+	LARGE_INTEGER ddwTimer;
+	QueryPerformanceCounter(&ddwTimer);
+	return ddwTimer.QuadPart;
+}
+tick_t ticks_per_sec()
+{
+	LARGE_INTEGER ddwTimerFrequency;
+	QueryPerformanceFrequency(&ddwTimerFrequency);
+	return ddwTimerFrequency.QuadPart;
 }
 #else
 #error No tick_t
@@ -114,9 +132,17 @@ void Print(__m128 m)
 
 bool always_true() { return time(NULL) != 0; } // This function always returns true, but the compiler should not know this.
 
-float __attribute__((noinline)) *get_src() { return always_true() ? (float*)aligned_alloc(16, (N+16)*sizeof(float)) : 0; }
-float __attribute__((noinline)) *get_src2() { return always_true() ? (float*)aligned_alloc(16, (N+16)*sizeof(float)) : 0; }
-float __attribute__((noinline)) *get_dst() { return always_true() ? (float*)aligned_alloc(16, (N+16)*sizeof(float)) : 0; }
+#ifdef _MSC_VER
+#define NOINLINE __declspec(noinline)
+#define INLINE __forceinline
+#else
+#define NOINLINE __attribute__((noinline))
+#define INLINE __inline__
+#endif
+
+float NOINLINE *get_src() { return always_true() ? (float*)aligned_alloc(16, (N+16)*sizeof(float)) : 0; }
+float NOINLINE *get_src2() { return always_true() ? (float*)aligned_alloc(16, (N+16)*sizeof(float)) : 0; }
+float NOINLINE *get_dst() { return always_true() ? (float*)aligned_alloc(16, (N+16)*sizeof(float)) : 0; }
 
 float checksum_dst(float *dst)
 {
@@ -136,6 +162,13 @@ float ucastf(uint32_t t) { return *(float*)&t; }
 	START(); \
 		for(int i = 0; i < N; i += 4) \
 			store_instr((float*)dst+store_offset+i, load_instr(src+load_offset+i)); \
+	END(checksum_dst(dst), msg);
+
+// loadh/l - store test
+#define LSH_TEST(msg, reg, load_instr, load_offset, store_instr, store_offset) \
+	START(); \
+		for(int i = 0; i < N; i += 4) \
+			store_instr((float*)dst+store_offset+i, load_instr(reg, (const __m64*)(src+load_offset+i))); \
 	END(checksum_dst(dst), msg);
 
 #define LS64_TEST(msg, load_instr, load_offset, store_instr, store_offset) \
@@ -171,7 +204,7 @@ float ucastf(uint32_t t) { return *(float*)&t; }
 #define Max(a,b) ((a) >= (b) ? (a) : (b))
 #define Min(a,b) ((a) <= (b) ? (a) : (b))
 
-static __inline__ int Isnan(float __f)
+static INLINE int Isnan(float __f)
 {
   return (*(unsigned int*)&__f << 1) > 0xFF000000u;
 }
@@ -203,8 +236,11 @@ int main()
 	LS_TEST("_mm_load_ps1", _mm_load_ps1, 1, _mm_store_ps, 0);
 	LS_TEST("_mm_load_ss", _mm_load_ss, 1, _mm_store_ps, 0);
 	LS_TEST("_mm_load1_ps", _mm_load1_ps, 1, _mm_store_ps, 0);
-	// _mm_loadh_pi
-	// _mm_loadl_pi
+
+	__m128 tempReg = _mm_set_ps(1.f, 2.f, 3.f, 4.f);
+	LSH_TEST("_mm_loadh_pi", tempReg, _mm_loadh_pi, 1, _mm_store_ps, 0);
+	LSH_TEST("_mm_loadl_pi", tempReg, _mm_loadh_pi, 1, _mm_store_ps, 0);
+
 	LS_TEST("_mm_loadr_ps", _mm_loadr_ps, 0, _mm_store_ps, 0);
 	LS_TEST("_mm_loadu_ps", _mm_loadu_ps, 1, _mm_store_ps, 0);
 
@@ -269,7 +305,6 @@ int main()
 	BINARYOP_TEST("_mm_xor_ps", _mm_xor_ps, _mm_load_ps(src), _mm_load_ps(src2));
 
 	SETCHART("cmp");
-#ifndef __EMSCRIPTEN__ // TODO: Disabled due to https://github.com/kripken/emscripten/issues/2841
 	START(); dst[0] = src[0]; dst[1] = src[1]; dst[2] = src[2]; dst[3] = src[3]; for(int i = 0; i < N; ++i) { dst[0] = (dst[0] == src2[0]) ? ucastf(0xFFFFFFFFU) : 0.f; dst[1] = (dst[1] == src2[1]) ? ucastf(0xFFFFFFFFU) : 0.f; dst[2] = (dst[2] == src2[2]) ? ucastf(0xFFFFFFFFU) : 0.f; dst[3] = (dst[3] == src2[3]) ? ucastf(0xFFFFFFFFU) : 0.f; } ENDSCALAR(checksum_dst(dst), "scalar cmp==");
 	BINARYOP_TEST("_mm_cmpeq_ps", _mm_cmpeq_ps, _mm_load_ps(src), _mm_load_ps(src2));
 	BINARYOP_TEST("_mm_cmpeq_ss", _mm_cmpeq_ss, _mm_load_ps(src), _mm_load_ps(src2));
@@ -285,7 +320,6 @@ int main()
 	START(); dst[0] = src[0]; dst[1] = src[1]; dst[2] = src[2]; dst[3] = src[3]; for(int i = 0; i < N; ++i) { dst[0] = (dst[0] < src2[0]) ? ucastf(0xFFFFFFFFU) : 0.f; dst[1] = (dst[1] < src2[1]) ? ucastf(0xFFFFFFFFU) : 0.f; dst[2] = (dst[2] < src2[2]) ? ucastf(0xFFFFFFFFU) : 0.f; dst[3] = (dst[3] < src2[3]) ? ucastf(0xFFFFFFFFU) : 0.f; } ENDSCALAR(checksum_dst(dst), "scalar cmp<");
 	BINARYOP_TEST("_mm_cmplt_ps", _mm_cmplt_ps, _mm_load_ps(src), _mm_load_ps(src2));
 	BINARYOP_TEST("_mm_cmplt_ss", _mm_cmplt_ss, _mm_load_ps(src), _mm_load_ps(src2));
-#endif
 
 	START(); dst[0] = src[0]; dst[1] = src[1]; dst[2] = src[2]; dst[3] = src[3]; for(int i = 0; i < N; ++i) { dst[0] = (!Isnan(dst[0]) && !Isnan(src2[0])) ? ucastf(0xFFFFFFFFU) : 0.f; dst[1] = (!Isnan(dst[1]) && !Isnan(src2[1])) ? ucastf(0xFFFFFFFFU) : 0.f; dst[2] = (!Isnan(dst[2]) && !Isnan(src2[2])) ? ucastf(0xFFFFFFFFU) : 0.f; dst[3] = (!Isnan(dst[3]) && !Isnan(src2[3])) ? ucastf(0xFFFFFFFFU) : 0.f; } ENDSCALAR(checksum_dst(dst), "scalar cmpord");
 	BINARYOP_TEST("_mm_cmpord_ps", _mm_cmpord_ps, _mm_load_ps(src), _mm_load_ps(src2));

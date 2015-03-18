@@ -276,6 +276,29 @@ f.close()
     # TODO: test normal project linking, static and dynamic: get_library should not need to be told what to link!
     # TODO: deprecate llvm optimizations, dlmalloc, etc. in emscripten.py.
 
+  def test_emcc_nonfastcomp_fails(self):
+    open(os.path.join(self.get_dir(), 'test.c'), 'w').write(r'''
+      int main() {
+        return 0;
+      }
+    ''')
+    def check_errors(command):
+      process = Popen(command, stdout=PIPE, stderr=PIPE)
+      stdout, stderr = process.communicate()
+      self.assertEqual(stdout, '')
+      self.assertIn('Non-fastcomp compiler is no longer available', stderr)
+      self.assertEqual(process.returncode, 1)
+    def check_success(command):
+      process = Popen(command, stdout=PIPE, stderr=PIPE)
+      stdout, stderr = process.communicate()
+      self.assertEqual(stderr, '')
+      self.assertEqual(process.returncode, 0)
+    nonfastcomp(lambda: check_success([PYTHON, EMCC, '--version']))
+    nonfastcomp(lambda: check_success([PYTHON, EMCC, '--help']))
+    nonfastcomp(lambda: check_errors([PYTHON, EMCC, '-v']))
+    nonfastcomp(lambda: check_errors([PYTHON, EMCC, os.path.join(self.get_dir(), 'test.c')]))
+    self.assertFalse(os.path.exists('a.out.js'))
+
   def test_emcc_nonfastcomp(self):
     return self.skip('non-fastcomp is deprecated and fails in 3.5')
     nonfastcomp(self.test_emcc)
@@ -4893,4 +4916,59 @@ int main() {
     test(['-O2'], 6)
     test(['-Os'], 1)
     test(['-Oz'], 1)
+
+  def test_massive_alloc(self):
+    if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('cannot run without spidermonkey, node cannnot alloc huge arrays')
+
+    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+  return (int)malloc(1024*1024*1400);
+}
+    ''')
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'ALLOW_MEMORY_GROWTH=1']).communicate()[1]
+    assert os.path.exists('a.out.js')
+    output = run_js('a.out.js', stderr=PIPE, full_output=True, engine=SPIDERMONKEY_ENGINE, assert_returncode=None)
+    # just care about message regarding allocating over 1GB of memory
+    self.assertContained('''Warning: Enlarging memory arrays, this is not fast! 16777216,1543503872\n''', output)
+
+  def test_failing_alloc(self):
+    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
+#include <stdio.h>
+#include <stdlib.h>
+#include <vector>
+#include <assert.h>
+
+#define CHUNK_SIZE (10*1024*1024)
+
+int main() {
+  std::vector<void*> allocs;
+  bool has = false;
+  while (1) {
+    printf("trying an allocation\n");
+    void* curr = malloc(CHUNK_SIZE);
+    if (!curr) break;
+    has = true;
+    printf("allocated another chunk, %d so far\n", allocs.size());
+    allocs.push_back(curr);
+  }
+  assert(has);
+  printf("an allocation failed!\n");
+  while (1) {
+    void *curr = allocs.back();
+    allocs.pop_back();
+    free(curr);
+    printf("freed one\n");
+    if (malloc(CHUNK_SIZE)) break;
+  }
+  printf("managed another malloc!\n");
+}
+    ''')
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'ALLOW_MEMORY_GROWTH=1']).communicate()[1]
+    assert os.path.exists('a.out.js')
+    output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
+    # just care about message regarding allocating over 1GB of memory
+    self.assertContained('''managed another malloc!\n''', output)
 

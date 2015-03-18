@@ -1,5 +1,5 @@
 
-import os, sys, subprocess, multiprocessing, re, string, json, shutil
+import os, sys, subprocess, multiprocessing, re, string, json, shutil, logging
 import shared
 
 configuration = shared.configuration
@@ -62,7 +62,9 @@ def find_msbuild(sln_file, make_env):
   return [None, make_env]
 
 def get_native_optimizer():
-  if os.environ.get('EMCC_FAST_COMPILER') == '0': return None # need fastcomp for native optimizer
+  if os.environ.get('EMCC_FAST_COMPILER') == '0':
+    logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
+    sys.exit(1)
 
   # Allow users to override the location of the optimizer executable by setting an environment variable EMSCRIPTEN_NATIVE_OPTIMIZER=/path/to/optimizer(.exe)
   if os.environ.get('EMSCRIPTEN_NATIVE_OPTIMIZER') and len(os.environ.get('EMSCRIPTEN_NATIVE_OPTIMIZER')) > 0: return os.environ.get('EMSCRIPTEN_NATIVE_OPTIMIZER')

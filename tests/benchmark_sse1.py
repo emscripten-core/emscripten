@@ -11,16 +11,17 @@ from tools.shared import *
 temp_dir = tempfile.mkdtemp()
 
 # System info
-system_info = Popen([path_from_root('emrun'), '--system_info'], stdout=PIPE, stderr=PIPE).communicate()
+system_info = Popen([PYTHON, path_from_root('emrun'), '--system_info'], stdout=PIPE, stderr=PIPE).communicate()
 
 # Native info
 native_info = Popen(['clang', '-v'], stdout=PIPE, stderr=PIPE).communicate()
 
 # Emscripten info
-emscripten_info = Popen([EMCC, '-v'], stdout=PIPE, stderr=PIPE).communicate()
+emscripten_info = Popen([PYTHON, EMCC, '-v'], stdout=PIPE, stderr=PIPE).communicate()
 
 # Run native build
 out_file = os.path.join(temp_dir, 'benchmark_sse1_native')
+if WINDOWS: out_file += '.exe'
 cmd = [CLANG_CPP] + get_clang_native_args() + [path_from_root('tests', 'benchmark_sse1.cpp'), '-O3', '-o', out_file]
 print 'Building native version of the benchmark:'
 print ' '.join(cmd)
@@ -34,7 +35,7 @@ print native_results[0]
 
 # Run emscripten build
 out_file = os.path.join(temp_dir, 'benchmark_sse1_html.html')
-cmd = [EMCC, path_from_root('tests', 'benchmark_sse1.cpp'), '-O3', '--emrun', '-s', 'TOTAL_MEMORY=536870912', '-o', out_file]
+cmd = [PYTHON, EMCC, path_from_root('tests', 'benchmark_sse1.cpp'), '-O3', '--emrun', '-s', 'TOTAL_MEMORY=536870912', '-o', out_file]
 print 'Building Emscripten version of the benchmark:'
 print ' '.join(cmd)
 build = Popen(cmd)
@@ -69,7 +70,7 @@ print ' - The slow script dialog in Firefox is disabled.'
 print ' - Make sure that all Firefox debugging, profiling etc. add-ons that might impact performance are disabled (Firebug, Geckoprofiler, ...).'
 print ''
 print 'Once the test has finished, close the browser application to continue.'
-html_results = Popen([path_from_root('emrun'), '--browser=' + browser, out_file], stdout=PIPE, stderr=PIPE).communicate()
+html_results = Popen([PYTHON, path_from_root('emrun'), '--browser=' + browser, out_file], stdout=PIPE, stderr=PIPE).communicate()
 
 if not html_results or not html_results[0].strip():
     print 'Running Firefox Nightly failed! Please rerun with the command line parameter --browser=/path/to/firefox/nightly/firefox'
@@ -78,6 +79,11 @@ if not html_results or not html_results[0].strip():
 def strip_comments(text):
     return re.sub('//.*?\n|/\*.*?\*/', '', text, re.S)
 benchmark_results = strip_comments(html_results[0])
+
+# Strip out unwanted print output.
+benchmark_results = benchmark_results[benchmark_results.find('{'):].strip()
+if '*************************' in benchmark_results:
+    benchmark_results = benchmark_results[:benchmark_results.find('*************************')].strip()
 
 ##html_results = native_results
 print benchmark_results

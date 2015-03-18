@@ -1967,9 +1967,10 @@ void *getBindBuffer() {
     # and the browser will not close as part of the test, pinning down the cwd on Windows and it wouldn't be possible to delete it. Therefore switch away from that directory
     # before launching.
     os.chdir(path_from_root())
-    args = [PYTHON, path_from_root('emrun'), '--timeout', '30', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt'), os.path.join(outdir, 'hello_world.html'), '1', '2', '--3']
+    args = [PYTHON, path_from_root('emrun'), '--timeout', '30', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
     if emscripten_browser is not None:
       args += ['--browser', emscripten_browser]
+    args += [os.path.join(outdir, 'hello_world.html'), '1', '2', '--3']
     process = subprocess.Popen(args)
     process.communicate()
     stdout = open(os.path.join(outdir, 'stdout.txt'), 'r').read()
@@ -2032,6 +2033,11 @@ Module["preRun"].push(function () {
     for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'FULL_ES2=1']]:
       print opts
       self.btest(path_from_root('tests', 'webgl_create_context.cpp'), args=opts, expected='0')
+
+  def test_html5_webgl_destroy_context(self):
+    for opts in [[], ['-O2', '-g1'], ['-s', 'FULL_ES2=1']]:
+      print opts
+      self.btest(path_from_root('tests', 'webgl_destroy_context.cpp'), args=opts + ['--shell-file', path_from_root('tests/webgl_destroy_context_shell.html'), '-s', 'NO_EXIT_RUNTIME=1'], expected='0')
 
   def test_sdl_touch(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1']]:
@@ -2163,8 +2169,11 @@ Module['_main'] = function() {
       Popen([PYTHON, path_from_root('tools', 'distill_asm.py'), 'a.out.js', 'second.js', 'swap-in']).communicate()
       assert os.path.exists('second.js')
 
-      out = run_js('second.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True, assert_returncode=None)
-      self.validate_asmjs(out)
+      if isinstance(SPIDERMONKEY_ENGINE, list) and len(SPIDERMONKEY_ENGINE[0]) != 0:
+        out = run_js('second.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True, assert_returncode=None)
+        self.validate_asmjs(out)
+      else:
+        print 'Skipping asm validation check, spidermonkey is not configured'
 
       self.btest(path_from_root('tests', 'asm_swap.cpp'), args=['-s', 'SWAPPABLE_ASM_MODULE=1', '-s', 'NO_EXIT_RUNTIME=1', '--pre-js', 'run.js'] + opts, expected='999')
 
@@ -2572,4 +2581,13 @@ window.close = function() {
           </script>
         ''' % code)
         self.run_browser('a.html', '...', '/report_result?0')
+
+  def test_webidl(self):
+    # see original in test_core.py
+    output = Popen([PYTHON, path_from_root('tools', 'webidl_binder.py'),
+                            path_from_root('tests', 'webidl', 'test.idl'),
+                            'glue']).communicate()[0]
+    assert os.path.exists('glue.cpp')
+    assert os.path.exists('glue.js')
+    self.btest(os.path.join('webidl', 'test.cpp'), '1', args=['--post-js', 'glue.js', '-I' + path_from_root('tests', 'webidl'), '-DBROWSER'])
 

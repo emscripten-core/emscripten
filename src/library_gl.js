@@ -784,7 +784,7 @@ var LibraryGL = {
 
     deleteContext: function(contextHandle) {
       if (GL.currentContext === GL.contexts[contextHandle]) GL.currentContext = null;
-      if (typeof JSEvents === 'object') JSEvents.removeAllHandlersOnTarget(GL.contexts[contextHandle].canvas); // Release all JS event handlers on the DOM element that the GL context is associated with since the context is now deleted.
+      if (typeof JSEvents === 'object') JSEvents.removeAllHandlersOnTarget(GL.contexts[contextHandle].GLctx.canvas); // Release all JS event handlers on the DOM element that the GL context is associated with since the context is now deleted.
       if (GL.contexts[contextHandle] && GL.contexts[contextHandle].GLctx.canvas) GL.contexts[contextHandle].GLctx.canvas.GLctxObject = undefined; // Make sure the canvas object no longer refers to the context object so there are no GC surprises.
       GL.contexts[contextHandle] = null;
     },
@@ -866,13 +866,15 @@ var LibraryGL = {
         return ret;
       }
 
- 
-      GLctx.getSupportedExtensions().forEach(function(ext) {
-        ext = ext.replace('MOZ_', '').replace('WEBKIT_', '');
-        if (automaticallyEnabledExtensions.indexOf(ext) != -1) {
-          GLctx.getExtension(ext); // Calling .getExtension enables that extension permanently, no need to store the return value to be enabled.
-        }
-      });
+      var exts = GLctx.getSupportedExtensions();
+      if (exts && exts.length > 0) {
+        GLctx.getSupportedExtensions().forEach(function(ext) {
+          ext = ext.replace('MOZ_', '').replace('WEBKIT_', '');
+          if (automaticallyEnabledExtensions.indexOf(ext) != -1) {
+            GLctx.getExtension(ext); // Calling .getExtension enables that extension permanently, no need to store the return value to be enabled.
+          }
+        });
+      }
     },
 
     // In WebGL, uniforms in a shader program are accessed through an opaque object type 'WebGLUniformLocation'.

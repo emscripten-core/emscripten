@@ -1657,7 +1657,10 @@ LibraryManager.library = {
       Runtime.dynamicAlloc = function() { abort('cannot dynamically allocate, sbrk now has control') };
     }
     var ret = DYNAMICTOP;
-    if (bytes != 0) self.alloc(bytes);
+    if (bytes != 0) {
+      var success = self.alloc(bytes);
+      if (!success) return -1 >>> 0; // sbrk failure code
+    }
     return ret;  // Previous break location.
   },
 

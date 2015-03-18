@@ -1206,8 +1206,12 @@ Module['stackTrace'] = stackTrace;
 // Memory management
 
 var PAGE_SIZE = 4096;
+
 function alignMemoryPage(x) {
-  return (x+4095)&-4096;
+  if (x % 4096 > 0) {
+    x += (4096 - (x % 4096));
+  }
+  return x;
 }
 
 var HEAP;
@@ -1243,11 +1247,23 @@ function enlargeMemory() {
   _emscripten_trace_report_memory_layout();
 #endif
 
+  var LIMIT = Math.pow(2, 31); // 2GB is a practical maximum, as we use signed ints as pointers
+                               // and JS engines seem unhappy to give us 2GB arrays currently
+  if (DYNAMICTOP >= LIMIT) return false;
+
   while (TOTAL_MEMORY <= DYNAMICTOP) { // Simple heuristic.
-    TOTAL_MEMORY = alignMemoryPage(2*TOTAL_MEMORY);
+    if (TOTAL_MEMORY < LIMIT/2) {
+      TOTAL_MEMORY = alignMemoryPage(2*TOTAL_MEMORY); // double until 1GB
+    } else {
+      var last = TOTAL_MEMORY;
+      TOTAL_MEMORY = alignMemoryPage((3*TOTAL_MEMORY + LIMIT)/4); // add smaller increments towards 2GB, which we cannot reach
+      if (TOTAL_MEMORY <= last) return false;
+    }
   }
 
   TOTAL_MEMORY = Math.max(TOTAL_MEMORY, 16*1024*1024);
+
+  if (TOTAL_MEMORY >= LIMIT) return false;
 
 #if ASSERTIONS
   Module.printErr('Warning: Enlarging memory arrays, this is not fast! ' + [OLD_TOTAL_MEMORY, TOTAL_MEMORY]);
@@ -1259,19 +1275,26 @@ function enlargeMemory() {
   _emscripten_trace_report_memory_layout();
 #endif
 
-  assert(TOTAL_MEMORY <= Math.pow(2, 30)); // 2^30==1GB is a practical maximum - 2^31 is already close to possible negative numbers etc.
-
 #if ASSERTIONS
   var start = Date.now();
 #endif
 
-#if USE_TYPED_ARRAYS == 2
-  if (ArrayBuffer.transfer) {
-    buffer = ArrayBuffer.transfer(buffer, TOTAL_MEMORY);
-  } else {
-    var oldHEAP8 = HEAP8;
-    buffer = new ArrayBuffer(TOTAL_MEMORY);
+  try {
+    if (ArrayBuffer.transfer) {
+      buffer = ArrayBuffer.transfer(buffer, TOTAL_MEMORY);
+    } else {
+      var oldHEAP8 = HEAP8;
+      buffer = new ArrayBuffer(TOTAL_MEMORY);
+    }
+  } catch(e) {
+    return false;
   }
+
+  var success = _emscripten_replace_memory(buffer);
+  if (!success) return false;
+
+  // everything worked
+
   Module['buffer'] = buffer;
   Module['HEAP8'] = HEAP8 = new Int8Array(buffer);
   Module['HEAP16'] = HEAP16 = new Int16Array(buffer);
@@ -1284,18 +1307,12 @@ function enlargeMemory() {
   if (!ArrayBuffer.transfer) {
     HEAP8.set(oldHEAP8);
   }
-#else
-  abort('cannot enlarge memory arrays in non-ta2 modes');
-#endif
-#if ASM_JS
-  var success = _emscripten_replace_memory(buffer);
-  assert(success);
-#endif
 
 #if ASSERTIONS
   Module.printErr('enlarged memory arrays from ' + OLD_TOTAL_MEMORY + ' to ' + TOTAL_MEMORY + ', took ' + (Date.now() - start) + ' ms (has ArrayBuffer.transfer? ' + (!!ArrayBuffer.transfer) + ')');
 #endif
 
+  return true;
 #endif
 }
 #endif

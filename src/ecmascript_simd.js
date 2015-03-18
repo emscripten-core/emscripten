@@ -18,6 +18,18 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
+// A conforming SIMD.js implementation may contain the following deviations to
+// normal JS numeric behavior:
+//  - Subnormal numbers may or may not be flushed to zero on input or output of
+//    any SIMD operation.
+
+// Many of the operations in SIMD.js have semantics which correspond to scalar
+// operations in JS, however there are a few differences:
+//  - The conversion of integers to booleans uses <0 rather than !=0.
+//  - Vector shifts don't mask the shift count.
+//  - Conversions from float to int32 throw on error.
+//  - Load and store operations throw when out of bounds.
+
 if (typeof SIMD === "undefined") {
   // SIMD module. We don't use the var keyword here, so that we put the
   // SIMD object in the global scope even if this polyfill code is included
@@ -89,6 +101,12 @@ _SIMD_PRIVATE.tobool = function(x) {
 
 _SIMD_PRIVATE.frombool = function(x) {
   return !x - 1;
+}
+
+_SIMD_PRIVATE.int32FromFloat = function(x) {
+  if (x >= -0x80000000 && x <= 0x7fffffff)
+      return x|0;
+  throw new RangeError("Conversion from floating-point to integer failed");
 }
 
 // Save/Restore utilities for implementing bitwise conversions.
@@ -564,7 +582,10 @@ if (typeof SIMD.int32x4.fromFloat32x4 === "undefined") {
     */
   SIMD.int32x4.fromFloat32x4 = function(t) {
     t = SIMD.float32x4.check(t);
-    return SIMD.int32x4(t.x, t.y, t.z, t.w);
+    return SIMD.int32x4(_SIMD_PRIVATE.int32FromFloat(t.x),
+                        _SIMD_PRIVATE.int32FromFloat(t.y),
+                        _SIMD_PRIVATE.int32FromFloat(t.z),
+                        _SIMD_PRIVATE.int32FromFloat(t.w));
   }
 }
 
@@ -575,7 +596,10 @@ if (typeof SIMD.int32x4.fromFloat64x2 === "undefined") {
     */
   SIMD.int32x4.fromFloat64x2 = function(t) {
     t = SIMD.float64x2.check(t);
-    return SIMD.int32x4(t.x, t.y, 0, 0);
+    return SIMD.int32x4(_SIMD_PRIVATE.int32FromFloat(t.x),
+                        _SIMD_PRIVATE.int32FromFloat(t.y),
+                        0,
+                        0);
   }
 }
 
@@ -1225,25 +1249,25 @@ if (typeof SIMD.float32x4.maxNum === "undefined") {
   }
 }
 
-if (typeof SIMD.float32x4.reciprocal === "undefined") {
+if (typeof SIMD.float32x4.reciprocalApproximation === "undefined") {
   /**
     * @param {float32x4} t An instance of float32x4.
-    * @return {float32x4} New instance of float32x4 with reciprocal value of
-    * t.
+    * @return {float32x4} New instance of float32x4 with an approximation of the
+    * reciprocal value of t.
     */
-  SIMD.float32x4.reciprocal = function(t) {
+  SIMD.float32x4.reciprocalApproximation = function(t) {
     t = SIMD.float32x4.check(t);
     return SIMD.float32x4(1.0 / t.x, 1.0 / t.y, 1.0 / t.z, 1.0 / t.w);
   }
 }
 
-if (typeof SIMD.float32x4.reciprocalSqrt === "undefined") {
+if (typeof SIMD.float32x4.reciprocalSqrtApproximation === "undefined") {
   /**
     * @param {float32x4} t An instance of float32x4.
-    * @return {float32x4} New instance of float32x4 with square root of the
-    * reciprocal value of t.
+    * @return {float32x4} New instance of float32x4 with an approximation of the
+    * square root of the reciprocal value of t.
     */
-  SIMD.float32x4.reciprocalSqrt = function(t) {
+  SIMD.float32x4.reciprocalSqrtApproximation = function(t) {
     t = SIMD.float32x4.check(t);
     return SIMD.float32x4(Math.sqrt(1.0 / t.x), Math.sqrt(1.0 / t.y),
                           Math.sqrt(1.0 / t.z), Math.sqrt(1.0 / t.w));
@@ -1962,25 +1986,25 @@ if (typeof SIMD.float64x2.maxNum === "undefined") {
   }
 }
 
-if (typeof SIMD.float64x2.reciprocal === "undefined") {
+if (typeof SIMD.float64x2.reciprocalApproximation === "undefined") {
   /**
     * @param {float64x2} t An instance of float64x2.
-    * @return {float64x2} New instance of float64x2 with reciprocal value of
-    * t.
+    * @return {float64x2} New instance of float64x2 with an approximation of the
+    * reciprocal value of t.
     */
-  SIMD.float64x2.reciprocal = function(t) {
+  SIMD.float64x2.reciprocalApproximation = function(t) {
     t = SIMD.float64x2.check(t);
     return SIMD.float64x2(1.0 / t.x, 1.0 / t.y);
   }
 }
 
-if (typeof SIMD.float64x2.reciprocalSqrt === "undefined") {
+if (typeof SIMD.float64x2.reciprocalSqrtApproximation === "undefined") {
   /**
     * @param {float64x2} t An instance of float64x2.
-    * @return {float64x2} New instance of float64x2 with square root of the
-    * reciprocal value of t.
+    * @return {float64x2} New instance of float64x2 with an approximation of the
+    * square root of the reciprocal value of t.
     */
-  SIMD.float64x2.reciprocalSqrt = function(t) {
+  SIMD.float64x2.reciprocalSqrtApproximation = function(t) {
     t = SIMD.float64x2.check(t);
     return SIMD.float64x2(Math.sqrt(1.0 / t.x), Math.sqrt(1.0 / t.y));
   }
@@ -2173,8 +2197,10 @@ if (typeof SIMD.float64x2.select === "undefined") {
     t = SIMD.int32x4.check(t);
     trueValue = SIMD.float64x2.check(trueValue);
     falseValue = SIMD.float64x2.check(falseValue);
+    // We use t.z for the second element because t is an int32x4, because
+    // int64x2 isn't available.
     return SIMD.float64x2(_SIMD_PRIVATE.tobool(t.x) ? trueValue.x : falseValue.x,
-                          _SIMD_PRIVATE.tobool(t.y) ? trueValue.y : falseValue.y);
+                          _SIMD_PRIVATE.tobool(t.z) ? trueValue.y : falseValue.y);
   }
 }
 
@@ -2666,6 +2692,8 @@ if (typeof SIMD.int32x4.shiftLeftByScalar === "undefined") {
     */
   SIMD.int32x4.shiftLeftByScalar = function(a, bits) {
     a = SIMD.int32x4.check(a);
+    if (bits>>>0 >= 32)
+      return SIMD.int32x4.splat(0.0);
     var x = a.x << bits;
     var y = a.y << bits;
     var z = a.z << bits;
@@ -2682,6 +2710,8 @@ if (typeof SIMD.int32x4.shiftRightLogicalByScalar === "undefined") {
     */
   SIMD.int32x4.shiftRightLogicalByScalar = function(a, bits) {
     a = SIMD.int32x4.check(a);
+    if (bits>>>0 >= 32)
+      return SIMD.int32x4.splat(0.0);
     var x = a.x >>> bits;
     var y = a.y >>> bits;
     var z = a.z >>> bits;
@@ -2698,6 +2728,8 @@ if (typeof SIMD.int32x4.shiftRightArithmeticByScalar === "undefined") {
     */
   SIMD.int32x4.shiftRightArithmeticByScalar = function(a, bits) {
     a = SIMD.int32x4.check(a);
+    if (bits>>>0 >= 32)
+      bits = 31;
     var x = a.x >> bits;
     var y = a.y >> bits;
     var z = a.z >> bits;
@@ -3046,6 +3078,77 @@ if (typeof SIMD.int16x8.mul === "undefined") {
   }
 }
 
+if (typeof SIMD.int16x8.swizzle === "undefined") {
+  /**
+    * @param {int16x8} t An instance of int16x8 to be swizzled.
+    * @param {integer} s0 - Index in t for lane s0
+    * @param {integer} s1 - Index in t for lane s1
+    * @param {integer} s2 - Index in t for lane s2
+    * @param {integer} s3 - Index in t for lane s3
+    * @param {integer} s4 - Index in t for lane s4
+    * @param {integer} s5 - Index in t for lane s5
+    * @param {integer} s6 - Index in t for lane s6
+    * @param {integer} s7 - Index in t for lane s7
+    * @return {int16x8} New instance of int16x8 with lanes swizzled.
+    */
+  SIMD.int16x8.swizzle = function(t, s0, s1, s2, s3, s4, s5, s6, s7) {
+    t = SIMD.int16x8.check(t);
+    var storage = _SIMD_PRIVATE._i16x8;
+    storage[0] = t.s0;
+    storage[1] = t.s1;
+    storage[2] = t.s2;
+    storage[3] = t.s3;
+    storage[4] = t.s4;
+    storage[5] = t.s5;
+    storage[6] = t.s6;
+    storage[7] = t.s7;
+    return SIMD.int16x8(storage[s0], storage[s1], storage[s2], storage[s3],
+                        storage[s4], storage[s5], storage[s6], storage[s7]);
+  }
+}
+
+if (typeof SIMD.int16x8.shuffle === "undefined") {
+
+  _SIMD_PRIVATE._i16x16 = new Int16Array(16);
+
+  /**
+    * @param {int16x8} t0 An instance of int16x8 to be shuffled.
+    * @param {int16x8} t1 An instance of int16x8 to be shuffled.
+    * @param {integer} s0 - Index in concatenation of t0 and t1 for lane s0
+    * @param {integer} s1 - Index in concatenation of t0 and t1 for lane s1
+    * @param {integer} s2 - Index in concatenation of t0 and t1 for lane s2
+    * @param {integer} s3 - Index in concatenation of t0 and t1 for lane s3
+    * @param {integer} s4 - Index in concatenation of t0 and t1 for lane s4
+    * @param {integer} s5 - Index in concatenation of t0 and t1 for lane s5
+    * @param {integer} s6 - Index in concatenation of t0 and t1 for lane s6
+    * @param {integer} s7 - Index in concatenation of t0 and t1 for lane s7
+    * @return {int16x8} New instance of int16x8 with lanes shuffled.
+    */
+  SIMD.int16x8.shuffle = function(t0, t1, s0, s1, s2, s3, s4, s5, s6, s7) {
+    t0 = SIMD.int16x8.check(t0);
+    t1 = SIMD.int16x8.check(t1);
+    var storage = _SIMD_PRIVATE._i16x16;
+    storage[0] = t0.s0;
+    storage[1] = t0.s1;
+    storage[2] = t0.s2;
+    storage[3] = t0.s3;
+    storage[4] = t0.s4;
+    storage[5] = t0.s5;
+    storage[6] = t0.s6;
+    storage[7] = t0.s7;
+    storage[8] = t1.s0;
+    storage[9] = t1.s1;
+    storage[10] = t1.s2;
+    storage[11] = t1.s3;
+    storage[12] = t1.s4;
+    storage[13] = t1.s5;
+    storage[14] = t1.s6;
+    storage[15] = t1.s7;
+    return SIMD.int16x8(storage[s0], storage[s1], storage[s2], storage[s3],
+                        storage[s4], storage[s5], storage[s6], storage[s7]);
+  }
+}
+
 if (typeof SIMD.int16x8.select === "undefined") {
   /**
     * @param {int16x8} t Selector mask. An instance of int16x8
@@ -3231,6 +3334,8 @@ if (typeof SIMD.int16x8.shiftLeftByScalar === "undefined") {
     */
   SIMD.int16x8.shiftLeftByScalar = function(a, bits) {
     a = SIMD.int16x8.check(a);
+    if (bits>>>0 > 16)
+      bits = 16;
     var s0 = a.s0 << bits;
     var s1 = a.s1 << bits;
     var s2 = a.s2 << bits;
@@ -3251,6 +3356,8 @@ if (typeof SIMD.int16x8.shiftRightLogicalByScalar === "undefined") {
     */
   SIMD.int16x8.shiftRightLogicalByScalar = function(a, bits) {
     a = SIMD.int16x8.check(a);
+    if (bits>>>0 > 16)
+      bits = 16;
     var s0 = (a.s0 & 0xffff) >>> bits;
     var s1 = (a.s1 & 0xffff) >>> bits;
     var s2 = (a.s2 & 0xffff) >>> bits;
@@ -3271,6 +3378,8 @@ if (typeof SIMD.int16x8.shiftRightArithmeticByScalar === "undefined") {
     */
   SIMD.int16x8.shiftRightArithmeticByScalar = function(a, bits) {
     a = SIMD.int16x8.check(a);
+    if (bits>>>0 > 16)
+      bits = 16;
     var s0 = a.s0 >> bits;
     var s1 = a.s1 >> bits;
     var s2 = a.s2 >> bits;
@@ -3469,6 +3578,123 @@ if (typeof SIMD.int8x16.mul === "undefined") {
                         Math.imul(a.s10, b.s10), Math.imul(a.s11, b.s11),
                         Math.imul(a.s12, b.s12), Math.imul(a.s13, b.s13),
                         Math.imul(a.s14, b.s14), Math.imul(a.s15, b.s15));
+  }
+}
+
+if (typeof SIMD.int8x16.swizzle === "undefined") {
+  /**
+    * @param {int8x16} t An instance of int8x16 to be swizzled.
+    * @param {integer} s0 - Index in t for lane s0
+    * @param {integer} s1 - Index in t for lane s1
+    * @param {integer} s2 - Index in t for lane s2
+    * @param {integer} s3 - Index in t for lane s3
+    * @param {integer} s4 - Index in t for lane s4
+    * @param {integer} s5 - Index in t for lane s5
+    * @param {integer} s6 - Index in t for lane s6
+    * @param {integer} s7 - Index in t for lane s7
+    * @param {integer} s8 - Index in t for lane s8
+    * @param {integer} s9 - Index in t for lane s9
+    * @param {integer} s10 - Index in t for lane s10
+    * @param {integer} s11 - Index in t for lane s11
+    * @param {integer} s12 - Index in t for lane s12
+    * @param {integer} s13 - Index in t for lane s13
+    * @param {integer} s14 - Index in t for lane s14
+    * @param {integer} s15 - Index in t for lane s15
+    * @return {int8x16} New instance of int8x16 with lanes swizzled.
+    */
+  SIMD.int8x16.swizzle = function(t, s0, s1, s2, s3, s4, s5, s6, s7,
+                                     s8, s9, s10, s11, s12, s13, s14, s15) {
+    t = SIMD.int8x16.check(t);
+    var storage = _SIMD_PRIVATE._i8x16;
+    storage[0] = t.s0;
+    storage[1] = t.s1;
+    storage[2] = t.s2;
+    storage[3] = t.s3;
+    storage[4] = t.s4;
+    storage[5] = t.s5;
+    storage[6] = t.s6;
+    storage[7] = t.s7;
+    storage[8] = t.s8;
+    storage[9] = t.s9;
+    storage[10] = t.s10;
+    storage[11] = t.s11;
+    storage[12] = t.s12;
+    storage[13] = t.s13;
+    storage[14] = t.s14;
+    storage[15] = t.s15;
+    return SIMD.int8x16(storage[s0], storage[s1], storage[s2], storage[s3],
+                        storage[s4], storage[s5], storage[s6], storage[s7],
+                        storage[s8], storage[s9], storage[s10], storage[s11],
+                        storage[s12], storage[s13], storage[s14], storage[s15]);
+  }
+}
+
+if (typeof SIMD.int8x16.shuffle === "undefined") {
+
+  _SIMD_PRIVATE._i8x32 = new Int8Array(32);
+
+  /**
+    * @param {int8x16} t0 An instance of int8x16 to be shuffled.
+    * @param {int8x16} t1 An instance of int8x16 to be shuffled.
+    * @param {integer} s0 - Index in concatenation of t0 and t1 for lane s0
+    * @param {integer} s1 - Index in concatenation of t0 and t1 for lane s1
+    * @param {integer} s2 - Index in concatenation of t0 and t1 for lane s2
+    * @param {integer} s3 - Index in concatenation of t0 and t1 for lane s3
+    * @param {integer} s4 - Index in concatenation of t0 and t1 for lane s4
+    * @param {integer} s5 - Index in concatenation of t0 and t1 for lane s5
+    * @param {integer} s6 - Index in concatenation of t0 and t1 for lane s6
+    * @param {integer} s7 - Index in concatenation of t0 and t1 for lane s7
+    * @param {integer} s8 - Index in concatenation of t0 and t1 for lane s8
+    * @param {integer} s9 - Index in concatenation of t0 and t1 for lane s9
+    * @param {integer} s10 - Index in concatenation of t0 and t1 for lane s10
+    * @param {integer} s11 - Index in concatenation of t0 and t1 for lane s11
+    * @param {integer} s12 - Index in concatenation of t0 and t1 for lane s12
+    * @param {integer} s13 - Index in concatenation of t0 and t1 for lane s13
+    * @param {integer} s14 - Index in concatenation of t0 and t1 for lane s14
+    * @param {integer} s15 - Index in concatenation of t0 and t1 for lane s15
+    * @return {int8x16} New instance of int8x16 with lanes shuffled.
+    */
+  SIMD.int8x16.shuffle = function(t0, t1, s0, s1, s2, s3, s4, s5, s6, s7,
+                                          s8, s9, s10, s11, s12, s13, s14, s15) {
+    t0 = SIMD.int8x16.check(t0);
+    t1 = SIMD.int8x16.check(t1);
+    var storage = _SIMD_PRIVATE._i8x32;
+    storage[0] = t0.s0;
+    storage[1] = t0.s1;
+    storage[2] = t0.s2;
+    storage[3] = t0.s3;
+    storage[4] = t0.s4;
+    storage[5] = t0.s5;
+    storage[6] = t0.s6;
+    storage[7] = t0.s7;
+    storage[8] = t0.s8;
+    storage[9] = t0.s9;
+    storage[10] = t0.s10;
+    storage[11] = t0.s11;
+    storage[12] = t0.s12;
+    storage[13] = t0.s13;
+    storage[14] = t0.s14;
+    storage[15] = t0.s15;
+    storage[16] = t1.s0;
+    storage[17] = t1.s1;
+    storage[18] = t1.s2;
+    storage[19] = t1.s3;
+    storage[20] = t1.s4;
+    storage[21] = t1.s5;
+    storage[22] = t1.s6;
+    storage[23] = t1.s7;
+    storage[24] = t1.s8;
+    storage[25] = t1.s9;
+    storage[26] = t1.s10;
+    storage[27] = t1.s11;
+    storage[28] = t1.s12;
+    storage[29] = t1.s13;
+    storage[30] = t1.s14;
+    storage[31] = t1.s15;
+    return SIMD.int8x16(storage[s0], storage[s1], storage[s2], storage[s3],
+                        storage[s4], storage[s5], storage[s6], storage[s7],
+                        storage[s8], storage[s9], storage[s10], storage[s11],
+                        storage[s12], storage[s13], storage[s14], storage[s15]);
   }
 }
 
@@ -3719,6 +3945,8 @@ if (typeof SIMD.int8x16.shiftLeftByScalar === "undefined") {
     */
   SIMD.int8x16.shiftLeftByScalar = function(a, bits) {
     a = SIMD.int8x16.check(a);
+    if (bits>>>0 > 8)
+      bits = 8;
     var s0 = a.s0 << bits;
     var s1 = a.s1 << bits;
     var s2 = a.s2 << bits;
@@ -3748,6 +3976,8 @@ if (typeof SIMD.int8x16.shiftRightLogicalByScalar === "undefined") {
     */
   SIMD.int8x16.shiftRightLogicalByScalar = function(a, bits) {
     a = SIMD.int8x16.check(a);
+    if (bits>>>0 > 8)
+      bits = 8;
     var s0 = (a.s0 & 0xff) >>> bits;
     var s1 = (a.s1 & 0xff) >>> bits;
     var s2 = (a.s2 & 0xff) >>> bits;
@@ -3777,6 +4007,8 @@ if (typeof SIMD.int8x16.shiftRightArithmeticByScalar === "undefined") {
     */
   SIMD.int8x16.shiftRightArithmeticByScalar = function(a, bits) {
     a = SIMD.int8x16.check(a);
+    if (bits>>>0 > 8)
+      bits = 8;
     var s0 = a.s0 >> bits;
     var s1 = a.s1 >> bits;
     var s2 = a.s2 >> bits;

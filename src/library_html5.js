@@ -125,11 +125,11 @@ var LibraryJSEvents = {
 
     isInternetExplorer: function() { return navigator.userAgent.indexOf('MSIE') !== -1 || navigator.appVersion.indexOf('Trident/') > 0; },
 
-    // Removes all event handlers on the given DOM element of the given type. Pass in eventType == undefined/null to remove all event handlers regardless of the type.
+    // Removes all event handlers on the given DOM element of the given type. Pass in eventTypeString == undefined/null to remove all event handlers regardless of the type.
     removeAllHandlersOnTarget: function(target, eventTypeString) {
       for(var i = 0; i < JSEvents.eventHandlers.length; ++i) {
         if (JSEvents.eventHandlers[i].target == target && 
-          (!eventType || eventTypeString == JSEvents.eventHandlers[i].eventTypeString)) {
+          (!eventTypeString || eventTypeString == JSEvents.eventHandlers[i].eventTypeString)) {
            JSEvents._removeHandler(i--);
          }
       }
@@ -1722,6 +1722,7 @@ var LibraryJSEvents = {
     {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault, 1, 'i32') }}};
   },
 
+  emscripten_webgl_create_context__deps: ['$GL'],
   emscripten_webgl_create_context: function(target, attributes) {
     var contextAttributes = {};
     contextAttributes.alpha = !!{{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.alpha, 'i32') }}};

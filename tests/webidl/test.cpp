@@ -9,3 +9,11 @@ typedef EnumNamespace::EnumInNamespace EnumNamespace_EnumInNamespace;
 
 #include "glue.cpp"
 
+#ifdef BROWSER
+int main() {
+  printf("main().\n");
+  int result = 1;
+  REPORT_RESULT();
+}
+#endif
+

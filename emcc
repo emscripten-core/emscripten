@@ -109,7 +109,8 @@ stderr = PIPE if not DEBUG else None # unless we are in DEBUG mode
 EMCC_CXX = '--emscripten-cxx' in sys.argv
 sys.argv = filter(lambda x: x != '--emscripten-cxx', sys.argv)
 
-shared.check_sanity(force=DEBUG)
+if len(sys.argv) <= 1 or ('--help' not in sys.argv and len(sys.argv) >= 2 and sys.argv[1] != '--version'):
+  shared.check_sanity(force=DEBUG)
 
 # Handle some global flags
 
@@ -707,10 +708,6 @@ try:
   if opt_level == 0: debug_level = max(3, debug_level)
   if memory_init_file is None: memory_init_file = opt_level >= 2
 
-  if llvm_lto is None and bind:
-    logging.debug('running lto for embind') # XXX this is a workaround for a pointer issue
-    llvm_lto = 1
-
   # TODO: support source maps with js_transform
   if js_transform and debug_level >= 4:
     logging.warning('disabling source maps because a js transform is being done')
@@ -944,7 +941,8 @@ try:
       fastcomp_opts += ['-emscripten-asyncify-whitelist=' + ','.join(shared.Settings.ASYNCIFY_WHITELIST)]
 
   else: # non-fastcomp
-    logging.warning('Using old (non-fastcomp) compiler due to EMCC_FAST_COMPILER=0 in the env. This is dangerous, as there are known bugs, and this code path is no longer maintained. Please use emscripten in the default configuration (i.e., do not disable fastcomp)')
+    logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
+    sys.exit(1)
 
   if shared.Settings.ASM_JS:
     assert opt_level >= 1 or fastcomp, 'asm.js requires -O1 or above'

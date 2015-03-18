@@ -1102,7 +1102,8 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
                  'withX', 'withY', 'withZ', 'withW',
                  'load', 'store', 'loadX', 'storeX', 'loadXY', 'storeXY', 'loadXYZ', 'storeXYZ']
     simdfloatfuncs = simdfuncs + ['div', 'min', 'max', 'minNum', 'maxNum', 'sqrt',
-                                  'abs', 'fromInt32x4', 'fromInt32x4Bits'];
+                                  'abs', 'fromInt32x4', 'fromInt32x4Bits',
+                                  'reciprocalApproximation', 'reciprocalSqrtApproximation'];
     simdintfuncs = simdfuncs + ['fromFloat32x4', 'fromFloat32x4Bits',
                                 'shiftRightArithmeticByScalar',
                                 'shiftRightLogicalByScalar',
@@ -1528,6 +1529,9 @@ Runtime.getTempRet0 = asm['getTempRet0'];
 
 if os.environ.get('EMCC_FAST_COMPILER') != '0':
   emscript = emscript_fast
+else:
+  logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
+  sys.exit(1)
 
 def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG, DEBUG_CACHE):
   # Prepare settings for serialization to JSON.

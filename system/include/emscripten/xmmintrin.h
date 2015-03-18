@@ -241,7 +241,11 @@ _mm_max_ss(__m128 __a, __m128 __b)
   return _mm_move_ss(__a, _mm_max_ps(__a, __b));
 }
 
-// TODO: we should re-evaluate rcpps, rsqrtps, and friends once we figure out what we're doing with SIMD.float32x4.reciprocal, SIMD.float32x4.reciprocalSqrt, and friends in SIMD.js.
+// TODO: we should re-evaluate whether rcpps and rsqrtps can be implemented in
+// the reciprocalApproximation and reciprocalSqrtApproximation operations. It's
+// unclear, because while they are implemented with actiuap rcp and rsqrt on x86,
+// they may be specified to have a looser tolerance in order to accomodate
+// reciprocal sqrt implementations on other platforms.
 #define _mm_rcp_ps(__a) (_mm_set1_ps(1.0f) / (__a))
 
 static __inline__ __m128 __attribute__((__always_inline__))
