@@ -38,7 +38,8 @@ mergeInto(LibraryManager.library, {
               read: MEMFS.stream_ops.read,
               write: MEMFS.stream_ops.write,
               allocate: MEMFS.stream_ops.allocate,
-              mmap: MEMFS.stream_ops.mmap
+              mmap: MEMFS.stream_ops.mmap,
+              msync: MEMFS.stream_ops.msync
             }
           },
           link: {
@@ -373,6 +374,14 @@ mergeInto(LibraryManager.library, {
         }
         return { ptr: ptr, allocated: allocated };
       },
+      msync: function(stream, buffer, offset, length) {
+        if (!FS.isFile(stream.node.mode)) {
+          throw new FS.ErrnoError(ERRNO_CODES.ENODEV);
+        }
+        var bytesWritten = MEMFS.stream_ops.write(stream, buffer, 0, length, offset, false);
+        // should we check if bytesWritten and length are the same?
+        return 0;
+      }
     }
   }
 });

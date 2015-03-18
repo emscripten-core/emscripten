@@ -4613,6 +4613,15 @@ def process(filename):
     src = open(path_from_root('tests', 'fs', 'test_append.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
 
+  def test_fs_mmap(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
+    orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
+    for fs in ['MEMFS']:
+      src = path_from_root('tests', 'fs', 'test_mmap.c')
+      out = path_from_root('tests', 'fs', 'test_mmap.out')
+      Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
+      self.do_run_from_file(src, out)
+
   def test_unistd_access(self):
     self.clear()
     if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for inline js')

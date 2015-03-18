@@ -1154,6 +1154,15 @@ mergeInto(LibraryManager.library, {
       }
       return stream.stream_ops.mmap(stream, buffer, offset, length, position, prot, flags);
     },
+    msync: function(stream, buffer, offset, length) {
+      if (!stream.stream_ops.msync) {
+        return 0;
+      }
+      return stream.stream_ops.msync(stream, buffer, offset, length);
+    },
+    munmap: function(stream) {
+      return 0;
+    },
     ioctl: function(stream, cmd, arg) {
       if (!stream.stream_ops.ioctl) {
         throw new FS.ErrnoError(ERRNO_CODES.ENOTTY);

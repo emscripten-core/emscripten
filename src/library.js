@@ -2997,7 +2997,7 @@ LibraryManager.library = {
       }
     }
 
-    _mmap.mappings[ptr] = { malloc: ptr, num: num, allocated: allocated };
+    _mmap.mappings[ptr] = { malloc: ptr, num: num, allocated: allocated, fd: fd };
     return ptr;
   },
 
@@ -3007,6 +3007,13 @@ LibraryManager.library = {
     var info = _mmap.mappings[start];
     if (!info) return 0;
     if (num == info.num) {
+      // At the Linux man page, it says:
+      // "The file may not actually be updated until msync(2) or munmap(2) are called."
+      // I guess that means we need to call msync when doing munmap
+      _msync(start, num); // todo: which flags?
+
+      FS.munmap(FS.getStream(info.fd));
+
       _mmap.mappings[start] = null;
       if (info.allocated) {
         _free(info.malloc);
@@ -3027,7 +3034,14 @@ LibraryManager.library = {
   msync: function(addr, len, flags) {
     // int msync(void *addr, size_t len, int flags);
     // http://pubs.opengroup.org/onlinepubs/009696799/functions/msync.html
-    // Pretend to succeed
+    // TODO: support sync'ing parts of allocations
+    var info = _mmap.mappings[addr];
+    if (!info) return 0;
+    if (len == info.num) {
+      var buffer = new Uint8Array(HEAPU8.buffer, addr, len);
+      return FS.msync(FS.getStream(info.fd), buffer, 0, len);
+    }
+
     return 0;
   },
 
