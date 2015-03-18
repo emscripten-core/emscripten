@@ -97,7 +97,7 @@ mergeInto(LibraryManager.library, {
           while (FS.isLink(current.mode)) {
             var link = FS.readlink(current_path);
             current_path = PATH.resolve(PATH.dirname(current_path), link);
-            
+
             var lookup = FS.lookupPath(current_path, { recurse_count: opts.recurse_count });
             current = lookup.node;
 
@@ -427,7 +427,7 @@ mergeInto(LibraryManager.library, {
     // we employ a simple trick: the pointer to a stream is its fd plus 1.  This
     // means that all valid streams have a valid non-zero pointer while allowing
     // the fs for stdin to be the standard value of zero.
-    // 
+    //
     //
     getStreamFromPtr: function(ptr) {
       return FS.streams[ptr - 1];
@@ -838,7 +838,7 @@ mergeInto(LibraryManager.library, {
       if (!link.node_ops.readlink) {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
-      return link.node_ops.readlink(link);
+      return PATH.resolve('.', link.node_ops.readlink(link));
     },
     stat: function(path, dontFollow) {
       var lookup = FS.lookupPath(path, { follow: !dontFollow });
