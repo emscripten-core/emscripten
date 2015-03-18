@@ -1417,7 +1417,7 @@ class Building:
     #opts += ['-debug-pass=Arguments']
     if get_clang_version() >= '3.4':
       if not Settings.SIMD:
-        opts += ['-disable-vectorize']
+        opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false', '-vectorize-slp-aggressive=false']
       else:
         opts += ['-bb-vectorize-vector-bits=128', '-force-vector-width=4']
 
