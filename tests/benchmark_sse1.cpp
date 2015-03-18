@@ -132,9 +132,17 @@ void Print(__m128 m)
 
 bool always_true() { return time(NULL) != 0; } // This function always returns true, but the compiler should not know this.
 
-float __attribute__((noinline)) *get_src() { return always_true() ? (float*)aligned_alloc(16, (N+16)*sizeof(float)) : 0; }
-float __attribute__((noinline)) *get_src2() { return always_true() ? (float*)aligned_alloc(16, (N+16)*sizeof(float)) : 0; }
-float __attribute__((noinline)) *get_dst() { return always_true() ? (float*)aligned_alloc(16, (N+16)*sizeof(float)) : 0; }
+#ifdef _MSC_VER
+#define NOINLINE __declspec(noinline)
+#define INLINE __forceinline
+#else
+#define NOINLINE __attribute__((noinline))
+#define INLINE __inline__
+#endif
+
+float NOINLINE *get_src() { return always_true() ? (float*)aligned_alloc(16, (N+16)*sizeof(float)) : 0; }
+float NOINLINE *get_src2() { return always_true() ? (float*)aligned_alloc(16, (N+16)*sizeof(float)) : 0; }
+float NOINLINE *get_dst() { return always_true() ? (float*)aligned_alloc(16, (N+16)*sizeof(float)) : 0; }
 
 float checksum_dst(float *dst)
 {
@@ -189,7 +197,7 @@ float ucastf(uint32_t t) { return *(float*)&t; }
 #define Max(a,b) ((a) >= (b) ? (a) : (b))
 #define Min(a,b) ((a) <= (b) ? (a) : (b))
 
-static __inline__ int Isnan(float __f)
+static INLINE int Isnan(float __f)
 {
   return (*(unsigned int*)&__f << 1) > 0xFF000000u;
 }
