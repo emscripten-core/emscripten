@@ -164,6 +164,13 @@ float ucastf(uint32_t t) { return *(float*)&t; }
 			store_instr((float*)dst+store_offset+i, load_instr(src+load_offset+i)); \
 	END(checksum_dst(dst), msg);
 
+// loadh/l - store test
+#define LSH_TEST(msg, reg, load_instr, load_offset, store_instr, store_offset) \
+	START(); \
+		for(int i = 0; i < N; i += 4) \
+			store_instr((float*)dst+store_offset+i, load_instr(reg, (const __m64*)(src+load_offset+i))); \
+	END(checksum_dst(dst), msg);
+
 #define LS64_TEST(msg, load_instr, load_offset, store_instr, store_offset) \
 	START(); \
 		for(int i = 0; i < N; i += 4) \
@@ -229,8 +236,11 @@ int main()
 	LS_TEST("_mm_load_ps1", _mm_load_ps1, 1, _mm_store_ps, 0);
 	LS_TEST("_mm_load_ss", _mm_load_ss, 1, _mm_store_ps, 0);
 	LS_TEST("_mm_load1_ps", _mm_load1_ps, 1, _mm_store_ps, 0);
-	// _mm_loadh_pi
-	// _mm_loadl_pi
+
+	__m128 tempReg = _mm_set_ps(1.f, 2.f, 3.f, 4.f);
+	LSH_TEST("_mm_loadh_pi", tempReg, _mm_loadh_pi, 1, _mm_store_ps, 0);
+	LSH_TEST("_mm_loadl_pi", tempReg, _mm_loadh_pi, 1, _mm_store_ps, 0);
+
 	LS_TEST("_mm_loadr_ps", _mm_loadr_ps, 0, _mm_store_ps, 0);
 	LS_TEST("_mm_loadu_ps", _mm_loadu_ps, 1, _mm_store_ps, 0);
 
