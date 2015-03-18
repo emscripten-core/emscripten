@@ -22,13 +22,13 @@
 
 #ifdef __APPLE__
 #include <mach/mach_time.h>
-#define aligned_alloc(align, size) malloc(size)
+#define aligned_alloc(align, size) malloc((size))
 #endif
 
 #ifdef WIN32
 #include <Windows.h>
 #define tick_t unsigned long long
-#define aligned_alloc _aligned_malloc
+#define aligned_alloc(align, size) _aligned_malloc((size), (align))
 #endif
 
 // Scalar horizonal max across four lanes.
