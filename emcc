@@ -1504,6 +1504,11 @@ try:
         # add explicit label setting, as we will run aggressiveVariableElimination late, *after* 'label' is no longer notable by name
         js_optimizer_queue += ['safeLabelSetting']
 
+    if shared.Settings.EMTERPRETIFY:
+      # add explicit label setting, as we will run aggressiveVariableElimination late, *after* 'label' is no longer notable by name
+      js_optimizer_queue += ['safeLabelSetting']
+
+    if opt_level >= 2:
       if shared.Settings.RELOOP and not shared.Settings.ASM_JS:
         js_optimizer_queue += ['optimizeShiftsAggressive', get_eliminate()] # aggressive shifts optimization requires loops, it breaks on switches
 

@@ -4588,7 +4588,7 @@ function _main() {
       print '  seen', seen, ', expected ', expected, type(seen), type(expected)
       assert expected == seen or (seen in expected if type(expected) in [list, tuple] else False), ['expect', expected, 'but see', seen]
 
-    do_log_test(path_from_root('tests', 'primes.cpp'), 86, 'main')
+    do_log_test(path_from_root('tests', 'primes.cpp'), 87, 'main')
     do_log_test(path_from_root('tests', 'fannkuch.cpp'), 230, 'fannkuch_worker')
 
     # test non-native as well, registerizeHarder can be a little more efficient here

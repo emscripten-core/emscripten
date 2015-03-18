@@ -221,7 +221,7 @@ OPCODES = [ # l, lx, ly etc - one of 256 locals
 
   'SWITCH',  # [lx, ly, lz]         switch (lx) { .. }. followed by a jump table for values in range [ly..ly+lz), after which is the default (which might be empty)
   'RET',     # [l, 0, 0]            return l (depending on which emterpreter_x we are in, has the right type)
-  'FUNC',    # [num params, total locals (low 8 bits), total locals (high 8 bits)] [which emterpreter (0 = normal, 1 = zero), 0, last zeroinit = num params + num zero-inits (low 8), (high 8)]           function with n locals (each taking 64 bits), of which the first are params
+  'FUNC',    # [num params, total locals (low 8 bits), total locals (high 8 bits)] [which emterpreter (0 = normal, 1 = zero), 0, 0, 0]           function with n locals (each taking 64 bits), of which the first are params
              # this is read in the emterpreter prelude, and also in intcalls
 
   # slow locals support - copying from/to slow locals
@@ -679,12 +679,6 @@ function emterpret%s(pc) {
  assert(((HEAPU8[pc>>0]>>>0) == %d)|0);
  lx = HEAPU16[pc + 2 >> 1] | 0; // num locals
 %s
- ly = HEAPU8[pc + 1 >> 0] | 0; // first zeroinit (after params)
- lz = HEAPU16[pc + 6 >> 1] | 0; // offset of last zeroinit
- while ((ly | 0) < (lz | 0)) { // clear the zeroinits
-  %s = +0;
-  ly = ly + 1 | 0;
- }
 %s
  //print('enter func ' + [pc, HEAPU8[pc + 0],HEAPU8[pc + 1],HEAPU8[pc + 2],HEAPU8[pc + 3],HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]].join(', '));
  //var first = true;
@@ -702,7 +696,6 @@ function emterpret%s(pc) {
   ROPCODES['FUNC'],
   (''' EMTSTACKTOP = EMTSTACKTOP + (lx ''' + (' + 1 ' if ASYNC else '') + '''<< 3) | 0;
  assert(((EMTSTACKTOP|0) <= (EMT_STACK_MAX|0))|0);\n''' + (' if ((asyncState|0) != 2) {' if ASYNC else '')) if not zero else '',
-  get_access('ly', s='d'),
   ' } else { pc = (HEAP32[sp - 4 >> 2] | 0) - 8 | 0; }' if ASYNC else '',
   main_loop,
 ))
