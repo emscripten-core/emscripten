@@ -2967,7 +2967,7 @@ LibraryManager.library = {
   // sys/mman.h
   // ==========================================================================
 
-  mmap__deps: ['$FS', 'memset'],
+  mmap__deps: ['$FS', 'memset', 'mmap_read', 'mmap_write'],
   mmap: function(start, num, prot, flags, fd, offset) {
     /* FIXME: Since mmap is normally implemented at the kernel level,
      * this implementation simply uses malloc underneath the call to
@@ -3001,6 +3001,7 @@ LibraryManager.library = {
     return ptr;
   },
 
+  munmap__deps: ['msync'],
   munmap: function(start, num) {
     if (!_mmap.mappings) _mmap.mappings = {};
     // TODO: support unmmap'ing parts of allocations
@@ -3010,9 +3011,9 @@ LibraryManager.library = {
       // At the Linux man page, it says:
       // "The file may not actually be updated until msync(2) or munmap(2) are called."
       // I guess that means we need to call msync when doing munmap
-      _msync(start, num); // todo: which flags?
+      _msync(start, num, 4);
 
-      FS.munmap(FS.getStream(info.fd));
+      FS.munmap(FS.getStream(info.fd), info, num);
 
       _mmap.mappings[start] = null;
       if (info.allocated) {
@@ -3039,10 +3040,113 @@ LibraryManager.library = {
     if (!info) return 0;
     if (len == info.num) {
       var buffer = new Uint8Array(HEAPU8.buffer, addr, len);
-      return FS.msync(FS.getStream(info.fd), buffer, 0, len);
+      return FS.msync(FS.getStream(info.fd), info, buffer, 0, len, flags);
     }
 
     return 0;
+  },
+  
+  // ==========================================================================
+  // emscripten_mmap.h
+  // ==========================================================================
+  mmap_read: function(heap, addr, addrOnHeap, type, index) {
+    var info = _mmap.mappings[addr];
+    // ?? How to handle this? 0 is a weird return value in a way...
+    if (!info) return 0;
+    return FS.mmap_read(FS.getStream(info.fd), info, type, index, heap[addrOnHeap + index]);
+  },
+  mmap_write: function(heap, addr, addrOnHeap, type, index, value) {
+    var info = _mmap.mappings[addr];
+    if (!info) return -1;
+    // Always write to heap too
+    heap[addrOnHeap + index] = value;
+    return FS.mmap_write(FS.getStream(info.fd), info, type, index, value);
+  },
+
+  mmap_read_char: function(addr, index) {
+    return _mmap_read(HEAP8, addr, addr, 'int8_t', index);
+  },
+  mmap_read_short: function(addr, index) {
+    return _mmap_read(HEAP16, addr, addr >> 1, 'int16_t', index);
+  },
+  mmap_read_long: function(addr, index) {
+    return _mmap_read(HEAP32, addr, addr >> 2, 'int32_t', index);
+  },
+  mmap_read_int8_t: function(addr, index) {
+    return _mmap_read(HEAP8, addr, addr, 'int8_t', index);
+  },
+  mmap_read_int16_t: function(addr, index) {
+    return _mmap_read(HEAP16, addr, addr >> 1, 'int16_t', index);
+  },
+  mmap_read_int32_t: function(addr, index) {
+    return _mmap_read(HEAP32, addr, addr >> 2, 'int32_t', index);
+  },
+  mmap_read_unsigned_char: function(addr, index) {
+    return _mmap_read(HEAPU8, addr, addr, 'uint8_t', index);
+  },
+  mmap_read_unsigned_short: function(addr, index) {
+    return _mmap_read(HEAPU16, addr, addr >> 1, 'uint16_t', index);
+  },
+  mmap_read_unsigned_long: function(addr, index) {
+    return _mmap_read(HEAPU32, addr, addr >> 2, 'uint32_t', index);
+  },
+  mmap_read_uint8_t: function(addr, index) {
+    return _mmap_read(HEAPU8, addr, addr, 'uint8_t', index);
+  },
+  mmap_read_uint16_t: function(addr, index) {
+    return _mmap_read(HEAPU16, addr, addr >> 1, 'uint16_t', index);
+  },
+  mmap_read_uint32_t: function(addr, index) {
+    return _mmap_read(HEAPU32, addr, addr >> 2, 'uint32_t', index);
+  },
+  mmap_read_float: function(addr, index) {
+    return _mmap_read(HEAPF32, addr, addr >> 2, 'float', index);
+  },
+  mmap_read_double: function(addr, index) {
+    return _mmap_read(HEAPF64, addr, addr >> 3, 'double', index);
+  },
+  
+  mmap_write_char: function(addr, index, value) {
+    return _mmap_write(HEAP8, addr, addr, 'int8_t', index, value);
+  },
+  mmap_write_short: function(addr, index, value) {
+    return _mmap_write(HEAP16, addr, addr >> 1, 'int16_t', index, value);
+  },
+  mmap_write_long: function(addr, index, value) {
+    return _mmap_write(HEAP32, addr, addr >> 2, 'int32_t', index, value);
+  },
+  mmap_write_int8_t: function(addr, index, value) {
+    return _mmap_write(HEAP8, addr, addr, 'int8_t', index, value);
+  },
+  mmap_write_int16_t: function(addr, index, value) {
+    return _mmap_write(HEAP16, addr, addr >> 1, 'int16_t', index, value);
+  },
+  mmap_write_int32_t: function(addr, index, value) {
+    return _mmap_write(HEAP32, addr, addr >> 2, 'int32_t', index, value);
+  },
+  mmap_write_unsigned_char: function(addr, index, value) {
+    return _mmap_write(HEAPU8, addr, addr, 'uint8_t', index, value);
+  },
+  mmap_write_unsigned_short: function(addr, index, value) {
+    return _mmap_write(HEAPU16, addr, addr >> 1, 'uint16_t', index, value);
+  },
+  mmap_write_unsigned_long: function(addr, index, value) {
+    return _mmap_write(HEAPU32, addr, addr >> 2, 'uint32_t', index, value);
+  },
+  mmap_write_uint8_t: function(addr, index, value) {
+    return _mmap_write(HEAPU8, addr, addr, 'uint8_t', index, value);
+  },
+  mmap_write_uint16_t: function(addr, index, value) {
+    return _mmap_write(HEAPU16, addr, addr >> 1, 'uint16_t', index, value);
+  },
+  mmap_write_uint32_t: function(addr, index, value) {
+    return _mmap_write(HEAPU32, addr, addr >> 2, 'uint32_t', index, value);
+  },
+  mmap_write_float: function(addr, index, value) {
+    return _mmap_write(HEAPF32, addr, addr >> 2, 'float', index, value);
+  },
+  mmap_write_double: function(addr, index, value) {
+    return _mmap_write(HEAPF64, addr, addr >> 3, 'double', index, value);
   },
 
   // ==========================================================================

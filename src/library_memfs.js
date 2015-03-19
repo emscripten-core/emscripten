@@ -374,7 +374,7 @@ mergeInto(LibraryManager.library, {
         }
         return { ptr: ptr, allocated: allocated };
       },
-      msync: function(stream, buffer, offset, length) {
+      msync: function(stream, map, buffer, offset, length, flags) {
         if (!FS.isFile(stream.node.mode)) {
           throw new FS.ErrnoError(ERRNO_CODES.ENODEV);
         }

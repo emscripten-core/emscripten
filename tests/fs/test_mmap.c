@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <sys/io.h>
 #include <sys/mman.h>
+#include <emscripten_mmap.h>
 
 int main() {
   EM_ASM(
@@ -29,7 +30,7 @@ int main() {
 
     printf("/yolo/in.txt content=");
     for (int i = 0; i < filesize; i++) {
-        printf("%c", map[i]);
+        printf("%c", mmap_read_char(map, i));
     }
     printf("\n");
 
@@ -57,7 +58,7 @@ int main() {
     assert(map != MAP_FAILED);
     
     for (size_t i = 0; i < textsize; i++) {
-      map[i] = text[i];
+      mmap_write_char(map, i, text[i]);
     }
     
     assert(msync(map, textsize, MS_SYNC) != -1);

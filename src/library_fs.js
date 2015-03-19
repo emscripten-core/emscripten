@@ -1154,14 +1154,29 @@ mergeInto(LibraryManager.library, {
       }
       return stream.stream_ops.mmap(stream, buffer, offset, length, position, prot, flags);
     },
-    msync: function(stream, buffer, offset, length) {
+    msync: function(stream, map, buffer, offset, length, flags) {
       if (!stream.stream_ops.msync) {
         return 0;
       }
-      return stream.stream_ops.msync(stream, buffer, offset, length);
+      return stream.stream_ops.msync(stream, map, buffer, offset, length, flags);
     },
-    munmap: function(stream) {
-      return 0;
+    munmap: function(stream, map, length) {
+      if (!stream.stream_ops.munmap) {
+        return 0;
+      }
+      return stream.stream_ops.munmap(map, length);
+    },
+    mmap_read: function(stream, map, type, index, valueOnHeap) {
+      if (!stream.stream_ops.mmap_read) {
+        return valueOnHeap;
+      }
+      return stream.stream_ops.mmap_read(map, type, index);
+    },
+    mmap_write: function(stream, map, type, index, value) {
+      if (!stream.stream_ops.mmap_write) {
+        return 0;
+      }
+      return stream.stream_ops.mmap_write(map, type, index, value);
     },
     ioctl: function(stream, cmd, arg) {
       if (!stream.stream_ops.ioctl) {

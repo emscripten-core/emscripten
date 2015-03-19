@@ -11,7 +11,7 @@ mergeInto(LibraryManager.library, {
       return NODEFS.createNode(null, '/', NODEFS.getMode(mount.opts.root), 0);
     },
     createNode: function (parent, name, mode, dev) {
-      if (!FS.isDir(mode) && !FS.isFile(mode) && !FS.isLink(mode)) {
+      if (!FS.isDir(mode) && !FS.isFile(mode) && !FS.isLink(mode) && !FS.isChrdev(mode)) {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
       var node = FS.createNode(parent, name, mode);
@@ -214,7 +214,7 @@ mergeInto(LibraryManager.library, {
       open: function (stream) {
         var path = NODEFS.realPath(stream.node);
         try {
-          if (FS.isFile(stream.node.mode)) {
+          if (FS.isFile(stream.node.mode) || FS.isChrdev(stream.node.mode)) {
             stream.nfd = fs.openSync(path, NODEFS.flagsToPermissionString(stream.flags));
           }
         } catch (e) {
@@ -224,7 +224,7 @@ mergeInto(LibraryManager.library, {
       },
       close: function (stream) {
         try {
-          if (FS.isFile(stream.node.mode) && stream.nfd) {
+          if ((FS.isFile(stream.node.mode) || FS.isChrdev(stream.node.mode)) && stream.nfd) {
             fs.closeSync(stream.nfd);
           }
         } catch (e) {
@@ -280,6 +280,48 @@ mergeInto(LibraryManager.library, {
         }
 
         return position;
+      },
+      _node_mmap: null,
+      _mmapLookup: {},
+      mmap: function(stream, buffer, offset, length, position, prot, flags) {
+        var self = this;
+        try {
+          if (!this._node_mmap) {
+            this._node_mmap = require("emscripten-node-mmap");
+          }
+        }
+        catch (ex) {
+          console.error(ex);
+          throw 'For mmap to work with NODEFS, run \'npm install emscripten-node-mmap\'';
+        }
+        var mapPtr = this._node_mmap.mmap(length, prot, flags, stream.nfd, position);
+        if (!mapPtr) {
+          return -1;
+        }
+        var ptr = _malloc(length);
+        this._mmapLookup[ptr] = mapPtr;
+        return { ptr: ptr, allocated: true };
+      },
+      msync: function(stream, map, buffer, offset, length, flags) {
+        var realPtr = this._mmapLookup[map.malloc];
+        return this._node_mmap.msync(realPtr, length, flags);
+      },
+      munmap: function(map, length) {
+        var realPtr = this._mmapLookup[map.malloc];
+        
+        // fails for some reason, why??
+        // _free(map.malloc);
+        
+        delete this._mmapLookup[map.malloc];
+        return this._node_mmap.munmap(realPtr, length);
+      },
+      mmap_read: function(map, type, index) {
+        var realPtr = this._mmapLookup[map.malloc];
+        return this._node_mmap['get_' + type](realPtr, index);
+      },
+      mmap_write: function(map, type, index, value) {
+        var realPtr = this._mmapLookup[map.malloc];
+        return this._node_mmap['set_' + type](realPtr, index, value);
       }
     }
   }
