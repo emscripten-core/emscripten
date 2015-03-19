@@ -1093,7 +1093,7 @@ function safeLabelSetting(ast) {
           seenVar = true;
         } else if (seenVar && curr[0] !== 'var') {
           // first location after the vars
-          stats.splice(i+1, 0, ['stat', ['assign', true, ['name', 'label'], ['num', 0]]]);
+          stats.splice(i, 0, ['stat', ['assign', true, ['name', 'label'], ['num', 0]]]);
           break;
         }
       }

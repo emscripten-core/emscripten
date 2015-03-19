@@ -2016,6 +2016,8 @@ int f() {
        ['asm', 'eliminate', 'registerize', 'asmLastOpts', 'last']),
       (path_from_root('tests', 'optimizer', 'simd.js'), open(path_from_root('tests', 'optimizer', 'simd-output.js')).read(),
        ['asm', 'eliminate']), # eliminate, just enough to trigger asm normalization/denormalization
+      (path_from_root('tests', 'optimizer', 'safeLabelSetting.js'), open(path_from_root('tests', 'optimizer', 'safeLabelSetting-output.js')).read(),
+       ['asm', 'safeLabelSetting']), # eliminate, just enough to trigger asm normalization/denormalization
     ]:
       print input, passes
 
