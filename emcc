@@ -994,7 +994,7 @@ try:
   elif shared.Settings.POINTER_MASKING_DYNAMIC:
     raise Exception('POINTER_MASKING_DYNAMIC requires POINTER_MASKING')
   else:
-    shared.Settings.POINTER_MASKING_DEFAULT_ENABLED = 0;
+    shared.Settings.POINTER_MASKING_DEFAULT_ENABLED = 0
 
   assert shared.LLVM_TARGET in shared.COMPILER_OPTS
   if shared.LLVM_TARGET == 'i386-pc-linux-gnu':
