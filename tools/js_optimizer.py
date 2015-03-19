@@ -263,8 +263,7 @@ def run_on_chunk(command):
       while os.path.exists(saved): saved = 'input' + str(int(saved.replace('input', '').replace('.txt', ''))+1) + '.txt'
       print >> sys.stderr, 'running js optimizer command', ' '.join(map(lambda c: c if c != filename else saved, command))
       shutil.copyfile(filename, os.path.join('/tmp/emscripten_temp', saved))
-    verbose_level = int(os.getenv('EM_BUILD_VERBOSE')) if os.getenv('EM_BUILD_VERBOSE') != None else 0
-    if verbose_level >= 3: print >> sys.stderr, str(command)
+    if shared.EM_BUILD_VERBOSE_LEVEL >= 3: print >> sys.stderr, 'run_on_chunk: ' + str(command)
     proc = subprocess.Popen(command, stdout=subprocess.PIPE)
     output = proc.communicate()[0]
     assert proc.returncode == 0, 'Error in optimizer: ' + output

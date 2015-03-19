@@ -297,6 +297,13 @@ if EM_POPEN_WORKAROUND and os.name == 'nt':
   logging.debug('Installing Popen workaround handler to avoid bug http://bugs.python.org/issue3905')
   Popen = WindowsPopen
 
+# Verbosity level control for any intermediate subprocess spawns from the compiler. Useful for internal debugging.
+# 0: disabled.
+# 1: Log stderr of subprocess spawns.
+# 2: Log stdout and stderr of subprocess spawns. Print out subprocess commands that were executed.
+# 3: Log stdout and stderr, and pass VERBOSE=1 to CMake configure steps.
+EM_BUILD_VERBOSE_LEVEL = int(os.getenv('EM_BUILD_VERBOSE')) if os.getenv('EM_BUILD_VERBOSE') != None else 0
+
 # Expectations
 
 EXPECTED_LLVM_VERSION = (3,5)
@@ -1110,7 +1117,8 @@ class Building:
       # do builds natively with Clang. This is a heuristic emulation that may or may not work. 
       env['EMMAKEN_JUST_CONFIGURE'] = '1'
     try:
-      process = Popen(args, stdout=stdout, stderr=stderr, env=env)
+      if EM_BUILD_VERBOSE_LEVEL >= 3: print >> sys.stderr, 'configure: ' + str(args)
+      process = Popen(args, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else stdout, stderr=None if EM_BUILD_VERBOSE_LEVEL >= 1 else stderr, env=env)
       process.communicate()
     except Exception, e:
       logging.error('Exception thrown when invoking Popen in configure with args: "%s"!' % ' '.join(args))
@@ -1137,7 +1145,8 @@ class Building:
 
     try:
       # On Windows, run the execution through shell to get PATH expansion and executable extension lookup, e.g. 'sdl2-config' will match with 'sdl2-config.bat' in PATH.
-      process = Popen(args, stdout=stdout, stderr=stderr, env=env, shell=WINDOWS)
+      if EM_BUILD_VERBOSE_LEVEL >= 3: print >> sys.stderr, 'make: ' + str(args)
+      process = Popen(args, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else stdout, stderr=None if EM_BUILD_VERBOSE_LEVEL >= 1 else stderr, env=env, shell=WINDOWS)
       process.communicate()
     except Exception, e:
       logging.error('Exception thrown when invoking Popen in make with args: "%s"!' % ' '.join(args))
@@ -1178,13 +1187,12 @@ class Building:
     #  except:
     #    pass
     env = Building.get_building_env(native)
-    verbose_level = int(os.getenv('EM_BUILD_VERBOSE')) if os.getenv('EM_BUILD_VERBOSE') != None else 0
     for k, v in env_init.iteritems():
       env[k] = v
     if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |link| call)
       try:
-        Building.configure(configure + configure_args, env=env, stdout=open(os.path.join(project_dir, 'configure_'), 'w') if verbose_level < 2 else None,
-                                                                stderr=open(os.path.join(project_dir, 'configure_err'), 'w') if verbose_level < 1 else None)
+        Building.configure(configure + configure_args, env=env, stdout=open(os.path.join(project_dir, 'configure_'), 'w') if EM_BUILD_VERBOSE_LEVEL < 2 else None,
+                                                                stderr=open(os.path.join(project_dir, 'configure_err'), 'w') if EM_BUILD_VERBOSE_LEVEL < 1 else None)
       except subprocess.CalledProcessError, e:
         pass # Ignore exit code != 0
     def open_make_out(i, mode='r'):
@@ -1193,15 +1201,15 @@ class Building:
     def open_make_err(i, mode='r'):
       return open(os.path.join(project_dir, 'make_err' + str(i)), mode)
 
-    if verbose_level >= 3:
+    if EM_BUILD_VERBOSE_LEVEL >= 3:
       make_args += ['VERBOSE=1']
 
     for i in range(2): # FIXME: Sad workaround for some build systems that need to be run twice to succeed (e.g. poppler)
       with open_make_out(i, 'w') as make_out:
         with open_make_err(i, 'w') as make_err:
           try:
-            Building.make(make + make_args, stdout=make_out if verbose_level < 2 else None,
-                                            stderr=make_err if verbose_level < 1 else None, env=env)
+            Building.make(make + make_args, stdout=make_out if EM_BUILD_VERBOSE_LEVEL < 2 else None,
+                                            stderr=make_err if EM_BUILD_VERBOSE_LEVEL < 1 else None, env=env)
           except subprocess.CalledProcessError, e:
             pass # Ignore exit code != 0
       try:
@@ -1213,7 +1221,7 @@ class Building:
         break
       except Exception, e:
         if i > 0:
-          if verbose_level == 0:
+          if EM_BUILD_VERBOSE_LEVEL == 0:
             # Due to the ugly hack above our best guess is to output the first run
             with open_make_err(0) as ferr:
               for line in ferr:
