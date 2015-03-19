@@ -1085,8 +1085,15 @@ class Building:
     # pulling in a native Visual Studio, or Unix Makefiles.
     if WINDOWS and not '-G' in args and Building.which('mingw32-make'):
       args += ['-G', 'MinGW Makefiles']
- 
-    return args
+
+    # CMake has a requirement that it wants sh.exe off PATH if MinGW Makefiles is being used. This happens quite often,
+    # so do this automatically on behalf of the user. See http://www.cmake.org/Wiki/CMake_MinGW_Compiler_Issues
+    if WINDOWS and 'MinGW Makefiles' in args:
+      path = env['PATH'].split(';')
+      path = filter(lambda p: not os.path.exists(os.path.join(p, 'sh.exe')), path)
+      env['PATH'] = ';'.join(path)
+
+    return (args, env)
 
   @staticmethod
   def configure(args, stdout=None, stderr=None, env=None):
@@ -1097,7 +1104,7 @@ class Building:
     if 'cmake' in args[0]:
       # Note: EMMAKEN_JUST_CONFIGURE shall not be enabled when configuring with CMake. This is because CMake
       #       does expect to be able to do config-time builds with emcc.
-      args = Building.handle_CMake_toolchain(args, env)
+      args, env = Building.handle_CMake_toolchain(args, env)
     else:
       # When we configure via a ./configure script, don't do config-time compilation with emcc, but instead
       # do builds natively with Clang. This is a heuristic emulation that may or may not work. 
