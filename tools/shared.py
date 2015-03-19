@@ -1129,7 +1129,8 @@ class Building:
         args[0] = mingw32_make
 
     try:
-      process = Popen(args, stdout=stdout, stderr=stderr, env=env)
+      # On Windows, run the execution through shell to get PATH expansion and executable extension lookup, e.g. 'sdl2-config' will match with 'sdl2-config.bat' in PATH.
+      process = Popen(args, stdout=stdout, stderr=stderr, env=env, shell=WINDOWS)
       process.communicate()
     except Exception, e:
       logging.error('Exception thrown when invoking Popen in make with args: "%s"!' % ' '.join(args))
