@@ -1247,12 +1247,13 @@ int f() {
 
     for engine in JS_ENGINES:
       if engine == V8_ENGINE: continue # no stdin support in v8 shell
+      engine[0] = os.path.normpath(engine[0])
       print >> sys.stderr, engine
       # work around a bug in python's subprocess module
       # (we'd use run_js() normally)
       try_delete('out.txt')
       if os.name == 'nt': # windows
-        os.system('type "in.txt" | {} >out.txt'.format(' '.join(make_js_command(exe, engine))))
+        os.system('type "in.txt" | {} >out.txt'.format(' '.join(make_js_command(os.path.normpath(exe), engine))))
       else: # posix
         os.system('cat in.txt | {} > out.txt'.format(' '.join(make_js_command(exe, engine))))
       self.assertContained('abcdef\nghijkl\neof', open('out.txt').read())
