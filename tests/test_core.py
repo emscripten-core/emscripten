@@ -7383,15 +7383,18 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
   TT = type(fullname, (T,), dict(run_name = fullname, env = env))
 
   def tearDown(self):
-    super(TT, self).tearDown()
+    try:
+      super(TT, self).tearDown()
+    except Exception, e:
+      print >> sys.stderr, 'Test tearDown threw an exception ' + str(e)
+    finally:
+      for k, v in self.env.iteritems():
+        del os.environ[k]
 
-    for k, v in self.env.iteritems():
-      del os.environ[k]
-
-    # clear global changes to Building
-    Building.COMPILER_TEST_OPTS = []
-    Building.COMPILER = CLANG
-    Building.LLVM_OPTS = 0
+      # clear global changes to Building
+      Building.COMPILER_TEST_OPTS = []
+      Building.COMPILER = CLANG
+      Building.LLVM_OPTS = 0
 
   TT.tearDown = tearDown
 
