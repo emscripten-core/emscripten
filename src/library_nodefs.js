@@ -205,7 +205,7 @@ mergeInto(LibraryManager.library, {
         try {
           path = fs.readlinkSync(path);
           path = NODEJS_PATH.relative(NODEJS_PATH.resolve(node.mount.opts.root), path);
-          return PATH.join(node.mount.mountpoint, path);
+          return path;
         } catch (e) {
           if (!e.code) throw e;
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);

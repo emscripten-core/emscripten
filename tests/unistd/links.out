@@ -21,11 +21,11 @@ symlink/normal
 ret: 0
 errno: 0
 readlink(created link)
-ret: 29
+ret: 36
 errno: 0
-result: /working/new-nonexistent-path
+result: /working/folder/new-nonexistent-path
 
 readlink(short buffer)
 ret: 3
 errno: 0
-result: /thrking/new-nonexistent-path
+result: /thrking/folder/new-nonexistent-path
