@@ -4606,6 +4606,13 @@ function _main() {
 
     out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'emterpreter_advise_funcptr.cpp'), '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_ADVISE=1'], stdout=PIPE).communicate()
     self.assertContained('-s EMTERPRETIFY_WHITELIST=\'["__Z4posti", "__Z5post2i", "__Z6middlev", "__Z7sleeperv", "__Z8recurserv", "_main"]\'', out)
+    self.assertNotContained('EMTERPRETIFY_YIELDLIST', out);
+
+    out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'emterpreter_advise_funcptr.cpp'), '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_ADVISE=1', '-s', 'EMTERPRETIFY_YIELDLIST=["__Z6middlev"]'], stdout=PIPE).communicate()
+    self.assertContained('-s EMTERPRETIFY_YIELDLIST=\'["__Z6middlev", "__Z7siblingii", "__Z7sleeperv", "__Z8recurserv", "_printf"]\'', out)
+
+    out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'emterpreter_advise_funcptr.cpp'), '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_ADVISE=1', '-s', 'EMTERPRETIFY_YIELDLIST=["__Z3pref"]'], stdout=PIPE).communicate()
+    self.assertContained('-s EMTERPRETIFY_YIELDLIST=\'["__Z3pref", "__Z7siblingii", "_printf"]\'', out)
 
   def test_link_with_a_static(self):
     for args in [[], ['-O2']]:

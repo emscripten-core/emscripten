@@ -632,6 +632,8 @@ var EMTERPRETIFY_ADVISE = 0; // Performs a static analysis to suggest which func
                              // appears they can be on the stack when a sync function is called in the EMTERPRETIFY_ASYNC option.
                              // After showing the suggested list, compilation will halt. You can apply the provided list as an
                              // emcc argument when compiling later.
+                             // This will also advise on the YIELDLIST, if it contains at least one value (it then reports
+                             // all things reachable from that function, as they may need to be in the YIELDLIST as well).
                              // Note that this depends on things like inlining. If you run this with different inlining than
                              // when you use the list, it might not work.
 

@@ -706,6 +706,8 @@ if __name__ == '__main__':
   outfile = sys.argv[2]
   force_memfile = sys.argv[3] if len(sys.argv) >= 4 else None
 
+  original_yieldlist = YIELDLIST
+
   extra_blacklist = []
   if len(sys.argv) >= 5:
     temp = sys.argv[4]
@@ -775,6 +777,23 @@ if __name__ == '__main__':
     print "Suggested list of functions to run in the emterpreter:"
     print "  -s EMTERPRETIFY_WHITELIST='" + str(sorted(list(advised))).replace("'", '"') + "'"
     print "(%d%% out of %d functions)" % (int((100.0*len(advised))/len(can_call)), len(can_call))
+    if len(YIELDLIST) > len(original_yieldlist):
+      # advise on the yield list as well. Anything a yield function can reach, likely needs to also be a yield function
+      YIELD_IGNORE = set(['abort'])
+      to_check = list(YIELDLIST)
+      advised = set([str(f) for f in YIELDLIST])
+      while len(to_check) > 0:
+        curr = to_check.pop()
+        if curr not in can_call: continue
+        for next in can_call[curr]:
+          if next not in advised:
+            advised.add(str(next))
+            to_check.append(next)
+      advised = [next for next in advised if not is_dyn_call(next) and not is_function_table(next) and not next in original_yieldlist and next not in SYNC_FUNCS and next not in YIELD_IGNORE and next[0] == '_']
+      print
+      print "Suggested list of yield functions for the emterpreter:"
+      print "  -s EMTERPRETIFY_YIELDLIST='" + str(sorted(list(advised))).replace("'", '"') + "'"
+      print "(%d%% out of %d functions)" % (int((100.0*len(advised))/len(can_call)), len(can_call))
     sys.exit(0)
 
   BLACKLIST = set(list(BLACKLIST) + extra_blacklist)
