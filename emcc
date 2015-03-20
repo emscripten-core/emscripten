@@ -1517,10 +1517,11 @@ try:
         # emterpreter code will not run through a JS optimizing JIT, do more work ourselves
         js_optimizer_queue += ['localCSE']
 
-    if shared.Settings.EMTERPRETIFY:
-      # add explicit label setting, as we will run aggressiveVariableElimination late, *after* 'label' is no longer notable by name
-      js_optimizer_queue += ['safeLabelSetting']
+  if shared.Settings.EMTERPRETIFY:
+    # add explicit label setting, as we will run aggressiveVariableElimination late, *after* 'label' is no longer notable by name
+    js_optimizer_queue += ['safeLabelSetting']
 
+  if opt_level >= 1 and js_opts:
     if opt_level >= 2:
       if shared.Settings.RELOOP and not shared.Settings.ASM_JS:
         js_optimizer_queue += ['optimizeShiftsAggressive', get_eliminate()] # aggressive shifts optimization requires loops, it breaks on switches
@@ -1611,6 +1612,7 @@ try:
   js_target = unsuffixed(target) + '.js'
 
   if shared.Settings.EMTERPRETIFY:
+    flush_js_optimizer_queue()
     logging.debug('emterpretifying')
     assert memory_init_file, 'emterpreter requires a mem init file'
     import json
