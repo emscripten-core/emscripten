@@ -418,8 +418,6 @@ f.close()
             try:
               os.chdir(tempdirname)
 
-              verbose_level = int(os.getenv('EM_BUILD_VERBOSE')) if os.getenv('EM_BUILD_VERBOSE') != None else 0
-
               # Run Cmake
               if invoke_method == 'cmake':
                 # Test invoking cmake directly.
@@ -429,7 +427,7 @@ f.close()
                 # Test invoking via 'emconfigure cmake'
                 cmd = [emconfigure, 'cmake', '-DCMAKE_BUILD_TYPE=' + configuration, cmake_arguments[i], '-G', generator, cmakelistsdir]
 							  
-              ret = Popen(cmd, stdout=None if verbose_level >= 2 else PIPE, stderr=None if verbose_level >= 1 else PIPE).communicate()
+              ret = Popen(cmd, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else PIPE, stderr=None if EM_BUILD_VERBOSE_LEVEL >= 1 else PIPE).communicate()
               if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
                 logging.error(ret[1]) # If there were any errors, print them directly to console for diagnostics.
               if len(ret) > 1 and ret[1] != None and 'error' in ret[1].lower():
@@ -442,9 +440,9 @@ f.close()
 
               # Build
               cmd = make
-              if verbose_level >= 3 and 'Ninja' not in generator:
+              if EM_BUILD_VERBOSE_LEVEL >= 3 and 'Ninja' not in generator:
                 cmd += ['VERBOSE=1']
-              ret = Popen(cmd, stdout=None if verbose_level >= 2 else PIPE).communicate()
+              ret = Popen(cmd, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else PIPE).communicate()
               if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
                 logging.error(ret[1]) # If there were any errors, print them directly to console for diagnostics.
               if len(ret) > 0 and ret[0] != None and 'error' in ret[0].lower() and not '0 error(s)' in ret[0].lower():
@@ -1247,12 +1245,13 @@ int f() {
 
     for engine in JS_ENGINES:
       if engine == V8_ENGINE: continue # no stdin support in v8 shell
+      engine[0] = os.path.normpath(engine[0])
       print >> sys.stderr, engine
       # work around a bug in python's subprocess module
       # (we'd use run_js() normally)
       try_delete('out.txt')
       if os.name == 'nt': # windows
-        os.system('type "in.txt" | {} >out.txt'.format(' '.join(make_js_command(exe, engine))))
+        os.system('type "in.txt" | {} >out.txt'.format(' '.join(make_js_command(os.path.normpath(exe), engine))))
       else: # posix
         os.system('cat in.txt | {} > out.txt'.format(' '.join(make_js_command(exe, engine))))
       self.assertContained('abcdef\nghijkl\neof', open('out.txt').read())

@@ -5570,10 +5570,18 @@ def process(filename):
 
     Settings.CORRECT_SIGNS = 1
 
+    use_cmake_configure = WINDOWS
+    if use_cmake_configure:
+      make_args = []
+      configure = [PYTHON, path_from_root('emcmake'), 'cmake', '.', '-DBUILD_SHARED_LIBS=OFF']
+    else:
+      make_args = ['libz.a']
+      configure = ['sh', './configure']
+
     self.do_run(open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(),
                  open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
-                 libraries=self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']),
-                 includes=[path_from_root('tests', 'zlib')],
+                 libraries=self.get_library('zlib', os.path.join('libz.a'), make_args=make_args, configure=configure),
+                 includes=[path_from_root('tests', 'zlib'), os.path.join(self.get_dir(), 'building', 'zlib')],
                  force_c=True)
 
   def test_the_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
@@ -7383,15 +7391,16 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
   TT = type(fullname, (T,), dict(run_name = fullname, env = env))
 
   def tearDown(self):
-    super(TT, self).tearDown()
+    try:
+      super(TT, self).tearDown()
+    finally:
+      for k, v in self.env.iteritems():
+        del os.environ[k]
 
-    for k, v in self.env.iteritems():
-      del os.environ[k]
-
-    # clear global changes to Building
-    Building.COMPILER_TEST_OPTS = []
-    Building.COMPILER = CLANG
-    Building.LLVM_OPTS = 0
+      # clear global changes to Building
+      Building.COMPILER_TEST_OPTS = []
+      Building.COMPILER = CLANG
+      Building.LLVM_OPTS = 0
 
   TT.tearDown = tearDown
 

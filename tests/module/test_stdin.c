@@ -25,8 +25,9 @@ void main_loop()
       if (ret > 0) puts(str);
     }
 
+    int err = ferror(stdin);
     if (ferror(stdin) && errno != EAGAIN) {
-      puts("error");
+      printf("error %d\n", err);
       exit(EXIT_FAILURE);
     }
 
