@@ -61,6 +61,7 @@ var KeyboardEvent = {
 function PropertyBag() {
   this.addProperty = function(){};
   this.removeProperty = function(){};
+  this.setProperty = function(){};
 };
 
 var IndexedObjects = {
@@ -295,6 +296,11 @@ Audio.prototype.cloneNode = function() {
   return new Audio;
 }
 
+var screen = {
+  width: 0,
+  height: 0
+};
+
 Module.canvas = document.createElement('canvas');
 
 Module.setStatus = function(){};
@@ -397,8 +403,8 @@ onmessage = function onmessage(message) {
     }
     case 'worker-init': {
       Module.canvas = document.createElement('canvas');
-      Module.canvas.width_ = message.data.width;
-      Module.canvas.height_ = message.data.height;
+      screen.width = Module.canvas.width_ = message.data.width;
+      screen.height = Module.canvas.height_ = message.data.height;
       document.URL = message.data.URL;
       window.fireEvent({ type: 'load' });
       removeRunDependency('worker-init');
