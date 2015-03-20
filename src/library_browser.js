@@ -1312,7 +1312,6 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_worker_respond_provisionally: function(data, size) {
-    if (!inWorkerCall) throw 'not in worker call!';
     if (workerResponded) throw 'already responded with final response!';
     postMessage({
       'callbackId': workerCallbackId,
@@ -1322,7 +1321,6 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_worker_respond: function(data, size) {
-    if (!inWorkerCall) throw 'not in worker call!';
     if (workerResponded) throw 'already responded with final response!';
     workerResponded = true;
     postMessage({

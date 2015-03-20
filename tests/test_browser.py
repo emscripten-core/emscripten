@@ -1936,6 +1936,10 @@ void *getBindBuffer() {
     Popen([PYTHON, EMCC, path_from_root('tests', 'worker_api_3_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]']).communicate()
     self.btest('worker_api_3_main.cpp', expected='5')
 
+  def test_worker_api_sleep(self):
+    Popen([PYTHON, EMCC, path_from_root('tests', 'worker_api_worker_sleep.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1']).communicate()
+    self.btest('worker_api_main.cpp', expected='566')
+
   def test_emscripten_async_wget2(self):
     self.btest('http.cpp', expected='0', args=['-I' + path_from_root('tests')])
 
