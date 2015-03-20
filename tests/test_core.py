@@ -7393,8 +7393,6 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
   def tearDown(self):
     try:
       super(TT, self).tearDown()
-    except Exception, e:
-      print >> sys.stderr, 'Test tearDown threw an exception ' + str(e)
     finally:
       for k, v in self.env.iteritems():
         del os.environ[k]
