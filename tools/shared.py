@@ -1075,6 +1075,17 @@ class Building:
 
     return None
 
+  # Returns a clone of the given environment with all directories that contain sh.exe removed from the PATH.
+  # Used to work around CMake limitation with MinGW Makefiles, where sh.exe is not allowed to be present.
+  @staticmethod
+  def remove_sh_exe_from_path(env):
+    env = env.copy()
+    if not WINDOWS: return env
+    path = env['PATH'].split(';')
+    path = filter(lambda p: not os.path.exists(os.path.join(p, 'sh.exe')), path)
+    env['PATH'] = ';'.join(path)
+    return env
+  
   @staticmethod
   def handle_CMake_toolchain(args, env):
 
@@ -1096,9 +1107,7 @@ class Building:
     # CMake has a requirement that it wants sh.exe off PATH if MinGW Makefiles is being used. This happens quite often,
     # so do this automatically on behalf of the user. See http://www.cmake.org/Wiki/CMake_MinGW_Compiler_Issues
     if WINDOWS and 'MinGW Makefiles' in args:
-      path = env['PATH'].split(';')
-      path = filter(lambda p: not os.path.exists(os.path.join(p, 'sh.exe')), path)
-      env['PATH'] = ';'.join(path)
+      env = Building.remove_sh_exe_from_path(env)
 
     return (args, env)
 
