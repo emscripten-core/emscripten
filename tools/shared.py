@@ -1147,10 +1147,14 @@ class Building:
     #args += ['VERBOSE=1']
 
     # On Windows prefer building with mingw32-make instead of make, if it exists.
-    if WINDOWS and args[0] == 'make':
-      mingw32_make = Building.which('mingw32-make')
-      if mingw32_make:
-        args[0] = mingw32_make
+    if WINDOWS:
+      if args[0] == 'make':
+        mingw32_make = Building.which('mingw32-make')
+        if mingw32_make:
+          args[0] = mingw32_make
+
+      if 'mingw32-make' in args[0]:
+        env = Building.remove_sh_exe_from_path(env)
 
     try:
       # On Windows, run the execution through shell to get PATH expansion and executable extension lookup, e.g. 'sdl2-config' will match with 'sdl2-config.bat' in PATH.
