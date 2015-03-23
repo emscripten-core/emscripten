@@ -464,12 +464,12 @@ for defining the binding:
    natural fit for the project and its build system.
 
 .. _library.js: https://github.com/kripken/emscripten/blob/master/src/library.js
-.. _test_js_libraries: https://github.com/kripken/emscripten/blob/master/tests/test_core.py#L4800
+.. _test_js_libraries: https://github.com/kripken/emscripten/blob/1.29.12/tests/test_core.py#L5043
 .. _src/deps_info.json: https://github.com/kripken/emscripten/blob/master/src/deps_info.json
 .. _tools/system_libs.py: https://github.com/kripken/emscripten/blob/master/tools/system_libs.py
 .. _library_\*.js: https://github.com/kripken/emscripten/tree/master/src
-.. _test_add_function in tests/test_core.py: https://github.com/kripken/emscripten/blob/master/tests/test_core.py#L5904
+.. _test_add_function in tests/test_core.py: https://github.com/kripken/emscripten/blob/1.29.12/tests/test_core.py#L6237
 .. _tests/core/test_utf.in: https://github.com/kripken/emscripten/blob/master/tests/core/test_utf.in
-.. _tests/test_core.py: https://github.com/kripken/emscripten/blob/master/tests/test_core.py#L5704
+.. _tests/test_core.py: https://github.com/kripken/emscripten/blob/1.29.12/tests/test_core.py#L4597
 .. _Box2D: https://github.com/kripken/box2d.js/#box2djs
 .. _Bullet: https://github.com/kripken/ammo.js/#ammojs

@@ -69,7 +69,7 @@ You can also run a specific mode or test in a mode, or a specific test across al
 	# Run one test in all modes.
 	python tests/runner.py ALL.test_hello_world 
 
-The core test modes are documented at the end of `/tests/test_core.py <https://github.com/kripken/emscripten/blob/master/tests/test_core.py#L7099>`_.
+The core test modes are documented at the end of `/tests/test_core.py <https://github.com/kripken/emscripten/blob/1.29.12/tests/test_core.py#L7421>`_.
 
 .. _emscripten-test-suite-modes:
 
