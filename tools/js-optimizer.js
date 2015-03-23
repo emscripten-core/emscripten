@@ -1,3 +1,6 @@
+// -*- Mode: javascript; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 2 ; js-indent-level : 2 ; js-curly-indent-offset: 0 -*-
+// vim: set ts=2 et sw=2 tw=80:
+
 //==============================================================================
 // Optimizer tool. This is meant to be run after the emscripten compiler has
 // finished generating code. These optimizations are done on the generated
@@ -1090,7 +1093,7 @@ function safeLabelSetting(ast) {
           seenVar = true;
         } else if (seenVar && curr[0] !== 'var') {
           // first location after the vars
-          stats.splice(i+1, 0, ['stat', ['assign', true, ['name', 'label'], ['num', 0]]]);
+          stats.splice(i, 0, ['stat', ['assign', true, ['name', 'label'], ['num', 0]]]);
           break;
         }
       }
@@ -6071,46 +6074,63 @@ function optimizeFrounds(ast) {
   traverseChildren(ast, fix);
 }
 
-// Optimize heap expressions into   HEAP32[(x&m)+c>>2]    where c is a small aligned constant, and m guarantees the pointer is without range+aligned
+// Optimize heap expressions into HEAP32[(x&m)+c>>2] where c is an aligned
+// constant, and m guarantees the pointer is within bounds and aligned.
 function pointerMasking(ast) {
-  var MAX_SMALL_OFFSET = 32;
+  var parseHeapTemp = makeTempParseHeap();
 
   traverse(ast, function(node, type) {
     if (type === 'sub' && node[1][0] === 'name' && node[1][1][0] === 'H' && node[2][0] === 'binary' && node[2][1] === '>>' && node[2][3][0] === 'num') {
-      var addee = node[2][2];
-      if (!(addee[0] === 'binary' && addee[1] === '+')) return;
       var shifts = node[2][3][1];
-      if (!parseHeap(node[1][1])) return;
-      if (parseHeapTemp.bits !== 8*Math.pow(2, shifts)) return;
-      // this is an HEAP[U]N[x + y >> n] expression. gather up all the top-level added items, seek a small constant amongst them
+      var addee = node[2][2];
+
+      if (!parseHeap(node[1][1], parseHeapTemp)) return;
+      if (parseHeapTemp.bits !== 8 * Math.pow(2, shifts)) return;
+
+      // Don't mask a shifted constant index. It will be folded later,
+      // and it is assumed that they are within bounds.
+      if (addee[0] === 'num') return;
+
+      if (!(addee[0] === 'binary' && addee[1] === '+')) {
+        node[2][2] = ['binary', '&', addee, ['name', 'MASK' + shifts]];
+        return;
+      }
+
+      // This is a HEAP[U]N[x + y >> n] expression. Gather up all the top-level
+      // added items, summing constants amongst them.
+      var addedConstants = 0;
       var addedElements = [];
       function addElements(node) {
         if (node[0] === 'binary' && node[1] === '+') {
           addElements(node[2]);
           addElements(node[3]);
+        } else if (node[0] === 'num') {
+          var c = node[1];
+          // Check that it is aligned.
+          if (((c >> shifts) << shifts) === c) {
+            addedConstants += c;
+          } else {
+            addedElements.push(node);
+          }
         } else {
           addedElements.push(node);
         }
       }
       addElements(addee);
-      assert(addedElements.length >= 2);
-      for (var i = 0; i < addedElements.length; i++) {
-        var element = addedElements[i];
-        if (element[0] === 'num') {
-          var c = element[1];
-          if (c < MAX_SMALL_OFFSET && ((c >> shifts) << shifts) === c) {
-            // this is a small aligned offset, we are good to go. gather the others, and finalize
-            addedElements.splice(i, 1);
-            var others = addedElements[0];
-            for (var j = 1; j < addedElements.length; j++) {
-              others = ['binary', '+', others, addedElements[j]];
-            }
-            others = ['binary', '&', others, ['name', 'MASK' + shifts]];
-            node[2][2] = ['binary', '+', others, element];
-            return;
-          }
+      if (addedElements.length > 0) {
+        var others = addedElements[0];
+        for (var j = 1; j < addedElements.length; j++) {
+          others = ['binary', '+', others, addedElements[j]];
         }
+        others = ['binary', '&', others, ['name', 'MASK' + shifts]];
+        if (addedConstants != 0) {
+          others = ['binary', '+', others, ['num' , addedConstants]];
+        }
+        node[2][2] = others;
+        return;
       }
+
+      node[2][2] = ['num' , addedConstants];
     }
   });
 }

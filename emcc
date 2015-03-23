@@ -976,10 +976,25 @@ try:
       shared.Settings.ASM_JS = 2
 
   if shared.Settings.POINTER_MASKING:
-    logging.warning('POINTER_MASKING is experimental')
-    size = shared.Settings.POINTER_MASKING + 1 # size plus 1 should be a power of 2
-    if size & (size-1) != 0:
-      raise Exception('POINTER_MASKING value must be a power of 2 minus 1')
+    if shared.Settings.ALLOW_MEMORY_GROWTH:
+      raise Exception('With POINTER_MASKING the ALLOW_MEMORY_GROWTH feature is not supported')
+    if not shared.Settings.POINTER_MASKING_DYNAMIC:
+      shared.Settings.POINTER_MASKING_DEFAULT_ENABLED = 1;
+      size = shared.Settings.TOTAL_MEMORY
+      if size & (size - 1) != 0:
+        raise Exception('With POINTER_MASKING the TOTAL_MEMORY must be a power of 2')
+      if shared.Settings.ASM_JS:
+        # Silently keep the total length a valid asm.js heap buffer length.
+        overflow = shared.Settings.POINTER_MASKING_OVERFLOW;
+        if overflow > 0:
+          if size <= 0x01000000:
+            shared.Settings.POINTER_MASKING_OVERFLOW = size;
+          else:
+            shared.Settings.POINTER_MASKING_OVERFLOW = (overflow + 0x00ffffff) & 0xff000000;
+  elif shared.Settings.POINTER_MASKING_DYNAMIC:
+    raise Exception('POINTER_MASKING_DYNAMIC requires POINTER_MASKING')
+  else:
+    shared.Settings.POINTER_MASKING_DEFAULT_ENABLED = 0
 
   assert shared.LLVM_TARGET in shared.COMPILER_OPTS
   if shared.LLVM_TARGET == 'i386-pc-linux-gnu':
@@ -1504,10 +1519,11 @@ try:
         # add explicit label setting, as we will run aggressiveVariableElimination late, *after* 'label' is no longer notable by name
         js_optimizer_queue += ['safeLabelSetting']
 
-    if shared.Settings.EMTERPRETIFY:
-      # add explicit label setting, as we will run aggressiveVariableElimination late, *after* 'label' is no longer notable by name
-      js_optimizer_queue += ['safeLabelSetting']
+  if shared.Settings.EMTERPRETIFY:
+    # add explicit label setting, as we will run aggressiveVariableElimination late, *after* 'label' is no longer notable by name
+    js_optimizer_queue += ['safeLabelSetting']
 
+  if opt_level >= 1 and js_opts:
     if opt_level >= 2:
       if shared.Settings.RELOOP and not shared.Settings.ASM_JS:
         js_optimizer_queue += ['optimizeShiftsAggressive', get_eliminate()] # aggressive shifts optimization requires loops, it breaks on switches
@@ -1556,7 +1572,8 @@ try:
       else:
         js_optimizer_queue += ['registerize']
 
-    if shared.Settings.POINTER_MASKING and shared.Settings.ASM_JS: js_optimizer_queue += ['pointerMasking']
+    if shared.Settings.POINTER_MASKING:
+      js_optimizer_queue += ['pointerMasking']
 
     if not shared.Settings.EMTERPRETIFY:
       do_minify()
@@ -1597,6 +1614,7 @@ try:
   js_target = unsuffixed(target) + '.js'
 
   if shared.Settings.EMTERPRETIFY:
+    flush_js_optimizer_queue()
     logging.debug('emterpretifying')
     assert memory_init_file, 'emterpreter requires a mem init file'
     import json

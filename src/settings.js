@@ -58,8 +58,6 @@ var TOTAL_STACK = 5*1024*1024; // The total stack size. There is no way to enlar
 var TOTAL_MEMORY = 16777216;     // The total amount of memory to use. Using more memory than this will
                                  // cause us to expand the heap, which can be costly with typed arrays:
                                  // we need to copy the old heap into a new one in that case.
-var FAST_MEMORY = 2*1024*1024; // The amount of memory to initialize to 0. This ensures it will be
-                               // in a flat array. This only matters in non-typed array builds.
 var ALLOW_MEMORY_GROWTH = 0; // If false, we abort with an error if we try to allocate more memory than
                              // we can (TOTAL_MEMORY). If true, we will grow the memory arrays at
                              // runtime, seamlessly and dynamically. This has a performance cost though,
@@ -190,8 +188,26 @@ var OUTLINING_LIMIT = 0; // A function size above which we try to automatically 
 
 var AGGRESSIVE_VARIABLE_ELIMINATION = 0; // Run aggressiveVariableElimination in js-optimizer.js
 var SIMPLIFY_IFS = 1; // Whether to simplify ifs in js-optimizer.js
-var POINTER_MASKING = 0; // Whether to mask pointers (experimental optimization trying to reduce VM bounds checks).
-                         // When using this option, TOTAL_MEMORY must be a power of 2.
+
+var POINTER_MASKING = 0; // Whether pointers can be masked to a power-of-two heap
+                         // length. An experimental optimization trying to reduce VM
+                         // bounds checks.
+var POINTER_MASKING_OVERFLOW = 64 * 1024; // The length added to the heap length to allow
+                                          // the compiler to derive that accesses are
+                                          // within bounds even when adding small constant
+                                          // offsets. This defaults to 64K, but in asm.js
+                                          // mode it is silently adjusted to keep the
+                                          // total buffer length a valid asm.js heap
+                                          // buffer length.
+var POINTER_MASKING_DYNAMIC = 0; // When disabled, the masking is baked into the code with
+				 // static masks and a static heap buffer length and the
+				 // TOTAL_MEMORY must be a power of 2. When enabled, the
+				 // masks are defined at runtime rather than compling them
+				 // into the asm.js module as literal constants and the
+				 // TOTAL_MEMORY can be defined at run time.
+var POINTER_MASKING_DEFAULT_ENABLED = 1; // When POINTER_MASKING_DYNAMIC is enabled this
+					 // sets the default for POINTER_MASKING_ENABLED,
+					 // enabling or disabling pointer masking.
 
 // Generated code debugging options
 var SAFE_HEAP = 0; // Check each write to the heap, for example, this will give a clear
@@ -614,6 +630,8 @@ var EMTERPRETIFY_ADVISE = 0; // Performs a static analysis to suggest which func
                              // appears they can be on the stack when a sync function is called in the EMTERPRETIFY_ASYNC option.
                              // After showing the suggested list, compilation will halt. You can apply the provided list as an
                              // emcc argument when compiling later.
+                             // This will also advise on the YIELDLIST, if it contains at least one value (it then reports
+                             // all things reachable from that function, as they may need to be in the YIELDLIST as well).
                              // Note that this depends on things like inlining. If you run this with different inlining than
                              // when you use the list, it might not work.
 

@@ -300,7 +300,7 @@ function messageResender() {
 }
 
 var buffer = 0, bufferSize = 0;
-var inWorkerCall = false, workerResponded = false, workerCallbackId = -1;
+var workerResponded = false, workerCallbackId = -1;
 
 onmessage = function onmessage(msg) {
   // if main has not yet been called (mem init file, other async things), buffer messages
@@ -326,7 +326,6 @@ onmessage = function onmessage(msg) {
     HEAPU8.set(data, buffer);
   }
 
-  inWorkerCall = true;
   workerResponded = false;
   workerCallbackId = msg.data['callbackId'];
   if (data) {
@@ -334,7 +333,6 @@ onmessage = function onmessage(msg) {
   } else {
     func(0, 0);
   }
-  inWorkerCall = false;
 }
 
 #endif

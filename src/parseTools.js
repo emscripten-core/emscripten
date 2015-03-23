@@ -57,8 +57,10 @@ function preprocess(text) {
           ret += '\n' + preprocess(included) + '\n'
         }
       } else if (line[2] == 'l') { // else
+        assert(showStack.length > 0);
         showStack.push(!showStack.pop());
       } else if (line[2] == 'n') { // endif
+        assert(showStack.length > 0);
         showStack.pop();
       } else {
         throw "Unclear preprocessor command: " + line;

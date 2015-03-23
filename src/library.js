@@ -3378,7 +3378,6 @@ LibraryManager.library = {
     if ((ret | 0) == 32) ret = ret + (Math_clz32(l) | 0) | 0;
     tempRet0 = 0;
     return ret | 0;
-#endif
   },
 
   llvm_cttz_i32__deps: [function() {

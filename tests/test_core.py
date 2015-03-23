@@ -4794,6 +4794,22 @@ def process(filename):
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
 
+  def test_unistd_symlink_on_nodefs(self):
+    self.clear()
+    if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for inline js')
+    orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
+    for fs in ['NODEFS']:
+      if WINDOWS and fs == 'NODEFS':
+        print >> sys.stderr, 'Skipping NODEFS part of this test for test_unistd_symlink_on_nodefs on Windows, since it would require administrative privileges.'
+        # Also, other detected discrepancies if you do end up running this test on NODEFS:
+        # test expects /, but Windows gives \ as path slashes.
+        # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
+        continue
+      src = open(path_from_root('tests', 'unistd', 'symlink_on_nodefs.c'), 'r').read()
+      expected = open(path_from_root('tests', 'unistd', 'symlink_on_nodefs.out'), 'r').read()
+      Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
+      self.do_run(src, expected, js_engines=[NODE_JS])
+
   def test_unistd_sleep(self):
     src = open(path_from_root('tests', 'unistd', 'sleep.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'sleep.out'), 'r').read()
@@ -5554,10 +5570,18 @@ def process(filename):
 
     Settings.CORRECT_SIGNS = 1
 
+    use_cmake_configure = WINDOWS
+    if use_cmake_configure:
+      make_args = []
+      configure = [PYTHON, path_from_root('emcmake'), 'cmake', '.', '-DBUILD_SHARED_LIBS=OFF']
+    else:
+      make_args = ['libz.a']
+      configure = ['sh', './configure']
+
     self.do_run(open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(),
                  open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
-                 libraries=self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']),
-                 includes=[path_from_root('tests', 'zlib')],
+                 libraries=self.get_library('zlib', os.path.join('libz.a'), make_args=make_args, configure=configure),
+                 includes=[path_from_root('tests', 'zlib'), os.path.join(self.get_dir(), 'building', 'zlib')],
                  force_c=True)
 
   def test_the_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
@@ -7367,15 +7391,16 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
   TT = type(fullname, (T,), dict(run_name = fullname, env = env))
 
   def tearDown(self):
-    super(TT, self).tearDown()
+    try:
+      super(TT, self).tearDown()
+    finally:
+      for k, v in self.env.iteritems():
+        del os.environ[k]
 
-    for k, v in self.env.iteritems():
-      del os.environ[k]
-
-    # clear global changes to Building
-    Building.COMPILER_TEST_OPTS = []
-    Building.COMPILER = CLANG
-    Building.LLVM_OPTS = 0
+      # clear global changes to Building
+      Building.COMPILER_TEST_OPTS = []
+      Building.COMPILER = CLANG
+      Building.LLVM_OPTS = 0
 
   TT.tearDown = tearDown
 

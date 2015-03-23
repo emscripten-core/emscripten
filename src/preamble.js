@@ -1329,9 +1329,49 @@ try {
 
 var TOTAL_STACK = Module['TOTAL_STACK'] || {{{ TOTAL_STACK }}};
 var TOTAL_MEMORY = Module['TOTAL_MEMORY'] || {{{ TOTAL_MEMORY }}};
-var FAST_MEMORY = Module['FAST_MEMORY'] || {{{ FAST_MEMORY }}};
 
-#if ASM_JS
+#if POINTER_MASKING
+
+#if POINTER_MASKING_DYNAMIC
+var POINTER_MASKING_ENABLED = Module['POINTER_MASKING_DEFAULT_ENABLED'] || {{{ POINTER_MASKING_DEFAULT_ENABLED }}};
+var POINTER_MASKING_OVERFLOW = Module['POINTER_MASKING_OVERFLOW'] || {{{ POINTER_MASKING_OVERFLOW }}}
+var MASK0 = -1, MASK1 = -1, MASK2 = -1, MASK3 = -1;
+function initPointerMasking() {
+  var totalMemory = 64*1024;
+  while (totalMemory < TOTAL_MEMORY || totalMemory < 2*TOTAL_STACK) {
+    if (POINTER_MASKING_ENABLED || totalMemory < 16*1024*1024) {
+      totalMemory *= 2;
+    } else {
+      totalMemory += 16*1024*1024
+    }
+  }
+  if (totalMemory !== TOTAL_MEMORY) {
+    Module.printErr('increasing TOTAL_MEMORY to ' + totalMemory + ' to be compliant with the asm.js spec (and given that TOTAL_STACK=' + TOTAL_STACK + ')');
+    TOTAL_MEMORY = totalMemory;
+  }
+  // Silently keep the total length a valid asm.js heap buffer length.
+  if (POINTER_MASKING_OVERFLOW > 0) {
+    if (TOTAL_MEMORY <= 0x01000000) {
+      POINTER_MASKING_OVERFLOW = TOTAL_MEMORY;
+    } else {
+      POINTER_MASKING_OVERFLOW = (POINTER_MASKING_OVERFLOW + 0x00ffffff) & 0xff000000;
+    }
+  }
+  MASK0 = POINTER_MASKING_ENABLED ? TOTAL_MEMORY - 1 : -1;
+  MASK1 = POINTER_MASKING_ENABLED ? (TOTAL_MEMORY - 1) & ~1 : -1;
+  MASK2 = POINTER_MASKING_ENABLED ? (TOTAL_MEMORY - 1) & ~3 : -1;
+  MASK3 = POINTER_MASKING_ENABLED ? (TOTAL_MEMORY - 1) & ~7 : -1;
+}
+initPointerMasking();
+#else // POINTER_MASKING_DYNAMIC
+var totalMemory = 64*1024;
+while (totalMemory < TOTAL_MEMORY || totalMemory < 2*TOTAL_STACK) {
+  totalMemory *= 2;
+}
+#endif // POINTER_MASKING_DYNAMIC
+
+#else // POINTER_MASKING
+
 var totalMemory = 64*1024;
 while (totalMemory < TOTAL_MEMORY || totalMemory < 2*TOTAL_STACK) {
   if (totalMemory < 16*1024*1024) {
@@ -1347,7 +1387,9 @@ if (totalMemory !== TOTAL_MEMORY) {
   Module.printErr('increasing TOTAL_MEMORY to ' + totalMemory + ' to be compliant with the asm.js spec (and given that TOTAL_STACK=' + TOTAL_STACK + ')');
   TOTAL_MEMORY = totalMemory;
 }
-#endif
+
+#endif // POINTER_MASKING
+
 
 // Initialize the runtime's memory
 #if USE_TYPED_ARRAYS
@@ -1362,8 +1404,19 @@ IHEAPU = new Uint32Array(IHEAP.buffer);
 FHEAP = new Float64Array(TOTAL_MEMORY);
 #endif
 #endif
+
 #if USE_TYPED_ARRAYS == 2
+#if POINTER_MASKING
+#if POINTER_MASKING_DYNAMIC
+var buffer = new ArrayBuffer(TOTAL_MEMORY + (POINTER_MASKING_ENABLED ? POINTER_MASKING_OVERFLOW : 0));
+#else
+var buffer = new ArrayBuffer(TOTAL_MEMORY + {{{ POINTER_MASKING_OVERFLOW }}});
+#endif
+#else
 var buffer = new ArrayBuffer(TOTAL_MEMORY);
+#endif // POINTER_MASKING
+#endif // USE_TYPED_ARRAYS == 2
+
 HEAP8 = new Int8Array(buffer);
 HEAP16 = new Int16Array(buffer);
 HEAP32 = new Int32Array(buffer);
@@ -1376,14 +1429,7 @@ HEAPF64 = new Float64Array(buffer);
 // Endianness check (note: assumes compiler arch was little-endian)
 HEAP32[0] = 255;
 assert(HEAPU8[0] === 255 && HEAPU8[3] === 0, 'Typed arrays 2 must be run on a little-endian system');
-#endif
-#else
-// Make sure that our HEAP is implemented as a flat array.
-HEAP = []; // Hinting at the size with |new Array(TOTAL_MEMORY)| should help in theory but makes v8 much slower
-for (var i = 0; i < FAST_MEMORY; i++) {
-  HEAP[i] = 0; // XXX We do *not* use {{| makeSetValue(0, 'i', 0, 'null') |}} here, since this is done just to optimize runtime speed
-}
-#endif
+#endif // USE_TYPED_ARRAYS
 
 Module['HEAP'] = HEAP;
 #if USE_TYPED_ARRAYS == 1

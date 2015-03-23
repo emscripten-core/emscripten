@@ -297,6 +297,13 @@ if EM_POPEN_WORKAROUND and os.name == 'nt':
   logging.debug('Installing Popen workaround handler to avoid bug http://bugs.python.org/issue3905')
   Popen = WindowsPopen
 
+# Verbosity level control for any intermediate subprocess spawns from the compiler. Useful for internal debugging.
+# 0: disabled.
+# 1: Log stderr of subprocess spawns.
+# 2: Log stdout and stderr of subprocess spawns. Print out subprocess commands that were executed.
+# 3: Log stdout and stderr, and pass VERBOSE=1 to CMake configure steps.
+EM_BUILD_VERBOSE_LEVEL = int(os.getenv('EM_BUILD_VERBOSE')) if os.getenv('EM_BUILD_VERBOSE') != None else 0
+
 # Expectations
 
 EXPECTED_LLVM_VERSION = (3, 6)
@@ -1068,6 +1075,17 @@ class Building:
 
     return None
 
+  # Returns a clone of the given environment with all directories that contain sh.exe removed from the PATH.
+  # Used to work around CMake limitation with MinGW Makefiles, where sh.exe is not allowed to be present.
+  @staticmethod
+  def remove_sh_exe_from_path(env):
+    env = env.copy()
+    if not WINDOWS: return env
+    path = env['PATH'].split(';')
+    path = filter(lambda p: not os.path.exists(os.path.join(p, 'sh.exe')), path)
+    env['PATH'] = ';'.join(path)
+    return env
+  
   @staticmethod
   def handle_CMake_toolchain(args, env):
 
@@ -1085,8 +1103,13 @@ class Building:
     # pulling in a native Visual Studio, or Unix Makefiles.
     if WINDOWS and not '-G' in args and Building.which('mingw32-make'):
       args += ['-G', 'MinGW Makefiles']
- 
-    return args
+
+    # CMake has a requirement that it wants sh.exe off PATH if MinGW Makefiles is being used. This happens quite often,
+    # so do this automatically on behalf of the user. See http://www.cmake.org/Wiki/CMake_MinGW_Compiler_Issues
+    if WINDOWS and 'MinGW Makefiles' in args:
+      env = Building.remove_sh_exe_from_path(env)
+
+    return (args, env)
 
   @staticmethod
   def configure(args, stdout=None, stderr=None, env=None):
@@ -1097,13 +1120,14 @@ class Building:
     if 'cmake' in args[0]:
       # Note: EMMAKEN_JUST_CONFIGURE shall not be enabled when configuring with CMake. This is because CMake
       #       does expect to be able to do config-time builds with emcc.
-      args = Building.handle_CMake_toolchain(args, env)
+      args, env = Building.handle_CMake_toolchain(args, env)
     else:
       # When we configure via a ./configure script, don't do config-time compilation with emcc, but instead
       # do builds natively with Clang. This is a heuristic emulation that may or may not work. 
       env['EMMAKEN_JUST_CONFIGURE'] = '1'
     try:
-      process = Popen(args, stdout=stdout, stderr=stderr, env=env)
+      if EM_BUILD_VERBOSE_LEVEL >= 3: print >> sys.stderr, 'configure: ' + str(args)
+      process = Popen(args, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else stdout, stderr=None if EM_BUILD_VERBOSE_LEVEL >= 1 else stderr, env=env)
       process.communicate()
     except Exception, e:
       logging.error('Exception thrown when invoking Popen in configure with args: "%s"!' % ' '.join(args))
@@ -1123,13 +1147,19 @@ class Building:
     #args += ['VERBOSE=1']
 
     # On Windows prefer building with mingw32-make instead of make, if it exists.
-    if WINDOWS and args[0] == 'make':
-      mingw32_make = Building.which('mingw32-make')
-      if mingw32_make:
-        args[0] = mingw32_make
+    if WINDOWS:
+      if args[0] == 'make':
+        mingw32_make = Building.which('mingw32-make')
+        if mingw32_make:
+          args[0] = mingw32_make
+
+      if 'mingw32-make' in args[0]:
+        env = Building.remove_sh_exe_from_path(env)
 
     try:
-      process = Popen(args, stdout=stdout, stderr=stderr, env=env)
+      # On Windows, run the execution through shell to get PATH expansion and executable extension lookup, e.g. 'sdl2-config' will match with 'sdl2-config.bat' in PATH.
+      if EM_BUILD_VERBOSE_LEVEL >= 3: print >> sys.stderr, 'make: ' + str(args)
+      process = Popen(args, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else stdout, stderr=None if EM_BUILD_VERBOSE_LEVEL >= 1 else stderr, env=env, shell=WINDOWS)
       process.communicate()
     except Exception, e:
       logging.error('Exception thrown when invoking Popen in make with args: "%s"!' % ' '.join(args))
@@ -1170,13 +1200,12 @@ class Building:
     #  except:
     #    pass
     env = Building.get_building_env(native)
-    verbose_level = int(os.getenv('EM_BUILD_VERBOSE')) if os.getenv('EM_BUILD_VERBOSE') != None else 0
     for k, v in env_init.iteritems():
       env[k] = v
     if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |link| call)
       try:
-        Building.configure(configure + configure_args, env=env, stdout=open(os.path.join(project_dir, 'configure_'), 'w') if verbose_level < 2 else None,
-                                                                stderr=open(os.path.join(project_dir, 'configure_err'), 'w') if verbose_level < 1 else None)
+        Building.configure(configure + configure_args, env=env, stdout=open(os.path.join(project_dir, 'configure_'), 'w') if EM_BUILD_VERBOSE_LEVEL < 2 else None,
+                                                                stderr=open(os.path.join(project_dir, 'configure_err'), 'w') if EM_BUILD_VERBOSE_LEVEL < 1 else None)
       except subprocess.CalledProcessError, e:
         pass # Ignore exit code != 0
     def open_make_out(i, mode='r'):
@@ -1185,15 +1214,15 @@ class Building:
     def open_make_err(i, mode='r'):
       return open(os.path.join(project_dir, 'make_err' + str(i)), mode)
 
-    if verbose_level >= 3:
+    if EM_BUILD_VERBOSE_LEVEL >= 3:
       make_args += ['VERBOSE=1']
 
     for i in range(2): # FIXME: Sad workaround for some build systems that need to be run twice to succeed (e.g. poppler)
       with open_make_out(i, 'w') as make_out:
         with open_make_err(i, 'w') as make_err:
           try:
-            Building.make(make + make_args, stdout=make_out if verbose_level < 2 else None,
-                                            stderr=make_err if verbose_level < 1 else None, env=env)
+            Building.make(make + make_args, stdout=make_out if EM_BUILD_VERBOSE_LEVEL < 2 else None,
+                                            stderr=make_err if EM_BUILD_VERBOSE_LEVEL < 1 else None, env=env)
           except subprocess.CalledProcessError, e:
             pass # Ignore exit code != 0
       try:
@@ -1205,7 +1234,7 @@ class Building:
         break
       except Exception, e:
         if i > 0:
-          if verbose_level == 0:
+          if EM_BUILD_VERBOSE_LEVEL == 0:
             # Due to the ugly hack above our best guess is to output the first run
             with open_make_err(0) as ferr:
               for line in ferr:
