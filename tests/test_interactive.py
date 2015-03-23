@@ -9,6 +9,8 @@ if emscripten_browser:
   cmd = shlex.split(emscripten_browser)
   def run_in_other_browser(url):
     Popen(cmd + [url])
+  if EM_BUILD_VERBOSE_LEVEL >= 3:
+    print >> sys.stderr, "using Emscripten browser: " + str(cmd)
   webbrowser.open_new = run_in_other_browser
 
 class interactive(BrowserCore):
