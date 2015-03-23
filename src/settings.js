@@ -58,8 +58,6 @@ var TOTAL_STACK = 5*1024*1024; // The total stack size. There is no way to enlar
 var TOTAL_MEMORY = 16777216;     // The total amount of memory to use. Using more memory than this will
                                  // cause us to expand the heap, which can be costly with typed arrays:
                                  // we need to copy the old heap into a new one in that case.
-var FAST_MEMORY = 2*1024*1024; // The amount of memory to initialize to 0. This ensures it will be
-                               // in a flat array. This only matters in non-typed array builds.
 var ALLOW_MEMORY_GROWTH = 0; // If false, we abort with an error if we try to allocate more memory than
                              // we can (TOTAL_MEMORY). If true, we will grow the memory arrays at
                              // runtime, seamlessly and dynamically. This has a performance cost though,

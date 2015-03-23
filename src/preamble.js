@@ -1329,7 +1329,6 @@ try {
 
 var TOTAL_STACK = Module['TOTAL_STACK'] || {{{ TOTAL_STACK }}};
 var TOTAL_MEMORY = Module['TOTAL_MEMORY'] || {{{ TOTAL_MEMORY }}};
-var FAST_MEMORY = Module['FAST_MEMORY'] || {{{ FAST_MEMORY }}};
 
 #if POINTER_MASKING
 
@@ -1430,14 +1429,7 @@ HEAPF64 = new Float64Array(buffer);
 // Endianness check (note: assumes compiler arch was little-endian)
 HEAP32[0] = 255;
 assert(HEAPU8[0] === 255 && HEAPU8[3] === 0, 'Typed arrays 2 must be run on a little-endian system');
-#endif
-#else
-// Make sure that our HEAP is implemented as a flat array.
-HEAP = []; // Hinting at the size with |new Array(TOTAL_MEMORY)| should help in theory but makes v8 much slower
-for (var i = 0; i < FAST_MEMORY; i++) {
-  HEAP[i] = 0; // XXX We do *not* use {{| makeSetValue(0, 'i', 0, 'null') |}} here, since this is done just to optimize runtime speed
-}
-#endif
+#endif // USE_TYPED_ARRAYS
 
 Module['HEAP'] = HEAP;
 #if USE_TYPED_ARRAYS == 1
