@@ -5505,7 +5505,7 @@ LibraryManager.library = {
   clock_getcpuclockid__deps: ['$PROCINFO'],
   clock_getcpuclockid: function(pid, clk_id) {
     if (pid < 0) return ERRNO_CODES.ESRCH;
-    if (pid != 0 && pid != PROCINFO.pid) return ERRNO_CODES.ENOSYS;
+    if (pid !== 0 && pid !== PROCINFO.pid) return ERRNO_CODES.ENOSYS;
     if (clk_id) {{{ makeSetValue('clk_id', 0, 2/*CLOCK_PROCESS_CPUTIME_ID*/, 'i32') }}};
     return 0;
   },
