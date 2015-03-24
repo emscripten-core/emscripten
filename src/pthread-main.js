@@ -68,10 +68,11 @@ this.onmessage = function(e) {
     try {
       // HACK: Some code in the wild has instead signatures of form 'void *ThreadMain()', which seems to be ok in native code.
       // To emulate supporting both in test suites, use the following form. This is brittle!
-      if (typeof asm['dynCall_ii'] !== 'undefined')
+      if (typeof asm['dynCall_ii'] !== 'undefined') {
         result = asm.dynCall_ii(e.data.start_routine, e.data.arg); // pthread entry points are always of signature 'void *ThreadMain(void *arg)'
-      else
+      } else {
         result = asm.dynCall_i(e.data.start_routine); // as a hack, try signature 'i' as fallback.
+      }
     } catch(e) {
       if (e === 'Canceled!') {
         PThread.threadCancel();

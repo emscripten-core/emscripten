@@ -47,19 +47,20 @@ int emscripten_futex_wake_or_requeue(void/*uint32_t*/ *addr, int count, int cmpV
 
 typedef union em_variant_val
 {
-	int i;
-	float f;
-	double d;
-	void *vp;
-	char *cp;
+  int i;
+  float f;
+  double d;
+  void *vp;
+  char *cp;
 } em_variant_val;
 
+#define EM_QUEUED_CALL_MAX_ARGS 8
 typedef struct em_queued_call
 {
-	int function;
-	int operationDone;
-	em_variant_val args[8];
-	em_variant_val returnValue;
+  int function;
+  int operationDone;
+  em_variant_val args[EM_QUEUED_CALL_MAX_ARGS];
+  em_variant_val returnValue;
 } em_queued_call;
 
 void emscripten_sync_run_in_main_thread(em_queued_call *call);
