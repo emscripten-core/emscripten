@@ -19,11 +19,20 @@
 
 LibraryManager.library = {
   // keep this low in memory, because we flatten arrays with them in them
+#if USE_PTHREADS
   stdin: 'ENVIRONMENT_IS_PTHREAD?-1:allocate(1, "i32*", ALLOC_STATIC)',
   stdout: 'ENVIRONMENT_IS_PTHREAD?-1:allocate(1, "i32*", ALLOC_STATIC)',
   stderr: 'ENVIRONMENT_IS_PTHREAD?-1:allocate(1, "i32*", ALLOC_STATIC)',
   _impure_ptr: 'ENVIRONMENT_IS_PTHREAD?-1:allocate(1, "i32*", ALLOC_STATIC)',
   __dso_handle: 'ENVIRONMENT_IS_PTHREAD?-1:allocate(1, "i32*", ALLOC_STATIC)',
+#else
+  stdin: 'allocate(1, "i32*", ALLOC_STATIC)',
+  stdout: 'allocate(1, "i32*", ALLOC_STATIC)',
+  stderr: 'allocate(1, "i32*", ALLOC_STATIC)',
+  _impure_ptr: 'allocate(1, "i32*", ALLOC_STATIC)',
+  __dso_handle: 'allocate(1, "i32*", ALLOC_STATIC)',
+#endif
+
   $PROCINFO: {
     // permissions
     /*
@@ -2230,7 +2239,11 @@ LibraryManager.library = {
     */
   },
   fgetc__deps: ['$FS', 'fread'],
+#if USE_PTHREADS
   fgetc__postset: '_fgetc.ret = ENVIRONMENT_IS_PTHREAD?0:allocate([0], "i8", ALLOC_STATIC);',
+#else
+  fgetc__postset: '_fgetc.ret = allocate([0], "i8", ALLOC_STATIC);',
+#endif
   fgetc: function(stream) {
 #if USE_PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_FGETC') }}}, stream);
@@ -2370,7 +2383,11 @@ LibraryManager.library = {
     return fd === -1 ? 0 : FS.getPtrForStream(FS.getStream(fd));
   },
   fputc__deps: ['$FS', 'write', 'fileno'],
+#if USE_PTHREADS
   fputc__postset: '_fputc.ret = ENVIRONMENT_IS_PTHREAD?0:allocate([0], "i8", ALLOC_STATIC);',
+#else
+  fputc__postset: '_fputc.ret = allocate([0], "i8", ALLOC_STATIC);',
+#endif
   fputc: function(c, stream) {
 #if USE_PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_FPUTC') }}}, c, stream);
@@ -3147,7 +3164,11 @@ LibraryManager.library = {
     {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32')]) }}};
   },
   environ__deps: ['$ENV'],
+#if USE_PTHREADS
   environ: 'ENVIRONMENT_IS_PTHREAD?0:allocate(1, "i32*", ALLOC_STATIC)', // TODO: Pass access to 'environ' for pthreads.
+#else
+  environ: 'allocate(1, "i32*", ALLOC_STATIC)',
+#endif
   __environ__deps: ['environ'],
   __environ: 'environ',
   __buildEnvironment__deps: ['__environ'],
