@@ -1133,10 +1133,11 @@ assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' 
 
 #endif // POINTER_MASKING
 
+var buffer;
 #if USE_PTHREADS
-var buffer = new SharedArrayBuffer(TOTAL_MEMORY);
+if (!ENVIRONMENT_IS_PTHREAD) buffer = new SharedArrayBuffer(TOTAL_MEMORY);
 #else
-var buffer = new ArrayBuffer(TOTAL_MEMORY);
+buffer = new ArrayBuffer(TOTAL_MEMORY);
 #endif
 
 if (typeof SharedArrayBuffer != 'undefined') {
@@ -1200,11 +1201,17 @@ var __ATMAIN__    = []; // functions called when main() is to be run
 var __ATEXIT__    = []; // functions called during shutdown
 var __ATPOSTRUN__ = []; // functions called after the runtime has exited
 
-var runtimeInitialized = ENVIRONMENT_IS_PTHREAD; // The runtime is hosted in the main thread, and bits shared to pthreads via SharedArrayBuffer. No need to init again in pthread.
+var runtimeInitialized = false;
 var runtimeExited = false;
 
+#if USE_PTHREADS
+if (ENVIRONMENT_IS_PTHREAD) runtimeInitialized = true; // The runtime is hosted in the main thread, and bits shared to pthreads via SharedArrayBuffer. No need to init again in pthread.
+#endif
+
 function preRun() {
+#if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
+#endif
   // compatibility - merge in anything from Module['preRun'] at this time
   if (Module['preRun']) {
     if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
@@ -1222,18 +1229,24 @@ function ensureInitRuntime() {
 }
 
 function preMain() {
+#if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
+#endif
   callRuntimeCallbacks(__ATMAIN__);
 }
 
 function exitRuntime() {
+#if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
+#endif
   callRuntimeCallbacks(__ATEXIT__);
   runtimeExited = true;
 }
 
 function postRun() {
+#if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
+#endif
   // compatibility - merge in anything from Module['postRun'] at this time
   if (Module['postRun']) {
     if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
