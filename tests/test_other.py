@@ -2540,7 +2540,7 @@ int main()
       self.assertContained('File size: 724', out)
 
   def test_simd(self):
-    assert get_clang_version() == '3.5'
+    assert get_clang_version() == '3.6'
     Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-s', 'SIMD=1', '-DSP', '-s', 'PRECISE_F32=1']).communicate()
     self.assertContained('Unrolled Single  Precision', run_js('a.out.js'))
 
@@ -3024,7 +3024,7 @@ int main()
         }
         return 0;
       }
-    ''', [8, 5, 5])
+    ''', [8, [5,7], [5,7]])
 
     test(r'''
       #include <stdio.h>
@@ -4428,9 +4428,10 @@ pass: error == ENOTDIR
 
     do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-g2'])
     normal = open('a.out.js').read()
+    shutil.copyfile('a.out.js', 'last.js')
     do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-g2', '--profiling'])
     profiling = open('a.out.js').read()
-    assert len(profiling) > len(normal) + 500, [len(profiling), len(normal)] # should be much larger
+    assert len(profiling) > len(normal) + 300, [len(profiling), len(normal)] # should be much larger
 
     print 'blacklisting'
 
@@ -4588,16 +4589,16 @@ function _main() {
       post = post.split('\n')[0]
       seen = int(post)
       print '  seen', seen, ', expected ', expected, type(seen), type(expected)
-      assert expected == seen or seen in expected, ['expect', expected, 'but see', seen]
+      assert expected == seen or (seen in expected if type(expected) in [list, tuple] else False), ['expect', expected, 'but see', seen]
 
-    do_log_test(path_from_root('tests', 'primes.cpp'), 87, 'main')
-    do_log_test(path_from_root('tests', 'fannkuch.cpp'), 230, 'fannkuch_worker')
+    do_log_test(path_from_root('tests', 'primes.cpp'), 88, 'main')
+    do_log_test(path_from_root('tests', 'fannkuch.cpp'), 237, 'fannkuch_worker')
 
     # test non-native as well, registerizeHarder can be a little more efficient here
     old_native = os.environ.get('EMCC_NATIVE_OPTIMIZER')
     try:
       os.environ['EMCC_NATIVE_OPTIMIZER'] = '0'
-      do_log_test(path_from_root('tests', 'fannkuch.cpp'), 230, 'fannkuch_worker')
+      do_log_test(path_from_root('tests', 'fannkuch.cpp'), 237, 'fannkuch_worker')
     finally:
       if old_native: os.environ['EMCC_NATIVE_OPTIMIZER'] = old_native
       else: del os.environ['EMCC_NATIVE_OPTIMIZER']
@@ -4729,12 +4730,14 @@ int main(void) {
       finally:
         del os.environ['EMCC_DEBUG']
 
-      if args:
-        assert err.count('-disable-vectorize') == 2, err # specified twice, once per file
+      VECTORIZE = '-disable-loop-vectorization'
 
-        assert err.count('emcc: LLVM opts: ' + llvm_opts + ' -disable-vectorize') == 2, err # exactly once per invocation of optimizer
+      if args:
+        assert err.count(VECTORIZE) == 2, err # specified twice, once per file
+
+        assert err.count('emcc: LLVM opts: ' + llvm_opts + ' ' + VECTORIZE) == 2, err # exactly once per invocation of optimizer
       else:
-        assert err.count('-disable-vectorize') == 0, err # no optimizations
+        assert err.count(VECTORIZE) == 0, err # no optimizations
 
       Popen([PYTHON, EMCC, main_name.replace('.c', '.o'), lib_name.replace('.c', '.o')]).communicate()
 

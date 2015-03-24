@@ -6,8 +6,8 @@ target triple = "asmjs-unknown-emscripten"
 %"class.test::Processor" = type { i32, %"class.test::StateMachine" }
 %"class.test::StateMachine" = type { { i32, i32 } }
 
-@_ZN4test9ProcessorC1Ev = alias internal void (%"class.test::Processor"*)* @_ZN4test9ProcessorC2Ev
-@_ZN4test9ProcessorD1Ev = alias internal void (%"class.test::Processor"*)* @_ZN4test9ProcessorD2Ev
+@_ZN4test9ProcessorC1Ev = internal alias void (%"class.test::Processor"*)* @_ZN4test9ProcessorC2Ev
+@_ZN4test9ProcessorD1Ev = internal alias void (%"class.test::Processor"*)* @_ZN4test9ProcessorD2Ev
 
 define internal void @_ZN4test9ProcessorC2Ev(%"class.test::Processor"* nocapture %this) unnamed_addr nounwind align 2 {
   %1 = getelementptr inbounds %"class.test::Processor"* %this, i32 0, i32 0

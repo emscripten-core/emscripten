@@ -199,9 +199,9 @@ target triple = "asmjs-unknown-emscripten"
 @_ZNSt16bad_array_lengthC1Ev = alias void (%"class.std::bad_array_length"*)* @_ZNSt16bad_array_lengthC2Ev
 @_ZNSt16bad_array_lengthD1Ev = alias bitcast (void (%"class.std::bad_alloc"*)* @_ZNSt9bad_allocD2Ev to void (%"class.std::bad_array_length"*)*)
 @_ZNSt16bad_array_lengthD2Ev = alias bitcast (void (%"class.std::bad_alloc"*)* @_ZNSt9bad_allocD2Ev to void (%"class.std::bad_array_length"*)*)
-@__strtof_l = alias weak float (i8*, i8**, %struct.__locale_struct*)* @strtof_l
-@__strtod_l = alias weak double (i8*, i8**, %struct.__locale_struct.0*)* @strtod_l
-@__strtold_l = alias weak double (i8*, i8**, %struct.__locale_struct.1*)* @strtold_l
+@__strtof_l = weak alias float (i8*, i8**, %struct.__locale_struct*)* @strtof_l
+@__strtod_l = weak alias double (i8*, i8**, %struct.__locale_struct.0*)* @strtod_l
+@__strtold_l = weak alias double (i8*, i8**, %struct.__locale_struct.1*)* @strtold_l
 
 ; Function Attrs: nounwind
 define i32 @main(i32 %argc, i8** nocapture %argv) #0 {
