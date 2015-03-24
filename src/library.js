@@ -5502,7 +5502,7 @@ LibraryManager.library = {
     {{{ makeSetValue('res', C_STRUCTS.timespec.tv_nsec, 'nsec', 'i32') }}} // resolution is nanoseconds
     return 0;
   },
-  clock_getcpuclockid__deps: ['emscripten_get_now_is_monotonic', '$PROCINFO'],
+  clock_getcpuclockid__deps: ['$PROCINFO'],
   clock_getcpuclockid: function(pid, clk_id) {
     if (pid < 0) return ERRNO_CODES.ESRCH;
     if (pid != 0 && pid != PROCINFO.pid) return ERRNO_CODES.ENOSYS;
