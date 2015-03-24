@@ -188,8 +188,9 @@ var LibraryPThread = {
 
     busySpinWait: function(msecs) {
       var t = performance.now() + msecs;
-      while(performance.now() < t)
+      while(performance.now() < t) {
         ;
+      }
     }
   },
 
@@ -407,7 +408,8 @@ var LibraryPThread = {
       // TODO HACK! Replace the _js variant with just _pthread_testcancel:
       //_pthread_testcancel();
       __pthread_testcancel_js();
-      // In Main runtime thread, assist pthreads in performing operations that they need to access the Emscripten main runtime for.
+      // In main runtime thread (the thread that initialized the Emscripten C runtime and launched main()), assist pthreads in performing operations
+      // that they need to access the Emscripten main runtime for.
       if (!ENVIRONMENT_IS_PTHREAD) _emscripten_main_thread_process_queued_calls();
       _emscripten_futex_wait(thread + {{{ C_STRUCTS.pthread.threadStatus }}}, threadStatus, 100 * 1000 * 1000);
     }
