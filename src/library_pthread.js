@@ -137,29 +137,29 @@ var LibraryPThread = {
         var worker = new Worker('pthread-main.js');
 
         worker.onmessage = function(e) {
-          if (e.data.cmd == 'processQueuedMainThreadWork') {
+          if (e.data.cmd === 'processQueuedMainThreadWork') {
             // TODO: Must post message to main Emscripten thread in PROXY_TO_WORKER mode.
             _emscripten_main_thread_process_queued_calls();
-          } if (e.data.cmd == 'spawnThread') {
+          } if (e.data.cmd === 'spawnThread') {
             __spawn_thread(e.data);
-          } else if (e.data.cmd == 'cleanupThread') {
+          } else if (e.data.cmd === 'cleanupThread') {
             __cleanup_thread(e.data.thread);
-          } else if (e.data.cmd == 'killThread') {
+          } else if (e.data.cmd === 'killThread') {
             __kill_thread(e.data.thread);
-          } else if (e.data.cmd == 'cancelThread') {
+          } else if (e.data.cmd === 'cancelThread') {
             __cancel_thread(e.data.thread);
-          } else if (e.data.cmd == 'loaded') {
+          } else if (e.data.cmd === 'loaded') {
             ++numWorkersLoaded;
-            if (numWorkersLoaded == numWorkers && onFinishedLoading) {
+            if (numWorkersLoaded === numWorkers && onFinishedLoading) {
               onFinishedLoading();
             }
-          } else if (e.data.cmd == 'print') {
+          } else if (e.data.cmd === 'print') {
             Module['print']('Thread ' + e.data.threadId + ': ' + e.data.text);
-          } else if (e.data.cmd == 'printErr') {
+          } else if (e.data.cmd === 'printErr') {
             Module['printErr']('Thread ' + e.data.threadId + ': ' + e.data.text);
-          } else if (e.data.cmd == 'exit') {
+          } else if (e.data.cmd === 'exit') {
             // todo 
-          } else if (e.data.cmd == 'cancelDone') {
+          } else if (e.data.cmd === 'cancelDone') {
               PThread.freeThreadData(worker.pthread);
               worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
               PThread.unusedWorkerPool.push(worker);

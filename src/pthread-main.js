@@ -40,12 +40,12 @@ console = {
 };
 
 this.onmessage = function(e) {
-  if (e.data.cmd == 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
+  if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
     buffer = e.data.buffer;
     importScripts(e.data.url);
     _stdin = _stdout = _stderr = -1;
     postMessage({ cmd: 'loaded' });
-  } else if (e.data.cmd == 'run') { // This worker was idle, and now should start executing its pthread entry point.
+  } else if (e.data.cmd === 'run') { // This worker was idle, and now should start executing its pthread entry point.
     if (_stdin == -1) { // On first thread run, initialize TTYs for standard streams.
       _stdin = e.data.stdin;
       _stdout = e.data.stdout;
@@ -86,7 +86,7 @@ this.onmessage = function(e) {
     // The thread might have finished without calling pthread_exit(). If so, then perform the exit operation ourselves.
     // (This is a no-op if explicit pthread_exit() had been called prior.)
     PThread.threadExit(result);
-  } else if (e.data.cmd == 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
+  } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
     if (threadBlock && PThread.thisThreadCancelState == 0/*PTHREAD_CANCEL_ENABLE*/) {
       PThread.threadCancel();
     }
