@@ -16,7 +16,7 @@ The backend can improve start up time as the whole file system does not need to 
 Test code
 =========
 
-An example of how to implement a synchronous virtual XHR backed file system is provided in the test code at `tests/test_browser.py <https://github.com/kripken/emscripten/blob/master/tests/test_browser.py#L1266>`_ (see ``test_chunked_synchronous_xhr``). The test case also contains an HTTP server (see `test_chunked_synchronous_xhr_server <https://github.com/kripken/emscripten/blob/master/tests/test_browser.py#L14>`_) showing CORS headers that might need to be set (if the resources are hosted from the same domain Emscripten runs from, there is no issue).
+An example of how to implement a synchronous virtual XHR backed file system is provided in the test code at `tests/test_browser.py <https://github.com/kripken/emscripten/blob/1.29.12/tests/test_browser.py#L1313>`_ (see ``test_chunked_synchronous_xhr``). The test case also contains an HTTP server (see `test_chunked_synchronous_xhr_server <https://github.com/kripken/emscripten/blob/1.29.12/tests/test_browser.py#L14>`_) showing CORS headers that might need to be set (if the resources are hosted from the same domain Emscripten runs from, there is no issue).
 
 The tests use `checksummer.c <https://github.com/kripken/emscripten/blob/master/tests/checksummer.c>`_ as the Emscripten-compiled program. This is simply a vanilla C program using synchronous *libc* file system calls like ``fopen()``, ``fread()``, ``fclose()`` etc.
 
@@ -59,7 +59,7 @@ Instructions
 #. 
 	You will need a page that spawns the web worker. 
 	
-	The `test code <https://github.com/kripken/emscripten/blob/master/tests/test_browser.py#L1266>`_ that does this is shown below:
+	The `test code <https://github.com/kripken/emscripten/blob/1.29.12/tests/test_browser.py#L1286>`_ that does this is shown below:
 
 	.. include:: ../../../../../tests/test_browser.py
 		:literal:

@@ -14,7 +14,7 @@ Emscripten predominantly compiles code that uses synchronous file I/O, so the ma
 
 File data in Emscripten is partitioned by mounted file systems. Several file systems are provided. An instance of :ref:`MEMFS <filesystem-api-memfs>` is mounted to ``/`` by default. Instances of :ref:`NODEFS <filesystem-api-nodefs>` and :ref:`IDBFS <filesystem-api-idbfs>` can be mounted to other directories if your application needs to :ref:`persist data <filesystem-api-persist-data>`.
 
-The automatic tests in `tests/test_core.py <https://github.com/kripken/emscripten/blob/master/tests/test_core.py#L4110>`_ (search for ``test_files``) contain many examples of how to use this API. The :ref:`tutorial <tutorial-files>` also shows how to pre-load a file so that it can be read from compiled C/C++.
+The automatic tests in `tests/test_core.py <https://github.com/kripken/emscripten/blob/1.29.12/tests/test_core.py#L4285>`_ (search for ``test_files``) contain many examples of how to use this API. The :ref:`tutorial <tutorial-files>` also shows how to pre-load a file so that it can be read from compiled C/C++.
 
 A high level overview of the way File Systems work in Emscripten-ported code is provided in the :ref:`file-system-overview`. 
 
@@ -87,7 +87,7 @@ The device node acts as an interface between the device and the file system. Any
 	Registers the specified device driver with a set of callbacks.
 	
 	:param dev: The specific device driver id, created using :js:func:`makedev`.
-	:param object ops: The set of callbacks required by the device. For an example, see the `NODEFS default callbacks <https://github.com/kripken/emscripten/blob/master/src/library_nodefs.js#L213)>`_.
+	:param object ops: The set of callbacks required by the device. For an example, see the `NODEFS default callbacks <https://github.com/kripken/emscripten/blob/1.29.12/src/library_nodefs.js#L213>`_.
 
 
 

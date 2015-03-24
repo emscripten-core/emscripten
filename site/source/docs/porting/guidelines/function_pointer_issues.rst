@@ -25,7 +25,7 @@ There are three general issues with function pointers:
 
 #. 
 
-  When using optimisation :ref:`-O2 <emcc-O2>` and above, comparing function pointers of different types can give false positives, and bugs with incorrect function pointers are potentially more misleading. To check if this is the cause of problems with your code, you can compile with `ALIASING_FUNCTION_POINTERS <https://github.com/kripken/emscripten/blob/master/src/settings.js#L209>`_ unset (``-s ALIASING_FUNCTION_POINTERS=0``).
+  When using optimisation :ref:`-O2 <emcc-O2>` and above, comparing function pointers of different types can give false positives, and bugs with incorrect function pointers are potentially more misleading. To check if this is the cause of problems with your code, you can compile with `ALIASING_FUNCTION_POINTERS <https://github.com/kripken/emscripten/blob/1.29.12/src/settings.js#L213>`_ unset (``-s ALIASING_FUNCTION_POINTERS=0``).
 
   .. note:: In **asm.js**, function pointers are stored within a function-type specific table (as in the ``FUNCTION_TABLE_ii`` example from before).
   

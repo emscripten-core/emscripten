@@ -5539,7 +5539,6 @@ def process(filename):
     Settings.CORRECT_ROUNDINGS = 0
     if self.emcc_args is None: Settings.SAFE_HEAP = 0 # uses time.h to set random bytes, other stuff
     Settings.DISABLE_EXCEPTION_CATCHING = 1
-    Settings.FAST_MEMORY = 4*1024*1024
     Settings.EXPORTED_FUNCTIONS += ['_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free', '_callback'];
     if Settings.ASM_JS == 1 and '-g' in self.emcc_args:
       print "disabling inlining" # without registerize (which -g disables), we generate huge amounts of code
