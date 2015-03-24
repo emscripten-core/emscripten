@@ -111,7 +111,7 @@ process(sys.argv[1])
                     '-O3', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
                     '--memory-init-file', '0', '--js-transform', 'python hardcode.py',
                     '-s', 'TOTAL_MEMORY=128*1024*1024',
-                    '--profiling',
+                    #'--profiling',
                     #'--closure', '1',
                     '-o', final] + shared_args + emcc_args + self.extra_args, stdout=PIPE, stderr=PIPE, env=self.env).communicate()
     assert os.path.exists(final), 'Failed to compile file: ' + output[0]
