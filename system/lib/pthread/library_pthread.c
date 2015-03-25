@@ -327,7 +327,7 @@ static void _do_call(em_queued_call *q)
 		case EM_PROXIED_FILENO: q->returnValue.i = fileno(q->args[0].vp); break;
 		case EM_PROXIED_FPUTC: q->returnValue.i = fputc(q->args[0].i, q->args[1].vp); break;
 		case EM_PROXIED_PUTCHAR: q->returnValue.i = putchar(q->args[0].i); break;
-		case EM_PROXIED_PUTS: q->returnValue.i = putc(q->args[0].i, q->args[1].vp); break;
+		case EM_PROXIED_PUTS: q->returnValue.i = puts(q->args[0].cp); break;
 		case EM_PROXIED_FREAD: q->returnValue.i = fread(q->args[0].vp, q->args[1].i, q->args[2].i, q->args[3].vp); break;
 		case EM_PROXIED_FREOPEN: q->returnValue.vp = freopen(q->args[0].cp, q->args[1].cp, q->args[2].vp); break;
 		case EM_PROXIED_FSEEK: q->returnValue.i = fseek(q->args[0].vp, q->args[1].i, q->args[2].i); break;
