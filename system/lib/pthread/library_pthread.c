@@ -20,6 +20,13 @@
 #include "../internal/pthread_impl.h"
 #include <assert.h>
 
+// With LLVM 3.6, C11 is the default compilation mode.
+// gets() is deprecated under that standard, but emcc
+// still provides it, so always include it in the build.
+#if __STDC_VERSION__ >= 201112L
+char *gets(char *);
+#endif
+
 int _pthread_getcanceltype()
 {
 	return pthread_self()->cancelasync;
