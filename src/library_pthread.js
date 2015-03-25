@@ -140,7 +140,7 @@ var LibraryPThread = {
           if (e.data.cmd === 'processQueuedMainThreadWork') {
             // TODO: Must post message to main Emscripten thread in PROXY_TO_WORKER mode.
             _emscripten_main_thread_process_queued_calls();
-          } if (e.data.cmd === 'spawnThread') {
+          } else if (e.data.cmd === 'spawnThread') {
             __spawn_thread(e.data);
           } else if (e.data.cmd === 'cleanupThread') {
             __cleanup_thread(e.data.thread);
