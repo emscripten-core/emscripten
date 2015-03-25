@@ -25,7 +25,7 @@ void __wait(volatile int *addr, volatile int *waiters, int val, int priv)
 					if (waiters) a_dec(waiters);
 					return;
 				}
-				e = emscripten_futex_wait((void*)addr, val, 100*1000*1000);
+				e = emscripten_futex_wait((void*)addr, val, 100);
 			} while(e == -ETIMEDOUT);
 		} else {
 			// Can wait in one go.

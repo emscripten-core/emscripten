@@ -41,7 +41,7 @@ uint8_t emscripten_atomic_xor_u8(void/*uint8_t*/ *addr, uint8_t val);
 uint16_t emscripten_atomic_xor_u16(void/*uint16_t*/ *addr, uint16_t val);
 uint32_t emscripten_atomic_xor_u32(void/*uint32_t*/ *addr, uint32_t val);
 
-int emscripten_futex_wait(void/*uint32_t*/ *addr, uint32_t val, double maxWaitNanoseconds);
+int emscripten_futex_wait(void/*uint32_t*/ *addr, uint32_t val, double maxWaitMilliseconds);
 int emscripten_futex_wake(void/*uint32_t*/ *addr, int count);
 int emscripten_futex_wake_or_requeue(void/*uint32_t*/ *addr, int count, int cmpValue, void/*uint32_t*/ *addr2);
 

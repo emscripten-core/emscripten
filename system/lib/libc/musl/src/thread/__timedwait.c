@@ -12,7 +12,7 @@
 #include "syscall.h"
 
 #ifdef __EMSCRIPTEN__
-double _pthread_nsecs_until(const struct timespec *restrict at);
+double _pthread_msecs_until(const struct timespec *restrict at);
 int _pthread_isduecanceled(struct pthread *pthread_ptr);
 #endif
 
@@ -44,18 +44,18 @@ static int do_wait(volatile int *addr, int val,
 				return ECANCELED;
 			}
 			// Must wait in slices in case this thread is cancelled in between.
-			double waitNsecs = at ? _pthread_nsecs_until(at) : INFINITY;
-			if (waitNsecs <= 0) {
+			double waitMsecs = at ? _pthread_msecs_until(at) : INFINITY;
+			if (waitMsecs <= 0) {
 				r = ETIMEDOUT;
 				break;
 			}
-			if (waitNsecs > 100 * 1000 * 1000) waitNsecs = 100 * 1000 * 1000;
-			r = -emscripten_futex_wait((void*)addr, val, waitNsecs);
+			if (waitMsecs > 100) waitMsecs = 100;
+			r = -emscripten_futex_wait((void*)addr, val, waitMsecs);
 		} while(r == ETIMEDOUT);
 	} else {
 		// Can wait in one go.
-		double waitNsecs = at ? _pthread_nsecs_until(at) : INFINITY;
-		r = -emscripten_futex_wait((void*)addr, val, waitNsecs);
+		double waitMsecs = at ? _pthread_msecs_until(at) : INFINITY;
+		r = -emscripten_futex_wait((void*)addr, val, waitMsecs);
 	}
 #else
 	r = -__syscall_cp(SYS_futex, addr, FUTEX_WAIT, val, top);

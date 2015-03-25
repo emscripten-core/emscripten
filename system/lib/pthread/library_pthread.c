@@ -41,14 +41,14 @@ static void inline __pthread_mutex_locked(pthread_mutex_t *mutex)
 	if (_pthread_getcanceltype() == PTHREAD_CANCEL_ASYNCHRONOUS) pthread_testcancel();
 }
 
-double _pthread_nsecs_until(const struct timespec *restrict at)
+double _pthread_msecs_until(const struct timespec *restrict at)
 {
 	struct timeval t;
 	gettimeofday(&t, NULL);
-	double cur_t = t.tv_sec * 1e9 + t.tv_usec * 1e3;
-	double at_t = at->tv_sec * 1e9 + at->tv_nsec;
-	double nsecs = at_t - cur_t;
-	return nsecs;
+	double cur_t = t.tv_sec * 1e3 + t.tv_usec * 1e-3;
+	double at_t = at->tv_sec * 1e3 + at->tv_nsec * 1e-6;
+	double msecs = at_t - cur_t;
+	return msecs;
 }
 
 #if 0
@@ -74,13 +74,13 @@ int pthread_mutex_lock(pthread_mutex_t *mutex)
 	if (c != 0) {
 		do {
 			if (c == 2 || emscripten_atomic_cas_u32(&mutex->_m_addr, 1, 2) != 0) {
-				double nsecs = INFINITY;
+				double msecs = INFINITY;
 				if (threadCancelType == PTHREAD_CANCEL_ASYNCHRONOUS) {
 					// Sleep in small slices so that we can test cancellation to honor PTHREAD_CANCEL_ASYNCHRONOUS.
 					pthread_testcancel();
-					nsecs = 100 * 1000 * 1000;
+					msecs = 100;
 				}
-				emscripten_futex_wait(&mutex->_m_addr, 2, nsecs);
+				emscripten_futex_wait(&mutex->_m_addr, 2, msecs);
 			}
 		} while((c = emscripten_atomic_cas_u32(&mutex->_m_addr, 0, 2)));
 	}
@@ -152,18 +152,18 @@ int pthread_mutex_timedlock(pthread_mutex_t *restrict mutex, const struct timesp
 			if (c == 2 || emscripten_atomic_cas_u32(&mutex->_m_addr, 1, 2) != 0)
 			{
 				if (at->tv_nsec < 0 || at->tv_nsec >= 1000000000) return EINVAL;
-				double nsecs = _pthread_nsecs_until(at);
-				if (nsecs <= 0) return ETIMEDOUT;
+				double msecs = _pthread_msecs_until(at);
+				if (msecs <= 0) return ETIMEDOUT;
 
 				// Sleep in small slices if thread type is PTHREAD_CANCEL_ASYNCHRONOUS
 				// so that we can honor PTHREAD_CANCEL_ASYNCHRONOUS requests.
 				if (threadCancelType == PTHREAD_CANCEL_ASYNCHRONOUS) {
 					pthread_testcancel();
-					if (nsecs > 100 * 1000 * 1000) nsecs = 100 * 1000 * 1000;
+					if (msecs > 100) msecs = 100;
 				}
-				int ret = emscripten_futex_wait(&mutex->_m_addr, 2, nsecs);
+				int ret = emscripten_futex_wait(&mutex->_m_addr, 2, msecs);
 				if (ret == 0) break;
-				else if (threadCancelType != PTHREAD_CANCEL_ASYNCHRONOUS || _pthread_nsecs_until(at) <= 0) {
+				else if (threadCancelType != PTHREAD_CANCEL_ASYNCHRONOUS || _pthread_msecs_until(at) <= 0) {
 					return ETIMEDOUT;
 				}
 			}
@@ -225,13 +225,13 @@ static uint32_t dummyZeroAddress = 0;
 int usleep(unsigned usec)
 {
 	double now = emscripten_get_now();
-	double target = now + usec / 1000.0;
+	double target = now + usec * 1e-3;
 	while(now < target) {
-		double nsecsToSleep = (target - now) * 1e6;
-		if (nsecsToSleep > 1e6) {
-			if (nsecsToSleep > 100 * 1000 * 1000) nsecsToSleep = 100 * 1000 * 1000;
+		double msecsToSleep = target - now;
+		if (msecsToSleep > 1.0) {
+			if (msecsToSleep > 100.0) msecsToSleep = 100.0;
 			pthread_testcancel(); // pthreads spec: usleep is a cancellation point, so it must test if this thread is cancelled during the sleep.
-			emscripten_futex_wait(&dummyZeroAddress, 0, nsecsToSleep);
+			emscripten_futex_wait(&dummyZeroAddress, 0, msecsToSleep);
 		}
 		now = emscripten_get_now();
 	}
