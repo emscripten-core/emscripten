@@ -231,6 +231,7 @@ int usleep(unsigned usec)
 		if (msecsToSleep > 1.0) {
 			if (msecsToSleep > 100.0) msecsToSleep = 100.0;
 			pthread_testcancel(); // pthreads spec: usleep is a cancellation point, so it must test if this thread is cancelled during the sleep.
+			if (emscripten_is_main_runtime_thread()) emscripten_main_thread_process_queued_calls(); // Assist other threads by executing proxied operations that are effectively singlethreaded.
 			emscripten_futex_wait(&dummyZeroAddress, 0, msecsToSleep);
 		}
 		now = emscripten_get_now();
