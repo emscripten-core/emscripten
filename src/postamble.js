@@ -1,7 +1,11 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
+#if USE_PTHREADS
 if (memoryInitializer && !ENVIRONMENT_IS_PTHREAD) {
+#else
+if (memoryInitializer) {
+#endif
   if (typeof Module['locateFile'] === 'function') {
     memoryInitializer = Module['locateFile'](memoryInitializer);
   } else if (Module['memoryInitializerPrefixURL']) {
@@ -282,7 +286,11 @@ if (Module['noInitialRun']) {
 Module["noExitRuntime"] = true;
 #endif
 
+#if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) run();
+#else
+run();
+#endif
 
 // {{POST_RUN_ADDITIONS}}
 

@@ -302,15 +302,23 @@ function JSify(data, functionsOnly) {
           return true;
         });
         // write out the singleton big memory initialization value
-        print('if (!ENVIRONMENT_IS_PTHREAD) {') // Pthreads should not initialize memory again, since it's shared with the main thread.
+        if (USE_PTHREADS) {
+          print('if (!ENVIRONMENT_IS_PTHREAD) {') // Pthreads should not initialize memory again, since it's shared with the main thread.
+        }
         print('/* memory initializer */ ' + makePointer(memoryInitialization, null, 'ALLOC_NONE', 'i8', 'Runtime.GLOBAL_BASE' + (SIDE_MODULE ? '+H_BASE' : ''), true));
-        print('}')
+        if (USE_PTHREADS) {
+          print('}')
+        }
       } else {
         print('/* no memory initializer */'); // test purposes
       }
 
       if (!BUILD_AS_SHARED_LIB && !SIDE_MODULE) {
-        print('var tempDoublePtr = ENVIRONMENT_IS_PTHREAD ? 0 : Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n'); // We can't immediately allocate in a pthread, must wait until we have shared the HEAP.
+        if (USE_PTHREADS) {
+          print('var tempDoublePtr = ENVIRONMENT_IS_PTHREAD ? 0 : Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n'); // We can't immediately allocate in a pthread, must wait until we have shared the HEAP.
+        } else {
+          print('var tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
+        }
         print('assert(tempDoublePtr % 8 == 0);\n');
         print('function copyTempFloat(ptr) { // functions, because inlining this code increases code size too much\n');
         print('  HEAP8[tempDoublePtr] = HEAP8[ptr];\n');
