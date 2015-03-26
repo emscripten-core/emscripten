@@ -4592,13 +4592,13 @@ function _main() {
       assert expected == seen or (seen in expected if type(expected) in [list, tuple] else False), ['expect', expected, 'but see', seen]
 
     do_log_test(path_from_root('tests', 'primes.cpp'), 88, 'main')
-    do_log_test(path_from_root('tests', 'fannkuch.cpp'), 237, 'fannkuch_worker')
+    do_log_test(path_from_root('tests', 'fannkuch.cpp'), range(237, 240), 'fannkuch_worker')
 
     # test non-native as well, registerizeHarder can be a little more efficient here
     old_native = os.environ.get('EMCC_NATIVE_OPTIMIZER')
     try:
       os.environ['EMCC_NATIVE_OPTIMIZER'] = '0'
-      do_log_test(path_from_root('tests', 'fannkuch.cpp'), 237, 'fannkuch_worker')
+      do_log_test(path_from_root('tests', 'fannkuch.cpp'), range(237, 240), 'fannkuch_worker')
     finally:
       if old_native: os.environ['EMCC_NATIVE_OPTIMIZER'] = old_native
       else: del os.environ['EMCC_NATIVE_OPTIMIZER']
