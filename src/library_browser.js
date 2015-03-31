@@ -8,7 +8,8 @@ mergeInto(LibraryManager.library, {
                      'Module["setCanvasSize"] = function Module_setCanvasSize(width, height, noUpdates) { Browser.setCanvasSize(width, height, noUpdates) };\n' +
                      'Module["pauseMainLoop"] = function Module_pauseMainLoop() { Browser.mainLoop.pause() };\n' +
                      'Module["resumeMainLoop"] = function Module_resumeMainLoop() { Browser.mainLoop.resume() };\n' +
-                     'Module["getUserMedia"] = function Module_getUserMedia() { Browser.getUserMedia() }',
+                     'Module["getUserMedia"] = function Module_getUserMedia() { Browser.getUserMedia() }\n' +
+                     'Module["createContext"] = function Module_createContext(canvas, useWebGL, setInModule, webGLContextAttributes) { return Browser.createContext(canvas, useWebGL, setInModule, webGLContextAttributes) }',
   $Browser: {
     mainLoop: {
       scheduler: null,
