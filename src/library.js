@@ -2572,6 +2572,7 @@ LibraryManager.library = {
     return ptr;
   },
 
+  munmap__deps: ['msync'],
   munmap: function(start, num) {
     if (!_mmap.mappings) _mmap.mappings = {};
     // TODO: support unmmap'ing parts of allocations

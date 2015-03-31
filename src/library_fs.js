@@ -1155,7 +1155,7 @@ mergeInto(LibraryManager.library, {
       return stream.stream_ops.mmap(stream, buffer, offset, length, position, prot, flags);
     },
     msync: function(stream, buffer, offset, length, mmapFlags) {
-      if (!stream.stream_ops.msync) {
+      if (!stream || !stream.stream_ops.msync) {
         return 0;
       }
       return stream.stream_ops.msync(stream, buffer, offset, length, mmapFlags);
