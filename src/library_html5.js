@@ -169,10 +169,6 @@ var LibraryJSEvents = {
       if (window['performance'] && window['performance']['now']) return window['performance']['now']();
       else return Date.now();
     },
-
-    fullscreenEnabled: function() {
-      return document.fullscreenEnabled || document.mozFullscreenEnabled || document.mozFullScreenEnabled || document.webkitFullscreenEnabled || document.msFullscreenEnabled;
-    },
     
     resizeCanvasForFullscreen: function(target, strategy) {
       var restoreOldStyle = __registerRestoreOldStyle(target);
@@ -227,9 +223,7 @@ var LibraryJSEvents = {
         if (target.GLctxObject) target.GLctxObject.GLctx.viewport(0, 0, target.width, target.height);
       }
       return restoreOldStyle;
-    },
-
-    battery: function() { return navigator.battery || navigator.mozBattery || navigator.webkitBattery; }
+    }
   },
 
   _keyEvent: 0,
@@ -828,12 +822,16 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  _fillFullscreenChangeEventData__deps: ['$JSEvents'],
+  _fullscreenEnabled: function() {
+    return document.fullscreenEnabled || document.mozFullscreenEnabled || document.mozFullScreenEnabled || document.webkitFullscreenEnabled || document.msFullscreenEnabled;
+  },
+
+  _fillFullscreenChangeEventData__deps: ['$JSEvents', '_fullscreenEnabled'],
   _fillFullscreenChangeEventData: function(eventStruct, e) {
     var fullscreenElement = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
     var isFullscreen = !!fullscreenElement;
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.isFullscreen, 'isFullscreen', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.fullscreenEnabled, 'JSEvents.fullscreenEnabled()', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.fullscreenEnabled, '__fullscreenEnabled()', 'i32') }}};
     // If transitioning to fullscreen, report info about the element that is now fullscreen.
     // If transitioning to windowed mode, report info about the element that just was fullscreen.
     var reportedElement = isFullscreen ? fullscreenElement : JSEvents.previousFullscreenElement;
@@ -886,9 +884,9 @@ var LibraryJSEvents = {
     JSEvents.registerOrRemoveHandler(eventHandler);
   },
 
-  emscripten_set_fullscreenchange_callback__deps: ['_registerFullscreenChangeEventCallback'],
+  emscripten_set_fullscreenchange_callback__deps: ['_registerFullscreenChangeEventCallback', '_fullscreenEnabled'],
   emscripten_set_fullscreenchange_callback: function(target, userData, useCapture, callbackfunc) {
-    if (typeof JSEvents.fullscreenEnabled() === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    if (typeof __fullscreenEnabled() === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     if (!target) target = document;
     else {
       target = JSEvents.findEventTarget(target);
@@ -901,9 +899,9 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  emscripten_get_fullscreen_status__deps: ['_fillFullscreenChangeEventData'],
+  emscripten_get_fullscreen_status__deps: ['_fillFullscreenChangeEventData', '_fullscreenEnabled'],
   emscripten_get_fullscreen_status: function(fullscreenStatus) {
-    if (typeof JSEvents.fullscreenEnabled() === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    if (typeof __fullscreenEnabled() === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     __fillFullscreenChangeEventData(fullscreenStatus);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
@@ -1077,7 +1075,7 @@ var LibraryJSEvents = {
     }
   },
 
-  _requestFullscreen__deps: ['$JSEvents'],
+  _requestFullscreen__deps: ['_fullscreenEnabled'],
   _requestFullscreen: function(target, strategy) {
     // EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT + EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE is a mode where no extra logic is performed to the DOM elements.
     if (strategy.scaleMode != {{{ cDefine('EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT') }}} || strategy.canvasResolutionScaleMode != {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE') }}}) {
@@ -1095,7 +1093,7 @@ var LibraryJSEvents = {
     } else if (target.webkitRequestFullscreen) {
       target.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
     } else {
-      if (typeof JSEvents.fullscreenEnabled() === 'undefined') {
+      if (typeof __fullscreenEnabled() === 'undefined') {
         return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
       } else {
         return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
@@ -1110,10 +1108,10 @@ var LibraryJSEvents = {
   },
 
   // https://developer.mozilla.org/en-US/docs/Web/Guide/API/DOM/Using_full_screen_mode  
-  emscripten_do_request_fullscreen__deps: ['_setLetterbox', '_requestFullscreen'],
+  emscripten_do_request_fullscreen__deps: ['$JSEvents', '_setLetterbox', '_requestFullscreen', '_fullscreenEnabled'],
   emscripten_do_request_fullscreen: function(target, strategy) {
-    if (typeof JSEvents.fullscreenEnabled() === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
-    if (!JSEvents.fullscreenEnabled()) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
+    if (typeof __fullscreenEnabled() === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    if (!__fullscreenEnabled()) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
     if (!target) target = '#canvas';
     target = JSEvents.findEventTarget(target);
     if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
@@ -1214,9 +1212,9 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  emscripten_exit_fullscreen__deps: ['_currentFullscreenStrategy', '_requestFullscreen'],
+  emscripten_exit_fullscreen__deps: ['_currentFullscreenStrategy', '_requestFullscreen', '_fullscreenEnabled'],
   emscripten_exit_fullscreen: function() {
-    if (typeof JSEvents.fullscreenEnabled() === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    if (typeof __fullscreenEnabled() === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     // Make sure no queued up calls will fire after this.
     JSEvents.removeDeferredCalls(__requestFullscreen);
 
@@ -1706,19 +1704,23 @@ var LibraryJSEvents = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.level, 'e.level', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.charging, 'e.charging', 'i32') }}};
   },
+
+  _batteryEvent: 0,
+
+  _battery: function() { return navigator.battery || navigator.mozBattery || navigator.webkitBattery; },
   
-  _registerBatteryEventCallback__deps: ['$JSEvents', '_fillBatteryEventData'],
+  _registerBatteryEventCallback__deps: ['$JSEvents', '_fillBatteryEventData', '_battery', '_batteryEvent'],
   _registerBatteryEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
-    if (!JSEvents.batteryEvent) {
-      JSEvents.batteryEvent = _malloc( {{{ C_STRUCTS.EmscriptenBatteryEvent.__size__ }}} );
+    if (!__batteryEvent) {
+      __batteryEvent = _malloc( {{{ C_STRUCTS.EmscriptenBatteryEvent.__size__ }}} );
     }
 
     var handlerFunc = function(event) {
       var e = event || window.event;
 
-      __fillBatteryEventData(JSEvents.batteryEvent, JSEvents.battery());
+      __fillBatteryEventData(__batteryEvent, __battery());
 
-      var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.batteryEvent, userData]);
+      var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, __batteryEvent, userData]);
       if (shouldCancel) {
         e.preventDefault();
       }
@@ -1735,24 +1737,24 @@ var LibraryJSEvents = {
     JSEvents.registerOrRemoveHandler(eventHandler);
   },
 
-  emscripten_set_batterychargingchange_callback__deps: ['_registerBatteryEventCallback'],
+  emscripten_set_batterychargingchange_callback__deps: ['_registerBatteryEventCallback', '_battery'],
   emscripten_set_batterychargingchange_callback: function(userData, callbackfunc) {
-    if (!JSEvents.battery()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}}; 
-    __registerBatteryEventCallback(JSEvents.battery(), userData, true, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_BATTERYCHARGINGCHANGE') }}}, "chargingchange");
+    if (!__battery()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}}; 
+    __registerBatteryEventCallback(__battery(), userData, true, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_BATTERYCHARGINGCHANGE') }}}, "chargingchange");
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  emscripten_set_batterylevelchange_callback__deps: ['_registerBatteryEventCallback'],
+  emscripten_set_batterylevelchange_callback__deps: ['_registerBatteryEventCallback', '_battery'],
   emscripten_set_batterylevelchange_callback: function(userData, callbackfunc) {
-    if (!JSEvents.battery()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}}; 
-    __registerBatteryEventCallback(JSEvents.battery(), userData, true, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_BATTERYLEVELCHANGE') }}}, "levelchange");
+    if (!__battery()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}}; 
+    __registerBatteryEventCallback(__battery(), userData, true, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_BATTERYLEVELCHANGE') }}}, "levelchange");
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
   
-  emscripten_get_battery_status__deps: ['$JSEvents', '_fillBatteryEventData'],
+  emscripten_get_battery_status__deps: ['$JSEvents', '_fillBatteryEventData', '_battery'],
   emscripten_get_battery_status: function(batteryState) {
-    if (!JSEvents.battery()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}}; 
-    __fillBatteryEventData(batteryState, JSEvents.battery());
+    if (!__battery()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}}; 
+    __fillBatteryEventData(batteryState, __battery());
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
   
