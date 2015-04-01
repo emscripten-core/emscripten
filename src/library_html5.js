@@ -22,16 +22,6 @@ var LibraryJSEvents = {
 
     deferredCalls: [],
     
-    // Erases all deferred calls to the given target function from the queue list.
-    removeDeferredCalls: function(targetFunction) {
-      for(var i = 0; i < JSEvents.deferredCalls.length; ++i) {
-        if (JSEvents.deferredCalls[i].targetFunction == targetFunction) {
-          JSEvents.deferredCalls.splice(i, 1);
-          --i;
-        }
-      }
-    },
-
     // If positive, we are currently executing in a JS event handler.
     inEventHandler: 0,
     // If we are in an event handler, specifies the event handler object from the eventHandlers array that is currently running.
@@ -1219,11 +1209,22 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  emscripten_exit_fullscreen__deps: ['_currentFullscreenStrategy', '_requestFullscreen', '_fullscreenEnabled'],
+  // Erases all deferred calls to the given target function from the queue list.
+  _removeDeferredCalls__deps: ['$JSEvents'],
+  _removeDeferredCalls: function(targetFunction) {
+    for(var i = 0; i < JSEvents.deferredCalls.length; ++i) {
+      if (JSEvents.deferredCalls[i].targetFunction == targetFunction) {
+        JSEvents.deferredCalls.splice(i, 1);
+        --i;
+      }
+    }
+  },
+
+  emscripten_exit_fullscreen__deps: ['_currentFullscreenStrategy', '_requestFullscreen', '_fullscreenEnabled', '_removeDeferredCalls'],
   emscripten_exit_fullscreen: function() {
     if (typeof __fullscreenEnabled() === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     // Make sure no queued up calls will fire after this.
-    JSEvents.removeDeferredCalls(__requestFullscreen);
+    __removeDeferredCalls(__requestFullscreen);
 
     if (document.exitFullscreen) {
       document.exitFullscreen();
@@ -1362,10 +1363,10 @@ var LibraryJSEvents = {
     return __requestPointerLock(target);
   },
 
-  emscripten_exit_pointerlock__deps: ['_requestPointerLock'],
+  emscripten_exit_pointerlock__deps: ['_requestPointerLock', '_removeDeferredCalls'],
   emscripten_exit_pointerlock: function() {
     // Make sure no queued up calls will fire after this.
-    JSEvents.removeDeferredCalls(__requestPointerLock);
+    __removeDeferredCalls(__requestPointerLock);
 
     if (document.exitPointerLock) {
       document.exitPointerLock();
