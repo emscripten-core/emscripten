@@ -52,7 +52,7 @@ var LibraryIDBStore = {
       IDBStore.getDB(dbName, function(error, db) {
         var transaction = db.transaction([IDBStore.DB_STORE_NAME], type);
         transaction.onerror = function(e) {
-          callback(this.error);
+          callback(this.error || 'unknown error');
           e.preventDefault();
         };
         var store = transaction.objectStore(IDBStore.DB_STORE_NAME);
