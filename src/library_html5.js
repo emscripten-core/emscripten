@@ -31,11 +31,7 @@ var LibraryJSEvents = {
         }
       }
     },
-    
-    canPerformEventHandlerRequests: function() {
-      return JSEvents.inEventHandler && JSEvents.currentEventHandler.allowsDeferredCalls;
-    },
-    
+
     // If positive, we are currently executing in a JS event handler.
     inEventHandler: 0,
     // If we are in an event handler, specifies the event handler object from the eventHandlers array that is currently running.
@@ -61,9 +57,14 @@ var LibraryJSEvents = {
     }
   },
 
-  _runDeferredCalls__deps: ['$JSEvents'],
+  _canPerformEventHandlerRequests__deps: ['$JSEvents'],
+  _canPerformEventHandlerRequests: function() {
+    return JSEvents.inEventHandler && JSEvents.currentEventHandler.allowsDeferredCalls;
+  },
+
+  _runDeferredCalls__deps: ['$JSEvents', '_canPerformEventHandlerRequests'],
   _runDeferredCalls: function() {
-    if (!JSEvents.canPerformEventHandlerRequests()) {
+    if (!__canPerformEventHandlerRequests()) {
       return;
     }
     for(var i = 0; i < JSEvents.deferredCalls.length; ++i) {
@@ -1114,7 +1115,7 @@ var LibraryJSEvents = {
   },
 
   // https://developer.mozilla.org/en-US/docs/Web/Guide/API/DOM/Using_full_screen_mode  
-  emscripten_do_request_fullscreen__deps: ['$JSEvents', '_requestFullscreen', '_fullscreenEnabled', '_deferCall'],
+  emscripten_do_request_fullscreen__deps: ['$JSEvents', '_requestFullscreen', '_fullscreenEnabled', '_deferCall', '_canPerformEventHandlerRequests'],
   emscripten_do_request_fullscreen: function(target, strategy) {
     if (typeof __fullscreenEnabled() === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     if (!__fullscreenEnabled()) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
@@ -1126,7 +1127,7 @@ var LibraryJSEvents = {
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
     }
 
-    var canPerformRequests = JSEvents.canPerformEventHandlerRequests();
+    var canPerformRequests = __canPerformEventHandlerRequests();
 
     // Queue this function call if we're not currently in an event handler and the user saw it appropriate to do so.
     if (!canPerformRequests) {
@@ -1337,7 +1338,7 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  emscripten_request_pointerlock__deps: ['_requestPointerLock', '_deferCall'],
+  emscripten_request_pointerlock__deps: ['_requestPointerLock', '_deferCall', '_canPerformEventHandlerRequests'],
   emscripten_request_pointerlock: function(target, deferUntilInEventHandler) {
     if (!target) target = '#canvas';
     target = JSEvents.findEventTarget(target);
@@ -1346,7 +1347,7 @@ var LibraryJSEvents = {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
 
-    var canPerformRequests = JSEvents.canPerformEventHandlerRequests();
+    var canPerformRequests = __canPerformEventHandlerRequests();
 
     // Queue this function call if we're not currently in an event handler and the user saw it appropriate to do so.
     if (!canPerformRequests) {
