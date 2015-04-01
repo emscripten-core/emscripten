@@ -248,58 +248,6 @@ var LibraryJSEvents = {
       return restoreOldStyle;
     },
 
-    requestFullscreen: function(target, strategy) {
-      // EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT + EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE is a mode where no extra logic is performed to the DOM elements.
-      if (strategy.scaleMode != {{{ cDefine('EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT') }}} || strategy.canvasResolutionScaleMode != {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE') }}}) {
-        JSEvents.resizeCanvasForFullscreen(target, strategy);
-      }
-
-      if (target.requestFullscreen) {
-        target.requestFullscreen();
-      } else if (target.msRequestFullscreen) {
-        target.msRequestFullscreen();
-      } else if (target.mozRequestFullScreen) {
-        target.mozRequestFullScreen();
-      } else if (target.mozRequestFullscreen) {
-        target.mozRequestFullscreen();
-      } else if (target.webkitRequestFullscreen) {
-        target.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
-      } else {
-        if (typeof JSEvents.fullscreenEnabled() === 'undefined') {
-          return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
-        } else {
-          return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
-        }
-      }
-
-      if (strategy.canvasResizedCallback) {
-        Runtime.dynCall('iiii', strategy.canvasResizedCallback, [{{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, strategy.canvasResizedCallbackUserData]);
-      }
-
-      return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
-    },
-
-    requestPointerLock: function(target) {
-      if (target.requestPointerLock) {
-        target.requestPointerLock();
-      } else if (target.mozRequestPointerLock) {
-        target.mozRequestPointerLock();
-      } else if (target.webkitRequestPointerLock) {
-        target.webkitRequestPointerLock();
-      } else if (target.msRequestPointerLock) {
-        target.msRequestPointerLock();
-      } else {
-        // document.body is known to accept pointer lock, so use that to differentiate if the user passed a bad element,
-        // or if the whole browser just doesn't support the feature.
-        if (document.body.requestPointerLock || document.body.mozRequestPointerLock || document.body.webkitRequestPointerLock || document.body.msRequestPointerLock) {
-          return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
-        } else {
-          return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
-        }
-      }
-      return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
-    },
-
     fillVisibilityChangeEventData: function(eventStruct, e) {
       var visibilityStates = [ "hidden", "visible", "prerender", "unloaded" ];
       var visibilityState = visibilityStates.indexOf(document.visibilityState);
@@ -1163,8 +1111,40 @@ var LibraryJSEvents = {
     }
   },
 
+  _requestFullscreen__deps: ['$JSEvents'],
+  _requestFullscreen: function(target, strategy) {
+    // EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT + EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE is a mode where no extra logic is performed to the DOM elements.
+    if (strategy.scaleMode != {{{ cDefine('EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT') }}} || strategy.canvasResolutionScaleMode != {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE') }}}) {
+      JSEvents.resizeCanvasForFullscreen(target, strategy);
+    }
+
+    if (target.requestFullscreen) {
+      target.requestFullscreen();
+    } else if (target.msRequestFullscreen) {
+      target.msRequestFullscreen();
+    } else if (target.mozRequestFullScreen) {
+      target.mozRequestFullScreen();
+    } else if (target.mozRequestFullscreen) {
+      target.mozRequestFullscreen();
+    } else if (target.webkitRequestFullscreen) {
+      target.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
+    } else {
+      if (typeof JSEvents.fullscreenEnabled() === 'undefined') {
+        return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+      } else {
+        return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
+      }
+    }
+
+    if (strategy.canvasResizedCallback) {
+      Runtime.dynCall('iiii', strategy.canvasResizedCallback, [{{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, strategy.canvasResizedCallbackUserData]);
+    }
+
+    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+  },
+
   // https://developer.mozilla.org/en-US/docs/Web/Guide/API/DOM/Using_full_screen_mode  
-  emscripten_do_request_fullscreen__deps: ['_setLetterbox'],
+  emscripten_do_request_fullscreen__deps: ['_setLetterbox', '_requestFullscreen'],
   emscripten_do_request_fullscreen: function(target, strategy) {
     if (typeof JSEvents.fullscreenEnabled() === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     if (!JSEvents.fullscreenEnabled()) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
@@ -1181,14 +1161,14 @@ var LibraryJSEvents = {
     // Queue this function call if we're not currently in an event handler and the user saw it appropriate to do so.
     if (!canPerformRequests) {
       if (strategy.deferUntilInEventHandler) {
-        JSEvents.deferCall(JSEvents.requestFullscreen, 1 /* priority over pointer lock */, [target, strategy]);
+        JSEvents.deferCall(__requestFullscreen, 1 /* priority over pointer lock */, [target, strategy]);
         return {{{ cDefine('EMSCRIPTEN_RESULT_DEFERRED') }}};
       } else {
         return {{{ cDefine('EMSCRIPTEN_RESULT_FAILED_NOT_DEFERRED') }}};
       }
     }
 
-    return JSEvents.requestFullscreen(target, strategy);
+    return __requestFullscreen(target, strategy);
   },
 
   emscripten_request_fullscreen__deps: ['emscripten_do_request_fullscreen'],
@@ -1268,11 +1248,11 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  emscripten_exit_fullscreen__deps: ['_currentFullscreenStrategy'],
+  emscripten_exit_fullscreen__deps: ['_currentFullscreenStrategy', '_requestFullscreen'],
   emscripten_exit_fullscreen: function() {
     if (typeof JSEvents.fullscreenEnabled() === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     // Make sure no queued up calls will fire after this.
-    JSEvents.removeDeferredCalls(JSEvents.requestFullscreen);
+    JSEvents.removeDeferredCalls(__requestFullscreen);
 
     if (document.exitFullscreen) {
       document.exitFullscreen();
@@ -1366,6 +1346,28 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  _requestPointerLock: function(target) {
+    if (target.requestPointerLock) {
+      target.requestPointerLock();
+    } else if (target.mozRequestPointerLock) {
+      target.mozRequestPointerLock();
+    } else if (target.webkitRequestPointerLock) {
+      target.webkitRequestPointerLock();
+    } else if (target.msRequestPointerLock) {
+      target.msRequestPointerLock();
+    } else {
+      // document.body is known to accept pointer lock, so use that to differentiate if the user passed a bad element,
+      // or if the whole browser just doesn't support the feature.
+      if (document.body.requestPointerLock || document.body.mozRequestPointerLock || document.body.webkitRequestPointerLock || document.body.msRequestPointerLock) {
+        return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
+      } else {
+        return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+      }
+    }
+    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+  },
+
+  emscripten_request_pointerlock__deps: ['_requestPointerLock'],
   emscripten_request_pointerlock: function(target, deferUntilInEventHandler) {
     if (!target) target = '#canvas';
     target = JSEvents.findEventTarget(target);
@@ -1379,19 +1381,20 @@ var LibraryJSEvents = {
     // Queue this function call if we're not currently in an event handler and the user saw it appropriate to do so.
     if (!canPerformRequests) {
       if (deferUntilInEventHandler) {
-        JSEvents.deferCall(JSEvents.requestPointerLock, 2 /* priority below fullscreen */, [target]);
+        JSEvents.deferCall(__requestPointerLock, 2 /* priority below fullscreen */, [target]);
         return {{{ cDefine('EMSCRIPTEN_RESULT_DEFERRED') }}};
       } else {
         return {{{ cDefine('EMSCRIPTEN_RESULT_FAILED_NOT_DEFERRED') }}};
       }
     }
 
-    return JSEvents.requestPointerLock(target);
+    return __requestPointerLock(target);
   },
 
+  emscripten_exit_pointerlock__deps: ['_requestPointerLock'],
   emscripten_exit_pointerlock: function() {
     // Make sure no queued up calls will fire after this.
-    JSEvents.removeDeferredCalls(JSEvents.requestPointerLock);
+    JSEvents.removeDeferredCalls(__requestPointerLock);
 
     if (document.exitPointerLock) {
       document.exitPointerLock();
