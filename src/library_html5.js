@@ -1,18 +1,5 @@
 var LibraryJSEvents = {
   $JSEvents: {
-    // pointers to structs malloc()ed to Emscripten HEAP for JS->C interop.
-    keyEvent: 0,
-    mouseEvent: 0,
-    wheelEvent: 0,
-    uiEvent: 0,
-    focusEvent: 0,
-    deviceOrientationEvent: 0,
-    deviceMotionEvent: 0,
-    fullscreenChangeEvent: 0,
-    pointerlockChangeEvent: 0,
-    visibilityChangeEvent: 0,
-    touchEvent: 0,
-
     // When we transition from fullscreen to windowed mode, we remember here the element that was just in fullscreen mode
     // so that we can report information about that element in the event message.
     previousFullscreenElement: null,
@@ -351,27 +338,29 @@ var LibraryJSEvents = {
     battery: function() { return navigator.battery || navigator.mozBattery || navigator.webkitBattery; }
   },
 
-  _registerKeyEventCallback__deps: ['$JSEvents'],
+  _keyEvent: 0,
+
+  _registerKeyEventCallback__deps: ['$JSEvents', '_keyEvent'],
   _registerKeyEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
-    if (!JSEvents.keyEvent) {
-      JSEvents.keyEvent = _malloc( {{{ C_STRUCTS.EmscriptenKeyboardEvent.__size__ }}} );
+    if (!__keyEvent) {
+      __keyEvent = _malloc( {{{ C_STRUCTS.EmscriptenKeyboardEvent.__size__ }}} );
     }
     var handlerFunc = function(event) {
       var e = event || window.event;
-      writeStringToMemory(e.key ? e.key : "", JSEvents.keyEvent + {{{ C_STRUCTS.EmscriptenKeyboardEvent.key }}} );
-      writeStringToMemory(e.code ? e.code : "", JSEvents.keyEvent + {{{ C_STRUCTS.EmscriptenKeyboardEvent.code }}} );
-      {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.location, 'e.location', 'i32') }}};
-      {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.ctrlKey, 'e.ctrlKey', 'i32') }}};
-      {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.shiftKey, 'e.shiftKey', 'i32') }}};
-      {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.altKey, 'e.altKey', 'i32') }}};
-      {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.metaKey, 'e.metaKey', 'i32') }}};
-      {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.repeat, 'e.repeat', 'i32') }}};
-      writeStringToMemory(e.locale ? e.locale : "", JSEvents.keyEvent + {{{ C_STRUCTS.EmscriptenKeyboardEvent.locale }}} );
-      writeStringToMemory(e.char ? e.char : "", JSEvents.keyEvent + {{{ C_STRUCTS.EmscriptenKeyboardEvent.charValue }}} );
-      {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.charCode, 'e.charCode', 'i32') }}};
-      {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.keyCode, 'e.keyCode', 'i32') }}};
-      {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.which, 'e.which', 'i32') }}};
-      var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.keyEvent, userData]);
+      writeStringToMemory(e.key ? e.key : "", __keyEvent + {{{ C_STRUCTS.EmscriptenKeyboardEvent.key }}} );
+      writeStringToMemory(e.code ? e.code : "", __keyEvent + {{{ C_STRUCTS.EmscriptenKeyboardEvent.code }}} );
+      {{{ makeSetValue('__keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.location, 'e.location', 'i32') }}};
+      {{{ makeSetValue('__keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.ctrlKey, 'e.ctrlKey', 'i32') }}};
+      {{{ makeSetValue('__keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.shiftKey, 'e.shiftKey', 'i32') }}};
+      {{{ makeSetValue('__keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.altKey, 'e.altKey', 'i32') }}};
+      {{{ makeSetValue('__keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.metaKey, 'e.metaKey', 'i32') }}};
+      {{{ makeSetValue('__keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.repeat, 'e.repeat', 'i32') }}};
+      writeStringToMemory(e.locale ? e.locale : "", __keyEvent + {{{ C_STRUCTS.EmscriptenKeyboardEvent.locale }}} );
+      writeStringToMemory(e.char ? e.char : "", __keyEvent + {{{ C_STRUCTS.EmscriptenKeyboardEvent.charValue }}} );
+      {{{ makeSetValue('__keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.charCode, 'e.charCode', 'i32') }}};
+      {{{ makeSetValue('__keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.keyCode, 'e.keyCode', 'i32') }}};
+      {{{ makeSetValue('__keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.which, 'e.which', 'i32') }}};
+      var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, __keyEvent, userData]);
       if (shouldCancel) {
         e.preventDefault();
       }
@@ -427,16 +416,17 @@ var LibraryJSEvents = {
     JSEvents.previousScreenY = e.screenY;
   },
 
-  _registerMouseEventCallback__deps: ['$JSEvents', '_fillMouseEventData'],
+  _mouseEvent: 0,
+  _registerMouseEventCallback__deps: ['$JSEvents', '_fillMouseEventData', '_mouseEvent'],
   _registerMouseEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
-    if (!JSEvents.mouseEvent) {
-      JSEvents.mouseEvent = _malloc( {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}} );
+    if (!__mouseEvent) {
+      __mouseEvent = _malloc( {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}} );
     }
     target = JSEvents.findEventTarget(target);
     var handlerFunc = function(event) {
       var e = event || window.event;
-      __fillMouseEventData(JSEvents.mouseEvent, e, target);
-      var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.mouseEvent, userData]);
+      __fillMouseEventData(__mouseEvent, e, target);
+      var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, __mouseEvent, userData]);
       if (shouldCancel) {
         e.preventDefault();
       }
@@ -527,31 +517,33 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  emscripten_get_mouse_status__deps: ['$JSEvents'],
+  emscripten_get_mouse_status__deps: ['$JSEvents', '_mouseEvent'],
   emscripten_get_mouse_status: function(mouseState) {
-    if (!JSEvents.mouseEvent) return {{{ cDefine('EMSCRIPTEN_RESULT_NO_DATA') }}};
+    if (!__mouseEvent) return {{{ cDefine('EMSCRIPTEN_RESULT_NO_DATA') }}};
     // HTML5 does not really have a polling API for mouse events, so implement one manually by
     // returning the data from the most recently received event. This requires that user has registered
     // at least some no-op function as an event handler to any of the mouse function.
-    HEAP32.set(HEAP32.subarray(JSEvents.mouseEvent, {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}}), mouseState);
+    HEAP32.set(HEAP32.subarray(__mouseEvent, {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}}), mouseState);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  _registerWheelEventCallback__deps: ['$JSEvents'],
+  _wheelEvent: 0,
+
+  _registerWheelEventCallback__deps: ['$JSEvents', '_wheelEvent'],
   _registerWheelEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
-    if (!JSEvents.wheelEvent) {
-      JSEvents.wheelEvent = _malloc( {{{ C_STRUCTS.EmscriptenWheelEvent.__size__ }}} );
+    if (!__wheelEvent) {
+      __wheelEvent = _malloc( {{{ C_STRUCTS.EmscriptenWheelEvent.__size__ }}} );
     }
     target = JSEvents.findEventTarget(target);
     // The DOM Level 3 events spec event 'wheel'
     var wheelHandlerFunc = function(event) {
       var e = event || window.event;
-      JSEvents.fillMouseEventData(JSEvents.wheelEvent, e, target);
-      {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaX, 'e["deltaX"]', 'double') }}};
-      {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaY, 'e["deltaY"]', 'double') }}};
-      {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaZ, 'e["deltaZ"]', 'double') }}};
-      {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaMode, 'e["deltaMode"]', 'i32') }}};
-      var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.wheelEvent, userData]);
+      JSEvents.fillMouseEventData(__wheelEvent, e, target);
+      {{{ makeSetValue('__wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaX, 'e["deltaX"]', 'double') }}};
+      {{{ makeSetValue('__wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaY, 'e["deltaY"]', 'double') }}};
+      {{{ makeSetValue('__wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaZ, 'e["deltaZ"]', 'double') }}};
+      {{{ makeSetValue('__wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaMode, 'e["deltaMode"]', 'i32') }}};
+      var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, __wheelEvent, userData]);
       if (shouldCancel) {
         e.preventDefault();
       }
@@ -559,12 +551,12 @@ var LibraryJSEvents = {
     // The 'mousewheel' event as implemented in Safari 6.0.5
     var mouseWheelHandlerFunc = function(event) {
       var e = event || window.event;
-      JSEvents.fillMouseEventData(JSEvents.wheelEvent, e, target);
-      {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaX, 'e["wheelDeltaX"]', 'double') }}};
-      {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaY, '-e["wheelDeltaY"] /* Invert to unify direction with the DOM Level 3 wheel event. */', 'double') }}};
-      {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaZ, '0 /* Not available */', 'double') }}};
-      {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaMode, '0 /* DOM_DELTA_PIXEL */', 'i32') }}};
-      var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.wheelEvent, userData]);
+      JSEvents.fillMouseEventData(__wheelEvent, e, target);
+      {{{ makeSetValue('__wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaX, 'e["wheelDeltaX"]', 'double') }}};
+      {{{ makeSetValue('__wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaY, '-e["wheelDeltaY"] /* Invert to unify direction with the DOM Level 3 wheel event. */', 'double') }}};
+      {{{ makeSetValue('__wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaZ, '0 /* Not available */', 'double') }}};
+      {{{ makeSetValue('__wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaMode, '0 /* DOM_DELTA_PIXEL */', 'i32') }}};
+      var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, __wheelEvent, userData]);
       if (shouldCancel) {
         e.preventDefault();
       }
@@ -595,10 +587,12 @@ var LibraryJSEvents = {
     }
   },
 
-  _registerUiEventCallback__deps: ['$JSEvents'],
+  _uiEvent: 0,
+
+  _registerUiEventCallback__deps: ['$JSEvents', '_uiEvent'],
   _registerUiEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
-    if (!JSEvents.uiEvent) {
-      JSEvents.uiEvent = _malloc( {{{ C_STRUCTS.EmscriptenUiEvent.__size__ }}} );
+    if (!__uiEvent) {
+      __uiEvent = _malloc( {{{ C_STRUCTS.EmscriptenUiEvent.__size__ }}} );
     }
 
     if (eventTypeString == "scroll" && !target) {
@@ -617,16 +611,16 @@ var LibraryJSEvents = {
         return;
       }
       var scrollPos = JSEvents.pageScrollPos();
-      {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.detail, 'e.detail', 'i32') }}};
-      {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientWidth, 'document.body.clientWidth', 'i32') }}};
-      {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientHeight, 'document.body.clientHeight', 'i32') }}};
-      {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.windowInnerWidth, 'window.innerWidth', 'i32') }}};
-      {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.windowInnerHeight, 'window.innerHeight', 'i32') }}};
-      {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.windowOuterWidth, 'window.outerWidth', 'i32') }}};
-      {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.windowOuterHeight, 'window.outerHeight', 'i32') }}};
-      {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollTop, 'scrollPos[0]', 'i32') }}};
-      {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollLeft, 'scrollPos[1]', 'i32') }}};
-      var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.uiEvent, userData]);
+      {{{ makeSetValue('__uiEvent', C_STRUCTS.EmscriptenUiEvent.detail, 'e.detail', 'i32') }}};
+      {{{ makeSetValue('__uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientWidth, 'document.body.clientWidth', 'i32') }}};
+      {{{ makeSetValue('__uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientHeight, 'document.body.clientHeight', 'i32') }}};
+      {{{ makeSetValue('__uiEvent', C_STRUCTS.EmscriptenUiEvent.windowInnerWidth, 'window.innerWidth', 'i32') }}};
+      {{{ makeSetValue('__uiEvent', C_STRUCTS.EmscriptenUiEvent.windowInnerHeight, 'window.innerHeight', 'i32') }}};
+      {{{ makeSetValue('__uiEvent', C_STRUCTS.EmscriptenUiEvent.windowOuterWidth, 'window.outerWidth', 'i32') }}};
+      {{{ makeSetValue('__uiEvent', C_STRUCTS.EmscriptenUiEvent.windowOuterHeight, 'window.outerHeight', 'i32') }}};
+      {{{ makeSetValue('__uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollTop, 'scrollPos[0]', 'i32') }}};
+      {{{ makeSetValue('__uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollLeft, 'scrollPos[1]', 'i32') }}};
+      var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, __uiEvent, userData]);
       if (shouldCancel) {
         e.preventDefault();
       }
@@ -655,19 +649,21 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  _registerFocusEventCallback__deps: ['$JSEvents'],
+  _focusEvent: 0,
+
+  _registerFocusEventCallback__deps: ['$JSEvents', '_focusEvent'],
   _registerFocusEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
-    if (!JSEvents.focusEvent) {
-      JSEvents.focusEvent = _malloc( {{{ C_STRUCTS.EmscriptenFocusEvent.__size__ }}} );
+    if (!__focusEvent) {
+      __focusEvent = _malloc( {{{ C_STRUCTS.EmscriptenFocusEvent.__size__ }}} );
     }
     var handlerFunc = function(event) {
       var e = event || window.event;
 
       var nodeName = JSEvents.getNodeNameForTarget(e.target);
       var id = e.target.id ? e.target.id : '';
-      writeStringToMemory(nodeName, JSEvents.focusEvent + {{{ C_STRUCTS.EmscriptenFocusEvent.nodeName }}} );
-      writeStringToMemory(id, JSEvents.focusEvent + {{{ C_STRUCTS.EmscriptenFocusEvent.id }}} );
-      var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.focusEvent, userData]);
+      writeStringToMemory(nodeName, __focusEvent + {{{ C_STRUCTS.EmscriptenFocusEvent.nodeName }}} );
+      writeStringToMemory(id, __focusEvent + {{{ C_STRUCTS.EmscriptenFocusEvent.id }}} );
+      var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, __focusEvent, userData]);
       if (shouldCancel) {
         e.preventDefault();
       }
@@ -708,21 +704,23 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  _registerDeviceOrientationEventCallback__deps: ['$JSEvents'],
+  _deviceOrientationEvent: 0,
+
+  _registerDeviceOrientationEventCallback__deps: ['$JSEvents', '_deviceOrientationEvent'],
   _registerDeviceOrientationEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
-    if (!JSEvents.deviceOrientationEvent) {
-      JSEvents.deviceOrientationEvent = _malloc( {{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}} );
+    if (!__deviceOrientationEvent) {
+      __deviceOrientationEvent = _malloc( {{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}} );
     }
     var handlerFunc = function(event) {
       var e = event || window.event;
 
-      {{{ makeSetValue('JSEvents.deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.timestamp, 'JSEvents.tick()', 'double') }}};
-      {{{ makeSetValue('JSEvents.deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.alpha, 'e.alpha', 'double') }}};
-      {{{ makeSetValue('JSEvents.deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.beta, 'e.beta', 'double') }}};
-      {{{ makeSetValue('JSEvents.deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.gamma, 'e.gamma', 'double') }}};
-      {{{ makeSetValue('JSEvents.deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.absolute, 'e.absolute', 'i32') }}};
+      {{{ makeSetValue('__deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.timestamp, 'JSEvents.tick()', 'double') }}};
+      {{{ makeSetValue('__deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.alpha, 'e.alpha', 'double') }}};
+      {{{ makeSetValue('__deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.beta, 'e.beta', 'double') }}};
+      {{{ makeSetValue('__deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.gamma, 'e.gamma', 'double') }}};
+      {{{ makeSetValue('__deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.absolute, 'e.absolute', 'i32') }}};
 
-      var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.deviceOrientationEvent, userData]);
+      var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, __deviceOrientationEvent, userData]);
       if (shouldCancel) {
         e.preventDefault();
       }
@@ -745,36 +743,38 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  emscripten_get_deviceorientation_status__deps: ['$JSEvents'],
+  emscripten_get_deviceorientation_status__deps: ['$JSEvents', '_deviceOrientationEvent'],
   emscripten_get_deviceorientation_status: function(orientationState) {
-    if (!JSEvents.deviceOrientationEvent) return {{{ cDefine('EMSCRIPTEN_RESULT_NO_DATA') }}};
+    if (!__deviceOrientationEvent) return {{{ cDefine('EMSCRIPTEN_RESULT_NO_DATA') }}};
     // HTML5 does not really have a polling API for device orientation events, so implement one manually by
     // returning the data from the most recently received event. This requires that user has registered
     // at least some no-op function as an event handler.
-    HEAP32.set(HEAP32.subarray(JSEvents.deviceOrientationEvent, {{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}}), orientationState);
+    HEAP32.set(HEAP32.subarray(__deviceOrientationEvent, {{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}}), orientationState);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  _registerDeviceMotionEventCallback__deps: ['$JSEvents'],
+  _deviceMotionEvent: 0,
+
+  _registerDeviceMotionEventCallback__deps: ['$JSEvents', '_deviceMotionEvent'],
   _registerDeviceMotionEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
-    if (!JSEvents.deviceMotionEvent) {
-      JSEvents.deviceMotionEvent = _malloc( {{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}} );
+    if (!__deviceMotionEvent) {
+      __deviceMotionEvent = _malloc( {{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}} );
     }
     var handlerFunc = function(event) {
       var e = event || window.event;
 
-      {{{ makeSetValue('JSEvents.deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.timestamp, 'JSEvents.tick()', 'double') }}};
-      {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationX, 'e.acceleration.x', 'double') }}};
-      {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationY, 'e.acceleration.y', 'double') }}};
-      {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationZ, 'e.acceleration.z', 'double') }}};
-      {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationIncludingGravityX, 'e.accelerationIncludingGravity.x', 'double') }}};
-      {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationIncludingGravityY, 'e.accelerationIncludingGravity.y', 'double') }}};
-      {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationIncludingGravityZ, 'e.accelerationIncludingGravity.z', 'double') }}};
-      {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateAlpha, 'e.rotationRate.alpha', 'double') }}};
-      {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateBeta, 'e.rotationRate.beta', 'double') }}};
-      {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateGamma, 'e.rotationRate.gamma', 'double') }}};
+      {{{ makeSetValue('__deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.timestamp, 'JSEvents.tick()', 'double') }}};
+      {{{ makeSetValue('__deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationX, 'e.acceleration.x', 'double') }}};
+      {{{ makeSetValue('__deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationY, 'e.acceleration.y', 'double') }}};
+      {{{ makeSetValue('__deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationZ, 'e.acceleration.z', 'double') }}};
+      {{{ makeSetValue('__deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationIncludingGravityX, 'e.accelerationIncludingGravity.x', 'double') }}};
+      {{{ makeSetValue('__deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationIncludingGravityY, 'e.accelerationIncludingGravity.y', 'double') }}};
+      {{{ makeSetValue('__deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationIncludingGravityZ, 'e.accelerationIncludingGravity.z', 'double') }}};
+      {{{ makeSetValue('__deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateAlpha, 'e.rotationRate.alpha', 'double') }}};
+      {{{ makeSetValue('__deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateBeta, 'e.rotationRate.beta', 'double') }}};
+      {{{ makeSetValue('__deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateGamma, 'e.rotationRate.gamma', 'double') }}};
 
-      var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.deviceMotionEvent, userData]);
+      var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, __deviceMotionEvent, userData]);
       if (shouldCancel) {
         e.preventDefault();
       }
@@ -797,13 +797,13 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  emscripten_get_devicemotion_status__deps: ['$JSEvents'],
+  emscripten_get_devicemotion_status__deps: ['$JSEvents', '_deviceMotionEvent'],
   emscripten_get_devicemotion_status: function(motionState) {
-    if (!JSEvents.deviceMotionEvent) return {{{ cDefine('EMSCRIPTEN_RESULT_NO_DATA') }}};
+    if (!__deviceMotionEvent) return {{{ cDefine('EMSCRIPTEN_RESULT_NO_DATA') }}};
     // HTML5 does not really have a polling API for device motion events, so implement one manually by
     // returning the data from the most recently received event. This requires that user has registered
     // at least some no-op function as an event handler.
-    HEAP32.set(HEAP32.subarray(JSEvents.deviceMotionEvent, {{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}}), motionState);
+    HEAP32.set(HEAP32.subarray(__deviceMotionEvent, {{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}}), motionState);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
@@ -936,10 +936,12 @@ var LibraryJSEvents = {
     }
   },
 
-  _registerFullscreenChangeEventCallback__deps: ['$JSEvents', '_fillFullscreenChangeEventData'],
+  _fullscreenChangeEvent: 0,
+
+  _registerFullscreenChangeEventCallback__deps: ['$JSEvents', '_fillFullscreenChangeEventData', '_fullscreenChangeEvent'],
   _registerFullscreenChangeEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
-    if (!JSEvents.fullscreenChangeEvent) {
-      JSEvents.fullscreenChangeEvent = _malloc( {{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.__size__ }}} );
+    if (!__fullscreenChangeEvent) {
+      __fullscreenChangeEvent = _malloc( {{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.__size__ }}} );
     }
 
     if (!target) {
@@ -951,9 +953,9 @@ var LibraryJSEvents = {
     var handlerFunc = function(event) {
       var e = event || window.event;
 
-      __fillFullscreenChangeEventData(JSEvents.fullscreenChangeEvent, e);
+      __fillFullscreenChangeEventData(__fullscreenChangeEvent, e);
 
-      var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.fullscreenChangeEvent, userData]);
+      var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, __fullscreenChangeEvent, userData]);
       if (shouldCancel) {
         e.preventDefault();
       }
@@ -1302,10 +1304,12 @@ var LibraryJSEvents = {
     writeStringToMemory(id, eventStruct + {{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.id }}});
   },
 
-  _registerPointerlockChangeEventCallback__deps: ['$JSEvents', '_fillPointerlockChangeEventData'],
+  _pointerlockChangeEvent: 0,
+
+  _registerPointerlockChangeEventCallback__deps: ['$JSEvents', '_fillPointerlockChangeEventData', '_pointerlockChangeEvent'],
   _registerPointerlockChangeEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
-    if (!JSEvents.pointerlockChangeEvent) {
-      JSEvents.pointerlockChangeEvent = _malloc( {{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.__size__ }}} );
+    if (!__pointerlockChangeEvent) {
+      __pointerlockChangeEvent = _malloc( {{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.__size__ }}} );
     }
 
     if (!target) {
@@ -1317,9 +1321,9 @@ var LibraryJSEvents = {
     var handlerFunc = function(event) {
       var e = event || window.event;
 
-      __fillPointerlockChangeEventData(JSEvents.pointerlockChangeEvent, e);
+      __fillPointerlockChangeEventData(__pointerlockChangeEvent, e);
 
-      var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.pointerlockChangeEvent, userData]);
+      var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, __pointerlockChangeEvent, userData]);
       if (shouldCancel) {
         e.preventDefault();
       }
@@ -1421,10 +1425,12 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  _registerVisibilityChangeEventCallback__deps: ['$JSEvents'],
+  _visibilityChangeEvent: 0,
+
+  _registerVisibilityChangeEventCallback__deps: ['$JSEvents', '_visibilityChangeEvent'],
   _registerVisibilityChangeEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
-    if (!JSEvents.visibilityChangeEvent) {
-      JSEvents.visibilityChangeEvent = _malloc( {{{ C_STRUCTS.EmscriptenVisibilityChangeEvent.__size__ }}} );
+    if (!__visibilityChangeEvent) {
+      __visibilityChangeEvent = _malloc( {{{ C_STRUCTS.EmscriptenVisibilityChangeEvent.__size__ }}} );
     }
 
     if (!target) {
@@ -1436,9 +1442,9 @@ var LibraryJSEvents = {
     var handlerFunc = function(event) {
       var e = event || window.event;
 
-      JSEvents.fillVisibilityChangeEventData(JSEvents.visibilityChangeEvent, e);
+      JSEvents.fillVisibilityChangeEventData(__visibilityChangeEvent, e);
 
-      var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.visibilityChangeEvent, userData]);
+      var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, __visibilityChangeEvent, userData]);
       if (shouldCancel) {
         e.preventDefault();
       }
@@ -1469,10 +1475,12 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  _registerTouchEventCallback__deps: ['$JSEvents'],
+  _touchEvent: 0,
+
+  _registerTouchEventCallback__deps: ['$JSEvents', '_touchEvent'],
   _registerTouchEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
-    if (!JSEvents.touchEvent) {
-      JSEvents.touchEvent = _malloc( {{{ C_STRUCTS.EmscriptenTouchEvent.__size__ }}} );
+    if (!__touchEvent) {
+      __touchEvent = _malloc( {{{ C_STRUCTS.EmscriptenTouchEvent.__size__ }}} );
     }
 
     target = JSEvents.findEventTarget(target);
@@ -1495,7 +1503,7 @@ var LibraryJSEvents = {
         touches[touch.identifier].onTarget = true;
       }
       
-      var ptr = JSEvents.touchEvent;
+      var ptr = __touchEvent;
       {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.ctrlKey, 'e.ctrlKey', 'i32') }}};
       {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.shiftKey, 'e.shiftKey', 'i32') }}};
       {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.altKey, 'e.altKey', 'i32') }}};
@@ -1531,9 +1539,9 @@ var LibraryJSEvents = {
           break;
         }
       }
-      {{{ makeSetValue('JSEvents.touchEvent', C_STRUCTS.EmscriptenTouchEvent.numTouches, 'numTouches', 'i32') }}};
+      {{{ makeSetValue('__touchEvent', C_STRUCTS.EmscriptenTouchEvent.numTouches, 'numTouches', 'i32') }}};
 
-      var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.touchEvent, userData]);
+      var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, __touchEvent, userData]);
       if (shouldCancel) {
         e.preventDefault();
       }
