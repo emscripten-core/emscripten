@@ -115,13 +115,6 @@ var LibraryJSEvents = {
       var h = JSEvents.eventHandlers[i];
       h.target.removeEventListener(h.eventTypeString, h.eventListenerFunc, h.useCapture);
       JSEvents.eventHandlers.splice(i, 1);
-    },
-        
-    getNodeNameForTarget: function(target) {
-      if (!target) return '';
-      if (target == window) return '#window';
-      if (target == window.screen) return '#screen';
-      return (target && target.nodeName) ? target.nodeName : '';
     }
   },
 
@@ -496,7 +489,14 @@ var LibraryJSEvents = {
 
   _focusEvent: 0,
 
-  _registerFocusEventCallback__deps: ['$JSEvents', '_focusEvent', '_registerOrRemoveHandler'],
+  _getNodeNameForTarget: function(target) {
+    if (!target) return '';
+    if (target == window) return '#window';
+    if (target == window.screen) return '#screen';
+    return (target && target.nodeName) ? target.nodeName : '';
+  },
+
+  _registerFocusEventCallback__deps: ['$JSEvents', '_focusEvent', '_registerOrRemoveHandler', '_getNodeNameForTarget'],
   _registerFocusEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
     if (!__focusEvent) {
       __focusEvent = _malloc( {{{ C_STRUCTS.EmscriptenFocusEvent.__size__ }}} );
@@ -504,7 +504,7 @@ var LibraryJSEvents = {
     var handlerFunc = function(event) {
       var e = event || window.event;
 
-      var nodeName = JSEvents.getNodeNameForTarget(e.target);
+      var nodeName = __getNodeNameForTarget(e.target);
       var id = e.target.id ? e.target.id : '';
       writeStringToMemory(nodeName, __focusEvent + {{{ C_STRUCTS.EmscriptenFocusEvent.nodeName }}} );
       writeStringToMemory(id, __focusEvent + {{{ C_STRUCTS.EmscriptenFocusEvent.id }}} );
@@ -772,7 +772,7 @@ var LibraryJSEvents = {
   // so that we can report information about that element in the event message.
   _previousFullscreenElement: null,
 
-  _fillFullscreenChangeEventData__deps: ['$JSEvents', '_fullscreenEnabled', '_previousFullscreenElement'],
+  _fillFullscreenChangeEventData__deps: ['$JSEvents', '_fullscreenEnabled', '_previousFullscreenElement', '_getNodeNameForTarget'],
   _fillFullscreenChangeEventData: function(eventStruct, e) {
     var fullscreenElement = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
     var isFullscreen = !!fullscreenElement;
@@ -781,7 +781,7 @@ var LibraryJSEvents = {
     // If transitioning to fullscreen, report info about the element that is now fullscreen.
     // If transitioning to windowed mode, report info about the element that just was fullscreen.
     var reportedElement = isFullscreen ? fullscreenElement : __previousFullscreenElement;
-    var nodeName = JSEvents.getNodeNameForTarget(reportedElement);
+    var nodeName = __getNodeNameForTarget(reportedElement);
     var id = (reportedElement && reportedElement.id) ? reportedElement.id : '';
     writeStringToMemory(nodeName, eventStruct + {{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.nodeName }}} );
     writeStringToMemory(id, eventStruct + {{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.id }}} );
@@ -1240,12 +1240,12 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  _fillPointerlockChangeEventData__deps: ['$JSEvents'],
+  _fillPointerlockChangeEventData__deps: ['$JSEvents', '_getNodeNameForTarget'],
   _fillPointerlockChangeEventData: function(eventStruct, e) {
     var pointerLockElement = document.pointerLockElement || document.mozPointerLockElement || document.webkitPointerLockElement || document.msPointerLockElement;
     var isPointerlocked = !!pointerLockElement;
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenPointerlockChangeEvent.isActive, 'isPointerlocked', 'i32') }}};
-    var nodeName = JSEvents.getNodeNameForTarget(pointerLockElement);
+    var nodeName = __getNodeNameForTarget(pointerLockElement);
     var id = (pointerLockElement && pointerLockElement.id) ? pointerLockElement.id : '';
     writeStringToMemory(nodeName, eventStruct + {{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.nodeName }}} );
     writeStringToMemory(id, eventStruct + {{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.id }}});
