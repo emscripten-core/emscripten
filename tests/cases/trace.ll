@@ -1,11 +1,10 @@
-; ModuleID = 'tests/hello_world.bc'
+; ModuleID = '/tmp/tmpe4Pk1F/a.out.bc'
+target datalayout = "e-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-p:32:32:32-v128:32:128-n32-S128"
+target triple = "asmjs-unknown-emscripten"
 
 ; A [block] type is used in a function def here. If we investigate types in the very first pass, we will
 ; make a bad guess as to the size - we assume undef'd types are [int32]. For this code to compile, we must
 ; only investigate in the first side pass, which is correct since there the type defs are handled.
-
-target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:64-f32:32:32-f64:32:64-v64:64:64-v128:128:128-a0:0:64-f80:32:32-n8:16:32-S128"
-target triple = "i386-pc-linux-gnu"
 
 %struct.TraceKindPair = type { i8*, i32 }
 
