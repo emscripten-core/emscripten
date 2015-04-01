@@ -1,45 +1,46 @@
 var LibraryJSEvents = {
-  $JSEvents: {
-    deferredCalls: [],
-    
-    // If positive, we are currently executing in a JS event handler.
-    inEventHandler: 0,
-    // If we are in an event handler, specifies the event handler object from the eventHandlers array that is currently running.
-    currentEventHandler: null,
+  // If we are in an event handler, specifies the event handler object from the eventHandlers array that is currently running.
+  _currentEventHandler: null,
 
-    // Stores objects representing each currently registered JS event handler.
-    eventHandlers: [],
+  // Stores objects representing each currently registered JS event handler.
+  _eventHandlers: [],
 
-    // Removes all event handlers on the given DOM element of the given type. Pass in eventTypeString == undefined/null to remove all event handlers regardless of the type.
-    removeAllHandlersOnTarget: function(target, eventTypeString) {
-      for(var i = 0; i < JSEvents.eventHandlers.length; ++i) {
-        if (JSEvents.eventHandlers[i].target == target && 
-          (!eventTypeString || eventTypeString == JSEvents.eventHandlers[i].eventTypeString)) {
-           JSEvents._removeHandler(i--);
-         }
-      }
-    },
+  _removeHandler__deps: ['_eventHandlers'],
+  _removeHandler: function(i) {
+    var h = __eventHandlers[i];
+    h.target.removeEventListener(h.eventTypeString, h.eventListenerFunc, h.useCapture);
+    __eventHandlers.splice(i, 1);
+  },
 
-    _removeHandler: function(i) {
-      var h = JSEvents.eventHandlers[i];
-      h.target.removeEventListener(h.eventTypeString, h.eventListenerFunc, h.useCapture);
-      JSEvents.eventHandlers.splice(i, 1);
+  // Removes all event handlers on the given DOM element of the given type. Pass in eventTypeString == undefined/null to remove all event handlers regardless of the type.
+  _removeAllHandlersOnTarget__deps: ['_eventHandlers', '_removeHandler'],
+  _removeAllHandlersOnTarget: function(target, eventTypeString) {
+    for(var i = 0; i < __eventHandlers.length; ++i) {
+      if (__eventHandlers[i].target == target && 
+        (!eventTypeString || eventTypeString == __eventHandlers[i].eventTypeString)) {
+         __removeHandler(i--);
+       }
     }
   },
 
-  _canPerformEventHandlerRequests__deps: ['$JSEvents'],
+  // If positive, we are currently executing in a JS event handler.
+  _inEventHandler: 0,
+
+  _deferredCalls: [],
+
+  _canPerformEventHandlerRequests__deps: ['_inEventHandler', '_currentEventHandler'],
   _canPerformEventHandlerRequests: function() {
-    return JSEvents.inEventHandler && JSEvents.currentEventHandler.allowsDeferredCalls;
+    return __inEventHandler && __currentEventHandler.allowsDeferredCalls;
   },
 
-  _runDeferredCalls__deps: ['$JSEvents', '_canPerformEventHandlerRequests'],
+  _runDeferredCalls__deps: ['_canPerformEventHandlerRequests', '_deferredCalls'],
   _runDeferredCalls: function() {
     if (!__canPerformEventHandlerRequests()) {
       return;
     }
-    for(var i = 0; i < JSEvents.deferredCalls.length; ++i) {
-      var call = JSEvents.deferredCalls[i];
-      JSEvents.deferredCalls.splice(i, 1);
+    for(var i = 0; i < __deferredCalls.length; ++i) {
+      var call = __deferredCalls[i];
+      __deferredCalls.splice(i, 1);
       --i;
       call.targetFunction.apply(this, call.argsList);
     }
@@ -49,24 +50,24 @@ var LibraryJSEvents = {
   // Track in this field whether we have yet registered that __ATEXIT__ handler.
   _removeEventListenersRegistered: false, 
 
-  _registerRemoveEventListeners__deps: ['$JSEvents', '_removeEventListenersRegistered'],
+  _registerRemoveEventListeners__deps: ['_eventHandlers', '_removeHandler', '_removeEventListenersRegistered'],
   _registerRemoveEventListeners: function() {
-    if (!JSEvents.removeEventListenersRegistered) {
+    if (!__removeEventListenersRegistered) {
     __ATEXIT__.push({ func: function() {
-        for(var i = JSEvents.eventHandlers.length-1; i >= 0; --i) {
-          JSEvents._removeHandler(i);
+        for(var i = __eventHandlers.length-1; i >= 0; --i) {
+          __removeHandler(i);
         }
        } });
       __removeEventListenersRegistered = true;
     }
   },
 
-  _registerOrRemoveHandler__deps: ['$JSEvents', '_runDeferredCalls', '_registerRemoveEventListeners'],
+  _registerOrRemoveHandler__deps: ['_eventHandlers', '_removeHandler', '_runDeferredCalls', '_registerRemoveEventListeners', '_inEventHandler', '_currentEventHandler'],
   _registerOrRemoveHandler: function(eventHandler) {
     var jsEventHandler = function jsEventHandler(event) {
       // Increment nesting count for the event handler.
-      ++JSEvents.inEventHandler;
-      JSEvents.currentEventHandler = eventHandler;
+      ++__inEventHandler;
+      __currentEventHandler = eventHandler;
       // Process any old deferred calls the user has placed.
       __runDeferredCalls();
       // Process the actual event, calls back to user C code handler.
@@ -74,19 +75,19 @@ var LibraryJSEvents = {
       // Process any new deferred calls that were placed right now from this event handler.
       __runDeferredCalls();
       // Out of event handler - restore nesting count.
-      --JSEvents.inEventHandler;
+      --__inEventHandler;
     }
     
     if (eventHandler.callbackfunc) {
       eventHandler.eventListenerFunc = jsEventHandler;
       eventHandler.target.addEventListener(eventHandler.eventTypeString, jsEventHandler, eventHandler.useCapture);
-      JSEvents.eventHandlers.push(eventHandler);
+      __eventHandlers.push(eventHandler);
       __registerRemoveEventListeners();
     } else {
-      for(var i = 0; i < JSEvents.eventHandlers.length; ++i) {
-        if (JSEvents.eventHandlers[i].target == eventHandler.target
-         && JSEvents.eventHandlers[i].eventTypeString == eventHandler.eventTypeString) {
-           JSEvents._removeHandler(i--);
+      for(var i = 0; i < __eventHandlers.length; ++i) {
+        if (__eventHandlers[i].target == eventHandler.target
+         && __eventHandlers[i].eventTypeString == eventHandler.eventTypeString) {
+           __removeHandler(i--);
          }
       }
     }
@@ -1080,7 +1081,7 @@ var LibraryJSEvents = {
   // the target element is active in fullscreen mode first. Thefefore give
   // fullscreen mode request a precedence of 1 and pointer lock a precedence of 2
   // and sort by that to always request fullscreen before pointer lock.
-  _deferCall__deps: ['$JSEvents'],
+  _deferCall__deps: ['_deferredCalls'],
   _deferCall: function(targetFunction, precedence, argsList) {
     function arraysHaveEqualContent(arrA, arrB) {
       if (arrA.length != arrB.length) return false;
@@ -1091,19 +1092,19 @@ var LibraryJSEvents = {
       return true;
     }
     // Test if the given call was already queued, and if so, don't add it again.
-    for(var i in JSEvents.deferredCalls) {
-      var call = JSEvents.deferredCalls[i];
+    for(var i in __deferredCalls) {
+      var call = __deferredCalls[i];
       if (call.targetFunction == targetFunction && arraysHaveEqualContent(call.argsList, argsList)) {
         return;
       }
     }
-    JSEvents.deferredCalls.push({
+    __deferredCalls.push({
       targetFunction: targetFunction,
       precedence: precedence,
       argsList: argsList
     });
 
-    JSEvents.deferredCalls.sort(function(x,y) { return x.precedence < y.precedence; });
+    __deferredCalls.sort(function(x,y) { return x.precedence < y.precedence; });
   },
 
   // https://developer.mozilla.org/en-US/docs/Web/Guide/API/DOM/Using_full_screen_mode  
@@ -1212,11 +1213,11 @@ var LibraryJSEvents = {
   },
 
   // Erases all deferred calls to the given target function from the queue list.
-  _removeDeferredCalls__deps: ['$JSEvents'],
+  _removeDeferredCalls__deps: ['_deferredCalls'],
   _removeDeferredCalls: function(targetFunction) {
-    for(var i = 0; i < JSEvents.deferredCalls.length; ++i) {
-      if (JSEvents.deferredCalls[i].targetFunction == targetFunction) {
-        JSEvents.deferredCalls.splice(i, 1);
+    for(var i = 0; i < __deferredCalls.length; ++i) {
+      if (__deferredCalls[i].targetFunction == targetFunction) {
+        __deferredCalls.splice(i, 1);
         --i;
       }
     }
