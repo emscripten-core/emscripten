@@ -154,11 +154,6 @@ var LibraryJSEvents = {
       if (target == window) return '#window';
       if (target == window.screen) return '#screen';
       return (target && target.nodeName) ? target.nodeName : '';
-    },
-
-    tick: function() {
-      if (window['performance'] && window['performance']['now']) return window['performance']['now']();
-      else return Date.now();
     }
   },
 
@@ -210,13 +205,18 @@ var LibraryJSEvents = {
   _previousScreenX: null,
   _previousScreenY: null,
 
+  _tick: function() {
+    if (window['performance'] && window['performance']['now']) return window['performance']['now']();
+    else return Date.now();
+  },
+
   // Copies mouse event data from the given JS mouse event 'e' to the specified Emscripten mouse event structure in the HEAP.
   // eventStruct: the structure to populate.
   // e: The JS mouse event to read data from.
   // target: Specifies a target DOM element that will be used as the reference to populate targetX and targetY parameters.
-  _fillMouseEventData__deps: ['_getBoundingClientRectOrZeros', '_previousScreenX', '_previousScreenY'],
+  _fillMouseEventData__deps: ['_getBoundingClientRectOrZeros', '_previousScreenX', '_previousScreenY', '_tick'],
   _fillMouseEventData: function(eventStruct, e, target) {
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.timestamp, 'JSEvents.tick()', 'double') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.timestamp, '__tick()', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.screenX, 'e.screenX', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.screenY, 'e.screenY', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.clientX, 'e.clientX', 'i32') }}};
@@ -550,7 +550,7 @@ var LibraryJSEvents = {
 
   _deviceOrientationEvent: 0,
 
-  _registerDeviceOrientationEventCallback__deps: ['$JSEvents', '_deviceOrientationEvent'],
+  _registerDeviceOrientationEventCallback__deps: ['$JSEvents', '_deviceOrientationEvent', '_tick'],
   _registerDeviceOrientationEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
     if (!__deviceOrientationEvent) {
       __deviceOrientationEvent = _malloc( {{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}} );
@@ -558,7 +558,7 @@ var LibraryJSEvents = {
     var handlerFunc = function(event) {
       var e = event || window.event;
 
-      {{{ makeSetValue('__deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.timestamp, 'JSEvents.tick()', 'double') }}};
+      {{{ makeSetValue('__deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.timestamp, '__tick()', 'double') }}};
       {{{ makeSetValue('__deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.alpha, 'e.alpha', 'double') }}};
       {{{ makeSetValue('__deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.beta, 'e.beta', 'double') }}};
       {{{ makeSetValue('__deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.gamma, 'e.gamma', 'double') }}};
@@ -599,7 +599,7 @@ var LibraryJSEvents = {
 
   _deviceMotionEvent: 0,
 
-  _registerDeviceMotionEventCallback__deps: ['$JSEvents', '_deviceMotionEvent'],
+  _registerDeviceMotionEventCallback__deps: ['$JSEvents', '_deviceMotionEvent', '_tick'],
   _registerDeviceMotionEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
     if (!__deviceMotionEvent) {
       __deviceMotionEvent = _malloc( {{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}} );
@@ -607,7 +607,7 @@ var LibraryJSEvents = {
     var handlerFunc = function(event) {
       var e = event || window.event;
 
-      {{{ makeSetValue('__deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.timestamp, 'JSEvents.tick()', 'double') }}};
+      {{{ makeSetValue('__deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.timestamp, '__tick()', 'double') }}};
       {{{ makeSetValue('__deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationX, 'e.acceleration.x', 'double') }}};
       {{{ makeSetValue('__deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationY, 'e.acceleration.y', 'double') }}};
       {{{ makeSetValue('__deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationZ, 'e.acceleration.z', 'double') }}};
