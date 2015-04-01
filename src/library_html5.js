@@ -162,16 +162,6 @@ var LibraryJSEvents = {
       return target.getBoundingClientRect ? target.getBoundingClientRect() : { left: 0, top: 0 };
     },
     
-    pageScrollPos: function() {
-      if (window.pageXOffset > 0 || window.pageYOffset > 0) {
-        return [window.pageXOffset, window.pageYOffset];
-      }
-      if (typeof document.documentElement.scrollLeft !== 'undefined' || typeof document.documentElement.scrollTop !== 'undefined') {
-        return [document.documentElement.scrollLeft, document.documentElement.scrollTop];
-      }
-      return [document.body.scrollLeft|0, document.body.scrollTop|0];
-    },
-
     getNodeNameForTarget: function(target) {
       if (!target) return '';
       if (target == window) return '#window';
@@ -182,11 +172,6 @@ var LibraryJSEvents = {
     tick: function() {
       if (window['performance'] && window['performance']['now']) return window['performance']['now']();
       else return Date.now();
-    },
-
-    screenOrientation: function() {
-      if (!window.screen) return undefined;
-      return window.screen.orientation || window.screen.mozOrientation || window.screen.webkitOrientation || window.screen.msOrientation;
     },
 
     fullscreenEnabled: function() {
@@ -502,7 +487,17 @@ var LibraryJSEvents = {
 
   _uiEvent: 0,
 
-  _registerUiEventCallback__deps: ['$JSEvents', '_uiEvent'],
+  _pageScrollPos: function() {
+    if (window.pageXOffset > 0 || window.pageYOffset > 0) {
+      return [window.pageXOffset, window.pageYOffset];
+    }
+    if (typeof document.documentElement.scrollLeft !== 'undefined' || typeof document.documentElement.scrollTop !== 'undefined') {
+      return [document.documentElement.scrollLeft, document.documentElement.scrollTop];
+    }
+    return [document.body.scrollLeft|0, document.body.scrollTop|0];
+  },
+
+  _registerUiEventCallback__deps: ['$JSEvents', '_uiEvent', '_pageScrollPos'],
   _registerUiEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
     if (!__uiEvent) {
       __uiEvent = _malloc( {{{ C_STRUCTS.EmscriptenUiEvent.__size__ }}} );
@@ -523,7 +518,7 @@ var LibraryJSEvents = {
         // causing a new scroll, etc..
         return;
       }
-      var scrollPos = JSEvents.pageScrollPos();
+      var scrollPos = __pageScrollPos();
       {{{ makeSetValue('__uiEvent', C_STRUCTS.EmscriptenUiEvent.detail, 'e.detail', 'i32') }}};
       {{{ makeSetValue('__uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientWidth, 'document.body.clientWidth', 'i32') }}};
       {{{ makeSetValue('__uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientHeight, 'document.body.clientHeight', 'i32') }}};
@@ -720,12 +715,17 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  _fillOrientationChangeEventData__deps: ['$JSEvents'],
+  _screenOrientation: function() {
+    if (!window.screen) return undefined;
+    return window.screen.orientation || window.screen.mozOrientation || window.screen.webkitOrientation || window.screen.msOrientation;
+  },
+
+  _fillOrientationChangeEventData__deps: ['_screenOrientation'],
   _fillOrientationChangeEventData: function(eventStruct, e) {
     var orientations  = ["portrait-primary", "portrait-secondary", "landscape-primary", "landscape-secondary"];
     var orientations2 = ["portrait",         "portrait",           "landscape",         "landscape"];
 
-    var orientationString = JSEvents.screenOrientation();
+    var orientationString = __screenOrientation();
     var orientation = orientations.indexOf(orientationString);
     if (orientation == -1) {
       orientation = orientations2.indexOf(orientationString);
@@ -780,9 +780,9 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
   
-  emscripten_get_orientation_status__deps: ['$JSEvents', '_fillOrientationChangeEventData'],
+  emscripten_get_orientation_status__deps: ['_screenOrientation', '_fillOrientationChangeEventData'],
   emscripten_get_orientation_status: function(orientationChangeEvent) {
-    if (!JSEvents.screenOrientation() && typeof window.orientation === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    if (!__screenOrientation() && typeof window.orientation === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     __fillOrientationChangeEventData(orientationChangeEvent);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
