@@ -1,20 +1,5 @@
 var LibraryJSEvents = {
   $JSEvents: {
-    // When the C runtime exits via exit(), we unregister all event handlers added by this library to be nice and clean.
-    // Track in this field whether we have yet registered that __ATEXIT__ handler.
-    removeEventListenersRegistered: false, 
-
-    registerRemoveEventListeners: function() {
-      if (!JSEvents.removeEventListenersRegistered) {
-      __ATEXIT__.push({ func: function() {
-          for(var i = JSEvents.eventHandlers.length-1; i >= 0; --i) {
-            JSEvents._removeHandler(i);
-          }
-         } });
-        JSEvents.removeEventListenersRegistered = true;
-      }
-    },
-
     findEventTarget: function(target) {
       if (target) {
         if (typeof target == "number") {
@@ -89,7 +74,23 @@ var LibraryJSEvents = {
     }
   },
 
-  _registerOrRemoveHandler__deps: ['$JSEvents', '_runDeferredCalls'],
+  // When the C runtime exits via exit(), we unregister all event handlers added by this library to be nice and clean.
+  // Track in this field whether we have yet registered that __ATEXIT__ handler.
+  _removeEventListenersRegistered: false, 
+
+  _registerRemoveEventListeners__deps: ['$JSEvents', '_removeEventListenersRegistered'],
+  _registerRemoveEventListeners: function() {
+    if (!JSEvents.removeEventListenersRegistered) {
+    __ATEXIT__.push({ func: function() {
+        for(var i = JSEvents.eventHandlers.length-1; i >= 0; --i) {
+          JSEvents._removeHandler(i);
+        }
+       } });
+      __removeEventListenersRegistered = true;
+    }
+  },
+
+  _registerOrRemoveHandler__deps: ['$JSEvents', '_runDeferredCalls', '_registerRemoveEventListeners'],
   _registerOrRemoveHandler: function(eventHandler) {
     var jsEventHandler = function jsEventHandler(event) {
       // Increment nesting count for the event handler.
@@ -109,7 +110,7 @@ var LibraryJSEvents = {
       eventHandler.eventListenerFunc = jsEventHandler;
       eventHandler.target.addEventListener(eventHandler.eventTypeString, jsEventHandler, eventHandler.useCapture);
       JSEvents.eventHandlers.push(eventHandler);
-      JSEvents.registerRemoveEventListeners();
+      __registerRemoveEventListeners();
     } else {
       for(var i = 0; i < JSEvents.eventHandlers.length; ++i) {
         if (JSEvents.eventHandlers[i].target == eventHandler.target
