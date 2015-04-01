@@ -248,41 +248,6 @@ var LibraryJSEvents = {
       return restoreOldStyle;
     },
 
-    fillVisibilityChangeEventData: function(eventStruct, e) {
-      var visibilityStates = [ "hidden", "visible", "prerender", "unloaded" ];
-      var visibilityState = visibilityStates.indexOf(document.visibilityState);
-
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.hidden, 'document.hidden', 'i32') }}};
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.visibilityState, 'visibilityState', 'i32') }}};
-    },
-
-    fillGamepadEventData: function(eventStruct, e) {
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.timestamp, 'e.timestamp', 'double') }}};
-      for(var i = 0; i < e.axes.length; ++i) {
-        {{{ makeSetValue('eventStruct+i*8', C_STRUCTS.EmscriptenGamepadEvent.axis, 'e.axes[i]', 'double') }}};
-      }
-      for(var i = 0; i < e.buttons.length; ++i) {
-        if (typeof(e.buttons[i]) === 'object') {
-          {{{ makeSetValue('eventStruct+i*8', C_STRUCTS.EmscriptenGamepadEvent.analogButton, 'e.buttons[i].value', 'double') }}};
-        } else {
-          {{{ makeSetValue('eventStruct+i*8', C_STRUCTS.EmscriptenGamepadEvent.analogButton, 'e.buttons[i]', 'double') }}};
-        }
-      }
-      for(var i = 0; i < e.buttons.length; ++i) {
-        if (typeof(e.buttons[i]) === 'object') {
-          {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i].pressed', 'i32') }}};
-        } else {
-          {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i] == 1.0', 'i32') }}};
-        }
-      }
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.connected, 'e.connected', 'i32') }}};
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.index, 'e.index', 'i32') }}};
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.numAxes, 'e.axes.length', 'i32') }}};
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.numButtons, 'e.buttons.length', 'i32') }}};
-      writeStringToMemory(e.id, eventStruct + {{{ C_STRUCTS.EmscriptenGamepadEvent.id }}} );
-      writeStringToMemory(e.mapping, eventStruct + {{{ C_STRUCTS.EmscriptenGamepadEvent.mapping }}} );
-    },
-
     battery: function() { return navigator.battery || navigator.mozBattery || navigator.webkitBattery; }
   },
 
@@ -1430,7 +1395,15 @@ var LibraryJSEvents = {
 
   _visibilityChangeEvent: 0,
 
-  _registerVisibilityChangeEventCallback__deps: ['$JSEvents', '_visibilityChangeEvent'],
+  _fillVisibilityChangeEventData: function(eventStruct, e) {
+    var visibilityStates = [ "hidden", "visible", "prerender", "unloaded" ];
+    var visibilityState = visibilityStates.indexOf(document.visibilityState);
+
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.hidden, 'document.hidden', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.visibilityState, 'visibilityState', 'i32') }}};
+  },
+
+  _registerVisibilityChangeEventCallback__deps: ['$JSEvents', '_visibilityChangeEvent', '_fillVisibilityChangeEventData'],
   _registerVisibilityChangeEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
     if (!__visibilityChangeEvent) {
       __visibilityChangeEvent = _malloc( {{{ C_STRUCTS.EmscriptenVisibilityChangeEvent.__size__ }}} );
@@ -1445,7 +1418,7 @@ var LibraryJSEvents = {
     var handlerFunc = function(event) {
       var e = event || window.event;
 
-      JSEvents.fillVisibilityChangeEventData(__visibilityChangeEvent, e);
+      __fillVisibilityChangeEventData(__visibilityChangeEvent, e);
 
       var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, __visibilityChangeEvent, userData]);
       if (shouldCancel) {
@@ -1470,11 +1443,12 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  emscripten_get_visibility_status__deps: ['_fillVisibilityChangeEventData'],
   emscripten_get_visibility_status: function(visibilityStatus) {
     if (typeof document.visibilityState === 'undefined' && typeof document.hidden === 'undefined') {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
-    JSEvents.fillVisibilityChangeEventData(visibilityStatus);  
+    __fillVisibilityChangeEventData(visibilityStatus);  
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
@@ -1586,8 +1560,35 @@ var LibraryJSEvents = {
     __registerTouchEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_TOUCHCANCEL') }}}, "touchcancel");
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
+
+  _fillGamepadEventData: function(eventStruct, e) {
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.timestamp, 'e.timestamp', 'double') }}};
+    for(var i = 0; i < e.axes.length; ++i) {
+      {{{ makeSetValue('eventStruct+i*8', C_STRUCTS.EmscriptenGamepadEvent.axis, 'e.axes[i]', 'double') }}};
+    }
+    for(var i = 0; i < e.buttons.length; ++i) {
+      if (typeof(e.buttons[i]) === 'object') {
+        {{{ makeSetValue('eventStruct+i*8', C_STRUCTS.EmscriptenGamepadEvent.analogButton, 'e.buttons[i].value', 'double') }}};
+      } else {
+        {{{ makeSetValue('eventStruct+i*8', C_STRUCTS.EmscriptenGamepadEvent.analogButton, 'e.buttons[i]', 'double') }}};
+      }
+    }
+    for(var i = 0; i < e.buttons.length; ++i) {
+      if (typeof(e.buttons[i]) === 'object') {
+        {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i].pressed', 'i32') }}};
+      } else {
+        {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i] == 1.0', 'i32') }}};
+      }
+    }
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.connected, 'e.connected', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.index, 'e.index', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.numAxes, 'e.axes.length', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.numButtons, 'e.buttons.length', 'i32') }}};
+    writeStringToMemory(e.id, eventStruct + {{{ C_STRUCTS.EmscriptenGamepadEvent.id }}} );
+    writeStringToMemory(e.mapping, eventStruct + {{{ C_STRUCTS.EmscriptenGamepadEvent.mapping }}} );
+  },
   
-  _registerGamepadEventCallback__deps: ['$JSEvents'],
+  _registerGamepadEventCallback__deps: ['$JSEvents', '_fillGamepadEventData'],
   _registerGamepadEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
     if (!JSEvents.gamepadEvent) {
       JSEvents.gamepadEvent = _malloc( {{{ C_STRUCTS.EmscriptenGamepadEvent.__size__ }}} );
@@ -1596,7 +1597,7 @@ var LibraryJSEvents = {
     var handlerFunc = function(event) {
       var e = event || window.event;
 
-      JSEvents.fillGamepadEventData(JSEvents.gamepadEvent, e.gamepad);
+      __fillGamepadEventData(JSEvents.gamepadEvent, e.gamepad);
 
       var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.gamepadEvent, userData]);
       if (shouldCancel) {
