@@ -101,8 +101,6 @@ var LibraryJSEvents = {
     // Stores objects representing each currently registered JS event handler.
     eventHandlers: [],
 
-    isInternetExplorer: function() { return navigator.userAgent.indexOf('MSIE') !== -1 || navigator.appVersion.indexOf('Trident/') > 0; },
-
     // Removes all event handlers on the given DOM element of the given type. Pass in eventTypeString == undefined/null to remove all event handlers regardless of the type.
     removeAllHandlersOnTarget: function(target, eventTypeString) {
       for(var i = 0; i < JSEvents.eventHandlers.length; ++i) {
@@ -159,7 +157,9 @@ var LibraryJSEvents = {
 
   _keyEvent: 0,
 
-  _registerKeyEventCallback__deps: ['$JSEvents', '_keyEvent'],
+  _isInternetExplorer: function() { return navigator.userAgent.indexOf('MSIE') !== -1 || navigator.appVersion.indexOf('Trident/') > 0; },
+
+  _registerKeyEventCallback__deps: ['$JSEvents', '_keyEvent', '_isInternetExplorer'],
   _registerKeyEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
     if (!__keyEvent) {
       __keyEvent = _malloc( {{{ C_STRUCTS.EmscriptenKeyboardEvent.__size__ }}} );
@@ -187,7 +187,7 @@ var LibraryJSEvents = {
 
     var eventHandler = {
       target: JSEvents.findEventTarget(target),
-      allowsDeferredCalls: JSEvents.isInternetExplorer() ? false : true, // MSIE doesn't allow fullscreen and pointerlock requests from key handlers, others do.
+      allowsDeferredCalls: __isInternetExplorer() ? false : true, // MSIE doesn't allow fullscreen and pointerlock requests from key handlers, others do.
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
       handlerFunc: handlerFunc,
@@ -251,7 +251,7 @@ var LibraryJSEvents = {
   },
 
   _mouseEvent: 0,
-  _registerMouseEventCallback__deps: ['$JSEvents', '_fillMouseEventData', '_mouseEvent'],
+  _registerMouseEventCallback__deps: ['$JSEvents', '_fillMouseEventData', '_mouseEvent', '_isInternetExplorer'],
   _registerMouseEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
     if (!__mouseEvent) {
       __mouseEvent = _malloc( {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}} );
@@ -275,7 +275,7 @@ var LibraryJSEvents = {
       useCapture: useCapture
     };
     // In IE, mousedown events don't either allow deferred calls to be run!
-    if (JSEvents.isInternetExplorer() && eventTypeString == 'mousedown') eventHandler.allowsDeferredCalls = false;
+    if (__isInternetExplorer() && eventTypeString == 'mousedown') eventHandler.allowsDeferredCalls = false;
     JSEvents.registerOrRemoveHandler(eventHandler);
   },
 
@@ -946,9 +946,9 @@ var LibraryJSEvents = {
   },
 
   // Add letterboxes to a fullscreen element in a cross-browser way.
-  _setLetterbox__deps: ['$JSEvents'],
+  _setLetterbox__deps: ['_isInternetExplorer'],
   _setLetterbox: function(element, topBottom, leftRight) {
-    if (JSEvents.isInternetExplorer()) {
+    if (__isInternetExplorer()) {
       // Cannot use padding on IE11, because IE11 computes padding in addition to the size, unlike
       // other browsers, which treat padding to be part of the size.
       // e.g.
