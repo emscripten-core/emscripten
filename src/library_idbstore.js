@@ -83,7 +83,7 @@ var LibraryIDBStore = {
           callback();
         };
         req.onerror = function(error) {
-          errback(error);
+          callback(error);
         };
       });
     },
@@ -94,7 +94,7 @@ var LibraryIDBStore = {
           callback();
         };
         req.onerror = function(error) {
-          errback(error);
+          callback(error);
         };
       });
     },
@@ -105,7 +105,7 @@ var LibraryIDBStore = {
           callback(null, event.target.result > 0);
         };
         req.onerror = function(error) {
-          errback(error);
+          callback(error);
         };
       });
     },
