@@ -36,36 +36,6 @@ var LibraryJSEvents = {
     },
 
     deferredCalls: [],
-
-    // Queues the given function call to occur the next time we enter an event handler.
-    // Existing implementations of pointerlock apis have required that 
-    // the target element is active in fullscreen mode first. Thefefore give
-    // fullscreen mode request a precedence of 1 and pointer lock a precedence of 2
-    // and sort by that to always request fullscreen before pointer lock.
-    deferCall: function(targetFunction, precedence, argsList) {
-      function arraysHaveEqualContent(arrA, arrB) {
-        if (arrA.length != arrB.length) return false;
-
-        for(var i in arrA) {
-          if (arrA[i] != arrB[i]) return false;
-        }
-        return true;
-      }
-      // Test if the given call was already queued, and if so, don't add it again.
-      for(var i in JSEvents.deferredCalls) {
-        var call = JSEvents.deferredCalls[i];
-        if (call.targetFunction == targetFunction && arraysHaveEqualContent(call.argsList, argsList)) {
-          return;
-        }
-      }
-      JSEvents.deferredCalls.push({
-        targetFunction: targetFunction,
-        precedence: precedence,
-        argsList: argsList
-      });
-
-      JSEvents.deferredCalls.sort(function(x,y) { return x.precedence < y.precedence; });
-    },
     
     // Erases all deferred calls to the given target function from the queue list.
     removeDeferredCalls: function(targetFunction) {
@@ -1111,8 +1081,39 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  // Queues the given function call to occur the next time we enter an event handler.
+  // Existing implementations of pointerlock apis have required that 
+  // the target element is active in fullscreen mode first. Thefefore give
+  // fullscreen mode request a precedence of 1 and pointer lock a precedence of 2
+  // and sort by that to always request fullscreen before pointer lock.
+  _deferCall__deps: ['$JSEvents'],
+  _deferCall: function(targetFunction, precedence, argsList) {
+    function arraysHaveEqualContent(arrA, arrB) {
+      if (arrA.length != arrB.length) return false;
+
+      for(var i in arrA) {
+        if (arrA[i] != arrB[i]) return false;
+      }
+      return true;
+    }
+    // Test if the given call was already queued, and if so, don't add it again.
+    for(var i in JSEvents.deferredCalls) {
+      var call = JSEvents.deferredCalls[i];
+      if (call.targetFunction == targetFunction && arraysHaveEqualContent(call.argsList, argsList)) {
+        return;
+      }
+    }
+    JSEvents.deferredCalls.push({
+      targetFunction: targetFunction,
+      precedence: precedence,
+      argsList: argsList
+    });
+
+    JSEvents.deferredCalls.sort(function(x,y) { return x.precedence < y.precedence; });
+  },
+
   // https://developer.mozilla.org/en-US/docs/Web/Guide/API/DOM/Using_full_screen_mode  
-  emscripten_do_request_fullscreen__deps: ['$JSEvents', '_requestFullscreen', '_fullscreenEnabled'],
+  emscripten_do_request_fullscreen__deps: ['$JSEvents', '_requestFullscreen', '_fullscreenEnabled', '_deferCall'],
   emscripten_do_request_fullscreen: function(target, strategy) {
     if (typeof __fullscreenEnabled() === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     if (!__fullscreenEnabled()) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
@@ -1129,7 +1130,7 @@ var LibraryJSEvents = {
     // Queue this function call if we're not currently in an event handler and the user saw it appropriate to do so.
     if (!canPerformRequests) {
       if (strategy.deferUntilInEventHandler) {
-        JSEvents.deferCall(__requestFullscreen, 1 /* priority over pointer lock */, [target, strategy]);
+        __deferCall(__requestFullscreen, 1 /* priority over pointer lock */, [target, strategy]);
         return {{{ cDefine('EMSCRIPTEN_RESULT_DEFERRED') }}};
       } else {
         return {{{ cDefine('EMSCRIPTEN_RESULT_FAILED_NOT_DEFERRED') }}};
@@ -1335,7 +1336,7 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  emscripten_request_pointerlock__deps: ['_requestPointerLock'],
+  emscripten_request_pointerlock__deps: ['_requestPointerLock', '_deferCall'],
   emscripten_request_pointerlock: function(target, deferUntilInEventHandler) {
     if (!target) target = '#canvas';
     target = JSEvents.findEventTarget(target);
@@ -1349,7 +1350,7 @@ var LibraryJSEvents = {
     // Queue this function call if we're not currently in an event handler and the user saw it appropriate to do so.
     if (!canPerformRequests) {
       if (deferUntilInEventHandler) {
-        JSEvents.deferCall(__requestPointerLock, 2 /* priority below fullscreen */, [target]);
+        __deferCall(__requestPointerLock, 2 /* priority below fullscreen */, [target]);
         return {{{ cDefine('EMSCRIPTEN_RESULT_DEFERRED') }}};
       } else {
         return {{{ cDefine('EMSCRIPTEN_RESULT_FAILED_NOT_DEFERRED') }}};
