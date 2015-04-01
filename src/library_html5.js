@@ -116,37 +116,7 @@ var LibraryJSEvents = {
       h.target.removeEventListener(h.eventTypeString, h.eventListenerFunc, h.useCapture);
       JSEvents.eventHandlers.splice(i, 1);
     },
-    
-    registerOrRemoveHandler: function(eventHandler) {
-      var jsEventHandler = function jsEventHandler(event) {
-        // Increment nesting count for the event handler.
-        ++JSEvents.inEventHandler;
-        JSEvents.currentEventHandler = eventHandler;
-        // Process any old deferred calls the user has placed.
-        JSEvents.runDeferredCalls();
-        // Process the actual event, calls back to user C code handler.
-        eventHandler.handlerFunc(event);
-        // Process any new deferred calls that were placed right now from this event handler.
-        JSEvents.runDeferredCalls();
-        // Out of event handler - restore nesting count.
-        --JSEvents.inEventHandler;
-      }
-      
-      if (eventHandler.callbackfunc) {
-        eventHandler.eventListenerFunc = jsEventHandler;
-        eventHandler.target.addEventListener(eventHandler.eventTypeString, jsEventHandler, eventHandler.useCapture);
-        JSEvents.eventHandlers.push(eventHandler);
-        JSEvents.registerRemoveEventListeners();
-      } else {
-        for(var i = 0; i < JSEvents.eventHandlers.length; ++i) {
-          if (JSEvents.eventHandlers[i].target == eventHandler.target
-           && JSEvents.eventHandlers[i].eventTypeString == eventHandler.eventTypeString) {
-             JSEvents._removeHandler(i--);
-           }
-        }
-      }
-    },
-    
+        
     getNodeNameForTarget: function(target) {
       if (!target) return '';
       if (target == window) return '#window';
@@ -155,11 +125,42 @@ var LibraryJSEvents = {
     }
   },
 
+  _registerOrRemoveHandler__deps: ['$JSEvents'],
+  _registerOrRemoveHandler: function(eventHandler) {
+    var jsEventHandler = function jsEventHandler(event) {
+      // Increment nesting count for the event handler.
+      ++JSEvents.inEventHandler;
+      JSEvents.currentEventHandler = eventHandler;
+      // Process any old deferred calls the user has placed.
+      JSEvents.runDeferredCalls();
+      // Process the actual event, calls back to user C code handler.
+      eventHandler.handlerFunc(event);
+      // Process any new deferred calls that were placed right now from this event handler.
+      JSEvents.runDeferredCalls();
+      // Out of event handler - restore nesting count.
+      --JSEvents.inEventHandler;
+    }
+    
+    if (eventHandler.callbackfunc) {
+      eventHandler.eventListenerFunc = jsEventHandler;
+      eventHandler.target.addEventListener(eventHandler.eventTypeString, jsEventHandler, eventHandler.useCapture);
+      JSEvents.eventHandlers.push(eventHandler);
+      JSEvents.registerRemoveEventListeners();
+    } else {
+      for(var i = 0; i < JSEvents.eventHandlers.length; ++i) {
+        if (JSEvents.eventHandlers[i].target == eventHandler.target
+         && JSEvents.eventHandlers[i].eventTypeString == eventHandler.eventTypeString) {
+           JSEvents._removeHandler(i--);
+         }
+      }
+    }
+  },
+
   _keyEvent: 0,
 
   _isInternetExplorer: function() { return navigator.userAgent.indexOf('MSIE') !== -1 || navigator.appVersion.indexOf('Trident/') > 0; },
 
-  _registerKeyEventCallback__deps: ['$JSEvents', '_keyEvent', '_isInternetExplorer'],
+  _registerKeyEventCallback__deps: ['$JSEvents', '_keyEvent', '_isInternetExplorer', '_registerOrRemoveHandler'],
   _registerKeyEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
     if (!__keyEvent) {
       __keyEvent = _malloc( {{{ C_STRUCTS.EmscriptenKeyboardEvent.__size__ }}} );
@@ -193,7 +194,7 @@ var LibraryJSEvents = {
       handlerFunc: handlerFunc,
       useCapture: useCapture
     };
-    JSEvents.registerOrRemoveHandler(eventHandler);
+    __registerOrRemoveHandler(eventHandler);
   },
 
   _getBoundingClientRectOrZeros: function(target) {
@@ -251,7 +252,7 @@ var LibraryJSEvents = {
   },
 
   _mouseEvent: 0,
-  _registerMouseEventCallback__deps: ['$JSEvents', '_fillMouseEventData', '_mouseEvent', '_isInternetExplorer'],
+  _registerMouseEventCallback__deps: ['$JSEvents', '_fillMouseEventData', '_mouseEvent', '_isInternetExplorer', '_registerOrRemoveHandler'],
   _registerMouseEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
     if (!__mouseEvent) {
       __mouseEvent = _malloc( {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}} );
@@ -276,7 +277,7 @@ var LibraryJSEvents = {
     };
     // In IE, mousedown events don't either allow deferred calls to be run!
     if (__isInternetExplorer() && eventTypeString == 'mousedown') eventHandler.allowsDeferredCalls = false;
-    JSEvents.registerOrRemoveHandler(eventHandler);
+    __registerOrRemoveHandler(eventHandler);
   },
 
   emscripten_set_keypress_callback__deps: ['_registerKeyEventCallback'],
@@ -363,7 +364,7 @@ var LibraryJSEvents = {
 
   _wheelEvent: 0,
 
-  _registerWheelEventCallback__deps: ['$JSEvents', '_wheelEvent'],
+  _registerWheelEventCallback__deps: ['$JSEvents', '_wheelEvent', '_registerOrRemoveHandler'],
   _registerWheelEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
     if (!__wheelEvent) {
       __wheelEvent = _malloc( {{{ C_STRUCTS.EmscriptenWheelEvent.__size__ }}} );
@@ -404,7 +405,7 @@ var LibraryJSEvents = {
       handlerFunc: (eventTypeString == 'wheel') ? wheelHandlerFunc : mouseWheelHandlerFunc,
       useCapture: useCapture
     };
-    JSEvents.registerOrRemoveHandler(eventHandler);
+    __registerOrRemoveHandler(eventHandler);
   },
 
   emscripten_set_wheel_callback__deps: ['$JSEvents', '_registerWheelEventCallback'],
@@ -433,7 +434,7 @@ var LibraryJSEvents = {
     return [document.body.scrollLeft|0, document.body.scrollTop|0];
   },
 
-  _registerUiEventCallback__deps: ['$JSEvents', '_uiEvent', '_pageScrollPos'],
+  _registerUiEventCallback__deps: ['$JSEvents', '_uiEvent', '_pageScrollPos', '_registerOrRemoveHandler'],
   _registerUiEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
     if (!__uiEvent) {
       __uiEvent = _malloc( {{{ C_STRUCTS.EmscriptenUiEvent.__size__ }}} );
@@ -478,7 +479,7 @@ var LibraryJSEvents = {
       handlerFunc: handlerFunc,
       useCapture: useCapture
     };
-    JSEvents.registerOrRemoveHandler(eventHandler);
+    __registerOrRemoveHandler(eventHandler);
   },
 
   emscripten_set_resize_callback__deps: ['_registerUiEventCallback'],
@@ -495,7 +496,7 @@ var LibraryJSEvents = {
 
   _focusEvent: 0,
 
-  _registerFocusEventCallback__deps: ['$JSEvents', '_focusEvent'],
+  _registerFocusEventCallback__deps: ['$JSEvents', '_focusEvent', '_registerOrRemoveHandler'],
   _registerFocusEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
     if (!__focusEvent) {
       __focusEvent = _malloc( {{{ C_STRUCTS.EmscriptenFocusEvent.__size__ }}} );
@@ -521,7 +522,7 @@ var LibraryJSEvents = {
       handlerFunc: handlerFunc,
       useCapture: useCapture
     };
-    JSEvents.registerOrRemoveHandler(eventHandler);
+    __registerOrRemoveHandler(eventHandler);
   },
 
   emscripten_set_blur_callback__deps: ['_registerFocusEventCallback'],
@@ -550,7 +551,7 @@ var LibraryJSEvents = {
 
   _deviceOrientationEvent: 0,
 
-  _registerDeviceOrientationEventCallback__deps: ['$JSEvents', '_deviceOrientationEvent', '_tick'],
+  _registerDeviceOrientationEventCallback__deps: ['$JSEvents', '_deviceOrientationEvent', '_tick', '_registerOrRemoveHandler'],
   _registerDeviceOrientationEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
     if (!__deviceOrientationEvent) {
       __deviceOrientationEvent = _malloc( {{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}} );
@@ -578,7 +579,7 @@ var LibraryJSEvents = {
       handlerFunc: handlerFunc,
       useCapture: useCapture
     };
-    JSEvents.registerOrRemoveHandler(eventHandler);
+    __registerOrRemoveHandler(eventHandler);
   },
 
   emscripten_set_deviceorientation_callback__deps: ['_registerDeviceOrientationEventCallback'],
@@ -599,7 +600,7 @@ var LibraryJSEvents = {
 
   _deviceMotionEvent: 0,
 
-  _registerDeviceMotionEventCallback__deps: ['$JSEvents', '_deviceMotionEvent', '_tick'],
+  _registerDeviceMotionEventCallback__deps: ['$JSEvents', '_deviceMotionEvent', '_tick', '_registerOrRemoveHandler'],
   _registerDeviceMotionEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
     if (!__deviceMotionEvent) {
       __deviceMotionEvent = _malloc( {{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}} );
@@ -632,7 +633,7 @@ var LibraryJSEvents = {
       handlerFunc: handlerFunc,
       useCapture: useCapture
     };
-    JSEvents.registerOrRemoveHandler(eventHandler);
+    __registerOrRemoveHandler(eventHandler);
   },
 
   emscripten_set_devicemotion_callback__deps: ['_registerDeviceMotionEventCallback'],
@@ -671,7 +672,7 @@ var LibraryJSEvents = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationAngle, 'window.orientation', 'i32') }}};
   },
 
-  _registerOrientationChangeEventCallback__deps: ['$JSEvents', '_fillOrientationChangeEventData'],
+  _registerOrientationChangeEventCallback__deps: ['$JSEvents', '_fillOrientationChangeEventData', '_registerOrRemoveHandler'],
   _registerOrientationChangeEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
     if (!JSEvents.orientationChangeEvent) {
       JSEvents.orientationChangeEvent = _malloc( {{{ C_STRUCTS.EmscriptenOrientationChangeEvent.__size__ }}} );
@@ -706,7 +707,7 @@ var LibraryJSEvents = {
       handlerFunc: handlerFunc,
       useCapture: useCapture
     };
-    JSEvents.registerOrRemoveHandler(eventHandler);
+    __registerOrRemoveHandler(eventHandler);
   },
 
   emscripten_set_orientationchange_callback__deps: ['_registerOrientationChangeEventCallback'],
@@ -795,7 +796,7 @@ var LibraryJSEvents = {
 
   _fullscreenChangeEvent: 0,
 
-  _registerFullscreenChangeEventCallback__deps: ['$JSEvents', '_fillFullscreenChangeEventData', '_fullscreenChangeEvent'],
+  _registerFullscreenChangeEventCallback__deps: ['$JSEvents', '_fillFullscreenChangeEventData', '_fullscreenChangeEvent', '_registerOrRemoveHandler'],
   _registerFullscreenChangeEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
     if (!__fullscreenChangeEvent) {
       __fullscreenChangeEvent = _malloc( {{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.__size__ }}} );
@@ -826,7 +827,7 @@ var LibraryJSEvents = {
       handlerFunc: handlerFunc,
       useCapture: useCapture
     };
-    JSEvents.registerOrRemoveHandler(eventHandler);
+    __registerOrRemoveHandler(eventHandler);
   },
 
   emscripten_set_fullscreenchange_callback__deps: ['_registerFullscreenChangeEventCallback', '_fullscreenEnabled'],
@@ -1252,7 +1253,7 @@ var LibraryJSEvents = {
 
   _pointerlockChangeEvent: 0,
 
-  _registerPointerlockChangeEventCallback__deps: ['$JSEvents', '_fillPointerlockChangeEventData', '_pointerlockChangeEvent'],
+  _registerPointerlockChangeEventCallback__deps: ['$JSEvents', '_fillPointerlockChangeEventData', '_pointerlockChangeEvent', '_registerOrRemoveHandler'],
   _registerPointerlockChangeEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
     if (!__pointerlockChangeEvent) {
       __pointerlockChangeEvent = _malloc( {{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.__size__ }}} );
@@ -1283,7 +1284,7 @@ var LibraryJSEvents = {
       handlerFunc: handlerFunc,
       useCapture: useCapture
     };
-    JSEvents.registerOrRemoveHandler(eventHandler);
+    __registerOrRemoveHandler(eventHandler);
   },
 
   emscripten_set_pointerlockchange_callback__deps: ['_registerPointerlockChangeEventCallback', '$JSEvents'],
@@ -1404,7 +1405,7 @@ var LibraryJSEvents = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.visibilityState, 'visibilityState', 'i32') }}};
   },
 
-  _registerVisibilityChangeEventCallback__deps: ['$JSEvents', '_visibilityChangeEvent', '_fillVisibilityChangeEventData'],
+  _registerVisibilityChangeEventCallback__deps: ['$JSEvents', '_visibilityChangeEvent', '_fillVisibilityChangeEventData', '_registerOrRemoveHandler'],
   _registerVisibilityChangeEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
     if (!__visibilityChangeEvent) {
       __visibilityChangeEvent = _malloc( {{{ C_STRUCTS.EmscriptenVisibilityChangeEvent.__size__ }}} );
@@ -1435,7 +1436,7 @@ var LibraryJSEvents = {
       handlerFunc: handlerFunc,
       useCapture: useCapture
     };
-    JSEvents.registerOrRemoveHandler(eventHandler);
+    __registerOrRemoveHandler(eventHandler);
   },
 
   emscripten_set_visibilitychange_callback__deps: ['_registerVisibilityChangeEventCallback'],
@@ -1455,7 +1456,7 @@ var LibraryJSEvents = {
 
   _touchEvent: 0,
 
-  _registerTouchEventCallback__deps: ['$JSEvents', '_touchEvent', '_getBoundingClientRectOrZeros'],
+  _registerTouchEventCallback__deps: ['$JSEvents', '_touchEvent', '_getBoundingClientRectOrZeros', '_registerOrRemoveHandler'],
   _registerTouchEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
     if (!__touchEvent) {
       __touchEvent = _malloc( {{{ C_STRUCTS.EmscriptenTouchEvent.__size__ }}} );
@@ -1535,7 +1536,7 @@ var LibraryJSEvents = {
       handlerFunc: handlerFunc,
       useCapture: useCapture
     };
-    JSEvents.registerOrRemoveHandler(eventHandler);
+    __registerOrRemoveHandler(eventHandler);
   },
 
   emscripten_set_touchstart_callback__deps: ['_registerTouchEventCallback'],
@@ -1589,7 +1590,7 @@ var LibraryJSEvents = {
     writeStringToMemory(e.mapping, eventStruct + {{{ C_STRUCTS.EmscriptenGamepadEvent.mapping }}} );
   },
   
-  _registerGamepadEventCallback__deps: ['$JSEvents', '_fillGamepadEventData'],
+  _registerGamepadEventCallback__deps: ['$JSEvents', '_fillGamepadEventData', '_registerOrRemoveHandler'],
   _registerGamepadEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
     if (!JSEvents.gamepadEvent) {
       JSEvents.gamepadEvent = _malloc( {{{ C_STRUCTS.EmscriptenGamepadEvent.__size__ }}} );
@@ -1614,7 +1615,7 @@ var LibraryJSEvents = {
       handlerFunc: handlerFunc,
       useCapture: useCapture
     };
-    JSEvents.registerOrRemoveHandler(eventHandler);
+    __registerOrRemoveHandler(eventHandler);
   },
 
   emscripten_set_gamepadconnected_callback__deps: ['_registerGamepadEventCallback'],
@@ -1665,7 +1666,7 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  _registerBeforeUnloadEventCallback__deps: ['$JSEvents'],
+  _registerBeforeUnloadEventCallback__deps: ['$JSEvents', '_registerOrRemoveHandler'],
   _registerBeforeUnloadEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
     var handlerFunc = function(event) {
       var e = event || window.event;
@@ -1690,7 +1691,7 @@ var LibraryJSEvents = {
       handlerFunc: handlerFunc,
       useCapture: useCapture
     };
-    JSEvents.registerOrRemoveHandler(eventHandler);
+    __registerOrRemoveHandler(eventHandler);
   },
 
   emscripten_set_beforeunload_callback__deps: ['_registerBeforeUnloadEventCallback'],
@@ -1711,7 +1712,7 @@ var LibraryJSEvents = {
 
   _battery: function() { return navigator.battery || navigator.mozBattery || navigator.webkitBattery; },
   
-  _registerBatteryEventCallback__deps: ['$JSEvents', '_fillBatteryEventData', '_battery', '_batteryEvent'],
+  _registerBatteryEventCallback__deps: ['$JSEvents', '_fillBatteryEventData', '_battery', '_batteryEvent', '_registerOrRemoveHandler'],
   _registerBatteryEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
     if (!__batteryEvent) {
       __batteryEvent = _malloc( {{{ C_STRUCTS.EmscriptenBatteryEvent.__size__ }}} );
@@ -1736,7 +1737,7 @@ var LibraryJSEvents = {
       handlerFunc: handlerFunc,
       useCapture: useCapture
     };
-    JSEvents.registerOrRemoveHandler(eventHandler);
+    __registerOrRemoveHandler(eventHandler);
   },
 
   emscripten_set_batterychargingchange_callback__deps: ['_registerBatteryEventCallback', '_battery'],
@@ -1823,7 +1824,7 @@ var LibraryJSEvents = {
     return ext ? 1 : 0;
   },
 
-  _registerWebGlEventCallback__deps: ['$JSEvents'],
+  _registerWebGlEventCallback__deps: ['$JSEvents', '_registerOrRemoveHandler'],
   _registerWebGlEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
     if (!target) {
       target = Module['canvas'];
@@ -1845,7 +1846,7 @@ var LibraryJSEvents = {
       handlerFunc: handlerFunc,
       useCapture: useCapture
     };
-    JSEvents.registerOrRemoveHandler(eventHandler);
+    __registerOrRemoveHandler(eventHandler);
   },
 
   emscripten_set_webglcontextlost_callback__deps: ['_registerWebGlEventCallback'],
