@@ -1,14 +1,5 @@
 var LibraryJSEvents = {
   $JSEvents: {
-    // When we transition from fullscreen to windowed mode, we remember here the element that was just in fullscreen mode
-    // so that we can report information about that element in the event message.
-    previousFullscreenElement: null,
-
-    // Remember the current mouse coordinates in case we need to emulate movementXY generation for browsers that don't support it.
-    // Some browsers (e.g. Safari 6.0.5) only give movementXY when Pointerlock is active.
-    previousScreenX: null,
-    previousScreenY: null,
-
     // When the C runtime exits via exit(), we unregister all event handlers added by this library to be nice and clean.
     // Track in this field whether we have yet registered that __ATEXIT__ handler.
     removeEventListenersRegistered: false, 
@@ -168,61 +159,6 @@ var LibraryJSEvents = {
     tick: function() {
       if (window['performance'] && window['performance']['now']) return window['performance']['now']();
       else return Date.now();
-    },
-    
-    resizeCanvasForFullscreen: function(target, strategy) {
-      var restoreOldStyle = __registerRestoreOldStyle(target);
-      var cssWidth = strategy.softFullscreen ? window.innerWidth : screen.width;
-      var cssHeight = strategy.softFullscreen ? window.innerHeight : screen.height;
-      var rect = target.getBoundingClientRect();
-      var windowedCssWidth = rect.right - rect.left;
-      var windowedCssHeight = rect.bottom - rect.top;
-      var windowedRttWidth = target.width;
-      var windowedRttHeight = target.height;
-
-      if (strategy.scaleMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_SCALE_CENTER') }}}) {
-        __setLetterbox(target, (cssHeight - windowedCssHeight) / 2, (cssWidth - windowedCssWidth) / 2);
-        cssWidth = windowedCssWidth;
-        cssHeight = windowedCssHeight;
-      } else if (strategy.scaleMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_SCALE_ASPECT') }}}) {
-        if (cssWidth*windowedRttHeight < windowedRttWidth*cssHeight) {
-          var desiredCssHeight = windowedRttHeight * cssWidth / windowedRttWidth;
-          __setLetterbox(target, (cssHeight - desiredCssHeight) / 2, 0);
-          cssHeight = desiredCssHeight;
-        } else {
-          var desiredCssWidth = windowedRttWidth * cssHeight / windowedRttHeight;
-          __setLetterbox(target, 0, (cssWidth - desiredCssWidth) / 2);
-          cssWidth = desiredCssWidth;
-        }
-      }
-
-      // If we are adding padding, must choose a background color or otherwise Chrome will give the
-      // padding a default white color. Do it only if user has not customized their own background color.
-      if (!target.style.backgroundColor) target.style.backgroundColor = 'black';
-      // IE11 does the same, but requires the color to be set in the document body.
-      if (!document.body.style.backgroundColor) document.body.style.backgroundColor = 'black'; // IE11
-      // Firefox always shows black letterboxes independent of style color.
-
-      target.style.width = cssWidth + 'px';
-      target.style.height = cssHeight + 'px';
-
-      if (strategy.filteringMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_FILTERING_NEAREST') }}}) {
-        target.style.imageRendering = 'optimizeSpeed';
-        target.style.imageRendering = '-moz-crisp-edges';
-        target.style.imageRendering = '-o-crisp-edges';
-        target.style.imageRendering = '-webkit-optimize-contrast';
-        target.style.imageRendering = 'optimize-contrast';
-        target.style.imageRendering = 'crisp-edges';
-        target.style.imageRendering = 'pixelated';
-      }
-
-      var dpiScale = (strategy.canvasResolutionScaleMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF') }}}) ? window.devicePixelRatio : 1;
-      if (strategy.canvasResolutionScaleMode != {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE') }}}) {
-        target.width = cssWidth * dpiScale;
-        target.height = cssHeight * dpiScale;
-        if (target.GLctxObject) target.GLctxObject.GLctx.viewport(0, 0, target.width, target.height);
-      }
-      return restoreOldStyle;
     }
   },
 
@@ -269,11 +205,16 @@ var LibraryJSEvents = {
     return target.getBoundingClientRect ? target.getBoundingClientRect() : { left: 0, top: 0 };
   },
 
+  // Remember the current mouse coordinates in case we need to emulate movementXY generation for browsers that don't support it.
+  // Some browsers (e.g. Safari 6.0.5) only give movementXY when Pointerlock is active.
+  _previousScreenX: null,
+  _previousScreenY: null,
+
   // Copies mouse event data from the given JS mouse event 'e' to the specified Emscripten mouse event structure in the HEAP.
   // eventStruct: the structure to populate.
   // e: The JS mouse event to read data from.
   // target: Specifies a target DOM element that will be used as the reference to populate targetX and targetY parameters.
-  _fillMouseEventData__deps: ['_getBoundingClientRectOrZeros'],
+  _fillMouseEventData__deps: ['_getBoundingClientRectOrZeros', '_previousScreenX', '_previousScreenY'],
   _fillMouseEventData: function(eventStruct, e, target) {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.timestamp, 'JSEvents.tick()', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.screenX, 'e.screenX', 'i32') }}};
@@ -286,8 +227,8 @@ var LibraryJSEvents = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.metaKey, 'e.metaKey', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.button, 'e.button', 'i16') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.buttons, 'e.buttons', 'i16') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementX, 'e["movementX"] || e["mozMovementX"] || e["webkitMovementX"] || (e.screenX-JSEvents.previousScreenX)', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementY, 'e["movementY"] || e["mozMovementY"] || e["webkitMovementY"] || (e.screenY-JSEvents.previousScreenY)', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementX, 'e["movementX"] || e["mozMovementX"] || e["webkitMovementX"] || (e.screenX-__previousScreenX)', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementY, 'e["movementY"] || e["mozMovementY"] || e["webkitMovementY"] || (e.screenY-__previousScreenY)', 'i32') }}};
 
     if (Module['canvas']) {
       var rect = Module['canvas'].getBoundingClientRect();
@@ -305,8 +246,8 @@ var LibraryJSEvents = {
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetX, '0', 'i32') }}};
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetY, '0', 'i32') }}};
     }
-    JSEvents.previousScreenX = e.screenX;
-    JSEvents.previousScreenY = e.screenY;
+    __previousScreenX = e.screenX;
+    __previousScreenY = e.screenY;
   },
 
   _mouseEvent: 0,
@@ -826,7 +767,11 @@ var LibraryJSEvents = {
     return document.fullscreenEnabled || document.mozFullscreenEnabled || document.mozFullScreenEnabled || document.webkitFullscreenEnabled || document.msFullscreenEnabled;
   },
 
-  _fillFullscreenChangeEventData__deps: ['$JSEvents', '_fullscreenEnabled'],
+  // When we transition from fullscreen to windowed mode, we remember here the element that was just in fullscreen mode
+  // so that we can report information about that element in the event message.
+  _previousFullscreenElement: null,
+
+  _fillFullscreenChangeEventData__deps: ['$JSEvents', '_fullscreenEnabled', '_previousFullscreenElement'],
   _fillFullscreenChangeEventData: function(eventStruct, e) {
     var fullscreenElement = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
     var isFullscreen = !!fullscreenElement;
@@ -834,7 +779,7 @@ var LibraryJSEvents = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.fullscreenEnabled, '__fullscreenEnabled()', 'i32') }}};
     // If transitioning to fullscreen, report info about the element that is now fullscreen.
     // If transitioning to windowed mode, report info about the element that just was fullscreen.
-    var reportedElement = isFullscreen ? fullscreenElement : JSEvents.previousFullscreenElement;
+    var reportedElement = isFullscreen ? fullscreenElement : __previousFullscreenElement;
     var nodeName = JSEvents.getNodeNameForTarget(reportedElement);
     var id = (reportedElement && reportedElement.id) ? reportedElement.id : '';
     writeStringToMemory(nodeName, eventStruct + {{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.nodeName }}} );
@@ -844,7 +789,7 @@ var LibraryJSEvents = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.screenWidth, 'screen.width', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.screenHeight, 'screen.height', 'i32') }}};
     if (isFullscreen) {
-      JSEvents.previousFullscreenElement = fullscreenElement;
+      __previousFullscreenElement = fullscreenElement;
     }
   },
 
@@ -906,6 +851,7 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  _registerRestoreOldStyle__deps: ['_currentFullscreenStrategy'],
   _registerRestoreOldStyle: function(canvas) {
     var oldWidth = canvas.width;
     var oldHeight = canvas.height;
@@ -1075,11 +1021,67 @@ var LibraryJSEvents = {
     }
   },
 
-  _requestFullscreen__deps: ['_fullscreenEnabled'],
+  _resizeCanvasForFullscreen__deps: ['_registerRestoreOldStyle', '_setLetterbox'],
+  _resizeCanvasForFullscreen: function(target, strategy) {
+    var restoreOldStyle = __registerRestoreOldStyle(target);
+    var cssWidth = strategy.softFullscreen ? window.innerWidth : screen.width;
+    var cssHeight = strategy.softFullscreen ? window.innerHeight : screen.height;
+    var rect = target.getBoundingClientRect();
+    var windowedCssWidth = rect.right - rect.left;
+    var windowedCssHeight = rect.bottom - rect.top;
+    var windowedRttWidth = target.width;
+    var windowedRttHeight = target.height;
+
+    if (strategy.scaleMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_SCALE_CENTER') }}}) {
+      __setLetterbox(target, (cssHeight - windowedCssHeight) / 2, (cssWidth - windowedCssWidth) / 2);
+      cssWidth = windowedCssWidth;
+      cssHeight = windowedCssHeight;
+    } else if (strategy.scaleMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_SCALE_ASPECT') }}}) {
+      if (cssWidth*windowedRttHeight < windowedRttWidth*cssHeight) {
+        var desiredCssHeight = windowedRttHeight * cssWidth / windowedRttWidth;
+        __setLetterbox(target, (cssHeight - desiredCssHeight) / 2, 0);
+        cssHeight = desiredCssHeight;
+      } else {
+        var desiredCssWidth = windowedRttWidth * cssHeight / windowedRttHeight;
+        __setLetterbox(target, 0, (cssWidth - desiredCssWidth) / 2);
+        cssWidth = desiredCssWidth;
+      }
+    }
+
+    // If we are adding padding, must choose a background color or otherwise Chrome will give the
+    // padding a default white color. Do it only if user has not customized their own background color.
+    if (!target.style.backgroundColor) target.style.backgroundColor = 'black';
+    // IE11 does the same, but requires the color to be set in the document body.
+    if (!document.body.style.backgroundColor) document.body.style.backgroundColor = 'black'; // IE11
+    // Firefox always shows black letterboxes independent of style color.
+
+    target.style.width = cssWidth + 'px';
+    target.style.height = cssHeight + 'px';
+
+    if (strategy.filteringMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_FILTERING_NEAREST') }}}) {
+      target.style.imageRendering = 'optimizeSpeed';
+      target.style.imageRendering = '-moz-crisp-edges';
+      target.style.imageRendering = '-o-crisp-edges';
+      target.style.imageRendering = '-webkit-optimize-contrast';
+      target.style.imageRendering = 'optimize-contrast';
+      target.style.imageRendering = 'crisp-edges';
+      target.style.imageRendering = 'pixelated';
+    }
+
+    var dpiScale = (strategy.canvasResolutionScaleMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF') }}}) ? window.devicePixelRatio : 1;
+    if (strategy.canvasResolutionScaleMode != {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE') }}}) {
+      target.width = cssWidth * dpiScale;
+      target.height = cssHeight * dpiScale;
+      if (target.GLctxObject) target.GLctxObject.GLctx.viewport(0, 0, target.width, target.height);
+    }
+    return restoreOldStyle;
+  },
+
+  _requestFullscreen__deps: ['_fullscreenEnabled', '_resizeCanvasForFullscreen'],
   _requestFullscreen: function(target, strategy) {
     // EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT + EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE is a mode where no extra logic is performed to the DOM elements.
     if (strategy.scaleMode != {{{ cDefine('EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT') }}} || strategy.canvasResolutionScaleMode != {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE') }}}) {
-      JSEvents.resizeCanvasForFullscreen(target, strategy);
+      __resizeCanvasForFullscreen(target, strategy);
     }
 
     if (target.requestFullscreen) {
@@ -1108,7 +1110,7 @@ var LibraryJSEvents = {
   },
 
   // https://developer.mozilla.org/en-US/docs/Web/Guide/API/DOM/Using_full_screen_mode  
-  emscripten_do_request_fullscreen__deps: ['$JSEvents', '_setLetterbox', '_requestFullscreen', '_fullscreenEnabled'],
+  emscripten_do_request_fullscreen__deps: ['$JSEvents', '_requestFullscreen', '_fullscreenEnabled'],
   emscripten_do_request_fullscreen: function(target, strategy) {
     if (typeof __fullscreenEnabled() === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     if (!__fullscreenEnabled()) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
@@ -1147,7 +1149,7 @@ var LibraryJSEvents = {
     return _emscripten_do_request_fullscreen(target, strategy);
   },
 
-  emscripten_request_fullscreen_strategy__deps: ['emscripten_do_request_fullscreen', '_currentFullscreenStrategy', '_registerRestoreOldStyle'],
+  emscripten_request_fullscreen_strategy__deps: ['emscripten_do_request_fullscreen', '_currentFullscreenStrategy'],
   emscripten_request_fullscreen_strategy: function(target, deferUntilInEventHandler, fullscreenStrategy) {
     var strategy = {};
     strategy.scaleMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.scaleMode, 'i32') }}};
@@ -1161,7 +1163,7 @@ var LibraryJSEvents = {
     return _emscripten_do_request_fullscreen(target, strategy);
   },
 
-  emscripten_enter_soft_fullscreen__deps: ['_setLetterbox', '_hideEverythingExceptGivenElement', '_restoreOldWindowedStyle', '_registerRestoreOldStyle', '_restoreHiddenElements', '_currentFullscreenStrategy', '_softFullscreenResizeWebGLRenderTarget'],
+  emscripten_enter_soft_fullscreen__deps: ['_hideEverythingExceptGivenElement', '_restoreOldWindowedStyle', '_restoreHiddenElements', '_currentFullscreenStrategy', '_softFullscreenResizeWebGLRenderTarget', '_resizeCanvasForFullscreen'],
   emscripten_enter_soft_fullscreen: function(target, fullscreenStrategy) {
     if (!target) target = '#canvas';
     target = JSEvents.findEventTarget(target);
@@ -1176,7 +1178,7 @@ var LibraryJSEvents = {
     strategy.target = target;
     strategy.softFullscreen = true;
 
-    var restoreOldStyle = JSEvents.resizeCanvasForFullscreen(target, strategy);
+    var restoreOldStyle = __resizeCanvasForFullscreen(target, strategy);
 
     document.documentElement.style.overflow = 'hidden';  // Firefox, Chrome
     document.body.scroll = "no"; // IE11
