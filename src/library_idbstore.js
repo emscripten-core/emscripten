@@ -62,6 +62,7 @@ var LibraryIDBStore = {
     // External API
     getFile: function(dbName, id, callback) {
       IDBStore.getStore(dbName, 'readonly', function(err, store) {
+        if (err) return callback(err);
         var req = store.get(id);
         req.onsuccess = function(event) {
           var result = event.target.result;
@@ -78,6 +79,7 @@ var LibraryIDBStore = {
     },
     setFile: function(dbName, id, data, callback) {
       IDBStore.getStore(dbName, 'readwrite', function(err, store) {
+        if (err) return callback(err);
         var req = store.put(data, id);
         req.onsuccess = function(event) {
           callback();
@@ -89,6 +91,7 @@ var LibraryIDBStore = {
     },
     deleteFile: function(dbName, id, callback) {
       IDBStore.getStore(dbName, 'readwrite', function(err, store) {
+        if (err) return callback(err);
         var req = store.delete(id);
         req.onsuccess = function(event) {
           callback();
@@ -100,6 +103,7 @@ var LibraryIDBStore = {
     },
     existsFile: function(dbName, id, callback) {
       IDBStore.getStore(dbName, 'readonly', function(err, store) {
+        if (err) return callback(err);
         var req = store.count(id);
         req.onsuccess = function(event) {
           callback(null, event.target.result > 0);
