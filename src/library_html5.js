@@ -81,18 +81,6 @@ var LibraryJSEvents = {
       return JSEvents.inEventHandler && JSEvents.currentEventHandler.allowsDeferredCalls;
     },
     
-    runDeferredCalls: function() {
-      if (!JSEvents.canPerformEventHandlerRequests()) {
-        return;
-      }
-      for(var i = 0; i < JSEvents.deferredCalls.length; ++i) {
-        var call = JSEvents.deferredCalls[i];
-        JSEvents.deferredCalls.splice(i, 1);
-        --i;
-        call.targetFunction.apply(this, call.argsList);
-      }
-    },
-
     // If positive, we are currently executing in a JS event handler.
     inEventHandler: 0,
     // If we are in an event handler, specifies the event handler object from the eventHandlers array that is currently running.
@@ -118,18 +106,31 @@ var LibraryJSEvents = {
     }
   },
 
-  _registerOrRemoveHandler__deps: ['$JSEvents'],
+  _runDeferredCalls__deps: ['$JSEvents'],
+  _runDeferredCalls: function() {
+    if (!JSEvents.canPerformEventHandlerRequests()) {
+      return;
+    }
+    for(var i = 0; i < JSEvents.deferredCalls.length; ++i) {
+      var call = JSEvents.deferredCalls[i];
+      JSEvents.deferredCalls.splice(i, 1);
+      --i;
+      call.targetFunction.apply(this, call.argsList);
+    }
+  },
+
+  _registerOrRemoveHandler__deps: ['$JSEvents', '_runDeferredCalls'],
   _registerOrRemoveHandler: function(eventHandler) {
     var jsEventHandler = function jsEventHandler(event) {
       // Increment nesting count for the event handler.
       ++JSEvents.inEventHandler;
       JSEvents.currentEventHandler = eventHandler;
       // Process any old deferred calls the user has placed.
-      JSEvents.runDeferredCalls();
+      __runDeferredCalls();
       // Process the actual event, calls back to user C code handler.
       eventHandler.handlerFunc(event);
       // Process any new deferred calls that were placed right now from this event handler.
-      JSEvents.runDeferredCalls();
+      __runDeferredCalls();
       // Out of event handler - restore nesting count.
       --JSEvents.inEventHandler;
     }
