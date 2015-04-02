@@ -422,39 +422,6 @@ var Runtime = {
 
   asmConsts: [],
 
-  getAsmConst: function(code, numArgs) {
-    // code is a constant string on the heap, so we can cache these
-    if (!Runtime.asmConstCache) Runtime.asmConstCache = {};
-    var func = Runtime.asmConstCache[code];
-    if (func) return func;
-    var args = [];
-    for (var i = 0; i < numArgs; i++) {
-      args.push(String.fromCharCode(36) + i); // $0, $1 etc
-    }
-    var source = Pointer_stringify(code);
-    if (source[0] === '"') {
-      // tolerate EM_ASM("..code..") even though EM_ASM(..code..) is correct
-      if (source.indexOf('"', 1) === source.length-1) {
-        source = source.substr(1, source.length-2);
-      } else {
-        // something invalid happened, e.g. EM_ASM("..code($0)..", input)
-        abort('invalid EM_ASM input |' + source + '|. Please use EM_ASM(..code..) (no quotes) or EM_ASM({ ..code($0).. }, input) (to input values)');
-      }
-    }
-#if NO_DYNAMIC_EXECUTION == 0
-    try {
-      // Module is the only 'upvar', which we provide directly. We also provide FS for legacy support.
-      var evalled = eval('(function(Module, FS) { return function(' + args.join(',') + '){ ' + source + ' } })')(Module, typeof FS !== 'undefined' ? FS : null);
-    } catch(e) {
-      Module.printErr('error in executing inline EM_ASM code: ' + e + ' on: \n\n' + source + '\n\nwith args |' + args + '| (make sure to use the right one out of EM_ASM, EM_ASM_ARGS, etc.)');
-      throw e;
-    }
-#else
-    abort('NO_DYNAMIC_EXECUTION was set, cannot eval, so EM_ASM is not functional');
-#endif
-    return Runtime.asmConstCache[code] = evalled;
-  },
-
   warnOnce: function(text) {
     if (!Runtime.warnOnce.shown) Runtime.warnOnce.shown = {};
     if (!Runtime.warnOnce.shown[text]) {
