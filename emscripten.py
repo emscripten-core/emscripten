@@ -1049,6 +1049,9 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
             if proper_sig[0] != 'v':
               # proper sig has a return, which the wrapper may or may not use
               proper_code = shared.JS.make_coercion(proper_code, proper_sig[0], settings)
+              if proper_sig[0] != sig[0]:
+                # first coercion ensured we call the target ok; this one ensures we return the right type in the wrapper
+                proper_code = shared.JS.make_coercion(proper_code, sig[0], settings, convert_from=proper_sig[0])
               if sig[0] != 'v':
                 proper_code = 'return ' + proper_code
             else:
