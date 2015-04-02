@@ -436,6 +436,7 @@ def generate_sanity():
   return EMSCRIPTEN_VERSION + '|' + get_llvm_target() + '|' + LLVM_ROOT + '|' + get_clang_version()
 
 def check_sanity(force=False):
+  return
   try:
     if os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
       return
