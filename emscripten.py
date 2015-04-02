@@ -959,7 +959,10 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     named_globals = '\n'.join(['var %s = %s;' % (k, v) for k, v in metadata['namedGlobals'].iteritems()])
     asm_consts = [0]*len(metadata['asmConsts'])
     for k, v in metadata['asmConsts'].iteritems():
-      const = '{ ' + str(v) + ' }'
+      const = str(v)
+      if const[0] == '"' and const[-1] == '"':
+        const = const[1:-1]
+      const = '{ ' + const + ' }'
       i = 0
       args = []
       while ('$' + str(i)) in const:
