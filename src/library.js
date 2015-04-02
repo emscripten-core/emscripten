@@ -7911,19 +7911,19 @@ LibraryManager.library = {
   },
 
   emscripten_asm_const: function(code) {
-    Runtime.getAsmConst(code, 0)();
+    Runtime.asmConsts[code]();
   },
 
   emscripten_asm_const_int__jsargs: true,
   emscripten_asm_const_int: function(code) {
     var args = Array.prototype.slice.call(arguments, 1);
-    return Runtime.getAsmConst(code, args.length).apply(null, args) | 0;
+    return Runtime.asmConsts[code].apply(null, args) | 0;
   },
 
   emscripten_asm_const_double__jsargs: true,
   emscripten_asm_const_double: function(code) {
     var args = Array.prototype.slice.call(arguments, 1);
-    return +Runtime.getAsmConst(code, args.length).apply(null, args);
+    return +Runtime.asmConsts[code].apply(null, args);
   },
 
   emscripten_get_now: function() {

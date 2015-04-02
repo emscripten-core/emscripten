@@ -957,7 +957,17 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
     # Add named globals
     named_globals = '\n'.join(['var %s = %s;' % (k, v) for k, v in metadata['namedGlobals'].iteritems()])
-    pre = pre.replace('// === Body ===', '// === Body ===\n' + named_globals + '\n')
+    asm_consts = [0]*len(metadata['asmConsts'])
+    for k, v in metadata['asmConsts'].iteritems():
+      const = '{ ' + str(v) + ' }'
+      i = 0
+      args = []
+      while ('$' + str(i)) in const:
+        args.append('$' + str(i))
+        i += 1
+      const = 'function(' + ', '.join(args ) + ') ' + const
+      asm_consts[int(k)] = const
+    pre = pre.replace('// === Body ===', '// === Body ===\n' + named_globals + '\nRuntime.asmConsts = [' + ', '.join(asm_consts) + '];\n')
 
     #if DEBUG: outfile.write('// pre\n')
     outfile.write(pre)

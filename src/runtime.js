@@ -420,6 +420,8 @@ var Runtime = {
 #endif
   },
 
+  asmConsts: [],
+
   getAsmConst: function(code, numArgs) {
     // code is a constant string on the heap, so we can cache these
     if (!Runtime.asmConstCache) Runtime.asmConstCache = {};
