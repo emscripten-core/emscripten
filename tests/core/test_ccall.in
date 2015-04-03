@@ -30,7 +30,7 @@ int get_stack() { int i; return (int)&i; }
 int uses_stack(test_struct* t1) {
   if (stackChecker == 0) stackChecker = (int*)malloc(sizeof(int));
   *stackChecker = get_stack();
-  EM_ASM(Module.ccall('get_int', 'number'));
+  EM_ASM(Module['ccall']('get_int', 'number'));
   printf("stack is %s.\n", *stackChecker == get_stack() ? "ok" : "messed up");
 }
 void call_ccall_again() {
