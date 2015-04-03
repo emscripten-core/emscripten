@@ -978,11 +978,17 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('fastcomp-only')
     Settings.INLINING_LIMIT = 50
     src = path_from_root('tests', 'core', 'test_stack_align.cpp')
-    self.do_run(open(src).read(), ['''align 4: 0
+    def test():
+      self.do_run(open(src).read(), ['''align 4: 0
 align 8: 0
 align 16: 0
 align 32: 0
 base align: 0, 0, 0, 0'''])
+    test()
+    if '-O' in str(self.emcc_args):
+      print 'outlining'
+      Settings.OUTLINING_LIMIT = 60
+      test()
 
   def test_stack_restore(self):
     if self.is_emterpreter(): return self.skip('generated code not available in emterpreter')

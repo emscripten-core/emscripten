@@ -2525,7 +2525,9 @@ function getStackBumpNode(ast) {
     if (type === 'assign' && node[2][0] === 'name' && node[2][1] === 'STACKTOP') {
       var value = node[3];
       if (value[0] === 'name') return true;
-      assert(value[0] == 'binary' && value[1] == '|' && value[2][0] == 'binary' && value[2][1] == '+' && value[2][2][0] == 'name' && value[2][2][1] == 'STACKTOP' && value[2][3][0] == 'num');
+      if (value[0] == 'binary' && value[1] == '&') return; // this is an alignment fix, ignore
+      assert(value[0] == 'binary' && value[1] == '|' && value[2][0] == 'binary' && value[2][1] == '+' && value[2][2][0] == 'name' && value[2][2][1] == 'STACKTOP');
+      if (value[2][3][0] !== 'num') return; // non-constant bump, ignore
       found = node;
       return true;
     }
