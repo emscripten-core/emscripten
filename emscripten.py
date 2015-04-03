@@ -506,6 +506,9 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       shared.Settings.copy(settings)
       asm_setup += '\n' + shared.JS.make_invoke(sig) + '\n'
       basic_funcs.append('invoke_%s' % sig)
+      if settings.get('RESERVED_FUNCTION_POINTERS'):
+        asm_setup += '\n' + shared.JS.make_jscall(sig) + '\n'
+        basic_funcs.append('jsCall_%s' % sig)
       if settings.get('DLOPEN_SUPPORT'):
         asm_setup += '\n' + shared.JS.make_extcall(sig) + '\n'
         basic_funcs.append('extCall_%s' % sig)
@@ -1231,6 +1234,9 @@ function jsCall_%s_%s(%s) {
       shared.Settings.copy(settings)
       asm_setup += '\n' + shared.JS.make_invoke(sig) + '\n'
       basic_funcs.append('invoke_%s' % sig)
+      if settings.get('RESERVED_FUNCTION_POINTERS'):
+        asm_setup += '\n' + shared.JS.make_jscall(sig) + '\n'
+        basic_funcs.append('jsCall_%s' % sig)
       if settings.get('DLOPEN_SUPPORT'):
         asm_setup += '\n' + shared.JS.make_extcall(sig) + '\n'
         basic_funcs.append('extCall_%s' % sig)
