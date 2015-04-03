@@ -5335,6 +5335,8 @@ function outline(ast) {
     // the value after they return.
     var size = measureSize(func);
     asmData.maxOutlinings = Math.min(Math.round(3*size/extraInfo.sizeToOutline), maxTotalOutlinings);
+    asmData.maxAttemptedOutlinings = Infinity;
+    if (extraInfo.sizeToOutline < 100) asmData.maxAttemptedOutlinings = Math.min(50, asmData.maxAttemptedOutlinings); // tiny sizes, be careful of too many attempts
     asmData.intendedPieces = Math.ceil(size/extraInfo.sizeToOutline);
     asmData.totalStackSize = stackSize + (stack.length + 2*asmData.maxOutlinings)*8;
     asmData.controlStackPos = function(i) { return stackSize + (stack.length + i)*8 };
@@ -5678,6 +5680,7 @@ function outline(ast) {
   }
 
   function outlineStatements(func, asmData, stats, maxSize) {
+    asmData.maxAttemptedOutlinings--;
     level++;
     //printErr('outlineStatements: ' + [func[1], level, measureSize(func)]);
     var lastSize = measureSize(stats);
@@ -5708,7 +5711,7 @@ function outline(ast) {
       }
     }
     function done() {
-      return asmData.splitCounter >= asmData.maxOutlinings || measureSize(func) <= extraInfo.sizeToOutline;
+      return asmData.splitCounter >= asmData.maxOutlinings || measureSize(func) <= extraInfo.sizeToOutline || asmData.maxAttemptedOutlinings < 0;
     }
     while (1) {
       i--;
