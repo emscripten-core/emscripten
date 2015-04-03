@@ -75,9 +75,9 @@ int main()
       Module['canvas'].dispatchEvent(event);
     }
     // Scroll up by a tiny amount.
-    sendEvent('wheel', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 0, deltaX: 0, deltaY: -0.1, deltaZ: 0, deltaMode: 1 });
+    sendEvent('wheel', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 0, 'deltaX': 0, 'deltaY': -0.1, 'deltaZ': 0, 'deltaMode': 1 });
     // Scroll down by a tiny amount.
-    sendEvent('wheel', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 0, deltaX: 0, deltaY: 0.1, deltaZ: 0, deltaMode: 1 });
+    sendEvent('wheel', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 0, 'deltaX': 0, 'deltaY': 0.1, 'deltaZ': 0, 'deltaMode': 1 });
     // Press mouse middle button.
     sendEvent('mousedown', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 1, buttons: 2 });
   );
