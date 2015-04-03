@@ -1,5 +1,7 @@
 #!/usr/bin/env python2
 
+# email group about closure EM_ASM issue
+
 '''
 You should normally never use this! Use emcc instead.
 

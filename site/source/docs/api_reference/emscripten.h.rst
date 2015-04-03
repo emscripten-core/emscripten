@@ -34,8 +34,8 @@ Defines
 	.. note:: 
 		- Double-quotes (") cannot be used in the inline assembly/JavaScript. Single-quotes (‘) can be used, as shown above.
 		- Newlines (\\n, \\r etc.) are supported in the inline Javascript. Note that any platform-specific issues with line endings in normal JavaScript also apply to inline JavaScript declared using ``EM_ASM``.
-		- This works with **asm.js** (it outlines the code and does a function call to reach it). 
 		- You can’t access C variables with :c:macro:`EM_ASM`, nor receive a value back. Instead use :c:macro:`EM_ASM_ARGS`, :c:macro:`EM_ASM_INT`, or :c:macro:`EM_ASM_DOUBLE`.
+		- As of ``1.30.4``, ``EM_ASM`` contents appear as normal JS, outside of the compiled code. Previously we had them as a string that was ``eval``ed. The newer approach avoids the overhead of ``eval``, and also allows for better optimization of ``EM_ASM`` contents by things like closure compiler, as their contents are now visible. Note that this means that closure compiler will optimize them as if they were written together with the rest of the codebase, which is a change from before - you may need to use safety quotes in some places (``a['b']`` instead of ``a.b``).
    
 	
 .. c:macro:: EM_ASM_(code, ...)
