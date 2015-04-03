@@ -319,7 +319,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
     %sEM_ASM_%s({
       var self = Module['getCache'](Module['%s'])[$0];
       if (!self.hasOwnProperty('%s')) throw 'a JSImplementation must implement all functions, you forgot %s::%s.';
-      %sself.%s(%s)%s;
+      %sself['%s'](%s)%s;
     }, (int)this%s);
   }''' % (c_return_type, func_name, dec_args,
           basic_return, 'INT' if c_return_type not in C_FLOATS else 'DOUBLE',
@@ -381,7 +381,7 @@ for name in names:
         continue
     if not constructor:
       mid_js += [r'''
-%s.prototype['%s'] = ''' % (name, m.identifier.name)]
+%s.prototype['%s'] = %s.prototype.%s = ''' % (name, m.identifier.name, name, m.identifier.name)]
     sigs = {}
     return_type = None
     for ret, args in m.signatures():
@@ -427,7 +427,7 @@ for name in names:
 
     get_name = 'get_' + attr
     mid_js += [r'''
-  %s.prototype['%s']= ''' % (name, get_name)]
+  %s.prototype['%s'] = %s.prototype.%s = ''' % (name, get_name, name, get_name)]
     render_function(name,
                     get_name, get_sigs, m.type.name,
                     None,
@@ -441,7 +441,7 @@ for name in names:
     if not m.readonly:
       set_name = 'set_' + attr
       mid_js += [r'''
-    %s.prototype['%s']= ''' % (name, set_name)]
+    %s.prototype['%s'] = %s.prototype.%s = ''' % (name, set_name, name, set_name)]
       render_function(name,
                       set_name, set_sigs, 'Void',
                       None,
@@ -454,7 +454,7 @@ for name in names:
 
   if not interface.getExtendedAttribute('NoDelete'):
     mid_js += [r'''
-  %s.prototype['__destroy__'] = ''' % name]
+  %s.prototype['__destroy__'] = %s.prototype.__destroy__ = ''' % (name, name)]
     render_function(name,
                     '__destroy__', { 0: [] }, 'Void',
                     None,
