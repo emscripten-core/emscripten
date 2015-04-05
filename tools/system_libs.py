@@ -33,11 +33,14 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # Check if we need to include some libraries that we compile. (We implement libc ourselves in js, but
   # compile a malloc implementation and stdlibc++.)
 
-  def read_symbols(path, exclude=None):
-    symbols = map(lambda line: line.strip().split(' ')[1], open(path).readlines())
-    if exclude:
-      symbols = filter(lambda symbol: symbol not in exclude, symbols)
-    return set(symbols)
+  def read_symbols(path, exclude=()):
+    symbols = set()
+    with open(path, 'r') as file:
+      for line in file:
+        mark, symbol = line.strip().split(' ')
+        if mark != 'U' and symbol not in exclude:
+          symbols.add(symbol)
+    return symbols
 
   default_opts = []
   # If we're building tracing, we should build the system libraries that way too.
