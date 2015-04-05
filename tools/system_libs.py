@@ -33,11 +33,14 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # Check if we need to include some libraries that we compile. (We implement libc ourselves in js, but
   # compile a malloc implementation and stdlibc++.)
 
-  def read_symbols(path, exclude=None):
-    symbols = map(lambda line: line.strip().split(' ')[1], open(path).readlines())
-    if exclude:
-      symbols = filter(lambda symbol: symbol not in exclude, symbols)
-    return set(symbols)
+  def read_symbols(path, exclude=()):
+    symbols = set()
+    with open(path, 'r') as file:
+      for line in file:
+        mark, symbol = line.strip().split(' ')
+        if mark != 'U' and symbol not in exclude:
+          symbols.add(symbol)
+    return symbols
 
   default_opts = []
   # If we're building tracing, we should build the system libraries that way too.
@@ -48,7 +51,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   #     a normal malloc symbol (like free, after calling strdup), so we haven't hit this yet, but it is possible.
   libc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc.symbols'))
   libcextra_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcextra.symbols'))
-  libcxx_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'symbols'), exclude=libc_symbols)
+  libcxx_slim_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'slim.symbols'), exclude=libc_symbols)
+  libcxx_ios_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'ios.symbols'), exclude=libc_symbols|libcxx_slim_symbols)
   libcxxabi_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols'), exclude=libc_symbols)
   gl_symbols = read_symbols(shared.path_from_root('system', 'lib', 'gl.symbols'))
 
@@ -586,13 +590,12 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     return build_libc('libcextra.bc', libcextra_files, ['-O2'])
 
   # libcxx
-  def create_libcxx():
-    logging.debug('building libcxx for cache')
-    libcxx_files = [
+  def create_libcxx_slim():
+    logging.debug('building libcxx_slim for cache')
+    libcxx_slim_files = [
       'algorithm.cpp',
       'condition_variable.cpp',
       'future.cpp',
-      'iostream.cpp',
       'memory.cpp',
       'random.cpp',
       'stdexcept.cpp',
@@ -607,12 +610,19 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'valarray.cpp',
       'chrono.cpp',
       'exception.cpp',
+      'regex.cpp',
+    ]
+    return build_libcxx(os.path.join('system', 'lib', 'libcxx'), 'libcxx_slim.bc', libcxx_slim_files, ['-Oz', '-Wno-warn-absolute-paths', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')])
+
+  def create_libcxx_ios():
+    logging.debug('building libcxx_ios for cache')
+    libcxx_ios_files = [
+      'iostream.cpp',
       'ios.cpp',
       'locale.cpp',
-      'regex.cpp',
       'strstream.cpp'
     ]
-    return build_libcxx(os.path.join('system', 'lib', 'libcxx'), 'libcxx.bc', libcxx_files, ['-Oz', '-Wno-warn-absolute-paths', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')])
+    return build_libcxx(os.path.join('system', 'lib', 'libcxx'), 'libcxx_ios.bc', libcxx_ios_files, ['-Oz', '-Wno-warn-absolute-paths', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')])
 
   def apply_libcxx(need):
     assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++ with QUANTUM_SIZE == 1'
@@ -722,11 +732,13 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # Go over libraries to figure out which we must include
   ret = []
   has = need = None
-  for name, create, apply_, library_symbols, deps in [('libcxx',    create_libcxx,    apply_libcxx,    libcxx_symbols,    ['libcextra', 'libcxxabi']),
-                                                      ('libcextra', create_libcextra, lambda x: True,  libcextra_symbols, ['libc']),
-                                                      ('libcxxabi', create_libcxxabi, apply_libcxxabi, libcxxabi_symbols, ['libc']),
-                                                      ('gl',        create_gl,        lambda x: True,  gl_symbols,        ['libc']),
-                                                      ('libc',      create_libc,      apply_libc,      libc_symbols,      [])]:
+  for name, create, apply_, library_symbols, deps in [
+      ('libcxx_ios',  create_libcxx_ios,  apply_libcxx,    libcxx_ios_symbols,  ['libcxx_slim']),
+      ('libcxx_slim', create_libcxx_slim, apply_libcxx,    libcxx_slim_symbols, ['libcextra', 'libcxxabi']),
+      ('libcextra',   create_libcextra,   lambda x: True,  libcextra_symbols,   ['libc']),
+      ('libcxxabi',   create_libcxxabi,   apply_libcxxabi, libcxxabi_symbols,   ['libc']),
+      ('gl',          create_gl,          lambda x: True,  gl_symbols,          ['libc']),
+      ('libc',        create_libc,        apply_libc,      libc_symbols,        [])]:
     force_this = force_all or name in force
     if not force_this:
       need = set()
