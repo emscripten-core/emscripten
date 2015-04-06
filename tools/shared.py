@@ -1901,6 +1901,26 @@ class JS:
     return ret
 
   @staticmethod
+  def make_jscall(sig, named=True):
+    fnargs = ','.join(['a' + str(i) for i in range(1, len(sig))])
+    args = 'index' + (',' if fnargs else '') + fnargs
+    ret = '''function%s(%s) {
+    %sRuntime.functionPointers[index](%s);
+}''' % ((' jsCall_' + sig) if named else '', args, 'return ' if sig[0] != 'v' else '', fnargs)
+
+    if Settings.DLOPEN_SUPPORT and Settings.ASSERTIONS:
+      # guard against cross-module stack leaks
+      ret = ret.replace(') {\n', ''') {
+  try {
+    var preStack = asm.stackSave();
+''').replace(';\n}', ''';
+  } finally {
+    assert(asm.stackSave() == preStack);
+  }
+}''')
+    return ret
+
+  @staticmethod
   def make_invoke(sig, named=True):
     args = ','.join(['a' + str(i) for i in range(1, len(sig))])
     args = 'index' + (',' if args else '') + args

@@ -456,7 +456,6 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     if settings['PRECISE_F32']: maths += ['Math.fround']
 
     basic_funcs = ['abort', 'assert', 'asmPrintInt', 'asmPrintFloat'] + [m.replace('.', '_') for m in math_envs]
-    if settings['RESERVED_FUNCTION_POINTERS'] > 0: basic_funcs.append('jsCall')
     if settings['SAFE_HEAP']: basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE', 'SAFE_FT_MASK']
     if settings['CHECK_HEAP_ALIGN']: basic_funcs += ['CHECK_ALIGN_2', 'CHECK_ALIGN_4', 'CHECK_ALIGN_8']
     if settings['ASSERTIONS']:
@@ -495,7 +494,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
 ''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, ret))
 
       for i in range(settings['RESERVED_FUNCTION_POINTERS']):
-        jsret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('jsCall(%d%s%s)' % (i, ',' if coerced_args else '', coerced_args), sig[0], settings)
+        jsret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('jsCall_%s(%d%s%s)' % (sig, i, ',' if coerced_args else '', coerced_args), sig[0], settings)
         function_tables_impls.append('''
   function jsCall_%s_%s(%s) {
     %s
@@ -506,6 +505,9 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       shared.Settings.copy(settings)
       asm_setup += '\n' + shared.JS.make_invoke(sig) + '\n'
       basic_funcs.append('invoke_%s' % sig)
+      if settings.get('RESERVED_FUNCTION_POINTERS'):
+        asm_setup += '\n' + shared.JS.make_jscall(sig) + '\n'
+        basic_funcs.append('jsCall_%s' % sig)
       if settings.get('DLOPEN_SUPPORT'):
         asm_setup += '\n' + shared.JS.make_extcall(sig) + '\n'
         basic_funcs.append('extCall_%s' % sig)
@@ -1135,7 +1137,6 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
     if provide_fround: maths += ['Math.fround']
 
     basic_funcs = ['abort', 'assert'] + [m.replace('.', '_') for m in math_envs]
-    if settings['RESERVED_FUNCTION_POINTERS'] > 0: basic_funcs.append('jsCall')
     if settings['SAFE_HEAP']: basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE', 'SAFE_FT_MASK']
     if settings['CHECK_HEAP_ALIGN']: basic_funcs += ['CHECK_ALIGN_2', 'CHECK_ALIGN_4', 'CHECK_ALIGN_8']
     if settings['ASSERTIONS']:
@@ -1220,7 +1221,7 @@ function dynCall_%s(index%s%s) {
 
       ffi_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i], settings, ffi_arg=True) for i in range(1, len(sig))])
       for i in range(settings['RESERVED_FUNCTION_POINTERS']):
-        jsret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('jsCall(%d%s%s)' % (i, ',' if ffi_args else '', ffi_args), sig[0], settings, ffi_result=True)
+        jsret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('jsCall_%s(%d%s%s)' % (sig, i, ',' if ffi_args else '', ffi_args), sig[0], settings, ffi_result=True)
         function_tables_impls.append('''
 function jsCall_%s_%s(%s) {
   %s
@@ -1231,6 +1232,9 @@ function jsCall_%s_%s(%s) {
       shared.Settings.copy(settings)
       asm_setup += '\n' + shared.JS.make_invoke(sig) + '\n'
       basic_funcs.append('invoke_%s' % sig)
+      if settings.get('RESERVED_FUNCTION_POINTERS'):
+        asm_setup += '\n' + shared.JS.make_jscall(sig) + '\n'
+        basic_funcs.append('jsCall_%s' % sig)
       if settings.get('DLOPEN_SUPPORT'):
         asm_setup += '\n' + shared.JS.make_extcall(sig) + '\n'
         basic_funcs.append('extCall_%s' % sig)
