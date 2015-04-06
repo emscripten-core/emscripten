@@ -6125,6 +6125,38 @@ def process(filename):
       self.emcc_args += ['--closure', '1']
       self.do_run_from_file(src, output, post_build=post)
 
+  def test_dead_functions(self):
+    src = r'''
+      #include <stdio.h>
+      extern "C" {
+      __attribute__((noinline)) int unused(int x) {
+        return x;
+      }
+      }
+      int main(int argc, char **argv) {
+        printf("*%d*\n", argc > 1 ? unused(1) : 2);
+        return 0;
+      }
+    '''
+    def test(expected, args=[], no_build=False):
+      self.do_run(src, expected, args=args, no_build=no_build)
+      return open(self.in_dir('src.cpp.o.js')).read()
+
+    # Sanity check that it works and the dead function is emitted
+    js = test('*1*', ['x'])
+    test('*2*', no_build=True)
+    if self.run_name in ['default', 'asm1', 'asm2g']: assert 'function _unused($' in js
+
+    # Kill off the dead function, and check a code path using it aborts
+    Settings.DEAD_FUNCTIONS = ['_unused']
+    test('*2*')
+    test('abort(-1) at Error', args=['x'], no_build=True)
+
+    # Kill off a library function, check code aborts
+    Settings.DEAD_FUNCTIONS = ['_printf']
+    test('abort(-1) at Error')
+    test('abort(-1) at Error', args=['x'], no_build=True)
+
   def test_pgo(self):
     if Settings.ASM_JS: return self.skip('PGO does not work in asm mode')
 

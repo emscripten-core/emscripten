@@ -496,7 +496,6 @@ function JSify(data, functionsOnly) {
     }
 
     itemsDict.functionStub.push(item);
-    if (IGNORED_FUNCTIONS.indexOf(item.ident) >= 0) return;
     var shortident = item.ident.substr(1);
     if (BUILD_AS_SHARED_LIB) {
       // Shared libraries reuse the runtime of their parents.
@@ -577,8 +576,6 @@ function JSify(data, functionsOnly) {
   // function reconstructor & post-JS optimizer
   function functionReconstructor(func) {
     // We have this function all reconstructed, go and finalize it's JS!
-
-    if (IGNORED_FUNCTIONS.indexOf(func.ident) >= 0) return null;
 
     func.JS = '\n';
 
@@ -1933,9 +1930,7 @@ function JSify(data, functionsOnly) {
     print(processMacros(preprocess(shellParts[1])));
     // Print out some useful metadata
     if (RUNNING_JS_OPTS || PGO) {
-      var generatedFunctions = JSON.stringify(keys(Functions.implementedFunctions).filter(function(func) {
-        return IGNORED_FUNCTIONS.indexOf(func.ident) < 0;
-      }));
+      var generatedFunctions = JSON.stringify(keys(Functions.implementedFunctions));
       if (PGO) {
         print('PGOMonitor.allGenerated = ' + generatedFunctions + ';\nremoveRunDependency("pgo");\n');
       }
