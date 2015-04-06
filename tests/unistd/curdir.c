@@ -16,9 +16,6 @@ int main() {
   );
 
   char buffer[256];
-  printf("getwd: %s\n", getwd(buffer));
-  printf("errno: %d\n", errno);
-  errno = 0;
   printf("getcwd: %s\n", getcwd(buffer, 256));
   printf("errno: %d\n", errno);
   errno = 0;
@@ -27,9 +24,6 @@ int main() {
   printf("chdir(file): %d\n", chdir("/file"));
   printf("errno: %d\n", errno);
   if (!errno) {
-    errno = 0;
-    printf("getwd: %s\n", getwd(buffer));
-    printf("errno: %d\n", errno);
     errno = 0;
     printf("getcwd: %s\n", getcwd(buffer, 256));
     printf("errno: %d\n", errno);
@@ -41,9 +35,6 @@ int main() {
   printf("errno: %d\n", errno);
   if (!errno) {
     errno = 0;
-    printf("getwd: %s\n", getwd(buffer));
-    printf("errno: %d\n", errno);
-    errno = 0;
     printf("getcwd: %s\n", getcwd(buffer, 256));
     printf("errno: %d\n", errno);
   }
@@ -53,9 +44,6 @@ int main() {
   printf("chdir(folder): %d\n", chdir("/folder"));
   printf("errno: %d\n", errno);
   if (!errno) {
-    errno = 0;
-    printf("getwd: %s\n", getwd(buffer));
-    printf("errno: %d\n", errno);
     errno = 0;
     printf("getcwd: %s\n", getcwd(buffer, 256));
     printf("errno: %d\n", errno);
@@ -67,9 +55,6 @@ int main() {
   printf("errno: %d\n", errno);
   if (!errno) {
     errno = 0;
-    printf("getwd: %s\n", getwd(buffer));
-    printf("errno: %d\n", errno);
-    errno = 0;
     printf("getcwd: %s\n", getcwd(buffer, 256));
     printf("errno: %d\n", errno);
   }
@@ -79,9 +64,6 @@ int main() {
   printf("chdir(link): %d\n", chdir("/link"));
   printf("errno: %d\n", errno);
   if (!errno) {
-    errno = 0;
-    printf("getwd: %s\n", getwd(buffer));
-    printf("errno: %d\n", errno);
     errno = 0;
     printf("getcwd: %s\n", getcwd(buffer, 256));
     printf("errno: %d\n", errno);
@@ -93,9 +75,6 @@ int main() {
   printf("fchdir(/): %d\n", fchdir(open("/", O_RDONLY, 0777)));
   printf("errno: %d\n", errno);
   if (!errno) {
-    errno = 0;
-    printf("getwd: %s\n", getwd(buffer));
-    printf("errno: %d\n", errno);
     errno = 0;
     printf("getcwd: %s\n", getcwd(buffer, 256));
     printf("errno: %d\n", errno);

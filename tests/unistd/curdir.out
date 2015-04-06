@@ -1,5 +1,3 @@
-getwd: /
-errno: 0
 getcwd: /
 errno: 0
 
@@ -11,8 +9,6 @@ errno: 20
 
 chdir(folder): 0
 errno: 0
-getwd: /folder
-errno: 0
 getcwd: /folder
 errno: 0
 
@@ -21,14 +17,10 @@ errno: 2
 
 chdir(link): 0
 errno: 0
-getwd: /folder
-errno: 0
 getcwd: /folder
 errno: 0
 
 fchdir(/): 0
-errno: 0
-getwd: /
 errno: 0
 getcwd: /
 errno: 0
