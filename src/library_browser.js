@@ -1268,7 +1268,8 @@ mergeInto(LibraryManager.library, {
       }
       var data = msg.data['data'];
       if (data) {
-        if (!data.byteLength) data = new Uint8Array(data);
+        assert(data instanceof ArrayBuffer);
+        data = new Uint8Array(data);
         if (!info.buffer || info.bufferSize < data.length) {
           if (info.buffer) _free(info.buffer);
           info.bufferSize = data.length;
@@ -1305,30 +1306,33 @@ mergeInto(LibraryManager.library, {
       });
       info.awaited++;
     }
+    data = data ? Module['buffer'].slice(data, data + size) : 0;
     info.worker.postMessage({
       'funcName': funcName,
       'callbackId': callbackId,
-      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0 // XXX copy to a new typed array as a workaround for chrome bug 169705
-    });
+      'data': data
+    },  data ? [data] : []);
   },
 
   emscripten_worker_respond_provisionally: function(data, size) {
     if (workerResponded) throw 'already responded with final response!';
+    data = data ? Module['buffer'].slice(data, data + size) : 0;
     postMessage({
       'callbackId': workerCallbackId,
       'finalResponse': false,
-      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0 // XXX copy to a new typed array as a workaround for chrome bug 169705
-    });
+      'data': data
+    }, data ? [data] : []);
   },
 
   emscripten_worker_respond: function(data, size) {
     if (workerResponded) throw 'already responded with final response!';
     workerResponded = true;
+    data = data ? Module['buffer'].slice(data, data + size) : 0;
     postMessage({
       'callbackId': workerCallbackId,
       'finalResponse': true,
-      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0 // XXX copy to a new typed array as a workaround for chrome bug 169705
-    });
+      'data': data
+    }, data ? [data] : []);
   },
 
   emscripten_get_worker_queue_size: function(id) {

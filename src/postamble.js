@@ -314,7 +314,8 @@ onmessage = function onmessage(msg) {
   if (!func) throw 'invalid worker function to call: ' + msg.data['funcName'];
   var data = msg.data['data'];
   if (data) {
-    if (!data.byteLength) data = new Uint8Array(data);
+    assert(data instanceof ArrayBuffer);
+    data = new Uint8Array(data);
     if (!buffer || bufferSize < data.length) {
       if (buffer) _free(buffer);
       bufferSize = data.length;
