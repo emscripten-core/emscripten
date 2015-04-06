@@ -278,7 +278,7 @@ mergeInto(LibraryManager.library, {
         });
         EmterpreterAsync.setState(1);
 #if ASSERTIONS
-        EmterpreterAsync.saveStack = stackTrace();
+        EmterpreterAsync.saveStack = new Error().stack; // we can't call  stackTrace()  as it calls compiled code
 #endif
         // Pause the main loop, until we resume
         if (Browser.mainLoop.func) {
