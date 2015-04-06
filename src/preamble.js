@@ -384,6 +384,11 @@ var cwrap, ccall;
       }
     }
     var ret = func.apply(null, cArgs);
+#if ASSERTIONS
+    if (typeof EmterpreterAsync === 'object') {
+      assert(!EmterpreterAsync.state, 'cannot start async op with normal JS calling ccall');
+    }
+#endif
     if (returnType === 'string') ret = Pointer_stringify(ret);
     if (stack !== 0) Runtime.stackRestore(stack);
     return ret;
@@ -443,6 +448,9 @@ var cwrap, ccall;
       var strgfy = parseJSFunc(function(){return Pointer_stringify}).returnValue;
       funcstr += 'ret = ' + strgfy + '(ret);';
     }
+#if ASSERTIONS
+    funcstr += "if (typeof EmterpreterAsync === 'object') { assert(!EmterpreterAsync.state, 'cannot start async op with normal JS calling cwrap') }";
+#endif
     if (!numericArgs) {
       // If we had a stack, restore it
       funcstr += JSsource['stackRestore'].body.replace('()', '(stack)') + ';';

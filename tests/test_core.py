@@ -7345,6 +7345,22 @@ int main() {
 
     self.do_run(src, 'HelloWorld!99');
 
+    if self.is_emterpreter():
+      print 'check bad ccall use'
+      Settings.ASSERTIONS = 1
+      Settings.INVOKE_RUN = 0
+      open('post.js', 'w').write('''
+try {
+  Module['ccall']('main', 'number', ['number', 'string'], [2, 'waka']);
+  var never = true;
+} catch(e) {
+  Module.print(e);
+  assert(!never);
+}
+''')
+      self.emcc_args += ['--post-js', 'post.js']
+      self.do_run(src, 'cannot start async op with normal JS');
+
   def test_coroutine(self):
     if not Settings.ASM_JS: return self.skip('asyncify requires asm.js')
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('asyncify requires fastcomp')
