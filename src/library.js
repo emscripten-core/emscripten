@@ -925,12 +925,6 @@ LibraryManager.library = {
       return buf;
     }
   },
-  getwd__deps: ['getcwd'],
-  getwd: function(path_name) {
-    // char *getwd(char *path_name);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/getwd.html
-    return _getcwd(path_name, 4096);  // PATH_MAX.
-  },
   isatty__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   isatty: function(fildes) {
     // int isatty(int fildes);
