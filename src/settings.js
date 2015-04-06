@@ -443,13 +443,6 @@ var LIBRARY_DEPS_TO_AUTOEXPORT = ['memcpy']; // This list is also used to determ
                                              // so we must export so that if they are implemented in C
                                              // they will be accessible, in ASM_JS mode).
 
-var IGNORED_FUNCTIONS = []; // Functions that we should not generate, neither a stub nor a complete function.
-                            // This is useful if your project code includes a function, and you want to replace
-                            // that in the compiled code with your own handwritten JS. (Of course even without
-                            // this option, you could just override the generated function at runtime. However,
-                            // JS engines might optimize better if the function is defined once in a single
-                            // place in your code.)
-
 var EXPORTED_GLOBALS = []; // Global non-function variables that are explicitly
                            // exported, so they are guaranteed to be
                            // accessible outside of the generated code.
