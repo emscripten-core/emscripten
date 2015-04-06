@@ -2320,7 +2320,7 @@ var LibrarySDL = {
       // new audio data. This is because setTimeouts alone have very poor granularity for audio streaming purposes, but also
       // the application might not be using emscripten_set_main_loop to drive the main loop, so we cannot rely on that alone.
       SDL.audio.queueNewAudioData = function SDL_queueNewAudioData() {
-        if (!SDL.audio) return;
+        if (!SDL.audio || SDL.audio.paused) return;
 
         for(var i = 0; i < SDL.audio.numSimultaneouslyQueuedBuffers; ++i) {
           // Only queue new data if we don't have enough audio data already in queue. Otherwise skip this time slot
@@ -2345,7 +2345,7 @@ var LibrarySDL = {
 
       // Create a callback function that will be routinely called to ask more audio data from the user application.
       SDL.audio.caller = function SDL_audioCaller() {
-        if (!SDL.audio) return;
+        if (!SDL.audio || SDL.audio.paused) return;
 
         --SDL.audio.numAudioTimersPending;
 
@@ -2368,7 +2368,21 @@ var LibrarySDL = {
           }
         }
       };
-      
+
+      SDL.audio.currentlyPlayingSources = [];
+      SDL.audio.stopCurrentlyPlayingSources = function SDL_audioStopCurrentlyPlayingSources() {
+        SDL.audio.currentlyPlayingSources.forEach(function(source) {
+          source.stop();
+        });
+      };
+
+      function removeSource() {
+        var index = SDL.audio.currentlyPlayingSources.indexOf(this);
+        if (index > -1) {
+          SDL.audio.currentlyPlayingSources.splice(index, 1);
+        }
+      }
+
       SDL.audio.audioOutput = new Audio();
 
       // Initialize Web Audio API if we haven't done so yet. Note: Only initialize Web Audio context ever once on the web page,
@@ -2395,7 +2409,10 @@ var LibrarySDL = {
           SDL.fillWebAudioBufferFromHeap(ptr, sizeSamplesPerChannel, soundBuffer);
           // Workaround https://bugzilla.mozilla.org/show_bug.cgi?id=883675 by setting the buffer only after filling. The order is important here!
           source['buffer'] = soundBuffer;
-          
+
+          source['onended'] = removeSource;
+          sources.push(source);
+
           // Schedule the generated sample buffer to be played out at the correct time right after the previously scheduled
           // sample buffer has finished.
           var curtime = SDL.audioContext['currentTime'];
@@ -2460,16 +2477,16 @@ var LibrarySDL = {
   },
 
   SDL_PauseAudio: function(pauseOn) {
-    if (!SDL.audio) {
+    if (!SDL.audio || (SDL.audio.paused && pauseOn) || (!SDL.audio.paused && !pauseOn)) {
       return;
     }
     if (pauseOn) {
-      if (SDL.audio.timer !== undefined) {
-        clearTimeout(SDL.audio.timer);
-        SDL.audio.numAudioTimersPending = 0;
-        SDL.audio.timer = undefined;
-      }
-    } else if (!SDL.audio.timer) {
+      clearTimeout(SDL.audio.timer);
+      SDL.audio.numAudioTimersPending = 0;
+      SDL.audio.timer = undefined;
+      SDL.audio.nextPlayTime = 0;
+      SDL.audio.stopCurrentlyPlayingSources();
+    } else {
       // Start the audio playback timer callback loop.
       SDL.audio.numAudioTimersPending = 1;
       SDL.audio.timer = Browser.safeSetTimeout(SDL.audio.caller, 1);
