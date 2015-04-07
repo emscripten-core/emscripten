@@ -280,10 +280,7 @@ def run_on_chunk(command):
     # avoid throwing keyboard interrupts from a child process
     raise Exception()
 
-def run_on_js(filename, passes, js_engine, jcache, source_map=False, extra_info=None, just_split=False, just_concat=False):
-  if isinstance(jcache, bool) and jcache: jcache = shared.JCache
-  if jcache: shared.JCache.ensure()
-
+def run_on_js(filename, passes, js_engine, source_map=False, extra_info=None, just_split=False, just_concat=False):
   if type(passes) == str:
     passes = [passes]
 
@@ -321,13 +318,6 @@ def run_on_js(filename, passes, js_engine, jcache, source_map=False, extra_info=
   cleanup = 'cleanup' in passes
   if cleanup:
     passes = filter(lambda p: p != 'cleanup', passes) # we will do it manually
-
-  if not know_generated and jcache:
-    # JCache cannot be used without metadata, since it might reorder stuff, and that's dangerous since only generated can be reordered
-    # This means jcache does not work after closure compiler runs, for example. But you won't get much benefit from jcache with closure
-    # anyhow (since closure is likely the longest part of the build).
-    if DEBUG: print >>sys.stderr, 'js optimizer: no metadata, so disabling jcache'
-    jcache = False
 
   if know_generated:
     if not minify_globals:
@@ -393,7 +383,7 @@ EMSCRIPTEN_FUNCS();
   if not just_split:
     intended_num_chunks = int(round(cores * NUM_CHUNKS_PER_CORE))
     chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
-    chunks = shared.chunkify(funcs, chunk_size, jcache.get_cachename('jsopt') if jcache else None)
+    chunks = shared.chunkify(funcs, chunk_size)
   else:
     # keep same chunks as before
     chunks = map(lambda f: f[1], funcs)
@@ -401,23 +391,6 @@ EMSCRIPTEN_FUNCS();
   chunks = filter(lambda chunk: len(chunk) > 0, chunks)
   if DEBUG and len(chunks) > 0: print >> sys.stderr, 'chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(map(len, chunks)), '-', min(map(len, chunks))
   funcs = None
-
-  if jcache:
-    # load chunks from cache where we can # TODO: ignore small chunks
-    cached_outputs = []
-    def load_from_cache(chunk):
-      keys = [chunk]
-      shortkey = shared.JCache.get_shortkey(keys) # TODO: share shortkeys with later code
-      out = shared.JCache.get(shortkey, keys)
-      if out:
-        cached_outputs.append(out)
-        return False
-      return True
-    chunks = filter(load_from_cache, chunks)
-    if len(cached_outputs) > 0:
-      if DEBUG: print >> sys.stderr, '  loading %d jsfuncchunks from jcache' % len(cached_outputs)
-    else:
-      cached_outputs = []
 
   if len(chunks) > 0:
     def write_chunk(chunk, i):
@@ -531,33 +504,19 @@ EMSCRIPTEN_FUNCS();
     # just concat the outputs
     for out_file in filenames:
       f.write(open(out_file).read())
-    assert not jcache
   f.write('\n')
-  if jcache:
-    for cached in cached_outputs:
-      f.write(cached); # TODO: preserve order
-      f.write('\n')
   f.write(post);
   # No need to write suffix: if there was one, it is inside post which exists when suffix is there
   f.write('\n')
   f.close()
 
-  if jcache:
-    # save chunks to cache
-    for i in range(len(chunks)):
-      chunk = chunks[i]
-      keys = [chunk]
-      shortkey = shared.JCache.get_shortkey(keys)
-      shared.JCache.set(shortkey, keys, open(filenames[i]).read())
-    if DEBUG and len(chunks) > 0: print >> sys.stderr, '  saving %d jsfuncchunks to jcache' % len(chunks)
-
   return filename
 
-def run(filename, passes, js_engine=shared.NODE_JS, jcache=False, source_map=False, extra_info=None, just_split=False, just_concat=False):
+def run(filename, passes, js_engine=shared.NODE_JS, source_map=False, extra_info=None, just_split=False, just_concat=False):
   if 'receiveJSON' in passes: just_split = True
   if 'emitJSON' in passes: just_concat = True
   js_engine = shared.listify(js_engine)
-  return temp_files.run_and_clean(lambda: run_on_js(filename, passes, js_engine, jcache, source_map, extra_info, just_split, just_concat))
+  return temp_files.run_and_clean(lambda: run_on_js(filename, passes, js_engine, source_map, extra_info, just_split, just_concat))
 
 if __name__ == '__main__':
   last = sys.argv[-1]

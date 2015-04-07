@@ -427,7 +427,6 @@ try:
   js_libraries = []
   bind = False
   emrun = False
-  jcache = False
   save_bc = False
   memory_init_file = None
   use_preload_cache = False
@@ -637,8 +636,7 @@ try:
       logging.warning('--remove-duplicates is deprecated as it is no longer needed. If you cannot link without it, file a bug with a testcase')
       newargs[i] = ''
     elif newargs[i] == '--jcache':
-      logging.warning('jcache is deprecated')
-      jcache = True
+      logging.error('jcache is no longer supported')
       newargs[i] = ''
     elif newargs[i] == '--cache':
       check_bad_eq(newargs[i])
@@ -921,10 +919,6 @@ try:
     except Exception, e:
       logging.error('Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
       raise e
-
-    if jcache:
-      logging.warning('jcache is deprecated and not supported in fastcomp (you should not need it anyhow), disabling')
-      jcache = False
 
     fastcomp_opts = []
     if shared.Settings.NO_EXIT_RUNTIME:
@@ -1336,7 +1330,6 @@ try:
   # Emscripten
   logging.debug('LLVM => JS')
   extra_args = [] if not js_libraries else ['--libraries', ','.join(map(os.path.abspath, js_libraries))]
-  if jcache: extra_args.append('--jcache')
   final = shared.Building.emscripten(final, append_ext=False, extra_args=extra_args)
   if DEBUG: save_intermediate('original')
 
@@ -1455,7 +1448,7 @@ try:
           passes += ['minifyWhitespace']
         logging.debug('applying js optimization passes: %s', ' '.join(passes))
         misc_temp_files.note(final)
-        final = shared.Building.js_optimizer(final, passes, jcache, debug_level >= 4, js_optimizer_extra_info, just_split=just_split, just_concat=just_concat)
+        final = shared.Building.js_optimizer(final, passes, debug_level >= 4, js_optimizer_extra_info, just_split=just_split, just_concat=just_concat)
         misc_temp_files.note(final)
         js_transform_tempfiles.append(final)
         if DEBUG: save_intermediate(title, suffix='js' if 'emitJSON' not in passes else 'json')
