@@ -69,13 +69,16 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     shared.Building.link(o_s, in_temp(lib_filename))
     return in_temp(lib_filename)
 
-  def build_libcxx(src_dirname, lib_filename, files, lib_opts):
+  def build_libcxx(src_dirname, lib_filename, files, lib_opts, has_noexcept_version=False):
     o_s = []
     commands = []
+    opts = default_opts + lib_opts
+    if has_noexcept_version and shared.Settings.DISABLE_EXCEPTION_CATCHING:
+      opts += ['-fno-exceptions']
     for src in files:
       o = in_temp(src + '.o')
       srcfile = shared.path_from_root(src_dirname, src)
-      commands.append([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'] + default_opts + lib_opts)
+      commands.append([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'] + opts)
       o_s.append(o)
     run_commands(commands)
     shared.Building.link(o_s, in_temp(lib_filename))
@@ -612,7 +615,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'regex.cpp',
       'strstream.cpp'
     ]
-    return build_libcxx(os.path.join('system', 'lib', 'libcxx'), 'libcxx.bc', libcxx_files, ['-Oz', '-Wno-warn-absolute-paths', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')])
+    return build_libcxx(os.path.join('system', 'lib', 'libcxx'), 'libcxx.bc', libcxx_files, ['-Oz', '-Wno-warn-absolute-paths', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')], has_noexcept_version=True)
 
   def apply_libcxx(need):
     assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++ with QUANTUM_SIZE == 1'
@@ -720,13 +723,17 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     all_needed.difference_update(symbols.defs)
 
   # Go over libraries to figure out which we must include
+  def maybe_noexcept(name):
+    if shared.Settings.DISABLE_EXCEPTION_CATCHING:
+      name += '_noexcept'
+    return name
   ret = []
   has = need = None
-  for name, create, apply_, library_symbols, deps in [('libcxx',    create_libcxx,    apply_libcxx,    libcxx_symbols,    ['libcextra', 'libcxxabi']),
-                                                      ('libcextra', create_libcextra, lambda x: True,  libcextra_symbols, ['libc']),
-                                                      ('libcxxabi', create_libcxxabi, apply_libcxxabi, libcxxabi_symbols, ['libc']),
-                                                      ('gl',        create_gl,        lambda x: True,  gl_symbols,        ['libc']),
-                                                      ('libc',      create_libc,      apply_libc,      libc_symbols,      [])]:
+  for name, create, apply_, library_symbols, deps in [(maybe_noexcept('libcxx'),    create_libcxx,    apply_libcxx,    libcxx_symbols,    ['libcextra', 'libcxxabi']),
+                                                      ('libcextra',                 create_libcextra, lambda x: True,  libcextra_symbols, ['libc']),
+                                                      ('libcxxabi',                 create_libcxxabi, apply_libcxxabi, libcxxabi_symbols, ['libc']),
+                                                      ('gl',                        create_gl,        lambda x: True,  gl_symbols,        ['libc']),
+                                                      ('libc',                      create_libc,      apply_libc,      libc_symbols,      [])]:
     force_this = force_all or name in force
     if not force_this:
       need = set()
