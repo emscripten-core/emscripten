@@ -14,7 +14,7 @@ var LibraryOpenAL = {
     QUEUE_INTERVAL: 25,
     QUEUE_LOOKAHEAD: 100,
 
-    newSrcId: 0,
+    newSrcId: 1,
 
 #if OPENAL_DEBUG
     //This function is slow and used only for debugging purposes
