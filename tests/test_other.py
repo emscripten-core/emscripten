@@ -3706,13 +3706,13 @@ main()
       del os.environ['EMCC_FORCE_STDLIBS']
 
     try:
-      os.environ['EMCC_FORCE_STDLIBS'] = 'libc'
+      os.environ['EMCC_FORCE_STDLIBS'] = 'libc.bc'
       test('partial list, but ok since we grab them as needed')
     finally:
       del os.environ['EMCC_FORCE_STDLIBS']
 
     try:
-      os.environ['EMCC_FORCE_STDLIBS'] = 'libc'
+      os.environ['EMCC_FORCE_STDLIBS'] = 'libc.bc'
       os.environ['EMCC_ONLY_FORCED_STDLIBS'] = '1'
       ok = False
       test('fail! not enough stdlibs')
@@ -3724,7 +3724,7 @@ main()
     assert ok
 
     try:
-      os.environ['EMCC_FORCE_STDLIBS'] = 'libc,libcxxabi,libcxx'
+      os.environ['EMCC_FORCE_STDLIBS'] = 'libc.bc,libcxxabi.bc,libcxx.a'
       os.environ['EMCC_ONLY_FORCED_STDLIBS'] = '1'
       test('force all the needed stdlibs, so this works even though we ignore the input file')
     finally:
@@ -3748,7 +3748,7 @@ int main()
 }
 ''')
     try:
-      os.environ['EMCC_FORCE_STDLIBS'] = 'libc,libcxxabi,libcxx'
+      os.environ['EMCC_FORCE_STDLIBS'] = 'libc.bc,libcxxabi.bc,libcxx.a'
       os.environ['EMCC_ONLY_FORCED_STDLIBS'] = '1'
       Popen([PYTHON, EMXX, 'src.cpp']).communicate()
       self.assertContained('Caught exception: std::exception', run_js('a.out.js', stderr=PIPE))
@@ -4983,4 +4983,26 @@ int main() {
     output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
     # just care about message regarding allocating over 1GB of memory
     self.assertContained('''managed another malloc!\n''', output)
+
+  def test_libcxx_minimal(self):
+    open('vector.cpp', 'w').write(r'''
+#include <vector>
+int main(int argc, char** argv) {
+  std::vector<void*> v;
+  for (int i = 0 ; i < argc; i++) {
+    v.push_back(nullptr);
+  }
+  return v.size();
+}
+''')
+
+    Popen([PYTHON, EMCC, '-O2', 'vector.cpp', '-o', 'vector.js']).communicate()[1]
+    Popen([PYTHON, EMCC, '-O2', path_from_root('tests', 'hello_libcxx.cpp'), '-o', 'iostream.js']).communicate()[1]
+
+    vector = os.stat('vector.js').st_size
+    iostream = os.stat('iostream.js').st_size
+    print vector, iostream
+
+    assert vector > 1000
+    assert 2.5*vector < iostream # we can strip out almost all of libcxx when just using vector
 
