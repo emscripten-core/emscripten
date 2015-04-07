@@ -4984,3 +4984,25 @@ int main() {
     # just care about message regarding allocating over 1GB of memory
     self.assertContained('''managed another malloc!\n''', output)
 
+  def test_libcxx_minimal(self):
+    open('vector.cpp', 'w').write(r'''
+#include <vector>
+int main(int argc, char** argv) {
+  std::vector<void*> v;
+  for (int i = 0 ; i < argc; i++) {
+    v.push_back(nullptr);
+  }
+  return v.size();
+}
+''')
+
+    Popen([PYTHON, EMCC, '-O2', 'vector.cpp', '-o', 'vector.js']).communicate()[1]
+    Popen([PYTHON, EMCC, '-O2', path_from_root('tests', 'hello_libcxx.cpp'), '-o', 'iostream.js']).communicate()[1]
+
+    vector = os.stat('vector.js').st_size
+    iostream = os.stat('iostream.js').st_size
+    print vector, iostream
+
+    assert vector > 1000
+    assert 2.5*vector < iostream # we can strip out almost all of libcxx when just using vector
+
