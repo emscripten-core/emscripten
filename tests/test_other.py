@@ -3706,13 +3706,13 @@ main()
       del os.environ['EMCC_FORCE_STDLIBS']
 
     try:
-      os.environ['EMCC_FORCE_STDLIBS'] = 'libc'
+      os.environ['EMCC_FORCE_STDLIBS'] = 'libc.bc'
       test('partial list, but ok since we grab them as needed')
     finally:
       del os.environ['EMCC_FORCE_STDLIBS']
 
     try:
-      os.environ['EMCC_FORCE_STDLIBS'] = 'libc'
+      os.environ['EMCC_FORCE_STDLIBS'] = 'libc.bc'
       os.environ['EMCC_ONLY_FORCED_STDLIBS'] = '1'
       ok = False
       test('fail! not enough stdlibs')
@@ -3724,7 +3724,7 @@ main()
     assert ok
 
     try:
-      os.environ['EMCC_FORCE_STDLIBS'] = 'libc,libcxxabi,libcxx'
+      os.environ['EMCC_FORCE_STDLIBS'] = 'libc.bc,libcxxabi.bc,libcxx.a'
       os.environ['EMCC_ONLY_FORCED_STDLIBS'] = '1'
       test('force all the needed stdlibs, so this works even though we ignore the input file')
     finally:
@@ -3748,7 +3748,7 @@ int main()
 }
 ''')
     try:
-      os.environ['EMCC_FORCE_STDLIBS'] = 'libc,libcxxabi,libcxx'
+      os.environ['EMCC_FORCE_STDLIBS'] = 'libc.bc,libcxxabi.bc,libcxx.a'
       os.environ['EMCC_ONLY_FORCED_STDLIBS'] = '1'
       Popen([PYTHON, EMXX, 'src.cpp']).communicate()
       self.assertContained('Caught exception: std::exception', run_js('a.out.js', stderr=PIPE))
