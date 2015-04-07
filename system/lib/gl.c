@@ -1543,12 +1543,14 @@ GLAPI void APIENTRY emscripten_glVertexAttribDivisor (GLuint index, GLuint divis
 void* emscripten_GetProcAddress(const char *name_) {
   char *name = malloc(strlen(name_)+1);
   strcpy(name, name_);
-  // remove EXT|ARB|OES suffixes
+  // remove EXT|ARB|OES|ANGLE suffixes
   char *end = strstr(name, "EXT");
   if (end) *end = 0;
   end = strstr(name, "ARB");
   if (end) *end = 0;
   end = strstr(name, "OES");
+  if (end) *end = 0;
+  end = strstr(name, "ANGLE");
   if (end) *end = 0;
   // misc renamings
   if (!strcmp(name, "glCreateProgramObject")) name = "glCreateProgram";
