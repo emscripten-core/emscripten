@@ -7463,6 +7463,10 @@ int main(int argc, char **argv) {
     self.emcc_args += ['--js-library', os.path.join(self.get_dir(), 'lib.js')]
     self.do_run(open(os.path.join(self.get_dir(), 'main.cpp'), 'r').read(), 'able to run memprof')
 
+  def test_memprof_compiler_flag(self):
+    Building.COMPILER_TEST_OPTS += ['--memprof']
+    self.do_run(open(path_from_root('tests', 'mem_leak.c'), 'r').read(), 'mallocProxy\nfreeProxy');
+
 # Generate tests for everything
 def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
     typed_arrays=0, emcc_args=None, env=None):
