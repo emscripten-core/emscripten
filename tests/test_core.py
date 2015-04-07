@@ -7347,6 +7347,15 @@ int main() {
 
     if self.is_emterpreter():
       print 'check bad ccall use'
+      src = r'''
+#include <stdio.h>
+#include <emscripten.h>
+int main() {
+  printf("Hello");
+  emscripten_sleep(100);
+  printf("World\n");
+}
+'''
       Settings.ASSERTIONS = 1
       Settings.INVOKE_RUN = 0
       open('post.js', 'w').write('''
@@ -7360,6 +7369,26 @@ try {
 ''')
       self.emcc_args += ['--post-js', 'post.js']
       self.do_run(src, 'cannot start async op with normal JS');
+
+      print 'check reasonable ccall use'
+      src = r'''
+#include <stdio.h>
+#include <emscripten.h>
+int main() {
+  printf("Hello");
+  emscripten_sleep(100);
+  printf("World\n");
+  EM_ASM( Module.doCleanup() );
+}
+'''
+      open('post.js', 'w').write('''
+Module.cleanup = Module['ccall']('main', null, ['number', 'string'], [2, 'waka'], { async: true });
+Module.doCleanup = function() {
+  Module.print('cleanup');
+  Module.cleanup();
+};
+''')
+      self.do_run(src, 'HelloWorld\ncleanup');
 
   def test_coroutine(self):
     if not Settings.ASM_JS: return self.skip('asyncify requires asm.js')

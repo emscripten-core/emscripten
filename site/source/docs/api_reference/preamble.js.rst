@@ -18,7 +18,7 @@ The JavaScript APIs in `preamble.js <https://github.com/kripken/emscripten/blob/
 Calling compiled C functions from JavaScript
 ============================================
 
-.. js:function:: ccall(ident, returnType, argTypes, args)
+.. js:function:: ccall(ident, returnType, argTypes, args, opts)
 
 	Call a compiled C function from JavaScript.
 
@@ -55,8 +55,11 @@ Calling compiled C functions from JavaScript
 	.. note:: 64-bit integers become two 32-bit parameters, for the low and high bits (since 64-bit integers cannot be represented in JavaScript numbers).
 	:param argTypes: An array of the types of arguments for the function (if there are no arguments, this can be omitted). Types are as in ``returnType``, except that ``array`` is not supported as there is no way for us to know the length of the array).
 	:param args: An array of the arguments to the function, as native JavaScript values (as in ``returnType``). Note that string arguments will be stored on the stack (the JavaScript string will become a C string on the stack).
-	:returns: The result of the function call as a native JavaScript value (as in ``returnType``). 
-	
+	:returns: The result of the function call as a native JavaScript value (as in ``returnType``).
+	:opts: An optional options object. It can contain the following properties:
+
+			- ``async``: Implies that the ccall will perform an async operation. This assumes you are using the Emterpreter-Async option for your code. When using this option, the ccalled function cannot return a value (it can't be received synchronously anyhow); instead, ccall will return a function that you should call after all asynchronous operations conclude (the function does some cleanup).
+
 	.. COMMENT (not rendered): The ccall/cwrap functions only work for C++ functions that use "extern C". In theory ordinary C++ names can be unmangled, but it would require tool to ship a fairly large amount of code just for this purpose.
 
 	

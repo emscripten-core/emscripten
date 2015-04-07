@@ -365,7 +365,7 @@ var cwrap, ccall;
   var toC = {'string' : JSfuncs['stringToC'], 'array' : JSfuncs['arrayToC']};
 
   // C calling interface. 
-  ccall = function ccallFunc(ident, returnType, argTypes, args) {
+  ccall = function ccallFunc(ident, returnType, argTypes, args, opts) {
     var func = getCFunc(ident);
     var cArgs = [];
     var stack = 0;
@@ -385,12 +385,20 @@ var cwrap, ccall;
     }
     var ret = func.apply(null, cArgs);
 #if ASSERTIONS
-    if (typeof EmterpreterAsync === 'object') {
+    if ((!opts || !opts.async) && typeof EmterpreterAsync === 'object') {
       assert(!EmterpreterAsync.state, 'cannot start async op with normal JS calling ccall');
     }
+    if (opts && opts.async) assert(!returnType, 'async ccalls cannot return values');
 #endif
     if (returnType === 'string') ret = Pointer_stringify(ret);
-    if (stack !== 0) Runtime.stackRestore(stack);
+    if (stack !== 0) {
+      if (opts && opts.async) {
+        return function() {
+          Runtime.stackRestore(stack);
+        };
+      }
+      Runtime.stackRestore(stack);
+    }
     return ret;
   }
 
