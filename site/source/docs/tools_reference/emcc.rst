@@ -369,7 +369,7 @@ Options that are modified or new in *emcc* are listed below:
 ``--clear-cache``
 	Manually clears the cache of compiled Emscripten system libraries (libc++, libc++abi, libc). 
 	
-	This is normally handled automatically, but if you update LLVM in-place (instead of having a different directory for a new version), the caching mechanism can get confused. Clearing the cache can fix weird problems related to cache incompatibilities, like *Clang* failing to link with library files. This also clears other cached data like the jcache and the bootstrapped relooper. After the cache is cleared, this process will exit.
+	This is normally handled automatically, but if you update LLVM in-place (instead of having a different directory for a new version), the caching mechanism can get confused. Clearing the cache can fix weird problems related to cache incompatibilities, like *Clang* failing to link with library files. This also clears other cached data. After the cache is cleared, this process will exit.
 
 .. _emcc-clear-ports:
 	 

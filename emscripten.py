@@ -68,7 +68,7 @@ def process_funcs((i, funcs_file, meta, settings_file, compiler, forwarded_file,
   return out
 
 def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
-             jcache=None, temp_files=None, DEBUG=None, DEBUG_CACHE=None):
+             temp_files=None, DEBUG=None, DEBUG_CACHE=None):
   """Runs the emscripten LLVM-to-JS compiler. We parallelize as much as possible
 
   Args:
@@ -86,8 +86,6 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   #   3 aka 'post' : Process globals, generate postamble and finishing touches.
 
   if DEBUG: logging.debug('emscript: ll=>js')
-
-  if jcache: jcache.ensure()
 
   # Pre-scan ll and alter settings as necessary
   if DEBUG: t = time.time()
@@ -159,34 +157,12 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   pre_file = temp_files.get('.pre.ll').name
   pre_input = ''.join(pre) + '\n' + meta
   out = None
-  if jcache:
-    keys = [pre_input, settings_text, ','.join(libraries)]
-    shortkey = jcache.get_shortkey(keys)
-    if DEBUG_CACHE: logging.debug('shortkey', shortkey)
-
-    out = jcache.get(shortkey, keys)
-
-    if DEBUG_CACHE and not out:
-      dfpath = os.path.join(get_configuration().TEMP_DIR, "ems_" + shortkey)
-      dfp = open(dfpath, 'w')
-      dfp.write(pre_input)
-      dfp.write("\n\n========================== settings_text\n\n")
-      dfp.write(settings_text)
-      dfp.write("\n\n========================== libraries\n\n")
-      dfp.write("\n".join(libraries))
-      dfp.close()
-      logging.debug('  cache miss, key data dumped to %s' % dfpath)
-
-    if out and DEBUG: logging.debug('  loading pre from jcache')
   if not out:
     open(pre_file, 'w').write(pre_input)
     #print >> sys.stderr, 'running', str([settings_file, pre_file, 'pre'] + libraries).replace("'/", "'") # see funcs
     out = jsrun.run_js(compiler, compiler_engine, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
                        cwd=path_from_root('src'))
     assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
-    if jcache:
-      if DEBUG: logging.debug('  saving pre to jcache')
-      jcache.set(shortkey, keys, out)
   pre, forwarded_data = out.split('//FORWARDED_DATA:')
   forwarded_file = temp_files.get('.json').name
   pre_input = None
@@ -215,31 +191,12 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     settings['EXPORTED_FUNCTIONS'] = forwarded_json['EXPORTED_FUNCTIONS']
     save_settings()
 
-  chunks = cache_module.chunkify(
-    funcs, chunk_size,
-    jcache.get_cachename('emscript_files') if jcache else None)
+  chunks = cache_module.chunkify(funcs, chunk_size)
 
   #sys.exit(1)
   #chunks = [chunks[0]] # pick specific chunks for debugging/profiling
 
   funcs = None
-
-  if jcache:
-    # load chunks from cache where we can # TODO: ignore small chunks
-    cached_outputs = []
-    def load_from_cache(chunk):
-      keys = [settings_text, forwarded_data, chunk]
-      shortkey = jcache.get_shortkey(keys) # TODO: share shortkeys with later code
-      out = jcache.get(shortkey, keys) # this is relatively expensive (pickling?)
-      if out:
-        cached_outputs.append(out)
-        return False
-      return True
-    chunks = filter(load_from_cache, chunks)
-    if len(cached_outputs) > 0:
-      if out and DEBUG: logging.debug('  loading %d funcchunks from jcache' % len(cached_outputs))
-    else:
-      cached_outputs = []
 
   # TODO: minimize size of forwarded data from funcs to what we actually need
 
@@ -254,8 +211,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       funcs_file = temp_files.get('.func_%d.ll' % i).name
       f = open(funcs_file, 'w')
       f.write(chunks[i])
-      if not jcache:
-        chunks[i] = None # leave chunks array alive (need its length later)
+      chunks[i] = None # leave chunks array alive (need its length later)
       f.write('\n')
       f.write(meta)
       f.close()
@@ -275,18 +231,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   else:
     outputs = []
 
-  if jcache:
-    # save chunks to cache
-    for i in range(len(chunks)):
-      chunk = chunks[i]
-      keys = [settings_text, forwarded_data, chunk]
-      shortkey = jcache.get_shortkey(keys)
-      jcache.set(shortkey, keys, outputs[i])
-    if out and DEBUG and len(chunks) > 0: logging.debug('  saving %d funcchunks to jcache' % len(chunks))
-
   chunks = None
-
-  if jcache: outputs += cached_outputs # TODO: preserve order
 
   outputs = [output.split('//FORWARDED_DATA:') for output in outputs]
   for output in outputs:
@@ -749,7 +694,7 @@ Runtime.getTempRet0 = asm['getTempRet0'];
 #        if the experiment fails)
 
 def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
-             jcache=None, temp_files=None, DEBUG=None, DEBUG_CACHE=None):
+                  temp_files=None, DEBUG=None, DEBUG_CACHE=None):
   """Runs the emscripten LLVM-to-JS compiler.
 
   Args:
@@ -1562,7 +1507,7 @@ else:
   logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
   sys.exit(1)
 
-def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG, DEBUG_CACHE):
+def main(args, compiler_engine, cache, relooper, temp_files, DEBUG, DEBUG_CACHE):
   # Prepare settings for serialization to JSON.
   settings = {}
   for setting in args.settings:
@@ -1591,7 +1536,7 @@ def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG, DEBU
     if DEBUG: logging.debug('  emscript: bootstrapping struct info complete')
 
   emscript(args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine,
-           jcache=jcache, temp_files=temp_files, DEBUG=DEBUG, DEBUG_CACHE=DEBUG_CACHE)
+           temp_files=temp_files, DEBUG=DEBUG, DEBUG_CACHE=DEBUG_CACHE)
 
 def _main(environ):
   response_file = True
@@ -1635,10 +1580,6 @@ def _main(environ):
                     metavar='FOO=BAR',
                     help=('Overrides for settings defined in settings.js. '
                           'May occur multiple times.'))
-  parser.add_option('-j', '--jcache',
-                    action='store_true',
-                    default=False,
-                    help=('Enable jcache (ccache-like caching of compilation results, for faster incremental builds).'))
   parser.add_option('-T', '--temp-dir',
                     default=None,
                     help=('Where to create temporary files.'))
@@ -1700,7 +1641,6 @@ WARNING: You should normally never use this! Use emcc instead.
     keywords,
     compiler_engine=keywords.compiler,
     cache=cache,
-    jcache=cache_module.JCache(cache) if keywords.jcache else None,
     relooper=relooper,
     temp_files=temp_files,
     DEBUG=DEBUG,

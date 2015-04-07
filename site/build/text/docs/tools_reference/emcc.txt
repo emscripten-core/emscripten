@@ -432,8 +432,7 @@ Options that are modified or new in *emcc* are listed below:
    the caching mechanism can get confused. Clearing the cache can fix
    weird problems related to cache incompatibilities, like *Clang*
    failing to link with library files. This also clears other cached
-   data like the jcache and the bootstrapped relooper. After the cache
-   is cleared, this process will exit.
+   data. After the cache is cleared, this process will exit.
 
 "--save-bc PATH"
    When compiling to JavaScript or HTML, this option will save a copy

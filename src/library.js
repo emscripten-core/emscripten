@@ -7885,25 +7885,6 @@ LibraryManager.library = {
     return Math.random();
   },
 
-  emscripten_jcache_printf___deps: ['_formatString'],
-  emscripten_jcache_printf_: function(varargs) {
-    // XXX this is probably broken
-    var MAX = 10240;
-    if (!_emscripten_jcache_printf_.buffer) {
-      _emscripten_jcache_printf_.buffer = _malloc(MAX);
-    }
-    var i = 0;
-    do {
-      var curr = {{{ makeGetValue('varargs', '0', 'i8') }}};
-      varargs += {{{ STACK_ALIGN }}};
-      {{{ makeSetValue('_emscripten_jcache_printf_.buffer', 'i', 'curr', 'i8') }}};
-      i++;
-      assert(i*{{{ STACK_ALIGN }}} < MAX);
-    } while (curr != 0);
-    Module.print(intArrayToString(__formatString(_emscripten_jcache_printf_.buffer, varargs)).replace('\\n', ''));
-    Runtime.stackAlloc(-4*i); // free up the stack space we know is ok to free
-  },
-
   emscripten_asm_const: function(code) {
     Runtime.asmConsts[code]();
   },
