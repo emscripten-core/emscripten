@@ -2185,6 +2185,7 @@ int f() {
           path_from_root('tests', 'embind', 'embind_test.cpp'),
           '--pre-js', path_from_root('tests', 'embind', 'test.pre.js'),
           '--post-js', path_from_root('tests', 'embind', 'test.post.js'),
+          '-s', 'ALLOW_MEMORY_GROWTH=1',
         ] + args,
         stderr=PIPE if fail else None,
         env=environ).communicate()
