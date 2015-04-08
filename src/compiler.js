@@ -204,7 +204,7 @@ if (phase == 'pre') {
       !SKIP_STACK_IN_SMALL || SAFE_HEAP || !DISABLE_EXCEPTION_CATCHING) {
     print('// Note: Some Emscripten settings will significantly limit the speed of the generated code.');
   } else {
-    print('// Note: For maximum-speed code, see "Optimizing Code" on the Emscripten wiki, https://github.com/kripken/emscripten/wiki/Optimizing-Code');
+    print('// Note: For maximum-speed code, see "Optimizing Code" on the Emscripten wiki, http://kripken.github.io/emscripten-site/docs/optimizing/Optimizing-Code.html');
   }
 
   if (DOUBLE_MODE || CORRECT_SIGNS || CORRECT_OVERFLOWS || CORRECT_ROUNDINGS || CHECK_HEAP_ALIGN) {

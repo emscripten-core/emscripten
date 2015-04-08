@@ -299,7 +299,7 @@ var USE_WEBGL2 = 0; // Enables WebGL2 native functions. This mode will also crea
                     // context by default if no version is specified.
 var FULL_ES3 = 0;   // Forces support for all GLES3 features, not just the WebGL2-friendly subset.
 var LEGACY_GL_EMULATION = 0; // Includes code to emulate various desktop GL features. Incomplete but useful
-                             // in some cases, see https://github.com/kripken/emscripten/wiki/OpenGL-support
+                             // in some cases, see http://kripken.github.io/emscripten-site/docs/porting/multimedia_and_graphics/OpenGL-support.html
 var GL_FFP_ONLY = 0; // If you specified LEGACY_GL_EMULATION = 1 and only use fixed function pipeline in your code,
                      // you can also set this to 1 to signal the GL emulation layer that it can perform extra
                      // optimizations by knowing that the user code does not use shaders at all. If 
