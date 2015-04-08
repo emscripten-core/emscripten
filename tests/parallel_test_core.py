@@ -25,13 +25,14 @@ class Watcher(threading.Thread):
       time.sleep(1)
 
 # run tests for one mode
-def run_mode(mode):
+def run_mode(args):
+  mode = args[0]
   print '<< running %s >>' % mode
-  proc = subprocess.Popen([PYTHON, path_from_root('tests', 'runner.py'), mode], stdout=open(mode + '.out', 'w'), stderr=open(mode + '.err', 'w'))
+  proc = subprocess.Popen([PYTHON, path_from_root('tests', 'runner.py')] + args, stdout=open(mode + '.out', 'w'), stderr=open(mode + '.err', 'w'))
   proc.communicate()
   print '<< %s finished >>' % mode
 
-def main():  
+def main():
   # clean up previous output
   for mode in optimal_order:
     if os.path.exists(mode + '.err'):
@@ -43,7 +44,8 @@ def main():
   # run all modes
   cores = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
   pool = multiprocessing.Pool(processes=cores)
-  filenames = pool.map(run_mode, optimal_order, chunksize=1)
+  args = [[x] + sys.argv[1:] for x in optimal_order]
+  filenames = pool.map(run_mode, args, chunksize=1)
 
   # quit watcher
   Watcher.stop = True
