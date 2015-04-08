@@ -199,7 +199,7 @@ class sanity(RunnerCore):
     assert os.environ.get('EMCC_FAST_COMPILER') != '0', 'must be using fastcomp to test fastcomp'
 
     WARNING = 'fastcomp in use, but LLVM has not been built with the JavaScript backend as a target'
-    WARNING2 = 'you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see https://github.com/kripken/emscripten/wiki/LLVM-Backend'
+    WARNING2 = 'you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html'
 
     restore()
 

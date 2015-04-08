@@ -2,7 +2,7 @@
 '''
 WebIDL binder
 
-https://github.com/kripken/emscripten/wiki/WebIDL-Binder
+http://kripken.github.io/emscripten-site/docs/porting/connecting_cpp_and_javascript/WebIDL-Binder.html
 '''
 
 import os, sys

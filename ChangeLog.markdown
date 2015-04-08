@@ -910,7 +910,7 @@ v1.12.2: 2/25/2014
 
 v1.12.1: 2/25/2014
 ------------------
- - TURNED ON FASTCOMP BY DEFAULT. This means that you will need to migrate to fastcomp-clang build. Either use an Emscripten SDK distribution, or to build manually, see https://github.com/kripken/emscripten/wiki/LLVM-Backend for info.
+ - TURNED ON FASTCOMP BY DEFAULT. This means that you will need to migrate to fastcomp-clang build. Either use an Emscripten SDK distribution, or to build manually, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html for info.
  - Migrate to requiring Clang 3.3 instead of Clang 3.2. The fastcomp-clang repository by Emscripten is based on Clang 3.3.
  - Deprecated old Emscripten libgc implementation.
  - asm.js will now be always enabled, even in -O0 builds in fastcomp.

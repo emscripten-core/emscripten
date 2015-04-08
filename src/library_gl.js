@@ -1,5 +1,5 @@
 /*
- * GL support. See https://github.com/kripken/emscripten/wiki/OpenGL-support
+ * GL support. See http://kripken.github.io/emscripten-site/docs/porting/multimedia_and_graphics/OpenGL-support.html
  * for current status.
  */
 
