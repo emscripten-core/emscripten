@@ -16,7 +16,7 @@ if (memoryInitializer) {
 #endif
   } else {
     addRunDependency('memory initializer');
-    function applyMemoryInitializer(data) {
+    var applyMemoryInitializer = function(data) {
       if (data.byteLength) data = new Uint8Array(data);
 #if USE_TYPED_ARRAYS == 2
 #if ASSERTIONS
