@@ -1179,19 +1179,19 @@ class AbstractClassWrapper : public wrapper<AbstractClass> {
 public:
     EMSCRIPTEN_WRAPPER(AbstractClassWrapper);
 
-    std::string abstractMethod() const {
+    std::string abstractMethod() const override {
         return call<std::string>("abstractMethod");
     }
 
-    std::string optionalMethod(std::string s) const {
+    std::string optionalMethod(std::string s) const override {
         return call<std::string>("optionalMethod", s);
     }
 
-    std::shared_ptr<Derived> returnsSharedPtr() {
+    std::shared_ptr<Derived> returnsSharedPtr() override {
         return call<std::shared_ptr<Derived> >("returnsSharedPtr");
     }
 
-    void differentArguments(int i, double d, unsigned char f, double q, std::string s) {
+    void differentArguments(int i, double d, unsigned char f, double q, std::string s) override {
         return call<void>("differentArguments", i, d, f, q, s);
     }
 
