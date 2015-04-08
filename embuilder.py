@@ -26,6 +26,7 @@ Available operations and tasks:
 
   build libc
         libcxx
+        libcxx_noexcept
         libcxxabi
         gl
         struct_info
@@ -77,7 +78,15 @@ if operation == 'build':
           std::cout << "hello";
           return 0;
         }
-      ''', ['libcxx.bc'])
+      ''', ['libcxx.a'])
+    elif what == 'libcxx_noexcept':
+      build('''
+        #include <iostream>
+        int main() {
+          std::cout << "hello";
+          return 0;
+        }
+      ''', ['libcxx_noexcept.a'], ['-s', 'DISABLE_EXCEPTION_CATCHING=1'])
     elif what == 'libcxxabi':
       build('''
         struct X { int x; virtual void a() {} };
