@@ -5839,10 +5839,8 @@ def process(filename):
 
     #Settings.EXPORTED_FUNCTIONS += ['_PyRun_SimpleStringFlags'] # for the demo
 
-    if self.is_emscripten_abi():
-      bitcode = path_from_root('tests', 'python', 'python.asmjs-unknown-emscripten.bc')
-    else:
-      bitcode = path_from_root('tests', 'python', 'python.small.bc')
+    assert self.is_emscripten_abi()
+    bitcode = path_from_root('tests', 'python', 'python.bc')
 
     for lto in [0, 1]:
       if lto == 1: self.emcc_args += ['--llvm-lto', '1']
