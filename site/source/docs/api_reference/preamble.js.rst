@@ -58,7 +58,7 @@ Calling compiled C functions from JavaScript
 	:returns: The result of the function call as a native JavaScript value (as in ``returnType``).
 	:opts: An optional options object. It can contain the following properties:
 
-			- ``async``: Implies that the ccall will perform an async operation. This assumes you are using the Emterpreter-Async option for your code. When using this option, the ccalled function cannot return a value (it can't be received synchronously anyhow); instead, ccall will return a function that you should call after all asynchronous operations conclude (the function does some cleanup).
+			- ``async``: Implies that the ccall will perform an async operation. This assumes you are using the Emterpreter-Async option for your code. When using this option, the ccalled function cannot return a value (it can't be received synchronously anyhow).
 
 	.. COMMENT (not rendered): The ccall/cwrap functions only work for C++ functions that use "extern C". In theory ordinary C++ names can be unmangled, but it would require tool to ship a fairly large amount of code just for this purpose.
 

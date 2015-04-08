@@ -7378,17 +7378,12 @@ int main() {
   printf("Hello");
   emscripten_sleep(100);
   printf("World\n");
-  EM_ASM( Module.doCleanup() );
 }
 '''
       open('post.js', 'w').write('''
-Module.cleanup = Module['ccall']('main', null, ['number', 'string'], [2, 'waka'], { async: true });
-Module.doCleanup = function() {
-  Module.print('cleanup');
-  Module.cleanup();
-};
+Module['ccall']('main', null, ['number', 'string'], [2, 'waka'], { async: true });
 ''')
-      self.do_run(src, 'HelloWorld\ncleanup');
+      self.do_run(src, 'HelloWorld');
 
   def test_coroutine(self):
     if not Settings.ASM_JS: return self.skip('asyncify requires asm.js')

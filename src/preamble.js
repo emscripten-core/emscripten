@@ -393,9 +393,10 @@ var cwrap, ccall;
     if (returnType === 'string') ret = Pointer_stringify(ret);
     if (stack !== 0) {
       if (opts && opts.async) {
-        return function() {
+        EmterpreterAsync.asyncFinalizers.push(function() {
           Runtime.stackRestore(stack);
-        };
+        });
+        return;
       }
       Runtime.stackRestore(stack);
     }

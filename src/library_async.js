@@ -214,6 +214,7 @@ mergeInto(LibraryManager.library, {
     saveStack: '',
     yieldCallbacks: [],
     postAsync: null,
+    asyncFinalizers: [], // functions to run when all asynchronicity is done
 
     ensureInit: function() {
       if (this.initted) return;
@@ -274,6 +275,12 @@ mergeInto(LibraryManager.library, {
           if (!yieldDuring && EmterpreterAsync.state === 0) {
             // if we did *not* do another async operation, then we know that nothing is conceptually on the stack now, and we can re-allow async callbacks as well as run the queued ones right now
             Browser.resumeAsyncCallbacks();
+          }
+          if (EmterpreterAsync.state === 0) {
+            EmterpreterAsync.asyncFinalizers.forEach(function(func) {
+              func();
+            });
+            EmterpreterAsync.asyncFinalizers.length = 0;
           }
         });
         EmterpreterAsync.setState(1);
