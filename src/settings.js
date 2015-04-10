@@ -78,15 +78,12 @@ var RELOOPER_BUFFER_SIZE = 20*1024*1024; // The internal relooper buffer size. I
                                          // on OutputBuffer.
 
 var USE_TYPED_ARRAYS = 2; // Use typed arrays for the heap. See https://github.com/kripken/emscripten/wiki/Code-Generation-Modes/
-                          // 0 means no typed arrays are used. This mode disallows LLVM optimizations
-                          // 1 has two heaps, IHEAP (int32) and FHEAP (double),
-                          // and addresses there are a match for normal addresses. This mode disallows LLVM optimizations.
                           // 2 is a single heap, accessible through views as int8, int32, etc. This is
-                          //   the recommended mode both for performance and for compatibility.
+                          //   the only supported mode.
 var USE_FHEAP = 1; // Relevant in USE_TYPED_ARRAYS == 1. If this is disabled, only IHEAP will be used, and FHEAP
                    // not generated at all. This is useful if your code is 100% ints without floats or doubles
-var DOUBLE_MODE = 1; // How to load and store 64-bit doubles. Without typed arrays or in typed array mode 1,
-                     // this doesn't matter - these values are just values like any other. In typed array mode 2,
+var DOUBLE_MODE = 1; // How to load and store 64-bit doubles.
+                     // A potential risk is that doubles may be only 32-bit aligned. Forcing 64-bit alignment
                      // a potential risk is that doubles may be only 32-bit aligned. Forcing 64-bit alignment
                      // in Clang itself should be able to solve that, or as a workaround in DOUBLE_MODE 1 we
                      // will carefully load in parts, in a way that requires only 32-bit alignment. In DOUBLE_MODE
@@ -97,9 +94,8 @@ var DOUBLE_MODE = 1; // How to load and store 64-bit doubles. Without typed arra
                      // then load it aligned, and that load-store will make JS engines alter it if it is being
                      // stored to a typed array for security reasons. That will 'fix' the number from being a
                      // NaN or an infinite number.
-var UNALIGNED_MEMORY = 0; // If enabled, all memory accesses are assumed to be unaligned. (This only matters in
-                          // typed arrays mode 2 where alignment is relevant.) In unaligned memory mode, you
-                          // can run nonportable code that typically would break in JS (or on ARM for that
+var UNALIGNED_MEMORY = 0; // If enabled, all memory accesses are assumed to be unaligned.  In unaligned memory mode,
+                          // you can run nonportable code that typically would break in JS (or on ARM for that
                           // matter, which also cannot do unaligned reads/writes), at the cost of slowness
 var FORCE_ALIGNED_MEMORY = 0; // If enabled, assumes all reads and writes are fully aligned for the type they
                               // use. This is true in proper C code (no undefined behavior), but is sadly

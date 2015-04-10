@@ -1008,11 +1008,6 @@ LibraryManager.library = {
     }
     try {
       var slab = {{{ makeGetSlabs('buf', 'i8', true) }}};
-#if SAFE_HEAP
-#if USE_TYPED_ARRAYS == 0
-      SAFE_HEAP_FILL_HISTORY(buf, buf+nbyte, 'i8'); // VFS does not use makeSetValues, so we need to do it manually
-#endif
-#endif
       return FS.read(stream, slab, buf, nbyte, offset);
     } catch (e) {
       FS.handleFSError(e);
@@ -1037,11 +1032,6 @@ LibraryManager.library = {
 
     try {
       var slab = {{{ makeGetSlabs('buf', 'i8', true) }}};
-#if SAFE_HEAP
-#if USE_TYPED_ARRAYS == 0
-      SAFE_HEAP_FILL_HISTORY(buf, buf+nbyte, 'i8'); // VFS does not use makeSetValues, so we need to do it manually
-#endif
-#endif
       return FS.read(stream, slab, buf, nbyte);
     } catch (e) {
       FS.handleFSError(e);
@@ -1143,11 +1133,6 @@ LibraryManager.library = {
     }
     try {
       var slab = {{{ makeGetSlabs('buf', 'i8', true) }}};
-#if SAFE_HEAP
-#if USE_TYPED_ARRAYS == 0
-      SAFE_HEAP_FILL_HISTORY(buf, buf+nbyte, 'i8'); // VFS does not use makeSetValues, so we need to do it manually
-#endif
-#endif
       return FS.write(stream, slab, buf, nbyte, offset);
     } catch (e) {
       FS.handleFSError(e);
@@ -1172,11 +1157,6 @@ LibraryManager.library = {
 
     try {
       var slab = {{{ makeGetSlabs('buf', 'i8', true) }}};
-#if SAFE_HEAP
-#if USE_TYPED_ARRAYS == 0
-      SAFE_HEAP_FILL_HISTORY(buf, buf+nbyte, 'i8'); // VFS does not use makeSetValues, so we need to do it manually
-#endif
-#endif
       return FS.write(stream, slab, buf, nbyte);
     } catch (e) {
       FS.handleFSError(e);
@@ -2645,17 +2625,11 @@ LibraryManager.library = {
 
   abs: 'Math_abs',
   labs: 'Math_abs',
-#if USE_TYPED_ARRAYS == 2
   llabs__deps: [function() { Types.preciseI64MathUsed = 1 }],
   llabs: function(lo, hi) {
     i64Math.abs(lo, hi);
     {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32')]) }}};
   },
-#else
-  llabs: function(lo, hi) {
-    throw 'unsupported llabs';
-  },
-#endif
 
   exit__deps: ['_exit'],
   exit: function(status) {
@@ -2766,15 +2740,12 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.ERANGE);
     }
 
-#if USE_TYPED_ARRAYS == 2
     if (bits == 64) {
       {{{ makeStructuralReturn(splitI64('ret')) }}};
     }
-#endif
 
     return ret;
   },
-#if USE_TYPED_ARRAYS == 2
   _parseInt64__deps: ['isspace', '__setErrNo', '$ERRNO_CODES', function() { Types.preciseI64MathUsed = 1 }],
   _parseInt64: function(str, endptr, base, min, max, unsign) {
     var isNegative = false;
@@ -2845,7 +2816,6 @@ LibraryManager.library = {
 
     {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32')]) }}};
   },
-#endif
   environ__deps: ['$ENV'],
   environ: 'allocate(1, "i32*", ALLOC_STATIC)',
   __environ__deps: ['environ'],
@@ -3048,20 +3018,9 @@ LibraryManager.library = {
   memcpy__sig: 'iiii',
   memcpy__deps: ['emscripten_memcpy_big'],
   memcpy: function(dest, src, num) {
-#if USE_TYPED_ARRAYS == 0
-    {{{ makeCopyValues('dest', 'src', 'num', 'null') }}};
-    return num;
-#endif
-#if USE_TYPED_ARRAYS == 1
-    {{{ makeCopyValues('dest', 'src', 'num', 'null') }}};
-    return num;
-#endif
-
     dest = dest|0; src = src|0; num = num|0;
     var ret = 0;
-#if USE_TYPED_ARRAYS
     if ((num|0) >= 4096) return _emscripten_memcpy_big(dest|0, src|0, num|0)|0;
-#endif
     ret = dest|0;
     if ((dest&3) == (src&3)) {
       while (dest & 3) {
@@ -3126,7 +3085,6 @@ LibraryManager.library = {
   memset__sig: 'iiii',
   memset__asm: true,
   memset: function(ptr, value, num) {
-#if USE_TYPED_ARRAYS == 2
     ptr = ptr|0; value = value|0; num = num|0;
     var stop = 0, value4 = 0, stop4 = 0, unaligned = 0;
     stop = (ptr + num)|0;
@@ -3153,10 +3111,6 @@ LibraryManager.library = {
       ptr = (ptr+1)|0;
     }
     return (ptr-num)|0;
-#else
-    {{{ makeSetValues('ptr', '0', 'value', 'null', 'num') }}};
-    return ptr;
-#endif
   },
   llvm_memset_i32: 'memset',
   llvm_memset_p0i8_i32: 'memset',
@@ -3370,11 +3324,7 @@ LibraryManager.library = {
   llvm_bswap_i64: function(l, h) {
     var retl = _llvm_bswap_i32(h)>>>0;
     var reth = _llvm_bswap_i32(l)>>>0;
-#if USE_TYPED_ARRAYS == 2
     {{{ makeStructuralReturn(['retl', 'reth']) }}};
-#else
-    throw 'unsupported';
-#endif
   },
 
   llvm_ctlz_i64__asm: true,
@@ -3418,11 +3368,7 @@ LibraryManager.library = {
   llvm_cttz_i64: function(l, h) {
     var ret = _llvm_cttz_i32(l);
     if (ret == 32) ret += _llvm_cttz_i32(h);
-#if USE_TYPED_ARRAYS == 2
     {{{ makeStructuralReturn(['ret', '0']) }}};
-#else
-    return ret;
-#endif
   },
 
   llvm_ctpop_i32: function(x) {
@@ -3463,12 +3409,6 @@ LibraryManager.library = {
   },
   __cxa_guard_release: function() {},
   __cxa_guard_abort: function() {},
-
-#if USE_TYPED_ARRAYS != 2
-  _ZTVN10__cxxabiv119__pointer_type_infoE: [0], // is a pointer
-  _ZTVN10__cxxabiv117__class_type_infoE: [1], // no inherited classes
-  _ZTVN10__cxxabiv120__si_class_type_infoE: [2], // yes inherited classes
-#endif
 
   $EXCEPTIONS: {
     last: 0,
@@ -3552,20 +3492,6 @@ LibraryManager.library = {
   __cxa_throw__sig: 'viii',
   __cxa_throw__deps: ['_ZSt18uncaught_exceptionv', '__cxa_find_matching_catch', '$EXCEPTIONS'],
   __cxa_throw: function(ptr, type, destructor) {
-#if USE_TYPED_ARRAYS != 2
-    if (!___cxa_throw.initialized) {
-      try {
-        {{{ makeSetValue(makeGlobalUse('__ZTVN10__cxxabiv119__pointer_type_infoE'), '0', '0', 'i32') }}}; // Workaround for libcxxabi integration bug
-      } catch(e){}
-      try {
-        {{{ makeSetValue(makeGlobalUse('__ZTVN10__cxxabiv117__class_type_infoE'), '0', '1', 'i32') }}}; // Workaround for libcxxabi integration bug
-      } catch(e){}
-      try {
-        {{{ makeSetValue(makeGlobalUse('__ZTVN10__cxxabiv120__si_class_type_infoE'), '0', '2', 'i32') }}}; // Workaround for libcxxabi integration bug
-      } catch(e){}
-      ___cxa_throw.initialized = true;
-    }
-#endif
 #if EXCEPTION_DEBUG
     Module.printErr('Compiled code throwing an exception, ' + [ptr,type,destructor]);
 #endif

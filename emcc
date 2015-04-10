@@ -722,11 +722,6 @@ try:
       if is_minus_s_for_emcc(newargs, i):
         settings_changes.append(newargs[i+1])
         newargs[i] = newargs[i+1] = ''
-    elif newargs[i].startswith('--typed-arrays'):
-      assert '=' not in newargs[i], 'Invalid typed arrays parameter (do not use "=")'
-      settings_changes.append('USE_TYPED_ARRAYS=' + newargs[i+1])
-      newargs[i] = ''
-      newargs[i+1] = ''
   newargs = [arg for arg in newargs if arg is not '']
 
   if split_js_file:
@@ -913,7 +908,8 @@ try:
       assert shared.Settings.NAMED_GLOBALS == 0, 'named globals not supported in fastcomp'
       assert shared.Settings.PGO == 0, 'pgo not supported in fastcomp'
       assert shared.Settings.TARGET_ASMJS_UNKNOWN_EMSCRIPTEN == 1, 'fastcomp requires asmjs-unknown-emscripten'
-      assert shared.Settings.USE_TYPED_ARRAYS == 2, 'fastcomp assumes ta2'
+      assert shared.Settings.USE_TYPED_ARRAYS == 2, 'altering USE_TYPED_ARRAYS is not supported'
+      assert shared.Settings.QUANTUM_SIZE == 4, 'altering the QUANTUM_SIZE is not supported'
       assert not split_js_file, '--split-js is deprecated and not supported in fastcomp'
       assert shared.Settings.INIT_HEAP == 0, 'HEAP_INIT is not supported in fastcomp (and should never be needed except for debugging)'
       assert not shared.Settings.RUNTIME_TYPE_INFO, 'RUNTIME_TYPE_INFO is not supported in fastcomp'
@@ -1007,10 +1003,6 @@ try:
     assert 'i386-pc-linux-gnu' not in shared.COMPILER_OPTS
   else:
     raise Exception('unknown llvm target: ' + str(shared.LLVM_TARGET))
-
-  if shared.Settings.USE_TYPED_ARRAYS != 2 and llvm_opts > 0:
-    logging.warning('disabling LLVM optimizations, need typed arrays mode 2 for them')
-    llvm_opts = 0
 
   if shared.Settings.MAIN_MODULE:
     assert not shared.Settings.SIDE_MODULE
@@ -1277,7 +1269,7 @@ try:
       if DEBUG: save_intermediate('opt', 'bc')
 
     # If we can LTO, do it before dce, since it opens up dce opportunities
-    if shared.Building.can_build_standalone() and llvm_lto and llvm_lto != 2 and shared.Building.can_use_unsafe_opts():
+    if shared.Building.can_build_standalone() and llvm_lto and llvm_lto != 2:
       if not shared.Building.can_inline(): link_opts.append('-disable-inlining')
       # add a manual internalize with the proper things we need to be kept alive during lto
       link_opts += shared.Building.get_safe_internalize() + ['-std-link-opts']
@@ -1384,32 +1376,29 @@ try:
   js_transform_tempfiles = [final]
 
   if memory_init_file:
-    if shared.Settings.USE_TYPED_ARRAYS != 2:
-      if type(memory_init_file) == int: logging.warning('memory init file requires typed arrays mode 2')
-    else:
-      memfile = target + '.mem'
-      shared.try_delete(memfile)
-      def repl(m):
-        # handle chunking of the memory initializer
-        s = m.groups(0)[0]
-        if len(s) == 0 and not shared.Settings.EMTERPRETIFY: return m.group(0) # emterpreter must have a mem init file; otherwise, don't emit 0-size ones
-        open(memfile, 'wb').write(''.join(map(lambda x: chr(int(x or '0')), s.split(','))))
-        if DEBUG:
-          # Copy into temp dir as well, so can be run there too
-          shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
-        return 'var memoryInitializer = "%s";' % os.path.basename(memfile)
-      src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
-      open(final + '.mem.js', 'w').write(src)
-      final += '.mem.js'
-      src = None
-      js_transform_tempfiles[-1] = final # simple text substitution preserves comment line number mappings
+    memfile = target + '.mem'
+    shared.try_delete(memfile)
+    def repl(m):
+      # handle chunking of the memory initializer
+      s = m.groups(0)[0]
+      if len(s) == 0 and not shared.Settings.EMTERPRETIFY: return m.group(0) # emterpreter must have a mem init file; otherwise, don't emit 0-size ones
+      open(memfile, 'wb').write(''.join(map(lambda x: chr(int(x or '0')), s.split(','))))
       if DEBUG:
-        if os.path.exists(memfile):
-          save_intermediate('meminit')
-          logging.debug('wrote memory initialization to %s', memfile)
-        else:
-          logging.debug('did not see memory initialization')
-  elif shared.Settings.USE_TYPED_ARRAYS == 2 and not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and debug_level < 4:
+        # Copy into temp dir as well, so can be run there too
+        shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
+      return 'var memoryInitializer = "%s";' % os.path.basename(memfile)
+    src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
+    open(final + '.mem.js', 'w').write(src)
+    final += '.mem.js'
+    src = None
+    js_transform_tempfiles[-1] = final # simple text substitution preserves comment line number mappings
+    if DEBUG:
+      if os.path.exists(memfile):
+        save_intermediate('meminit')
+        logging.debug('wrote memory initialization to %s', memfile)
+      else:
+        logging.debug('did not see memory initialization')
+  elif not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and debug_level < 4:
     # not writing a binary init, but we can at least optimize them by splitting them up
     src = open(final).read()
     src = shared.JS.optimize_initializer(src)

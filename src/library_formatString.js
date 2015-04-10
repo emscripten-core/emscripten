@@ -160,12 +160,10 @@ mergeInto(LibraryManager.library, {
             var origArg = currArg;
 #endif
             var argText;
-#if USE_TYPED_ARRAYS == 2
             // Flatten i64-1 [low, high] into a (slightly rounded) double
             if (argSize == 8) {
               currArg = Runtime.makeBigInt(currArg[0], currArg[1], next == {{{ charCode('u') }}});
             }
-#endif
             // Truncate to requested size.
             if (argSize <= 4) {
               var limit = Math.pow(256, argSize) - 1;

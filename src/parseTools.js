@@ -770,17 +770,12 @@ function makeInlineCalculation(expression, value, tempVar) {
 // Makes a proper runtime value for a 64-bit value from low and high i32s. low and high are assumed to be unsigned.
 function makeI64(low, high) {
   high = high || '0';
-  if (USE_TYPED_ARRAYS == 2) {
-    return '[' + makeSignOp(low, 'i32', 'un', 1, 1) + ',' + makeSignOp(high, 'i32', 'un', 1, 1) + ']';
-  } else {
-    if (high) return RuntimeGenerator.makeBigInt(low, high);
-    return low;
-  }
+  return '[' + makeSignOp(low, 'i32', 'un', 1, 1) + ',' + makeSignOp(high, 'i32', 'un', 1, 1) + ']';
 }
 
 // XXX Make all i64 parts signed
 
-// Splits a number (an integer in a double, possibly > 32 bits) into an USE_TYPED_ARRAYS == 2 i64 value.
+// Splits a number (an integer in a double, possibly > 32 bits) into an i64 value, represented by a low and high i32 pair.
 // Will suffer from rounding. mergeI64 does the opposite.
 function splitI64(value, floatConversion) {
   // general idea:
@@ -817,7 +812,6 @@ function splitI64(value, floatConversion) {
   }
 }
 function mergeI64(value, unsigned) {
-  assert(USE_TYPED_ARRAYS == 2);
   if (legalizedI64s) {
     return RuntimeGenerator.makeBigInt(value + '$0', value + '$1', unsigned);
   } else {
@@ -828,12 +822,10 @@ function mergeI64(value, unsigned) {
 // Takes an i64 value and changes it into the [low, high] form used in i64 mode 1. In that
 // mode, this is a no-op
 function ensureI64_1(value) {
-  if (USE_TYPED_ARRAYS == 2) return value;
-  return splitI64(value, 1);
+  return value;
 }
 
 function makeCopyI64(value) {
-  assert(USE_TYPED_ARRAYS == 2);
   return value + '.slice(0)';
 }
 
@@ -956,7 +948,7 @@ function parseNumerical(value, type) {
     // Hexadecimal double value, as the llvm docs say,
     // "The one non-intuitive notation for constants is the hexadecimal form of floating point constants."
     value = IEEEUnHex(value);
-  } else if (USE_TYPED_ARRAYS == 2 && isIllegalType(type)) {
+  } else if (isIllegalType(type)) {
     return value; // do not parseFloat etc., that can lead to loss of precision
   } else if (value === 'null') {
     // NULL *is* 0, in C/C++. No JS null! (null == 0 is false, etc.)
@@ -1035,7 +1027,7 @@ function calcAllocatedSize(type) {
 function generateStructTypes(type) {
   if (isArray(type)) return type; // already in the form of [type, type,...]
   if (Compiletime.isNumberType(type) || isPointerType(type)) {
-    if (USE_TYPED_ARRAYS == 2 && type == 'i64') {
+    if (type == 'i64') {
       return ['i64', 0, 0, 0, 'i32', 0, 0, 0];
     }
     return [type].concat(zeros(Runtime.getNativeFieldSize(type)-1));
@@ -1054,7 +1046,7 @@ function generateStructTypes(type) {
       var type = array ? typeData.fields[0] : typeData.fields[i];
       if (!SAFE_HEAP && isPointerType(type)) type = '*'; // do not include unneeded type names without safe heap
       if (Compiletime.isNumberType(type) || isPointerType(type)) {
-        if (USE_TYPED_ARRAYS == 2 && type == 'i64') {
+        if (type == 'i64') {
           ret[index++] = 'i64';
           ret[index++] = 0;
           ret[index++] = 0;
@@ -1157,10 +1149,6 @@ function checkSafeHeap() {
 }
 
 function getHeapOffset(offset, type, forceAsm) {
-  if (USE_TYPED_ARRAYS !== 2) {
-    return offset;
-  }
-
   if (Runtime.getNativeFieldSize(type) > 4) {
     if (type == 'i64' || TARGET_X86) {
       type = 'i32'; // XXX we emulate 64-bit values as 32 in x86, and also in asmjs-unknown-emscripten but only i64, not double
@@ -1286,13 +1274,13 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
 
   // In double mode 1, in x86 we always assume unaligned because we can't trust that; otherwise in asmjs-unknown-emscripten
   // we need this code path if we are not fully aligned.
-  if (DOUBLE_MODE == 1 && USE_TYPED_ARRAYS == 2 && type == 'double' && (TARGET_X86 || align < 8)) {
+  if (DOUBLE_MODE == 1 && type == 'double' && (TARGET_X86 || align < 8)) {
     return '(' + makeSetTempDouble(0, 'i32', makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align, noSafe)) + ',' +
                  makeSetTempDouble(1, 'i32', makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore, align, noSafe)) + ',' +
             makeGetTempDouble(0, 'double') + ')';
   }
 
-  if (USE_TYPED_ARRAYS == 2 && align) {
+  if (align) {
     // Alignment is important here. May need to split this up
     var bytes = Runtime.getNativeTypeSize(type);
     if (DOUBLE_MODE == 0 && type == 'double') bytes = 4; // we will really only read 4 bytes here
@@ -1394,11 +1382,11 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
     return ret.join('; ');
   }
 
-  if (DOUBLE_MODE == 1 && USE_TYPED_ARRAYS == 2 && type == 'double' && (TARGET_X86 || align < 8)) {
+  if (DOUBLE_MODE == 1 && type == 'double' && (TARGET_X86 || align < 8)) {
     return '(' + makeSetTempDouble(0, 'double', value) + ',' +
             makeSetValue(ptr, pos, makeGetTempDouble(0, 'i32'), 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
             makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), makeGetTempDouble(1, 'i32'), 'i32', noNeedFirst, ignore, align, noSafe, ',') + ')';
-  } else if (USE_TYPED_ARRAYS == 2 && type == 'i64') {
+  } else if (type == 'i64') {
     return '(tempI64 = [' + splitI64(value) + '],' +
             makeSetValue(ptr, pos, 'tempI64[0]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
             makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempI64[1]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ')';
@@ -1406,7 +1394,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
 
   var bits = getBits(type);
   var needSplitting = bits > 0 && !isPowerOfTwo(bits); // an unnatural type like i24
-  if (USE_TYPED_ARRAYS == 2 && (align || needSplitting)) {
+  if (align || needSplitting) {
     // Alignment is important here, or we need to split this up for other reasons.
     var bytes = Runtime.getNativeTypeSize(type);
     if (DOUBLE_MODE == 0 && type == 'double') bytes = 4; // we will really only read 4 bytes here
@@ -1464,37 +1452,29 @@ function makeSetValues(ptr, pos, value, type, num, align) {
       return makeSetValue(ptr, getFastValue(pos, '+', i*jump), value$, type);
     }).join('; ');
   }
-  if (USE_TYPED_ARRAYS <= 1) {
-    if (isNumber(num) && parseInt(num) <= UNROLL_LOOP_MAX) {
-      return unroll(type, num);
-    }
-    return 'for (var $$dest = ' + getFastValue(ptr, '+', pos) + ', $$stop = $$dest + ' + num + '; $$dest < $$stop; $$dest++) {\n' +
-      makeSetValue('$$dest', '0', value, type) + '\n}';
-  } else { // USE_TYPED_ARRAYS == 2
-    // If we don't know how to handle this at compile-time, or handling it is best done in a large amount of code, call memset
-    // TODO: optimize the case of numeric num but non-numeric value
-    if (!isNumber(num) || !isNumber(value) || (parseInt(num)/align >= UNROLL_LOOP_MAX)) {
-      return '_memset(' + asmCoercion(getFastValue(ptr, '+', pos), 'i32') + ', ' + asmCoercion(value, 'i32') + ', ' + asmCoercion(num, 'i32') + ')|0';
-    }
-    num = parseInt(num);
-    value = parseInt(value);
-    if (value < 0) value += 256; // make it unsigned
-    var values = {
-      1: value,
-      2: value | (value << 8), 
-      4: value | (value << 8) | (value << 16) | (value << 24)
-    };
-    var ret = [];
-    [4, 2, 1].forEach(function(possibleAlign) {
-      if (num == 0) return;
-      if (align >= possibleAlign) {
-        ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign, values[possibleAlign]));
-        pos = getFastValue(pos, '+', Math.floor(num/possibleAlign)*possibleAlign);
-        num %= possibleAlign;
-      }
-    });
-    return ret.join('; ');
+  // If we don't know how to handle this at compile-time, or handling it is best done in a large amount of code, call memset
+  // TODO: optimize the case of numeric num but non-numeric value
+  if (!isNumber(num) || !isNumber(value) || (parseInt(num)/align >= UNROLL_LOOP_MAX)) {
+    return '_memset(' + asmCoercion(getFastValue(ptr, '+', pos), 'i32') + ', ' + asmCoercion(value, 'i32') + ', ' + asmCoercion(num, 'i32') + ')|0';
   }
+  num = parseInt(num);
+  value = parseInt(value);
+  if (value < 0) value += 256; // make it unsigned
+  var values = {
+    1: value,
+    2: value | (value << 8), 
+    4: value | (value << 8) | (value << 16) | (value << 24)
+  };
+  var ret = [];
+  [4, 2, 1].forEach(function(possibleAlign) {
+    if (num == 0) return;
+    if (align >= possibleAlign) {
+      ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign, values[possibleAlign]));
+      pos = getFastValue(pos, '+', Math.floor(num/possibleAlign)*possibleAlign);
+      num %= possibleAlign;
+    }
+  });
+  return ret.join('; ');
 }
 
 var TYPED_ARRAY_SET_MIN = Infinity; // .set() as memcpy seems to just slow us down
@@ -1504,53 +1484,34 @@ function makeCopyValues(dest, src, num, type, modifier, align, sep) {
   function unroll(type, num, jump) {
     jump = jump || 1;
     return range(num).map(function(i) {
-      if (USE_TYPED_ARRAYS <= 1 && type === 'null') {
-        // Null is special-cased: We copy over all heaps
-        return makeGetSlabs(dest, 'null', true).map(function(slab) {
-          return slab + '[' + getFastValue(dest, '+', i) + ']=' + slab + '[' + getFastValue(src, '+', i) + ']';
-        }).join(sep) + (SAFE_HEAP ? sep + 'SAFE_HEAP_COPY_HISTORY(' + getFastValue(dest, '+', i) + ', ' +  getFastValue(src, '+', i) + ')' : '');
-      } else {
-        return makeSetValue(dest, i*jump, makeGetValue(src, i*jump, type), type);
-      }
+      return makeSetValue(dest, i*jump, makeGetValue(src, i*jump, type), type);
     }).join(sep);
   }
-  if (USE_TYPED_ARRAYS <= 1) {
-    if (isNumber(num) && parseInt(num) <= UNROLL_LOOP_MAX) {
-      return unroll(type, num);
-    }
-    var oldDest = dest, oldSrc = src;
-    dest = '$$dest';
-    src = '$$src';
-    return 'for (var $$src = ' + oldSrc + ', $$dest = ' + oldDest + ', $$stop = $$src + ' + num + '; $$src < $$stop; $$src++, $$dest++) {\n' +
-            unroll(type, 1) + ' }';
-  } else { // USE_TYPED_ARRAYS == 2
-    // If we don't know how to handle this at compile-time, or handling it is best done in a large amount of code, call memcpy
-    if (!isNumber(num)) num = stripCorrections(num);
-    if (!isNumber(align)) align = stripCorrections(align);
-    if (!isNumber(num) || (parseInt(num)/align >= UNROLL_LOOP_MAX)) {
-      return '(_memcpy(' + dest + ', ' + src + ', ' + num + ')|0)';
-    }
-    num = parseInt(num);
-    if (ASM_JS) {
-      dest = stripCorrections(dest); // remove corrections, since we will be correcting after we add anyhow,
-      src = stripCorrections(src);   // and in the heap assignment expression
-    }
-    var ret = [];
-    [4, 2, 1].forEach(function(possibleAlign) {
-      if (num == 0) return;
-      if (align >= possibleAlign) {
-        ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign));
-        src = getFastValue(src, '+', Math.floor(num/possibleAlign)*possibleAlign);
-        dest = getFastValue(dest, '+', Math.floor(num/possibleAlign)*possibleAlign);
-        num %= possibleAlign;
-      }
-    });
-    return ret.join(sep);
+  // If we don't know how to handle this at compile-time, or handling it is best done in a large amount of code, call memcpy
+  if (!isNumber(num)) num = stripCorrections(num);
+  if (!isNumber(align)) align = stripCorrections(align);
+  if (!isNumber(num) || (parseInt(num)/align >= UNROLL_LOOP_MAX)) {
+    return '(_memcpy(' + dest + ', ' + src + ', ' + num + ')|0)';
   }
+  num = parseInt(num);
+  if (ASM_JS) {
+    dest = stripCorrections(dest); // remove corrections, since we will be correcting after we add anyhow,
+    src = stripCorrections(src);   // and in the heap assignment expression
+  }
+  var ret = [];
+  [4, 2, 1].forEach(function(possibleAlign) {
+    if (num == 0) return;
+    if (align >= possibleAlign) {
+      ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign));
+      src = getFastValue(src, '+', Math.floor(num/possibleAlign)*possibleAlign);
+      dest = getFastValue(dest, '+', Math.floor(num/possibleAlign)*possibleAlign);
+      num %= possibleAlign;
+    }
+  });
+  return ret.join(sep);
 }
 
 function makeHEAPView(which, start, end) {
-  // Assumes USE_TYPED_ARRAYS == 2
   var size = parseInt(which.replace('U', '').replace('F', ''))/8;
   var mod = size == 1 ? '' : ('>>' + log2(size));
   return 'HEAP' + which + '.subarray((' + start + ')' + mod + ',(' + end + ')' + mod + ')';
@@ -1724,7 +1685,7 @@ function writeInt8s(slab, i, value, type) {
 
 function makePointer(slab, pos, allocator, type, ptr, finalMemoryInitialization) {
   assert(type, 'makePointer requires type info');
-  if (typeof slab == 'string' && (slab.substr(0, 4) === 'HEAP' || (USE_TYPED_ARRAYS == 1 && slab in IHEAP_FHEAP))) return pos;
+  if (typeof slab == 'string' && (slab.substr(0, 4) === 'HEAP')) return pos;
   var types = generateStructTypes(type);
   if (typeof slab == 'object') {
     for (var i = 0; i < slab.length; i++) {
@@ -1737,42 +1698,17 @@ function makePointer(slab, pos, allocator, type, ptr, finalMemoryInitialization)
     }
   }
   // compress type info and data if possible
-  if (USE_TYPED_ARRAYS != 2) {
-    var de;
-    try {
-      // compress all-zeros into a number (which will become zeros(..)).
-      // note that we cannot always eval the slab, e.g., if it contains ident,0,0 etc. In that case, no compression TODO: ensure we get arrays here, not str
-      var evaled = typeof slab === 'string' ? eval(slab) : slab;
-      de = dedup(evaled);
-      if (de.length === 1 && de[0] == 0) {
-        slab = types.length;
-      }
-      // TODO: if not all zeros, at least filter out items with type === 0. requires cleverness to know how to skip at runtime though. also
-      //       be careful of structure padding
-    } catch(e){}
-    de = dedup(types);
-    if (de.length === 1) {
-      types = de[0];
-    } else if (de.length === 2 && typeof slab === 'number') {
-      // If slab is all zeros, we can compress types even if we have i32,0,0,0,i32,0,0,0 etc. - we do not need the zeros
-      de = de.filter(function(x) { return x !== 0 });
-      if (de.length === 1) {
-        types = de[0];
-      }
+  if (!finalMemoryInitialization) {
+    // XXX This heavily assumes the target endianness is the same as our current endianness! XXX
+    var i = 0;
+    while (i < slab.length) {
+      var currType = types[i];
+      if (!currType) { i++; continue }
+      i += writeInt8s(slab, i, slab[i], currType);
     }
-  } else { // USE_TYPED_ARRAYS == 2
-    if (!finalMemoryInitialization) {
-      // XXX This heavily assumes the target endianness is the same as our current endianness! XXX
-      var i = 0;
-      while (i < slab.length) {
-        var currType = types[i];
-        if (!currType) { i++; continue }
-        i += writeInt8s(slab, i, slab[i], currType);
-      }
-      types = 'i8';
-    }
+    types = 'i8';
   }
-  if (allocator == 'ALLOC_NONE' && USE_TYPED_ARRAYS == 2) {
+  if (allocator == 'ALLOC_NONE') {
     if (!finalMemoryInitialization) {
       // writing out into memory, without a normal allocation. We put all of these into a single big chunk.
       assert(typeof slab == 'object');
@@ -1800,37 +1736,20 @@ function makePointer(slab, pos, allocator, type, ptr, finalMemoryInitialization)
 
 function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
   assert(type);
-  if (!USE_TYPED_ARRAYS) {
-    return ['HEAP'];
-  } else if (USE_TYPED_ARRAYS == 1) {
-    if (type in Compiletime.FLOAT_TYPES || type === 'int64') { // XXX should be i64, no?
-      return ['FHEAP']; // If USE_FHEAP is false, will fail at runtime. At compiletime we do need it for library stuff.
-    } else if (type in Compiletime.INT_TYPES || isPointerType(type)) {
-      return [unsigned ? 'IHEAPU' : 'IHEAP'];
-    } else {
-      assert(allowMultiple, 'Unknown slab type and !allowMultiple: ' + type);
-      if (USE_FHEAP) {
-        return ['IHEAP', 'FHEAP']; // unknown, so assign to both typed arrays
-      } else {
-        return ['IHEAP'];
-      }
+  if (isPointerType(type)) type = 'i32'; // Hardcoded 32-bit
+  switch(type) {
+    case 'i1': case 'i8': return [unsigned ? 'HEAPU8' : 'HEAP8']; break;
+    case 'i16': return [unsigned ? 'HEAPU16' : 'HEAP16']; break;
+    case '<4 x i32>':
+    case 'i32': case 'i64': return [unsigned ? 'HEAPU32' : 'HEAP32']; break;
+    case 'double': {
+      if (TARGET_ASMJS_UNKNOWN_EMSCRIPTEN) return ['HEAPF64']; // in asmjs-unknown-emscripten, we do have the ability to assume 64-bit alignment
+      // otherwise, fall through to float
     }
-  } else { // USE_TYPED_ARRAYS == 2)
-    if (isPointerType(type)) type = 'i32'; // Hardcoded 32-bit
-    switch(type) {
-      case 'i1': case 'i8': return [unsigned ? 'HEAPU8' : 'HEAP8']; break;
-      case 'i16': return [unsigned ? 'HEAPU16' : 'HEAP16']; break;
-      case '<4 x i32>':
-      case 'i32': case 'i64': return [unsigned ? 'HEAPU32' : 'HEAP32']; break;
-      case 'double': {
-        if (TARGET_ASMJS_UNKNOWN_EMSCRIPTEN) return ['HEAPF64']; // in asmjs-unknown-emscripten, we do have the ability to assume 64-bit alignment
-        // otherwise, fall through to float
-      }
-      case '<4 x float>':
-      case 'float': return ['HEAPF32'];
-      default: {
-        throw 'what, exactly, can we do for unknown types in TA2?! ' + [new Error().stack, ptr, type, allowMultiple, unsigned];
-      }
+    case '<4 x float>':
+    case 'float': return ['HEAPF32'];
+    default: {
+      throw 'what, exactly, can we do for unknown types in TA2?! ' + [new Error().stack, ptr, type, allowMultiple, unsigned];
     }
   }
   return [];
@@ -1889,10 +1808,8 @@ function finalizeLLVMFunctionCall(item, noIndexizeFunctions) {
 
 function getGetElementPtrIndexes(item) {
   var type = item.params[0].type;
-  if (USE_TYPED_ARRAYS == 2) {
-    // GEP indexes are marked as i64s, but they are just numbers to us
-    item.params.forEach(function(param) { param.type = 'i32' });
-  }
+  // GEP indexes are marked as i64s, but they are just numbers to us
+  item.params.forEach(function(param) { param.type = 'i32' });
   item.params = item.params.map(finalizeLLVMParameter);
   var ident = item.params[0];
 
@@ -1966,35 +1883,20 @@ function handleOverflow(text, bits) {
 }
 
 function makeLLVMStruct(values) {
-  if (USE_TYPED_ARRAYS == 2) {
-    return 'DEPRECATED' + (new Error().stack) + 'XXX';
-  } else {
-    return '{ ' + values.map(function(value, i) { return 'f' + i + ': ' + value }).join(', ') + ' }'
-  }
+  return 'DEPRECATED' + (new Error().stack) + 'XXX';
 }
 
 function makeStructuralReturn(values, inAsm) {
-  if (USE_TYPED_ARRAYS == 2) {
-    var i = -1;
-    return 'return ' + asmCoercion(values.slice(1).map(function(value) {
-      i++;
-      return ASM_JS ? (inAsm ? 'tempRet' + i + ' = ' + value : 'asm["setTempRet' + i + '"](' + value + ')')
-                    : 'tempRet' + i + ' = ' + value;
-    }).concat([values[0]]).join(','), 'i32');
-  } else {
-    var i = 0;
-    return 'return { ' + values.map(function(value) {
-      return 'f' + (i++) + ': ' + value;
-    }).join(', ') + ' }';
-  }
+  var i = -1;
+  return 'return ' + asmCoercion(values.slice(1).map(function(value) {
+    i++;
+    return ASM_JS ? (inAsm ? 'tempRet' + i + ' = ' + value : 'asm["setTempRet' + i + '"](' + value + ')')
+                  : 'tempRet' + i + ' = ' + value;
+  }).concat([values[0]]).join(','), 'i32');
 }
 
 function makeStructuralAccess(ident, i) {
-  if (USE_TYPED_ARRAYS == 2) {
-    return ident + '$' + i;
-  } else {
-    return ident + '.f' + i;
-  }
+  return ident + '$' + i;
 }
 
 function makeThrow(what) {
@@ -2023,7 +1925,7 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
     if (ret in Variables.globals) {
       ret = makeGlobalUse(ret);
     }
-    if (param.type == 'i64' && USE_TYPED_ARRAYS == 2) {
+    if (param.type == 'i64') {
       ret = parseI64Constant(ret);
     }
     ret = parseNumerical(ret, param.type);
@@ -2058,7 +1960,7 @@ function makeComparison(a, op, b, type) {
 }
 
 function makeSignOp(value, type, op, force, ignore) {
-  if (USE_TYPED_ARRAYS == 2 && type == 'i64') {
+  if (type == 'i64') {
     return value; // these are always assumed to be two 32-bit unsigneds.
   }
   if (isPointerType(type)) type = 'i32'; // Pointers are treated as 32-bit ints
@@ -2170,7 +2072,7 @@ function isSignedOp(op, variant) {
   return op in SIGNED_OP || (variant && variant[0] == 's');
 }
 
-var legalizedI64s = USE_TYPED_ARRAYS == 2; // We do not legalize globals, but do legalize function lines. This will be true in the latter case
+var legalizedI64s = true; // We do not legalize globals, but do legalize function lines. This will be true in the latter case
 
 function processMathop(item) {
   var op = item.op;
@@ -2210,7 +2112,7 @@ function processMathop(item) {
     return makeInlineCalculation('VALUE-VALUE%1', value, 'tempBigIntI');
   }
 
-  if ((type == 'i64' || paramTypes[0] == 'i64' || paramTypes[1] == 'i64' || idents[1] == '(i64)' || rawBits > 32) && USE_TYPED_ARRAYS == 2) {
+  if ((type == 'i64' || paramTypes[0] == 'i64' || paramTypes[1] == 'i64' || idents[1] == '(i64)' || rawBits > 32)) {
     // this code assumes i64 for the most part
     if (ASSERTIONS && rawBits > 1 && rawBits < 64) {
       warnOnce('processMathop processing illegal non-i64 value');
@@ -2350,7 +2252,6 @@ function processMathop(item) {
       }
       case 'bitcast': {
         // Pointers are not 64-bit, so there is really only one possible type of bitcast here, int to float or vice versa
-        assert(USE_TYPED_ARRAYS == 2, 'Can only bitcast ints <-> floats with typed arrays mode 2');
         var inType = item.params[0].type;
         var outType = item.type;
         if (inType in Compiletime.INT_TYPES && outType in Compiletime.FLOAT_TYPES) {
@@ -2366,7 +2267,7 @@ function processMathop(item) {
             return '(' + makeSetTempDouble(0, 'double', idents[0]) + ',[' + makeGetTempDouble(0, 'i32') + ',' + makeGetTempDouble(1, 'i32') + '])';
           }
         } else {
-          throw 'Invalid USE_TYPED_ARRAYS == 2 bitcast: ' + dump(item) + ' : ' + item.params[0].type;
+          throw 'Invalid bitcast: ' + dump(item) + ' : ' + item.params[0].type;
         }
       }
       default: throw 'Unsupported i64 mode 1 op: ' + item.op + ' : ' + dump(item);
@@ -2541,7 +2442,6 @@ function processMathop(item) {
       var outType = item.type;
       if ((inType in Compiletime.INT_TYPES && outType in Compiletime.FLOAT_TYPES) ||
           (inType in Compiletime.FLOAT_TYPES && outType in Compiletime.INT_TYPES)) {
-        assert(USE_TYPED_ARRAYS == 2, 'Can only bitcast ints <-> floats with typed arrays mode 2');
         if (inType in Compiletime.INT_TYPES) {
           return '(' + makeSetTempDouble(0, 'i32', idents[0]) + ',' + makeGetTempDouble(0, 'float') + ')';
         } else {

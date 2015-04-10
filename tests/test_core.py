@@ -40,8 +40,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run_from_file(src, output, force_c=True)
 
   def test_i64(self):
-      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('i64 mode 1 requires ta2')
-
       src = '''
         #include <stdio.h>
         int main()
@@ -267,48 +265,36 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run(src, '*1*\n*0*\n*0*\n')
 
   def test_i64_b(self):
-      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
-
       test_path = path_from_root('tests', 'core', 'test_i64_b')
       src, output = (test_path + s for s in ('.in', '.out'))
 
       self.do_run_from_file(src, output)
 
   def test_i64_cmp(self):
-      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
-
       test_path = path_from_root('tests', 'core', 'test_i64_cmp')
       src, output = (test_path + s for s in ('.in', '.out'))
 
       self.do_run_from_file(src, output)
 
   def test_i64_cmp2(self):
-      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
-
       test_path = path_from_root('tests', 'core', 'test_i64_cmp2')
       src, output = (test_path + s for s in ('.in', '.out'))
 
       self.do_run_from_file(src, output)
 
   def test_i64_double(self):
-      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
-
       test_path = path_from_root('tests', 'core', 'test_i64_double')
       src, output = (test_path + s for s in ('.in', '.out'))
 
       self.do_run_from_file(src, output)
 
   def test_i64_umul(self):
-      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
-
       test_path = path_from_root('tests', 'core', 'test_i64_umul')
       src, output = (test_path + s for s in ('.in', '.out'))
 
       self.do_run_from_file(src, output)
 
   def test_i64_precise(self):
-      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
-
       src = r'''
         #include <inttypes.h>
         #include <stdio.h>
@@ -382,7 +368,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       ''', 'c = 4ca38a6bd2973f97')
 
   def test_i64_llabs(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
     Settings.PRECISE_I64_MATH = 2
 
     test_path = path_from_root('tests', 'core', 'test_i64_llabs')
@@ -391,40 +376,30 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_i64_zextneg(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
-
     test_path = path_from_root('tests', 'core', 'test_i64_zextneg')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
 
   def test_i64_7z(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
-
     test_path = path_from_root('tests', 'core', 'test_i64_7z')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output, ['hallo'])
 
   def test_i64_i16(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
-
     test_path = path_from_root('tests', 'core', 'test_i64_i16')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
 
   def test_i64_qdouble(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
-
     test_path = path_from_root('tests', 'core', 'test_i64_qdouble')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
 
   def test_i64_varargs(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
-
     test_path = path_from_root('tests', 'core', 'test_i64_varargs')
     src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -474,8 +449,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_double_i64_conversion(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
-
     test_path = path_from_root('tests', 'core', 'test_double_i64_conversion')
     src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -516,8 +489,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_bswap64(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
-
     test_path = path_from_root('tests', 'core', 'test_bswap64')
     src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -555,7 +526,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
         os.environ['EMSCRIPT_MAX_CHUNK_SIZE'] = chunk_size
 
         # A good test of i64 math
-        if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2 C-style memory aliasing')
         self.do_run('', 'Usage: hashstring <seed>',
                     libraries=self.get_library('cube2hash', ['cube2hash.bc'], configure=None),
                     includes=[path_from_root('tests', 'cube2hash')])
@@ -609,8 +579,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       return # TODO: continue to the next part here
 
       # Test for undefined behavior in C. This is not legitimate code, but does exist
-
-      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('No meaning to unaligned addresses without t2')
 
       src = r'''
         #include <stdio.h>
@@ -735,13 +703,8 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       '''
       self.do_run(src, '*4294967295,0,4294967219*\n*-1,1,-1,1*\n*-2,1,-2,1*\n*246,296*\n*1,0*')
 
-      # Now let's see some code that should just work in USE_TYPED_ARRAYS == 2, but requires
-      # corrections otherwise
       Settings.CHECK_SIGNS = 0
-      if Settings.USE_TYPED_ARRAYS == 2:
-        Settings.CORRECT_SIGNS = 0
-      else:
-        Settings.CORRECT_SIGNS = 1
+      Settings.CORRECT_SIGNS = 0
 
       src = '''
         #include <stdio.h>
@@ -805,7 +768,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_closebitcasts(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
     test_path = path_from_root('tests', 'core', 'closebitcasts')
     src, output = (test_path + s for s in ('.c', '.txt'))
     self.do_run_from_file(src, output)
@@ -844,8 +806,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_math(self):
-      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
-
       test_path = path_from_root('tests', 'core', 'test_math')
       src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -894,8 +854,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run_from_file(src, output)
 
   def test_llrint(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
-
     test_path = path_from_root('tests', 'core', 'test_llrint')
     src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -1915,8 +1873,6 @@ value = real 1.25 imag 0.00''', force_c=True)
       self.do_run_from_file(src, output)
 
   def test_alloca(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('non-ta2 may have unaligned allocas')
-
     test_path = path_from_root('tests', 'core', 'test_alloca')
     src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -2245,7 +2201,6 @@ def process(filename):
         self.do_run_from_file(src, output, post_build=check)
 
   def test_emscripten_get_now(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
     self.banned_js_engines = [V8_ENGINE] # timer limitations in v8 shell
 
     if self.run_name == 'slow2asm':
@@ -2288,7 +2243,6 @@ def process(filename):
     self.do_run_from_file(src, output)
 
   def test_memorygrowth(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('memory growth is only supported with typed arrays mode 2')
     self.banned_js_engines = [V8_ENGINE] # stderr printing limitations in v8
 
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0'] # start with 0
@@ -2422,8 +2376,6 @@ def process(filename):
       self.do_run_from_file(src, output)
 
   def test_indirectbr_many(self):
-      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('blockaddr > 255 requires ta2')
-
       test_path = path_from_root('tests', 'core', 'test_indirectbr_many')
       src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -2474,7 +2426,6 @@ def process(filename):
       self.do_run_from_file(src, output)
 
   def test_varargs_byval(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('FIXME: Add support for this')
     if self.is_emscripten_abi(): return self.skip('clang cannot compile this code with that target yet')
 
     src = r'''
@@ -2664,9 +2615,8 @@ The current type of b is: 9
 
   def test_stdlibs(self):
       if self.emcc_args is None: return self.skip('requires emcc')
-      if Settings.USE_TYPED_ARRAYS == 2:
-          # Typed arrays = 2 + safe heap prints a warning that messes up our output.
-          Settings.SAFE_HEAP = 0
+      # safe heap prints a warning that messes up our output.
+      Settings.SAFE_HEAP = 0
       src = '''
         #include <stdio.h>
         #include <stdlib.h>
@@ -2926,13 +2876,11 @@ The current type of b is: 9
       self.do_run_from_file(src, output)
 
   def test_memcpy3(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('need ta2')
     test_path = path_from_root('tests', 'core', 'test_memcpy3')
     src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
 
   def test_memset(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('need ta2')
     test_path = path_from_root('tests', 'core', 'test_memset')
     src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
@@ -2960,8 +2908,6 @@ The current type of b is: 9
     self.do_run_from_file(src, output)
 
   def test_memmove2(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('need ta2')
-
     test_path = path_from_root('tests', 'core', 'test_memmove2')
     src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -3219,8 +3165,7 @@ def process(filename):
   def test_dlfcn_qsort(self):
     if not self.can_dlfcn(): return
 
-    if Settings.USE_TYPED_ARRAYS == 2:
-      Settings.CORRECT_SIGNS = 1 # Needed for unsafe optimizations
+    Settings.CORRECT_SIGNS = 1 # Needed for unsafe optimizations
 
     self.prep_dlfcn_lib()
     Settings.EXPORTED_FUNCTIONS = ['_get_cmp']
@@ -3306,7 +3251,6 @@ def process(filename):
 
   def test_dlfcn_data_and_fptr(self):
     if Settings.ASM_JS: return self.skip('this is not a valid case - libraries should not be able to access their parents globals willy nilly')
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
     if not self.can_dlfcn(): return
 
     if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize out parent_func')
@@ -3403,7 +3347,6 @@ def process(filename):
                  post_build=self.dlfcn_post_build)
 
   def test_dlfcn_alias(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
     if Settings.ASM_JS: return self.skip('this is not a valid case - libraries should not be able to access their parents globals willy nilly')
 
     Settings.LINKABLE = 1
@@ -3454,7 +3397,6 @@ def process(filename):
 
   def test_dlfcn_varargs(self):
     if Settings.ASM_JS: return self.skip('this is not a valid case - libraries should not be able to access their parents globals willy nilly')
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
 
     if not self.can_dlfcn(): return
 
@@ -3511,7 +3453,6 @@ def process(filename):
                 post_build=self.dlfcn_post_build)
 
   def test_dlfcn_self(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
     if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('todo in fastcomp')
     Settings.DLOPEN_SUPPORT = 1
 
@@ -3577,7 +3518,6 @@ def process(filename):
     self.do_run(src, 'success', force_c=True, post_build=self.dlfcn_post_build)
 
   def test_dlfcn_stacks(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('snprintf needs ta2 to be able to bitcast int<->float')
     if not self.can_dlfcn(): return
 
     self.prep_dlfcn_lib()
@@ -4058,21 +3998,18 @@ Have even and odd!
     self.do_run_from_file(src, output)
 
   def test_parseInt(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('i64 mode 1 requires ta2')
     if Settings.QUANTUM_SIZE == 1: return self.skip('Q1 and I64_1 do not mix well yet')
     src = open(path_from_root('tests', 'parseInt', 'src.c'), 'r').read()
     expected = open(path_from_root('tests', 'parseInt', 'output.txt'), 'r').read()
     self.do_run(src, expected)
 
   def test_transtrcase(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('musl libc needs ta2')
     test_path = path_from_root('tests', 'core', 'test_transtrcase')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
 
   def test_printf(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('i64 mode 1 requires ta2')
     self.banned_js_engines = [NODE_JS, V8_ENGINE] # SpiderMonkey and V8 do different things to float64 typed arrays, un-NaNing, etc.
     src = open(path_from_root('tests', 'printf', 'test.c'), 'r').read()
     expected = [open(path_from_root('tests', 'printf', 'output.txt'), 'r').read(),
@@ -4144,9 +4081,8 @@ Have even and odd!
 
   def test_sscanf_2(self):
     # doubles
-    if Settings.USE_TYPED_ARRAYS == 2:
-      for ftype in ['float', 'double']:
-        src = r'''
+    for ftype in ['float', 'double']:
+      src = r'''
           #include <stdio.h>
 
           int main(){
@@ -4185,14 +4121,14 @@ Have even and odd!
               return 0;
           }
         '''
-        if ftype == 'float':
-          self.do_run(src.replace('%lf', '%f').replace('double', 'float'), '''Pass: 1.234568 1.234568
+      if ftype == 'float':
+        self.do_run(src.replace('%lf', '%f').replace('double', 'float'), '''Pass: 1.234568 1.234568
 Pass: 123456.789063 123456.789063
 Pass: 123456.789063 123456.789063
 Pass: 0.000012 0.000012
 Pass: 0.000012 0.000012''')
-        else:
-          self.do_run(src, '''Pass: 1.234568 1.234568
+      else:
+        self.do_run(src, '''Pass: 1.234568 1.234568
 Pass: 123456.789000 123456.789000
 Pass: 123456.789000 123456.789000
 Pass: 0.000012 0.000012
@@ -4223,8 +4159,6 @@ Pass: 0.000012 0.000012''')
 
   def test_sscanf_3(self):
     if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
-    # i64
-    if not Settings.USE_TYPED_ARRAYS == 2: return self.skip('64-bit sscanf only supported in ta2')
 
     test_path = path_from_root('tests', 'core', 'test_sscanf_3')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -4253,7 +4187,6 @@ Pass: 0.000012 0.000012''')
 
   def test_sscanf_skip(self):
     if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip("need ta2 for full i64")
 
     test_path = path_from_root('tests', 'core', 'test_sscanf_skip')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -4269,7 +4202,6 @@ Pass: 0.000012 0.000012''')
 
   def test_sscanf_hex(self):
     if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
 
     test_path = path_from_root('tests', 'core', 'test_sscanf_hex')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -4994,7 +4926,6 @@ PORT: 3979
   def test_jansson(self):
       return self.skip('currently broken')
 
-      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
       if Settings.SAFE_HEAP: return self.skip('jansson is not safe-heap safe')
 
       src = '''
@@ -5156,7 +5087,6 @@ int main(void) {
   ### 'Medium' tests
 
   def test_fannkuch(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('musl libc needs ta2')
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     results = [ (1,0), (2,1), (3,2), (4,4), (5,7), (6,10), (7, 16), (8,22) ]
     for i, j in results:
@@ -5165,7 +5095,8 @@ int main(void) {
 
   def test_raytrace(self):
       if self.emcc_args is None: return self.skip('requires emcc')
-      if Settings.USE_TYPED_ARRAYS == 2: return self.skip('Relies on double value rounding, extremely sensitive')
+      # TODO: Should we remove this test?
+      return self.skip('Relies on double value rounding, extremely sensitive')
 
       src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read().replace('double', 'float')
       output = open(path_from_root('tests', 'raytrace.ppm'), 'r').read()
@@ -5316,8 +5247,7 @@ return malloc(size);
     Settings.CORRECT_OVERFLOWS = 1
     Settings.CHECK_OVERFLOWS = 0
 
-    if Settings.USE_TYPED_ARRAYS == 2:
-      Settings.CORRECT_SIGNS = 1
+    Settings.CORRECT_SIGNS = 1
 
     def test():
       self.do_run(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
@@ -5354,7 +5284,6 @@ return malloc(size);
   def test_simd(self):
     if self.is_emterpreter(): return self.skip('todo')
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
 
     test_path = path_from_root('tests', 'core', 'test_simd')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5372,8 +5301,6 @@ return malloc(size);
 
   def test_simd3(self):
     return self.skip('FIXME: this appears to be broken')
-
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
 
     test_path = path_from_root('tests', 'core', 'test_simd3')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5573,8 +5500,6 @@ def process(filename):
                  force_c=True)
 
   def test_zlib(self):
-    if not Settings.USE_TYPED_ARRAYS == 2: return self.skip('works in general, but cached build will be optimized and fail, so disable this')
-
     if self.emcc_args is not None and '-O2' in self.emcc_args and 'ASM_JS=0' not in self.emcc_args: # without asm, closure minifies Math.imul badly
       self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
@@ -5703,11 +5628,7 @@ def process(filename):
 
     Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS) # remove -g, so we have one test without it by default
 
-    if Settings.USE_TYPED_ARRAYS == 2:
-      Settings.CORRECT_SIGNS = 1
-    else:
-      Settings.CORRECT_SIGNS = 2
-      Settings.CORRECT_SIGNS_LINES = ["mqc.c:566", "mqc.c:317"]
+    Settings.CORRECT_SIGNS = 1
 
     post = '''
 def process(filename):
@@ -5890,9 +5811,6 @@ def process(filename):
         else:
           os.environ['EMCC_LEAVE_INPUTS_RAW'] = '1'
 
-        if '_ta2' in shortname and not Settings.USE_TYPED_ARRAYS == 2:
-          print self.skip('case "%s" only relevant for ta2' % shortname)
-          continue
         if '_noasm' in shortname and Settings.ASM_JS:
           print self.skip('case "%s" not relevant for asm.js' % shortname)
           continue
@@ -5929,8 +5847,6 @@ def process(filename):
       self.emcc_args = emcc_args
 
   def test_fuzz(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
-
     Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'fuzz', 'include'), '-Wno-warn-absolute-paths']
 
     def run_all(x):
@@ -6016,7 +5932,6 @@ def process(filename):
 
   def test_corruption(self):
     if Settings.ASM_JS: return self.skip('cannot use corruption checks in asm')
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2 for actual test')
 
     Settings.CORRUPTION_CHECK = 1
 
@@ -6045,7 +5960,6 @@ def process(filename):
 
   def test_corruption_2(self):
     if Settings.ASM_JS: return self.skip('cannot use corruption checks in asm')
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2 for actual test')
 
     Settings.SAFE_HEAP = 1
     Settings.CORRUPTION_CHECK = 1
@@ -6058,7 +5972,6 @@ def process(filename):
 
   def test_corruption_3(self):
     if Settings.ASM_JS: return self.skip('cannot use corruption checks in asm')
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2 for actual test')
 
     Settings.CORRUPTION_CHECK = 1
 
@@ -6834,7 +6747,8 @@ def process(filename):
 
   def test_safe_heap(self):
     if not Settings.SAFE_HEAP: return self.skip('We need SAFE_HEAP to test SAFE_HEAP')
-    if Settings.USE_TYPED_ARRAYS == 2: return self.skip('It is ok to violate the load-store assumption with TA2')
+    # TODO: Should we remove this test?
+    return self.skip('It is ok to violate the load-store assumption with TA2')
     if Building.LLVM_OPTS: return self.skip('LLVM can optimize away the intermediate |x|')
 
     src = '''
@@ -6941,7 +6855,6 @@ def process(filename):
 
   def test_source_map(self):
     if self.is_emterpreter(): return self.skip('todo')
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip("doesn't pass without typed arrays")
     if NODE_JS not in JS_ENGINES: return self.skip('sourcemapper requires Node to run')
     if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
 
@@ -7032,7 +6945,6 @@ def process(filename):
 
   def test_exception_source_map(self):
     if self.is_emterpreter(): return self.skip('todo')
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip("doesn't pass without typed arrays")
     if '-g4' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g4')
     if NODE_JS not in JS_ENGINES: return self.skip('sourcemapper requires Node to run')
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('requires fastcomp')
@@ -7214,35 +7126,12 @@ def process(filename):
       }
     '''
 
-    if Settings.USE_TYPED_ARRAYS != 2: # the errors here are very specific to non-i64 mode 1
-      Settings.CORRECT_ROUNDINGS = 0
-      self.do_run(src.replace('TYPE', 'long long'), '*-3**2**-6**5*') # JS floor operations, always to the negative. This is an undetected error here!
-      self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # We get these right, since they are 32-bit and we can shortcut using the |0 trick
-      self.do_run(src.replace('TYPE', 'unsigned int'), '*-2**2**-6**5*')
-
     Settings.CORRECT_ROUNDINGS = 1
     Settings.CORRECT_SIGNS = 1 # To be correct here, we need sign corrections as well
     self.do_run(src.replace('TYPE', 'long long'), '*-2**2**-5**5*') # Correct
     self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # Correct
     self.do_run(src.replace('TYPE', 'unsigned int'), '*2147483645**2**-5**5*') # Correct
     Settings.CORRECT_SIGNS = 0
-
-    if Settings.USE_TYPED_ARRAYS != 2: # the errors here are very specific to non-i64 mode 1
-      Settings.CORRECT_ROUNDINGS = 2
-      Settings.CORRECT_ROUNDINGS_LINES = ["src.cpp:13"] # Fix just the last mistake
-      self.do_run(src.replace('TYPE', 'long long'), '*-3**2**-5**5*')
-      self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # Here we are lucky and also get the first one right
-      self.do_run(src.replace('TYPE', 'unsigned int'), '*-2**2**-5**5*')
-
-    # And reverse the check with = 2
-    if Settings.USE_TYPED_ARRAYS != 2: # the errors here are very specific to non-i64 mode 1
-      Settings.CORRECT_ROUNDINGS = 3
-      Settings.CORRECT_ROUNDINGS_LINES = ["src.cpp:999"]
-      self.do_run(src.replace('TYPE', 'long long'), '*-2**2**-5**5*')
-      self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*')
-      Settings.CORRECT_SIGNS = 1 # To be correct here, we need sign corrections as well
-      self.do_run(src.replace('TYPE', 'unsigned int'), '*2147483645**2**-5**5*')
-      Settings.CORRECT_SIGNS = 0
 
   def test_float_literals(self):
     self.do_run_from_file(path_from_root('tests', 'test_float_literals.cpp'), path_from_root('tests', 'test_float_literals.out'))

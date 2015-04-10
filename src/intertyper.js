@@ -902,13 +902,11 @@ function intertyper(lines, sidePass, baseLineNums) {
       item.type = 'i1';
       if (item.params[1].intertype === 'type') item.params[1].intertype = 'value'; // parsed as type, but comparisons have just values there
     }
-    if (USE_TYPED_ARRAYS == 2) {
-      // Some specific corrections, since 'i64' is special
-      if (item.op in LLVM.SHIFTS) {
-        item.params[1].type = 'i32';
-      } else if (item.op == 'select') {
-        item.params[0].type = 'i1';
-      }
+    // Some specific corrections, since 'i64' is special
+    if (item.op in LLVM.SHIFTS) {
+      item.params[1].type = 'i32';
+    } else if (item.op == 'select') {
+      item.params[0].type = 'i1';
     }
     Types.needAnalysis[item.type] = 0;
     return item;
