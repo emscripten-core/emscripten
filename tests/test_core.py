@@ -797,8 +797,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run_from_file(src, output)
 
   def test_floatvars(self):
-    if self.run_name == 'slow2asm': return self.skip('FIXME in slow2asm')
-
     test_path = path_from_root('tests', 'core', 'test_floatvars')
     src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -2216,8 +2214,6 @@ value = real 1.25 imag 0.00''', force_c=True)
     self.do_run_from_file(src, output)
 
   def test_set_align(self):
-    if self.run_name == 'slow2asm': return self.skip('FIXME in slow2asm')
-
     Settings.SAFE_HEAP = 1
 
     test_path = path_from_root('tests', 'core', 'test_set_align')
@@ -2248,7 +2244,7 @@ def process(filename):
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
     self.banned_js_engines = [V8_ENGINE] # timer limitations in v8 shell
 
-    if self.run_name == 'slow2asm':
+    if self.run_name == 'asm2':
       self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
     self.do_run(open(path_from_root('tests', 'emscripten_get_now.cpp')).read(), 'Timer resolution is good.')
 
@@ -6434,7 +6430,6 @@ def process(filename):
 
   def test_embind_2(self):
     if self.emcc_args is None: return self.skip('requires emcc')
-    if self.run_name == 'slow2asm': return self.skip('embind/asm.js requires fastcomp')
     Building.COMPILER_TEST_OPTS += ['--bind', '--post-js', 'post.js']
     open('post.js', 'w').write('''
       Module.print('lerp ' + Module.lerp(100, 200, 66) + '.');
