@@ -871,7 +871,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run_from_file(src, output)
 
   def test_frexp(self):
-      if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sprintf.')
       test_path = path_from_root('tests', 'core', 'test_frexp')
       src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -1009,7 +1008,6 @@ base align: 0, 0, 0, 0'''])
     ensure_stack_restore_count('function _stack_usage', 1)
 
   def test_strings(self):
-      if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
       test_path = path_from_root('tests', 'core', 'test_strings')
       src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -1032,7 +1030,6 @@ base align: 0, 0, 0, 0'''])
     self.do_run_from_file(src, output)
 
   def test_strndup(self):
-    if self.run_name.startswith('s_'): return self.skip('musl libc strndup() assumes that C strings can be loaded via i16 and i32 loads.')
     test_path = path_from_root('tests', 'core', 'test_strndup')
     src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -2460,7 +2457,6 @@ def process(filename):
         self.do_run(src, '*4,3,4*\n*6,4,6*')
 
   def test_varargs(self):
-      if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sprintf.')
       if Settings.QUANTUM_SIZE == 1: return self.skip('FIXME: Add support for this')
       if not self.is_emscripten_abi(): return self.skip('we do not support all varargs stuff without asmjs-unknown-emscripten')
 
@@ -2770,7 +2766,6 @@ The current type of b is: 9
     self.do_run_from_file(src, output)
 
   def test_strtol_hex(self):
-    if self.run_name.startswith('s_'): return self.skip('Needs musl libc.')
     # tests strtoll for hex strings (0x...) 
     test_path = path_from_root('tests', 'core', 'test_strtol_hex')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -2778,7 +2773,6 @@ The current type of b is: 9
     self.do_run_from_file(src, output)
 
   def test_strtol_dec(self):
-    if self.run_name.startswith('s_'): return self.skip('Needs musl libc.')
     # tests strtoll for decimal strings (0x...) 
     test_path = path_from_root('tests', 'core', 'test_strtol_dec')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -2786,7 +2780,6 @@ The current type of b is: 9
     self.do_run_from_file(src, output)
 
   def test_strtol_bin(self):
-    if self.run_name.startswith('s_'): return self.skip('Needs musl libc.')
     # tests strtoll for binary strings (0x...) 
     test_path = path_from_root('tests', 'core', 'test_strtol_bin')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -2794,7 +2787,6 @@ The current type of b is: 9
     self.do_run_from_file(src, output)
 
   def test_strtol_oct(self):
-    if self.run_name.startswith('s_'): return self.skip('Needs musl libc.')
     # tests strtoll for decimal strings (0x...) 
     test_path = path_from_root('tests', 'core', 'test_strtol_oct')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -4096,7 +4088,6 @@ Have even and odd!
     self.do_run_from_file(src, output)
 
   def test_printf_more(self):
-    if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sprintf.')
     test_path = path_from_root('tests', 'core', 'test_printf_more')
     src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -4117,7 +4108,6 @@ Have even and odd!
     self.do_run_from_file(src, output)
 
   def test_strstr(self):
-    if self.run_name.startswith('s_'): return self.skip('musl libc strstr() assumes that C strings can be loaded via i16 and i32 loads.')
     test_path = path_from_root('tests', 'core', 'test_strstr')
     src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -4195,21 +4185,18 @@ Pass: 0.000012 0.000012
 Pass: 0.000012 0.000012''')
 
   def test_sscanf_n(self):
-    if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
     test_path = path_from_root('tests', 'core', 'test_sscanf_n')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
 
   def test_sscanf_whitespace(self):
-    if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
     test_path = path_from_root('tests', 'core', 'test_sscanf_whitespace')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
 
   def test_sscanf_other_whitespace(self):
-    if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
     Settings.SAFE_HEAP = 0 # use i16s in printf
 
     test_path = path_from_root('tests', 'core', 'test_sscanf_other_whitespace')
@@ -4218,7 +4205,6 @@ Pass: 0.000012 0.000012''')
     self.do_run_from_file(src, output)
 
   def test_sscanf_3(self):
-    if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
     # i64
     if not Settings.USE_TYPED_ARRAYS == 2: return self.skip('64-bit sscanf only supported in ta2')
 
@@ -4228,27 +4214,23 @@ Pass: 0.000012 0.000012''')
     self.do_run_from_file(src, output)
 
   def test_sscanf_4(self):
-    if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
     test_path = path_from_root('tests', 'core', 'test_sscanf_4')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
 
   def test_sscanf_5(self):
-    if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
     test_path = path_from_root('tests', 'core', 'test_sscanf_5')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
 
   def test_sscanf_6(self):
-    if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
     test_path = path_from_root('tests', 'core', 'test_sscanf_6')
     src, output = (test_path + s for s in ('.in', '.out'))
     self.do_run_from_file(src, output)
 
   def test_sscanf_skip(self):
-    if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip("need ta2 for full i64")
 
     test_path = path_from_root('tests', 'core', 'test_sscanf_skip')
@@ -4257,14 +4239,12 @@ Pass: 0.000012 0.000012''')
     self.do_run_from_file(src, output)
 
   def test_sscanf_caps(self):
-    if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
     test_path = path_from_root('tests', 'core', 'test_sscanf_caps')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
 
   def test_sscanf_hex(self):
-    if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
     if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
 
     test_path = path_from_root('tests', 'core', 'test_sscanf_hex')
@@ -4273,7 +4253,6 @@ Pass: 0.000012 0.000012''')
     self.do_run_from_file(src, output)
 
   def test_sscanf_float(self):
-    if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
     test_path = path_from_root('tests', 'core', 'test_sscanf_float')
     src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -4285,7 +4264,6 @@ Pass: 0.000012 0.000012''')
     self.do_run(src, expected, extra_emscripten_args=['-H', 'libc/langinfo.h'])
 
   def test_files(self):
-    if self.run_name.startswith('s_'): return self.skip('This test requires linking to musl lib for sscanf.')
     self.banned_js_engines = [SPIDERMONKEY_ENGINE] # closure can generate variables called 'gc', which pick up js shell stuff
     if self.emcc_args is not None and '-O2' in self.emcc_args:
       self.emcc_args += ['--closure', '1'] # Use closure here, to test we don't break FS stuff
@@ -4736,7 +4714,6 @@ def process(filename):
     self.do_run(src, expected, extra_emscripten_args=['-H', 'libc/unistd.h'])
 
   def test_unistd_ttyname(self):
-    if self.run_name.startswith('s_'): return self.skip('musl libc strstr() assumes that C strings can be loaded via i16 and i32 loads.')
     src = open(path_from_root('tests', 'unistd', 'ttyname.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
 
@@ -5879,9 +5856,6 @@ def process(filename):
         if self.is_emterpreter() and os.path.basename(shortname) in ['funcptr']: continue # test writes to memory we store out bytecode! test is invalid
 
         if os.path.basename(shortname) in need_no_leave_inputs_raw:
-          if self.run_name.startswith('s_'):
-            print self.skip('case "%s" cannot be run in mode %s, since it would require EMCC_LEAVE_INPUTS_RAW=1' % (shortname, self.run_name))
-            continue
           if 'EMCC_LEAVE_INPUTS_RAW' in os.environ: del os.environ['EMCC_LEAVE_INPUTS_RAW']
         else:
           os.environ['EMCC_LEAVE_INPUTS_RAW'] = '1'
