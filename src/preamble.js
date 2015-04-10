@@ -46,51 +46,12 @@ function SAFE_HEAP_ACCESS(dest, type, store, ignore, storeValue) {
 
   if (dest <= 0) abort('segmentation fault ' + (store ? ('storing value ' + storeValue) : 'loading') + ' type ' + type + ' at address ' + dest);
 
-#if USE_TYPED_ARRAYS
   // When using typed arrays, reads over the top of TOTAL_MEMORY will fail silently, so we must
   // correct that by growing TOTAL_MEMORY as needed. Without typed arrays, memory is a normal
   // JS array so it will work (potentially slowly, depending on the engine).
   if (!ignore && dest >= Math.max(DYNAMICTOP, STATICTOP)) abort('segmentation fault ' + (store ? ('storing value ' + storeValue) : 'loading') + ' type ' + type + ' at address ' + dest + '. Heap ends at address ' + Math.max(DYNAMICTOP, STATICTOP));
   assert(ignore || DYNAMICTOP <= TOTAL_MEMORY);
-#endif
-
-#if USE_TYPED_ARRAYS == 2
   return; // It is legitimate to violate the load-store assumption in this case
-#endif
-  if (type && type.charAt(type.length-1) == '*') type = 'i32'; // pointers are ints, for our purposes here
-  // Note that this will pass even with unions: You can store X, load X, then store Y and load Y.
-  // You cannot, however, do the nonportable act of store X and load Y!
-  if (store) {
-    HEAP_HISTORY[dest] = ignore ? null : type;
-  } else {
-#if USE_TYPED_ARRAYS == 0
-    if (!HEAP[dest] && HEAP[dest] !== 0 && HEAP[dest] !== false && !ignore) { // false can be the result of a mathop comparator
-      var error = true;
-      try {
-        if (HEAP[dest].toString() === 'NaN') error = false; // NaN is acceptable, as a double value
-      } catch(e){}
-      if (error) throw('Warning: Reading an invalid value at ' + dest + ' :: ' + stackTrace() + '\n');
-    }
-#endif
-    if (type === null) return;
-    var history = HEAP_HISTORY[dest];
-    if (history === null) return;
-    if (!ignore)
-      assert(history, 'Must have a history for a safe heap load! ' + dest + ':' + type); // Warning - bit fields in C structs cause loads+stores for each store, so
-                                                                                         //           they will show up here...
-//    assert((history && history[0]) /* || HEAP[dest] === 0 */, "Loading from where there was no store! " + dest + ',' + HEAP[dest] + ',' + type + ', \n\n' + stackTrace() + '\n');
-//    if (history[0].type !== type) {
-    if (history !== type && !ignore) {
-      Module.print('Load-store consistency assumption failure! ' + dest);
-      Module.print('\n');
-      Module.print(JSON.stringify(history));
-      Module.print('\n');
-      Module.print('LOAD: ' + type + ', ' + stackTrace());
-      Module.print('\n');
-      SAFE_HEAP_ERRORS++;
-      assert(SAFE_HEAP_ERRORS <= ACCEPTABLE_SAFE_HEAP_ERRORS, 'Load-store consistency assumption failure!');
-    }
-  }
 }
 
 function SAFE_HEAP_STORE(dest, value, type, ignore) {
@@ -109,7 +70,6 @@ function SAFE_HEAP_STORE(dest, value, type, ignore) {
     throw "Bad store!" + dest;
   }
 
-#if USE_TYPED_ARRAYS == 2
   // Check alignment
   switch(type) {
     case 'i16': assert(dest % 2 == 0); break;
@@ -122,7 +82,6 @@ function SAFE_HEAP_STORE(dest, value, type, ignore) {
     case 'double': assert(dest % 4 == 0); break;
 #endif
   }
-#endif
 
   setValue(dest, value, type, 1);
 }
@@ -134,7 +93,6 @@ function SAFE_HEAP_LOAD(dest, type, unsigned, ignore) {
     Module.print('SAFE_HEAP load: ' + [dest, type, getValue(dest, type, 1), ignore]);
 #endif
 
-#if USE_TYPED_ARRAYS == 2
   // Check alignment
   switch(type) {
     case 'i16': assert(dest % 2 == 0); break;
@@ -147,7 +105,6 @@ function SAFE_HEAP_LOAD(dest, type, unsigned, ignore) {
     case 'double': assert(dest % 4 == 0); break;
 #endif
   }
-#endif
 
   var ret = getValue(dest, type, 1);
   if (unsigned) ret = unSign(ret, parseInt(type.substr(1)), 1);
@@ -304,10 +261,8 @@ var undef = 0;
 // tempInt is used for 32-bit signed values or smaller. tempBigInt is used
 // for 32-bit unsigned values or more than 32 bits. TODO: audit all uses of tempInt
 var tempValue, tempInt, tempBigInt, tempInt2, tempBigInt2, tempPair, tempBigIntI, tempBigIntR, tempBigIntS, tempBigIntP, tempBigIntD, tempDouble, tempFloat;
-#if USE_TYPED_ARRAYS == 2
 var tempI64, tempI64b;
 var tempRet0, tempRet1, tempRet2, tempRet3, tempRet4, tempRet5, tempRet6, tempRet7, tempRet8, tempRet9;
-#endif
 
 function assert(condition, text) {
   if (!condition) {
@@ -598,13 +553,11 @@ function allocate(slab, types, allocator, ptr) {
 
   if (zeroinit) {
     var ptr = ret, stop;
-#if USE_TYPED_ARRAYS == 2
     assert((ret & 3) == 0);
     stop = ret + (size & ~3);
     for (; ptr < stop; ptr += 4) {
       {{{ makeSetValue('ptr', '0', '0', 'i32', null, true) }}};
     }
-#endif
     stop = ret + size;
     while (ptr < stop) {
       {{{ makeSetValue('ptr++', '0', '0', 'i8', null, true) }}};
@@ -612,7 +565,6 @@ function allocate(slab, types, allocator, ptr) {
     return ret;
   }
 
-#if USE_TYPED_ARRAYS == 2
   if (singleType === 'i8') {
     if (slab.subarray || slab.slice) {
       HEAPU8.set(slab, ret);
@@ -621,7 +573,6 @@ function allocate(slab, types, allocator, ptr) {
     }
     return ret;
   }
-#endif
 
   var i = 0, type, typeSize, previousType;
   while (i < size) {
@@ -640,9 +591,7 @@ function allocate(slab, types, allocator, ptr) {
     assert(type, 'Must know what type to store in allocate!');
 #endif
 
-#if USE_TYPED_ARRAYS == 2
     if (type == 'i64') type = 'i32'; // special case: we have one i32 here, and one i32 later
-#endif
 
     setValue(ret+i, curr, type);
 
@@ -680,7 +629,6 @@ function Pointer_stringify(ptr, /* optional */ length) {
   var ret = '';
 
   if (hasUtf < 128) {
-#if USE_TYPED_ARRAYS == 2
     var MAX_CHUNK = 1024; // split up into chunks, because .apply on a huge string can overflow the stack
     var curr;
     while (length > 0) {
@@ -690,9 +638,6 @@ function Pointer_stringify(ptr, /* optional */ length) {
       length -= MAX_CHUNK;
     }
     return ret;
-#else
-    return Module['AsciiToString'](ptr);
-#endif
   }
   return Module['UTF8ToString'](ptr);
 }
@@ -1223,21 +1168,12 @@ function alignMemoryPage(x) {
 }
 
 var HEAP;
-#if USE_TYPED_ARRAYS == 1
-var IHEAP, IHEAPU;
-#if USE_FHEAP
-var FHEAP;
-#endif
-#endif
-#if USE_TYPED_ARRAYS == 2
 var HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32, HEAPF64;
-#endif
 
 var STATIC_BASE = 0, STATICTOP = 0, staticSealed = false; // static area
 var STACK_BASE = 0, STACKTOP = 0, STACK_MAX = 0; // stack area
 var DYNAMIC_BASE = 0, DYNAMICTOP = 0; // dynamic area handled by sbrk
 
-#if USE_TYPED_ARRAYS
 function enlargeMemory() {
 #if ALLOW_MEMORY_GROWTH == 0
   abort('Cannot enlarge memory arrays. Either (1) compile with -s TOTAL_MEMORY=X with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with ALLOW_MEMORY_GROWTH which adjusts the size at runtime but prevents some optimizations, or (3) set Module.TOTAL_MEMORY before the program runs.');
@@ -1323,7 +1259,6 @@ function enlargeMemory() {
   return true;
 #endif
 }
-#endif
 
 #if ALLOW_MEMORY_GROWTH
 var byteLength;
@@ -1400,20 +1335,10 @@ if (totalMemory !== TOTAL_MEMORY) {
 
 
 // Initialize the runtime's memory
-#if USE_TYPED_ARRAYS
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' && !!(new Int32Array(1)['subarray']) && !!(new Int32Array(1)['set']),
        'JS engine does not provide full typed array support');
 
-#if USE_TYPED_ARRAYS == 1
-HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
-IHEAPU = new Uint32Array(IHEAP.buffer);
-#if USE_FHEAP
-FHEAP = new Float64Array(TOTAL_MEMORY);
-#endif
-#endif
-
-#if USE_TYPED_ARRAYS == 2
 #if POINTER_MASKING
 #if POINTER_MASKING_DYNAMIC
 var buffer = new ArrayBuffer(TOTAL_MEMORY + (POINTER_MASKING_ENABLED ? POINTER_MASKING_OVERFLOW : 0));
@@ -1423,7 +1348,6 @@ var buffer = new ArrayBuffer(TOTAL_MEMORY + {{{ POINTER_MASKING_OVERFLOW }}});
 #else
 var buffer = new ArrayBuffer(TOTAL_MEMORY);
 #endif // POINTER_MASKING
-#endif // USE_TYPED_ARRAYS == 2
 
 HEAP8 = new Int8Array(buffer);
 HEAP16 = new Int16Array(buffer);
@@ -1437,16 +1361,8 @@ HEAPF64 = new Float64Array(buffer);
 // Endianness check (note: assumes compiler arch was little-endian)
 HEAP32[0] = 255;
 assert(HEAPU8[0] === 255 && HEAPU8[3] === 0, 'Typed arrays 2 must be run on a little-endian system');
-#endif // USE_TYPED_ARRAYS
 
 Module['HEAP'] = HEAP;
-#if USE_TYPED_ARRAYS == 1
-Module['IHEAP'] = IHEAP;
-#if USE_FHEAP
-Module['FHEAP'] = FHEAP;
-#endif
-#endif
-#if USE_TYPED_ARRAYS == 2
 Module['buffer'] = buffer;
 Module['HEAP8'] = HEAP8;
 Module['HEAP16'] = HEAP16;
@@ -1456,7 +1372,6 @@ Module['HEAPU16'] = HEAPU16;
 Module['HEAPU32'] = HEAPU32;
 Module['HEAPF32'] = HEAPF32;
 Module['HEAPF64'] = HEAPF64;
-#endif
 
 function callRuntimeCallbacks(callbacks) {
   while(callbacks.length > 0) {

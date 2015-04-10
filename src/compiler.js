@@ -194,7 +194,6 @@ if (NO_BROWSER) {
 
 // Settings sanity checks
 
-assert(!(USE_TYPED_ARRAYS === 2 && QUANTUM_SIZE !== 4), 'For USE_TYPED_ARRAYS == 2, must have normal QUANTUM_SIZE of 4');
 assert(!(!NAMED_GLOBALS && BUILD_AS_SHARED_LIB), 'shared libraries must have named globals');
 
 // Output some info and warnings based on settings

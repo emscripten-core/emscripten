@@ -629,10 +629,6 @@ var LibraryGL = {
     
     // Returns the context handle to the new context.
     createContext: function(canvas, webGLContextAttributes) {
-#if !USE_TYPED_ARRAYS
-      Module.print('(USE_TYPED_ARRAYS needs to be enabled for WebGL)');
-      return null;
-#endif
       if (typeof webGLContextAttributes.majorVersion === 'undefined' && typeof webGLContextAttributes.minorVersion === 'undefined') {
 #if USE_WEBGL2
         webGLContextAttributes.majorVersion = 2;

@@ -104,13 +104,7 @@ mergeInto(LibraryManager.library, {
           // socket is closed
           return 0;
         }
-#if USE_TYPED_ARRAYS == 2
         buffer.set(msg.buffer, offset);
-#else
-        for (var i = 0; i < size; i++) {
-          buffer[offset + i] = msg.buffer[i];
-        }
-#endif
         return msg.buffer.length;
       },
       write: function(stream, buffer, offset, length, position /* ignored */) {

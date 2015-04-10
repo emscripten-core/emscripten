@@ -1575,10 +1575,6 @@ class Building:
     return not Settings.BUILD_AS_SHARED_LIB and not Settings.LINKABLE and not Settings.EXPORT_ALL
 
   @staticmethod
-  def can_use_unsafe_opts():
-    return Settings.USE_TYPED_ARRAYS == 2
-
-  @staticmethod
   def can_inline():
     return Settings.INLINING_LIMIT == 0
 
@@ -1603,92 +1599,14 @@ class Building:
         llvm-as < /dev/null | opt -std-compile-opts -disable-output -debug-pass=Arguments
     '''
     assert 0 <= optimization_level <= 3
-    unsafe = Building.can_use_unsafe_opts()
     opts = []
     if optimization_level > 0:
-      if unsafe:
-        if not Building.can_inline():
-          opts.append('-disable-inlining')
-        if not Building.can_build_standalone():
-          # -O1 does not have -gobaldce, which removes stuff that is needed for libraries and linkables
-          optimization_level = min(1, optimization_level)
-        opts.append('-O%d' % optimization_level)
-        #print '[unsafe: %s]' % ','.join(opts)
-      else:
-        allow_nonportable = False
-        optimize_size = True
-        use_aa = False
-
-        # PassManagerBuilder::populateModulePassManager
-        if allow_nonportable and use_aa: # ammo.js results indicate this can be nonportable
-          opts.append('-tbaa')
-          opts.append('-basicaa') # makes fannkuch slow but primes fast
-
-        if Building.can_build_standalone():
-          opts += Building.get_safe_internalize()
-
-        opts.append('-globalopt')
-        opts.append('-ipsccp')
-        opts.append('-deadargelim')
-        if allow_nonportable: opts.append('-instcombine')
-        opts.append('-simplifycfg')
-
-        opts.append('-prune-eh')
-        if Building.can_inline(): opts.append('-inline')
-        opts.append('-functionattrs')
-        if optimization_level > 2:
-          opts.append('-argpromotion')
-
-        # XXX Danger: Can turn a memcpy into something that violates the
-        #             load-store consistency hypothesis. See hashnum() in Lua.
-        #             Note: this opt is of great importance for raytrace...
-        if allow_nonportable: opts.append('-scalarrepl')
-
-        if allow_nonportable: opts.append('-early-cse') # ?
-        opts.append('-simplify-libcalls')
-        opts.append('-jump-threading')
-        if allow_nonportable: opts.append('-correlated-propagation') # ?
-        opts.append('-simplifycfg')
-        if allow_nonportable: opts.append('-instcombine')
-
-        opts.append('-tailcallelim')
-        opts.append('-simplifycfg')
-        opts.append('-reassociate')
-        opts.append('-loop-rotate')
-        opts.append('-licm')
-        opts.append('-loop-unswitch') # XXX should depend on optimize_size
-        if allow_nonportable: opts.append('-instcombine')
-        if Settings.QUANTUM_SIZE == 4: opts.append('-indvars') # XXX this infinite-loops raytrace on q1 (loop in |new node_t[count]| has 68 hardcoded &not fixed)
-        if allow_nonportable: opts.append('-loop-idiom') # ?
-        opts.append('-loop-deletion')
-        opts.append('-loop-unroll')
-
-        ##### not in llvm-3.0. but have |      #addExtensionsToPM(EP_LoopOptimizerEnd, MPM);| if allow_nonportable: opts.append('-instcombine')
-
-        # XXX Danger: Messes up Lua output for unknown reasons
-        #             Note: this opt is of minor importance for raytrace...
-        if optimization_level > 1 and allow_nonportable: opts.append('-gvn')
-
-        opts.append('-memcpyopt') # Danger?
-        opts.append('-sccp')
-
-        if allow_nonportable: opts.append('-instcombine')
-        opts.append('-jump-threading')
-        opts.append('-correlated-propagation')
-        opts.append('-dse')
-        #addExtensionsToPM(EP_ScalarOptimizerLate, MPM)
-
-        opts.append('-adce')
-        opts.append('-simplifycfg')
-        if allow_nonportable: opts.append('-instcombine')
-
-        opts.append('-strip-dead-prototypes')
-
-        if Building.can_build_standalone():
-          opts.append('-globaldce')
-
-        if optimization_level > 1: opts.append('-constmerge')
-
+      if not Building.can_inline():
+        opts.append('-disable-inlining')
+      if not Building.can_build_standalone():
+        # -O1 does not have -gobaldce, which removes stuff that is needed for libraries and linkables
+        optimization_level = min(1, optimization_level)
+      opts.append('-O%d' % optimization_level)
     Building.LLVM_OPT_OPTS = opts
     return opts
 

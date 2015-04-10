@@ -9,25 +9,17 @@ if (memoryInitializer) {
   }
   if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
     var data = Module['readBinary'](memoryInitializer);
-#if USE_TYPED_ARRAYS == 2
     HEAPU8.set(data, STATIC_BASE);
-#else
-    allocate(data, 'i8', ALLOC_NONE, STATIC_BASE);
-#endif
   } else {
     addRunDependency('memory initializer');
     var applyMemoryInitializer = function(data) {
       if (data.byteLength) data = new Uint8Array(data);
-#if USE_TYPED_ARRAYS == 2
 #if ASSERTIONS
       for (var i = 0; i < data.length; i++) {
         assert(HEAPU8[STATIC_BASE + i] === 0, "area for memory initializer should not have been touched before it's loaded");
       }
 #endif
       HEAPU8.set(data, STATIC_BASE);
-#else
-      allocate(data, 'i8', ALLOC_NONE, STATIC_BASE);
-#endif
       removeRunDependency('memory initializer');
     }
     var request = Module['memoryInitializerRequest'];

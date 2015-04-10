@@ -147,7 +147,7 @@ function JSify(data, functionsOnly) {
       }
       // Add current value(s)
       var currValue = values[i];
-      if (USE_TYPED_ARRAYS == 2 && (typeData.fields[i] == 'i64' || (typeData.flatFactor && typeData.fields[0] == 'i64'))) {
+      if ((typeData.fields[i] == 'i64' || (typeData.flatFactor && typeData.fields[0] == 'i64'))) {
         // 'flatten' out the 64-bit value into two 32-bit halves
         var parts = parseI64Constant(currValue, true);
         ret[index++] = parts[0];
@@ -1260,7 +1260,7 @@ function JSify(data, functionsOnly) {
     ret = makeVarArgsCleanup(ret);
 
     if (item.assignTo) {
-      var illegal = USE_TYPED_ARRAYS == 2 && isIllegalType(item.type);
+      var illegal = isIllegalType(item.type);
       var assignTo = illegal ? item.assignTo + '$r' : item.assignTo;
       ret = makeVarDef(assignTo) + '=' + ret;
       if (ASM_JS) addVariable(assignTo, item.type);
@@ -1304,7 +1304,7 @@ function JSify(data, functionsOnly) {
       addVariable(item.assignTo + '$0', 'i32');
       addVariable(item.assignTo + '$1', 'i32');
     }
-    if (DISABLE_EXCEPTION_CATCHING && !(item.funcData.ident in EXCEPTION_CATCHING_WHITELIST) && USE_TYPED_ARRAYS == 2) {
+    if (DISABLE_EXCEPTION_CATCHING && !(item.funcData.ident in EXCEPTION_CATCHING_WHITELIST)) {
       ret = makeVarDef(item.assignTo) + '$0 = 0; ' + makeVarDef(item.assignTo) + '$1 = 0;';
       item.assignTo = null;
       if (VERBOSE) warnOnce('landingpad, but exceptions are disabled!');
@@ -1312,10 +1312,8 @@ function JSify(data, functionsOnly) {
     }
     var catchTypeArray = item.catchables.map(finalizeLLVMParameter).map(function(element) { return asmCoercion(element, 'i32') }).join(',');
     var ret = asmCoercion('___cxa_find_matching_catch(' + catchTypeArray +')', 'i32');
-    if (USE_TYPED_ARRAYS == 2) {
-      ret = makeVarDef(item.assignTo) + '$0 = ' + ret + '; ' + makeVarDef(item.assignTo) + '$1 = tempRet0;';
-      item.assignTo = null;
-    }
+    ret = makeVarDef(item.assignTo) + '$0 = ' + ret + '; ' + makeVarDef(item.assignTo) + '$1 = tempRet0;';
+    item.assignTo = null;
     return ret;
   }
   function loadHandler(item) {
@@ -1352,7 +1350,7 @@ function JSify(data, functionsOnly) {
                                       //       and we emulate them using simple JS objects { f1: , f2: , } etc., for speed
     var index = item.indexes[0][0].text;
     var valueType = Types.types[item.type].fields[index];
-    if (USE_TYPED_ARRAYS != 2 || valueType != 'i64') {
+    if (valueType != 'i64') {
       return item.ident + '.f' + index;
     } else {
       var assignTo = item.assignTo;
@@ -1764,27 +1762,25 @@ function JSify(data, functionsOnly) {
           print('}\n');
         }
 
-        if (USE_TYPED_ARRAYS == 2) {
-          if (!BUILD_AS_SHARED_LIB && !SIDE_MODULE) {
-            print('var tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
-            print('assert(tempDoublePtr % 8 == 0);\n');
-            print('function copyTempFloat(ptr) { // functions, because inlining this code increases code size too much\n');
-            print('  HEAP8[tempDoublePtr] = HEAP8[ptr];\n');
-            print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];\n');
-            print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];\n');
-            print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];\n');
-            print('}\n');
-            print('function copyTempDouble(ptr) {\n');
-            print('  HEAP8[tempDoublePtr] = HEAP8[ptr];\n');
-            print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];\n');
-            print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];\n');
-            print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];\n');
-            print('  HEAP8[tempDoublePtr+4] = HEAP8[ptr+4];\n');
-            print('  HEAP8[tempDoublePtr+5] = HEAP8[ptr+5];\n');
-            print('  HEAP8[tempDoublePtr+6] = HEAP8[ptr+6];\n');
-            print('  HEAP8[tempDoublePtr+7] = HEAP8[ptr+7];\n');
-            print('}\n');
-          }
+        if (!BUILD_AS_SHARED_LIB && !SIDE_MODULE) {
+          print('var tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
+          print('assert(tempDoublePtr % 8 == 0);\n');
+          print('function copyTempFloat(ptr) { // functions, because inlining this code increases code size too much\n');
+          print('  HEAP8[tempDoublePtr] = HEAP8[ptr];\n');
+          print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];\n');
+          print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];\n');
+          print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];\n');
+          print('}\n');
+          print('function copyTempDouble(ptr) {\n');
+          print('  HEAP8[tempDoublePtr] = HEAP8[ptr];\n');
+          print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];\n');
+          print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];\n');
+          print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];\n');
+          print('  HEAP8[tempDoublePtr+4] = HEAP8[ptr+4];\n');
+          print('  HEAP8[tempDoublePtr+5] = HEAP8[ptr+5];\n');
+          print('  HEAP8[tempDoublePtr+6] = HEAP8[ptr+6];\n');
+          print('  HEAP8[tempDoublePtr+7] = HEAP8[ptr+7];\n');
+          print('}\n');
         }
       }
 

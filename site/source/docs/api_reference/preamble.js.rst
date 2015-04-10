@@ -386,7 +386,6 @@ The :ref:`emscripten-memory-model` uses a typed array buffer (``ArrayBuffer``) t
 	Module['ALLOC_NONE'] = ALLOC_NONE;
 	Module['HEAP'] = HEAP;
 	Module['IHEAP'] = IHEAP;
-	Module['FHEAP'] = FHEAP;
 	function alignMemoryPage(x)
 	function enlargeMemory()
 	function demangle(func)

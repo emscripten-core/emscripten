@@ -23,7 +23,7 @@ var RuntimeGenerator = {
   // An allocation that lives as long as the current function call
   stackAlloc: function(size, sep) {
     sep = sep || ';';
-    var ret = RuntimeGenerator.alloc(size, 'STACK', false, sep, USE_TYPED_ARRAYS != 2 || (isNumber(size) && parseInt(size) % {{{ STACK_ALIGN }}} == 0));
+    var ret = RuntimeGenerator.alloc(size, 'STACK', false, sep, (isNumber(size) && parseInt(size) % {{{ STACK_ALIGN }}} == 0));
     if (ASSERTIONS) {
       ret += sep + '(assert(' + asmCoercion('(STACKTOP|0) < (STACK_MAX|0)', 'i32') + ')|0)';
     }
@@ -34,11 +34,9 @@ var RuntimeGenerator = {
     if (initial === 0 && SKIP_STACK_IN_SMALL && !force) return '';
     var ret = 'var sp=' + (ASM_JS ? '0;sp=' : '') + 'STACKTOP';
     if (initial > 0) ret += ';STACKTOP=(STACKTOP+' + initial + ')|0';
-    if (USE_TYPED_ARRAYS == 2) {
-      assert(initial % Runtime.STACK_ALIGN == 0);
-      if (ASSERTIONS && Runtime.STACK_ALIGN == 4) {
-        ret += '; (assert(' + asmCoercion('!(STACKTOP&3)', 'i32') + ')|0)';
-      }
+    assert(initial % Runtime.STACK_ALIGN == 0);
+    if (ASSERTIONS && Runtime.STACK_ALIGN == 4) {
+      ret += '; (assert(' + asmCoercion('!(STACKTOP&3)', 'i32') + ')|0)';
     }
     if (ASSERTIONS) {
       ret += '; (assert(' + asmCoercion('(STACKTOP|0) < (STACK_MAX|0)', 'i32') + ')|0)';
@@ -67,7 +65,7 @@ var RuntimeGenerator = {
   dynamicAlloc: function(size) {
     if (ASSERTIONS) size = '(assert(DYNAMICTOP > 0),' + size + ')'; // dynamic area must be ready
     var ret = RuntimeGenerator.alloc(size, 'DYNAMIC', INIT_HEAP);
-    if (USE_TYPED_ARRAYS) ret += '; if (DYNAMICTOP >= TOTAL_MEMORY) { var success = enlargeMemory(); if (!success) return 0; }'
+    ret += '; if (DYNAMICTOP >= TOTAL_MEMORY) { var success = enlargeMemory(); if (!success) return 0; }'
     return ret;
   },
 

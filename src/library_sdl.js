@@ -1538,14 +1538,7 @@ var LibrarySDL = {
         // }
         throw 'CopyOnLock is not supported for SDL_LockSurface with SDL_HWPALETTE flag set' + new Error().stack;
       } else {
-#if USE_TYPED_ARRAYS == 2
-      HEAPU8.set(surfData.image.data, surfData.buffer);
-#else
-      var num2 = surfData.image.data.length;
-      for (var i = 0; i < num2; i++) {
-        {{{ makeSetValue('surfData.buffer', 'i', 'surfData.image.data[i]', 'i8') }}};
-      }
-#endif
+        HEAPU8.set(surfData.image.data, surfData.buffer);
       }
     }
 
@@ -1568,7 +1561,6 @@ var LibrarySDL = {
     } else if (!surfData.colors) {
       var data = surfData.image.data;
       var buffer = surfData.buffer;
-#if USE_TYPED_ARRAYS == 2
       assert(buffer % 4 == 0, 'Invalid buffer offset: ' + buffer);
       var src = buffer >> 2;
       var dst = 0;
@@ -1635,15 +1627,6 @@ var LibrarySDL = {
           data32.set(HEAP32.subarray(src, src + data32.length));
         }
       }
-#else
-      var num = surfData.image.data.length;
-      for (var i = 0; i < num; i++) {
-        // We may need to correct signs here. Potentially you can hardcode a write of 255 to alpha, say, and
-        // the compiler may decide to write -1 in the llvm bitcode...
-        data[i] = {{{ makeGetValue('buffer', 'i', 'i8', null, true) }}};
-        if (i % 4 == 3) data[i] = 0xff;
-      }
-#endif
     } else {
       var width = Module['canvas'].width;
       var height = Module['canvas'].height;
