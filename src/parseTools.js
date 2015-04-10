@@ -1359,7 +1359,7 @@ function indexizeFunctions(value, type) {
 //!            possible to put |0| here, but if a pointer is available, that is more future-proof.
 //! @param pos The position in that slab - the offset. Added to any offset in the pointer itself.
 //! @param value The value to set.
-//! @param type A string defining the type. Used to find the slab (IHEAP, FHEAP, etc.).
+//! @param type A string defining the type. Used to find the slab (HEAPU8, HEAP16, HEAPU32, etc.).
 //!             'null' means, in the context of SAFE_HEAP, that we should accept all types;
 //!             which means we should write to all slabs, ignore type differences if any on reads, etc.
 //! @param noNeedFirst Whether to ignore the offset in the pointer itself.
@@ -1643,8 +1643,6 @@ function calcFastOffset(ptr, pos, noNeedFirst) {
   assert(!noNeedFirst);
   return getFastValue(ptr, '+', pos, 'i32');
 }
-
-var IHEAP_FHEAP = set('IHEAP', 'IHEAPU', 'FHEAP');
 
 var temp64f = new Float64Array(1);
 var temp32f = new Float32Array(temp64f.buffer);

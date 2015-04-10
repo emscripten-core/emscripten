@@ -80,8 +80,6 @@ var RELOOPER_BUFFER_SIZE = 20*1024*1024; // The internal relooper buffer size. I
 var USE_TYPED_ARRAYS = 2; // Use typed arrays for the heap. See https://github.com/kripken/emscripten/wiki/Code-Generation-Modes/
                           // 2 is a single heap, accessible through views as int8, int32, etc. This is
                           //   the only supported mode.
-var USE_FHEAP = 1; // Relevant in USE_TYPED_ARRAYS == 1. If this is disabled, only IHEAP will be used, and FHEAP
-                   // not generated at all. This is useful if your code is 100% ints without floats or doubles
 var DOUBLE_MODE = 1; // How to load and store 64-bit doubles.
                      // A potential risk is that doubles may be only 32-bit aligned. Forcing 64-bit alignment
                      // a potential risk is that doubles may be only 32-bit aligned. Forcing 64-bit alignment
