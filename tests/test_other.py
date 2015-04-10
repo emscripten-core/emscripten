@@ -2495,6 +2495,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     # Tidy up files that might have been created by this test.
     try_delete(path_from_root('tests', 'Module-exports', 'test.js'))
     try_delete(path_from_root('tests', 'Module-exports', 'test.js.map'))
+    try_delete(path_from_root('tests', 'Module-exports', 'test.js.mem'))
 
   def test_fs_stream_proto(self):
     open('src.cpp', 'wb').write(r'''
