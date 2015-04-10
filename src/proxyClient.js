@@ -71,6 +71,10 @@ window.requestAnimationFrame = window.requestAnimationFrame || window.mozRequest
 
 // end render
 
+// IDBStore
+
+var IDBStore = {{{ IDBStore.js }}};
+
 // Frame throttling
 
 var frameId = 0;
@@ -166,6 +170,31 @@ worker.onmessage = function worker_onmessage(event) {
         worker.postMessage({ target: 'Image', method: 'onerror', id: data.id, preMain: true });
       };
       img.src = data.src;
+      break;
+    }
+    case 'IDBStore': {
+      switch (data.method) {
+        case 'loadBlob': {
+          IDBStore.getFile(data.db, data.id, function(error, blob) {
+            worker.postMessage({
+              target: 'IDBStore',
+              method: 'response',
+              blob: error ? null : blob
+            });
+          });
+          break;
+        }
+        case 'storeBlob': {
+          IDBStore.setFile(data.db, data.id, data.blob, function(error) {
+            worker.postMessage({
+              target: 'IDBStore',
+              method: 'response',
+              error: !!error
+            });
+          });
+          break;
+        }
+      }
       break;
     }
     default: throw 'what?';

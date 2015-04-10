@@ -96,9 +96,33 @@ var LibraryIDBStore = {
       });
     });
   },
-  // extra worker methods
+  // extra worker methods - proxied
   emscripten_idb_load_blob__deps: ['$EmterpreterAsync'],
   emscripten_idb_load_blob: function(db, id, pblob, perror) {
+    EmterpreterAsync.handle(function(resume) {
+      assert(!IDBStore.pending);
+      IDBStore.pending = function(msg) {
+        IDBStore.pending = null;
+        var blob = msg.blob;
+        if (!blob) {
+          {{{ makeSetValueAsm('perror', 0, '1', 'i32') }}};
+          resume();
+          return;
+        }
+        assert(blob instanceof Blob);
+        var blobId = IDBStore.blobs.length;
+        IDBStore.blobs.push(blob);
+        {{{ makeSetValueAsm('pblob', 0, 'blobId', 'i32') }}};
+        resume();
+      };
+      postMessage({
+        target: 'IDBStore',
+        method: 'loadBlob',
+        db: Pointer_stringify(db),
+        id: Pointer_stringify(id)
+      });
+    });
+    /*
     EmterpreterAsync.handle(function(resume) {
       IDBStore.getFile(Pointer_stringify(db), Pointer_stringify(id), function(error, blob) {
         if (error) {
@@ -113,29 +137,47 @@ var LibraryIDBStore = {
         resume();
       });
     });
+    */
   },
   emscripten_idb_store_blob__deps: ['$EmterpreterAsync'],
   emscripten_idb_store_blob: function(db, id, ptr, num, perror) {
+    EmterpreterAsync.handle(function(resume) {
+      assert(!IDBStore.pending);
+      IDBStore.pending = function(msg) {
+        IDBStore.pending = null;
+        {{{ makeSetValueAsm('perror', 0, '!!msg.error', 'i32') }}};
+        resume();
+      };
+      postMessage({
+        target: 'IDBStore',
+        method: 'storeBlob',
+        db: Pointer_stringify(db),
+        id: Pointer_stringify(id),
+        blob: new Blob([new Uint8Array(HEAPU8.subarray(ptr, ptr+num))])
+      });
+    });
+    /*
     EmterpreterAsync.handle(function(resume) {
       IDBStore.setFile(Pointer_stringify(db), Pointer_stringify(id), new Blob([new Uint8Array(HEAPU8.subarray(ptr, ptr+num))]), function(error) {
         {{{ makeSetValueAsm('perror', 0, '!!error', 'i32') }}};
         resume();
       });
     });
+    */
   },
   emscripten_idb_read_from_blob__deps: ['$EmterpreterAsync'],
   emscripten_idb_read_from_blob: function(blobId, start, num, buffer) {
-    var blob = EmterpreterAsync.blobs[blobId];
+    var blob = IDBStore.blobs[blobId];
     if (!blob) return 1;
     if (start+num > blob.size) return 2;
-    var byteArray = (new FileReaderSync()).readAsArrayBuffer(Blob.slice(start, start+num));
-    HEAPU8.set(byteArray, buffer);
+    var byteArray = (new FileReaderSync()).readAsArrayBuffer(blob.slice(start, start+num));
+    HEAPU8.set(new Uint8Array(byteArray), buffer);
     return 0;
   },
   emscripten_idb_free_blob__deps: ['$EmterpreterAsync'],
   emscripten_idb_free_blob: function(blobId) {
-    assert(EmterpreterAsync.blobs[blobId]);
-    EmterpreterAsync.blobs[blobId] = null;
+    assert(IDBStore.blobs[blobId]);
+    IDBStore.blobs[blobId] = null;
   },
 #else
   emscripten_idb_load: function() {

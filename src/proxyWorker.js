@@ -357,7 +357,7 @@ onmessage = function onmessage(message) {
     messageBuffer.push(message);
     return;
   }
-  //dump('worker got ' + JSON.stringify(message.data) + '\n');
+  //dump('worker got ' + JSON.stringify(message.data).substr(0, 150) + '\n');
   switch (message.data.target) {
     case 'document': {
       document.fireEvent(message.data.event);
@@ -399,6 +399,12 @@ onmessage = function onmessage(message) {
           break;
         }
       }
+      break;
+    }
+    case 'IDBStore': {
+      assert(message.data.method === 'response');
+      assert(IDBStore.pending);
+      IDBStore.pending(message.data);
       break;
     }
     case 'worker-init': {
