@@ -5729,6 +5729,8 @@ def process(filename):
     if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
     if not self.is_emscripten_abi(): return self.skip('fails on not asmjs-unknown-emscripten') # FIXME
 
+    Settings.EMULATE_FUNCTION_POINTER_CASTS = 1
+
     assert self.is_emscripten_abi()
     bitcode = path_from_root('tests', 'python', 'python.bc')
     pyscript = dedent('''\
@@ -5739,9 +5741,10 @@ def process(filename):
       print 10-3-t
       print (lambda x: x*2)(11)
       print '%f' % 5.47
+      print {1: 2}.keys()
       print '***'
       ''')
-    pyoutput = '***\nhello python world!\n[0, 2, 4, 6]\n5\n22\n5.470000\n***'
+    pyoutput = '***\nhello python world!\n[0, 2, 4, 6]\n5\n22\n5.470000\n[1]\n***'
 
     for lto in [0, 1]:
       if lto == 1: self.emcc_args += ['--llvm-lto', '1']
