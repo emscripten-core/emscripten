@@ -348,11 +348,9 @@ function intertyper(lines, sidePass, baseLineNums) {
       if (token1Text == 'triple') {
         var triple = item.tokens[3].text;
         triple = triple.substr(1, triple.length-2);
-        var expected = TARGET_ASMJS_UNKNOWN_EMSCRIPTEN ? 'asmjs-unknown-emscripten' : 'i386-pc-linux-gnu';
+        var expected = 'asmjs-unknown-emscripten';
         if (triple !== expected) {
-          if (!(TARGET_ASMJS_UNKNOWN_EMSCRIPTEN && triple === 'le32-unknown-nacl')) {
-            warn('using an unexpected LLVM triple: ' + [triple, ' !== ', expected] + ' (are you using emcc for everything and not clang?)');
-          }
+          warn('using an unexpected LLVM triple: ' + [triple, ' !== ', expected] + ' (are you using emcc for everything and not clang?)');
         }
       }
       return null;

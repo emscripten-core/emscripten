@@ -990,19 +990,7 @@ try:
   else:
     shared.Settings.POINTER_MASKING_DEFAULT_ENABLED = 0
 
-  assert shared.LLVM_TARGET in shared.COMPILER_OPTS
-  if shared.LLVM_TARGET == 'i386-pc-linux-gnu':
-    shared.Settings.TARGET_X86 = 1
-    shared.Settings.TARGET_ASMJS_UNKNOWN_EMSCRIPTEN = 0
-    assert 'asmjs-unknown-emscripten' not in shared.COMPILER_OPTS
-  elif shared.LLVM_TARGET == 'asmjs-unknown-emscripten' or \
-       shared.LLVM_TARGET == 'le32-unknown-nacl':
-    # For temporary compatibility, treat 'le32-unknown-nacl' as 'asmjs-unknown-emscripten'.
-    shared.Settings.TARGET_ASMJS_UNKNOWN_EMSCRIPTEN = 1
-    shared.Settings.TARGET_X86 = 0
-    assert 'i386-pc-linux-gnu' not in shared.COMPILER_OPTS
-  else:
-    raise Exception('unknown llvm target: ' + str(shared.LLVM_TARGET))
+  shared.Settings.TARGET_ASMJS_UNKNOWN_EMSCRIPTEN = 1
 
   if shared.Settings.MAIN_MODULE:
     assert not shared.Settings.SIDE_MODULE

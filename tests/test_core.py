@@ -8,7 +8,7 @@ from runner import RunnerCore, path_from_root, checked_sanity, test_modes, get_b
 
 class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
   def is_emscripten_abi(self):
-    return not ('i386-pc-linux-gnu' in COMPILER_OPTS or self.env.get('EMCC_LLVM_TARGET') == 'i386-pc-linux-gnu')
+    return True
 
   def is_emterpreter(self):
     return 'EMTERPRETIFY=1' in self.emcc_args
@@ -504,9 +504,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run(open(path_from_root('tests', 'sha1.c')).read(), 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
 
   def test_asmjs_unknown_emscripten(self):
-    if self.emcc_args == None: return self.skip('needs emcc')
-    if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for asmjs-unknown-emscripten target test')
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('fastcomp needed for asmjs-unknonw-emscripten target')
+    # No other configuration is supported, so always run this.
     self.do_run(open(path_from_root('tests', 'asmjs-unknown-emscripten.c')).read(), '')
 
   def test_cube2md5(self):
@@ -2600,10 +2598,7 @@ The current type of b is: 9
 
       # Check for warning in the generated code
       generated = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
-      if 'i386-pc-linux-gnu' in COMPILER_OPTS:
-        assert 'Casting a function pointer type to a potentially incompatible one' in output[1], 'Missing expected warning'
-      else:
-        print >> sys.stderr, 'skipping C/C++ conventions warning check, since not i386-pc-linux-gnu'
+      print >> sys.stderr, 'skipping C/C++ conventions warning check, since not i386-pc-linux-gnu'
 
   def test_stdlibs(self):
       if self.emcc_args is None: return self.skip('requires emcc')

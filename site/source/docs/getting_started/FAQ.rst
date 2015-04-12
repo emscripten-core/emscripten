@@ -337,7 +337,7 @@ On Linux and Mac OS X, you can just do ``NODE_JS = ['node', '--stack_size=8192']
 Why do I get ``error: cannot compile this aggregate va_arg expression yet`` and it says ``compiler frontend failed to generate LLVM bitcode, halting`` afterwards?
 ===================================================================================================================================================================
 
-This is a limitation of the le32 frontend in :term:`Clang`. You can use the x86 frontend instead by compiling with ``EMCC_LLVM_TARGET=i386-pc-linux-gnu`` in the environment (however you will lose the advantages of le32, which includes better alignment of doubles).
+This is a limitation of the asm.js target in :term:`Clang`. This code is not currently supported.
 
 		
 Why does building from source fail during linking (at 100%)?
