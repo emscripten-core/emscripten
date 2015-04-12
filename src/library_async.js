@@ -303,9 +303,11 @@ mergeInto(LibraryManager.library, {
         // nothing to do here, the stack was just recreated. reset the state.
         assert(EmterpreterAsync.state === 2);
         EmterpreterAsync.setState(0);
+
         if (EmterpreterAsync.postAsync) {
-          EmterpreterAsync.postAsync();
+          var ret = EmterpreterAsync.postAsync();
           EmterpreterAsync.postAsync = null;
+          return ret;
         }
       }
     }

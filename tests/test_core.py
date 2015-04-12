@@ -7227,6 +7227,48 @@ Module['ccall']('main', null, ['number', 'string'], [2, 'waka'], { async: true }
 ''')
       self.do_run(src, 'HelloWorld');
 
+  def test_async_returnvalue(self):
+    if not self.is_emterpreter(): return self.skip('emterpreter-only test')
+
+    Settings.EMTERPRETIFY_ASYNC = 1
+    self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
+
+    open('lib.js', 'w').write(r'''
+mergeInto(LibraryManager.library, {
+  sleep_with_return__deps: ['$EmterpreterAsync'],
+  sleep_with_return: function(ms) {
+    return EmterpreterAsync.handle(function(resume) {
+      var startTime = Date.now();
+      setTimeout(function() {
+        if (ABORT) return; // do this manually; we can't call into Browser.safeSetTimeout, because that is paused/resumed!
+        resume(function() {
+          return Date.now() - startTime;
+        });
+      }, ms);
+    });
+  }
+});
+''')
+
+    src = r'''
+#include <stdio.h>
+#include <assert.h>
+#include <emscripten.h>
+
+extern "C" {
+extern int sleep_with_return(int ms);
+}
+
+int main() {
+  int ms = sleep_with_return(1000);
+  assert(ms >= 900);
+  printf("napped for %d ms\n", ms);
+}
+'''
+    self.emcc_args += ['--js-library', 'lib.js']
+
+    self.do_run(src, 'napped');
+
   def test_coroutine(self):
     if not Settings.ASM_JS: return self.skip('asyncify requires asm.js')
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('asyncify requires fastcomp')
