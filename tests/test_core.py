@@ -7126,17 +7126,6 @@ def process(filename):
     self.emcc_args += ['-s', 'INVOKE_RUN=0', '--post-js', 'post.js']
     self.do_run(src, 'hello, world!\ncleanup\nI see exit status: 118')
 
-  def test_gc(self):
-    if self.emcc_args == None: return self.skip('needs ta2')
-    if Settings.ASM_JS: return self.skip('asm cannot support generic function table')
-
-    Settings.GC_SUPPORT = 1
-
-    test_path = path_from_root('tests', 'core', 'test_gc')
-    src, output = (test_path + s for s in ('.in', '.out'))
-
-    self.do_run_from_file(src, output)
-
   def test_minmax(self):
     if self.emcc_args == None: return self.skip('needs emcc')
     if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('this test will not pass in the old compiler')
