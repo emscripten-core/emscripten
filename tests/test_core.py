@@ -5742,6 +5742,7 @@ def process(filename):
     pyoutput = '***\nhello python world!\n[0, 2, 4, 6]\n5\n22\n5.470000\n[1]\n***'
 
     for lto in [0, 1]:
+      print 'lto:', lto
       if lto == 1: self.emcc_args += ['--llvm-lto', '1']
       self.do_ll_run(bitcode, pyoutput, args=['-S', '-c', pyscript])
 
