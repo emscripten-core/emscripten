@@ -451,7 +451,7 @@ function headlessCanvas() {
               }
             },
             getSupportedExtensions: function() {
-              return ["OES_texture_float", "OES_standard_derivatives", "EXT_texture_filter_anisotropic", "MOZ_EXT_texture_filter_anisotropic", "MOZ_WEBGL_lose_context", "MOZ_WEBGL_compressed_texture_s3tc", "MOZ_WEBGL_depth_texture"];
+              return ["OES_texture_float", "OES_standard_derivatives", "EXT_texture_filter_anisotropic"];
             },
             createShader: function(type) {
               var id = this.id++;

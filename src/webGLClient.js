@@ -312,7 +312,7 @@ WebGLClient.prefetch = function() {
   });
   // Try to enable some extensions, so we can access their parameters
   [{ extName: 'EXT_texture_filter_anisotropic', paramName: 'MAX_TEXTURE_MAX_ANISOTROPY_EXT' }].forEach(function(pair) {
-    var ext = ctx.getExtension(pair.extName) || ctx.getExtension('MOZ_' + pair.extName) || 'WEBKIT_' + ctx.getExtension(pair.extName);
+    var ext = ctx.getExtension(pair.extName);
     if (ext) {
       var id = ext[pair.paramName];
       parameters[id] = ctx.getParameter(id);

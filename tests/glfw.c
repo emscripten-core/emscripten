@@ -385,7 +385,7 @@ void PullInfo(){
   for(i = 0; i<nb_params; i++)
     printf(" - %-27s : %i\n", GetParamName(params[i]), glfwGetWindowParam(params[i]));
   
-  const char* extension = "MOZ_WEBGL_compressed_texture_s3tc";
+  const char* extension = "WEBGL_compressed_texture_s3tc";
   printf("'%s' extension is %s.\n", extension, glfwExtensionSupported(extension) ? "supported" : "not supported");  
   
   extension = "GL_EXT_framebuffer_object";
