@@ -7799,22 +7799,6 @@ LibraryManager.library = {
     return Math.random();
   },
 
-  emscripten_asm_const: function(code) {
-    Runtime.asmConsts[code]();
-  },
-
-  emscripten_asm_const_int__jsargs: true,
-  emscripten_asm_const_int: function(code) {
-    var args = Array.prototype.slice.call(arguments, 1);
-    return Runtime.asmConsts[code].apply(null, args) | 0;
-  },
-
-  emscripten_asm_const_double__jsargs: true,
-  emscripten_asm_const_double: function(code) {
-    var args = Array.prototype.slice.call(arguments, 1);
-    return +Runtime.asmConsts[code].apply(null, args);
-  },
-
   emscripten_get_now: function() {
     if (!_emscripten_get_now.actual) {
       if (ENVIRONMENT_IS_NODE) {
@@ -8203,6 +8187,9 @@ LibraryManager.library = {
   BItoD: true,
   llvm_dbg_value: true,
   llvm_ctlz_i32: true,
+  emscripten_asm_const: true,
+  emscripten_asm_const_int: true,
+  emscripten_asm_const_double: true,
 };
 
 function autoAddDeps(object, name) {

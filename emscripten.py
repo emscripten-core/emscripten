@@ -904,6 +904,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
     # Add named globals
     named_globals = '\n'.join(['var %s = %s;' % (k, v) for k, v in metadata['namedGlobals'].iteritems()])
+
     asm_consts = [0]*len(metadata['asmConsts'])
     for k, v in metadata['asmConsts'].iteritems():
       const = str(v)
@@ -917,7 +918,18 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
         i += 1
       const = 'function(' + ', '.join(args ) + ') ' + const
       asm_consts[int(k)] = const
-    pre = pre.replace('// === Body ===', '// === Body ===\n' + named_globals + '\nRuntime.asmConsts = [' + ', '.join(asm_consts) + '];\n')
+
+    asm_const_funcs = []
+    for arity in metadata['asmConstArities']:
+      forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_%d' % arity] = 1
+      args = ['a%d' % i for i in range(arity)]
+      all_args = ['code'] + args
+      asm_const_funcs.append(r'''
+function _emscripten_asm_const_%d(%s) {
+ return Runtime.asmConsts[code](%s) | 0;
+}''' % (arity, ', '.join(all_args), ', '.join(args)))
+
+    pre = pre.replace('// === Body ===', '// === Body ===\n' + named_globals + '\nRuntime.asmConsts = [' + ', '.join(asm_consts) + '];\n' + '\n'.join(asm_const_funcs) + '\n')
 
     #if DEBUG: outfile.write('// pre\n')
     outfile.write(pre)
