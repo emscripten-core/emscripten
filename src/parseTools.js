@@ -731,7 +731,7 @@ function IEEEUnHex(stringy) {
   while (stringy.length < 16) stringy = '0' + stringy;
   if (FAKE_X86_FP80 && stringy.length > 16) {
     stringy = stringy.substr(stringy.length-16, 16);
-    assert(TARGET_X86, 'must only see >64 bit floats in x86, as fp80s');
+    assert(false, 'must only see >64 bit floats in x86, as fp80s');
     warnOnce('.ll contains floating-point values with more than 64 bits. Faking values for them. If they are used, this will almost certainly break horribly!');
   }
   assert(stringy.length === 16, 'Can only unhex 16-digit double numbers, nothing platform-specific'); // |long double| can cause x86_fp80 which causes this
@@ -1150,8 +1150,8 @@ function checkSafeHeap() {
 
 function getHeapOffset(offset, type, forceAsm) {
   if (Runtime.getNativeFieldSize(type) > 4) {
-    if (type == 'i64' || TARGET_X86) {
-      type = 'i32'; // XXX we emulate 64-bit values as 32 in x86, and also in asmjs-unknown-emscripten but only i64, not double
+    if (type == 'i64') {
+      type = 'i32'; // we emulate 64-bit integer values as 32 in asmjs-unknown-emscripten, but not double
     }
   }
 
@@ -1272,9 +1272,8 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
     return '{ ' + ret.join(', ') + ' }';
   }
 
-  // In double mode 1, in x86 we always assume unaligned because we can't trust that; otherwise in asmjs-unknown-emscripten
-  // we need this code path if we are not fully aligned.
-  if (DOUBLE_MODE == 1 && type == 'double' && (TARGET_X86 || align < 8)) {
+  // In double mode 1, in asmjs-unknown-emscripten we need this code path if we are not fully aligned.
+  if (DOUBLE_MODE == 1 && type == 'double' && (align < 8)) {
     return '(' + makeSetTempDouble(0, 'i32', makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align, noSafe)) + ',' +
                  makeSetTempDouble(1, 'i32', makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore, align, noSafe)) + ',' +
             makeGetTempDouble(0, 'double') + ')';
@@ -1382,7 +1381,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
     return ret.join('; ');
   }
 
-  if (DOUBLE_MODE == 1 && type == 'double' && (TARGET_X86 || align < 8)) {
+  if (DOUBLE_MODE == 1 && type == 'double' && (align < 8)) {
     return '(' + makeSetTempDouble(0, 'double', value) + ',' +
             makeSetValue(ptr, pos, makeGetTempDouble(0, 'i32'), 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
             makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), makeGetTempDouble(1, 'i32'), 'i32', noNeedFirst, ignore, align, noSafe, ',') + ')';

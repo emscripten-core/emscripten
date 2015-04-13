@@ -1715,7 +1715,6 @@ function JSify(data, functionsOnly) {
       if ((phase == 'pre' || phase == 'glue') && !Variables.generatedGlobalBase && !BUILD_AS_SHARED_LIB) {
         Variables.generatedGlobalBase = true;
         // Globals are done, here is the rest of static memory
-        assert(TARGET_ASMJS_UNKNOWN_EMSCRIPTEN || (TARGET_X86 && Runtime.GLOBAL_BASE == 4)); // this is assumed in e.g. relocations for linkable modules
         if (!SIDE_MODULE) {
           print('STATIC_BASE = ' + Runtime.GLOBAL_BASE + ';\n');
           print('STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');

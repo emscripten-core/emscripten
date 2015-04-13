@@ -724,9 +724,7 @@ except:
 
 # Target choice. Must be synced with src/settings.js (TARGET_*)
 def get_llvm_target():
-  if os.environ.get('EMCC_FAST_COMPILER') == '0':
-    return 'unavailable-non-fastcomp'
-  return os.environ.get('EMCC_LLVM_TARGET') or 'asmjs-unknown-emscripten'
+  return 'asmjs-unknown-emscripten'
 LLVM_TARGET = get_llvm_target()
 
 # COMPILER_OPTS: options passed to clang when generating bitcode for us
@@ -740,28 +738,8 @@ COMPILER_OPTS = COMPILER_OPTS + [#'-fno-threadsafe-statics', # disabled due to i
                                  '-D__EMSCRIPTEN_minor__=' + str(EMSCRIPTEN_VERSION_MINOR),
                                  '-D__EMSCRIPTEN_tiny__=' + str(EMSCRIPTEN_VERSION_TINY)]
 
-# COMPILER_STANDARDIZATION_OPTS: Options to correct various predefined macro options.
-COMPILER_STANDARDIZATION_OPTS = []
-
-# When we're not using an appropriate target triple, use -m32 to get i386, which we
-# can mostly make work.
-if LLVM_TARGET != 'asmjs-unknown-emscripten' and LLVM_TARGET != 'le32-unknown-nacl':
-  COMPILER_OPTS += ['-m32']
-  COMPILER_STANDARDIZATION_OPTS += ['-U__i386__', '-U__i386', '-Ui386',
-                                    '-U__SSE__', '-U__SSE_MATH__', '-U__SSE2__', '-U__SSE2_MATH__', '-U__MMX__',
-                                    '-U__APPLE__', '-U__linux__']
-
-# With the asmjs-unknown-emscripten target triple, clang sets up language modes
-# and predefined macros properly. When using the other targets, we have to set things
-# up manually.
-if LLVM_TARGET != 'asmjs-unknown-emscripten':
-  COMPILER_OPTS += ['-fno-math-errno']
-  COMPILER_STANDARDIZATION_OPTS += ['-D__IEEE_LITTLE_ENDIAN']
-  COMPILER_OPTS += ['-DEMSCRIPTEN', '-D__EMSCRIPTEN__', '-fno-math-errno',
-                    '-U__native_client__', '-U__pnacl__', '-U__ELF__']
-
 # Changes to default clang behavior
-if LLVM_TARGET == 'asmjs-unknown-emscripten' or LLVM_TARGET == 'le32-unknown-nacl':
+if LLVM_TARGET == 'asmjs-unknown-emscripten':
   # Implicit functions can cause horribly confusing asm.js function pointer type errors, see #2175
   # If your codebase really needs them - very unrecommended! - you can disable the error with
   #   -Wno-error=implicit-function-declaration
@@ -796,18 +774,11 @@ if USE_EMSDK:
   
   EMSDK_OPTS = C_OPTS + include_directive(C_INCLUDE_PATHS) + include_directive(CXX_INCLUDE_PATHS)
 
-  EMSDK_OPTS += COMPILER_STANDARDIZATION_OPTS
-  # For temporary compatibility, treat 'le32-unknown-nacl' as 'asmjs-unknown-emscripten'.
-  if LLVM_TARGET != 'asmjs-unknown-emscripten' and \
-     LLVM_TARGET != 'le32-unknown-pnacl':
-    EMSDK_CXX_OPTS = ['-nostdinc++'] # asmjs-unknown-emscripten target does not need -nostdinc++
-  else:
-    EMSDK_CXX_OPTS = []
+  EMSDK_CXX_OPTS = []
   COMPILER_OPTS += EMSDK_OPTS
 else:
   EMSDK_OPTS = []
   EMSDK_CXX_OPTS = []
-  COMPILER_OPTS += COMPILER_STANDARDIZATION_OPTS
 
 #print >> sys.stderr, 'SDK opts', ' '.join(EMSDK_OPTS)
 #print >> sys.stderr, 'Compiler opts', ' '.join(COMPILER_OPTS)

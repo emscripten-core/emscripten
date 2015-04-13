@@ -2475,15 +2475,6 @@ LibraryManager.library = {
     Runtime.stackRestore(stack);
   },
 
-#if TARGET_X86
-  // va_arg is just like our varargs
-  vfprintf: 'fprintf',
-  vprintf: 'printf',
-  vdprintf: 'dprintf',
-  vscanf: 'scanf',
-  vfscanf: 'fscanf',
-#endif
-
 #if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN
   // convert va_arg into varargs
   vfprintf__deps: ['fprintf'],
@@ -3287,9 +3278,6 @@ LibraryManager.library = {
 
   llvm_va_start__inline: function(ptr) {
     // varargs - we received a pointer to the varargs as a final 'extra' parameter called 'varrp'
-#if TARGET_X86
-    return makeSetValue(ptr, 0, 'varrp', 'void*');
-#endif
 #if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN
     // 2-word structure: struct { void* start; void* currentOffset; }
     return makeSetValue(ptr, 0, 'varrp', 'void*') + ';' + makeSetValue(ptr, Runtime.QUANTUM_SIZE, 0, 'void*');
