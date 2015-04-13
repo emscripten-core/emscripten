@@ -293,7 +293,6 @@ static void _do_call(em_queued_call *q)
 		case EM_PROXIED_TRUNCATE: q->returnValue.i = truncate(q->args[0].cp, q->args[1].i); break;
 		case EM_PROXIED_FTRUNCATE: q->returnValue.i = ftruncate(q->args[0].i, q->args[1].i); break;
 		case EM_PROXIED_GETCWD: q->returnValue.cp = getcwd(q->args[0].cp, q->args[1].i); break;
-		case EM_PROXIED_GETWD: q->returnValue.cp = getwd(q->args[0].cp); break;
 		case EM_PROXIED_ISATTY: q->returnValue.i = isatty(q->args[0].i); break;
 		case EM_PROXIED_LCHOWN: q->returnValue.i = lchown(q->args[0].cp, q->args[1].i, q->args[2].i); break;
 		case EM_PROXIED_LINK: q->returnValue.i = link(q->args[0].cp, q->args[1].cp); break;

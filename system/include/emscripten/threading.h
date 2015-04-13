@@ -126,7 +126,6 @@ void emscripten_main_thread_process_queued_calls();
 #define EM_PROXIED_TRUNCATE 48 
 #define EM_PROXIED_FTRUNCATE 49
 #define EM_PROXIED_GETCWD 50
-#define EM_PROXIED_GETWD 51
 #define EM_PROXIED_ISATTY 52
 #define EM_PROXIED_LCHOWN 53
 #define EM_PROXIED_LINK 54

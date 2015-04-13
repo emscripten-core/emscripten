@@ -109,7 +109,6 @@
          U getsockname
          U getsockopt
          U gettimeofday
-         U getwd
          U ioctl
          U isatty
          d keys

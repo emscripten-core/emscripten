@@ -1448,7 +1448,6 @@
             "EM_PROXIED_TRUNCATE",
             "EM_PROXIED_FTRUNCATE",
             "EM_PROXIED_GETCWD",
-            "EM_PROXIED_GETWD",
             "EM_PROXIED_ISATTY",
             "EM_PROXIED_LCHOWN",
             "EM_PROXIED_LINK",
