@@ -45,7 +45,7 @@ var LibraryPThread = {
       }
 
       // Call into the musl function that runs destructors of all thread-specific data.
-      if (ENVIRONMENT_IS_PTHREAD && threadBlock) ___pthread_tsd_run_dtors();
+      if (ENVIRONMENT_IS_PTHREAD && threadInfoStruct) ___pthread_tsd_run_dtors();
     },
 
     // Called when we are performing a pthread_exit(), either explicitly called by programmer,
@@ -55,7 +55,7 @@ var LibraryPThread = {
       if (tb) { // If we haven't yet exited?
         Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, exitCode);
         // When we publish this, the main thread is free to deallocate the thread object and we are done.
-        // Therefore set threadBlock = 0; above to 'release' the object in this worker thread.
+        // Therefore set threadInfoStruct = 0; above to 'release' the object in this worker thread.
         Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 1);
 
         // Disable all cancellation so that executing the cleanup handlers won't trigger another JS
@@ -65,7 +65,7 @@ var LibraryPThread = {
         PThread.runExitHandlers();
 
         _emscripten_futex_wake(tb + {{{ C_STRUCTS.pthread.threadStatus }}}, {{{ cDefine('INT_MAX') }}});
-        threadBlock = 0;
+        threadInfoStruct = 0;
         if (ENVIRONMENT_IS_PTHREAD) {
           postMessage({ cmd: 'exit' });
         }
@@ -74,10 +74,10 @@ var LibraryPThread = {
 
     threadCancel: function() {
       PThread.runExitHandlers();
-      Atomics.store(HEAPU32, (threadBlock + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, -1/*PTHREAD_CANCELED*/);
-      Atomics.store(HEAPU32, (threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 1); // Mark the thread as no longer running.
-      _emscripten_futex_wake(threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}}, {{{ cDefine('INT_MAX') }}}); // wake all threads
-      threadBlock = selfThreadId = 0; // Not hosting a pthread anymore in this worker, reset the info structures to null.
+      Atomics.store(HEAPU32, (threadInfoStruct + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, -1/*PTHREAD_CANCELED*/);
+      Atomics.store(HEAPU32, (threadInfoStruct + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 1); // Mark the thread as no longer running.
+      _emscripten_futex_wake(threadInfoStruct + {{{ C_STRUCTS.pthread.threadStatus }}}, {{{ cDefine('INT_MAX') }}}); // wake all threads
+      threadInfoStruct = selfThreadId = 0; // Not hosting a pthread anymore in this worker, reset the info structures to null.
       postMessage({ cmd: 'cancelDone' });
     },
 
@@ -109,13 +109,13 @@ var LibraryPThread = {
     },
     freeThreadData: function(pthread) {
       if (!pthread) return;
-      if (pthread.threadBlock) {
-        var tlsMemory = {{{ makeGetValue('pthread.threadBlock', C_STRUCTS.pthread.tsd, 'i32') }}};
-        {{{ makeSetValue('pthread.threadBlock', C_STRUCTS.pthread.tsd, 0, 'i32') }}};
+      if (pthread.threadInfoStruct) {
+        var tlsMemory = {{{ makeGetValue('pthread.threadInfoStruct', C_STRUCTS.pthread.tsd, 'i32') }}};
+        {{{ makeSetValue('pthread.threadInfoStruct', C_STRUCTS.pthread.tsd, 0, 'i32') }}};
         _free(pthread.tlsMemory);
-        _free(pthread.threadBlock);
+        _free(pthread.threadInfoStruct);
       }
-      pthread.threadBlock = 0;
+      pthread.threadInfoStruct = 0;
       if (pthread.allocatedOwnStack && pthread.stackBase) _free(pthread.stackBase);
       pthread.stackBase = 0;
       if (pthread.worker) pthread.worker.pthread = null;
@@ -246,21 +246,21 @@ var LibraryPThread = {
       stackSize: threadParams.stackSize,
       allocatedOwnStack: threadParams.allocatedOwnStack,
       thread: threadParams.pthread_ptr,
-      threadBlock: threadParams.pthread_ptr // Info area for this thread in Emscripten HEAP (shared)
+      threadInfoStruct: threadParams.pthread_ptr // Info area for this thread in Emscripten HEAP (shared)
     };
-    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0); // threadStatus <- 0, meaning not yet exited.
-    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, 0); // threadExitCode <- 0.
-    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, threadParams.detached);
-    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.tsd }}} ) >> 2, tlsMemory); // Init thread-local-storage memory array.
-    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.tsd_used }}} ) >> 2, 0); // Mark initial status to unused.
-    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.tid }}} ) >> 2, pthread.threadBlock); // Main thread ID.
-    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.pid }}} ) >> 2, PROCINFO.pid); // Process ID.
+    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0); // threadStatus <- 0, meaning not yet exited.
+    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, 0); // threadExitCode <- 0.
+    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, threadParams.detached);
+    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.tsd }}} ) >> 2, tlsMemory); // Init thread-local-storage memory array.
+    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.tsd_used }}} ) >> 2, 0); // Mark initial status to unused.
+    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.tid }}} ) >> 2, pthread.threadInfoStruct); // Main thread ID.
+    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.pid }}} ) >> 2, PROCINFO.pid); // Process ID.
 
-    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.attr }}}) >> 2, threadParams.stackSize);
-    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.attr }}} + 8) >> 2, threadParams.stackBase);
-    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.attr }}} + 12) >> 2, threadParams.detached);
-    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.attr }}} + 20) >> 2, threadParams.schedPolicy);
-    Atomics.store(HEAPU32, (pthread.threadBlock + {{{ C_STRUCTS.pthread.attr }}} + 24) >> 2, threadParams.schedPrio);
+    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}}) >> 2, threadParams.stackSize);
+    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 8) >> 2, threadParams.stackBase);
+    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 12) >> 2, threadParams.detached);
+    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 20) >> 2, threadParams.schedPolicy);
+    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 24) >> 2, threadParams.schedPrio);
 
     worker.pthread = pthread;
 
@@ -269,7 +269,7 @@ var LibraryPThread = {
       cmd: 'run',
       start_routine: threadParams.startRoutine,
       arg: threadParams.arg,
-      threadBlock: threadParams.pthread_ptr,
+      threadInfoStruct: threadParams.pthread_ptr,
       selfThreadId: threadParams.pthread_ptr, // TODO: Remove this since thread ID is now the same as the thread address.
       stackBase: threadParams.stackBase,
       stackSize: threadParams.stackSize,
@@ -324,13 +324,13 @@ var LibraryPThread = {
     }
 
     // Allocate thread block (pthread_t structure).
-    var threadBlock = _malloc({{{ C_STRUCTS.pthread.__size__ }}});
-    for(var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}} >> 2; ++i) HEAPU32[(threadBlock>>2) + i] = 0; // zero-initialize thread structure.
-    {{{ makeSetValue('pthread_ptr', 0, 'threadBlock', 'i32') }}};
+    var threadInfoStruct = _malloc({{{ C_STRUCTS.pthread.__size__ }}});
+    for(var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}} >> 2; ++i) HEAPU32[(threadInfoStruct>>2) + i] = 0; // zero-initialize thread structure.
+    {{{ makeSetValue('pthread_ptr', 0, 'threadInfoStruct', 'i32') }}};
 
     // The pthread struct has a field that points to itself - this is used as a magic ID to detect whether the pthread_t
     // structure is 'alive'.
-    {{{ makeSetValue('threadBlock', C_STRUCTS.pthread.self, 'threadBlock', 'i32') }}};
+    {{{ makeSetValue('threadInfoStruct', C_STRUCTS.pthread.self, 'threadInfoStruct', 'i32') }}};
 
     var threadParams = {
       stackBase: stackBase,
@@ -340,7 +340,7 @@ var LibraryPThread = {
       schedPrio: schedPrio,
       detached: detached,
       startRoutine: start_routine,
-      pthread_ptr: threadBlock,
+      pthread_ptr: threadInfoStruct,
       arg: arg,
     };
 
@@ -362,10 +362,10 @@ var LibraryPThread = {
   // Just call pthread_testcancel() everywhere.
   _pthread_testcancel_js: function() {
     if (!ENVIRONMENT_IS_PTHREAD) return;
-    if (!threadBlock) return;
-    var cancelDisabled = Atomics.load(HEAPU32, (threadBlock + {{{ C_STRUCTS.pthread.canceldisable }}} ) >> 2);
+    if (!threadInfoStruct) return;
+    var cancelDisabled = Atomics.load(HEAPU32, (threadInfoStruct + {{{ C_STRUCTS.pthread.canceldisable }}} ) >> 2);
     if (cancelDisabled) return;
-    var canceled = Atomics.load(HEAPU32, (threadBlock + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
+    var canceled = Atomics.load(HEAPU32, (threadInfoStruct + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
     if (canceled == 2) throw 'Canceled!';
   },
 
@@ -484,7 +484,7 @@ var LibraryPThread = {
 
   // Public pthread_self() function which returns a unique ID for the thread.
   pthread_self: function() {
-    if (ENVIRONMENT_IS_PTHREAD) return threadBlock;
+    if (ENVIRONMENT_IS_PTHREAD) return threadInfoStruct;
     return PThread.mainThreadBlock; // Main JS thread.
   },
 

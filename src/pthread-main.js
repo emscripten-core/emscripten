@@ -6,7 +6,7 @@
 // with the main execution thread.
 var buffer;
 
-var threadBlock = 0; // Info area for this thread in Emscripten HEAP (shared). If zero, this worker is not currently hosting an executing pthread.
+var threadInfoStruct = 0; // Info area for this thread in Emscripten HEAP (shared). If zero, this worker is not currently hosting an executing pthread.
 
 var selfThreadId = 0; // The ID of this thread. 0 if not hosting a pthread.
 
@@ -52,9 +52,9 @@ this.onmessage = function(e) {
       _stderr = e.data.stderr;
       FS.createStandardStreams(); // pthread workers don't run prerun handlers, so initialize TTY filesystem manually so that printf() et al. works.
     }
-    threadBlock = e.data.threadBlock;
-    tempDoublePtr = Runtime.alignMemory(threadBlock + 8/*tempDoublePtr*/, 8);
-    assert(threadBlock);
+    threadInfoStruct = e.data.threadInfoStruct;
+    tempDoublePtr = Runtime.alignMemory(threadInfoStruct + 8/*tempDoublePtr*/, 8);
+    assert(threadInfoStruct);
     selfThreadId = e.data.selfThreadId;
     assert(selfThreadId);
     // TODO: Emscripten runtime has these variables twice(!), once outside the asm.js module, and a second time inside the asm.js module.
@@ -78,9 +78,9 @@ this.onmessage = function(e) {
         PThread.threadCancel();
         return;
       } else {
-        Atomics.store(HEAPU32, (threadBlock + 4 /*{{{ C_STRUCTS.pthread.threadExitCode }}}*/ ) >> 2, -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
-        Atomics.store(HEAPU32, (threadBlock + 0 /*{{{ C_STRUCTS.pthread.threadStatus }}}*/ ) >> 2, 1); // Mark the thread as no longer running.
-        _emscripten_futex_wake(threadBlock + 0 /*{{{ C_STRUCTS.pthread.threadStatus }}}*/, 0x7FFFFFFF/*INT_MAX*/); // wake all threads
+        Atomics.store(HEAPU32, (threadInfoStruct + 4 /*{{{ C_STRUCTS.pthread.threadExitCode }}}*/ ) >> 2, -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
+        Atomics.store(HEAPU32, (threadInfoStruct + 0 /*{{{ C_STRUCTS.pthread.threadStatus }}}*/ ) >> 2, 1); // Mark the thread as no longer running.
+        _emscripten_futex_wake(threadInfoStruct + 0 /*{{{ C_STRUCTS.pthread.threadStatus }}}*/, 0x7FFFFFFF/*INT_MAX*/); // wake all threads
         throw e;
       }
     }
@@ -88,7 +88,7 @@ this.onmessage = function(e) {
     // (This is a no-op if explicit pthread_exit() had been called prior.)
     PThread.threadExit(result);
   } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
-    if (threadBlock && PThread.thisThreadCancelState == 0/*PTHREAD_CANCEL_ENABLE*/) {
+    if (threadInfoStruct && PThread.thisThreadCancelState == 0/*PTHREAD_CANCEL_ENABLE*/) {
       PThread.threadCancel();
     }
   } else {
