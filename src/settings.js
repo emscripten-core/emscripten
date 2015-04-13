@@ -503,10 +503,6 @@ var RUNTIME_TYPE_INFO = 0; // Whether to expose type info to the script at run t
                            // to more easily perform operations from handwritten JS on
                            // objects with structures etc.
 
-var FAKE_X86_FP80 = 1; // Replaces x86_fp80 with double. This loses precision. It is better,
-                       // if you can, to get the original source code to build without x86_fp80
-                       // (which is nonportable anyhow).
-
 var WARN_ON_UNDEFINED_SYMBOLS = 1; // If set to 1, we will warn on any undefined symbols that
                                    // are not resolved by the library_*.js files. Note that
                                    // it is common in large projects to
