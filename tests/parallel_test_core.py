@@ -27,7 +27,17 @@ class Watcher(threading.Thread):
 # run tests for one mode
 def run_mode(args):
   mode = args[0]
-  print '<< running %s >>' % mode
+  if len(args) > 1:
+    # If args has multiple elements, then only the selected tests from that suite are run e.g. args=['asm1', 'test_hello_world', 'test_i64'] runs only tests asm1.test_hello_world and asm1.test_i64.
+    for i in range(1, len(args)):
+      if args[i].startswith('test_'):
+        args[i] = mode + '.' + args[i]
+    args = args[1:]
+    print '<< running %s >>' % str(args)
+  else:
+    # If args has only one argument, e.g. args=['default'] or args=['asm1'], all tests are run in one suite.
+    print '<< running %s >>' % mode
+
   proc = subprocess.Popen([PYTHON, path_from_root('tests', 'runner.py')] + args, stdout=open(mode + '.out', 'w'), stderr=open(mode + '.err', 'w'))
   proc.communicate()
   print '<< %s finished >>' % mode
