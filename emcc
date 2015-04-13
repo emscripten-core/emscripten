@@ -1824,7 +1824,7 @@ try {
       if debug_level >= 4: generate_source_map(target)
       if proxy_to_worker:
         worker_target_basename = target_basename + '.worker'
-        open(target, 'w').write(open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', shared.Settings.PROXY_TO_WORKER_FILENAME or worker_target_basename))
+        open(target, 'w').write(open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', shared.Settings.PROXY_TO_WORKER_FILENAME or worker_target_basename).replace('{{{ IDBStore.js }}}', open(shared.path_from_root('src', 'IDBStore.js')).read()))
         shutil.move(final, target[:-3] + '.worker.js')
       else:
         # copy final JS to output normally
