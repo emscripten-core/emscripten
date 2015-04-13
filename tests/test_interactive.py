@@ -1,5 +1,5 @@
 import BaseHTTPServer, multiprocessing, os, shutil, subprocess, unittest, zlib, webbrowser, time, shlex
-from runner import BrowserCore, path_from_root, nonfastcomp
+from runner import BrowserCore, path_from_root
 from tools.shared import *
 
 # User can specify an environment variable EMSCRIPTEN_BROWSER to force the browser test suite to

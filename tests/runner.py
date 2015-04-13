@@ -28,19 +28,6 @@ import tools.shared
 from tools.shared import *
 from tools.line_endings import check_line_endings
 
-# Utils
-
-def nonfastcomp(test):
-  try:
-    old_fastcomp = os.environ.get('EMCC_FAST_COMPILER')
-    os.environ['EMCC_FAST_COMPILER'] = '0'
-    test()
-  finally:
-    if old_fastcomp is None:
-      del os.environ['EMCC_FAST_COMPILER']
-    else:
-      os.environ['EMCC_FAST_COMPILER'] = old_fastcomp
-
 # Sanity check for config
 
 try:
@@ -377,7 +364,7 @@ process(sys.argv[1])
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()
 
-    cache_name = name + ','.join(filter(lambda opt: len(opt) < 10, Building.COMPILER_TEST_OPTS)) + '_' + hashlib.md5(str(Building.COMPILER_TEST_OPTS)).hexdigest() + cache_name_extra + (self.env.get('EMCC_FAST_COMPILER') or '_')
+    cache_name = name + ','.join(filter(lambda opt: len(opt) < 10, Building.COMPILER_TEST_OPTS)) + '_' + hashlib.md5(str(Building.COMPILER_TEST_OPTS)).hexdigest() + cache_name_extra
 
     valid_chars = "_%s%s" % (string.ascii_letters, string.digits)
     cache_name = ''.join([(c if c in valid_chars else '_') for c in cache_name])
