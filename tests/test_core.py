@@ -966,7 +966,8 @@ base align: 0, 0, 0, 0'''])
       for named in (0, 1):
         print named
 
-        if os.environ.get('EMCC_FAST_COMPILER') != '0' and named: continue # no named globals in fastcomp
+        # TODO: test only worked in non-fastcomp
+        if named: continue
 
         Settings.NAMED_GLOBALS = named
         self.do_run_from_file(src, output, ['wowie', 'too', '74'])
@@ -2186,9 +2187,10 @@ def process(filename):
     Settings.RETAIN_COMPILER_SETTINGS = 1
     self.do_run(open(src).read(), open(output).read().replace('waka', EMSCRIPTEN_VERSION))
 
+  # TODO: test only worked in non-fastcomp
   def test_inlinejs(self):
+      return self.skip('non-fastcomp is deprecated and fails in 3.5') # only supports EM_ASM
       if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for inline js')
-      if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('fastcomp only supports EM_ASM')
 
       test_path = path_from_root('tests', 'core', 'test_inlinejs')
       src, output = (test_path + s for s in ('.in', '.out'))
@@ -2199,9 +2201,10 @@ def process(filename):
         out = open('src.cpp.o.js').read()
         for i in range(1, 5): assert ('comment%d' % i) in out
 
+  # TODO: test only worked in non-fastcomp
   def test_inlinejs2(self):
+      return self.skip('non-fastcomp is deprecated and fails in 3.5') # only supports EM_ASM
       if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for inline js')
-      if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('fastcomp only supports EM_ASM')
 
       test_path = path_from_root('tests', 'core', 'test_inlinejs2')
       src, output = (test_path + s for s in ('.in', '.out'))
@@ -2998,10 +3001,10 @@ The current type of b is: 9
     Settings.RUNTIME_LINKED_LIBS = ['liblib.so'];
     self.do_run(main, 'supp: 54,2\nmain: 56\nsupp see: 543\nmain see: 76\nok.')
 
+  # TODO: test only worked in non-fastcomp (well, this is a utility, dlfcn is todo for fastcomp)
   def can_dlfcn(self):
-    if os.environ.get('EMCC_FAST_COMPILER') != '0':
-      self.skip('todo in fastcomp')
-      return False
+    print 'dlfcn is not available in fastcomp'
+    return False
 
     if self.emcc_args:
       self.emcc_args += ['--memory-init-file', '0']
@@ -3415,8 +3418,9 @@ def process(filename):
     self.do_run(src, '100\n200\n13\n42\n',
                 post_build=self.dlfcn_post_build)
 
+  # TODO: test only worked in non-fastcomp
   def test_dlfcn_self(self):
-    if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('todo in fastcomp')
+    return self.skip('non-fastcomp is deprecated and fails in 3.5')
     Settings.DLOPEN_SUPPORT = 1
 
     def post(filename):
@@ -5485,8 +5489,10 @@ def process(filename):
                      includes=[path_from_root('tests', 'bullet', 'src')])
       test()
 
+      # TODO: test only worked in non-fastcomp (well, this section)
+      continue
       assert 'asm2g' in test_modes
-      if self.run_name == 'asm2g' and not use_cmake and os.environ.get('EMCC_FAST_COMPILER') == '0':
+      if self.run_name == 'asm2g' and not use_cmake:
         # Test forced alignment
         print >> sys.stderr, 'testing FORCE_ALIGNED_MEMORY'
         old = open('src.cpp.o.js').read()
@@ -5734,7 +5740,8 @@ def process(filename):
       for name in glob.glob(path_from_root('tests', 'cases', '*.ll')):
         shortname = name.replace('.ll', '')
         if '' not in shortname: continue
-        if os.environ.get('EMCC_FAST_COMPILER') != '0' and os.path.basename(shortname) in [
+        # TODO: test only worked in non-fastcomp (well, these cases)
+        if os.path.basename(shortname) in [
           'aliasbitcast', 'structparam', 'issue_39', 'phinonexist', 'oob_ta2', 'phiself', 'invokebitcast', # invalid ir
           'structphiparam', 'callwithstructural_ta2', 'callwithstructural64_ta2', 'structinparam', # pnacl limitations in ExpandStructRegs
           '2xi40', # pnacl limitations in ExpandGetElementPtr
@@ -5753,9 +5760,6 @@ def process(filename):
           continue
         if '_eua' in shortname and not self.is_emscripten_abi():
           print self.skip('case "%s" not relevant for not asmjs-unknown-emscripten target' % shortname)
-          continue
-        if '_fastcomp' in shortname and not os.environ.get('EMCC_FAST_COMPILER') != '0':
-          print self.skip('case "%s" not relevant for non-fastcomp' % shortname)
           continue
         self.emcc_args = emcc_args
         if os.path.exists(shortname + '.emcc'):
@@ -5792,9 +5796,6 @@ def process(filename):
         #if os.path.basename(name) != '4.c': continue
         if 'newfail' in name: continue
         if os.path.basename(name).startswith('temp_fuzzcode'): continue
-        if os.environ.get('EMCC_FAST_COMPILER') == '0' and os.path.basename(name) in [
-          '18.cpp', '15.c', '21.c', '22.c'
-        ]: continue # works only in fastcomp
         if x == 'lto' and self.run_name in ['default', 'asm2f'] and os.path.basename(name) in [
           '8.c' # pnacl legalization issue, see https://code.google.com/p/nativeclient/issues/detail?id=4027
         ]: continue
@@ -6074,9 +6075,10 @@ def process(filename):
       }
     ''')
 
+  # TODO: test only worked in non-fastcomp
   def test_asm_pgo(self):
+    return self.skip('non-fastcomp is deprecated and fails in 3.5')
     if not Settings.ASM_JS: return self.skip('this is a test for PGO for asm (NB: not *in* asm)')
-    if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('todo in fastcomp')
 
     src = open(path_from_root('tests', 'hello_libcxx.cpp')).read()
     output = 'hello, world!'
@@ -6621,8 +6623,9 @@ def process(filename):
       src.close()
     self.do_run(src, open(path_from_root('tests', 'webidl', 'output.txt')).read(), post_build=(None, post))
 
+  # TODO: test only worked in non-fastcomp
   def test_typeinfo(self):
-    if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('fastcomp does not support RUNTIME_TYPE_INFO')
+    return self.skip('non-fastcomp is deprecated and fails in 3.5') # RUNTIME_TYPE_INFO
 
     if self.emcc_args is not None and self.emcc_args != []: return self.skip('full LLVM opts optimize out all the code that uses the type')
 

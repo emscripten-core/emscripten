@@ -301,10 +301,6 @@ f.close()
         os.environ['EMCC_FAST_COMPILER'] = old_fastcomp
     self.assertFalse(os.path.exists('a.out.js'))
 
-  def test_emcc_nonfastcomp(self):
-    return self.skip('non-fastcomp is deprecated and fails in 3.5')
-    nonfastcomp(self.test_emcc)
-
   def test_emcc_cache_flag(self):
     tempdirname = tempfile.mkdtemp(prefix='emscripten_test_emcache_', dir=TEMP_DIR)
     try:
@@ -2103,7 +2099,6 @@ int f() {
   # TODO: test only worked in non-fastcomp
   def test_chunking(self):
     return self.skip('non-fastcomp is deprecated and fails in 3.5')
-    if os.environ.get('EMCC_FAST_COMPILER') != '0': return self.skip('not relevant for fastcomp, only checks js compiler chunking')
     if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
     if os.environ.get('EMCC_CORES'): return self.skip('cannot run if cores are altered')
     if multiprocessing.cpu_count() < 2: return self.skip('need multiple cores')
