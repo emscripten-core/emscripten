@@ -809,14 +809,8 @@ var LibraryGL = {
 #endif
 
       // Detect the presence of a few extensions manually, this GL interop layer itself will need to know if they exist. 
-      context.compressionExt = GLctx.getExtension('WEBGL_compressed_texture_s3tc') ||
-                          GLctx.getExtension('MOZ_WEBGL_compressed_texture_s3tc') ||
-                          GLctx.getExtension('WEBKIT_WEBGL_compressed_texture_s3tc');
-
-      context.anisotropicExt = GLctx.getExtension('EXT_texture_filter_anisotropic') ||
-                          GLctx.getExtension('MOZ_EXT_texture_filter_anisotropic') ||
-                          GLctx.getExtension('WEBKIT_EXT_texture_filter_anisotropic');
-
+      context.compressionExt = GLctx.getExtension('WEBGL_compressed_texture_s3tc');
+      context.anisotropicExt = GLctx.getExtension('EXT_texture_filter_anisotropic');
       context.floatExt = GLctx.getExtension('OES_texture_float');
 
       // Extension available from Firefox 26 and Google Chrome 30
@@ -865,7 +859,6 @@ var LibraryGL = {
       var exts = GLctx.getSupportedExtensions();
       if (exts && exts.length > 0) {
         GLctx.getSupportedExtensions().forEach(function(ext) {
-          ext = ext.replace('MOZ_', '').replace('WEBKIT_', '');
           if (automaticallyEnabledExtensions.indexOf(ext) != -1) {
             GLctx.getExtension(ext); // Calling .getExtension enables that extension permanently, no need to store the return value to be enabled.
           }
