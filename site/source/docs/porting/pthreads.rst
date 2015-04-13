@@ -38,6 +38,8 @@ The Emscripten implementation for the pthreads API should follow the POSIX stand
 
 - One particular note to pay attention to when porting is that sometimes in existing codebases the callback function pointers to pthread_create() and pthread_cleanup_push() omit the void* argument, which strictly speaking is undefined behavior in C/C++, but works in several x86 calling conventions. Doing this in Emscripten will issue a compiler warning, and can abort at runtime when attempting to call a function pointer with incorrect signature, so in the presence of such errors, it is good to check the signatures of the thread callback functions.
 
+Also note that when compiling code that uses pthreads, an additional JavaScript file `pthread-main.js` is generated alongside the output .js file. That file must be deployed with the rest of the generated code files.
+
 Running code and tests
 ======================
 
