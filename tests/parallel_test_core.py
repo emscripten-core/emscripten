@@ -27,10 +27,21 @@ class Watcher(threading.Thread):
 # run tests for one mode
 def run_mode(args):
   mode = args[0]
-  print '<< running %s >>' % mode
+  if len(args) > 1:
+    # If args has multiple elements, then only the selected tests from that suite are run e.g. args=['asm1', 'test_hello_world', 'test_i64'] runs only tests asm1.test_hello_world and asm1.test_i64.
+    args = args[1:]
+    for i in range(len(args)):
+      if args[i].startswith('test_'):
+        args[i] = mode + '.' + args[i]
+    print '<< running %s >>' % str(args)
+  else:
+    # If args has only one argument, e.g. args=['default'] or args=['asm1'], all tests are run in one suite.
+    print '<< running %s >>' % mode
+
   proc = subprocess.Popen([PYTHON, path_from_root('tests', 'runner.py')] + args, stdout=open(mode + '.out', 'w'), stderr=open(mode + '.err', 'w'))
   proc.communicate()
-  print '<< %s finished >>' % mode
+  print '<< %s finished with exit code %d >>' % (mode, proc.returncode)
+  return proc.returncode
 
 def main():
   # clean up previous output
@@ -45,7 +56,7 @@ def main():
   cores = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
   pool = multiprocessing.Pool(processes=cores)
   args = [[x] + sys.argv[1:] for x in optimal_order]
-  filenames = pool.map(run_mode, args, chunksize=1)
+  num_failures = pool.map(run_mode, args, chunksize=1)
 
   # quit watcher
   Watcher.stop = True
@@ -56,6 +67,7 @@ def main():
     if os.path.exists(mode + '.err'):
       print >> sys.stderr, open(mode + '.err').read()
     print >> sys.stderr
+  return sum(num_failures)
 
 if __name__ == '__main__':
   sys.exit(main())
