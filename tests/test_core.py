@@ -1,6 +1,7 @@
 # coding=utf-8
 
 import glob, hashlib, os, re, shutil, subprocess, sys
+from textwrap import dedent
 import tools.shared
 from tools.shared import *
 from tools.line_endings import check_line_endings
@@ -5723,17 +5724,26 @@ def process(filename):
     if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
     if not self.is_emscripten_abi(): return self.skip('fails on not asmjs-unknown-emscripten') # FIXME
 
-    #Settings.EXPORTED_FUNCTIONS += ['_PyRun_SimpleStringFlags'] # for the demo
+    Settings.EMULATE_FUNCTION_POINTER_CASTS = 1
 
     assert self.is_emscripten_abi()
     bitcode = path_from_root('tests', 'python', 'python.bc')
+    pyscript = dedent('''\
+      print '***'
+      print "hello python world!"
+      print [x*2 for x in range(4)]
+      t=2
+      print 10-3-t
+      print (lambda x: x*2)(11)
+      print '%f' % 5.47
+      print {1: 2}.keys()
+      print '***'
+      ''')
+    pyoutput = '***\nhello python world!\n[0, 2, 4, 6]\n5\n22\n5.470000\n[1]\n***'
 
     for lto in [0, 1]:
       if lto == 1: self.emcc_args += ['--llvm-lto', '1']
-      print self.emcc_args
-      self.do_ll_run(bitcode,
-                      'hello python world!\n[0, 2, 4, 6]\n5\n22\n5.470000',
-                      args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t; print (lambda x: x*2)(11); print '%f' % 5.47'''])
+      self.do_ll_run(bitcode, pyoutput, args=['-S', '-c', pyscript])
 
   def test_lifetime(self):
     if self.emcc_args is None: return self.skip('test relies on emcc opts')
