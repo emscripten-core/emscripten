@@ -8,6 +8,7 @@
    To run the Embind tests using the Emscripten test runner, invoke 'python tests/runner.py other.test_embind' in the Emscripten root directory.
 */
 
+/* global assert:true */
 /* global Module, console, global, process */
 
 //=== testing glue
