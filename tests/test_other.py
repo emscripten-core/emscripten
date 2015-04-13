@@ -279,7 +279,6 @@ f.close()
     def check_errors(command):
       process = Popen(command, stdout=PIPE, stderr=PIPE)
       stdout, stderr = process.communicate()
-      self.assertEqual(stdout, '')
       self.assertIn('Non-fastcomp compiler is no longer available', stderr)
       self.assertEqual(process.returncode, 1)
     def check_success(command):
