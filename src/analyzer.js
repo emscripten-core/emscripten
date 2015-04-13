@@ -689,8 +689,7 @@ function analyzer(data, sidePass) {
                 }
                 case 'bitcast': {
                   if (!sourceBits) {
-                    // we can be asked to bitcast doubles or such to integers, handle that as best we can (if it's a double that
-                    // was an x86_fp80, this code will likely break when called)
+                    // we can be asked to bitcast doubles or such to integers, handle that as best we can
                     sourceBits = targetBits = Runtime.getNativeTypeSize(value.params[0].type);
                     warn('legalizing non-integer bitcast on ll #' + item.lineNum);
                   }

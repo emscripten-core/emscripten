@@ -729,12 +729,7 @@ function IEEEUnHex(stringy) {
   stringy = stringy.substr(2); // leading '0x';
   if (stringy.replace(/0/g, '') === '') return 0;
   while (stringy.length < 16) stringy = '0' + stringy;
-  if (FAKE_X86_FP80 && stringy.length > 16) {
-    stringy = stringy.substr(stringy.length-16, 16);
-    assert(false, 'must only see >64 bit floats in x86, as fp80s');
-    warnOnce('.ll contains floating-point values with more than 64 bits. Faking values for them. If they are used, this will almost certainly break horribly!');
-  }
-  assert(stringy.length === 16, 'Can only unhex 16-digit double numbers, nothing platform-specific'); // |long double| can cause x86_fp80 which causes this
+  assert(stringy.length === 16, 'Can only unhex 16-digit double numbers, nothing platform-specific'); // |long double| might cause this
   var top = eval('0x' + stringy[0]);
   var neg = !!(top & 8); // sign
   if (neg) {
