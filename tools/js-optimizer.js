@@ -6085,11 +6085,8 @@ function pointerMasking(ast) {
   var BLACKLIST = extraInfo ? set(extraInfo.pointerMaskingBlacklist) : [];
   var parseHeapTemp = makeTempParseHeap();
 
-  printErr('pointerMasking blacklist: ' + BLACKLIST);
-
   traverseGeneratedFunctions(ast, function(func) {
     var blacklisted = func[1] in BLACKLIST;
-    printErr(' pointerMasking traverse func:' + func[1] + ', blacklisted ' + blacklisted);
 
     traverse(func, function(node, type) {
       if (type === 'sub' && node[1][0] === 'name' && node[1][1][0] === 'H' && node[2][0] === 'binary' && node[2][1] === '>>' && node[2][3][0] === 'num') {
