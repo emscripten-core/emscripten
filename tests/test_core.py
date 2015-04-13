@@ -412,13 +412,11 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_struct_varargs(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('struct varargs requires fastcomp')
     test_path = path_from_root('tests', 'core', 'test_struct_varargs')
     src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
 
   def zzztest_nested_struct_varargs(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('struct varargs requires fastcomp')
     test_path = path_from_root('tests', 'core', 'test_nested_struct_varargs')
     src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
@@ -494,7 +492,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     src, output = (test_path + s for s in ('.in', '.out'))
 
     for emulate_fps in [0, 1]:
-      if os.environ.get('EMCC_FAST_COMPILER') == '0' and emulate_fps: continue # only in fastcomp
       print emulate_fps
       Settings.EMULATE_FUNCTION_POINTER_CASTS = emulate_fps # extra coverage for this
       self.do_run_from_file(src, output)
@@ -822,7 +819,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def test_math_lgamma(self):
       if self.emcc_args is None: return self.skip('requires emcc')
       if not self.is_emscripten_abi(): return self.skip('asmjs-unknown-emscripten needed for accurate math')
-      if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('fastcomp needed for proper handling of _signgam extern')
 
       test_path = path_from_root('tests', 'math', 'lgamma')
       src, output = (test_path + s for s in ('.in', '.out'))
@@ -929,7 +925,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_stack_align(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('fastcomp-only')
     Settings.INLINING_LIMIT = 50
     src = path_from_root('tests', 'core', 'test_stack_align.cpp')
     def test():
@@ -1197,8 +1192,6 @@ base align: 0, 0, 0, 0'''])
       self.do_run(src.replace('NUM', str(num)), '0\n' * num)
 
   def test_setjmp_many_2(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('non-fastcomp do not hit the limit.')
-
     src = r'''
 #include <setjmp.h>
 #include <stdio.h>
@@ -1227,8 +1220,6 @@ int main()
     self.do_run(src, r'''d is at 24''')
 
   def test_setjmp_noleak(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('non-fastcomp do not hit the limit.')
-
     src = r'''
 #include <setjmp.h>
 #include <stdio.h>
@@ -1283,7 +1274,7 @@ int main() {
       Settings.EXCEPTION_DEBUG = 1
 
       Settings.DISABLE_EXCEPTION_CATCHING = 0
-      if '-O2' in self.emcc_args and os.environ.get('EMCC_FAST_COMPILER') != '0':
+      if '-O2' in self.emcc_args:
         self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
       src = '''
@@ -1379,7 +1370,6 @@ int main() {
   def test_exceptions_3(self):
     if self.emcc_args is None: return self.skip('need emcc to add in libcxx properly')
     if self.run_name == 'asm2x86': return self.skip('TODO')
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
 
     Settings.DISABLE_EXCEPTION_CATCHING = 0
 
@@ -1431,30 +1421,29 @@ int main(int argc, char **argv)
     size = len(open('src.cpp.o.js').read())
     shutil.copyfile('src.cpp.o.js', 'orig.js')
 
-    if os.environ.get('EMCC_FAST_COMPILER') != '0':
-      # check that an empty whitelist works properly (as in, same as exceptions disabled)
-      empty_output = path_from_root('tests', 'core', 'test_exceptions_white_list_empty.out')
+    # check that an empty whitelist works properly (as in, same as exceptions disabled)
+    empty_output = path_from_root('tests', 'core', 'test_exceptions_white_list_empty.out')
 
-      Settings.EXCEPTION_CATCHING_WHITELIST = []
-      self.do_run_from_file(src, empty_output)
-      empty_size = len(open('src.cpp.o.js').read())
-      shutil.copyfile('src.cpp.o.js', 'empty.js')
+    Settings.EXCEPTION_CATCHING_WHITELIST = []
+    self.do_run_from_file(src, empty_output)
+    empty_size = len(open('src.cpp.o.js').read())
+    shutil.copyfile('src.cpp.o.js', 'empty.js')
 
-      Settings.EXCEPTION_CATCHING_WHITELIST = ['fake']
-      self.do_run_from_file(src, empty_output)
-      fake_size = len(open('src.cpp.o.js').read())
-      shutil.copyfile('src.cpp.o.js', 'fake.js')
+    Settings.EXCEPTION_CATCHING_WHITELIST = ['fake']
+    self.do_run_from_file(src, empty_output)
+    fake_size = len(open('src.cpp.o.js').read())
+    shutil.copyfile('src.cpp.o.js', 'fake.js')
 
-      Settings.DISABLE_EXCEPTION_CATCHING = 1
-      self.do_run_from_file(src, empty_output)
-      disabled_size = len(open('src.cpp.o.js').read())
-      shutil.copyfile('src.cpp.o.js', 'disabled.js')
+    Settings.DISABLE_EXCEPTION_CATCHING = 1
+    self.do_run_from_file(src, empty_output)
+    disabled_size = len(open('src.cpp.o.js').read())
+    shutil.copyfile('src.cpp.o.js', 'disabled.js')
 
-      assert size - empty_size > 0.005*size, [empty_size, size] # big change when we disable entirely
-      assert size - fake_size > 0.005*size, [fake_size, size]
-      assert abs(empty_size - fake_size) < 0.007*size, [empty_size, fake_size]
-      assert empty_size - disabled_size < 0.007*size, [empty_size, disabled_size] # full disable removes a little bit more
-      assert fake_size - disabled_size < 0.007*size, [disabled_size, fake_size]
+    assert size - empty_size > 0.005*size, [empty_size, size] # big change when we disable entirely
+    assert size - fake_size > 0.005*size, [fake_size, size]
+    assert abs(empty_size - fake_size) < 0.007*size, [empty_size, fake_size]
+    assert empty_size - disabled_size < 0.007*size, [empty_size, disabled_size] # full disable removes a little bit more
+    assert fake_size - disabled_size < 0.007*size, [disabled_size, fake_size]
 
   def test_exceptions_white_list_2(self):
     if self.emcc_args is None: return self.skip('requires emcc')
@@ -1508,7 +1497,6 @@ int main(int argc, char **argv)
 
   def test_exceptions_typed(self):
     if self.emcc_args is None: return self.skip('requires emcc')
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
 
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     self.emcc_args += ['-s', 'SAFE_HEAP=0'] # Throwing null will cause an ignorable null pointer access.
@@ -1520,7 +1508,6 @@ int main(int argc, char **argv)
 
   def test_exceptions_virtual_inheritance(self):
     if self.emcc_args is None: return self.skip('requires emcc')
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
 
     Settings.DISABLE_EXCEPTION_CATCHING = 0
 
@@ -1530,7 +1517,6 @@ int main(int argc, char **argv)
     self.do_run_from_file(src, output)
 
   def test_exceptions_convert(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     test_path = path_from_root('tests', 'core', 'test_exceptions_convert')
     src, output = (test_path + s for s in ('.cpp', '.txt'))
@@ -1562,14 +1548,12 @@ int main(int argc, char **argv)
     self.do_run_from_file(src, output)
 
   def test_exceptions_rethrow(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     test_path = path_from_root('tests', 'core', 'test_exceptions_rethrow')
     src, output = (test_path + s for s in ('.cpp', '.txt'))
     self.do_run_from_file(src, output)
 
   def test_exceptions_resume(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     Settings.EXCEPTION_DEBUG = 1
     test_path = path_from_root('tests', 'core', 'test_exceptions_resume')
@@ -1577,21 +1561,18 @@ int main(int argc, char **argv)
     self.do_run_from_file(src, output)
 
   def test_exceptions_destroy_virtual(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     test_path = path_from_root('tests', 'core', 'test_exceptions_destroy_virtual')
     src, output = (test_path + s for s in ('.cpp', '.txt'))
     self.do_run_from_file(src, output)
 
   def test_exceptions_refcount(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     test_path = path_from_root('tests', 'core', 'test_exceptions_refcount')
     src, output = (test_path + s for s in ('.cpp', '.txt'))
     self.do_run_from_file(src, output)
 
   def test_exceptions_primary(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     test_path = path_from_root('tests', 'core', 'test_exceptions_primary')
     src, output = (test_path + s for s in ('.cpp', '.txt'))
@@ -1599,7 +1580,6 @@ int main(int argc, char **argv)
 
   def test_bad_typeid(self):
     if self.emcc_args is None: return self.skip('requires emcc')
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
 
     Settings.ERROR_ON_UNDEFINED_SYMBOLS = 1
     Settings.DISABLE_EXCEPTION_CATCHING = 0
@@ -2918,7 +2898,6 @@ The current type of b is: 9
     self.do_run_from_file(src, output)
 
   def test_stack_overflow(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     Settings.ASSERTIONS = 1
     self.do_run(open(path_from_root('tests', 'core', 'stack_overflow.cpp')).read(), 'abort()')
 
@@ -4776,7 +4755,6 @@ def process(filename):
     ])
 
   def test_environ(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     src = open(path_from_root('tests', 'env', 'src-mini.c'), 'r').read()
     expected = open(path_from_root('tests', 'env', 'output-mini.txt'), 'r').read()
     self.do_run(src, [
@@ -4828,7 +4806,6 @@ PORT: 3979
 
   def test_atomic_cxx(self):
     if self.emcc_args is None: return self.skip('needs emcc')
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     test_path = path_from_root('tests', 'core', 'test_atomic_cxx')
     src, output = (test_path + s for s in ('.cpp', '.txt'))
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
@@ -5053,7 +5030,6 @@ int main(void) {
   ### 'Medium' tests
 
   def test_fannkuch(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     results = [ (1,0), (2,1), (3,2), (4,4), (5,7), (6,10), (7, 16), (8,22) ]
     for i, j in results:
       src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read()
@@ -5249,7 +5225,6 @@ return malloc(size);
 
   def test_simd(self):
     if self.is_emterpreter(): return self.skip('todo')
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
 
     test_path = path_from_root('tests', 'core', 'test_simd')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5258,7 +5233,6 @@ return malloc(size);
 
   def test_simd2(self):
     if self.is_emterpreter(): return self.skip('todo')
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
 
     test_path = path_from_root('tests', 'core', 'test_simd2')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5276,7 +5250,6 @@ return malloc(size);
   def test_simd4(self):
     # test_simd4 is to test phi node handling of SIMD path
     if self.is_emterpreter(): return self.skip('todo')
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
 
     test_path = path_from_root('tests', 'core', 'test_simd4')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5285,8 +5258,6 @@ return malloc(size);
 
   def test_simd5(self):
     # test_simd5 is to test shufflevector of SIMD path
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
-
     test_path = path_from_root('tests', 'core', 'test_simd5')
     src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -5294,7 +5265,6 @@ return malloc(size);
 
   def test_simd6(self):
     # test_simd6 is to test x86 min and max intrinsics on NaN and -0.0
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     if self.is_emterpreter(): return self.skip('todo')
 
     test_path = path_from_root('tests', 'core', 'test_simd6')
@@ -5304,7 +5274,6 @@ return malloc(size);
 
   def test_simd7(self):
     # test_simd7 is to test negative zero handling.
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     if self.is_emterpreter(): return self.skip('todo')
 
     test_path = path_from_root('tests', 'core', 'test_simd7')
@@ -5314,7 +5283,6 @@ return malloc(size);
 
   def test_simd8(self):
     # test_simd8 is to test unaligned load and store
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     if self.is_emterpreter(): return self.skip('todo')
 
     test_path = path_from_root('tests', 'core', 'test_simd8')
@@ -5323,7 +5291,6 @@ return malloc(size);
     self.do_run_from_file(src, output)
 
   def test_simd_dyncall(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
     if self.is_emterpreter(): return self.skip('todo')
 
     test_path = path_from_root('tests', 'core', 'test_simd_dyncall')
@@ -5331,8 +5298,6 @@ return malloc(size);
     self.do_run_from_file(src, output)
 
   def test_gcc_unmangler(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': Settings.NAMED_GLOBALS = 1 # test coverage for this; fastcomp never names globals
-
     Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('third_party'), '-Wno-warn-absolute-paths']
 
     self.do_run(open(path_from_root('third_party', 'gcc_demangler.c')).read(), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'])
@@ -5349,7 +5314,7 @@ return malloc(size);
       Settings.PRECISE_F32 = 1
 
     for aggro in ([0, 1] if Settings.ASM_JS and '-O2' in self.emcc_args else [0]):
-      for masking in ([0, 1] if Settings.ASM_JS and '-O2' in self.emcc_args and os.environ.get('EMCC_FAST_COMPILER') != '0' else [0]):
+      for masking in ([0, 1] if Settings.ASM_JS and '-O2' in self.emcc_args else [0]):
         Settings.AGGRESSIVE_VARIABLE_ELIMINATION = aggro
         Settings.POINTER_MASKING = masking
         Settings.TOTAL_MEMORY = total_memory
@@ -5436,7 +5401,6 @@ def process(filename):
     # gcc -O3 -I/home/alon/Dev/emscripten/tests/sqlite -ldl src.c
     if self.emcc_args is None: return self.skip('Very slow without ta2, and we would also need to include dlmalloc manually without emcc')
     if not self.is_emscripten_abi(): return self.skip('fails on x86 due to a legalization issue on llvm 3.3')
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('requires fastcomp')
     if Settings.QUANTUM_SIZE == 1: return self.skip('TODO FIXME')
     self.banned_js_engines = [NODE_JS] # OOM in older node
     if '-O' not in str(self.emcc_args):
@@ -5957,8 +5921,6 @@ def process(filename):
   ### Integration tests
 
   def test_ccall(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('needs fastcomp')
-
     post = '''
 def process(filename):
   src = \'\'\'
@@ -6919,7 +6881,6 @@ def process(filename):
     if self.is_emterpreter(): return self.skip('todo')
     if '-g4' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g4')
     if NODE_JS not in JS_ENGINES: return self.skip('sourcemapper requires Node to run')
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('requires fastcomp')
 
     src = '''
       #include <stdio.h>
@@ -7134,7 +7095,6 @@ def process(filename):
 
   def test_minmax(self):
     if self.emcc_args == None: return self.skip('needs emcc')
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('this test will not pass in the old compiler')
     self.do_run(open(path_from_root('tests', 'test_minmax.c')).read(), 'NAN != NAN\nSuccess!')
 
   def test_locale(self):
@@ -7165,7 +7125,6 @@ def process(filename):
 
   def test_async(self):
     if not Settings.ASM_JS: return self.skip('async requires asm.js')
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('async requires fastcomp')
 
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
 
@@ -7277,7 +7236,6 @@ int main() {
 
   def test_coroutine(self):
     if not Settings.ASM_JS: return self.skip('asyncify requires asm.js')
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('asyncify requires fastcomp')
 
     src = r'''
 #include <stdio.h>

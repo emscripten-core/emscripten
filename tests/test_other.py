@@ -2709,7 +2709,6 @@ int main() {
     assert os.path.exists('my.gch')
 
   def test_warn_unaligned(self):
-    if os.environ.get('EMCC_FAST_COMPILER') == '0': return self.skip('need fastcomp')
     open('src.cpp', 'w').write(r'''
 #include <stdio.h>
 static const double grid[4][2] = {{-3 / 3., -1 / 3.},
