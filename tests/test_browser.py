@@ -1,5 +1,5 @@
 import BaseHTTPServer, multiprocessing, os, shutil, subprocess, unittest, zlib, webbrowser, time, shlex
-from runner import BrowserCore, path_from_root, nonfastcomp
+from runner import BrowserCore, path_from_root
 from tools.shared import *
 
 # User can specify an environment variable EMSCRIPTEN_BROWSER to force the browser test suite to
@@ -124,196 +124,192 @@ If manually bisecting:
     finally:
       os.chdir(cwd)
 
+  # TODO: test only worked in non-fastcomp
   def test_split(self):
     return self.skip('non-fastcomp is deprecated and fails in 3.5')
-    def nfc():
-      # test HTML generation.
-      self.reftest(path_from_root('tests', 'htmltest.png'))
-      output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.js', '--split', '100', '--pre-js', 'reftest.js']).communicate()
-      assert os.path.exists(os.path.join(self.get_dir(), 'something.js')), 'must be main js file'
-      assert os.path.exists(os.path.join(self.get_dir(), 'something_functions.js')), 'must be functions js file'
-      assert os.path.exists(os.path.join(self.get_dir(), 'something.include.html')), 'must be js include file'
+    # test HTML generation.
+    self.reftest(path_from_root('tests', 'htmltest.png'))
+    output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.js', '--split', '100', '--pre-js', 'reftest.js']).communicate()
+    assert os.path.exists(os.path.join(self.get_dir(), 'something.js')), 'must be main js file'
+    assert os.path.exists(os.path.join(self.get_dir(), 'something_functions.js')), 'must be functions js file'
+    assert os.path.exists(os.path.join(self.get_dir(), 'something.include.html')), 'must be js include file'
 
-      open(os.path.join(self.get_dir(), 'something.html'), 'w').write('''
+    open(os.path.join(self.get_dir(), 'something.html'), 'w').write('''
 
-      <!doctype html>
-      <html lang="en-us">
-        <head>
-          <meta charset="utf-8">
-          <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-          <title>Emscripten-Generated Code</title>
-          <style>
-            .emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
-            canvas.emscripten { border: 1px solid black; }
-            textarea.emscripten { font-family: monospace; width: 80%; }
-            div.emscripten { text-align: center; }
-          </style>
-        </head>
-        <body>
-          <hr/>
-          <div class="emscripten" id="status">Downloading...</div>
-          <div class="emscripten">
-            <progress value="0" max="100" id="progress" hidden=1></progress>
-          </div>
-          <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
-          <hr/>
-          <div class="emscripten"><input type="button" value="fullscreen" onclick="Module.requestFullScreen()"></div>
-          <hr/>
-          <textarea class="emscripten" id="output" rows="8"></textarea>
-          <hr>
-          <script type='text/javascript'>
-            // connect to canvas
-            var Module = {
-              preRun: [],
-              postRun: [],
-              print: (function() {
-                var element = document.getElementById('output');
-                element.value = ''; // clear browser cache
-                return function(text) {
-                  // These replacements are necessary if you render to raw HTML
-                  //text = text.replace(/&/g, "&amp;");
-                  //text = text.replace(/</g, "&lt;");
-                  //text = text.replace(/>/g, "&gt;");
-                  //text = text.replace('\\n', '<br>', 'g');
-                  element.value += text + "\\n";
-                  element.scrollTop = element.scrollHeight; // focus on bottom
-                };
-              })(),
-              printErr: function(text) {
-                if (0) { // XXX disabled for safety typeof dump == 'function') {
-                  dump(text + '\\n'); // fast, straight to the real console
-                } else {
-                  console.log(text);
-                }
-              },
-              canvas: document.getElementById('canvas'),
-              setStatus: function(text) {
-                if (Module.setStatus.interval) clearInterval(Module.setStatus.interval);
-                var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
-                var statusElement = document.getElementById('status');
-                var progressElement = document.getElementById('progress');
-                if (m) {
-                  text = m[1];
-                  progressElement.value = parseInt(m[2])*100;
-                  progressElement.max = parseInt(m[4])*100;
-                  progressElement.hidden = false;
-                } else {
-                  progressElement.value = null;
-                  progressElement.max = null;
-                  progressElement.hidden = true;
-                }
-                statusElement.innerHTML = text;
-              },
-              totalDependencies: 0,
-              monitorRunDependencies: function(left) {
-                this.totalDependencies = Math.max(this.totalDependencies, left);
-                Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+    <!doctype html>
+    <html lang="en-us">
+      <head>
+        <meta charset="utf-8">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <title>Emscripten-Generated Code</title>
+        <style>
+          .emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
+          canvas.emscripten { border: 1px solid black; }
+          textarea.emscripten { font-family: monospace; width: 80%; }
+          div.emscripten { text-align: center; }
+        </style>
+      </head>
+      <body>
+        <hr/>
+        <div class="emscripten" id="status">Downloading...</div>
+        <div class="emscripten">
+          <progress value="0" max="100" id="progress" hidden=1></progress>
+        </div>
+        <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+        <hr/>
+        <div class="emscripten"><input type="button" value="fullscreen" onclick="Module.requestFullScreen()"></div>
+        <hr/>
+        <textarea class="emscripten" id="output" rows="8"></textarea>
+        <hr>
+        <script type='text/javascript'>
+          // connect to canvas
+          var Module = {
+            preRun: [],
+            postRun: [],
+            print: (function() {
+              var element = document.getElementById('output');
+              element.value = ''; // clear browser cache
+              return function(text) {
+                // These replacements are necessary if you render to raw HTML
+                //text = text.replace(/&/g, "&amp;");
+                //text = text.replace(/</g, "&lt;");
+                //text = text.replace(/>/g, "&gt;");
+                //text = text.replace('\\n', '<br>', 'g');
+                element.value += text + "\\n";
+                element.scrollTop = element.scrollHeight; // focus on bottom
+              };
+            })(),
+            printErr: function(text) {
+              if (0) { // XXX disabled for safety typeof dump == 'function') {
+                dump(text + '\\n'); // fast, straight to the real console
+              } else {
+                console.log(text);
               }
-            };
-            Module.setStatus('Downloading...');
-          </script>''' + open(os.path.join(self.get_dir(), 'something.include.html')).read() + '''
-        </body>
-      </html>
-      ''')
+            },
+            canvas: document.getElementById('canvas'),
+            setStatus: function(text) {
+              if (Module.setStatus.interval) clearInterval(Module.setStatus.interval);
+              var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+              var statusElement = document.getElementById('status');
+              var progressElement = document.getElementById('progress');
+              if (m) {
+                text = m[1];
+                progressElement.value = parseInt(m[2])*100;
+                progressElement.max = parseInt(m[4])*100;
+                progressElement.hidden = false;
+              } else {
+                progressElement.value = null;
+                progressElement.max = null;
+                progressElement.hidden = true;
+              }
+              statusElement.innerHTML = text;
+            },
+            totalDependencies: 0,
+            monitorRunDependencies: function(left) {
+              this.totalDependencies = Math.max(this.totalDependencies, left);
+              Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+            }
+          };
+          Module.setStatus('Downloading...');
+        </script>''' + open(os.path.join(self.get_dir(), 'something.include.html')).read() + '''
+      </body>
+    </html>
+    ''')
 
-      self.run_browser('something.html', 'You should see "hello, world!" and a colored cube.', '/report_result?0')
+    self.run_browser('something.html', 'You should see "hello, world!" and a colored cube.', '/report_result?0')
 
-    nonfastcomp(nfc)
-
+  # TODO: test only worked in non-fastcomp
   def test_split_in_source_filenames(self):
     return self.skip('non-fastcomp is deprecated and fails in 3.5')
-    def nfc():
-      self.reftest(path_from_root('tests', 'htmltest.png'))
-      output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.js', '-g', '--split', '100', '--pre-js', 'reftest.js']).communicate()
-      assert os.path.exists(os.path.join(self.get_dir(), 'something.js')), 'must be main js file'
-      assert os.path.exists(os.path.join(self.get_dir(), 'something', 'hello_world_sdl.cpp.js')), 'must be functions js file'
-      assert os.path.exists(os.path.join(self.get_dir(), 'something.include.html')), 'must be js include file'
+    self.reftest(path_from_root('tests', 'htmltest.png'))
+    output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.js', '-g', '--split', '100', '--pre-js', 'reftest.js']).communicate()
+    assert os.path.exists(os.path.join(self.get_dir(), 'something.js')), 'must be main js file'
+    assert os.path.exists(os.path.join(self.get_dir(), 'something', 'hello_world_sdl.cpp.js')), 'must be functions js file'
+    assert os.path.exists(os.path.join(self.get_dir(), 'something.include.html')), 'must be js include file'
 
-      open(os.path.join(self.get_dir(), 'something.html'), 'w').write('''
+    open(os.path.join(self.get_dir(), 'something.html'), 'w').write('''
 
-      <!doctype html>
-      <html lang="en-us">
-        <head>
-          <meta charset="utf-8">
-          <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-          <title>Emscripten-Generated Code</title>
-          <style>
-            .emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
-            canvas.emscripten { border: 1px solid black; }
-            textarea.emscripten { font-family: monospace; width: 80%; }
-            div.emscripten { text-align: center; }
-          </style>
-        </head>
-        <body>
-          <hr/>
-          <div class="emscripten" id="status">Downloading...</div>
-          <div class="emscripten">
-            <progress value="0" max="100" id="progress" hidden=1></progress>
-          </div>
-          <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
-          <hr/>
-          <div class="emscripten"><input type="button" value="fullscreen" onclick="Module.requestFullScreen()"></div>
-          <hr/>
-          <textarea class="emscripten" id="output" rows="8"></textarea>
-          <hr>
-          <script type='text/javascript'>
-            // connect to canvas
-            var Module = {
-              preRun: [],
-              postRun: [],
-              print: (function() {
-                var element = document.getElementById('output');
-                element.value = ''; // clear browser cache
-                return function(text) {
-                  // These replacements are necessary if you render to raw HTML
-                  //text = text.replace(/&/g, "&amp;");
-                  //text = text.replace(/</g, "&lt;");
-                  //text = text.replace(/>/g, "&gt;");
-                  //text = text.replace('\\n', '<br>', 'g');
-                  element.value += text + "\\n";
-                  element.scrollTop = element.scrollHeight; // focus on bottom
-                };
-              })(),
-              printErr: function(text) {
-                if (0) { // XXX disabled for safety typeof dump == 'function') {
-                  dump(text + '\\n'); // fast, straight to the real console
-                } else {
-                  console.log(text);
-                }
-              },
-              canvas: document.getElementById('canvas'),
-              setStatus: function(text) {
-                if (Module.setStatus.interval) clearInterval(Module.setStatus.interval);
-                var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
-                var statusElement = document.getElementById('status');
-                var progressElement = document.getElementById('progress');
-                if (m) {
-                  text = m[1];
-                  progressElement.value = parseInt(m[2])*100;
-                  progressElement.max = parseInt(m[4])*100;
-                  progressElement.hidden = false;
-                } else {
-                  progressElement.value = null;
-                  progressElement.max = null;
-                  progressElement.hidden = true;
-                }
-                statusElement.innerHTML = text;
-              },
-              totalDependencies: 0,
-              monitorRunDependencies: function(left) {
-                this.totalDependencies = Math.max(this.totalDependencies, left);
-                Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+    <!doctype html>
+    <html lang="en-us">
+      <head>
+        <meta charset="utf-8">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <title>Emscripten-Generated Code</title>
+        <style>
+          .emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
+          canvas.emscripten { border: 1px solid black; }
+          textarea.emscripten { font-family: monospace; width: 80%; }
+          div.emscripten { text-align: center; }
+        </style>
+      </head>
+      <body>
+        <hr/>
+        <div class="emscripten" id="status">Downloading...</div>
+        <div class="emscripten">
+          <progress value="0" max="100" id="progress" hidden=1></progress>
+        </div>
+        <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+        <hr/>
+        <div class="emscripten"><input type="button" value="fullscreen" onclick="Module.requestFullScreen()"></div>
+        <hr/>
+        <textarea class="emscripten" id="output" rows="8"></textarea>
+        <hr>
+        <script type='text/javascript'>
+          // connect to canvas
+          var Module = {
+            preRun: [],
+            postRun: [],
+            print: (function() {
+              var element = document.getElementById('output');
+              element.value = ''; // clear browser cache
+              return function(text) {
+                // These replacements are necessary if you render to raw HTML
+                //text = text.replace(/&/g, "&amp;");
+                //text = text.replace(/</g, "&lt;");
+                //text = text.replace(/>/g, "&gt;");
+                //text = text.replace('\\n', '<br>', 'g');
+                element.value += text + "\\n";
+                element.scrollTop = element.scrollHeight; // focus on bottom
+              };
+            })(),
+            printErr: function(text) {
+              if (0) { // XXX disabled for safety typeof dump == 'function') {
+                dump(text + '\\n'); // fast, straight to the real console
+              } else {
+                console.log(text);
               }
-            };
-            Module.setStatus('Downloading...');
-          </script>''' + open(os.path.join(self.get_dir(), 'something.include.html')).read() + '''
-        </body>
-      </html>
-      ''')
+            },
+            canvas: document.getElementById('canvas'),
+            setStatus: function(text) {
+              if (Module.setStatus.interval) clearInterval(Module.setStatus.interval);
+              var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+              var statusElement = document.getElementById('status');
+              var progressElement = document.getElementById('progress');
+              if (m) {
+                text = m[1];
+                progressElement.value = parseInt(m[2])*100;
+                progressElement.max = parseInt(m[4])*100;
+                progressElement.hidden = false;
+              } else {
+                progressElement.value = null;
+                progressElement.max = null;
+                progressElement.hidden = true;
+              }
+              statusElement.innerHTML = text;
+            },
+            totalDependencies: 0,
+            monitorRunDependencies: function(left) {
+              this.totalDependencies = Math.max(this.totalDependencies, left);
+              Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+            }
+          };
+          Module.setStatus('Downloading...');
+        </script>''' + open(os.path.join(self.get_dir(), 'something.include.html')).read() + '''
+      </body>
+    </html>
+    ''')
 
-      self.run_browser('something.html', 'You should see "hello, world!" and a colored cube.', '/report_result?0')
-
-    nonfastcomp(nfc)
+    self.run_browser('something.html', 'You should see "hello, world!" and a colored cube.', '/report_result?0')
 
   def test_compression(self):
     open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
@@ -1950,12 +1946,11 @@ void *getBindBuffer() {
   def test_emscripten_async_wget2(self):
     self.btest('http.cpp', expected='0', args=['-I' + path_from_root('tests')])
 
+  # TODO: test only worked in non-fastcomp
   def test_module(self):
     return self.skip('non-fastcomp is deprecated and fails in 3.5')
-    def nfc():
-      Popen([PYTHON, EMCC, path_from_root('tests', 'browser_module.cpp'), '-o', 'module.js', '-O2', '-s', 'SIDE_MODULE=1', '-s', 'DLOPEN_SUPPORT=1', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two"]']).communicate()
-      self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE=1', '-s', 'DLOPEN_SUPPORT=1'], expected='8')
-    nonfastcomp(nfc)
+    Popen([PYTHON, EMCC, path_from_root('tests', 'browser_module.cpp'), '-o', 'module.js', '-O2', '-s', 'SIDE_MODULE=1', '-s', 'DLOPEN_SUPPORT=1', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two"]']).communicate()
+    self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE=1', '-s', 'DLOPEN_SUPPORT=1'], expected='8')
 
   def test_mmap_file(self):
     open(self.in_dir('data.dat'), 'w').write('data from the file ' + ('.' * 9000))

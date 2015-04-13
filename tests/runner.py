@@ -28,19 +28,6 @@ import tools.shared
 from tools.shared import *
 from tools.line_endings import check_line_endings
 
-# Utils
-
-def nonfastcomp(test):
-  try:
-    old_fastcomp = os.environ.get('EMCC_FAST_COMPILER')
-    os.environ['EMCC_FAST_COMPILER'] = '0'
-    test()
-  finally:
-    if old_fastcomp is None:
-      del os.environ['EMCC_FAST_COMPILER']
-    else:
-      os.environ['EMCC_FAST_COMPILER'] = old_fastcomp
-
 # Sanity check for config
 
 try:
