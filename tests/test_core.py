@@ -2234,6 +2234,10 @@ def process(filename):
 
     self.do_run_from_file(src, output)
 
+    print 'no debugger, check validation'
+    src = open(src).read().replace('emscripten_debugger();', '')
+    self.do_run(src, open(output).read())
+
   def test_memorygrowth(self):
     self.banned_js_engines = [V8_ENGINE] # stderr printing limitations in v8
 
