@@ -851,6 +851,10 @@ an individual test with
 
   python tests/runner.py ALL.test_hello_world
 
+You can run a random set of N tests with a command like
+
+  python tests/runner.py random50
+
 Debugging: You can run
 
   EM_SAVE_DIR=1 python tests/runner.py ALL.test_hello_world
