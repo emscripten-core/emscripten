@@ -722,10 +722,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # malloc dependency is force-added, so when using pthreads, it must be force-added
   # as well, since malloc needs to be thread-safe, so it depends on mutexes.
   if shared.Settings.USE_PTHREADS:
-    force.add('pthreads')
-    force.add('dlmalloc_threadsafe')
+    force.add('pthreads.bc')
+    force.add('dlmalloc_threadsafe.bc')
   else:
-    force.add('dlmalloc')
+    force.add('dlmalloc.bc')
 
   # Go over libraries to figure out which we must include
   def maybe_noexcept(name):
