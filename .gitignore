@@ -5,15 +5,10 @@
 *.diff
 *.pyc
 *.bc
-src/relooper*.js
 
 node_modules/
 
 # Ignore generated files
-src/relooper.js
-src/relooper.js.raw.js
-src/relooper/*.o
-src/relooper/*.out
 
 tests/fake/
 tests/freetype/objs/*.o
