@@ -232,19 +232,7 @@ if (!BOOTSTRAPPING_STRUCT_INFO) {
 
 load('modules.js');
 load('parseTools.js');
-load('intertyper.js');
-load('analyzer.js');
 load('jsifier.js');
-if (phase == 'funcs' && RELOOP) { // XXX handle !singlePhase
-  RelooperModule = { TOTAL_MEMORY: ceilPowerOfTwo(2*RELOOPER_BUFFER_SIZE) };
-  //try {
-    load(RELOOPER);
-  //} catch(e) {
-  //  printErr('cannot load relooper at ' + RELOOPER + ' : ' + e + ', trying in current dir');
-  //  load('relooper.js');
-  //}
-  assert(typeof Relooper != 'undefined');
-}
 globalEval(processMacros(preprocess(read('runtime.js'))));
 Runtime.QUANTUM_SIZE = QUANTUM_SIZE;
 
@@ -261,74 +249,22 @@ NECESSARY_BLOCKADDRS = temp;
 // Main
 //===============================
 
-// Read llvm
+B = new Benchmarker();
 
-function compile(raw) {
-  if (raw.search('\r\n') >= 0) {
-    raw = raw.replace(/\r\n/g, '\n'); // fix windows line endings
-  }
-  var lines = raw.split('\n');
-  raw = null;
-
-  // Pre-process the LLVM assembly
-
-  Debugging.handleMetadata(lines);
-
-  function runPhase(currPhase) {
-    //printErr('// JS compiler in action, phase ' + currPhase + typeof lines + (lines === null));
-    phase = currPhase;
-    if (phase != 'pre' && phase != 'glue') {
-      if (singlePhase) PassManager.load(read(forwardedDataFile));
-
-      if (phase == 'funcs') {
-        PreProcessor.eliminateUnneededIntrinsics(lines);
-      }
-    }
-
-    // Do it
-
-    var intertyped = intertyper(lines);
-    if (singlePhase) lines = null;
-    var analyzed = analyzer(intertyped);
-    intertyped = null;
-    JSify(analyzed);
+try {
+  if (ll_file) {
+    var dummyData = {globalVariables: {}, functionStubs: []}
+    JSify(dummyData);
 
     //dumpInterProf();
     //printErr(phase + ' paths (fast, slow): ' + [fastPaths, slowPaths]);
     B.print(phase);
-
-    phase = null;
 
     if (DEBUG_MEMORY) {
       print('zzz. last gc: ' + gc());
       MemoryDebugger.dump();
       print('zzz. hanging now!');
       while(1){};
-    }
-  }
-
-  // Normal operation is for each execution of compiler.js to run a single phase. The calling script sends us exactly the information we need, and it is easy to parallelize operation that way. However, it is also possible to run in an unoptimal multiphase mode, where a single invocation goes from ll to js directly. This is not recommended and will likely do a lot of duplicate processing.
-  singlePhase = !!phase;
-
-  if (singlePhase) {
-    runPhase(phase);
-  } else {
-    runPhase('pre');
-    runPhase('funcs');
-    runPhase('post');
-  }
-}
-
-B = new Benchmarker();
-
-try {
-  if (ll_file) {
-    if (phase === 'glue') {
-      compile(';');
-    } else if (ll_file.indexOf(String.fromCharCode(10)) == -1) {
-      compile(read(ll_file));
-    } else {
-      compile(ll_file); // we are given raw .ll
     }
   }
 } catch(err) {
