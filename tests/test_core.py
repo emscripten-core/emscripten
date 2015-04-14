@@ -1357,7 +1357,6 @@ int main() {
 
   def test_exceptions_2(self):
     if self.emcc_args is None: return self.skip('need emcc to add in libcxx properly')
-    if self.run_name == 'asm2x86': return self.skip('TODO')
 
     Settings.DISABLE_EXCEPTION_CATCHING = 0
 
@@ -1370,7 +1369,6 @@ int main() {
 
   def test_exceptions_3(self):
     if self.emcc_args is None: return self.skip('need emcc to add in libcxx properly')
-    if self.run_name == 'asm2x86': return self.skip('TODO')
 
     Settings.DISABLE_EXCEPTION_CATCHING = 0
 
