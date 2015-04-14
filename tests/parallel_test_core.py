@@ -4,6 +4,7 @@
 import os, sys, subprocess, multiprocessing, threading, time
 from runner import test_modes, PYTHON, path_from_root
 
+# Need separate directories to avoid the parallel tests clashing.
 assert not os.environ.get('EM_SAVE_DIR')
 
 # run slower ones first, to optimize total time
