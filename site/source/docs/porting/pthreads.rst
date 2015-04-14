@@ -17,7 +17,7 @@ By default, support for pthreads is not enabled, since the specification is stil
 - Pass the linker flag -lpthread when generating the final output .js file.
 - Optionally, pass the linker flag -s PTHREAD_POOL_SIZE=<integer> to specify a predefined pool of web workers to populate at page preRun time before application main() is called.
 
-There should be no other changes required.
+There should be no other changes required. In C/C++ code, the preprocessor #define __EMSCRIPTEN_PTHREADS__ can be used to detect whether Emscripten is targeting pthreads.
 
 Special considerations
 ======================
