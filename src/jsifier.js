@@ -27,7 +27,7 @@ function JSify(data, functionsOnly) {
   if (mainPass) {
     var shellFile = SHELL_FILE ? SHELL_FILE : (BUILD_AS_SHARED_LIB || SIDE_MODULE ? 'shell_sharedlib.js' : 'shell.js');
 
-    if (phase == 'pre' || phase == 'glue') {
+    if (phase == 'glue') {
       // We will start to print out the data, but must do so carefully - we are
       // dealing with potentially *huge* strings. Convenient replacements and
       // manipulations may create in-memory copies, and we may OOM.
@@ -52,26 +52,17 @@ function JSify(data, functionsOnly) {
       var preFile = BUILD_AS_SHARED_LIB || SIDE_MODULE ? 'preamble_sharedlib.js' : 'preamble.js';
       var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime())));
       print(pre);
-
-      // Populate implementedFunctions. Note that this is before types, and will be updated later.
-      data.unparsedFunctions.forEach(function(func) {
-        Functions.implementedFunctions[func.ident] = Functions.getSignature(func.returnType, func.params.map(function(param) { return param.type }));
-      });
     }
   }
 
   if (mainPass) {
-    // Handle unparsed types TODO: Batch them
-    analyzer(intertyper(data.unparsedTypess[0].lines, true), true);
-    data.unparsedTypess = null;
-
     // Add additional necessary items for the main pass. We can now do this since types are parsed (types can be used through
     // generateStructInfo in library.js)
     //B.start('jsifier-libload');
     LibraryManager.load();
     //B.stop('jsifier-libload');
 
-    if (phase == 'pre' || phase == 'glue') {
+    if (phase == 'glue') {
       var libFuncsToInclude;
       if (INCLUDE_FULL_LIBRARY) {
         assert(!(BUILD_AS_SHARED_LIB || SIDE_MODULE), 'Cannot have both INCLUDE_FULL_LIBRARY and BUILD_AS_SHARED_LIB/SIDE_MODULE set.')
@@ -96,29 +87,6 @@ function JSify(data, functionsOnly) {
         });
       });
     }
-  }
-
-  // Functions
-
-  if (phase == 'funcs') { // || phase == 'pre') { // pre has function shells, just to defined implementedFunctions
-    var MAX_BATCH_FUNC_LINES = 1000;
-    while (data.unparsedFunctions.length > 0) {
-      var currFuncLines = [];
-      var currBaseLineNums = [];
-      while (currFuncLines.length == 0 ||
-             (data.unparsedFunctions.length > 0 && currFuncLines.length + data.unparsedFunctions[0].lines.length <= MAX_BATCH_FUNC_LINES)) {
-        currBaseLineNums.push([currFuncLines.length, data.unparsedFunctions[0].lineNum-1]);
-        currFuncLines = currFuncLines.concat(data.unparsedFunctions[0].lines); // for first one, assign, do not concat?
-        data.unparsedFunctions.shift();
-      }
-      dprint('unparsedFunctions','====================\n// Processing function batch of ' + currBaseLineNums.length +
-                                 ' functions, ' + currFuncLines.length + ' lines, functions left: ' + data.unparsedFunctions.length);
-      if (DEBUG_MEMORY) MemoryDebugger.tick('pre-func');
-      JSify(analyzer(intertyper(currFuncLines, true, currBaseLineNums), true), true);
-      if (DEBUG_MEMORY) MemoryDebugger.tick('post-func');
-    }
-    currFuncLines = currBaseLineNums = null; // Do not hold on to anything from inside that loop (JS function scoping..)
-    data.unparsedFunctions = null;
   }
 
   // Actors
@@ -353,21 +321,6 @@ function JSify(data, functionsOnly) {
     });
   }
 
-  // alias
-  function aliasHandler(item) {
-    item.intertype = 'GlobalVariableStub';
-    itemsDict.GlobalVariableStub.push(item);
-    item.JS = 'var ' + item.ident + ';';
-    // Set the actual value in a postset, since it may be a global variable. We also order by dependencies there
-    Variables.globals[item.ident].targetIdent = item.value.ident;
-    var value = Variables.globals[item.ident].resolvedAlias = finalizeLLVMParameter(item.value);
-    if ((MAIN_MODULE || SIDE_MODULE) && isFunctionType(item.type)) {
-      var target = item.value.ident;
-      if (!Functions.aliases[target]) Functions.aliases[target] = [];
-      Functions.aliases[target].push(item.ident);
-    }
-  }
-
   function processLibraryFunction(snippet, ident, finalName) {
     snippet = snippet.toString();
     assert(snippet.indexOf('XXX missing C define') == -1,
@@ -488,7 +441,7 @@ function JSify(data, functionsOnly) {
         }
       }
       if (SIDE_MODULE) return ';'; // we import into the side module js library stuff from the outside parent 
-      if ((!ASM_JS || phase == 'pre' || phase == 'glue') &&
+      if ((!ASM_JS || phase == 'glue') &&
           (EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS))) {
         contentText += '\nModule["' + finalName + '"] = ' + finalName + ';';
       }
@@ -513,51 +466,6 @@ function JSify(data, functionsOnly) {
       }
       item.JS = addFromLibrary(shortident, true);
     }
-  }
-
-  // function splitter
-  function functionSplitter(item) {
-    item.lines.forEach(function(line) {
-      //B.start('jsifier-handle-' + line.intertype);
-      Framework.currItem = line;
-      line.funcData = item; // TODO: remove all these, access it globally
-      switch (line.intertype) {
-        case 'value': line.JS = valueHandler(line); break;
-        case 'noop': line.JS = noopHandler(line); break;
-        case 'var': line.JS = varHandler(line); break;
-        case 'store': line.JS = storeHandler(line); break;
-        case 'deleted': line.JS = deletedHandler(line); break;
-        case 'branch': line.JS = branchHandler(line); break;
-        case 'switch': line.JS = switchHandler(line); break;
-        case 'return': line.JS = returnHandler(line); break;
-        case 'resume': line.JS = resumeHandler(line); break;
-        case 'invoke': line.JS = invokeHandler(line); break;
-        case 'atomic': line.JS = atomicHandler(line); break;
-        case 'landingpad': line.JS = landingpadHandler(line); break;
-        case 'load': line.JS = loadHandler(line); break;
-        case 'extractvalue': line.JS = extractvalueHandler(line); break;
-        case 'insertvalue': line.JS = insertvalueHandler(line); break;
-        case 'insertelement': line.JS = insertelementHandler(line); break;
-        case 'extracttelement': line.JS = extractelementHandler(line); break;
-        case 'shufflevector': line.JS = shufflevectorHandler(line); break;
-        case 'indirectbr': line.JS = indirectbrHandler(line); break;
-        case 'alloca': line.JS = allocaHandler(line); break;
-        case 'va_arg': line.JS = va_argHandler(line); break;
-        case 'mathop': line.JS = mathopHandler(line); break;
-        case 'bitcast': line.JS = bitcastHandler(line); break;
-        case 'getelementptr': line.JS = getelementptrHandler(line); break;
-        case 'call': line.JS = callHandler(line); break;
-        case 'unreachable': line.JS = unreachableHandler(line); break;
-        default: throw 'what is this line? ' + dump(line);
-      }
-      //if (ASM_JS) assert(line.JS.indexOf('var ') < 0, dump(line));
-      if (line.assignTo) makeAssign(line);
-      Framework.currItem = null;
-      //B.stop('jsifier-handle-' + line.intertype);
-    });
-    //B.start('jsifier-frec');
-    functionReconstructor(item);
-    //B.stop('jsifier-frec');
   }
 
   // function for filtering functions for label debugging
@@ -1686,8 +1594,6 @@ function JSify(data, functionsOnly) {
   // Final combiner
 
   function finalCombiner() {
-    dprint('unparsedFunctions', 'Starting finalCombiner');
-
     var splitPostSets = splitter(itemsDict.GlobalVariablePostSet, function(x) { return x.ident && x.dependencies });
     itemsDict.GlobalVariablePostSet = splitPostSets.leftIn;
     var orderedPostSets = splitPostSets.splitOut;
@@ -1712,7 +1618,7 @@ function JSify(data, functionsOnly) {
     //
 
     if (!mainPass) {
-      if ((phase == 'pre' || phase == 'glue') && !Variables.generatedGlobalBase && !BUILD_AS_SHARED_LIB) {
+      if ((phase == 'glue') && !Variables.generatedGlobalBase && !BUILD_AS_SHARED_LIB) {
         Variables.generatedGlobalBase = true;
         // Globals are done, here is the rest of static memory
         if (!SIDE_MODULE) {
@@ -1726,7 +1632,7 @@ function JSify(data, functionsOnly) {
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
       print(generated.map(function(item) { return item.JS; }).join('\n'));
 
-      if (phase == 'pre' || phase == 'glue') {
+      if (phase == 'glue') {
         if (memoryInitialization.length > 0) {
           // apply postsets directly into the big memory initialization
           itemsDict.GlobalVariablePostSet = itemsDict.GlobalVariablePostSet.filter(function(item) {
@@ -1787,27 +1693,13 @@ function JSify(data, functionsOnly) {
     }
 
     // Print out global variables and postsets TODO: batching
-    if (phase == 'pre' || phase == 'glue') {
+    if (phase == 'glue') {
       var legalizedI64sDefault = legalizedI64s;
       legalizedI64s = false;
 
-      var globalsData = analyzer(intertyper(data.unparsedGlobalss[0].lines, true), true);
-
-      if (!NAMED_GLOBALS) {
-        sortGlobals(globalsData.globalVariables).forEach(function(g) {
-          var ident = g.ident;
-          if (!isIndexableGlobal(ident)) return;
-          assert(Variables.nextIndexedOffset % Runtime.STACK_ALIGN == 0);
-          Variables.indexedGlobals[ident] = Variables.nextIndexedOffset;
-          Variables.nextIndexedOffset += Runtime.alignMemory(calcAllocatedSize(Variables.globals[ident].type));
-          if (ident.substr(0, 5) == '__ZTV') { // leave room for null-terminating the vtable
-            Variables.nextIndexedOffset += Runtime.alignMemory(QUANTUM_SIZE);
-          }
-        });
-      }
+      var globalsData = {globalVariables: {}, functionStubs: []}
       JSify(globalsData, true);
       globalsData = null;
-      data.unparsedGlobalss = null;
 
       var generated = itemsDict.functionStub.concat(itemsDict.GlobalVariablePostSet);
       generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
@@ -1831,20 +1723,9 @@ function JSify(data, functionsOnly) {
         }
         print(asmLibraryFunctions.map(fix).join('\n'));
       }
-
-    } else {
-      if (singlePhase) {
-        assert(data.unparsedGlobalss[0].lines.length == 0, dump([phase, data.unparsedGlobalss]));
-        assert(itemsDict.functionStub.length == 0, dump([phase, itemsDict.functionStub]));
-      }
     }
 
     if (abortExecution) throw 'Aborting compilation due to previous errors';
-
-    if (phase == 'pre' || phase == 'funcs') {
-      PassManager.serialize();
-      return;
-    }
 
     // This is the main 'post' pass. Print out the generated code that we have here, together with the
     // rest of the output that we started to print out earlier (see comment on the
@@ -1940,35 +1821,11 @@ function JSify(data, functionsOnly) {
   // Data
 
   if (mainPass) {
-    if (phase == 'pre') {
-      // types have been parsed, so we can figure out function signatures (which can use types)
-      data.unparsedFunctions.forEach(function(func) {
-        Functions.implementedFunctions[func.ident] = Functions.getSignature(func.returnType, func.params.map(function(param) { return param.type }));
-      });
-    }
     data.functionStubs.forEach(functionStubHandler);
-    assert(data.functions.length == 0);
   } else {
-    if (phase == 'pre') {
-      // ensure there is a global ctors, for runPostSets
-      if ('_llvm_global_ctors' in data.globalVariables) {
-        data.globalVariables._llvm_global_ctors.ctors.unshift('runPostSets'); // run postsets right before global initializers
-        hasCtors = true;
-      } else {
-        globalVariableHandler({
-          intertype: 'GlobalVariableStub',
-          ident: '_llvm_global_ctors',
-          type: '[1 x { i32, void ()* }]',
-          ctors: ["runPostSets"],
-        });
-      }
-    }
-
     //B.start('jsifier-handle-gv');
     sortGlobals(data.globalVariables).forEach(globalVariableHandler);
     //B.stop('jsifier-handle-gv');
-    data.aliass.forEach(aliasHandler);
-    data.functions.forEach(functionSplitter);
   }
 
   //B.start('jsifier-fc');
