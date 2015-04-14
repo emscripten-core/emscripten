@@ -6300,6 +6300,9 @@ def process(filename):
       EMSCRIPTEN_BINDINGS(my_module) {
           function("lerp", &lerp);
       }
+      int main(int argc, char **argv) {
+          return 0;
+      }
     '''
     self.do_run(src, 'lerp 166');
 
