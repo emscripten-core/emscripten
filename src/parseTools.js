@@ -1075,23 +1075,6 @@ function generateStructTypes(type) {
   return ret;
 }
 
-// Flow blocks
-
-function recurseBlock(block, func) {
-  var ret = [];
-  if (block.type == 'reloop') {
-    ret.push(func(block.inner));
-  } else if (block.type == 'multiple') {
-    block.entryLabels.forEach(function(entryLabel) { ret.push(func(entryLabel.block)) });
-  }
-  ret.push(func(block.next));
-  return ret;
-}
-
-function getActualLabelId(labelId) {
-  return labelId.split('|').slice(-1)[0];
-}
-
 // Misc
 
 function indentify(text, indent) {
