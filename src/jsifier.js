@@ -6,7 +6,6 @@
 // Handy sets
 
 var STRUCT_LIST = set('struct', 'list');
-var RELOOP_IGNORED_LASTS = set('return', 'unreachable', 'resume');
 
 var addedLibraryItems = {};
 var asmLibraryFunctions = [];

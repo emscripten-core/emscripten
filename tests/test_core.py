@@ -2078,7 +2078,7 @@ value = real 1.25 imag 0.00''', force_c=True)
     self.do_run_from_file(src, output)
 
   def test_emscripten_api(self):
-      #if Settings.MICRO_OPTS or Settings.RELOOP or Building.LLVM_OPTS: return self.skip('FIXME')
+      #if Settings.MICRO_OPTS or Building.LLVM_OPTS: return self.skip('FIXME')
 
       test_path = path_from_root('tests', 'core', 'test_emscripten_api')
       src, output = (test_path + s for s in ('.in', '.out'))

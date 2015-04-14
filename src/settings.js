@@ -71,11 +71,6 @@ var GLOBAL_BASE = -1; // where global data begins; the start of static memory. -
 
 // Code embetterments
 var MICRO_OPTS = 1; // Various micro-optimizations, like nativizing variables
-var RELOOP = 0; // Recreate js native loops from llvm data
-var RELOOPER = 'relooper.js'; // Loads the relooper from this path relative to compiler.js
-var RELOOPER_BUFFER_SIZE = 20*1024*1024; // The internal relooper buffer size. Increase if you see assertions
-                                         // on OutputBuffer.
-
 var USE_TYPED_ARRAYS = 2; // Use typed arrays for the heap. See https://github.com/kripken/emscripten/wiki/Code-Generation-Modes/
                           // 2 is a single heap, accessible through views as int8, int32, etc. This is
                           //   the only supported mode.
@@ -645,7 +640,6 @@ var DEBUG_TAGS_SHOWING = [];
   //    gconst
   //    types
   //    vars
-  //    relooping
   //    unparsedFunctions
   //    metadata
   //    legalizer

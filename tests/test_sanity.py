@@ -432,7 +432,7 @@ fi
             try_delete(basebc_name) # we might need to check this file later
             try_delete(dcebc_name) # we might need to check this file later
             for ll_name in ll_names: try_delete(ll_name)
-            output = self.do([compiler, '-O' + str(i), '-s', 'RELOOP=0', '--llvm-lto', '0', path_from_root('tests', filename), '--save-bc', 'a.bc', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
+            output = self.do([compiler, '-O' + str(i), '-s', '--llvm-lto', '0', path_from_root('tests', filename), '--save-bc', 'a.bc', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
             #print output
             assert INCLUDING_MESSAGE.replace('X', libname) in output
             if libname == 'libc':
@@ -479,32 +479,6 @@ fi
       else: del os.environ['LLVM']
 
     try_delete(CANONICAL_TEMP_DIR)
-
-  # TODO: test only worked in non-fastcomp
-  def test_relooper(self):
-    return self.skip('non-fastcomp is deprecated and fails in 3.5')
-
-    RELOOPER = Cache.get_path('relooper.js')
-
-    restore()
-    for phase in range(2): # 0: we wipe the relooper dir. 1: we have it, so should just update
-      if phase == 0: Cache.erase()
-      try_delete(RELOOPER)
-
-      for i in range(4):
-        print >> sys.stderr, phase, i
-        opt = min(i, 2)
-        try_delete('a.out.js')
-        output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_loop.cpp'), '-O' + str(opt), '-g'],
-                       stdout=PIPE, stderr=PIPE).communicate()
-        self.assertContained('hello, world!', run_js('a.out.js'))
-        output = '\n'.join(output)
-        assert ('bootstrapping relooper succeeded' in output) == (i == 1), 'only bootstrap on first O2: ' + output
-        assert os.path.exists(RELOOPER) == (i >= 1), 'have relooper on O2: ' + output
-        src = open('a.out.js').read()
-        main = src.split('function _main()')[1].split('\n}\n')[0]
-        assert ('while (1) {' in main or 'while(1){' in main or 'while(1) {' in main or '} while ($' in main or '}while($' in main) == (i >= 1), 'reloop code on O2: ' + main
-        assert ('switch' not in main) == (i >= 1), 'reloop code on O2: ' + main
 
   def test_nostdincxx(self):
     restore()

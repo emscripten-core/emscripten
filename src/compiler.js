@@ -199,7 +199,7 @@ assert(!(!NAMED_GLOBALS && BUILD_AS_SHARED_LIB), 'shared libraries must have nam
 // Output some info and warnings based on settings
 
 if (phase == 'pre') {
-  if (!MICRO_OPTS || !RELOOP || ASSERTIONS || CHECK_SIGNS || CHECK_OVERFLOWS || INIT_HEAP ||
+  if (!MICRO_OPTS || ASSERTIONS || CHECK_SIGNS || CHECK_OVERFLOWS || INIT_HEAP ||
       !SKIP_STACK_IN_SMALL || SAFE_HEAP || !DISABLE_EXCEPTION_CATCHING) {
     print('// Note: Some Emscripten settings will significantly limit the speed of the generated code.');
   } else {

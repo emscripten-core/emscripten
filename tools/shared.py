@@ -945,7 +945,6 @@ class Settings2(type):
         self.attrs['ASM_JS'] = 1
         self.attrs['ASSERTIONS'] = 0
         self.attrs['DISABLE_EXCEPTION_CATCHING'] = 1
-        self.attrs['RELOOP'] = 1
         self.attrs['ALIASING_FUNCTION_POINTERS'] = 1
 
     def __getattr__(self, attr):
@@ -1520,8 +1519,6 @@ class Building:
     os.environ['EMSCRIPTEN_SUPPRESS_USAGE_WARNING'] = '1'
 
     # Run Emscripten
-    if not os.path.exists(Settings.RELOOPER):
-      Settings.RELOOPER = Cache.get_path('relooper.js')
     settings = Settings.serialize()
     args = settings + extra_args
     if WINDOWS:
@@ -1650,63 +1647,6 @@ class Building:
 
     return False
 
-  # Make sure the relooper exists. If it does not, check out the relooper code and bootstrap it
-  @staticmethod
-  def ensure_relooper(relooper):
-    if os.path.exists(relooper): return
-    if os.environ.get('EMCC_FAST_COMPILER') != '0':
-      logging.debug('not building relooper to js, using it in c++ backend')
-      return
-
-    Cache.ensure()
-    curr = os.getcwd()
-    try:
-      ok = False
-      logging.info('=======================================')
-      logging.info('bootstrapping relooper...')
-      os.chdir(path_from_root('src'))
-
-      emcc_debug = os.environ.get('EMCC_DEBUG')
-      if emcc_debug: del os.environ['EMCC_DEBUG']
-
-      emcc_leave_inputs_raw = os.environ.get('EMCC_LEAVE_INPUTS_RAW')
-      if emcc_leave_inputs_raw: del os.environ['EMCC_LEAVE_INPUTS_RAW']
-
-      def make(opt_level, reloop):
-        raw = relooper + '.raw.js'
-        Building.emcc(os.path.join('relooper', 'Relooper.cpp'), ['-I' + os.path.join('relooper'), '--post-js',
-          os.path.join('relooper', 'emscripten', 'glue.js'),
-          '--memory-init-file', '0', '-s', 'RELOOP=%d' % reloop,
-          '-s', 'EXPORTED_FUNCTIONS=["_rl_set_output_buffer","_rl_make_output_buffer","_rl_new_block","_rl_delete_block","_rl_block_add_branch_to","_rl_new_relooper","_rl_delete_relooper","_rl_relooper_add_block","_rl_relooper_calculate","_rl_relooper_render", "_rl_set_asm_js_mode"]',
-          '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["memcpy", "memset", "malloc", "free", "puts"]',
-          '-s', 'RELOOPER="' + relooper + '"',
-          '-O' + str(opt_level), '--closure', '0'], raw)
-        f = open(relooper, 'w')
-        f.write("// Relooper, (C) 2012 Alon Zakai, MIT license, https://github.com/kripken/Relooper\n")
-        f.write("var Relooper = (function(Module) {\n")
-        f.write(open(raw).read())
-        f.write('\n  return Module.Relooper;\n')
-        f.write('})(RelooperModule);\n')
-        f.close()
-
-      # bootstrap phase 1: generate unrelooped relooper, for which we do not need a relooper (so we cannot recurse infinitely in this function)
-      logging.info('  bootstrap phase 1')
-      make(2, 0)
-      # bootstrap phase 2: generate relooped relooper, using the unrelooped relooper (we see relooper.js exists so we cannot recurse infinitely in this function)
-      logging.info('  bootstrap phase 2')
-      make(2, 1)
-      logging.info('bootstrapping relooper succeeded')
-      logging.info('=======================================')
-      ok = True
-    finally:
-      os.chdir(curr)
-      if emcc_debug: os.environ['EMCC_DEBUG'] = emcc_debug
-      if emcc_leave_inputs_raw: os.environ['EMCC_LEAVE_INPUTS_RAW'] = emcc_leave_inputs_raw
-      if not ok:
-        logging.error('bootstrapping relooper failed. You may need to manually create relooper.js by compiling it, see src/relooper/emscripten')
-        try_delete(relooper) # do not leave a phase-1 version if phase 2 broke
-        1/0
-  
   @staticmethod
   def ensure_struct_info(info_path):
     if os.path.exists(info_path): return
