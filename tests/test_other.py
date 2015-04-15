@@ -165,7 +165,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if opt_level == 0 or '-g' in params: assert 'function _main() {' in generated or 'function _main(){' in generated, 'Should be unminified'
           elif opt_level >= 2: assert ('function _main(){' in generated or '"use asm";var a=' in generated), 'Should be whitespace-minified'
 
-      # emcc -s RELOOP=1 src.cpp ==> should pass -s to emscripten.py.
+      # emcc -s INLINING_LIMIT=0 src.cpp ==> should pass -s to emscripten.py.
       for params, test, text in [
         (['-O2'], lambda generated: 'function intArrayToString' in generated, 'shell has unminified utilities'),
         (['-O2', '--closure', '1'], lambda generated: 'function intArrayToString' not in generated and ';function' in generated, 'closure minifies the shell, removes whitespace'),
@@ -3931,9 +3931,9 @@ Size of file is: 32
 
   def test_emcc_s_typo(self):
     # with suggestions
-    out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'RELOO=1'], stderr=PIPE).communicate()
-    self.assertContained(r'''Assigning a non-existent settings attribute "RELOO"''', err)
-    self.assertContained(r'''did you mean one of RELOOP, RELOOPER?''', err)
+    out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'DISABLE_EXCEPTION_CATCH=1'], stderr=PIPE).communicate()
+    self.assertContained(r'''Assigning a non-existent settings attribute "DISABLE_EXCEPTION_CATCH"''', err)
+    self.assertContained(r'''did you mean one of DISABLE_EXCEPTION_CATCHING?''', err)
     # no suggestions
     out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'CHEEZ=1'], stderr=PIPE).communicate()
     self.assertContained(r'''perhaps a typo in emcc's  -s X=Y  notation?''', err)

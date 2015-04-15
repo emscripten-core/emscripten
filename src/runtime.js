@@ -583,7 +583,7 @@ function reSign(value, bits, ignore) {
 Runtime.GLOBAL_BASE = {{{ GLOBAL_BASE }}} < 0 ? 8 : {{{ GLOBAL_BASE }}};
 
 if (RETAIN_COMPILER_SETTINGS) {
-  var blacklist = set('RELOOPER', 'STRUCT_INFO');
+  var blacklist = set('STRUCT_INFO');
   for (var x in this) {
     try {
       if (x[0] !== '_' && !(x in blacklist) && x == x.toUpperCase() && (typeof this[x] === 'number' || typeof this[x] === 'string' || this.isArray())) Runtime.compilerSettings[x] = this[x];

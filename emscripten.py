@@ -1519,7 +1519,7 @@ else:
   logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
   sys.exit(1)
 
-def main(args, compiler_engine, cache, relooper, temp_files, DEBUG, DEBUG_CACHE):
+def main(args, compiler_engine, cache, temp_files, DEBUG, DEBUG_CACHE):
   # Prepare settings for serialization to JSON.
   settings = {}
   for setting in args.settings:
@@ -1528,16 +1528,6 @@ def main(args, compiler_engine, cache, relooper, temp_files, DEBUG, DEBUG_CACHE)
 
   # libraries
   libraries = args.libraries[0].split(',') if len(args.libraries) > 0 else []
-
-  # Compile the assembly to Javascript.
-  if settings.get('RELOOP'):
-    if not relooper:
-      relooper = settings.get('RELOOPER')
-      if not relooper:
-        relooper = cache.get_path('relooper.js')
-    settings.setdefault('RELOOPER', relooper)
-    if not os.path.exists(relooper):
-      shared.Building.ensure_relooper(relooper)
 
   settings.setdefault('STRUCT_INFO', cache.get_path('struct_info.compiled.json'))
   struct_info = settings.get('STRUCT_INFO')
@@ -1582,9 +1572,6 @@ def _main(environ):
   parser.add_option('-c', '--compiler',
                     default=None,
                     help='Which JS engine to use to run the compiler; defaults to the one in ~/.emscripten.')
-  parser.add_option('--relooper',
-                    default=None,
-                    help='Which relooper file to use if RELOOP is enabled.')
   parser.add_option('-s', '--setting',
                     dest='settings',
                     default=[],
@@ -1624,11 +1611,6 @@ WARNING: You should normally never use this! Use emcc instead.
   if isinstance(keywords.outfile, basestring):
     keywords.outfile = open(keywords.outfile, 'w')
 
-  if keywords.relooper:
-    relooper = os.path.abspath(keywords.relooper)
-  else:
-    relooper = None # use the cache
-
   if keywords.temp_dir is None:
     temp_files = get_configuration().get_temp_files()
     temp_dir = get_configuration().TEMP_DIR
@@ -1653,7 +1635,6 @@ WARNING: You should normally never use this! Use emcc instead.
     keywords,
     compiler_engine=keywords.compiler,
     cache=cache,
-    relooper=relooper,
     temp_files=temp_files,
     DEBUG=DEBUG,
     DEBUG_CACHE=DEBUG_CACHE,
