@@ -11,6 +11,7 @@
 
 #define T int
 
+#if 0
 // TEMP to make this test pass:
 // Our Clang backend doesn't define this builtin function, so implement it ourselves.
 // The current Atomics spec doesn't have the nand atomic op either, so must use a cas loop.
@@ -25,6 +26,7 @@ T __sync_nand_and_fetch(T *ptr, T x)
 		if (old2 == old) return newVal;
 	}
 }
+#endif
 
 void *thread_add_and_fetch(void *arg)
 {

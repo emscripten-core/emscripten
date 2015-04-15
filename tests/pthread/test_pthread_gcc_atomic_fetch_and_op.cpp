@@ -11,6 +11,7 @@
 
 #define T int
 
+#if 0
 // TEMP to make this test pass:
 // Our Clang backend doesn't define this builtin function, so implement it ourselves.
 // The current Atomics spec doesn't have the nand atomic op either, so must use a cas loop.
@@ -25,6 +26,7 @@ T __sync_fetch_and_nand(T *ptr, T x)
 		if (old2 == old) return old;
 	}
 }
+#endif
 
 void *thread_fetch_and_add(void *arg)
 {
@@ -62,6 +64,8 @@ void *thread_fetch_and_xor(void *arg)
 	pthread_exit(0);
 }
 
+// XXX NAND support does not exist in Atomics API.
+#if 0
 volatile int fetch_and_nand_data = 0;
 void *thread_fetch_and_nand(void *arg)
 {
@@ -69,7 +73,7 @@ void *thread_fetch_and_nand(void *arg)
 		__sync_fetch_and_nand((int*)&fetch_and_nand_data, (int)arg);
 	pthread_exit(0);
 }
-
+#endif
 pthread_t thread[NUM_THREADS];
 
 int main()
@@ -133,6 +137,8 @@ int main()
 			assert(fetch_and_xor_data == (1<<(NUM_THREADS+1))-1);
 		}
 	}
+// XXX NAND support does not exist in Atomics API.
+#if 0
 	{
 		T x = 5;
 		T y = __sync_fetch_and_nand(&x, 9);
@@ -147,6 +153,7 @@ int main()
 			assert(fetch_and_nand_data == -1);
 		}
 	}
+#endif
 
 #ifdef REPORT_RESULT
 	int result = 0;
