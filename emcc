@@ -987,6 +987,10 @@ try:
             shared.Settings.POINTER_MASKING_OVERFLOW = (overflow + 0x00ffffff) & 0xff000000;
   elif shared.Settings.POINTER_MASKING_DYNAMIC:
     raise Exception('POINTER_MASKING_DYNAMIC requires POINTER_MASKING')
+  elif shared.Settings.SAFE_POINTER_MASKING:
+    raise Exception('SAFE_POINTER_MASKING requires POINTER_MASKING')
+  elif shared.Settings.POINTER_MASKING_BLACKLIST:
+    raise Exception('POINTER_MASKING_BLACKLIST requires POINTER_MASKING')
   else:
     shared.Settings.POINTER_MASKING_DEFAULT_ENABLED = 0
 
@@ -1425,6 +1429,8 @@ try:
           passes += ['symbolMap='+target+'.symbols']
         if profiling_funcs and 'minifyNames' in passes:
           passes += ['profilingFuncs']
+        if shared.Settings.SAFE_POINTER_MASKING:
+          passes = ['safeMask'] + passes
         if minify_whitespace and 'last' in passes:
           passes += ['minifyWhitespace']
         logging.debug('applying js optimization passes: %s', ' '.join(passes))
@@ -1540,6 +1546,9 @@ try:
         js_optimizer_queue += ['closure']
       elif debug_level <= 2 and not shared.Settings.MAIN_MODULE and shared.Settings.FINALIZE_ASM_JS and not closure:
         js_optimizer_queue += ['cleanup']
+
+  if shared.Settings.POINTER_MASKING_BLACKLIST:
+    js_optimizer_extra_info['pointerMaskingBlacklist'] = list(shared.Settings.POINTER_MASKING_BLACKLIST)
 
   if js_opts:
     if shared.Settings.ASM_JS and shared.Settings.SAFE_HEAP: js_optimizer_queue += ['safeHeap']

@@ -402,6 +402,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
 
     basic_funcs = ['abort', 'assert', 'asmPrintInt', 'asmPrintFloat'] + [m.replace('.', '_') for m in math_envs]
     if settings['SAFE_HEAP']: basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE', 'SAFE_FT_MASK']
+    if settings['SAFE_POINTER_MASKING']: basic_funcs += ['SAFE_MASK_REPORT']
     if settings['CHECK_HEAP_ALIGN']: basic_funcs += ['CHECK_ALIGN_2', 'CHECK_ALIGN_4', 'CHECK_ALIGN_8']
     if settings['ASSERTIONS']:
       basic_funcs += ['nullFunc']
@@ -1095,6 +1096,7 @@ function _emscripten_asm_const_%d(%s) {
 
     basic_funcs = ['abort', 'assert'] + [m.replace('.', '_') for m in math_envs]
     if settings['SAFE_HEAP']: basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE', 'SAFE_FT_MASK']
+    if settings['SAFE_POINTER_MASKING']: basic_funcs += ['SAFE_MASK_REPORT']
     if settings['CHECK_HEAP_ALIGN']: basic_funcs += ['CHECK_ALIGN_2', 'CHECK_ALIGN_4', 'CHECK_ALIGN_8']
     if settings['ASSERTIONS']:
       if settings['ASSERTIONS'] >= 2: import difflib
@@ -1365,7 +1367,15 @@ function _emscripten_replace_memory(newBuffer) {
 function _declare_heap_length() {
   return HEAP8[%s] | 0;
 }
-  ''' % (settings['TOTAL_MEMORY'] + settings['POINTER_MASKING_OVERFLOW'] - 1)] + ['''
+  ''' % (settings['TOTAL_MEMORY'] + settings['POINTER_MASKING_OVERFLOW'] - 1)] + \
+  ['' if not settings['SAFE_POINTER_MASKING'] else '''
+function _safe_mask_check(value, mask) {
+  value = value | 0;
+  mask = mask | 0;
+  if (((value & mask) | 0) != (value | 0)) SAFE_MASK_REPORT(value | 0, mask | 0);
+  return value | 0;
+}
+  '''] + ['''
 // EMSCRIPTEN_START_FUNCS
 function stackAlloc(size) {
   size = size|0;

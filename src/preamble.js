@@ -25,6 +25,21 @@ Module.realPrint = Module.print;
 Module.print = Module.printErr = function(){};
 #endif
 
+
+#if POINTER_MASKING
+#if SAFE_POINTER_MASKING
+function SAFE_MASK_REPORT(value, mask) {
+  value = value | 0;
+  mask = mask | 0;
+  if ((value & mask) != value) {
+    console.log("Heap access mask error: pointer is " + value + " which is masked by " + mask + ", add the function to the POINTER_MASKING_BLACKLIST." + stackTrace());
+  }
+  return value | 0;
+}
+#endif
+#endif
+
+
 #if SAFE_HEAP
 #if ASM_JS == 0
 //========================================

@@ -201,6 +201,15 @@ var POINTER_MASKING_DYNAMIC = 0; // When disabled, the masking is baked into the
 var POINTER_MASKING_DEFAULT_ENABLED = 1; // When POINTER_MASKING_DYNAMIC is enabled this
 					 // sets the default for POINTER_MASKING_ENABLED,
 					 // enabling or disabling pointer masking.
+var SAFE_POINTER_MASKING = 0; // When enabled the masking checks that it does not alter
+                              // the index which it should not do if used only as an
+                              // optimization.
+var POINTER_MASKING_BLACKLIST = []; // List of functions to blacklist from the pointer
+				    // masking offset dehoisting optimization. For these
+				    // functions the masking will be emitted as a[(i+c)&m]
+				    // rather than a[(i&m)+c] which may lead to less
+				    // optimized code generation but is necessary when 'i'
+				    // can be negative.
 
 // Generated code debugging options
 var SAFE_HEAP = 0; // Check each write to the heap, for example, this will give a clear
