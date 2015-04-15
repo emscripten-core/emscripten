@@ -6941,7 +6941,7 @@ def process(filename):
   def test_locale(self):
     self.do_run_from_file(path_from_root('tests', 'test_locale.c'), path_from_root('tests', 'test_locale.out'))
 
-  def test_64bit_return_value(self):
+  def test_sixtyfour_bit_return_value(self):
     # This test checks that the most significant 32 bits of a 64 bit long are correctly made available
     # to native JavaScript applications that wish to interact with compiled code returning 64 bit longs.
     # The MS 32 bits should be available in Runtime.getTempRet0() even when compiled with -O2 --closure 1
