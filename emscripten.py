@@ -907,7 +907,7 @@ def emscript_fast(infile, settings, outfile, libraries=[], compiler_engine=None,
 
     asm_consts = [0]*len(metadata['asmConsts'])
     for k, v in metadata['asmConsts'].iteritems():
-      const = str(v)
+      const = v.encode('utf-8')
       if const[0] == '"' and const[-1] == '"':
         const = const[1:-1]
       const = '{ ' + const + ' }'

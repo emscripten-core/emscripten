@@ -2145,6 +2145,15 @@ def process(filename):
     src = open(src).read().replace('emscripten_debugger();', '')
     self.do_run(src, open(output).read())
 
+  def test_em_asm_unicode(self):
+    self.do_run(r'''
+#include <emscripten.h>
+
+int main() {
+  EM_ASM( Module.print("hello world…") );
+}
+''', 'hello world…')
+
   def test_memorygrowth(self):
     self.banned_js_engines = [V8_ENGINE] # stderr printing limitations in v8
 
