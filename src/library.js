@@ -3225,7 +3225,11 @@ LibraryManager.library = {
     {{{ makeSetValue('envPtr', 'strings.length * ptrSize', '0', 'i8*') }}};
   },
   $ENV__deps: ['__buildEnvironment'],
+#if USE_PTHREADS
   $ENV__postset: 'if (!ENVIRONMENT_IS_PTHREAD) ___buildEnvironment(ENV);',
+#else
+  $ENV__postset: '___buildEnvironment(ENV);',
+#endif
   $ENV: {},
   getenv__deps: ['$ENV'],
   getenv: function(name) {
