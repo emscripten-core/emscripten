@@ -10,6 +10,8 @@ var threadInfoStruct = 0; // Info area for this thread in Emscripten HEAP (share
 
 var selfThreadId = 0; // The ID of this thread. 0 if not hosting a pthread.
 
+var tempDoublePtr = 0; // A temporary memory area for global float and double marshalling operations.
+
 // Each thread has its own allocated stack space.
 var STACK_BASE = 0;
 var STACKTOP = 0;
@@ -42,6 +44,7 @@ console = {
 this.onmessage = function(e) {
   if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
     buffer = e.data.buffer;
+    tempDoublePtr = e.data.tempDoublePtr;
     importScripts(e.data.url);
     _stdin = _stdout = _stderr = -1;
     postMessage({ cmd: 'loaded' });
@@ -53,7 +56,6 @@ this.onmessage = function(e) {
       FS.createStandardStreams(); // pthread workers don't run prerun handlers, so initialize TTY filesystem manually so that printf() et al. works.
     }
     threadInfoStruct = e.data.threadInfoStruct;
-    tempDoublePtr = Runtime.alignMemory(threadInfoStruct + 8/*tempDoublePtr*/, 8);
     assert(threadInfoStruct);
     selfThreadId = e.data.selfThreadId;
     assert(selfThreadId);

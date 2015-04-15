@@ -174,8 +174,12 @@ var LibraryPThread = {
           Module['printErr']('pthread sent an error! ' + e.message);
         };
 
+        // Allocate tempDoublePtr for the worker. This is done here on the worker's behalf, since allocate()
+        // is not thread-safe.
+        var tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);
+
         // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
-        worker.postMessage({ cmd: 'load', url: url, buffer: HEAPU8.buffer }, [HEAPU8.buffer]);
+        worker.postMessage({ cmd: 'load', url: url, buffer: HEAPU8.buffer, tempDoublePtr: tempDoublePtr }, [HEAPU8.buffer]);
         PThread.unusedWorkerPool.push(worker);
       }
     },

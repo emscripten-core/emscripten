@@ -315,7 +315,8 @@ function JSify(data, functionsOnly) {
 
       if (!BUILD_AS_SHARED_LIB && !SIDE_MODULE) {
         if (USE_PTHREADS) {
-          print('var tempDoublePtr = ENVIRONMENT_IS_PTHREAD ? 0 : Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n'); // We can't immediately allocate in a pthread, must wait until we have shared the HEAP.
+          print('var tempDoublePtr;\n');
+          print('if (!ENVIRONMENT_IS_PTHREAD) tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
         } else {
           print('var tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
         }
