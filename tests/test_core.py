@@ -7074,6 +7074,40 @@ int main() {
 
     self.do_run(src, 'napped');
 
+  def test_async_exit(self):
+    if not self.is_emterpreter(): return self.skip('emterpreter-only test')
+
+    Settings.EMTERPRETIFY_ASYNC = 1
+    self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
+
+    self.do_run(r'''
+#include <stdio.h>
+#include <stdlib.h>
+#include <emscripten.h>
+
+void f()
+{
+    printf("f\n");
+    emscripten_sleep(1);
+    printf("hello\n");
+    static int i = 0;
+    i++;
+    if(i == 5) {
+        printf("exit\n");
+        exit(0);
+        printf("world\n");
+        i = 0;
+    }
+}
+
+int main() {
+    while(1) {
+        f();
+    }
+    return 0;
+}
+''', 'f\nhello\nf\nhello\nf\nhello\nf\nhello\nf\nhello\nexit\n')
+
   def test_coroutine(self):
     if not Settings.ASM_JS: return self.skip('asyncify requires asm.js')
 

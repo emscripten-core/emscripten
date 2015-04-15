@@ -104,7 +104,7 @@ Module['callMain'] = Module.callMain = function callMain(args) {
 #endif
 
     // if we're not running an evented main loop, it's time to exit
-    exit(ret);
+    exit(ret, /* implicit = */ true);
   }
   catch(e) {
     if (e instanceof ExitStatus) {
@@ -178,22 +178,27 @@ function run(args) {
 }
 Module['run'] = Module.run = run;
 
-function exit(status) {
-  if (Module['noExitRuntime']) {
+function exit(status, implicit) {
+  if (implicit && Module['noExitRuntime']) {
 #if ASSERTIONS
-    Module.printErr('exit(' + status + ') called, but noExitRuntime, so not exiting (you can use emscripten_force_exit, if you want to force a true shutdown)');
+    Module.printErr('exit(' + status + ') implicitly called by end of main(), but noExitRuntime, so not exiting the runtime (you can use emscripten_force_exit, if you want to force a true shutdown)');
 #endif
     return;
   }
 
-  ABORT = true;
-  EXITSTATUS = status;
-  STACKTOP = initialStackTop;
+  if (Module['noExitRuntime']) {
+#if ASSERTIONS
+    Module.printErr('exit(' + status + ') called, but noExitRuntime, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)');
+#endif
+  } else {
+    ABORT = true;
+    EXITSTATUS = status;
+    STACKTOP = initialStackTop;
 
-  // exit the runtime
-  exitRuntime();
+    exitRuntime();
 
-  if (Module['onExit']) Module['onExit'](status);
+    if (Module['onExit']) Module['onExit'](status);
+  }
 
 #if NODE_STDOUT_FLUSH_WORKAROUND
   if (ENVIRONMENT_IS_NODE) {
