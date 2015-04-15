@@ -6079,67 +6079,6 @@ function optimizeFrounds(ast) {
   traverseChildren(ast, fix);
 }
 
-// Optimize heap expressions into HEAP32[(x&m)+c>>2] where c is an aligned
-// constant, and m guarantees the pointer is within bounds and aligned.
-function pointerMasking(ast) {
-  var parseHeapTemp = makeTempParseHeap();
-
-  traverse(ast, function(node, type) {
-    if (type === 'sub' && node[1][0] === 'name' && node[1][1][0] === 'H' && node[2][0] === 'binary' && node[2][1] === '>>' && node[2][3][0] === 'num') {
-      var shifts = node[2][3][1];
-      var addee = node[2][2];
-
-      if (!parseHeap(node[1][1], parseHeapTemp)) return;
-      if (parseHeapTemp.bits !== 8 * Math.pow(2, shifts)) return;
-
-      // Don't mask a shifted constant index. It will be folded later,
-      // and it is assumed that they are within bounds.
-      if (addee[0] === 'num') return;
-
-      if (!(addee[0] === 'binary' && addee[1] === '+')) {
-        node[2][2] = ['binary', '&', addee, ['name', 'MASK' + shifts]];
-        return;
-      }
-
-      // This is a HEAP[U]N[x + y >> n] expression. Gather up all the top-level
-      // added items, summing constants amongst them.
-      var addedConstants = 0;
-      var addedElements = [];
-      function addElements(node) {
-        if (node[0] === 'binary' && node[1] === '+') {
-          addElements(node[2]);
-          addElements(node[3]);
-        } else if (node[0] === 'num') {
-          var c = node[1];
-          // Check that it is aligned.
-          if (((c >> shifts) << shifts) === c) {
-            addedConstants += c;
-          } else {
-            addedElements.push(node);
-          }
-        } else {
-          addedElements.push(node);
-        }
-      }
-      addElements(addee);
-      if (addedElements.length > 0) {
-        var others = addedElements[0];
-        for (var j = 1; j < addedElements.length; j++) {
-          others = ['binary', '+', others, addedElements[j]];
-        }
-        others = ['binary', '&', others, ['name', 'MASK' + shifts]];
-        if (addedConstants != 0) {
-          others = ['binary', '+', others, ['num' , addedConstants]];
-        }
-        node[2][2] = others;
-        return;
-      }
-
-      node[2][2] = ['num' , addedConstants];
-    }
-  });
-}
-
 // Ensures that if label exists, it is assigned an initial value (to not assume the asm declaration has an effect, which we normally do not)
 function ensureLabelSet(ast) {
   assert(asm);
@@ -7963,7 +7902,6 @@ var passes = {
   outline: outline,
   safeHeap: safeHeap,
   optimizeFrounds: optimizeFrounds,
-  pointerMasking: pointerMasking,
   ensureLabelSet: ensureLabelSet,
   emterpretify: emterpretify,
   findReachable: findReachable,

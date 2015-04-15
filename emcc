@@ -969,27 +969,6 @@ try:
       logging.warning('not all asm.js optimizations are possible with --closure 2, disabling those - your code will be run more slowly')
       shared.Settings.ASM_JS = 2
 
-  if shared.Settings.POINTER_MASKING:
-    if shared.Settings.ALLOW_MEMORY_GROWTH:
-      raise Exception('With POINTER_MASKING the ALLOW_MEMORY_GROWTH feature is not supported')
-    if not shared.Settings.POINTER_MASKING_DYNAMIC:
-      shared.Settings.POINTER_MASKING_DEFAULT_ENABLED = 1;
-      size = shared.Settings.TOTAL_MEMORY
-      if size & (size - 1) != 0:
-        raise Exception('With POINTER_MASKING the TOTAL_MEMORY must be a power of 2')
-      if shared.Settings.ASM_JS:
-        # Silently keep the total length a valid asm.js heap buffer length.
-        overflow = shared.Settings.POINTER_MASKING_OVERFLOW;
-        if overflow > 0:
-          if size <= 0x01000000:
-            shared.Settings.POINTER_MASKING_OVERFLOW = size;
-          else:
-            shared.Settings.POINTER_MASKING_OVERFLOW = (overflow + 0x00ffffff) & 0xff000000;
-  elif shared.Settings.POINTER_MASKING_DYNAMIC:
-    raise Exception('POINTER_MASKING_DYNAMIC requires POINTER_MASKING')
-  else:
-    shared.Settings.POINTER_MASKING_DEFAULT_ENABLED = 0
-
   shared.Settings.TARGET_ASMJS_UNKNOWN_EMSCRIPTEN = 1
 
   if shared.Settings.MAIN_MODULE:
@@ -1553,9 +1532,6 @@ try:
         js_optimizer_queue += ['registerizeHarder']
       else:
         js_optimizer_queue += ['registerize']
-
-    if shared.Settings.POINTER_MASKING:
-      js_optimizer_queue += ['pointerMasking']
 
     if not shared.Settings.EMTERPRETIFY:
       do_minify()

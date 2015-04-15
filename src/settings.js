@@ -177,26 +177,6 @@ var OUTLINING_LIMIT = 0; // A function size above which we try to automatically 
 var AGGRESSIVE_VARIABLE_ELIMINATION = 0; // Run aggressiveVariableElimination in js-optimizer.js
 var SIMPLIFY_IFS = 1; // Whether to simplify ifs in js-optimizer.js
 
-var POINTER_MASKING = 0; // Whether pointers can be masked to a power-of-two heap
-                         // length. An experimental optimization trying to reduce VM
-                         // bounds checks.
-var POINTER_MASKING_OVERFLOW = 64 * 1024; // The length added to the heap length to allow
-                                          // the compiler to derive that accesses are
-                                          // within bounds even when adding small constant
-                                          // offsets. This defaults to 64K, but in asm.js
-                                          // mode it is silently adjusted to keep the
-                                          // total buffer length a valid asm.js heap
-                                          // buffer length.
-var POINTER_MASKING_DYNAMIC = 0; // When disabled, the masking is baked into the code with
-				 // static masks and a static heap buffer length and the
-				 // TOTAL_MEMORY must be a power of 2. When enabled, the
-				 // masks are defined at runtime rather than compling them
-				 // into the asm.js module as literal constants and the
-				 // TOTAL_MEMORY can be defined at run time.
-var POINTER_MASKING_DEFAULT_ENABLED = 1; // When POINTER_MASKING_DYNAMIC is enabled this
-					 // sets the default for POINTER_MASKING_ENABLED,
-					 // enabling or disabling pointer masking.
-
 // Generated code debugging options
 var SAFE_HEAP = 0; // Check each write to the heap, for example, this will give a clear
                    // error on what would be segfaults in a native build (like deferencing
@@ -655,3 +635,5 @@ var SAFE_HEAP_LINES = [];
 // That file is automatically parsed by tools/gen_struct_info.py.
 // If you modify the headers, just clear your cache and emscripten libc should see
 // the new values.
+
+// Reserved: variables containing POINTER_MASKING.

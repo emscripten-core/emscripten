@@ -1243,14 +1243,6 @@ function jsCall_%s_%s(%s) {
           if settings.get('SIDE_MODULE'): init = '(H_BASE+' + str(init) + ')|0'
           asm_global_vars += '  var %s=%s;\n' % (key, str(init))
 
-    if settings['POINTER_MASKING']:
-      for i in [0, 1, 2, 3]:
-        if settings['POINTER_MASKING_DYNAMIC']:
-          asm_global_vars += '  const MASK%d=env' % i + access_quote('MASK%d' % i) + '|0;\n';
-          basic_vars += ['MASK%d' %i]
-        else:
-          asm_global_vars += '  const MASK%d=%d;\n' % (i, (settings['TOTAL_MEMORY']-1) & (~((2**i)-1)));
-
     # sent data
     the_global = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
     sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars]) + ' }'
@@ -1360,12 +1352,7 @@ function _emscripten_replace_memory(newBuffer) {
   buffer = newBuffer;
   return true;
 }
-'''] + \
-  ['' if not settings['POINTER_MASKING'] or settings['POINTER_MASKING_DYNAMIC'] else '''
-function _declare_heap_length() {
-  return HEAP8[%s] | 0;
-}
-  ''' % (settings['TOTAL_MEMORY'] + settings['POINTER_MASKING_OVERFLOW'] - 1)] + ['''
+'''] + ['''
 // EMSCRIPTEN_START_FUNCS
 function stackAlloc(size) {
   size = size|0;
