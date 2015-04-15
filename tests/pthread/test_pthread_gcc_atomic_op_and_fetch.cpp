@@ -64,6 +64,7 @@ void *thread_xor_and_fetch(void *arg)
 	pthread_exit(0);
 }
 
+#if 0
 volatile int nand_and_fetch_data = 0;
 void *thread_nand_and_fetch(void *arg)
 {
@@ -71,6 +72,7 @@ void *thread_nand_and_fetch(void *arg)
 		__sync_nand_and_fetch((int*)&nand_and_fetch_data, (int)arg);
 	pthread_exit(0);
 }
+#endif
 
 pthread_t thread[NUM_THREADS];
 
@@ -135,6 +137,7 @@ int main()
 			assert(xor_and_fetch_data == (1<<(NUM_THREADS+1))-1);
 		}
 	}
+#if 0
 	{
 		T x = 5;
 		T y = __sync_nand_and_fetch(&x, 9);
@@ -149,6 +152,7 @@ int main()
 			assert(nand_and_fetch_data == -1);
 		}
 	}
+#endif
 
 #ifdef REPORT_RESULT
 	int result = 0;
