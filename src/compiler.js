@@ -186,8 +186,6 @@ DEAD_FUNCTIONS = numberedSet(DEAD_FUNCTIONS);
 
 RUNTIME_DEBUG = LIBRARY_DEBUG || GL_DEBUG;
 
-if (SAFE_HEAP) USE_BSS = 0; // must initialize heap for safe heap
-
 if (NO_BROWSER) {
   DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.filter(function(func) { return func !== '$Browser' });
 }
@@ -236,15 +234,6 @@ load('jsifier.js');
 globalEval(processMacros(preprocess(read('runtime.js'))));
 Runtime.QUANTUM_SIZE = QUANTUM_SIZE;
 
-var temp = {};
-for (var i = 0; i < NECESSARY_BLOCKADDRS.length; i++) {
-  var func = toNiceIdent(NECESSARY_BLOCKADDRS[i][0]);
-  var label = toNiceIdent(NECESSARY_BLOCKADDRS[i][1]);
-  if (!temp[func]) temp[func] = {};
-  temp[func][label] = 1;
-}
-NECESSARY_BLOCKADDRS = temp;
-
 //===============================
 // Main
 //===============================
@@ -253,7 +242,7 @@ B = new Benchmarker();
 
 try {
   if (ll_file) {
-    var dummyData = {globalVariables: {}, functionStubs: []}
+    var dummyData = {functionStubs: []}
     JSify(dummyData);
 
     //dumpInterProf();

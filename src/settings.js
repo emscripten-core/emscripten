@@ -377,11 +377,6 @@ var NO_BROWSER = 0; // If set, disables building in browser support using the Br
                     // just doing pure computation in a library, and don't need any browser capabilities like a main loop
                     // (emscripten_set_main_loop), or setTimeout, etc.
 
-var USE_BSS = 1; // https://en.wikipedia.org/wiki/.bss
-                 // When enabled, 0-initialized globals are sorted to the end of the globals list,
-                 // enabling us to not explicitly store the initialization value for each 0 byte.
-                 // This significantly lowers the memory initialization array size.
-
 var NAMED_GLOBALS = 0; // If 1, we use global variables for globals. Otherwise
                        // they are referred to by a base plus an offset (called an indexed global),
                        // saving global variables but adding runtime overhead.
@@ -576,10 +571,6 @@ var DEAD_FUNCTIONS = []; // Functions on this list are not converted to JS, and 
                          // TODO: options to lazily load such functions
 
 var EXPLICIT_ZEXT = 0; // If 1, generate an explicit conversion of zext i1 to i32, using ?:
-
-var NECESSARY_BLOCKADDRS = []; // List of (function, block) for all block addresses that are taken.
-
-var JS_CHUNK_SIZE = 10240; // Used as a maximum size before breaking up expressions and lines into smaller pieces
 
 var EXPORT_NAME = 'Module'; // Global variable to export the module as for environments without a standardized module
                             // loading system (e.g. the browser and SM shell).
