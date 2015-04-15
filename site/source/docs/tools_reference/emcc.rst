@@ -427,7 +427,7 @@ Options that are modified or new in *emcc* are listed below:
 		emcc -c a.c -o dir/
  
        
-``--valid_abspath path``
+``--valid-abspath path``
 	Whitelist an absolute path to prevent warnings about absolute include paths.
 	 
 .. _emcc-o-target:
