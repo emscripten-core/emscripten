@@ -3130,7 +3130,6 @@ void registerizeHarder(Ref ast) {
         }
       }
       junc.live = live;
-      junc.checkedLive = true;
     };
 
     auto analyzeBlock = [&](Block* block) {
@@ -3258,9 +3257,9 @@ void registerizeHarder(Ref ast) {
         Junction& junc = junctions[*last];
         jWorkSet.erase(last);
         StringSet oldLive = junc.live; // copy it here, to check for changes later
-        bool oldChecked = junc.checkedLive;
         analyzeJunction(junc);
-        if (oldChecked != junc.checkedLive || oldLive != junc.live) {
+        if (!junc.checkedLive || oldLive != junc.live) {
+          junc.checkedLive = true;
           // Live set changed, updated predecessor blocks and junctions.
           for (auto b : junc.inblocks) {
             bWorkSet.insert(b);
