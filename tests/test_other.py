@@ -1990,8 +1990,6 @@ int f() {
        ['asm', 'minifyWhitespace', 'asmLastOpts', 'last']),
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-shiftsAggressive.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-shiftsAggressive-output.js')).read(),
        ['asm', 'aggressiveVariableElimination']),
-      (path_from_root('tests', 'optimizer', 'test-js-optimizer-pointerMask.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-pointerMask-output.js')).read(),
-       ['pointerMasking']),
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-localCSE.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-localCSE-output.js')).read(),
        ['asm', 'localCSE']),
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-ensureLabelSet.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-ensureLabelSet-output.js')).read(),
