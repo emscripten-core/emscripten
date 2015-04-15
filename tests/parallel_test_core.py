@@ -4,6 +4,9 @@
 import os, sys, subprocess, multiprocessing, threading, time
 from runner import test_modes, PYTHON, path_from_root
 
+# Need separate directories to avoid the parallel tests clashing.
+assert not os.environ.get('EM_SAVE_DIR')
+
 # run slower ones first, to optimize total time
 optimal_order = ['asm3i', 'asm1i', 'asm2nn', 'asm3', 'asm2', 'asm2g', 'asm2f', 'asm1', 'default']
 assert set(optimal_order) == set(test_modes), 'need to update the list of slowest modes'
