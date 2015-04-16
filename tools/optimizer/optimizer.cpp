@@ -2564,8 +2564,7 @@ void registerizeHarder(Ref ast) {
       int id;
       std::unordered_set<int> inblocks, outblocks;
       StringSet live;
-      bool checkedLive;
-      Junction(int id_) : id(id_), checkedLive(false) {}
+      Junction(int id_) : id(id_) {}
     };
     struct Node {
     };
@@ -3235,19 +3234,23 @@ void registerizeHarder(Ref ast) {
       block->lastKillLoc = lastKillLoc;
     };
 
-    // Ordered map to work in reverse order
+    // Ordered map to work in approximate reverse order of junction appearance
     std::set<int> jWorkSet;
-    jWorkSet.insert(EXIT_JUNCTION);
     std::set<int> bWorkSet;
 
     // Be sure to visit every junction at least once.
     // This avoids missing some vars because we disconnected them
     // when processing the labelled jumps.
-    for (int i = junctions.size() - 1; i >= EXIT_JUNCTION; i--) {
+    for (int i = EXIT_JUNCTION; i < junctions.size(); i++) {
       jWorkSet.insert(i);
+      for (auto b : junctions[i].inblocks) {
+        bWorkSet.insert(b);
+      }
     }
+    // Exit junction never has any live variable changes to propagate
+    jWorkSet.erase(EXIT_JUNCTION);
 
-    while (jWorkSet.size() > 0) {
+    do {
       // Iterate on just the junctions until we get stable live sets.
       // The first run of this loop will grow the live sets to their maximal size.
       // Subsequent runs will shrink them based on eliminated in-block uses.
@@ -3258,8 +3261,7 @@ void registerizeHarder(Ref ast) {
         jWorkSet.erase(last);
         StringSet oldLive = junc.live; // copy it here, to check for changes later
         analyzeJunction(junc);
-        if (!junc.checkedLive || oldLive != junc.live) {
-          junc.checkedLive = true;
+        if (oldLive != junc.live) {
           // Live set changed, updated predecessor blocks and junctions.
           for (auto b : junc.inblocks) {
             bWorkSet.insert(b);
@@ -3280,7 +3282,7 @@ void registerizeHarder(Ref ast) {
           jWorkSet.insert(block->entry);
         }
       }
-    }
+    } while (jWorkSet.size() > 0);
 
     // Insist that all function parameters are alive at function entry.
     // This ensures they will be assigned independent registers, even
