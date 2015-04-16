@@ -6121,6 +6121,7 @@ def process(filename):
     self.do_run(src, 'abs(-10): 10\nabs(-11): 11');
 
   def test_embind_2(self):
+    Settings.NO_EXIT_RUNTIME = 1 # we emit some post.js that we need to see
     Building.COMPILER_TEST_OPTS += ['--bind', '--post-js', 'post.js']
     open('post.js', 'w').write('''
       Module.print('lerp ' + Module.lerp(100, 200, 66) + '.');
