@@ -20,11 +20,11 @@
 LibraryManager.library = {
   // keep this low in memory, because we flatten arrays with them in them
 #if USE_PTHREADS
-  stdin: 'ENVIRONMENT_IS_PTHREAD?-1:allocate(1, "i32*", ALLOC_STATIC)',
-  stdout: 'ENVIRONMENT_IS_PTHREAD?-1:allocate(1, "i32*", ALLOC_STATIC)',
-  stderr: 'ENVIRONMENT_IS_PTHREAD?-1:allocate(1, "i32*", ALLOC_STATIC)',
-  _impure_ptr: 'ENVIRONMENT_IS_PTHREAD?-1:allocate(1, "i32*", ALLOC_STATIC)',
-  __dso_handle: 'ENVIRONMENT_IS_PTHREAD?-1:allocate(1, "i32*", ALLOC_STATIC)',
+  stdin: '; if (ENVIRONMENT_IS_PTHREAD) _stdin = PthreadWorkerInit._stdin; else PthreadWorkerInit._stdin = _stdin = allocate(1, "i32*", ALLOC_STATIC)',
+  stdout: '; if (ENVIRONMENT_IS_PTHREAD) _stdout = PthreadWorkerInit._stdout; else PthreadWorkerInit._stdout = _stdout = allocate(1, "i32*", ALLOC_STATIC)',
+  stderr: '; if (ENVIRONMENT_IS_PTHREAD) _stderr = PthreadWorkerInit._stderr; else PthreadWorkerInit._stderr = _stderr = allocate(1, "i32*", ALLOC_STATIC)',
+  _impure_ptr: '; if (ENVIRONMENT_IS_PTHREAD) __impure_ptr = PthreadWorkerInit.__impure_ptr; else PthreadWorkerInit.__impure_ptr __impure_ptr = allocate(1, "i32*", ALLOC_STATIC)',
+  __dso_handle: '; if (ENVIRONMENT_IS_PTHREAD) ___dso_handle = PthreadWorkerInit.___dso_handle; else PthreadWorkerInit.___dso_handle = ___dso_handle = allocate(1, "i32*", ALLOC_STATIC)',
 #else
   stdin: 'allocate(1, "i32*", ALLOC_STATIC)',
   stdout: 'allocate(1, "i32*", ALLOC_STATIC)',
@@ -2240,7 +2240,7 @@ LibraryManager.library = {
   },
   fgetc__deps: ['$FS', 'fread'],
 #if USE_PTHREADS
-  fgetc__postset: '_fgetc.ret = ENVIRONMENT_IS_PTHREAD?0:allocate([0], "i8", ALLOC_STATIC);',
+  fgetc__postset: 'if (ENVIRONMENT_IS_PTHREAD) _fgetc.ret = PthreadWorkerInit._fgetc_ret; else PthreadWorkerInit._fgetc_ret = _fgetc.ret = allocate([0], "i8", ALLOC_STATIC);',
 #else
   fgetc__postset: '_fgetc.ret = allocate([0], "i8", ALLOC_STATIC);',
 #endif
@@ -2384,7 +2384,7 @@ LibraryManager.library = {
   },
   fputc__deps: ['$FS', 'write', 'fileno'],
 #if USE_PTHREADS
-  fputc__postset: '_fputc.ret = ENVIRONMENT_IS_PTHREAD?0:allocate([0], "i8", ALLOC_STATIC);',
+  fputc__postset: 'if (ENVIRONMENT_IS_PTHREAD) _fputc.ret = PthreadWorkerInit._fputc_ret; else PthreadWorkerInit._fputc_ret = _fputc.ret = allocate([0], "i8", ALLOC_STATIC);',
 #else
   fputc__postset: '_fputc.ret = allocate([0], "i8", ALLOC_STATIC);',
 #endif
@@ -3165,7 +3165,7 @@ LibraryManager.library = {
   },
   environ__deps: ['$ENV'],
 #if USE_PTHREADS
-  environ: 'ENVIRONMENT_IS_PTHREAD?0:allocate(1, "i32*", ALLOC_STATIC)', // TODO: Pass access to 'environ' for pthreads.
+  environ: '; if (ENVIRONMENT_IS_PTHREAD) _environ = PthreadWorkerInit._environ; else PthreadWorkerInit._environ = _environ = allocate(1, "i32*", ALLOC_STATIC)',
 #else
   environ: 'allocate(1, "i32*", ALLOC_STATIC)',
 #endif
@@ -3713,7 +3713,12 @@ LibraryManager.library = {
       return 8;
     }
     if (SIDE_MODULE) return ''; // uses it from the parent
+
+#if USE_PTHREADS
+    return 'var cttz_i8; if (ENVIRONMENT_IS_PTHREAD) cttz_i8 = PthreadWorkerInit.cttz_i8; else PthreadWorkerInit.cttz_i8 = cttz_i8 = allocate([' + range(256).map(function(x) { return cttz(x) }).join(',') + '], "i8", ALLOC_STATIC);';
+#else
     return 'var cttz_i8 = allocate([' + range(256).map(function(x) { return cttz(x) }).join(',') + '], "i8", ALLOC_STATIC);';
+#endif
   }],
   llvm_cttz_i32__asm: true,
   llvm_cttz_i32__sig: 'ii',
@@ -4644,12 +4649,17 @@ LibraryManager.library = {
   },
 
   // Statically allocated time struct.
+#if USE_PTHREADS
+  __tm_current: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_current = PthreadWorkerInit.___tm_current; else PthreadWorkerInit.___tm_current = ___tm_current = allocate({{{ C_STRUCTS.tm.__size__ }}}, "i8", ALLOC_STATIC)',
+  __tm_timezone: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_timezone = PthreadWorkerInit.___tm_timezone; else PthreadWorkerInit.___tm_timezone = ___tm_timezone = allocate(intArrayFromString("GMT"), "i8", ALLOC_STATIC)',
+  __tm_formatted: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_formatted = PthreadWorkerInit.___tm_formatted; else PthreadWorkerInit.___tm_formatted = ___tm_formatted = allocate({{{ C_STRUCTS.tm.__size__ }}}, "i8", ALLOC_STATIC)',
+#else
   __tm_current: 'allocate({{{ C_STRUCTS.tm.__size__ }}}, "i8", ALLOC_STATIC)',
   // Statically allocated copy of the string "GMT" for gmtime() to point to
   __tm_timezone: 'allocate(intArrayFromString("GMT"), "i8", ALLOC_STATIC)',
   // Statically allocated time strings.
   __tm_formatted: 'allocate({{{ C_STRUCTS.tm.__size__ }}}, "i8", ALLOC_STATIC)',
-
+#endif
   mktime__deps: ['tzset'],
   mktime: function(tmPtr) {
     _tzset();
@@ -4814,9 +4824,15 @@ LibraryManager.library = {
 
   // TODO: Initialize these to defaults on startup from system settings.
   // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
+#if USE_PTHREADS
+  tzname: '; if (ENVIRONMENT_IS_PTHREAD) _tzname = PthreadWorkerInit._tzname; else PthreadWorkerInit._tzname = _tzname = allocate({{{ 2*Runtime.QUANTUM_SIZE }}}, "i32*", ALLOC_STATIC)',
+  daylight: '; if (ENVIRONMENT_IS_PTHREAD) _daylight = PthreadWorkerInit._daylight; else PthreadWorkerInit._daylight = _daylight = allocate(1, "i32*", ALLOC_STATIC)',
+  timezone: '; if (ENVIRONMENT_IS_PTHREAD) _timezone = PthreadWorkerInit._timezone; else PthreadWorkerInit._timezone = _timezone = allocate(1, "i32*", ALLOC_STATIC)',
+#else
   tzname: 'allocate({{{ 2*Runtime.QUANTUM_SIZE }}}, "i32*", ALLOC_STATIC)',
   daylight: 'allocate(1, "i32*", ALLOC_STATIC)',
   timezone: 'allocate(1, "i32*", ALLOC_STATIC)',
+#endif
   tzset__deps: ['tzname', 'daylight', 'timezone'],
   tzset: function() {
 #if USE_PTHREADS
@@ -6151,7 +6167,11 @@ LibraryManager.library = {
   },
   __errno_state: 0,
   __setErrNo__deps: ['__errno_state'],
+#if USE_PTHREADS
+  __setErrNo__postset: 'if (ENVIRONMENT_IS_PTHREAD) ___errno_state = PthreadWorkerInit.___errno_state; else { PthreadWorkerInit.___errno_state = ___errno_state = Runtime.staticAlloc(4); {{{ makeSetValue("___errno_state", 0, 0, "i32") }}}; }',
+#else
   __setErrNo__postset: '___errno_state = Runtime.staticAlloc(4); {{{ makeSetValue("___errno_state", 0, 0, "i32") }}};',
+#endif
   __setErrNo: function(value) {
     // For convenient setting and returning of errno.
     {{{ makeSetValue('___errno_state', '0', 'value', 'i32') }}};
@@ -6516,16 +6536,25 @@ LibraryManager.library = {
   // netinet/in.h
   // ==========================================================================
 
+#if USE_PTHREADS
+  in6addr_any: '; if (ENVIRONMENT_IS_PTHREAD) _in6addr_any = PthreadWorkerInit._in6addr_any; else PthreadWorkerInit._in6addr_any = _in6addr_any = allocate([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], "i8", ALLOC_STATIC)',
+  in6addr_loopback: '; if (ENVIRONMENT_IS_PTHREAD) _in6addr_loopback = PthreadWorkerInit._in6addr_loopback; else PthreadWorkerInit._in6addr_loopback = _in6addr_loopback = allocate([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], "i8", ALLOC_STATIC)',
+#else
   in6addr_any:
     'allocate([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], "i8", ALLOC_STATIC)',
   in6addr_loopback:
     'allocate([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], "i8", ALLOC_STATIC)',
+#endif
 
   // ==========================================================================
   // netdb.h
   // ==========================================================================
 
+#if USE_PTHREADS
+  __h_errno_state: '; if (ENVIRONMENT_IS_PTHREAD) ___h_errno_state = PthreadWorkerInit.___h_errno_state; else PthreadWorkerInit.___h_errno_state = ___h_errno_state = allocate(1, "i32", ALLOC_STATIC)',
+#else
   __h_errno_state: 'allocate(1, "i32", ALLOC_STATIC)',
+#endif
   __h_errno_location__deps: ['__h_errno_state'],
   __h_errno_location: function() {
     return ___h_errno_state;
