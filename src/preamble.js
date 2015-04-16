@@ -1219,6 +1219,9 @@ function preRun() {
 }
 
 function ensureInitRuntime() {
+#if USE_PTHREADS
+  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
+#endif
   if (runtimeInitialized) return;
   runtimeInitialized = true;
   callRuntimeCallbacks(__ATINIT__);
