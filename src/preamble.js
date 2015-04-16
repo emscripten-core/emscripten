@@ -1007,6 +1007,10 @@ var STATIC_BASE = 0, STATICTOP = 0, staticSealed = false; // static area
 var STACK_BASE = 0, STACKTOP = 0, STACK_MAX = 0; // stack area
 var DYNAMIC_BASE = 0, DYNAMICTOP = 0; // dynamic area handled by sbrk
 
+#if USE_PTHREADS
+if (ENVIRONMENT_IS_PTHREAD) staticSealed = true; // The static memory area has been initialized already in the main thread, pthreads skip this.
+#endif
+
 function enlargeMemory() {
 #if USE_PTHREADS
   abort('Cannot enlarge memory arrays, since compiling with pthreads support enabled (-lpthread).');
