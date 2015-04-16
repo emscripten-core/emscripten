@@ -3130,7 +3130,6 @@ void registerizeHarder(Ref ast) {
         }
       }
       junc.live = live;
-      junc.checkedLive = true;
     };
 
     auto analyzeBlock = [&](Block* block) {
@@ -3236,60 +3235,49 @@ void registerizeHarder(Ref ast) {
       block->lastKillLoc = lastKillLoc;
     };
 
-    std::unordered_set<int> jWorklistMap;
-    jWorklistMap.insert(EXIT_JUNCTION);
-    std::vector<int> jWorklist;
-    jWorklist.push_back(EXIT_JUNCTION);
-    std::unordered_set<int> bWorklistMap;
-    std::vector<int> bWorklist;
+    // Ordered map to work in reverse order
+    std::set<int> jWorkSet;
+    jWorkSet.insert(EXIT_JUNCTION);
+    std::set<int> bWorkSet;
 
     // Be sure to visit every junction at least once.
     // This avoids missing some vars because we disconnected them
     // when processing the labelled jumps.
     for (int i = junctions.size() - 1; i >= EXIT_JUNCTION; i--) {
-      jWorklistMap.insert(i);
-      jWorklist.push_back(i);
+      jWorkSet.insert(i);
     }
 
-    while (jWorklist.size() > 0) {
+    while (jWorkSet.size() > 0) {
       // Iterate on just the junctions until we get stable live sets.
       // The first run of this loop will grow the live sets to their maximal size.
       // Subsequent runs will shrink them based on eliminated in-block uses.
-      while (jWorklist.size() > 0) {
-        Junction& junc = junctions[jWorklist.back()];
-        jWorklist.pop_back();
-        jWorklistMap.erase(junc.id);
+      while (jWorkSet.size() > 0) {
+        auto last = jWorkSet.end();
+        --last;
+        Junction& junc = junctions[*last];
+        jWorkSet.erase(last);
         StringSet oldLive = junc.live; // copy it here, to check for changes later
-        bool oldChecked = junc.checkedLive;
         analyzeJunction(junc);
-        if (oldChecked != junc.checkedLive || oldLive != junc.live) {
+        if (!junc.checkedLive || oldLive != junc.live) {
+          junc.checkedLive = true;
           // Live set changed, updated predecessor blocks and junctions.
           for (auto b : junc.inblocks) {
-            if (bWorklistMap.count(b) == 0) {
-              bWorklistMap.insert(b);
-              bWorklist.push_back(b);
-            }
-            int jPred = blocks[b]->entry;
-            if (jWorklistMap.count(jPred) == 0) {
-              jWorklistMap.insert(jPred);
-              jWorklist.push_back(jPred);
-            }
+            bWorkSet.insert(b);
+            jWorkSet.insert(blocks[b]->entry);
           }
         }
       }
       // Now update the blocks based on the calculated live sets.
-      while (bWorklist.size() > 0) {
-        Block* block = blocks[bWorklist.back()];
-        bWorklist.pop_back();
-        bWorklistMap.erase(block->id);
+      while (bWorkSet.size() > 0) {
+        auto last = bWorkSet.end();
+        --last;
+        Block* block = blocks[*last];
+        bWorkSet.erase(last);
         auto oldUse = block->use;
         analyzeBlock(block);
         if (oldUse != block->use) {
           // The use set changed, re-process the entry junction.
-          if (jWorklistMap.count(block->entry) == 0) {
-            jWorklistMap.insert(block->entry);
-            jWorklist.push_back(block->entry);
-          }
+          jWorkSet.insert(block->entry);
         }
       }
     }
