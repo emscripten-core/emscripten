@@ -204,7 +204,15 @@ function JSify(data, functionsOnly) {
       });
       if (VERBOSE) printErr('adding ' + finalName + ' and deps ' + deps + ' : ' + (snippet + '').substr(0, 40));
       var depsText = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
-      var contentText = isFunction ? snippet : ('var ' + finalName + '=' + snippet + ';');
+      var contentText;
+      if (isFunction) {
+        contentText = snippet;
+      } else if (typeof snippet === 'string' && snippet.indexOf(';') == 0) {
+        contentText = 'var ' + finalName + snippet;
+        if (snippet[snippet.length-1] != ';' && snippet[snippet.length-1] != '}') contentText += ';';
+      } else {
+        contentText = 'var ' + finalName + '=' + snippet + ';';
+      }
       var sig = LibraryManager.library[ident + '__sig'];
       if (isFunction && sig && LibraryManager.library[ident + '__asm']) {
         // asm library function, add it as generated code alongside the generated code
