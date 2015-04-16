@@ -2591,6 +2591,10 @@ window.close = function() {
   def test_pthread_printf(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_printf.cpp'), expected='0', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=1'])
 
+  # Test that pthreads are able to do cout. Failed due to https://bugzilla.mozilla.org/show_bug.cgi?id=1154858.
+  def test_pthread_iostream(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_iostream.cpp'), expected='0', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=1'])
+
   # Test that the main thread is able to use pthread_set/getspecific.
   def test_pthread_setspecific_mainthread(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_setspecific_mainthread.cpp'), expected='0', args=['-lpthread'])
