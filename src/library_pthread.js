@@ -176,10 +176,16 @@ var LibraryPThread = {
 
         // Allocate tempDoublePtr for the worker. This is done here on the worker's behalf, since allocate()
         // is not thread-safe.
-        var tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_NORMAL), 8);
+        var tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_NORMAL), 8); // TODO: leaks. Cleanup after worker terminates.
 
         // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
-        worker.postMessage({ cmd: 'load', url: url, buffer: HEAPU8.buffer, tempDoublePtr: tempDoublePtr }, [HEAPU8.buffer]);
+        worker.postMessage({
+            cmd: 'load',
+            url: url,
+            buffer: HEAPU8.buffer,
+            tempDoublePtr: tempDoublePtr,
+            PthreadWorkerInit: PthreadWorkerInit
+          }, [HEAPU8.buffer]);
         PThread.unusedWorkerPool.push(worker);
       }
     },
@@ -276,10 +282,7 @@ var LibraryPThread = {
       threadInfoStruct: threadParams.pthread_ptr,
       selfThreadId: threadParams.pthread_ptr, // TODO: Remove this since thread ID is now the same as the thread address.
       stackBase: threadParams.stackBase,
-      stackSize: threadParams.stackSize,
-      stdin: _stdin,
-      stdout: _stdout,
-      stderr: _stderr
+      stackSize: threadParams.stackSize
     });
   },
 
