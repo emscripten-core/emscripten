@@ -13,6 +13,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <termios.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
@@ -346,9 +347,9 @@ static void _do_call(em_queued_call *q)
 		case EM_PROXIED_UNGETC: q->returnValue.i = ungetc(q->args[0].i, q->args[1].vp); break;
 		case EM_PROXIED_FSCANF: q->returnValue.i = fscanf(q->args[0].vp, q->args[1].cp, q->args[2].vp); break;
 		case EM_PROXIED_SCANF: q->returnValue.i = scanf(q->args[0].cp, q->args[1].vp); break;
-		case EM_PROXIED_FPRINTF: q->returnValue.i = fprintf(q->args[0].vp, q->args[1].cp, q->args[2].vp); break;
-		case EM_PROXIED_PRINTF: q->returnValue.i = printf(q->args[0].cp, q->args[1].vp); break;
-		case EM_PROXIED_DPRINTF: q->returnValue.i = dprintf(q->args[0].i, q->args[1].cp, q->args[2].vp); break;
+		case EM_PROXIED_FPRINTF: q->returnValue.i = fprintf(q->args[0].vp, q->args[1].cp); break;
+		case EM_PROXIED_PRINTF: q->returnValue.i = printf(q->args[0].cp); break;
+		case EM_PROXIED_DPRINTF: q->returnValue.i = dprintf(q->args[0].i, q->args[1].cp); break;
 		case EM_PROXIED_MMAP: q->returnValue.vp = mmap(q->args[0].vp, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i); break;
 		case EM_PROXIED_MUNMAP: q->returnValue.i = munmap(q->args[0].vp, q->args[1].i); break;
 		case EM_PROXIED_ATEXIT: q->returnValue.i = atexit(q->args[0].vp); break;
@@ -429,6 +430,36 @@ void * EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_2(int function, v
 	q.args[1].vp = arg2;
 	q.returnValue.vp = 0;
 	emscripten_sync_run_in_main_thread(&q);
+	return q.returnValue.vp;
+}
+
+void * EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_xprintf_varargs(int function, int param0, const char *format, ...)
+{
+	va_list args;
+	va_start(args, format);
+	const int CAP = 128;
+	char str[CAP];
+	char *s = str;
+	int len = vsnprintf(s, CAP, format, args);
+	if (len >= CAP)
+	{
+		s = (char*)malloc(len+1);
+		va_start(args, format);
+		len = vsnprintf(s, len+1, format, args);
+	}
+	em_queued_call q = { function, 0 };
+	if (function == EM_PROXIED_PRINTF)
+	{
+		q.args[0].vp = s;
+	}
+	else
+	{
+		q.args[0].vp = param0;
+		q.args[1].vp = s;
+	}
+	q.returnValue.vp = 0;
+	emscripten_sync_run_in_main_thread(&q);
+	if (s != str) free(s);
 	return q.returnValue.vp;
 }
 

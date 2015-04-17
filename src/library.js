@@ -2784,7 +2784,7 @@ LibraryManager.library = {
   fprintf__deps: ['fwrite', '_formatString'],
   fprintf: function(stream, format, varargs) {
 #if USE_PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_FPRINTF') }}}, stream, format, varargs);
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_xprintf_varargs({{{ cDefine('EM_PROXIED_FPRINTF') }}}, stream, format, varargs);
 #endif
     // int fprintf(FILE *restrict stream, const char *restrict format, ...);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
@@ -2797,7 +2797,7 @@ LibraryManager.library = {
   printf__deps: ['fprintf'],
   printf: function(format, varargs) {
 #if USE_PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_PRINTF') }}}, format, varargs);
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_xprintf_varargs({{{ cDefine('EM_PROXIED_PRINTF') }}}, 0, format, varargs);
 #endif
     // int printf(const char *restrict format, ...);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
@@ -2816,7 +2816,7 @@ LibraryManager.library = {
   dprintf__deps: ['_formatString', 'write'],
   dprintf: function(fd, format, varargs) {
 #if USE_PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_DPRINTF') }}}, fd, format, varargs);
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_xprintf_varargs({{{ cDefine('EM_PROXIED_DPRINTF') }}}, fd, format, varargs);
 #endif
     var result = __formatString(format, varargs);
     var stack = Runtime.stackSave();
