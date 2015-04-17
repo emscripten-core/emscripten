@@ -211,16 +211,6 @@ var FUNCTION_POINTER_ALIGNMENT = 2; // Byte alignment of function pointers - we 
 
 var ASM_HEAP_LOG = 0; // Simple heap logging, like SAFE_HEAP_LOG but cheaper, and in asm.js
 
-var CORRUPTION_CHECK = 0; // When enabled, will emit a buffer area at the beginning and
-                          // end of each allocation on the heap, filled with canary
-                          // values that can be checked later. Corruption is checked for
-                          // at the end of each at each free() (see jsifier to add more, and you
-                          // can add more manual checks by calling CorruptionChecker.checkAll).
-                          // 0 means not enabled, higher values mean the size of the
-                          // buffer areas as a multiple of the allocated area (so
-                          // 1 means 100%, or buffer areas equal to allocated area,
-                          // both before and after). This must be an integer.
-
 var LABEL_DEBUG = 0; // 1: Print out functions as we enter them
                      // 2: Also print out each label as we enter it
 var LABEL_FUNCTION_FILTERS = []; // Filters for function label debug.

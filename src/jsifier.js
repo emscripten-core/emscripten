@@ -417,10 +417,6 @@ function JSify(data, functionsOnly) {
       print('var i64Math = null;');
     }
 
-    if (CORRUPTION_CHECK) {
-      assert(!ASM_JS, 'corruption checker is not compatible with asm.js');
-      print(processMacros(read('corruptionCheck.js')));
-    }
     if (HEADLESS) {
       print('if (!ENVIRONMENT_IS_WEB) {');
       print(read('headlessCanvas.js'));
