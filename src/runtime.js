@@ -32,7 +32,7 @@ var RuntimeGenerator = {
 
   stackEnter: function(initial, force) {
     if (initial === 0 && SKIP_STACK_IN_SMALL && !force) return '';
-    var ret = 'var sp=' + (ASM_JS ? '0;sp=' : '') + 'STACKTOP';
+    var ret = 'var sp=0;sp=STACKTOP';
     if (initial > 0) ret += ';STACKTOP=(STACKTOP+' + initial + ')|0';
     assert(initial % Runtime.STACK_ALIGN == 0);
     if (ASSERTIONS && Runtime.STACK_ALIGN == 4) {
@@ -46,11 +46,7 @@ var RuntimeGenerator = {
 
   stackExit: function(initial, force) {
     if (initial === 0 && SKIP_STACK_IN_SMALL && !force) return '';
-    var ret = '';
-    if (SAFE_HEAP && !ASM_JS) {
-      ret += 'var i = sp; while ((i|0) < (STACKTOP|0)) { SAFE_HEAP_CLEAR(i|0); i = (i+1)|0 }';
-    }
-    return ret += 'STACKTOP=sp';
+    return 'STACKTOP=sp';
   },
 
   // An allocation that cannot normally be free'd (except through sbrk, which once
@@ -361,37 +357,26 @@ var Runtime = {
 #if ASSERTIONS
       assert(args.length == sig.length-1);
 #endif
-#if ASM_JS
       if (!args.splice) args = Array.prototype.slice.call(args);
       args.splice(0, 0, ptr);
 #if ASSERTIONS
       assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
 #endif
       return Module['dynCall_' + sig].apply(null, args);
-#else
-      return FUNCTION_TABLE[ptr].apply(null, args);
-#endif
     } else {
 #if ASSERTIONS
       assert(sig.length == 1);
 #endif
-#if ASM_JS
 #if ASSERTIONS
       assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
 #endif
       return Module['dynCall_' + sig].call(null, ptr);
-#else
-      return FUNCTION_TABLE[ptr]();
-#endif
     }
   },
 
-#if ASM_JS
   functionPointers: new Array(RESERVED_FUNCTION_POINTERS),
-#endif
 
   addFunction: function(func) {
-#if ASM_JS
     for (var i = 0; i < Runtime.functionPointers.length; i++) {
       if (!Runtime.functionPointers[i]) {
         Runtime.functionPointers[i] = func;
@@ -399,23 +384,10 @@ var Runtime = {
       }
     }
     throw 'Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.';
-#else
-    var table = FUNCTION_TABLE;
-    var ret = table.length;
-    assert(ret % {{{ FUNCTION_POINTER_ALIGNMENT }}} === 0);
-    table.push(func);
-    for (var i = 0; i < {{{ FUNCTION_POINTER_ALIGNMENT }}}-1; i++) table.push(0);
-    return ret;
-#endif
   },
 
   removeFunction: function(index) {
-#if ASM_JS
     Runtime.functionPointers[(index-{{{ FUNCTION_POINTER_ALIGNMENT }}})/{{{ FUNCTION_POINTER_ALIGNMENT }}}] = null;
-#else
-    var table = FUNCTION_TABLE;
-    table[index] = null;
-#endif
   },
 
   asmConsts: [],
