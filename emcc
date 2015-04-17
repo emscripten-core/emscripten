@@ -55,9 +55,9 @@ from tools.response_file import read_response_file
 
 # endings = dot + a suffix, safe to test by  filename.endswith(endings)
 C_ENDINGS = ('.c', '.C')
-CXX_ENDINGS = ('.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.CC', '.C++')
-OBJC_ENDINGS = ('.m',)
-OBJCXX_ENDINGS = ('.mm',)
+CXX_ENDINGS = ('.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.CC', '.C++', '.i', '.ii')
+OBJC_ENDINGS = ('.m', '.mi')
+OBJCXX_ENDINGS = ('.mm', '.mii')
 SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS
 BITCODE_ENDINGS = ('.bc', '.o', '.obj')
 DYNAMICLIB_ENDINGS = ('.dylib', '.so') # Windows .dll suffix is not included in this list, since those are never linked to directly on the command line.

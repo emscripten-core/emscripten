@@ -482,7 +482,8 @@ f.close()
       assert process.returncode is 0, 'User should be able to specify custom -std= on the command line!'
 
   def test_odd_suffixes(self):
-    for suffix in ['CPP', 'c++', 'C++', 'cxx', 'CXX', 'cc', 'CC']:
+    for suffix in ['CPP', 'c++', 'C++', 'cxx', 'CXX', 'cc', 'CC', 'i', 'ii']:
+      self.clear()
       print suffix
       shutil.copyfile(path_from_root('tests', 'hello_world.cpp'), 'test.' + suffix)
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'test.' + suffix)]).communicate()
