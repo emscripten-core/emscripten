@@ -582,7 +582,6 @@ var EMTERPRETIFY_ADVISE = 0; // Performs a static analysis to suggest which func
                              // when you use the list, it might not work.
 
 var RUNNING_JS_OPTS = 0; // whether js opts will be run, after the main compiler
-var RUNNING_FASTCOMP = 1; // whether we are running the fastcomp backend
 var BOOTSTRAPPING_STRUCT_INFO = 0; // whether we are in the generate struct_info bootstrap phase
 
 var COMPILER_ASSERTIONS = 0; // costly (slow) compile-time assertions
