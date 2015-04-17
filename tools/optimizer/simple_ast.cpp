@@ -62,7 +62,7 @@ void dump(const char *str, Ref node, bool pretty) {
 
 struct TraverseInfo {
   TraverseInfo() {}
-  TraverseInfo(Ref node, int index) : node(node), index(index) {}
+  TraverseInfo(Ref node) : node(node), index(0) {}
   Ref node;
   int index;
 };
@@ -123,7 +123,7 @@ void traversePre(Ref node, std::function<void (Ref)> visit) {
   if (!visitable(node)) return;
   visit(node);
   StackedStack<TraverseInfo, TRAV_STACK> stack;
-  stack.push_back(TraverseInfo(node, 0));
+  stack.push_back(TraverseInfo(node));
   while (stack.size() > 0) {
     TraverseInfo& top = stack.back();
     if (top.index < (int)top.node->size()) {
@@ -131,7 +131,7 @@ void traversePre(Ref node, std::function<void (Ref)> visit) {
       top.index++;
       if (visitable(sub)) {
         visit(sub);
-        stack.push_back(TraverseInfo(sub, 0));
+        stack.push_back(TraverseInfo(sub));
       }
     } else {
       stack.pop_back();
@@ -144,7 +144,7 @@ void traversePrePost(Ref node, std::function<void (Ref)> visitPre, std::function
   if (!visitable(node)) return;
   visitPre(node);
   StackedStack<TraverseInfo, TRAV_STACK> stack;
-  stack.push_back(TraverseInfo(node, 0));
+  stack.push_back(TraverseInfo(node));
   while (stack.size() > 0) {
     TraverseInfo& top = stack.back();
     if (top.index < (int)top.node->size()) {
@@ -152,7 +152,7 @@ void traversePrePost(Ref node, std::function<void (Ref)> visitPre, std::function
       top.index++;
       if (visitable(sub)) {
         visitPre(sub);
-        stack.push_back(TraverseInfo(sub, 0));
+        stack.push_back(TraverseInfo(sub));
       }
     } else {
       visitPost(top.node);
@@ -166,7 +166,7 @@ void traversePrePostConditional(Ref node, std::function<bool (Ref)> visitPre, st
   if (!visitable(node)) return;
   if (!visitPre(node)) return;
   StackedStack<TraverseInfo, TRAV_STACK> stack;
-  stack.push_back(TraverseInfo(node, 0));
+  stack.push_back(TraverseInfo(node));
   while (stack.size() > 0) {
     TraverseInfo& top = stack.back();
     if (top.index < (int)top.node->size()) {
@@ -174,7 +174,7 @@ void traversePrePostConditional(Ref node, std::function<bool (Ref)> visitPre, st
       top.index++;
       if (visitable(sub)) {
         if (visitPre(sub)) {
-          stack.push_back(TraverseInfo(sub, 0));
+          stack.push_back(TraverseInfo(sub));
         }
       }
     } else {
