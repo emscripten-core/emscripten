@@ -3350,6 +3350,7 @@ void registerizeHarder(Ref ast) {
             if (block->lastKillLoc[otherName] < block->firstDeadLoc[name]) {
               jvar.conf.insert(otherName);
               getJunctionVariable(otherName).conf.insert(name);
+              break;
             }
           }
         }
