@@ -238,7 +238,7 @@ var Types = {
   preciseI64MathUsed: (PRECISE_I64_MATH == 2)
 };
 
-var firstTableIndex = FUNCTION_POINTER_ALIGNMENT * ((ASM_JS ? RESERVED_FUNCTION_POINTERS : 0) + 1);
+var firstTableIndex = FUNCTION_POINTER_ALIGNMENT * RESERVED_FUNCTION_POINTERS + 1;
 
 var Functions = {
   // All functions that will be implemented in this file. Maps id to signature
@@ -316,19 +316,17 @@ var Functions = {
   },
 
   getTable: function(sig) {
-    return ASM_JS ? 'FUNCTION_TABLE_' + sig : 'FUNCTION_TABLE';
+    return 'FUNCTION_TABLE_' + sig
   },
 
   // Generate code for function indexing
   generateIndexing: function() {
     var tables = { pre: '' };
-    if (ASM_JS) {
-      keys(Functions.neededTables).forEach(function(sig) { // add some default signatures that are used in the library
-        tables[sig] = zeros(firstTableIndex);
-      });
-    }
+    keys(Functions.neededTables).forEach(function(sig) { // add some default signatures that are used in the library
+      tables[sig] = zeros(firstTableIndex);
+    });
     for (var ident in this.indexedFunctions) {
-      var sig = ASM_JS ? Functions.implementedFunctions[ident] || Functions.unimplementedFunctions[ident] || LibraryManager.library[ident.substr(1) + '__sig'] : 'x';
+      var sig = Functions.implementedFunctions[ident] || Functions.unimplementedFunctions[ident] || LibraryManager.library[ident.substr(1) + '__sig'];
       assert(sig, ident);
       if (!tables[sig]) tables[sig] = zeros(firstTableIndex);
       var index = this.indexedFunctions[ident];
@@ -358,43 +356,41 @@ var Functions = {
             table[i] = (libName.indexOf('Math_') < 0 ? '_' : '') + libName;
           }
         }
-        if (ASM_JS) {
-          var curr = table[i];
-          if (curr && curr != '0' && !Functions.implementedFunctions[curr]) {
-            var short = toNiceIdent(curr); // fix Math.* to Math_*
-            curr = t + '_' + short; // libfuncs can alias with different sigs, wrap each separately
-            // This is a library function, we can't just put it in the function table, need a wrapper
-            if (!wrapped[curr]) {
-              var args = '', arg_coercions = '', call = short + '(', retPre = '', retPost = '';
-              if (t[0] != 'v') {
-                var temp = asmFFICoercion('X', Functions.getSignatureType(t[0])).split('X');
-                retPre = 'return ' + temp[0];
-                retPost = temp[1];
-              }
-              for (var j = 1; j < t.length; j++) {
-                args += (j > 1 ? ',' : '') + 'a' + j;
-                var type = Functions.getSignatureType(t[j]);
-                arg_coercions += 'a' + j + '=' + asmCoercion('a' + j, type) + ';';
-                call += (j > 1 ? ',' : '') + asmCoercion('a' + j, type === 'float' ? 'double' : type); // ffi arguments must be doubles if they are floats
-              }
-              call += ')';
-              if (short == '_setjmp') printErr('WARNING: setjmp used via a function pointer. If this is for libc setjmp (not something of your own with the same name), it will break things');
-              tables.pre += 'function ' + curr + '__wrapper(' + args + ') { ' + arg_coercions + ' ; ' + retPre + call + retPost + ' }\n';
-              wrapped[curr] = 1;
+        var curr = table[i];
+        if (curr && curr != '0' && !Functions.implementedFunctions[curr]) {
+          var short = toNiceIdent(curr); // fix Math.* to Math_*
+          curr = t + '_' + short; // libfuncs can alias with different sigs, wrap each separately
+          // This is a library function, we can't just put it in the function table, need a wrapper
+          if (!wrapped[curr]) {
+            var args = '', arg_coercions = '', call = short + '(', retPre = '', retPost = '';
+            if (t[0] != 'v') {
+              var temp = asmFFICoercion('X', Functions.getSignatureType(t[0])).split('X');
+              retPre = 'return ' + temp[0];
+              retPost = temp[1];
             }
-            table[i] = curr + '__wrapper';
+            for (var j = 1; j < t.length; j++) {
+              args += (j > 1 ? ',' : '') + 'a' + j;
+              var type = Functions.getSignatureType(t[j]);
+              arg_coercions += 'a' + j + '=' + asmCoercion('a' + j, type) + ';';
+              call += (j > 1 ? ',' : '') + asmCoercion('a' + j, type === 'float' ? 'double' : type); // ffi arguments must be doubles if they are floats
+            }
+            call += ')';
+            if (short == '_setjmp') printErr('WARNING: setjmp used via a function pointer. If this is for libc setjmp (not something of your own with the same name), it will break things');
+            tables.pre += 'function ' + curr + '__wrapper(' + args + ') { ' + arg_coercions + ' ; ' + retPre + call + retPost + ' }\n';
+            wrapped[curr] = 1;
           }
+          table[i] = curr + '__wrapper';
         }
       }
       maxTable = Math.max(maxTable, table.length);
     }
-    if (ASM_JS) maxTable = ceilPowerOfTwo(maxTable);
+    maxTable = ceilPowerOfTwo(maxTable);
     for (var t in tables) {
       if (t == 'pre') continue;
       var table = tables[t];
       // asm function table mask must be power of two, and non-asm must be aligned
       // if nonaliasing, then standardize function table size, to avoid aliasing pointers through the &M mask (in a small table using a big index)
-      var fullSize = ASM_JS ? (ALIASING_FUNCTION_POINTERS ? ceilPowerOfTwo(table.length) : maxTable) : ((table.length+FUNCTION_POINTER_ALIGNMENT-1)&-FUNCTION_POINTER_ALIGNMENT);
+      var fullSize = ALIASING_FUNCTION_POINTERS ? ceilPowerOfTwo(table.length) : maxTable;
       for (var i = table.length; i < fullSize; i++) {
         table[i] = 0;
       }
@@ -409,9 +405,6 @@ var Functions = {
           tables[t] += 'var FUNCTION_TABLE_NAMES = ' + JSON.stringify(table).replace(/\n/g, '').replace(/,0/g, ',0\n') + ';\n';
         }
       }
-    }
-    if (!generated && !ASM_JS) {
-      tables['x'] = 'var FUNCTION_TABLE = [0, 0];\n'; // default empty table
     }
     Functions.tables = tables;
   }
@@ -575,7 +568,7 @@ var PassManager = {
         Functions: {
           blockAddresses: Functions.blockAddresses,
           indexedFunctions: Functions.indexedFunctions,
-          implementedFunctions: ASM_JS ? Functions.implementedFunctions : [],
+          implementedFunctions: Functions.implementedFunctions,
           unimplementedFunctions: Functions.unimplementedFunctions,
           neededTables: Functions.neededTables
         }

@@ -548,7 +548,7 @@ function splitI64(value, floatConversion) {
   // For negatives, we need to ensure a -1 if the value is overall negative, even if not significant negative component
 
   var lowInput = legalizedI64s ? value : 'VALUE';
-  if (floatConversion && ASM_JS) lowInput = asmFloatToInt(lowInput);
+  if (floatConversion) lowInput = asmFloatToInt(lowInput);
   var low = lowInput + '>>>0';
   var high = makeInlineCalculation(
     asmCoercion('Math_abs(VALUE)', 'double') + ' >= ' + asmEnsureFloat('1', 'double') + ' ? ' +
@@ -903,11 +903,6 @@ function getHeapOffset(offset, type, forceAsm) {
   }
 }
 
-function makeVarDef(js) {
-  if (!ASM_JS) js = 'var ' + js;
-  return js;
-}
-
 function ensureDot(value) {
   value = value.toString();
   // if already dotted, or Infinity or NaN, nothing to do here
@@ -920,7 +915,6 @@ function ensureDot(value) {
 }
 
 function asmEnsureFloat(value, type) { // ensures that a float type has either 5.5 (clearly a float) or +5 (float due to asm coercion)
-  if (!ASM_JS) return value;
   if (!isNumber(value)) return value;
   if (PRECISE_F32 && type === 'float') {
     // normally ok to just emit Math_fround(0), but if the constant is large we may need a .0 (if it can't fit in an int)
@@ -945,7 +939,6 @@ function asmInitializer(type) {
 }
 
 function asmCoercion(value, type, signedness) {
-  if (!ASM_JS) return value;
   if (type == 'void') {
     return value;
   } else if (type in Compiletime.FLOAT_TYPES) {
@@ -1053,15 +1046,12 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
     var printType = type;
     if (printType !== 'null' && printType[0] !== '#') printType = '"' + safeQuote(printType) + '"';
     if (printType[0] === '#') printType = printType.substr(1);
-    if (ASM_JS) {
-      if (!ignore && phase !== 'funcs') return asmCoercion('SAFE_HEAP_LOAD(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + ((type in Compiletime.FLOAT_TYPES)|0) + ', ' + (!!unsigned+0) + ')', type);
-      // else fall through
-    } else {
-      return asmCoercion('SAFE_HEAP_LOAD(' + offset + ', ' + (ASM_JS ? 0 : printType) + ', ' + (!!unsigned+0) + ', ' + ((!checkSafeHeap() || ignore)|0) + ')', type);
+    if (!ignore && phase !== 'funcs') {
+      return asmCoercion('SAFE_HEAP_LOAD(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + ((type in Compiletime.FLOAT_TYPES)|0) + ', ' + (!!unsigned+0) + ')', type);
     }
   }
   var ret = makeGetSlabs(ptr, type, false, unsigned)[0] + '[' + getHeapOffset(offset, type, forceAsm) + ']';
-  if (ASM_JS && (phase == 'funcs' || forceAsm)) {
+  if (phase == 'funcs' || forceAsm) {
     ret = asmCoercion(ret, type);
   }
   if (ASM_HEAP_LOG) {
@@ -1165,11 +1155,8 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
     var printType = type;
     if (printType !== 'null' && printType[0] !== '#') printType = '"' + safeQuote(printType) + '"';
     if (printType[0] === '#') printType = printType.substr(1);
-    if (ASM_JS) {
-      if (!ignore && phase !== 'funcs') return asmCoercion('SAFE_HEAP_STORE(' + asmCoercion(offset, 'i32') + ', ' + asmCoercion(value, type) + ', ' + Runtime.getNativeTypeSize(type) + ', ' + ((type in Compiletime.FLOAT_TYPES)|0) + ')', type);
-      // else fall through
-    } else {
-      return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ', ' + (ASM_JS ? 0 : printType) + ', ' + ((!checkSafeHeap() || ignore)|0) + ')';
+    if (!ignore && phase !== 'funcs') {
+      return asmCoercion('SAFE_HEAP_STORE(' + asmCoercion(offset, 'i32') + ', ' + asmCoercion(value, type) + ', ' + Runtime.getNativeTypeSize(type) + ', ' + ((type in Compiletime.FLOAT_TYPES)|0) + ')', type);
     }
   }
   return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + getHeapOffset(offset, type, forceAsm) + ']=' + value }).join(sep);
@@ -1231,10 +1218,8 @@ function makeCopyValues(dest, src, num, type, modifier, align, sep) {
     return '(_memcpy(' + dest + ', ' + src + ', ' + num + ')|0)';
   }
   num = parseInt(num);
-  if (ASM_JS) {
-    dest = stripCorrections(dest); // remove corrections, since we will be correcting after we add anyhow,
-    src = stripCorrections(src);   // and in the heap assignment expression
-  }
+  dest = stripCorrections(dest); // remove corrections, since we will be correcting after we add anyhow,
+  src = stripCorrections(src);   // and in the heap assignment expression
   var ret = [];
   [4, 2, 1].forEach(function(possibleAlign) {
     if (num == 0) return;
@@ -1494,8 +1479,7 @@ function makeStructuralReturn(values, inAsm) {
   var i = -1;
   return 'return ' + asmCoercion(values.slice(1).map(function(value) {
     i++;
-    return ASM_JS ? (inAsm ? 'tempRet' + i + ' = ' + value : 'asm["setTempRet' + i + '"](' + value + ')')
-                  : 'tempRet' + i + ' = ' + value;
+    return inAsm ? 'tempRet' + i + ' = ' + value : 'asm["setTempRet' + i + '"](' + value + ')';
   }).concat([values[0]]).join(','), 'i32');
 }
 

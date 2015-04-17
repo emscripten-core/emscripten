@@ -26,112 +26,6 @@ Module.print = Module.printErr = function(){};
 #endif
 
 #if SAFE_HEAP
-#if ASM_JS == 0
-//========================================
-// Debugging tools - Heap
-//========================================
-var HEAP_WATCHED = [];
-var HEAP_HISTORY = [];
-function SAFE_HEAP_CLEAR(dest) {
-#if SAFE_HEAP_LOG
-  Module.print('SAFE_HEAP clear: ' + dest);
-#endif
-  HEAP_HISTORY[dest] = undefined;
-}
-var SAFE_HEAP_ERRORS = 0;
-var ACCEPTABLE_SAFE_HEAP_ERRORS = 0;
-
-function SAFE_HEAP_ACCESS(dest, type, store, ignore, storeValue) {
-  //if (dest === A_NUMBER) Module.print ([dest, type, store, ignore, storeValue] + ' ' + stackTrace()); // Something like this may be useful, in debugging
-
-  if (dest <= 0) abort('segmentation fault ' + (store ? ('storing value ' + storeValue) : 'loading') + ' type ' + type + ' at address ' + dest);
-
-  // When using typed arrays, reads over the top of TOTAL_MEMORY will fail silently, so we must
-  // correct that by growing TOTAL_MEMORY as needed. Without typed arrays, memory is a normal
-  // JS array so it will work (potentially slowly, depending on the engine).
-  if (!ignore && dest >= Math.max(DYNAMICTOP, STATICTOP)) abort('segmentation fault ' + (store ? ('storing value ' + storeValue) : 'loading') + ' type ' + type + ' at address ' + dest + '. Heap ends at address ' + Math.max(DYNAMICTOP, STATICTOP));
-  assert(ignore || DYNAMICTOP <= TOTAL_MEMORY);
-  return; // It is legitimate to violate the load-store assumption in this case
-}
-
-function SAFE_HEAP_STORE(dest, value, type, ignore) {
-#if SAFE_HEAP_LOG
-  Module.print('SAFE_HEAP store: ' + [dest, type, value, ignore]);
-#endif
-
-  if (!ignore && !value && (value === null || value === undefined)) {
-    throw('Warning: Writing an invalid value of ' + JSON.stringify(value) + ' at ' + dest + ' :: ' + stackTrace() + '\n');
-  }
-  //if (!ignore && (value === Infinity || value === -Infinity || isNaN(value))) throw [value, typeof value, stackTrace()];
-
-  SAFE_HEAP_ACCESS(dest, type, true, ignore, value);
-  if (dest in HEAP_WATCHED) {
-    Module.print((new Error()).stack);
-    throw "Bad store!" + dest;
-  }
-
-  // Check alignment
-  switch(type) {
-    case 'i16': assert(dest % 2 == 0); break;
-    case 'i32': assert(dest % 4 == 0); break;
-    case 'i64': assert(dest % 8 == 0); break;
-    case 'float': assert(dest % 4 == 0); break;
-#if DOUBLE_MODE == 1
-    case 'double': assert(dest % 4 == 0); break;
-#else
-    case 'double': assert(dest % 4 == 0); break;
-#endif
-  }
-
-  setValue(dest, value, type, 1);
-}
-
-function SAFE_HEAP_LOAD(dest, type, unsigned, ignore) {
-  SAFE_HEAP_ACCESS(dest, type, false, ignore);
-
-#if SAFE_HEAP_LOG
-    Module.print('SAFE_HEAP load: ' + [dest, type, getValue(dest, type, 1), ignore]);
-#endif
-
-  // Check alignment
-  switch(type) {
-    case 'i16': assert(dest % 2 == 0); break;
-    case 'i32': assert(dest % 4 == 0); break;
-    case 'i64': assert(dest % 8 == 0); break;
-    case 'float': assert(dest % 4 == 0); break;
-#if DOUBLE_MODE == 1
-    case 'double': assert(dest % 4 == 0); break;
-#else
-    case 'double': assert(dest % 4 == 0); break;
-#endif
-  }
-
-  var ret = getValue(dest, type, 1);
-  if (unsigned) ret = unSign(ret, parseInt(type.substr(1)), 1);
-  return ret;
-}
-
-function SAFE_HEAP_COPY_HISTORY(dest, src) {
-#if SAFE_HEAP_LOG
-  Module.print('SAFE_HEAP copy: ' + [dest, src]);
-#endif
-  HEAP_HISTORY[dest] = HEAP_HISTORY[src];
-  SAFE_HEAP_ACCESS(dest, HEAP_HISTORY[dest] || null, true, false);
-}
-
-function SAFE_HEAP_FILL_HISTORY(from, to, type) {
-#if SAFE_HEAP_LOG
-  Module.print('SAFE_HEAP fill: ' + [from, to, type]);
-#endif
-  for (var i = from; i < to; i++) {
-    HEAP_HISTORY[i] = type;
-  }
-}
-
-//==========================================
-#else
-// ASM_JS safe heap
-
 function getSafeHeapType(bytes, isFloat) {
   switch (bytes) {
     case 1: return 'i8';
@@ -178,8 +72,6 @@ function SAFE_FT_MASK(value, mask) {
   }
   return ret;
 }
-
-#endif
 #endif
 
 #if CHECK_HEAP_ALIGN
@@ -249,10 +141,6 @@ var START_TIME = Date.now();
 //========================================
 
 var __THREW__ = 0; // Used in checking for thrown exceptions.
-#if ASM_JS == 0
-var setjmpId = 1; // Used in setjmp/longjmp
-var setjmpLabels = {};
-#endif
 
 var ABORT = false; // whether we are quitting the application. no code should run after this. set in exit() and abort()
 var EXITSTATUS = 0;

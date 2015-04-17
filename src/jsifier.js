@@ -157,7 +157,7 @@ function JSify(data, functionsOnly) {
         }
         // In asm, we need to know about library functions. If there is a target, though, then no
         // need to consider this a library function - we will call directly to it anyhow
-        if (ASM_JS && !redirectedIdent && (typeof target == 'function' || /Math_\w+/.exec(snippet))) {
+        if (!redirectedIdent && (typeof target == 'function' || /Math_\w+/.exec(snippet))) {
           Functions.libraryFunctions[finalName] = 1;
         }
       } else if (typeof snippet === 'object') {
@@ -165,7 +165,7 @@ function JSify(data, functionsOnly) {
       } else if (typeof snippet === 'function') {
         isFunction = true;
         snippet = processLibraryFunction(snippet, ident, finalName);
-        if (ASM_JS) Functions.libraryFunctions[finalName] = 1;
+        Functions.libraryFunctions[finalName] = 1;
       }
 
       var postsetId = ident + '__postset';
@@ -181,31 +181,27 @@ function JSify(data, functionsOnly) {
       if (redirectedIdent) {
         deps = deps.concat(LibraryManager.library[redirectedIdent + '__deps'] || []);
       }
-      if (ASM_JS) {
-        // In asm, dependencies implemented in C might be needed by JS library functions.
-        // We don't know yet if they are implemented in C or not. To be safe, export such
-        // special cases.
-        [LIBRARY_DEPS_TO_AUTOEXPORT].forEach(function(special) {
-          deps.forEach(function(dep) {
-            if (dep == special && !EXPORTED_FUNCTIONS[dep]) {
-              EXPORTED_FUNCTIONS[dep] = 1;
-            }
-          });
+      // In asm, dependencies implemented in C might be needed by JS library functions.
+      // We don't know yet if they are implemented in C or not. To be safe, export such
+      // special cases.
+      [LIBRARY_DEPS_TO_AUTOEXPORT].forEach(function(special) {
+        deps.forEach(function(dep) {
+          if (dep == special && !EXPORTED_FUNCTIONS[dep]) {
+            EXPORTED_FUNCTIONS[dep] = 1;
+          }
         });
-      }
+      });
       if (VERBOSE) printErr('adding ' + finalName + ' and deps ' + deps + ' : ' + (snippet + '').substr(0, 40));
       var depsText = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
       var contentText = isFunction ? snippet : ('var ' + finalName + '=' + snippet + ';');
-      if (ASM_JS) {
-        var sig = LibraryManager.library[ident + '__sig'];
-        if (isFunction && sig && LibraryManager.library[ident + '__asm']) {
-          // asm library function, add it as generated code alongside the generated code
-          Functions.implementedFunctions[finalName] = sig;
-          asmLibraryFunctions.push(contentText);
-          contentText = ' ';
-          EXPORTED_FUNCTIONS[finalName] = 1;
-          Functions.libraryFunctions[finalName] = 2;
-        }
+      var sig = LibraryManager.library[ident + '__sig'];
+      if (isFunction && sig && LibraryManager.library[ident + '__asm']) {
+        // asm library function, add it as generated code alongside the generated code
+        Functions.implementedFunctions[finalName] = sig;
+        asmLibraryFunctions.push(contentText);
+        contentText = ' ';
+        EXPORTED_FUNCTIONS[finalName] = 1;
+        Functions.libraryFunctions[finalName] = 2;
       }
       if (SIDE_MODULE) return ';'; // we import into the side module js library stuff from the outside parent 
       if ((phase == 'glue') &&
@@ -421,10 +417,6 @@ function JSify(data, functionsOnly) {
       print('var i64Math = null;');
     }
 
-    if (CORRUPTION_CHECK) {
-      assert(!ASM_JS, 'corruption checker is not compatible with asm.js');
-      print(processMacros(read('corruptionCheck.js')));
-    }
     if (HEADLESS) {
       print('if (!ENVIRONMENT_IS_WEB) {');
       print(read('headlessCanvas.js'));

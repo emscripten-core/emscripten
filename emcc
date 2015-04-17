@@ -874,10 +874,12 @@ try:
   # Apply optimization level settings
   shared.Settings.apply_opt_level(opt_level, noisy=True)
 
-  fastcomp = os.environ.get('EMCC_FAST_COMPILER') != '0'
-  if fastcomp:
-    # Set ASM_JS default here so that we can override it from the command line.
-    shared.Settings.ASM_JS = 1 if opt_level > 0 else 2
+  if os.environ.get('EMCC_FAST_COMPILER') == '0':
+    logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
+    sys.exit(1)
+
+  # Set ASM_JS default here so that we can override it from the command line.
+  shared.Settings.ASM_JS = 1 if opt_level > 0 else 2
 
   pre_fastcomp_opts = []
 
@@ -895,63 +897,54 @@ try:
     if key == 'EXPORTED_FUNCTIONS':
       shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = shared.Settings.EXPORTED_FUNCTIONS[:] # used for warnings in emscripten.py
 
-  if fastcomp:
-    try:
-      assert shared.Settings.ASM_JS > 0, 'ASM_JS must be enabled in fastcomp'
-      assert shared.Settings.UNALIGNED_MEMORY == 0, 'forced unaligned memory not supported in fastcomp'
-      assert shared.Settings.FORCE_ALIGNED_MEMORY == 0, 'forced aligned memory is not supported in fastcomp'
-      assert shared.Settings.CHECK_HEAP_ALIGN == 0, 'check heap align not supported in fastcomp - use SAFE_HEAP instead'
-      assert shared.Settings.SAFE_DYNCALLS == 0, 'safe dyncalls not supported in fastcomp'
-      assert shared.Settings.ASM_HEAP_LOG == 0, 'asm heap log not supported in fastcomp'
-      assert shared.Settings.LABEL_DEBUG == 0, 'label debug not supported in fastcomp'
-      assert shared.Settings.EXECUTION_TIMEOUT == -1, 'execution timeout not supported in fastcomp'
-      assert shared.Settings.NAMED_GLOBALS == 0, 'named globals not supported in fastcomp'
-      assert shared.Settings.PGO == 0, 'pgo not supported in fastcomp'
-      assert shared.Settings.TARGET_ASMJS_UNKNOWN_EMSCRIPTEN == 1, 'fastcomp requires asmjs-unknown-emscripten'
-      assert shared.Settings.USE_TYPED_ARRAYS == 2, 'altering USE_TYPED_ARRAYS is not supported'
-      assert shared.Settings.QUANTUM_SIZE == 4, 'altering the QUANTUM_SIZE is not supported'
-      assert not split_js_file, '--split-js is deprecated and not supported in fastcomp'
-      assert shared.Settings.INIT_HEAP == 0, 'HEAP_INIT is not supported in fastcomp (and should never be needed except for debugging)'
-      assert not shared.Settings.RUNTIME_TYPE_INFO, 'RUNTIME_TYPE_INFO is not supported in fastcomp'
-      assert not shared.Settings.CORRUPTION_CHECK, 'CORRUPTION_CHECK is not supported in asm.js mode, which is what fastcomp can emit (you can use non-asm.js mode in non-fastcomp)'
-      assert not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE, 'Linking modules is not supported in fastcomp'
-      assert not shared.Settings.DLOPEN_SUPPORT, 'dlopen() is not supported yet in fastcomp'
-    except Exception, e:
-      logging.error('Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
-      raise e
+  try:
+    assert shared.Settings.ASM_JS > 0, 'ASM_JS must be enabled in fastcomp'
+    assert shared.Settings.UNALIGNED_MEMORY == 0, 'forced unaligned memory not supported in fastcomp'
+    assert shared.Settings.FORCE_ALIGNED_MEMORY == 0, 'forced aligned memory is not supported in fastcomp'
+    assert shared.Settings.CHECK_HEAP_ALIGN == 0, 'check heap align not supported in fastcomp - use SAFE_HEAP instead'
+    assert shared.Settings.SAFE_DYNCALLS == 0, 'safe dyncalls not supported in fastcomp'
+    assert shared.Settings.ASM_HEAP_LOG == 0, 'asm heap log not supported in fastcomp'
+    assert shared.Settings.LABEL_DEBUG == 0, 'label debug not supported in fastcomp'
+    assert shared.Settings.EXECUTION_TIMEOUT == -1, 'execution timeout not supported in fastcomp'
+    assert shared.Settings.NAMED_GLOBALS == 0, 'named globals not supported in fastcomp'
+    assert shared.Settings.PGO == 0, 'pgo not supported in fastcomp'
+    assert shared.Settings.TARGET_ASMJS_UNKNOWN_EMSCRIPTEN == 1, 'fastcomp requires asmjs-unknown-emscripten'
+    assert shared.Settings.USE_TYPED_ARRAYS == 2, 'altering USE_TYPED_ARRAYS is not supported'
+    assert shared.Settings.QUANTUM_SIZE == 4, 'altering the QUANTUM_SIZE is not supported'
+    assert not split_js_file, '--split-js is deprecated and not supported in fastcomp'
+    assert shared.Settings.INIT_HEAP == 0, 'HEAP_INIT is not supported in fastcomp (and should never be needed except for debugging)'
+    assert not shared.Settings.RUNTIME_TYPE_INFO, 'RUNTIME_TYPE_INFO is not supported in fastcomp'
+    assert not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE, 'Linking modules is not supported in fastcomp'
+    assert not shared.Settings.DLOPEN_SUPPORT, 'dlopen() is not supported yet in fastcomp'
+  except Exception, e:
+    logging.error('Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
+    raise e
 
-    fastcomp_opts = []
-    if shared.Settings.NO_EXIT_RUNTIME:
-      pre_fastcomp_opts += ['-emscripten-no-exit-runtime']
-      if not llvm_lto: fastcomp_opts += ['-globalopt', '-globaldce']
-    fastcomp_opts += ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt']
-    if shared.Settings.DISABLE_EXCEPTION_CATCHING != 1:
-      fastcomp_opts += ['-enable-emscripten-cxx-exceptions']
-      if shared.Settings.DISABLE_EXCEPTION_CATCHING == 2:
-        fastcomp_opts += ['-emscripten-cxx-exceptions-whitelist=' + ','.join(shared.Settings.EXCEPTION_CATCHING_WHITELIST or ['fake'])]
-    if shared.Settings.ASYNCIFY:
-      fastcomp_opts += ['-emscripten-asyncify']
-      fastcomp_opts += ['-emscripten-asyncify-functions=' + ','.join(shared.Settings.ASYNCIFY_FUNCTIONS)]
-      fastcomp_opts += ['-emscripten-asyncify-whitelist=' + ','.join(shared.Settings.ASYNCIFY_WHITELIST)]
+  fastcomp_opts = []
+  if shared.Settings.NO_EXIT_RUNTIME:
+    pre_fastcomp_opts += ['-emscripten-no-exit-runtime']
+    if not llvm_lto: fastcomp_opts += ['-globalopt', '-globaldce']
+  fastcomp_opts += ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt']
+  if shared.Settings.DISABLE_EXCEPTION_CATCHING != 1:
+    fastcomp_opts += ['-enable-emscripten-cxx-exceptions']
+    if shared.Settings.DISABLE_EXCEPTION_CATCHING == 2:
+      fastcomp_opts += ['-emscripten-cxx-exceptions-whitelist=' + ','.join(shared.Settings.EXCEPTION_CATCHING_WHITELIST or ['fake'])]
+  if shared.Settings.ASYNCIFY:
+    fastcomp_opts += ['-emscripten-asyncify']
+    fastcomp_opts += ['-emscripten-asyncify-functions=' + ','.join(shared.Settings.ASYNCIFY_FUNCTIONS)]
+    fastcomp_opts += ['-emscripten-asyncify-whitelist=' + ','.join(shared.Settings.ASYNCIFY_WHITELIST)]
 
-  else: # non-fastcomp
-    logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
-    sys.exit(1)
+  if shared.Settings.CORRECT_SIGNS != 1:
+    logging.warning('setting CORRECT_SIGNS to 1 for asm.js code generation')
+    shared.Settings.CORRECT_SIGNS = 1
+  if shared.Settings.CORRECT_OVERFLOWS != 1:
+    logging.warning('setting CORRECT_OVERFLOWS to 1 for asm.js code generation')
+    shared.Settings.CORRECT_OVERFLOWS = 1
+  assert not shared.Settings.PGO, 'cannot run PGO in ASM_JS mode'
 
-  if shared.Settings.ASM_JS:
-    assert opt_level >= 1 or fastcomp, 'asm.js requires -O1 or above'
-
-    if shared.Settings.CORRECT_SIGNS != 1:
-      logging.warning('setting CORRECT_SIGNS to 1 for asm.js code generation')
-      shared.Settings.CORRECT_SIGNS = 1
-    if shared.Settings.CORRECT_OVERFLOWS != 1:
-      logging.warning('setting CORRECT_OVERFLOWS to 1 for asm.js code generation')
-      shared.Settings.CORRECT_OVERFLOWS = 1
-    assert not shared.Settings.PGO, 'cannot run PGO in ASM_JS mode'
-
-    if shared.Settings.SAFE_HEAP and not js_opts:
-      js_opts = True
-      logging.warning('enabling js opts for SAFE_HEAP')
+  if shared.Settings.SAFE_HEAP and not js_opts:
+    js_opts = True
+    logging.warning('enabling js opts for SAFE_HEAP')
 
   if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2 or shared.Settings.SAFE_HEAP >= 2:
     debug_level = 4 # must keep debug info to do line-by-line operations
@@ -984,9 +977,6 @@ try:
     assert shared.Settings.ASM_JS, 'module linking requires asm.js output (-s ASM_JS=1)'
     shared.Settings.LINKABLE = 1 # TODO: add FORCE_DCE option for the brave people that do want to dce here and in side modules
     debug_level = max(debug_level, 2)
-
-  if not fastcomp and shared.Settings.ASSERTIONS and shared.Settings.ALIASING_FUNCTION_POINTERS:
-    logging.warning('ALIASING_FUNCTION_POINTERS is on, function pointer comparisons may be invalid across types')
 
   if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
     shared.Settings.ALIASING_FUNCTION_POINTERS = 0
@@ -1036,8 +1026,6 @@ try:
 
   if js_opts:
     shared.Settings.RUNNING_JS_OPTS = 1
-
-  shared.Settings.RUNNING_FASTCOMP = fastcomp
 
   shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
   shared.Settings.OPT_LEVEL = opt_level
@@ -1249,30 +1237,26 @@ try:
       # At minimum remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
       link_opts += shared.Building.get_safe_internalize() + ['-globaldce']
 
-    if (not save_bc and not fastcomp) or AUTODEBUG:
+    if AUTODEBUG:
       # let llvm opt directly emit ll, to skip writing and reading all the bitcode
       link_opts += ['-S']
       shared.Building.llvm_opt(final, link_opts, final + '.link.ll')
       final = final + '.link.ll'
       if DEBUG: save_intermediate('linktime', 'll')
     else:
-      if fastcomp and not save_bc:
+      if not save_bc:
         # Simplify LLVM bitcode for fastcomp
         link_opts = pre_fastcomp_opts + link_opts + fastcomp_opts
       shared.Building.llvm_opt(final, link_opts)
       if DEBUG: save_intermediate('linktime', 'bc')
       if save_bc:
         shutil.copyfile(final, save_bc)
-        if fastcomp:
-          shared.Building.llvm_opt(final, fastcomp_opts, final + '.adsimp.bc')
-          final += '.adsimp.bc'
-          if DEBUG: save_intermediate('adsimp', 'bc')
+        shared.Building.llvm_opt(final, fastcomp_opts, final + '.adsimp.bc')
+        final += '.adsimp.bc'
+        if DEBUG: save_intermediate('adsimp', 'bc')
 
   # Prepare .ll for Emscripten
-  if not LEAVE_INPUTS_RAW:
-    if save_bc and not fastcomp:
-      final = shared.Building.llvm_dis(final, final + '.ll')
-  else:
+  if LEAVE_INPUTS_RAW:
     assert len(input_files) == 1
   if DEBUG and save_bc: save_intermediate('ll', 'll')
 
@@ -1283,7 +1267,7 @@ try:
     if DEBUG: save_intermediate('autodebug', 'll')
 
   # Simplify bitcode after autodebug
-  if fastcomp and (AUTODEBUG or LEAVE_INPUTS_RAW):
+  if AUTODEBUG or LEAVE_INPUTS_RAW:
     shared.Building.llvm_opt(final, fastcomp_opts, final + '.adsimp.bc')
     final += '.adsimp.bc'
     if DEBUG: save_intermediate('adsimp', 'bc')
