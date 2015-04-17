@@ -3312,33 +3312,52 @@ void registerizeHarder(Ref ast) {
 
     for (size_t i = 0; i < junctions.size(); i++) {
       Junction& junc = junctions[i];
+
+      // Pre-compute the possible conflicts and links for each block rather
+      // than checking potentially impossible options for each var
+      std::unordered_map<IString, std::vector<Block*>> possibleBlockConflicts;
+      std::unordered_map<IString, std::vector<Block*>> possibleBlockLinks;
+      for (auto b : junc.outblocks) {
+        Block* block = blocks[b];
+        Junction& jSucc = junctions[block->exit];
+        for (auto name : jSucc.live) {
+          possibleBlockConflicts[name].push_back(block);
+        }
+        for (auto name_linkname : block->link) {
+          if (name_linkname.first != name_linkname.second) {
+            possibleBlockLinks[name_linkname.first].push_back(block);
+          }
+        }
+      }
+      for (auto name : junc.live) {
+        possibleBlockConflicts.erase(name);
+      }
+
       for (auto name : junc.live) {
         if (junctionVariables.count(name) == 0) initializeJunctionVariable(name);
         // It conflicts with all other names live at this junction.
         junctionVariables[name].conf.insert(junc.live.begin(), junc.live.end()); // XXX this operation is very expensive
         junctionVariables[name].conf.erase(name); // except for itself, of course
-        for (auto b : junc.outblocks) {
-          // It conflicts with any output vars of successor blocks,
-          // if they're assigned before it goes dead in that block.
-          Block* block = blocks[b];
-          Junction& jSucc = junctions[block->exit];
-          for (auto otherName : jSucc.live) {
-            if (junc.live.has(otherName)) continue;
+
+        // It conflicts with any output vars of successor blocks,
+        // if they're assigned before it goes dead in that block.
+        for (auto kv: possibleBlockConflicts) {
+          IString otherName = kv.first;
+          for (auto block : kv.second) {
             if (block->lastKillLoc[otherName] < block->firstDeadLoc[name]) {
               if (junctionVariables.count(otherName) == 0) initializeJunctionVariable(otherName);
               junctionVariables[name].conf.insert(otherName);
               junctionVariables[otherName].conf.insert(name);
             }
           }
-          // It links with any linkages in the outgoing blocks.
-          if (block->link.has(name)) {
-            IString linkName = block->link[name];
-            if (linkName != name) {
-              if (junctionVariables.count(linkName) == 0) initializeJunctionVariable(linkName);
-              junctionVariables[name].link.insert(linkName);
-              junctionVariables[linkName].link.insert(name);
-            }
-          }
+        }
+
+        // It links with any linkages in the outgoing blocks.
+        for (auto block: possibleBlockLinks[name]) {
+          IString linkName = block->link[name];
+          if (junctionVariables.count(linkName) == 0) initializeJunctionVariable(linkName);
+          junctionVariables[name].link.insert(linkName);
+          junctionVariables[linkName].link.insert(name);
         }
       }
     }
