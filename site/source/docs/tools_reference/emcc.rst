@@ -464,7 +464,6 @@ Environment variables
 	- ``EMMAKEN_COMPILER``
 	- ``EMMAKEN_CFLAGS``
 	- ``EMCC_DEBUG``
-	- ``EMCC_FAST_COMPILER``
 
 Search for 'os.environ' in `emcc <https://github.com/kripken/emscripten/blob/master/emcc>`_ to see how these are used. The most interesting is possibly ``EMCC_DEBUG``, which forces the compiler to dump its build and temporary files to a temporary directory where they can be reviewed.
 

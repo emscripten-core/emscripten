@@ -493,10 +493,9 @@ def check_sanity(force=False):
         logging.critical('Cannot find %s, check the paths in %s' % (cmd, EM_CONFIG))
         sys.exit(1)
 
-    if os.environ.get('EMCC_FAST_COMPILER') != '0':
-      if not fastcomp_ok:
-        logging.critical('failing sanity checks due to previous fastcomp failure')
-        sys.exit(1)
+    if not fastcomp_ok:
+      logging.critical('failing sanity checks due to previous fastcomp failure')
+      sys.exit(1)
 
     try:
       subprocess.call([JAVA, '-version'], stdout=PIPE, stderr=PIPE)
@@ -939,8 +938,6 @@ class Settings2(type):
 
     @classmethod
     def apply_opt_level(self, opt_level, noisy=False):
-      if opt_level == 0 and os.environ.get('EMCC_FAST_COMPILER') == '0':
-        self.attrs['ASM_JS'] = 0 # non-fastcomp has asm off in -O1
       if opt_level >= 1:
         self.attrs['ASM_JS'] = 1
         self.attrs['ASSERTIONS'] = 0
