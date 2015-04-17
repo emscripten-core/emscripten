@@ -3306,8 +3306,11 @@ void registerizeHarder(Ref ast) {
     };
     std::unordered_map<IString, JuncVar> junctionVariables;
 
-    auto initializeJunctionVariable = [&](IString name) {
-      junctionVariables[name].conf.reserve(asmData.locals.size());
+    auto getJunctionVariable = [&](IString name) -> JuncVar& {
+      auto it_created = junctionVariables.insert(std::make_pair(name, JuncVar()));
+      JuncVar &jvar = it_created.first->second;
+      if (it_created.second) jvar.conf.reserve(asmData.locals.size());
+      return jvar;
     };
 
     for (size_t i = 0; i < junctions.size(); i++) {
@@ -3334,8 +3337,7 @@ void registerizeHarder(Ref ast) {
       }
 
       for (auto name : junc.live) {
-        if (junctionVariables.count(name) == 0) initializeJunctionVariable(name);
-        JuncVar& jvar = junctionVariables[name];
+        JuncVar& jvar = getJunctionVariable(name);
         // It conflicts with all other names live at this junction.
         jvar.conf.insert(junc.live.begin(), junc.live.end()); // XXX this operation is very expensive
         jvar.conf.erase(name); // except for itself, of course
@@ -3346,9 +3348,8 @@ void registerizeHarder(Ref ast) {
           IString otherName = kv.first;
           for (auto block : kv.second) {
             if (block->lastKillLoc[otherName] < block->firstDeadLoc[name]) {
-              if (junctionVariables.count(otherName) == 0) initializeJunctionVariable(otherName);
               jvar.conf.insert(otherName);
-              junctionVariables[otherName].conf.insert(name);
+              getJunctionVariable(otherName).conf.insert(name);
             }
           }
         }
@@ -3356,9 +3357,8 @@ void registerizeHarder(Ref ast) {
         // It links with any linkages in the outgoing blocks.
         for (auto block: possibleBlockLinks[name]) {
           IString linkName = block->link[name];
-          if (junctionVariables.count(linkName) == 0) initializeJunctionVariable(linkName);
           jvar.link.insert(linkName);
-          junctionVariables[linkName].link.insert(name);
+          getJunctionVariable(linkName).link.insert(name);
         }
       }
     }
