@@ -3335,9 +3335,10 @@ void registerizeHarder(Ref ast) {
 
       for (auto name : junc.live) {
         if (junctionVariables.count(name) == 0) initializeJunctionVariable(name);
+        JuncVar& jvar = junctionVariables[name];
         // It conflicts with all other names live at this junction.
-        junctionVariables[name].conf.insert(junc.live.begin(), junc.live.end()); // XXX this operation is very expensive
-        junctionVariables[name].conf.erase(name); // except for itself, of course
+        jvar.conf.insert(junc.live.begin(), junc.live.end()); // XXX this operation is very expensive
+        jvar.conf.erase(name); // except for itself, of course
 
         // It conflicts with any output vars of successor blocks,
         // if they're assigned before it goes dead in that block.
@@ -3346,7 +3347,7 @@ void registerizeHarder(Ref ast) {
           for (auto block : kv.second) {
             if (block->lastKillLoc[otherName] < block->firstDeadLoc[name]) {
               if (junctionVariables.count(otherName) == 0) initializeJunctionVariable(otherName);
-              junctionVariables[name].conf.insert(otherName);
+              jvar.conf.insert(otherName);
               junctionVariables[otherName].conf.insert(name);
             }
           }
@@ -3356,7 +3357,7 @@ void registerizeHarder(Ref ast) {
         for (auto block: possibleBlockLinks[name]) {
           IString linkName = block->link[name];
           if (junctionVariables.count(linkName) == 0) initializeJunctionVariable(linkName);
-          junctionVariables[name].link.insert(linkName);
+          jvar.link.insert(linkName);
           junctionVariables[linkName].link.insert(name);
         }
       }
