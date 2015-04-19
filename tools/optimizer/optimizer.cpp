@@ -3305,18 +3305,23 @@ void registerizeHarder(Ref ast) {
       JuncVar() : reg(-1) {}
     };
     std::unordered_map<IString, JuncVar> junctionVariables;
+    std::unordered_map<IString, std::vector<Block*>> possibleBlockConflicts;
+    std::unordered_map<IString, std::vector<Block*>> possibleBlockLinks;
 
+    junctionVariables.reserve(asmData.locals.size());
     for (Junction& junc : junctions) {
       for (IString name : junc.live) {
         junctionVariables[name].conf.reserve(asmData.locals.size());
       }
     }
+    possibleBlockConflicts.reserve(asmData.locals.size());
+    possibleBlockLinks.reserve(asmData.locals.size());
 
     for (Junction& junc : junctions) {
       // Pre-compute the possible conflicts and links for each block rather
       // than checking potentially impossible options for each var
-      std::unordered_map<IString, std::vector<Block*>> possibleBlockConflicts;
-      std::unordered_map<IString, std::vector<Block*>> possibleBlockLinks;
+      possibleBlockConflicts.clear(); // will leave reserved space
+      possibleBlockLinks.clear();
       for (auto b : junc.outblocks) {
         Block* block = blocks[b];
         Junction& jSucc = junctions[block->exit];
