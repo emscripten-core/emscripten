@@ -3299,34 +3299,47 @@ void registerizeHarder(Ref ast) {
     // (the "links").
 
     struct JuncVar {
-      StringSet conf, link;
+      std::vector<bool> conf;
+      StringSet link;
       std::unordered_set<int> excl;
       int reg;
       JuncVar() : reg(-1) {}
     };
     std::unordered_map<IString, JuncVar> junctionVariables;
-    std::unordered_map<IString, std::vector<Block*>> possibleBlockConflicts;
+    std::vector<std::vector<Block*>> possibleBlockConflicts;
     std::unordered_map<IString, std::vector<Block*>> possibleBlockLinks;
 
-    junctionVariables.reserve(asmData.locals.size());
+    size_t numLocals = asmData.locals.size();
+    junctionVariables.reserve(numLocals);
     for (Junction& junc : junctions) {
       for (IString name : junc.live) {
-        junctionVariables[name].conf.reserve(asmData.locals.size());
+        junctionVariables[name].conf.assign(numLocals, false);
       }
     }
-    possibleBlockConflicts.reserve(asmData.locals.size());
-    possibleBlockLinks.reserve(asmData.locals.size());
+    possibleBlockConflicts.reserve(numLocals);
+    possibleBlockLinks.reserve(numLocals);
+
+    std::unordered_map<IString, size_t> nameToNum;
+    std::vector<IString> numToName;
+    nameToNum.reserve(numLocals);
+    numToName.reserve(numLocals);
+    for (auto kv : asmData.locals) {
+      nameToNum[kv.first] = numToName.size();
+      numToName.push_back(kv.first);
+    }
 
     for (Junction& junc : junctions) {
       // Pre-compute the possible conflicts and links for each block rather
       // than checking potentially impossible options for each var
-      possibleBlockConflicts.clear(); // will leave reserved space
+      std::vector<Block*> initvec;
+      initvec.reserve(junc.outblocks.size());
+      possibleBlockConflicts.assign(numLocals, initvec);
       possibleBlockLinks.clear();
       for (auto b : junc.outblocks) {
         Block* block = blocks[b];
         Junction& jSucc = junctions[block->exit];
         for (auto name : jSucc.live) {
-          possibleBlockConflicts[name].push_back(block);
+          possibleBlockConflicts[nameToNum[name]].push_back(block);
         }
         for (auto name_linkname : block->link) {
           if (name_linkname.first != name_linkname.second) {
@@ -3334,24 +3347,31 @@ void registerizeHarder(Ref ast) {
           }
         }
       }
+      std::vector<size_t> liveNameNums;
+      liveNameNums.reserve(junc.live.size());
       for (auto name : junc.live) {
-        possibleBlockConflicts.erase(name);
+        size_t nameNum = nameToNum[name];
+        liveNameNums.push_back(nameNum);
+        possibleBlockConflicts[nameNum] = initvec;
       }
 
-      for (auto name : junc.live) {
+      for (size_t nameNum : liveNameNums) {
+        IString name = numToName[nameNum];
         JuncVar& jvar = junctionVariables[name];
         // It conflicts with all other names live at this junction.
-        jvar.conf.insert(junc.live.begin(), junc.live.end()); // XXX this operation is very expensive
-        jvar.conf.erase(name); // except for itself, of course
+        for (size_t liveNameNum : liveNameNums) {
+          jvar.conf[liveNameNum] = true;
+        }
+        jvar.conf[nameNum] = false; // except for itself, of course
 
         // It conflicts with any output vars of successor blocks,
         // if they're assigned before it goes dead in that block.
-        for (auto kv: possibleBlockConflicts) {
-          IString otherName = kv.first;
-          for (auto block : kv.second) {
+        for (size_t otherNameNum = 0; otherNameNum < possibleBlockConflicts.size(); otherNameNum++) {
+          IString otherName = numToName[otherNameNum];
+          for (auto block : possibleBlockConflicts[otherNameNum]) {
             if (block->lastKillLoc[otherName] < block->firstDeadLoc[name]) {
-              jvar.conf.insert(otherName);
-              junctionVariables[otherName].conf.insert(name);
+              jvar.conf[otherNameNum] = true;
+              junctionVariables[otherName].conf[nameNum] = true;
               break;
             }
           }
@@ -3379,8 +3399,12 @@ void registerizeHarder(Ref ast) {
       //if (asmData.isParam(name1) && !asmData.isParam(name2)) return true;
       //if (!asmData.isParam(name1) && asmData.isParam(name2)) return false;
       // sort by # of conflicts
-      if (junctionVariables[name1].conf.size() < junctionVariables[name2].conf.size()) return true;
-      if (junctionVariables[name1].conf.size() == junctionVariables[name2].conf.size()) return name1 < name2;
+      auto conf1 = junctionVariables[name1].conf;
+      auto count1 = std::count(conf1.begin(), conf1.end(), true);
+      auto conf2 = junctionVariables[name2].conf;
+      auto count2 = std::count(conf2.begin(), conf2.end(), true);
+      if (count1 < count2) return true;
+      if (count1 == count2) return name1 < name2;
       return false;
     });
 
@@ -3402,8 +3426,10 @@ void registerizeHarder(Ref ast) {
       }
       jv.reg = reg;
       // Exclude use of this register at all conflicting variables.
-      for (auto confName : jv.conf) {
-        junctionVariables[confName].excl.insert(reg);
+      for (size_t confNameNum = 0; confNameNum < jv.conf.size(); confNameNum++) {
+        if (jv.conf[confNameNum]) {
+          junctionVariables[numToName[confNameNum]].excl.insert(reg);
+        }
       }
       // Try to propagate it into linked variables.
       // It's not an error if we can't.
