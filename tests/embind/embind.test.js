@@ -443,10 +443,12 @@ module({
             assert.equal(expected, cm.take_and_return_std_wstring(expected));
         });
 
-        test("can access a literal wstring after a memory growth", function() {    
-            cm.force_memory_growth();
-            assert.equal("get_literal_wstring", cm.get_literal_wstring());
-        });
+        if (Module.isMemoryGrowthEnabled) {
+            test("can access a literal wstring after a memory growth", function() {
+                cm.force_memory_growth();
+                assert.equal("get_literal_wstring", cm.get_literal_wstring());
+            });
+        }
 
     });
 

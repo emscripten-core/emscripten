@@ -2168,6 +2168,7 @@ int f() {
       (['--bind', '-O1'], False),
       (['--bind', '-O2'], False),
       (['--bind', '-O2', '--closure', '1'], False),
+      (['--bind', '-O2', '-s', 'ALLOW_MEMORY_GROWTH=1', path_from_root('tests', 'embind', 'isMemoryGrowthEnabled=true.cpp')], False),
     ]:
       print args, fail
       self.clear()
@@ -2185,7 +2186,6 @@ int f() {
           path_from_root('tests', 'embind', 'embind_test.cpp'),
           '--pre-js', path_from_root('tests', 'embind', 'test.pre.js'),
           '--post-js', path_from_root('tests', 'embind', 'test.post.js'),
-          '-s', 'ALLOW_MEMORY_GROWTH=1',
         ] + args,
         stderr=PIPE if fail else None,
         env=environ).communicate()
