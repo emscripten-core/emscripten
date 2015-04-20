@@ -3324,8 +3324,10 @@ void registerizeHarder(Ref ast) {
         jVar.conf.assign(numLocals, false);
       }
     }
-    std::vector<std::vector<Block*>> possibleBlockConflicts;
+    std::vector<std::vector<Block*>> possibleBlockConflictsMap;
+    std::vector<std::pair<size_t, std::vector<Block*>>> possibleBlockConflicts;
     std::unordered_map<IString, std::vector<Block*>> possibleBlockLinks;
+    possibleBlockConflictsMap.reserve(numLocals);
     possibleBlockConflicts.reserve(numLocals);
     possibleBlockLinks.reserve(numLocals);
 
@@ -3335,13 +3337,14 @@ void registerizeHarder(Ref ast) {
       // Pre-compute the possible conflicts and links for each block rather
       // than checking potentially impossible options for each var
       initvec.reserve(junc.outblocks.size());
-      possibleBlockConflicts.assign(numLocals, initvec);
+      possibleBlockConflictsMap.assign(numLocals, initvec);
+      possibleBlockConflicts.clear();
       possibleBlockLinks.clear();
       for (auto b : junc.outblocks) {
         Block* block = blocks[b];
         Junction& jSucc = junctions[block->exit];
         for (auto name : jSucc.live) {
-          possibleBlockConflicts[nameToNum[name]].push_back(block);
+          possibleBlockConflictsMap[nameToNum[name]].push_back(block);
         }
         for (auto name_linkname : block->link) {
           if (name_linkname.first != name_linkname.second) {
@@ -3349,12 +3352,19 @@ void registerizeHarder(Ref ast) {
           }
         }
       }
+      // Find the live variables in this block, mark them as unnecessary to
+      // check for conflicts (we mark all live vars as conflicting later)
       std::vector<size_t> liveJVarNums;
       liveJVarNums.reserve(junc.live.size());
       for (auto name : junc.live) {
         size_t jVarNum = nameToNum[name];
         liveJVarNums.push_back(jVarNum);
-        possibleBlockConflicts[jVarNum] = initvec;
+        possibleBlockConflictsMap[jVarNum] = initvec;
+      }
+      // Extract just the variables we might want to check for conflicts
+      for (size_t jVarNum = 0; jVarNum < possibleBlockConflictsMap.size(); jVarNum++) {
+        if (possibleBlockConflictsMap[jVarNum].size() == 0) continue;
+        possibleBlockConflicts.push_back(std::make_pair(jVarNum, possibleBlockConflictsMap[jVarNum]));
       }
 
       for (size_t jVarNum : liveJVarNums) {
@@ -3368,10 +3378,10 @@ void registerizeHarder(Ref ast) {
 
         // It conflicts with any output vars of successor blocks,
         // if they're assigned before it goes dead in that block.
-        for (size_t otherJVarNum = 0; otherJVarNum < possibleBlockConflicts.size(); otherJVarNum++) {
-          if (possibleBlockConflicts[otherJVarNum].size() == 0) continue;
+        for (auto jvarnum_blocks : possibleBlockConflicts) {
+          size_t otherJVarNum = jvarnum_blocks.first;
           IString otherName = numToName[otherJVarNum];
-          for (auto block : possibleBlockConflicts[otherJVarNum]) {
+          for (auto block : jvarnum_blocks.second) {
             if (block->lastKillLoc[otherName] < block->firstDeadLoc[name]) {
               jvar.conf[otherJVarNum] = true;
               juncVars[otherJVarNum].conf[jVarNum] = true;
