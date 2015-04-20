@@ -820,6 +820,8 @@ try:
     assert has_source_inputs or has_header_inputs, 'Must have source code or header inputs to use -c'
     target = target_basename + '.o'
     final_suffix = 'o'
+  if '-E' in newargs:
+    final_suffix = 'eout' # not bitcode, not js; something else
   final_ending = ('.' + final_suffix) if len(final_suffix) > 0 else ''
 
   # Find library files
