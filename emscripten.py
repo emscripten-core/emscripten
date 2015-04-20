@@ -73,6 +73,8 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       backend_args += ['-emscripten-assertions=%d' % settings['ASSERTIONS']]
     if settings['ALIASING_FUNCTION_POINTERS'] == 0:
       backend_args += ['-emscripten-no-aliasing-function-pointers']
+    if settings['EMULATED_FUNCTION_POINTERS']:
+      backend_args += ['-emscripten-emulated-function-pointers']
     if settings['GLOBAL_BASE'] >= 0:
       backend_args += ['-emscripten-global-base=%d' % settings['GLOBAL_BASE']]
     backend_args += ['-O' + str(settings['OPT_LEVEL'])]
@@ -322,6 +324,8 @@ function _emscripten_asm_const_%d(%s) {
     def make_coercions(sig): return ';'.join(['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, sig[p+1], settings)) for p in range(len(sig)-1)]) + ';'
     def make_func(name, code, params, coercions): return 'function %s(%s) { %s %s }' % (name, params, coercions, code)
 
+    in_table = set()
+
     def make_table(sig, raw):
       params = make_params(sig)
       coerced_params = make_coerced_params(sig)
@@ -346,6 +350,17 @@ function _emscripten_asm_const_%d(%s) {
       start = raw.index('[')
       end = raw.rindex(']')
       body = raw[start+1:end].split(',')
+      if settings['EMULATED_FUNCTION_POINTERS']:
+        def receive(item):
+          if item == '0':
+            return item
+          else:
+            if item in all_implemented:
+              in_table.add(item)
+              return "asm['" + item + "']"
+            else:
+              return item # this is not implemented; it would normally be wrapped, but with emulation, we just use it directly outside
+        body = map(receive, body)
       for j in range(settings['RESERVED_FUNCTION_POINTERS']):
         curr = 'jsCall_%s_%s' % (sig, j)
         body[settings['FUNCTION_POINTER_ALIGNMENT'] * (1 + j)] = curr
@@ -384,7 +399,7 @@ function _emscripten_asm_const_%d(%s) {
             specific_bad, specific_bad_func = make_bad(j)
             Counter.pre.append(specific_bad_func)
             return specific_bad if not newline else (specific_bad + '\n')
-        if item not in implemented_functions:
+        if item not in implemented_functions and not settings['EMULATED_FUNCTION_POINTERS']: # when emulating function pointers, we don't need wrappers
           # this is imported into asm, we must wrap it
           call_ident = item
           if call_ident in metadata['redirects']: call_ident = metadata['redirects'][call_ident]
@@ -406,7 +421,10 @@ function _emscripten_asm_const_%d(%s) {
     infos = [make_table(sig, raw) for sig, raw in last_forwarded_json['Functions']['tables'].iteritems()]
     Counter.pre = []
 
-    function_tables_defs = '\n'.join([info[0] for info in infos]) + '\n\n// EMSCRIPTEN_END_FUNCS\n' + '\n'.join([info[1] for info in infos])
+    function_tables_defs = '\n'.join([info[0] for info in infos]) + '\n'
+    if not settings['EMULATED_FUNCTION_POINTERS']:
+      function_tables_defs += '\n// EMSCRIPTEN_END_FUNCS\n'
+    function_tables_defs += '\n'.join([info[1] for info in infos])
 
     asm_setup = ''
     maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'clz32']]
@@ -504,7 +522,10 @@ function _emscripten_asm_const_%d(%s) {
         asm_runtime_funcs += ['setAsyncState', 'emtStackSave']
 
     # function tables
-    function_tables = ['dynCall_' + table for table in last_forwarded_json['Functions']['tables']]
+    if not settings['EMULATED_FUNCTION_POINTERS']:
+      function_tables = ['dynCall_' + table for table in last_forwarded_json['Functions']['tables']]
+    else:
+      function_tables = []
     function_tables_impls = []
 
     for sig in last_forwarded_json['Functions']['tables'].iterkeys():
@@ -536,6 +557,15 @@ function jsCall_%s_%s(%s) {
       if settings.get('RESERVED_FUNCTION_POINTERS'):
         asm_setup += '\n' + shared.JS.make_jscall(sig) + '\n'
         basic_funcs.append('jsCall_%s' % sig)
+      if settings.get('EMULATED_FUNCTION_POINTERS'):
+        args = ['a%d' % i for i in range(len(sig)-1)]
+        full_args = ['fp'] + args
+        asm_setup += '''
+function ftCall_%s(%s) {
+  return FUNCTION_TABLE_%s[fp](%s);
+}
+''' % (sig, ', '.join(full_args), sig, ', '.join(args))
+        basic_funcs.append('ftCall_%s' % sig)
       if settings.get('DLOPEN_SUPPORT'):
         asm_setup += '\n' + shared.JS.make_extcall(sig) + '\n'
         basic_funcs.append('extCall_%s' % sig)
@@ -557,8 +587,11 @@ function jsCall_%s_%s(%s) {
     exported_implemented_functions.append('runPostSets')
     if settings['ALLOW_MEMORY_GROWTH']:
       exported_implemented_functions.append('_emscripten_replace_memory')
+    all_exported = exported_implemented_functions + asm_runtime_funcs + function_tables
+    if settings['EMULATED_FUNCTION_POINTERS']:
+      all_exported = list(set(all_exported).union(in_table))
     exports = []
-    for export in exported_implemented_functions + asm_runtime_funcs + function_tables:
+    for export in all_exported:
       exports.append(quote(export) + ": " + export)
     exports = '{ ' + ', '.join(exports) + ' }'
     # calculate globals
@@ -606,9 +639,9 @@ return real_''' + s + '''.apply(null, arguments);
       receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables])
     else:
       receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + s + ' = Module["' + s + '"] = function() { return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions + function_tables])
+    receiving += ';\n'
 
     if settings['EXPORT_FUNCTION_TABLES']:
-      receiving += '\n'
       for table in last_forwarded_json['Functions']['tables'].values():
         tableName = table.split()[1]
         table = table.replace('var ' + tableName, 'var ' + tableName + ' = Module["' + tableName + '"]')
@@ -617,6 +650,13 @@ return real_''' + s + '''.apply(null, arguments);
     # finalize
 
     if DEBUG: logging.debug('asm text sizes' + str([map(len, funcs_js), len(asm_setup), len(asm_global_vars), len(asm_global_funcs), len(pre_tables), len('\n'.join(function_tables_impls)), len(function_tables_defs.replace('\n', '\n  ')), len(exports), len(the_global), len(sending), len(receiving)]))
+
+    if not settings.get('EMULATED_FUNCTION_POINTERS'):
+      final_function_tables = '\n'.join(function_tables_impls) + '\n' + function_tables_defs
+    else:
+      asm_setup += '\n' + '\n'.join(function_tables_impls) + '\n'
+      receiving += '\n' + function_tables_defs + '\n' + ''.join(['Module["dynCall_%s"] = dynCall_%s\n' % (sig, sig) for sig in last_forwarded_json['Functions']['tables']])
+      final_function_tables = '\n// EMSCRIPTEN_END_FUNCS\n'
 
     funcs_js = ['''
 %s
@@ -772,7 +812,7 @@ function getTempRet0() {
 // EMSCRIPTEN_END_ASM
 (%s, %s, buffer);
 %s;
-''' % (pre_tables + '\n'.join(function_tables_impls) + '\n' + function_tables_defs, exports,
+''' % (pre_tables + final_function_tables, exports,
        'Module' + access_quote('asmGlobalArg'),
        'Module' + access_quote('asmLibraryArg'),
        receiving)]

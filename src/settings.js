@@ -198,6 +198,10 @@ var ALIASING_FUNCTION_POINTERS = 0; // Whether to allow function pointers to ali
                                     // a different type. This can greatly decrease table sizes
                                     // in asm.js, but can break code that compares function
                                     // pointers across different types.
+var EMULATED_FUNCTION_POINTERS = 0; // By default we implement function pointers using asm.js
+                                    // function tables, which is very fast. With this option,
+                                    // we implement them more flexibly by emulating them: we
+                                    // call out into JS, which handles the function tables.
 var EMULATE_FUNCTION_POINTER_CASTS = 0; // Allows function pointers to be cast, wraps each
                                         // call of an incorrect type with a runtime correction.
                                         // This adds overhead and should not be used normally.
