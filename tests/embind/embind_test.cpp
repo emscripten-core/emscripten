@@ -121,6 +121,15 @@ std::wstring get_non_ascii_wstring() {
     return ws;
 }
 
+std::wstring get_literal_wstring() {
+    return L"get_literal_wstring";
+}
+
+void force_memory_growth() {
+    auto heapu8 = val::global("Module")["HEAPU8"];
+    delete [] new char[heapu8["byteLength"].as<size_t>() + 1];
+}
+
 std::string emval_test_take_and_return_const_char_star(const char* str) {
     return str;
 }
@@ -1657,6 +1666,9 @@ EMSCRIPTEN_BINDINGS(tests) {
 
     function("get_non_ascii_string", &get_non_ascii_string);
     function("get_non_ascii_wstring", &get_non_ascii_wstring);
+    function("get_literal_wstring", &get_literal_wstring);
+    function("force_memory_growth", &force_memory_growth);
+
     //function("emval_test_take_and_return_const_char_star", &emval_test_take_and_return_const_char_star);
     function("emval_test_take_and_return_std_string", &emval_test_take_and_return_std_string);
     function("emval_test_take_and_return_std_string_const_ref", &emval_test_take_and_return_std_string_const_ref);

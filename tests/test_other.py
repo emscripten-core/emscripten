@@ -2147,6 +2147,7 @@ int f() {
       (['--bind', '-O1'], False),
       (['--bind', '-O2'], False),
       (['--bind', '-O2', '--closure', '1'], False),
+      (['--bind', '-O2', '-s', 'ALLOW_MEMORY_GROWTH=1', path_from_root('tests', 'embind', 'isMemoryGrowthEnabled=true.cpp')], False),
     ]:
       print args, fail
       self.clear()
