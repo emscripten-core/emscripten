@@ -329,12 +329,6 @@ if '-M' in sys.argv or '-MM' in sys.argv:
   logging.debug('just dependencies: ' + ' '.join(cmd))
   exit(subprocess.call(cmd))
 
-if '-E' in sys.argv:
-  # Just run the preprocessor
-  cmd = [CC] + shared.COMPILER_OPTS + sys.argv[1:]
-  logging.debug('just preprocessor ' + ' '.join(cmd))
-  exit(subprocess.call(cmd))
-
 # Check if a target is specified
 target = None
 for i in range(len(sys.argv)-1):
@@ -1072,6 +1066,23 @@ try:
       newargs.append('-g') # preserve LLVM debug info
       debug_level = 4
 
+  # Bitcode args generation code
+  def get_bitcode_args(input_file):
+    file_ending = filename_type_ending(input_file)
+    args = [call] + newargs + [input_file]
+    if file_ending.endswith(CXX_ENDINGS):
+      args += shared.EMSDK_CXX_OPTS
+    args = system_libs.process_args(args, shared.Settings)
+    return args
+
+  # -E preprocessor-only support
+  if '-E' in newargs:
+    assert len(input_files) == 1
+    input_file = input_files[0][1]
+    cmd = get_bitcode_args(input_file)
+    logging.debug('just preprocessor ' + ' '.join(cmd))
+    exit(subprocess.call(cmd))
+
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   for i, input_file in input_files:
     file_ending = filename_type_ending(input_file)
@@ -1079,12 +1090,9 @@ try:
       logging.debug('compiling source file: ' + input_file)
       output_file = get_bitcode_file(input_file)
       temp_files.append((i, output_file))
-      args = newargs + ['-emit-llvm', '-c', input_file, '-o', output_file]
-      if file_ending.endswith(CXX_ENDINGS):
-        args += shared.EMSDK_CXX_OPTS
-      args = system_libs.process_args(args, shared.Settings)
-      logging.debug("running: " + call + ' ' + ' '.join(args))
-      execute([call] + args) # let compiler frontend print directly, so colors are saved (PIPE kills that)
+      args = get_bitcode_args(input_file) + ['-emit-llvm', '-c', '-o', output_file]
+      logging.debug("running: " + ' '.join(args))
+      execute(args) # let compiler frontend print directly, so colors are saved (PIPE kills that)
       if not os.path.exists(output_file):
         logging.error('compiler frontend failed to generate LLVM bitcode, halting')
         sys.exit(1)

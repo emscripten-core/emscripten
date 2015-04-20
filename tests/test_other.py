@@ -3520,6 +3520,18 @@ EMSCRIPTEN_KEEPALIVE __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny
     out = Popen([PYTHON, EMCC, 'src.cpp', '-E'], stdout=PIPE).communicate()[0]
     self.assertContained(r'''__attribute__((used)) %d %d %d __attribute__((used))''' % (EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY), out)
 
+  def test_dashE_consistent(self): # issue #3365
+    normal = Popen([PYTHON, EMXX, '-v', '-Wno-warn-absolute-paths', path_from_root('tests', 'hello_world.cpp'), '-c'], stdout=PIPE, stderr=PIPE).communicate()[1]
+    dash_e = Popen([PYTHON, EMXX, '-v', '-Wno-warn-absolute-paths', path_from_root('tests', 'hello_world.cpp'), '-E'], stdout=PIPE, stderr=PIPE).communicate()[1]
+
+    import difflib
+    diff = [a.rstrip()+'\n' for a in difflib.unified_diff(normal.split('\n'), dash_e.split('\n'), fromfile='normal', tofile='dash_e')]
+    left_std = filter(lambda x: x.startswith('-') and '-std=' in x, diff)
+    right_std = filter(lambda x: x.startswith('+') and '-std=' in x, diff)
+    assert len(left_std) == len(right_std) == 1, '\n\n'.join(diff)
+    bad = filter(lambda x: '-Wno-warn-absolute-paths' in x, diff)
+    assert len(bad) == 0, '\n\n'.join(diff)
+
   def test_malloc_implicit(self):
     open('src.cpp', 'w').write(r'''
 #include <stdlib.h>
