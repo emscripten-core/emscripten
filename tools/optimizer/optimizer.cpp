@@ -3303,22 +3303,10 @@ void registerizeHarder(Ref ast) {
       StringSet link;
       std::unordered_set<int> excl;
       int reg;
-      JuncVar() : reg(-1) {}
+      bool used;
+      JuncVar() : reg(-1), used(false) {}
     };
-    std::unordered_map<IString, JuncVar> junctionVariables;
-    std::vector<std::vector<Block*>> possibleBlockConflicts;
-    std::unordered_map<IString, std::vector<Block*>> possibleBlockLinks;
-
     size_t numLocals = asmData.locals.size();
-    junctionVariables.reserve(numLocals);
-    for (Junction& junc : junctions) {
-      for (IString name : junc.live) {
-        junctionVariables[name].conf.assign(numLocals, false);
-      }
-    }
-    possibleBlockConflicts.reserve(numLocals);
-    possibleBlockLinks.reserve(numLocals);
-
     std::unordered_map<IString, size_t> nameToNum;
     std::vector<IString> numToName;
     nameToNum.reserve(numLocals);
@@ -3328,10 +3316,24 @@ void registerizeHarder(Ref ast) {
       numToName.push_back(kv.first);
     }
 
+    std::vector<JuncVar> juncVars(numLocals);
+    for (Junction& junc : junctions) {
+      for (IString name : junc.live) {
+        JuncVar& jVar = juncVars[nameToNum[name]];
+        jVar.used = true;
+        jVar.conf.assign(numLocals, false);
+      }
+    }
+    std::vector<std::vector<Block*>> possibleBlockConflicts;
+    std::unordered_map<IString, std::vector<Block*>> possibleBlockLinks;
+    possibleBlockConflicts.reserve(numLocals);
+    possibleBlockLinks.reserve(numLocals);
+
+    std::vector<Block*> initvec;
+
     for (Junction& junc : junctions) {
       // Pre-compute the possible conflicts and links for each block rather
       // than checking potentially impossible options for each var
-      std::vector<Block*> initvec;
       initvec.reserve(junc.outblocks.size());
       possibleBlockConflicts.assign(numLocals, initvec);
       possibleBlockLinks.clear();
@@ -3347,31 +3349,32 @@ void registerizeHarder(Ref ast) {
           }
         }
       }
-      std::vector<size_t> liveNameNums;
-      liveNameNums.reserve(junc.live.size());
+      std::vector<size_t> liveJVarNums;
+      liveJVarNums.reserve(junc.live.size());
       for (auto name : junc.live) {
-        size_t nameNum = nameToNum[name];
-        liveNameNums.push_back(nameNum);
-        possibleBlockConflicts[nameNum] = initvec;
+        size_t jVarNum = nameToNum[name];
+        liveJVarNums.push_back(jVarNum);
+        possibleBlockConflicts[jVarNum] = initvec;
       }
 
-      for (size_t nameNum : liveNameNums) {
-        IString name = numToName[nameNum];
-        JuncVar& jvar = junctionVariables[name];
+      for (size_t jVarNum : liveJVarNums) {
+        JuncVar& jvar = juncVars[jVarNum];
+        IString name = numToName[jVarNum];
         // It conflicts with all other names live at this junction.
-        for (size_t liveNameNum : liveNameNums) {
-          jvar.conf[liveNameNum] = true;
+        for (size_t liveJVarNum : liveJVarNums) {
+          jvar.conf[liveJVarNum] = true;
         }
-        jvar.conf[nameNum] = false; // except for itself, of course
+        jvar.conf[jVarNum] = false; // except for itself, of course
 
         // It conflicts with any output vars of successor blocks,
         // if they're assigned before it goes dead in that block.
-        for (size_t otherNameNum = 0; otherNameNum < possibleBlockConflicts.size(); otherNameNum++) {
-          IString otherName = numToName[otherNameNum];
-          for (auto block : possibleBlockConflicts[otherNameNum]) {
+        for (size_t otherJVarNum = 0; otherJVarNum < possibleBlockConflicts.size(); otherJVarNum++) {
+          if (possibleBlockConflicts[otherJVarNum].size() == 0) continue;
+          IString otherName = numToName[otherJVarNum];
+          for (auto block : possibleBlockConflicts[otherJVarNum]) {
             if (block->lastKillLoc[otherName] < block->firstDeadLoc[name]) {
-              jvar.conf[otherNameNum] = true;
-              junctionVariables[otherName].conf[nameNum] = true;
+              jvar.conf[otherJVarNum] = true;
+              juncVars[otherJVarNum].conf[jVarNum] = true;
               break;
             }
           }
@@ -3381,7 +3384,7 @@ void registerizeHarder(Ref ast) {
         for (auto block: possibleBlockLinks[name]) {
           IString linkName = block->link[name];
           jvar.link.insert(linkName);
-          junctionVariables[linkName].link.insert(name);
+          juncVars[nameToNum[linkName]].link.insert(name);
         }
       }
     }
@@ -3391,13 +3394,12 @@ void registerizeHarder(Ref ast) {
     // This seems to work pretty well.
 
     std::vector<size_t> sortedJVarNums;
-    sortedJVarNums.reserve(junctionVariables.size());
+    sortedJVarNums.reserve(juncVars.size());
     std::vector<size_t> jVarConfCounts(numLocals);
-    for (auto pair : junctionVariables) {
-      IString jVarName = pair.first;
-      size_t jVarNum = nameToNum[jVarName];
-      auto confs = junctionVariables[jVarName].conf;
-      jVarConfCounts[jVarNum] = std::count(confs.begin(), confs.end(), true);
+    for (size_t jVarNum = 0; jVarNum < juncVars.size(); jVarNum++) {
+      JuncVar& jVar = juncVars[jVarNum];
+      if (!jVar.used) continue;
+      jVarConfCounts[jVarNum] = std::count(jVar.conf.begin(), jVar.conf.end(), true);
       sortedJVarNums.push_back(jVarNum);
     }
     std::sort(sortedJVarNums.begin(), sortedJVarNums.end(), [&](const size_t vi1, const size_t vi2) {
@@ -3416,7 +3418,7 @@ void registerizeHarder(Ref ast) {
       // Try to assign the given register to the given variable,
       // and propagate that choice throughout the graph.
       // Returns true if successful, false if there was a conflict.
-      JuncVar& jv = junctionVariables[name];
+      JuncVar& jv = juncVars[nameToNum[name]];
       if (jv.reg > 0) {
         return jv.reg == reg;
       }
@@ -3427,7 +3429,7 @@ void registerizeHarder(Ref ast) {
       // Exclude use of this register at all conflicting variables.
       for (size_t confNameNum = 0; confNameNum < jv.conf.size(); confNameNum++) {
         if (jv.conf[confNameNum]) {
-          junctionVariables[numToName[confNameNum]].excl.insert(reg);
+          juncVars[confNameNum].excl.insert(reg);
         }
       }
       // Try to propagate it into linked variables.
@@ -3438,11 +3440,11 @@ void registerizeHarder(Ref ast) {
       return true;
     };
     for (size_t jVarNum : sortedJVarNums) {
-      IString name = numToName[jVarNum];
       // It may already be assigned due to linked-variable propagation.
-      if (junctionVariables[name].reg > 0) {
+      if (juncVars[jVarNum].reg > 0) {
         continue;
       }
+      IString name = numToName[jVarNum];
       // Try to use existing registers first.
       auto& allRegs = allRegsByType[asmData.getType(name)];
       bool moar = false;
@@ -3477,7 +3479,7 @@ void registerizeHarder(Ref ast) {
       for (auto name : jExit.live) {
         if (!block->kill.has(name)) {
           inputVars.insert(name);
-          int reg = junctionVariables[name].reg;
+          int reg = juncVars[nameToNum[name]].reg;
           assert(reg > 0); // 'input variable doesnt have a register');
           inputDeadLoc[reg] = block->firstDeadLoc[name];
           inputVarsByReg[reg] = name;
@@ -3487,7 +3489,7 @@ void registerizeHarder(Ref ast) {
         IString name = pair.first;
         if (!inputVars.has(name)) {
           inputVars.insert(name);
-          int reg = junctionVariables[name].reg;
+          int reg = juncVars[nameToNum[name]].reg;
           assert(reg > 0); // 'input variable doesnt have a register');
           inputDeadLoc[reg] = block->firstDeadLoc[name];
           inputVarsByReg[reg] = name;
@@ -3502,7 +3504,7 @@ void registerizeHarder(Ref ast) {
       auto freeRegsByTypePre = allRegsByType; // XXX copy
       // Begin with all live vars assigned per the exit junction.
       for (auto name : jExit.live) {
-        int reg = junctionVariables[name].reg;
+        int reg = juncVars[nameToNum[name]].reg;
         assert(reg > 0); // 'output variable doesnt have a register');
         assignedRegs[name] = reg;
         freeRegsByTypePre[asmData.getType(name)].erase(reg); // XXX assert?
@@ -3528,7 +3530,7 @@ void registerizeHarder(Ref ast) {
           if (reg <= 0) {
             if (inputVars.has(name) && j <= block->firstDeadLoc[name]) {
               // Assignment to an input variable, must use pre-assigned reg.
-              reg = junctionVariables[name].reg;
+              reg = juncVars[nameToNum[name]].reg;
               assignedRegs[name] = reg;
               for (int k = freeRegs.size() - 1; k >= 0; k--) {
                 if (freeRegs[k] == reg) {
@@ -3593,7 +3595,7 @@ void registerizeHarder(Ref ast) {
     if (!!fun[2]) {
       for (size_t i = 0; i < fun[2]->size(); i++) {
         auto& allRegs = allRegsByType[asmData.getType(fun[2][i]->getIString())];
-        fun[2][i]->setString(allRegs[junctionVariables[fun[2][i]->getIString()].reg]);
+        fun[2][i]->setString(allRegs[juncVars[nameToNum[fun[2][i]->getIString()]].reg]);
         paramRegs.insert(fun[2][i]->getIString());
       }
     }
