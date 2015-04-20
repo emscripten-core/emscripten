@@ -1067,9 +1067,9 @@ try:
       debug_level = 4
 
   # Bitcode args generation code
-  def get_bitcode_args(input_file):
-    file_ending = filename_type_ending(input_file)
-    args = [call] + newargs + [input_file]
+  def get_bitcode_args(input_files):
+    file_ending = filename_type_ending(input_files[0])
+    args = [call] + newargs + input_files
     if file_ending.endswith(CXX_ENDINGS):
       args += shared.EMSDK_CXX_OPTS
     args = system_libs.process_args(args, shared.Settings)
@@ -1077,9 +1077,8 @@ try:
 
   # -E preprocessor-only support
   if '-E' in newargs:
-    assert len(input_files) == 1
-    input_file = input_files[0][1]
-    cmd = get_bitcode_args(input_file)
+    input_files = map(lambda x: x[1], input_files)
+    cmd = get_bitcode_args(input_files)
     logging.debug('just preprocessor ' + ' '.join(cmd))
     exit(subprocess.call(cmd))
 
@@ -1090,7 +1089,7 @@ try:
       logging.debug('compiling source file: ' + input_file)
       output_file = get_bitcode_file(input_file)
       temp_files.append((i, output_file))
-      args = get_bitcode_args(input_file) + ['-emit-llvm', '-c', '-o', output_file]
+      args = get_bitcode_args([input_file]) + ['-emit-llvm', '-c', '-o', output_file]
       logging.debug("running: " + ' '.join(args))
       execute(args) # let compiler frontend print directly, so colors are saved (PIPE kills that)
       if not os.path.exists(output_file):

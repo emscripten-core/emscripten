@@ -3517,8 +3517,12 @@ tiny: %d
     open('src.cpp', 'w').write(r'''#include <emscripten.h>
 EMSCRIPTEN_KEEPALIVE __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALIVE
 ''')
-    out = Popen([PYTHON, EMCC, 'src.cpp', '-E'], stdout=PIPE).communicate()[0]
-    self.assertContained(r'''__attribute__((used)) %d %d %d __attribute__((used))''' % (EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY), out)
+    def test(args=[]):
+      print args
+      out = Popen([PYTHON, EMCC, 'src.cpp', '-E'] + args, stdout=PIPE).communicate()[0]
+      self.assertContained(r'''__attribute__((used)) %d %d %d __attribute__((used))''' % (EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY), out)
+    test()
+    test(['--bind'])
 
   def test_dashE_consistent(self): # issue #3365
     normal = Popen([PYTHON, EMXX, '-v', '-Wno-warn-absolute-paths', path_from_root('tests', 'hello_world.cpp'), '-c'], stdout=PIPE, stderr=PIPE).communicate()[1]
