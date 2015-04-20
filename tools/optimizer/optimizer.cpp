@@ -2564,8 +2564,7 @@ void registerizeHarder(Ref ast) {
       int id;
       std::unordered_set<int> inblocks, outblocks;
       StringSet live;
-      bool checkedLive;
-      Junction(int id_) : id(id_), checkedLive(false) {}
+      Junction(int id_) : id(id_) {}
     };
     struct Node {
     };
@@ -3235,19 +3234,23 @@ void registerizeHarder(Ref ast) {
       block->lastKillLoc = lastKillLoc;
     };
 
-    // Ordered map to work in reverse order
+    // Ordered map to work in approximate reverse order of junction appearance
     std::set<int> jWorkSet;
-    jWorkSet.insert(EXIT_JUNCTION);
     std::set<int> bWorkSet;
 
     // Be sure to visit every junction at least once.
     // This avoids missing some vars because we disconnected them
     // when processing the labelled jumps.
-    for (int i = junctions.size() - 1; i >= EXIT_JUNCTION; i--) {
+    for (int i = EXIT_JUNCTION; i < junctions.size(); i++) {
       jWorkSet.insert(i);
+      for (auto b : junctions[i].inblocks) {
+        bWorkSet.insert(b);
+      }
     }
+    // Exit junction never has any live variable changes to propagate
+    jWorkSet.erase(EXIT_JUNCTION);
 
-    while (jWorkSet.size() > 0) {
+    do {
       // Iterate on just the junctions until we get stable live sets.
       // The first run of this loop will grow the live sets to their maximal size.
       // Subsequent runs will shrink them based on eliminated in-block uses.
@@ -3258,8 +3261,7 @@ void registerizeHarder(Ref ast) {
         jWorkSet.erase(last);
         StringSet oldLive = junc.live; // copy it here, to check for changes later
         analyzeJunction(junc);
-        if (!junc.checkedLive || oldLive != junc.live) {
-          junc.checkedLive = true;
+        if (oldLive != junc.live) {
           // Live set changed, updated predecessor blocks and junctions.
           for (auto b : junc.inblocks) {
             bWorkSet.insert(b);
@@ -3280,7 +3282,7 @@ void registerizeHarder(Ref ast) {
           jWorkSet.insert(block->entry);
         }
       }
-    }
+    } while (jWorkSet.size() > 0);
 
     // Insist that all function parameters are alive at function entry.
     // This ensures they will be assigned independent registers, even
@@ -3304,39 +3306,60 @@ void registerizeHarder(Ref ast) {
     };
     std::unordered_map<IString, JuncVar> junctionVariables;
 
-    auto initializeJunctionVariable = [&](IString name) {
-      junctionVariables[name].conf.reserve(asmData.locals.size());
+    auto getJunctionVariable = [&](IString name) -> JuncVar& {
+      auto it_created = junctionVariables.insert(std::make_pair(name, JuncVar()));
+      JuncVar &jvar = it_created.first->second;
+      if (it_created.second) jvar.conf.reserve(asmData.locals.size());
+      return jvar;
     };
 
     for (size_t i = 0; i < junctions.size(); i++) {
       Junction& junc = junctions[i];
+
+      // Pre-compute the possible conflicts and links for each block rather
+      // than checking potentially impossible options for each var
+      std::unordered_map<IString, std::vector<Block*>> possibleBlockConflicts;
+      std::unordered_map<IString, std::vector<Block*>> possibleBlockLinks;
+      for (auto b : junc.outblocks) {
+        Block* block = blocks[b];
+        Junction& jSucc = junctions[block->exit];
+        for (auto name : jSucc.live) {
+          possibleBlockConflicts[name].push_back(block);
+        }
+        for (auto name_linkname : block->link) {
+          if (name_linkname.first != name_linkname.second) {
+            possibleBlockLinks[name_linkname.first].push_back(block);
+          }
+        }
+      }
       for (auto name : junc.live) {
-        if (junctionVariables.count(name) == 0) initializeJunctionVariable(name);
+        possibleBlockConflicts.erase(name);
+      }
+
+      for (auto name : junc.live) {
+        JuncVar& jvar = getJunctionVariable(name);
         // It conflicts with all other names live at this junction.
-        junctionVariables[name].conf.insert(junc.live.begin(), junc.live.end()); // XXX this operation is very expensive
-        junctionVariables[name].conf.erase(name); // except for itself, of course
-        for (auto b : junc.outblocks) {
-          // It conflicts with any output vars of successor blocks,
-          // if they're assigned before it goes dead in that block.
-          Block* block = blocks[b];
-          Junction& jSucc = junctions[block->exit];
-          for (auto otherName : jSucc.live) {
-            if (junc.live.has(otherName)) continue;
+        jvar.conf.insert(junc.live.begin(), junc.live.end()); // XXX this operation is very expensive
+        jvar.conf.erase(name); // except for itself, of course
+
+        // It conflicts with any output vars of successor blocks,
+        // if they're assigned before it goes dead in that block.
+        for (auto kv: possibleBlockConflicts) {
+          IString otherName = kv.first;
+          for (auto block : kv.second) {
             if (block->lastKillLoc[otherName] < block->firstDeadLoc[name]) {
-              if (junctionVariables.count(otherName) == 0) initializeJunctionVariable(otherName);
-              junctionVariables[name].conf.insert(otherName);
-              junctionVariables[otherName].conf.insert(name);
+              jvar.conf.insert(otherName);
+              getJunctionVariable(otherName).conf.insert(name);
+              break;
             }
           }
-          // It links with any linkages in the outgoing blocks.
-          if (block->link.has(name)) {
-            IString linkName = block->link[name];
-            if (linkName != name) {
-              if (junctionVariables.count(linkName) == 0) initializeJunctionVariable(linkName);
-              junctionVariables[name].link.insert(linkName);
-              junctionVariables[linkName].link.insert(name);
-            }
-          }
+        }
+
+        // It links with any linkages in the outgoing blocks.
+        for (auto block: possibleBlockLinks[name]) {
+          IString linkName = block->link[name];
+          jvar.link.insert(linkName);
+          getJunctionVariable(linkName).link.insert(name);
         }
       }
     }
