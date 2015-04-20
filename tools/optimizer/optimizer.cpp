@@ -3390,21 +3390,20 @@ void registerizeHarder(Ref ast) {
     // Simple starting point: handle the most-conflicted variables first.
     // This seems to work pretty well.
 
-    StringVec sortedJunctionVariables;
+    std::vector<size_t> sortedJVarNums;
+    sortedJVarNums.reserve(junctionVariables.size());
+    std::vector<size_t> jVarConfCounts(numLocals);
     for (auto pair : junctionVariables) {
-      sortedJunctionVariables.push_back(pair.first);
+      IString jVarName = pair.first;
+      size_t jVarNum = nameToNum[jVarName];
+      auto confs = junctionVariables[jVarName].conf;
+      jVarConfCounts[jVarNum] = std::count(confs.begin(), confs.end(), true);
+      sortedJVarNums.push_back(jVarNum);
     }
-    std::sort(sortedJunctionVariables.begin(), sortedJunctionVariables.end(), [&](const IString name1, const IString name2) {
-      //// sort params first
-      //if (asmData.isParam(name1) && !asmData.isParam(name2)) return true;
-      //if (!asmData.isParam(name1) && asmData.isParam(name2)) return false;
+    std::sort(sortedJVarNums.begin(), sortedJVarNums.end(), [&](const size_t vi1, const size_t vi2) {
       // sort by # of conflicts
-      auto conf1 = junctionVariables[name1].conf;
-      auto count1 = std::count(conf1.begin(), conf1.end(), true);
-      auto conf2 = junctionVariables[name2].conf;
-      auto count2 = std::count(conf2.begin(), conf2.end(), true);
-      if (count1 < count2) return true;
-      if (count1 == count2) return name1 < name2;
+      if (jVarConfCounts[vi1] < jVarConfCounts[vi2]) return true;
+      if (jVarConfCounts[vi1] == jVarConfCounts[vi2]) return numToName[vi1] < numToName[vi2];
       return false;
     });
 
@@ -3438,8 +3437,8 @@ void registerizeHarder(Ref ast) {
       }
       return true;
     };
-    for (size_t i = 0; i < sortedJunctionVariables.size(); i++) {
-      IString name = sortedJunctionVariables[i];
+    for (size_t jVarNum : sortedJVarNums) {
+      IString name = numToName[jVarNum];
       // It may already be assigned due to linked-variable propagation.
       if (junctionVariables[name].reg > 0) {
         continue;
