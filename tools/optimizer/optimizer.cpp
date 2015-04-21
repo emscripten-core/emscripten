@@ -1828,7 +1828,7 @@ void simplifyExpressions(Ref ast) {
           }
         }
       } else if (type == BINARY && node[1] == RSHIFT && node[2][0] == NUM && node[3][0] == NUM) {
-        // optimize num >> num, in asm we need this since we do not run optimizeShifts
+        // optimize num >> num, in asm we need this since we do not optimize shifts in asm.js
         node[0]->setString(NUM);
         node[1]->setNumber(jsD2I(node[2][1]->getNumber()) >> jsD2I(node[3][1]->getNumber()));
         node->setSize(2);

@@ -1479,9 +1479,6 @@ try:
 
   if opt_level >= 1 and js_opts:
     if opt_level >= 2:
-      if not shared.Settings.ASM_JS:
-        js_optimizer_queue += ['optimizeShiftsAggressive', get_eliminate()] # aggressive shifts optimization requires loops, it breaks on switches
-
       # simplify ifs if it is ok to make the code somewhat unreadable, and unless outlining (simplified ifs
       # with commaified code breaks late aggressive variable elimination)
       if shared.Settings.SIMPLIFY_IFS and (debug_level == 0 or profiling) and shared.Settings.OUTLINING_LIMIT == 0: js_optimizer_queue += ['simplifyIfs']
