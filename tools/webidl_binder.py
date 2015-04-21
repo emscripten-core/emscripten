@@ -499,7 +499,7 @@ for name, enum in enums.iteritems():
         # namespace is a namespace, so the enums get collapsed into the top level namespace.
         deferred_js += ["Module['%s'] = _emscripten_enum_%s();\n" % (identifier, function_id)]
     else:
-      throw ("Illegal enum value %s" % value)
+      raise Exception("Illegal enum value %s" % value)
 
 mid_c += ['\n}\n\n']
 mid_js += ['''
