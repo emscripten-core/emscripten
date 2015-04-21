@@ -38,7 +38,7 @@ mergeInto(LibraryManager.library, {
       callback = {{{ makeGetValueAsm('___async_cur_frame', 8, 'i32') }}};
       // the signature of callback is always vi
       // the only argument is ctx
-      dynCall_vi(callback, (___async_cur_frame + 8)|0);
+      {{{ makeDynCall('vi') }}}(callback | 0, (___async_cur_frame + 8)|0);
       if (___async) return; // that was an async call
       if (!___async_unwind) {
         // keep the async stack
@@ -156,7 +156,7 @@ mergeInto(LibraryManager.library, {
 
     if (!___async_cur_frame) {
       // first run
-      dynCall_vi(
+      {{{ makeDynCall('vi') }}}(
         {{{ makeGetValueAsm('coroutine', 24, 'i32') }}},
         {{{ makeGetValueAsm('coroutine', 28, 'i32') }}}
       );

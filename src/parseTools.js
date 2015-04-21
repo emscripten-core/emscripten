@@ -1604,3 +1604,11 @@ function asmFFICoercion(value, type) {
   return value;
 }
 
+function makeDynCall(sig) {
+  if (!EMULATED_FUNCTION_POINTERS) {
+    return 'dynCall_' + sig;
+  } else {
+    return 'ftCall_' + sig;
+  }
+}
+
