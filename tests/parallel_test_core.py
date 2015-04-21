@@ -55,7 +55,7 @@ def main():
   watcher.start()
 
   # run all modes
-  cores = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
+  cores = int(os.environ.get('PARALLEL_SUITE_EMCC_CORES') or os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
   pool = multiprocessing.Pool(processes=cores)
   args = [[x] + sys.argv[1:] for x in optimal_order]
   num_failures = pool.map(run_mode, args, chunksize=1)
