@@ -3324,27 +3324,24 @@ void registerizeHarder(Ref ast) {
         jVar.conf.assign(numLocals, false);
       }
     }
-    std::vector<std::vector<Block*>> possibleBlockConflictsMap;
+    std::unordered_map<IString, std::vector<Block*>> possibleBlockConflictsMap;
     std::vector<std::pair<size_t, std::vector<Block*>>> possibleBlockConflicts;
     std::unordered_map<IString, std::vector<Block*>> possibleBlockLinks;
     possibleBlockConflictsMap.reserve(numLocals);
     possibleBlockConflicts.reserve(numLocals);
     possibleBlockLinks.reserve(numLocals);
 
-    std::vector<Block*> initvec;
-
     for (Junction& junc : junctions) {
       // Pre-compute the possible conflicts and links for each block rather
       // than checking potentially impossible options for each var
-      initvec.reserve(junc.outblocks.size());
-      possibleBlockConflictsMap.assign(numLocals, initvec);
+      possibleBlockConflictsMap.clear();
       possibleBlockConflicts.clear();
       possibleBlockLinks.clear();
       for (auto b : junc.outblocks) {
         Block* block = blocks[b];
         Junction& jSucc = junctions[block->exit];
         for (auto name : jSucc.live) {
-          possibleBlockConflictsMap[nameToNum[name]].push_back(block);
+          possibleBlockConflictsMap[name].push_back(block);
         }
         for (auto name_linkname : block->link) {
           if (name_linkname.first != name_linkname.second) {
@@ -3359,12 +3356,11 @@ void registerizeHarder(Ref ast) {
       for (auto name : junc.live) {
         size_t jVarNum = nameToNum[name];
         liveJVarNums.push_back(jVarNum);
-        possibleBlockConflictsMap[jVarNum] = initvec;
+        possibleBlockConflictsMap.erase(name);
       }
       // Extract just the variables we might want to check for conflicts
-      for (size_t jVarNum = 0; jVarNum < possibleBlockConflictsMap.size(); jVarNum++) {
-        if (possibleBlockConflictsMap[jVarNum].size() == 0) continue;
-        possibleBlockConflicts.push_back(std::make_pair(jVarNum, possibleBlockConflictsMap[jVarNum]));
+      for (auto kv : possibleBlockConflictsMap) {
+        possibleBlockConflicts.push_back(std::make_pair(nameToNum[kv.first], kv.second));
       }
 
       for (size_t jVarNum : liveJVarNums) {
