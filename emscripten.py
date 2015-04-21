@@ -427,6 +427,11 @@ function _emscripten_asm_const_%d(%s) {
     function_tables_defs += '\n'.join([info[1] for info in infos])
 
     asm_setup = ''
+
+    if settings['ASSERTIONS'] >= 2:
+      for sig in last_forwarded_json['Functions']['tables']:
+        asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(debug_tables[sig]) + ';'
+
     maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'clz32']]
     simdfloattypes = ['float32x4']
     simdinttypes = ['int32x4']
@@ -455,6 +460,37 @@ function _emscripten_asm_const_%d(%s) {
 
     if provide_fround: maths += ['Math.fround']
 
+    def get_function_pointer_error(sig):
+      if settings['ASSERTIONS'] <= 1:
+        extra = ' Module["printErr"]("Build with ASSERTIONS=2 for more info.");'
+        pointer = ' '
+      else:
+        pointer = ' \'" + x + "\' '
+        extra = ' Module["printErr"]("This pointer might make sense in another type signature: '
+        # sort signatures, attempting to show most likely related ones first
+        sigs = last_forwarded_json['Functions']['tables'].keys()
+        def keyfunc(other):
+          ret = 0
+          minlen = min(len(other), len(sig))
+          maxlen = min(len(other), len(sig))
+          if other.startswith(sig) or sig.startswith(other): ret -= 1000 # prioritize prefixes, could be dropped params
+          ret -= 133*difflib.SequenceMatcher(a=other, b=sig).ratio() # prioritize on diff similarity
+          ret += 15*abs(len(other) - len(sig))/float(maxlen) # deprioritize the bigger the length difference is
+          for i in range(minlen):
+            if other[i] == sig[i]: ret -= 5/float(maxlen) # prioritize on identically-placed params
+          ret += 20*len(other) # deprioritize on length
+          return ret
+        sigs.sort(key=keyfunc)
+        for other in sigs:
+          if other != sig:
+            extra += other + ': " + debug_table_' + other + '[x] + "  '
+        extra += '"); '
+      return 'Module["printErr"]("Invalid function pointer' + pointer + 'called with signature \'' + sig + '\'. ' + \
+             'Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? ' + \
+             'Or calling a function with an incorrect type, which will fail? ' + \
+             '(it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)' + \
+             '"); ' + extra
+
     basic_funcs = ['abort', 'assert'] + [m.replace('.', '_') for m in math_envs]
     if settings['SAFE_HEAP']: basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE', 'SAFE_FT_MASK']
     if settings['CHECK_HEAP_ALIGN']: basic_funcs += ['CHECK_ALIGN_2', 'CHECK_ALIGN_4', 'CHECK_ALIGN_8']
@@ -462,36 +498,7 @@ function _emscripten_asm_const_%d(%s) {
       if settings['ASSERTIONS'] >= 2: import difflib
       for sig in last_forwarded_json['Functions']['tables'].iterkeys():
         basic_funcs += ['nullFunc_' + sig]
-        if settings['ASSERTIONS'] <= 1:
-          extra = ' Module["printErr"]("Build with ASSERTIONS=2 for more info.");'
-          pointer = ' '
-        else:
-          pointer = ' \'" + x + "\' '
-          asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(debug_tables[sig]) + ';'
-          extra = ' Module["printErr"]("This pointer might make sense in another type signature: '
-          # sort signatures, attempting to show most likely related ones first
-          sigs = last_forwarded_json['Functions']['tables'].keys()
-          def keyfunc(other):
-            ret = 0
-            minlen = min(len(other), len(sig))
-            maxlen = min(len(other), len(sig))
-            if other.startswith(sig) or sig.startswith(other): ret -= 1000 # prioritize prefixes, could be dropped params
-            ret -= 133*difflib.SequenceMatcher(a=other, b=sig).ratio() # prioritize on diff similarity
-            ret += 15*abs(len(other) - len(sig))/float(maxlen) # deprioritize the bigger the length difference is
-            for i in range(minlen):
-              if other[i] == sig[i]: ret -= 5/float(maxlen) # prioritize on identically-placed params
-            ret += 20*len(other) # deprioritize on length
-            return ret
-          sigs.sort(key=keyfunc)
-          for other in sigs:
-            if other != sig:
-              extra += other + ': " + debug_table_' + other + '[x] + "  '
-          extra += '"); '
-        asm_setup += '\nfunction nullFunc_' + sig + '(x) { Module["printErr"]("Invalid function pointer' + pointer + 'called with signature \'' + sig + '\'. ' + \
-                     'Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? ' + \
-                     'Or calling a function with an incorrect type, which will fail? ' + \
-                     '(it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)' + \
-                     '"); ' + extra + ' abort(x) }\n'
+        asm_setup += '\nfunction nullFunc_' + sig + '(x) { ' + get_function_pointer_error(sig) + 'abort(x) }\n'
 
     basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
     basic_float_vars = []
@@ -559,12 +566,14 @@ function jsCall_%s_%s(%s) {
         basic_funcs.append('jsCall_%s' % sig)
       if settings.get('EMULATED_FUNCTION_POINTERS'):
         args = ['a%d' % i for i in range(len(sig)-1)]
-        full_args = ['fp'] + args
+        full_args = ['x'] + args
+        prelude = '''
+  if (x < 0 || x >= FUNCTION_TABLE_%s.length) { %s ; abort(x) }''' % (sig, get_function_pointer_error(sig))
         asm_setup += '''
-function ftCall_%s(%s) {
-  return FUNCTION_TABLE_%s[fp](%s);
+function ftCall_%s(%s) {%s
+  return FUNCTION_TABLE_%s[x](%s);
 }
-''' % (sig, ', '.join(full_args), sig, ', '.join(args))
+''' % (sig, ', '.join(full_args), prelude, sig, ', '.join(args))
         basic_funcs.append('ftCall_%s' % sig)
       if settings.get('DLOPEN_SUPPORT'):
         asm_setup += '\n' + shared.JS.make_extcall(sig) + '\n'
