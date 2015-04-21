@@ -571,7 +571,7 @@ function jsCall_%s_%s(%s) {
         args = ['a%d' % i for i in range(len(sig)-1)]
         full_args = ['x'] + args
         prelude = '''
-  if (x < 0 || x >= FUNCTION_TABLE_%s.length) { %s ; abort(x) }''' % (sig, get_function_pointer_error(sig))
+  if (x < 0 || x >= FUNCTION_TABLE_%s.length) { Module.printErr("Function table mask error (out of range)"); %s ; abort(x) }''' % (sig, get_function_pointer_error(sig))
         asm_setup += '''
 function ftCall_%s(%s) {%s
   return FUNCTION_TABLE_%s[x](%s);
