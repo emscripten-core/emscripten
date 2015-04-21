@@ -483,10 +483,13 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     test_path = path_from_root('tests', 'core', 'test_bswap64')
     src, output = (test_path + s for s in ('.in', '.out'))
 
-    for emulate_fps in [0, 1]:
-      print emulate_fps
-      Settings.EMULATE_FUNCTION_POINTER_CASTS = emulate_fps # extra coverage for this
-      self.do_run_from_file(src, output)
+    # extra coverages
+    for emulate_casts in [0, 1]:
+      for emulate_fps in [0, 1]:
+        print emulate_casts, emulate_fps
+        Settings.EMULATE_FUNCTION_POINTER_CASTS = emulate_casts
+        Settings.EMULATED_FUNCTION_POINTERS = emulate_fps
+        self.do_run_from_file(src, output)
 
   def test_sha1(self):
     self.do_run(open(path_from_root('tests', 'sha1.c')).read(), 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')

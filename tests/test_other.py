@@ -600,7 +600,10 @@ f.close()
       out, err = Popen([PYTHON, EMCC, 'src.c'] + args, stderr=PIPE).communicate()
       if err_expected: self.assertContained(err_expected, err)
       self.assertContained(expected, run_js(self.in_dir('a.out.js'), stderr=PIPE, full_output=True, assert_returncode=None))
-      return open(self.in_dir('a.out.js')).read()
+      print 'with emulated function pointers'
+      out, err = Popen([PYTHON, EMCC, 'src.c'] + args + ['-s', 'EMULATED_FUNCTION_POINTERS=1'], stderr=PIPE).communicate()
+      if err_expected: self.assertContained(err_expected, err)
+      self.assertContained(expected, run_js(self.in_dir('a.out.js'), stderr=PIPE, full_output=True, assert_returncode=None))
 
     # fastcomp. all asm, so it can't just work with wrong sigs. but, ASSERTIONS=2 gives much better info to debug
     test(['-O1'], 'If this abort() is unexpected, build with -s ASSERTIONS=1 which can give more information.') # no useful info, but does mention ASSERTIONS
@@ -3095,22 +3098,25 @@ int main() {
 
     for opts in [0, 1, 2]:
       for safe in [0, 1]:
-        for emulate in [0, 1]:
-          cmd = [PYTHON, EMCC, 'src.cpp', '-O' + str(opts), '-s', 'SAFE_HEAP=' + str(safe)]
-          if emulate:
-            cmd += ['-s', 'EMULATE_FUNCTION_POINTER_CASTS=1']
-          print cmd
-          Popen(cmd).communicate()
-          output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
-          if emulate:
-            assert 'Hello, world.' in output, output
-          elif safe:
-            assert 'Function table mask error' in output, output
-          else:
-            if opts == 0:
-              assert 'Invalid function pointer called' in output, output
+        for emulate_casts in [0, 1]:
+          for emulate_fps in [0, 1]:
+            cmd = [PYTHON, EMCC, 'src.cpp', '-O' + str(opts), '-s', 'SAFE_HEAP=' + str(safe)]
+            if emulate_casts:
+              cmd += ['-s', 'EMULATE_FUNCTION_POINTER_CASTS=1']
+            if emulate_fps:
+              cmd += ['-s', 'EMULATED_FUNCTION_POINTERS=1']
+            print cmd
+            Popen(cmd).communicate()
+            output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
+            if emulate_casts:
+              assert 'Hello, world.' in output, output
+            elif safe:
+              assert 'Function table mask error' in output, output
             else:
-              assert 'abort()' in output, output
+              if opts == 0:
+                assert 'Invalid function pointer called' in output, output
+              else:
+                assert 'abort()' in output, output
 
   def test_aliased_func_pointers(self):
     open('src.cpp', 'w').write(r'''
@@ -5002,4 +5008,31 @@ int main(int argc, char** argv) {
 
     assert vector > 1000
     assert 2.5*vector < iostream # we can strip out almost all of libcxx when just using vector
+
+  def test_emulated_function_pointers(self):
+    src = r'''
+      #include <emscripten.h>
+      typedef void (*fp)();
+      int main(int argc, char **argv) {
+        volatile fp f = 0;
+        EM_ASM({
+          if (typeof FUNCTION_TABLE_v !== 'undefined') {
+            Module.print('function table: ' + FUNCTION_TABLE_v);
+          } else {
+            Module.print('no visible function tables');
+          }
+        });
+        if (f) f();
+        return 0;
+      }
+    '''
+    open('src.c', 'w').write(src)
+    def test(args, expected):
+      print args, expected
+      out, err = Popen([PYTHON, EMCC, 'src.c'] + args, stderr=PIPE).communicate()
+      self.assertContained(expected, run_js(self.in_dir('a.out.js')))
+
+    for opts in [0, 1, 2, 3]:
+      test(['-O' + str(opts)], 'no visible function tables')
+      test(['-O' + str(opts), '-s', 'EMULATED_FUNCTION_POINTERS=1'], 'function table: ')
 
