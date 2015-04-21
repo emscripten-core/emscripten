@@ -485,7 +485,7 @@ f.close()
     for suffix in ['CPP', 'c++', 'C++', 'cxx', 'CXX', 'cc', 'CC', 'i', 'ii']:
       self.clear()
       print suffix
-      shutil.copyfile(path_from_root('tests', 'hello_world.cpp'), 'test.' + suffix)
+      shutil.copyfile(path_from_root('tests', 'hello_world.c'), 'test.' + suffix)
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'test.' + suffix)]).communicate()
       self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
