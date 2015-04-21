@@ -373,6 +373,9 @@ function _emscripten_asm_const_%d(%s) {
         if item == '0':
           if j > 0 and settings['EMULATE_FUNCTION_POINTER_CASTS'] and j in function_pointer_targets: # emulate all non-null pointer calls, if asked to
             proper_sig, proper_target = function_pointer_targets[j]
+            if settings['EMULATED_FUNCTION_POINTERS']:
+              if proper_target in all_implemented:
+                return "asm['" + proper_target + "']"
             def make_emulated_param(i):
               if i >= len(sig): return shared.JS.make_initializer(proper_sig[i], settings) # extra param, just send a zero
               return shared.JS.make_coercion('p%d' % (i-1), proper_sig[i], settings, convert_from=sig[i])
