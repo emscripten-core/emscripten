@@ -2516,7 +2516,23 @@ void registerize(Ref ast) {
 //     (e.g. unnecessary assignments to the 'label' variable).
 //
 void registerizeHarder(Ref ast) {
-  traverseFunctions(ast, [](Ref fun) {
+#ifdef PROFILING
+  clock_t tasmdata = 0;
+  clock_t tflowgraph = 0;
+  clock_t tlabelfix = 0;
+  clock_t tbackflow = 0;
+  clock_t tjuncvaruniqassign = 0;
+  clock_t tjuncvarsort = 0;
+  clock_t tregassign = 0;
+  clock_t tblockproc = 0;
+  clock_t treconstruct = 0;
+#endif
+
+  traverseFunctions(ast, [&](Ref fun) {
+
+#ifdef PROFILING
+    clock_t start = clock();
+#endif
 
     // Do not try to process non-validating methods, like the heap replacer
     bool abort = false;
@@ -2526,6 +2542,11 @@ void registerizeHarder(Ref ast) {
     if (abort) return;
 
     AsmData asmData(fun);
+
+#ifdef PROFILING
+    tasmdata += clock() - start;
+    start = clock();
+#endif
 
     // Utilities for allocating register variables.
     // We need distinct register pools for each type of variable.
@@ -3024,6 +3045,11 @@ void registerizeHarder(Ref ast) {
 
     buildFlowGraph(fun);
 
+#ifdef PROFILING
+    tflowgraph += clock() - start;
+    start = clock();
+#endif
+
     assert(junctions[ENTRY_JUNCTION].inblocks.size() == 0); // 'function entry must have no incoming blocks');
     assert(junctions[EXIT_JUNCTION].outblocks.size() == 0); // 'function exit must have no outgoing blocks');
     assert(blocks[ENTRY_BLOCK]->entry == ENTRY_JUNCTION); //, 'block zero must be the initial block');
@@ -3105,6 +3131,11 @@ void registerizeHarder(Ref ast) {
         junctions[block->exit].inblocks.insert(block->id);
       }
     }
+
+#ifdef PROFILING
+    tlabelfix += clock() - start;
+    start = clock();
+#endif
 
     // Do a backwards data-flow analysis to determine the set of live
     // variables at each junction, and to use this information to eliminate
@@ -3284,6 +3315,11 @@ void registerizeHarder(Ref ast) {
       }
     } while (jWorkSet.size() > 0);
 
+#ifdef PROFILING
+    tbackflow += clock() - start;
+    start = clock();
+#endif
+
     // Insist that all function parameters are alive at function entry.
     // This ensures they will be assigned independent registers, even
     // if they happen to be unused.
@@ -3395,6 +3431,11 @@ void registerizeHarder(Ref ast) {
       }
     }
 
+#ifdef PROFILING
+    tjuncvaruniqassign += clock() - start;
+    start = clock();
+#endif
+
     // Attempt to sort the junction variables to heuristically reduce conflicts.
     // Simple starting point: handle the most-conflicted variables first.
     // This seems to work pretty well.
@@ -3414,6 +3455,11 @@ void registerizeHarder(Ref ast) {
       if (jVarConfCounts[vi1] == jVarConfCounts[vi2]) return numToName[vi1] < numToName[vi2];
       return false;
     });
+
+#ifdef PROFILING
+    tjuncvarsort += clock() - start;
+    start = clock();
+#endif
 
     // We can now assign a register to each junction variable.
     // Process them in order, trying available registers until we find
@@ -3464,6 +3510,11 @@ void registerizeHarder(Ref ast) {
       // They're all taken, create a new one.
       tryAssignRegister(name, createReg(name));
     }
+
+#ifdef PROFILING
+    tregassign += clock() - start;
+    start = clock();
+#endif
 
     // Each basic block can now be processed in turn.
     // There may be internal-use-only variables that still need a register
@@ -3595,6 +3646,11 @@ void registerizeHarder(Ref ast) {
       }
     }
 
+#ifdef PROFILING
+    tblockproc += clock() - start;
+    start = clock();
+#endif
+
     // Assign registers to function params based on entry junction
 
     StringSet paramRegs;
@@ -3628,7 +3684,17 @@ void registerizeHarder(Ref ast) {
     asmData.denormalize();
 
     removeAllUselessSubNodes(fun); // XXX vacuum?    vacuum(fun);
+
+#ifdef PROFILING
+    treconstruct += clock() - start;
+    start = clock();
+#endif
+
   });
+#ifdef PROFILING
+  errv("    RH stages: a:%li fl:%li lf:%li bf:%li jvua:%li jvs:%li jra:%li bp:%li r:%li",
+    tasmdata, tflowgraph, tlabelfix, tbackflow, tjuncvaruniqassign, tjuncvarsort, tregassign, tblockproc, treconstruct);
+#endif
 }
 // end registerizeHarder
 
