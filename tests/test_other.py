@@ -165,7 +165,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if opt_level == 0 or '-g' in params: assert 'function _main() {' in generated or 'function _main(){' in generated, 'Should be unminified'
           elif opt_level >= 2: assert ('function _main(){' in generated or '"use asm";var a=' in generated), 'Should be whitespace-minified'
 
-      # emcc -s RELOOP=1 src.cpp ==> should pass -s to emscripten.py.
+      # emcc -s INLINING_LIMIT=0 src.cpp ==> should pass -s to emscripten.py.
       for params, test, text in [
         (['-O2'], lambda generated: 'function intArrayToString' in generated, 'shell has unminified utilities'),
         (['-O2', '--closure', '1'], lambda generated: 'function intArrayToString' not in generated and ';function' in generated, 'closure minifies the shell, removes whitespace'),
@@ -482,9 +482,10 @@ f.close()
       assert process.returncode is 0, 'User should be able to specify custom -std= on the command line!'
 
   def test_odd_suffixes(self):
-    for suffix in ['CPP', 'c++', 'C++', 'cxx', 'CXX', 'cc', 'CC']:
+    for suffix in ['CPP', 'c++', 'C++', 'cxx', 'CXX', 'cc', 'CC', 'i', 'ii']:
+      self.clear()
       print suffix
-      shutil.copyfile(path_from_root('tests', 'hello_world.cpp'), 'test.' + suffix)
+      shutil.copyfile(path_from_root('tests', 'hello_world.c'), 'test.' + suffix)
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'test.' + suffix)]).communicate()
       self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
@@ -599,16 +600,20 @@ f.close()
       out, err = Popen([PYTHON, EMCC, 'src.c'] + args, stderr=PIPE).communicate()
       if err_expected: self.assertContained(err_expected, err)
       self.assertContained(expected, run_js(self.in_dir('a.out.js'), stderr=PIPE, full_output=True, assert_returncode=None))
-      return open(self.in_dir('a.out.js')).read()
+      print 'with emulated function pointers'
+      out, err = Popen([PYTHON, EMCC, 'src.c'] + args + ['-s', 'EMULATED_FUNCTION_POINTERS=1'], stderr=PIPE).communicate()
+      if err_expected: self.assertContained(err_expected, err)
+      self.assertContained(expected, run_js(self.in_dir('a.out.js'), stderr=PIPE, full_output=True, assert_returncode=None))
 
     # fastcomp. all asm, so it can't just work with wrong sigs. but, ASSERTIONS=2 gives much better info to debug
     test(['-O1'], 'If this abort() is unexpected, build with -s ASSERTIONS=1 which can give more information.') # no useful info, but does mention ASSERTIONS
     test(['-O1', '-s', 'ASSERTIONS=1'], '''Invalid function pointer called with signature 'v'. Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? Or calling a function with an incorrect type, which will fail? (it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)
 Build with ASSERTIONS=2 for more info.
 ''') # some useful text
-    test(['-O1', '-s', 'ASSERTIONS=2'], '''Invalid function pointer '0' called with signature 'v'. Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? Or calling a function with an incorrect type, which will fail? (it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)
+    test(['-O1', '-s', 'ASSERTIONS=2'], ('''Invalid function pointer '0' called with signature 'v'. Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? Or calling a function with an incorrect type, which will fail? (it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)
 This pointer might make sense in another type signature: i: 0  
-''') # actually useful identity of the bad pointer, with comparisons to what it would be in other types/tables
+''', '''Invalid function pointer '1' called with signature 'v'. Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? Or calling a function with an incorrect type, which will fail? (it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)
+This pointer might make sense in another type signature: i: asm['_my_func']''')) # actually useful identity of the bad pointer, with comparisons to what it would be in other types/tables
     test(['-O1', '-s', 'EMULATE_FUNCTION_POINTER_CASTS=1'], '''my func\n''') # emulate so it works
 
   def test_l_link(self):
@@ -1944,12 +1949,6 @@ int f() {
     for input, expected, passes in [
       (path_from_root('tests', 'optimizer', 'test-js-optimizer.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-output.js')).read(),
        ['hoistMultiples', 'removeAssignsToUndefined', 'simplifyExpressions']),
-      (path_from_root('tests', 'optimizer', 'test-js-optimizer-t2c.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-t2c-output.js')).read(),
-       ['simplifyExpressions', 'optimizeShiftsConservative']),
-      (path_from_root('tests', 'optimizer', 'test-js-optimizer-t2.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-t2-output.js')).read(),
-       ['simplifyExpressions', 'optimizeShiftsAggressive']),
-      (path_from_root('tests', 'optimizer', 'test-js-optimizer-t3.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-t3-output.js')).read(),
-       ['optimizeShiftsAggressive']),
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-si.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-si-output.js')).read(),
        ['simplifyIfs']),
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-regs.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-regs-output.js')).read(),
@@ -1990,8 +1989,6 @@ int f() {
        ['asm', 'minifyWhitespace', 'asmLastOpts', 'last']),
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-shiftsAggressive.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-shiftsAggressive-output.js')).read(),
        ['asm', 'aggressiveVariableElimination']),
-      (path_from_root('tests', 'optimizer', 'test-js-optimizer-pointerMask.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-pointerMask-output.js')).read(),
-       ['pointerMasking']),
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-localCSE.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-localCSE-output.js')).read(),
        ['asm', 'localCSE']),
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-ensureLabelSet.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-ensureLabelSet-output.js')).read(),
@@ -2148,6 +2145,7 @@ int f() {
       (['--bind', '-O1'], False),
       (['--bind', '-O2'], False),
       (['--bind', '-O2', '--closure', '1'], False),
+      (['--bind', '-O2', '-s', 'ALLOW_MEMORY_GROWTH=1', path_from_root('tests', 'embind', 'isMemoryGrowthEnabled=true.cpp')], False),
     ]:
       print args, fail
       self.clear()
@@ -3094,22 +3092,25 @@ int main() {
 
     for opts in [0, 1, 2]:
       for safe in [0, 1]:
-        for emulate in [0, 1]:
-          cmd = [PYTHON, EMCC, 'src.cpp', '-O' + str(opts), '-s', 'SAFE_HEAP=' + str(safe)]
-          if emulate:
-            cmd += ['-s', 'EMULATE_FUNCTION_POINTER_CASTS=1']
-          print cmd
-          Popen(cmd).communicate()
-          output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
-          if emulate:
-            assert 'Hello, world.' in output, output
-          elif safe:
-            assert 'Function table mask error' in output, output
-          else:
-            if opts == 0:
-              assert 'Invalid function pointer called' in output, output
+        for emulate_casts in [0, 1]:
+          for emulate_fps in [0, 1]:
+            cmd = [PYTHON, EMCC, 'src.cpp', '-O' + str(opts), '-s', 'SAFE_HEAP=' + str(safe)]
+            if emulate_casts:
+              cmd += ['-s', 'EMULATE_FUNCTION_POINTER_CASTS=1']
+            if emulate_fps:
+              cmd += ['-s', 'EMULATED_FUNCTION_POINTERS=1']
+            print cmd
+            Popen(cmd).communicate()
+            output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
+            if emulate_casts:
+              assert 'Hello, world.' in output, output
+            elif safe:
+              assert 'Function table mask error' in output, output
             else:
-              assert 'abort()' in output, output
+              if opts == 0:
+                assert 'Invalid function pointer called' in output, output
+              else:
+                assert 'abort()' in output, output
 
   def test_aliased_func_pointers(self):
     open('src.cpp', 'w').write(r'''
@@ -3517,8 +3518,24 @@ tiny: %d
     open('src.cpp', 'w').write(r'''#include <emscripten.h>
 EMSCRIPTEN_KEEPALIVE __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALIVE
 ''')
-    out = Popen([PYTHON, EMCC, 'src.cpp', '-E'], stdout=PIPE).communicate()[0]
-    self.assertContained(r'''__attribute__((used)) %d %d %d __attribute__((used))''' % (EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY), out)
+    def test(args=[]):
+      print args
+      out = Popen([PYTHON, EMCC, 'src.cpp', '-E'] + args, stdout=PIPE).communicate()[0]
+      self.assertContained(r'''__attribute__((used)) %d %d %d __attribute__((used))''' % (EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY), out)
+    test()
+    test(['--bind'])
+
+  def test_dashE_consistent(self): # issue #3365
+    normal = Popen([PYTHON, EMXX, '-v', '-Wno-warn-absolute-paths', path_from_root('tests', 'hello_world.cpp'), '-c'], stdout=PIPE, stderr=PIPE).communicate()[1]
+    dash_e = Popen([PYTHON, EMXX, '-v', '-Wno-warn-absolute-paths', path_from_root('tests', 'hello_world.cpp'), '-E'], stdout=PIPE, stderr=PIPE).communicate()[1]
+
+    import difflib
+    diff = [a.rstrip()+'\n' for a in difflib.unified_diff(normal.split('\n'), dash_e.split('\n'), fromfile='normal', tofile='dash_e')]
+    left_std = filter(lambda x: x.startswith('-') and '-std=' in x, diff)
+    right_std = filter(lambda x: x.startswith('+') and '-std=' in x, diff)
+    assert len(left_std) == len(right_std) == 1, '\n\n'.join(diff)
+    bad = filter(lambda x: '-Wno-warn-absolute-paths' in x, diff)
+    assert len(bad) == 0, '\n\n'.join(diff)
 
   def test_malloc_implicit(self):
     open('src.cpp', 'w').write(r'''
@@ -3931,9 +3948,9 @@ Size of file is: 32
 
   def test_emcc_s_typo(self):
     # with suggestions
-    out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'RELOO=1'], stderr=PIPE).communicate()
-    self.assertContained(r'''Assigning a non-existent settings attribute "RELOO"''', err)
-    self.assertContained(r'''did you mean one of RELOOP, RELOOPER?''', err)
+    out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'DISABLE_EXCEPTION_CATCH=1'], stderr=PIPE).communicate()
+    self.assertContained(r'''Assigning a non-existent settings attribute "DISABLE_EXCEPTION_CATCH"''', err)
+    self.assertContained(r'''did you mean one of DISABLE_EXCEPTION_CATCHING?''', err)
     # no suggestions
     out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'CHEEZ=1'], stderr=PIPE).communicate()
     self.assertContained(r'''perhaps a typo in emcc's  -s X=Y  notation?''', err)
@@ -4985,4 +5002,31 @@ int main(int argc, char** argv) {
 
     assert vector > 1000
     assert 2.5*vector < iostream # we can strip out almost all of libcxx when just using vector
+
+  def test_emulated_function_pointers(self):
+    src = r'''
+      #include <emscripten.h>
+      typedef void (*fp)();
+      int main(int argc, char **argv) {
+        volatile fp f = 0;
+        EM_ASM({
+          if (typeof FUNCTION_TABLE_v !== 'undefined') {
+            Module.print('function table: ' + FUNCTION_TABLE_v);
+          } else {
+            Module.print('no visible function tables');
+          }
+        });
+        if (f) f();
+        return 0;
+      }
+    '''
+    open('src.c', 'w').write(src)
+    def test(args, expected):
+      print args, expected
+      out, err = Popen([PYTHON, EMCC, 'src.c'] + args, stderr=PIPE).communicate()
+      self.assertContained(expected, run_js(self.in_dir('a.out.js')))
+
+    for opts in [0, 1, 2, 3]:
+      test(['-O' + str(opts)], 'no visible function tables')
+      test(['-O' + str(opts), '-s', 'EMULATED_FUNCTION_POINTERS=1'], 'function table: ')
 

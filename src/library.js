@@ -2991,11 +2991,6 @@ LibraryManager.library = {
 
   memcpy__inline: function(dest, src, num, align) {
     var ret = '';
-#if ASSERTIONS
-#if ASM_JS == 0
-    ret += "assert(" + num + " % 1 === 0);"; //, 'memcpy given ' + " + num + " + ' bytes to copy. Problem with quantum=1 corrections perhaps?');";
-#endif
-#endif
     ret += makeCopyValues(dest, src, num, 'null', null, align);
     return ret;
   },
@@ -3548,11 +3543,7 @@ LibraryManager.library = {
       return;
     }
     // Clear state flag.
-#if ASM_JS
     asm['setThrew'](0);
-#else
-    __THREW__ = 0;
-#endif
     // Call destructor if one is registered then clear it.
     var ptr = EXCEPTIONS.caught.pop();
 #if EXCEPTION_DEBUG
@@ -4102,10 +4093,8 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
     filename = filename === 0 ? '__self__' : (ENV['LD_LIBRARY_PATH'] || '/') + Pointer_stringify(filename);
 
-#if ASM_JS
 #if DLOPEN_SUPPORT == 0
     abort('need to build with DLOPEN_SUPPORT=1 to get dlopen support in asm.js');
-#endif
 #endif
 
     if (DLFCN.loadedLibNames[filename]) {
@@ -4131,11 +4120,7 @@ LibraryManager.library = {
 
       try {
         var lib_module = eval(lib_data)(
-#if ASM_JS
           DLFCN.functionTable.length,
-#else
-          {{{ Functions.getTable('x') }}}.length,
-#endif
           Module
         );
       } catch (e) {
@@ -4217,12 +4202,8 @@ LibraryManager.library = {
         } else {
           var result = lib.module[symbol];
           if (typeof result == 'function') {
-#if ASM_JS
             result = lib.module.SYMBOL_TABLE[symbol];
             assert(result);
-#else
-            result = Runtime.addFunction(result);
-#endif
             lib.cached_functions = result;
           }
           return result;
@@ -5294,28 +5275,16 @@ LibraryManager.library = {
     return 0;
   },
 
-#if ASM_JS
   setjmp__deps: ['saveSetjmp', 'testSetjmp'],
-#endif
   setjmp__inline: function(env) {
     // Save the label
-#if ASM_JS
     return '_saveSetjmp(' + env + ', label, setjmpTable)|0';
-#else
-    return '(tempInt = setjmpId++, mySetjmpIds[tempInt] = 1, setjmpLabels[tempInt] = label,' + makeSetValue(env, '0', 'tempInt', 'i32', undefined, undefined, undefined, undefined,  ',') + ', 0)';
-#endif
   },
 
-#if ASM_JS
   longjmp__deps: ['saveSetjmp', 'testSetjmp'],
-#endif
   longjmp: function(env, value) {
-#if ASM_JS
     asm['setThrew'](env, value || 1);
     throw 'longjmp';
-#else
-    throw { longjmp: true, id: {{{ makeGetValue('env', '0', 'i32') }}}, value: value || 1 };
-#endif
   },
   emscripten_longjmp__deps: ['longjmp'],
   emscripten_longjmp: function(env, value) {
@@ -8036,32 +8005,6 @@ LibraryManager.library = {
     if (fullret) return fullret;
     return cache[fullname] = allocate(intArrayFromString(ret + ''), 'i8', ALLOC_NORMAL);
   },
-
-#if RUNNING_FASTCOMP == 0
-#if ASM_JS
-#if ALLOW_MEMORY_GROWTH
-  emscripten_replace_memory__asm: true, // this is used inside the asm module
-  emscripten_replace_memory__sig: 'viiiiiiii', // bogus
-  emscripten_replace_memory: function(newBuffer) {
-    if ((byteLength(newBuffer) & 0xffff) || byteLength(newBuffer) < 0xffff) return false;
-    HEAP8 = new Int8View(newBuffer);
-    HEAP16 = new Int16View(newBuffer);
-    HEAP32 = new Int32View(newBuffer);
-    HEAPU8 = new Uint8View(newBuffer);
-    HEAPU16 = new Uint16View(newBuffer);
-    HEAPU32 = new Uint32View(newBuffer);
-    HEAPF32 = new Float32View(newBuffer);
-    HEAPF64 = new Float64View(newBuffer);
-    buffer = newBuffer;
-    return true;
-  },
-  // this function is inside the asm block, but prevents validation as asm.js
-  // the codebase still benefits from being in the general asm.js shape,
-  // but should not declare itself as validating (which is prevented in ASM_JS == 2).
-  {{{ (assert(ASM_JS === 2), DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('emscripten_replace_memory'), '') }}}
-#endif
-#endif
-#endif
 
   emscripten_debugger: function() {
     debugger;

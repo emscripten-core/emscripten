@@ -4,6 +4,8 @@
 import os, sys, subprocess, multiprocessing, threading, time
 from runner import test_modes, PYTHON, path_from_root
 
+assert not os.environ.get('EM_SAVE_DIR'), 'Need separate directories to avoid the parallel tests clashing'
+
 # run slower ones first, to optimize total time
 optimal_order = ['asm3i', 'asm1i', 'asm2nn', 'asm3', 'asm2', 'asm2g', 'asm2f', 'asm1', 'default']
 assert set(optimal_order) == set(test_modes), 'need to update the list of slowest modes'
@@ -53,7 +55,7 @@ def main():
   watcher.start()
 
   # run all modes
-  cores = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
+  cores = int(os.environ.get('PARALLEL_SUITE_EMCC_CORES') or os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
   pool = multiprocessing.Pool(processes=cores)
   args = [[x] + sys.argv[1:] for x in optimal_order]
   num_failures = pool.map(run_mode, args, chunksize=1)

@@ -651,18 +651,20 @@ var LibraryEmbind = {
     'free', 'malloc', '$readLatin1String', '$registerType',
     '$simpleReadValueFromPointer'],
   _embind_register_std_wstring: function(rawType, charSize, name) {
+    // nb. do not cache HEAPU16 and HEAPU32, they may be destroyed by enlargeMemory().
     name = readLatin1String(name);
-    var HEAP, shift;
+    var getHeap, shift;
     if (charSize === 2) {
-        HEAP = HEAPU16;
+        getHeap = function() { return HEAPU16; };
         shift = 1;
     } else if (charSize === 4) {
-        HEAP = HEAPU32;
+        getHeap = function() { return HEAPU32; };
         shift = 2;
     }
     registerType(rawType, {
         name: name,
         'fromWireType': function(value) {
+            var HEAP = getHeap();
             var length = HEAPU32[value >> 2];
             var a = new Array(length);
             var start = (value + 4) >> shift;
@@ -674,6 +676,7 @@ var LibraryEmbind = {
         },
         'toWireType': function(destructors, value) {
             // assumes 4-byte alignment
+            var HEAP = getHeap();
             var length = value.length;
             var ptr = _malloc(4 + length * charSize);
             HEAPU32[ptr >> 2] = length;

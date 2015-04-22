@@ -146,30 +146,17 @@ class RunnerCore(unittest.TestCase):
     if emcc_args is None:
       emcc_args = []
 
-    if emcc_args is None: # legacy testing mode, no longer used
-      Building.emscripten(filename, append_ext=True, extra_args=extra_emscripten_args)
-      if post1:
-        exec post1 in locals()
-        shutil.copyfile(filename + '.o.js', filename + '.o.js.prepost.js')
-        process(filename + '.o.js')
-      if post2: post2(filename + '.o.js')
-    else:
-      transform_args = []
-      if post1:
-        transform_filename = os.path.join(self.get_dir(), 'transform.py')
-        transform = open(transform_filename, 'w')
-        transform.write('''
-import sys
-sys.path += [%r]
-''' % path_from_root(''))
-        transform.write(post1)
-        transform.write('''
-process(sys.argv[1])
-''')
-        transform.close()
-        transform_args = ['--js-transform', "%s %s" % (PYTHON, transform_filename)]
-      Building.emcc(filename + '.o.ll', Settings.serialize() + emcc_args + transform_args + Building.COMPILER_TEST_OPTS, filename + '.o.js')
-      if post2: post2(filename + '.o.js')
+    transform_args = []
+    if post1:
+      transform_filename = os.path.join(self.get_dir(), 'transform.py')
+      transform = open(transform_filename, 'w')
+      transform.write('\nimport sys\nsys.path += [%r]\n' % path_from_root(''))
+      transform.write(post1)
+      transform.write('\nprocess(sys.argv[1])\n')
+      transform.close()
+      transform_args = ['--js-transform', "%s %s" % (PYTHON, transform_filename)]
+    Building.emcc(filename + '.o.ll', Settings.serialize() + emcc_args + transform_args + Building.COMPILER_TEST_OPTS, filename + '.o.js')
+    if post2: post2(filename + '.o.js')
 
   # Build JavaScript code from source code
   def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None, extra_emscripten_args=[], post_build=None):
@@ -863,6 +850,10 @@ In the main test suite, you can run all variations (O0, O1, O2, etc.) of
 an individual test with
 
   python tests/runner.py ALL.test_hello_world
+
+You can run a random set of N tests with a command like
+
+  python tests/runner.py random50
 
 Debugging: You can run
 

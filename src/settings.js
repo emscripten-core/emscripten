@@ -71,11 +71,6 @@ var GLOBAL_BASE = -1; // where global data begins; the start of static memory. -
 
 // Code embetterments
 var MICRO_OPTS = 1; // Various micro-optimizations, like nativizing variables
-var RELOOP = 0; // Recreate js native loops from llvm data
-var RELOOPER = 'relooper.js'; // Loads the relooper from this path relative to compiler.js
-var RELOOPER_BUFFER_SIZE = 20*1024*1024; // The internal relooper buffer size. Increase if you see assertions
-                                         // on OutputBuffer.
-
 var USE_TYPED_ARRAYS = 2; // Use typed arrays for the heap. See https://github.com/kripken/emscripten/wiki/Code-Generation-Modes/
                           // 2 is a single heap, accessible through views as int8, int32, etc. This is
                           //   the only supported mode.
@@ -182,26 +177,6 @@ var OUTLINING_LIMIT = 0; // A function size above which we try to automatically 
 var AGGRESSIVE_VARIABLE_ELIMINATION = 0; // Run aggressiveVariableElimination in js-optimizer.js
 var SIMPLIFY_IFS = 1; // Whether to simplify ifs in js-optimizer.js
 
-var POINTER_MASKING = 0; // Whether pointers can be masked to a power-of-two heap
-                         // length. An experimental optimization trying to reduce VM
-                         // bounds checks.
-var POINTER_MASKING_OVERFLOW = 64 * 1024; // The length added to the heap length to allow
-                                          // the compiler to derive that accesses are
-                                          // within bounds even when adding small constant
-                                          // offsets. This defaults to 64K, but in asm.js
-                                          // mode it is silently adjusted to keep the
-                                          // total buffer length a valid asm.js heap
-                                          // buffer length.
-var POINTER_MASKING_DYNAMIC = 0; // When disabled, the masking is baked into the code with
-				 // static masks and a static heap buffer length and the
-				 // TOTAL_MEMORY must be a power of 2. When enabled, the
-				 // masks are defined at runtime rather than compling them
-				 // into the asm.js module as literal constants and the
-				 // TOTAL_MEMORY can be defined at run time.
-var POINTER_MASKING_DEFAULT_ENABLED = 1; // When POINTER_MASKING_DYNAMIC is enabled this
-					 // sets the default for POINTER_MASKING_ENABLED,
-					 // enabling or disabling pointer masking.
-
 // Generated code debugging options
 var SAFE_HEAP = 0; // Check each write to the heap, for example, this will give a clear
                    // error on what would be segfaults in a native build (like deferencing
@@ -223,6 +198,10 @@ var ALIASING_FUNCTION_POINTERS = 0; // Whether to allow function pointers to ali
                                     // a different type. This can greatly decrease table sizes
                                     // in asm.js, but can break code that compares function
                                     // pointers across different types.
+var EMULATED_FUNCTION_POINTERS = 0; // By default we implement function pointers using asm.js
+                                    // function tables, which is very fast. With this option,
+                                    // we implement them more flexibly by emulating them: we
+                                    // call out into JS, which handles the function tables.
 var EMULATE_FUNCTION_POINTER_CASTS = 0; // Allows function pointers to be cast, wraps each
                                         // call of an incorrect type with a runtime correction.
                                         // This adds overhead and should not be used normally.
@@ -235,16 +214,6 @@ var FUNCTION_POINTER_ALIGNMENT = 2; // Byte alignment of function pointers - we 
                                     // test_polymorph and issue #1692).
 
 var ASM_HEAP_LOG = 0; // Simple heap logging, like SAFE_HEAP_LOG but cheaper, and in asm.js
-
-var CORRUPTION_CHECK = 0; // When enabled, will emit a buffer area at the beginning and
-                          // end of each allocation on the heap, filled with canary
-                          // values that can be checked later. Corruption is checked for
-                          // at the end of each at each free() (see jsifier to add more, and you
-                          // can add more manual checks by calling CorruptionChecker.checkAll).
-                          // 0 means not enabled, higher values mean the size of the
-                          // buffer areas as a multiple of the allocated area (so
-                          // 1 means 100%, or buffer areas equal to allocated area,
-                          // both before and after). This must be an integer.
 
 var LABEL_DEBUG = 0; // 1: Print out functions as we enter them
                      // 2: Also print out each label as we enter it
@@ -381,11 +350,6 @@ var NO_FILESYSTEM = 0; // If set, does not build in any filesystem support. Usef
 var NO_BROWSER = 0; // If set, disables building in browser support using the Browser object. Useful if you are
                     // just doing pure computation in a library, and don't need any browser capabilities like a main loop
                     // (emscripten_set_main_loop), or setTimeout, etc.
-
-var USE_BSS = 1; // https://en.wikipedia.org/wiki/.bss
-                 // When enabled, 0-initialized globals are sorted to the end of the globals list,
-                 // enabling us to not explicitly store the initialization value for each 0 byte.
-                 // This significantly lowers the memory initialization array size.
 
 var NAMED_GLOBALS = 0; // If 1, we use global variables for globals. Otherwise
                        // they are referred to by a base plus an offset (called an indexed global),
@@ -582,10 +546,6 @@ var DEAD_FUNCTIONS = []; // Functions on this list are not converted to JS, and 
 
 var EXPLICIT_ZEXT = 0; // If 1, generate an explicit conversion of zext i1 to i32, using ?:
 
-var NECESSARY_BLOCKADDRS = []; // List of (function, block) for all block addresses that are taken.
-
-var JS_CHUNK_SIZE = 10240; // Used as a maximum size before breaking up expressions and lines into smaller pieces
-
 var EXPORT_NAME = 'Module'; // Global variable to export the module as for environments without a standardized module
                             // loading system (e.g. the browser and SM shell).
 
@@ -616,7 +576,6 @@ var EMTERPRETIFY_ADVISE = 0; // Performs a static analysis to suggest which func
                              // when you use the list, it might not work.
 
 var RUNNING_JS_OPTS = 0; // whether js opts will be run, after the main compiler
-var RUNNING_FASTCOMP = 1; // whether we are running the fastcomp backend
 var BOOTSTRAPPING_STRUCT_INFO = 0; // whether we are in the generate struct_info bootstrap phase
 
 var COMPILER_ASSERTIONS = 0; // costly (slow) compile-time assertions
@@ -645,7 +604,6 @@ var DEBUG_TAGS_SHOWING = [];
   //    gconst
   //    types
   //    vars
-  //    relooping
   //    unparsedFunctions
   //    metadata
   //    legalizer
@@ -661,3 +619,5 @@ var SAFE_HEAP_LINES = [];
 // That file is automatically parsed by tools/gen_struct_info.py.
 // If you modify the headers, just clear your cache and emscripten libc should see
 // the new values.
+
+// Reserved: variables containing POINTER_MASKING.

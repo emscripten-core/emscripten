@@ -82,39 +82,7 @@ Some features that were present in the original compiler that are not present in
 How to disable Fastcomp
 -----------------------
 
-.. warning:: You should **NOT** disable Fastcomp. If you "really must", then:
-
-   -  The build will be slower, consume more memory, and result in sub-optimal code.
-   -  There are more likely to be bugs, because the old compiler is less tested.
-
-The original compiler is still present, and you may want to use it if you need a feature that is not yet present in *Fastcomp*. There should be very few such features, as almost everything that is not deprecated or planned to be rewritten has already been ported.
-
-However, if you do need to, you can use the old compiler by turning off *Fastcomp*; you do this by setting ``EMCC_FAST_COMPILER=0`` when you build:
-::
-
-    EMCC_FAST_COMPILER=0 emcc [..]
-
-
-When you disable *Fastcomp* you can use **either** a build from the *Fastcomp* repositories, **or** a stock LLVM build. The latter is less tested, but should work in principle: Disabling *Fastcomp* does not use anything new in the *Fastcomp* repo (neither the new backend, nor the new target triple).
-
-You can check whether *Fastcomp* is enabled by looking at the debug output. For example, run ``EMCC_DEBUG=1 emcc tests/hello_world.c`` — if *Fastcomp* is on, then among the output will be:
-
-::
-
-    DEBUG    root: emscript: llvm backend: ...
-    DEBUG    root:   emscript: llvm backend took
-
-This debug output shows both the command used to run the backend, and how much time it took. If *Fastcomp* is off on the other hand, the old compiler is used, and you will instead see:
-
-::
-
-    DEBUG    root: emscript: ll=>js
-    DEBUG    root:   emscript: scan took ...
-    ...
-    DEBUG    root: emcc step "emscript (llvm=>js)" took ...
-
-This shows that the old compiler (``ll=>js``) is called, as well as how much time each step takes, and the total time. Again, this is the output for the **old** compiler, so hopefully you will never see it!
-
+Fastcomp is now the only supported compiler and the old compiler has been removed from emscripten.
 
 
 .. _fastcomp-faq:

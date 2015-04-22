@@ -1828,7 +1828,7 @@ void simplifyExpressions(Ref ast) {
           }
         }
       } else if (type == BINARY && node[1] == RSHIFT && node[2][0] == NUM && node[3][0] == NUM) {
-        // optimize num >> num, in asm we need this since we do not run optimizeShifts
+        // optimize num >> num, in asm we need this since we do not optimize shifts in asm.js
         node[0]->setString(NUM);
         node[1]->setNumber(jsD2I(node[2][1]->getNumber()) >> jsD2I(node[3][1]->getNumber()));
         node->setSize(2);
@@ -2564,8 +2564,7 @@ void registerizeHarder(Ref ast) {
       int id;
       std::unordered_set<int> inblocks, outblocks;
       StringSet live;
-      bool checkedLive;
-      Junction(int id_) : id(id_), checkedLive(false) {}
+      Junction(int id_) : id(id_) {}
     };
     struct Node {
     };
@@ -3130,7 +3129,6 @@ void registerizeHarder(Ref ast) {
         }
       }
       junc.live = live;
-      junc.checkedLive = true;
     };
 
     auto analyzeBlock = [&](Block* block) {
@@ -3236,63 +3234,55 @@ void registerizeHarder(Ref ast) {
       block->lastKillLoc = lastKillLoc;
     };
 
-    std::unordered_set<int> jWorklistMap;
-    jWorklistMap.insert(EXIT_JUNCTION);
-    std::vector<int> jWorklist;
-    jWorklist.push_back(EXIT_JUNCTION);
-    std::unordered_set<int> bWorklistMap;
-    std::vector<int> bWorklist;
+    // Ordered map to work in approximate reverse order of junction appearance
+    std::set<int> jWorkSet;
+    std::set<int> bWorkSet;
 
     // Be sure to visit every junction at least once.
     // This avoids missing some vars because we disconnected them
     // when processing the labelled jumps.
-    for (int i = junctions.size() - 1; i >= EXIT_JUNCTION; i--) {
-      jWorklistMap.insert(i);
-      jWorklist.push_back(i);
+    for (int i = EXIT_JUNCTION; i < junctions.size(); i++) {
+      jWorkSet.insert(i);
+      for (auto b : junctions[i].inblocks) {
+        bWorkSet.insert(b);
+      }
     }
+    // Exit junction never has any live variable changes to propagate
+    jWorkSet.erase(EXIT_JUNCTION);
 
-    while (jWorklist.size() > 0) {
+    do {
       // Iterate on just the junctions until we get stable live sets.
       // The first run of this loop will grow the live sets to their maximal size.
       // Subsequent runs will shrink them based on eliminated in-block uses.
-      while (jWorklist.size() > 0) {
-        Junction& junc = junctions[jWorklist.back()];
-        jWorklist.pop_back();
-        jWorklistMap.erase(junc.id);
+      while (jWorkSet.size() > 0) {
+        auto last = jWorkSet.end();
+        --last;
+        Junction& junc = junctions[*last];
+        jWorkSet.erase(last);
         StringSet oldLive = junc.live; // copy it here, to check for changes later
-        bool oldChecked = junc.checkedLive;
         analyzeJunction(junc);
-        if (oldChecked != junc.checkedLive || oldLive != junc.live) {
+        if (oldLive != junc.live) {
           // Live set changed, updated predecessor blocks and junctions.
           for (auto b : junc.inblocks) {
-            if (bWorklistMap.count(b) == 0) {
-              bWorklistMap.insert(b);
-              bWorklist.push_back(b);
-            }
-            int jPred = blocks[b]->entry;
-            if (jWorklistMap.count(jPred) == 0) {
-              jWorklistMap.insert(jPred);
-              jWorklist.push_back(jPred);
-            }
+            bWorkSet.insert(b);
+            jWorkSet.insert(blocks[b]->entry);
           }
         }
       }
       // Now update the blocks based on the calculated live sets.
-      while (bWorklist.size() > 0) {
-        Block* block = blocks[bWorklist.back()];
-        bWorklist.pop_back();
-        bWorklistMap.erase(block->id);
+      while (bWorkSet.size() > 0) {
+        auto last = bWorkSet.end();
+        --last;
+        Block* block = blocks[*last];
+        bWorkSet.erase(last);
         auto oldUse = block->use;
         analyzeBlock(block);
         if (oldUse != block->use) {
           // The use set changed, re-process the entry junction.
-          if (jWorklistMap.count(block->entry) == 0) {
-            jWorklistMap.insert(block->entry);
-            jWorklist.push_back(block->entry);
-          }
+          jWorkSet.insert(block->entry);
         }
       }
-    }
+    } while (jWorkSet.size() > 0);
 
     // Insist that all function parameters are alive at function entry.
     // This ensures they will be assigned independent registers, even
@@ -3309,46 +3299,98 @@ void registerizeHarder(Ref ast) {
     // (the "links").
 
     struct JuncVar {
-      StringSet conf, link;
+      std::vector<bool> conf;
+      StringSet link;
       std::unordered_set<int> excl;
       int reg;
-      JuncVar() : reg(-1) {}
+      bool used;
+      JuncVar() : reg(-1), used(false) {}
     };
-    std::unordered_map<IString, JuncVar> junctionVariables;
+    size_t numLocals = asmData.locals.size();
+    std::unordered_map<IString, size_t> nameToNum;
+    std::vector<IString> numToName;
+    nameToNum.reserve(numLocals);
+    numToName.reserve(numLocals);
+    for (auto kv : asmData.locals) {
+      nameToNum[kv.first] = numToName.size();
+      numToName.push_back(kv.first);
+    }
 
-    auto initializeJunctionVariable = [&](IString name) {
-      junctionVariables[name].conf.reserve(asmData.locals.size());
-    };
+    std::vector<JuncVar> juncVars(numLocals);
+    for (Junction& junc : junctions) {
+      for (IString name : junc.live) {
+        JuncVar& jVar = juncVars[nameToNum[name]];
+        jVar.used = true;
+        jVar.conf.assign(numLocals, false);
+      }
+    }
+    std::unordered_map<IString, std::vector<Block*>> possibleBlockConflictsMap;
+    std::vector<std::pair<size_t, std::vector<Block*>>> possibleBlockConflicts;
+    std::unordered_map<IString, std::vector<Block*>> possibleBlockLinks;
+    possibleBlockConflictsMap.reserve(numLocals);
+    possibleBlockConflicts.reserve(numLocals);
+    possibleBlockLinks.reserve(numLocals);
 
-    for (size_t i = 0; i < junctions.size(); i++) {
-      Junction& junc = junctions[i];
+    for (Junction& junc : junctions) {
+      // Pre-compute the possible conflicts and links for each block rather
+      // than checking potentially impossible options for each var
+      possibleBlockConflictsMap.clear();
+      possibleBlockConflicts.clear();
+      possibleBlockLinks.clear();
+      for (auto b : junc.outblocks) {
+        Block* block = blocks[b];
+        Junction& jSucc = junctions[block->exit];
+        for (auto name : jSucc.live) {
+          possibleBlockConflictsMap[name].push_back(block);
+        }
+        for (auto name_linkname : block->link) {
+          if (name_linkname.first != name_linkname.second) {
+            possibleBlockLinks[name_linkname.first].push_back(block);
+          }
+        }
+      }
+      // Find the live variables in this block, mark them as unnecessary to
+      // check for conflicts (we mark all live vars as conflicting later)
+      std::vector<size_t> liveJVarNums;
+      liveJVarNums.reserve(junc.live.size());
       for (auto name : junc.live) {
-        if (junctionVariables.count(name) == 0) initializeJunctionVariable(name);
+        size_t jVarNum = nameToNum[name];
+        liveJVarNums.push_back(jVarNum);
+        possibleBlockConflictsMap.erase(name);
+      }
+      // Extract just the variables we might want to check for conflicts
+      for (auto kv : possibleBlockConflictsMap) {
+        possibleBlockConflicts.push_back(std::make_pair(nameToNum[kv.first], kv.second));
+      }
+
+      for (size_t jVarNum : liveJVarNums) {
+        JuncVar& jvar = juncVars[jVarNum];
+        IString name = numToName[jVarNum];
         // It conflicts with all other names live at this junction.
-        junctionVariables[name].conf.insert(junc.live.begin(), junc.live.end()); // XXX this operation is very expensive
-        junctionVariables[name].conf.erase(name); // except for itself, of course
-        for (auto b : junc.outblocks) {
-          // It conflicts with any output vars of successor blocks,
-          // if they're assigned before it goes dead in that block.
-          Block* block = blocks[b];
-          Junction& jSucc = junctions[block->exit];
-          for (auto otherName : jSucc.live) {
-            if (junc.live.has(otherName)) continue;
+        for (size_t liveJVarNum : liveJVarNums) {
+          jvar.conf[liveJVarNum] = true;
+        }
+        jvar.conf[jVarNum] = false; // except for itself, of course
+
+        // It conflicts with any output vars of successor blocks,
+        // if they're assigned before it goes dead in that block.
+        for (auto jvarnum_blocks : possibleBlockConflicts) {
+          size_t otherJVarNum = jvarnum_blocks.first;
+          IString otherName = numToName[otherJVarNum];
+          for (auto block : jvarnum_blocks.second) {
             if (block->lastKillLoc[otherName] < block->firstDeadLoc[name]) {
-              if (junctionVariables.count(otherName) == 0) initializeJunctionVariable(otherName);
-              junctionVariables[name].conf.insert(otherName);
-              junctionVariables[otherName].conf.insert(name);
+              jvar.conf[otherJVarNum] = true;
+              juncVars[otherJVarNum].conf[jVarNum] = true;
+              break;
             }
           }
-          // It links with any linkages in the outgoing blocks.
-          if (block->link.has(name)) {
-            IString linkName = block->link[name];
-            if (linkName != name) {
-              if (junctionVariables.count(linkName) == 0) initializeJunctionVariable(linkName);
-              junctionVariables[name].link.insert(linkName);
-              junctionVariables[linkName].link.insert(name);
-            }
-          }
+        }
+
+        // It links with any linkages in the outgoing blocks.
+        for (auto block: possibleBlockLinks[name]) {
+          IString linkName = block->link[name];
+          jvar.link.insert(linkName);
+          juncVars[nameToNum[linkName]].link.insert(name);
         }
       }
     }
@@ -3357,17 +3399,19 @@ void registerizeHarder(Ref ast) {
     // Simple starting point: handle the most-conflicted variables first.
     // This seems to work pretty well.
 
-    StringVec sortedJunctionVariables;
-    for (auto pair : junctionVariables) {
-      sortedJunctionVariables.push_back(pair.first);
+    std::vector<size_t> sortedJVarNums;
+    sortedJVarNums.reserve(juncVars.size());
+    std::vector<size_t> jVarConfCounts(numLocals);
+    for (size_t jVarNum = 0; jVarNum < juncVars.size(); jVarNum++) {
+      JuncVar& jVar = juncVars[jVarNum];
+      if (!jVar.used) continue;
+      jVarConfCounts[jVarNum] = std::count(jVar.conf.begin(), jVar.conf.end(), true);
+      sortedJVarNums.push_back(jVarNum);
     }
-    std::sort(sortedJunctionVariables.begin(), sortedJunctionVariables.end(), [&](const IString name1, const IString name2) {
-      //// sort params first
-      //if (asmData.isParam(name1) && !asmData.isParam(name2)) return true;
-      //if (!asmData.isParam(name1) && asmData.isParam(name2)) return false;
+    std::sort(sortedJVarNums.begin(), sortedJVarNums.end(), [&](const size_t vi1, const size_t vi2) {
       // sort by # of conflicts
-      if (junctionVariables[name1].conf.size() < junctionVariables[name2].conf.size()) return true;
-      if (junctionVariables[name1].conf.size() == junctionVariables[name2].conf.size()) return name1 < name2;
+      if (jVarConfCounts[vi1] < jVarConfCounts[vi2]) return true;
+      if (jVarConfCounts[vi1] == jVarConfCounts[vi2]) return numToName[vi1] < numToName[vi2];
       return false;
     });
 
@@ -3380,7 +3424,7 @@ void registerizeHarder(Ref ast) {
       // Try to assign the given register to the given variable,
       // and propagate that choice throughout the graph.
       // Returns true if successful, false if there was a conflict.
-      JuncVar& jv = junctionVariables[name];
+      JuncVar& jv = juncVars[nameToNum[name]];
       if (jv.reg > 0) {
         return jv.reg == reg;
       }
@@ -3389,8 +3433,10 @@ void registerizeHarder(Ref ast) {
       }
       jv.reg = reg;
       // Exclude use of this register at all conflicting variables.
-      for (auto confName : jv.conf) {
-        junctionVariables[confName].excl.insert(reg);
+      for (size_t confNameNum = 0; confNameNum < jv.conf.size(); confNameNum++) {
+        if (jv.conf[confNameNum]) {
+          juncVars[confNameNum].excl.insert(reg);
+        }
       }
       // Try to propagate it into linked variables.
       // It's not an error if we can't.
@@ -3399,12 +3445,12 @@ void registerizeHarder(Ref ast) {
       }
       return true;
     };
-    for (size_t i = 0; i < sortedJunctionVariables.size(); i++) {
-      IString name = sortedJunctionVariables[i];
+    for (size_t jVarNum : sortedJVarNums) {
       // It may already be assigned due to linked-variable propagation.
-      if (junctionVariables[name].reg > 0) {
+      if (juncVars[jVarNum].reg > 0) {
         continue;
       }
+      IString name = numToName[jVarNum];
       // Try to use existing registers first.
       auto& allRegs = allRegsByType[asmData.getType(name)];
       bool moar = false;
@@ -3439,7 +3485,7 @@ void registerizeHarder(Ref ast) {
       for (auto name : jExit.live) {
         if (!block->kill.has(name)) {
           inputVars.insert(name);
-          int reg = junctionVariables[name].reg;
+          int reg = juncVars[nameToNum[name]].reg;
           assert(reg > 0); // 'input variable doesnt have a register');
           inputDeadLoc[reg] = block->firstDeadLoc[name];
           inputVarsByReg[reg] = name;
@@ -3449,7 +3495,7 @@ void registerizeHarder(Ref ast) {
         IString name = pair.first;
         if (!inputVars.has(name)) {
           inputVars.insert(name);
-          int reg = junctionVariables[name].reg;
+          int reg = juncVars[nameToNum[name]].reg;
           assert(reg > 0); // 'input variable doesnt have a register');
           inputDeadLoc[reg] = block->firstDeadLoc[name];
           inputVarsByReg[reg] = name;
@@ -3464,7 +3510,7 @@ void registerizeHarder(Ref ast) {
       auto freeRegsByTypePre = allRegsByType; // XXX copy
       // Begin with all live vars assigned per the exit junction.
       for (auto name : jExit.live) {
-        int reg = junctionVariables[name].reg;
+        int reg = juncVars[nameToNum[name]].reg;
         assert(reg > 0); // 'output variable doesnt have a register');
         assignedRegs[name] = reg;
         freeRegsByTypePre[asmData.getType(name)].erase(reg); // XXX assert?
@@ -3490,7 +3536,7 @@ void registerizeHarder(Ref ast) {
           if (reg <= 0) {
             if (inputVars.has(name) && j <= block->firstDeadLoc[name]) {
               // Assignment to an input variable, must use pre-assigned reg.
-              reg = junctionVariables[name].reg;
+              reg = juncVars[nameToNum[name]].reg;
               assignedRegs[name] = reg;
               for (int k = freeRegs.size() - 1; k >= 0; k--) {
                 if (freeRegs[k] == reg) {
@@ -3555,7 +3601,7 @@ void registerizeHarder(Ref ast) {
     if (!!fun[2]) {
       for (size_t i = 0; i < fun[2]->size(); i++) {
         auto& allRegs = allRegsByType[asmData.getType(fun[2][i]->getIString())];
-        fun[2][i]->setString(allRegs[junctionVariables[fun[2][i]->getIString()].reg]);
+        fun[2][i]->setString(allRegs[juncVars[nameToNum[fun[2][i]->getIString()]].reg]);
         paramRegs.insert(fun[2][i]->getIString());
       }
     }
