@@ -3991,6 +3991,10 @@ int main(int argc, char **argv) {
   // Run passes on the Document
   for (int i = 2; i < argc; i++) {
     std::string str(argv[i]);
+#ifdef PROFILING
+    clock_t start = clock();
+    errv("starting %s", str.c_str());
+#endif
     if (str == "asm") {} // the default for us
     else if (str == "asmPreciseF32") {}
     else if (str == "receiveJSON" || str == "emitJSON") {}
@@ -4011,6 +4015,9 @@ int main(int argc, char **argv) {
       fprintf(stderr, "unrecognized argument: %s\n", str.c_str());
       assert(0);
     }
+#ifdef PROFILING
+    errv("    %s took %lu microseconds", str.c_str(), clock() - start);
+#endif
   }
 
   // Emit

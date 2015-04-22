@@ -11,6 +11,10 @@ else()
 	set(IS_GCC_LIKE FALSE)
 endif()
 
+# -DPROFILING will print crude timing information to stderr for initial
+# identification of areas to profile in more depth with
+# CALLGRIND_{START,STOP}_INSTRUMENTATION or similar
+
 if (IS_GCC_LIKE)
 	set(cFlags "-std=c++11 -fno-exceptions -fno-rtti")
 endif()
