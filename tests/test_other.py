@@ -2694,22 +2694,24 @@ int main() {
   def test_warn_unaligned(self):
     open('src.cpp', 'w').write(r'''
 #include <stdio.h>
-static const double grid[4][2] = {{-3 / 3., -1 / 3.},
-                                  {+1 / 3., -3 / 3.},
-                                  {-1 / 3., +3 / 3.},
-                                  {+3 / 3., +1 / 3.}};
+struct packey {
+  char x;
+  int y;
+  double z;
+} __attribute__((__packed__));
 int main() {
-  for (int i = 0; i < 4; i++)
-    printf("%d:%.2f,%.2f ", i, grid[i][0], grid[i][1]);
-  printf("\n");
+  volatile packey p;
+  p.x = 0;
+  p.y = 1;
+  p.z = 2;
   return 0;
 }
 ''')
-    output = Popen([PYTHON, EMCC, 'src.cpp', '-O1', '-s', 'WARN_UNALIGNED=1'], stderr=PIPE).communicate()
-    assert 'emcc: warning: unaligned store' in output[1]
+    output = Popen([PYTHON, EMCC, 'src.cpp', '-s', 'WARN_UNALIGNED=1'], stderr=PIPE).communicate()
+    assert 'emcc: warning: unaligned store' in output[1], output[1]
     output = Popen([PYTHON, EMCC, 'src.cpp', '-s', 'WARN_UNALIGNED=1', '-g'], stderr=PIPE).communicate()
-    assert 'emcc: warning: unaligned store' in output[1]
-    assert '@line 9 "src.cpp"' in output[1]
+    assert 'emcc: warning: unaligned store' in output[1], output[1]
+    assert '@line 11 "src.cpp"' in output[1], output[1]
 
   def test_no_exit_runtime(self):
     open('code.cpp', 'w').write(r'''
