@@ -14,6 +14,9 @@ sys.path.append(shared.path_from_root('third_party', 'ply'))
 
 import WebIDL
 
+DO_CHECKS = os.environ.get('IDL_CHECKS') or '0'
+DBG_PRINT = os.environ.get('IDL_VERBOSE') or '0'
+
 class Dummy:
   def __init__(self, init):
     for k, v in init.iteritems():
@@ -82,6 +85,11 @@ function WrapperObject() {
 emit_constructor('WrapperObject')
 
 mid_js += ['''
+function CHECK(__COND__, __ERR__) {
+  if(!__COND__) { throw new Error(__ERR__); };
+};
+Module['CHECK'] = CHECK;
+
 function getCache(__class__) {
   return (__class__ || WrapperObject).__cache__;
 }
@@ -213,13 +221,22 @@ def type_to_cdec(raw):
 def render_function(class_name, func_name, sigs, return_type, non_pointer, copy, operator, constructor, func_scope, call_content=None, const=False):
   global mid_c, mid_js, js_impl_methods
 
-  #print 'renderfunc', class_name, func_name, sigs, return_type, constructor
+  printDebugInfo = DBG_PRINT is '1'
+  doChecks = DO_CHECKS is '1'
 
   bindings_name = class_name + '_' + func_name
   min_args = min(sigs.keys())
   max_args = max(sigs.keys())
 
   c_names = {}
+
+  if printDebugInfo: print 'renderfunc', class_name, func_name, sigs.keys(), return_type, constructor
+
+  allargs = sigs.get(max_args)
+  for i in range(max_args):
+    a = allargs[i]
+    if printDebugInfo and isinstance(a, WebIDL.IDLArgument):
+      print ("  arg%d" % i), a.identifier, a.type, a.optional
 
   # JS
 
@@ -243,10 +260,48 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
     body = ''
     pre_arg = []
 
+  fullname = "%s::%s" % (class_name, func_name)
+
   for i in range(max_args):
+    if i >= min_args:
+      optional = True
+    else:
+      optional = False
+    arg = allargs[i]
+    doDefault = False
     # note: null has typeof object, but is ok to leave as is, since we are calling into asm code where null|0 = 0
-    body += "  if (arg%d && typeof arg%d === 'object') arg%d = arg%d.ptr;\n" % (i, i, i, i)
-    body += "  else arg%d = ensureString(arg%d);\n" % (i, i)
+    if isinstance(arg, Dummy) or (isinstance(arg, WebIDL.IDLArgument) and arg.optional is False):
+      if isinstance(arg, WebIDL.IDLArgument):
+        argName = arg.identifier.name
+      else:
+        argName = ''
+      checkMsg = "[CHECK FAILED] %s(arg%d:%s): " % (fullname, i, argName)
+      if isinstance(arg.type, WebIDL.IDLWrapperType):
+        inner = arg.type.inner
+      else:
+        inner = ""
+      body += "  /* arg%d <%s> [%s] */\n" % (i, arg.type.name, inner)
+      if arg.type.isNumeric():
+        if doChecks and not optional: body += "  CHECK(typeof arg%d === 'number' && !isNaN(arg%d), '%sExpecting <number>');\n" % (i, i, checkMsg)
+      elif arg.type.isBoolean():
+        body += ""
+      elif arg.type.isString():
+        if doChecks and not optional: body += "  CHECK(typeof arg%d === 'string', '%sExpecting <string>');\n" % (i, checkMsg)
+        body += "  arg%d = ensureString(arg%d);\n" % (i, i)
+      elif arg.type.isInterface():
+        if doChecks and not optional: body += "  CHECK(typeof arg%d === 'object' && typeof arg%d.ptr === 'number', '%sExpecting <pointer>');\n" % (i, i, checkMsg)
+        if optional:
+          body += "  if(typeof arg%d !== 'undefined' && arg%d !== null) { arg%d = arg%d.ptr };\n" % (i, i, i, i)
+        else:
+          body += "  arg%d = arg%d.ptr;\n" % (i, i)
+      else:
+        doDefault = True
+    else:
+      doDefault = True
+
+    if doDefault:
+      body += "  if (arg%d && typeof arg%d === 'object') arg%d = arg%d.ptr;\n" % (i, i, i, i)
+      body += "  else arg%d = ensureString(arg%d);\n" % (i, i)
 
   for i in range(min_args, max_args):
     c_names[i] = 'emscripten_bind_%s_%d' % (bindings_name, i)
@@ -267,7 +322,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
     sig = [arg.type.name for arg in raw]
 
     c_arg_types = map(type_to_c, sig)
- 
+
     normal_args = ', '.join(['%s arg%d' % (c_arg_types[j], j) for j in range(i)])
     if constructor:
       full_args = normal_args
