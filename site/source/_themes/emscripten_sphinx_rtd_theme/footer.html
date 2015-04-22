@@ -90,7 +90,7 @@
         {% trans path=pathto('copyright'), copyright=copyright|e %}&copy; <a href="{{ path }}">Copyright</a> {{ copyright }}.{% endtrans %} 
       {%- else %}
         <!-- {% trans copyright=copyright|e %}&copy; Copyright {{ copyright }}.{% endtrans %} -->
-		&copy; Copyright {{ copyright }} <a href="{{ pathto("docs\contributing\AUTHORS") }}">Emscripten Contributors</a>.
+		&copy; Copyright {{ copyright }} <a href="{{ pathto("docs/contributing/AUTHORS") }}">Emscripten Contributors</a>.
 		<!-- update theme to remove the translation stuff here - it was breaking due to link to AUTHORS file. This is a cludge to allow specific link to my authors file -->
       {%- endif %}
     {%- endif %}
