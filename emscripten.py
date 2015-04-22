@@ -75,7 +75,10 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       backend_args += ['-emscripten-no-aliasing-function-pointers']
     if settings['EMULATED_FUNCTION_POINTERS']:
       backend_args += ['-emscripten-emulated-function-pointers']
-    if settings['GLOBAL_BASE'] >= 0:
+    if settings['RELOCATABLE']:
+      backend_args += ['-emscripten-relocatable']
+      backend_args += ['-emscripten-global-base=0']
+    elif settings['GLOBAL_BASE'] >= 0:
       backend_args += ['-emscripten-global-base=%d' % settings['GLOBAL_BASE']]
     backend_args += ['-O' + str(settings['OPT_LEVEL'])]
     if DEBUG:
@@ -517,6 +520,10 @@ function _emscripten_asm_const_%d(%s) {
         basic_vars.append('F_BASE_%s' % sig)
         asm_setup += '  var F_BASE_%s = %s;\n' % (sig, 'FUNCTION_TABLE_OFFSET' if settings.get('SIDE_MODULE') else '0') + '\n'
 
+    if settings['RELOCATABLE']:
+      basic_vars += ['gb', 'fb']
+      asm_setup += 'var gb = Runtime.GLOBAL_BASE, fb = 0;\n'
+
     asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'setThrew', 'setTempRet0', 'getTempRet0']
 
     # See if we need ASYNCIFY functions
@@ -645,7 +652,7 @@ assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. w
 assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
 return real_''' + s + '''.apply(null, arguments);
 };
-''' for s in exported_implemented_functions if s not in ['_malloc', '_free', '_memcpy', '_memset']])
+''' for s in exported_implemented_functions if s not in ['_malloc', '_free', '_memcpy', '_memset', 'runPostSets']])
 
     if not settings['SWAPPABLE_ASM_MODULE']:
       receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables])

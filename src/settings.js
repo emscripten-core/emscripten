@@ -419,6 +419,9 @@ var SHOW_LABELS = 0; // Show labels in the generated code
 
 var PRINT_SPLIT_FILE_MARKER = 0; // Prints markers in Javascript generation to split the file later on. See emcc --split option.
 
+var RELOCATABLE = 0; // If set to 1, we emit relocatable code from the LLVM backend; both
+                     // globals and function pointers are all offset (by gb and fp, respectively)
+
 var MAIN_MODULE = 0; // A main module is a file compiled in a way that allows us to link it to
                      // a side module using emlink.py.
 var SIDE_MODULE = 0; // Corresponds to MAIN_MODULE

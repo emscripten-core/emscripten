@@ -5077,6 +5077,13 @@ return malloc(size);
       main = main[:main.find('\n}')]
       assert main.count('\n') <= 7, ('must not emit too many postSets: %d' % main.count('\n')) + ' : ' + main
 
+    if not self.is_emterpreter():
+      print 'relocatable'
+      assert Settings.RELOCATABLE == Settings.EMULATED_FUNCTION_POINTERS == 0
+      Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 1
+      test()
+      Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 0
+
     if self.is_emterpreter():
       print 'emterpreter/async/assertions' # extra coverage
       self.emcc_args += ['-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'ASSERTIONS=1']
