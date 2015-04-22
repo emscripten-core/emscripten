@@ -21,7 +21,7 @@ import time
 
 
 #the directory, relative to \source for the API reference
-api_reference_directory = '.\\docs\\api_reference\\'
+api_reference_directory = './docs/api_reference/'
 
 #name to write API items to. Note, this is used by the get-wiki.py script, so if you change here, change everywhere.
 api_item_filename = 'api_items.py'
