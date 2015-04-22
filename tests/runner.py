@@ -35,6 +35,9 @@ try:
 except:
   raise Exception('Cannot find "COMPILER_OPTS" definition. Is %s set up properly? You may need to copy the template settings file into it.' % EM_CONFIG)
 
+# Force IDL checks
+os.environ['IDL_CHECKS'] = 'ALL'
+
 # Core test runner class, shared between normal tests and benchmarks
 checked_sanity = False
 test_modes = ['default', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g', 'asm1i', 'asm3i', 'asm2nn']
