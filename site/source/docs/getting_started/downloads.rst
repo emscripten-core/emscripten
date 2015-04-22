@@ -174,7 +174,7 @@ You can jump ahead to the :ref:`Tutorial`, but if you have any problems building
 Updating the SDK
 ================
 
-.. tip:: You only need to install the SDK once! After that you can update to the latest SDK at any time using the :ref:`SDK Package Manager (emsdk) <emsdk>`. 
+.. tip:: You only need to install the SDK once! After that you can update to the latest SDK at any time using :ref:`Emscripten SDK (emsdk) <emsdk>`. 
 
 Type the following (omitting comments) on the :ref:`Emscripten Command Prompt <emcmdprompt>`: ::
 

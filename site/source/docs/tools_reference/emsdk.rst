@@ -1,10 +1,10 @@
 .. _emsdk:
 
-==============================
-Emscripten SDK Manager (emsdk)
-==============================
+======================
+Emscripten SDK (emsdk)
+======================
 
-**The Emscripten SDK management script (** ``emsdk`` **) is used to perform all SDK maintenance. You only need to install the SDK once; after that emsdk can do all further updates!**
+** Emscripten SDK (** ``emsdk`` **) is used to perform all SDK maintenance. You only need to install the SDK once; after that emsdk can do all further updates!**
 
 With *emsdk* you can download, install or remove *any* :term:`SDK` or :term:`Tool`, and even use the :ref:`bleeding edge versions <emsdk-master-or-incoming-sdk>` in development on Github. To access the *emsdk* on Windows, first launch the :ref:`Emscripten Command Prompt <emcmdprompt>`. Most operations are of the form ``./emsdk command``.
 
@@ -57,8 +57,8 @@ You can also specify a target of ``latest`` to grab the most current SDK.
 
 
 
-SDK manager concepts
-====================
+SDK concepts
+============
 
 The Emscripten toolchain includes a number of different tools, including *Clang*, *Emscripten*, *Java*, *Git*, *Node*, etc. *Emsdk* is a small package manager for controlling which tools are installed, and from the set of installed tools, which are active.
 
