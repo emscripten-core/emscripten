@@ -101,7 +101,11 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     funcs = backend_output[start_funcs+len(start_funcs_marker):end_funcs]
     metadata_raw = backend_output[metadata_split+len(metadata_split_marker):]
     #if DEBUG: print >> sys.stderr, "METAraw", metadata_raw
-    metadata = json.loads(metadata_raw)
+    try:
+      metadata = json.loads(metadata_raw)
+    except Exception, e:
+      logging.error('emscript: failure to parse metadata output from compiler backend. raw output is: \n' + metadata_raw)
+      raise e
     mem_init = backend_output[end_funcs+len(end_funcs_marker):metadata_split]
     #if DEBUG: print >> sys.stderr, "FUNCS", funcs
     #if DEBUG: print >> sys.stderr, "META", metadata
