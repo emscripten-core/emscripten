@@ -184,7 +184,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     # Call js compiler
     if DEBUG: t = time.time()
     out = jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
-                       [settings_file, ';', 'glue'] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
+                       [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
                        cwd=path_from_root('src'), error_limit=300)
     assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
     glue, forwarded_data = out.split('//FORWARDED_DATA:')
@@ -198,10 +198,6 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     # merge in information from llvm backend
 
     last_forwarded_json['Functions']['tables'] = metadata['tables']
-
-    '''indexed_functions = set()
-    for key in forwarded_json['Functions']['indexedFunctions'].iterkeys():
-      indexed_functions.add(key)'''
 
     pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
 

@@ -246,7 +246,6 @@ var Functions = {
   libraryFunctions: {}, // functions added from the library. value 2 means asmLibraryFunction
   unimplementedFunctions: {}, // library etc. functions that we need to index, maps id to signature
 
-  indexedFunctions: {},
   nextIndex: firstTableIndex, // Start at a non-0 (even, see below) value
   neededTables: set('v', 'vi', 'ii', 'iii'), // signatures that appeared (initialized with library stuff
                                              // we always use), and we will need a function table for
@@ -295,118 +294,8 @@ var Functions = {
     return sig;
   },
 
-  // Mark a function as needing indexing. Python will coordinate them all
-  getIndex: function(ident, sig) {
-    var ret;
-    if (phase != 'post' && singlePhase) {
-      ret = "'{{ FI_" + toNiceIdent(ident) + " }}'"; // something python will replace later
-      this.indexedFunctions[ident] = 0;
-    } else {
-      if (!singlePhase) return 'NO_INDEX'; // Should not index functions in post
-      ret = this.indexedFunctions[ident];
-      assert(ret);
-      ret = ret.toString();
-    }
-    if (SIDE_MODULE && sig) { // sig can be undefined for the GL library functions
-      ret = '((F_BASE_' + sig + ' + ' + ret + ')|0)';
-    } else if (BUILD_AS_SHARED_LIB) {
-      ret = '(FUNCTION_TABLE_OFFSET + ' + ret + ')';
-    }
-    return ret;
-  },
-
   getTable: function(sig) {
     return 'FUNCTION_TABLE_' + sig
-  },
-
-  // Generate code for function indexing
-  generateIndexing: function() {
-    var tables = { pre: '' };
-    keys(Functions.neededTables).forEach(function(sig) { // add some default signatures that are used in the library
-      tables[sig] = zeros(firstTableIndex);
-    });
-    for (var ident in this.indexedFunctions) {
-      var sig = Functions.implementedFunctions[ident] || Functions.unimplementedFunctions[ident] || LibraryManager.library[ident.substr(1) + '__sig'];
-      assert(sig, ident);
-      if (!tables[sig]) tables[sig] = zeros(firstTableIndex);
-      var index = this.indexedFunctions[ident];
-      for (var i = tables[sig].length; i < index; i++) {
-        tables[sig][i] = 0; // keep flat
-      }
-      tables[sig][index] = ident;
-    }
-    var generated = false;
-    var wrapped = {}; // whether we wrapped a lib func
-    var maxTable = 0;
-    for (var t in tables) {
-      if (t == 'pre') continue;
-      generated = true;
-      var table = tables[t];
-      for (var i = 0; i < table.length; i++) {
-        // Resolve multi-level aliases all the way down
-        while (1) {
-          var varData = Variables.globals[table[i]];
-          if (!(varData && varData.resolvedAlias && !/(FUNCTION_TABLE_OFFSET|F_BASE_)/.test(varData.resolvedAlias))) break;
-          table[i] = table[+varData.resolvedAlias || eval(varData.resolvedAlias)]; // might need to eval to turn (6) into 6
-        }
-        // Resolve library aliases
-        if (table[i]) {
-          var libName = LibraryManager.getRootIdent(table[i].substr(1));
-          if (libName && typeof libName == 'string') {
-            table[i] = (libName.indexOf('Math_') < 0 ? '_' : '') + libName;
-          }
-        }
-        var curr = table[i];
-        if (curr && curr != '0' && !Functions.implementedFunctions[curr]) {
-          var short = toNiceIdent(curr); // fix Math.* to Math_*
-          curr = t + '_' + short; // libfuncs can alias with different sigs, wrap each separately
-          // This is a library function, we can't just put it in the function table, need a wrapper
-          if (!wrapped[curr]) {
-            var args = '', arg_coercions = '', call = short + '(', retPre = '', retPost = '';
-            if (t[0] != 'v') {
-              var temp = asmFFICoercion('X', Functions.getSignatureType(t[0])).split('X');
-              retPre = 'return ' + temp[0];
-              retPost = temp[1];
-            }
-            for (var j = 1; j < t.length; j++) {
-              args += (j > 1 ? ',' : '') + 'a' + j;
-              var type = Functions.getSignatureType(t[j]);
-              arg_coercions += 'a' + j + '=' + asmCoercion('a' + j, type) + ';';
-              call += (j > 1 ? ',' : '') + asmCoercion('a' + j, type === 'float' ? 'double' : type); // ffi arguments must be doubles if they are floats
-            }
-            call += ')';
-            if (short == '_setjmp') printErr('WARNING: setjmp used via a function pointer. If this is for libc setjmp (not something of your own with the same name), it will break things');
-            tables.pre += 'function ' + curr + '__wrapper(' + args + ') { ' + arg_coercions + ' ; ' + retPre + call + retPost + ' }\n';
-            wrapped[curr] = 1;
-          }
-          table[i] = curr + '__wrapper';
-        }
-      }
-      maxTable = Math.max(maxTable, table.length);
-    }
-    maxTable = ceilPowerOfTwo(maxTable);
-    for (var t in tables) {
-      if (t == 'pre') continue;
-      var table = tables[t];
-      // asm function table mask must be power of two, and non-asm must be aligned
-      // if nonaliasing, then standardize function table size, to avoid aliasing pointers through the &M mask (in a small table using a big index)
-      var fullSize = ALIASING_FUNCTION_POINTERS ? ceilPowerOfTwo(table.length) : maxTable;
-      for (var i = table.length; i < fullSize; i++) {
-        table[i] = 0;
-      }
-      // finalize table
-      var indices = table.toString().replace('"', '');
-      if (BUILD_AS_SHARED_LIB) {
-        // Shared libraries reuse the parent's function table.
-        tables[t] = Functions.getTable(t) + '.push.apply(' + Functions.getTable(t) + ', [' + indices + ']);\n';
-      } else {
-        tables[t] = 'var ' + Functions.getTable(t) + ' = [' + indices + '];\n';
-        if (SAFE_DYNCALLS) {
-          tables[t] += 'var FUNCTION_TABLE_NAMES = ' + JSON.stringify(table).replace(/\n/g, '').replace(/,0/g, ',0\n') + ';\n';
-        }
-      }
-    }
-    Functions.tables = tables;
   }
 };
 
@@ -550,39 +439,10 @@ function cDefine(key) {
 
 var PassManager = {
   serialize: function() {
-    if (phase == 'pre') {
-      print('\n//FORWARDED_DATA:' + JSON.stringify({
-        Types: Types,
-        Variables: Variables,
-        Functions: Functions,
-        EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS, // needed for asm.js global constructors (ctors)
-        Runtime: { GLOBAL_BASE: Runtime.GLOBAL_BASE }
-      }));
-    } else if (phase == 'funcs') {
-      print('\n//FORWARDED_DATA:' + JSON.stringify({
-        Types: {
-          hasInlineJS: Types.hasInlineJS,
-          usesSIMD: Types.usesSIMD,
-          preciseI64MathUsed: Types.preciseI64MathUsed
-        },
-        Functions: {
-          blockAddresses: Functions.blockAddresses,
-          indexedFunctions: Functions.indexedFunctions,
-          implementedFunctions: Functions.implementedFunctions,
-          unimplementedFunctions: Functions.unimplementedFunctions,
-          neededTables: Functions.neededTables
-        }
-      }));
-    } else if (phase == 'post') {
-      print('\n//FORWARDED_DATA:' + JSON.stringify({
-        Functions: { tables: Functions.tables }
-      }));
-    } else if (phase == 'glue') {
-      print('\n//FORWARDED_DATA:' + JSON.stringify({
-        Functions: Functions,
-        EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS
-      }));
-    }
+    print('\n//FORWARDED_DATA:' + JSON.stringify({
+      Functions: Functions,
+      EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS
+    }));
   },
   load: function(json) {
     var data = JSON.parse(json);
@@ -597,7 +457,7 @@ var PassManager = {
     }
     EXPORTED_FUNCTIONS = data.EXPORTED_FUNCTIONS;
     /*
-    print('\n//LOADED_DATA:' + phase + ':' + JSON.stringify({
+    print('\n//LOADED_DATA:' + JSON.stringify({
       Types: Types,
       Variables: Variables,
       Functions: Functions
