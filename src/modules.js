@@ -298,7 +298,7 @@ var Functions = {
   // Mark a function as needing indexing. Python will coordinate them all
   getIndex: function(ident, sig) {
     var ret;
-    if (phase != 'post' && singlePhase) {
+    if (singlePhase) {
       ret = "'{{ FI_" + toNiceIdent(ident) + " }}'"; // something python will replace later
       this.indexedFunctions[ident] = 0;
     } else {
@@ -550,39 +550,10 @@ function cDefine(key) {
 
 var PassManager = {
   serialize: function() {
-    if (phase == 'pre') {
-      print('\n//FORWARDED_DATA:' + JSON.stringify({
-        Types: Types,
-        Variables: Variables,
-        Functions: Functions,
-        EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS, // needed for asm.js global constructors (ctors)
-        Runtime: { GLOBAL_BASE: Runtime.GLOBAL_BASE }
-      }));
-    } else if (phase == 'funcs') {
-      print('\n//FORWARDED_DATA:' + JSON.stringify({
-        Types: {
-          hasInlineJS: Types.hasInlineJS,
-          usesSIMD: Types.usesSIMD,
-          preciseI64MathUsed: Types.preciseI64MathUsed
-        },
-        Functions: {
-          blockAddresses: Functions.blockAddresses,
-          indexedFunctions: Functions.indexedFunctions,
-          implementedFunctions: Functions.implementedFunctions,
-          unimplementedFunctions: Functions.unimplementedFunctions,
-          neededTables: Functions.neededTables
-        }
-      }));
-    } else if (phase == 'post') {
-      print('\n//FORWARDED_DATA:' + JSON.stringify({
-        Functions: { tables: Functions.tables }
-      }));
-    } else if (phase == 'glue') {
-      print('\n//FORWARDED_DATA:' + JSON.stringify({
-        Functions: Functions,
-        EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS
-      }));
-    }
+    print('\n//FORWARDED_DATA:' + JSON.stringify({
+      Functions: Functions,
+      EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS
+    }));
   },
   load: function(json) {
     var data = JSON.parse(json);
@@ -597,7 +568,7 @@ var PassManager = {
     }
     EXPORTED_FUNCTIONS = data.EXPORTED_FUNCTIONS;
     /*
-    print('\n//LOADED_DATA:' + phase + ':' + JSON.stringify({
+    print('\n//LOADED_DATA:' + JSON.stringify({
       Types: Types,
       Variables: Variables,
       Functions: Functions

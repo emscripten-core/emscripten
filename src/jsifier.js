@@ -26,32 +26,30 @@ function JSify(data, functionsOnly) {
   if (mainPass) {
     var shellFile = SHELL_FILE ? SHELL_FILE : (BUILD_AS_SHARED_LIB || SIDE_MODULE ? 'shell_sharedlib.js' : 'shell.js');
 
-    if (phase == 'glue') {
-      // We will start to print out the data, but must do so carefully - we are
-      // dealing with potentially *huge* strings. Convenient replacements and
-      // manipulations may create in-memory copies, and we may OOM.
-      //
-      // Final shape that will be created:
-      //    shell
-      //      (body)
-      //        preamble
-      //          runtime
-      //        generated code
-      //        postamble
-      //          global_vars
-      //
-      // First, we print out everything until the generated code. Then the
-      // functions will print themselves out as they are parsed. Finally, we
-      // will call finalCombiner in the main pass, to print out everything
-      // else. This lets us not hold any strings in memory, we simply print
-      // things out as they are ready.
+    // We will start to print out the data, but must do so carefully - we are
+    // dealing with potentially *huge* strings. Convenient replacements and
+    // manipulations may create in-memory copies, and we may OOM.
+    //
+    // Final shape that will be created:
+    //    shell
+    //      (body)
+    //        preamble
+    //          runtime
+    //        generated code
+    //        postamble
+    //          global_vars
+    //
+    // First, we print out everything until the generated code. Then the
+    // functions will print themselves out as they are parsed. Finally, we
+    // will call finalCombiner in the main pass, to print out everything
+    // else. This lets us not hold any strings in memory, we simply print
+    // things out as they are ready.
 
-      var shellParts = read(shellFile).split('{{BODY}}');
-      print(processMacros(preprocess(shellParts[0])));
-      var preFile = BUILD_AS_SHARED_LIB || SIDE_MODULE ? 'preamble_sharedlib.js' : 'preamble.js';
-      var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime())));
-      print(pre);
-    }
+    var shellParts = read(shellFile).split('{{BODY}}');
+    print(processMacros(preprocess(shellParts[0])));
+    var preFile = BUILD_AS_SHARED_LIB || SIDE_MODULE ? 'preamble_sharedlib.js' : 'preamble.js';
+    var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime())));
+    print(pre);
   }
 
   if (mainPass) {
@@ -61,31 +59,29 @@ function JSify(data, functionsOnly) {
     LibraryManager.load();
     //B.stop('jsifier-libload');
 
-    if (phase == 'glue') {
-      var libFuncsToInclude;
-      if (INCLUDE_FULL_LIBRARY) {
-        assert(!(BUILD_AS_SHARED_LIB || SIDE_MODULE), 'Cannot have both INCLUDE_FULL_LIBRARY and BUILD_AS_SHARED_LIB/SIDE_MODULE set.')
-        libFuncsToInclude = [];
-        for (var key in LibraryManager.library) {
-          if (!key.match(/__(deps|postset|inline|asm|sig)$/)) {
-            libFuncsToInclude.push(key);
-          }
+    var libFuncsToInclude;
+    if (INCLUDE_FULL_LIBRARY) {
+      assert(!(BUILD_AS_SHARED_LIB || SIDE_MODULE), 'Cannot have both INCLUDE_FULL_LIBRARY and BUILD_AS_SHARED_LIB/SIDE_MODULE set.')
+      libFuncsToInclude = [];
+      for (var key in LibraryManager.library) {
+        if (!key.match(/__(deps|postset|inline|asm|sig)$/)) {
+          libFuncsToInclude.push(key);
         }
-      } else {
-        libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
       }
-      libFuncsToInclude.forEach(function(ident) {
-        var finalName = '_' + ident;
-        if (ident[0] === '$') {
-          finalName = ident.substr(1);
-        }
-        data.functionStubs.push({
-          intertype: 'functionStub',
-          finalName: finalName,
-          ident: '_' + ident
-        });
-      });
+    } else {
+      libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
     }
+    libFuncsToInclude.forEach(function(ident) {
+      var finalName = '_' + ident;
+      if (ident[0] === '$') {
+        finalName = ident.substr(1);
+      }
+      data.functionStubs.push({
+        intertype: 'functionStub',
+        finalName: finalName,
+        ident: '_' + ident
+      });
+    });
   }
 
   function processLibraryFunction(snippet, ident, finalName) {
@@ -204,8 +200,7 @@ function JSify(data, functionsOnly) {
         Functions.libraryFunctions[finalName] = 2;
       }
       if (SIDE_MODULE) return ';'; // we import into the side module js library stuff from the outside parent 
-      if ((phase == 'glue') &&
-          (EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS))) {
+      if (EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS)) {
         contentText += '\nModule["' + finalName + '"] = ' + finalName + ';';
       }
       return depsText + contentText;
@@ -271,7 +266,7 @@ function JSify(data, functionsOnly) {
     //
 
     if (!mainPass) {
-      if ((phase == 'glue') && !Variables.generatedGlobalBase && !BUILD_AS_SHARED_LIB) {
+      if (!Variables.generatedGlobalBase && !BUILD_AS_SHARED_LIB) {
         Variables.generatedGlobalBase = true;
         // Globals are done, here is the rest of static memory
         if (!SIDE_MODULE) {
@@ -285,97 +280,85 @@ function JSify(data, functionsOnly) {
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
       print(generated.map(function(item) { return item.JS; }).join('\n'));
 
-      if (phase == 'glue') {
-        if (memoryInitialization.length > 0) {
-          // apply postsets directly into the big memory initialization
-          itemsDict.GlobalVariablePostSet = itemsDict.GlobalVariablePostSet.filter(function(item) {
-            var m;
-            if (m = /^HEAP([\dFU]+)\[([()>\d]+)\] *= *([()|\d{}\w_' ]+);?$/.exec(item.JS)) {
-              var type = getTypeFromHeap(m[1]);
-              var bytes = Runtime.getNativeTypeSize(type);
-              var target = eval(m[2]) << log2(bytes);
-              var value = m[3];
-              try {
-                value = eval(value);
-              } catch(e) {
-                // possibly function table {{{ FT_* }}} etc.
-                if (value.indexOf('{{ ') < 0) return true;
-              }
-              writeInt8s(memoryInitialization, target - Runtime.GLOBAL_BASE, value, type);
-              return false;
+      if (memoryInitialization.length > 0) {
+        // apply postsets directly into the big memory initialization
+        itemsDict.GlobalVariablePostSet = itemsDict.GlobalVariablePostSet.filter(function(item) {
+          var m;
+          if (m = /^HEAP([\dFU]+)\[([()>\d]+)\] *= *([()|\d{}\w_' ]+);?$/.exec(item.JS)) {
+            var type = getTypeFromHeap(m[1]);
+            var bytes = Runtime.getNativeTypeSize(type);
+            var target = eval(m[2]) << log2(bytes);
+            var value = m[3];
+            try {
+              value = eval(value);
+            } catch(e) {
+              // possibly function table {{{ FT_* }}} etc.
+              if (value.indexOf('{{ ') < 0) return true;
             }
-            return true;
-          });
-          // write out the singleton big memory initialization value
-          print('/* memory initializer */ ' + makePointer(memoryInitialization, null, 'ALLOC_NONE', 'i8', 'Runtime.GLOBAL_BASE' + (SIDE_MODULE ? '+H_BASE' : ''), true));
-        } else if (phase !== 'glue') {
-          print('/* no memory initializer */'); // test purposes
-        }
+            writeInt8s(memoryInitialization, target - Runtime.GLOBAL_BASE, value, type);
+            return false;
+          }
+          return true;
+        });
+        // write out the singleton big memory initialization value
+        print('/* memory initializer */ ' + makePointer(memoryInitialization, null, 'ALLOC_NONE', 'i8', 'Runtime.GLOBAL_BASE' + (SIDE_MODULE ? '+H_BASE' : ''), true));
+      } else {
+        print('/* no memory initializer */'); // test purposes
+      }
 
-        if (phase !== 'glue') {
-          // Define postsets. These will be run in ATINIT, right before global initializers (which might need the postsets). We cannot
-          // run them now because the memory initializer might not have been applied yet.
-          print('function runPostSets() {\n');
-          print(itemsDict.GlobalVariablePostSet.map(function(item) { return item.JS }).join('\n'));
-          print('}\n');
-        }
-
-        if (!BUILD_AS_SHARED_LIB && !SIDE_MODULE) {
-          print('var tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
-          print('assert(tempDoublePtr % 8 == 0);\n');
-          print('function copyTempFloat(ptr) { // functions, because inlining this code increases code size too much\n');
-          print('  HEAP8[tempDoublePtr] = HEAP8[ptr];\n');
-          print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];\n');
-          print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];\n');
-          print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];\n');
-          print('}\n');
-          print('function copyTempDouble(ptr) {\n');
-          print('  HEAP8[tempDoublePtr] = HEAP8[ptr];\n');
-          print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];\n');
-          print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];\n');
-          print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];\n');
-          print('  HEAP8[tempDoublePtr+4] = HEAP8[ptr+4];\n');
-          print('  HEAP8[tempDoublePtr+5] = HEAP8[ptr+5];\n');
-          print('  HEAP8[tempDoublePtr+6] = HEAP8[ptr+6];\n');
-          print('  HEAP8[tempDoublePtr+7] = HEAP8[ptr+7];\n');
-          print('}\n');
-        }
+      if (!BUILD_AS_SHARED_LIB && !SIDE_MODULE) {
+        print('var tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
+        print('assert(tempDoublePtr % 8 == 0);\n');
+        print('function copyTempFloat(ptr) { // functions, because inlining this code increases code size too much\n');
+        print('  HEAP8[tempDoublePtr] = HEAP8[ptr];\n');
+        print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];\n');
+        print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];\n');
+        print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];\n');
+        print('}\n');
+        print('function copyTempDouble(ptr) {\n');
+        print('  HEAP8[tempDoublePtr] = HEAP8[ptr];\n');
+        print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];\n');
+        print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];\n');
+        print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];\n');
+        print('  HEAP8[tempDoublePtr+4] = HEAP8[ptr+4];\n');
+        print('  HEAP8[tempDoublePtr+5] = HEAP8[ptr+5];\n');
+        print('  HEAP8[tempDoublePtr+6] = HEAP8[ptr+6];\n');
+        print('  HEAP8[tempDoublePtr+7] = HEAP8[ptr+7];\n');
+        print('}\n');
       }
 
       return;
     }
 
     // Print out global variables and postsets TODO: batching
-    if (phase == 'glue') {
-      var legalizedI64sDefault = legalizedI64s;
-      legalizedI64s = false;
+    var legalizedI64sDefault = legalizedI64s;
+    legalizedI64s = false;
 
-      var globalsData = {functionStubs: []}
-      JSify(globalsData, true);
-      globalsData = null;
+    var globalsData = {functionStubs: []}
+    JSify(globalsData, true);
+    globalsData = null;
 
-      var generated = itemsDict.functionStub.concat(itemsDict.GlobalVariablePostSet);
-      generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
+    var generated = itemsDict.functionStub.concat(itemsDict.GlobalVariablePostSet);
+    generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
 
-      legalizedI64s = legalizedI64sDefault;
+    legalizedI64s = legalizedI64sDefault;
 
-      if (!BUILD_AS_SHARED_LIB && !SIDE_MODULE) {
-        print('STACK_BASE = STACKTOP = Runtime.alignMemory(STATICTOP);\n');
-        print('staticSealed = true; // seal the static portion of memory\n');
-        print('STACK_MAX = STACK_BASE + TOTAL_STACK;\n');
-        print('DYNAMIC_BASE = DYNAMICTOP = Runtime.alignMemory(STACK_MAX);\n');
-        print('assert(DYNAMIC_BASE < TOTAL_MEMORY, "TOTAL_MEMORY not big enough for stack");\n');
+    if (!BUILD_AS_SHARED_LIB && !SIDE_MODULE) {
+      print('STACK_BASE = STACKTOP = Runtime.alignMemory(STATICTOP);\n');
+      print('staticSealed = true; // seal the static portion of memory\n');
+      print('STACK_MAX = STACK_BASE + TOTAL_STACK;\n');
+      print('DYNAMIC_BASE = DYNAMICTOP = Runtime.alignMemory(STACK_MAX);\n');
+      print('assert(DYNAMIC_BASE < TOTAL_MEMORY, "TOTAL_MEMORY not big enough for stack");\n');
+    }
+
+    if (asmLibraryFunctions.length > 0) {
+      print('// ASM_LIBRARY FUNCTIONS');
+      function fix(f) { // fix indenting to not confuse js optimizer
+        f = f.substr(f.indexOf('f')); // remove initial spaces before 'function'
+        f = f.substr(0, f.lastIndexOf('\n')+1); // remove spaces and last }  XXX assumes function has multiple lines
+        return f + '}'; // add unindented } to match function
       }
-
-      if (asmLibraryFunctions.length > 0) {
-        print('// ASM_LIBRARY FUNCTIONS');
-        function fix(f) { // fix indenting to not confuse js optimizer
-          f = f.substr(f.indexOf('f')); // remove initial spaces before 'function'
-          f = f.substr(0, f.lastIndexOf('\n')+1); // remove spaces and last }  XXX assumes function has multiple lines
-          return f + '}'; // add unindented } to match function
-        }
-        print(asmLibraryFunctions.map(fix).join('\n'));
-      }
+      print(asmLibraryFunctions.map(fix).join('\n'));
     }
 
     if (abortExecution) throw 'Aborting compilation due to previous errors';
@@ -389,10 +372,10 @@ function JSify(data, functionsOnly) {
         ['i64Add', 'i64Subtract', 'bitshift64Shl', 'bitshift64Lshr', 'bitshift64Ashr',
          'llvm_cttz_i32'].forEach(function(ident) {
           var finalName = '_' + ident;
-          if (!Functions.libraryFunctions[finalName] || (phase == 'glue' && ident[0] === 'l' && !addedLibraryItems[ident])) { // TODO: one-by-one in fastcomp glue mode
+          if (!Functions.libraryFunctions[finalName] || (ident[0] === 'l' && !addedLibraryItems[ident])) { // TODO: one-by-one in fastcomp glue mode
             print(processLibraryFunction(LibraryManager.library[ident], ident, finalName)); // must be first to be close to generated code
             Functions.implementedFunctions[finalName] = LibraryManager.library[ident + '__sig'];
-            Functions.libraryFunctions[finalName] = phase == 'glue' ? 2 : 1; // XXX
+            Functions.libraryFunctions[finalName] = 2; // XXX
             // limited dependency handling
             var deps = LibraryManager.library[ident + '__deps'];
             if (deps) {

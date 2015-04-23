@@ -1046,12 +1046,12 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
     var printType = type;
     if (printType !== 'null' && printType[0] !== '#') printType = '"' + safeQuote(printType) + '"';
     if (printType[0] === '#') printType = printType.substr(1);
-    if (!ignore && phase !== 'funcs') {
+    if (!ignore) {
       return asmCoercion('SAFE_HEAP_LOAD(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + ((type in Compiletime.FLOAT_TYPES)|0) + ', ' + (!!unsigned+0) + ')', type);
     }
   }
   var ret = makeGetSlabs(ptr, type, false, unsigned)[0] + '[' + getHeapOffset(offset, type, forceAsm) + ']';
-  if (phase == 'funcs' || forceAsm) {
+  if (forceAsm) {
     ret = asmCoercion(ret, type);
   }
   if (ASM_HEAP_LOG) {
@@ -1150,12 +1150,11 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
 
   value = indexizeFunctions(value, type);
   var offset = calcFastOffset(ptr, pos, noNeedFirst);
-  if (phase === 'pre' && isNumber(offset)) offset += ' '; // avoid pure numeric strings, seem to be perf issues with overly-aggressive interning or slt in pre processing of heap inits
   if (SAFE_HEAP && !noSafe) {
     var printType = type;
     if (printType !== 'null' && printType[0] !== '#') printType = '"' + safeQuote(printType) + '"';
     if (printType[0] === '#') printType = printType.substr(1);
-    if (!ignore && phase !== 'funcs') {
+    if (!ignore) {
       return asmCoercion('SAFE_HEAP_STORE(' + asmCoercion(offset, 'i32') + ', ' + asmCoercion(value, type) + ', ' + Runtime.getNativeTypeSize(type) + ', ' + ((type in Compiletime.FLOAT_TYPES)|0) + ')', type);
     }
   }
