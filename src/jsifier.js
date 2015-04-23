@@ -425,8 +425,6 @@ function JSify(data, functionsOnly) {
     var postParts = processMacros(preprocess(read(postFile))).split('{{GLOBAL_VARS}}');
     print(postParts[0]);
 
-    Functions.generateIndexing(); // done last, as it may rely on aliases set in postsets
-
     // Load runtime-linked libraries
     RUNTIME_LINKED_LIBS.forEach(function(lib) {
       print('eval(Module["read"]("' + lib + '"))(' + Functions.getTable('x') + '.length, this);');

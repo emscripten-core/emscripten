@@ -1065,21 +1065,6 @@ function makeGetValueAsm(ptr, pos, type, unsigned) {
   return makeGetValue(ptr, pos, type, null, unsigned, null, null, null, true);
 }
 
-function indexizeFunctions(value, type) {
-  assert((type && type !== '?') || (typeof value === 'string' && value.substr(0, 6) === 'CHECK_'), 'No type given for function indexizing');
-  assert(value !== type, 'Type set to value');
-  var out = {};
-  if (type && isFunctionType(type, out) && value[0] === '_') { // checking for _ differentiates from $ (local vars)
-    // add signature to library functions that we now know need indexing
-    var sig = Functions.implementedFunctions[value] || Functions.unimplementedFunctions[value];
-    if (!sig) {
-      sig = Functions.unimplementedFunctions[value] = Functions.getSignature(out.returnType, out.segments ? out.segments.map(function(segment) { return segment[0].text }) : [], isVarArgsFunctionType(type));
-    }
-    return Functions.getIndex(value, sig);
-  }
-  return value;
-}
-
 //! @param ptr The pointer. Used to find both the slab and the offset in that slab. If the pointer
 //!            is just an integer, then this is almost redundant, but in general the pointer type
 //!            may in the future include information about which slab as well. So, for now it is
@@ -1148,7 +1133,6 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
     }
   }
 
-  value = indexizeFunctions(value, type);
   var offset = calcFastOffset(ptr, pos, noNeedFirst);
   if (SAFE_HEAP && !noSafe) {
     var printType = type;

@@ -199,10 +199,6 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
 
     last_forwarded_json['Functions']['tables'] = metadata['tables']
 
-    '''indexed_functions = set()
-    for key in forwarded_json['Functions']['indexedFunctions'].iterkeys():
-      indexed_functions.add(key)'''
-
     pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
 
     #print >> sys.stderr, 'glue:', pre, '\n\n||||||||||||||||\n\n', post, '...............'
