@@ -61,7 +61,7 @@ var RuntimeGenerator = {
   dynamicAlloc: function(size) {
     if (ASSERTIONS) size = '(assert(DYNAMICTOP > 0),' + size + ')'; // dynamic area must be ready
     var ret = RuntimeGenerator.alloc(size, 'DYNAMIC', INIT_HEAP);
-    ret += '; if (DYNAMICTOP >= TOTAL_MEMORY) { var success = enlargeMemory(); if (!success) return 0; }'
+    ret += '; if (DYNAMICTOP >= TOTAL_MEMORY) { var success = enlargeMemory(); if (!success) { DYNAMICTOP = ret; return 0; } }'
     return ret;
   },
 
