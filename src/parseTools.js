@@ -71,7 +71,6 @@ function preprocess(text) {
   return ret;
 }
 
-function addPointing(type) { return type + '*' }
 function removePointing(type, num) {
   if (num === 0) return type;
   assert(type.substr(type.length-(num ? num : 1)).replace(/\*/g, '') === ''); //, 'Error in removePointing with ' + [type, num, type.substr(type.length-(num ? num : 1))]);
@@ -167,16 +166,6 @@ function isStructuralType(type) {
 
 function getStructuralTypeParts(type) { // split { i32, i8 } etc. into parts
   return type.replace(/[ {}]/g, '').split(',');
-}
-
-function getStructureTypeParts(type) {
-  if (isStructuralType(type)) {
-    return type.replace(/[ {}]/g, '').split(',');
-  } else {
-    var typeData = Types.types[type];
-    assert(typeData, type);
-    return typeData.fields;
-  }
 }
 
 function getStructuralTypePartBits(part) {
@@ -321,103 +310,6 @@ function isType(type) {
   return ret;
 }
 
-function isVarArgsFunctionType(type) {
-  // assumes this is known to be a function type already
-  var varArgsSuffix = '...)*';
-  return type.substr(-varArgsSuffix.length) == varArgsSuffix;
-}
-
-function getNumLegalizedVars(type) { // how many legalized variables are needed to represent this type
-  if (type in Compiletime.FLOAT_TYPES) return 1;
-  return Math.max(getNumIntChunks(type), 1);
-}
-
-function countNormalArgs(type, out, legalized) {
-  out = out || {};
-  if (!isFunctionType(type, out)) return -1;
-  var ret = 0;
-  if (out.segments) {
-    for (var i = 0; i < out.segments.length; i++) {
-      ret += legalized ? getNumLegalizedVars(out.segments[i][0].text) : 1;
-    }
-  }
-  if (isVarArgsFunctionType(type)) ret--;
-  return ret;
-}
-
-function getVectorSize(type) {
-  return parseInt(type.substring(1, type.indexOf(' ')));
-}
-
-function getVectorNativeType(type) {
-  Types.usesSIMD = true;
-  switch (type) {
-    case '<2 x float>':
-    case '<4 x float>': return 'float';
-    case '<2 x i32>':
-    case '<4 x i32>': return 'i32';
-    default: throw 'unknown vector type ' + type;
-  }
-}
-
-function getSIMDName(type) {
-  switch (type) {
-    case 'i32': return 'int';
-    case 'float': return 'float';
-    default: throw 'getSIMDName ' + type;
-  }
-}
-
-function getVectorBaseType(type) {
-  return getSIMDName(getVectorNativeType(type));
-}
-
-function addIdent(token) {
-  token.ident = token.text;
-  return token;
-}
-
-function combineTokens(tokens) {
-  var ret = {
-    lineNum: tokens[0].lineNum,
-    text: '',
-    tokens: []
-  };
-  tokens.forEach(function(token) {
-    ret.text += token.text;
-    ret.tokens.push(token);
-  });
-  return ret;
-}
-
-function compareTokens(a, b) {
-  var aId = a.__uid__;
-  var bId = b.__uid__;
-  a.__uid__ = 0;
-  b.__uid__ = 0;
-  var ret = JSON.stringify(a) == JSON.stringify(b);
-  a.__uid__ = aId;
-  b.__uid__ = bId;
-  return ret;
-}
-
-function getTokenIndexByText(tokens, text) {
-  var i = 0;
-  while (tokens[i] && tokens[i].text != text) i++;
-  return i;
-}
-
-function findTokenText(item, text) {
-  return findTokenTextAfter(item, text, 0);
-}
-
-function findTokenTextAfter(item, text, startAt) {
-  for (var i = startAt; i < item.tokens.length; i++) {
-    if (item.tokens[i].text == text) return i;
-  }
-  return -1;
-}
-
 var SPLIT_TOKEN_LIST_SPLITTERS = set(',', 'to'); // 'to' can separate parameters as well...
 
 // Splits a list of tokens separated by commas. For example, a list of arguments in a function call
@@ -454,11 +346,6 @@ function isIndexableGlobal(ident) {
   }
   var data = Variables.globals[ident];
   return !data.alias && !data.external;
-}
-
-function makeGlobalDef(ident) {
-  if (!NAMED_GLOBALS && isIndexableGlobal(ident)) return '';
-  return 'var ' + ident + ';';
 }
 
 function makeGlobalUse(ident) {
@@ -746,35 +633,6 @@ function parseLLVMString(str) {
     }
   }
   return ret;
-}
-
-function expandLLVMString(str) {
-  return str.replace(/\\../g, function(m) {
-    return String.fromCharCode(parseInt(m.substr(1), '16'));
-  });
-}
-
-function getLabelIds(labels) {
-  return labels.map(function(label) { return label.ident });
-}
-
-function cleanLabel(label) {
-  if (label[0] == 'B') {
-    return label.substr(5);
-  } else {
-    return label;
-  }
-}
-
-function getOldLabel(label) {
-  var parts = label.split('|');
-  return parts[parts.length-1];
-}
-
-function calcAllocatedSize(type) {
-  var ret = Runtime.getNativeTypeSize(type);
-  if (ret) return ret;
-  return Types.types[type].flatSize; // known type
 }
 
 // Generates the type signature for a structure, for each byte, the type that is there.
@@ -1464,10 +1322,6 @@ function makeStructuralReturn(values, inAsm) {
     i++;
     return inAsm ? 'tempRet' + i + ' = ' + value : 'asm["setTempRet' + i + '"](' + value + ')';
   }).concat([values[0]]).join(','), 'i32');
-}
-
-function makeStructuralAccess(ident, i) {
-  return ident + '$' + i;
 }
 
 function makeThrow(what) {
