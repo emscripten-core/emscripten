@@ -132,8 +132,7 @@ load('utility.js');
 load('settings.js');
 
 var settings_file = arguments_[0];
-var ll_file = arguments_[1];
-additionalLibraries = Array.prototype.slice.call(arguments_, 2);
+additionalLibraries = Array.prototype.slice.call(arguments_, 1);
 
 if (settings_file) {
   var settings = JSON.parse(read(settings_file));
@@ -222,20 +221,18 @@ Runtime.QUANTUM_SIZE = QUANTUM_SIZE;
 B = new Benchmarker();
 
 try {
-  if (ll_file) {
-    var dummyData = {functionStubs: []}
-    JSify(dummyData);
+  var dummyData = {functionStubs: []}
+  JSify(dummyData);
 
-    //dumpInterProf();
-    //printErr('paths (fast, slow): ' + [fastPaths, slowPaths]);
-    B.print('glue');
+  //dumpInterProf();
+  //printErr('paths (fast, slow): ' + [fastPaths, slowPaths]);
+  B.print('glue');
 
-    if (DEBUG_MEMORY) {
-      print('zzz. last gc: ' + gc());
-      MemoryDebugger.dump();
-      print('zzz. hanging now!');
-      while(1){};
-    }
+  if (DEBUG_MEMORY) {
+    print('zzz. last gc: ' + gc());
+    MemoryDebugger.dump();
+    print('zzz. hanging now!');
+    while(1){};
   }
 } catch(err) {
   if (err.toString().indexOf('Aborting compilation due to previous errors') != -1) {
