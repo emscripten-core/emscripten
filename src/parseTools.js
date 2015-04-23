@@ -886,7 +886,7 @@ function checkSafeHeap() {
   return SAFE_HEAP === 1 || checkSpecificSafeHeap();
 }
 
-function getHeapOffset(offset, type, forceAsm) {
+function getHeapOffset(offset, type) {
   if (Runtime.getNativeFieldSize(type) > 4) {
     if (type == 'i64') {
       type = 'i32'; // we emulate 64-bit integer values as 32 in asmjs-unknown-emscripten, but not double
@@ -1050,7 +1050,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
       return asmCoercion('SAFE_HEAP_LOAD(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + ((type in Compiletime.FLOAT_TYPES)|0) + ', ' + (!!unsigned+0) + ')', type);
     }
   }
-  var ret = makeGetSlabs(ptr, type, false, unsigned)[0] + '[' + getHeapOffset(offset, type, forceAsm) + ']';
+  var ret = makeGetSlabs(ptr, type, false, unsigned)[0] + '[' + getHeapOffset(offset, type) + ']';
   if (forceAsm) {
     ret = asmCoercion(ret, type);
   }
@@ -1142,7 +1142,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
       return asmCoercion('SAFE_HEAP_STORE(' + asmCoercion(offset, 'i32') + ', ' + asmCoercion(value, type) + ', ' + Runtime.getNativeTypeSize(type) + ', ' + ((type in Compiletime.FLOAT_TYPES)|0) + ')', type);
     }
   }
-  return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + getHeapOffset(offset, type, forceAsm) + ']=' + value }).join(sep);
+  return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + getHeapOffset(offset, type) + ']=' + value }).join(sep);
 }
 
 function makeSetValueAsm(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign) {
