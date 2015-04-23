@@ -995,7 +995,7 @@ try:
   else:
     logging.debug('using response file for EXPORTED_FUNCTIONS, make sure it includes _malloc and _free')
 
-  if shared.Settings.ASM_JS and shared.Settings.DLOPEN_SUPPORT:
+  if shared.Settings.DLOPEN_SUPPORT:
     assert shared.Settings.DISABLE_EXCEPTION_CATCHING, 'no exceptions support with dlopen in asm yet'
 
   assert not (bind and shared.Settings.NO_DYNAMIC_EXECUTION), 'NO_DYNAMIC_EXECUTION disallows embind'
@@ -1389,10 +1389,9 @@ try:
 
       def run_passes(passes, title, just_split, just_concat):
         global final, minify_whitespace, emit_symbol_map, target
-        if shared.Settings.ASM_JS:
-          passes = ['asm'] + passes
-          if shared.Settings.PRECISE_F32:
-            passes = ['asmPreciseF32'] + passes
+        passes = ['asm'] + passes
+        if shared.Settings.PRECISE_F32:
+          passes = ['asmPreciseF32'] + passes
         if emit_symbol_map and 'minifyNames' in passes:
           passes += ['symbolMap='+target+'.symbols']
         if profiling_funcs and 'minifyNames' in passes:
@@ -1485,40 +1484,30 @@ try:
 
       if shared.Settings.PRECISE_F32: js_optimizer_queue += ['optimizeFrounds']
 
-  if closure and not shared.Settings.ASM_JS:
-    flush_js_optimizer_queue()
-
-    logging.debug('running closure')
-    # no need to add this to js_transform_tempfiles, because closure and
-    # debug_level > 0 are never simultaneously true
-    final = shared.Building.closure_compiler(final)
-    if DEBUG: save_intermediate('closure')
-
   def do_minify():
     global js_optimizer_queue
 
     if opt_level >= 2:
-      if debug_level < 2 and shared.Settings.ASM_JS and not closure == 2:
+      if debug_level < 2 and not closure == 2:
         js_optimizer_queue += ['minifyNames']
       if debug_level == 0:
         global minify_whitespace
         minify_whitespace = True
 
-    if shared.Settings.ASM_JS:
-      if closure == 1:
-        js_optimizer_queue += ['closure']
-      elif debug_level <= 2 and not shared.Settings.MAIN_MODULE and shared.Settings.FINALIZE_ASM_JS and not closure:
-        js_optimizer_queue += ['cleanup']
+    if closure == 1:
+      js_optimizer_queue += ['closure']
+    elif debug_level <= 2 and not shared.Settings.MAIN_MODULE and shared.Settings.FINALIZE_ASM_JS and not closure:
+      js_optimizer_queue += ['cleanup']
 
   if js_opts:
-    if shared.Settings.ASM_JS and shared.Settings.SAFE_HEAP: js_optimizer_queue += ['safeHeap']
+    if shared.Settings.SAFE_HEAP: js_optimizer_queue += ['safeHeap']
 
-    if shared.Settings.OUTLINING_LIMIT > 0 and shared.Settings.ASM_JS:
+    if shared.Settings.OUTLINING_LIMIT > 0:
       js_optimizer_queue += ['outline']
       js_optimizer_extra_info['sizeToOutline'] = shared.Settings.OUTLINING_LIMIT
 
-    if opt_level >= 2 and (not closure or shared.Settings.ASM_JS or closure == 2) and debug_level < 3:
-      if shared.Settings.ASM_JS and (opt_level >= 3 or shrink_level > 0):
+    if opt_level >= 2 and debug_level < 3:
+      if opt_level >= 3 or shrink_level > 0:
         js_optimizer_queue += ['registerizeHarder']
       else:
         js_optimizer_queue += ['registerize']
@@ -1526,14 +1515,14 @@ try:
     if not shared.Settings.EMTERPRETIFY:
       do_minify()
 
-    if opt_level >= 2 and shared.Settings.ASM_JS:
+    if opt_level >= 2:
       js_optimizer_queue += ['asmLastOpts']
 
     if shared.Settings.FINALIZE_ASM_JS: js_optimizer_queue += ['last']
 
     flush_js_optimizer_queue()
 
-  if shared.Settings.ASM_JS and closure == 2:
+  if closure == 2:
     flush_js_optimizer_queue()
 
     logging.debug('running closure')
