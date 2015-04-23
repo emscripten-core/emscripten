@@ -11,8 +11,8 @@ function emrun_register_handlers() {
     var prevErr = Module['printErr'];
     function emrun_exit() { post('^exit^'+EXITSTATUS); };
     Module['addOnExit'](emrun_exit);
-    Module['print'] = function emrun_print(text) { post('^out^'+(emrun_http_sequence_number++)+'^'+text); prevPrint(text); }
-    Module['printErr'] = function emrun_printErr(text) { post('^err^'+(emrun_http_sequence_number++)+'^'+text); prevErr(text); }
+    Module['print'] = function emrun_print(text) { post('^out^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(text)); prevPrint(text); }
+    Module['printErr'] = function emrun_printErr(text) { post('^err^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(text)); prevErr(text); }
   }
   // Notify emrun web server that this browser has successfully launched the page.
   post('^pageload^');
