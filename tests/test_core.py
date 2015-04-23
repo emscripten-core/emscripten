@@ -2037,7 +2037,17 @@ value = real 1.25 imag 0.00''', force_c=True)
           printf("*%d,%d,%d*\\n", sizeof(PyGC_Head), sizeof(gc_generation), int(GEN_HEAD(2)) - int(GEN_HEAD(1)));
         }
       '''
-      self.do_run(src, '*0,0,0,4,8,16,20,24*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*16,24,24*')
+      def test():
+        self.do_run(src, '*0,0,0,4,8,16,20,24*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*16,24,24*')
+
+      test()
+
+      if not self.is_emterpreter():
+        print 'relocatable' # this tests recursive global structs => nontrivial postSets for relocation
+        assert Settings.RELOCATABLE == Settings.EMULATED_FUNCTION_POINTERS == 0
+        Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 1
+        test()
+        Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 0
 
   def test_ptrtoint(self):
       runner = self
