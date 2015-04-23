@@ -1360,7 +1360,6 @@ Module['writeAsciiToMemory'] = writeAsciiToMemory;
 {{{ unSign }}}
 {{{ reSign }}}
 
-#if PRECISE_I32_MUL
 // check for imul support, and also for correctness ( https://bugs.webkit.org/show_bug.cgi?id=126345 )
 if (!Math['imul'] || Math['imul'](0xffffffff, 5) !== -5) Math['imul'] = function imul(a, b) {
   var ah  = a >>> 16;
@@ -1369,11 +1368,6 @@ if (!Math['imul'] || Math['imul'](0xffffffff, 5) !== -5) Math['imul'] = function
   var bl = b & 0xffff;
   return (al*bl + ((ah*bl + al*bh) << 16))|0;
 };
-#else
-Math['imul'] = function imul(a, b) {
-  return (a*b)|0; // fast but imprecise
-};
-#endif
 Math.imul = Math['imul'];
 
 #if PRECISE_F32
