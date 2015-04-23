@@ -2037,14 +2037,7 @@ value = real 1.25 imag 0.00''', force_c=True)
           printf("*%d,%d,%d*\\n", sizeof(PyGC_Head), sizeof(gc_generation), int(GEN_HEAD(2)) - int(GEN_HEAD(1)));
         }
       '''
-      if Settings.QUANTUM_SIZE == 1:
-        # Compressed memory. Note that sizeof() does give the fat sizes, however!
-        self.do_run(src, '*0,0,0,1,2,3,4,5*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,5*')
-      else:
-        if self.is_emscripten_abi():
-          self.do_run(src, '*0,0,0,4,8,16,20,24*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*16,24,24*')
-        else:
-          self.do_run(src, '*0,0,0,4,8,12,16,20*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,20*')
+      self.do_run(src, '*0,0,0,4,8,16,20,24*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*16,24,24*')
 
   def test_ptrtoint(self):
       runner = self
