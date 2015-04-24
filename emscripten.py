@@ -607,6 +607,7 @@ function ftCall_%s(%s) {%s
     if settings['ALLOW_MEMORY_GROWTH']:
       exported_implemented_functions.append('_emscripten_replace_memory')
     all_exported = exported_implemented_functions + asm_runtime_funcs + function_tables
+    exported_implemented_functions = list(set(exported_implemented_functions))
     if settings['EMULATED_FUNCTION_POINTERS']:
       all_exported = list(set(all_exported).union(in_table))
     exports = []
