@@ -325,9 +325,6 @@ var CORRECT_OVERFLOWS = 1; // Experimental code that tries to prevent unexpected
                            // NOTE: You can introduce signing issues by using this option. If you
                            //       take a large enough 32-bit value, and correct it for overflows,
                            //       you may get a negative number, as JS & operations are signed.
-var CORRECT_ROUNDINGS = 1; // C rounds to 0 (-5.5 to -5, +5.5 to 5), while JS has no direct way to do that:
-                           // Math.floor is to negative, ceil to positive. With CORRECT_ROUNDINGS,
-                           // we will do slow but correct C rounding operations.
 var FS_LOG = 0; // Log all FS operations.  This is especially helpful when you're porting
                 // a new project and want to see a list of file system operations happening
                 // so that you can create a virtual file system with all of the required files.
@@ -606,7 +603,6 @@ var DEBUG_TAGS_SHOWING = [];
 var ORIGINAL_EXPORTED_FUNCTIONS = [];
 var CORRECT_OVERFLOWS_LINES = [];
 var CORRECT_SIGNS_LINES = [];
-var CORRECT_ROUNDINGS_LINES = [];
 var SAFE_HEAP_LINES = [];
 
 // The list of defines (C_DEFINES) was moved into struct_info.json in the same directory.

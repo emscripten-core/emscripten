@@ -5260,7 +5260,6 @@ def process(filename):
 
     Settings.CORRECT_SIGNS = 1
     Settings.CORRECT_OVERFLOWS = 0
-    Settings.CORRECT_ROUNDINGS = 0
     Settings.DISABLE_EXCEPTION_CATCHING = 1
     Settings.EXPORTED_FUNCTIONS += ['_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free', '_callback'];
     if Settings.ASM_JS == 1 and '-g' in self.emcc_args:
@@ -6838,7 +6837,6 @@ def process(filename):
       }
     '''
 
-    Settings.CORRECT_ROUNDINGS = 1
     Settings.CORRECT_SIGNS = 1 # To be correct here, we need sign corrections as well
     self.do_run(src.replace('TYPE', 'long long'), '*-2**2**-5**5*') # Correct
     self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # Correct

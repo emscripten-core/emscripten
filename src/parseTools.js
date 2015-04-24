@@ -726,15 +726,6 @@ function correctOverflows() {
   return CORRECT_OVERFLOWS === 1 || correctSpecificOverflow();
 }
 
-function correctSpecificRounding() {
-  if (!Framework.currItem) return false;
-  return (CORRECT_ROUNDINGS === 2 && Debugging.getIdentifier() in CORRECT_ROUNDINGS_LINES) ||
-         (CORRECT_ROUNDINGS === 3 && !(Debugging.getIdentifier() in CORRECT_ROUNDINGS_LINES));
-}
-function correctRoundings() {
-  return CORRECT_ROUNDINGS === 1 || correctSpecificRounding();
-}
-
 function checkSpecificSafeHeap() {
   if (!Framework.currItem) return false;
   return (SAFE_HEAP === 2 && Debugging.getIdentifier() in SAFE_HEAP_LINES) ||
