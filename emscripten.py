@@ -208,7 +208,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
 
     # memory and global initializers
 
-    global_initializers = ', '.join(map(lambda i: '{ func: function() { %s() } }' % i, metadata['initializers']))
+    global_initializers = str(', '.join(map(lambda i: '{ func: function() { %s() } }' % i, metadata['initializers'])))
 
     if settings['SIMD'] == 1:
       pre = open(path_from_root(os.path.join('src', 'ecmascript_simd.js'))).read() + '\n\n' + pre
@@ -630,14 +630,6 @@ function ftCall_%s(%s) {%s
       asm_global_funcs += ''.join(['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdinttypes for g in simdintfuncs])
       asm_global_funcs += ''.join(['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdfloattypes for g in simdfloatfuncs])
     asm_global_vars = ''.join(['  var ' + g + '=env' + access_quote(g) + '|0;\n' for g in basic_vars + global_vars])
-    # In linkable modules, we need to add some explicit globals for global variables that can be linked and used across modules
-    if settings.get('MAIN_MODULE') or settings.get('SIDE_MODULE'):
-      assert settings.get('TARGET_ASMJS_UNKNOWN_EMSCRIPTEN'), 'TODO: support x86 target when linking modules (needs offset of 4 and not 8 here)'
-      for key, value in forwarded_json['Variables']['globals'].iteritems():
-        if value.get('linkable'):
-          init = forwarded_json['Variables']['indexedGlobals'][key] + 8 # 8 is Runtime.GLOBAL_BASE / STATIC_BASE
-          if settings.get('SIDE_MODULE'): init = '(H_BASE+' + str(init) + ')|0'
-          asm_global_vars += '  var %s=%s;\n' % (key, str(init))
 
     # sent data
     the_global = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
@@ -861,28 +853,12 @@ Runtime.getTempRet0 = asm['getTempRet0'];
 
     if settings.get('DLOPEN_SUPPORT'):
       funcs_js.append('''
-  asm.maxFunctionIndex = %(max_mask)d;
-  DLFCN.registerFunctions(asm, %(max_mask)d+1, %(sigs)s, Module);
-  Module.SYMBOL_TABLE = SYMBOL_TABLE;
-''' % { 'max_mask': max_mask, 'sigs': str(map(str, last_forwarded_json['Functions']['tables'].keys())) })
-
-    # Create symbol table for self-dlopen
-    if settings.get('DLOPEN_SUPPORT'):
-      symbol_table = {}
-      for k, v in forwarded_json['Variables']['indexedGlobals'].iteritems():
-         if forwarded_json['Variables']['globals'][k]['named']:
-           symbol_table[k] = str(v + forwarded_json['Runtime']['GLOBAL_BASE'])
-      for raw in last_forwarded_json['Functions']['tables'].itervalues():
-        if raw == '': continue
-        table = map(string.strip, raw[raw.find('[')+1:raw.find(']')].split(","))
-        for i in range(len(table)):
-          value = table[i]
-          if value != '0':
-            if settings.get('SIDE_MODULE'):
-              symbol_table[value] = 'FUNCTION_TABLE_OFFSET+' + str(i)
-            else:
-              symbol_table[value] = str(i)
-      outfile.write("var SYMBOL_TABLE = %s;" % json.dumps(symbol_table).replace('"', ''))
+asm.maxFunctionIndex = %(max_mask)d;
+DLFCN.registerFunctions(asm, %(max_mask)d+1, %(sigs)s, Module);
+Module.SYMBOL_TABLE = %(symbol_table)s;
+''' % { 'max_mask': max_mask, 'sigs': str(map(str, last_forwarded_json['Functions']['tables'].keys())), 'symbol_table': r'''{
+  %s
+}''' % (', '.join(['"%s": asm["%s"]' % (item, item) for item in set(metadata['exports'])])) })
 
     for i in range(len(funcs_js)): # do this loop carefully to save memory
       if WINDOWS: funcs_js[i] = funcs_js[i].replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!

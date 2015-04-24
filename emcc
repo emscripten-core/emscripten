@@ -910,8 +910,6 @@ try:
     assert not split_js_file, '--split-js is deprecated and not supported in fastcomp'
     assert shared.Settings.INIT_HEAP == 0, 'HEAP_INIT is not supported in fastcomp (and should never be needed except for debugging)'
     assert not shared.Settings.RUNTIME_TYPE_INFO, 'RUNTIME_TYPE_INFO is not supported in fastcomp'
-    assert not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE, 'Linking modules is not supported in fastcomp'
-    assert not shared.Settings.DLOPEN_SUPPORT, 'dlopen() is not supported yet in fastcomp'
   except Exception, e:
     logging.error('Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
     raise e

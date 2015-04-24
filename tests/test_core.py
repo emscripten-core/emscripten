@@ -2928,38 +2928,23 @@ The current type of b is: 9
 
   # TODO: test only worked in non-fastcomp (well, this is a utility, dlfcn is todo for fastcomp)
   def can_dlfcn(self):
-    print 'dlfcn is not available in fastcomp'
-    return False
-
     if self.emcc_args:
       self.emcc_args += ['--memory-init-file', '0']
 
-    if Settings.ASM_JS:
-      Settings.DLOPEN_SUPPORT = 1
-    else:
-      Settings.NAMED_GLOBALS = 1
+    Settings.DLOPEN_SUPPORT = 1
+    Settings.RELOCATABLE = 1
+    Settings.EMULATED_FUNCTION_POINTERS = 1
+    Settings.DISABLE_EXCEPTION_CATCHING = 1
 
-    if not self.is_emscripten_abi():
-      self.skip('need asmjs-unknown-emscripten for dlfcn support')
-      return False
-    else:
-      return True
+    return True
 
   def prep_dlfcn_lib(self):
-    if Settings.ASM_JS:
-      Settings.MAIN_MODULE = 0
-      Settings.SIDE_MODULE = 1
-    else:
-      Settings.BUILD_AS_SHARED_LIB = 1
-      Settings.INCLUDE_FULL_LIBRARY = 0
+    Settings.MAIN_MODULE = 0
+    Settings.SIDE_MODULE = 1
 
   def prep_dlfcn_main(self):
-    if Settings.ASM_JS:
-      Settings.MAIN_MODULE = 1
-      Settings.SIDE_MODULE = 0
-    else:
-      Settings.BUILD_AS_SHARED_LIB = 0
-      Settings.INCLUDE_FULL_LIBRARY = 1
+    Settings.MAIN_MODULE = 1
+    Settings.SIDE_MODULE = 0
 
   dlfcn_post_build = '''
 def process(filename):
