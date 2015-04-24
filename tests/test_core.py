@@ -2928,6 +2928,10 @@ The current type of b is: 9
 
   # TODO: test only worked in non-fastcomp (well, this is a utility, dlfcn is todo for fastcomp)
   def can_dlfcn(self):
+    if self.is_emterpreter():
+      self.skip('no dlfcn support in emterpreter yet')
+      return False
+
     if self.emcc_args:
       self.emcc_args += ['--memory-init-file', '0']
 
