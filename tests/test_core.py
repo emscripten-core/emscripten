@@ -2138,6 +2138,26 @@ def process(filename):
     src = open(src).read().replace('emscripten_debugger();', '')
     self.do_run(src, open(output).read())
 
+  def test_inlinejs4(self):
+    self.do_run(r'''
+#include <emscripten.h>
+
+#define TO_STRING_INNER(x) #x
+#define TO_STRING(x) TO_STRING_INNER(x)
+#define assert_msg(msg, file, line) EM_ASM( throw 'Assert (' + msg + ') failed in ' + file + ':' + line + '!'; )
+#define assert(expr) { \
+  if (!(expr)) { \
+    assert_msg(#expr, TO_STRING(__FILE__), TO_STRING(__LINE__)); \
+  } \
+}
+
+int main(int argc, char **argv) {
+  assert(argc != 17);
+  assert(false);
+  return 0;
+}
+''', 'false')
+
   def test_em_asm_unicode(self):
     self.do_run(r'''
 #include <emscripten.h>
