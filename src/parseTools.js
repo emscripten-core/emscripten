@@ -717,15 +717,6 @@ function correctSigns() {
   return CORRECT_SIGNS === 1 || correctSpecificSign();
 }
 
-function correctSpecificOverflow() {
-  if (!Framework.currItem) return false;
-  return (CORRECT_OVERFLOWS === 2 && Debugging.getIdentifier() in CORRECT_OVERFLOWS_LINES) ||
-         (CORRECT_OVERFLOWS === 3 && !(Debugging.getIdentifier() in CORRECT_OVERFLOWS_LINES));
-}
-function correctOverflows() {
-  return CORRECT_OVERFLOWS === 1 || correctSpecificOverflow();
-}
-
 function checkSpecificSafeHeap() {
   if (!Framework.currItem) return false;
   return (SAFE_HEAP === 2 && Debugging.getIdentifier() in SAFE_HEAP_LINES) ||

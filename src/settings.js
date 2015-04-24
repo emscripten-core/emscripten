@@ -300,31 +300,6 @@ var ASYNCIFY_WHITELIST = ['qsort',   // Functions in this list are never conside
                                                                                                     
 
 var EXECUTION_TIMEOUT = -1; // Throw an exception after X seconds - useful to debug infinite loops
-var CHECK_OVERFLOWS = 0; // Add code that checks for overflows in integer math operations.
-                         // There is currently not much to do to handle overflows if they occur.
-                         // We can add code to simulate i32/i64 overflows in JS, but that would
-                         // be very slow. It probably makes more sense to avoid overflows in
-                         // C/C++ code. For example, if you have an int that you multiply by
-                         // some factor, in order to get 'random' hash values - by taking
-                         // that |value & hash_table_size| - then multiplying enough times will overflow.
-                         // But instead, you can do |value = value & 30_BITS| in each iteration.
-var CHECK_SIGNED_OVERFLOWS = 0; // Whether to allow *signed* overflows - our correction for overflows generates signed
-                                // values (since we use &). This means that we correct some things are not strictly overflows,
-                                // and we cause them to be signed (which may lead to unnecessary unSign()ing later).
-                                // With this enabled, we check signed overflows for CHECK_OVERFLOWS
-var CORRECT_OVERFLOWS = 1; // Experimental code that tries to prevent unexpected JS overflows in integer
-                           // mathops, by doing controlled overflows (sort of parallel to a CPU).
-                           // Note that as mentioned above in CHECK_OVERFLOWS, the best thing is to
-                           // not rely on overflows in your C/C++ code, as even if this option works,
-                           // it slows things down.
-                           //
-                           // If equal to 2, done on a line-by-line basis according to
-                           // CORRECT_OVERFLOWS_LINES, correcting only the specified lines.
-                           // If equal to 3, correcting all *but* the specified lines
-                           //
-                           // NOTE: You can introduce signing issues by using this option. If you
-                           //       take a large enough 32-bit value, and correct it for overflows,
-                           //       you may get a negative number, as JS & operations are signed.
 var FS_LOG = 0; // Log all FS operations.  This is especially helpful when you're porting
                 // a new project and want to see a list of file system operations happening
                 // so that you can create a virtual file system with all of the required files.
@@ -601,7 +576,6 @@ var DEBUG_TAGS_SHOWING = [];
 
 // For internal use only
 var ORIGINAL_EXPORTED_FUNCTIONS = [];
-var CORRECT_OVERFLOWS_LINES = [];
 var CORRECT_SIGNS_LINES = [];
 var SAFE_HEAP_LINES = [];
 

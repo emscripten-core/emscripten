@@ -31,7 +31,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
   def test_sintvars(self):
       Settings.CORRECT_SIGNS = 1 # Relevant to this test
-      Settings.CORRECT_OVERFLOWS = 0 # We should not need overflow correction to get this right
 
       test_path = path_from_root('tests', 'core', 'test_sintvars')
       src, output = (test_path + s for s in ('.in', '.out'))
@@ -5047,10 +5046,6 @@ return malloc(size);
 
     Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS) # remove -g, so we have one test without it by default
 
-    # Overflows happen in hash loop
-    Settings.CORRECT_OVERFLOWS = 1
-    Settings.CHECK_OVERFLOWS = 0
-
     Settings.CORRECT_SIGNS = 1
 
     def test():
@@ -5259,7 +5254,6 @@ def process(filename):
       self.banned_js_engines += [SPIDERMONKEY_ENGINE] # SM bug 1066759
 
     Settings.CORRECT_SIGNS = 1
-    Settings.CORRECT_OVERFLOWS = 0
     Settings.DISABLE_EXCEPTION_CATCHING = 1
     Settings.EXPORTED_FUNCTIONS += ['_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free', '_callback'];
     if Settings.ASM_JS == 1 and '-g' in self.emcc_args:
@@ -5347,7 +5341,6 @@ def process(filename):
         assert old.count('tempBigInt') > new.count('tempBigInt')
 
   def test_poppler(self):
-    Settings.CORRECT_OVERFLOWS = 1
     Settings.CORRECT_SIGNS = 1
     Settings.NO_EXIT_RUNTIME = 1
 
@@ -5571,8 +5564,6 @@ def process(filename):
     need_no_leave_inputs_raw = ['muli33_ta2', 'philoop_ta2']
 
     try:
-      Settings.CHECK_OVERFLOWS = 0
-
       for name in glob.glob(path_from_root('tests', 'cases', '*.ll')):
         shortname = name.replace('.ll', '')
         if '' not in shortname: continue
@@ -6715,7 +6706,6 @@ def process(filename):
       Building.COMPILER_TEST_OPTS += ['--llvm-opts', '0']
 
     Settings.CHECK_SIGNS = 0
-    Settings.CHECK_OVERFLOWS = 0
 
     # Signs
 
@@ -6756,62 +6746,6 @@ def process(filename):
     self.do_run(src, '*1*')
 
     Settings.CORRECT_SIGNS = 0
-
-    # Overflows
-
-    src = '''
-      #include<stdio.h>
-      int main() {
-        int t = 77;
-        for (int i = 0; i < 30; i++) {
-          t = t + t + t + t + t + 1;
-        }
-        printf("*%d,%d*\\n", t, t & 127);
-        return 0;
-      }
-    '''
-
-    correct = '*186854335,63*'
-    Settings.CORRECT_OVERFLOWS = 0
-    try:
-      self.do_run(src, correct)
-      raise Exception('UNEXPECTED-PASS')
-    except Exception, e:
-      assert 'UNEXPECTED' not in str(e), str(e)
-      assert 'Expected to find' in str(e), str(e)
-
-    Settings.CORRECT_OVERFLOWS = 1
-    self.do_run(src, correct) # Now it will work properly
-
-    # And now let's fix just that one line
-    Settings.CORRECT_OVERFLOWS = 2
-    Settings.CORRECT_OVERFLOWS_LINES = ["src.cpp:6"]
-    self.do_run(src, correct)
-
-    # Fixing the wrong line should not work
-    Settings.CORRECT_OVERFLOWS = 2
-    Settings.CORRECT_OVERFLOWS_LINES = ["src.cpp:3"]
-    try:
-      self.do_run(src, correct)
-      raise Exception('UNEXPECTED-PASS')
-    except Exception, e:
-      assert 'UNEXPECTED' not in str(e), str(e)
-      assert 'Expected to find' in str(e), str(e)
-
-    # And reverse the checks with = 2
-    Settings.CORRECT_OVERFLOWS = 3
-    Settings.CORRECT_OVERFLOWS_LINES = ["src.cpp:3"]
-    self.do_run(src, correct)
-    Settings.CORRECT_OVERFLOWS = 3
-    Settings.CORRECT_OVERFLOWS_LINES = ["src.cpp:6"]
-    try:
-      self.do_run(src, correct)
-      raise Exception('UNEXPECTED-PASS')
-    except Exception, e:
-      assert 'UNEXPECTED' not in str(e), str(e)
-      assert 'Expected to find' in str(e), str(e)
-
-    Settings.CORRECT_OVERFLOWS = 0
 
     # Roundings
 

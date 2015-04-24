@@ -507,7 +507,7 @@ class benchmark(RunnerCore):
         return 0;
       }
     '''
-    self.do_benchmark('corrections', src, 'final:', emcc_args=['-s', 'CORRECT_SIGNS=1', '-s', 'CORRECT_OVERFLOWS=1'])
+    self.do_benchmark('corrections', src, 'final:', emcc_args=['-s', 'CORRECT_SIGNS=1'])
 
   def fasta(self, name, double_rep, emcc_args=[]):
     src = open(path_from_root('tests', 'fasta.cpp'), 'r').read().replace('double', double_rep)

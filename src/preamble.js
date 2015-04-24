@@ -93,35 +93,6 @@ function CHECK_ALIGN_2(addr) {
 #endif
 
 
-#if CHECK_OVERFLOWS
-//========================================
-// Debugging tools - Mathop overflows
-//========================================
-function CHECK_OVERFLOW(value, bits, ignore, sig) {
-  if (ignore) return value;
-  var twopbits = Math.pow(2, bits);
-  var twopbits1 = Math.pow(2, bits-1);
-  // For signedness issue here, see settings.js, CHECK_SIGNED_OVERFLOWS
-#if CHECK_SIGNED_OVERFLOWS
-  if (value === Infinity || value === -Infinity || value >= twopbits1 || value < -twopbits1) {
-    throw 'SignedOverflow';
-    if (value === Infinity || value === -Infinity || Math.abs(value) >= twopbits) throw 'Overflow';
-  }
-#else
-  if (value === Infinity || value === -Infinity || Math.abs(value) >= twopbits) {
-    throw 'Overflow';
-  }
-#endif
-#if CORRECT_OVERFLOWS
-  // Fail on >32 bits - we warned at compile time
-  if (bits <= 32) {
-    value = value & (twopbits - 1);
-  }
-#endif
-  return value;
-}
-#endif
-
 #if LABEL_DEBUG
 //========================================
 // Debugging tools - Code flow progress

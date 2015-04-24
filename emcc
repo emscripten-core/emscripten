@@ -933,16 +933,13 @@ try:
   if shared.Settings.CORRECT_SIGNS != 1:
     logging.warning('setting CORRECT_SIGNS to 1 for asm.js code generation')
     shared.Settings.CORRECT_SIGNS = 1
-  if shared.Settings.CORRECT_OVERFLOWS != 1:
-    logging.warning('setting CORRECT_OVERFLOWS to 1 for asm.js code generation')
-    shared.Settings.CORRECT_OVERFLOWS = 1
   assert not shared.Settings.PGO, 'cannot run PGO in ASM_JS mode'
 
   if shared.Settings.SAFE_HEAP and not js_opts:
     js_opts = True
     logging.warning('enabling js opts for SAFE_HEAP')
 
-  if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.SAFE_HEAP >= 2:
+  if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.SAFE_HEAP >= 2:
     debug_level = 4 # must keep debug info to do line-by-line operations
 
   if debug_level > 1 and closure:

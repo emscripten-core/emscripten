@@ -625,7 +625,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   def apply_libcxx(need):
     assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++ with QUANTUM_SIZE == 1'
     # libcxx might need corrections, so turn them all on. TODO: check which are actually needed
-    shared.Settings.CORRECT_SIGNS = shared.Settings.CORRECT_OVERFLOWS = 1
+    shared.Settings.CORRECT_SIGNS = 1
     #logging.info('using libcxx turns on CORRECT_* options')
     return True
 
@@ -651,7 +651,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   def apply_libcxxabi(need):
     assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++abi with QUANTUM_SIZE == 1'
     #logging.info('using libcxxabi, this may need CORRECT_* options')
-    #shared.Settings.CORRECT_SIGNS = shared.Settings.CORRECT_OVERFLOWS = 1
+    #shared.Settings.CORRECT_SIGNS = 1
     return True
 
   # gl
