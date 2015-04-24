@@ -65,7 +65,7 @@ function JSify(data, functionsOnly) {
       var libFuncsToInclude;
       if (INCLUDE_FULL_LIBRARY) {
         assert(!(BUILD_AS_SHARED_LIB || SIDE_MODULE), 'Cannot have both INCLUDE_FULL_LIBRARY and BUILD_AS_SHARED_LIB/SIDE_MODULE set.')
-        libFuncsToInclude = [];
+        libFuncsToInclude = MAIN_MODULE ? DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.slice(0) : [];
         for (var key in LibraryManager.library) {
           if (!key.match(/__(deps|postset|inline|asm|sig)$/)) {
             libFuncsToInclude.push(key);
@@ -134,8 +134,12 @@ function JSify(data, functionsOnly) {
             else if (VERBOSE || (WARN_ON_UNDEFINED_SYMBOLS && !LINKABLE)) warn('unresolved symbol: ' + ident);
           }
         }
-        // emit a stub that will fail at runtime
-        LibraryManager.library[shortident] = new Function("Module['printErr']('missing function: " + shortident + "'); abort(-1);");
+        if (!(MAIN_MODULE || SIDE_MODULE)) {
+          // emit a stub that will fail at runtime
+          LibraryManager.library[shortident] = new Function("Module['printErr']('missing function: " + shortident + "'); abort(-1);");
+        } else {
+          LibraryManager.library[shortident] = function() { return Module['_' + shortident].apply(null, arguments); };
+        }
       }
 
       var snippet = LibraryManager.library[ident];
