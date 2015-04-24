@@ -207,6 +207,23 @@ arrayClass.set_struct_ptr_array(0, struct);
 TheModule.print('struct_ptr_array[0]->attr1 == ' + arrayClass.get_struct_ptr_array(0).get_attr1());
 TheModule.print('struct_ptr_array[0]->attr2 == ' + arrayClass.get_struct_ptr_array(0).get_attr2());
 
+
+// Test IDL_CHECKS=ALL
+
+try {
+  p = new TheModule.Parent(NaN); // Expects an integer
+} catch (e) {}
+
+try {
+  p = new TheModule.Parent(42);
+  p.voidStar(1234) // Expects a wrapped pointer
+} catch (e) {}
+
+try {
+  s = new TheModule.StringUser('abc', 1);
+  s.Print(123, null); // Expects a string or a wrapped pointer
+} catch (e) {}
+
 //
 
 TheModule.print('\ndone.')

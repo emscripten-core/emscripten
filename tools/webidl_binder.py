@@ -14,6 +14,17 @@ sys.path.append(shared.path_from_root('third_party', 'ply'))
 
 import WebIDL
 
+# CHECKS='FAST' will skip most argument type checks in the wrapper methods for
+#                  performance (~3x faster than default).
+# CHECKS='ALL' will do extensive argument type checking (~5x slower than default).
+#                 This will catch invalid numbers, invalid pointers, invalid strings, etc.
+# Anything else defaults to legacy mode for backward compatibility.
+CHECKS = os.environ.get('IDL_CHECKS') or 'DEFAULT'
+# DEBUG=1 will print debug info in render_function
+DEBUG = os.environ.get('IDL_VERBOSE') is '1'
+
+if DEBUG: print "Debug print ON, CHECKS=%s" % CHECKS
+
 class Dummy:
   def __init__(self, init):
     for k, v in init.iteritems():
@@ -213,13 +224,24 @@ def type_to_cdec(raw):
 def render_function(class_name, func_name, sigs, return_type, non_pointer, copy, operator, constructor, func_scope, call_content=None, const=False):
   global mid_c, mid_js, js_impl_methods
 
-  #print 'renderfunc', class_name, func_name, sigs, return_type, constructor
+  legacy_mode = CHECKS not in ['ALL', 'FAST']
+  all_checks = CHECKS  == 'ALL'
 
   bindings_name = class_name + '_' + func_name
   min_args = min(sigs.keys())
   max_args = max(sigs.keys())
 
   c_names = {}
+  all_args = sigs.get(max_args)
+
+  if DEBUG:
+    print 'renderfunc', class_name, func_name, sigs.keys(), return_type, constructor
+    for i in range(max_args):
+      a = all_args[i]
+      if isinstance(a, WebIDL.IDLArgument):
+        print ("  arg%d" % i), a.identifier, a.type, a.optional
+      else:
+        print "  arg%d" % i
 
   # JS
 
@@ -243,10 +265,67 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
     body = ''
     pre_arg = []
 
+  full_name = "%s::%s" % (class_name, func_name)
+
   for i in range(max_args):
+    if i >= min_args:
+      optional = True
+    else:
+      optional = False
+    arg = all_args[i]
+    do_default = False
+    # Filter out arguments we don't know how to parse. Fast casing only common cases.
+    compatible_arg = isinstance(arg, Dummy) or (isinstance(arg, WebIDL.IDLArgument) and arg.optional is False)
     # note: null has typeof object, but is ok to leave as is, since we are calling into asm code where null|0 = 0
-    body += "  if (arg%d && typeof arg%d === 'object') arg%d = arg%d.ptr;\n" % (i, i, i, i)
-    body += "  else arg%d = ensureString(arg%d);\n" % (i, i)
+    if not legacy_mode and compatible_arg:
+      if isinstance(arg, WebIDL.IDLArgument):
+        arg_name = arg.identifier.name
+      else:
+        arg_name = ''
+      # Format assert fail message
+      check_msg = "[CHECK FAILED] %s(arg%d:%s): " % (full_name, i, arg_name)
+      if isinstance(arg.type, WebIDL.IDLWrapperType):
+        inner = arg.type.inner
+      else:
+        inner = ""
+
+      # Print type info in comments.
+      body += "  /* arg%d <%s> [%s] */\n" % (i, arg.type.name, inner)
+
+      # Wrap asserts with existance check when argument is optional.
+      if all_checks and optional: body += "if(typeof arg%d !== 'undefined' && arg%d !== null) {\n" % (i, i)
+      # Special case argument types.
+      if arg.type.isNumeric():
+        if arg.type.isInteger():
+          if all_checks: body += "  assert(typeof arg%d === 'number' && !isNaN(arg%d), '%sExpecting <integer>');\n" % (i, i, check_msg)
+        else:
+          if all_checks: body += "  assert(typeof arg%d === 'number', '%sExpecting <number>');\n" % (i, check_msg)
+        # No transform needed for numbers
+      elif arg.type.isBoolean():
+        if all_checks: body += "  assert(typeof arg%d === 'boolean' || (typeof arg%d === 'number' && !isNaN(arg%d)), '%sExpecting <boolean>');\n" % (i, i, i, check_msg)
+        # No transform needed for booleans
+      elif arg.type.isString():
+        # Strings can be DOM strings or pointers.
+        if all_checks: body += "  assert(typeof arg%d === 'string' || (arg%d && typeof arg%d === 'object' && typeof arg%d.ptr === 'number'), '%sExpecting <string>');\n" % (i, i, i, i, check_msg)
+        do_default = True # legacy path is fast enough for strings.
+      elif arg.type.isInterface():
+        if all_checks: body += "  assert(typeof arg%d === 'object' && typeof arg%d.ptr === 'number', '%sExpecting <pointer>');\n" % (i, i, check_msg)
+        if optional:
+          body += "  if(typeof arg%d !== 'undefined' && arg%d !== null) { arg%d = arg%d.ptr };\n" % (i, i, i, i)
+        else:
+          # No checks in fast mode when the arg is required
+          body += "  arg%d = arg%d.ptr;\n" % (i, i)
+      else:
+        do_default = True
+
+      if all_checks and optional: body += "}\n"
+    else:
+      do_default = True
+
+    if do_default:
+      body += "  if (arg%d && typeof arg%d === 'object') arg%d = arg%d.ptr;\n" % (i, i, i, i)
+      body += "  else arg%d = ensureString(arg%d);\n" % (i, i)
+
 
   for i in range(min_args, max_args):
     c_names[i] = 'emscripten_bind_%s_%d' % (bindings_name, i)
@@ -267,7 +346,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
     sig = [arg.type.name for arg in raw]
 
     c_arg_types = map(type_to_c, sig)
- 
+
     normal_args = ', '.join(['%s arg%d' % (c_arg_types[j], j) for j in range(i)])
     if constructor:
       full_args = normal_args
