@@ -25,17 +25,6 @@ var QUANTUM_SIZE = 4; // This is the size of an individual field in a structure.
 var TARGET_ASMJS_UNKNOWN_EMSCRIPTEN = 1; // For asmjs-unknown-emscripten. 1 is normal, 2 is for the fastcomp llvm
                      // backend using emscripten-customized abi simplification
 
-var CORRECT_SIGNS = 1; // Whether we make sure to convert unsigned values to signed values.
-                       // Decreases performance with additional runtime checks. Might not be
-                       // needed in some kinds of code.
-                       // If equal to 2, done on a line-by-line basis according to
-                       // CORRECT_SIGNS_LINES, correcting only the specified lines.
-                       // If equal to 3, correcting all *but* the specified lines
-var CHECK_SIGNS = 0; // Runtime errors for signing issues that need correcting.
-                     // It is recommended to use this in
-                     // order to find if your code needs CORRECT_SIGNS. If you can get your
-                     // code to run without CORRECT_SIGNS, it will run much faster
-
 var ASSERTIONS = 1; // Whether we should add runtime assertions, for example to
                     // check that each allocation to the stack does not
                     // exceed its size, whether all allocations (stack and static) are
@@ -576,7 +565,6 @@ var DEBUG_TAGS_SHOWING = [];
 
 // For internal use only
 var ORIGINAL_EXPORTED_FUNCTIONS = [];
-var CORRECT_SIGNS_LINES = [];
 var SAFE_HEAP_LINES = [];
 
 // The list of defines (C_DEFINES) was moved into struct_info.json in the same directory.

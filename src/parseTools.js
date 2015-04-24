@@ -707,16 +707,6 @@ function indentify(text, indent) {
 
 // Correction tools
 
-function correctSpecificSign() {
-  if (!Framework.currItem) return false;
-  if (Framework.currItem.funcData.ident.indexOf('emscripten_autodebug') >= 0) return 1; // always correct in the autodebugger code!
-  return (CORRECT_SIGNS === 2 && Debugging.getIdentifier() in CORRECT_SIGNS_LINES) ||
-         (CORRECT_SIGNS === 3 && !(Debugging.getIdentifier() in CORRECT_SIGNS_LINES));
-}
-function correctSigns() {
-  return CORRECT_SIGNS === 1 || correctSpecificSign();
-}
-
 function checkSpecificSafeHeap() {
   if (!Framework.currItem) return false;
   return (SAFE_HEAP === 2 && Debugging.getIdentifier() in SAFE_HEAP_LINES) ||
@@ -1319,17 +1309,17 @@ function makeSignOp(value, type, op, force, ignore) {
   var bits, full;
   if (type[0] === 'i') {
     bits = parseInt(type.substr(1));
-    full = op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(ignore || correctSpecificSign()) + ')';
+    full = op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(ignore) + ')';
     // Always sign/unsign constants at compile time, regardless of CHECK/CORRECT
     if (isNumber(value)) {
       return eval(full).toString();
     }
   }
-  if ((ignore || !correctSigns()) && !CHECK_SIGNS && !force) return value;
+  if ((ignore) && !force) return value;
   if (type[0] === 'i') {
     // this is an integer, but not a number (or we would have already handled it)
     // shortcuts
-    if (!CHECK_SIGNS || ignore) {
+    if (ignore) {
       if (value === 'true') {
         value = '1';
       } else if (value === 'false') {

@@ -151,9 +151,6 @@ if (settings_file) {
 }
 
 
-if (CORRECT_SIGNS >= 2) {
-  CORRECT_SIGNS_LINES = set(CORRECT_SIGNS_LINES); // for fast checking
-}
 if (SAFE_HEAP >= 2) {
   SAFE_HEAP_LINES = set(SAFE_HEAP_LINES); // for fast checking
 }
