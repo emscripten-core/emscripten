@@ -668,6 +668,9 @@ return real_''' + s + '''.apply(null, arguments);
     else:
       asm_setup += '\n' + '\n'.join(function_tables_impls) + '\n'
       receiving += '\n' + function_tables_defs + '\n' + ''.join(['Module["dynCall_%s"] = dynCall_%s\n' % (sig, sig) for sig in last_forwarded_json['Functions']['tables']])
+      for sig in last_forwarded_json['Functions']['tables'].keys():
+        name = 'FUNCTION_TABLE_' + sig
+        receiving += 'Module["' + name + '"] = ' + name + ';\n'
       final_function_tables = '\n// EMSCRIPTEN_END_FUNCS\n'
 
     funcs_js = ['''
