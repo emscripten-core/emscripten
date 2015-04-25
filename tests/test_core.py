@@ -509,8 +509,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       os.environ['EMSCRIPT_MAX_CHUNK_SIZE'] = old_chunk_size
 
   def test_unaligned(self):
-      if Settings.QUANTUM_SIZE == 1: return self.skip('No meaning to unaligned addresses in q1')
-
       src = r'''
         #include<stdio.h>
 
@@ -1064,10 +1062,7 @@ base align: 0, 0, 0, 0'''])
           return 0;
         }
       '''
-      if Settings.QUANTUM_SIZE == 1:
-        self.do_run(src, 'sizeofs:6,8\n*C___: 0,3,6,9<24*\n*Carr: 0,3,6,9<24*\n*C__w: 0,3,9,12<24*\n*Cp1_: 1,2,5,8<24*\n*Cp2_: 0,2,5,8<24*\n*Cint: 0,3,4,7<24*\n*C4__: 0,3,4,7<24*\n*C4_2: 0,3,5,8<20*\n*C__z: 0,3,5,8<28*')
-      else:
-        self.do_run(src, 'sizeofs:6,8\n*C___: 0,6,12,20<24*\n*Carr: 0,6,12,20<24*\n*C__w: 0,6,12,20<24*\n*Cp1_: 4,6,12,20<24*\n*Cp2_: 0,6,12,20<24*\n*Cint: 0,8,12,20<24*\n*C4__: 0,8,12,20<24*\n*C4_2: 0,6,10,16<20*\n*C__z: 0,8,16,24<28*')
+      self.do_run(src, 'sizeofs:6,8\n*C___: 0,6,12,20<24*\n*Carr: 0,6,12,20<24*\n*C__w: 0,6,12,20<24*\n*Cp1_: 4,6,12,20<24*\n*Cp2_: 0,6,12,20<24*\n*Cint: 0,8,12,20<24*\n*C4__: 0,8,12,20<24*\n*C4_2: 0,6,10,16<20*\n*C__z: 0,8,16,24<28*')
 
   def test_assert(self):
     test_path = path_from_root('tests', 'core', 'test_assert')
@@ -1228,8 +1223,6 @@ int main() {
     self.do_run(src, r'''ok.''')
 
   def test_exceptions(self):
-      if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")
-
       Settings.EXCEPTION_DEBUG = 1
 
       Settings.DISABLE_EXCEPTION_CATCHING = 0
@@ -1984,14 +1977,10 @@ value = real 1.25 imag 0.00''', force_c=True)
           printf("*%d,%d,%d*\\n", sizeof(PyGC_Head), sizeof(gc_generation), int(GEN_HEAD(2)) - int(GEN_HEAD(1)));
         }
       '''
-      if Settings.QUANTUM_SIZE == 1:
-        # Compressed memory. Note that sizeof() does give the fat sizes, however!
-        self.do_run(src, '*0,0,0,1,2,3,4,5*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,5*')
+      if self.is_emscripten_abi():
+        self.do_run(src, '*0,0,0,4,8,16,20,24*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*16,24,24*')
       else:
-        if self.is_emscripten_abi():
-          self.do_run(src, '*0,0,0,4,8,16,20,24*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*16,24,24*')
-        else:
-          self.do_run(src, '*0,0,0,4,8,12,16,20*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,20*')
+        self.do_run(src, '*0,0,0,4,8,12,16,20*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,20*')
 
   def test_ptrtoint(self):
       runner = self
@@ -2210,10 +2199,7 @@ int main() {
           return 0;
         }
         '''
-      if Settings.QUANTUM_SIZE == 1:
-        self.do_run(src, '''*4*\n0:22016,0,8,12\n1:22018,1,12,8\n''')
-      else:
-        self.do_run(src, '''*16*\n0:22016,0,32,48\n1:22018,1,48,32\n''')
+      self.do_run(src, '''*16*\n0:22016,0,32,48\n1:22018,1,48,32\n''')
 
   def test_tinyfuncstr(self):
       test_path = path_from_root('tests', 'core', 'test_tinyfuncstr')
@@ -2288,13 +2274,9 @@ int main() {
           return 0;
         }
         '''
-      if Settings.QUANTUM_SIZE == 1:
-        self.do_run(src, '*4,2,3*\n*6,2,3*')
-      else:
-        self.do_run(src, '*4,3,4*\n*6,4,6*')
+      self.do_run(src, '*4,3,4*\n*6,4,6*')
 
   def test_varargs(self):
-      if Settings.QUANTUM_SIZE == 1: return self.skip('FIXME: Add support for this')
       if not self.is_emscripten_abi(): return self.skip('we do not support all varargs stuff without asmjs-unknown-emscripten')
 
       test_path = path_from_root('tests', 'core', 'test_varargs')
@@ -2775,8 +2757,6 @@ The current type of b is: 9
     self.do_run_from_file(src, output)
 
   def test_bsearch(self):
-    if Settings.QUANTUM_SIZE == 1: return self.skip('Test cannot work with q1')
-
     test_path = path_from_root('tests', 'core', 'test_bsearch')
     src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -2857,12 +2837,8 @@ The current type of b is: 9
           return 0;
         }
         '''
-      if Settings.QUANTUM_SIZE == 1:
-        # Compressed memory. Note that sizeof() does give the fat sizes, however!
-        self.do_run(src, '*16,0,1,2,2,3|20,0,1,1,2,3,3,4|24,0,5,0,1,1,2,3,3,4*\n*0,0,0,1,2,62,63,64,72*\n*2*')
-      else:
-        # Bloated memory; same layout as C/C++
-        self.do_run(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
+      # Bloated memory; same layout as C/C++
+      self.do_run(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
 
   def test_runtimelink(self):
     return self.skip('BUILD_AS_SHARED_LIB=2 is deprecated')
@@ -3249,7 +3225,6 @@ def process(filename):
     Settings.LINKABLE = 1
 
     if Building.LLVM_OPTS == 2: return self.skip('LLVM LTO will optimize things that prevent shared objects from working')
-    if Settings.QUANTUM_SIZE == 1: return self.skip('FIXME: Add support for this')
 
     self.prep_dlfcn_lib()
     lib_src = r'''
@@ -3844,7 +3819,6 @@ Have even and odd!
     self.do_run_from_file(src, output)
 
   def test_parseInt(self):
-    if Settings.QUANTUM_SIZE == 1: return self.skip('Q1 and I64_1 do not mix well yet')
     src = open(path_from_root('tests', 'parseInt', 'src.c'), 'r').read()
     expected = open(path_from_root('tests', 'parseInt', 'output.txt'), 'r').read()
     self.do_run(src, expected)
@@ -4672,7 +4646,6 @@ PORT: 3979
   # libc++ tests
 
   def test_iostream(self):
-    if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")
     src = '''
       #include <iostream>
 
@@ -5120,8 +5093,6 @@ return malloc(size);
     self.do_run(open(path_from_root('third_party', 'gcc_demangler.c')).read(), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'])
 
   def test_lua(self):
-    if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
-
     if self.emcc_args: self.emcc_args = ['-g1'] + self.emcc_args
 
     total_memory = Settings.TOTAL_MEMORY
@@ -5147,8 +5118,6 @@ return malloc(size);
                             os.path.join('objs', '.libs', 'libfreetype.a'))
 
   def test_freetype(self):
-    if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
-
     assert 'asm2g' in test_modes
     if self.run_name == 'asm2g':
       Settings.ALIASING_FUNCTION_POINTERS = 1 - Settings.ALIASING_FUNCTION_POINTERS # flip for some more coverage here
@@ -5206,7 +5175,6 @@ def process(filename):
   def test_sqlite(self):
     # gcc -O3 -I/home/alon/Dev/emscripten/tests/sqlite -ldl src.c
     if not self.is_emscripten_abi(): return self.skip('fails on x86 due to a legalization issue on llvm 3.3')
-    if Settings.QUANTUM_SIZE == 1: return self.skip('TODO FIXME')
     self.banned_js_engines = [NODE_JS] # OOM in older node
     if '-O' not in str(self.emcc_args):
       self.banned_js_engines += [SPIDERMONKEY_ENGINE] # SM bug 1066759
@@ -5467,7 +5435,6 @@ def process(filename):
       do_test()
 
   def test_python(self):
-    if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
     if not self.is_emscripten_abi(): return self.skip('fails on not asmjs-unknown-emscripten') # FIXME
 
     Settings.EMULATE_FUNCTION_POINTER_CASTS = 1
@@ -5539,10 +5506,6 @@ def process(filename):
           self.emcc_args = self.emcc_args + json.loads(open(shortname + '.emcc').read())
         print >> sys.stderr, "Testing case '%s'..." % shortname
         output_file = path_from_root('tests', 'cases', shortname + '.txt')
-        if Settings.QUANTUM_SIZE == 1:
-          q1_output_file = path_from_root('tests', 'cases', shortname + '_q1.txt')
-          if os.path.exists(q1_output_file):
-            output_file = q1_output_file
         if os.path.exists(output_file):
           output = open(output_file, 'r').read()
         else:
