@@ -2292,6 +2292,30 @@ seeked= file.
     out3, err3 = Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data2.txt', 'data2.txt@waka.txt'], stdout=PIPE, stderr=PIPE).communicate()
     out3 = clean(out3)
     assert out != out3
+    # verify '--separate-metadata' option produces separate metadata file
+    os.chdir('..')
+    Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata']).communicate()
+    assert os.path.isfile('immutable.js.metadata')
+    # verify js output file is immutable when metadata is separated
+    shutil.copy2('immutable.js', 'immutable.js.copy') # copy with timestamp preserved
+    Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata']).communicate()
+    import filecmp
+    assert filecmp.cmp('immutable.js.copy', 'immutable.js')
+    assert str(os.path.getmtime('immutable.js.copy')) == str(os.path.getmtime('immutable.js')) # assert both file content and timestamp are the same as reference copy
+    # verify the content of metadata file is correct
+    f = open('immutable.js.metadata', 'r')
+    import json
+    metadata = json.load(f)
+    f.close
+    assert len(metadata['files']) == 2
+    assert metadata['files'][0]['start'] == 0 and metadata['files'][0]['end'] == len('data1') and metadata['files'][0]['filename'] == '/data1.txt'
+    assert metadata['files'][1]['start'] == len('data1') and metadata['files'][1]['end'] == len('data1') + len('data2') and metadata['files'][1]['filename'] == '/subdir/data2.txt'
+    assert metadata['remote_package_size'] == len('data1') + len('data2')
+    import uuid
+    try:
+      uuid = uuid.UUID(metadata['package_uuid'], version = 4) # can only assert the uuid format is correct, the uuid's value is expected to differ in between invocation
+    except ValueError:
+      assert False
 
   def test_crunch(self):
     # crunch should not be run if a .crn exists that is more recent than the .dds
