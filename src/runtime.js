@@ -255,6 +255,7 @@ var Runtime = {
     sigs.forEach(function(sig) {
       var newTable = newModule['FUNCTION_TABLE_' + sig];
       var oldTable = Module['FUNCTION_TABLE_' + sig];
+      assert(newTable !== oldTable);
       assert(oldTable.length === oldMaxx);
       for (var i = 0; i < newTable.length; i++) {
         oldTable.push(newTable[i]);

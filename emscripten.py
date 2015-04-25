@@ -120,6 +120,10 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
         if curr < max_size:
           metadata['tables'][k] = v.replace(']', (',0'*(max_size - curr)) + ']')
 
+    if settings['SIDE_MODULE']:
+      for k in metadata['tables'].keys():
+        metadata['tables'][k] = metadata['tables'][k].replace('var FUNCTION_TABLE_', 'var SIDE_FUNCTION_TABLE_')
+
     # function table masks
 
     table_sizes = {}
@@ -669,7 +673,8 @@ return real_''' + s + '''.apply(null, arguments);
       receiving += '\n' + function_tables_defs + '\n' + ''.join(['Module["dynCall_%s"] = dynCall_%s\n' % (sig, sig) for sig in last_forwarded_json['Functions']['tables']])
       for sig in last_forwarded_json['Functions']['tables'].keys():
         name = 'FUNCTION_TABLE_' + sig
-        receiving += 'Module["' + name + '"] = ' + name + ';\n'
+        fullname = name if not settings['SIDE_MODULE'] else ('SIDE_' + name)
+        receiving += 'Module["' + name + '"] = ' + fullname + ';\n'
       final_function_tables = '\n// EMSCRIPTEN_END_FUNCS\n'
 
     funcs_js = ['''
