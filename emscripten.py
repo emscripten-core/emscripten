@@ -219,6 +219,9 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   /* global initializers */ __ATINIT__.push(%s);
   %s''' % (staticbump, global_initializers, mem_init)) # XXX wrong size calculation!
 
+    if settings['SIDE_MODULE']:
+      pre = pre.replace('Runtime.GLOBAL_BASE', 'gb').replace('{{{ STATIC_BUMP }}}', str(staticbump))
+
     funcs_js = [funcs]
     parts = pre.split('// ASM_LIBRARY FUNCTIONS\n')
     if len(parts) > 1:
