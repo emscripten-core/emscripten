@@ -726,11 +726,7 @@ function getHeapOffset(offset, type) {
   var sz = Runtime.getNativeTypeSize(type);
   var shifts = Math.log(sz)/Math.LN2;
   offset = '(' + offset + ')';
-  if (CHECK_HEAP_ALIGN && shifts > 0) {
-    return '((CHECK_ALIGN_' + sz + '(' + offset + '|0)|0)>>' + shifts + ')';
-  } else {
-    return '(' + offset + '>>' + shifts + ')';
-  }
+  return '(' + offset + '>>' + shifts + ')';
 }
 
 function ensureDot(value) {

@@ -4085,7 +4085,6 @@ Pass: 0.000012 0.000012''')
     if '-O2' in self.emcc_args:
       self.emcc_args += ['--closure', '1'] # Use closure here, to test we don't break FS stuff
       self.emcc_args = filter(lambda x: x != '-g', self.emcc_args) # ensure we test --closure 1 --memory-init-file 1 (-g would disable closure)
-      self.emcc_args += ["-s", "CHECK_HEAP_ALIGN=0"] # disable heap align check here, it mixes poorly with closure
 
     post = '''
 def process(filename):
@@ -4980,7 +4979,7 @@ return malloc(size);
     self.do_run(src, 'new 4!\n*1,0*')
 
   def test_dlmalloc_partial_2(self):
-    if 'SAFE_HEAP' in str(self.emcc_args) or 'CHECK_HEAP_ALIGN' in str(self.emcc_args): return self.skip('only emcc will link in dlmalloc, and we do unsafe stuff')
+    if 'SAFE_HEAP' in str(self.emcc_args): return self.skip('only emcc will link in dlmalloc, and we do unsafe stuff')
     # present part of the symbols of dlmalloc, not all. malloc is harder to link than new which is weak.
 
     test_path = path_from_root('tests', 'core', 'test_dlmalloc_partial_2')

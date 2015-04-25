@@ -80,7 +80,7 @@ var UNALIGNED_MEMORY = 0; // If enabled, all memory accesses are assumed to be u
                           // matter, which also cannot do unaligned reads/writes), at the cost of slowness
 var FORCE_ALIGNED_MEMORY = 0; // If enabled, assumes all reads and writes are fully aligned for the type they
                               // use. This is true in proper C code (no undefined behavior), but is sadly
-                              // common enough that we can't do it by default. See SAFE_HEAP and CHECK_HEAP_ALIGN
+                              // common enough that we can't do it by default. See SAFE_HEAP.
                               // for ways to help find places in your code where unaligned reads/writes are done -
                               // you might be able to refactor your codebase to prevent them, which leads to
                               // smaller and faster code, or even the option to turn this flag on.
@@ -169,9 +169,6 @@ var SAFE_HEAP = 0; // Check each write to the heap, for example, this will give 
                    // If equal to 3, checking all *but* the specified lines. Note
                    // that 3 is the option you usually want here.
 var SAFE_HEAP_LOG = 0; // Log out all SAFE_HEAP operations
-
-var CHECK_HEAP_ALIGN = 0; // Check heap accesses for alignment, but don't do as
-                          // near extensive (or slow) checks as SAFE_HEAP.
 
 var SAFE_DYNCALLS = 0; // Show stack traces on missing function pointer/virtual method calls
 
