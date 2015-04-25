@@ -132,9 +132,6 @@ var Runtime = {
   //! Returns the size of a type, as C/C++ would have it (in 32-bit), in bytes.
   //! @param type The type, by name.
   getNativeTypeSize: function(type) {
-#if QUANTUM_SIZE == 1
-    return 1;
-#else
     switch (type) {
       case 'i1': case 'i8': return 1;
       case 'i16': return 2;
@@ -154,7 +151,6 @@ var Runtime = {
         }
       }
     }
-#endif
   },
 
   //! Returns the size of a structure field, as C/C++ would have it (in 32-bit,

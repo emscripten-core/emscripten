@@ -509,8 +509,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       os.environ['EMSCRIPT_MAX_CHUNK_SIZE'] = old_chunk_size
 
   def test_unaligned(self):
-      if Settings.QUANTUM_SIZE == 1: return self.skip('No meaning to unaligned addresses in q1')
-
       src = r'''
         #include<stdio.h>
 
@@ -1064,10 +1062,7 @@ base align: 0, 0, 0, 0'''])
           return 0;
         }
       '''
-      if Settings.QUANTUM_SIZE == 1:
-        self.do_run(src, 'sizeofs:6,8\n*C___: 0,3,6,9<24*\n*Carr: 0,3,6,9<24*\n*C__w: 0,3,9,12<24*\n*Cp1_: 1,2,5,8<24*\n*Cp2_: 0,2,5,8<24*\n*Cint: 0,3,4,7<24*\n*C4__: 0,3,4,7<24*\n*C4_2: 0,3,5,8<20*\n*C__z: 0,3,5,8<28*')
-      else:
-        self.do_run(src, 'sizeofs:6,8\n*C___: 0,6,12,20<24*\n*Carr: 0,6,12,20<24*\n*C__w: 0,6,12,20<24*\n*Cp1_: 4,6,12,20<24*\n*Cp2_: 0,6,12,20<24*\n*Cint: 0,8,12,20<24*\n*C4__: 0,8,12,20<24*\n*C4_2: 0,6,10,16<20*\n*C__z: 0,8,16,24<28*')
+      self.do_run(src, 'sizeofs:6,8\n*C___: 0,6,12,20<24*\n*Carr: 0,6,12,20<24*\n*C__w: 0,6,12,20<24*\n*Cp1_: 4,6,12,20<24*\n*Cp2_: 0,6,12,20<24*\n*Cint: 0,8,12,20<24*\n*C4__: 0,8,12,20<24*\n*C4_2: 0,6,10,16<20*\n*C__z: 0,8,16,24<28*')
 
   def test_assert(self):
     test_path = path_from_root('tests', 'core', 'test_assert')
@@ -1228,8 +1223,6 @@ int main() {
     self.do_run(src, r'''ok.''')
 
   def test_exceptions(self):
-      if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")
-
       Settings.EXCEPTION_DEBUG = 1
 
       Settings.DISABLE_EXCEPTION_CATCHING = 0
@@ -1681,37 +1674,6 @@ value = real 1.25 imag 0.00''', force_c=True)
       ''' % addr
       self.do_run(src, 'segmentation fault' if addr.isdigit() else 'marfoosh')
 
-  def test_safe_dyncalls(self):
-    if Settings.ASM_JS: return self.skip('asm does not support missing function stack traces')
-    if Settings.SAFE_HEAP: return self.skip('safe heap warning will appear instead')
-    Settings.SAFE_DYNCALLS = 1
-
-    for cond, body, work in [(True, True, False), (True, False, False), (False, True, True), (False, False, False)]:
-      print cond, body, work
-      src = r'''
-        #include <stdio.h>
-
-        struct Classey {
-          virtual void doIt() = 0;
-        };
-
-        struct D1 : Classey {
-          virtual void doIt() BODY;
-        };
-
-        int main(int argc, char **argv)
-        {
-          Classey *p = argc COND 100 ? new D1() : NULL;
-          printf("%p\n", p);
-          p->doIt();
-
-          return 0;
-        }
-      '''.replace('COND', '==' if cond else '!=').replace('BODY', r'{ printf("all good\n"); }' if body else '')
-      # typically we get the dyncall error message from SAFE_DYNCALLS, however llvm opts can devirtualize the
-      # call in -O2, leading to the much nicer error message specifically about the missing function
-      self.do_run(src, ('dyncall error: vi', 'missing function: _ZN2D14doItEv') if not work else 'all good')
-
   def test_dynamic_cast(self):
       test_path = path_from_root('tests', 'core', 'test_dynamic_cast')
       src, output = (test_path + s for s in ('.in', '.out'))
@@ -2015,14 +1977,10 @@ value = real 1.25 imag 0.00''', force_c=True)
           printf("*%d,%d,%d*\\n", sizeof(PyGC_Head), sizeof(gc_generation), int(GEN_HEAD(2)) - int(GEN_HEAD(1)));
         }
       '''
-      if Settings.QUANTUM_SIZE == 1:
-        # Compressed memory. Note that sizeof() does give the fat sizes, however!
-        self.do_run(src, '*0,0,0,1,2,3,4,5*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,5*')
+      if self.is_emscripten_abi():
+        self.do_run(src, '*0,0,0,4,8,16,20,24*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*16,24,24*')
       else:
-        if self.is_emscripten_abi():
-          self.do_run(src, '*0,0,0,4,8,16,20,24*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*16,24,24*')
-        else:
-          self.do_run(src, '*0,0,0,4,8,12,16,20*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,20*')
+        self.do_run(src, '*0,0,0,4,8,12,16,20*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,20*')
 
   def test_ptrtoint(self):
       runner = self
@@ -2241,10 +2199,7 @@ int main() {
           return 0;
         }
         '''
-      if Settings.QUANTUM_SIZE == 1:
-        self.do_run(src, '''*4*\n0:22016,0,8,12\n1:22018,1,12,8\n''')
-      else:
-        self.do_run(src, '''*16*\n0:22016,0,32,48\n1:22018,1,48,32\n''')
+      self.do_run(src, '''*16*\n0:22016,0,32,48\n1:22018,1,48,32\n''')
 
   def test_tinyfuncstr(self):
       test_path = path_from_root('tests', 'core', 'test_tinyfuncstr')
@@ -2319,13 +2274,9 @@ int main() {
           return 0;
         }
         '''
-      if Settings.QUANTUM_SIZE == 1:
-        self.do_run(src, '*4,2,3*\n*6,2,3*')
-      else:
-        self.do_run(src, '*4,3,4*\n*6,4,6*')
+      self.do_run(src, '*4,3,4*\n*6,4,6*')
 
   def test_varargs(self):
-      if Settings.QUANTUM_SIZE == 1: return self.skip('FIXME: Add support for this')
       if not self.is_emscripten_abi(): return self.skip('we do not support all varargs stuff without asmjs-unknown-emscripten')
 
       test_path = path_from_root('tests', 'core', 'test_varargs')
@@ -2728,11 +2679,6 @@ The current type of b is: 9
     self.do_run_from_file(src, output)
 
   def test_statics(self):
-      # static initializers save i16 but load i8 for some reason (or i64 and load i8)
-      if Settings.SAFE_HEAP:
-        Settings.SAFE_HEAP = 3
-        Settings.SAFE_HEAP_LINES = ['src.cpp:19', 'src.cpp:26', 'src.cpp:28']
-
       test_path = path_from_root('tests', 'core', 'test_statics')
       src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -2811,8 +2757,6 @@ The current type of b is: 9
     self.do_run_from_file(src, output)
 
   def test_bsearch(self):
-    if Settings.QUANTUM_SIZE == 1: return self.skip('Test cannot work with q1')
-
     test_path = path_from_root('tests', 'core', 'test_bsearch')
     src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -2893,12 +2837,8 @@ The current type of b is: 9
           return 0;
         }
         '''
-      if Settings.QUANTUM_SIZE == 1:
-        # Compressed memory. Note that sizeof() does give the fat sizes, however!
-        self.do_run(src, '*16,0,1,2,2,3|20,0,1,1,2,3,3,4|24,0,5,0,1,1,2,3,3,4*\n*0,0,0,1,2,62,63,64,72*\n*2*')
-      else:
-        # Bloated memory; same layout as C/C++
-        self.do_run(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
+      # Bloated memory; same layout as C/C++
+      self.do_run(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
 
   def test_runtimelink(self):
     return self.skip('BUILD_AS_SHARED_LIB=2 is deprecated')
@@ -3285,7 +3225,6 @@ def process(filename):
     Settings.LINKABLE = 1
 
     if Building.LLVM_OPTS == 2: return self.skip('LLVM LTO will optimize things that prevent shared objects from working')
-    if Settings.QUANTUM_SIZE == 1: return self.skip('FIXME: Add support for this')
 
     self.prep_dlfcn_lib()
     lib_src = r'''
@@ -3880,7 +3819,6 @@ Have even and odd!
     self.do_run_from_file(src, output)
 
   def test_parseInt(self):
-    if Settings.QUANTUM_SIZE == 1: return self.skip('Q1 and I64_1 do not mix well yet')
     src = open(path_from_root('tests', 'parseInt', 'src.c'), 'r').read()
     expected = open(path_from_root('tests', 'parseInt', 'output.txt'), 'r').read()
     self.do_run(src, expected)
@@ -4085,7 +4023,6 @@ Pass: 0.000012 0.000012''')
     if '-O2' in self.emcc_args:
       self.emcc_args += ['--closure', '1'] # Use closure here, to test we don't break FS stuff
       self.emcc_args = filter(lambda x: x != '-g', self.emcc_args) # ensure we test --closure 1 --memory-init-file 1 (-g would disable closure)
-      self.emcc_args += ["-s", "CHECK_HEAP_ALIGN=0"] # disable heap align check here, it mixes poorly with closure
 
     post = '''
 def process(filename):
@@ -4709,7 +4646,6 @@ PORT: 3979
   # libc++ tests
 
   def test_iostream(self):
-    if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")
     src = '''
       #include <iostream>
 
@@ -4980,7 +4916,7 @@ return malloc(size);
     self.do_run(src, 'new 4!\n*1,0*')
 
   def test_dlmalloc_partial_2(self):
-    if 'SAFE_HEAP' in str(self.emcc_args) or 'CHECK_HEAP_ALIGN' in str(self.emcc_args): return self.skip('only emcc will link in dlmalloc, and we do unsafe stuff')
+    if 'SAFE_HEAP' in str(self.emcc_args): return self.skip('only emcc will link in dlmalloc, and we do unsafe stuff')
     # present part of the symbols of dlmalloc, not all. malloc is harder to link than new which is weak.
 
     test_path = path_from_root('tests', 'core', 'test_dlmalloc_partial_2')
@@ -5157,8 +5093,6 @@ return malloc(size);
     self.do_run(open(path_from_root('third_party', 'gcc_demangler.c')).read(), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'])
 
   def test_lua(self):
-    if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
-
     if self.emcc_args: self.emcc_args = ['-g1'] + self.emcc_args
 
     total_memory = Settings.TOTAL_MEMORY
@@ -5184,8 +5118,6 @@ return malloc(size);
                             os.path.join('objs', '.libs', 'libfreetype.a'))
 
   def test_freetype(self):
-    if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
-
     assert 'asm2g' in test_modes
     if self.run_name == 'asm2g':
       Settings.ALIASING_FUNCTION_POINTERS = 1 - Settings.ALIASING_FUNCTION_POINTERS # flip for some more coverage here
@@ -5243,7 +5175,6 @@ def process(filename):
   def test_sqlite(self):
     # gcc -O3 -I/home/alon/Dev/emscripten/tests/sqlite -ldl src.c
     if not self.is_emscripten_abi(): return self.skip('fails on x86 due to a legalization issue on llvm 3.3')
-    if Settings.QUANTUM_SIZE == 1: return self.skip('TODO FIXME')
     self.banned_js_engines = [NODE_JS] # OOM in older node
     if '-O' not in str(self.emcc_args):
       self.banned_js_engines += [SPIDERMONKEY_ENGINE] # SM bug 1066759
@@ -5291,13 +5222,6 @@ def process(filename):
 
   def test_the_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
     Settings.DEAD_FUNCTIONS = ['__ZSt9terminatev']
-
-    # Note: this is also a good test of per-file and per-line changes (since we have multiple files, and correct specific lines)
-    if Settings.SAFE_HEAP:
-      # Ignore bitfield warnings
-      Settings.SAFE_HEAP = 3
-      Settings.SAFE_HEAP_LINES = ['btVoronoiSimplexSolver.h:40', 'btVoronoiSimplexSolver.h:41',
-                                  'btVoronoiSimplexSolver.h:42', 'btVoronoiSimplexSolver.h:43']
 
     asserts = Settings.ASSERTIONS
 
@@ -5511,7 +5435,6 @@ def process(filename):
       do_test()
 
   def test_python(self):
-    if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
     if not self.is_emscripten_abi(): return self.skip('fails on not asmjs-unknown-emscripten') # FIXME
 
     Settings.EMULATE_FUNCTION_POINTER_CASTS = 1
@@ -5583,10 +5506,6 @@ def process(filename):
           self.emcc_args = self.emcc_args + json.loads(open(shortname + '.emcc').read())
         print >> sys.stderr, "Testing case '%s'..." % shortname
         output_file = path_from_root('tests', 'cases', shortname + '.txt')
-        if Settings.QUANTUM_SIZE == 1:
-          q1_output_file = path_from_root('tests', 'cases', shortname + '_q1.txt')
-          if os.path.exists(q1_output_file):
-            output_file = q1_output_file
         if os.path.exists(output_file):
           output = open(output_file, 'r').read()
         else:
@@ -6379,63 +6298,6 @@ def process(filename):
       src.close()
     self.do_run(src, open(path_from_root('tests', 'webidl', 'output.txt')).read(), post_build=(None, post))
 
-  # TODO: test only worked in non-fastcomp
-  def test_typeinfo(self):
-    return self.skip('non-fastcomp is deprecated and fails in 3.5') # RUNTIME_TYPE_INFO
-
-    if self.emcc_args != []: return self.skip('full LLVM opts optimize out all the code that uses the type')
-
-    Settings.RUNTIME_TYPE_INFO = 1
-    Settings.NO_EXIT_RUNTIME = 1
-    Settings.ASSERTIONS = 0
-    if Settings.QUANTUM_SIZE != 4: return self.skip('We assume normal sizes in the output here')
-
-    src = '''
-      #include<stdio.h>
-      struct UserStruct {
-        int x;
-        char y;
-        short z;
-      };
-      struct Encloser {
-        short x;
-        UserStruct us;
-        int y;
-      };
-      int main() {
-        Encloser e;
-        e.us.y = 5;
-        printf("*ok:%d*\\n", e.us.y);
-        return 0;
-      }
-    '''
-
-    post = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{POST_RUN_ADDITIONS}}',
-    \'\'\'
-      if (Runtime.typeInfo) {
-        Module.print('|' + Runtime.typeInfo.UserStruct.fields + '|' + Runtime.typeInfo.UserStruct.flatIndexes + '|');
-        var t = Runtime.generateStructInfo(['x', { us: ['x', 'y', 'z'] }, 'y'], 'Encloser')
-        Module.print('|' + [t.x, t.us.x, t.us.y, t.us.z, t.y] + '|');
-        Module.print('|' + JSON.stringify(Runtime.generateStructInfo(['x', 'y', 'z'], 'UserStruct')) + '|');
-      } else {
-        Module.print('No type info.');
-      }
-    \'\'\'
-  )
-  open(filename, 'w').write(src)
-'''
-
-    self.do_run(src,
-                '*ok:5*\n|i32,i8,i16|0,4,6|\n|0,4,8,10,12|\n|{"__size__":8,"x":0,"y":4,"z":6}|',
-                post_build=post)
-
-    # Make sure that without the setting, we don't spam the .js with the type info
-    Settings.RUNTIME_TYPE_INFO = 0
-    self.do_run(src, 'No type info.', post_build=post)
-
   ### Tests for tools
 
   def test_safe_heap(self):
@@ -6461,30 +6323,6 @@ def process(filename):
     except Exception, e:
       # This test *should* fail, by throwing this exception
       assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
-
-    # And we should not fail if we disable checking on that line
-
-    Settings.SAFE_HEAP = 3
-    Settings.SAFE_HEAP_LINES = ["src.cpp:7"]
-
-    self.do_run(src, '*ok*')
-
-    # But if we disable the wrong lines, we still fail
-
-    Settings.SAFE_HEAP_LINES = ["src.cpp:99"]
-
-    try:
-      self.do_run(src, '*nothingatall*', assert_returncode=None)
-    except Exception, e:
-      # This test *should* fail, by throwing this exception
-      assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
-
-    # And reverse the checks with = 2
-
-    Settings.SAFE_HEAP = 2
-    Settings.SAFE_HEAP_LINES = ["src.cpp:99"]
-
-    self.do_run(src, '*ok*')
 
     Settings.SAFE_HEAP = 1
 
@@ -6528,23 +6366,6 @@ def process(filename):
     except Exception, e:
       # This test *should* fail, by throwing this exception
       assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
-
-    # And we should not fail if we disable checking on those lines
-
-    Settings.SAFE_HEAP = 3
-    Settings.SAFE_HEAP_LINES = ["module.cpp:7", "main.cpp:9"]
-
-    self.do_ll_run(all_name, '*ok*')
-
-    # But we will fail if we do not disable exactly what we need to - any mistake leads to error
-
-    for lines in [["module.cpp:22", "main.cpp:9"], ["module.cpp:7", "main.cpp:29"], ["module.cpp:127", "main.cpp:449"], ["module.cpp:7"], ["main.cpp:9"]]:
-      Settings.SAFE_HEAP_LINES = lines
-      try:
-        self.do_ll_run(all_name, '*nothingatall*', assert_returncode=None)
-      except Exception, e:
-        # This test *should* fail, by throwing this exception
-        assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
 
   def test_source_map(self):
     if self.is_emterpreter(): return self.skip('todo')

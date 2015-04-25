@@ -80,7 +80,7 @@ var UNALIGNED_MEMORY = 0; // If enabled, all memory accesses are assumed to be u
                           // matter, which also cannot do unaligned reads/writes), at the cost of slowness
 var FORCE_ALIGNED_MEMORY = 0; // If enabled, assumes all reads and writes are fully aligned for the type they
                               // use. This is true in proper C code (no undefined behavior), but is sadly
-                              // common enough that we can't do it by default. See SAFE_HEAP and CHECK_HEAP_ALIGN
+                              // common enough that we can't do it by default. See SAFE_HEAP.
                               // for ways to help find places in your code where unaligned reads/writes are done -
                               // you might be able to refactor your codebase to prevent them, which leads to
                               // smaller and faster code, or even the option to turn this flag on.
@@ -164,16 +164,7 @@ var SIMPLIFY_IFS = 1; // Whether to simplify ifs in js-optimizer.js
 var SAFE_HEAP = 0; // Check each write to the heap, for example, this will give a clear
                    // error on what would be segfaults in a native build (like deferencing
                    // 0). See preamble.js for the actual checks performed.
-                   // If equal to 2, done on a line-by-line basis according to
-                   // SAFE_HEAP_LINES, checking only the specified lines.
-                   // If equal to 3, checking all *but* the specified lines. Note
-                   // that 3 is the option you usually want here.
 var SAFE_HEAP_LOG = 0; // Log out all SAFE_HEAP operations
-
-var CHECK_HEAP_ALIGN = 0; // Check heap accesses for alignment, but don't do as
-                          // near extensive (or slow) checks as SAFE_HEAP.
-
-var SAFE_DYNCALLS = 0; // Show stack traces on missing function pointer/virtual method calls
 
 var RESERVED_FUNCTION_POINTERS = 0; // In asm.js mode, we cannot simply add function pointers to
                                     // function tables, so we reserve some slots for them.
@@ -196,16 +187,6 @@ var FUNCTION_POINTER_ALIGNMENT = 2; // Byte alignment of function pointers - we 
                                     // which llvm assumes have the lower bit zero (see
                                     // test_polymorph and issue #1692).
 
-var ASM_HEAP_LOG = 0; // Simple heap logging, like SAFE_HEAP_LOG but cheaper, and in asm.js
-
-var LABEL_DEBUG = 0; // 1: Print out functions as we enter them
-                     // 2: Also print out each label as we enter it
-var LABEL_FUNCTION_FILTERS = []; // Filters for function label debug.
-                                 // The items for this array will be used
-                                 // as filters for function names. Only the
-                                 // labels of functions that is equaled to
-                                 // one of the filters are printed out
-                                 // When the array is empty, the filter is disabled.
 var EXCEPTION_DEBUG = 0; // Print out exceptions in emscriptened code. Does not work in asm.js mode
 
 var DEMANGLE_SUPPORT = 0; // If 1, build in libcxxabi's full c++ demangling code, to allow stackTrace()
@@ -288,7 +269,6 @@ var ASYNCIFY_WHITELIST = ['qsort',   // Functions in this list are never conside
                           'MUSL_vfprintf']; 
                                                                                                     
 
-var EXECUTION_TIMEOUT = -1; // Throw an exception after X seconds - useful to debug infinite loops
 var FS_LOG = 0; // Log all FS operations.  This is especially helpful when you're porting
                 // a new project and want to see a list of file system operations happening
                 // so that you can create a virtual file system with all of the required files.
@@ -416,11 +396,6 @@ var DLOPEN_SUPPORT = 0; // Full support for dlopen. This is necessary for asm.js
                         // modes for dlopen(NULL, ...). Note that you must use EMSCRIPTEN_KEEPALIVE
                         // to ensure that functions and globals can be accessed through dlsym,
                         // otherwise LLVM may optimize them out.
-
-var RUNTIME_TYPE_INFO = 0; // Whether to expose type info to the script at run time. This
-                           // increases the size of the generated script, but allows you
-                           // to more easily perform operations from handwritten JS on
-                           // objects with structures etc.
 
 var WARN_ON_UNDEFINED_SYMBOLS = 1; // If set to 1, we will warn on any undefined symbols that
                                    // are not resolved by the library_*.js files. Note that
@@ -565,7 +540,6 @@ var DEBUG_TAGS_SHOWING = [];
 
 // For internal use only
 var ORIGINAL_EXPORTED_FUNCTIONS = [];
-var SAFE_HEAP_LINES = [];
 
 // The list of defines (C_DEFINES) was moved into struct_info.json in the same directory.
 // That file is automatically parsed by tools/gen_struct_info.py.

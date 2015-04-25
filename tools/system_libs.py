@@ -614,7 +614,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     return build_libcxx(os.path.join('system', 'lib', 'libcxx'), 'libcxx.a', libcxx_files, ['-Oz', '-Wno-warn-absolute-paths', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')], has_noexcept_version=True)
 
   def apply_libcxx(need):
-    assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++ with QUANTUM_SIZE == 1'
     #logging.info('using libcxx turns on CORRECT_* options')
     return True
 
@@ -638,7 +637,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     return build_libcxx(os.path.join('system', 'lib', 'libcxxabi', 'src'), 'libcxxabi.bc', libcxxabi_files, ['-Oz', '-Wno-warn-absolute-paths', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')])
 
   def apply_libcxxabi(need):
-    assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++abi with QUANTUM_SIZE == 1'
     return True
 
   # gl
