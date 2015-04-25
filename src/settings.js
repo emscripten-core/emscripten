@@ -166,8 +166,6 @@ var SAFE_HEAP = 0; // Check each write to the heap, for example, this will give 
                    // 0). See preamble.js for the actual checks performed.
 var SAFE_HEAP_LOG = 0; // Log out all SAFE_HEAP operations
 
-var SAFE_DYNCALLS = 0; // Show stack traces on missing function pointer/virtual method calls
-
 var RESERVED_FUNCTION_POINTERS = 0; // In asm.js mode, we cannot simply add function pointers to
                                     // function tables, so we reserve some slots for them.
 var ALIASING_FUNCTION_POINTERS = 0; // Whether to allow function pointers to alias if they have

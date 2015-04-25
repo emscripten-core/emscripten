@@ -1681,37 +1681,6 @@ value = real 1.25 imag 0.00''', force_c=True)
       ''' % addr
       self.do_run(src, 'segmentation fault' if addr.isdigit() else 'marfoosh')
 
-  def test_safe_dyncalls(self):
-    if Settings.ASM_JS: return self.skip('asm does not support missing function stack traces')
-    if Settings.SAFE_HEAP: return self.skip('safe heap warning will appear instead')
-    Settings.SAFE_DYNCALLS = 1
-
-    for cond, body, work in [(True, True, False), (True, False, False), (False, True, True), (False, False, False)]:
-      print cond, body, work
-      src = r'''
-        #include <stdio.h>
-
-        struct Classey {
-          virtual void doIt() = 0;
-        };
-
-        struct D1 : Classey {
-          virtual void doIt() BODY;
-        };
-
-        int main(int argc, char **argv)
-        {
-          Classey *p = argc COND 100 ? new D1() : NULL;
-          printf("%p\n", p);
-          p->doIt();
-
-          return 0;
-        }
-      '''.replace('COND', '==' if cond else '!=').replace('BODY', r'{ printf("all good\n"); }' if body else '')
-      # typically we get the dyncall error message from SAFE_DYNCALLS, however llvm opts can devirtualize the
-      # call in -O2, leading to the much nicer error message specifically about the missing function
-      self.do_run(src, ('dyncall error: vi', 'missing function: _ZN2D14doItEv') if not work else 'all good')
-
   def test_dynamic_cast(self):
       test_path = path_from_root('tests', 'core', 'test_dynamic_cast')
       src, output = (test_path + s for s in ('.in', '.out'))
