@@ -398,11 +398,6 @@ var DLOPEN_SUPPORT = 0; // Full support for dlopen. This is necessary for asm.js
                         // to ensure that functions and globals can be accessed through dlsym,
                         // otherwise LLVM may optimize them out.
 
-var RUNTIME_TYPE_INFO = 0; // Whether to expose type info to the script at run time. This
-                           // increases the size of the generated script, but allows you
-                           // to more easily perform operations from handwritten JS on
-                           // objects with structures etc.
-
 var WARN_ON_UNDEFINED_SYMBOLS = 1; // If set to 1, we will warn on any undefined symbols that
                                    // are not resolved by the library_*.js files. Note that
                                    // it is common in large projects to

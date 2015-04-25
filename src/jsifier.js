@@ -403,11 +403,6 @@ function JSify(data, functionsOnly) {
     if (DETERMINISTIC) {
       print(read('deterministic.js'));
     }
-    if (RUNTIME_TYPE_INFO) {
-      Types.cleanForRuntime();
-      print('Runtime.typeInfo = ' + JSON.stringify(Types.types));
-      print('Runtime.structMetadata = ' + JSON.stringify(Types.structMetadata));
-    }
     var postFile = BUILD_AS_SHARED_LIB || SIDE_MODULE ? 'postamble_sharedlib.js' : 'postamble.js';
     var postParts = processMacros(preprocess(read(postFile))).split('{{GLOBAL_VARS}}');
     print(postParts[0]);

@@ -6335,63 +6335,6 @@ def process(filename):
       src.close()
     self.do_run(src, open(path_from_root('tests', 'webidl', 'output.txt')).read(), post_build=(None, post))
 
-  # TODO: test only worked in non-fastcomp
-  def test_typeinfo(self):
-    return self.skip('non-fastcomp is deprecated and fails in 3.5') # RUNTIME_TYPE_INFO
-
-    if self.emcc_args != []: return self.skip('full LLVM opts optimize out all the code that uses the type')
-
-    Settings.RUNTIME_TYPE_INFO = 1
-    Settings.NO_EXIT_RUNTIME = 1
-    Settings.ASSERTIONS = 0
-    if Settings.QUANTUM_SIZE != 4: return self.skip('We assume normal sizes in the output here')
-
-    src = '''
-      #include<stdio.h>
-      struct UserStruct {
-        int x;
-        char y;
-        short z;
-      };
-      struct Encloser {
-        short x;
-        UserStruct us;
-        int y;
-      };
-      int main() {
-        Encloser e;
-        e.us.y = 5;
-        printf("*ok:%d*\\n", e.us.y);
-        return 0;
-      }
-    '''
-
-    post = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{POST_RUN_ADDITIONS}}',
-    \'\'\'
-      if (Runtime.typeInfo) {
-        Module.print('|' + Runtime.typeInfo.UserStruct.fields + '|' + Runtime.typeInfo.UserStruct.flatIndexes + '|');
-        var t = Runtime.generateStructInfo(['x', { us: ['x', 'y', 'z'] }, 'y'], 'Encloser')
-        Module.print('|' + [t.x, t.us.x, t.us.y, t.us.z, t.y] + '|');
-        Module.print('|' + JSON.stringify(Runtime.generateStructInfo(['x', 'y', 'z'], 'UserStruct')) + '|');
-      } else {
-        Module.print('No type info.');
-      }
-    \'\'\'
-  )
-  open(filename, 'w').write(src)
-'''
-
-    self.do_run(src,
-                '*ok:5*\n|i32,i8,i16|0,4,6|\n|0,4,8,10,12|\n|{"__size__":8,"x":0,"y":4,"z":6}|',
-                post_build=post)
-
-    # Make sure that without the setting, we don't spam the .js with the type info
-    Settings.RUNTIME_TYPE_INFO = 0
-    self.do_run(src, 'No type info.', post_build=post)
-
   ### Tests for tools
 
   def test_safe_heap(self):

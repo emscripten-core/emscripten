@@ -209,24 +209,6 @@ var Types = {
   },
   structMetadata: {},
 
-  // Remove all data not needed during runtime (like line numbers, JS, etc.)
-  cleanForRuntime: function() {
-    values(this.types).forEach(function(type) {
-      delete type.intertype;
-      delete type.name_;
-      delete type.lineNum;
-      delete type.lines;
-      delete type.needsFlattening;
-      delete type.JS;
-    });
-    keys(this.types).forEach(function(longer) {
-      var shorter = longer.replace('%struct.', '').replace('%class.');
-      if (shorter === longer) return;
-      if (shorter in this.types) return;
-      this.types[shorter] = this.types[longer];
-    }, this);
-  },
-
   needAnalysis: {}, // Types noticed during parsing, that need analysis
 
   hasInlineJS: false, // whether the program has inline JS anywhere
