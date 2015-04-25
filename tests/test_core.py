@@ -30,9 +30,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run_from_file(src, output)
 
   def test_sintvars(self):
-      Settings.CORRECT_SIGNS = 1 # Relevant to this test
-      Settings.CORRECT_OVERFLOWS = 0 # We should not need overflow correction to get this right
-
       test_path = path_from_root('tests', 'core', 'test_sintvars')
       src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -240,8 +237,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
       # stuff that also needs sign corrections
 
-      Settings.CORRECT_SIGNS = 1
-
       src = r'''
         #include <stdio.h>
         #include <stdint.h>
@@ -426,8 +421,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run_from_file(src, output)
 
   def test_i16_emcc_intrinsic(self):
-    Settings.CORRECT_SIGNS = 1 # Relevant to this test
-
     test_path = path_from_root('tests', 'core', 'test_i16_emcc_intrinsic')
     src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -641,8 +634,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 ''')
 
   def test_unsigned(self):
-      Settings.CORRECT_SIGNS = 1 # We test for exactly this sort of thing here
-      Settings.CHECK_SIGNS = 0
       src = '''
         #include <stdio.h>
         const signed char cvals[2] = { -1, -2 }; // compiler can store this is a string, so -1 becomes \FF, and needs re-signing
@@ -680,9 +671,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
         }
       '''
       self.do_run(src, '*4294967295,0,4294967219*\n*-1,1,-1,1*\n*-2,1,-2,1*\n*246,296*\n*1,0*')
-
-      Settings.CHECK_SIGNS = 0
-      Settings.CORRECT_SIGNS = 0
 
       src = '''
         #include <stdio.h>
@@ -2265,8 +2253,6 @@ int main() {
       self.do_run_from_file(src, output)
 
   def test_llvmswitch(self):
-      Settings.CORRECT_SIGNS = 1
-
       test_path = path_from_root('tests', 'core', 'test_llvmswitch')
       src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -3062,8 +3048,6 @@ def process(filename):
 
   def test_dlfcn_qsort(self):
     if not self.can_dlfcn(): return
-
-    Settings.CORRECT_SIGNS = 1 # Needed for unsafe optimizations
 
     self.prep_dlfcn_lib()
     Settings.EXPORTED_FUNCTIONS = ['_get_cmp']
@@ -4103,7 +4087,6 @@ Pass: 0.000012 0.000012''')
       self.emcc_args = filter(lambda x: x != '-g', self.emcc_args) # ensure we test --closure 1 --memory-init-file 1 (-g would disable closure)
       self.emcc_args += ["-s", "CHECK_HEAP_ALIGN=0"] # disable heap align check here, it mixes poorly with closure
 
-    Settings.CORRECT_SIGNS = 1 # Just so our output is what we expect. Can flip them both.
     post = '''
 def process(filename):
   src = \'\'\'
@@ -4141,8 +4124,6 @@ def process(filename):
 
   def test_files_m(self):
     # Test for Module.stdin etc.
-
-    Settings.CORRECT_SIGNS = 1
 
     post = '''
 def process(filename):
@@ -4693,8 +4674,6 @@ PORT: 3979
 ''')
 
   def test_ctype(self):
-    # The bit fiddling done by the macros using __ctype_b_loc requires this.
-    Settings.CORRECT_SIGNS = 1
     src = open(path_from_root('tests', 'ctype', 'src.c'), 'r').read()
     expected = open(path_from_root('tests', 'ctype', 'output.txt'), 'r').read()
     self.do_run(src, expected)
@@ -4956,7 +4935,6 @@ int main(void) {
 
   def test_dlmalloc(self):
     self.banned_js_engines = [NODE_JS] # slower, and fail on 64-bit
-    Settings.CORRECT_SIGNS = 1
     Settings.TOTAL_MEMORY = 128*1024*1024 # needed with typed arrays
 
     src = open(path_from_root('system', 'lib', 'dlmalloc.c'), 'r').read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
@@ -5066,12 +5044,6 @@ return malloc(size);
       self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
     Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS) # remove -g, so we have one test without it by default
-
-    # Overflows happen in hash loop
-    Settings.CORRECT_OVERFLOWS = 1
-    Settings.CHECK_OVERFLOWS = 0
-
-    Settings.CORRECT_SIGNS = 1
 
     def test():
       self.do_run(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
@@ -5218,8 +5190,6 @@ return malloc(size);
     if self.run_name == 'asm2g':
       Settings.ALIASING_FUNCTION_POINTERS = 1 - Settings.ALIASING_FUNCTION_POINTERS # flip for some more coverage here
 
-    if Settings.CORRECT_SIGNS == 0: Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
-
     post = '''
 def process(filename):
   import tools.shared as shared
@@ -5278,9 +5248,6 @@ def process(filename):
     if '-O' not in str(self.emcc_args):
       self.banned_js_engines += [SPIDERMONKEY_ENGINE] # SM bug 1066759
 
-    Settings.CORRECT_SIGNS = 1
-    Settings.CORRECT_OVERFLOWS = 0
-    Settings.CORRECT_ROUNDINGS = 0
     Settings.DISABLE_EXCEPTION_CATCHING = 1
     Settings.EXPORTED_FUNCTIONS += ['_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free', '_callback'];
     if Settings.ASM_JS == 1 and '-g' in self.emcc_args:
@@ -5307,8 +5274,6 @@ def process(filename):
     assert 'asm2g' in test_modes
     if self.run_name == 'asm2g':
       self.emcc_args += ['-g4'] # more source maps coverage
-
-    Settings.CORRECT_SIGNS = 1
 
     use_cmake_configure = WINDOWS
     if use_cmake_configure:
@@ -5368,8 +5333,6 @@ def process(filename):
         assert old.count('tempBigInt') > new.count('tempBigInt')
 
   def test_poppler(self):
-    Settings.CORRECT_OVERFLOWS = 1
-    Settings.CORRECT_SIGNS = 1
     Settings.NO_EXIT_RUNTIME = 1
 
     Building.COMPILER_TEST_OPTS += [
@@ -5423,8 +5386,6 @@ def process(filename):
 
   def test_openjpeg(self):
     Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS) # remove -g, so we have one test without it by default
-
-    Settings.CORRECT_SIGNS = 1
 
     post = '''
 def process(filename):
@@ -5592,8 +5553,6 @@ def process(filename):
     need_no_leave_inputs_raw = ['muli33_ta2', 'philoop_ta2']
 
     try:
-      Settings.CHECK_OVERFLOWS = 0
-
       for name in glob.glob(path_from_root('tests', 'cases', '*.ll')):
         shortname = name.replace('.ll', '')
         if '' not in shortname: continue
@@ -6726,144 +6685,6 @@ def process(filename):
       self.banned_js_engines = [SPIDERMONKEY_ENGINE] 
     if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
     self.do_run('#define RUN_FROM_JS_SHELL\n' + open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read(), "Success!")
-
-  def test_linespecific(self):
-    if Settings.ASM_JS: return self.skip('asm always has corrections on')
-
-    if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
-    if self.emcc_args:
-      self.emcc_args += ['--llvm-opts', '0'] # llvm full opts make the expected failures here not happen
-      Building.COMPILER_TEST_OPTS += ['--llvm-opts', '0']
-
-    Settings.CHECK_SIGNS = 0
-    Settings.CHECK_OVERFLOWS = 0
-
-    # Signs
-
-    src = '''
-      #include <stdio.h>
-      #include <assert.h>
-
-      int main()
-      {
-        int varey = 100;
-        unsigned int MAXEY = -1;
-        printf("*%d*\\n", varey >= MAXEY); // 100 >= -1? not in unsigned!
-      }
-    '''
-
-    Settings.CORRECT_SIGNS = 0
-    self.do_run(src, '*1*') # This is a fail - we expect 0
-
-    Settings.CORRECT_SIGNS = 1
-    self.do_run(src, '*0*') # Now it will work properly
-
-    ## And now let's fix just that one line
-    #Settings.CORRECT_SIGNS = 2
-    #Settings.CORRECT_SIGNS_LINES = ["src.cpp:9"]
-    #self.do_run(src, '*0*')
-
-    # Fixing the wrong line should not work
-    Settings.CORRECT_SIGNS = 2
-    Settings.CORRECT_SIGNS_LINES = ["src.cpp:3"]
-    self.do_run(src, '*1*')
-
-    # And reverse the checks with = 2
-    Settings.CORRECT_SIGNS = 3
-    Settings.CORRECT_SIGNS_LINES = ["src.cpp:3"]
-    self.do_run(src, '*0*')
-    Settings.CORRECT_SIGNS = 3
-    Settings.CORRECT_SIGNS_LINES = ["src.cpp:9"]
-    self.do_run(src, '*1*')
-
-    Settings.CORRECT_SIGNS = 0
-
-    # Overflows
-
-    src = '''
-      #include<stdio.h>
-      int main() {
-        int t = 77;
-        for (int i = 0; i < 30; i++) {
-          t = t + t + t + t + t + 1;
-        }
-        printf("*%d,%d*\\n", t, t & 127);
-        return 0;
-      }
-    '''
-
-    correct = '*186854335,63*'
-    Settings.CORRECT_OVERFLOWS = 0
-    try:
-      self.do_run(src, correct)
-      raise Exception('UNEXPECTED-PASS')
-    except Exception, e:
-      assert 'UNEXPECTED' not in str(e), str(e)
-      assert 'Expected to find' in str(e), str(e)
-
-    Settings.CORRECT_OVERFLOWS = 1
-    self.do_run(src, correct) # Now it will work properly
-
-    # And now let's fix just that one line
-    Settings.CORRECT_OVERFLOWS = 2
-    Settings.CORRECT_OVERFLOWS_LINES = ["src.cpp:6"]
-    self.do_run(src, correct)
-
-    # Fixing the wrong line should not work
-    Settings.CORRECT_OVERFLOWS = 2
-    Settings.CORRECT_OVERFLOWS_LINES = ["src.cpp:3"]
-    try:
-      self.do_run(src, correct)
-      raise Exception('UNEXPECTED-PASS')
-    except Exception, e:
-      assert 'UNEXPECTED' not in str(e), str(e)
-      assert 'Expected to find' in str(e), str(e)
-
-    # And reverse the checks with = 2
-    Settings.CORRECT_OVERFLOWS = 3
-    Settings.CORRECT_OVERFLOWS_LINES = ["src.cpp:3"]
-    self.do_run(src, correct)
-    Settings.CORRECT_OVERFLOWS = 3
-    Settings.CORRECT_OVERFLOWS_LINES = ["src.cpp:6"]
-    try:
-      self.do_run(src, correct)
-      raise Exception('UNEXPECTED-PASS')
-    except Exception, e:
-      assert 'UNEXPECTED' not in str(e), str(e)
-      assert 'Expected to find' in str(e), str(e)
-
-    Settings.CORRECT_OVERFLOWS = 0
-
-    # Roundings
-
-    src = '''
-      #include <stdio.h>
-      #include <assert.h>
-
-      int main()
-      {
-        TYPE x = -5;
-        printf("*%d*", x/2);
-        x = 5;
-        printf("*%d*", x/2);
-
-        float y = -5.33;
-        x = y;
-        printf("*%d*", x);
-        y = 5.33;
-        x = y;
-        printf("*%d*", x);
-
-        printf("\\n");
-      }
-    '''
-
-    Settings.CORRECT_ROUNDINGS = 1
-    Settings.CORRECT_SIGNS = 1 # To be correct here, we need sign corrections as well
-    self.do_run(src.replace('TYPE', 'long long'), '*-2**2**-5**5*') # Correct
-    self.do_run(src.replace('TYPE', 'int'), '*-2**2**-5**5*') # Correct
-    self.do_run(src.replace('TYPE', 'unsigned int'), '*2147483645**2**-5**5*') # Correct
-    Settings.CORRECT_SIGNS = 0
 
   def test_float_literals(self):
     self.do_run_from_file(path_from_root('tests', 'test_float_literals.cpp'), path_from_root('tests', 'test_float_literals.out'))
