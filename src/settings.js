@@ -189,8 +189,6 @@ var FUNCTION_POINTER_ALIGNMENT = 2; // Byte alignment of function pointers - we 
                                     // which llvm assumes have the lower bit zero (see
                                     // test_polymorph and issue #1692).
 
-var ASM_HEAP_LOG = 0; // Simple heap logging, like SAFE_HEAP_LOG but cheaper, and in asm.js
-
 var LABEL_DEBUG = 0; // 1: Print out functions as we enter them
                      // 2: Also print out each label as we enter it
 var LABEL_FUNCTION_FILTERS = []; // Filters for function label debug.

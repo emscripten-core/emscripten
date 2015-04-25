@@ -875,10 +875,6 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
   if (forceAsm) {
     ret = asmCoercion(ret, type);
   }
-  if (ASM_HEAP_LOG) {
-    ret = makeInlineCalculation('(asmPrint' + (type in Compiletime.FLOAT_TYPES ? 'Float' : 'Int') + '(' + (asmPrintCounter++) + ',' + asmCoercion('VALUE', type) + '), VALUE)', ret,
-                                'temp' + (type in Compiletime.FLOAT_TYPES ? 'Double' : 'Int'));
-  }
   return ret;
 }
 
