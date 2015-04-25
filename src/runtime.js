@@ -216,9 +216,35 @@ var Runtime = {
     }
   },
 
+#if EMULATED_FUNCTION_POINTERS
+  getFunctionTables: function() {
+    var tables = {};
+    for (var t in Module) {
+      if (/^FUNCTION_TABLE_.*/.test(t)) {
+        var table = Module[t];
+        if (typeof table === 'object') tables[t.substr('FUNCTION_TABLE_'.length)] = table;
+      }
+    }
+    return tables;
+  },
+
+  alignFunctionTables: function() {
+    var tables = Runtime.getFunctionTables();
+    var maxx = 0;
+    for (var sig in tables) {
+      maxx = Math.max(maxx, tables[sig].length);
+    }
+    for (var sig in tables) {
+      var table = tables[sig];
+      while (table.length < maxx) table.push(0);
+    }
+  },
+#endif
+
   functionPointers: new Array(RESERVED_FUNCTION_POINTERS),
 
   addFunction: function(func) {
+#if EMULATED_FUNCTION_POINTERS == 0
     for (var i = 0; i < Runtime.functionPointers.length; i++) {
       if (!Runtime.functionPointers[i]) {
         Runtime.functionPointers[i] = func;
@@ -226,6 +252,18 @@ var Runtime = {
       }
     }
     throw 'Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.';
+#else
+    Runtime.alignFunctionTables(); // XXX we should rely on this being an invariant
+    var tables = Runtime.getFunctionTables();
+    var ret = -1;
+    for (var sig in tables) {
+      var table = tables[sig];
+      if (ret < 0) ret = table.length;
+      else assert(ret === table.length);
+      table.push(func);
+    }
+    return ret;
+#endif
   },
 
   removeFunction: function(index) {
