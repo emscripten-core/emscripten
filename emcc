@@ -898,7 +898,6 @@ try:
     assert shared.Settings.SAFE_HEAP in [0, 1], 'safe heap must be 0 or 1 in fastcomp'
     assert shared.Settings.UNALIGNED_MEMORY == 0, 'forced unaligned memory not supported in fastcomp'
     assert shared.Settings.FORCE_ALIGNED_MEMORY == 0, 'forced aligned memory is not supported in fastcomp'
-    assert shared.Settings.LABEL_DEBUG == 0, 'label debug not supported in fastcomp'
     assert shared.Settings.EXECUTION_TIMEOUT == -1, 'execution timeout not supported in fastcomp'
     assert shared.Settings.NAMED_GLOBALS == 0, 'named globals not supported in fastcomp'
     assert shared.Settings.PGO == 0, 'pgo not supported in fastcomp'

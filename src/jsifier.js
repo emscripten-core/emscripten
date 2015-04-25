@@ -226,19 +226,6 @@ function JSify(data, functionsOnly) {
     }
   }
 
-  // function for filtering functions for label debugging
-  if (LABEL_FUNCTION_FILTERS.length > 0) {
-    var LABEL_FUNCTION_FILTER_SET = set(LABEL_FUNCTION_FILTERS);
-    var finalNameFilterTest = function(ident) {
-      return (ident in LABEL_FUNCTION_FILTER_SET);
-    };
-  } else {
-    // no filters are specified, all function names are printed
-    var finalNameFilterTest = function(ident) {
-      return true;
-    }
-  }
-
   // Final combiner
 
   function finalCombiner() {

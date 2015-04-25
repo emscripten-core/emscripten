@@ -74,13 +74,6 @@ function SAFE_FT_MASK(value, mask) {
 }
 #endif
 
-#if LABEL_DEBUG
-//========================================
-// Debugging tools - Code flow progress
-//========================================
-var INDENT = '';
-#endif
-
 #if EXECUTION_TIMEOUT
 //========================================
 // Debugging tools - Execution timeout

@@ -187,14 +187,6 @@ var FUNCTION_POINTER_ALIGNMENT = 2; // Byte alignment of function pointers - we 
                                     // which llvm assumes have the lower bit zero (see
                                     // test_polymorph and issue #1692).
 
-var LABEL_DEBUG = 0; // 1: Print out functions as we enter them
-                     // 2: Also print out each label as we enter it
-var LABEL_FUNCTION_FILTERS = []; // Filters for function label debug.
-                                 // The items for this array will be used
-                                 // as filters for function names. Only the
-                                 // labels of functions that is equaled to
-                                 // one of the filters are printed out
-                                 // When the array is empty, the filter is disabled.
 var EXCEPTION_DEBUG = 0; // Print out exceptions in emscriptened code. Does not work in asm.js mode
 
 var DEMANGLE_SUPPORT = 0; // If 1, build in libcxxabi's full c++ demangling code, to allow stackTrace()
