@@ -74,13 +74,6 @@ function SAFE_FT_MASK(value, mask) {
 }
 #endif
 
-#if EXECUTION_TIMEOUT
-//========================================
-// Debugging tools - Execution timeout
-//========================================
-var START_TIME = Date.now();
-#endif
-
 //========================================
 // Runtime essentials
 //========================================

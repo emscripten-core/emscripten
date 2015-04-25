@@ -269,7 +269,6 @@ var ASYNCIFY_WHITELIST = ['qsort',   // Functions in this list are never conside
                           'MUSL_vfprintf']; 
                                                                                                     
 
-var EXECUTION_TIMEOUT = -1; // Throw an exception after X seconds - useful to debug infinite loops
 var FS_LOG = 0; // Log all FS operations.  This is especially helpful when you're porting
                 // a new project and want to see a list of file system operations happening
                 // so that you can create a virtual file system with all of the required files.
