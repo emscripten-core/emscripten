@@ -895,6 +895,7 @@ try:
 
   try:
     assert shared.Settings.ASM_JS > 0, 'ASM_JS must be enabled in fastcomp'
+    assert shared.Settings.SAFE_HEAP in [0, 1], 'safe heap must be 0 or 1 in fastcomp'
     assert shared.Settings.UNALIGNED_MEMORY == 0, 'forced unaligned memory not supported in fastcomp'
     assert shared.Settings.FORCE_ALIGNED_MEMORY == 0, 'forced aligned memory is not supported in fastcomp'
     assert shared.Settings.SAFE_DYNCALLS == 0, 'safe dyncalls not supported in fastcomp'
@@ -934,9 +935,6 @@ try:
   if shared.Settings.SAFE_HEAP and not js_opts:
     js_opts = True
     logging.warning('enabling js opts for SAFE_HEAP')
-
-  if shared.Settings.SAFE_HEAP >= 2:
-    debug_level = 4 # must keep debug info to do line-by-line operations
 
   if debug_level > 1 and closure:
     logging.warning('disabling closure because debug info was requested')

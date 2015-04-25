@@ -2728,11 +2728,6 @@ The current type of b is: 9
     self.do_run_from_file(src, output)
 
   def test_statics(self):
-      # static initializers save i16 but load i8 for some reason (or i64 and load i8)
-      if Settings.SAFE_HEAP:
-        Settings.SAFE_HEAP = 3
-        Settings.SAFE_HEAP_LINES = ['src.cpp:19', 'src.cpp:26', 'src.cpp:28']
-
       test_path = path_from_root('tests', 'core', 'test_statics')
       src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -5291,13 +5286,6 @@ def process(filename):
   def test_the_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
     Settings.DEAD_FUNCTIONS = ['__ZSt9terminatev']
 
-    # Note: this is also a good test of per-file and per-line changes (since we have multiple files, and correct specific lines)
-    if Settings.SAFE_HEAP:
-      # Ignore bitfield warnings
-      Settings.SAFE_HEAP = 3
-      Settings.SAFE_HEAP_LINES = ['btVoronoiSimplexSolver.h:40', 'btVoronoiSimplexSolver.h:41',
-                                  'btVoronoiSimplexSolver.h:42', 'btVoronoiSimplexSolver.h:43']
-
     asserts = Settings.ASSERTIONS
 
     for use_cmake in [False, True]: # If false, use a configure script to configure Bullet build.
@@ -6461,30 +6449,6 @@ def process(filename):
       # This test *should* fail, by throwing this exception
       assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
 
-    # And we should not fail if we disable checking on that line
-
-    Settings.SAFE_HEAP = 3
-    Settings.SAFE_HEAP_LINES = ["src.cpp:7"]
-
-    self.do_run(src, '*ok*')
-
-    # But if we disable the wrong lines, we still fail
-
-    Settings.SAFE_HEAP_LINES = ["src.cpp:99"]
-
-    try:
-      self.do_run(src, '*nothingatall*', assert_returncode=None)
-    except Exception, e:
-      # This test *should* fail, by throwing this exception
-      assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
-
-    # And reverse the checks with = 2
-
-    Settings.SAFE_HEAP = 2
-    Settings.SAFE_HEAP_LINES = ["src.cpp:99"]
-
-    self.do_run(src, '*ok*')
-
     Settings.SAFE_HEAP = 1
 
     # Linking multiple files should work too
@@ -6527,23 +6491,6 @@ def process(filename):
     except Exception, e:
       # This test *should* fail, by throwing this exception
       assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
-
-    # And we should not fail if we disable checking on those lines
-
-    Settings.SAFE_HEAP = 3
-    Settings.SAFE_HEAP_LINES = ["module.cpp:7", "main.cpp:9"]
-
-    self.do_ll_run(all_name, '*ok*')
-
-    # But we will fail if we do not disable exactly what we need to - any mistake leads to error
-
-    for lines in [["module.cpp:22", "main.cpp:9"], ["module.cpp:7", "main.cpp:29"], ["module.cpp:127", "main.cpp:449"], ["module.cpp:7"], ["main.cpp:9"]]:
-      Settings.SAFE_HEAP_LINES = lines
-      try:
-        self.do_ll_run(all_name, '*nothingatall*', assert_returncode=None)
-      except Exception, e:
-        # This test *should* fail, by throwing this exception
-        assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
 
   def test_source_map(self):
     if self.is_emterpreter(): return self.skip('todo')

@@ -707,13 +707,8 @@ function indentify(text, indent) {
 
 // Correction tools
 
-function checkSpecificSafeHeap() {
-  if (!Framework.currItem) return false;
-  return (SAFE_HEAP === 2 && Debugging.getIdentifier() in SAFE_HEAP_LINES) ||
-         (SAFE_HEAP === 3 && !(Debugging.getIdentifier() in SAFE_HEAP_LINES));
-}
 function checkSafeHeap() {
-  return SAFE_HEAP === 1 || checkSpecificSafeHeap();
+  return SAFE_HEAP === 1;
 }
 
 function getHeapOffset(offset, type) {

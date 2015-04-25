@@ -164,10 +164,6 @@ var SIMPLIFY_IFS = 1; // Whether to simplify ifs in js-optimizer.js
 var SAFE_HEAP = 0; // Check each write to the heap, for example, this will give a clear
                    // error on what would be segfaults in a native build (like deferencing
                    // 0). See preamble.js for the actual checks performed.
-                   // If equal to 2, done on a line-by-line basis according to
-                   // SAFE_HEAP_LINES, checking only the specified lines.
-                   // If equal to 3, checking all *but* the specified lines. Note
-                   // that 3 is the option you usually want here.
 var SAFE_HEAP_LOG = 0; // Log out all SAFE_HEAP operations
 
 var SAFE_DYNCALLS = 0; // Show stack traces on missing function pointer/virtual method calls
@@ -562,7 +558,6 @@ var DEBUG_TAGS_SHOWING = [];
 
 // For internal use only
 var ORIGINAL_EXPORTED_FUNCTIONS = [];
-var SAFE_HEAP_LINES = [];
 
 // The list of defines (C_DEFINES) was moved into struct_info.json in the same directory.
 // That file is automatically parsed by tools/gen_struct_info.py.
