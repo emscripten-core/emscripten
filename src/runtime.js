@@ -217,27 +217,51 @@ var Runtime = {
   },
 
 #if EMULATED_FUNCTION_POINTERS
-  getFunctionTables: function() {
+  getFunctionTables: function(module) {
+    if (!module) module = Module;
     var tables = {};
-    for (var t in Module) {
+    for (var t in module) {
       if (/^FUNCTION_TABLE_.*/.test(t)) {
-        var table = Module[t];
+        var table = module[t];
         if (typeof table === 'object') tables[t.substr('FUNCTION_TABLE_'.length)] = table;
       }
     }
     return tables;
   },
 
-  alignFunctionTables: function() {
-    var tables = Runtime.getFunctionTables();
+  alignFunctionTables: function(module) {
+    var tables = Runtime.getFunctionTables(module);
     var maxx = 0;
     for (var sig in tables) {
       maxx = Math.max(maxx, tables[sig].length);
     }
+    assert(maxx >= 0);
     for (var sig in tables) {
       var table = tables[sig];
       while (table.length < maxx) table.push(0);
     }
+    return maxx;
+  },
+
+  registerFunctions: function(sigs, newModule) {
+    sigs.forEach(function(sig) {
+      if (!Module['FUNCTION_TABLE_' + sig]) {
+        Module['FUNCTION_TABLE_' + sig] = [];
+      }
+    });
+    var oldMaxx = Runtime.alignFunctionTables(); // align the new tables we may have just added
+    var newMaxx = Runtime.alignFunctionTables(newModule);
+    var maxx = oldMaxx + newMaxx;
+    sigs.forEach(function(sig) {
+      var newTable = newModule['FUNCTION_TABLE_' + sig];
+      var oldTable = Module['FUNCTION_TABLE_' + sig];
+      assert(oldTable.length === oldMaxx);
+      for (var i = 0; i < newTable.length; i++) {
+        oldTable.push(newTable[i]);
+      }
+      assert(oldTable.length === maxx);
+    });
+    assert(maxx === Runtime.alignFunctionTables()); // align the ones we didn't touch
   },
 #endif
 

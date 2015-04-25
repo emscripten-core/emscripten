@@ -515,14 +515,10 @@ function _emscripten_asm_const_%d(%s) {
       if forwarded_json['Functions']['libraryFunctions'].get('_llvm_cttz_i32'):
         basic_vars += ['cttz_i8']
 
-    if settings.get('DLOPEN_SUPPORT'):
-      for sig in last_forwarded_json['Functions']['tables'].iterkeys():
-        basic_vars.append('F_BASE_%s' % sig)
-        asm_setup += '  var F_BASE_%s = %s;\n' % (sig, 'FUNCTION_TABLE_OFFSET' if settings.get('SIDE_MODULE') else '0') + '\n'
-
     if settings['RELOCATABLE']:
       basic_vars += ['gb', 'fb']
-      asm_setup += 'var gb = Runtime.GLOBAL_BASE, fb = 0;\n'
+      if not settings['SIDE_MODULE']:
+        asm_setup += 'var gb = Runtime.GLOBAL_BASE, fb = 0;\n'
 
     asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'setThrew', 'setTempRet0', 'getTempRet0']
 
@@ -855,14 +851,10 @@ Runtime.getTempRet0 = asm['getTempRet0'];
       return re.sub(r'{{{ FTM_([\w\d_$]+) }}}', lambda m: fix(m), js) # masks[m.groups(0)[0]]
     funcs_js = map(lambda js: function_table_maskize(js, masks), funcs_js)
 
-    if settings.get('DLOPEN_SUPPORT'):
+    if settings['SIDE_MODULE']:
       funcs_js.append('''
-asm.maxFunctionIndex = %(max_mask)d;
-DLFCN.registerFunctions(asm, %(max_mask)d+1, %(sigs)s, Module);
-Module.SYMBOL_TABLE = %(symbol_table)s;
-''' % { 'max_mask': max_mask, 'sigs': str(map(str, last_forwarded_json['Functions']['tables'].keys())), 'symbol_table': r'''{
-  %s
-}''' % (', '.join(['"%s": asm["%s"]' % (item, item) for item in set(metadata['exports'])])) })
+Runtime.registerFunctions(%(sigs)s, Module);
+''' % { 'sigs': str(map(str, last_forwarded_json['Functions']['tables'].keys())) }) 
 
     for i in range(len(funcs_js)): # do this loop carefully to save memory
       if WINDOWS: funcs_js[i] = funcs_js[i].replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!

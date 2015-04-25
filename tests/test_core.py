@@ -3043,7 +3043,6 @@ def process(filename):
     self.do_run(src, '|65830|', post_build=self.dlfcn_post_build)
 
   def test_dlfcn_qsort(self):
-    return self.skip('todo')
     if not self.can_dlfcn(): return
 
     Settings.CORRECT_SIGNS = 1 # Needed for unsafe optimizations

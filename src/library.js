@@ -4036,51 +4036,6 @@ LibraryManager.library = {
   // ==========================================================================
 
   $DLFCN: {
-#if DLOPEN_SUPPORT
-    // extra asm.js dlopen support
-    functionTable: [], // will contain objects mapping sigs to js functions that call into the right asm module with the right index
-
-    registerFunctions: function(asm, num, sigs, jsModule) {
-      // use asm module dynCall_* from functionTable
-      if (num % 2 == 1) num++; // keep pointers even
-      var table = DLFCN.functionTable;
-      var from = table.length;
-      assert(from % 2 == 0);
-      for (var i = 0; i < num; i++) {
-        table[from + i] = {};
-        sigs.forEach(function(sig) { // TODO: new Function etc.
-          var full = 'dynCall_' + sig;
-          table[from + i][sig] = function dynCall_sig() {
-            arguments[0] -= from;
-            return asm[full].apply(null, arguments);
-          }
-        });
-      }
-
-      if (jsModule.cleanups) {
-        var newLength = table.length;
-        jsModule.cleanups.push(function() {
-          if (table.length === newLength) {
-            table.length = from; // nothing added since, just shrink
-          } else {
-            // something was added above us, clear and leak the span
-            for (var i = 0; i < num; i++) {
-              table[from + i] = null;
-            }
-          }
-          while (table.length > 0 && table[table.length-1] === null) table.pop();
-        });
-      }
-
-      // patch js module dynCall_* to use functionTable
-      sigs.forEach(function(sig) {
-        jsModule['dynCall_' + sig] = function dynCall_sig() {
-          return table[arguments[0]][sig].apply(null, arguments);
-        };
-      });
-    },
-#endif
-
     error: null,
     errorMsg: null,
     loadedLibs: {}, // handle -> [refcount, name, lib_object]
@@ -4120,7 +4075,7 @@ LibraryManager.library = {
 
       try {
         var lib_module = eval(lib_data)(
-          DLFCN.functionTable.length,
+          Runtime.alignFunctionTables(),
           Module
         );
       } catch (e) {
