@@ -3003,7 +3003,6 @@ def process(filename):
                 post_build=self.dlfcn_post_build)
 
   def test_dlfcn_i64(self):
-    return self.skip('todo')
     if not self.can_dlfcn(): return
     if not Settings.ASM_JS: return self.skip('TODO')
 
