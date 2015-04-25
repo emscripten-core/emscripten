@@ -98,6 +98,3 @@ Assertion failed: [CHECK FAILED] Parent::voidStar(arg0:something): Expecting <po
 Assertion failed: [CHECK FAILED] StringUser::Print(arg1:anotherString): Expecting <string>
 
 done.
-Assertion failed: [CHECK FAILED] Parent::Parent(arg0:val): Expecting <integer>
-Assertion failed: [CHECK FAILED] Parent::voidStar(arg0:something): Expecting <pointer>
-Assertion failed: [CHECK FAILED] StringUser::Print(arg1:anotherString): Expecting <string>

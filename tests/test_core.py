@@ -6402,7 +6402,8 @@ def process(filename):
         src.write(open(path_from_root('tests', 'webidl', 'post.js')).read())
         src.write('\n\n')
         src.close()
-      self.do_run(src, open(path_from_root('tests', 'webidl', "output_%s.txt" % mode)).read(), post_build=(None, post))
+      self.do_run(src, open(path_from_root('tests', 'webidl', "output_%s.txt" % mode)).read(), post_build=(None, post),
+        output_nicerizer=(lambda out, err: out))
 
     do_test_in_mode('ALL')
     do_test_in_mode('FAST')
