@@ -1068,7 +1068,7 @@ try:
     input_files = map(lambda x: x[1], input_files)
     cmd = get_bitcode_args(input_files)
     if specified_target:
-        cmd += ['-o', specified_target]
+      cmd += ['-o', specified_target]
     logging.debug('just preprocessor ' + ' '.join(cmd))
     exit(subprocess.call(cmd))
 
