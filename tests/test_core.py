@@ -3256,66 +3256,11 @@ def process(filename):
                  output_nicerizer=lambda x, err: x.replace('\n', '*'),
                  post_build=self.dlfcn_post_build)
 
-  def test_dlfcn_alias(self):
-    return self.skip('todo')
-    if Settings.ASM_JS: return self.skip('this is not a valid case - libraries should not be able to access their parents globals willy nilly')
-
-    Settings.LINKABLE = 1
-    Settings.NAMED_GLOBALS = 1
-
-    if Building.LLVM_OPTS == 2: return self.skip('LLVM LTO will optimize away stuff we expect from the shared library')
-
-    lib_src = r'''
-      #include <stdio.h>
-      extern int parent_global;
-      extern "C" void func() {
-        printf("Parent global: %d.\n", parent_global);
-      }
-      '''
-    dirname = self.get_dir()
-    filename = os.path.join(dirname, 'liblib.cpp')
-    Settings.BUILD_AS_SHARED_LIB = 1
-    Settings.EXPORTED_FUNCTIONS = ['_func']
-    self.build(lib_src, dirname, filename)
-    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
-
-    src = r'''
-      #include <dlfcn.h>
-
-      int parent_global = 123;
-
-      int main() {
-        void* lib_handle;
-        void (*fptr)();
-
-        lib_handle = dlopen("liblib.so", RTLD_NOW);
-        fptr = (void (*)())dlsym(lib_handle, "func");
-        fptr();
-        parent_global = 456;
-        fptr();
-
-        return 0;
-      }
-      '''
-    Settings.BUILD_AS_SHARED_LIB = 0
-    Settings.INCLUDE_FULL_LIBRARY = 1
-    Settings.EXPORTED_FUNCTIONS = ['_main']
-    self.do_run(src, 'Parent global: 123.*Parent global: 456.*',
-                output_nicerizer=lambda x, err: x.replace('\n', '*'),
-                post_build=self.dlfcn_post_build,
-                extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/time.h,libc/langinfo.h'])
-    Settings.INCLUDE_FULL_LIBRARY = 0
-
   def test_dlfcn_varargs(self):
-    return self.skip('todo')
-    if Settings.ASM_JS: return self.skip('this is not a valid case - libraries should not be able to access their parents globals willy nilly')
-
+    # this test is not actually valid - it fails natively. the child should fail to be loaded, not load and successfully see the parent print_ints func
     if not self.can_dlfcn(): return
 
     Settings.LINKABLE = 1
-
-    if Building.LLVM_OPTS == 2: return self.skip('LLVM LTO will optimize things that prevent shared objects from working')
-    if Settings.QUANTUM_SIZE == 1: return self.skip('FIXME: Add support for this')
 
     self.prep_dlfcn_lib()
     lib_src = r'''
