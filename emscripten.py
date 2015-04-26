@@ -258,9 +258,6 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
            requested != '_malloc': # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS
           logging.warning('function requested to be exported, but not implemented: "%s"', requested)
 
-    # Add named globals
-    named_globals = '\n'.join(['var %s = %s;' % (k, v) for k, v in metadata['namedGlobals'].iteritems()])
-
     asm_consts = [0]*len(metadata['asmConsts'])
     for k, v in metadata['asmConsts'].iteritems():
       const = v.encode('utf-8')
@@ -285,7 +282,7 @@ function _emscripten_asm_const_%d(%s) {
  return Runtime.asmConsts[code](%s) | 0;
 }''' % (arity, ', '.join(all_args), ', '.join(args)))
 
-    pre = pre.replace('// === Body ===', '// === Body ===\n' + named_globals + '\nRuntime.asmConsts = [' + ', '.join(asm_consts) + '];\n' + '\n'.join(asm_const_funcs) + '\n')
+    pre = pre.replace('// === Body ===', '// === Body ===\n' + '\nRuntime.asmConsts = [' + ', '.join(asm_consts) + '];\n' + '\n'.join(asm_const_funcs) + '\n')
 
     #if DEBUG: outfile.write('// pre\n')
     outfile.write(pre)
@@ -676,6 +673,13 @@ return real_''' + s + '''.apply(null, arguments);
         fullname = name if not settings['SIDE_MODULE'] else ('SIDE_' + name)
         receiving += 'Module["' + name + '"] = ' + fullname + ';\n'
       final_function_tables = '\n// EMSCRIPTEN_END_FUNCS\n'
+
+    if settings['RELOCATABLE']:
+      receiving += '''
+var NAMED_GLOBALS = %s;
+for (var named in NAMED_GLOBALS) NAMED_GLOBALS[named] += gb;
+Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
+''' % json.dumps(metadata['namedGlobals'])
 
     funcs_js = ['''
 %s

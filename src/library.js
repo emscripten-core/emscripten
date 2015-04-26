@@ -4138,30 +4138,32 @@ LibraryManager.library = {
   dlsym: function(handle, symbol) {
     // void *dlsym(void *restrict handle, const char *restrict name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlsym.html
-    symbol = '_' + Pointer_stringify(symbol);
+    symbol = Pointer_stringify(symbol);
 
     if (!DLFCN.loadedLibs[handle]) {
       DLFCN.errorMsg = 'Tried to dlsym() from an unopened handle: ' + handle;
       return 0;
     } else {
       var lib = DLFCN.loadedLibs[handle];
-      // self-dlopen means that lib.module is not a superset of
-      // cached_functions, so check the latter first
+      if (lib.module.NAMED_GLOBALS.hasOwnProperty(symbol)) {
+        return lib.module.NAMED_GLOBALS[symbol];
+      }
+      // not a global var, must be a function
+      symbol = '_' + symbol;
       if (lib.cached_functions.hasOwnProperty(symbol)) {
         return lib.cached_functions[symbol];
+      }
+      if (!lib.module.hasOwnProperty(symbol)) {
+        DLFCN.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
+                               '" in dynamic lib: ' + lib.name);
+        return 0;
       } else {
-        if (!lib.module.hasOwnProperty(symbol)) {
-          DLFCN.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
-                                 '" in dynamic lib: ' + lib.name);
-          return 0;
-        } else {
-          var result = lib.module[symbol];
-          if (typeof result == 'function') {
-            result = Runtime.addFunction(result);
-            lib.cached_functions = result;
-          }
-          return result;
+        var result = lib.module[symbol];
+        if (typeof result == 'function') {
+          result = Runtime.addFunction(result);
+          lib.cached_functions = result;
         }
+        return result;
       }
     }
   },

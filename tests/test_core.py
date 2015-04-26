@@ -3130,8 +3130,6 @@ def process(filename):
         self.validate_asmjs(out)
 
   def test_dlfcn_data_and_fptr(self):
-    return self.skip('todo')
-    if Settings.ASM_JS: return self.skip('this is not a valid case - libraries should not be able to access their parents globals willy nilly')
     if not self.can_dlfcn(): return
 
     if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize out parent_func')
