@@ -3355,7 +3355,6 @@ def process(filename):
     self.do_run_from_file(src, output, post_build=(None, post))
 
   def test_dlfcn_unique_sig(self):
-    return self.skip('todo')
     if not self.can_dlfcn(): return
 
     self.prep_dlfcn_lib()
@@ -3400,7 +3399,6 @@ def process(filename):
     self.do_run(src, 'success', force_c=True, post_build=self.dlfcn_post_build)
 
   def test_dlfcn_stacks(self):
-    return self.skip('todo')
     if not self.can_dlfcn(): return
 
     self.prep_dlfcn_lib()
@@ -3461,7 +3459,6 @@ def process(filename):
     self.do_run(src, 'success', force_c=True, post_build=self.dlfcn_post_build)
 
   def test_dlfcn_funcs(self):
-    return self.skip('todo')
     if not self.can_dlfcn(): return
 
     self.prep_dlfcn_lib()
@@ -3562,7 +3559,6 @@ ok
 ''', force_c=True, post_build=self.dlfcn_post_build)
 
   def test_dlfcn_mallocs(self):
-    return self.skip('todo')
     if not Settings.ASM_JS: return self.skip('needs asm')
 
     if not self.can_dlfcn(): return
