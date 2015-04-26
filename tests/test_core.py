@@ -5994,6 +5994,11 @@ def process(filename):
       self.emcc_args += ['--closure', '1']
       self.do_run(src, expected)
 
+    print 'function pointer emulation'
+    Settings.RESERVED_FUNCTION_POINTERS = 0
+    Settings.EMULATED_FUNCTION_POINTERS = 1 # with emulation, we don't need to reserve
+    self.do_run(src, expected)
+
   def test_getFuncWrapper_sig_alias(self):
     src = r'''
     #include <stdio.h>
