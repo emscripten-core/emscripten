@@ -585,9 +585,6 @@ function ftCall_%s(%s) {%s
 }
 ''' % (sig, ', '.join(full_args), prelude, sig, ', '.join(args))
         basic_funcs.append('ftCall_%s' % sig)
-      if settings.get('DLOPEN_SUPPORT'):
-        asm_setup += '\n' + shared.JS.make_extcall(sig) + '\n'
-        basic_funcs.append('extCall_%s' % sig)
 
     def quote(prop):
       if settings['CLOSURE_COMPILER'] == 2:

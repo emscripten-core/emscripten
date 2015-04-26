@@ -1712,17 +1712,6 @@ class JS:
     ret = '''function%s(%s) {
   %sModule["dynCall_%s"](%s);
 }''' % ((' extCall_' + sig) if named else '', args, 'return ' if sig[0] != 'v' else '', sig, args)
-
-    if Settings.DLOPEN_SUPPORT and Settings.ASSERTIONS:
-      # guard against cross-module stack leaks
-      ret = ret.replace(') {\n', ''') {
-  try {
-    var preStack = asm.stackSave();
-''').replace(';\n}', ''';
-  } finally {
-    assert(asm.stackSave() == preStack);
-  }
-}''')
     return ret
 
   @staticmethod
@@ -1732,17 +1721,6 @@ class JS:
     ret = '''function%s(%s) {
     %sRuntime.functionPointers[index](%s);
 }''' % ((' jsCall_' + sig) if named else '', args, 'return ' if sig[0] != 'v' else '', fnargs)
-
-    if Settings.DLOPEN_SUPPORT and Settings.ASSERTIONS:
-      # guard against cross-module stack leaks
-      ret = ret.replace(') {\n', ''') {
-  try {
-    var preStack = asm.stackSave();
-''').replace(';\n}', ''';
-  } finally {
-    assert(asm.stackSave() == preStack);
-  }
-}''')
     return ret
 
   @staticmethod
@@ -1758,16 +1736,6 @@ class JS:
     asm["setThrew"](1, 0);
   }
 }''' % ((' invoke_' + sig) if named else '', args, 'return ' if sig[0] != 'v' else '', sig, args)
-
-    if Settings.DLOPEN_SUPPORT and Settings.ASSERTIONS:
-      # guard against cross-module stack leaks
-      ret = ret.replace('  try {', '''  var preStack = asm.stackSave();
-  try {
-''').replace('  }\n}', '''  } finally {
-    assert(asm.stackSave() == preStack);
-  }
-}''')
-
     return ret
 
   @staticmethod
