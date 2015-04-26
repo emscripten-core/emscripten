@@ -3041,6 +3041,44 @@ def process(filename):
       '''
     self.do_run(src, '|65830|', post_build=self.dlfcn_post_build)
 
+  def test_dlfcn_em_asm(self):
+    if not self.can_dlfcn(): return
+
+    self.prep_dlfcn_lib()
+    lib_src = '''
+      #include <emscripten.h>
+      class Foo {
+      public:
+        Foo() {
+          EM_ASM( Module.print("Constructing lib object.") );
+        }
+      };
+      Foo global;
+      '''
+    filename = 'liblib.cpp'
+    self.build(lib_src, self.get_dir(), filename)
+    shutil.move(filename + '.o.js', 'liblib.so')
+
+    self.prep_dlfcn_main()
+    src = '''
+      #include <emscripten.h>
+      #include <dlfcn.h>
+      class Bar {
+      public:
+        Bar() {
+          EM_ASM( Module.print("Constructing main object.") );
+        }
+      };
+      Bar global;
+      int main() {
+        dlopen("liblib.so", RTLD_NOW);
+        EM_ASM( Module.print("All done.") );
+        return 0;
+      }
+      '''
+    self.do_run(src, 'Constructing main object.\nConstructing lib object.\nAll done.\n',
+                post_build=self.dlfcn_post_build)
+
   def test_dlfcn_qsort(self):
     if not self.can_dlfcn(): return
 
