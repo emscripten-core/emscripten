@@ -550,13 +550,18 @@ function _emscripten_asm_const_%d(%s) {
       arg_coercions = ' '.join(['a' + str(i) + '=' + shared.JS.make_coercion('a' + str(i), sig[i], settings) + ';' for i in range(1, len(sig))])
       coerced_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i], settings) for i in range(1, len(sig))])
       ret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('FUNCTION_TABLE_%s[index&{{{ FTM_%s }}}](%s)' % (sig, sig, coerced_args), sig[0], settings)
-      function_tables_impls.append('''
+      if not settings['EMULATED_FUNCTION_POINTERS']:
+        function_tables_impls.append('''
 function dynCall_%s(index%s%s) {
   index = index|0;
   %s
   %s;
 }
 ''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, ret))
+      else:
+        function_tables_impls.append('''
+var dynCall_%s = ftCall_%s;
+''' % (sig, sig))
 
       ffi_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i], settings, ffi_arg=True) for i in range(1, len(sig))])
       for i in range(settings['RESERVED_FUNCTION_POINTERS']):

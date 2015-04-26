@@ -3625,7 +3625,6 @@ ok
     self.do_run(src, '''*294,153*''', force_c=True, post_build=self.dlfcn_post_build)
 
   def test_dlfcn_longjmp(self):
-    return self.skip('todo')
     if not self.can_dlfcn(): return
 
     self.prep_dlfcn_lib()
