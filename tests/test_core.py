@@ -3335,14 +3335,13 @@ def process(filename):
 
   # TODO: test only worked in non-fastcomp
   def test_dlfcn_self(self):
-    return self.skip('todo')
-    return self.skip('non-fastcomp is deprecated and fails in 3.5')
-    Settings.DLOPEN_SUPPORT = 1
+    if not self.can_dlfcn(): return
+    self.prep_dlfcn_main()
 
     def post(filename):
       with open(filename) as f:
         for line in f:
-          if 'var SYMBOL_TABLE' in line:
+          if 'var NAMED_GLOBALS' in line:
             table = line
             break
         else:

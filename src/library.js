@@ -4048,10 +4048,6 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
     filename = filename === 0 ? '__self__' : (ENV['LD_LIBRARY_PATH'] || '/') + Pointer_stringify(filename);
 
-#if DLOPEN_SUPPORT == 0
-    abort('need to build with DLOPEN_SUPPORT=1 to get dlopen support in asm.js');
-#endif
-
     if (DLFCN.loadedLibNames[filename]) {
       // Already loaded; increment ref count and return.
       var handle = DLFCN.loadedLibNames[filename];
@@ -4062,7 +4058,8 @@ LibraryManager.library = {
     if (filename === '__self__') {
       var handle = -1;
       var lib_module = Module;
-      var cached_functions = SYMBOL_TABLE;
+      Module.NAMED_GLOBALS = NAMED_GLOBALS;
+      var cached_functions = {};
     } else {
       var target = FS.findObject(filename);
       if (!target || target.isFolder || target.isDevice) {
