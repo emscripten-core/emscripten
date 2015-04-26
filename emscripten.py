@@ -104,7 +104,11 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     funcs = backend_output[start_funcs+len(start_funcs_marker):end_funcs]
     metadata_raw = backend_output[metadata_split+len(metadata_split_marker):]
     #if DEBUG: print >> sys.stderr, "METAraw", metadata_raw
-    metadata = json.loads(metadata_raw)
+    try:
+      metadata = json.loads(metadata_raw)
+    except Exception, e:
+      logging.error('emscript: failure to parse metadata output from compiler backend. raw output is: \n' + metadata_raw)
+      raise e
     mem_init = backend_output[end_funcs+len(end_funcs_marker):metadata_split]
     #if DEBUG: print >> sys.stderr, "FUNCS", funcs
     #if DEBUG: print >> sys.stderr, "META", metadata
@@ -187,7 +191,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     # Call js compiler
     if DEBUG: t = time.time()
     out = jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
-                       [settings_file, ';', 'glue'] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
+                       [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
                        cwd=path_from_root('src'), error_limit=300)
     assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
     glue, forwarded_data = out.split('//FORWARDED_DATA:')
@@ -201,10 +205,6 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     # merge in information from llvm backend
 
     last_forwarded_json['Functions']['tables'] = metadata['tables']
-
-    '''indexed_functions = set()
-    for key in forwarded_json['Functions']['indexedFunctions'].iterkeys():
-      indexed_functions.add(key)'''
 
     pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
 

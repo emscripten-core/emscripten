@@ -1967,7 +1967,7 @@ void *getBindBuffer() {
     assert 'Traceback' not in result
 
   def test_emrun(self):
-    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_exit.c'), '--emrun', '-o', 'hello_world.html']).communicate()
+    Popen([PYTHON, EMCC, path_from_root('tests', 'test_emrun.c'), '--emrun', '-o', 'hello_world.html']).communicate()
     outdir = os.getcwd()
     # We cannot run emrun from the temp directory the suite will clean up afterwards, since the browser that is launched will have that directory as startup directory,
     # and the browser will not close as part of the test, pinning down the cwd on Windows and it wouldn't be possible to delete it. Therefore switch away from that directory
@@ -1985,6 +1985,8 @@ void *getBindBuffer() {
     assert 'argc: 4' in stdout
     assert 'argv[3]: --3' in stdout
     assert 'hello, world!' in stdout
+    assert 'Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~' in stdout
+    assert 'Testing char sequences: %20%21 &auml;' in stdout
     assert 'hello, error stream!' in stderr
 
   def test_uuid(self):

@@ -93,35 +93,6 @@ function CHECK_ALIGN_2(addr) {
 #endif
 
 
-#if CHECK_OVERFLOWS
-//========================================
-// Debugging tools - Mathop overflows
-//========================================
-function CHECK_OVERFLOW(value, bits, ignore, sig) {
-  if (ignore) return value;
-  var twopbits = Math.pow(2, bits);
-  var twopbits1 = Math.pow(2, bits-1);
-  // For signedness issue here, see settings.js, CHECK_SIGNED_OVERFLOWS
-#if CHECK_SIGNED_OVERFLOWS
-  if (value === Infinity || value === -Infinity || value >= twopbits1 || value < -twopbits1) {
-    throw 'SignedOverflow';
-    if (value === Infinity || value === -Infinity || Math.abs(value) >= twopbits) throw 'Overflow';
-  }
-#else
-  if (value === Infinity || value === -Infinity || Math.abs(value) >= twopbits) {
-    throw 'Overflow';
-  }
-#endif
-#if CORRECT_OVERFLOWS
-  // Fail on >32 bits - we warned at compile time
-  if (bits <= 32) {
-    value = value & (twopbits - 1);
-  }
-#endif
-  return value;
-}
-#endif
-
 #if LABEL_DEBUG
 //========================================
 // Debugging tools - Code flow progress
@@ -1360,7 +1331,6 @@ Module['writeAsciiToMemory'] = writeAsciiToMemory;
 {{{ unSign }}}
 {{{ reSign }}}
 
-#if PRECISE_I32_MUL
 // check for imul support, and also for correctness ( https://bugs.webkit.org/show_bug.cgi?id=126345 )
 if (!Math['imul'] || Math['imul'](0xffffffff, 5) !== -5) Math['imul'] = function imul(a, b) {
   var ah  = a >>> 16;
@@ -1369,11 +1339,6 @@ if (!Math['imul'] || Math['imul'](0xffffffff, 5) !== -5) Math['imul'] = function
   var bl = b & 0xffff;
   return (al*bl + ((ah*bl + al*bh) << 16))|0;
 };
-#else
-Math['imul'] = function imul(a, b) {
-  return (a*b)|0; // fast but imprecise
-};
-#endif
 Math.imul = Math['imul'];
 
 #if PRECISE_F32

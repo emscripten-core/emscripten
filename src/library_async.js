@@ -253,7 +253,18 @@ mergeInto(LibraryManager.library, {
           Browser.resumeAsyncCallbacks(); // if we were paused (e.g. we are after a sleep), then since we are now yielding, it is safe to call callbacks
         }
 
+        var callingDoAsyncOp = 1; // if resume is called synchronously - during the doAsyncOp - we must make it truly async, for consistency
+
         doAsyncOp(function resume(post) {
+          if (callingDoAsyncOp) {
+            assert(callingDoAsyncOp === 1); // avoid infinite recursion
+            callingDoAsyncOp++;
+            setTimeout(function() {
+              resume(post);
+            }, 0);
+            return;
+          }
+
           assert(EmterpreterAsync.state === 1 || EmterpreterAsync.state === 3);
           EmterpreterAsync.setState(3);
           if (yieldDuring) {
@@ -283,6 +294,9 @@ mergeInto(LibraryManager.library, {
             EmterpreterAsync.asyncFinalizers.length = 0;
           }
         });
+
+        callingDoAsyncOp = 0;
+
         EmterpreterAsync.setState(1);
 #if ASSERTIONS
         EmterpreterAsync.saveStack = new Error().stack; // we can't call  stackTrace()  as it calls compiled code

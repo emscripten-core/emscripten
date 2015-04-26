@@ -271,15 +271,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     return build_libc('libc.bc', libc_files, ['-O2'])
 
   def apply_libc(need):
-    # libc needs some sign correction. # If we are in mode 0, switch to 2. We will add our lines
-    try:
-      if shared.Settings.CORRECT_SIGNS == 0: raise Exception('we need to change to 2')
-    except: # we fail if equal to 0 - so we need to switch to 2 - or if CORRECT_SIGNS is not even in Settings
-      shared.Settings.CORRECT_SIGNS = 2
-    if shared.Settings.CORRECT_SIGNS == 2:
-      shared.Settings.CORRECT_SIGNS_LINES = [shared.path_from_root('src', 'dlmalloc.c') + ':' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
-    # If we are in mode 1, we are correcting everything anyhow. If we are in mode 3, we will be corrected
-    # so all is well anyhow too.
     return True
 
   # libcextra
@@ -624,8 +615,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   def apply_libcxx(need):
     assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++ with QUANTUM_SIZE == 1'
-    # libcxx might need corrections, so turn them all on. TODO: check which are actually needed
-    shared.Settings.CORRECT_SIGNS = shared.Settings.CORRECT_OVERFLOWS = shared.Settings.CORRECT_ROUNDINGS = 1
     #logging.info('using libcxx turns on CORRECT_* options')
     return True
 
@@ -650,8 +639,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   def apply_libcxxabi(need):
     assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++abi with QUANTUM_SIZE == 1'
-    #logging.info('using libcxxabi, this may need CORRECT_* options')
-    #shared.Settings.CORRECT_SIGNS = shared.Settings.CORRECT_OVERFLOWS = shared.Settings.CORRECT_ROUNDINGS = 1
     return True
 
   # gl

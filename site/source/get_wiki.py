@@ -24,7 +24,7 @@ import time
 
 
 wiki_repo = 'https://github.com/kripken/emscripten.wiki.git'
-wiki_directory = '.\\wiki_static\\'
+wiki_directory = './wiki_static/'
 logfilename='log-get-wiki.txt'
 
 
@@ -45,7 +45,7 @@ mapped_wiki_inline_code['setValue(ptr, value, type)']=':js:func:`setValue(ptr, v
 
 
 
-wiki_temp_directory = wiki_directory + 'temp\\'
+wiki_temp_directory = wiki_directory + 'temp/'
 temp_set_of_codemarkup=set()
 logfile=open(logfilename,'w')
 #snapshot_version_information='.. note:: This is a **snapshot** of the wiki: %s\n\n' % strftime("%a, %d %b %Y %H:%M", gmtime())

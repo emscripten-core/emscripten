@@ -61,7 +61,7 @@ var RuntimeGenerator = {
   dynamicAlloc: function(size) {
     if (ASSERTIONS) size = '(assert(DYNAMICTOP > 0),' + size + ')'; // dynamic area must be ready
     var ret = RuntimeGenerator.alloc(size, 'DYNAMIC', INIT_HEAP);
-    ret += '; if (DYNAMICTOP >= TOTAL_MEMORY) { var success = enlargeMemory(); if (!success) return 0; }'
+    ret += '; if (DYNAMICTOP >= TOTAL_MEMORY) { var success = enlargeMemory(); if (!success) { DYNAMICTOP = ret; return 0; } }'
     return ret;
   },
 
@@ -414,9 +414,6 @@ function unSign(value, bits, ignore) {
   if (value >= 0) {
     return value;
   }
-#if CHECK_SIGNS
-  if (!ignore) throw 'UnSign';
-#endif
   return bits <= 32 ? 2*Math.abs(1 << (bits-1)) + value // Need some trickery, since if bits == 32, we are right at the limit of the bits JS uses in bitshifts
                     : Math.pow(2, bits)         + value;
 }
@@ -429,25 +426,11 @@ function reSign(value, bits, ignore) {
   }
   var half = bits <= 32 ? Math.abs(1 << (bits-1)) // abs is needed if bits == 32
                         : Math.pow(2, bits-1);
-#if CHECK_SIGNS
-  var noted = false;
-#endif
   if (value >= half && (bits <= 32 || value > half)) { // for huge values, we can hit the precision limit and always get true here. so don't do that
                                                        // but, in general there is no perfect solution here. With 64-bit ints, we get rounding and errors
                                                        // TODO: In i64 mode 1, resign the two parts separately and safely
-#if CHECK_SIGNS
-    if (!ignore) throw 'ReSign';
-#endif
     value = -2*half + value; // Cannot bitshift half, as it may be at the limit of the bits JS uses in bitshifts
   }
-#if CHECK_SIGNS
-  // If this is a 32-bit value, then it should be corrected at this point. And,
-  // without CHECK_SIGNS, we would just do the |0 shortcut, so check that that
-  // would indeed give the exact same result.
-  if (bits === 32 && (value|0) !== value && typeof value !== 'boolean') {
-    if (!ignore) throw 'ReSign';
-  }
-#endif
   return value;
 }
 

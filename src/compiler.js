@@ -132,14 +132,7 @@ load('utility.js');
 load('settings.js');
 
 var settings_file = arguments_[0];
-var ll_file = arguments_[1];
-phase = arguments_[2];
-if (phase == 'pre' || phase == 'glue') {
-  additionalLibraries = Array.prototype.slice.call(arguments_, 3);
-} else {
-  var forwardedDataFile = arguments_[3];
-  additionalLibraries = Array.prototype.slice.call(arguments_, 4);
-}
+additionalLibraries = Array.prototype.slice.call(arguments_, 1);
 
 if (settings_file) {
   var settings = JSON.parse(read(settings_file));
@@ -158,15 +151,6 @@ if (settings_file) {
 }
 
 
-if (CORRECT_SIGNS >= 2) {
-  CORRECT_SIGNS_LINES = set(CORRECT_SIGNS_LINES); // for fast checking
-}
-if (CORRECT_OVERFLOWS >= 2) {
-  CORRECT_OVERFLOWS_LINES = set(CORRECT_OVERFLOWS_LINES); // for fast checking
-}
-if (CORRECT_ROUNDINGS >= 2) {
-  CORRECT_ROUNDINGS_LINES = set(CORRECT_ROUNDINGS_LINES); // for fast checking
-}
 if (SAFE_HEAP >= 2) {
   SAFE_HEAP_LINES = set(SAFE_HEAP_LINES); // for fast checking
 }
@@ -195,19 +179,6 @@ if (NO_BROWSER) {
 assert(!(!NAMED_GLOBALS && BUILD_AS_SHARED_LIB), 'shared libraries must have named globals');
 
 // Output some info and warnings based on settings
-
-if (phase == 'pre') {
-  if (!MICRO_OPTS || ASSERTIONS || CHECK_SIGNS || CHECK_OVERFLOWS || INIT_HEAP ||
-      !SKIP_STACK_IN_SMALL || SAFE_HEAP || !DISABLE_EXCEPTION_CATCHING) {
-    print('// Note: Some Emscripten settings will significantly limit the speed of the generated code.');
-  } else {
-    print('// Note: For maximum-speed code, see "Optimizing Code" on the Emscripten wiki, http://kripken.github.io/emscripten-site/docs/optimizing/Optimizing-Code.html');
-  }
-
-  if (DOUBLE_MODE || CORRECT_SIGNS || CORRECT_OVERFLOWS || CORRECT_ROUNDINGS || CHECK_HEAP_ALIGN) {
-    print('// Note: Some Emscripten settings may limit the speed of the generated code.');
-  }
-}
 
 if (VERBOSE) printErr('VERBOSE is on, this generates a lot of output and can slow down compilation');
 
@@ -241,20 +212,18 @@ Runtime.QUANTUM_SIZE = QUANTUM_SIZE;
 B = new Benchmarker();
 
 try {
-  if (ll_file) {
-    var dummyData = {functionStubs: []}
-    JSify(dummyData);
+  var dummyData = {functionStubs: []}
+  JSify(dummyData);
 
-    //dumpInterProf();
-    //printErr(phase + ' paths (fast, slow): ' + [fastPaths, slowPaths]);
-    B.print(phase);
+  //dumpInterProf();
+  //printErr('paths (fast, slow): ' + [fastPaths, slowPaths]);
+  B.print('glue');
 
-    if (DEBUG_MEMORY) {
-      print('zzz. last gc: ' + gc());
-      MemoryDebugger.dump();
-      print('zzz. hanging now!');
-      while(1){};
-    }
+  if (DEBUG_MEMORY) {
+    print('zzz. last gc: ' + gc());
+    MemoryDebugger.dump();
+    print('zzz. hanging now!');
+    while(1){};
   }
 } catch(err) {
   if (err.toString().indexOf('Aborting compilation due to previous errors') != -1) {

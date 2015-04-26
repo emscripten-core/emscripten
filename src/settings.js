@@ -25,17 +25,6 @@ var QUANTUM_SIZE = 4; // This is the size of an individual field in a structure.
 var TARGET_ASMJS_UNKNOWN_EMSCRIPTEN = 1; // For asmjs-unknown-emscripten. 1 is normal, 2 is for the fastcomp llvm
                      // backend using emscripten-customized abi simplification
 
-var CORRECT_SIGNS = 1; // Whether we make sure to convert unsigned values to signed values.
-                       // Decreases performance with additional runtime checks. Might not be
-                       // needed in some kinds of code.
-                       // If equal to 2, done on a line-by-line basis according to
-                       // CORRECT_SIGNS_LINES, correcting only the specified lines.
-                       // If equal to 3, correcting all *but* the specified lines
-var CHECK_SIGNS = 0; // Runtime errors for signing issues that need correcting.
-                     // It is recommended to use this in
-                     // order to find if your code needs CORRECT_SIGNS. If you can get your
-                     // code to run without CORRECT_SIGNS, it will run much faster
-
 var ASSERTIONS = 1; // Whether we should add runtime assertions, for example to
                     // check that each allocation to the stack does not
                     // exceed its size, whether all allocations (stack and static) are
@@ -100,16 +89,10 @@ var WARN_UNALIGNED = 0; // Warn at compile time about instructions that LLVM tel
                         // alignment. (this option is fastcomp-only)
 var PRECISE_I64_MATH = 1; // If enabled, i64 addition etc. is emulated - which is slow but precise. If disabled,
                           // we use the 'double trick' which is fast but incurs rounding at high values.
-                          // Note that we do not catch 32-bit multiplication by default (which must be done in
-                          // 64 bits for high values for full precision) - you must manually set PRECISE_I32_MUL
-                          // for that.
                           // If set to 2, we always include the i64 math code, which is necessary in the case
                           // that we can't know at compile time that 64-bit math is needed. For example, if you
                           // print 64-bit values with printf, but never add them, we can't know at compile time
                           // and you need to set this to 2.
-var PRECISE_I32_MUL = 1; // If enabled, i32 multiplication is done with full precision, which means it is
-                         // correct even if the value exceeds the JS double-integer limit of ~52 bits (otherwise,
-                         // rounding will occur above that range).
 var PRECISE_F32 = 0; // 0: Use JS numbers for floating-point values. These are 64-bit and do not model C++
                      //    floats exactly, which are 32-bit.
                      // 1: Model C++ floats precisely, using Math.fround, polyfilling when necessary. This
@@ -308,34 +291,6 @@ var ASYNCIFY_WHITELIST = ['qsort',   // Functions in this list are never conside
                                                                                                     
 
 var EXECUTION_TIMEOUT = -1; // Throw an exception after X seconds - useful to debug infinite loops
-var CHECK_OVERFLOWS = 0; // Add code that checks for overflows in integer math operations.
-                         // There is currently not much to do to handle overflows if they occur.
-                         // We can add code to simulate i32/i64 overflows in JS, but that would
-                         // be very slow. It probably makes more sense to avoid overflows in
-                         // C/C++ code. For example, if you have an int that you multiply by
-                         // some factor, in order to get 'random' hash values - by taking
-                         // that |value & hash_table_size| - then multiplying enough times will overflow.
-                         // But instead, you can do |value = value & 30_BITS| in each iteration.
-var CHECK_SIGNED_OVERFLOWS = 0; // Whether to allow *signed* overflows - our correction for overflows generates signed
-                                // values (since we use &). This means that we correct some things are not strictly overflows,
-                                // and we cause them to be signed (which may lead to unnecessary unSign()ing later).
-                                // With this enabled, we check signed overflows for CHECK_OVERFLOWS
-var CORRECT_OVERFLOWS = 1; // Experimental code that tries to prevent unexpected JS overflows in integer
-                           // mathops, by doing controlled overflows (sort of parallel to a CPU).
-                           // Note that as mentioned above in CHECK_OVERFLOWS, the best thing is to
-                           // not rely on overflows in your C/C++ code, as even if this option works,
-                           // it slows things down.
-                           //
-                           // If equal to 2, done on a line-by-line basis according to
-                           // CORRECT_OVERFLOWS_LINES, correcting only the specified lines.
-                           // If equal to 3, correcting all *but* the specified lines
-                           //
-                           // NOTE: You can introduce signing issues by using this option. If you
-                           //       take a large enough 32-bit value, and correct it for overflows,
-                           //       you may get a negative number, as JS & operations are signed.
-var CORRECT_ROUNDINGS = 1; // C rounds to 0 (-5.5 to -5, +5.5 to 5), while JS has no direct way to do that:
-                           // Math.floor is to negative, ceil to positive. With CORRECT_ROUNDINGS,
-                           // we will do slow but correct C rounding operations.
 var FS_LOG = 0; // Log all FS operations.  This is especially helpful when you're porting
                 // a new project and want to see a list of file system operations happening
                 // so that you can create a virtual file system with all of the required files.
@@ -610,9 +565,6 @@ var DEBUG_TAGS_SHOWING = [];
 
 // For internal use only
 var ORIGINAL_EXPORTED_FUNCTIONS = [];
-var CORRECT_OVERFLOWS_LINES = [];
-var CORRECT_SIGNS_LINES = [];
-var CORRECT_ROUNDINGS_LINES = [];
 var SAFE_HEAP_LINES = [];
 
 // The list of defines (C_DEFINES) was moved into struct_info.json in the same directory.
