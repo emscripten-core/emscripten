@@ -193,7 +193,9 @@ var CHECK_HEAP_ALIGN = 0; // Check heap accesses for alignment, but don't do as
 var SAFE_DYNCALLS = 0; // Show stack traces on missing function pointer/virtual method calls
 
 var RESERVED_FUNCTION_POINTERS = 0; // In asm.js mode, we cannot simply add function pointers to
-                                    // function tables, so we reserve some slots for them.
+                                    // function tables, so we reserve some slots for them. An
+                                    // alternative to this is to use EMULATED_FUNCTION_POINTERS,
+                                    // in which case we don't need to reserve.
 var ALIASING_FUNCTION_POINTERS = 0; // Whether to allow function pointers to alias if they have
                                     // a different type. This can greatly decrease table sizes
                                     // in asm.js, but can break code that compares function
