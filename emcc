@@ -900,7 +900,6 @@ try:
     assert shared.Settings.FORCE_ALIGNED_MEMORY == 0, 'forced aligned memory is not supported in fastcomp'
     assert shared.Settings.NAMED_GLOBALS == 0, 'named globals not supported in fastcomp'
     assert shared.Settings.PGO == 0, 'pgo not supported in fastcomp'
-    assert shared.Settings.TARGET_ASMJS_UNKNOWN_EMSCRIPTEN == 1, 'fastcomp requires asmjs-unknown-emscripten'
     assert shared.Settings.USE_TYPED_ARRAYS == 2, 'altering USE_TYPED_ARRAYS is not supported'
     assert shared.Settings.QUANTUM_SIZE == 4, 'altering the QUANTUM_SIZE is not supported'
     assert not split_js_file, '--split-js is deprecated and not supported in fastcomp'
@@ -943,8 +942,6 @@ try:
     if closure == 2 and shared.Settings.ASM_JS == 1:
       logging.warning('not all asm.js optimizations are possible with --closure 2, disabling those - your code will be run more slowly')
       shared.Settings.ASM_JS = 2
-
-  shared.Settings.TARGET_ASMJS_UNKNOWN_EMSCRIPTEN = 1
 
   if shared.Settings.MAIN_MODULE:
     assert not shared.Settings.SIDE_MODULE

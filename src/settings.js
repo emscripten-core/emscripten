@@ -22,9 +22,6 @@ var QUANTUM_SIZE = 4; // This is the size of an individual field in a structure.
                       //
                       // Changing this from the default of 4 is deprecated.
 
-var TARGET_ASMJS_UNKNOWN_EMSCRIPTEN = 1; // For asmjs-unknown-emscripten. 1 is normal, 2 is for the fastcomp llvm
-                     // backend using emscripten-customized abi simplification
-
 var ASSERTIONS = 1; // Whether we should add runtime assertions, for example to
                     // check that each allocation to the stack does not
                     // exceed its size, whether all allocations (stack and static) are

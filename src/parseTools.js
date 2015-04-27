@@ -1262,10 +1262,7 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
     case 'i16': return [unsigned ? 'HEAPU16' : 'HEAP16']; break;
     case '<4 x i32>':
     case 'i32': case 'i64': return [unsigned ? 'HEAPU32' : 'HEAP32']; break;
-    case 'double': {
-      if (TARGET_ASMJS_UNKNOWN_EMSCRIPTEN) return ['HEAPF64']; // in asmjs-unknown-emscripten, we do have the ability to assume 64-bit alignment
-      // otherwise, fall through to float
-    }
+    case 'double': return ['HEAPF64'];
     case '<4 x float>':
     case 'float': return ['HEAPF32'];
     default: {
