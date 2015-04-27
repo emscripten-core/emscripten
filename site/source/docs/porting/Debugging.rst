@@ -80,9 +80,9 @@ The most important settings are:
 		
 	- 
 		.. _debugging-SAFE-HEAP:
-		
-		``SAFE_HEAP=1`` adds additional memory access checks, and will give clear errors for problems like dereferencing 0 and memory alignment issues. Use  ``SAFE_HEAP=2`` in order to check only specific lines listed in ``SAFE_HEAP_LINES``, and use ``SAFE_HEAP=3`` to check all the lines except those specified. This last option is the most common operation.
-		
+
+		``SAFE_HEAP=1`` adds additional memory access checks, and will give clear errors for problems like dereferencing 0 and memory alignment issues.
+
 		You can also set ``SAFE_HEAP_LOG`` to log ``SAFE_HEAP`` operations.
 
 A number of other useful debug settings are defined in `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_. For more information, search that file for the keywords "check" and "debug".

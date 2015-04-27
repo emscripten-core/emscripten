@@ -132,9 +132,6 @@ var Runtime = {
   //! Returns the size of a type, as C/C++ would have it (in 32-bit), in bytes.
   //! @param type The type, by name.
   getNativeTypeSize: function(type) {
-#if QUANTUM_SIZE == 1
-    return 1;
-#else
     switch (type) {
       case 'i1': case 'i8': return 1;
       case 'i16': return 2;
@@ -154,7 +151,6 @@ var Runtime = {
         }
       }
     }
-#endif
   },
 
   //! Returns the size of a structure field, as C/C++ would have it (in 32-bit,
@@ -184,13 +180,8 @@ var Runtime = {
   // type can be a native type or a struct (or null, for structs we only look at size here)
   getAlignSize: function(type, size, vararg) {
     // we align i64s and doubles on 64-bit boundaries, unlike x86
-#if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN == 1
-    if (vararg) return 8;
-#endif
-#if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN
     if (!vararg && (type == 'i64' || type == 'double')) return 8;
     if (!type) return Math.min(size, 8); // align structures internally to 64 bits
-#endif
     return Math.min(size || (type ? Runtime.getNativeFieldSize(type) : 0), Runtime.QUANTUM_SIZE);
   },
 

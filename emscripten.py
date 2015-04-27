@@ -156,8 +156,6 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     if DEBUG: logging.debug('emscript: js compiler glue')
 
     # Settings changes
-    assert settings['TARGET_ASMJS_UNKNOWN_EMSCRIPTEN'] == 1
-    settings['TARGET_ASMJS_UNKNOWN_EMSCRIPTEN'] = 2
     i64_funcs = ['i64Add', 'i64Subtract', '__muldi3', '__divdi3', '__udivdi3', '__remdi3', '__uremdi3']
     for i64_func in i64_funcs:
       if i64_func in metadata['declares']:
@@ -503,7 +501,6 @@ function _emscripten_asm_const_%d(%s) {
 
     basic_funcs = ['abort', 'assert'] + [m.replace('.', '_') for m in math_envs]
     if settings['SAFE_HEAP']: basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE', 'SAFE_FT_MASK']
-    if settings['CHECK_HEAP_ALIGN']: basic_funcs += ['CHECK_ALIGN_2', 'CHECK_ALIGN_4', 'CHECK_ALIGN_8']
     if settings['ASSERTIONS']:
       if settings['ASSERTIONS'] >= 2: import difflib
       for sig in last_forwarded_json['Functions']['tables'].iterkeys():

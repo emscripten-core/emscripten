@@ -2475,7 +2475,6 @@ LibraryManager.library = {
     Runtime.stackRestore(stack);
   },
 
-#if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN
   // convert va_arg into varargs
   vfprintf__deps: ['fprintf'],
   vfprintf: function(s, f, va_arg) {
@@ -2497,7 +2496,6 @@ LibraryManager.library = {
   vfscanf: function(s, format, va_arg) {
     return _fscanf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
   },
-#endif
 
   // ==========================================================================
   // sys/mman.h
@@ -3273,10 +3271,8 @@ LibraryManager.library = {
 
   llvm_va_start__inline: function(ptr) {
     // varargs - we received a pointer to the varargs as a final 'extra' parameter called 'varrp'
-#if TARGET_ASMJS_UNKNOWN_EMSCRIPTEN
     // 2-word structure: struct { void* start; void* currentOffset; }
     return makeSetValue(ptr, 0, 'varrp', 'void*') + ';' + makeSetValue(ptr, Runtime.QUANTUM_SIZE, 0, 'void*');
-#endif
   },
 
   llvm_va_end: function() {},

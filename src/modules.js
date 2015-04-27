@@ -201,38 +201,6 @@ var Variables = {
 
 var Types = {
   types: {},
-  fatTypes: {}, // With QUANTUM_SIZE=1, we store the full-size type data here
-  flipTypes: function() {
-    var temp = this.fatTypes;
-    this.fatTypes = this.types;
-    this.types = temp;
-  },
-  structMetadata: {},
-
-  // Remove all data not needed during runtime (like line numbers, JS, etc.)
-  cleanForRuntime: function() {
-    values(this.types).forEach(function(type) {
-      delete type.intertype;
-      delete type.name_;
-      delete type.lineNum;
-      delete type.lines;
-      delete type.needsFlattening;
-      delete type.JS;
-    });
-    keys(this.types).forEach(function(longer) {
-      var shorter = longer.replace('%struct.', '').replace('%class.');
-      if (shorter === longer) return;
-      if (shorter in this.types) return;
-      this.types[shorter] = this.types[longer];
-    }, this);
-  },
-
-  needAnalysis: {}, // Types noticed during parsing, that need analysis
-
-  hasInlineJS: false, // whether the program has inline JS anywhere
-
-  usesSIMD: false,
-
   // Set to true if we actually use precise i64 math: If PRECISE_I64_MATH is set, and also such math is actually
   // needed (+,-,*,/,% - we do not need it for bitops), or PRECISE_I64_MATH is 2 (forced)
   preciseI64MathUsed: (PRECISE_I64_MATH == 2)

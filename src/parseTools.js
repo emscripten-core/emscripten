@@ -707,13 +707,8 @@ function indentify(text, indent) {
 
 // Correction tools
 
-function checkSpecificSafeHeap() {
-  if (!Framework.currItem) return false;
-  return (SAFE_HEAP === 2 && Debugging.getIdentifier() in SAFE_HEAP_LINES) ||
-         (SAFE_HEAP === 3 && !(Debugging.getIdentifier() in SAFE_HEAP_LINES));
-}
 function checkSafeHeap() {
-  return SAFE_HEAP === 1 || checkSpecificSafeHeap();
+  return SAFE_HEAP === 1;
 }
 
 function getHeapOffset(offset, type) {
@@ -726,11 +721,7 @@ function getHeapOffset(offset, type) {
   var sz = Runtime.getNativeTypeSize(type);
   var shifts = Math.log(sz)/Math.LN2;
   offset = '(' + offset + ')';
-  if (CHECK_HEAP_ALIGN && shifts > 0) {
-    return '((CHECK_ALIGN_' + sz + '(' + offset + '|0)|0)>>' + shifts + ')';
-  } else {
-    return '(' + offset + '>>' + shifts + ')';
-  }
+  return '(' + offset + '>>' + shifts + ')';
 }
 
 function ensureDot(value) {
@@ -883,10 +874,6 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
   var ret = makeGetSlabs(ptr, type, false, unsigned)[0] + '[' + getHeapOffset(offset, type) + ']';
   if (forceAsm) {
     ret = asmCoercion(ret, type);
-  }
-  if (ASM_HEAP_LOG) {
-    ret = makeInlineCalculation('(asmPrint' + (type in Compiletime.FLOAT_TYPES ? 'Float' : 'Int') + '(' + (asmPrintCounter++) + ',' + asmCoercion('VALUE', type) + '), VALUE)', ret,
-                                'temp' + (type in Compiletime.FLOAT_TYPES ? 'Double' : 'Int'));
   }
   return ret;
 }
@@ -1275,10 +1262,7 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
     case 'i16': return [unsigned ? 'HEAPU16' : 'HEAP16']; break;
     case '<4 x i32>':
     case 'i32': case 'i64': return [unsigned ? 'HEAPU32' : 'HEAP32']; break;
-    case 'double': {
-      if (TARGET_ASMJS_UNKNOWN_EMSCRIPTEN) return ['HEAPF64']; // in asmjs-unknown-emscripten, we do have the ability to assume 64-bit alignment
-      // otherwise, fall through to float
-    }
+    case 'double': return ['HEAPF64'];
     case '<4 x float>':
     case 'float': return ['HEAPF32'];
     default: {

@@ -74,39 +74,6 @@ function SAFE_FT_MASK(value, mask) {
 }
 #endif
 
-#if CHECK_HEAP_ALIGN
-//========================================
-// Debugging tools - alignment check
-//========================================
-function CHECK_ALIGN_8(addr) {
-  assert((addr & 7) == 0, "address must be 8-byte aligned, is " + addr + "!");
-  return addr;
-}
-function CHECK_ALIGN_4(addr) {
-  assert((addr & 3) == 0, "address must be 4-byte aligned, is " + addr + "!");
-  return addr;
-}
-function CHECK_ALIGN_2(addr) {
-  assert((addr & 1) == 0, "address must be 2-byte aligned!");
-  return addr;
-}
-#endif
-
-
-#if LABEL_DEBUG
-//========================================
-// Debugging tools - Code flow progress
-//========================================
-var INDENT = '';
-#endif
-
-#if EXECUTION_TIMEOUT
-//========================================
-// Debugging tools - Execution timeout
-//========================================
-var START_TIME = Date.now();
-#endif
-
 //========================================
 // Runtime essentials
 //========================================

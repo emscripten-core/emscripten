@@ -270,9 +270,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       libc_files += [os.path.join('libc', 'musl', 'src', directory, source) for source in sources]
     return build_libc('libc.bc', libc_files, ['-O2'])
 
-  def apply_libc(need):
-    return True
-
   # libcextra
   def create_libcextra():
     logging.debug('building libcextra for cache')
@@ -613,11 +610,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     ]
     return build_libcxx(os.path.join('system', 'lib', 'libcxx'), 'libcxx.a', libcxx_files, ['-Oz', '-Wno-warn-absolute-paths', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')], has_noexcept_version=True)
 
-  def apply_libcxx(need):
-    assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++ with QUANTUM_SIZE == 1'
-    #logging.info('using libcxx turns on CORRECT_* options')
-    return True
-
   # libcxxabi - just for dynamic_cast for now
   def create_libcxxabi():
     logging.debug('building libcxxabi for cache')
@@ -636,10 +628,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       os.path.join('..', '..', 'libcxx', 'new.cpp'),
     ]
     return build_libcxx(os.path.join('system', 'lib', 'libcxxabi', 'src'), 'libcxxabi.bc', libcxxabi_files, ['-Oz', '-Wno-warn-absolute-paths', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')])
-
-  def apply_libcxxabi(need):
-    assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++abi with QUANTUM_SIZE == 1'
-    return True
 
   # gl
   def create_gl():
@@ -722,11 +710,11 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     return name
   ret = []
   has = need = None
-  for name, create, apply_, library_symbols, deps in [(maybe_noexcept('libcxx.a'), create_libcxx,    apply_libcxx,    libcxx_symbols,    ['libcextra.bc', 'libcxxabi.bc']),
-                                                      ('libcextra.bc',             create_libcextra, lambda x: True,  libcextra_symbols, ['libc.bc']),
-                                                      ('libcxxabi.bc',             create_libcxxabi, apply_libcxxabi, libcxxabi_symbols, ['libc.bc']),
-                                                      ('gl.bc',                    create_gl,        lambda x: True,  gl_symbols,        ['libc.bc']),
-                                                      ('libc.bc',                  create_libc,      apply_libc,      libc_symbols,      [])]:
+  for name, create, library_symbols, deps in [(maybe_noexcept('libcxx.a'), create_libcxx,    libcxx_symbols,    ['libcextra.bc', 'libcxxabi.bc']),
+                                              ('libcextra.bc',             create_libcextra, libcextra_symbols, ['libc.bc']),
+                                              ('libcxxabi.bc',             create_libcxxabi, libcxxabi_symbols, ['libc.bc']),
+                                              ('gl.bc',                    create_gl,        gl_symbols,        ['libc.bc']),
+                                              ('libc.bc',                  create_libc,      libc_symbols,      [])]:
     force_this = force_all or name in force
     if not force_this:
       need = set()
@@ -743,12 +731,11 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
           need.remove(haz)
       if shared.Settings.VERBOSE: logging.debug('considering %s: we need %s and have %s' % (name, str(need), str(has)))
     if force_this or (len(need) > 0 and not only_forced):
-      if apply_(need):
-        # We need to build and link the library in
-        logging.debug('including %s' % name)
-        libfile = shared.Cache.get(name, create, extension=name.split('.')[-1])
-        ret.append(libfile)
-        force = force.union(deps)
+      # We need to build and link the library in
+      logging.debug('including %s' % name)
+      libfile = shared.Cache.get(name, create, extension=name.split('.')[-1])
+      ret.append(libfile)
+      force = force.union(deps)
   ret.sort(key=lambda x: x.endswith('.a')) # make sure to put .a files at the end.
   return ret
 
