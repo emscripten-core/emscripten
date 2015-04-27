@@ -221,6 +221,15 @@ void pthread_testcancel()
 	}
 }
 
+int pthread_getattr_np(pthread_t t, pthread_attr_t *a)
+{
+	*a = (pthread_attr_t){0};
+	a->_a_detach = !!t->detached;
+	a->_a_stackaddr = (uintptr_t)t->stack;
+	a->_a_stacksize = t->stack_size - DEFAULT_STACK_SIZE;
+	return 0;
+}
+
 static uint32_t dummyZeroAddress = 0;
 
 int usleep(unsigned usec)

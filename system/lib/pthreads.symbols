@@ -179,6 +179,7 @@
          T pthread_condattr_setclock
          T pthread_condattr_setpshared
          T pthread_equal
+         T pthread_getattr_np
          T pthread_getspecific
          T pthread_key_create
          T pthread_key_delete
