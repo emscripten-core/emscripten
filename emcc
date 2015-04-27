@@ -987,9 +987,6 @@ try:
   else:
     logging.debug('using response file for EXPORTED_FUNCTIONS, make sure it includes _malloc and _free')
 
-  if shared.Settings.RELOCATABLE:
-    assert shared.Settings.DISABLE_EXCEPTION_CATCHING, 'no exceptions support with relocatable modules yet'
-
   assert not (bind and shared.Settings.NO_DYNAMIC_EXECUTION), 'NO_DYNAMIC_EXECUTION disallows embind'
 
   if shared.Settings.RELOCATABLE:
