@@ -116,8 +116,6 @@ var SIMD = 0; // Whether to allow autovectorized SIMD code ( https://github.com/
               // any SIMD output at all.)
 
 var CLOSURE_COMPILER = 0; // Whether closure compiling is being run on this output
-var CLOSURE_ANNOTATIONS = 0; // If set, the generated code will be annotated for the closure
-                             // compiler. This potentially lets closure optimize the code better.
 
 var SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all in
                              // functions that have no basic stack usage. But, they
