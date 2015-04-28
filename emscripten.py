@@ -579,13 +579,16 @@ function jsCall_%s_%s(%s) {
       if settings.get('EMULATED_FUNCTION_POINTERS'):
         args = ['a%d' % i for i in range(len(sig)-1)]
         full_args = ['x'] + args
+        table_access = 'FUNCTION_TABLE_' + sig
+        if settings['SIDE_MODULE']:
+          table_access = 'parentModule["' + table_access + '"]' # side module tables were merged into the parent, we need to access the global one
         prelude = '''
-  if (x < 0 || x >= FUNCTION_TABLE_%s.length) { Module.printErr("Function table mask error (out of range)"); %s ; abort(x) }''' % (sig, get_function_pointer_error(sig))
+  if (x < 0 || x >= %s.length) { Module.printErr("Function table mask error (out of range)"); %s ; abort(x) }''' % (table_access, get_function_pointer_error(sig))
         asm_setup += '''
 function ftCall_%s(%s) {%s
-  return FUNCTION_TABLE_%s[x](%s);
+  return %s[x](%s);
 }
-''' % (sig, ', '.join(full_args), prelude, sig, ', '.join(args))
+''' % (sig, ', '.join(full_args), prelude, table_access, ', '.join(args))
         basic_funcs.append('ftCall_%s' % sig)
 
     def quote(prop):
