@@ -16,6 +16,10 @@ Usage:
   --preload  ,
   --embed    See emcc --help for more details on those options.
 
+  --no-closure In general, the file packager emits closure compiler-compatible code, which requires an eval().
+               With this flag passed, we avoid emitting the eval. emcc passes this flag by default whenever
+               it knows that closure is not run.
+
   --crunch=X Will compress dxt files to crn with quality level X. The crunch commandline tool must be present
              and CRUNCH should be defined in ~/.emscripten that points to it. JS crunch decompressing code will
              be added to convert the crn to dds in the browser.
@@ -51,7 +55,7 @@ from subprocess import Popen, PIPE, STDOUT
 import fnmatch
 
 if len(sys.argv) == 1:
-  print '''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--exclude C...] [--compress COMPRESSION_DATA] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy]
+  print '''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--exclude C...] [--compress COMPRESSION_DATA] [--no-closure] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy]
 See the source for more details.'''
   sys.exit(0)
 
@@ -77,6 +81,7 @@ compress_cnt = 0
 crunch = 0
 plugins = []
 jsoutput = None
+no_closure = False
 force = True
 # If set to True, IndexedDB (IDBFS in library_idbfs.js) is used to locally cache VFS XHR so that subsequent 
 # page loads can read the data from the offline cache instead.
@@ -108,6 +113,9 @@ for arg in sys.argv[2:]:
     leading = ''
   elif arg.startswith('--js-output'):
     jsoutput = arg.split('=')[1] if '=' in arg else None
+    leading = ''
+  elif arg.startswith('--no-closure'):
+    no_closure = True
     leading = ''
   elif arg.startswith('--crunch'):
     try:
@@ -154,7 +162,17 @@ if (not force) and len(data_files) == 0:
 
 ret = '''
 var Module;
+'''
+if not no_closure:
+  ret += '''
 if (typeof Module === 'undefined') Module = eval('(function() { try { return Module || {} } catch(e) { return {} } })()');
+'''
+else:
+  ret += '''
+if (typeof Module === 'undefined') Module = {};
+'''
+
+ret += '''
 if (!Module.expectedDataFileDownloads) {
   Module.expectedDataFileDownloads = 0;
   Module.finishedDataFileDownloads = 0;

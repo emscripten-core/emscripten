@@ -1283,6 +1283,8 @@ try:
       file_args.append('--use-preload-cache')
     if no_heap_copy:
       file_args.append('--no-heap-copy')
+    if not closure:
+      file_args.append('--no-closure')
     file_code = execute([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE)[0]
     pre_js = file_code + pre_js
 
