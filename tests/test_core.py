@@ -3651,8 +3651,10 @@ var Module = {
     finally:
       self.emcc_args = emcc_args[:]
 
-    # test the reverse as well
-    # TODO self.dylink_test(side, main, expected, need_reverse=False)
+    if need_reverse:
+      # test the reverse as well
+      print 'flip'
+      self.dylink_test(side, main, expected, need_reverse=False)
 
   def test_dylink_basics(self):
     self.dylink_test('''
