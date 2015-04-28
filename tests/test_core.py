@@ -3618,10 +3618,13 @@ int 123
 ok
 ''', post_build=self.dlfcn_post_build)
 
-  def dylink_test(self, main, side, expected, need_reverse=True):
+  def dylink_test(self, main, side, expected, header=None, need_reverse=True):
     if self.is_emterpreter():
       self.skip('no dylink support in emterpreter yet')
       return
+
+    if header:
+      open('header.h', 'w').write(header)
 
     emcc_args = self.emcc_args[:]
     try:
@@ -3654,7 +3657,7 @@ var Module = {
     if need_reverse:
       # test the reverse as well
       print 'flip'
-      self.dylink_test(side, main, expected, need_reverse=False)
+      self.dylink_test(side, main, expected, header, need_reverse=False)
 
   def test_dylink_basics(self):
     self.dylink_test('''
@@ -3693,6 +3696,21 @@ var Module = {
       #include <stdio.h>
       void sidey() { printf("hello from side\n"); }
     ''', 'hello from main\nhello from side\n')
+
+  def test_dylink_funcpointer(self):
+    self.dylink_test(r'''
+      #include <stdio.h>
+      #include "header.h"
+      voidfunc sidey(voidfunc f);
+      void a() { printf("hello from funcptr\n"); }
+      int main() {
+        sidey(a)();
+        return 0;
+      }
+    ''', '''
+      #include "header.h"
+      voidfunc sidey(voidfunc f) { return f; }
+    ''', 'hello from funcptr\n', header='typedef void (*voidfunc)();')
 
   def test_random(self):
     src = r'''#include <stdlib.h>
