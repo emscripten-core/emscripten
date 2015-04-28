@@ -415,7 +415,6 @@ try:
   js_transform = None
   pre_js = ''
   post_js = ''
-  split_js_file = None
   preload_files = []
   embed_files = []
   exclude_files = []
@@ -532,11 +531,6 @@ try:
       check_bad_eq(newargs[i])
       assert newargs[i+1] == '0', '0 is the only supported option for --minify; 1 has been deprecated'
       debug_level = max(1, debug_level)
-      newargs[i] = ''
-      newargs[i+1] = ''
-    elif newargs[i].startswith('--split'):
-      check_bad_eq(newargs[i])
-      split_js_file = int(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('-g'):
@@ -717,9 +711,6 @@ try:
         settings_changes.append(newargs[i+1])
         newargs[i] = newargs[i+1] = ''
   newargs = [arg for arg in newargs if arg is not '']
-
-  if split_js_file:
-    settings_changes.append("PRINT_SPLIT_FILE_MARKER=1")
 
   # Find input files
 
@@ -902,7 +893,6 @@ try:
     assert shared.Settings.PGO == 0, 'pgo not supported in fastcomp'
     assert shared.Settings.USE_TYPED_ARRAYS == 2, 'altering USE_TYPED_ARRAYS is not supported'
     assert shared.Settings.QUANTUM_SIZE == 4, 'altering the QUANTUM_SIZE is not supported'
-    assert not split_js_file, '--split-js is deprecated and not supported in fastcomp'
     assert shared.Settings.INIT_HEAP == 0, 'HEAP_INIT is not supported in fastcomp (and should never be needed except for debugging)'
   except Exception, e:
     logging.error('Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
@@ -1755,18 +1745,14 @@ try {
 
     html.close()
   else:
-    if split_js_file:
-      from tools.split import split_javascript_file
-      split_javascript_file(final, unsuffixed(target), split_js_file)
+    if debug_level >= 4: generate_source_map(target)
+    if proxy_to_worker:
+      worker_target_basename = target_basename + '.worker'
+      open(target, 'w').write(open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', shared.Settings.PROXY_TO_WORKER_FILENAME or worker_target_basename).replace('{{{ IDBStore.js }}}', open(shared.path_from_root('src', 'IDBStore.js')).read()))
+      shutil.move(final, target[:-3] + '.worker.js')
     else:
-      if debug_level >= 4: generate_source_map(target)
-      if proxy_to_worker:
-        worker_target_basename = target_basename + '.worker'
-        open(target, 'w').write(open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', shared.Settings.PROXY_TO_WORKER_FILENAME or worker_target_basename).replace('{{{ IDBStore.js }}}', open(shared.path_from_root('src', 'IDBStore.js')).read()))
-        shutil.move(final, target[:-3] + '.worker.js')
-      else:
-        # copy final JS to output normally
-        shutil.move(final, target)
+      # copy final JS to output normally
+      shutil.move(final, target)
 
   log_time('final emitting')
 
