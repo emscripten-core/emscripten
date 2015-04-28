@@ -316,17 +316,6 @@ Options that are modified or new in *emcc* are listed below:
 	
 	``<cmd>`` is interpreted as a space-separated list of arguments, for example, ``<cmd>`` of **python processor.py** will cause a Python script to be run.
 	 
-``--split <size>``
-	Splits the resulting JavaScript file into pieces to ease debugging. 
-	
-	.. warning:: This option is deprecated (modern JavaScript debuggers should work even on large files).
-	
-	This option only works if JavaScript is generated (``target -o <name>.js``). Files with function declarations must be loaded before main file upon execution.
-
-		- Without the ``-g`` option this creates files with function declarations up to the given size with the suffix **_functions.partxxx.js** and a main file with the suffix **.js**.
-		- With the ``-g`` option this recreates the directory structure of the C source files and stores function declarations in their respective C files with the suffix ".js". If such a file exceeds the given size, files with the suffix ".partxxx.js" are created. The main file resides in the base directory and has the suffix ".js".
-
-
 .. _emcc-bind:
 
 ``--bind``
