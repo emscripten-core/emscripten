@@ -3618,6 +3618,55 @@ int 123
 ok
 ''', post_build=self.dlfcn_post_build)
 
+  def dylink_test(self, main, side, expected, need_reverse=True):
+    if self.is_emterpreter():
+      self.skip('no dylink support in emterpreter yet')
+      return
+
+    emcc_args = self.emcc_args[:]
+    try:
+      # general settings
+      Settings.RELOCATABLE = 1
+      Settings.EMULATED_FUNCTION_POINTERS = 1
+      Settings.DISABLE_EXCEPTION_CATCHING = 1
+      self.emcc_args += ['--memory-init-file', '0']
+
+      # side settings
+      Settings.MAIN_MODULE = 0
+      Settings.SIDE_MODULE = 1
+      self.build(side, self.get_dir(), 'liblib.cpp')
+      shutil.move('liblib.cpp.o.js', 'liblib.so')
+
+      # main settings
+      Settings.MAIN_MODULE = 1
+      Settings.SIDE_MODULE = 0
+      open('pre.js', 'w').write('''
+var Module = {
+  dynamicLibraries: ['liblib.so'],
+};
+  ''')
+      self.emcc_args += ['--pre-js', 'pre.js']
+
+      print self.emcc_args
+      self.do_run(main, expected)
+    finally:
+      self.emcc_args = emcc_args[:]
+
+    # test the reverse as well
+    # TODO self.dylink_test(side, main, expected, need_reverse=False)
+
+  def test_dylink_basics(self):
+    self.dylink_test('''
+      #include <stdio.h>
+      extern int sidey();
+      int main() {
+        printf("other says %d.", sidey());
+        return 0;
+      }
+    ''', '''
+      int sidey() { return 11; }
+    ''', 'other says 11.')
+
   def test_random(self):
     src = r'''#include <stdlib.h>
 #include <stdio.h>
