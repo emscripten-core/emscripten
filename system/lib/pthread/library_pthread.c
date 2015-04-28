@@ -534,7 +534,7 @@ void EMSCRIPTEN_KEEPALIVE emscripten_main_thread_process_queued_calls()
 	pthread_mutex_unlock(&call_queue_lock);
 }
 
-float EMSCRIPTEN_KEEPALIVE _Atomics_load_HEAPF32_emulated(void *addr)
+float EMSCRIPTEN_KEEPALIVE emscripten_atomic_load_f32(const void *addr)
 {
 	union {
 		float f;
@@ -544,47 +544,128 @@ float EMSCRIPTEN_KEEPALIVE _Atomics_load_HEAPF32_emulated(void *addr)
 	return u.f;
 }
 
-double EMSCRIPTEN_KEEPALIVE _Atomics_load_HEAPF64_emulated(void *addr)
-{
-	union {
-		double d;
-		uint32_t u[2];
-	} u;
+// Use an array of multiple interleaved mutexes to separate memory addresses to ease pressure when locking.
+// This is outright horrible, but enables easily porting code that does require 64-bit atomics.
+// Eventually in the long run we'd hope to have real support for 64-bit atomics in the browser, after
+// which this emulation can be removed.
+#define NUM_64BIT_LOCKS 16
+static pthread_mutex_t emulated64BitAtomicsLocks[NUM_64BIT_LOCKS] = {
+	PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER,
+	PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER,
+	PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER,
+	PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER
+};
 
-	for(;;) {
-		u.u[0] = emscripten_atomic_load_u32(addr);
-		u.u[1] = emscripten_atomic_load_u32((void*)((uintptr_t)addr + 4));
-		uint32_t low2 = emscripten_atomic_load_u32(addr);
-		if (u.u[0] == low2) {
-			return u.d;
-		}
-	}
+uint64_t EMSCRIPTEN_KEEPALIVE emscripten_atomic_cas_u64(void/*uint64_t*/ *addr, uint64_t oldVal, uint64_t newVal)
+{
+	uintptr_t m = (uintptr_t)addr >> 3;
+	pthread_mutex_lock(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
+	uint64_t oldValInMemory = *(uint64_t*)addr;
+	if (oldValInMemory == oldVal)
+		*(uint64_t*)addr = newVal;
+	pthread_mutex_unlock(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
+	return oldValInMemory;
 }
 
-void EMSCRIPTEN_KEEPALIVE _Atomics_store_HEAPF32_emulated(void *addr, float val)
+double EMSCRIPTEN_KEEPALIVE emscripten_atomic_load_f64(const void *addr)
+{
+	uintptr_t m = (uintptr_t)addr >> 3;
+	pthread_mutex_lock(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
+	double val = *(double*)addr;
+	pthread_mutex_unlock(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
+	return val;
+}
+
+uint64_t EMSCRIPTEN_KEEPALIVE emscripten_atomic_load_u64(const void *addr)
+{
+	uintptr_t m = (uintptr_t)addr >> 3;
+	pthread_mutex_lock(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
+	uint64_t val = *(uint64_t*)addr;
+	pthread_mutex_unlock(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
+	return val;
+}
+
+float EMSCRIPTEN_KEEPALIVE emscripten_atomic_store_f32(void *addr, float val)
 {
 	union {
 		float f;
 		uint32_t u;
 	} u;
 	u.f = val;
-	emscripten_atomic_store_u32(addr, u.u);
+	return emscripten_atomic_store_u32(addr, u.u);
 }
 
-void EMSCRIPTEN_KEEPALIVE _Atomics_store_HEAPF64_emulated(void *addr, double val)
+double EMSCRIPTEN_KEEPALIVE emscripten_atomic_store_f64(void *addr, double val)
 {
-	union {
-		double d;
-		uint32_t u[2];
-	} u;
-	u.d = val;
+	uintptr_t m = (uintptr_t)addr >> 3;
+	pthread_mutex_lock(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
+	double *a = (double*)addr;
+	*a = val;
+	pthread_mutex_unlock(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
+	return val;
+}
 
-	for(;;) {
-		emscripten_atomic_store_u32(addr, u.u[0]);
-		emscripten_atomic_store_u32((void*)((uintptr_t)addr + 4), u.u[1]);
-		uint32_t low2 = emscripten_atomic_load_u32(addr);
-		if (u.u[0] == low2) {
-			return;
-		}
-	}
+uint64_t EMSCRIPTEN_KEEPALIVE emscripten_atomic_store_u64(void *addr, uint64_t val)
+{
+	uintptr_t m = (uintptr_t)addr >> 3;
+	pthread_mutex_lock(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
+	uint64_t *a = (uint64_t*)addr;
+	*a = val;
+	pthread_mutex_unlock(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
+	return val;
+}
+
+uint64_t EMSCRIPTEN_KEEPALIVE emscripten_atomic_add_u64(void *addr, uint64_t val)
+{
+	uintptr_t m = (uintptr_t)addr >> 3;
+	pthread_mutex_lock(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
+	uint64_t *a = (uint64_t *)addr;
+	uint64_t newVal = *a + val;
+	*a = newVal;
+	pthread_mutex_unlock(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
+	return newVal;
+}
+
+uint64_t EMSCRIPTEN_KEEPALIVE emscripten_atomic_sub_u64(void *addr, uint64_t val)
+{
+	uintptr_t m = (uintptr_t)addr >> 3;
+	pthread_mutex_lock(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
+	uint64_t *a = (uint64_t *)addr;
+	uint64_t newVal = *a - val;
+	*a = newVal;
+	pthread_mutex_unlock(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
+	return newVal;
+}
+
+uint64_t EMSCRIPTEN_KEEPALIVE emscripten_atomic_and_u64(void *addr, uint64_t val)
+{
+	uintptr_t m = (uintptr_t)addr >> 3;
+	pthread_mutex_lock(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
+	uint64_t *a = (uint64_t *)addr;
+	uint64_t newVal = *a & val;
+	*a = newVal;
+	pthread_mutex_unlock(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
+	return newVal;
+}
+
+uint64_t EMSCRIPTEN_KEEPALIVE emscripten_atomic_or_u64(void *addr, uint64_t val)
+{
+	uintptr_t m = (uintptr_t)addr >> 3;
+	pthread_mutex_lock(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
+	uint64_t *a = (uint64_t *)addr;
+	uint64_t newVal = *a | val;
+	*a = newVal;
+	pthread_mutex_unlock(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
+	return newVal;
+}
+
+uint64_t EMSCRIPTEN_KEEPALIVE emscripten_atomic_xor_u64(void *addr, uint64_t val)
+{
+	uintptr_t m = (uintptr_t)addr >> 3;
+	pthread_mutex_lock(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
+	uint64_t *a = (uint64_t *)addr;
+	uint64_t newVal = *a ^ val;
+	*a = newVal;
+	pthread_mutex_unlock(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
+	return newVal;
 }

@@ -2516,6 +2516,10 @@ window.close = function() {
   def test_pthread_atomics(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
 
+  # Test 64-bit atomics.
+  def test_pthread_64bit_atomics(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_atomics.cpp'), expected='0', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
+
   # Test the old GCC atomic __sync_fetch_and_op builtin operations.
   def test_pthread_gcc_atomic_fetch_and_op(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_fetch_and_op.cpp'), expected='0', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
