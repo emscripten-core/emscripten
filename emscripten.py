@@ -675,10 +675,12 @@ return real_''' + s + '''.apply(null, arguments);
 
     if settings['RELOCATABLE']:
       receiving += '''
-var NAMED_GLOBALS = %s;
-for (var named in NAMED_GLOBALS) NAMED_GLOBALS[named] += gb;
+var NAMED_GLOBALS = { %s };
+for (var named in NAMED_GLOBALS) {
+  Module['_' + named] = gb + NAMED_GLOBALS[named];
+}
 Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
-''' % json.dumps(metadata['namedGlobals'])
+''' % ', '.join('"' + k + '": ' + str(v) for k, v in metadata['namedGlobals'].iteritems())
 
     funcs_js = ['''
 %s

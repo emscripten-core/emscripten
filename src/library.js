@@ -4054,7 +4054,6 @@ LibraryManager.library = {
     if (filename === '__self__') {
       var handle = -1;
       var lib_module = Module;
-      Module.NAMED_GLOBALS = NAMED_GLOBALS;
       var cached_functions = {};
     } else {
       var target = FS.findObject(filename);
@@ -4138,10 +4137,6 @@ LibraryManager.library = {
       return 0;
     } else {
       var lib = DLFCN.loadedLibs[handle];
-      if (lib.module.NAMED_GLOBALS.hasOwnProperty(symbol)) {
-        return lib.module.NAMED_GLOBALS[symbol];
-      }
-      // not a global var, must be a function
       symbol = '_' + symbol;
       if (lib.cached_functions.hasOwnProperty(symbol)) {
         return lib.cached_functions[symbol];
