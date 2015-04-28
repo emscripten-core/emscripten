@@ -123,6 +123,8 @@ function JSify(data, functionsOnly) {
       // Note: We don't return the dependencies here. Be careful not to end up where this matters
       if (finalName in Functions.implementedFunctions) return '';
 
+      var noExport = false;
+
       if (!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) {
         if (notDep) {
           if (VERBOSE || ident.substr(0, 11) !== 'emscripten_') { // avoid warning on emscripten_* functions which are for internal usage anyhow
@@ -134,7 +136,8 @@ function JSify(data, functionsOnly) {
           // emit a stub that will fail at runtime
           LibraryManager.library[shortident] = new Function("Module['printErr']('missing function: " + shortident + "'); abort(-1);");
         } else {
-          LibraryManager.library[shortident] = function() { return Module['_' + shortident].apply(null, arguments); };
+          LibraryManager.library[shortident] = new Function("return Module['_" + shortident + "'].apply(null, arguments);");
+          noExport = true;
         }
       }
 
@@ -204,7 +207,7 @@ function JSify(data, functionsOnly) {
         Functions.libraryFunctions[finalName] = 2;
       }
       if (SIDE_MODULE) return ';'; // we import into the side module js library stuff from the outside parent 
-      if (EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS)) {
+      if ((EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS)) && !noExport) {
         contentText += '\nModule["' + finalName + '"] = ' + finalName + ';';
       }
       return depsText + contentText;
