@@ -497,9 +497,6 @@ var EMTERPRETIFY_ADVISE = 0; // Performs a static analysis to suggest which func
 var RUNNING_JS_OPTS = 0; // whether js opts will be run, after the main compiler
 var BOOTSTRAPPING_STRUCT_INFO = 0; // whether we are in the generate struct_info bootstrap phase
 
-var COMPILER_ASSERTIONS = 0; // costly (slow) compile-time assertions
-var COMPILER_FASTPATHS = 1; // use fast-paths to speed up compilation
-
 var EMSCRIPTEN_TRACING = 0; // Add some calls to emscripten tracing APIs
 
 var USE_GLFW = 2; // Specify the GLFW version that is being linked against.
