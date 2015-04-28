@@ -124,7 +124,6 @@ var SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all
                              // a lot can exhaust the stack very fast, with this option.
                              // In particular, be careful with the autodebugger! (We do turn
                              // this off automatically in that case, though.)
-var INLINE_LIBRARY_FUNCS = 1; // Will inline library functions that have __inline defined
 var INLINING_LIMIT = 0;  // A limit on inlining. If 0, we will inline normally in LLVM and
                          // closure. If greater than 0, we will *not* inline in LLVM, and
                          // we will prevent inlining of functions of this size or larger
