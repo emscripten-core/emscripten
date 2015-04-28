@@ -2866,7 +2866,6 @@ The current type of b is: 9
     Settings.RUNTIME_LINKED_LIBS = ['liblib.so'];
     self.do_run(main, 'supp: 54,2\nmain: 56\nsupp see: 543\nmain see: 76\nok.')
 
-  # TODO: test only worked in non-fastcomp (well, this is a utility, dlfcn is todo for fastcomp)
   def can_dlfcn(self):
     if self.is_emterpreter():
       self.skip('no dlfcn support in emterpreter yet')
@@ -3253,7 +3252,6 @@ def process(filename):
     self.do_run(src, '100\n200\n13\n42\n',
                 post_build=self.dlfcn_post_build)
 
-  # TODO: test only worked in non-fastcomp
   def test_dlfcn_self(self):
     if not self.can_dlfcn(): return
     self.prep_dlfcn_main()
