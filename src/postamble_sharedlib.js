@@ -4,6 +4,7 @@
 {{GLOBAL_VARS}}
 
 function run(args) {
+  runPostSets();
   initRuntime();
 }
 Module['run'] = run;
