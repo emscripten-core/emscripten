@@ -3678,6 +3678,20 @@ var Module = {
       float sidey() { return 11.5; }
     ''', 'other says 12.50')
 
+  def test_dylink_printfs(self):
+    self.dylink_test(r'''
+      #include <stdio.h>
+      extern void sidey();
+      int main() {
+        printf("hello from main\n");
+        sidey();
+        return 0;
+      }
+    ''', r'''
+      #include <stdio.h>
+      void sidey() { printf("hello from side\n"); }
+    ''', 'hello from main\nhello from side\n')
+
   def test_random(self):
     src = r'''#include <stdlib.h>
 #include <stdio.h>
