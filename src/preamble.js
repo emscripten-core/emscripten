@@ -1449,6 +1449,16 @@ __ATEXIT__.push({ func: function() { PGOMonitor.dump() } });
 addOnPreRun(function() { addRunDependency('pgo') });
 #endif
 
+#if RELOCATABLE
+if (Module['dynamicLibraries']) {
+  Module['dynamicLibraries'].forEach(function(lib) {
+    addOnPreRun(function() {
+      Runtime.loadDynamicLibrary(lib);
+    });
+  });
+}
+#endif
+
 var memoryInitializer = null;
 
 // === Body ===

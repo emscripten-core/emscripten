@@ -283,8 +283,42 @@ var Runtime = {
   },
 
   removeFunction: function(index) {
+#if EMULATED_FUNCTION_POINTERS == 0
     Runtime.functionPointers[(index-{{{ FUNCTION_POINTER_ALIGNMENT }}})/{{{ FUNCTION_POINTER_ALIGNMENT }}}] = null;
+#else
+    Runtime.alignFunctionTables(); // XXX we should rely on this being an invariant
+    var tables = Runtime.getFunctionTables();
+    for (var sig in tables) {
+      tables[sig][index] = null;
+    }
+#endif
   },
+
+#if RELOCATABLE
+  loadDynamicLibrary: function(lib) {
+    // TODO: addRunDep etc., do asynchronously when in the browser. for now we assume we can do a sync xhr, no mem init files in libs, and we ignore the sync xhr lag
+    var src = Module['read'](lib);
+    try {
+      var ok = false;
+      var libModule = eval(src)(
+        Runtime.alignFunctionTables(),
+        Module
+      );
+      ok = true;
+    } finally {
+      if (!ok) {
+        Module.printErr('Error in preparing dynamic library');
+        return;
+      }
+    }
+    // add symbols into global namespace TODO: weak linking etc.
+    for (var sym in libModule) {
+      if (!Module.hasOwnProperty(sym)) {
+        Module[sym] = libModule[sym];
+      }
+    }
+  },
+#endif
 
   warnOnce: function(text) {
     if (!Runtime.warnOnce.shown) Runtime.warnOnce.shown = {};
