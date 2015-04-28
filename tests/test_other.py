@@ -3539,6 +3539,12 @@ EMSCRIPTEN_KEEPALIVE __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny
     bad = filter(lambda x: '-Wno-warn-absolute-paths' in x, diff)
     assert len(bad) == 0, '\n\n'.join(diff)
 
+  def test_dashE_respect_dashO(self): # issue #3365
+    with_dash_o = Popen([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-E', '-o', '/dev/null'], stdout=PIPE, stderr=PIPE).communicate()[0]
+    without_dash_o = Popen([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-E'], stdout=PIPE, stderr=PIPE).communicate()[0]
+    assert len(with_dash_o) == 0
+    assert len(without_dash_o) != 0
+
   def test_malloc_implicit(self):
     open('src.cpp', 'w').write(r'''
 #include <stdlib.h>
