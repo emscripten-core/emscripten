@@ -893,7 +893,6 @@ try:
     assert shared.Settings.PGO == 0, 'pgo not supported in fastcomp'
     assert shared.Settings.USE_TYPED_ARRAYS == 2, 'altering USE_TYPED_ARRAYS is not supported'
     assert shared.Settings.QUANTUM_SIZE == 4, 'altering the QUANTUM_SIZE is not supported'
-    assert shared.Settings.INIT_HEAP == 0, 'HEAP_INIT is not supported in fastcomp (and should never be needed except for debugging)'
   except Exception, e:
     logging.error('Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
     raise e
