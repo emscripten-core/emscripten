@@ -3,15 +3,12 @@
 
 {{GLOBAL_VARS}}
 
-function run(args) {
-  runPostSets();
+runPostSets();
+
+if (runtimeInitialized) {
   initRuntime();
+  Module['initLibraryRuntime'] = function(){};
+} else {
+  Module['initLibraryRuntime'] = initRuntime; // rely on the system to call it later, at the right time
 }
-Module['run'] = run;
-
-// {{PRE_RUN_ADDITIONS}}
-
-run();
-
-// {{POST_RUN_ADDITIONS}}
 

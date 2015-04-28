@@ -295,6 +295,8 @@ var Runtime = {
   },
 
 #if RELOCATABLE
+  loadedDynamicLibraries: [],
+
   loadDynamicLibrary: function(lib) {
     // TODO: addRunDep etc., do asynchronously when in the browser. for now we assume we can do a sync xhr, no mem init files in libs, and we ignore the sync xhr lag
     var src = Module['read'](lib);
@@ -317,6 +319,7 @@ var Runtime = {
         Module[sym] = libModule[sym];
       }
     }
+    Runtime.loadedDynamicLibraries.push(libModule);
   },
 #endif
 

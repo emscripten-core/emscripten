@@ -3730,6 +3730,20 @@ var Module = {
       int sidey(voidfunc f) { if (f) f(); return 1; }
     ''', 'hello 1\n', header='typedef void (*voidfunc)();')
 
+  def test_dylink_global_init(self):
+    self.dylink_test(r'''
+      #include <stdio.h>
+      struct Class {
+        Class() { printf("a new Class\n"); }
+      };
+      static Class c;
+      int main() {
+        return 0;
+      }
+    ''', r'''
+      void nothing() {}
+    ''', 'a new Class\n')
+
   def test_random(self):
     src = r'''#include <stdlib.h>
 #include <stdio.h>
