@@ -3744,6 +3744,23 @@ var Module = {
       void nothing() {}
     ''', 'a new Class\n')
 
+  def test_dylink_global_inits(self):
+    self.dylink_test(header=r'''
+      #include <stdio.h>
+      struct Class {
+        Class(const char *name) { printf("new %s\n", name); }
+      };
+    ''', main=r'''
+      #include "header.h"
+      static Class c("main");
+      int main() {
+        return 0;
+      }
+    ''', side=r'''
+      #include "header.h"
+      static Class c("side");
+    ''', expected=['new main\nnew side\n', 'new side\nnew main\n'])
+
   def test_random(self):
     src = r'''#include <stdlib.h>
 #include <stdio.h>
