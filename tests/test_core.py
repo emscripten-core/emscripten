@@ -3647,7 +3647,6 @@ var Module = {
   ''')
       self.emcc_args += ['--pre-js', 'pre.js']
 
-      print self.emcc_args
       self.do_run(main, expected)
     finally:
       self.emcc_args = emcc_args[:]
@@ -3666,6 +3665,18 @@ var Module = {
     ''', '''
       int sidey() { return 11; }
     ''', 'other says 11.')
+
+  def test_dylink_floats(self):
+    self.dylink_test('''
+      #include <stdio.h>
+      extern float sidey();
+      int main() {
+        printf("other says %.2f.", sidey()+1);
+        return 0;
+      }
+    ''', '''
+      float sidey() { return 11.5; }
+    ''', 'other says 12.50')
 
   def test_random(self):
     src = r'''#include <stdlib.h>
