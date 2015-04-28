@@ -116,7 +116,7 @@ void http::runRequest(const char* page, int assync) {
 			_targetFileName = format("prepare%d",_uid);
 		}
 
-		_handle = emscripten_async_wget2(url.c_str(), _targetFileName.c_str(), (_request==REQUEST_GET) ? "GET":"POST", _param.c_str(), this, http::onLoaded, http::onError, http::onProgress);
+		_handle = emscripten_async_wget2(url.c_str(), _targetFileName.c_str(), (_request==REQUEST_GET) ? "GET":"POST", _param.c_str(), "", this, http::onLoaded, http::onError, http::onProgress);
 	
 	} else {
 		_error = format("malformed url : %s\n",url.c_str());

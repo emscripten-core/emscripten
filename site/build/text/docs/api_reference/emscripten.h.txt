@@ -690,7 +690,7 @@ void emscripten_async_wget_data(const char* url, void *arg, em_async_wget_onlo
 
         * *(void*)* : A pointer to "arg" (user defined data).
 
-int emscripten_async_wget2(const char* url, const char* file, const char* requesttype, const char* param, void *arg, em_async_wget2_onload_func onload, em_async_wget2_onstatus_func onerror, em_async_wget2_onstatus_func onprogress)
+int emscripten_async_wget2(const char* url, const char* file, const char* requesttype, const char* param, const char* additionalHeader, void *arg, em_async_wget2_onload_func onload, em_async_wget2_onstatus_func onerror, em_async_wget2_onstatus_func onprogress)
 
    Loads a file from a URL asynchronously.
 
@@ -719,6 +719,9 @@ int emscripten_async_wget2(const char* url, const char* file, const char* req
         requests (see "requesttype"). The parameters are specified in
         the same way as they would be in the URL for an equivalent GET
         request: e.g. "key=value&key2=value2".
+
+      * **additionalHeader** (*const char**) -- Request header entries
+        as a Json formatted string for any request type.
 
       * **arg** (*void**) -- User-defined data that is passed to the
         callbacks, untouched by the API itself. This may be be used by
@@ -755,7 +758,7 @@ int emscripten_async_wget2(const char* url, const char* file, const char* req
       A handle to request ("int") that can be used to "abort" the
       request.
 
-int emscripten_async_wget2_data(const char* url, const char* requesttype, const char* param, void *arg, int free, em_async_wget2_data_onload_func onload, em_async_wget2_data_onerror_func onerror, em_async_wget2_data_onprogress_func onprogress)
+int emscripten_async_wget2_data(const char* url, const char* requesttype, const char* param, const char* additionalHeader, void *arg, int free, em_async_wget2_data_onload_func onload, em_async_wget2_data_onerror_func onerror, em_async_wget2_data_onprogress_func onprogress)
 
    Loads a buffer from a URL asynchronously.
 
@@ -791,6 +794,9 @@ int emscripten_async_wget2_data(const char* url, const char* requesttype, cons
         requests (see "requesttype"). The parameters are specified in
         the same way as they would be in the URL for an equivalent GET
         request: e.g. "key=value&key2=value2".
+
+      * **additionalHeader** (*const char**) -- Request header entries
+        as a Json formatted string for any request type.
 
       * **arg** (*void**) -- User-defined data that is passed to the
         callbacks, untouched by the API itself. This may be be used by
