@@ -2022,11 +2022,10 @@ def process(filename):
       Settings.EXPORTED_FUNCTIONS = ['_main', '_save_me_aimee']
       self.do_run_from_file(src, output, post_build=check)
 
-      if self.run_name != 's_0_0' and self.run_name != 's_0_1':
-        # test EXPORT_ALL
-        Settings.EXPORTED_FUNCTIONS = []
-        Settings.EXPORT_ALL = 1
-        self.do_run_from_file(src, output, post_build=check)
+      # test EXPORT_ALL
+      Settings.EXPORTED_FUNCTIONS = []
+      Settings.EXPORT_ALL = 1
+      self.do_run_from_file(src, output, post_build=check)
 
   def test_emscripten_get_now(self):
     self.banned_js_engines = [V8_ENGINE] # timer limitations in v8 shell
@@ -4478,7 +4477,6 @@ def process(filename):
 
   def test_unistd_io(self):
     self.clear()
-    if self.run_name == 'o2': return self.skip('non-asm optimized builds can fail with inline js')
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
     for fs in ['MEMFS', 'NODEFS']:
       src = open(path_from_root('tests', 'unistd', 'io.c'), 'r').read()
@@ -4917,7 +4915,8 @@ return malloc(size);
       self.do_run(src, '*\ndata from the file .\nfrom the file ......\n*\n')
 
   def test_cubescript(self):
-    if self.run_name == 'o2':
+    assert 'asm3' in test_modes
+    if self.run_name == 'asm3':
       self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
     Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS) # remove -g, so we have one test without it by default
