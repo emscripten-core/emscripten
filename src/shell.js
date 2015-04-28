@@ -90,6 +90,8 @@ if (ENVIRONMENT_IS_NODE) {
       throw ex;
     }
   });
+
+  Module['inspect'] = function () { return '[Emscripten Module object]'; };
 }
 else if (ENVIRONMENT_IS_SHELL) {
   if (!Module['print']) Module['print'] = print;
