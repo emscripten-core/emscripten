@@ -345,8 +345,6 @@ var INCLUDE_FULL_LIBRARY = 0; // Whether to include the whole library rather tha
 
 var SHELL_FILE = 0; // set this to a string to override the shell file used
 
-var SHOW_LABELS = 0; // Show labels in the generated code
-
 var RELOCATABLE = 0; // If set to 1, we emit relocatable code from the LLVM backend; both
                      // globals and function pointers are all offset (by gb and fp, respectively)
 
