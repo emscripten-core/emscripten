@@ -165,6 +165,8 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     metadata['declares'] = filter(lambda i64_func: i64_func not in ['getHigh32', 'setHigh32', '__muldi3', '__divdi3', '__remdi3', '__udivdi3', '__uremdi3'], metadata['declares']) # FIXME: do these one by one as normal js lib funcs
 
     # Integrate info from backend
+    if settings['SIDE_MODULE']:
+      settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = [] # we don't need any JS library contents in side modules
     settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
       set(settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + map(shared.JS.to_nice_ident, metadata['declares'])).difference(
         map(lambda x: x[1:], metadata['implementedFunctions'])
@@ -306,7 +308,7 @@ function _emscripten_asm_const_%d(%s) {
       contents = m.groups(0)[0]
       outfile.write(contents + '\n')
       return ''
-    if not settings['BOOTSTRAPPING_STRUCT_INFO']:
+    if not settings['BOOTSTRAPPING_STRUCT_INFO'] and not settings['SIDE_MODULE']:
       funcs_js[1] = re.sub(r'/\* PRE_ASM \*/(.*)\n', lambda m: move_preasm(m), funcs_js[1])
 
     class Counter:

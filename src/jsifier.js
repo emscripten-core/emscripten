@@ -62,7 +62,7 @@ function JSify(data, functionsOnly) {
     var libFuncsToInclude;
     if (INCLUDE_FULL_LIBRARY) {
       assert(!(BUILD_AS_SHARED_LIB || SIDE_MODULE), 'Cannot have both INCLUDE_FULL_LIBRARY and BUILD_AS_SHARED_LIB/SIDE_MODULE set.')
-      libFuncsToInclude = MAIN_MODULE ? DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.slice(0) : [];
+      libFuncsToInclude = (MAIN_MODULE || SIDE_MODULE) ? DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.slice(0) : [];
       for (var key in LibraryManager.library) {
         if (!key.match(/__(deps|postset|inline|asm|sig)$/)) {
           libFuncsToInclude.push(key);
@@ -125,7 +125,7 @@ function JSify(data, functionsOnly) {
 
       var noExport = false;
 
-      if (!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) {
+      if ((!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) || SIDE_MODULE) {
         if (notDep) {
           if (VERBOSE || ident.substr(0, 11) !== 'emscripten_') { // avoid warning on emscripten_* functions which are for internal usage anyhow
             if (ERROR_ON_UNDEFINED_SYMBOLS) error('unresolved symbol: ' + ident);
@@ -136,7 +136,12 @@ function JSify(data, functionsOnly) {
           // emit a stub that will fail at runtime
           LibraryManager.library[shortident] = new Function("Module['printErr']('missing function: " + shortident + "'); abort(-1);");
         } else {
-          LibraryManager.library[shortident] = new Function("return Module['_" + shortident + "'].apply(null, arguments);");
+          LibraryManager.library[shortident] = new Function("return " + (MAIN_MODULE ? '' : 'parent') + "Module['_" + shortident + "'].apply(null, arguments);");
+          if (SIDE_MODULE) {
+            // no dependencies, just emit the thunk
+            Functions.libraryFunctions[finalName] = 1;
+            return processLibraryFunction(LibraryManager.library[shortident], ident, finalName);
+          }
           noExport = true;
         }
       }
@@ -206,7 +211,6 @@ function JSify(data, functionsOnly) {
         EXPORTED_FUNCTIONS[finalName] = 1;
         Functions.libraryFunctions[finalName] = 2;
       }
-      if (SIDE_MODULE) return ';'; // we import into the side module js library stuff from the outside parent 
       if ((EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS)) && !noExport) {
         contentText += '\nModule["' + finalName + '"] = ' + finalName + ';';
       }

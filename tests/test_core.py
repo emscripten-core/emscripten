@@ -3776,7 +3776,7 @@ var Module = {
     ''', side=r'''
       #include "header.h"
       Class::Class(const char *name) { printf("new %s\n", name); }
-    ''', expected=['new main\n'], need_reverse=False)
+    ''', expected=['new main\n'])
 
   def test_random(self):
     src = r'''#include <stdlib.h>
