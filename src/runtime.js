@@ -297,19 +297,10 @@ var Runtime = {
   loadDynamicLibrary: function(lib) {
     // TODO: addRunDep etc., do asynchronously when in the browser. for now we assume we can do a sync xhr, no mem init files in libs, and we ignore the sync xhr lag
     var src = Module['read'](lib);
-    try {
-      var ok = false;
-      var libModule = eval(src)(
-        Runtime.alignFunctionTables(),
-        Module
-      );
-      ok = true;
-    } finally {
-      if (!ok) {
-        Module.printErr('Error in preparing dynamic library');
-        return;
-      }
-    }
+    var libModule = eval(src)(
+      Runtime.alignFunctionTables(),
+      Module
+    );
     // add symbols into global namespace TODO: weak linking etc.
     for (var sym in libModule) {
       if (!Module.hasOwnProperty(sym)) {
