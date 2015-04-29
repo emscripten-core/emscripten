@@ -46,6 +46,7 @@ var ENVIRONMENT_IS_PTHREAD;
 if (!ENVIRONMENT_IS_PTHREAD) ENVIRONMENT_IS_PTHREAD = false; // ENVIRONMENT_IS_PTHREAD=true will have been preset in pthread-main.js. Make it false in the main runtime thread.
 var PthreadWorkerInit; // Collects together variables that are needed at initialization time for the web workers that host pthreads.
 if (!ENVIRONMENT_IS_PTHREAD) PthreadWorkerInit = {};
+var currentScriptUrl = ENVIRONMENT_IS_WORKER ? undefined : document.currentScript.src;
 #endif
 var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
 

@@ -126,11 +126,6 @@ var LibraryPThread = {
     //                    ready to host pthreads. Optional. This is used to mitigate bug https://bugzilla.mozilla.org/show_bug.cgi?id=1049079
     allocateUnusedWorkers: function(numWorkers, onFinishedLoading) {
       Module['print']('Preallocating ' + numWorkers + ' workers for a pthread spawn pool.');
-      // Create a new one.
-      // To spawn a web worker, we must give it a URL of the file to run. This means that for now, the new pthread we are spawning will
-      // load the same Emscripten-compiled output .js file as the thread starts up.
-      var url = window.location.pathname;
-      url = url.substr(url.lastIndexOf('/')+1).replace('.html', '.js');
 
       var numWorkersLoaded = 0;
       for(var i = 0; i < numWorkers; ++i) {
@@ -181,7 +176,7 @@ var LibraryPThread = {
         // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
         worker.postMessage({
             cmd: 'load',
-            url: url,
+            url: currentScriptUrl,
             buffer: HEAPU8.buffer,
             tempDoublePtr: tempDoublePtr,
             PthreadWorkerInit: PthreadWorkerInit
