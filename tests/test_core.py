@@ -3611,7 +3611,7 @@ int 123
 ok
 ''', post_build=self.dlfcn_post_build)
 
-  def dylink_test(self, main, side, expected, header=None, need_reverse=True):
+  def dylink_test(self, main, side, expected, header=None, main_emcc_args=[], need_reverse=True):
     if self.is_emterpreter():
       self.skip('no dylink support in emterpreter yet')
       return
@@ -3641,7 +3641,7 @@ var Module = {
   dynamicLibraries: ['liblib.so'],
 };
   ''')
-      self.emcc_args += ['--pre-js', 'pre.js']
+      self.emcc_args += ['--pre-js', 'pre.js'] + main_emcc_args
 
       self.do_run(main, expected)
     finally:
@@ -3650,7 +3650,7 @@ var Module = {
     if need_reverse:
       # test the reverse as well
       print 'flip'
-      self.dylink_test(side, main, expected, header, need_reverse=False)
+      self.dylink_test(side, main, expected, header, main_emcc_args, need_reverse=False)
 
   def test_dylink_basics(self):
     self.dylink_test('''
@@ -3770,6 +3770,65 @@ var Module = {
       #include "header.h"
       Class::Class(const char *name) { printf("new %s\n", name); }
     ''', expected=['new main\n'])
+
+  def test_dylink_mallocs(self):
+    self.dylink_test(header=r'''
+      #include <stdlib.h>
+      #include <string.h>
+      char *side(const char *data);
+    ''', main=r'''
+      #include <stdio.h>
+      #include "header.h"
+      int main() {
+        char *temp = side("hello through side\n");
+        char *ret = (char*)malloc(strlen(temp)+1);
+        strcpy(ret, temp);
+        temp[1] = 'x';
+        puts(ret);
+        return 0;
+      }
+    ''', side=r'''
+      #include "header.h"
+      char *side(const char *data) {
+        char *ret = (char*)malloc(strlen(data)+1);
+        strcpy(ret, data);
+        return ret;
+      }
+    ''', expected=['hello through side\n'])
+
+  def test_dylink_jslib(self):
+    open('lib.js', 'w').write(r'''
+      mergeInto(LibraryManager.library, {
+        test_lib_func: function(x) {
+          return x + 17.2;
+        }
+      });
+    ''')
+    self.dylink_test(header=r'''
+      extern "C" { extern double test_lib_func(int input); }
+    ''', main=r'''
+      #include <stdio.h>
+      #include "header.h"
+      extern double sidey();
+      int main2() { return 11; }
+      int main() {
+        int input = sidey();
+        double temp = test_lib_func(input);
+        printf("other says %.2f\n", temp);
+        printf("more: %.5f, %d\n", temp, input);
+        return 0;
+      }
+    ''', side=r'''
+      #include <stdio.h>
+      #include "header.h"
+      extern int main2();
+      double sidey() {
+        int temp = main2();
+        printf("main2 sed: %d\n", temp);
+        printf("main2 sed: %u, %c\n", temp, temp/2);
+        return test_lib_func(temp);
+      }
+    ''', expected='other says 45.2', main_emcc_args=['--js-library', 'lib.js'])
 
   def test_random(self):
     src = r'''#include <stdlib.h>
