@@ -705,17 +705,17 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # Go over libraries to figure out which we must include
   def maybe_noexcept(name):
     if shared.Settings.DISABLE_EXCEPTION_CATCHING:
-      base, suffix = name.split('.')
-      name = base + '_noexcept' + '.' + suffix
+      name += '_noexcept'
     return name
   ret = []
   has = need = None
-  for name, create, library_symbols, deps in [(maybe_noexcept('libcxx.a'), create_libcxx,    libcxx_symbols,    ['libcextra.bc', 'libcxxabi.bc']),
-                                              ('libcextra.bc',             create_libcextra, libcextra_symbols, ['libc.bc']),
-                                              ('libcxxabi.bc',             create_libcxxabi, libcxxabi_symbols, ['libc.bc']),
-                                              ('gl.bc',                    create_gl,        gl_symbols,        ['libc.bc']),
-                                              ('libc.bc',                  create_libc,      libc_symbols,      [])]:
-    force_this = force_all or name in force
+  for shortname, suffix, create, library_symbols, deps in [(maybe_noexcept('libcxx'), 'a',  create_libcxx,    libcxx_symbols,    ['libcextra', 'libcxxabi']),
+                                                           ('libcextra',              'bc', create_libcextra, libcextra_symbols, ['libc']),
+                                                           ('libcxxabi',              'bc', create_libcxxabi, libcxxabi_symbols, ['libc']),
+                                                           ('gl',                     'bc', create_gl,        gl_symbols,        ['libc']),
+                                                           ('libc',                   'bc', create_libc,      libc_symbols,      [])]:
+    name = shortname + '.' + suffix
+    force_this = force_all or shortname in force
     if not force_this:
       need = set()
       has = set()
