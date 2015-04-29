@@ -108,16 +108,16 @@ class RunnerCore(unittest.TestCase):
     open(filename, 'w').write(js.replace('run();', 'run(%s + Module["arguments"]);' % str(args)))
 
   def prep_ll_run(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
-    if ll_file.endswith(('.bc', '.o')):
-      if ll_file != filename + '.o':
-        shutil.copy(ll_file, filename + '.o')
-      Building.llvm_dis(filename)
-    else:
-      shutil.copy(ll_file, filename + '.o.ll')
-
     #force_recompile = force_recompile or os.stat(filename + '.o.ll').st_size > 50000 # if the file is big, recompile just to get ll_opts # Recompiling just for dfe in ll_opts is too costly
 
     if Building.LLVM_OPTS or force_recompile or build_ll_hook:
+      if ll_file.endswith(('.bc', '.o')):
+        if ll_file != filename + '.o':
+          shutil.copy(ll_file, filename + '.o')
+        Building.llvm_dis(filename)
+      else:
+        shutil.copy(ll_file, filename + '.o.ll')
+
       Building.ll_opts(filename)
       if build_ll_hook:
         need_post = build_ll_hook(filename)
@@ -131,6 +131,14 @@ class RunnerCore(unittest.TestCase):
         Building.llvm_as(filename)
         shutil.move(filename + '.o.ll', filename + '.o.ll.post') # for comparisons later
         Building.llvm_dis(filename)
+
+      Building.llvm_as(filename)
+    else:
+      if ll_file.endswith('.ll'):
+        safe_copy(ll_file, filename + '.o.ll')
+        Building.llvm_as(filename)
+      else:
+        safe_copy(ll_file, filename + '.o')
 
   # Generate JS from ll, and optionally modify the generated JS with a post_build function. Note
   # that post_build is called on unoptimized JS, so we send it to emcc (otherwise, if run after
@@ -155,7 +163,7 @@ class RunnerCore(unittest.TestCase):
       transform.write('\nprocess(sys.argv[1])\n')
       transform.close()
       transform_args = ['--js-transform', "%s %s" % (PYTHON, transform_filename)]
-    Building.emcc(filename + '.o.ll', Settings.serialize() + emcc_args + transform_args + Building.COMPILER_TEST_OPTS, filename + '.o.js')
+    Building.emcc(filename + '.o', Settings.serialize() + emcc_args + transform_args + Building.COMPILER_TEST_OPTS, filename + '.o.js')
     if post2: post2(filename + '.o.js')
 
   # Build JavaScript code from source code
