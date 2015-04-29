@@ -6374,28 +6374,37 @@ def process(filename):
   def test_webidl(self):
     if self.run_name == 'asm2': self.emcc_args += ['--closure', '1', '-g1'] # extra testing
 
-    output = Popen([PYTHON, path_from_root('tools', 'webidl_binder.py'),
-                            path_from_root('tests', 'webidl', 'test.idl'),
-                            'glue']).communicate()[0]
-    assert os.path.exists('glue.cpp')
-    assert os.path.exists('glue.js')
+    def do_test_in_mode(mode):
+      # Force IDL checks mode
+      os.environ['IDL_CHECKS'] = mode
 
-    # Export things on "TheModule". This matches the typical use pattern of the bound library
-    # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
-    open('export.js', 'w').write('''this['TheModule'] = Module;\n''')
-    self.emcc_args += ['--post-js', 'glue.js', '--post-js', 'export.js']
-    shutil.copyfile(path_from_root('tests', 'webidl', 'test.h'), self.in_dir('test.h'))
-    shutil.copyfile(path_from_root('tests', 'webidl', 'test.cpp'), self.in_dir('test.cpp'))
-    src = open('test.cpp').read()
-    def post(filename):
-      src = open(filename, 'a')
-      src.write('\n\n')
-      src.write('var TheModule = this.TheModule;\n')
-      src.write('\n\n')
-      src.write(open(path_from_root('tests', 'webidl', 'post.js')).read())
-      src.write('\n\n')
-      src.close()
-    self.do_run(src, open(path_from_root('tests', 'webidl', 'output.txt')).read(), post_build=(None, post))
+      output = Popen([PYTHON, path_from_root('tools', 'webidl_binder.py'),
+                              path_from_root('tests', 'webidl', 'test.idl'),
+                              'glue']).communicate()[0]
+      assert os.path.exists('glue.cpp')
+      assert os.path.exists('glue.js')
+
+      # Export things on "TheModule". This matches the typical use pattern of the bound library
+      # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
+      open('export.js', 'w').write('''this['TheModule'] = Module;\n''')
+      self.emcc_args += ['--post-js', 'glue.js', '--post-js', 'export.js']
+      shutil.copyfile(path_from_root('tests', 'webidl', 'test.h'), self.in_dir('test.h'))
+      shutil.copyfile(path_from_root('tests', 'webidl', 'test.cpp'), self.in_dir('test.cpp'))
+      src = open('test.cpp').read()
+      def post(filename):
+        src = open(filename, 'a')
+        src.write('\n\n')
+        src.write('var TheModule = this.TheModule;\n')
+        src.write('\n\n')
+        src.write(open(path_from_root('tests', 'webidl', 'post.js')).read())
+        src.write('\n\n')
+        src.close()
+      self.do_run(src, open(path_from_root('tests', 'webidl', "output_%s.txt" % mode)).read(), post_build=(None, post),
+        output_nicerizer=(lambda out, err: out))
+
+    do_test_in_mode('ALL')
+    do_test_in_mode('FAST')
+    do_test_in_mode('DEFAULT')
 
   ### Tests for tools
 

@@ -92,5 +92,8 @@ struct_array[7].attr1 == 14
 struct_array[7].attr2 == 18
 struct_ptr_array[0]->attr1 == 100
 struct_ptr_array[0]->attr2 == 101
+Parent:0
+Parent:42
+|abc|1|(null)|123|
 
 done.
