@@ -685,6 +685,8 @@ for (var named in NAMED_GLOBALS) {
 Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
 ''' % ', '.join('"' + k + '": ' + str(v) for k, v in metadata['namedGlobals'].iteritems())
 
+      receiving += ''.join(["Module['%s'] = Module['%s']\n" % (k, v) for k, v in metadata['aliases'].iteritems()])
+
     funcs_js = ['''
 %s
 Module%s = %s;

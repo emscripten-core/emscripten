@@ -3761,6 +3761,23 @@ var Module = {
       static Class c("side");
     ''', expected=['new main\nnew side\n', 'new side\nnew main\n'])
 
+  def test_dylink_class(self):
+    self.dylink_test(header=r'''
+      #include <stdio.h>
+      struct Class {
+        Class(const char *name);
+      };
+    ''', main=r'''
+      #include "header.h"
+      int main() {
+        Class c("main");
+        return 0;
+      }
+    ''', side=r'''
+      #include "header.h"
+      Class::Class(const char *name) { printf("new %s\n", name); }
+    ''', expected=['new main\n'], need_reverse=False)
+
   def test_random(self):
     src = r'''#include <stdlib.h>
 #include <stdio.h>
