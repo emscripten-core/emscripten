@@ -6,6 +6,7 @@ target triple = "asmjs-unknown-emscripten"
 @.str1 = private unnamed_addr constant [6 x i8] c"more\0A\00", align 1
 
 define i32 @main() {
+  %wimpy = trunc i32 100 to i8
   %call0 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([6 x i8]* @.str1, i32 0, i32 0))
   %chak = icmp ne i32 %call0, 12345678
   br i1 %chak, label %middle, label %if.then
@@ -13,7 +14,6 @@ define i32 @main() {
 middle:
   %retval = alloca i32, align 4
   store i32 0, i32* %retval
-  %wimpy = trunc i32 100 to i8
   %buffy = inttoptr i8 %wimpy to i16*
   %call = call i32 @setjmp(i16* %buffy) returns_twice ; 20
   %tobool = icmp ne i32 %call, 0 ; 20
