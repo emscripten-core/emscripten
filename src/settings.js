@@ -55,7 +55,6 @@ var GLOBAL_BASE = -1; // where global data begins; the start of static memory. -
                       // default, any other value will be used as an override
 
 // Code embetterments
-var MICRO_OPTS = 1; // Various micro-optimizations, like nativizing variables
 var USE_TYPED_ARRAYS = 2; // Use typed arrays for the heap. See https://github.com/kripken/emscripten/wiki/Code-Generation-Modes/
                           // 2 is a single heap, accessible through views as int8, int32, etc. This is
                           //   the only supported mode.
@@ -116,8 +115,6 @@ var SIMD = 0; // Whether to allow autovectorized SIMD code ( https://github.com/
               // any SIMD output at all.)
 
 var CLOSURE_COMPILER = 0; // Whether closure compiling is being run on this output
-var CLOSURE_ANNOTATIONS = 0; // If set, the generated code will be annotated for the closure
-                             // compiler. This potentially lets closure optimize the code better.
 
 var SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all in
                              // functions that have no basic stack usage. But, they
@@ -126,7 +123,6 @@ var SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all
                              // a lot can exhaust the stack very fast, with this option.
                              // In particular, be careful with the autodebugger! (We do turn
                              // this off automatically in that case, though.)
-var INLINE_LIBRARY_FUNCS = 1; // Will inline library functions that have __inline defined
 var INLINING_LIMIT = 0;  // A limit on inlining. If 0, we will inline normally in LLVM and
                          // closure. If greater than 0, we will *not* inline in LLVM, and
                          // we will prevent inlining of functions of this size or larger
@@ -348,8 +344,6 @@ var INCLUDE_FULL_LIBRARY = 0; // Whether to include the whole library rather tha
 
 var SHELL_FILE = 0; // set this to a string to override the shell file used
 
-var SHOW_LABELS = 0; // Show labels in the generated code
-
 var RELOCATABLE = 0; // If set to 1, we emit relocatable code from the LLVM backend; both
                      // globals and function pointers are all offset (by gb and fp, respectively)
 
@@ -501,9 +495,6 @@ var EMTERPRETIFY_ADVISE = 0; // Performs a static analysis to suggest which func
 
 var RUNNING_JS_OPTS = 0; // whether js opts will be run, after the main compiler
 var BOOTSTRAPPING_STRUCT_INFO = 0; // whether we are in the generate struct_info bootstrap phase
-
-var COMPILER_ASSERTIONS = 0; // costly (slow) compile-time assertions
-var COMPILER_FASTPATHS = 1; // use fast-paths to speed up compilation
 
 var EMSCRIPTEN_TRACING = 0; // Add some calls to emscripten tracing APIs
 
