@@ -170,10 +170,6 @@ if (NO_BROWSER) {
   DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.filter(function(func) { return func !== '$Browser' });
 }
 
-// Settings sanity checks
-
-assert(!(!NAMED_GLOBALS && BUILD_AS_SHARED_LIB), 'shared libraries must have named globals');
-
 // Output some info and warnings based on settings
 
 if (VERBOSE) printErr('VERBOSE is on, this generates a lot of output and can slow down compilation');

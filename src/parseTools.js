@@ -349,7 +349,7 @@ function isIndexableGlobal(ident) {
 }
 
 function makeGlobalUse(ident) {
-  if (!NAMED_GLOBALS && isIndexableGlobal(ident)) {
+  if (isIndexableGlobal(ident)) {
     var index = Variables.indexedGlobals[ident];
     if (index === undefined) {
       // we are accessing this before we index globals, likely from the library. mark as unindexable
