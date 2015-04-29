@@ -6372,9 +6372,13 @@ def process(filename):
       self.do_run(src, '|hello|43|world|41|', post_build=post)
 
   def test_webidl(self):
-    if self.run_name == 'asm2': self.emcc_args += ['--closure', '1', '-g1'] # extra testing
+    assert 'asm2' in test_modes
+    if self.run_name == 'asm2':
+      self.emcc_args += ['--closure', '1', '-g1'] # extra testing
+      Settings.MODULARIZE = 1 # avoid closure minified names competing with our test code in the global name space
 
     def do_test_in_mode(mode):
+      print 'testing mode', mode
       # Force IDL checks mode
       os.environ['IDL_CHECKS'] = mode
 
@@ -6386,7 +6390,10 @@ def process(filename):
 
       # Export things on "TheModule". This matches the typical use pattern of the bound library
       # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
-      open('export.js', 'w').write('''this['TheModule'] = Module;\n''')
+      open('export.js', 'w').write('''
+// test purposes: remove printErr output, whose order is unpredictable when compared to print
+Module.printErr = Module['printErr'] = function(){};
+''')
       self.emcc_args += ['--post-js', 'glue.js', '--post-js', 'export.js']
       shutil.copyfile(path_from_root('tests', 'webidl', 'test.h'), self.in_dir('test.h'))
       shutil.copyfile(path_from_root('tests', 'webidl', 'test.cpp'), self.in_dir('test.cpp'))
@@ -6394,7 +6401,10 @@ def process(filename):
       def post(filename):
         src = open(filename, 'a')
         src.write('\n\n')
-        src.write('var TheModule = this.TheModule;\n')
+        if self.run_name == 'asm2':
+          src.write('var TheModule = Module();\n')
+        else:
+          src.write('var TheModule = Module;\n')
         src.write('\n\n')
         src.write(open(path_from_root('tests', 'webidl', 'post.js')).read())
         src.write('\n\n')
