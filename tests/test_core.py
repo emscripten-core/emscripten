@@ -910,18 +910,11 @@ base align: 0, 0, 0, 0'''])
       test_path = path_from_root('tests', 'core', 'test_strings')
       src, output = (test_path + s for s in ('.in', '.out'))
 
-      for named in (0, 1):
-        print named
+      self.do_run_from_file(src, output, ['wowie', 'too', '74'])
 
-        # TODO: test only worked in non-fastcomp
-        if named: continue
-
-        Settings.NAMED_GLOBALS = named
-        self.do_run_from_file(src, output, ['wowie', 'too', '74'])
-
-        if self.emcc_args == []:
-          gen = open(self.in_dir('src.cpp.o.js')).read()
-          assert ('var __str1;' in gen) == named
+      if self.emcc_args == []:
+        gen = open(self.in_dir('src.cpp.o.js')).read()
+        assert ('var __str1;' in gen) == named
 
   def test_strcmp_uni(self):
     test_path = path_from_root('tests', 'core', 'test_strcmp_uni')
