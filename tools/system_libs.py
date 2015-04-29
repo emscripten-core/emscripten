@@ -90,7 +90,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     return in_temp(lib_filename)
 
   # libc
-  def create_libc():
+  def create_libc(libname):
     logging.debug(' building libc for cache')
     libc_files = [
       'dlmalloc.c',
@@ -268,10 +268,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     ]
     for directory, sources in musl_files:
       libc_files += [os.path.join('libc', 'musl', 'src', directory, source) for source in sources]
-    return build_libc('libc.bc', libc_files, ['-O2'])
+    return build_libc(libname, libc_files, ['-O2'])
 
   # libcextra
-  def create_libcextra():
+  def create_libcextra(libname):
     logging.debug('building libcextra for cache')
     musl_files = [
        ['compat', [
@@ -579,10 +579,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     libcextra_files = []
     for directory, sources in musl_files:
       libcextra_files += [os.path.join('libc', 'musl', 'src', directory, source) for source in sources]
-    return build_libc('libcextra.bc', libcextra_files, ['-O2'])
+    return build_libc(libname, libcextra_files, ['-O2'])
 
   # libcxx
-  def create_libcxx():
+  def create_libcxx(libname):
     logging.debug('building libcxx for cache')
     libcxx_files = [
       'algorithm.cpp',
@@ -608,10 +608,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'regex.cpp',
       'strstream.cpp'
     ]
-    return build_libcxx(os.path.join('system', 'lib', 'libcxx'), 'libcxx.a', libcxx_files, ['-Oz', '-Wno-warn-absolute-paths', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')], has_noexcept_version=True)
+    return build_libcxx(os.path.join('system', 'lib', 'libcxx'), libname, libcxx_files, ['-Oz', '-Wno-warn-absolute-paths', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')], has_noexcept_version=True)
 
   # libcxxabi - just for dynamic_cast for now
-  def create_libcxxabi():
+  def create_libcxxabi(libname):
     logging.debug('building libcxxabi for cache')
     libcxxabi_files = [
       'abort_message.cpp',
@@ -627,10 +627,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'private_typeinfo.cpp',
       os.path.join('..', '..', 'libcxx', 'new.cpp'),
     ]
-    return build_libcxx(os.path.join('system', 'lib', 'libcxxabi', 'src'), 'libcxxabi.bc', libcxxabi_files, ['-Oz', '-Wno-warn-absolute-paths', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')])
+    return build_libcxx(os.path.join('system', 'lib', 'libcxxabi', 'src'), libname, libcxxabi_files, ['-Oz', '-Wno-warn-absolute-paths', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')])
 
   # gl
-  def create_gl():
+  def create_gl(libname): # libname is ignored, this is just one .o file
     o = in_temp('gl.o')
     check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'gl.c'), '-o', o])
     return o
@@ -737,7 +737,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     if force_this or (len(need) > 0 and not only_forced):
       # We need to build and link the library in
       logging.debug('including %s' % name)
-      libfile = shared.Cache.get(name, create, extension=name.split('.')[-1])
+      libfile = shared.Cache.get(name, lambda: create(name), extension=suffix)
       ret.append(libfile)
       force = force.union(deps)
   ret.sort(key=lambda x: x.endswith('.a')) # make sure to put .a files at the end.
