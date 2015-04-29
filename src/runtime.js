@@ -7,12 +7,9 @@
 // itself is as optimized as possible - no unneeded runtime checks).
 
 var RuntimeGenerator = {
-  alloc: function(size, type, init, sep, ignoreAlign) {
+  alloc: function(size, type, sep, ignoreAlign) {
     sep = sep || ';';
     var ret = type + 'TOP';
-    if (init) {
-      ret += sep + '_memset(' + type + 'TOP, 0, ' + size + ')';
-    }
     ret += sep + type + 'TOP = (' + type + 'TOP + ' + size + ')|0';
     if ({{{ STACK_ALIGN }}} > 1 && !ignoreAlign) {
       ret += sep + RuntimeGenerator.alignMemory(type + 'TOP', {{{ STACK_ALIGN }}});
@@ -23,7 +20,7 @@ var RuntimeGenerator = {
   // An allocation that lives as long as the current function call
   stackAlloc: function(size, sep) {
     sep = sep || ';';
-    var ret = RuntimeGenerator.alloc(size, 'STACK', false, sep, (isNumber(size) && parseInt(size) % {{{ STACK_ALIGN }}} == 0));
+    var ret = RuntimeGenerator.alloc(size, 'STACK', sep, (isNumber(size) && parseInt(size) % {{{ STACK_ALIGN }}} == 0));
     if (ASSERTIONS) {
       ret += sep + '(assert(' + asmCoercion('(STACKTOP|0) < (STACK_MAX|0)', 'i32') + ')|0)';
     }
@@ -53,14 +50,14 @@ var RuntimeGenerator = {
   // called, takes control of STATICTOP)
   staticAlloc: function(size) {
     if (ASSERTIONS) size = '(assert(!staticSealed),' + size + ')'; // static area must not be sealed
-    var ret = RuntimeGenerator.alloc(size, 'STATIC', INIT_HEAP);
+    var ret = RuntimeGenerator.alloc(size, 'STATIC');
     return ret;
   },
 
   // allocation on the top of memory, adjusted dynamically by sbrk
   dynamicAlloc: function(size) {
     if (ASSERTIONS) size = '(assert(DYNAMICTOP > 0),' + size + ')'; // dynamic area must be ready
-    var ret = RuntimeGenerator.alloc(size, 'DYNAMIC', INIT_HEAP);
+    var ret = RuntimeGenerator.alloc(size, 'DYNAMIC');
     ret += '; if (DYNAMICTOP >= TOTAL_MEMORY) { var success = enlargeMemory(); if (!success) { DYNAMICTOP = ret; return 0; } }'
     return ret;
   },
