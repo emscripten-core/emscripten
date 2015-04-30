@@ -3857,6 +3857,30 @@ var Module = {
       }
     ''', expected='other says 45.2', main_emcc_args=['--js-library', 'lib.js'])
 
+  def test_dylink_global_var_jslib(self):
+    open('lib.js', 'w').write(r'''
+      mergeInto(LibraryManager.library, {
+        jslib_x: 'allocate(1, "i32*", ALLOC_STATIC)',
+        jslib_x__postset: 'HEAP32[_jslib_x>>2] = 148;',
+      });
+    ''')
+    self.dylink_test(main=r'''
+      #include <stdio.h>
+      extern "C" int jslib_x;
+      extern void call_side();
+      int main() {
+        printf("main: jslib_x is %d.\n", jslib_x);
+        call_side();
+        return 0;
+      }
+    ''', side=r'''
+      #include <stdio.h>
+      extern "C" int jslib_x;
+      void call_side() {
+        printf("side: jslib_x is %d.\n", jslib_x);
+      }
+    ''', expected=['main: jslib_x is 148.\nside: jslib_x is 148.\n'], main_emcc_args=['--js-library', 'lib.js'])
+
   def test_dylink_syslibs(self): # one module uses libcextra, need to force its inclusion when it isn't the main
     try:
       os.environ['EMCC_FORCE_STDLIBS'] = 'libc,libcextra'
