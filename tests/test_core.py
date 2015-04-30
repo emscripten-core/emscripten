@@ -6631,6 +6631,7 @@ Module.printErr = Module['printErr'] = function(){};
       map_filename = out_filename + '.map'
       data = json.load(open(map_filename, 'r'))
       self.assertPathsIdentical(out_filename, data['file'])
+      assert len(data['sources']) == 1, data['sources']
       self.assertPathsIdentical(src_filename, data['sources'][0])
       self.assertTextDataIdentical(src, data['sourcesContent'][0])
       mappings = json.loads(jsrun.run_js(
