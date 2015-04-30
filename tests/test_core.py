@@ -3908,6 +3908,26 @@ var Module = {
     finally:
       del os.environ['EMCC_FORCE_STDLIBS']
 
+  def test_dylink_iostream(self):
+    try:
+      os.environ['EMCC_FORCE_STDLIBS'] = 'libcxx'
+      self.dylink_test(header=r'''
+        #include <iostream>
+        #include <string>
+        std::string side();
+      ''', main=r'''
+        #include "header.h"
+        int main() {
+          std::cout << "hello from main " << side() << std::endl;
+          return 0;
+        }
+      ''', side=r'''
+        #include "header.h"
+        std::string side() { return "and hello from side"; }
+      ''', expected=['hello from main and hello from side\n'])
+    finally:
+      del os.environ['EMCC_FORCE_STDLIBS']
+
   def test_random(self):
     src = r'''#include <stdlib.h>
 #include <stdio.h>
