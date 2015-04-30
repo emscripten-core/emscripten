@@ -3782,6 +3782,22 @@ var Module = {
       int x = 123;
     ''', expected=['extern is 123.\n'])
 
+  def test_dylink_global_var_modded(self):
+    self.dylink_test(main=r'''
+      #include <stdio.h>
+      extern int x;
+      int main() {
+        printf("extern is %d.\n", x);
+        return 0;
+      }
+    ''', side=r'''
+      int x = 123;
+      struct Initter {
+        Initter() { x = 456; }
+      };
+      Initter initter;
+    ''', expected=['extern is 456.\n'])
+
   def test_dylink_mallocs(self):
     self.dylink_test(header=r'''
       #include <stdlib.h>
