@@ -2830,7 +2830,6 @@ The current type of b is: 9
     self.banned_js_engines = [NODE_JS] # node's global scope behaves differently than everything else, needs investigation FIXME
     Settings.LINKABLE = 1
     Settings.BUILD_AS_SHARED_LIB = 2
-    Settings.NAMED_GLOBALS = 1
 
     self.build(supp, self.get_dir(), self.in_dir('supp.cpp'))
     shutil.move(self.in_dir('supp.cpp.o.js'), self.in_dir('liblib.so'))
