@@ -3770,6 +3770,18 @@ var Module = {
       Class::Class(const char *name) { printf("new %s\n", name); }
     ''', expected=['new main\n'])
 
+  def test_dylink_global_var(self):
+    self.dylink_test(main=r'''
+      #include <stdio.h>
+      extern int x;
+      int main() {
+        printf("extern is %d.\n", x);
+        return 0;
+      }
+    ''', side=r'''
+      int x = 123;
+    ''', expected=['extern is 123.\n'])
+
   def test_dylink_mallocs(self):
     self.dylink_test(header=r'''
       #include <stdlib.h>
