@@ -623,12 +623,12 @@ function ftCall_%s(%s) {%s
       del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
     except:
       pass
-    if not settings['MAIN_MODULE'] and not settings['SIDE_MODULE']:
+    if not settings['RELOCATABLE']:
       global_vars = metadata['externs']
     else:
       global_vars = [] # linkable code accesses globals through function calls
     global_funcs = list(set([key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2]).difference(set(global_vars)).difference(implemented_functions))
-    if settings['MAIN_MODULE'] or settings['SIDE_MODULE']:
+    if settings['RELOCATABLE']:
       global_funcs += ['g$' + extern for extern in metadata['externs']]
       side = 'parent' if settings['SIDE_MODULE'] else ''
       def check(extern):

@@ -932,7 +932,6 @@ try:
   if shared.Settings.MAIN_MODULE:
     assert not shared.Settings.SIDE_MODULE
     shared.Settings.INCLUDE_FULL_LIBRARY = 1
-    shared.Settings.EXPORT_ALL = 1
   elif shared.Settings.SIDE_MODULE:
     assert not shared.Settings.MAIN_MODULE
     shared.Settings.FINALIZE_ASM_JS = 0 # side modules are not finalized until after relocation
@@ -942,6 +941,7 @@ try:
     assert shared.Settings.ASM_JS, 'module linking requires asm.js output (-s ASM_JS=1)'
     shared.Settings.LINKABLE = 1 # TODO: add FORCE_DCE option for the brave people that do want to dce here and in side modules
     debug_level = max(debug_level, 2)
+    shared.Settings.RELOCATABLE = 1
 
   if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
     shared.Settings.ALIASING_FUNCTION_POINTERS = 0
@@ -969,6 +969,9 @@ try:
   if shared.Settings.RELOCATABLE:
     assert shared.Settings.GLOBAL_BASE < 1
     shared.Settings.EMULATED_FUNCTION_POINTERS = 1
+    shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = shared.Settings.WARN_ON_UNDEFINED_SYMBOLS = 0
+    if not shared.Settings.SIDE_MODULE:
+      shared.Settings.EXPORT_ALL = 1
 
   if shared.Settings.EMTERPRETIFY:
     shared.Settings.FINALIZE_ASM_JS = 0

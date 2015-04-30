@@ -2846,8 +2846,6 @@ The current type of b is: 9
     if self.emcc_args:
       self.emcc_args += ['--memory-init-file', '0']
 
-    Settings.RELOCATABLE = 1
-    Settings.EMULATED_FUNCTION_POINTERS = 1
     Settings.DISABLE_EXCEPTION_CATCHING = 1
 
     return True
@@ -3621,8 +3619,6 @@ ok
     emcc_args = self.emcc_args[:]
     try:
       # general settings
-      Settings.RELOCATABLE = 1
-      Settings.EMULATED_FUNCTION_POINTERS = 1
       Settings.DISABLE_EXCEPTION_CATCHING = 1
       self.emcc_args += ['--memory-init-file', '0']
 
