@@ -3951,6 +3951,15 @@ var Module = {
     finally:
       del os.environ['EMCC_FORCE_STDLIBS']
 
+  #def test_dylink_bullet(self):
+  #  Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'bullet', 'src')]
+  #  side = get_bullet_library(self, True)
+  #  self.dylink_test(main=open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(),
+  #                   side=side,
+  #                   expected=[open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(), # different roundings
+  #                             open(path_from_root('tests', 'bullet', 'output2.txt'), 'r').read(),
+  #                             open(path_from_root('tests', 'bullet', 'output3.txt'), 'r').read()])
+
   def test_random(self):
     src = r'''#include <stdlib.h>
 #include <stdio.h>
