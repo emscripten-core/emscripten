@@ -3936,6 +3936,42 @@ var Module = {
     finally:
       del os.environ['EMCC_FORCE_STDLIBS']
 
+  def test_dylink_hyper_dupe(self):
+    if self.is_emterpreter(): return self.skip('todo')
+
+    # test hyper-dynamic linking, and test duplicate warnings
+    open('third.cpp', 'w').write(r'''
+      int sidef() { return 36; }
+      int sideg = 49;
+      int bsidef() { return 536; }
+    ''')
+    Popen([PYTHON, EMCC, 'third.cpp', '-s', 'SIDE_MODULE=1'] + Building.COMPILER_TEST_OPTS + self.emcc_args + ['-o', 'third.js']).communicate()
+
+    self.dylink_test(main=r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+      extern int sidef();
+      extern int sideg;
+      extern int bsidef();
+      extern int bsideg;
+      int main() {
+        EM_ASM({
+          Runtime.loadDynamicLibrary('third.js'); // hyper-dynamic! works at least for functions (and consts not used in same block)
+        });
+        printf("sidef: %d, sideg: %d.\n", sidef(), sideg);
+        printf("bsidef: %d.\n", bsidef());
+      }
+    ''', side=r'''
+      int sidef() { return 10; } // third.js will try to override these, but fail!
+      int sideg = 20;
+    ''', expected=['sidef: 10, sideg: 20.\nbsidef: 536.\n'])
+
+    if Settings.ASSERTIONS:
+      print 'check warnings'
+      full = run_js('src.cpp.o.js', engine=JS_ENGINES[0], full_output=True, stderr=STDOUT)
+      self.assertContained("warning: trying to dynamically load symbol '__Z5sidefv' (from 'third.js') that already exists", full)
+      self.assertContained("warning: trying to dynamically load symbol '_sideg' (from 'third.js') that already exists", full)
+
   def test_dylink_zlib(self):
     Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'zlib')]
     try:

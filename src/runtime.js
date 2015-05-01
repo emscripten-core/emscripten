@@ -306,6 +306,11 @@ var Runtime = {
       if (!Module.hasOwnProperty(sym)) {
         Module[sym] = libModule[sym];
       }
+#if ASSERTIONS
+      else if (sym[0] === '_') {
+        Module.printErr("warning: trying to dynamically load symbol '" + sym + "' (from '" + lib + "') that already exists (duplicate symbol? or weak linking, which isn't supported yet?");
+      }
+#endif
     }
     Runtime.loadedDynamicLibraries.push(libModule);
   },
