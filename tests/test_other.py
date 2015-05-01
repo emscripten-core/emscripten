@@ -2,15 +2,9 @@ import multiprocessing, os, pipes, re, shutil, subprocess, sys
 import glob
 import tools.shared
 from tools.shared import *
-from runner import RunnerCore, path_from_root, get_bullet_library
+from runner import RunnerCore, path_from_root, get_zlib_library, get_bullet_library
 
 class other(RunnerCore):
-  def get_zlib_library(self):
-    if WINDOWS:
-      return self.get_library('zlib', os.path.join('libz.a'), configure=['emconfigure.bat'], configure_args=['cmake', '.', '-DBUILD_SHARED_LIBS=OFF'], make=['mingw32-make'], make_args=[])
-    else:
-      return self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'])
-
   def test_emcc(self):
     for compiler in [EMCC, EMXX]:
       shortcompiler = os.path.basename(compiler)
@@ -910,7 +904,7 @@ This pointer might make sense in another type signature: i: asm['_my_func']'''))
     try:
       os.environ['EMCC_FORCE_STDLIBS'] = 'libcextra'
       test('zlib', '', open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(), 
-                       self.get_zlib_library(),
+                       get_zlib_library(self),
                        open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
                        args=['-I' + path_from_root('tests', 'zlib')], suffix='c')
     finally:
@@ -994,7 +988,7 @@ This pointer might make sense in another type signature: i: asm['_my_func']'''))
     ]:
       Building.COMPILER_TEST_OPTS = test_opts
       test('zlib', path_from_root('tests', 'zlib', 'example.c'), 
-                   self.get_zlib_library(),
+                   get_zlib_library(self),
                    open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
                    expected_ranges,
                    args=['-I' + path_from_root('tests', 'zlib')], suffix='c')

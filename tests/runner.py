@@ -743,6 +743,12 @@ class BrowserCore(RunnerCore):
 
 ###################################################################################################
 
+def get_zlib_library(runner_core):
+  if WINDOWS:
+    return runner_core.get_library('zlib', os.path.join('libz.a'), configure=['emconfigure.bat'], configure_args=['cmake', '.', '-DBUILD_SHARED_LIBS=OFF'], make=['mingw32-make'], make_args=[])
+  else:
+    return runner_core.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'])
+
 # Both test_core and test_other access the Bullet library, share the access here to avoid duplication.
 def get_bullet_library(runner_core, use_cmake):
   if use_cmake:
