@@ -1013,6 +1013,10 @@ void eliminate(Ref ast, bool memSafe=false) {
                   unprocessVariable(name);
                   processVariable(name);
                 }
+              } else if (node[0] == CALL) {
+                // no side effects, so this must be a Math.* call or such. We can just ignore it and all children
+                node[0]->setString(NAME);
+                node[1]->setString(EMPTY);
               }
             });
           }
