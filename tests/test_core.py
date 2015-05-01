@@ -5,7 +5,7 @@ from textwrap import dedent
 import tools.shared
 from tools.shared import *
 from tools.line_endings import check_line_endings
-from runner import RunnerCore, path_from_root, checked_sanity, test_modes, get_bullet_library
+from runner import RunnerCore, path_from_root, checked_sanity, test_modes, get_zlib_library, get_bullet_library
 
 class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
   def is_emterpreter(self):
@@ -3608,7 +3608,7 @@ int 123
 ok
 ''', post_build=self.dlfcn_post_build)
 
-  def dylink_test(self, main, side, expected, header=None, main_emcc_args=[], need_reverse=True):
+  def dylink_test(self, main, side, expected, header=None, main_emcc_args=[], force_c=False, need_reverse=True):
     if self.is_emterpreter():
       self.skip('no dylink support in emterpreter yet')
       return
@@ -3625,7 +3625,16 @@ ok
       # side settings
       Settings.MAIN_MODULE = 0
       Settings.SIDE_MODULE = 1
-      self.build(side, self.get_dir(), 'liblib.cpp')
+      if type(side) == str:
+        base = 'liblib.cpp' if not force_c else 'liblib.c'
+        try_delete(base + '.o.js')
+        self.build(side, self.get_dir(), base)
+        if force_c:
+          shutil.move(base + '.o.js', 'liblib.cpp.o.js')
+      else:
+        # side is just a library
+        try_delete('liblib.cpp.o.js')
+        Popen([PYTHON, EMCC] + side + self.emcc_args + Settings.serialize() + ['-o', os.path.join(self.get_dir(), 'liblib.cpp.o.js')]).communicate()
       shutil.move('liblib.cpp.o.js', 'liblib.so')
 
       # main settings
@@ -3638,14 +3647,20 @@ var Module = {
   ''')
       self.emcc_args += ['--pre-js', 'pre.js'] + main_emcc_args
 
-      self.do_run(main, expected)
+      if type(main) == str:
+        self.do_run(main, expected, force_c=force_c)
+      else:
+        # main is just a library
+        try_delete('src.cpp.o.js')
+        Popen([PYTHON, EMCC] + main + self.emcc_args + Settings.serialize() + ['-o', os.path.join(self.get_dir(), 'src.cpp.o.js')]).communicate()
+        self.do_run(None, expected, no_build=True)
     finally:
       self.emcc_args = emcc_args[:]
 
     if need_reverse:
       # test the reverse as well
       print 'flip'
-      self.dylink_test(side, main, expected, header, main_emcc_args, need_reverse=False)
+      self.dylink_test(side, main, expected, header, main_emcc_args, force_c, need_reverse=False)
 
   def test_dylink_basics(self):
     self.dylink_test('''
@@ -3921,6 +3936,18 @@ var Module = {
         #include "header.h"
         std::string side() { return "and hello from side"; }
       ''', expected=['hello from main and hello from side\n'])
+    finally:
+      del os.environ['EMCC_FORCE_STDLIBS']
+
+  def test_dylink_zlib(self):
+    Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'zlib')]
+    try:
+      os.environ['EMCC_FORCE_STDLIBS'] = 'libcextra'
+      side = get_zlib_library(self)
+      self.dylink_test(main=open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(),
+                       side=side,
+                       expected=open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
+                       force_c=True)
     finally:
       del os.environ['EMCC_FORCE_STDLIBS']
 
