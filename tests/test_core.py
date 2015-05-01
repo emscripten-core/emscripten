@@ -2912,7 +2912,6 @@ def process(filename):
 
   def test_dlfcn_i64(self):
     if not self.can_dlfcn(): return
-    if not Settings.ASM_JS: return self.skip('TODO')
 
     self.prep_dlfcn_lib()
     Settings.EXPORTED_FUNCTIONS = ['_foo']
@@ -3448,8 +3447,6 @@ ok
 ''', force_c=True, post_build=self.dlfcn_post_build)
 
   def test_dlfcn_mallocs(self):
-    if not Settings.ASM_JS: return self.skip('needs asm')
-
     if not self.can_dlfcn(): return
 
     Settings.TOTAL_MEMORY = 64*1024*1024 # will be exhausted without functional malloc/free
@@ -5147,7 +5144,6 @@ int main(void) {
           shutil.copyfile('src.cpp.o.js', '%d_%s.js' % (precision, t))
 
   def test_whets(self):
-    if not Settings.ASM_JS: return self.skip('mainly a test for asm validation here')
     self.do_run(open(path_from_root('tests', 'whets.cpp')).read(), 'Single Precision C Whetstone Benchmark')
 
   def test_dlmalloc(self):
@@ -6045,7 +6041,6 @@ def process(filename):
   # TODO: test only worked in non-fastcomp
   def test_asm_pgo(self):
     return self.skip('non-fastcomp is deprecated and fails in 3.5')
-    if not Settings.ASM_JS: return self.skip('this is a test for PGO for asm (NB: not *in* asm)')
 
     src = open(path_from_root('tests', 'hello_libcxx.cpp')).read()
     output = 'hello, world!'
@@ -6869,8 +6864,6 @@ Module.printErr = Module['printErr'] = function(){};
       assert "high = 1234" in out
 
   def test_async(self):
-    if not Settings.ASM_JS: return self.skip('async requires asm.js')
-
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
 
     src = r'''
@@ -7014,8 +7007,6 @@ int main() {
 ''', 'f\nhello\nf\nhello\nf\nhello\nf\nhello\nf\nhello\nexit\n')
 
   def test_coroutine(self):
-    if not Settings.ASM_JS: return self.skip('asyncify requires asm.js')
-
     src = r'''
 #include <stdio.h>
 #include <emscripten.h>
