@@ -308,7 +308,11 @@ var Runtime = {
       }
 #if ASSERTIONS
       else if (sym[0] === '_') {
-        Module.printErr("warning: trying to dynamically load symbol '" + sym + "' (from '" + lib + "') that already exists (duplicate symbol? or weak linking, which isn't supported yet?");
+        var curr = Module[sym], next = libModule[sym];
+        // don't warn on functions - might be odr, linkonce_odr, etc.
+        if (!(typeof curr === 'function' && typeof next === 'function')) {
+          Module.printErr("warning: trying to dynamically load symbol '" + sym + "' (from '" + lib + "') that already exists (duplicate symbol? or weak linking, which isn't supported yet?)"); // + [curr, ' vs ', next]);
+        }
       }
 #endif
     }

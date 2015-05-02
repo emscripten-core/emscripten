@@ -3761,6 +3761,11 @@ var Module = {
       static Class c("side");
     ''', expected=['new main\nnew side\n', 'new side\nnew main\n'])
 
+    if Settings.ASSERTIONS:
+      print 'check warnings'
+      full = run_js('src.cpp.o.js', engine=JS_ENGINES[0], full_output=True, stderr=STDOUT)
+      self.assertNotContained("trying to dynamically load symbol '__ZN5ClassC2EPKc' (from 'liblib.so') that already exists", full)
+
   def test_dylink_class(self):
     self.dylink_test(header=r'''
       #include <stdio.h>
@@ -3969,7 +3974,7 @@ var Module = {
     if Settings.ASSERTIONS:
       print 'check warnings'
       full = run_js('src.cpp.o.js', engine=JS_ENGINES[0], full_output=True, stderr=STDOUT)
-      self.assertContained("warning: trying to dynamically load symbol '__Z5sidefv' (from 'third.js') that already exists", full)
+      #self.assertContained("warning: trying to dynamically load symbol '__Z5sidefv' (from 'third.js') that already exists", full)
       self.assertContained("warning: trying to dynamically load symbol '_sideg' (from 'third.js') that already exists", full)
 
   def test_dylink_zlib(self):
