@@ -2412,3 +2412,46 @@ window.close = function() {
     assert os.path.exists('glue.js')
     self.btest(os.path.join('webidl', 'test.cpp'), '1', args=['--post-js', 'glue.js', '-I' + path_from_root('tests', 'webidl'), '-DBROWSER'])
 
+  def test_dynamic_link(self):
+    open('pre.js', 'w').write('''
+      Module.dynamicLibraries = ['side.js'];
+  ''')
+    open('main.cpp', 'w').write(r'''
+      #include <stdio.h>
+      #include <stdlib.h>
+      #include <string.h>
+      #include <emscripten.h>
+      char *side(const char *data);
+      int main() {
+        char *temp = side("hello through side\n");
+        char *ret = (char*)malloc(strlen(temp)+1);
+        strcpy(ret, temp);
+        temp[1] = 'x';
+        EM_ASM({
+          Module.realPrint = Module.print;
+          Module.print = function(x) {
+            if (!Module.printed) Module.printed = x;
+            Module.realPrint(x);
+          };
+        });
+        puts(ret);
+        EM_ASM({ assert(Module.printed === 'hello through side', ['expected', Module.printed]); });
+        int result = 2;
+        REPORT_RESULT();
+        return 0;
+      }
+    ''')
+    open('side.cpp', 'w').write(r'''
+      #include <stdlib.h>
+      #include <string.h>
+      char *side(const char *data);
+      char *side(const char *data) {
+        char *ret = (char*)malloc(strlen(data)+1);
+        strcpy(ret, data);
+        return ret;
+      }
+    ''')
+    Popen([PYTHON, EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.js']).communicate()
+
+    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js'])
+
