@@ -914,7 +914,7 @@ try:
 
   if shared.Settings.SAFE_HEAP and not js_opts:
     js_opts = True
-    logging.warning('enabling js opts for SAFE_HEAP')
+    logging.debug('enabling js opts for SAFE_HEAP')
 
   if debug_level > 1 and closure:
     logging.warning('disabling closure because debug info was requested')
@@ -980,13 +980,13 @@ try:
     shared.Settings.EXPORTED_FUNCTIONS += ['emterpret']
     if not js_opts:
       js_opts = True
-      logging.warning('enabling js opts for EMTERPRETIFY')
+      logging.debug('enabling js opts for EMTERPRETIFY')
     assert closure is not 2, 'EMTERPRETIFY requires valid asm.js, and is incompatible with closure 2 which disables that'
     assert not shared.Settings.RELOCATABLE
 
   if shared.Settings.DEAD_FUNCTIONS and not js_opts:
     js_opts = True
-    logging.warning('enabling js opts for DEAD_FUNCTIONS')
+    logging.debug('enabling js opts for DEAD_FUNCTIONS')
 
   if proxy_to_worker:
     shared.Settings.PROXY_TO_WORKER = 1
