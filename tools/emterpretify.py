@@ -1023,14 +1023,17 @@ if __name__ == '__main__':
   asm.funcs_js = '\n'.join([lines[0], make_emterpreter(), make_emterpreter(zero=True) if ZERO else '', '\n'.join(filter(lambda line: len(line) > 0, lines[1:]))]) + '\n'
   lines = None
 
-  # set up emterpreter stack top
-  pre_js = ['var EMTSTACKTOP = Runtime.staticAlloc(%s);\nvar EMT_STACK_MAX = EMTSTACKTOP + %d;' % (EMT_STACK_MAX, EMT_STACK_MAX)]
+  # set up emterpreter stack top (note we must use malloc if in a shared lib, or other enviroment where static memory is sealed)
+  js = ['''
+var EMTSTACKTOP = (staticSealed ? _malloc : Runtime.staticAlloc)(%s);
+var EMT_STACK_MAX = EMTSTACKTOP + %d;
+''' % (EMT_STACK_MAX, EMT_STACK_MAX)]
 
   # write out our bytecode, and runtime relocation logic
-  pre_js += ['''
-var eb = Runtime.staticAlloc(%s);
+  js += ['''
+var eb = (staticSealed ? _malloc : Runtime.staticAlloc)(%s);
 assert(eb %% 8 === 0);
-addOnInit(function() {
+__ATPRERUN__.push(function() {
 ''' % len(all_code)]
 
   CHUNK_SIZE = 10240
@@ -1038,22 +1041,22 @@ addOnInit(function() {
   i = 0
   while i < len(all_code):
     curr = all_code[i:i+CHUNK_SIZE]
-    pre_js += ['''  HEAPU8.set([%s], eb + %d);
+    js += ['''  HEAPU8.set([%s], eb + %d);
 ''' % (','.join(map(str, curr)), i)]
     i += CHUNK_SIZE
 
-  pre_js += ['''
+  js += ['''
   var relocations = [];
 ''']
 
   i = 0
   while i < len(relocations):
     curr = relocations[i:i+CHUNK_SIZE]
-    pre_js += ['''  relocations = relocations.concat([%s]);
+    js += ['''  relocations = relocations.concat([%s]);
 ''' % (','.join(map(str, curr)))]
     i += CHUNK_SIZE
 
-  pre_js += ['''
+  js += ['''
   for (var i = 0; i < relocations.length; i++) {
     assert(relocations[i] %% 4 === 0);
     assert(relocations[i] >= 0 && relocations[i] < eb + %d); // in range
@@ -1063,9 +1066,10 @@ addOnInit(function() {
 });
 ''' % len(all_code)]
 
-  pre_js = ''.join(pre_js)
+  js = ''.join(js)
   # TODO: strip asserts when not ASSERTIONS
-  asm.set_pre_js(js=pre_js)
+  assert '// {{PRE_LIBRARY}}' in asm.pre_js
+  asm.pre_js = asm.pre_js.replace('// {{PRE_LIBRARY}}', '// {{PRE_LIBRARY}}\n' + js)
 
   # send EMT vars into asm
   asm.pre_js += "Module.asmLibraryArg['EMTSTACKTOP'] = EMTSTACKTOP; Module.asmLibraryArg['EMT_STACK_MAX'] = EMT_STACK_MAX; Module.asmLibraryArg['eb'] = eb;\n"

@@ -324,6 +324,7 @@ function JSify(data, functionsOnly) {
         print('  HEAP8[tempDoublePtr+7] = HEAP8[ptr+7];\n');
         print('}\n');
       }
+      print('// {{PRE_LIBRARY}}\n'); // safe to put stuff here that statically allocates
 
       return;
     }
