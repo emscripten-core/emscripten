@@ -1024,15 +1024,36 @@ if __name__ == '__main__':
   lines = None
 
   # set up emterpreter stack top
-  pre_js = 'var EMTSTACKTOP = Runtime.staticAlloc(%s);\nvar EMT_STACK_MAX = EMTSTACKTOP + %d;' % (EMT_STACK_MAX, EMT_STACK_MAX)
+  pre_js = ['var EMTSTACKTOP = Runtime.staticAlloc(%s);\nvar EMT_STACK_MAX = EMTSTACKTOP + %d;' % (EMT_STACK_MAX, EMT_STACK_MAX)]
 
   # write out our bytecode, and runtime relocation logic
-  pre_js += '''
+  pre_js += ['''
 var eb = Runtime.staticAlloc(%s);
 assert(eb %% 8 === 0);
 addOnInit(function() {
-  HEAPU8.set([%s], eb); // TODO: chunking etc
-  var relocations = [%s];
+''' % len(all_code)]
+
+  CHUNK_SIZE = 10240
+
+  i = 0
+  while i < len(all_code):
+    curr = all_code[i:i+CHUNK_SIZE]
+    pre_js += ['''  HEAPU8.set([%s], eb + %d);
+''' % (','.join(map(str, curr)), i)]
+    i += CHUNK_SIZE
+
+  pre_js += ['''
+  var relocations = [];
+''']
+
+  i = 0
+  while i < len(relocations):
+    curr = relocations[i:i+CHUNK_SIZE]
+    pre_js += ['''  relocations = relocations.concat([%s]);
+''' % (','.join(map(str, curr)))]
+    i += CHUNK_SIZE
+
+  pre_js += ['''
   for (var i = 0; i < relocations.length; i++) {
     assert(relocations[i] %% 4 === 0);
     assert(relocations[i] >= 0 && relocations[i] < eb + %d); // in range
@@ -1040,8 +1061,10 @@ addOnInit(function() {
     HEAPU32[eb + relocations[i] >> 2] += eb;
   }
 });
-''' % (len(all_code), ','.join(map(str, all_code)), ','.join(map(str, relocations)), len(all_code))
+''' % len(all_code)]
 
+  pre_js = ''.join(pre_js)
+  # TODO: strip asserts when not ASSERTIONS
   asm.set_pre_js(js=pre_js)
 
   # send EMT vars into asm
