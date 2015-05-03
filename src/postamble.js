@@ -257,9 +257,11 @@ function abort(what) {
 #endif
 
   var output = 'abort(' + what + ') at ' + stackTrace() + extra;
-  abortDecorators.forEach(function(decorator) {
-    output = decorator(output, what);
-  });
+  if (abortDecorators) {
+    abortDecorators.forEach(function(decorator) {
+      output = decorator(output, what);
+    });
+  }
   throw output;
 }
 Module['abort'] = Module.abort = abort;
