@@ -236,7 +236,7 @@ class RunnerCore(unittest.TestCase):
         # side memory init file, or an empty one in the js
         assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
       else:
-        assert 'memory initializer */' in src
+        assert 'memory initializer */' in src or '/*' not in src # memory initializer comment, or cleaned-up source with no comments
 
   def validate_asmjs(self, err):
     if 'uccessfully compiled asm.js code' in err and 'asm.js link error' not in err:
