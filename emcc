@@ -975,15 +975,12 @@ try:
 
   if shared.Settings.EMTERPRETIFY:
     shared.Settings.FINALIZE_ASM_JS = 0
-    shared.Settings.GLOBAL_BASE = 8*256 # keep enough space at the bottom for a full stack frame
+    #shared.Settings.GLOBAL_BASE = 8*256 # keep enough space at the bottom for a full stack frame, for z-interpreter
     shared.Settings.SIMPLIFY_IFS = 0 # this is just harmful for emterpreting
     shared.Settings.EXPORTED_FUNCTIONS += ['emterpret']
     if not js_opts:
       js_opts = True
       logging.warning('enabling js opts for EMTERPRETIFY')
-    if not memory_init_file:
-      logging.warning('enabling --memory-init-file for EMTERPRETIFY')
-      memory_init_file = True
     assert closure is not 2, 'EMTERPRETIFY requires valid asm.js, and is incompatible with closure 2 which disables that'
     assert not shared.Settings.RELOCATABLE
 
@@ -1531,12 +1528,11 @@ try:
   if shared.Settings.EMTERPRETIFY:
     flush_js_optimizer_queue()
     logging.debug('emterpretifying')
-    assert memory_init_file, 'emterpreter requires a mem init file'
     import json
     try:
       # move temp js to final position, alongside its mem init file
       shutil.move(final, js_target)
-      args = [shared.PYTHON, shared.path_from_root('tools', 'emterpretify.py'), js_target, final + '.em.js', memfile, json.dumps(shared.Settings.EMTERPRETIFY_BLACKLIST), json.dumps(shared.Settings.EMTERPRETIFY_WHITELIST), json.dumps(shared.Settings.EMTERPRETIFY_YIELDLIST), str(shared.Settings.SWAPPABLE_ASM_MODULE)]
+      args = [shared.PYTHON, shared.path_from_root('tools', 'emterpretify.py'), js_target, final + '.em.js', json.dumps(shared.Settings.EMTERPRETIFY_BLACKLIST), json.dumps(shared.Settings.EMTERPRETIFY_WHITELIST), json.dumps(shared.Settings.EMTERPRETIFY_YIELDLIST), str(shared.Settings.SWAPPABLE_ASM_MODULE)]
       if shared.Settings.EMTERPRETIFY_ASYNC:
         args += ['ASYNC=1']
       if shared.Settings.EMTERPRETIFY_ADVISE:

@@ -250,8 +250,6 @@ ROPCODES = {}
 for i in range(len(OPCODES)):
   ROPCODES[OPCODES[i]] = i
 
-GLOBAL_BASE = 256*8
-
 # utils
 
 settings = { 'PRECISE_F32': 0 } # TODO
@@ -704,37 +702,36 @@ function emterpret%s(pc) {
 if __name__ == '__main__':
   infile = sys.argv[1]
   outfile = sys.argv[2]
-  force_memfile = sys.argv[3] if len(sys.argv) >= 4 else None
 
   original_yieldlist = YIELDLIST
 
   extra_blacklist = []
-  if len(sys.argv) >= 5:
-    temp = sys.argv[4]
+  if len(sys.argv) >= 4:
+    temp = sys.argv[3]
     if temp[0] == '"':
       # response file
       assert temp[1] == '@'
       temp = open(temp[2:-1]).read()
     extra_blacklist = json.loads(temp)
 
-    if len(sys.argv) >= 6:
-      temp = sys.argv[5]
+    if len(sys.argv) >= 5:
+      temp = sys.argv[4]
       if temp[0] == '"':
         # response file
         assert temp[1] == '@'
         temp = open(temp[2:-1]).read()
       WHITELIST = json.loads(temp)
 
-      if len(sys.argv) >= 7:
-        temp = sys.argv[6]
+      if len(sys.argv) >= 6:
+        temp = sys.argv[5]
         if temp[0] == '"':
           # response file
           assert temp[1] == '@'
           temp = open(temp[2:-1]).read()
         YIELDLIST = YIELDLIST + json.loads(temp)
 
-        if len(sys.argv) >= 8:
-          SWAPPABLE = int(sys.argv[7])
+        if len(sys.argv) >= 7:
+          SWAPPABLE = int(sys.argv[6])
 
   if ADVISE:
     # Advise the user on which functions should likely be emterpreted
@@ -856,35 +853,7 @@ if __name__ == '__main__':
   # load the module and modify it
   asm = asm_module.AsmModule(temp)
 
-  # find memfile. can be x.js.mem or x.html.mem
-  in_mem_file = infile + '.mem'
-  in_mem_file_base = os.path.basename(in_mem_file)
-  out_mem_file = outfile + '.mem'
-  out_mem_file_base = os.path.basename(out_mem_file)
-  if in_mem_file_base not in asm.pre_js:
-    in_mem_file = (infile + '.mem').replace('.js.mem', '.html.mem')
-    in_mem_file_base = os.path.basename(in_mem_file)
-    out_mem_file = (outfile + '.mem').replace('.js.mem', '.html.mem')
-    out_mem_file_base = os.path.basename(out_mem_file)
-    assert in_mem_file_base in asm.pre_js, 'we assume a mem init file for now (looked for %s)' % in_mem_file
-
-  if not force_memfile:
-    asm.pre_js = asm.pre_js.replace(in_mem_file_base, out_mem_file_base)
-    assert os.path.exists(in_mem_file), 'need to find mem file at %s' % in_mem_file
-  else:
-    out_mem_file = force_memfile
-    out_mem_file_base = os.path.basename(out_mem_file)
-  mem_init = map(ord, open(in_mem_file, 'rb').read())
-  zero_space = asm.staticbump - len(mem_init)
-  assert zero_space >= 0 # can be positive, if we add a bump of zeros
-
-  assert ('GLOBAL_BASE: %d,' % GLOBAL_BASE) in asm.pre_js, 'we assume a specific global base, and that we can write to all memory below it'
-
-  # calculate where code will start
-  while len(mem_init) % 8 != 0:
-    mem_init.append(0)
-    asm.staticbump += 1
-  code_start = len(mem_init) + GLOBAL_BASE
+  relocations = [] # list of places that need to contain absolute offsets, we will add eb to them at runtime to relocate them
 
   # parse out bytecode and add to mem init file
   all_code = []
@@ -926,7 +895,7 @@ if __name__ == '__main__':
   call_sigs = {} # signatures appearing for each call target
   def process_code(func, code, absolute_targets):
     global global_func_id
-    absolute_start = code_start + len(all_code) # true absolute starting point of this function
+    absolute_start = len(all_code) # true absolute starting point of this function (except for eb)
     #print 'processing code', func, absolute_start
     for i in range(len(code)/4):
       j = i*4
@@ -961,7 +930,7 @@ if __name__ == '__main__':
         note_global(target, j, code)
         code[j+1] = global_vars[target]
       elif code[j] == 'absolute-value':
-        # put the 32-bit absolute value of an abolute target here
+        # put the 32-bit absolute value of an abolute target here (correct except for adding eb to relocate at runtime)
         absolute_value = absolute_start + absolute_targets[unicode(code[j+1])]
         #print '  fixing absolute value', code[j+1], absolute_targets[unicode(code[j+1])], absolute_value
         assert absolute_value < (1 << 31)
@@ -969,6 +938,7 @@ if __name__ == '__main__':
         value = bytify(absolute_value)
         for k in range(4):
           code[j + k] = value[k]
+        relocations.append(absolute_start + j)
 
   actual_sigs = {}
 
@@ -1008,13 +978,14 @@ if __name__ == '__main__':
       j = i*4
       if code[j] == 'absolute-funcaddr':
         # put the 32-bit absolute value of an abolute function here
-        absolute_value = code_start + funcs[code[j+1]]
+        absolute_value = funcs[code[j+1]]
         #print '  fixing absolute value', code[j+1], absolute_targets[unicode(code[j+1])], absolute_value
         assert absolute_value < (1 << 31)
         assert absolute_value % 4 == 0
         value = bytify(absolute_value)
         for k in range(4):
           code[j + k] = value[k]
+        relocations.append(j)
 
     # finalize instruction string names to opcodes
     for i in range(len(code)/4):
@@ -1030,19 +1001,9 @@ if __name__ == '__main__':
 
   post_process_code(all_code)
 
-  # create new mem init
-  mem_init = mem_init + all_code
-  asm.staticbump += len(all_code)
-
-  while len(mem_init) % 8 != 0:
-    mem_init.append(0)
-    asm.staticbump += 1
-  stack_start = len(mem_init)
-  asm.staticbump += EMT_STACK_MAX
-  while asm.staticbump % 8 != 0:
-    asm.staticbump += 1
-
-  open(out_mem_file, 'wb').write(''.join(map(chr, mem_init)))
+  # finalize our mem init
+  while len(all_code) % 8 != 0:
+    all_code.append(0)
 
   # second pass, finalize trampolines
   for i in range(len(lines)):
@@ -1056,18 +1017,36 @@ if __name__ == '__main__':
     elif func and func in funcs:
       call = '(EMTERPRETER_' + func + ')'
       if call in line:
-        lines[i] = lines[i].replace(call, '(%s)' % (funcs[func] + code_start))
+        lines[i] = lines[i].replace(call, '(eb + %s | 0)' % (funcs[func]))
 
   # finalize funcs JS (first line has the marker, add emterpreters right after that)
   asm.funcs_js = '\n'.join([lines[0], make_emterpreter(), make_emterpreter(zero=True) if ZERO else '', '\n'.join(filter(lambda line: len(line) > 0, lines[1:]))]) + '\n'
   lines = None
 
   # set up emterpreter stack top
-  asm.set_pre_js(js='var EMTSTACKTOP = STATIC_BASE + %s, EMT_STACK_MAX = EMTSTACKTOP + %d;' % (stack_start, EMT_STACK_MAX))
+  pre_js = 'var EMTSTACKTOP = Runtime.staticAlloc(%s);\nvar EMT_STACK_MAX = EMTSTACKTOP + %d;' % (EMT_STACK_MAX, EMT_STACK_MAX)
+
+  # write out our bytecode, and runtime relocation logic
+  pre_js += '''
+var eb = Runtime.staticAlloc(%s);
+assert(eb %% 8 === 0);
+addOnInit(function() {
+  HEAPU8.set([%s], eb); // TODO: chunking etc
+  var relocations = [%s];
+  for (var i = 0; i < relocations.length; i++) {
+    assert(relocations[i] %% 4 === 0);
+    assert(relocations[i] >= 0 && relocations[i] < eb + %d); // in range
+    assert(HEAPU32[eb + relocations[i] >> 2] + eb < (-1 >>> 0), [i, relocations[i]]); // no overflows
+    HEAPU32[eb + relocations[i] >> 2] += eb;
+  }
+});
+''' % (len(all_code), ','.join(map(str, all_code)), ','.join(map(str, relocations)), len(all_code))
+
+  asm.set_pre_js(js=pre_js)
 
   # send EMT vars into asm
-  asm.pre_js += "Module.asmLibraryArg['EMTSTACKTOP'] = EMTSTACKTOP; Module.asmLibraryArg['EMT_STACK_MAX'] = EMT_STACK_MAX;\n"
-  extra_vars = 'var EMTSTACKTOP = env.EMTSTACKTOP|0;\nvar EMT_STACK_MAX = env.EMT_STACK_MAX|0;\n'
+  asm.pre_js += "Module.asmLibraryArg['EMTSTACKTOP'] = EMTSTACKTOP; Module.asmLibraryArg['EMT_STACK_MAX'] = EMT_STACK_MAX; Module.asmLibraryArg['eb'] = eb;\n"
+  extra_vars = 'var EMTSTACKTOP = env.EMTSTACKTOP|0;\nvar EMT_STACK_MAX = env.EMT_STACK_MAX|0;\nvar eb = env.eb|0;\n'
   first_func = asm.imports_js.find('function ')
   if first_func < 0:
     asm.imports_js += extra_vars
