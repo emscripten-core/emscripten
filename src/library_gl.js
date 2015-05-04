@@ -661,13 +661,16 @@ var LibraryGL = {
         return 0;
       }
 
+#if GL_DEBUG
       function wrapDebugGL(ctx) {
 
         var printObjectList = [];
 
-        function dump(arg){
-          Module.print(arg);
-        }
+        function myDump(arg){
+          if(window.dump){
+            window.dump(arg);
+          }
+				}
 
         function prettyPrint(arg) {
           if (typeof arg == 'undefined') return '!UNDEFINED!';
@@ -722,10 +725,10 @@ var LibraryGL = {
               case 'function': {
                 wrapper[prop] = function gl_wrapper() {
                   var printArgs = Array.prototype.slice.call(arguments).map(prettyPrint);
-                  dump('[gl_f:' + prop + ':' + printArgs + ']\n');
+                  myDump('[gl_f:' + prop + ':' + printArgs + ']\n');
                   var ret = ctx[prop].apply(ctx, arguments);
                   if (typeof ret != 'undefined') {
-                    dump('[     gl:' + prop + ':return:' + prettyPrint(ret) + ']\n');
+                    myDump('[     gl:' + prop + ':return:' + prettyPrint(ret) + ']\n');
                   }
                   return ret;
                 }
@@ -733,11 +736,11 @@ var LibraryGL = {
               }
               case 'number': case 'string': {
                 wrapper.__defineGetter__(prop, function() {
-                  //dump('[gl_g:' + prop + ':' + ctx[prop] + ']\n');
+                  myDump('[gl_g:' + prop + ':' + ctx[prop] + ']\n');
                   return ctx[prop];
                 });
                 wrapper.__defineSetter__(prop, function(value) {
-                  dump('[gl_s:' + prop + ':' + value + ']\n');
+                  myDump('[gl_s:' + prop + ':' + value + ']\n');
                   ctx[prop] = value;
                 });
                 break;
@@ -747,9 +750,8 @@ var LibraryGL = {
         }
         return wrapper;
       }
-      if(GL.debug){
-        ctx = wrapDebugGL(ctx);
-      }
+      ctx = wrapDebugGL(ctx);
+#endif
       if (!ctx) return 0;
       return GL.registerContext(ctx, webGLContextAttributes);
     },
