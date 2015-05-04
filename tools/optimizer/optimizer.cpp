@@ -1839,21 +1839,11 @@ void simplifyExpressions(Ref ast) {
         return;
       } else if (type == BINARY && node[1] == PLUS) {
         // The most common mathop is addition, e.g. in getelementptr done repeatedly. We can join all of those,
-        // by doing (num+num) ==> newnum, and (name+num)+num = name+newnum
+        // by doing (num+num) ==> newnum.
         if (node[2][0] == NUM && node[3][0] == NUM) {
           node[2][1]->setNumber(jsD2I(node[2][1]->getNumber()) + jsD2I(node[3][1]->getNumber()));
           safeCopy(node, node[2]);
           return;
-        }
-        for (int i = 2; i <= 3; i++) {
-          int ii = 5-i;
-          for (int j = 2; j <= 3; j++) {
-            if (node[i][0] == NUM && node[ii][0] == BINARY && node[ii][1] == PLUS && node[ii][j][0] == NUM) {
-              node[ii][j][1]->setNumber(jsD2I(node[ii][j][1]->getNumber()) + jsD2I(node[i][1]->getNumber()));
-              safeCopy(node, node[ii]);
-              return;
-            }
-          }
         }
       }
     });

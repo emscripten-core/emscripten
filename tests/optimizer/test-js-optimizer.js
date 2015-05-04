@@ -54,6 +54,7 @@ function bits() {
 function maths() {
  check(5+12);
  check(90+3+2);
+ __ZN6b2Vec2C1Ev($this1 + ((((((((20 | 0) + 8 | 0) + 8 | 0) + 8 | 0) + 8 | 0) + 8 | 0) + 8 | 0) + 8 | 0) | 0);
  __ZN6b2Vec2C1Ev(((((((($this1 + 20 | 0 | 0) + 8 | 0) + 8 | 0) + 8 | 0) + 8 | 0) + 8 | 0) + 8 | 0) + 8 | 0);
 }
 function hoisting() {
