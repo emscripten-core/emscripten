@@ -719,13 +719,22 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   for symbols in symbolses:
     all_needed.difference_update(symbols.defs)
 
+  system_libs = [('libcxx',    'a',  create_libcxx,    libcxx_symbols,    ['libcextra', 'libcxxabi'], True),
+                 ('libcextra', 'bc', create_libcextra, libcextra_symbols, ['libc'],                   False),
+                 ('libcxxabi', 'bc', create_libcxxabi, libcxxabi_symbols, ['libc'],                   False),
+                 ('gl',        'bc', create_gl,        gl_symbols,        ['libc'],                   False),
+                 ('libc',      'bc', create_libc,      libc_symbols,      [],                         False)]
+
   # malloc dependency is force-added, so when using pthreads, it must be force-added
   # as well, since malloc needs to be thread-safe, so it depends on mutexes.
   if shared.Settings.USE_PTHREADS:
-    force.add('pthreads.bc')
-    force.add('dlmalloc_threadsafe.bc')
+    system_libs += [('pthreads',  'bc', create_pthreads,  pthreads_symbols,  ['libc'],                   False),
+                    ('dlmalloc_threadsafe', 'bc', create_dlmalloc_multithreaded, [], [],                 False)]
+    force.add('pthreads')
+    force.add('dlmalloc_threadsafe')
   else:
-    force.add('dlmalloc.bc')
+    system_libs += [('dlmalloc',  'bc', create_dlmalloc_singlethreaded,      [], [],                     False)]
+    force.add('dlmalloc')
 
   # Go over libraries to figure out which we must include
   def maybe_noexcept(name):
@@ -734,14 +743,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     return name
   ret = []
   has = need = None
-  for shortname, suffix, create, library_symbols, deps, can_noexcept in [('libcxx',    'a',  create_libcxx,    libcxx_symbols,    ['libcextra', 'libcxxabi'], True),
-                                                                         ('libcextra', 'bc', create_libcextra, libcextra_symbols, ['libc'],                   False),
-                                                                         ('libcxxabi', 'bc', create_libcxxabi, libcxxabi_symbols, ['libc'],                   False),
-                                                                         ('gl',        'bc', create_gl,        gl_symbols,        ['libc'],                   False),
-                                                                         ('libc',      'bc', create_libc,      libc_symbols,      [],                         False),
-                                                                         ('pthreads',  'bc', create_pthreads,  pthreads_symbols,  ['libc'],                   False),
-                                                                         ('dlmalloc',  'bc', create_dlmalloc_singlethreaded,      [], [],                     False),
-                                                                         ('dlmalloc_threadsafe', 'bc', create_dlmalloc_multithreaded, [], [],                 False)]:
+
+  for shortname, suffix, create, library_symbols, deps, can_noexcept in system_libs:
     force_this = force_all or shortname in force
     if can_noexcept: shortname = maybe_noexcept(shortname)
     if force_this:
