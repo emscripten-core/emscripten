@@ -1272,11 +1272,23 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
   return [];
 }
 
+function makeGetTempRet0() {
+  return RELOCATABLE ? "(getTempRet0() | 0)" : "tempRet0";
+}
+
+function makeSetTempRet0(value) {
+  return RELOCATABLE ? "setTempRet0((" + value + ") | 0)" : ("tempRet0 = " + value);
+}
+
 function makeStructuralReturn(values, inAsm) {
   var i = -1;
   return 'return ' + asmCoercion(values.slice(1).map(function(value) {
     i++;
-    return inAsm ? 'tempRet' + i + ' = ' + value : 'asm["setTempRet' + i + '"](' + value + ')';
+    if (i === 0) {
+      return inAsm ? makeSetTempRet0(value) : 'asm["setTempRet' + i + '"](' + value + ')';
+    } else {
+      return inAsm ? 'tempRet' + i + ' = ' + value : 'asm["setTempRet' + i + '"](' + value + ')';
+    }
   }).concat([values[0]]).join(','), 'i32');
 }
 

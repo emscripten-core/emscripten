@@ -523,7 +523,12 @@ function _emscripten_asm_const_%d(%s) {
       if not settings['SIDE_MODULE']:
         asm_setup += 'var gb = Runtime.GLOBAL_BASE, fb = 0;\n'
 
-    asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'setThrew', 'setTempRet0', 'getTempRet0']
+    asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'setThrew']
+    if not settings['RELOCATABLE']:
+      asm_runtime_funcs += ['setTempRet0', 'getTempRet0']
+    else:
+      basic_funcs += ['setTempRet0', 'getTempRet0']
+      asm_setup += 'var setTempRet0 = Runtime.setTempRet0, getTempRet0 = Runtime.getTempRet0;\n'
 
     # See if we need ASYNCIFY functions
     # We might not need them even if ASYNCIFY is enabled
@@ -838,6 +843,7 @@ function copyTempDouble(ptr) {
   HEAP8[tempDoublePtr+6>>0] = HEAP8[ptr+6>>0];
   HEAP8[tempDoublePtr+7>>0] = HEAP8[ptr+7>>0];
 }
+'''] + ['''
 function setTempRet0(value) {
   value = value|0;
   tempRet0 = value;
@@ -845,7 +851,7 @@ function setTempRet0(value) {
 function getTempRet0() {
   return tempRet0|0;
 }
-'''] + funcs_js + ['''
+''' if not settings['RELOCATABLE'] else ''] + funcs_js + ['''
   %s
 
   return %s;
@@ -863,6 +869,9 @@ function getTempRet0() {
 Runtime.stackAlloc = asm['stackAlloc'];
 Runtime.stackSave = asm['stackSave'];
 Runtime.stackRestore = asm['stackRestore'];
+''')
+    if not settings['RELOCATABLE']:
+      funcs_js.append('''
 Runtime.setTempRet0 = asm['setTempRet0'];
 Runtime.getTempRet0 = asm['getTempRet0'];
 ''')

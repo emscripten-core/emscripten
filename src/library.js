@@ -3314,7 +3314,7 @@ LibraryManager.library = {
     var ret = 0;
     ret = Math_clz32(h) | 0;
     if ((ret | 0) == 32) ret = ret + (Math_clz32(l) | 0) | 0;
-    tempRet0 = 0;
+    {{{ makeSetTempRet0('0') }}};
     return ret | 0;
   },
 
@@ -3696,7 +3696,7 @@ LibraryManager.library = {
     Runtime.warnOnce('no overflow support in llvm_umul_with_overflow_i64');
 #endif
     var low = ___muldi3(xl, xh, yl, yh);
-    {{{ makeStructuralReturn(['low', 'tempRet0', '0']) }}};
+    {{{ makeStructuralReturn(['low', makeGetTempRet0(), '0']) }}};
   },
 
   llvm_stacksave: function() {
@@ -3797,7 +3797,7 @@ LibraryManager.library = {
     var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
     var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
     {{{ makeSetValue('ptr', 0, '_llvm_uadd_with_overflow_i64(l, h, vall, valh)', 'i32') }}};
-    {{{ makeSetValue('ptr', 4, 'tempRet0', 'i32') }}};
+    {{{ makeSetValue('ptr', 4, makeGetTempRet0(), 'i32') }}};
     {{{ makeStructuralReturn(['l', 'h']) }}};
   },
 
@@ -3806,7 +3806,7 @@ LibraryManager.library = {
     var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
     var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
     {{{ makeSetValue('ptr', 0, '_i64Subtract(l, h, vall, valh)', 'i32') }}};
-    {{{ makeSetValue('ptr', 4, 'tempRet0', 'i32') }}};
+    {{{ makeSetValue('ptr', 4, makeGetTempRet0(), 'i32') }}};
     {{{ makeStructuralReturn(['l', 'h']) }}};
   },
 
@@ -5188,7 +5188,7 @@ LibraryManager.library = {
         {{{ makeSetValueAsm('table', '(i<<3)+4', 'label', 'i32') }}};
         // prepare next slot
         {{{ makeSetValueAsm('table', '(i<<3)+8', '0', 'i32') }}};
-        tempRet0 = size;
+        {{{ makeSetTempRet0('size') }}};
         return table | 0;
       }
       i = i+1|0;
@@ -5197,7 +5197,7 @@ LibraryManager.library = {
     size = (size*2)|0;
     table = _realloc(table|0, 8*(size+1|0)|0) | 0;
     table = _saveSetjmp(env|0, label|0, table|0, size|0) | 0;
-    tempRet0 = size;
+    {{{ makeSetTempRet0('size') }}};
     return table | 0;
   },
 
@@ -8005,10 +8005,10 @@ LibraryManager.library = {
     var ander = 0;
     if ((bits|0) < 32) {
       ander = ((1 << bits) - 1)|0;
-      tempRet0 = (high << bits) | ((low&(ander << (32 - bits))) >>> (32 - bits));
+      {{{ makeSetTempRet0('(high << bits) | ((low&(ander << (32 - bits))) >>> (32 - bits))') }}};
       return low << bits;
     }
-    tempRet0 = low << (bits - 32);
+    {{{ makeSetTempRet0('low << (bits - 32)') }}};
     return 0;
   },
   bitshift64Ashr__asm: true,
@@ -8018,10 +8018,10 @@ LibraryManager.library = {
     var ander = 0;
     if ((bits|0) < 32) {
       ander = ((1 << bits) - 1)|0;
-      tempRet0 = high >> bits;
+      {{{ makeSetTempRet0('high >> bits') }}};
       return (low >>> bits) | ((high&ander) << (32 - bits));
     }
-    tempRet0 = (high|0) < 0 ? -1 : 0;
+    {{{ makeSetTempRet0('(high|0) < 0 ? -1 : 0') }}};
     return (high >> (bits - 32))|0;
   },
   bitshift64Lshr__asm: true,
@@ -8031,10 +8031,10 @@ LibraryManager.library = {
     var ander = 0;
     if ((bits|0) < 32) {
       ander = ((1 << bits) - 1)|0;
-      tempRet0 = high >>> bits;
+      {{{ makeSetTempRet0('high >>> bits') }}};
       return (low >>> bits) | ((high&ander) << (32 - bits));
     }
-    tempRet0 = 0;
+    {{{ makeSetTempRet0('0') }}};
     return (high >>> (bits - 32))|0;
   },
 

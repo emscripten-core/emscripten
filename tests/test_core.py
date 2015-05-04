@@ -3758,6 +3758,20 @@ var Module = {
       full = run_js('src.cpp.o.js', engine=JS_ENGINES[0], full_output=True, stderr=STDOUT)
       self.assertNotContained("trying to dynamically load symbol '__ZN5ClassC2EPKc' (from 'liblib.so') that already exists", full)
 
+  def test_dylink_i64(self):
+    self.dylink_test('''
+      #include <stdio.h>
+      #include <stdint.h>
+      extern int64_t sidey();
+      int main() {
+        printf("other says %lld.", sidey());
+        return 0;
+      }
+    ''', '''
+      #include <stdint.h>
+      int64_t sidey() { int64_t ret = 11; return ret << 40; }
+    ''', 'other says 12094627905536.')
+
   def test_dylink_class(self):
     self.dylink_test(header=r'''
       #include <stdio.h>

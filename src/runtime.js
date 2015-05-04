@@ -416,6 +416,16 @@ Runtime.dynamicAlloc = unInline('dynamicAlloc', ['size']);
 Runtime.alignMemory = unInline('alignMemory', ['size', 'quantum']);
 Runtime.makeBigInt = unInline('makeBigInt', ['low', 'high', 'unsigned']);
 
+if (MAIN_MODULE || SIDE_MODULE) {
+  Runtime.tempRet0 = 0;
+  Runtime.getTempRet0 = function() {
+    return Runtime.tempRet0;
+  };
+  Runtime.setTempRet0 = function(x) {
+    Runtime.tempRet0 = x;
+  };
+}
+
 function getRuntime() {
   var ret = 'var Runtime = {\n';
   for (i in Runtime) {
