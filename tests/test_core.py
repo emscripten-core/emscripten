@@ -3901,31 +3901,36 @@ var Module = {
     ''', expected=['main: jslib_x is 148.\nside: jslib_x is 148.\n'], main_emcc_args=['--js-library', 'lib.js'])
 
   def test_dylink_syslibs(self): # one module uses libcextra, need to force its inclusion when it isn't the main
-    try:
-      os.environ['EMCC_FORCE_STDLIBS'] = 'libc,libcextra'
-      self.dylink_test(header=r'''
-        #include <string.h>
-        int side();
-      ''', main=r'''
-        #include <stdio.h>
-        #include <wchar.h>
-        #include "header.h"
-        int main() {
-          printf("|%d|\n", side());
-          wprintf (L"Characters: %lc %lc\n", L'a', 65);
-          return 0;
-        }
-      ''', side=r'''
-        #include <stdlib.h>
-        #include <malloc.h>
-        #include "header.h"
-        int side() {
-          struct mallinfo m = mallinfo();
-          return m.arena > 1;
-        }
-      ''', expected=['|1|\nCharacters: a A\n'])
-    finally:
-      del os.environ['EMCC_FORCE_STDLIBS']
+    def test(syslibs):
+      print 'syslibs', syslibs
+      try:
+        os.environ['EMCC_FORCE_STDLIBS'] = syslibs
+        self.dylink_test(header=r'''
+          #include <string.h>
+          int side();
+        ''', main=r'''
+          #include <stdio.h>
+          #include <wchar.h>
+          #include "header.h"
+          int main() {
+            printf("|%d|\n", side());
+            wprintf (L"Characters: %lc %lc\n", L'a', 65);
+            return 0;
+          }
+        ''', side=r'''
+          #include <stdlib.h>
+          #include <malloc.h>
+          #include "header.h"
+          int side() {
+            struct mallinfo m = mallinfo();
+            return m.arena > 1;
+          }
+        ''', expected=['|1|\nCharacters: a A\n'])
+      finally:
+        del os.environ['EMCC_FORCE_STDLIBS']
+
+    test('libc,libcextra')
+    test('1')
 
   def test_dylink_iostream(self):
     try:
