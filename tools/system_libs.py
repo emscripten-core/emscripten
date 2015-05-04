@@ -270,11 +270,11 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
     return build_libc(libname, libc_files, ['-O2'])
 
-  def create_pthreads():
+  def create_pthreads(libname):
     # Add pthread files.
     pthreads_files = [os.path.join('pthread', 'library_pthread.c')]
     pthreads_files += glob.glob(shared.path_from_root('system/lib/libc/musl/src/thread/*.c'))
-    return build_libc('pthreads.bc', pthreads_files, ['-O2'])
+    return build_libc(libname, pthreads_files, ['-O2'])
 
   # libcextra
   def create_libcextra(libname):
@@ -646,11 +646,11 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-o', o] + clflags)
     return o
 
-  def create_dlmalloc_singlethreaded():
-    return create_dlmalloc('dlmalloc.bc', ['-O2'])
+  def create_dlmalloc_singlethreaded(libname):
+    return create_dlmalloc(libname, ['-O2'])
 
-  def create_dlmalloc_multithreaded():
-    return create_dlmalloc('dlmalloc_threadsafe.bc', ['-O2', '-s', 'USE_PTHREADS=1'])
+  def create_dlmalloc_multithreaded(libname):
+    return create_dlmalloc(libname, ['-O2', '-s', 'USE_PTHREADS=1'])
 
   # Setting this in the environment will avoid checking dependencies and make building big projects a little faster
   # 1 means include everything; otherwise it can be the name of a lib (libcxx, etc.)
@@ -740,8 +740,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                                                                          ('gl',        'bc', create_gl,        gl_symbols,        ['libc'],                   False),
                                                                          ('libc',      'bc', create_libc,      libc_symbols,      [],                         False),
                                                                          ('pthreads',  'bc', create_pthreads,  pthreads_symbols,  ['libc'],                   False),
-                                                                         ('dlmalloc',  'bc', create_dlmalloc_singlethreaded,      [],                         False),
-                                                                         ('dlmalloc_threadsafe', 'bc', create_dlmalloc_multithreaded,[],                      False)]:
+                                                                         ('dlmalloc',  'bc', create_dlmalloc_singlethreaded,      [], [],                     False),
+                                                                         ('dlmalloc_threadsafe', 'bc', create_dlmalloc_multithreaded, [], [],                 False)]:
     force_this = force_all or shortname in force
     if can_noexcept: shortname = maybe_noexcept(shortname)
     if force_this:
