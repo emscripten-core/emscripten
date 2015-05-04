@@ -1135,8 +1135,6 @@ if (totalMemory !== TOTAL_MEMORY) {
 assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' && !!(new Int32Array(1)['subarray']) && !!(new Int32Array(1)['set']),
        'JS engine does not provide full typed array support');
 
-#endif // POINTER_MASKING
-
 var buffer;
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) buffer = new SharedArrayBuffer(TOTAL_MEMORY);
