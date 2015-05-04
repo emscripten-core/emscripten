@@ -3969,6 +3969,31 @@ var Module = {
       #self.assertContained("warning: trying to dynamically load symbol '__Z5sidefv' (from 'third.js') that already exists", full)
       self.assertContained("warning: trying to dynamically load symbol '_sideg' (from 'third.js') that already exists", full)
 
+  def test_dylink_dot_a(self):
+    # .a linking must force all .o files inside it, when in a shared module
+    open('third.cpp', 'w').write(r'''
+      int sidef() { return 36; }
+    ''')
+    Popen([PYTHON, EMCC, 'third.cpp'] + Building.COMPILER_TEST_OPTS + self.emcc_args + ['-o', 'third.o', '-c']).communicate()
+
+    open('fourth.cpp', 'w').write(r'''
+      int sideg() { return 17; }
+    ''')
+    Popen([PYTHON, EMCC, 'fourth.cpp'] + Building.COMPILER_TEST_OPTS + self.emcc_args + ['-o', 'fourth.o', '-c']).communicate()
+
+    Popen([PYTHON, EMAR, 'rc', 'libfourth.a', 'fourth.o']).communicate()
+
+    self.dylink_test(main=r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+      extern int sidef();
+      extern int sideg();
+      int main() {
+        printf("sidef: %d, sideg: %d.\n", sidef(), sideg());
+      }
+    ''', side=['libfourth.a', 'third.o'], # contents of libtwo.a must be included, even if they aren't referred to!
+    expected=['sidef: 36, sideg: 17.\n'])
+
   def test_dylink_zlib(self):
     Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'zlib')]
     try:
