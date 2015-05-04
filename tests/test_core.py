@@ -1960,12 +1960,11 @@ value = real 1.25 imag 0.00''', force_c=True)
 
       test()
 
-      if not self.is_emterpreter():
-        print 'relocatable' # this tests recursive global structs => nontrivial postSets for relocation
-        assert Settings.RELOCATABLE == Settings.EMULATED_FUNCTION_POINTERS == 0
-        Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 1
-        test()
-        Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 0
+      print 'relocatable' # this tests recursive global structs => nontrivial postSets for relocation
+      assert Settings.RELOCATABLE == Settings.EMULATED_FUNCTION_POINTERS == 0
+      Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 1
+      test()
+      Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 0
 
   def test_ptrtoint(self):
       runner = self
@@ -3935,7 +3934,7 @@ var Module = {
       del os.environ['EMCC_FORCE_STDLIBS']
 
   def test_dylink_hyper_dupe(self):
-    if self.is_emterpreter(): return self.skip('todo')
+    Settings.TOTAL_MEMORY = 64*1024*1024
 
     # test hyper-dynamic linking, and test duplicate warnings
     open('third.cpp', 'w').write(r'''
@@ -5307,12 +5306,11 @@ return malloc(size);
       main = main[:main.find('\n}')]
       assert main.count('\n') <= 7, ('must not emit too many postSets: %d' % main.count('\n')) + ' : ' + main
 
-    if not self.is_emterpreter():
-      print 'relocatable'
-      assert Settings.RELOCATABLE == Settings.EMULATED_FUNCTION_POINTERS == 0
-      Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 1
-      test()
-      Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 0
+    print 'relocatable'
+    assert Settings.RELOCATABLE == Settings.EMULATED_FUNCTION_POINTERS == 0
+    Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 1
+    test()
+    Settings.RELOCATABLE = Settings.EMULATED_FUNCTION_POINTERS = 0
 
     if self.is_emterpreter():
       print 'emterpreter/async/assertions' # extra coverage
