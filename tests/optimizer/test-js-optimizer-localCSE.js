@@ -56,5 +56,7 @@ function cubeMD5mesh() {
 function ___towcase() {
  gb + 1 + ($i << 2);
  gb + 1 + ($i << 2);
+ gb + gb + gb + gb;
+ gb + gb + gb + gb;
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["skinning", "_i64Subtract", "cubeMD5mesh", "___towcase"]

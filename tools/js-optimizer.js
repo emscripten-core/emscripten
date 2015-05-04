@@ -1012,6 +1012,7 @@ function localCSE(ast) {
           if (type === 'binary' || type === 'unary-prefix') {
             if (type === 'binary' && skips.indexOf(node) >= 0) return;
             if (measureCost(node) < MIN_COST) return;
+            if (detectType(node, asmData) === ASM_NONE) return; // if we can't figure it out locally, forget it
             var str = JSON.stringify(node);
             var lookup = exps[str];
             if (!lookup) {

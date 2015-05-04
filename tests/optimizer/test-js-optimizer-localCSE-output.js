@@ -61,5 +61,7 @@ function ___towcase() {
  CSE$0 = gb + 1 + ($i << 2) | 0;
  CSE$0 | 0;
  CSE$0 | 0;
+ gb + gb + gb + gb;
+ gb + gb + gb + gb;
 }
 
