@@ -261,7 +261,7 @@ void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_in
    mechanism to call the main loop function. This is **HIGHLY**
    recommended if you are doing rendering, as the browser’s
    "requestAnimationFrame" will make sure you render at a proper
-   smooth rate that lines up properly with the the browser and
+   smooth rate that lines up properly with the browser and
    monitor. If you do not render at all in your application, then you
    should pick a specific frame rate that makes sense for your code.
 
@@ -666,7 +666,7 @@ void emscripten_async_wget_data(const char* url, void *arg, em_async_wget_onlo
       * **url** (*const char**) -- The URL of the file to load.
 
       * **arg** (*void**) -- User-defined data that is passed to the
-        callbacks, untouched by the API itself. This may be be used by
+        callbacks, untouched by the API itself. This may be used by
         a callback to identify the associated call.
 
       * **onload** (*em_async_wget_onload_func*) --
@@ -721,7 +721,7 @@ int emscripten_async_wget2(const char* url, const char* file, const char* req
         request: e.g. "key=value&key2=value2".
 
       * **arg** (*void**) -- User-defined data that is passed to the
-        callbacks, untouched by the API itself. This may be be used by
+        callbacks, untouched by the API itself. This may be used by
         a callback to identify the associated call.
 
       * **onload** (*em_async_wget2_onload_func*) --
@@ -793,7 +793,7 @@ int emscripten_async_wget2_data(const char* url, const char* requesttype, cons
         request: e.g. "key=value&key2=value2".
 
       * **arg** (*void**) -- User-defined data that is passed to the
-        callbacks, untouched by the API itself. This may be be used by
+        callbacks, untouched by the API itself. This may be used by
         a callback to identify the associated call.
 
       * **int free** (*const*) -- Tells the runtime whether to free
@@ -908,7 +908,7 @@ void emscripten_async_prepare_data(char* data, int size, const char *suffix, 
         'jpg'.
 
       * **arg** (*void**) -- User-defined data that is passed to the
-        callbacks, untouched by the API itself. This may be be used by
+        callbacks, untouched by the API itself. This may be used by
         a callback to identify the associated call.
 
       * **onload** (*em_async_prepare_data_onload_func*) --
