@@ -660,10 +660,14 @@ var LibraryGL = {
         Module.print('Could not create canvas: ' + [errorInfo, e, JSON.stringify(webGLContextAttributes)]);
         return 0;
       }
-#if GL_DEBUG
+
       function wrapDebugGL(ctx) {
 
         var printObjectList = [];
+
+        function dump(arg){
+          Module.print(arg);
+        }
 
         function prettyPrint(arg) {
           if (typeof arg == 'undefined') return '!UNDEFINED!';
@@ -743,9 +747,9 @@ var LibraryGL = {
         }
         return wrapper;
       }
-#endif
-      // possible GL_DEBUG entry point: ctx = wrapDebugGL(ctx);
-
+      if(GL.debug){
+        ctx = wrapDebugGL(ctx);
+      }
       if (!ctx) return 0;
       return GL.registerContext(ctx, webGLContextAttributes);
     },
