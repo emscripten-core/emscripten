@@ -1810,7 +1810,11 @@ function detectType(node, asmInfo, inVarDef) {
     case 'binary': {
       switch (node[1]) {
         case '+': case '-':
-        case '*': case '/': case '%': return detectType(node[2], asmInfo, inVarDef);
+        case '*': case '/': case '%': {
+          var ret = detectType(node[2], asmInfo, inVarDef);
+          if (ret !== ASM_NONE) return ret;
+          return detectType(node[3], asmInfo, inVarDef)
+        }
         case '|': case '&': case '^': case '<<': case '>>': case '>>>':
         case '==': case '!=': case '<': case '<=': case '>': case '>=': {
           return ASM_INT;
