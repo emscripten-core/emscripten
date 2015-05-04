@@ -140,7 +140,7 @@ var LibraryManager = {
       var filename = libraries[i];
       var src = read(filename);
       try {
-        var processed = processMacros(preprocess(src));
+        var processed = processMacros(preprocess(src, filename));
         eval(processed);
       } catch(e) {
         var details = [e, e.lineNumber ? 'line number: ' + e.lineNumber : '', (e.stack || "").toString().replace('Object.<anonymous>', filename)];

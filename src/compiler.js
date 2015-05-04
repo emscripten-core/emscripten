@@ -194,7 +194,7 @@ if (!BOOTSTRAPPING_STRUCT_INFO) {
 load('modules.js');
 load('parseTools.js');
 load('jsifier.js');
-globalEval(processMacros(preprocess(read('runtime.js'))));
+globalEval(processMacros(preprocess(read('runtime.js'), 'runtime.js')));
 Runtime.QUANTUM_SIZE = QUANTUM_SIZE;
 
 //===============================

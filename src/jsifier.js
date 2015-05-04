@@ -46,9 +46,9 @@ function JSify(data, functionsOnly) {
     // things out as they are ready.
 
     var shellParts = read(shellFile).split('{{BODY}}');
-    print(processMacros(preprocess(shellParts[0])));
+    print(processMacros(preprocess(shellParts[0], shellFile)));
     var preFile = BUILD_AS_SHARED_LIB || SIDE_MODULE ? 'preamble_sharedlib.js' : 'preamble.js';
-    var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime())));
+    var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime()), preFile));
     print(pre);
   }
 
@@ -441,13 +441,13 @@ function JSify(data, functionsOnly) {
       print(read('deterministic.js'));
     }
     var postFile = BUILD_AS_SHARED_LIB || SIDE_MODULE ? 'postamble_sharedlib.js' : 'postamble.js';
-    var postParts = processMacros(preprocess(read(postFile))).split('{{GLOBAL_VARS}}');
+    var postParts = processMacros(preprocess(read(postFile), postFile)).split('{{GLOBAL_VARS}}');
     print(postParts[0]);
 
     print(postParts[1]);
 
     var shellParts = read(shellFile).split('{{BODY}}');
-    print(processMacros(preprocess(shellParts[1])));
+    print(processMacros(preprocess(shellParts[1], shellFile)));
     // Print out some useful metadata
     if (RUNNING_JS_OPTS || PGO) {
       var generatedFunctions = JSON.stringify(keys(Functions.implementedFunctions));
