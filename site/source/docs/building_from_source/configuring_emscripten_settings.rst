@@ -4,7 +4,7 @@
 Configuring Emscripten Settings when Manually Building from Source
 ==================================================================
 
-.. note:: These instructions are are only useful if you are building Emscripten **manually** from source! If you're using the :ref:`SDK <building-emscripten-from-source-using-the-sdk>` you should never manually update the settings, because the :ref:`emsdk` automatically overwrites the file with the appropriate compiler settings when you :term:`activate <Active Tool/SDK>` a tool or SDK.
+.. note:: These instructions are only useful if you are building Emscripten **manually** from source! If you're using the :ref:`SDK <building-emscripten-from-source-using-the-sdk>` you should never manually update the settings, because the :ref:`emsdk` automatically overwrites the file with the appropriate compiler settings when you :term:`activate <Active Tool/SDK>` a tool or SDK.
 
 
 The compiler settings used by Emscripten are defined in the :ref:`compiler configuration file (~/.emscripten) <compiler-configuration-file>`. These settings include paths to the tools (LLVM, Clang, Java, etc.) and the compiler's temporary directory for intermediate build files.
@@ -49,7 +49,7 @@ Compiler configuration file-format
 
 .. note:: While the syntax is identical, the appearance of the default **.emscripten** file created by *emcc* is quite different than that created by :ref:`emsdk <compiler-configuration-file>`. This is because *emsdk* manages multiple target environments, and where possible hard codes the locations of those tools when a new environment is activated. The default file, by contrast, is managed by the user — and is designed to make that task as easy as possible.
 
-The file simply assigns paths to a number of *variables* representing the the main tools used by Emscripten. For example, if the user cloned Emscripten to the **C:/Users/username/Documents/GitHub/emscripten** directory, then the file would have the line: ::
+The file simply assigns paths to a number of *variables* representing the main tools used by Emscripten. For example, if the user cloned Emscripten to the **C:/Users/username/Documents/GitHub/emscripten** directory, then the file would have the line: ::
 
 	EMSCRIPTEN_ROOT = 'C:/Users/username/Documents/GitHub/emscripten'
 	

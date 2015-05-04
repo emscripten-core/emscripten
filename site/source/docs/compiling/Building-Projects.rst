@@ -146,7 +146,7 @@ For example, consider the case where a project "project" uses a library "libstuf
 	./emconfigure ./configure
 	./emmake make
 		
-	# Compile the the library and code together to HTML
+	# Compile the library and code together to HTML
 	emcc project.bc libstuff.bc -o final.html
 
 	

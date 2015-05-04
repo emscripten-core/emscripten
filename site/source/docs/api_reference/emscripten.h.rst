@@ -177,7 +177,7 @@ Functions
 	
 	If the main loop function needs to receive user-defined data, use :c:func:`emscripten_set_main_loop_arg` instead.
 
-	The JavaScript environment will call that function at a specified number of frames per second. Setting 0 or a negative value as the ``fps`` will instead use the browser’s ``requestAnimationFrame`` mechanism to call the main loop function. This is **HIGHLY** recommended if you are doing rendering, as the browser’s ``requestAnimationFrame`` will make sure you render at a proper smooth rate that lines up properly with the the browser and monitor. If you do not render at all in your application, then you should pick a specific frame rate that makes sense for your code.
+	The JavaScript environment will call that function at a specified number of frames per second. Setting 0 or a negative value as the ``fps`` will instead use the browser’s ``requestAnimationFrame`` mechanism to call the main loop function. This is **HIGHLY** recommended if you are doing rendering, as the browser’s ``requestAnimationFrame`` will make sure you render at a proper smooth rate that lines up properly with the browser and monitor. If you do not render at all in your application, then you should pick a specific frame rate that makes sense for your code.
 	
 	If ``simulate_infinite_loop`` is true, the function will throw an exception in order to stop execution of the caller. This will lead to the main loop being entered instead of code after the call to :c:func:`emscripten_set_main_loop` being run, which is the closest we can get to simulating an infinite loop (we do something similar in `glutMainLoop <https://github.com/kripken/emscripten/blob/1.29.12/system/include/GL/freeglut_std.h#L400>`_ in `GLUT <http://www.opengl.org/resources/libraries/glut/>`_). If this parameter is ``false``, then the behavior is the same as it was before this parameter was added to the API, which is that execution continues normally. Note that in both cases we do not run global destructors, ``atexit``, etc., since we know the main loop will still be running, but if we do not simulate an infinite loop then the stack will be unwound. That means that if ``simulate_infinite_loop`` is ``false``, and you created an object on the stack, it will be cleaned up before the main loop is called for the first time.
 	
@@ -480,7 +480,7 @@ Functions
 	
 	:param url: The URL of the file to load.
 	:type url: const char* 
-	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
+	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be used by a callback to identify the associated call.
 	:param em_async_wget_onload_func onload: Callback on successful load of the URL into the buffer. The callback function parameter values are:	
 	
 		- *(void*)* : Equal to ``arg`` (user defined data).
@@ -510,7 +510,7 @@ Functions
 	:type requesttype: const char* 	
 	:param param: Request parameters for POST requests (see ``requesttype``). The parameters are specified in the same way as they would be in the URL for an equivalent GET request: e.g. ``key=value&key2=value2``.
 	:type param: const char*
-	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
+	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be used by a callback to identify the associated call.
 	:param em_async_wget2_onload_func onload: Callback on successful load of the file. The callback function parameter values are:	
 	
 		- *(void*)* : Equal to ``arg`` (user defined data).
@@ -547,7 +547,7 @@ Functions
 	:type requesttype: const char*	
 	:param param: Request parameters for POST requests (see ``requesttype``). The parameters are specified in the same way as they would be in the URL for an equivalent GET request: e.g. ``key=value&key2=value2``.
 	:type param: const char*
-	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
+	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be used by a callback to identify the associated call.
 	:param const int free: Tells the runtime whether to free the returned buffer after ``onload`` is complete. If ``false`` freeing the buffer is the receiver's responsibility.
 	:type free: const int
 	:param em_async_wget2_data_onload_func onload: Callback on successful load of the file. The callback function parameter values are:
@@ -589,7 +589,7 @@ Functions
 	:param char* data: The buffer of data to prepare.
 	:param suffix: The file suffix, e.g. 'png' or 'jpg'.
 	:type suffix: const char* 
-	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
+	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be used by a callback to identify the associated call.
 	:param em_async_prepare_data_onload_func onload: Callback on successful preparation of the file. The callback function parameter values are:	
 	
 		- *(void*)* : Equal to ``arg`` (user defined data).
@@ -613,7 +613,7 @@ Emscripten Asynchronous IndexedDB API
 	
 	:param db_name: The IndexedDB database from which to load.
 	:param file_id: The identifier of the data to load.
-	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
+	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be used by a callback to identify the associated call.
 	:param em_async_wget_onload_func onload: Callback on successful load of the URL into the buffer. The callback function parameter values are:	
 	
 		- *(void*)* : Equal to ``arg`` (user defined data).
@@ -634,7 +634,7 @@ Emscripten Asynchronous IndexedDB API
 	:param file_id: The identifier of the data to load.
 	:param ptr: A pointer to the data to store.
 	:param num: How many bytes to store.
-	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
+	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be used by a callback to identify the associated call.
 	:param em_async_wget_onload_func onload: Callback on successful load of the URL into the buffer. The callback function parameter values are:	
 	
 		- *(void*)* : Equal to ``arg`` (user defined data).
@@ -651,7 +651,7 @@ Emscripten Asynchronous IndexedDB API
 	
 	:param db_name: The IndexedDB database.
 	:param file_id: The identifier of the data.
-	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
+	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be used by a callback to identify the associated call.
 	:param em_arg_callback_func ondelete: Callback on successful delete
 
 		- *(void*)* : Equal to ``arg`` (user defined data).
@@ -668,7 +668,7 @@ Emscripten Asynchronous IndexedDB API
 	
 	:param db_name: The IndexedDB database.
 	:param file_id: The identifier of the data.
-	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be be used by a callback to identify the associated call.
+	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be used by a callback to identify the associated call.
 	:param em_arg_callback_func oncheck: Callback on successful check, with arguments
 
 		- *(void*)* : Equal to ``arg`` (user defined data).
