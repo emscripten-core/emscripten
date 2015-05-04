@@ -982,7 +982,6 @@ try:
       js_opts = True
       logging.debug('enabling js opts for EMTERPRETIFY')
     assert closure is not 2, 'EMTERPRETIFY requires valid asm.js, and is incompatible with closure 2 which disables that'
-    assert not shared.Settings.RELOCATABLE
 
   if shared.Settings.DEAD_FUNCTIONS and not js_opts:
     js_opts = True

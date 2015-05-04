@@ -2839,9 +2839,6 @@ The current type of b is: 9
     self.do_run(main, 'supp: 54,2\nmain: 56\nsupp see: 543\nmain see: 76\nok.')
 
   def can_dlfcn(self):
-    if self.is_emterpreter():
-      self.skip('no dlfcn support in emterpreter yet')
-      return False
 
     if self.emcc_args:
       self.emcc_args += ['--memory-init-file', '0']
@@ -3606,10 +3603,6 @@ ok
 ''', post_build=self.dlfcn_post_build)
 
   def dylink_test(self, main, side, expected, header=None, main_emcc_args=[], force_c=False, need_reverse=True):
-    if self.is_emterpreter():
-      self.skip('no dylink support in emterpreter yet')
-      return
-
     if header:
       open('header.h', 'w').write(header)
 
