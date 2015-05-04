@@ -1069,7 +1069,6 @@ __ATPRERUN__.push(function() {
   js = ''.join(js)
   if not ASSERTIONS:
     js = js.replace('assert(', '//assert(')
-  # TODO: strip asserts when not ASSERTIONS
   assert '// {{PRE_LIBRARY}}' in asm.pre_js
   asm.pre_js = asm.pre_js.replace('// {{PRE_LIBRARY}}', '// {{PRE_LIBRARY}}\n' + js)
 
