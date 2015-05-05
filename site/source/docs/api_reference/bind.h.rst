@@ -630,7 +630,7 @@ Classes
 
    .. cpp:type:: HELPNEEDEDHERE
 
-      **HamishW** Don't know what do do with this: ::
+      **HamishW** Don't know what to do with this: ::
 
          class_() = delete;
 

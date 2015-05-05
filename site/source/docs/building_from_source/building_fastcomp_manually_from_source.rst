@@ -142,5 +142,5 @@ Version numbers are typically ``X.Y.Z`` where:
 Backend code structure
 ----------------------
 
-The backend is in `emscripten-fastcomp <https://github.com/kripken/emscripten-fastcomp>`_. The main file is `JSBackend.cpp <https://github.com/kripken/emscripten-fastcomp/blob/incoming/lib/Target/JSBackend/JSBackend.cpp>`_ but the the other files in that directory (`lib/Target/JSBackend/ <https://github.com/kripken/emscripten-fastcomp/tree/incoming/lib/Target/JSBackend>`_) are also important.
+The backend is in `emscripten-fastcomp <https://github.com/kripken/emscripten-fastcomp>`_. The main file is `JSBackend.cpp <https://github.com/kripken/emscripten-fastcomp/blob/incoming/lib/Target/JSBackend/JSBackend.cpp>`_ but the other files in that directory (`lib/Target/JSBackend/ <https://github.com/kripken/emscripten-fastcomp/tree/incoming/lib/Target/JSBackend>`_) are also important.
 
