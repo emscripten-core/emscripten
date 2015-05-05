@@ -935,9 +935,9 @@ try:
   elif shared.Settings.SIDE_MODULE:
     assert not shared.Settings.MAIN_MODULE
     shared.Settings.FINALIZE_ASM_JS = 0 # side modules are not finalized until after relocation
+    memory_init_file = False # memory init file is not supported with side modules, must be executable synchronously (for dlopen)
 
   if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
-    memory_init_file = False # memory init file is not supported with module linking
     assert shared.Settings.ASM_JS, 'module linking requires asm.js output (-s ASM_JS=1)'
     shared.Settings.LINKABLE = 1 # TODO: add FORCE_DCE option for the brave people that do want to dce here and in side modules
     debug_level = max(debug_level, 2)

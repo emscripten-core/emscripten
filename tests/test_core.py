@@ -2838,12 +2838,6 @@ The current type of b is: 9
     self.do_run(main, 'supp: 54,2\nmain: 56\nsupp see: 543\nmain see: 76\nok.')
 
   def can_dlfcn(self):
-
-    if self.emcc_args:
-      self.emcc_args += ['--memory-init-file', '0']
-
-    Settings.DISABLE_EXCEPTION_CATCHING = 1
-
     return True
 
   def prep_dlfcn_lib(self):
