@@ -667,10 +667,10 @@ var LibraryGL = {
         var printObjectList = [];
 
         function myDump(arg){
-          if(window.dump){
+          if (window.dump) {
             window.dump(arg);
           }
-				}
+        }
 
         function prettyPrint(arg) {
           if (typeof arg == 'undefined') return '!UNDEFINED!';
