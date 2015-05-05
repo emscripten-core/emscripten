@@ -664,6 +664,10 @@ var LibraryGL = {
 #if GL_DEBUG
       function wrapDebugGL(ctx) {
 
+        if (!(window.dump)){
+          Module.print('GL debug context requested, but window.dump is unavailable.');
+        }
+
         var printObjectList = [];
 
         function myDump(arg){
