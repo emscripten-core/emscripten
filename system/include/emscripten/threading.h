@@ -228,6 +228,7 @@ void emscripten_main_thread_process_queued_calls();
 #define EM_PROXIED_SENDTO 134
 #define EM_PROXIED_RECVFROM 135
 #define EM_PROXIED_GETSOCKOPT 136
+#define EM_PROXIED_PTHREAD_CREATE 137
 
 #ifdef __cplusplus
 }

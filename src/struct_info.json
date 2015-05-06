@@ -1532,7 +1532,8 @@
             "EM_PROXIED_RECV",
             "EM_PROXIED_SENDTO",
             "EM_PROXIED_RECVFROM",
-            "EM_PROXIED_GETSOCKOPT"
+            "EM_PROXIED_GETSOCKOPT",
+            "EM_PROXIED_PTHREAD_CREATE"
             ]
     },
     {

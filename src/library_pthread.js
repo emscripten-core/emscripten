@@ -285,6 +285,12 @@ var LibraryPThread = {
 
   pthread_create__deps: ['_spawn_thread', 'pthread_getschedparam', 'pthread_self'],
   pthread_create: function(pthread_ptr, attr, start_routine, arg) {
+    // When running in PROXY_TO_WORKER=1 mode, the pthread creation needs to be forwarded to the main browser thread, and not the main C runtime thread,
+    // so the following is valid only when in non-proxy-to-worker mode.
+#if !PROXY_TO_WORKER
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_4({{{ cDefine('EM_PROXIED_PTHREAD_CREATE') }}}, pthread_ptr, attr, start_routine, arg);
+#endif
+
     if (!HEAPU8.buffer instanceof SharedArrayBuffer) {
       Module['printErr']('Current environment does not support SharedArrayBuffer, pthreads are not available!');
       return 1;

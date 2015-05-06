@@ -388,6 +388,7 @@ static void _do_call(em_queued_call *q)
 		case EM_PROXIED_SENDTO: q->returnValue.i = sendto(q->args[0].i, q->args[1].vp, q->args[2].i, q->args[3].i, q->args[4].vp, q->args[5].i); break;
 		case EM_PROXIED_RECVFROM: q->returnValue.i = recvfrom(q->args[0].i, q->args[1].vp, q->args[2].i, q->args[3].i, q->args[4].vp, q->args[5].vp); break;
 		case EM_PROXIED_GETSOCKOPT: q->returnValue.i = getsockopt(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].vp, q->args[4].vp); break;
+		case EM_PROXIED_PTHREAD_CREATE: q->returnValue.i = pthread_create(q->args[0].vp, q->args[1].vp, q->args[2].vp, q->args[3].vp); break;
 		default: assert(0 && "Invalid Emscripten pthread _do_call opcode!");
 	}
 	q->operationDone = 1;

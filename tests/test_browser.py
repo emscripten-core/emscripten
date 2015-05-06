@@ -2548,6 +2548,10 @@ window.close = function() {
   def test_pthread_create_pthread(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_create_pthread.cpp'), expected='1', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'NO_EXIT_RUNTIME=1'])
 
+  # Test another case of pthreads spawning pthreads, but this time the callers immediately join on the threads they created.
+  def test_pthread_nested_spawns(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_nested_spawns.cpp'), expected='1', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=2'])
+
   # Test that main thread can wait for a pthread to finish via pthread_join().
   def test_pthread_join(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_join.cpp'), expected='6765', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
