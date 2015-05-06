@@ -51,6 +51,8 @@ static int do_wait(volatile int *addr, int val,
 			}
 			if (waitMsecs > 100) waitMsecs = 100;
 			r = -emscripten_futex_wait((void*)addr, val, waitMsecs);
+			// Assist other threads by executing proxied operations that are effectively singlethreaded.
+			if (emscripten_is_main_runtime_thread()) emscripten_main_thread_process_queued_calls();
 		} while(r == ETIMEDOUT);
 	} else {
 		// Can wait in one go.

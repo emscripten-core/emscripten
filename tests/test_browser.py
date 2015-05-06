@@ -2577,6 +2577,10 @@ window.close = function() {
   def test_pthread_malloc(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc.cpp'), expected='0', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
 
+  # Stress test pthreads allocating memory that will call to sbrk(), and main thread has to free up the data.
+  def test_pthread_malloc_free(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc_free.cpp'), expected='0', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'TOTAL_MEMORY=268435456'])
+
   # Test that the pthread_barrier API works ok.
   def test_pthread_barrier(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_barrier.cpp'), expected='0', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
