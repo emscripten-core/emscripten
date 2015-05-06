@@ -868,6 +868,35 @@ LibraryManager.library = {
     return -1;
   },
   pathconf: 'fpathconf',
+#if EMTERPRETIFY_ASYNC
+  fsync__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '$EmterpreterAsync'],
+  fsync: function(fildes) {
+    return EmterpreterAsync.handle(function(resume) {
+      // int fsync(int fildes);
+      // http://pubs.opengroup.org/onlinepubs/000095399/functions/fsync.html
+      var stream = FS.getStream(fildes);
+      if (stream) {
+        var mount = stream.node.mount;
+        if (!mount.type.syncfs) {
+          // We write directly to the file system, so there's nothing to do here.
+          resume(function() { return 0 });
+          return;
+        }
+        mount.type.syncfs(mount, false, function(err) {
+          if (err) {
+            ___setErrNo(ERRNO_CODES.EIO);
+            resume(function() { return -1 });
+            return;
+          }
+          resume(function() { return 0 });
+        });
+      } else {
+        ___setErrNo(ERRNO_CODES.EBADF);
+        resume(function() { return -1 });
+      }
+    });
+  },
+#else
   fsync__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   fsync: function(fildes) {
     // int fsync(int fildes);
@@ -881,6 +910,7 @@ LibraryManager.library = {
       return -1;
     }
   },
+#endif // EMTERPRETIFY_ASYNC
   fdatasync: 'fsync',
   truncate__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   truncate: function(path, length) {
@@ -1936,12 +1966,11 @@ LibraryManager.library = {
     stream.eof = false;
     stream.error = false;
   },
-  fclose__deps: ['close', 'fsync', 'fileno'],
+  fclose__deps: ['close', 'fileno'],
   fclose: function(stream) {
     // int fclose(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fclose.html
     var fd = _fileno(stream);
-    _fsync(fd);
     return _close(fd);
   },
   fdopen__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
