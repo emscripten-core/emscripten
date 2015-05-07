@@ -596,8 +596,10 @@ mergeInto(LibraryManager.library, {
             Browser.lastTouches[touch.identifier] = coords;
             Browser.touches[touch.identifier] = coords;
           } else if (event.type === 'touchend' || event.type === 'touchmove') {
-            Browser.lastTouches[touch.identifier] = Browser.touches[touch.identifier];
-            Browser.touches[touch.identifier] = { x: adjustedX, y: adjustedY };
+            var last = Browser.touches[touch.identifier];
+            if (!last) last = coords;
+            Browser.lastTouches[touch.identifier] = last;
+            Browser.touches[touch.identifier] = coords;
           } 
           return;
         }
