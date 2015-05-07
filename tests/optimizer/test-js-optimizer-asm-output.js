@@ -54,7 +54,7 @@ function bits() {
 function maths() {
  check(17);
  check(95);
- __ZN6b2Vec2C1Ev($this1 + 76 | 0);
+ __ZN6b2Vec2C1Ev($this1 + 20 + 8 + 8 + 8 + 8 + 8 + 8 + 8 | 0);
 }
 function hoisting() {
  if ($i < $N) {
