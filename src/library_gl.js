@@ -5231,6 +5231,7 @@ var LibraryGL = {
         GLImmediate.flush(null, first);
         GLImmediate.mode = -1;
       };
+      {{{ updateExport('glDrawArrays') }}}
 
       _glDrawElements = _emscripten_glDrawElements = function _glDrawElements(mode, count, type, indices, start, end) { // start, end are given if we come from glDrawRangeElements
         if (GLImmediate.totalEnabledClientAttributes == 0 && mode <= 6 && GL.currElementArrayBuffer) {
@@ -5253,6 +5254,7 @@ var LibraryGL = {
         GLImmediate.flush(count, 0, indices);
         GLImmediate.mode = -1;
       };
+      {{{ updateExport('glDrawElements') }}}
 
       // TexEnv stuff needs to be prepared early, so do it here.
       // init() is too late for -O2, since it freezes the GL functions
@@ -5276,17 +5278,21 @@ var LibraryGL = {
         GLImmediate.TexEnvJIT.hook_activeTexture(texture);
         glActiveTexture(texture);
       };
+      {{{ updateExport('glActiveTexture') }}}
 
       var glEnable = _glEnable;
       _glEnable = _emscripten_glEnable = function _glEnable(cap) {
         GLImmediate.TexEnvJIT.hook_enable(cap);
         glEnable(cap);
       };
+      {{{ updateExport('glEnable') }}}
+
       var glDisable = _glDisable;
       _glDisable = _emscripten_glDisable = function _glDisable(cap) {
         GLImmediate.TexEnvJIT.hook_disable(cap);
         glDisable(cap);
       };
+      {{{ updateExport('glDisable') }}}
 
       var glTexEnvf = (typeof(_glTexEnvf) != 'undefined') ? _glTexEnvf : function(){};
       _glTexEnvf = _emscripten_glTexEnvf = function _glTexEnvf(target, pname, param) {
@@ -5294,26 +5300,33 @@ var LibraryGL = {
         // Don't call old func, since we are the implementor.
         //glTexEnvf(target, pname, param);
       };
+      {{{ updateExport('glTexEnvf') }}}
+
       var glTexEnvi = (typeof(_glTexEnvi) != 'undefined') ? _glTexEnvi : function(){};
       _glTexEnvi = _emscripten_glTexEnvi = function _glTexEnvi(target, pname, param) {
         GLImmediate.TexEnvJIT.hook_texEnvi(target, pname, param);
         // Don't call old func, since we are the implementor.
         //glTexEnvi(target, pname, param);
       };
+      {{{ updateExport('glTexEnvi') }}}
+
       var glTexEnvfv = (typeof(_glTexEnvfv) != 'undefined') ? _glTexEnvfv : function(){};
       _glTexEnvfv = _emscripten_glTexEnvfv = function _glTexEnvfv(target, pname, param) {
         GLImmediate.TexEnvJIT.hook_texEnvfv(target, pname, param);
         // Don't call old func, since we are the implementor.
         //glTexEnvfv(target, pname, param);
       };
+      {{{ updateExport('glTexEnvfv') }}}
 
       _glGetTexEnviv = function _glGetTexEnviv(target, pname, param) {
         GLImmediate.TexEnvJIT.hook_getTexEnviv(target, pname, param);
       };
+      {{{ updateExport('glGetTexEnviv') }}}
 
       _glGetTexEnvfv = function _glGetTexEnvfv(target, pname, param) {
         GLImmediate.TexEnvJIT.hook_getTexEnvfv(target, pname, param);
       };
+      {{{ updateExport('glGetTexEnvfv') }}}
 
       var glGetIntegerv = _glGetIntegerv;
       _glGetIntegerv = _emscripten_glGetIntegerv = function _glGetIntegerv(pname, params) {
@@ -5331,6 +5344,7 @@ var LibraryGL = {
         }
         glGetIntegerv(pname, params);
       };
+      {{{ updateExport('glGetIntegerv') }}}
     },
 
     // Main functions
