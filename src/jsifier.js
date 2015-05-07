@@ -390,7 +390,7 @@ function JSify(data, functionsOnly) {
         });
       }
       // these may be duplicated in side modules and the main module without issue
-      print(read('fastLong.js'));
+      print(processMacros(read('fastLong.js')));
       print('// EMSCRIPTEN_END_FUNCS\n');
       print(read('long.js'));
     } else {
