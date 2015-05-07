@@ -942,6 +942,7 @@ try:
     shared.Settings.LINKABLE = 1 # TODO: add FORCE_DCE option for the brave people that do want to dce here and in side modules
     debug_level = max(debug_level, 2)
     shared.Settings.RELOCATABLE = 1
+    shared.Settings.PRECISE_I64_MATH = 1 # other might use precise math, we need to be able to print it
 
   if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
     shared.Settings.ALIASING_FUNCTION_POINTERS = 0
