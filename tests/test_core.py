@@ -3763,8 +3763,14 @@ var Module = {
       }
     ''', '''
       #include <stdint.h>
-      int64_t sidey() { int64_t ret = 11; return ret << 40; }
-    ''', 'other says 12094627905536.')
+      int64_t sidey() {
+        volatile int64_t x = 11;
+        x = x * x * x * x;
+        x += x % 17;
+        x += (x * (1 << 30));
+        return x;
+      }
+    ''', 'other says 15724949027125.')
 
   def test_dylink_class(self):
     self.dylink_test(header=r'''
