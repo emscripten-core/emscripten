@@ -2913,6 +2913,19 @@ var LibraryGL = {
         0x80A0: 1  // GL_SAMPLE_COVERAGE
       };
 
+#if RELOCATABLE
+{{{
+(updateExport = function(name) {
+  var name = '_' + name;
+  var exported = 'Module["' + name + '"]';
+  // make sure we write to an existing export, and are not repeating ourselves
+  return 'assert(' + exported + '); assert(' + exported + ' !== ' + name + '); ' + exported + ' = ' + name + ';';
+}, '')
+}}}
+#else
+{{{ (updateExport = function(){ return '' }, '') }}}
+#endif
+
       var glEnable = _glEnable;
       _glEnable = _emscripten_glEnable = function _glEnable(cap) {
         // Clean up the renderer on any change to the rendering state. The optimization of
@@ -2937,6 +2950,7 @@ var LibraryGL = {
         }
         glEnable(cap);
       };
+      {{{ updateExport('glEnable') }}}
 
       var glDisable = _glDisable;
       _glDisable = _emscripten_glDisable = function _glDisable(cap) {
@@ -2960,6 +2974,8 @@ var LibraryGL = {
         }
         glDisable(cap);
       };
+      {{{ updateExport('glDisable') }}}
+
       _glIsEnabled = _emscripten_glIsEnabled = function _glIsEnabled(cap) {
         if (cap == 0x0B60 /* GL_FOG */) {
           return GLEmulation.fogEnabled ? 1 : 0;
@@ -2968,6 +2984,7 @@ var LibraryGL = {
         }
         return GLctx.isEnabled(cap);
       };
+      {{{ updateExport('glIsEnabled') }}}
 
       var glGetBooleanv = _glGetBooleanv;
       _glGetBooleanv = _emscripten_glGetBooleanv = function _glGetBooleanv(pname, p) {
@@ -2979,6 +2996,7 @@ var LibraryGL = {
         }
         glGetBooleanv(pname, p);
       };
+      {{{ updateExport('glGetBooleanv') }}}
 
       var glGetIntegerv = _glGetIntegerv;
       _glGetIntegerv = _emscripten_glGetIntegerv = function _glGetIntegerv(pname, params) {
@@ -3048,6 +3066,7 @@ var LibraryGL = {
         }
         glGetIntegerv(pname, params);
       };
+      {{{ updateExport('glGetIntegerv') }}}
 
       var glGetString = _glGetString;
       _glGetString = _emscripten_glGetString = function _glGetString(name_) {
@@ -3064,6 +3083,7 @@ var LibraryGL = {
         }
         return glGetString(name_);
       };
+      {{{ updateExport('glGetString') }}}
 
       // Do some automatic rewriting to work around GLSL differences. Note that this must be done in
       // tandem with the rest of the program, by itself it cannot suffice.
@@ -3082,6 +3102,7 @@ var LibraryGL = {
         };
         return id;
       };
+      {{{ updateExport('glCreateShader') }}}
 
       function ensurePrecision(source) {
         if (!/precision +(low|medium|high)p +float *;/.test(source)) {
@@ -3203,6 +3224,7 @@ var LibraryGL = {
 #endif
         GLctx.shaderSource(GL.shaders[shader], source);
       };
+      {{{ updateExport('glShaderSource') }}}
 
       var glCompileShader = _glCompileShader;
       _glCompileShader = _emscripten_glCompileShader = function _glCompileShader(shader) {
@@ -3217,6 +3239,7 @@ var LibraryGL = {
         }
 #endif
       };
+      {{{ updateExport('glCompileShader') }}}
 
       GL.programShaders = {};
       var glAttachShader = _glAttachShader;
@@ -3225,6 +3248,7 @@ var LibraryGL = {
         GL.programShaders[program].push(shader);
         glAttachShader(program, shader);
       };
+      {{{ updateExport('glAttachShader') }}}
 
       var glDetachShader = _glDetachShader;
       _glDetachShader = _emscripten_glDetachShader = function _glDetachShader(program, shader) {
@@ -3237,6 +3261,7 @@ var LibraryGL = {
         programShader.splice(index, 1);
         glDetachShader(program, shader);
       };
+      {{{ updateExport('glDetachShader') }}}
 
       var glUseProgram = _glUseProgram;
       _glUseProgram = _emscripten_glUseProgram = function _glUseProgram(program) {
@@ -3258,6 +3283,7 @@ var LibraryGL = {
           glUseProgram(program);
         }
       }
+      {{{ updateExport('glUseProgram') }}}
 
       var glDeleteProgram = _glDeleteProgram;
       _glDeleteProgram = _emscripten_glDeleteProgram = function _glDeleteProgram(program) {
@@ -3267,6 +3293,7 @@ var LibraryGL = {
           GL.currProgram = 0;
         }
       };
+      {{{ updateExport('glDeleteProgram') }}}
 
       // If attribute 0 was not bound, bind it to 0 for WebGL performance reasons. Track if 0 is free for that.
       var zeroUsedPrograms = {};
@@ -3275,6 +3302,8 @@ var LibraryGL = {
         if (index == 0) zeroUsedPrograms[program] = true;
         glBindAttribLocation(program, index, name);
       };
+      {{{ updateExport('glBindAttribLocation') }}}
+
       var glLinkProgram = _glLinkProgram;
       _glLinkProgram = _emscripten_glLinkProgram = function _glLinkProgram(program) {
         if (!(program in zeroUsedPrograms)) {
@@ -3282,6 +3311,7 @@ var LibraryGL = {
         }
         glLinkProgram(program);
       };
+      {{{ updateExport('glLinkProgram') }}}
 
       var glBindBuffer = _glBindBuffer;
       _glBindBuffer = _emscripten_glBindBuffer = function _glBindBuffer(target, buffer) {
@@ -3297,6 +3327,7 @@ var LibraryGL = {
           if (GLEmulation.currentVao) GLEmulation.currentVao.elementArrayBuffer = buffer;
         }
       };
+      {{{ updateExport('glBindBuffer') }}}
 
       var glGetFloatv = _glGetFloatv;
       _glGetFloatv = _emscripten_glGetFloatv = function _glGetFloatv(pname, params) {
@@ -3320,6 +3351,7 @@ var LibraryGL = {
           glGetFloatv(pname, params);
         }
       };
+      {{{ updateExport('glGetFloatv') }}}
 
       var glHint = _glHint;
       _glHint = _emscripten_glHint = function _glHint(target, mode) {
@@ -3328,6 +3360,7 @@ var LibraryGL = {
         }
         glHint(target, mode);
       };
+      {{{ updateExport('glHint') }}}
 
       var glEnableVertexAttribArray = _glEnableVertexAttribArray;
       _glEnableVertexAttribArray = _emscripten_glEnableVertexAttribArray = function _glEnableVertexAttribArray(index) {
@@ -3335,6 +3368,7 @@ var LibraryGL = {
         GLEmulation.enabledVertexAttribArrays[index] = 1;
         if (GLEmulation.currentVao) GLEmulation.currentVao.enabledVertexAttribArrays[index] = 1;
       };
+      {{{ updateExport('glEnableVertexAttribArray') }}}
 
       var glDisableVertexAttribArray = _glDisableVertexAttribArray;
       _glDisableVertexAttribArray = _emscripten_glDisableVertexAttribArray = function _glDisableVertexAttribArray(index) {
@@ -3342,6 +3376,7 @@ var LibraryGL = {
         delete GLEmulation.enabledVertexAttribArrays[index];
         if (GLEmulation.currentVao) delete GLEmulation.currentVao.enabledVertexAttribArrays[index];
       };
+      {{{ updateExport('glDisableVertexAttribArray') }}}
 
       var glVertexAttribPointer = _glVertexAttribPointer;
       _glVertexAttribPointer = _emscripten_glVertexAttribPointer = function _glVertexAttribPointer(index, size, type, normalized, stride, pointer) {
@@ -3350,6 +3385,7 @@ var LibraryGL = {
           GLEmulation.currentVao.vertexAttribPointers[index] = [index, size, type, normalized, stride, pointer];
         }
       };
+      {{{ updateExport('glVertexAttribPointer') }}}
     },
 
     getAttributeFromCapability: function(cap) {

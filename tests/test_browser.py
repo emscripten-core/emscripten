@@ -1405,6 +1405,7 @@ keydown(100);keyup(100); // trigger the end
 
   def test_cubegeom_pre(self):
     self.btest('cubegeom_pre.c', reference='cubegeom_pre.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
+    self.btest('cubegeom_pre.c', reference='cubegeom_pre.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'RELOCATABLE=1'])
 
   def test_cubegeom_pre2(self):
     self.btest('cubegeom_pre2.c', reference='cubegeom_pre2.png', args=['-s', 'GL_DEBUG=1', '-s', 'LEGACY_GL_EMULATION=1']) # some coverage for GL_DEBUG not breaking the build
@@ -2481,4 +2482,35 @@ window.close = function() {
     Popen([PYTHON, EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.js']).communicate()
 
     self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js'])
+
+  def test_dynamic_link_glemu(self):
+    open('pre.js', 'w').write('''
+      Module.dynamicLibraries = ['side.js'];
+  ''')
+    open('main.cpp', 'w').write(r'''
+      #include <stdio.h>
+      #include <string.h>
+      #include <assert.h>
+      const char *side();
+      int main() {
+        const char *exts = side();
+        puts(side());
+        assert(strstr(exts, "GL_EXT_texture_env_combine"));
+        int result = 1;
+        REPORT_RESULT();
+        return 0;
+      }
+    ''')
+    open('side.cpp', 'w').write(r'''
+      #include "SDL/SDL.h"
+      #include "SDL/SDL_opengl.h"
+      const char *side() {
+        SDL_Init(SDL_INIT_VIDEO);
+        SDL_SetVideoMode(600, 600, 16, SDL_OPENGL);
+        return (const char *)glGetString(GL_EXTENSIONS);
+      }
+    ''')
+    Popen([PYTHON, EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.js']).communicate()
+
+    self.btest(self.in_dir('main.cpp'), '1', args=['-s', 'MAIN_MODULE=1', '-O2', '-s', 'LEGACY_GL_EMULATION=1', '--pre-js', 'pre.js'])
 
