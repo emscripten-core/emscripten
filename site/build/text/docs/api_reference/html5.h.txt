@@ -495,6 +495,8 @@ EMSCRIPTEN_EVENT_MOUSEDOWN
 EMSCRIPTEN_EVENT_MOUSEUP
 EMSCRIPTEN_EVENT_DBLCLICK
 EMSCRIPTEN_EVENT_MOUSEMOVE
+EMSCRIPTEN_EVENT_MOUSEENTER
+EMSCRIPTEN_EVENT_MOUSELEAVE
 
    Emscripten mouse events.
 
@@ -505,7 +507,7 @@ Struct
 EmscriptenMouseEvent
 
    The event structure passed in mouse events: click, mousedown,
-   mouseup, dblclick and mousemove.
+   mouseup, dblclick, mousemove, mouseenter and mouseleave.
 
    double timestamp;
 
@@ -609,6 +611,8 @@ EMSCRIPTEN_RESULT emscripten_set_mousedown_callback(const char *target, void *
 EMSCRIPTEN_RESULT emscripten_set_mouseup_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback)
 EMSCRIPTEN_RESULT emscripten_set_dblclick_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback)
 EMSCRIPTEN_RESULT emscripten_set_mousemove_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback)
+EMSCRIPTEN_RESULT emscripten_set_mouseenter_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback)
+EMSCRIPTEN_RESULT emscripten_set_mouseleave_callback(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback)
 
    Registers a callback function for receiving browser-generated mouse
    input events.
@@ -1369,6 +1373,104 @@ EMSCRIPTEN_EVENT_FULLSCREENCHANGE
 
    Emscripten fullscreenchange event.
 
+EMSCRIPTEN_FULLSCREEN_SCALE
+
+   An enum-like type which specifies how the Emscripten runtime should
+   treat the CSS size of the target element when displaying it in
+   fullscreen mode via calls to functions
+   "emscripten_request_fullscreen_strategy()" and
+   "emscripten_enter_soft_fullscreen()".
+
+EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT
+
+   Specifies that the DOM element should not be resized by Emscripten
+   runtime when transitioning between fullscreen and windowed modes.
+   The browser will be responsible for scaling the DOM element to the
+   fullscreen size. The proper browser behavior in this mode is to
+   stretch the element to fit the full display ignoring aspect ratio,
+   but at the time of writing, browsers implement different behavior
+   here. See the discussion at
+   https://github.com/kripken/emscripten/issues/2556 for more
+   information.
+
+EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH
+
+   Specifies that the Emscripten runtime should explicitly stretch the
+   CSS size of the target element to cover the whole screen when
+   trasnsitioning to fullscreen mode. This will change the aspect
+   ratio of the displayed content.
+
+EMSCRIPTEN_FULLSCREEN_SCALE_ASPECT
+
+   Specifies that the Emscripten runtime should explicitly scale the
+   CSS size of the target element to cover the whole screen, while
+   adding either vertical or horizontal black letterbox padding to
+   preserve the aspect ratio of the content. The aspect ratio that is
+   used here is the render target size of the canvas element. To
+   change the desired aspect ratio, call
+   "emscripten_set_canvas_size()" before entering fullscreen mode.
+
+EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE
+
+   An enum-like type which specifies how the Emscripten runtime should
+   treat the pixel size (render target resolution) of the target
+   canvas element when displaying it in fullscreen mode via calls to
+   functions "emscripten_request_fullscreen_strategy()" and
+   "emscripten_enter_soft_fullscreen()". To better understand the
+   underlying distinction between the CSS size of a canvas element
+   versus the render target size of a canvas element, see
+   https://www.khronos.org/webgl/wiki/HandlingHighDPI.
+
+EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE
+
+   Specifies that the Emscripten runtime should not do any changes to
+   the render target resolution of the target canvas element that is
+   displayed in fullscreen mode. Use this mode when your application
+   is set up to render to a single fixed resolution that cannot be
+   changed under any condition.
+
+EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_STDDEF
+
+   Specifies that the Emscripten runtime should resize the render
+   target of the canvas element to match 1:1 with the CSS size of the
+   element in fullscreen mode. On high DPI displays
+   (*window.devicePixelRatio* > 1), the CSS size is not the same as
+   the physical screen resolution of the device. Call
+   "emscripten_get_device_pixel_ratio()" to obtain the pixel ratio
+   between CSS pixels and actual device pixels of the screen. Use this
+   mode when you want to render to a pixel resolution that is DPI-
+   independent.
+
+EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF
+
+   Specifies that the Emscripten runtime should resize the canvas
+   render target size to match 1:1 with the physical screen resolution
+   on the device. This corresponds to high definition displays on
+   retina iOS and other mobile and desktop devices with high DPI. Use
+   this mode to match and render 1:1 to the native display resolution.
+
+EMSCRIPTEN_FULLSCREEN_FILTERING
+
+   An enum-like type that specifies what kind of image filtering
+   algorithm to apply to the element when it is presented in
+   fullscreen mode.
+
+EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT
+
+   Specifies that the image filtering mode should not be changed from
+   the existing setting in the CSS style.
+
+EMSCRIPTEN_FULLSCREEN_FILTERING_NEAREST
+
+   Applies a CSS style to the element that displays the content using
+   a nearest-neighbor image filtering algorithm in fullscreen mode.
+
+EMSCRIPTEN_FULLSCREEN_FILTERING_BILINEAR
+
+   Applies a CSS style to the element that displays the content using
+   a bilinear image filtering algorithm in fullscreen mode. This is
+   the default browser behavior.
+
 
 Struct
 ------
@@ -1414,6 +1516,41 @@ EmscriptenFullscreenChangeEvent
    int screenHeight
 
       The size of the whole screen, in pixels.
+
+EmscriptenFullscreenStrategy
+
+   The options structure that is passed in to functions
+   "emscripten_request_fullscreen_strategy()" and
+   "emscripten_enter_soft_fullscreen()" to configure how the target
+   element should be displayed in fullscreen mode.
+
+   EMSCRIPTEN_FULLSCREEN_SCALE scaleMode
+
+      Specifies the rule how the CSS size (the displayed size) of the
+      target element is resized when displayed in fullscreen mode.
+
+   EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE canvasResolutionScaleMode
+
+      Specifies how the render target size (the pixel resolution) of
+      the target element is adjusted when displayed in fullscreen
+      mode.
+
+   EMSCRIPTEN_FULLSCREEN_FILTERING filteringMode
+
+      Specifies the image filtering algorithm to apply to the element
+      in fullscreen mode.
+
+   em_canvasresized_callback_func canvasResizedCallback
+
+      If nonzero, points to a user-provided callback function which
+      will be called whenever either the CSS or the canvas render
+      target size changes. Use this callback to reliably obtain
+      information about canvas resize events.
+
+   void *canvasResizedCallbackUserData
+
+      Stores a custom data field which will be passed to all calls to
+      the user-provided callback function.
 
 
 Callback functions
@@ -1498,6 +1635,19 @@ EMSCRIPTEN_RESULT emscripten_request_fullscreen(const char *target, EM_BOOL de
      and the value of "deferUntilInEventHandler"  — see *Functions
      affected by web security* for more information.
 
+   Note: This function only performs a fullscreen request without
+     changing any parameters of the DOM element that is to be
+     displayed in fullscreen mode. At the time of writing, there are
+     differences in how browsers present elements in fullscreen mode.
+     For more information, read the discussion at
+     https://github.com/kripken/emscripten/issues/2556. To display an
+     element in fullscreen mode in a way that is consistent across
+     browsers, prefer calling the function
+     "emscripten_request_fullscreen_strategy()" instead. This function
+     is best called only in scenarios where the preconfigured presets
+     defined by "emscripten_request_fullscreen_strategy()" conflict
+     with the developer's use case in some way.
+
    Parameters:
       * **target** (*const char**) -- *Target HTML element id*.
 
@@ -1513,15 +1663,63 @@ EMSCRIPTEN_RESULT emscripten_request_fullscreen(const char *target, EM_BOOL de
    Return type:
       **EMSCRIPTEN_RESULT**
 
+EMSCRIPTEN_RESULT emscripten_request_fullscreen_strategy(const char *target, EM_BOOL deferUntilInEventHandler, const EmscriptenFullscreenStrategy *fullscreenStrategy)
+
+   Requests the given target element to transition to full screen
+   mode, using a custom presentation mode for the element. This
+   function is otherwise the same as
+   "emscripten_request_fullscreen()", but this function adds options
+   to control how resizing and aspect ratio, and ensures that the
+   behavior is consistent across browsers.
+
+   Note: This function makes changes to the DOM to satisfy
+     consistent presentation across browsers. These changes have been
+     designed to intrude as little as possible, and the changes are
+     cleared once windowed browsing is restored. If any of these
+     changes are conflicting, see the function
+     "emscripten_request_fullscreen()" instead, which performs a bare
+     fullscreen request without any modifications to the DOM.
+
+   Parameters:
+      * **EmscriptenFullscreenStrategy *fullscreenStrategy**
+        (*const*) --
+
+        [in] Points to a configuration structure filled by the caller
+        which specifies display options for the fullscreen mode.
+
 EMSCRIPTEN_RESULT emscripten_exit_fullscreen(void)
 
-   Returns back to windowed browsing mode.
+   Returns back to windowed browsing mode from a proper fullscreen
+   mode.
+
+   Do not call this function to attempt to return to windowed browsing
+   mode from a soft fullscreen mode, or vice versa.
 
    Returns:
       "EMSCRIPTEN_RESULT_SUCCESS", or one of the other result values.
 
    Return type:
       "EMSCRIPTEN_RESULT"
+
+EMSCRIPTEN_RESULT emscripten_enter_soft_fullscreen(const char *target, const EmscriptenFullscreenStrategy *fullscreenStrategy)
+
+   Enters a "soft" fullscreen mode, where the given target element is
+   displayed in the whole client area of the page and all other
+   elements are hidden, but does not actually request fullscreen mode
+   for the browser. This function is useful in cases where the actual
+   Fullscreen API is not desirable or needed, for example in packaged
+   apps for Firefox OS, where applications essentially already cover
+   the whole screen.
+
+   Pressing the esc button does not automatically exit the soft
+   fullscreen mode. To return to windowed presentation mode, manually
+   call the function "emscripten_exit_soft_fullscreen()".
+
+EMSCRIPTEN_RESULT emscripten_exit_soft_fullscreen()
+
+   Returns back to windowed browsing mode from a soft fullscreen mode.
+   Do not call this function to attempt to return to windowed browsing
+   mode from a real fullscreen mode, or vice versa.
 
 
 Pointerlock

@@ -33,7 +33,7 @@ Table of Contents
 Calling compiled C functions from JavaScript
 ============================================
 
-ccall(ident, returnType, argTypes, args)
+ccall(ident, returnType, argTypes, args, opts)
 
    Call a compiled C function from JavaScript.
 
@@ -67,7 +67,7 @@ ccall(ident, returnType, argTypes, args)
        either case, the solution is to add the functions to the
        "EXPORTED_FUNCTIONS" list when you invoke *emcc* :
 
-             -s EXPORTED_FUNCTIONS='["_main", "_myfunc"]'
+             -s EXPORTED_FUNCTIONS="['_main', '_myfunc']"
 
           Exported functions can be called as normal:
 
@@ -84,6 +84,11 @@ ccall(ident, returnType, argTypes, args)
         "null" (note: the JavaScript "null" value, not a string
         containing the word "null").
 
+   Note: 64-bit integers become two 32-bit parameters, for the low
+     and high bits (since 64-bit integers cannot be represented in
+     JavaScript numbers).
+
+   Arguments:
       * **argTypes** -- An array of the types of arguments for the
         function (if there are no arguments, this can be omitted).
         Types are as in "returnType", except that "array" is not
@@ -98,6 +103,16 @@ ccall(ident, returnType, argTypes, args)
    Returns:
       The result of the function call as a native JavaScript value (as
       in "returnType").
+
+   Opts:
+      An optional options object. It can contain the following
+      properties:
+
+      * "async": Implies that the ccall will perform an async
+        operation. This assumes you are using the Emterpreter-Async
+        option for your code. When using this option, the ccalled
+        function cannot return a value (it can't be received
+        synchronously anyhow).
 
 cwrap(ident, returnType, argTypes)
 
@@ -134,7 +149,7 @@ cwrap(ident, returnType, argTypes)
        either case, the solution is to add the functions to the
        "EXPORTED_FUNCTIONS" list when you invoke *emcc* :
 
-             -s EXPORTED_FUNCTIONS='["_main", "_myfunc"]'
+             -s EXPORTED_FUNCTIONS="['_main', '_myfunc']"
 
           Exported functions can be called as normal:
 

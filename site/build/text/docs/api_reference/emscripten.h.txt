@@ -21,17 +21,19 @@ Table of Contents
 
 * Emscripten Asynchronous File System API
 
+* Emscripten Asynchronous IndexedDB API
+
 * Compiling
 
 * Worker API
 
 * Logging utilities
 
-* Networking backend
-
 * Socket event registration
 
 * Unaligned types
+
+* Emterpreter-Async functions
 
 * Asyncify functions
 
@@ -68,12 +70,20 @@ EM_ASM(...)
        endings in normal JavaScript also apply to inline JavaScript
        declared using "EM_ASM".
 
-     * This works with **asm.js** (it outlines the code and does a
-       function call to reach it).
-
      * You can’t access C variables with "EM_ASM", nor receive a
        value back. Instead use "EM_ASM_ARGS", "EM_ASM_INT", or
        "EM_ASM_DOUBLE".
+
+     * As of "1.30.4", "EM_ASM" contents appear as normal JS,
+       outside of the compiled code. Previously we had them as a
+       string that was "eval``ed. The newer approach avoids the
+       overhead of ``eval", and also allows for better optimization of
+       "EM_ASM" contents by things like closure compiler, as their
+       contents are now visible. Note that this means that closure
+       compiler will optimize them as if they were written together
+       with the rest of the codebase, which is a change from before -
+       you may need to use safety quotes in some places ("a['b']"
+       instead of "a.b").
 
 EM_ASM_(code, ...)
 EM_ASM_ARGS(code, ...)
@@ -261,9 +271,9 @@ void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_in
    mechanism to call the main loop function. This is **HIGHLY**
    recommended if you are doing rendering, as the browser’s
    "requestAnimationFrame" will make sure you render at a proper
-   smooth rate that lines up properly with the browser and
-   monitor. If you do not render at all in your application, then you
-   should pick a specific frame rate that makes sense for your code.
+   smooth rate that lines up properly with the browser and monitor. If
+   you do not render at all in your application, then you should pick
+   a specific frame rate that makes sense for your code.
 
    If "simulate_infinite_loop" is true, the function will throw an
    exception in order to stop execution of the caller. This will lead
@@ -288,6 +298,13 @@ void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_in
      "emscripten_pause_main_loop()", "emscripten_resume_main_loop()"
      and "emscripten_cancel_main_loop()" for information about
      blocking, pausing, and resuming the main loop.
+
+   Note: Calling this function overrides the effect of any previous
+     calls to "emscripten_set_main_loop_timing()" by applying the
+     timing mode specified by the parameter "fps". To specify a
+     different timing mode, call the function
+     "emscripten_set_main_loop_timing()" after setting up the main
+     loop.
 
    Parameters:
       * **func** (*em_callback_func*) -- C function to set as main
@@ -382,6 +399,95 @@ void emscripten_cancel_main_loop(void)
    See also "emscripten_set_main_loop()" and
    "emscripten_set_main_loop_arg()" for information about setting and
    using the main loop.
+
+int emscripten_set_main_loop_timing(int mode, int value)
+
+      Specifies the scheduling mode that the current main loop tick
+      function will be called with.
+
+      This function can be used to interactively control the rate at
+      which Emscripten runtime drives the main loop specified by
+      calling the function "emscripten_set_main_loop()". In native
+      development, this corresponds with the "swap interval" or the
+      "presentation interval" for 3D rendering. The new tick interval
+      specified by this function takes effect immediately on the
+      existing main loop, and this function must be called only after
+      setting up a main loop via "emscripten_set_main_loop()".
+
+   Parameters:
+      * **mode** (*int*) --
+
+        The timing mode to use. Allowed values are
+        EM_TIMING_SETTIMEOUT, EM_TIMING_RAF.
+
+        param int value:
+           The timing value to activate for the main loop. This value
+           interpreted differently according to the
+           >>``<<mode``parameter:
+
+           * If "mode" is EM_TIMING_SETTIMEOUT, then "value"
+             specifies the number of milliseconds to wait between
+             subsequent ticks to the main loop and updates occur
+             independent of the vsync rate of the display (vsync off).
+             This method uses the JavaScript "setTimeout" function to
+             drive the animation.
+
+           * If "mode" is EM_TIMING_RAF, then updates are performed
+             using the "requestAnimationFrame" function (with vsync
+             enabled), and this value is interpreted as a "swap
+             interval" rate for the main loop. The value of "1"
+             specifies the runtime that it should render at every
+             vsync (typically 60fps), whereas the value "2" means that
+             the main loop callback should be called only every second
+             vsync (30fps). As a general formula, the value "n" means
+             that the main loop is updated at every n'th vsync, or at
+             a rate of "60/n" for 60Hz displays, and "120/n" for 120Hz
+             displays.
+
+        rtype:
+           int
+
+        return:
+           The value 0 is returned on success, and a nonzero value is
+           returned on failure. A failure occurs if there is no main
+           loop active before calling this function.
+
+        Note: Browsers heavily optimize towards using
+          "requestAnimationFrame" for animation instead of
+          "setTimeout". Because of that, for best experience across
+          browsers, calling this function with "mode=EM_TIMING_RAF"
+          and "value=1" will yield best results. Using the JavaScript
+          "setTimeout" function is known to cause stutter and
+          generally worse experience than using the
+          "requestAnimationFrame" function.
+
+        Note: There is a functional difference between "setTimeout"
+          and "requestAnimationFrame": If the user minimizes the
+          browser window or hides your application tab, browsers will
+          typically stop calling "requestAnimationFrame" callbacks,
+          but "setTimeout"-based main loop will continue to be run,
+          although with heavily throttled intervals. See *setTimeout
+          on MDN <https://developer.mozilla.org/en-
+          US/docs/Web/API/WindowTimers.setTimeout#Inactive_tabs>* for
+          more information.
+
+void emscripten_set_main_loop_timing(int *mode, int *value)
+
+      Returns the current main loop timing mode that is in effect. For
+      interpretation of the values, see the documentation of the
+      function "emscripten_set_main_loop_timing()". The timing mode is
+      controlled by calling the functions
+      "emscripten_set_main_loop_timing()" and
+      "emscripten_set_main_loop()".
+
+   Parameters:
+      * ***mode** (*int*) --
+
+        If not null, the used timing mode is returned here.
+
+      * ***value** (*int*) --
+
+        If not null, the used timing value is returned here.
 
 void emscripten_set_main_loop_expected_blockers(int num)
 
@@ -619,7 +725,7 @@ void emscripten_async_wget(const char* url, const char* file, em_str_callback_
    asynchronously do the work to make the browser decode the image or
    audio etc.).
 
-   When file is ready the "onload" callback will be called. If any
+   When the file is ready the "onload" callback will be called. If any
    error occurs "onerror" will be called. The callbacks are called
    with the file as their argument.
 
@@ -658,23 +764,22 @@ void emscripten_async_wget_data(const char* url, void *arg, em_async_wget_onlo
    do the 'prepare' stage to set things up for "IMG_Load" and so forth
    ("IMG_Load" etc. work on files).
 
-   When file is ready then the "onload" callback will be called. If
-   any error occurred "onerror" will be called. The callbacks are
-   called with the file as their argument.
+   When the file is ready then the "onload" callback will be called.
+   If any error occurred "onerror" will be called.
 
    Parameters:
       * **url** (*const char**) -- The URL of the file to load.
 
       * **arg** (*void**) -- User-defined data that is passed to the
-        callbacks, untouched by the API itself. This may be used by
-        a callback to identify the associated call.
+        callbacks, untouched by the API itself. This may be used by a
+        callback to identify the associated call.
 
       * **onload** (*em_async_wget_onload_func*) --
 
         Callback on successful load of the URL into the buffer. The
         callback function parameter values are:
 
-        * *(void*)* : A pointer to "arg" (user defined data).
+        * *(void*)* : Equal to "arg" (user defined data).
 
         * *(void*)* : A pointer to a buffer with the data. Note
           that, as with the worker API, the data buffer only lives
@@ -688,7 +793,7 @@ void emscripten_async_wget_data(const char* url, void *arg, em_async_wget_onlo
         Callback in the event of failure. The callback function
         parameter values are:
 
-        * *(void*)* : A pointer to "arg" (user defined data).
+        * *(void*)* : Equal to "arg" (user defined data).
 
 int emscripten_async_wget2(const char* url, const char* file, const char* requesttype, const char* param, void *arg, em_async_wget2_onload_func onload, em_async_wget2_onstatus_func onerror, em_async_wget2_onstatus_func onprogress)
 
@@ -721,15 +826,15 @@ int emscripten_async_wget2(const char* url, const char* file, const char* req
         request: e.g. "key=value&key2=value2".
 
       * **arg** (*void**) -- User-defined data that is passed to the
-        callbacks, untouched by the API itself. This may be used by
-        a callback to identify the associated call.
+        callbacks, untouched by the API itself. This may be used by a
+        callback to identify the associated call.
 
       * **onload** (*em_async_wget2_onload_func*) --
 
         Callback on successful load of the file. The callback function
         parameter values are:
 
-        * *(void*)* : A pointer to "arg" (user defined data).
+        * *(void*)* : Equal to "arg" (user defined data).
 
         * *(const char*)* : The "file" passed to the original call.
 
@@ -738,7 +843,7 @@ int emscripten_async_wget2(const char* url, const char* file, const char* req
         Callback in the event of failure. The callback function
         parameter values are:
 
-        * *(void*)* : A pointer to "arg" (user defined data).
+        * *(void*)* : Equal to "arg" (user defined data).
 
         * *(int)* : The HTTP status code.
 
@@ -747,7 +852,7 @@ int emscripten_async_wget2(const char* url, const char* file, const char* req
         Callback during load of the file. The callback function
         parameter values are:
 
-        * *(void*)* : A pointer to "arg" (user defined data).
+        * *(void*)* : Equal to "arg" (user defined data).
 
         * *(int)* : The progress (percentage completed).
 
@@ -793,8 +898,8 @@ int emscripten_async_wget2_data(const char* url, const char* requesttype, cons
         request: e.g. "key=value&key2=value2".
 
       * **arg** (*void**) -- User-defined data that is passed to the
-        callbacks, untouched by the API itself. This may be used by
-        a callback to identify the associated call.
+        callbacks, untouched by the API itself. This may be used by a
+        callback to identify the associated call.
 
       * **int free** (*const*) -- Tells the runtime whether to free
         the returned buffer after "onload" is complete. If "false"
@@ -805,7 +910,7 @@ int emscripten_async_wget2_data(const char* url, const char* requesttype, cons
         Callback on successful load of the file. The callback function
         parameter values are:
 
-        * *(void*)* : A pointer to "arg" (user defined data).
+        * *(void*)* : Equal to "arg" (user defined data).
 
         * *(void*)* : A pointer to the buffer in memory.
 
@@ -816,7 +921,7 @@ int emscripten_async_wget2_data(const char* url, const char* requesttype, cons
         Callback in the event of failure. The callback function
         parameter values are:
 
-        * *(void*)* : A pointer to "arg" (user defined data).
+        * *(void*)* : Equal to "arg" (user defined data).
 
         * *(int)* : The HTTP error code.
 
@@ -827,7 +932,7 @@ int emscripten_async_wget2_data(const char* url, const char* requesttype, cons
         Callback called (regularly) during load of the file to update
         progress. The callback function parameter values are:
 
-        * *(void*)* : A pointer to "arg" (user defined data).
+        * *(void*)* : Equal to "arg" (user defined data).
 
         * *(int)* : The number of bytes loaded.
 
@@ -845,6 +950,196 @@ emscripten_async_wget2_abort(int handle)
 
    Parameters:
       * **handle** (*int*) -- A handle to request to be aborted.
+
+void emscripten_async_prepare_data(char* data, int size, const char *suffix, void *arg, em_async_prepare_data_onload_func onload, em_arg_callback_func onerror)
+
+   Prepares a buffer of data asynchronously. This is a "data" version
+   of "emscripten_async_prepare()", which receives raw data as input
+   instead of a filename (this can prevent the need to write data to a
+   file first).
+
+   When file is loaded then the "onload" callback will be called. If
+   any error occurs "onerror" will be called.
+
+   "onload" also receives a second parameter, which is a 'fake'
+   filename which you can pass into "IMG_Load" (it is not an actual
+   file, but it identifies this image for "IMG_Load" to be able to
+   process it). Note that the user of this API is responsible for
+   "free()" ing the memory allocated for the fake filename.
+
+   Parameters:
+      * **data** (*char**) -- The buffer of data to prepare.
+
+      * **suffix** (*const char**) -- The file suffix, e.g. 'png' or
+        'jpg'.
+
+      * **arg** (*void**) -- User-defined data that is passed to the
+        callbacks, untouched by the API itself. This may be used by a
+        callback to identify the associated call.
+
+      * **onload** (*em_async_prepare_data_onload_func*) --
+
+        Callback on successful preparation of the file. The callback
+        function parameter values are:
+
+        * *(void*)* : Equal to "arg" (user defined data).
+
+        * *(const char*)* : A 'fake' filename which you can pass
+          into "IMG_Load". See above for more information.
+
+      * **onerror** (*em_arg_callback_func*) --
+
+        Callback in the event of failure. The callback function
+        parameter value is:
+
+        * *(void*)* : Equal to "arg" (user defined data).
+
+
+Emscripten Asynchronous IndexedDB API
+=====================================
+
+   IndexedDB is a browser API that lets you store data persistently,
+   that is, you can save data there and load it later when the user
+   re-visits the web page. IDBFS provides one way to use IndexedDB,
+   through the Emscripten filesystem layer. The "emscripten_idb_*"
+   methods listed here provide an alternative API, directly to
+   IndexedDB, thereby avoiding the overhead of the filesystem layer.
+
+void emscripten_idb_async_load(const char *db_name, const char *file_id, void* arg, em_async_wget_onload_func onload, em_arg_callback_func onerror)
+
+   Loads data from local IndexedDB storage asynchronously. This allows
+   use of persistent data, without the overhead of the filesystem
+   layer.
+
+   When the data is ready then the "onload" callback will be called.
+   If any error occurred "onerror" will be called.
+
+   Parameters:
+      * **db_name** -- The IndexedDB database from which to load.
+
+      * **file_id** -- The identifier of the data to load.
+
+      * **arg** (*void**) -- User-defined data that is passed to the
+        callbacks, untouched by the API itself. This may be used by a
+        callback to identify the associated call.
+
+      * **onload** (*em_async_wget_onload_func*) --
+
+        Callback on successful load of the URL into the buffer. The
+        callback function parameter values are:
+
+        * *(void*)* : Equal to "arg" (user defined data).
+
+        * *(void*)* : A pointer to a buffer with the data. Note
+          that, as with the worker API, the data buffer only lives
+          during the callback; it must be used or copied during that
+          time.
+
+        * *(int)* : The size of the buffer, in bytes.
+
+      * **onerror** (*em_arg_callback_func*) --
+
+        Callback in the event of failure. The callback function
+        parameter values are:
+
+        * *(void*)* : Equal to "arg" (user defined data).
+
+void emscripten_idb_async_store(const char *db_name, const char *file_id, void* ptr, int num, void* arg, em_arg_callback_func onstore, em_arg_callback_func onerror);
+
+   Stores data to local IndexedDB storage asynchronously. This allows
+   use of persistent data, without the overhead of the filesystem
+   layer.
+
+   When the data has been stored then the "onstore" callback will be
+   called. If any error occurred "onerror" will be called.
+
+   Parameters:
+      * **db_name** -- The IndexedDB database from which to load.
+
+      * **file_id** -- The identifier of the data to load.
+
+      * **ptr** -- A pointer to the data to store.
+
+      * **num** -- How many bytes to store.
+
+      * **arg** (*void**) -- User-defined data that is passed to the
+        callbacks, untouched by the API itself. This may be used by a
+        callback to identify the associated call.
+
+      * **onload** (*em_async_wget_onload_func*) --
+
+        Callback on successful load of the URL into the buffer. The
+        callback function parameter values are:
+
+        * *(void*)* : Equal to "arg" (user defined data).
+
+      * **onerror** (*em_arg_callback_func*) --
+
+        Callback in the event of failure. The callback function
+        parameter values are:
+
+        * *(void*)* : Equal to "arg" (user defined data).
+
+void emscripten_idb_async_delete(const char *db_name, const char *file_id, void* arg, em_arg_callback_func ondelete, em_arg_callback_func onerror)
+
+   Deletes data from local IndexedDB storage asynchronously.
+
+   When the data has been deleted then the "ondelete" callback will be
+   called. If any error occurred "onerror" will be called.
+
+   Parameters:
+      * **db_name** -- The IndexedDB database.
+
+      * **file_id** -- The identifier of the data.
+
+      * **arg** (*void**) -- User-defined data that is passed to the
+        callbacks, untouched by the API itself. This may be used by a
+        callback to identify the associated call.
+
+      * **ondelete** (*em_arg_callback_func*) --
+
+        Callback on successful delete
+
+        * *(void*)* : Equal to "arg" (user defined data).
+
+      * **onerror** (*em_arg_callback_func*) --
+
+        Callback in the event of failure. The callback function
+        parameter values are:
+
+        * *(void*)* : Equal to "arg" (user defined data).
+
+void emscripten_idb_async_exists(const char *db_name, const char *file_id, void* arg, em_arg_callback_func oncheck, em_arg_callback_func onerror)
+
+   Checks if data with a certain ID exists in the local IndexedDB
+   storage asynchronously.
+
+   When the data has been checked then the "oncheck" callback will be
+   called. If any error occurred "onerror" will be called.
+
+   Parameters:
+      * **db_name** -- The IndexedDB database.
+
+      * **file_id** -- The identifier of the data.
+
+      * **arg** (*void**) -- User-defined data that is passed to the
+        callbacks, untouched by the API itself. This may be used by a
+        callback to identify the associated call.
+
+      * **oncheck** (*em_arg_callback_func*) --
+
+        Callback on successful check, with arguments
+
+        * *(void*)* : Equal to "arg" (user defined data).
+
+        * *int* : Whether the file exists or not.
+
+      * **onerror** (*em_arg_callback_func*) --
+
+        Callback in the event of failure. The callback function
+        parameter values are:
+
+        * *(void*)* : Equal to "arg" (user defined data).
 
 int emscripten_async_prepare(const char* file, em_str_callback_func onload, em_str_callback_func onerror)
 
@@ -884,49 +1179,6 @@ int emscripten_async_prepare(const char* file, em_str_callback_func onload, em
 
    Return type:
       int
-
-void emscripten_async_prepare_data(char* data, int size, const char *suffix, void *arg, em_async_prepare_data_onload_func onload, em_arg_callback_func onerror)
-
-   Prepares a buffer of data asynchronously. This is a "data" version
-   of "emscripten_async_prepare()", which receives raw data as input
-   instead of a filename (this can prevent the need to write data to a
-   file first).
-
-   When file is loaded then the "onload" callback will be called. If
-   any error occurs "onerror" will be called.
-
-   "onload" also receives a second parameter, which is a 'fake'
-   filename which you can pass into "IMG_Load" (it is not an actual
-   file, but it identifies this image for "IMG_Load" to be able to
-   process it). Note that the user of this API is responsible for
-   "free()" ing the memory allocated for the fake filename.
-
-   Parameters:
-      * **data** (*char**) -- The buffer of data to prepare.
-
-      * **suffix** (*const char**) -- The file suffix, e.g. 'png' or
-        'jpg'.
-
-      * **arg** (*void**) -- User-defined data that is passed to the
-        callbacks, untouched by the API itself. This may be used by
-        a callback to identify the associated call.
-
-      * **onload** (*em_async_prepare_data_onload_func*) --
-
-        Callback on successful preparation of the file. The callback
-        function parameter values are:
-
-        * *(void*)* : A pointer to "arg" (user defined data).
-
-        * *(const char*)* : A 'fake' filename which you can pass
-          into "IMG_Load". See above for more information.
-
-      * **onerror** (*em_arg_callback_func*) --
-
-        Callback in the event of failure. The callback function
-        parameter value is:
-
-        * *(void*)* : A pointer to "arg" (user defined data).
 
 
 Compiling
@@ -1041,7 +1293,7 @@ void emscripten_call_worker(worker_handle worker, const char *funcname, char 
 
         * *(int)* : The "size" of the block of data.
 
-        * *(void*)* : A pointer to "arg" (user defined data).
+        * *(void*)* : Equal to "arg" (user defined data).
 
       * **arg** (*void**) -- An argument (user data) to be passed to
         the callback
@@ -1049,7 +1301,8 @@ void emscripten_call_worker(worker_handle worker, const char *funcname, char 
 void emscripten_worker_respond(char *data, int size)
 void emscripten_worker_respond_provisionally(char *data, int size)
 
-   Sends a response when in a worker call.
+   Sends a response when in a worker call (that is, when called by the
+   main thread using "emscripten_call_worker()").
 
    Both functions post a message back to the thread which called the
    worker. The "emscripten_worker_respond_provisionally()" variant can
@@ -1275,45 +1528,6 @@ char *emscripten_get_preloaded_image_data_from_FILE(FILE *file, int *w, int *
       char*
 
 
-Networking backend
-==================
-
-
-Defines
--------
-
-EMSCRIPTEN_NETWORK_WEBSOCKETS
-
-   Used to select the websockets networking backend in
-   "emscripten_set_network_backend()"
-
-EMSCRIPTEN_NETWORK_WEBRTC
-
-   Used to select the WebRTC networking backend in
-   "emscripten_set_network_backend()"
-
-
-Functions
----------
-
-void emscripten_set_network_backend(int backend)
-
-   Selects the networking backend to use.
-
-   Note: * This function must be called before any network functions
-     are
-
-       called.
-
-   By default Emscripten's socket/networking implementation will use
-   websockets. With this function you can change that to WebRTC.
-
-   Parameters:
-      * **backend** (*int*) -- The backend to use. One of
-        "EMSCRIPTEN_NETWORK_WEBSOCKETS" and
-        "EMSCRIPTEN_NETWORK_WEBRTC"
-
-
 Socket event registration
 =========================
 
@@ -1518,6 +1732,134 @@ emscripten_align1_double
      useful!
 
 
+Emterpreter-Async functions
+===========================
+
+Emterpreter-async functions are asynchronous functions that appear
+synchronously in C, the linker flags "-s EMTERPRETIFY -s
+EMTERPRETIFY_ASYNC=1" are required to use these functions. See
+Emterpreter for more details.
+
+
+Sleeping
+--------
+
+void emscripten_sleep(unsigned int ms)
+
+   Sleep for *ms* milliseconds. This is a normal "synchronous" sleep,
+   which blocks all other operations while it runs. In other words, if
+   there are other async events waiting to happen, they will not
+   happen during this sleep, which makes sense as conceptually this
+   code is on the stack (that's how it looks in the C source code). If
+   you do want things to happen while sleeping, see
+   "emscripten_sleep_with_yield".
+
+void emscripten_sleep_with_yield(unsigned int ms)
+
+   Sleep for *ms* milliseconds, while allowing other asynchronous
+   operations, e.g. caused by "emscripten_async_call", to run
+   normally, during this sleep. Note that this method **does** still
+   block the main loop, as otherwise it could recurse, if you are
+   calling this method from it. Even so, you should use this method
+   carefully: the order of execution is potentially very confusing
+   this way.
+
+
+Network
+-------
+
+void emscripten_wget_data(const char* url, void** pbuffer, int* pnum, int *perror);
+
+   Synchronously fetches data off the network, and stores it to a
+   buffer in memory, which is allocated for you. **You must free the
+   buffer, or it will leak!**
+
+   Parameters:
+      * **url** -- The URL to fetch from
+
+      * **pbuffer** -- An out parameter that will be filled with a
+        pointer to a buffer containing the data that is downloaded.
+        This space has been malloced for you, **and you must free it,
+        or it will leak!**
+
+      * **pnum** -- An out parameter that will be filled with the
+        size of the downloaded data.
+
+      * **perror** -- An out parameter that will be filled with a
+        non- zero value if an error occurred.
+
+
+IndexedDB
+---------
+
+void emscripten_idb_load(const char *db_name, const char *file_id, void** pbuffer, int* pnum, int *perror);
+
+   Synchronously fetches data from IndexedDB, and stores it to a
+   buffer in memory, which is allocated for you. **You must free the
+   buffer, or it will leak!**
+
+   Parameters:
+      * **db_name** -- The name of the database to load from
+
+      * **file_id** -- The name of the file to load
+
+      * **pbuffer** -- An out parameter that will be filled with a
+        pointer to a buffer containing the data that is downloaded.
+        This space has been malloced for you, **and you must free it,
+        or it will leak!**
+
+      * **pnum** -- An out parameter that will be filled with the
+        size of the downloaded data.
+
+      * **perror** -- An out parameter that will be filled with a
+        non- zero value if an error occurred.
+
+void emscripten_idb_store(const char *db_name, const char *file_id, void* ptr, int num, int *perror);
+
+   Synchronously stores data to IndexedDB.
+
+   Parameters:
+      * **db_name** -- The name of the database to store to
+
+      * **file_id** -- The name of the file to store
+
+      * **buffer** -- A pointer to the data to store
+
+      * **num** -- How many bytes to store
+
+      * **perror** -- An out parameter that will be filled with a
+        non- zero value if an error occurred.
+
+void emscripten_idb_delete(const char *db_name, const char *file_id, int *perror);
+
+   Synchronously deletes data from IndexedDB.
+
+   Parameters:
+      * **db_name** -- The name of the database to delete from
+
+      * **file_id** -- The name of the file to delete
+
+      * **perror** -- An out parameter that will be filled with a
+        non- zero value if an error occurred.
+
+void emscripten_idb_exists(const char *db_name, const char *file_id, int* pexists, int *perror);
+
+   Synchronously checks if a file exists in IndexedDB.
+
+   Parameters:
+      * **db_name** -- The name of the database to check in
+
+      * **file_id** -- The name of the file to check
+
+      * **perror** -- An out parameter that will be filled with a
+        non- zero value if the file exists in that database.
+
+      * **perror** -- An out parameter that will be filled with a
+        non- zero value if an error occurred.
+
+void emscripten_idb_load(const char *db_name, const char *file_id, void** pbuffer, int* pnum, int *perror);
+
+
 Asyncify functions
 ==================
 
@@ -1531,7 +1873,7 @@ Typedefs
 
 emscripten_coroutine
 
-   A handle to the strcture used by coroutine supporting functions.
+   A handle to the structure used by coroutine supporting functions.
 
 
 Functions
