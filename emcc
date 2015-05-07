@@ -1472,7 +1472,7 @@ try:
 
     if closure == 1:
       js_optimizer_queue += ['closure']
-    elif debug_level <= 2 and not shared.Settings.MAIN_MODULE and shared.Settings.FINALIZE_ASM_JS and not closure:
+    elif debug_level <= 2 and shared.Settings.FINALIZE_ASM_JS and not closure:
       js_optimizer_queue += ['cleanup']
 
   if js_opts:
