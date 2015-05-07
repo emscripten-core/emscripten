@@ -369,7 +369,7 @@ function JSify(data, functionsOnly) {
       if (SIDE_MODULE) {
         print('// ASM_LIBRARY FUNCTIONS'); // fastLong.js etc. code is indeed asm library code
       }
-      if (!INCLUDE_FULL_LIBRARY && !SIDE_MODULE && !BUILD_AS_SHARED_LIB) {
+      if (!INCLUDE_FULL_LIBRARY) {
         // first row are utilities called from generated code, second are needed from fastLong
         ['i64Add', 'i64Subtract', 'bitshift64Shl', 'bitshift64Lshr', 'bitshift64Ashr',
          'llvm_cttz_i32'].forEach(function(ident) {

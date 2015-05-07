@@ -245,7 +245,7 @@ function ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem) {
   } else {
     $d_sroa_0_0_insert_insert99$0 = 0 | $b$0 & -1;
     $d_sroa_0_0_insert_insert99$1 = $d_sroa_1_4_extract_shift$0 | $b$1 & 0;
-    $137$0 = _i64Add($d_sroa_0_0_insert_insert99$0, $d_sroa_0_0_insert_insert99$1, -1, -1) | 0;
+    $137$0 = _i64Add($d_sroa_0_0_insert_insert99$0 | 0, $d_sroa_0_0_insert_insert99$1 | 0, -1, -1) | 0;
     $137$1 = {{{ makeGetTempRet0() }}};
     $q_sroa_1_1198 = $q_sroa_1_1_ph;
     $q_sroa_0_1199 = $q_sroa_0_1_ph;

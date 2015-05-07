@@ -308,7 +308,7 @@ function _emscripten_asm_const_%d(%s) {
       contents = m.groups(0)[0]
       outfile.write(contents + '\n')
       return ''
-    if not settings['BOOTSTRAPPING_STRUCT_INFO'] and not settings['SIDE_MODULE']:
+    if not settings['BOOTSTRAPPING_STRUCT_INFO'] and len(funcs_js) > 1:
       funcs_js[1] = re.sub(r'/\* PRE_ASM \*/(.*)\n', lambda m: move_preasm(m), funcs_js[1])
 
     class Counter:
@@ -715,7 +715,7 @@ var asm = (function(global, env, buffer) {
 ''' % (asm_setup,
        access_quote('asmGlobalArg'), the_global,
        access_quote('asmLibraryArg'), sending,
-       "'use asm';" if not metadata.get('hasInlineJS') and not settings['SIDE_MODULE'] and settings['ASM_JS'] == 1 else "'almost asm';", '''
+       "'use asm';" if not metadata.get('hasInlineJS') and settings['ASM_JS'] == 1 else "'almost asm';", '''
   var HEAP8 = new global%s(buffer);
   var HEAP16 = new global%s(buffer);
   var HEAP32 = new global%s(buffer);

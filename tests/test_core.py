@@ -3618,6 +3618,10 @@ ok
         # side is just a library
         try_delete('liblib.cpp.o.js')
         Popen([PYTHON, EMCC] + side + self.emcc_args + Settings.serialize() + ['-o', os.path.join(self.get_dir(), 'liblib.cpp.o.js')]).communicate()
+      if SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]):
+        out = run_js('liblib.cpp.o.js', engine=SPIDERMONKEY_ENGINE, full_output=True, stderr=STDOUT)
+        if 'asm' in out:
+          self.validate_asmjs(out)
       shutil.move('liblib.cpp.o.js', 'liblib.so')
 
       # main settings

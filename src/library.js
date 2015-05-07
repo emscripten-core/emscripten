@@ -3356,6 +3356,7 @@ LibraryManager.library = {
       }
       return 8;
     }
+    if (SIDE_MODULE) return ''; // uses it from the parent
     return 'var cttz_i8 = allocate([' + range(256).map(function(x) { return cttz(x) }).join(',') + '], "i8", ALLOC_STATIC);';
   }],
   llvm_cttz_i32__asm: true,
