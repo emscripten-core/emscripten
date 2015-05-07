@@ -754,19 +754,10 @@ function simplifyExpressions(ast) {
         return node;
       } else if (type === 'binary' && node[1] === '+') {
         // The most common mathop is addition, e.g. in getelementptr done repeatedly. We can join all of those,
-        // by doing (num+num) ==> newnum, and (name+num)+num = name+newnum
+        // by doing (num+num) ==> newnum.
         if (node[2][0] === 'num' && node[3][0] === 'num') {
           node[2][1] += node[3][1];
           return node[2];
-        }
-        for (var i = 2; i <= 3; i++) {
-          var ii = 5-i;
-          for (var j = 2; j <= 3; j++) {
-            if (node[i][0] === 'num' && node[ii][0] === 'binary' && node[ii][1] === '+' && node[ii][j][0] === 'num') {
-              node[ii][j][1] += node[i][1];
-              return node[ii];
-            }
-          }
         }
       }
     });
