@@ -934,7 +934,6 @@ try:
     shared.Settings.INCLUDE_FULL_LIBRARY = 1
   elif shared.Settings.SIDE_MODULE:
     assert not shared.Settings.MAIN_MODULE
-    shared.Settings.FINALIZE_ASM_JS = 0 # side modules are not finalized until after relocation
     memory_init_file = False # memory init file is not supported with side modules, must be executable synchronously (for dlopen)
 
   if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
