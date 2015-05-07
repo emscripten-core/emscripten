@@ -2919,7 +2919,7 @@ var LibraryGL = {
   var name = '_' + name;
   var exported = 'Module["' + name + '"]';
   // make sure we write to an existing export, and are not repeating ourselves
-  return 'assert(' + exported + '); assert(' + exported + ' !== ' + name + '); ' + exported + ' = ' + name + ';';
+  return 'assert(' + exported + ' !== ' + name + '); ' + exported + ' = ' + name + ';';
 }, '')
 }}}
 #else
