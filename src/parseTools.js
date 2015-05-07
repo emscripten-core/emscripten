@@ -1284,10 +1284,17 @@ function makeStructuralReturn(values, inAsm) {
   var i = -1;
   return 'return ' + asmCoercion(values.slice(1).map(function(value) {
     i++;
+    if (!inAsm) {
+      if (!RELOCATABLE) {
+        return 'asm["setTempRet' + i + '"](' + value + ')';
+      } else {
+        return 'Runtime.setTempRet' + i + '(' + value + ')';
+      }
+    }
     if (i === 0) {
-      return inAsm ? makeSetTempRet0(value) : 'asm["setTempRet' + i + '"](' + value + ')';
+      return makeSetTempRet0(value)
     } else {
-      return inAsm ? 'tempRet' + i + ' = ' + value : 'asm["setTempRet' + i + '"](' + value + ')';
+      return 'tempRet' + i + ' = ' + value;
     }
   }).concat([values[0]]).join(','), 'i32');
 }

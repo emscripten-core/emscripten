@@ -4991,6 +4991,10 @@ PORT: 3979
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
     self.do_run_from_file(src, output)
 
+    print 'main module'
+    Settings.MAIN_MODULE = 1
+    self.do_run_from_file(src, output)
+
   def test_phiundef(self):
     test_path = path_from_root('tests', 'core', 'test_phiundef')
     src, output = (test_path + s for s in ('.in', '.out'))
