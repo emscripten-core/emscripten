@@ -1717,6 +1717,12 @@ int f() {
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')]).communicate()
     self.assertContained('1234, 1234, 4321\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+  def test_libpng(self):
+    shutil.copyfile(path_from_root('tests', 'pngtest.png'), 'pngtest.png')
+    Building.emcc(path_from_root('tests','pngtest.c'), ['--embed-file', 'pngtest.png', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'], output_filename='a.out.js')
+    self.assertContained('TESTS PASSED', Popen(JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).communicate()[0])
+
+
   def test_link_memcpy(self):
     # memcpy can show up *after* optimizations, so after our opportunity to link in libc, so it must be special-cased
     open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''

@@ -32,6 +32,7 @@ Available operations and tasks:
         struct_info
         native_optimizer
         zlib
+        libpng
         sdl2
         sdl2-image
 
@@ -116,6 +117,10 @@ if operation == 'build':
       build('''
         int main() {}
       ''', [os.path.join('ports-builds', 'zlib', 'libz.a')], ['-s', 'USE_ZLIB=1'])
+    elif what == 'libpng':
+      build('''
+        int main() {}
+      ''', [os.path.join('ports-builds', 'libpng', 'libpng.bc')], ['-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'])
     elif what == 'sdl2':
       build('''
         int main() {}
