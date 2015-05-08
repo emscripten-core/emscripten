@@ -637,7 +637,7 @@ function ftCall_%s(%s) {%s
       global_funcs += ['g$' + extern for extern in metadata['externs']]
       side = 'parent' if settings['SIDE_MODULE'] else ''
       def check(extern):
-        if settings['ASSERTIONS']: return 'assert(' + side + 'Module["' + extern + '"] !== undefined);'
+        if settings['ASSERTIONS']: return 'assert(' + side + 'Module["' + extern + '"]);'
         return ''
       for extern in metadata['externs']:
         asm_setup += 'var g$' + extern + ' = function() { ' + check(extern) + ' return ' + side + 'Module["' + extern + '"] };\n'
