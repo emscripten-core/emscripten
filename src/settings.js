@@ -347,19 +347,11 @@ var MAIN_MODULE = 0; // A main module is a file compiled in a way that allows us
                      // a side module using emlink.py.
 var SIDE_MODULE = 0; // Corresponds to MAIN_MODULE
 
-var BUILD_AS_SHARED_LIB = 0; // Whether to build the code as a shared library
-                             // 0 here means this is not a shared lib: It is a main file.
-                             // 1 means this is a normal shared lib, load it with dlopen()
-                             // 2 means this is a shared lib that will be linked at runtime,
-                             //   which means it will insert its functions into
-                             //   the global namespace. See STATIC_LIBS_TO_LOAD.
-                             //
-                             // Value 2 is currently deprecated.
-var RUNTIME_LINKED_LIBS = []; // If this is a main file (BUILD_AS_SHARED_LIB == 0), then
+var RUNTIME_LINKED_LIBS = []; // If this is a main module (MAIN_MODULE == 1), then
                               // we will link these at runtime. They must have been built with
-                              // BUILD_AS_SHARED_LIB == 2.
-                              // NOTE: LLVM optimizations run separately on the main file and
-                              //       linked libraries can break things.
+                              // SIDE_MODULE == 1.
+var BUILD_AS_SHARED_LIB = 0; // (deprecated option TODO: remove)
+
 var BUILD_AS_WORKER = 0; // If set to 1, this is a worker library, a special kind of library
                          // that is run in a worker. See emscripten.h
 

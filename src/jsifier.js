@@ -422,11 +422,6 @@ function JSify(data, functionsOnly) {
     var postParts = processMacros(preprocess(read(postFile))).split('{{GLOBAL_VARS}}');
     print(postParts[0]);
 
-    // Load runtime-linked libraries
-    RUNTIME_LINKED_LIBS.forEach(function(lib) {
-      print('eval(Module["read"]("' + lib + '"))(' + Functions.getTable('x') + '.length, this);');
-    });
-
     print(postParts[1]);
 
     var shellParts = read(shellFile).split('{{BODY}}');
