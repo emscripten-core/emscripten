@@ -1456,13 +1456,14 @@ addOnPreRun(function() { addRunDependency('pgo') });
 #endif
 
 #if RELOCATABLE
-if (Module['dynamicLibraries']) {
-  Module['dynamicLibraries'].forEach(function(lib) {
-    addOnPreRun(function() {
+addOnPreRun(function() {
+  if (Module['dynamicLibraries']) {
+    Module['dynamicLibraries'].forEach(function(lib) {
       Runtime.loadDynamicLibrary(lib);
     });
-  });
-}
+  }
+  asm['runPostSets']();
+});
 #endif
 
 var memoryInitializer = null;

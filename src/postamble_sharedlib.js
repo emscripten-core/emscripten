@@ -3,7 +3,7 @@
 
 {{GLOBAL_VARS}}
 
-runPostSets();
+__ATPRERUN__.push(runPostSets);
 
 if (runtimeInitialized) {
   initRuntime();

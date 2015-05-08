@@ -4021,6 +4021,38 @@ var Module = {
     ''', side=['libfourth.a', 'third.o'], # contents of libtwo.a must be included, even if they aren't referred to!
     expected=['sidef: 36, sideg: 17.\n'])
 
+  def test_dylink_spaghetti(self):
+    self.dylink_test(main=r'''
+      #include <stdio.h>
+      int main_x = 72;
+      extern int side_x;
+      int adjust = side_x + 10;
+      int *ptr = &side_x;
+      struct Class {
+        Class() {
+          printf("main init sees %d, %d, %d.\n", adjust, *ptr, main_x);
+        }
+      };
+      Class cm;
+      int main() {
+        printf("main main sees %d, %d, %d.\n", adjust, *ptr, main_x);
+        return 0;
+      }
+    ''', side=r'''
+      #include <stdio.h>
+      extern int main_x;
+      int side_x = -534;
+      int adjust2 = main_x + 10;
+      int *ptr2 = &main_x;
+      struct Class {
+        Class() {
+          printf("side init sees %d, %d, %d.\n", adjust2, *ptr2, side_x);
+        }
+      };
+      Class cs;
+    ''', expected=['side init sees 82, 72, -534.\nmain init sees -524, -534, 72.\nmain main sees -524, -534, 72.',
+                   'main init sees -524, -534, 72.\nside init sees 82, 72, -534.\nmain main sees -524, -534, 72.'])
+
   def test_dylink_zlib(self):
     Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'zlib')]
     try:

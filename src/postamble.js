@@ -10,9 +10,6 @@ if (memoryInitializer) {
   if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
     var data = Module['readBinary'](memoryInitializer);
     HEAPU8.set(data, STATIC_BASE);
-#if RELOCATABLE
-    asm['runPostSets']();
-#endif
   } else {
     addRunDependency('memory initializer');
     var applyMemoryInitializer = function(data) {
@@ -23,9 +20,6 @@ if (memoryInitializer) {
       }
 #endif
       HEAPU8.set(data, STATIC_BASE);
-#if RELOCATABLE
-      asm['runPostSets']();
-#endif
       removeRunDependency('memory initializer');
     }
     var request = Module['memoryInitializerRequest'];
@@ -54,11 +48,6 @@ if (memoryInitializer) {
     }
   }
 }
-#if RELOCATABLE
-else {
-  asm['runPostSets']();
-}
-#endif
 
 function ExitStatus(status) {
   this.name = "ExitStatus";
