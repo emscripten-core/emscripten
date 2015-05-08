@@ -815,12 +815,6 @@ var LibrarySDL = {
             ({{{ makeGetValue('SDL.keyboardState', '1252', 'i8') }}} ? 0x0080 : 0) | // KMOD_RCTRL
             ({{{ makeGetValue('SDL.keyboardState', '1253', 'i8') }}} ? 0x0002 : 0) | // KMOD_RSHIFT
             ({{{ makeGetValue('SDL.keyboardState', '1254', 'i8') }}} ? 0x0200 : 0); //  KMOD_RALT
-          if (down) {
-            SDL.keyboardMap[code] = event.keyCode; // save the DOM input, which we can use to unpress it during blur
-          } else {
-            delete SDL.keyboardMap[code];
-          }
-
           break;
         }
         case 'mousedown': case 'mouseup':
@@ -887,10 +881,16 @@ var LibrarySDL = {
           } else {
             scan = SDL.scanCodes[key] || key;
           }
+          var repeat = down && SDL.keyboardMap[key] !== undefined;
+          if (down) {
+            SDL.keyboardMap[code] = event.keyCode; // save the DOM input, which we can use to unpress it during blur
+          } else {
+            delete SDL.keyboardMap[code];
+          }
 
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.type, 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.state, 'down ? 1 : 0', 'i8') }}};
-          {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.repeat, '0', 'i8') }}}; // TODO
+          {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.repeat, 'repeat ? 1 : 0', 'i8') }}}; 
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.keysym + C_STRUCTS.SDL_Keysym.scancode, 'scan', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.keysym + C_STRUCTS.SDL_Keysym.sym, 'key', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_KeyboardEvent.keysym + C_STRUCTS.SDL_Keysym.mod, 'SDL.modState', 'i16') }}};
