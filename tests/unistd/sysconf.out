@@ -364,5 +364,8 @@ errno: 0
 _SC_THREAD_DESTRUCTOR_ITERATIONS: 4
 errno: 0
 
+_SC_PHYS_PAGES: 4096
+errno: 0
+
 (invalid): -1
 errno: 22
