@@ -3,6 +3,7 @@ function headlessCanvas() {
     headless: true,
     getContext: function(which) {
       switch(which) {
+        case 'webgl':
         case 'experimental-webgl': {
           return {
             /* ClearBufferMask */
