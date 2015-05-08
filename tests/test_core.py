@@ -774,6 +774,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
       self.do_run_from_file(src, output)
 
+      print 'main module'
+      Settings.MAIN_MODULE = 1
+      self.do_run_from_file(src, output)
+
   def test_frexp(self):
       test_path = path_from_root('tests', 'core', 'test_frexp')
       src, output = (test_path + s for s in ('.in', '.out'))
