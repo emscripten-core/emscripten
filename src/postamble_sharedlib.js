@@ -6,9 +6,8 @@
 __ATPRERUN__.push(runPostSets);
 
 if (runtimeInitialized) {
-  initRuntime();
-  Module['initLibraryRuntime'] = function(){};
-} else {
-  Module['initLibraryRuntime'] = initRuntime; // rely on the system to call it later, at the right time
-}
+  // dlopen case: we are being loaded after the system is fully initialized, so just run our prerun and atinit stuff now
+  callRuntimeCallbacks(__ATPRERUN__);
+  callRuntimeCallbacks(__ATINIT__);
+} // otherwise, general dynamic linking case: stuff we added to prerun and init will be executed with the rest of the system as it loads
 

@@ -1190,12 +1190,6 @@ function ensureInitRuntime() {
   if (runtimeInitialized) return;
   runtimeInitialized = true;
   callRuntimeCallbacks(__ATINIT__);
-
-#if RELOCATABLE
-  Runtime.loadedDynamicLibraries.forEach(function(lib) {
-    lib['initLibraryRuntime']();
-  });
-#endif
 }
 
 function preMain() {
