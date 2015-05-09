@@ -1568,9 +1568,6 @@ class Building:
     if optimization_level > 0:
       if not Building.can_inline():
         opts.append('-disable-inlining')
-      if not Building.can_build_standalone():
-        # -O1 does not have -gobaldce, which removes stuff that is needed for libraries and linkables
-        optimization_level = min(1, optimization_level)
       opts.append('-O%d' % optimization_level)
     Building.LLVM_OPT_OPTS = opts
     return opts
