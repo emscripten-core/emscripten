@@ -11,7 +11,7 @@ data downloads.
 
 Usage:
 
-  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--compress COMPRESSION_DATA] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy]
+  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--compress COMPRESSION_DATA] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy] [--separate-metadata]
 
   --preload  ,
   --embed    See emcc --help for more details on those options.
@@ -38,6 +38,8 @@ Usage:
                  The default, if this is not specified, is to embed the VFS inside the HEAP, so that mmap()ing files in it is a no-op.
                  Passing this flag optimizes for fread() usage, omitting it optimizes for mmap() usage.
 
+  --separate-metadata Stores package metadata separately. Only applicable when preloading and js-output file is specified.
+
 Notes:
 
   * The file packager generates unix-style file paths. So if you are on windows and a file is accessed at
@@ -55,7 +57,7 @@ from subprocess import Popen, PIPE, STDOUT
 import fnmatch
 
 if len(sys.argv) == 1:
-  print '''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--exclude C...] [--compress COMPRESSION_DATA] [--no-closure] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy]
+  print '''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--exclude C...] [--compress COMPRESSION_DATA] [--no-closure] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy] [--separate-metadata]
 See the source for more details.'''
   sys.exit(0)
 
@@ -89,6 +91,9 @@ use_preload_cache = False
 # If set to True, the blob received from XHR is moved to the Emscripten HEAP, optimizing for mmap() performance.
 # If set to False, the XHR blob is kept intact, and fread()s etc. are performed directly to that data. This optimizes for minimal memory usage and fread() performance.
 no_heap_copy = True
+# If set to True, the package metadata is stored separately from js-output file which makes js-output file immutable to the package content changes.
+# If set to False, the package metadata is stored inside the js-output file which makes js-output file to mutate on each invocation of this packager tool.
+separate_metadata  = False
 
 for arg in sys.argv[2:]:
   if arg == '--preload':
@@ -110,6 +115,9 @@ for arg in sys.argv[2:]:
     leading = ''
   elif arg == '--no-heap-copy':
     no_heap_copy = False
+    leading = ''
+  elif arg == '--separate-metadata':
+    separate_metadata = True
     leading = ''
   elif arg.startswith('--js-output'):
     jsoutput = arg.split('=')[1] if '=' in arg else None
@@ -159,6 +167,8 @@ for arg in sys.argv[2:]:
 
 if (not force) and len(data_files) == 0:
   has_preloaded = False
+if not has_preloaded or jsoutput == None:
+  separate_metadata = False
 
 ret = '''
 var Module;
@@ -179,12 +189,13 @@ if (!Module.expectedDataFileDownloads) {
 }
 Module.expectedDataFileDownloads++;
 (function() {
+ var loadPackage = function(metadata) {
 '''
 
 code = '''
-function assert(check, msg) {
-  if (!check) throw msg + new Error().stack;
-}
+    function assert(check, msg) {
+      if (!check) throw msg + new Error().stack;
+    }
 '''
 
 # Win32 code to test whether the given file has the hidden property set.
@@ -288,6 +299,9 @@ if AV_WORKAROUND:
 for file_ in data_files:
   for plugin in plugins:
     plugin(file_)
+
+if separate_metadata:
+  metadata = {'files': []}
 
 # Crunch files
 if crunch:
@@ -417,6 +431,7 @@ if has_preloaded:
         this.requests[this.name] = null;
       },
     };
+%s
   ''' % ('' if not crunch else '''
         if (this.crunched) {
           var ddsHeader = byteArray.subarray(0, 128);
@@ -429,6 +444,11 @@ if has_preloaded:
           });
         } else {
 ''', '' if not crunch else '''
+        }
+''', '' if not separate_metadata else '''
+        var files = metadata.files;
+        for (i = 0; i < files.length; ++i) {
+          new DataRequest(files[i].start, files[i].end, files[i].crunched, files[i].audio).open('GET', files[i].filename);
         }
 ''')
 
@@ -455,14 +475,23 @@ for file_ in data_files:
     # Preload
     varname = 'filePreload%d' % counter
     counter += 1
-    code += '''    new DataRequest(%(start)d, %(end)d, %(crunched)s, %(audio)s).open('GET', '%(filename)s');
+    if separate_metadata:
+      metadata['files'].append({
+        'filename': escape_for_js_string(file_['dstpath']),
+        'start': file_['data_start'],
+        'end': file_['data_end'],
+        'crunched': '1' if crunch and filename.endswith(CRUNCH_INPUT_SUFFIX) else '0',
+        'audio': '1' if filename[-4:] in AUDIO_SUFFIXES else '0',
+      })
+    else:
+      code += '''    new DataRequest(%(start)d, %(end)d, %(crunched)s, %(audio)s).open('GET', '%(filename)s');
 ''' % {
-      'filename': escape_for_js_string(file_['dstpath']),
-      'start': file_['data_start'],
-      'end': file_['data_end'],
-      'crunched': '1' if crunch and filename.endswith(CRUNCH_INPUT_SUFFIX) else '0',
-      'audio': '1' if filename[-4:] in AUDIO_SUFFIXES else '0',
-    }
+        'filename': escape_for_js_string(file_['dstpath']),
+        'start': file_['data_start'],
+        'end': file_['data_end'],
+        'crunched': '1' if crunch and filename.endswith(CRUNCH_INPUT_SUFFIX) else '0',
+        'audio': '1' if filename[-4:] in AUDIO_SUFFIXES else '0',
+      }
   else:
     assert 0
 
@@ -517,9 +546,19 @@ if has_preloaded:
     var REMOTE_PACKAGE_NAME = typeof Module['locateFile'] === 'function' ?
                               Module['locateFile'](REMOTE_PACKAGE_BASE) :
                               ((Module['filePackagePrefixURL'] || '') + REMOTE_PACKAGE_BASE);
-    var REMOTE_PACKAGE_SIZE = %d;
-    var PACKAGE_UUID = '%s';
-  ''' % (data_target, remote_package_name, remote_package_size, package_uuid)
+  ''' % (data_target, remote_package_name)
+  if separate_metadata:
+    metadata['remote_package_size'] = remote_package_size
+    metadata['package_uuid'] = str(package_uuid)
+    ret += '''
+      var REMOTE_PACKAGE_SIZE = metadata.remote_package_size;
+      var PACKAGE_UUID = metadata.package_uuid;
+    '''
+  else:
+    ret += '''
+      var REMOTE_PACKAGE_SIZE = %d;
+      var PACKAGE_UUID = '%s';
+    ''' % (remote_package_size, package_uuid)
 
   if use_preload_cache:
     code += r'''
@@ -756,12 +795,52 @@ if crunch:
   });
 '''
 
-ret += '''
+ret += '''%s
 })();
-'''
+''' % ('''
+  Module['removeRunDependency']('%(metadata_file)s');
+ }
+
+ var REMOTE_METADATA_NAME = typeof Module['locateFile'] === 'function' ?
+                            Module['locateFile']('%(metadata_file)s') :
+                            ((Module['filePackagePrefixURL'] || '') + '%(metadata_file)s');
+ var xhr = new XMLHttpRequest();
+ xhr.onreadystatechange = function() {
+  if (xhr.readyState === 4 && xhr.status === 200) {
+    loadPackage(JSON.parse(xhr.responseText));
+  }
+ }
+ xhr.open('GET', REMOTE_METADATA_NAME, true);
+ xhr.overrideMimeType('application/json');
+ xhr.send(null);
+
+ if (!Module['preRun']) Module['preRun'] = [];
+ Module["preRun"].push(function() {
+  Module['addRunDependency']('%(metadata_file)s');
+ });
+''' % {'metadata_file': os.path.basename(jsoutput + '.metadata')} if separate_metadata else '''
+ }
+ loadPackage();
+''')
+
 if force or len(data_files) > 0:
   if jsoutput == None:
     print ret
   else:
-    f = open(jsoutput, 'w')
-    f.write(ret)
+    # Overwrite the old jsoutput file (if exists) only when its content differs from the current generated one, otherwise leave the file untouched preserving its old timestamp
+    if os.path.isfile(jsoutput):
+      f = open(jsoutput, 'r+')
+      old = f.read()
+      if old != ret:
+        f.seek(0)
+        f.write(ret)
+        f.truncate()
+    else:
+      f = open(jsoutput, 'w')
+      f.write(ret)
+    f.close()
+    if separate_metadata:
+      import json
+      f = open(jsoutput + '.metadata', 'w')
+      json.dump(metadata, f, separators=(',', ':'))
+      f.close()
