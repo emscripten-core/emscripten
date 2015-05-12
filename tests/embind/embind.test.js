@@ -876,6 +876,22 @@ module({
             p.delete();
         });
 */
+
+        test("no undefined entry in overload table when depending on already bound types", function() {
+            var dummy_overloads = cm.MultipleOverloadsDependingOnDummy.prototype.dummy;
+            // check if the overloadTable is correctly named
+            // it can be minimized if using closure compiler
+            if (dummy_overloads.hasOwnProperty('overloadTable')) {
+                assert.false(dummy_overloads.overloadTable.hasOwnProperty('undefined'));
+            }
+
+            // this part should fail anyway if there is no overloadTable
+            var dependOnDummy = new cm.MultipleOverloadsDependingOnDummy();
+            var dummy = dependOnDummy.dummy();
+            dependOnDummy.dummy(dummy);
+            dummy.delete();
+            dependOnDummy.delete();
+        });
     });
 
     BaseFixture.extend("vector", function() {
