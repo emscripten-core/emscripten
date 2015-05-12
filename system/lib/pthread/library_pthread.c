@@ -523,15 +523,24 @@ void * EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_6(int function, v
 	return q.returnValue.vp;
 }
 
+static int bool_inside_nested_process_queued_calls = 0;
+
 void EMSCRIPTEN_KEEPALIVE emscripten_main_thread_process_queued_calls()
 {
 	assert(emscripten_is_main_runtime_thread() && "emscripten_main_thread_process_queued_calls must be called from the main thread!");
 	if (!emscripten_is_main_runtime_thread()) return;
 
+	// It is possible that when processing a queued call, the call flow leads back to calling this function in a nested fashion!
+	// Therefore this scenario must explicitly be detected, and processing the queue must be avoided if we are nesting, or otherwise
+	// the same queued calls would be processed again and again.
+	if (bool_inside_nested_process_queued_calls) return;
+	// This must be before pthread_mutex_lock(), since pthread_mutex_lock() can call back to this function.
+	bool_inside_nested_process_queued_calls = 1;
 	pthread_mutex_lock(&call_queue_lock);
 	for(int i = 0; i < call_queue_length; ++i)
 		_do_call(call_queue[i]);
 	call_queue_length = 0;
+	bool_inside_nested_process_queued_calls = 0;
 	pthread_mutex_unlock(&call_queue_lock);
 }
 
