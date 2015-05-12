@@ -1166,7 +1166,7 @@ try:
     linker_inputs += extra_files_to_link
     logging.debug('linking: ' + str(linker_inputs))
     # force archive contents to all be included, if just archives, or if linking shared modules
-    force_archive_contents = len([temp for i, temp in temp_files if not temp.endswith(STATICLIB_ENDINGS)]) == 0 or shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE
+    force_archive_contents = len([temp for i, temp in temp_files if not temp.endswith(STATICLIB_ENDINGS)]) == 0 or not shared.Building.can_build_standalone()
     shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'), force_archive_contents=force_archive_contents)
     final = in_temp(target_basename + '.bc')
   else:
