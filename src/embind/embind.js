@@ -1949,6 +1949,8 @@ var LibraryEmbind = {
             // Replace the initial unbound-handler-stub function with the appropriate member function, now that all types
             // are resolved. If multiple overloads are registered for this function, the function goes into an overload table.
             if (undefined === proto[methodName].overloadTable) {
+                // Set argCount in case an overload is registered later
+                memberFunction.argCount = argCount - 2;
                 proto[methodName] = memberFunction;
             } else {
                 proto[methodName].overloadTable[argCount - 2] = memberFunction;
