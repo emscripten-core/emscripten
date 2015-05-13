@@ -476,6 +476,7 @@
             "_PC_CHOWN_RESTRICTED", 
             "_SC_MQ_PRIO_MAX", 
             "_SC_PAGE_SIZE", 
+            "_SC_PHYS_PAGES",
             "_SC_BARRIERS", 
             "_SC_2_LOCALEDEF", 
             "_SC_STREAM_MAX", 
