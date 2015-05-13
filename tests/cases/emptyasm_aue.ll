@@ -12,7 +12,7 @@ entry:
   %retval = alloca i32, align 4                   ; [#uses=1 type=i32*]
   store i32 0, i32* %retval
   call void asm sideeffect "", "~{memory}"() nounwind
-  %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0 type=i32]
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0 type=i32]
   ret i32 1
 }
 

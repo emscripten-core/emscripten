@@ -14,9 +14,9 @@ label555:                                     ; preds = %353
   br label %label569
 
 label569:                                     ; preds = %555
-  %a333 = call i32 @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0]
+  %a333 = call i32 @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0]
   ; this should compile ok
-  store i32 ptrtoint (i8* blockaddress(@main, %label569) to i32), i32* bitcast (i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0) to i32*), align 8
+  store i32 ptrtoint (i8* blockaddress(@main, %label569) to i32), i32* bitcast (i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0) to i32*), align 8
   ret i32 0
 }
 

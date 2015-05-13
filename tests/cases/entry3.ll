@@ -27,9 +27,9 @@ declare i32 @getgid()
 
 define i32 @main() {
   %1 = tail call i32 @getgid()
-  %2 = tail call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([11 x i8]* @.str, i32 0, i32 0), i32 %1)
+  %2 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str, i32 0, i32 0), i32 %1)
   %3 = tail call i32 @_Z1fii(i32 undef, i32 undef)
-  %4 = tail call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([6 x i8]* @.str1, i32 0, i32 0), i32 %3)
+  %4 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str1, i32 0, i32 0), i32 %3)
   ret i32 0
 }
 

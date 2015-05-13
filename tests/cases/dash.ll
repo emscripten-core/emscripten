@@ -11,7 +11,7 @@ entry:
   %ret-val = alloca i32, align 4
   store i32 0, i32* %ret-val
   %aaa = ptrtoint i32 ()* @other-name to i32
-  %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.st-r, i32 0, i32 0), i32 %aaa)
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.st-r, i32 0, i32 0), i32 %aaa)
   ret i32 0
 }
 

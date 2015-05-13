@@ -11,16 +11,16 @@ entry:
   %f = fadd float 1.000, 0.500
   %d = fadd double 3.333, 0.444
   %fd = fpext float %f to double
-  %call1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([8 x i8]* @.str, i32 0, i32 0), double %fd) ; [#uses=0 type=i32]
-  %call2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([8 x i8]* @.str, i32 0, i32 0), double %d) ; [#uses=0 type=i32]
+  %call1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str, i32 0, i32 0), double %fd) ; [#uses=0 type=i32]
+  %call2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str, i32 0, i32 0), double %d) ; [#uses=0 type=i32]
   %fs = fptosi float %f to i64
   %fu = fptoui float %f to i64
   %ds = fptosi double %d to i64
   %du = fptoui double %d to i64
-  %call3 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([6 x i8]* @.str2, i32 0, i32 0), i64 %fs) ; [#uses=0 type=i32]
-  %call4 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([6 x i8]* @.str2, i32 0, i32 0), i64 %fu) ; [#uses=0 type=i32]
-  %call5 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([6 x i8]* @.str2, i32 0, i32 0), i64 %ds) ; [#uses=0 type=i32]
-  %call6 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([6 x i8]* @.str2, i32 0, i32 0), i64 %du) ; [#uses=0 type=i32]
+  %call3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str2, i32 0, i32 0), i64 %fs) ; [#uses=0 type=i32]
+  %call4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str2, i32 0, i32 0), i64 %fu) ; [#uses=0 type=i32]
+  %call5 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str2, i32 0, i32 0), i64 %ds) ; [#uses=0 type=i32]
+  %call6 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str2, i32 0, i32 0), i64 %du) ; [#uses=0 type=i32]
   ret i32 1
 }
 

@@ -10,20 +10,20 @@ define i32 @main() {
 entry:
   %retval = alloca i32, align 4                   ; [#uses=1 type=i32*]
   store i32 0, i32* %retval
-  %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0), i32 1)
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0), i32 1)
   %bad = call zeroext i1 null()
   %bad2 = call zeroext i1 null(i32 5, float 1.0E2, double 0.02, i64 1000, i1 0, i32* %retval)
-  %bad3 = call zeroext i1 (i32, float, double, i64, i1, i32*)* null(i32 5, float 1.0E2, double 0.02, i64 1000, i1 0, i32* %retval)
+  %bad3 = call zeroext i1 (i32, float, double, i64, i1, i32*) null(i32 5, float 1.0E2, double 0.02, i64 1000, i1 0, i32* %retval)
   %bad4 = or i1 %bad, %bad2
   %bad5 = or i1 %bad3, %bad4
   br i1 %bad5, label %pre, label %finish
 
 pre:
-  %call0 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str1, i32 0, i32 0), i32 0)
+  %call0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str1, i32 0, i32 0), i32 0)
   ret i32 0
 
 finish:
-  %call1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str2, i32 0, i32 0), i32 1)
+  %call1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str2, i32 0, i32 0), i32 1)
   ret i32 1
 }
 

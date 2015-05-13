@@ -10,11 +10,11 @@ entry:
   br label %zero
 
 zero:
-  %.3.ph.i757 = phi i8* [ getelementptr ([15 x i8]* @.str, i32 0, i32 add (i32 xor (i32 ptrtoint (i8* getelementptr ([15 x i8]* @.str, i32 0, i32 select (i1 icmp ugt (i32 sub (i32 0, i32 add (i32 ptrtoint ([15 x i8]* @.str to i32), i32 25)), i32 xor (i32 ptrtoint ([15 x i8]* @.str to i32), i32 -1)), i32 sub (i32 0, i32 add (i32 ptrtoint ([15 x i8]* @.str to i32), i32 25)), i32 xor (i32 ptrtoint ([15 x i8]* @.str to i32), i32 -1))) to i32), i32 -1), i32 25)), %entry ], [ getelementptr ([15 x i8]* @.str, i32 0, i32 ptrtoint (i8* getelementptr ([15 x i8]* @.str, i32 0, i32 add (i32 sub (i32 0, i32 ptrtoint ([15 x i8]* @.str to i32)), i32 25)) to i32)), %other ]
+  %.3.ph.i757 = phi i8* [ getelementptr ([15 x i8], [15 x i8]* @.str, i32 0, i32 add (i32 xor (i32 ptrtoint (i8* getelementptr ([15 x i8], [15 x i8]* @.str, i32 0, i32 select (i1 icmp ugt (i32 sub (i32 0, i32 add (i32 ptrtoint ([15 x i8]* @.str to i32), i32 25)), i32 xor (i32 ptrtoint ([15 x i8]* @.str to i32), i32 -1)), i32 sub (i32 0, i32 add (i32 ptrtoint ([15 x i8]* @.str to i32), i32 25)), i32 xor (i32 ptrtoint ([15 x i8]* @.str to i32), i32 -1))) to i32), i32 -1), i32 25)), %entry ], [ getelementptr ([15 x i8], [15 x i8]* @.str, i32 0, i32 ptrtoint (i8* getelementptr ([15 x i8], [15 x i8]* @.str, i32 0, i32 add (i32 sub (i32 0, i32 ptrtoint ([15 x i8]* @.str to i32)), i32 25)) to i32)), %other ]
 
   %retval = alloca i32, align 4                   ; [#uses=1 type=i32*]
   store i32 0, i32* %retval
-  %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0 type=i32]
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0 type=i32]
   br label %other
 
 other:

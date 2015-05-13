@@ -14,7 +14,7 @@ entry:
   %a0 = extractvalue { i32, i1 } %uadd1, 0
   %a1 = extractvalue { i32, i1 } %uadd1, 1
   %a2 = zext i1 %a1 to i32
-  call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([9 x i8]* @.str2, i32 0, i32 0), i32 %a0, i32 %a2) ; [#uses=0]
+  call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str2, i32 0, i32 0), i32 %a0, i32 %a2) ; [#uses=0]
 
   %buadd1prepre = tail call { i32, i1 } @llvm.uadd.with.overflow.i32(i32 %mul7, i32 %shl10)
   %buadd1pre = insertvalue { i32, i1 } %buadd1prepre, i1 0, 1
@@ -22,7 +22,7 @@ entry:
   %ba0 = extractvalue { i32, i1 } %buadd1, 0
   %ba1 = extractvalue { i32, i1 } %buadd1, 1
   %ba2 = zext i1 %ba1 to i32
-  call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([9 x i8]* @.str2, i32 0, i32 0), i32 %ba0, i32 %ba2) ; [#uses=0]
+  call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str2, i32 0, i32 0), i32 %ba0, i32 %ba2) ; [#uses=0]
 
   %z64buadd1pre = tail call { i64, i1 } @llvm.uadd.with.overflow.i64(i64 5000, i64 3000)
   %z64buadd1 = insertvalue { i64, i1 } %z64buadd1pre, i64 9875, 0
@@ -31,13 +31,13 @@ entry:
   %z64ba0 = trunc i64 %z64ba0pre to i32
   %z64ba1 = extractvalue { i64, i1 } %z64buadd2, 1
   %z64ba2 = zext i1 %z64ba1 to i32
-  call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([9 x i8]* @.str2, i32 0, i32 0), i32 %z64ba0, i32 %z64ba2) ; [#uses=0]
+  call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str2, i32 0, i32 0), i32 %z64ba0, i32 %z64ba2) ; [#uses=0]
 
   %zbuadd1 = insertvalue { i32, i1 } { i32 undef, i1 false }, i32 10, 0 ; undef and explicit
   %zba0 = extractvalue { i32, i1 } %zbuadd1, 0
   %zba1 = extractvalue { i32, i1 } %zbuadd1, 1
   %zba2 = zext i1 %ba1 to i32
-  call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([9 x i8]* @.str2, i32 0, i32 0), i32 %zba0, i32 %zba2) ; [#uses=0]
+  call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str2, i32 0, i32 0), i32 %zba0, i32 %zba2) ; [#uses=0]
 
   ret i32 1
 }

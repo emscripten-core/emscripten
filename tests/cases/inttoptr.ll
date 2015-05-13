@@ -15,6 +15,6 @@ entry:
   %"alloca point" = bitcast i32 0 to i32          ; [#uses=0]
   %sz.i7 = inttoptr i32 64 to i32*          ; [#uses=1 type=i32*]
   store i32 184, i32* %sz.i7, align 8
-  %1 = call i32 @puts(i8* getelementptr inbounds ([14 x i8]* @.str, i32 0, i32 0)) ; [#uses=0]
+  %1 = call i32 @puts(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @.str, i32 0, i32 0)) ; [#uses=0]
   ret i32 0
 }

@@ -6,7 +6,7 @@ target triple = "asmjs-unknown-emscripten"
 declare i32 @printf(i8*, ...)
 
 define linkonce_odr i32 @main() align 2 {
-  %a333 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([18 x i8]* @.str, i32 0, i32 0), i32 5)
+  %a333 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.str, i32 0, i32 0), i32 5)
   %a400 = zext i32 %a333 to i64
   %a444 = udiv i64 %a400, 3
   switch i64 %a444, label %label999 [
@@ -24,7 +24,7 @@ define linkonce_odr i32 @main() align 2 {
 
 label9950:
   %waka = phi i32 [11000, %0], [10, %label9951], [11, %label9952], [12, %label9953], [13, %label9954], [14, %label9955], [15, %label9956], [16, %label9957], [17, %label9958], [18, %label9959]
-  %a333b = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([18 x i8]* @.str, i32 0, i32 0), i32 %waka)
+  %a333b = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.str, i32 0, i32 0), i32 %waka)
   br label %label999
 
 label9951:
@@ -48,7 +48,7 @@ label9959:
 
 label999:                                     ; preds = %555
   %last = phi i32 [1, %0], [2, %label9950]
-  %a333c = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([18 x i8]* @.str, i32 0, i32 0), i32 %last)
+  %a333c = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.str, i32 0, i32 0), i32 %last)
   ret i32 0
 }
 

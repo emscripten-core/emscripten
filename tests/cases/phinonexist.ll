@@ -12,7 +12,7 @@ entry:
 
 label13:                                      ; preds = %13, %1
   %a14 = phi i32 [ %a12, %entry ], [ %a15, %135 ]
-  %call0 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0))
+  %call0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0))
   %a15 = add nsw i32 %a14, 2
   %a16 = icmp eq i32 %a15, 9
   br label %label17

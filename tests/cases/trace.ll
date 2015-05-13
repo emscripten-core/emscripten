@@ -8,7 +8,7 @@ target triple = "asmjs-unknown-emscripten"
 
 %struct.TraceKindPair = type { i8*, i32 }
 
-@_ZL14traceKindNames = internal constant [4 x %struct.TraceKindPair] [%struct.TraceKindPair { i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0), i32 -1 }, %struct.TraceKindPair { i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0), i32 0 }, %struct.TraceKindPair { i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0), i32 1 }, %struct.TraceKindPair { i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0), i32 3 }], align 4 ; [#uses=3 type=[4 x %struct.TraceKindPair]*]
+@_ZL14traceKindNames = internal constant [4 x %struct.TraceKindPair] [%struct.TraceKindPair { i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0), i32 -1 }, %struct.TraceKindPair { i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0), i32 0 }, %struct.TraceKindPair { i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0), i32 1 }, %struct.TraceKindPair { i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0), i32 3 }], align 4 ; [#uses=3 type=[4 x %struct.TraceKindPair]*]
 
 @.str = private unnamed_addr constant [15 x i8] c"hello, world!\0A\00", align 1 ; [#uses=1 type=[15 x i8]*]
 
@@ -22,9 +22,9 @@ define i32 @main() {
 entry:
   %retval = alloca i32, align 4                   ; [#uses=1 type=i32*]
   store i32 0, i32* %retval
-  %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0 type=i32]
-  %0 = getelementptr inbounds [4 x %struct.TraceKindPair]* @_ZL14traceKindNames, i32 0, i32 1 ; [#uses=1 type=%struct.TraceKindPair*] [debug line = 1473:17]
-  %1 = getelementptr inbounds %struct.TraceKindPair* %0, i32 0, i32 0 ; [#uses=1 type=i8**] [debug line = 1473:17]
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0 type=i32]
+  %0 = getelementptr inbounds [4 x %struct.TraceKindPair], [4 x %struct.TraceKindPair]* @_ZL14traceKindNames, i32 0, i32 1 ; [#uses=1 type=%struct.TraceKindPair*] [debug line = 1473:17]
+  %1 = getelementptr inbounds %struct.TraceKindPair, %struct.TraceKindPair* %0, i32 0, i32 0 ; [#uses=1 type=i8**] [debug line = 1473:17]
   ret i32 1
 }
 

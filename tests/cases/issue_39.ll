@@ -12,21 +12,21 @@ entry:
   %x = alloca i32                                 ; [#uses=2]
   %"alloca point" = bitcast i32 0 to i32          ; [#uses=0]
   store i32 5, i32* %x, align 4
-  %1 = load i32* %x, align 4                      ; [#uses=1]
+  %1 = load i32, i32* %x, align 4                      ; [#uses=1]
   br i1 icmp sgt (i32 %1, i32 3), label %bb, label %bb1
 
 bb:                                               ; preds = %entry
-  %3 = call i32 @puts(i8* getelementptr inbounds ([6 x i8]* @.str, i32 0, i32 0)) ; [#uses=0]
+  %3 = call i32 @puts(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str, i32 0, i32 0)) ; [#uses=0]
   br label %bb1
 
 bb1:                                              ; preds = %bb, %entry
   store i32 0, i32* %0, align 4
-  %4 = load i32* %0, align 4                      ; [#uses=1]
+  %4 = load i32, i32* %0, align 4                      ; [#uses=1]
   store i32 %4, i32* %retval, align 4
   br label %return
 
 return:                                           ; preds = %bb1
-  %retval2 = load i32* %retval                    ; [#uses=1]
+  %retval2 = load i32, i32* %retval                    ; [#uses=1]
   ret i32 %retval2
 }
 

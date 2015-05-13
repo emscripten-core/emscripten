@@ -24,20 +24,20 @@ define i32 @main(i32 %argc, i8** %argv) #0 {
   store i32 0, i32* %1
   store i32 %argc, i32* %2, align 4
   store i8** %argv, i8*** %3, align 4
-  %9 = load i8*** %3, align 4
-  %10 = getelementptr inbounds i8** %9, i32 0
-  %11 = load i8** %10, align 4
+  %9 = load i8**, i8*** %3, align 4
+  %10 = getelementptr inbounds i8*, i8** %9, i32 0
+  %11 = load i8*, i8** %10, align 4
   %12 = bitcast i8* %11 to i32*
   store i32* %12, i32** %x, align 4
-  %13 = load i8*** %3, align 4
-  %14 = getelementptr inbounds i8** %13, i32 0
-  %15 = load i8** %14, align 4
+  %13 = load i8**, i8*** %3, align 4
+  %14 = getelementptr inbounds i8*, i8** %13, i32 0
+  %15 = load i8*, i8** %14, align 4
   %16 = bitcast i8* %15 to i32*
   store i32* %16, i32** %y, align 4
-  %17 = load i32** %x, align 4
-  %18 = load i32* %17, align 4
-  %19 = load i32** %y, align 4
-  %20 = load i32* %19, align 4
+  %17 = load i32*, i32** %x, align 4
+  %18 = load i32, i32* %17, align 4
+  %19 = load i32*, i32** %y, align 4
+  %20 = load i32, i32* %19, align 4
   call void @_ZN5pointC2Eii(%struct.point* %p, i32 %18, i32 %20)
   %21 = bitcast %struct.point* %4 to i8*
   %22 = bitcast %struct.point* %p to i8*
@@ -46,9 +46,9 @@ define i32 @main(i32 %argc, i8** %argv) #0 {
           to label %23 unwind label %31
 
 ; <label>:23                                      ; preds = %0
-  %24 = load i32** %x, align 4
+  %24 = load i32*, i32** %x, align 4
   %25 = bitcast i32* %24 to i8*
-  %26 = load i32** %y, align 4
+  %26 = load i32*, i32** %y, align 4
   %27 = bitcast i32* %26 to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* %25, i8* %27, i32 8, i32 4, i1 false)
   %28 = bitcast %struct.point* %7 to i8*
@@ -73,16 +73,16 @@ define i32 @main(i32 %argc, i8** %argv) #0 {
   br label %35
 
 ; <label>:35                                      ; preds = %31
-  %36 = load i32* %6
+  %36 = load i32, i32* %6
   %37 = call i32 @llvm.eh.typeid.for(i8* bitcast ({ i8*, i8* }* @_ZTIi to i8*)) #2
   %38 = icmp eq i32 %36, %37
   br i1 %38, label %39, label %47
 
 ; <label>:39                                      ; preds = %35
-  %40 = load i8** %5
+  %40 = load i8*, i8** %5
   %41 = call i8* @__cxa_begin_catch(i8* %40) #2
   %42 = bitcast i8* %41 to i32*
-  %43 = load i32* %42, align 4
+  %43 = load i32, i32* %42, align 4
   store i32 %43, i32* %x1, align 4
   store i32 1, i32* %1
   store i32 1, i32* %8
@@ -94,12 +94,12 @@ define i32 @main(i32 %argc, i8** %argv) #0 {
   br label %45
 
 ; <label>:45                                      ; preds = %44, %39
-  %46 = load i32* %1
+  %46 = load i32, i32* %1
   ret i32 %46
 
 ; <label>:47                                      ; preds = %35
-  %48 = load i8** %5
-  %49 = load i32* %6
+  %48 = load i8*, i8** %5
+  %49 = load i32, i32* %6
   %50 = insertvalue { i8*, i32 } undef, i8* %48, 0
   %51 = insertvalue { i8*, i32 } %50, i32 %49, 1
   resume { i8*, i32 } %51
@@ -129,7 +129,4 @@ attributes #1 = { nounwind "less-precise-fpmad"="false" "no-frame-pointer-elim"=
 attributes #2 = { nounwind }
 attributes #3 = { nounwind readnone }
 
-!llvm.ident = !{!0, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1}
 
-!0 = metadata !{metadata !"clang version 3.5.0 (git@github.com:kripken/emscripten-fastcomp-clang.git 00519b59e3985b8e1ad35051b5e231df8c2efe24) (git@github.com:kripken/emscripten-fastcomp.git 24d76083fe941895112b68375d7b7cd1f8d0ed04)"}
-!1 = metadata !{metadata !"clang version 3.5.0 (git@github.com:kripken/emscripten-fastcomp-clang.git 00519b59e3985b8e1ad35051b5e231df8c2efe24) (git@github.com:kripken/emscripten-fastcomp.git 44c87ce5bb3f433a69d5e80b9af9c4cda299ca8c)"}

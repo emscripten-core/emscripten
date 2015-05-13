@@ -9,7 +9,7 @@ target triple = "asmjs-unknown-emscripten"
 ; [#uses=2]
 define void @original() {
 entry:
-  %0 = call i32 bitcast (i32 (i8*)* @puts to i32 (i32*)*)(i32* bitcast (i8* getelementptr inbounds ([14 x i8]* @.str, i32 0, i32 0) to i32*)) ; [#uses=0]
+  %0 = call i32 bitcast (i32 (i8*)* @puts to i32 (i32*)*)(i32* bitcast (i8* getelementptr inbounds ([14 x i8], [14 x i8]* @.str, i32 0, i32 0) to i32*)) ; [#uses=0]
   br label %return
 
 return:                                           ; preds = %entry
