@@ -2540,6 +2540,10 @@ window.close = function() {
   def test_pthread_gcc_atomics(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomics.cpp'), expected='0', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
 
+  # Test the __sync_lock_test_and_set and __sync_lock_release primitives.
+  def test_pthread_gcc_spinlock(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_spinlock.cpp'), expected='800', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
+
   # Test that basic thread creation works.
   def test_pthread_create(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])

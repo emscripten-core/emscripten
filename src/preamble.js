@@ -1344,6 +1344,21 @@ Module['writeAsciiToMemory'] = writeAsciiToMemory;
 {{{ unSign }}}
 {{{ reSign }}}
 
+#if USE_PTHREADS
+// Atomics.exchange is not yet implemented in the spec, so polyfill that in via compareExchange in the meanwhile.
+// TODO: Keep an eye out for the opportunity to remove this once Atomics.exchange is available.
+if (typeof Atomics !== 'undefined' && !Atomics['exchange']) {
+  Atomics['exchange'] = function(heap, index, val) {
+    var oldVal, oldVal2;
+    do {
+      oldVal = Atomics['load'](heap, index);
+      oldVal2 = Atomics['compareExchange'](heap, index, oldVal, val);
+    } while(oldVal != oldVal2);
+    return oldVal;
+  }
+}
+#endif
+
 // check for imul support, and also for correctness ( https://bugs.webkit.org/show_bug.cgi?id=126345 )
 if (!Math['imul'] || Math['imul'](0xffffffff, 5) !== -5) Math['imul'] = function imul(a, b) {
   var ah  = a >>> 16;
