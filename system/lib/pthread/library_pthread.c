@@ -566,6 +566,16 @@ static pthread_mutex_t emulated64BitAtomicsLocks[NUM_64BIT_LOCKS] = {
 	PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER
 };
 
+uint32_t EMSCRIPTEN_KEEPALIVE emscripten_atomic_exchange_u32(void/*uint32_t*/ *addr, uint32_t newVal)
+{
+	uint32_t oldVal, oldVal2;
+	do {
+		oldVal = emscripten_atomic_load_u32(addr);
+		oldVal2 = emscripten_atomic_cas_u32(addr, oldVal, newVal);
+	} while (oldVal != oldVal2);
+	return oldVal;
+}
+
 uint64_t EMSCRIPTEN_KEEPALIVE emscripten_atomic_exchange_u64(void/*uint64_t*/ *addr, uint64_t newVal)
 {
 	uintptr_t m = (uintptr_t)addr >> 3;
