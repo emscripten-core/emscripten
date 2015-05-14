@@ -28,7 +28,7 @@ entry:
 define i32 @main() {
 entry:
   %retval = alloca i32, align 4                   ; [#uses=1]
-  %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0]
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0]
   ret i32 0
 }
 
