@@ -3993,6 +3993,7 @@ LibraryManager.library = {
   fabs: 'Math_abs',
   fabsf: 'Math_abs',
   fabsl: 'Math_abs',
+  llvm_fabs_f32: 'Math_abs',
   llvm_fabs_f64: 'Math_abs',
   ceil: 'Math_ceil',
   ceilf: 'Math_ceil',
