@@ -396,6 +396,12 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
     self.do_run_from_file(src, output, 'waka fleefl asdfasdfasdfasdf'.split(' '))
 
+  def test_llvm_fabs(self):
+    Settings.PRECISE_F32 = 1
+    test_path = path_from_root('tests', 'core', 'test_llvm_fabs')
+    src, output = (test_path + s for s in ('.c', '.out'))
+    self.do_run_from_file(src, output)
+
   def test_double_varargs(self):
     test_path = path_from_root('tests', 'core', 'test_double_varargs')
     src, output = (test_path + s for s in ('.c', '.out'))
