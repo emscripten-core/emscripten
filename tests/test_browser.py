@@ -2542,7 +2542,8 @@ window.close = function() {
 
   # Test the __sync_lock_test_and_set and __sync_lock_release primitives.
   def test_pthread_gcc_spinlock(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_spinlock.cpp'), expected='800', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
+    for arg in [[], ['-DUSE_EMSCRIPTEN_INTRINSICS']]:
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_spinlock.cpp'), expected='800', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'] + arg)
 
   # Test that basic thread creation works.
   def test_pthread_create(self):
@@ -2575,7 +2576,7 @@ window.close = function() {
   # Tests the pthread mutex api.
   def test_pthread_mutex(self):
     for arg in [[], ['-DSPINLOCK_TEST']]:
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_mutex.cpp'), expected='50', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'])
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_mutex.cpp'), expected='50', args=['-lpthread', '-s', 'PTHREAD_POOL_SIZE=8'] + arg)
 
   # Test that memory allocation is thread-safe.
   def test_pthread_malloc(self):

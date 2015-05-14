@@ -1,19 +1,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
-#include <emscripten.h>
+#include <emscripten/emscripten.h>
+#include <emscripten/threading.h>
 #include <unistd.h> // usleep
 #include <assert.h>
 
 volatile int counter = 0; // Shared data
 volatile int lock = 0; // spinlock "mutex" variable
 
+
 void *ThreadMain(void *arg)
 {
 	printf("Thread started.\n");
 	for(int i = 0; i < 100; ++i)
 	{
+#ifdef USE_EMSCRIPTEN_INTRINSICS
+		while(emscripten_atomic_exchange_u32((void*)&lock, 1))
+#else
 		while(__sync_lock_test_and_set(&lock, 1))
+#endif
 		{
 			/*nop*/;
 		}
@@ -21,7 +27,11 @@ void *ThreadMain(void *arg)
 		usleep(5 * 1000); // Create contention on the lock.
 		++c;
 		counter = c;
+#ifdef USE_EMSCRIPTEN_INTRINSICS
+		emscripten_atomic_store_u32((void*)&lock, 0);
+#else
 		__sync_lock_release(&lock);
+#endif
 	}
 	printf("Thread done.\n");
 	pthread_exit(0);
