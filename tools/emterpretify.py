@@ -1025,13 +1025,13 @@ if __name__ == '__main__':
 
   # set up emterpreter stack top (note we must use malloc if in a shared lib, or other enviroment where static memory is sealed)
   js = ['''
-var EMTSTACKTOP = (staticSealed ? _malloc : Runtime.staticAlloc)(%s);
+var EMTSTACKTOP = getMemory(%s);
 var EMT_STACK_MAX = EMTSTACKTOP + %d;
 ''' % (EMT_STACK_MAX, EMT_STACK_MAX)]
 
   # write out our bytecode, and runtime relocation logic
   js += ['''
-var eb = (staticSealed ? _malloc : Runtime.staticAlloc)(%s);
+var eb = getMemory(%s);
 assert(eb %% 8 === 0);
 __ATPRERUN__.push(function() {
 ''' % len(all_code)]
