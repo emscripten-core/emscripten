@@ -49,9 +49,9 @@ cond.false.i:                                     ; preds = %entry
   %cmp1.i = fcmp olt float %sub, 0.000000e+00
   %phitmp = sitofp i1 %cmp1.i to float
   %phitmpd = fpext float %phitmp to double
-  %call1115a = tail call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([7 x i8]* @.str, i32 0, i32 0), double %phitmpd)
+  %call1115a = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str, i32 0, i32 0), double %phitmpd)
   %phitmpi = sext i1 %cmp1.i to i32
-  %call1115b = tail call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([4 x i8]* @.str2, i32 0, i32 0), i32 %phitmpi)
+  %call1115b = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str2, i32 0, i32 0), i32 %phitmpi)
   br label %_ZL5signff.exit
 
 _ZL5signff.exit:                                  ; preds = %cond.false.i, %entry
@@ -59,7 +59,7 @@ _ZL5signff.exit:                                  ; preds = %cond.false.i, %entr
   %mul = fmul float %call2, %cond2.i
   %add = fadd float %call, %mul
   %conv4 = fpext float %add to double
-  %call5 = tail call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([7 x i8]* @.str, i32 0, i32 0), double %conv4)
+  %call5 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str, i32 0, i32 0), double %conv4)
   ret i32 0
 }
 

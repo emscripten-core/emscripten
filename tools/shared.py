@@ -306,7 +306,7 @@ EM_BUILD_VERBOSE_LEVEL = int(os.getenv('EM_BUILD_VERBOSE')) if os.getenv('EM_BUI
 
 # Expectations
 
-EXPECTED_LLVM_VERSION = (3, 6)
+EXPECTED_LLVM_VERSION = (3, 7)
 
 actual_clang_version = None
 

@@ -2545,7 +2545,7 @@ int main()
       self.assertContained('File size: 724', out)
 
   def test_simd(self):
-    assert get_clang_version() == '3.6'
+    assert get_clang_version() == '3.7'
     Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-s', 'SIMD=1', '-DSP', '-s', 'PRECISE_F32=1']).communicate()
     self.assertContained('Unrolled Single  Precision', run_js('a.out.js'))
 
@@ -4623,13 +4623,13 @@ function _main() {
       assert expected == seen or (seen in expected if type(expected) in [list, tuple] else False), ['expect', expected, 'but see', seen]
 
     do_log_test(path_from_root('tests', 'primes.cpp'), 88, 'main')
-    do_log_test(path_from_root('tests', 'fannkuch.cpp'), range(237, 240), 'fannkuch_worker')
+    do_log_test(path_from_root('tests', 'fannkuch.cpp'), range(227, 230), 'fannkuch_worker')
 
     # test non-native as well, registerizeHarder can be a little more efficient here
     old_native = os.environ.get('EMCC_NATIVE_OPTIMIZER')
     try:
       os.environ['EMCC_NATIVE_OPTIMIZER'] = '0'
-      do_log_test(path_from_root('tests', 'fannkuch.cpp'), range(237, 240), 'fannkuch_worker')
+      do_log_test(path_from_root('tests', 'fannkuch.cpp'), range(227, 230), 'fannkuch_worker')
     finally:
       if old_native: os.environ['EMCC_NATIVE_OPTIMIZER'] = old_native
       else: del os.environ['EMCC_NATIVE_OPTIMIZER']
@@ -4912,6 +4912,8 @@ int main() {
     open('src.cpp', 'w').write(r'''
       #include <stdio.h>
       int main(int argc, char **argv) {
+        printf("extra code\n");
+        printf("to make the function big enough to justify splitting\n");
         if (argc == 1) {
           printf("1\n");
           printf("1\n");
@@ -4949,12 +4951,13 @@ int main() {
       }
     ''')
     def test(opts, expected):
+      print opts
       Popen([PYTHON, EMCC, 'src.cpp', '--profiling'] + opts).communicate()
       src = open('a.out.js').read()
       main = self.get_func(src, '_main')
       rets = main.count('return ')
-      print opts, rets
-      assert rets == expected
+      print '    ', rets
+      assert rets == expected, [rets, '!=', expected]
     test(['-O1'], 6)
     test(['-O2'], 6)
     test(['-Os'], 1)

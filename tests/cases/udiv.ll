@@ -11,7 +11,7 @@ entry:
   %waka = udiv i32 -1806866064, 5
   %waka2 = add i32 2247483648, 2247483648
   store i32 0, i32* %retval
-  %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0), i32 %waka, i32 %waka2) ; [#uses=0 type=i32]
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0), i32 %waka, i32 %waka2) ; [#uses=0 type=i32]
   ret i32 1
 }
 

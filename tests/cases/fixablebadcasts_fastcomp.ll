@@ -10,7 +10,7 @@ entry:
   %retval = alloca i32, align 4                   ; [#uses=1 type=i32*]
   store i32 0, i32* %retval
   %a = call i32 bitcast (i32 (i32)* @twoparam to i32 (i32, i32)*)(i32 5, i32 6)
-  %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([18 x i8]* @.str, i32 0, i32 0), i32 %a) ; [#uses=0 type=i32]
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.str, i32 0, i32 0), i32 %a) ; [#uses=0 type=i32]
   call void bitcast (void (i32, i32*, i32*)* @_ZN7WebCore33signedPublicKeyAndChallengeStringEjRKN3WTF6StringERKNS_3URLE to void (i32*, i32, i32*, i32*)*)(i32* sret null, i32 0, i32* null, i32* null)
   ret i32 1
 }

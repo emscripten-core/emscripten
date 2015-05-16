@@ -9,7 +9,7 @@ entry:
   %retval = alloca i32, align 4
   store i32 0, i32* %retval
   %call = call i32 @llvm.ctlz.i32(i32 109, i1 0)
-  %call2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([18 x i8]* @.str, i32 0, i32 0), i32 %call)
+  %call2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.str, i32 0, i32 0), i32 %call)
   ret i32 0
 }
 

@@ -6,7 +6,7 @@ target triple = "asmjs-unknown-emscripten"
 declare i32 @printf(i8*, ...)
 
 define i32 @main() {
-  %a333 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([18 x i8]* @.str, i32 0, i32 0), i32 5)
+  %a333 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.str, i32 0, i32 0), i32 5)
   %a400 = zext i32 %a333 to i64
   %check = trunc i32 %a333 to i1
   br i1 %check, label %l1, label %l2
@@ -14,7 +14,7 @@ define i32 @main() {
 l1:
   %bbb = phi i64 [ %a400, %0 ], [ 10, %l2 ]
   %bbb32 = trunc i64 %bbb to i32
-  %a333z = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([18 x i8]* @.str, i32 0, i32 0), i32 %bbb32)
+  %a333z = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.str, i32 0, i32 0), i32 %bbb32)
   %check2 = trunc i32 %bbb32 to i1
   br i1 %check2, label %l2, label %label999
 
@@ -37,7 +37,7 @@ l2:
 label9950:
   %waka = phi i64 [1000, %l2], [0, %label9951], [1, %label9952], [2, %label9953], [3, %label9954], [4, %label9955], [5, %label9956], [6, %label9957], [7, %label9958], [8, %label9959]
   %waka32 = trunc i64 %waka to i32
-  %a333b = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([18 x i8]* @.str, i32 0, i32 0), i32 %waka32)
+  %a333b = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.str, i32 0, i32 0), i32 %waka32)
   br label %label999
 
 label9951:
@@ -62,7 +62,7 @@ label9959:
 label999:                                     ; preds = %555
   %last = phi i64 [1, %l1], [2, %label9950]
   %last32 = trunc i64 %last to i32
-  %a333c = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([18 x i8]* @.str, i32 0, i32 0), i32 %last32)
+  %a333c = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.str, i32 0, i32 0), i32 %last32)
   ret i32 0
 }
 

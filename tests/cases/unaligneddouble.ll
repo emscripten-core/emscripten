@@ -16,7 +16,7 @@ entry:
   store double %1, double* %doub, align 2
   store double %1, double* %doub, align 4
   store double %1, double* %doub, align 8
-  %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0 type=i32]
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0 type=i32]
   ret i32 1
 }
 

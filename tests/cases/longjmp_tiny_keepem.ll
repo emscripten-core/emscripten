@@ -6,7 +6,7 @@ target triple = "asmjs-unknown-emscripten"
 @.str1 = private unnamed_addr constant [6 x i8] c"more\0A\00", align 1
 
 define i32 @main() {
-  %call0 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([6 x i8]* @.str1, i32 0, i32 0))
+  %call0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str1, i32 0, i32 0))
   br label %middle
 
 middle:
@@ -19,12 +19,12 @@ middle:
   br i1 %tobool, label %if.else, label %if.then ; 20
 
 if.then:                                          ;  preds = %entry
-  %call1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([13 x i8]* @.str, i32 0, i32 0)) ; 22
+  %call1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str, i32 0, i32 0)) ; 22
   call void @longjmp(i8 %wimpy, i32 10) ; 24
   br label %if.end ; 25
 
 if.else:                                          ;  preds = %entry
-  %call2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([6 x i8]* @.str1, i32 0, i32 0)) ; 26
+  %call2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str1, i32 0, i32 0)) ; 26
   br label %if.end
 
 if.end:                                           ;  preds = %if.else, %if.then

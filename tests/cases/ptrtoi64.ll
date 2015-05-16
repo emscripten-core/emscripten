@@ -22,6 +22,6 @@ entry:
   %conv5 = trunc i64 %a10 to i32
   %a11 = ptrtoint i32* %sz.i7 to i8
   %conv6 = zext i8 %a11 to i32
-  %a55 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([9 x i8]* @.str2, i32 0, i32 0), i32 %conv5, i32 %conv6)
+  %a55 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str2, i32 0, i32 0), i32 %conv5, i32 %conv6)
   ret i32 0
 }

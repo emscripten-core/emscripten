@@ -9,7 +9,7 @@ define i32 @main(i32 %argc) {
 entry:
   %retval = alloca i32, i32 %argc, align 4                   ; [#uses=1 type=i32*]
   store i32 0, i32* %retval
-  %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0 type=i32]
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0 type=i32]
   ret i32 1
 }
 

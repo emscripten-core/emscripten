@@ -15,9 +15,9 @@ define i32 @main() #1 {
   %arr = alloca [0 x i32], align 4
   %1 = bitcast [0 x i32]* %arr to i8*
   call void @llvm.memset.p0i8.i32(i8* %1, i8 0, i32 0, i32 4, i1 false)
-  %2 = getelementptr inbounds [0 x i32]* %arr, i32 0, i32 0
+  %2 = getelementptr inbounds [0 x i32], [0 x i32]* %arr, i32 0, i32 0
   call void @_Z9doNothingPi(i32* %2)
-  call void @emscripten_asm_const(i8* getelementptr inbounds ([30 x i8]* @.str, i32 0, i32 0))
+  call void @emscripten_asm_const(i8* getelementptr inbounds ([30 x i8], [30 x i8]* @.str, i32 0, i32 0))
   ret i32 0
 }
 

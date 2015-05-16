@@ -20,9 +20,9 @@ L26:
   %a27 = phi i1 [ false, %0 ], [ true, %whoosh ]        ; [#uses=1 type=i1]
   %a28 = phi i1 [ true, %0 ], [ false, %whoosh ]        ; [#uses=1 type=i1]
   store i32 0, i32* %retval
-  %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0 type=i32]
-  %cal2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0), i1 %a27) ; make sure %27 is used
-  %cal3 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0), i1 %a28) ; make sure %28 is used
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0 type=i32]
+  %cal2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0), i1 %a27) ; make sure %27 is used
+  %cal3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0), i1 %a28) ; make sure %28 is used
   ret i32 1
 }
 

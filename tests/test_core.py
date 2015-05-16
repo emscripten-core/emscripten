@@ -791,6 +791,8 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run_from_file(src, output)
 
   def test_rounding(self):
+      Settings.PRECISE_F32 = 1 # in the move to llvm 3.7, froundf in musl became more sensitive to float/double differences
+
       test_path = path_from_root('tests', 'core', 'test_rounding')
       src, output = (test_path + s for s in ('.in', '.out'))
 

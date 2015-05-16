@@ -14,9 +14,9 @@ define void @direct(%ac) {
 entry:
   %str = alloca %ac
   store %ac %0, %ac* %str
-  %1 = getelementptr inbounds %ac* %str, i32 0, i32 0
-  %2 = load i8** %1
-  call void (i8*, ...)* @printf(i8* getelementptr inbounds ([9 x i8]* @0, i32 0, i32 0), i8* %2)
+  %1 = getelementptr inbounds %ac, %ac* %str, i32 0, i32 0
+  %2 = load i8*, i8** %1
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @0, i32 0, i32 0), i8* %2)
   ret void
 }
 
@@ -25,11 +25,11 @@ declare void @printf(i8*, ...)
 define i32 @main() {
 entry:
   %str = alloca %ac
-  store %ac { i8* getelementptr inbounds ([4 x i8]* @1, i32 0, i32 0), i32 3 }, %ac* %str
-  %0 = getelementptr inbounds %ac* %str, i32 0, i32 0
-  %1 = load i8** %0
-  call void (i8*, ...)* @printf(i8* getelementptr inbounds ([9 x i8]* @2, i32 0, i32 0), i8* %1)
-  %2 = load %ac* %str
+  store %ac { i8* getelementptr inbounds ([4 x i8], [4 x i8]* @1, i32 0, i32 0), i32 3 }, %ac* %str
+  %0 = getelementptr inbounds %ac, %ac* %str, i32 0, i32 0
+  %1 = load i8*, i8** %0
+  call void (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @2, i32 0, i32 0), i8* %1)
+  %2 = load %ac, %ac* %str
   call void @direct(%ac %2)
   ret i32 0
 }

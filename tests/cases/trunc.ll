@@ -14,12 +14,12 @@ entry:
   %0 = alloca i32                                 ; [#uses=2]
   %"alloca point" = bitcast i32 0 to i32          ; [#uses=0]
   store i32 4, i32* %0, align 4
-  %1 = load i32* %0, align 4                      ; [#uses=1]
+  %1 = load i32, i32* %0, align 4                      ; [#uses=1]
   %2 = trunc i32 %1 to i1                          ; [#uses=1]
-  %3 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([9 x i8]* @.str, i32 0, i32 0), i32 %1, i1 %2) ; [#uses=0]
+  %3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str, i32 0, i32 0), i32 %1, i1 %2) ; [#uses=0]
   br label %return
 
 return:                                           ; preds = %entry
-  %retval1 = load i32* %retval                    ; [#uses=1]
+  %retval1 = load i32, i32* %retval                    ; [#uses=1]
   ret i32 %retval1
 }

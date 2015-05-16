@@ -7,7 +7,7 @@ target triple = "asmjs-unknown-emscripten"
 
 define i32 @main() {
   %wimpy = trunc i32 100 to i8
-  %call0 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([6 x i8]* @.str1, i32 0, i32 0))
+  %call0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str1, i32 0, i32 0))
   %chak = icmp ne i32 %call0, 12345678
   br i1 %chak, label %middle, label %if.then
 
@@ -20,12 +20,12 @@ middle:
   br i1 %tobool, label %if.else, label %if.then ; 20
 
 if.then:                                          ;  preds = %entry
-  %call1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([13 x i8]* @.str, i32 0, i32 0)) ; 22
+  %call1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str, i32 0, i32 0)) ; 22
   call void @longjmp(i8 %wimpy, i32 10) ; 24
   br label %if.end ; 25
 
 if.else:                                          ;  preds = %entry
-  %call2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([6 x i8]* @.str1, i32 0, i32 0)) ; 26
+  %call2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str1, i32 0, i32 0)) ; 26
   br label %if.end
 
 if.end:                                           ;  preds = %if.else, %if.then

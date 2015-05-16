@@ -11,23 +11,23 @@ define i32 @main() {
 entry:
   %retval = alloca i32, align 4
   store i32 0, i32* %retval
-  %call = invoke i32 @setjmp(i16* getelementptr inbounds ([20 x i16]* @_ZL3buf, i32 0, i32 0)) returns_twice
+  %call = invoke i32 @setjmp(i16* getelementptr inbounds ([20 x i16], [20 x i16]* @_ZL3buf, i32 0, i32 0)) returns_twice
           to label %allgood unwind label %awful
 
 allgood:
   %p = phi i32 [0, %entry], [1, %if.else]
-  %calll = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([6 x i8]* @.str2, i32 0, i32 0))
+  %calll = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str2, i32 0, i32 0))
   %total = add i32 %p, %call
   %tobool = icmp ne i32 %total, 10
   br i1 %tobool, label %if.then, label %if.else
 
 if.then:                                          ; preds = %entry
-  %call1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([13 x i8]* @.str, i32 0, i32 0))
-  call void @longjmp(i16* getelementptr inbounds ([20 x i16]* @_ZL3buf, i32 0, i32 0), i32 10)
+  %call1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str, i32 0, i32 0))
+  call void @longjmp(i16* getelementptr inbounds ([20 x i16], [20 x i16]* @_ZL3buf, i32 0, i32 0), i32 10)
   br label %if.end
 
 if.else:                                          ; preds = %entry
-  %call2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([6 x i8]* @.str1, i32 0, i32 0))
+  %call2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str1, i32 0, i32 0))
   %chak = icmp ne i32 %call2, 1337
   br i1 %chak, label %if.end, label %allgood
 
