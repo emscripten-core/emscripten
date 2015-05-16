@@ -165,7 +165,7 @@ the callback function is:
    typedef EM_BOOL (*em_someevent_callback_func) // Callback function. Return true if event is "consumed".
            (
            int eventType, // The type of event.
-           const EmscriptenSomeEvent *keyEvent, // Information about the event.
+           const EmscriptenSomeEvent *someEvent, // Information about the event.
            void *userData // User data passed from the registration function.
            );
 
@@ -584,12 +584,12 @@ em_mouse_callback_func
    Function pointer for the "mouse event callback functions", defined
    as:
 
-      typedef EM_BOOL (*em_mouse_callback_func)(int eventType, const EmscriptenMouseEvent *keyEvent, void *userData);
+      typedef EM_BOOL (*em_mouse_callback_func)(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData);
 
    Parameters:
       * **eventType** (*int*) -- The type of "mouse event".
 
-      * **keyEvent** (*const EmscriptenMouseEvent**) -- Information
+      * **mouseEvent** (*const EmscriptenMouseEvent**) -- Information
         about the mouse event that occurred.
 
       * **userData** (*void**) -- The "userData" originally passed
@@ -721,13 +721,13 @@ em_wheel_callback_func
    Function pointer for the "wheel event callback functions", defined
    as:
 
-      typedef EM_BOOL (*em_wheel_callback_func)(int eventType, const EmscriptenWheelEvent *keyEvent, void *userData);
+      typedef EM_BOOL (*em_wheel_callback_func)(int eventType, const EmscriptenWheelEvent *wheelEvent, void *userData);
 
    Parameters:
       * **eventType** (*int*) -- The type of wheel event
         ("EMSCRIPTEN_EVENT_WHEEL").
 
-      * **keyEvent** (*const EmscriptenWheelEvent**) -- Information
+      * **wheelEvent** (*const EmscriptenWheelEvent**) -- Information
         about the wheel event that occurred.
 
       * **userData** (*void**) -- The "userData" originally passed
@@ -823,13 +823,13 @@ em_ui_callback_func
 
    Function pointer for the "UI event callback functions", defined as:
 
-      typedef EM_BOOL (*em_ui_callback_func)(int eventType, const EmscriptenUiEvent *keyEvent, void *userData);
+      typedef EM_BOOL (*em_ui_callback_func)(int eventType, const EmscriptenUiEvent *uiEvent, void *userData);
 
    Parameters:
       * **eventType** (*int*) -- The type of UI event
         ("EMSCRIPTEN_EVENT_RESIZE").
 
-      * **keyEvent** (*const EmscriptenUiEvent**) -- Information
+      * **uiEvent** (*const EmscriptenUiEvent**) -- Information
         about the UI event that occurred.
 
       * **userData** (*void**) -- The "userData" originally passed
@@ -927,13 +927,13 @@ em_focus_callback_func
    Function pointer for the "focus event callback functions", defined
    as:
 
-      typedef EM_BOOL (*em_focus_callback_func)(int eventType, const EmscriptenFocusEvent *keyEvent, void *userData);
+      typedef EM_BOOL (*em_focus_callback_func)(int eventType, const EmscriptenFocusEvent *focusEvent, void *userData);
 
    Parameters:
       * **eventType** (*int*) -- The type of focus event
         ("EMSCRIPTEN_EVENT_BLUR").
 
-      * **keyEvent** (*const EmscriptenFocusEvent**) -- Information
+      * **focusEvent** (*const EmscriptenFocusEvent**) -- Information
         about the focus event that occurred.
 
       * **userData** (*void**) -- The "userData" originally passed
@@ -1036,13 +1036,13 @@ em_deviceorientation_callback_func
    Function pointer for the "orientation event callback functions",
    defined as:
 
-      typedef EM_BOOL (*em_deviceorientation_callback_func)(int eventType, const EmscriptenDeviceOrientationEvent *keyEvent, void *userData);
+      typedef EM_BOOL (*em_deviceorientation_callback_func)(int eventType, const EmscriptenDeviceOrientationEvent *deviceOrientationEvent, void *userData);
 
    Parameters:
       * **eventType** (*int*) -- The type of orientation event
         ("EMSCRIPTEN_EVENT_DEVICEORIENTATION").
 
-      * **keyEvent** (*const EmscriptenDeviceOrientationEvent**) --
+      * **deviceOrientationEvent** (*const EmscriptenDeviceOrientationEvent**) --
         Information about the orientation event that occurred.
 
       * **userData** (*void**) -- The "userData" originally passed
@@ -1152,13 +1152,13 @@ em_devicemotion_callback_func
    Function pointer for the "devicemotion event callback functions",
    defined as:
 
-      typedef EM_BOOL (*em_devicemotion_callback_func)(int eventType, const EmscriptenDeviceMotionEvent *keyEvent, void *userData);
+      typedef EM_BOOL (*em_devicemotion_callback_func)(int eventType, const EmscriptenDeviceMotionEvent *deviceMotionEvent, void *userData);
 
    Parameters:
       * **eventType** (*int*) -- The type of devicemotion event
         ("EMSCRIPTEN_EVENT_DEVICEMOTION").
 
-      * **keyEvent** (*const EmscriptenDeviceMotionEvent**) --
+      * **deviceMotionEvent** (*const EmscriptenDeviceMotionEvent**) --
         Information about the devicemotion event that occurred.
 
       * **userData** (*void**) -- The "userData" originally passed
@@ -1275,13 +1275,13 @@ em_orientationchange_callback_func
    Function pointer for the "orientationchange event callback
    functions", defined as:
 
-      typedef EM_BOOL (*em_orientationchange_callback_func)(int eventType, const EmscriptenOrientationChangeEvent *keyEvent, void *userData);
+      typedef EM_BOOL (*em_orientationchange_callback_func)(int eventType, const EmscriptenOrientationChangeEvent *orientationChangeEvent, void *userData);
 
    Parameters:
       * **eventType** (*int*) -- The type of orientationchange event
         ("EMSCRIPTEN_EVENT_ORIENTATIONCHANGE").
 
-      * **keyEvent** (*const EmscriptenOrientationChangeEvent**) --
+      * **orientationChangeEvent** (*const EmscriptenOrientationChangeEvent**) --
         Information about the orientationchange event that occurred.
 
       * **userData** (*void**) -- The "userData" originally passed
@@ -1561,13 +1561,13 @@ em_fullscreenchange_callback_func
    Function pointer for the "fullscreen event callback functions",
    defined as:
 
-      typedef EM_BOOL (*em_fullscreenchange_callback_func)(int eventType, const EmscriptenFullscreenChangeEvent *keyEvent, void *userData);
+      typedef EM_BOOL (*em_fullscreenchange_callback_func)(int eventType, const EmscriptenFullscreenChangeEvent *fullscreenChangeEvent, void *userData);
 
    Parameters:
       * **eventType** (*int*) -- The type of fullscreen event
         ("EMSCRIPTEN_EVENT_FULLSCREENCHANGE").
 
-      * **keyEvent** (*const EmscriptenFullscreenChangeEvent**) --
+      * **fullscreenChangeEvent** (*const EmscriptenFullscreenChangeEvent**) --
         Information about the fullscreen event that occurred.
 
       * **userData** (*void**) -- The "userData" originally passed
@@ -1769,13 +1769,13 @@ em_pointerlockchange_callback_func
    Function pointer for the "pointerlockchange event callback
    functions", defined as:
 
-      typedef EM_BOOL (*em_pointerlockchange_callback_func)(int eventType, const EmscriptenPointerlockChangeEvent *keyEvent, void *userData);
+      typedef EM_BOOL (*em_pointerlockchange_callback_func)(int eventType, const EmscriptenPointerlockChangeEvent *pointerlockChangeEvent, void *userData);
 
    Parameters:
       * **eventType** (*int*) -- The type of pointerlockchange event
         ("EMSCRIPTEN_EVENT_POINTERLOCKCHANGE").
 
-      * **keyEvent** (*const EmscriptenPointerlockChangeEvent**) --
+      * **pointerlockChangeEvent** (*const EmscriptenPointerlockChangeEvent**) --
         Information about the pointerlockchange event that occurred.
 
       * **userData** (*void**) -- The "userData" originally passed
@@ -1926,13 +1926,13 @@ em_visibilitychange_callback_func
    Function pointer for the "visibilitychange event callback
    functions", defined as:
 
-      typedef EM_BOOL (*em_visibilitychange_callback_func)(int eventType, const EmscriptenVisibilityChangeEvent *keyEvent, void *userData);
+      typedef EM_BOOL (*em_visibilitychange_callback_func)(int eventType, const EmscriptenVisibilityChangeEvent *visibilityChangeEvent, void *userData);
 
    Parameters:
       * **eventType** (*int*) -- The type of "visibilitychange"
         event ("EMSCRIPTEN_VISIBILITY_HIDDEN").
 
-      * **keyEvent** (*const EmscriptenVisibilityChangeEvent**) --
+      * **visibilityChangeEvent** (*const EmscriptenVisibilityChangeEvent**) --
         Information about the "visibilitychange" event that occurred.
 
       * **userData** (*void**) -- The "userData" originally passed
@@ -2080,13 +2080,13 @@ em_touch_callback_func
    Function pointer for the "touch event callback functions", defined
    as:
 
-      typedef EM_BOOL (*em_touch_callback_func)(int eventType, const EmscriptenTouchEvent *keyEvent, void *userData);
+      typedef EM_BOOL (*em_touch_callback_func)(int eventType, const EmscriptenTouchEvent *touchEvent, void *userData);
 
    Parameters:
       * **eventType** (*int*) -- The type of touch event
         ("EMSCRIPTEN_EVENT_TOUCHSTART").
 
-      * **keyEvent** (*const EmscriptenTouchEvent**) -- Information
+      * **touchEvent** (*const EmscriptenTouchEvent**) -- Information
         about the touch event that occurred.
 
       * **userData** (*void**) -- The "userData" originally passed
@@ -2209,13 +2209,13 @@ em_gamepad_callback_func
    Function pointer for the "gamepad event callback functions",
    defined as:
 
-      typedef EM_BOOL (*em_gamepad_callback_func)(int eventType, const EmscriptenGamepadEvent *keyEvent, void *userData)
+      typedef EM_BOOL (*em_gamepad_callback_func)(int eventType, const EmscriptenGamepadEvent *gamepadEvent, void *userData)
 
    Parameters:
       * **eventType** (*int*) -- The type of gamepad event
         ("EMSCRIPTEN_EVENT_GAMEPADCONNECTED").
 
-      * **keyEvent** (*const EmscriptenGamepadEvent**) --
+      * **gamepadEvent** (*const EmscriptenGamepadEvent**) --
         Information about the gamepad event that occurred.
 
       * **userData** (*void**) -- The "userData" originally passed
@@ -2336,13 +2336,13 @@ em_battery_callback_func
    Function pointer for the "batterymanager event callback functions",
    defined as:
 
-      typedef EM_BOOL (*em_battery_callback_func)(int eventType, const EmscriptenBatteryEvent *keyEvent, void *userData);
+      typedef EM_BOOL (*em_battery_callback_func)(int eventType, const EmscriptenBatteryEvent *batteryEvent, void *userData);
 
    Parameters:
       * **eventType** (*int*) -- The type of "batterymanager" event
         ("EMSCRIPTEN_EVENT_BATTERYCHARGINGCHANGE").
 
-      * **keyEvent** (*const EmscriptenBatteryEvent**) --
+      * **batteryEvent** (*const EmscriptenBatteryEvent**) --
         Information about the "batterymanager" event that occurred.
 
       * **userData** (*void**) -- The "userData" originally passed
