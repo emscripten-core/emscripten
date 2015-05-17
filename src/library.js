@@ -3338,9 +3338,10 @@ LibraryManager.library = {
 
   llvm_ctlz_i64__asm: true,
   llvm_ctlz_i64__sig: 'iii',
-  llvm_ctlz_i64: function(l, h) {
+  llvm_ctlz_i64: function(l, h, isZeroUndef) {
     l = l | 0;
     h = h | 0;
+    isZeroUndef = isZeroUndef | 0;
     var ret = 0;
     ret = Math_clz32(h) | 0;
     if ((ret | 0) == 32) ret = ret + (Math_clz32(l) | 0) | 0;
