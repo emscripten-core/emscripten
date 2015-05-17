@@ -13,7 +13,7 @@ class other(RunnerCore):
       # --version
       output = Popen([PYTHON, compiler, '--version'], stdout=PIPE, stderr=PIPE).communicate()
       output = output[0].replace('\r', '')
-      self.assertContained('''emcc (Emscripten GCC-like replacement)''', output)
+      self.assertContained('''emcc (Emscripten gcc/clang-like replacement)''', output)
       self.assertContained('''Copyright (C) 2014 the Emscripten authors (see AUTHORS.txt)
 This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
