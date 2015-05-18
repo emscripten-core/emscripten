@@ -1236,7 +1236,7 @@ mergeInto(LibraryManager.library, {
       // setup /dev/null
       FS.registerDevice(FS.makedev(1, 3), {
         read: function() { return 0; },
-        write: function() { return 0; }
+        write: function(stream, buffer, offset, length, pos) { return length; }
       });
       FS.mkdev('/dev/null', FS.makedev(1, 3));
       // setup /dev/tty and /dev/tty1
