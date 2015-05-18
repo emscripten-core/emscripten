@@ -193,35 +193,53 @@ class RunnerCore(unittest.TestCase):
       additional_files = map(lambda f: os.path.join(dirname, f), additional_files)
       os.chdir(self.get_dir())
 
-    # C++ => LLVM binary
+    if build_ll_hook or post_build or extra_emscripten_args:
+      # "slow", old path: build to bc, then build to JS
 
-    for f in [filename] + additional_files:
-      try:
-        # Make sure we notice if compilation steps failed
-        os.remove(f + '.o')
-      except:
-        pass
+      # C++ => LLVM binary
+
+      for f in [filename] + additional_files:
+        try:
+          # Make sure we notice if compilation steps failed
+          os.remove(f + '.o')
+        except:
+          pass
+        args = [PYTHON, EMCC] + Building.COMPILER_TEST_OPTS + Settings.serialize() + \
+               ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
+               map(lambda include: '-I' + include, includes) + \
+               ['-c', f, '-o', f + '.o']
+        output = Popen(args, stdout=PIPE, stderr=self.stderr_redirect if not DEBUG else None).communicate()[0]
+        assert os.path.exists(f + '.o'), 'Source compilation error: ' + output
+
+      # Link all files
+      if len(additional_files) + len(libraries) > 0:
+        shutil.move(filename + '.o', filename + '.o.alone')
+        Building.link([filename + '.o.alone'] + map(lambda f: f + '.o', additional_files) + libraries,
+                 filename + '.o')
+        if not os.path.exists(filename + '.o'):
+          print "Failed to link LLVM binaries:\n\n", output
+          raise Exception("Linkage error");
+
+      # Finalize
+      self.prep_ll_run(filename, filename + '.o', build_ll_hook=build_ll_hook)
+
+      # BC => JS
+      self.ll_to_js(filename, extra_emscripten_args, post_build)
+    else:
+      # "fast", new path: just call emcc and go straight to JS
+      all_files = [filename] + additional_files + libraries
+      for i in range(len(all_files)):
+        if '.' not in all_files[i]:
+          shutil.move(all_files[i], all_files[i] + '.bc')
+          all_files[i] += '.bc'
       args = [PYTHON, EMCC] + Building.COMPILER_TEST_OPTS + Settings.serialize() + \
+             self.emcc_args + \
              ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
              map(lambda include: '-I' + include, includes) + \
-             ['-c', f, '-o', f + '.o']
+             all_files + \
+             ['-o', filename + '.o.js']
       output = Popen(args, stdout=PIPE, stderr=self.stderr_redirect if not DEBUG else None).communicate()[0]
-      assert os.path.exists(f + '.o'), 'Source compilation error: ' + output
-
-    # Link all files
-    if len(additional_files) + len(libraries) > 0:
-      shutil.move(filename + '.o', filename + '.o.alone')
-      Building.link([filename + '.o.alone'] + map(lambda f: f + '.o', additional_files) + libraries,
-               filename + '.o')
-      if not os.path.exists(filename + '.o'):
-        print "Failed to link LLVM binaries:\n\n", output
-        raise Exception("Linkage error");
-
-    # Finalize
-    self.prep_ll_run(filename, filename + '.o', build_ll_hook=build_ll_hook)
-
-    # BC => JS
-    self.ll_to_js(filename, extra_emscripten_args, post_build)
+      assert os.path.exists(filename + '.o.js'), 'Source compilation error: ' + output
 
     if output_processor is not None:
       output_processor(open(filename + '.o.js').read())

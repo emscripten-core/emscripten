@@ -5983,7 +5983,9 @@ def process(filename):
     Building.COMPILER_TEST_OPTS += ['--llvm-opts', '0']
 
     # Run a test that should work, generating some code
-    self.test_structs()
+    test_path = path_from_root('tests', 'core', 'test_structs')
+    src, output = (test_path + s for s in ('.in', '.out'))
+    self.do_run_from_file(src, output, build_ll_hook=lambda x: False) # add an ll hook, to force ll generation
 
     filename = os.path.join(self.get_dir(), 'src.cpp')
     self.do_autodebug(filename)
