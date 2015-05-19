@@ -23,8 +23,8 @@ class Watcher(threading.Thread):
           total += os.stat(mode + '.err').st_size
       if total != last:
         last = total
-        print >> sys.stderr, '[parallel_test_copy.py watcher] total output: %d' % total
-      time.sleep(1)
+        print '[parallel_test_copy.py watcher] total output: %d' % total
+      time.sleep(10)
 
 # run tests for one mode
 def run_mode(args):
@@ -65,10 +65,10 @@ def main():
 
   # emit all outputs
   for mode in optimal_order:
-    print >> sys.stderr, '=== %s ===' % mode
+    print '=== %s ===' % mode
     if os.path.exists(mode + '.err'):
-      print >> sys.stderr, open(mode + '.err').read()
-    print >> sys.stderr
+      print open(mode + '.err').read()
+    print ''
   return sum(num_failures)
 
 if __name__ == '__main__':
