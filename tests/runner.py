@@ -40,6 +40,12 @@ checked_sanity = False
 test_modes = ['default', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g', 'asm1i', 'asm3i', 'asm2nn']
 test_index = 0
 
+use_all_engines = os.environ.get('EM_ALL_ENGINES') # generally js engines are equivalent, testing 1 is enough. set this
+                                                   # to force testing on all js engines, good to find js engine bugs
+
+if use_all_engines:
+  print '(using ALL js engines)'
+
 class RunnerCore(unittest.TestCase):
   emcc_args = None
   save_dir = os.environ.get('EM_SAVE_DIR')
@@ -488,6 +494,11 @@ class RunnerCore(unittest.TestCase):
     for engine in self.banned_js_engines: assert type(engine) == list
     js_engines = filter(lambda engine: engine[0] not in map(lambda engine: engine[0], self.banned_js_engines), js_engines)
     if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
+    if len(js_engines) > 1 and not use_all_engines:
+      if SPIDERMONKEY_ENGINE in js_engines: # make sure to get asm.js validation checks, using sm
+        js_engines = [SPIDERMONKEY_ENGINE]
+      else:
+        js_engines = js_engines[:1]
     for engine in js_engines:
       js_output = self.run_generated_code(engine, filename + '.o.js', args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
       try:
