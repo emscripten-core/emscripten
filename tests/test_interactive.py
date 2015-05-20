@@ -110,7 +110,7 @@ class interactive(BrowserCore):
     if WINDOWS and Building.which('cmake'):
       return self.get_library('freealut', os.path.join('hello_world.bc'), configure=['cmake', '.'], configure_args=['-DBUILD_TESTS=ON'])
     else:
-      return self.get_library('freealut', os.path.join('examples', '.libs', 'hello_world.bc'), make_args=['EXEEXT=.bc'])
+      return self.get_library('freealut', os.path.join('examples', 'hello_world.bc'), make_args=['EXEEXT=.bc'])
 
   def test_freealut(self):
     programs = self.get_freealut_library()
