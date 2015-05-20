@@ -30,8 +30,10 @@ int play2() {
 
   int channel2 = Mix_PlayChannel(-1, sound2, 0);
   assert(channel2 == 1);
+#ifndef USE_SDL2  // rw stuff fails in SDL2
   int channel3 = Mix_PlayChannel(-1, sound3, 0);
   assert(channel3 == 2);
+#endif
   assert(Mix_PlayMusic(music, 1) == 0);
   return channel2;
 }
@@ -52,11 +54,13 @@ int main(int argc, char **argv) {
       FILE * f = fopen( "noise.ogg", "rb" );
       fread( bytes, 1, info.st_size, f  );
       fclose(f);
-  
+
+#ifndef USE_SDL2  // rw stuff fails in SDL2
       SDL_RWops * ops = SDL_RWFromConstMem(bytes, info.st_size);
       sound3 = Mix_LoadWAV_RW(ops, 0);
       SDL_FreeRW(ops);
       free(bytes);
+#endif
   }
 
   {

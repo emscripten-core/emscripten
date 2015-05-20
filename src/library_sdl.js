@@ -2554,7 +2554,7 @@ var LibrarySDL = {
     return SDL.setGetVolume(SDL.channels[channel], volume);
   },
 
-// Note: Mix_SetPanning requires WebAudio (file loaded from memory).
+  // Note: Mix_SetPanning requires WebAudio (file loaded from memory).
   Mix_SetPanning: function(channel, left, right) {
     // SDL API uses [0-255], while PannerNode has an (x, y, z) position.
 
@@ -2649,6 +2649,14 @@ var LibrarySDL = {
       webAudio: webAudio // Points to a Web Audio -specific resource object, if loaded
     });
     return id;
+  },
+
+  Mix_LoadWAV__deps: ['Mix_LoadWAV_RW', 'SDL_RWFromFile', 'SDL_FreeRW'],
+  Mix_LoadWAV: function(filename) {
+    var rwops = _SDL_RWFromFile(filename);
+    var result = _Mix_LoadWAV_RW(rwops);
+    _SDL_FreeRW(rwops);
+    return result;
   },
 
   Mix_QuickLoad_RAW: function(mem, len) {
