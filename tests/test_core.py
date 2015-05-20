@@ -4063,9 +4063,12 @@ var Module = {
 
   def test_dylink_zlib(self):
     Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'zlib')]
+
+    Popen([PYTHON, path_from_root('embuilder.py'), 'build' ,'zlib']).communicate()
+    zlib = Cache.get_path(os.path.join('ports-builds', 'zlib', 'libz.a'))
     try:
       os.environ['EMCC_FORCE_STDLIBS'] = 'libcextra'
-      side = get_zlib_library(self)
+      side = [zlib]
       self.dylink_test(main=open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(),
                        side=side,
                        expected=open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
