@@ -3968,6 +3968,54 @@ var Module = {
     finally:
       del os.environ['EMCC_FORCE_STDLIBS']
 
+  def test_dylink_dynamic_cast(self): # issue 3465
+    self.dylink_test(header=r'''
+      class Base {
+      public:
+          virtual void printName();
+      };
+
+      class Derived : public Base {
+      public:
+          void printName();
+      };
+    ''', main=r'''
+      #include "header.h"
+      #include <iostream>
+
+      using namespace std;
+
+      int main() {
+        cout << "starting main" << endl;
+
+        Base *base = new Base();
+        Base *derived = new Derived();
+        base->printName();
+        derived->printName();
+
+        if (dynamic_cast<Derived*>(derived)) {
+          cout << "OK" << endl;
+        } else {
+          cout << "KO" << endl;
+        }
+
+        return 0;
+      }
+    ''', side=r'''
+      #include "header.h"
+      #include <iostream>
+
+      using namespace std;
+
+      void Base::printName() {
+          cout << "Base" << endl;
+      }
+
+      void Derived::printName() {
+          cout << "Derived" << endl;
+      }
+    ''', expected=['starting main\nBase\nDerived\nOK'])
+
   def test_dylink_hyper_dupe(self):
     Settings.TOTAL_MEMORY = 64*1024*1024
 
