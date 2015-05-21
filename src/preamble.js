@@ -1476,6 +1476,16 @@ addOnPreRun(function() {
   }
   asm['runPostSets']();
 });
+
+#if ASSERTIONS
+function lookupSymbol(ptr) { // for a pointer, print out all symbols that resolve to it
+  var ret = [];
+  for (var i in Module) {
+    if (Module[i] === ptr) ret.push(i);
+  }
+  print(ptr + ' is ' + ret);
+}
+#endif
 #endif
 
 var memoryInitializer = null;
