@@ -4041,6 +4041,8 @@ var Module = {
   def test_dylink_hyper_dupe(self):
     Settings.TOTAL_MEMORY = 64*1024*1024
 
+    if Settings.ASSERTIONS: self.emcc_args += ['-s', 'ASSERTIONS=2']
+
     # test hyper-dynamic linking, and test duplicate warnings
     open('third.cpp', 'w').write(r'''
       int sidef() { return 36; }
