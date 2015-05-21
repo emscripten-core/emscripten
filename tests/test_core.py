@@ -3747,24 +3747,28 @@ var Module = {
     ''', 'a new Class\n')
 
   def test_dylink_global_inits(self):
-    self.dylink_test(header=r'''
-      #include <stdio.h>
-      struct Class {
-        Class(const char *name) { printf("new %s\n", name); }
-      };
-    ''', main=r'''
-      #include "header.h"
-      static Class c("main");
-      int main() {
-        return 0;
-      }
-    ''', side=r'''
-      #include "header.h"
-      static Class c("side");
-    ''', expected=['new main\nnew side\n', 'new side\nnew main\n'])
+    def test():
+      self.dylink_test(header=r'''
+        #include <stdio.h>
+        struct Class {
+          Class(const char *name) { printf("new %s\n", name); }
+        };
+      ''', main=r'''
+        #include "header.h"
+        static Class c("main");
+        int main() {
+          return 0;
+        }
+      ''', side=r'''
+        #include "header.h"
+        static Class c("side");
+      ''', expected=['new main\nnew side\n', 'new side\nnew main\n'])
+    test()
 
-    if Settings.ASSERTIONS:
+    if Settings.ASSERTIONS == 1:
       print 'check warnings'
+      Settings.ASSERTIONS = 2
+      test()
       full = run_js('src.cpp.o.js', engine=JS_ENGINES[0], full_output=True, stderr=STDOUT)
       self.assertNotContained("trying to dynamically load symbol '__ZN5ClassC2EPKc' (from 'liblib.so') that already exists", full)
 

@@ -306,7 +306,7 @@ var Runtime = {
       if (!Module.hasOwnProperty(sym)) {
         Module[sym] = libModule[sym];
       }
-#if ASSERTIONS
+#if ASSERTIONS == 2
       else if (sym[0] === '_') {
         var curr = Module[sym], next = libModule[sym];
         // don't warn on functions - might be odr, linkonce_odr, etc.
