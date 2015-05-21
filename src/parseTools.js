@@ -47,6 +47,8 @@ function preprocess(text, filenameHint) {
                 showStack.push(!(ident in this && this[ident] == value));
               } else if (op === '<') {
                 showStack.push(ident in this && this[ident] < value);
+              } else if (op === '>') {
+                showStack.push(ident in this && this[ident] > value);
               } else {
                 error('unsupported preprocessor op ' + op);
               }
