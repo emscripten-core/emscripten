@@ -283,6 +283,22 @@ var LibraryPThread = {
     });
   },
 
+#if USE_PTHREADS
+  _num_logical_cores__deps: ['emscripten_force_num_logical_cores'],
+  _num_logical_cores: '; if (ENVIRONMENT_IS_PTHREAD) __num_logical_cores = PthreadWorkerInit.__num_logical_cores; else { PthreadWorkerInit.__num_logical_cores = __num_logical_cores = allocate(1, "i32*", ALLOC_STATIC); HEAPU32[__num_logical_cores>>2] = navigator["hardwareConcurrency"] || ' + {{{ PTHREAD_HINT_NUM_CORES }}} + '; }',
+#else
+  _num_logical_cores: 'allocate(1, "i32*", ALLOC_STATIC)',
+#endif
+
+  emscripten_num_logical_cores__deps: ['_num_logical_cores'],
+  emscripten_num_logical_cores: function() {
+    return {{{ makeGetValue('__num_logical_cores', 0, 'i32') }}};
+  },
+
+  emscripten_force_num_logical_cores: function(cores) {
+    {{{ makeSetValue('__num_logical_cores', 0, 'cores', 'i32') }}};
+  },
+
   pthread_create__deps: ['_spawn_thread', 'pthread_getschedparam', 'pthread_self'],
   pthread_create: function(pthread_ptr, attr, start_routine, arg) {
     // When running in PROXY_TO_WORKER=1 mode, the pthread creation needs to be forwarded to the main browser thread, and not the main C runtime thread,

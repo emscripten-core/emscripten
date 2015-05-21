@@ -7,6 +7,15 @@
 extern "C" {
 #endif
 
+int emscripten_num_logical_cores();
+
+// Configures the number of logical cores on the system. This can be called at startup
+// to specify the number of cores emscripten_num_logical_cores() reports. The
+// Emscripten system itself does not use this value internally anywhere, it is just
+// a hint to help developers have a single access point 'emscripten_num_logical_cores()'
+// to query the number of cores in the system.
+void emscripten_force_num_logical_cores(int cores);
+
 // Atomically stores the given value to the memory location, and returns the value that was there prior to the store.
 uint8_t emscripten_atomic_exchange_u8(void/*uint8_t*/ *addr, uint8_t newVal);
 uint16_t emscripten_atomic_exchange_u16(void/*uint16_t*/ *addr, uint16_t newVal);
