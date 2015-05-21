@@ -45,8 +45,10 @@ function preprocess(text, filenameHint) {
                 showStack.push(ident in this && this[ident] == value);
               } else if (op === '!=') {
                 showStack.push(!(ident in this && this[ident] == value));
+              } else if (op === '<') {
+                showStack.push(ident in this && this[ident] < value);
               } else {
-                error('unsupported preprecessor op ' + op);
+                error('unsupported preprocessor op ' + op);
               }
             } else {
               if (ident[0] === '!') {
