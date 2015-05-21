@@ -15,8 +15,8 @@ By default, support for pthreads is not enabled, since the specification is stil
 
 - Pass the compiler flag -s USE_PTHREADS=1 when compiling any .c/.cpp files.
 - Pass the linker flag -lpthread when generating the final output .js file.
-- Optionally, pass the linker flag -s PTHREAD_POOL_SIZE=<integer> to specify a predefined pool of web workers to populate at page preRun time before application main() is called.
-- Optionally, pass the linker flag -s PTHREAD_HINT_NUM_CORES=<integer> to choose what the function emscripten_num_logical_cores(); will return if navigator.hardwareConcurrency is not supported. If a negative number is specified here, a popup dialog will be shown at startup to let the user specify the value that is returned here. This can be helpful in order to dynamically test how an application behaves with different values here. 
+- Optionally, pass the linker flag -s PTHREAD_POOL_SIZE=<integer> to specify a predefined pool of web workers to populate at page preRun time before application main() is called. If -1 is passed to both PTHREAD_POOL_SIZE and PTHREAD_HINT_NUM_CORES, then a popup dialog will ask the user the size of the pool (useful for testing).
+- Optionally, pass the linker flag -s PTHREAD_HINT_NUM_CORES=<integer> to choose what the function emscripten_num_logical_cores(); will return if navigator.hardwareConcurrency is not supported. If -1 is specified here, a popup dialog will be shown at startup to let the user specify the value that is returned here. This can be helpful in order to dynamically test how an application behaves with different values here. 
 
 There should be no other changes required. In C/C++ code, the preprocessor #define __EMSCRIPTEN_PTHREADS__ can be used to detect whether Emscripten is targeting pthreads.
 
