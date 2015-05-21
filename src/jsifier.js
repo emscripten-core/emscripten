@@ -136,7 +136,10 @@ function JSify(data, functionsOnly) {
           // emit a stub that will fail at runtime
           LibraryManager.library[shortident] = new Function("Module['printErr']('missing function: " + shortident + "'); abort(-1);");
         } else {
-          LibraryManager.library[shortident] = new Function("return " + (MAIN_MODULE ? '' : 'parent') + "Module['_" + shortident + "'].apply(null, arguments);");
+          var target = (MAIN_MODULE ? '' : 'parent') + "Module['_" + shortident + "']";
+          var assertion = '';
+          if (ASSERTIONS) assertion = 'if (!' + target + ') abort("external function \'' + shortident + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");';
+          LibraryManager.library[shortident] = new Function(assertion + "return " + target + ".apply(null, arguments);");
           if (SIDE_MODULE) {
             // no dependencies, just emit the thunk
             Functions.libraryFunctions[finalName] = 1;

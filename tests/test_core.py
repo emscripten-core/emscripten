@@ -3922,7 +3922,7 @@ var Module = {
 
   def test_dylink_syslibs(self): # one module uses libcextra, need to force its inclusion when it isn't the main
     def test(syslibs, expect_pass=True):
-      print 'syslibs', syslibs
+      print 'syslibs', syslibs, Settings.ASSERTIONS
       passed = True
       try:
         os.environ['EMCC_FORCE_STDLIBS'] = syslibs
@@ -3951,12 +3951,23 @@ var Module = {
         if expect_pass: raise e
         print '(seeing expected fail)'
         passed = False
+        assertion = 'build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment'
+        if Settings.ASSERTIONS:
+          self.assertContained(assertion, str(e))
+        else:
+          self.assertNotContained(assertion, str(e))
       finally:
         del os.environ['EMCC_FORCE_STDLIBS']
       assert passed == expect_pass
 
     test('libc,libcextra')
     test('1')
+    if 'ASSERTIONS=1' not in self.emcc_args:
+      Settings.ASSERTIONS = 0
+      test('', expect_pass=False)
+    else:
+      print '(skip ASSERTIONS == 0 part)'
+    Settings.ASSERTIONS = 1
     test('', expect_pass=False)
 
   def test_dylink_iostream(self):
