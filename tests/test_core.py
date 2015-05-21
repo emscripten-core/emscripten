@@ -3921,8 +3921,9 @@ var Module = {
     ''', expected=['main: jslib_x is 148.\nside: jslib_x is 148.\n'], main_emcc_args=['--js-library', 'lib.js'])
 
   def test_dylink_syslibs(self): # one module uses libcextra, need to force its inclusion when it isn't the main
-    def test(syslibs):
+    def test(syslibs, expect_pass=True):
       print 'syslibs', syslibs
+      passed = True
       try:
         os.environ['EMCC_FORCE_STDLIBS'] = syslibs
         self.dylink_test(header=r'''
@@ -3946,11 +3947,17 @@ var Module = {
             return m.arena > 1;
           }
         ''', expected=['|1|\nCharacters: a A\n'])
+      except Exception, e:
+        if expect_pass: raise e
+        print '(seeing expected fail)'
+        passed = False
       finally:
         del os.environ['EMCC_FORCE_STDLIBS']
+      assert passed == expect_pass
 
     test('libc,libcextra')
     test('1')
+    test('', expect_pass=False)
 
   def test_dylink_iostream(self):
     try:
