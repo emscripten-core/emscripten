@@ -177,6 +177,10 @@ elif len(sys.argv) == 2 and sys.argv[1] == '-v': # -v with no inputs
   shared.check_sanity(force=True)
   exit(code)
 
+elif '-dumpmachine' in sys.argv:
+  print shared.get_llvm_target()
+  exit(0)
+
 def is_minus_s_for_emcc(newargs, i):
   assert newargs[i] == '-s'
   if i+1 < len(newargs) and '=' in newargs[i+1]: # -s OPT=VALUE is for us, -s by itself is a linker option

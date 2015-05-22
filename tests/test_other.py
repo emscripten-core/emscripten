@@ -28,6 +28,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       self.assertContained('Display this information', output[0])
       self.assertContained('Most clang options will work', output[0])
 
+      # -dumpmachine
+      output = Popen([PYTHON, compiler, '-dumpmachine'], stdout=PIPE, stderr=PIPE).communicate()
+      self.assertContained(get_llvm_target(), output[0])
+
       # emcc src.cpp ==> writes a.out.js
       self.clear()
       output = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world' + suffix)], stdout=PIPE, stderr=PIPE).communicate()
