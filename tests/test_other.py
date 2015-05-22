@@ -1232,6 +1232,12 @@ int f() {
     assert 'duplicate: common.o' not in err, err
     self.assertContained('a\nb...\n', run_js('a.out.js'))
 
+    text = Popen([PYTHON, EMAR, 't', 'liba.a'], stdout=PIPE).communicate()[0]
+    assert 'common.o' not in text, text
+    assert text.count('common_') == 2, text
+    for line in text.split('\n'):
+      assert len(line) < 20, line # should not have huge hash names
+
   def test_export_in_a(self):
     export_name = 'this_is_an_entry_point'
 
