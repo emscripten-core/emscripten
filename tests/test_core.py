@@ -7041,6 +7041,26 @@ Module.printErr = Module['printErr'] = function(){};
     self.emcc_args += ['-s', 'INVOKE_RUN=0', '--post-js', 'post.js']
     self.do_run(src, 'hello, world!\ncleanup\nI see exit status: 118')
 
+  def test_noexitruntime(self):
+    src = r'''
+      #include <emscripten.h>
+      #include <stdio.h>
+      static int testPre = TEST_PRE;
+      struct Global {
+        Global() {
+          printf("in Global()\n");
+          if (testPre) { EM_ASM(Module['noExitRuntime'] = true;); }
+        }
+        ~Global() { printf("ERROR: in ~Global()\n"); }
+      } global;
+      int main() {
+        if (!testPre) { EM_ASM(Module['noExitRuntime'] = true;); }
+        printf("in main()\n");
+      }
+    '''
+    self.do_run(src.replace('TEST_PRE', '0'), 'in Global()\nin main()')
+    self.do_run(src.replace('TEST_PRE', '1'), 'in Global()\nin main()')
+
   def test_minmax(self):
     self.do_run(open(path_from_root('tests', 'test_minmax.c')).read(), 'NAN != NAN\nSuccess!')
 
