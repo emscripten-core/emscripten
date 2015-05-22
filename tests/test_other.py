@@ -56,11 +56,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
       #      regression check: -o js should create "js", with bitcode content
-      for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so'], ['-o', 'js']]:
+      for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so'], ['-o', 'js'], ['-O1', '-c', '-o', '/dev/null'], ['-O1', '-o', '/dev/null']]:
         print '-c stuff', args
         target = args[1] if len(args) == 2 else 'hello_world.o'
         self.clear()
-        Popen([PYTHON, compiler, path_from_root('tests', 'hello_world' + suffix)] + args, stdout=PIPE, stderr=PIPE).communicate()
+        proc = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world' + suffix)] + args, stdout=PIPE, stderr=PIPE)
+        proc.communicate()
+        assert proc.returncode == 0, proc.returncode
+        if args[-1] == '/dev/null':
+          print '(no output)'
+          continue
         syms = Building.llvm_nm(target)
         assert len(syms.defs) == 1 and 'main' in syms.defs, 'Failed to generate valid bitcode'
         if target == 'js': # make sure emcc can recognize the target as a bitcode file
