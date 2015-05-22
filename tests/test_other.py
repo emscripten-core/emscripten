@@ -1238,6 +1238,14 @@ int f() {
     for line in text.split('\n'):
       assert len(line) < 20, line # should not have huge hash names
 
+    # make the hashing fail: 'q' is just a quick append, no replacement, so hashing is not done, and dupes are easy
+    Popen([PYTHON, EMAR, 'q', 'liba.a', 'common.o', os.path.join('libdir', 'common.o')]).communicate()
+    out, err = Popen([PYTHON, EMCC, 'main.c', '-L.', '-la'], stderr=PIPE).communicate()
+    assert 'loading from archive' in err, err
+    assert 'which has duplicate entries' in err, err
+    assert 'duplicate: common.o' in err, err
+    assert err.count('duplicate: ') == 1, err # others are not duplicates - the hashing keeps them separate
+
   def test_export_in_a(self):
     export_name = 'this_is_an_entry_point'
 
