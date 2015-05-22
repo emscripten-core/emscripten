@@ -12,10 +12,11 @@ int mbtowc(wchar_t *restrict wc, const char *restrict src, size_t n)
 {
 	unsigned c;
 	const unsigned char *s = (const void *)src;
+	wchar_t dummy;
 
 	if (!s) return 0;
 	if (!n) goto ilseq;
-	if (!wc) wc = (void *)&wc;
+	if (!wc) wc = &dummy;
 
 	if (*s < 0x80) return !!(*wc = *s);
 	if (*s-SA > SB-SA) goto ilseq;

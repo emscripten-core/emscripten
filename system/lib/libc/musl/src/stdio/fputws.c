@@ -8,16 +8,10 @@ int fputws(const wchar_t *restrict ws, FILE *restrict f)
 
 	FLOCK(f);
 
-#ifndef __EMSCRIPTEN__
 	f->mode |= f->mode+1;
-#endif
 
 	while (ws && (l = wcsrtombs((void *)buf, (void*)&ws, sizeof buf, 0))+1 > 1)
-#ifndef __EMSCRIPTEN__
 		if (__fwritex(buf, l, f) < l) {
-#else
-		if (fwrite(buf, 1, l, f) < l) {
-#endif
 			FUNLOCK(f);
 			return -1;
 		}

@@ -14,6 +14,7 @@ size_t mbrtowc(wchar_t *restrict wc, const char *restrict src, size_t n, mbstate
 	unsigned c;
 	const unsigned char *s = (const void *)src;
 	const unsigned N = n;
+	wchar_t dummy;
 
 	if (!st) st = (void *)&internal_state;
 	c = *(unsigned *)st;
@@ -21,7 +22,7 @@ size_t mbrtowc(wchar_t *restrict wc, const char *restrict src, size_t n, mbstate
 	if (!s) {
 		if (c) goto ilseq;
 		return 0;
-	} else if (!wc) wc = (void *)&wc;
+	} else if (!wc) wc = &dummy;
 
 	if (!n) return -2;
 	if (!c) {
