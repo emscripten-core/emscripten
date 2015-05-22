@@ -756,7 +756,7 @@ if USE_EMSDK:
                      path_from_root('system', 'include'),
                      path_from_root('system', 'include', 'emscripten'),
                      path_from_root('system', 'include', 'libc'),
-                     path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'js'),
+                     path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'emscripten')
   ]
   
   CXX_INCLUDE_PATHS = [path_from_root('system', 'include', 'libcxx')
