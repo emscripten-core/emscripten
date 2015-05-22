@@ -4586,11 +4586,13 @@ Descriptor desc;
     test('hello_libcxx.cpp', False)
 
   def test_emmake_emconfigure(self):
-    def check(what, args, fail=True):
-      print what, args, fail
-      our, err = Popen([PYTHON, path_from_root(what)] + args, stdout=PIPE, stderr=PIPE).communicate()
+    def check(what, args, fail=True, expect=''):
+      args = [PYTHON, path_from_root(what)] + args
+      print what, args, fail, expect
+      out, err = Popen(args, stdout=PIPE, stderr=PIPE).communicate()
       assert ('is a helper for' in err) == fail
       assert ('Typical usage' in err) == fail
+      self.assertContained(expect, out)
     check('emmake', [])
     check('emconfigure', [])
     check('emmake', ['--version'])
@@ -4599,6 +4601,13 @@ Descriptor desc;
     check('emconfigure', ['configure'], fail=False)
     check('emconfigure', ['./configure'], fail=False)
     check('emconfigure', ['cmake'], fail=False)
+
+    open('test.py', 'w').write('''
+import os
+print os.environ.get('CROSS_COMPILE')
+''')
+    check('emconfigure', [PYTHON, 'test.py'], expect=path_from_root('em'))
+    check('emmake', [PYTHON, 'test.py'], expect=path_from_root('em'))
 
   def test_sdl2_config(self):
     for args, expected in [

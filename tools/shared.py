@@ -1012,6 +1012,7 @@ class Building:
     env['PKG_CONFIG_PATH'] = os.environ.get ('EM_PKG_CONFIG_PATH') or ''
     env['EMSCRIPTEN'] = path_from_root()
     env['PATH'] = path_from_root('system', 'bin') + os.pathsep + env['PATH']
+    env['CROSS_COMPILE'] = path_from_root('em') # produces /path/to/emscripten/em , which then can have 'cc', 'ar', etc appended to it
     return env
 
   # Finds the given executable 'program' in PATH. Operates like the Unix tool 'which'.
