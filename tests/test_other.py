@@ -1227,9 +1227,10 @@ int f() {
       }
     ''')
     out, err = Popen([PYTHON, EMCC, 'main.c', '-L.', '-la'], stderr=PIPE).communicate()
-    assert 'loading from archive' in err, err
-    assert 'which has duplicate entries' in err, err
-    assert 'duplicate: common.o' in err, err
+    assert 'loading from archive' not in err, err
+    assert 'which has duplicate entries' not in err, err
+    assert 'duplicate: common.o' not in err, err
+    self.assertContained('a\nb...\n', run_js('a.out.js'))
 
   def test_export_in_a(self):
     export_name = 'this_is_an_entry_point'
