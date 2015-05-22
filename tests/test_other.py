@@ -62,7 +62,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         self.clear()
         proc = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world' + suffix)] + args, stdout=PIPE, stderr=PIPE)
         proc.communicate()
-        assert proc.returncode == 0, proc.returncode
+        assert proc.returncode == 0, [proc.returncode, args]
         if args[-1] == '/dev/null':
           print '(no output)'
           continue
