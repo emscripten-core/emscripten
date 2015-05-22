@@ -1582,12 +1582,9 @@ class Building:
       logging.debug('Building.is_ar failed to test whether file \'%s\' is a llvm archive file! Failed on exception: %s' % (filename, e))
       return False
 
-  _is_bitcode_cache = {}
   @staticmethod
   def is_bitcode(filename):
     try:
-      if filename in Building._is_bitcode_cache:
-        return Building._is_bitcode_cache[filename]
       sigcheck = False
       # look for magic signature
       with open(filename, 'r') as f:
@@ -1603,7 +1600,6 @@ class Building:
                              ord(b[2]) == 23 and ord(b[3]) == 11:
           b = f.read(18)
           sigcheck = len(b) == 18 and b[16] == 'B' and b[17] == 'C'
-      Building._is_bitcode_cache[filename] = sigcheck
       return sigcheck
     except Exception, e:
       logging.debug('Building.is_bitcode failed on file \'%s\'! Failed on exception: %s' % (filename, e))
