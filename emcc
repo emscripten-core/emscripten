@@ -281,7 +281,10 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
         full_node = '/usr/bin/' + full_node # TODO: use whereis etc. And how about non-*NIX?
       open(target, 'w').write('#!' + full_node + '\n' + src) # add shebang
       import stat
-      os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable
+      try:
+        os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable
+      except:
+        pass # can fail if e.g. writing the executable to /dev/null
     exit(ret)
 
 if os.environ.get('EMMAKEN_COMPILER'):
