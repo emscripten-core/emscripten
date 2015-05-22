@@ -117,6 +117,7 @@ var LibraryManager = {
       ]);
     }
     libraries = libraries.concat([
+      'library_syscall.js',
       'library_sdl.js',
       'library_gl.js',
       'library_glut.js',
