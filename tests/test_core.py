@@ -115,7 +115,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
           printf("*%lld*\n", returner2(30));
 
           uint64_t maxx = -1ULL;
-          printf("*%Lu*\n*%Lu*\n", maxx, maxx >> 5);
+          printf("*%llu*\n*%llu*\n", maxx, maxx >> 5);
 
           // Make sure params are not modified if they shouldn't be
           int64_t t = 123;
