@@ -107,7 +107,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
               break
           if not cancel:
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
-    return build_libc(libname, libc_files, ['-O2']) # TODO: consider -Os, as musl appears to do so
+    return build_libc(libname, libc_files, ['-Os'])
 
   # libcxx
   def create_libcxx(libname):
