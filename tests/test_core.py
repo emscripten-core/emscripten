@@ -173,11 +173,11 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
           a -= 17; if (truthy()) a += 5; // confuse optimizer
           b -= 17; if (truthy()) b += 121; // confuse optimizer
-          printf("*%Lx,%Lx,%Lx,%Lx*\n", b - a, b - a/2, b/2 - a, b - 20);
+          printf("*%llx,%llx,%llx,%llx*\n", b - a, b - a/2, b/2 - a, b - 20);
 
           if (truthy()) a += 5/b; // confuse optimizer
           if (truthy()) b += 121*(3+a/b); // confuse optimizer
-          printf("*%Lx,%Lx,%Lx,%Lx*\n", a - b, a - b/2, a/2 - b, a - 20);
+          printf("*%llx,%llx,%llx,%llx*\n", a - b, a - b/2, a/2 - b, a - 20);
 
           return 0;
         }
