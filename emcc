@@ -1161,6 +1161,7 @@ try:
 
   if not LEAVE_INPUTS_RAW and \
      not shared.Settings.BUILD_AS_SHARED_LIB and \
+     not shared.Settings.BOOTSTRAPPING_STRUCT_INFO and \
      not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
     extra_files_to_link = system_libs.get_ports(shared.Settings)
     extra_files_to_link += system_libs.calculate([f for _, f in sorted(temp_files)] + extra_files_to_link, in_temp, stdout, stderr, forced=forced_stdlibs)
