@@ -1356,6 +1356,16 @@ mergeInto(LibraryManager.library, {
     },
     quit: function() {
       FS.init.initialized = false;
+      // force-flush musl std streams
+      var fflush = Module['_fflush'];
+      if (fflush) {
+        for (var i = 0; i < 2; i++) {
+          try {
+            fflush(i);
+          } catch (e) {}
+        }
+      }
+      // close all of our streams
       for (var i = 0; i < FS.streams.length; i++) {
         var stream = FS.streams[i];
         if (!stream) {
