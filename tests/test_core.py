@@ -335,13 +335,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run(src, '*4903566027370624, 153236438355333*')
 
       code = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
-      assert 'goog.math.Long' not in code, 'i64 precise math should not have been included if not actually used'
-
-      # But if we force it to be included, it is. First, a case where we don't need it
-      Settings.PRECISE_I64_MATH = 2
-      self.do_run(open(path_from_root('tests', 'hello_world.c')).read(), 'hello')
-      code = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
-      assert 'goog.math.Long' in code, 'i64 precise math should be included if forced'
+      assert 'goog.math.Long' not in code, 'i64 precise math should never be included, musl does its own printfing'
 
       # and now one where we do
       self.do_run(r'''
