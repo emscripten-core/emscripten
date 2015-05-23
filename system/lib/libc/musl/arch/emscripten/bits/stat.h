@@ -20,4 +20,3 @@ struct stat
 	struct timespec st_ctim;
 	ino_t st_ino;
 };
-
