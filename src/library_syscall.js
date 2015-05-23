@@ -399,8 +399,11 @@ mergeInto(LibraryManager.library, {
     }
   },
 
+  __syscall_cp: '__syscall',
+
   // methods that musl could do, but for now we do
   _pthread_cleanup_push: function(){},
   _pthread_cleanup_pop: function(){},
+  __pthread_self: function() { abort() },
 });
 
