@@ -1,4 +1,5 @@
 mergeInto(LibraryManager.library, {
+#if SYSCALL_DEBUG
   $SYSCALLS: {
     NAME_TO_CODE: {
       SYS_restart_syscall: 0,
@@ -348,10 +349,15 @@ mergeInto(LibraryManager.library, {
       return SYSCALLS.CODE_TO_NAME[code];
     }
   },
+#endif
 
+#if SYSCALL_DEBUG
   __syscall__deps: ['$SYSCALLS', '$FS'],
+#endif
   __syscall: function(which, varargs) {
+#if SYSCALL_DEBUG
     Module.print('syscall! ' + [which, SYSCALLS.getFromCode(which)]);
+#endif
     function get() { // gets a 32-bit vararg
       var ret = {{{ makeGetValue('varargs', '0', 'i32') }}};
       varargs += 4;
@@ -363,7 +369,9 @@ mergeInto(LibraryManager.library, {
         switch (op) {
           case 0x5401: { // TCGETS
             assert(fd === 1); // stdout
-            Module.printErr('warning: not filling tio struct');
+#if SYSCALL_DEBUG
+            Module.print('warning: not filling tio struct');
+#endif
             return 0;
           }
           default: abort('bad ioctl syscall ' + op);

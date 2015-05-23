@@ -190,6 +190,7 @@ var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js). 
                        // Runtime.debug at runtime for logging to cease, and can set it when you
                        // want it back. A simple way to set it in C++ is
                        //   emscripten_run_script("Runtime.debug = ...;");
+var SYSCALL_DEBUG = 0; // Print out all syscalls
 var SOCKET_DEBUG = 0; // Log out socket/network data transfer.
 var SOCKET_WEBRTC = 0; // Select socket backend, either webrtc or websockets. XXX webrtc is not currently tested, may be broken
 
