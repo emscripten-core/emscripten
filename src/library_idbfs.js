@@ -29,6 +29,21 @@ mergeInto(LibraryManager.library, {
           }
         });
       }, IDBFS.AUTOMATIC_SYNC_TIMEOUT);
+
+      // Also set an atExit hook (if we have not yet done so.)
+      if (!mount.atExitSyncFsHookAdded) {
+        mount.atExitSyncFsHookAdded = true;
+        Module['addOnExit'](function() {
+          // We might not need to syncfs() at this time ...
+          if (mount.mountSyncfsTimer) { return; }
+
+          IDBFS.syncfs(mount, false, function(err) {
+            if (err) {
+              console.log("IDBFS.syncfs threw an exception: ", err);
+            }
+          });
+        });
+      }
     },
 #endif
     syncfs: function(mount, populate, callback) {

@@ -1038,6 +1038,27 @@ keydown(100);keyup(100); // trigger the end
       secret = str(time.time())
       self.btest(path_from_root('tests', 'fs', 'test_idbfs_defer_write.c'), '1', force_c=True, args=mode + ['-s', 'IDBFS_AUTOMATIC_SYNC=1', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test_open_close2', '_test_fopen_fclose', '_test_rename', '_test_unlink', '_success']'''])
 
+  def test_fs_idbfs_defer_write_on_exit(self):
+    # sync from persisted state into memory before main()
+    open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+      Module.preRun = function() {
+        addRunDependency('syncfs');
+
+        FS.mkdir('/working1');
+        FS.mount(IDBFS, {}, '/working1');
+        FS.syncfs(true, function (err) {
+          if (err) throw err;
+          removeRunDependency('syncfs');
+        });
+      };
+    ''')
+
+    args = ['--pre-js', 'pre.js', '-s', 'IDBFS_AUTOMATIC_SYNC=1'];
+    for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']]:
+      secret = str(time.time())
+      self.btest(path_from_root('tests', 'fs', 'test_idbfs_defer_write_on_exit.c'), '1', force_c=True, args=args + mode + ['-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main']'''])
+      self.btest(path_from_root('tests', 'fs', 'test_idbfs_defer_write_on_exit.c'), '1', force_c=True, args=args + mode + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main']'''])
+
   def test_fs_idbfs_fsync(self):
     # sync from persisted state into memory before main()
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
