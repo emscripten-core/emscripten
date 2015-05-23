@@ -374,6 +374,7 @@ def inspect_code(headers, cpp_opts, structs, defines):
   try:
     # Compile the program.
     show('Compiling generated code...')
+    print >> sys.stderr, 'src:', open(src_file[1]).read()
     subprocess.check_call([shared.PYTHON, shared.EMCC] + cpp_opts + ['-o', js_file[1], src_file[1], '-s', 'BOOTSTRAPPING_STRUCT_INFO=1', '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0', '-Oz', '--js-opts', '0', '--memory-init-file', '0']) # -Oz optimizes enough to avoid warnings on code size/num locals
     # Run the compiled program.
     show('Calling generated program...')

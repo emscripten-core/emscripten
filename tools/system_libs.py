@@ -12,7 +12,7 @@ def call_process(cmd):
   proc.communicate()
   if proc.returncode != 0:
     # Deliberately do not use CalledProcessError, see issue #2944
-    raise Exception('Command \'%s\' returned non-zero exit status %s' % (cmd, proc.returncode))
+    raise Exception('Command \'%s\' returned non-zero exit status %s' % (' '.join(cmd), proc.returncode))
 
 CORES = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
 
@@ -59,7 +59,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     commands = []
     # Hide several musl warnings that produce a lot of spam to unit test build server logs.
     # TODO: When updating musl the next time, feel free to recheck which of their warnings might have been fixed, and which ones of these could be cleaned up.
-    c_opts = ['-Wno-dangling-else', '-Wno-unknown-pragmas', '-Wno-shift-op-parentheses', '-Wno-string-plus-int', '-Wno-logical-op-parentheses', '-Wno-bitwise-op-parentheses', '-Wno-visibility']
+    c_opts = ['-Wno-dangling-else', '-Wno-unknown-pragmas', '-Wno-shift-op-parentheses', '-Wno-string-plus-int', '-Wno-logical-op-parentheses', '-Wno-bitwise-op-parentheses', '-Wno-visibility', '-Wno-pointer-sign']
     for src in files:
       o = in_temp(os.path.basename(src) + '.o')
       commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes + default_opts + c_opts + lib_opts)
@@ -94,180 +94,20 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     libc_files = [
       'dlmalloc.c',
     ]
-    musl_files = [
-      ['ctype', [
-       'isdigit.c',
-       'isspace.c',
-       'isupper.c',
-       'isxdigit.c',
-       'tolower.c',
-      ]],
-      ['fenv', [
-        'fenv.c'
-      ]],
-      ['internal', [
-       'intscan.c',
-       'floatscan.c',
-       'shgetc.c',
-      ]],
-      ['math', [
-       '__expo2.c',
-       '__expo2f.c',
-       '__fpclassify.c',
-       '__fpclassifyf.c',
-       '__fpclassifyl.c',
-       '__signbit.c',
-       '__signbitf.c',
-       '__signbitl.c',
-       'acosh.c',
-       'acoshf.c',
-       'acoshl.c',
-       'asinh.c',
-       'asinhf.c',
-       'asinhl.c',
-       'atanh.c',
-       'atanhf.c',
-       'atanhl.c',
-       'cbrt.c',
-       'cbrtf.c',
-       'cbrtl.c',
-       'copysign.c',
-       'copysignf.c',
-       'copysignl.c',
-       'cosh.c',
-       'coshf.c',
-       'coshl.c',
-       'exp2.c',
-       'exp2f.c',
-       'exp2l.c',
-       'expm1.c',
-       'expm1f.c',
-       'expm1l.c',
-       'fdim.c',
-       'fdimf.c',
-       'fdiml.c',
-       'finite.c',
-       'finitef.c',
-       'fma.c',
-       'fmaf.c',
-       'fmal.c',
-       'fmax.c',
-       'fmaxf.c',
-       'fmaxl.c',
-       'fmin.c',
-       'fminf.c',
-       'fminl.c',
-       'fmod.c',
-       'fmodf.c',
-       'fmodl.c',
-       'frexp.c',
-       'frexpf.c',
-       'frexpl.c',
-       'hypot.c',
-       'hypotf.c',
-       'hypotl.c',
-       'llrint.c',
-       'llrintf.c',
-       'llrintl.c',
-       'llround.c',
-       'llroundf.c',
-       'llroundl.c',
-       'log10.c',
-       'log10f.c',
-       'log10l.c',
-       'log1p.c',
-       'log1pf.c',
-       'log1pl.c',
-       'log2.c',
-       'log2f.c',
-       'log2l.c',
-       'lrint.c',
-       'lrintf.c',
-       'lrintl.c',
-       'lround.c',
-       'lroundf.c',
-       'lroundl.c',
-       'modf.c',
-       'modff.c',
-       'modfl.c',
-       'nan.c',
-       'nanf.c',
-       'nanl.c',
-       'nearbyint.c',
-       'nearbyintf.c',
-       'nearbyintl.c',
-       'remainder.c',
-       'remainderf.c',
-       'remainderl.c',
-       'rint.c',
-       'rintf.c',
-       'rintl.c',
-       'round.c',
-       'roundf.c',
-       'roundl.c',
-       'scalbn.c',
-       'scalbnl.c',
-       'sincos.c',
-       'sincosf.c',
-       'sincosl.c',
-       'sinh.c',
-       'sinhf.c',
-       'sinhl.c',
-       'tanh.c',
-       'tanhf.c',
-       'tanhl.c',
-       'trunc.c',
-       'truncf.c',
-       'truncl.c',
-      ]],
-      ['multibyte', [
-       'wctomb.c',
-       'wcrtomb.c',
-      ]],
-      ['prng', [
-       '__rand48_step.c',
-       '__seed48.c',
-       'drand48.c',
-       'lcong48.c',
-       'lrand48.c',
-       'mrand48.c',
-       'rand_r.c',
-       'rand.c',
-       'random.c',
-       'seed48.c',
-       'srand48.c'
-      ]],
-      ['stdio', [
-       '__overflow.c',
-       '__toread.c',
-       '__towrite.c',
-       '__uflow.c',
-       'fwrite.c',
-       'snprintf.c',
-       'sprintf.c',
-       'vfprintf.c',
-       'vsnprintf.c',
-       'vsprintf.c',
-      ]],
-      ['stdlib', [
-       'atof.c',
-       'atoi.c',
-       'atol.c',
-       'strtod.c',
-       'strtol.c',
-      ]],
-      ['string', [
-       'memchr.c',
-       'memcmp.c',
-       'strcasecmp.c',
-       'strcmp.c',
-       'strncasecmp.c',
-       'strncmp.c',
-      ]]
-    ]
-    for directory, sources in musl_files:
-      libc_files += [os.path.join('libc', 'musl', 'src', directory, source) for source in sources]
-    return build_libc(libname, libc_files, ['-O2'])
+    musl_srcdir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src')
+    blacklist = set(['ipc', 'passwd', 'exit', 'thread', 'signal', 'sched', 'ipc'])
+    for dirpath, dirnames, filenames in os.walk(musl_srcdir):
+      for f in filenames:
+        if f.endswith('.c'):
+          dir_parts = os.path.split(dirpath)
+          cancel = False
+          for part in dir_parts:
+            if part in blacklist:
+              cancel = True
+              break
+          if not cancel:
+            libc_files.append(os.path.join(musl_srcdir, dirpath, f))
+    return build_libc(libname, libc_files, ['-O2']) # TODO: consider -Os, as musl appears to do so
 
   # libcxx
   def create_libcxx(libname):

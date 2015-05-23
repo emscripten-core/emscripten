@@ -418,7 +418,7 @@
         "structs": {}
     }, 
     {
-        "file": "libc/bits/fcntl.h", 
+        "file": "bits/fcntl.h", 
         "defines": [
             "O_CREAT", 
             "O_SYNC", 
@@ -449,7 +449,7 @@
         "structs": {}
     }, 
     {
-        "file": "libc/bits/ioctl.h", 
+        "file": "bits/ioctl.h", 
         "defines": [
             "FIONREAD"
         ],
@@ -625,7 +625,7 @@
         "structs": {}
     }, 
     {
-        "file": "libc/bits/errno.h", 
+        "file": "bits/errno.h", 
         "defines": [
             "ETXTBSY", 
             "ETOOMANYREFS", 
@@ -839,7 +839,7 @@
         "structs": {}
     },
     {
-        "file": "libc/bits/mman.h",
+        "file": "bits/mman.h",
         "defines": [
             "MAP_PRIVATE"
         ],
