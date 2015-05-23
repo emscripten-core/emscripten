@@ -41,16 +41,16 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
           long long b = a >> 29;
           long long c = a >> 32;
           long long d = a >> 34;
-          printf("*%Ld,%Ld,%Ld,%Ld*\\n", a, b, c, d);
+          printf("*%lld,%lld,%lld,%lld*\\n", a, b, c, d);
           unsigned long long ua = 0x2b00505c10;
           unsigned long long ub = ua >> 29;
           unsigned long long uc = ua >> 32;
           unsigned long long ud = ua >> 34;
-          printf("*%Ld,%Ld,%Ld,%Ld*\\n", ua, ub, uc, ud);
+          printf("*%lld,%lld,%lld,%lld*\\n", ua, ub, uc, ud);
 
           long long x = 0x0000def123450789ULL; // any bigger than this, and we
           long long y = 0x00020ef123456089ULL; // start to run into the double precision limit!
-          printf("*%Ld,%Ld,%Ld,%Ld,%Ld*\\n", x, y, x | y, x & y, x ^ y, x >> 2, y << 2);
+          printf("*%lld,%lld,%lld,%lld,%lld*\\n", x, y, x | y, x & y, x ^ y, x >> 2, y << 2);
 
           printf("*");
           long long z = 13;
@@ -79,7 +79,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
         void modifier1(int64_t t) {
           t |= 12;
-          printf("m1: %Ld\n", t);
+          printf("m1: %lld\n", t);
         }
         void modifier2(int64_t &t) {
           t |= 12;
@@ -109,10 +109,10 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
           int64_t x1 = 0x1234def123450789ULL;
           int64_t x2 = 0x1234def123450788ULL;
           int64_t x3 = 0x1234def123450789ULL;
-          printf("*%Ld\n%d,%d,%d,%d,%d\n%d,%d,%d,%d,%d*\n", x1, x1==x2, x1<x2, x1<=x2, x1>x2, x1>=x2, // note: some rounding in the printing!
+          printf("*%lld\n%d,%d,%d,%d,%d\n%d,%d,%d,%d,%d*\n", x1, x1==x2, x1<x2, x1<=x2, x1>x2, x1>=x2, // note: some rounding in the printing!
                                                                 x1==x3, x1<x3, x1<=x3, x1>x3, x1>=x3);
-          printf("*%Ld*\n", returner1());
-          printf("*%Ld*\n", returner2(30));
+          printf("*%lld*\n", returner1());
+          printf("*%lld*\n", returner2(30));
 
           uint64_t maxx = -1ULL;
           printf("*%Lu*\n*%Lu*\n", maxx, maxx >> 5);
@@ -120,12 +120,12 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
           // Make sure params are not modified if they shouldn't be
           int64_t t = 123;
           modifier1(t);
-          printf("*%Ld*\n", t);
+          printf("*%lld*\n", t);
           modifier2(t);
-          printf("*%Ld*\n", t);
+          printf("*%lld*\n", t);
 
           // global structs with i64s
-          printf("*%d,%Ld*\n*%d,%Ld*\n", iub[0].c, iub[0].d, iub[1].c, iub[1].d);
+          printf("*%d,%lld*\n*%d,%lld*\n", iub[0].c, iub[0].d, iub[1].c, iub[1].d);
 
           // Bitshifts
           {
@@ -133,12 +133,12 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
             int64_t b = a >> 29;
             int64_t c = a >> 32;
             int64_t d = a >> 34;
-            printf("*%Ld,%Ld,%Ld,%Ld*\n", a, b, c, d);
+            printf("*%lld,%lld,%lld,%lld*\n", a, b, c, d);
             uint64_t ua = -1;
             int64_t ub = ua >> 29;
             int64_t uc = ua >> 32;
             int64_t ud = ua >> 34;
-            printf("*%Ld,%Ld,%Ld,%Ld*\n", ua, ub, uc, ud);
+            printf("*%lld,%lld,%lld,%lld*\n", ua, ub, uc, ud);
           }
 
           // Nonconstant bitshifts
@@ -147,12 +147,12 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
             int64_t b = a >> (29 - argc + 1);
             int64_t c = a >> (32 - argc + 1);
             int64_t d = a >> (34 - argc + 1);
-            printf("*%Ld,%Ld,%Ld,%Ld*\n", a, b, c, d);
+            printf("*%lld,%lld,%lld,%lld*\n", a, b, c, d);
             uint64_t ua = -1;
             int64_t ub = ua >> (29 - argc + 1);
             int64_t uc = ua >> (32 - argc + 1);
             int64_t ud = ua >> (34 - argc + 1);
-            printf("*%Ld,%Ld,%Ld,%Ld*\n", ua, ub, uc, ud);
+            printf("*%lld,%lld,%lld,%lld*\n", ua, ub, uc, ud);
           }
 
           // Math mixtures with doubles
@@ -169,7 +169,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
           a--; if (truthy()) a--; // confuse optimizer
           int64_t b = 0x1234000000450789ULL;
           b++; if (truthy()) b--; // confuse optimizer
-          printf("*%Ld,%Ld,%Ld,%Ld*\n",   (a+b)/5000, (a-b)/5000, (a*3)/5000, (a/5)/5000);
+          printf("*%lld,%lld,%lld,%lld*\n",   (a+b)/5000, (a-b)/5000, (a*3)/5000, (a/5)/5000);
 
           a -= 17; if (truthy()) a += 5; // confuse optimizer
           b -= 17; if (truthy()) b += 121; // confuse optimizer
@@ -565,7 +565,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
           printf("*%d*\n", *r);
           long long *t = (long long*)p;
           *t = 42949672960;
-          printf("*%Ld*\n", *t);
+          printf("*%lld*\n", *t);
           return 0;
         }
       '''
