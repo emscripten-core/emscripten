@@ -2,6 +2,7 @@
 #define _INTERNAL_ATOMIC_H
 
 #include <stdint.h>
+#include <emscripten.h>
 
 static inline int a_ctz_l(unsigned long x)
 {
@@ -97,6 +98,7 @@ static inline void a_spin()
 
 static inline void a_crash()
 {
+  EM_ASM( abort() );
 }
 
 static inline int a_swap(volatile int *x, int v)
