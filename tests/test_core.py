@@ -4412,8 +4412,8 @@ Have even and odd!
         '''
       if ftype == 'float':
         self.do_run(src.replace('%lf', '%f').replace('double', 'float'), '''Pass: 1.234568 1.234568
-Pass: 123456.789063 123456.789063
-Pass: 123456.789063 123456.789063
+Pass: 123456.789062 123456.789062
+Pass: 123456.789062 123456.789062
 Pass: 0.000012 0.000012
 Pass: 0.000012 0.000012''')
       else:
