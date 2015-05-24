@@ -379,6 +379,10 @@ mergeInto(LibraryManager.library, {
 #if SYSCALL_DEBUG
     Module.printErr('syscall! ' + [which, SYSCALLS.getFromCode(which)]);
 #endif
+    function handleSyscallFSError(e) { // syscalls return a negative number which is errno; libc calls then return just -1
+      if (typeof FS === 'undefined' || !(e instanceof FS.ErrnoError)) abort(e);
+      return -e.errno;
+    }
     switch (which) {
       case 4: { // write
         var fd = get(), buf = get(), count = get();
@@ -390,8 +394,7 @@ mergeInto(LibraryManager.library, {
         try {
           return FS.write(stream, {{{ makeGetSlabs('ptr', 'i8', true) }}}, buf, count);
         } catch (e) {
-          FS.handleFSError(e);
-          return -1;
+          return handleSyscallFSError(e);
         }
       }
       case 5: { // open
@@ -401,8 +404,7 @@ mergeInto(LibraryManager.library, {
           var stream = FS.open(pathname, flags, mode);
           return stream.fd;
         } catch (e) {
-          FS.handleFSError(e);
-          return -1;
+          return handleSyscallFSError(e);
         }
       }
       case 6: { // close
@@ -416,8 +418,7 @@ mergeInto(LibraryManager.library, {
           FS.close(stream);
           return 0;
         } catch (e) {
-          FS.handleFSError(e);
-          return -1;
+          return handleSyscallFSError(e);
         }
       }
       case 38: { // rename
@@ -428,8 +429,7 @@ mergeInto(LibraryManager.library, {
           FS.rename(old_path, new_path);
           return 0;
         } catch (e) {
-          FS.handleFSError(e);
-          return -1;
+          return handleSyscallFSError(e);
         }
       }
       case 39: { // mkdir
@@ -443,8 +443,7 @@ mergeInto(LibraryManager.library, {
           FS.mkdir(path, mode, 0);
           return 0;
         } catch (e) {
-          FS.handleFSError(e);
-          return -1;
+          return handleSyscallFSError(e);
         }
       }
       case 54: { // ioctl
@@ -476,8 +475,7 @@ mergeInto(LibraryManager.library, {
           try {
             var curr = FS.read(stream, {{{ makeGetSlabs('ptr', 'i8', true) }}}, ptr, len);
           } catch (e) {
-            FS.handleFSError(e);
-            return -1;
+            return handleSyscallFSError(e);
           }
           if (curr < 0) return -1;
           ret += curr;
@@ -499,8 +497,7 @@ mergeInto(LibraryManager.library, {
           try {
             var curr = FS.write(stream, {{{ makeGetSlabs('ptr', 'i8', true) }}}, ptr, len);
           } catch (e) {
-            FS.handleFSError(e);
-            return -1;
+            return handleSyscallFSError(e);
           }
           if (curr < 0) return -1;
           ret += curr;

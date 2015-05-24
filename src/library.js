@@ -5780,19 +5780,20 @@ LibraryManager.library = {
     {{{ cDefine('EOWNERDEAD') }}}: 'Previous owner died',
     {{{ cDefine('ESTRPIPE') }}}: 'Streams pipe error',
   },
-  __errno_state: 0,
-  __setErrNo__deps: ['__errno_state'],
-  __setErrNo__postset: '___errno_state = Runtime.staticAlloc(4); {{{ makeSetValue("___errno_state", 0, 0, "i32") }}};',
+  __setErrNo__deps: ['__errno_location'],
   __setErrNo: function(value) {
-    // For convenient setting and returning of errno.
-    {{{ makeSetValue('___errno_state', '0', 'value', 'i32') }}};
+    if (___setErrNo.loc === undefined) {
+      if (Module["___errno_location"]) {
+        ___setErrNo.loc = Module["___errno_location"]();
+      } else {
+        ___setErrNo.loc = 0; // no __errno_location, so errno is inaccessible from C code; no need to set it
+      }
+    }
+    if (___setErrNo.loc) {
+      {{{ makeSetValue('___setErrNo.loc', '0', 'value', 'i32') }}};
+    }
     return value;
   },
-  __errno_location__deps: ['__setErrNo'],
-  __errno_location: function() {
-    return ___errno_state;
-  },
-  __errno: '__errno_location',
 
   // ==========================================================================
   // sys/resource.h
