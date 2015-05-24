@@ -3914,33 +3914,24 @@ var Module = {
       }
     ''', expected=['main: jslib_x is 148.\nside: jslib_x is 148.\n'], main_emcc_args=['--js-library', 'lib.js'])
 
-  def test_dylink_syslibs(self): # one module uses libcextra, need to force its inclusion when it isn't the main
-    def test(syslibs, expect_pass=True):
+  def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
+    def test(syslibs, expect_pass=True, need_reverse=True):
       print 'syslibs', syslibs, Settings.ASSERTIONS
       passed = True
       try:
         os.environ['EMCC_FORCE_STDLIBS'] = syslibs
-        self.dylink_test(header=r'''
-          #include <string.h>
-          int side();
-        ''', main=r'''
-          #include <stdio.h>
-          #include <wchar.h>
+        self.dylink_test(main=r'''
           #include "header.h"
+          void side();
           int main() {
-            printf("|%d|\n", side());
-            wprintf (L"Characters: %lc %lc\n", L'a', 65);
+            side();
             return 0;
           }
         ''', side=r'''
-          #include <stdlib.h>
-          #include <malloc.h>
-          #include "header.h"
-          int side() {
-            struct mallinfo m = mallinfo();
-            return m.arena > 1;
-          }
-        ''', expected=['|1|\nCharacters: a A\n'])
+          #include <iostream>
+          void side() { std::cout << "cout hello from side"; }
+        ''', expected=['cout hello from side\n'],
+             need_reverse=need_reverse)
       except Exception, e:
         if expect_pass: raise e
         print '(seeing expected fail)'
@@ -3952,17 +3943,17 @@ var Module = {
           self.assertNotContained(assertion, str(e))
       finally:
         del os.environ['EMCC_FORCE_STDLIBS']
-      assert passed == expect_pass
+      assert passed == expect_pass, ['saw', passed, 'but expected', expect_pass]
 
-    test('libc,libcextra')
+    test('libcxx')
     test('1')
     if 'ASSERTIONS=1' not in self.emcc_args:
       Settings.ASSERTIONS = 0
-      test('', expect_pass=False)
+      test('', expect_pass=False, need_reverse=False)
     else:
       print '(skip ASSERTIONS == 0 part)'
     Settings.ASSERTIONS = 1
-    test('', expect_pass=False)
+    test('', expect_pass=False, need_reverse=False)
 
   def test_dylink_iostream(self):
     try:
