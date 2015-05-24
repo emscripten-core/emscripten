@@ -524,6 +524,60 @@ mergeInto(LibraryManager.library, {
         }
         return ret;
       }
+      case 221: { // fcntl64
+        var fildes = get(), cmd = get();
+        var stream = FS.getStream(fildes);
+        if (!stream) {
+          return -ERRNO_CODES.EBADF;
+        }
+        switch (cmd) {
+          case {{{ cDefine('F_DUPFD') }}}: {
+            var arg = get();
+            if (arg < 0) {
+              return -ERRNO_CODES.EINVAL;
+            }
+            var newStream;
+            try {
+              newStream = FS.open(stream.path, stream.flags, 0, arg);
+            } catch (e) {
+              return handleSyscallFSError(e);
+            }
+            return newStream.fd;
+          }
+          case {{{ cDefine('F_GETFD') }}}:
+          case {{{ cDefine('F_SETFD') }}}:
+            return 0;  // FD_CLOEXEC makes no sense for a single process.
+          case {{{ cDefine('F_GETFL') }}}:
+            return stream.flags;
+          case {{{ cDefine('F_SETFL') }}}: {
+            var arg = get();
+            stream.flags |= arg;
+            return 0;
+          }
+          case {{{ cDefine('F_GETLK') }}}:
+          case {{{ cDefine('F_GETLK64') }}}: {
+            var arg = get();
+            var offset = {{{ C_STRUCTS.flock.l_type }}};
+            // We're always unlocked.
+            {{{ makeSetValue('arg', 'offset', cDefine('F_UNLCK'), 'i16') }}};
+            return 0;
+          }
+          case {{{ cDefine('F_SETLK') }}}:
+          case {{{ cDefine('F_SETLKW') }}}:
+          case {{{ cDefine('F_SETLK64') }}}:
+          case {{{ cDefine('F_SETLKW64') }}}:
+            return 0; // Pretend that the locking is successful.
+          case {{{ cDefine('F_SETOWN') }}}:
+          case {{{ cDefine('F_GETOWN') }}}:
+            return -ERRNO_CODES.EINVAL; // These are for sockets. We don't have them fully implemented yet.
+          default: {
+#if SYSCALL_DEBUG
+            Module.printErr('warning: fctl64 unrecognized command ' + cmd);
+#endif
+            return -ERRNO_CODES.EINVAL;
+          }
+        }
+      }
       default: abort('bad syscall ' + which);
     }
   },
