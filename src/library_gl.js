@@ -6421,6 +6421,9 @@ var LibraryGL = {
   glVertexAttribDivisorARB: 'glVertexAttribDivisor',
   glDrawArraysInstancedARB: 'glDrawArraysInstanced',
   glDrawElementsInstancedARB: 'glDrawElementsInstanced',
+  glVertexAttribDivisorANGLE: 'glVertexAttribDivisor',
+  glDrawArraysInstancedANGLE: 'glDrawArraysInstanced',
+  glDrawElementsInstancedANGLE: 'glDrawElementsInstanced',
 
 
   glDrawBuffers__sig: 'vii',
