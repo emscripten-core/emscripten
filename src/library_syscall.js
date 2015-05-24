@@ -380,6 +380,20 @@ mergeInto(LibraryManager.library, {
     Module.printErr('syscall! ' + [which, SYSCALLS.getFromCode(which)]);
 #endif
     switch (which) {
+      case 4: { // write
+        var fd = get(), buf = get(), count = get();
+        var stream = FS.getStream(fd);
+        if (!stream) {
+          ___setErrNo(ERRNO_CODES.EBADF);
+          return -1;
+        }
+        try {
+          return FS.write(stream, {{{ makeGetSlabs('ptr', 'i8', true) }}}, buf, count);
+        } catch (e) {
+          FS.handleFSError(e);
+          return -1;
+        }
+      }
       case 5: { // open
         var pathname = get(), flags = get(), mode = get() /* optional TODO */;
         pathname = Pointer_stringify(pathname);
@@ -447,6 +461,10 @@ mergeInto(LibraryManager.library, {
       case 146: { // writev
         var fd = get(), iov = get(), iovcnt = get();
         var stream = FS.getStream(fd);
+        if (!stream) {
+          ___setErrNo(ERRNO_CODES.EBADF);
+          return -1;
+        }
         var ret = 0;
         for (var i = 0; i < iovcnt; i++) {
           var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
