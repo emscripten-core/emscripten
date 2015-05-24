@@ -476,15 +476,15 @@ mergeInto(LibraryManager.library, {
       }
       case 54: { // ioctl
         var fd = get(), op = get(), tio = get();
+        var stream = FS.getStream(fd);
+        if (!stream) return -ERRNO_CODES.EBADF;
         switch (op) {
           case 0x5401: { // TCGETS
-            if (fd === 0 || fd === 1 || fd === 2) { // stdin, stdout, or stderr
+            if (!stream.tty) return -ERRNO_CODES.ENOTTY;
 #if SYSCALL_DEBUG
-              Module.printErr('warning: not filling tio struct');
+            Module.printErr('warning: not filling tio struct');
 #endif
-              return 0;
-            }
-            return -1;
+            return 0;
           }
           default: abort('bad ioctl syscall ' + op);
         }
