@@ -602,6 +602,12 @@ mergeInto(LibraryManager.library, {
           }
         }
       }
+      case 265: { // clock_nanosleep
+#if SYSCALL_DEBUG
+        Module.printErr('warning: ignoring SYS_clock_nanosleep');
+#endif
+        return 0;
+      }
       default: abort('bad syscall ' + which);
     }
   },
