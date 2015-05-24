@@ -360,6 +360,9 @@ mergeInto(LibraryManager.library, {
       get = function() {
         var ret = {{{ makeGetValue('varargs', '0', 'i32') }}};
         varargs += 4;
+#if SYSCALL_DEBUG
+        Module.printErr('  syscall arg: ' + ret);
+#endif
         return ret;
       }
     } else {
@@ -372,6 +375,9 @@ mergeInto(LibraryManager.library, {
       get = function() {
 #if ASSERTIONS
         assert(index < array.length);
+#endif
+#if SYSCALL_DEBUG
+        Module.printErr('  syscall arg: ' + array[index]);
 #endif
         return array[index++];
       };
@@ -472,7 +478,7 @@ mergeInto(LibraryManager.library, {
         var fd = get(), op = get(), tio = get();
         switch (op) {
           case 0x5401: { // TCGETS
-            if (fd === 1 || fd === 2) { // stdout or stderr
+            if (fd === 0 || fd === 1 || fd === 2) { // stdin, stdout, or stderr
 #if SYSCALL_DEBUG
               Module.printErr('warning: not filling tio struct');
 #endif
