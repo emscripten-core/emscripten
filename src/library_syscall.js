@@ -420,6 +420,18 @@ mergeInto(LibraryManager.library, {
           return -1;
         }
       }
+      case 38: { // rename
+        var old_path = get(), new_path = get();
+        old_path = Pointer_stringify(old_path);
+        new_path = Pointer_stringify(new_path);
+        try {
+          FS.rename(old_path, new_path);
+          return 0;
+        } catch (e) {
+          FS.handleFSError(e);
+          return -1;
+        }
+      }
       case 39: { // mkdir
         var path = get(), mode = get();
         path = Pointer_stringify(path);
