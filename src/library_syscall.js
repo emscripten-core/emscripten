@@ -493,6 +493,20 @@ mergeInto(LibraryManager.library, {
           default: abort('bad ioctl syscall ' + op);
         }
       }
+      case 140: { // llseek
+        var fd = get(), offset_high = get(), offset_low = get(), result = get(), whence = get();
+        var offset = offset_low;
+        assert(offset_high === 0);
+        var stream = FS.getStream(fd);
+        if (!stream) return -ERRNO_CODES.EBADF;
+        try {
+          FS.llseek(stream, offset, whence);
+        } catch (e) {
+          return handleSyscallFSError(e);
+        }
+        {{{ makeSetValue('result', '0', 'stream.position', 'i32') }}};
+        return 0;
+      }
       case 145: { // readv
         var fd = get(), iov = get(), iovcnt = get();
         var stream = FS.getStream(fd);
