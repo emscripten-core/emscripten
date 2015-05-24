@@ -352,7 +352,7 @@ mergeInto(LibraryManager.library, {
 #endif
 
 #if SYSCALL_DEBUG
-  __syscall__deps: ['$SYSCALLS', '$FS'],
+  __syscall__deps: ['$SYSCALLS', '$FS', '$ERRNO_CODES'],
 #endif
   __syscall: function(which, varargs) {
     var get;
@@ -388,8 +388,7 @@ mergeInto(LibraryManager.library, {
         var fd = get(), buf = get(), count = get();
         var stream = FS.getStream(fd);
         if (!stream) {
-          ___setErrNo(ERRNO_CODES.EBADF);
-          return -1;
+          return -ERRNO_CODES.EBADF;
         }
         try {
           return FS.write(stream, {{{ makeGetSlabs('ptr', 'i8', true) }}}, buf, count);
@@ -411,8 +410,7 @@ mergeInto(LibraryManager.library, {
         var fd = get();
         var stream = FS.getStream(fd);
         if (!stream) {
-          ___setErrNo(ERRNO_CODES.EBADF);
-          return -1;
+          return -ERRNO_CODES.EBADF;
         }
         try {
           FS.close(stream);
@@ -420,6 +418,30 @@ mergeInto(LibraryManager.library, {
         } catch (e) {
           return handleSyscallFSError(e);
         }
+      }
+      case 33: { // access
+        var path = get(), amode = get();
+        path = Pointer_stringify(path);
+        if (amode & ~{{{ cDefine('S_IRWXO') }}}) {
+          // need a valid mode
+          return -ERRNO_CODES.EINVAL;
+        }
+        var node;
+        try {
+          var lookup = FS.lookupPath(path, { follow: true });
+          node = lookup.node;
+        } catch (e) {
+          FS.handleFSError(e);
+          return -1;
+        }
+        var perms = '';
+        if (amode & {{{ cDefine('R_OK') }}}) perms += 'r';
+        if (amode & {{{ cDefine('W_OK') }}}) perms += 'w';
+        if (amode & {{{ cDefine('X_OK') }}}) perms += 'x';
+        if (perms /* otherwise, they've just passed F_OK */ && FS.nodePermissions(node, perms)) {
+          return -ERRNO_CODES.EACCES;
+        }
+        return 0;
       }
       case 38: { // rename
         var old_path = get(), new_path = get();
@@ -465,8 +487,7 @@ mergeInto(LibraryManager.library, {
         var fd = get(), iov = get(), iovcnt = get();
         var stream = FS.getStream(fd);
         if (!stream) {
-          ___setErrNo(ERRNO_CODES.EBADF);
-          return -1;
+          return -ERRNO_CODES.EBADF;
         }
         var ret = 0;
         for (var i = 0; i < iovcnt; i++) {
@@ -487,8 +508,7 @@ mergeInto(LibraryManager.library, {
         var fd = get(), iov = get(), iovcnt = get();
         var stream = FS.getStream(fd);
         if (!stream) {
-          ___setErrNo(ERRNO_CODES.EBADF);
-          return -1;
+          return -ERRNO_CODES.EBADF;
         }
         var ret = 0;
         for (var i = 0; i < iovcnt; i++) {
