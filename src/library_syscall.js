@@ -377,11 +377,11 @@ mergeInto(LibraryManager.library, {
       };
     }
 #if SYSCALL_DEBUG
-    Module.print('syscall! ' + [which, SYSCALLS.getFromCode(which)]);
+    Module.printErr('syscall! ' + [which, SYSCALLS.getFromCode(which)]);
 #endif
     switch (which) {
       case 5: { // open
-        var pathname = get(), flags = get(), mode = get() /* optional XXX how to detect if passed or not? */;
+        var pathname = get(), flags = get(), mode = get() /* optional TODO */;
         pathname = Pointer_stringify(pathname);
         try {
           var stream = FS.open(pathname, flags, mode);
@@ -391,15 +391,32 @@ mergeInto(LibraryManager.library, {
           return -1;
         }
       }
+      case 6: { // close
+        var fd = get();
+        var stream = FS.getStream(fd);
+        if (!stream) {
+          ___setErrNo(ERRNO_CODES.EBADF);
+          return -1;
+        }
+        try {
+          FS.close(stream);
+          return 0;
+        } catch (e) {
+          FS.handleFSError(e);
+          return -1;
+        }
+      }
       case 54: { // ioctl
         var fd = get(), op = get(), tio = get();
         switch (op) {
           case 0x5401: { // TCGETS
-            assert(fd === 1); // stdout
+            if (fd === 1 || fd === 2) { // stdout or stderr
 #if SYSCALL_DEBUG
-            Module.print('warning: not filling tio struct');
+              Module.printErr('warning: not filling tio struct');
 #endif
-            return 0;
+              return 0;
+            }
+            return -1;
           }
           default: abort('bad ioctl syscall ' + op);
         }
