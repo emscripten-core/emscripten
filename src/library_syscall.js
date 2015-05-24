@@ -486,6 +486,10 @@ mergeInto(LibraryManager.library, {
 #endif
             return 0;
           }
+          case 0x5402: { // TCGETS
+            if (!stream.tty) return -ERRNO_CODES.ENOTTY;
+            return 0; // no-op, not actually adjusting terminal settings
+          }
           default: abort('bad ioctl syscall ' + op);
         }
       }
