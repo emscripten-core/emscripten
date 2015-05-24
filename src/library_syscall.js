@@ -425,6 +425,16 @@ mergeInto(LibraryManager.library, {
           return handleSyscallFSError(e);
         }
       }
+      case 10: { // unlink
+        var path = get();
+        path = Pointer_stringify(path);
+        try {
+          FS.unlink(path);
+          return 0;
+        } catch (e) {
+          return handleSyscallFSError(e);
+        }
+      }
       case 33: { // access
         var path = get(), amode = get();
         path = Pointer_stringify(path);
