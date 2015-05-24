@@ -4312,8 +4312,7 @@ Have even and odd!
   def test_printf(self):
     self.banned_js_engines = [NODE_JS, V8_ENGINE] # SpiderMonkey and V8 do different things to float64 typed arrays, un-NaNing, etc.
     src = open(path_from_root('tests', 'printf', 'test.c'), 'r').read()
-    expected = [open(path_from_root('tests', 'printf', 'output.txt'), 'r').read(),
-                open(path_from_root('tests', 'printf', 'output_i64_1.txt'), 'r').read()]
+    expected = open(path_from_root('tests', 'printf', 'output.txt'), 'r').read()
     self.do_run(src, expected)
 
   def test_printf_2(self):
