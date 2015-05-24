@@ -5119,6 +5119,7 @@ LibraryManager.library = {
     {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_nsec, '((now % 1000)*1000*1000)|0', 'i32') }}}; // nanoseconds
     return 0;
   },
+  __clock_gettime: 'clock_gettime', // musl internal alias
   clock_settime__deps: ['$ERRNO_CODES', '__setErrNo'],
   clock_settime: function(clk_id, tp) {
     // int clock_settime(clockid_t clk_id, const struct timespec *tp);
