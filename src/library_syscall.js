@@ -420,6 +420,21 @@ mergeInto(LibraryManager.library, {
           return -1;
         }
       }
+      case 39: { // mkdir
+        var path = get(), mode = get();
+        path = Pointer_stringify(path);
+        // remove a trailing slash, if one - /a/b/ has basename of '', but
+        // we want to create b in the context of this function
+        path = PATH.normalize(path);
+        if (path[path.length-1] === '/') path = path.substr(0, path.length-1);
+        try {
+          FS.mkdir(path, mode, 0);
+          return 0;
+        } catch (e) {
+          FS.handleFSError(e);
+          return -1;
+        }
+      }
       case 54: { // ioctl
         var fd = get(), op = get(), tio = get();
         switch (op) {
