@@ -1360,16 +1360,14 @@ mergeInto(LibraryManager.library, {
       var fflush = Module['_fflush'];
       if (fflush) {
         for (var i = 0; i < 2; i++) {
-#if SAFE_HEAP
-          var saved = abort;
-          abort = function() { throw 'silent abort' };
-#endif
+          var savedPrint = Module.print;
+          var savedPrintErr = Module.printErr;
+          Module.print = Module.printErr = function(){};
           try {
             fflush(i);
           } catch (e) {}
-#if SAFE_HEAP
-          abort = saved;
-#endif
+          Module.print = savedPrint;
+          Module.printErr = savedPrintErr;
         }
       }
       // close all of our streams
