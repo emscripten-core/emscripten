@@ -1735,7 +1735,7 @@ value = real 1.25 imag 0.00''', force_c=True)
 
   def test_stack_varargs(self):
     Settings.INLINING_LIMIT = 50
-    Settings.TOTAL_STACK = 1024
+    Settings.TOTAL_STACK = 2048
 
     test_path = path_from_root('tests', 'core', 'test_stack_varargs')
     src, output = (test_path + s for s in ('.in', '.out'))
