@@ -3028,6 +3028,7 @@ LibraryManager.library = {
     return dest;
   },
 
+  // TODO: compare these to musl's
   memcpy__asm: true,
   memcpy__sig: 'iiii',
   memcpy__deps: ['emscripten_memcpy_big'],
