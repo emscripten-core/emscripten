@@ -355,15 +355,42 @@ mergeInto(LibraryManager.library, {
   __syscall__deps: ['$SYSCALLS', '$FS'],
 #endif
   __syscall: function(which, varargs) {
+    var get;
+    if (typeof which === 'number') {
+      get = function() {
+        var ret = {{{ makeGetValue('varargs', '0', 'i32') }}};
+        varargs += 4;
+        return ret;
+      }
+    } else {
+#if ASSERTIONS
+      assert(varargs === 0);
+#endif
+      var array = which;
+      var which = array[0];
+      var index = 1;
+      get = function() {
+#if ASSERTIONS
+        assert(index < array.length);
+#endif
+        return array[index++];
+      };
+    }
 #if SYSCALL_DEBUG
     Module.print('syscall! ' + [which, SYSCALLS.getFromCode(which)]);
 #endif
-    function get() { // gets a 32-bit vararg
-      var ret = {{{ makeGetValue('varargs', '0', 'i32') }}};
-      varargs += 4;
-      return ret;
-    }
     switch (which) {
+      case 5: { // open
+        var pathname = get(), flags = get(), mode = get() /* optional XXX how to detect if passed or not? */;
+        pathname = Pointer_stringify(pathname);
+        try {
+          var stream = FS.open(pathname, flags, mode);
+          return stream.fd;
+        } catch (e) {
+          FS.handleFSError(e);
+          return -1;
+        }
+      }
       case 54: { // ioctl
         var fd = get(), op = get(), tio = get();
         switch (op) {
@@ -377,7 +404,30 @@ mergeInto(LibraryManager.library, {
           default: abort('bad ioctl syscall ' + op);
         }
       }
-      case 146: { // SYS_writev
+      case 145: { // readv
+        var fd = get(), iov = get(), iovcnt = get();
+        var stream = FS.getStream(fd);
+        if (!stream) {
+          ___setErrNo(ERRNO_CODES.EBADF);
+          return -1;
+        }
+        var ret = 0;
+        for (var i = 0; i < iovcnt; i++) {
+          var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
+          var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
+          try {
+            var curr = FS.read(stream, {{{ makeGetSlabs('ptr', 'i8', true) }}}, ptr, len);
+          } catch (e) {
+            FS.handleFSError(e);
+            return -1;
+          }
+          if (curr < 0) return -1;
+          ret += curr;
+          if (curr < len) break; // nothing more to read
+        }
+        return ret;
+      }
+      case 146: { // writev
         var fd = get(), iov = get(), iovcnt = get();
         var stream = FS.getStream(fd);
         var ret = 0;
@@ -399,7 +449,11 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  __syscall_cp: '__syscall',
+  __syscall_cp__deps: ['__syscall'],
+  __syscall_cp: function() {
+    var args = Array.prototype.slice.call(arguments);
+    return ___syscall(args, 0);
+  },
 
   // methods that musl could do, but for now we do
   _pthread_cleanup_push: function(){},
