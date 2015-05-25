@@ -1356,20 +1356,9 @@ mergeInto(LibraryManager.library, {
     },
     quit: function() {
       FS.init.initialized = false;
-      // force-flush musl std streams
+      // force-flush all streams, so we get musl std streams printed out
       var fflush = Module['_fflush'];
-      if (fflush) {
-        for (var i = 0; i < 2; i++) {
-          var savedPrint = Module.print;
-          var savedPrintErr = Module.printErr;
-          Module.print = Module.printErr = function(){};
-          try {
-            fflush(i);
-          } catch (e) {}
-          Module.print = savedPrint;
-          Module.printErr = savedPrintErr;
-        }
-      }
+      if (fflush) fflush(0);
       // close all of our streams
       for (var i = 0; i < FS.streams.length; i++) {
         var stream = FS.streams[i];
