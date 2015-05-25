@@ -4684,9 +4684,7 @@ main( int argv, char ** argc ) {
       {
           FILE* fp = fopen("empty.txt", "r");
           if (fp) {
-              printf("%d\n", fp);
               printf("%d\n", fileno(fp));
-              printf("%d\n", fileno((FILE*)42));  // nonexistent stream
           } else {
               printf("failed to open empty.txt\n");
           }
@@ -4694,7 +4692,7 @@ main( int argv, char ** argc ) {
       }
     '''
     self.emcc_args += ['--embed-file', 'empty.txt']
-    self.do_run(src, '4\n3\n-1\n')
+    self.do_run(src, '3\n')
 
   def test_readdir(self):
     self.banned_js_engines = [V8_ENGINE] # stderr printing limitations in v8
