@@ -558,6 +558,9 @@ mergeInto(LibraryManager.library, {
         }
         return ret;
       }
+      case 220: { // madvise
+        return 0; // nothing for now
+      }
       case 221: { // fcntl64
         var fildes = get(), cmd = get();
         var stream = FS.getStream(fildes);
