@@ -428,6 +428,7 @@
             "O_APPEND", 
             "F_SETOWN", 
             "O_TRUNC", 
+            "O_DIRECTORY",
             "F_GETOWN", 
             "F_SETFD", 
             "O_EXCL", 

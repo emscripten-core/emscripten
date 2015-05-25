@@ -998,6 +998,10 @@ mergeInto(LibraryManager.library, {
       if (FS.isChrdev(node.mode)) {
         flags &= ~{{{ cDefine('O_TRUNC') }}};
       }
+      // if asked only for a directory, then this must be one
+      if ((flags & {{{ cDefine('O_DIRECTORY') }}}) && !FS.isDir(node.mode)) {
+        throw new FS.ErrnoError(ERRNO_CODES.ENOTDIR);
+      }
       // check permissions, if this is not a file we just created now (it is ok to
       // create and write to a file with read-only permissions; it is read-only
       // for later use)
