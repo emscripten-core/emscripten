@@ -963,6 +963,29 @@ module({
             assert.equal(20, vec.get(1));
             vec.delete();
         });
+
+        test("can iterate through elements", function() {
+            var vec = cm.emval_test_return_vector();
+
+            vec.resize(3, 42);
+            var sum=0;
+            for(i of vec){
+                sum+=i;
+            }
+            assert.equal(60, sum);
+            vec.delete();
+        });
+
+        test("can iterate through shared_ptr elemenets", function() {
+            var vec = cm.emval_test_return_shared_ptr_vector();
+
+            var string="";
+            for(s of vec){
+                string+=s.get();
+                s.delete();
+            }
+            vec.delete();
+        });
     });
 
     BaseFixture.extend("map", function() {

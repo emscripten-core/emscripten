@@ -1632,7 +1632,7 @@ unsigned long load_unsigned_long() {
 }
 
 EMSCRIPTEN_BINDINGS(tests) {
-    register_vector<int>("IntegerVector");
+    register_vector_and_iterator<int>("IntegerVector");
     register_vector<char>("CharVector");
     register_vector<unsigned>("VectorUnsigned");
     register_vector<unsigned char>("VectorUnsignedChar");
@@ -2037,7 +2037,7 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("emval_test_return_vector", &emval_test_return_vector);
     function("emval_test_return_vector_of_vectors", &emval_test_return_vector_of_vectors);
 
-    register_vector<std::shared_ptr<StringHolder>>("SharedPtrVector");
+    register_vector_and_iterator<std::shared_ptr<StringHolder>,std::nullptr_t>("SharedPtrVector");
     function("emval_test_return_shared_ptr_vector", &emval_test_return_shared_ptr_vector);
 
     function("get_module_property", &get_module_property);

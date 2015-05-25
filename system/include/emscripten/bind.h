@@ -5,6 +5,7 @@
 #include <string>
 #include <functional>
 #include <vector>
+#include <list>
 #include <map>
 #include <type_traits>
 #include <emscripten/val.h>
@@ -1346,6 +1347,39 @@ namespace emscripten {
     };
 
     ////////////////////////////////////////////////////////////////////////////////
+    // CONTAINERS
+    ////////////////////////////////////////////////////////////////////////////////
+
+    namespace internal {
+        template<typename ContainerType>
+        struct IteratorItem {
+            bool done;
+            typename ContainerType::value_type value;
+        };
+
+        template<typename ContainerType,typename Invalid>
+        struct ContainerIterator {
+            ContainerType& container;
+            typename ContainerType::iterator it;
+        
+            ContainerIterator(ContainerType& container):container(container),it(container.begin()){}
+            IteratorItem<ContainerType> next(){
+                bool done=it==container.end();
+                return IteratorItem<ContainerType>{done,done?Invalid():*it++};
+            }
+        };
+
+        template<typename ContainerType,typename Invalid>
+        struct ContainerAccess {
+            static ContainerIterator<ContainerType,Invalid> iterator(
+                ContainerType& c
+            ) {
+                return ContainerIterator<ContainerType,Invalid>(c);
+            }
+        };
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
     // VECTORS
     ////////////////////////////////////////////////////////////////////////////////
 
@@ -1374,19 +1408,61 @@ namespace emscripten {
         };
     }
 
-    template<typename T>
-    class_<std::vector<T>> register_vector(const char* name) {
-        typedef std::vector<T> VecType;
-
+    template<typename T,typename VecType=std::vector<T>>
+    class_<VecType> register_vector(const char* name) {
         void (VecType::*push_back)(const T&) = &VecType::push_back;
         void (VecType::*resize)(const size_t, const T&) = &VecType::resize;
-        return class_<std::vector<T>>(name)
+        return class_<VecType>(name)
             .template constructor<>()
             .function("push_back", push_back)
             .function("resize", resize)
             .function("size", &VecType::size)
             .function("get", &internal::VectorAccess<VecType>::get)
             .function("set", &internal::VectorAccess<VecType>::set)
+            ;
+    }
+
+    template<typename T,typename Invalid=T,typename VecType=std::vector<T>>
+    class_<VecType> register_vector_and_iterator(const char* name) {
+        std::string sname=name;
+
+        value_object<internal::IteratorItem<VecType>>((sname + "IteratorItem").c_str())
+            .field("done", &internal::IteratorItem<VecType>::done)
+            .field("value", &internal::IteratorItem<VecType>::value)
+        ;
+
+        class_<internal::ContainerIterator<VecType,Invalid>>((sname + "Iterator").c_str())
+            .function("next", &internal::ContainerIterator<VecType,Invalid>::next)
+            ;
+
+        return register_vector<T,VecType>(name)
+            .function("@@iterator",&internal::ContainerAccess<VecType,Invalid>::iterator)
+            ;
+    }
+
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // LISTS
+    ////////////////////////////////////////////////////////////////////////////////
+
+    template<typename T,typename Invalid=T,typename ListType=std::list<T>>
+    class_<ListType> register_list_and_iterator(const char* name) {
+        std::string sname=name;
+
+        value_object<internal::IteratorItem<ListType>>((sname + "IteratorItem").c_str())
+            .field("done", &internal::IteratorItem<ListType>::done)
+            .field("value", &internal::IteratorItem<ListType>::value)
+        ;
+
+        class_<internal::ContainerIterator<ListType,Invalid>>((sname + "Iterator").c_str())
+            .function("next", &internal::ContainerIterator<ListType,Invalid>::next)
+            ;
+
+        void (ListType::*push_back)(const T&) = &ListType::push_back;
+        return class_<ListType>(name)
+            .template constructor<>()
+            .function("@@iterator",&internal::ContainerAccess<ListType,Invalid>::iterator)
+            .function("push_back", push_back)
             ;
     }
 
@@ -1419,10 +1495,8 @@ namespace emscripten {
         };
     }
 
-    template<typename K, typename V>
-    class_<std::map<K, V>> register_map(const char* name) {
-        typedef std::map<K,V> MapType;
-
+    template<typename K, typename V, typename MapType=std::map<K,V>>
+    class_<MapType> register_map(const char* name) {
         return class_<MapType>(name)
             .template constructor<>()
             .function("size", &MapType::size)

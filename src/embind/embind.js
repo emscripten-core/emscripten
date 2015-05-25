@@ -794,7 +794,7 @@ var LibraryEmbind = {
   // craftInvokerFunction generates the JS invoker function for each function exposed to JS through embind.
   $craftInvokerFunction__deps: [
     '$makeLegalFunctionName', '$new_', '$runDestructors', '$throwBindingError'],
-  $craftInvokerFunction: function(humanName, argTypes, classType, cppInvokerFunc, cppTargetFunc) {
+  $craftInvokerFunction: function(humanName, argTypes, classType, cppInvokerFunc, cppTargetFunc, deleteLater) {
     // humanName: a human-readable string name for the function to be generated.
     // argTypes: An array that contains the embind type objects for all types in the function signature.
     //    argTypes[0] is the type object for the function return value.
@@ -892,11 +892,14 @@ var LibraryEmbind = {
     }
 
     if (returns) {
-        invokerFnBody += "var ret = retType.fromWireType(rv);\n" +
+        invokerFnBody += "var ret = retType.fromWireType(rv);\n";
 #if EMSCRIPTEN_TRACING
-                         "Module.emscripten_trace_exit_context();\n" +
+        invokerFnBody +=  "Module.emscripten_trace_exit_context();\n";
 #endif
-                         "return ret;\n";
+        if (deleteLater) {
+            invokerFnBody += "ret.deleteLater();"
+        }
+        invokerFnBody += "return ret;\n";
     } else {
 #if EMSCRIPTEN_TRACING
         invokerFnBody += "Module.emscripten_trace_exit_context();\n";
@@ -1913,11 +1916,15 @@ var LibraryEmbind = {
   ) {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = readLatin1String(methodName);
+    var humanName = methodName;
+    if(methodName == "@@iterator"){
+        methodName = Symbol.iterator;
+    }
     rawInvoker = requireFunction(invokerSignature, rawInvoker);
 
     whenDependentTypesAreResolved([], [rawClassType], function(classType) {
         classType = classType[0];
-        var humanName = classType.name + '.' + methodName;
+        humanName = classType.name + '.' + humanName;
 
         if (isPureVirtual) {
             classType.registeredClass.pureVirtualFunctions.push(methodName);
@@ -1942,7 +1949,7 @@ var LibraryEmbind = {
 
         whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
 
-            var memberFunction = craftInvokerFunction(humanName, argTypes, classType, rawInvoker, context);
+            var memberFunction = craftInvokerFunction(humanName, argTypes, classType, rawInvoker, context, methodName == Symbol.iterator);
 
             // Replace the initial unbound-handler-stub function with the appropriate member function, now that all types
             // are resolved. If multiple overloads are registered for this function, the function goes into an overload table.
