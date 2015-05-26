@@ -108,7 +108,9 @@
             "O_ACCMODE", 
             "F_DUPFD", 
             "F_SETLK", 
-            "O_WRONLY"
+            "O_WRONLY",
+            "AT_FDCWD",
+            "AT_SYMLINK_NOFOLLOW"
         ],
         "structs": {
             "flock": [

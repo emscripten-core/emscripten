@@ -391,7 +391,7 @@ mergeInto(LibraryManager.library, {
     },
   },
 
-  __syscall__deps: ['$SYSCALLS', '$FS', '$ERRNO_CODES'],
+  __syscall__deps: ['$SYSCALLS', '$FS', '$ERRNO_CODES', '$PATH'],
   __syscall: function(which, varargs) {
     var get;
     if (typeof which === 'number') {
@@ -419,6 +419,9 @@ mergeInto(LibraryManager.library, {
 #endif
         return array[index++];
       };
+    }
+    function getStr() {
+      return Pointer_stringify(get());
     }
 #if SYSCALL_DEBUG
     Module.printErr('syscall! ' + [which, SYSCALLS.getFromCode(which)]);
@@ -666,6 +669,25 @@ mergeInto(LibraryManager.library, {
           Module.printErr('warning: ignoring SYS_clock_nanosleep');
 #endif
           return 0;
+        }
+        case 300: { // SYS_fstatat64
+          var dirfd = get(), path = getStr(), buf = get(), flags = get();
+          var nofollow = flags & {{{ cDefine('AT_SYMLINK_NOFOLLOW') }}};
+          flags = flags & (~{{{ cDefine('AT_SYMLINK_NOFOLLOW') }}});
+          assert(!flags, flags);
+          if (path[0] !== '/') {
+            // relative path
+            var dir;
+            if (dirfd === {{{ cDefine('AT_FDCWD') }}}) {
+              dir = FS.cwd();
+            } else {
+              var dirstream = FS.getStream(dirfd);
+              if (!dirstream) return -ERRNO_CODES.EBADF;
+              dir = dirstream.path;
+            }
+            path = PATH.join2(dir, path);
+          }
+          return SYSCALLS.doStat(function() { return (nofollow ? FS.lstat : FS.stat)(path) }, buf);
         }
         default: abort('bad syscall ' + which);
       }
