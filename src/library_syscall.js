@@ -393,298 +393,242 @@ mergeInto(LibraryManager.library, {
 #if SYSCALL_DEBUG
     Module.printErr('syscall! ' + [which, SYSCALLS.getFromCode(which)]);
 #endif
-    function handleSyscallFSError(e) { // syscalls return a negative number which is errno; libc calls then return just -1
-      if (typeof FS === 'undefined' || !(e instanceof FS.ErrnoError)) abort(e);
-      return -e.errno;
-    }
-    switch (which) {
-      case 4: { // write
-        var fd = get(), buf = get(), count = get();
-        var stream = FS.getStream(fd);
-        if (!stream) {
-          return -ERRNO_CODES.EBADF;
-        }
-        try {
+    try {
+      switch (which) {
+        case 4: { // write
+          var fd = get(), buf = get(), count = get();
+          var stream = FS.getStream(fd);
+          if (!stream) {
+            return -ERRNO_CODES.EBADF;
+          }
           return FS.write(stream, {{{ makeGetSlabs('ptr', 'i8', true) }}}, buf, count);
-        } catch (e) {
-          return handleSyscallFSError(e);
         }
-      }
-      case 5: { // open
-        var pathname = get(), flags = get(), mode = get() /* optional TODO */;
-        pathname = Pointer_stringify(pathname);
-        try {
+        case 5: { // open
+          var pathname = get(), flags = get(), mode = get() /* optional TODO */;
+          pathname = Pointer_stringify(pathname);
           var stream = FS.open(pathname, flags, mode);
           return stream.fd;
-        } catch (e) {
-          return handleSyscallFSError(e);
         }
-      }
-      case 6: { // close
-        var fd = get();
-        var stream = FS.getStream(fd);
-        if (!stream) {
-          return -ERRNO_CODES.EBADF;
-        }
-        if (stream.getdents) stream.getdents = null; // free readdir state
-        try {
+        case 6: { // close
+          var fd = get();
+          var stream = FS.getStream(fd);
+          if (!stream) {
+            return -ERRNO_CODES.EBADF;
+          }
+          if (stream.getdents) stream.getdents = null; // free readdir state
           FS.close(stream);
           return 0;
-        } catch (e) {
-          return handleSyscallFSError(e);
         }
-      }
-      case 10: { // unlink
-        var path = get();
-        path = Pointer_stringify(path);
-        try {
+        case 10: { // unlink
+          var path = get();
+          path = Pointer_stringify(path);
           FS.unlink(path);
           return 0;
-        } catch (e) {
-          return handleSyscallFSError(e);
         }
-      }
-      case 33: { // access
-        var path = get(), amode = get();
-        path = Pointer_stringify(path);
-        if (amode & ~{{{ cDefine('S_IRWXO') }}}) {
-          // need a valid mode
-          return -ERRNO_CODES.EINVAL;
-        }
-        var node;
-        try {
-          var lookup = FS.lookupPath(path, { follow: true });
-          node = lookup.node;
-        } catch (e) {
-          FS.handleFSError(e);
-          return -1;
-        }
-        var perms = '';
-        if (amode & {{{ cDefine('R_OK') }}}) perms += 'r';
-        if (amode & {{{ cDefine('W_OK') }}}) perms += 'w';
-        if (amode & {{{ cDefine('X_OK') }}}) perms += 'x';
-        if (perms /* otherwise, they've just passed F_OK */ && FS.nodePermissions(node, perms)) {
-          return -ERRNO_CODES.EACCES;
-        }
-        return 0;
-      }
-      case 38: { // rename
-        var old_path = get(), new_path = get();
-        old_path = Pointer_stringify(old_path);
-        new_path = Pointer_stringify(new_path);
-        try {
-          FS.rename(old_path, new_path);
-          return 0;
-        } catch (e) {
-          return handleSyscallFSError(e);
-        }
-      }
-      case 39: { // mkdir
-        var path = get(), mode = get();
-        path = Pointer_stringify(path);
-        // remove a trailing slash, if one - /a/b/ has basename of '', but
-        // we want to create b in the context of this function
-        path = PATH.normalize(path);
-        if (path[path.length-1] === '/') path = path.substr(0, path.length-1);
-        try {
-          FS.mkdir(path, mode, 0);
-          return 0;
-        } catch (e) {
-          return handleSyscallFSError(e);
-        }
-      }
-      case 40: { // rmdir
-        var path = get();
-        path = Pointer_stringify(path);
-        try {
-          FS.rmdir(path);
-          return 0;
-        } catch (e) {
-          return handleSyscallFSError(e);
-        }
-      }
-      case 54: { // ioctl
-        var fd = get(), op = get(), tio = get();
-        var stream = FS.getStream(fd);
-        if (!stream) return -ERRNO_CODES.EBADF;
-        switch (op) {
-          case 0x5401: { // TCGETS
-            if (!stream.tty) return -ERRNO_CODES.ENOTTY;
-#if SYSCALL_DEBUG
-            Module.printErr('warning: not filling tio struct');
-#endif
-            return 0;
-          }
-          case 0x5402: { // TCGETS
-            if (!stream.tty) return -ERRNO_CODES.ENOTTY;
-            return 0; // no-op, not actually adjusting terminal settings
-          }
-          default: abort('bad ioctl syscall ' + op);
-        }
-      }
-      case 83: { // SYS_symlink
-        var target = get(), linkpath = get();
-        try {
-          FS.symlink(Pointer_stringify(target), Pointer_stringify(linkpath));
-          return 0;
-        } catch (e) {
-          return handleSyscallFSError(e);
-        }
-      }
-      case 140: { // llseek
-        var fd = get(), offset_high = get(), offset_low = get(), result = get(), whence = get();
-        var offset = offset_low;
-        assert(offset_high === 0);
-        var stream = FS.getStream(fd);
-        if (!stream) return -ERRNO_CODES.EBADF;
-        try {
-          FS.llseek(stream, offset, whence);
-        } catch (e) {
-          return handleSyscallFSError(e);
-        }
-        {{{ makeSetValue('result', '0', 'stream.position', 'i32') }}};
-        if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
-        return 0;
-      }
-      case 145: { // readv
-        var fd = get(), iov = get(), iovcnt = get();
-        var stream = FS.getStream(fd);
-        if (!stream) return -ERRNO_CODES.EBADF;
-        var ret = 0;
-        for (var i = 0; i < iovcnt; i++) {
-          var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
-          var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
-          try {
-            var curr = FS.read(stream, {{{ makeGetSlabs('ptr', 'i8', true) }}}, ptr, len);
-          } catch (e) {
-            return handleSyscallFSError(e);
-          }
-          if (curr < 0) return -1;
-          ret += curr;
-          if (curr < len) break; // nothing more to read
-        }
-        return ret;
-      }
-      case 146: { // writev
-        var fd = get(), iov = get(), iovcnt = get();
-        var stream = FS.getStream(fd);
-        if (!stream) {
-          return -ERRNO_CODES.EBADF;
-        }
-        var ret = 0;
-        for (var i = 0; i < iovcnt; i++) {
-          var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
-          var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
-          try {
-            var curr = FS.write(stream, {{{ makeGetSlabs('ptr', 'i8', true) }}}, ptr, len);
-          } catch (e) {
-            return handleSyscallFSError(e);
-          }
-          if (curr < 0) return -1;
-          ret += curr;
-        }
-        return ret;
-      }
-      case 220: { // SYS_getdents64
-        var fd = get(), dirp = get(), count = get();
-        var stream = FS.getStream(fd);
-        if (!stream.getdents) {
-          try {
-            stream.getdents = FS.readdir(stream.path);
-          } catch (e) {
-            return handleSyscallFSError(e);
-          }
-        }
-        var pos = 0;
-        while (stream.getdents.length > 0 && pos + {{{ C_STRUCTS.dirent.__size__ }}} < count) {
-          var id;
-          var type;
-          var name = stream.getdents.pop();
-          assert(name.length < 256); // limit of dirent struct
-          if (name[0] === '.') {
-            id = 1;
-            type = 4; // DT_DIR
-          } else {
-            var child = FS.lookupNode(stream.node, name);
-            id = child.id;
-            type = FS.isChrdev(child.mode) ? 2 :  // DT_CHR, character device.
-                   FS.isDir(child.mode) ? 4 :     // DT_DIR, directory.
-                   FS.isLink(child.mode) ? 10 :   // DT_LNK, symbolic link.
-                   8;                             // DT_REG, regular file.
-          }
-          {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_ino, 'id', 'i32') }}};
-          {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_off, 'stream.position', 'i32') }}};
-          {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_reclen, C_STRUCTS.dirent.__size__, 'i16') }}};
-          {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_type, 'type', 'i8') }}};
-          for (var i = 0; i < name.length; i++) {
-            {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_name + ' + i', 'name.charCodeAt(i)', 'i8') }}};
-          }
-          {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_name + ' + i', '0', 'i8') }}};
-          pos += {{{ C_STRUCTS.dirent.__size__ }}};
-        }
-        return pos;
-      }
-      case 221: { // fcntl64
-        var fildes = get(), cmd = get();
-        var stream = FS.getStream(fildes);
-        if (!stream) {
-          return -ERRNO_CODES.EBADF;
-        }
-        switch (cmd) {
-          case {{{ cDefine('F_DUPFD') }}}: {
-            var arg = get();
-            if (arg < 0) {
-              return -ERRNO_CODES.EINVAL;
-            }
-            var newStream;
-            try {
-              newStream = FS.open(stream.path, stream.flags, 0, arg);
-            } catch (e) {
-              return handleSyscallFSError(e);
-            }
-            return newStream.fd;
-          }
-          case {{{ cDefine('F_GETFD') }}}:
-          case {{{ cDefine('F_SETFD') }}}:
-            return 0;  // FD_CLOEXEC makes no sense for a single process.
-          case {{{ cDefine('F_GETFL') }}}:
-            return stream.flags;
-          case {{{ cDefine('F_SETFL') }}}: {
-            var arg = get();
-            stream.flags |= arg;
-            return 0;
-          }
-          case {{{ cDefine('F_GETLK') }}}:
-          case {{{ cDefine('F_GETLK64') }}}: {
-            var arg = get();
-            var offset = {{{ C_STRUCTS.flock.l_type }}};
-            // We're always unlocked.
-            {{{ makeSetValue('arg', 'offset', cDefine('F_UNLCK'), 'i16') }}};
-            return 0;
-          }
-          case {{{ cDefine('F_SETLK') }}}:
-          case {{{ cDefine('F_SETLKW') }}}:
-          case {{{ cDefine('F_SETLK64') }}}:
-          case {{{ cDefine('F_SETLKW64') }}}:
-            return 0; // Pretend that the locking is successful.
-          case {{{ cDefine('F_SETOWN') }}}:
-          case {{{ cDefine('F_GETOWN') }}}:
-            return -ERRNO_CODES.EINVAL; // These are for sockets. We don't have them fully implemented yet.
-          default: {
-#if SYSCALL_DEBUG
-            Module.printErr('warning: fctl64 unrecognized command ' + cmd);
-#endif
+        case 33: { // access
+          var path = get(), amode = get();
+          path = Pointer_stringify(path);
+          if (amode & ~{{{ cDefine('S_IRWXO') }}}) {
+            // need a valid mode
             return -ERRNO_CODES.EINVAL;
           }
+          var node;
+          var lookup = FS.lookupPath(path, { follow: true });
+          node = lookup.node;
+          var perms = '';
+          if (amode & {{{ cDefine('R_OK') }}}) perms += 'r';
+          if (amode & {{{ cDefine('W_OK') }}}) perms += 'w';
+          if (amode & {{{ cDefine('X_OK') }}}) perms += 'x';
+          if (perms /* otherwise, they've just passed F_OK */ && FS.nodePermissions(node, perms)) {
+            return -ERRNO_CODES.EACCES;
+          }
+          return 0;
         }
-      }
-      case 265: { // clock_nanosleep
+        case 38: { // rename
+          var old_path = get(), new_path = get();
+          old_path = Pointer_stringify(old_path);
+          new_path = Pointer_stringify(new_path);
+          FS.rename(old_path, new_path);
+          return 0;
+        }
+        case 39: { // mkdir
+          var path = get(), mode = get();
+          path = Pointer_stringify(path);
+          // remove a trailing slash, if one - /a/b/ has basename of '', but
+          // we want to create b in the context of this function
+          path = PATH.normalize(path);
+          if (path[path.length-1] === '/') path = path.substr(0, path.length-1);
+          FS.mkdir(path, mode, 0);
+          return 0;
+        }
+        case 40: { // rmdir
+          var path = get();
+          path = Pointer_stringify(path);
+          FS.rmdir(path);
+          return 0;
+        }
+        case 54: { // ioctl
+          var fd = get(), op = get(), tio = get();
+          var stream = FS.getStream(fd);
+          if (!stream) return -ERRNO_CODES.EBADF;
+          switch (op) {
+            case 0x5401: { // TCGETS
+              if (!stream.tty) return -ERRNO_CODES.ENOTTY;
 #if SYSCALL_DEBUG
-        Module.printErr('warning: ignoring SYS_clock_nanosleep');
+              Module.printErr('warning: not filling tio struct');
 #endif
-        return 0;
+              return 0;
+            }
+            case 0x5402: { // TCGETS
+              if (!stream.tty) return -ERRNO_CODES.ENOTTY;
+              return 0; // no-op, not actually adjusting terminal settings
+            }
+            default: abort('bad ioctl syscall ' + op);
+          }
+        }
+        case 83: { // SYS_symlink
+          var target = get(), linkpath = get();
+          FS.symlink(Pointer_stringify(target), Pointer_stringify(linkpath));
+          return 0;
+        }
+        case 140: { // llseek
+          var fd = get(), offset_high = get(), offset_low = get(), result = get(), whence = get();
+          var offset = offset_low;
+          assert(offset_high === 0);
+          var stream = FS.getStream(fd);
+          if (!stream) return -ERRNO_CODES.EBADF;
+          FS.llseek(stream, offset, whence);
+          {{{ makeSetValue('result', '0', 'stream.position', 'i32') }}};
+          if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
+          return 0;
+        }
+        case 145: { // readv
+          var fd = get(), iov = get(), iovcnt = get();
+          var stream = FS.getStream(fd);
+          if (!stream) return -ERRNO_CODES.EBADF;
+          var ret = 0;
+          for (var i = 0; i < iovcnt; i++) {
+            var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
+            var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
+            var curr = FS.read(stream, {{{ makeGetSlabs('ptr', 'i8', true) }}}, ptr, len);
+            if (curr < 0) return -1;
+            ret += curr;
+            if (curr < len) break; // nothing more to read
+          }
+          return ret;
+        }
+        case 146: { // writev
+          var fd = get(), iov = get(), iovcnt = get();
+          var stream = FS.getStream(fd);
+          if (!stream) {
+            return -ERRNO_CODES.EBADF;
+          }
+          var ret = 0;
+          for (var i = 0; i < iovcnt; i++) {
+            var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
+            var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
+            var curr = FS.write(stream, {{{ makeGetSlabs('ptr', 'i8', true) }}}, ptr, len);
+            if (curr < 0) return -1;
+            ret += curr;
+          }
+          return ret;
+        }
+        case 220: { // SYS_getdents64
+          var fd = get(), dirp = get(), count = get();
+          var stream = FS.getStream(fd);
+          if (!stream.getdents) {
+            stream.getdents = FS.readdir(stream.path);
+          }
+          var pos = 0;
+          while (stream.getdents.length > 0 && pos + {{{ C_STRUCTS.dirent.__size__ }}} < count) {
+            var id;
+            var type;
+            var name = stream.getdents.pop();
+            assert(name.length < 256); // limit of dirent struct
+            if (name[0] === '.') {
+              id = 1;
+              type = 4; // DT_DIR
+            } else {
+              var child = FS.lookupNode(stream.node, name);
+              id = child.id;
+              type = FS.isChrdev(child.mode) ? 2 :  // DT_CHR, character device.
+                     FS.isDir(child.mode) ? 4 :     // DT_DIR, directory.
+                     FS.isLink(child.mode) ? 10 :   // DT_LNK, symbolic link.
+                     8;                             // DT_REG, regular file.
+            }
+            {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_ino, 'id', 'i32') }}};
+            {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_off, 'stream.position', 'i32') }}};
+            {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_reclen, C_STRUCTS.dirent.__size__, 'i16') }}};
+            {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_type, 'type', 'i8') }}};
+            for (var i = 0; i < name.length; i++) {
+              {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_name + ' + i', 'name.charCodeAt(i)', 'i8') }}};
+            }
+            {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_name + ' + i', '0', 'i8') }}};
+            pos += {{{ C_STRUCTS.dirent.__size__ }}};
+          }
+          return pos;
+        }
+        case 221: { // fcntl64
+          var fildes = get(), cmd = get();
+          var stream = FS.getStream(fildes);
+          if (!stream) {
+            return -ERRNO_CODES.EBADF;
+          }
+          switch (cmd) {
+            case {{{ cDefine('F_DUPFD') }}}: {
+              var arg = get();
+              if (arg < 0) {
+                return -ERRNO_CODES.EINVAL;
+              }
+              var newStream;
+              newStream = FS.open(stream.path, stream.flags, 0, arg);
+              return newStream.fd;
+            }
+            case {{{ cDefine('F_GETFD') }}}:
+            case {{{ cDefine('F_SETFD') }}}:
+              return 0;  // FD_CLOEXEC makes no sense for a single process.
+            case {{{ cDefine('F_GETFL') }}}:
+              return stream.flags;
+            case {{{ cDefine('F_SETFL') }}}: {
+              var arg = get();
+              stream.flags |= arg;
+              return 0;
+            }
+            case {{{ cDefine('F_GETLK') }}}:
+            case {{{ cDefine('F_GETLK64') }}}: {
+              var arg = get();
+              var offset = {{{ C_STRUCTS.flock.l_type }}};
+              // We're always unlocked.
+              {{{ makeSetValue('arg', 'offset', cDefine('F_UNLCK'), 'i16') }}};
+              return 0;
+            }
+            case {{{ cDefine('F_SETLK') }}}:
+            case {{{ cDefine('F_SETLKW') }}}:
+            case {{{ cDefine('F_SETLK64') }}}:
+            case {{{ cDefine('F_SETLKW64') }}}:
+              return 0; // Pretend that the locking is successful.
+            case {{{ cDefine('F_SETOWN') }}}:
+            case {{{ cDefine('F_GETOWN') }}}:
+              return -ERRNO_CODES.EINVAL; // These are for sockets. We don't have them fully implemented yet.
+            default: {
+#if SYSCALL_DEBUG
+              Module.printErr('warning: fctl64 unrecognized command ' + cmd);
+#endif
+              return -ERRNO_CODES.EINVAL;
+            }
+          }
+        }
+        case 265: { // clock_nanosleep
+#if SYSCALL_DEBUG
+          Module.printErr('warning: ignoring SYS_clock_nanosleep');
+#endif
+          return 0;
+        }
+        default: abort('bad syscall ' + which);
       }
-      default: abort('bad syscall ' + which);
+    } catch (e) {
+      if (typeof FS === 'undefined' || !(e instanceof FS.ErrnoError)) abort(e);
+      return -e.errno;
     }
   },
 
