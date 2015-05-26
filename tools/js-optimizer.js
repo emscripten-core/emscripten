@@ -7443,12 +7443,14 @@ function asmLastOpts(ast) {
       var stats = getStatements(node);
       if (stats) statsStack.pop();
     });
-    // convert  { singleton }  into  singleton
-    traverse(fun, function(node, type) {
-      if (type === 'block' && node[1] && node[1].length === 1) {
-        return node[1][0];
-      }
-    });
+    if (!debug) { // dangerous in debug mode, as without braces things can end up on the same line, together with comments
+      // convert  { singleton }  into  singleton
+      traverse(fun, function(node, type) {
+        if (type === 'block' && node[1] && node[1].length === 1) {
+          return node[1][0];
+        }
+      });
+    }
   });
 }
 

@@ -6914,23 +6914,11 @@ Module.printErr = Module['printErr'] = function(){};
       import json
       Building.emcc(src_filename, Settings.serialize() + self.emcc_args +
           Building.COMPILER_TEST_OPTS, out_filename, stderr=PIPE)
-      with open(out_filename) as f: out_file = f.read()
       # after removing the @line and @sourceMappingURL comments, the build
       # result should be identical to the non-source-mapped debug version.
       # this is worth checking because the parser AST swaps strings for token
       # objects when generating source maps, so we want to make sure the
       # optimizer can deal with both types.
-      out_file = re.sub(' *//[@#].*$', '', out_file, flags=re.MULTILINE)
-      def clean(code):
-        code = code.replace('// EMSCRIPTEN_GENERATED_FUNCTIONS: ["_malloc","__Z3foov","_free","_main"]', '')
-        code = re.sub(';', ';\n', code) # put statements each on a new line
-        code = re.sub(r'\n+[ \n]*\n+', '\n', code)
-        code = re.sub(' L\d+ ?:', '', code) # ignore labels; they can change in each compile
-        code = code.replace('{\n}', '{}')
-        lines = code.split('\n')
-        lines = filter(lambda line: ': do {' not in line and ' break L' not in line, lines) # ignore labels; they can change in each compile
-        return '\n'.join(sorted(lines))
-      self.assertIdentical(clean(no_maps_file), clean(out_file))
       map_filename = out_filename + '.map'
       data = json.load(open(map_filename, 'r'))
       self.assertPathsIdentical(out_filename, data['file'])

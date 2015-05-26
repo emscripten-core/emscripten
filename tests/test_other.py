@@ -4848,3 +4848,24 @@ int main(int argc, char** argv) {
     out, err = Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'temp.txt', '--no-closure'], stdout=PIPE, stderr=PIPE).communicate()
     assert BAD not in out, out[max(out.index(BAD)-80, 0) : min(out.index(BAD)+80, len(out)-1)]
 
+  def test_debug_asmLastOpts(self):
+    open('src.c', 'w').write(r'''
+#include <stdio.h>
+struct Dtlink_t
+{   struct Dtlink_t*   right;  /* right child      */
+        union
+        { unsigned int  _hash;  /* hash value       */
+          struct Dtlink_t* _left;  /* left child       */
+        } hl;
+};
+int treecount(register struct Dtlink_t* e)
+{
+  return e ? treecount(e->hl._left) + treecount(e->right) + 1 : 0;
+}
+int main() {
+  printf("hello, world!\n");
+}
+''')
+    out, err = Popen([PYTHON, EMCC, 'src.c', '-s', 'EXPORTED_FUNCTIONS=["_main", "_treecount"]', '--minify', '0', '-g4', '-Oz']).communicate()
+    self.assertContained('hello, world!', run_js('a.out.js'))
+
