@@ -3921,7 +3921,6 @@ var Module = {
       try:
         os.environ['EMCC_FORCE_STDLIBS'] = syslibs
         self.dylink_test(main=r'''
-          #include "header.h"
           void side();
           int main() {
             side();
