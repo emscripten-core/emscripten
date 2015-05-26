@@ -1,6 +1,13 @@
 #!/usr/bin/env python2
 # This Python file uses the following encoding: utf-8
 
+'''
+Parallel test runner
+--------------------
+
+You may want to run this with unbuffered output, python -u ...
+'''
+
 import os, sys, subprocess, multiprocessing, threading, time
 from runner import test_modes, PYTHON, path_from_root
 
