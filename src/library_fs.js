@@ -1712,7 +1712,7 @@ mergeInto(LibraryManager.library, {
     // You can also call this with a typed array instead of a url. It will then
     // do preloading for the Image/Audio part, as if the typed array were the
     // result of an XHR that you did manually.
-    createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn) {
+    createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) {
       Browser.init();
       // TODO we should allow people to just pass in a complete filename instead
       // of parent and name being that we just join them anyways
@@ -1720,6 +1720,7 @@ mergeInto(LibraryManager.library, {
       var dep = getUniqueRunDependency('cp ' + fullname); // might have several active requests for the same fullname
       function processData(byteArray) {
         function finish(byteArray) {
+          if (preFinish) preFinish();
           if (!dontCreateFile) {
             FS.createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
           }

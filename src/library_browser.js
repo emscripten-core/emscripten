@@ -785,6 +785,14 @@ mergeInto(LibraryManager.library, {
       },
       function() {
         doCallback(onerror);
+      },
+      false, // dontCreateFile
+      false, // canOwn
+      function() { // preFinish
+        // if a file exists there, we overwrite it
+        try {
+          FS.unlink(_file);
+        } catch (e) {}
       }
     );
   },
