@@ -423,17 +423,18 @@ mergeInto(LibraryManager.library, {
     function getStr() {
       return Pointer_stringify(get());
     }
+    function getStreamFromFD() {
+      var stream = FS.getStream(get());
+      if (!stream) throw new FS.ErrnoError(ERRNO_CODES.EBADF);
+      return stream;
+    }
 #if SYSCALL_DEBUG
     Module.printErr('syscall! ' + [which, SYSCALLS.getFromCode(which)]);
 #endif
     try {
       switch (which) {
         case 4: { // write
-          var fd = get(), buf = get(), count = get();
-          var stream = FS.getStream(fd);
-          if (!stream) {
-            return -ERRNO_CODES.EBADF;
-          }
+          var stream = getStreamFromFD(), buf = get(), count = get();
           return FS.write(stream, {{{ makeGetSlabs('ptr', 'i8', true) }}}, buf, count);
         }
         case 5: { // open
@@ -443,11 +444,7 @@ mergeInto(LibraryManager.library, {
           return stream.fd;
         }
         case 6: { // close
-          var fd = get();
-          var stream = FS.getStream(fd);
-          if (!stream) {
-            return -ERRNO_CODES.EBADF;
-          }
+          var stream = getStreamFromFD();
           if (stream.getdents) stream.getdents = null; // free readdir state
           FS.close(stream);
           return 0;
@@ -501,9 +498,7 @@ mergeInto(LibraryManager.library, {
           return 0;
         }
         case 54: { // ioctl
-          var fd = get(), op = get(), tio = get();
-          var stream = FS.getStream(fd);
-          if (!stream) return -ERRNO_CODES.EBADF;
+          var stream = getStreamFromFD(), op = get(), tio = get();
           switch (op) {
             case 0x5401: { // TCGETS
               if (!stream.tty) return -ERRNO_CODES.ENOTTY;
@@ -525,20 +520,16 @@ mergeInto(LibraryManager.library, {
           return 0;
         }
         case 140: { // llseek
-          var fd = get(), offset_high = get(), offset_low = get(), result = get(), whence = get();
+          var stream = getStreamFromFD(), offset_high = get(), offset_low = get(), result = get(), whence = get();
           var offset = offset_low;
           assert(offset_high === 0);
-          var stream = FS.getStream(fd);
-          if (!stream) return -ERRNO_CODES.EBADF;
           FS.llseek(stream, offset, whence);
           {{{ makeSetValue('result', '0', 'stream.position', 'i32') }}};
           if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
           return 0;
         }
         case 145: { // readv
-          var fd = get(), iov = get(), iovcnt = get();
-          var stream = FS.getStream(fd);
-          if (!stream) return -ERRNO_CODES.EBADF;
+          var stream = getStreamFromFD(), iov = get(), iovcnt = get();
           var ret = 0;
           for (var i = 0; i < iovcnt; i++) {
             var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
@@ -551,11 +542,7 @@ mergeInto(LibraryManager.library, {
           return ret;
         }
         case 146: { // writev
-          var fd = get(), iov = get(), iovcnt = get();
-          var stream = FS.getStream(fd);
-          if (!stream) {
-            return -ERRNO_CODES.EBADF;
-          }
+          var stream = getStreamFromFD(), iov = get(), iovcnt = get();
           var ret = 0;
           for (var i = 0; i < iovcnt; i++) {
             var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
@@ -575,15 +562,11 @@ mergeInto(LibraryManager.library, {
           return SYSCALLS.doStat(function() { return FS.lstat(Pointer_stringify(path)) }, buf);
         }
         case 197: { // SYS_fstat64
-          var fd = get(), buf = get();
-          var stream = FS.getStream(fd);
-          if (!stream) return -ERRNO_CODES.EBADF;
+          var stream = getStreamFromFD(), buf = get();
           return SYSCALLS.doStat(function() { return FS.stat(stream.path) }, buf);
         }
         case 220: { // SYS_getdents64
-          var fd = get(), dirp = get(), count = get();
-          var stream = FS.getStream(fd);
-          if (!stream) return -ERRNO_CODES.EBADF;
+          var stream = getStreamFromFD(), dirp = get(), count = get();
           if (!stream.getdents) {
             stream.getdents = FS.readdir(stream.path);
           }
@@ -617,9 +600,7 @@ mergeInto(LibraryManager.library, {
           return pos;
         }
         case 221: { // fcntl64
-          var fildes = get(), cmd = get();
-          var stream = FS.getStream(fildes);
-          if (!stream) return -ERRNO_CODES.EBADF;
+          var stream = getStreamFromFD(), cmd = get();
           switch (cmd) {
             case {{{ cDefine('F_DUPFD') }}}: {
               var arg = get();
