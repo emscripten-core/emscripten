@@ -493,6 +493,16 @@ mergeInto(LibraryManager.library, {
           return handleSyscallFSError(e);
         }
       }
+      case 40: { // rmdir
+        var path = get();
+        path = Pointer_stringify(path);
+        try {
+          FS.rmdir(path);
+          return 0;
+        } catch (e) {
+          return handleSyscallFSError(e);
+        }
+      }
       case 54: { // ioctl
         var fd = get(), op = get(), tio = get();
         var stream = FS.getStream(fd);
