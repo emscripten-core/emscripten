@@ -1717,13 +1717,14 @@ mergeInto(LibraryManager.library, {
       // TODO we should allow people to just pass in a complete filename instead
       // of parent and name being that we just join them anyways
       var fullname = name ? PATH.resolve(PATH.join2(parent, name)) : parent;
+      var dep = getUniqueRunDependency('cp ' + fullname); // might have several active requests for the same fullname
       function processData(byteArray) {
         function finish(byteArray) {
           if (!dontCreateFile) {
             FS.createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
           }
           if (onload) onload();
-          removeRunDependency('cp ' + fullname);
+          removeRunDependency(dep);
         }
         var handled = false;
         Module['preloadPlugins'].forEach(function(plugin) {
@@ -1731,14 +1732,14 @@ mergeInto(LibraryManager.library, {
           if (plugin['canHandle'](fullname)) {
             plugin['handle'](byteArray, fullname, finish, function() {
               if (onerror) onerror();
-              removeRunDependency('cp ' + fullname);
+              removeRunDependency(dep);
             });
             handled = true;
           }
         });
         if (!handled) finish(byteArray);
       }
-      addRunDependency('cp ' + fullname);
+      addRunDependency(dep);
       if (typeof url == 'string') {
         Browser.asyncLoad(url, function(byteArray) {
           processData(byteArray);
