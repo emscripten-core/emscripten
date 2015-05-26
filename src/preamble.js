@@ -1452,7 +1452,7 @@ var PGOMonitor = {
   }
 };
 Module['PGOMonitor'] = PGOMonitor;
-__ATEXIT__.push({ func: function() { PGOMonitor.dump() } });
+__ATEXIT__.push(function() { PGOMonitor.dump() });
 addOnPreRun(function() { addRunDependency('pgo') });
 #endif
 
