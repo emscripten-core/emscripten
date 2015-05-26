@@ -426,6 +426,7 @@ mergeInto(LibraryManager.library, {
         if (!stream) {
           return -ERRNO_CODES.EBADF;
         }
+        if (stream.getdents) stream.getdents = null; // free readdir state
         try {
           FS.close(stream);
           return 0;
@@ -523,14 +524,13 @@ mergeInto(LibraryManager.library, {
           return handleSyscallFSError(e);
         }
         {{{ makeSetValue('result', '0', 'stream.position', 'i32') }}};
+        if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
         return 0;
       }
       case 145: { // readv
         var fd = get(), iov = get(), iovcnt = get();
         var stream = FS.getStream(fd);
-        if (!stream) {
-          return -ERRNO_CODES.EBADF;
-        }
+        if (!stream) return -ERRNO_CODES.EBADF;
         var ret = 0;
         for (var i = 0; i < iovcnt; i++) {
           var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
@@ -566,8 +566,44 @@ mergeInto(LibraryManager.library, {
         }
         return ret;
       }
-      case 220: { // madvise
-        return 0; // nothing for now
+      case 220: { // SYS_getdents64
+        var fd = get(), dirp = get(), count = get();
+        var stream = FS.getStream(fd);
+        if (!stream.getdents) {
+          try {
+            stream.getdents = FS.readdir(stream.path);
+          } catch (e) {
+            return handleSyscallFSError(e);
+          }
+        }
+        var pos = 0;
+        while (stream.getdents.length > 0 && pos + {{{ C_STRUCTS.dirent.__size__ }}} < count) {
+          var id;
+          var type;
+          var name = stream.getdents.pop();
+          assert(name.length < 256); // limit of dirent struct
+          if (name[0] === '.') {
+            id = 1;
+            type = 4; // DT_DIR
+          } else {
+            var child = FS.lookupNode(stream.node, name);
+            id = child.id;
+            type = FS.isChrdev(child.mode) ? 2 :  // DT_CHR, character device.
+                   FS.isDir(child.mode) ? 4 :     // DT_DIR, directory.
+                   FS.isLink(child.mode) ? 10 :   // DT_LNK, symbolic link.
+                   8;                             // DT_REG, regular file.
+          }
+          {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_ino, 'id', 'i32') }}};
+          {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_off, 'stream.position', 'i32') }}};
+          {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_reclen, C_STRUCTS.dirent.__size__, 'i16') }}};
+          {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_type, 'type', 'i8') }}};
+          for (var i = 0; i < name.length; i++) {
+            {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_name + ' + i', 'name.charCodeAt(i)', 'i8') }}};
+          }
+          {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_name + ' + i', '0', 'i8') }}};
+          pos += {{{ C_STRUCTS.dirent.__size__ }}};
+        }
+        return pos;
       }
       case 221: { // fcntl64
         var fildes = get(), cmd = get();
