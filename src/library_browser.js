@@ -853,6 +853,10 @@ mergeInto(LibraryManager.library, {
     // LOAD
     http.onload = function http_onload(e) {
       if (http.status == 200) {
+        // if a file exists there, we overwrite it
+        try {
+          FS.unlink(_file);
+        } catch (e) {}
         FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(http.response), true, true);
         if (onload) {
           var stack = Runtime.stackSave();
