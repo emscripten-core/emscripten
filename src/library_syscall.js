@@ -1,6 +1,6 @@
 mergeInto(LibraryManager.library, {
-#if SYSCALL_DEBUG
   $SYSCALLS: {
+#if SYSCALL_DEBUG
     NAME_TO_CODE: {
       SYS_restart_syscall: 0,
       SYS_exit: 1,
@@ -355,13 +355,43 @@ mergeInto(LibraryManager.library, {
       }
       assert(SYSCALLS.CODE_TO_NAME[code]);
       return SYSCALLS.CODE_TO_NAME[code];
-    }
+    },
+#endif
+    // shared utilities
+    doStat: function(func, buf) {
+      try {
+        var stat = func();
+      } catch (e) {
+        if (e && e.node && PATH.normalize(path) !== PATH.normalize(FS.getPath(e.node))) {
+          // an error occurred while trying to look up the path; we should just report ENOTDIR
+          return -ERRNO_CODES.ENOTDIR;
+        }
+        throw e;
+      }
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_dev, 'stat.dev', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.__st_dev_padding, '0', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.__st_ino_truncated, 'stat.ino', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mode, 'stat.mode', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_nlink, 'stat.nlink', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_uid, 'stat.uid', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_gid, 'stat.gid', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_rdev, 'stat.rdev', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.__st_rdev_padding, '0', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_size, 'stat.size', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_blksize, '4096', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_blocks, 'stat.blocks', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_sec, '(stat.atime.getTime() / 1000)|0', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_nsec, '0', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_sec, '(stat.mtime.getTime() / 1000)|0', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_nsec, '0', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_sec, '(stat.ctime.getTime() / 1000)|0', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_nsec, '0', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i32') }}};
+      return 0;
+    },
   },
-#endif
 
-#if SYSCALL_DEBUG
   __syscall__deps: ['$SYSCALLS', '$FS', '$ERRNO_CODES'],
-#endif
   __syscall: function(which, varargs) {
     var get;
     if (typeof which === 'number') {
@@ -535,40 +565,22 @@ mergeInto(LibraryManager.library, {
         }
         case 195: { // SYS_stat64
           var path = get(), buf = get();
-          path = Pointer_stringify(path);
-          try {
-            var stat = FS.stat(path);
-            {{{ makeSetValue('buf', C_STRUCTS.stat.st_dev, 'stat.dev', 'i32') }}};
-            {{{ makeSetValue('buf', C_STRUCTS.stat.__st_dev_padding, '0', 'i32') }}};
-            {{{ makeSetValue('buf', C_STRUCTS.stat.__st_ino_truncated, 'stat.ino', 'i32') }}};
-            {{{ makeSetValue('buf', C_STRUCTS.stat.st_mode, 'stat.mode', 'i32') }}};
-            {{{ makeSetValue('buf', C_STRUCTS.stat.st_nlink, 'stat.nlink', 'i32') }}};
-            {{{ makeSetValue('buf', C_STRUCTS.stat.st_uid, 'stat.uid', 'i32') }}};
-            {{{ makeSetValue('buf', C_STRUCTS.stat.st_gid, 'stat.gid', 'i32') }}};
-            {{{ makeSetValue('buf', C_STRUCTS.stat.st_rdev, 'stat.rdev', 'i32') }}};
-            {{{ makeSetValue('buf', C_STRUCTS.stat.__st_rdev_padding, '0', 'i32') }}};
-            {{{ makeSetValue('buf', C_STRUCTS.stat.st_size, 'stat.size', 'i32') }}};
-            {{{ makeSetValue('buf', C_STRUCTS.stat.st_blksize, '4096', 'i32') }}};
-            {{{ makeSetValue('buf', C_STRUCTS.stat.st_blocks, 'stat.blocks', 'i32') }}};
-            {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_sec, '(stat.atime.getTime() / 1000)|0', 'i32') }}};
-            {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_nsec, '0', 'i32') }}};
-            {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_sec, '(stat.mtime.getTime() / 1000)|0', 'i32') }}};
-            {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_nsec, '0', 'i32') }}};
-            {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_sec, '(stat.ctime.getTime() / 1000)|0', 'i32') }}};
-            {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_nsec, '0', 'i32') }}};
-            {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i32') }}};
-            return 0;
-          } catch (e) {
-            if (e && e.node && PATH.normalize(path) !== PATH.normalize(FS.getPath(e.node))) {
-              // an error occurred while trying to look up the path; we should just report ENOTDIR
-              return -ERRNO_CODES.ENOTDIR;
-            }
-            throw e;
-          }
+          return SYSCALLS.doStat(function() { return FS.stat(Pointer_stringify(path)) }, buf);
+        }
+        case 196: { // SYS_lstat64
+          var path = get(), buf = get();
+          return SYSCALLS.doStat(function() { return FS.lstat(Pointer_stringify(path)) }, buf);
+        }
+        case 197: { // SYS_fstat64
+          var fd = get(), buf = get();
+          var stream = FS.getStream(fd);
+          if (!stream) return -ERRNO_CODES.EBADF;
+          return SYSCALLS.doStat(function() { return FS.stat(stream.path) }, buf);
         }
         case 220: { // SYS_getdents64
           var fd = get(), dirp = get(), count = get();
           var stream = FS.getStream(fd);
+          if (!stream) return -ERRNO_CODES.EBADF;
           if (!stream.getdents) {
             stream.getdents = FS.readdir(stream.path);
           }
@@ -604,9 +616,7 @@ mergeInto(LibraryManager.library, {
         case 221: { // fcntl64
           var fildes = get(), cmd = get();
           var stream = FS.getStream(fildes);
-          if (!stream) {
-            return -ERRNO_CODES.EBADF;
-          }
+          if (!stream) return -ERRNO_CODES.EBADF;
           switch (cmd) {
             case {{{ cDefine('F_DUPFD') }}}: {
               var arg = get();
