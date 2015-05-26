@@ -522,6 +522,15 @@ mergeInto(LibraryManager.library, {
           default: abort('bad ioctl syscall ' + op);
         }
       }
+      case 83: { // SYS_symlink
+        var target = get(), linkpath = get();
+        try {
+          FS.symlink(Pointer_stringify(target), Pointer_stringify(linkpath));
+          return 0;
+        } catch (e) {
+          return handleSyscallFSError(e);
+        }
+      }
       case 140: { // llseek
         var fd = get(), offset_high = get(), offset_low = get(), result = get(), whence = get();
         var offset = offset_low;
