@@ -836,6 +836,8 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_async_wget2: function(url, file, request, param, arg, onload, onerror, onprogress) {
+    Module['noExitRuntime'] = true;
+
     var _url = Pointer_stringify(url);
     var _file = Pointer_stringify(file);
     var _request = Pointer_stringify(request);
