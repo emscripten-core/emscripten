@@ -28,11 +28,11 @@ var LibraryJSEvents = {
 
     registerRemoveEventListeners: function() {
       if (!JSEvents.removeEventListenersRegistered) {
-      __ATEXIT__.push({ func: function() {
+      __ATEXIT__.push(function() {
           for(var i = JSEvents.eventHandlers.length-1; i >= 0; --i) {
             JSEvents._removeHandler(i);
           }
-         } });
+         });
         JSEvents.removeEventListenersRegistered = true;
       }
     },

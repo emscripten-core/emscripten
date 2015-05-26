@@ -1,9 +1,9 @@
 mergeInto(LibraryManager.library, {
   $FS__deps: ['$ERRNO_CODES', '$ERRNO_MESSAGES', '__setErrNo', '$PATH', '$TTY', '$MEMFS', '$IDBFS', '$NODEFS', 'stdin', 'stdout', 'stderr', 'fflush'],
   $FS__postset: 'FS.staticInit();' +
-                '__ATINIT__.unshift({ func: function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() } });' +
-                '__ATMAIN__.push({ func: function() { FS.ignorePermissions = false } });' +
-                '__ATEXIT__.push({ func: function() { FS.quit() } });' +
+                '__ATINIT__.unshift(function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() });' +
+                '__ATMAIN__.push(function() { FS.ignorePermissions = false });' +
+                '__ATEXIT__.push(function() { FS.quit() });' +
                 // export some names through closure
                 'Module["FS_createFolder"] = FS.createFolder;' +
                 'Module["FS_createPath"] = FS.createPath;' +
