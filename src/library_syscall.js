@@ -592,6 +592,28 @@ mergeInto(LibraryManager.library, {
           }
           return ret;
         }
+        case 168: { // poll
+          var fds = get(), nfds = get(), timeout = get();
+          var DEFAULT_POLLMASK = {{{ cDefine('POLLIN') }}} | {{{ cDefine('POLLOUT') }}};
+          var nonzero = 0;
+          for (var i = 0; i < nfds; i++) {
+            var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
+            var fd = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.fd, 'i32') }}};
+            var events = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.events, 'i16') }}};
+            var mask = {{{ cDefine('POLLNVAL') }}};
+            var stream = FS.getStream(fd);
+            if (stream) {
+              mask = DEFAULT_POLLMASK;
+              if (stream.stream_ops.poll) {
+                mask = stream.stream_ops.poll(stream);
+              }
+            }
+            mask &= events | {{{ cDefine('POLLERR') }}} | {{{ cDefine('POLLHUP') }}};
+            if (mask) nonzero++;
+            {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'mask', 'i16') }}};
+          }
+          return nonzero;
+        }
         case 195: { // SYS_stat64
           var path = getStr(), buf = get();
           return SYSCALLS.doStat(function() { return FS.stat(path) }, buf);
