@@ -5782,18 +5782,11 @@ LibraryManager.library = {
     {{{ cDefine('EOWNERDEAD') }}}: 'Previous owner died',
     {{{ cDefine('ESTRPIPE') }}}: 'Streams pipe error',
   },
-  __setErrNo__deps: ['__errno_location'],
   __setErrNo: function(value) {
-    if (___setErrNo.loc === undefined) {
-      if (Module["___errno_location"]) {
-        ___setErrNo.loc = Module["___errno_location"]();
-      } else {
-        ___setErrNo.loc = 0; // no __errno_location, so errno is inaccessible from C code; no need to set it
-      }
-    }
-    if (___setErrNo.loc) {
-      {{{ makeSetValue('___setErrNo.loc', '0', 'value', 'i32') }}};
-    }
+    if (Module['___errno_location']) {{{ makeSetValue("Module['___errno_location']()", 0, 'value', 'i32') }}};
+#if ASSERTIONS
+    else Module.printErr('failed to set errno from JS');
+#endif
     return value;
   },
 
