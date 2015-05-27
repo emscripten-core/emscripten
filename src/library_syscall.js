@@ -512,9 +512,14 @@ mergeInto(LibraryManager.library, {
             default: abort('bad ioctl syscall ' + op);
           }
         }
-        case 83: { // SYS_symlink
+        case 83: { // symlink
           var target = getStr(), linkpath = getStr();
           FS.symlink(target, linkpath);
+          return 0;
+        }
+        case 94: { // fchmod
+          var fd = get(), mode = get();
+          FS.fchmod(fd, mode);
           return 0;
         }
         case 140: { // llseek
