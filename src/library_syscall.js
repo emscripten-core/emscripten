@@ -666,6 +666,7 @@ mergeInto(LibraryManager.library, {
               return 0; // Pretend that the locking is successful.
             case {{{ cDefine('F_SETOWN') }}}:
             case {{{ cDefine('F_GETOWN') }}}:
+            case {{{ cDefine('F_GETOWN_EX') }}}:
               return -ERRNO_CODES.EINVAL; // These are for sockets. We don't have them fully implemented yet.
             default: {
 #if SYSCALL_DEBUG
