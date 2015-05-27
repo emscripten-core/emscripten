@@ -432,6 +432,7 @@
             "O_TRUNC", 
             "O_DIRECTORY",
             "F_GETOWN", 
+            "F_GETOWN_EX",
             "F_SETFD", 
             "O_EXCL", 
             "F_GETFL"
