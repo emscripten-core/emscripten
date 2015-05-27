@@ -453,6 +453,11 @@ mergeInto(LibraryManager.library, {
           FS.unlink(path);
           return 0;
         }
+        case 15: { // chmod
+          var path = getStr(), mode = get();
+          FS.chmod(path, mode);
+          return 0;
+        }
         case 33: { // access
           var path = getStr(), amode = get();
           if (amode & ~{{{ cDefine('S_IRWXO') }}}) {
