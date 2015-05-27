@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <assert.h>
 
 int main() {
-  int f = open("/test", O_RDWR, 0777);
+  int f = open("test", O_RDWR, 0777);
+  assert(f > 0);
 
   printf("F_DUPFD: %d\n", fcntl(f, F_DUPFD, 100) >= 100);
   printf("errno: %d\n", errno);
