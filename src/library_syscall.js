@@ -439,6 +439,15 @@ mergeInto(LibraryManager.library, {
 #endif
       return stream;
     }
+    function get64() {
+      var ret = get();
+      assert(get() === 0); // high bits must be 0
+#if SYSCALL_DEBUG
+      Module.printErr('    (i64: "' + ret + '")');
+#endif
+      return ret;
+    }
+    // main
 #if SYSCALL_DEBUG
     Module.printErr('syscall! ' + [which, SYSCALLS.getFromCode(which)]);
     var ret = (function() {
@@ -706,6 +715,12 @@ mergeInto(LibraryManager.library, {
             path = PATH.join2(dir, path);
           }
           return SYSCALLS.doStat(function() { return (nofollow ? FS.lstat : FS.stat)(path) }, buf);
+        }
+        case 324: { // fallocate
+          var stream = getStreamFromFD(), mode = get(), offset = get64(), len = get64();
+          assert(mode === 0);
+          FS.allocate(stream, offset, len);
+          return 0;
         }
         default: abort('bad syscall ' + which);
       }
