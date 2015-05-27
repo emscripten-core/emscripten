@@ -391,7 +391,11 @@ mergeInto(LibraryManager.library, {
     },
   },
 
-  __syscall__deps: ['$SYSCALLS', '$FS', '$ERRNO_CODES', '$PATH'],
+  __syscall__deps: ['$SYSCALLS', '$FS', '$ERRNO_CODES', '$PATH'
+#if SYSCALL_DEBUG
+                   ,'$ERRNO_MESSAGES'
+#endif
+  ],
   __syscall: function(which, varargs) {
     var get;
     if (typeof which === 'number') {
@@ -677,6 +681,9 @@ mergeInto(LibraryManager.library, {
       }
     } catch (e) {
       if (typeof FS === 'undefined' || !(e instanceof FS.ErrnoError)) abort(e);
+#if SYSCALL_DEBUG
+      Module.printErr('error: syscall failed with ' + e.errno + ' (' + ERRNO_MESSAGES[e.errno] + ')');
+#endif
       return -e.errno;
     }
   },
