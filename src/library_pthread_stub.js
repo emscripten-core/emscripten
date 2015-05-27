@@ -102,7 +102,7 @@ var LibraryPThreadStub = {
   },
 
   pthread_cleanup_push: function(routine, arg) {
-    __ATEXIT__.push({ func: function() { Runtime.dynCall('vi', routine, [arg]) } })
+    __ATEXIT__.push(function() { Runtime.dynCall('vi', routine, [arg]) })
     _pthread_cleanup_push.level = __ATEXIT__.length;
   },
 

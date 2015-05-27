@@ -622,7 +622,7 @@ var LibraryPThread = {
     if (PThread.exitHandlers === null) {
       PThread.exitHandlers = [];
       if (!ENVIRONMENT_IS_PTHREAD) {
-        __ATEXIT__.push({ func: function() { PThread.runExitHandlers(); } });
+        __ATEXIT__.push(function() { PThread.runExitHandlers(); });
       }
     }
     PThread.exitHandlers.push(function() { Runtime.dynCall('vi', routine, [arg]) });
