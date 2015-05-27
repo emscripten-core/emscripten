@@ -645,6 +645,14 @@ mergeInto(LibraryManager.library, {
           }
           return nonzero;
         }
+        case 183: { // getcwd
+          var buf = get(), size = get();
+          if (size === 0) return -ERRNO_CODES.EINVAL;
+          var cwd = FS.cwd();
+          if (size < cwd.length + 1) return -ERRNO_CODES.ERANGE;
+          writeAsciiToMemory(cwd, buf);
+          return buf;
+        }
         case 192: { // mmap2
           var addr = get(), len = get(), prot = get(), flags = get(), fd = get(), off = get()
           off <<= 12; // undo pgoffset
