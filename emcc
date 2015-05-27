@@ -745,6 +745,10 @@ try:
   else:
     js_libraries.append(shared.path_from_root('src', 'library_pthread_stub.js'))
 
+  if pthreads and 'PROXY_TO_WORKER=1' in settings_changes:
+    logging.error('-s PROXY_TO_WORKER=1 is not yet supported with -s USE_PTHREADS=1!')
+    exit(1)
+
   has_source_inputs = False
   has_header_inputs = False
   lib_dirs = [shared.path_from_root('system', 'local', 'lib'),
