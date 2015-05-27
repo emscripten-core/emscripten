@@ -587,6 +587,10 @@ mergeInto(LibraryManager.library, {
           FS.fchmod(fd, mode);
           return 0;
         }
+        case 118: { // fsync
+          var stream = getStreamFromFD();
+          return 0; // we can't do anything synchronously; the in-memory FS is already synced to
+        }
         case 133: { // fchdir
           var stream = getStreamFromFD();
           FS.chdir(stream.path);
