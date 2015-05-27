@@ -716,6 +716,27 @@ mergeInto(LibraryManager.library, {
 #endif
           return 0;
         }
+        case 268: { // statfs64
+          var path = getStr(), size = get(), buf = get();
+          assert(size === {{{ C_STRUCTS.statfs.__size__ }}});
+          // NOTE: None of the constants here are true. We're just returning safe and
+          //       sane values.
+          {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bsize, '4096', 'i32') }}};
+          {{{ makeSetValue('buf', C_STRUCTS.statfs.f_frsize, '4096', 'i32') }}};
+          {{{ makeSetValue('buf', C_STRUCTS.statfs.f_blocks, '1000000', 'i32') }}};
+          {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bfree, '500000', 'i32') }}};
+          {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bavail, '500000', 'i32') }}};
+          {{{ makeSetValue('buf', C_STRUCTS.statfs.f_files, 'FS.nextInode', 'i32') }}};
+          {{{ makeSetValue('buf', C_STRUCTS.statfs.f_ffree, '1000000', 'i32') }}};
+          {{{ makeSetValue('buf', C_STRUCTS.statfs.f_fsid, '42', 'i32') }}};
+          {{{ makeSetValue('buf', C_STRUCTS.statfs.f_flags, '2', 'i32') }}};  // ST_NOSUID
+          {{{ makeSetValue('buf', C_STRUCTS.statfs.f_namelen, '255', 'i32') }}};
+          return 0;
+        }
+        case 269: { // fstatfs64
+          var stream = getStreamFromFD(), size = get(), buf = get();
+          return ___syscall([268, 0, size, buf], 0);
+        }
         case 272: { // fadvise64_64
           return 0; // your advice is important to us (but we can't use it)
         }
