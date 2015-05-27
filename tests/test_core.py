@@ -4527,10 +4527,11 @@ def process(filename):
 
     mem_file = 'src.cpp.o.js.mem'
     orig_args = self.emcc_args
-    for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']]:
+    for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1'], ['-s', 'SYSCALL_DEBUG=1']]:
+      print mode
       self.emcc_args = orig_args + mode
       try_delete(mem_file)
-      self.do_run(src, ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n \ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n'),
+      self.do_run(src, map(lambda x: x if 'SYSCALL_DEBUG=1' not in mode else 'syscall! 146,SYS_writev', ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n \ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n')),
                   post_build=post, extra_emscripten_args=['-H', 'libc/fcntl.h'])
       if '-O2' in self.emcc_args:
         assert os.path.exists(mem_file)
