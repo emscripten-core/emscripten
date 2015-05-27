@@ -1295,7 +1295,7 @@ var LibraryGL = {
     for (var i = 0; i < numAttachments; i++)
       list.push({{{ makeGetValue('attachments', 'i*4', 'i32') }}});
 
-    GLctx.invalidateFramebuffer(target, list);
+    GLctx['invalidateFramebuffer'](target, list);
   },
 
   glInvalidateSubFramebuffer__sig: 'viiiiiii',
@@ -1304,47 +1304,47 @@ var LibraryGL = {
     for (var i = 0; i < numAttachments; i++)
       list.push({{{ makeGetValue('attachments', 'i*4', 'i32') }}});
 
-    GLctx.invalidateSubFramebuffer(target, list, x, y, width, height);
+    GLctx['invalidateSubFramebuffer'](target, list, x, y, width, height);
   },
 
   glTexStorage2D__sig: 'viiiii',
   glTexStorage2D: function(target, levels, internalformat, width, height) {
-    GLctx.texStorage2D(target, levels, internalformat, width, height);
+    GLctx['texStorage2D'](target, levels, internalformat, width, height);
   },
 
   glTexStorage3D__sig: 'viiiiii',
   glTexStorage3D: function(target, levels, internalformat, width, height, depth) {
-    GLctx.texStorage3D(target, levels, internalformat, width, height, depth);
+    GLctx['texStorage3D'](target, levels, internalformat, width, height, depth);
   },
 
   glTexImage3D__sig: 'viiiiiiiiii',
   glTexImage3D: function(target, level, internalFormat, width, height, depth, border, format, type, data) {
-    GLctx.texImage3D(target, level, internalFormat, width, height, depth, border, format, type,
+    GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type,
                      HEAPU8.subarray(data));
   },
 
   glTexSubImage3D__sig: 'viiiiiiiiiii',
   glTexSubImage3D: function(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, data) {
-    GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type,
+    GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type,
                         HEAPU8.subarray(data));
   },
 
   // Framebuffer objects
   glBlitFramebuffer__sig: 'viiiiiiiiii',
   glBlitFramebuffer: function(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter) {
-    GLctx.blitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter);
+    GLctx['blitFramebuffer'](srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter);
   },
 
   glReadBuffer__sig: 'vi',
   glReadBuffer: function(src) {
-    GLctx.readBuffer(src);
+    GLctx['readBuffer'](src);
   },
 
   // Queries
   glGenQueries__sig: 'vii',
   glGenQueries: function(n, ids) {
     for (var i = 0; i < n; i++) {
-      var query = GLctx.createQuery();
+      var query = GLctx['createQuery']();
       if (!query) {
         GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
 #if GL_ASSERTIONS
@@ -1366,7 +1366,7 @@ var LibraryGL = {
       var id = {{{ makeGetValue('ids', 'i*4', 'i32') }}};
       var query = GL.queries[id];
       if (!query) continue; // GL spec: "unused names in ids are ignored, as is the name zero."
-      GLctx.deleteQuery(query);
+      GLctx['deleteQuery'](query);
       query.name = 0;
       GL.queries[id] = null;
     }
@@ -1376,7 +1376,7 @@ var LibraryGL = {
   glIsQuery: function(id) {
     var query = GL.queries[query];
     if (!query) return 0;
-    return GLctx.isQuery(query);
+    return GLctx['isQuery'](query);
   },
 
   glBeginQuery__sig: 'vii',
@@ -1384,12 +1384,12 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.queries, id, 'glBeginQuery', 'id');
 #endif
-    GLctx.beginQuery(target, id ? GL.queries[id] : null);
+    GLctx['beginQuery'](target, id ? GL.queries[id] : null);
   },
 
   glEndQuery__sig: 'vi',
   glEndQuery: function(target) {
-    GLctx.endQuery(target);
+    GLctx['endQuery'](target);
   },
 
   glGetQueryiv__sig: 'viii',
@@ -1419,7 +1419,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.queries, id, 'glGetQueryObjectuiv', 'id');
 #endif
     var query = GL.queries[id];
-    var param = GLctx.getQueryParameter(query, pname);
+    var param = GLctx['getQueryParameter'](query, pname);
     var ret;
     if (typeof param == 'boolean') {
       ret = param ? 1 : 0;
@@ -1432,14 +1432,14 @@ var LibraryGL = {
   // Renderbuffer objects
   glRenderbufferStorageMultisample__sig: 'viiiii',
   glRenderbufferStorageMultisample: function(target, samples, internalformat, width, height) {
-    GLctx.renderbufferStorageMultisample(target, samples, internalformat, width, height);
+    GLctx['renderbufferStorageMultisample'](target, samples, internalformat, width, height);
   },
 
   // Sampler objects
   glGenSamplers__sig: 'vii',
   glGenSamplers: function(n, samplers) {
     for (var i = 0; i < n; i++) {
-      var sampler = GLctx.createSampler();
+      var sampler = GLctx['createSampler']();
       if (!sampler) {
         GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
 #if GL_ASSERTIONS
@@ -1461,7 +1461,7 @@ var LibraryGL = {
       var id = {{{ makeGetValue('samplers', 'i*4', 'i32') }}};
       var sampler = GL.samplers[id];
       if (!sampler) continue;
-      GLctx.deleteSampler(sampler);
+      GLctx['deleteSampler'](sampler);
       sampler.name = 0;
       GL.samplers[id] = null;
     }
@@ -1471,7 +1471,7 @@ var LibraryGL = {
   glIsSampler: function(id) {
     var sampler = GL.samplers[id];
     if (!sampler) return 0;
-    return GLctx.isSampler(sampler);
+    return GLctx['isSampler'](sampler);
   },
 
   glBindSampler__sig: 'vii',
@@ -1479,7 +1479,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
 #endif
-    GLctx.bindSampler(unit, sampler ? GL.samplers[sampler] : null);
+    GLctx['bindSampler'](unit, sampler ? GL.samplers[sampler] : null);
   },
 
   glSamplerParameterf__sig: 'viif',
@@ -1487,7 +1487,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
 #endif
-    GLctx.samplerParameterf(sampler ? GL.samplers[sampler] : null, pname, param);
+    GLctx['samplerParameterf'](sampler ? GL.samplers[sampler] : null, pname, param);
   },
 
   glSamplerParameteri__sig: 'viii',
@@ -1495,7 +1495,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
 #endif
-    GLctx.samplerParameteri(sampler ? GL.samplers[sampler] : null, pname, param);
+    GLctx['samplerParameteri'](sampler ? GL.samplers[sampler] : null, pname, param);
   },
 
   glSamplerParameterfv__sig: 'viii',
@@ -1504,7 +1504,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
 #endif
     var param = {{{ makeGetValue('params', '0', 'float') }}};
-    GLctx.samplerParameterf(sampler ? GL.samplers[sampler] : null, pname, param);
+    GLctx['samplerParameterf'](sampler ? GL.samplers[sampler] : null, pname, param);
   },
 
   glSamplerParameteriv__sig: 'viii',
@@ -1513,7 +1513,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
 #endif
     var param = {{{ makeGetValue('params', '0', 'i32') }}};
-    GLctx.samplerParameteri(sampler ? GL.samplers[sampler] : null, pname, param);
+    GLctx['samplerParameteri'](sampler ? GL.samplers[sampler] : null, pname, param);
   },
 
   glGetSamplerParameterfv__sig: 'viii',
@@ -1550,7 +1550,7 @@ var LibraryGL = {
   glGenTransformFeedbacks__sig: 'vii',
   glGenTransformFeedbacks: function(n, ids) {
     for (var i = 0; i < n; i++) {
-      var transformFeedback = GLctx.createTransformFeedback();
+      var transformFeedback = GLctx['createTransformFeedback']();
       if (!transformFeedback) {
         GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
 #if GL_ASSERTIONS
@@ -1572,7 +1572,7 @@ var LibraryGL = {
       var id = {{{ makeGetValue('ids', 'i*4', 'i32') }}};
       var transformFeedback = GL.transformFeedbacks[id];
       if (!transformFeedback) continue; // GL spec: "unused names in ids are ignored, as is the name zero."
-      GLctx.deleteTransformFeedback(transformFeedback);
+      GLctx['deleteTransformFeedback'](transformFeedback);
       transformFeedback.name = 0;
       GL.transformFeedbacks[id] = null;
     }
@@ -1582,7 +1582,7 @@ var LibraryGL = {
   glIsTransformFeedback: function(transformFeedback) {
     var transformFeedback = GL.transformFeedbacks[transformFeedback];
     if (!transformFeedback) return 0;
-    return GLctx.isTransformFeedback(transformFeedback);
+    return GLctx['isTransformFeedback'](transformFeedback);
   },
 
   glBindTransformFeedback__sig: 'vii',
@@ -1595,27 +1595,27 @@ var LibraryGL = {
       GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
       return;
     }
-    GLctx.bindTransformFeedback(target, transformFeedback);
+    GLctx['bindTransformFeedback'](target, transformFeedback);
   },
 
   glBeginTransformFeedback__sig: 'vi',
   glBeginTransformFeedback: function(primitiveMode) {
-    GLctx.beginTransformFeedback(primitiveMode);
+    GLctx['beginTransformFeedback'](primitiveMode);
   },
 
   glEndTransformFeedback__sig: 'v',
   glEndTransformFeedback: function() {
-    GLctx.endTransformFeedback();
+    GLctx['endTransformFeedback']();
   },
 
   glPauseTransformFeedback__sig: 'v',
   glPauseTransformFeedback: function() {
-    GLctx.pauseTransformFeedback();
+    GLctx['pauseTransformFeedback']();
   },
 
   glResumeTransformFeedback__sig: 'v',
   glResumeTransformFeedback: function() {
-    GLctx.resumeTransformFeedback();
+    GLctx['resumeTransformFeedback']();
   },
 
   glTransformFeedbackVaryings__sig: 'viiii',
@@ -1628,7 +1628,7 @@ var LibraryGL = {
     for (var i = 0; i < count; i++)
       vars.push(Pointer_stringify({{{ makeGetValue('varyings', 'i*4', 'i32') }}}));
 
-    GLctx.transformFeedbackVaryings(program, vars, bufferMode);
+    GLctx['transformFeedbackVaryings'](program, vars, bufferMode);
   },
 
   glGetTransformFeedbackVarying__sig: 'viiiiiii',
@@ -1637,7 +1637,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.programs, program, 'glGetTransformFeedbackVarying', 'program');
 #endif
     program = GL.programs[program];
-    var info = GLctx.getTransformFeedbackVarying(program, index);
+    var info = GLctx['getTransformFeedbackVarying'](program, index);
     if (!info) return; // If an error occurred, the return parameters length, size, type and name will be unmodified.
 
     var infoname = info.name.slice(0, Math.max(0, bufSize - 1));
@@ -1663,7 +1663,7 @@ var LibraryGL = {
       return;
     }
 #endif
-    var result = GLctx.getIndexedParameter(target, index);
+    var result = GLctx['getIndexedParameter'](target, index);
     var ret;
     switch (typeof result) {
       case 'boolean':
@@ -1715,7 +1715,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.buffers, buffer, 'glBindBufferBase', 'buffer');
 #endif
     var bufferObj = buffer ? GL.buffers[buffer] : null;
-    GLctx.bindBufferBase(target, index, bufferObj);
+    GLctx['bindBufferBase'](target, index, bufferObj);
   },
 
   glBindBufferRange__sig: 'viiiii',
@@ -1724,7 +1724,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.buffers, buffer, 'glBindBufferRange', 'buffer');
 #endif
     var bufferObj = buffer ? GL.buffers[buffer] : null;
-    GLctx.bindBufferRange(target, index, bufferObj, offset, ptrsize);
+    GLctx['bindBufferRange'](target, index, bufferObj, offset, ptrsize);
   },
 
   glGetUniformIndices__sig: 'viiii',
@@ -1748,7 +1748,7 @@ var LibraryGL = {
     for (var i = 0; i < uniformCount; i++)
       names.push(Pointer_stringify({{{ makeGetValue('uniformNames', 'i*4', 'i32') }}}));
 
-    var result = GLctx.getUniformIndices(program, names);
+    var result = GLctx['getUniformIndices'](program, names);
     if (!result) return; // GL spec: If an error is generated, nothing is written out to uniformIndices.
 
     var len = result.length;
@@ -1779,7 +1779,7 @@ var LibraryGL = {
       ids.push({{{ makeGetValue('uniformIndices', 'i*4', 'i32') }}});
     }
 
-    var result = GLctx.getActiveUniforms(program, ids, pname);
+    var result = GLctx['getActiveUniforms'](program, ids, pname);
     if (!result) return; // GL spec: If an error is generated, nothing is written out to params.
 
     var len = result.length;
@@ -1795,7 +1795,7 @@ var LibraryGL = {
 #endif
     program = GL.programs[program];
     uniformBlockName = Pointer_stringify(uniformBlockName);
-    return GLctx.getUniformBlockIndex(program, uniformBlockName);
+    return GLctx['getUniformBlockIndex'](program, uniformBlockName);
   },
 
   glGetActiveUniformBlockiv__sig: 'viiii',
@@ -1812,7 +1812,7 @@ var LibraryGL = {
 #endif
     program = GL.programs[program];
 
-    var result = GLctx.getActiveUniformBlockParameter(program, uniformBlockIndex, pname);
+    var result = GLctx['getActiveUniformBlockParameter'](program, uniformBlockIndex, pname);
     if (!result) return; // If an error occurs, nothing will be written to params.
     if (typeof result == 'number') {
       {{{ makeSetValue('params', '0', 'result', 'i32') }}};
@@ -1830,7 +1830,7 @@ var LibraryGL = {
 #endif
     program = GL.programs[program];
 
-    var result = GLctx.getActiveUniformBlockName(program, uniformBlockIndex);
+    var result = GLctx['getActiveUniformBlockName'](program, uniformBlockIndex);
     if (!result) return; // If an error occurs, nothing will be written to uniformBlockName or length.
     var name = result.slice(0, Math.max(0, bufSize - 1));
     if (uniformBlockName && bufSize > 0) {
@@ -1848,7 +1848,7 @@ var LibraryGL = {
 #endif
     program = GL.programs[program];
 
-    GLctx.uniformBlockBinding(program, uniformBlockIndex, uniformBlockBinding);
+    GLctx['uniformBlockBinding'](program, uniformBlockIndex, uniformBlockBinding);
   },
 
 // ~USE_WEBGL2
