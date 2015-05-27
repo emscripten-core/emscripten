@@ -464,6 +464,21 @@ mergeInto(LibraryManager.library, {
           FS.unlink(path);
           return 0;
         }
+        case 14: { // mknod
+          var path = getStr(), mode = get(), dev = get();
+          // we don't want this in the JS API as it uses mknod to create all nodes.
+          switch (mode & {{{ cDefine('S_IFMT') }}}) {
+            case {{{ cDefine('S_IFREG') }}}:
+            case {{{ cDefine('S_IFCHR') }}}:
+            case {{{ cDefine('S_IFBLK') }}}:
+            case {{{ cDefine('S_IFIFO') }}}:
+            case {{{ cDefine('S_IFSOCK') }}}:
+              break;
+            default: return -ERRNO_CODES.EINVAL;
+          }
+          FS.mknod(path, mode, dev);
+          return 0;
+        }
         case 15: { // chmod
           var path = getStr(), mode = get();
           FS.chmod(path, mode);
