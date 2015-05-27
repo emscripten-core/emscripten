@@ -566,6 +566,14 @@ mergeInto(LibraryManager.library, {
           FS.symlink(target, linkpath);
           return 0;
         }
+        case 85: { // readlink
+          var path = getStr(), buf = get(), bufsize = get();
+          if (bufsize <= 0) return -ERRNO_CODES.EINVAL;
+          var ret = FS.readlink(path);
+          ret = ret.slice(0, Math.max(0, bufsize));
+          writeStringToMemory(ret, buf, true);
+          return ret.length;
+        }
         case 91: { // munmap
           var addr = get(), len = get();
           // TODO: support unmmap'ing parts of allocations
