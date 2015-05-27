@@ -357,6 +357,10 @@ mergeInto(LibraryManager.library, {
       return SYSCALLS.CODE_TO_NAME[code];
     },
 #endif
+
+    // global state
+    mappings: {},
+
     // shared utilities
     doStat: function(func, buf) {
       try {
@@ -389,6 +393,10 @@ mergeInto(LibraryManager.library, {
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i32') }}};
       return 0;
     },
+    doMsync: function(addr, stream, len, flags) {
+      var buffer = new Uint8Array(HEAPU8.buffer, addr, len);
+      FS.msync(stream, buffer, 0, len, flags);
+    }
   },
 
   __syscall__deps: ['$SYSCALLS', '$FS', '$ERRNO_CODES', '$PATH', '__setErrNo'
@@ -553,6 +561,22 @@ mergeInto(LibraryManager.library, {
           FS.symlink(target, linkpath);
           return 0;
         }
+        case 91: { // munmap
+          var addr = get(), len = get();
+          // TODO: support unmmap'ing parts of allocations
+          var info = SYSCALLS.mappings[addr];
+          if (!info) return 0;
+          if (len === info.len) {
+            var stream = FS.getStream(info.fd);
+            SYSCALLS.doMsync(addr, stream, len, info.flags)
+            FS.munmap(stream);
+            SYSCALLS.mappings[addr] = null;
+            if (info.allocated) {
+              _free(info.malloc);
+            }
+          }
+          return 0;
+        }
         case 94: { // fchmod
           var fd = get(), mode = get();
           FS.fchmod(fd, mode);
@@ -565,6 +589,13 @@ mergeInto(LibraryManager.library, {
           FS.llseek(stream, offset, whence);
           {{{ makeSetValue('result', '0', 'stream.position', 'i32') }}};
           if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
+          return 0;
+        }
+        case 144: { // msync
+          var addr = get(), len = get(), flags = get();
+          var info = SYSCALLS.mappings[addr];
+          if (!info) return 0;
+          SYSCALLS.doMsync(addr, FS.getStream(info.fd), len, info.flags);
           return 0;
         }
         case 145: { // readv
@@ -613,6 +644,26 @@ mergeInto(LibraryManager.library, {
             {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'mask', 'i16') }}};
           }
           return nonzero;
+        }
+        case 192: { // mmap2
+          var addr = get(), len = get(), prot = get(), flags = get(), fd = get(), off = get()
+          off <<= 12; // undo pgoffset
+          var ptr;
+          var allocated = false;
+          if (fd === -1) {
+            ptr = _malloc(len);
+            if (!ptr) return -ERRNO_CODES.ENOMEM;
+            _memset(ptr, 0, len);
+            allocated = true;
+          } else {
+            var info = FS.getStream(fd);
+            if (!info) return -ERRNO_CODES.EBADF;
+            var res = FS.mmap(info, HEAPU8, addr, len, off, prot, flags);
+            ptr = res.ptr;
+            allocated = res.allocated;
+          }
+          SYSCALLS.mappings[ptr] = { malloc: ptr, len: len, allocated: allocated, fd: fd, flags: flags };
+          return ptr;
         }
         case 195: { // SYS_stat64
           var path = getStr(), buf = get();
