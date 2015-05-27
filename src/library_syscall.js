@@ -438,8 +438,7 @@ mergeInto(LibraryManager.library, {
           return FS.write(stream, {{{ makeGetSlabs('ptr', 'i8', true) }}}, buf, count);
         }
         case 5: { // open
-          var pathname = get(), flags = get(), mode = get() /* optional TODO */;
-          pathname = Pointer_stringify(pathname);
+          var pathname = getStr(), flags = get(), mode = get() /* optional TODO */;
           var stream = FS.open(pathname, flags, mode);
           return stream.fd;
         }
@@ -450,14 +449,12 @@ mergeInto(LibraryManager.library, {
           return 0;
         }
         case 10: { // unlink
-          var path = get();
-          path = Pointer_stringify(path);
+          var path = getStr();
           FS.unlink(path);
           return 0;
         }
         case 33: { // access
-          var path = get(), amode = get();
-          path = Pointer_stringify(path);
+          var path = getStr(), amode = get();
           if (amode & ~{{{ cDefine('S_IRWXO') }}}) {
             // need a valid mode
             return -ERRNO_CODES.EINVAL;
@@ -475,15 +472,12 @@ mergeInto(LibraryManager.library, {
           return 0;
         }
         case 38: { // rename
-          var old_path = get(), new_path = get();
-          old_path = Pointer_stringify(old_path);
-          new_path = Pointer_stringify(new_path);
+          var old_path = getStr(), new_path = getStr();
           FS.rename(old_path, new_path);
           return 0;
         }
         case 39: { // mkdir
-          var path = get(), mode = get();
-          path = Pointer_stringify(path);
+          var path = getStr(), mode = get();
           // remove a trailing slash, if one - /a/b/ has basename of '', but
           // we want to create b in the context of this function
           path = PATH.normalize(path);
@@ -492,8 +486,7 @@ mergeInto(LibraryManager.library, {
           return 0;
         }
         case 40: { // rmdir
-          var path = get();
-          path = Pointer_stringify(path);
+          var path = getStr();
           FS.rmdir(path);
           return 0;
         }
@@ -515,8 +508,8 @@ mergeInto(LibraryManager.library, {
           }
         }
         case 83: { // SYS_symlink
-          var target = get(), linkpath = get();
-          FS.symlink(Pointer_stringify(target), Pointer_stringify(linkpath));
+          var target = getStr(), linkpath = getStr();
+          FS.symlink(target, linkpath);
           return 0;
         }
         case 140: { // llseek
@@ -554,12 +547,12 @@ mergeInto(LibraryManager.library, {
           return ret;
         }
         case 195: { // SYS_stat64
-          var path = get(), buf = get();
-          return SYSCALLS.doStat(function() { return FS.stat(Pointer_stringify(path)) }, buf);
+          var path = getStr(), buf = get();
+          return SYSCALLS.doStat(function() { return FS.stat(path) }, buf);
         }
         case 196: { // SYS_lstat64
-          var path = get(), buf = get();
-          return SYSCALLS.doStat(function() { return FS.lstat(Pointer_stringify(path)) }, buf);
+          var path = getStr(), buf = get();
+          return SYSCALLS.doStat(function() { return FS.lstat(path) }, buf);
         }
         case 197: { // SYS_fstat64
           var stream = getStreamFromFD(), buf = get();
