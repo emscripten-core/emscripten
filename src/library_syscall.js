@@ -391,7 +391,7 @@ mergeInto(LibraryManager.library, {
     },
   },
 
-  __syscall__deps: ['$SYSCALLS', '$FS', '$ERRNO_CODES', '$PATH'
+  __syscall__deps: ['$SYSCALLS', '$FS', '$ERRNO_CODES', '$PATH', '__setErrNo'
 #if SYSCALL_DEBUG
                    ,'$ERRNO_MESSAGES'
 #endif
@@ -664,10 +664,13 @@ mergeInto(LibraryManager.library, {
             case {{{ cDefine('F_SETLK64') }}}:
             case {{{ cDefine('F_SETLKW64') }}}:
               return 0; // Pretend that the locking is successful.
-            case {{{ cDefine('F_SETOWN') }}}:
-            case {{{ cDefine('F_GETOWN') }}}:
             case {{{ cDefine('F_GETOWN_EX') }}}:
+            case {{{ cDefine('F_SETOWN') }}}:
               return -ERRNO_CODES.EINVAL; // These are for sockets. We don't have them fully implemented yet.
+            case {{{ cDefine('F_GETOWN') }}}:
+              // musl trusts getown return values, due to a bug where they must be, as they overlap with errors. just return -1 here, so fnctl() returns that, and we set errno ourselves.
+              ___setErrNo(ERRNO_CODES.EINVAL);
+              return -1;
             default: {
 #if SYSCALL_DEBUG
               Module.printErr('warning: fctl64 unrecognized command ' + cmd);
