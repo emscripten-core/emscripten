@@ -441,6 +441,7 @@ mergeInto(LibraryManager.library, {
     }
 #if SYSCALL_DEBUG
     Module.printErr('syscall! ' + [which, SYSCALLS.getFromCode(which)]);
+    var ret = (function() {
 #endif
     try {
       switch (which) {
@@ -708,6 +709,11 @@ mergeInto(LibraryManager.library, {
 #endif
       return -e.errno;
     }
+#if SYSCALL_DEBUG
+    })();
+    Module.printErr('syscall return: ' + ret);
+    return ret;
+#endif
   },
 
   __syscall_cp__deps: ['__syscall'],
