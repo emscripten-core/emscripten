@@ -685,7 +685,10 @@ mergeInto(LibraryManager.library, {
 #endif
           return 0;
         }
-        case 300: { // SYS_fstatat64
+        case 272: { // fadvise64_64
+          return 0; // your advice is important to us (but we can't use it)
+        }
+        case 300: { // fstatat64
           var dirfd = get(), path = getStr(), buf = get(), flags = get();
           var nofollow = flags & {{{ cDefine('AT_SYMLINK_NOFOLLOW') }}};
           flags = flags & (~{{{ cDefine('AT_SYMLINK_NOFOLLOW') }}});
