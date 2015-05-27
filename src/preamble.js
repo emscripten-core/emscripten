@@ -1013,7 +1013,7 @@ if (ENVIRONMENT_IS_PTHREAD) staticSealed = true; // The static memory area has b
 
 function enlargeMemory() {
 #if USE_PTHREADS
-  abort('Cannot enlarge memory arrays, since compiling with pthreads support enabled (-lpthread).');
+  abort('Cannot enlarge memory arrays, since compiling with pthreads support enabled (-s USE_PTHREADS=1).');
 #else
 #if ALLOW_MEMORY_GROWTH == 0
   abort('Cannot enlarge memory arrays. Either (1) compile with -s TOTAL_MEMORY=X with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with ALLOW_MEMORY_GROWTH which adjusts the size at runtime but prevents some optimizations, or (3) set Module.TOTAL_MEMORY before the program runs.');

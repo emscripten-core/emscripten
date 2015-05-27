@@ -433,7 +433,6 @@ try:
   emrun = False
   save_bc = False
   memory_init_file = None
-  pthreads = False
   use_preload_cache = False
   no_heap_copy = False
   proxy_to_worker = False
@@ -687,9 +686,6 @@ try:
       if not default_object_extension.startswith('.'):
         default_object_extension = '.' + default_object_extension
       newargs[i+1] = ''
-    elif newargs[i] == '-lpthread':
-      newargs[i] = ''
-      pthreads = True
 
   if should_exit:
     sys.exit(0)
@@ -739,15 +735,15 @@ try:
   # counter for the next index that should be used.
   next_arg_index = len(newargs)
 
+  pthreads = 'USE_PTHREADS=1' in settings_changes
   if pthreads:
     settings_changes.append('USE_PTHREADS=1')
     if not any(s.startswith('PTHREAD_POOL_SIZE=') for s in settings_changes):
       settings_changes.append('PTHREAD_POOL_SIZE=0')
     js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
+    newargs.append('-D__EMSCRIPTEN_PTHREADS__=1')
   else:
     js_libraries.append(shared.path_from_root('src', 'library_pthread_stub.js'))
-  if 'USE_PTHREADS=1' in settings_changes:
-    newargs.append('-D__EMSCRIPTEN_PTHREADS__=1')
 
   has_source_inputs = False
   has_header_inputs = False
