@@ -1403,7 +1403,7 @@ var LibraryGL = {
       return;
     }
 #endif
-    {{{ makeSetValue('params', '0', 'GLctx.getQuery(target, pname)', 'i32') }}};
+    {{{ makeSetValue('params', '0', 'GLctx[\'getQuery\'](target, pname)', 'i32') }}};
   },
 
   glGetQueryObjectuiv__sig: 'viii',
@@ -1528,7 +1528,7 @@ var LibraryGL = {
     }
 #endif
     sampler = GL.samplers[sampler];
-    {{{ makeSetValue('params', '0', 'GLctx.getSamplerParameter(sampler, pname)', 'float') }}};
+    {{{ makeSetValue('params', '0', 'GLctx[\'getSamplerParameter\'](sampler, pname)', 'float') }}};
   },
 
   glGetSamplerParameteriv__sig: 'viii',
@@ -1543,7 +1543,7 @@ var LibraryGL = {
     }
 #endif
     sampler = GL.samplers[sampler];
-    {{{ makeSetValue('params', '0', 'GLctx.getSamplerParameter(sampler, pname)', 'i32') }}};
+    {{{ makeSetValue('params', '0', 'GLctx[\'getSamplerParameter\'](sampler, pname)', 'i32') }}};
   },
 
   // Transform Feedback
