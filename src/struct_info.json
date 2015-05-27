@@ -91,7 +91,25 @@
                 "f_namemax"
             ]
         }
-    }, 
+    },
+    {
+        "file": "libc/sys/statfs.h",
+        "defines": [],
+        "structs": {
+            "statfs": [
+                "f_bsize",
+                "f_frsize",
+                "f_blocks",
+                "f_bfree",
+                "f_bavail",
+                "f_files",
+                "f_ffree",
+                "f_fsid",
+                "f_flags",
+                "f_namelen"
+            ]
+        } 
+    },
     {
         "file": "libc/fcntl.h", 
         "defines": [
