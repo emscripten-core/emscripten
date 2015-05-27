@@ -425,11 +425,18 @@ mergeInto(LibraryManager.library, {
       };
     }
     function getStr() {
-      return Pointer_stringify(get());
+      var ret = Pointer_stringify(get());
+#if SYSCALL_DEBUG
+      Module.printErr('    (str: "' + ret + '")');
+#endif
+      return ret;
     }
     function getStreamFromFD() {
       var stream = FS.getStream(get());
       if (!stream) throw new FS.ErrnoError(ERRNO_CODES.EBADF);
+#if SYSCALL_DEBUG
+      Module.printErr('    (stream: "' + stream.path + '")');
+#endif
       return stream;
     }
 #if SYSCALL_DEBUG
