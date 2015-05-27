@@ -11,10 +11,6 @@ static void *thread2_start(void *arg)
   EM_ASM(Module['print']('thread2_start!'););
   ++result;
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT();
-#endif
-
   pthread_exit(0);
 }
 
@@ -41,9 +37,9 @@ int main()
   if (stack_size != 81920 || stack_addr == 0)
     result = -100; // Report failure.
 
-//  pthread_join(thr, 0);
+  pthread_join(thr, 0);
 
-//#ifdef REPORT_RESULT
-//  REPORT_RESULT();
-//#endif
+#ifdef REPORT_RESULT
+  REPORT_RESULT();
+#endif
 }
