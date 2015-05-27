@@ -482,6 +482,11 @@ mergeInto(LibraryManager.library, {
           FS.unlink(path);
           return 0;
         }
+        case 12: { // chdir
+          var path = getStr();
+          FS.chdir(path);
+          return 0;
+        }
         case 14: { // mknod
           var path = getStr(), mode = get(), dev = get();
           // we don't want this in the JS API as it uses mknod to create all nodes.
