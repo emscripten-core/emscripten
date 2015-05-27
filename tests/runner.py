@@ -17,6 +17,7 @@ so you may prefer to use fewer cores here.
 
 from subprocess import Popen, PIPE, STDOUT
 import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer, multiprocessing, functools, stat, string, random
+from urllib import unquote
 
 # Setup
 
@@ -611,8 +612,10 @@ class BrowserCore(RunnerCore):
             output = queue.get()
             break
           time.sleep(0.1)
-
-        self.assertIdentical(expectedResult, output)
+        if output.startswith('/report_result?skipped:'):
+          self.skip(unquote(output[len('/report_result?skipped:'):]).strip())
+        else:
+          self.assertIdentical(expectedResult, output)
       finally:
         server.terminate()
         time.sleep(0.1) # see comment about Windows above
@@ -747,7 +750,7 @@ class BrowserCore(RunnerCore):
       self.reftest(path_from_root('tests', reference))
       if not manual_reference:
         args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
-    all_args = [PYTHON, EMCC, temp_filepath, '-o', outfile] + args
+    all_args = [PYTHON, EMCC, '-s', 'IN_TEST_HARNESS=1', temp_filepath, '-o', outfile] + args
     #print 'all args:', all_args
     try_delete(outfile)
     Popen(all_args).communicate()

@@ -1137,6 +1137,17 @@ assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' 
 
 var buffer;
 #if USE_PTHREADS
+
+if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') {
+#if IN_TEST_HARNESS
+  xhr = new XMLHttpRequest();
+  xhr.open('GET', 'http://localhost:8888/report_result?skipped:%20SharedArrayBuffer%20is%20not%20supported!');
+  xhr.send();
+  window.close();
+#endif
+  abort('Your browser does not support the SharedArrayBuffer and Atomics specification! Try running in Firefox Nightly.');
+}
+
 if (!ENVIRONMENT_IS_PTHREAD) buffer = new SharedArrayBuffer(TOTAL_MEMORY);
 
 // Currently SharedArrayBuffer does not have a slice() operation, so polyfill it in.
