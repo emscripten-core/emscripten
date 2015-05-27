@@ -6421,6 +6421,9 @@ var LibraryGL = {
   glVertexAttribDivisorARB: 'glVertexAttribDivisor',
   glDrawArraysInstancedARB: 'glDrawArraysInstanced',
   glDrawElementsInstancedARB: 'glDrawElementsInstanced',
+  glVertexAttribDivisorANGLE: 'glVertexAttribDivisor',
+  glDrawArraysInstancedANGLE: 'glDrawArraysInstanced',
+  glDrawElementsInstancedANGLE: 'glDrawElementsInstanced',
 
 
   glDrawBuffers__sig: 'vii',
@@ -6434,6 +6437,11 @@ var LibraryGL = {
 
     GL.currentContext.drawBuffersExt(bufArray);
   },
+
+  // OpenGL ES 2.0 draw buffer extensions compatibility
+
+  glDrawBuffersEXT: 'glDrawBuffers',
+
   // signatures of simple pass-through functions, see later
 
   glActiveTexture__sig: 'vi',
