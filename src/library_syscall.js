@@ -587,6 +587,11 @@ mergeInto(LibraryManager.library, {
           FS.fchmod(fd, mode);
           return 0;
         }
+        case 133: { // fchdir
+          var stream = getStreamFromFD();
+          FS.chdir(stream.path);
+          return 0;
+        }
         case 140: { // llseek
           var stream = getStreamFromFD(), offset_high = get(), offset_low = get(), result = get(), whence = get();
           var offset = offset_low;
