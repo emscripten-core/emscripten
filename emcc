@@ -1008,9 +1008,19 @@ try:
   else:
     js_libraries.append(shared.path_from_root('src', 'library_pthread_stub.js'))
 
-  if shared.Settings.USE_PTHREADS and shared.Settings.PROXY_TO_WORKER:
-    logging.error('-s PROXY_TO_WORKER=1 is not yet supported with -s USE_PTHREADS=1!')
-    exit(1)
+  if shared.Settings.USE_PTHREADS:
+    if shared.Settings.PROXY_TO_WORKER:
+      logging.error('-s PROXY_TO_WORKER=1 is not yet supported with -s USE_PTHREADS=1!')
+      exit(1)
+    if shared.Settings.LINKABLE:
+      logging.error('-s LINKABLE=1 is not supported with -s USE_PTHREADS=1!')
+      exit(1)
+    if shared.Settings.SIDE_MODULE:
+      logging.error('-s SIDE_MODULE=1 is not supported with -s USE_PTHREADS=1!')
+      exit(1)
+    if shared.Settings.MAIN_MODULE:
+      logging.error('-s MAIN_MODULE=1 is not supported with -s USE_PTHREADS=1!')
+      exit(1)
 
   shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
   shared.Settings.OPT_LEVEL = opt_level
