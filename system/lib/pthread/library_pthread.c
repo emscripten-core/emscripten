@@ -537,7 +537,7 @@ void EMSCRIPTEN_KEEPALIVE emscripten_main_thread_process_queued_calls()
 	// This must be before pthread_mutex_lock(), since pthread_mutex_lock() can call back to this function.
 	bool_inside_nested_process_queued_calls = 1;
 	pthread_mutex_lock(&call_queue_lock);
-	for(int i = 0; i < call_queue_length; ++i)
+	for (int i = 0; i < call_queue_length; ++i)
 		_do_call(call_queue[i]);
 	call_queue_length = 0;
 	bool_inside_nested_process_queued_calls = 0;

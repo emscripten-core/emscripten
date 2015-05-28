@@ -17,7 +17,7 @@ var LibraryPThread = {
     initMainThreadBlock: function() {
       if (ENVIRONMENT_IS_PTHREAD) return undefined;
       PThread.mainThreadBlock = allocate({{{ C_STRUCTS.pthread.__size__ }}}, "i32*", ALLOC_STATIC);
-      for(var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}}/4; ++i) HEAPU32[PThread.mainThreadBlock/4+i] = 0;
+      for (var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}}/4; ++i) HEAPU32[PThread.mainThreadBlock/4+i] = 0;
 
       // The pthread struct has a field that points to itself - this is used as a magic ID to detect whether the pthread_t
       // structure is 'alive'.
@@ -25,7 +25,7 @@ var LibraryPThread = {
 
       // Allocate memory for thread-local storage.
       var tlsMemory = allocate({{{ cDefine('PTHREAD_KEYS_MAX') }}} * 4, "i32*", ALLOC_STATIC);
-      for(var i = 0; i < {{{ cDefine('PTHREAD_KEYS_MAX') }}}; ++i) HEAPU32[tlsMemory/4+i] = 0;
+      for (var i = 0; i < {{{ cDefine('PTHREAD_KEYS_MAX') }}}; ++i) HEAPU32[tlsMemory/4+i] = 0;
       Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.tsd }}} ) >> 2, tlsMemory); // Init thread-local-storage memory array.
       Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.tid }}} ) >> 2, PThread.mainThreadBlock); // Main thread ID.
       Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.pid }}} ) >> 2, PROCINFO.pid); // Process ID.
@@ -82,7 +82,7 @@ var LibraryPThread = {
     },
 
     terminateAllThreads: function() {
-      for(var t in PThread.pthreads) {
+      for (var t in PThread.pthreads) {
         var pthread = PThread.pthreads[t];
         if (pthread) {
           PThread.freeThreadData(pthread);
@@ -90,7 +90,7 @@ var LibraryPThread = {
         }
       }
       PThread.pthreads = {};
-      for(var t in PThread.unusedWorkerPool) {
+      for (var t in PThread.unusedWorkerPool) {
         var pthread = PThread.unusedWorkerPool[t];
         if (pthread) {
           PThread.freeThreadData(pthread);
@@ -98,7 +98,7 @@ var LibraryPThread = {
         }
       }
       PThread.unusedWorkerPool = [];
-      for(var t in PThread.runningWorkers) {
+      for (var t in PThread.runningWorkers) {
         var pthread = PThread.runningWorkers[t];
         if (pthread) {
           PThread.freeThreadData(pthread);
@@ -128,7 +128,7 @@ var LibraryPThread = {
       Module['print']('Preallocating ' + numWorkers + ' workers for a pthread spawn pool.');
 
       var numWorkersLoaded = 0;
-      for(var i = 0; i < numWorkers; ++i) {
+      for (var i = 0; i < numWorkers; ++i) {
         var worker = new Worker('pthread-main.js');
 
         worker.onmessage = function(e) {
@@ -241,7 +241,7 @@ var LibraryPThread = {
 
     // Allocate memory for thread-local storage and initialize it to zero.
     var tlsMemory = _malloc({{{ cDefine('PTHREAD_KEYS_MAX') }}} * 4);
-    for(var i = 0; i < {{{ cDefine('PTHREAD_KEYS_MAX') }}}; ++i) {
+    for (var i = 0; i < {{{ cDefine('PTHREAD_KEYS_MAX') }}}; ++i) {
       {{{ makeSetValue('tlsMemory', 'i*4', 0, 'i32') }}};
     }
 
@@ -351,7 +351,7 @@ var LibraryPThread = {
 
     // Allocate thread block (pthread_t structure).
     var threadInfoStruct = _malloc({{{ C_STRUCTS.pthread.__size__ }}});
-    for(var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}} >> 2; ++i) HEAPU32[(threadInfoStruct>>2) + i] = 0; // zero-initialize thread structure.
+    for (var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}} >> 2; ++i) HEAPU32[(threadInfoStruct>>2) + i] = 0; // zero-initialize thread structure.
     {{{ makeSetValue('pthread_ptr', 0, 'threadInfoStruct', 'i32') }}};
 
     // The pthread struct has a field that points to itself - this is used as a magic ID to detect whether the pthread_t
@@ -420,7 +420,7 @@ var LibraryPThread = {
       Module['printErr']('Attempted to join thread ' + thread + ', which was already detached!');
       return ERRNO_CODES.EINVAL; // The thread is already detached, can no longer join it!
     }
-    for(;;) {
+    for (;;) {
       var threadStatus = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
       if (threadStatus == 1) { // Exited?
         var threadExitCode = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2);
