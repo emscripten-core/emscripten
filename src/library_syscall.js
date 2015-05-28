@@ -456,6 +456,9 @@ mergeInto(LibraryManager.library, {
 #endif
       return low;
     }
+    function getZero() {
+      assert(get() === 0);
+    }
     // main
 #if SYSCALL_DEBUG
     Module.printErr('syscall! ' + [which, SYSCALLS.getFromCode(which)]);
@@ -697,6 +700,10 @@ mergeInto(LibraryManager.library, {
           }
           return nonzero;
         }
+        case 180: { // pread64
+          var stream = getStreamFromFD(), buf = get(), count = get(), zero = getZero(), offset = get64();
+          return FS.read(stream, {{{ makeGetSlabs('buf', 'i8', true) }}}, buf, count, offset);
+        }
         case 183: { // getcwd
           var buf = get(), size = get();
           if (size === 0) return -ERRNO_CODES.EINVAL;
@@ -726,12 +733,12 @@ mergeInto(LibraryManager.library, {
           return ptr;
         }
         case 193: { // truncate64
-          var path = getStr(), zero = get(), length = get64();
+          var path = getStr(), zero = getZero(), length = get64();
           FS.truncate(path, length);
           return 0;
         }
         case 194: { // ftruncate64
-          var fd = get(), zero = get(), length = get64();
+          var fd = get(), zero = getZero(), length = get64();
           FS.ftruncate(fd, length);
           return 0;
         }
