@@ -605,8 +605,8 @@ mergeInto(LibraryManager.library, {
         case 57: { // setpgid
           var pid = get(), pgid = get();
           if (pid && pid !== PROCINFO.pid) return -ERRNO_CODES.ESRCH;
-          if (pgid !== PROCINFO.pgid) return -ERRNO_CODES.EPERM;
-          return 0; // TODO: call setpgrp()
+          if (pgid && pgid !== PROCINFO.pgid) return -ERRNO_CODES.EPERM;
+          return 0;
         }
         case 63: { // dup2
           var old = getStreamFromFD(), suggestFD = get();
