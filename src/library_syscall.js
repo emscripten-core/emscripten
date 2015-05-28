@@ -448,12 +448,13 @@ mergeInto(LibraryManager.library, {
       return stream;
     }
     function get64() {
-      var ret = get();
-      assert(get() === 0); // high bits must be 0
+      var low = get(), high = get();
+      if (low >= 0) assert(high === 0);
+      else assert(high === -1);
 #if SYSCALL_DEBUG
-      Module.printErr('    (i64: "' + ret + '")');
+      Module.printErr('    (i64: "' + low + '")');
 #endif
-      return ret;
+      return low;
     }
     // main
 #if SYSCALL_DEBUG
@@ -706,12 +707,12 @@ mergeInto(LibraryManager.library, {
           return ptr;
         }
         case 193: { // truncate64
-          var path = getStr(), length = get();
+          var path = getStr(), zero = get(), length = get64();
           FS.truncate(path, length);
           return 0;
         }
         case 194: { // ftruncate64
-          var fd = get(), length = get();
+          var fd = get(), zero = get(), length = get64();
           FS.ftruncate(fd, length);
           return 0;
         }
