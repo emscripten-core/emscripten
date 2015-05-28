@@ -6,6 +6,10 @@
 #include <emscripten/threading.h>
 #include <assert.h>
 
+#if !defined(__EMSCRIPTEN_PTHREADS__) || __EMSCRIPTEN_PTHREADS__ != 1
+#error __EMSCRIPTEN_PTHREADS__ should have been defined to be equal to 1 when building with pthreads support enabled!
+#endif
+
 #define NUM_THREADS 8
 
 volatile unsigned char globalUchar = 0;
