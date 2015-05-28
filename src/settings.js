@@ -35,6 +35,11 @@ var INVOKE_RUN = 1; // Whether we will run the main() function. Disable if you e
                     // can do with Module.callMain(), with an optional parameter of commandline args).
 var NO_EXIT_RUNTIME = 0; // If set, the runtime is not quit when main() completes (allowing code to
                          // run afterwards, for example from the browser main event loop).
+var MEM_INIT_METHOD = 0; // How to represent the initial memory content.
+                         // 0: keep array literal representing the initial memory data
+                         // 1: create a *.mem file containing the binary data of the initial memory;
+                         //    use the --memory-init-file command line switch to select this method
+                         // 2: embed a string literal representing that initial memory data
 var TOTAL_STACK = 5*1024*1024; // The total stack size. There is no way to enlarge the stack, so this
                                // value must be large enough for the program's requirements. If
                                // assertions are on, we will assert on not exceeding this, otherwise,

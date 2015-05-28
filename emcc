@@ -1289,6 +1289,10 @@ try:
   # Emscripten
   logging.debug('LLVM => JS')
   extra_args = [] if not js_libraries else ['--libraries', ','.join(map(os.path.abspath, js_libraries))]
+  if memory_init_file:
+    shared.Settings.MEM_INIT_METHOD = 1
+  elif shared.Settings.MEM_INIT_METHOD == 1:
+    shared.Settings.MEM_INIT_METHOD = 0
   final = shared.Building.emscripten(final, append_ext=False, extra_args=extra_args)
   if DEBUG: save_intermediate('original')
 
@@ -1340,14 +1344,26 @@ try:
 
   js_transform_tempfiles = [final]
 
-  if memory_init_file:
+  if memory_init_file or shared.Settings.MEM_INIT_METHOD == 2:
     memfile = target + '.mem'
     shared.try_delete(memfile)
     def repl(m):
       # handle chunking of the memory initializer
       s = m.groups(0)[0]
       if len(s) == 0 and not shared.Settings.EMTERPRETIFY: return m.group(0) # emterpreter must have a mem init file; otherwise, don't emit 0-size ones
-      open(memfile, 'wb').write(''.join(map(lambda x: chr(int(x or '0')), s.split(','))))
+      membytes = [int(x or '0') for x in s.split(',')]
+      if not shared.Settings.EMTERPRETIFY:
+        while membytes and membytes[-1] == 0:
+          membytes.pop()
+        if not membytes:
+          return '';
+      membytes = ''.join(map(chr, membytes))
+      if not memory_init_file:
+        s = repr(membytes)
+        hex_to_octal = lambda x: '\\%o' % int(x.group(1), 16)
+        s = re.sub(r'\\x([0-1][0-9A-Fa-f])(?:(?=[^0-9])|$)', hex_to_octal, s)
+        return 'var memoryInitializer = %s;' % s
+      open(memfile, 'wb').write(membytes)
       if DEBUG:
         # Copy into temp dir as well, so can be run there too
         shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
