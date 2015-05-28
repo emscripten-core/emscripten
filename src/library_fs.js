@@ -1058,6 +1058,7 @@ mergeInto(LibraryManager.library, {
       return stream;
     },
     close: function(stream) {
+      if (stream.getdents) stream.getdents = null; // free readdir state
       try {
         if (stream.stream_ops.close) {
           stream.stream_ops.close(stream);

@@ -473,7 +473,6 @@ mergeInto(LibraryManager.library, {
         }
         case 6: { // close
           var stream = getStreamFromFD();
-          if (stream.getdents) stream.getdents = null; // free readdir state
           FS.close(stream);
           return 0;
         }
