@@ -1097,8 +1097,8 @@ function enlargeMemory() {
 #endif
 
   return true;
-#endif
-#endif
+#endif // ALLOW_MEMORY_GROWTH
+#endif // USE_PTHREADS
 }
 
 #if ALLOW_MEMORY_GROWTH
@@ -1185,7 +1185,7 @@ HEAPU16 = new SharedUint16Array(buffer);
 HEAPU32 = new SharedUint32Array(buffer);
 HEAPF32 = new SharedFloat32Array(buffer);
 HEAPF64 = new SharedFloat64Array(buffer);
-#else
+#else // USE_PTHREADS
 buffer = new ArrayBuffer(TOTAL_MEMORY);
 HEAP8 = new Int8Array(buffer);
 HEAP16 = new Int16Array(buffer);
@@ -1195,7 +1195,7 @@ HEAPU16 = new Uint16Array(buffer);
 HEAPU32 = new Uint32Array(buffer);
 HEAPF32 = new Float32Array(buffer);
 HEAPF64 = new Float64Array(buffer);
-#endif
+#endif // USE_PTHREADS
 
 // Endianness check (note: assumes compiler arch was little-endian)
 HEAP32[0] = 255;
