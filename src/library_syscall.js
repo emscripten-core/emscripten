@@ -834,6 +834,7 @@ mergeInto(LibraryManager.library, {
           FS.chown(path, owner, group);
           return 0;
         }
+        case 203:   // setreuid32
         case 204:   // setregid32
         case 208:   // setresuid32
         case 210:   // setresgid32
@@ -842,6 +843,12 @@ mergeInto(LibraryManager.library, {
           var uid = get();
           if (uid !== 0) return -ERRNO_CODES.EPERM;
           return 0;
+        }
+        case 205: { // getgroups32
+          var size = get(), list = get();
+          if (size < 1) return -ERRNO_CODES.EINVAL;
+          {{{ makeSetValue('list', '0', '0', 'i32') }}};
+          return 1;
         }
         case 220: { // SYS_getdents64
           var stream = getStreamFromFD(), dirp = get(), count = get();
