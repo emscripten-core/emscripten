@@ -602,6 +602,12 @@ mergeInto(LibraryManager.library, {
             default: abort('bad ioctl syscall ' + op);
           }
         }
+        case 57: { // setpgid
+          var pid = get(), pgid = get();
+          if (pid && pid !== PROCINFO.pid) return -ERRNO_CODES.ESRCH;
+          if (pgid !== PROCINFO.pgid) return -ERRNO_CODES.EPERM;
+          return 0; // TODO: call setpgrp()
+        }
         case 63: { // dup2
           var old = getStreamFromFD(), suggestFD = get();
           if (old.fd === suggestFD) return suggestFD;
@@ -614,6 +620,9 @@ mergeInto(LibraryManager.library, {
         }
         case 65: { // getpgrp
           return PROCINFO.pgid;
+        }
+        case 66: { // setsid
+          return 0; // no-op
         }
         case 83: { // symlink
           var target = getStr(), linkpath = getStr();
@@ -823,6 +832,15 @@ mergeInto(LibraryManager.library, {
         case 212: { // chown32
           var path = getStr(), owner = get(), group = get();
           FS.chown(path, owner, group);
+          return 0;
+        }
+        case 204:   // setregid32
+        case 208:   // setresuid32
+        case 210:   // setresgid32
+        case 213:   // setuid32
+        case 214: { // setgid32
+          var uid = get();
+          if (uid !== 0) return -ERRNO_CODES.EPERM;
           return 0;
         }
         case 220: { // SYS_getdents64
