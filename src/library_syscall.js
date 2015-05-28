@@ -518,6 +518,9 @@ mergeInto(LibraryManager.library, {
           FS.chmod(path, mode);
           return 0;
         }
+        case 29: { // pause
+          return -ERRNO_CODES.EINTR; // we can't pause
+        }
         case 33: { // access
           var path = getStr(), amode = get();
           if (amode & ~{{{ cDefine('S_IRWXO') }}}) {
