@@ -592,12 +592,12 @@ mergeInto(LibraryManager.library, {
             case {{{ cDefine('TIOCGPGRP') }}}: {
               if (!stream.tty) return -ERRNO_CODES.ENOTTY;
               var argp = get();
-              {{{ makeSetValue('argp', 0, 123, 'i32') }}};
+              {{{ makeSetValue('argp', 0, 0, 'i32') }}};
               return 0;
             }
             case {{{ cDefine('TIOCSPGRP') }}}: {
               if (!stream.tty) return -ERRNO_CODES.ENOTTY;
-              return 0; // no-op
+              return -ERRNO_CODES.EINVAL; // not supported
             }
             default: abort('bad ioctl syscall ' + op);
           }

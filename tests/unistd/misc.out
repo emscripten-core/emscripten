@@ -3,9 +3,9 @@ fsync(bad): -1, errno: 9
 fdatasync(good): 0, errno: 0
 fdatasync(bad): -1, errno: 9
 tcgetpgrp(good): 0, errno: 0
-tcgetpgrp(bad): 0, errno: 0
+tcgetpgrp(bad): -1, errno: 9
 tcsetpgrp(good): -1, errno: 22
-tcsetpgrp(bad): -1, errno: 22
+tcsetpgrp(bad): -1, errno: 9
 link: -1, errno: 31
 lockf(good): 0, errno: 0
 lockf(bad): -1, errno: 9
