@@ -544,6 +544,10 @@ mergeInto(LibraryManager.library, {
           FS.rmdir(path);
           return 0;
         }
+        case 41: { // dup
+          var old = getStreamFromFD();
+          return FS.open(old.path, old.flags, old.mode).fd;
+        }
         case 54: { // ioctl
           var stream = getStreamFromFD(), op = get(), tio = get();
           switch (op) {
