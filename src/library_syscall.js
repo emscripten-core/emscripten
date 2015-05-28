@@ -705,6 +705,11 @@ mergeInto(LibraryManager.library, {
           SYSCALLS.mappings[ptr] = { malloc: ptr, len: len, allocated: allocated, fd: fd, flags: flags };
           return ptr;
         }
+        case 193: { // truncate64
+          var path = getStr(), length = get();
+          FS.truncate(path, length);
+          return 0;
+        }
         case 194: { // ftruncate64
           var fd = get(), length = get();
           FS.ftruncate(fd, length);
