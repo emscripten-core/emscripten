@@ -559,18 +559,24 @@ mergeInto(LibraryManager.library, {
           return FS.open(old.path, old.flags, 0).fd;
         }
         case 54: { // ioctl
-          var stream = getStreamFromFD(), op = get(), tio = get();
+          var stream = getStreamFromFD(), op = get();
           switch (op) {
-            case 0x5401: { // TCGETS
+            case {{{ cDefine('TCGETS') }}}: {
               if (!stream.tty) return -ERRNO_CODES.ENOTTY;
 #if SYSCALL_DEBUG
               Module.printErr('warning: not filling tio struct');
 #endif
               return 0;
             }
-            case 0x5402: { // TCGETS
+            case {{{ cDefine('TCSETS') }}}: {
               if (!stream.tty) return -ERRNO_CODES.ENOTTY;
               return 0; // no-op, not actually adjusting terminal settings
+            }
+            case {{{ cDefine('TIOCGPGRP') }}}: {
+              if (!stream.tty) return -ERRNO_CODES.ENOTTY;
+              var argp = get();
+              {{{ makeSetValue('argp', 0, 123, 'i32') }}};
+              return 0;
             }
             default: abort('bad ioctl syscall ' + op);
           }
