@@ -836,8 +836,6 @@ mergeInto(LibraryManager.library, {
         }
         case 203:   // setreuid32
         case 204:   // setregid32
-        case 208:   // setresuid32
-        case 210:   // setresgid32
         case 213:   // setuid32
         case 214: { // setgid32
           var uid = get();
@@ -849,6 +847,12 @@ mergeInto(LibraryManager.library, {
           if (size < 1) return -ERRNO_CODES.EINVAL;
           {{{ makeSetValue('list', '0', '0', 'i32') }}};
           return 1;
+        }
+        case 208:   // setresuid32
+        case 210: { // setresgid32
+          var ruid = get(), euid = get(), suid = get();
+          if (euid !== 0) return -ERRNO_CODES.EPERM;
+          return 0;
         }
         case 220: { // SYS_getdents64
           var stream = getStreamFromFD(), dirp = get(), count = get();
