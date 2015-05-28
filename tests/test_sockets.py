@@ -105,6 +105,8 @@ def filter_harnesses(harnesses):
   return filter(lambda harness: (harness[0].__class__ if type(harness) is tuple else harness.__class__) is not WebsockifyServerHarness, harnesses)
 
 class sockets(BrowserCore):
+  emcc_args = []
+
   def test_inet(self):
     src = r'''
       #include <stdio.h>
