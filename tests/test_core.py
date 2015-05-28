@@ -5945,7 +5945,7 @@ def process(filename):
     emcc_args = self.emcc_args
 
     # The following tests link to libc, and must be run with EMCC_LEAVE_INPUTS_RAW = 0
-    need_no_leave_inputs_raw = ['muli33_ta2', 'philoop_ta2']
+    need_no_leave_inputs_raw = ['muli33_ta2', 'philoop_ta2', 'uadd_overflow_64_ta2']
 
     try:
       for name in glob.glob(path_from_root('tests', 'cases', '*.ll')):
