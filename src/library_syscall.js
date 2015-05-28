@@ -790,6 +790,12 @@ mergeInto(LibraryManager.library, {
           FS.chown(path, owner, group); // XXX we ignore the 'l' aspect, and do the same as chown
           return 0;
         }
+        case 199:   // getuid32
+        case 200:   // getgid32
+        case 201:   // geteuid32
+        case 202: { // getgid32
+          return 0;
+        }
         case 207: { // fchown32
           var stream = getStreamFromFD(), owner = get(), group = get();
           FS.fchown(stream, owner, group);
