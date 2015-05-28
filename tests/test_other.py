@@ -3889,7 +3889,7 @@ main(const int argc, const char * const * const argv)
     Popen([PYTHON, EMCC, 'src.cpp']).communicate()
 
     self.assertContained('locale set to C: C', run_js('a.out.js', args=['C']))
-    self.assertContained('waka locale not supported', run_js('a.out.js', args=['waka']))
+    self.assertContained('locale set to waka: C.UTF-8', run_js('a.out.js', args=['waka'])) # the call still succeeds in musl, even if the locale requested was not selected
 
   def test_js_malloc(self):
     open('src.cpp', 'w').write(r'''
