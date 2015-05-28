@@ -3821,7 +3821,7 @@ Failed to open file for writing: /tmp/file; errno=13; Permission denied
       {
           FILE* fp = fopen("large.txt", "r");
           if (fp) {
-              printf("%d\n", (int)fp);
+              printf("ok\n");
               fseek(fp, 0L, SEEK_END);
               printf("%ld\n", ftell(fp));
           } else {
@@ -3834,7 +3834,7 @@ Failed to open file for writing: /tmp/file; errno=13; Permission denied
     for engine in JS_ENGINES:
       if engine == V8_ENGINE: continue # ooms
       print engine
-      self.assertContained('4\n' + str(large_size) + '\n', run_js('a.out.js', engine=engine))
+      self.assertContained('ok\n' + str(large_size) + '\n', run_js('a.out.js', engine=engine))
 
   def test_force_exit(self):
     open('src.cpp', 'w').write(r'''
