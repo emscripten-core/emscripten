@@ -569,6 +569,9 @@ mergeInto(LibraryManager.library, {
           var old = getStreamFromFD();
           return FS.open(old.path, old.flags, 0).fd;
         }
+        case 42: { // pipe
+          return -ERRNO_CODES.ENOSYS; // we don't support pipes
+        }
         case 54: { // ioctl
           var stream = getStreamFromFD(), op = get();
           switch (op) {
