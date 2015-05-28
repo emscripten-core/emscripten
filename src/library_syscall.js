@@ -484,6 +484,10 @@ mergeInto(LibraryManager.library, {
           FS.close(stream);
           return 0;
         }
+        case 9: { // link
+          var oldpath = get(), newpath = get();
+          return -ERRNO_CODES.EMLINK; // no hardlinks for us
+        }
         case 10: { // unlink
           var path = getStr();
           FS.unlink(path);
