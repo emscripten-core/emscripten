@@ -1421,9 +1421,11 @@ try:
             run_passes(chunks[i], 'js_opts_' + str(i), just_split='receiveJSON' in chunks[i], just_concat='emitJSON' in chunks[i])
       else:
         # DEBUG 2, run each pass separately
+        extra_info = js_optimizer_extra_info
         for p in passes:
           js_optimizer_queue = [p]
           flush_js_optimizer_queue(p)
+          js_optimizer_extra_info = extra_info # flush wipes it
       js_optimizer_queue_history += js_optimizer_queue
       js_optimizer_queue = []
     js_optimizer_extra_info = {}
