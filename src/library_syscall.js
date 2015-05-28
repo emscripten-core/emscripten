@@ -399,7 +399,7 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  __syscall__deps: ['$SYSCALLS', '$FS', '$ERRNO_CODES', '$PATH', '__setErrNo'
+  __syscall__deps: ['$SYSCALLS', '$FS', '$ERRNO_CODES', '$PATH', '__setErrNo', '$PROCINFO',
 #if SYSCALL_DEBUG
                    ,'$ERRNO_MESSAGES'
 #endif
@@ -518,6 +518,9 @@ mergeInto(LibraryManager.library, {
           FS.chmod(path, mode);
           return 0;
         }
+        case 20: { // getpid
+          return PROCINFO.pid;
+        }
         case 29: { // pause
           return -ERRNO_CODES.EINTR; // we can't pause
         }
@@ -606,6 +609,12 @@ mergeInto(LibraryManager.library, {
           if (suggest) FS.close(suggest);
           return FS.open(old.path, old.flags, 0, suggestFD, suggestFD).fd;
         }
+        case 64: { // getppid
+          return PROCINFO.ppid;
+        }
+        case 65: { // getpgrp
+          return PROCINFO.pgid;
+        }
         case 83: { // symlink
           var target = getStr(), linkpath = getStr();
           FS.symlink(target, linkpath);
@@ -659,6 +668,11 @@ mergeInto(LibraryManager.library, {
           copyString('machine', 'x86-JS');
           return 0;
         }
+        case 132: { // getpgid
+          var pid = get();
+          if (pid && pid !== PROCINFO.pid) return -ERRNO_CODES.ESRCH;
+          return PROCINFO.pgid;
+        }
         case 133: { // fchdir
           var stream = getStreamFromFD();
           FS.chdir(stream.path);
@@ -704,6 +718,11 @@ mergeInto(LibraryManager.library, {
             ret += curr;
           }
           return ret;
+        }
+        case 147: { // getsid
+          var pid = get();
+          if (pid && pid !== PROCINFO.pid) return -ERRNO_CODES.ESRCH;
+          return PROCINFO.sid;
         }
         case 148: { // fdatasync
           var stream = getStreamFromFD();
