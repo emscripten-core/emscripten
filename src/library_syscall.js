@@ -610,6 +610,21 @@ mergeInto(LibraryManager.library, {
           var stream = getStreamFromFD();
           return 0; // we can't do anything synchronously; the in-memory FS is already synced to
         }
+        case 122: { // uname
+          var buf = get();
+          if (!buf) return -ERRNO_CODES.EFAULT
+          var layout = {{{ JSON.stringify(C_STRUCTS.utsname) }}};
+          function copyString(element, value) {
+            var offset = layout[element];
+            writeAsciiToMemory(value, buf + offset);
+          }
+          copyString('sysname', 'Emscripten');
+          copyString('nodename', 'emscripten');
+          copyString('release', '1.0');
+          copyString('version', '#1');
+          copyString('machine', 'x86-JS');
+          return 0;
+        }
         case 133: { // fchdir
           var stream = getStreamFromFD();
           FS.chdir(stream.path);
