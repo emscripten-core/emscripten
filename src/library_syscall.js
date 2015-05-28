@@ -982,6 +982,16 @@ mergeInto(LibraryManager.library, {
           FS.allocate(stream, offset, len);
           return 0;
         }
+        case 340: { // prlimit64
+          var pid = get(), resource = get(), new_limit = get(), old_limit = get();
+          if (old_limit) { // just report no limits
+            {{{ makeSetValue('old_limit', C_STRUCTS.rlimit.rlim_cur, '-1', 'i32') }}};  // RLIM_INFINITY
+            {{{ makeSetValue('old_limit', C_STRUCTS.rlimit.rlim_cur + 4, '-1', 'i32') }}};  // RLIM_INFINITY
+            {{{ makeSetValue('old_limit', C_STRUCTS.rlimit.rlim_max, '-1', 'i32') }}};  // RLIM_INFINITY
+            {{{ makeSetValue('old_limit', C_STRUCTS.rlimit.rlim_max + 4, '-1', 'i32') }}};  // RLIM_INFINITY
+          }
+          return 0;
+        }
         default: abort('bad syscall ' + which);
       }
     } catch (e) {
