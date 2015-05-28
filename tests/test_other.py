@@ -58,6 +58,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       #      regression check: -o js should create "js", with bitcode content
       for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so'], ['-o', 'js'], ['-O1', '-c', '-o', '/dev/null'], ['-O1', '-o', '/dev/null']]:
         print '-c stuff', args
+        if '/dev/null' in args and WINDOWS:
+          print 'skip because windows'
+          continue
         target = args[1] if len(args) == 2 else 'hello_world.o'
         self.clear()
         proc = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world' + suffix)] + args, stdout=PIPE, stderr=PIPE)
