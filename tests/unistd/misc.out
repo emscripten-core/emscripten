@@ -27,8 +27,8 @@ fchown(good): 0, errno: 0
 fchown(bad): -1, errno: 9
 fork: -1, errno: 11
 vfork: -1, errno: 11
-crypt: (null), errno: 38
-encrypt, errno: 38
+crypt: ba4TuD1iozTxw, errno: 0
+encrypt, errno: 0
 getgid: 0, errno: 0
 getegid: 0, errno: 0
 getuid: 0, errno: 0
