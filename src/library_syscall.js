@@ -785,6 +785,21 @@ mergeInto(LibraryManager.library, {
           var stream = getStreamFromFD(), buf = get();
           return SYSCALLS.doStat(function() { return FS.stat(stream.path) }, buf);
         }
+        case 198: { // lchown32
+          var path = getStr(), owner = get(), group = get();
+          FS.chown(path, owner, group); // XXX we ignore the 'l' aspect, and do the same as chown
+          return 0;
+        }
+        case 207: { // fchown32
+          var stream = getStreamFromFD(), owner = get(), group = get();
+          FS.fchown(stream, owner, group);
+          return 0;
+        }
+        case 212: { // chown32
+          var path = getStr(), owner = get(), group = get();
+          FS.chown(path, owner, group);
+          return 0;
+        }
         case 220: { // SYS_getdents64
           var stream = getStreamFromFD(), dirp = get(), count = get();
           if (!stream.getdents) {
