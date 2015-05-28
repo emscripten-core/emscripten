@@ -825,8 +825,8 @@ mergeInto(LibraryManager.library, {
           return 0;
         }
         case 207: { // fchown32
-          var stream = getStreamFromFD(), owner = get(), group = get();
-          FS.fchown(stream, owner, group);
+          var fd = get(), owner = get(), group = get();
+          FS.fchown(fd, owner, group);
           return 0;
         }
         case 212: { // chown32
