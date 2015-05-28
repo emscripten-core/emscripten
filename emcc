@@ -735,20 +735,6 @@ try:
   # counter for the next index that should be used.
   next_arg_index = len(newargs)
 
-  pthreads = 'USE_PTHREADS=1' in settings_changes
-  if pthreads:
-    settings_changes.append('USE_PTHREADS=1')
-    if not any(s.startswith('PTHREAD_POOL_SIZE=') for s in settings_changes):
-      settings_changes.append('PTHREAD_POOL_SIZE=0')
-    js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
-    newargs.append('-D__EMSCRIPTEN_PTHREADS__=1')
-  else:
-    js_libraries.append(shared.path_from_root('src', 'library_pthread_stub.js'))
-
-  if pthreads and 'PROXY_TO_WORKER=1' in settings_changes:
-    logging.error('-s PROXY_TO_WORKER=1 is not yet supported with -s USE_PTHREADS=1!')
-    exit(1)
-
   has_source_inputs = False
   has_header_inputs = False
   lib_dirs = [shared.path_from_root('system', 'local', 'lib'),
@@ -1013,6 +999,18 @@ try:
 
   if js_opts:
     shared.Settings.RUNNING_JS_OPTS = 1
+
+  if shared.Settings.USE_PTHREADS:
+    if not any(s.startswith('PTHREAD_POOL_SIZE=') for s in settings_changes):
+      settings_changes.append('PTHREAD_POOL_SIZE=0')
+    js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
+    newargs.append('-D__EMSCRIPTEN_PTHREADS__=1')
+  else:
+    js_libraries.append(shared.path_from_root('src', 'library_pthread_stub.js'))
+
+  if shared.Settings.USE_PTHREADS and shared.Settings.PROXY_TO_WORKER:
+    logging.error('-s PROXY_TO_WORKER=1 is not yet supported with -s USE_PTHREADS=1!')
+    exit(1)
 
   shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
   shared.Settings.OPT_LEVEL = opt_level
@@ -1365,7 +1363,7 @@ try:
       final += '.mem.js'
       src = None
 
-  if pthreads:
+  if shared.Settings.USE_PTHREADS:
     shutil.copyfile(shared.path_from_root('src', 'pthread-main.js'), os.path.join(os.path.dirname(os.path.abspath(target)), 'pthread-main.js'))
 
   log_time('source transforms')
