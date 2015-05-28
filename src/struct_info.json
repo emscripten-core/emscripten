@@ -473,7 +473,10 @@
     {
         "file": "bits/ioctl.h", 
         "defines": [
-            "FIONREAD"
+            "FIONREAD",
+            "TCGETS",
+            "TCSETS",
+            "TIOCGPGRP"
         ],
         "structs": {}
     }, 
