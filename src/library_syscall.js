@@ -463,6 +463,10 @@ mergeInto(LibraryManager.library, {
 #endif
     try {
       switch (which) {
+        case 3: { // read
+          var stream = getStreamFromFD(), buf = get(), count = get();
+          return FS.read(stream, {{{ makeGetSlabs('buf', 'i8', true) }}}, buf, count);
+        }
         case 4: { // write
           var stream = getStreamFromFD(), buf = get(), count = get();
           return FS.write(stream, {{{ makeGetSlabs('ptr', 'i8', true) }}}, buf, count);
