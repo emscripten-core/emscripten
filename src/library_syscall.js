@@ -532,6 +532,9 @@ mergeInto(LibraryManager.library, {
           }
           return 0;
         }
+        case 36: { // sync
+          return 0;
+        }
         case 38: { // rename
           var old_path = getStr(), new_path = getStr();
           FS.rename(old_path, new_path);
@@ -677,6 +680,10 @@ mergeInto(LibraryManager.library, {
             ret += curr;
           }
           return ret;
+        }
+        case 148: { // fdatasync
+          var stream = getStreamFromFD();
+          return 0; // we can't do anything synchronously; the in-memory FS is already synced to
         }
         case 168: { // poll
           var fds = get(), nfds = get(), timeout = get();
