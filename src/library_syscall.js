@@ -545,7 +545,7 @@ mergeInto(LibraryManager.library, {
         }
         case 41: { // dup
           var old = getStreamFromFD();
-          return FS.open(old.path, old.flags, old.mode).fd;
+          return FS.open(old.path, old.flags, 0).fd;
         }
         case 54: { // ioctl
           var stream = getStreamFromFD(), op = get(), tio = get();
@@ -563,6 +563,13 @@ mergeInto(LibraryManager.library, {
             }
             default: abort('bad ioctl syscall ' + op);
           }
+        }
+        case 63: { // dup2
+          var old = getStreamFromFD(), suggestFD = get();
+          if (old.fd === suggestFD) return suggestFD;
+          var suggest = FS.getStream(suggestFD);
+          if (suggest) FS.close(suggest);
+          return FS.open(old.path, old.flags, 0, suggestFD, suggestFD).fd;
         }
         case 83: { // symlink
           var target = getStr(), linkpath = getStr();
