@@ -10,12 +10,10 @@ int main() {
     char *m;
     m = (char*)mmap(NULL, 9000, PROT_READ, MAP_PRIVATE, fileno(f), 0);
     for (int i = 0; i < 20; i++) putchar(m[i]);
-    assert(!strncmp(m, "data from the file .", 20));
     munmap(m, 9000);
     printf("\n");
-    m = (char*)mmap(NULL, 9000, PROT_READ, MAP_PRIVATE, fileno(f), 5);
+    m = (char*)mmap(NULL, 9000, PROT_READ, MAP_PRIVATE, fileno(f), 4096);
     for (int i = 0; i < 20; i++) putchar(m[i]);
-    assert(!strncmp(m, "from the file ......", 20));
     munmap(m, 9000);
     printf("\n*\n");
 

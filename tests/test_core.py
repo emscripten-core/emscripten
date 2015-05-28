@@ -5432,11 +5432,17 @@ return malloc(size);
   def test_mmap_file(self):
     for extra_args in [[], ['--no-heap-copy']]:
       self.emcc_args += ['--embed-file', 'data.dat'] + extra_args
-
-      open(self.in_dir('data.dat'), 'w').write('data from the file ' + ('.' * 9000))
-
+      x = 'data from the file........'
+      s = ''
+      while len(s) < 9000:
+        if len(s) + len(x) < 9000:
+          s += x
+          continue
+        s += '.'
+      assert len(s) == 9000
+      open(self.in_dir('data.dat'), 'w').write(s)
       src = open(path_from_root('tests', 'mmap_file.c')).read()
-      self.do_run(src, '*\ndata from the file .\nfrom the file ......\n*\n')
+      self.do_run(src, '*\n' + s[0:20] + '\n' + s[4096:4096+20] + '\n*\n')
 
   def test_cubescript(self):
     assert 'asm3' in test_modes
