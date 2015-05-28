@@ -476,7 +476,8 @@
             "FIONREAD",
             "TCGETS",
             "TCSETS",
-            "TIOCGPGRP"
+            "TIOCGPGRP",
+            "TIOCSPGRP"
         ],
         "structs": {}
     }, 
