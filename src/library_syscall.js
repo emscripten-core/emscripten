@@ -536,6 +536,10 @@ mergeInto(LibraryManager.library, {
           }
           return 0;
         }
+        case 34: { // nice
+          var inc = get();
+          return -ERRNO_CODES.EPERM; // no meaning to nice for our single-process environment
+        }
         case 36: { // sync
           return 0;
         }
