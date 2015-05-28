@@ -54,10 +54,10 @@ int main() {
   printf(", errno: %d\n", errno);
   errno = 0;
 
-  printf("lockf(good): %d", lockf(f, 123, 456));
+  printf("lockf(good): %d", lockf(f, F_LOCK, 456));
   printf(", errno: %d\n", errno);
   errno = 0;
-  printf("lockf(bad): %d", lockf(42, 123, 456));
+  printf("lockf(bad): %d", lockf(42, F_LOCK, 456));
   printf(", errno: %d\n", errno);
   errno = 0;
 

@@ -1338,7 +1338,7 @@ mergeInto(LibraryManager.library, {
     ensureErrnoError: function() {
       if (FS.ErrnoError) return;
       FS.ErrnoError = function ErrnoError(errno, node) {
-        // Module.printErr(stackTrace()); // useful for debugging
+        //Module.printErr(stackTrace()); // useful for debugging
         this.node = node;
         this.setErrno = function(errno) {
           this.errno = errno;

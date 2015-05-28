@@ -9,7 +9,7 @@ tcsetpgrp(bad): -1, errno: 9
 link: -1, errno: 31
 lockf(good): 0, errno: 0
 lockf(bad): -1, errno: 9
-nice: 0, errno: 1
+nice: -1, errno: 1
 pause: -1, errno: 4
 pipe(good): -1, errno: 38
 pipe(bad): -1, errno: 38
