@@ -4389,10 +4389,10 @@ function _main() {
     self.assertNotContained('EMTERPRETIFY_YIELDLIST', out);
 
     out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'emterpreter_advise_funcptr.cpp'), '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_ADVISE=1', '-s', 'EMTERPRETIFY_YIELDLIST=["__Z6middlev"]'], stdout=PIPE).communicate()
-    self.assertContained('-s EMTERPRETIFY_YIELDLIST=\'["__Z6middlev", "__Z7siblingii", "__Z7sleeperv", "__Z8recurserv", "_printf"]\'', out)
+    self.assertContained('-s EMTERPRETIFY_YIELDLIST=\'["__Z6middlev", "__Z6print2PKcii", "__Z7siblingii", "__Z7sleeperv", "__Z8recurserv", "_emscripten_asm_const_3"]\'', out)
 
     out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'emterpreter_advise_funcptr.cpp'), '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_ADVISE=1', '-s', 'EMTERPRETIFY_YIELDLIST=["__Z3pref"]'], stdout=PIPE).communicate()
-    self.assertContained('-s EMTERPRETIFY_YIELDLIST=\'["__Z3pref", "__Z7siblingii", "_printf"]\'', out)
+    self.assertContained('-s EMTERPRETIFY_YIELDLIST=\'["__Z3pref", "__Z6print1PKci", "__Z6print2PKcii", "__Z7siblingii", "_emscripten_asm_const_2", "_emscripten_asm_const_3"]\'', out)
 
   def test_link_with_a_static(self):
     for args in [[], ['-O2']]:
