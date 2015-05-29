@@ -362,9 +362,9 @@ mergeInto(LibraryManager.library, {
     mappings: {},
 
     // shared utilities
-    doStat: function(func, buf) {
+    doStat: function(func, path, buf) {
       try {
-        var stat = func();
+        var stat = func(path);
       } catch (e) {
         if (e && e.node && PATH.normalize(path) !== PATH.normalize(FS.getPath(e.node))) {
           // an error occurred while trying to look up the path; we should just report ENOTDIR
@@ -803,15 +803,15 @@ mergeInto(LibraryManager.library, {
         }
         case 195: { // SYS_stat64
           var path = getStr(), buf = get();
-          return SYSCALLS.doStat(function() { return FS.stat(path) }, buf);
+          return SYSCALLS.doStat(FS.stat, path, buf);
         }
         case 196: { // SYS_lstat64
           var path = getStr(), buf = get();
-          return SYSCALLS.doStat(function() { return FS.lstat(path) }, buf);
+          return SYSCALLS.doStat(FS.lstat, path, buf);
         }
         case 197: { // SYS_fstat64
           var stream = getStreamFromFD(), buf = get();
-          return SYSCALLS.doStat(function() { return FS.stat(stream.path) }, buf);
+          return SYSCALLS.doStat(FS.stat, stream.path, buf);
         }
         case 198: { // lchown32
           var path = getStr(), owner = get(), group = get();
@@ -985,7 +985,7 @@ mergeInto(LibraryManager.library, {
             }
             path = PATH.join2(dir, path);
           }
-          return SYSCALLS.doStat(function() { return (nofollow ? FS.lstat : FS.stat)(path) }, buf);
+          return SYSCALLS.doStat(nofollow ? FS.lstat : FS.stat, path, buf);
         }
         case 324: { // fallocate
           var stream = getStreamFromFD(), mode = get(), offset = get64(), len = get64();
