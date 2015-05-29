@@ -4700,8 +4700,9 @@ main( int argv, char ** argc ) {
     src = open(path_from_root('tests', 'dirent', 'test_readdir.c'), 'r').read()
     self.do_run(src, '''SIGILL: Illegal instruction
 success
-n: 7
+n: 8
 name: tmp
+name: proc
 name: nocanread
 name: home
 name: foobar
