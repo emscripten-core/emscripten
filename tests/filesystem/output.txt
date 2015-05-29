@@ -4,10 +4,10 @@
   error: 0
   path: /
   name: /
-  object.contents: ["tmp","home","dev","forbidden","abc","def"]
+  object.contents: ["tmp","home","dev","proc","forbidden","abc","def"]
   parentExists: true
   parentPath: /
-  parentObject.contents: ["tmp","home","dev","forbidden","abc","def"]
+  parentObject.contents: ["tmp","home","dev","proc","forbidden","abc","def"]
 
 .
   isRoot: false
@@ -18,7 +18,7 @@
   object.contents: ["123","456","deviceA","localLink","rootLink","relativeLink"]
   parentExists: true
   parentPath: /
-  parentObject.contents: ["tmp","home","dev","forbidden","abc","def"]
+  parentObject.contents: ["tmp","home","dev","proc","forbidden","abc","def"]
 
 ..
   isRoot: true
@@ -26,10 +26,10 @@
   error: 0
   path: /
   name: /
-  object.contents: ["tmp","home","dev","forbidden","abc","def"]
+  object.contents: ["tmp","home","dev","proc","forbidden","abc","def"]
   parentExists: true
   parentPath: /
-  parentObject.contents: ["tmp","home","dev","forbidden","abc","def"]
+  parentObject.contents: ["tmp","home","dev","proc","forbidden","abc","def"]
 
 ../..
   isRoot: true
@@ -37,10 +37,10 @@
   error: 0
   path: /
   name: /
-  object.contents: ["tmp","home","dev","forbidden","abc","def"]
+  object.contents: ["tmp","home","dev","proc","forbidden","abc","def"]
   parentExists: true
   parentPath: /
-  parentObject.contents: ["tmp","home","dev","forbidden","abc","def"]
+  parentObject.contents: ["tmp","home","dev","proc","forbidden","abc","def"]
 
 /abc
   isRoot: false
@@ -51,7 +51,7 @@
   object.contents: ["123","456","deviceA","localLink","rootLink","relativeLink"]
   parentExists: true
   parentPath: /
-  parentObject.contents: ["tmp","home","dev","forbidden","abc","def"]
+  parentObject.contents: ["tmp","home","dev","proc","forbidden","abc","def"]
 
 /abc/123
   isRoot: false
@@ -103,10 +103,10 @@
   error: 0
   path: /
   name: /
-  object.contents: ["tmp","home","dev","forbidden","abc","def"]
+  object.contents: ["tmp","home","dev","proc","forbidden","abc","def"]
   parentExists: true
   parentPath: /
-  parentObject.contents: ["tmp","home","dev","forbidden","abc","def"]
+  parentObject.contents: ["tmp","home","dev","proc","forbidden","abc","def"]
 
 /abc/relativeLink
   isRoot: false
@@ -117,7 +117,7 @@
   object.contents: ["789","deviceB"]
   parentExists: true
   parentPath: /
-  parentObject.contents: ["tmp","home","dev","forbidden","abc","def"]
+  parentObject.contents: ["tmp","home","dev","proc","forbidden","abc","def"]
 
 /abc/relativeLink/deviceB
   isRoot: false
@@ -139,7 +139,7 @@
   object.contents: null
   parentExists: true
   parentPath: /
-  parentObject.contents: ["tmp","home","dev","forbidden","abc","def"]
+  parentObject.contents: ["tmp","home","dev","proc","forbidden","abc","def"]
 
 /abc/rootLink/abc/noexist
   isRoot: false
@@ -161,7 +161,7 @@
   object.contents: ["test"]
   parentExists: true
   parentPath: /
-  parentObject.contents: ["tmp","home","dev","forbidden","abc","def"]
+  parentObject.contents: ["tmp","home","dev","proc","forbidden","abc","def"]
 
 /forbidden/test
   isRoot: false
