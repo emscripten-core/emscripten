@@ -1024,10 +1024,5 @@ mergeInto(LibraryManager.library, {
     var args = Array.prototype.slice.call(arguments);
     return ___syscall(args, 0);
   },
-
-  // methods that musl could do, but for now we do
-  _pthread_cleanup_push: function(){},
-  _pthread_cleanup_pop: function(){},
-  __pthread_self: function() { abort() },
 });
 

@@ -8078,6 +8078,11 @@ LibraryManager.library = {
     abort('Undefined behavior! ubsan_handle_float_cast_overflow: ' + [id, post]);
   },
 
+  // internal musl requirements that we do, for now
+  _pthread_cleanup_push: function(){},
+  _pthread_cleanup_pop: function(){},
+  __pthread_self: function() { abort() },
+
   // misc definitions to avoid unnecessary unresolved symbols from fastcomp
   emscripten_prep_setjmp: true,
   emscripten_cleanup_setjmp: true,
