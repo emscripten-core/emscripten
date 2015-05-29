@@ -6920,6 +6920,10 @@ Module.printErr = Module['printErr'] = function(){};
         code = re.sub(r'\n+[ \n]*\n+', '\n', code)
         code = re.sub(' L\d+ ?:', '', code) # ignore labels; they can change in each compile
         code = code.replace('{\n}', '{}')
+        code = code.replace('18446744073709551616.0', '18446744073709552000.0') # gets rounded by js at runtime, or in the js optimizer at compile time
+        code = code.replace('? (', '? ').replace(') :', ' :') # native optimizer isn't smart enough to remove these parens yet
+        code = code.replace('} ', '').replace('{ ', '')
+        code = code.replace('else ', '')
         lines = code.split('\n')
         lines = filter(lambda line: ': do {' not in line and ' break L' not in line, lines) # ignore labels; they can change in each compile
         return '\n'.join(sorted(lines))
