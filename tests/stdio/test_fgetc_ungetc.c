@@ -74,7 +74,7 @@ void test() {
   // ungetc should reset the EOF indicator
   ungetc('e', file);
   err = feof(file);
-  // XXX musl fails here. it does not allow ungetc on a stream in EOF mode. not sure from ungetc docs if that is right or not (glibc allows it fwiw)   assert(!err);
+  // XXX musl fails here. it does not allow ungetc on a stream in EOF mode, which has been confirmed as a bug upstream
 
   fclose(file);
 
