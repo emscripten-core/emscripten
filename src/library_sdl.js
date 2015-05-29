@@ -2571,6 +2571,26 @@ var LibrarySDL = {
   Mix_LoadWAV_RW: function(rwopsID, freesrc) {
     var rwops = SDL.rwops[rwopsID];
 
+#if USE_SDL == 2
+    if (rwops === undefined) {
+      var type = {{{ makeGetValue('rwopsID + ' + 20 /*type*/, '0', 'i32') }}};
+
+      if (type === 2/*SDL_RWOPS_STDFILE*/) {
+        var fp = {{{ makeGetValue('rwopsID + ' + 28 /*hidden.stdio.fp*/, '0', 'i32') }}};
+        var stream = FS.getStreamFromPtr(fp);
+        if (stream) {
+          rwops = { filename: stream.path };
+        }
+      }
+      else if (type === 4/*SDL_RWOPS_MEMORY*/ || type === 5/*SDL_RWOPS_MEMORY_RO*/) {
+        var base = {{{ makeGetValue('rwopsID + ' + 24 /*hidden.mem.base*/, '0', 'i32') }}};
+        var stop = {{{ makeGetValue('rwopsID + ' + 32 /*hidden.mem.stop*/, '0', 'i32') }}};
+
+        rwops = { bytes: base, count: stop - base };
+      }
+    }
+#endif
+
     if (rwops === undefined)
       return 0;
 
