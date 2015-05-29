@@ -148,10 +148,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
         # Verify optimization level etc. in the generated code
         # XXX these are quite sensitive, and will need updating when code generation changes
-        generated = open('something.js').read() # TODO: parse out the _main function itself, not support code, if the tests below need that some day
+        generated = open('something.js').read()
+        main = self.get_func(generated, '_main') if 'function _main' in generated else generated
         assert 'new Uint16Array' in generated and 'new Uint32Array' in generated, 'typed arrays 2 should be used by default'
         assert 'SAFE_HEAP' not in generated, 'safe heap should not be used by default'
-        assert ': while(' not in generated, 'when relooping we also js-optimize, so there should be no labelled whiles'
+        assert ': while(' not in main, 'when relooping we also js-optimize, so there should be no labelled whiles'
         if closure:
           if opt_level == 0: assert '._main =' in generated, 'closure compiler should have been run'
           elif opt_level >= 1: assert '._main=' in generated, 'closure compiler should have been run (and output should be minified)'
@@ -164,7 +165,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             assert '$i' in generated or '$storemerge' in generated or '$original' in generated, 'micro opts should always be on'
           if opt_level >= 2 and '-g' in params:
             assert re.search('HEAP8\[\$?\w+ ?\+ ?\(+\$?\w+ ?', generated) or re.search('HEAP8\[HEAP32\[', generated) or re.search('[i$]\d+ & ~\(1 << [i$]\d+\)', generated), 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
-          assert ('_puts(' in generated) == (opt_level >= 1), 'with opt >= 1, llvm opts are run and they should optimize printf to puts'
           if opt_level == 0 or '-g' in params: assert 'function _main() {' in generated or 'function _main(){' in generated, 'Should be unminified'
           elif opt_level >= 2: assert ('function _main(){' in generated or '"use asm";var a=' in generated), 'Should be whitespace-minified'
 
