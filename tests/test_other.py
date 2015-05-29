@@ -4361,6 +4361,10 @@ function _main() {
         out, err = Popen([PYTHON, EMCC, source, '-O3', '-s', 'EMTERPRETIFY=1'], stderr=PIPE).communicate()
       finally:
         del os.environ['EMCC_LOG_EMTERPRETER_CODE']
+      lines = err.split('\n')
+      lines = filter(lambda line: 'raw bytecode for ' + func in line, lines)
+      assert len(lines) == 1, '\n\n'.join(lines)
+      err = lines[0]
       parts = err.split('insts: ')
       pre, post = parts[:2]
       assert func in pre, pre
@@ -4370,13 +4374,13 @@ function _main() {
       assert expected == seen or (seen in expected if type(expected) in [list, tuple] else False), ['expect', expected, 'but see', seen]
 
     do_log_test(path_from_root('tests', 'primes.cpp'), 88, 'main')
-    do_log_test(path_from_root('tests', 'fannkuch.cpp'), range(227, 230), 'fannkuch_worker')
+    do_log_test(path_from_root('tests', 'fannkuch.cpp'), range(227, 230), '__Z15fannkuch_workerPv')
 
     # test non-native as well, registerizeHarder can be a little more efficient here
     old_native = os.environ.get('EMCC_NATIVE_OPTIMIZER')
     try:
       os.environ['EMCC_NATIVE_OPTIMIZER'] = '0'
-      do_log_test(path_from_root('tests', 'fannkuch.cpp'), range(227, 230), 'fannkuch_worker')
+      do_log_test(path_from_root('tests', 'fannkuch.cpp'), range(227, 230), '__Z15fannkuch_workerPv')
     finally:
       if old_native: os.environ['EMCC_NATIVE_OPTIMIZER'] = old_native
       else: del os.environ['EMCC_NATIVE_OPTIMIZER']
