@@ -3031,11 +3031,12 @@ int main(int argc, char **argv) {
 1:
   make /: -1
   open /: 1
-  ., 4
-  .., 4
-  tmp, 4
-  home, 4
+  proc, 4
   dev, 4
+  home, 4
+  tmp, 4
+  .., 4
+  ., 4
 ''', run_js('a.out.js', args=['/']))
     # cannot create empty name, cannot open
     self.assertContained(r'''
@@ -3048,21 +3049,21 @@ int main(int argc, char **argv) {
 1:
   make /a//: 0
   open /a//: 1
-  ., 4
   .., 4
+  ., 4
 ''', run_js('a.out.js', args=['/a//']))
     # can create child unnormalized
     self.assertContained(r'''
 1:
   make /a: 0
   open /a: 1
-  ., 4
   .., 4
+  ., 4
 2:
   make /a//b//: 0
   open /a//b//: 1
-  ., 4
   .., 4
+  ., 4
 ''', run_js('a.out.js', args=['/a', '/a//b//']))
 
   def test_stat_silly(self):
