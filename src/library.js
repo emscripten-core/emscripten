@@ -3131,59 +3131,6 @@ LibraryManager.library = {
   llvm_memset_p0i8_i32: 'memset',
   llvm_memset_p0i8_i64: 'memset',
 
-  strlen__sig: 'ii',
-  strlen__asm: true,
-  strlen: function(ptr) {
-    ptr = ptr|0;
-    var curr = 0;
-    curr = ptr;
-    while ({{{ makeGetValueAsm('curr', '0', 'i8') }}}) {
-      curr = (curr + 1)|0;
-    }
-    return (curr - ptr)|0;
-  },
-
-  strcpy__asm: true,
-  strcpy__sig: 'iii',
-  strcpy: function(pdest, psrc) {
-    pdest = pdest|0; psrc = psrc|0;
-    var i = 0;
-    do {
-      {{{ makeCopyValues('(pdest+i)|0', '(psrc+i)|0', 1, 'i8', null, 1) }}};
-      i = (i+1)|0;
-    } while ({{{ makeGetValueAsm('psrc', 'i-1', 'i8') }}});
-    return pdest|0;
-  },
-
-  strncpy__asm: true,
-  strncpy__sig: 'iiii',
-  strncpy: function(pdest, psrc, num) {
-    pdest = pdest|0; psrc = psrc|0; num = num|0;
-    var padding = 0, curr = 0, i = 0;
-    while ((i|0) < (num|0)) {
-      curr = padding ? 0 : {{{ makeGetValueAsm('psrc', 'i', 'i8') }}};
-      {{{ makeSetValue('pdest', 'i', 'curr', 'i8') }}};
-      padding = padding ? 1 : ({{{ makeGetValueAsm('psrc', 'i', 'i8') }}} == 0);
-      i = (i+1)|0;
-    }
-    return pdest|0;
-  },
-
-  strcat__asm: true,
-  strcat__sig: 'iii',
-  strcat__deps: ['strlen'],
-  strcat: function(pdest, psrc) {
-    pdest = pdest|0; psrc = psrc|0;
-    var i = 0;
-    var pdestEnd = 0;
-    pdestEnd = (pdest + (_strlen(pdest)|0))|0;
-    do {
-      {{{ makeCopyValues('pdestEnd+i', 'psrc+i', 1, 'i8', null, 1) }}};
-      i = (i+1)|0;
-    } while ({{{ makeGetValueAsm('psrc', 'i-1', 'i8') }}});
-    return pdest|0;
-  },
-
   strerror_r__deps: ['$ERRNO_CODES', '$ERRNO_MESSAGES', '__setErrNo'],
   strerror_r: function(errnum, strerrbuf, buflen) {
     if (errnum in ERRNO_MESSAGES) {
