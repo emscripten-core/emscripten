@@ -1,275 +1,810 @@
+         d BF_atoi64
+         t BF_crypt
+         d BF_crypt.flags_by_subtype
+         t BF_encrypt
+         d BF_init_state
+         d BF_itoa64
+         d BF_magic_w
+         t BF_set_key
+         d K
+         d K144
+         d PIo2
+         d Sden
+         d Snum
+         U _Exit
+         W _IO_feof_unlocked
+         W _IO_ferror_unlocked
+         W _IO_getc
+         W _IO_getc_unlocked
+         W _IO_putc
+         W _IO_putc_unlocked
+         U __block_all_sigs
+         U __clock_gettime
+         U __clone
+         T __cos
+         T __cosdf
+         T __crypt_blowfish
+         d __crypt_blowfish.test_hash
+         T __crypt_des
+         T __crypt_md5
+         d __crypt_md5.testhash
+         d __crypt_md5.testkey
+         d __crypt_md5.testsetting
+         T __crypt_r
+         T __crypt_sha256
+         d __crypt_sha256.testhash
+         d __crypt_sha256.testkey
+         d __crypt_sha256.testsetting
+         T __crypt_sha512
+         d __crypt_sha512.testhash
+         d __crypt_sha512.testkey
+         d __crypt_sha512.testsetting
+         T __ctype_b_loc
+         T __ctype_get_mb_cur_max
+         T __ctype_tolower_loc
+         T __ctype_toupper_loc
+         T __des_setkey
+         T __dn_comp
+         T __dn_expand
+         T __dns_count_addrs
+         T __dns_doqueries
+         T __dns_get_rr
+         T __dns_query
+         T __do_des
+         T __dup3
+         W __duplocale
+         d __encrypt_key
+         U __environ
+         T __errno_location
+         d __errno_location.e
+         T __expo2
+         T __expo2f
+         T __fbufsize
+         T __fclose_ca
+         T __fdopen
+         T __fesetround
+         t __fflush_unlocked
+         T __fgetwc_unlocked
+         T __flbf
          T __floatscan
+         T __fmodeflags
+         T __fopen_rb_ca
          T __fpclassify
          T __fpclassifyf
-         T __fpclassifyl
+         T __fpending
+         T __fpurge
+         T __fputwc_unlocked
+         T __freadable
+         T __freadahead
+         T __freading
+         T __freadptr
+         T __freadptrinc
+         W __freelocale
+         T __fseeko
+         T __fseeko_unlocked
+         T __fseterr
+         T __fsetlocking
+         D __fsmu8
+         T __fstatfs
+         T __ftello
+         T __ftello_unlocked
+         T __fwritable
+         T __fwritex
+         T __fwriting
+         T __fxstat
+         W __fxstat64
+         T __fxstatat
+         W __fxstatat64
+         W __getdelim
+         T __getdents
+         t __getopt_long
+         T __h_errno_location
+         C __hwcap
          T __intscan
+         T __ipparse
+         W __isoc99_fscanf
+         W __isoc99_fwscanf
+         W __isoc99_scanf
+         W __isoc99_sscanf
+         W __isoc99_swscanf
+         W __isoc99_vfscanf
+         W __isoc99_vfwscanf
+         W __isoc99_vscanf
+         W __isoc99_vsscanf
+         W __isoc99_vswscanf
+         W __isoc99_vwscanf
+         W __isoc99_wscanf
+         W __iswctype_l
+         T __ldexp_cexp
+         T __ldexp_cexpf
+         T __lgamma_r
+         T __lgammaf_r
+         T __lgammal_r
+         C __libc
+         U __lock
+         T __lockfile
+         T __lxstat
+         W __lxstat64
+         T __madvise
+         T __memrchr
+         T __mkostemps
+         T __mmap
+         T __mremap
+         U __muldc3
+         U __mulsc3
+         T __munmap
+         W __newlocale
+         T __nl_langinfo
+         T __nl_langinfo_l
+         t __openlog
+         C __optpos
+         D __optreset
          T __overflow
+         T __p1evll
+         T __polevll
+         W __posix_getopt
+         T __procfdname
+         D __progname
+         D __progname_full
+         U __pthread_self
+         T __ptsname_r
+         T __rand48_step
+         T __randname
+         T __rem_pio2
+         T __rem_pio2_large
+         T __rem_pio2f
+         T __res_state
+         d __res_state.res
+         U __restore_sigs
+         D __seed48
+         T __setrlimit
+         T __setxid
          T __shgetc
          T __shlim
+         T __shm_mapname
          T __signbit
          T __signbitf
-         T __signbitl
+         D __signgam
+         T __sin
+         T __sindf
+         t __srandom
+         T __statfs
+         D __stderr_used
+         D __stdin_used
+         T __stdio_close
+         T __stdio_exit
+         W __stdio_exit_needed
+         T __stdio_read
+         T __stdio_seek
+         T __stdio_write
+         D __stdout_used
+         T __stdout_write
+         T __stpcpy
+         T __stpncpy
+         T __strchrnul
+         T __strcoll_l
+         T __strdup
+         T __string_read
          W __strtod_l
          W __strtof_l
+         W __strtoimax_internal
+         W __strtol_internal
          W __strtold_l
+         W __strtoll_internal
+         W __strtoul_internal
+         W __strtoull_internal
+         W __strtoumax_internal
+         T __strxfrm_l
+         T __synccall
+         U __syscall
+         U __syscall_cp
+         T __syscall_ret
+         C __sysinfo
+         T __tan
+         T __tandf
          T __toread
+         T __toread_needs_stdio_exit
+         t __towcase
+         W __towlower_l
          T __towrite
+         T __towrite_needs_stdio_exit
+         W __towupper_l
+         T __tre_mem_alloc_impl
+         T __tre_mem_destroy
+         T __tre_mem_new_impl
          T __uflow
+         U __unlock
+         T __unlockfile
+         W __uselocale
+         W __vm_lock
+         W __vm_unlock
+         T __vsyslog
+         U __wait
+         T __wcscoll_l
+         T __wcsxfrm_l
+         W __wctype_l
+         W __xpg_basename
+         W __xpg_strerror_r
+         T __xstat
+         W __xstat64
+         t _crypt_extended_r_uut
+         T _exit
+         T _flushlbf
+         d _gm_
+         U _pthread_cleanup_pop
+         U _pthread_cleanup_push
+         T a64l
+         U abort
+         T abs
+         T accept
+         T accept4
+         T access
+         T acct
+         T acos
+         T acosf
          T acosh
          T acoshf
          T acoshl
+         T acosl
+         T addmntent
+         T alarm
+         T alphasort
+         W alphasort64
+         t append
+         d ascii64
+         T asin
+         T asinf
          T asinh
          T asinhf
          T asinhl
+         T asinl
+         T asprintf
+         T atan
+         T atan2
+         T atan2f
+         T atan2l
+         T atanf
          T atanh
          T atanhf
+         d atanhi
+         d atanhi663
          T atanhl
+         T atanl
+         d atanlo
+         d atanlo664
          T atof
          T atoi
          T atol
+         T atoll
+         d b64
+         d b64142
+         d b64149
+         T basename
+         T bcmp
+         T bcopy
+         d big5
+         T bind
+         T bind_textdomain_codeset
+         T bindtextdomain
+         d bindtextdomain.dir
+         d bp
+         d bp681
+         T bsearch
+         T btowc
+         d buf
+         d buf516
+         d buf535
          W bulk_free
+         T bzero
+         d c_messages
+         d c_numeric
+         d c_time
+         T cabs
+         T cabsf
+         T cabsl
+         T cacos
+         T cacosf
+         T cacosh
+         T cacoshf
+         T cacoshl
+         T cacosl
          W calloc
+         T carg
+         T cargf
+         T cargl
+         d casemaps
+         T casin
+         T casinf
+         T casinh
+         T casinhf
+         T casinhl
+         T casinl
+         T catan
+         T catanf
+         T catanh
+         T catanhf
+         T catanhl
+         T catanl
+         T catclose
+         T catgets
+         T catopen
          T cbrt
          T cbrtf
          T cbrtl
+         T ccos
+         T ccosf
+         T ccosh
+         T ccoshf
+         T ccoshl
+         T ccosl
+         T ceil
+         T ceilf
+         T ceill
+         T cexp
+         T cexpf
+         T cexpl
+         T cfgetispeed
+         T cfgetospeed
+         T cfmakeraw
+         T cfsetispeed
+         T cfsetospeed
+         W cfsetspeed
+         d charmaps
+         T chdir
+         t checker
+         T chmod
+         T chown
+         T cimag
+         T cimagf
+         T cimagl
+         t cleanup
+         t cleanup439
+         t cleanup456
+         T clearerr
+         W clearerr_unlocked
+         U clock_gettime
+         T clog
+         T clogf
+         T clogl
+         T close
+         t close_file
+         T closedir
+         T closelog
+         t common
+         t common697
+         t common722
+         t common745
+         d comp_maskl0
+         d comp_maskl1
+         d comp_maskr0
+         d comp_maskr1
+         T conj
+         T conjf
+         T conjl
+         T connect
          T copysign
          T copysignf
          T copysignl
+         T cos
+         T cosf
          T cosh
          T coshf
          T coshl
+         T cosl
+         T cpow
+         T cpowf
+         T cpowl
+         T cproj
+         T cprojf
+         T cprojl
+         T creal
+         T crealf
+         T creall
+         T creat
+         W creat64
+         T crypt
+         d crypt.buf
+         W crypt_r
+         T csin
+         T csinf
+         T csinh
+         T csinhf
+         T csinhl
+         T csinl
+         T csqrt
+         T csqrtf
+         T csqrtl
+         T ctan
+         T ctanf
+         T ctanh
+         T ctanhf
+         T ctanhl
+         T ctanl
+         T ctermid
+         d ctermid.s2
+         t cycle
+         T dcgettext
+         T dcngettext
+         d decfloat.p10s
+         T dgettext
+         d digits
+         T dirfd
+         T dirname
+         t dispose_chunk
+         T div
+         W dn_comp
+         W dn_expand
+         T dn_skipname
+         T dngettext
+         t do_nftw
+         t do_read
+         t do_read442
+         t do_read7
+         t do_setrlimit
+         t do_setxid
+         d dp_h
+         d dp_h683
+         d dp_l
+         d dp_l682
+         T dprintf
          T drand48
+         W drem
+         W dremf
+         t dummy0
+         t dummy1
+         d dummy_file
+         T dup
+         T dup2
+         W dup3
+         T duplocale
+         T ecvt
+         d ecvt.buf
+         T encrypt
+         U endgrent
+         T endhostent
+         T endmntent
+         W endnetent
+         T endprotoent
+         T endservent
          T erand48
+         T erf
+         T erfc
+         t erfc2
+         t erfc2762
+         T erfcf
+         T erfcl
+         T erff
+         T erfl
+         d errid
+         d errmsg
+         d errors
+         T ether_aton
+         d ether_aton.a
+         T ether_aton_r
+         T ether_hostton
+         T ether_line
+         T ether_ntoa
+         d ether_ntoa.x
+         T ether_ntoa_r
+         T ether_ntohost
+         U execl
+         T exp
+         T exp10
+         d exp10.p10
+         T exp10f
+         d exp10f.p10
+         T exp10l
+         d exp10l.p10
          T exp2
          T exp2f
+         d exp2ft
          T exp2l
+         T expf
+         T expl
          T expm1
          T expm1f
          T expm1l
-         T feclearexcept
-         T feraiseexcept
-         T fetestexcept
-         T fegetround
-         T __fesetround
-         T fegetenv
-         T fesetenv
+         d f
+         d f515
+         d f534
+         T fabs
+         T fabsf
+         T fabsl
+         T faccessat
+         d fact
+         T fchdir
+         T fchmod
+         T fchmodat
+         T fchown
+         T fchownat
+         T fclose
+         T fcntl
+         T fcvt
+         T fdatasync
          T fdim
          T fdimf
          T fdiml
+         W fdopen
+         T fdopendir
+         T feclearexcept
+         T fegetenv
+         T fegetexceptflag
+         T fegetround
+         T feholdexcept
+         T feof
+         W feof_unlocked
+         T feraiseexcept
+         T ferror
+         W ferror_unlocked
+         T fesetenv
+         T fesetexceptflag
+         T fesetround
+         T fetestexcept
+         T feupdateenv
+         T fflush
+         W fflush_unlocked
          T ffs
+         T fgetc
+         W fgetc_unlocked
+         T fgetln
+         T fgetpos
+         W fgetpos64
+         T fgets
+         W fgets_unlocked
+         T fgetwc
+         W fgetwc_unlocked
+         T fgetws
+         W fgetws_unlocked
+         T fileno
+         W fileno_unlocked
+         t find_charmap
          T finite
          T finitef
+         T flockfile
+         T floor
+         T floorf
+         T floorl
          T fma
          T fmaf
          T fmal
          T fmax
          T fmaxf
          T fmaxl
+         T fmemopen
          T fmin
          T fminf
          T fminl
          T fmod
          T fmodf
          T fmodl
+         t fmt_u
+         T fnmatch
+         t fnmatch_internal
+         T fopen
+         W fopen64
+         U fork
+         T forkpty
+         d fp_maskl
+         T fprintf
+         W fpurge
+         T fputc
+         W fputc_unlocked
+         T fputs
+         W fputs_unlocked
+         T fputwc
+         W fputwc_unlocked
+         T fputws
+         W fputws_unlocked
+         T fread
+         W fread_unlocked
          W free
+         T freeaddrinfo
+         T freeifaddrs
+         T freelocale
+         T freopen
+         W freopen64
          T frexp
          T frexpf
          T frexpl
-         T hypot
-         T hypotf
-         T hypotl
-         W independent_calloc
-         W independent_comalloc
-         T initstate
-         T isdigit
-         T isspace
-         T isupper
-         T jrand48
-         T lcg31
-         T lcg64
-         T lcong48
-         T llrint
-         T llrintf
-         T llrintl
-         T llround
-         T llroundf
-         T llroundl
-         T loadstate
-         T log10
-         T log10f
-         T log10l
-         T log1p
-         T log1pf
-         T log1pl
-         T log2
-         T log2f
-         T log2l
-         T lrand48
-         T lrint
-         T lrintf
-         T lrintl
-         T lround
-         T lroundf
-         T lroundl
-         W mallinfo
-         W malloc
-         W malloc_footprint
-         W malloc_footprint_limit
-         W malloc_max_footprint
-         W malloc_set_footprint_limit
-         W malloc_stats
-         W malloc_trim
-         W malloc_usable_size
-         W mallopt
-         W memalign
-         T modf
-         T modff
-         T modfl
-         T MUSL_vfprintf
-         T mrand48
-         T nan
-         T nanf
-         T nanl
-         T nearbyint
-         T nearbyintf
-         T nearbyintl
-         T nrand48
-         W posix_memalign
-         W pvalloc
-         T rand
-         T rand_r
-         T random
-         W realloc
-         W realloc_in_place
-         T remainder
-         T remainderf
-         T remainderl
-         T rint
-         T rintf
-         T rintl
-         T round
-         T roundf
-         T roundl
-         T scalbn
-         T scalbnl
-         T sincos
-         T sincosf
-         T sincosl
-         T sinh
-         T sinhf
-         T sinhl
-         T srand
-         T tanh
-         T tanhf
-         T tanhl
-         T trunc
-         T truncf
-         T truncl
-         T memchr
-         T memcmp
-         T memcpy
-         T savestate
-         T seed48
-         T setstate
-         T snprintf
-         T sprintf
-         T srand48
-         T srandom
-         T strtod
-         T strtoull
-         T strtoll
-         T strtoul
-         T strtol
-         T strtoimax
-         T strtoumax
-         T strcmp
-         T strncmp
-         T strcasecmp
-         T strncasecmp
-         T strtod_l
-         T strtof
-         T strtof_l
-         T strtold
-         T strtold_l
-         T temper
-         T tolower
-         W valloc
-         T vsnprintf
-         T vsprintf
-         T wcrtomb
-         T wctomb
-         T isxdigit
-         T __cos
-         T __cosdf
-         T __fputwc_unlocked
-         W __iswctype_l
-         T __lgamma_r
-         T __lgammaf_r
-         T __lgammal_r
-         T __memrchr
-         C __optpos
-         D __optreset
-         W __posix_getopt
-         T __sin
-         T __sindf
-         T __strchrnul
-         T __strxfrm_l
-         W __towlower_l
-         W __towupper_l
-         T __tre_mem_alloc_impl
-         T __tre_mem_destroy
-         T __tre_mem_new_impl
-         T __wcscoll_l
-         T __wcsxfrm_l
-         W __wctype_l
-         T alphasort
-         T asprintf
-         T atoll
-         T bcmp
-         T bcopy
-         T bzero
-         T bsearch
-         T btowc
-         T ecvt
-         T err
-         T errx
-         T fcvt
-         T fputwc
-         W fputwc_unlocked
+         T fscanf
+         T fseek
+         W fseeko
+         W fseeko64
+         T fsetpos
+         W fsetpos64
+         T fstat
+         W fstat64
+         T fstatat
+         W fstatat64
+         W fstatfs
+         W fstatfs64
+         T fstatvfs
+         W fstatvfs64
+         T fsync
+         T ftell
+         W ftello
+         W ftello64
+         T ftruncate
+         W ftruncate64
+         T ftrylockfile
+         T funlockfile
+         T futimens
+         T futimesat
+         T fwide
          T fwprintf
+         T fwrite
+         W fwrite_unlocked
+         T fwscanf
+         T gai_strerror
+         d gb18030
          T gcvt
+         T get_current_dir_name
+         T getaddrinfo
+         T getc
+         T getc_unlocked
+         T getchar
+         T getchar_unlocked
+         T getcwd
+         T getdelim
+         W getdents
+         W getdents64
+         T getdomainname
+         T getegid
+         U getenv
+         T geteuid
+         T getgid
+         U getgrent
+         T getgrouplist
+         T getgroups
+         T gethostbyaddr
+         d gethostbyaddr.h
+         T gethostbyaddr_r
+         T gethostbyname
+         T gethostbyname2
+         d gethostbyname2.h
+         T gethostbyname2_r
+         T gethostbyname_r
+         T gethostent
+         T gethostid
+         T gethostname
+         T getifaddrs
+         t getint
+         T getline
+         T getlogin
+         T getlogin_r
+         T getmntent
+         d getmntent.linebuf
+         d getmntent.mnt
+         T getmntent_r
+         T getnameinfo
+         T getnetbyaddr
+         T getnetbyname
+         W getnetent
          T getopt
          T getopt_long
          T getopt_long_only
+         T getpeername
+         T getpgid
+         T getpgrp
+         T getpid
+         T getppid
+         T getpriority
+         T getprotobyname
+         T getprotobynumber
+         T getprotoent
+         d getprotoent.aliases
+         d getprotoent.p
+         T getresgid
+         T getresuid
+         T getrlimit
+         W getrlimit64
+         T getrusage
+         T gets
+         T getservbyname
+         d getservbyname.buf
+         d getservbyname.se
+         T getservbyname_r
+         T getservbyport
+         d getservbyport.buf
+         d getservbyport.se
+         T getservbyport_r
+         T getservent
+         T getsid
+         T getsockname
+         T getsockopt
+         T getsubopt
+         T gettext
+         T getuid
+         T getw
+         T getwc
+         W getwc_unlocked
+         T getwchar
+         W getwchar_unlocked
          T glob
+         W glob64
          T globfree
+         W globfree64
+         U gmtime_r
+         T grantpt
+         C h_errno
+         d half
+         d half688
+         t hashmd
+         t hashmd140
+         T hasmntopt
+         T herror
+         d hkscs
+         T hstrerror
+         T htonl
+         T htons
+         T hypot
+         T hypotf
+         T hypotl
+         d i
+         t ialloc
          T iconv
          T iconv_close
          T iconv_open
+         d idx
+         T if_freenameindex
+         T if_indextoname
+         T if_nameindex
+         T if_nametoindex
+         t ignore_err
          T ilogb
          T ilogbf
          T ilogbl
+         T imaxabs
+         T imaxdiv
+         D in6addr_any
+         D in6addr_loopback
+         W independent_calloc
+         W independent_comalloc
          T index
-         T isascii
-         T islower
-         T islower_l
-         T isupper_l
-         T isalpha
-         T isalpha_l
-         T isblank_l
-         T isdigit_l
-         T isxdigit_l
+         T inet_addr
+         T inet_aton
+         T inet_lnaof
+         T inet_makeaddr
+         T inet_netof
+         T inet_network
+         T inet_ntoa
+         d inet_ntoa.buf
+         T inet_ntop
+         T inet_pton
+         d init
+         d init_jk
+         t init_mparams
+         T initgroups
+         T initstate
+         t internal_memalign
+         T ioctl
+         d ip_maskl
+         d ip_maskr
+         d ipio2
          T isalnum
          T isalnum_l
-         T ispunct
-         T ispunct_l
-         T isspace_l
+         T isalpha
+         T isalpha_l
+         T isascii
+         T isatty
+         T isblank
+         T isblank_l
          T iscntrl
          T iscntrl_l
-         T isprint
-         T isprint_l
+         T isdigit
+         T isdigit_l
          T isgraph
          T isgraph_l
+         T islower
+         T islower_l
+         T isprint
+         T isprint_l
+         T ispunct
+         T ispunct_l
+         T isspace
+         T isspace_l
+         T isupper
+         T isupper_l
          T iswalnum
          T iswalnum_l
          T iswalpha
@@ -291,123 +826,685 @@
          T iswpunct
          T iswpunct_l
          T iswspace
+         d iswspace.spaces
          T iswspace_l
          T iswupper
          T iswupper_l
          T iswxdigit
          T iswxdigit_l
+         T isxdigit
+         T isxdigit_l
+         d j
          T j0
          T j0f
          T j1
          T j1f
+         d jis0208
          T jn
          T jnf
+         T jrand48
+         d key_perm_maskl
+         d key_perm_maskr
+         d key_shifts
+         U kill
+         d ksc
+         T l64a
+         d l64a.s
+         T labs
+         T lchmod
+         T lchown
+         T lcong48
          T ldexp
          T ldexpf
          T ldexpl
+         T ldiv
+         d legacy_chars
          T lgamma
          W lgamma_r
          T lgammaf
          W lgammaf_r
          T lgammal
          W lgammal_r
+         T link
+         T linkat
+         t list_add
+         T listen
+         T llabs
+         T lldiv
+         T llrint
+         T llrintf
+         T llrintl
+         T llround
+         T llroundf
+         T llroundl
+         T localeconv
+         d lock
+         d lock387
+         T lockf
+         W lockf64
+         T log
+         T log10
+         T log10f
+         T log10l
+         T log1p
+         T log1pf
+         T log1pl
+         T log2
+         T log2f
+         T log2l
+         d log_addr
+         d log_facility
+         d log_fd
+         d log_ident
+         d log_mask
+         d log_opt
          T logb
          T logbf
          T logbl
+         T logf
+         T logl
+         T lrand48
+         T lrint
+         T lrintf
+         T lrintl
+         T lround
+         T lroundf
+         T lroundl
+         T lseek
+         W lseek64
+         T lstat
+         W lstat64
+         W madvise
+         W mallinfo
+         W malloc
+         W malloc_footprint
+         W malloc_footprint_limit
+         W malloc_max_footprint
+         W malloc_set_footprint_limit
+         W malloc_stats
+         W malloc_trim
+         W malloc_usable_size
+         W mallopt
+         t match_bracket
+         t match_in_dir
          T mblen
          T mbrlen
+         d mbrlen.internal
          T mbrtowc
+         d mbrtowc.internal_state
          T mbsinit
          T mbsnrtowcs
          T mbsrtowcs
          T mbstowcs
          T mbtowc
+         t mclose
+         t md5_sum
+         t md5_update
+         t md5crypt
+         d md5crypt.perm
+         W memalign
          T memccpy
+         T memchr
+         T memcmp
          T memmem
          T mempcpy
          W memrchr
+         d messages
+         T mincore
+         T mkdir
+         T mkdirat
+         T mkdtemp
+         T mkfifo
+         T mkfifoat
+         T mknod
+         T mknodat
+         T mkostemp
+         W mkostemp64
+         W mkostemps
+         W mkostemps64
+         d mkptr6.xdigits
+         T mkstemp
+         W mkstemp64
+         T mkstemps
+         W mkstemps64
+         T mktemp
+         T mlock
+         T mlockall
+         W mmap
+         W mmap64
+         T modf
+         T modff
+         T modfl
+         d mparams
+         T mprotect
+         T mrand48
+         t mread
+         W mremap
+         t ms_close
+         t ms_seek
+         t ms_write
+         t mseek
+         d msgs
+         d msgs225
+         T msync
+         T munlock
+         T munlockall
+         W munmap
+         t mwrite
+         d n
+         T nan
+         T nanf
+         T nanl
+         U nanosleep
+         T nearbyint
+         T nearbyintf
+         T nearbyintl
+         T newlocale
+         T nextafter
+         T nextafterf
+         T nextafterl
+         T nexttoward
+         T nexttowardf
+         T nexttowardl
+         T nftw
+         W nftw64
+         T ngettext
+         T nice
+         W nl_langinfo
+         W nl_langinfo_l
+         T nrand48
+         T ntohl
+         T ntohs
+         T open
+         W open64
+         T open_memstream
+         T open_wmemstream
+         T openat
+         W openat64
+         T opendir
+         T openlog
+         T openpty
          C optarg
          D opterr
          D optind
          C optopt
          W optreset
+         t out
+         d pR2
+         d pR2749
+         d pR3
+         d pR3748
+         d pR5
+         d pR5753
+         d pR8
+         d pR8752
+         d pS2
+         d pS2747
+         d pS3
+         d pS3746
+         d pS5
+         d pS5751
+         d pS8
+         d pS8750
+         t pad
+         d pairs
+         t pat_next
+         T pause
+         T pclose
+         T perror
+         T pipe
+         T pipe2
+         T poll
+         t pop_arg
+         t pop_arg550
+         T popen
+         T posix_close
+         T posix_fadvise
+         W posix_fadvise64
+         T posix_fallocate
+         W posix_fallocate64
+         d posix_lconv
+         T posix_madvise
+         W posix_memalign
+         T posix_openpt
+         U posix_spawn
+         U posix_spawn_file_actions_adddup2
+         U posix_spawn_file_actions_destroy
+         U posix_spawn_file_actions_init
+         T pow
+         W pow10
+         W pow10f
+         W pow10l
+         T powf
+         T powl
+         d pr2
+         d pr2701
+         d pr3
+         d pr3700
+         d pr5
+         d pr5705
+         d pr8
+         d pr8704
+         T pread
+         W pread64
+         T preadv
+         W preadv64
+         T printf
+         t printf_core
+         t processblock
+         t processblock143
+         t processblock150
+         W program_invocation_name
+         W program_invocation_short_name
+         d protos
+         d ps2
+         d ps2699
+         d ps3
+         d ps3698
+         d ps5
+         d ps5703
+         d ps8
+         d ps8702
+         d psbox
+         T pselect
+         d ptable
+         d ptable279
+         d ptable285
+         U pthread_self
+         U pthread_setcancelstate
+         T ptsname
+         d ptsname.buf
+         W ptsname_r
+         T putc
+         T putc_unlocked
+         T putchar
+         T putchar_unlocked
+         T puts
+         T putw
+         T putwc
          W putwc_unlocked
+         T putwchar
+         W putwchar_unlocked
+         W pvalloc
+         T pwrite
+         W pwrite64
+         T pwritev
+         W pwritev64
+         d qR2
+         d qR2757
+         d qR3
+         d qR3756
+         d qR5
+         d qR5761
+         d qR8
+         d qR8760
+         d qS2
+         d qS2755
+         d qS3
+         d qS3754
+         d qS5
+         d qS5759
+         d qS8
+         d qS8758
+         d qr2
+         d qr2707
+         d qr3
+         d qr5
+         d qr8
+         d qr8709
+         d qs2
+         d qs2706
+         d qs3
+         d qs5
+         d qs8
+         d qs8708
          T qsort
+         T rand
+         T rand_r
+         T random
+         T read
+         T readdir
+         W readdir64
+         W readdir64_r
+         T readdir_r
+         T readlink
+         T readlinkat
+         T readv
+         W realloc
+         W realloc_in_place
+         T realpath
+         t reap
+         T recv
+         T recvfrom
+         T recvmsg
          T regcomp
          T regerror
          T regexec
          T regfree
+         T remainder
+         T remainderf
+         T remainderl
+         T remove
+         T remquo
+         T remquof
+         T remquol
+         T rename
+         T renameat
+         T res_init
+         T res_query
+         W res_search
+         T rewind
+         T rewinddir
          T rindex
+         T rint
+         T rintf
+         T rintl
+         T rmdir
+         T round
+         T roundf
+         T roundl
+         U sbrk
+         T scalb
+         T scalbf
+         T scalbln
+         T scalblnf
+         T scalblnl
+         T scalbn
          T scalbnf
+         T scalbnl
          T scandir
-         D signgam
+         W scandir64
+         t scanexp
+         T scanf
+         d seed
+         T seed48
+         d seed48.p
+         T seekdir
+         T select
+         T send
+         T sendmsg
+         T sendto
+         T setbuf
+         T setbuffer
+         T setdomainname
+         T setegid
+         T seteuid
+         T setgid
+         U setgrent
+         U setgroups
+         T sethostent
+         U setitimer
+         T setkey
+         T setlinebuf
+         T setlocale
+         T setlogmask
+         T setmntent
+         W setnetent
+         T setpgid
+         T setpgrp
+         T setpriority
+         T setprotoent
+         T setregid
+         T setresgid
+         T setresuid
+         T setreuid
+         T setrlimit
+         W setrlimit64
+         T setservent
+         T setsid
+         T setsockopt
+         T setstate
+         T setuid
+         T setvbuf
+         t sha256_sum
+         t sha256_update
+         t sha256crypt
+         d sha256crypt.perm
+         t sha512_sum
+         t sha512_update
+         t sha512crypt
+         d sha512crypt.perm
+         T shm_open
+         T shm_unlink
+         T shutdown
+         t sift
+         W signgam
+         T significand
+         T significandf
+         T sin
+         T sincos
+         T sincosf
+         T sincosl
+         T sinf
+         T sinh
+         T sinhf
+         T sinhl
+         T sinl
+         d sizeprefix
+         T sleep
+         t sn_write
+         T snprintf
+         T sockatmark
+         T socket
+         T socketpair
+         t sort
+         T sprintf
+         T sqrt
+         T sqrtf
+         T sqrtl
+         T srand
+         T srand48
+         T srandom
          T sscanf
-         T stpcpy
+         T stat
+         W stat64
+         d states
+         d states549
+         W statfs
+         W statfs64
+         T statvfs
+         W statvfs64
+         D stderr
+         D stdin
+         D stdout
+         W stpcpy
+         W stpncpy
+         t str_next
+         T strcasecmp
          T strcasecmp_l
          T strcasestr
-         W strchrnul
+         T strcat
          T strchr
+         W strchrnul
+         T strcmp
+         T strcoll
+         W strcoll_l
+         T strcpy
          T strcspn
-         T strdup
+         W strdup
+         T strerror
+         T strerror_l
+         T strerror_r
          T strfmon
          T strfmon_l
+         U strftime
+         d strings
          T strlcat
          T strlcpy
+         T strlen
          T strlwr
+         T strncasecmp
          T strncasecmp_l
          T strncat
+         T strncmp
+         T strncpy
          T strndup
          T strnlen
          T strpbrk
          T strrchr
          T strsep
+         T strsignal
          T strspn
          T strstr
+         T strtod
+         W strtod_l
+         T strtof
+         W strtof_l
+         T strtoimax
          T strtok
+         d strtok.p
          T strtok_r
-         T strtoull_l
-         T strtoll_l
-         T strtoul_l
+         T strtol
          T strtol_l
+         T strtold
+         W strtold_l
+         T strtoll
+         T strtoll_l
+         T strtoul
+         T strtoul_l
+         T strtoull
+         T strtoull_l
+         T strtoumax
+         t strtox
+         t strtox23
          T strupr
          T strverscmp
          T strxfrm
          W strxfrm_l
+         t sw_write
+         T swab
          T swprintf
+         T swscanf
+         T symlink
+         T symlinkat
+         T sync
+         T syscall
+         U sysconf
+         T syslog
+         d tab
+         d table
+         d table280
+         d table286
+         d table311
+         d table316
+         d table323
+         d table380
+         T tan
+         T tanf
+         T tanh
+         T tanhf
+         T tanhl
+         T tanl
+         d tbl
+         T tcdrain
+         T tcflow
+         T tcflush
+         T tcgetattr
+         T tcgetpgrp
+         T tcgetsid
+         T tcsendbreak
+         T tcsetattr
+         T tcsetpgrp
+         T telldir
+         T tempnam
+         d tempnam.index
+         T textdomain
+         d textdomain.default_str
          T tgamma
          T tgammaf
          T tgammal
+         U time
+         T tmpfile
+         W tmpfile64
+         T tmpnam
+         d tmpnam.index
+         d tmpnam.s2
          T toascii
+         T tolower
+         T tolower_l
          T toupper
          T toupper_l
-         T tolower_l
          T towctrans
          T towctrans_l
          T towlower
          T towlower_l
          T towupper
          T towupper_l
+         t tre_add_tag_left
+         t tre_add_tag_right
+         t tre_add_tags
+         t tre_ast_new_catenation
+         t tre_ast_new_iter
+         t tre_ast_new_node
+         t tre_ast_new_union
+         t tre_ast_to_tnfa
+         t tre_compare_items
+         t tre_copy_ast
+         t tre_fill_pmatch
+         d tre_macros
+         t tre_make_trans
+         t tre_match_empty
+         t tre_neg_char_classes_match
+         t tre_new_item
+         t tre_parse
+         t tre_purge_regset
+         t tre_set_empty
+         t tre_set_one
+         t tre_set_union
+         t tre_stack_push
+         t tre_tag_order
+         t trinkle
+         T trunc
+         T truncate
+         W truncate64
+         T truncf
+         T truncl
+         t try_realloc_chunk
+         T ttyname
+         d ttyname.buf
+         T ttyname_r
+         T ualarm
+         T umask
+         T uname
+         T ungetc
+         T ungetwc
+         T unlink
+         T unlinkat
+         T unlockpt
+         T uselocale
+         T usleep
+         T utimensat
+         W valloc
          T vasprintf
-         T verr
-         T verrx
-         T MUSL_vfscanf
-         T vsscanf
+         T vdprintf
+         T versionsort
+         T vfprintf
+         T vfscanf
          T vfwprintf
+         T vfwscanf
+         d vfwscanf.size_pfx
+         T vprintf
+         T vscanf
+         T vsnprintf
+         T vsprintf
+         T vsscanf
+         t vstrfmon_l
          T vswprintf
-         T vwarn
-         T vwarnx
+         T vswscanf
+         W vsyslog
          T vwprintf
-         T warn
-         T warnx
+         T vwscanf
+         U waitpid
          T wcpcpy
          T wcpncpy
+         T wcrtomb
          T wcscasecmp
          T wcscasecmp_l
          T wcscat
          T wcschr
          T wcscmp
          T wcscoll
-         T wcscoll_l
+         W wcscoll_l
          T wcscpy
          T wcscspn
          T wcsdup
@@ -435,14 +1532,18 @@
          T wcstoul
          T wcstoull
          T wcstoumax
+         t wcstox
+         t wcstox6
          T wcswcs
          T wcswidth
          T wcsxfrm
-         T wcsxfrm_l
+         W wcsxfrm_l
          T wctob
+         T wctomb
          T wctrans
          T wctrans_l
          T wctype
+         d wctype.names
          T wctype_l
          T wcwidth
          T wmemchr
@@ -450,77 +1551,24 @@
          T wmemcpy
          T wmemmove
          T wmemset
+         t wms_close
+         t wms_seek
+         t wms_write
+         T wordexp
+         T wordfree
          T wprintf
-         T fnmatch
-         T strsignal
-         T strcoll
-         T __strcoll_l
-         W strcoll_l
-         T cabs
-         T cabsf
-         T cabsl
-         T cacos
-         T cacosf
-         T cacosh
-         T cacoshf
-         T cacoshl
-         T cacosl
-         T carg
-         T cargf
-         T cargl
-         T casin
-         T casinf
-         T casinh
-         T casinhf
-         T casinhl
-         T casinl
-         T catan
-         T catanf
-         T catanh
-         T catanhf
-         T catanhl
-         T catanl
-         T ccos
-         T ccosf
-         T ccosh
-         T ccoshf
-         T ccoshl
-         T ccosl
-         T __cexp
-         T cexp
-         T __cexpf
-         T cexpf
-         T cexpl
-         T cimag
-         T cimagf
-         T cimagl
-         T clog
-         T clogf
-         T clogl
-         T conj
-         T conjf
-         T conjl
-         T cpow
-         T cpowf
-         T cpowl
-         T cproj
-         T cprojf
-         T cprojl
-         T creal
-         T crealf
-         T creall
-         T csin
-         T csinf
-         T csinh
-         T csinhf
-         T csinhl
-         T csinl
-         T csqrt
-         T csqrtf
-         T csqrtl
-         T ctan
-         T ctanf
-         T ctanh
-         T ctanhf
-         T ctanhl
-         T ctanl
+         t wprintf_core
+         t wrap_write
+         T write
+         T writev
+         T wscanf
+         t wstring_read
+         d wtable
+         d x
+         d xdigits
+         T y0
+         T y0f
+         T y1
+         T y1f
+         T yn
+         T ynf
