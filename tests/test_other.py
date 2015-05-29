@@ -4023,13 +4023,13 @@ main(const int argc, const char * const * const argv)
 
   def test_no_nuthin(self):
     def test(opts, ratio, absolute):
-      print opts
+      print 'opts, ratio, absolute:', opts, ratio, absolute
       def get_size(name):
         return os.stat(name).st_size
       sizes = {}
       def do(name, moar_opts):
         self.clear()
-        Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', name + '.js'] + opts + moar_opts).communicate()
+        Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_em_asm.c'), '-o', name + '.js'] + opts + moar_opts).communicate()
         sizes[name] = get_size(name + '.js')
         self.assertContained('hello, world!', run_js(name + '.js'))
       do('normal', [])
