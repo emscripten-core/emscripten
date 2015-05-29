@@ -1000,9 +1000,10 @@ try:
   if js_opts:
     shared.Settings.RUNNING_JS_OPTS = 1
 
-  shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location'] # so FS can report errno back to C
-  if not shared.Settings.NO_EXIT_RUNTIME:
-    shared.Settings.EXPORTED_FUNCTIONS += ['_fflush'] # to flush the streams on FS quit
+  if not shared.Settings.NO_FILESYSTEM:
+    shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location'] # so FS can report errno back to C
+    if not shared.Settings.NO_EXIT_RUNTIME:
+      shared.Settings.EXPORTED_FUNCTIONS += ['_fflush'] # to flush the streams on FS quit
 
   shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
   shared.Settings.OPT_LEVEL = opt_level

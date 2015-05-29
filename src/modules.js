@@ -102,6 +102,7 @@ var LibraryManager = {
     ];
     if (!NO_FILESYSTEM) {
       libraries = libraries.concat([
+        'library_syscall.js',
         'library_path.js',
         'library_fs.js',
         'library_idbfs.js',
@@ -117,7 +118,6 @@ var LibraryManager = {
       ]);
     }
     libraries = libraries.concat([
-      'library_syscall.js',
       'library_sdl.js',
       'library_gl.js',
       'library_glut.js',
