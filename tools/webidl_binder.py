@@ -139,20 +139,10 @@ function getClass(obj) {
 Module['getClass'] = getClass;
 
 // Converts a value into a C-style string.
-var ensureString = (function() {
-  var stringCache = {};
-  function ensureString(value) {
-    if (typeof value == 'string') {
-      var cachedVal = stringCache[value];
-      if (cachedVal) return cachedVal;
-      var ret = allocate(intArrayFromString(value), 'i8', ALLOC_STACK);
-      stringCache[value] = ret;
-      return ret;
-    }
-    return value;
-  }
-  return ensureString;
-})();
+function ensureString(value) {
+  if (typeof value == 'string') return allocate(intArrayFromString(value), 'i8', ALLOC_STACK);
+  return value;
+}
 
 ''']
 

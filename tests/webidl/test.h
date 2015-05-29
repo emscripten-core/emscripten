@@ -59,10 +59,6 @@ public:
   }
   void PrintFloat(float f) { printf("%.2f\n", f); }
   const char* returnAString() { return "a returned string"; }
-
-  void CompareCStringAddress(const char* s1, const char* s2) {
-    printf("C string addresses: \"%s\" ? \"%s\"  =>  %d\n", s1, s2, s1 < s2 ? -1 : (s1 == s2 ? 0 : 1));
-  }
 };
 
 struct RefUser {
