@@ -3869,6 +3869,7 @@ main()
     assert 'callback post()' not in output
 
   def test_bad_locale(self):
+    logging.warning('TODO: check with upstream musl if this is correct behavior or not')
     open('src.cpp', 'w').write(r'''
 
 #include <locale.h>
