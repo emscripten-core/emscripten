@@ -2924,10 +2924,12 @@ int main(int argc, char **argv) {
         if line.strip().startswith('var FUNCTION_TABLE_dd = '):
           sizes_dd[alias] = line.count(',')
 
+    print 'ii', sizes_ii
+    print 'dd', sizes_dd
+
     for sizes in [sizes_ii, sizes_dd]:
-      assert sizes[-1] == 3 # default - let them alias
-      assert sizes[0] == 7 # no aliasing, all unique, fat tables
-      assert sizes[1] == 3 # aliased once more
+      assert sizes[-1] == sizes[1] # default is to alias
+      assert sizes[1] < sizes[0] # without aliasing, we have more unique values and fat tables
 
   def test_bad_export(self):
     for m in ['', ' ']:
