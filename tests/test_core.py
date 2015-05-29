@@ -5946,10 +5946,13 @@ def process(filename):
     emcc_args = self.emcc_args
 
     # The following tests link to libc, and must be run with EMCC_LEAVE_INPUTS_RAW = 0
-    need_no_leave_inputs_raw = ['muli33_ta2', 'philoop_ta2', 'uadd_overflow_64_ta2']
+    need_no_leave_inputs_raw = ['muli33_ta2', 'philoop_ta2', 'uadd_overflow_64_ta2', 'i64toi8star', 'legalizer_ta2', 'inttoptr', 'quotedlabel', 'alignedunaligned', 'sillybitcast', 'invokeundef', 'loadbitcastgep', 'sillybitcast2', 'legalizer_b_ta2', 'emptystruct']
 
     try:
-      for name in glob.glob(path_from_root('tests', 'cases', '*.ll')):
+      import random
+      names = glob.glob(path_from_root('tests', 'cases', '*.ll'))
+      #random.shuffle(names)
+      for name in names:
         shortname = name.replace('.ll', '')
         if '' not in shortname: continue
         # TODO: test only worked in non-fastcomp (well, these cases)
