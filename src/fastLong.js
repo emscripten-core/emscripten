@@ -38,7 +38,7 @@ function ___remdi3($a$0, $a$1, $b$0, $b$1) {
   $b$1 = $b$1 | 0;
   var $rem = 0, $1$0 = 0, $1$1 = 0, $2$0 = 0, $2$1 = 0, $4$0 = 0, $4$1 = 0, $6$0 = 0, $10$0 = 0, $10$1 = 0, __stackBase__ = 0;
   __stackBase__ = STACKTOP;
-  STACKTOP = STACKTOP + 8 | 0;
+  STACKTOP = STACKTOP + 16 | 0;
   $rem = __stackBase__ | 0;
   $1$0 = $a$1 >> 31 | (($a$1 | 0) < 0 ? -1 : 0) << 1;
   $1$1 = (($a$1 | 0) < 0 ? -1 : 0) >> 31 | (($a$1 | 0) < 0 ? -1 : 0) << 1;
@@ -82,7 +82,7 @@ function ___uremdi3($a$0, $a$1, $b$0, $b$1) {
   $b$1 = $b$1 | 0;
   var $rem = 0, __stackBase__ = 0;
   __stackBase__ = STACKTOP;
-  STACKTOP = STACKTOP + 8 | 0;
+  STACKTOP = STACKTOP + 16 | 0;
   $rem = __stackBase__ | 0;
   ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem) | 0;
   STACKTOP = __stackBase__;
