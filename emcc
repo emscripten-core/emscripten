@@ -1359,10 +1359,11 @@ try:
           return '';
       membytes = ''.join(map(chr, membytes))
       if not memory_init_file:
-        s = repr(membytes)
-        hex_to_octal = lambda x: '\\%o' % int(x.group(1), 16)
-        s = re.sub(r'\\x([0-1][0-9A-Fa-f])(?:(?=[^0-9])|$)', hex_to_octal, s)
-        return 'var memoryInitializer = %s;' % s
+        s = membytes
+        s = s.replace('\\', '\\\\').replace("'", "\\'")
+        s = s.replace('\n', '\\n').replace('\r', '\\r')
+        s = s.decode('latin1').encode('utf8')
+        return "var memoryInitializer = '%s';" % s
       open(memfile, 'wb').write(membytes)
       if DEBUG:
         # Copy into temp dir as well, so can be run there too
