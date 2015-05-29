@@ -3255,17 +3255,17 @@ int main()
     # cannot symlink nonexistents
     self.assertContained(r'''Before:
 dir
-  a
-  b
-  c
-  d
   e
+  d
+  c
+  b
+  a
 
-Unlinking a
-Unlinking b
-Unlinking c
-Unlinking d
 Unlinking e
+Unlinking d
+Unlinking c
+Unlinking b
+Unlinking a
 After:
 dir
 ''', run_js('a.out.js', args=['', 'abc']))
