@@ -424,6 +424,13 @@ function overwrite(x, y) {
   x.length = y.length;
 }
 
+var STACK_ALIGN = 16;
+
+function stackAlign(x) {
+  if (x % STACK_ALIGN) x += STACK_ALIGN - (x % STACK_ALIGN);
+  return x;
+}
+
 // Closure compiler, when inlining, will insert assignments to
 // undefined for the shared variables. However, in compiled code
 // - and in library/shell code too! - we should never rely on
@@ -4925,7 +4932,8 @@ function outline(ast) {
     }
     asmData.stackPos = {};
     var stackSize = getStackBumpSize(func);
-    if (stackSize % 8 === 0) stackSize += 8 - (stackSize % 8);
+    assert(stackSize % STACK_ALIGN === 0, 'bad stack! ' + stackSize);
+    stackSize += STACK_ALIGN;
     for (var i = 0; i < stack.length; i++) {
       asmData.stackPos[stack[i]] = stackSize + i*8;
     }
@@ -4937,7 +4945,7 @@ function outline(ast) {
     asmData.maxAttemptedOutlinings = Infinity;
     if (extraInfo.sizeToOutline < 100) asmData.maxAttemptedOutlinings = Math.min(50, asmData.maxAttemptedOutlinings); // tiny sizes, be careful of too many attempts
     asmData.intendedPieces = Math.ceil(size/extraInfo.sizeToOutline);
-    asmData.totalStackSize = stackSize + (stack.length + 2*asmData.maxOutlinings)*8;
+    asmData.totalStackSize = stackAlign(stackSize + (stack.length + 2*asmData.maxOutlinings)*8);
     asmData.controlStackPos = function(i) { return stackSize + (stack.length + i)*8 };
     asmData.controlDataStackPos = function(i) { return stackSize + (stack.length + i)*8 + 4 };
     asmData.splitCounter = 0;

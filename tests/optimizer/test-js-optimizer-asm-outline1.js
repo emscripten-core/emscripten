@@ -356,7 +356,7 @@ function stackSet(x1, x2, x3, x4, x5) {
  var sp = 0, a = 0, b = 0, cc = 0, d = 0, e = 0, f = 0, g = 0;
  var sp1 = 0, a1 = 0, b1 = 0, c1 = 0, d1 = 0, e1 = 0, f1 = 0, g1 = 0;
  sp = STACKTOP;
- STACKTOP = STACKTOP + 10 | 0;
+ STACKTOP = STACKTOP + 16 | 0;
  c(1);
  c(2);
  c(3);
