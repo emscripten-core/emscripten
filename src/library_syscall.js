@@ -640,6 +640,15 @@ mergeInto(LibraryManager.library, {
         case 75: { // setrlimit
           return 0; // no-op
         }
+        case 77: { // getrusage
+          var who = get(), usage = get();
+          _memset(usage, 0, {{{ C_STRUCTS.rusage.__size__ }}});
+          {{{ makeSetValue('usage', C_STRUCTS.rusage.ru_utime.tv_sec, '1', 'i32') }}}; // fake some values
+          {{{ makeSetValue('usage', C_STRUCTS.rusage.ru_utime.tv_usec, '2', 'i32') }}};
+          {{{ makeSetValue('usage', C_STRUCTS.rusage.ru_stime.tv_sec, '3', 'i32') }}};
+          {{{ makeSetValue('usage', C_STRUCTS.rusage.ru_stime.tv_usec, '4', 'i32') }}};
+          return 0;
+        }
         case 83: { // symlink
           var target = getStr(), linkpath = getStr();
           FS.symlink(target, linkpath);
