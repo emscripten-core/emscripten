@@ -683,6 +683,12 @@ mergeInto(LibraryManager.library, {
           FS.fchmod(fd, mode);
           return 0;
         }
+        case 96: { // getpriority
+          return 0;
+        }
+        case 97: { // setpriority
+          return -ERRNO_CODES.EPERM;
+        }
         case 118: { // fsync
           var stream = getStreamFromFD();
           return 0; // we can't do anything synchronously; the in-memory FS is already synced to
