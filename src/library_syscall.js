@@ -360,6 +360,7 @@ mergeInto(LibraryManager.library, {
 
     // global state
     mappings: {},
+    umask: 0x1FF,  // S_IRWXU | S_IRWXG | S_IRWXO
 
     // shared utilities
     doStat: function(func, path, buf) {
@@ -613,6 +614,12 @@ mergeInto(LibraryManager.library, {
           if (pid && pid !== PROCINFO.pid) return -ERRNO_CODES.ESRCH;
           if (pgid && pgid !== PROCINFO.pgid) return -ERRNO_CODES.EPERM;
           return 0;
+        }
+        case 60: { // umask
+          var mask = get();
+          var old = SYSCALLS.umask;
+          SYSCALLS.umask = newMask;
+          return old;
         }
         case 63: { // dup2
           var old = getStreamFromFD(), suggestFD = get();
