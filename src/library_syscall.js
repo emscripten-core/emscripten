@@ -466,6 +466,11 @@ mergeInto(LibraryManager.library, {
 #endif
     try {
       switch (which) {
+        case 1: { // exit
+          var status = get();
+          Module['exit'](status);
+          return 0;
+        }
         case 3: { // read
           var stream = getStreamFromFD(), buf = get(), count = get();
           return FS.read(stream, {{{ makeGetSlabs('buf', 'i8', true) }}}, buf, count);

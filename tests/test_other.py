@@ -4911,3 +4911,17 @@ int main() {
     engine = SPIDERMONKEY_ENGINE if SPIDERMONKEY_ENGINE in JS_ENGINES else JS_ENGINES[0] # node is slow on this, sm is fast
     self.assertContained('these should work...\nthis should fail...\nunimplemented syscall: -1\n', run_js('test.js', engine=engine))
 
+  def test_syscall_1(self):
+    open('src.c', 'w').write(r'''
+      int __syscall(int, ...);
+      int main() {
+        __syscall(1, 102);
+      }
+    ''')
+    Popen([PYTHON, EMCC, 'src.c']).communicate()
+    for engine in JS_ENGINES:
+      print engine
+      process = Popen(engine + ['a.out.js'], stdout=PIPE, stderr=PIPE)
+      output = '\n'.join(process.communicate())
+      assert process.returncode == 102 or 'exit(102)' in output, [process.returncode, output]
+
