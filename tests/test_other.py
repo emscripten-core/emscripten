@@ -4884,6 +4884,7 @@ void test(int num) {
     // we expect them to fail! we are not passing in valid parameters or anything. but the error tells us if they are missing or not
     // suppress printErrs, and restore all of memory to remove all side effects (at least those not in JS)
     Module.printErr = function(){};
+    Module.exit = function() { throw 'exit' };
     var mem = new Uint8Array(HEAPU8);
     abort = function(text) {
       if (text.indexOf('unimplemented syscall') >= 0) Module.print('unimplemented syscall: ' + num);
