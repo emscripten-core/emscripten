@@ -637,6 +637,9 @@ mergeInto(LibraryManager.library, {
         case 66: { // setsid
           return 0; // no-op
         }
+        case 75: { // setrlimit
+          return 0; // no-op
+        }
         case 83: { // symlink
           var target = getStr(), linkpath = getStr();
           FS.symlink(target, linkpath);
