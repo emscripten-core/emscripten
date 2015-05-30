@@ -95,7 +95,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'dlmalloc.c',
     ]
     musl_srcdir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src')
-    blacklist = set(['ipc', 'passwd', 'exit', 'thread', 'signal', 'sched', 'ipc', 'time', 'linux', 'aio', 'exit', 'legacy', 'mq', 'process', 'search', 'setjmp', 'env', 'ldso', 'conf'] + ['memcpy.c', 'memset.c', 'memmove.c'])
+    blacklist = set(['ipc', 'passwd', 'thread', 'signal', 'sched', 'ipc', 'time', 'linux', 'aio', 'exit', 'legacy', 'mq', 'process', 'search', 'setjmp', 'env', 'ldso', 'conf'] + ['memcpy.c', 'memset.c', 'memmove.c'])
     for dirpath, dirnames, filenames in os.walk(musl_srcdir):
       for f in filenames:
         if f.endswith('.c'):
