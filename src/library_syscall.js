@@ -463,6 +463,7 @@ mergeInto(LibraryManager.library, {
     // main
 #if SYSCALL_DEBUG
     Module.printErr('syscall! ' + [which, SYSCALLS.getFromCode(which)]);
+    var canWarn = true;
     var ret = (function() {
 #endif
     try {
@@ -1040,11 +1041,15 @@ mergeInto(LibraryManager.library, {
       if (typeof FS === 'undefined' || !(e instanceof FS.ErrnoError)) abort(e);
 #if SYSCALL_DEBUG
       Module.printErr('error: syscall failed with ' + e.errno + ' (' + ERRNO_MESSAGES[e.errno] + ')');
+      canWarn = false;
 #endif
       return -e.errno;
     }
 #if SYSCALL_DEBUG
     })();
+    if (ret < 0 && canWarn) { // TODO: some syscalls can return legit negative values, need to whitelist them
+      Module.printErr('error: syscall may have failed with ' + (-ret) + ' (' + ERRNO_MESSAGES[-ret] + ')');
+    }
     Module.printErr('syscall return: ' + ret);
     return ret;
 #endif
