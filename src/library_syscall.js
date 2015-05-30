@@ -693,6 +693,9 @@ mergeInto(LibraryManager.library, {
         case 104: { // setitimer
           return -ERRNO_CODES.ENOSYS; // unsupported feature
         }
+        case 114: { // wait4
+          abort('cannot wait on child processes');
+        }
         case 118: { // fsync
           var stream = getStreamFromFD();
           return 0; // we can't do anything synchronously; the in-memory FS is already synced to
