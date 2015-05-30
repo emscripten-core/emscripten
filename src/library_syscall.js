@@ -1003,7 +1003,7 @@ mergeInto(LibraryManager.library, {
           }
           return 0;
         }
-        default: abort('bad syscall ' + which);
+        default: abort('unimplemented syscall (' + which + ')');
       }
     } catch (e) {
       if (typeof FS === 'undefined' || !(e instanceof FS.ErrnoError)) abort(e);
