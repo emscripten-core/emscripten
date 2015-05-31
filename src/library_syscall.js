@@ -942,6 +942,12 @@ mergeInto(LibraryManager.library, {
           {{{ makeSetValue('suid', '0', '0', 'i32') }}};
           return 0;
         }
+        case 218: { // mincore
+          return -ERRNO_CODES.ENOSYS; // unsupported feature
+        }
+        case 219: { // madvise
+          return 0; // advice is welcome, but ignored
+        }
         case 220: { // SYS_getdents64
           var stream = getStreamFromFD(), dirp = get(), count = get();
           if (!stream.getdents) {
