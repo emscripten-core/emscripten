@@ -781,6 +781,15 @@ mergeInto(LibraryManager.library, {
           var stream = getStreamFromFD();
           return 0; // we can't do anything synchronously; the in-memory FS is already synced to
         }
+        case 150:   // mlock
+        case 151:   // munlock
+        case 152:   // mlockall
+        case 153: { // munlockall
+          return 0;
+        }
+        case 163: { // mremap
+          return -ERRNO_CODES.ENOMEM; // never succeed
+        }
         case 168: { // poll
           var fds = get(), nfds = get(), timeout = get();
           var DEFAULT_POLLMASK = {{{ cDefine('POLLIN') }}} | {{{ cDefine('POLLOUT') }}};
