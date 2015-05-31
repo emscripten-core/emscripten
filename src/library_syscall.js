@@ -1108,6 +1108,16 @@ mergeInto(LibraryManager.library, {
           path = SYSCALLS.calculateAt(dirfd, path);
           return SYSCALLS.doMknod(path, mode, dev);
         }
+        case 298: { // fchownat
+#if SYSCALL_DEBUG
+          Module.printErr('warning: untested syscall');
+#endif
+          var dirfd = get(), path = getStr(), owner = get(), group = get(), flags = get();
+          assert(flags === 0);
+          path = SYSCALLS.calculateAt(dirfd, path);
+          FS.chown(path, owner, group);
+          return 0;
+        }
         case 300: { // fstatat64
           var dirfd = get(), path = getStr(), buf = get(), flags = get();
           var nofollow = flags & {{{ cDefine('AT_SYMLINK_NOFOLLOW') }}};
