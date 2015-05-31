@@ -422,6 +422,20 @@ mergeInto(LibraryManager.library, {
       FS.mkdir(path, mode, 0);
       return 0;
     },
+    doMknod: function(path, mode, dev) {
+      // we don't want this in the JS API as it uses mknod to create all nodes.
+      switch (mode & {{{ cDefine('S_IFMT') }}}) {
+        case {{{ cDefine('S_IFREG') }}}:
+        case {{{ cDefine('S_IFCHR') }}}:
+        case {{{ cDefine('S_IFBLK') }}}:
+        case {{{ cDefine('S_IFIFO') }}}:
+        case {{{ cDefine('S_IFSOCK') }}}:
+          break;
+        default: return -ERRNO_CODES.EINVAL;
+      }
+      FS.mknod(path, mode, dev);
+      return 0;
+    },
   },
 
   __syscall__deps: ['$SYSCALLS', '$FS', '$ERRNO_CODES', '$PATH', '__setErrNo', '$PROCINFO',
@@ -531,18 +545,7 @@ mergeInto(LibraryManager.library, {
         }
         case 14: { // mknod
           var path = getStr(), mode = get(), dev = get();
-          // we don't want this in the JS API as it uses mknod to create all nodes.
-          switch (mode & {{{ cDefine('S_IFMT') }}}) {
-            case {{{ cDefine('S_IFREG') }}}:
-            case {{{ cDefine('S_IFCHR') }}}:
-            case {{{ cDefine('S_IFBLK') }}}:
-            case {{{ cDefine('S_IFIFO') }}}:
-            case {{{ cDefine('S_IFSOCK') }}}:
-              break;
-            default: return -ERRNO_CODES.EINVAL;
-          }
-          FS.mknod(path, mode, dev);
-          return 0;
+          return SYSCALLS.doMknod(path, mode, dev);
         }
         case 15: { // chmod
           var path = getStr(), mode = get();
@@ -1096,6 +1099,14 @@ mergeInto(LibraryManager.library, {
           var dirfd = get(), path = getStr(), mode = get();
           path = SYSCALLS.calculateAt(dirfd, path);
           return SYSCALLS.doMkdir(path, mode);
+        }
+        case 297: { // mknodat
+#if SYSCALL_DEBUG
+          Module.printErr('warning: untested syscall');
+#endif
+          var dirfd = get(), path = getStr(), mode = get(), dev = get();
+          path = SYSCALLS.calculateAt(dirfd, path);
+          return SYSCALLS.doMknod(path, mode, dev);
         }
         case 300: { // fstatat64
           var dirfd = get(), path = getStr(), buf = get(), flags = get();
