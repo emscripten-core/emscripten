@@ -413,7 +413,15 @@ mergeInto(LibraryManager.library, {
     doMsync: function(addr, stream, len, flags) {
       var buffer = new Uint8Array(HEAPU8.buffer, addr, len);
       FS.msync(stream, buffer, 0, len, flags);
-    }
+    },
+    doMkdir: function(path, mode) {
+      // remove a trailing slash, if one - /a/b/ has basename of '', but
+      // we want to create b in the context of this function
+      path = PATH.normalize(path);
+      if (path[path.length-1] === '/') path = path.substr(0, path.length-1);
+      FS.mkdir(path, mode, 0);
+      return 0;
+    },
   },
 
   __syscall__deps: ['$SYSCALLS', '$FS', '$ERRNO_CODES', '$PATH', '__setErrNo', '$PROCINFO',
@@ -579,12 +587,7 @@ mergeInto(LibraryManager.library, {
         }
         case 39: { // mkdir
           var path = getStr(), mode = get();
-          // remove a trailing slash, if one - /a/b/ has basename of '', but
-          // we want to create b in the context of this function
-          path = PATH.normalize(path);
-          if (path[path.length-1] === '/') path = path.substr(0, path.length-1);
-          FS.mkdir(path, mode, 0);
-          return 0;
+          return SYSCALLS.doMkdir(path, mode);
         }
         case 40: { // rmdir
           var path = getStr();
@@ -1085,6 +1088,14 @@ mergeInto(LibraryManager.library, {
           var dirfd = get(), path = getStr(), flags = get(), mode = get();
           path = SYSCALLS.calculateAt(dirfd, path);
           return FS.open(path, flags, mode).fd;
+        }
+        case 296: { // mkdirat
+#if SYSCALL_DEBUG
+          Module.printErr('warning: untested syscall');
+#endif
+          var dirfd = get(), path = getStr(), mode = get();
+          path = SYSCALLS.calculateAt(dirfd, path);
+          return SYSCALLS.doMkdir(path, mode);
         }
         case 300: { // fstatat64
           var dirfd = get(), path = getStr(), buf = get(), flags = get();
