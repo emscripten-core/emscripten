@@ -617,6 +617,9 @@ mergeInto(LibraryManager.library, {
           return 0;
         }
         case 60: { // umask
+#if SYSCALL_DEBUG
+          Module.printErr('warning: untested syscall');
+#endif
           var mask = get();
           var old = SYSCALLS.umask;
           SYSCALLS.umask = newMask;
@@ -642,6 +645,9 @@ mergeInto(LibraryManager.library, {
           return 0; // no-op
         }
         case 77: { // getrusage
+#if SYSCALL_DEBUG
+          Module.printErr('warning: untested syscall');
+#endif
           var who = get(), usage = get();
           _memset(usage, 0, {{{ C_STRUCTS.rusage.__size__ }}});
           {{{ makeSetValue('usage', C_STRUCTS.rusage.ru_utime.tv_sec, '1', 'i32') }}}; // fake some values
@@ -817,6 +823,9 @@ mergeInto(LibraryManager.library, {
           return FS.read(stream, {{{ makeGetSlabs('buf', 'i8', true) }}}, buf, count, offset);
         }
         case 181: { // pwrite64
+#if SYSCALL_DEBUG
+          Module.printErr('warning: untested syscall');
+#endif
           var stream = getStreamFromFD(), buf = get(), count = get(), zero = getZero(), offset = get64();
           return FS.write(stream, {{{ makeGetSlabs('buf', 'i8', true) }}}, buf, nbyte, offset);
         }
@@ -829,6 +838,9 @@ mergeInto(LibraryManager.library, {
           return buf;
         }
         case 191: { // ugetrlimit
+#if SYSCALL_DEBUG
+          Module.printErr('warning: untested syscall');
+#endif
           var resource = get(), rlim = get();
           {{{ makeSetValue('rlim', C_STRUCTS.rlimit.rlim_cur, '-1', 'i32') }}};  // RLIM_INFINITY
           {{{ makeSetValue('rlim', C_STRUCTS.rlimit.rlim_cur + 4, '-1', 'i32') }}};  // RLIM_INFINITY
@@ -921,6 +933,9 @@ mergeInto(LibraryManager.library, {
         }
         case 209:   // getresuid
         case 211: { // getresgid32
+#if SYSCALL_DEBUG
+          Module.printErr('warning: untested syscall');
+#endif
           var ruid = get(), euid = get(), suid = get();
           {{{ makeSetValue('ruid', '0', '0', 'i32') }}};
           {{{ makeSetValue('euid', '0', '0', 'i32') }}};
