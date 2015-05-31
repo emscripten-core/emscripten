@@ -1118,6 +1118,9 @@ mergeInto(LibraryManager.library, {
           FS.chown(path, owner, group);
           return 0;
         }
+        case 299: { // futimesat
+          abort('futimesat is obsolete');
+        }
         case 300: { // fstatat64
           var dirfd = get(), path = getStr(), buf = get(), flags = get();
           var nofollow = flags & {{{ cDefine('AT_SYMLINK_NOFOLLOW') }}};
