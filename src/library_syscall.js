@@ -816,6 +816,10 @@ mergeInto(LibraryManager.library, {
           var stream = getStreamFromFD(), buf = get(), count = get(), zero = getZero(), offset = get64();
           return FS.read(stream, {{{ makeGetSlabs('buf', 'i8', true) }}}, buf, count, offset);
         }
+        case 181: { // pwrite64
+          var stream = getStreamFromFD(), buf = get(), count = get(), zero = getZero(), offset = get64();
+          return FS.write(stream, {{{ makeGetSlabs('buf', 'i8', true) }}}, buf, nbyte, offset);
+        }
         case 183: { // getcwd
           var buf = get(), size = get();
           if (size === 0) return -ERRNO_CODES.EINVAL;
