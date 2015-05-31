@@ -363,6 +363,22 @@ mergeInto(LibraryManager.library, {
     umask: 0x1FF,  // S_IRWXU | S_IRWXG | S_IRWXO
 
     // shared utilities
+    calculateAt: function(dirfd, path) {
+      if (path[0] !== '/') {
+        // relative path
+        var dir;
+        if (dirfd === {{{ cDefine('AT_FDCWD') }}}) {
+          dir = FS.cwd();
+        } else {
+          var dirstream = FS.getStream(dirfd);
+          if (!dirstream) throw new FS.ErrnoError(ERRNO_CODES.EBADF);
+          dir = dirstream.path;
+        }
+        path = PATH.join2(dir, path);
+      }
+      return path;
+    },
+
     doStat: function(func, path, buf) {
       try {
         var stat = func(path);
@@ -1062,23 +1078,20 @@ mergeInto(LibraryManager.library, {
         case 272: { // fadvise64_64
           return 0; // your advice is important to us (but we can't use it)
         }
+        case 295: { // openat
+#if SYSCALL_DEBUG
+          Module.printErr('warning: untested syscall');
+#endif
+          var dirfd = get(), path = getStr(), flags = get(), mode = get();
+          path = SYSCALLS.calculateAt(dirfd, path);
+          return FS.open(path, flags, mode).fd;
+        }
         case 300: { // fstatat64
           var dirfd = get(), path = getStr(), buf = get(), flags = get();
           var nofollow = flags & {{{ cDefine('AT_SYMLINK_NOFOLLOW') }}};
           flags = flags & (~{{{ cDefine('AT_SYMLINK_NOFOLLOW') }}});
           assert(!flags, flags);
-          if (path[0] !== '/') {
-            // relative path
-            var dir;
-            if (dirfd === {{{ cDefine('AT_FDCWD') }}}) {
-              dir = FS.cwd();
-            } else {
-              var dirstream = FS.getStream(dirfd);
-              if (!dirstream) return -ERRNO_CODES.EBADF;
-              dir = dirstream.path;
-            }
-            path = PATH.join2(dir, path);
-          }
+          path = SYSCALLS.calculateAt(dirfd, path);
           return SYSCALLS.doStat(nofollow ? FS.lstat : FS.stat, path, buf);
         }
         case 324: { // fallocate
