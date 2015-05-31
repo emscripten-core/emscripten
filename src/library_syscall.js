@@ -700,6 +700,9 @@ mergeInto(LibraryManager.library, {
           var stream = getStreamFromFD();
           return 0; // we can't do anything synchronously; the in-memory FS is already synced to
         }
+        case 121: { // setdomainname
+          return -ERRNO_CODES.EPERM;
+        }
         case 122: { // uname
           var buf = get();
           if (!buf) return -ERRNO_CODES.EFAULT
@@ -714,6 +717,9 @@ mergeInto(LibraryManager.library, {
           copyString('version', '#1');
           copyString('machine', 'x86-JS');
           return 0;
+        }
+        case 125: { // mprotect
+          return 0; // let's not and say we did
         }
         case 132: { // getpgid
           var pid = get();
