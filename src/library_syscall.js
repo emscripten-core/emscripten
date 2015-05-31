@@ -828,6 +828,14 @@ mergeInto(LibraryManager.library, {
           writeAsciiToMemory(cwd, buf);
           return buf;
         }
+        case 191: { // ugetrlimit
+          var resource = get(), rlim = get();
+          {{{ makeSetValue('rlim', C_STRUCTS.rlimit.rlim_cur, '-1', 'i32') }}};  // RLIM_INFINITY
+          {{{ makeSetValue('rlim', C_STRUCTS.rlimit.rlim_cur + 4, '-1', 'i32') }}};  // RLIM_INFINITY
+          {{{ makeSetValue('rlim', C_STRUCTS.rlimit.rlim_max, '-1', 'i32') }}};  // RLIM_INFINITY
+          {{{ makeSetValue('rlim', C_STRUCTS.rlimit.rlim_max + 4, '-1', 'i32') }}};  // RLIM_INFINITY
+          return 0; // just report no limits
+        }
         case 192: { // mmap2
           var addr = get(), len = get(), prot = get(), flags = get(), fd = get(), off = get()
           off <<= 12; // undo pgoffset
