@@ -919,6 +919,14 @@ mergeInto(LibraryManager.library, {
           if (euid !== 0) return -ERRNO_CODES.EPERM;
           return 0;
         }
+        case 209:   // getresuid
+        case 211: { // getresgid32
+          var ruid = get(), euid = get(), suid = get();
+          {{{ makeSetValue('ruid', '0', '0', 'i32') }}};
+          {{{ makeSetValue('euid', '0', '0', 'i32') }}};
+          {{{ makeSetValue('suid', '0', '0', 'i32') }}};
+          return 0;
+        }
         case 220: { // SYS_getdents64
           var stream = getStreamFromFD(), dirp = get(), count = get();
           if (!stream.getdents) {
