@@ -1139,6 +1139,16 @@ mergeInto(LibraryManager.library, {
           FS.unlink(path);
           return 0;
         }
+        case 302: { // renameat
+#if SYSCALL_DEBUG
+          Module.printErr('warning: untested syscall');
+#endif
+          var olddirfd = get(), oldpath = getStr(), newdirfd = get(), newpath = getStr();
+          oldpath = SYSCALLS.calculateAt(olddirfd, oldpath);
+          newpath = SYSCALLS.calculateAt(newdirfd, newpath);
+          FS.rename(oldpath, newpath);
+          return 0;
+        }
         case 324: { // fallocate
           var stream = getStreamFromFD(), mode = get(), offset = get64(), len = get64();
           assert(mode === 0);
