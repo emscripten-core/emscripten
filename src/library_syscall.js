@@ -1172,6 +1172,16 @@ mergeInto(LibraryManager.library, {
           path = SYSCALLS.calculateAt(dirfd, path);
           return SYSCALLS.doReadlink(path, buf, bufsize);
         }
+        case 306: { // fchmodat
+#if SYSCALL_DEBUG
+          Module.printErr('warning: untested syscall');
+#endif
+          var dirfd = get(), path = getStr(), mode = get(), flags = get();
+          assert(flags === 0);
+          path = SYSCALLS.calculateAt(dirfd, path);
+          FS.chmod(path, mode);
+          return 0;
+        }
         case 324: { // fallocate
           var stream = getStreamFromFD(), mode = get(), offset = get64(), len = get64();
           assert(mode === 0);
