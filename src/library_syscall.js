@@ -1149,6 +1149,18 @@ mergeInto(LibraryManager.library, {
           FS.rename(oldpath, newpath);
           return 0;
         }
+        case 303: { // linkat
+          return -ERRNO_CODES.EMLINK; // no hardlinks for us
+        }
+        case 304: { // symlinkat
+#if SYSCALL_DEBUG
+          Module.printErr('warning: untested syscall');
+#endif
+          var target = get(), newdirfd = get(), linkpath = get();
+          linkpath = SYSCALLS.calculateAt(newdirfd, linkpath);
+          FS.symlink(target, linkpath);
+          return 0;
+        }
         case 324: { // fallocate
           var stream = getStreamFromFD(), mode = get(), offset = get64(), len = get64();
           assert(mode === 0);
