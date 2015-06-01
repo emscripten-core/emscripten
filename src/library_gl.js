@@ -2490,8 +2490,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.shaders, shader, 'glGetShaderInfoLog', 'shader');
 #endif
     var log = GLctx.getShaderInfoLog(GL.shaders[shader]);
-    // Work around a bug in Chromium which causes getShaderInfoLog to return null
-    if (!log) log = '(unknown error)';
+    if (log === null) log = '(unknown error)';
     log = log.substr(0, maxLength - 1);
     if (maxLength > 0 && infoLog) {
       writeStringToMemory(log, infoLog);
@@ -2515,8 +2514,7 @@ var LibraryGL = {
 #endif
     if (pname == 0x8B84) { // GL_INFO_LOG_LENGTH
       var log = GLctx.getShaderInfoLog(GL.shaders[shader]);
-      // Work around a bug in Chromium which causes getShaderInfoLog to return null: https://code.google.com/p/chromium/issues/detail?id=111337
-      if (!log) log = '(unknown error)';
+      if (log === null) log = '(unknown error)';
       {{{ makeSetValue('p', '0', 'log.length + 1', 'i32') }}};
     } else {
       {{{ makeSetValue('p', '0', 'GLctx.getShaderParameter(GL.shaders[shader], pname)', 'i32') }}};
@@ -2536,7 +2534,9 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.programs, program, 'glGetProgramiv', 'program');
 #endif
     if (pname == 0x8B84) { // GL_INFO_LOG_LENGTH
-      {{{ makeSetValue('p', '0', 'GLctx.getProgramInfoLog(GL.programs[program]).length + 1', 'i32') }}};
+      var log = GLctx.getProgramInfoLog(GL.programs[program]);
+      if (log === null) log = '(unknown error)';
+      {{{ makeSetValue('p', '0', 'log.length + 1', 'i32') }}};
     } else if (pname == 0x8B87 /* GL_ACTIVE_UNIFORM_MAX_LENGTH */) {
       var ptable = GL.programInfos[program];
       if (ptable) {
@@ -2656,11 +2656,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.programs, program, 'glGetProgramInfoLog', 'program');
 #endif
     var log = GLctx.getProgramInfoLog(GL.programs[program]);
-    // Work around a bug in Chromium which causes getProgramInfoLog to return null: https://code.google.com/p/chromium/issues/detail?id=111337
-    // Note that this makes glGetProgramInfoLog behavior to be inconsistent. If an error occurs, GL functions should not write anything
-    // to the output parameters, however with this workaround in place, we will always write an empty string out to 'infoLog', even if an
-    // error did occur.
-    if (!log) log = "";
+    if (log === null) log = '(unknown error)';
 
     log = log.substr(0, maxLength - 1);
     if (maxLength > 0 && infoLog) {
@@ -3430,16 +3426,22 @@ var LibraryGL = {
   glGetObjectParameteriv: function(id, type, result) {
     if (GL.programs[id]) {
       if (type == 0x8B84) { // GL_OBJECT_INFO_LOG_LENGTH_ARB
-        {{{ makeSetValue('result', '0', 'GLctx.getProgramInfoLog(GL.programs[id]).length', 'i32') }}};
+        var log = GLctx.getProgramInfoLog(GL.programs[id]);
+        if (log === null) log = '(unknown error)';
+        {{{ makeSetValue('result', '0', 'log.length', 'i32') }}};
         return;
       }
       _glGetProgramiv(id, type, result);
     } else if (GL.shaders[id]) {
       if (type == 0x8B84) { // GL_OBJECT_INFO_LOG_LENGTH_ARB
-        {{{ makeSetValue('result', '0', 'GLctx.getShaderInfoLog(GL.shaders[id]).length', 'i32') }}};
+        var log = GLctx.getShaderInfoLog(GL.shaders[id]);
+        if (log === null) log = '(unknown error)';
+        {{{ makeSetValue('result', '0', 'log.length', 'i32') }}};
         return;
       } else if (type == 0x8B88) { // GL_OBJECT_SHADER_SOURCE_LENGTH_ARB
-        {{{ makeSetValue('result', '0', 'GLctx.getShaderSource(GL.shaders[id]).length', 'i32') }}};
+        var source = GLctx.getShaderSource(GL.shaders[id]);
+        if (source === null) return; // If an error occurs, nothing will be written to result
+        {{{ makeSetValue('result', '0', 'source.length', 'i32') }}};
         return;
       }
       _glGetShaderiv(id, type, result);
