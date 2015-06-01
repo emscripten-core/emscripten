@@ -1197,6 +1197,23 @@ mergeInto(LibraryManager.library, {
         case 308: { // pselect
           return -ERRNO_CODES.ENOSYS; // unsupported feature
         }
+        case 320: { // utimensat
+#if SYSCALL_DEBUG
+          Module.printErr('warning: untested syscall');
+#endif
+          var dirfd = get(), path = getStr(), times = get(), flags = get();
+          assert(flags === 0);
+          path = SYSCALLS.calculateAt(dirfd, path);
+          var seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
+          var nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
+          var atime = (seconds*1000) + (nanoseconds/(1000*1000));
+          times += {{{ C_STRUCTS.timespec.__size__ }}};
+          seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
+          nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
+          var mtime = (seconds*1000) + (nanoseconds/(1000*1000));
+          FS.utime(path, atime, mtime);
+          return 0;  
+        }
         case 324: { // fallocate
           var stream = getStreamFromFD(), mode = get(), offset = get64(), len = get64();
           assert(mode === 0);
