@@ -8029,6 +8029,7 @@ LibraryManager.library = {
   _pthread_cleanup_push: function(){},
   _pthread_cleanup_pop: function(){},
   __pthread_self: function() { abort() },
+  pthread_setcancelstate: function() { return 0 },
 
   // misc definitions to avoid unnecessary unresolved symbols from fastcomp
   emscripten_prep_setjmp: true,
