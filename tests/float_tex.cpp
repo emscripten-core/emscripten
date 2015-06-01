@@ -1,5 +1,6 @@
 #define GL_GLEXT_PROTOTYPES
 #define EGL_EGLEXT_PROTOTYPES
+#include <cassert>
 #include <cmath>
 #include <iostream>
 #include <vector>
@@ -97,6 +98,7 @@ GLuint createShader(const char source[], int type) {
     glCompileShader(shader);
     glGetShaderInfoLog(shader, sizeof msg, NULL, msg);
     std::cout << "Shader info: " << msg << std::endl;
+    assert(msg[0] == '\0');
     return shader;
 }
 static void gl_init(void) {
