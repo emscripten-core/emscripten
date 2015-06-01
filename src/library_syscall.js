@@ -436,6 +436,13 @@ mergeInto(LibraryManager.library, {
       FS.mknod(path, mode, dev);
       return 0;
     },
+    doReadlink: function(path, buf, bufsize) {
+      if (bufsize <= 0) return -ERRNO_CODES.EINVAL;
+      var ret = FS.readlink(path);
+      ret = ret.slice(0, Math.max(0, bufsize));
+      writeStringToMemory(ret, buf, true);
+      return ret.length;
+    },
   },
 
   __syscall__deps: ['$SYSCALLS', '$FS', '$ERRNO_CODES', '$PATH', '__setErrNo', '$PROCINFO',
@@ -685,11 +692,7 @@ mergeInto(LibraryManager.library, {
         }
         case 85: { // readlink
           var path = getStr(), buf = get(), bufsize = get();
-          if (bufsize <= 0) return -ERRNO_CODES.EINVAL;
-          var ret = FS.readlink(path);
-          ret = ret.slice(0, Math.max(0, bufsize));
-          writeStringToMemory(ret, buf, true);
-          return ret.length;
+          return SYSCALLS.doReadlink(path, buf, bufsize);
         }
         case 91: { // munmap
           var addr = get(), len = get();
@@ -1160,6 +1163,14 @@ mergeInto(LibraryManager.library, {
           linkpath = SYSCALLS.calculateAt(newdirfd, linkpath);
           FS.symlink(target, linkpath);
           return 0;
+        }
+        case 305: { // readlinkat
+#if SYSCALL_DEBUG
+          Module.printErr('warning: untested syscall');
+#endif
+          var dirfd = get(), path = getStr(), buf = get(), bufsize = get();
+          path = SYSCALLS.calculateAt(dirfd, path);
+          return SYSCALLS.doReadlink(path, buf, bufsize);
         }
         case 324: { // fallocate
           var stream = getStreamFromFD(), mode = get(), offset = get64(), len = get64();
