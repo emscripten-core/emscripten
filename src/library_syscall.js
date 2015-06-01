@@ -460,6 +460,11 @@ mergeInto(LibraryManager.library, {
       }
       return 0;
     },
+    doDup: function(path, flags, suggestFD) {
+      var suggest = FS.getStream(suggestFD);
+      if (suggest) FS.close(suggest);
+      return FS.open(path, flags, 0, suggestFD, suggestFD).fd;
+    },
   },
 
   __syscall__deps: ['$SYSCALLS', '$FS', '$ERRNO_CODES', '$PATH', '__setErrNo', '$PROCINFO',
@@ -660,9 +665,7 @@ mergeInto(LibraryManager.library, {
         case 63: { // dup2
           var old = getStreamFromFD(), suggestFD = get();
           if (old.fd === suggestFD) return suggestFD;
-          var suggest = FS.getStream(suggestFD);
-          if (suggest) FS.close(suggest);
-          return FS.open(old.path, old.flags, 0, suggestFD, suggestFD).fd;
+          return SYSCALLS.doDup(old.path, old.flags, suggestFD);
         }
         case 64: { // getppid
           return PROCINFO.ppid;
@@ -1219,6 +1222,15 @@ mergeInto(LibraryManager.library, {
           assert(mode === 0);
           FS.allocate(stream, offset, len);
           return 0;
+        }
+        case 330: { // dup3
+#if SYSCALL_DEBUG
+          Module.printErr('warning: untested syscall');
+#endif
+          var old = getStreamFromFD(), suggestFD = get(), flags = get();
+          assert(!flags);
+          if (old.fd === suggestFD) return -ERRNO_CODES.EINVAL;
+          return SYSCALLS.doDup(old.path, old.flags, suggestFD);
         }
         case 340: { // prlimit64
           var pid = get(), resource = get(), new_limit = get(), old_limit = get();
