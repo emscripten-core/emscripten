@@ -443,6 +443,23 @@ mergeInto(LibraryManager.library, {
       writeStringToMemory(ret, buf, true);
       return ret.length;
     },
+    doAccess: function(path, amode) {
+      if (amode & ~{{{ cDefine('S_IRWXO') }}}) {
+        // need a valid mode
+        return -ERRNO_CODES.EINVAL;
+      }
+      var node;
+      var lookup = FS.lookupPath(path, { follow: true });
+      node = lookup.node;
+      var perms = '';
+      if (amode & {{{ cDefine('R_OK') }}}) perms += 'r';
+      if (amode & {{{ cDefine('W_OK') }}}) perms += 'w';
+      if (amode & {{{ cDefine('X_OK') }}}) perms += 'x';
+      if (perms /* otherwise, they've just passed F_OK */ && FS.nodePermissions(node, perms)) {
+        return -ERRNO_CODES.EACCES;
+      }
+      return 0;
+    },
   },
 
   __syscall__deps: ['$SYSCALLS', '$FS', '$ERRNO_CODES', '$PATH', '__setErrNo', '$PROCINFO',
@@ -567,21 +584,7 @@ mergeInto(LibraryManager.library, {
         }
         case 33: { // access
           var path = getStr(), amode = get();
-          if (amode & ~{{{ cDefine('S_IRWXO') }}}) {
-            // need a valid mode
-            return -ERRNO_CODES.EINVAL;
-          }
-          var node;
-          var lookup = FS.lookupPath(path, { follow: true });
-          node = lookup.node;
-          var perms = '';
-          if (amode & {{{ cDefine('R_OK') }}}) perms += 'r';
-          if (amode & {{{ cDefine('W_OK') }}}) perms += 'w';
-          if (amode & {{{ cDefine('X_OK') }}}) perms += 'x';
-          if (perms /* otherwise, they've just passed F_OK */ && FS.nodePermissions(node, perms)) {
-            return -ERRNO_CODES.EACCES;
-          }
-          return 0;
+          return SYSCALLS.doAccess(path, amode);
         }
         case 34: { // nice
           var inc = get();
@@ -1181,6 +1184,15 @@ mergeInto(LibraryManager.library, {
           path = SYSCALLS.calculateAt(dirfd, path);
           FS.chmod(path, mode);
           return 0;
+        }
+        case 307: { // faccessat
+#if SYSCALL_DEBUG
+          Module.printErr('warning: untested syscall');
+#endif
+          var dirfd = get(), path = getStr(), amode = get(), flags = get();
+          assert(flags === 0);
+          path = SYSCALLS.calculateAt(dirfd, path);
+          return SYSCALLS.doAccess(path, amode);
         }
         case 324: { // fallocate
           var stream = getStreamFromFD(), mode = get(), offset = get64(), len = get64();
