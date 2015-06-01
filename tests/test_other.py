@@ -58,6 +58,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       #      regression check: -o js should create "js", with bitcode content
       for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so'], ['-o', 'js'], ['-O1', '-c', '-o', '/dev/null'], ['-O1', '-o', '/dev/null']]:
         print '-c stuff', args
+        if '/dev/null' in args and WINDOWS:
+          print 'skip because windows'
+          continue
         target = args[1] if len(args) == 2 else 'hello_world.o'
         self.clear()
         proc = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world' + suffix)] + args, stdout=PIPE, stderr=PIPE)
@@ -490,6 +493,13 @@ f.close()
       print suffix
       shutil.copyfile(path_from_root('tests', 'hello_world.c'), 'test.' + suffix)
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'test.' + suffix)]).communicate()
+      self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
+    for suffix in ['lo']:
+      self.clear()
+      print suffix
+      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'binary.' + suffix]).communicate()
+      Popen([PYTHON, EMCC, 'binary.' + suffix]).communicate()
       self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_catch_undef(self):
@@ -4925,4 +4935,25 @@ int main() {
       process = Popen(engine + ['a.out.js'], stdout=PIPE, stderr=PIPE)
       output = '\n'.join(process.communicate())
       assert process.returncode == 102 or 'exit(102)' in output, [process.returncode, output]
+
+  def test_debug_asmLastOpts(self):
+    open('src.c', 'w').write(r'''
+#include <stdio.h>
+struct Dtlink_t
+{   struct Dtlink_t*   right;  /* right child      */
+        union
+        { unsigned int  _hash;  /* hash value       */
+          struct Dtlink_t* _left;  /* left child       */
+        } hl;
+};
+int treecount(register struct Dtlink_t* e)
+{
+  return e ? treecount(e->hl._left) + treecount(e->right) + 1 : 0;
+}
+int main() {
+  printf("hello, world!\n");
+}
+''')
+    out, err = Popen([PYTHON, EMCC, 'src.c', '-s', 'EXPORTED_FUNCTIONS=["_main", "_treecount"]', '--minify', '0', '-g4', '-Oz']).communicate()
+    self.assertContained('hello, world!', run_js('a.out.js'))
 

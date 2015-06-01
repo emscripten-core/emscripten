@@ -1373,6 +1373,17 @@ var dependenciesFulfilled = null; // overridden to take different actions when a
 var runDependencyTracking = {};
 #endif
 
+function getUniqueRunDependency(id) {
+#if ASSERTIONS
+  var orig = id;
+  while (1) {
+    if (!runDependencyTracking[id]) return id;
+    id = orig + Math.random();
+  }
+#endif
+  return id;
+}
+
 function addRunDependency(id) {
   runDependencies++;
   if (Module['monitorRunDependencies']) {
@@ -1452,7 +1463,7 @@ var PGOMonitor = {
   }
 };
 Module['PGOMonitor'] = PGOMonitor;
-__ATEXIT__.push({ func: function() { PGOMonitor.dump() } });
+__ATEXIT__.push(function() { PGOMonitor.dump() });
 addOnPreRun(function() { addRunDependency('pgo') });
 #endif
 

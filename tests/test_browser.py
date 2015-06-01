@@ -1341,6 +1341,10 @@ keydown(100);keyup(100); // trigger the end
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png')) # preloaded *after* run
     self.btest('emscripten_fs_api_browser.cpp', '1')
 
+  def test_emscripten_fs_api2(self):
+    self.btest('emscripten_fs_api_browser2.cpp', '1', args=['-s', "ASSERTIONS=0"])
+    self.btest('emscripten_fs_api_browser2.cpp', '1', args=['-s', "ASSERTIONS=1"])
+
   def test_emscripten_main_loop(self):
     self.btest('emscripten_main_loop.cpp', '0')
 

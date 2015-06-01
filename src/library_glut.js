@@ -321,7 +321,7 @@ var LibraryGLUT = {
       }
     });
 
-    __ATEXIT__.push({ func: function() {
+    __ATEXIT__.push(function() {
       window.removeEventListener("keydown", GLUT.onKeydown, true);
       window.removeEventListener("keyup", GLUT.onKeyup, true);
       if (isTouchDevice) {
@@ -338,7 +338,7 @@ var LibraryGLUT = {
         window.removeEventListener("DOMMouseScroll", GLUT.onMouseWheel, true);
       }
       Module["canvas"].width = Module["canvas"].height = 1;
-    } });
+    });
   },
 
   glutInitWindowSize: function(width, height) {

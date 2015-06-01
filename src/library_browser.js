@@ -767,6 +767,8 @@ mergeInto(LibraryManager.library, {
 #endif
 
   emscripten_async_wget: function(url, file, onload, onerror) {
+    Module['noExitRuntime'] = true;
+
     var _url = Pointer_stringify(url);
     var _file = Pointer_stringify(file);
     function doCallback(callback) {
@@ -785,6 +787,14 @@ mergeInto(LibraryManager.library, {
       },
       function() {
         doCallback(onerror);
+      },
+      false, // dontCreateFile
+      false, // canOwn
+      function() { // preFinish
+        // if a file exists there, we overwrite it
+        try {
+          FS.unlink(_file);
+        } catch (e) {}
       }
     );
   },
@@ -826,6 +836,8 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_async_wget2: function(url, file, request, param, arg, onload, onerror, onprogress) {
+    Module['noExitRuntime'] = true;
+
     var _url = Pointer_stringify(url);
     var _file = Pointer_stringify(file);
     var _request = Pointer_stringify(request);
@@ -841,6 +853,10 @@ mergeInto(LibraryManager.library, {
     // LOAD
     http.onload = function http_onload(e) {
       if (http.status == 200) {
+        // if a file exists there, we overwrite it
+        try {
+          FS.unlink(_file);
+        } catch (e) {}
         FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(http.response), true, true);
         if (onload) {
           var stack = Runtime.stackSave();

@@ -1,5 +1,5 @@
 mergeInto(LibraryManager.library, {
-  $SOCKFS__postset: '__ATINIT__.push({ func: function() { SOCKFS.root = FS.mount(SOCKFS, {}, null); } });',
+  $SOCKFS__postset: '__ATINIT__.push(function() { SOCKFS.root = FS.mount(SOCKFS, {}, null); });',
   $SOCKFS__deps: ['$FS', 'mkport'],
   $SOCKFS: {
     mount: function(mount) {

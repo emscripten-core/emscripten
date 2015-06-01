@@ -6907,27 +6907,11 @@ Module.printErr = Module['printErr'] = function(){};
       import json
       Building.emcc(src_filename, Settings.serialize() + self.emcc_args +
           Building.COMPILER_TEST_OPTS, out_filename, stderr=PIPE)
-      with open(out_filename) as f: out_file = f.read()
       # after removing the @line and @sourceMappingURL comments, the build
       # result should be identical to the non-source-mapped debug version.
       # this is worth checking because the parser AST swaps strings for token
       # objects when generating source maps, so we want to make sure the
       # optimizer can deal with both types.
-      out_file = re.sub(' *//[@#].*$', '', out_file, flags=re.MULTILINE)
-      def clean(code):
-        code = code.replace('// EMSCRIPTEN_GENERATED_FUNCTIONS: ["_malloc","__Z3foov","_free","_main"]', '')
-        code = re.sub(';', ';\n', code) # put statements each on a new line
-        code = re.sub(r'\n+[ \n]*\n+', '\n', code)
-        code = re.sub(' L\d+ ?:', '', code) # ignore labels; they can change in each compile
-        code = code.replace('{\n}', '{}')
-        code = code.replace('18446744073709551616.0', '18446744073709552000.0') # gets rounded by js at runtime, or in the js optimizer at compile time
-        code = code.replace('? (', '? ').replace(') :', ' :') # native optimizer isn't smart enough to remove these parens yet
-        code = code.replace('} ', '').replace('{ ', '')
-        code = code.replace('else ', '')
-        lines = code.split('\n')
-        lines = filter(lambda line: ': do {' not in line and ' break L' not in line, lines) # ignore labels; they can change in each compile
-        return '\n'.join(sorted(lines))
-      self.assertIdentical(clean(no_maps_file), clean(out_file))
       map_filename = out_filename + '.map'
       data = json.load(open(map_filename, 'r'))
       self.assertPathsIdentical(out_filename, data['file'])
@@ -7037,6 +7021,26 @@ Module.printErr = Module['printErr'] = function(){};
     ''')
     self.emcc_args += ['-s', 'INVOKE_RUN=0', '--post-js', 'post.js']
     self.do_run(src, 'hello, world!\ncleanup\nI see exit status: 118')
+
+  def test_noexitruntime(self):
+    src = r'''
+      #include <emscripten.h>
+      #include <stdio.h>
+      static int testPre = TEST_PRE;
+      struct Global {
+        Global() {
+          printf("in Global()\n");
+          if (testPre) { EM_ASM(Module['noExitRuntime'] = true;); }
+        }
+        ~Global() { printf("ERROR: in ~Global()\n"); }
+      } global;
+      int main() {
+        if (!testPre) { EM_ASM(Module['noExitRuntime'] = true;); }
+        printf("in main()\n");
+      }
+    '''
+    self.do_run(src.replace('TEST_PRE', '0'), 'in Global()\nin main()')
+    self.do_run(src.replace('TEST_PRE', '1'), 'in Global()\nin main()')
 
   def test_minmax(self):
     self.do_run(open(path_from_root('tests', 'test_minmax.c')).read(), 'NAN != NAN\nSuccess!')
