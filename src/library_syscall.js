@@ -465,6 +465,29 @@ mergeInto(LibraryManager.library, {
       if (suggest) FS.close(suggest);
       return FS.open(path, flags, 0, suggestFD, suggestFD).fd;
     },
+    doReadv: function(stream, iov, iovcnt, offset) {
+      var ret = 0;
+      for (var i = 0; i < iovcnt; i++) {
+        var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
+        var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
+        var curr = FS.read(stream, {{{ makeGetSlabs('ptr', 'i8', true) }}}, ptr, len, offset);
+        if (curr < 0) return -1;
+        ret += curr;
+        if (curr < len) break; // nothing more to read
+      }
+      return ret;
+    },
+    doWritev: function(stream, iov, iovcnt, offset) {
+      var ret = 0;
+      for (var i = 0; i < iovcnt; i++) {
+        var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
+        var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
+        var curr = FS.write(stream, {{{ makeGetSlabs('ptr', 'i8', true) }}}, ptr, len, offset);
+        if (curr < 0) return -1;
+        ret += curr;
+      }
+      return ret;
+    },
   },
 
   __syscall__deps: ['$SYSCALLS', '$FS', '$ERRNO_CODES', '$PATH', '__setErrNo', '$PROCINFO',
@@ -786,28 +809,11 @@ mergeInto(LibraryManager.library, {
         }
         case 145: { // readv
           var stream = getStreamFromFD(), iov = get(), iovcnt = get();
-          var ret = 0;
-          for (var i = 0; i < iovcnt; i++) {
-            var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
-            var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
-            var curr = FS.read(stream, {{{ makeGetSlabs('ptr', 'i8', true) }}}, ptr, len);
-            if (curr < 0) return -1;
-            ret += curr;
-            if (curr < len) break; // nothing more to read
-          }
-          return ret;
+          return SYSCALLS.doReadv(stream, iov, iovcnt);
         }
         case 146: { // writev
           var stream = getStreamFromFD(), iov = get(), iovcnt = get();
-          var ret = 0;
-          for (var i = 0; i < iovcnt; i++) {
-            var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
-            var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
-            var curr = FS.write(stream, {{{ makeGetSlabs('ptr', 'i8', true) }}}, ptr, len);
-            if (curr < 0) return -1;
-            ret += curr;
-          }
-          return ret;
+          return SYSCALLS.doWritev(stream, iov, iovcnt);
         }
         case 147: { // getsid
           var pid = get();
@@ -1231,6 +1237,23 @@ mergeInto(LibraryManager.library, {
           assert(!flags);
           if (old.fd === suggestFD) return -ERRNO_CODES.EINVAL;
           return SYSCALLS.doDup(old.path, old.flags, suggestFD);
+        }
+        case 331: { // pipe2
+          return -ERRNO_CODES.ENOSYS; // unsupported feature
+        }
+        case 333: { // preadv
+#if SYSCALL_DEBUG
+          Module.printErr('warning: untested syscall');
+#endif
+          var stream = getStreamFromFD(), iov = get(), iovcnt = get(), offset = get();
+          return SYSCALLS.doReadv(stream, iov, iovcnt, offset);
+        }
+        case 334: { // pwritev
+#if SYSCALL_DEBUG
+          Module.printErr('warning: untested syscall');
+#endif
+          var stream = getStreamFromFD(), iov = get(), iovcnt = get(), offset = get();
+          return SYSCALLS.doWritev(stream, iov, iovcnt, offset);
         }
         case 340: { // prlimit64
           var pid = get(), resource = get(), new_limit = get(), old_limit = get();
