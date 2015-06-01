@@ -1143,7 +1143,7 @@ if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') 
   xhr = new XMLHttpRequest();
   xhr.open('GET', 'http://localhost:8888/report_result?skipped:%20SharedArrayBuffer%20is%20not%20supported!');
   xhr.send();
-  window.close();
+  setTimeout(function() { window.close() }, 2000);
 #endif
   abort('Your browser does not support the SharedArrayBuffer and Atomics specification! Try running in Firefox Nightly.');
 }
