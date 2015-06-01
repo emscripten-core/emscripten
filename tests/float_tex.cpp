@@ -109,6 +109,7 @@ static void gl_init(void) {
     char msg[512];
     glGetProgramInfoLog(program, sizeof msg, NULL, msg);
     std::cout << "info: " <<  msg << std::endl;
+    assert(msg[0] == '\0');
     glUseProgram(program);
     std::vector<float> elements(nbNodes);
     int count = 0;
