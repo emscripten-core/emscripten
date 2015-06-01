@@ -2490,7 +2490,6 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.shaders, shader, 'glGetShaderInfoLog', 'shader');
 #endif
     var log = GLctx.getShaderInfoLog(GL.shaders[shader]);
-    // Work around a bug in Chromium which causes getShaderInfoLog to return null
     if (log === null) log = '(unknown error)';
     log = log.substr(0, maxLength - 1);
     if (maxLength > 0 && infoLog) {
@@ -2515,7 +2514,6 @@ var LibraryGL = {
 #endif
     if (pname == 0x8B84) { // GL_INFO_LOG_LENGTH
       var log = GLctx.getShaderInfoLog(GL.shaders[shader]);
-      // Work around a bug in Chromium which causes getShaderInfoLog to return null: https://code.google.com/p/chromium/issues/detail?id=111337
       if (log === null) log = '(unknown error)';
       {{{ makeSetValue('p', '0', 'log.length + 1', 'i32') }}};
     } else {
