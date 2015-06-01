@@ -1194,6 +1194,9 @@ mergeInto(LibraryManager.library, {
           path = SYSCALLS.calculateAt(dirfd, path);
           return SYSCALLS.doAccess(path, amode);
         }
+        case 308: { // pselect
+          return -ERRNO_CODES.ENOSYS; // unsupported feature
+        }
         case 324: { // fallocate
           var stream = getStreamFromFD(), mode = get(), offset = get64(), len = get64();
           assert(mode === 0);
