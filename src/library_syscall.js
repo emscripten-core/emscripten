@@ -490,7 +490,7 @@ mergeInto(LibraryManager.library, {
     },
   },
 
-  __syscall__deps: ['$SYSCALLS', '$FS', '$ERRNO_CODES', '$PATH', '__setErrNo', '$PROCINFO',
+  __syscall__deps: ['$SYSCALLS', '$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '$PATH', '__setErrNo', '$PROCINFO', '_read_sockaddr'
 #if SYSCALL_DEBUG
                    ,'$ERRNO_MESSAGES'
 #endif
@@ -537,6 +537,14 @@ mergeInto(LibraryManager.library, {
       Module.printErr('    (stream: "' + stream.path + '")');
 #endif
       return stream;
+    }
+    function getSocketFromFD() {
+      var socket = SOCKFS.getSocket(get());
+      if (!socket) throw new FS.ErrnoError(ERRNO_CODES.EBADF);
+#if SYSCALL_DEBUG
+      Module.printErr('    (socket: "' + socket.path + '")');
+#endif
+      return socket;
     }
     function get64() {
       var low = get(), high = get();
@@ -749,6 +757,27 @@ mergeInto(LibraryManager.library, {
         }
         case 97: { // setpriority
           return -ERRNO_CODES.EPERM;
+        }
+        case 102: { // socketcall
+          var call = get();
+          switch (call) {
+            case 1: { // socket
+              var domain = get(), type = get(), protocol = get();
+              var sock = SOCKFS.createSocket(domain, type, protocol);
+              assert(sock.stream.fd < 64); // XXX ? select() assumes socket fd values are in 0..63
+              return sock.stream.fd;
+            }
+            case 2: { // bind
+              var sock = getSocketFromFD(), addrp = get(), addrlen = get()
+              var info = __read_sockaddr(addrp, addrlen);
+              if (info.errno) return -info.errno;
+              var port = info.port;
+              var addr = DNS.lookup_addr(info.addr) || info.addr;
+              sock.sock_ops.bind(sock, addr, port);
+              return 0;
+            }
+            default: abort('unsupported socketcall syscall ' + call);
+          }
         }
         case 104: { // setitimer
           return -ERRNO_CODES.ENOSYS; // unsupported feature
