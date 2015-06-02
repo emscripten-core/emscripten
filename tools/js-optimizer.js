@@ -245,6 +245,11 @@ function traverseGenerated(ast, pre, post) {
   });
 }
 
+function deStat(node) {
+  if (node[0] === 'stat') return node[1];
+  return node;
+}
+
 function emptyNode() { // XXX do we need to create new nodes here? can't we reuse?
   return ['toplevel', []]
 }
@@ -4849,6 +4854,19 @@ function outline(ast) {
                   return { condition: case_[0], body: case_[1] };
                 });
               }
+              // if we have a block ending with  label = x;  then we must leave it alone, labels are 'magic' in that we can assume seeing one implies we get immediately to the destination.
+              var bad = false;
+              parts.forEach(function(part) {
+                var last = part.body;
+                if (last[0] === 'block' && last[1] && last[1].length > 0) {
+                  last = last[1][last[1].length-1];
+                  last = deStat(last);
+                  if (last[0] === 'assign' && last[2][0] === 'name' && last[2][1] === 'label') {
+                    bad = true;
+                  }
+                }
+              });
+              if (bad) continue;
               // chunkify. Each chunk is a chain of if-elses, with the new overhead just on entry and exit
               var chunks = [];
               var currSize = 0;
@@ -5451,6 +5469,7 @@ function outline(ast) {
       var size = measureSize(func);
       if (size >= extraInfo.sizeToOutline && maxTotalFunctions > 0) {
         maxTotalFunctions--;
+        removeAllEmptySubNodes(func);
         aggressiveVariableEliminationInternal(func, asmData);
         flatten(func, asmData);
         analyzeFunction(func, asmData);
