@@ -5714,7 +5714,8 @@ def process(filename):
         self.do_run(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(),
                      [open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(), # different roundings
                       open(path_from_root('tests', 'bullet', 'output2.txt'), 'r').read(),
-                      open(path_from_root('tests', 'bullet', 'output3.txt'), 'r').read()],
+                      open(path_from_root('tests', 'bullet', 'output3.txt'), 'r').read(),
+                      open(path_from_root('tests', 'bullet', 'output4.txt'), 'r').read()],
                      libraries=get_bullet_library(self, use_cmake),
                      includes=[path_from_root('tests', 'bullet', 'src')])
       test()
