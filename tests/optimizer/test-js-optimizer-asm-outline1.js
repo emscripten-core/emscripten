@@ -411,5 +411,43 @@ function linf(d) {
   }
   return +d;
 }
+function leaveLabelsMagic() {
+  var label = 0;
+  if (x) {
+    c(1);
+    c(2);
+    c(3);
+    c(4);
+    c(5);
+    c(6);
+    c(7);
+    c(8);
+    c(9);
+    c(10);
+    c(11);
+    c(12);
+    c(13);
+    c(14);
+    c(15);
+    label = 1;
+  } else if (y) {
+    c(1);
+    c(2);
+    c(3);
+    c(4);
+    c(5);
+    c(6);
+    c(7);
+    c(8);
+    c(9);
+    c(10);
+    c(11);
+    c(12);
+    c(13);
+    c(14);
+    c(15);
+  }
+  if ((label|0) == 1) print(1);
+}
 // EMSCRIPTEN_GENERATED_FUNCTIONS
 // EXTRA_INFO: { "sizeToOutline": 30, "allowCostlyOutlines": 1 }

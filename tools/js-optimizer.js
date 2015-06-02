@@ -1082,26 +1082,30 @@ function localCSE(ast) {
   });
 }
 
+function safeLabelSettingInternal(func, asmData) {
+  if ('label' in asmData.vars) {
+    var stats = getStatements(func);
+    var seenVar = false;
+    for (var i = 0; i < stats.length; i++) {
+      var curr = stats[i];
+      if (curr[0] === 'stat') curr = curr[1];
+      if (curr[0] === 'var') {
+        seenVar = true;
+      } else if (seenVar && curr[0] !== 'var') {
+        // first location after the vars
+        stats.splice(i, 0, ['stat', ['assign', true, ['name', 'label'], ['num', 0]]]);
+        break;
+      }
+    }
+  }
+}
+
 function safeLabelSetting(ast) {
   // Add an assign to label, if it exists, so that even after we minify/registerize variable names, we can tell if any vars use the asm init value of 0 - none will, so it's easy to tell
   assert(asm);
   traverseGeneratedFunctions(ast, function(func) {
     var asmData = normalizeAsm(func);
-    if ('label' in asmData.vars) {
-      var stats = getStatements(func);
-      var seenVar = false;
-      for (var i = 0; i < stats.length; i++) {
-        var curr = stats[i];
-        if (curr[0] === 'stat') curr = curr[1];
-        if (curr[0] === 'var') {
-          seenVar = true;
-        } else if (seenVar && curr[0] !== 'var') {
-          // first location after the vars
-          stats.splice(i, 0, ['stat', ['assign', true, ['name', 'label'], ['num', 0]]]);
-          break;
-        }
-      }
-    }
+    safeLabelSettingInternal(func, asmData);
     denormalizeAsm(func, asmData);
   });
 }
@@ -4789,6 +4793,17 @@ function aggressiveVariableElimination(ast) {
 }
 
 function outline(ast) {
+  // Move from 'label' to another name. This will avoid optimizations for label later, but we modify control flow so much here, we just give up on them
+  function deLabel(func, asmData) {
+    if (!('label' in asmData.vars)) return;
+    safeLabelSettingInternal(func, asmData);
+    assert(!('fakeLabel' in asmData.vars));
+    asmData.vars.fakeLabel = ASM_INT;
+    delete asmData.vars.label;
+    traverse(func, function(node, type) {
+      if (type === 'name' && node[1] === 'label') node[1] = 'fakeLabel';
+    });
+  }
   // Try to flatten out code as much as possible, to make outlining more feasible.
   function flatten(func, asmData) {
     var minSize = extraInfo.sizeToOutline/4;
@@ -4854,19 +4869,6 @@ function outline(ast) {
                   return { condition: case_[0], body: case_[1] };
                 });
               }
-              // if we have a block ending with  label = x;  then we must leave it alone, labels are 'magic' in that we can assume seeing one implies we get immediately to the destination.
-              var bad = false;
-              parts.forEach(function(part) {
-                var last = part.body;
-                if (last[0] === 'block' && last[1] && last[1].length > 0) {
-                  last = last[1][last[1].length-1];
-                  last = deStat(last);
-                  if (last[0] === 'assign' && last[2][0] === 'name' && last[2][1] === 'label') {
-                    bad = true;
-                  }
-                }
-              });
-              if (bad) continue;
               // chunkify. Each chunk is a chain of if-elses, with the new overhead just on entry and exit
               var chunks = [];
               var currSize = 0;
@@ -5469,8 +5471,8 @@ function outline(ast) {
       var size = measureSize(func);
       if (size >= extraInfo.sizeToOutline && maxTotalFunctions > 0) {
         maxTotalFunctions--;
-        removeAllEmptySubNodes(func);
         aggressiveVariableEliminationInternal(func, asmData);
+        deLabel(func, asmData);
         flatten(func, asmData);
         analyzeFunction(func, asmData);
         calculateThreshold(func, asmData);

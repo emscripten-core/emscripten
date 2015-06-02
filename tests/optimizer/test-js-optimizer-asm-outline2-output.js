@@ -23,7 +23,8 @@ function linear() {
 }
 function _free($mem) {
  $mem = $mem | 0;
- var $5 = 0, $10 = 0, $16 = 0, $21 = 0, $25 = 0, $26 = 0, $psize_0 = 0, $p_0 = 0, $189 = 0, $194 = 0, sp = 0, helper$0 = 0;
+ var $5 = 0, $10 = 0, $16 = 0, $21 = 0, $25 = 0, $26 = 0, $psize_0 = 0, $p_0 = 0, $189 = 0, $194 = 0, sp = 0, fakeLabel = 0, helper$0 = 0;
+ fakeLabel = 0;
  sp = STACKTOP;
  STACKTOP = STACKTOP + 880 | 0;
  if (($mem | 0) == 0) {
@@ -122,9 +123,11 @@ function _free($mem) {
  HEAP32[sp + 232 >> 2] = $p_0;
  HEAP32[sp + 240 >> 2] = $189;
  HEAP32[sp + 248 >> 2] = $194;
+ HEAP32[sp + 640 >> 2] = fakeLabel;
  HEAP32[sp + 712 >> 2] = 0;
  HEAP32[sp + 716 >> 2] = 0;
  _free$2(sp);
+ fakeLabel = HEAP32[sp + 640 >> 2] | 0;
  tempValue = HEAP32[sp + 712 >> 2] | 0;
  tempInt = HEAP32[sp + 716 >> 2] | 0;
  tempDouble = +HEAPF32[sp + 716 >> 2];
@@ -559,7 +562,7 @@ function _free$1(sp) {
 }
 function _free$2(sp) {
  sp = sp | 0;
- var helper$2 = 0, $194 = 0, $16 = 0, $204 = 0, $psize_0 = 0, $p_0 = 0, $220 = 0, $189 = 0, $227 = 0, helper$3 = 0, $mem = 0, $10 = 0, $psize_1 = 0, $390 = 0, $396 = 0, $F16_0 = 0, $_pre_phi = 0, $404 = 0, $414 = 0, $415 = 0, $I18_0 = 0, $428 = 0, $436 = 0, $443 = 0, $447 = 0, $448 = 0, helper$5 = 0, $463 = 0, $K19_0 = 0, $T_0 = 0, $472 = 0, $473 = 0, label = 0, $486 = 0, $487 = 0, $489 = 0, $501 = 0, $sp_0_in_i = 0, $sp_0_i = 0;
+ var helper$2 = 0, $194 = 0, $16 = 0, $204 = 0, $psize_0 = 0, $p_0 = 0, $220 = 0, $189 = 0, $227 = 0, helper$3 = 0, $mem = 0, $10 = 0, $psize_1 = 0, $390 = 0, $396 = 0, $F16_0 = 0, $_pre_phi = 0, $404 = 0, $414 = 0, $415 = 0, $I18_0 = 0, $428 = 0, $436 = 0, $443 = 0, $447 = 0, $448 = 0, helper$5 = 0, $463 = 0, $K19_0 = 0, $T_0 = 0, $472 = 0, $473 = 0, fakeLabel = 0, $486 = 0, $487 = 0, $489 = 0, $501 = 0, $sp_0_in_i = 0, $sp_0_i = 0;
  $mem = HEAP32[sp + 16 >> 2] | 0;
  $10 = HEAP32[sp + 32 >> 2] | 0;
  $16 = HEAP32[sp + 40 >> 2] | 0;
@@ -567,6 +570,7 @@ function _free$2(sp) {
  $p_0 = HEAP32[sp + 232 >> 2] | 0;
  $189 = HEAP32[sp + 240 >> 2] | 0;
  $194 = HEAP32[sp + 248 >> 2] | 0;
+ fakeLabel = HEAP32[sp + 640 >> 2] | 0;
  OL : do {
   do {
    helper$2 = 1;
@@ -730,14 +734,14 @@ function _free$2(sp) {
       $472 = $T_0 + 16 + ($K19_0 >>> 31 << 2) | 0;
       $473 = HEAP32[$472 >> 2] | 0;
       if (($473 | 0) == 0) {
-       label = 569;
+       fakeLabel = 569;
        break;
       } else {
        $K19_0 = $K19_0 << 1;
        $T_0 = $473;
       }
      }
-     if ((label | 0) == 569) {
+     if ((fakeLabel | 0) == 569) {
       if ($472 >>> 0 < (HEAP32[24] | 0) >>> 0) {
        _abort();
       } else {
@@ -790,5 +794,6 @@ function _free$2(sp) {
   HEAP32[sp + 712 >> 2] = 5;
   break OL;
  } while (0);
+ HEAP32[sp + 640 >> 2] = fakeLabel;
 }
 

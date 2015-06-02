@@ -472,6 +472,52 @@ function linf(d) {
  STACKTOP = sp;
  return +d;
 }
+function leaveLabelsMagic() {
+ var fakeLabel = 0, helper$0 = 0, sp = 0;
+ sp = STACKTOP;
+ STACKTOP = STACKTOP + 336 | 0;
+ fakeLabel = 0;
+ helper$0 = 1;
+ if (helper$0) {
+  helper$0 = 0;
+  if (x) {
+   c(1);
+   c(2);
+   c(3);
+   c(4);
+   c(5);
+   c(6);
+   HEAP32[sp + 16 >> 2] = fakeLabel;
+   HEAP32[sp + 48 >> 2] = 0;
+   HEAP32[sp + 52 >> 2] = 0;
+   leaveLabelsMagic$2(sp);
+   fakeLabel = HEAP32[sp + 16 >> 2] | 0;
+  } else {
+   helper$0 = 1;
+  }
+ }
+ if (helper$0) {
+  helper$0 = 0;
+  if (!y) {} else {
+   helper$0 = 1;
+  }
+ }
+ if (helper$0) {
+  helper$0 = 0;
+  if (1) {
+   HEAP32[sp + 40 >> 2] = 0;
+   HEAP32[sp + 44 >> 2] = 0;
+   leaveLabelsMagic$1(sp);
+   HEAP32[sp + 32 >> 2] = 0;
+   HEAP32[sp + 36 >> 2] = 0;
+   leaveLabelsMagic$0(sp);
+  } else {
+   helper$0 = 1;
+  }
+ }
+ if ((fakeLabel | 0) == 1) print(1);
+ STACKTOP = sp;
+}
 function lin$0(sp) {
  sp = sp | 0;
  c(14);
@@ -1013,5 +1059,42 @@ function linf$1(sp) {
  c(13);
  c(14);
  c(15);
+}
+function leaveLabelsMagic$0(sp) {
+ sp = sp | 0;
+ c(9);
+ c(10);
+ c(11);
+ c(12);
+ c(13);
+ c(14);
+ c(15);
+}
+function leaveLabelsMagic$1(sp) {
+ sp = sp | 0;
+ c(1);
+ c(2);
+ c(3);
+ c(4);
+ c(5);
+ c(6);
+ c(7);
+ c(8);
+}
+function leaveLabelsMagic$2(sp) {
+ sp = sp | 0;
+ var fakeLabel = 0;
+ fakeLabel = HEAP32[sp + 16 >> 2] | 0;
+ c(7);
+ c(8);
+ c(9);
+ c(10);
+ c(11);
+ c(12);
+ c(13);
+ c(14);
+ c(15);
+ fakeLabel = 1;
+ HEAP32[sp + 16 >> 2] = fakeLabel;
 }
 
