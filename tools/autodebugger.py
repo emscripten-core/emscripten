@@ -93,7 +93,7 @@ f = open(filename, 'r')
 data = f.read()
 f.close()
 
-if 'declare i32 @printf(' not in data:
+if 'declare i32 @printf(' not in data and 'define internal i32 @printf(' not in data:
   POSTAMBLE += '''
 ; [#uses=1]
 declare i32 @printf(i8*, ...)
@@ -172,6 +172,8 @@ for i in range(len(lines)):
         in_func = False
       if in_func:
         added_entry = False
+      if 'printf' in lines[i] or '__fwritex' in lines[i] or '__towrite' in lines[i] or 'pop_arg391' in lines[i] or 'fmt_u' in lines[i] or 'pad(' in lines[i] or 'stdout_write' in lines[i] or 'stdio_write' in lines[i] or 'syscall' in lines[i]:
+        in_func = False # do not add logging in musl printing code, which would infinitely recurse
     elif lines[i].startswith('}'):
       in_func = False
     elif in_func and not added_entry and ' = alloca' not in lines[i] and lines[i].startswith('  '):
