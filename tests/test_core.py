@@ -1367,8 +1367,10 @@ int main(int argc, char **argv)
     disabled_size = len(open('src.cpp.o.js').read())
     shutil.copyfile('src.cpp.o.js', 'disabled.js')
 
-    assert size - empty_size > 0.005*size, [empty_size, size] # big change when we disable entirely
-    assert size - fake_size > 0.005*size, [fake_size, size]
+    print size, empty_size, fake_size, disabled_size
+
+    assert size - empty_size > 0.0025*size, [empty_size, size] # big change when we disable entirely
+    assert size - fake_size > 0.0025*size, [fake_size, size]
     assert abs(empty_size - fake_size) < 0.007*size, [empty_size, fake_size]
     assert empty_size - disabled_size < 0.007*size, [empty_size, disabled_size] # full disable removes a little bit more
     assert fake_size - disabled_size < 0.007*size, [disabled_size, fake_size]
