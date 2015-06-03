@@ -4214,7 +4214,7 @@ pass: error == ENOTDIR
     shutil.copyfile('a.out.js', 'last.js')
     do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-g2', '--profiling'])
     profiling = open('a.out.js').read()
-    assert len(profiling) > len(normal) + 300, [len(profiling), len(normal)] # should be much larger
+    assert len(profiling) > len(normal) + 250, [len(profiling), len(normal)] # should be much larger
 
     print 'blacklisting'
 
