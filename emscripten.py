@@ -65,6 +65,8 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     backend_args = [backend_compiler, infile, '-march=js', '-filetype=asm', '-o', temp_js]
     if settings['PRECISE_F32']:
       backend_args += ['-emscripten-precise-f32']
+    if settings['USE_PTHREADS']:
+      backend_args += ['-emscripten-enable-pthreads']
     if settings['WARN_UNALIGNED']:
       backend_args += ['-emscripten-warn-unaligned']
     if settings['RESERVED_FUNCTION_POINTERS'] > 0:
@@ -220,8 +222,8 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     staticbump = mem_init.count(',')+1
     while staticbump % 16 != 0: staticbump += 1
     pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;
-  /* global initializers */ __ATINIT__.push(%s);
-  %s''' % (staticbump, global_initializers, mem_init)) # XXX wrong size calculation!
+  /* global initializers */ %s __ATINIT__.push(%s);
+  %s''' % (staticbump, 'if (!ENVIRONMENT_IS_PTHREAD)' if settings['USE_PTHREADS'] else '', global_initializers, mem_init)) # XXX wrong size calculation!
 
     if settings['SIDE_MODULE']:
       pre = pre.replace('Runtime.GLOBAL_BASE', 'gb').replace('{{{ STATIC_BUMP }}}', str(staticbump))
@@ -460,7 +462,12 @@ function _emscripten_asm_const_%d(%s) {
                                 'shiftRightArithmeticByScalar',
                                 'shiftRightLogicalByScalar',
                                 'shiftLeftByScalar'];
-    fundamentals = ['Math', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array', 'NaN', 'Infinity']
+    fundamentals = ['Math']
+    if settings['USE_PTHREADS']:
+      fundamentals += ['SharedInt8Array', 'SharedInt16Array', 'SharedInt32Array', 'SharedUint8Array', 'SharedUint16Array', 'SharedUint32Array', 'SharedFloat32Array', 'SharedFloat64Array', 'Atomics']
+    else:
+      fundamentals += ['Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
+    fundamentals += ['NaN', 'Infinity']
     if metadata['simd']:
         fundamentals += ['SIMD']
     if settings['ALLOW_MEMORY_GROWTH']: fundamentals.append('byteLength')
@@ -523,7 +530,7 @@ function _emscripten_asm_const_%d(%s) {
       if not settings['SIDE_MODULE']:
         asm_setup += 'var gb = Runtime.GLOBAL_BASE, fb = 0;\n'
 
-    asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'setThrew']
+    asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace', 'setThrew']
     if not settings['RELOCATABLE']:
       asm_runtime_funcs += ['setTempRet0', 'getTempRet0']
     else:
@@ -649,6 +656,10 @@ function ftCall_%s(%s) {%s
       asm_global_funcs += ''.join(['  var SIMD_' + ty + '=global' + access_quote('SIMD') + access_quote(ty) + ';\n' for ty in simdtypes])
       asm_global_funcs += ''.join(['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdinttypes for g in simdintfuncs])
       asm_global_funcs += ''.join(['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdfloattypes for g in simdfloatfuncs])
+    if settings['USE_PTHREADS']:
+#      asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor', 'fence']])
+# TODO: Once bug https://bugzilla.mozilla.org/show_bug.cgi?id=1141986 is implemented, replace the following line with the above one!
+      asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor', 'fence']])
     asm_global_vars = ''.join(['  var ' + g + '=env' + access_quote(g) + '|0;\n' for g in basic_vars + global_vars])
 
     # sent data
@@ -724,14 +735,15 @@ var asm = (function(global, env, buffer) {
   var HEAPU32 = new global%s(buffer);
   var HEAPF32 = new global%s(buffer);
   var HEAPF64 = new global%s(buffer);
-''' % (access_quote('Int8Array'),
-     access_quote('Int16Array'),
-     access_quote('Int32Array'),
-     access_quote('Uint8Array'),
-     access_quote('Uint16Array'),
-     access_quote('Uint32Array'),
-     access_quote('Float32Array'),
-     access_quote('Float64Array')) if not settings['ALLOW_MEMORY_GROWTH'] else '''
+''' % (access_quote('SharedInt8Array' if settings['USE_PTHREADS'] else 'Int8Array'),
+     access_quote('SharedInt16Array' if settings['USE_PTHREADS'] else 'Int16Array'),
+     access_quote('SharedInt32Array' if settings['USE_PTHREADS'] else 'Int32Array'),
+     access_quote('SharedUint8Array' if settings['USE_PTHREADS'] else 'Uint8Array'),
+     access_quote('SharedUint16Array' if settings['USE_PTHREADS'] else 'Uint16Array'),
+     access_quote('SharedUint32Array' if settings['USE_PTHREADS'] else 'Uint32Array'),
+     access_quote('SharedFloat32Array' if settings['USE_PTHREADS'] else 'Float32Array'),
+     access_quote('SharedFloat64Array' if settings['USE_PTHREADS'] else 'Float64Array'))
+     if not settings['ALLOW_MEMORY_GROWTH'] else '''
   var Int8View = global%s;
   var Int16View = global%s;
   var Int32View = global%s;
@@ -799,6 +811,12 @@ function stackSave() {
 function stackRestore(top) {
   top = top|0;
   STACKTOP = top;
+}
+function establishStackSpace(stackBase, stackMax) {
+  stackBase = stackBase|0;
+  stackMax = stackMax|0;
+  STACKTOP = stackBase;
+  STACK_MAX = stackMax;
 }
 ''' + ('''
 function setAsync() {
@@ -869,6 +887,7 @@ function getTempRet0() {
 Runtime.stackAlloc = asm['stackAlloc'];
 Runtime.stackSave = asm['stackSave'];
 Runtime.stackRestore = asm['stackRestore'];
+Runtime.establishStackSpace = asm['establishStackSpace'];
 ''')
     if not settings['RELOCATABLE']:
       funcs_js.append('''

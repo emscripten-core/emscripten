@@ -46,9 +46,9 @@ function JSify(data, functionsOnly) {
     // things out as they are ready.
 
     var shellParts = read(shellFile).split('{{BODY}}');
-    print(processMacros(preprocess(shellParts[0])));
+    print(processMacros(preprocess(shellParts[0], shellFile)));
     var preFile = BUILD_AS_SHARED_LIB || SIDE_MODULE ? 'preamble_sharedlib.js' : 'preamble.js';
-    var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime())));
+    var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime()), preFile));
     print(pre);
   }
 
@@ -204,7 +204,15 @@ function JSify(data, functionsOnly) {
       });
       if (VERBOSE) printErr('adding ' + finalName + ' and deps ' + deps + ' : ' + (snippet + '').substr(0, 40));
       var depsText = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
-      var contentText = isFunction ? snippet : ('var ' + finalName + '=' + snippet + ';');
+      var contentText;
+      if (isFunction) {
+        contentText = snippet;
+      } else if (typeof snippet === 'string' && snippet.indexOf(';') == 0) {
+        contentText = 'var ' + finalName + snippet;
+        if (snippet[snippet.length-1] != ';' && snippet[snippet.length-1] != '}') contentText += ';';
+      } else {
+        contentText = 'var ' + finalName + '=' + snippet + ';';
+      }
       var sig = LibraryManager.library[ident + '__sig'];
       if (isFunction && sig && LibraryManager.library[ident + '__asm']) {
         // asm library function, add it as generated code alongside the generated code
@@ -302,13 +310,24 @@ function JSify(data, functionsOnly) {
           return true;
         });
         // write out the singleton big memory initialization value
+        if (USE_PTHREADS) {
+          print('if (!ENVIRONMENT_IS_PTHREAD) {') // Pthreads should not initialize memory again, since it's shared with the main thread.
+        }
         print('/* memory initializer */ ' + makePointer(memoryInitialization, null, 'ALLOC_NONE', 'i8', 'Runtime.GLOBAL_BASE' + (SIDE_MODULE ? '+H_BASE' : ''), true));
+        if (USE_PTHREADS) {
+          print('}')
+        }
       } else {
         print('/* no memory initializer */'); // test purposes
       }
 
       if (!BUILD_AS_SHARED_LIB && !SIDE_MODULE) {
-        print('var tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
+        if (USE_PTHREADS) {
+          print('var tempDoublePtr;\n');
+          print('if (!ENVIRONMENT_IS_PTHREAD) tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
+        } else {
+          print('var tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
+        }
         print('assert(tempDoublePtr % 8 == 0);\n');
         print('function copyTempFloat(ptr) { // functions, because inlining this code increases code size too much\n');
         print('  HEAP8[tempDoublePtr] = HEAP8[ptr];\n');
@@ -422,13 +441,13 @@ function JSify(data, functionsOnly) {
       print(read('deterministic.js'));
     }
     var postFile = BUILD_AS_SHARED_LIB || SIDE_MODULE ? 'postamble_sharedlib.js' : 'postamble.js';
-    var postParts = processMacros(preprocess(read(postFile))).split('{{GLOBAL_VARS}}');
+    var postParts = processMacros(preprocess(read(postFile), postFile)).split('{{GLOBAL_VARS}}');
     print(postParts[0]);
 
     print(postParts[1]);
 
     var shellParts = read(shellFile).split('{{BODY}}');
-    print(processMacros(preprocess(shellParts[1])));
+    print(processMacros(preprocess(shellParts[1], shellFile)));
     // Print out some useful metadata
     if (RUNNING_JS_OPTS || PGO) {
       var generatedFunctions = JSON.stringify(keys(Functions.implementedFunctions));

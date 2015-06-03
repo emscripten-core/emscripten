@@ -32,6 +32,7 @@
   "eglGetProcAddress": ["emscripten_GetProcAddress"],
   "glfwGetProcAddress": ["emscripten_GetProcAddress"],
   "emscripten_GetProcAddress": ["strstr"],
-  "__cxa_begin_catch": ["__cxa_can_catch", "__cxa_is_pointer_type"]
+  "__cxa_begin_catch": ["__cxa_can_catch", "__cxa_is_pointer_type"],
+  "sleep": ["usleep"]
 }
 

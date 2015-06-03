@@ -1,7 +1,11 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
+#if USE_PTHREADS
+if (memoryInitializer && !ENVIRONMENT_IS_PTHREAD) {
+#else
 if (memoryInitializer) {
+#endif
   if (typeof Module['locateFile'] === 'function') {
     memoryInitializer = Module['locateFile'](memoryInitializer);
   } else if (Module['memoryInitializerPrefixURL']) {
@@ -191,6 +195,10 @@ function exit(status, implicit) {
     Module.printErr('exit(' + status + ') called, but noExitRuntime, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)');
 #endif
   } else {
+#if USE_PTHREADS
+    PThread.terminateAllThreads();
+#endif
+
     ABORT = true;
     EXITSTATUS = status;
     STACKTOP = initialStackTop;
@@ -228,6 +236,9 @@ Module['exit'] = Module.exit = exit;
 var abortDecorators = [];
 
 function abort(what) {
+#if USE_PTHREADS
+  if (ENVIRONMENT_IS_PTHREAD) console.error('Pthread aborting at ' + new Error().stack);
+#endif
   if (what !== undefined) {
     Module.print(what);
     Module.printErr(what);
@@ -278,7 +289,11 @@ if (Module['noInitialRun']) {
 Module["noExitRuntime"] = true;
 #endif
 
+#if USE_PTHREADS
+if (!ENVIRONMENT_IS_PTHREAD) run();
+#else
 run();
+#endif
 
 // {{POST_RUN_ADDITIONS}}
 
