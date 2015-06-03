@@ -540,7 +540,7 @@ function _emscripten_asm_const_%d(%s) {
     if settings.get('EMTERPRETIFY'):
       asm_runtime_funcs += ['emterpret']
       if settings.get('EMTERPRETIFY_ASYNC'):
-        asm_runtime_funcs += ['setAsyncState', 'emtStackSave']
+        asm_runtime_funcs += ['setAsyncState', 'emtStackSave', 'emtStackRestore']
 
     # function tables
     if not settings['EMULATED_FUNCTION_POINTERS']:
@@ -815,6 +815,10 @@ function setAsyncState(x) {
 }
 function emtStackSave() {
   return EMTSTACKTOP|0;
+}
+function emtStackRestore(x) {
+  x = x | 0;
+  EMTSTACKTOP = x;
 }
 ''' if settings['EMTERPRETIFY_ASYNC'] else '') + '''
 function setThrew(threw, value) {
