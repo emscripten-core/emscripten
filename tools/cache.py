@@ -5,8 +5,6 @@ import tempfiles
 # Permanent cache for dlmalloc and stdlibc++
 class Cache:
   def __init__(self, dirname=None, debug=False):
-    if dirname is None:
-      dirname = os.environ.get('EM_CACHE')
     if not dirname:
       dirname = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
     self.dirname = dirname

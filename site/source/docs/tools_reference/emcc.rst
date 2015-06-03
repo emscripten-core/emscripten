@@ -352,8 +352,8 @@ Options that are modified or new in *emcc* are listed below:
   If using this in combination with ``--clear-cache``, be sure to specify
   this argument first.
 
-  The Emscripten cache defaults to being located in the path name stored
-  in the ``EM_CACHE`` environment variable or ``~/.emscripten_cache``.
+  The Emscripten cache defaults to being located in the path name
+  ``~/.emscripten_cache``.
 
 .. _emcc-clear-cache:
 	 

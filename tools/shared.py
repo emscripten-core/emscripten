@@ -1654,9 +1654,9 @@ class Building:
 Cache = cache.Cache(debug=DEBUG_CACHE)
 chunkify = cache.chunkify
 
-def reconfigure_cache():
+def reconfigure_cache(dirname):
   global Cache
-  Cache = cache.Cache(debug=DEBUG_CACHE)
+  Cache = cache.Cache(dirname=dirname, debug=DEBUG_CACHE)
 
 class JS:
   memory_initializer_pattern = '/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+Runtime\.GLOBAL_BASEH]+)\);'
