@@ -135,7 +135,7 @@ Accessing memory
 
 	:param ptr: A pointer (number) representing the memory address.  
 	:param type: An LLVM IR type as a string (see "note" above). 	
-	:param noSafe: Developers should ignore this variable. It is on used in ``SAFE_HEAP`` compilation mode, where it can be avoid infinite recursion in some specialist use cases. 
+	:param noSafe: Developers should ignore this variable. It is only used in ``SAFE_HEAP`` compilation mode, where it can help avoid infinite recursion in some specialist use cases.
 	:type noSafe: bool
 	:returns: The value stored at the specified memory address.
 
@@ -158,10 +158,10 @@ Conversion functions — strings, pointers and arrays
 
 .. js:function:: UTF16ToString(ptr)
 
-	Given a pointer ``ptr`` to a null-terminated UTF16LE-encoded string in the Emscripten HEAP, returns a copy of that string as a Javascript ``String`` object.
+	Given a pointer ``ptr`` to a null-terminated UTF16LE-encoded string in the Emscripten HEAP, returns a copy of that string as a JavaScript ``String`` object.
 
 	:param ptr: A pointer to a null-terminated UTF16LE-encoded string in the Emscripten HEAP.
-	:returns: A Javascript ``String`` object	
+	:returns: A JavaScript ``String`` object
 	
 
 
@@ -182,7 +182,7 @@ Conversion functions — strings, pointers and arrays
 	Given a pointer ``ptr`` to a null-terminated UTF32LE-encoded string in the Emscripten HEAP, returns a copy of that string as a JavaScript ``String`` object.
 
 	:param ptr: A pointer to a null-terminated UTF32LE-encoded string in the Emscripten HEAP.
-	:returns: A Javascript ``String`` object.
+	:returns: A JavaScript ``String`` object.
 	
 
 .. js:function:: stringToUTF32(str, outPtr)

@@ -1024,7 +1024,7 @@ Defines
 
 .. c:macro:: EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH
 
-	Specifies that the Emscripten runtime should explicitly stretch the CSS size of the target element to cover the whole screen when trasnsitioning to fullscreen mode. This
+	Specifies that the Emscripten runtime should explicitly stretch the CSS size of the target element to cover the whole screen when transitioning to fullscreen mode. This
 	will change the aspect ratio of the displayed content.
 
 .. c:macro:: EMSCRIPTEN_FULLSCREEN_SCALE_ASPECT
@@ -2012,7 +2012,7 @@ Functions
 	Enables the given extension on the given context.
 
 	:param EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context: The WebGL context on which the extension is to be enabled.
-	:param extension: A string identifyingthea `WebGL extension <http://www.khronos.org/registry/webgl/extensions/>`_. For example "OES_texture_float".
+	:param extension: A string identifying the `WebGL extension <http://www.khronos.org/registry/webgl/extensions/>`_. For example "OES_texture_float".
 	:type extension: const char*
 	:returns: EM_TRUE if the given extension is supported by the context, and EM_FALSE if the extension was not available. 
 	:rtype: |EM_BOOL|

@@ -150,7 +150,7 @@ When running web pages via ``emrun`` using Firefox, you may want to set one or m
   dom.max_chrome_script_run_time;0
 
   ; Accelerate browser update background timer tick so that autoupdates take place as quickly as possible.
-  ; This is useful for continous integration servers wanting to always test the latest browser version.
+  ; This is useful for continuous integration servers wanting to always test the latest browser version.
   app.update.download.backgroundInterval;1
 
   ; Always run in private browsing mode to avoid caching any pages (but also disables IndexedDB persistency!).
