@@ -621,7 +621,7 @@ window.close = function() {
       ]:
         for emterps in [
           [],
-          ['-DTEST_SLEEP', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'ASSERTIONS=1', '-s', 'EMTERPRETIFY_YIELDLIST=["_EventHandler"]', '-s', "SAFE_HEAP=1"]
+          ['-DTEST_SLEEP', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'ASSERTIONS=1', '-s', 'EMTERPRETIFY_YIELDLIST=["_EventHandler","_printf","_vfprintf","_printf_core","___fwritex","___stdio_write","___syscall_ret","_memcpy"]', '-s', "SAFE_HEAP=1"]
         ]:
           print delay, defines, emterps
           open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
