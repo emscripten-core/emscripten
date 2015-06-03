@@ -440,6 +440,10 @@ var FINALIZE_ASM_JS = 1; // If 1, will finalize the final emitted code, includin
 
 var SWAPPABLE_ASM_MODULE = 0; // If 1, then all exports from the asm.js module will be accessed
                               // indirectly, which allow the asm module to be swapped later.
+                              // Note: It is very important to build the two modules that
+                              // are to be swapped with the same optimizations and so forth,
+                              // as we depend on them being a drop-in replacement for each
+                              // other (same globals on the heap at the same locations, etc.)
 
 var PGO = 0; // Enables profile-guided optimization in the form of runtime checks for
              // which functions are actually called. Emits a list during shutdown that you
