@@ -494,6 +494,9 @@ mergeInto(LibraryManager.library, {
 #if SYSCALL_DEBUG
                    ,'$ERRNO_MESSAGES'
 #endif
+#if EMTERPRETIFY_ASYNC
+                   ,'$EmterpreterAsync'
+#endif
   ],
   __syscall: function(which, varargs) {
     var get;
@@ -787,7 +790,25 @@ mergeInto(LibraryManager.library, {
         }
         case 118: { // fsync
           var stream = getStreamFromFD();
+#if EMTERPRETIFY_ASYNC
+          return EmterpreterAsync.handle(function(resume) {
+            var mount = stream.node.mount;
+            if (!mount.type.syncfs) {
+              // We write directly to the file system, so there's nothing to do here.
+              resume(function() { return 0 });
+              return;
+            }
+            mount.type.syncfs(mount, false, function(err) {
+              if (err) {
+                resume(function() { return -ERRNO_CODES.EIO });
+                return;
+              }
+              resume(function() { return 0 });
+            });
+          });
+#else
           return 0; // we can't do anything synchronously; the in-memory FS is already synced to
+#endif
         }
         case 121: { // setdomainname
           return -ERRNO_CODES.EPERM;
