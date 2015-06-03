@@ -639,8 +639,7 @@ try:
       newargs[i] = ''
     elif newargs[i] == '--cache':
       check_bad_eq(newargs[i])
-      os.environ['EM_CACHE'] = newargs[i+1]
-      shared.reconfigure_cache()
+      shared.reconfigure_cache(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i] == '--clear-cache':
