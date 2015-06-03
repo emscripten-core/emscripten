@@ -228,8 +228,8 @@ getValue(ptr, type[, noSafe])
       * **type** -- An LLVM IR type as a string (see "note" above).
 
       * **noSafe** (*bool*) -- Developers should ignore this
-        variable. It is on used in "SAFE_HEAP" compilation mode, where
-        it can be avoid infinite recursion in some specialist use
+        variable. It is only used in "SAFE_HEAP" compilation mode, where
+        it can help avoid infinite recursion in some specialist use
         cases.
 
    Returns:
@@ -260,14 +260,14 @@ UTF16ToString(ptr)
 
    Given a pointer "ptr" to a null-terminated UTF16LE-encoded string
    in the Emscripten HEAP, returns a copy of that string as a
-   Javascript "String" object.
+   JavaScript "String" object.
 
    Arguments:
       * **ptr** -- A pointer to a null-terminated UTF16LE-encoded
         string in the Emscripten HEAP.
 
    Returns:
-      A Javascript "String" object
+      A JavaScript "String" object
 
 stringToUTF16(str, outPtr)
 
@@ -295,7 +295,7 @@ UTF32ToString(ptr)
         string in the Emscripten HEAP.
 
    Returns:
-      A Javascript "String" object.
+      A JavaScript "String" object.
 
 stringToUTF32(str, outPtr)
 
