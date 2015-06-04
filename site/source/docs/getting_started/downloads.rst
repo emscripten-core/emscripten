@@ -150,6 +150,8 @@ Linux
 		
 		# Install Java
 		sudo apt-get install default-jre
+
+.. note:: Your system may provide Node.js as ``node`` instead of ``nodejs``. In that case, you may need to also update the ``NODE_JS`` attribute of your ``~/.emscripten`` file.
 		
 - *Git* is not installed automatically. Git is only needed if you want to use tools from one of the development branches **emscripten-incoming** or **emscripten-master**: 
 
