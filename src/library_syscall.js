@@ -563,7 +563,7 @@ mergeInto(LibraryManager.library, {
     }
     // main
 #if SYSCALL_DEBUG
-    Module.printErr('syscall! ' + [which, SYSCALLS.getFromCode(which)]);
+    Module.printErr('syscall! ' + [which, SYSCALLS.getFromCode(which)]); //, stackTrace()]);
     var canWarn = true;
     var ret = (function() {
 #endif
@@ -762,7 +762,7 @@ mergeInto(LibraryManager.library, {
           return -ERRNO_CODES.EPERM;
         }
         case 102: { // socketcall
-          var call = get();
+          var call = get(), padding = get();
           switch (call) {
             case 1: { // socket
               var domain = get(), type = get(), protocol = get();
