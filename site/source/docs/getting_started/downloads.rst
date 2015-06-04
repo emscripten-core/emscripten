@@ -114,7 +114,7 @@ Mac OS X
 	
 - The *python2* command line tool is not present on OSX by default. To manually work around this issue, follow the linked step in :ref:`Getting started on Mac OS X <getting-started-on-osx-install-python2>`.
 
-.. **HamishW**: I think that Mac OS X has the same issues as Linux - ie you don't get ANYTHING much in the SDK. YOu will need the command line tools, but mostly for GCC - need to confirm this with Jukka
+.. **HamishW**: I think that Mac OS X has the same issues as Linux - ie you don't get ANYTHING much in the SDK. You will need the command line tools, but mostly for GCC - need to confirm this with Jukka
 
 Linux
 ++++++++

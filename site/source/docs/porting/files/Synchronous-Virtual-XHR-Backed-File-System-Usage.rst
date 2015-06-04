@@ -46,7 +46,7 @@ Instructions
 #. 
 	The added JavaScript should also include code to allow the web worker to communicate with the original thread. 
 
-	The test code adds the following JavaScript to the web worker for this purpose. It uses ``postMessage()`` to send it's ``stdout`` back to the main thread. 
+	The test code adds the following JavaScript to the web worker for this purpose. It uses ``postMessage()`` to send its ``stdout`` back to the main thread.
 
 	.. include:: ../../../../../tests/test_browser.py
 		:literal:

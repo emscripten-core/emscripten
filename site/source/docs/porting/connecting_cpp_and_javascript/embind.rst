@@ -711,7 +711,7 @@ First we use :cpp:func:`~emscripten::val::global` to get the symbol for
 the global ``AudioContext`` object (or ``webkitAudioContext`` if that
 does not exist). We then use :cpp:func:`~emscripten::val::new_` to create
 the context, and from this context we can create an ``oscillator``,
-:cpp:func:`~emscripten::val::set` it's properties (again using ``val``)
+:cpp:func:`~emscripten::val::set` its properties (again using ``val``)
 and then play the tone.
 
 The example can be compiled on the Linux/Mac OS X terminal with::

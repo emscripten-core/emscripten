@@ -151,7 +151,7 @@ Libraries not included with Emscripten (like Boost) must be compiled and linked 
 
 There is a set of libraries ported to Emscripten for convenient use, Emscripten Ports. See :ref:`Building-Projects`
 
-Another option is to implement needed C APIs as JavaScript librarys (see ``--js-library`` in :ref:`emcc <emcc-js-library>` and :ref:`implement-c-in-javascript`). Emscripten itself does this for *libc* (not including *malloc*) and :term:`SDL` (but not *libc++* or *malloc*).  
+Another option is to implement needed C APIs as JavaScript libraries (see ``--js-library`` in :ref:`emcc <emcc-js-library>` and :ref:`implement-c-in-javascript`). Emscripten itself does this for *libc* (not including *malloc*) and :term:`SDL` (but not *libc++* or *malloc*).
 
 .. note:: 
 
@@ -335,7 +335,7 @@ On Linux and Mac OS X, you can just do ``NODE_JS = ['node', '--stack_size=8192']
 
 
 Why do I get ``error: cannot compile this aggregate va_arg expression yet`` and it says ``compiler frontend failed to generate LLVM bitcode, halting`` afterwards?
-===================================================================================================================================================================
+==================================================================================================================================================================
 
 This is a limitation of the asm.js target in :term:`Clang`. This code is not currently supported.
 

@@ -1397,7 +1397,7 @@ EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH
 
    Specifies that the Emscripten runtime should explicitly stretch the
    CSS size of the target element to cover the whole screen when
-   trasnsitioning to fullscreen mode. This will change the aspect
+   transitioning to fullscreen mode. This will change the aspect
    ratio of the displayed content.
 
 EMSCRIPTEN_FULLSCREEN_SCALE_ASPECT
@@ -2778,7 +2778,7 @@ EM_BOOL emscripten_webgl_enable_extension(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE conte
       * **context** (*EMSCRIPTEN_WEBGL_CONTEXT_HANDLE*) -- The WebGL
         context on which the extension is to be enabled.
 
-      * **extension** (*const char**) -- A string identifyingthea
+      * **extension** (*const char**) -- A string identifying the
         WebGL extension. For example "OES_texture_float".
 
    Returns:
