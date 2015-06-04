@@ -121,7 +121,7 @@ var LibraryPThread = {
       if (pthread.worker) pthread.worker.pthread = null;
     },
 
-    // Allocates a the given amount of new web workers and stores them in the pool of unused workers.
+    // Allocates the given amount of new web workers and stores them in the pool of unused workers.
     // onFinishedLoading: A callback function that will be called once all of the workers have been initialized and are
     //                    ready to host pthreads. Optional. This is used to mitigate bug https://bugzilla.mozilla.org/show_bug.cgi?id=1049079
     allocateUnusedWorkers: function(numWorkers, onFinishedLoading) {
