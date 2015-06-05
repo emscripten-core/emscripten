@@ -529,10 +529,9 @@
          T fwrite
          W fwrite_unlocked
          T fwscanf
-         T gai_strerror
          T gcvt
          T get_current_dir_name
-         T getaddrinfo
+         U getaddrinfo
          T getc
          T getc_unlocked
          T getchar
@@ -564,7 +563,7 @@
          T getlogin_r
          T getmntent
          T getmntent_r
-         T getnameinfo
+         U getnameinfo
          T getnetbyaddr
          T getnetbyname
          W getnetent
@@ -634,7 +633,7 @@
          W independent_calloc
          W independent_comalloc
          T index
-         T inet_addr
+         U inet_addr
          T inet_aton
          T inet_lnaof
          T inet_makeaddr
@@ -939,8 +938,6 @@
          T rename
          T renameat
          T res_init
-         T res_query
-         W res_search
          T rewind
          T rewinddir
          T rindex
