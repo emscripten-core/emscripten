@@ -549,6 +549,16 @@ mergeInto(LibraryManager.library, {
 #endif
       return socket;
     }
+    function getSocketAddress() {
+      var addrp = get(), addrlen = get();
+      var info = __read_sockaddr(addrp, addrlen);
+      if (info.errno) throw new FS.ErrnoError(info.errno);
+      info.addr = DNS.lookup_addr(info.addr) || info.addr;
+#if SYSCALL_DEBUG
+      Module.printErr('    (socketaddress: "' + [info.addr, info.port] + '")');
+#endif
+      return info;
+    }
     function get64() {
       var low = get(), high = get();
       if (low >= 0) assert(high === 0);
@@ -771,12 +781,18 @@ mergeInto(LibraryManager.library, {
               return sock.stream.fd;
             }
             case 2: { // bind
-              var sock = getSocketFromFD(), addrp = get(), addrlen = get()
-              var info = __read_sockaddr(addrp, addrlen);
-              if (info.errno) return -info.errno;
-              var port = info.port;
-              var addr = DNS.lookup_addr(info.addr) || info.addr;
-              sock.sock_ops.bind(sock, addr, port);
+              var sock = getSocketFromFD(), info = getSocketAddress();
+              sock.sock_ops.bind(sock, info.addr, info.port);
+              return 0;
+            }
+            case 3: { // connect
+              var sock = getSocketFromFD(), info = getSocketAddress();
+              sock.sock_ops.connect(sock, info.addr, info.port);
+              return 0;
+            }
+            case 4: { // listen
+              var sock = getSocketFromFD(), backlog = get();
+              sock.sock_ops.listen(sock, backlog);
               return 0;
             }
             default: abort('unsupported socketcall syscall ' + call);
