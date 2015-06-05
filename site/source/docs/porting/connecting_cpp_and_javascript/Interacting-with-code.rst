@@ -257,19 +257,13 @@ that was used to write Emscripten's implementations of :term:`SDL` and
 You can use it to write your own APIs to call from C/C++. To do this
 you define the interface, decorating with ``extern`` to mark the methods
 in the API as external symbols. You then implement the symbols in
-JavaScript by simply adding their definition to `library.js`_ (by
-default). When compiling the C code, the compiler looks in the JavaScript
+JavaScript by simply adding their definition to a "JavaScript library".
+When compiling the C code, the compiler looks in the JavaScript
 libraries for relevant external symbols.
 
-By default, the implementation is added to **library.js** (and this is
-where you'll find the Emscripten implementation of *libc*). You can put
-the JavaScript implementation in your own library file and add it using
-the :ref:`emcc option <emcc-js-library>` ``--js-library``. See
-`test_js_libraries`_ in **tests/test_other.py** for a complete working
-example, including the syntax you should use inside the JavaScript library
-file.
-
-As a simple example, consider the case where you have some C code like this:
+As a simple example, we will show how to create a dialog box using the
+browser's ``alert()`` function. Consider the case where you have some C code
+like this:
 
 .. code-block:: c
 
@@ -289,18 +283,8 @@ As a simple example, consider the case where you have some C code like this:
         extern void my_js();
       }
 
-Then you can implement ``my_js`` in JavaScript by simply adding the
-implementation to **library.js** (or your own file). Like our other
-examples of calling JavaScript from C, the example below just creates
-a dialog box using a simple ``alert()`` function.
-
-.. code-block:: javascript
-
-   my_js: function() {
-     alert('hi');
-   },
-
-If you add it to your own file, you should write something like
+Then you can implement ``my_js`` in JavaScript by adding the implementation to
+your own JavaScript library file as follows:
 
 .. code-block:: javascript
 
@@ -310,11 +294,29 @@ If you add it to your own file, you should write something like
      },
    });
 
-``mergeInto`` just copies the properties on the second parameter onto the
-first, so this add ``my_js`` onto ``LibraryManager.library``, the global
-object where all JavaScript library code should be.
+(``mergeInto`` just copies the properties on the second parameter onto the
+first, so this adds ``my_js`` onto ``LibraryManager.library``, the global
+object where all JavaScript library code should be.)
 
-See the `library_*.js`_ files for other examples.
+Finally, you must add the JavaScript library file to the final link command
+using the :ref:`emcc option <emcc-js-library>` ``--js-library``. Alternatively,
+if you save the JavaScript library with the file extension **.jso**, you can
+include it in a static library (**.a** file); the linker will use functions
+defined in all **.jso** libraries embedded in the application's static libraries.
+See :ref:`building-project-javascript-libraries` for more examples of using
+JavaScript libraries with different build systems.
+
+For functions with arguments and an integer return value, the JavaScript
+function will be passed all the arguments from the C calling code as JavaScript
+integers (pointers are passed as integers, representing an offset into the
+global ``HEAPU8`` typed array). The return value will be coerced to an integer
+and returned to the C code.
+
+See the `library_*.js`_ files for other examples, where you'll find the
+JavaScript part of the standard runtime.  Also, `test_js_libraries`_ in
+**tests/test_other.py** contains a more complete working example, including
+all the variations of the syntax you may use inside the JavaScript library
+file.
 
 .. note::
 
@@ -331,6 +333,9 @@ See the `library_*.js`_ files for other examples.
    - If a JavaScript library depends on a compiled C library (like most
      of *libc*), you must edit `src/deps_info.json`_. Search for
      "deps_info" in `tools/system_libs.py`_.
+   - Emscripten's own core JavaScript libraries are used to implement *libc* and
+     are included by the linker automatically.  To contribute new functions
+     to Emscripten's *libc*, add them to `library.js`_.
 
 
 .. _interacting-with-code-call-function-pointers-from-c:

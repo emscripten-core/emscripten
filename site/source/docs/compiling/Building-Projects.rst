@@ -163,7 +163,51 @@ It is also possible to link the bitcode libraries first, and then compile the co
 	# Compile the combined bitcode to HTML
 	emcc allproject.bc -o final.html
 
+.. _building-project-javascript-libraries:
 
+Using your own JavaScript libraries
+-----------------------------------
+
+To call JavaScript functions from C code, you may use ``EM_ASM`` in order
+to call JavaScript inline, but for larger functions you will probably need to
+split out your JavaScript into a separate file, a "JavaScript library".  See
+:ref:`implement-c-in-javascript` for an example.
+
+There are two ways to link JavaScript libraries into your application. Firstly,
+you may use the :ref:`emcc option <emcc-js-library>` ``--js-library`` to pass
+the JavaScript file to final link command.
+
+Secondly, the linker also searches static libraries for JavaScript functions
+stored in **.jso** files.  The **.jso** file is a JavaScript file which adds
+JavaScript functions and variables to the linker's list of symbols, typically
+using the following syntax: ``mergeInto(LibraryManager.library, { /* functions */ });``.
+
+An example of using **.jso** files with *emcc*:
+
+.. code-block:: bash
+
+  # Compile funcs.c which uses functions defined in jsfuncs.jso
+  emcc -o funcs.c.o -c funcs.c
+  # Archive them together
+  emar cr libexample.a funcs.c.o jsfuncs.jso
+
+  # Compile main.c which uses functions defined in funcs.c
+  emcc -o main.c.o -c main.c
+  emcc -o main.js main.c.o libexample.a
+
+The same example using CMake instead:
+
+.. code-block:: CMake
+
+  cmake_minimum_required(VERSION 2.8)
+  project(testproj)
+
+  # This will create libexample.a containing funcs.c.o and jsfuncs.jso.o
+  add_library(example STATIC funcs.c jsfuncs.jso)
+
+  # Output main.js using source main.c and libexample.a
+  add_executable(main main.c)
+  target_link_libraries(main example)
 
 Emscripten Ports
 ================
