@@ -816,6 +816,22 @@ mergeInto(LibraryManager.library, {
               }
               return newsock.stream.fd;
             }
+            case 11: { // sendto
+              var sock = getSocketFromFD(), message = get(), length = get(), flags = get(), dest = getSocketAddress();
+              var slab = {{{ makeGetSlabs('message', 'i8', true) }}};
+              return sock.sock_ops.sendmsg(sock, slab, message, length, info.addr, info.port);
+            }
+            case 12: { // recvfrom
+              var sock = getSocketFromFD(), buf = get(), len = get(), flags = get(), addr = get(), addrlen = get();
+              var msg = sock.sock_ops.recvmsg(sock, len);
+              if (!msg) return 0; // socket is closed
+              if (addr) {
+                var res = __write_sockaddr(addr, sock.family, DNS.lookup_name(msg.addr), msg.port);
+                assert(!res.errno);
+              }
+              HEAPU8.set(msg.buffer, buf);
+              return msg.buffer.byteLength;
+            }
             default: abort('unsupported socketcall syscall ' + call);
           }
         }
