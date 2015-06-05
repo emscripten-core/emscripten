@@ -377,7 +377,6 @@
          T endhostent
          T endmntent
          W endnetent
-         T endprotoent
          T endservent
          T erand48
          T erf
@@ -576,9 +575,6 @@
          T getpid
          T getppid
          T getpriority
-         T getprotobyname
-         T getprotobynumber
-         T getprotoent
          T getresgid
          T getresuid
          T getrlimit
@@ -985,7 +981,6 @@
          T setpgid
          T setpgrp
          T setpriority
-         T setprotoent
          T setregid
          T setresgid
          T setresuid
