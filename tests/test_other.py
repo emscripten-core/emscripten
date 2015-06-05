@@ -3323,6 +3323,28 @@ EMSCRIPTEN_KEEPALIVE __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny
     assert len(with_dash_o) == 0
     assert len(without_dash_o) != 0
 
+  def test_dashM(self):
+    out = Popen([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-M'], stdout=PIPE).communicate()[0]
+    self.assertContained('hello_world.o:', out) # Verify output is just a dependency rule instead of bitcode or js
+
+  def test_dashM_consistent(self):
+    normal = Popen([PYTHON, EMXX, '-v', '-Wno-warn-absolute-paths', path_from_root('tests', 'hello_world.cpp'), '-c'], stdout=PIPE, stderr=PIPE).communicate()[1]
+    dash_m = Popen([PYTHON, EMXX, '-v', '-Wno-warn-absolute-paths', path_from_root('tests', 'hello_world.cpp'), '-M'], stdout=PIPE, stderr=PIPE).communicate()[1]
+
+    import difflib
+    diff = [a.rstrip()+'\n' for a in difflib.unified_diff(normal.split('\n'), dash_m.split('\n'), fromfile='normal', tofile='dash_m')]
+    left_std = filter(lambda x: x.startswith('-') and '-std=' in x, diff)
+    right_std = filter(lambda x: x.startswith('+') and '-std=' in x, diff)
+    assert len(left_std) == len(right_std) == 1, '\n\n'.join(diff)
+    bad = filter(lambda x: '-Wno-warn-absolute-paths' in x, diff)
+    assert len(bad) == 0, '\n\n'.join(diff)
+
+  def test_dashM_respect_dashO(self):
+    with_dash_o = Popen([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-M', '-o', '/dev/null'], stdout=PIPE, stderr=PIPE).communicate()[0]
+    without_dash_o = Popen([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-M'], stdout=PIPE, stderr=PIPE).communicate()[0]
+    assert len(with_dash_o) == 0
+    assert len(without_dash_o) != 0
+
   def test_malloc_implicit(self):
     open('src.cpp', 'w').write(r'''
 #include <stdlib.h>

@@ -221,7 +221,7 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
     elif arg.endswith('.s'):
       if debug_configure: open(tempout, 'a').write('(compiling .s assembly, must use clang\n')
       if use_js == 1: use_js = 0
-    elif arg == '-E':
+    elif arg == '-E' or arg == '-M' or arg == '-MM':
       if use_js == 1: use_js = 0
 
   if src:
@@ -329,12 +329,6 @@ for i in range(1, len(sys.argv)):
   if not arg.startswith('-'):
     if arg.endswith(C_ENDINGS + OBJC_ENDINGS):
       use_cxx = False
-
-if '-M' in sys.argv or '-MM' in sys.argv:
-  # Just output dependencies, do not compile. Warning: clang and gcc behave differently with -MF! (clang seems to not recognize it)
-  cmd = [CC] + shared.COMPILER_OPTS + sys.argv[1:]
-  logging.debug('just dependencies: ' + ' '.join(cmd))
-  exit(subprocess.call(cmd))
 
 # Check if a target is specified
 target = None
@@ -819,7 +813,9 @@ try:
     target = target_basename + '.o'
     final_suffix = 'o'
   if '-E' in newargs:
-    final_suffix = 'eout' # not bitcode, not js; something else
+    final_suffix = 'eout' # not bitcode, not js; but just result from preprocessing stage of the input file
+  if '-M' in newargs or '-MM' in newargs:
+    final_suffix = 'mout' # not bitcode, not js; but just dependency rule of the input file
   final_ending = ('.' + final_suffix) if len(final_suffix) > 0 else ''
 
   # Find library files
@@ -1077,12 +1073,13 @@ try:
     return args
 
   # -E preprocessor-only support
-  if '-E' in newargs:
+  if '-E' in newargs or '-M' in newargs or '-MM' in newargs:
     input_files = map(lambda x: x[1], input_files)
     cmd = get_bitcode_args(input_files)
     if specified_target:
       cmd += ['-o', specified_target]
-    logging.debug('just preprocessor ' + ' '.join(cmd))
+    # Do not compile, but just output the result from preprocessing stage or output the dependency rule. Warning: clang and gcc behave differently with -MF! (clang seems to not recognize it)
+    logging.debug(('just preprocessor ' if '-E' in newargs else 'just dependencies: ') + ' '.join(cmd))
     exit(subprocess.call(cmd))
 
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
