@@ -775,7 +775,16 @@ mergeInto(LibraryManager.library, {
           return -ERRNO_CODES.EPERM;
         }
         case 102: { // socketcall
-          var call = get(), padding = get();
+          var call = get(), socketvararg = get();
+          // socketcalls pass the rest of the arguments in a struct
+          get = function() {
+            var ret = {{{ makeGetValue('socketvararg', '0', 'i32') }}};
+            socketvararg += 4;
+#if SYSCALL_DEBUG
+            Module.printErr('  socket syscall arg: ' + ret);
+#endif
+            return ret;
+          }
           switch (call) {
             case 1: { // socket
               var domain = get(), type = get(), protocol = get();
@@ -797,6 +806,15 @@ mergeInto(LibraryManager.library, {
               var sock = getSocketFromFD(), backlog = get();
               sock.sock_ops.listen(sock, backlog);
               return 0;
+            }
+            case 5: { // accept
+              var sock = getSocketFromFD(), addr = get(), addrlen = get();
+              var newsock = sock.sock_ops.accept(sock);
+              if (addr) {
+                var res = __write_sockaddr(addr, newsock.family, DNS.lookup_name(newsock.daddr), newsock.dport);
+                assert(!res.errno);
+              }
+              return newsock.stream.fd;
             }
             default: abort('unsupported socketcall syscall ' + call);
           }
