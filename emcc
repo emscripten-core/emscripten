@@ -742,7 +742,7 @@ try:
       prev = newargs[i-1]
       if prev in ['-MT', '-MF', '-MQ', '-D', '-U', '-o', '-x', '-Xpreprocessor', '-include', '-imacros', '-idirafter', '-iprefix', '-iwithprefix', '-iwithprefixbefore', '-isysroot', '-imultilib', '-A', '-isystem', '-iquote', '-install_name', '-compatibility_version', '-current_version', '-I', '-L']: continue # ignore this gcc-style argument
 
-    if os.path.islink(arg) and os.path.realpath(arg).endswith(SOURCE_ENDINGS + BITCODE_ENDINGS + JSOBS_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS):
+    if os.path.islink(arg) and os.path.realpath(arg).endswith(SOURCE_ENDINGS + BITCODE_ENDINGS + JSOBJ_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS):
       arg = os.path.realpath(arg)
 
     if not arg.startswith('-'):
@@ -1270,12 +1270,15 @@ try:
 
   log_time('post-link')
 
-  # Emscripten
-  logging.debug('LLVM => JS')
+  # Prepare JS libraries for Emscripten linking, extracting and merging .jso
+  # files embedded in static libraries
   for lib in library_files:
     if shared.Building.is_ar(lib):
       js_libraries.extend(filter(shared.Building.is_jslibrary, shared.Building.ar_contents(lib)))
   extra_args = [] if not js_libraries else ['--libraries', ','.join(map(os.path.abspath, js_libraries))]
+
+  # Emscripten
+  logging.debug('LLVM => JS')
   final = shared.Building.emscripten(final, append_ext=False, extra_args=extra_args)
   if DEBUG: save_intermediate('original')
 
