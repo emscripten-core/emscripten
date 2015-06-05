@@ -1,16 +1,3 @@
-         d BF_atoi64
-         t BF_crypt
-         d BF_crypt.flags_by_subtype
-         t BF_encrypt
-         d BF_init_state
-         d BF_itoa64
-         d BF_magic_w
-         t BF_set_key
-         d K
-         d K144
-         d PIo2
-         d Sden
-         d Snum
          U _Exit
          W _IO_feof_unlocked
          W _IO_ferror_unlocked
@@ -24,21 +11,11 @@
          T __cos
          T __cosdf
          T __crypt_blowfish
-         d __crypt_blowfish.test_hash
          T __crypt_des
          T __crypt_md5
-         d __crypt_md5.testhash
-         d __crypt_md5.testkey
-         d __crypt_md5.testsetting
          T __crypt_r
          T __crypt_sha256
-         d __crypt_sha256.testhash
-         d __crypt_sha256.testkey
-         d __crypt_sha256.testsetting
          T __crypt_sha512
-         d __crypt_sha512.testhash
-         d __crypt_sha512.testkey
-         d __crypt_sha512.testsetting
          T __ctype_b_loc
          T __ctype_get_mb_cur_max
          T __ctype_tolower_loc
@@ -53,17 +30,14 @@
          T __do_des
          T __dup3
          W __duplocale
-         d __encrypt_key
          U __environ
          T __errno_location
-         d __errno_location.e
          T __expo2
          T __expo2f
          T __fbufsize
          T __fclose_ca
          T __fdopen
          T __fesetround
-         t __fflush_unlocked
          T __fgetwc_unlocked
          T __flbf
          T __floatscan
@@ -97,7 +71,6 @@
          W __fxstatat64
          W __getdelim
          T __getdents
-         t __getopt_long
          T __h_errno_location
          C __hwcap
          T __intscan
@@ -136,7 +109,6 @@
          W __newlocale
          T __nl_langinfo
          T __nl_langinfo_l
-         t __openlog
          C __optpos
          D __optreset
          T __overflow
@@ -154,7 +126,6 @@
          T __rem_pio2_large
          T __rem_pio2f
          T __res_state
-         d __res_state.res
          U __restore_sigs
          D __seed48
          T __setrlimit
@@ -167,7 +138,6 @@
          D __signgam
          T __sin
          T __sindf
-         t __srandom
          T __statfs
          D __stderr_used
          D __stdin_used
@@ -204,7 +174,6 @@
          T __tandf
          T __toread
          T __toread_needs_stdio_exit
-         t __towcase
          W __towlower_l
          T __towrite
          T __towrite_needs_stdio_exit
@@ -227,10 +196,8 @@
          W __xpg_strerror_r
          T __xstat
          W __xstat64
-         t _crypt_extended_r_uut
          T _exit
          T _flushlbf
-         d _gm_
          U _pthread_cleanup_pop
          U _pthread_cleanup_push
          T a64l
@@ -250,8 +217,6 @@
          T alarm
          T alphasort
          W alphasort64
-         t append
-         d ascii64
          T asin
          T asinf
          T asinh
@@ -266,39 +231,22 @@
          T atanf
          T atanh
          T atanhf
-         d atanhi
-         d atanhi663
          T atanhl
          T atanl
-         d atanlo
-         d atanlo664
          T atof
          T atoi
          T atol
          T atoll
-         d b64
-         d b64142
-         d b64149
          T basename
          T bcmp
          T bcopy
-         d big5
          T bind
          T bind_textdomain_codeset
          T bindtextdomain
-         d bindtextdomain.dir
-         d bp
-         d bp681
          T bsearch
          T btowc
-         d buf
-         d buf516
-         d buf535
          W bulk_free
          T bzero
-         d c_messages
-         d c_numeric
-         d c_time
          T cabs
          T cabsf
          T cabsl
@@ -312,7 +260,6 @@
          T carg
          T cargf
          T cargl
-         d casemaps
          T casin
          T casinf
          T casinh
@@ -349,17 +296,12 @@
          T cfsetispeed
          T cfsetospeed
          W cfsetspeed
-         d charmaps
          T chdir
-         t checker
          T chmod
          T chown
          T cimag
          T cimagf
          T cimagl
-         t cleanup
-         t cleanup439
-         t cleanup456
          T clearerr
          W clearerr_unlocked
          U clock_gettime
@@ -367,17 +309,8 @@
          T clogf
          T clogl
          T close
-         t close_file
          T closedir
          T closelog
-         t common
-         t common697
-         t common722
-         t common745
-         d comp_maskl0
-         d comp_maskl1
-         d comp_maskr0
-         d comp_maskr1
          T conj
          T conjf
          T conjl
@@ -403,7 +336,6 @@
          T creat
          W creat64
          T crypt
-         d crypt.buf
          W crypt_r
          T csin
          T csinf
@@ -421,44 +353,25 @@
          T ctanhl
          T ctanl
          T ctermid
-         d ctermid.s2
-         t cycle
          T dcgettext
          T dcngettext
-         d decfloat.p10s
          T dgettext
-         d digits
          T dirfd
          T dirname
-         t dispose_chunk
          T div
          W dn_comp
          W dn_expand
          T dn_skipname
          T dngettext
-         t do_nftw
-         t do_read
-         t do_read442
-         t do_read7
-         t do_setrlimit
-         t do_setxid
-         d dp_h
-         d dp_h683
-         d dp_l
-         d dp_l682
          T dprintf
          T drand48
          W drem
          W dremf
-         t dummy0
-         t dummy1
-         d dummy_file
          T dup
          T dup2
          W dup3
          T duplocale
          T ecvt
-         d ecvt.buf
          T encrypt
          U endgrent
          T endhostent
@@ -469,49 +382,34 @@
          T erand48
          T erf
          T erfc
-         t erfc2
-         t erfc2762
          T erfcf
          T erfcl
          T erff
          T erfl
-         d errid
-         d errmsg
-         d errors
          T ether_aton
-         d ether_aton.a
          T ether_aton_r
          T ether_hostton
          T ether_line
          T ether_ntoa
-         d ether_ntoa.x
          T ether_ntoa_r
          T ether_ntohost
          U execl
          T exp
          T exp10
-         d exp10.p10
          T exp10f
-         d exp10f.p10
          T exp10l
-         d exp10l.p10
          T exp2
          T exp2f
-         d exp2ft
          T exp2l
          T expf
          T expl
          T expm1
          T expm1f
          T expm1l
-         d f
-         d f515
-         d f534
          T fabs
          T fabsf
          T fabsl
          T faccessat
-         d fact
          T fchdir
          T fchmod
          T fchmodat
@@ -557,7 +455,6 @@
          W fgetws_unlocked
          T fileno
          W fileno_unlocked
-         t find_charmap
          T finite
          T finitef
          T flockfile
@@ -577,14 +474,11 @@
          T fmod
          T fmodf
          T fmodl
-         t fmt_u
          T fnmatch
-         t fnmatch_internal
          T fopen
          W fopen64
          U fork
          T forkpty
-         d fp_maskl
          T fprintf
          W fpurge
          T fputc
@@ -636,7 +530,6 @@
          W fwrite_unlocked
          T fwscanf
          T gai_strerror
-         d gb18030
          T gcvt
          T get_current_dir_name
          T getaddrinfo
@@ -657,24 +550,19 @@
          T getgrouplist
          T getgroups
          T gethostbyaddr
-         d gethostbyaddr.h
          T gethostbyaddr_r
          T gethostbyname
          T gethostbyname2
-         d gethostbyname2.h
          T gethostbyname2_r
          T gethostbyname_r
          T gethostent
          T gethostid
          T gethostname
          T getifaddrs
-         t getint
          T getline
          T getlogin
          T getlogin_r
          T getmntent
-         d getmntent.linebuf
-         d getmntent.mnt
          T getmntent_r
          T getnameinfo
          T getnetbyaddr
@@ -692,8 +580,6 @@
          T getprotobyname
          T getprotobynumber
          T getprotoent
-         d getprotoent.aliases
-         d getprotoent.p
          T getresgid
          T getresuid
          T getrlimit
@@ -701,12 +587,8 @@
          T getrusage
          T gets
          T getservbyname
-         d getservbyname.buf
-         d getservbyname.se
          T getservbyname_r
          T getservbyport
-         d getservbyport.buf
-         d getservbyport.se
          T getservbyport_r
          T getservent
          T getsid
@@ -727,30 +609,21 @@
          U gmtime_r
          T grantpt
          C h_errno
-         d half
-         d half688
-         t hashmd
-         t hashmd140
          T hasmntopt
          T herror
-         d hkscs
          T hstrerror
          T htonl
          T htons
          T hypot
          T hypotf
          T hypotl
-         d i
-         t ialloc
          T iconv
          T iconv_close
          T iconv_open
-         d idx
          T if_freenameindex
          T if_indextoname
          T if_nameindex
          T if_nametoindex
-         t ignore_err
          T ilogb
          T ilogbf
          T ilogbl
@@ -768,19 +641,11 @@
          T inet_netof
          T inet_network
          T inet_ntoa
-         d inet_ntoa.buf
          T inet_ntop
          T inet_pton
-         d init
-         d init_jk
-         t init_mparams
          T initgroups
          T initstate
-         t internal_memalign
          T ioctl
-         d ip_maskl
-         d ip_maskr
-         d ipio2
          T isalnum
          T isalnum_l
          T isalpha
@@ -826,7 +691,6 @@
          T iswpunct
          T iswpunct_l
          T iswspace
-         d iswspace.spaces
          T iswspace_l
          T iswupper
          T iswupper_l
@@ -834,22 +698,15 @@
          T iswxdigit_l
          T isxdigit
          T isxdigit_l
-         d j
          T j0
          T j0f
          T j1
          T j1f
-         d jis0208
          T jn
          T jnf
          T jrand48
-         d key_perm_maskl
-         d key_perm_maskr
-         d key_shifts
          U kill
-         d ksc
          T l64a
-         d l64a.s
          T labs
          T lchmod
          T lchown
@@ -858,7 +715,6 @@
          T ldexpf
          T ldexpl
          T ldiv
-         d legacy_chars
          T lgamma
          W lgamma_r
          T lgammaf
@@ -867,7 +723,6 @@
          W lgammal_r
          T link
          T linkat
-         t list_add
          T listen
          T llabs
          T lldiv
@@ -878,8 +733,6 @@
          T llroundf
          T llroundl
          T localeconv
-         d lock
-         d lock387
          T lockf
          W lockf64
          T log
@@ -892,12 +745,6 @@
          T log2
          T log2f
          T log2l
-         d log_addr
-         d log_facility
-         d log_fd
-         d log_ident
-         d log_mask
-         d log_opt
          T logb
          T logbf
          T logbl
@@ -925,23 +772,14 @@
          W malloc_trim
          W malloc_usable_size
          W mallopt
-         t match_bracket
-         t match_in_dir
          T mblen
          T mbrlen
-         d mbrlen.internal
          T mbrtowc
-         d mbrtowc.internal_state
          T mbsinit
          T mbsnrtowcs
          T mbsrtowcs
          T mbstowcs
          T mbtowc
-         t mclose
-         t md5_sum
-         t md5_update
-         t md5crypt
-         d md5crypt.perm
          W memalign
          T memccpy
          T memchr
@@ -949,7 +787,6 @@
          T memmem
          T mempcpy
          W memrchr
-         d messages
          T mincore
          T mkdir
          T mkdirat
@@ -962,7 +799,6 @@
          W mkostemp64
          W mkostemps
          W mkostemps64
-         d mkptr6.xdigits
          T mkstemp
          W mkstemp64
          T mkstemps
@@ -975,23 +811,13 @@
          T modf
          T modff
          T modfl
-         d mparams
          T mprotect
          T mrand48
-         t mread
          W mremap
-         t ms_close
-         t ms_seek
-         t ms_write
-         t mseek
-         d msgs
-         d msgs225
          T msync
          T munlock
          T munlockall
          W munmap
-         t mwrite
-         d n
          T nan
          T nanf
          T nanl
@@ -1029,41 +855,18 @@
          D optind
          C optopt
          W optreset
-         t out
-         d pR2
-         d pR2749
-         d pR3
-         d pR3748
-         d pR5
-         d pR5753
-         d pR8
-         d pR8752
-         d pS2
-         d pS2747
-         d pS3
-         d pS3746
-         d pS5
-         d pS5751
-         d pS8
-         d pS8750
-         t pad
-         d pairs
-         t pat_next
          T pause
          T pclose
          T perror
          T pipe
          T pipe2
          T poll
-         t pop_arg
-         t pop_arg550
          T popen
          T posix_close
          T posix_fadvise
          W posix_fadvise64
          T posix_fallocate
          W posix_fallocate64
-         d posix_lconv
          T posix_madvise
          W posix_memalign
          T posix_openpt
@@ -1077,43 +880,17 @@
          W pow10l
          T powf
          T powl
-         d pr2
-         d pr2701
-         d pr3
-         d pr3700
-         d pr5
-         d pr5705
-         d pr8
-         d pr8704
          T pread
          W pread64
          T preadv
          W preadv64
          T printf
-         t printf_core
-         t processblock
-         t processblock143
-         t processblock150
          W program_invocation_name
          W program_invocation_short_name
-         d protos
-         d ps2
-         d ps2699
-         d ps3
-         d ps3698
-         d ps5
-         d ps5703
-         d ps8
-         d ps8702
-         d psbox
          T pselect
-         d ptable
-         d ptable279
-         d ptable285
          U pthread_self
          U pthread_setcancelstate
          T ptsname
-         d ptsname.buf
          W ptsname_r
          T putc
          T putc_unlocked
@@ -1130,34 +907,6 @@
          W pwrite64
          T pwritev
          W pwritev64
-         d qR2
-         d qR2757
-         d qR3
-         d qR3756
-         d qR5
-         d qR5761
-         d qR8
-         d qR8760
-         d qS2
-         d qS2755
-         d qS3
-         d qS3754
-         d qS5
-         d qS5759
-         d qS8
-         d qS8758
-         d qr2
-         d qr2707
-         d qr3
-         d qr5
-         d qr8
-         d qr8709
-         d qs2
-         d qs2706
-         d qs3
-         d qs5
-         d qs8
-         d qs8708
          T qsort
          T rand
          T rand_r
@@ -1173,7 +922,6 @@
          W realloc
          W realloc_in_place
          T realpath
-         t reap
          T recv
          T recvfrom
          T recvmsg
@@ -1214,11 +962,8 @@
          T scalbnl
          T scandir
          W scandir64
-         t scanexp
          T scanf
-         d seed
          T seed48
-         d seed48.p
          T seekdir
          T select
          T send
@@ -1256,18 +1001,9 @@
          T setstate
          T setuid
          T setvbuf
-         t sha256_sum
-         t sha256_update
-         t sha256crypt
-         d sha256crypt.perm
-         t sha512_sum
-         t sha512_update
-         t sha512crypt
-         d sha512crypt.perm
          T shm_open
          T shm_unlink
          T shutdown
-         t sift
          W signgam
          T significand
          T significandf
@@ -1280,14 +1016,11 @@
          T sinhf
          T sinhl
          T sinl
-         d sizeprefix
          T sleep
-         t sn_write
          T snprintf
          T sockatmark
          T socket
          T socketpair
-         t sort
          T sprintf
          T sqrt
          T sqrtf
@@ -1298,8 +1031,6 @@
          T sscanf
          T stat
          W stat64
-         d states
-         d states549
          W statfs
          W statfs64
          T statvfs
@@ -1309,7 +1040,6 @@
          D stdout
          W stpcpy
          W stpncpy
-         t str_next
          T strcasecmp
          T strcasecmp_l
          T strcasestr
@@ -1328,7 +1058,6 @@
          T strfmon
          T strfmon_l
          U strftime
-         d strings
          T strlcat
          T strlcpy
          T strlen
@@ -1352,7 +1081,6 @@
          W strtof_l
          T strtoimax
          T strtok
-         d strtok.p
          T strtok_r
          T strtol
          T strtol_l
@@ -1365,13 +1093,10 @@
          T strtoull
          T strtoull_l
          T strtoumax
-         t strtox
-         t strtox23
          T strupr
          T strverscmp
          T strxfrm
          W strxfrm_l
-         t sw_write
          T swab
          T swprintf
          T swscanf
@@ -1381,21 +1106,12 @@
          T syscall
          U sysconf
          T syslog
-         d tab
-         d table
-         d table280
-         d table286
-         d table311
-         d table316
-         d table323
-         d table380
          T tan
          T tanf
          T tanh
          T tanhf
          T tanhl
          T tanl
-         d tbl
          T tcdrain
          T tcflow
          T tcflush
@@ -1407,9 +1123,7 @@
          T tcsetpgrp
          T telldir
          T tempnam
-         d tempnam.index
          T textdomain
-         d textdomain.default_str
          T tgamma
          T tgammaf
          T tgammal
@@ -1417,8 +1131,6 @@
          T tmpfile
          W tmpfile64
          T tmpnam
-         d tmpnam.index
-         d tmpnam.s2
          T toascii
          T tolower
          T tolower_l
@@ -1430,38 +1142,12 @@
          T towlower_l
          T towupper
          T towupper_l
-         t tre_add_tag_left
-         t tre_add_tag_right
-         t tre_add_tags
-         t tre_ast_new_catenation
-         t tre_ast_new_iter
-         t tre_ast_new_node
-         t tre_ast_new_union
-         t tre_ast_to_tnfa
-         t tre_compare_items
-         t tre_copy_ast
-         t tre_fill_pmatch
-         d tre_macros
-         t tre_make_trans
-         t tre_match_empty
-         t tre_neg_char_classes_match
-         t tre_new_item
-         t tre_parse
-         t tre_purge_regset
-         t tre_set_empty
-         t tre_set_one
-         t tre_set_union
-         t tre_stack_push
-         t tre_tag_order
-         t trinkle
          T trunc
          T truncate
          W truncate64
          T truncf
          T truncl
-         t try_realloc_chunk
          T ttyname
-         d ttyname.buf
          T ttyname_r
          T ualarm
          T umask
@@ -1482,13 +1168,11 @@
          T vfscanf
          T vfwprintf
          T vfwscanf
-         d vfwscanf.size_pfx
          T vprintf
          T vscanf
          T vsnprintf
          T vsprintf
          T vsscanf
-         t vstrfmon_l
          T vswprintf
          T vswscanf
          W vsyslog
@@ -1532,8 +1216,6 @@
          T wcstoul
          T wcstoull
          T wcstoumax
-         t wcstox
-         t wcstox6
          T wcswcs
          T wcswidth
          T wcsxfrm
@@ -1543,7 +1225,6 @@
          T wctrans
          T wctrans_l
          T wctype
-         d wctype.names
          T wctype_l
          T wcwidth
          T wmemchr
@@ -1551,21 +1232,12 @@
          T wmemcpy
          T wmemmove
          T wmemset
-         t wms_close
-         t wms_seek
-         t wms_write
          T wordexp
          T wordfree
          T wprintf
-         t wprintf_core
-         t wrap_write
          T write
          T writev
          T wscanf
-         t wstring_read
-         d wtable
-         d x
-         d xdigits
          T y0
          T y0f
          T y1
