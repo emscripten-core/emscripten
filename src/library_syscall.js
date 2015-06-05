@@ -358,6 +358,9 @@ mergeInto(LibraryManager.library, {
     },
 #endif
 
+    // global constants
+    DEFAULT_POLLMASK: {{{ cDefine('POLLIN') }}} | {{{ cDefine('POLLOUT') }}},
+
     // global state
     mappings: {},
     umask: 0x1FF,  // S_IRWXU | S_IRWXG | S_IRWXO
@@ -866,6 +869,87 @@ mergeInto(LibraryManager.library, {
           if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
           return 0;
         }
+        case 142: { // newselect
+          // readfds are supported,
+          // writefds checks socket open status
+          // exceptfds not supported
+          // timeout is always 0 - fully async
+          var nfds = get(), readfds = get(), writefds = get(), exceptfds = get(), timeout = get();
+
+          assert(nfds <= 64, 'nfds must be less than or equal to 64');  // fd sets have 64 bits // TODO: this could be 1024 based on current musl headers
+          assert(!exceptfds, 'exceptfds not supported');
+
+          var total = 0;
+          
+          var srcReadLow = (readfds ? {{{ makeGetValue('readfds', 0, 'i32') }}} : 0),
+              srcReadHigh = (readfds ? {{{ makeGetValue('readfds', 4, 'i32') }}} : 0);
+          var srcWriteLow = (writefds ? {{{ makeGetValue('writefds', 0, 'i32') }}} : 0),
+              srcWriteHigh = (writefds ? {{{ makeGetValue('writefds', 4, 'i32') }}} : 0);
+          var srcExceptLow = (exceptfds ? {{{ makeGetValue('exceptfds', 0, 'i32') }}} : 0),
+              srcExceptHigh = (exceptfds ? {{{ makeGetValue('exceptfds', 4, 'i32') }}} : 0);
+
+          var dstReadLow = 0,
+              dstReadHigh = 0;
+          var dstWriteLow = 0,
+              dstWriteHigh = 0;
+          var dstExceptLow = 0,
+              dstExceptHigh = 0;
+
+          var allLow = (readfds ? {{{ makeGetValue('readfds', 0, 'i32') }}} : 0) |
+                       (writefds ? {{{ makeGetValue('writefds', 0, 'i32') }}} : 0) |
+                       (exceptfds ? {{{ makeGetValue('exceptfds', 0, 'i32') }}} : 0);
+          var allHigh = (readfds ? {{{ makeGetValue('readfds', 4, 'i32') }}} : 0) |
+                        (writefds ? {{{ makeGetValue('writefds', 4, 'i32') }}} : 0) |
+                        (exceptfds ? {{{ makeGetValue('exceptfds', 4, 'i32') }}} : 0);
+
+          function check(fd, low, high, val) {
+            return (fd < 32 ? (low & val) : (high & val));
+          }
+
+          for (var fd = 0; fd < nfds; fd++) {
+            var mask = 1 << (fd % 32);
+            if (!(check(fd, allLow, allHigh, mask))) {
+              continue;  // index isn't in the set
+            }
+
+            var stream = FS.getStream(fd);
+            if (!stream) throw new FS.ErrnoError(ERRNO_CODES.EBADF);
+
+            var flags = SYSCALLS.DEFAULT_POLLMASK;
+
+            if (stream.stream_ops.poll) {
+              flags = stream.stream_ops.poll(stream);
+            }
+
+            if ((flags & {{{ cDefine('POLLIN') }}}) && check(fd, srcReadLow, srcReadHigh, mask)) {
+              fd < 32 ? (dstReadLow = dstReadLow | mask) : (dstReadHigh = dstReadHigh | mask);
+              total++;
+            }
+            if ((flags & {{{ cDefine('POLLOUT') }}}) && check(fd, srcWriteLow, srcWriteHigh, mask)) {
+              fd < 32 ? (dstWriteLow = dstWriteLow | mask) : (dstWriteHigh = dstWriteHigh | mask);
+              total++;
+            }
+            if ((flags & {{{ cDefine('POLLPRI') }}}) && check(fd, srcExceptLow, srcExceptHigh, mask)) {
+              fd < 32 ? (dstExceptLow = dstExceptLow | mask) : (dstExceptHigh = dstExceptHigh | mask);
+              total++;
+            }
+          }
+
+          if (readfds) {
+            {{{ makeSetValue('readfds', '0', 'dstReadLow', 'i32') }}};
+            {{{ makeSetValue('readfds', '4', 'dstReadHigh', 'i32') }}};
+          }
+          if (writefds) {
+            {{{ makeSetValue('writefds', '0', 'dstWriteLow', 'i32') }}};
+            {{{ makeSetValue('writefds', '4', 'dstWriteHigh', 'i32') }}};
+          }
+          if (exceptfds) {
+            {{{ makeSetValue('exceptfds', '0', 'dstExceptLow', 'i32') }}};
+            {{{ makeSetValue('exceptfds', '4', 'dstExceptHigh', 'i32') }}};
+          }
+          
+          return total;
+        }
         case 144: { // msync
           var addr = get(), len = get(), flags = get();
           var info = SYSCALLS.mappings[addr];
@@ -901,7 +985,6 @@ mergeInto(LibraryManager.library, {
         }
         case 168: { // poll
           var fds = get(), nfds = get(), timeout = get();
-          var DEFAULT_POLLMASK = {{{ cDefine('POLLIN') }}} | {{{ cDefine('POLLOUT') }}};
           var nonzero = 0;
           for (var i = 0; i < nfds; i++) {
             var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
@@ -910,7 +993,7 @@ mergeInto(LibraryManager.library, {
             var mask = {{{ cDefine('POLLNVAL') }}};
             var stream = FS.getStream(fd);
             if (stream) {
-              mask = DEFAULT_POLLMASK;
+              mask = SYSCALLS.DEFAULT_POLLMASK;
               if (stream.stream_ops.poll) {
                 mask = stream.stream_ops.poll(stream);
               }
