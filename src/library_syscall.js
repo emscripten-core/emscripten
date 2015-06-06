@@ -692,6 +692,10 @@ mergeInto(LibraryManager.library, {
               if (!stream.tty) return -ERRNO_CODES.ENOTTY;
               return -ERRNO_CODES.EINVAL; // not supported
             }
+            case {{{ cDefine('FIONREAD') }}}: {
+              var argp = get();
+              return FS.ioctl(stream, op, argp);
+            }
             default: abort('bad ioctl syscall ' + op);
           }
         }
