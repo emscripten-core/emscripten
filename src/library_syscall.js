@@ -843,6 +843,9 @@ mergeInto(LibraryManager.library, {
               HEAPU8.set(msg.buffer, buf);
               return msg.buffer.byteLength;
             }
+            case 14: { // setsockopt
+              return -ERRNO_CODES.ENOPROTOOPT; // The option is unknown at the level indicated.
+            }
             case 15: { // getsockopt
               var sock = getSocketFromFD(), level = get(), optname = get(), optval = get(), optlen = get();
               // Minimal getsockopt aimed at resolving https://github.com/kripken/emscripten/issues/2211
