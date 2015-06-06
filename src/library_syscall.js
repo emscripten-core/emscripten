@@ -843,6 +843,20 @@ mergeInto(LibraryManager.library, {
               HEAPU8.set(msg.buffer, buf);
               return msg.buffer.byteLength;
             }
+            case 15: { // getsockopt
+              var sock = getSocketFromFD(), level = get(), optname = get(), optval = get(), optlen = get();
+              // Minimal getsockopt aimed at resolving https://github.com/kripken/emscripten/issues/2211
+              // so only supports SOL_SOCKET with SO_ERROR.
+              if (level === {{{ cDefine('SOL_SOCKET') }}}) {
+                if (optname === {{{ cDefine('SO_ERROR') }}}) {
+                  {{{ makeSetValue('optval', 0, 'sock.error', 'i32') }}};
+                  {{{ makeSetValue('optlen', 0, 4, 'i32') }}};
+                  sock.error = null; // Clear the error (The SO_ERROR option obtains and then clears this field).
+                  return 0;
+                }
+              }
+              return -ERRNO_CODES.ENOPROTOOPT; // The option is unknown at the level indicated.
+            }
             default: abort('unsupported socketcall syscall ' + call);
           }
         }
