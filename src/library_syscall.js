@@ -493,7 +493,7 @@ mergeInto(LibraryManager.library, {
     },
   },
 
-  __syscall__deps: ['$SYSCALLS', '$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '$PATH', '__setErrNo', '$PROCINFO', '_read_sockaddr'
+  __syscall__deps: ['$SYSCALLS', '$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '$PATH', '__setErrNo', '$PROCINFO', '_read_sockaddr', '_write_sockaddr'
 #if SYSCALL_DEBUG
                    ,'$ERRNO_MESSAGES'
 #endif
@@ -552,8 +552,9 @@ mergeInto(LibraryManager.library, {
 #endif
       return socket;
     }
-    function getSocketAddress() {
+    function getSocketAddress(allowNull) {
       var addrp = get(), addrlen = get();
+      if (allowNull && addrp === 0) return null;
       var info = __read_sockaddr(addrp, addrlen);
       if (info.errno) throw new FS.ErrnoError(info.errno);
       info.addr = DNS.lookup_addr(info.addr) || info.addr;
@@ -817,9 +818,15 @@ mergeInto(LibraryManager.library, {
               return newsock.stream.fd;
             }
             case 11: { // sendto
-              var sock = getSocketFromFD(), message = get(), length = get(), flags = get(), dest = getSocketAddress();
+              var sock = getSocketFromFD(), message = get(), length = get(), flags = get(), dest = getSocketAddress(true);
               var slab = {{{ makeGetSlabs('message', 'i8', true) }}};
-              return sock.sock_ops.sendmsg(sock, slab, message, length, info.addr, info.port);
+              if (!dest) {
+                // send, no address provided
+                return FS.write(sock.stream, slab, message, length);
+              } else {
+                // sendto an address
+                return sock.sock_ops.sendmsg(sock, slab, message, length, dest.addr, dest.port);
+              }
             }
             case 12: { // recvfrom
               var sock = getSocketFromFD(), buf = get(), len = get(), flags = get(), addr = get(), addrlen = get();
