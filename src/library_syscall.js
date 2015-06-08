@@ -517,7 +517,7 @@ mergeInto(LibraryManager.library, {
       assert(varargs === 0);
 #endif
       var array = which;
-      var which = array[0];
+      which = array[0];
       var index = 1;
       get = function() {
 #if ASSERTIONS
