@@ -860,6 +860,91 @@ mergeInto(LibraryManager.library, {
               }
               return -ERRNO_CODES.ENOPROTOOPT; // The option is unknown at the level indicated.
             }
+            case 16: { // sendmsg
+              var sock = getSocketFromFD(), message = get(), flags = get();
+              var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, '*') }}};
+              var num = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iovlen, 'i32') }}};
+              // read the address and port to send to
+              var addr, port;
+              var name = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_name, '*') }}};
+              var namelen = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_namelen, 'i32') }}};
+              if (name) {
+                var info = __read_sockaddr(name, namelen);
+                if (info.errno) return -info.errno;
+                port = info.port;
+                addr = DNS.lookup_addr(info.addr) || info.addr;
+              }
+              // concatenate scatter-gather arrays into one message buffer
+              var total = 0;
+              for (var i = 0; i < num; i++) {
+                total += {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
+              }
+              var view = new Uint8Array(total);
+              var offset = 0;
+              for (var i = 0; i < num; i++) {
+                var iovbase = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_base, 'i8*') }}};
+                var iovlen = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
+                for (var j = 0; j < iovlen; j++) {  
+                  view[offset++] = {{{ makeGetValue('iovbase', 'j', 'i8') }}};
+                }
+              }
+              // write the buffer
+              return sock.sock_ops.sendmsg(sock, view, 0, total, addr, port);
+            }
+            case 17: { // recvmsg
+              var sock = getSocketFromFD(), message = get(), flags = get();
+              var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, 'i8*') }}};
+              var num = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iovlen, 'i32') }}};
+              // get the total amount of data we can read across all arrays
+              var total = 0;
+              for (var i = 0; i < num; i++) {
+                total += {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
+              }
+              // try to read total data
+              var msg = sock.sock_ops.recvmsg(sock, total);
+              if (!msg) return 0; // socket is closed
+
+              // TODO honor flags:
+              // MSG_OOB
+              // Requests out-of-band data. The significance and semantics of out-of-band data are protocol-specific.
+              // MSG_PEEK
+              // Peeks at the incoming message.
+              // MSG_WAITALL
+              // Requests that the function block until the full amount of data requested can be returned. The function may return a smaller amount of data if a signal is caught, if the connection is terminated, if MSG_PEEK was specified, or if an error is pending for the socket.
+
+              // write the source address out
+              var name = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_name, '*') }}};
+              if (name) {
+                var res = __write_sockaddr(name, sock.family, DNS.lookup_name(msg.addr), msg.port);
+                assert(!res.errno);
+              }
+              // write the buffer out to the scatter-gather arrays
+              var bytesRead = 0;
+              var bytesRemaining = msg.buffer.byteLength;
+              for (var i = 0; bytesRemaining > 0 && i < num; i++) {
+                var iovbase = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_base, 'i8*') }}};
+                var iovlen = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
+                if (!iovlen) {
+                  continue;
+                }
+                var length = Math.min(iovlen, bytesRemaining);
+                var buf = msg.buffer.subarray(bytesRead, bytesRead + length);
+                HEAPU8.set(buf, iovbase + bytesRead);
+                bytesRead += length;
+                bytesRemaining -= length;
+              }
+
+              // TODO set msghdr.msg_flags
+              // MSG_EOR
+              // End of record was received (if supported by the protocol).
+              // MSG_OOB
+              // Out-of-band data was received.
+              // MSG_TRUNC
+              // Normal data was truncated.
+              // MSG_CTRUNC
+
+              return bytesRead;
+            }
             default: abort('unsupported socketcall syscall ' + call);
           }
         }
