@@ -547,8 +547,6 @@
          U getgrent
          T getgrouplist
          T getgroups
-         T gethostbyaddr
-         T gethostbyaddr_r
          T gethostbyname
          T gethostbyname2
          T gethostbyname2_r
@@ -1095,7 +1093,6 @@
          T symlink
          T symlinkat
          T sync
-         T syscall
          U sysconf
          T syslog
          T tan
