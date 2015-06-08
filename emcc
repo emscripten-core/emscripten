@@ -1357,14 +1357,28 @@ try:
           membytes.pop()
         if not membytes:
           return '';
-      membytes = ''.join(map(chr, membytes))
       if not memory_init_file:
-        s = membytes
+        crcTable = []
+        for i in range(256):
+          crc = i
+          for bit in range(8):
+            crc = (crc >> 1) ^ ((crc & 1) * 0xedb88320)
+          crcTable.append(crc)
+        crc = 0xffffffff
+        s = list(membytes)
+        n = len(s)
+        crc = crcTable[(crc ^ n) & 0xff] ^ (crc >> 8)
+        crc = crcTable[(crc ^ (n >> 8)) & 0xff] ^ (crc >> 8)
+        for i in s:
+          crc = crcTable[(crc ^ i) & 0xff] ^ (crc >> 8)
+        for i in range(4):
+          s.append((crc >> (8 * i)) & 0xff)
+        s = ''.join(map(chr, s))
         s = s.replace('\\', '\\\\').replace("'", "\\'")
         s = s.replace('\n', '\\n').replace('\r', '\\r')
         s = s.decode('latin1').encode('utf8')
         return "var memoryInitializer = '%s';" % s
-      open(memfile, 'wb').write(membytes)
+      open(memfile, 'wb').write(''.join(map(chr, membytes)))
       if DEBUG:
         # Copy into temp dir as well, so can be run there too
         shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
