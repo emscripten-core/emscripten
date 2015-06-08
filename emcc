@@ -1376,7 +1376,8 @@ try:
         s = ''.join(map(chr, s))
         s = s.replace('\\', '\\\\').replace("'", "\\'")
         s = s.replace('\n', '\\n').replace('\r', '\\r')
-        s = s.decode('latin1').encode('utf8')
+        def escape(x): return '\\x{:02x}'.format(ord(x.group()))
+        s = re.sub('[\x80-\xff]', escape, s)
         return "var memoryInitializer = '%s';" % s
       open(memfile, 'wb').write(''.join(map(chr, membytes)))
       if DEBUG:
