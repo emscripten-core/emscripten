@@ -4055,9 +4055,10 @@ int main(int argc, char **argv) {
     clock_t start = clock();
     errv("starting %s", str.c_str());
 #endif
-    if (str == "asm") {} // the default for us
-    else if (str == "asmPreciseF32") {}
-    else if (str == "receiveJSON" || str == "emitJSON") {}
+    bool worked = true;
+    if (str == "asm") { worked = false; } // the default for us
+    else if (str == "asmPreciseF32") { worked = false; }
+    else if (str == "receiveJSON" || str == "emitJSON") { worked = false; }
     else if (str == "eliminateDeadFuncs") eliminateDeadFuncs(doc);
     else if (str == "eliminate") eliminate(doc);
     else if (str == "eliminateMemSafe") eliminateMemSafe(doc);
@@ -4067,16 +4068,23 @@ int main(int argc, char **argv) {
     else if (str == "registerize") registerize(doc);
     else if (str == "registerizeHarder") registerizeHarder(doc);
     else if (str == "minifyLocals") minifyLocals(doc);
-    else if (str == "minifyWhitespace") {}
+    else if (str == "minifyWhitespace") { worked = false; }
     else if (str == "asmLastOpts") asmLastOpts(doc);
-    else if (str == "last") {}
-    else if (str == "noop") {}
+    else if (str == "last") { worked = false; }
+    else if (str == "noop") { worked = false; }
     else {
       fprintf(stderr, "unrecognized argument: %s\n", str.c_str());
       assert(0);
     }
 #ifdef PROFILING
     errv("    %s took %lu microseconds", str.c_str(), clock() - start);
+#endif
+#ifdef DEBUGGING
+    if (worked) {
+      std::cerr << "ast after " << str << ":\n";
+      doc->stringify(std::cerr);
+      std::cerr << "\n";
+    }
 #endif
   }
 
