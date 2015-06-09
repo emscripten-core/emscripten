@@ -71,7 +71,7 @@ if operation == 'build':
         int main() {
           return int(malloc(10)) + int(strchr("str", 'c'));
         }
-      ''', ['libc.bc', 'libcextra.bc'])
+      ''', ['libc.bc'])
     elif what == 'libcxx':
       build('''
         #include <iostream>
