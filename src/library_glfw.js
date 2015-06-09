@@ -419,7 +419,7 @@ var LibraryGLFW = {
         GLFW.active.height = GLFW.active.storedHeight;
       }
 
-      Browser.setCanvasSize(GLFW.active.width, GLFW.active.height);
+      Browser.setCanvasSize(GLFW.active.width, GLFW.active.height, true);
 
       if (!GLFW.active.windowResizeFunc) return;
 
@@ -722,6 +722,10 @@ var LibraryGLFW = {
     Module["canvas"].addEventListener("mouseup", GLFW.onMouseButtonUp, true);
     Module["canvas"].addEventListener('wheel', GLFW.onMouseWheel, true);
     Module["canvas"].addEventListener('mousewheel', GLFW.onMouseWheel, true);
+	
+	Browser.resizeListeners.push(function(width, height) {
+       GLFW.onFullScreenEventChange();
+    });
     return 1; // GL_TRUE
   },
 
