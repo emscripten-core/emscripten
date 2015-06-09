@@ -95,7 +95,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'dlmalloc.c',
     ]
     musl_srcdir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src')
-    blacklist = set(['ipc', 'passwd', 'thread', 'signal', 'sched', 'ipc', 'time', 'linux', 'aio', 'exit', 'legacy', 'mq', 'process', 'search', 'setjmp', 'env', 'ldso', 'conf'] + ['memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c', 'inet_addr.c', 'res_query.c', 'gai_strerror.c', 'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c'])
+    blacklist = set(['ipc', 'passwd', 'thread', 'signal', 'sched', 'ipc', 'time', 'linux', 'aio', 'exit', 'legacy', 'mq', 'process', 'search', 'setjmp', 'env', 'ldso', 'conf'] + ['memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c', 'inet_addr.c', 'res_query.c', 'gai_strerror.c', 'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c', 'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c'])
     # TODO: decide which math (abs, cos, log, pow, etc.) methods to use from Math, and which to keep from musl
     for dirpath, dirnames, filenames in os.walk(musl_srcdir):
       for f in filenames:

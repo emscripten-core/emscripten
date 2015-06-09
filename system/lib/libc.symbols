@@ -547,10 +547,6 @@
          U getgrent
          T getgrouplist
          T getgroups
-         T gethostbyname
-         T gethostbyname2
-         T gethostbyname2_r
-         T gethostbyname_r
          T gethostent
          T gethostid
          T gethostname
