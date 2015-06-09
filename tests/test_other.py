@@ -1753,6 +1753,8 @@ int f() {
        ['asm', 'eliminate']), # eliminate, just enough to trigger asm normalization/denormalization
       (path_from_root('tests', 'optimizer', 'safeLabelSetting.js'), open(path_from_root('tests', 'optimizer', 'safeLabelSetting-output.js')).read(),
        ['asm', 'safeLabelSetting']), # eliminate, just enough to trigger asm normalization/denormalization
+      (path_from_root('tests', 'optimizer', 'null_if.js'), [open(path_from_root('tests', 'optimizer', 'null_if-output.js')).read(), open(path_from_root('tests', 'optimizer', 'null_if-output2.js')).read()],
+       ['asm', 'registerizeHarder', 'asmLastOpts', 'minifyWhitespace']), # issue 3520
     ]:
       print input, passes
 
@@ -1817,7 +1819,9 @@ int f() {
           json += '\n' + original[original.find('// EXTRA_INFO:'):]
           open(input_temp + '.js', 'w').write(json)
 
-        if 'last' not in passes: # last is only relevant when we emit JS
+        # last is only relevant when we emit JS
+        if 'last' not in passes and \
+           'null_if' not in input:  # null-if test is js optimizer or native, not a mixture (they mix badly)
           print '  native (receiveJSON)'
           output = Popen([js_optimizer.get_native_optimizer(), input_temp + '.js'] + passes + ['receiveJSON', 'emitJSON'], stdin=PIPE, stdout=open(output_temp, 'w')).communicate()[0]
           check_json()
