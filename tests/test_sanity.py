@@ -413,13 +413,6 @@ fi
         os.environ['EMCC_DEBUG'] ='1'
         self.working_dir = os.path.join(TEMP_DIR, 'emscripten_temp')
 
-        # Building a file that doesn't need cached stuff should not trigger cache generation
-        output = self.do([compiler, path_from_root('tests', 'hello_world.cpp')])
-        assert INCLUDING_MESSAGE.replace('X', 'libcextra') not in output
-        assert BUILDING_MESSAGE.replace('X', 'libcextra') not in output
-        self.assertContained('hello, world!', run_js('a.out.js'))
-        try_delete('a.out.js')
-
         basebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-0-basebc.bc')
         dcebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-1-linktime.bc')
         ll_names = [os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-X-ll.ll').replace('X', str(x)) for x in range(2,5)]
