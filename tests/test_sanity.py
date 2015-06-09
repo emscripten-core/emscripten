@@ -426,7 +426,7 @@ fi
             try_delete(dcebc_name) # we might need to check this file later
             for ll_name in ll_names: try_delete(ll_name)
             output = self.do([compiler, '-O' + str(i), '-s', '--llvm-lto', '0', path_from_root('tests', filename), '--save-bc', 'a.bc', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
-            #print output
+            #print '\n\n\n', output
             assert INCLUDING_MESSAGE.replace('X', libname) in output
             if libname == 'libc':
               assert INCLUDING_MESSAGE.replace('X', 'libcxx') not in output # we don't need libcxx in this code
@@ -437,11 +437,6 @@ fi
             assert os.path.exists(EMCC_CACHE)
             full_libname = libname + '.bc' if libname != 'libcxx' else libname + '.a'
             assert os.path.exists(os.path.join(EMCC_CACHE, full_libname))
-            if libname == 'libcxx':
-              print os.stat(os.path.join(EMCC_CACHE, full_libname)).st_size, os.stat(basebc_name).st_size, os.stat(dcebc_name).st_size
-              assert os.stat(os.path.join(EMCC_CACHE, full_libname)).st_size > 1000000, 'libc++ is big'
-              assert os.stat(basebc_name).st_size > 1000000, 'libc++ is indeed big'
-              assert os.stat(dcebc_name).st_size < os.stat(basebc_name).st_size*0.666, 'Dead code elimination must remove most of libc++'
       finally:
         del os.environ['EMCC_DEBUG']
 
