@@ -40,7 +40,7 @@ if len(newargs) > 2:
           parts = base_name.split('.')
           parts[0] += '_' + h
           newname = '.'.join(parts)
-          full_newname = os.path.relpath(os.path.join(dir_name, newname))
+          full_newname = os.path.join(dir_name, newname)
           if not os.path.exists(full_newname):
             try: # it is ok to fail here, we just don't get hashing
               shutil.copyfile(orig_name, full_newname)
