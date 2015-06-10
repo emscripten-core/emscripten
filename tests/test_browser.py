@@ -621,7 +621,7 @@ window.close = function() {
       ]:
         for emterps in [
           [],
-          ['-DTEST_SLEEP', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'ASSERTIONS=1', '-s', 'EMTERPRETIFY_YIELDLIST=["_EventHandler"]', '-s', "SAFE_HEAP=1"]
+          ['-DTEST_SLEEP', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'ASSERTIONS=1', '-s', "SAFE_HEAP=1"]
         ]:
           print delay, defines, emterps
           open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
@@ -2400,7 +2400,7 @@ window.close = function() {
     self.btest('emterpreter_async_sleep2.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Oz'])
 
   def test_sdl_audio_beep_sleep(self):
-    self.btest('sdl_audio_beep_sleep.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Os', '-s', 'ASSERTIONS=1', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-profiling', '-s', 'EMTERPRETIFY_YIELDLIST=["__Z14audio_callbackPvPhi", "__ZN6Beeper15generateSamplesIhEEvPT_i", "__ZN6Beeper15generateSamplesIsEEvPT_i"]', '-s', 'SAFE_HEAP=1'])
+    self.btest('sdl_audio_beep_sleep.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Os', '-s', 'ASSERTIONS=1', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-profiling', '-s', 'SAFE_HEAP=1'])
 
   def test_mainloop_reschedule(self):
     self.btest('mainloop_reschedule.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Os'])

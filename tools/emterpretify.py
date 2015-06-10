@@ -57,7 +57,6 @@ sys.argv = filter(handle_arg, sys.argv)
 
 BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memmove', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64', '_strncpy', '_strcpy', '_strcat', '_saveSetjmp', '_testSetjmp', '_emscripten_replace_memory', '_bitshift64Shl', '_bitshift64Ashr', '_bitshift64Lshr', 'setAsyncState', 'emtStackSave'])
 WHITELIST = []
-YIELDLIST = ['stackSave', 'stackRestore', 'stackAlloc', 'setThrew', '_memset'] # functions which are ok to run while doing a sleep_with_yield.
 
 SYNC_FUNCS = set(['_emscripten_sleep', '_emscripten_sleep_with_yield', '_emscripten_wget_data', '_emscripten_idb_load', '_emscripten_idb_store', '_emscripten_idb_delete'])
 
@@ -703,8 +702,6 @@ if __name__ == '__main__':
   infile = sys.argv[1]
   outfile = sys.argv[2]
 
-  original_yieldlist = YIELDLIST
-
   extra_blacklist = []
   if len(sys.argv) >= 4:
     temp = sys.argv[3]
@@ -723,13 +720,6 @@ if __name__ == '__main__':
       WHITELIST = json.loads(temp)
 
       if len(sys.argv) >= 6:
-        temp = sys.argv[5]
-        if temp[0] == '"':
-          # response file
-          assert temp[1] == '@'
-          temp = open(temp[2:-1]).read()
-        YIELDLIST = YIELDLIST + json.loads(temp)
-
         if len(sys.argv) >= 7:
           SWAPPABLE = int(sys.argv[6])
 
@@ -774,23 +764,6 @@ if __name__ == '__main__':
     print "Suggested list of functions to run in the emterpreter:"
     print "  -s EMTERPRETIFY_WHITELIST='" + str(sorted(list(advised))).replace("'", '"') + "'"
     print "(%d%% out of %d functions)" % (int((100.0*len(advised))/len(can_call)), len(can_call))
-    if len(YIELDLIST) > len(original_yieldlist):
-      # advise on the yield list as well. Anything a yield function can reach, likely needs to also be a yield function
-      YIELD_IGNORE = set(['abort'])
-      to_check = list(YIELDLIST)
-      advised = set([str(f) for f in YIELDLIST])
-      while len(to_check) > 0:
-        curr = to_check.pop()
-        if curr not in can_call: continue
-        for next in can_call[curr]:
-          if next not in advised:
-            advised.add(str(next))
-            to_check.append(next)
-      advised = [next for next in advised if not is_dyn_call(next) and not is_function_table(next) and not next in original_yieldlist and next not in SYNC_FUNCS and next not in YIELD_IGNORE and next[0] == '_']
-      print
-      print "Suggested list of yield functions for the emterpreter:"
-      print "  -s EMTERPRETIFY_YIELDLIST='" + str(sorted(list(advised))).replace("'", '"') + "'"
-      print "(%d%% out of %d functions)" % (int((100.0*len(advised))/len(can_call)), len(can_call))
     sys.exit(0)
 
   BLACKLIST = set(list(BLACKLIST) + extra_blacklist)
@@ -848,7 +821,7 @@ if __name__ == '__main__':
   external_emterpreted_funcs = filter(lambda func: func in tabled_funcs or func in exported_funcs or func in reachable_funcs, emterpreted_funcs)
 
   # process functions, generating bytecode
-  shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'emterpretedFuncs': list(emterpreted_funcs), 'externalEmterpretedFuncs': list(external_emterpreted_funcs), 'opcodes': OPCODES, 'ropcodes': ROPCODES, 'ASYNC': ASYNC, 'PROFILING': PROFILING, 'ASSERTIONS': ASSERTIONS, 'yieldFuncs': YIELDLIST }, output_filename=temp, just_concat=True)
+  shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'emterpretedFuncs': list(emterpreted_funcs), 'externalEmterpretedFuncs': list(external_emterpreted_funcs), 'opcodes': OPCODES, 'ropcodes': ROPCODES, 'ASYNC': ASYNC, 'PROFILING': PROFILING, 'ASSERTIONS': ASSERTIONS }, output_filename=temp, just_concat=True)
 
   # load the module and modify it
   asm = asm_module.AsmModule(temp)
