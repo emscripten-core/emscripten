@@ -5491,7 +5491,6 @@ return malloc(size);
       self.emcc_args += ['-s', 'EMTERPRETIFY_WHITELIST=["_frexpl"]'] # test double call assertions
       test()
 
-  # Tests the full SSE1 API.
   def test_sse1(self):
     return self.skip('TODO: This test fails due to bugs #2840, #3044, #3045, #3046 and #3048 (also see #3043 and #3049)')
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
@@ -5500,6 +5499,19 @@ return malloc(size);
     for mode in [[], ['-s', 'SIMD=1']]:
       self.emcc_args = orig_args + mode
       self.do_run(open(path_from_root('tests', 'test_sse1.cpp'), 'r').read(), 'Success!')
+
+  # Tests the full SSE1 API.
+  def test_sse1_full(self):
+    return self.skip('TODO: This test fails due to bugs #2840, #3044, #3045, #3046 and #3048 (also see #3043 and #3049)')
+    if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('test_sse1_full requires SpiderMonkey to run.')
+    Popen([CLANG, path_from_root('tests', 'test_sse1_full.c'), '-o', 'test_sse1_full'] + get_clang_native_args(), stdout=PIPE, stderr=PIPE).communicate()
+    native_result, err = Popen('./test_sse1_full', stdout=PIPE, stderr=PIPE).communicate()
+
+    Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
+    orig_args = self.emcc_args
+    for mode in [[], ['-s', 'SIMD=1']]:
+      self.emcc_args = orig_args + mode
+      self.do_run(open(path_from_root('tests', 'test_sse1_full.c'), 'r').read(), native_result)
 
   def test_simd(self):
     if self.is_emterpreter(): return self.skip('todo')
