@@ -400,35 +400,34 @@ var LibraryGLFW = {
       event.preventDefault();
     },
 
-    onFullScreenEventChange: function(event) {
+    onFullScreenEventChange: function() {
       if (!GLFW.active) return;
 
       if (document["fullScreen"] || document["mozFullScreen"] || document["webkitIsFullScreen"]) {
         GLFW.active.storedX = GLFW.active.x;
         GLFW.active.storedY = GLFW.active.y;
-        GLFW.active.x = GLFW.active.y = 0;
         GLFW.active.storedWidth = GLFW.active.width;
         GLFW.active.storedHeight = GLFW.active.height;
+        GLFW.active.x = GLFW.active.y = 0;
         GLFW.active.width = screen.width;
         GLFW.active.height = screen.height;
       } else {
-        document.removeEventListener('fullscreenchange', GLFW.onFullScreenEventChange, true);
-        document.removeEventListener('mozfullscreenchange', GLFW.onFullScreenEventChange, true);
-        document.removeEventListener('webkitfullscreenchange', GLFW.onFullScreenEventChange, true);
+        GLFW.active.x = GLFW.active.storedX;
+        GLFW.active.y = GLFW.active.storedY;
         GLFW.active.width = GLFW.active.storedWidth;
         GLFW.active.height = GLFW.active.storedHeight;
       }
 
-      Browser.setCanvasSize(GLFW.active.width, GLFW.active.height);
+      Browser.setCanvasSize(GLFW.active.width, GLFW.active.height, true); // resets the canvas size to counter the aspect preservation of Browser.updateCanvasDimensions
 
-      if (!GLFW.active.windowResizeFunc) return;
+      if (!GLFW.active.windowSizeFunc) return;
 
 #if USE_GLFW == 2
-      Runtime.dynCall('vii', GLFW.active.windowResizeFunc, [width, height]);
+      Runtime.dynCall('vii', GLFW.active.windowSizeFunc, [GLFW.active.width, GLFW.active.height]);
 #endif
 
 #if USE_GLFW == 3
-      Runtime.dynCall('viii', GLFW.active.windowResizeFunc, [GLFW.active.id, width, height]);
+      Runtime.dynCall('viii', GLFW.active.windowSizeFunc, [GLFW.active.id, GLFW.active.width, GLFW.active.height]);
 #endif
     },
 
@@ -722,6 +721,10 @@ var LibraryGLFW = {
     Module["canvas"].addEventListener("mouseup", GLFW.onMouseButtonUp, true);
     Module["canvas"].addEventListener('wheel', GLFW.onMouseWheel, true);
     Module["canvas"].addEventListener('mousewheel', GLFW.onMouseWheel, true);
+
+    Browser.resizeListeners.push(function(width, height) {
+       GLFW.onFullScreenEventChange();
+    });
     return 1; // GL_TRUE
   },
 
