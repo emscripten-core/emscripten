@@ -6015,7 +6015,7 @@ def process(filename):
         ]: continue
         if x == 'lto' and self.run_name == 'default' and os.path.basename(name) in [
           '19.c', '18.cpp', # LLVM LTO bug
-          '23.cpp', # puts exists before LTO, but is not used; LTO cleans it out, but then creates uses to it (printf=>puts) # TODO: check with upstream if that is intended
+          '23.cpp', # puts exists before LTO, but is not used; LTO cleans it out, but then creates uses to it (printf=>puts) XXX https://llvm.org/bugs/show_bug.cgi?id=23814
         ]: continue
         if x == 'lto' and os.path.basename(name) in [
           '21.c'
