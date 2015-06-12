@@ -1740,7 +1740,13 @@ void *getBindBuffer() {
         doDirectCall(300);
       }
 
-      setTimeout(Module['_free'], 1000); // free is valid to call even after the runtime closes
+      setTimeout(function() {
+        var xhr = new XMLHttpRequest();
+        assert(Module.noted);
+        xhr.open('GET', 'http://localhost:8888/report_result?' + HEAP32[Module.noted>>2]);
+        xhr.send();
+        setTimeout(function() { window.close() }, 1000);
+      }, 1000);
     '''
 
     open('pre_main.js', 'w').write(r'''
