@@ -5,7 +5,7 @@ mergeInto(LibraryManager.library, {
   // Returns the resulting string string as a character array.
   _formatString__deps: ['strlen', '_reallyNegative'],
   _formatString: function(format, varargs) {
-    assert((varargs & 7) === 0);
+    assert((varargs & 3) === 0);
     var textIndex = format;
     var argIndex = 0;
     function getNextArg(type) {

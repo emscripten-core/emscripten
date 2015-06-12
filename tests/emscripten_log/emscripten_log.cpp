@@ -134,6 +134,9 @@ void __attribute__((noinline)) Foo() // Arbitrary function signature to add some
 
 int main()
 {
+	int test = 123;
+	emscripten_log(EM_LOG_FUNC_PARAMS | EM_LOG_DEMANGLE | EM_LOG_CONSOLE, "test print %d\n", test);
+
 	Foo<int>();
 #ifdef REPORT_RESULT
 	REPORT_RESULT();
