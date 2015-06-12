@@ -439,6 +439,7 @@ function getMemory(size) {
   if (typeof _sbrk !== 'undefined' && !_sbrk.called) return Runtime.dynamicAlloc(size);
   return _malloc(size);
 }
+Module['getMemory'] = getMemory;
 
 function Pointer_stringify(ptr, /* optional */ length) {
   if (length === 0 || !ptr) return '';

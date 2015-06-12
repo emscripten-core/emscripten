@@ -499,8 +499,9 @@ if has_preloaded:
   # Get the big archive and split it up
   if no_heap_copy:
     use_data = '''
-      // copy the entire loaded file into a spot in the heap. Files will refer to slices in that. They cannot be freed though.
-      var ptr = Module['_malloc'](byteArray.length);
+      // copy the entire loaded file into a spot in the heap. Files will refer to slices in that. They cannot be freed though
+      // (we may be allocating before malloc is ready, during startup).
+      var ptr = Module['getMemory'](byteArray.length);
       Module['HEAPU8'].set(byteArray, ptr);
       DataRequest.prototype.byteArray = Module['HEAPU8'].subarray(ptr, ptr+byteArray.length);
 '''
