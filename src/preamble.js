@@ -436,7 +436,7 @@ Module['allocate'] = allocate;
 // Allocate memory during any stage of startup - static memory early on, dynamic memory later, malloc when ready
 function getMemory(size) {
   if (!staticSealed) return Runtime.staticAlloc(size);
-  if (typeof _sbrk !== 'undefined' && !_sbrk.called) return Runtime.dynamicAlloc(size);
+  if ((typeof _sbrk !== 'undefined' && !_sbrk.called) || !runtimeInitialized) return Runtime.dynamicAlloc(size);
   return _malloc(size);
 }
 Module['getMemory'] = getMemory;
