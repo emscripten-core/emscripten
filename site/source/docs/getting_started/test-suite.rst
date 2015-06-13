@@ -19,7 +19,7 @@ The whole core test suite can be run using the script `tests/runner.py <https://
 	
 .. note:: 
 
-	- The core test suite is not the entire test suite, see :ref:`emscripten-test-suite-modes`
+	- The core test suite is not the entire test suite, see :ref:`section about core test modes <emscripten-test-suite-modes>`
 	- This may take several hours.
 	- :term:`Node.js` cannot run all of the tests in the suite; if you need to run them all, you should get a recent trunk version of the `SpiderMonkey <https://developer.mozilla.org/en-US/docs/Mozilla/Projects/SpiderMonkey/Introduction_to_the_JavaScript_shell>`_ shell. On Windows you can install and activate *SpiderMonkey* using the :ref:`emsdk`.
 

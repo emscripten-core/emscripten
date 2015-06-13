@@ -24,7 +24,7 @@ passed to JavaScript.
 .. tip:: In addition to the code in this article:
 
    - There are many other examples of how to use *Embind* in the `Test Suite`_.
-   - `Connecting C++ and JavaScript on the Web with Embind>`_ (slides from
+   - `Connecting C++ and JavaScript on the Web with Embind`_ (slides from
      CppCon 2014) contains more examples and information about *Embind*'s
      design philosophy and implementation.
 
@@ -787,7 +787,7 @@ real-world applications has proved to be more than acceptable.
 .. _Connecting C++ and JavaScript on the Web with Embind: http://chadaustin.me/2014/09/connecting-c-and-javascript-on-the-web-with-embind/
 .. _Boost.Python: http://www.boost.org/doc/libs/1_56_0/libs/python/doc/
 .. _finalizers: http://en.wikipedia.org/wiki/Finalizer
-.. _Boost.Python-like raw pointer policies`: https://wiki.python.org/moin/boost.python/CallPolicy
+.. _Boost.Python-like raw pointer policies: https://wiki.python.org/moin/boost.python/CallPolicy
 .. _Backbone.js: http://backbonejs.org/#Model-extend
 .. _Web Audio API: https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API
 .. _Making sine, square, sawtooth and triangle waves: http://stuartmemo.com/making-sine-square-sawtooth-and-triangle-waves/

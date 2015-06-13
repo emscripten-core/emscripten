@@ -1207,7 +1207,8 @@ Functions
 
 	.. note:: This function makes changes to the DOM to satisfy consistent presentation across browsers. These changes have been designed to intrude as little as possible, and the changes are cleared once windowed browsing is restored. If any of these changes are conflicting, see the function :c:func:`emscripten_request_fullscreen` instead, which performs a bare fullscreen request without any modifications to the DOM.
 
-	:param const EmscriptenFullscreenStrategy *fullscreenStrategy: [in] Points to a configuration structure filled by the caller which specifies display options for the fullscreen mode.
+	:param fullscreenStrategy: [in] Points to a configuration structure filled by the caller which specifies display options for the fullscreen mode.
+	:type fullscreenStrategy: const EmscriptenFullscreenStrategy*
 
 .. c:function:: EMSCRIPTEN_RESULT emscripten_exit_fullscreen(void)
 

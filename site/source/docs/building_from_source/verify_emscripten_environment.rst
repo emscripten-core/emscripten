@@ -98,6 +98,6 @@ Other common problems to check for are:
    
 		python emcc
 
-.. COMMENT:: **HamishW** Need to clarify if this last point on Python2 is Linux/Mac only, and if not, what needs to be done on Windows.
+.. COMMENT : **HamishW** Need to clarify if this last point on Python2 is Linux/Mac only, and if not, what needs to be done on Windows.
 
 If none of the above is helpful, then please :ref:`contact us <contact>` for help.

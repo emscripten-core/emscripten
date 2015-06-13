@@ -15,6 +15,7 @@ The topics in this section cover the main integration points that you need to co
 	files/index
 	multimedia_and_graphics/index	
 	Debugging
+	pthreads
 	
 	
    
