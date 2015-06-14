@@ -22,6 +22,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # -v, without input files
       output = Popen([PYTHON, compiler, '-v'], stdout=PIPE, stderr=PIPE).communicate()
       self.assertContained('''clang version''', output[1].replace('\r', ''), output[1].replace('\r', ''))
+      self.assertContained('''GNU''', output[0])
 
       # --help
       output = Popen([PYTHON, compiler, '--help'], stdout=PIPE, stderr=PIPE).communicate()
