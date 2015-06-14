@@ -248,25 +248,24 @@ int main()
 	Ret_M128d_M128d(__m128d, _mm_min_pd);
 	Ret_M128d_M128d(__m128d, _mm_min_sd);
 
-/*
 	// SSE2 Store instructions:
-	_mm_maskmoveu_si128
-	_mm_store_pd
-	_mm_store_pd1
-	_mm_store_sd
-	_mm_store_si128
-	_mm_store1_pd
-	_mm_storeh_pd
-	_mm_storel_epi64
-	_mm_storel_pd
-	_mm_storer_pd
-	_mm_storeu_pd
-	_mm_storeu_si128
-	_mm_stream_pd
-	_mm_stream_si128
-	_mm_stream_si32
-	_mm_stream_si64
-*/
+	void_M128i_M128i_OutIntPtr(_mm_maskmoveu_si128, char*, 16, 1);
+	void_OutDoublePtr_M128d(_mm_store_pd, double*, 16, 16);
+//	void_OutDoublePtr_M128d(_mm_store_pd1, double*, 16, 16);
+	void_OutDoublePtr_M128d(_mm_store_sd, double*, 8, 1);
+	void_OutIntPtr_M128(_mm_store_si128, __m128i*, 16, 16);
+	void_OutDoublePtr_M128d(_mm_store1_pd, double*, 16, 16);
+	void_OutDoublePtr_M128d(_mm_storeh_pd, double*, 8, 1);
+	void_OutIntPtr_M128(_mm_storel_epi64, __m128i*, 8, 1);
+	void_OutDoublePtr_M128d(_mm_storel_pd, double*, 8, 1);
+	void_OutDoublePtr_M128d(_mm_storer_pd, double*, 16, 16);
+	void_OutDoublePtr_M128d(_mm_storeu_pd, double*, 16, 1);
+	void_OutIntPtr_M128(_mm_storeu_si128, __m128i*, 16, 1);
+	void_OutDoublePtr_M128d(_mm_stream_pd, double*, 16, 16);
+	void_OutIntPtr_M128(_mm_stream_si128, __m128i*, 16, 16);
+	void_OutIntPtr_int(_mm_stream_si32, int*, 4, 1);
+	void_OutIntPtr_int64(_mm_stream_si64, int64_t*, 8, 1);
+
 	// SSE2 Swizzle instructions:
 /*
 	_mm_extract_epi16

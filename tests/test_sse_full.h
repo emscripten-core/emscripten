@@ -164,6 +164,15 @@ void tostr(int *s, int numElems, char *outstr)
 	}
 }
 
+void tostr(int64_t *m, int numElems, char *outstr)
+{
+	switch(numElems)
+	{
+		case 1: sprintf(outstr, "{0x%08X%08X}", (int)(*m >> 32), (int)*m); break;
+		case 2: sprintf(outstr, "{0x%08X%08X,0x%08X%08X}", (int)(*m >> 32), (int)*m, (int)(m[1] >> 32), (int)m[1]);
+	}
+}
+
 // Accessors to the test data in a way that the compiler can't optimize at compile-time.
 __attribute__((noinline)) float *get_interesting_floats()
 {
@@ -236,6 +245,104 @@ __m128 ExtractInRandomOrder(float *arr, int i, int n, int prime)
 		char str2[256]; tostr(&ret, str2); \
 		printf("%s(%s) = %s\n", #func, str, str2); \
 	}
+
+float tempOutFloatStore[16];
+float *getTempOutFloatStore(int alignmentBytes)
+{
+	uintptr_t addr = (uintptr_t)tempOutFloatStore;
+	addr = (addr + alignmentBytes - 1) & ~(alignmentBytes-1);
+	return (float*)addr;
+}
+
+int *getTempOutIntStore(int alignmentBytes) { return (int*)getTempOutFloatStore(alignmentBytes); }
+double *getTempOutDoubleStore(int alignmentBytes) { return (double*)getTempOutFloatStore(alignmentBytes); }
+
+#define void_OutFloatPtr_M128(func, Ptr_type, numBytesWritten, alignmentBytes) \
+	for(int i = 0; i < numInterestingFloats / 4; ++i) \
+		for(int offset = 0; offset < numBytesWritten; offset += alignmentBytes) \
+			for(int k = 0; k < 4; ++k) \
+			{ \
+				uintptr_t base = (uintptr_t)getTempOutFloatStore(16); \
+				__m128 m1 = E1(interesting_floats, i*4+k, numInterestingFloats); \
+				float *out = (float*)(base + offset); \
+				func((Ptr_type)out, m1); \
+				char str[256]; tostr(&m1, str); \
+				char str2[256]; tostr(out, numBytesWritten/sizeof(float), str2); \
+				printf("%s(p:align=%d, %s) = %s\n", #func, offset, str, str2); \
+			}
+
+#define void_OutDoublePtr_M128d(func, Ptr_type, numBytesWritten, alignmentBytes) \
+	for(int i = 0; i < numInterestingDoubles / 2; ++i) \
+		for(int offset = 0; offset < numBytesWritten; offset += alignmentBytes) \
+			for(int k = 0; k < 2; ++k) \
+			{ \
+				uintptr_t base = (uintptr_t)getTempOutDoubleStore(16); \
+				__m128d m1 = E1(interesting_doubles, i*2+k, numInterestingDoubles); \
+				double *out = (double*)(base + offset); \
+				func((Ptr_type)out, m1); \
+				char str[256]; tostr(&m1, str); \
+				char str2[256]; tostr(out, numBytesWritten/sizeof(double), str2); \
+				printf("%s(p:align=%d, %s) = %s\n", #func, offset, str, str2); \
+			}
+
+#define void_OutIntPtr_M128(func, Ptr_type, numBytesWritten, alignmentBytes) \
+	for(int i = 0; i < numInterestingInts / 4; ++i) \
+		for(int offset = 0; offset < numBytesWritten; offset += alignmentBytes) \
+			for(int k = 0; k < 4; ++k) \
+			{ \
+				uintptr_t base = (uintptr_t)getTempOutIntStore(16); \
+				__m128 m1 = E1(interesting_ints, i*4+k, numInterestingInts); \
+				int *out = (int*)(base + offset); \
+				func((Ptr_type)out, m1); \
+				char str[256]; tostr(&m1, str); \
+				char str2[256]; tostr(out, numBytesWritten/sizeof(int), str2); \
+				printf("%s(p:align=%d, %s) = %s\n", #func, offset, str, str2); \
+			}
+
+#define void_OutIntPtr_int(func, Ptr_type, numBytesWritten, alignmentBytes) \
+	for(int i = 0; i < numInterestingInts; ++i) \
+		for(int offset = 0; offset < numBytesWritten; offset += alignmentBytes) \
+			for(int k = 0; k < 4; ++k) \
+			{ \
+				uintptr_t base = (uintptr_t)getTempOutIntStore(16); \
+				int m1 = interesting_ints[i]; \
+				int *out = (int*)(base + offset); \
+				func((Ptr_type)out, m1); \
+				char str[256]; tostr(&m1, str); \
+				char str2[256]; tostr(out, numBytesWritten/sizeof(int), str2); \
+				printf("%s(p:align=%d, %s) = %s\n", #func, offset, str, str2); \
+			}
+
+#define void_OutIntPtr_int64(func, Ptr_type, numBytesWritten, alignmentBytes) \
+	for(int i = 0; i < numInterestingInts; ++i) \
+		for(int j = 0; j < numInterestingInts; ++j) \
+			for(int offset = 0; offset < numBytesWritten; offset += alignmentBytes) \
+			{ \
+				uintptr_t base = (uintptr_t)getTempOutIntStore(16); \
+				int64_t m1 = (int64_t)(((uint64_t)interesting_ints[i]) << 32 | (uint64_t)interesting_ints[j]); \
+				int64_t *out = (int64_t*)(base + offset); \
+				func((Ptr_type)out, m1); \
+				char str[256]; tostr(&m1, str); \
+				char str2[256]; tostr(out, numBytesWritten/sizeof(int64_t), str2); \
+				printf("%s(p:align=%d, %s) = %s\n", #func, offset, str, str2); \
+			}
+
+#define void_M128i_M128i_OutIntPtr(func, Ptr_type, numBytesWritten, alignmentBytes) \
+	for(int i = 0; i < numInterestingInts / 4; ++i) \
+		for(int j = 0; j < numInterestingInts / 4; ++j) \
+			for(int offset = 0; offset < numBytesWritten; offset += alignmentBytes) \
+				for(int k = 0; k < 4; ++k) \
+				{ \
+					uintptr_t base = (uintptr_t)getTempOutIntStore(16); \
+					__m128d m1 = E1(interesting_ints, i*4+k, numInterestingInts); \
+					__m128i m2 = E2(interesting_ints, j*4, numInterestingInts); \
+					int *out = (int*)(base + offset); \
+					func(m1, m2, (Ptr_type)out); \
+					char str[256]; tostr(&m1, str); \
+					char str2[256]; tostr(&m2, str2); \
+					char str3[256]; tostr(out, numBytesWritten/sizeof(int), str3); \
+					printf("%s(%s, %s, p:align=%d) = %s\n", #func, str, str2, offset, str3); \
+				}
 
 #define Ret_M128(Ret_type, func) \
 	for(int i = 0; i < numInterestingFloats / 4; ++i) \

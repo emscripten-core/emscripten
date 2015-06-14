@@ -118,19 +118,16 @@ int main()
 	Ret_M128_M128(__m128, _mm_min_ps);
 	Ret_M128_M128(__m128, _mm_min_ss);
 
-/*
 	// SSE1 Store instructions:
-	_mm_store_ps
-	_mm_store_ps1
-	_mm_store_ss
-	_mm_store1_ps
-	_mm_storeh_pi
-	_mm_storel_pi
-	_mm_storer_ps
-	_mm_storeu_ps
-	_mm_stream_pi
-	_mm_stream_ps
-*/
+	void_OutFloatPtr_M128(_mm_store_ps, float*, 16, 16);
+	void_OutFloatPtr_M128(_mm_store_ps1, float*, 16, 16);
+	void_OutFloatPtr_M128(_mm_store_ss, float*, 4, 1);
+	void_OutFloatPtr_M128(_mm_store1_ps, float*, 16, 16);
+	void_OutFloatPtr_M128(_mm_storeh_pi, __m64*, 8, 1);
+	void_OutFloatPtr_M128(_mm_storel_pi, __m64*, 8, 1);
+	void_OutFloatPtr_M128(_mm_storer_ps, float*, 16, 16);
+	void_OutFloatPtr_M128(_mm_storeu_ps, float*, 16, 1);
+	void_OutFloatPtr_M128(_mm_stream_ps, float*, 16, 16);
 
 	// SSE1 Swizzle instructions:
 	M128_M128_shuffle();
