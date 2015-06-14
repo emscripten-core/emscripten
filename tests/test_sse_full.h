@@ -211,6 +211,89 @@ __m128 ExtractInRandomOrder(float *arr, int i, int n, int prime)
 				printf("%s(%s, %s) = %s\n", #func, str, str2, str3); \
 			}
 
+#define Ret_M128i_Tint_body(Ret_type, func, Tint) \
+	for(int i = 0; i < numInterestingInts / 4; ++i) \
+		for(int k = 0; k < 4; ++k) \
+		{ \
+			__m128i m1 = E1(interesting_ints, i*4+k, numInterestingInts); \
+			Ret_type ret = func(m1, Tint); \
+			char str[256]; tostr(&m1, str); \
+			char str2[256]; tostr(&ret, str2); \
+			printf("%s(%s, %d) = %s\n", #func, str, Tint, str2); \
+		}
+
+#define Ret_M128i_int_Tint_body(Ret_type, func, Tint) \
+	for(int i = 0; i < numInterestingInts / 4; ++i) \
+		for(int j = 0; j < numInterestingInts; ++j) \
+			for(int k = 0; k < 4; ++k) \
+			{ \
+				__m128i m1 = E1(interesting_ints, i*4+k, numInterestingInts); \
+				Ret_type ret = func(m1, interesting_ints[j], Tint); \
+				char str[256]; tostr(&m1, str); \
+				char str2[256]; tostr(&ret, str2); \
+				printf("%s(%s, 0x%08X, %d) = %s\n", #func, str, interesting_ints[j], Tint, str2); \
+			}
+
+#define Ret_M128d_M128d_Tint_body(Ret_type, func, Tint) \
+	for(int i = 0; i < numInterestingDoubles / 2; ++i) \
+		for(int k = 0; k < 2; ++k) \
+			for(int j = 0; j < numInterestingDoubles / 2; ++j) \
+			{ \
+				__m128d m1 = E1(interesting_doubles, i*2+k, numInterestingDoubles); \
+				__m128d m2 = E2(interesting_doubles, j*2, numInterestingDoubles); \
+				Ret_type ret = func(m1, m2, Tint); \
+				char str[256]; tostr(&m1, str); \
+				char str2[256]; tostr(&m2, str2); \
+				char str3[256]; tostr(&ret, str3); \
+				printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3); \
+			}
+
+#define Ret_M128_M128_Tint_body(Ret_type, func, Tint) \
+	for(int i = 0; i < numInterestingFloats / 4; ++i) \
+		for(int k = 0; k < 4; ++k) \
+			for(int j = 0; j < numInterestingFloats / 4; ++j) \
+			{ \
+				__m128 m1 = E1(interesting_floats, i*4+k, numInterestingFloats); \
+				__m128 m2 = E2(interesting_floats, j*4, numInterestingFloats); \
+				Ret_type ret = func(m1, m2, Tint); \
+				char str[256]; tostr(&m1, str); \
+				char str2[256]; tostr(&m2, str2); \
+				char str3[256]; tostr(&ret, str3); \
+				printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3); \
+			}
+
+#define const_int8_unroll(Ret_type, F, func) \
+	F(Ret_type, func, -1); \
+	F(Ret_type, func, 0); \
+	F(Ret_type, func, 1); \
+	F(Ret_type, func, 2); \
+	F(Ret_type, func, 3); \
+	F(Ret_type, func, 5); \
+	F(Ret_type, func, 7); \
+	F(Ret_type, func, 11); \
+	F(Ret_type, func, 13); \
+	F(Ret_type, func, 15); \
+	F(Ret_type, func, 16); \
+	F(Ret_type, func, 17); \
+	F(Ret_type, func, 23); \
+	F(Ret_type, func, 29); \
+	F(Ret_type, func, 31); \
+	F(Ret_type, func, 37); \
+	F(Ret_type, func, 43); \
+	F(Ret_type, func, 47); \
+	F(Ret_type, func, 59); \
+	F(Ret_type, func, 127); \
+	F(Ret_type, func, 128); \
+	F(Ret_type, func, 191); \
+	F(Ret_type, func, 254); \
+	F(Ret_type, func, 255); \
+	F(Ret_type, func, 309);
+
+#define Ret_M128i_Tint(Ret_type, func) const_int8_unroll(Ret_type, Ret_M128i_Tint_body, func)
+#define Ret_M128i_int_Tint(Ret_type, func) const_int8_unroll(Ret_type, Ret_M128i_int_Tint_body, func)
+#define Ret_M128d_M128d_Tint(Ret_type, func) const_int8_unroll(Ret_type, Ret_M128d_M128d_Tint_body, func)
+#define Ret_M128_M128_Tint(Ret_type, func) const_int8_unroll(Ret_type, Ret_M128_M128_Tint_body, func)
+
 #define Ret_M128d_M128d(Ret_type, func) \
 	for(int i = 0; i < numInterestingDoubles / 2; ++i) \
 		for(int k = 0; k < 2; ++k) \
@@ -475,17 +558,4 @@ double *getTempOutDoubleStore(int alignmentBytes) { return (double*)getTempOutFl
 				char str2[256]; tostr(&m2, str2); \
 				char str3[256]; tostr(&ret, str3); \
 				printf("%s(%s, %s) = %s\n", #func, str, str2, str3); \
-			}
-
-#define M128_M128_shuffle() \
-	for(int i = 0; i < numInterestingFloats / 4; ++i) \
-		for(int k = 0; k < 4; ++k) \
-			for(int j = 0; j < numInterestingFloats / 4; ++j) \
-			{ \
-				__m128 m1 = E1(interesting_floats, i*4+k, numInterestingFloats); \
-				__m128 m2 = E2(interesting_floats, j*4, numInterestingFloats); \
-				__m128 ret = _mm_shuffle_ps(m1, m2, _MM_SHUFFLE(1, 3, 0, 2)); \
-				char str[256], str2[256], str3[256]; \
-				tostr(&m1, str); tostr(&m2, str2); tostr(&ret, str3); \
-				printf("%s(%s, %s) = %s\n", "_mm_shuffle_ps", str, str2, str3); \
 			}

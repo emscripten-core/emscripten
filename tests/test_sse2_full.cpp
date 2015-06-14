@@ -1,7 +1,7 @@
 // This file uses SSE2 by calling different functions with different interesting inputs and prints the results.
 // Use a diff tool to compare the results between platforms.
 
-#include <xmmintrin.h>
+#include <emmintrin.h>
 #define ENABLE_SSE2
 #include "test_sse_full.h"
 
@@ -217,26 +217,26 @@ int main()
 	_mm_setzero_si128
 */
 	// SSE2 Shift instructions:
-//	M128i_M128i_int(_mm_bslli_si128);
-//	M128i_M128i_int(_mm_bsrli_si128);
+//	Ret_M128i_Tint(__m128i, _mm_bslli_si128);
+//	Ret_M128i_Tint(__m128i, _mm_bsrli_si128);
 	M128i_M128i_M128i(_mm_sll_epi16);
 	M128i_M128i_M128i(_mm_sll_epi32);
 	M128i_M128i_M128i(_mm_sll_epi64);
-//	M128i_M128i_int(_mm_slli_epi16);
-//	M128i_M128i_int(_mm_slli_epi32);
-//	M128i_M128i_int(_mm_slli_epi64);
-//	M128i_M128i_int(_mm_slli_si128);
+	Ret_M128i_Tint(__m128i, _mm_slli_epi16);
+	Ret_M128i_Tint(__m128i, _mm_slli_epi32);
+	Ret_M128i_Tint(__m128i, _mm_slli_epi64);
+	Ret_M128i_Tint(__m128i, _mm_slli_si128);
 	M128i_M128i_M128i(_mm_sra_epi16);
 	M128i_M128i_M128i(_mm_sra_epi32);
-//	M128i_M128i_int(_mm_srai_epi16);
-//	M128i_M128i_int(_mm_srai_epi32);
+	Ret_M128i_Tint(__m128i, _mm_srai_epi16);
+	Ret_M128i_Tint(__m128i, _mm_srai_epi32);
 	M128i_M128i_M128i(_mm_srl_epi16);
 	M128i_M128i_M128i(_mm_srl_epi32);
 	M128i_M128i_M128i(_mm_srl_epi64);
-//	M128i_M128i_int(_mm_srli_epi16);
-//	M128i_M128i_int(_mm_srli_epi32);
-//	M128i_M128i_int(_mm_srli_epi64);
-//	M128i_M128i_int(_mm_srli_epi128);
+	Ret_M128i_Tint(__m128i, _mm_srli_epi16);
+	Ret_M128i_Tint(__m128i, _mm_srli_epi32);
+	Ret_M128i_Tint(__m128i, _mm_srli_epi64);
+//	Ret_M128i_Tint(__m128i, _mm_srli_epi128);
 
 	// SSE2 Special Math instructions:
 	M128i_M128i_M128i(_mm_max_epi16);
@@ -267,14 +267,13 @@ int main()
 	void_OutIntPtr_int64(_mm_stream_si64, int64_t*, 8, 1);
 
 	// SSE2 Swizzle instructions:
-/*
-	_mm_extract_epi16
-	_mm_insert_epi16
-	_mm_shuffle_epi32
-	_mm_shuffle_pd
-	_mm_shufflehi_epi16
-	_mm_shufflelo_epi16
-*/
+	Ret_M128i_Tint(int, _mm_extract_epi16);
+	Ret_M128i_int_Tint(__m128i, _mm_insert_epi16);
+	Ret_M128i_Tint(__m128i, _mm_shuffle_epi32);
+	Ret_M128d_M128d_Tint(__m128d, _mm_shuffle_pd);
+	Ret_M128i_Tint(__m128i, _mm_shufflehi_epi16);
+	Ret_M128i_Tint(__m128i, _mm_shufflelo_epi16);
+
 	M128i_M128i_M128i(_mm_unpackhi_epi16);
 	M128i_M128i_M128i(_mm_unpackhi_epi32);
 	M128i_M128i_M128i(_mm_unpackhi_epi64);

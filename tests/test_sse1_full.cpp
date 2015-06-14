@@ -130,7 +130,7 @@ int main()
 	void_OutFloatPtr_M128(_mm_stream_ps, float*, 16, 16);
 
 	// SSE1 Swizzle instructions:
-	M128_M128_shuffle();
+	Ret_M128_M128_Tint(__m128, _mm_shuffle_ps);
 	// _MM_TRANSPOSE4_PS
 	Ret_M128_M128(__m128, _mm_unpackhi_ps);
 	Ret_M128_M128(__m128, _mm_unpacklo_ps);
