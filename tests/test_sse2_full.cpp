@@ -2,6 +2,7 @@
 // Use a diff tool to compare the results between platforms.
 
 #include <xmmintrin.h>
+#define ENABLE_SSE2
 #include "test_sse_full.h"
 
 int main()
@@ -152,20 +153,18 @@ int main()
 	_mm_pause
 	*/
 
-/*
 	// SSE2 Load functions:
-	_mm_load_pd
-	_mm_load_pd1
-	_mm_load_sd
-	_mm_load_si128
-	_mm_load1_pd
-	_mm_loadh_pd
-	_mm_loadl_epi64
-	_mm_loadl_pd
-	_mm_loadr_pd
-	_mm_loadu_pd
-	_mm_loadu_si128
-*/
+	Ret_DoublePtr(__m128d, _mm_load_pd, 2, 2);
+	Ret_DoublePtr(__m128d, _mm_load_pd1, 1, 1);
+	Ret_DoublePtr(__m128d, _mm_load_sd, 1, 1);
+	Ret_IntPtr(__m128i, _mm_load_si128, __m128i*, 4, 4);
+	Ret_DoublePtr(__m128d, _mm_load1_pd, 1, 1);
+	Ret_M128d_DoublePtr(__m128d, _mm_loadh_pd, double*, 1, 1);
+	Ret_IntPtr(__m128i, _mm_loadl_epi64, __m128i*, 2, 1);
+	Ret_M128d_DoublePtr(__m128d, _mm_loadl_pd, double*, 1, 1);
+	Ret_DoublePtr(__m128d, _mm_loadr_pd, 2, 2);
+	Ret_DoublePtr(__m128d, _mm_loadu_pd, 2, 1);
+	Ret_IntPtr(__m128i, _mm_loadu_si128, __m128i*, 2, 1);
 
 	// SSE2 Logical instructions:
 	Ret_M128d_M128d(__m128d, _mm_and_pd);

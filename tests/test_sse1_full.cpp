@@ -84,17 +84,15 @@ int main()
 	Ret_M128(int, _mm_cvttss_si32);
 	Ret_M128(int64_t, _mm_cvttss_si64);
 
-/*
 	// SSE1 Load functions:
-	_mm_load_ps
-	_mm_load_ps1
-	_mm_load_ss
-	_mm_load1_ps
-	_mm_loadh_pi
-	_mm_loadl_pi
-	_mm_loadr_ps
-	_mm_loadu_ps
-*/
+	Ret_FloatPtr(__m128, _mm_load_ps, 4, 4);
+	Ret_FloatPtr(__m128, _mm_load_ps1, 1, 1);
+	Ret_FloatPtr(__m128, _mm_load_ss, 1, 1);
+	Ret_FloatPtr(__m128, _mm_load1_ps, 1, 1);
+	Ret_M128_FloatPtr(__m128, _mm_loadh_pi, __m64*, 2, 1);
+	Ret_M128_FloatPtr(__m128, _mm_loadl_pi, __m64*, 2, 1);
+	Ret_FloatPtr(__m128, _mm_loadr_ps, 4, 4);
+	Ret_FloatPtr(__m128, _mm_loadu_ps, 4, 1);
 
 	// SSE1 Miscellaneous functions:
 	Ret_M128(int, _mm_movemask_ps);

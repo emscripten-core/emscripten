@@ -127,6 +127,43 @@ void tostr(double *m, char *outstr)
 	SerializeDouble(*m, outstr);
 }
 
+void tostr(double *m, int numElems, char *outstr)
+{
+	char s[2][64];
+	for(int i = 0; i < numElems; ++i)
+		SerializeDouble(m[i], s[i]);
+	switch(numElems)
+	{
+		case 1: sprintf(outstr, "{%s}", s[0]); break;
+		case 2: sprintf(outstr, "{%s,%s}", s[0], s[1]); break;
+	}
+}
+
+void tostr(float *m, int numElems, char *outstr)
+{
+	char s[4][64];
+	for(int i = 0; i < numElems; ++i)
+		SerializeFloat(m[i], s[i]);
+	switch(numElems)
+	{
+		case 1: sprintf(outstr, "{%s}", s[0]); break;
+		case 2: sprintf(outstr, "{%s,%s}", s[0], s[1]); break;
+		case 3: sprintf(outstr, "{%s,%s,%s}", s[0], s[1], s[2]); break;
+		case 4: sprintf(outstr, "{%s,%s,%s,%s}", s[0], s[1], s[2], s[3]); break;
+	}
+}
+
+void tostr(int *s, int numElems, char *outstr)
+{
+	switch(numElems)
+	{
+		case 1: sprintf(outstr, "{0x%08X}", s[0]); break;
+		case 2: sprintf(outstr, "{0x%08X,0x%08X}", s[0], s[1]); break;
+		case 3: sprintf(outstr, "{0x%08X,0x%08X,0x%08X}", s[0], s[1], s[2]); break;
+		case 4: sprintf(outstr, "{0x%08X,0x%08X,0x%08X,0x%08X}", s[0], s[1], s[2], s[3]); break;
+	}
+}
+
 // Accessors to the test data in a way that the compiler can't optimize at compile-time.
 __attribute__((noinline)) float *get_interesting_floats()
 {
@@ -190,6 +227,16 @@ __m128 ExtractInRandomOrder(float *arr, int i, int n, int prime)
 			printf("%s(%s) = %s\n", #func, str, str2); \
 		}
 
+#define Ret_DoublePtr(Ret_type, func, numElemsAccessed, inc) \
+	for(int i = 0; i+numElemsAccessed <= numInterestingDoubles; i += inc) \
+	{ \
+		double *ptr = interesting_doubles + i; \
+		Ret_type ret = func(ptr); \
+		char str[256]; tostr(ptr, numElemsAccessed, str); \
+		char str2[256]; tostr(&ret, str2); \
+		printf("%s(%s) = %s\n", #func, str, str2); \
+	}
+
 #define Ret_M128(Ret_type, func) \
 	for(int i = 0; i < numInterestingFloats / 4; ++i) \
 		for(int k = 0; k < 4; ++k) \
@@ -200,6 +247,54 @@ __m128 ExtractInRandomOrder(float *arr, int i, int n, int prime)
 			char str2[256]; tostr(&ret, str2); \
 			printf("%s(%s) = %s\n", #func, str, str2); \
 		}
+
+#define Ret_FloatPtr(Ret_type, func, numElemsAccessed, inc) \
+	for(int i = 0; i+numElemsAccessed <= numInterestingFloats; i += inc) \
+	{ \
+		float *ptr = interesting_floats + i; \
+		Ret_type ret = func(ptr); \
+		char str[256]; tostr(ptr, numElemsAccessed, str); \
+		char str2[256]; tostr(&ret, str2); \
+		printf("%s(%s) = %s\n", #func, str, str2); \
+	}
+
+#define Ret_IntPtr(Ret_type, func, Ptr_type, numElemsAccessed, inc) \
+	for(int i = 0; i+numElemsAccessed <= numInterestingInts; i += inc) \
+	{ \
+		uint32_t *ptr = interesting_ints + i; \
+		Ret_type ret = func((Ptr_type)ptr); \
+		char str[256]; tostr((int*)ptr, numElemsAccessed, str); \
+		char str2[256]; tostr(&ret, str2); \
+		printf("%s(%s) = %s\n", #func, str, str2); \
+	}
+
+#define Ret_M128_FloatPtr(Ret_type, func, Ptr_type, numElemsAccessed, inc) \
+	for(int i = 0; i < numInterestingFloats / 4; ++i) \
+		for(int k = 0; k < 4; ++k) \
+			for(int j = 0; j+numElemsAccessed <= numInterestingFloats; j += inc) \
+			{ \
+				__m128 m1 = E1(interesting_floats, i*4+k, numInterestingFloats); \
+				float *ptr = interesting_floats + j; \
+				Ret_type ret = func(m1, (Ptr_type)ptr); \
+				char str[256]; tostr(&m1, str); \
+				char str2[256]; tostr(ptr, numElemsAccessed, str2); \
+				char str3[256]; tostr(&ret, str3); \
+				printf("%s(%s, %s) = %s\n", #func, str, str2, str3); \
+			}
+
+#define Ret_M128d_DoublePtr(Ret_type, func, Ptr_type, numElemsAccessed, inc) \
+	for(int i = 0; i < numInterestingDoubles / 2; ++i) \
+		for(int k = 0; k < 2; ++k) \
+			for(int j = 0; j+numElemsAccessed <= numInterestingDoubles; j += inc) \
+			{ \
+				__m128d m1 = E1(interesting_doubles, i*2+k, numInterestingDoubles); \
+				double *ptr = interesting_doubles + j; \
+				Ret_type ret = func(m1, (Ptr_type)ptr); \
+				char str[256]; tostr(&m1, str); \
+				char str2[256]; tostr(ptr, numElemsAccessed, str2); \
+				char str3[256]; tostr(&ret, str3); \
+				printf("%s(%s, %s) = %s\n", #func, str, str2, str3); \
+			}
 
 #define Ret_M128i(Ret_type, func) \
 	for(int i = 0; i < numInterestingInts / 4; ++i) \
