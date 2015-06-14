@@ -128,9 +128,9 @@ int main()
 	Ret_M128i(int, _mm_cvtsi128_si32);
 	Ret_M128i(int64_t, _mm_cvtsi128_si64);
 //	Ret_M128i(int64_t, _mm_cvtsi128_si64x);
-//	M128d_M128d_int(_mm_cvtsi32_sd);
+	Ret_M128d_int(__m128d, _mm_cvtsi32_sd);
 	Ret_int(__m128i, _mm_cvtsi32_si128);
-//	M128d_M128d_int64(_mm_cvtsi64_sd);
+	Ret_M128d_int64(__m128d, _mm_cvtsi64_sd);
 	Ret_int64(__m128i, _mm_cvtsi64_si128);
 //	Ret_int64(__m128d, _mm_cvtsi64x_sd);
 //	Ret_int64(__m128i, _mm_cvtsi64x_si128);
