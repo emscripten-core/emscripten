@@ -559,3 +559,17 @@ double *getTempOutDoubleStore(int alignmentBytes) { return (double*)getTempOutFl
 				char str3[256]; tostr(&ret, str3); \
 				printf("%s(%s, %s) = %s\n", #func, str, str2, str3); \
 			}
+
+#define Ret_M128_int(Ret_type, func) \
+	for(int i = 0; i < numInterestingFloats / 4; ++i) \
+		for(int k = 0; k < 4; ++k) \
+			for(int j = 0; j < numInterestingInts; ++j) \
+			{ \
+				__m128 m1 = E1(interesting_floats, i*4+k, numInterestingFloats); \
+				int m2 = interesting_ints[j]; \
+				Ret_type ret = func(m1, m2); \
+				char str[256]; tostr(&m1, str); \
+				char str2[256]; tostr(&m2, str2); \
+				char str3[256]; tostr(&ret, str3); \
+				printf("%s(%s, %s) = %s\n", #func, str, str2, str3); \
+			}

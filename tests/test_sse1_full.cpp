@@ -10,6 +10,10 @@ int main()
 	int numInterestingFloats = sizeof(interesting_floats_)/sizeof(interesting_floats_[0]);
 	assert(numInterestingFloats % 4 == 0);
 
+	uint32_t *interesting_ints = get_interesting_ints();
+	int numInterestingInts = sizeof(interesting_ints_)/sizeof(interesting_ints_[0]);
+	assert(numInterestingInts % 4 == 0);
+
 	// SSE1 Arithmetic instructions:
 	Ret_M128_M128(__m128, _mm_add_ps);
 	Ret_M128_M128(__m128, _mm_add_ss);
@@ -74,9 +78,9 @@ int main()
 	Ret_M128_M128(int, _mm_ucomineq_ss);
 
 	// SSE1 Convert instructions:
-//	M128_M128_int(_mm_cvt_si2ss);
+	Ret_M128_int(__m128, _mm_cvt_si2ss);
 	Ret_M128(int, _mm_cvt_ss2si);
-//	M128_M128_int(_mm_cvtsi32_ss);
+	Ret_M128_int(__m128, _mm_cvtsi32_ss);
 	Ret_M128(float, _mm_cvtss_f32);
 	Ret_M128(int, _mm_cvtss_si32);
 	Ret_M128(int64_t, _mm_cvtss_si64);
