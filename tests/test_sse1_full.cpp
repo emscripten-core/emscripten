@@ -73,18 +73,16 @@ int main()
 	Ret_M128_M128(int, _mm_ucomilt_ss);
 	Ret_M128_M128(int, _mm_ucomineq_ss);
 
-/*
 	// SSE1 Convert instructions:
-	_mm_cvt_si2ss;
-	_mm_cvt_ss2si;
-	_mm_cvtsi32_ss;
-	_mm_cvtss_f32;
-	_mm_cvtss_si32;
-	_mm_cvtss_si64;
-	_mm_cvtt_ss2si;
-	_mm_cvttss_si32;
-	_mm_cvttss_si64;
-*/
+//	M128_M128_int(_mm_cvt_si2ss);
+	Ret_M128(int, _mm_cvt_ss2si);
+//	M128_M128_int(_mm_cvtsi32_ss);
+	Ret_M128(float, _mm_cvtss_f32);
+	Ret_M128(int, _mm_cvtss_si32);
+	Ret_M128(int64_t, _mm_cvtss_si64);
+	Ret_M128(int, _mm_cvtt_ss2si);
+	Ret_M128(int, _mm_cvttss_si32);
+	Ret_M128(int64_t, _mm_cvttss_si64);
 
 /*
 	// SSE1 Load functions:
@@ -99,7 +97,7 @@ int main()
 */
 
 	// SSE1 Miscellaneous functions:
-//	_mm_movemask_ps
+	Ret_M128(int, _mm_movemask_ps);
 
 	// SSE1 Move functions:
 	Ret_M128_M128(__m128, _mm_move_ss);

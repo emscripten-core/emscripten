@@ -77,6 +77,8 @@ void tostr(__m128 *m, char *outstr)
 	sprintf(outstr, "[%s,%s,%s,%s]", s[3], s[2], s[1], s[0]);
 }
 
+#ifdef ENABLE_SSE2
+
 void tostr(__m128i *m, char *outstr)
 {
 	union { __m128i m; uint32_t val[4]; } u;
@@ -93,6 +95,17 @@ void tostr(__m128d *m, char *outstr)
 	SerializeDouble(u.val[1], s[1]);
 	sprintf(outstr, "[%s,%s]", s[1], s[0]);
 }
+
+__m128i ExtractInRandomOrder(uint32_t *arr, int i, int n, int prime)
+{
+	return _mm_set_epi32(arr[(i*prime)%n], arr[((i+1)*prime)%n], arr[((i+2)*prime)%n], arr[((i+3)*prime)%n]);
+}
+
+__m128d ExtractInRandomOrder(double *arr, int i, int n, int prime)
+{
+	return _mm_set_pd(arr[(i*prime)%n], arr[((i+1)*prime)%n]);
+}
+#endif
 
 void tostr(int *m, char *outstr)
 {
@@ -133,16 +146,6 @@ __attribute__((noinline)) double *get_interesting_doubles()
 __m128 ExtractInRandomOrder(float *arr, int i, int n, int prime)
 {
 	return _mm_set_ps(arr[(i*prime)%n], arr[((i+1)*prime)%n], arr[((i+2)*prime)%n], arr[((i+3)*prime)%n]);
-}
-
-__m128i ExtractInRandomOrder(uint32_t *arr, int i, int n, int prime)
-{
-	return _mm_set_epi32(arr[(i*prime)%n], arr[((i+1)*prime)%n], arr[((i+2)*prime)%n], arr[((i+3)*prime)%n]);
-}
-
-__m128d ExtractInRandomOrder(double *arr, int i, int n, int prime)
-{
-	return _mm_set_pd(arr[(i*prime)%n], arr[((i+1)*prime)%n]);
 }
 
 #define E1(arr, i, n) ExtractInRandomOrder(arr, i, n, 1)
