@@ -172,7 +172,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   exit(0)
 
 elif len(sys.argv) == 2 and sys.argv[1] == '-v': # -v with no inputs
-  print 'emcc (Emscripten gcc/clang-like replacement) %s' % shared.EMSCRIPTEN_VERSION
+  # autoconf likes to see 'GNU' in the output to enable shared object support
+  print 'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION
   code = subprocess.call([shared.CLANG, '-v'])
   shared.check_sanity(force=True)
   exit(code)
