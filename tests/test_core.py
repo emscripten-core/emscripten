@@ -4385,7 +4385,7 @@ Have even and odd!
       i = self.emcc_args.index('ASSERTIONS=1')
       assert i > 0 and self.emcc_args[i-1] == '-s'
       self.emcc_args[i] = 'ASSERTIONS=0'
-
+      print 'flip assertions off'
     test_path = path_from_root('tests', 'core', 'fnmatch')
     src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
