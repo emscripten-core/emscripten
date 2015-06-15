@@ -163,13 +163,11 @@ int main()
 	Ret_M128d(__m128d, _mm_sqrt_pd);
 	Ret_M128d_M128d(__m128d, _mm_sqrt_sd);
 
-#if 0
 	// SSE2 General Support instructions:
-	_mm_clflush(0);
+	_mm_clflush(interesting_floats);
 	_mm_lfence();
 	_mm_mfence();
 	_mm_pause();
-#endif
 
 	// SSE2 Load functions:
 	Ret_DoublePtr(__m128d, _mm_load_pd, 2, 2);

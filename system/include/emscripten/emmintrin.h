@@ -26,20 +26,16 @@
 
 #ifdef __EMSCRIPTEN__
 
-// XXX TODO: Might be nice to add support for standard flags.
-#define __SSE2__
-
 // XXX TODO: Remove after _mm_sqrt_pd/sd is supported.
 #include <math.h>
 
-// Emscripten/SIMD.js does not have cache hinting.
-#define _mm_stream_pd _mm_store_pd
-#define _mm_stream_si128 _mm_store_si128
-#endif
+#else
 
 #ifndef __SSE2__
 #error "SSE2 instruction set not enabled"
-#else
+#endif
+
+#endif
 
 #include <xmmintrin.h>
 
@@ -1318,19 +1314,27 @@ _mm_storel_epi64(__m128i *__p, __m128i __a)
   ((struct __mm_storel_epi64_struct*)__p)->__u = __a[0];
 }
 
-#ifndef __EMSCRIPTEN__
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm_stream_pd(double *__p, __m128d __a)
 {
+#ifdef __EMSCRIPTEN__
+  // Emscripten/SIMD.js does not have cache hinting.
+  _mm_store_pd(__p, __a);
+#else
   __builtin_ia32_movntpd(__p, __a);
+#endif
 }
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm_stream_si128(__m128i *__p, __m128i __a)
 {
+#ifdef __EMSCRIPTEN__
+  // Emscripten/SIMD.js does not have cache hinting.
+  _mm_store_si128(__p, __a);
+#else
   __builtin_ia32_movntdq(__p, __a);
-}
 #endif
+}
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm_stream_si32(int *__p, int __a)
@@ -1356,26 +1360,35 @@ _mm_stream_si64(long long *__p, long long __a)
 }
 #endif
 
-#ifndef __EMSCRIPTEN__ // XXX TODO Add support
-
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm_clflush(void const *__p)
 {
+#ifndef __EMSCRIPTEN__ // Emscripten/SIMD.js does not have cache hinting
   __builtin_ia32_clflush(__p);
+#endif
 }
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm_lfence(void)
 {
+#ifdef __EMSCRIPTEN__
+  __sync_synchronize(); // Emscripten/SharedArrayBuffer has only a full barrier instruction, which gives a stronger guarantee.
+#else
   __builtin_ia32_lfence();
+#endif
 }
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm_mfence(void)
 {
+#ifdef __EMSCRIPTEN__
+  __sync_synchronize(); // Emscripten/SharedArrayBuffer has only a full barrier instruction, which gives a stronger guarantee.
+#else
   __builtin_ia32_mfence();
+#endif
 }
 
+#ifndef __EMSCRIPTEN__ // XXX TODO Add support
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_packs_epi16(__m128i __a, __m128i __b)
 {
@@ -1571,11 +1584,13 @@ _mm_castsi128_pd(__m128i __a)
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm_pause(void)
 {
+#ifndef __EMSCRIPTEN__ // Emscripten does not have an equivalent.
   __asm__ volatile ("pause");
+#endif
 }
 
 #define _MM_SHUFFLE2(x, y) (((x) << 1) | (y))
 
-#endif /* __SSE2__ */
+//#endif /* __SSE2__ */
 
 #endif /* __EMMINTRIN_H */
