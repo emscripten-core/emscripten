@@ -247,7 +247,7 @@ Functions
 
     :param int mode: The timing mode to use. Allowed values are EM_TIMING_SETTIMEOUT, EM_TIMING_RAF.
 
-	:param int value: The timing value to activate for the main loop. This value interpreted differently according to the ``mode``parameter:
+	:param int value: The timing value to activate for the main loop. This value interpreted differently according to the ``mode`` parameter:
 
 	   - If ``mode`` is EM_TIMING_SETTIMEOUT, then ``value`` specifies the number of milliseconds to wait between subsequent ticks to the main loop and updates occur independent of the vsync rate of the display (vsync off). This method uses the JavaScript ``setTimeout`` function to drive the animation.
 	   - If ``mode`` is EM_TIMING_RAF, then updates are performed using the ``requestAnimationFrame`` function (with vsync enabled), and this value is interpreted as a "swap interval" rate for the main loop. The value of ``1`` specifies the runtime that it should render at every vsync (typically 60fps), whereas the value ``2`` means that the main loop callback should be called only every second vsync (30fps). As a general formula, the value ``n`` means that the main loop is updated at every n'th vsync, or at a rate of ``60/n`` for 60Hz displays, and ``120/n`` for 120Hz displays.
@@ -263,9 +263,10 @@ Functions
 
 	Returns the current main loop timing mode that is in effect. For interpretation of the values, see the documentation of the function :c:func:`emscripten_set_main_loop_timing`. The timing mode is controlled by calling the functions :c:func:`emscripten_set_main_loop_timing` and :c:func:`emscripten_set_main_loop`.
 
-    :param int *mode: If not null, the used timing mode is returned here.
-
-    :param int *value: If not null, the used timing value is returned here.
+    :param mode: If not null, the used timing mode is returned here.
+    :type mode: int*
+    :param value: If not null, the used timing value is returned here.
+    :type value: int*
 	
 .. c:function:: void emscripten_set_main_loop_expected_blockers(int num)
 
