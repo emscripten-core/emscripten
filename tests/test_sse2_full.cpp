@@ -143,7 +143,7 @@ int main()
 
 	// SSE2 Elementary Math Functions instructions:
 	Ret_M128d(__m128d, _mm_sqrt_pd);
-	Ret_M128d(__m128d, _mm_sqrt_ps);
+	Ret_M128d(__m128d, _mm_sqrt_sd);
 
 	// SSE2 General Support instructions:
 	/*
