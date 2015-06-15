@@ -26,38 +26,43 @@ int main()
 	M128i_M128i_M128i(_mm_add_epi8);
 	Ret_M128d_M128d(__m128d, _mm_add_pd);
 	Ret_M128d_M128d(__m128d, _mm_add_sd);
-
+#if 0
 	M128i_M128i_M128i(_mm_adds_epi16);
 	M128i_M128i_M128i(_mm_adds_epi8);
 	M128i_M128i_M128i(_mm_adds_epu16);
 	M128i_M128i_M128i(_mm_adds_epu8);
-
+#endif
 	Ret_M128d_M128d(__m128d, _mm_div_pd);
 	Ret_M128d_M128d(__m128d, _mm_div_sd);
-
+#if 0
 	M128i_M128i_M128i(_mm_madd_epi16);
 	M128i_M128i_M128i(_mm_mul_epu32);
+#endif
 
 	Ret_M128d_M128d(__m128d, _mm_mul_pd);
 	Ret_M128d_M128d(__m128d, _mm_mul_sd);
 
+#if 0
 	M128i_M128i_M128i(_mm_mulhi_epi16);
 	M128i_M128i_M128i(_mm_mulhi_epu16);
+#endif
 	M128i_M128i_M128i(_mm_mullo_epi16);
+#if 0
 	M128i_M128i_M128i(_mm_sad_epu8);
+#endif
 	M128i_M128i_M128i(_mm_sub_epi16);
 	M128i_M128i_M128i(_mm_sub_epi32);
 	M128i_M128i_M128i(_mm_sub_epi64);
 	M128i_M128i_M128i(_mm_sub_epi8);
-
 	Ret_M128d_M128d(__m128d, _mm_sub_pd);
 	Ret_M128d_M128d(__m128d, _mm_sub_sd);
 
+#if 0
 	M128i_M128i_M128i(_mm_subs_epi16);
 	M128i_M128i_M128i(_mm_subs_epi8);
 	M128i_M128i_M128i(_mm_subs_epu16);
 	M128i_M128i_M128i(_mm_subs_epu8);
-
+#endif
 	// SSE2 Cast functions:
 	Ret_M128d(__m128, _mm_castpd_ps);
 	Ret_M128d(__m128i, _mm_castpd_si128);
@@ -70,20 +75,25 @@ int main()
 	M128i_M128i_M128i(_mm_cmpeq_epi16);
 	M128i_M128i_M128i(_mm_cmpeq_epi32);
 	M128i_M128i_M128i(_mm_cmpeq_epi8);
+#if 0
 	Ret_M128d_M128d(__m128d, _mm_cmpeq_pd);
 	Ret_M128d_M128d(__m128d, _mm_cmpeq_sd);
 	Ret_M128d_M128d(__m128d, _mm_cmpge_pd);
 	Ret_M128d_M128d(__m128d, _mm_cmpge_sd);
+#endif
 	M128i_M128i_M128i(_mm_cmpgt_epi16);
 	M128i_M128i_M128i(_mm_cmpgt_epi32);
 	M128i_M128i_M128i(_mm_cmpgt_epi8);
+#if 0
 	Ret_M128d_M128d(__m128d, _mm_cmpgt_pd);
 	Ret_M128d_M128d(__m128d, _mm_cmpgt_sd);
 	Ret_M128d_M128d(__m128d, _mm_cmple_pd);
 	Ret_M128d_M128d(__m128d, _mm_cmple_sd);
+#endif
 	M128i_M128i_M128i(_mm_cmplt_epi16);
 	M128i_M128i_M128i(_mm_cmplt_epi32);
 	M128i_M128i_M128i(_mm_cmplt_epi8);
+#if 0
 	Ret_M128d_M128d(__m128d, _mm_cmplt_pd);
 	Ret_M128d_M128d(__m128d, _mm_cmplt_sd);
 	Ret_M128d_M128d(__m128d, _mm_cmpneq_pd);
@@ -100,7 +110,6 @@ int main()
 	Ret_M128d_M128d(__m128d, _mm_cmpord_sd);
 	Ret_M128d_M128d(__m128d, _mm_cmpunord_pd);
 	Ret_M128d_M128d(__m128d, _mm_cmpunord_sd);
-
 	Ret_M128d_M128d(int, _mm_comieq_sd);
 	Ret_M128d_M128d(int, _mm_comige_sd);
 	Ret_M128d_M128d(int, _mm_comigt_sd);
@@ -116,15 +125,22 @@ int main()
 
 	// SSE2 Convert instructions:
 	Ret_M128i(__m128d, _mm_cvtepi32_pd);
+#endif
 	Ret_M128i(__m128, _mm_cvtepi32_ps);
+#if 0
 	Ret_M128d(__m128i, _mm_cvtpd_epi32);
 	Ret_M128d(__m128, _mm_cvtpd_ps);
+#endif
 	Ret_M128(__m128i, _mm_cvtps_epi32);
+#if 0
 	Ret_M128(__m128d,  _mm_cvtps_pd);
+#endif
 	Ret_M128(double, _mm_cvtsd_f64);
+#if 0
 	Ret_M128d(int, _mm_cvtsd_si32);
 	Ret_M128d(int64_t, _mm_cvtsd_si64);
 //	Ret_M128d(int64_t, _mm_cvtsd_si64x);
+#endif
 	Ret_M128i(int, _mm_cvtsi128_si32);
 	Ret_M128i(int64_t, _mm_cvtsi128_si64);
 //	Ret_M128i(int64_t, _mm_cvtsi128_si64x);
@@ -135,23 +151,25 @@ int main()
 //	Ret_int64(__m128d, _mm_cvtsi64x_sd);
 //	Ret_int64(__m128i, _mm_cvtsi64x_si128);
 	Ret_M128d_M128d(__m128d, _mm_cvtss_sd);
+#if 0
 	Ret_M128d(__m128i, _mm_cvttpd_epi32);
 	Ret_M128(__m128i, _mm_cvttps_epi32);
+#endif
 	Ret_M128d(int, _mm_cvttsd_si32);
 	Ret_M128d(int64_t, _mm_cvttsd_si64);
 //	Ret_M128d(int64_t, _mm_cvttsd_si64x);
 
 	// SSE2 Elementary Math Functions instructions:
 	Ret_M128d(__m128d, _mm_sqrt_pd);
-	Ret_M128d(__m128d, _mm_sqrt_sd);
+	Ret_M128d_M128d(__m128d, _mm_sqrt_sd);
 
+#if 0
 	// SSE2 General Support instructions:
-	/*
-	_mm_clflush
-	_mm_lfence
-	_mm_mfence
-	_mm_pause
-	*/
+	_mm_clflush(0);
+	_mm_lfence();
+	_mm_mfence();
+	_mm_pause();
+#endif
 
 	// SSE2 Load functions:
 	Ret_DoublePtr(__m128d, _mm_load_pd, 2, 2);
@@ -177,21 +195,24 @@ int main()
 	M128i_M128i_M128i(_mm_xor_si128);
 
 	// SSE2 Miscellaneous instructions:
+#if 0
 	Ret_M128i(int, _mm_movemask_epi8);
 	Ret_M128d(int, _mm_movemask_pd);
 	M128i_M128i_M128i(_mm_packs_epi16);
 	M128i_M128i_M128i(_mm_packs_epi32);
 	M128i_M128i_M128i(_mm_packus_epi16);
 	M128i_M128i_M128i(_mm_sad_epu8);
+#endif
 
 	// SSE2 Move instructions:
 	Ret_M128i(__m128i, _mm_move_epi64);
 	Ret_M128d_M128d(__m128d, _mm_move_sd);
 
 	// SSE2 Probability/Statistics instructions:
+#if 0
 	M128i_M128i_M128i(_mm_avg_epu16);
 	M128i_M128i_M128i(_mm_avg_epu8);
-
+#endif
 /*
 	// SSE2 Set functions:
 	_mm_set_epi16
@@ -217,6 +238,7 @@ int main()
 	_mm_setzero_si128
 */
 	// SSE2 Shift instructions:
+#if 0
 //	Ret_M128i_Tint(__m128i, _mm_bslli_si128);
 //	Ret_M128i_Tint(__m128i, _mm_bsrli_si128);
 	M128i_M128i_M128i(_mm_sll_epi16);
@@ -247,9 +269,12 @@ int main()
 	M128i_M128i_M128i(_mm_min_epu8);
 	Ret_M128d_M128d(__m128d, _mm_min_pd);
 	Ret_M128d_M128d(__m128d, _mm_min_sd);
+#endif
 
 	// SSE2 Store instructions:
+#if 0
 	void_M128i_M128i_OutIntPtr(_mm_maskmoveu_si128, char*, 16, 1);
+#endif
 	void_OutDoublePtr_M128d(_mm_store_pd, double*, 16, 16);
 //	void_OutDoublePtr_M128d(_mm_store_pd1, double*, 16, 16);
 	void_OutDoublePtr_M128d(_mm_store_sd, double*, 8, 1);
@@ -273,7 +298,6 @@ int main()
 	Ret_M128d_M128d_Tint(__m128d, _mm_shuffle_pd);
 	Ret_M128i_Tint(__m128i, _mm_shufflehi_epi16);
 	Ret_M128i_Tint(__m128i, _mm_shufflelo_epi16);
-
 	M128i_M128i_M128i(_mm_unpackhi_epi16);
 	M128i_M128i_M128i(_mm_unpackhi_epi32);
 	M128i_M128i_M128i(_mm_unpackhi_epi64);
