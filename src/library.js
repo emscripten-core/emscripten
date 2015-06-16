@@ -2692,7 +2692,7 @@ LibraryManager.library = {
     do {
       name += String.fromCharCode(65 + (Math.random() * 25)|0);
     } while (name in folder.contents);
-    var result = dir + '/' + name;
+    var result = folder.name + '/' + name;
     if (!_tmpnam.buffer) _tmpnam.buffer = _malloc(256);
     if (!s) s = _tmpnam.buffer;
     assert(result.length <= 255);
