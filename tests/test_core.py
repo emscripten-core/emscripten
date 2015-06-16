@@ -2223,7 +2223,8 @@ int main() {
     self.do_run(src, '''34962: GL_ARRAY_BUFFER (0x8892)
 26214: what?
 35040: GL_STREAM_DRAW (0x88E0)
-''', args=['34962', '26214', '35040'])
+3060: what?
+''', args=['34962', '26214', '35040', str(0xbf4)])
 
   def test_biggerswitch(self):
     if self.is_emterpreter(): return self.skip('todo')
