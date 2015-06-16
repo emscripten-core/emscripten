@@ -118,6 +118,10 @@ while 1:
           js_args += ['-s', 'EMTERPRETIFY_WHITELIST=["_main"]'] # the opposite direction
       if random.random() < 0.5:
         js_args += ['-s', 'EMTERPRETIFY_ASYNC=1']
+    if random.random() < 0.5:
+      js_args += ["--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2"]
+    if random.random() < 0.5:
+      js_args += ['-s', 'ASSERTIONS=1']
     print '(compile)', ' '.join(js_args)
     open(fullname, 'a').write('\n// ' + ' '.join(js_args) + '\n\n')
     try:
