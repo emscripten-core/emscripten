@@ -1,4 +1,4 @@
-if (typeof window === "object" && !ENVIRONMENT_IS_PTHREAD) {
+if (typeof window === "object" && (typeof ENVIRONMENT_IS_PTHREAD === 'undefined' || !ENVIRONMENT_IS_PTHREAD)) {
   function emrun_register_handlers() {
     function post(msg) {
       var http = new XMLHttpRequest();
@@ -19,6 +19,7 @@ if (typeof window === "object" && !ENVIRONMENT_IS_PTHREAD) {
       post('^pageload^');
     }
   }
+  window.addEventListener('load', emrun_register_handlers);
 }
 
 // POSTs the given binary data represented as a (typed) array data back to the emrun-based web server.
