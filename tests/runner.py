@@ -38,7 +38,7 @@ except:
 
 # Core test runner class, shared between normal tests and benchmarks
 checked_sanity = False
-test_modes = ['default', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g', 'asm1i', 'asm3i', 'asm2nn']
+test_modes = ['default', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g', 'asm1i', 'asm3i', 'asm2m', 'asm2nn']
 test_index = 0
 
 use_all_engines = os.environ.get('EM_ALL_ENGINES') # generally js engines are equivalent, testing 1 is enough. set this
@@ -61,6 +61,14 @@ class RunnerCore(unittest.TestCase):
 
   def is_emterpreter(self):
     return False
+
+  def uses_memory_init_file(self):
+    if self.emcc_args is None:
+      return None
+    elif '--memory-init-file' in self.emcc_args:
+      return int(self.emcc_args[self.emcc_args.index('--memory-init-file')+1])
+    else:
+      return ('-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args) and not Settings.SIDE_MODULE
 
   def setUp(self):
     Settings.reset()
@@ -252,16 +260,10 @@ class RunnerCore(unittest.TestCase):
       output_processor(open(filename + '.o.js').read())
 
     if self.emcc_args is not None:
-      if '--memory-init-file' in self.emcc_args:
-        memory_init_file = int(self.emcc_args[self.emcc_args.index('--memory-init-file')+1])
-      else:
-        memory_init_file = ('-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args) and not Settings.SIDE_MODULE
       src = open(filename + '.o.js').read()
-      if memory_init_file:
+      if self.uses_memory_init_file():
         # side memory init file, or an empty one in the js
         assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
-      else:
-        assert 'memory initializer */' in src or '/*' not in src # memory initializer comment, or cleaned-up source with no comments
 
   def validate_asmjs(self, err):
     if 'uccessfully compiled asm.js code' in err and 'asm.js link error' not in err:

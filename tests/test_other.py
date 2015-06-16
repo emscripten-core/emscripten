@@ -4899,3 +4899,17 @@ int main() {
     out, err = Popen([PYTHON, EMCC, 'src.c', '-s', 'EXPORTED_FUNCTIONS=["_main", "_treecount"]', '--minify', '0', '-g4', '-Oz']).communicate()
     self.assertContained('hello, world!', run_js('a.out.js'))
 
+  def test_meminit_crc(self):
+    with open('src.c', 'w') as f:
+      f.write(r'''
+#include<stdio.h>
+int main() { printf("Mary had a little lamb.\n"); }
+''')
+    out, err = Popen([PYTHON, EMCC, 'src.c', '-O2', '--memory-init-file', '0', '-s', 'MEM_INIT_METHOD=2', '-s', 'ASSERTIONS=1']).communicate()
+    with open('a.out.js', 'r') as f:
+      d = f.read()
+    d = d.replace('Mary had', 'Paul had')
+    with open('a.out.js', 'w') as f:
+      f.write(d)
+    out = run_js('a.out.js', assert_returncode=None, stderr=subprocess.STDOUT)
+    self.assertContained('Assertion failed: memory initializer checksum', out)

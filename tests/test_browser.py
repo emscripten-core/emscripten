@@ -2653,3 +2653,26 @@ window.close = function() {
   # Test that it is possible to send a signal via calling alarm(timeout), which in turn calls to the signal handler set by signal(SIGALRM, func);
   def test_sigalrm(self):
     self.btest(path_from_root('tests', 'sigalrm.cpp'), expected='0', args=['-O3'])
+
+  def test_meminit_pairs(self):
+    d = 'const char *data[] = {\n  "'
+    d += '",\n  "'.join(''.join('\\x{:02x}\\x{:02x}'.format(i, j)
+                                for j in range(256)) for i in range(256))
+    with open(path_from_root('tests', 'meminit_pairs.c')) as f:
+      d += '"\n};\n' + f.read()
+    args = ["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1"]
+    self.btest(d, expected='0', args=args + ["--closure", "0"])
+    self.btest(d, expected='0', args=args + ["--closure", "0", "-g"])
+    self.btest(d, expected='0', args=args + ["--closure", "1"])
+
+  def test_meminit_big(self):
+    d = 'const char *data[] = {\n  "'
+    d += '",\n  "'.join([''.join('\\x{:02x}\\x{:02x}'.format(i, j)
+                                 for j in range(256)) for i in range(256)]*256)
+    with open(path_from_root('tests', 'meminit_pairs.c')) as f:
+      d += '"\n};\n' + f.read()
+    assert len(d) > (1 << 27) # more than 32M memory initializer
+    args = ["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1"]
+    self.btest(d, expected='0', args=args + ["--closure", "0"])
+    self.btest(d, expected='0', args=args + ["--closure", "0", "-g"])
+    self.btest(d, expected='0', args=args + ["--closure", "1"])

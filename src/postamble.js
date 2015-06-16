@@ -1,6 +1,35 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
+#if MEM_INIT_METHOD == 2
+#if USE_PTHREADS
+if (memoryInitializer && !ENVIRONMENT_IS_PTHREAD) (function(s) {
+#else
+if (memoryInitializer) (function(s) {
+#endif
+  var i, n = s.length;
+#if ASSERTIONS
+  n -= 4;
+  var crc, bit, table = new Int32Array(256);
+  for (i = 0; i < 256; ++i) {
+    for (crc = i, bit = 0; bit < 8; ++bit)
+      crc = (crc >>> 1) ^ ((crc & 1) * 0xedb88320);
+    table[i] = crc >>> 0;
+  }
+  crc = -1;
+  crc = table[(crc ^ n) & 0xff] ^ (crc >>> 8);
+  crc = table[(crc ^ (n >>> 8)) & 0xff] ^ (crc >>> 8);
+  for (i = 0; i < s.length; ++i) {
+    crc = table[(crc ^ s.charCodeAt(i)) & 0xff] ^ (crc >>> 8);
+  }
+  assert(crc === 0, "memory initializer checksum");
+#endif
+  for (i = 0; i < n; ++i) {
+    HEAPU8[STATIC_BASE + i] = s.charCodeAt(i);
+  }
+})(memoryInitializer);
+#else
+#if MEM_INIT_METHOD == 1
 #if USE_PTHREADS
 if (memoryInitializer && !ENVIRONMENT_IS_PTHREAD) {
 #else
@@ -52,6 +81,8 @@ if (memoryInitializer) {
     }
   }
 }
+#endif
+#endif
 
 function ExitStatus(status) {
   this.name = "ExitStatus";

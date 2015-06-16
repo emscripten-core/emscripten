@@ -4379,6 +4379,13 @@ Have even and odd!
     self.do_run_from_file(src, output)
 
   def test_fnmatch(self):
+    # Run one test without assertions, for additional coverage
+    assert 'asm2m' in test_modes
+    if self.run_name == 'asm2m':
+      i = self.emcc_args.index('ASSERTIONS=1')
+      assert i > 0 and self.emcc_args[i-1] == '-s'
+      self.emcc_args[i] = 'ASSERTIONS=0'
+
     test_path = path_from_root('tests', 'core', 'fnmatch')
     src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
@@ -4554,7 +4561,7 @@ def process(filename):
       try_delete(mem_file)
       self.do_run(src, ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n \ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n'),
                   post_build=post, extra_emscripten_args=['-H', 'libc/fcntl.h'])
-      if '-O2' in self.emcc_args:
+      if self.uses_memory_init_file():
         assert os.path.exists(mem_file)
 
   def test_files_m(self):
@@ -7405,6 +7412,7 @@ asm2f = make_run("asm2f", compiler=CLANG, emcc_args=["-Oz", "-s", "PRECISE_F32=1
 asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "-s", "SAFE_HEAP=1"])
 asm1i = make_run("asm1i", compiler=CLANG, emcc_args=["-O1", '-s', 'EMTERPRETIFY=1'])
 asm3i = make_run("asm3i", compiler=CLANG, emcc_args=["-O3", '-s', 'EMTERPRETIFY=1'])
+asm2m = make_run("asm2m", compiler=CLANG, emcc_args=["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1"])
 
 # Legacy test modes - 
 asm2nn = make_run("asm2nn", compiler=CLANG, emcc_args=["-O2"], env={"EMCC_NATIVE_OPTIMIZER": "0"})
