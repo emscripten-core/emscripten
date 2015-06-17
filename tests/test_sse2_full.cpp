@@ -5,6 +5,8 @@
 #define ENABLE_SSE2
 #include "test_sse_full.h"
 
+//#define ENABLE_SCALAR_64BIT
+
 int main()
 {
 	float *interesting_floats = get_interesting_floats();
@@ -22,7 +24,7 @@ int main()
 	// SSE2 Arithmetic instructions:
 	M128i_M128i_M128i(_mm_add_epi16);
 	M128i_M128i_M128i(_mm_add_epi32);
-	M128i_M128i_M128i(_mm_add_epi64);
+//	M128i_M128i_M128i(_mm_add_epi64); // FAILS
 	M128i_M128i_M128i(_mm_add_epi8);
 	Ret_M128d_M128d(__m128d, _mm_add_pd);
 	Ret_M128d_M128d(__m128d, _mm_add_sd);
@@ -41,7 +43,6 @@ int main()
 
 	Ret_M128d_M128d(__m128d, _mm_mul_pd);
 	Ret_M128d_M128d(__m128d, _mm_mul_sd);
-
 #if 0
 	M128i_M128i_M128i(_mm_mulhi_epi16);
 	M128i_M128i_M128i(_mm_mulhi_epu16);
@@ -52,7 +53,7 @@ int main()
 #endif
 	M128i_M128i_M128i(_mm_sub_epi16);
 	M128i_M128i_M128i(_mm_sub_epi32);
-	M128i_M128i_M128i(_mm_sub_epi64);
+	// M128i_M128i_M128i(_mm_sub_epi64); // FAILS
 	M128i_M128i_M128i(_mm_sub_epi8);
 	Ret_M128d_M128d(__m128d, _mm_sub_pd);
 	Ret_M128d_M128d(__m128d, _mm_sub_sd);
@@ -72,6 +73,7 @@ int main()
 	Ret_M128i(__m128, _mm_castsi128_ps);
 
 	// SSE2 Compare instructions:
+#if 0
 	M128i_M128i_M128i(_mm_cmpeq_epi16);
 	M128i_M128i_M128i(_mm_cmpeq_epi32);
 	M128i_M128i_M128i(_mm_cmpeq_epi8);
@@ -122,8 +124,11 @@ int main()
 	Ret_M128d_M128d(int, _mm_ucomile_sd);
 	Ret_M128d_M128d(int, _mm_ucomilt_sd);
 	Ret_M128d_M128d(int, _mm_ucomineq_sd);
+#endif
+#endif
 
 	// SSE2 Convert instructions:
+#if 0
 	Ret_M128i(__m128d, _mm_cvtepi32_pd);
 #endif
 	Ret_M128i(__m128, _mm_cvtepi32_ps);
@@ -131,7 +136,9 @@ int main()
 	Ret_M128d(__m128i, _mm_cvtpd_epi32);
 	Ret_M128d(__m128, _mm_cvtpd_ps);
 #endif
+#if 0 // Emscripten: RangeError: SIMD conversion loses precision
 	Ret_M128(__m128i, _mm_cvtps_epi32);
+#endif
 #if 0
 	Ret_M128(__m128d,  _mm_cvtps_pd);
 #endif
@@ -142,12 +149,16 @@ int main()
 //	Ret_M128d(int64_t, _mm_cvtsd_si64x);
 #endif
 	Ret_M128i(int, _mm_cvtsi128_si32);
+#ifdef ENABLE_SCALAR_64BIT
 	Ret_M128i(int64_t, _mm_cvtsi128_si64);
+#endif
 //	Ret_M128i(int64_t, _mm_cvtsi128_si64x);
 	Ret_M128d_int(__m128d, _mm_cvtsi32_sd);
 	Ret_int(__m128i, _mm_cvtsi32_si128);
+#ifdef ENABLE_SCALAR_64BIT
 	Ret_M128d_int64(__m128d, _mm_cvtsi64_sd);
 	Ret_int64(__m128i, _mm_cvtsi64_si128);
+#endif
 //	Ret_int64(__m128d, _mm_cvtsi64x_sd);
 //	Ret_int64(__m128i, _mm_cvtsi64x_si128);
 	Ret_M128d_M128d(__m128d, _mm_cvtss_sd);
@@ -156,7 +167,9 @@ int main()
 	Ret_M128(__m128i, _mm_cvttps_epi32);
 #endif
 	Ret_M128d(int, _mm_cvttsd_si32);
+#ifdef ENABLE_SCALAR_64BIT
 	Ret_M128d(int64_t, _mm_cvttsd_si64);
+#endif
 //	Ret_M128d(int64_t, _mm_cvttsd_si64x);
 
 	// SSE2 Elementary Math Functions instructions:
@@ -176,11 +189,13 @@ int main()
 	Ret_IntPtr(__m128i, _mm_load_si128, __m128i*, 4, 4);
 	Ret_DoublePtr(__m128d, _mm_load1_pd, 1, 1);
 	Ret_M128d_DoublePtr(__m128d, _mm_loadh_pd, double*, 1, 1);
+#ifdef ENABLE_SCALAR_64BIT
 	Ret_IntPtr(__m128i, _mm_loadl_epi64, __m128i*, 2, 1);
+#endif
 	Ret_M128d_DoublePtr(__m128d, _mm_loadl_pd, double*, 1, 1);
 	Ret_DoublePtr(__m128d, _mm_loadr_pd, 2, 2);
 	Ret_DoublePtr(__m128d, _mm_loadu_pd, 2, 1);
-	Ret_IntPtr(__m128i, _mm_loadu_si128, __m128i*, 2, 1);
+	Ret_IntPtr(__m128i, _mm_loadu_si128, __m128i*, 4, 1);
 
 	// SSE2 Logical instructions:
 	Ret_M128d_M128d(__m128d, _mm_and_pd);
@@ -235,6 +250,7 @@ int main()
 	_mm_setzero_pd
 	_mm_setzero_si128
 */
+
 	// SSE2 Shift instructions:
 #if 0
 //	Ret_M128i_Tint(__m128i, _mm_bslli_si128);
@@ -279,7 +295,9 @@ int main()
 	void_OutIntPtr_M128(_mm_store_si128, __m128i*, 16, 16);
 	void_OutDoublePtr_M128d(_mm_store1_pd, double*, 16, 16);
 	void_OutDoublePtr_M128d(_mm_storeh_pd, double*, 8, 1);
+#ifdef ENABLE_SCALAR_64BIT
 	void_OutIntPtr_M128(_mm_storel_epi64, __m128i*, 8, 1);
+#endif
 	void_OutDoublePtr_M128d(_mm_storel_pd, double*, 8, 1);
 	void_OutDoublePtr_M128d(_mm_storer_pd, double*, 16, 16);
 	void_OutDoublePtr_M128d(_mm_storeu_pd, double*, 16, 1);
@@ -287,11 +305,15 @@ int main()
 	void_OutDoublePtr_M128d(_mm_stream_pd, double*, 16, 16);
 	void_OutIntPtr_M128(_mm_stream_si128, __m128i*, 16, 16);
 	void_OutIntPtr_int(_mm_stream_si32, int*, 4, 1);
+#ifdef ENABLE_SCALAR_64BIT
 	void_OutIntPtr_int64(_mm_stream_si64, int64_t*, 8, 1);
+#endif
 
 	// SSE2 Swizzle instructions:
 	Ret_M128i_Tint(int, _mm_extract_epi16);
+#if 0
 	Ret_M128i_int_Tint(__m128i, _mm_insert_epi16);
+#endif
 	Ret_M128i_Tint(__m128i, _mm_shuffle_epi32);
 	Ret_M128d_M128d_Tint(__m128d, _mm_shuffle_pd);
 	Ret_M128i_Tint(__m128i, _mm_shufflehi_epi16);

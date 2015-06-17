@@ -5550,8 +5550,9 @@ return malloc(size);
 
   # Tests the full SSE1 API.
   def test_sse1_full(self):
-    return self.skip('TODO: This test fails due to bugs #2840, #3044, #3045, #3046 and #3048 (also see #3043 and #3049)')
     if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('test_sse1_full requires SpiderMonkey to run.')
+    if '-O1' in self.emcc_args or '-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args:
+      return self.skip('TODO: SIMD does not currently validate as asm.js in SpiderMonkey, run only in unoptimized mode.')
     Popen([CLANG, path_from_root('tests', 'test_sse1_full.cpp'), '-o', 'test_sse1_full'] + get_clang_native_args(), stdout=PIPE, stderr=PIPE).communicate()
     native_result, err = Popen('./test_sse1_full', stdout=PIPE, stderr=PIPE).communicate()
 
@@ -5561,8 +5562,23 @@ return malloc(size);
       self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests')]
       self.do_run(open(path_from_root('tests', 'test_sse1_full.cpp'), 'r').read(), native_result)
 
+  # Tests the full SSE2 API.
+  def test_sse2_full(self):
+    if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('test_sse2_full requires SpiderMonkey to run.')
+    if '-O1' in self.emcc_args or '-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args:
+      return self.skip('TODO: SIMD does not currently validate as asm.js in SpiderMonkey, run only in unoptimized mode.')
+    Popen([CLANG, path_from_root('tests', 'test_sse2_full.cpp'), '-o', 'test_sse2_full'] + get_clang_native_args(), stdout=PIPE, stderr=PIPE).communicate()
+    native_result, err = Popen('./test_sse2_full', stdout=PIPE, stderr=PIPE).communicate()
+
+    Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
+    orig_args = self.emcc_args
+    for mode in [[], ['-s', 'SIMD=1']]:
+      self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests')]
+      self.do_run(open(path_from_root('tests', 'test_sse2_full.cpp'), 'r').read(), native_result)
+
   def test_simd(self):
     if self.is_emterpreter(): return self.skip('todo')
+    if SPIDERMONKEY_ENGINE in JS_ENGINES: return self.skip('TODO: SIMD does not currently validate as asm.js in SpiderMonkey, not running in SpiderMonkey.')
 
     test_path = path_from_root('tests', 'core', 'test_simd')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5571,6 +5587,7 @@ return malloc(size);
 
   def test_simd2(self):
     if self.is_emterpreter(): return self.skip('todo')
+    if SPIDERMONKEY_ENGINE in JS_ENGINES: return self.skip('TODO: SIMD does not currently validate as asm.js in SpiderMonkey, not running in SpiderMonkey.')
 
     test_path = path_from_root('tests', 'core', 'test_simd2')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5579,6 +5596,7 @@ return malloc(size);
 
   def test_simd3(self):
     return self.skip('FIXME: this appears to be broken')
+    if SPIDERMONKEY_ENGINE in JS_ENGINES: return self.skip('TODO: SIMD does not currently validate as asm.js in SpiderMonkey, not running in SpiderMonkey.')
 
     test_path = path_from_root('tests', 'core', 'test_simd3')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5588,6 +5606,7 @@ return malloc(size);
   def test_simd4(self):
     # test_simd4 is to test phi node handling of SIMD path
     if self.is_emterpreter(): return self.skip('todo')
+    if SPIDERMONKEY_ENGINE in JS_ENGINES: return self.skip('TODO: SIMD does not currently validate as asm.js in SpiderMonkey, not running in SpiderMonkey.')
 
     test_path = path_from_root('tests', 'core', 'test_simd4')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5595,6 +5614,7 @@ return malloc(size);
     self.do_run_from_file(src, output)
 
   def test_simd5(self):
+    if SPIDERMONKEY_ENGINE in JS_ENGINES: return self.skip('TODO: SIMD does not currently validate as asm.js in SpiderMonkey, not running in SpiderMonkey.')
     # test_simd5 is to test shufflevector of SIMD path
     test_path = path_from_root('tests', 'core', 'test_simd5')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5604,6 +5624,7 @@ return malloc(size);
   def test_simd6(self):
     # test_simd6 is to test x86 min and max intrinsics on NaN and -0.0
     if self.is_emterpreter(): return self.skip('todo')
+    if SPIDERMONKEY_ENGINE in JS_ENGINES: return self.skip('TODO: SIMD does not currently validate as asm.js in SpiderMonkey, not running in SpiderMonkey.')
 
     test_path = path_from_root('tests', 'core', 'test_simd6')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5613,6 +5634,7 @@ return malloc(size);
   def test_simd7(self):
     # test_simd7 is to test negative zero handling.
     if self.is_emterpreter(): return self.skip('todo')
+    if SPIDERMONKEY_ENGINE in JS_ENGINES: return self.skip('TODO: SIMD does not currently validate as asm.js in SpiderMonkey, not running in SpiderMonkey.')
 
     test_path = path_from_root('tests', 'core', 'test_simd7')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5622,6 +5644,7 @@ return malloc(size);
   def test_simd8(self):
     # test_simd8 is to test unaligned load and store
     if self.is_emterpreter(): return self.skip('todo')
+    if SPIDERMONKEY_ENGINE in JS_ENGINES: return self.skip('TODO: SIMD does not currently validate as asm.js in SpiderMonkey, not running in SpiderMonkey.')
 
     test_path = path_from_root('tests', 'core', 'test_simd8')
     src, output = (test_path + s for s in ('.in', '.out'))

@@ -29,6 +29,8 @@
 // XXX TODO: Remove after _mm_sqrt_pd/sd is supported.
 #include <math.h>
 
+#include <emscripten/emscripten.h>
+
 #else
 
 #ifndef __SSE2__
@@ -40,7 +42,11 @@
 #include <xmmintrin.h>
 
 typedef double __m128d __attribute__((__vector_size__(16)));
+#ifdef __EMSCRIPTEN__
+typedef int __m128i __attribute__((__vector_size__(16)));
+#else
 typedef long long __m128i __attribute__((__vector_size__(16)));
+#endif
 
 /* Type defines.  */
 typedef double __v2df __attribute__ ((__vector_size__ (16)));
@@ -457,7 +463,11 @@ _mm_cvttpd_epi32(__m128d __a)
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_cvttsd_si32(__m128d __a)
 {
-  return __a[0];
+  int x = lrint(__a[0]);
+  if (x != 0 || fabs(__a[0]) < 2.0)
+    return (int)__a[0];
+  else
+    return (int)0x80000000;
 }
 
 #ifndef __EMSCRIPTEN__ // MMX support is not available in Emscripten/SIMD.js.
@@ -615,7 +625,6 @@ static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm_storeu_pd(double *__dp, __m128d __a)
 {
 #ifdef __EMSCRIPTEN__
-  // XXX TODO: Check that this compiles to best possible form.
   struct __unaligned {
     __m128d __v;
   } __attribute__((__packed__, __may_alias__));
@@ -1286,11 +1295,9 @@ static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm_storeu_si128(__m128i *__p, __m128i __b)
 {
 #ifdef __EMSCRIPTEN__
-  // XXX TODO: Check that this compiles to best possible form.
   struct __unaligned {
     __m128i __v;
   } __attribute__((__packed__, __may_alias__));
-
   ((struct __unaligned *)__p)->__v = __b;
 #else
   __builtin_ia32_storedqu((char *)__p, (__v16qi)__b);
@@ -1340,7 +1347,13 @@ static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm_stream_si32(int *__p, int __a)
 {
 #ifdef __EMSCRIPTEN__
-  *__p = __a; // No cache hinting available.
+  // No cache hinting available.
+  /* TODO: Add a build flag EMSCRIPTEN_SIMD_REQUIRE_ELEMENT_ALIGNMENT or something similar to avoid this.
+    Then could just do *__p = __a; */
+  struct __unaligned {
+    int __v;
+  } __attribute__((__packed__, __may_alias__));
+  ((struct __unaligned *)__p)->__v = __a;
 #else
   __builtin_ia32_movnti(__p, __a);
 #endif
@@ -1474,7 +1487,11 @@ _mm_unpackhi_epi32(__m128i __a, __m128i __b)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_unpackhi_epi64(__m128i __a, __m128i __b)
 {
+#ifdef __EMSCRIPTEN__
+  return (__m128i)__builtin_shufflevector(__a, __b, 2, 3, 4+2, 4+3);
+#else
   return (__m128i)__builtin_shufflevector(__a, __b, 1, 2+1);
+#endif
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
@@ -1498,7 +1515,11 @@ _mm_unpacklo_epi32(__m128i __a, __m128i __b)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_unpacklo_epi64(__m128i __a, __m128i __b)
 {
+#ifdef __EMSCRIPTEN__
+  return (__m128i)__builtin_shufflevector(__a, __b, 0, 1, 4+0, 4+1);
+#else
   return (__m128i)__builtin_shufflevector(__a, __b, 0, 2+0);
+#endif
 }
 
 static __inline__ __m64 __attribute__((__always_inline__, __nodebug__))
@@ -1518,7 +1539,11 @@ _mm_movpi64_epi64(__m64 __a)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_move_epi64(__m128i __a)
 {
+#ifdef __EMSCRIPTEN__
+  return __builtin_shufflevector(__a, (__m128i){ 0 }, 0, 1, 4+0, 4+1);
+#else
   return __builtin_shufflevector(__a, (__m128i){ 0 }, 0, 2);
+#endif
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
@@ -1590,7 +1615,5 @@ _mm_pause(void)
 }
 
 #define _MM_SHUFFLE2(x, y) (((x) << 1) | (y))
-
-//#endif /* __SSE2__ */
 
 #endif /* __EMMINTRIN_H */

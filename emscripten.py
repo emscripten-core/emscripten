@@ -450,8 +450,8 @@ function _emscripten_asm_const_%d(%s) {
         asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(debug_tables[sig]) + ';'
 
     maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'clz32']]
-    simdfloattypes = ['Float32x4']
-    simdinttypes = ['Int32x4']
+    simdfloattypes = ['Float32x4', 'Float64x2']
+    simdinttypes = ['Int8x16', 'Int16x8', 'Int32x4']
     simdtypes = simdfloattypes + simdinttypes
     simdfuncs = ['check', 'add', 'sub', 'neg', 'mul',
                  'equal', 'lessThan', 'greaterThan',
@@ -459,12 +459,13 @@ function _emscripten_asm_const_%d(%s) {
                  'select', 'and', 'or', 'xor', 'not',
                  'splat', 'swizzle', 'shuffle',
                  'load', 'store', 'load1', 'store1', 'load2', 'store2', 'load3', 'store3',
-                 'extractLane', 'replaceLane']
+                 'extractLane', 'replaceLane',
+                 'fromFloat64x2Bits', 'fromFloat64x2', 'fromInt32x4',
+                 'fromFloat32x4', 'fromFloat32x4Bits', 'fromInt32x4Bits', 'fromInt16x8Bits',
+                 'fromInt8x16Bits', 'fromInt16x8Bits']
     simdfloatfuncs = simdfuncs + ['div', 'min', 'max', 'minNum', 'maxNum', 'sqrt',
-                                  'abs', 'fromInt32x4', 'fromInt32x4Bits',
-                                  'reciprocalApproximation', 'reciprocalSqrtApproximation'];
-    simdintfuncs = simdfuncs + ['fromFloat32x4', 'fromFloat32x4Bits',
-                                'shiftRightArithmeticByScalar',
+                                  'abs', 'reciprocalApproximation', 'reciprocalSqrtApproximation'];
+    simdintfuncs = simdfuncs + ['shiftRightArithmeticByScalar',
                                 'shiftRightLogicalByScalar',
                                 'shiftLeftByScalar'];
     fundamentals = ['Math']
