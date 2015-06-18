@@ -2231,7 +2231,11 @@ int main() {
     self.banned_js_engines = [SPIDERMONKEY_ENGINE] # bug 1174230
     num_cases = 20000
     switch_case, err = Popen([PYTHON, path_from_root('tests', 'gen_large_switchcase.py'), str(num_cases)], stdout=PIPE, stderr=PIPE).communicate()
-    self.do_run(switch_case, 'Success!')
+    self.do_run(switch_case, '''58996: 589965899658996
+59297: 592975929759297
+59598: default
+59899: 598995989959899
+Success!''')
 
   def test_indirectbr(self):
       Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS)
