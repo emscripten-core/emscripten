@@ -757,4 +757,28 @@ fi
     finally:
       del os.environ['EM_IGNORE_SANITY']
 
+  def test_wacky_env(self):
+    restore()
+
+    def build():
+      return self.check_working([EMCC, 'tests/hello_world.c'], '')
+
+    def test():
+      self.assertContained('hello, world!', run_js('a.out.js'))
+
+    assert 'EMCC_FORCE_STDLIBS' not in os.environ
+
+    print 'normal build'
+    Cache.erase()
+    build()
+    test()
+
+    try:
+      print 'wacky env vars, these should not mess our bootstrapping of struct_info etc. up'
+      os.environ['EMCC_FORCE_STDLIBS'] = '1'
+      Cache.erase()
+      build()
+      test()
+    finally:
+      del os.environ['EMCC_FORCE_STDLIBS']
 
