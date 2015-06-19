@@ -1296,12 +1296,24 @@ _mm_cmplt_epi32(__m128i __a, __m128i __b)
   return _mm_cmpgt_epi32(__b, __a);
 }
 
-#if defined(__x86_64__) || defined(__EMSCRIPTEN__)
+#if defined(__x86_64__)
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cvtsi64_sd(__m128d __a, long long __b)
 {
   __a[0] = __b;
   return __a;
+}
+#elif defined(__EMSCRIPTEN__)
+static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
+_mm_cvtsi64_sd(__m128d __a, long long __b)
+{
+  union {
+    double x[2];
+    __m128d m;
+  } m;
+  m.m = __a;
+  m.x[0] = (double)__b;
+  return m.m;
 }
 #endif
 
@@ -1324,11 +1336,22 @@ _mm_cvtsd_si64(__m128d __a)
 }
 #endif
 
-#if defined(__x86_64__) || defined(__EMSCRIPTEN__)
+#if defined(__x86_64__)
 static __inline__ long long __attribute__((__always_inline__, __nodebug__))
 _mm_cvttsd_si64(__m128d __a)
 {
   return __a[0];
+}
+#elif defined(__EMSCRIPTEN__)
+static __inline__ long long __attribute__((__always_inline__, __nodebug__))
+_mm_cvttsd_si64(__m128d __a)
+{
+  if (isnan(__a[0]) || isinf(__a[0])) return 0x8000000000000000LL;
+  long long x = llrint(__a[0]);
+  if (x != 0xFFFFFFFF00000000ULL && (x != 0 || fabsf(__a[0]) < 2.f))
+    return (long long)__a[0];
+  else
+    return 0x8000000000000000LL;
 }
 #endif
 
@@ -1394,11 +1417,23 @@ _mm_cvtsi32_si128(int __a)
   return (__m128i)(__v4si){ __a, 0, 0, 0 };
 }
 
-#if defined(__x86_64__) || defined(__EMSCRIPTEN__)
+#if defined(__x86_64__)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cvtsi64_si128(long long __a)
 {
   return (__m128i){ __a, 0 };
+}
+#elif defined(__EMSCRIPTEN__)
+static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
+_mm_cvtsi64_si128(long long __a)
+{
+  union {
+    long long x[2];
+    __m128i m;
+  } m;
+  m.x[0] = __a;
+  m.x[1] = 0;
+  return m.m;
 }
 #endif
 
@@ -1409,11 +1444,22 @@ _mm_cvtsi128_si32(__m128i __a)
   return __b[0];
 }
 
-#if defined(__x86_64__) || defined(__EMSCRIPTEN__)
+#if defined(__x86_64__)
 static __inline__ long long __attribute__((__always_inline__, __nodebug__))
 _mm_cvtsi128_si64(__m128i __a)
 {
   return __a[0];
+}
+#elif defined(__EMSCRIPTEN__)
+static __inline__ long long __attribute__((__always_inline__, __nodebug__))
+_mm_cvtsi128_si64(__m128i __a)
+{
+  union {
+    long long x[2];
+    __m128i m;
+  } m;
+  m.m = __a;
+  return m.x[0];
 }
 #endif
 

@@ -133,25 +133,19 @@ int main()
 	Ret_M128d(int64_t, _mm_cvtsd_si64);
 //	Ret_M128d(int64_t, _mm_cvtsd_si64x);
 	Ret_M128i(int, _mm_cvtsi128_si32);
-#ifdef ENABLE_SCALAR_64BIT
 	Ret_M128i(int64_t, _mm_cvtsi128_si64);
-#endif
 //	Ret_M128i(int64_t, _mm_cvtsi128_si64x);
 	Ret_M128d_int(__m128d, _mm_cvtsi32_sd);
 	Ret_int(__m128i, _mm_cvtsi32_si128);
-#ifdef ENABLE_SCALAR_64BIT
 	Ret_M128d_int64(__m128d, _mm_cvtsi64_sd);
 	Ret_int64(__m128i, _mm_cvtsi64_si128);
-#endif
 //	Ret_int64(__m128d, _mm_cvtsi64x_sd);
 //	Ret_int64(__m128i, _mm_cvtsi64x_si128);
 	Ret_M128d_M128d(__m128d, _mm_cvtss_sd);
 	Ret_M128d(__m128i, _mm_cvttpd_epi32);
 	Ret_M128(__m128i, _mm_cvttps_epi32);
 	Ret_M128d(int, _mm_cvttsd_si32);
-#ifdef ENABLE_SCALAR_64BIT
 	Ret_M128d(int64_t, _mm_cvttsd_si64);
-#endif
 //	Ret_M128d(int64_t, _mm_cvttsd_si64x);
 
 	// SSE2 Elementary Math Functions instructions:
