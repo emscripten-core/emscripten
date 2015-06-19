@@ -1242,6 +1242,17 @@ _mm_cvtsd_si64(__m128d __a)
 {
   return __builtin_ia32_cvtsd2si64(__a);
 }
+#elif defined(__EMSCRIPTEN__)
+static __inline__ long long __attribute__((__always_inline__, __nodebug__))
+_mm_cvtsd_si64(__m128d __a)
+{
+  if (isnan(__a[0]) || isinf(__a[0])) return 0x8000000000000000LL;
+  long long x = llrint(__a[0]);
+  if (x != 0xFFFFFFFF00000000ULL && (x != 0 || fabsf(__a[0]) < 2.f))
+    return x;
+  else
+    return 0x8000000000000000LL;
+}
 #endif
 
 #if defined(__x86_64__) || defined(__EMSCRIPTEN__)

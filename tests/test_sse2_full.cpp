@@ -130,10 +130,8 @@ int main()
 	Ret_M128(__m128d,  _mm_cvtps_pd);
 	Ret_M128(double, _mm_cvtsd_f64);
 	Ret_M128d(int, _mm_cvtsd_si32);
-#if 0
 	Ret_M128d(int64_t, _mm_cvtsd_si64);
 //	Ret_M128d(int64_t, _mm_cvtsd_si64x);
-#endif
 	Ret_M128i(int, _mm_cvtsi128_si32);
 #ifdef ENABLE_SCALAR_64BIT
 	Ret_M128i(int64_t, _mm_cvtsi128_si64);
