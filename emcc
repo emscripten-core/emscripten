@@ -851,7 +851,7 @@ try:
 
   if len(input_files) == 0:
     logging.error('no input files\nnote that input files without a known suffix are ignored, make sure your input files end with one of: ' + str(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + STATICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS))
-    exit(0)
+    exit(1)
 
   newargs = CC_ADDITIONAL_ARGS + newargs
 
