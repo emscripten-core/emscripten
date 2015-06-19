@@ -38,6 +38,10 @@ inline int32x4 emscripten_int32x4_fromFloat32x4Bits(float32x4 __a) __attribute__
 inline int32x4 emscripten_int32x4_fromFloat32x4(float32x4 __a) __attribute__((__nothrow__, __const__)) { return __builtin_convertvector(__a, int32x4); }
 
 float64x2 emscripten_float64x2_fromFloat32x4Bits(float32x4 __a) __attribute__((__nothrow__, __const__));
+float64x2 emscripten_float64x2_fromInt8x16Bits(int8x16 __a) __attribute__((__nothrow__, __const__));
+float64x2 emscripten_float64x2_fromInt16x8Bits(int16x8 __a) __attribute__((__nothrow__, __const__));
+float64x2 emscripten_float64x2_fromInt32x4Bits(int32x4 __a) __attribute__((__nothrow__, __const__));
+float64x2 emscripten_float64x2_fromInt32x4(int32x4 __a) __attribute__((__nothrow__, __const__));
 float64x2 emscripten_float64x2_fromFloat32x4(float32x4 __a) __attribute__((__nothrow__, __const__));
 
 int32x4 emscripten_int32x4_select(int32x4 __a, int32x4 __b, int32x4 __c) __attribute__((__nothrow__, __const__));

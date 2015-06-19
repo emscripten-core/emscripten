@@ -417,13 +417,17 @@ _mm_cvtps_pd(__m128 __a)
 #endif
 }
 
-#ifndef __EMSCRIPTEN__ // XXX TODO Add support
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cvtepi32_pd(__m128i __a)
 {
+#ifdef __EMSCRIPTEN__
+  return emscripten_float64x2_fromInt32x4(__a);
+#else
   return __builtin_ia32_cvtdq2pd((__v4si)__a);
+#endif
 }
 
+#ifndef __EMSCRIPTEN__ // XXX TODO Add support
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cvtpd_epi32(__m128d __a)
 {
