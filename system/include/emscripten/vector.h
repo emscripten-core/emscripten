@@ -48,6 +48,18 @@ int32x4 emscripten_int32x4_select(int32x4 __a, int32x4 __b, int32x4 __c) __attri
 inline float32x4 emscripten_float32x4_fromInt32x4Bits(int32x4 __a) __attribute__((__nothrow__, __const__)) { return (float32x4)__a; }
 inline float32x4 emscripten_float32x4_fromInt32x4(int32x4 __a) __attribute__((__nothrow__, __const__)) { return __builtin_convertvector(__a, float32x4); }
 
+int8x16 emscripten_int8x16_shiftLeftByScalar(int8x16 __a, int __count) __attribute__((__nothrow__, __const__));
+int8x16 emscripten_int8x16_shiftRightLogicalByScalar(int8x16 __a, int __count) __attribute__((__nothrow__, __const__));
+int8x16 emscripten_int8x16_shiftRightArithmeticByScalar(int8x16 __a, int __count) __attribute__((__nothrow__, __const__));
+
+int16x8 emscripten_int16x8_shiftLeftByScalar(int16x8 __a, int __count) __attribute__((__nothrow__, __const__));
+int16x8 emscripten_int16x8_shiftRightLogicalByScalar(int16x8 __a, int __count) __attribute__((__nothrow__, __const__));
+int16x8 emscripten_int16x8_shiftRightArithmeticByScalar(int16x8 __a, int __count) __attribute__((__nothrow__, __const__));
+
+int32x4 emscripten_int32x4_shiftLeftByScalar(int32x4 __a, int __count) __attribute__((__nothrow__, __const__));
+int32x4 emscripten_int32x4_shiftRightLogicalByScalar(int32x4 __a, int __count) __attribute__((__nothrow__, __const__));
+int32x4 emscripten_int32x4_shiftRightArithmeticByScalar(int32x4 __a, int __count) __attribute__((__nothrow__, __const__));
+
 float32x4 emscripten_float32x4_load1(const void *__p) __attribute__((__nothrow__, __const__));
 float32x4 emscripten_float32x4_load2(const void *__p) __attribute__((__nothrow__, __const__));
 void emscripten_float32x4_store1(const void *__p, float32x4 __a) __attribute__((__nothrow__));
