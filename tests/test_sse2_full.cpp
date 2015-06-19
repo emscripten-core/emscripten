@@ -198,8 +198,8 @@ int main()
 	M128i_M128i_M128i(_mm_xor_si128);
 
 	// SSE2 Miscellaneous instructions:
-#if 0
 	Ret_M128i(int, _mm_movemask_epi8);
+#if 0
 	Ret_M128d(int, _mm_movemask_pd);
 	M128i_M128i_M128i(_mm_packs_epi16);
 	M128i_M128i_M128i(_mm_packs_epi32);

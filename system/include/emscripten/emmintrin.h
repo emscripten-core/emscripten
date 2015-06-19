@@ -1571,13 +1571,23 @@ _mm_insert_epi16(__m128i __a, int __b, int __imm)
   return (__m128i)__c;
 }
 
-#ifndef __EMSCRIPTEN__ // XXX TODO Add support
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_movemask_epi8(__m128i __a)
 {
+#ifdef __EMSCRIPTEN__
+  union {
+    unsigned char x[16];
+    __m128i m;
+  } src;
+  src.m = __a;
+  unsigned int x = 0;
+  for(int i = 0; i < 16; ++i)
+    x |= ((unsigned int)src.x[i] >> 7) << i;
+  return (int)x;
+#else
   return __builtin_ia32_pmovmskb128((__v16qi)__a);
-}
 #endif
+}
 
 #define _mm_shuffle_epi32(a, imm) __extension__ ({ \
   (__m128i)__builtin_shufflevector((__v4si)(__m128i)(a), \
