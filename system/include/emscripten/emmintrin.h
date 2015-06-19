@@ -767,7 +767,19 @@ _mm_add_si64(__m64 __a, __m64 __b)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_add_epi64(__m128i __a, __m128i __b)
 {
+#ifdef __EMSCRIPTEN__
+  union {
+    long long x[2];
+    __m128i m;
+  } src, src2, dst;
+  src.m = __a;
+  src2.m = __b;
+  dst.x[0] = src.x[0] + src2.x[0];
+  dst.x[1] = src.x[1] + src2.x[1];
+  return dst.m;
+#else
   return __a + __b;
+#endif
 }
 
 #ifndef __EMSCRIPTEN__ // XXX TODO Add support
@@ -984,7 +996,19 @@ _mm_sub_si64(__m64 __a, __m64 __b)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_sub_epi64(__m128i __a, __m128i __b)
 {
+#ifdef __EMSCRIPTEN__
+  union {
+    long long x[2];
+    __m128i m;
+  } src, src2, dst;
+  src.m = __a;
+  src2.m = __b;
+  dst.x[0] = src.x[0] - src2.x[0];
+  dst.x[1] = src.x[1] - src2.x[1];
+  return dst.m;
+#else
   return __a - __b;
+#endif
 }
 
 #ifndef __EMSCRIPTEN__ // XXX TODO Add support

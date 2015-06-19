@@ -24,7 +24,7 @@ int main()
 	// SSE2 Arithmetic instructions:
 	M128i_M128i_M128i(_mm_add_epi16);
 	M128i_M128i_M128i(_mm_add_epi32);
-//	M128i_M128i_M128i(_mm_add_epi64); // FAILS
+	M128i_M128i_M128i(_mm_add_epi64);
 	M128i_M128i_M128i(_mm_add_epi8);
 	Ret_M128d_M128d(__m128d, _mm_add_pd);
 	Ret_M128d_M128d(__m128d, _mm_add_sd);
@@ -47,7 +47,7 @@ int main()
 	M128i_M128i_M128i(_mm_sad_epu8);
 	M128i_M128i_M128i(_mm_sub_epi16);
 	M128i_M128i_M128i(_mm_sub_epi32);
-	// M128i_M128i_M128i(_mm_sub_epi64); // FAILS
+	M128i_M128i_M128i(_mm_sub_epi64);
 	M128i_M128i_M128i(_mm_sub_epi8);
 	Ret_M128d_M128d(__m128d, _mm_sub_pd);
 	Ret_M128d_M128d(__m128d, _mm_sub_sd);
