@@ -65,29 +65,23 @@ int main()
 	Ret_M128i(__m128, _mm_castsi128_ps);
 
 	// SSE2 Compare instructions:
-#if 0
 	M128i_M128i_M128i(_mm_cmpeq_epi16);
 	M128i_M128i_M128i(_mm_cmpeq_epi32);
 	M128i_M128i_M128i(_mm_cmpeq_epi8);
-#if 0
 	Ret_M128d_M128d(__m128d, _mm_cmpeq_pd);
 	Ret_M128d_M128d(__m128d, _mm_cmpeq_sd);
 	Ret_M128d_M128d(__m128d, _mm_cmpge_pd);
 	Ret_M128d_M128d(__m128d, _mm_cmpge_sd);
-#endif
 	M128i_M128i_M128i(_mm_cmpgt_epi16);
 	M128i_M128i_M128i(_mm_cmpgt_epi32);
 	M128i_M128i_M128i(_mm_cmpgt_epi8);
-#if 0
 	Ret_M128d_M128d(__m128d, _mm_cmpgt_pd);
 	Ret_M128d_M128d(__m128d, _mm_cmpgt_sd);
 	Ret_M128d_M128d(__m128d, _mm_cmple_pd);
 	Ret_M128d_M128d(__m128d, _mm_cmple_sd);
-#endif
 	M128i_M128i_M128i(_mm_cmplt_epi16);
 	M128i_M128i_M128i(_mm_cmplt_epi32);
 	M128i_M128i_M128i(_mm_cmplt_epi8);
-#if 0
 	Ret_M128d_M128d(__m128d, _mm_cmplt_pd);
 	Ret_M128d_M128d(__m128d, _mm_cmplt_sd);
 	Ret_M128d_M128d(__m128d, _mm_cmpneq_pd);
@@ -116,8 +110,6 @@ int main()
 	Ret_M128d_M128d(int, _mm_ucomile_sd);
 	Ret_M128d_M128d(int, _mm_ucomilt_sd);
 	Ret_M128d_M128d(int, _mm_ucomineq_sd);
-#endif
-#endif
 
 	// SSE2 Convert instructions:
 	Ret_M128i(__m128d, _mm_cvtepi32_pd);

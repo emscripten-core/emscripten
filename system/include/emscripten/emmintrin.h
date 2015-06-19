@@ -219,227 +219,376 @@ _mm_xor_pd(__m128d __a, __m128d __b)
   return (__m128d)((__v4si)__a ^ (__v4si)__b);
 }
 
-#ifndef __EMSCRIPTEN__ // XXX TODO Add support
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cmpeq_pd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return emscripten_float64x2_equal(__a, __b);
+#else
   return (__m128d)__builtin_ia32_cmpeqpd(__a, __b);
+#endif
 }
-
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cmplt_pd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return emscripten_float64x2_lessThan(__a, __b);
+#else
   return (__m128d)__builtin_ia32_cmpltpd(__a, __b);
+#endif
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cmple_pd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return emscripten_float64x2_lessThanOrEqual(__a, __b);
+#else
   return (__m128d)__builtin_ia32_cmplepd(__a, __b);
+#endif
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cmpgt_pd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return emscripten_float64x2_greaterThan(__a, __b);
+#else
   return (__m128d)__builtin_ia32_cmpltpd(__b, __a);
+#endif
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cmpge_pd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return emscripten_float64x2_greaterThanOrEqual(__a, __b);
+#else
   return (__m128d)__builtin_ia32_cmplepd(__b, __a);
+#endif
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cmpord_pd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return emscripten_float64x2_and(emscripten_float64x2_equal(__a, __a),
+                                  emscripten_float64x2_equal(__b, __b));
+#else
   return (__m128d)__builtin_ia32_cmpordpd(__a, __b);
+#endif
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cmpunord_pd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return emscripten_float64x2_or(emscripten_float64x2_notEqual(__a, __a),
+                                 emscripten_float64x2_notEqual(__b, __b));
+#else
   return (__m128d)__builtin_ia32_cmpunordpd(__a, __b);
+#endif
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cmpneq_pd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return emscripten_float64x2_notEqual(__a, __b);
+#else
   return (__m128d)__builtin_ia32_cmpneqpd(__a, __b);
+#endif
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cmpnlt_pd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return emscripten_float64x2_not(_mm_cmplt_pd(__a, __b));
+#else
   return (__m128d)__builtin_ia32_cmpnltpd(__a, __b);
+#endif
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cmpnle_pd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return emscripten_float64x2_not(_mm_cmple_pd(__a, __b));
+#else
   return (__m128d)__builtin_ia32_cmpnlepd(__a, __b);
+#endif
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cmpngt_pd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return emscripten_float64x2_not(_mm_cmpgt_pd(__a, __b));
+#else
   return (__m128d)__builtin_ia32_cmpnltpd(__b, __a);
+#endif
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cmpnge_pd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return emscripten_float64x2_not(_mm_cmpge_pd(__a, __b));
+#else
   return (__m128d)__builtin_ia32_cmpnlepd(__b, __a);
+#endif
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cmpeq_sd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return _mm_move_sd(__a, _mm_cmpeq_pd(__a, __b));
+#else
   return (__m128d)__builtin_ia32_cmpeqsd(__a, __b);
+#endif
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cmplt_sd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return _mm_move_sd(__a, _mm_cmplt_pd(__a, __b));
+#else
   return (__m128d)__builtin_ia32_cmpltsd(__a, __b);
+#endif
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cmple_sd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return _mm_move_sd(__a, _mm_cmple_pd(__a, __b));
+#else
   return (__m128d)__builtin_ia32_cmplesd(__a, __b);
+#endif
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cmpgt_sd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return _mm_move_sd(__a, _mm_cmpgt_pd(__a, __b));
+#else
   __m128d __c = __builtin_ia32_cmpltsd(__b, __a);
   return (__m128d) { __c[0], __a[1] };
+#endif
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cmpge_sd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return _mm_move_sd(__a, _mm_cmpge_pd(__a, __b));
+#else
   __m128d __c = __builtin_ia32_cmplesd(__b, __a);
   return (__m128d) { __c[0], __a[1] };
+#endif
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cmpord_sd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return _mm_move_sd(__a, _mm_cmpord_pd(__a, __b));
+#else
   return (__m128d)__builtin_ia32_cmpordsd(__a, __b);
+#endif
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cmpunord_sd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return _mm_move_sd(__a, _mm_cmpunord_pd(__a, __b));
+#else
   return (__m128d)__builtin_ia32_cmpunordsd(__a, __b);
+#endif
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cmpneq_sd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return _mm_move_sd(__a, _mm_cmpneq_pd(__a, __b));
+#else
   return (__m128d)__builtin_ia32_cmpneqsd(__a, __b);
+#endif
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cmpnlt_sd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return _mm_move_sd(__a, _mm_cmpnlt_pd(__a, __b));
+#else
   return (__m128d)__builtin_ia32_cmpnltsd(__a, __b);
+#endif
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cmpnle_sd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return _mm_move_sd(__a, _mm_cmpnle_pd(__a, __b));
+#else
   return (__m128d)__builtin_ia32_cmpnlesd(__a, __b);
+#endif
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cmpngt_sd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return _mm_move_sd(__a, _mm_cmpngt_pd(__a, __b));
+#else
   __m128d __c = __builtin_ia32_cmpnltsd(__b, __a);
   return (__m128d) { __c[0], __a[1] };
+#endif
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cmpnge_sd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return _mm_move_sd(__a, _mm_cmpnge_pd(__a, __b));
+#else
   __m128d __c = __builtin_ia32_cmpnlesd(__b, __a);
   return (__m128d) { __c[0], __a[1] };
+#endif
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_comieq_sd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  if (isnan(__a[0]) || isnan(__b[0])) return 1;
+  return __a[0] == __b[0];
+#else
   return __builtin_ia32_comisdeq(__a, __b);
+#endif
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_comilt_sd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  if (isnan(__a[0]) || isnan(__b[0])) return 1;
+  return __a[0] < __b[0];
+#else
   return __builtin_ia32_comisdlt(__a, __b);
+#endif
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_comile_sd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  if (isnan(__a[0]) || isnan(__b[0])) return 1;
+  return __a[0] <= __b[0];
+#else
   return __builtin_ia32_comisdle(__a, __b);
+#endif
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_comigt_sd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return __a[0] > __b[0];
+#else
   return __builtin_ia32_comisdgt(__a, __b);
+#endif
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_comige_sd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return __a[0] >= __b[0];
+#else
   return __builtin_ia32_comisdge(__a, __b);
+#endif
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_comineq_sd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  if (isnan(__a[0]) || isnan(__b[0])) return 0;
+  return __a[0] != __b[0];
+#else
   return __builtin_ia32_comisdneq(__a, __b);
+#endif
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_ucomieq_sd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  if (isnan(__a[0]) || isnan(__b[0])) return 1;
+  return __a[0] == __b[0];
+#else
   return __builtin_ia32_ucomisdeq(__a, __b);
+#endif
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_ucomilt_sd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return !(__a[0] >= __b[0]);
+#else
   return __builtin_ia32_ucomisdlt(__a, __b);
+#endif
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_ucomile_sd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return !(__a[0] > __b[0]);
+#else
   return __builtin_ia32_ucomisdle(__a, __b);
+#endif
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_ucomigt_sd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return __a[0] > __b[0];
+#else
   return __builtin_ia32_ucomisdgt(__a, __b);
+#endif
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_ucomige_sd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  return __a[0] >= __b[0];
+#else
   return __builtin_ia32_ucomisdge(__a, __b);
+#endif
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_ucomineq_sd(__m128d __a, __m128d __b)
 {
+#ifdef __EMSCRIPTEN__
+  if (isnan(__a[0]) || isnan(__b[0])) return 0;
+  return __a[0] != __b[0];
+#else
   return __builtin_ia32_ucomisdneq(__a, __b);
-}
 #endif
+}
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_cvtpd_ps(__m128d __a)
