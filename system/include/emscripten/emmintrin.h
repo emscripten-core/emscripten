@@ -1703,13 +1703,20 @@ _mm_unpacklo_pd(__m128d __a, __m128d __b)
   return __builtin_shufflevector(__a, __b, 0, 2+0);
 }
 
-#ifndef __EMSCRIPTEN__ // XXX TODO Add support
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_movemask_pd(__m128d __a)
 {
+#ifdef __EMSCRIPTEN__
+  union {
+    unsigned long long x[2];
+    __m128d m;
+  } src;
+  src.m = __a;
+  return (src.x[0] >> 63) | ((src.x[1] >> 63) << 1);
+#else
   return __builtin_ia32_movmskpd(__a);
-}
 #endif
+}
 
 #define _mm_shuffle_pd(a, b, i) __extension__ ({ \
   __builtin_shufflevector((__m128d)(a), (__m128d)(b), \
