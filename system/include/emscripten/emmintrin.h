@@ -1532,13 +1532,23 @@ _mm_storeu_si128(__m128i *__p, __m128i __b)
 #endif
 }
 
-#ifndef __EMSCRIPTEN__ // XXX TODO Add support
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm_maskmoveu_si128(__m128i __d, __m128i __n, char *__p)
 {
+#ifdef __EMSCRIPTEN__
+  union {
+    unsigned char x[16];
+    __m128i m;
+  } mask, data;
+  mask.m = __n;
+  data.m = __d;
+  for(int i = 0; i < 16; ++i)
+    if (mask.x[i] & 0x80)
+      __p[i] = data.x[i];
+#else
   __builtin_ia32_maskmovdqu((__v16qi)__d, (__v16qi)__n, __p);
-}
 #endif
+}
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm_storel_epi64(__m128i *__p, __m128i __a)

@@ -275,9 +275,7 @@ int main()
 	Ret_M128d_M128d(__m128d, _mm_min_sd);
 
 	// SSE2 Store instructions:
-#if 0
 	void_M128i_M128i_OutIntPtr(_mm_maskmoveu_si128, char*, 16, 1);
-#endif
 	void_OutDoublePtr_M128d(_mm_store_pd, double*, 16, 16);
 //	void_OutDoublePtr_M128d(_mm_store_pd1, double*, 16, 16);
 	void_OutDoublePtr_M128d(_mm_store_sd, double*, 8, 1);
