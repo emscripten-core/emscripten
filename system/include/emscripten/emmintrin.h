@@ -854,13 +854,34 @@ _mm_mul_epu32(__m128i __a, __m128i __b)
 #endif
 }
 
-#ifndef __EMSCRIPTEN__ // XXX TODO Add support
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_sad_epu8(__m128i __a, __m128i __b)
 {
+#ifdef __EMSCRIPTEN__
+  union {
+    unsigned char x[16];
+    __m128i m;
+  } src, src2;
+  src.m = __a;
+  src2.m = __b;
+  union {
+    unsigned short x[8];
+    __m128i m;
+  } dst;
+#define __ABS(a) ((a) < 0 ? -(a) : (a))
+  for(int i = 0; i < 8; ++i)
+    dst.x[i] = 0;
+  for(int i = 0; i < 8; ++i)
+  {
+    dst.x[0] += __ABS(src.x[i] - src2.x[i]);
+    dst.x[4] += __ABS(src.x[8+i] - src2.x[8+i]);
+  }
+  return dst.m;
+#undef __ABS
+#else
   return __builtin_ia32_psadbw128((__v16qi)__a, (__v16qi)__b);
-}
 #endif
+}
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_sub_epi8(__m128i __a, __m128i __b)

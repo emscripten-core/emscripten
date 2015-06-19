@@ -44,9 +44,7 @@ int main()
 	M128i_M128i_M128i(_mm_mulhi_epi16);
 	M128i_M128i_M128i(_mm_mulhi_epu16);
 	M128i_M128i_M128i(_mm_mullo_epi16);
-#if 0
 	M128i_M128i_M128i(_mm_sad_epu8);
-#endif
 	M128i_M128i_M128i(_mm_sub_epi16);
 	M128i_M128i_M128i(_mm_sub_epi32);
 	// M128i_M128i_M128i(_mm_sub_epi64); // FAILS
