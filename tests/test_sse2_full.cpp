@@ -133,8 +133,8 @@ int main()
 #endif
 	Ret_M128(__m128d,  _mm_cvtps_pd);
 	Ret_M128(double, _mm_cvtsd_f64);
-#if 0
 	Ret_M128d(int, _mm_cvtsd_si32);
+#if 0
 	Ret_M128d(int64_t, _mm_cvtsd_si64);
 //	Ret_M128d(int64_t, _mm_cvtsd_si64x);
 #endif
@@ -204,7 +204,6 @@ int main()
 	M128i_M128i_M128i(_mm_packs_epi16);
 	M128i_M128i_M128i(_mm_packs_epi32);
 	M128i_M128i_M128i(_mm_packus_epi16);
-	M128i_M128i_M128i(_mm_sad_epu8);
 #endif
 
 	// SSE2 Move instructions:

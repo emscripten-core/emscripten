@@ -433,13 +433,21 @@ _mm_cvtpd_epi32(__m128d __a)
 {
   return __builtin_ia32_cvtpd2dq(__a);
 }
+#endif
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_cvtsd_si32(__m128d __a)
 {
+#ifdef __EMSCRIPTEN__
+  int x = lrint(__a[0]);
+  if (x != 0 || fabs(__a[0]) < 2.0)
+    return (int)x;
+  else
+    return (int)0x80000000;
+#else
   return __builtin_ia32_cvtsd2si(__a);
-}
 #endif
+}
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_cvtsd_ss(__m128 __a, __m128d __b)
