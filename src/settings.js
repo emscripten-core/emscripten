@@ -525,4 +525,6 @@ var PTHREAD_POOL_SIZE = 0; // Specifies the number of web workers that are preal
 // to show a popup dialog at startup so the user can configure this dynamically.
 var PTHREAD_HINT_NUM_CORES = 4;
 
+var MAX_GLOBAL_ALIGN = -1; // received from the backend
+
 // Reserved: variables containing POINTER_MASKING.

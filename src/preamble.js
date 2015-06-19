@@ -14,6 +14,10 @@
 
 {{RUNTIME}}
 
+#if RELOCATABLE
+Runtime.GLOBAL_BASE = Runtime.alignMemory(Runtime.GLOBAL_BASE, {{{ MAX_GLOBAL_ALIGN || 1 }}});
+#endif
+
 Module['Runtime'] = Runtime;
 #if CLOSURE_COMPILER
 Runtime['addFunction'] = Runtime.addFunction;

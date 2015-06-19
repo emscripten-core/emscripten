@@ -624,6 +624,36 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 0.00,10,123.46,0.00 : 0.00,10,123.46,0.00
 ''')
 
+  def test_align_moar(self):
+    def test():
+      self.do_run(r'''
+#include <xmmintrin.h>
+#include <stdio.h>
+
+struct __attribute__((aligned(16))) float4x4
+{
+    union
+    {
+        float v[4][4];
+        __m128 row[4];
+    };
+};
+
+float4x4 v;
+__m128 m;
+
+int main()
+{
+    printf("Alignment: %d addr: %x\n", ((int)&v) % 16, (int)&v);
+    printf("Alignment: %d addr: %x\n", ((int)&m) % 16, (int)&m);
+}
+    ''', 'Alignment: 0 addr: 10\nAlignment: 0 addr: 50\n') # hardcoded addresses, just to track if this ever changes by surprise. will need normal updates.
+
+    test()
+    print 'relocatable'
+    Settings.RELOCATABLE = 1
+    test()
+
   def test_unsigned(self):
       src = '''
         #include <stdio.h>

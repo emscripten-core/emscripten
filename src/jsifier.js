@@ -282,7 +282,7 @@ function JSify(data, functionsOnly) {
           print('STATIC_BASE = ' + Runtime.GLOBAL_BASE + ';\n');
           print('STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');
         } else {
-          print('gb = getMemory({{{ STATIC_BUMP }}});\n');
+          print('gb = Runtime.alignMemory(getMemory({{{ STATIC_BUMP }}}, ' + MAX_GLOBAL_ALIGN + ' || 1));\n');
           print('// STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n'); // comment as metadata only
         }
       }
