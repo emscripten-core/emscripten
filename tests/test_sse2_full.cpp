@@ -124,9 +124,7 @@ int main()
 	// SSE2 Convert instructions:
 	Ret_M128i(__m128d, _mm_cvtepi32_pd);
 	Ret_M128i(__m128, _mm_cvtepi32_ps);
-#if 0
 	Ret_M128d(__m128i, _mm_cvtpd_epi32);
-#endif
 	Ret_M128d(__m128, _mm_cvtpd_ps);
 	Ret_M128(__m128i, _mm_cvtps_epi32);
 	Ret_M128(__m128d,  _mm_cvtps_pd);

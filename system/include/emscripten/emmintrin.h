@@ -431,13 +431,24 @@ _mm_cvtepi32_pd(__m128i __a)
 #endif
 }
 
-#ifndef __EMSCRIPTEN__ // XXX TODO Add support
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cvtpd_epi32(__m128d __a)
 {
+#ifdef __EMSCRIPTEN__
+  int m[2];
+  for(int i = 0; i < 2; ++i)
+  {
+    int x = lrint(__a[i]);
+    if (x != 0 || fabs(__a[i]) < 2.0)
+      m[i] = (int)x;
+    else
+      m[i] = (int)0x80000000;
+  }
+  return (__m128i) { m[0], m[1], 0, 0 };
+#else
   return __builtin_ia32_cvtpd2dq(__a);
-}
 #endif
+}
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_cvtsd_si32(__m128d __a)
