@@ -126,8 +126,8 @@ int main()
 	Ret_M128i(__m128, _mm_cvtepi32_ps);
 #if 0
 	Ret_M128d(__m128i, _mm_cvtpd_epi32);
-	Ret_M128d(__m128, _mm_cvtpd_ps);
 #endif
+	Ret_M128d(__m128, _mm_cvtpd_ps);
 	Ret_M128(__m128i, _mm_cvtps_epi32);
 	Ret_M128(__m128d,  _mm_cvtps_pd);
 	Ret_M128(double, _mm_cvtsd_f64);

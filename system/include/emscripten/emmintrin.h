@@ -399,13 +399,17 @@ _mm_ucomineq_sd(__m128d __a, __m128d __b)
 {
   return __builtin_ia32_ucomisdneq(__a, __b);
 }
+#endif
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_cvtpd_ps(__m128d __a)
 {
+#ifdef __EMSCRIPTEN__
+  return (__m128) { (float)__a[0], (float)__a[1], 0, 0 };
+#else
   return __builtin_ia32_cvtpd2ps(__a);
-}
 #endif
+}
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cvtps_pd(__m128 __a)
