@@ -1128,13 +1128,27 @@ _mm_cvtps_epi32(__m128 __a)
 #endif
 }
 
-#ifndef __EMSCRIPTEN__ // XXX TODO Add support.
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cvttps_epi32(__m128 __a)
 {
+#ifdef __EMSCRIPTEN__
+  union {
+    int x[4];
+    __m128i m;
+  } u;
+  for(int i = 0; i < 4; ++i)
+  {
+    int x = lrint(__a[i]);
+    if (x != 0 || fabs(__a[i]) < 2.0)
+      u.x[i] = (int)__a[i];
+    else
+      u.x[i] = (int)0x80000000;
+  }
+  return u.m;
+#else
   return (__m128i)__builtin_ia32_cvttps2dq(__a);
+#endif
 }
-#endif // ~__EMSCRIPTEN__
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cvtsi32_si128(int __a)
