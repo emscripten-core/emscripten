@@ -784,13 +784,29 @@ _mm_mul_su32(__m64 __a, __m64 __b)
 {
   return __builtin_ia32_pmuludq((__v2si)__a, (__v2si)__b);
 }
+#endif
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_mul_epu32(__m128i __a, __m128i __b)
 {
+#ifdef __EMSCRIPTEN__
+  unsigned long long a0 = (unsigned long long)(unsigned int)__a[0];
+  unsigned long long a2 = (unsigned long long)(unsigned int)__a[2];
+  unsigned long long b0 = (unsigned long long)(unsigned int)__b[0];
+  unsigned long long b2 = (unsigned long long)(unsigned int)__b[2];
+  union {
+    unsigned long long x[2];
+    __m128i m;
+  } u;
+  u.x[0] = a0*b0;
+  u.x[1] = a2*b2;
+  return u.m;
+#else
   return __builtin_ia32_pmuludq128((__v4si)__a, (__v4si)__b);
+#endif
 }
 
+#ifndef __EMSCRIPTEN__ // XXX TODO Add support
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_sad_epu8(__m128i __a, __m128i __b)
 {
