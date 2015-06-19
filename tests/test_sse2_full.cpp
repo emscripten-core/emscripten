@@ -36,9 +36,7 @@ int main()
 #endif
 	Ret_M128d_M128d(__m128d, _mm_div_pd);
 	Ret_M128d_M128d(__m128d, _mm_div_sd);
-#if 0
 	M128i_M128i_M128i(_mm_madd_epi16);
-#endif
 	M128i_M128i_M128i(_mm_mul_epu32);
 
 	Ret_M128d_M128d(__m128d, _mm_mul_pd);
