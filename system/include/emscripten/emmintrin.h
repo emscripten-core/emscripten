@@ -1481,10 +1481,17 @@ _mm_loadu_si128(__m128i const *__p)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_loadl_epi64(__m128i const *__p)
 {
+#ifdef __EMSCRIPTEN__
+  struct __mm_loadl_epi64_struct {
+    int __u[2];
+  } __attribute__((__packed__, __may_alias__));
+  return (__m128i) { ((struct __mm_loadl_epi64_struct*)__p)->__u[0], ((struct __mm_loadl_epi64_struct*)__p)->__u[1], 0, 0};
+#else
   struct __mm_loadl_epi64_struct {
     long long __u;
   } __attribute__((__packed__, __may_alias__));
   return (__m128i) { ((struct __mm_loadl_epi64_struct*)__p)->__u, 0};
+#endif
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
@@ -1623,10 +1630,18 @@ _mm_maskmoveu_si128(__m128i __d, __m128i __n, char *__p)
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm_storel_epi64(__m128i *__p, __m128i __a)
 {
+#ifdef __EMSCRIPTEN__
+  struct __mm_storel_epi64_struct {
+    int __u[2];
+  } __attribute__((__packed__, __may_alias__));
+  ((struct __mm_storel_epi64_struct*)__p)->__u[0] = __a[0];
+  ((struct __mm_storel_epi64_struct*)__p)->__u[1] = __a[1];
+#else
   struct __mm_storel_epi64_struct {
     long long __u;
   } __attribute__((__packed__, __may_alias__));
   ((struct __mm_storel_epi64_struct*)__p)->__u = __a[0];
+#endif
 }
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
@@ -1674,10 +1689,13 @@ _mm_stream_si64(long long *__p, long long __a)
   __builtin_ia32_movnti64(__p, __a);
 }
 #elif defined(__EMSCRIPTEN__)
+typedef long long __attribute__((aligned(1))) align1_int64;
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm_stream_si64(long long *__p, long long __a)
 {
-  *__p = __a; // No cache hinting available.
+  // No cache hinting available.
+  emscripten_align1_int *__q = (emscripten_align1_int*)__p;
+  memcpy(__q, &__a, sizeof(long long));
 }
 #endif
 

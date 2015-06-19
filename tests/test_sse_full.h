@@ -10,9 +10,11 @@
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #define align1_int emscripten_align1_int
+#define align1_int64 emscripten_align1_int64
 #define align1_float emscripten_align1_float
 #define align1_double emscripten_align1_double
 #else
+#define align1_int64 long long
 #define align1_int int
 #define align1_float float
 #define align1_double double
@@ -137,7 +139,7 @@ void tostr(align1_int *m, char *outstr)
 	sprintf(outstr, "0x%08X", *m);
 }
 
-void tostr(int64_t *m, char *outstr)
+void tostr(align1_int64 *m, char *outstr)
 {
 	sprintf(outstr, "0x%08X%08X", (int)(*m >> 32), (int)*m);
 }
@@ -189,7 +191,7 @@ void tostr(align1_int *s, int numElems, char *outstr)
 	}
 }
 
-void tostr(int64_t *m, int numElems, char *outstr)
+void tostr(align1_int64 *m, int numElems, char *outstr)
 {
 	switch(numElems)
 	{
@@ -457,7 +459,7 @@ double *getTempOutDoubleStore(int alignmentBytes) { return (double*)getTempOutFl
 			{ \
 				uintptr_t base = (uintptr_t)getTempOutIntStore(16); \
 				int64_t m1 = (int64_t)(((uint64_t)interesting_ints[i]) << 32 | (uint64_t)interesting_ints[j]); \
-				int64_t *out = (int64_t*)(base + offset); \
+				align1_int64 *out = (align1_int64*)(base + offset); \
 				func((Ptr_type)out, m1); \
 				char str[256]; tostr(&m1, str); \
 				char str2[256]; tostr(out, numBytesWritten/sizeof(int64_t), str2); \

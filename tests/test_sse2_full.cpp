@@ -5,8 +5,6 @@
 #define ENABLE_SSE2
 #include "test_sse_full.h"
 
-//#define ENABLE_SCALAR_64BIT
-
 int main()
 {
 	float *interesting_floats = get_interesting_floats();
@@ -165,9 +163,7 @@ int main()
 	Ret_IntPtr(__m128i, _mm_load_si128, __m128i*, 4, 4);
 	Ret_DoublePtr(__m128d, _mm_load1_pd, 1, 1);
 	Ret_M128d_DoublePtr(__m128d, _mm_loadh_pd, double*, 1, 1);
-#ifdef ENABLE_SCALAR_64BIT
 	Ret_IntPtr(__m128i, _mm_loadl_epi64, __m128i*, 2, 1);
-#endif
 	Ret_M128d_DoublePtr(__m128d, _mm_loadl_pd, double*, 1, 1);
 	Ret_DoublePtr(__m128d, _mm_loadr_pd, 2, 2);
 	Ret_DoublePtr(__m128d, _mm_loadu_pd, 2, 1);
@@ -276,9 +272,7 @@ int main()
 	void_OutIntPtr_M128(_mm_store_si128, __m128i*, 16, 16);
 	void_OutDoublePtr_M128d(_mm_store1_pd, double*, 16, 16);
 	void_OutDoublePtr_M128d(_mm_storeh_pd, double*, 8, 1);
-#ifdef ENABLE_SCALAR_64BIT
 	void_OutIntPtr_M128(_mm_storel_epi64, __m128i*, 8, 1);
-#endif
 	void_OutDoublePtr_M128d(_mm_storel_pd, double*, 8, 1);
 	void_OutDoublePtr_M128d(_mm_storer_pd, double*, 16, 16);
 	void_OutDoublePtr_M128d(_mm_storeu_pd, double*, 16, 1);
@@ -286,9 +280,7 @@ int main()
 	void_OutDoublePtr_M128d(_mm_stream_pd, double*, 16, 16);
 	void_OutIntPtr_M128(_mm_stream_si128, __m128i*, 16, 16);
 	void_OutIntPtr_int(_mm_stream_si32, int*, 4, 1);
-#ifdef ENABLE_SCALAR_64BIT
 	void_OutIntPtr_int64(_mm_stream_si64, int64_t*, 8, 1);
-#endif
 
 	// SSE2 Swizzle instructions:
 	Ret_M128i_Tint(int, _mm_extract_epi16);
