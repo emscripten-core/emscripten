@@ -41,10 +41,8 @@ int main()
 
 	Ret_M128d_M128d(__m128d, _mm_mul_pd);
 	Ret_M128d_M128d(__m128d, _mm_mul_sd);
-#if 0
 	M128i_M128i_M128i(_mm_mulhi_epi16);
 	M128i_M128i_M128i(_mm_mulhi_epu16);
-#endif
 	M128i_M128i_M128i(_mm_mullo_epi16);
 #if 0
 	M128i_M128i_M128i(_mm_sad_epu8);
