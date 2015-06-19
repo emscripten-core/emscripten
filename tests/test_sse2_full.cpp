@@ -273,8 +273,10 @@ int main()
 	M128i_M128i_M128i(_mm_srl_epi16);
 	M128i_M128i_M128i(_mm_srl_epi32);
 	M128i_M128i_M128i(_mm_srl_epi64);
+#endif
 	Ret_M128i_Tint(__m128i, _mm_srli_epi16);
 	Ret_M128i_Tint(__m128i, _mm_srli_epi32);
+#if 0
 	Ret_M128i_Tint(__m128i, _mm_srli_epi64);
 //	Ret_M128i_Tint(__m128i, _mm_srli_epi128);
 
