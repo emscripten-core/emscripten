@@ -1251,7 +1251,21 @@ static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cvtps_epi32(__m128 __a)
 {
 #ifdef __EMSCRIPTEN__
-  return emscripten_int32x4_fromFloat32x4(__a);
+  // Emscripten: RangeError: SIMD conversion loses precision
+  //return emscripten_int32x4_fromFloat32x4(__a);
+  union {
+    int x[4];
+    __m128i m;
+  } u;
+  for(int i = 0; i < 4; ++i)
+  {
+    int x = lrint(__a[i]);
+    if (x != 0 || fabs(__a[i]) < 2.0)
+      u.x[i] = x;
+    else
+      u.x[i] = (int)0x80000000;
+  }
+  return u.m;
 #else
   return (__m128i)__builtin_ia32_cvtps2dq(__a);
 #endif

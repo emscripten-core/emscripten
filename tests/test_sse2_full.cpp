@@ -128,9 +128,7 @@ int main()
 	Ret_M128d(__m128i, _mm_cvtpd_epi32);
 	Ret_M128d(__m128, _mm_cvtpd_ps);
 #endif
-#if 0 // Emscripten: RangeError: SIMD conversion loses precision
 	Ret_M128(__m128i, _mm_cvtps_epi32);
-#endif
 	Ret_M128(__m128d,  _mm_cvtps_pd);
 	Ret_M128(double, _mm_cvtsd_f64);
 	Ret_M128d(int, _mm_cvtsd_si32);
