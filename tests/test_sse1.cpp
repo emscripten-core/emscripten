@@ -328,11 +328,11 @@ int main()
 	unsigned int csr = _mm_getcsr();
 	_mm_setcsr(csr);
 	unsigned char dummyData[4096];
+#endif
 	_mm_prefetch(dummyData, _MM_HINT_T0);
 	_mm_prefetch(dummyData, _MM_HINT_T1);
 	_mm_prefetch(dummyData, _MM_HINT_T2);
 	_mm_prefetch(dummyData, _MM_HINT_NTA);
-#endif
 	_mm_sfence();
 
 	// SSE1 Misc instructions:

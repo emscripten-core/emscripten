@@ -120,6 +120,13 @@ _mm_store_ps(float *__p, __m128 __a)
 // No NTA cache hint available.
 #define _mm_stream_ps _mm_store_ps
 
+#define _MM_HINT_T0 3
+#define _MM_HINT_T1 2
+#define _MM_HINT_T2 1
+#define _MM_HINT_NTA 0
+// No prefetch available, dummy it out.
+#define _mm_prefetch(a, sel) ((void)0)
+
 static __inline__ void __attribute__((__always_inline__))
 _mm_sfence(void)
 {
