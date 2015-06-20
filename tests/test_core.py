@@ -5633,13 +5633,13 @@ return malloc(size);
     self.do_run_from_file(src, output)
 
   def test_simd7(self):
-    # test_simd7 is to test negative zero handling.
+    # test_simd7 is to test negative zero handling: https://github.com/kripken/emscripten/issues/2791
     if self.is_emterpreter(): return self.skip('todo')
-    if SPIDERMONKEY_ENGINE in JS_ENGINES: return self.skip('TODO: SIMD does not currently validate as asm.js in SpiderMonkey, not running in SpiderMonkey.')
 
     test_path = path_from_root('tests', 'core', 'test_simd7')
     src, output = (test_path + s for s in ('.in', '.out'))
 
+    self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
   def test_simd8(self):
