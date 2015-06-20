@@ -236,17 +236,15 @@ int main()
 #if 0
 	Ret_M128i_Tint(__m128i, _mm_srli_epi64);
 //	Ret_M128i_Tint(__m128i, _mm_srli_epi128);
+#endif
 
 	// SSE2 Special Math instructions:
 	M128i_M128i_M128i(_mm_max_epi16);
 	M128i_M128i_M128i(_mm_max_epu8);
-#endif
 	Ret_M128d_M128d(__m128d, _mm_max_pd);
 	Ret_M128d_M128d(__m128d, _mm_max_sd);
-#if 0
 	M128i_M128i_M128i(_mm_min_epi16);
 	M128i_M128i_M128i(_mm_min_epu8);
-#endif
 	Ret_M128d_M128d(__m128d, _mm_min_pd);
 	Ret_M128d_M128d(__m128d, _mm_min_sd);
 
