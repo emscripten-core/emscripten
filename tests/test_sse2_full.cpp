@@ -202,34 +202,24 @@ int main()
 */
 
 	// SSE2 Shift instructions:
-//	Ret_M128i_Tint(__m128i, _mm_bslli_si128);
-//	Ret_M128i_Tint(__m128i, _mm_bsrli_si128);
 	M128i_M128i_M128i(_mm_sll_epi16);
 	M128i_M128i_M128i(_mm_sll_epi32);
-#if 0
 	M128i_M128i_M128i(_mm_sll_epi64);
-#endif
 	Ret_M128i_Tint(__m128i, _mm_slli_epi16);
 	Ret_M128i_Tint(__m128i, _mm_slli_epi32);
-#if 0
 	Ret_M128i_Tint(__m128i, _mm_slli_epi64);
-	Ret_M128i_Tint(__m128i, _mm_slli_si128);
-#endif
+	Ret_M128i_Tint(__m128i, _mm_slli_si128); // _mm_bslli_si128 is an alias to this.
 	M128i_M128i_M128i(_mm_sra_epi16);
 	M128i_M128i_M128i(_mm_sra_epi32);
 	Ret_M128i_Tint(__m128i, _mm_srai_epi16);
 	Ret_M128i_Tint(__m128i, _mm_srai_epi32);
 	M128i_M128i_M128i(_mm_srl_epi16);
 	M128i_M128i_M128i(_mm_srl_epi32);
-#if 0
 	M128i_M128i_M128i(_mm_srl_epi64);
-#endif
 	Ret_M128i_Tint(__m128i, _mm_srli_epi16);
 	Ret_M128i_Tint(__m128i, _mm_srli_epi32);
-#if 0
 	Ret_M128i_Tint(__m128i, _mm_srli_epi64);
-//	Ret_M128i_Tint(__m128i, _mm_srli_epi128);
-#endif
+	Ret_M128i_Tint(__m128i, _mm_srli_si128); // _mm_bsrli_si128 is an alias to this.
 
 	// SSE2 Special Math instructions:
 	M128i_M128i_M128i(_mm_max_epi16);

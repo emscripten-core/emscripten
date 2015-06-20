@@ -1403,7 +1403,6 @@ _mm_xor_si128(__m128i __a, __m128i __b)
                                    ((imm)&0xF0) ? 0 : 29 - ((imm)&0xF), \
                                    ((imm)&0xF0) ? 0 : 30 - ((imm)&0xF), \
                                    ((imm)&0xF0) ? 0 : 31 - ((imm)&0xF)); })
-
 #define _mm_bslli_si128(a, imm) \
   _mm_slli_si128((a), (imm))
 
@@ -1447,19 +1446,51 @@ _mm_sll_epi32(__m128i __a, __m128i __count)
 #endif
 }
 
-#ifndef __EMSCRIPTEN__ // XXX TODO Add support.
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_slli_epi64(__m128i __a, int __count)
 {
+#ifdef __EMSCRIPTEN__
+  if ((unsigned int)__count <= 63)
+  {
+    union {
+      unsigned long long x[2];
+      __m128i m;
+    } __m;
+    __m.m = __a;
+    unsigned char __c = (unsigned char)__count;
+    __m.x[0] = __m.x[0] << __c;
+    __m.x[1] = __m.x[1] << __c;
+    return __m.m;
+  }
+  else
+    return (__m128i) { 0, 0, 0, 0 };
+#else
   return __builtin_ia32_psllqi128(__a, __count);
+#endif
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_sll_epi64(__m128i __a, __m128i __count)
 {
+#ifdef __EMSCRIPTEN__
+  union {
+    unsigned long long x[2];
+    __m128i m;
+  } __m, __c;
+  __c.m = __count;
+  if (__c.x[0] <= 63)
+  {
+    __m.m = __a;
+    __m.x[0] = __m.x[0] << __c.x[0];
+    __m.x[1] = __m.x[1] << __c.x[0];
+    return __m.m;
+  }
+  else
+    return (__m128i) { 0, 0, 0, 0 };
+#else
   return __builtin_ia32_psllq128(__a, __count);
-}
 #endif
+}
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_srai_epi16(__m128i __a, int __count)
@@ -1564,19 +1595,51 @@ _mm_srl_epi32(__m128i __a, __m128i __count)
 #endif
 }
 
-#ifndef __EMSCRIPTEN__ // XXX TODO Add support.
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_srli_epi64(__m128i __a, int __count)
 {
+#ifdef __EMSCRIPTEN__
+  if ((unsigned int)__count <= 63)
+  {
+    union {
+      unsigned long long x[2];
+      __m128i m;
+    } __m;
+    __m.m = __a;
+    unsigned char __c = (unsigned char)__count;
+    __m.x[0] = __m.x[0] >> __c;
+    __m.x[1] = __m.x[1] >> __c;
+    return __m.m;
+  }
+  else
+    return (__m128i) { 0, 0, 0, 0 };
+#else
   return __builtin_ia32_psrlqi128(__a, __count);
+#endif
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_srl_epi64(__m128i __a, __m128i __count)
 {
+#ifdef __EMSCRIPTEN__
+  union {
+    unsigned long long x[2];
+    __m128i m;
+  } __m, __c;
+  __c.m = __count;
+  if (__c.x[0] <= 63)
+  {
+    __m.m = __a;
+    __m.x[0] = __m.x[0] >> __c.x[0];
+    __m.x[1] = __m.x[1] >> __c.x[0];
+    return __m.m;
+  }
+  else
+    return (__m128i) { 0, 0, 0, 0 };
+#else
   return __builtin_ia32_psrlq128(__a, __count);
-}
 #endif
+}
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_cmpeq_epi8(__m128i __a, __m128i __b)
