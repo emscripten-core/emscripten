@@ -452,13 +452,6 @@ function _emscripten_asm_const_%d(%s) {
     maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'clz32']]
     simdfloattypes = []
     simdinttypes = []
-
-    if settings['SSE1'] or settings['SIMD']:
-      simdfloattypes += ['Float32x4']
-    if settings['SSE2'] or settings['SIMD']:
-      simdfloattypes += ['Float64x2']
-      simdinttypes = ['Int8x16', 'Int16x8', 'Int32x4']
-    simdtypes = simdfloattypes + simdinttypes
     simdfuncs = ['check', 'add', 'sub', 'neg', 'mul',
                  'equal', 'lessThan', 'greaterThan',
                  'notEqual', 'lessThanOrEqual', 'greaterThanOrEqual',
@@ -466,14 +459,23 @@ function _emscripten_asm_const_%d(%s) {
                  'splat', 'swizzle', 'shuffle',
                  'load', 'store', 'load1', 'store1', 'load2', 'store2', 'load3', 'store3',
                  'extractLane', 'replaceLane',
-                 'fromFloat64x2Bits', 'fromFloat64x2', 'fromInt32x4',
-                 'fromFloat32x4', 'fromFloat32x4Bits', 'fromInt32x4Bits', 'fromInt16x8Bits',
-                 'fromInt8x16Bits', 'fromInt16x8Bits']
+                 'fromFloat32x4', 'fromFloat32x4Bits',
+                 'fromInt32x4', 'fromInt32x4Bits']
+    if settings['SSE1'] or settings['SIMD']:
+      simdfloattypes += ['Float32x4']
+      simdinttypes += ['Int32x4']
+    if settings['SSE2']:
+      simdfloattypes += ['Float64x2']
+      simdinttypes += ['Int8x16', 'Int16x8']
+      simdfuncs += ['fromFloat64x2', 'fromFloat64x2Bits', 'fromInt8x16Bits', 'fromInt16x8Bits']
+
     simdfloatfuncs = simdfuncs + ['div', 'min', 'max', 'minNum', 'maxNum', 'sqrt',
                                   'abs', 'reciprocalApproximation', 'reciprocalSqrtApproximation'];
     simdintfuncs = simdfuncs + ['shiftRightArithmeticByScalar',
                                 'shiftRightLogicalByScalar',
                                 'shiftLeftByScalar'];
+    simdtypes = simdfloattypes + simdinttypes
+
     fundamentals = ['Math']
     if settings['USE_PTHREADS']:
       fundamentals += ['SharedInt8Array', 'SharedInt16Array', 'SharedInt32Array', 'SharedUint8Array', 'SharedUint16Array', 'SharedUint32Array', 'SharedFloat32Array', 'SharedFloat64Array', 'Atomics']
@@ -665,9 +667,22 @@ function ftCall_%s(%s) {%s
     asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global' + access_quote(g) + ';\n' for g in maths]);
     asm_global_funcs += ''.join(['  var ' + g + '=env' + access_quote(math_fix(g)) + ';\n' for g in basic_funcs + global_funcs])
     if metadata['simd']:
+      def string_contains_any(s, str_list):
+        for sub in str_list:
+          if sub in s:
+            return True
+        return False
+      nonexisting_simd_symbols = ['int32x4_fromInt32x4', 'float32x4_fromFloat32x4']
+
       asm_global_funcs += ''.join(['  var SIMD_' + ty + '=global' + access_quote('SIMD') + access_quote(ty) + ';\n' for ty in simdtypes])
-      asm_global_funcs += ''.join(['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdinttypes for g in simdintfuncs])
-      asm_global_funcs += ''.join(['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdfloattypes for g in simdfloatfuncs])
+
+      simd_int_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdinttypes for g in simdintfuncs]
+      simd_int_symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), simd_int_symbols)
+      asm_global_funcs += ''.join(simd_int_symbols)
+
+      simd_float_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdfloattypes for g in simdfloatfuncs]
+      simd_float_symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), simd_float_symbols)
+      asm_global_funcs += ''.join(simd_float_symbols)
     if settings['USE_PTHREADS']:
 #      asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor', 'fence']])
 # TODO: Once bug https://bugzilla.mozilla.org/show_bug.cgi?id=1141986 is implemented, replace the following line with the above one!

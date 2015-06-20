@@ -5550,20 +5550,20 @@ return malloc(size);
 
   # Tests the full SSE1 API.
   def test_sse1_full(self):
-    if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('test_sse1_full requires SpiderMonkey to run.')
-    if '-O1' in self.emcc_args or '-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args:
-      return self.skip('TODO: SIMD does not currently validate as asm.js in SpiderMonkey, run only in unoptimized mode.')
+    if self.is_emterpreter(): return self.skip('todo')
     Popen([CLANG, path_from_root('tests', 'test_sse1_full.cpp'), '-o', 'test_sse1_full'] + get_clang_native_args(), stdout=PIPE, stderr=PIPE).communicate()
     native_result, err = Popen('./test_sse1_full', stdout=PIPE, stderr=PIPE).communicate()
 
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
+    Settings.SSE1=1
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
-      self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests')]
+      self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests'), '-msse']
       self.do_run(open(path_from_root('tests', 'test_sse1_full.cpp'), 'r').read(), native_result)
 
   # Tests the full SSE2 API.
   def test_sse2_full(self):
+    if self.is_emterpreter(): return self.skip('todo')
     if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('test_sse2_full requires SpiderMonkey to run.')
     if '-O1' in self.emcc_args or '-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args:
       return self.skip('TODO: SIMD does not currently validate as asm.js in SpiderMonkey, run only in unoptimized mode.')
@@ -5571,9 +5571,10 @@ return malloc(size);
     native_result, err = Popen('./test_sse2_full', stdout=PIPE, stderr=PIPE).communicate()
 
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
+    Settings.SSE2=1
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
-      self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests')]
+      self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests'), '-msse2']
       self.do_run(open(path_from_root('tests', 'test_sse2_full.cpp'), 'r').read(), native_result)
 
   def test_simd(self):
