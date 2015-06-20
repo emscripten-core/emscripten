@@ -1534,13 +1534,15 @@ _mm_srli_epi16(__m128i __a, int __count)
 #endif
 }
 
-#ifndef __EMSCRIPTEN__ // XXX TODO Add support.
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_srl_epi16(__m128i __a, __m128i __count)
 {
+#ifdef __EMSCRIPTEN__
+  return emscripten_int16x8_shiftRightLogicalByScalar(__a, __count[1] == 0 ? __count[0] : 16);
+#else
   return (__m128i)__builtin_ia32_psrlw128((__v8hi)__a, (__v8hi)__count);
-}
 #endif
+}
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_srli_epi32(__m128i __a, int __count)
@@ -1552,13 +1554,17 @@ _mm_srli_epi32(__m128i __a, int __count)
 #endif
 }
 
-#ifndef __EMSCRIPTEN__ // XXX TODO Add support.
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_srl_epi32(__m128i __a, __m128i __count)
 {
+#ifdef __EMSCRIPTEN__
+  return emscripten_int16x8_shiftRightLogicalByScalar(__a, __count[1] == 0 ? __count[0] : 16);
+#else
   return (__m128i)__builtin_ia32_psrld128((__v4si)__a, (__v4si)__count);
+#endif
 }
 
+#ifndef __EMSCRIPTEN__ // XXX TODO Add support.
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_srli_epi64(__m128i __a, int __count)
 {

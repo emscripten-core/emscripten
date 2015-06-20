@@ -219,9 +219,9 @@ int main()
 	M128i_M128i_M128i(_mm_sra_epi32);
 	Ret_M128i_Tint(__m128i, _mm_srai_epi16);
 	Ret_M128i_Tint(__m128i, _mm_srai_epi32);
-#if 0
 	M128i_M128i_M128i(_mm_srl_epi16);
 	M128i_M128i_M128i(_mm_srl_epi32);
+#if 0
 	M128i_M128i_M128i(_mm_srl_epi64);
 #endif
 	Ret_M128i_Tint(__m128i, _mm_srli_epi16);
