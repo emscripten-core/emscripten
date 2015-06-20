@@ -332,8 +332,8 @@ int main()
 	_mm_prefetch(dummyData, _MM_HINT_T1);
 	_mm_prefetch(dummyData, _MM_HINT_T2);
 	_mm_prefetch(dummyData, _MM_HINT_NTA);
-	_mm_sfence();
 #endif
+	_mm_sfence();
 
 	// SSE1 Misc instructions:
 #ifdef TEST_M64

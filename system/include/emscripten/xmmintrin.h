@@ -120,6 +120,12 @@ _mm_store_ps(float *__p, __m128 __a)
 // No NTA cache hint available.
 #define _mm_stream_ps _mm_store_ps
 
+static __inline__ void __attribute__((__always_inline__))
+_mm_sfence(void)
+{
+  __sync_synchronize(); // Emscripten/SharedArrayBuffer has only a full barrier instruction, which gives a stronger guarantee.
+}
+
 #define _MM_SHUFFLE(w, z, y, x) (((w) << 6) | ((z) << 4) | ((y) << 2) | (x))
 
 // This is defined as a macro because __builtin_shufflevector requires its
