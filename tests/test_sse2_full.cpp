@@ -116,23 +116,18 @@ int main()
 	Ret_M128(__m128d,  _mm_cvtps_pd);
 	Ret_M128(double, _mm_cvtsd_f64);
 	Ret_M128d(int, _mm_cvtsd_si32);
-	Ret_M128d(int64_t, _mm_cvtsd_si64);
-//	Ret_M128d(int64_t, _mm_cvtsd_si64x);
+	Ret_M128d(int64_t, _mm_cvtsd_si64); // _mm_cvtsd_si64x is an alias to this.
 	Ret_M128i(int, _mm_cvtsi128_si32);
-	Ret_M128i(int64_t, _mm_cvtsi128_si64);
-//	Ret_M128i(int64_t, _mm_cvtsi128_si64x);
+	Ret_M128i(int64_t, _mm_cvtsi128_si64); // _mm_cvtsi128_si64x is an alias to this.
 	Ret_M128d_int(__m128d, _mm_cvtsi32_sd);
 	Ret_int(__m128i, _mm_cvtsi32_si128);
-	Ret_M128d_int64(__m128d, _mm_cvtsi64_sd);
-	Ret_int64(__m128i, _mm_cvtsi64_si128);
-//	Ret_int64(__m128d, _mm_cvtsi64x_sd);
-//	Ret_int64(__m128i, _mm_cvtsi64x_si128);
+	Ret_M128d_int64(__m128d, _mm_cvtsi64_sd); // _mm_cvtsi64x_sd is an alias to this.
+	Ret_int64(__m128i, _mm_cvtsi64_si128); // _mm_cvtsi64x_si128 is an alias to this.
 	Ret_M128d_M128d(__m128d, _mm_cvtss_sd);
 	Ret_M128d(__m128i, _mm_cvttpd_epi32);
 	Ret_M128(__m128i, _mm_cvttps_epi32);
 	Ret_M128d(int, _mm_cvttsd_si32);
-	Ret_M128d(int64_t, _mm_cvttsd_si64);
-//	Ret_M128d(int64_t, _mm_cvttsd_si64x);
+	Ret_M128d(int64_t, _mm_cvttsd_si64); // _mm_cvttsd_si64x is an alias to this.
 
 	// SSE2 Elementary Math Functions instructions:
 	Ret_M128d(__m128d, _mm_sqrt_pd);
@@ -249,10 +244,9 @@ int main()
 	// SSE2 Store instructions:
 	void_M128i_M128i_OutIntPtr(_mm_maskmoveu_si128, char*, 16, 1);
 	void_OutDoublePtr_M128d(_mm_store_pd, double*, 16, 16);
-//	void_OutDoublePtr_M128d(_mm_store_pd1, double*, 16, 16);
 	void_OutDoublePtr_M128d(_mm_store_sd, double*, 8, 1);
 	void_OutIntPtr_M128(_mm_store_si128, __m128i*, 16, 16);
-	void_OutDoublePtr_M128d(_mm_store1_pd, double*, 16, 16);
+	void_OutDoublePtr_M128d(_mm_store1_pd, double*, 16, 16); // _mm_store_pd1 is an alias to this.
 	void_OutDoublePtr_M128d(_mm_storeh_pd, double*, 8, 1);
 	void_OutIntPtr_M128(_mm_storel_epi64, __m128i*, 8, 1);
 	void_OutDoublePtr_M128d(_mm_storel_pd, double*, 8, 1);

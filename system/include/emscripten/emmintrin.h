@@ -35,6 +35,14 @@
 #define __MIN(x, y) ((x) <= (y) ? (x) : (y))
 #define __MAX(x, y) ((x) >= (y) ? (x) : (y))
 
+// Alias different (functionally) equivalent intrinsics.
+#define _mm_cvtsd_si64x _mm_cvtsd_si64
+#define _mm_cvtsi128_si64x _mm_cvtsi128_si64
+#define _mm_cvtsi64x_sd _mm_cvtsi64_sd
+#define _mm_cvtsi64x_si128 _mm_cvtsi64_si128
+#define _mm_cvttsd_si64x _mm_cvttsd_si64
+#define _mm_store_pd1 _mm_store1_pd
+
 #else
 
 #ifndef __SSE2__
