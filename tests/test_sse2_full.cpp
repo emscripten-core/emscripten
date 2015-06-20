@@ -266,9 +266,7 @@ int main()
 
 	// SSE2 Swizzle instructions:
 	Ret_M128i_Tint(int, _mm_extract_epi16);
-#if 0
 	Ret_M128i_int_Tint(__m128i, _mm_insert_epi16);
-#endif
 	Ret_M128i_Tint(__m128i, _mm_shuffle_epi32);
 	Ret_M128d_M128d_Tint(__m128d, _mm_shuffle_pd);
 	Ret_M128i_Tint(__m128i, _mm_shufflehi_epi16);
