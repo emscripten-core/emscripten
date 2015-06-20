@@ -457,17 +457,24 @@ function _emscripten_asm_const_%d(%s) {
                  'notEqual', 'lessThanOrEqual', 'greaterThanOrEqual',
                  'select', 'and', 'or', 'xor', 'not',
                  'splat', 'swizzle', 'shuffle',
-                 'load', 'store', 'load1', 'store1', 'load2', 'store2', 'load3', 'store3',
+                 'withX', 'withY', 'withZ', 'withW',
                  'extractLane', 'replaceLane',
-                 'fromFloat32x4', 'fromFloat32x4Bits',
-                 'fromInt32x4', 'fromInt32x4Bits']
-    if settings['SSE1'] or settings['SIMD']:
-      simdfloattypes += ['Float32x4']
+                 'load', 'store', 'load1', 'store1', 'load2', 'store2', 'load3', 'store3']
+    if metadata['simd_int8x16']:
+      simdinttypes += ['Int8x16']
+      simdfuncs += ['fromInt8x16Bits']
+    if metadata['simd_int16x8']:
+      simdinttypes += ['Int16x8']
+      simdfuncs += ['fromInt16x8Bits']
+    if metadata['simd_int32x4']:
       simdinttypes += ['Int32x4']
-    if settings['SSE2']:
+      simdfuncs += ['fromInt32x4', 'fromInt32x4Bits']
+    if metadata['simd_float32x4']:
+      simdfloattypes += ['Float32x4']
+      simdfuncs += ['fromFloat32x4', 'fromFloat32x4Bits']
+    if metadata['simd_float64x2']:
       simdfloattypes += ['Float64x2']
-      simdinttypes += ['Int8x16', 'Int16x8']
-      simdfuncs += ['fromFloat64x2', 'fromFloat64x2Bits', 'fromInt8x16Bits', 'fromInt16x8Bits']
+      simdfuncs += ['fromFloat64x2', 'fromFloat64x2Bits']
 
     simdfloatfuncs = simdfuncs + ['div', 'min', 'max', 'minNum', 'maxNum', 'sqrt',
                                   'abs', 'reciprocalApproximation', 'reciprocalSqrtApproximation'];
