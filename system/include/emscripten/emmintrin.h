@@ -2042,25 +2042,80 @@ _mm_mfence(void)
 #endif
 }
 
-#ifndef __EMSCRIPTEN__ // XXX TODO Add support
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_packs_epi16(__m128i __a, __m128i __b)
 {
+#ifdef __EMSCRIPTEN__
+  union {
+    signed short x[8];
+    __m128i m;
+  } src, src2;
+  union {
+    signed char x[16];
+    __m128i m;
+  } dst;
+  src.m = __a;
+  src2.m = __b;
+  for(int i = 0; i < 8; ++i)
+  {
+    dst.x[i] = __SATURATE(src.x[i], -128, 127);
+    dst.x[8+i] = __SATURATE(src2.x[i], -128, 127);
+  }
+  return dst.m;
+#else
   return (__m128i)__builtin_ia32_packsswb128((__v8hi)__a, (__v8hi)__b);
+#endif
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_packs_epi32(__m128i __a, __m128i __b)
 {
+#ifdef __EMSCRIPTEN__
+  union {
+    signed int x[4];
+    __m128i m;
+  } src, src2;
+  union {
+    signed short x[8];
+    __m128i m;
+  } dst;
+  src.m = __a;
+  src2.m = __b;
+  for(int i = 0; i < 4; ++i)
+  {
+    dst.x[i] = __SATURATE(src.x[i], -32768, 32767);
+    dst.x[4+i] = __SATURATE(src2.x[i], -32768, 32767);
+  }
+  return dst.m;
+#else
   return (__m128i)__builtin_ia32_packssdw128((__v4si)__a, (__v4si)__b);
+#endif
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_packus_epi16(__m128i __a, __m128i __b)
 {
+#ifdef __EMSCRIPTEN__
+  union {
+    signed short x[8];
+    __m128i m;
+  } src, src2;
+  union {
+    unsigned char x[16];
+    __m128i m;
+  } dst;
+  src.m = __a;
+  src2.m = __b;
+  for(int i = 0; i < 8; ++i)
+  {
+    dst.x[i] = __SATURATE(src.x[i], 0, 255);
+    dst.x[8+i] = __SATURATE(src2.x[i], 0, 255);
+  }
+  return dst.m;
+#else
   return (__m128i)__builtin_ia32_packuswb128((__v8hi)__a, (__v8hi)__b);
-}
 #endif
+}
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_extract_epi16(__m128i __a, int __imm)

@@ -170,11 +170,9 @@ int main()
 	// SSE2 Miscellaneous instructions:
 	Ret_M128i(int, _mm_movemask_epi8);
 	Ret_M128d(int, _mm_movemask_pd);
-#if 0
 	M128i_M128i_M128i(_mm_packs_epi16);
 	M128i_M128i_M128i(_mm_packs_epi32);
 	M128i_M128i_M128i(_mm_packus_epi16);
-#endif
 
 	// SSE2 Move instructions:
 	Ret_M128i(__m128i, _mm_move_epi64);
