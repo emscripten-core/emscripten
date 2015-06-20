@@ -31,6 +31,8 @@
 
 #include <emscripten/emscripten.h>
 
+#define __SATURATE(x, Min, Max) ((x) >= Min ? ((x) <= Max ? (x) : Max) : Min)
+
 #else
 
 #ifndef __SSE2__
@@ -931,31 +933,77 @@ _mm_add_epi64(__m128i __a, __m128i __b)
 #endif
 }
 
-#ifndef __EMSCRIPTEN__ // XXX TODO Add support
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_adds_epi8(__m128i __a, __m128i __b)
 {
+#ifdef __EMSCRIPTEN__
+  union {
+    signed char x[16];
+    __m128i m;
+  } src, src2, dst;
+  src.m = __a;
+  src2.m = __b;
+  for(int i = 0; i < 16; ++i)
+    dst.x[i] = __SATURATE(src.x[i] + src2.x[i], -128, 127);
+  return dst.m;
+#else
   return (__m128i)__builtin_ia32_paddsb128((__v16qi)__a, (__v16qi)__b);
+#endif
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_adds_epi16(__m128i __a, __m128i __b)
 {
+#ifdef __EMSCRIPTEN__
+  union {
+    signed short x[8];
+    __m128i m;
+  } src, src2, dst;
+  src.m = __a;
+  src2.m = __b;
+  for(int i = 0; i < 8; ++i)
+    dst.x[i] = __SATURATE(src.x[i] + src2.x[i], -32768, 32767);
+  return dst.m;
+#else
   return (__m128i)__builtin_ia32_paddsw128((__v8hi)__a, (__v8hi)__b);
+#endif
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_adds_epu8(__m128i __a, __m128i __b)
 {
+#ifdef __EMSCRIPTEN__
+  union {
+    unsigned char x[16];
+    __m128i m;
+  } src, src2, dst;
+  src.m = __a;
+  src2.m = __b;
+  for(int i = 0; i < 16; ++i)
+    dst.x[i] = __SATURATE(src.x[i] + src2.x[i], 0, 255);
+  return dst.m;
+#else
   return (__m128i)__builtin_ia32_paddusb128((__v16qi)__a, (__v16qi)__b);
+#endif
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_adds_epu16(__m128i __a, __m128i __b)
 {
+#ifdef __EMSCRIPTEN__
+  union {
+    unsigned short x[8];
+    __m128i m;
+  } src, src2, dst;
+  src.m = __a;
+  src2.m = __b;
+  for(int i = 0; i < 8; ++i)
+    dst.x[i] = __SATURATE(src.x[i] + src2.x[i], 0, 65535);
+  return dst.m;
+#else
   return (__m128i)__builtin_ia32_paddusw128((__v8hi)__a, (__v8hi)__b);
-}
 #endif
+}
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_avg_epu8(__m128i __a, __m128i __b)
@@ -1184,31 +1232,77 @@ _mm_sub_epi64(__m128i __a, __m128i __b)
 #endif
 }
 
-#ifndef __EMSCRIPTEN__ // XXX TODO Add support
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_subs_epi8(__m128i __a, __m128i __b)
 {
+#ifdef __EMSCRIPTEN__
+  union {
+    signed char x[16];
+    __m128i m;
+  } src, src2, dst;
+  src.m = __a;
+  src2.m = __b;
+  for(int i = 0; i < 16; ++i)
+    dst.x[i] = __SATURATE(src.x[i] - src2.x[i], -128, 127);
+  return dst.m;
+#else
   return (__m128i)__builtin_ia32_psubsb128((__v16qi)__a, (__v16qi)__b);
+#endif
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_subs_epi16(__m128i __a, __m128i __b)
 {
+#ifdef __EMSCRIPTEN__
+  union {
+    signed short x[8];
+    __m128i m;
+  } src, src2, dst;
+  src.m = __a;
+  src2.m = __b;
+  for(int i = 0; i < 8; ++i)
+    dst.x[i] = __SATURATE(src.x[i] - src2.x[i], -32768, 32767);
+  return dst.m;
+#else
   return (__m128i)__builtin_ia32_psubsw128((__v8hi)__a, (__v8hi)__b);
+#endif
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_subs_epu8(__m128i __a, __m128i __b)
 {
+#ifdef __EMSCRIPTEN__
+  union {
+    unsigned char x[16];
+    __m128i m;
+  } src, src2, dst;
+  src.m = __a;
+  src2.m = __b;
+  for(int i = 0; i < 16; ++i)
+    dst.x[i] = __SATURATE(src.x[i] - src2.x[i], 0, 255);
+  return dst.m;
+#else
   return (__m128i)__builtin_ia32_psubusb128((__v16qi)__a, (__v16qi)__b);
+#endif
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_subs_epu16(__m128i __a, __m128i __b)
 {
+#ifdef __EMSCRIPTEN__
+  union {
+    unsigned short x[8];
+    __m128i m;
+  } src, src2, dst;
+  src.m = __a;
+  src2.m = __b;
+  for(int i = 0; i < 8; ++i)
+    dst.x[i] = __SATURATE(src.x[i] - src2.x[i], 0, 65535);
+  return dst.m;
+#else
   return (__m128i)__builtin_ia32_psubusw128((__v8hi)__a, (__v8hi)__b);
-}
 #endif
+}
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_and_si128(__m128i __a, __m128i __b)

@@ -26,12 +26,10 @@ int main()
 	M128i_M128i_M128i(_mm_add_epi8);
 	Ret_M128d_M128d(__m128d, _mm_add_pd);
 	Ret_M128d_M128d(__m128d, _mm_add_sd);
-#if 0
 	M128i_M128i_M128i(_mm_adds_epi16);
 	M128i_M128i_M128i(_mm_adds_epi8);
 	M128i_M128i_M128i(_mm_adds_epu16);
 	M128i_M128i_M128i(_mm_adds_epu8);
-#endif
 	Ret_M128d_M128d(__m128d, _mm_div_pd);
 	Ret_M128d_M128d(__m128d, _mm_div_sd);
 	M128i_M128i_M128i(_mm_madd_epi16);
@@ -49,13 +47,11 @@ int main()
 	M128i_M128i_M128i(_mm_sub_epi8);
 	Ret_M128d_M128d(__m128d, _mm_sub_pd);
 	Ret_M128d_M128d(__m128d, _mm_sub_sd);
-
-#if 0
 	M128i_M128i_M128i(_mm_subs_epi16);
 	M128i_M128i_M128i(_mm_subs_epi8);
 	M128i_M128i_M128i(_mm_subs_epu16);
 	M128i_M128i_M128i(_mm_subs_epu8);
-#endif
+
 	// SSE2 Cast functions:
 	Ret_M128d(__m128, _mm_castpd_ps);
 	Ret_M128d(__m128i, _mm_castpd_si128);
