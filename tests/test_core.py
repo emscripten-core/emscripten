@@ -5675,6 +5675,21 @@ return malloc(size);
     self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
+  def test_simd11(self):
+    # test_simd11 is to test that _mm_movemask_ps works correctly when handling input floats with 0xFFFFFFFF NaN bit patterns.
+    if self.is_emterpreter(): return self.skip('todo')
+
+    if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('This test cannot be run in the SIMD.js polyfill due to NaN canonicalization bugs!')
+
+    if '-O1' in self.emcc_args or '-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args:
+      return self.skip('TODO: Compiler is too aggressive in optimizing and generates code that breaks due to NaN canonicalization! https://github.com/kripken/emscripten/issues/3403')
+
+    test_path = path_from_root('tests', 'core', 'test_simd11')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.emcc_args = self.emcc_args + ['-msse2']
+    self.do_run_from_file(src, output)
+
   def test_simd_dyncall(self):
     if self.is_emterpreter(): return self.skip('todo')
 
