@@ -5662,6 +5662,18 @@ return malloc(size);
     self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
+  def test_simd10(self):
+    # test_simd10 is to test that loading and storing arbitrary bit patterns works in SSE1.
+    if self.is_emterpreter(): return self.skip('todo')
+
+    if SPIDERMONKEY_ENGINE in JS_ENGINES: return self.skip('TODO: SpiderMonkey problem with NaN canonicalization! Need node.js to test.')
+
+    test_path = path_from_root('tests', 'core', 'test_simd10')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.emcc_args = self.emcc_args + ['-msse']
+    self.do_run_from_file(src, output)
+
   def test_simd_dyncall(self):
     if self.is_emterpreter(): return self.skip('todo')
 
