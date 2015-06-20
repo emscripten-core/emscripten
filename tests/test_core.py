@@ -5652,6 +5652,16 @@ return malloc(size);
 
     self.do_run_from_file(src, output)
 
+  def test_simd9(self):
+    # test_simd9 is to test a bug where _mm_set_ps(0.f) would generate an expression that did not validate as asm.js
+    if self.is_emterpreter(): return self.skip('todo')
+
+    test_path = path_from_root('tests', 'core', 'test_simd9')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.emcc_args = self.emcc_args + ['-msse']
+    self.do_run_from_file(src, output)
+
   def test_simd_dyncall(self):
     if self.is_emterpreter(): return self.skip('todo')
 
