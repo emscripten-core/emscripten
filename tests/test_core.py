@@ -5657,6 +5657,7 @@ return malloc(size);
 
     test_path = path_from_root('tests', 'core', 'test_simd_dyncall')
     src, output = (test_path + s for s in ('.cpp', '.txt'))
+    self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
   def test_gcc_unmangler(self):
