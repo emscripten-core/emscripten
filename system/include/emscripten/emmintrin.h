@@ -1417,13 +1417,15 @@ _mm_slli_epi16(__m128i __a, int __count)
 #endif
 }
 
-#ifndef __EMSCRIPTEN__ // XXX TODO Add support.
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_sll_epi16(__m128i __a, __m128i __count)
 {
+#ifdef __EMSCRIPTEN__
+    return emscripten_int16x8_shiftLeftByScalar(__a, __count[1] == 0 ? __count[0] : 16);
+#else
   return (__m128i)__builtin_ia32_psllw128((__v8hi)__a, (__v8hi)__count);
-}
 #endif
+}
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_slli_epi32(__m128i __a, int __count)
@@ -1435,13 +1437,17 @@ _mm_slli_epi32(__m128i __a, int __count)
 #endif
 }
 
-#ifndef __EMSCRIPTEN__ // XXX TODO Add support.
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_sll_epi32(__m128i __a, __m128i __count)
 {
+#ifdef __EMSCRIPTEN__
+    return emscripten_int32x4_shiftLeftByScalar(__a, __count[1] == 0 ? __count[0] : 32);
+#else
   return (__m128i)__builtin_ia32_pslld128((__v4si)__a, (__v4si)__count);
+#endif
 }
 
+#ifndef __EMSCRIPTEN__ // XXX TODO Add support.
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_slli_epi64(__m128i __a, int __count)
 {
@@ -1465,13 +1471,15 @@ _mm_srai_epi16(__m128i __a, int __count)
 #endif
 }
 
-#ifndef __EMSCRIPTEN__ // XXX TODO Add support.
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_sra_epi16(__m128i __a, __m128i __count)
 {
+#ifdef __EMSCRIPTEN__
+  return emscripten_int16x8_shiftRightArithmeticByScalar(__a, __count[1] == 0 ? __count[0] : 16);
+#else
   return (__m128i)__builtin_ia32_psraw128((__v8hi)__a, (__v8hi)__count);
-}
 #endif
+}
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_srai_epi32(__m128i __a, int __count)
@@ -1483,13 +1491,15 @@ _mm_srai_epi32(__m128i __a, int __count)
 #endif
 }
 
-#ifndef __EMSCRIPTEN__ // XXX TODO Add support.
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_sra_epi32(__m128i __a, __m128i __count)
 {
+#ifdef __EMSCRIPTEN__
+  return emscripten_int32x4_shiftRightArithmeticByScalar(__a, __count[1] == 0 ? __count[0] : 32);
+#else
   return (__m128i)__builtin_ia32_psrad128((__v4si)__a, (__v4si)__count);
-}
 #endif
+}
 
 #define _mm_srli_si128(a, imm) __extension__ ({                          \
   (__m128i)__builtin_shufflevector((__v16qi)(__m128i)(a),                \
