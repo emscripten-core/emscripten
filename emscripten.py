@@ -450,8 +450,14 @@ function _emscripten_asm_const_%d(%s) {
         asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(debug_tables[sig]) + ';'
 
     maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'clz32']]
-    simdfloattypes = ['Float32x4', 'Float64x2']
-    simdinttypes = ['Int8x16', 'Int16x8', 'Int32x4']
+    simdfloattypes = []
+    simdinttypes = []
+
+    if settings['SSE1'] or settings['SIMD']:
+      simdfloattypes += ['Float32x4']
+    if settings['SSE2'] or settings['SIMD']:
+      simdfloattypes += ['Float64x2']
+      simdinttypes = ['Int8x16', 'Int16x8', 'Int32x4']
     simdtypes = simdfloattypes + simdinttypes
     simdfuncs = ['check', 'add', 'sub', 'neg', 'mul',
                  'equal', 'lessThan', 'greaterThan',
@@ -479,7 +485,7 @@ function _emscripten_asm_const_%d(%s) {
     if settings['ALLOW_MEMORY_GROWTH']: fundamentals.append('byteLength')
     math_envs = []
 
-    provide_fround = settings['PRECISE_F32'] or settings['SIMD']
+    provide_fround = settings['PRECISE_F32'] or settings['SIMD'] or settings['SSE1']
 
     if provide_fround: maths += ['Math.fround']
 

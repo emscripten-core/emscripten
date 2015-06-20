@@ -6,6 +6,10 @@
 #include <math.h>
 #include <string.h>
 
+#ifndef __SSE__
+#error "SSE instruction set not enabled"
+#endif
+
 // Emscripten SIMD support doesn't support MMX/float32x2/__m64.
 // However, we support loading and storing 2-vectors, so
 // treat "__m64 *" as "void *" for that purpose.

@@ -43,12 +43,10 @@
 #define _mm_cvttsd_si64x _mm_cvttsd_si64
 #define _mm_store_pd1 _mm_store1_pd
 
-#else
+#endif
 
 #ifndef __SSE2__
 #error "SSE2 instruction set not enabled"
-#endif
-
 #endif
 
 #include <xmmintrin.h>
