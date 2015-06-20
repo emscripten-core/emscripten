@@ -5540,12 +5540,13 @@ return malloc(size);
       test()
 
   def test_sse1(self):
-    return self.skip('TODO: This test fails due to bugs #2840, #3044, #3045, #3046 and #3048 (also see #3043 and #3049)')
+    if self.is_emterpreter(): return self.skip('todo')
+    if 'SAFE_HEAP=1' in self.emcc_args: return self.skip('SSE with SAFE_HEAP=1 breaks due to NaN canonicalization!')
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
-      self.emcc_args = orig_args + mode
+      self.emcc_args = orig_args + mode + ['-msse']
       self.do_run(open(path_from_root('tests', 'test_sse1.cpp'), 'r').read(), 'Success!')
 
   # Tests the full SSE1 API.
