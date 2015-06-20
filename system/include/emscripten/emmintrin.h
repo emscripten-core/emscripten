@@ -955,19 +955,43 @@ _mm_adds_epu16(__m128i __a, __m128i __b)
 {
   return (__m128i)__builtin_ia32_paddusw128((__v8hi)__a, (__v8hi)__b);
 }
+#endif
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_avg_epu8(__m128i __a, __m128i __b)
 {
+#ifdef __EMSCRIPTEN__
+  union {
+    unsigned char x[16];
+    __m128i m;
+  } src, src2, dst;
+  src.m = __a;
+  src2.m = __b;
+  for(int i = 0; i < 16; ++i)
+    dst.x[i] = (src.x[i] + src2.x[i] + 1) >> 1;
+  return dst.m;
+#else
   return (__m128i)__builtin_ia32_pavgb128((__v16qi)__a, (__v16qi)__b);
+#endif
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_avg_epu16(__m128i __a, __m128i __b)
 {
+#ifdef __EMSCRIPTEN__
+  union {
+    unsigned short x[8];
+    __m128i m;
+  } src, src2, dst;
+  src.m = __a;
+  src2.m = __b;
+  for(int i = 0; i < 8; ++i)
+    dst.x[i] = (src.x[i] + src2.x[i] + 1) >> 1;
+  return dst.m;
+#else
   return (__m128i)__builtin_ia32_pavgw128((__v8hi)__a, (__v8hi)__b);
-}
 #endif
+}
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_madd_epi16(__m128i __a, __m128i __b)

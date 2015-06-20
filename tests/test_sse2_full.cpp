@@ -185,10 +185,8 @@ int main()
 	Ret_M128d_M128d(__m128d, _mm_move_sd);
 
 	// SSE2 Probability/Statistics instructions:
-#if 0
 	M128i_M128i_M128i(_mm_avg_epu16);
 	M128i_M128i_M128i(_mm_avg_epu8);
-#endif
 /*
 	// SSE2 Set functions:
 	_mm_set_epi16
