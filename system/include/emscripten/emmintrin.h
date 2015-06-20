@@ -1185,7 +1185,7 @@ _mm_mullo_epi16(__m128i __a, __m128i __b)
   return (__m128i)((__v8hi)__a * (__v8hi)__b);
 }
 
-#ifndef __EMSCRIPTEN__ // XXX TODO Add support
+#ifndef __EMSCRIPTEN__ // MMX support is not available in Emscripten/SIMD.js.
 static __inline__ __m64 __attribute__((__always_inline__, __nodebug__))
 _mm_mul_su32(__m64 __a, __m64 __b)
 {
@@ -2313,13 +2313,13 @@ _mm_unpacklo_epi64(__m128i __a, __m128i __b)
 #endif
 }
 
+#ifndef __EMSCRIPTEN__ // MMX support is not available in Emscripten/SIMD.js.
 static __inline__ __m64 __attribute__((__always_inline__, __nodebug__))
 _mm_movepi64_pi64(__m128i __a)
 {
   return (__m64)__a[0];
 }
 
-#ifndef __EMSCRIPTEN__ // MMX support is not available in Emscripten/SIMD.js.
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_movpi64_epi64(__m64 __a)
 {
