@@ -207,25 +207,11 @@ In some cases it makes sense to modify the build scripts so that they build the 
 Dynamic linking
 ---------------
 
-Emscripten's goal is to generate the fastest and smallest possible code, and for that reason it focuses on generating a single JavaScript file for an entire project. 
+Emscripten's goal is to generate the fastest and smallest possible code, and for that reason it focuses on generating a single JavaScript file for an entire project. For that reason, dynamic linking should be avoided when possible.
 
-Dynamic linking at runtime is not supported when using :ref:`Fastcomp <LLVM-Backend>` (it won't link in code from an arbitrary location when an app is loaded).
+By default, Emscripten ``.so`` files are the same as ``.bc`` or ``.o`` files, that is, they contain LLVM bitcode. Dynamic libraries that you specify in the final build stage (when generating JavaScript or HTML) are linked in as static libraries. *Emcc* ignores commands to dynamically link libraries when linking together bitcode (i.e., not in the final build stage). This is to ensure that the same dynamic library is not linked multiple times in intermediate build stages, which would result in duplicate symbol errors.
 
-.. note:: Dynamic linking would be an excellent :ref:`contribution <Contributing>` to Emscripten.
-
-Dynamic linking is supported when using the :ref:`original compiler <original-compiler-core>` but is **not** recommended.
-
-
-.. _building-projects-dynamic-linking-workaround:
-
-Pseudo-Dynamic linking
----------------------------
-
-.. note:: This section applies to the :ref:`current compiler <LLVM-Backend>` only. It is a workaround because *Fastcomp* does not support true dynamic linking.
-
-Dynamic libraries that you specify in the final build stage (when generating JavaScript or HTML) are linked in as static libraries. 
-
-*Emcc* ignores commands to dynamically link libraries when linking together bitcode. This is to ensure that the same dynamic library is not linked multiple times in intermediate build stages, which would result in duplicate symbol errors.
+There is `experimental support <https://github.com/kripken/emscripten/wiki/Linking>`_ for true dynamic libraries, loaded as runtime, either via dlopen or as a shared library. See that link for the details and limitations.
 
 
 Configure may run checks that appear to fail
