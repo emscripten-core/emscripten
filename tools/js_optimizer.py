@@ -399,12 +399,13 @@ EMSCRIPTEN_FUNCS();
       f.write(chunk)
       f.write(suffix_marker)
       if minify_globals:
-        if extra_info:
-          for key, value in extra_info.iteritems():
-            assert key not in minify_info or value == minify_info[key], [key, value, minify_info[key]]
-            minify_info[key] = value
-        f.write('\n')
-        f.write('// EXTRA_INFO:' + json.dumps(minify_info))
+        if know_generated:
+          if extra_info:
+            for key, value in extra_info.iteritems():
+              assert key not in minify_info or value == minify_info[key], [key, value, minify_info[key]]
+              minify_info[key] = value
+          f.write('\n')
+          f.write('// EXTRA_INFO:' + json.dumps(minify_info))
       elif extra_info:
         f.write('\n')
         f.write('// EXTRA_INFO:' + json.dumps(extra_info))
