@@ -1,5 +1,7 @@
 '''
 Receives an emscripten output, and integrates the polyfill
+
+XXX THIS IS A PROTOTYPE XXX The wasm format is changing, and also this tool has not yet been fully tested
 '''
 
 import os, sys, shutil
