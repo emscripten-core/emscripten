@@ -2,11 +2,11 @@
 
 default: tools/pack-asmjs tools/unpack-asmjs jslib/load-wasm-worker.js
 
-tools/pack-asmjs: src/pack-asmjs.cpp src/unpack.cpp src/unpack.h src/shared.h src/cashew/parser.h src/cashew/parser.cpp src/cashew/istring.h
+tools/pack-asmjs: src/pack-asmjs.cpp src/unpack.cpp src/unpack.h src/shared.h ../../tools/optimizer/parser.h ../../tools/optimizer/parser.cpp ../../tools/optimizer/istring.h
 	mkdir -p tools
 	c++ -O3 -g -std=c++11 -DCHECKED_OUTPUT_SIZE -Wall -pedantic \
-	    src/pack-asmjs.cpp src/unpack.cpp src/cashew/parser.cpp \
-	    -o tools/pack-asmjs
+	    src/pack-asmjs.cpp src/unpack.cpp ../../tools/optimizer/parser.cpp \
+	    -o tools/pack-asmjs -I../../tools/optimizer/
 
 tools/unpack-asmjs: src/unpack-asmjs.cpp src/unpack.cpp src/unpack.h src/shared.h
 	mkdir -p tools
@@ -15,7 +15,7 @@ tools/unpack-asmjs: src/unpack-asmjs.cpp src/unpack.cpp src/unpack.h src/shared.
 	    -o tools/unpack-asmjs
 
 jslib/load-wasm-worker.js: src/unpack.cpp src/unpack.h src/shared.h src/load-wasm-worker.js
-	emcc -DNDEBUG -O3 -std=c++11 -Wall -pedantic \
+	$(EMSCRIPTEN)/emcc -DNDEBUG -O3 -std=c++11 -Wall -pedantic \
 	     --memory-init-file 0 --llvm-lto 1 -s TOTAL_MEMORY=67108864 \
 	     src/unpack.cpp \
 	     -o jslib/load-wasm-worker.js
