@@ -15,15 +15,17 @@ polyfill_dir = os.path.abspath(os.path.dirname(__file__))
 def path_in_polyfill(*pathelems):
   return os.path.join(polyfill_dir, *pathelems)
 
-infile = sys.argv[1]
-outfile = sys.argv[2]
-wasmfile = sys.argv[3]
+jsfile = sys.argv[1]
+wasmfile = sys.argv[2]
 
-tempfile = infile + '.temp.js'
-tempfile2 = infile + '.temp2.js'
+tempfile = jsfile + '.temp.js'
+tempfile2 = jsfile + '.temp2.js'
+
+print 'save the before js'
+shutil.copyfile(jsfile, 'before.js')
 
 print 'process input'
-Popen([PYTHON, path_from_root('tools', 'distill_asm.py'), infile, tempfile]).communicate()
+Popen([PYTHON, path_from_root('tools', 'distill_asm.py'), jsfile, tempfile]).communicate()
 module = open(tempfile).read()
 start = module.index('function')
 end = module.rindex(')')
@@ -34,7 +36,7 @@ print 'run polyfill packer'
 Popen([path_in_polyfill('tools', 'pack-asmjs'), tempfile2, wasmfile]).communicate()
 
 print 'create patched out js'
-js = open(infile).read()
+js = open(jsfile).read()
 patched = js.replace(asm, 'unwasmed') # we assume the module is right there
 assert patched != js
 patched = '''
@@ -48,6 +50,6 @@ function runEmscriptenModule(unwasmed) {
 
 loadWebAssembly("''' + wasmfile + '''", 'load-wasm-worker.js').then(runEmscriptenModule);
 '''
-open(outfile, 'w').write(patched)
+open(jsfile, 'w').write(patched)
 shutil.copyfile(path_in_polyfill('jslib', 'load-wasm-worker.js'), 'load-wasm-worker.js')
 

@@ -2698,8 +2698,8 @@ window.close = function() {
         return 0;
       }
     '''))
-    Popen([PYTHON, EMCC, 'main.cpp', '-O2', '-o', 'before.html']).communicate()
-    Popen([PYTHON, path_from_root('third_party', 'wasm-polyfill', 'process_module.py'), 'before.js', 'after.js', 'after.wasm']).communicate()
+    Popen([PYTHON, EMCC, 'main.cpp', '-O2', '-o', 'test.html']).communicate()
+    Popen([PYTHON, path_from_root('third_party', 'wasm-polyfill', 'process_module.py'), 'test.js', 'test.wasm']).communicate()
 
 
 
