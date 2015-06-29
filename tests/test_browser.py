@@ -2679,9 +2679,31 @@ window.close = function() {
 
   def test_wasm_polyfill(self):
     if WINDOWS: return self.skip('TODO')
+    # build the polyfill tools
     dir = os.getcwd()
     os.chdir(path_from_root('third_party', 'wasm-polyfill'))
+    #proc = Popen([PYTHON, path_from_root('emmake'), 'make', 'clean'])
     proc = Popen([PYTHON, path_from_root('emmake'), 'make'])
     proc.communicate()
+    os.chdir(dir)
     assert proc.returncode == 0
+    # build a program
+    open('main.cpp', 'w').write(self.with_report_result(r'''
+      #include <stdio.h>
+      int main() {
+        int result = 1;
+        REPORT_RESULT();
+        return 0;
+      }
+    '''))
+    Popen([PYTHON, EMCC, 'main.cpp', '-O2', '-o', 'page.html']).communicate()
+    Popen([PYTHON, path_from_root('third_party', 'wasm-polyfill', 'process_module.py'), 'page.js', 'page.wasm']).communicate()
+
+
+
+
+
+
+
+
 
