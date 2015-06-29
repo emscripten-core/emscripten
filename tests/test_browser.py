@@ -2676,3 +2676,12 @@ window.close = function() {
     self.btest(d, expected='0', args=args + ["--closure", "0"])
     self.btest(d, expected='0', args=args + ["--closure", "0", "-g"])
     self.btest(d, expected='0', args=args + ["--closure", "1"])
+
+  def test_wasm_polyfill(self):
+    if WINDOWS: return self.skip('TODO')
+    dir = os.getcwd()
+    os.chdir(path_from_root('third_party', 'wasm-polyfill'))
+    proc = Popen([PYTHON, path_from_root('emmake'), 'make'])
+    proc.communicate()
+    assert proc.returncode == 0
+
