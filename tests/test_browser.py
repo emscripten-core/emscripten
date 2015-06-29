@@ -2678,6 +2678,7 @@ window.close = function() {
     self.btest(d, expected='0', args=args + ["--closure", "1"])
 
   def test_wasm_polyfill(self):
+    self.clear()
     if WINDOWS: return self.skip('TODO')
     # build the polyfill tools
     dir = os.getcwd()
@@ -2689,15 +2690,16 @@ window.close = function() {
     assert proc.returncode == 0
     # build a program
     open('main.cpp', 'w').write(self.with_report_result(r'''
-      #include <stdio.h>
+      #include <iostream>
       int main() {
+        std::cout << "Hello!\n";
         int result = 1;
         REPORT_RESULT();
         return 0;
       }
     '''))
-    Popen([PYTHON, EMCC, 'main.cpp', '-O2', '-o', 'page.html']).communicate()
-    Popen([PYTHON, path_from_root('third_party', 'wasm-polyfill', 'process_module.py'), 'page.js', 'page.wasm']).communicate()
+    Popen([PYTHON, EMCC, 'main.cpp', '-O2', '-o', 'before.html']).communicate()
+    Popen([PYTHON, path_from_root('third_party', 'wasm-polyfill', 'process_module.py'), 'before.js', 'after.js', 'after.wasm']).communicate()
 
 
 
