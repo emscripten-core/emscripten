@@ -2699,7 +2699,7 @@ window.close = function() {
       }
     '''))
     Popen([PYTHON, EMCC, 'main.cpp', '-O2', '-o', 'test.html']).communicate()
-    Popen([PYTHON, path_from_root('third_party', 'wasm-polyfill', 'process_module.py'), 'test.js', 'test.wasm']).communicate()
+    Popen([PYTHON, path_from_root('third_party', 'wasm-polyfill', 'wasmator.py'), 'test.js', 'test.wasm']).communicate()
 
 
 
