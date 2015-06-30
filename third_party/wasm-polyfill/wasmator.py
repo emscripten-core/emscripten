@@ -42,7 +42,9 @@ js = open(jsfile).read()
 patched = js.replace(asm, 'unwasmed') # we assume the module is right there
 assert patched != js
 patched = '''
-function runEmscriptenModule(unwasmed) {
+function runEmscriptenModule(unwasmed_) {
+  var unwasmed = unwasmed_;
+  arguments = undefined; // emscripten shell code looks at arguments, which it uses as commandline args
 
 ''' + patched + '''
 
