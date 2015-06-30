@@ -55,7 +55,7 @@ To enable this mode, specify the :ref:`emcc <emcc-s-option-value>` option ``-s L
 OpenGL extensions
 =================
 
-When porting code, it should be noted that desktop OpenGL, OpenGL ES and WebGL each have their own extension registryes. This means that neither desktop OpenGL or OpenGL ES extensions are automatically also WebGL extensions, although some amount of parity does exist. See the `WebGL 1.0 extension registry <https://www.khronos.org/registry/webgl/extensions/>`_ for the full list of registered extensions.
+When porting code, it should be noted that desktop OpenGL, OpenGL ES and WebGL each have their own extension registries. This means that neither desktop OpenGL or OpenGL ES extensions are automatically also WebGL extensions, although some amount of parity does exist. See the `WebGL 1.0 extension registry <https://www.khronos.org/registry/webgl/extensions/>`_ for the full list of registered extensions.
 
 Additionally, in WebGL, unlike in desktop or mobile OpenGL, extensions must be activated first before the features they expose take effect. If you use one of the native APIs SDL, EGL, GLUT or GLFW to create your GL context, this will be done automatically for most extensions. If instead you use the HTML5 WebGL context creation API, you must explicitly choose whether to autoenable WebGL extensions. If an extension was not automatically enabled at context creation time, the HTML5 API function `emscripten_webgl_enable_extension` can be used to activate it. Debugging related extensions, draft extensions and vendor-prefixed extensions (MOZ_*, WEBKIT_*) are never enabled automatically at context creation time, but must always be activated manually.
 

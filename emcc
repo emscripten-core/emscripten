@@ -59,7 +59,7 @@ CXX_ENDINGS = ('.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.CC', '.C++', '.i
 OBJC_ENDINGS = ('.m', '.mi')
 OBJCXX_ENDINGS = ('.mm', '.mii')
 SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS
-BITCODE_ENDINGS = ('.bc', '.o', '.obj')
+BITCODE_ENDINGS = ('.bc', '.o', '.obj', '.lo')
 DYNAMICLIB_ENDINGS = ('.dylib', '.so') # Windows .dll suffix is not included in this list, since those are never linked to directly on the command line.
 STATICLIB_ENDINGS = ('.a',)
 ASSEMBLY_ENDINGS = ('.ll',)
@@ -164,7 +164,7 @@ elif sys.argv[1] == '--version':
     pass
   finally:
     os.chdir(here)
-  print '''emcc (Emscripten GCC-like replacement) %s (%s)
+  print '''emcc (Emscripten gcc/clang-like replacement) %s (%s)
 Copyright (C) 2014 the Emscripten authors (see AUTHORS.txt)
 This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
@@ -172,10 +172,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   exit(0)
 
 elif len(sys.argv) == 2 and sys.argv[1] == '-v': # -v with no inputs
-  print 'emcc (Emscripten GCC-like replacement + linker emulating GNU ld ) %s' % shared.EMSCRIPTEN_VERSION
+  # autoconf likes to see 'GNU' in the output to enable shared object support
+  print 'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION
   code = subprocess.call([shared.CLANG, '-v'])
   shared.check_sanity(force=True)
   exit(code)
+
+elif '-dumpmachine' in sys.argv:
+  print shared.get_llvm_target()
+  exit(0)
 
 def is_minus_s_for_emcc(newargs, i):
   assert newargs[i] == '-s'
@@ -217,7 +222,7 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
     elif arg.endswith('.s'):
       if debug_configure: open(tempout, 'a').write('(compiling .s assembly, must use clang\n')
       if use_js == 1: use_js = 0
-    elif arg == '-E':
+    elif arg == '-E' or arg == '-M' or arg == '-MM':
       if use_js == 1: use_js = 0
 
   if src:
@@ -281,7 +286,10 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
         full_node = '/usr/bin/' + full_node # TODO: use whereis etc. And how about non-*NIX?
       open(target, 'w').write('#!' + full_node + '\n' + src) # add shebang
       import stat
-      os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable
+      try:
+        os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable
+      except:
+        pass # can fail if e.g. writing the executable to /dev/null
     exit(ret)
 
 if os.environ.get('EMMAKEN_COMPILER'):
@@ -322,12 +330,6 @@ for i in range(1, len(sys.argv)):
   if not arg.startswith('-'):
     if arg.endswith(C_ENDINGS + OBJC_ENDINGS):
       use_cxx = False
-
-if '-M' in sys.argv or '-MM' in sys.argv:
-  # Just output dependencies, do not compile. Warning: clang and gcc behave differently with -MF! (clang seems to not recognize it)
-  cmd = [CC] + shared.COMPILER_OPTS + sys.argv[1:]
-  logging.debug('just dependencies: ' + ' '.join(cmd))
-  exit(subprocess.call(cmd))
 
 # Check if a target is specified
 target = None
@@ -812,7 +814,9 @@ try:
     target = target_basename + '.o'
     final_suffix = 'o'
   if '-E' in newargs:
-    final_suffix = 'eout' # not bitcode, not js; something else
+    final_suffix = 'eout' # not bitcode, not js; but just result from preprocessing stage of the input file
+  if '-M' in newargs or '-MM' in newargs:
+    final_suffix = 'mout' # not bitcode, not js; but just dependency rule of the input file
   final_ending = ('.' + final_suffix) if len(final_suffix) > 0 else ''
 
   # Find library files
@@ -889,11 +893,9 @@ try:
     assert shared.Settings.SAFE_HEAP in [0, 1], 'safe heap must be 0 or 1 in fastcomp'
     assert shared.Settings.UNALIGNED_MEMORY == 0, 'forced unaligned memory not supported in fastcomp'
     assert shared.Settings.FORCE_ALIGNED_MEMORY == 0, 'forced aligned memory is not supported in fastcomp'
-    assert shared.Settings.NAMED_GLOBALS == 0, 'named globals not supported in fastcomp'
     assert shared.Settings.PGO == 0, 'pgo not supported in fastcomp'
     assert shared.Settings.USE_TYPED_ARRAYS == 2, 'altering USE_TYPED_ARRAYS is not supported'
     assert shared.Settings.QUANTUM_SIZE == 4, 'altering the QUANTUM_SIZE is not supported'
-    assert shared.Settings.INIT_HEAP == 0, 'HEAP_INIT is not supported in fastcomp (and should never be needed except for debugging)'
   except Exception, e:
     logging.error('Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
     raise e
@@ -916,7 +918,7 @@ try:
 
   if shared.Settings.SAFE_HEAP and not js_opts:
     js_opts = True
-    logging.warning('enabling js opts for SAFE_HEAP')
+    logging.debug('enabling js opts for SAFE_HEAP')
 
   if debug_level > 1 and closure:
     logging.warning('disabling closure because debug info was requested')
@@ -934,16 +936,16 @@ try:
   if shared.Settings.MAIN_MODULE:
     assert not shared.Settings.SIDE_MODULE
     shared.Settings.INCLUDE_FULL_LIBRARY = 1
-    shared.Settings.EXPORT_ALL = 1
   elif shared.Settings.SIDE_MODULE:
     assert not shared.Settings.MAIN_MODULE
-    shared.Settings.FINALIZE_ASM_JS = 0 # side modules are not finalized until after relocation
+    memory_init_file = False # memory init file is not supported with side modules, must be executable synchronously (for dlopen)
 
   if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
-    memory_init_file = False # memory init file is not supported with module linking
     assert shared.Settings.ASM_JS, 'module linking requires asm.js output (-s ASM_JS=1)'
     shared.Settings.LINKABLE = 1 # TODO: add FORCE_DCE option for the brave people that do want to dce here and in side modules
-    debug_level = max(debug_level, 2)
+    shared.Settings.RELOCATABLE = 1
+    shared.Settings.PRECISE_I64_MATH = 1 # other might use precise math, we need to be able to print it
+    assert not closure, 'cannot use closure compiler on shared modules'
 
   if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
     shared.Settings.ALIASING_FUNCTION_POINTERS = 0
@@ -971,30 +973,51 @@ try:
   if shared.Settings.RELOCATABLE:
     assert shared.Settings.GLOBAL_BASE < 1
     shared.Settings.EMULATED_FUNCTION_POINTERS = 1
+    shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = shared.Settings.WARN_ON_UNDEFINED_SYMBOLS = 0
+    if not shared.Settings.SIDE_MODULE:
+      shared.Settings.EXPORT_ALL = 1
 
   if shared.Settings.EMTERPRETIFY:
     shared.Settings.FINALIZE_ASM_JS = 0
-    shared.Settings.GLOBAL_BASE = 8*256 # keep enough space at the bottom for a full stack frame
+    #shared.Settings.GLOBAL_BASE = 8*256 # keep enough space at the bottom for a full stack frame, for z-interpreter
     shared.Settings.SIMPLIFY_IFS = 0 # this is just harmful for emterpreting
     shared.Settings.EXPORTED_FUNCTIONS += ['emterpret']
     if not js_opts:
       js_opts = True
-      logging.warning('enabling js opts for EMTERPRETIFY')
-    if not memory_init_file:
-      logging.warning('enabling --memory-init-file for EMTERPRETIFY')
-      memory_init_file = True
+      logging.debug('enabling js opts for EMTERPRETIFY')
     assert closure is not 2, 'EMTERPRETIFY requires valid asm.js, and is incompatible with closure 2 which disables that'
-    assert not shared.Settings.RELOCATABLE
 
   if shared.Settings.DEAD_FUNCTIONS and not js_opts:
     js_opts = True
-    logging.warning('enabling js opts for DEAD_FUNCTIONS')
+    logging.debug('enabling js opts for DEAD_FUNCTIONS')
 
   if proxy_to_worker:
     shared.Settings.PROXY_TO_WORKER = 1
 
   if js_opts:
     shared.Settings.RUNNING_JS_OPTS = 1
+
+  if shared.Settings.USE_PTHREADS:
+    if not any(s.startswith('PTHREAD_POOL_SIZE=') for s in settings_changes):
+      settings_changes.append('PTHREAD_POOL_SIZE=0')
+    js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
+    newargs.append('-D__EMSCRIPTEN_PTHREADS__=1')
+  else:
+    js_libraries.append(shared.path_from_root('src', 'library_pthread_stub.js'))
+
+  if shared.Settings.USE_PTHREADS:
+    if shared.Settings.PROXY_TO_WORKER:
+      logging.error('-s PROXY_TO_WORKER=1 is not yet supported with -s USE_PTHREADS=1!')
+      exit(1)
+    if shared.Settings.LINKABLE:
+      logging.error('-s LINKABLE=1 is not supported with -s USE_PTHREADS=1!')
+      exit(1)
+    if shared.Settings.SIDE_MODULE:
+      logging.error('-s SIDE_MODULE=1 is not supported with -s USE_PTHREADS=1!')
+      exit(1)
+    if shared.Settings.MAIN_MODULE:
+      logging.error('-s MAIN_MODULE=1 is not supported with -s USE_PTHREADS=1!')
+      exit(1)
 
   shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
   shared.Settings.OPT_LEVEL = opt_level
@@ -1051,10 +1074,13 @@ try:
     return args
 
   # -E preprocessor-only support
-  if '-E' in newargs:
+  if '-E' in newargs or '-M' in newargs or '-MM' in newargs:
     input_files = map(lambda x: x[1], input_files)
     cmd = get_bitcode_args(input_files)
-    logging.debug('just preprocessor ' + ' '.join(cmd))
+    if specified_target:
+      cmd += ['-o', specified_target]
+    # Do not compile, but just output the result from preprocessing stage or output the dependency rule. Warning: clang and gcc behave differently with -MF! (clang seems to not recognize it)
+    logging.debug(('just preprocessor ' if '-E' in newargs else 'just dependencies: ') + ' '.join(cmd))
     exit(subprocess.call(cmd))
 
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
@@ -1166,7 +1192,9 @@ try:
      (not LEAVE_INPUTS_RAW and not (suffix(temp_files[0][1]) in BITCODE_ENDINGS or suffix(temp_files[0][1]) in DYNAMICLIB_ENDINGS) and shared.Building.is_ar(temp_files[0][1])):
     linker_inputs += extra_files_to_link
     logging.debug('linking: ' + str(linker_inputs))
-    shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'), force_archive_contents=len([temp for i, temp in temp_files if not temp.endswith(STATICLIB_ENDINGS)]) == 0)
+    # force archive contents to all be included, if just archives, or if linking shared modules
+    force_archive_contents = len([temp for i, temp in temp_files if not temp.endswith(STATICLIB_ENDINGS)]) == 0 or not shared.Building.can_build_standalone()
+    shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'), force_archive_contents=force_archive_contents)
     final = in_temp(target_basename + '.bc')
   else:
     if not LEAVE_INPUTS_RAW:
@@ -1259,6 +1287,10 @@ try:
   # Emscripten
   logging.debug('LLVM => JS')
   extra_args = [] if not js_libraries else ['--libraries', ','.join(map(os.path.abspath, js_libraries))]
+  if memory_init_file:
+    shared.Settings.MEM_INIT_METHOD = 1
+  else:
+    assert shared.Settings.MEM_INIT_METHOD != 1
   final = shared.Building.emscripten(final, append_ext=False, extra_args=extra_args)
   if DEBUG: save_intermediate('original')
 
@@ -1283,6 +1315,8 @@ try:
       file_args.append('--use-preload-cache')
     if no_heap_copy:
       file_args.append('--no-heap-copy')
+    if not closure:
+      file_args.append('--no-closure')
     file_code = execute([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE)[0]
     pre_js = file_code + pre_js
 
@@ -1308,18 +1342,25 @@ try:
 
   js_transform_tempfiles = [final]
 
-  if memory_init_file:
+  if shared.Settings.MEM_INIT_METHOD > 0:
     memfile = target + '.mem'
     shared.try_delete(memfile)
     def repl(m):
       # handle chunking of the memory initializer
-      s = m.groups(0)[0]
-      if len(s) == 0 and not shared.Settings.EMTERPRETIFY: return m.group(0) # emterpreter must have a mem init file; otherwise, don't emit 0-size ones
-      open(memfile, 'wb').write(''.join(map(lambda x: chr(int(x or '0')), s.split(','))))
+      s = m.group(1)
+      if len(s) == 0: return '' # don't emit 0-size ones
+      membytes = [int(x or '0') for x in s.split(',')]
+      while membytes and membytes[-1] == 0:
+        membytes.pop()
+      if not membytes: return ''
+      if not memory_init_file:
+        # memory initializer in a string literal
+        return "memoryInitializer = '%s';" % shared.JS.generate_string_initializer(list(membytes))
+      open(memfile, 'wb').write(''.join(map(chr, membytes)))
       if DEBUG:
         # Copy into temp dir as well, so can be run there too
         shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
-      return 'var memoryInitializer = "%s";' % os.path.basename(memfile)
+      return 'memoryInitializer = "%s";' % os.path.basename(memfile)
     src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
     open(final + '.mem.js', 'w').write(src)
     final += '.mem.js'
@@ -1340,6 +1381,9 @@ try:
       open(final + '.mem.js', 'w').write(src)
       final += '.mem.js'
       src = None
+
+  if shared.Settings.USE_PTHREADS:
+    shutil.copyfile(shared.path_from_root('src', 'pthread-main.js'), os.path.join(os.path.dirname(os.path.abspath(target)), 'pthread-main.js'))
 
   log_time('source transforms')
 
@@ -1469,7 +1513,7 @@ try:
 
     if closure == 1:
       js_optimizer_queue += ['closure']
-    elif debug_level <= 2 and not shared.Settings.MAIN_MODULE and shared.Settings.FINALIZE_ASM_JS and not closure:
+    elif debug_level <= 2 and shared.Settings.FINALIZE_ASM_JS and not closure:
       js_optimizer_queue += ['cleanup']
 
   if js_opts:
@@ -1526,12 +1570,11 @@ try:
   if shared.Settings.EMTERPRETIFY:
     flush_js_optimizer_queue()
     logging.debug('emterpretifying')
-    assert memory_init_file, 'emterpreter requires a mem init file'
     import json
     try:
       # move temp js to final position, alongside its mem init file
       shutil.move(final, js_target)
-      args = [shared.PYTHON, shared.path_from_root('tools', 'emterpretify.py'), js_target, final + '.em.js', memfile, json.dumps(shared.Settings.EMTERPRETIFY_BLACKLIST), json.dumps(shared.Settings.EMTERPRETIFY_WHITELIST), json.dumps(shared.Settings.EMTERPRETIFY_YIELDLIST), str(shared.Settings.SWAPPABLE_ASM_MODULE)]
+      args = [shared.PYTHON, shared.path_from_root('tools', 'emterpretify.py'), js_target, final + '.em.js', json.dumps(shared.Settings.EMTERPRETIFY_BLACKLIST), json.dumps(shared.Settings.EMTERPRETIFY_WHITELIST), '', str(shared.Settings.SWAPPABLE_ASM_MODULE)]
       if shared.Settings.EMTERPRETIFY_ASYNC:
         args += ['ASYNC=1']
       if shared.Settings.EMTERPRETIFY_ADVISE:
@@ -1597,7 +1640,7 @@ try:
 <script>
   if ((',' + window.location.search.substr(1) + ',').indexOf(',noProxy,') < 0) {
     console.log('running code in a web worker');
-''' + open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', child_js).replace('{{{ IDBStore.js }}}', open(shared.path_from_root('src', 'IDBStore.js')).read()) + '''
+''' + open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + shared.read_and_preprocess(shared.path_from_root('src', 'proxyClient.js')).replace('{{{ filename }}}', child_js).replace('{{{ IDBStore.js }}}', open(shared.path_from_root('src', 'IDBStore.js')).read()) + '''
   } else {
     // note: no support for code mods (PRECISE_F32==2)
     console.log('running code on the main thread');

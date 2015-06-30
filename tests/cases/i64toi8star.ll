@@ -12,7 +12,7 @@ declare i32 @printf(i8* nocapture, ...) nounwind
 
 define i32 @PyLong_FromVoidPtr(i8* %p) nounwind {
 entry:
-  %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([9 x i8]* @.str2, i32 0, i32 0), i8* %p) ; [#uses=0]
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str2, i32 0, i32 0), i8* %p) ; [#uses=0]
   br label %return
 
 return:                                           ; preds = %entry
@@ -27,6 +27,6 @@ entry:
   %"alloca point" = bitcast i32 0 to i32          ; [#uses=0]
   %a5 = call i32 @PyLong_FromVoidPtr(i8* null) nounwind ; [#uses=0]
   %a13 = call i32 @PyLong_FromVoidPtr(i8* inttoptr (i64 1 to i8*)) nounwind ; [#uses=0]
-  %a1 = call i32 @puts(i8* getelementptr inbounds ([14 x i8]* @.str, i32 0, i32 0)) ; [#uses=0]
+  %a1 = call i32 @puts(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @.str, i32 0, i32 0)) ; [#uses=0]
   ret i32 0
 }

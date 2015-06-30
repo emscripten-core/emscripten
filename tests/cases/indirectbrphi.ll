@@ -33,14 +33,14 @@ define i32 @main(i32 %argc, i8** nocapture %argv) nounwind {
   br i1 %9, label %14, label %10
 
 ; <label>:10                                      ; preds = %8
-  %11 = getelementptr inbounds [2 x i8*]* @_ZZ4mainE5addrs, i32 0, i32 %which.0.lcssa
-  %12 = load i8** %11, align 4
+  %11 = getelementptr inbounds [2 x i8*], [2 x i8*]* @_ZZ4mainE5addrs, i32 0, i32 %which.0.lcssa
+  %12 = load i8*, i8** %11, align 4
   %13 = add nsw i32 %argc, 111
   br label %17
 
 ; <label>:14                                      ; preds = %17, %8
   %15 = phi i32 [ 100, %17 ], [ 222, %8 ]
-  %16 = tail call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([8 x i8]* @.str, i32 0, i32 0), i32 %15)
+  %16 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str, i32 0, i32 0), i32 %15)
   ret i32 0
 
 ; <label>:17                                      ; preds = %19, %10
@@ -48,7 +48,7 @@ define i32 @main(i32 %argc, i8** nocapture %argv) nounwind {
   indirectbr i8* %18, [label %14, label %19]
 
 ; <label>:19                                      ; preds = %17
-  %20 = tail call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([9 x i8]* @.str1, i32 0, i32 0), i32 %13)
+  %20 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str1, i32 0, i32 0), i32 %13)
   br label %17
 }
 
@@ -73,9 +73,9 @@ define i8* @memcpy(i8* noalias %dest, i8* noalias %src, i32 %n) nounwind {
   %s.032 = phi i8* [ %9, %.lr.ph33 ], [ %src, %.preheader28 ]
   %d.031 = phi i8* [ %11, %.lr.ph33 ], [ %dest, %.preheader28 ]
   %.030 = phi i32 [ %12, %.lr.ph33 ], [ %n, %.preheader28 ]
-  %9 = getelementptr inbounds i8* %s.032, i32 1
-  %10 = load i8* %s.032, align 1
-  %11 = getelementptr inbounds i8* %d.031, i32 1
+  %9 = getelementptr inbounds i8, i8* %s.032, i32 1
+  %10 = load i8, i8* %s.032, align 1
+  %11 = getelementptr inbounds i8, i8* %d.031, i32 1
   store i8 %10, i8* %d.031, align 1
   %12 = add i32 %.030, -1
   %13 = ptrtoint i8* %11 to i32
@@ -102,9 +102,9 @@ define i8* @memcpy(i8* noalias %dest, i8* noalias %src, i32 %n) nounwind {
   %ws.024 = phi i32* [ %21, %.lr.ph25 ], [ %19, %17 ]
   %wd.023 = phi i32* [ %23, %.lr.ph25 ], [ %18, %17 ]
   %.122 = phi i32 [ %24, %.lr.ph25 ], [ %.0.lcssa, %17 ]
-  %21 = getelementptr inbounds i32* %ws.024, i32 1
-  %22 = load i32* %ws.024, align 4
-  %23 = getelementptr inbounds i32* %wd.023, i32 1
+  %21 = getelementptr inbounds i32, i32* %ws.024, i32 1
+  %22 = load i32, i32* %ws.024, align 4
+  %23 = getelementptr inbounds i32, i32* %wd.023, i32 1
   store i32 %22, i32* %wd.023, align 4
   %24 = add i32 %.122, -4
   %25 = icmp ugt i32 %24, 3
@@ -129,9 +129,9 @@ define i8* @memcpy(i8* noalias %dest, i8* noalias %src, i32 %n) nounwind {
   %s.121 = phi i8* [ %29, %.lr.ph ], [ %s.1.ph, %.preheader ]
   %d.120 = phi i8* [ %31, %.lr.ph ], [ %d.1.ph, %.preheader ]
   %.219 = phi i32 [ %32, %.lr.ph ], [ %.2.ph, %.preheader ]
-  %29 = getelementptr inbounds i8* %s.121, i32 1
-  %30 = load i8* %s.121, align 1
-  %31 = getelementptr inbounds i8* %d.120, i32 1
+  %29 = getelementptr inbounds i8, i8* %s.121, i32 1
+  %30 = load i8, i8* %s.121, align 1
+  %31 = getelementptr inbounds i8, i8* %d.120, i32 1
   store i8 %30, i8* %d.120, align 1
   %32 = add i32 %.219, -1
   %33 = icmp eq i32 %32, 0

@@ -13,21 +13,21 @@ entry:
   %y = trunc i96 %y0 to i32
   %z0 = lshr i96 %a, 64
   %z = trunc i96 %z0 to i32
-  %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([23 x i8]* @.str, i32 0, i32 0), i32 %x, i32 %y, i32 %z) ; [#uses=0 type=i32]
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([23 x i8], [23 x i8]* @.str, i32 0, i32 0), i32 %x, i32 %y, i32 %z) ; [#uses=0 type=i32]
   %b = lshr i96 78981949996569583556032504063, 17
   %bx = trunc i96 %b to i32
   %by0 = lshr i96 %b, 32
   %by = trunc i96 %by0 to i32
   %bz0 = lshr i96 %b, 64
   %bz = trunc i96 %bz0 to i32
-  %bcall = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([23 x i8]* @.str, i32 0, i32 0), i32 %bx, i32 %by, i32 %bz) ; [#uses=0 type=i32]
+  %bcall = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([23 x i8], [23 x i8]* @.str, i32 0, i32 0), i32 %bx, i32 %by, i32 %bz) ; [#uses=0 type=i32]
   %c = ashr i96 78981949996569583556032504063, 17
   %cx = trunc i96 %c to i32
   %cy0 = lshr i96 %c, 32
   %cy = trunc i96 %cy0 to i32
   %cz0 = lshr i96 %c, 64
   %cz = trunc i96 %cz0 to i32
-  %ccall = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([23 x i8]* @.str, i32 0, i32 0), i32 %cx, i32 %cy, i32 %cz) ; [#uses=0 type=i32]
+  %ccall = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([23 x i8], [23 x i8]* @.str, i32 0, i32 0), i32 %cx, i32 %cy, i32 %cz) ; [#uses=0 type=i32]
   ret i32 1
 }
 

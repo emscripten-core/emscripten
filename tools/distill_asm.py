@@ -17,6 +17,8 @@ infile = sys.argv[1]
 outfile = sys.argv[2]
 extra = sys.argv[3] if len(sys.argv) >= 4 else ';'
 
+module = asm_module.AsmModule(infile).asm_js
+
 if extra == 'swap-in':
   # we do |var asm = | just like the original codebase, so that gets overridden anyhow (assuming global scripts).
   extra = r''' (Module.asmGlobalArg, Module.asmLibraryArg, Module['buffer']);
@@ -26,7 +28,9 @@ if extra == 'swap-in':
  Module['asm'] = asm;
  if (Module['onAsmSwap']) Module['onAsmSwap']();
 '''
+elif extra == 'just-func':
+  module = module[module.find('=')+1:] # strip the initial "var asm =" bit, leave just the raw module as a function
+  extra = ';'
 
-asm = asm_module.AsmModule(infile)
-open(outfile, 'w').write(asm.asm_js + extra)
+open(outfile, 'w').write(module + extra)
 

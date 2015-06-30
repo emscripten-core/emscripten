@@ -1304,5 +1304,11 @@ function mixed_up_loop_helpers() {
   }
  }
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label", "confuusion", "tempDouble", "_org_apache_harmony_luni_util_NumberConverter_freeFormat__", "__ZN23b2EdgeAndPolygonContact8EvaluateEP10b2ManifoldRK11b2TransformS4_", "_java_nio_charset_Charset_forNameInternal___java_lang_String", "looop2", "looop3", "looop4", "looop5", "looop6", "looop7", "looop8", "multiloop", "multiloop2", "tempDouble2", "watIf", "select2", "binary", "cute", "selfAssign", "elimOneLoopVar", "elimOneLoopVar2", "elimOneLoopVar3", "elimOneLoopVar4", "elimOneLoopVarStillUsed", "elimOneLoopVarStillUsedSE", "elimOneLoopVar5", "helperExtraUse", "mixed_up_loop_helpers"]
+function _postProcess() {
+ var $w = 0, $z = 0;
+ $w = Math_abs($global);
+ $z = $w;
+ cheez();
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label", "confuusion", "tempDouble", "_org_apache_harmony_luni_util_NumberConverter_freeFormat__", "__ZN23b2EdgeAndPolygonContact8EvaluateEP10b2ManifoldRK11b2TransformS4_", "_java_nio_charset_Charset_forNameInternal___java_lang_String", "looop2", "looop3", "looop4", "looop5", "looop6", "looop7", "looop8", "multiloop", "multiloop2", "tempDouble2", "watIf", "select2", "binary", "cute", "selfAssign", "elimOneLoopVar", "elimOneLoopVar2", "elimOneLoopVar3", "elimOneLoopVar4", "elimOneLoopVarStillUsed", "elimOneLoopVarStillUsedSE", "elimOneLoopVar5", "helperExtraUse", "mixed_up_loop_helpers", "_postProcess"]
 

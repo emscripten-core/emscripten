@@ -1,8 +1,10 @@
 function headlessCanvas() {
-  return {
+  var that = this;
+  var ret = {
     headless: true,
     getContext: function(which) {
       switch(which) {
+        case 'webgl':
         case 'experimental-webgl': {
           return {
             /* ClearBufferMask */
@@ -451,7 +453,7 @@ function headlessCanvas() {
               }
             },
             getSupportedExtensions: function() {
-              return ["OES_texture_float", "OES_standard_derivatives", "EXT_texture_filter_anisotropic"];
+              return ["OES_texture_float", "OES_standard_derivatives", "EXT_texture_filter_anisotropic", "MOZ_EXT_texture_filter_anisotropic", "MOZ_WEBGL_lose_context", "MOZ_WEBGL_compressed_texture_s3tc", "MOZ_WEBGL_depth_texture"];
             },
             createShader: function(type) {
               var id = this.id++;
@@ -599,7 +601,8 @@ function headlessCanvas() {
     },
     exitPointerLock: function(){},
     style: {
-      setProperty: function(){}
+      setProperty: function() {},
+      removeProperty: function() {},
     },
     eventListeners: {},
     addEventListener: function(){},
@@ -617,6 +620,9 @@ function headlessCanvas() {
       add: function(){},
       remove: function(){},
     },
+    insertBefore: function(){},
   };
+  ret.parentNode = ret;
+  return ret;
 }
 

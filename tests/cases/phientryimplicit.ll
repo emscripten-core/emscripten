@@ -19,8 +19,8 @@ L17:
 L26:
   %a27 = phi i1 [ false, %0 ], [ %a25, %L17 ]        ; [#uses=1 type=i1]
   store i32 0, i32* %retval
-  %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0 type=i32]
-  %cal2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0), i1 %a27) ; make sure %27 is used
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0 type=i32]
+  %cal2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0), i1 %a27) ; make sure %27 is used
   ret i32 1
 }
 
@@ -36,8 +36,8 @@ L17:
 L26:
   %a27 = phi i1 [ false, %0 ], [ %a25, %L17 ]        ; [#uses=1 type=i1]
   store i32 0, i32* %retval
-  %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0 type=i32]
-  %cal2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0), i1 %a27) ; make sure %27 is used
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0 type=i32]
+  %cal2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0), i1 %a27) ; make sure %27 is used
   ret i32 1
 }
 

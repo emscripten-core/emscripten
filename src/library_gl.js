@@ -1305,7 +1305,7 @@ var LibraryGL = {
     for (var i = 0; i < numAttachments; i++)
       list.push({{{ makeGetValue('attachments', 'i*4', 'i32') }}});
 
-    GLctx.invalidateFramebuffer(target, list);
+    GLctx['invalidateFramebuffer'](target, list);
   },
 
   glInvalidateSubFramebuffer__sig: 'viiiiiii',
@@ -1314,47 +1314,47 @@ var LibraryGL = {
     for (var i = 0; i < numAttachments; i++)
       list.push({{{ makeGetValue('attachments', 'i*4', 'i32') }}});
 
-    GLctx.invalidateSubFramebuffer(target, list, x, y, width, height);
+    GLctx['invalidateSubFramebuffer'](target, list, x, y, width, height);
   },
 
   glTexStorage2D__sig: 'viiiii',
   glTexStorage2D: function(target, levels, internalformat, width, height) {
-    GLctx.texStorage2D(target, levels, internalformat, width, height);
+    GLctx['texStorage2D'](target, levels, internalformat, width, height);
   },
 
   glTexStorage3D__sig: 'viiiiii',
   glTexStorage3D: function(target, levels, internalformat, width, height, depth) {
-    GLctx.texStorage3D(target, levels, internalformat, width, height, depth);
+    GLctx['texStorage3D'](target, levels, internalformat, width, height, depth);
   },
 
   glTexImage3D__sig: 'viiiiiiiiii',
   glTexImage3D: function(target, level, internalFormat, width, height, depth, border, format, type, data) {
-    GLctx.texImage3D(target, level, internalFormat, width, height, depth, border, format, type,
+    GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type,
                      HEAPU8.subarray(data));
   },
 
   glTexSubImage3D__sig: 'viiiiiiiiiii',
   glTexSubImage3D: function(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, data) {
-    GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type,
+    GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type,
                         HEAPU8.subarray(data));
   },
 
   // Framebuffer objects
   glBlitFramebuffer__sig: 'viiiiiiiiii',
   glBlitFramebuffer: function(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter) {
-    GLctx.blitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter);
+    GLctx['blitFramebuffer'](srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter);
   },
 
   glReadBuffer__sig: 'vi',
   glReadBuffer: function(src) {
-    GLctx.readBuffer(src);
+    GLctx['readBuffer'](src);
   },
 
   // Queries
   glGenQueries__sig: 'vii',
   glGenQueries: function(n, ids) {
     for (var i = 0; i < n; i++) {
-      var query = GLctx.createQuery();
+      var query = GLctx['createQuery']();
       if (!query) {
         GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
 #if GL_ASSERTIONS
@@ -1376,7 +1376,7 @@ var LibraryGL = {
       var id = {{{ makeGetValue('ids', 'i*4', 'i32') }}};
       var query = GL.queries[id];
       if (!query) continue; // GL spec: "unused names in ids are ignored, as is the name zero."
-      GLctx.deleteQuery(query);
+      GLctx['deleteQuery'](query);
       query.name = 0;
       GL.queries[id] = null;
     }
@@ -1386,7 +1386,7 @@ var LibraryGL = {
   glIsQuery: function(id) {
     var query = GL.queries[query];
     if (!query) return 0;
-    return GLctx.isQuery(query);
+    return GLctx['isQuery'](query);
   },
 
   glBeginQuery__sig: 'vii',
@@ -1394,12 +1394,12 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.queries, id, 'glBeginQuery', 'id');
 #endif
-    GLctx.beginQuery(target, id ? GL.queries[id] : null);
+    GLctx['beginQuery'](target, id ? GL.queries[id] : null);
   },
 
   glEndQuery__sig: 'vi',
   glEndQuery: function(target) {
-    GLctx.endQuery(target);
+    GLctx['endQuery'](target);
   },
 
   glGetQueryiv__sig: 'viii',
@@ -1413,7 +1413,7 @@ var LibraryGL = {
       return;
     }
 #endif
-    {{{ makeSetValue('params', '0', 'GLctx.getQuery(target, pname)', 'i32') }}};
+    {{{ makeSetValue('params', '0', 'GLctx[\'getQuery\'](target, pname)', 'i32') }}};
   },
 
   glGetQueryObjectuiv__sig: 'viii',
@@ -1429,7 +1429,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.queries, id, 'glGetQueryObjectuiv', 'id');
 #endif
     var query = GL.queries[id];
-    var param = GLctx.getQueryParameter(query, pname);
+    var param = GLctx['getQueryParameter'](query, pname);
     var ret;
     if (typeof param == 'boolean') {
       ret = param ? 1 : 0;
@@ -1442,14 +1442,14 @@ var LibraryGL = {
   // Renderbuffer objects
   glRenderbufferStorageMultisample__sig: 'viiiii',
   glRenderbufferStorageMultisample: function(target, samples, internalformat, width, height) {
-    GLctx.renderbufferStorageMultisample(target, samples, internalformat, width, height);
+    GLctx['renderbufferStorageMultisample'](target, samples, internalformat, width, height);
   },
 
   // Sampler objects
   glGenSamplers__sig: 'vii',
   glGenSamplers: function(n, samplers) {
     for (var i = 0; i < n; i++) {
-      var sampler = GLctx.createSampler();
+      var sampler = GLctx['createSampler']();
       if (!sampler) {
         GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
 #if GL_ASSERTIONS
@@ -1471,7 +1471,7 @@ var LibraryGL = {
       var id = {{{ makeGetValue('samplers', 'i*4', 'i32') }}};
       var sampler = GL.samplers[id];
       if (!sampler) continue;
-      GLctx.deleteSampler(sampler);
+      GLctx['deleteSampler'](sampler);
       sampler.name = 0;
       GL.samplers[id] = null;
     }
@@ -1481,7 +1481,7 @@ var LibraryGL = {
   glIsSampler: function(id) {
     var sampler = GL.samplers[id];
     if (!sampler) return 0;
-    return GLctx.isSampler(sampler);
+    return GLctx['isSampler'](sampler);
   },
 
   glBindSampler__sig: 'vii',
@@ -1489,7 +1489,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
 #endif
-    GLctx.bindSampler(unit, sampler ? GL.samplers[sampler] : null);
+    GLctx['bindSampler'](unit, sampler ? GL.samplers[sampler] : null);
   },
 
   glSamplerParameterf__sig: 'viif',
@@ -1497,7 +1497,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
 #endif
-    GLctx.samplerParameterf(sampler ? GL.samplers[sampler] : null, pname, param);
+    GLctx['samplerParameterf'](sampler ? GL.samplers[sampler] : null, pname, param);
   },
 
   glSamplerParameteri__sig: 'viii',
@@ -1505,7 +1505,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
 #endif
-    GLctx.samplerParameteri(sampler ? GL.samplers[sampler] : null, pname, param);
+    GLctx['samplerParameteri'](sampler ? GL.samplers[sampler] : null, pname, param);
   },
 
   glSamplerParameterfv__sig: 'viii',
@@ -1514,7 +1514,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
 #endif
     var param = {{{ makeGetValue('params', '0', 'float') }}};
-    GLctx.samplerParameterf(sampler ? GL.samplers[sampler] : null, pname, param);
+    GLctx['samplerParameterf'](sampler ? GL.samplers[sampler] : null, pname, param);
   },
 
   glSamplerParameteriv__sig: 'viii',
@@ -1523,7 +1523,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
 #endif
     var param = {{{ makeGetValue('params', '0', 'i32') }}};
-    GLctx.samplerParameteri(sampler ? GL.samplers[sampler] : null, pname, param);
+    GLctx['samplerParameteri'](sampler ? GL.samplers[sampler] : null, pname, param);
   },
 
   glGetSamplerParameterfv__sig: 'viii',
@@ -1538,7 +1538,7 @@ var LibraryGL = {
     }
 #endif
     sampler = GL.samplers[sampler];
-    {{{ makeSetValue('params', '0', 'GLctx.getSamplerParameter(sampler, pname)', 'float') }}};
+    {{{ makeSetValue('params', '0', 'GLctx[\'getSamplerParameter\'](sampler, pname)', 'float') }}};
   },
 
   glGetSamplerParameteriv__sig: 'viii',
@@ -1553,14 +1553,14 @@ var LibraryGL = {
     }
 #endif
     sampler = GL.samplers[sampler];
-    {{{ makeSetValue('params', '0', 'GLctx.getSamplerParameter(sampler, pname)', 'i32') }}};
+    {{{ makeSetValue('params', '0', 'GLctx[\'getSamplerParameter\'](sampler, pname)', 'i32') }}};
   },
 
   // Transform Feedback
   glGenTransformFeedbacks__sig: 'vii',
   glGenTransformFeedbacks: function(n, ids) {
     for (var i = 0; i < n; i++) {
-      var transformFeedback = GLctx.createTransformFeedback();
+      var transformFeedback = GLctx['createTransformFeedback']();
       if (!transformFeedback) {
         GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
 #if GL_ASSERTIONS
@@ -1582,7 +1582,7 @@ var LibraryGL = {
       var id = {{{ makeGetValue('ids', 'i*4', 'i32') }}};
       var transformFeedback = GL.transformFeedbacks[id];
       if (!transformFeedback) continue; // GL spec: "unused names in ids are ignored, as is the name zero."
-      GLctx.deleteTransformFeedback(transformFeedback);
+      GLctx['deleteTransformFeedback'](transformFeedback);
       transformFeedback.name = 0;
       GL.transformFeedbacks[id] = null;
     }
@@ -1592,7 +1592,7 @@ var LibraryGL = {
   glIsTransformFeedback: function(transformFeedback) {
     var transformFeedback = GL.transformFeedbacks[transformFeedback];
     if (!transformFeedback) return 0;
-    return GLctx.isTransformFeedback(transformFeedback);
+    return GLctx['isTransformFeedback'](transformFeedback);
   },
 
   glBindTransformFeedback__sig: 'vii',
@@ -1605,27 +1605,27 @@ var LibraryGL = {
       GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
       return;
     }
-    GLctx.bindTransformFeedback(target, transformFeedback);
+    GLctx['bindTransformFeedback'](target, transformFeedback);
   },
 
   glBeginTransformFeedback__sig: 'vi',
   glBeginTransformFeedback: function(primitiveMode) {
-    GLctx.beginTransformFeedback(primitiveMode);
+    GLctx['beginTransformFeedback'](primitiveMode);
   },
 
   glEndTransformFeedback__sig: 'v',
   glEndTransformFeedback: function() {
-    GLctx.endTransformFeedback();
+    GLctx['endTransformFeedback']();
   },
 
   glPauseTransformFeedback__sig: 'v',
   glPauseTransformFeedback: function() {
-    GLctx.pauseTransformFeedback();
+    GLctx['pauseTransformFeedback']();
   },
 
   glResumeTransformFeedback__sig: 'v',
   glResumeTransformFeedback: function() {
-    GLctx.resumeTransformFeedback();
+    GLctx['resumeTransformFeedback']();
   },
 
   glTransformFeedbackVaryings__sig: 'viiii',
@@ -1638,7 +1638,7 @@ var LibraryGL = {
     for (var i = 0; i < count; i++)
       vars.push(Pointer_stringify({{{ makeGetValue('varyings', 'i*4', 'i32') }}}));
 
-    GLctx.transformFeedbackVaryings(program, vars, bufferMode);
+    GLctx['transformFeedbackVaryings'](program, vars, bufferMode);
   },
 
   glGetTransformFeedbackVarying__sig: 'viiiiiii',
@@ -1647,7 +1647,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.programs, program, 'glGetTransformFeedbackVarying', 'program');
 #endif
     program = GL.programs[program];
-    var info = GLctx.getTransformFeedbackVarying(program, index);
+    var info = GLctx['getTransformFeedbackVarying'](program, index);
     if (!info) return; // If an error occurred, the return parameters length, size, type and name will be unmodified.
 
     var infoname = info.name.slice(0, Math.max(0, bufSize - 1));
@@ -1673,7 +1673,7 @@ var LibraryGL = {
       return;
     }
 #endif
-    var result = GLctx.getIndexedParameter(target, index);
+    var result = GLctx['getIndexedParameter'](target, index);
     var ret;
     switch (typeof result) {
       case 'boolean':
@@ -1725,7 +1725,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.buffers, buffer, 'glBindBufferBase', 'buffer');
 #endif
     var bufferObj = buffer ? GL.buffers[buffer] : null;
-    GLctx.bindBufferBase(target, index, bufferObj);
+    GLctx['bindBufferBase'](target, index, bufferObj);
   },
 
   glBindBufferRange__sig: 'viiiii',
@@ -1734,7 +1734,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.buffers, buffer, 'glBindBufferRange', 'buffer');
 #endif
     var bufferObj = buffer ? GL.buffers[buffer] : null;
-    GLctx.bindBufferRange(target, index, bufferObj, offset, ptrsize);
+    GLctx['bindBufferRange'](target, index, bufferObj, offset, ptrsize);
   },
 
   glGetUniformIndices__sig: 'viiii',
@@ -1758,7 +1758,7 @@ var LibraryGL = {
     for (var i = 0; i < uniformCount; i++)
       names.push(Pointer_stringify({{{ makeGetValue('uniformNames', 'i*4', 'i32') }}}));
 
-    var result = GLctx.getUniformIndices(program, names);
+    var result = GLctx['getUniformIndices'](program, names);
     if (!result) return; // GL spec: If an error is generated, nothing is written out to uniformIndices.
 
     var len = result.length;
@@ -1789,7 +1789,7 @@ var LibraryGL = {
       ids.push({{{ makeGetValue('uniformIndices', 'i*4', 'i32') }}});
     }
 
-    var result = GLctx.getActiveUniforms(program, ids, pname);
+    var result = GLctx['getActiveUniforms'](program, ids, pname);
     if (!result) return; // GL spec: If an error is generated, nothing is written out to params.
 
     var len = result.length;
@@ -1805,7 +1805,7 @@ var LibraryGL = {
 #endif
     program = GL.programs[program];
     uniformBlockName = Pointer_stringify(uniformBlockName);
-    return GLctx.getUniformBlockIndex(program, uniformBlockName);
+    return GLctx['getUniformBlockIndex'](program, uniformBlockName);
   },
 
   glGetActiveUniformBlockiv__sig: 'viiii',
@@ -1822,7 +1822,7 @@ var LibraryGL = {
 #endif
     program = GL.programs[program];
 
-    var result = GLctx.getActiveUniformBlockParameter(program, uniformBlockIndex, pname);
+    var result = GLctx['getActiveUniformBlockParameter'](program, uniformBlockIndex, pname);
     if (!result) return; // If an error occurs, nothing will be written to params.
     if (typeof result == 'number') {
       {{{ makeSetValue('params', '0', 'result', 'i32') }}};
@@ -1840,7 +1840,7 @@ var LibraryGL = {
 #endif
     program = GL.programs[program];
 
-    var result = GLctx.getActiveUniformBlockName(program, uniformBlockIndex);
+    var result = GLctx['getActiveUniformBlockName'](program, uniformBlockIndex);
     if (!result) return; // If an error occurs, nothing will be written to uniformBlockName or length.
     var name = result.slice(0, Math.max(0, bufSize - 1));
     if (uniformBlockName && bufSize > 0) {
@@ -1858,7 +1858,7 @@ var LibraryGL = {
 #endif
     program = GL.programs[program];
 
-    GLctx.uniformBlockBinding(program, uniformBlockIndex, uniformBlockBinding);
+    GLctx['uniformBlockBinding'](program, uniformBlockIndex, uniformBlockBinding);
   },
 
 // ~USE_WEBGL2
@@ -2500,8 +2500,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.shaders, shader, 'glGetShaderInfoLog', 'shader');
 #endif
     var log = GLctx.getShaderInfoLog(GL.shaders[shader]);
-    // Work around a bug in Chromium which causes getShaderInfoLog to return null
-    if (!log) log = '(unknown error)';
+    if (log === null) log = '(unknown error)';
     log = log.substr(0, maxLength - 1);
     if (maxLength > 0 && infoLog) {
       writeStringToMemory(log, infoLog);
@@ -2525,8 +2524,7 @@ var LibraryGL = {
 #endif
     if (pname == 0x8B84) { // GL_INFO_LOG_LENGTH
       var log = GLctx.getShaderInfoLog(GL.shaders[shader]);
-      // Work around a bug in Chromium which causes getShaderInfoLog to return null: https://code.google.com/p/chromium/issues/detail?id=111337
-      if (!log) log = '(unknown error)';
+      if (log === null) log = '(unknown error)';
       {{{ makeSetValue('p', '0', 'log.length + 1', 'i32') }}};
     } else {
       {{{ makeSetValue('p', '0', 'GLctx.getShaderParameter(GL.shaders[shader], pname)', 'i32') }}};
@@ -2546,7 +2544,9 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.programs, program, 'glGetProgramiv', 'program');
 #endif
     if (pname == 0x8B84) { // GL_INFO_LOG_LENGTH
-      {{{ makeSetValue('p', '0', 'GLctx.getProgramInfoLog(GL.programs[program]).length + 1', 'i32') }}};
+      var log = GLctx.getProgramInfoLog(GL.programs[program]);
+      if (log === null) log = '(unknown error)';
+      {{{ makeSetValue('p', '0', 'log.length + 1', 'i32') }}};
     } else if (pname == 0x8B87 /* GL_ACTIVE_UNIFORM_MAX_LENGTH */) {
       var ptable = GL.programInfos[program];
       if (ptable) {
@@ -2666,11 +2666,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.programs, program, 'glGetProgramInfoLog', 'program');
 #endif
     var log = GLctx.getProgramInfoLog(GL.programs[program]);
-    // Work around a bug in Chromium which causes getProgramInfoLog to return null: https://code.google.com/p/chromium/issues/detail?id=111337
-    // Note that this makes glGetProgramInfoLog behavior to be inconsistent. If an error occurs, GL functions should not write anything
-    // to the output parameters, however with this workaround in place, we will always write an empty string out to 'infoLog', even if an
-    // error did occur.
-    if (!log) log = "";
+    if (log === null) log = '(unknown error)';
 
     log = log.substr(0, maxLength - 1);
     if (maxLength > 0 && infoLog) {
@@ -2923,6 +2919,19 @@ var LibraryGL = {
         0x80A0: 1  // GL_SAMPLE_COVERAGE
       };
 
+#if RELOCATABLE
+{{{
+(updateExport = function(name) {
+  var name = '_' + name;
+  var exported = 'Module["' + name + '"]';
+  // make sure we write to an existing export, and are not repeating ourselves
+  return 'assert(' + exported + ' !== ' + name + '); ' + exported + ' = ' + name + ';';
+}, '')
+}}}
+#else
+{{{ (updateExport = function(){ return '' }, '') }}}
+#endif
+
       var glEnable = _glEnable;
       _glEnable = _emscripten_glEnable = function _glEnable(cap) {
         // Clean up the renderer on any change to the rendering state. The optimization of
@@ -2947,6 +2956,7 @@ var LibraryGL = {
         }
         glEnable(cap);
       };
+      {{{ updateExport('glEnable') }}}
 
       var glDisable = _glDisable;
       _glDisable = _emscripten_glDisable = function _glDisable(cap) {
@@ -2970,6 +2980,8 @@ var LibraryGL = {
         }
         glDisable(cap);
       };
+      {{{ updateExport('glDisable') }}}
+
       _glIsEnabled = _emscripten_glIsEnabled = function _glIsEnabled(cap) {
         if (cap == 0x0B60 /* GL_FOG */) {
           return GLEmulation.fogEnabled ? 1 : 0;
@@ -2978,6 +2990,7 @@ var LibraryGL = {
         }
         return GLctx.isEnabled(cap);
       };
+      {{{ updateExport('glIsEnabled') }}}
 
       var glGetBooleanv = _glGetBooleanv;
       _glGetBooleanv = _emscripten_glGetBooleanv = function _glGetBooleanv(pname, p) {
@@ -2989,6 +3002,7 @@ var LibraryGL = {
         }
         glGetBooleanv(pname, p);
       };
+      {{{ updateExport('glGetBooleanv') }}}
 
       var glGetIntegerv = _glGetIntegerv;
       _glGetIntegerv = _emscripten_glGetIntegerv = function _glGetIntegerv(pname, params) {
@@ -3058,6 +3072,7 @@ var LibraryGL = {
         }
         glGetIntegerv(pname, params);
       };
+      {{{ updateExport('glGetIntegerv') }}}
 
       var glGetString = _glGetString;
       _glGetString = _emscripten_glGetString = function _glGetString(name_) {
@@ -3074,6 +3089,7 @@ var LibraryGL = {
         }
         return glGetString(name_);
       };
+      {{{ updateExport('glGetString') }}}
 
       // Do some automatic rewriting to work around GLSL differences. Note that this must be done in
       // tandem with the rest of the program, by itself it cannot suffice.
@@ -3092,6 +3108,7 @@ var LibraryGL = {
         };
         return id;
       };
+      {{{ updateExport('glCreateShader') }}}
 
       function ensurePrecision(source) {
         if (!/precision +(low|medium|high)p +float *;/.test(source)) {
@@ -3213,6 +3230,7 @@ var LibraryGL = {
 #endif
         GLctx.shaderSource(GL.shaders[shader], source);
       };
+      {{{ updateExport('glShaderSource') }}}
 
       var glCompileShader = _glCompileShader;
       _glCompileShader = _emscripten_glCompileShader = function _glCompileShader(shader) {
@@ -3227,6 +3245,7 @@ var LibraryGL = {
         }
 #endif
       };
+      {{{ updateExport('glCompileShader') }}}
 
       GL.programShaders = {};
       var glAttachShader = _glAttachShader;
@@ -3235,6 +3254,7 @@ var LibraryGL = {
         GL.programShaders[program].push(shader);
         glAttachShader(program, shader);
       };
+      {{{ updateExport('glAttachShader') }}}
 
       var glDetachShader = _glDetachShader;
       _glDetachShader = _emscripten_glDetachShader = function _glDetachShader(program, shader) {
@@ -3247,6 +3267,7 @@ var LibraryGL = {
         programShader.splice(index, 1);
         glDetachShader(program, shader);
       };
+      {{{ updateExport('glDetachShader') }}}
 
       var glUseProgram = _glUseProgram;
       _glUseProgram = _emscripten_glUseProgram = function _glUseProgram(program) {
@@ -3268,6 +3289,7 @@ var LibraryGL = {
           glUseProgram(program);
         }
       }
+      {{{ updateExport('glUseProgram') }}}
 
       var glDeleteProgram = _glDeleteProgram;
       _glDeleteProgram = _emscripten_glDeleteProgram = function _glDeleteProgram(program) {
@@ -3277,6 +3299,7 @@ var LibraryGL = {
           GL.currProgram = 0;
         }
       };
+      {{{ updateExport('glDeleteProgram') }}}
 
       // If attribute 0 was not bound, bind it to 0 for WebGL performance reasons. Track if 0 is free for that.
       var zeroUsedPrograms = {};
@@ -3285,6 +3308,8 @@ var LibraryGL = {
         if (index == 0) zeroUsedPrograms[program] = true;
         glBindAttribLocation(program, index, name);
       };
+      {{{ updateExport('glBindAttribLocation') }}}
+
       var glLinkProgram = _glLinkProgram;
       _glLinkProgram = _emscripten_glLinkProgram = function _glLinkProgram(program) {
         if (!(program in zeroUsedPrograms)) {
@@ -3292,6 +3317,7 @@ var LibraryGL = {
         }
         glLinkProgram(program);
       };
+      {{{ updateExport('glLinkProgram') }}}
 
       var glBindBuffer = _glBindBuffer;
       _glBindBuffer = _emscripten_glBindBuffer = function _glBindBuffer(target, buffer) {
@@ -3307,6 +3333,7 @@ var LibraryGL = {
           if (GLEmulation.currentVao) GLEmulation.currentVao.elementArrayBuffer = buffer;
         }
       };
+      {{{ updateExport('glBindBuffer') }}}
 
       var glGetFloatv = _glGetFloatv;
       _glGetFloatv = _emscripten_glGetFloatv = function _glGetFloatv(pname, params) {
@@ -3330,6 +3357,7 @@ var LibraryGL = {
           glGetFloatv(pname, params);
         }
       };
+      {{{ updateExport('glGetFloatv') }}}
 
       var glHint = _glHint;
       _glHint = _emscripten_glHint = function _glHint(target, mode) {
@@ -3338,6 +3366,7 @@ var LibraryGL = {
         }
         glHint(target, mode);
       };
+      {{{ updateExport('glHint') }}}
 
       var glEnableVertexAttribArray = _glEnableVertexAttribArray;
       _glEnableVertexAttribArray = _emscripten_glEnableVertexAttribArray = function _glEnableVertexAttribArray(index) {
@@ -3345,6 +3374,7 @@ var LibraryGL = {
         GLEmulation.enabledVertexAttribArrays[index] = 1;
         if (GLEmulation.currentVao) GLEmulation.currentVao.enabledVertexAttribArrays[index] = 1;
       };
+      {{{ updateExport('glEnableVertexAttribArray') }}}
 
       var glDisableVertexAttribArray = _glDisableVertexAttribArray;
       _glDisableVertexAttribArray = _emscripten_glDisableVertexAttribArray = function _glDisableVertexAttribArray(index) {
@@ -3352,6 +3382,7 @@ var LibraryGL = {
         delete GLEmulation.enabledVertexAttribArrays[index];
         if (GLEmulation.currentVao) delete GLEmulation.currentVao.enabledVertexAttribArrays[index];
       };
+      {{{ updateExport('glDisableVertexAttribArray') }}}
 
       var glVertexAttribPointer = _glVertexAttribPointer;
       _glVertexAttribPointer = _emscripten_glVertexAttribPointer = function _glVertexAttribPointer(index, size, type, normalized, stride, pointer) {
@@ -3360,6 +3391,7 @@ var LibraryGL = {
           GLEmulation.currentVao.vertexAttribPointers[index] = [index, size, type, normalized, stride, pointer];
         }
       };
+      {{{ updateExport('glVertexAttribPointer') }}}
     },
 
     getAttributeFromCapability: function(cap) {
@@ -3404,16 +3436,22 @@ var LibraryGL = {
   glGetObjectParameteriv: function(id, type, result) {
     if (GL.programs[id]) {
       if (type == 0x8B84) { // GL_OBJECT_INFO_LOG_LENGTH_ARB
-        {{{ makeSetValue('result', '0', 'GLctx.getProgramInfoLog(GL.programs[id]).length', 'i32') }}};
+        var log = GLctx.getProgramInfoLog(GL.programs[id]);
+        if (log === null) log = '(unknown error)';
+        {{{ makeSetValue('result', '0', 'log.length', 'i32') }}};
         return;
       }
       _glGetProgramiv(id, type, result);
     } else if (GL.shaders[id]) {
       if (type == 0x8B84) { // GL_OBJECT_INFO_LOG_LENGTH_ARB
-        {{{ makeSetValue('result', '0', 'GLctx.getShaderInfoLog(GL.shaders[id]).length', 'i32') }}};
+        var log = GLctx.getShaderInfoLog(GL.shaders[id]);
+        if (log === null) log = '(unknown error)';
+        {{{ makeSetValue('result', '0', 'log.length', 'i32') }}};
         return;
       } else if (type == 0x8B88) { // GL_OBJECT_SHADER_SOURCE_LENGTH_ARB
-        {{{ makeSetValue('result', '0', 'GLctx.getShaderSource(GL.shaders[id]).length', 'i32') }}};
+        var source = GLctx.getShaderSource(GL.shaders[id]);
+        if (source === null) return; // If an error occurs, nothing will be written to result
+        {{{ makeSetValue('result', '0', 'source.length', 'i32') }}};
         return;
       }
       _glGetShaderiv(id, type, result);
@@ -5205,6 +5243,7 @@ var LibraryGL = {
         GLImmediate.flush(null, first);
         GLImmediate.mode = -1;
       };
+      {{{ updateExport('glDrawArrays') }}}
 
       _glDrawElements = _emscripten_glDrawElements = function _glDrawElements(mode, count, type, indices, start, end) { // start, end are given if we come from glDrawRangeElements
         if (GLImmediate.totalEnabledClientAttributes == 0 && mode <= 6 && GL.currElementArrayBuffer) {
@@ -5227,6 +5266,7 @@ var LibraryGL = {
         GLImmediate.flush(count, 0, indices);
         GLImmediate.mode = -1;
       };
+      {{{ updateExport('glDrawElements') }}}
 
       // TexEnv stuff needs to be prepared early, so do it here.
       // init() is too late for -O2, since it freezes the GL functions
@@ -5250,17 +5290,21 @@ var LibraryGL = {
         GLImmediate.TexEnvJIT.hook_activeTexture(texture);
         glActiveTexture(texture);
       };
+      {{{ updateExport('glActiveTexture') }}}
 
       var glEnable = _glEnable;
       _glEnable = _emscripten_glEnable = function _glEnable(cap) {
         GLImmediate.TexEnvJIT.hook_enable(cap);
         glEnable(cap);
       };
+      {{{ updateExport('glEnable') }}}
+
       var glDisable = _glDisable;
       _glDisable = _emscripten_glDisable = function _glDisable(cap) {
         GLImmediate.TexEnvJIT.hook_disable(cap);
         glDisable(cap);
       };
+      {{{ updateExport('glDisable') }}}
 
       var glTexEnvf = (typeof(_glTexEnvf) != 'undefined') ? _glTexEnvf : function(){};
       _glTexEnvf = _emscripten_glTexEnvf = function _glTexEnvf(target, pname, param) {
@@ -5268,26 +5312,33 @@ var LibraryGL = {
         // Don't call old func, since we are the implementor.
         //glTexEnvf(target, pname, param);
       };
+      {{{ updateExport('glTexEnvf') }}}
+
       var glTexEnvi = (typeof(_glTexEnvi) != 'undefined') ? _glTexEnvi : function(){};
       _glTexEnvi = _emscripten_glTexEnvi = function _glTexEnvi(target, pname, param) {
         GLImmediate.TexEnvJIT.hook_texEnvi(target, pname, param);
         // Don't call old func, since we are the implementor.
         //glTexEnvi(target, pname, param);
       };
+      {{{ updateExport('glTexEnvi') }}}
+
       var glTexEnvfv = (typeof(_glTexEnvfv) != 'undefined') ? _glTexEnvfv : function(){};
       _glTexEnvfv = _emscripten_glTexEnvfv = function _glTexEnvfv(target, pname, param) {
         GLImmediate.TexEnvJIT.hook_texEnvfv(target, pname, param);
         // Don't call old func, since we are the implementor.
         //glTexEnvfv(target, pname, param);
       };
+      {{{ updateExport('glTexEnvfv') }}}
 
       _glGetTexEnviv = function _glGetTexEnviv(target, pname, param) {
         GLImmediate.TexEnvJIT.hook_getTexEnviv(target, pname, param);
       };
+      {{{ updateExport('glGetTexEnviv') }}}
 
       _glGetTexEnvfv = function _glGetTexEnvfv(target, pname, param) {
         GLImmediate.TexEnvJIT.hook_getTexEnvfv(target, pname, param);
       };
+      {{{ updateExport('glGetTexEnvfv') }}}
 
       var glGetIntegerv = _glGetIntegerv;
       _glGetIntegerv = _emscripten_glGetIntegerv = function _glGetIntegerv(pname, params) {
@@ -5305,6 +5356,7 @@ var LibraryGL = {
         }
         glGetIntegerv(pname, params);
       };
+      {{{ updateExport('glGetIntegerv') }}}
     },
 
     // Main functions
@@ -6381,6 +6433,9 @@ var LibraryGL = {
   glVertexAttribDivisorARB: 'glVertexAttribDivisor',
   glDrawArraysInstancedARB: 'glDrawArraysInstanced',
   glDrawElementsInstancedARB: 'glDrawElementsInstanced',
+  glVertexAttribDivisorANGLE: 'glVertexAttribDivisor',
+  glDrawArraysInstancedANGLE: 'glDrawArraysInstanced',
+  glDrawElementsInstancedANGLE: 'glDrawElementsInstanced',
 
 
   glDrawBuffers__sig: 'vii',
@@ -6394,6 +6449,11 @@ var LibraryGL = {
 
     GL.currentContext.drawBuffersExt(bufArray);
   },
+
+  // OpenGL ES 2.0 draw buffer extensions compatibility
+
+  glDrawBuffersEXT: 'glDrawBuffers',
+
   // signatures of simple pass-through functions, see later
 
   glActiveTexture__sig: 'vi',

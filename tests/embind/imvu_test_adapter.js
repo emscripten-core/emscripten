@@ -4,7 +4,7 @@
 
    Embind (and its tests) were originally developed in IMVU repository, which is the reason for two testing architectures.
    This adapter file is used when the embind tests are run as part of the Emscripten test runner, to provide the necessary glue code to adapt the tests to Emscripten runner.
-   
+
    To run the Embind tests using the Emscripten test runner, invoke 'python tests/runner.py other.test_embind' in the Emscripten root directory.
 */
 
@@ -124,7 +124,7 @@ function module(ignore, func) {
         allTests = [];
         return true;
     }
-    
+
     var activeFixture;
 
     function Fixture(parent, name, definition, abstract_) {

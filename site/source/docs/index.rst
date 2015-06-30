@@ -14,7 +14,7 @@ This comprehensive documentation set contains everything you need to know to use
 **Emscripten Fundamentals:**
 
 - :ref:`integrating-porting-index` illustrates the main differences between the native and Emscripten runtime environments, and explains the changes you need to make to prepare your C/C++ code for the Web. 
-- :ref:`optimizing-index` shows how to optimise your code for size and performance.
+- :ref:`Optimizing-Code` shows how to optimise your code for size and performance.
 - :ref:`compiling-and-running-projects-index` demonstrates how to integrate Emscripten into your existing project build system.
 
 **Contributing:**

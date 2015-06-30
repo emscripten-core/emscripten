@@ -13,7 +13,7 @@ entry:
   br label %"finish$$$"
 
 "finish$$$":                                           ; preds = %entry
-  %0 = call i32 bitcast (i32 (i8*)* @puts to i32 (i32*)*)(i32* bitcast (i8* getelementptr inbounds ([14 x i8]* @.str, i32 0, i32 0) to i32*)) ; [#uses=0]
+  %0 = call i32 bitcast (i32 (i8*)* @puts to i32 (i32*)*)(i32* bitcast (i8* getelementptr inbounds ([14 x i8], [14 x i8]* @.str, i32 0, i32 0) to i32*)) ; [#uses=0]
   ret i32 0
 }
 

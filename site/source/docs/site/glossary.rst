@@ -51,7 +51,7 @@ Emscripten tools and dependencies
 		Clang is a compiler front end for C, C++, and other programming languages that uses :term:`LLVM` as its back end.
 		
 	emcc
-		The :ref:`emccdoc`. Emscripten's drop in replacement for a compiler like *gcc*.
+		The :ref:`emccdoc`. Emscripten's drop-in replacement for a compiler like *gcc*.
 		
 	Emscripten Command Prompt
 		The :ref:`emcmdprompt` is used to call Emscripten tools from the command line on Windows.

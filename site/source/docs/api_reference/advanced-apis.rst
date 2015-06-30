@@ -63,7 +63,6 @@ Advanced File System API
 :ref:`Filesystem-API` covers the public API that will be relevant to most developers. The following functions are only needed for advanced use-cases (for example, writing a new local file system) or legacy file system compatibility.
 
 .. js:function:: FS.handleFSError(e)
-	FS.handleFSError(e)
 	FS.hashName(parentid, name)
 	FS.hashAddNode(node)
 	FS.hashRemoveNode(node)

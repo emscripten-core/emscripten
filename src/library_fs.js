@@ -1,9 +1,9 @@
 mergeInto(LibraryManager.library, {
   $FS__deps: ['$ERRNO_CODES', '$ERRNO_MESSAGES', '__setErrNo', '$PATH', '$TTY', '$MEMFS', '$IDBFS', '$NODEFS', 'stdin', 'stdout', 'stderr', 'fflush'],
   $FS__postset: 'FS.staticInit();' +
-                '__ATINIT__.unshift({ func: function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() } });' +
-                '__ATMAIN__.push({ func: function() { FS.ignorePermissions = false } });' +
-                '__ATEXIT__.push({ func: function() { FS.quit() } });' +
+                '__ATINIT__.unshift(function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() });' +
+                '__ATMAIN__.push(function() { FS.ignorePermissions = false });' +
+                '__ATEXIT__.push(function() { FS.quit() });' +
                 // export some names through closure
                 'Module["FS_createFolder"] = FS.createFolder;' +
                 'Module["FS_createPath"] = FS.createPath;' +
@@ -1236,7 +1236,7 @@ mergeInto(LibraryManager.library, {
       // setup /dev/null
       FS.registerDevice(FS.makedev(1, 3), {
         read: function() { return 0; },
-        write: function() { return 0; }
+        write: function(stream, buffer, offset, length, pos) { return length; }
       });
       FS.mkdev('/dev/null', FS.makedev(1, 3));
       // setup /dev/tty and /dev/tty1
@@ -1712,18 +1712,20 @@ mergeInto(LibraryManager.library, {
     // You can also call this with a typed array instead of a url. It will then
     // do preloading for the Image/Audio part, as if the typed array were the
     // result of an XHR that you did manually.
-    createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn) {
+    createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) {
       Browser.init();
       // TODO we should allow people to just pass in a complete filename instead
       // of parent and name being that we just join them anyways
       var fullname = name ? PATH.resolve(PATH.join2(parent, name)) : parent;
+      var dep = getUniqueRunDependency('cp ' + fullname); // might have several active requests for the same fullname
       function processData(byteArray) {
         function finish(byteArray) {
+          if (preFinish) preFinish();
           if (!dontCreateFile) {
             FS.createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
           }
           if (onload) onload();
-          removeRunDependency('cp ' + fullname);
+          removeRunDependency(dep);
         }
         var handled = false;
         Module['preloadPlugins'].forEach(function(plugin) {
@@ -1731,14 +1733,14 @@ mergeInto(LibraryManager.library, {
           if (plugin['canHandle'](fullname)) {
             plugin['handle'](byteArray, fullname, finish, function() {
               if (onerror) onerror();
-              removeRunDependency('cp ' + fullname);
+              removeRunDependency(dep);
             });
             handled = true;
           }
         });
         if (!handled) finish(byteArray);
       }
-      addRunDependency('cp ' + fullname);
+      addRunDependency(dep);
       if (typeof url == 'string') {
         Browser.asyncLoad(url, function(byteArray) {
           processData(byteArray);

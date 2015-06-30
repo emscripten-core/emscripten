@@ -56,4 +56,12 @@ function cubeMD5mesh() {
  $36 = +HEAPF32[CSE$1 + 12 >> 2];
  $43 = +HEAPF32[CSE$1 + 24 >> 2];
 }
+function ___towcase() {
+ var CSE$0 = 0;
+ CSE$0 = gb + 1 + ($i << 2) | 0;
+ CSE$0 | 0;
+ CSE$0 | 0;
+ gb + gb + gb + gb;
+ gb + gb + gb + gb;
+}
 

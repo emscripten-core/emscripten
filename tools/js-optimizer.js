@@ -754,19 +754,10 @@ function simplifyExpressions(ast) {
         return node;
       } else if (type === 'binary' && node[1] === '+') {
         // The most common mathop is addition, e.g. in getelementptr done repeatedly. We can join all of those,
-        // by doing (num+num) ==> newnum, and (name+num)+num = name+newnum
+        // by doing (num+num) ==> newnum.
         if (node[2][0] === 'num' && node[3][0] === 'num') {
           node[2][1] += node[3][1];
           return node[2];
-        }
-        for (var i = 2; i <= 3; i++) {
-          var ii = 5-i;
-          for (var j = 2; j <= 3; j++) {
-            if (node[i][0] === 'num' && node[ii][0] === 'binary' && node[ii][1] === '+' && node[ii][j][0] === 'num') {
-              node[ii][j][1] += node[i][1];
-              return node[ii];
-            }
-          }
         }
       }
     });
@@ -1012,6 +1003,7 @@ function localCSE(ast) {
           if (type === 'binary' || type === 'unary-prefix') {
             if (type === 'binary' && skips.indexOf(node) >= 0) return;
             if (measureCost(node) < MIN_COST) return;
+            if (detectType(node, asmData) === ASM_NONE) return; // if we can't figure it out locally, forget it
             var str = JSON.stringify(node);
             var lookup = exps[str];
             if (!lookup) {
@@ -1810,7 +1802,11 @@ function detectType(node, asmInfo, inVarDef) {
     case 'binary': {
       switch (node[1]) {
         case '+': case '-':
-        case '*': case '/': case '%': return detectType(node[2], asmInfo, inVarDef);
+        case '*': case '/': case '%': {
+          var ret = detectType(node[2], asmInfo, inVarDef);
+          if (ret !== ASM_NONE) return ret;
+          return detectType(node[3], asmInfo, inVarDef)
+        }
         case '|': case '&': case '^': case '<<': case '>>': case '>>>':
         case '==': case '!=': case '<': case '<=': case '>': case '>=': {
           return ASM_INT;
@@ -5758,7 +5754,6 @@ function emterpretify(ast) {
   var ASYNC = extraInfo.ASYNC;
   var PROFILING = extraInfo.PROFILING;
   var ASSERTIONS = extraInfo.ASSERTIONS;
-  var yieldFuncs = set(extraInfo.yieldFuncs);
 
   var RELATIVE_BRANCHES = set('BR', 'BRT', 'BRF');
   var ABSOLUTE_BRANCHES = set('BRA', 'BRTA', 'BRFA');
@@ -5784,6 +5779,14 @@ function emterpretify(ast) {
   function flattenFloat64(value) {
     tempFloat64[0] = value;
     return Array.prototype.slice.call(tempUint8, 0, 8);
+  }
+
+  var OK_TO_CALL_WHILE_ASYNC = set('stackSave', 'stackRestore', 'stackAlloc', 'setThrew', '_memset'); // functions which are ok to run while async, even if not emterpreted
+  function okToCallWhileAsync(name) {
+    // dynCall *can* be on the stack, they are just bridges; what matters is where they go
+    if (/^dynCall_/.test(name)) return true;
+    if (name in OK_TO_CALL_WHILE_ASYNC) return true;
+    return false;
   }
 
   function verifyCode(code, stat) {
@@ -7041,12 +7044,9 @@ function emterpretify(ast) {
 
     if (ignore) {
       // we are not emterpreting this function
-      if (ASYNC && ASSERTIONS && !/^dynCall_/.test(func[1]) && !(func[1] in yieldFuncs)) {
+      if (ASYNC && ASSERTIONS && !okToCallWhileAsync(func[1])) {
         // we need to be careful to never enter non-emterpreted code while doing an async save/restore,
         // which is what happens if non-emterpreted code is on the stack while we attempt to save.
-        // note that we special-case dynCall, which *can* be on the stack, they are just bridges; what
-        // matters is where they go
-
         // add asserts right after each call
         var stack = [];
         traverse(func, function(node, type) {
@@ -7255,10 +7255,6 @@ function emterpretify(ast) {
       });
       if (ASYNC) {
         argStats.push(['if', srcToExp('(asyncState|0) == 1'), srcToStat('asyncState = 3;')]); // we know we are during a sleep, mark the state
-        if (ASSERTIONS && !(func[1] in yieldFuncs)) {
-          argStats.push(['if', srcToExp('((asyncState|0) == 1) | ((asyncState|0) == 3)'), srcToStat('abort(-12) | 0')]); // if *not* a yield func, we should never get here (trampoline entry)
-                                                                                                                         // while sleeping (3, or 1 which has not yet been turned into a 3)
-        }
         argStats = [['if', srcToExp('(asyncState|0) != 2'), ['block', argStats]]]; // 2 means restore, so do not trample the stack
       }
       func[3] = func[3].concat(argStats);
@@ -7447,12 +7443,14 @@ function asmLastOpts(ast) {
       var stats = getStatements(node);
       if (stats) statsStack.pop();
     });
-    // convert  { singleton }  into  singleton
-    traverse(fun, function(node, type) {
-      if (type === 'block' && node[1] && node[1].length === 1) {
-        return node[1][0];
-      }
-    });
+    if (!debug) { // dangerous in debug mode, as without braces things can end up on the same line, together with comments
+      // convert  { singleton }  into  singleton
+      traverse(fun, function(node, type) {
+        if (type === 'block' && node[1] && node[1].length === 1) {
+          return node[1][0];
+        }
+      });
+    }
   });
 }
 

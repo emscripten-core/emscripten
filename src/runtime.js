@@ -7,12 +7,9 @@
 // itself is as optimized as possible - no unneeded runtime checks).
 
 var RuntimeGenerator = {
-  alloc: function(size, type, init, sep, ignoreAlign) {
+  alloc: function(size, type, sep, ignoreAlign) {
     sep = sep || ';';
     var ret = type + 'TOP';
-    if (init) {
-      ret += sep + '_memset(' + type + 'TOP, 0, ' + size + ')';
-    }
     ret += sep + type + 'TOP = (' + type + 'TOP + ' + size + ')|0';
     if ({{{ STACK_ALIGN }}} > 1 && !ignoreAlign) {
       ret += sep + RuntimeGenerator.alignMemory(type + 'TOP', {{{ STACK_ALIGN }}});
@@ -23,7 +20,7 @@ var RuntimeGenerator = {
   // An allocation that lives as long as the current function call
   stackAlloc: function(size, sep) {
     sep = sep || ';';
-    var ret = RuntimeGenerator.alloc(size, 'STACK', false, sep, (isNumber(size) && parseInt(size) % {{{ STACK_ALIGN }}} == 0));
+    var ret = RuntimeGenerator.alloc(size, 'STACK', sep, (isNumber(size) && parseInt(size) % {{{ STACK_ALIGN }}} == 0));
     if (ASSERTIONS) {
       ret += sep + '(assert(' + asmCoercion('(STACKTOP|0) < (STACK_MAX|0)', 'i32') + ')|0)';
     }
@@ -53,14 +50,20 @@ var RuntimeGenerator = {
   // called, takes control of STATICTOP)
   staticAlloc: function(size) {
     if (ASSERTIONS) size = '(assert(!staticSealed),' + size + ')'; // static area must not be sealed
-    var ret = RuntimeGenerator.alloc(size, 'STATIC', INIT_HEAP);
+#if USE_PTHREADS
+    if (typeof ENVIRONMENT_IS_PTHREAD !== 'undefined' && ENVIRONMENT_IS_PTHREAD) throw 'Runtime.staticAlloc is not available in pthreads!'; // This is because each worker has its own copy of STATICTOP, of which main thread is authoritative.
+#endif
+    var ret = RuntimeGenerator.alloc(size, 'STATIC');
     return ret;
   },
 
   // allocation on the top of memory, adjusted dynamically by sbrk
   dynamicAlloc: function(size) {
     if (ASSERTIONS) size = '(assert(DYNAMICTOP > 0),' + size + ')'; // dynamic area must be ready
-    var ret = RuntimeGenerator.alloc(size, 'DYNAMIC', INIT_HEAP);
+#if USE_PTHREADS
+    if (typeof ENVIRONMENT_IS_PTHREAD !== 'undefined' && ENVIRONMENT_IS_PTHREAD) throw 'Runtime.dynamicAlloc is not available in pthreads!'; // This is because each worker has its own copy of DYNAMICTOP, of which main thread is authoritative.
+#endif
+    var ret = RuntimeGenerator.alloc(size, 'DYNAMIC');
     ret += '; if (DYNAMICTOP >= TOTAL_MEMORY) { var success = enlargeMemory(); if (!success) { DYNAMICTOP = ret; return 0; } }'
     return ret;
   },
@@ -283,8 +286,45 @@ var Runtime = {
   },
 
   removeFunction: function(index) {
+#if EMULATED_FUNCTION_POINTERS == 0
     Runtime.functionPointers[(index-{{{ FUNCTION_POINTER_ALIGNMENT }}})/{{{ FUNCTION_POINTER_ALIGNMENT }}}] = null;
+#else
+    Runtime.alignFunctionTables(); // XXX we should rely on this being an invariant
+    var tables = Runtime.getFunctionTables();
+    for (var sig in tables) {
+      tables[sig][index] = null;
+    }
+#endif
   },
+
+#if RELOCATABLE
+  loadedDynamicLibraries: [],
+
+  loadDynamicLibrary: function(lib) {
+    // TODO: addRunDep etc., do asynchronously when in the browser. for now we assume we can do a sync xhr, no mem init files in libs, and we ignore the sync xhr lag
+    var src = Module['read'](lib);
+    var libModule = eval(src)(
+      Runtime.alignFunctionTables(),
+      Module
+    );
+    // add symbols into global namespace TODO: weak linking etc.
+    for (var sym in libModule) {
+      if (!Module.hasOwnProperty(sym)) {
+        Module[sym] = libModule[sym];
+      }
+#if ASSERTIONS == 2
+      else if (sym[0] === '_') {
+        var curr = Module[sym], next = libModule[sym];
+        // don't warn on functions - might be odr, linkonce_odr, etc.
+        if (!(typeof curr === 'function' && typeof next === 'function')) {
+          Module.printErr("warning: trying to dynamically load symbol '" + sym + "' (from '" + lib + "') that already exists (duplicate symbol? or weak linking, which isn't supported yet?)"); // + [curr, ' vs ', next]);
+        }
+      }
+#endif
+    }
+    Runtime.loadedDynamicLibraries.push(libModule);
+  },
+#endif
 
   warnOnce: function(text) {
     if (!Runtime.warnOnce.shown) Runtime.warnOnce.shown = {};
@@ -381,6 +421,16 @@ Runtime.staticAlloc = unInline('staticAlloc', ['size']);
 Runtime.dynamicAlloc = unInline('dynamicAlloc', ['size']);
 Runtime.alignMemory = unInline('alignMemory', ['size', 'quantum']);
 Runtime.makeBigInt = unInline('makeBigInt', ['low', 'high', 'unsigned']);
+
+if (MAIN_MODULE || SIDE_MODULE) {
+  Runtime.tempRet0 = 0;
+  Runtime.getTempRet0 = function() {
+    return Runtime.tempRet0;
+  };
+  Runtime.setTempRet0 = function(x) {
+    Runtime.tempRet0 = x;
+  };
+}
 
 function getRuntime() {
   var ret = 'var Runtime = {\n';

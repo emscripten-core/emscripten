@@ -46,9 +46,9 @@ function JSify(data, functionsOnly) {
     // things out as they are ready.
 
     var shellParts = read(shellFile).split('{{BODY}}');
-    print(processMacros(preprocess(shellParts[0])));
+    print(processMacros(preprocess(shellParts[0], shellFile)));
     var preFile = BUILD_AS_SHARED_LIB || SIDE_MODULE ? 'preamble_sharedlib.js' : 'preamble.js';
-    var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime())));
+    var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime()), preFile));
     print(pre);
   }
 
@@ -62,7 +62,7 @@ function JSify(data, functionsOnly) {
     var libFuncsToInclude;
     if (INCLUDE_FULL_LIBRARY) {
       assert(!(BUILD_AS_SHARED_LIB || SIDE_MODULE), 'Cannot have both INCLUDE_FULL_LIBRARY and BUILD_AS_SHARED_LIB/SIDE_MODULE set.')
-      libFuncsToInclude = MAIN_MODULE ? DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.slice(0) : [];
+      libFuncsToInclude = (MAIN_MODULE || SIDE_MODULE) ? DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.slice(0) : [];
       for (var key in LibraryManager.library) {
         if (!key.match(/__(deps|postset|inline|asm|sig)$/)) {
           libFuncsToInclude.push(key);
@@ -123,7 +123,9 @@ function JSify(data, functionsOnly) {
       // Note: We don't return the dependencies here. Be careful not to end up where this matters
       if (finalName in Functions.implementedFunctions) return '';
 
-      if (!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) {
+      var noExport = false;
+
+      if ((!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) || SIDE_MODULE) {
         if (notDep) {
           if (VERBOSE || ident.substr(0, 11) !== 'emscripten_') { // avoid warning on emscripten_* functions which are for internal usage anyhow
             if (ERROR_ON_UNDEFINED_SYMBOLS) error('unresolved symbol: ' + ident);
@@ -134,7 +136,16 @@ function JSify(data, functionsOnly) {
           // emit a stub that will fail at runtime
           LibraryManager.library[shortident] = new Function("Module['printErr']('missing function: " + shortident + "'); abort(-1);");
         } else {
-          LibraryManager.library[shortident] = function() { return Module['_' + shortident].apply(null, arguments); };
+          var target = (MAIN_MODULE ? '' : 'parent') + "Module['_" + shortident + "']";
+          var assertion = '';
+          if (ASSERTIONS) assertion = 'if (!' + target + ') abort("external function \'' + shortident + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");';
+          LibraryManager.library[shortident] = new Function(assertion + "return " + target + ".apply(null, arguments);");
+          if (SIDE_MODULE) {
+            // no dependencies, just emit the thunk
+            Functions.libraryFunctions[finalName] = 1;
+            return processLibraryFunction(LibraryManager.library[shortident], ident, finalName);
+          }
+          noExport = true;
         }
       }
 
@@ -193,7 +204,15 @@ function JSify(data, functionsOnly) {
       });
       if (VERBOSE) printErr('adding ' + finalName + ' and deps ' + deps + ' : ' + (snippet + '').substr(0, 40));
       var depsText = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
-      var contentText = isFunction ? snippet : ('var ' + finalName + '=' + snippet + ';');
+      var contentText;
+      if (isFunction) {
+        contentText = snippet;
+      } else if (typeof snippet === 'string' && snippet.indexOf(';') == 0) {
+        contentText = 'var ' + finalName + snippet;
+        if (snippet[snippet.length-1] != ';' && snippet[snippet.length-1] != '}') contentText += ';';
+      } else {
+        contentText = 'var ' + finalName + '=' + snippet + ';';
+      }
       var sig = LibraryManager.library[ident + '__sig'];
       if (isFunction && sig && LibraryManager.library[ident + '__asm']) {
         // asm library function, add it as generated code alongside the generated code
@@ -203,8 +222,7 @@ function JSify(data, functionsOnly) {
         EXPORTED_FUNCTIONS[finalName] = 1;
         Functions.libraryFunctions[finalName] = 2;
       }
-      if (SIDE_MODULE) return ';'; // we import into the side module js library stuff from the outside parent 
-      if (EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS)) {
+      if ((EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS)) && !noExport) {
         contentText += '\nModule["' + finalName + '"] = ' + finalName + ';';
       }
       return depsText + contentText;
@@ -264,7 +282,7 @@ function JSify(data, functionsOnly) {
           print('STATIC_BASE = ' + Runtime.GLOBAL_BASE + ';\n');
           print('STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');
         } else {
-          print('gb = parentModule["_malloc"]({{{ STATIC_BUMP }}});\n');
+          print('gb = getMemory({{{ STATIC_BUMP }}});\n');
           print('// STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n'); // comment as metadata only
         }
       }
@@ -292,13 +310,24 @@ function JSify(data, functionsOnly) {
           return true;
         });
         // write out the singleton big memory initialization value
+        if (USE_PTHREADS) {
+          print('if (!ENVIRONMENT_IS_PTHREAD) {') // Pthreads should not initialize memory again, since it's shared with the main thread.
+        }
         print('/* memory initializer */ ' + makePointer(memoryInitialization, null, 'ALLOC_NONE', 'i8', 'Runtime.GLOBAL_BASE' + (SIDE_MODULE ? '+H_BASE' : ''), true));
+        if (USE_PTHREADS) {
+          print('}')
+        }
       } else {
         print('/* no memory initializer */'); // test purposes
       }
 
       if (!BUILD_AS_SHARED_LIB && !SIDE_MODULE) {
-        print('var tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
+        if (USE_PTHREADS) {
+          print('var tempDoublePtr;\n');
+          print('if (!ENVIRONMENT_IS_PTHREAD) tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
+        } else {
+          print('var tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
+        }
         print('assert(tempDoublePtr % 8 == 0);\n');
         print('function copyTempFloat(ptr) { // functions, because inlining this code increases code size too much\n');
         print('  HEAP8[tempDoublePtr] = HEAP8[ptr];\n');
@@ -317,6 +346,7 @@ function JSify(data, functionsOnly) {
         print('  HEAP8[tempDoublePtr+7] = HEAP8[ptr+7];\n');
         print('}\n');
       }
+      print('// {{PRE_LIBRARY}}\n'); // safe to put stuff here that statically allocates
 
       return;
     }
@@ -358,7 +388,10 @@ function JSify(data, functionsOnly) {
     // rest of the output that we started to print out earlier (see comment on the
     // "Final shape that will be created").
     if (PRECISE_I64_MATH && (Types.preciseI64MathUsed || PRECISE_I64_MATH == 2)) {
-      if (!INCLUDE_FULL_LIBRARY && !SIDE_MODULE && !BUILD_AS_SHARED_LIB) {
+      if (SIDE_MODULE) {
+        print('// ASM_LIBRARY FUNCTIONS'); // fastLong.js etc. code is indeed asm library code
+      }
+      if (!INCLUDE_FULL_LIBRARY) {
         // first row are utilities called from generated code, second are needed from fastLong
         ['i64Add', 'i64Subtract', 'bitshift64Shl', 'bitshift64Lshr', 'bitshift64Ashr',
          'llvm_cttz_i32'].forEach(function(ident) {
@@ -382,7 +415,7 @@ function JSify(data, functionsOnly) {
         });
       }
       // these may be duplicated in side modules and the main module without issue
-      print(read('fastLong.js'));
+      print(processMacros(read('fastLong.js')));
       print('// EMSCRIPTEN_END_FUNCS\n');
       print(read('long.js'));
     } else {
@@ -408,18 +441,13 @@ function JSify(data, functionsOnly) {
       print(read('deterministic.js'));
     }
     var postFile = BUILD_AS_SHARED_LIB || SIDE_MODULE ? 'postamble_sharedlib.js' : 'postamble.js';
-    var postParts = processMacros(preprocess(read(postFile))).split('{{GLOBAL_VARS}}');
+    var postParts = processMacros(preprocess(read(postFile), postFile)).split('{{GLOBAL_VARS}}');
     print(postParts[0]);
-
-    // Load runtime-linked libraries
-    RUNTIME_LINKED_LIBS.forEach(function(lib) {
-      print('eval(Module["read"]("' + lib + '"))(' + Functions.getTable('x') + '.length, this);');
-    });
 
     print(postParts[1]);
 
     var shellParts = read(shellFile).split('{{BODY}}');
-    print(processMacros(preprocess(shellParts[1])));
+    print(processMacros(preprocess(shellParts[1], shellFile)));
     // Print out some useful metadata
     if (RUNNING_JS_OPTS || PGO) {
       var generatedFunctions = JSON.stringify(keys(Functions.implementedFunctions));

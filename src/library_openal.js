@@ -781,6 +781,14 @@ var LibraryOpenAL = {
       bytes = 2;
       channels = 2;
       break;
+    case 0x10010 /* AL_FORMAT_MONO_FLOAT32 */:
+      bytes = 4;
+      channels = 1;
+      break;
+    case 0x10011 /* AL_FORMAT_STEREO_FLOAT32 */:
+      bytes = 4;
+      channels = 2;
+      break;
     default:
 #if OPENAL_DEBUG
       console.error("alBufferData called with invalid format " + format);
@@ -808,6 +816,9 @@ var LibraryOpenAL = {
         case 2:
           var val = {{{ makeGetValue('data', '2*(i*channels+j)', 'i16') }}};
           buf[j][i] = val/32768;
+          break;
+        case 4:
+          buf[j][i] = {{{ makeGetValue('data', '4*(i*channels+j)', 'float') }}};
           break;
         }
       }
@@ -1300,6 +1311,10 @@ var LibraryOpenAL = {
   },
 
   alIsExtensionPresent: function(extName) {
+    extName = Pointer_stringify(extName);
+
+    if (extName == "AL_EXT_float32") return 1;
+
     return 0;
   },
 
@@ -1339,7 +1354,7 @@ var LibraryOpenAL = {
       ret = 'WebAudio';
       break;
     case 0xB004 /* AL_EXTENSIONS */:
-      ret = '';
+      ret = 'AL_EXT_float32';
       break;
     default:
       AL.currentContext.err = 0xA002 /* AL_INVALID_ENUM */;
@@ -1425,6 +1440,11 @@ var LibraryOpenAL = {
   },
 
   alGetEnumValue: function(name) {
+    name = Pointer_stringify(name);
+
+    if (name == "AL_FORMAT_MONO_FLOAT32") return 0x10010;
+    if (name == "AL_FORMAT_STEREO_FLOAT32") return 0x10011;
+
     AL.currentContext.err = 0xA003 /* AL_INVALID_VALUE */;
     return 0;
   },

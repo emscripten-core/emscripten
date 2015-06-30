@@ -179,9 +179,16 @@ Options that are modified or new in *emcc* are listed below:
 
 "--profiling"
    Use reasonable defaults when emitting JavaScript to make the build
-   useful for profiling. This sets "-g2" (preserve function names) and
-   may also enable optimizations that affect performance and otherwise
-   might not be performed in "-g2".
+   readable but still useful for profiling. This sets "-g2" (preserve
+   whitespace and function names) and may also enable optimizations
+   that affect performance and otherwise might not be performed in
+   "-g2".
+
+"--profiling-funcs"
+   Preserve function names in profiling, but otherwise minify
+   whitespace and names as we normally do in optimized builds. This is
+   useful if you want to look at profiler results based on function
+   names, but do *not* intend to read the emitted code.
 
 "--tracing"
    Enable the *Emscripten Tracing API*.
@@ -258,8 +265,20 @@ Options that are modified or new in *emcc* are listed below:
         optimizations, so it is not recommended unless you want to
         reduce code size at all costs.
 
-   Note: * If closure compiler hits an out-of-memory, try adjusting
+   Note: * Consider using "-s MODULARIZE=1" when using closure, as
+     it
 
+       minifies globals to names that might conflict with others in
+       the global scope. "MODULARIZE" puts all the output into a
+       function (see "src/settings.js").
+
+     * Closure will minify the name of *Module* itself, by default!
+       Using "MODULARIZE" will solve that as well. Another solution is
+       to make sure a global variable called *Module* already exists
+       before the closure-compiled code runs, because then it will
+       reuse that variable.
+
+     * If closure compiler hits an out-of-memory, try adjusting
        "JAVA_HEAP_SIZE" in the environment (for example, to 4096m for
        4GB).
 
@@ -401,6 +420,18 @@ Options that are modified or new in *emcc* are listed below:
    Tip: "emcc -v" is a useful tool for diagnosing errors. It works
      with or without other arguments.
 
+"--cache"
+   Sets the directory to use as the Emscripten cache. The Emscripten
+   cache is used to store pre-built versions of "libc", "libcxx" and
+   other libraries.
+
+   If using this in combination with "--clear-cache", be sure to
+   specify this argument first.
+
+   The Emscripten cache defaults to being located in the path name
+   stored in the "EM_CACHE" environment variable or
+   "~/.emscripten_cache".
+
 "--clear-cache"
    Manually clears the cache of compiled Emscripten system libraries
    (libc++, libc++abi, libc).
@@ -412,6 +443,18 @@ Options that are modified or new in *emcc* are listed below:
    failing to link with library files. This also clears other cached
    data. After the cache is cleared, this process will exit.
 
+"--clear-ports"
+   Manually clears the local copies and builds of projects from the
+   Emscripten Ports repos (sdl2, etc.)
+
+   You should only need to do this if a problem happens and you want
+   all ports that you use to be downloaded and built from scratch.
+   After this operation is complete, this process will exit.
+
+"--show-ports"
+   Shows the list of available projects in the Emscripten Ports repos.
+   After this operation is complete, this process will exit.
+
 "--save-bc PATH"
    When compiling to JavaScript or HTML, this option will save a copy
    of the bitcode to the specified path. The bitcode will include all
@@ -422,9 +465,10 @@ Options that are modified or new in *emcc* are listed below:
    Specifies whether to emit a separate memory initialization file.
    Possible "on" values are:
 
-      * "0": Do not emit a separate memory initialization file
-        (default). Instead keep the static initialization inside the
-        generated JavaScript as text.
+      * "0": Do not emit a separate memory initialization file.
+        Instead keep the static initialization inside the generated
+        JavaScript as text. This is the default setting if compiling
+        with -O0 or -O1 link-time optimization flags.
 
       * "1": Emit a separate memory initialization file in binary
         format. This is more efficient than storing it as text inside
@@ -432,10 +476,23 @@ Options that are modified or new in *emcc* are listed below:
         The binary file will also be loaded asynchronously, which
         means "main()" will not be called until the file is downloaded
         and applied; you cannot call any C functions until it arrives.
+        This is the default setting when compiling with -O2 or higher.
 
            Note: The *safest way* to ensure that it is safe to call
              C functions (the initialisation file has loaded) is to
              call a notifier function from "main()".
+
+           Note: If you assign a network request to
+             "Module.memoryInitializerRequest" (before the script
+             runs), then it will use that request instead of
+             automatically starting a download for you. This is
+             beneficial in that you can, in your HTML, fire off a
+             request for the memory init file before the script
+             actually arrives. For this to work, the network request
+             should be an XMLHttpRequest with responseType set to
+             "'arraybuffer'". (You can also put any other object here,
+             all it must provide is a ".response" property containing
+             an ArrayBuffer.)
 
 "-Wno-warn-absolute-paths"
    Suppress warnings about the use of absolute paths in "-I" and "-L"
@@ -471,7 +528,7 @@ Options that are modified or new in *emcc* are listed below:
 
       emcc -c a.c -o dir/
 
-"--valid_abspath path"
+"--valid-abspath path"
    Whitelist an absolute path to prevent warnings about absolute
    include paths.
 

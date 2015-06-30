@@ -13,7 +13,7 @@ entry:
   %z = alloca %struct.s, align 4
   %0 = bitcast %struct.s* %z to i8*
   call void @llvm.memset.p0i8.i32(i8* %0, i8 0, i32 4, i32 4, i1 false)
-  %1 = call i32 bitcast (i32 (i8*)* @puts to i32 (i32*)*)(i32* bitcast (i8* getelementptr inbounds ([14 x i8]* @.str, i32 0, i32 0) to i32*)) ; [#uses=0]
+  %1 = call i32 bitcast (i32 (i8*)* @puts to i32 (i32*)*)(i32* bitcast (i8* getelementptr inbounds ([14 x i8], [14 x i8]* @.str, i32 0, i32 0) to i32*)) ; [#uses=0]
   ret i32 0
 }
 

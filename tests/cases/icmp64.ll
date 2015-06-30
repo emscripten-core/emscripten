@@ -12,19 +12,19 @@ entry:
   %a0 = add i64 0, 0
   %a1 = icmp slt i64 %a0, 0
   %a2 = zext i1 %a1 to i32
-  %calla = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([17 x i8]* @.str, i32 0, i32 0), i32 %a2)
+  %calla = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @.str, i32 0, i32 0), i32 %a2)
   %b0 = add i64 0, 1
   %b1 = icmp slt i64 %b0, 0
   %b2 = zext i1 %b1 to i32
-  %callb = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([17 x i8]* @.str, i32 0, i32 0), i32 %b2)
+  %callb = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @.str, i32 0, i32 0), i32 %b2)
   %c0 = sub i64 1, 0
   %c1 = icmp slt i64 %c0, 0
   %c2 = zext i1 %c1 to i32
-  %callc = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([17 x i8]* @.str, i32 0, i32 0), i32 %c2)
+  %callc = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @.str, i32 0, i32 0), i32 %c2)
   %d0 = sub i64 0, 1
   %d1 = icmp slt i64 %d0, 0
   %d2 = zext i1 %d1 to i32
-  %calld = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([17 x i8]* @.str, i32 0, i32 0), i32 %d2)
+  %calld = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @.str, i32 0, i32 0), i32 %d2)
   ret i32 1
 }
 

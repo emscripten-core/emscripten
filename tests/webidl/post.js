@@ -103,12 +103,6 @@ suser.Print(41, "world");
 suser.PrintFloat(12.3456);
 TheModule.print(suser.returnAString());
 
-// Verify that subsequent calls with the same string value re-use the string storage.
-suser.CompareCStringAddress("string A", "string A");
-suser.CompareCStringAddress("string B", "string B");
-suser.CompareCStringAddress("string A", "string B");
-suser.CompareCStringAddress("string B", "string A");
-
 var bv = new TheModule.RefUser(10);
 var bv2 = new TheModule.RefUser(11);
 TheModule.print(bv2.getValue(bv));
@@ -206,6 +200,23 @@ struct = new TheModule.StructInArray(100, 101);
 arrayClass.set_struct_ptr_array(0, struct);
 TheModule.print('struct_ptr_array[0]->attr1 == ' + arrayClass.get_struct_ptr_array(0).get_attr1());
 TheModule.print('struct_ptr_array[0]->attr2 == ' + arrayClass.get_struct_ptr_array(0).get_attr2());
+
+
+// Test IDL_CHECKS=ALL
+
+try {
+  p = new TheModule.Parent(NaN); // Expects an integer
+} catch (e) {}
+
+try {
+  p = new TheModule.Parent(42);
+  p.voidStar(1234) // Expects a wrapped pointer
+} catch (e) {}
+
+try {
+  s = new TheModule.StringUser('abc', 1);
+  s.Print(123, null); // Expects a string or a wrapped pointer
+} catch (e) {}
 
 //
 

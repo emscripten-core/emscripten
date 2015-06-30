@@ -53,4 +53,10 @@ function cubeMD5mesh() {
  $36 = +HEAPF32[$16 + ($20 * 28 | 0) + 12 >> 2];
  $43 = +HEAPF32[$16 + ($20 * 28 | 0) + 24 >> 2];
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["skinning", "_i64Subtract", "cubeMD5mesh"]
+function ___towcase() {
+ gb + 1 + ($i << 2);
+ gb + 1 + ($i << 2);
+ gb + gb + gb + gb;
+ gb + gb + gb + gb;
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["skinning", "_i64Subtract", "cubeMD5mesh", "___towcase"]

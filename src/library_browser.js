@@ -596,8 +596,10 @@ mergeInto(LibraryManager.library, {
             Browser.lastTouches[touch.identifier] = coords;
             Browser.touches[touch.identifier] = coords;
           } else if (event.type === 'touchend' || event.type === 'touchmove') {
-            Browser.lastTouches[touch.identifier] = Browser.touches[touch.identifier];
-            Browser.touches[touch.identifier] = { x: adjustedX, y: adjustedY };
+            var last = Browser.touches[touch.identifier];
+            if (!last) last = coords;
+            Browser.lastTouches[touch.identifier] = last;
+            Browser.touches[touch.identifier] = coords;
           } 
           return;
         }
@@ -765,6 +767,8 @@ mergeInto(LibraryManager.library, {
 #endif
 
   emscripten_async_wget: function(url, file, onload, onerror) {
+    Module['noExitRuntime'] = true;
+
     var _url = Pointer_stringify(url);
     var _file = Pointer_stringify(file);
     function doCallback(callback) {
@@ -783,6 +787,14 @@ mergeInto(LibraryManager.library, {
       },
       function() {
         doCallback(onerror);
+      },
+      false, // dontCreateFile
+      false, // canOwn
+      function() { // preFinish
+        // if a file exists there, we overwrite it
+        try {
+          FS.unlink(_file);
+        } catch (e) {}
       }
     );
   },
@@ -824,6 +836,8 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_async_wget2: function(url, file, request, param, arg, onload, onerror, onprogress) {
+    Module['noExitRuntime'] = true;
+
     var _url = Pointer_stringify(url);
     var _file = Pointer_stringify(file);
     var _request = Pointer_stringify(request);
@@ -839,6 +853,10 @@ mergeInto(LibraryManager.library, {
     // LOAD
     http.onload = function http_onload(e) {
       if (http.status == 200) {
+        // if a file exists there, we overwrite it
+        try {
+          FS.unlink(_file);
+        } catch (e) {}
         FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(http.response), true, true);
         if (onload) {
           var stack = Runtime.stackSave();

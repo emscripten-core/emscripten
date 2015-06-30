@@ -10,7 +10,7 @@ function ___muldsi3($a, $b) {
   $8 = ($3 >>> 16) + (Math_imul($2, $6) | 0) | 0;
   $11 = $b >>> 16;
   $12 = Math_imul($11, $1) | 0;
-  return (tempRet0 = (($8 >>> 16) + (Math_imul($11, $6) | 0) | 0) + ((($8 & 65535) + $12 | 0) >>> 16) | 0, 0 | ($8 + $12 << 16 | $3 & 65535)) | 0;
+  return ({{{ makeSetTempRet0('(($8 >>> 16) + (Math_imul($11, $6) | 0) | 0) + ((($8 & 65535) + $12 | 0) >>> 16) | 0') }}}, 0 | ($8 + $12 << 16 | $3 & 65535)) | 0;
 }
 function ___divdi3($a$0, $a$1, $b$0, $b$1) {
   $a$0 = $a$0 | 0;
@@ -23,13 +23,13 @@ function ___divdi3($a$0, $a$1, $b$0, $b$1) {
   $2$0 = $b$1 >> 31 | (($b$1 | 0) < 0 ? -1 : 0) << 1;
   $2$1 = (($b$1 | 0) < 0 ? -1 : 0) >> 31 | (($b$1 | 0) < 0 ? -1 : 0) << 1;
   $4$0 = _i64Subtract($1$0 ^ $a$0, $1$1 ^ $a$1, $1$0, $1$1) | 0;
-  $4$1 = tempRet0;
+  $4$1 = {{{ makeGetTempRet0() }}};
   $6$0 = _i64Subtract($2$0 ^ $b$0, $2$1 ^ $b$1, $2$0, $2$1) | 0;
   $7$0 = $2$0 ^ $1$0;
   $7$1 = $2$1 ^ $1$1;
-  $8$0 = ___udivmoddi4($4$0, $4$1, $6$0, tempRet0, 0) | 0;
-  $10$0 = _i64Subtract($8$0 ^ $7$0, tempRet0 ^ $7$1, $7$0, $7$1) | 0;
-  return (tempRet0 = tempRet0, $10$0) | 0;
+  $8$0 = ___udivmoddi4($4$0, $4$1, $6$0, {{{ makeGetTempRet0() }}}, 0) | 0;
+  $10$0 = _i64Subtract($8$0 ^ $7$0, {{{ makeGetTempRet0() }}} ^ $7$1, $7$0, $7$1) | 0;
+  return $10$0 | 0;
 }
 function ___remdi3($a$0, $a$1, $b$0, $b$1) {
   $a$0 = $a$0 | 0;
@@ -45,13 +45,13 @@ function ___remdi3($a$0, $a$1, $b$0, $b$1) {
   $2$0 = $b$1 >> 31 | (($b$1 | 0) < 0 ? -1 : 0) << 1;
   $2$1 = (($b$1 | 0) < 0 ? -1 : 0) >> 31 | (($b$1 | 0) < 0 ? -1 : 0) << 1;
   $4$0 = _i64Subtract($1$0 ^ $a$0, $1$1 ^ $a$1, $1$0, $1$1) | 0;
-  $4$1 = tempRet0;
+  $4$1 = {{{ makeGetTempRet0() }}};
   $6$0 = _i64Subtract($2$0 ^ $b$0, $2$1 ^ $b$1, $2$0, $2$1) | 0;
-  ___udivmoddi4($4$0, $4$1, $6$0, tempRet0, $rem) | 0;
+  ___udivmoddi4($4$0, $4$1, $6$0, {{{ makeGetTempRet0() }}}, $rem) | 0;
   $10$0 = _i64Subtract(HEAP32[$rem >> 2] ^ $1$0, HEAP32[$rem + 4 >> 2] ^ $1$1, $1$0, $1$1) | 0;
-  $10$1 = tempRet0;
+  $10$1 = {{{ makeGetTempRet0() }}};
   STACKTOP = __stackBase__;
-  return (tempRet0 = $10$1, $10$0) | 0;
+  return ({{{ makeSetTempRet0('$10$1') }}}, $10$0) | 0;
 }
 function ___muldi3($a$0, $a$1, $b$0, $b$1) {
   $a$0 = $a$0 | 0;
@@ -62,9 +62,9 @@ function ___muldi3($a$0, $a$1, $b$0, $b$1) {
   $x_sroa_0_0_extract_trunc = $a$0;
   $y_sroa_0_0_extract_trunc = $b$0;
   $1$0 = ___muldsi3($x_sroa_0_0_extract_trunc, $y_sroa_0_0_extract_trunc) | 0;
-  $1$1 = tempRet0;
+  $1$1 = {{{ makeGetTempRet0() }}};
   $2 = Math_imul($a$1, $y_sroa_0_0_extract_trunc) | 0;
-  return (tempRet0 = ((Math_imul($b$1, $x_sroa_0_0_extract_trunc) | 0) + $2 | 0) + $1$1 | $1$1 & 0, 0 | $1$0 & -1) | 0;
+  return ({{{ makeSetTempRet0('((Math_imul($b$1, $x_sroa_0_0_extract_trunc) | 0) + $2 | 0) + $1$1 | $1$1 & 0') }}}, 0 | $1$0 & -1) | 0;
 }
 function ___udivdi3($a$0, $a$1, $b$0, $b$1) {
   $a$0 = $a$0 | 0;
@@ -73,7 +73,7 @@ function ___udivdi3($a$0, $a$1, $b$0, $b$1) {
   $b$1 = $b$1 | 0;
   var $1$0 = 0;
   $1$0 = ___udivmoddi4($a$0, $a$1, $b$0, $b$1, 0) | 0;
-  return (tempRet0 = tempRet0, $1$0) | 0;
+  return $1$0 | 0;
 }
 function ___uremdi3($a$0, $a$1, $b$0, $b$1) {
   $a$0 = $a$0 | 0;
@@ -86,7 +86,7 @@ function ___uremdi3($a$0, $a$1, $b$0, $b$1) {
   $rem = __stackBase__ | 0;
   ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem) | 0;
   STACKTOP = __stackBase__;
-  return (tempRet0 = HEAP32[$rem + 4 >> 2] | 0, HEAP32[$rem >> 2] | 0) | 0;
+  return ({{{ makeSetTempRet0('HEAP32[$rem + 4 >> 2] | 0') }}}, HEAP32[$rem >> 2] | 0) | 0;
 }
 function ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem) {
   $a$0 = $a$0 | 0;
@@ -110,18 +110,18 @@ function ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem) {
       }
       $_0$1 = 0;
       $_0$0 = ($n_sroa_0_0_extract_trunc >>> 0) / ($d_sroa_0_0_extract_trunc >>> 0) >>> 0;
-      return (tempRet0 = $_0$1, $_0$0) | 0;
+      return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
     } else {
       if (!$4) {
         $_0$1 = 0;
         $_0$0 = 0;
-        return (tempRet0 = $_0$1, $_0$0) | 0;
+        return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
       }
       HEAP32[$rem >> 2] = $a$0 & -1;
       HEAP32[$rem + 4 >> 2] = $a$1 & 0;
       $_0$1 = 0;
       $_0$0 = 0;
-      return (tempRet0 = $_0$1, $_0$0) | 0;
+      return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
     }
   }
   $17 = ($d_sroa_1_4_extract_trunc | 0) == 0;
@@ -134,7 +134,7 @@ function ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem) {
         }
         $_0$1 = 0;
         $_0$0 = ($n_sroa_1_4_extract_trunc >>> 0) / ($d_sroa_0_0_extract_trunc >>> 0) >>> 0;
-        return (tempRet0 = $_0$1, $_0$0) | 0;
+        return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
       }
       if (($n_sroa_0_0_extract_trunc | 0) == 0) {
         if (($rem | 0) != 0) {
@@ -143,7 +143,7 @@ function ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem) {
         }
         $_0$1 = 0;
         $_0$0 = ($n_sroa_1_4_extract_trunc >>> 0) / ($d_sroa_1_4_extract_trunc >>> 0) >>> 0;
-        return (tempRet0 = $_0$1, $_0$0) | 0;
+        return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
       }
       $37 = $d_sroa_1_4_extract_trunc - 1 | 0;
       if (($37 & $d_sroa_1_4_extract_trunc | 0) == 0) {
@@ -153,7 +153,7 @@ function ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem) {
         }
         $_0$1 = 0;
         $_0$0 = $n_sroa_1_4_extract_trunc >>> ((_llvm_cttz_i32($d_sroa_1_4_extract_trunc | 0) | 0) >>> 0);
-        return (tempRet0 = $_0$1, $_0$0) | 0;
+        return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
       }
       $49 = Math_clz32($d_sroa_1_4_extract_trunc | 0) | 0;
       $51 = $49 - (Math_clz32($n_sroa_1_4_extract_trunc | 0) | 0) | 0;
@@ -170,13 +170,13 @@ function ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem) {
       if (($rem | 0) == 0) {
         $_0$1 = 0;
         $_0$0 = 0;
-        return (tempRet0 = $_0$1, $_0$0) | 0;
+        return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
       }
       HEAP32[$rem >> 2] = 0 | $a$0 & -1;
       HEAP32[$rem + 4 >> 2] = $n_sroa_1_4_extract_shift$0 | $a$1 & 0;
       $_0$1 = 0;
       $_0$0 = 0;
-      return (tempRet0 = $_0$1, $_0$0) | 0;
+      return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
     } else {
       if (!$17) {
         $117 = Math_clz32($d_sroa_1_4_extract_trunc | 0) | 0;
@@ -195,13 +195,13 @@ function ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem) {
         if (($rem | 0) == 0) {
           $_0$1 = 0;
           $_0$0 = 0;
-          return (tempRet0 = $_0$1, $_0$0) | 0;
+          return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
         }
         HEAP32[$rem >> 2] = 0 | $a$0 & -1;
         HEAP32[$rem + 4 >> 2] = $n_sroa_1_4_extract_shift$0 | $a$1 & 0;
         $_0$1 = 0;
         $_0$0 = 0;
-        return (tempRet0 = $_0$1, $_0$0) | 0;
+        return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
       }
       $66 = $d_sroa_0_0_extract_trunc - 1 | 0;
       if (($66 & $d_sroa_0_0_extract_trunc | 0) != 0) {
@@ -226,12 +226,12 @@ function ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem) {
       if (($d_sroa_0_0_extract_trunc | 0) == 1) {
         $_0$1 = $n_sroa_1_4_extract_shift$0 | $a$1 & 0;
         $_0$0 = 0 | $a$0 & -1;
-        return (tempRet0 = $_0$1, $_0$0) | 0;
+        return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
       } else {
         $78 = _llvm_cttz_i32($d_sroa_0_0_extract_trunc | 0) | 0;
         $_0$1 = 0 | $n_sroa_1_4_extract_trunc >>> ($78 >>> 0);
         $_0$0 = $n_sroa_1_4_extract_trunc << 32 - $78 | $n_sroa_0_0_extract_trunc >>> ($78 >>> 0) | 0;
-        return (tempRet0 = $_0$1, $_0$0) | 0;
+        return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
       }
     }
   } while (0);
@@ -245,8 +245,8 @@ function ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem) {
   } else {
     $d_sroa_0_0_insert_insert99$0 = 0 | $b$0 & -1;
     $d_sroa_0_0_insert_insert99$1 = $d_sroa_1_4_extract_shift$0 | $b$1 & 0;
-    $137$0 = _i64Add($d_sroa_0_0_insert_insert99$0, $d_sroa_0_0_insert_insert99$1, -1, -1) | 0;
-    $137$1 = tempRet0;
+    $137$0 = _i64Add($d_sroa_0_0_insert_insert99$0 | 0, $d_sroa_0_0_insert_insert99$1 | 0, -1, -1) | 0;
+    $137$1 = {{{ makeGetTempRet0() }}};
     $q_sroa_1_1198 = $q_sroa_1_1_ph;
     $q_sroa_0_1199 = $q_sroa_0_1_ph;
     $r_sroa_1_1200 = $r_sroa_1_1_ph;
@@ -259,12 +259,12 @@ function ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem) {
       $r_sroa_0_0_insert_insert42$0 = 0 | ($r_sroa_0_1201 << 1 | $q_sroa_1_1198 >>> 31);
       $r_sroa_0_0_insert_insert42$1 = $r_sroa_0_1201 >>> 31 | $r_sroa_1_1200 << 1 | 0;
       _i64Subtract($137$0, $137$1, $r_sroa_0_0_insert_insert42$0, $r_sroa_0_0_insert_insert42$1) | 0;
-      $150$1 = tempRet0;
+      $150$1 = {{{ makeGetTempRet0() }}};
       $151$0 = $150$1 >> 31 | (($150$1 | 0) < 0 ? -1 : 0) << 1;
       $152 = $151$0 & 1;
       $154$0 = _i64Subtract($r_sroa_0_0_insert_insert42$0, $r_sroa_0_0_insert_insert42$1, $151$0 & $d_sroa_0_0_insert_insert99$0, ((($150$1 | 0) < 0 ? -1 : 0) >> 31 | (($150$1 | 0) < 0 ? -1 : 0) << 1) & $d_sroa_0_0_insert_insert99$1) | 0;
       $r_sroa_0_0_extract_trunc = $154$0;
-      $r_sroa_1_4_extract_trunc = tempRet0;
+      $r_sroa_1_4_extract_trunc = {{{ makeGetTempRet0() }}};
       $155 = $sr_1202 - 1 | 0;
       if (($155 | 0) == 0) {
         break;
@@ -293,7 +293,7 @@ function ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem) {
   }
   $_0$1 = (0 | $q_sroa_0_0_insert_ext75$0) >>> 31 | $q_sroa_0_0_insert_insert77$1 << 1 | ($q_sroa_0_0_insert_ext75$1 << 1 | $q_sroa_0_0_insert_ext75$0 >>> 31) & 0 | $carry_0_lcssa$1;
   $_0$0 = ($q_sroa_0_0_insert_ext75$0 << 1 | 0 >>> 31) & -2 | $carry_0_lcssa$0;
-  return (tempRet0 = $_0$1, $_0$0) | 0;
+  return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
 }
 // =======================================================================
 

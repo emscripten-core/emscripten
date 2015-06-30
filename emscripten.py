@@ -65,6 +65,8 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     backend_args = [backend_compiler, infile, '-march=js', '-filetype=asm', '-o', temp_js]
     if settings['PRECISE_F32']:
       backend_args += ['-emscripten-precise-f32']
+    if settings['USE_PTHREADS']:
+      backend_args += ['-emscripten-enable-pthreads']
     if settings['WARN_UNALIGNED']:
       backend_args += ['-emscripten-warn-unaligned']
     if settings['RESERVED_FUNCTION_POINTERS'] > 0:
@@ -165,6 +167,8 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     metadata['declares'] = filter(lambda i64_func: i64_func not in ['getHigh32', 'setHigh32', '__muldi3', '__divdi3', '__remdi3', '__udivdi3', '__uremdi3'], metadata['declares']) # FIXME: do these one by one as normal js lib funcs
 
     # Integrate info from backend
+    if settings['SIDE_MODULE']:
+      settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = [] # we don't need any JS library contents in side modules
     settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
       set(settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + map(shared.JS.to_nice_ident, metadata['declares'])).difference(
         map(lambda x: x[1:], metadata['implementedFunctions'])
@@ -218,8 +222,8 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     staticbump = mem_init.count(',')+1
     while staticbump % 16 != 0: staticbump += 1
     pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;
-  /* global initializers */ __ATINIT__.push(%s);
-  %s''' % (staticbump, global_initializers, mem_init)) # XXX wrong size calculation!
+  /* global initializers */ %s __ATINIT__.push(%s);
+  %s''' % (staticbump, 'if (!ENVIRONMENT_IS_PTHREAD)' if settings['USE_PTHREADS'] else '', global_initializers, mem_init)) # XXX wrong size calculation!
 
     if settings['SIDE_MODULE']:
       pre = pre.replace('Runtime.GLOBAL_BASE', 'gb').replace('{{{ STATIC_BUMP }}}', str(staticbump))
@@ -306,7 +310,7 @@ function _emscripten_asm_const_%d(%s) {
       contents = m.groups(0)[0]
       outfile.write(contents + '\n')
       return ''
-    if not settings['BOOTSTRAPPING_STRUCT_INFO']:
+    if not settings['BOOTSTRAPPING_STRUCT_INFO'] and len(funcs_js) > 1:
       funcs_js[1] = re.sub(r'/\* PRE_ASM \*/(.*)\n', lambda m: move_preasm(m), funcs_js[1])
 
     class Counter:
@@ -458,7 +462,12 @@ function _emscripten_asm_const_%d(%s) {
                                 'shiftRightArithmeticByScalar',
                                 'shiftRightLogicalByScalar',
                                 'shiftLeftByScalar'];
-    fundamentals = ['Math', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array', 'NaN', 'Infinity']
+    fundamentals = ['Math']
+    if settings['USE_PTHREADS']:
+      fundamentals += ['SharedInt8Array', 'SharedInt16Array', 'SharedInt32Array', 'SharedUint8Array', 'SharedUint16Array', 'SharedUint32Array', 'SharedFloat32Array', 'SharedFloat64Array', 'Atomics']
+    else:
+      fundamentals += ['Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
+    fundamentals += ['NaN', 'Infinity']
     if metadata['simd']:
         fundamentals += ['SIMD']
     if settings['ALLOW_MEMORY_GROWTH']: fundamentals.append('byteLength')
@@ -521,7 +530,12 @@ function _emscripten_asm_const_%d(%s) {
       if not settings['SIDE_MODULE']:
         asm_setup += 'var gb = Runtime.GLOBAL_BASE, fb = 0;\n'
 
-    asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'setThrew', 'setTempRet0', 'getTempRet0']
+    asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace', 'setThrew']
+    if not settings['RELOCATABLE']:
+      asm_runtime_funcs += ['setTempRet0', 'getTempRet0']
+    else:
+      basic_funcs += ['setTempRet0', 'getTempRet0']
+      asm_setup += 'var setTempRet0 = Runtime.setTempRet0, getTempRet0 = Runtime.getTempRet0;\n'
 
     # See if we need ASYNCIFY functions
     # We might not need them even if ASYNCIFY is enabled
@@ -579,13 +593,16 @@ function jsCall_%s_%s(%s) {
       if settings.get('EMULATED_FUNCTION_POINTERS'):
         args = ['a%d' % i for i in range(len(sig)-1)]
         full_args = ['x'] + args
+        table_access = 'FUNCTION_TABLE_' + sig
+        if settings['SIDE_MODULE']:
+          table_access = 'parentModule["' + table_access + '"]' # side module tables were merged into the parent, we need to access the global one
         prelude = '''
-  if (x < 0 || x >= FUNCTION_TABLE_%s.length) { Module.printErr("Function table mask error (out of range)"); %s ; abort(x) }''' % (sig, get_function_pointer_error(sig))
+  if (x < 0 || x >= %s.length) { Module.printErr("Function table mask error (out of range)"); %s ; abort(x) }''' % (table_access, get_function_pointer_error(sig))
         asm_setup += '''
 function ftCall_%s(%s) {%s
-  return FUNCTION_TABLE_%s[x](%s);
+  return %s[x](%s);
 }
-''' % (sig, ', '.join(full_args), prelude, sig, ', '.join(args))
+''' % (sig, ', '.join(full_args), prelude, table_access, ', '.join(args))
         basic_funcs.append('ftCall_%s' % sig)
 
     def quote(prop):
@@ -618,9 +635,19 @@ function ftCall_%s(%s) {%s
       del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
     except:
       pass
-    # If no named globals, only need externals
-    global_vars = metadata['externs'] #+ forwarded_json['Variables']['globals']
+    if not settings['RELOCATABLE']:
+      global_vars = metadata['externs']
+    else:
+      global_vars = [] # linkable code accesses globals through function calls
     global_funcs = list(set([key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2]).difference(set(global_vars)).difference(implemented_functions))
+    if settings['RELOCATABLE']:
+      global_funcs += ['g$' + extern for extern in metadata['externs']]
+      side = 'parent' if settings['SIDE_MODULE'] else ''
+      def check(extern):
+        if settings['ASSERTIONS']: return 'assert(' + side + 'Module["' + extern + '"]);'
+        return ''
+      for extern in metadata['externs']:
+        asm_setup += 'var g$' + extern + ' = function() { ' + check(extern) + ' return ' + side + 'Module["' + extern + '"] };\n'
     def math_fix(g):
       return g if not g.startswith('Math_') else g.split('_')[1]
     asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global' + access_quote(g) + ';\n' for g in maths]);
@@ -629,6 +656,10 @@ function ftCall_%s(%s) {%s
       asm_global_funcs += ''.join(['  var SIMD_' + ty + '=global' + access_quote('SIMD') + access_quote(ty) + ';\n' for ty in simdtypes])
       asm_global_funcs += ''.join(['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdinttypes for g in simdintfuncs])
       asm_global_funcs += ''.join(['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdfloattypes for g in simdfloatfuncs])
+    if settings['USE_PTHREADS']:
+#      asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor', 'fence']])
+# TODO: Once bug https://bugzilla.mozilla.org/show_bug.cgi?id=1141986 is implemented, replace the following line with the above one!
+      asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor', 'fence']])
     asm_global_vars = ''.join(['  var ' + g + '=env' + access_quote(g) + '|0;\n' for g in basic_vars + global_vars])
 
     # sent data
@@ -638,13 +669,13 @@ function ftCall_%s(%s) {%s
     receiving = ''
     if settings['ASSERTIONS']:
       # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
-      # some support code like malloc TODO: verify that malloc is actually safe to use that way
+      # some support code
       receiving = '\n'.join(['var real_' + s + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {
 assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
 assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
 return real_''' + s + '''.apply(null, arguments);
 };
-''' for s in exported_implemented_functions if s not in ['_malloc', '_free', '_memcpy', '_memset', 'runPostSets']])
+''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', 'runPostSets', '_emscripten_replace_memory']])
 
     if not settings['SWAPPABLE_ASM_MODULE']:
       receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables])
@@ -675,10 +706,14 @@ return real_''' + s + '''.apply(null, arguments);
 
     if settings['RELOCATABLE']:
       receiving += '''
-var NAMED_GLOBALS = %s;
-for (var named in NAMED_GLOBALS) NAMED_GLOBALS[named] += gb;
+var NAMED_GLOBALS = { %s };
+for (var named in NAMED_GLOBALS) {
+  Module['_' + named] = gb + NAMED_GLOBALS[named];
+}
 Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
-''' % json.dumps(metadata['namedGlobals'])
+''' % ', '.join('"' + k + '": ' + str(v) for k, v in metadata['namedGlobals'].iteritems())
+
+      receiving += ''.join(["Module['%s'] = Module['%s']\n" % (k, v) for k, v in metadata['aliases'].iteritems()])
 
     funcs_js = ['''
 %s
@@ -691,7 +726,7 @@ var asm = (function(global, env, buffer) {
 ''' % (asm_setup,
        access_quote('asmGlobalArg'), the_global,
        access_quote('asmLibraryArg'), sending,
-       "'use asm';" if not metadata.get('hasInlineJS') and not settings['SIDE_MODULE'] and settings['ASM_JS'] == 1 else "'almost asm';", '''
+       "'use asm';" if not metadata.get('hasInlineJS') and settings['ASM_JS'] == 1 else "'almost asm';", '''
   var HEAP8 = new global%s(buffer);
   var HEAP16 = new global%s(buffer);
   var HEAP32 = new global%s(buffer);
@@ -700,14 +735,15 @@ var asm = (function(global, env, buffer) {
   var HEAPU32 = new global%s(buffer);
   var HEAPF32 = new global%s(buffer);
   var HEAPF64 = new global%s(buffer);
-''' % (access_quote('Int8Array'),
-     access_quote('Int16Array'),
-     access_quote('Int32Array'),
-     access_quote('Uint8Array'),
-     access_quote('Uint16Array'),
-     access_quote('Uint32Array'),
-     access_quote('Float32Array'),
-     access_quote('Float64Array')) if not settings['ALLOW_MEMORY_GROWTH'] else '''
+''' % (access_quote('SharedInt8Array' if settings['USE_PTHREADS'] else 'Int8Array'),
+     access_quote('SharedInt16Array' if settings['USE_PTHREADS'] else 'Int16Array'),
+     access_quote('SharedInt32Array' if settings['USE_PTHREADS'] else 'Int32Array'),
+     access_quote('SharedUint8Array' if settings['USE_PTHREADS'] else 'Uint8Array'),
+     access_quote('SharedUint16Array' if settings['USE_PTHREADS'] else 'Uint16Array'),
+     access_quote('SharedUint32Array' if settings['USE_PTHREADS'] else 'Uint32Array'),
+     access_quote('SharedFloat32Array' if settings['USE_PTHREADS'] else 'Float32Array'),
+     access_quote('SharedFloat64Array' if settings['USE_PTHREADS'] else 'Float64Array'))
+     if not settings['ALLOW_MEMORY_GROWTH'] else '''
   var Int8View = global%s;
   var Int16View = global%s;
   var Int32View = global%s;
@@ -776,6 +812,12 @@ function stackRestore(top) {
   top = top|0;
   STACKTOP = top;
 }
+function establishStackSpace(stackBase, stackMax) {
+  stackBase = stackBase|0;
+  stackMax = stackMax|0;
+  STACKTOP = stackBase;
+  STACK_MAX = stackMax;
+}
 ''' + ('''
 function setAsync() {
   ___async = 1;
@@ -819,6 +861,7 @@ function copyTempDouble(ptr) {
   HEAP8[tempDoublePtr+6>>0] = HEAP8[ptr+6>>0];
   HEAP8[tempDoublePtr+7>>0] = HEAP8[ptr+7>>0];
 }
+'''] + ['''
 function setTempRet0(value) {
   value = value|0;
   tempRet0 = value;
@@ -826,7 +869,7 @@ function setTempRet0(value) {
 function getTempRet0() {
   return tempRet0|0;
 }
-'''] + funcs_js + ['''
+''' if not settings['RELOCATABLE'] else ''] + funcs_js + ['''
   %s
 
   return %s;
@@ -844,6 +887,10 @@ function getTempRet0() {
 Runtime.stackAlloc = asm['stackAlloc'];
 Runtime.stackSave = asm['stackSave'];
 Runtime.stackRestore = asm['stackRestore'];
+Runtime.establishStackSpace = asm['establishStackSpace'];
+''')
+    if not settings['RELOCATABLE']:
+      funcs_js.append('''
 Runtime.setTempRet0 = asm['setTempRet0'];
 Runtime.getTempRet0 = asm['getTempRet0'];
 ''')

@@ -1,13 +1,20 @@
 #!/usr/bin/env python2
 # This Python file uses the following encoding: utf-8
 
+'''
+Parallel test runner
+--------------------
+
+You may want to run this with unbuffered output, python -u ...
+'''
+
 import os, sys, subprocess, multiprocessing, threading, time
 from runner import test_modes, PYTHON, path_from_root
 
 assert not os.environ.get('EM_SAVE_DIR'), 'Need separate directories to avoid the parallel tests clashing'
 
 # run slower ones first, to optimize total time
-optimal_order = ['asm3i', 'asm1i', 'asm2nn', 'asm3', 'asm2', 'asm2g', 'asm2f', 'asm1', 'default']
+optimal_order = ['asm3i', 'asm1i', 'asm2nn', 'asm3', 'asm2', 'asm2m', 'asm2g', 'asm2f', 'asm1', 'default']
 assert set(optimal_order) == set(test_modes), 'need to update the list of slowest modes'
 
 # set up a background thread to report progress
@@ -23,8 +30,8 @@ class Watcher(threading.Thread):
           total += os.stat(mode + '.err').st_size
       if total != last:
         last = total
-        print >> sys.stderr, '[parallel_test_copy.py watcher] total output: %d' % total
-      time.sleep(1)
+        print '[parallel_test_copy.py watcher] total output: %d' % total
+      time.sleep(10)
 
 # run tests for one mode
 def run_mode(args):
@@ -65,10 +72,10 @@ def main():
 
   # emit all outputs
   for mode in optimal_order:
-    print >> sys.stderr, '=== %s ===' % mode
+    print '=== %s ===' % mode
     if os.path.exists(mode + '.err'):
-      print >> sys.stderr, open(mode + '.err').read()
-    print >> sys.stderr
+      print open(mode + '.err').read()
+    print ''
   return sum(num_failures)
 
 if __name__ == '__main__':

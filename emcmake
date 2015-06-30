@@ -4,5 +4,10 @@ import os, subprocess, sys
 from tools import shared
 
 configure_path = shared.path_from_root('emconfigure')
-exit(subprocess.call([shared.PYTHON, configure_path] + sys.argv[1:]))
+node_js = shared.NODE_JS
+if type(node_js) is list: node_js = ' '.join(node_js)
+node_js = node_js.replace('"', '\"')
 
+exit(subprocess.call([shared.PYTHON, configure_path] + \
+                     [sys.argv[1]] + \
+                     ['-DCMAKE_CROSSCOMPILING_EMULATOR="' + node_js +'"'] + sys.argv[2:]))

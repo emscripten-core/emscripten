@@ -35,7 +35,11 @@ var INVOKE_RUN = 1; // Whether we will run the main() function. Disable if you e
                     // can do with Module.callMain(), with an optional parameter of commandline args).
 var NO_EXIT_RUNTIME = 0; // If set, the runtime is not quit when main() completes (allowing code to
                          // run afterwards, for example from the browser main event loop).
-var INIT_HEAP = 0; // Whether to initialize memory anywhere other than the stack to 0.
+var MEM_INIT_METHOD = 0; // How to represent the initial memory content.
+                         // 0: keep array literal representing the initial memory data
+                         // 1: create a *.mem file containing the binary data of the initial memory;
+                         //    use the --memory-init-file command line switch to select this method
+                         // 2: embed a string literal representing that initial memory data
 var TOTAL_STACK = 5*1024*1024; // The total stack size. There is no way to enlarge the stack, so this
                                // value must be large enough for the program's requirements. If
                                // assertions are on, we will assert on not exceeding this, otherwise,
@@ -56,7 +60,6 @@ var GLOBAL_BASE = -1; // where global data begins; the start of static memory. -
                       // default, any other value will be used as an override
 
 // Code embetterments
-var MICRO_OPTS = 1; // Various micro-optimizations, like nativizing variables
 var USE_TYPED_ARRAYS = 2; // Use typed arrays for the heap. See https://github.com/kripken/emscripten/wiki/Code-Generation-Modes/
                           // 2 is a single heap, accessible through views as int8, int32, etc. This is
                           //   the only supported mode.
@@ -117,8 +120,6 @@ var SIMD = 0; // Whether to allow autovectorized SIMD code ( https://github.com/
               // any SIMD output at all.)
 
 var CLOSURE_COMPILER = 0; // Whether closure compiling is being run on this output
-var CLOSURE_ANNOTATIONS = 0; // If set, the generated code will be annotated for the closure
-                             // compiler. This potentially lets closure optimize the code better.
 
 var SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all in
                              // functions that have no basic stack usage. But, they
@@ -127,7 +128,6 @@ var SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all
                              // a lot can exhaust the stack very fast, with this option.
                              // In particular, be careful with the autodebugger! (We do turn
                              // this off automatically in that case, though.)
-var INLINE_LIBRARY_FUNCS = 1; // Will inline library functions that have __inline defined
 var INLINING_LIMIT = 0;  // A limit on inlining. If 0, we will inline normally in LLVM and
                          // closure. If greater than 0, we will *not* inline in LLVM, and
                          // we will prevent inlining of functions of this size or larger
@@ -287,10 +287,6 @@ var NO_BROWSER = 0; // If set, disables building in browser support using the Br
                     // just doing pure computation in a library, and don't need any browser capabilities like a main loop
                     // (emscripten_set_main_loop), or setTimeout, etc.
 
-var NAMED_GLOBALS = 0; // If 1, we use global variables for globals. Otherwise
-                       // they are referred to by a base plus an offset (called an indexed global),
-                       // saving global variables but adding runtime overhead.
-
 var NODE_STDOUT_FLUSH_WORKAROUND = 1; // Whether or not to work around node issues with not flushing stdout. This
                                       // can cause unnecessary whitespace to be printed.
 
@@ -351,8 +347,6 @@ var INCLUDE_FULL_LIBRARY = 0; // Whether to include the whole library rather tha
 
 var SHELL_FILE = 0; // set this to a string to override the shell file used
 
-var SHOW_LABELS = 0; // Show labels in the generated code
-
 var RELOCATABLE = 0; // If set to 1, we emit relocatable code from the LLVM backend; both
                      // globals and function pointers are all offset (by gb and fp, respectively)
 
@@ -360,19 +354,11 @@ var MAIN_MODULE = 0; // A main module is a file compiled in a way that allows us
                      // a side module using emlink.py.
 var SIDE_MODULE = 0; // Corresponds to MAIN_MODULE
 
-var BUILD_AS_SHARED_LIB = 0; // Whether to build the code as a shared library
-                             // 0 here means this is not a shared lib: It is a main file.
-                             // 1 means this is a normal shared lib, load it with dlopen()
-                             // 2 means this is a shared lib that will be linked at runtime,
-                             //   which means it will insert its functions into
-                             //   the global namespace. See STATIC_LIBS_TO_LOAD.
-                             //
-                             // Value 2 is currently deprecated.
-var RUNTIME_LINKED_LIBS = []; // If this is a main file (BUILD_AS_SHARED_LIB == 0), then
+var RUNTIME_LINKED_LIBS = []; // If this is a main module (MAIN_MODULE == 1), then
                               // we will link these at runtime. They must have been built with
-                              // BUILD_AS_SHARED_LIB == 2.
-                              // NOTE: LLVM optimizations run separately on the main file and
-                              //       linked libraries can break things.
+                              // SIDE_MODULE == 1.
+var BUILD_AS_SHARED_LIB = 0; // (deprecated option TODO: remove)
+
 var BUILD_AS_WORKER = 0; // If set to 1, this is a worker library, a special kind of library
                          // that is run in a worker. See emscripten.h
 
@@ -485,28 +471,14 @@ var EMTERPRETIFY = 0; // Runs tools/emterpretify on the compiler output
 var EMTERPRETIFY_BLACKLIST = []; // Functions to not emterpret, that is, to run normally at full speed
 var EMTERPRETIFY_WHITELIST = []; // If this contains any functions, then only the functions in this list
                                  // are emterpreted (as if all the rest are blacklisted; this overrides the BLACKLIST)
-var EMTERPRETIFY_YIELDLIST = []; // A list of functions that are allowed to run during while sleeping. Typically this is
-                                 // during  emscripten_sleep_with_yield  , but also you may need to add methods to this list
-                                 // for things like event handling (an SDL EventHandler will be called from the event, directly -
-                                 // if we do that later, you lose out on the whole point of an EventHandler, which is to let
-                                 // you react to key presses in order to launch fullscreen, etc.).
-                                 // Functions in the yield list do not trigger asserts checking on running during a sleep,
-                                 // in ASSERTIONS builds, 
 var EMTERPRETIFY_ASYNC = 0; // Allows sync code in the emterpreter, by saving the call stack, doing an async delay, and resuming it
 var EMTERPRETIFY_ADVISE = 0; // Performs a static analysis to suggest which functions should be run in the emterpreter, as it
                              // appears they can be on the stack when a sync function is called in the EMTERPRETIFY_ASYNC option.
                              // After showing the suggested list, compilation will halt. You can apply the provided list as an
                              // emcc argument when compiling later.
-                             // This will also advise on the YIELDLIST, if it contains at least one value (it then reports
-                             // all things reachable from that function, as they may need to be in the YIELDLIST as well).
-                             // Note that this depends on things like inlining. If you run this with different inlining than
-                             // when you use the list, it might not work.
 
 var RUNNING_JS_OPTS = 0; // whether js opts will be run, after the main compiler
 var BOOTSTRAPPING_STRUCT_INFO = 0; // whether we are in the generate struct_info bootstrap phase
-
-var COMPILER_ASSERTIONS = 0; // costly (slow) compile-time assertions
-var COMPILER_FASTPATHS = 1; // use fast-paths to speed up compilation
 
 var EMSCRIPTEN_TRACING = 0; // Add some calls to emscripten tracing APIs
 
@@ -521,6 +493,7 @@ var USE_SDL = 1; // Specify the SDL version that is being linked against.
                  // 2 is a port of the SDL C code on emscripten-ports
 var USE_SDL_IMAGE = 1; // Specify the SDL_image version that is being linked against. Must match USE_SDL
 var USE_ZLIB = 0; // 1 = use zlib from emscripten-ports
+var USE_LIBPNG = 0; // 1 = use libpng from emscripten-ports
 
 
 // Compiler debugging options
@@ -542,5 +515,16 @@ var ORIGINAL_EXPORTED_FUNCTIONS = [];
 // That file is automatically parsed by tools/gen_struct_info.py.
 // If you modify the headers, just clear your cache and emscripten libc should see
 // the new values.
+
+var IN_TEST_HARNESS = 0; // If true, the current build is performed for the Emscripten test harness.
+
+var USE_PTHREADS = 0; // If true, enables support for pthreads.
+
+var PTHREAD_POOL_SIZE = 0; // Specifies the number of web workers that are preallocated before runtime is initialized. If 0, workers are created on demand.
+
+// Specifies the value returned by the function emscripten_num_logical_cores()
+// if navigator.hardwareConcurrency is not supported. Pass in a negative number
+// to show a popup dialog at startup so the user can configure this dynamically.
+var PTHREAD_HINT_NUM_CORES = 4;
 
 // Reserved: variables containing POINTER_MASKING.

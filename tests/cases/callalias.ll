@@ -7,13 +7,13 @@ target triple = "asmjs-unknown-emscripten"
 @othername = internal alias void ()* @doit
 
 define internal void @doit() unnamed_addr nounwind align 2 {
-  %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0 type=i32]
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0 type=i32]
   ret void
 }
 
 define i32 @main() {
 entry:
-  tail call void ()* @othername() nounwind
+  tail call void () @othername() nounwind
   ret i32 1
 }
 

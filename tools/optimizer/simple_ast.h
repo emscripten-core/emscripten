@@ -590,7 +590,9 @@ struct JSPrinter {
 
   void emit(char c) {
     maybeSpace(c);
-    if (!pretty && c == '}' && buffer[used-1] == ';') used--; // optimize ;} into }, the ; is not separating anything
+    if (!pretty && c == '}' && buffer[used-1] == ';' && buffer[used-2] != ')') {
+      used--; // optimize ;} into }, the ; is not separating anything (note we must be careful of   {if(a);}   !)
+    }
     ensure(1);
     buffer[used++] = c;
   }

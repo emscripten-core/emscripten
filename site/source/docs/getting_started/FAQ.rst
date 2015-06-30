@@ -151,7 +151,7 @@ Libraries not included with Emscripten (like Boost) must be compiled and linked 
 
 There is a set of libraries ported to Emscripten for convenient use, Emscripten Ports. See :ref:`Building-Projects`
 
-Another option is to implement needed C APIs as JavaScript librarys (see ``--js-library`` in :ref:`emcc <emcc-js-library>` and :ref:`implement-c-in-javascript`). Emscripten itself does this for *libc* (not including *malloc*) and :term:`SDL` (but not *libc++* or *malloc*).  
+Another option is to implement needed C APIs as JavaScript libraries (see ``--js-library`` in :ref:`emcc <emcc-js-library>` and :ref:`implement-c-in-javascript`). Emscripten itself does this for *libc* (not including *malloc*) and :term:`SDL` (but not *libc++* or *malloc*).
 
 .. note:: 
 
@@ -263,7 +263,7 @@ If your function is used in other functions, LLVM may inline it and it will not 
 	
 	- Exported functions need to be C functions (to avoid C++ name mangling).
 
-	- Decorating your code with :c:type:`EMSCRIPTEN_KEEPALIVE` can be useful if you don't want to have to keep track of functions to export explicitly, and when these exports do not change. It is not necessarily suitable for exporting functions from other libraries — for example it is not a good idea to decorate and and recompile the source code of the C standard library. If you build the same source in multiple ways and change what is exported, then managing exports on the command line is easier. 
+	- Decorating your code with :c:type:`EMSCRIPTEN_KEEPALIVE` can be useful if you don't want to have to keep track of functions to export explicitly, and when these exports do not change. It is not necessarily suitable for exporting functions from other libraries — for example it is not a good idea to decorate and recompile the source code of the C standard library. If you build the same source in multiple ways and change what is exported, then managing exports on the command line is easier.
 
 	- Running *emcc* with ``-s LINKABLE=1`` will also disable link-time optimizations and dead code elimination. This is not recommended as it makes the code larger and less optimized. 	
 	
@@ -335,7 +335,7 @@ On Linux and Mac OS X, you can just do ``NODE_JS = ['node', '--stack_size=8192']
 
 
 Why do I get ``error: cannot compile this aggregate va_arg expression yet`` and it says ``compiler frontend failed to generate LLVM bitcode, halting`` afterwards?
-===================================================================================================================================================================
+==================================================================================================================================================================
 
 This is a limitation of the asm.js target in :term:`Clang`. This code is not currently supported.
 
@@ -345,7 +345,7 @@ Why does building from source fail during linking (at 100%)?
 
 Building :ref:`Fastcomp from source <building-fastcomp-from-source>` (and hence the SDK) can fail at 100% progress. This is due to out of memory in the linking stage, and is reported as an error: ``collect2: error: ld terminated with signal 9 [Killed]``.
 
-The solution is to ensure the system has sufficient memory. On Ubuntu 14.04.1 LTS 64bit, you should use use at least 6Gb.
+The solution is to ensure the system has sufficient memory. On Ubuntu 14.04.1 LTS 64bit, you should use at least 6Gb.
 
 
 Why do I get odd rounding errors when using float variables?

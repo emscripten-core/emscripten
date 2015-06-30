@@ -9,6 +9,6 @@ declare i32 @printf(i8* noalias, ...) nounwind
 define i32 @main() {
 entry:
   %c = frem double 2.5, 1.0
-  %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([6 x i8]* @.str2, i32 0, i32 0), double %c)
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str2, i32 0, i32 0), double %c)
   ret i32 0
 }

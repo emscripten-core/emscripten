@@ -14,6 +14,10 @@ Current trunk code
     - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.29.12...incoming
     - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.29.12...incoming
 
+v1.32.4: 5/15/2015
+-------------------
+ - Update LLVM and clang to PNaCl's current 3.7 merge point (April 17 2015)
+
 v1.29.12: 3/15/2015
 -------------------
  - Fix a bug where SDL_malloc and SDL_free were not available. (#3247)

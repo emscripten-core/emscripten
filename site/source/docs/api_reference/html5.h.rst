@@ -87,7 +87,7 @@ When the event occurs the callback is invoked with the relevant event "type" (fo
 	typedef EM_BOOL (*em_someevent_callback_func) // Callback function. Return true if event is "consumed".
 		(
 		int eventType, // The type of event.
-		const EmscriptenSomeEvent *keyEvent, // Information about the event.
+		const EmscriptenSomeEvent *someEvent, // Information about the event.
 		void *userData // User data passed from the registration function.
 		);
 
@@ -417,11 +417,11 @@ Callback functions
 
 	.. code-block:: cpp
 
-		typedef EM_BOOL (*em_mouse_callback_func)(int eventType, const EmscriptenMouseEvent *keyEvent, void *userData);
+		typedef EM_BOOL (*em_mouse_callback_func)(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData);
 	
 	:param int eventType: The type of :c:data:`mouse event <EMSCRIPTEN_EVENT_CLICK>`.
-	:param keyEvent: Information about the mouse event that occurred.
-	:type keyEvent: const EmscriptenMouseEvent*
+	:param mouseEvent: Information about the mouse event that occurred.
+	:type mouseEvent: const EmscriptenMouseEvent*
 	:param void* userData: The ``userData`` originally passed to the registration function.
 	:returns: |callback-handler-return-value-doc|
 	:rtype: |EM_BOOL|
@@ -519,11 +519,11 @@ Callback functions
 
 	.. code-block:: cpp
 
-		typedef EM_BOOL (*em_wheel_callback_func)(int eventType, const EmscriptenWheelEvent *keyEvent, void *userData);
+		typedef EM_BOOL (*em_wheel_callback_func)(int eventType, const EmscriptenWheelEvent *wheelEvent, void *userData);
 	
 	:param int eventType: The type of wheel event (:c:data:`EMSCRIPTEN_EVENT_WHEEL`).
-	:param keyEvent: Information about the wheel event that occurred.
-	:type keyEvent: const EmscriptenWheelEvent*
+	:param wheelEvent: Information about the wheel event that occurred.
+	:type wheelEvent: const EmscriptenWheelEvent*
 	:param void* userData: The ``userData`` originally passed to the registration function.
 	:returns: |callback-handler-return-value-doc|
 	:rtype: |EM_BOOL|
@@ -533,7 +533,7 @@ Callback functions
 Functions
 --------- 
 		
-.. c:function:: EMSCRIPTEN_RESULT EMSCRIPTEN_RESULT emscripten_set_wheel_callback(const char *target, void *userData, EM_BOOL useCapture, em_wheel_callback_func callback)
+.. c:function:: EMSCRIPTEN_RESULT emscripten_set_wheel_callback(const char *target, void *userData, EM_BOOL useCapture, em_wheel_callback_func callback)
 	  	
 	Registers a callback function for receiving browser-generated `mousewheel events <http://www.w3.org/TR/DOM-Level-3-Events/#event-type-wheel>`_.
 
@@ -601,11 +601,11 @@ Callback functions
 
 	.. code-block:: cpp
 
-		typedef EM_BOOL (*em_ui_callback_func)(int eventType, const EmscriptenUiEvent *keyEvent, void *userData);
+		typedef EM_BOOL (*em_ui_callback_func)(int eventType, const EmscriptenUiEvent *uiEvent, void *userData);
 	
 	:param int eventType: The type of UI event (:c:data:`EMSCRIPTEN_EVENT_RESIZE`).
-	:param keyEvent: Information about the UI event that occurred.
-	:type keyEvent: const EmscriptenUiEvent*
+	:param uiEvent: Information about the UI event that occurred.
+	:type uiEvent: const EmscriptenUiEvent*
 	:param void* userData: The ``userData`` originally passed to the registration function.
 	:returns: |callback-handler-return-value-doc|
 	:rtype: |EM_BOOL|
@@ -679,11 +679,11 @@ Callback functions
 
 	.. code-block:: cpp
 
-		typedef EM_BOOL (*em_focus_callback_func)(int eventType, const EmscriptenFocusEvent *keyEvent, void *userData);
+		typedef EM_BOOL (*em_focus_callback_func)(int eventType, const EmscriptenFocusEvent *focusEvent, void *userData);
 	
 	:param int eventType: The type of focus event (:c:data:`EMSCRIPTEN_EVENT_BLUR`).
-	:param keyEvent: Information about the focus event that occurred.
-	:type keyEvent: const EmscriptenFocusEvent*
+	:param focusEvent: Information about the focus event that occurred.
+	:type focusEvent: const EmscriptenFocusEvent*
 	:param void* userData: The ``userData`` originally passed to the registration function.
 	:returns: |callback-handler-return-value-doc|
 	:rtype: |EM_BOOL|
@@ -763,11 +763,11 @@ Callback functions
 
 	.. code-block:: cpp
 
-		typedef EM_BOOL (*em_deviceorientation_callback_func)(int eventType, const EmscriptenDeviceOrientationEvent *keyEvent, void *userData);
+		typedef EM_BOOL (*em_deviceorientation_callback_func)(int eventType, const EmscriptenDeviceOrientationEvent *deviceOrientationEvent, void *userData);
 	
 	:param int eventType: The type of orientation event (:c:data:`EMSCRIPTEN_EVENT_DEVICEORIENTATION`).
-	:param keyEvent: Information about the orientation event that occurred.
-	:type keyEvent: const EmscriptenDeviceOrientationEvent*
+	:param deviceOrientationEvent: Information about the orientation event that occurred.
+	:type deviceOrientationEvent: const EmscriptenDeviceOrientationEvent*
 	:param void* userData: The ``userData`` originally passed to the registration function.
 	:returns: |callback-handler-return-value-doc|
 	:rtype: |EM_BOOL|
@@ -854,11 +854,11 @@ Callback functions
 
 	.. code-block:: cpp
 
-		typedef EM_BOOL (*em_devicemotion_callback_func)(int eventType, const EmscriptenDeviceMotionEvent *keyEvent, void *userData);
+		typedef EM_BOOL (*em_devicemotion_callback_func)(int eventType, const EmscriptenDeviceMotionEvent *deviceMotionEvent, void *userData);
 	
 	:param int eventType: The type of devicemotion event (:c:data:`EMSCRIPTEN_EVENT_DEVICEMOTION`).
-	:param keyEvent: Information about the devicemotion event that occurred.
-	:type keyEvent: const EmscriptenDeviceMotionEvent*
+	:param deviceMotionEvent: Information about the devicemotion event that occurred.
+	:type deviceMotionEvent: const EmscriptenDeviceMotionEvent*
 	:param void* userData: The ``userData`` originally passed to the registration function.
 	:returns: |callback-handler-return-value-doc|
 	:rtype: |EM_BOOL|
@@ -949,11 +949,11 @@ Callback functions
 
 	.. code-block:: cpp
 
-		typedef EM_BOOL (*em_orientationchange_callback_func)(int eventType, const EmscriptenOrientationChangeEvent *keyEvent, void *userData);
+		typedef EM_BOOL (*em_orientationchange_callback_func)(int eventType, const EmscriptenOrientationChangeEvent *orientationChangeEvent, void *userData);
 	
 	:param int eventType: The type of orientationchange event (:c:data:`EMSCRIPTEN_EVENT_ORIENTATIONCHANGE`).
-	:param keyEvent: Information about the orientationchange event that occurred.
-	:type keyEvent: const EmscriptenOrientationChangeEvent*
+	:param orientationChangeEvent: Information about the orientationchange event that occurred.
+	:type orientationChangeEvent: const EmscriptenOrientationChangeEvent*
 	:param void* userData: The ``userData`` originally passed to the registration function.
 	:returns: |callback-handler-return-value-doc|
 	:rtype: |EM_BOOL|
@@ -1024,7 +1024,7 @@ Defines
 
 .. c:macro:: EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH
 
-	Specifies that the Emscripten runtime should explicitly stretch the CSS size of the target element to cover the whole screen when trasnsitioning to fullscreen mode. This
+	Specifies that the Emscripten runtime should explicitly stretch the CSS size of the target element to cover the whole screen when transitioning to fullscreen mode. This
 	will change the aspect ratio of the displayed content.
 
 .. c:macro:: EMSCRIPTEN_FULLSCREEN_SCALE_ASPECT
@@ -1149,11 +1149,11 @@ Callback functions
 
 	.. code-block:: cpp
 
-		typedef EM_BOOL (*em_fullscreenchange_callback_func)(int eventType, const EmscriptenFullscreenChangeEvent *keyEvent, void *userData);
+		typedef EM_BOOL (*em_fullscreenchange_callback_func)(int eventType, const EmscriptenFullscreenChangeEvent *fullscreenChangeEvent, void *userData);
 	
 	:param int eventType: The type of fullscreen event (:c:data:`EMSCRIPTEN_EVENT_FULLSCREENCHANGE`).
-	:param keyEvent: Information about the fullscreen event that occurred.
-	:type keyEvent: const EmscriptenFullscreenChangeEvent*
+	:param fullscreenChangeEvent: Information about the fullscreen event that occurred.
+	:type fullscreenChangeEvent: const EmscriptenFullscreenChangeEvent*
 	:param void* userData: The ``userData`` originally passed to the registration function.
 	:returns: |callback-handler-return-value-doc|
 	:rtype: |EM_BOOL|
@@ -1207,7 +1207,8 @@ Functions
 
 	.. note:: This function makes changes to the DOM to satisfy consistent presentation across browsers. These changes have been designed to intrude as little as possible, and the changes are cleared once windowed browsing is restored. If any of these changes are conflicting, see the function :c:func:`emscripten_request_fullscreen` instead, which performs a bare fullscreen request without any modifications to the DOM.
 
-	:param const EmscriptenFullscreenStrategy *fullscreenStrategy: [in] Points to a configuration structure filled by the caller which specifies display options for the fullscreen mode.
+	:param fullscreenStrategy: [in] Points to a configuration structure filled by the caller which specifies display options for the fullscreen mode.
+	:type fullscreenStrategy: const EmscriptenFullscreenStrategy*
 
 .. c:function:: EMSCRIPTEN_RESULT emscripten_exit_fullscreen(void)
 
@@ -1273,11 +1274,11 @@ Callback functions
 
 	.. code-block:: cpp
 
-		typedef EM_BOOL (*em_pointerlockchange_callback_func)(int eventType, const EmscriptenPointerlockChangeEvent *keyEvent, void *userData);
+		typedef EM_BOOL (*em_pointerlockchange_callback_func)(int eventType, const EmscriptenPointerlockChangeEvent *pointerlockChangeEvent, void *userData);
 	
 	:param int eventType: The type of pointerlockchange event (:c:data:`EMSCRIPTEN_EVENT_POINTERLOCKCHANGE`).
-	:param keyEvent: Information about the pointerlockchange event that occurred.
-	:type keyEvent: const EmscriptenPointerlockChangeEvent*
+	:param pointerlockChangeEvent: Information about the pointerlockchange event that occurred.
+	:type pointerlockChangeEvent: const EmscriptenPointerlockChangeEvent*
 	:param void* userData: The ``userData`` originally passed to the registration function.
 	:returns: |callback-handler-return-value-doc|
 	:rtype: |EM_BOOL|
@@ -1391,11 +1392,11 @@ Callback functions
 
 	.. code-block:: cpp
 
-		typedef EM_BOOL (*em_visibilitychange_callback_func)(int eventType, const EmscriptenVisibilityChangeEvent *keyEvent, void *userData);
+		typedef EM_BOOL (*em_visibilitychange_callback_func)(int eventType, const EmscriptenVisibilityChangeEvent *visibilityChangeEvent, void *userData);
 	
 	:param int eventType: The type of ``visibilitychange`` event (:c:data:`EMSCRIPTEN_VISIBILITY_HIDDEN`).
-	:param keyEvent: Information about the ``visibilitychange`` event that occurred.
-	:type keyEvent: const EmscriptenVisibilityChangeEvent*
+	:param visibilityChangeEvent: Information about the ``visibilitychange`` event that occurred.
+	:type visibilityChangeEvent: const EmscriptenVisibilityChangeEvent*
 	:param void* userData: The ``userData`` originally passed to the registration function.
 	:returns: |callback-handler-return-value-doc|
 	:rtype: |EM_BOOL|
@@ -1517,11 +1518,11 @@ Callback functions
 
 	.. code-block:: cpp
 
-		typedef EM_BOOL (*em_touch_callback_func)(int eventType, const EmscriptenTouchEvent *keyEvent, void *userData);
+		typedef EM_BOOL (*em_touch_callback_func)(int eventType, const EmscriptenTouchEvent *touchEvent, void *userData);
 	
 	:param int eventType: The type of touch event (:c:data:`EMSCRIPTEN_EVENT_TOUCHSTART`).
-	:param keyEvent: Information about the touch event that occurred.
-	:type keyEvent: const EmscriptenTouchEvent*
+	:param touchEvent: Information about the touch event that occurred.
+	:type touchEvent: const EmscriptenTouchEvent*
 	:param void* userData: The ``userData`` originally passed to the registration function.
 	:returns: |callback-handler-return-value-doc|
 	:rtype: |EM_BOOL|
@@ -1625,11 +1626,11 @@ Callback functions
 
 	.. code-block:: cpp
 
-		typedef EM_BOOL (*em_gamepad_callback_func)(int eventType, const EmscriptenGamepadEvent *keyEvent, void *userData)
+		typedef EM_BOOL (*em_gamepad_callback_func)(int eventType, const EmscriptenGamepadEvent *gamepadEvent, void *userData)
 	
 	:param int eventType: The type of gamepad event (:c:data:`EMSCRIPTEN_EVENT_GAMEPADCONNECTED`).
-	:param keyEvent: Information about the gamepad event that occurred.
-	:type keyEvent: const EmscriptenGamepadEvent*
+	:param gamepadEvent: Information about the gamepad event that occurred.
+	:type gamepadEvent: const EmscriptenGamepadEvent*
 	:param void* userData: The ``userData`` originally passed to the registration function.
 	:returns: |callback-handler-return-value-doc|
 	:rtype: |EM_BOOL|		
@@ -1718,11 +1719,11 @@ Callback functions
 
 	.. code-block:: cpp
 
-		typedef EM_BOOL (*em_battery_callback_func)(int eventType, const EmscriptenBatteryEvent *keyEvent, void *userData);
+		typedef EM_BOOL (*em_battery_callback_func)(int eventType, const EmscriptenBatteryEvent *batteryEvent, void *userData);
 	
 	:param int eventType: The type of ``batterymanager`` event (:c:data:`EMSCRIPTEN_EVENT_BATTERYCHARGINGCHANGE`).
-	:param keyEvent: Information about the ``batterymanager`` event that occurred.
-	:type keyEvent: const EmscriptenBatteryEvent*
+	:param batteryEvent: Information about the ``batterymanager`` event that occurred.
+	:type batteryEvent: const EmscriptenBatteryEvent*
 	:param void* userData: The ``userData`` originally passed to the registration function.
 	:returns: |callback-handler-return-value-doc|
 	:rtype: |EM_BOOL|
@@ -2012,7 +2013,7 @@ Functions
 	Enables the given extension on the given context.
 
 	:param EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context: The WebGL context on which the extension is to be enabled.
-	:param extension: A string identifyingthea `WebGL extension <http://www.khronos.org/registry/webgl/extensions/>`_. For example "OES_texture_float".
+	:param extension: A string identifying the `WebGL extension <http://www.khronos.org/registry/webgl/extensions/>`_. For example "OES_texture_float".
 	:type extension: const char*
 	:returns: EM_TRUE if the given extension is supported by the context, and EM_FALSE if the extension was not available. 
 	:rtype: |EM_BOOL|

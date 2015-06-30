@@ -13,7 +13,7 @@ target triple = "asmjs-unknown-emscripten"
 @value3 = alias i32* @value
 
 define internal void @doit(i32 %x) {
-  %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([18 x i8]* @.str, i32 0, i32 0), i32 %x) ; [#uses=0 type=i32]
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.str, i32 0, i32 0), i32 %x) ; [#uses=0 type=i32]
   ret void
 }
 
@@ -22,18 +22,18 @@ entry:
   %fp = ptrtoint void (i32)* @othername3 to i32
   %fp1 = add i32 %fp, 0
   %pf = inttoptr i32 %fp1 to void (i32)*
-  %x = load i32* @value3
-  call void (i32)* %pf(i32 %x)
-  %x1 = load i32* @value2
-  call void (i32)* @othername3(i32 %x1)
-  %x2 = load i32* @value
-  call void (i32)* @othername2(i32 %x2)
+  %x = load i32, i32* @value3
+  call void (i32) %pf(i32 %x)
+  %x1 = load i32, i32* @value2
+  call void (i32) @othername3(i32 %x1)
+  %x2 = load i32, i32* @value
+  call void (i32) @othername2(i32 %x2)
   store i32 18, i32* @value
-  %x3 = load i32* @value
-  call void (i32)* @othername(i32 %x3)
+  %x3 = load i32, i32* @value
+  call void (i32) @othername(i32 %x3)
   store i32 19, i32* @value3
-  %x4 = load i32* @value3
-  call void (i32)* @doit(i32 %x4)
+  %x4 = load i32, i32* @value3
+  call void (i32) @doit(i32 %x4)
   ret i32 1
 }
 

@@ -132,6 +132,10 @@ int main()
     assert(strncmp("/tmp/file", str, 9) == 0);
   }
 
+  FILE *n = fopen("/dev/null", "w");
+  printf("5 bytes to dev/null: %d\n", fwrite(data, 1, 5, n));
+  fclose(n);
+
   printf("ok.\n");
 
   return 0;

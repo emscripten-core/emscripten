@@ -14,7 +14,7 @@ Please supply as much relevant information as possible, including:
 - Error symptoms.
 - Proposed solutions, ideally with a pull request.
 
-.. Tip:: Compile with ``EMCC_DEBUG=1`` and grab the **/tmp/emscripten_temp/emcc-\*** files (these include the bytecode and JavaScript in several stages). Note that the **emscripten_temp** directory should be emptied manually first, so it only contains new content!
+.. Tip:: Compile with ``EMCC_DEBUG=1`` and grab the **/tmp/emscripten_temp/emcc-\*** files (these include the bitcode and JavaScript in several stages). Note that the **emscripten_temp** directory should be emptied manually first, so it only contains new content!
 
 
 Fastcomp LLVM-Backend and Clang bugs

@@ -75,6 +75,7 @@ This model is supported by changing the :js:attr:`Module.filePackagePrefixURL` t
 .. _packaging-files-packaged-file-location:
 
 Modifying file locations in the virtual file system
+===================================================
 
 The default approach for packaging is to directly map the nested file structure at compile time — relative to the compile-time command prompt directory — to the root of the virtual file system. The ``@`` symbol can be used in a path at build time to *explicitly* specify where the resource will be located in the virtual file system at runtime. 
 

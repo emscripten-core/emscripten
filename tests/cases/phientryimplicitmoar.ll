@@ -7,19 +7,19 @@ target triple = "asmjs-unknown-emscripten"
 
 define i32 @main() {
   %retval = alloca i32, align 4
-  %call2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str2, i32 0, i32 0))
+  %call2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str2, i32 0, i32 0))
   %a12 = zext i1 1 to i32
   br label %L13
 
 L13:
   %a14 = phi i32 [ %a12, %0 ], [ %a15, %L13 ]
-  %call0 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0))
+  %call0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0))
   %a15 = add nsw i32 %a14, 2
   %a16 = icmp eq i32 %a15, 9
   br i1 %a16, label %L17, label %L13
 
 L17:
-  %call1 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str2, i32 0, i32 0))
+  %call1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str2, i32 0, i32 0))
   ret i32 1
 }
 

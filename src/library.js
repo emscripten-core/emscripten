@@ -19,11 +19,20 @@
 
 LibraryManager.library = {
   // keep this low in memory, because we flatten arrays with them in them
+#if USE_PTHREADS
+  stdin: '; if (ENVIRONMENT_IS_PTHREAD) _stdin = PthreadWorkerInit._stdin; else PthreadWorkerInit._stdin = _stdin = allocate(1, "i32*", ALLOC_STATIC)',
+  stdout: '; if (ENVIRONMENT_IS_PTHREAD) _stdout = PthreadWorkerInit._stdout; else PthreadWorkerInit._stdout = _stdout = allocate(1, "i32*", ALLOC_STATIC)',
+  stderr: '; if (ENVIRONMENT_IS_PTHREAD) _stderr = PthreadWorkerInit._stderr; else PthreadWorkerInit._stderr = _stderr = allocate(1, "i32*", ALLOC_STATIC)',
+  _impure_ptr: '; if (ENVIRONMENT_IS_PTHREAD) __impure_ptr = PthreadWorkerInit.__impure_ptr; else PthreadWorkerInit.__impure_ptr __impure_ptr = allocate(1, "i32*", ALLOC_STATIC)',
+  __dso_handle: '; if (ENVIRONMENT_IS_PTHREAD) ___dso_handle = PthreadWorkerInit.___dso_handle; else PthreadWorkerInit.___dso_handle = ___dso_handle = allocate(1, "i32*", ALLOC_STATIC)',
+#else
   stdin: 'allocate(1, "i32*", ALLOC_STATIC)',
   stdout: 'allocate(1, "i32*", ALLOC_STATIC)',
   stderr: 'allocate(1, "i32*", ALLOC_STATIC)',
   _impure_ptr: 'allocate(1, "i32*", ALLOC_STATIC)',
   __dso_handle: 'allocate(1, "i32*", ALLOC_STATIC)',
+#endif
+
   $PROCINFO: {
     // permissions
     /*
@@ -49,6 +58,9 @@ LibraryManager.library = {
 
   opendir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'open'],
   opendir: function(dirname) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_OPENDIR') }}}, dirname);
+#endif
     // DIR *opendir(const char *dirname);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/opendir.html
     // NOTE: Calculating absolute path redundantly since we need to associate it
@@ -75,6 +87,9 @@ LibraryManager.library = {
   },
   closedir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'close', 'fileno'],
   closedir: function(dirp) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_CLOSEDIR') }}}, dirp);
+#endif
     // int closedir(DIR *dirp);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/closedir.html
     var fd = _fileno(dirp);
@@ -84,6 +99,9 @@ LibraryManager.library = {
   },
   telldir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   telldir: function(dirp) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_TELLDIR') }}}, dirp);
+#endif
     // long int telldir(DIR *dirp);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/telldir.html
     var stream = FS.getStreamFromPtr(dirp);
@@ -95,6 +113,9 @@ LibraryManager.library = {
   },
   seekdir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'lseek', 'fileno'],
   seekdir: function(dirp, loc) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_SEEKDIR') }}}, dirp, loc);
+#endif
     // void seekdir(DIR *dirp, long int loc);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/seekdir.html
     var fd = _fileno(dirp);
@@ -102,6 +123,9 @@ LibraryManager.library = {
   },
   rewinddir__deps: ['seekdir'],
   rewinddir: function(dirp) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_REWINDDIR') }}}, dirp);
+#endif
     // void rewinddir(DIR *dirp);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/rewinddir.html
     _seekdir(dirp, 0);
@@ -110,6 +134,9 @@ LibraryManager.library = {
   },
   readdir_r__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   readdir_r: function(dirp, entry, result) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_READDIR_R') }}}, dirp, entry, result);
+#endif
     // int readdir_r(DIR *dirp, struct dirent *entry, struct dirent **result);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/readdir_r.html
     var stream = FS.getStreamFromPtr(dirp);
@@ -161,6 +188,9 @@ LibraryManager.library = {
   },
   readdir__deps: ['readdir_r', '__setErrNo', '$ERRNO_CODES'],
   readdir: function(dirp) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_READDIR') }}}, dirp);
+#endif
     // struct dirent *readdir(DIR *dirp);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/readdir_r.html
     var stream = FS.getStreamFromPtr(dirp);
@@ -185,6 +215,9 @@ LibraryManager.library = {
 
   utime__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   utime: function(path, times) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_UTIME') }}}, path, times);
+#endif
     // int utime(const char *path, const struct utimbuf *times);
     // http://pubs.opengroup.org/onlinepubs/009695399/basedefs/utime.h.html
     var time;
@@ -208,6 +241,9 @@ LibraryManager.library = {
 
   utimes__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   utimes: function(path, times) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_UTIMES') }}}, path, times);
+#endif
     var time;
     if (times) {
       var offset = {{{ C_STRUCTS.timeval.__size__ }}} + {{{ C_STRUCTS.timeval.tv_sec }}};
@@ -292,6 +328,9 @@ LibraryManager.library = {
 
   stat__deps: ['$FS'],
   stat: function(path, buf, dontResolveLastLink) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_STAT') }}}, path, buf, dontResolveLastLink);
+#endif
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/stat.html
     // int stat(const char *path, struct stat *buf);
     // NOTE: dontResolveLastLink is a shortcut for lstat(). It should never be
@@ -330,12 +369,18 @@ LibraryManager.library = {
   },
   lstat__deps: ['stat'],
   lstat: function(path, buf) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_LSTAT') }}}, path, buf);
+#endif
     // int lstat(const char *path, struct stat *buf);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/lstat.html
     return _stat(path, buf, true);
   },
   fstat__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'stat'],
   fstat: function(fildes, buf) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_FSTAT') }}}, fildes, buf);
+#endif
     // int fstat(int fildes, struct stat *buf);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/fstat.html
     var stream = FS.getStream(fildes);
@@ -347,6 +392,9 @@ LibraryManager.library = {
   },
   mknod__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   mknod: function(path, mode, dev) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_MKNOD') }}}, path, mode, dev);
+#endif
     // int mknod(const char *path, mode_t mode, dev_t dev);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/mknod.html
     path = Pointer_stringify(path);
@@ -373,6 +421,9 @@ LibraryManager.library = {
   },
   mkdir__deps: ['mknod'],
   mkdir: function(path, mode) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_MKDIR') }}}, path, mode);
+#endif
     // int mkdir(const char *path, mode_t mode);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/mkdir.html
     path = Pointer_stringify(path);
@@ -390,6 +441,9 @@ LibraryManager.library = {
   },
   mkfifo__deps: ['__setErrNo', '$ERRNO_CODES'],
   mkfifo: function(path, mode) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_MKFIFO') }}}, path, mode);
+#endif
     // int mkfifo(const char *path, mode_t mode);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/mkfifo.html
     // NOTE: We support running only a single process, and named pipes require
@@ -401,6 +455,9 @@ LibraryManager.library = {
   },
   chmod__deps: ['$FS', '__setErrNo'],
   chmod: function(path, mode, dontResolveLastLink) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_CHMOD') }}}, path, mode, dontResolveLastLink);
+#endif
     // int chmod(const char *path, mode_t mode);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/chmod.html
     // NOTE: dontResolveLastLink is a shortcut for lchmod(). It should never be
@@ -416,6 +473,9 @@ LibraryManager.library = {
   },
   fchmod__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'chmod'],
   fchmod: function(fildes, mode) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_FCHMOD') }}}, fildes, mode);
+#endif
     // int fchmod(int fildes, mode_t mode);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/fchmod.html
     try {
@@ -428,6 +488,9 @@ LibraryManager.library = {
   },
   lchmod__deps: ['chmod'],
   lchmod: function(path, mode) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_LCHMOD') }}}, path, mode);
+#endif
     path = Pointer_stringify(path);
     try {
       FS.lchmod(path, mode);
@@ -440,6 +503,9 @@ LibraryManager.library = {
 
   umask__deps: ['$FS'],
   umask: function(newMask) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_UMASK') }}}, newMask);
+#endif
     // mode_t umask(mode_t cmask);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/umask.html
     // NOTE: This value isn't actually used for anything.
@@ -455,6 +521,9 @@ LibraryManager.library = {
 
   statvfs__deps: ['$FS'],
   statvfs: function(path, buf) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_STATVFS') }}}, path, buf);
+#endif
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/statvfs.html
     // int statvfs(const char *restrict path, struct statvfs *restrict buf);
     // NOTE: None of the constants here are true. We're just returning safe and
@@ -474,6 +543,9 @@ LibraryManager.library = {
   },
   fstatvfs__deps: ['statvfs'],
   fstatvfs: function(fildes, buf) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_FSTATVFS') }}}, fildes, buf);
+#endif
     // int fstatvfs(int fildes, struct statvfs *buf);
     // http://pubs.opengroup.org/onlinepubs/009604499/functions/statvfs.html
     return _statvfs(0, buf);
@@ -485,6 +557,9 @@ LibraryManager.library = {
 
   open__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   open: function(path, oflag, varargs) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_OPEN') }}}, path, oflag, varargs);
+#endif
     // int open(const char *path, int oflag, ...);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/open.html
     var mode = {{{ makeGetValue('varargs', 0, 'i32') }}};
@@ -499,11 +574,17 @@ LibraryManager.library = {
   },
   creat__deps: ['open'],
   creat: function(path, mode) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_CREAT') }}}, path, mode);
+#endif
     // int creat(const char *path, mode_t mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/creat.html
     return _open(path, {{{ cDefine('O_WRONLY') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_TRUNC') }}}, allocate([mode, 0, 0, 0], 'i32', ALLOC_STACK));
   },
   mktemp: function(template) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_MKTEMP') }}}, template);
+#endif
     if (!_mktemp.counter) _mktemp.counter = 0;
     var c = (_mktemp.counter++).toString();
     var rep = 'XXXXXX';
@@ -513,15 +594,24 @@ LibraryManager.library = {
   },
   mkstemp__deps: ['creat', 'mktemp'],
   mkstemp: function(template) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_MKSTEMP') }}}, template);
+#endif
     return _creat(_mktemp(template), 0600);
   },
   mkdtemp__deps: ['mktemp', 'mkdir'],
   mkdtemp: function(template) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_MKDTEMP') }}}, template);
+#endif
     template = _mktemp(template);
     return (_mkdir(template, 0700) === 0) ? template : 0;
   },
   fcntl__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   fcntl: function(fildes, cmd, varargs, dup2) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_4({{{ cDefine('EM_PROXIED_FCNTL') }}}, fildes, cmd, varargs, dup2);
+#endif
     // int fcntl(int fildes, int cmd, ...);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/fcntl.html
     var stream = FS.getStream(fildes);
@@ -587,6 +677,9 @@ LibraryManager.library = {
   posix_madvise: function(){ return 0 }, // ditto as fadvise
   posix_fallocate__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   posix_fallocate: function(fd, offset, len) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_POSIX_FALLOCATE') }}}, fd, offset, len);
+#endif
     // int posix_fallocate(int fd, off_t offset, off_t len);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/posix_fallocate.html
     var stream = FS.getStream(fd);
@@ -639,6 +732,9 @@ LibraryManager.library = {
   __DEFAULT_POLLMASK: {{{ cDefine('POLLIN') }}} | {{{ cDefine('POLLOUT') }}},
   poll__deps: ['$FS', '__DEFAULT_POLLMASK'],
   poll: function(fds, nfds, timeout) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_POLL') }}}, fds, nfds, timeout);
+#endif
     // int poll(struct pollfd fds[], nfds_t nfds, int timeout);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/poll.html
     var nonzero = 0;
@@ -667,6 +763,9 @@ LibraryManager.library = {
 
   access__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   access: function(path, amode) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_ACCESS') }}}, path, amode);
+#endif
     // int access(const char *path, int amode);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/access.html
     path = Pointer_stringify(path);
@@ -695,6 +794,9 @@ LibraryManager.library = {
   },
   chdir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   chdir: function(path) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_CHDIR') }}}, path);
+#endif
     // int chdir(const char *path);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/chdir.html
     // NOTE: The path argument may be a string, to simplify fchdir().
@@ -709,6 +811,9 @@ LibraryManager.library = {
   },
   chown__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   chown: function(path, owner, group, dontResolveLastLink) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_4({{{ cDefine('EM_PROXIED_CHOWN') }}}, path, owner, group, dontResolveLastLink);
+#endif
     // int chown(const char *path, uid_t owner, gid_t group);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/chown.html
     // We don't support multiple users, so changing ownership makes no sense.
@@ -726,6 +831,9 @@ LibraryManager.library = {
   },
   chroot__deps: ['__setErrNo', '$ERRNO_CODES'],
   chroot: function(path) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_CHROOT') }}}, path);
+#endif
     // int chroot(const char *path);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/chroot.html
     ___setErrNo(ERRNO_CODES.EACCES);
@@ -733,6 +841,9 @@ LibraryManager.library = {
   },
   close__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   close: function(fildes) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_CLOSE') }}}, fildes);
+#endif
     // int close(int fildes);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/close.html
     var stream = FS.getStream(fildes);
@@ -750,12 +861,18 @@ LibraryManager.library = {
   },
   dup__deps: ['fcntl'],
   dup: function(fildes) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_DUP') }}}, fildes);
+#endif
     // int dup(int fildes);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/dup.html
     return _fcntl(fildes, 0, allocate([0, 0, 0, 0], 'i32', ALLOC_STACK));  // F_DUPFD.
   },
   dup2__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'fcntl', 'close'],
   dup2: function(fildes, fildes2) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_DUP2') }}}, fildes, fildes2);
+#endif
     // int dup2(int fildes, int fildes2);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/dup.html
     var stream = FS.getStream(fildes);
@@ -777,6 +894,9 @@ LibraryManager.library = {
   },
   fchown__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'chown'],
   fchown: function(fildes, owner, group) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_FCHOWN') }}}, fildes, owner, group);
+#endif
     // int fchown(int fildes, uid_t owner, gid_t group);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fchown.html
     try {
@@ -789,6 +909,9 @@ LibraryManager.library = {
   },
   fchdir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'chdir'],
   fchdir: function(fildes) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_FCHDIR') }}}, fildes);
+#endif
     // int fchdir(int fildes);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fchdir.html
     var stream = FS.getStream(fildes);
@@ -801,6 +924,9 @@ LibraryManager.library = {
   },
   ctermid__deps: ['strcpy'],
   ctermid: function(s) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_CTERMID') }}}, s);
+#endif
     // char *ctermid(char *s);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ctermid.html
     if (!_ctermid.ret) {
@@ -810,6 +936,9 @@ LibraryManager.library = {
     return s ? _strcpy(s, _ctermid.ret) : _ctermid.ret;
   },
   crypt: function(key, salt) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_CRYPT') }}}, key, salt);
+#endif
     // char *(const char *, const char *);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/crypt.html
     // TODO: Implement (probably compile from C).
@@ -820,6 +949,9 @@ LibraryManager.library = {
     return 0;
   },
   encrypt: function(block, edflag) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_ENCRYPT') }}}, block, edflag);
+#endif
     // void encrypt(char block[64], int edflag);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/encrypt.html
     // TODO: Implement (probably compile from C).
@@ -830,6 +962,9 @@ LibraryManager.library = {
   },
   fpathconf__deps: ['__setErrNo', '$ERRNO_CODES'],
   fpathconf: function(fildes, name) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_FPATHCONF') }}}, fildes, name);
+#endif
     // long fpathconf(int fildes, int name);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/encrypt.html
     // NOTE: The first parameter is ignored, so pathconf == fpathconf.
@@ -868,8 +1003,40 @@ LibraryManager.library = {
     return -1;
   },
   pathconf: 'fpathconf',
+#if EMTERPRETIFY_ASYNC
+  fsync__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '$EmterpreterAsync'],
+  fsync: function(fildes) {
+    return EmterpreterAsync.handle(function(resume) {
+      // int fsync(int fildes);
+      // http://pubs.opengroup.org/onlinepubs/000095399/functions/fsync.html
+      var stream = FS.getStream(fildes);
+      if (stream) {
+        var mount = stream.node.mount;
+        if (!mount.type.syncfs) {
+          // We write directly to the file system, so there's nothing to do here.
+          resume(function() { return 0 });
+          return;
+        }
+        mount.type.syncfs(mount, false, function(err) {
+          if (err) {
+            ___setErrNo(ERRNO_CODES.EIO);
+            resume(function() { return -1 });
+            return;
+          }
+          resume(function() { return 0 });
+        });
+      } else {
+        ___setErrNo(ERRNO_CODES.EBADF);
+        resume(function() { return -1 });
+      }
+    });
+  },
+#else
   fsync__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   fsync: function(fildes) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_FSYNC') }}}, fildes);
+#endif
     // int fsync(int fildes);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fsync.html
     var stream = FS.getStream(fildes);
@@ -881,9 +1048,13 @@ LibraryManager.library = {
       return -1;
     }
   },
+#endif // EMTERPRETIFY_ASYNC
   fdatasync: 'fsync',
   truncate__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   truncate: function(path, length) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_TRUNCATE') }}}, path, length);
+#endif
     // int truncate(const char *path, off_t length);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/truncate.html
     // NOTE: The path argument may be a string, to simplify ftruncate().
@@ -898,6 +1069,9 @@ LibraryManager.library = {
   },
   ftruncate__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'truncate'],
   ftruncate: function(fildes, length) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_FTRUNCATE') }}}, fildes, length);
+#endif
     // int ftruncate(int fildes, off_t length);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ftruncate.html
     try {
@@ -910,6 +1084,9 @@ LibraryManager.library = {
   },
   getcwd__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   getcwd: function(buf, size) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_GETCWD') }}}, buf, size);
+#endif
     // char *getcwd(char *buf, size_t size);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/getcwd.html
     if (size == 0) {
@@ -927,6 +1104,9 @@ LibraryManager.library = {
   },
   isatty__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   isatty: function(fildes) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_ISATTY') }}}, fildes);
+#endif
     // int isatty(int fildes);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/isatty.html
     var stream = FS.getStream(fildes);
@@ -943,12 +1123,18 @@ LibraryManager.library = {
   },
   lchown__deps: ['chown'],
   lchown: function(path, owner, group) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_LCHOWN') }}}, path, owner, group);
+#endif
     // int lchown(const char *path, uid_t owner, gid_t group);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/lchown.html
     return _chown(path, owner, group, true);
   },
   link__deps: ['__setErrNo', '$ERRNO_CODES'],
   link: function(path1, path2) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_LINK') }}}, path1, path2);
+#endif
     // int link(const char *path1, const char *path2);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/link.html
     // We don't support hard links.
@@ -957,6 +1143,9 @@ LibraryManager.library = {
   },
   lockf__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   lockf: function(fildes, func, size) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_LOCKF') }}}, fildes, func, size);
+#endif
     // int lockf(int fildes, int function, off_t size);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/lockf.html
     var stream = FS.getStream(fildes);
@@ -971,6 +1160,9 @@ LibraryManager.library = {
   },
   lseek__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   lseek: function(fildes, offset, whence) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_LSEEK') }}}, fildes, offset, whence);
+#endif
     // off_t lseek(int fildes, off_t offset, int whence);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/lseek.html
     var stream = FS.getStream(fildes);
@@ -987,6 +1179,9 @@ LibraryManager.library = {
   },
   pipe__deps: ['__setErrNo', '$ERRNO_CODES'],
   pipe: function(fildes) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_PIPE') }}}, fildes);
+#endif
     // int pipe(int fildes[2]);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/pipe.html
     // It is possible to implement this using two device streams, but pipes make
@@ -999,6 +1194,9 @@ LibraryManager.library = {
   },
   pread__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   pread: function(fildes, buf, nbyte, offset) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_4({{{ cDefine('EM_PROXIED_PREAD') }}}, fildes, buf, nbyte, offset);
+#endif
     // ssize_t pread(int fildes, void *buf, size_t nbyte, off_t offset);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/read.html
     var stream = FS.getStream(fildes);
@@ -1016,6 +1214,9 @@ LibraryManager.library = {
   },
   read__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'recv', 'pread'],
   read: function(fildes, buf, nbyte) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_READ') }}}, fildes, buf, nbyte);
+#endif
     // ssize_t read(int fildes, void *buf, size_t nbyte);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/read.html
     var stream = FS.getStream(fildes);
@@ -1045,6 +1246,9 @@ LibraryManager.library = {
   },
   rmdir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   rmdir: function(path) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_RMDIR') }}}, path);
+#endif
     // int rmdir(const char *path);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/rmdir.html
     path = Pointer_stringify(path);
@@ -1058,6 +1262,9 @@ LibraryManager.library = {
   },
   unlink__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   unlink: function(path) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_UNLINK') }}}, path);
+#endif
     // int unlink(const char *path);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/unlink.html
     path = Pointer_stringify(path);
@@ -1071,6 +1278,9 @@ LibraryManager.library = {
   },
   ttyname__deps: ['ttyname_r'],
   ttyname: function(fildes) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_TTYNAME') }}}, fildes);
+#endif
     // char *ttyname(int fildes);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ttyname.html
     if (!_ttyname.ret) _ttyname.ret = _malloc(256);
@@ -1078,6 +1288,9 @@ LibraryManager.library = {
   },
   ttyname_r__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'isatty'],
   ttyname_r: function(fildes, name, namesize) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_TTYNAME_R') }}}, fildes, name, namesize);
+#endif
     // int ttyname_r(int fildes, char *name, size_t namesize);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ttyname.html
     var stream = FS.getStream(fildes);
@@ -1094,6 +1307,9 @@ LibraryManager.library = {
   },
   symlink__deps: ['$FS', '$PATH', '__setErrNo', '$ERRNO_CODES'],
   symlink: function(path1, path2) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_SYMLINK') }}}, path1, path2);
+#endif
     // int symlink(const char *path1, const char *path2);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/symlink.html
     path1 = Pointer_stringify(path1);
@@ -1108,6 +1324,9 @@ LibraryManager.library = {
   },
   readlink__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   readlink: function(path, buf, bufsize) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_READLINK') }}}, path, buf, bufsize);
+#endif
     // ssize_t readlink(const char *restrict path, char *restrict buf, size_t bufsize);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/readlink.html
     path = Pointer_stringify(path);
@@ -1124,6 +1343,9 @@ LibraryManager.library = {
   },
   pwrite__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   pwrite: function(fildes, buf, nbyte, offset) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_4({{{ cDefine('EM_PROXIED_PWRITE') }}}, fildes, buf, nbyte, offset);
+#endif
     // ssize_t pwrite(int fildes, const void *buf, size_t nbyte, off_t offset);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/write.html
     var stream = FS.getStream(fildes);
@@ -1141,6 +1363,9 @@ LibraryManager.library = {
   },
   write__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'send', 'pwrite'],
   write: function(fildes, buf, nbyte) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_WRITE') }}}, fildes, buf, nbyte);
+#endif
     // ssize_t write(int fildes, const void *buf, size_t nbyte);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/write.html
     var stream = FS.getStream(fildes);
@@ -1165,6 +1390,9 @@ LibraryManager.library = {
   },
   confstr__deps: ['__setErrNo', '$ERRNO_CODES', '$ENV'],
   confstr: function(name, buf, len) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_CONFSTR') }}}, name, buf, len);
+#endif
     // size_t confstr(int name, char *buf, size_t len);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/confstr.html
     var value;
@@ -1369,6 +1597,9 @@ LibraryManager.library = {
   },
   gethostname__deps: ['__setErrNo', '$ERRNO_CODES'],
   gethostname: function(name, namelen) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_GETHOSTNAME') }}}, name, namelen);
+#endif
     // int gethostname(char *name, size_t namelen);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/gethostname.html
     var host = 'emscripten';
@@ -1389,6 +1620,9 @@ LibraryManager.library = {
   },
   getlogin__deps: ['getlogin_r'],
   getlogin: function() {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_0({{{ cDefine('EM_PROXIED_GETLOGIN') }}});
+#endif
     // char *getlogin(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/getlogin.html
     if (!_getlogin.ret) _getlogin.ret = _malloc(8);
@@ -1396,6 +1630,9 @@ LibraryManager.library = {
   },
   getlogin_r__deps: ['__setErrNo', '$ERRNO_CODES'],
   getlogin_r: function(name, namesize) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_GETLOGIN_R') }}}, name, namesize);
+#endif
     // int getlogin_r(char *name, size_t namesize);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/getlogin.html
     var ret = 'root';
@@ -1430,24 +1667,7 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/sleep.html
     return _usleep(seconds * 1e6);
   },
-  usleep: function(useconds) {
-    // int usleep(useconds_t useconds);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/usleep.html
-    // We're single-threaded, so use a busy loop. Super-ugly.
-    var msec = useconds / 1000;
-    if ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && self['performance'] && self['performance']['now']) {
-      var start = self['performance']['now']();
-      while (self['performance']['now']() - start < msec) {
-        // Do nothing.
-      }
-    } else {
-      var start = Date.now();
-      while (Date.now() - start < msec) {
-        // Do nothing.
-      }
-    }
-    return 0;
-  },
+
   swab: function(src, dest, nbytes) {
     // void swab(const void *restrict src, void *restrict dest, ssize_t nbytes);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/swab.html
@@ -1476,10 +1696,14 @@ LibraryManager.library = {
   },
   sysconf__deps: ['__setErrNo', '$ERRNO_CODES'],
   sysconf: function(name) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_SYSCONF') }}}, name);
+#endif
     // long sysconf(int name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/sysconf.html
     switch(name) {
       case {{{ cDefine('_SC_PAGE_SIZE') }}}: return PAGE_SIZE;
+      case {{{ cDefine('_SC_PHYS_PAGES') }}}: return totalMemory / PAGE_SIZE;
       case {{{ cDefine('_SC_ADVISORY_INFO') }}}:
       case {{{ cDefine('_SC_BARRIERS') }}}:
       case {{{ cDefine('_SC_ASYNCHRONOUS_IO') }}}:
@@ -1508,7 +1732,6 @@ LibraryManager.library = {
       case {{{ cDefine('_SC_THREAD_CPUTIME') }}}:
       case {{{ cDefine('_SC_THREAD_PRIO_INHERIT') }}}:
       case {{{ cDefine('_SC_THREAD_PRIO_PROTECT') }}}:
-      case {{{ cDefine('_SC_THREAD_PRIORITY_SCHEDULING') }}}:
       case {{{ cDefine('_SC_THREAD_PROCESS_SHARED') }}}:
       case {{{ cDefine('_SC_THREAD_SAFE_FUNCTIONS') }}}:
       case {{{ cDefine('_SC_THREADS') }}}:
@@ -1522,6 +1745,8 @@ LibraryManager.library = {
       case {{{ cDefine('_SC_2_SW_DEV') }}}:
       case {{{ cDefine('_SC_2_VERSION') }}}:
         return 200809;
+      case {{{ cDefine('_SC_THREAD_PRIORITY_SCHEDULING') }}}:
+        return 0;
       case {{{ cDefine('_SC_MQ_OPEN_MAX') }}}:
       case {{{ cDefine('_SC_XOPEN_STREAMS') }}}:
       case {{{ cDefine('_SC_XBS5_LP64_OFF64') }}}:
@@ -1618,6 +1843,9 @@ LibraryManager.library = {
     return -1;
   },
   sbrk: function(bytes) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_SBRK') }}}, bytes);
+#endif
     // Implement a Linux-like 'memory area' for our 'process'.
     // Changes the size of the memory area by |bytes|; returns the
     // address of the previous top ('break') of the memory area
@@ -1927,6 +2155,9 @@ LibraryManager.library = {
   //       easier.
   clearerr__deps: ['$FS'],
   clearerr: function(stream) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_CLEARERR') }}}, stream);
+#endif
     // void clearerr(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/clearerr.html
     stream = FS.getStreamFromPtr(stream);
@@ -1936,16 +2167,21 @@ LibraryManager.library = {
     stream.eof = false;
     stream.error = false;
   },
-  fclose__deps: ['close', 'fsync', 'fileno'],
+  fclose__deps: ['close', 'fileno'],
   fclose: function(stream) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_FCLOSE') }}}, stream);
+#endif
     // int fclose(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fclose.html
     var fd = _fileno(stream);
-    _fsync(fd);
     return _close(fd);
   },
   fdopen__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   fdopen: function(fildes, mode) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_FDOPEN') }}}, fildes, mode);
+#endif
     // FILE *fdopen(int fildes, const char *mode);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fdopen.html
     mode = Pointer_stringify(mode);
@@ -1968,6 +2204,9 @@ LibraryManager.library = {
   },
   feof__deps: ['$FS'],
   feof: function(stream) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_FEOF') }}}, stream);
+#endif
     // int feof(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/feof.html
     stream = FS.getStreamFromPtr(stream);
@@ -1975,6 +2214,9 @@ LibraryManager.library = {
   },
   ferror__deps: ['$FS'],
   ferror: function(stream) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_FERROR') }}}, stream);
+#endif
     // int ferror(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ferror.html
     stream = FS.getStreamFromPtr(stream);
@@ -1982,6 +2224,9 @@ LibraryManager.library = {
   },
   fflush__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   fflush: function(stream) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_FFLUSH') }}}, stream);
+#endif
     // int fflush(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fflush.html
 
@@ -1994,8 +2239,15 @@ LibraryManager.library = {
     */
   },
   fgetc__deps: ['$FS', 'fread'],
+#if USE_PTHREADS
+  fgetc__postset: 'if (ENVIRONMENT_IS_PTHREAD) _fgetc.ret = PthreadWorkerInit._fgetc_ret; else PthreadWorkerInit._fgetc_ret = _fgetc.ret = allocate([0], "i8", ALLOC_STATIC);',
+#else
   fgetc__postset: '_fgetc.ret = allocate([0], "i8", ALLOC_STATIC);',
+#endif
   fgetc: function(stream) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_FGETC') }}}, stream);
+#endif
     // int fgetc(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fgetc.html
     var streamObj = FS.getStreamFromPtr(stream);
@@ -2015,12 +2267,18 @@ LibraryManager.library = {
   getc_unlocked: 'fgetc',
   getchar__deps: ['fgetc', 'stdin'],
   getchar: function() {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_0({{{ cDefine('EM_PROXIED_GETCHAR') }}});
+#endif
     // int getchar(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/getchar.html
     return _fgetc({{{ makeGetValue(makeGlobalUse('_stdin'), '0', 'void*') }}});
   },
   fgetpos__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   fgetpos: function(stream, pos) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_FGETPOS') }}}, stream, pos);
+#endif
     // int fgetpos(FILE *restrict stream, fpos_t *restrict pos);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fgetpos.html
     stream = FS.getStreamFromPtr(stream);
@@ -2039,6 +2297,9 @@ LibraryManager.library = {
   },
   fgets__deps: ['fgetc'],
   fgets: function(s, n, stream) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_FGETS') }}}, s, n, stream);
+#endif
     // char *fgets(char *restrict s, int n, FILE *restrict stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fgets.html
     var streamObj = FS.getStreamFromPtr(stream);
@@ -2058,11 +2319,17 @@ LibraryManager.library = {
   },
   gets__deps: ['fgets'],
   gets: function(s) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_GETS') }}}, s);
+#endif
     // char *gets(char *s);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/gets.html
     return _fgets(s, 1e6, {{{ makeGetValue(makeGlobalUse('_stdin'), '0', 'void*') }}});
   },
   fileno: function(stream) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_FILENO') }}}, stream);
+#endif
     // int fileno(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fileno.html
     stream = FS.getStreamFromPtr(stream);
@@ -2079,6 +2346,9 @@ LibraryManager.library = {
   funlockfile: 'ftrylockfile',
   fopen__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'open'],
   fopen: function(filename, mode) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_FOPEN') }}}, filename, mode);
+#endif
     // FILE *fopen(const char *restrict filename, const char *restrict mode);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fopen.html
     var flags;
@@ -2113,8 +2383,15 @@ LibraryManager.library = {
     return fd === -1 ? 0 : FS.getPtrForStream(FS.getStream(fd));
   },
   fputc__deps: ['$FS', 'write', 'fileno'],
+#if USE_PTHREADS
+  fputc__postset: 'if (ENVIRONMENT_IS_PTHREAD) _fputc.ret = PthreadWorkerInit._fputc_ret; else PthreadWorkerInit._fputc_ret = _fputc.ret = allocate([0], "i8", ALLOC_STATIC);',
+#else
   fputc__postset: '_fputc.ret = allocate([0], "i8", ALLOC_STATIC);',
+#endif
   fputc: function(c, stream) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_FPUTC') }}}, c, stream);
+#endif
     // int fputc(int c, FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fputc.html
     var chr = unSign(c & 0xFF);
@@ -2133,6 +2410,9 @@ LibraryManager.library = {
   putc_unlocked: 'fputc',
   putchar__deps: ['fputc', 'stdout'],
   putchar: function(c) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_PUTCHAR') }}}, c);
+#endif
     // int putchar(int c);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/putchar.html
     return _fputc(c, {{{ makeGetValue(makeGlobalUse('_stdout'), '0', 'void*') }}});
@@ -2140,6 +2420,9 @@ LibraryManager.library = {
   putchar_unlocked: 'putchar',
   fputs__deps: ['write', 'strlen', 'fileno'],
   fputs: function(s, stream) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_FPUTS') }}}, s, stream);
+#endif
     // int fputs(const char *restrict s, FILE *restrict stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fputs.html
     var fd = _fileno(stream);
@@ -2147,6 +2430,9 @@ LibraryManager.library = {
   },
   puts__deps: ['fputs', 'fputc', 'stdout'],
   puts: function(s) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_PUTS') }}}, s);
+#endif
 #if NO_FILESYSTEM == 0
     // int puts(const char *s);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/puts.html
@@ -2170,6 +2456,9 @@ LibraryManager.library = {
   },
   fread__deps: ['$FS', 'read'],
   fread: function(ptr, size, nitems, stream) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_4({{{ cDefine('EM_PROXIED_FREAD') }}}, ptr, size, nitems, stream);
+#endif
     // size_t fread(void *restrict ptr, size_t size, size_t nitems, FILE *restrict stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fread.html
     var bytesToRead = nitems * size;
@@ -2198,6 +2487,9 @@ LibraryManager.library = {
   },
   freopen__deps: ['$FS', 'fclose', 'fopen', '__setErrNo', '$ERRNO_CODES'],
   freopen: function(filename, mode, stream) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_FREOPEN') }}}, filename, mode, stream);
+#endif
     // FILE *freopen(const char *restrict filename, const char *restrict mode, FILE *restrict stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/freopen.html
     if (!filename) {
@@ -2215,6 +2507,9 @@ LibraryManager.library = {
   },
   fseek__deps: ['$FS', 'lseek', 'fileno'],
   fseek: function(stream, offset, whence) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_FSEEK') }}}, stream, offset, whence);
+#endif
     // int fseek(FILE *stream, long offset, int whence);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fseek.html
     var fd = _fileno(stream);
@@ -2229,6 +2524,9 @@ LibraryManager.library = {
   fseeko: 'fseek',
   fsetpos__deps: ['$FS', 'lseek', '__setErrNo', '$ERRNO_CODES'],
   fsetpos: function(stream, pos) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_FSETPOS') }}}, stream, pos);
+#endif
     // int fsetpos(FILE *stream, const fpos_t *pos);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fsetpos.html
     stream = FS.getStreamFromPtr(stream);
@@ -2248,6 +2546,9 @@ LibraryManager.library = {
   },
   ftell__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   ftell: function(stream) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_FTELL') }}}, stream);
+#endif
     // long ftell(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ftell.html
     stream = FS.getStreamFromPtr(stream);
@@ -2265,6 +2566,9 @@ LibraryManager.library = {
   ftello: 'ftell',
   fwrite__deps: ['$FS', 'write', 'fileno'],
   fwrite: function(ptr, size, nitems, stream) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_4({{{ cDefine('EM_PROXIED_FWRITE') }}}, ptr, size, nitems, stream);
+#endif
     // size_t fwrite(const void *restrict ptr, size_t size, size_t nitems, FILE *restrict stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fwrite.html
     var bytesToWrite = nitems * size;
@@ -2281,6 +2585,9 @@ LibraryManager.library = {
   },
   popen__deps: ['__setErrNo', '$ERRNO_CODES'],
   popen: function(command, mode) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_POPEN') }}}, command, mode);
+#endif
     // FILE *popen(const char *command, const char *mode);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/popen.html
     // We allow only one process, so no pipes.
@@ -2289,6 +2596,9 @@ LibraryManager.library = {
   },
   pclose__deps: ['__setErrNo', '$ERRNO_CODES'],
   pclose: function(stream) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_PCLOSE') }}}, stream);
+#endif
     // int pclose(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/pclose.html
     // We allow only one process, so no pipes.
@@ -2297,6 +2607,9 @@ LibraryManager.library = {
   },
   perror__deps: ['puts', 'fputs', 'fputc', 'strerror', '__errno_location'],
   perror: function(s) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_PERROR') }}}, s);
+#endif
     // void perror(const char *s);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/perror.html
     var stdout = {{{ makeGetValue(makeGlobalUse('_stdout'), '0', 'void*') }}};
@@ -2310,6 +2623,9 @@ LibraryManager.library = {
   },
   remove__deps: ['unlink', 'rmdir'],
   remove: function(path) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_REMOVE') }}}, path);
+#endif
     // int remove(const char *path);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/remove.html
     var ret = _unlink(path);
@@ -2318,6 +2634,9 @@ LibraryManager.library = {
   },
   rename__deps: ['__setErrNo', '$ERRNO_CODES'],
   rename: function(old_path, new_path) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_RENAME') }}}, old_path, new_path);
+#endif
     // int rename(const char *old, const char *new);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/rename.html
     old_path = Pointer_stringify(old_path);
@@ -2332,6 +2651,9 @@ LibraryManager.library = {
   },
   rewind__deps: ['$FS', 'fseek'],
   rewind: function(stream) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_REWIND') }}}, stream);
+#endif
     // void rewind(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/rewind.html
     _fseek(stream, 0, 0);  // SEEK_SET.
@@ -2353,6 +2675,9 @@ LibraryManager.library = {
   },
   tmpnam__deps: ['$FS'],
   tmpnam: function(s, dir, prefix) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_TMPNAM') }}}, s, dir, prefix);
+#endif
     // char *tmpnam(char *s);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/tmpnam.html
     // NOTE: The dir and prefix arguments are for internal use only.
@@ -2376,12 +2701,18 @@ LibraryManager.library = {
   },
   tempnam__deps: ['tmpnam'],
   tempnam: function(dir, pfx) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_TEMPNAM') }}}, dir, pfx);
+#endif
     // char *tempnam(const char *dir, const char *pfx);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/tempnam.html
     return _tmpnam(0, Pointer_stringify(dir), Pointer_stringify(pfx));
   },
   tmpfile__deps: ['tmpnam', 'fopen'],
   tmpfile: function() {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_0({{{ cDefine('EM_PROXIED_TMPFILE') }}});
+#endif
     // FILE *tmpfile(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/tmpfile.html
     // TODO: Delete the created file on closing.
@@ -2392,6 +2723,9 @@ LibraryManager.library = {
   },
   ungetc__deps: ['$FS'],
   ungetc: function(c, stream) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_UNGETC') }}}, c, stream);
+#endif
     // int ungetc(int c, FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ungetc.html
     stream = FS.getStreamFromPtr(stream);
@@ -2417,6 +2751,9 @@ LibraryManager.library = {
   },
   fscanf__deps: ['$FS', '_scanString', 'fgetc', 'ungetc'],
   fscanf: function(stream, format, varargs) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_FSCANF') }}}, stream, format, varargs);
+#endif
     // int fscanf(FILE *restrict stream, const char *restrict format, ... );
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/scanf.html
     var streamObj = FS.getStreamFromPtr(stream);
@@ -2436,6 +2773,9 @@ LibraryManager.library = {
   },
   scanf__deps: ['fscanf'],
   scanf: function(format, varargs) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_SCANF') }}}, format, varargs);
+#endif
     // int scanf(const char *restrict format, ... );
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/scanf.html
     var stdin = {{{ makeGetValue(makeGlobalUse('_stdin'), '0', 'void*') }}};
@@ -2443,6 +2783,9 @@ LibraryManager.library = {
   },
   fprintf__deps: ['fwrite', '_formatString'],
   fprintf: function(stream, format, varargs) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_xprintf_varargs({{{ cDefine('EM_PROXIED_FPRINTF') }}}, stream, format, varargs);
+#endif
     // int fprintf(FILE *restrict stream, const char *restrict format, ...);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
     var result = __formatString(format, varargs);
@@ -2453,6 +2796,9 @@ LibraryManager.library = {
   },
   printf__deps: ['fprintf'],
   printf: function(format, varargs) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_xprintf_varargs({{{ cDefine('EM_PROXIED_PRINTF') }}}, 0, format, varargs);
+#endif
     // int printf(const char *restrict format, ...);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
 #if NO_FILESYSTEM == 0
@@ -2469,6 +2815,9 @@ LibraryManager.library = {
   },
   dprintf__deps: ['_formatString', 'write'],
   dprintf: function(fd, format, varargs) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_xprintf_varargs({{{ cDefine('EM_PROXIED_DPRINTF') }}}, fd, format, varargs);
+#endif
     var result = __formatString(format, varargs);
     var stack = Runtime.stackSave();
     var ret = _write(fd, allocate(result, 'i8', ALLOC_STACK), result.length);
@@ -2503,6 +2852,9 @@ LibraryManager.library = {
 
   mmap__deps: ['$FS', 'memset'],
   mmap: function(start, num, prot, flags, fd, offset) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_6({{{ cDefine('EM_PROXIED_MMAP') }}}, start, num, prot, flags, fd, offset);
+#endif
     /* FIXME: Since mmap is normally implemented at the kernel level,
      * this implementation simply uses malloc underneath the call to
      * mmap.
@@ -2537,6 +2889,9 @@ LibraryManager.library = {
 
   munmap__deps: ['msync'],
   munmap: function(start, num) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_MUNMAP') }}}, start, num);
+#endif
     if (!_mmap.mappings) _mmap.mappings = {};
     // TODO: support unmmap'ing parts of allocations
     var info = _mmap.mappings[start];
@@ -2631,6 +2986,9 @@ LibraryManager.library = {
   },
 
   atexit: function(func, arg) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_ATEXIT') }}}, func, arg);
+#endif
     __ATEXIT__.unshift({ func: func, arg: arg });
   },
   __cxa_atexit: 'atexit',
@@ -2806,7 +3164,11 @@ LibraryManager.library = {
     {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32')]) }}};
   },
   environ__deps: ['$ENV'],
+#if USE_PTHREADS
+  environ: '; if (ENVIRONMENT_IS_PTHREAD) _environ = PthreadWorkerInit._environ; else PthreadWorkerInit._environ = _environ = allocate(1, "i32*", ALLOC_STATIC)',
+#else
   environ: 'allocate(1, "i32*", ALLOC_STATIC)',
+#endif
   __environ__deps: ['environ'],
   __environ: 'environ',
   __buildEnvironment__deps: ['__environ'],
@@ -2863,10 +3225,17 @@ LibraryManager.library = {
     {{{ makeSetValue('envPtr', 'strings.length * ptrSize', '0', 'i8*') }}};
   },
   $ENV__deps: ['__buildEnvironment'],
+#if USE_PTHREADS
+  $ENV__postset: 'if (!ENVIRONMENT_IS_PTHREAD) ___buildEnvironment(ENV);',
+#else
   $ENV__postset: '___buildEnvironment(ENV);',
+#endif
   $ENV: {},
   getenv__deps: ['$ENV'],
   getenv: function(name) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_GETENV') }}}, name);
+#endif
     // char *getenv(const char *name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/getenv.html
     if (name === 0) return 0;
@@ -2879,6 +3248,9 @@ LibraryManager.library = {
   },
   clearenv__deps: ['$ENV', '__buildEnvironment'],
   clearenv: function(name) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_CLEARENV') }}}, name);
+#endif
     // int clearenv (void);
     // http://www.gnu.org/s/hello/manual/libc/Environment-Access.html#index-clearenv-3107
     ENV = {};
@@ -2887,6 +3259,9 @@ LibraryManager.library = {
   },
   setenv__deps: ['$ENV', '__buildEnvironment', '$ERRNO_CODES', '__setErrNo'],
   setenv: function(envname, envval, overwrite) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_SETENV') }}}, envname, envval, overwrite);
+#endif
     // int setenv(const char *envname, const char *envval, int overwrite);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/setenv.html
     if (envname === 0) {
@@ -2906,6 +3281,9 @@ LibraryManager.library = {
   },
   unsetenv__deps: ['$ENV', '__buildEnvironment', '$ERRNO_CODES', '__setErrNo'],
   unsetenv: function(name) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_UNSETENV') }}}, name);
+#endif
     // int unsetenv(const char *name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/unsetenv.html
     if (name === 0) {
@@ -2925,6 +3303,9 @@ LibraryManager.library = {
   },
   putenv__deps: ['$ENV', '__buildEnvironment', '$ERRNO_CODES', '__setErrNo'],
   putenv: function(string) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_1({{{ cDefine('EM_PROXIED_PUTENV') }}}, string);
+#endif
     // int putenv(char *string);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/putenv.html
     // WARNING: According to the standard (and the glibc implementation), the
@@ -2962,6 +3343,9 @@ LibraryManager.library = {
 
   realpath__deps: ['$FS', '__setErrNo'],
   realpath: function(file_name, resolved_name) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_REALPATH') }}}, file_name, resolved_name);
+#endif
     // char *realpath(const char *restrict file_name, char *restrict resolved_name);
     // http://pubs.opengroup.org/onlinepubs/009604499/functions/realpath.html
     var absolute = FS.analyzePath(Pointer_stringify(file_name));
@@ -3308,13 +3692,14 @@ LibraryManager.library = {
 
   llvm_ctlz_i64__asm: true,
   llvm_ctlz_i64__sig: 'iii',
-  llvm_ctlz_i64: function(l, h) {
+  llvm_ctlz_i64: function(l, h, isZeroUndef) {
     l = l | 0;
     h = h | 0;
+    isZeroUndef = isZeroUndef | 0;
     var ret = 0;
     ret = Math_clz32(h) | 0;
     if ((ret | 0) == 32) ret = ret + (Math_clz32(l) | 0) | 0;
-    tempRet0 = 0;
+    {{{ makeSetTempRet0('0') }}};
     return ret | 0;
   },
 
@@ -3327,7 +3712,13 @@ LibraryManager.library = {
       }
       return 8;
     }
+    if (SIDE_MODULE) return ''; // uses it from the parent
+
+#if USE_PTHREADS
+    return 'var cttz_i8; if (ENVIRONMENT_IS_PTHREAD) cttz_i8 = PthreadWorkerInit.cttz_i8; else PthreadWorkerInit.cttz_i8 = cttz_i8 = allocate([' + range(256).map(function(x) { return cttz(x) }).join(',') + '], "i8", ALLOC_STATIC);';
+#else
     return 'var cttz_i8 = allocate([' + range(256).map(function(x) { return cttz(x) }).join(',') + '], "i8", ALLOC_STATIC);';
+#endif
   }],
   llvm_cttz_i32__asm: true,
   llvm_cttz_i32__sig: 'ii',
@@ -3696,7 +4087,7 @@ LibraryManager.library = {
     Runtime.warnOnce('no overflow support in llvm_umul_with_overflow_i64');
 #endif
     var low = ___muldi3(xl, xh, yl, yh);
-    {{{ makeStructuralReturn(['low', 'tempRet0', '0']) }}};
+    {{{ makeStructuralReturn(['low', makeGetTempRet0(), '0']) }}};
   },
 
   llvm_stacksave: function() {
@@ -3797,7 +4188,7 @@ LibraryManager.library = {
     var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
     var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
     {{{ makeSetValue('ptr', 0, '_llvm_uadd_with_overflow_i64(l, h, vall, valh)', 'i32') }}};
-    {{{ makeSetValue('ptr', 4, 'tempRet0', 'i32') }}};
+    {{{ makeSetValue('ptr', 4, makeGetTempRet0(), 'i32') }}};
     {{{ makeStructuralReturn(['l', 'h']) }}};
   },
 
@@ -3806,7 +4197,7 @@ LibraryManager.library = {
     var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
     var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
     {{{ makeSetValue('ptr', 0, '_i64Subtract(l, h, vall, valh)', 'i32') }}};
-    {{{ makeSetValue('ptr', 4, 'tempRet0', 'i32') }}};
+    {{{ makeSetValue('ptr', 4, makeGetTempRet0(), 'i32') }}};
     {{{ makeStructuralReturn(['l', 'h']) }}};
   },
 
@@ -3962,6 +4353,7 @@ LibraryManager.library = {
   fabs: 'Math_abs',
   fabsf: 'Math_abs',
   fabsl: 'Math_abs',
+  llvm_fabs_f32: 'Math_abs',
   llvm_fabs_f64: 'Math_abs',
   ceil: 'Math_ceil',
   ceilf: 'Math_ceil',
@@ -4054,7 +4446,6 @@ LibraryManager.library = {
     if (filename === '__self__') {
       var handle = -1;
       var lib_module = Module;
-      Module.NAMED_GLOBALS = NAMED_GLOBALS;
       var cached_functions = {};
     } else {
       var target = FS.findObject(filename);
@@ -4138,10 +4529,6 @@ LibraryManager.library = {
       return 0;
     } else {
       var lib = DLFCN.loadedLibs[handle];
-      if (lib.module.NAMED_GLOBALS.hasOwnProperty(symbol)) {
-        return lib.module.NAMED_GLOBALS[symbol];
-      }
-      // not a global var, must be a function
       symbol = '_' + symbol;
       if (lib.cached_functions.hasOwnProperty(symbol)) {
         return lib.cached_functions[symbol];
@@ -4200,6 +4587,9 @@ LibraryManager.library = {
   // termios.h
   // ==========================================================================
   tcgetattr: function(fildes, termios_p) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_TCGETATTR') }}}, fildes, termios_p);
+#endif
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/tcgetattr.html
     var stream = FS.getStream(fildes);
     if (!stream) {
@@ -4214,6 +4604,9 @@ LibraryManager.library = {
   },
 
   tcsetattr: function(fildes, optional_actions, termios_p) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_TCSETATTR') }}}, fildes, optional_actions, termios_p);
+#endif
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/tcsetattr.html
     var stream = FS.getStream(fildes);
     if (!stream) {
@@ -4256,12 +4649,17 @@ LibraryManager.library = {
   },
 
   // Statically allocated time struct.
+#if USE_PTHREADS
+  __tm_current: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_current = PthreadWorkerInit.___tm_current; else PthreadWorkerInit.___tm_current = ___tm_current = allocate({{{ C_STRUCTS.tm.__size__ }}}, "i8", ALLOC_STATIC)',
+  __tm_timezone: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_timezone = PthreadWorkerInit.___tm_timezone; else PthreadWorkerInit.___tm_timezone = ___tm_timezone = allocate(intArrayFromString("GMT"), "i8", ALLOC_STATIC)',
+  __tm_formatted: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_formatted = PthreadWorkerInit.___tm_formatted; else PthreadWorkerInit.___tm_formatted = ___tm_formatted = allocate({{{ C_STRUCTS.tm.__size__ }}}, "i8", ALLOC_STATIC)',
+#else
   __tm_current: 'allocate({{{ C_STRUCTS.tm.__size__ }}}, "i8", ALLOC_STATIC)',
   // Statically allocated copy of the string "GMT" for gmtime() to point to
   __tm_timezone: 'allocate(intArrayFromString("GMT"), "i8", ALLOC_STATIC)',
   // Statically allocated time strings.
   __tm_formatted: 'allocate({{{ C_STRUCTS.tm.__size__ }}}, "i8", ALLOC_STATIC)',
-
+#endif
   mktime__deps: ['tzset'],
   mktime: function(tmPtr) {
     _tzset();
@@ -4426,11 +4824,20 @@ LibraryManager.library = {
 
   // TODO: Initialize these to defaults on startup from system settings.
   // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
+#if USE_PTHREADS
+  tzname: '; if (ENVIRONMENT_IS_PTHREAD) _tzname = PthreadWorkerInit._tzname; else PthreadWorkerInit._tzname = _tzname = allocate({{{ 2*Runtime.QUANTUM_SIZE }}}, "i32*", ALLOC_STATIC)',
+  daylight: '; if (ENVIRONMENT_IS_PTHREAD) _daylight = PthreadWorkerInit._daylight; else PthreadWorkerInit._daylight = _daylight = allocate(1, "i32*", ALLOC_STATIC)',
+  timezone: '; if (ENVIRONMENT_IS_PTHREAD) _timezone = PthreadWorkerInit._timezone; else PthreadWorkerInit._timezone = _timezone = allocate(1, "i32*", ALLOC_STATIC)',
+#else
   tzname: 'allocate({{{ 2*Runtime.QUANTUM_SIZE }}}, "i32*", ALLOC_STATIC)',
   daylight: 'allocate(1, "i32*", ALLOC_STATIC)',
   timezone: 'allocate(1, "i32*", ALLOC_STATIC)',
+#endif
   tzset__deps: ['tzname', 'daylight', 'timezone'],
   tzset: function() {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_0({{{ cDefine('EM_PROXIED_TZSET') }}});
+#endif
     // TODO: Use (malleable) environment variables instead of system settings.
     if (_tzset.called) return;
     _tzset.called = true;
@@ -5115,7 +5522,13 @@ LibraryManager.library = {
     {{{ makeSetValue('res', C_STRUCTS.timespec.tv_nsec, 'nsec', 'i32') }}} // resolution is nanoseconds
     return 0;
   },
-
+  clock_getcpuclockid__deps: ['$PROCINFO'],
+  clock_getcpuclockid: function(pid, clk_id) {
+    if (pid < 0) return ERRNO_CODES.ESRCH;
+    if (pid !== 0 && pid !== PROCINFO.pid) return ERRNO_CODES.ENOSYS;
+    if (clk_id) {{{ makeSetValue('clk_id', 0, 2/*CLOCK_PROCESS_CPUTIME_ID*/, 'i32') }}};
+    return 0;
+  },
   // http://pubs.opengroup.org/onlinepubs/000095399/basedefs/sys/time.h.html
   gettimeofday: function(ptr) {
     var now = Date.now();
@@ -5193,7 +5606,7 @@ LibraryManager.library = {
         {{{ makeSetValueAsm('table', '(i<<3)+4', 'label', 'i32') }}};
         // prepare next slot
         {{{ makeSetValueAsm('table', '(i<<3)+8', '0', 'i32') }}};
-        tempRet0 = size;
+        {{{ makeSetTempRet0('size') }}};
         return table | 0;
       }
       i = i+1|0;
@@ -5202,7 +5615,7 @@ LibraryManager.library = {
     size = (size*2)|0;
     table = _realloc(table|0, 8*(size+1|0)|0) | 0;
     table = _saveSetjmp(env|0, label|0, table|0, size|0) | 0;
-    tempRet0 = size;
+    {{{ makeSetTempRet0('size') }}};
     return table | 0;
   },
 
@@ -5754,7 +6167,11 @@ LibraryManager.library = {
   },
   __errno_state: 0,
   __setErrNo__deps: ['__errno_state'],
+#if USE_PTHREADS
+  __setErrNo__postset: 'if (ENVIRONMENT_IS_PTHREAD) ___errno_state = PthreadWorkerInit.___errno_state; else { PthreadWorkerInit.___errno_state = ___errno_state = Runtime.staticAlloc(4); {{{ makeSetValue("___errno_state", 0, 0, "i32") }}}; }',
+#else
   __setErrNo__postset: '___errno_state = Runtime.staticAlloc(4); {{{ makeSetValue("___errno_state", 0, 0, "i32") }}};',
+#endif
   __setErrNo: function(value) {
     // For convenient setting and returning of errno.
     {{{ makeSetValue('___errno_state', '0', 'value', 'i32') }}};
@@ -5799,123 +6216,6 @@ LibraryManager.library = {
   // ==========================================================================
   sched_yield: function() {
     return 0;
-  },
-
-  // ==========================================================================
-  // pthread.h (stubs for mutexes only - no thread support yet!)
-  // ==========================================================================
-
-  pthread_mutex_init: function() {},
-  pthread_mutex_destroy: function() {},
-  pthread_mutexattr_init: function() {},
-  pthread_mutexattr_settype: function() {},
-  pthread_mutexattr_destroy: function() {},
-  pthread_mutex_lock: function() {},
-  pthread_mutex_unlock: function() {},
-  pthread_mutex_trylock: function() {
-    return 0;
-  },
-  pthread_mutexattr_setpshared: function(attr, pshared) {
-    // XXX implement if/when getpshared is required
-    return 0;
-  },
-  pthread_cond_init: function() {},
-  pthread_cond_destroy: function() {},
-  pthread_cond_broadcast: function() {
-    return 0;
-  },
-  pthread_cond_wait: function() {
-    return 0;
-  },
-  pthread_cond_timedwait: function() {
-    return 0;
-  },
-  pthread_self: function() {
-    //FIXME: assumes only a single thread
-    return 0;
-  },
-  pthread_attr_init: function(attr) {
-    /* int pthread_attr_init(pthread_attr_t *attr); */
-    //FIXME: should allocate a pthread_attr_t
-    return 0;
-  },
-  pthread_getattr_np: function(thread, attr) {
-    /* int pthread_getattr_np(pthread_t thread, pthread_attr_t *attr); */
-    //FIXME: should fill in attributes of the given thread in pthread_attr_t
-    return 0;
-  },
-  pthread_attr_destroy: function(attr) {
-    /* int pthread_attr_destroy(pthread_attr_t *attr); */
-    //FIXME: should destroy the pthread_attr_t struct
-    return 0;
-  },
-  pthread_attr_getstack: function(attr, stackaddr, stacksize) {
-    /* int pthread_attr_getstack(const pthread_attr_t *restrict attr,
-       void **restrict stackaddr, size_t *restrict stacksize); */
-    /*FIXME: assumes that there is only one thread, and that attr is the
-      current thread*/
-    {{{ makeSetValue('stackaddr', '0', 'STACK_BASE', 'i8*') }}};
-    {{{ makeSetValue('stacksize', '0', 'TOTAL_STACK', 'i32') }}};
-    return 0;
-  },
-
-  pthread_once: function(ptr, func) {
-    if (!_pthread_once.seen) _pthread_once.seen = {};
-    if (ptr in _pthread_once.seen) return;
-    Runtime.dynCall('v', func);
-    _pthread_once.seen[ptr] = 1;
-  },
-
-  $PTHREAD_SPECIFIC: {},
-  $PTHREAD_SPECIFIC_NEXT_KEY: 1,
-  pthread_key_create__deps: ['$PTHREAD_SPECIFIC', '$PTHREAD_SPECIFIC_NEXT_KEY', '$ERRNO_CODES'],
-  pthread_key_create: function(key, destructor) {
-    if (key == 0) {
-      return ERRNO_CODES.EINVAL;
-    }
-    {{{ makeSetValue('key', '0', 'PTHREAD_SPECIFIC_NEXT_KEY', 'i32*') }}};
-    // values start at 0
-    PTHREAD_SPECIFIC[PTHREAD_SPECIFIC_NEXT_KEY] = 0;
-    PTHREAD_SPECIFIC_NEXT_KEY++;
-    return 0;
-  },
-
-  pthread_getspecific__deps: ['$PTHREAD_SPECIFIC'],
-  pthread_getspecific: function(key) {
-    return PTHREAD_SPECIFIC[key] || 0;
-  },
-
-  pthread_setspecific__deps: ['$PTHREAD_SPECIFIC', '$ERRNO_CODES'],
-  pthread_setspecific: function(key, value) {
-    if (!(key in PTHREAD_SPECIFIC)) {
-      return ERRNO_CODES.EINVAL;
-    }
-    PTHREAD_SPECIFIC[key] = value;
-    return 0;
-  },
-
-  pthread_key_delete__deps: ['$PTHREAD_SPECIFIC', '$ERRNO_CODES'],
-  pthread_key_delete: function(key) {
-    if (key in PTHREAD_SPECIFIC) {
-      delete PTHREAD_SPECIFIC[key];
-      return 0;
-    }
-    return ERRNO_CODES.EINVAL;
-  },
-
-  pthread_cleanup_push: function(routine, arg) {
-    __ATEXIT__.push({ func: function() { Runtime.dynCall('vi', routine, [arg]) } })
-    _pthread_cleanup_push.level = __ATEXIT__.length;
-  },
-
-  pthread_cleanup_pop: function() {
-    assert(_pthread_cleanup_push.level == __ATEXIT__.length, 'cannot pop if something else added meanwhile!');
-    __ATEXIT__.pop();
-    _pthread_cleanup_push.level = __ATEXIT__.length;
-  },
-
-  pthread_rwlock_init: function() {
-    return 0; // XXX
   },
 
   // ==========================================================================
@@ -6236,16 +6536,25 @@ LibraryManager.library = {
   // netinet/in.h
   // ==========================================================================
 
+#if USE_PTHREADS
+  in6addr_any: '; if (ENVIRONMENT_IS_PTHREAD) _in6addr_any = PthreadWorkerInit._in6addr_any; else PthreadWorkerInit._in6addr_any = _in6addr_any = allocate([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], "i8", ALLOC_STATIC)',
+  in6addr_loopback: '; if (ENVIRONMENT_IS_PTHREAD) _in6addr_loopback = PthreadWorkerInit._in6addr_loopback; else PthreadWorkerInit._in6addr_loopback = _in6addr_loopback = allocate([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], "i8", ALLOC_STATIC)',
+#else
   in6addr_any:
     'allocate([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], "i8", ALLOC_STATIC)',
   in6addr_loopback:
     'allocate([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], "i8", ALLOC_STATIC)',
+#endif
 
   // ==========================================================================
   // netdb.h
   // ==========================================================================
 
+#if USE_PTHREADS
+  __h_errno_state: '; if (ENVIRONMENT_IS_PTHREAD) ___h_errno_state = PthreadWorkerInit.___h_errno_state; else PthreadWorkerInit.___h_errno_state = ___h_errno_state = allocate(1, "i32", ALLOC_STATIC)',
+#else
   __h_errno_state: 'allocate(1, "i32", ALLOC_STATIC)',
+#endif
   __h_errno_location__deps: ['__h_errno_state'],
   __h_errno_location: function() {
     return ___h_errno_state;
@@ -6734,6 +7043,9 @@ LibraryManager.library = {
    */
   socket__deps: ['$FS', '$Sockets'],
   socket: function(family, type, protocol) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_SOCKET') }}}, family, type, protocol);
+#endif
     var INCOMING_QUEUE_LENGTH = 64;
     var info = FS.createStream({
       addr: null,
@@ -6878,6 +7190,9 @@ LibraryManager.library = {
 
   bind__deps: ['$FS', '$Sockets', '_inet_ntop4_raw', 'ntohs', 'mkport'],
   bind: function(fd, addr, addrlen) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_BIND') }}}, fd, addr, addrlen);
+#endif
     var info = FS.getStream(fd);
     if (!info) return -1;
     if (addr) {
@@ -6899,6 +7214,9 @@ LibraryManager.library = {
 
   sendmsg__deps: ['$FS', '$Sockets', 'bind', '_inet_ntop4_raw', 'ntohs'],
   sendmsg: function(fd, msg, flags) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_SENDMSG') }}}, fd, msg, flags);
+#endif
     var info = FS.getStream(fd);
     if (!info) return -1;
     // if we are not connected, use the address info in the message
@@ -6956,6 +7274,9 @@ LibraryManager.library = {
 
   recvmsg__deps: ['$FS', '$Sockets', 'bind', '__setErrNo', '$ERRNO_CODES', 'htons'],
   recvmsg: function(fd, msg, flags) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_RECVMSG') }}}, fd, msg, flags);
+#endif
     var info = FS.getStream(fd);
     if (!info) return -1;
     // if we are not connected, use the address info in the message
@@ -7008,6 +7329,9 @@ LibraryManager.library = {
 
   shutdown__deps: ['$FS'],
   shutdown: function(fd, how) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_SHUTDOWN') }}}, fd, how);
+#endif
     var stream = FS.getStream(fd);
     if (!stream) return -1;
     stream.close();
@@ -7016,6 +7340,9 @@ LibraryManager.library = {
 
   ioctl__deps: ['$FS'],
   ioctl: function(fd, request, varargs) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_IOCTL') }}}, fd, request, varargs);
+#endif
     var info = FS.getStream(fd);
     if (!info) return -1;
     var bytes = 0;
@@ -7036,6 +7363,9 @@ LibraryManager.library = {
 
   accept__deps: ['$FS'],
   accept: function(fd, addr, addrlen) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_ACCEPT') }}}, fd, addr, addrlen);
+#endif
     // TODO: webrtc queued incoming connections, etc.
     // For now, the model is that bind does a connect, and we "accept" that one connection,
     // which has host:port the same as ours. We also return the same socket fd.
@@ -7051,6 +7381,9 @@ LibraryManager.library = {
 
   select__deps: ['$FS'],
   select: function(nfds, readfds, writefds, exceptfds, timeout) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_5({{{ cDefine('EM_PROXIED_SELECT') }}}, nfds, readfds, writefds, exceptfds, timeout);
+#endif
     // readfds are supported,
     // writefds checks socket open status
     // exceptfds not supported
@@ -7169,6 +7502,9 @@ LibraryManager.library = {
 
   socket__deps: ['$FS', '$SOCKFS'],
   socket: function(family, type, protocol) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_SOCKET') }}}, family, type, protocol);
+#endif
     var sock = SOCKFS.createSocket(family, type, protocol);
     assert(sock.stream.fd < 64); // select() assumes socket fd values are in 0..63
     return sock.stream.fd;
@@ -7184,6 +7520,9 @@ LibraryManager.library = {
 
   shutdown__deps: ['$SOCKFS', '$ERRNO_CODES', '__setErrNo'],
   shutdown: function(fd, how) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_SHUTDOWN') }}}, fd, how);
+#endif
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
       ___setErrNo(ERRNO_CODES.EBADF);
@@ -7194,6 +7533,9 @@ LibraryManager.library = {
 
   bind__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_read_sockaddr'],
   bind: function(fd, addrp, addrlen) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_BIND') }}}, fd, addrp, addrlen);
+#endif
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
       ___setErrNo(ERRNO_CODES.EBADF);
@@ -7219,6 +7561,9 @@ LibraryManager.library = {
 
   connect__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_read_sockaddr'],
   connect: function(fd, addrp, addrlen) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_CONNECT') }}}, fd, addrp, addrlen);
+#endif
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
       ___setErrNo(ERRNO_CODES.EBADF);
@@ -7244,6 +7589,9 @@ LibraryManager.library = {
 
   listen__deps: ['$FS', '$SOCKFS', '$ERRNO_CODES', '__setErrNo'],
   listen: function(fd, backlog) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_LISTEN') }}}, fd, backlog);
+#endif
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
       ___setErrNo(ERRNO_CODES.EBADF);
@@ -7260,6 +7608,9 @@ LibraryManager.library = {
 
   accept__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr'],
   accept: function(fd, addr, addrlen) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_ACCEPT') }}}, fd, addr, addrlen);
+#endif
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
       ___setErrNo(ERRNO_CODES.EBADF);
@@ -7280,6 +7631,9 @@ LibraryManager.library = {
 
   getsockname__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr'],
   getsockname: function (fd, addr, addrlen) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_GETSOCKNAME') }}}, fd, addr, addrlen);
+#endif
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
       ___setErrNo(ERRNO_CODES.EBADF);
@@ -7298,6 +7652,9 @@ LibraryManager.library = {
 
   getpeername__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr'],
   getpeername: function (fd, addr, addrlen) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_GETPEERNAME') }}}, fd, addr, addrlen);
+#endif
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
       ___setErrNo(ERRNO_CODES.EBADF);
@@ -7316,6 +7673,9 @@ LibraryManager.library = {
 
   send__deps: ['$SOCKFS', '$ERRNO_CODES', '__setErrNo', 'write'],
   send: function(fd, buf, len, flags) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_4({{{ cDefine('EM_PROXIED_SEND') }}}, fd, buf, len, flags);
+#endif
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
       ___setErrNo(ERRNO_CODES.EBADF);
@@ -7327,6 +7687,9 @@ LibraryManager.library = {
 
   recv__deps: ['$SOCKFS', '$ERRNO_CODES', '__setErrNo', 'read'],
   recv: function(fd, buf, len, flags) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_4({{{ cDefine('EM_PROXIED_RECV') }}}, fd, buf, len, flags);
+#endif
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
       ___setErrNo(ERRNO_CODES.EBADF);
@@ -7338,6 +7701,9 @@ LibraryManager.library = {
 
   sendto__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_read_sockaddr'],
   sendto: function(fd, message, length, flags, dest_addr, dest_len) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_6({{{ cDefine('EM_PROXIED_SENDTO') }}}, fd, message, length, flags, dest_addr, dest_len);
+#endif
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
       ___setErrNo(ERRNO_CODES.EBADF);
@@ -7365,6 +7731,9 @@ LibraryManager.library = {
 
   recvfrom__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr'],
   recvfrom: function(fd, buf, len, flags, addr, addrlen) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_6({{{ cDefine('EM_PROXIED_RECVFROM') }}}, fd, buf, len, flags, addr, addrlen);
+#endif
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
       ___setErrNo(ERRNO_CODES.EBADF);
@@ -7398,6 +7767,9 @@ LibraryManager.library = {
 
   sendmsg__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_read_sockaddr'],
   sendmsg: function(fd, message, flags) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_SENDMSG') }}}, fd, message, flags);
+#endif
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
       ___setErrNo(ERRNO_CODES.EBADF);
@@ -7448,6 +7820,9 @@ LibraryManager.library = {
 
   recvmsg__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr'],
   recvmsg: function(fd, message, flags) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_RECVMSG') }}}, fd, message, flags);
+#endif
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
       ___setErrNo(ERRNO_CODES.EBADF);
@@ -7529,6 +7904,9 @@ LibraryManager.library = {
 
   getsockopt__deps: ['$SOCKFS', '__setErrNo', '$ERRNO_CODES'],
   getsockopt: function(fd, level, optname, optval, optlen) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_5({{{ cDefine('EM_PROXIED_GETSOCKOPT') }}}, fd, level, optname, optval, optlen);
+#endif
     // int getsockopt(int sockfd, int level, int optname, void *optval, socklen_t *optlen);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/getsockopt.html
     // Minimal getsockopt aimed at resolving https://github.com/kripken/emscripten/issues/2211
@@ -7569,6 +7947,9 @@ LibraryManager.library = {
 
   select__deps: ['$FS', '__DEFAULT_POLLMASK'],
   select: function(nfds, readfds, writefds, exceptfds, timeout) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_5({{{ cDefine('EM_PROXIED_SELECT') }}}, nfds, readfds, writefds, exceptfds, timeout);
+#endif
     // readfds are supported,
     // writefds checks socket open status
     // exceptfds not supported
@@ -7657,6 +8038,9 @@ LibraryManager.library = {
 
   ioctl__deps: ['$FS'],
   ioctl: function(fd, request, varargs) {
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) return _emscripten_sync_run_in_main_thread_3({{{ cDefine('EM_PROXIED_IOCTL') }}}, fd, request, varargs);
+#endif
     var stream = FS.getStream(fd);
     if (!stream) {
       ___setErrNo(ERRNO_CODES.EBADF);
@@ -8010,10 +8394,10 @@ LibraryManager.library = {
     var ander = 0;
     if ((bits|0) < 32) {
       ander = ((1 << bits) - 1)|0;
-      tempRet0 = (high << bits) | ((low&(ander << (32 - bits))) >>> (32 - bits));
+      {{{ makeSetTempRet0('(high << bits) | ((low&(ander << (32 - bits))) >>> (32 - bits))') }}};
       return low << bits;
     }
-    tempRet0 = low << (bits - 32);
+    {{{ makeSetTempRet0('low << (bits - 32)') }}};
     return 0;
   },
   bitshift64Ashr__asm: true,
@@ -8023,10 +8407,10 @@ LibraryManager.library = {
     var ander = 0;
     if ((bits|0) < 32) {
       ander = ((1 << bits) - 1)|0;
-      tempRet0 = high >> bits;
+      {{{ makeSetTempRet0('high >> bits') }}};
       return (low >>> bits) | ((high&ander) << (32 - bits));
     }
-    tempRet0 = (high|0) < 0 ? -1 : 0;
+    {{{ makeSetTempRet0('(high|0) < 0 ? -1 : 0') }}};
     return (high >> (bits - 32))|0;
   },
   bitshift64Lshr__asm: true,
@@ -8036,10 +8420,10 @@ LibraryManager.library = {
     var ander = 0;
     if ((bits|0) < 32) {
       ander = ((1 << bits) - 1)|0;
-      tempRet0 = high >>> bits;
+      {{{ makeSetTempRet0('high >>> bits') }}};
       return (low >>> bits) | ((high&ander) << (32 - bits));
     }
-    tempRet0 = 0;
+    {{{ makeSetTempRet0('0') }}};
     return (high >>> (bits - 32))|0;
   },
 
@@ -8096,9 +8480,4 @@ function autoAddDeps(object, name) {
     }
   }
 }
-
-// Add aborting stubs for various libc stuff needed by libc++
-['pthread_cond_signal', 'pthread_equal', 'pthread_join', 'pthread_detach'].forEach(function(aborter) {
-  LibraryManager.library[aborter] = function aborting_stub() { throw 'TODO: ' + aborter };
-});
 

@@ -1,4 +1,4 @@
-import os, json, logging, zipfile
+import os, json, logging, zipfile, glob
 import shared
 from subprocess import Popen, CalledProcessError
 import multiprocessing
@@ -51,6 +51,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   libcxx_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'symbols'), exclude=libc_symbols)
   libcxxabi_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols'), exclude=libc_symbols)
   gl_symbols = read_symbols(shared.path_from_root('system', 'lib', 'gl.symbols'))
+  pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads.symbols'))
 
   # XXX we should disable EMCC_DEBUG when building libs, just like in the relooper
 
@@ -90,11 +91,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     return in_temp(lib_filename)
 
   # libc
-  def create_libc():
+  def create_libc(libname):
     logging.debug(' building libc for cache')
-    libc_files = [
-      'dlmalloc.c',
-    ]
     musl_files = [
       ['ctype', [
        'isdigit.c',
@@ -266,12 +264,20 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
        'strncmp.c',
       ]]
     ]
+    libc_files = []
     for directory, sources in musl_files:
       libc_files += [os.path.join('libc', 'musl', 'src', directory, source) for source in sources]
-    return build_libc('libc.bc', libc_files, ['-O2'])
+
+    return build_libc(libname, libc_files, ['-O2'])
+
+  def create_pthreads(libname):
+    # Add pthread files.
+    pthreads_files = [os.path.join('pthread', 'library_pthread.c')]
+    pthreads_files += glob.glob(shared.path_from_root('system/lib/libc/musl/src/thread/*.c'))
+    return build_libc(libname, pthreads_files, ['-O2'])
 
   # libcextra
-  def create_libcextra():
+  def create_libcextra(libname):
     logging.debug('building libcextra for cache')
     musl_files = [
        ['compat', [
@@ -579,10 +585,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     libcextra_files = []
     for directory, sources in musl_files:
       libcextra_files += [os.path.join('libc', 'musl', 'src', directory, source) for source in sources]
-    return build_libc('libcextra.bc', libcextra_files, ['-O2'])
+    return build_libc(libname, libcextra_files, ['-O2'])
 
   # libcxx
-  def create_libcxx():
+  def create_libcxx(libname):
     logging.debug('building libcxx for cache')
     libcxx_files = [
       'algorithm.cpp',
@@ -608,10 +614,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'regex.cpp',
       'strstream.cpp'
     ]
-    return build_libcxx(os.path.join('system', 'lib', 'libcxx'), 'libcxx.a', libcxx_files, ['-Oz', '-Wno-warn-absolute-paths', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')], has_noexcept_version=True)
+    return build_libcxx(os.path.join('system', 'lib', 'libcxx'), libname, libcxx_files, ['-Oz', '-Wno-warn-absolute-paths', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')], has_noexcept_version=True)
 
   # libcxxabi - just for dynamic_cast for now
-  def create_libcxxabi():
+  def create_libcxxabi(libname):
     logging.debug('building libcxxabi for cache')
     libcxxabi_files = [
       'abort_message.cpp',
@@ -627,13 +633,24 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'private_typeinfo.cpp',
       os.path.join('..', '..', 'libcxx', 'new.cpp'),
     ]
-    return build_libcxx(os.path.join('system', 'lib', 'libcxxabi', 'src'), 'libcxxabi.bc', libcxxabi_files, ['-Oz', '-Wno-warn-absolute-paths', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')])
+    return build_libcxx(os.path.join('system', 'lib', 'libcxxabi', 'src'), libname, libcxxabi_files, ['-Oz', '-Wno-warn-absolute-paths', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')])
 
   # gl
-  def create_gl():
+  def create_gl(libname): # libname is ignored, this is just one .o file
     o = in_temp('gl.o')
     check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'gl.c'), '-o', o])
     return o
+
+  def create_dlmalloc(out_name, clflags):
+    o = in_temp(out_name)
+    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-o', o] + clflags)
+    return o
+
+  def create_dlmalloc_singlethreaded(libname):
+    return create_dlmalloc(libname, ['-O2'])
+
+  def create_dlmalloc_multithreaded(libname):
+    return create_dlmalloc(libname, ['-O2', '-s', 'USE_PTHREADS=1'])
 
   # Setting this in the environment will avoid checking dependencies and make building big projects a little faster
   # 1 means include everything; otherwise it can be the name of a lib (libcxx, etc.)
@@ -702,20 +719,38 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   for symbols in symbolses:
     all_needed.difference_update(symbols.defs)
 
+  system_libs = [('libcxx',    'a',  create_libcxx,    libcxx_symbols,    ['libcextra', 'libcxxabi'], True),
+                 ('libcextra', 'bc', create_libcextra, libcextra_symbols, ['libc'],                   False),
+                 ('libcxxabi', 'bc', create_libcxxabi, libcxxabi_symbols, ['libc'],                   False),
+                 ('gl',        'bc', create_gl,        gl_symbols,        ['libc'],                   False),
+                 ('libc',      'bc', create_libc,      libc_symbols,      [],                         False)]
+
+  # malloc dependency is force-added, so when using pthreads, it must be force-added
+  # as well, since malloc needs to be thread-safe, so it depends on mutexes.
+  if shared.Settings.USE_PTHREADS:
+    system_libs += [('pthreads',  'bc', create_pthreads,  pthreads_symbols,  ['libc'],                   False),
+                    ('dlmalloc_threadsafe', 'bc', create_dlmalloc_multithreaded, [], [],                 False)]
+    force.add('pthreads')
+    force.add('dlmalloc_threadsafe')
+  else:
+    system_libs += [('dlmalloc',  'bc', create_dlmalloc_singlethreaded,      [], [],                     False)]
+    force.add('dlmalloc')
+
   # Go over libraries to figure out which we must include
   def maybe_noexcept(name):
     if shared.Settings.DISABLE_EXCEPTION_CATCHING:
-      base, suffix = name.split('.')
-      name = base + '_noexcept' + '.' + suffix
+      name += '_noexcept'
     return name
   ret = []
   has = need = None
-  for name, create, library_symbols, deps in [(maybe_noexcept('libcxx.a'), create_libcxx,    libcxx_symbols,    ['libcextra.bc', 'libcxxabi.bc']),
-                                              ('libcextra.bc',             create_libcextra, libcextra_symbols, ['libc.bc']),
-                                              ('libcxxabi.bc',             create_libcxxabi, libcxxabi_symbols, ['libc.bc']),
-                                              ('gl.bc',                    create_gl,        gl_symbols,        ['libc.bc']),
-                                              ('libc.bc',                  create_libc,      libc_symbols,      [])]:
-    force_this = force_all or name in force
+
+  for shortname, suffix, create, library_symbols, deps, can_noexcept in system_libs:
+    force_this = force_all or shortname in force
+    if can_noexcept: shortname = maybe_noexcept(shortname)
+    if force_this:
+      suffix = 'bc' # .a files do not always link in all their parts; don't use them when forced
+    name = shortname + '.' + suffix
+
     if not force_this:
       need = set()
       has = set()
@@ -733,7 +768,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     if force_this or (len(need) > 0 and not only_forced):
       # We need to build and link the library in
       logging.debug('including %s' % name)
-      libfile = shared.Cache.get(name, create, extension=name.split('.')[-1])
+      libfile = shared.Cache.get(name, lambda: create(name), extension=suffix)
       ret.append(libfile)
       force = force.union(deps)
   ret.sort(key=lambda x: x.endswith('.a')) # make sure to put .a files at the end.

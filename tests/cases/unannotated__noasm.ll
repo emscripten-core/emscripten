@@ -10,7 +10,7 @@ define i32 @main() nounwind {
   %1 = alloca i32, align 4
   store i32 0, i32* %1
   %2 = call i32 @llvm.expect.i32(i32 0, i32 1)
-  %3 = call i32 @puts(i8* getelementptr inbounds ([6 x i8]* @.str, i32 0, i32 0))
+  %3 = call i32 @puts(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str, i32 0, i32 0))
   ret i32 0
 }
 

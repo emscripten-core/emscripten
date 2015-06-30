@@ -22,14 +22,14 @@ define i32 @main() nounwind {
   %.p.i = select i1 %2, i32 %j.07.i, i32 %3
   %4 = add i32 %.p.i, 8
   %5 = urem i32 %4, 101
-  %6 = getelementptr inbounds [100 x [100 x i32]]* %t, i32 0, i32 0, i32 %j.07.i
+  %6 = getelementptr inbounds [100 x [100 x i32]], [100 x [100 x i32]]* %t, i32 0, i32 0, i32 %j.07.i
   store i32 %5, i32* %6, align 4
   %7 = add i32 %j.07.i, 1
   %8 = icmp ult i32 %7, 10000
   br i1 %8, label %.lr.ph.i, label %init.exit
 
 init.exit:                                        ; preds = %.lr.ph.i
-  %9 = call i32 (i8*, i8*, ...)* @sscanf(i8* getelementptr inbounds ([7 x i8]* @.str, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8]* @.str1, i32 0, i32 0), i32* %j, i32* %k4) nounwind
+  %9 = call i32 (i8*, i8*, ...) @sscanf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str, i32 0, i32 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str1, i32 0, i32 0), i32* %j, i32* %k4) nounwind
   store i32 53, i32* %j, align 4
   br label %.preheader
 
@@ -63,8 +63,8 @@ init.exit:                                        ; preds = %.lr.ph.i
   %22 = mul i32 %indvars.iv17, %20
   %23 = add i32 %10, -1
   %24 = add i32 %10, 1
-  %25 = getelementptr inbounds [100 x [100 x i32]]* %t, i32 0, i32 %24, i32 %23
-  %.promoted = load i32* %25, align 4
+  %25 = getelementptr inbounds [100 x [100 x i32]], [100 x [100 x i32]]* %t, i32 0, i32 %24, i32 %23
+  %.promoted = load i32, i32* %25, align 4
   %26 = add i32 %.promoted, %indvars.iv15
   %27 = add i32 %26, %22
   %28 = add i32 %27, %21
@@ -94,8 +94,8 @@ init.exit:                                        ; preds = %.lr.ph.i
   %j.06.i = phi i32 [ %38, %.lr.ph.i3 ], [ 0, %.lr.ph.i3.preheader ]
   %31 = and i32 %j.06.i, 1
   %32 = icmp eq i32 %31, 0
-  %33 = getelementptr inbounds [100 x [100 x i32]]* %t, i32 0, i32 0, i32 %j.06.i
-  %34 = load i32* %33, align 4
+  %33 = getelementptr inbounds [100 x [100 x i32]], [100 x [100 x i32]]* %t, i32 0, i32 0, i32 %j.06.i
+  %34 = load i32, i32* %33, align 4
   %35 = sub i32 0, %34
   %36 = select i1 %32, i32 %34, i32 %35
   %37 = add i32 %36, %sum.07.i
@@ -105,7 +105,7 @@ init.exit:                                        ; preds = %.lr.ph.i
 
 checkSum.exit:                                    ; preds = %.lr.ph.i3
   %40 = add i32 %37, 2
-  %41 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([10 x i8]* @.str2, i32 0, i32 0), i32 %40) nounwind
+  %41 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @.str2, i32 0, i32 0), i32 %40) nounwind
   ret i32 0
 }
 

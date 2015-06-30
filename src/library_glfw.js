@@ -32,7 +32,7 @@
  ******************************************************************************/
 
 var LibraryGLFW = {
-  $GLFW__deps: ['emscripten_get_now'],
+  $GLFW__deps: ['emscripten_get_now', '$GL'],
   $GLFW: {
 
     Window: function(id, width, height, title, monitor, share) {

@@ -19,13 +19,13 @@ Download one of the SDK installers below to get started with Emscripten developm
 Windows
 -------
 
-- `Emscripten SDK Web Installer  <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.29.0-web-64bit.exe>`_ (emsdk-1.29.0-web-64bit.exe)
+- `Emscripten SDK Web Installer  <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.30.0-web-64bit.exe>`_ (emsdk-1.30.0-web-64bit.exe)
 		An NSIS installer that fetches and installs the latest Emscripten SDK from the Web. To :ref:`install <windows-installation_instructions-NSIS>`, download and open the file, then follow the installer prompts.
 
-- `Emscripten SDK Offline Installer <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.29.0-full-64bit.exe>`_ (emsdk-1.29.0-full-64bit.exe)
+- `Emscripten SDK Offline Installer <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.30.0-full-64bit.exe>`_ (emsdk-1.30.0-full-64bit.exe)
 		An NSIS installer that bundles together the current Emscripten toolchain as an offline-installable package. To :ref:`install <windows-installation_instructions-NSIS>`, download and open the file, then follow the installer prompts.
 
-- `Portable Emscripten SDK for Windows <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.29.0-portable-64bit.zip>`_ (emsdk-1.29.0-portable-64bit.zip)
+- `Portable Emscripten SDK for Windows <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.30.0-portable-64bit.zip>`_ (emsdk-1.30.0-portable-64bit.zip)
 		A zipped package of the SDK that does not require system installation privileges. Follow the instructions below to :ref:`install the Portable Emscripten SDK on Windows <all-os-installation_instructions-portable-SDK>`.
 
 Linux and Mac OS X
@@ -114,7 +114,7 @@ Mac OS X
 	
 - The *python2* command line tool is not present on OSX by default. To manually work around this issue, follow the linked step in :ref:`Getting started on Mac OS X <getting-started-on-osx-install-python2>`.
 
-.. **HamishW**: I think that Mac OS X has the same issues as Linux - ie you don't get ANYTHING much in the SDK. YOu will need the command line tools, but mostly for GCC - need to confirm this with Jukka
+.. **HamishW**: I think that Mac OS X has the same issues as Linux - ie you don't get ANYTHING much in the SDK. You will need the command line tools, but mostly for GCC - need to confirm this with Jukka
 
 Linux
 ++++++++
@@ -150,6 +150,8 @@ Linux
 		
 		# Install Java
 		sudo apt-get install default-jre
+
+.. note:: Your system may provide Node.js as ``node`` instead of ``nodejs``. In that case, you may need to also update the ``NODE_JS`` attribute of your ``~/.emscripten`` file.
 		
 - *Git* is not installed automatically. Git is only needed if you want to use tools from one of the development branches **emscripten-incoming** or **emscripten-master**: 
 
@@ -213,6 +215,8 @@ You can always install old SDK and compiler toolchains using a *current SDK*. Se
 
 On Windows, you can also install one of the **old versions** via an offline NSIS installer:
 
+- `emsdk-1.30.0-full-64bit.exe` <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.30.0-full-64bit.exe`_ (first and last release based on Clang 3.5)
+- `emsdk-1.29.0-full-64bit.exe` <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.29.0-full-64bit.exe`_ (first and last release based on Clang 3.4)
 - `emsdk-1.27.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.27.0-full-64bit.exe>`_
 - `emsdk-1.25.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.25.0-full-64bit.exe>`_
 - `emsdk-1.22.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.22.0-full-64bit.exe>`_
@@ -230,5 +234,5 @@ On Windows, you can also install one of the **old versions** via an offline NSIS
 - `emsdk-1.5.6.1-full.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.5.6.1-full.exe)>`_ (32-bit, first emsdk release)
 
 
-A snapshot of all tagged releases (not SDKs) can be found at `emscripten/releases <https://github.com/kripken/emscripten/releases>`_.
+A snapshot of all tagged Emscripten compiler releases (not full SDKs) can be found at `emscripten/releases <https://github.com/kripken/emscripten/releases>`_.
 

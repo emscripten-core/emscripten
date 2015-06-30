@@ -17,6 +17,7 @@ so you may prefer to use fewer cores here.
 
 from subprocess import Popen, PIPE, STDOUT
 import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer, multiprocessing, functools, stat, string, random
+from urllib import unquote
 
 # Setup
 
@@ -37,8 +38,14 @@ except:
 
 # Core test runner class, shared between normal tests and benchmarks
 checked_sanity = False
-test_modes = ['default', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g', 'asm1i', 'asm3i', 'asm2nn']
+test_modes = ['default', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g', 'asm1i', 'asm3i', 'asm2m', 'asm2nn']
 test_index = 0
+
+use_all_engines = os.environ.get('EM_ALL_ENGINES') # generally js engines are equivalent, testing 1 is enough. set this
+                                                   # to force testing on all js engines, good to find js engine bugs
+
+if use_all_engines:
+  print '(using ALL js engines)'
 
 class RunnerCore(unittest.TestCase):
   emcc_args = None
@@ -54,6 +61,14 @@ class RunnerCore(unittest.TestCase):
 
   def is_emterpreter(self):
     return False
+
+  def uses_memory_init_file(self):
+    if self.emcc_args is None:
+      return None
+    elif '--memory-init-file' in self.emcc_args:
+      return int(self.emcc_args[self.emcc_args.index('--memory-init-file')+1])
+    else:
+      return ('-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args) and not Settings.SIDE_MODULE
 
   def setUp(self):
     Settings.reset()
@@ -108,16 +123,16 @@ class RunnerCore(unittest.TestCase):
     open(filename, 'w').write(js.replace('run();', 'run(%s + Module["arguments"]);' % str(args)))
 
   def prep_ll_run(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
-    if ll_file.endswith(('.bc', '.o')):
-      if ll_file != filename + '.o':
-        shutil.copy(ll_file, filename + '.o')
-      Building.llvm_dis(filename)
-    else:
-      shutil.copy(ll_file, filename + '.o.ll')
-
     #force_recompile = force_recompile or os.stat(filename + '.o.ll').st_size > 50000 # if the file is big, recompile just to get ll_opts # Recompiling just for dfe in ll_opts is too costly
 
     if Building.LLVM_OPTS or force_recompile or build_ll_hook:
+      if ll_file.endswith(('.bc', '.o')):
+        if ll_file != filename + '.o':
+          shutil.copy(ll_file, filename + '.o')
+        Building.llvm_dis(filename)
+      else:
+        shutil.copy(ll_file, filename + '.o.ll')
+
       Building.ll_opts(filename)
       if build_ll_hook:
         need_post = build_ll_hook(filename)
@@ -131,6 +146,14 @@ class RunnerCore(unittest.TestCase):
         Building.llvm_as(filename)
         shutil.move(filename + '.o.ll', filename + '.o.ll.post') # for comparisons later
         Building.llvm_dis(filename)
+
+      Building.llvm_as(filename)
+    else:
+      if ll_file.endswith('.ll'):
+        safe_copy(ll_file, filename + '.o.ll')
+        Building.llvm_as(filename)
+      else:
+        safe_copy(ll_file, filename + '.o')
 
   # Generate JS from ll, and optionally modify the generated JS with a post_build function. Note
   # that post_build is called on unoptimized JS, so we send it to emcc (otherwise, if run after
@@ -155,7 +178,7 @@ class RunnerCore(unittest.TestCase):
       transform.write('\nprocess(sys.argv[1])\n')
       transform.close()
       transform_args = ['--js-transform', "%s %s" % (PYTHON, transform_filename)]
-    Building.emcc(filename + '.o.ll', Settings.serialize() + emcc_args + transform_args + Building.COMPILER_TEST_OPTS, filename + '.o.js')
+    Building.emcc(filename + '.o', Settings.serialize() + emcc_args + transform_args + Building.COMPILER_TEST_OPTS, filename + '.o.js')
     if post2: post2(filename + '.o.js')
 
   # Build JavaScript code from source code
@@ -185,50 +208,62 @@ class RunnerCore(unittest.TestCase):
       additional_files = map(lambda f: os.path.join(dirname, f), additional_files)
       os.chdir(self.get_dir())
 
-    # C++ => LLVM binary
+    if build_ll_hook or post_build or extra_emscripten_args:
+      # "slow", old path: build to bc, then build to JS
 
-    for f in [filename] + additional_files:
-      try:
-        # Make sure we notice if compilation steps failed
-        os.remove(f + '.o')
-      except:
-        pass
+      # C++ => LLVM binary
+
+      for f in [filename] + additional_files:
+        try:
+          # Make sure we notice if compilation steps failed
+          os.remove(f + '.o')
+        except:
+          pass
+        args = [PYTHON, EMCC] + Building.COMPILER_TEST_OPTS + Settings.serialize() + \
+               ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
+               map(lambda include: '-I' + include, includes) + \
+               ['-c', f, '-o', f + '.o']
+        output = Popen(args, stdout=PIPE, stderr=self.stderr_redirect if not DEBUG else None).communicate()[0]
+        assert os.path.exists(f + '.o'), 'Source compilation error: ' + output
+
+      # Link all files
+      if len(additional_files) + len(libraries) > 0:
+        shutil.move(filename + '.o', filename + '.o.alone')
+        Building.link([filename + '.o.alone'] + map(lambda f: f + '.o', additional_files) + libraries,
+                 filename + '.o')
+        if not os.path.exists(filename + '.o'):
+          print "Failed to link LLVM binaries:\n\n", output
+          raise Exception("Linkage error");
+
+      # Finalize
+      self.prep_ll_run(filename, filename + '.o', build_ll_hook=build_ll_hook)
+
+      # BC => JS
+      self.ll_to_js(filename, extra_emscripten_args, post_build)
+    else:
+      # "fast", new path: just call emcc and go straight to JS
+      all_files = [filename] + additional_files + libraries
+      for i in range(len(all_files)):
+        if '.' not in all_files[i]:
+          shutil.move(all_files[i], all_files[i] + '.bc')
+          all_files[i] += '.bc'
       args = [PYTHON, EMCC] + Building.COMPILER_TEST_OPTS + Settings.serialize() + \
+             self.emcc_args + \
              ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
              map(lambda include: '-I' + include, includes) + \
-             ['-c', f, '-o', f + '.o']
+             all_files + \
+             ['-o', filename + '.o.js']
       output = Popen(args, stdout=PIPE, stderr=self.stderr_redirect if not DEBUG else None).communicate()[0]
-      assert os.path.exists(f + '.o'), 'Source compilation error: ' + output
-
-    # Link all files
-    if len(additional_files) + len(libraries) > 0:
-      shutil.move(filename + '.o', filename + '.o.alone')
-      Building.link([filename + '.o.alone'] + map(lambda f: f + '.o', additional_files) + libraries,
-               filename + '.o')
-      if not os.path.exists(filename + '.o'):
-        print "Failed to link LLVM binaries:\n\n", output
-        raise Exception("Linkage error");
-
-    # Finalize
-    self.prep_ll_run(filename, filename + '.o', build_ll_hook=build_ll_hook)
-
-    # BC => JS
-    self.ll_to_js(filename, extra_emscripten_args, post_build)
+      assert os.path.exists(filename + '.o.js'), 'Source compilation error: ' + output
 
     if output_processor is not None:
       output_processor(open(filename + '.o.js').read())
 
     if self.emcc_args is not None:
-      if '--memory-init-file' in self.emcc_args:
-        memory_init_file = int(self.emcc_args[self.emcc_args.index('--memory-init-file')+1])
-      else:
-        memory_init_file = '-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args or self.is_emterpreter()
       src = open(filename + '.o.js').read()
-      if memory_init_file:
+      if self.uses_memory_init_file():
         # side memory init file, or an empty one in the js
         assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
-      else:
-        assert 'memory initializer */' in src
 
   def validate_asmjs(self, err):
     if 'uccessfully compiled asm.js code' in err and 'asm.js link error' not in err:
@@ -462,6 +497,11 @@ class RunnerCore(unittest.TestCase):
     for engine in self.banned_js_engines: assert type(engine) == list
     js_engines = filter(lambda engine: engine[0] not in map(lambda engine: engine[0], self.banned_js_engines), js_engines)
     if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
+    if len(js_engines) > 1 and not use_all_engines:
+      if SPIDERMONKEY_ENGINE in js_engines: # make sure to get asm.js validation checks, using sm
+        js_engines = [SPIDERMONKEY_ENGINE]
+      else:
+        js_engines = js_engines[:1]
     for engine in js_engines:
       js_output = self.run_generated_code(engine, filename + '.o.js', args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
       try:
@@ -574,8 +614,10 @@ class BrowserCore(RunnerCore):
             output = queue.get()
             break
           time.sleep(0.1)
-
-        self.assertIdentical(expectedResult, output)
+        if output.startswith('/report_result?skipped:'):
+          self.skip(unquote(output[len('/report_result?skipped:'):]).strip())
+        else:
+          self.assertIdentical(expectedResult, output)
       finally:
         server.terminate()
         time.sleep(0.1) # see comment about Windows above
@@ -710,7 +752,7 @@ class BrowserCore(RunnerCore):
       self.reftest(path_from_root('tests', reference))
       if not manual_reference:
         args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
-    all_args = [PYTHON, EMCC, temp_filepath, '-o', outfile] + args
+    all_args = [PYTHON, EMCC, '-s', 'IN_TEST_HARNESS=1', temp_filepath, '-o', outfile] + args
     #print 'all args:', all_args
     try_delete(outfile)
     Popen(all_args).communicate()
@@ -734,6 +776,12 @@ class BrowserCore(RunnerCore):
       self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build, original_args + ['--proxy-to-worker', '-s', 'GL_TESTING=1'], outfile, message)
 
 ###################################################################################################
+
+def get_zlib_library(runner_core):
+  if WINDOWS:
+    return runner_core.get_library('zlib', os.path.join('libz.a'), configure=['emconfigure.bat'], configure_args=['cmake', '.', '-DBUILD_SHARED_LIBS=OFF'], make=['mingw32-make'], make_args=[])
+  else:
+    return runner_core.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'])
 
 # Both test_core and test_other access the Bullet library, share the access here to avoid duplication.
 def get_bullet_library(runner_core, use_cmake):

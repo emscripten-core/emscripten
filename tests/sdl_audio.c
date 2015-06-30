@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
       FILE * f = fopen( "noise.ogg", "rb" );
       fread( bytes, 1, info.st_size, f  );
       fclose(f);
-  
+
       SDL_RWops * ops = SDL_RWFromConstMem(bytes, info.st_size);
       sound3 = Mix_LoadWAV_RW(ops, 0);
       SDL_FreeRW(ops);

@@ -105,6 +105,8 @@ while 1:
     js_args = [shared.PYTHON, shared.EMCC, opts] + llvm_opts + [fullname, '-o', filename + '.js'] + CSMITH_CFLAGS + args
     if random.random() < 0.5:
       js_args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
+    if random.random() < 0.5:
+      js_args += ['-s', 'MAIN_MODULE=1']
     if random.random() < 0.25:
       js_args += ['-s', 'INLINING_LIMIT=1'] # inline nothing, for more call interaction
     if random.random() < 0.333:
@@ -116,6 +118,10 @@ while 1:
           js_args += ['-s', 'EMTERPRETIFY_WHITELIST=["_main"]'] # the opposite direction
       if random.random() < 0.5:
         js_args += ['-s', 'EMTERPRETIFY_ASYNC=1']
+    if random.random() < 0.5:
+      js_args += ["--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2"]
+    if random.random() < 0.5:
+      js_args += ['-s', 'ASSERTIONS=1']
     print '(compile)', ' '.join(js_args)
     open(fullname, 'a').write('\n// ' + ' '.join(js_args) + '\n\n')
     try:
