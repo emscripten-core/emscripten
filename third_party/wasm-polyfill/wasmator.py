@@ -1,7 +1,15 @@
 '''
-Receives an emscripten output, and integrates the polyfill
+Receives an emscripten output, and integrates the WebAssembly polyfill
 
 XXX THIS IS A PROTOTYPE XXX The wasm format is changing, and also this tool has not yet been fully tested
+
+See browser.test_wasm_polyfill_prototype for a concrete example. Basically, usage can look like this:
+
+  emcc main.cpp -O2 -o test.html
+  third_party/wasm-polyfill/wasmator.py test.js test.wasm
+
+That builds test.html, then wasm-ifies it, modifying test.js with code using the polyfill, and creating
+test.wasm that contains the wasmified asm.js.
 '''
 
 import os, sys, shutil
