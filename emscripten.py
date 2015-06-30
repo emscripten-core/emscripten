@@ -258,8 +258,11 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       original_exports = settings['ORIGINAL_EXPORTED_FUNCTIONS']
       if original_exports[0] == '@': original_exports = json.loads(open(original_exports[1:]).read())
       for requested in original_exports:
+        # check if already implemented
+        # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS \
         if requested not in all_implemented and \
-           requested != '_malloc': # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS
+           requested != '_malloc' and \
+           ('function ' + requested) not in pre: # could be a js library func
           logging.warning('function requested to be exported, but not implemented: "%s"', requested)
 
     asm_consts = [0]*len(metadata['asmConsts'])

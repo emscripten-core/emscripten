@@ -4915,3 +4915,8 @@ int main() { printf("Mary had a little lamb.\n"); }
       f.write(d)
     out = run_js('a.out.js', assert_returncode=None, stderr=subprocess.STDOUT)
     self.assertContained('Assertion failed: memory initializer checksum', out)
+
+  def test_no_warn_exported_jslibfunc(self):
+    out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["alGetError"]', '-s', 'EXPORTED_FUNCTIONS=["_main", "_alGetError"]'], stdout=PIPE, stderr=PIPE).communicate()
+    self.assertNotContained('''function requested to be exported, but not implemented: "_alGetError"''', err)
+
