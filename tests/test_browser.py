@@ -2677,7 +2677,7 @@ window.close = function() {
     self.btest(d, expected='0', args=args + ["--closure", "0", "-g"])
     self.btest(d, expected='0', args=args + ["--closure", "1"])
 
-  def test_wasm_polyfill(self):
+  def test_wasm_polyfill_prototype(self):
     self.clear()
     if WINDOWS: return self.skip('TODO')
     # build the polyfill tools
@@ -2693,19 +2693,12 @@ window.close = function() {
       #include <iostream>
       int main() {
         std::cout << "Hello!\n";
-        int result = 1;
+        int result = 7;
         REPORT_RESULT();
         return 0;
       }
     '''))
     Popen([PYTHON, EMCC, 'main.cpp', '-O2', '-o', 'test.html']).communicate()
     Popen([PYTHON, path_from_root('third_party', 'wasm-polyfill', 'wasmator.py'), 'test.js', 'test.wasm']).communicate()
-
-
-
-
-
-
-
-
+    self.run_browser('test.html', None, '/report_result?7')
 
