@@ -1097,6 +1097,8 @@ function enlargeMemory() {
   Module.printErr('enlarged memory arrays from ' + OLD_TOTAL_MEMORY + ' to ' + TOTAL_MEMORY + ', took ' + (Date.now() - start) + ' ms (has ArrayBuffer.transfer? ' + (!!ArrayBuffer.transfer) + ')');
 #endif
 
+  callRuntimeCallbacks(__MEMGROWTH__);
+
   return true;
 #endif // ALLOW_MEMORY_GROWTH
 #endif // USE_PTHREADS
@@ -1238,6 +1240,7 @@ var __ATINIT__    = []; // functions called during startup
 var __ATMAIN__    = []; // functions called when main() is to be run
 var __ATEXIT__    = []; // functions called during shutdown
 var __ATPOSTRUN__ = []; // functions called after the runtime has exited
+var __MEMGROWTH__ = []; // functions called after the memory has been enlarged
 
 var runtimeInitialized = false;
 var runtimeExited = false;
@@ -1322,6 +1325,11 @@ function addOnPostRun(cb) {
   __ATPOSTRUN__.unshift(cb);
 }
 Module['addOnPostRun'] = Module.addOnPostRun = addOnPostRun;
+
+function addOnMemoryGrowth(cb) {
+  __MEMGROWTH__.unshift(cb);
+}
+Module['addOnMemoryGrowth'] = Module.addOnMemoryGrowth = addOnMemoryGrowth;
 
 // Tools
 
