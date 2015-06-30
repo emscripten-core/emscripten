@@ -42,8 +42,10 @@ end = module.rindex(')')
 asm = module[start:end]
 open(tempfile2, 'w').write(asm)
 
-print 'run polyfill packer'
-Popen([path_in_polyfill('tools', 'pack-asmjs'), tempfile2, wasmfile]).communicate()
+print 'run polyfill packer on', tempfile2
+proc = Popen([path_in_polyfill('tools', 'pack-asmjs'), tempfile2, wasmfile])
+proc.communicate()
+if proc.returncode: sys.exit(proc.returncode)
 
 print 'create patched out js'
 js = open(jsfile).read()
