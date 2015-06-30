@@ -590,9 +590,7 @@ struct JSPrinter {
 
   void emit(char c) {
     maybeSpace(c);
-    if (!pretty && c == '}' && buffer[used-1] == ';' && buffer[used-2] != ')') {
-      used--; // optimize ;} into }, the ; is not separating anything (note we must be careful of   {if(a);}   !)
-    }
+    if (!pretty && c == '}' && buffer[used-1] == ';') used--; // optimize ;} into }, the ; is not separating anything
     ensure(1);
     buffer[used++] = c;
   }
@@ -721,6 +719,13 @@ struct JSPrinter {
     }
   }
 
+  // print a node, and if nothing is emitted, emit something instead
+  void print(Ref node, const char *otherwise) {
+    int last = used;
+    print(node);
+    if (used == last) emit(otherwise);
+  }
+
   void printStats(Ref stats) {
     bool first = true;
     for (size_t i = 0; i < stats->size(); i++) {
@@ -736,11 +741,6 @@ struct JSPrinter {
   void printToplevel(Ref node) {
     if (node[1]->size() > 0) {
       printStats(node[1]);
-    } else {
-      // this is an empty toplevel. this should normally not happen, but
-      // can occur in very un-LLVM-optimized code. emit a ; because otherwise
-      // we can end up with e.g. if ()  else f() (nothing in the if-true block)
-      emit(';');
     }
   }
 
@@ -1153,25 +1153,25 @@ struct JSPrinter {
       emit('{');
       indent++;
       newline();
-    }
-    print(node[2]);
-    if (needBraces) {
+      print(node[2]);
       indent--;
       newline();
       emit('}');
+    } else {
+      print(node[2], "{}");
     }
     if (hasElse) {
       space();
       emit("else");
       safeSpace();
-      print(node[3]);
+      print(node[3], "{}");
     }
   }
 
   void printDo(Ref node) {
     emit("do");
     safeSpace();
-    print(node[2]);
+    print(node[2], "{}");
     space();
     emit("while");
     space();
@@ -1188,7 +1188,7 @@ struct JSPrinter {
     print(node[1]);
     emit(')');
     space();
-    print(node[2]);
+    print(node[2], "{}");
   }
 
   void printLabel(Ref node) {

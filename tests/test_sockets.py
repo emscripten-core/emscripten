@@ -366,7 +366,7 @@ class sockets(BrowserCore):
   #       finally:
   #         clean_pids(pids);
 
-  def zzztest_webrtc(self): # XXX see src/settings.js, this is disabled pending investigation
+  def test_webrtc(self): # XXX see src/settings.js, this is disabled pending investigation
     host_src = 'webrtc_host.c'
     peer_src = 'webrtc_peer.c'
 

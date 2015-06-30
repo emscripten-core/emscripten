@@ -1,2 +1,2 @@
-function _main(){if(a);}
+function _main(){if(a){}}
 

@@ -338,7 +338,10 @@ namespace emscripten {
 
     namespace internal {
         template<typename T>
-        struct SignatureCode {
+        struct SignatureCode {};
+
+        template<>
+        struct SignatureCode<int> {
             static constexpr char get() {
                 return 'i';
             }
@@ -365,10 +368,25 @@ namespace emscripten {
             }
         };
 
+        template<typename... Args>
+        const char* getGenericSignature() {
+            static constexpr char signature[] = { SignatureCode<Args>::get()..., 0 };
+            return signature;
+        }
+
+        template<typename T> struct SignatureTranslator { using type = int; };
+        template<> struct SignatureTranslator<void> { using type = void; };
+        template<> struct SignatureTranslator<float> { using type = float; };
+        template<> struct SignatureTranslator<double> { using type = double; };
+
+        template<typename... Args>
+        EMSCRIPTEN_ALWAYS_INLINE const char* getSpecificSignature() {
+            return getGenericSignature<typename SignatureTranslator<Args>::type...>();
+        }
+
         template<typename Return, typename... Args>
-        const char* getSignature(Return (*)(Args...)) {
-            static constexpr char str[] = { SignatureCode<Return>::get(), SignatureCode<Args>::get()..., 0 };
-            return str;
+        EMSCRIPTEN_ALWAYS_INLINE const char* getSignature(Return (*)(Args...)) {
+            return getSpecificSignature<Return, Args...>();
         }
     }
 

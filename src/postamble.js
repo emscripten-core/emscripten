@@ -25,7 +25,7 @@ if (memoryInitializer) (function(s) {
   assert(crc === 0, "memory initializer checksum");
 #endif
   for (i = 0; i < n; ++i) {
-    HEAPU8[STATIC_BASE + i] = s.charCodeAt(i);
+    HEAPU8[Runtime.GLOBAL_BASE + i] = s.charCodeAt(i);
   }
 })(memoryInitializer);
 #else
@@ -42,17 +42,17 @@ if (memoryInitializer) {
   }
   if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
     var data = Module['readBinary'](memoryInitializer);
-    HEAPU8.set(data, STATIC_BASE);
+    HEAPU8.set(data, Runtime.GLOBAL_BASE);
   } else {
     addRunDependency('memory initializer');
     var applyMemoryInitializer = function(data) {
       if (data.byteLength) data = new Uint8Array(data);
 #if ASSERTIONS
       for (var i = 0; i < data.length; i++) {
-        assert(HEAPU8[STATIC_BASE + i] === 0, "area for memory initializer should not have been touched before it's loaded");
+        assert(HEAPU8[Runtime.GLOBAL_BASE + i] === 0, "area for memory initializer should not have been touched before it's loaded");
       }
 #endif
-      HEAPU8.set(data, STATIC_BASE);
+      HEAPU8.set(data, Runtime.GLOBAL_BASE);
       removeRunDependency('memory initializer');
     }
     var request = Module['memoryInitializerRequest'];

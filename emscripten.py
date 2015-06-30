@@ -180,6 +180,8 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       logging.warning('disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
       settings['ASM_JS'] = 2
 
+    settings['MAX_GLOBAL_ALIGN'] = metadata['maxGlobalAlign']
+
     # Save settings to a file to work around v8 issue 1579
     settings_file = temp_files.get('.txt').name
     def save_settings():

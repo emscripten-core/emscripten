@@ -38,7 +38,7 @@ var LibraryEmVal = {
 
   $get_first_emval__deps: ['$emval_handle_array'],
   $get_first_emval: function() {
-    for (var i = 1; i < emval_handle_array.length; ++i) {
+    for (var i = 5; i < emval_handle_array.length; ++i) {
         if (emval_handle_array[i] !== undefined) {
             return emval_handle_array[i];
         }

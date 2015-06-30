@@ -406,8 +406,28 @@ for name, interface in interfaces.iteritems():
   if not js_impl: continue
   implements[name] = [js_impl[0]]
 
+# Compute the height in the inheritance tree of each node. Note that the order of interation
+# of `implements` is irrelevant.
+#
+# After one iteration of the loop, all ancestors of child are guaranteed to have a a larger
+# height number than the child, and this is recursively true for each ancestor. If the height
+# of child is later increased, all its ancestors will be readjusted at that time to maintain
+# that invariant. Further, the height of a node never decreases. Therefore, when the loop
+# finishes, all ancestors of a given node should have a larger height number than that node.
+nodeHeight = {}
+for child, parent in implements.iteritems():
+  parent = parent[0]
+  while parent:
+    nodeHeight[parent] = max(nodeHeight.get(parent, 0), nodeHeight.get(child, 0) + 1)
+    grandParent = implements.get(parent)
+    if grandParent:
+      child = parent
+      parent = grandParent[0]
+    else:
+      parent = None
+
 names = interfaces.keys()
-names.sort(lambda x, y: 1 if implements.get(x) and implements[x][0] == y else (-1 if implements.get(y) and implements[y][0] == x else 0))
+names.sort(lambda x, y: nodeHeight.get(y, 0) - nodeHeight.get(x, 0))
 
 for name in names:
   interface = interfaces[name]
