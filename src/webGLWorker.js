@@ -992,6 +992,9 @@ function WebGLWorker() {
     commandBuffer.push(76);
     return false;
   };
+  this.isProgram = function(program) {
+    return program && program.what === 'program';
+  };
 
   // Setup
 
