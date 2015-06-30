@@ -822,7 +822,7 @@ function WebGLWorker() {
         break;
       }
     }
-    texture.binding = target;
+    if (texture) texture.binding = target;
     commandBuffer.push(38, target, texture ? texture.id : 0);
   };
   this.texParameteri = function(target, pname, param) {

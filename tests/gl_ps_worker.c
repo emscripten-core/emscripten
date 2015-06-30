@@ -143,6 +143,9 @@ int main(int argc, char *argv[])
         // Have OpenGL generate a texture object handle for us
         glGenTextures( 1, &texture );
 
+        // Test binding null
+        glBindTexture( GL_TEXTURE_2D, 0 );
+
         // Bind the texture object
         glBindTexture( GL_TEXTURE_2D, texture );
 
