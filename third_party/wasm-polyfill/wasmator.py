@@ -50,7 +50,7 @@ js = open(jsfile).read()
 patched = js.replace(asm, 'unwasmed') # we assume the module is right there
 assert patched != js
 patched = '''
-function runEmscriptenModule(unwasmed_) {
+function runEmscriptenModule(Module, unwasmed_) {
   var unwasmed = unwasmed_;
   arguments = undefined; // emscripten shell code looks at arguments, which it uses as commandline args
 
@@ -60,7 +60,9 @@ function runEmscriptenModule(unwasmed_) {
 
 ''' + open(path_in_polyfill('jslib', 'load-wasm.js')).read() + '''
 
-loadWebAssembly("''' + wasmfile + '''", 'load-wasm-worker.js').then(runEmscriptenModule);
+loadWebAssembly("''' + wasmfile + '''", 'load-wasm-worker.js').then(function(unwasmed) {
+  runEmscriptenModule(Module, unwasmed);
+});
 '''
 open(jsfile, 'w').write(patched)
 shutil.copyfile(path_in_polyfill('jslib', 'load-wasm-worker.js'), 'load-wasm-worker.js')
