@@ -53,7 +53,7 @@ onmessage = function(e) {
         var utf8 = unpack(xhr.response, callbackName);
         var aft = Date.now();
         console.log("unpack of " + url + " took " + (aft - bef) + "ms");
-        postMessage({ callbackName: callbackName, data: utf8 });
+        postMessage({ callbackName: callbackName, data: new Blob([utf8]) });
       } catch (e) {
         postMessage("failed to unpack " + url + ": " + e);
       }

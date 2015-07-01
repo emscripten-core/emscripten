@@ -101,8 +101,7 @@ var loadWebAssembly = (function() {
     }
     var callbackName = e.data.callbackName;
     var script = document.createElement('script');
-    var data = e.data.data;
-    var url = URL.createObjectURL(new Blob([data]));
+    var url = URL.createObjectURL(e.data.data);
     script.onload = function() {
       URL.revokeObjectURL(url);
     };
