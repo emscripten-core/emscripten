@@ -13,7 +13,7 @@ test.wasm that contains the wasmified asm.js.
 '''
 
 import os, sys, shutil
-from subprocess import Popen, PIPE, STDOUT
+from subprocess import Popen, PIPE, STDOUT, check_call
 
 PYTHON = sys.executable
 
@@ -30,6 +30,15 @@ wasmfile = sys.argv[2]
 
 tempfile = jsfile + '.temp.js'
 tempfile2 = jsfile + '.temp2.js'
+
+print 'build executables'
+dir = os.getcwd()
+try:
+  os.chdir(path_from_root('third_party', 'wasm-polyfill'))
+  #proc = check_call([PYTHON, path_from_root('emmake'), 'make', 'clean'])
+  proc = check_call([PYTHON, path_from_root('emmake'), 'make'])
+finally:
+  os.chdir(dir)
 
 print 'save the before js'
 shutil.copyfile(jsfile, 'before.js')
