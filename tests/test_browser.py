@@ -2691,6 +2691,23 @@ window.close = function() {
     # verify that running the wasmator after emcc works
     Popen([PYTHON, EMCC, 'main.cpp', '-O2', '-o', 'test.html']).communicate()
     Popen([PYTHON, path_from_root('third_party', 'wasm-polyfill', 'wasmator.py'), 'test.js', 'test.wasm']).communicate()
+    src = open('test.js').read()
+    open('test.js', 'w').write('''
+      window.onerror = function() {
+        Module.print('fail!');
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'http://localhost:8888/report_result?99');
+        xhr.onload = function() {
+          console.log('close!');
+          window.close();
+        };
+        setTimeout(xhr.onload, 2000); 
+        xhr.send();
+      };
+
+    ''' + src)
     self.run_browser('test.html', None, '/report_result?7')
     assert os.path.exists('test.wasm')
+    os.unlink('test.wasm')
+    self.run_browser('test.html', None, '/report_result?99') # without the wasm, we failz
 
