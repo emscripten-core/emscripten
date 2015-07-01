@@ -600,24 +600,6 @@ class BrowserCore(RunnerCore):
     time.sleep(0.1)
 
   def run_browser(self, html_file, message, expectedResult=None):
-    if False: # test wasmator
-      js_file = html_file[:-5] + '.js'
-      if os.path.exists(js_file):
-        js = open(js_file).read()
-        if 'loadWebAssembly' not in js:
-          if 'almost asm' in js:
-            js = js.replace('almost asm', 'use asm')
-            open(js_file, 'w').write(js)
-          if 'use asm' in js:
-            Popen([PYTHON, path_from_root('third_party', 'wasm-polyfill', 'wasmator.py'), js_file, 'test.wasm']).communicate()
-            print '\n<<< wasmated >>>\n'
-          else:
-            print '[ not asm.js, cannot wasmate ]'
-        else:
-          print '[ was already wasmated ]'
-      else:
-        print '[ no js file to wasmate ]'
-
     print '[browser launch:', html_file, ']'
     if expectedResult is not None:
       try:

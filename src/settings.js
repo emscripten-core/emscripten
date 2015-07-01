@@ -484,6 +484,8 @@ var USE_GLFW = 2; // Specify the GLFW version that is being linked against.
                   // Only relevant, if you are linking against the GLFW library.
                   // Valid options are 2 for GLFW2 and 3 for GLFW3.
 
+var WASM = 0; // If 1, compress the asm.js module into WebAssembly, and ship a decompressor that runs on the client
+
 // Ports
 
 var USE_SDL = 1; // Specify the SDL version that is being linked against.

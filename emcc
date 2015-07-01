@@ -1797,6 +1797,10 @@ try {
       # copy final JS to output normally
       shutil.move(final, target)
 
+  if shared.Settings.WASM:
+    logging.debug('converting to WebAssembly')
+    subprocess.check_call([shared.PYTHON, shared.path_from_root('third_party', 'wasm-polyfill', 'wasmator.py'), js_target, os.path.join(os.path.dirname(js_target), 'test.wasm')])
+
   log_time('final emitting')
 
   if DEBUG: logging.debug('total time: %.2f seconds', (time.time() - start_time))
