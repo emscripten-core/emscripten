@@ -262,7 +262,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
         # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS \
         if requested not in all_implemented and \
            requested != '_malloc' and \
-           ('function ' + requested) not in pre: # could be a js library func
+           (('function ' + requested.encode('utf-8')) not in pre): # could be a js library func
           logging.warning('function requested to be exported, but not implemented: "%s"', requested)
 
     asm_consts = [0]*len(metadata['asmConsts'])
