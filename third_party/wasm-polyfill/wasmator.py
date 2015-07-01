@@ -63,7 +63,7 @@ function runEmscriptenModule(Module, unwasmed_) {
 ''' + open(path_in_polyfill('jslib', 'load-wasm.js')).read() + '''
 
 loadWebAssembly("''' + wasmfile + '''", 'load-wasm-worker.js').then(function(unwasmed) {
-  runEmscriptenModule(Module, unwasmed);
+  runEmscriptenModule(typeof Module !== 'undefined' ? Module : {}, unwasmed);
 });
 '''
 open(jsfile, 'w').write(patched)

@@ -62,12 +62,19 @@ var loadWebAssembly = (function() {
     if (ENVIRONMENT_IS_WORKER) {
       Module['load'] = importScripts;
     }
-    Module['loadScript'] = function(url, after) {
-      var script = document.createElement('script');
-      script.onload = script.onerror = after;
-      script.src = url;
-      document.body.appendChild(script);
-    };
+    if (ENVIRONMENT_IS_WEB) {
+      Module['loadScript'] = function(url, after) {
+        var script = document.createElement('script');
+        script.onload = script.onerror = after;
+        script.src = url;
+        document.body.appendChild(script);
+      };
+    } else {
+      Module['loadScript'] = function(url, after) {
+        importScripts(url);
+        after();
+      };
+    }
   } else {
     // Unreachable because SHELL is dependant on the others
     throw 'Unknown runtime environment. Where are we?';
