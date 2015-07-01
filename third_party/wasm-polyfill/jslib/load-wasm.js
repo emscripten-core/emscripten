@@ -105,7 +105,6 @@ var loadWebAssembly = (function() {
     var url = URL.createObjectURL(new Blob([data]));
     script.onload = function() {
       URL.revokeObjectURL(url);
-      window.waka = script;
     };
     script.onerror = function() { URL.revokeObjectURL(url) }
     script.src = url;
