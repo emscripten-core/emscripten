@@ -62,6 +62,12 @@ var loadWebAssembly = (function() {
     if (ENVIRONMENT_IS_WORKER) {
       Module['load'] = importScripts;
     }
+    Module['loadScript'] = function(url, after) {
+      var script = document.createElement('script');
+      script.onload = script.onerror = after;
+      script.src = url;
+      document.body.appendChild(script);
+    };
   } else {
     // Unreachable because SHELL is dependant on the others
     throw 'Unknown runtime environment. Where are we?';
@@ -100,14 +106,10 @@ var loadWebAssembly = (function() {
       return;
     }
     var callbackName = e.data.callbackName;
-    var script = document.createElement('script');
     var url = URL.createObjectURL(e.data.data);
-    script.onload = function() {
+    Module['loadScript'](url, function() {
       URL.revokeObjectURL(url);
-    };
-    script.onerror = function() { URL.revokeObjectURL(url) }
-    script.src = url;
-    document.body.appendChild(script);
+    });
   }
 
   return function(packedURL) {
