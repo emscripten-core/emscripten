@@ -71,9 +71,26 @@ function runEmscriptenModule(Module, unwasmed_) {
 
 ''' + open(path_in_polyfill('jslib', 'load-wasm.js')).read() + '''
 
+// note: web worker messages must be queued, as we delay the scripts chance to listen to them
+
 loadWebAssembly("''' + wasmfile + '''", 'load-wasm-worker.js').then(function(unwasmed) {
+  if (typeof importScripts === 'function') {
+    onmessage = null;
+  }
   runEmscriptenModule(typeof Module !== 'undefined' ? Module : {}, unwasmed);
+  if (typeof importScripts === 'function' && onmessage) {
+    queuedMessages.forEach(function(e) {
+      onmessage(e);
+    });
+  }
 });
+
+if (typeof importScripts === 'function') {
+  var queuedMessages = [];
+  onmessage = function(e) {
+    queuedMessages.push(e);
+  };
+}
 '''
 open(jsfile, 'w').write(patched)
 shutil.copyfile(path_in_polyfill('jslib', 'load-wasm-worker.js'), 'load-wasm-worker.js')

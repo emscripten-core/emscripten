@@ -2695,11 +2695,18 @@ window.close = function() {
     def together():
       print '*** verify that running the wasmator using  emcc -s WASM=1  works'
       Popen([PYTHON, EMCC, 'main.cpp', '-O2', '-o', 'test.html', '-s', 'WASM=1']).communicate()
-    for which in [separate, together]:
-      which()
+    def together_worker():
+      print '*** verify that running the wasmator using  emcc -s WASM=1  works, running in a worker'
+      Popen([PYTHON, EMCC, 'main.cpp', '-O2', '-o', 'test.html', '-s', 'WASM=1', '--proxy-to-worker']).communicate()
+    for build, check_error in [
+      (separate,        True),
+      (together,        True),
+      (together_worker, False) # onerror does not work in workers
+    ]:
+      build()
       src = open('test.js').read()
       open('test.js', 'w').write('''
-        window.onerror = function() {
+        onerror = function() {
           Module.print('fail!');
           var xhr = new XMLHttpRequest();
           xhr.open('GET', 'http://localhost:8888/report_result?99');
@@ -2715,6 +2722,7 @@ window.close = function() {
       self.run_browser('test.html', None, '/report_result?7')
       assert os.path.exists('test.wasm')
       os.unlink('test.wasm')
-      self.run_browser('test.html', None, '/report_result?99') # without the wasm, we failz
+      if check_error:
+        self.run_browser('test.html', None, '/report_result?99') # without the wasm, we failz
       os.unlink('test.js')
 
