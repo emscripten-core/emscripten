@@ -91,6 +91,17 @@ var loadWebAssembly = (function() {
   if (!Module['print']) {
     Module['print'] = function(){};
   }
+  if (typeof Worker === 'undefined') {
+    Worker = function(url) {
+      var that = this;
+      var onmessage = new Function('postMessage', 'var onmessage; ' + Module['read'](url) + '; return onmessage')(function(data) {
+        that.onmessage({ data: data });
+      });
+      this.postMessage = function(data) {
+        onmessage({ data: data });
+      };
+    };
+  }
   // *** Environment setup code ***
 
   // main
@@ -117,7 +128,7 @@ var loadWebAssembly = (function() {
     Module['loadScript'](url, function() {
       URL.revokeObjectURL(url);
     });
-  }
+  };
 
   return function(packedURL) {
     var job = {
