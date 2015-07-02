@@ -66,16 +66,21 @@ var loadWebAssembly = (function() {
       Module['load'] = importScripts;
     }
     if (ENVIRONMENT_IS_WEB) {
-      Module['loadScript'] = function(url, after) {
+      Module['loadScriptFromBlob'] = function(blob) {
+        var url = URL.createObjectURL(blob);
+        function after() {
+          URL.revokeObjectURL(url);
+        }
         var script = document.createElement('script');
         script.onload = script.onerror = after;
         script.src = url;
         document.body.appendChild(script);
       };
     } else {
-      Module['loadScript'] = function(url, after) {
+      Module['loadScriptFromBlob'] = function(blob) {
+        var url = URL.createObjectURL(blob);
         importScripts(url);
-        after();
+        URL.revokeObjectURL(url);
       };
     }
   } else {
@@ -93,6 +98,21 @@ var loadWebAssembly = (function() {
   }
   if (!Module['print']) {
     Module['print'] = function(){};
+  }
+  if (!Module['loadScriptFromBlob']) {
+    Module['loadScriptFromBlob'] = function(blob) {
+      assert(blob.args.length === 1);
+      var array = blob.args[0];
+      var str = [];
+      for (var i = 0; i < array.length; i++) {
+        var chr = array[i];
+        if (chr > 0xFF) {
+          chr &= 0xFF;
+        }
+        str.push(String.fromCharCode(chr));
+      }
+      globalEval(str.join(''));
+    };
   }
   if (typeof Worker === 'undefined') {
     Worker = function(url) {
@@ -116,10 +136,23 @@ var loadWebAssembly = (function() {
         assert(arg === null);
         assert(this.responseType === 'arraybuffer');
         this.status = 200;
-        this.response = new ArrayBuffer(Module['readBinary'](this.url));
+        var typedArray = Module['readBinary'](this.url);
+        assert(typedArray.buffer);
+        this.response = typedArray.buffer;
         this.onload();
       }
     }
+  }
+  if (typeof console === 'undefined') {
+    console = {
+      log: function(x) { Module['print'](x) },
+      error: function(x) { Module['printErr'](x) }
+    };
+  }
+  if (typeof Blob === 'undefined') {
+    Blob = function(args) {
+      this.args = args;
+    };
   }
   // *** Environment setup code ***
 
@@ -143,10 +176,7 @@ var loadWebAssembly = (function() {
       return;
     }
     var callbackName = e.data.callbackName;
-    var url = URL.createObjectURL(e.data.data);
-    Module['loadScript'](url, function() {
-      URL.revokeObjectURL(url);
-    });
+    Module['loadScriptFromBlob'](e.data.data);
   };
 
   return function(packedURL) {
