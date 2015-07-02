@@ -11,6 +11,9 @@ var loadWebAssembly = (function() {
   var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
 
   var Module = {};
+  function assert(x, y) {
+    if (!x) throw 'assert failed: ' + y;
+  }
 
   if (ENVIRONMENT_IS_NODE) {
     Module['print'] = function print(x) {
@@ -101,6 +104,22 @@ var loadWebAssembly = (function() {
         onmessage({ data: data });
       };
     };
+  }
+  if (typeof XMLHttpRequest === 'undefined') {
+    XMLHttpRequest = function() {
+      this.open = function(mode, url, async) {
+        assert(mode === 'GET');
+        assert(async);
+        this.url = url;
+      };
+      this.send = function(arg) {
+        assert(arg === null);
+        assert(this.responseType === 'arraybuffer');
+        this.status = 200;
+        this.response = new ArrayBuffer(Module['readBinary'](this.url));
+        this.onload();
+      }
+    }
   }
   // *** Environment setup code ***
 
