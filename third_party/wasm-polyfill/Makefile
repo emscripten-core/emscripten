@@ -16,7 +16,7 @@ tools/unpack-asmjs: src/unpack-asmjs.cpp src/unpack.cpp src/unpack.h src/shared.
 
 jslib/load-wasm-worker.js: src/unpack.cpp src/unpack.h src/shared.h src/load-wasm-worker.js
 	$(EMSCRIPTEN)/emcc -DNDEBUG -O3 -std=c++11 -Wall -pedantic \
-	     --memory-init-file 0 --llvm-lto 1 -s TOTAL_MEMORY=67108864 \
+	     --memory-init-file 0 --llvm-lto 1 -s TOTAL_MEMORY=67108864 -s WASM=0 \
 	     src/unpack.cpp \
 	     -o jslib/load-wasm-worker.js
 	cat src/load-wasm-worker.js >> jslib/load-wasm-worker.js
