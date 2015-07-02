@@ -94,7 +94,7 @@ var loadWebAssembly = (function() {
   if (typeof Worker === 'undefined') {
     Worker = function(url) {
       var that = this;
-      var onmessage = new Function('postMessage', 'var onmessage; ' + Module['read'](url) + '; return onmessage')(function(data) {
+      var onmessage = new Function('postMessage', 'var onmessage, Module; ' + Module['read'](url) + '; return onmessage')(function(data) {
         that.onmessage({ data: data });
       });
       this.postMessage = function(data) {
