@@ -2691,7 +2691,7 @@ window.close = function() {
     def separate():
       print '*** verify that running the wasmator after emcc works'
       Popen([PYTHON, EMCC, 'main.cpp', '-O2', '-o', 'test.html']).communicate()
-      Popen([PYTHON, path_from_root('third_party', 'wasm-polyfill', 'wasmator.py'), 'test.js', 'test.wasm']).communicate()
+      subprocess.check_call([PYTHON, path_from_root('third_party', 'wasm-polyfill', 'wasmator.py'), 'test.js', 'test.wasm'])
     def together():
       print '*** verify that running the wasmator using  emcc -s WASM=1  works'
       Popen([PYTHON, EMCC, 'main.cpp', '-O2', '-o', 'test.html', '-s', 'WASM=1']).communicate()
