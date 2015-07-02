@@ -58,7 +58,6 @@ onmessage = function(e) {
         postMessage("failed to unpack " + url + ": " + e);
       }
     }
-    self.close();
   }
   xhr.send(null);
 }
