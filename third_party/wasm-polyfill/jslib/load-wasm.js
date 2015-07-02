@@ -165,7 +165,14 @@ var loadWebAssembly = (function() {
     var job = jobs[callbackName];
     if (!job) throw 'bad job';
     delete jobs[callbackName];
-    job.resolve(asm);
+    if (job.resolve) {
+      job.resolve(asm);
+    } else {
+      // synchronous execution, then() has not been called yet. queue us for later
+      job.then = function(resolve) {
+        resolve(asm);
+      };
+    }
   };
 
   var workerURL = 'load-wasm-worker.js';
