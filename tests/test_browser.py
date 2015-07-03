@@ -2690,22 +2690,22 @@ window.close = function() {
     '''))
     def separate():
       print '*** verify that running the wasmator after emcc works'
-      Popen([PYTHON, EMCC, 'main.cpp', '-O2', '-o', 'test.html']).communicate()
-      subprocess.check_call([PYTHON, path_from_root('third_party', 'wasm-polyfill', 'wasmator.py'), 'test.js', 'test.wasm'])
+      Popen([PYTHON, EMCC, 'main.cpp', '-O2', '-o', 'test.o.html']).communicate()
+      subprocess.check_call([PYTHON, path_from_root('third_party', 'wasm-polyfill', 'wasmator.py'), 'test.o.js', 'test.wasm'])
     def together():
       print '*** verify that running the wasmator using  emcc -s WASM=1  works'
-      Popen([PYTHON, EMCC, 'main.cpp', '-O2', '-o', 'test.html', '-s', 'WASM=1']).communicate()
+      Popen([PYTHON, EMCC, 'main.cpp', '-O2', '-o', 'test.o.html', '-s', 'WASM=1']).communicate()
     def together_worker():
       print '*** verify that running the wasmator using  emcc -s WASM=1  works, running in a worker'
-      Popen([PYTHON, EMCC, 'main.cpp', '-O2', '-o', 'test.html', '-s', 'WASM=1', '--proxy-to-worker']).communicate()
+      Popen([PYTHON, EMCC, 'main.cpp', '-O2', '-o', 'test.o.html', '-s', 'WASM=1', '--proxy-to-worker']).communicate()
     for build, check_error in [
       (separate,        True),
       (together,        True),
       (together_worker, False) # onerror does not work in workers
     ]:
       build()
-      src = open('test.js').read()
-      open('test.js', 'w').write('''
+      src = open('test.o.js').read()
+      open('test.o.js', 'w').write('''
         onerror = function() {
           Module.print('fail!');
           var xhr = new XMLHttpRequest();
@@ -2719,10 +2719,14 @@ window.close = function() {
         };
 
       ''' + src)
-      self.run_browser('test.html', None, '/report_result?7')
+      print 'browser'
+      self.run_browser('test.o.html', None, '/report_result?7')
+      print 'shell'
+      self.do_run('', 'Hello!', no_build=True, basename='test') # test in the shell too
       assert os.path.exists('test.wasm')
       os.unlink('test.wasm')
       if check_error:
-        self.run_browser('test.html', None, '/report_result?99') # without the wasm, we failz
-      os.unlink('test.js')
+        print 'error verify'
+        self.run_browser('test.o.html', None, '/report_result?99') # without the wasm, we failz
+      os.unlink('test.o.js')
 
