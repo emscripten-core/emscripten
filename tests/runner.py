@@ -266,6 +266,8 @@ class RunnerCore(unittest.TestCase):
         assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
 
   def validate_asmjs(self, err):
+    if 'asm.js type error:' in err:
+      raise Exception("did NOT asm.js'ify, type error: " + err)
     if 'uccessfully compiled asm.js code' in err and 'asm.js link error' not in err:
       print >> sys.stderr, "[was asm.js'ified]"
     elif 'asm.js' in err: # if no asm.js error, then not an odin build
