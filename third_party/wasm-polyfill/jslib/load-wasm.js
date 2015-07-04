@@ -12,7 +12,7 @@ var loadWebAssembly = (function() {
 
   var Module = {};
   function assert(x, y) {
-    if (!x) throw 'assert failed: ' + y;
+    if (!x) throw 'assert failed: ' + y + ' at ' + new Error().stack;
   }
 
   if (ENVIRONMENT_IS_NODE) {
@@ -137,6 +137,10 @@ var loadWebAssembly = (function() {
         assert(this.responseType === 'arraybuffer');
         this.status = 200;
         var typedArray = Module['readBinary'](this.url);
+        if (!typedArray.buffer) {
+          assert(ENVIRONMENT_IS_NODE);
+          typedArray = new Uint8Array(typedArray);
+        }
         assert(typedArray.buffer);
         this.response = typedArray.buffer;
         this.onload();
