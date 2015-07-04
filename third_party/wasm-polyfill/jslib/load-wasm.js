@@ -106,6 +106,7 @@ var loadWebAssembly = (function() {
       var str = [];
       for (var i = 0; i < array.length; i++) {
         var chr = array[i];
+        if (chr === 0) break;
         if (chr > 0xFF) {
           chr &= 0xFF;
         }
