@@ -46,6 +46,9 @@ shutil.copyfile(jsfile, 'before.js')
 print 'process input'
 Popen([PYTHON, path_from_root('tools', 'distill_asm.py'), jsfile, tempfile]).communicate()
 module = open(tempfile).read()
+if 'use asm' not in module:
+  print >> sys.stderr, 'no asm.js module to wasm-ify'
+  sys.exit(1)
 start = module.index('function')
 end = module.rindex(')')
 asm = module[start:end]
