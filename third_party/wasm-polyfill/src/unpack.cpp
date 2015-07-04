@@ -246,15 +246,9 @@ public:
 
   void float32(double f)
   {
-    static const unsigned N = 100;
-    char buf[N];
-    uint32_t len = snprintf(buf, N, "%g", (double)f);
-
     name(HotStdLib::FRound);
     ascii('(');
-    check_write(len);
-    memcpy(cur_, buf, len);
-    cur_ += len;
+    float64((double)f);
     ascii(')');
   }
 
