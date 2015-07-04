@@ -8343,6 +8343,12 @@ LibraryManager.library = {
     debugger;
   },
 
+  emscripten_print_double: function(x, to) {
+    var str = x + '';
+    if (to) writeStringToMemory(str, to, true);
+    return str.length;
+  },
+
   //============================
   // i64 math
   //============================

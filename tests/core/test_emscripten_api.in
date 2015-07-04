@@ -11,5 +11,14 @@ int main() {
   printf("*%d*\n", emscripten_run_script_int("5*20"));
   printf("*%s*\n", emscripten_run_script_string("'five'+'six'"));
   emscripten_run_script("Module['_save_me_aimee']()");
+  //
+  double d = 0.1234567891231219886553;
+  int len = emscripten_print_double(d, NULL);
+  char buffer[len+1];
+  emscripten_print_double(d, buffer);
+  buffer[len] = 0;
+  double e;
+  sscanf(buffer, "%lf", &e);
+  printf("%.30lf : %s : %.30lf  (%d)\n", d, buffer, e, len);
   return 0;
 }

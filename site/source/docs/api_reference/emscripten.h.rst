@@ -930,6 +930,15 @@ Functions
 	:returns: A pointer to the preloaded image or NULL.
 	:rtype: char*
 
+.. c:function:: char *emscripten_print_double(double x, char *to)
+
+	Prints a double as a string. This is useful because JS engines have good support for printing out a double in a way that takes the least possible size, but preserves all the information in the double, i.e., it can then be parsed back in a perfectly reversible manner (snprintf etc. do not do so, sadly).
+
+	No zero terminator is emitted, just the double itself.
+
+	:param double x: The double.
+	:param char* to: A pre-allocated buffer of sufficient size, or NULL if no output is requested (useful to get the necessary size).
+	:rtype: The number of necessary bytes (actually written, if ``to`` is not NULL).
 	
 .. _emscripten-api-reference-sockets:
 
