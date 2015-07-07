@@ -102,19 +102,40 @@ Platform-specific notes
 Mac OS X
 ++++++++
 
-- *Git* is not installed automatically. Git is only needed if you want to use tools from one of the development branches directly (**emscripten-incoming** or **emscripten-master**). To install *git* on OSX:
-   
-	1. Install *XCode* and the *XCode Command Line Tools*. This will provide *git* to the system PATH. For more help on this step, see `this stackoverflow post <http://stackoverflow.com/questions/9329243/xcode-4-4-command-line-tools>`_.
-	2. Install git directly from http://git-scm.com/.
+These instructions explain how to install **all** the :ref:`required tools <toolchain-what-you-need>`. You can :ref:`test whether some of these are already installed <toolchain-test-which-dependencies-are-installed>` on the platform and skip those steps.
 
-- *Java* is not bundled with the Emscripten SDK. After installing Emscripten via :ref:`emsdk <emsdk>`, typing ``./emcc --help`` should pop up a dialog that will automatically download a Java Runtime to the system: ::
+#. Install the *XCode Command Line Tools*. These are a precondition for *git*.
 
-	Java is not installed. To open Java, you need a Java SE 6 runtime. 
-	Would you like to install one now?
+	-  Install XCode from the `Mac OS X App Store <http://superuser.com/questions/455214/where-is-svn-on-os-x-mountain-lion>`_.
+	-  In **XCode | Preferences | Downloads**, install *Command Line Tools*.
+
+#. Install *git*:
+
+	- `Allow installation of unsigned packages <https://www.my-private-network.co.uk/knowledge-base/apple-related-questions/osx-unsigned-apps.html>`_, or installing the git package won't succeed.
+	- Install XCode and the XCode Command Line Tools (should already have been done). This will provide *git* to the system PATH (see `this stackoverflow post <http://stackoverflow.com/questions/9329243/xcode-4-4-command-line-tools>`_).
+	- Download and install git directly from http://git-scm.com/.	
+
+#. Install *cmake* if you do not have it yet:
+
+	-  Download and install `cmake-2.8.10.2-Darwin64-universal.dmg <http://www.cmake.org/cmake/resources/software.html>`_.
 	
-- The *python2* command line tool is not present on OSX by default. To manually work around this issue, follow the linked step in :ref:`Getting started on Mac OS X <getting-started-on-osx-install-python2>`.
+	.. tip:: This specific version (2.8.10) is recommended — it has been tested and shown to work. Other versions may not correctly set up the PATH variables, with the result that running *cmake* gives you "not found" errors.
 
-.. **HamishW**: I think that Mac OS X has the same issues as Linux - ie you don't get ANYTHING much in the SDK. You will need the command line tools, but mostly for GCC - need to confirm this with Jukka
+	
+#. Install *node.js* from http://nodejs.org/ 
+
+
+	.. _getting-started-on-osx-install-python2:
+
+#. Setup *python2* (this step is needed to workaround a bug reported in `#763 <https://github.com/kripken/emscripten/issues/763>`_):
+
+	-  In terminal, type ``python2 --version``. If you get a "command not found", type the following: ::
+	
+		cd /usr/bin
+		sudo ln python python2
+		sudo ln ../../System/Library/Frameworks/Python.framework/Versions/2.7/bin/python2.7 python22.7
+		
+	-  Enter ``python2 --version`` again. It should now print Python 2.7.2
 
 Linux
 ++++++++
