@@ -48,7 +48,7 @@ def process_args(ports, args, settings, shared):
   return args
 
 def show():
-  return 'libpng (zlib license)'
+  return 'libpng (USE_LIBPNG=1; zlib license)'
 
 pnglibconf_h = r'''/* libpng 1.6.17 STANDARD API DEFINITION */
 

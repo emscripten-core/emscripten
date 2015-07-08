@@ -34,5 +34,5 @@ def process_args(ports, args, settings, shared):
   return args
 
 def show():
-  return 'SDL2_image (zlib license)'
+  return 'SDL2_image (USE_SDL_IMAGE=2; zlib license)'
 

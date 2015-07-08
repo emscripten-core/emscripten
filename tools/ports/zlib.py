@@ -56,7 +56,7 @@ def process_args(ports, args, settings, shared):
   return args
 
 def show():
-  return 'zlib (zlib license)'
+  return 'zlib (USE_ZLIB=1; zlib license)'
 
 
 
