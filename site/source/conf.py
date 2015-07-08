@@ -80,7 +80,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Emscripten'
-copyright = u'2014, ' 
+copyright = u'2015, ' 
   # Note, theme was modified to allow this to display (fix breaks the translation code, which was breaking the above link and rendering it as text).
   # Also so I could link to specific copyright page.
 
