@@ -118,7 +118,6 @@
          T __procfdname
          D __progname
          D __progname_full
-         U __pthread_self
          T __ptsname_r
          T __rand48_step
          T __randname
@@ -198,41 +197,28 @@
          W __xstat64
          T _exit
          T _flushlbf
-         U _pthread_cleanup_pop
-         U _pthread_cleanup_push
          T a64l
          U abort
-         T abs
          T accept
          T accept4
          T access
          T acct
-         T acos
-         T acosf
          T acosh
          T acoshf
          T acoshl
-         T acosl
          T addmntent
          T alarm
          T alphasort
          W alphasort64
-         T asin
-         T asinf
          T asinh
          T asinhf
          T asinhl
-         T asinl
          T asprintf
-         T atan
-         T atan2
-         T atan2f
-         T atan2l
-         T atanf
+         U atan2
+         U atan2f
          T atanh
          T atanhf
          T atanhl
-         T atanl
          T atof
          T atoi
          T atol
@@ -284,9 +270,6 @@
          T ccoshf
          T ccoshl
          T ccosl
-         T ceil
-         T ceilf
-         T ceill
          T cexp
          T cexpf
          T cexpl
@@ -318,12 +301,11 @@
          T copysign
          T copysignf
          T copysignl
-         T cos
-         T cosf
+         U cos
+         U cosf
          T cosh
          T coshf
          T coshl
-         T cosl
          T cpow
          T cpowf
          T cpowl
@@ -393,21 +375,20 @@
          T ether_ntoa_r
          T ether_ntohost
          U execl
-         T exp
+         U exp
          T exp10
          T exp10f
          T exp10l
          T exp2
          T exp2f
          T exp2l
-         T expf
-         T expl
+         U expf
          T expm1
          T expm1f
          T expm1l
-         T fabs
-         T fabsf
-         T fabsl
+         U fabs
+         U fabsf
+         U fabsl
          T faccessat
          T fchdir
          T fchmod
@@ -457,9 +438,8 @@
          T finite
          T finitef
          T flockfile
-         T floor
-         T floorf
-         T floorl
+         U floor
+         U floorf
          T fma
          T fmaf
          T fmal
@@ -724,7 +704,7 @@
          T localeconv
          T lockf
          W lockf64
-         T log
+         U log
          T log10
          T log10f
          T log10l
@@ -737,8 +717,7 @@
          T logb
          T logbf
          T logbl
-         T logf
-         T logl
+         U logf
          T lrand48
          T lrint
          T lrintf
@@ -863,12 +842,9 @@
          U posix_spawn_file_actions_adddup2
          U posix_spawn_file_actions_destroy
          U posix_spawn_file_actions_init
-         T pow
          W pow10
          W pow10f
          W pow10l
-         T powf
-         T powl
          T pread
          W pread64
          T preadv
@@ -877,6 +853,8 @@
          W program_invocation_name
          W program_invocation_short_name
          T pselect
+         U pthread_cleanup_pop
+         U pthread_cleanup_push
          U pthread_self
          U pthread_setcancelstate
          T ptsname
@@ -993,24 +971,22 @@
          W signgam
          T significand
          T significandf
-         T sin
+         U sin
          T sincos
          T sincosf
          T sincosl
-         T sinf
+         U sinf
          T sinh
          T sinhf
          T sinhl
-         T sinl
          T sleep
          T snprintf
          T sockatmark
          T socket
          T socketpair
          T sprintf
-         T sqrt
-         T sqrtf
-         T sqrtl
+         U sqrt
+         U sqrtf
          T srand
          T srand48
          T srandom
@@ -1091,12 +1067,11 @@
          T sync
          U sysconf
          T syslog
-         T tan
-         T tanf
+         U tan
+         U tanf
          T tanh
          T tanhf
          T tanhl
-         T tanl
          T tcdrain
          T tcflow
          T tcflush
@@ -1143,7 +1118,6 @@
          T unlinkat
          T unlockpt
          T uselocale
-         T usleep
          T utimensat
          W valloc
          T vasprintf

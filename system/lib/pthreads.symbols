@@ -1,40 +1,67 @@
-         T _Atomics_load_HEAPF32_emulated
-         T _Atomics_load_HEAPF64_emulated
-         T _Atomics_store_HEAPF32_emulated
-         T _Atomics_store_HEAPF64_emulated
+         T __acquire_ptc
          U __assert_fail
+         U __block_all_sigs
+         U __block_app_sigs
+         T __cancel
+         T __clone
+         U __copy_tls
+         U __cp_begin
+         U __cp_end
+         T __do_cleanup_pop
+         T __do_cleanup_push
          U __errno_location
-         U __lock
+         T __fork_handler
+         T __futex
+         T __inhibit_ptc
+         T __install_initial_tls
+         U __libc
+         U __libc_sigaction
+         T __lock
+         U __pthread_self
+         T __pthread_self_def
+         W __pthread_self_init
          D __pthread_tsd_main
          T __pthread_tsd_run_dtors
          D __pthread_tsd_size
+         T __release_ptc
+         U __restore_sigs
+         T __set_thread_area
          U __shm_mapname
+         W __stderr_used
+         W __stdin_used
+         W __stdout_used
+         U __syscall
+         T __syscall_cp
+         U __syscall_cp_asm
+         U __syscall_ret
+         T __testcancel
          T __timedwait
-         U __unlock
+         T __unlock
+         U __unmapself
          T __vm_lock
          W __vm_lock_impl
          T __vm_unlock
          W __vm_unlock_impl
          T __wait
-         t _do_call
+         T _emscripten_atomic_fetch_and_add_u64
+         T _emscripten_atomic_fetch_and_and_u64
+         T _emscripten_atomic_fetch_and_or_u64
+         T _emscripten_atomic_fetch_and_sub_u64
+         T _emscripten_atomic_fetch_and_xor_u64
+         T _pthread_cleanup_pop
+         T _pthread_cleanup_push
          T _pthread_getcanceltype
          T _pthread_isduecanceled
-         T _pthread_nsecs_until
+         T _pthread_msecs_until
          U accept
          U access
          U atexit
          U bind
-         d call_queue.body
-         d call_queue.init
-         d call_queue_length
-         d call_queue_lock
          U calloc
          U chdir
          U chmod
          U chown
          U chroot
-         t cleanup
-         t cleanup17
          U clearenv
          U clearerr
          U clock_gettime
@@ -46,16 +73,26 @@
          U crypt
          U ctermid
          U dprintf
-         d dummyZeroAddress
          U dup
          U dup2
          U emscripten_asm_const
-         U emscripten_atomic_add_u32
+         T emscripten_atomic_add_u64
+         T emscripten_atomic_and_u64
          U emscripten_atomic_cas_u32
+         T emscripten_atomic_cas_u64
+         T emscripten_atomic_exchange_u32
+         T emscripten_atomic_exchange_u64
+         T emscripten_atomic_load_f32
+         T emscripten_atomic_load_f64
          U emscripten_atomic_load_u32
-         U emscripten_atomic_or_u32
+         T emscripten_atomic_load_u64
+         T emscripten_atomic_or_u64
+         T emscripten_atomic_store_f32
+         T emscripten_atomic_store_f64
          U emscripten_atomic_store_u32
-         U emscripten_atomic_sub_u32
+         T emscripten_atomic_store_u64
+         T emscripten_atomic_sub_u64
+         T emscripten_atomic_xor_u64
          U emscripten_futex_wait
          U emscripten_futex_wake
          U emscripten_get_now
@@ -68,7 +105,9 @@
          T emscripten_sync_run_in_main_thread_4
          T emscripten_sync_run_in_main_thread_5
          T emscripten_sync_run_in_main_thread_6
+         T emscripten_sync_run_in_main_thread_xprintf_varargs
          U encrypt
+         U exit
          U fchdir
          U fchmod
          U fchown
@@ -88,6 +127,7 @@
          U fputc
          U fputs
          U fread
+         U free
          U freopen
          U fscanf
          U fseek
@@ -111,15 +151,14 @@
          U gettimeofday
          U ioctl
          U isatty
-         d keys
          U lchmod
          U lchown
          U link
          U listen
-         d lock
          U lockf
          U lseek
          U lstat
+         U malloc
          U mkdir
          U mkdtemp
          U mkfifo
@@ -127,8 +166,8 @@
          U mkstemp
          U mktemp
          U mmap
+         U mprotect
          U munmap
-         t nodtor
          U open
          U opendir
          U pclose
@@ -139,6 +178,7 @@
          U posix_fallocate
          U pread
          U printf
+         T pthread_atfork
          T pthread_attr_destroy
          T pthread_attr_getdetachstate
          T pthread_attr_getguardsize
@@ -164,6 +204,7 @@
          T pthread_barrierattr_getpshared
          T pthread_barrierattr_init
          T pthread_barrierattr_setpshared
+         T pthread_cancel
          U pthread_cleanup_pop
          U pthread_cleanup_push
          T pthread_cond_broadcast
@@ -178,11 +219,19 @@
          T pthread_condattr_init
          T pthread_condattr_setclock
          T pthread_condattr_setpshared
+         T pthread_create
+         T pthread_detach
          T pthread_equal
+         T pthread_exit
          T pthread_getattr_np
+         T pthread_getconcurrency
+         T pthread_getcpuclockid
+         T pthread_getschedparam
          T pthread_getspecific
+         T pthread_join
          T pthread_key_create
          T pthread_key_delete
+         T pthread_kill
          T pthread_mutex_consistent
          T pthread_mutex_destroy
          T pthread_mutex_getprioceiling
@@ -203,7 +252,6 @@
          T pthread_mutexattr_setrobust
          T pthread_mutexattr_settype
          T pthread_once
-         d pthread_once.waiters
          T pthread_rwlock_destroy
          T pthread_rwlock_init
          T pthread_rwlock_rdlock
@@ -217,19 +265,23 @@
          T pthread_rwlockattr_getpshared
          T pthread_rwlockattr_init
          T pthread_rwlockattr_setpshared
-         U pthread_self
+         W pthread_self
          T pthread_setcancelstate
          T pthread_setcanceltype
+         T pthread_setconcurrency
+         T pthread_setschedparam
+         T pthread_setschedprio
          T pthread_setspecific
+         T pthread_sigmask
          T pthread_spin_destroy
          T pthread_spin_init
          T pthread_spin_lock
          T pthread_spin_trylock
          T pthread_spin_unlock
          T pthread_testcancel
-         U putc
          U putchar
          U putenv
+         U puts
          U pwrite
          U read
          U readdir
@@ -260,13 +312,13 @@
          T sem_trywait
          T sem_unlink
          T sem_wait
-         d semtab
          U send
          U sendmsg
          U sendto
          U setenv
          U shm_unlink
          U shutdown
+         U sigfillset
          U snprintf
          U socket
          U stat
@@ -284,13 +336,11 @@
          U ttyname_r
          U tzset
          U umask
-         t undo
          U ungetc
          U unlink
          U unsetenv
-         t unwait
          T usleep
          U utime
          U utimes
-         d vmlock
+         U vsnprintf
          U write
