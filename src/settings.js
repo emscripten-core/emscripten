@@ -35,6 +35,11 @@ var INVOKE_RUN = 1; // Whether we will run the main() function. Disable if you e
                     // can do with Module.callMain(), with an optional parameter of commandline args).
 var NO_EXIT_RUNTIME = 0; // If set, the runtime is not quit when main() completes (allowing code to
                          // run afterwards, for example from the browser main event loop).
+var MEM_INIT_METHOD = 0; // How to represent the initial memory content.
+                         // 0: keep array literal representing the initial memory data
+                         // 1: create a *.mem file containing the binary data of the initial memory;
+                         //    use the --memory-init-file command line switch to select this method
+                         // 2: embed a string literal representing that initial memory data
 var TOTAL_STACK = 5*1024*1024; // The total stack size. There is no way to enlarge the stack, so this
                                // value must be large enough for the program's requirements. If
                                // assertions are on, we will assert on not exceeding this, otherwise,
@@ -472,22 +477,11 @@ var EMTERPRETIFY = 0; // Runs tools/emterpretify on the compiler output
 var EMTERPRETIFY_BLACKLIST = []; // Functions to not emterpret, that is, to run normally at full speed
 var EMTERPRETIFY_WHITELIST = []; // If this contains any functions, then only the functions in this list
                                  // are emterpreted (as if all the rest are blacklisted; this overrides the BLACKLIST)
-var EMTERPRETIFY_YIELDLIST = []; // A list of functions that are allowed to run during while sleeping. Typically this is
-                                 // during  emscripten_sleep_with_yield  , but also you may need to add methods to this list
-                                 // for things like event handling (an SDL EventHandler will be called from the event, directly -
-                                 // if we do that later, you lose out on the whole point of an EventHandler, which is to let
-                                 // you react to key presses in order to launch fullscreen, etc.).
-                                 // Functions in the yield list do not trigger asserts checking on running during a sleep,
-                                 // in ASSERTIONS builds, 
 var EMTERPRETIFY_ASYNC = 0; // Allows sync code in the emterpreter, by saving the call stack, doing an async delay, and resuming it
 var EMTERPRETIFY_ADVISE = 0; // Performs a static analysis to suggest which functions should be run in the emterpreter, as it
                              // appears they can be on the stack when a sync function is called in the EMTERPRETIFY_ASYNC option.
                              // After showing the suggested list, compilation will halt. You can apply the provided list as an
                              // emcc argument when compiling later.
-                             // This will also advise on the YIELDLIST, if it contains at least one value (it then reports
-                             // all things reachable from that function, as they may need to be in the YIELDLIST as well).
-                             // Note that this depends on things like inlining. If you run this with different inlining than
-                             // when you use the list, it might not work.
 
 var RUNNING_JS_OPTS = 0; // whether js opts will be run, after the main compiler
 var BOOTSTRAPPING_STRUCT_INFO = 0; // whether we are in the generate struct_info bootstrap phase
@@ -527,5 +521,18 @@ var ORIGINAL_EXPORTED_FUNCTIONS = [];
 // That file is automatically parsed by tools/gen_struct_info.py.
 // If you modify the headers, just clear your cache and emscripten libc should see
 // the new values.
+
+var IN_TEST_HARNESS = 0; // If true, the current build is performed for the Emscripten test harness.
+
+var USE_PTHREADS = 0; // If true, enables support for pthreads.
+
+var PTHREAD_POOL_SIZE = 0; // Specifies the number of web workers that are preallocated before runtime is initialized. If 0, workers are created on demand.
+
+// Specifies the value returned by the function emscripten_num_logical_cores()
+// if navigator.hardwareConcurrency is not supported. Pass in a negative number
+// to show a popup dialog at startup so the user can configure this dynamically.
+var PTHREAD_HINT_NUM_CORES = 4;
+
+var MAX_GLOBAL_ALIGN = -1; // received from the backend
 
 // Reserved: variables containing POINTER_MASKING.

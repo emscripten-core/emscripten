@@ -17,54 +17,69 @@ function processMacros(text) {
 // Simple #if/else/endif preprocessing for a file. Checks if the
 // ident checked is true in our global.
 // Also handles #include x.js (similar to C #include <file>)
-function preprocess(text) {
+// Param filenameHint can be passed as a description to identify the file that is being processed, used
+// to locate errors for reporting.
+function preprocess(text, filenameHint) {
   var lines = text.split('\n');
   var ret = '';
   var showStack = [];
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i];
-    if (line[line.length-1] == '\r') {
-      line = line.substr(0, line.length-1); // Windows will have '\r' left over from splitting over '\r\n'
-    }
-    if (!line[0] || line[0] != '#') {
-      if (showStack.indexOf(false) == -1) {
-        ret += line + '\n';
+    try {
+      if (line[line.length-1] == '\r') {
+        line = line.substr(0, line.length-1); // Windows will have '\r' left over from splitting over '\r\n'
       }
-    } else {
-      if (line[1] == 'i') {
-        if (line[2] == 'f') { // if
-          var parts = line.split(' ');
-          var ident = parts[1];
-          var op = parts[2];
-          var value = parts[3];
-          if (op) {
-            if (op === '==') {
-              showStack.push(ident in this && this[ident] == value);
-            } else if (op === '!=') {
-              showStack.push(!(ident in this && this[ident] == value));
-            } else {
-              error('unsupported preprecessor op ' + op);
-            }
-          } else {
-            if (ident[0] === '!') {
-              showStack.push(!(this[ident.substr(1)] > 0));
-            } else {
-              showStack.push(ident in this && this[ident] > 0);
-            }
-          }
-        } else if (line[2] == 'n') { // include
-          var included = read(line.substr(line.indexOf(' ')+1));
-          ret += '\n' + preprocess(included) + '\n'
+      if (!line[0] || line[0] != '#') {
+        if (showStack.indexOf(false) == -1) {
+          ret += line + '\n';
         }
-      } else if (line[2] == 'l') { // else
-        assert(showStack.length > 0);
-        showStack.push(!showStack.pop());
-      } else if (line[2] == 'n') { // endif
-        assert(showStack.length > 0);
-        showStack.pop();
       } else {
-        throw "Unclear preprocessor command: " + line;
+        if (line[1] == 'i') {
+          if (line[2] == 'f') { // if
+            var parts = line.split(' ');
+            var ident = parts[1];
+            var op = parts[2];
+            var value = parts[3];
+            if (op) {
+              if (op === '==') {
+                showStack.push(ident in this && this[ident] == value);
+              } else if (op === '!=') {
+                showStack.push(!(ident in this && this[ident] == value));
+              } else if (op === '<') {
+                showStack.push(ident in this && this[ident] < value);
+              } else if (op === '>') {
+                showStack.push(ident in this && this[ident] > value);
+              } else {
+                error('unsupported preprocessor op ' + op);
+              }
+            } else {
+              if (ident[0] === '!') {
+                showStack.push(!(this[ident.substr(1)] > 0));
+              } else {
+                showStack.push(ident in this && this[ident] > 0);
+              }
+            }
+          } else if (line[2] == 'n') { // include
+            var filename = line.substr(line.indexOf(' ')+1);
+            if (filename.indexOf('"') === 0) {
+              filename = filename.substr(1, filename.length - 2);
+            }
+            var included = read(filename);
+            ret += '\n' + preprocess(included, filename) + '\n'
+          }
+        } else if (line[2] == 'l') { // else
+          assert(showStack.length > 0);
+          showStack.push(!showStack.pop());
+        } else if (line[2] == 'n') { // endif
+          assert(showStack.length > 0);
+          showStack.pop();
+        } else {
+          throw "Unclear preprocessor command: " + line;
+        }
       }
+    } catch(e) {
+      printErr('parseTools.js preprocessor error in ' + filenameHint + ':' + (i+1) + ': \"' + line + '\"!');
+      throw e;
     }
   }
   assert(showStack.length == 0);

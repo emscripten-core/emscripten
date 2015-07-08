@@ -110,14 +110,14 @@ class interactive(BrowserCore):
     if WINDOWS and Building.which('cmake'):
       return self.get_library('freealut', os.path.join('hello_world.bc'), configure=['cmake', '.'], configure_args=['-DBUILD_TESTS=ON'])
     else:
-      return self.get_library('freealut', os.path.join('examples', 'hello_world.bc'), make_args=['EXEEXT=.bc'])
+      return self.get_library('freealut', [os.path.join('examples', '.libs', 'hello_world.bc'), os.path.join('src', '.libs', 'libalut.a')], make_args=['EXEEXT=.bc'])
 
   def test_freealut(self):
-    programs = self.get_freealut_library()
-    for program in programs:
-      assert os.path.exists(program)
-      Popen([PYTHON, EMCC, '-O2', program, '-o', 'page.html']).communicate()
-      self.run_browser('page.html', 'You should hear "Hello World!"')
+    Popen([PYTHON, EMCC, '-O2'] + self.get_freealut_library() + ['-o', 'page.html']).communicate()
+    self.run_browser('page.html', 'You should hear "Hello World!"')
 
   def test_vr(self):
     self.btest(path_from_root('tests', 'test_vr.c'), expected='0')
+
+  def test_glfw_fullscreen(self):
+    self.btest('test_glfw_fullscreen.c', expected='1', args=['-s', 'NO_EXIT_RUNTIME=1', '-s', 'USE_GLFW=3'])

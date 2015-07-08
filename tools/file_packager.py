@@ -460,7 +460,7 @@ for file_ in data_files:
   if file_['mode'] == 'embed':
     # Embed
     data = map(ord, open(file_['srcpath'], 'rb').read())
-    code += '''fileData%d = [];\n''' % counter
+    code += '''var fileData%d = [];\n''' % counter
     if data:
       parts = []
       chunk_size = 10240
@@ -499,8 +499,9 @@ if has_preloaded:
   # Get the big archive and split it up
   if no_heap_copy:
     use_data = '''
-      // copy the entire loaded file into a spot in the heap. Files will refer to slices in that. They cannot be freed though.
-      var ptr = Module['_malloc'](byteArray.length);
+      // copy the entire loaded file into a spot in the heap. Files will refer to slices in that. They cannot be freed though
+      // (we may be allocating before malloc is ready, during startup).
+      var ptr = Module['getMemory'](byteArray.length);
       Module['HEAPU8'].set(byteArray, ptr);
       DataRequest.prototype.byteArray = Module['HEAPU8'].subarray(ptr, ptr+byteArray.length);
 '''

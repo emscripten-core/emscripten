@@ -14,6 +14,10 @@
 
 {{RUNTIME}}
 
+#if RELOCATABLE
+Runtime.GLOBAL_BASE = Runtime.alignMemory(Runtime.GLOBAL_BASE, {{{ MAX_GLOBAL_ALIGN || 1 }}});
+#endif
+
 Module['Runtime'] = Runtime;
 #if CLOSURE_COMPILER
 Runtime['addFunction'] = Runtime.addFunction;
@@ -436,9 +440,10 @@ Module['allocate'] = allocate;
 // Allocate memory during any stage of startup - static memory early on, dynamic memory later, malloc when ready
 function getMemory(size) {
   if (!staticSealed) return Runtime.staticAlloc(size);
-  if (typeof _sbrk !== 'undefined' && !_sbrk.called) return Runtime.dynamicAlloc(size);
+  if ((typeof _sbrk !== 'undefined' && !_sbrk.called) || !runtimeInitialized) return Runtime.dynamicAlloc(size);
   return _malloc(size);
 }
+Module['getMemory'] = getMemory;
 
 function Pointer_stringify(ptr, /* optional */ length) {
   if (length === 0 || !ptr) return '';
@@ -497,7 +502,7 @@ function stringToAscii(str, outPtr) {
 }
 Module['stringToAscii'] = stringToAscii;
 
-// Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the a given array that contains uint8 values, returns
+// Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the given array that contains uint8 values, returns
 // a copy of that string as a Javascript String object.
 
 function UTF8ArrayToString(u8Array, idx) {
@@ -1007,7 +1012,14 @@ var STATIC_BASE = 0, STATICTOP = 0, staticSealed = false; // static area
 var STACK_BASE = 0, STACKTOP = 0, STACK_MAX = 0; // stack area
 var DYNAMIC_BASE = 0, DYNAMICTOP = 0; // dynamic area handled by sbrk
 
+#if USE_PTHREADS
+if (ENVIRONMENT_IS_PTHREAD) staticSealed = true; // The static memory area has been initialized already in the main thread, pthreads skip this.
+#endif
+
 function enlargeMemory() {
+#if USE_PTHREADS
+  abort('Cannot enlarge memory arrays, since compiling with pthreads support enabled (-s USE_PTHREADS=1).');
+#else
 #if ALLOW_MEMORY_GROWTH == 0
   abort('Cannot enlarge memory arrays. Either (1) compile with -s TOTAL_MEMORY=X with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with ALLOW_MEMORY_GROWTH which adjusts the size at runtime but prevents some optimizations, or (3) set Module.TOTAL_MEMORY before the program runs.');
 #else
@@ -1090,7 +1102,8 @@ function enlargeMemory() {
 #endif
 
   return true;
-#endif
+#endif // ALLOW_MEMORY_GROWTH
+#endif // USE_PTHREADS
 }
 
 #if ALLOW_MEMORY_GROWTH
@@ -1127,8 +1140,58 @@ if (totalMemory !== TOTAL_MEMORY) {
 assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' && !!(new Int32Array(1)['subarray']) && !!(new Int32Array(1)['set']),
        'JS engine does not provide full typed array support');
 
-var buffer = new ArrayBuffer(TOTAL_MEMORY);
+var buffer;
+#if USE_PTHREADS
 
+if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') {
+#if IN_TEST_HARNESS
+  xhr = new XMLHttpRequest();
+  xhr.open('GET', 'http://localhost:8888/report_result?skipped:%20SharedArrayBuffer%20is%20not%20supported!');
+  xhr.send();
+  setTimeout(function() { window.close() }, 2000);
+#endif
+  abort('Your browser does not support the SharedArrayBuffer and Atomics specification! Try running in Firefox Nightly.');
+}
+
+if (!ENVIRONMENT_IS_PTHREAD) buffer = new SharedArrayBuffer(TOTAL_MEMORY);
+
+// Currently SharedArrayBuffer does not have a slice() operation, so polyfill it in.
+// Adapted from https://github.com/ttaubert/node-arraybuffer-slice, (c) 2014 Tim Taubert <tim@timtaubert.de>
+// arraybuffer-slice may be freely distributed under the MIT license.
+(function (undefined) {
+  "use strict";
+  function clamp(val, length) {
+    val = (val|0) || 0;
+    if (val < 0) return Math.max(val + length, 0);
+    return Math.min(val, length);
+  }
+  if (!SharedArrayBuffer.prototype.slice) {
+    SharedArrayBuffer.prototype.slice = function (from, to) {
+      var length = this.byteLength;
+      var begin = clamp(from, length);
+      var end = length;
+      if (to !== undefined) end = clamp(to, length);
+      if (begin > end) return new ArrayBuffer(0);
+      var num = end - begin;
+      var target = new ArrayBuffer(num);
+      var targetArray = new Uint8Array(target);
+      var sourceArray = new SharedUint8Array(this, begin, num);
+      targetArray.set(sourceArray);
+      return target;
+    };
+  }
+})();
+
+HEAP8 = new SharedInt8Array(buffer);
+HEAP16 = new SharedInt16Array(buffer);
+HEAP32 = new SharedInt32Array(buffer);
+HEAPU8 = new SharedUint8Array(buffer);
+HEAPU16 = new SharedUint16Array(buffer);
+HEAPU32 = new SharedUint32Array(buffer);
+HEAPF32 = new SharedFloat32Array(buffer);
+HEAPF64 = new SharedFloat64Array(buffer);
+#else // USE_PTHREADS
+buffer = new ArrayBuffer(TOTAL_MEMORY);
 HEAP8 = new Int8Array(buffer);
 HEAP16 = new Int16Array(buffer);
 HEAP32 = new Int32Array(buffer);
@@ -1137,6 +1200,7 @@ HEAPU16 = new Uint16Array(buffer);
 HEAPU32 = new Uint32Array(buffer);
 HEAPF32 = new Float32Array(buffer);
 HEAPF64 = new Float64Array(buffer);
+#endif // USE_PTHREADS
 
 // Endianness check (note: assumes compiler arch was little-endian)
 HEAP32[0] = 255;
@@ -1182,7 +1246,14 @@ var __ATPOSTRUN__ = []; // functions called after the runtime has exited
 var runtimeInitialized = false;
 var runtimeExited = false;
 
+#if USE_PTHREADS
+if (ENVIRONMENT_IS_PTHREAD) runtimeInitialized = true; // The runtime is hosted in the main thread, and bits shared to pthreads via SharedArrayBuffer. No need to init again in pthread.
+#endif
+
 function preRun() {
+#if USE_PTHREADS
+  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
+#endif
   // compatibility - merge in anything from Module['preRun'] at this time
   if (Module['preRun']) {
     if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
@@ -1194,21 +1265,33 @@ function preRun() {
 }
 
 function ensureInitRuntime() {
+#if USE_PTHREADS
+  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
+#endif
   if (runtimeInitialized) return;
   runtimeInitialized = true;
   callRuntimeCallbacks(__ATINIT__);
 }
 
 function preMain() {
+#if USE_PTHREADS
+  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
+#endif
   callRuntimeCallbacks(__ATMAIN__);
 }
 
 function exitRuntime() {
+#if USE_PTHREADS
+  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
+#endif
   callRuntimeCallbacks(__ATEXIT__);
   runtimeExited = true;
 }
 
 function postRun() {
+#if USE_PTHREADS
+  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
+#endif
   // compatibility - merge in anything from Module['postRun'] at this time
   if (Module['postRun']) {
     if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
@@ -1304,6 +1387,21 @@ Module['writeAsciiToMemory'] = writeAsciiToMemory;
 
 {{{ unSign }}}
 {{{ reSign }}}
+
+#if USE_PTHREADS
+// Atomics.exchange is not yet implemented in the spec, so polyfill that in via compareExchange in the meanwhile.
+// TODO: Keep an eye out for the opportunity to remove this once Atomics.exchange is available.
+if (typeof Atomics !== 'undefined' && !Atomics['exchange']) {
+  Atomics['exchange'] = function(heap, index, val) {
+    var oldVal, oldVal2;
+    do {
+      oldVal = Atomics['load'](heap, index);
+      oldVal2 = Atomics['compareExchange'](heap, index, oldVal, val);
+    } while(oldVal != oldVal2);
+    return oldVal;
+  }
+}
+#endif
 
 // check for imul support, and also for correctness ( https://bugs.webkit.org/show_bug.cgi?id=126345 )
 if (!Math['imul'] || Math['imul'](0xffffffff, 5) !== -5) Math['imul'] = function imul(a, b) {
@@ -1501,5 +1599,48 @@ function lookupSymbol(ptr) { // for a pointer, print out all symbols that resolv
 
 var memoryInitializer = null;
 
-// === Body ===
+#if USE_PTHREADS
+#if PTHREAD_HINT_NUM_CORES < 0
+if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() {
+  addRunDependency('pthreads_querycores');
 
+  var bg = document.createElement('div');
+  bg.style = "position: absolute; top: 0%; left: 0%; width: 100%; height: 100%; background-color: black; z-index:1001; -moz-opacity: 0.8; opacity:.80; filter: alpha(opacity=80);";
+  var div = document.createElement('div');
+  var default_num_cores = navigator.hardwareConcurrency || 4;
+  var hwConcurrency = navigator.hardwareConcurrency ? ("says " + navigator.hardwareConcurrency) : "is not available";
+  var html = '<div style="width: 100%; text-align:center;"> Thread setup</div> <br /> Number of logical cores: <input type="number" style="width: 50px;" value="'
+    + default_num_cores + '" min="1" max="32" id="thread_setup_num_logical_cores"></input> <br /><span style="font-size: 75%;">(<span style="font-family: monospace;">navigator.hardwareConcurrency</span> '
+    + hwConcurrency + ')</span> <br />';
+#if PTHREAD_POOL_SIZE < 0
+  html += 'PThread pool size: <input type="number" style="width: 50px;" value="'
+    + default_num_cores + '" min="1" max="32" id="thread_setup_pthread_pool_size"></input> <br />';
+#endif
+  html += ' <br /> <input type="button" id="thread_setup_button_go" value="Go"></input>';
+  div.innerHTML = html;
+  div.style = 'position: absolute; top: 35%; left: 35%; width: 30%; height: 150px; padding: 16px; border: 16px solid gray; background-color: white; z-index:1002; overflow: auto;';
+  document.body.appendChild(bg);
+  document.body.appendChild(div);
+  var goButton = document.getElementById('thread_setup_button_go');
+  goButton.onclick = function() {
+    var num_logical_cores = parseInt(document.getElementById('thread_setup_num_logical_cores').value);
+    _emscripten_force_num_logical_cores(num_logical_cores);
+#if PTHREAD_POOL_SIZE < 0
+    var pthread_pool_size = parseInt(document.getElementById('thread_setup_pthread_pool_size').value);
+    PThread.allocateUnusedWorkers(pthread_pool_size, function() { removeRunDependency('pthreads_querycores'); });
+#else
+    removeRunDependency('pthreads_querycores');
+#endif
+    document.body.removeChild(bg);
+    document.body.removeChild(div);
+  }
+});
+#endif
+#endif
+
+#if PTHREAD_POOL_SIZE > 0
+// To work around https://bugzilla.mozilla.org/show_bug.cgi?id=1049079, warm up a worker pool before starting up the application.
+if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() { addRunDependency('pthreads'); PThread.allocateUnusedWorkers({{{PTHREAD_POOL_SIZE}}}, function() { removeRunDependency('pthreads'); }); });
+#endif
+
+// === Body ===

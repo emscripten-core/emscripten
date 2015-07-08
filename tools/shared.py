@@ -1811,6 +1811,30 @@ class JS:
     if len(contents) <= JS.INITIALIZER_CHUNK_SIZE: return None
     return JS.replace_initializers(src, JS.split_initializer(contents))
 
+  @staticmethod
+  def generate_string_initializer(s):
+    if Settings.ASSERTIONS:
+      # append checksum of length and content
+      crcTable = []
+      for i in range(256):
+        crc = i
+        for bit in range(8):
+          crc = (crc >> 1) ^ ((crc & 1) * 0xedb88320)
+        crcTable.append(crc)
+      crc = 0xffffffff
+      n = len(s)
+      crc = crcTable[(crc ^ n) & 0xff] ^ (crc >> 8)
+      crc = crcTable[(crc ^ (n >> 8)) & 0xff] ^ (crc >> 8)
+      for i in s:
+        crc = crcTable[(crc ^ i) & 0xff] ^ (crc >> 8)
+      for i in range(4):
+        s.append((crc >> (8 * i)) & 0xff)
+    s = ''.join(map(chr, s))
+    s = s.replace('\\', '\\\\').replace("'", "\\'")
+    s = s.replace('\n', '\\n').replace('\r', '\\r')
+    def escape(x): return '\\x{:02x}'.format(ord(x.group()))
+    return re.sub('[\x80-\xff]', escape, s)
+
 # Compression of code and data for smaller downloads
 class Compression:
   on = False
@@ -1886,5 +1910,16 @@ def safe_copy(src, dst):
   if dst == '/dev/null': return
   shutil.copyfile(src, dst)
 
-import js_optimizer
+def read_and_preprocess(filename):
+  f = open(filename, 'r').read()
+  pos = 0
+  include_pattern = re.compile('^#include\s*["<](.*)[">]\s?$', re.MULTILINE)
+  while(1):
+    m = include_pattern.search(f, pos)
+    if not m:
+      return f
+    included_file = open(os.path.join(os.path.dirname(filename), m.groups(0)[0]), 'r').read()
 
+    f = f[:m.start(0)] + included_file + f[m.end(0):]
+
+import js_optimizer

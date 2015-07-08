@@ -1024,7 +1024,7 @@ Defines
 
 .. c:macro:: EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH
 
-	Specifies that the Emscripten runtime should explicitly stretch the CSS size of the target element to cover the whole screen when trasnsitioning to fullscreen mode. This
+	Specifies that the Emscripten runtime should explicitly stretch the CSS size of the target element to cover the whole screen when transitioning to fullscreen mode. This
 	will change the aspect ratio of the displayed content.
 
 .. c:macro:: EMSCRIPTEN_FULLSCREEN_SCALE_ASPECT
@@ -1207,7 +1207,8 @@ Functions
 
 	.. note:: This function makes changes to the DOM to satisfy consistent presentation across browsers. These changes have been designed to intrude as little as possible, and the changes are cleared once windowed browsing is restored. If any of these changes are conflicting, see the function :c:func:`emscripten_request_fullscreen` instead, which performs a bare fullscreen request without any modifications to the DOM.
 
-	:param const EmscriptenFullscreenStrategy *fullscreenStrategy: [in] Points to a configuration structure filled by the caller which specifies display options for the fullscreen mode.
+	:param fullscreenStrategy: [in] Points to a configuration structure filled by the caller which specifies display options for the fullscreen mode.
+	:type fullscreenStrategy: const EmscriptenFullscreenStrategy*
 
 .. c:function:: EMSCRIPTEN_RESULT emscripten_exit_fullscreen(void)
 
@@ -2012,7 +2013,7 @@ Functions
 	Enables the given extension on the given context.
 
 	:param EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context: The WebGL context on which the extension is to be enabled.
-	:param extension: A string identifyingthea `WebGL extension <http://www.khronos.org/registry/webgl/extensions/>`_. For example "OES_texture_float".
+	:param extension: A string identifying the `WebGL extension <http://www.khronos.org/registry/webgl/extensions/>`_. For example "OES_texture_float".
 	:type extension: const char*
 	:returns: EM_TRUE if the given extension is supported by the context, and EM_FALSE if the extension was not available. 
 	:rtype: |EM_BOOL|

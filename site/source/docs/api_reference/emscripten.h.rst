@@ -33,7 +33,7 @@ Defines
    
 	.. note:: 
 		- Double-quotes (") cannot be used in the inline assembly/JavaScript. Single-quotes (‘) can be used, as shown above.
-		- Newlines (\\n, \\r etc.) are supported in the inline Javascript. Note that any platform-specific issues with line endings in normal JavaScript also apply to inline JavaScript declared using ``EM_ASM``.
+		- Newlines (\\n, \\r etc.) are supported in the inline JavaScript. Note that any platform-specific issues with line endings in normal JavaScript also apply to inline JavaScript declared using ``EM_ASM``.
 		- You can’t access C variables with :c:macro:`EM_ASM`, nor receive a value back. Instead use :c:macro:`EM_ASM_ARGS`, :c:macro:`EM_ASM_INT`, or :c:macro:`EM_ASM_DOUBLE`.
 		- As of ``1.30.4``, ``EM_ASM`` contents appear as normal JS, outside of the compiled code. Previously we had them as a string that was ``eval``ed. The newer approach avoids the overhead of ``eval``, and also allows for better optimization of ``EM_ASM`` contents by things like closure compiler, as their contents are now visible. Note that this means that closure compiler will optimize them as if they were written together with the rest of the codebase, which is a change from before - you may need to use safety quotes in some places (``a['b']`` instead of ``a.b``).
    
@@ -247,7 +247,7 @@ Functions
 
     :param int mode: The timing mode to use. Allowed values are EM_TIMING_SETTIMEOUT, EM_TIMING_RAF.
 
-	:param int value: The timing value to activate for the main loop. This value interpreted differently according to the ``mode``parameter:
+	:param int value: The timing value to activate for the main loop. This value interpreted differently according to the ``mode`` parameter:
 
 	   - If ``mode`` is EM_TIMING_SETTIMEOUT, then ``value`` specifies the number of milliseconds to wait between subsequent ticks to the main loop and updates occur independent of the vsync rate of the display (vsync off). This method uses the JavaScript ``setTimeout`` function to drive the animation.
 	   - If ``mode`` is EM_TIMING_RAF, then updates are performed using the ``requestAnimationFrame`` function (with vsync enabled), and this value is interpreted as a "swap interval" rate for the main loop. The value of ``1`` specifies the runtime that it should render at every vsync (typically 60fps), whereas the value ``2`` means that the main loop callback should be called only every second vsync (30fps). As a general formula, the value ``n`` means that the main loop is updated at every n'th vsync, or at a rate of ``60/n`` for 60Hz displays, and ``120/n`` for 120Hz displays.
@@ -259,13 +259,14 @@ Functions
 
 	.. note:: There is a functional difference between ``setTimeout`` and ``requestAnimationFrame``: If the user minimizes the browser window or hides your application tab, browsers will typically stop calling ``requestAnimationFrame`` callbacks, but ``setTimeout``-based main loop will continue to be run, although with heavily throttled intervals. See `setTimeout on MDN <https://developer.mozilla.org/en-US/docs/Web/API/WindowTimers.setTimeout#Inactive_tabs>` for more information.
 
-.. c:function:: void emscripten_set_main_loop_timing(int *mode, int *value)
+.. c:function:: void emscripten_get_main_loop_timing(int *mode, int *value)
 
 	Returns the current main loop timing mode that is in effect. For interpretation of the values, see the documentation of the function :c:func:`emscripten_set_main_loop_timing`. The timing mode is controlled by calling the functions :c:func:`emscripten_set_main_loop_timing` and :c:func:`emscripten_set_main_loop`.
 
-    :param int *mode: If not null, the used timing mode is returned here.
-
-    :param int *value: If not null, the used timing value is returned here.
+    :param mode: If not null, the used timing mode is returned here.
+    :type mode: int*
+    :param value: If not null, the used timing value is returned here.
+    :type value: int*
 	
 .. c:function:: void emscripten_set_main_loop_expected_blockers(int num)
 
@@ -1119,7 +1120,7 @@ IndexedDB
 	:param pnum: An out parameter that will be filled with the size of the downloaded data.
 	:param perror: An out parameter that will be filled with a non-zero value if an error occurred.
 
-.. c:function:: void emscripten_idb_store(const char *db_name, const char *file_id, void* ptr, int num, int *perror);
+.. c:function:: void emscripten_idb_store(const char *db_name, const char *file_id, void* buffer, int num, int *perror);
 
 	Synchronously stores data to IndexedDB.
 
@@ -1143,10 +1144,8 @@ IndexedDB
 
 	:param db_name: The name of the database to check in
 	:param file_id: The name of the file to check
-	:param perror: An out parameter that will be filled with a non-zero value if the file exists in that database.
+	:param pexists: An out parameter that will be filled with a non-zero value if the file exists in that database.
 	:param perror: An out parameter that will be filled with a non-zero value if an error occurred.
-
-.. c:function:: void emscripten_idb_load(const char *db_name, const char *file_id, void** pbuffer, int* pnum, int *perror);
 
 		
 Asyncify functions

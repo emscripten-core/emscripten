@@ -1,5 +1,9 @@
 #include "pthread_impl.h"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 volatile size_t __pthread_tsd_size = sizeof(void *) * PTHREAD_KEYS_MAX;
 void *__pthread_tsd_main[PTHREAD_KEYS_MAX] = { 0 };
 
@@ -14,7 +18,9 @@ int pthread_key_create(pthread_key_t *k, void (*dtor)(void *))
 	unsigned i = (uintptr_t)&k / 16 % PTHREAD_KEYS_MAX;
 	unsigned j = i;
 
+#ifndef __EMSCRIPTEN__ // XXX Emscripten does not need specific initialization for threads, the runtime has initialized everything prior to running.
 	__pthread_self_init();
+#endif
 	if (!dtor) dtor = nodtor;
 	do {
 		if (!a_cas_p(keys+j, 0, (void *)dtor)) {
@@ -31,9 +37,13 @@ int pthread_key_delete(pthread_key_t k)
 	return 0;
 }
 
+#ifdef __EMSCRIPTEN__
+void EMSCRIPTEN_KEEPALIVE __pthread_tsd_run_dtors()
+#else
 void __pthread_tsd_run_dtors()
+#endif
 {
-	pthread_t self = __pthread_self();
+	pthread_t self = pthread_self();
 	int i, j, not_finished = self->tsd_used;
 	for (j=0; not_finished && j<PTHREAD_DESTRUCTOR_ITERATIONS; j++) {
 		not_finished = 0;

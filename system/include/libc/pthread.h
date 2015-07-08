@@ -203,11 +203,18 @@ struct __ptcb {
 	struct __ptcb *__next;
 };
 
+#ifdef __EMSCRIPTEN__
+// For Emscripten, the cleanup stack is not implemented as a macro, since it's currently in the JS side.
+typedef void (*cleanup_handler_routine)(void *arg);
+void pthread_cleanup_push(cleanup_handler_routine routine, void *arg);
+void pthread_cleanup_pop(int execute);
+#else
 void _pthread_cleanup_push(struct __ptcb *, void (*)(void *), void *);
 void _pthread_cleanup_pop(struct __ptcb *, int);
 
 #define pthread_cleanup_push(f, x) do { struct __ptcb __cb; _pthread_cleanup_push(&__cb, f, x);
 #define pthread_cleanup_pop(r) _pthread_cleanup_pop(&__cb, (r)); } while(0)
+#endif
 
 #ifdef _GNU_SOURCE
 struct cpu_set_t;

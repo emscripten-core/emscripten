@@ -37,8 +37,12 @@ int pthread_attr_getscope(const pthread_attr_t *restrict a, int *restrict scope)
 
 int pthread_attr_getstack(const pthread_attr_t *restrict a, void **restrict addr, size_t *restrict size)
 {
-	if (!a->_a_stackaddr)
-		return EINVAL;
+/// XXX musl is not standard-conforming? It should not report EINVAL if _a_stackaddr is zero, and it should
+///     report EINVAL if a is null: http://pubs.opengroup.org/onlinepubs/009695399/functions/pthread_attr_getstack.html
+	if (!a) return EINVAL;
+//	if (!a->_a_stackaddr)
+//		return EINVAL;
+
 	*size = a->_a_stacksize + DEFAULT_STACK_SIZE;
 	*addr = (void *)(a->_a_stackaddr - *size);
 	return 0;

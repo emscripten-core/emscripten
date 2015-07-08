@@ -222,7 +222,7 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
       abortDecorators.push(function(output, what) {
         if (EmterpreterAsync.state !== 0) {
-          return output + '\nThis error happened during an emterpreter-async save or load of the stack. Was there non-emterpreted code on the stack during save (which is unallowed)? You may want to adjust EMTERPRETIFY_BLACKLIST, EMTERPRETIFY_WHITELIST, or EMTERPRETIFY_YIELDLIST (to consider certain functions ok to run during an emscripten_sleep_with_yield).\nThis is what the stack looked like when we tried to save it: ' + [EmterpreterAsync.state, EmterpreterAsync.saveStack];
+          return output + '\nThis error happened during an emterpreter-async save or load of the stack. Was there non-emterpreted code on the stack during save (which is unallowed)? You may want to adjust EMTERPRETIFY_BLACKLIST, EMTERPRETIFY_WHITELIST.\nThis is what the stack looked like when we tried to save it: ' + [EmterpreterAsync.state, EmterpreterAsync.saveStack];
         }
         return output;
       });

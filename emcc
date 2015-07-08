@@ -172,7 +172,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   exit(0)
 
 elif len(sys.argv) == 2 and sys.argv[1] == '-v': # -v with no inputs
-  print 'emcc (Emscripten gcc/clang-like replacement) %s' % shared.EMSCRIPTEN_VERSION
+  # autoconf likes to see 'GNU' in the output to enable shared object support
+  print 'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION
   code = subprocess.call([shared.CLANG, '-v'])
   shared.check_sanity(force=True)
   exit(code)
@@ -221,7 +222,7 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
     elif arg.endswith('.s'):
       if debug_configure: open(tempout, 'a').write('(compiling .s assembly, must use clang\n')
       if use_js == 1: use_js = 0
-    elif arg == '-E':
+    elif arg == '-E' or arg == '-M' or arg == '-MM':
       if use_js == 1: use_js = 0
 
   if src:
@@ -329,12 +330,6 @@ for i in range(1, len(sys.argv)):
   if not arg.startswith('-'):
     if arg.endswith(C_ENDINGS + OBJC_ENDINGS):
       use_cxx = False
-
-if '-M' in sys.argv or '-MM' in sys.argv:
-  # Just output dependencies, do not compile. Warning: clang and gcc behave differently with -MF! (clang seems to not recognize it)
-  cmd = [CC] + shared.COMPILER_OPTS + sys.argv[1:]
-  logging.debug('just dependencies: ' + ' '.join(cmd))
-  exit(subprocess.call(cmd))
 
 # Check if a target is specified
 target = None
@@ -819,7 +814,9 @@ try:
     target = target_basename + '.o'
     final_suffix = 'o'
   if '-E' in newargs:
-    final_suffix = 'eout' # not bitcode, not js; something else
+    final_suffix = 'eout' # not bitcode, not js; but just result from preprocessing stage of the input file
+  if '-M' in newargs or '-MM' in newargs:
+    final_suffix = 'mout' # not bitcode, not js; but just dependency rule of the input file
   final_ending = ('.' + final_suffix) if len(final_suffix) > 0 else ''
 
   # Find library files
@@ -854,7 +851,7 @@ try:
 
   if len(input_files) == 0:
     logging.error('no input files\nnote that input files without a known suffix are ignored, make sure your input files end with one of: ' + str(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + STATICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS))
-    exit(0)
+    exit(1)
 
   newargs = CC_ADDITIONAL_ARGS + newargs
 
@@ -1005,6 +1002,28 @@ try:
     if not shared.Settings.NO_EXIT_RUNTIME:
       shared.Settings.EXPORTED_FUNCTIONS += ['_fflush'] # to flush the streams on FS quit
 
+  if shared.Settings.USE_PTHREADS:
+    if not any(s.startswith('PTHREAD_POOL_SIZE=') for s in settings_changes):
+      settings_changes.append('PTHREAD_POOL_SIZE=0')
+    js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
+    newargs.append('-D__EMSCRIPTEN_PTHREADS__=1')
+  else:
+    js_libraries.append(shared.path_from_root('src', 'library_pthread_stub.js'))
+
+  if shared.Settings.USE_PTHREADS:
+    if shared.Settings.PROXY_TO_WORKER:
+      logging.error('-s PROXY_TO_WORKER=1 is not yet supported with -s USE_PTHREADS=1!')
+      exit(1)
+    if shared.Settings.LINKABLE:
+      logging.error('-s LINKABLE=1 is not supported with -s USE_PTHREADS=1!')
+      exit(1)
+    if shared.Settings.SIDE_MODULE:
+      logging.error('-s SIDE_MODULE=1 is not supported with -s USE_PTHREADS=1!')
+      exit(1)
+    if shared.Settings.MAIN_MODULE:
+      logging.error('-s MAIN_MODULE=1 is not supported with -s USE_PTHREADS=1!')
+      exit(1)
+
   shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
   shared.Settings.OPT_LEVEL = opt_level
   shared.Settings.DEBUG_LEVEL = debug_level
@@ -1060,12 +1079,13 @@ try:
     return args
 
   # -E preprocessor-only support
-  if '-E' in newargs:
+  if '-E' in newargs or '-M' in newargs or '-MM' in newargs:
     input_files = map(lambda x: x[1], input_files)
     cmd = get_bitcode_args(input_files)
     if specified_target:
       cmd += ['-o', specified_target]
-    logging.debug('just preprocessor ' + ' '.join(cmd))
+    # Do not compile, but just output the result from preprocessing stage or output the dependency rule. Warning: clang and gcc behave differently with -MF! (clang seems to not recognize it)
+    logging.debug(('just preprocessor ' if '-E' in newargs else 'just dependencies: ') + ' '.join(cmd))
     exit(subprocess.call(cmd))
 
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
@@ -1273,6 +1293,10 @@ try:
   # Emscripten
   logging.debug('LLVM => JS')
   extra_args = [] if not js_libraries else ['--libraries', ','.join(map(os.path.abspath, js_libraries))]
+  if memory_init_file:
+    shared.Settings.MEM_INIT_METHOD = 1
+  else:
+    assert shared.Settings.MEM_INIT_METHOD != 1
   final = shared.Building.emscripten(final, append_ext=False, extra_args=extra_args)
   if DEBUG: save_intermediate('original')
 
@@ -1324,18 +1348,25 @@ try:
 
   js_transform_tempfiles = [final]
 
-  if memory_init_file:
+  if shared.Settings.MEM_INIT_METHOD > 0:
     memfile = target + '.mem'
     shared.try_delete(memfile)
     def repl(m):
       # handle chunking of the memory initializer
-      s = m.groups(0)[0]
-      if len(s) == 0 and not shared.Settings.EMTERPRETIFY: return m.group(0) # emterpreter must have a mem init file; otherwise, don't emit 0-size ones
-      open(memfile, 'wb').write(''.join(map(lambda x: chr(int(x or '0')), s.split(','))))
+      s = m.group(1)
+      if len(s) == 0: return '' # don't emit 0-size ones
+      membytes = [int(x or '0') for x in s.split(',')]
+      while membytes and membytes[-1] == 0:
+        membytes.pop()
+      if not membytes: return ''
+      if not memory_init_file:
+        # memory initializer in a string literal
+        return "memoryInitializer = '%s';" % shared.JS.generate_string_initializer(list(membytes))
+      open(memfile, 'wb').write(''.join(map(chr, membytes)))
       if DEBUG:
         # Copy into temp dir as well, so can be run there too
         shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
-      return 'var memoryInitializer = "%s";' % os.path.basename(memfile)
+      return 'memoryInitializer = "%s";' % os.path.basename(memfile)
     src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
     open(final + '.mem.js', 'w').write(src)
     final += '.mem.js'
@@ -1356,6 +1387,9 @@ try:
       open(final + '.mem.js', 'w').write(src)
       final += '.mem.js'
       src = None
+
+  if shared.Settings.USE_PTHREADS:
+    shutil.copyfile(shared.path_from_root('src', 'pthread-main.js'), os.path.join(os.path.dirname(os.path.abspath(target)), 'pthread-main.js'))
 
   log_time('source transforms')
 
@@ -1548,7 +1582,7 @@ try:
     try:
       # move temp js to final position, alongside its mem init file
       shutil.move(final, js_target)
-      args = [shared.PYTHON, shared.path_from_root('tools', 'emterpretify.py'), js_target, final + '.em.js', json.dumps(shared.Settings.EMTERPRETIFY_BLACKLIST), json.dumps(shared.Settings.EMTERPRETIFY_WHITELIST), json.dumps(shared.Settings.EMTERPRETIFY_YIELDLIST), str(shared.Settings.SWAPPABLE_ASM_MODULE)]
+      args = [shared.PYTHON, shared.path_from_root('tools', 'emterpretify.py'), js_target, final + '.em.js', json.dumps(shared.Settings.EMTERPRETIFY_BLACKLIST), json.dumps(shared.Settings.EMTERPRETIFY_WHITELIST), '', str(shared.Settings.SWAPPABLE_ASM_MODULE)]
       if shared.Settings.EMTERPRETIFY_ASYNC:
         args += ['ASYNC=1']
       if shared.Settings.EMTERPRETIFY_ADVISE:
@@ -1614,7 +1648,7 @@ try:
 <script>
   if ((',' + window.location.search.substr(1) + ',').indexOf(',noProxy,') < 0) {
     console.log('running code in a web worker');
-''' + open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', child_js).replace('{{{ IDBStore.js }}}', open(shared.path_from_root('src', 'IDBStore.js')).read()) + '''
+''' + open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + shared.read_and_preprocess(shared.path_from_root('src', 'proxyClient.js')).replace('{{{ filename }}}', child_js).replace('{{{ IDBStore.js }}}', open(shared.path_from_root('src', 'IDBStore.js')).read()) + '''
   } else {
     // note: no support for code mods (PRECISE_F32==2)
     console.log('running code on the main thread');

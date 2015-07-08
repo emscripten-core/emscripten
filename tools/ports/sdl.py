@@ -59,7 +59,7 @@ def process_args(ports, args, settings, shared):
   return args
 
 def show():
-  return 'SDL2 (zlib license)'
+  return 'SDL2 (USE_SDL=2; zlib license)'
 
 sdl_config_h = r'''/* include/SDL_config.h.  Generated from SDL_config.h.in by configure.  */
 /*

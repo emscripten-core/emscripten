@@ -117,10 +117,15 @@ parameters to pass to the function:
      - Emscripten does :ref:`dead code elimination <faq-dead-code-elimination>`
        to minimize code size — exporting ensures the functions you need
        aren't removed.
-     - At higher optimisation levels (``-O2`` and above), the
-       :term:`closure compiler` runs and minifies (changes) function names.
+     - At higher optimisation levels (``-O2`` and above), code is minified,
+       including function names.
        Exporting functions allows you to continue to access them using the
        original name through the global ``Module`` object.
+     - If you want to export a JS library function (something from a
+       ``src/library*.js`` file, for example), then in addition to
+       ``EXPORTED_FUNCTIONS``, you need to add it to ``DEFAULT_LIBRARY_FUNCS_TO_INCLUDE``,
+       as the latter will force the method to actually be included in
+       the build.
 
    - Use ``Module.ccall`` and not ``ccall`` by itself. The former will work
      at all optimisation levels (even if the :term:`Closure Compiler`

@@ -64,13 +64,19 @@ int pthread_cond_timedwait(pthread_cond_t *restrict c, pthread_mutex_t *restrict
 
 	pthread_mutex_unlock(m);
 
-	do e = __timedwait(&c->_c_seq, seq, c->_c_clock, ts, cleanup, &cm, 0);
+	do {
+		e = __timedwait(&c->_c_seq, seq, c->_c_clock, ts, cleanup, &cm, 0);
+	}
 	while (c->_c_seq == seq && (!e || e==EINTR));
 	if (e == EINTR) e = 0;
 
 	unwait(c, m);
 
 	if ((r=pthread_mutex_lock(m))) return r;
+
+#ifdef __EMSCRIPTEN__
+	pthread_testcancel();
+#endif
 
 	return e;
 }

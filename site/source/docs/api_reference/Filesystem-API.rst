@@ -702,7 +702,7 @@ Paths
 
 	Looks up the incoming path and returns an object containing both the resolved path and node. 
 	
-	The options (``opts``) allow you to specify whether the object, it’s parent component, a symlink, or the item the symlink points to are returned. For example: ::
+	The options (``opts``) allow you to specify whether the object, its parent component, a symlink, or the item the symlink points to are returned. For example: ::
 	
 		var lookup = FS.lookupPath(path, { parent: true });
 	

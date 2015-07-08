@@ -822,7 +822,7 @@ var LibraryGL = {
       if (context.version === 2) {
         // drawBuffers is available in WebGL2 by default.
         context.drawBuffersExt = function(n, bufs) {
-          GLctx.drawBuffers(n, bufs);
+          GLctx['drawBuffers'](n, bufs);
         };
       } else {
         var ext = GLctx.getExtension('WEBGL_draw_buffers');

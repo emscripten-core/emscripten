@@ -8,11 +8,24 @@
 #include "libc.h"
 #include "syscall.h"
 #include "atomic.h"
+#ifdef __EMSCRIPTEN__
+#include <emscripten/threading.h>
+#else
 #include "futex.h"
+#endif
 
 #define pthread __pthread
 
 struct pthread {
+// XXX Emscripten: Need some custom thread control structures.
+#ifdef __EMSCRIPTEN__
+	// Note: The specific order of these fields is important, since these are accessed
+	// by direct pointer arithmetic in pthread-main.js.
+	int threadStatus; // 0: thread not exited, 1: exited.
+	int threadExitCode; // Thread exit code.
+	int tempDoublePtr[3]; // Temporary memory area for double operations in runtime.
+#endif
+
 	struct pthread *self;
 	void **dtv, *unused1, *unused2;
 	uintptr_t sysinfo;
@@ -66,6 +79,9 @@ struct __timer {
 #define _m_prev __u.__p[3]
 #define _m_next __u.__p[4]
 #define _m_count __u.__i[5]
+#ifdef __EMSCRIPTEN__
+#define _m_addr __u.__i[6]
+#endif
 #define _c_mutex __u.__p[0]
 #define _c_seq __u.__i[2]
 #define _c_waiters __u.__i[3]
@@ -76,6 +92,12 @@ struct __timer {
 #define _c_destroy __u.__i[8]
 #define _rw_lock __u.__i[0]
 #define _rw_waiters __u.__i[1]
+#ifdef __EMSCRIPTEN__
+// XXX Emscripten: The spec allows detecting when multiple write locks would deadlock, so use an extra field
+// _rw_wr_owner to record which thread owns the write lock in order to avoid hangs.
+// Points to the pthread that currently has the write lock.
+#define _rw_wr_owner __u.__i[2]
+#endif
 #define _b_lock __u.__i[0]
 #define _b_waiters __u.__i[1]
 #define _b_limit __u.__i[2]
@@ -83,7 +105,9 @@ struct __timer {
 #define _b_waiters2 __u.__i[4]
 #define _b_inst __u.__p[3]
 
+#ifndef __EMSCRIPTEN__ // XXX Not currently used for Emscripten.
 #include "pthread_arch.h"
+#endif
 
 #define SIGTIMER 32
 #define SIGCANCEL 33
@@ -108,8 +132,13 @@ void __unmapself(void *, size_t);
 
 int __timedwait(volatile int *, int, clockid_t, const struct timespec *, void (*)(void *), void *, int);
 void __wait(volatile int *, volatile int *, int, int);
+
+#ifdef __EMSCRIPTEN__
+#define __wake(addr, cnt, priv) emscripten_futex_wake((void*)addr, (cnt)<0?INT_MAX:(cnt))
+#else
 #define __wake(addr, cnt, priv) \
 	__syscall(SYS_futex, addr, FUTEX_WAKE, (cnt)<0?INT_MAX:(cnt))
+#endif
 
 void __acquire_ptc();
 void __release_ptc();

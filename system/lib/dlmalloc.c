@@ -8,6 +8,13 @@
 #define MORECORE_CANNOT_TRIM 1
 /* XXX Emscripten Tracing API. This defines away the code if tracing is disabled. */
 #include <emscripten/trace.h>
+
+/* Make malloc() and free() threadsafe by securing the memory allocations with pthread mutexes. */
+#if __EMSCRIPTEN_PTHREADS__
+#define USE_LOCKS 1
+#define USE_SPIN_LOCKS 0 // Ensure we use pthread_mutex_t.
+#endif
+
 #endif
 
 
@@ -2017,6 +2024,7 @@ static void init_malloc_global_mutex() {
 }
 
 #else /* pthreads-based locks */
+
 #define MLOCK_T               pthread_mutex_t
 #define ACQUIRE_LOCK(lk)      pthread_mutex_lock(lk)
 #define RELEASE_LOCK(lk)      pthread_mutex_unlock(lk)

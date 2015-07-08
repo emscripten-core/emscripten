@@ -7,7 +7,7 @@ About Emscripten
 Emscripten is an :ref:`Open Source <emscripten-license>` LLVM to JavaScript compiler. Using Emscripten you can:
 
 - Compile C and C++ code into JavaScript 
-- Compile any other code that can be translated into LLVM bytecode into JavaScript.
+- Compile any other code that can be translated into LLVM bitcode into JavaScript.
 - Compile the C/C++ **runtimes** of other languages into JavaScript, and then run code in those other languages in an *indirect* way (this has been done for Python and Lua)!
 
 .. tip:: Emscripten makes native code immediately available on the Web: a platform that is standards-based, has numerous independent compatible implementations, and runs everywhere from PCs to iPads. 
@@ -45,7 +45,7 @@ A high level view of the Emscripten toolchain is given below. The main tool is t
 
 .. image:: EmscriptenToolchain.png
 
-*Emcc* uses :term:`Clang` to convert C/C++ files to LLVM bytecode, and :ref:`Fastcomp <LLVM-Backend>` (Emscripten's Compiler Core — an LLVM backend) to compile the bytecode to JavaScript. The output JavaScript can be executed by :term:`node.js`, or from within HTML in a browser. 
+*Emcc* uses :term:`Clang` to convert C/C++ files to LLVM bitcode, and :ref:`Fastcomp <LLVM-Backend>` (Emscripten's Compiler Core — an LLVM backend) to compile the bitcode to JavaScript. The output JavaScript can be executed by :term:`node.js`, or from within HTML in a browser.
 
 The :ref:`emsdk` is used to manage multiple SDKs and tools, and to specify the particular SDK/set of tools currently being used to compile code (the :term:`Active Tool/SDK`). It can even "install" (download and build) the latest toolchain from Github! 
 

@@ -822,7 +822,7 @@ function WebGLWorker() {
         break;
       }
     }
-    texture.binding = target;
+    if (texture) texture.binding = target;
     commandBuffer.push(38, target, texture ? texture.id : 0);
   };
   this.texParameteri = function(target, pname, param) {
@@ -991,6 +991,9 @@ function WebGLWorker() {
     // optimisticaly return that everything is ok; client will abort on an actual context loss. we assume an error-free async workflow
     commandBuffer.push(76);
     return false;
+  };
+  this.isProgram = function(program) {
+    return program && program.what === 'program';
   };
 
   // Setup

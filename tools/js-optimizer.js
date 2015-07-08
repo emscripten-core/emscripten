@@ -5783,7 +5783,6 @@ function emterpretify(ast) {
   var ASYNC = extraInfo.ASYNC;
   var PROFILING = extraInfo.PROFILING;
   var ASSERTIONS = extraInfo.ASSERTIONS;
-  var yieldFuncs = set(extraInfo.yieldFuncs);
 
   var RELATIVE_BRANCHES = set('BR', 'BRT', 'BRF');
   var ABSOLUTE_BRANCHES = set('BRA', 'BRTA', 'BRFA');
@@ -5809,6 +5808,14 @@ function emterpretify(ast) {
   function flattenFloat64(value) {
     tempFloat64[0] = value;
     return Array.prototype.slice.call(tempUint8, 0, 8);
+  }
+
+  var OK_TO_CALL_WHILE_ASYNC = set('stackSave', 'stackRestore', 'stackAlloc', 'setThrew', '_memset'); // functions which are ok to run while async, even if not emterpreted
+  function okToCallWhileAsync(name) {
+    // dynCall *can* be on the stack, they are just bridges; what matters is where they go
+    if (/^dynCall_/.test(name)) return true;
+    if (name in OK_TO_CALL_WHILE_ASYNC) return true;
+    return false;
   }
 
   function verifyCode(code, stat) {
@@ -7066,12 +7073,9 @@ function emterpretify(ast) {
 
     if (ignore) {
       // we are not emterpreting this function
-      if (ASYNC && ASSERTIONS && !/^dynCall_/.test(func[1]) && !(func[1] in yieldFuncs)) {
+      if (ASYNC && ASSERTIONS && !okToCallWhileAsync(func[1])) {
         // we need to be careful to never enter non-emterpreted code while doing an async save/restore,
         // which is what happens if non-emterpreted code is on the stack while we attempt to save.
-        // note that we special-case dynCall, which *can* be on the stack, they are just bridges; what
-        // matters is where they go
-
         // add asserts right after each call
         var stack = [];
         traverse(func, function(node, type) {
@@ -7280,10 +7284,6 @@ function emterpretify(ast) {
       });
       if (ASYNC) {
         argStats.push(['if', srcToExp('(asyncState|0) == 1'), srcToStat('asyncState = 3;')]); // we know we are during a sleep, mark the state
-        if (ASSERTIONS && !(func[1] in yieldFuncs)) {
-          argStats.push(['if', srcToExp('((asyncState|0) == 1) | ((asyncState|0) == 3)'), srcToStat('abort(-12) | 0')]); // if *not* a yield func, we should never get here (trampoline entry)
-                                                                                                                         // while sleeping (3, or 1 which has not yet been turned into a 3)
-        }
         argStats = [['if', srcToExp('(asyncState|0) != 2'), ['block', argStats]]]; // 2 means restore, so do not trample the stack
       }
       func[3] = func[3].concat(argStats);

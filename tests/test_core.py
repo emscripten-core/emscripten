@@ -618,6 +618,36 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 0.00,10,123.46,0.00 : 0.00,10,123.46,0.00
 ''')
 
+  def test_align_moar(self):
+    def test():
+      self.do_run(r'''
+#include <xmmintrin.h>
+#include <stdio.h>
+
+struct __attribute__((aligned(16))) float4x4
+{
+    union
+    {
+        float v[4][4];
+        __m128 row[4];
+    };
+};
+
+float4x4 v;
+__m128 m;
+
+int main()
+{
+    printf("Alignment: %d addr: %x\n", ((int)&v) % 16, (int)&v);
+    printf("Alignment: %d addr: %x\n", ((int)&m) % 16, (int)&m);
+}
+    ''', 'Alignment: 0 addr: 10\nAlignment: 0 addr: 50\n') # hardcoded addresses, just to track if this ever changes by surprise. will need normal updates.
+
+    test()
+    print 'relocatable'
+    Settings.RELOCATABLE = 1
+    test()
+
   def test_unsigned(self):
       src = '''
         #include <stdio.h>
@@ -2213,12 +2243,25 @@ int main() {
     self.do_run_from_file(src, output)
 
   def test_bigswitch(self):
-    if self.run_name != 'default': return self.skip('TODO: issue #781')
+    if self.is_emterpreter(): return self.skip('todo')
+    self.banned_js_engines = [SPIDERMONKEY_ENGINE] # bug 1174230
     src = open(path_from_root('tests', 'bigswitch.cpp')).read()
     self.do_run(src, '''34962: GL_ARRAY_BUFFER (0x8892)
 26214: what?
 35040: GL_STREAM_DRAW (0x88E0)
-''', args=['34962', '26214', '35040'])
+3060: what?
+''', args=['34962', '26214', '35040', str(0xbf4)])
+
+  def test_biggerswitch(self):
+    if self.is_emterpreter(): return self.skip('todo')
+    self.banned_js_engines = [SPIDERMONKEY_ENGINE] # bug 1174230
+    num_cases = 20000
+    switch_case, err = Popen([PYTHON, path_from_root('tests', 'gen_large_switchcase.py'), str(num_cases)], stdout=PIPE, stderr=PIPE).communicate()
+    self.do_run(switch_case, '''58996: 589965899658996
+59297: 592975929759297
+59598: default
+59899: 598995989959899
+Success!''')
 
   def test_indirectbr(self):
       Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS)
@@ -4359,6 +4402,13 @@ Have even and odd!
     self.do_run_from_file(src, output)
 
   def test_fnmatch(self):
+    # Run one test without assertions, for additional coverage
+    assert 'asm2m' in test_modes
+    if self.run_name == 'asm2m':
+      i = self.emcc_args.index('ASSERTIONS=1')
+      assert i > 0 and self.emcc_args[i-1] == '-s'
+      self.emcc_args[i] = 'ASSERTIONS=0'
+      print 'flip assertions off'
     test_path = path_from_root('tests', 'core', 'fnmatch')
     src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
@@ -4535,7 +4585,7 @@ def process(filename):
       try_delete(mem_file)
       self.do_run(src, map(lambda x: x if 'SYSCALL_DEBUG=1' not in mode else ('syscall! 146,SYS_writev' if self.run_name == 'default' else 'syscall! 146'), ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n \ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n')),
                   post_build=post, extra_emscripten_args=['-H', 'libc/fcntl.h'])
-      if '-O2' in self.emcc_args:
+      if self.uses_memory_init_file():
         assert os.path.exists(mem_file)
 
   def test_files_m(self):
@@ -5483,7 +5533,6 @@ return malloc(size);
       self.emcc_args += ['-s', 'EMTERPRETIFY_WHITELIST=["_frexpl"]'] # test double call assertions
       test()
 
-  # Tests the full SSE1 API.
   def test_sse1(self):
     return self.skip('TODO: This test fails due to bugs #2840, #3044, #3045, #3046 and #3048 (also see #3043 and #3049)')
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
@@ -5492,6 +5541,19 @@ return malloc(size);
     for mode in [[], ['-s', 'SIMD=1']]:
       self.emcc_args = orig_args + mode
       self.do_run(open(path_from_root('tests', 'test_sse1.cpp'), 'r').read(), 'Success!')
+
+  # Tests the full SSE1 API.
+  def test_sse1_full(self):
+    return self.skip('TODO: This test fails due to bugs #2840, #3044, #3045, #3046 and #3048 (also see #3043 and #3049)')
+    if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('test_sse1_full requires SpiderMonkey to run.')
+    Popen([CLANG, path_from_root('tests', 'test_sse1_full.cpp'), '-o', 'test_sse1_full'] + get_clang_native_args(), stdout=PIPE, stderr=PIPE).communicate()
+    native_result, err = Popen('./test_sse1_full', stdout=PIPE, stderr=PIPE).communicate()
+
+    Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
+    orig_args = self.emcc_args
+    for mode in [[], ['-s', 'SIMD=1']]:
+      self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests')]
+      self.do_run(open(path_from_root('tests', 'test_sse1_full.cpp'), 'r').read(), native_result)
 
   def test_simd(self):
     if self.is_emterpreter(): return self.skip('todo')
@@ -7000,7 +7062,8 @@ Module.printErr = Module['printErr'] = function(){};
       # XXX Does not work in SpiderMonkey since callstacks cannot be captured when running in asm.js, see https://bugzilla.mozilla.org/show_bug.cgi?id=947996
       self.banned_js_engines = [SPIDERMONKEY_ENGINE] 
     if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
-    self.do_run('#define RUN_FROM_JS_SHELL\n' + open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read(), "Success!")
+    Building.COMPILER_TEST_OPTS += ['-DRUN_FROM_JS_SHELL']
+    self.do_run(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read(), "Success!")
 
   def test_float_literals(self):
     self.do_run_from_file(path_from_root('tests', 'test_float_literals.cpp'), path_from_root('tests', 'test_float_literals.out'))
@@ -7386,6 +7449,7 @@ asm2f = make_run("asm2f", compiler=CLANG, emcc_args=["-Oz", "-s", "PRECISE_F32=1
 asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "-s", "SAFE_HEAP=1"])
 asm1i = make_run("asm1i", compiler=CLANG, emcc_args=["-O1", '-s', 'EMTERPRETIFY=1'])
 asm3i = make_run("asm3i", compiler=CLANG, emcc_args=["-O3", '-s', 'EMTERPRETIFY=1'])
+asm2m = make_run("asm2m", compiler=CLANG, emcc_args=["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1"])
 
 # Legacy test modes - 
 asm2nn = make_run("asm2nn", compiler=CLANG, emcc_args=["-O2"], env={"EMCC_NATIVE_OPTIMIZER": "0"})

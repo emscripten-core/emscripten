@@ -19,13 +19,13 @@ Download one of the SDK installers below to get started with Emscripten developm
 Windows
 -------
 
-- `Emscripten SDK Web Installer  <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.30.0-web-64bit.exe>`_ (emsdk-1.30.0-web-64bit.exe)
+- `Emscripten SDK Web Installer  <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.34.1-web-64bit.exe>`_ (emsdk-1.34.1-web-64bit.exe)
 		An NSIS installer that fetches and installs the latest Emscripten SDK from the Web. To :ref:`install <windows-installation_instructions-NSIS>`, download and open the file, then follow the installer prompts.
 
-- `Emscripten SDK Offline Installer <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.30.0-full-64bit.exe>`_ (emsdk-1.30.0-full-64bit.exe)
+- `Emscripten SDK Offline Installer <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.34.1-full-64bit.exe>`_ (emsdk-1.34.1-full-64bit.exe)
 		An NSIS installer that bundles together the current Emscripten toolchain as an offline-installable package. To :ref:`install <windows-installation_instructions-NSIS>`, download and open the file, then follow the installer prompts.
 
-- `Portable Emscripten SDK for Windows <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.30.0-portable-64bit.zip>`_ (emsdk-1.30.0-portable-64bit.zip)
+- `Portable Emscripten SDK for Windows <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.34.1-portable-64bit.zip>`_ (emsdk-1.34.1-portable-64bit.zip)
 		A zipped package of the SDK that does not require system installation privileges. Follow the instructions below to :ref:`install the Portable Emscripten SDK on Windows <all-os-installation_instructions-portable-SDK>`.
 
 Linux and Mac OS X
@@ -102,19 +102,40 @@ Platform-specific notes
 Mac OS X
 ++++++++
 
-- *Git* is not installed automatically. Git is only needed if you want to use tools from one of the development branches directly (**emscripten-incoming** or **emscripten-master**). To install *git* on OSX:
-   
-	1. Install *XCode* and the *XCode Command Line Tools*. This will provide *git* to the system PATH. For more help on this step, see `this stackoverflow post <http://stackoverflow.com/questions/9329243/xcode-4-4-command-line-tools>`_.
-	2. Install git directly from http://git-scm.com/.
+These instructions explain how to install **all** the :ref:`required tools <toolchain-what-you-need>`. You can :ref:`test whether some of these are already installed <toolchain-test-which-dependencies-are-installed>` on the platform and skip those steps.
 
-- *Java* is not bundled with the Emscripten SDK. After installing Emscripten via :ref:`emsdk <emsdk>`, typing ``./emcc --help`` should pop up a dialog that will automatically download a Java Runtime to the system: ::
+#. Install the *XCode Command Line Tools*. These are a precondition for *git*.
 
-	Java is not installed. To open Java, you need a Java SE 6 runtime. 
-	Would you like to install one now?
+	-  Install XCode from the `Mac OS X App Store <http://superuser.com/questions/455214/where-is-svn-on-os-x-mountain-lion>`_.
+	-  In **XCode | Preferences | Downloads**, install *Command Line Tools*.
+
+#. Install *git*:
+
+	- `Allow installation of unsigned packages <https://www.my-private-network.co.uk/knowledge-base/apple-related-questions/osx-unsigned-apps.html>`_, or installing the git package won't succeed.
+	- Install XCode and the XCode Command Line Tools (should already have been done). This will provide *git* to the system PATH (see `this stackoverflow post <http://stackoverflow.com/questions/9329243/xcode-4-4-command-line-tools>`_).
+	- Download and install git directly from http://git-scm.com/.	
+
+#. Install *cmake* if you do not have it yet:
+
+	-  Download and install `cmake-2.8.10.2-Darwin64-universal.dmg <http://www.cmake.org/cmake/resources/software.html>`_.
 	
-- The *python2* command line tool is not present on OSX by default. To manually work around this issue, follow the linked step in :ref:`Getting started on Mac OS X <getting-started-on-osx-install-python2>`.
+	.. tip:: This specific version (2.8.10) is recommended — it has been tested and shown to work. Other versions may not correctly set up the PATH variables, with the result that running *cmake* gives you "not found" errors.
 
-.. **HamishW**: I think that Mac OS X has the same issues as Linux - ie you don't get ANYTHING much in the SDK. YOu will need the command line tools, but mostly for GCC - need to confirm this with Jukka
+	
+#. Install *node.js* from http://nodejs.org/ 
+
+
+	.. _getting-started-on-osx-install-python2:
+
+#. Setup *python2* (this step is needed to workaround a bug reported in `#763 <https://github.com/kripken/emscripten/issues/763>`_):
+
+	-  In terminal, type ``python2 --version``. If you get a "command not found", type the following: ::
+	
+		cd /usr/bin
+		sudo ln python python2
+		sudo ln ../../System/Library/Frameworks/Python.framework/Versions/2.7/bin/python2.7 python22.7
+		
+	-  Enter ``python2 --version`` again. It should now print Python 2.7.2
 
 Linux
 ++++++++
@@ -150,6 +171,8 @@ Linux
 		
 		# Install Java
 		sudo apt-get install default-jre
+
+.. note:: Your system may provide Node.js as ``node`` instead of ``nodejs``. In that case, you may need to also update the ``NODE_JS`` attribute of your ``~/.emscripten`` file.
 		
 - *Git* is not installed automatically. Git is only needed if you want to use tools from one of the development branches **emscripten-incoming** or **emscripten-master**: 
 
@@ -213,6 +236,7 @@ You can always install old SDK and compiler toolchains using a *current SDK*. Se
 
 On Windows, you can also install one of the **old versions** via an offline NSIS installer:
 
+- `emsdk-1.34.1-full-64bit.exe` <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.34.1-full-64bit.exe`_ (first release based on Clang 3.7)
 - `emsdk-1.30.0-full-64bit.exe` <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.30.0-full-64bit.exe`_ (first and last release based on Clang 3.5)
 - `emsdk-1.29.0-full-64bit.exe` <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.29.0-full-64bit.exe`_ (first and last release based on Clang 3.4)
 - `emsdk-1.27.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.27.0-full-64bit.exe>`_

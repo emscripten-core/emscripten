@@ -66,7 +66,7 @@ EM_ASM(...)
        above.
 
      * Newlines (\n, \r etc.) are supported in the inline
-       Javascript. Note that any platform-specific issues with line
+       JavaScript. Note that any platform-specific issues with line
        endings in normal JavaScript also apply to inline JavaScript
        declared using "EM_ASM".
 
@@ -471,7 +471,7 @@ int emscripten_set_main_loop_timing(int mode, int value)
           US/docs/Web/API/WindowTimers.setTimeout#Inactive_tabs>* for
           more information.
 
-void emscripten_set_main_loop_timing(int *mode, int *value)
+void emscripten_get_main_loop_timing(int *mode, int *value)
 
       Returns the current main loop timing mode that is in effect. For
       interpretation of the values, see the documentation of the
@@ -1814,7 +1814,7 @@ void emscripten_idb_load(const char *db_name, const char *file_id, void** pbuffe
       * **perror** -- An out parameter that will be filled with a
         non- zero value if an error occurred.
 
-void emscripten_idb_store(const char *db_name, const char *file_id, void* ptr, int num, int *perror);
+void emscripten_idb_store(const char *db_name, const char *file_id, void* buffer, int num, int *perror);
 
    Synchronously stores data to IndexedDB.
 
@@ -1851,13 +1851,11 @@ void emscripten_idb_exists(const char *db_name, const char *file_id, int* pexist
 
       * **file_id** -- The name of the file to check
 
-      * **perror** -- An out parameter that will be filled with a
+      * **pexists** -- An out parameter that will be filled with a
         non- zero value if the file exists in that database.
 
       * **perror** -- An out parameter that will be filled with a
         non- zero value if an error occurred.
-
-void emscripten_idb_load(const char *db_name, const char *file_id, void** pbuffer, int* pnum, int *perror);
 
 
 Asyncify functions

@@ -22,6 +22,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # -v, without input files
       output = Popen([PYTHON, compiler, '-v'], stdout=PIPE, stderr=PIPE).communicate()
       self.assertContained('''clang version''', output[1].replace('\r', ''), output[1].replace('\r', ''))
+      self.assertContained('''GNU''', output[0])
 
       # --help
       output = Popen([PYTHON, compiler, '--help'], stdout=PIPE, stderr=PIPE).communicate()
@@ -1753,6 +1754,10 @@ int f() {
        ['asm', 'eliminate']), # eliminate, just enough to trigger asm normalization/denormalization
       (path_from_root('tests', 'optimizer', 'safeLabelSetting.js'), open(path_from_root('tests', 'optimizer', 'safeLabelSetting-output.js')).read(),
        ['asm', 'safeLabelSetting']), # eliminate, just enough to trigger asm normalization/denormalization
+      (path_from_root('tests', 'optimizer', 'null_if.js'), [open(path_from_root('tests', 'optimizer', 'null_if-output.js')).read(), open(path_from_root('tests', 'optimizer', 'null_if-output2.js')).read()],
+       ['asm', 'registerizeHarder', 'asmLastOpts', 'minifyWhitespace']), # issue 3520
+      (path_from_root('tests', 'optimizer', 'null_else.js'), [open(path_from_root('tests', 'optimizer', 'null_else-output.js')).read(), open(path_from_root('tests', 'optimizer', 'null_else-output2.js')).read()],
+       ['asm', 'registerizeHarder', 'asmLastOpts', 'minifyWhitespace']), # issue 3549
     ]:
       print input, passes
 
@@ -1817,7 +1822,9 @@ int f() {
           json += '\n' + original[original.find('// EXTRA_INFO:'):]
           open(input_temp + '.js', 'w').write(json)
 
-        if 'last' not in passes: # last is only relevant when we emit JS
+        # last is only relevant when we emit JS
+        if 'last' not in passes and \
+           'null_if' not in input and 'null_else' not in input:  # null-* tests are js optimizer or native, not a mixture (they mix badly)
           print '  native (receiveJSON)'
           output = Popen([js_optimizer.get_native_optimizer(), input_temp + '.js'] + passes + ['receiveJSON', 'emitJSON'], stdin=PIPE, stdout=open(output_temp, 'w')).communicate()[0]
           check_json()
@@ -3326,6 +3333,28 @@ EMSCRIPTEN_KEEPALIVE __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny
     assert len(with_dash_o) == 0
     assert len(without_dash_o) != 0
 
+  def test_dashM(self):
+    out = Popen([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-M'], stdout=PIPE).communicate()[0]
+    self.assertContained('hello_world.o:', out) # Verify output is just a dependency rule instead of bitcode or js
+
+  def test_dashM_consistent(self):
+    normal = Popen([PYTHON, EMXX, '-v', '-Wno-warn-absolute-paths', path_from_root('tests', 'hello_world.cpp'), '-c'], stdout=PIPE, stderr=PIPE).communicate()[1]
+    dash_m = Popen([PYTHON, EMXX, '-v', '-Wno-warn-absolute-paths', path_from_root('tests', 'hello_world.cpp'), '-M'], stdout=PIPE, stderr=PIPE).communicate()[1]
+
+    import difflib
+    diff = [a.rstrip()+'\n' for a in difflib.unified_diff(normal.split('\n'), dash_m.split('\n'), fromfile='normal', tofile='dash_m')]
+    left_std = filter(lambda x: x.startswith('-') and '-std=' in x, diff)
+    right_std = filter(lambda x: x.startswith('+') and '-std=' in x, diff)
+    assert len(left_std) == len(right_std) == 1, '\n\n'.join(diff)
+    bad = filter(lambda x: '-Wno-warn-absolute-paths' in x, diff)
+    assert len(bad) == 0, '\n\n'.join(diff)
+
+  def test_dashM_respect_dashO(self):
+    with_dash_o = Popen([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-M', '-o', '/dev/null'], stdout=PIPE, stderr=PIPE).communicate()[0]
+    without_dash_o = Popen([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-M'], stdout=PIPE, stderr=PIPE).communicate()[0]
+    assert len(with_dash_o) == 0
+    assert len(without_dash_o) != 0
+
   def test_malloc_implicit(self):
     open('src.cpp', 'w').write(r'''
 #include <stdlib.h>
@@ -4218,7 +4247,7 @@ pass: error == ENOTDIR
     shutil.copyfile('a.out.js', 'last.js')
     do_emcc_test('fannkuch.cpp', ['5'], 'Pfannkuchen(5) = 7.', ['-g2', '--profiling'])
     profiling = open('a.out.js').read()
-    assert len(profiling) > len(normal) + 300, [len(profiling), len(normal)] # should be much larger
+    assert len(profiling) > len(normal) + 250, [len(profiling), len(normal)] # should be much larger
 
     print 'blacklisting'
 
@@ -4401,13 +4430,6 @@ function _main() {
 
     out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'emterpreter_advise_funcptr.cpp'), '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_ADVISE=1'], stdout=PIPE).communicate()
     self.assertContained('-s EMTERPRETIFY_WHITELIST=\'["__Z4posti", "__Z5post2i", "__Z6middlev", "__Z7sleeperv", "__Z8recurserv", "_main"]\'', out)
-    self.assertNotContained('EMTERPRETIFY_YIELDLIST', out);
-
-    out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'emterpreter_advise_funcptr.cpp'), '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_ADVISE=1', '-s', 'EMTERPRETIFY_YIELDLIST=["__Z6middlev"]'], stdout=PIPE).communicate()
-    self.assertContained('-s EMTERPRETIFY_YIELDLIST=\'["__Z6middlev", "__Z6print2PKcii", "__Z7siblingii", "__Z7sleeperv", "__Z8recurserv", "_emscripten_asm_const_3"]\'', out)
-
-    out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'emterpreter_advise_funcptr.cpp'), '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_ADVISE=1', '-s', 'EMTERPRETIFY_YIELDLIST=["__Z3pref"]'], stdout=PIPE).communicate()
-    self.assertContained('-s EMTERPRETIFY_YIELDLIST=\'["__Z3pref", "__Z6print1PKci", "__Z6print2PKcii", "__Z7siblingii", "_emscripten_asm_const_2", "_emscripten_asm_const_3"]\'', out)
 
   def test_link_with_a_static(self):
     for args in [[], ['-O2']]:
@@ -4956,4 +4978,23 @@ int main() {
 ''')
     out, err = Popen([PYTHON, EMCC, 'src.c', '-s', 'EXPORTED_FUNCTIONS=["_main", "_treecount"]', '--minify', '0', '-g4', '-Oz']).communicate()
     self.assertContained('hello, world!', run_js('a.out.js'))
+
+  def test_meminit_crc(self):
+    with open('src.c', 'w') as f:
+      f.write(r'''
+#include<stdio.h>
+int main() { printf("Mary had a little lamb.\n"); }
+''')
+    out, err = Popen([PYTHON, EMCC, 'src.c', '-O2', '--memory-init-file', '0', '-s', 'MEM_INIT_METHOD=2', '-s', 'ASSERTIONS=1']).communicate()
+    with open('a.out.js', 'r') as f:
+      d = f.read()
+    d = d.replace('Mary had', 'Paul had')
+    with open('a.out.js', 'w') as f:
+      f.write(d)
+    out = run_js('a.out.js', assert_returncode=None, stderr=subprocess.STDOUT)
+    self.assertContained('Assertion failed: memory initializer checksum', out)
+
+  def test_no_warn_exported_jslibfunc(self):
+    out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["alGetError"]', '-s', 'EXPORTED_FUNCTIONS=["_main", "_alGetError"]'], stdout=PIPE, stderr=PIPE).communicate()
+    self.assertNotContained('''function requested to be exported, but not implemented: "_alGetError"''', err)
 

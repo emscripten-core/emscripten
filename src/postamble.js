@@ -1,7 +1,40 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
+#if MEM_INIT_METHOD == 2
+#if USE_PTHREADS
+if (memoryInitializer && !ENVIRONMENT_IS_PTHREAD) (function(s) {
+#else
+if (memoryInitializer) (function(s) {
+#endif
+  var i, n = s.length;
+#if ASSERTIONS
+  n -= 4;
+  var crc, bit, table = new Int32Array(256);
+  for (i = 0; i < 256; ++i) {
+    for (crc = i, bit = 0; bit < 8; ++bit)
+      crc = (crc >>> 1) ^ ((crc & 1) * 0xedb88320);
+    table[i] = crc >>> 0;
+  }
+  crc = -1;
+  crc = table[(crc ^ n) & 0xff] ^ (crc >>> 8);
+  crc = table[(crc ^ (n >>> 8)) & 0xff] ^ (crc >>> 8);
+  for (i = 0; i < s.length; ++i) {
+    crc = table[(crc ^ s.charCodeAt(i)) & 0xff] ^ (crc >>> 8);
+  }
+  assert(crc === 0, "memory initializer checksum");
+#endif
+  for (i = 0; i < n; ++i) {
+    HEAPU8[Runtime.GLOBAL_BASE + i] = s.charCodeAt(i);
+  }
+})(memoryInitializer);
+#else
+#if MEM_INIT_METHOD == 1
+#if USE_PTHREADS
+if (memoryInitializer && !ENVIRONMENT_IS_PTHREAD) {
+#else
 if (memoryInitializer) {
+#endif
   if (typeof Module['locateFile'] === 'function') {
     memoryInitializer = Module['locateFile'](memoryInitializer);
   } else if (Module['memoryInitializerPrefixURL']) {
@@ -9,17 +42,17 @@ if (memoryInitializer) {
   }
   if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
     var data = Module['readBinary'](memoryInitializer);
-    HEAPU8.set(data, STATIC_BASE);
+    HEAPU8.set(data, Runtime.GLOBAL_BASE);
   } else {
     addRunDependency('memory initializer');
     var applyMemoryInitializer = function(data) {
       if (data.byteLength) data = new Uint8Array(data);
 #if ASSERTIONS
       for (var i = 0; i < data.length; i++) {
-        assert(HEAPU8[STATIC_BASE + i] === 0, "area for memory initializer should not have been touched before it's loaded");
+        assert(HEAPU8[Runtime.GLOBAL_BASE + i] === 0, "area for memory initializer should not have been touched before it's loaded");
       }
 #endif
-      HEAPU8.set(data, STATIC_BASE);
+      HEAPU8.set(data, Runtime.GLOBAL_BASE);
       removeRunDependency('memory initializer');
     }
     var request = Module['memoryInitializerRequest'];
@@ -48,6 +81,8 @@ if (memoryInitializer) {
     }
   }
 }
+#endif
+#endif
 
 function ExitStatus(status) {
   this.name = "ExitStatus";
@@ -198,6 +233,10 @@ function exit(status, implicit) {
     Module.printErr('exit(' + status + ') called, but noExitRuntime, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)');
 #endif
   } else {
+#if USE_PTHREADS
+    PThread.terminateAllThreads();
+#endif
+
     ABORT = true;
     EXITSTATUS = status;
     STACKTOP = initialStackTop;
@@ -235,6 +274,9 @@ Module['exit'] = Module.exit = exit;
 var abortDecorators = [];
 
 function abort(what) {
+#if USE_PTHREADS
+  if (ENVIRONMENT_IS_PTHREAD) console.error('Pthread aborting at ' + new Error().stack);
+#endif
   if (what !== undefined) {
     Module.print(what);
     Module.printErr(what);
@@ -285,7 +327,11 @@ if (Module['noInitialRun']) {
 Module["noExitRuntime"] = true;
 #endif
 
+#if USE_PTHREADS
+if (!ENVIRONMENT_IS_PTHREAD) run();
+#else
 run();
+#endif
 
 // {{POST_RUN_ADDITIONS}}
 

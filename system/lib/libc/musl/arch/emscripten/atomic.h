@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <emscripten.h>
+#include <emscripten/threading.h>
 
 static inline int a_ctz_l(unsigned long x)
 {
@@ -38,58 +39,66 @@ static inline void a_or_64(volatile uint64_t *p, uint64_t v)
 
 static inline void a_store_l(volatile void *p, long x)
 {
-	*(long*)p = x;
+	emscripten_atomic_store_u32((void*)p, x);
 }
 
 static inline void a_or_l(volatile void *p, long v)
 {
-	*(long*)p |= v;
+	emscripten_atomic_or_u32((void*)p, v);
 }
 
 static inline void *a_cas_p(volatile void *p, void *t, void *s)
 {
-	if (*(long*)p == t)
-		*(long*)p = s;
-	return t;
+	return (void*)emscripten_atomic_cas_u32(p, (uint32_t)t, (uint32_t)s);
 }
 
 static inline long a_cas_l(volatile void *p, long t, long s)
 {
-	if (*(long*)p == t)
-		*(long*)p = s;
-	return t;
+	return emscripten_atomic_cas_u32(p, t, s);
 }
 
 static inline int a_cas(volatile int *p, int t, int s)
 {
-	if (*p == t)
-		*p = s;
-	return t;
+	return emscripten_atomic_cas_u32(p, t, s);
 }
 
 static inline void a_or(volatile void *p, int v)
 {
-	*(int*)p |= v;
+	emscripten_atomic_or_u32((void*)p, v);
 }
 
 static inline void a_and(volatile void *p, int v)
 {
-	*(int*)p &= v;
+	emscripten_atomic_and_u32((void*)p, v);
+}
+
+static inline int a_swap(volatile int *x, int v)
+{
+	int old;
+	do {
+		old = emscripten_atomic_load_u32(x);
+	} while(emscripten_atomic_cas_u32(x, old, v) != old);
+	return old;
+}
+
+static inline int a_fetch_add(volatile int *x, int v)
+{
+	return emscripten_atomic_add_u32(x, v);
 }
 
 static inline void a_inc(volatile int *x)
 {
-	++*x;
+	emscripten_atomic_add_u32((void*)x, 1);
 }
 
 static inline void a_dec(volatile int *x)
 {
-	--*x;
+	emscripten_atomic_sub_u32((void*)x, 1);
 }
 
 static inline void a_store(volatile int *p, int x)
 {
-	*p = x;
+	emscripten_atomic_store_u32((void*)p, x);
 }
 
 static inline void a_spin()
@@ -99,19 +108,6 @@ static inline void a_spin()
 static inline void a_crash()
 {
   EM_ASM( abort() );
-}
-
-static inline int a_swap(volatile int *x, int v)
-{
-	int old;
-	do old = *x;
-	while (!__sync_bool_compare_and_swap(x, old, v));
-	return old;
-}
-
-static inline int a_fetch_add(volatile int *x, int v)
-{
-  return __sync_fetch_and_add(x, v);
 }
 
 #endif
