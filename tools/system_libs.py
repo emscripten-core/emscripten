@@ -126,6 +126,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     # Add pthread files.
     pthreads_files = [os.path.join('pthread', 'library_pthread.c')]
     pthreads_files += glob.glob(shared.path_from_root('system/lib/libc/musl/src/thread/*.c'))
+    pthreads_files = filter(lambda x: os.path.basename(x) not in ('pthread_setcancelstate.c', 'pthread_getattr_np.c', 'pthread_testcancel.c'), pthreads_files)
     return build_libc(libname, pthreads_files, ['-O2'])
 
   # libcxx
