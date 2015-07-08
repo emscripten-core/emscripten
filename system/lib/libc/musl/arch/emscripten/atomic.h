@@ -37,6 +37,7 @@ static inline void a_or_64(volatile uint64_t *p, uint64_t v)
 	*p |= v;
 }
 
+#ifdef __EMSCRIPTEN_PTHREADS__
 static inline void a_store_l(volatile void *p, long x)
 {
 	emscripten_atomic_store_u32((void*)p, x);
@@ -100,6 +101,76 @@ static inline void a_store(volatile int *p, int x)
 {
 	emscripten_atomic_store_u32((void*)p, x);
 }
+#else // __EMSCRIPTEN_PTHREADS__
+static inline void a_store_l(volatile void *p, long x)
+{
+	*(long*)p = x;
+}
+
+static inline void a_or_l(volatile void *p, long v)
+{
+	*(long*)p |= v;
+}
+
+static inline void *a_cas_p(volatile void *p, void *t, void *s)
+{
+	if (*(long*)p == t)
+		*(long*)p = s;
+	return t;
+}
+
+static inline long a_cas_l(volatile void *p, long t, long s)
+{
+	if (*(long*)p == t)
+		*(long*)p = s;
+	return t;
+}
+
+static inline int a_cas(volatile int *p, int t, int s)
+{
+	if (*p == t)
+		*p = s;
+	return t;
+}
+
+static inline void a_or(volatile void *p, int v)
+{
+	*(int*)p |= v;
+}
+
+static inline void a_and(volatile void *p, int v)
+{
+	*(int*)p &= v;
+}
+
+static inline void a_inc(volatile int *x)
+{
+	++*x;
+}
+
+static inline void a_dec(volatile int *x)
+{
+	--*x;
+}
+
+static inline void a_store(volatile int *p, int x)
+{
+	*p = x;
+}
+
+static inline int a_swap(volatile int *x, int v)
+{
+	int old;
+	do old = *x;
+	while (!__sync_bool_compare_and_swap(x, old, v));
+	return old;
+}
+
+static inline int a_fetch_add(volatile int *x, int v)
+{
+  return __sync_fetch_and_add(x, v);
+}
+#endif
 
 static inline void a_spin()
 {

@@ -114,7 +114,13 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
               break
           if not cancel:
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
-    return build_libc(libname, libc_files, ['-Os'])
+    args = ['-Os']
+    if shared.Settings.USE_PTHREADS:
+      args += ['-s', 'USE_PTHREADS=1']
+      assert '-mt' in libname
+    else:
+      assert '-mt' not in libname
+    return build_libc(libname, libc_files, args)
 
   def create_pthreads(libname):
     # Add pthread files.
@@ -256,18 +262,19 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   system_libs = [('libcxx',    'a',  create_libcxx,    libcxx_symbols,    ['libcxxabi'], True),
                  ('libcxxabi', 'bc', create_libcxxabi, libcxxabi_symbols, ['libc'],      False),
-                 ('gl',        'bc', create_gl,        gl_symbols,        ['libc'],      False),
-                 ('libc',      'bc', create_libc,      libc_symbols,      [],            False)]
+                 ('gl',        'bc', create_gl,        gl_symbols,        ['libc'],      False)]
 
   # malloc dependency is force-added, so when using pthreads, it must be force-added
   # as well, since malloc needs to be thread-safe, so it depends on mutexes.
   if shared.Settings.USE_PTHREADS:
-    system_libs += [('pthreads',  'bc', create_pthreads,  pthreads_symbols,  ['libc'],                   False),
-                    ('dlmalloc_threadsafe', 'bc', create_dlmalloc_multithreaded, [], [],                 False)]
+    system_libs += [('libc-mt',             'bc', create_libc,                   libc_symbols,     [],       False),
+                    ('pthreads',            'bc', create_pthreads,               pthreads_symbols, ['libc'], False),
+                    ('dlmalloc_threadsafe', 'bc', create_dlmalloc_multithreaded, [],               [],       False)]
     force.add('pthreads')
     force.add('dlmalloc_threadsafe')
   else:
-    system_libs += [('dlmalloc',  'bc', create_dlmalloc_singlethreaded,      [], [],                     False)]
+    system_libs += [('libc',     'bc', create_libc,                    libc_symbols, [], False),
+                    ('dlmalloc', 'bc', create_dlmalloc_singlethreaded, [],           [], False)]
     force.add('dlmalloc')
 
   # Go over libraries to figure out which we must include
