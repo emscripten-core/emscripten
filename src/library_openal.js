@@ -1066,6 +1066,7 @@ var LibraryOpenAL = {
     }
   },
 
+  alGetSourcefv__deps: ['alGetSourcef'],
   alGetSourcefv: function(source, param, values) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
@@ -1082,6 +1083,21 @@ var LibraryOpenAL = {
       return;
     }
     switch (param) {
+    case 0x1003 /* AL_PITCH */:
+    case 0x100A /* AL_GAIN */:
+    case 0x100D /* AL_MIN_GAIN */:
+    case 0x100E /* AL_MAX_GAIN */:
+    case 0x1023 /* AL_MAX_DISTANCE */:
+    case 0x1021 /* AL_ROLLOFF_FACTOR */:
+    case 0x1022 /* AL_CONE_OUTER_GAIN */:
+    case 0x1001 /* AL_CONE_INNER_ANGLE */:
+    case 0x1002 /* AL_CONE_OUTER_ANGLE */:
+    case 0x1020 /* AL_REFERENCE_DISTANCE */:
+    case 0x1024 /* AL_SEC_OFFSET */:
+    case 0x1025 /* AL_SAMPLE_OFFSET */:
+    case 0x1026 /* AL_BYTE_OFFSET */:
+      this._alGetSourcef(source, param, values);
+      break;
     case 0x1004 /* AL_POSITION */:
       var position = src.position;
       {{{ makeSetValue('values', '0', 'position[0]', 'float') }}}
