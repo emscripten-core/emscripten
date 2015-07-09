@@ -973,6 +973,9 @@ var LibraryOpenAL = {
     case 0x1002 /* AL_CONE_OUTER_ANGLE */:
       {{{ makeSetValue('value', '0', 'src.coneOuterAngle', 'i32') }}};
       break;
+    case 0x1007 /* AL_LOOPING */:
+      {{{ makeSetValue('value', '0', 'src.loop', 'i32') }}};
+      break;
     case 0x1009 /* AL_BUFFER */:
       if (!src.queue.length) {
         {{{ makeSetValue('value', '0', '0', 'i32') }}};
