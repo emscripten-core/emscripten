@@ -1,4 +1,4 @@
-extern struct pthread *__pthread_self(void);
+static inline struct pthread *__pthread_self(void) { return pthread_self(); }
 
 #define TP_ADJ(p) (p)
 
