@@ -108,6 +108,9 @@ int emscripten_is_main_browser_thread(void);
 
 void emscripten_main_thread_process_queued_calls();
 
+// Direct syscall access, second argument is a varargs pointer. used in proxying
+int emscripten_syscall(int, void*);
+
 #define EM_PROXIED_FOPEN 1
 #define EM_PROXIED_FGETS 2
 #define EM_PROXIED_FPUTS 3
@@ -244,6 +247,7 @@ void emscripten_main_thread_process_queued_calls();
 #define EM_PROXIED_RECVFROM 135
 #define EM_PROXIED_GETSOCKOPT 136
 #define EM_PROXIED_PTHREAD_CREATE 137
+#define EM_PROXIED_SYSCALL 138
 
 #ifdef __cplusplus
 }
