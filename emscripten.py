@@ -458,8 +458,7 @@ function _emscripten_asm_const_%d(%s) {
                  'notEqual', 'lessThanOrEqual', 'greaterThanOrEqual',
                  'select', 'and', 'or', 'xor', 'not',
                  'splat', 'swizzle', 'shuffle',
-                 'withX', 'withY', 'withZ', 'withW',
-                 'load', 'store', 'loadX', 'storeX', 'loadXY', 'storeXY', 'loadXYZ', 'storeXYZ',
+                 'load', 'store', 'load1', 'store1', 'load2', 'store2', 'load3', 'store3',
                  'extractLane', 'replaceLane']
     simdfloatfuncs = simdfuncs + ['div', 'min', 'max', 'minNum', 'maxNum', 'sqrt',
                                   'abs', 'fromInt32x4', 'fromInt32x4Bits',
