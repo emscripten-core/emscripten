@@ -504,9 +504,6 @@ mergeInto(LibraryManager.library, {
   __syscall: function(which, varargs) {
 #if USE_PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
-#if ASSERTIONS
-      assert(typeof which === 'number'); // we need to remove syscall_cp, which uses js varargs
-#endif
       return _emscripten_sync_run_in_main_thread_2({{{ cDefine('EM_PROXIED_SYSCALL') }}}, which, varargs);
     }
 #endif
@@ -1592,12 +1589,21 @@ mergeInto(LibraryManager.library, {
   __syscall_cp__deps: ['__syscall'],
   __syscall_cp: function() {
     var args = Array.prototype.slice.call(arguments);
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) {
+      return _emscripten_sync_run_in_main_thread_7({{{ cDefine('EM_PROXIED_SYSCALL_CP') }}}, args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
+    }
+#endif
     return ___syscall(args, 0);
   },
 
   emscripten_syscall__deps: ['__syscall'],
   emscripten_syscall: function(which, varargs) {
     return ___syscall(which, varargs);
+  },
+  emscripten_syscall_cp__deps: ['__syscall_cp'],
+  emscripten_syscall_cp: function(which, a1, a2, a3, a4, a5, a6) {
+    return ___syscall_cp(which, a1, a2, a3, a4, a5, a6);
   },
 });
 

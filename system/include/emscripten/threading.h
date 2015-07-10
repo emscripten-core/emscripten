@@ -99,6 +99,7 @@ void emscripten_sync_run_in_main_thread(em_queued_call *call);
 void *emscripten_sync_run_in_main_thread_1(int function, void *arg1);
 void *emscripten_sync_run_in_main_thread_2(int function, void *arg1, void *arg2);
 void *emscripten_sync_run_in_main_thread_3(int function, void *arg1, void *arg2, void *arg3);
+void *emscripten_sync_run_in_main_thread_7(int function, void *arg1, void *arg2, void *arg3, void *arg4, void *arg5, void *arg6, void *arg7);
 
 // Returns 1 if the current thread is the thread that hosts the Emscripten runtime.
 int emscripten_is_main_runtime_thread(void);
@@ -110,6 +111,8 @@ void emscripten_main_thread_process_queued_calls();
 
 // Direct syscall access, second argument is a varargs pointer. used in proxying
 int emscripten_syscall(int, void*);
+
+int emscripten_syscall_cp(int, long, long, long, long, long, long);
 
 #define EM_PROXIED_FOPEN 1
 #define EM_PROXIED_FGETS 2
@@ -248,6 +251,7 @@ int emscripten_syscall(int, void*);
 #define EM_PROXIED_GETSOCKOPT 136
 #define EM_PROXIED_PTHREAD_CREATE 137
 #define EM_PROXIED_SYSCALL 138
+#define EM_PROXIED_SYSCALL_CP 139
 
 #ifdef __cplusplus
 }
