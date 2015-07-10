@@ -207,7 +207,6 @@
          T acoshf
          T acoshl
          T addmntent
-         T alarm
          T alphasort
          W alphasort64
          T asinh
@@ -1065,6 +1064,7 @@
          T symlink
          T symlinkat
          T sync
+         T syscall
          U sysconf
          T syslog
          U tan
