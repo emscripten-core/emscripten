@@ -684,10 +684,8 @@ def which(program):
   return None
 
 def win_get_default_browser():
-  # Manually find the default system browser on Windows without relying on 'start %1' since
-  # that method has an issue, see comment below.
-
-  # In Py3, the _winreg module is called winreg without the underscore
+  # Look in the registry for the default system browser on Windows without relying on
+  # 'start %1' since that method has an issue, see comment below.
   try:
     with OpenKey(HKEY_CURRENT_USER, r"Software\Classes\http\shell\open\command") as key:
       cmd = QueryValue(key, None)
