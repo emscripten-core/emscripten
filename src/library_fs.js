@@ -4,14 +4,8 @@ mergeInto(LibraryManager.library, {
                 '__ATINIT__.unshift(function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() });' +
                 '__ATMAIN__.push(function() { FS.ignorePermissions = false });' +
                 '__ATEXIT__.push(function() { FS.quit() });' +
-                // export some names through closure
-                'Module["FS_createFolder"] = FS.createFolder;' +
-                'Module["FS_createPath"] = FS.createPath;' +
-                'Module["FS_createDataFile"] = FS.createDataFile;' +
-                'Module["FS_createPreloadedFile"] = FS.createPreloadedFile;' +
-                'Module["FS_createLazyFile"] = FS.createLazyFile;' +
-                'Module["FS_createLink"] = FS.createLink;' +
-                'Module["FS_createDevice"] = FS.createDevice;',
+                //Get module methods from settings
+                '{{{ EXPORTED_FS_METHODS.map(function(module){return 'Module["FS_' + module + '"] = FS.' + module + ";"}).reduce(function(str, module){return str + module;}) }}}',
   $FS: {
     root: null,
     mounts: [],
