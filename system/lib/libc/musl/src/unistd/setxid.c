@@ -22,11 +22,19 @@ static void do_setxid(void *p)
 		getrlimit(RLIMIT_NPROC, &old);
 		if ((c->err = -__setrlimit(RLIMIT_NPROC, &inf)) && libc.threads_minus_1)
 			return;
+#ifndef __EMSCRIPTEN__
 		c->err = -__syscall(c->nr, c->id, c->eid, c->sid);
+#else
+    c->err = EPERM; // we don't allow dynamic syscalls, and don't need to support these anyhow
+#endif
 		__setrlimit(RLIMIT_NPROC, &old);
 		return;
 	}
+#ifndef __EMSCRIPTEN__
 	c->err = -__syscall(c->nr, c->id, c->eid, c->sid);
+#else
+  c->err = EPERM; // we don't allow dynamic syscalls, and don't need to support these anyhow
+#endif
 }
 
 int __setxid(int nr, int id, int eid, int sid)

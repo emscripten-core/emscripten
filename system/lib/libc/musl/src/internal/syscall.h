@@ -20,6 +20,7 @@ long __syscall_ret(unsigned long), __syscall(syscall_arg_t, ...),
 	__syscall_cp(syscall_arg_t, syscall_arg_t, syscall_arg_t, syscall_arg_t,
 	             syscall_arg_t, syscall_arg_t, syscall_arg_t);
 
+#ifndef __EMSCRIPTEN__
 #define __syscall1(n,a) __syscall1(n,__scc(a))
 #define __syscall2(n,a,b) __syscall2(n,__scc(a),__scc(b))
 #define __syscall3(n,a,b,c) __syscall3(n,__scc(a),__scc(b),__scc(c))
@@ -35,11 +36,17 @@ long __syscall_ret(unsigned long), __syscall(syscall_arg_t, ...),
 #define __SYSCALL_DISP(b,...) __SYSCALL_CONCAT(b,__SYSCALL_NARGS(__VA_ARGS__))(__VA_ARGS__)
 
 #define __syscall(...) __SYSCALL_DISP(__syscall,__VA_ARGS__)
+#else // __EMSCRIPTEN__
+#define __syscall_emscripten(n, ...) __syscall##n(n, ##__VA_ARGS__)
+#define __syscall(n, ...) __syscall_emscripten(n, ##__VA_ARGS__)
+#endif // __EMSCRIPTEN__
+
 #define syscall(...) __syscall_ret(__syscall(__VA_ARGS__))
 
 #define socketcall __socketcall
 #define socketcall_cp __socketcall_cp
 
+#ifndef __EMSCRIPTEN__
 #define __syscall_cp0(n) (__syscall_cp)(n,0,0,0,0,0,0)
 #define __syscall_cp1(n,a) (__syscall_cp)(n,__scc(a),0,0,0,0,0)
 #define __syscall_cp2(n,a,b) (__syscall_cp)(n,__scc(a),__scc(b),0,0,0,0)
@@ -49,6 +56,10 @@ long __syscall_ret(unsigned long), __syscall(syscall_arg_t, ...),
 #define __syscall_cp6(n,a,b,c,d,e,f) (__syscall_cp)(n,__scc(a),__scc(b),__scc(c),__scc(d),__scc(e),__scc(f))
 
 #define __syscall_cp(...) __SYSCALL_DISP(__syscall_cp,__VA_ARGS__)
+#else // __EMSCRIPTEN__
+#define __syscall_cp(...) __syscall(__VA_ARGS__)
+#endif // __EMSCRIPTEN__
+
 #define syscall_cp(...) __syscall_ret(__syscall_cp(__VA_ARGS__))
 
 #ifdef SYS_socket
