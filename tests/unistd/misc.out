@@ -38,10 +38,10 @@ getpid: 42, errno: 0
 getppid: 1, errno: 0
 getpgid: 42, errno: 0
 getsid: 42, errno: 0
-setgid: 0, errno: 0
-setegid: 0, errno: 0
-setuid: 0, errno: 0
-seteuid: 0, errno: 0
+setgid: -1, errno: 1
+setegid: -1, errno: 1
+setuid: -1, errno: 1
+seteuid: -1, errno: 1
 setpgrp: 0, errno: 0
 setsid: 0, errno: 0
 setpgid: 0, errno: 0
