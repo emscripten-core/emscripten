@@ -797,7 +797,7 @@ var SyscallsLibrary = {
         return newsock.stream.fd;
       }
       case 11: { // sendto
-        var sock = SYSCALLS.getSocketFromFD(), message = SYSCALLS.get(), length = SYSCALLS.get(), flags = SYSCALLS.get(), dest = getSocketAddress(true);
+        var sock = SYSCALLS.getSocketFromFD(), message = SYSCALLS.get(), length = SYSCALLS.get(), flags = SYSCALLS.get(), dest = SYSCALLS.getSocketAddress(true);
         var slab = {{{ makeGetSlabs('message', 'i8', true) }}};
         if (!dest) {
           // send, no address provided
