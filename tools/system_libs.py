@@ -309,7 +309,12 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     if force_this or (len(need) > 0 and not only_forced):
       # We need to build and link the library in
       logging.debug('including %s' % name)
-      libfile = shared.Cache.get(name, lambda: create(name), extension=suffix)
+      def do_create():
+        logging.warning('building system library: ' + name + '...')
+        ret = create(name)
+        logging.warning('                         ' + (' '*len(name)) + '   ok')
+        return ret
+      libfile = shared.Cache.get(name, do_create, extension=suffix)
       ret.append(libfile)
       force = force.union(deps)
   ret.sort(key=lambda x: x.endswith('.a')) # make sure to put .a files at the end.
