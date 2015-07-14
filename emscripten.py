@@ -450,16 +450,16 @@ function _emscripten_asm_const_%d(%s) {
         asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(debug_tables[sig]) + ';'
 
     maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'clz32']]
-    simdfloattypes = ['float32x4']
-    simdinttypes = ['int32x4']
+    simdfloattypes = ['Float32x4']
+    simdinttypes = ['Int32x4']
     simdtypes = simdfloattypes + simdinttypes
     simdfuncs = ['check', 'add', 'sub', 'neg', 'mul',
                  'equal', 'lessThan', 'greaterThan',
                  'notEqual', 'lessThanOrEqual', 'greaterThanOrEqual',
                  'select', 'and', 'or', 'xor', 'not',
                  'splat', 'swizzle', 'shuffle',
-                 'withX', 'withY', 'withZ', 'withW',
-                 'load', 'store', 'loadX', 'storeX', 'loadXY', 'storeXY', 'loadXYZ', 'storeXYZ']
+                 'load', 'store', 'load1', 'store1', 'load2', 'store2', 'load3', 'store3',
+                 'extractLane', 'replaceLane']
     simdfloatfuncs = simdfuncs + ['div', 'min', 'max', 'minNum', 'maxNum', 'sqrt',
                                   'abs', 'fromInt32x4', 'fromInt32x4Bits',
                                   'reciprocalApproximation', 'reciprocalSqrtApproximation'];

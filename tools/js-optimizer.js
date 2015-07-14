@@ -1789,10 +1789,10 @@ function detectType(node, asmInfo, inVarDef) {
       if (node[1][0] === 'name') {
         switch (node[1][1]) {
           case 'Math_fround':          return ASM_FLOAT;
-          case 'SIMD_float32x4':
-          case 'SIMD_float32x4_check': return ASM_FLOAT32X4;
-          case 'SIMD_int32x4':
-          case 'SIMD_int32x4_check':   return ASM_INT32X4;
+          case 'SIMD_Float32x4':
+          case 'SIMD_Float32x4_check': return ASM_FLOAT32X4;
+          case 'SIMD_Int32x4':
+          case 'SIMD_Int32x4_check':   return ASM_INT32X4;
           default: break;
         }
       }
@@ -1854,8 +1854,8 @@ function makeAsmCoercion(node, type) {
     case ASM_INT: return ['binary', '|', node, ['num', 0]];
     case ASM_DOUBLE: return ['unary-prefix', '+', node];
     case ASM_FLOAT: return ['call', ['name', 'Math_fround'], [node]];
-    case ASM_FLOAT32X4: return ['call', ['name', 'SIMD_float32x4_check'], [node]];
-    case ASM_INT32X4: return ['call', ['name', 'SIMD_int32x4_check'], [node]];
+    case ASM_FLOAT32X4: return ['call', ['name', 'SIMD_Float32x4_check'], [node]];
+    case ASM_INT32X4: return ['call', ['name', 'SIMD_Int32x4_check'], [node]];
     case ASM_NONE:
     default: return node; // non-validating code, emit nothing XXX this is dangerous, we should only allow this when we know we are not validating
   }
@@ -1879,10 +1879,10 @@ function makeAsmVarDef(v, type) {
       }
     }
     case ASM_FLOAT32X4: {
-      return [v, ['call', ['name', 'SIMD_float32x4'], [['num', 0], ['num', 0], ['num', 0], ['num', 0]]]];
+      return [v, ['call', ['name', 'SIMD_Float32x4'], [['num', 0], ['num', 0], ['num', 0], ['num', 0]]]];
     }
     case ASM_INT32X4: {
-      return [v, ['call', ['name', 'SIMD_int32x4'], [['num', 0], ['num', 0], ['num', 0], ['num', 0]]]];
+      return [v, ['call', ['name', 'SIMD_Int32x4'], [['num', 0], ['num', 0], ['num', 0], ['num', 0]]]];
     }
     default: throw 'wha? ' + JSON.stringify([v, type]) + new Error().stack;
   }

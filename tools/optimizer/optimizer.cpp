@@ -14,8 +14,8 @@ typedef std::vector<IString> StringVec;
 
 Ref doc, extraInfo;
 
-IString SIMD_INT32X4_CHECK("SIMD_int32x4_check"),
-        SIMD_FLOAT32X4_CHECK("SIMD_float32x4_check");
+IString SIMD_INT32X4_CHECK("SIMD_Int32x4_check"),
+        SIMD_FLOAT32X4_CHECK("SIMD_Float32x4_check");
 
 //==================
 // Infrastructure
