@@ -503,7 +503,11 @@ var SyscallsLibrary = {
 
     get: function(varargs) {
       SYSCALLS.varargs += 4;
-      return {{{ makeGetValue('SYSCALLS.varargs', '-4', 'i32') }}};
+      var ret = {{{ makeGetValue('SYSCALLS.varargs', '-4', 'i32') }}};
+#if SYSCALL_DEBUG
+      Module.printErr('    (raw: "' + ret + '")');
+#endif
+      return ret;
     },
     getStr: function() {
       var ret = Pointer_stringify(SYSCALLS.get());
@@ -757,14 +761,7 @@ var SyscallsLibrary = {
   __syscall102: function(which, varargs) { // socketcall
     var call = SYSCALLS.get(), socketvararg = SYSCALLS.get();
     // socketcalls pass the rest of the arguments in a struct
-    get = function() {
-      var ret = {{{ makeGetValue('socketvararg', '0', 'i32') }}};
-      socketvararg += 4;
-#if SYSCALL_DEBUG
-      Module.printErr('  socket syscall arg: ' + ret);
-#endif
-      return ret;
-    }
+    SYSCALLS.varargs = socketvararg;
     switch (call) {
       case 1: { // socket
         var domain = SYSCALLS.get(), type = SYSCALLS.get(), protocol = SYSCALLS.get();
