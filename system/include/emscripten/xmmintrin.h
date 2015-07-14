@@ -53,13 +53,13 @@ _mm_load_ps(const float *__p)
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_loadl_pi(__m128 __a, const void /*__m64*/ *__p)
 {
-  return __builtin_shufflevector(emscripten_float32x4_loadxy(__p), __a, 0, 1, 6, 7);
+  return __builtin_shufflevector(emscripten_float32x4_load2(__p), __a, 0, 1, 6, 7);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_loadh_pi(__m128 __a, const void /*__m64*/ *__p)
 {
-  return __builtin_shufflevector(__a, emscripten_float32x4_loadxy(__p), 0, 1, 4, 5);
+  return __builtin_shufflevector(__a, emscripten_float32x4_load2(__p), 0, 1, 4, 5);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
@@ -90,19 +90,19 @@ _mm_load_ps1(const float *__p)
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_load_ss(const float *__p)
 {
-  return emscripten_float32x4_loadx(__p);
+  return emscripten_float32x4_load1(__p);
 }
 
 static __inline__ void __attribute__((__always_inline__))
 _mm_storel_pi(void /*__m64*/ *__p, __m128 __a)
 {
-  emscripten_float32x4_storexy(__p, __a);
+  emscripten_float32x4_store2(__p, __a);
 }
 
 static __inline__ void __attribute__((__always_inline__))
 _mm_storeh_pi(void /*__m64*/ *__p, __m128 __a)
 {
-  emscripten_float32x4_storexy(__p, __builtin_shufflevector(__a, __a, 2, 3, 0, 1));
+  emscripten_float32x4_store2(__p, __builtin_shufflevector(__a, __a, 2, 3, 0, 1));
 }
 
 static __inline__ void __attribute__((__always_inline__))
@@ -140,7 +140,7 @@ _mm_store_ps1(float *__p, __m128 __a)
 static __inline__ void __attribute__((__always_inline__))
 _mm_store_ss(float *__p, __m128 __a)
 {
-  emscripten_float32x4_storex(__p, __a);
+  emscripten_float32x4_store1(__p, __a);
 }
 
 static __inline__ void __attribute__((__always_inline__))
@@ -376,8 +376,8 @@ _mm_cmpgt_ss(__m128 __a, __m128 __b)
 
 static __inline__ __m128 __attribute__((__always_inline__)) _mm_cmpord_ps(__m128 __a, __m128 __b)
 {
-  return emscripten_float32x4_and(emscripten_float32x4_equal(__a, __a),
-                                  emscripten_float32x4_equal(__b, __b));
+  return emscripten_int32x4_and(emscripten_float32x4_equal(__a, __a),
+                                emscripten_float32x4_equal(__b, __b));
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__)) _mm_cmpord_ss(__m128 __a, __m128 __b)
@@ -387,8 +387,8 @@ static __inline__ __m128 __attribute__((__always_inline__, __nodebug__)) _mm_cmp
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__)) _mm_cmpunord_ps(__m128 __a, __m128 __b)
 {
-  return emscripten_float32x4_or(emscripten_float32x4_notEqual(__a, __a),
-                                 emscripten_float32x4_notEqual(__b, __b));
+  return emscripten_int32x4_or(emscripten_float32x4_notEqual(__a, __a),
+                               emscripten_float32x4_notEqual(__b, __b));
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__)) _mm_cmpunord_ss(__m128 __a, __m128 __b)
@@ -399,25 +399,25 @@ static __inline__ __m128 __attribute__((__always_inline__, __nodebug__)) _mm_cmp
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_and_ps(__m128 __a, __m128 __b)
 {
-  return emscripten_float32x4_and(__a, __b);
+  return emscripten_int32x4_and(__a, __b);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_andnot_ps(__m128 __a, __m128 __b)
 {
-  return emscripten_float32x4_and(emscripten_float32x4_not(__a), __b);
+  return emscripten_int32x4_and(emscripten_int32x4_not(__a), __b);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_or_ps(__m128 __a, __m128 __b)
 {
-  return emscripten_float32x4_or(__a, __b);
+  return emscripten_int32x4_or(__a, __b);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_xor_ps(__m128 __a, __m128 __b)
 {
-  return emscripten_float32x4_xor(__a, __b);
+  return emscripten_int32x4_xor(__a, __b);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
@@ -435,7 +435,7 @@ _mm_cmpneq_ss(__m128 __a, __m128 __b)
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_cmpnge_ps(__m128 __a, __m128 __b)
 {
-  return emscripten_float32x4_not(_mm_cmpge_ps(__a, __b));
+  return emscripten_int32x4_not(_mm_cmpge_ps(__a, __b));
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
@@ -447,7 +447,7 @@ _mm_cmpnge_ss(__m128 __a, __m128 __b)
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_cmpngt_ps(__m128 __a, __m128 __b)
 {
-  return emscripten_float32x4_not(_mm_cmpgt_ps(__a, __b));
+  return emscripten_int32x4_not(_mm_cmpgt_ps(__a, __b));
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
@@ -459,7 +459,7 @@ _mm_cmpngt_ss(__m128 __a, __m128 __b)
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_cmpnle_ps(__m128 __a, __m128 __b)
 {
-  return emscripten_float32x4_not(_mm_cmple_ps(__a, __b));
+  return emscripten_int32x4_not(_mm_cmple_ps(__a, __b));
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
@@ -471,7 +471,7 @@ _mm_cmpnle_ss(__m128 __a, __m128 __b)
 static __inline__ __m128 __attribute__((__always_inline__))
 _mm_cmpnlt_ps(__m128 __a, __m128 __b)
 {
-  return emscripten_float32x4_not(_mm_cmplt_ps(__a, __b));
+  return emscripten_int32x4_not(_mm_cmplt_ps(__a, __b));
 }
 
 static __inline__ __m128 __attribute__((__always_inline__))
