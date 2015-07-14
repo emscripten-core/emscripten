@@ -4889,20 +4889,6 @@ int main(int argc, char** argv) {
     out, err = Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'temp.txt', '--no-closure'], stdout=PIPE, stderr=PIPE).communicate()
     assert BAD not in out, out[max(out.index(BAD)-80, 0) : min(out.index(BAD)+80, len(out)-1)]
 
-  def test_syscall_1(self):
-    open('src.c', 'w').write(r'''
-      int __syscall(int, ...);
-      int main() {
-        __syscall(1, 102);
-      }
-    ''')
-    Popen([PYTHON, EMCC, 'src.c']).communicate()
-    for engine in JS_ENGINES:
-      print engine
-      process = Popen(engine + ['a.out.js'], stdout=PIPE, stderr=PIPE)
-      output = '\n'.join(process.communicate())
-      assert process.returncode == 102 or 'exit(102)' in output, [process.returncode, output]
-
   def test_debug_asmLastOpts(self):
     open('src.c', 'w').write(r'''
 #include <stdio.h>
