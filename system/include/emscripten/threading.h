@@ -112,8 +112,6 @@ void emscripten_main_thread_process_queued_calls();
 // Direct syscall access, second argument is a varargs pointer. used in proxying
 int emscripten_syscall(int, void*);
 
-int emscripten_syscall_cp(int, long, long, long, long, long, long);
-
 #define EM_PROXIED_FOPEN 1
 #define EM_PROXIED_FGETS 2
 #define EM_PROXIED_FPUTS 3
@@ -251,7 +249,6 @@ int emscripten_syscall_cp(int, long, long, long, long, long, long);
 #define EM_PROXIED_GETSOCKOPT 136
 #define EM_PROXIED_PTHREAD_CREATE 137
 #define EM_PROXIED_SYSCALL 138
-#define EM_PROXIED_SYSCALL_CP 139
 
 #ifdef __cplusplus
 }

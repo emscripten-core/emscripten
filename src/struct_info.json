@@ -1560,8 +1560,7 @@
             "EM_PROXIED_RECVFROM",
             "EM_PROXIED_GETSOCKOPT",
             "EM_PROXIED_PTHREAD_CREATE",
-            "EM_PROXIED_SYSCALL",
-            "EM_PROXIED_SYSCALL_CP"
+            "EM_PROXIED_SYSCALL"
             ]
     },
     {
