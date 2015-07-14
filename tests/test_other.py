@@ -4889,61 +4889,6 @@ int main(int argc, char** argv) {
     out, err = Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'temp.txt', '--no-closure'], stdout=PIPE, stderr=PIPE).communicate()
     assert BAD not in out, out[max(out.index(BAD)-80, 0) : min(out.index(BAD)+80, len(out)-1)]
 
-  def test_all_syscalls(self):
-    # find all syscalls
-    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'LINKABLE=1']).communicate()
-    gen = open('a.out.js').read()
-    assert 'function _printf' in gen, 'libc is included'
-    assert 'function _printf_core' in gen, 'musl libc is included'
-    assert 'function _strtoull_l' in gen, 'all parts of musl are included'
-    seen = set()
-    for syscall in ['___syscall', '___syscall_cp']:
-      calls = re.findall(syscall + '\(\d+,', gen)
-      assert len(calls) > 0
-      for call in calls:
-        num = call.split('(')[1][:-1]
-        num = int(num) # must be integers, no indirect syscalls are allowed
-        seen.add(num)
-    print seen, len(seen)
-    # generate code to test them for support
-    open('test.cpp', 'w').write(r'''
-#include <stdio.h>
-#include <emscripten.h>
-
-void test(int num) {
-  EM_ASM_({
-    var num = $0;
-    // we expect them to fail! we are not passing in valid parameters or anything. but the error tells us if they are missing or not
-    // suppress printErrs, and restore all of memory to remove all side effects (at least those not in JS)
-    Module.printErr = function(){};
-    Module.exit = function() { throw 'exit' };
-    var mem = new Uint8Array(HEAPU8);
-    abort = function(text) {
-      if (text.indexOf('unimplemented syscall') >= 0) Module.print('unimplemented syscall: ' + num);
-      throw 'continue';
-    };
-    try {
-      ___syscall(num);
-    } catch (e) {
-    }
-    HEAPU8.set(mem);
-  }, num);
-}
-
-int main() {
-  // expected syscalls
-  printf("these should work...\n");
-%s
-  // test a fake syscall, see the error
-  printf("this should fail...\n");
-  test(-1);
-  return 0;
-}
-''' % '\n'.join(['  test(%d);' % num for num in seen]))
-    Popen([PYTHON, EMCC, 'test.cpp', '-o', 'test.js']).communicate()
-    engine = SPIDERMONKEY_ENGINE if SPIDERMONKEY_ENGINE in JS_ENGINES else JS_ENGINES[0] # node is slow on this, sm is fast
-    self.assertContained('these should work...\nthis should fail...\nunimplemented syscall: -1\n', run_js('test.js', engine=engine))
-
   def test_syscall_1(self):
     open('src.c', 'w').write(r'''
       int __syscall(int, ...);
