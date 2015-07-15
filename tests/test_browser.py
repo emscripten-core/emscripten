@@ -2374,6 +2374,15 @@ window.close = function() {
   def test_sdl2_canvas_write(self):
     self.btest('sdl2_canvas_write.cpp', expected='0', args=['-s', 'USE_SDL=2'])
 
+  def test_sdl2_gl_frames_swap(self):
+    def post_build(*args):
+      self.post_manual_reftest(*args)
+      html = open('test.html').read()
+      html2 = html.replace('''Module['postRun'] = doReftest;''', '') # we don't want the very first frame
+      assert html != html2
+      open('test.html', 'w').write(html2)
+    self.btest('sdl2_gl_frames_swap.c', reference='sdl2_gl_frames_swap.png', args=['--proxy-to-worker', '-s', 'GL_TESTING=1', '-s', 'USE_SDL=2'], manual_reference=True, post_build=post_build)
+
   def test_emterpreter_async(self):
     for opts in [0, 1, 2, 3]:
       print opts
