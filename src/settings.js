@@ -266,8 +266,15 @@ var ASYNCIFY_WHITELIST = ['qsort',   // Functions in this list are never conside
                           '__uflow',  // currently this link contains some functions in libc
                           '__fwritex', 
                           'MUSL_vfprintf']; 
-                                                                                                    
 
+var EXPORTED_FS_METHODS = ['createFolder',         //Define FS module names. These become Module["FS_(module name)"] = FS_(module name)
+                           'createPath',
+                           'createDataFile',
+                           'createPreloadedFile',
+                           'createLazyFile',
+                           'createLink',
+                           'createDevice',
+                           'unlink'];
 var FS_LOG = 0; // Log all FS operations.  This is especially helpful when you're porting
                 // a new project and want to see a list of file system operations happening
                 // so that you can create a virtual file system with all of the required files.
