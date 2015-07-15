@@ -1547,10 +1547,10 @@ for (var x in SyscallsLibrary) {
   if (typeof t === 'string') continue;
   t = t.toString();
   var pre = '', post = '';
-  pre += 'SYSCALLS.varargs = varargs;\n';
 #if USE_PTHREADS
   pre += 'if (ENVIRONMENT_IS_PTHREAD) { return _emscripten_sync_run_in_main_thread_2({{{ cDefine("EM_PROXIED_SYSCALL") }}}, ' + which + ', varargs) }\n';
 #endif
+  pre += 'SYSCALLS.varargs = varargs;\n';
 #if SYSCALL_DEBUG
   pre += "Module.printErr('syscall! ' + [" + which + ", SYSCALLS.getFromCode(" + which + ")]);\n";
   pre += "var canWarn = true;\n";
