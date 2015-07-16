@@ -53,12 +53,7 @@ static void *arg_n(va_list ap, unsigned int n)
 	return p;
 }
 
-#ifndef __EMSCRIPTEN__
 int vfscanf(FILE *restrict f, const char *restrict fmt, va_list ap)
-#else
-// XXX Emscripten: Only use musl-specific vfscanf when called from within sscanf.
-int MUSL_vfscanf(FILE *restrict f, const char *restrict fmt, va_list ap)
-#endif
 {
 	int width;
 	int size;
@@ -334,9 +329,4 @@ match_fail:
 	return matches;
 }
 
-#ifndef __EMSCRIPTEN__
-// XXX EMSCRIPTEN: We don't need this alias.
-// Keeping it would have it aliasing to the C code when we typically use the JS version.
 weak_alias(vfscanf,__isoc99_vfscanf);
-#endif
-

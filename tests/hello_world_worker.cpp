@@ -9,9 +9,10 @@ int main()
   char buffer[100];
   memset(buffer, 0, 100);
   buffer[0] = 0;
-  fread(buffer, 10, 1, f);
+  if (f) fread(buffer, 10, 1, f);
   char buffer2[100];
-  sprintf(buffer2, "if (typeof postMessage !== 'undefined') { postMessage('hello from worker, and |%s|') }", buffer);
+  int n = sprintf(buffer2, "if (typeof postMessage !== 'undefined') { postMessage('hello from worker, and |%s|') }", buffer);
+  printf("sprintf: %d\n", n);
   emscripten_run_script(buffer2);
 }
 

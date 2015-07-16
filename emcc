@@ -997,6 +997,11 @@ try:
   if js_opts:
     shared.Settings.RUNNING_JS_OPTS = 1
 
+  if not shared.Settings.NO_FILESYSTEM:
+    shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location'] # so FS can report errno back to C
+    if not shared.Settings.NO_EXIT_RUNTIME:
+      shared.Settings.EXPORTED_FUNCTIONS += ['_fflush'] # to flush the streams on FS quit
+
   if shared.Settings.USE_PTHREADS:
     if not any(s.startswith('PTHREAD_POOL_SIZE=') for s in settings_changes):
       settings_changes.append('PTHREAD_POOL_SIZE=0')
@@ -1181,6 +1186,7 @@ try:
 
   if not LEAVE_INPUTS_RAW and \
      not shared.Settings.BUILD_AS_SHARED_LIB and \
+     not shared.Settings.BOOTSTRAPPING_STRUCT_INFO and \
      not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
     extra_files_to_link = system_libs.get_ports(shared.Settings)
     extra_files_to_link += system_libs.calculate([f for _, f in sorted(temp_files)] + extra_files_to_link, in_temp, stdout, stderr, forced=forced_stdlibs)
@@ -1450,9 +1456,11 @@ try:
             run_passes(chunks[i], 'js_opts_' + str(i), just_split='receiveJSON' in chunks[i], just_concat='emitJSON' in chunks[i])
       else:
         # DEBUG 2, run each pass separately
+        extra_info = js_optimizer_extra_info
         for p in passes:
           js_optimizer_queue = [p]
           flush_js_optimizer_queue(p)
+          js_optimizer_extra_info = extra_info # flush wipes it
       js_optimizer_queue_history += js_optimizer_queue
       js_optimizer_queue = []
     js_optimizer_extra_info = {}

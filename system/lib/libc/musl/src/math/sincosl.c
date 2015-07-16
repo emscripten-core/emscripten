@@ -1,18 +1,6 @@
 #define _GNU_SOURCE
 #include "libm.h"
 
-#ifdef __EMSCRIPTEN__
-#include <math.h>
-
-// XXX Emscripten: Use the browser-optimized versions of sin and cos, since they are faster.
-void sincosl(long double x, long double *sin, long double *cos)
-{
-	*sin = sinl(x);
-	*cos = cosl(x);
-}
-
-#else
-
 #if LDBL_MANT_DIG == 53 && LDBL_MAX_EXP == 1024
 void sincosl(long double x, long double *sin, long double *cos)
 {
@@ -69,6 +57,4 @@ void sincosl(long double x, long double *sin, long double *cos)
 		break;
 	}
 }
-#endif
-
 #endif

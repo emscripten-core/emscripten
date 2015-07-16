@@ -631,18 +631,17 @@ class BrowserCore(RunnerCore):
 
   def with_report_result(self, code):
     return r'''
-      #ifdef __EMSCRIPTEN__
-      #include <emscripten.h>
-      #define REPORT_RESULT_INTERNAL(sync) \
-        char output[1000]; \
-        sprintf(output, \
-                "xhr = new XMLHttpRequest();" \
-                "xhr.open('GET', 'http://localhost:8888/report_result?%d'%s);" \
-                "xhr.send();", result, sync ? ", false" : ""); \
-        emscripten_run_script(output); \
-        emscripten_run_script("setTimeout(function() { window.close() }, 1000)"); // comment this out to keep the test runner window open to debug
-      #define REPORT_RESULT() REPORT_RESULT_INTERNAL(0)
-      #endif
+#ifdef __EMSCRIPTEN__
+  #include <emscripten.h>
+  #define REPORT_RESULT_INTERNAL(sync) \
+    EM_ASM_({ \
+      var xhr = new XMLHttpRequest(); \
+      xhr.open('GET', 'http://localhost:8888/report_result?' + $0, !$1); \
+      xhr.send(); \
+      setTimeout(function() { window.close() }, 1000); \
+    }, result, sync);
+  #define REPORT_RESULT() REPORT_RESULT_INTERNAL(0)
+#endif
 ''' + code
 
   def reftest(self, expected):

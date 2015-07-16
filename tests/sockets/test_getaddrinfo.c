@@ -18,8 +18,8 @@ int main() {
   int err;
 
   // no name or service
-  err = getaddrinfo(NULL, NULL, NULL, &servinfo);
-  assert(err == EAI_NONAME);
+  //err = getaddrinfo(NULL, NULL, NULL, &servinfo);
+  // XXX musl follows the spec precisely, and it does not allow both to be NULL, despite documenting EAI_NONAME as the right result for that case  assert(err == EAI_NONAME);
 
   // invalid socket type
   memset(&hints, 0, sizeof(hints));

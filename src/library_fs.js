@@ -415,22 +415,6 @@ mergeInto(LibraryManager.library, {
     },
 
     //
-    // file pointers
-    //
-    // instead of maintaining a separate mapping from FILE* to file descriptors,
-    // we employ a simple trick: the pointer to a stream is its fd plus 1.  This
-    // means that all valid streams have a valid non-zero pointer while allowing
-    // the fs for stdin to be the standard value of zero.
-    //
-    //
-    getStreamFromPtr: function(ptr) {
-      return FS.streams[ptr - 1];
-    },
-    getPtrForStream: function(stream) {
-      return stream ? stream.fd + 1 : 0;
-    },
-
-    //
     // devices
     //
     // each character device consists of a device id + stream operations.
@@ -832,7 +816,7 @@ mergeInto(LibraryManager.library, {
       if (!link.node_ops.readlink) {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
-      return PATH.resolve(FS.getPath(lookup.node.parent), link.node_ops.readlink(link));
+      return PATH.resolve(FS.getPath(link.parent), link.node_ops.readlink(link));
     },
     stat: function(path, dontFollow) {
       var lookup = FS.lookupPath(path, { follow: !dontFollow });
@@ -992,6 +976,10 @@ mergeInto(LibraryManager.library, {
       if (FS.isChrdev(node.mode)) {
         flags &= ~{{{ cDefine('O_TRUNC') }}};
       }
+      // if asked only for a directory, then this must be one
+      if ((flags & {{{ cDefine('O_DIRECTORY') }}}) && !FS.isDir(node.mode)) {
+        throw new FS.ErrnoError(ERRNO_CODES.ENOTDIR);
+      }
       // check permissions, if this is not a file we just created now (it is ok to
       // create and write to a file with read-only permissions; it is read-only
       // for later use)
@@ -1048,6 +1036,7 @@ mergeInto(LibraryManager.library, {
       return stream;
     },
     close: function(stream) {
+      if (stream.getdents) stream.getdents = null; // free readdir state
       try {
         if (stream.stream_ops.close) {
           stream.stream_ops.close(stream);
@@ -1260,6 +1249,32 @@ mergeInto(LibraryManager.library, {
       FS.mkdir('/dev/shm');
       FS.mkdir('/dev/shm/tmp');
     },
+    createSpecialDirectories: function() {
+      // create /proc/self/fd which allows /proc/self/fd/6 => readlink gives the name of the stream for fd 6 (see test_unistd_ttyname)
+      FS.mkdir('/proc');
+      FS.mkdir('/proc/self');
+      FS.mkdir('/proc/self/fd');
+      FS.mount({
+        mount: function() {
+          var node = FS.createNode('/proc/self', 'fd', {{{ cDefine('S_IFDIR') }}} | 0777, {{{ cDefine('S_IXUGO') }}});
+          node.node_ops = {
+            lookup: function(parent, name) {
+              var fd = +name;
+              var stream = FS.getStream(fd);
+              if (!stream) throw new FS.ErrnoError(ERRNO_CODES.EBADF);
+              var ret = {
+                parent: null,
+                mount: { mountpoint: 'fake' },
+                node_ops: { readlink: function() { return stream.path } }
+              };
+              ret.parent = ret; // make it look like a simple root node
+              return ret;
+            }
+          };
+          return node;
+        }
+      }, {}, '/proc/self/fd');
+    },
     createStandardStreams: function() {
       // TODO deprecate the old functionality of a single
       // input / output callback and that utilizes FS.createDevice
@@ -1287,20 +1302,18 @@ mergeInto(LibraryManager.library, {
 
       // open default streams for the stdin, stdout and stderr devices
       var stdin = FS.open('/dev/stdin', 'r');
-      {{{ makeSetValue(makeGlobalUse('_stdin'), 0, 'FS.getPtrForStream(stdin)', 'void*') }}};
       assert(stdin.fd === 0, 'invalid handle for stdin (' + stdin.fd + ')');
 
       var stdout = FS.open('/dev/stdout', 'w');
-      {{{ makeSetValue(makeGlobalUse('_stdout'), 0, 'FS.getPtrForStream(stdout)', 'void*') }}};
       assert(stdout.fd === 1, 'invalid handle for stdout (' + stdout.fd + ')');
 
       var stderr = FS.open('/dev/stderr', 'w');
-      {{{ makeSetValue(makeGlobalUse('_stderr'), 0, 'FS.getPtrForStream(stderr)', 'void*') }}};
       assert(stderr.fd === 2, 'invalid handle for stderr (' + stderr.fd + ')');
     },
     ensureErrnoError: function() {
       if (FS.ErrnoError) return;
       FS.ErrnoError = function ErrnoError(errno, node) {
+        //Module.printErr(stackTrace()); // useful for debugging
         this.node = node;
         this.setErrno = function(errno) {
           this.errno = errno;
@@ -1334,6 +1347,7 @@ mergeInto(LibraryManager.library, {
 
       FS.createDefaultDirectories();
       FS.createDefaultDevices();
+      FS.createSpecialDirectories();
     },
     init: function(input, output, error) {
       assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
@@ -1350,6 +1364,10 @@ mergeInto(LibraryManager.library, {
     },
     quit: function() {
       FS.init.initialized = false;
+      // force-flush all streams, so we get musl std streams printed out
+      var fflush = Module['_fflush'];
+      if (fflush) fflush(0);
+      // close all of our streams
       for (var i = 0; i < FS.streams.length; i++) {
         var stream = FS.streams[i];
         if (!stream) {

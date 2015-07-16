@@ -32,30 +32,9 @@ long double strtold(const char *restrict s, char **restrict p)
 	return strtox(s, p, 2);
 }
 
-#ifndef __EMSCRIPTEN__
 weak_alias(strtof, strtof_l);
 weak_alias(strtod, strtod_l);
 weak_alias(strtold, strtold_l);
 weak_alias(strtof, __strtof_l);
 weak_alias(strtod, __strtod_l);
 weak_alias(strtold, __strtold_l);
-#else
-float strtof_l(const char *restrict s, char **restrict p, struct __locale_struct *loc)
-{
-  return strtof(s, p);
-}
-
-double strtod_l(const char *restrict s, char **restrict p, struct __locale_struct *loc)
-{
-  return strtod(s, p);
-}
-
-long double strtold_l(const char *restrict s, char **restrict p, struct __locale_struct *loc)
-{
-  return strtold(s, p);
-}
-
-weak_alias(strtof_l, __strtof_l);
-weak_alias(strtod_l, __strtod_l);
-weak_alias(strtold_l, __strtold_l);
-#endif

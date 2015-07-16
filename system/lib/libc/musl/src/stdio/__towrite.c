@@ -17,13 +17,9 @@ int __towrite(FILE *f)
 	return 0;
 }
 
-#ifndef __EMSCRIPTEN__
-const int __towrite_used = 1;
+void __stdio_exit_needed(void);
 
-void __stdio_exit(void);
-
-void __flush_on_exit()
+void __towrite_needs_stdio_exit()
 {
-	__stdio_exit();
+	__stdio_exit_needed();
 }
-#endif

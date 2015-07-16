@@ -25,6 +25,10 @@ Usage:
 Available operations and tasks:
 
   build libc
+        libc-mt
+        dlmalloc
+        dlmalloc_threadsafe
+        pthreads
         libcxx
         libcxx_noexcept
         libcxxabi
@@ -64,14 +68,22 @@ operation = sys.argv[1]
 if operation == 'build':
   for what in sys.argv[2:]:
     shared.logging.info('building and verifying ' + what)
-    if what == 'libc':
+    if what in ('libc', 'dlmalloc'):
       build('''
         #include <string.h>
         #include <stdlib.h>
         int main() {
           return int(malloc(10)) + int(strchr("str", 'c'));
         }
-      ''', ['libc.bc', 'libcextra.bc'])
+      ''', ['libc.bc', 'dlmalloc.bc'])
+    elif what in ('libc-mt', 'pthreads', 'dlmalloc_threadsafe'):
+      build('''
+        #include <string.h>
+        #include <stdlib.h>
+        int main() {
+          return int(malloc(10)) + int(strchr("str", 'c'));
+        }
+      ''', ['libc-mt.bc', 'dlmalloc_threadsafe.bc', 'pthreads.bc'], ['-s', 'USE_PTHREADS=1'])
     elif what == 'libcxx':
       build('''
         #include <iostream>

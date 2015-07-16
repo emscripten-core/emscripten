@@ -1010,11 +1010,14 @@ function WebGLWorker() {
     //throttledTracker.tick();
   }
 
+  var postRAFed = false;
+
   function postRAF() {
     if (commandBuffer.length > 0) {
       postMessage({ target: 'gl', op: 'render', commandBuffer: commandBuffer });
       commandBuffer = [];
     }
+    postRAFed = true;
   }
 
   assert(!Browser.doSwapBuffers);
@@ -1027,8 +1030,11 @@ function WebGLWorker() {
         window.requestAnimationFrame(func); // skip this frame, do it later
         return;
       }
+      postRAFed = false;
       func();
-      postRAF();
+      if (!postRAFed) { // if we already posted this frame (e.g. from doSwapBuffers) do not post again
+        postRAF();
+      }
     });
   }
 

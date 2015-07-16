@@ -12,7 +12,7 @@ def call_process(cmd):
   proc.communicate()
   if proc.returncode != 0:
     # Deliberately do not use CalledProcessError, see issue #2944
-    raise Exception('Command \'%s\' returned non-zero exit status %s' % (cmd, proc.returncode))
+    raise Exception('Command \'%s\' returned non-zero exit status %s' % (' '.join(cmd), proc.returncode))
 
 CORES = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
 
@@ -47,7 +47,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # XXX We also need to add libc symbols that use malloc, for example strdup. It's very rare to use just them and not
   #     a normal malloc symbol (like free, after calling strdup), so we haven't hit this yet, but it is possible.
   libc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc.symbols'))
-  libcextra_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcextra.symbols'))
   libcxx_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'symbols'), exclude=libc_symbols)
   libcxxabi_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols'), exclude=libc_symbols)
   gl_symbols = read_symbols(shared.path_from_root('system', 'lib', 'gl.symbols'))
@@ -61,7 +60,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     commands = []
     # Hide several musl warnings that produce a lot of spam to unit test build server logs.
     # TODO: When updating musl the next time, feel free to recheck which of their warnings might have been fixed, and which ones of these could be cleaned up.
-    c_opts = ['-Wno-dangling-else', '-Wno-unknown-pragmas', '-Wno-shift-op-parentheses', '-Wno-string-plus-int', '-Wno-logical-op-parentheses', '-Wno-bitwise-op-parentheses', '-Wno-visibility']
+    c_opts = ['-Wno-dangling-else', '-Wno-unknown-pragmas', '-Wno-shift-op-parentheses', '-Wno-string-plus-int', '-Wno-logical-op-parentheses', '-Wno-bitwise-op-parentheses', '-Wno-visibility', '-Wno-pointer-sign']
     for src in files:
       o = in_temp(os.path.basename(src) + '.o')
       commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes + default_opts + c_opts + lib_opts)
@@ -93,499 +92,41 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # libc
   def create_libc(libname):
     logging.debug(' building libc for cache')
-    musl_files = [
-      ['ctype', [
-       'isdigit.c',
-       'isspace.c',
-       'isupper.c',
-       'isxdigit.c',
-       'tolower.c',
-      ]],
-      ['fenv', [
-        'fenv.c'
-      ]],
-      ['internal', [
-       'intscan.c',
-       'floatscan.c',
-       'shgetc.c',
-      ]],
-      ['math', [
-       '__expo2.c',
-       '__expo2f.c',
-       '__fpclassify.c',
-       '__fpclassifyf.c',
-       '__fpclassifyl.c',
-       '__signbit.c',
-       '__signbitf.c',
-       '__signbitl.c',
-       'acosh.c',
-       'acoshf.c',
-       'acoshl.c',
-       'asinh.c',
-       'asinhf.c',
-       'asinhl.c',
-       'atanh.c',
-       'atanhf.c',
-       'atanhl.c',
-       'cbrt.c',
-       'cbrtf.c',
-       'cbrtl.c',
-       'copysign.c',
-       'copysignf.c',
-       'copysignl.c',
-       'cosh.c',
-       'coshf.c',
-       'coshl.c',
-       'exp2.c',
-       'exp2f.c',
-       'exp2l.c',
-       'expm1.c',
-       'expm1f.c',
-       'expm1l.c',
-       'fdim.c',
-       'fdimf.c',
-       'fdiml.c',
-       'finite.c',
-       'finitef.c',
-       'fma.c',
-       'fmaf.c',
-       'fmal.c',
-       'fmax.c',
-       'fmaxf.c',
-       'fmaxl.c',
-       'fmin.c',
-       'fminf.c',
-       'fminl.c',
-       'fmod.c',
-       'fmodf.c',
-       'fmodl.c',
-       'frexp.c',
-       'frexpf.c',
-       'frexpl.c',
-       'hypot.c',
-       'hypotf.c',
-       'hypotl.c',
-       'llrint.c',
-       'llrintf.c',
-       'llrintl.c',
-       'llround.c',
-       'llroundf.c',
-       'llroundl.c',
-       'log10.c',
-       'log10f.c',
-       'log10l.c',
-       'log1p.c',
-       'log1pf.c',
-       'log1pl.c',
-       'log2.c',
-       'log2f.c',
-       'log2l.c',
-       'lrint.c',
-       'lrintf.c',
-       'lrintl.c',
-       'lround.c',
-       'lroundf.c',
-       'lroundl.c',
-       'modf.c',
-       'modff.c',
-       'modfl.c',
-       'nan.c',
-       'nanf.c',
-       'nanl.c',
-       'nearbyint.c',
-       'nearbyintf.c',
-       'nearbyintl.c',
-       'remainder.c',
-       'remainderf.c',
-       'remainderl.c',
-       'rint.c',
-       'rintf.c',
-       'rintl.c',
-       'round.c',
-       'roundf.c',
-       'roundl.c',
-       'scalbn.c',
-       'scalbnl.c',
-       'sincos.c',
-       'sincosf.c',
-       'sincosl.c',
-       'sinh.c',
-       'sinhf.c',
-       'sinhl.c',
-       'tanh.c',
-       'tanhf.c',
-       'tanhl.c',
-       'trunc.c',
-       'truncf.c',
-       'truncl.c',
-      ]],
-      ['multibyte', [
-       'wctomb.c',
-       'wcrtomb.c',
-      ]],
-      ['prng', [
-       '__rand48_step.c',
-       '__seed48.c',
-       'drand48.c',
-       'lcong48.c',
-       'lrand48.c',
-       'mrand48.c',
-       'rand_r.c',
-       'rand.c',
-       'random.c',
-       'seed48.c',
-       'srand48.c'
-      ]],
-      ['stdio', [
-       '__overflow.c',
-       '__toread.c',
-       '__towrite.c',
-       '__uflow.c',
-       'fwrite.c',
-       'snprintf.c',
-       'sprintf.c',
-       'vfprintf.c',
-       'vsnprintf.c',
-       'vsprintf.c',
-      ]],
-      ['stdlib', [
-       'atof.c',
-       'atoi.c',
-       'atol.c',
-       'strtod.c',
-       'strtol.c',
-      ]],
-      ['string', [
-       'memchr.c',
-       'memcmp.c',
-       'strcasecmp.c',
-       'strcmp.c',
-       'strncasecmp.c',
-       'strncmp.c',
-      ]]
+    libc_files = [
+      'dlmalloc.c',
     ]
-    libc_files = []
-    for directory, sources in musl_files:
-      libc_files += [os.path.join('libc', 'musl', 'src', directory, source) for source in sources]
-
-    return build_libc(libname, libc_files, ['-O2'])
+    musl_srcdir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src')
+    blacklist = set(
+      ['ipc', 'passwd', 'thread', 'signal', 'sched', 'ipc', 'time', 'linux', 'aio', 'exit', 'legacy', 'mq', 'process', 'search', 'setjmp', 'env', 'ldso', 'conf'] + # musl modules
+      ['memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c', 'inet_addr.c', 'res_query.c', 'gai_strerror.c', 'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c', 'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c', 'usleep.c', 'alarm.c', 'syscall.c'] + # individual files
+      ['abs.c', 'cos.c', 'cosf.c', 'cosl.c', 'sin.c', 'sinf.c', 'sinl.c', 'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c', 'asin.c', 'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c', 'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c', 'log.c', 'logf.c', 'logl.c', 'sqrt.c', 'sqrtf.c', 'sqrtl.c', 'fabs.c', 'fabsf.c', 'fabsl.c', 'ceil.c', 'ceilf.c', 'ceill.c', 'floor.c', 'floorf.c', 'floorl.c', 'pow.c', 'powf.c', 'powl.c'] # individual math files
+    )
+    # TODO: consider using more math code from musl, doing so makes box2d faster
+    for dirpath, dirnames, filenames in os.walk(musl_srcdir):
+      for f in filenames:
+        if f.endswith('.c'):
+          if f in blacklist: continue
+          dir_parts = os.path.split(dirpath)
+          cancel = False
+          for part in dir_parts:
+            if part in blacklist:
+              cancel = True
+              break
+          if not cancel:
+            libc_files.append(os.path.join(musl_srcdir, dirpath, f))
+    args = ['-Os']
+    if shared.Settings.USE_PTHREADS:
+      args += ['-s', 'USE_PTHREADS=1']
+      assert '-mt' in libname
+    else:
+      assert '-mt' not in libname
+    return build_libc(libname, libc_files, args)
 
   def create_pthreads(libname):
     # Add pthread files.
     pthreads_files = [os.path.join('pthread', 'library_pthread.c')]
-    pthreads_files += glob.glob(shared.path_from_root('system/lib/libc/musl/src/thread/*.c'))
-    return build_libc(libname, pthreads_files, ['-O2'])
-
-  # libcextra
-  def create_libcextra(libname):
-    logging.debug('building libcextra for cache')
-    musl_files = [
-       ['compat', [
-        'strlwr.c',
-        'strtol_l.c',
-        'strupr.c'
-       ]],
-       ['ctype', [
-        'isalnum.c',
-        'isalpha.c',
-        'isascii.c',
-        'isblank.c',
-        'iscntrl.c',
-        'isgraph.c',
-        'islower.c',
-        'isprint.c',
-        'ispunct.c',
-        'iswalnum.c',
-        'iswalpha.c',
-        'iswblank.c',
-        'iswcntrl.c',
-        'iswctype.c',
-        'iswdigit.c',
-        'iswgraph.c',
-        'iswlower.c',
-        'iswprint.c',
-        'iswpunct.c',
-        'iswspace.c',
-        'iswupper.c',
-        'iswxdigit.c',
-        'toascii.c',
-        'toupper.c',
-        'towctrans.c',
-        'wcswidth.c',
-        'wctrans.c',
-        'wcwidth.c',
-       ]],
-       ['dirent', [
-        'alphasort.c',
-        'scandir.c',
-       ]],
-       ['legacy', [
-        'err.c',
-       ]],
-       ['locale', [
-        'iconv.c',
-        'isalnum_l.c',
-        'isalpha_l.c',
-        'isblank_l.c',
-        'iscntrl_l.c',
-        'isdigit_l.c',
-        'isgraph_l.c',
-        'islower_l.c',
-        'isprint_l.c',
-        'ispunct_l.c',
-        'isspace_l.c',
-        'isupper_l.c',
-        'isxdigit_l.c',
-        'iswalnum_l.c',
-        'iswalpha_l.c',
-        'iswblank_l.c',
-        'iswcntrl_l.c',
-        'iswctype_l.c',
-        'iswdigit_l.c',
-        'iswgraph_l.c',
-        'iswlower_l.c',
-        'iswprint_l.c',
-        'iswpunct_l.c',
-        'iswspace_l.c',
-        'iswupper_l.c',
-        'iswxdigit_l.c',
-        'strcoll.c',
-        'strcasecmp_l.c',
-        'strfmon.c',
-        'strncasecmp_l.c',
-        'strxfrm.c',
-        'tolower_l.c',
-        'toupper_l.c',
-        'towctrans_l.c',
-        'towlower_l.c',
-        'towupper_l.c',
-        'wcscoll.c',
-        'wcscoll_l.c',
-        'wcsxfrm.c',
-        'wcsxfrm_l.c',
-        'wctrans_l.c',
-        'wctype_l.c',
-       ]],
-       ['math', [
-        '__cos.c',
-        '__cosdf.c',
-        '__sin.c',
-        '__sindf.c',
-        'ilogb.c',
-        'ilogbf.c',
-        'ilogbl.c',
-        'j0.c',
-        'j0f.c',
-        'j1.c',
-        'j1f.c',
-        'jn.c',
-        'jnf.c',
-        'ldexp.c',
-        'ldexpf.c',
-        'ldexpl.c',
-        'logb.c',
-        'logbf.c',
-        'logbl.c',
-        'lgamma.c',
-        'lgamma_r.c',
-        'lgammaf.c',
-        'lgammaf_r.c',
-        'lgammal.c',
-        'scalbnf.c',
-        'signgam.c',
-        'tgamma.c',
-        'tgammaf.c',
-        'tgammal.c'
-       ]],
-       ['misc', [
-        'ffs.c',
-        'getopt.c',
-        'getopt_long.c',
-       ]],
-       ['multibyte', [
-        'btowc.c',
-        'internal.c',
-        'mblen.c',
-        'mbrlen.c',
-        'mbrtowc.c',
-        'mbsinit.c',
-        'mbsnrtowcs.c',
-        'mbsrtowcs.c',
-        'mbstowcs.c',
-        'mbtowc.c',
-        'wcsnrtombs.c',
-        'wcsrtombs.c',
-        'wcstombs.c',
-        'wctob.c',
-       ]],
-       ['regex', [
-        'fnmatch.c',
-        'glob.c',
-        'regcomp.c',
-        'regerror.c',
-        'regexec.c',
-        'tre-mem.c',
-       ]],
-       ['stdio', [
-        '__string_read.c',
-        'asprintf.c',
-        'fwprintf.c',
-        'swprintf.c',
-        'vfwprintf.c',
-        'vswprintf.c',
-        'vwprintf.c',
-        'wprintf.c',
-        'fputwc.c',
-        'fputws.c',
-        'sscanf.c',
-        'vasprintf.c',
-        'vfscanf.c',
-        'vsscanf.c',
-       ]],
-       ['stdlib', [
-         'atoll.c',
-         'bsearch.c',
-         'ecvt.c',
-         'fcvt.c',
-         'gcvt.c',
-         'qsort.c',
-         'wcstod.c',
-         'wcstol.c',
-       ]],
-       ['complex', [
-         'cabs.c',
-         'cabsf.c',
-         'cabsl.c',
-         'cacos.c',
-         'cacosf.c',
-         'cacosh.c',
-         'cacoshf.c',
-         'cacoshl.c',
-         'cacosl.c',
-         'carg.c',
-         'cargf.c',
-         'cargl.c',
-         'casin.c',
-         'casinf.c',
-         'casinh.c',
-         'casinhf.c',
-         'casinhl.c',
-         'casinl.c',
-         'catan.c',
-         'catanf.c',
-         'catanh.c',
-         'catanhf.c',
-         'catanhl.c',
-         'catanl.c',
-         'ccos.c',
-         'ccosf.c',
-         'ccosh.c',
-         'ccoshf.c',
-         'ccoshl.c',
-         'ccosl.c',
-         '__cexp.c',
-         'cexp.c',
-         '__cexpf.c',
-         'cexpf.c',
-         'cexpl.c',
-         'cimag.c',
-         'cimagf.c',
-         'cimagl.c',
-         'clog.c',
-         'clogf.c',
-         'clogl.c',
-         'conj.c',
-         'conjf.c',
-         'conjl.c',
-         'cpow.c',
-         'cpowf.c',
-         'cpowl.c',
-         'cproj.c',
-         'cprojf.c',
-         'cprojl.c',
-         'creal.c',
-         'crealf.c',
-         'creall.c',
-         'csin.c',
-         'csinf.c',
-         'csinh.c',
-         'csinhf.c',
-         'csinhl.c',
-         'csinl.c',
-         'csqrt.c',
-         'csqrtf.c',
-         'csqrtl.c',
-         'ctan.c',
-         'ctanf.c',
-         'ctanh.c',
-         'ctanhf.c',
-         'ctanhl.c',
-         'ctanl.c'
-       ]],
-       ['string', [
-         'bcmp.c',
-         'bcopy.c',
-         'bzero.c',
-         'index.c',
-         'memccpy.c',
-         'memmem.c',
-         'mempcpy.c',
-         'memrchr.c',
-         'rindex.c',
-         'stpcpy.c',
-         'strcasestr.c',
-         'strchr.c',
-         'strchrnul.c',
-         'strcspn.c',
-         'strdup.c',
-         'strlcat.c',
-         'strlcpy.c',
-         'strncat.c',
-         'strndup.c',
-         'strnlen.c',
-         'strpbrk.c',
-         'strrchr.c',
-         'strsep.c',
-         'strsignal.c',
-         'strspn.c',
-         'strstr.c',
-         'strtok.c',
-         'strtok_r.c',
-         'strverscmp.c',
-         'wcpcpy.c',
-         'wcpncpy.c',
-         'wcscasecmp.c',
-         'wcscasecmp_l.c',
-         'wcscat.c',
-         'wcschr.c',
-         'wcscmp.c',
-         'wcscpy.c',
-         'wcscspn.c',
-         'wcsdup.c',
-         'wcslen.c',
-         'wcsncasecmp.c',
-         'wcsncasecmp_l.c',
-         'wcsncat.c',
-         'wcsncmp.c',
-         'wcsncpy.c',
-         'wcsnlen.c',
-         'wcspbrk.c',
-         'wcsrchr.c',
-         'wcsspn.c',
-         'wcsstr.c',
-         'wcstok.c',
-         'wcswcs.c',
-         'wmemchr.c',
-         'wmemcmp.c',
-         'wmemcpy.c',
-         'wmemmove.c',
-         'wmemset.c',
-       ]]
-    ]
-    libcextra_files = []
-    for directory, sources in musl_files:
-      libcextra_files += [os.path.join('libc', 'musl', 'src', directory, source) for source in sources]
-    return build_libc(libname, libcextra_files, ['-O2'])
+    pthreads_files += [shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'thread', x) for x in ('pthread_attr_destroy.c', 'pthread_condattr_setpshared.c', 'pthread_mutex_lock.c', 'pthread_spin_destroy.c', 'pthread_attr_get.c', 'pthread_cond_broadcast.c', 'pthread_mutex_setprioceiling.c', 'pthread_spin_init.c', 'pthread_attr_init.c', 'pthread_cond_destroy.c', 'pthread_mutex_timedlock.c', 'pthread_spin_lock.c', 'pthread_attr_setdetachstate.c', 'pthread_cond_init.c', 'pthread_mutex_trylock.c', 'pthread_spin_trylock.c', 'pthread_attr_setguardsize.c', 'pthread_cond_signal.c', 'pthread_mutex_unlock.c', 'pthread_spin_unlock.c', 'pthread_attr_setinheritsched.c', 'pthread_cond_timedwait.c', 'pthread_once.c', 'sem_destroy.c', 'pthread_attr_setschedparam.c', 'pthread_cond_wait.c', 'pthread_rwlockattr_destroy.c', 'sem_getvalue.c', 'pthread_attr_setschedpolicy.c', 'pthread_equal.c', 'pthread_rwlockattr_init.c', 'sem_init.c', 'pthread_attr_setscope.c', 'pthread_getspecific.c', 'pthread_rwlockattr_setpshared.c', 'sem_open.c', 'pthread_attr_setstack.c', 'pthread_key_create.c', 'pthread_rwlock_destroy.c', 'sem_post.c', 'pthread_attr_setstacksize.c', 'pthread_mutexattr_destroy.c', 'pthread_rwlock_init.c', 'sem_timedwait.c', 'pthread_barrierattr_destroy.c', 'pthread_mutexattr_init.c', 'pthread_rwlock_rdlock.c', 'sem_trywait.c', 'pthread_barrierattr_init.c', 'pthread_mutexattr_setprotocol.c', 'pthread_rwlock_timedrdlock.c', 'sem_unlink.c', 'pthread_barrierattr_setpshared.c', 'pthread_mutexattr_setpshared.c', 'pthread_rwlock_timedwrlock.c', 'sem_wait.c', 'pthread_barrier_destroy.c', 'pthread_mutexattr_setrobust.c', 'pthread_rwlock_tryrdlock.c', '__timedwait.c', 'pthread_barrier_init.c', 'pthread_mutexattr_settype.c', 'pthread_rwlock_trywrlock.c', 'vmlock.c', 'pthread_barrier_wait.c', 'pthread_mutex_consistent.c', 'pthread_rwlock_unlock.c', '__wait.c', 'pthread_condattr_destroy.c', 'pthread_mutex_destroy.c', 'pthread_rwlock_wrlock.c', 'pthread_condattr_init.c', 'pthread_mutex_getprioceiling.c', 'pthread_setcanceltype.c', 'pthread_condattr_setclock.c', 'pthread_mutex_init.c', 'pthread_setspecific.c')]
+    return build_libc(libname, pthreads_files, ['-O2', '-s', 'USE_PTHREADS=1'])
 
   # libcxx
   def create_libcxx(libname):
@@ -719,21 +260,21 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   for symbols in symbolses:
     all_needed.difference_update(symbols.defs)
 
-  system_libs = [('libcxx',    'a',  create_libcxx,    libcxx_symbols,    ['libcextra', 'libcxxabi'], True),
-                 ('libcextra', 'bc', create_libcextra, libcextra_symbols, ['libc'],                   False),
-                 ('libcxxabi', 'bc', create_libcxxabi, libcxxabi_symbols, ['libc'],                   False),
-                 ('gl',        'bc', create_gl,        gl_symbols,        ['libc'],                   False),
-                 ('libc',      'bc', create_libc,      libc_symbols,      [],                         False)]
+  system_libs = [('libcxx',    'a',  create_libcxx,    libcxx_symbols,    ['libcxxabi'], True),
+                 ('libcxxabi', 'bc', create_libcxxabi, libcxxabi_symbols, ['libc'],      False),
+                 ('gl',        'bc', create_gl,        gl_symbols,        ['libc'],      False)]
 
   # malloc dependency is force-added, so when using pthreads, it must be force-added
   # as well, since malloc needs to be thread-safe, so it depends on mutexes.
   if shared.Settings.USE_PTHREADS:
-    system_libs += [('pthreads',  'bc', create_pthreads,  pthreads_symbols,  ['libc'],                   False),
-                    ('dlmalloc_threadsafe', 'bc', create_dlmalloc_multithreaded, [], [],                 False)]
+    system_libs += [('libc-mt',             'bc', create_libc,                   libc_symbols,     [],       False),
+                    ('pthreads',            'bc', create_pthreads,               pthreads_symbols, ['libc'], False),
+                    ('dlmalloc_threadsafe', 'bc', create_dlmalloc_multithreaded, [],               [],       False)]
     force.add('pthreads')
     force.add('dlmalloc_threadsafe')
   else:
-    system_libs += [('dlmalloc',  'bc', create_dlmalloc_singlethreaded,      [], [],                     False)]
+    system_libs += [('libc',     'bc', create_libc,                    libc_symbols, [], False),
+                    ('dlmalloc', 'bc', create_dlmalloc_singlethreaded, [],           [], False)]
     force.add('dlmalloc')
 
   # Go over libraries to figure out which we must include
@@ -768,7 +309,12 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     if force_this or (len(need) > 0 and not only_forced):
       # We need to build and link the library in
       logging.debug('including %s' % name)
-      libfile = shared.Cache.get(name, lambda: create(name), extension=suffix)
+      def do_create():
+        logging.warning('building system library: ' + name + '...')
+        ret = create(name)
+        logging.warning('                         ' + (' '*len(name)) + '   ok')
+        return ret
+      libfile = shared.Cache.get(name, do_create, extension=suffix)
       ret.append(libfile)
       force = force.union(deps)
   ret.sort(key=lambda x: x.endswith('.a')) # make sure to put .a files at the end.

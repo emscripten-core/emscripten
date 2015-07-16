@@ -1,4 +1,5 @@
 List:
+LOGNAME=web_user
 USER=web_user
 PATH=/
 PWD=/

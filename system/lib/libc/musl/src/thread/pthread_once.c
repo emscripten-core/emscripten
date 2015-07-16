@@ -10,8 +10,13 @@ int pthread_once(pthread_once_t *control, void (*init)(void))
 {
 	static int waiters;
 
-	/* Return immediately if init finished before */
-	if (*control == 2) return 0;
+	/* Return immediately if init finished before, but ensure that
+	 * effects of the init routine are visible to the caller. */
+	if (*control == 2) {
+		/* Otherwise-useless cas just to get a barrier. */
+		a_cas(&(int){0},0,0);
+		return 0;
+	}
 
 	/* Try to enter initializing state. Three possibilities:
 	 *  0 - we're the first or the other cancelled; run init

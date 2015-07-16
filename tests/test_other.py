@@ -152,10 +152,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
         # Verify optimization level etc. in the generated code
         # XXX these are quite sensitive, and will need updating when code generation changes
-        generated = open('something.js').read() # TODO: parse out the _main function itself, not support code, if the tests below need that some day
+        generated = open('something.js').read()
+        main = self.get_func(generated, '_main') if 'function _main' in generated else generated
         assert 'new Uint16Array' in generated and 'new Uint32Array' in generated, 'typed arrays 2 should be used by default'
         assert 'SAFE_HEAP' not in generated, 'safe heap should not be used by default'
-        assert ': while(' not in generated, 'when relooping we also js-optimize, so there should be no labelled whiles'
+        assert ': while(' not in main, 'when relooping we also js-optimize, so there should be no labelled whiles'
         if closure:
           if opt_level == 0: assert '._main =' in generated, 'closure compiler should have been run'
           elif opt_level >= 1: assert '._main=' in generated, 'closure compiler should have been run (and output should be minified)'
@@ -168,7 +169,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             assert '$i' in generated or '$storemerge' in generated or '$original' in generated, 'micro opts should always be on'
           if opt_level >= 2 and '-g' in params:
             assert re.search('HEAP8\[\$?\w+ ?\+ ?\(+\$?\w+ ?', generated) or re.search('HEAP8\[HEAP32\[', generated) or re.search('[i$]\d+ & ~\(1 << [i$]\d+\)', generated), 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
-          assert ('_puts(' in generated) == (opt_level >= 1), 'with opt >= 1, llvm opts are run and they should optimize printf to puts'
           if opt_level == 0 or '-g' in params: assert 'function _main() {' in generated or 'function _main(){' in generated, 'Should be unminified'
           elif opt_level >= 2: assert ('function _main(){' in generated or '"use asm";var a=' in generated), 'Should be whitespace-minified'
 
@@ -609,15 +609,15 @@ f.close()
       }
     '''
     open('src.c', 'w').write(src)
-    def test(args, expected, err_expected=None):
-      print args, expected, err_expected
+    def test(args, expected, moar_expected=None):
+      print args, expected, moar_expected
       out, err = Popen([PYTHON, EMCC, 'src.c'] + args, stderr=PIPE).communicate()
-      if err_expected: self.assertContained(err_expected, err)
       self.assertContained(expected, run_js(self.in_dir('a.out.js'), stderr=PIPE, full_output=True, assert_returncode=None))
       print 'with emulated function pointers'
-      out, err = Popen([PYTHON, EMCC, 'src.c'] + args + ['-s', 'EMULATED_FUNCTION_POINTERS=1'], stderr=PIPE).communicate()
-      if err_expected: self.assertContained(err_expected, err)
-      self.assertContained(expected, run_js(self.in_dir('a.out.js'), stderr=PIPE, full_output=True, assert_returncode=None))
+      Popen([PYTHON, EMCC, 'src.c'] + args + ['-s', 'EMULATED_FUNCTION_POINTERS=1'], stderr=PIPE).communicate()
+      out = run_js(self.in_dir('a.out.js'), stderr=PIPE, full_output=True, assert_returncode=None)
+      self.assertContained(expected, out)
+      if moar_expected: self.assertContained(moar_expected, out)
 
     # fastcomp. all asm, so it can't just work with wrong sigs. but, ASSERTIONS=2 gives much better info to debug
     test(['-O1'], 'If this abort() is unexpected, build with -s ASSERTIONS=1 which can give more information.') # no useful info, but does mention ASSERTIONS
@@ -625,9 +625,7 @@ f.close()
 Build with ASSERTIONS=2 for more info.
 ''') # some useful text
     test(['-O1', '-s', 'ASSERTIONS=2'], ('''Invalid function pointer '0' called with signature 'v'. Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? Or calling a function with an incorrect type, which will fail? (it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)
-This pointer might make sense in another type signature: i: 0  
-''', '''Invalid function pointer '1' called with signature 'v'. Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? Or calling a function with an incorrect type, which will fail? (it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)
-This pointer might make sense in another type signature: i: asm['_my_func']''')) # actually useful identity of the bad pointer, with comparisons to what it would be in other types/tables
+This pointer might make sense in another type signature:''', '''Invalid function pointer '1' called with signature 'v'. Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? Or calling a function with an incorrect type, which will fail? (it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)'''), "i: asm['_my_func']") # actually useful identity of the bad pointer, with comparisons to what it would be in other types/tables
     test(['-O1', '-s', 'EMULATE_FUNCTION_POINTER_CASTS=1'], '''my func\n''') # emulate so it works
 
   def test_l_link(self):
@@ -1739,6 +1737,8 @@ int f() {
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-outline2.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-outline2-output.js')).read(),
        ['asm', 'outline']),
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-outline3.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-outline3-output.js')).read(),
+       ['asm', 'outline']),
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-outline4.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-outline4-output.js')).read(),
        ['asm', 'outline']),
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-minlast.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-minlast-output.js')).read(),
        ['asm', 'minifyWhitespace', 'asmLastOpts', 'last']),
@@ -2941,10 +2941,12 @@ int main(int argc, char **argv) {
         if line.strip().startswith('var FUNCTION_TABLE_dd = '):
           sizes_dd[alias] = line.count(',')
 
+    print 'ii', sizes_ii
+    print 'dd', sizes_dd
+
     for sizes in [sizes_ii, sizes_dd]:
-      assert sizes[-1] == 3 # default - let them alias
-      assert sizes[0] == 7 # no aliasing, all unique, fat tables
-      assert sizes[1] == 3 # aliased once more
+      assert sizes[-1] == sizes[1] # default is to alias
+      assert sizes[1] < sizes[0] # without aliasing, we have more unique values and fat tables
 
   def test_bad_export(self):
     for m in ['', ' ']:
@@ -3048,11 +3050,12 @@ int main(int argc, char **argv) {
 1:
   make /: -1
   open /: 1
-  ., 4
-  .., 4
-  tmp, 4
-  home, 4
+  proc, 4
   dev, 4
+  home, 4
+  tmp, 4
+  .., 4
+  ., 4
 ''', run_js('a.out.js', args=['/']))
     # cannot create empty name, cannot open
     self.assertContained(r'''
@@ -3065,21 +3068,21 @@ int main(int argc, char **argv) {
 1:
   make /a//: 0
   open /a//: 1
-  ., 4
   .., 4
+  ., 4
 ''', run_js('a.out.js', args=['/a//']))
     # can create child unnormalized
     self.assertContained(r'''
 1:
   make /a: 0
   open /a: 1
-  ., 4
   .., 4
+  ., 4
 2:
   make /a//b//: 0
   open /a//b//: 1
-  ., 4
   .., 4
+  ., 4
 ''', run_js('a.out.js', args=['/a', '/a//b//']))
 
   def test_stat_silly(self):
@@ -3271,17 +3274,17 @@ int main()
     # cannot symlink nonexistents
     self.assertContained(r'''Before:
 dir
-  a
-  b
-  c
-  d
   e
+  d
+  c
+  b
+  a
 
-Unlinking a
-Unlinking b
-Unlinking c
-Unlinking d
 Unlinking e
+Unlinking d
+Unlinking c
+Unlinking b
+Unlinking a
 After:
 dir
 ''', run_js('a.out.js', args=['', 'abc']))
@@ -3860,7 +3863,7 @@ Failed to open file for writing: /tmp/file; errno=13; Permission denied
       {
           FILE* fp = fopen("large.txt", "r");
           if (fp) {
-              printf("%d\n", (int)fp);
+              printf("ok\n");
               fseek(fp, 0L, SEEK_END);
               printf("%ld\n", ftell(fp));
           } else {
@@ -3873,7 +3876,7 @@ Failed to open file for writing: /tmp/file; errno=13; Permission denied
     for engine in JS_ENGINES:
       if engine == V8_ENGINE: continue # ooms
       print engine
-      self.assertContained('4\n' + str(large_size) + '\n', run_js('a.out.js', engine=engine))
+      self.assertContained('ok\n' + str(large_size) + '\n', run_js('a.out.js', engine=engine))
 
   def test_force_exit(self):
     open('src.cpp', 'w').write(r'''
@@ -3905,6 +3908,7 @@ main()
     assert 'callback post()' not in output
 
   def test_bad_locale(self):
+    logging.warning('TODO: check with upstream musl if this is correct behavior or not')
     open('src.cpp', 'w').write(r'''
 
 #include <locale.h>
@@ -3928,7 +3932,7 @@ main(const int argc, const char * const * const argv)
     Popen([PYTHON, EMCC, 'src.cpp']).communicate()
 
     self.assertContained('locale set to C: C', run_js('a.out.js', args=['C']))
-    self.assertContained('waka locale not supported', run_js('a.out.js', args=['waka']))
+    self.assertContained('locale set to waka: C.UTF-8', run_js('a.out.js', args=['waka'])) # the call still succeeds in musl, even if the locale requested was not selected
 
   def test_js_malloc(self):
     open('src.cpp', 'w').write(r'''
@@ -4060,13 +4064,13 @@ main(const int argc, const char * const * const argv)
 
   def test_no_nuthin(self):
     def test(opts, ratio, absolute):
-      print opts
+      print 'opts, ratio, absolute:', opts, ratio, absolute
       def get_size(name):
         return os.stat(name).st_size
       sizes = {}
       def do(name, moar_opts):
         self.clear()
-        Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', name + '.js'] + opts + moar_opts).communicate()
+        Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_em_asm.c'), '-o', name + '.js'] + opts + moar_opts).communicate()
         sizes[name] = get_size(name + '.js')
         self.assertContained('hello, world!', run_js(name + '.js'))
       do('normal', [])
@@ -4340,6 +4344,7 @@ function _main() {
 function _main() {
  var i2 = 0, i3 = 0, i4 = 0, i6 = 0, i8 = 0, i9 = 0, i10 = 0, i11 = 0, i12 = 0, i13 = 0, i14 = 0, i15 = 0, i16 = 0, i5 = 0, i7 = 0, i1 = 0;
  print(4278);
+ i6 = 0;
  L1 : while (1) {
   i11 = -1;
   switch ((i11 | 0)) {
@@ -4395,6 +4400,10 @@ function _main() {
         out, err = Popen([PYTHON, EMCC, source, '-O3', '-s', 'EMTERPRETIFY=1'], stderr=PIPE).communicate()
       finally:
         del os.environ['EMCC_LOG_EMTERPRETER_CODE']
+      lines = err.split('\n')
+      lines = filter(lambda line: 'raw bytecode for ' + func in line, lines)
+      assert len(lines) == 1, '\n\n'.join(lines)
+      err = lines[0]
       parts = err.split('insts: ')
       pre, post = parts[:2]
       assert func in pre, pre
@@ -4403,14 +4412,14 @@ function _main() {
       print '  seen', seen, ', expected ', expected, type(seen), type(expected)
       assert expected == seen or (seen in expected if type(expected) in [list, tuple] else False), ['expect', expected, 'but see', seen]
 
-    do_log_test(path_from_root('tests', 'primes.cpp'), 88, 'main')
-    do_log_test(path_from_root('tests', 'fannkuch.cpp'), range(227, 230), 'fannkuch_worker')
+    do_log_test(path_from_root('tests', 'primes.cpp'), range(88, 92), '_main')
+    do_log_test(path_from_root('tests', 'fannkuch.cpp'), range(227, 230), '__Z15fannkuch_workerPv')
 
     # test non-native as well, registerizeHarder can be a little more efficient here
     old_native = os.environ.get('EMCC_NATIVE_OPTIMIZER')
     try:
       os.environ['EMCC_NATIVE_OPTIMIZER'] = '0'
-      do_log_test(path_from_root('tests', 'fannkuch.cpp'), range(227, 230), 'fannkuch_worker')
+      do_log_test(path_from_root('tests', 'fannkuch.cpp'), range(227, 230), '__Z15fannkuch_workerPv')
     finally:
       if old_native: os.environ['EMCC_NATIVE_OPTIMIZER'] = old_native
       else: del os.environ['EMCC_NATIVE_OPTIMIZER']

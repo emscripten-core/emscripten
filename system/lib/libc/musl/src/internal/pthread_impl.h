@@ -105,9 +105,7 @@ struct __timer {
 #define _b_waiters2 __u.__i[4]
 #define _b_inst __u.__p[3]
 
-#ifndef __EMSCRIPTEN__ // XXX Not currently used for Emscripten.
 #include "pthread_arch.h"
-#endif
 
 #define SIGTIMER 32
 #define SIGCANCEL 33

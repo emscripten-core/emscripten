@@ -552,7 +552,7 @@ function _emscripten_asm_const_%d(%s) {
     if settings.get('EMTERPRETIFY'):
       asm_runtime_funcs += ['emterpret']
       if settings.get('EMTERPRETIFY_ASYNC'):
-        asm_runtime_funcs += ['setAsyncState', 'emtStackSave']
+        asm_runtime_funcs += ['setAsyncState', 'emtStackSave', 'emtStackRestore']
 
     # function tables
     if not settings['EMULATED_FUNCTION_POINTERS']:
@@ -649,7 +649,7 @@ function ftCall_%s(%s) {%s
       global_funcs += ['g$' + extern for extern in metadata['externs']]
       side = 'parent' if settings['SIDE_MODULE'] else ''
       def check(extern):
-        if settings['ASSERTIONS']: return 'assert(' + side + 'Module["' + extern + '"]);'
+        if settings['ASSERTIONS']: return 'assert(' + side + 'Module["' + extern + '"], "external function \'' + extern + '\' is missing. perhaps a side module was not linked in? if this symbol was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");'
         return ''
       for extern in metadata['externs']:
         asm_setup += 'var g$' + extern + ' = function() { ' + check(extern) + ' return ' + side + 'Module["' + extern + '"] };\n'
@@ -838,6 +838,10 @@ function setAsyncState(x) {
 }
 function emtStackSave() {
   return EMTSTACKTOP|0;
+}
+function emtStackRestore(x) {
+  x = x | 0;
+  EMTSTACKTOP = x;
 }
 ''' if settings['EMTERPRETIFY_ASYNC'] else '') + '''
 function setThrew(threw, value) {

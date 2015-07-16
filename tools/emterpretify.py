@@ -55,7 +55,7 @@ sys.argv = filter(handle_arg, sys.argv)
 
 # consts
 
-BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memmove', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64', '_strncpy', '_strcpy', '_strcat', '_saveSetjmp', '_testSetjmp', '_emscripten_replace_memory', '_bitshift64Shl', '_bitshift64Ashr', '_bitshift64Lshr', 'setAsyncState', 'emtStackSave'])
+BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memmove', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64', '_strncpy', '_strcpy', '_strcat', '_saveSetjmp', '_testSetjmp', '_emscripten_replace_memory', '_bitshift64Shl', '_bitshift64Ashr', '_bitshift64Lshr', 'setAsyncState', 'emtStackSave', 'emtStackRestore'])
 WHITELIST = []
 
 SYNC_FUNCS = set(['_emscripten_sleep', '_emscripten_sleep_with_yield', '_emscripten_wget_data', '_emscripten_idb_load', '_emscripten_idb_store', '_emscripten_idb_delete'])
