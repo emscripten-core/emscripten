@@ -14,6 +14,10 @@ Current trunk code
     - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.34.1...incoming
     - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.34.1...incoming
 
+v1.34.3: 7/15/2015
+------------------
+ - Move libc to musl+syscalls
+
 v1.34.1: 6/18/2015
 ------------------
  - Fixed an issue with resize canvas not working with GLFW.
