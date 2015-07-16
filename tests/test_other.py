@@ -4936,3 +4936,9 @@ int main() { printf("Mary had a little lamb.\n"); }
     print 'seen syscalls:', matches
     assert set(matches) == set(['6', '54', '140', '146']) # close, ioctl, llseek, writev
 
+  def test_emcc_dev_null(self):
+    proc = Popen([PYTHON, EMCC, '-dM', '-E', '-x', 'c', '/dev/null'], stdout=PIPE)
+    out, err = proc.communicate()
+    assert proc.returncode == 0
+    self.assertContained('#define __EMSCRIPTEN__ 1', out) # all our defines should show up
+
