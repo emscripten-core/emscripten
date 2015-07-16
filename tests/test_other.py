@@ -4929,3 +4929,10 @@ int main() { printf("Mary had a little lamb.\n"); }
     out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["alGetError"]', '-s', 'EXPORTED_FUNCTIONS=["_main", "_alGetError"]'], stdout=PIPE, stderr=PIPE).communicate()
     self.assertNotContained('''function requested to be exported, but not implemented: "_alGetError"''', err)
 
+  def test_static_syscalls(self):
+    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')]).communicate()
+    src = open('a.out.js').read()
+    matches = re.findall('''function ___syscall(\d+)\(''', src)
+    print 'seen syscalls:', matches
+    assert set(matches) == set(['6', '54', '140', '146']) # close, ioctl, llseek, writev
+
