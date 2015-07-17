@@ -2,18 +2,11 @@
 # This Python file uses the following encoding: utf-8
 
 '''
-Simple test runner
-
-These tests can be run in parallel using nose, for example
-
-  nosetests --processes=4 -v -s tests/runner.py
-
-will use 4 processes. To install nose do something like
-|pip install nose| or |sudo apt-get install python-nose|.
-
-Note however that emcc now uses multiple cores when optimizing,
-so you may prefer to use fewer cores here.
+Simple test runner. Consider using parallel_test_core.py for faster iteration times.
 '''
+
+# XXX Use EM_ALL_ENGINES=1 in the env to test all engines!
+
 
 from subprocess import Popen, PIPE, STDOUT
 import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer, multiprocessing, functools, stat, string, random
