@@ -107,6 +107,14 @@ def filter_harnesses(harnesses):
 class sockets(BrowserCore):
   emcc_args = []
 
+  @classmethod
+  def setUpClass(self):
+    super(sockets, self).setUpClass()
+    self.browser_timeout = 30
+    print
+    print 'Running the socket tests. Make sure the browser allows popups from localhost.'
+    print
+
   def test_inet(self):
     src = r'''
       #include <stdio.h>
