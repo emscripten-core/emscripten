@@ -596,7 +596,7 @@ class BrowserCore(RunnerCore):
     # WindowsError: [Error 32] The process cannot access the file because it is being used by another process.
     time.sleep(0.1)
 
-  def run_browser(self, html_file, message, expectedResult=None):
+  def run_browser(self, html_file, message, expectedResult=None, timeout=None):
     print '[browser launch:', html_file, ']'
     if expectedResult is not None:
       try:
@@ -606,7 +606,8 @@ class BrowserCore(RunnerCore):
         self.harness_queue.put('http://localhost:8888/' + html_file)
         output = '[no http server activity]'
         start = time.time()
-        while time.time() - start < self.browser_timeout:
+        if timeout is None: timeout = self.browser_timeout
+        while time.time() - start < timeout:
           if not queue.empty():
             output = queue.get()
             break
@@ -728,7 +729,7 @@ class BrowserCore(RunnerCore):
 ''' % basename)
 
   def btest(self, filename, expected=None, reference=None, force_c=False, reference_slack=0, manual_reference=False, post_build=None,
-      args=[], outfile='test.html', message='.', also_proxied=False, url_suffix=''): # TODO: use in all other tests
+      args=[], outfile='test.html', message='.', also_proxied=False, url_suffix='', timeout=None): # TODO: use in all other tests
     # if we are provided the source and not a path, use that
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
@@ -755,7 +756,7 @@ class BrowserCore(RunnerCore):
     assert os.path.exists(outfile)
     if post_build: post_build()
     if type(expected) is str: expected = [expected]
-    self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected])
+    self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected], timeout=timeout)
     if also_proxied:
       print 'proxied...'
       # save non-proxied
@@ -769,7 +770,7 @@ class BrowserCore(RunnerCore):
         assert not post_build
         post_build = self.post_manual_reftest
       # run proxied
-      self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build, original_args + ['--proxy-to-worker', '-s', 'GL_TESTING=1'], outfile, message)
+      self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build, original_args + ['--proxy-to-worker', '-s', 'GL_TESTING=1'], outfile, message, timeout=timeout)
 
 ###################################################################################################
 
