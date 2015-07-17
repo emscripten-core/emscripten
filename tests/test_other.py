@@ -4062,6 +4062,16 @@ main(const int argc, const char * const * const argv)
     test([])
     test(['-O1'])
 
+  def test_no_filesystem(self):
+    check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'])
+    yes_size = os.stat('a.out.js').st_size
+    self.assertContained('hello, world!', run_js('a.out.js'))
+    check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1', '-s', 'NO_FILESYSTEM=1'])
+    no_size = os.stat('a.out.js').st_size
+    self.assertContained('hello, world!', run_js('a.out.js'))
+    print 'yes fs, no fs:', yes_size, no_size
+    assert yes_size - no_size > 100000 # 100K of FS code is removed
+
   def test_no_nuthin(self):
     def test(opts, ratio, absolute):
       print 'opts, ratio, absolute:', opts, ratio, absolute

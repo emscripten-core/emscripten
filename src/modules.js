@@ -98,11 +98,11 @@ var LibraryManager = {
 
     var libraries = [
       'library.js',
-      'library_formatString.js'
+      'library_formatString.js',
+      'library_syscall.js'
     ];
     if (!NO_FILESYSTEM) {
       libraries = libraries.concat([
-        'library_syscall.js',
         'library_path.js',
         'library_fs.js',
         'library_idbfs.js',

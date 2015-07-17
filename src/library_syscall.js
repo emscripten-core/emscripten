@@ -1,10 +1,14 @@
 var SyscallsLibrary = {
-  $SYSCALLS__deps: ['$FS', '$ERRNO_CODES', '$PATH'
+  $SYSCALLS__deps: [
+#if NO_FILESYSTEM == 0
+                   '$FS', '$ERRNO_CODES', '$PATH',
+#endif
 #if SYSCALL_DEBUG
-                   ,'$ERRNO_MESSAGES'
+                   '$ERRNO_MESSAGES'
 #endif
   ],
   $SYSCALLS: {
+#if NO_FILESYSTEM == 0
     // global constants
     DEFAULT_POLLMASK: {{{ cDefine('POLLIN') }}} | {{{ cDefine('POLLOUT') }}},
 
@@ -138,6 +142,7 @@ var SyscallsLibrary = {
       }
       return ret;
     },
+#endif // NO_FILESYSTEM == 0
 
     // arguments handling
 
@@ -158,6 +163,7 @@ var SyscallsLibrary = {
 #endif
       return ret;
     },
+#if NO_FILESYSTEM == 0
     getStreamFromFD: function() {
       var stream = FS.getStream(SYSCALLS.get());
       if (!stream) throw new FS.ErrnoError(ERRNO_CODES.EBADF);
@@ -185,6 +191,7 @@ var SyscallsLibrary = {
 #endif
       return info;
     },
+#endif // NO_FILESYSTEM == 0
     get64: function() {
       var low = SYSCALLS.get(), high = SYSCALLS.get();
       if (low >= 0) assert(high === 0);
@@ -286,6 +293,12 @@ var SyscallsLibrary = {
     return -ERRNO_CODES.ENOSYS; // unsupported features
   },
   __syscall54: function(which, varargs) { // ioctl
+#if NO_FILESYSTEM
+#if SYSCALL_DEBUG
+    Module.printErr('no-op in ioctl syscall due to NO_FILESYSTEM');
+#endif
+    return 0;
+#else
     var stream = SYSCALLS.getStreamFromFD(), op = SYSCALLS.get();
     switch (op) {
       case {{{ cDefine('TCGETS') }}}: {
@@ -315,6 +328,7 @@ var SyscallsLibrary = {
       }
       default: abort('bad ioctl syscall ' + op);
     }
+#endif // NO_FILESYSTEM
   },
   __syscall57__deps: ['$PROCINFO'],
   __syscall57: function(which, varargs) { // setpgid
@@ -725,8 +739,31 @@ var SyscallsLibrary = {
     return SYSCALLS.doReadv(stream, iov, iovcnt);
   },
   __syscall146: function(which, varargs) { // writev
+#if NO_FILESYSTEM == 0
     var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
     return SYSCALLS.doWritev(stream, iov, iovcnt);
+#else
+    // hack to support printf in NO_FILESYSTEM
+    var stream = SYSCALLS.get(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
+    var ret = 0;
+    if (!___syscall146.buffer) ___syscall146.buffer = [];
+    var buffer = ___syscall146.buffer;
+    for (var i = 0; i < iovcnt; i++) {
+      var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
+      var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
+      for (var j = 0; j < len; j++) {
+        var curr = HEAPU8[ptr+j];
+        if (curr === 0 || curr === {{{ charCode('\n') }}}) {
+          Module['print'](UTF8ArrayToString(buffer, 0));
+          buffer.length = 0;
+        } else {
+          buffer.push(curr);
+        }
+      }
+      ret += len;
+    }
+    return ret;
+#endif // NO_FILESYSTEM == 0
   },
   __syscall147__deps: ['$PROCINFO'],
   __syscall147: function(which, varargs) { // getsid
