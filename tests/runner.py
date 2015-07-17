@@ -266,6 +266,10 @@ class RunnerCore(unittest.TestCase):
         assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
 
   def validate_asmjs(self, err):
+    if "asm.js type error: 'Float32x4' is not a standard SIMD type" in err:
+      err = err.replace("asm.js type error: 'Float32x4' is not a standard SIMD type", "")
+      print >> sys.stderr, "\nWARNING: ignoring asm.js type error due to old SpiderMonkey\n"
+
     if 'uccessfully compiled asm.js code' in err and 'asm.js link error' not in err:
       print >> sys.stderr, "[was asm.js'ified]"
     elif 'asm.js' in err: # if no asm.js error, then not an odin build
