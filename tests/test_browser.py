@@ -1241,7 +1241,7 @@ keydown(100);keyup(100); // trigger the end
   def test_glgears_long(self):
     for proxy in [0, 1]:
       print 'proxy', proxy
-      self.btest('hello_world_gles.c', expected=map(str, range(30, 500)), args=['-DHAVE_BUILTIN_SINCOS', '-DLONGTEST'] + (['--proxy-to-worker'] if proxy else []))
+      self.btest('hello_world_gles.c', expected=map(str, range(30, 500)), args=['-DHAVE_BUILTIN_SINCOS', '-DLONGTEST'] + (['--proxy-to-worker'] if proxy else []), timeout=30)
 
   def test_glgears_animation(self):
     es2_suffix = ['', '_full', '_full_944']
@@ -2421,10 +2421,10 @@ window.close = function() {
     self.btest('emterpreter_async_sleep2.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Oz'])
 
   def test_sdl_audio_beep_sleep(self):
-    self.btest('sdl_audio_beep_sleep.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Os', '-s', 'ASSERTIONS=1', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-profiling', '-s', 'SAFE_HEAP=1'])
+    self.btest('sdl_audio_beep_sleep.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Os', '-s', 'ASSERTIONS=1', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-profiling', '-s', 'SAFE_HEAP=1'], timeout=60)
 
   def test_mainloop_reschedule(self):
-    self.btest('mainloop_reschedule.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Os'])
+    self.btest('mainloop_reschedule.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Os'], timeout=30)
 
   def test_modularize(self):
     for opts in [[], ['-O1'], ['-O2', '-profiling'], ['-O2']]:
@@ -2576,7 +2576,7 @@ window.close = function() {
   # Test the __sync_lock_test_and_set and __sync_lock_release primitives.
   def test_pthread_gcc_spinlock(self):
     for arg in [[], ['-DUSE_EMSCRIPTEN_INTRINSICS']]:
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_spinlock.cpp'), expected='800', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + arg)
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_spinlock.cpp'), expected='800', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + arg, timeout=20)
 
   # Test that basic thread creation works.
   def test_pthread_create(self):
@@ -2609,7 +2609,7 @@ window.close = function() {
   # Tests the pthread mutex api.
   def test_pthread_mutex(self):
     for arg in [[], ['-DSPINLOCK_TEST']]:
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_mutex.cpp'), expected='50', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + arg)
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_mutex.cpp'), expected='50', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + arg, timeout=20)
 
   # Test that memory allocation is thread-safe.
   def test_pthread_malloc(self):
