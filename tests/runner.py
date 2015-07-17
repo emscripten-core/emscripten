@@ -609,7 +609,7 @@ class BrowserCore(RunnerCore):
         self.harness_queue.put('http://localhost:8888/' + html_file)
         output = '[no http server activity]'
         start = time.time()
-        while time.time() - start < 60:
+        while time.time() - start < 10:
           if not queue.empty():
             output = queue.get()
             break
