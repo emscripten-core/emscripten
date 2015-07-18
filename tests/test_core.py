@@ -4634,12 +4634,14 @@ def process(filename):
 
   def test_fgetc_ungetc(self):
     logging.warning('TODO: update this test once the musl ungetc-on-EOF-stream bug is fixed upstream and reaches us')
+    Settings.SYSCALL_DEBUG = 1
     self.clear()
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
     for fs in ['MEMFS', 'NODEFS']:
-        src = open(path_from_root('tests', 'stdio', 'test_fgetc_ungetc.c'), 'r').read()
-        Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
-        self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
+      print fs
+      src = open(path_from_root('tests', 'stdio', 'test_fgetc_ungetc.c'), 'r').read()
+      Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
+      self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
   def test_fgetc_unsigned(self):
     src = r'''
@@ -4910,6 +4912,7 @@ def process(filename):
       Settings.INCLUDE_FULL_LIBRARY = 0
 
   def test_fs_nodefs_rw(self):
+    Settings.SYSCALL_DEBUG = 1
     src = open(path_from_root('tests', 'fs', 'test_nodefs_rw.c'), 'r').read()
     self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
