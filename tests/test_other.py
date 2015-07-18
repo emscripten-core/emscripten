@@ -4947,6 +4947,7 @@ int main() { printf("Mary had a little lamb.\n"); }
     assert set(matches) == set(['6', '54', '140', '146']) # close, ioctl, llseek, writev
 
   def test_emcc_dev_null(self):
+    if WINDOWS: return self.skip('posix-only')
     proc = Popen([PYTHON, EMCC, '-dM', '-E', '-x', 'c', '/dev/null'], stdout=PIPE)
     out, err = proc.communicate()
     assert proc.returncode == 0
