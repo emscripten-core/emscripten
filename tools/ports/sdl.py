@@ -22,7 +22,6 @@ def get(ports, settings, shared):
   if settings.USE_SDL == 2:
     ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip', 'SDL2-' + TAG)
     def create():
-      logging.warning('building port: sdl2')
       # we are rebuilding SDL, clear dependant projects so they copy in their includes to ours properly
       ports.clear_project_build('sdl2-image')
       # copy includes to a location so they can be used as 'SDL2/'
@@ -47,7 +46,7 @@ def get(ports, settings, shared):
       final = os.path.join(ports.get_build_dir(), 'sdl2', 'libsdl2.bc')
       shared.Building.link(o_s, final)
       return final
-    return [shared.Cache.get('sdl2', create)]
+    return [shared.Cache.get('sdl2', create, what='port')]
   else:
     return []
 

@@ -5,9 +5,7 @@ TAG = 'version_1'
 def get(ports, settings, shared):
   if settings.USE_LIBPNG == 1:
     ports.fetch_project('libpng', 'https://github.com/emscripten-ports/libpng/archive/' + TAG + '.zip', 'libpng-' + TAG)
-    def create():
-      logging.warning('building port: libpng')
-     
+    def create():     
       zlib.get(ports, settings, shared);
       # TODO: clear dependent projects
       #ports.clear_project_build('sdl2-image')
@@ -36,7 +34,7 @@ def get(ports, settings, shared):
       final = os.path.join(ports.get_build_dir(), 'libpng', 'libpng.bc')
       shared.Building.link(o_s, final)
       return final
-    return [shared.Cache.get('libpng', create)]
+    return [shared.Cache.get('libpng', create, what='port')]
   else:
     return []
 

@@ -526,7 +526,7 @@ fi
     # using ports
 
     RETRIEVING_MESSAGE = 'retrieving port'
-    BUILDING_MESSAGE = 'building port'
+    BUILDING_MESSAGE = 'generating port'
 
     from tools import system_libs
     PORTS_DIR = system_libs.Ports.get_dir()
