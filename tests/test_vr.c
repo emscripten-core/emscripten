@@ -62,10 +62,11 @@ mainloop()
             return;
         }
 
-        WebVRFieldOfView leftFov, rightFov;
-        emscripten_vr_hmd_get_current_fov(gHmdDev, WebVREyeLeft, &leftFov);
-        emscripten_vr_hmd_get_current_fov(gHmdDev, WebVREyeRight, &rightFov);
+        WebVREyeParameters leftParams, rightParams;
+        emscripten_vr_hmd_get_eye_parameters(gHmdDev, WebVREyeLeft, &leftParams);
+        emscripten_vr_hmd_get_eye_parameters(gHmdDev, WebVREyeLeft, &rightParams);
 
+        WebVRFieldOfView leftFov = leftParams.currentFieldOfView, rightFov = rightParams.currentFieldOfView;
         printf("Left FOV: %f %f %f %f\n", leftFov.upDegrees, leftFov.downDegrees, leftFov.rightDegrees, leftFov.leftDegrees);
         printf("Right FOV: %f %f %f %f\n", rightFov.upDegrees, rightFov.downDegrees, rightFov.rightDegrees, rightFov.leftDegrees);
     }

@@ -1417,6 +1417,14 @@
 	      { "orientation": [ "x", "y", "z", "w" ] },
 	      { "angularVelocity": [ "x", "y", "z", "w" ] },
 	      { "angularAcceleration": [ "x", "y", "z", "w" ] }
+	    ],
+        "WebVREyeParameters": [
+          { "minimumFieldOfView": [ "upDegrees", "rightDegrees", "downDegrees", "leftDegrees" ] },
+          { "maximumFieldOfView": [ "upDegrees", "rightDegrees", "downDegrees", "leftDegrees" ] },
+          { "recommendedFieldOfView": [ "upDegrees", "rightDegrees", "downDegrees", "leftDegrees" ] },
+          { "eyeTranslation": [ "x", "y", "z", "w" ] },
+          { "currentFieldOfView": [ "upDegrees", "rightDegrees", "downDegrees", "leftDegrees" ] },
+          { "renderRect": [ "x", "y", "width", "height"] }
 	    ]
         }
     },
