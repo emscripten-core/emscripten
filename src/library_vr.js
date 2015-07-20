@@ -82,6 +82,15 @@ var LibraryWebVR = {
     return WebVR.deviceHardwareIds[dev.hardwareUnitId];
   },
 
+  emscripten_vr_get_device_name: function(deviceId) {
+    var dev = WebVR.getDeviceByID(deviceId);
+    var buffer, devName;
+    devName = dev ? dev.deviceName : ""
+    buf = _malloc(devName.length + 1);
+    writeStringToMemory(devName, buf);
+    return buf;
+  },
+
   emscripten_vr_get_device_type: function(deviceId) {
     var dev = WebVR.getDeviceByID(deviceId);
     if (!dev) return -1;

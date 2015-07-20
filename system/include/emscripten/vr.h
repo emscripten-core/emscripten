@@ -76,6 +76,7 @@ extern int emscripten_vr_count_devices();
 extern WebVRDeviceId emscripten_vr_get_device_id(int deviceIndex);
 extern WebVRDeviceType emscripten_vr_get_device_type(WebVRDeviceId deviceId);
 extern WebVRHardwareUnitId emscripten_vr_get_device_hwid(WebVRDeviceId deviceId);
+extern char *emscripten_vr_get_device_name(WebVRDeviceId deviceId);
 
 // select the given device as the fullscreen HMD device
 extern int emscripten_vr_select_hmd_device(WebVRDeviceId deviceId);
