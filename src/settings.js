@@ -269,14 +269,17 @@ var ASYNCIFY_WHITELIST = ['qsort',   // Functions in this list are never conside
                           '__fwritex', 
                           'MUSL_vfprintf']; 
 
-var EXPORTED_FS_METHODS = ['createFolder',         //Define FS module names. These become Module["FS_(module name)"] = FS_(module name)
-                           'createPath',
-                           'createDataFile',
-                           'createPreloadedFile',
-                           'createLazyFile',
-                           'createLink',
-                           'createDevice',
-                           'unlink'];
+var EXPORTED_RUNTIME_METHODS = [ // Methods that are exported on Module. By default we export quite a bit, you can reduce this list to lower your code size,
+  'FS_createFolder',             // especially when closure is run (exporting prevents closure from eliminating code)
+  'FS_createPath',
+  'FS_createDataFile',
+  'FS_createPreloadedFile',
+  'FS_createLazyFile',
+  'FS_createLink',
+  'FS_createDevice',
+  'FS_unlink'
+];
+
 var FS_LOG = 0; // Log all FS operations.  This is especially helpful when you're porting
                 // a new project and want to see a list of file system operations happening
                 // so that you can create a virtual file system with all of the required files.

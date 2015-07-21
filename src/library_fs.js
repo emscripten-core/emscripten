@@ -5,7 +5,7 @@ mergeInto(LibraryManager.library, {
                 '__ATMAIN__.push(function() { FS.ignorePermissions = false });' +
                 '__ATEXIT__.push(function() { FS.quit() });' +
                 //Get module methods from settings
-                '{{{ EXPORTED_FS_METHODS.map(function(module){return 'Module["FS_' + module + '"] = FS.' + module + ";"}).reduce(function(str, module){return str + module;}) }}}',
+                '{{{ EXPORTED_RUNTIME_METHODS.filter(function(func) { return func.substr(0, 3) === 'FS_' }).map(function(func){return 'Module["' + func + '"] = FS.' + func.substr(3) + ";"}).reduce(function(str, func){return str + func;}) }}}',
   $FS: {
     root: null,
     mounts: [],
