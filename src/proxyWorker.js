@@ -265,7 +265,7 @@ document.createElement = function document_createElement(what) {
           if (!style.cursor_ || style.cursor_ !== value) {
             style.cursor_ = value;
             if (style.parentCanvas === Module['canvas']) {
-              postMessage({ target: 'canvas', op: 'setStyle', property: 'cursor', value: style.cursor_ });
+              postMessage({ target: 'canvas', op: 'setObjectProperty', object: 'style', property: 'cursor', value: style.cursor_ });
             }
           }
         },

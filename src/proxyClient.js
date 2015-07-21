@@ -140,8 +140,8 @@ worker.onmessage = function worker_onmessage(event) {
           }
           break;
         }
-        case 'setStyle': {
-          Module.canvas.style[data.property] = data.value;
+        case 'setObjectProperty': {
+          Module.canvas[data.object][data.property] = data.value;
           break;
         }
         default: throw 'eh?';
