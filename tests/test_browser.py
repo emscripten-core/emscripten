@@ -2694,3 +2694,6 @@ window.close = function() {
 
   def test_canvas_style_proxy(self):
     self.btest('canvas_style_proxy.c', expected='1', args=['--proxy-to-worker', '--shell-file', path_from_root('tests/canvas_style_proxy_shell.html'), '--pre-js', path_from_root('tests/canvas_style_proxy_pre.js')])
+
+  def test_canvas_size_proxy(self):
+    self.btest(path_from_root('tests', 'canvas_size_proxy.c'), expected='0', args=['--proxy-to-worker'])
