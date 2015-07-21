@@ -4087,6 +4087,7 @@ main(const int argc, const char * const * const argv)
       do('no_fs', ['-s', 'NO_FILESYSTEM=1'])
       do('no_browser', ['-s', 'NO_BROWSER=1'])
       do('no_nuthin', ['-s', 'NO_FILESYSTEM=1', '-s', 'NO_BROWSER=1'])
+      do('no_nuthin_less', ['-s', 'NO_FILESYSTEM=1', '-s', 'NO_BROWSER=1', '-s', 'EXPORTED_RUNTIME_METHODS=[]'])
       print '  ', sizes
       assert sizes['no_fs'] < sizes['normal']
       assert sizes['no_browser'] < sizes['normal']
@@ -4094,6 +4095,7 @@ main(const int argc, const char * const * const argv)
       assert sizes['no_nuthin'] < sizes['no_browser']
       assert sizes['no_nuthin'] < ratio*sizes['normal']
       assert sizes['no_nuthin'] < absolute
+      assert sizes['no_nuthin_less'] < sizes['no_nuthin']
     test([], 0.66, 250000)
     test(['-O1'], 0.66, 225000)
     test(['-O2'], 0.50, 75000)

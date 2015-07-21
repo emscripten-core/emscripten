@@ -227,6 +227,17 @@ function cDefine(key) {
 	throw 'XXX missing C define ' + key + '!';
 }
 
+var EXPORTED_RUNTIME_METHODS_SET = null;
+
+function maybeExport(name) {
+  if (!EXPORTED_RUNTIME_METHODS_SET) EXPORTED_RUNTIME_METHODS_SET = set(EXPORTED_RUNTIME_METHODS);
+  if (name in EXPORTED_RUNTIME_METHODS_SET) {
+    return 'Module["' + name + '"] = ' + name + ';';
+  } else {
+    return '';
+  }
+}
+
 var PassManager = {
   serialize: function() {
     print('\n//FORWARDED_DATA:' + JSON.stringify({
