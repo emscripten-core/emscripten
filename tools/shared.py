@@ -1587,6 +1587,10 @@ class Building:
       raise Exception('Closure compiler appears to be missing, looked at: ' + str(CLOSURE_COMPILER))
 
     CLOSURE_EXTERNS = path_from_root('src', 'closure-externs.js')
+    NODE_EXTERNS_BASE = path_from_root('third_party', 'closure-compiler', 'node-externs')
+    NODE_EXTERNS = os.listdir(NODE_EXTERNS_BASE)
+    NODE_EXTERNS = [os.path.join(NODE_EXTERNS_BASE, name) for name in NODE_EXTERNS
+                    if name.endswith('.js')]
 
     # Something like this (adjust memory as needed):
     #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
@@ -1598,6 +1602,9 @@ class Building:
             '--externs', CLOSURE_EXTERNS,
             #'--variable_map_output_file', filename + '.vars',
             '--js', filename, '--js_output_file', filename + '.cc.js']
+    for extern in NODE_EXTERNS:
+        args.append('--externs')
+        args.append(extern)
     if pretty: args += ['--formatting', 'PRETTY_PRINT']
     if os.environ.get('EMCC_CLOSURE_ARGS'):
       args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))
