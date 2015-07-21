@@ -959,22 +959,28 @@ int f() {
     self.assertContained('libf1\nlibf2\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_stdin(self):
+    def _test():
+      for engine in JS_ENGINES:
+        if engine == V8_ENGINE: continue # no stdin support in v8 shell
+        engine[0] = os.path.normpath(engine[0])
+        print >> sys.stderr, engine
+        # work around a bug in python's subprocess module
+        # (we'd use run_js() normally)
+        try_delete('out.txt')
+        if os.name == 'nt': # windows
+          os.system('type "in.txt" | {} >out.txt'.format(' '.join(make_js_command(os.path.normpath(exe), engine))))
+        else: # posix
+          os.system('cat in.txt | {} > out.txt'.format(' '.join(make_js_command(exe, engine))))
+        self.assertContained('abcdef\nghijkl\neof', open('out.txt').read())
+
     Building.emcc(path_from_root('tests', 'module', 'test_stdin.c'), output_filename='a.out.js')
     open('in.txt', 'w').write('abcdef\nghijkl')
     exe = os.path.join(self.get_dir(), 'a.out.js')
-
-    for engine in JS_ENGINES:
-      if engine == V8_ENGINE: continue # no stdin support in v8 shell
-      engine[0] = os.path.normpath(engine[0])
-      print >> sys.stderr, engine
-      # work around a bug in python's subprocess module
-      # (we'd use run_js() normally)
-      try_delete('out.txt')
-      if os.name == 'nt': # windows
-        os.system('type "in.txt" | {} >out.txt'.format(' '.join(make_js_command(os.path.normpath(exe), engine))))
-      else: # posix
-        os.system('cat in.txt | {} > out.txt'.format(' '.join(make_js_command(exe, engine))))
-      self.assertContained('abcdef\nghijkl\neof', open('out.txt').read())
+    _test()
+    Building.emcc(path_from_root('tests', 'module', 'test_stdin.c'),
+                  ['-O2', '--closure', '1'],
+                  output_filename='a.out.js')
+    _test()
 
   def test_ungetc_fscanf(self):
     open('main.cpp', 'w').write(r'''
