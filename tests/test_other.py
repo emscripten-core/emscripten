@@ -4924,13 +4924,14 @@ int main() { printf("Mary had a little lamb.\n"); }
 #include <emscripten.h>
 
 void test(double d) {
-  char buffer[100];
-  unsigned len, len2;
+  char buffer[100], buffer2[100];
+  unsigned len, len2, len3;
   len = emscripten_print_double(d, NULL);
   len2 = emscripten_print_double(d, buffer);
   assert(len == len2);
   buffer[len] = 0;
-  printf("%g : %u : %s|\n", d, len, buffer);
+  len3 = snprintf(buffer2, 100, "%g", d);
+  printf("|%g : %u : %s : %s : %d|\n", d, len, buffer, buffer2, len3);
 }
 int main() {
   printf("\n");
@@ -4950,16 +4951,16 @@ int main() {
     Popen([PYTHON, EMCC, 'src.c']).communicate()
     out = run_js('a.out.js')
     self.assertContained('''
-0 : 1 : 0|
-1 : 1 : 1|
--1 : 2 : -1|
-1.234 : 5 : 1.234|
--1.234 : 6 : -1.234|
-1.1234e+20 : 21 : 112340000000000000000|
--1.1234e+20 : 22 : -112340000000000000000|
-1.1234e-20 : 10 : 1.1234e-20|
--1.1234e-20 : 11 : -1.1234e-20|
-inf : 8 : Infinity|
--inf : 9 : -Infinity|
+|0 : 1 : 0 : 0 : 1|
+|1 : 1 : 1 : 1 : 1|
+|-1 : 2 : -1 : -1 : 2|
+|1.234 : 5 : 1.234 : 1.234 : 5|
+|-1.234 : 6 : -1.234 : -1.234 : 6|
+|1.1234e+20 : 21 : 112340000000000000000 : 1.1234e+20 : 10|
+|-1.1234e+20 : 22 : -112340000000000000000 : -1.1234e+20 : 11|
+|1.1234e-20 : 10 : 1.1234e-20 : 1.1234e-20 : 10|
+|-1.1234e-20 : 11 : -1.1234e-20 : -1.1234e-20 : 11|
+|inf : 8 : Infinity : inf : 3|
+|-inf : 9 : -Infinity : -inf : 4|
 ''', out)
 
