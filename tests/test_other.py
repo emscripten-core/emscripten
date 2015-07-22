@@ -4915,3 +4915,51 @@ int main() { printf("Mary had a little lamb.\n"); }
       f.write(d)
     out = run_js('a.out.js', assert_returncode=None, stderr=subprocess.STDOUT)
     self.assertContained('Assertion failed: memory initializer checksum', out)
+
+  def test_emscripten_print_double(self):
+    with open('src.c', 'w') as f:
+      f.write(r'''
+#include <stdio.h>
+#include <assert.h>
+#include <emscripten.h>
+
+void test(double d) {
+  char buffer[100];
+  unsigned len, len2;
+  len = emscripten_print_double(d, NULL);
+  len2 = emscripten_print_double(d, buffer);
+  assert(len == len2);
+  buffer[len] = 0;
+  printf("%g : %u : %s|\n", d, len, buffer);
+}
+int main() {
+  printf("\n");
+  test(0);
+  test(1);
+  test(-1);
+  test(1.234);
+  test(-1.234);
+  test(1.1234E20);
+  test(-1.1234E20);
+  test(1.1234E-20);
+  test(-1.1234E-20);
+  test(1.0/0.0);
+  test(-1.0/0.0);
+}
+''')
+    Popen([PYTHON, EMCC, 'src.c']).communicate()
+    out = run_js('a.out.js')
+    self.assertContained('''
+0 : 1 : 0|
+1 : 1 : 1|
+-1 : 2 : -1|
+1.234 : 5 : 1.234|
+-1.234 : 6 : -1.234|
+1.1234e+20 : 21 : 112340000000000000000|
+-1.1234e+20 : 22 : -112340000000000000000|
+1.1234e-20 : 10 : 1.1234e-20|
+-1.1234e-20 : 11 : -1.1234e-20|
+inf : 8 : Infinity|
+-inf : 9 : -Infinity|
+''', out)
+
