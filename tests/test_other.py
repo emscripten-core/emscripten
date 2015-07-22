@@ -4102,6 +4102,8 @@ main(const int argc, const char * const * const argv)
       assert sizes['no_nuthin'] < ratio*sizes['normal']
       assert sizes['no_nuthin'] < absolute
       assert sizes['no_nuthin_less'] < sizes['no_nuthin']
+      if '--closure' in opts: # no EXPORTED_RUNTIME_METHODS makes closure much more effective
+        assert sizes['no_nuthin_less'] < 0.93*sizes['no_nuthin']
     test([], 0.66, 250000)
     test(['-O1'], 0.66, 225000)
     test(['-O2'], 0.50, 75000)
