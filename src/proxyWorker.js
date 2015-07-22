@@ -433,6 +433,7 @@ onmessage = function onmessage(message) {
       Module.canvas = document.createElement('canvas');
       screen.width = Module.canvas.width_ = message.data.width;
       screen.height = Module.canvas.height_ = message.data.height;
+      Module.canvas.boundingClientRect = message.data.boundingClientRect;
       document.URL = message.data.URL;
       window.fireEvent({ type: 'load' });
       removeRunDependency('worker-init');
