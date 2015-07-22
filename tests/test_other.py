@@ -4110,6 +4110,19 @@ main(const int argc, const char * const * const argv)
     test(['-O3', '--closure', '1'], 0.60, 60000)
     test(['-O3', '--closure', '2'], 0.60, 41000) # might change now and then
 
+  def test_EXPORTED_RUNTIME_METHODS(self):
+    def test(opts, has, not_has):
+      self.clear()
+      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')] + opts).communicate()
+      self.assertContained('hello, world!', run_js('a.out.js'))
+      src = open('a.out.js').read()
+      self.assertContained(has, src)
+      self.assertNotContained(not_has, src)
+
+    test([], 'Module["intArray', 'Module["waka')
+    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]'], 'Module["print', 'Module["intArray')
+    test(['-s', 'EXPORTED_RUNTIME_METHODS=["intArrayToString"]'], 'Module["intArray', 'Module["waka')
+
   def test_stat_fail_alongtheway(self):
     open('src.cpp', 'w').write(r'''
 #include <errno.h>
