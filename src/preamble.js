@@ -365,13 +365,17 @@ var ALLOC_NONE = 4; // Do not allocate
 //             for multiple syntaxes to save space in generated code. So you should
 //             normally not use allocate(), and instead allocate memory using _malloc(),
 //             initialize it with setValue(), and so forth.
-// @slab: An array of data, or a number. If a number, then the size of the block to allocate,
+// @slab: An array of data, a string, or a number. If a number, then the size of the block to allocate,
 //        in *bytes* (note that this is sometimes confusing: the next parameter does not
-//        affect this!)
+//        affect this!). If @slab is a string, the characters' Unicode code points represent the byte values.
+//        For now, the UTF-8 string must only contain characters having a code point between U+0000...U+00FF.
 // @types: Either an array of types, one for each byte (or 0 if no type at that position),
 //         or a single type which is used for the entire block. This only matters if there
 //         is initial data - if @slab is a number, then this does not matter at all and is
-//         ignored.
+//         ignored. If @slab is a (UTF-8) string, each characters may represent one or two bytes. For one-byte-per-character
+//         strings, @types is "i8". For two-bytes-per-character string, @types is "i8x2" or "i8x2+1" where the latter
+//         case represents a string where the very last character encodes a single byte, only. This is
+//         necessary to support static memory initializer with an odd number of bytes.
 // @allocator: How to allocate memory, see ALLOC_*
 function allocate(slab, types, allocator, ptr) {
   var zeroinit, size;
@@ -407,41 +411,81 @@ function allocate(slab, types, allocator, ptr) {
   }
 
   if (singleType === 'i8') {
-    if (slab.subarray || slab.slice) {
-      HEAPU8.set(slab, ret);
+    if (slab.charCodeAt) {
+      for (var i = 0; i < size; ++i) {
+          HEAPU8[ret+i] = slab.charCodeAt(i);
+      }
     } else {
-      HEAPU8.set(new Uint8Array(slab), ret);
+      if (slab.subarray || slab.slice) {
+        HEAPU8.set(slab, ret);
+      } else {
+        HEAPU8.set(new Uint8Array(slab), ret);
+      }
     }
     return ret;
   }
 
-  var i = 0, type, typeSize, previousType;
-  while (i < size) {
-    var curr = slab[i];
-
-    if (typeof curr === 'function') {
-      curr = Runtime.getFunctionIndex(curr);
-    }
-
-    type = singleType || types[i];
-    if (type === 0) {
-      i++;
-      continue;
-    }
+  if (slab.charCodeAt) {
 #if ASSERTIONS
-    assert(type, 'Must know what type to store in allocate!');
+    assert(singleType === 'i8' || singleType === 'i8x2' || singleType === 'i8x2+0' || singleType === 'i8x2+1', 'UTF-8 strings can (for now) only be used for allocations of single-byte-per-char or two-byte-per-char sequences');
+#endif
+    switch (singleType) {
+      case 'i8':
+        for (var i = 0; i < size; ++i) {
+          setValue(ret+i, slab.charCodeAt(i), 'i8');
+        }
+        break;
+      case 'i8x2':
+      case 'i8x2+0':
+        for (var i = 0; i < size; ++i) {
+          var byteOffset = 2*i,
+              charCode = slab.charCodeAt(i);
+
+          setValue(ret+byteOffset, charCode & 0xff, 'i8');
+          setValue(ret+byteOffset+1, (charCode >> 8) & 0xff, 'i8');
+        }
+        break;
+      case 'i8x2+1':
+        for (var i = 0, ii = size-1; i < ii; ++i) {
+          var byteOffset = 2*i,
+              charCode = slab.charCodeAt(i);
+
+          setValue(ret+byteOffset, charCode & 0xff, 'i8');
+          setValue(ret+byteOffset+1, (charCode >> 8) & 0xff, 'i8');
+        }
+        setValue(ret+2*(size-1), slab.charCodeAt(size-1), 'i8');
+        bytes.push(slab.charCodeAt(size-1));
+        break;
+    }
+  } else {
+    var i = 0, type, typeSize, previousType;
+    while (i < size) {
+      var curr = slab[i];
+
+      if (typeof curr === 'function') {
+        curr = Runtime.getFunctionIndex(curr);
+      }
+
+      type = singleType || types[i];
+      if (type === 0) {
+        i++;
+        continue;
+      }
+#if ASSERTIONS
+      assert(type, 'Must know what type to store in allocate!');
 #endif
 
     if (type == 'i64') type = 'i32'; // special case: we have one i32 here, and one i32 later
 
-    setValue(ret+i, curr, type);
+      setValue(ret+i, curr, type);
 
-    // no need to look up size unless type changes, so cache it
-    if (previousType !== type) {
-      typeSize = Runtime.getNativeTypeSize(type);
-      previousType = type;
+      // no need to look up size unless type changes, so cache it
+      if (previousType !== type) {
+        typeSize = Runtime.getNativeTypeSize(type);
+        previousType = type;
+      }
+      i += typeSize;
     }
-    i += typeSize;
   }
 
   return ret;
