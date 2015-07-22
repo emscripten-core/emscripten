@@ -75,8 +75,6 @@ Trading off code size and performance
 -------------------------------------
 You may wish to build the less performance-sensitive source files in your project using :ref:`-Os <emcc-Os>` or :ref:`-Oz <emcc-Oz>` and the remainder using :ref:`-O2 <emcc-O2>` (:ref:`-Os <emcc-Os>` and :ref:`-Oz <emcc-Oz>` are similar to :ref:`-O2 <emcc-O2>`, but reduce code size at the expense of performance. :ref:`-Oz <emcc-Oz>` reduces code size more than :ref:`-Os <emcc-Os>`.) 
 
-.. note:: This only matters when compiling the source to bitcode. There are currently no JavaScript-specific optimization flags for ``-Os`` or ``-Oz``, and these map to ``-O2`` in the bitcode-to-JavaScript phase.
-
 Miscellaneous code size tips
 ----------------------------
 
@@ -86,7 +84,7 @@ In addition to the above (defining a separate memory initialization file as :ref
 - Disable :ref:`optimizing-code-inlining`: ``-s INLINING_LIMIT=1``. Compiling with -Os or -Oz generally avoids inlining too.
 - Use :ref:`closure <emcc-closure>` on the outside non-asm.js code: ``--closure 1``. This can break code that doesn't use `closure annotations properly <https://developers.google.com/closure/compiler/docs/api-tutorial3>`_.
 - You can use the ``NO_FILESYSTEM`` and ``NO_BROWSER`` options to disable bundling of filesystem and browser support code, which by default are included. This can be useful if you are building a pure computational library, for example. See ``settings.js`` for more detals.
-- You can use ``EXPORTED_RUNTIME_METHODS`` to define which runtime methods are exported. By default a bunch of useful methods are exported, which you may not need. In conjunction with the closure compiler, this can be very effective (as exporting prevents closure from eliminating code). See ``settings.js`` for more detals. See ``test_no_nuthin`` in ``tests/test_other.py`` for an example usage in the test suite.
+- You can use ``EXPORTED_RUNTIME_METHODS`` to define which runtime methods are exported. By default a bunch of useful methods are exported, which you may not need; setting this to a smaller list will cause fewer methods to be exported. In conjunction with the closure compiler, this can be very effective, since closure can eliminate non-exported code. See ``settings.js`` for more detals. See ``test_no_nuthin`` in ``tests/test_other.py`` for an example usage in the test suite.
 
 
 Very large codebases
