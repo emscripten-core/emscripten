@@ -6159,7 +6159,7 @@ def process(filename):
   src = \'\'\'
     var Module = { 'noInitialRun': true };
     \'\'\' + open(filename, 'r').read() + \'\'\'
-    Module.addOnExit(function () {
+    addOnExit(function () {
       Module.print('*');
       var ret;
       ret = Module['ccall']('get_int', 'number'); Module.print([typeof ret, ret]);
