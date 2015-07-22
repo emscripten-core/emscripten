@@ -2580,6 +2580,9 @@ window.close = function() {
 
   # Test that basic thread creation works.
   def test_pthread_create(self):
+    print '0'
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=['-O0', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
+    print '3'
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Test that a pthread can spawn another pthread of its own.

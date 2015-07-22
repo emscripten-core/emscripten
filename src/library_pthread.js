@@ -169,9 +169,9 @@ var LibraryPThread = {
           Module['printErr']('pthread sent an error! ' + e.message);
         };
 
-        // Allocate tempDoublePtr for the worker. This is done here on the worker's behalf, since allocate()
-        // is not thread-safe.
-        var tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_NORMAL), 8); // TODO: leaks. Cleanup after worker terminates.
+        // Allocate tempDoublePtr for the worker. This is done here on the worker's behalf, since we may need to do this statically
+        // if the runtime has not been loaded yet, etc. - so we just use getMemory, which is main-thread only.
+        var tempDoublePtr = getMemory(8); // TODO: leaks. Cleanup after worker terminates.
 
         // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
         worker.postMessage({
