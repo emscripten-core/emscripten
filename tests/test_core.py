@@ -4915,6 +4915,8 @@ def process(filename):
     Settings.SYSCALL_DEBUG = 1
     src = open(path_from_root('tests', 'fs', 'test_nodefs_rw.c'), 'r').read()
     self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
+    self.emcc_args += ['--closure', '1']
+    self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
   def test_fs_trackingdelegate(self):
     src = path_from_root('tests', 'fs', 'test_trackingdelegate.c')
