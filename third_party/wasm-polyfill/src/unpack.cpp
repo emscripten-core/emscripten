@@ -267,13 +267,14 @@ public:
 
     static const unsigned N = 100;
     char buf[N];
+    uint32_t len;
 
 #if __EMSCRIPTEN__
-    int len = emscripten_print_double(d, buf);
+    len = emscripten_print_double(d, buf);
     assert(len < N-1);
     buf[len] = 0;
 #else
-    uint32_t len = snprintf(buf, N, "%g", d);
+    len = snprintf(buf, N, "%g", d);
 #endif
 
     check_write(len);
