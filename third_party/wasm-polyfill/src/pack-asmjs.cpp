@@ -152,6 +152,8 @@ public:
 
   void* alloc(size_t bytes)
   {
+    bytes = (bytes + 7)&-8; // some of our data structures, like DoubleNode, need 8-byte alignment
+
     if (remain_ < bytes) {
       remain_ = max<size_t>(bytes, 64 * 1024);
       allocs_.emplace_back(new uint8_t[remain_]);
