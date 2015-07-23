@@ -52,7 +52,7 @@ onmessage = function(e) {
         var bef = Date.now();
         var utf8 = unpack(xhr.response, callbackName);
         var aft = Date.now();
-        console.log("unpack of " + url + " took " + (aft - bef) + "ms");
+        if (ENVIRONMENT_IS_WEB) console.log("unpack of " + url + " took " + (aft - bef) + "ms");
         postMessage({ callbackName: callbackName, data: new Blob([utf8]) });
       } catch (e) {
         postMessage("failed to unpack " + url + ": " + e);
