@@ -5,7 +5,8 @@ default: tools/pack-asmjs.js jslib/load-wasm-worker.js
 tools/pack-asmjs.js: src/pack-asmjs.cpp src/unpack.cpp src/unpack.h src/shared.h ../../tools/optimizer/parser.h ../../tools/optimizer/parser.cpp ../../tools/optimizer/istring.h
 	mkdir -p tools
 	$(EMSCRIPTEN)/emcc -O3 -std=c++11 -DCHECKED_OUTPUT_SIZE -Wall -pedantic \
-	    --memory-init-file 0 src/pack-asmjs.cpp src/unpack.cpp ../../tools/optimizer/parser.cpp \
+	    --memory-init-file 0 --llvm-lto 1 -s TOTAL_MEMORY=67108864 -s WASM=0 \
+      src/pack-asmjs.cpp src/unpack.cpp ../../tools/optimizer/parser.cpp \
 	    -o tools/pack-asmjs.js -I../../tools/optimizer/ -s INVOKE_RUN=0
 	cat src/pack-asmjs.js >> tools/pack-asmjs.js
 
