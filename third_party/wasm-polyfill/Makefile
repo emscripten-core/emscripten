@@ -1,21 +1,16 @@
 # Patches welcome to actually make this portable
 
-default: tools/pack-asmjs tools/unpack-asmjs jslib/load-wasm-worker.js
+default: tools/pack-asmjs.js jslib/load-wasm-worker.js
 
-tools/pack-asmjs: src/pack-asmjs.cpp src/unpack.cpp src/unpack.h src/shared.h ../../tools/optimizer/parser.h ../../tools/optimizer/parser.cpp ../../tools/optimizer/istring.h
+tools/pack-asmjs.js: src/pack-asmjs.cpp src/unpack.cpp src/unpack.h src/shared.h ../../tools/optimizer/parser.h ../../tools/optimizer/parser.cpp ../../tools/optimizer/istring.h
 	mkdir -p tools
-	c++ -O3 -g -std=c++11 -DCHECKED_OUTPUT_SIZE -Wall -pedantic \
-	    src/pack-asmjs.cpp src/unpack.cpp ../../tools/optimizer/parser.cpp \
-	    -o tools/pack-asmjs -I../../tools/optimizer/
-
-tools/unpack-asmjs: src/unpack-asmjs.cpp src/unpack.cpp src/unpack.h src/shared.h
-	mkdir -p tools
-	c++ -DNDEBUG -O3 -std=c++11 -Wall -pedantic \
-	    src/unpack-asmjs.cpp src/unpack.cpp \
-	    -o tools/unpack-asmjs
+	$(EMSCRIPTEN)/emcc -O3 -std=c++11 -DCHECKED_OUTPUT_SIZE -Wall -pedantic \
+	    --memory-init-file 0 src/pack-asmjs.cpp src/unpack.cpp ../../tools/optimizer/parser.cpp \
+	    -o tools/pack-asmjs.js -I../../tools/optimizer/ -s INVOKE_RUN=0
+	cat src/pack-asmjs.js >> tools/pack-asmjs.js
 
 jslib/load-wasm-worker.js: src/unpack.cpp src/unpack.h src/shared.h src/load-wasm-worker.js
-	$(EMSCRIPTEN)/emcc -DNDEBUG -O3 -std=c++11 -Wall -pedantic \
+	$(EMSCRIPTEN)/emcc -O3 -std=c++11 -Wall -pedantic \
 	     --memory-init-file 0 --llvm-lto 1 -s TOTAL_MEMORY=67108864 -s WASM=0 \
 	     src/unpack.cpp \
 	     -o jslib/load-wasm-worker.js
@@ -40,5 +35,6 @@ test: tools/pack-asmjs tools/unpack-asmjs
 
 .PHONY: clean
 clean:
-	rm -f tools/pack-asmjs tools/unpack-asmjs
+	rm -f tools/pack-asmjs.js jslib/load-wasm-worker.js
 	rmdir tools
+

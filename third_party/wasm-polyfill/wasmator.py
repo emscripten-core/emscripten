@@ -12,7 +12,7 @@ That builds test.html, then wasm-ifies it, modifying test.js with code using the
 test.wasm that contains the wasmified asm.js.
 '''
 
-import os, sys, shutil
+import os, sys, shutil, json
 from subprocess import Popen, PIPE, STDOUT, check_call
 
 PYTHON = sys.executable
@@ -24,6 +24,9 @@ def path_from_root(*pathelems):
 polyfill_dir = os.path.abspath(os.path.dirname(__file__))
 def path_in_polyfill(*pathelems):
   return os.path.join(polyfill_dir, *pathelems)
+
+sys.path += [path_from_root('tools')]
+import shared as emscripten
 
 jsfile = sys.argv[1]
 wasmfile = sys.argv[2]
@@ -55,9 +58,14 @@ asm = module[start:end]
 open(tempfile2, 'w').write(asm)
 
 print 'run polyfill packer on', tempfile2
-proc = Popen([path_in_polyfill('tools', 'pack-asmjs'), tempfile2, wasmfile])
-proc.communicate()
-if proc.returncode: sys.exit(proc.returncode)
+dir = os.getcwd()
+try:
+  os.chdir(os.path.dirname(os.path.abspath(tempfile2)))
+  out = emscripten.run_js(path_in_polyfill('tools', 'pack-asmjs.js'), args=[os.path.basename(tempfile2), 'output.binary'], stdout=PIPE)
+finally:
+  os.chdir(dir)
+out = json.loads(out)
+open(wasmfile, 'w').write(''.join(map(chr, out)))
 
 print 'create patched out js'
 js = open(jsfile).read()

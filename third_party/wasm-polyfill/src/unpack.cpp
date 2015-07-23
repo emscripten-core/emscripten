@@ -2404,7 +2404,7 @@ asmjs::unpack(const uint8_t* packed, const char* cb_name, uint32_t unpacked_size
 
 #endif
 
-#ifdef EMSCRIPTEN
+#if defined(__EMSCRIPTEN__) && !defined(CHECKED_OUTPUT_SIZE)
 extern "C" {
 
 bool EMSCRIPTEN_KEEPALIVE
