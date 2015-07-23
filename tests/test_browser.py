@@ -2728,5 +2728,13 @@ window.close = function() {
       if check_error:
         print 'error verify'
         self.run_browser('test.o.html', None, '/report_result?99') # without the wasm, we failz
+        print 'shell'
+        ok = False
+        try:
+          self.do_run('', 'Hello!', no_build=True, basename='test') # test in the shell too
+          ok = True
+        except:
+          pass
+        assert not ok
       os.unlink('test.o.js')
 
