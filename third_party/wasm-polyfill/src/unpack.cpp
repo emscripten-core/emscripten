@@ -260,7 +260,9 @@ public:
     if (std::isinf(d))
         return name(StdLib::Infinity);
 
-    if (d < 0) {
+    // handle negative numbers. to detect -0 (which has -0 == 0), we must
+    // inspect the sign bit.
+    if (d < 0 || (d == 0 && std::signbit((float)d) == 1)) {
       ascii('-');
       d = -d;
     }
