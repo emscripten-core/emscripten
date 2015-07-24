@@ -939,6 +939,9 @@ try:
   elif shared.Settings.SIDE_MODULE:
     assert not shared.Settings.MAIN_MODULE
     memory_init_file = False # memory init file is not supported with side modules, must be executable synchronously (for dlopen)
+    if shared.Settings.WASM:
+      logging.warning('disabling WASM in SIDE_MODULE')
+      shared.Settings.WASM = 0
 
   if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
     assert shared.Settings.ASM_JS, 'module linking requires asm.js output (-s ASM_JS=1)'
