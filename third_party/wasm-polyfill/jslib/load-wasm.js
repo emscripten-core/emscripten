@@ -126,28 +126,6 @@ var loadWebAssembly = (function() {
       };
     };
   }
-  if (typeof XMLHttpRequest === 'undefined') {
-    XMLHttpRequest = function() {
-      this.open = function(mode, url, async) {
-        assert(mode === 'GET');
-        assert(async);
-        this.url = url;
-      };
-      this.send = function(arg) {
-        assert(arg === null);
-        assert(this.responseType === 'arraybuffer');
-        this.status = 200;
-        var typedArray = Module['readBinary'](this.url);
-        if (!typedArray.buffer) {
-          assert(ENVIRONMENT_IS_NODE);
-          typedArray = new Uint8Array(typedArray);
-        }
-        assert(typedArray.buffer);
-        this.response = typedArray.buffer;
-        this.onload();
-      }
-    }
-  }
   if (typeof console === 'undefined') {
     console = {
       log: function(x) { Module['print'](x) },
