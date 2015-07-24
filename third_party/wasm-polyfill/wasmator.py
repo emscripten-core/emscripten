@@ -44,7 +44,7 @@ finally:
   os.chdir(dir)
 
 print 'save the before js'
-shutil.copyfile(jsfile, 'before.js')
+emscripten.safe_copy(jsfile, 'before.js')
 
 print 'process input'
 Popen([PYTHON, path_from_root('tools', 'distill_asm.py'), jsfile, tempfile]).communicate()
