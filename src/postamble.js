@@ -195,9 +195,11 @@ function run(args) {
 
     preMain();
 
+#if ASSERTIONS
     if (ENVIRONMENT_IS_WEB && preloadStartTime !== null) {
       Module.printErr('pre-main prep time: ' + (Date.now() - preloadStartTime) + ' ms');
     }
+#endif
 
     if (Module['onRuntimeInitialized']) Module['onRuntimeInitialized']();
 
