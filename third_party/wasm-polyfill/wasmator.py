@@ -61,7 +61,11 @@ print 'run polyfill packer on', tempfile2
 dir = os.getcwd()
 try:
   os.chdir(os.path.dirname(os.path.abspath(tempfile2)))
-  out = emscripten.run_js(path_in_polyfill('tools', 'pack-asmjs.js'), args=[os.path.basename(tempfile2), 'output.binary'], stdout=PIPE)
+  # try in spidermonkey first, because it's faster
+  try:
+    out = emscripten.run_js(path_in_polyfill('tools', 'pack-asmjs.js'), args=[os.path.basename(tempfile2), 'output.binary'], stdout=PIPE, engine=emscripten.SPIDERMONKEY_ENGINE)
+  except:
+    out = emscripten.run_js(path_in_polyfill('tools', 'pack-asmjs.js'), args=[os.path.basename(tempfile2), 'output.binary'], stdout=PIPE)
 finally:
   os.chdir(dir)
 out = json.loads(out)
