@@ -355,6 +355,19 @@ By default Emscripten uses doubles for all floating-point variables, that is, 64
 
 To check if this is the issue you are seeing, build with ``-s PRECISE_F32=1``. This uses proper 32-bit floating-point values, at the cost of some extra code size overhead. This may be faster in some browsers, if they optimize ``Math.fround``, but can be slower in others. See ``src/settings.js`` for more details on this option.
 
+Can I use multiple Emscripten-compiled programs on one Web page?
+================================================================
+
+Emscripten output by default is just some code. When put in a script tag, that means the code is in the global scope. So multiple such modules on the same page can't work.
+
+But by putting each module in a function scope, that problem is avoided. Emscripten even has a compile flag for this, ``MODULARIZE``, useful in conjunction with ``EXPORT_NAME`` (details in settings.js).
+
+However, there are still some issues if the same Module object (that defines the canvas, text output area, etc.) is used among separate modules. By default Emscripten output even looks for Module in the global scope, but when using MODULARIZE, you get a function you must call with the Module as a param, so that problem is avoided. But note that each module will probably want its own canvas, text output area, etc.; just passing in the same Module object (e.g. from the default HTML shell) may not work.
+
+So by using MODULARIZE and creating a proper Module object for each module, and passing those in, multiple modules can work fine.
+
+Another option is to use an iframe, in which case the default HTML shell will just work, as each will have its own canvas, etc. But this is overkill for small programs, which can run modularly as described above.
+
 		
 Why the weird name for the project?
 ===================================

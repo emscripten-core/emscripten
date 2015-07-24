@@ -218,6 +218,13 @@ try {
   s.Print(123, null); // Expects a string or a wrapped pointer
 } catch (e) {}
 
+// Check for overflowing the stack
+
+for (var i = 0; i < 1000000; i++) {
+  var temp = new TheModule.StringUser('abc', 1);
+  TheModule.destroy(temp);
+}
+
 //
 
 TheModule.print('\ndone.')

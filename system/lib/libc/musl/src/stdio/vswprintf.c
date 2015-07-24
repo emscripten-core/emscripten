@@ -29,7 +29,6 @@ static size_t sw_write(FILE *f, const unsigned char *s, size_t l)
 
 int vswprintf(wchar_t *restrict s, size_t n, const wchar_t *restrict fmt, va_list ap)
 {
-#ifndef __EMSCRIPTEN__
 	int r;
 	FILE f;
 	unsigned char buf[256];
@@ -51,19 +50,4 @@ int vswprintf(wchar_t *restrict s, size_t n, const wchar_t *restrict fmt, va_lis
 	r = vfwprintf(&f, fmt, ap);
 	sw_write(&f, 0, 0);
 	return r>=n ? -1 : r;
-#else
-  // XXX EMSCRIPTEN: use memfs through libc fs
-  // we write to a file, which is in multibyte, then we read, then expand to widechar
-  #define TEMPFILE "emscripten.vswprintf.temp.buffer"
-  static FILE *f = NULL;
-  if (!f) f = fopen(TEMPFILE, "w+");
-  int r = vfwprintf(f, fmt, ap);
-  rewind(f);
-  char buffer[r+1];
-  fread(buffer, 1, r, f);
-  rewind(f); // TODO: truncate file here
-  buffer[r] = 0;
-  r = mbstowcs(s, buffer, n);
-  return r>=n ? -1 : r;
-#endif
 }

@@ -41,16 +41,16 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
           long long b = a >> 29;
           long long c = a >> 32;
           long long d = a >> 34;
-          printf("*%Ld,%Ld,%Ld,%Ld*\\n", a, b, c, d);
+          printf("*%lld,%lld,%lld,%lld*\\n", a, b, c, d);
           unsigned long long ua = 0x2b00505c10;
           unsigned long long ub = ua >> 29;
           unsigned long long uc = ua >> 32;
           unsigned long long ud = ua >> 34;
-          printf("*%Ld,%Ld,%Ld,%Ld*\\n", ua, ub, uc, ud);
+          printf("*%lld,%lld,%lld,%lld*\\n", ua, ub, uc, ud);
 
           long long x = 0x0000def123450789ULL; // any bigger than this, and we
           long long y = 0x00020ef123456089ULL; // start to run into the double precision limit!
-          printf("*%Ld,%Ld,%Ld,%Ld,%Ld*\\n", x, y, x | y, x & y, x ^ y, x >> 2, y << 2);
+          printf("*%lld,%lld,%lld,%lld,%lld*\\n", x, y, x | y, x & y, x ^ y, x >> 2, y << 2);
 
           printf("*");
           long long z = 13;
@@ -79,7 +79,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
         void modifier1(int64_t t) {
           t |= 12;
-          printf("m1: %Ld\n", t);
+          printf("m1: %lld\n", t);
         }
         void modifier2(int64_t &t) {
           t |= 12;
@@ -109,23 +109,23 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
           int64_t x1 = 0x1234def123450789ULL;
           int64_t x2 = 0x1234def123450788ULL;
           int64_t x3 = 0x1234def123450789ULL;
-          printf("*%Ld\n%d,%d,%d,%d,%d\n%d,%d,%d,%d,%d*\n", x1, x1==x2, x1<x2, x1<=x2, x1>x2, x1>=x2, // note: some rounding in the printing!
+          printf("*%lld\n%d,%d,%d,%d,%d\n%d,%d,%d,%d,%d*\n", x1, x1==x2, x1<x2, x1<=x2, x1>x2, x1>=x2, // note: some rounding in the printing!
                                                                 x1==x3, x1<x3, x1<=x3, x1>x3, x1>=x3);
-          printf("*%Ld*\n", returner1());
-          printf("*%Ld*\n", returner2(30));
+          printf("*%lld*\n", returner1());
+          printf("*%lld*\n", returner2(30));
 
           uint64_t maxx = -1ULL;
-          printf("*%Lu*\n*%Lu*\n", maxx, maxx >> 5);
+          printf("*%llu*\n*%llu*\n", maxx, maxx >> 5);
 
           // Make sure params are not modified if they shouldn't be
           int64_t t = 123;
           modifier1(t);
-          printf("*%Ld*\n", t);
+          printf("*%lld*\n", t);
           modifier2(t);
-          printf("*%Ld*\n", t);
+          printf("*%lld*\n", t);
 
           // global structs with i64s
-          printf("*%d,%Ld*\n*%d,%Ld*\n", iub[0].c, iub[0].d, iub[1].c, iub[1].d);
+          printf("*%d,%lld*\n*%d,%lld*\n", iub[0].c, iub[0].d, iub[1].c, iub[1].d);
 
           // Bitshifts
           {
@@ -133,12 +133,12 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
             int64_t b = a >> 29;
             int64_t c = a >> 32;
             int64_t d = a >> 34;
-            printf("*%Ld,%Ld,%Ld,%Ld*\n", a, b, c, d);
+            printf("*%lld,%lld,%lld,%lld*\n", a, b, c, d);
             uint64_t ua = -1;
             int64_t ub = ua >> 29;
             int64_t uc = ua >> 32;
             int64_t ud = ua >> 34;
-            printf("*%Ld,%Ld,%Ld,%Ld*\n", ua, ub, uc, ud);
+            printf("*%lld,%lld,%lld,%lld*\n", ua, ub, uc, ud);
           }
 
           // Nonconstant bitshifts
@@ -147,12 +147,12 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
             int64_t b = a >> (29 - argc + 1);
             int64_t c = a >> (32 - argc + 1);
             int64_t d = a >> (34 - argc + 1);
-            printf("*%Ld,%Ld,%Ld,%Ld*\n", a, b, c, d);
+            printf("*%lld,%lld,%lld,%lld*\n", a, b, c, d);
             uint64_t ua = -1;
             int64_t ub = ua >> (29 - argc + 1);
             int64_t uc = ua >> (32 - argc + 1);
             int64_t ud = ua >> (34 - argc + 1);
-            printf("*%Ld,%Ld,%Ld,%Ld*\n", ua, ub, uc, ud);
+            printf("*%lld,%lld,%lld,%lld*\n", ua, ub, uc, ud);
           }
 
           // Math mixtures with doubles
@@ -169,15 +169,15 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
           a--; if (truthy()) a--; // confuse optimizer
           int64_t b = 0x1234000000450789ULL;
           b++; if (truthy()) b--; // confuse optimizer
-          printf("*%Ld,%Ld,%Ld,%Ld*\n",   (a+b)/5000, (a-b)/5000, (a*3)/5000, (a/5)/5000);
+          printf("*%lld,%lld,%lld,%lld*\n",   (a+b)/5000, (a-b)/5000, (a*3)/5000, (a/5)/5000);
 
           a -= 17; if (truthy()) a += 5; // confuse optimizer
           b -= 17; if (truthy()) b += 121; // confuse optimizer
-          printf("*%Lx,%Lx,%Lx,%Lx*\n", b - a, b - a/2, b/2 - a, b - 20);
+          printf("*%llx,%llx,%llx,%llx*\n", b - a, b - a/2, b/2 - a, b - 20);
 
           if (truthy()) a += 5/b; // confuse optimizer
           if (truthy()) b += 121*(3+a/b); // confuse optimizer
-          printf("*%Lx,%Lx,%Lx,%Lx*\n", a - b, a - b/2, a/2 - b, a - 20);
+          printf("*%llx,%llx,%llx,%llx*\n", a - b, a - b/2, a/2 - b, a - 20);
 
           return 0;
         }
@@ -335,13 +335,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run(src, '*4903566027370624, 153236438355333*')
 
       code = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
-      assert 'goog.math.Long' not in code, 'i64 precise math should not have been included if not actually used'
-
-      # But if we force it to be included, it is. First, a case where we don't need it
-      Settings.PRECISE_I64_MATH = 2
-      self.do_run(open(path_from_root('tests', 'hello_world.c')).read(), 'hello')
-      code = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
-      assert 'goog.math.Long' in code, 'i64 precise math should be included if forced'
+      assert 'goog.math.Long' not in code, 'i64 precise math should never be included, musl does its own printfing'
 
       # and now one where we do
       self.do_run(r'''
@@ -565,7 +559,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
           printf("*%d*\n", *r);
           long long *t = (long long*)p;
           *t = 42949672960;
-          printf("*%Ld*\n", *t);
+          printf("*%lld*\n", *t);
           return 0;
         }
       '''
@@ -1403,8 +1397,10 @@ int main(int argc, char **argv)
     disabled_size = len(open('src.cpp.o.js').read())
     shutil.copyfile('src.cpp.o.js', 'disabled.js')
 
-    assert size - empty_size > 0.005*size, [empty_size, size] # big change when we disable entirely
-    assert size - fake_size > 0.005*size, [fake_size, size]
+    print size, empty_size, fake_size, disabled_size
+
+    assert size - empty_size > 0.0025*size, [empty_size, size] # big change when we disable entirely
+    assert size - fake_size > 0.0025*size, [fake_size, size]
     assert abs(empty_size - fake_size) < 0.007*size, [empty_size, fake_size]
     assert empty_size - disabled_size < 0.007*size, [empty_size, disabled_size] # full disable removes a little bit more
     assert fake_size - disabled_size < 0.007*size, [disabled_size, fake_size]
@@ -1771,7 +1767,7 @@ value = real 1.25 imag 0.00''', force_c=True)
 
   def test_stack_varargs(self):
     Settings.INLINING_LIMIT = 50
-    Settings.TOTAL_STACK = 1024
+    Settings.TOTAL_STACK = 2048
 
     test_path = path_from_root('tests', 'core', 'test_stack_varargs')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -3280,7 +3276,7 @@ def process(filename):
           raise Exception('Could not find symbol table!')
       table = table[table.find('{'):table.find('}')+1]
       # ensure there aren't too many globals; we don't want unnamed_addr
-      assert table.count(',') <= 8
+      assert table.count(',') <= 23, table.count(',')
 
     test_path = path_from_root('tests', 'core', 'test_dlfcn_self')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -3963,33 +3959,23 @@ var Module = {
       }
     ''', expected=['main: jslib_x is 148.\nside: jslib_x is 148.\n'], main_emcc_args=['--js-library', 'lib.js'])
 
-  def test_dylink_syslibs(self): # one module uses libcextra, need to force its inclusion when it isn't the main
-    def test(syslibs, expect_pass=True):
+  def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
+    def test(syslibs, expect_pass=True, need_reverse=True):
       print 'syslibs', syslibs, Settings.ASSERTIONS
       passed = True
       try:
         os.environ['EMCC_FORCE_STDLIBS'] = syslibs
-        self.dylink_test(header=r'''
-          #include <string.h>
-          int side();
-        ''', main=r'''
-          #include <stdio.h>
-          #include <wchar.h>
-          #include "header.h"
+        self.dylink_test(main=r'''
+          void side();
           int main() {
-            printf("|%d|\n", side());
-            wprintf (L"Characters: %lc %lc\n", L'a', 65);
+            side();
             return 0;
           }
         ''', side=r'''
-          #include <stdlib.h>
-          #include <malloc.h>
-          #include "header.h"
-          int side() {
-            struct mallinfo m = mallinfo();
-            return m.arena > 1;
-          }
-        ''', expected=['|1|\nCharacters: a A\n'])
+          #include <iostream>
+          void side() { std::cout << "cout hello from side"; }
+        ''', expected=['cout hello from side\n'],
+             need_reverse=need_reverse)
       except Exception, e:
         if expect_pass: raise e
         print '(seeing expected fail)'
@@ -4001,17 +3987,17 @@ var Module = {
           self.assertNotContained(assertion, str(e))
       finally:
         del os.environ['EMCC_FORCE_STDLIBS']
-      assert passed == expect_pass
+      assert passed == expect_pass, ['saw', passed, 'but expected', expect_pass]
 
-    test('libc,libcextra')
+    test('libcxx')
     test('1')
     if 'ASSERTIONS=1' not in self.emcc_args:
       Settings.ASSERTIONS = 0
-      test('', expect_pass=False)
+      test('', expect_pass=False, need_reverse=False)
     else:
       print '(skip ASSERTIONS == 0 part)'
     Settings.ASSERTIONS = 1
-    test('', expect_pass=False)
+    test('', expect_pass=False, need_reverse=False)
 
   def test_dylink_iostream(self):
     try:
@@ -4370,8 +4356,7 @@ Have even and odd!
   def test_printf(self):
     self.banned_js_engines = [NODE_JS, V8_ENGINE] # SpiderMonkey and V8 do different things to float64 typed arrays, un-NaNing, etc.
     src = open(path_from_root('tests', 'printf', 'test.c'), 'r').read()
-    expected = [open(path_from_root('tests', 'printf', 'output.txt'), 'r').read(),
-                open(path_from_root('tests', 'printf', 'output_i64_1.txt'), 'r').read()]
+    expected = open(path_from_root('tests', 'printf', 'output.txt'), 'r').read()
     self.do_run(src, expected)
 
   def test_printf_2(self):
@@ -4418,7 +4403,7 @@ Have even and odd!
 
   def test_fnmatch(self):
     # Run one test without assertions, for additional coverage
-    assert 'asm2m' in test_modes
+    #assert 'asm2m' in test_modes
     if self.run_name == 'asm2m':
       i = self.emcc_args.index('ASSERTIONS=1')
       assert i > 0 and self.emcc_args[i-1] == '-s'
@@ -4478,8 +4463,8 @@ Have even and odd!
         '''
       if ftype == 'float':
         self.do_run(src.replace('%lf', '%f').replace('double', 'float'), '''Pass: 1.234568 1.234568
-Pass: 123456.789063 123456.789063
-Pass: 123456.789063 123456.789063
+Pass: 123456.789062 123456.789062
+Pass: 123456.789062 123456.789062
 Pass: 0.000012 0.000012
 Pass: 0.000012 0.000012''')
       else:
@@ -4594,10 +4579,11 @@ def process(filename):
 
     mem_file = 'src.cpp.o.js.mem'
     orig_args = self.emcc_args
-    for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']]:
+    for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1'], ['-s', 'SYSCALL_DEBUG=1']]:
+      print mode
       self.emcc_args = orig_args + mode
       try_delete(mem_file)
-      self.do_run(src, ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n \ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n'),
+      self.do_run(src, map(lambda x: x if 'SYSCALL_DEBUG=1' not in mode else ('syscall! 146,SYS_writev' if self.run_name == 'default' else 'syscall! 146'), ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n \ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n')),
                   post_build=post, extra_emscripten_args=['-H', 'libc/fcntl.h'])
       if self.uses_memory_init_file():
         assert os.path.exists(mem_file)
@@ -4647,12 +4633,15 @@ def process(filename):
       self.do_run_from_file(src, output)
 
   def test_fgetc_ungetc(self):
+    logging.warning('TODO: update this test once the musl ungetc-on-EOF-stream bug is fixed upstream and reaches us')
+    Settings.SYSCALL_DEBUG = 1
     self.clear()
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
     for fs in ['MEMFS', 'NODEFS']:
-        src = open(path_from_root('tests', 'stdio', 'test_fgetc_ungetc.c'), 'r').read()
-        Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
-        self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
+      print fs
+      src = open(path_from_root('tests', 'stdio', 'test_fgetc_ungetc.c'), 'r').read()
+      Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
+      self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
   def test_fgetc_unsigned(self):
     src = r'''
@@ -4750,9 +4739,7 @@ main( int argv, char ** argc ) {
       {
           FILE* fp = fopen("empty.txt", "r");
           if (fp) {
-              printf("%d\n", fp);
               printf("%d\n", fileno(fp));
-              printf("%d\n", fileno((FILE*)42));  // nonexistent stream
           } else {
               printf("failed to open empty.txt\n");
           }
@@ -4760,15 +4747,16 @@ main( int argv, char ** argc ) {
       }
     '''
     self.emcc_args += ['--embed-file', 'empty.txt']
-    self.do_run(src, '4\n3\n-1\n')
+    self.do_run(src, '3\n')
 
   def test_readdir(self):
     self.banned_js_engines = [V8_ENGINE] # stderr printing limitations in v8
     src = open(path_from_root('tests', 'dirent', 'test_readdir.c'), 'r').read()
     self.do_run(src, '''SIGILL: Illegal instruction
 success
-n: 7
+n: 8
 name: tmp
+name: proc
 name: nocanread
 name: home
 name: foobar
@@ -4924,7 +4912,11 @@ def process(filename):
       Settings.INCLUDE_FULL_LIBRARY = 0
 
   def test_fs_nodefs_rw(self):
+    Settings.SYSCALL_DEBUG = 1
     src = open(path_from_root('tests', 'fs', 'test_nodefs_rw.c'), 'r').read()
+    self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
+    print 'closure'
+    self.emcc_args += ['--closure', '1']
     self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
   def test_fs_trackingdelegate(self):
@@ -5500,11 +5492,17 @@ return malloc(size);
   def test_mmap_file(self):
     for extra_args in [[], ['--no-heap-copy']]:
       self.emcc_args += ['--embed-file', 'data.dat'] + extra_args
-
-      open(self.in_dir('data.dat'), 'w').write('data from the file ' + ('.' * 9000))
-
+      x = 'data from the file........'
+      s = ''
+      while len(s) < 9000:
+        if len(s) + len(x) < 9000:
+          s += x
+          continue
+        s += '.'
+      assert len(s) == 9000
+      open(self.in_dir('data.dat'), 'w').write(s)
       src = open(path_from_root('tests', 'mmap_file.c')).read()
-      self.do_run(src, '*\ndata from the file .\nfrom the file ......\n*\n')
+      self.do_run(src, '*\n' + s[0:20] + '\n' + s[4096:4096+20] + '\n*\n')
 
   def test_cubescript(self):
     assert 'asm3' in test_modes
@@ -5786,7 +5784,8 @@ def process(filename):
         self.do_run(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(),
                      [open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(), # different roundings
                       open(path_from_root('tests', 'bullet', 'output2.txt'), 'r').read(),
-                      open(path_from_root('tests', 'bullet', 'output3.txt'), 'r').read()],
+                      open(path_from_root('tests', 'bullet', 'output3.txt'), 'r').read(),
+                      open(path_from_root('tests', 'bullet', 'output4.txt'), 'r').read()],
                      libraries=get_bullet_library(self, use_cmake),
                      includes=[path_from_root('tests', 'bullet', 'src')])
       test()
@@ -6019,10 +6018,13 @@ def process(filename):
     emcc_args = self.emcc_args
 
     # The following tests link to libc, and must be run with EMCC_LEAVE_INPUTS_RAW = 0
-    need_no_leave_inputs_raw = ['muli33_ta2', 'philoop_ta2']
+    need_no_leave_inputs_raw = ['muli33_ta2', 'philoop_ta2', 'uadd_overflow_64_ta2', 'i64toi8star', 'legalizer_ta2', 'inttoptr', 'quotedlabel', 'alignedunaligned', 'sillybitcast', 'invokeundef', 'loadbitcastgep', 'sillybitcast2', 'legalizer_b_ta2', 'emptystruct']
 
     try:
-      for name in glob.glob(path_from_root('tests', 'cases', '*.ll')):
+      import random
+      names = glob.glob(path_from_root('tests', 'cases', '*.ll'))
+      #random.shuffle(names)
+      for name in names:
         shortname = name.replace('.ll', '')
         if '' not in shortname: continue
         # TODO: test only worked in non-fastcomp (well, these cases)
@@ -6037,8 +6039,10 @@ def process(filename):
 
         if os.path.basename(shortname) in need_no_leave_inputs_raw:
           if 'EMCC_LEAVE_INPUTS_RAW' in os.environ: del os.environ['EMCC_LEAVE_INPUTS_RAW']
+          Settings.NO_FILESYSTEM = 0
         else:
           os.environ['EMCC_LEAVE_INPUTS_RAW'] = '1'
+          Settings.NO_FILESYSTEM = 1 # no libc is linked in; with NO_FILESYSTEM we have a chance at printfing anyhow
 
         if '_noasm' in shortname and Settings.ASM_JS:
           print self.skip('case "%s" not relevant for asm.js' % shortname)
@@ -6079,6 +6083,7 @@ def process(filename):
         ]: continue
         if x == 'lto' and self.run_name == 'default' and os.path.basename(name) in [
           '19.c', '18.cpp', # LLVM LTO bug
+          '23.cpp', # puts exists before LTO, but is not used; LTO cleans it out, but then creates uses to it (printf=>puts) XXX https://llvm.org/bugs/show_bug.cgi?id=23814
         ]: continue
         if x == 'lto' and os.path.basename(name) in [
           '21.c'
@@ -6157,7 +6162,7 @@ def process(filename):
   src = \'\'\'
     var Module = { 'noInitialRun': true };
     \'\'\' + open(filename, 'r').read() + \'\'\'
-    Module.addOnExit(function () {
+    addOnExit(function () {
       Module.print('*');
       var ret;
       ret = Module['ccall']('get_int', 'number'); Module.print([typeof ret, ret]);
@@ -7450,7 +7455,7 @@ asm2f = make_run("asm2f", compiler=CLANG, emcc_args=["-Oz", "-s", "PRECISE_F32=1
 asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "-s", "SAFE_HEAP=1"])
 asm1i = make_run("asm1i", compiler=CLANG, emcc_args=["-O1", '-s', 'EMTERPRETIFY=1'])
 asm3i = make_run("asm3i", compiler=CLANG, emcc_args=["-O3", '-s', 'EMTERPRETIFY=1'])
-asm2m = make_run("asm2m", compiler=CLANG, emcc_args=["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1"])
+#asm2m = make_run("asm2m", compiler=CLANG, emcc_args=["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1"])
 
 # Legacy test modes - 
 asm2nn = make_run("asm2nn", compiler=CLANG, emcc_args=["-O2"], env={"EMCC_NATIVE_OPTIMIZER": "0"})

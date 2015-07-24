@@ -7,15 +7,9 @@
 
 #define UNGET 8
 
-#if __EMSCRIPTEN__
-#define FFINALLOCK(f) 0
-#define FLOCK(f) 0
-#define FUNLOCK(f) 0
-#else
 #define FFINALLOCK(f) ((f)->lock>=0 ? __lockfile((f)) : 0)
 #define FLOCK(f) int __need_unlock = ((f)->lock>=0 ? __lockfile((f)) : 0)
 #define FUNLOCK(f) if (__need_unlock) __unlockfile((f)); else
-#endif
 
 #define F_PERM 1
 #define F_NORD 4
@@ -95,10 +89,5 @@ int __fmodeflags(const char *);
 /* Caller-allocated FILE * operations */
 FILE *__fopen_rb_ca(const char *, FILE *, unsigned char *, size_t);
 int __fclose_ca(FILE *);
-
-#if __EMSCRIPTEN__ // musl-specific vfscanf and vfprintf live parallel to JS handwritten vfscanf and vfprintf, so musl ones are prefixed.
-int MUSL_vfscanf(FILE *restrict f, const char *restrict fmt, va_list ap);
-int MUSL_vfprintf(FILE *restrict f, const char *restrict fmt, va_list ap);
-#endif
 
 #endif

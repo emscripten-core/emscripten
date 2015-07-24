@@ -417,11 +417,8 @@ function JSify(data, functionsOnly) {
       // these may be duplicated in side modules and the main module without issue
       print(processMacros(read('fastLong.js')));
       print('// EMSCRIPTEN_END_FUNCS\n');
-      print(read('long.js'));
     } else {
       print('// EMSCRIPTEN_END_FUNCS\n');
-      print('// Warning: printing of i64 values may be slightly rounded! No deep i64 math used, so precise i64 code not included');
-      print('var i64Math = null;');
     }
 
     if (HEADLESS) {

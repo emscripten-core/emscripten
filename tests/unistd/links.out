@@ -26,6 +26,6 @@ errno: 0
 result: /working/folder/new-nonexistent-path
 
 readlink(short buffer)
-ret: 3
+ret: 4
 errno: 0
-result: /thrking/folder/new-nonexistent-path
+result: /the**ng/folder/new-nonexistent-path

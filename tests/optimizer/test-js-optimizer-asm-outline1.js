@@ -356,7 +356,7 @@ function stackSet(x1, x2, x3, x4, x5) {
  var sp = 0, a = 0, b = 0, cc = 0, d = 0, e = 0, f = 0, g = 0;
  var sp1 = 0, a1 = 0, b1 = 0, c1 = 0, d1 = 0, e1 = 0, f1 = 0, g1 = 0;
  sp = STACKTOP;
- STACKTOP = STACKTOP + 10 | 0;
+ STACKTOP = STACKTOP + 16 | 0;
  c(1);
  c(2);
  c(3);
@@ -410,6 +410,44 @@ function linf(d) {
     return +d;
   }
   return +d;
+}
+function leaveLabelsMagic() {
+  var label = 0;
+  if (x) {
+    c(1);
+    c(2);
+    c(3);
+    c(4);
+    c(5);
+    c(6);
+    c(7);
+    c(8);
+    c(9);
+    c(10);
+    c(11);
+    c(12);
+    c(13);
+    c(14);
+    c(15);
+    label = 1;
+  } else if (y) {
+    c(1);
+    c(2);
+    c(3);
+    c(4);
+    c(5);
+    c(6);
+    c(7);
+    c(8);
+    c(9);
+    c(10);
+    c(11);
+    c(12);
+    c(13);
+    c(14);
+    c(15);
+  }
+  if ((label|0) == 1) print(1);
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS
 // EXTRA_INFO: { "sizeToOutline": 30, "allowCostlyOutlines": 1 }

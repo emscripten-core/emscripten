@@ -254,6 +254,28 @@ document.createElement = function document_createElement(what) {
         }
       });
 
+      var style = {
+        parentCanvas: canvas,
+        removeProperty: function(){},
+        setProperty:  function(){},
+      };
+
+      Object.defineProperty(style, 'cursor', {
+        set: function(value) {
+          if (!style.cursor_ || style.cursor_ !== value) {
+            style.cursor_ = value;
+            if (style.parentCanvas === Module['canvas']) {
+              postMessage({ target: 'canvas', op: 'setObjectProperty', object: 'style', property: 'cursor', value: style.cursor_ });
+            }
+          }
+        },
+        get: function() {
+          return style.cursor_;
+        }
+      });
+
+      canvas.style = style;
+
       return canvas;
     }
     default: throw 'document.createElement ' + what;
@@ -411,6 +433,7 @@ onmessage = function onmessage(message) {
       Module.canvas = document.createElement('canvas');
       screen.width = Module.canvas.width_ = message.data.width;
       screen.height = Module.canvas.height_ = message.data.height;
+      Module.canvas.boundingClientRect = message.data.boundingClientRect;
       document.URL = message.data.URL;
       window.fireEvent({ type: 'load' });
       removeRunDependency('worker-init');

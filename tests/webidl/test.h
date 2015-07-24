@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 // Part 1
 
@@ -54,6 +55,7 @@ class StringUser {
   int i;
 public:
   StringUser(char *string="NO", int integer=99) : s(strdup(string)), i(integer) {}
+  ~StringUser() { free(s); }
   void Print(int anotherInteger, char *anotherString) {
     printf("|%s|%d|%s|%d|\n", s, i, anotherString, anotherInteger);
   }

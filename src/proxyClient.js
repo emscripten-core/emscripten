@@ -86,7 +86,13 @@ var worker = new Worker('{{{ filename }}}.js');
 WebGLClient.prefetch();
 
 setTimeout(function() {
-  worker.postMessage({ target: 'worker-init', width: Module.canvas.width, height: Module.canvas.height, URL: document.URL, preMain: true });
+  worker.postMessage({
+    target: 'worker-init',
+    width: Module.canvas.width,
+    height: Module.canvas.height,
+    boundingClientRect: cloneObject(Module.canvas.getBoundingClientRect()),
+    URL: document.URL,
+    preMain: true });
 }, 0); // delay til next frame, to make sure html is ready
 
 var workerResponded = false;
@@ -138,6 +144,10 @@ worker.onmessage = function worker_onmessage(event) {
             renderFrameData = data.image.data;
             window.requestAnimationFrame(renderFrame);
           }
+          break;
+        }
+        case 'setObjectProperty': {
+          Module.canvas[data.object][data.property] = data.value;
           break;
         }
         default: throw 'eh?';

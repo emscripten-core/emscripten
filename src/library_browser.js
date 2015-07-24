@@ -1380,7 +1380,8 @@ mergeInto(LibraryManager.library, {
 
   emscripten_get_preloaded_image_data_from_FILE__deps: ['emscripten_get_preloaded_image_data'],
   emscripten_get_preloaded_image_data_from_FILE: function(file, w, h) {
-    var stream = FS.getStreamFromPtr(file);
+    var fd = Module['_fileno'](file);
+    var stream = FS.getStream(fd);
     if (stream) {
       return _emscripten_get_preloaded_image_data(stream.path, w, h);
     }

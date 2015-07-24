@@ -13,14 +13,9 @@ int __toread(FILE *f)
 	return 0;
 }
 
-#ifndef __EMSCRIPTEN__
-static const int dummy = 0;
-weak_alias(dummy, __towrite_used);
+void __stdio_exit_needed(void);
 
-void __stdio_exit(void);
-
-void __seek_on_exit()
+void __toread_needs_stdio_exit()
 {
-	if (!__towrite_used) __stdio_exit();
+	__stdio_exit_needed();
 }
-#endif

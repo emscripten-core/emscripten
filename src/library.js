@@ -3183,7 +3183,7 @@ LibraryManager.library = {
     if (!___buildEnvironment.called) {
       ___buildEnvironment.called = true;
       // Set default values. Use string keys for Closure Compiler compatibility.
-      ENV['USER'] = 'web_user';
+      ENV['USER'] = ENV['LOGNAME'] = 'web_user';
       ENV['PATH'] = '/';
       ENV['PWD'] = '/';
       ENV['HOME'] = '/home/web_user';
@@ -3483,59 +3483,6 @@ LibraryManager.library = {
   llvm_memset_i32: 'memset',
   llvm_memset_p0i8_i32: 'memset',
   llvm_memset_p0i8_i64: 'memset',
-
-  strlen__sig: 'ii',
-  strlen__asm: true,
-  strlen: function(ptr) {
-    ptr = ptr|0;
-    var curr = 0;
-    curr = ptr;
-    while ({{{ makeGetValueAsm('curr', '0', 'i8') }}}) {
-      curr = (curr + 1)|0;
-    }
-    return (curr - ptr)|0;
-  },
-
-  strcpy__asm: true,
-  strcpy__sig: 'iii',
-  strcpy: function(pdest, psrc) {
-    pdest = pdest|0; psrc = psrc|0;
-    var i = 0;
-    do {
-      {{{ makeCopyValues('(pdest+i)|0', '(psrc+i)|0', 1, 'i8', null, 1) }}};
-      i = (i+1)|0;
-    } while ({{{ makeGetValueAsm('psrc', 'i-1', 'i8') }}});
-    return pdest|0;
-  },
-
-  strncpy__asm: true,
-  strncpy__sig: 'iiii',
-  strncpy: function(pdest, psrc, num) {
-    pdest = pdest|0; psrc = psrc|0; num = num|0;
-    var padding = 0, curr = 0, i = 0;
-    while ((i|0) < (num|0)) {
-      curr = padding ? 0 : {{{ makeGetValueAsm('psrc', 'i', 'i8') }}};
-      {{{ makeSetValue('pdest', 'i', 'curr', 'i8') }}};
-      padding = padding ? 1 : ({{{ makeGetValueAsm('psrc', 'i', 'i8') }}} == 0);
-      i = (i+1)|0;
-    }
-    return pdest|0;
-  },
-
-  strcat__asm: true,
-  strcat__sig: 'iii',
-  strcat__deps: ['strlen'],
-  strcat: function(pdest, psrc) {
-    pdest = pdest|0; psrc = psrc|0;
-    var i = 0;
-    var pdestEnd = 0;
-    pdestEnd = (pdest + (_strlen(pdest)|0))|0;
-    do {
-      {{{ makeCopyValues('pdestEnd+i', 'psrc+i', 1, 'i8', null, 1) }}};
-      i = (i+1)|0;
-    } while ({{{ makeGetValueAsm('psrc', 'i-1', 'i8') }}});
-    return pdest|0;
-  },
 
   strerror_r__deps: ['$ERRNO_CODES', '$ERRNO_MESSAGES', '__setErrNo'],
   strerror_r: function(errnum, strerrbuf, buflen) {
@@ -5498,6 +5445,7 @@ LibraryManager.library = {
     {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_nsec, '((now % 1000)*1000*1000)|0', 'i32') }}}; // nanoseconds
     return 0;
   },
+  __clock_gettime: 'clock_gettime', // musl internal alias
   clock_settime__deps: ['$ERRNO_CODES', '__setErrNo'],
   clock_settime: function(clk_id, tp) {
     // int clock_settime(clockid_t clk_id, const struct timespec *tp);
@@ -6165,23 +6113,13 @@ LibraryManager.library = {
     {{{ cDefine('EOWNERDEAD') }}}: 'Previous owner died',
     {{{ cDefine('ESTRPIPE') }}}: 'Streams pipe error',
   },
-  __errno_state: 0,
-  __setErrNo__deps: ['__errno_state'],
-#if USE_PTHREADS
-  __setErrNo__postset: 'if (ENVIRONMENT_IS_PTHREAD) ___errno_state = PthreadWorkerInit.___errno_state; else { PthreadWorkerInit.___errno_state = ___errno_state = Runtime.staticAlloc(4); {{{ makeSetValue("___errno_state", 0, 0, "i32") }}}; }',
-#else
-  __setErrNo__postset: '___errno_state = Runtime.staticAlloc(4); {{{ makeSetValue("___errno_state", 0, 0, "i32") }}};',
-#endif
   __setErrNo: function(value) {
-    // For convenient setting and returning of errno.
-    {{{ makeSetValue('___errno_state', '0', 'value', 'i32') }}};
+    if (Module['___errno_location']) {{{ makeSetValue("Module['___errno_location']()", 0, 'value', 'i32') }}};
+#if ASSERTIONS
+    else Module.printErr('failed to set errno from JS');
+#endif
     return value;
   },
-  __errno_location__deps: ['__setErrNo'],
-  __errno_location: function() {
-    return ___errno_state;
-  },
-  __errno: '__errno_location',
 
   // ==========================================================================
   // sys/resource.h
@@ -8443,6 +8381,12 @@ LibraryManager.library = {
   __ubsan_handle_float_cast_overflow: function(id, post) {
     abort('Undefined behavior! ubsan_handle_float_cast_overflow: ' + [id, post]);
   },
+
+  // internal musl requirements that we do, for now
+  _pthread_cleanup_push: function(){},
+  _pthread_cleanup_pop: function(){},
+  __pthread_self: function() { abort() },
+  pthread_setcancelstate: function() { return 0 },
 
   // misc definitions to avoid unnecessary unresolved symbols from fastcomp
   emscripten_prep_setjmp: true,

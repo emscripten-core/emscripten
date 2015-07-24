@@ -107,6 +107,14 @@ def filter_harnesses(harnesses):
 class sockets(BrowserCore):
   emcc_args = []
 
+  @classmethod
+  def setUpClass(self):
+    super(sockets, self).setUpClass()
+    self.browser_timeout = 30
+    print
+    print 'Running the socket tests. Make sure the browser allows popups from localhost.'
+    print
+
   def test_inet(self):
     src = r'''
       #include <stdio.h>
@@ -162,7 +170,7 @@ class sockets(BrowserCore):
       #include <arpa/inet.h>
       #include <sys/socket.h>
 
-      void test(char *test_addr){
+      void test(char *test_addr, bool first=true){
           char str[40];
           struct in6_addr addr;
           unsigned char *p = (unsigned char*)&addr;
@@ -173,6 +181,7 @@ class sockets(BrowserCore):
           if(inet_ntop(AF_INET6,&addr,str,sizeof(str)) == NULL ) return;
           printf("%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x - %s\n",
                p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15],str);
+          if (first) test(str, false); // check again, on our output
       }
       int main(){
           test("::");
@@ -199,29 +208,50 @@ class sockets(BrowserCore):
           test("1.2.3.4");
           test("");
           test("-");
+
+          printf("ok.\n");
       }
     '''
-    self.do_run(src,
-        "0000:0000:0000:0000:0000:0000:0000:0000 - ::\n"
-        "0000:0000:0000:0000:0000:0000:0000:0001 - ::1\n"
-        "0000:0000:0000:0000:0000:0000:0102:0304 - ::1.2.3.4\n"
-        "0000:0000:0000:0000:0000:0000:1112:1314 - ::17.18.19.20\n"
-        "0000:0000:0000:0000:0000:ffff:0102:0304 - ::ffff:1.2.3.4\n"
-        "0001:0000:0000:0000:0000:0000:0000:ffff - 1::ffff\n"
-        "0000:0000:0000:0000:0000:0000:ffff:ffff - ::255.255.255.255\n"
-        "0000:ff00:0001:0000:0000:0000:0000:0000 - 0:ff00:1::\n"
-        "0000:00ff:0000:0000:0000:0000:0000:0000 - 0:ff::\n"
-        "abcd:0000:0000:0000:0000:0000:0000:0000 - abcd::\n"
-        "ffff:0000:0000:0000:0000:0000:0000:000a - ffff::a\n"
-        "ffff:0000:0000:0000:0000:0000:000a:000b - ffff::a:b\n"
-        "ffff:0000:0000:0000:0000:000a:000b:000c - ffff::a:b:c\n"
-        "ffff:0000:0000:0000:000a:000b:000c:000d - ffff::a:b:c:d\n"
-        "ffff:0000:0000:000a:000b:000c:000d:000e - ffff::a:b:c:d:e\n"
-        "0000:0000:0000:0001:0002:0000:0000:0000 - ::1:2:0:0:0\n"
-        "0000:0000:0001:0002:0003:0000:0000:0000 - 0:0:1:2:3::\n"
-        "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff - ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff\n"
-        "0001:0000:0000:0000:0000:0000:ffff:ffff - 1::ffff:ffff\n"
-    )
+    self.do_run(src, r'''0000:0000:0000:0000:0000:0000:0000:0000 - ::
+0000:0000:0000:0000:0000:0000:0000:0000 - ::
+0000:0000:0000:0000:0000:0000:0000:0001 - ::1
+0000:0000:0000:0000:0000:0000:0000:0001 - ::1
+0000:0000:0000:0000:0000:0000:0102:0304 - ::102:304
+0000:0000:0000:0000:0000:0000:0102:0304 - ::102:304
+0000:0000:0000:0000:0000:0000:1112:1314 - ::1112:1314
+0000:0000:0000:0000:0000:0000:1112:1314 - ::1112:1314
+0000:0000:0000:0000:0000:ffff:0102:0304 - ::ffff:1.2.3.4
+0000:0000:0000:0000:0000:ffff:0102:0304 - ::ffff:1.2.3.4
+0001:0000:0000:0000:0000:0000:0000:ffff - 1::ffff
+0001:0000:0000:0000:0000:0000:0000:ffff - 1::ffff
+0000:0000:0000:0000:0000:0000:ffff:ffff - ::ffff:ffff
+0000:0000:0000:0000:0000:0000:ffff:ffff - ::ffff:ffff
+0000:ff00:0001:0000:0000:0000:0000:0000 - 0:ff00:1::
+0000:ff00:0001:0000:0000:0000:0000:0000 - 0:ff00:1::
+0000:00ff:0000:0000:0000:0000:0000:0000 - 0:ff::
+0000:00ff:0000:0000:0000:0000:0000:0000 - 0:ff::
+abcd:0000:0000:0000:0000:0000:0000:0000 - abcd::
+abcd:0000:0000:0000:0000:0000:0000:0000 - abcd::
+ffff:0000:0000:0000:0000:0000:0000:000a - ffff::a
+ffff:0000:0000:0000:0000:0000:0000:000a - ffff::a
+ffff:0000:0000:0000:0000:0000:000a:000b - ffff::a:b
+ffff:0000:0000:0000:0000:0000:000a:000b - ffff::a:b
+ffff:0000:0000:0000:0000:000a:000b:000c - ffff::a:b:c
+ffff:0000:0000:0000:0000:000a:000b:000c - ffff::a:b:c
+ffff:0000:0000:0000:000a:000b:000c:000d - ffff::a:b:c:d
+ffff:0000:0000:0000:000a:000b:000c:000d - ffff::a:b:c:d
+ffff:0000:0000:000a:000b:000c:000d:000e - ffff::a:b:c:d:e
+ffff:0000:0000:000a:000b:000c:000d:000e - ffff::a:b:c:d:e
+0000:0000:0000:0001:0002:0000:0000:0000 - ::1:2:0:0:0
+0000:0000:0000:0001:0002:0000:0000:0000 - ::1:2:0:0:0
+0000:0000:0001:0002:0003:0000:0000:0000 - 0:0:1:2:3::
+0000:0000:0001:0002:0003:0000:0000:0000 - 0:0:1:2:3::
+ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff - ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff - ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+0001:0000:0000:0000:0000:0000:ffff:ffff - 1::ffff:ffff
+0001:0000:0000:0000:0000:0000:ffff:ffff - 1::ffff:ffff
+ok.
+''')
 
   def test_getaddrinfo(self):
     self.emcc_args=[]

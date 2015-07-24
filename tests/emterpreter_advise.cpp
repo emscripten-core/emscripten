@@ -2,12 +2,16 @@
 #include<emscripten.h>
 #include<assert.h>
 
+void print(const char *c) {
+  EM_ASM_({ Module.print($0) }, c);
+}
+
 void sleeper() {
   emscripten_sleep(100);
 }
 
 void sibling() {
-  printf("hi\n");
+  print("hi\n");
 }
 
 void middle();
@@ -23,11 +27,11 @@ void middle() {
 }
 
 void pre() {
-  printf("bi\n");
+  print("bi\n");
 }
 
 void post() {
-  printf("tri\n");
+  print("tri\n");
 }
 
 int main() {

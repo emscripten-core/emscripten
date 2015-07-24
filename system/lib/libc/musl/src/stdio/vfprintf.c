@@ -160,7 +160,7 @@ static void pop_arg(union arg *arg, int type, va_list *ap)
 
 static void out(FILE *f, const char *s, size_t l)
 {
-	__fwritex((void *)s, l, f);
+	if (!(f->flags & F_ERR)) __fwritex((void *)s, l, f);
 }
 
 static void pad(FILE *f, char c, int w, int l, int fl)
@@ -572,7 +572,7 @@ static int printf_core(FILE *f, const char *fmt, va_list *ap, union arg *nl_arg,
 			if (0) {
 		case 'o':
 			a = fmt_o(arg.i, z);
-			if ((fl&ALT_FORM) && arg.i) prefix+=5, pl=1;
+			if ((fl&ALT_FORM) && p<z-a+1) p=z-a+1;
 			} if (0) {
 		case 'd': case 'i':
 			pl=1;
@@ -652,13 +652,13 @@ static int printf_core(FILE *f, const char *fmt, va_list *ap, union arg *nl_arg,
 	return 1;
 }
 
-//int vfprintf(FILE *restrict f, const char *restrict fmt, va_list ap)
-int MUSL_vfprintf(FILE *restrict f, const char *restrict fmt, va_list ap) /// XXX Emscripten: Only use musl-specific vfprintf when called from within sprintf.
+int vfprintf(FILE *restrict f, const char *restrict fmt, va_list ap)
 {
 	va_list ap2;
 	int nl_type[NL_ARGMAX+1] = {0};
 	union arg nl_arg[NL_ARGMAX+1];
 	unsigned char internal_buf[80], *saved_buf = 0;
+	int olderr;
 	int ret;
 
 	/* the copy allows passing va_list* even if va_list is an array */
@@ -669,6 +669,8 @@ int MUSL_vfprintf(FILE *restrict f, const char *restrict fmt, va_list ap) /// XX
 	}
 
 	FLOCK(f);
+	olderr = f->flags & F_ERR;
+	if (f->mode < 1) f->flags &= ~F_ERR;
 	if (!f->buf_size) {
 		saved_buf = f->buf;
 		f->wpos = f->wbase = f->buf = internal_buf;
@@ -683,6 +685,8 @@ int MUSL_vfprintf(FILE *restrict f, const char *restrict fmt, va_list ap) /// XX
 		f->buf_size = 0;
 		f->wpos = f->wbase = f->wend = 0;
 	}
+	if (f->flags & F_ERR) ret = -1;
+	f->flags |= olderr;
 	FUNLOCK(f);
 	va_end(ap2);
 	return ret;

@@ -125,7 +125,10 @@ Module['callMain'] = Module.callMain = function callMain(args) {
   argv.push(0);
   argv = allocate(argv, 'i32', ALLOC_NORMAL);
 
-  initialStackTop = STACKTOP;
+  initialStackTop = Runtime.stackSave();
+#if EMTERPRETIFY_ASYNC
+  var initialEmtStackTop = asm.emtStackSave();
+#endif
 
   try {
 #if BENCHMARK
@@ -149,6 +152,10 @@ Module['callMain'] = Module.callMain = function callMain(args) {
     } else if (e == 'SimulateInfiniteLoop') {
       // running an evented main loop, don't immediately exit
       Module['noExitRuntime'] = true;
+      Runtime.stackRestore(initialStackTop);
+#if EMTERPRETIFY_ASYNC
+      asm.emtStackRestore(initialEmtStackTop);
+#endif
       return;
     } else {
       if (e && typeof e === 'object' && e.stack) Module.printErr('exception thrown: ' + [e, e.stack]);
@@ -188,9 +195,11 @@ function run(args) {
 
     preMain();
 
+#if ASSERTIONS
     if (ENVIRONMENT_IS_WEB && preloadStartTime !== null) {
       Module.printErr('pre-main prep time: ' + (Date.now() - preloadStartTime) + ' ms');
     }
+#endif
 
     if (Module['onRuntimeInitialized']) Module['onRuntimeInitialized']();
 

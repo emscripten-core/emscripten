@@ -78,7 +78,7 @@ typedef uint64_t uint_least64_t;
 #define INTMAX_MAX  INT64_MAX
 #define UINTMAX_MAX UINT64_MAX
 
-#define WINT_MIN 0
+#define WINT_MIN 0U
 #define WINT_MAX UINT32_MAX
 
 #if L'\0'-1 > 0

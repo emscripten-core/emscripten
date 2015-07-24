@@ -258,8 +258,11 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       original_exports = settings['ORIGINAL_EXPORTED_FUNCTIONS']
       if original_exports[0] == '@': original_exports = json.loads(open(original_exports[1:]).read())
       for requested in original_exports:
+        # check if already implemented
+        # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS \
         if requested not in all_implemented and \
-           requested != '_malloc': # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS
+           requested != '_malloc' and \
+           (('function ' + requested.encode('utf-8')) not in pre): # could be a js library func
           logging.warning('function requested to be exported, but not implemented: "%s"', requested)
 
     asm_consts = [0]*len(metadata['asmConsts'])
@@ -447,16 +450,16 @@ function _emscripten_asm_const_%d(%s) {
         asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(debug_tables[sig]) + ';'
 
     maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'clz32']]
-    simdfloattypes = ['float32x4']
-    simdinttypes = ['int32x4']
+    simdfloattypes = ['Float32x4']
+    simdinttypes = ['Int32x4']
     simdtypes = simdfloattypes + simdinttypes
     simdfuncs = ['check', 'add', 'sub', 'neg', 'mul',
                  'equal', 'lessThan', 'greaterThan',
                  'notEqual', 'lessThanOrEqual', 'greaterThanOrEqual',
                  'select', 'and', 'or', 'xor', 'not',
                  'splat', 'swizzle', 'shuffle',
-                 'withX', 'withY', 'withZ', 'withW',
-                 'load', 'store', 'loadX', 'storeX', 'loadXY', 'storeXY', 'loadXYZ', 'storeXYZ']
+                 'load', 'store', 'load1', 'store1', 'load2', 'store2', 'load3', 'store3',
+                 'extractLane', 'replaceLane']
     simdfloatfuncs = simdfuncs + ['div', 'min', 'max', 'minNum', 'maxNum', 'sqrt',
                                   'abs', 'fromInt32x4', 'fromInt32x4Bits',
                                   'reciprocalApproximation', 'reciprocalSqrtApproximation'];
@@ -549,7 +552,7 @@ function _emscripten_asm_const_%d(%s) {
     if settings.get('EMTERPRETIFY'):
       asm_runtime_funcs += ['emterpret']
       if settings.get('EMTERPRETIFY_ASYNC'):
-        asm_runtime_funcs += ['setAsyncState', 'emtStackSave']
+        asm_runtime_funcs += ['setAsyncState', 'emtStackSave', 'emtStackRestore']
 
     # function tables
     if not settings['EMULATED_FUNCTION_POINTERS']:
@@ -646,7 +649,7 @@ function ftCall_%s(%s) {%s
       global_funcs += ['g$' + extern for extern in metadata['externs']]
       side = 'parent' if settings['SIDE_MODULE'] else ''
       def check(extern):
-        if settings['ASSERTIONS']: return 'assert(' + side + 'Module["' + extern + '"]);'
+        if settings['ASSERTIONS']: return 'assert(' + side + 'Module["' + extern + '"], "external function \'' + extern + '\' is missing. perhaps a side module was not linked in? if this symbol was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");'
         return ''
       for extern in metadata['externs']:
         asm_setup += 'var g$' + extern + ' = function() { ' + check(extern) + ' return ' + side + 'Module["' + extern + '"] };\n'
@@ -835,6 +838,10 @@ function setAsyncState(x) {
 }
 function emtStackSave() {
   return EMTSTACKTOP|0;
+}
+function emtStackRestore(x) {
+  x = x | 0;
+  EMTSTACKTOP = x;
 }
 ''' if settings['EMTERPRETIFY_ASYNC'] else '') + '''
 function setThrew(threw, value) {

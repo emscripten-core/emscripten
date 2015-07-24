@@ -2,18 +2,11 @@
 # This Python file uses the following encoding: utf-8
 
 '''
-Simple test runner
-
-These tests can be run in parallel using nose, for example
-
-  nosetests --processes=4 -v -s tests/runner.py
-
-will use 4 processes. To install nose do something like
-|pip install nose| or |sudo apt-get install python-nose|.
-
-Note however that emcc now uses multiple cores when optimizing,
-so you may prefer to use fewer cores here.
+Simple test runner. Consider using parallel_test_core.py for faster iteration times.
 '''
+
+# XXX Use EM_ALL_ENGINES=1 in the env to test all engines!
+
 
 from subprocess import Popen, PIPE, STDOUT
 import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer, multiprocessing, functools, stat, string, random
@@ -38,7 +31,7 @@ except:
 
 # Core test runner class, shared between normal tests and benchmarks
 checked_sanity = False
-test_modes = ['default', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g', 'asm1i', 'asm3i', 'asm2m', 'asm2nn']
+test_modes = ['default', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g', 'asm1i', 'asm3i', 'asm2nn']
 test_index = 0
 
 use_all_engines = os.environ.get('EM_ALL_ENGINES') # generally js engines are equivalent, testing 1 is enough. set this
@@ -266,8 +259,9 @@ class RunnerCore(unittest.TestCase):
         assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
 
   def validate_asmjs(self, err):
-    if 'asm.js type error:' in err:
-      raise Exception("did NOT asm.js'ify, type error: " + err)
+    if "asm.js type error: 'Float32x4' is not a standard SIMD type" in err:
+      err = err.replace("asm.js type error: 'Float32x4' is not a standard SIMD type", "")
+      print >> sys.stderr, "\nWARNING: ignoring asm.js type error due to old SpiderMonkey\n"
     if 'uccessfully compiled asm.js code' in err and 'asm.js link error' not in err:
       print >> sys.stderr, "[was asm.js'ified]"
     elif 'asm.js' in err: # if no asm.js error, then not an odin build
@@ -601,7 +595,7 @@ class BrowserCore(RunnerCore):
     # WindowsError: [Error 32] The process cannot access the file because it is being used by another process.
     time.sleep(0.1)
 
-  def run_browser(self, html_file, message, expectedResult=None):
+  def run_browser(self, html_file, message, expectedResult=None, timeout=None):
     print '[browser launch:', html_file, ']'
     if expectedResult is not None:
       try:
@@ -611,7 +605,8 @@ class BrowserCore(RunnerCore):
         self.harness_queue.put('http://localhost:8888/' + html_file)
         output = '[no http server activity]'
         start = time.time()
-        while time.time() - start < 60:
+        if timeout is None: timeout = self.browser_timeout
+        while time.time() - start < timeout:
           if not queue.empty():
             output = queue.get()
             break
@@ -633,18 +628,17 @@ class BrowserCore(RunnerCore):
 
   def with_report_result(self, code):
     return r'''
-      #ifdef __EMSCRIPTEN__
-      #include <emscripten.h>
-      #define REPORT_RESULT_INTERNAL(sync) \
-        char output[1000]; \
-        sprintf(output, \
-                "xhr = new XMLHttpRequest();" \
-                "xhr.open('GET', 'http://localhost:8888/report_result?%d'%s);" \
-                "xhr.send();", result, sync ? ", false" : ""); \
-        emscripten_run_script(output); \
-        emscripten_run_script("setTimeout(function() { window.close() }, 1000)"); // comment this out to keep the test runner window open to debug
-      #define REPORT_RESULT() REPORT_RESULT_INTERNAL(0)
-      #endif
+#ifdef __EMSCRIPTEN__
+  #include <emscripten.h>
+  #define REPORT_RESULT_INTERNAL(sync) \
+    EM_ASM_({ \
+      var xhr = new XMLHttpRequest(); \
+      xhr.open('GET', 'http://localhost:8888/report_result?' + $0, !$1); \
+      xhr.send(); \
+      setTimeout(function() { window.close() }, 1000); \
+    }, result, sync);
+  #define REPORT_RESULT() REPORT_RESULT_INTERNAL(0)
+#endif
 ''' + code
 
   def reftest(self, expected):
@@ -734,7 +728,7 @@ class BrowserCore(RunnerCore):
 ''' % basename)
 
   def btest(self, filename, expected=None, reference=None, force_c=False, reference_slack=0, manual_reference=False, post_build=None,
-      args=[], outfile='test.html', message='.', also_proxied=False, url_suffix=''): # TODO: use in all other tests
+      args=[], outfile='test.html', message='.', also_proxied=False, url_suffix='', timeout=None): # TODO: use in all other tests
     # if we are provided the source and not a path, use that
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
@@ -761,7 +755,7 @@ class BrowserCore(RunnerCore):
     assert os.path.exists(outfile)
     if post_build: post_build()
     if type(expected) is str: expected = [expected]
-    self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected])
+    self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected], timeout=timeout)
     if also_proxied:
       print 'proxied...'
       # save non-proxied
@@ -775,7 +769,7 @@ class BrowserCore(RunnerCore):
         assert not post_build
         post_build = self.post_manual_reftest
       # run proxied
-      self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build, original_args + ['--proxy-to-worker', '-s', 'GL_TESTING=1'], outfile, message)
+      self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build, original_args + ['--proxy-to-worker', '-s', 'GL_TESTING=1'], outfile, message, timeout=timeout)
 
 ###################################################################################################
 

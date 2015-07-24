@@ -40,6 +40,7 @@ var MEM_INIT_METHOD = 0; // How to represent the initial memory content.
                          // 1: create a *.mem file containing the binary data of the initial memory;
                          //    use the --memory-init-file command line switch to select this method
                          // 2: embed a string literal representing that initial memory data
+                         //    XXX this is known to have bugs on windows, see https://github.com/kripken/emscripten/pull/3326
 var TOTAL_STACK = 5*1024*1024; // The total stack size. There is no way to enlarge the stack, so this
                                // value must be large enough for the program's requirements. If
                                // assertions are on, we will assert on not exceeding this, otherwise,
@@ -195,6 +196,7 @@ var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js). 
                        // Runtime.debug at runtime for logging to cease, and can set it when you
                        // want it back. A simple way to set it in C++ is
                        //   emscripten_run_script("Runtime.debug = ...;");
+var SYSCALL_DEBUG = 0; // Print out all syscalls
 var SOCKET_DEBUG = 0; // Log out socket/network data transfer.
 var SOCKET_WEBRTC = 0; // Select socket backend, either webrtc or websockets. XXX webrtc is not currently tested, may be broken
 
@@ -266,7 +268,56 @@ var ASYNCIFY_WHITELIST = ['qsort',   // Functions in this list are never conside
                           '__uflow',  // currently this link contains some functions in libc
                           '__fwritex', 
                           'MUSL_vfprintf']; 
-                                                                                                    
+
+var EXPORTED_RUNTIME_METHODS = [ // Methods that are exported on Module. By default we export quite a bit, you can reduce this list to lower your code size,
+  'FS_createFolder',             // especially when closure is run (exporting prevents closure from eliminating code)
+  'FS_createPath',
+  'FS_createDataFile',
+  'FS_createPreloadedFile',
+  'FS_createLazyFile',
+  'FS_createLink',
+  'FS_createDevice',
+  'FS_unlink',
+  'Runtime',
+  'ccall',
+  'cwrap',
+  'setValue',
+  'getValue',
+  'ALLOC_NORMAL',
+  'ALLOC_STACK',
+  'ALLOC_STATIC',
+  'ALLOC_DYNAMIC',
+  'ALLOC_NONE',
+  'allocate',
+  'getMemory',
+  'Pointer_stringify',
+  'AsciiToString',
+  'stringToAscii',
+  'UTF8ArrayToString',
+  'UTF8ToString',
+  'stringToUTF8Array',
+  'stringToUTF8',
+  'lengthBytesUTF8',
+  'UTF16ToString',
+  'stringToUTF16',
+  'lengthBytesUTF16',
+  'UTF32ToString',
+  'stringToUTF32',
+  'lengthBytesUTF32',
+  'stackTrace',
+  'addOnPreRun',
+  'addOnInit',
+  'addOnPreMain',
+  'addOnExit',
+  'addOnPostRun',
+  'intArrayFromString',
+  'intArrayToString',
+  'writeStringToMemory',
+  'writeArrayToMemory',
+  'writeAsciiToMemory',
+  'addRunDependency',
+  'removeRunDependency',
+];
 
 var FS_LOG = 0; // Log all FS operations.  This is especially helpful when you're porting
                 // a new project and want to see a list of file system operations happening
@@ -297,6 +348,9 @@ var EXPORTED_FUNCTIONS = ['_main', '_malloc'];
                                     // have a main() function and want it to run, you must include it in this
                                     // list (as _main is by default in this value, and if you override it
                                     // without keeping it there, you are in effect removing it).
+                                    //
+                                    // malloc should always be here, as it is used for internal allocations.
+
 var EXPORT_ALL = 0; // If true, we export all the symbols. Note that this does *not* affect LLVM, so it can
                     // still eliminate functions as dead. This just exports them on the Module object.
 var EXPORT_BINDINGS = 0; // Export all bindings generator functions (prefixed with emscripten_bind_). This
@@ -322,7 +376,7 @@ var DEBUG_LEVEL = 0;         // this will contain the debug level (-gx). you sho
 // C API call from C, but you want to call it from JS,
 // add it here (and in EXPORTED FUNCTIONS with prefix
 // "_", for closure).
-var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = ['memcpy', 'memset', 'malloc', 'free', 'strlen', '$Browser'];
+var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = ['memcpy', 'memset', 'malloc', 'free', '$Browser'];
 
 var LIBRARY_DEPS_TO_AUTOEXPORT = ['memcpy']; // This list is also used to determine
                                              // auto-exporting of library dependencies (i.e., functions that
@@ -441,6 +495,10 @@ var FINALIZE_ASM_JS = 1; // If 1, will finalize the final emitted code, includin
 
 var SWAPPABLE_ASM_MODULE = 0; // If 1, then all exports from the asm.js module will be accessed
                               // indirectly, which allow the asm module to be swapped later.
+                              // Note: It is very important to build the two modules that
+                              // are to be swapped with the same optimizations and so forth,
+                              // as we depend on them being a drop-in replacement for each
+                              // other (same globals on the heap at the same locations, etc.)
 
 var PGO = 0; // Enables profile-guided optimization in the form of runtime checks for
              // which functions are actually called. Emits a list during shutdown that you

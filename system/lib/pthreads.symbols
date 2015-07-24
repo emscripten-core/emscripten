@@ -1,10 +1,7 @@
-         T _Atomics_load_HEAPF32_emulated
-         T _Atomics_load_HEAPF64_emulated
-         T _Atomics_store_HEAPF32_emulated
-         T _Atomics_store_HEAPF64_emulated
          U __assert_fail
          U __errno_location
          U __lock
+         U __pthread_self
          D __pthread_tsd_main
          T __pthread_tsd_run_dtors
          D __pthread_tsd_size
@@ -16,25 +13,23 @@
          T __vm_unlock
          W __vm_unlock_impl
          T __wait
-         t _do_call
+         T _emscripten_atomic_fetch_and_add_u64
+         T _emscripten_atomic_fetch_and_and_u64
+         T _emscripten_atomic_fetch_and_or_u64
+         T _emscripten_atomic_fetch_and_sub_u64
+         T _emscripten_atomic_fetch_and_xor_u64
          T _pthread_getcanceltype
          T _pthread_isduecanceled
-         T _pthread_nsecs_until
+         T _pthread_msecs_until
          U accept
          U access
          U atexit
          U bind
-         d call_queue.body
-         d call_queue.init
-         d call_queue_length
-         d call_queue_lock
          U calloc
          U chdir
          U chmod
          U chown
          U chroot
-         t cleanup
-         t cleanup17
          U clearenv
          U clearerr
          U clock_gettime
@@ -46,16 +41,26 @@
          U crypt
          U ctermid
          U dprintf
-         d dummyZeroAddress
          U dup
          U dup2
          U emscripten_asm_const
-         U emscripten_atomic_add_u32
+         T emscripten_atomic_add_u64
+         T emscripten_atomic_and_u64
          U emscripten_atomic_cas_u32
+         T emscripten_atomic_cas_u64
+         T emscripten_atomic_exchange_u32
+         T emscripten_atomic_exchange_u64
+         T emscripten_atomic_load_f32
+         T emscripten_atomic_load_f64
          U emscripten_atomic_load_u32
-         U emscripten_atomic_or_u32
+         T emscripten_atomic_load_u64
+         T emscripten_atomic_or_u64
+         T emscripten_atomic_store_f32
+         T emscripten_atomic_store_f64
          U emscripten_atomic_store_u32
-         U emscripten_atomic_sub_u32
+         T emscripten_atomic_store_u64
+         T emscripten_atomic_sub_u64
+         T emscripten_atomic_xor_u64
          U emscripten_futex_wait
          U emscripten_futex_wake
          U emscripten_get_now
@@ -68,6 +73,7 @@
          T emscripten_sync_run_in_main_thread_4
          T emscripten_sync_run_in_main_thread_5
          T emscripten_sync_run_in_main_thread_6
+         T emscripten_sync_run_in_main_thread_xprintf_varargs
          U encrypt
          U fchdir
          U fchmod
@@ -88,6 +94,7 @@
          U fputc
          U fputs
          U fread
+         U free
          U freopen
          U fscanf
          U fseek
@@ -111,15 +118,14 @@
          U gettimeofday
          U ioctl
          U isatty
-         d keys
          U lchmod
          U lchown
          U link
          U listen
-         d lock
          U lockf
          U lseek
          U lstat
+         U malloc
          U mkdir
          U mkdtemp
          U mkfifo
@@ -128,7 +134,6 @@
          U mktemp
          U mmap
          U munmap
-         t nodtor
          U open
          U opendir
          U pclose
@@ -178,6 +183,7 @@
          T pthread_condattr_init
          T pthread_condattr_setclock
          T pthread_condattr_setpshared
+         U pthread_create
          T pthread_equal
          T pthread_getattr_np
          T pthread_getspecific
@@ -203,7 +209,6 @@
          T pthread_mutexattr_setrobust
          T pthread_mutexattr_settype
          T pthread_once
-         d pthread_once.waiters
          T pthread_rwlock_destroy
          T pthread_rwlock_init
          T pthread_rwlock_rdlock
@@ -227,9 +232,9 @@
          T pthread_spin_trylock
          T pthread_spin_unlock
          T pthread_testcancel
-         U putc
          U putchar
          U putenv
+         U puts
          U pwrite
          U read
          U readdir
@@ -260,7 +265,6 @@
          T sem_trywait
          T sem_unlink
          T sem_wait
-         d semtab
          U send
          U sendmsg
          U sendto
@@ -284,13 +288,11 @@
          U ttyname_r
          U tzset
          U umask
-         t undo
          U ungetc
          U unlink
          U unsetenv
-         t unwait
          T usleep
          U utime
          U utimes
-         d vmlock
+         U vsnprintf
          U write

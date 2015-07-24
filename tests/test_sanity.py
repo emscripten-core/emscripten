@@ -413,13 +413,6 @@ fi
         os.environ['EMCC_DEBUG'] ='1'
         self.working_dir = os.path.join(TEMP_DIR, 'emscripten_temp')
 
-        # Building a file that doesn't need cached stuff should not trigger cache generation
-        output = self.do([compiler, path_from_root('tests', 'hello_world.cpp')])
-        assert INCLUDING_MESSAGE.replace('X', 'libcextra') not in output
-        assert BUILDING_MESSAGE.replace('X', 'libcextra') not in output
-        self.assertContained('hello, world!', run_js('a.out.js'))
-        try_delete('a.out.js')
-
         basebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-0-basebc.bc')
         dcebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-1-linktime.bc')
         ll_names = [os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-X-ll.ll').replace('X', str(x)) for x in range(2,5)]
@@ -433,7 +426,7 @@ fi
             try_delete(dcebc_name) # we might need to check this file later
             for ll_name in ll_names: try_delete(ll_name)
             output = self.do([compiler, '-O' + str(i), '-s', '--llvm-lto', '0', path_from_root('tests', filename), '--save-bc', 'a.bc', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
-            #print output
+            #print '\n\n\n', output
             assert INCLUDING_MESSAGE.replace('X', libname) in output
             if libname == 'libc':
               assert INCLUDING_MESSAGE.replace('X', 'libcxx') not in output # we don't need libcxx in this code
@@ -444,11 +437,6 @@ fi
             assert os.path.exists(EMCC_CACHE)
             full_libname = libname + '.bc' if libname != 'libcxx' else libname + '.a'
             assert os.path.exists(os.path.join(EMCC_CACHE, full_libname))
-            if libname == 'libcxx':
-              print os.stat(os.path.join(EMCC_CACHE, full_libname)).st_size, os.stat(basebc_name).st_size, os.stat(dcebc_name).st_size
-              assert os.stat(os.path.join(EMCC_CACHE, full_libname)).st_size > 1000000, 'libc++ is big'
-              assert os.stat(basebc_name).st_size > 1000000, 'libc++ is indeed big'
-              assert os.stat(dcebc_name).st_size < os.stat(basebc_name).st_size*0.666, 'Dead code elimination must remove most of libc++'
       finally:
         del os.environ['EMCC_DEBUG']
 
@@ -538,7 +526,7 @@ fi
     # using ports
 
     RETRIEVING_MESSAGE = 'retrieving port'
-    BUILDING_MESSAGE = 'building port'
+    BUILDING_MESSAGE = 'generating port'
 
     from tools import system_libs
     PORTS_DIR = system_libs.Ports.get_dir()
@@ -684,6 +672,10 @@ fi
       ([PYTHON, 'embuilder.py'], ['Emscripten System Builder Tool', 'build libc', 'native_optimizer'], True, []),
       ([PYTHON, 'embuilder.py', 'build', 'waka'], 'ERROR', False, []),
       ([PYTHON, 'embuilder.py', 'build', 'libc'], ['building and verifying libc', 'success'], True, ['libc.bc']),
+      ([PYTHON, 'embuilder.py', 'build', 'libc-mt'], ['building and verifying libc-mt', 'success'], True, ['libc-mt.bc']),
+      ([PYTHON, 'embuilder.py', 'build', 'dlmalloc'], ['building and verifying dlmalloc', 'success'], True, ['dlmalloc.bc']),
+      ([PYTHON, 'embuilder.py', 'build', 'dlmalloc_threadsafe'], ['building and verifying dlmalloc_threadsafe', 'success'], True, ['dlmalloc_threadsafe.bc']),
+      ([PYTHON, 'embuilder.py', 'build', 'pthreads'], ['building and verifying pthreads', 'success'], True, ['pthreads.bc']),
       ([PYTHON, 'embuilder.py', 'build', 'libcxx'], ['success'], True, ['libcxx.a']),
       ([PYTHON, 'embuilder.py', 'build', 'libcxx_noexcept'], ['success'], True, ['libcxx_noexcept.a']),
       ([PYTHON, 'embuilder.py', 'build', 'libcxxabi'], ['success'], True, ['libcxxabi.bc']),

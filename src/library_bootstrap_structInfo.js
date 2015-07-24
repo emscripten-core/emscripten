@@ -49,5 +49,8 @@ LibraryManager.library = {
     Module.print(string);
     return result.length;
   },
+  malloc: function(x) {
+    return Runtime.dynamicAlloc(x);
+  },
 };
 

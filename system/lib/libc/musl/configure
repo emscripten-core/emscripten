@@ -1,0 +1,536 @@
+#!/bin/sh
+
+usage () {
+cat <<EOF
+Usage: $0 [OPTION]... [VAR=VALUE]... [TARGET]
+
+To assign environment variables (e.g., CC, CFLAGS...), specify them as
+VAR=VALUE.  See below for descriptions of some of the useful variables.
+
+Defaults for the options are specified in brackets.
+
+Installation directories:
+  --prefix=PREFIX         main installation prefix [/usr/local/musl]
+  --exec-prefix=EPREFIX   installation prefix for executable files [PREFIX]
+
+Fine tuning of the installation directories:
+  --bindir=DIR            user executables [EPREFIX/bin]
+  --libdir=DIR            library files for the linker [PREFIX/lib]
+  --includedir=DIR        include files for the C compiler [PREFIX/include]
+  --syslibdir=DIR         location for the dynamic linker [/lib]
+
+System types:
+  --target=TARGET         configure to run on target TARGET [detected]
+  --host=HOST             same as --target
+
+Optional features:
+  --enable-optimize=...   optimize listed components for speed over size [auto]
+  --enable-debug          build with debugging information [disabled]
+  --enable-warnings       build with recommended warnings flags [disabled]
+  --enable-gcc-wrapper    build musl-gcc toolchain wrapper [auto]
+  --disable-shared        inhibit building shared library [enabled]
+  --disable-static        inhibit building static library [enabled]
+
+Some influential environment variables:
+  CC                      C compiler command [detected]
+  CFLAGS                  C compiler flags [-Os -pipe ...]
+  CROSS_COMPILE           prefix for cross compiler and tools [none]
+  LIBCC                   compiler runtime library [detected]
+
+Use these variables to override the choices made by configure.
+
+EOF
+exit 0
+}
+
+# Helper functions
+
+quote () {
+tr '\n' ' ' <<EOF | grep '^[-[:alnum:]_=,./:]* $' >/dev/null 2>&1 && { echo "$1" ; return 0 ; }
+$1
+EOF
+printf %s\\n "$1" | sed -e "s/'/'\\\\''/g" -e "1s/^/'/" -e "\$s/\$/'/" -e "s#^'\([-[:alnum:]_,./:]*\)=\(.*\)\$#\1='\2#"
+}
+echo () { printf "%s\n" "$*" ; }
+fail () { echo "$*" ; exit 1 ; }
+fnmatch () { eval "case \"\$2\" in $1) return 0 ;; *) return 1 ;; esac" ; }
+cmdexists () { type "$1" >/dev/null 2>&1 ; }
+trycc () { test -z "$CC" && cmdexists "$1" && CC=$1 ; }
+
+stripdir () {
+while eval "fnmatch '*/' \"\${$1}\"" ; do eval "$1=\${$1%/}" ; done
+}
+
+trycppif () {
+printf "checking preprocessor condition %s... " "$1"
+echo "typedef int x;" > "$tmpc"
+echo "#if $1" >> "$tmpc"
+echo "#error yes" >> "$tmpc"
+echo "#endif" >> "$tmpc"
+if $CC $2 -c -o /dev/null "$tmpc" >/dev/null 2>&1 ; then
+printf "false\n"
+return 1
+else
+printf "true\n"
+return 0
+fi
+}
+
+tryflag () {
+printf "checking whether compiler accepts %s... " "$2"
+echo "typedef int x;" > "$tmpc"
+if $CC "$2" -c -o /dev/null "$tmpc" >/dev/null 2>&1 ; then
+printf "yes\n"
+eval "$1=\"\${$1} \$2\""
+eval "$1=\${$1# }"
+return 0
+else
+printf "no\n"
+return 1
+fi
+}
+
+tryldflag () {
+printf "checking whether linker accepts %s... " "$2"
+echo "typedef int x;" > "$tmpc"
+if $CC -nostdlib -shared "$2" -o /dev/null "$tmpc" >/dev/null 2>&1 ; then
+printf "yes\n"
+eval "$1=\"\${$1} \$2\""
+eval "$1=\${$1# }"
+return 0
+else
+printf "no\n"
+return 1
+fi
+}
+
+
+
+# Beginning of actual script
+
+CFLAGS_C99FSE=
+CFLAGS_AUTO=
+CFLAGS_MEMOPS=
+LDFLAGS_AUTO=
+OPTIMIZE_GLOBS=
+prefix=/usr/local/musl
+exec_prefix='$(prefix)'
+bindir='$(exec_prefix)/bin'
+libdir='$(prefix)/lib'
+includedir='$(prefix)/include'
+syslibdir='/lib'
+target=
+optimize=auto
+debug=no
+warnings=no
+shared=yes
+static=yes
+wrapper=auto
+
+for arg ; do
+case "$arg" in
+--help) usage ;;
+--prefix=*) prefix=${arg#*=} ;;
+--exec-prefix=*) exec_prefix=${arg#*=} ;;
+--bindir=*) bindir=${arg#*=} ;;
+--libdir=*) libdir=${arg#*=} ;;
+--includedir=*) includedir=${arg#*=} ;;
+--syslibdir=*) syslibdir=${arg#*=} ;;
+--enable-shared|--enable-shared=yes) shared=yes ;;
+--disable-shared|--enable-shared=no) shared=no ;;
+--enable-static|--enable-static=yes) static=yes ;;
+--disable-static|--enable-static=no) static=no ;;
+--enable-optimize) optimize=yes ;;
+--enable-optimize=*) optimize=${arg#*=} ;;
+--disable-optimize) optimize=no ;;
+--enable-debug|--enable-debug=yes) debug=yes ;;
+--disable-debug|--enable-debug=no) debug=no ;;
+--enable-warnings|--enable-warnings=yes) warnings=yes ;;
+--disable-warnings|--enable-warnings=no) warnings=no ;;
+--enable-gcc-wrapper|--enable-gcc-wrapper=yes) wrapper=yes ;;
+--disable-gcc-wrapper|--enable-gcc-wrapper=no) wrapper=no ;;
+--enable-*|--disable-*|--with-*|--without-*|--*dir=*|--build=*) ;;
+--host=*|--target=*) target=${arg#*=} ;;
+-* ) echo "$0: unknown option $arg" ;;
+CC=*) CC=${arg#*=} ;;
+CFLAGS=*) CFLAGS=${arg#*=} ;;
+CPPFLAGS=*) CPPFLAGS=${arg#*=} ;;
+LDFLAGS=*) LDFLAGS=${arg#*=} ;;
+CROSS_COMPILE=*) CROSS_COMPILE=${arg#*=} ;;
+LIBCC=*) LIBCC=${arg#*=} ;;
+*=*) ;;
+*) target=$arg ;;
+esac
+done
+
+for i in prefix exec_prefix bindir libdir includedir syslibdir ; do
+stripdir $i
+done
+
+#
+# Get a temp filename we can use
+#
+i=0
+set -C
+while : ; do i=$(($i+1))
+tmpc="./conf$$-$PPID-$i.c"
+2>|/dev/null > "$tmpc" && break
+test "$i" -gt 50 && fail "$0: cannot create temporary file $tmpc"
+done
+set +C
+trap 'rm "$tmpc"' EXIT INT QUIT TERM HUP
+
+#
+# Find a C compiler to use
+#
+printf "checking for C compiler... "
+trycc ${CROSS_COMPILE}gcc
+trycc ${CROSS_COMPILE}c99
+trycc ${CROSS_COMPILE}cc
+printf "%s\n" "$CC"
+test -n "$CC" || { echo "$0: cannot find a C compiler" ; exit 1 ; }
+
+printf "checking whether C compiler works... "
+echo "typedef int x;" > "$tmpc"
+if output=$($CC $CPPFLAGS $CFLAGS -c -o /dev/null "$tmpc" 2>&1) ; then
+printf "yes\n"
+else
+printf "no; compiler output follows:\n%s\n" "$output"
+exit 1
+fi
+
+#
+# Need to know if the compiler is gcc to decide whether to build the
+# musl-gcc wrapper, and for critical bug detection in some gcc versions.
+#
+printf "checking whether compiler is gcc... "
+if fnmatch '*gcc\ version*' "$($CC -v 2>&1)" ; then
+cc_is_gcc=yes
+else
+cc_is_gcc=no
+fi
+echo "$cc_is_gcc"
+
+#
+# Only build musl-gcc wrapper if toolchain does not already target musl
+#
+if test "$wrapper" = auto ; then
+printf "checking whether to build musl-gcc wrapper... "
+if test "$cc_is_gcc" = yes ; then
+wrapper=yes
+while read line ; do
+case "$line" in */ld-musl-*) wrapper=no ;; esac
+done <<EOF
+$($CC -dumpspecs)
+EOF
+else
+wrapper=no
+fi
+echo "$wrapper"
+fi
+
+
+
+#
+# Find the target architecture
+#
+printf "checking target system type... "
+test -n "$target" || target=$($CC -dumpmachine 2>/dev/null) || target=unknown
+printf "%s\n" "$target"
+
+#
+# Convert to just ARCH
+#
+case "$target" in
+# Catch these early to simplify matching for 32-bit archs
+mips64*|powerpc64*) fail "$0: unsupported target \"$target\"" ;;
+arm*) ARCH=arm ;;
+i?86*) ARCH=i386 ;;
+x86_64-x32*|x32*|x86_64*x32) ARCH=x32 ;;
+x86_64*) ARCH=x86_64 ;;
+mips*) ARCH=mips ;;
+microblaze*) ARCH=microblaze ;;
+powerpc*) ARCH=powerpc ;;
+sh[1-9bel-]*|sh|superh*) ARCH=sh ;;
+asmjs-unknown-emscripten) ARCH=emscripten ;;
+unknown) fail "$0: unable to detect target arch; try $0 --target=..." ;;
+*) fail "$0: unknown or unsupported target \"$target\"" ;;
+esac
+
+#
+# Try to get a conforming C99 freestanding environment
+#
+tryflag CFLAGS_C99FSE -std=c99
+tryflag CFLAGS_C99FSE -nostdinc
+tryflag CFLAGS_C99FSE -ffreestanding \
+|| tryflag CFLAGS_C99FSE -fno-builtin
+tryflag CFLAGS_C99FSE -fexcess-precision=standard \
+|| { test "$ARCH" = i386 && tryflag CFLAGS_C99FSE -ffloat-store ; }
+tryflag CFLAGS_C99FSE -frounding-math
+
+#
+# We may use the may_alias attribute if __GNUC__ is defined, so
+# if the compiler defines __GNUC__ but does not provide it,
+# it must be defined away as part of the CFLAGS.
+#
+printf "checking whether compiler needs attribute((may_alias)) suppression... "
+cat > "$tmpc" <<EOF
+typedef int
+#ifdef __GNUC__
+__attribute__((__may_alias__))
+#endif
+x;
+EOF
+if $CC $CFLAGS_C99FSE -I./arch/$ARCH -I./include $CPPFLAGS $CFLAGS \
+  -c -o /dev/null "$tmpc" >/dev/null 2>&1 ; then
+printf "no\n"
+else
+printf "yes\n"
+CFLAGS_C99FSE="$CFLAGS_C99FSE -D__may_alias__="
+fi
+
+#
+# Check for options that may be needed to prevent the compiler from
+# generating self-referential versions of memcpy,, memmove, memcmp,
+# and memset. Really, we should add a check to determine if this
+# option is sufficient, and if not, add a macro to cripple these
+# functions with volatile...
+#
+# XXX EMSCRIPTEN tryflag CFLAGS_MEMOPS -fno-tree-loop-distribute-patterns
+
+#
+# If debugging is explicitly enabled, don't auto-enable optimizations
+#
+if test "$debug" = yes ; then
+CFLAGS_AUTO=-g
+test "$optimize" = auto && optimize=no
+fi
+
+#
+# Possibly add a -O option to CFLAGS and select modules to optimize with
+# -O3 based on the status of --enable-optimize and provided CFLAGS.
+#
+printf "checking for optimization settings... "
+case "x$optimize" in
+xauto)
+if fnmatch '-O*|*\ -O*' "$CFLAGS_AUTO $CFLAGS" ; then
+printf "using provided CFLAGS\n" ;optimize=no
+else
+printf "using defaults\n" ; optimize=yes
+fi
+;;
+xsize|xnone) printf "minimize size\n" ; optimize=size ;;
+xno|x) printf "disabled\n" ; optimize=no ;;
+*) printf "custom\n" ;;
+esac
+
+test "$optimize" = no || tryflag CFLAGS_AUTO -Os || tryflag CFLAGS_AUTO -O2
+test "$optimize" = yes && optimize="internal,malloc,string"
+
+if fnmatch 'no|size' "$optimize" ; then :
+else
+printf "components to be optimized for speed:"
+while test "$optimize" ; do
+case "$optimize" in
+*,*) this=${optimize%%,*} optimize=${optimize#*,} ;;
+*) this=$optimize optimize=
+esac
+printf " $this"
+case "$this" in
+*/*.c) ;;
+*/*) this=$this*.c ;;
+*) this=$this/*.c ;;
+esac
+OPTIMIZE_GLOBS="$OPTIMIZE_GLOBS $this"
+done
+OPTIMIZE_GLOBS=${OPTIMIZE_GLOBS# }
+printf "\n"
+fi
+
+# Always try -pipe
+tryflag CFLAGS_AUTO -pipe
+
+#
+# If debugging is disabled, omit frame pointer. Modern GCC does this
+# anyway on most archs even when debugging is enabled since the frame
+# pointer is no longer needed for debugging.
+#
+if fnmatch '-g*|*\ -g*' "$CFLAGS_AUTO $CFLAGS" ; then :
+else 
+tryflag CFLAGS_AUTO -fomit-frame-pointer
+fi
+
+#
+# Modern GCC wants to put DWARF tables (used for debugging and
+# unwinding) in the loaded part of the program where they are
+# unstrippable. These options force them back to debug sections (and
+# cause them not to get generated at all if debugging is off).
+#
+tryflag CFLAGS_AUTO -fno-unwind-tables
+tryflag CFLAGS_AUTO -fno-asynchronous-unwind-tables
+
+#
+# The GNU toolchain defaults to assuming unmarked files need an
+# executable stack, potentially exposing vulnerabilities in programs
+# linked with such object files. Fix this.
+#
+tryflag CFLAGS_AUTO -Wa,--noexecstack
+
+#
+# On x86, make sure we don't have incompatible instruction set
+# extensions enabled by default. This is bad for making static binaries.
+# We cheat and use i486 rather than i386 because i386 really does not
+# work anyway (issues with atomic ops).
+#
+if test "$ARCH" = "i386" ; then
+fnmatch '-march=*|*\ -march=*' "$CFLAGS" || tryldflag CFLAGS_AUTO -march=i486
+fnmatch '-mtune=*|*\ -mtune=*' "$CFLAGS" || tryldflag CFLAGS_AUTO -mtune=generic
+fi
+
+#
+# Even with -std=c99, gcc accepts some constructs which are constraint
+# violations. We want to treat these as errors regardless of whether
+# other purely stylistic warnings are enabled -- especially implicit
+# function declarations, which are a dangerous programming error.
+#
+tryflag CFLAGS_AUTO -Werror=implicit-function-declaration
+tryflag CFLAGS_AUTO -Werror=implicit-int
+# XXX EMSCRIPTEN tryflag CFLAGS_AUTO -Werror=pointer-sign
+tryflag CFLAGS_AUTO -Werror=pointer-arith
+
+if test "x$warnings" = xyes ; then
+tryflag CFLAGS_AUTO -Wall
+tryflag CFLAGS_AUTO -Wno-parentheses
+tryflag CFLAGS_AUTO -Wno-uninitialized
+tryflag CFLAGS_AUTO -Wno-missing-braces
+tryflag CFLAGS_AUTO -Wno-unused-value
+tryflag CFLAGS_AUTO -Wno-unused-but-set-variable
+tryflag CFLAGS_AUTO -Wno-unknown-pragmas
+tryflag CFLAGS_AUTO -Wno-pointer-to-int-cast
+fi
+
+# Some patched GCC builds have these defaults messed up...
+tryflag CFLAGS_AUTO -fno-stack-protector
+tryldflag LDFLAGS_AUTO -Wl,--hash-style=both
+
+# Disable dynamic linking if ld is broken and can't do -Bsymbolic-functions
+LDFLAGS_DUMMY=
+tryldflag LDFLAGS_DUMMY -Wl,-Bsymbolic-functions || {
+printf "warning: disabling dynamic linking support\n"
+shared=no
+}
+
+# Find compiler runtime library
+test -z "$LIBCC" && tryldflag LIBCC -lgcc && tryldflag LIBCC -lgcc_eh
+test -z "$LIBCC" && tryldflag LIBCC -lcompiler_rt
+test -z "$LIBCC" && try_libcc=`$CC -print-file-name=libpcc.a 2>/dev/null` \
+                 && tryldflag LIBCC "$try_libcc"
+printf "using compiler runtime libraries: %s\n" "$LIBCC"
+
+# Figure out arch variants for archs with variants
+SUBARCH=
+t="$CFLAGS_C99FSE $CPPFLAGS $CFLAGS_AUTO $CFLAGS"
+
+if test "$ARCH" = "x86_64" ; then
+trycppif __ILP32__ "$t" && ARCH=x32
+fi
+
+if test "$ARCH" = "arm" ; then
+trycppif __ARMEB__ "$t" && SUBARCH=${SUBARCH}eb
+trycppif __ARM_PCS_VFP "$t" && SUBARCH=${SUBARCH}hf
+fi
+
+if test "$ARCH" = "mips" ; then
+trycppif "_MIPSEL || __MIPSEL || __MIPSEL__" "$t" && SUBARCH=${SUBARCH}el
+trycppif __mips_soft_float "$t" && SUBARCH=${SUBARCH}-sf
+fi
+
+test "$ARCH" = "microblaze" && trycppif __MICROBLAZEEL__ "$t" \
+&& SUBARCH=${SUBARCH}el
+
+if test "$ARCH" = "sh" ; then
+trycppif __BIG_ENDIAN__ "$t" && SUBARCH=${SUBARCH}eb
+if trycppif "__SH_FPU_ANY__ || __SH4__" "$t" ; then
+# Some sh configurations are broken and replace double with float
+# rather than using softfloat when the fpu is present but only
+# supports single precision. Reject them.
+printf "checking whether compiler's double type is IEEE double... "
+echo 'typedef char dblcheck[(int)sizeof(double)-5];' > "$tmpc"
+if $CC $CFLAGS_C99FSE $CPPFLAGS $CFLAGS -c -o /dev/null "$tmpc" >/dev/null 2>&1 ; then
+printf "yes\n"
+else
+printf "no\n"
+fail "$0: error: compiler's floating point configuration is unsupported"
+fi
+else
+SUBARCH=${SUBARCH}-nofpu
+fi
+fi
+
+test "$SUBARCH" \
+&& printf "configured for %s variant: %s\n" "$ARCH" "$ARCH$SUBARCH"
+
+case "$ARCH$SUBARCH" in
+arm) ASMSUBARCH=el ;;
+*) ASMSUBARCH=$SUBARCH ;;
+esac
+
+#
+# Some archs (powerpc) have different possible long double formats
+# that the compiler can be configured for. The logic for whether this
+# is supported is in bits/float.h; in general, it is not. We need to
+# check for mismatches here or code in printf, strotd, and scanf will
+# be dangerously incorrect because it depends on (1) the macros being
+# correct, and (2) IEEE semantics.
+#
+printf "checking whether compiler's long double definition matches float.h... "
+echo '#include <float.h>' > "$tmpc"
+echo '#if LDBL_MANT_DIG == 53' >> "$tmpc"
+echo 'typedef char ldcheck[9-(int)sizeof(long double)];' >> "$tmpc"
+echo '#endif' >> "$tmpc"
+if $CC $CFLAGS_C99FSE -I./arch/$ARCH -I./include $CPPFLAGS $CFLAGS \
+  -c -o /dev/null "$tmpc" >/dev/null 2>&1 ; then
+printf "yes\n"
+else
+printf "no\n"
+fail "$0: error: unsupported long double type"
+fi
+
+printf "creating config.mak... "
+
+cmdline=$(quote "$0")
+for i ; do cmdline="$cmdline $(quote "$i")" ; done
+
+exec 3>&1 1>config.mak
+
+
+cat << EOF
+# This version of config.mak was generated by:
+# $cmdline
+# Any changes made here will be lost if configure is re-run
+ARCH = $ARCH
+SUBARCH = $SUBARCH
+ASMSUBARCH = $ASMSUBARCH
+prefix = $prefix
+exec_prefix = $exec_prefix
+bindir = $bindir
+libdir = $libdir
+includedir = $includedir
+syslibdir = $syslibdir
+CC = $CC
+CFLAGS = $CFLAGS_AUTO $CFLAGS
+CFLAGS_C99FSE = $CFLAGS_C99FSE
+CFLAGS_MEMOPS = $CFLAGS_MEMOPS
+CPPFLAGS = $CPPFLAGS
+LDFLAGS = $LDFLAGS_AUTO $LDFLAGS
+CROSS_COMPILE = $CROSS_COMPILE
+LIBCC = $LIBCC
+OPTIMIZE_GLOBS = $OPTIMIZE_GLOBS
+EOF
+test "x$static" = xno && echo "STATIC_LIBS ="
+test "x$shared" = xno && echo "SHARED_LIBS ="
+test "x$wrapper" = xno && echo "ALL_TOOLS ="
+test "x$wrapper" = xno && echo "TOOL_LIBS ="
+exec 1>&3 3>&-
+
+printf "done\n"
