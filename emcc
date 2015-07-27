@@ -956,6 +956,9 @@ try:
     shared.Settings.PRECISE_I64_MATH = 1 # other might use precise math, we need to be able to print it
     assert not closure, 'cannot use closure compiler on shared modules'
 
+  if shared.Settings.WASM:
+    assert not shared.Settings.ALLOW_MEMORY_GROWTH, 'memory growth is not supported with WASM=1'
+
   if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
     shared.Settings.ALIASING_FUNCTION_POINTERS = 0
 

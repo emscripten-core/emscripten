@@ -51,7 +51,10 @@ check_call([PYTHON, path_from_root('tools', 'distill_asm.py'), jsfile, tempfile]
 
 module = open(tempfile).read()
 if 'use asm' not in module:
-  print >> sys.stderr, 'no asm.js module to wasm-ify'
+  if 'almost asm' in module:
+    print >> sys.stderr, 'cannot use WASM=1 when full asm.js validation was disabled (make sure to run in at least -O1, and look for warnings about other options that might force asm.js off)'
+  else:
+    print >> sys.stderr, 'cannot use WASM=1, no asm.js module to wasm-ify'
   sys.exit(1)
 start = module.index('function')
 end = module.rindex(')')
