@@ -4976,3 +4976,14 @@ int main() { printf("Mary had a little lamb.\n"); }
     assert proc.returncode == 0
     self.assertContained('#define __EMSCRIPTEN__ 1', out) # all our defines should show up
 
+  def test_umask_0(self):
+    open('src.c', 'w').write(r'''
+#include <sys/stat.h>
+#include <stdio.h>
+int main() {
+  umask(0);
+  printf("hello, world!\n");
+}''')
+    Popen([PYTHON, EMCC, 'src.c']).communicate()
+    self.assertContained('hello, world!', run_js('a.out.js'))
+
