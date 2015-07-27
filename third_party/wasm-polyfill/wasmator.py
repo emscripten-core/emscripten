@@ -47,7 +47,8 @@ print 'save the before js'
 emscripten.safe_copy(jsfile, 'before.js')
 
 print 'process input'
-Popen([PYTHON, path_from_root('tools', 'distill_asm.py'), jsfile, tempfile]).communicate()
+check_call([PYTHON, path_from_root('tools', 'distill_asm.py'), jsfile, tempfile])
+
 module = open(tempfile).read()
 if 'use asm' not in module:
   print >> sys.stderr, 'no asm.js module to wasm-ify'
