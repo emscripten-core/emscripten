@@ -51,7 +51,8 @@ def get(ports, settings, shared):
     return []
 
 def process_args(ports, args, settings, shared):
-  if settings.USE_SDL == 1: args += ['-Xclang', '-isystem' + shared.path_from_root('system', 'include', 'SDL')]
+  if settings.USE_SDL == 1:
+      args += ['-Xclang', '-isystem' + shared.path_from_root('system', 'include', 'SDL')]
   elif settings.USE_SDL == 2:
     get(ports, settings, shared)
     args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2', 'include')]

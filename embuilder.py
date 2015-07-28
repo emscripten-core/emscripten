@@ -37,8 +37,10 @@ Available operations and tasks:
         native_optimizer
         bullet
         libpng
+        ogg
         sdl2
         sdl2-image
+        vorbis
         zlib
 
 It is also possible to build native_optimizer manually by using CMake. To
@@ -63,6 +65,12 @@ def build(src, result_libs, args=[]):
   assert os.path.exists(temp_js), 'failed to build file'
   for lib in result_libs:
     assert os.path.exists(shared.Cache.get_path(lib)), 'not seeing that requested library %s has been built' % lib
+
+def build_port(port_name, lib_name, params):
+  build('''
+    int main() {}
+  ''', [os.path.join('ports-builds', port_name, lib_name)], params)
+
 
 operation = sys.argv[1]
 
@@ -127,25 +135,19 @@ if operation == 'build':
         int main() {}
       ''', ['optimizer.exe'], ['-O2'])
     elif what == 'zlib':
-      build('''
-        int main() {}
-      ''', [os.path.join('ports-builds', 'zlib', 'libz.a')], ['-s', 'USE_ZLIB=1'])
+      build_port('zlib', 'libz.a', ['-s', 'USE_ZLIB=1'])
     elif what == 'bullet':
-      build('''
-        int main() {}
-      ''', [os.path.join('ports-builds', 'bullet', 'libbullet.bc')], ['-s', 'USE_BULLET=1'])
+      build_port('bullet', 'libbullet.bc', ['-s', 'USE_BULLET=1'])
+    elif what == 'vorbis':
+      build_port('vorbis', 'libvorbis.bc', ['-s', 'USE_VORBIS=1'])
+    elif what == 'ogg':
+      build_port('ogg', 'libogg.bc', ['-s', 'USE_OGG=1'])
     elif what == 'libpng':
-      build('''
-        int main() {}
-      ''', [os.path.join('ports-builds', 'libpng', 'libpng.bc')], ['-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'])
+      build_port('libpng', 'libpng.bc', ['-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'])
     elif what == 'sdl2':
-      build('''
-        int main() {}
-      ''', [os.path.join('ports-builds', 'sdl2', 'libsdl2.bc')], ['-s', 'USE_SDL=2'])
+      build_port('sdl2', 'libsdl2.bc', ['-s', 'USE_SDL=2'])
     elif what == 'sdl2-image':
-      build('''
-        int main() {}
-      ''', [os.path.join('ports-builds', 'sdl2-image', 'libsdl2_image.bc')], ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'])
+      build_port('sdl2-image', 'libsdl2_image.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'])
     else:
       shared.logging.error('unfamiliar build target: ' + what)
       sys.exit(1)

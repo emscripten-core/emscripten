@@ -326,6 +326,29 @@ import ports
 
 class Ports:
   @staticmethod
+  def build_port(src_path, output_path, includes=[], flags=[], exclude_files=[], exclude_dirs=[]):
+      srcs = []
+      for root, dirs, files in os.walk(src_path, topdown=False):
+        if any((excluded in root) for excluded in exclude_dirs):
+          continue
+        for file in files:
+            if (file.endswith('.c') or file.endswith('.cpp')) and not any((excluded in file) for excluded in exclude_files):
+                srcs.append(os.path.join(root, file))
+      include_commands = ['-I' + src_path ]
+      for include in includes:
+          include_commands.append('-I' + include)
+
+      commands = []
+      objects = []
+      for src in srcs:
+        obj = src + '.o'
+        commands.append([shared.PYTHON, shared.EMCC, src, '-O2', '-o', obj, '-Wno-warn-absolute-paths', '-w'] + include_commands + flags)
+        objects.append(obj)
+
+      run_commands(commands)
+      shared.Building.link(objects, output_path)
+
+  @staticmethod
   def run_commands(commands): # make easily available for port objects
     run_commands(commands)
 
@@ -459,6 +482,7 @@ def get_ports(settings):
 
   ok = False
   try:
+    process_dependencies(settings)
     for port in ports.ports:
       ret += port.get(Ports, settings, shared)
     ok = True
@@ -466,9 +490,16 @@ def get_ports(settings):
     if not ok:
       logging.error('a problem occurred when using an emscripten-ports library. try to run    emcc --clear-cache --clear-ports    and then run this command again')
 
+  ret.reverse()
   return ret
 
+def process_dependencies(settings):
+  for port in reversed(ports.ports):
+    if hasattr(port, "process_dependencies"):
+      port.process_dependencies(settings)
+
 def process_args(args, settings):
+  process_dependencies(settings)
   for port in ports.ports:
     args = port.process_args(Ports, args, settings, shared)
   return args

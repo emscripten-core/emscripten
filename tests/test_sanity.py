@@ -685,6 +685,8 @@ fi
       ([PYTHON, 'embuilder.py', 'build', 'zlib'], ['building and verifying zlib', 'success'], True, [os.path.join('ports-builds', 'zlib', 'libz.a')]),
       ([PYTHON, 'embuilder.py', 'build', 'libpng'], ['building and verifying libpng', 'success'], True, [os.path.join('ports-builds', 'libpng', 'libpng.bc')]),
       ([PYTHON, 'embuilder.py', 'build', 'bullet'], ['building and verifying bullet', 'success'], True, [os.path.join('ports-builds', 'bullet', 'libbullet.bc')]),
+      ([PYTHON, 'embuilder.py', 'build', 'vorbis'], ['building and verifying vorbis', 'success'], True, [os.path.join('ports-builds', 'vorbis', 'libvorbis.bc')]),
+      ([PYTHON, 'embuilder.py', 'build', 'ogg'], ['building and verifying ogg', 'success'], True, [os.path.join('ports-builds', 'ogg', 'libogg.bc')]),
       ([PYTHON, 'embuilder.py', 'build', 'sdl2'], ['success'], True, [os.path.join('ports-builds', 'sdl2', 'libsdl2.bc')]),
       ([PYTHON, 'embuilder.py', 'build', 'sdl2-image'], ['success'], True, [os.path.join('ports-builds', 'sdl2-image', 'libsdl2_image.bc')]),
     ]:
