@@ -4,11 +4,11 @@ TAG = 'version_1'
 
 def get(ports, settings, shared):
   if settings.USE_BULLET == 1:
-    ports.fetch_project('bullet', 'https://github.com/nadult/ammo.js/archive/' + TAG + '.zip', 'ammo.js-' + TAG)
+    ports.fetch_project('bullet', 'https://github.com/emscripten-ports/bullet/archive/' + TAG + '.zip', 'Bullet-' + TAG)
     def create():
       logging.warning('building port: bullet')
      
-      source_path = os.path.join(ports.get_dir(), 'bullet', 'ammo.js-' + TAG)
+      source_path = os.path.join(ports.get_dir(), 'bullet', 'Bullet-' + TAG)
       dest_path = os.path.join(shared.Cache.get_path('ports-builds'), 'bullet')
      
       shutil.rmtree(dest_path, ignore_errors=True)
