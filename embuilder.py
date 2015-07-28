@@ -35,10 +35,11 @@ Available operations and tasks:
         gl
         struct_info
         native_optimizer
-        zlib
+        bullet
         libpng
         sdl2
         sdl2-image
+        zlib
 
 It is also possible to build native_optimizer manually by using CMake. To
 do that, run
@@ -129,6 +130,10 @@ if operation == 'build':
       build('''
         int main() {}
       ''', [os.path.join('ports-builds', 'zlib', 'libz.a')], ['-s', 'USE_ZLIB=1'])
+    elif what == 'bullet':
+      build('''
+        int main() {}
+      ''', [os.path.join('ports-builds', 'bullet', 'libbullet.bc')], ['-s', 'USE_BULLET=1'])
     elif what == 'libpng':
       build('''
         int main() {}
