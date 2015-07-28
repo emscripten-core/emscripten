@@ -7420,7 +7420,6 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
       check_sanity(force=True)
       checked_sanity = True
 
-    Building.COMPILER_TEST_OPTS = ['-g']
     os.chdir(self.get_dir()) # Ensure the directory exists and go there
     Building.COMPILER = compiler
 
@@ -7428,9 +7427,7 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
     self.emcc_args = emcc_args[:]
     Settings.load(self.emcc_args)
     Building.LLVM_OPTS = 0
-    if '-O2' in self.emcc_args or '-O3' in self.emcc_args:
-      Building.COMPILER_TEST_OPTS = [] # remove -g in -O2 tests, for more coverage
-    #Building.COMPILER_TEST_OPTS += self.emcc_args
+
     for arg in self.emcc_args:
       if arg.startswith('-O'):
         Building.COMPILER_TEST_OPTS.append(arg) # so bitcode is optimized too, this is for cpp to ll
