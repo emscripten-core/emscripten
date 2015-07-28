@@ -26,6 +26,10 @@ def get(ports, settings, shared):
   else:
     return []
 
+def process_dependencies(settings):
+  if settings.USE_SDL_IMAGE == 2:
+    settings.USE_SDL = 2
+
 def process_args(ports, args, settings, shared):
   if settings.USE_SDL_IMAGE == 2:
     get(ports, settings, shared)

@@ -5,39 +5,28 @@ TAG = 'version_1'
 def get(ports, settings, shared):
   if settings.USE_LIBPNG == 1:
     ports.fetch_project('libpng', 'https://github.com/emscripten-ports/libpng/archive/' + TAG + '.zip', 'libpng-' + TAG)
-    def create():     
-      zlib.get(ports, settings, shared);
-      # TODO: clear dependent projects
-      #ports.clear_project_build('sdl2-image')
-
+    def create():
+      logging.warning('building port: libpng')
 
       source_path = os.path.join(ports.get_dir(), 'libpng', 'libpng-' + TAG)
       dest_path = os.path.join(shared.Cache.get_path('ports-builds'), 'libpng')
-      shared.try_delete(dest_path)
-      os.makedirs(dest_path)
+
       shutil.rmtree(dest_path, ignore_errors=True)
       shutil.copytree(source_path, dest_path)
+
       open(os.path.join(dest_path, 'pnglibconf.h'), 'w').write(pnglibconf_h)
 
-      # build
-      srcs = 'png.c pngerror.c pngget.c pngmem.c pngpread.c pngread.c pngrio.c pngrtran.c pngrutil.c pngset.c pngtrans.c pngwio.c pngwrite.c pngwtran.c pngwutil.c'.split(' ')
-      commands = []
-      o_s = []
-      for src in srcs:
-        o = os.path.join(ports.get_build_dir(), 'libpng', src + '.o')
-        shared.safe_ensure_dirs(os.path.dirname(o))
-        commands.append([shared.PYTHON, shared.EMCC, os.path.join(dest_path, src), '-O2', '-o', o, '-I' + dest_path, '-s', 'USE_ZLIB=1',
-                         '-Wno-warn-absolute-paths', '-w',])
-        o_s.append(o)
-
-      ports.run_commands(commands)
       final = os.path.join(ports.get_build_dir(), 'libpng', 'libpng.bc')
-      shared.Building.link(o_s, final)
+      ports.build_port(dest_path, final, flags=['-s', 'USE_ZLIB=1'], exclude_files=['pngtest'], exclude_dirs=['scripts', 'contrib'])
       return final
     return [shared.Cache.get('libpng', create, what='port')]
   else:
     return []
 
+
+def  process_depends(settings):
+  if settings.USE_LIBPNG == 1:
+    settings.USE_ZLIB = 1
 
 def process_args(ports, args, settings, shared):
   if settings.USE_LIBPNG == 1:

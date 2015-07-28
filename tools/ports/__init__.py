@@ -1,4 +1,4 @@
-import sdl, sdl_image, zlib, libpng, bullet
+import bullet, libpng, ogg, sdl, sdl_image, vorbis, zlib
 
-ports = [bullet, sdl, sdl_image, libpng, zlib]
-
+# If port A depends on port B, then A should be _after_ B
+ports = [zlib, libpng, sdl, sdl_image, ogg, vorbis, bullet]

@@ -12,34 +12,6 @@ def build_with_configure(ports, shared, path):
   shutil.copyfile(os.path.join(path, 'bullet', 'build', 'libbullet.bc'), final)
   return final
 
-def build(ports, shared, path):
-  exclude_dirs = ['MiniCL']
-
-  srcs = []
-  includes = []
-  src_path = os.path.join(path, 'bullet', 'src')
-  for root, dirs, files in os.walk(src_path, topdown=False):
-      if any((excluded in root) for excluded in exclude_dirs):
-          continue
-      for file in files:
-          if file.endswith('.cpp'):
-              srcs.append(os.path.join(root, file))
-      for dir in dirs:
-          includes.append('-I' + os.path.join(root, dir))
-  includes.append('-I' + src_path)
-
-  commands = []
-  objects = []
-  for src in srcs:
-    obj = os.path.join(path, src + '.o')
-    commands.append([shared.PYTHON, shared.EMCC, src, '-O2', '-o', obj, '-Wno-warn-absolute-paths', '-w',] + includes)
-    objects.append(obj)
-
-  ports.run_commands(commands)
-  final = os.path.join(path, 'libbullet.bc')
-  shared.Building.link(objects, final)
-  return final
-
 def get(ports, settings, shared):
   if settings.USE_BULLET == 1:
     ports.fetch_project('bullet', 'https://github.com/emscripten-ports/bullet/archive/' + TAG + '.zip', 'Bullet-' + TAG)
@@ -52,7 +24,15 @@ def get(ports, settings, shared):
       shutil.rmtree(dest_path, ignore_errors=True)
       shutil.copytree(source_path, dest_path)
 
-      return build(ports, shared, dest_path)
+      src_path = os.path.join(dest_path, 'bullet', 'src')
+      includes = []
+      for root, dirs, files in os.walk(src_path, topdown=False):
+          for dir in dirs:
+              includes.append(os.path.join(root, dir))
+
+      final = os.path.join(ports.get_build_dir(), 'bullet', 'libbullet.bc')
+      ports.build_port(src_path, final, includes=includes, exclude_dirs=['MiniCL'])
+      return final
     return [shared.Cache.get('bullet', create)]
   else:
     return []
