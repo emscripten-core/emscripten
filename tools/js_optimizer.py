@@ -415,6 +415,9 @@ EMSCRIPTEN_FUNCS();
   else:
     filenames = []
 
+  if shared.Settings.WASM:
+    passes = filter(lambda p: p != 'minifyWhitespace', passes) # if we are going to wasmify the asm module, no need to minify it before hand
+
   if len(filenames) > 0:
     if not use_native(passes, source_map) or not get_native_optimizer():
       commands = map(lambda filename: js_engine +

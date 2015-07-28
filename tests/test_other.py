@@ -5037,6 +5037,7 @@ int main() {
       (['-s', 'WASM=1'], False, ''),
       (['-s', 'ALLOW_MEMORY_GROWTH=1'], False, 'memory growth is not supported with WASM=1'),
       (['-s', 'ALLOW_MEMORY_GROWTH=1', '-O1'], False, 'memory growth is not supported with WASM=1'),
+      (['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_WHITELIST=["_main"]', '-O2', '-s', 'ASSERTIONS=1'], True, ''),
     ]:
       print args, ok
       if not error_message: error_message = default_error_message
