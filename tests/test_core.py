@@ -7069,7 +7069,26 @@ Module.printErr = Module['printErr'] = function(){};
       self.banned_js_engines = [SPIDERMONKEY_ENGINE] 
     if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
     Building.COMPILER_TEST_OPTS += ['-DRUN_FROM_JS_SHELL']
-    self.do_run(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read(), "Success!")
+    self.do_run(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read(), '''test print 123
+
+12.345679 9.123457 1.353180
+
+12345678 9123456 1353179
+
+12.345679 9123456 1353179
+
+12345678 9.123457 1353179
+
+12345678 9123456 1.353180
+
+12345678 9.123457 1.353180
+
+12.345679 9123456 1.353180
+
+12.345679 9.123457 1353179
+
+Success!
+''')
 
   def test_float_literals(self):
     self.do_run_from_file(path_from_root('tests', 'test_float_literals.cpp'), path_from_root('tests', 'test_float_literals.out'))
