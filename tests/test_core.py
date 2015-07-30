@@ -2138,6 +2138,7 @@ int main() {
 ''', 'hello world…')
 
   def test_memorygrowth(self):
+    if self.is_wasm(): return self.skip('wasm support for memory growth in the MVP is yet unclear')
     self.banned_js_engines = [V8_ENGINE] # stderr printing limitations in v8
 
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0'] # start with 0
