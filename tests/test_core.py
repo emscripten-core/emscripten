@@ -2097,6 +2097,8 @@ def process(filename):
       self.do_run_from_file(src, output)
 
   def test_inlinejs3(self):
+    if self.is_wasm(): return self.skip('wasm requires a proper asm module')
+
     test_path = path_from_root('tests', 'core', 'test_inlinejs3')
     src, output = (test_path + s for s in ('.in', '.out'))
 
