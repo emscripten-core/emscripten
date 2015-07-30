@@ -11,6 +11,9 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def is_emterpreter(self):
     return 'EMTERPRETIFY=1' in self.emcc_args
 
+  def is_wasm(self):
+    return 'WASM=1' in self.emcc_args
+
   def test_hello_world(self):
       test_path = path_from_root('tests', 'core', 'test_hello_world')
       src, output = (test_path + s for s in ('.in', '.out'))
@@ -7061,6 +7064,7 @@ Module.printErr = Module['printErr'] = function(){};
     self.build(src, dirname, os.path.join(dirname, 'src.cpp'), post_build=(None, post))
 
   def test_emscripten_log(self):
+    if self.is_wasm(): return self.skip('wasmifying destroys debug info and stack tracability')
     if self.is_emterpreter():
       self.emcc_args += ['--profiling-funcs'] # without this, stack traces are not useful (we jump emterpret=>emterpret)
       Building.COMPILER_TEST_OPTS += ['-DEMTERPRETER'] # even so, we get extra emterpret() calls on the stack
