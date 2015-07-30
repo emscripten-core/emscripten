@@ -7,7 +7,11 @@ extern "C" {
 
 #include <features.h>
 
+#ifdef __cplusplus
 #define NULL 0L
+#else
+#define NULL ((void*)0)
+#endif
 
 #define __NEED_size_t
 #define __NEED_wchar_t
@@ -89,7 +93,7 @@ size_t wcstombs (char *__restrict, const wchar_t *__restrict, size_t);
 #define WSTOPSIG(s) WEXITSTATUS(s)
 #define WIFEXITED(s) (!WTERMSIG(s))
 #define WIFSTOPPED(s) ((short)((((s)&0xffff)*0x10001)>>8) > 0x7f00)
-#define WIFSIGNALED(s) (((s)&0xffff)-1 < 0xffu)
+#define WIFSIGNALED(s) (((s)&0xffff)-1U < 0xffu)
 
 int posix_memalign (void **, size_t, size_t);
 int setenv (const char *, const char *, int);
@@ -139,6 +143,7 @@ int mkstemps (char *, int);
 int mkostemps (char *, int, int);
 void *valloc (size_t);
 void *memalign(size_t, size_t);
+int getloadavg(double *, int);
 #define WCOREDUMP(s) ((s) & 0x80)
 #define WIFCONTINUED(s) ((s) == 0xffff)
 #endif

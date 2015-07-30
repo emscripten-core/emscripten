@@ -17,7 +17,7 @@ _nonreachable:
 _phinode:
   %a14 = phi i64 [ %a12, %_entry ], [ %b, %_nonreachable ]
   %a14s = trunc i64 %a14 to i32
-  %call0 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0))
+  %call0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0))
   ret i32 %a14s
 }
 

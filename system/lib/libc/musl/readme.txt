@@ -1,4 +1,4 @@
-These sources were downloaded from the musl-0.9.13 release on August 30, 2013.
+These sources were downloaded from the musl-1.0.3 release on Jul 2, 2014.
 
 Differences from upstream musl include:
 

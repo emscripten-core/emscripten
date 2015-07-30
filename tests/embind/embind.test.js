@@ -1,6 +1,7 @@
 module({
     Emscripten: '../../../../build/embind_test.js',
 }, function(imports) {
+    /*jshint sub:true */
     var cm = imports.Emscripten;
 
     var CheckForLeaks = fixture("check for leaks", function() {
@@ -8,15 +9,12 @@ module({
             cm.setDelayFunction(undefined);
 
             if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
-                cm._mallocDebug(2);
                 assert.equal(0, cm.count_emval_handles());
-                cm._mallocAssertAllMemoryFree();
             }
         });
         this.tearDown(function() {
             cm.flushPendingDeletes();
             if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
-                cm._mallocAssertAllMemoryFree();
                 assert.equal(0, cm.count_emval_handles());
             }
         });
@@ -28,35 +26,6 @@ module({
         test("temp test", function() {
         });
     });
-
-    if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
-
-    BaseFixture.extend("leak testing", function() {
-        test("no memory allocated at start of test", function() {
-            cm._mallocAssertAllMemoryFree();
-        });
-        test("assert when memory is allocated", function() {
-            var ptr = cm._malloc(42);
-            assert.throws(cm._MemoryAllocationError, function() {
-                cm._mallocAssertAllMemoryFree();
-            });
-            cm._free(ptr);
-        });
-        test("allocated memory counts down again for free", function() {
-            var ptr = cm._malloc(42);
-            cm._free(ptr);
-            cm._mallocAssertAllMemoryFree();
-        });
-        test("free without malloc throws MemoryAllocationError", function() {
-            var ptr = cm._malloc(42);
-            cm._free(ptr);
-            assert.throws(cm._MemoryAllocationError, function() {
-                cm._free(ptr);
-            });
-        });
-    });
-
-    }
 
     BaseFixture.extend("access to base class members", function() {
         test("method name in derived class silently overrides inherited name", function() {
@@ -473,6 +442,14 @@ module({
                 String.fromCharCode(65535);
             assert.equal(expected, cm.take_and_return_std_wstring(expected));
         });
+
+        if (cm.isMemoryGrowthEnabled) {
+            test("can access a literal wstring after a memory growth", function() {
+                cm.force_memory_growth();
+                assert.equal("get_literal_wstring", cm.get_literal_wstring());
+            });
+        }
+
     });
 
     BaseFixture.extend("embind", function() {
@@ -506,6 +483,65 @@ module({
         test("booleans can be marshalled", function() {
             assert.equal(false, cm.emval_test_not(true));
             assert.equal(true, cm.emval_test_not(false));
+        });
+
+        test("val.is_undefined() is functional",function() {
+            assert.equal(true, cm.emval_test_is_undefined(undefined));
+            assert.equal(false, cm.emval_test_is_undefined(true));
+            assert.equal(false, cm.emval_test_is_undefined(false));
+            assert.equal(false, cm.emval_test_is_undefined(null));
+            assert.equal(false, cm.emval_test_is_undefined({}));
+        });
+
+        test("val.is_null() is functional",function() {
+            assert.equal(true, cm.emval_test_is_null(null));
+            assert.equal(false, cm.emval_test_is_null(true));
+            assert.equal(false, cm.emval_test_is_null(false));
+            assert.equal(false, cm.emval_test_is_null(undefined));
+            assert.equal(false, cm.emval_test_is_null({}));
+        });
+
+        test("val.is_true() is functional",function() {
+            assert.equal(true, cm.emval_test_is_true(true));
+            assert.equal(false, cm.emval_test_is_true(false));
+            assert.equal(false, cm.emval_test_is_true(null));
+            assert.equal(false, cm.emval_test_is_true(undefined));
+            assert.equal(false, cm.emval_test_is_true({}));
+        });
+
+        test("val.is_false() is functional",function() {
+            assert.equal(true, cm.emval_test_is_false(false));
+            assert.equal(false, cm.emval_test_is_false(true));
+            assert.equal(false, cm.emval_test_is_false(null));
+            assert.equal(false, cm.emval_test_is_false(undefined));
+            assert.equal(false, cm.emval_test_is_false({}));
+        });
+
+        test("val.equals() is functional",function() {
+            var values = [undefined, null, true, false, {}];
+
+            for(var i=0;i<values.length;++i){
+                var first = values[i];
+                for(var j=i;j<values.length;++j)
+                {
+                    var second = values[j];
+                    /*jshint eqeqeq:false*/
+                    assert.equal((first == second), cm.emval_test_equals(first, second));
+                }
+            }
+        });
+
+        test("val.strictlyEquals() is functional", function() {
+            var values = [undefined, null, true, false, {}];
+
+            for(var i=0;i<values.length;++i){
+                var first = values[i];
+                for(var j=i;j<values.length;++j)
+                {
+                    var second = values[j];
+                    assert.equal(first===second, cm.emval_test_strictly_equals(first, second));
+                }
+            }
         });
 
         test("can pass booleans as integers", function() {
@@ -552,6 +588,11 @@ module({
 
         test("no memory leak when passing strings in by const reference", function() {
             cm.emval_test_take_and_return_std_string_const_ref("foobar");
+        });
+
+        test("can get global", function(){
+            /*jshint evil:true*/
+            assert.equal((new Function("return this;"))(), cm.embind_test_getglobal());
         });
 
         test("can create new object", function() {
@@ -601,6 +642,18 @@ module({
             var c = new cm.BigClass();
             var m = cm.embind_test_accept_big_class_instance(c);
             assert.equal(11, m);
+            c.delete();
+        });
+
+        test("can pass unique_ptr", function() {
+            var p = cm.embind_test_return_unique_ptr(42);
+            var m = cm.embind_test_accept_unique_ptr(p);
+            assert.equal(42, m);
+        });
+
+        test("can pass unique_ptr to constructor", function() {
+            var c = new cm.embind_test_construct_class_with_unique_ptr(42);
+            assert.equal(42, c.getValue());
             c.delete();
         });
 
@@ -685,6 +738,27 @@ module({
             assert.throws(TypeError, function() { cm.long_to_string(2147483648); });
             assert.throws(TypeError, function() { cm.unsigned_long_to_string(-1); });
             assert.throws(TypeError, function() { cm.unsigned_long_to_string(4294967296); });
+        });
+
+        test("unsigned values are correctly returned when stored in memory", function() {
+            cm.store_unsigned_char(255);
+            assert.equal(255, cm.load_unsigned_char());
+
+            cm.store_unsigned_short(32768);
+            assert.equal(32768, cm.load_unsigned_short());
+
+            cm.store_unsigned_int(2147483648);
+            assert.equal(2147483648, cm.load_unsigned_int());
+
+            cm.store_unsigned_long(2147483648);
+            assert.equal(2147483648, cm.load_unsigned_long());
+        });
+
+        test("throws appropriate type error when attempting to coerce null to int", function() {
+            var e = assert.throws(TypeError, function() {
+                cm.int_to_string(null);
+            });
+            assert.equal('Cannot convert "null" to int', e.message);
         });
 
         test("access multiple class ctors", function() {
@@ -864,6 +938,29 @@ module({
             var str = vec.get(0);
             assert.equal('string #1', str.get());
             str.delete();
+            vec.delete();
+        });
+
+        test("resize appends the given value", function() {
+            var vec = cm.emval_test_return_vector();
+
+            vec.resize(5, 42);
+            assert.equal(5, vec.size());
+            assert.equal(10, vec.get(0));
+            assert.equal(20, vec.get(1));
+            assert.equal(30, vec.get(2));
+            assert.equal(42, vec.get(3));
+            assert.equal(42, vec.get(4));
+            vec.delete();
+        });
+
+        test("resize preserves content when shrinking", function() {
+            var vec = cm.emval_test_return_vector();
+
+            vec.resize(2, 42);
+            assert.equal(2, vec.size());
+            assert.equal(10, vec.get(0));
+            assert.equal(20, vec.get(1));
             vec.delete();
         });
     });
@@ -1251,6 +1348,21 @@ module({
             });
         });
 
+        test("returned unique_ptr does not call destructor", function() {
+            var logged = "";
+            var c = new cm.emval_test_return_unique_ptr_lifetime(function (s) { logged += s; });
+            assert.equal("(constructor)", logged);
+            c.delete();
+        });
+
+        test("returned unique_ptr calls destructor on delete", function() {
+            var logged = "";
+            var c = new cm.emval_test_return_unique_ptr_lifetime(function (s) { logged += s; });
+            logged = "";
+            c.delete();
+            assert.equal("(destructor)", logged);
+        });
+
         test("StringHolder", function() {
             var a = new cm.StringHolder("foobar");
             assert.equal("foobar", a.get());
@@ -1580,8 +1692,6 @@ module({
             };
 
             var impl = cm.AbstractClass.implement(new MyImplementation);
-            // TODO: remove .implement() as a public API. It interacts poorly with Class.extend.
-            //assert.equal(expected, impl.optionalMethod(expected));
             assert.equal(expected, cm.callOptionalMethod(impl, expected));
             impl.delete();
         });
@@ -1589,8 +1699,6 @@ module({
         test("if not implemented then optional method runs default", function() {
             var impl = cm.AbstractClass.implement({});
             assert.equal("optionalfoo", impl.optionalMethod("foo"));
-            // TODO: remove .implement() as a public API. It interacts poorly with Class.extend.
-            //assert.equal("optionalfoo", cm.callOptionalMethod(impl, "foo"));
             impl.delete();
         });
 
@@ -1759,8 +1867,6 @@ module({
             instance.delete();
             assert.equal("optionaljs_optional_123", result);
         });
-
-        // TODO: deriving from classes with constructors?
 
         test("instanceof", function() {
             var instance = new Empty;
@@ -2193,6 +2299,13 @@ module({
             assert.throws(cm.BindingError, function() {
                 v.deleteLater();
             });
+        });
+
+        test("can clone instances that have been scheduled for deletion", function() {
+            var v = new cm.ValHolder({});
+            v.deleteLater();
+            var v2 = v.clone();
+            v2.delete();
         });
 
         test("deleteLater returns the object", function() {

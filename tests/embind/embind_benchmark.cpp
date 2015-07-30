@@ -181,7 +181,7 @@ public:
     void call_with_memory_view(size_t size, const void* data) {
         return call<void>(
             call_with_memory_view_symbol,
-            emscripten::memory_view(size, data));
+            emscripten::typed_memory_view(size, data));
     }
 };
 
@@ -246,11 +246,11 @@ EMSCRIPTEN_BINDINGS(benchmark)
     using namespace emscripten;
     
     class_<GameObject>("GameObject")
-        .smart_ptr<GameObjectPtr>()
+        .smart_ptr<GameObjectPtr>("GameObjectPtr")
         .function("GetTransform", &GameObject::GetTransform);
         
     class_<Transform>("Transform")
-        .smart_ptr<TransformPtr>()
+        .smart_ptr<TransformPtr>("TransformPtr")
         .function("GetPosition", &Transform::GetPosition)
         .function("GetRotation", &Transform::GetRotation)
         .function("GetScale", &Transform::GetScale)
@@ -258,7 +258,7 @@ EMSCRIPTEN_BINDINGS(benchmark)
         .function("SetRotation", &Transform::SetRotation)
         .function("SetScale", &Transform::SetScale);
         
-    value_tuple<Vec3>("Vec3")
+    value_array<Vec3>("Vec3")
         .element(&Vec3::x)
         .element(&Vec3::y)
         .element(&Vec3::z);
@@ -281,7 +281,7 @@ EMSCRIPTEN_BINDINGS(benchmark)
         ;
 
     class_<Interface>("Interface")
-        .allow_subclass<InterfaceWrapper>()
+        .allow_subclass<InterfaceWrapper>("InterfaceWrapper")
         ;
 
     function("callInterface0", &callInterface0);

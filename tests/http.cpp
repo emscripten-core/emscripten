@@ -64,17 +64,17 @@ std::string http::cross_domain = "";
 // HTTP CLASS
 //----------------------------------------------------------------------------------------
 
-void http::onLoaded(void* parent, const char * file) {
+void http::onLoaded(unsigned handle, void* parent, const char * file) {
 	http* req = reinterpret_cast<http*>(parent);
 	req->onLoaded(file);
 }
 
-void http::onError(void* parent, int statuserror) {
+void http::onError(unsigned handle, void* parent, int statuserror) {
 	http* req = reinterpret_cast<http*>(parent);
 	req->onError(statuserror);
 }
 
-void http::onProgress(void* parent, int progress) {
+void http::onProgress(unsigned handle, void* parent, int progress) {
 	http* req = reinterpret_cast<http*>(parent);
 	req->onProgress(progress);
 }
@@ -116,7 +116,7 @@ void http::runRequest(const char* page, int assync) {
 			_targetFileName = format("prepare%d",_uid);
 		}
 
-		emscripten_async_wget2(url.c_str(), _targetFileName.c_str(), (_request==REQUEST_GET) ? "GET":"POST", _param.c_str(), this, http::onLoaded, http::onError, http::onProgress);
+		_handle = emscripten_async_wget2(url.c_str(), _targetFileName.c_str(), (_request==REQUEST_GET) ? "GET":"POST", _param.c_str(), this, http::onLoaded, http::onError, http::onProgress);
 	
 	} else {
 		_error = format("malformed url : %s\n",url.c_str());
@@ -124,6 +124,14 @@ void http::runRequest(const char* page, int assync) {
 		_status = ST_FAILED;
 		_progressValue = -1;
 	}
+}
+
+/**
+* Abort the request
+*/
+void http::abortRequest() {
+	emscripten_async_wget2_abort(_handle);
+	_status = ST_ABORTED;
 }
 
 /**
@@ -242,7 +250,8 @@ void wait_http(void* request) {
     	} else {
 			if (req->getStatus() == http::ST_OK) { 
 				printf("Success Request n°%d : %s\n",req->getId(),req->getContent());
-	
+			} else if (req->getStatus() == http::ST_ABORTED) {
+				printf("Aborted Request n°%d", req->getId());
 			} else {
 				printf("Error Request n°%d : %s\n",req->getId(), req->getError());
     		}
@@ -263,6 +272,7 @@ int main() {
 
 	http* http2 = new http("https://github.com",http::REQUEST_GET,"wolfviking_master.zip");
 	http2->runRequest("/wolfviking0/image.js/archive/master.zip",http::ASSYNC_THREAD);
+	http2->abortRequest();
 
 	http* http3 = new http("https://raw.github.com",http::REQUEST_GET);
 	http3->runRequest("/kripken/emscripten/master/LICENSE",http::ASSYNC_THREAD);

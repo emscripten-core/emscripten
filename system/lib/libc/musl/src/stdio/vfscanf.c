@@ -5,10 +5,7 @@
 #include <wctype.h>
 #include <limits.h>
 #include <string.h>
-#include <errno.h>
-#include <math.h>
-#include <float.h>
-#include <inttypes.h>
+#include <stdint.h>
 
 #include "stdio_impl.h"
 #include "shgetc.h"
@@ -56,8 +53,12 @@ static void *arg_n(va_list ap, unsigned int n)
 	return p;
 }
 
-//int vfscanf(FILE *restrict f, const char *restrict fmt, va_list ap)
-int MUSL_vfscanf(FILE *restrict f, const char *restrict fmt, va_list ap) // XXX Emscripten: Only use musl-specific vfscanf when called from within sscanf.
+#ifndef __EMSCRIPTEN__
+int vfscanf(FILE *restrict f, const char *restrict fmt, va_list ap)
+#else
+// XXX Emscripten: Only use musl-specific vfscanf when called from within sscanf.
+int MUSL_vfscanf(FILE *restrict f, const char *restrict fmt, va_list ap)
+#endif
 {
 	int width;
 	int size;
@@ -119,6 +120,8 @@ int MUSL_vfscanf(FILE *restrict f, const char *restrict fmt, va_list ap) // XXX 
 		}
 
 		if (*p=='m') {
+			wcs = 0;
+			s = 0;
 			alloc = !!dest;
 			p++;
 		} else {
@@ -330,3 +333,10 @@ match_fail:
 	FUNLOCK(f);
 	return matches;
 }
+
+#ifndef __EMSCRIPTEN__
+// XXX EMSCRIPTEN: We don't need this alias.
+// Keeping it would have it aliasing to the C code when we typically use the JS version.
+weak_alias(vfscanf,__isoc99_vfscanf);
+#endif
+

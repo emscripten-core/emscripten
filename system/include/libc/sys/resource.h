@@ -15,8 +15,9 @@ extern "C" {
 #endif
 
 #include <bits/alltypes.h>
+#include <bits/resource.h>
 
-typedef unsigned long rlim_t;
+typedef unsigned long long rlim_t;
 
 struct rlimit
 {
@@ -59,6 +60,9 @@ int prlimit(pid_t, int, const struct rlimit *, struct rlimit *);
 #define prlimit64 prlimit
 #endif
 
+#define PRIO_MIN (-20)
+#define PRIO_MAX 20
+
 #define PRIO_PROCESS 0
 #define PRIO_PGRP    1
 #define PRIO_USER    2
@@ -75,11 +79,13 @@ int prlimit(pid_t, int, const struct rlimit *, struct rlimit *);
 #define RLIMIT_DATA    2
 #define RLIMIT_STACK   3
 #define RLIMIT_CORE    4
+#ifndef RLIMIT_RSS
 #define RLIMIT_RSS     5
-#define RLIMIT_NOFILE  7
-#define RLIMIT_AS      9
 #define RLIMIT_NPROC   6
+#define RLIMIT_NOFILE  7
 #define RLIMIT_MEMLOCK 8
+#define RLIMIT_AS      9
+#endif
 #define RLIMIT_LOCKS   10
 #define RLIMIT_SIGPENDING 11
 #define RLIMIT_MSGQUEUE 12

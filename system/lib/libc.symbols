@@ -1,69 +1,116 @@
-         T _ZNKSt16bad_array_length4whatEv
-         T _ZNKSt20bad_array_new_length4whatEv
-         T _ZNKSt9bad_alloc4whatEv
-         T _ZNSt16bad_array_lengthC1Ev
-         T _ZNSt16bad_array_lengthC2Ev
-         T _ZNSt16bad_array_lengthD0Ev
-         T _ZNSt16bad_array_lengthD1Ev
-         T _ZNSt16bad_array_lengthD2Ev
-         T _ZNSt20bad_array_new_lengthC1Ev
-         T _ZNSt20bad_array_new_lengthC2Ev
-         T _ZNSt20bad_array_new_lengthD0Ev
-         T _ZNSt20bad_array_new_lengthD1Ev
-         T _ZNSt20bad_array_new_lengthD2Ev
-         T _ZNSt9bad_allocC1Ev
-         T _ZNSt9bad_allocC2Ev
-         T _ZNSt9bad_allocD0Ev
-         T _ZNSt9bad_allocD1Ev
-         T _ZNSt9bad_allocD2Ev
-         T _ZSt15get_new_handlerv
-         T _ZSt15set_new_handlerPFvvE
-         T _ZSt17__throw_bad_allocv
-         D _ZSt7nothrow
-         D _ZTISt16bad_array_length
-         D _ZTISt20bad_array_new_length
-         D _ZTISt9bad_alloc
-         C _ZTISt9exception
-         D _ZTSSt16bad_array_length
-         D _ZTSSt20bad_array_new_length
-         D _ZTSSt9bad_alloc
-         C _ZTSSt9exception
-         D _ZTVSt16bad_array_length
-         D _ZTVSt20bad_array_new_length
-         D _ZTVSt9bad_alloc
-         W _ZdaPv
-         W _ZdaPvRKSt9nothrow_t
-         W _ZdlPv
-         W _ZdlPvRKSt9nothrow_t
-         W _Znaj
-         W _ZnajRKSt9nothrow_t
-         W _Znwj
-         W _ZnwjRKSt9nothrow_t
          T __floatscan
+         T __fpclassify
+         T __fpclassifyf
+         T __fpclassifyl
          T __intscan
          T __overflow
          T __shgetc
          T __shlim
+         T __signbit
+         T __signbitf
+         T __signbitl
          W __strtod_l
          W __strtof_l
          W __strtold_l
          T __toread
          T __towrite
          T __uflow
+         T acosh
+         T acoshf
+         T acoshl
+         T asinh
+         T asinhf
+         T asinhl
+         T atanh
+         T atanhf
+         T atanhl
          T atof
          T atoi
          T atol
          W bulk_free
          W calloc
+         T cbrt
+         T cbrtf
+         T cbrtl
+         T copysign
+         T copysignf
+         T copysignl
+         T cosh
+         T coshf
+         T coshl
+         T drand48
+         T erand48
+         T exp2
+         T exp2f
+         T exp2l
+         T expm1
+         T expm1f
+         T expm1l
+         T feclearexcept
+         T feraiseexcept
+         T fetestexcept
+         T fegetround
+         T __fesetround
+         T fegetenv
+         T fesetenv
+         T fdim
+         T fdimf
+         T fdiml
+         T ffs
+         T finite
+         T finitef
+         T fma
+         T fmaf
+         T fmal
+         T fmax
+         T fmaxf
+         T fmaxl
+         T fmin
+         T fminf
+         T fminl
+         T fmod
+         T fmodf
+         T fmodl
          W free
          T frexp
          T frexpf
          T frexpl
+         T hypot
+         T hypotf
+         T hypotl
          W independent_calloc
          W independent_comalloc
+         T initstate
          T isdigit
          T isspace
          T isupper
+         T jrand48
+         T lcg31
+         T lcg64
+         T lcong48
+         T llrint
+         T llrintf
+         T llrintl
+         T llround
+         T llroundf
+         T llroundl
+         T loadstate
+         T log10
+         T log10f
+         T log10l
+         T log1p
+         T log1pf
+         T log1pl
+         T log2
+         T log2f
+         T log2l
+         T lrand48
+         T lrint
+         T lrintf
+         T lrintl
+         T lround
+         T lroundf
+         T lroundl
          W mallinfo
          W malloc
          W malloc_footprint
@@ -75,18 +122,59 @@
          W malloc_usable_size
          W mallopt
          W memalign
+         T modf
+         T modff
+         T modfl
          T MUSL_vfprintf
+         T mrand48
+         T nan
+         T nanf
+         T nanl
+         T nearbyint
+         T nearbyintf
+         T nearbyintl
+         T nrand48
          W posix_memalign
          W pvalloc
+         T rand
+         T rand_r
+         T random
          W realloc
          W realloc_in_place
+         T remainder
+         T remainderf
+         T remainderl
+         T rint
+         T rintf
+         T rintl
+         T round
+         T roundf
+         T roundl
          T scalbn
          T scalbnl
+         T sincos
+         T sincosf
+         T sincosl
+         T sinh
+         T sinhf
+         T sinhl
+         T srand
+         T tanh
+         T tanhf
+         T tanhl
+         T trunc
+         T truncf
+         T truncl
          T memchr
          T memcmp
          T memcpy
+         T savestate
+         T seed48
+         T setstate
          T snprintf
          T sprintf
+         T srand48
+         T srandom
          T strtod
          T strtoull
          T strtoll
@@ -94,9 +182,6 @@
          T strtol
          T strtoimax
          T strtoumax
-         T strcoll
-         T __strcoll_l
-         W strcoll_l
          T strcmp
          T strncmp
          T strcasecmp
@@ -106,9 +191,11 @@
          T strtof_l
          T strtold
          T strtold_l
+         T temper
          T tolower
          W valloc
          T vsnprintf
          T vsprintf
          T wcrtomb
          T wctomb
+         T isxdigit

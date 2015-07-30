@@ -7,6 +7,9 @@ interface Parent {
   void mulVal(long mul);
   void parentFunc();
   [Const] Parent getAsConst();
+  VoidPtr voidStar(VoidPtr something);
+
+  readonly attribute long immutableAttr;
 };
 
 interface Child1 {
@@ -27,6 +30,7 @@ interface Child2 {
   void virtualFunc3(long x);
   void virtualFunc4(long x);
   static void runVirtualFunc(Child2 self);
+  static void runVirtualFunc3(Child2 self, long x);
 };
 
 Child2 implements Parent;
@@ -47,6 +51,7 @@ interface StringUser {
   void StringUser(DOMString str, long i);
   void Print(long anotherInteger, DOMString anotherString);
   void PrintFloat(float f);
+  [Const] DOMString returnAString();
 };
 
 interface RefUser {
@@ -58,6 +63,13 @@ interface RefUser {
   [Value] StringUser getAnother();
 };
 
+interface VoidPointerUser {
+  void VoidPointerUser();
+
+  any GetVoidPointer();
+  void SetVoidPointer(any ptr);
+};
+
 [Prefix="Space::"]
 interface Inner {
   void Inner();
@@ -65,3 +77,52 @@ interface Inner {
   [Operator="*=", Ref] Inner mul(float x);
 };
 
+enum AnEnum {
+  "enum_value1",
+  "enum_value2"
+};
+
+enum EnumClass_EnumWithinClass {
+  "EnumClass::e_val"
+};
+
+enum EnumNamespace_EnumInNamespace {
+  "EnumNamespace::e_namespace_val"
+};
+
+interface EnumClass {
+  void EnumClass();
+
+  EnumClass_EnumWithinClass GetEnum();
+
+  EnumNamespace_EnumInNamespace GetEnumFromNameSpace();
+};
+
+interface TypeTestClass {
+  void TypeTestClass();
+
+  byte ReturnCharMethod();
+  void AcceptCharMethod(byte x);
+
+  octet ReturnUnsignedCharMethod();
+  void AcceptUnsignedCharMethod(octet x);
+
+  unsigned short ReturnUnsignedShortMethod();
+  void AcceptUnsignedShortMethod(unsigned short x);
+
+  unsigned long ReturnUnsignedLongMethod();
+  void AcceptUnsignedLongMethod(unsigned long x);
+};
+
+interface StructInArray {
+  void StructInArray(long attr1, long attr2);
+  attribute long attr1;
+  attribute long attr2;
+};
+
+interface ArrayClass {
+  void ArrayClass();
+  [BoundsChecked] attribute long[] int_array;
+  [Value] attribute StructInArray[] struct_array;
+  attribute StructInArray[] struct_ptr_array;
+};

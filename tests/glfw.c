@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <GL/glfw.h>
 #include <stdio.h>
+#include <assert.h>
 #include <emscripten/emscripten.h>
 
 void Init(void);
@@ -47,6 +48,14 @@ void Init()
  
   if (glfwInit() != GL_TRUE)
     Shut_Down(1);
+
+  glfwEnable(GLFW_KEY_REPEAT); // test for issue #3059
+
+  int red_bits = glfwGetWindowParam(GLFW_RED_BITS);
+  glfwOpenWindowHint(GLFW_RED_BITS, 8);
+  assert(glfwGetWindowParam(GLFW_RED_BITS) == 8);
+  glfwOpenWindowHint(GLFW_RED_BITS, red_bits);
+
   // 800 x 600, 16 bit color, no depth, alpha or stencil buffers, windowed
   if (glfwOpenWindow(window_width, window_height, 5, 6, 5,
                   0, 0, 0, GLFW_WINDOW) != GL_TRUE)
@@ -95,6 +104,12 @@ void Iteration()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     // draw the figure
     Draw();
+
+    // Test that glfwSwapInterval doesn't crash (although we don't test actual timings)
+    static int i = 0;
+    glfwSwapInterval(i);
+    if (i < 2) ++i;
+
     // swap back and front buffers
     glfwSwapBuffers();
 }
@@ -370,7 +385,7 @@ void PullInfo(){
   for(i = 0; i<nb_params; i++)
     printf(" - %-27s : %i\n", GetParamName(params[i]), glfwGetWindowParam(params[i]));
   
-  const char* extension = "MOZ_WEBGL_compressed_texture_s3tc";
+  const char* extension = "WEBGL_compressed_texture_s3tc";
   printf("'%s' extension is %s.\n", extension, glfwExtensionSupported(extension) ? "supported" : "not supported");  
   
   extension = "GL_EXT_framebuffer_object";

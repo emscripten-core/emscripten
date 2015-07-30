@@ -16,13 +16,13 @@ define i8* @test_gep(i32 %y) nounwind readnone {
   ; If that number appears in JavaScript source instead of being properly
   ; limited to 32 bits, the %y parameter can be used to exceed the maximum 
   ; precisely representable integer, and make the computation inexact.
-  %test_res = getelementptr [4194304 x i8]* @x, i32 2147483647, i32 %y
+  %test_res = getelementptr [4194304 x i8], [4194304 x i8]* @x, i32 2147483647, i32 %y
   ret i8* %test_res
 }
 
 define i32 @main() {
-  %res_0 = call i8* (i32)* @test_gep(i32 1000000000)
-  %res_1 = call i8* (i32)* @test_gep(i32 1000000001)
+  %res_0 = call i8* (i32) @test_gep(i32 1000000000)
+  %res_1 = call i8* (i32) @test_gep(i32 1000000001)
   %res_0_i = ptrtoint i8* %res_0 to i32
   %res_1_i = ptrtoint i8* %res_1 to i32
 
@@ -30,7 +30,7 @@ define i32 @main() {
   ; result will be 1. Otherwise, it cannot be 1 because the large numbers in
   ; the calculation cannot be accurately represented by floating point math.
   %res_diff = sub i32 %res_1_i, %res_0_i
-  %printf_res = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([6 x i8]* @.str, i32 0, i32 0), i32 %res_diff)
+  %printf_res = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str, i32 0, i32 0), i32 %res_diff)
 
   ret i32 0
 }

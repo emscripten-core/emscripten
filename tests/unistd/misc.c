@@ -1,7 +1,9 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <grp.h>
 #include <emscripten.h>
 
 int main() {
@@ -111,13 +113,6 @@ int main() {
   printf(", errno: %d\n", errno);
   errno = 0;
 
-  printf("alarm: %d", alarm(42));
-  printf(", errno: %d\n", errno);
-  errno = 0;
-  printf("ualarm: %ld", ualarm(123, 456));
-  printf(", errno: %d\n", errno);
-  errno = 0;
-
   printf("fork: %d", fork());
   printf(", errno: %d\n", errno);
   errno = 0;
@@ -150,40 +145,40 @@ int main() {
   printf("getpgrp: %d", getpgrp());
   printf(", errno: %d\n", errno);
   errno = 0;
-  printf("getpid: %d", getpid());
+  pid_t mypid = getpid();
+  printf("getpid: %d", mypid);
   printf(", errno: %d\n", errno);
   errno = 0;
   printf("getppid: %d", getppid());
   printf(", errno: %d\n", errno);
   errno = 0;
-
-  printf("getpgid: %d", getpgid(42));
+  printf("getpgid: %d", getpgid(mypid));
   printf(", errno: %d\n", errno);
   errno = 0;
-  printf("getsid: %d", getsid(42));
+  printf("getsid: %d", getsid(mypid));
   printf(", errno: %d\n", errno);
   errno = 0;
-
-  printf("setgid: %d", setgid(42));
+  printf("setgid: %d", setgid(0));
   printf(", errno: %d\n", errno);
   errno = 0;
-  printf("setegid: %d", setegid(42));
+  printf("setegid: %d", setegid(0));
   printf(", errno: %d\n", errno);
   errno = 0;
-  printf("setuid: %d", setuid(42));
+  printf("setuid: %d", setuid(0));
   printf(", errno: %d\n", errno);
   errno = 0;
-  printf("seteuid: %d", seteuid(42));
+  printf("seteuid: %d", seteuid(0));
   printf(", errno: %d\n", errno);
   errno = 0;
-
   printf("setpgrp: %d", setpgrp());
   printf(", errno: %d\n", errno);
   errno = 0;
   printf("setsid: %d", setsid());
   printf(", errno: %d\n", errno);
   errno = 0;
-
+  printf("setpgid: %d", setpgid(mypid, mypid));
+  printf(", errno: %d\n", errno);
+  errno = 0;
   printf("setpgid: %d", setpgid(123, 456));
   printf(", errno: %d\n", errno);
   errno = 0;

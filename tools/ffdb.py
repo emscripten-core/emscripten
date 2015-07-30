@@ -2,6 +2,12 @@
 
 import socket, json, sys, uuid, datetime, time, logging, cgi, zipfile, os, tempfile, atexit, subprocess, re, base64, struct, imghdr
 
+WINDOWS = sys.platform == 'win32'
+if WINDOWS:
+  import ctypes
+  stdout_handle = ctypes.windll.kernel32.GetStdHandle(-11)
+
+LOG_FORMAT = 'short' # Either 'bare', 'short', or 'long'
 ADB = 'adb'          # Path to the adb executable
 LOG_VERBOSE = False  # Verbose printing enabled with --verbose
 HOST = 'localhost'   # The remote host to connect to the B2G device
@@ -63,21 +69,27 @@ def logv(msg):
 # Returns a JSON dictionary of the received message.
 def read_b2g_response(print_errors_to_console = True):
   global read_queue, b2g_socket
-  try:
-    if len(read_queue) == 0:
-      read_queue += b2g_socket.recv(65536*2)
-  except Exception, e:
-    if e[0] == 57: # Socket is not connected
-      print 'Error! Failed to receive data from the device: socket is not connected!'
-      sys.exit(1)
-    else:
-      raise
   payload = ''
-  while ':' in read_queue:
-    semicolon = read_queue.index(':')
-    payload_len = int(read_queue[:semicolon])
+  while True:
+    semicolon = float('Inf')
+    payload_len = float('Inf')
+    try:
+      semicolon = read_queue.index(':')
+      payload_len = int(read_queue[:semicolon])
+    except:
+      pass
     if semicolon+1+payload_len > len(read_queue):
-      read_queue += b2g_socket.recv(65536*2)
+      try:
+        read_queue += b2g_socket.recv(4096)
+      except socket.timeout, e: 
+        pass # We simulate blocking sockets with looping over reads that time out, since on Windows, the user cannot press Ctrl-C to break on blocking sockets.
+      except Exception, e:
+        if e[0] == 57: # Socket is not connected
+          print 'Error! Failed to receive data from the device: socket is not connected!'
+          sys.exit(1)
+        else:
+          print 'Got exception ' + str(e)
+          raise
       continue
     payload = read_queue[semicolon+1:semicolon+1+payload_len]
     read_queue = read_queue[semicolon+1+payload_len:]
@@ -313,6 +325,7 @@ def b2g_memory(app_name):
           print k + ': ' + str(v)
 
 def b2g_log(app_name, clear=False):
+  global LOG_FORMAT
   apps = b2g_get_appslist()
   appActor = ''
   for app in apps:
@@ -329,11 +342,30 @@ def b2g_log(app_name, clear=False):
 
     msgs = send_b2g_cmd(consoleActor, 'startListeners', { 'listeners': ['PageError','ConsoleAPI','NetworkActivity','FileActivity'] })
 
-    def log_b2g_message(msg):
+    if WINDOWS:
+      WARNING = 14 # FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY
+      FAIL = 12 # FOREGROUND_RED | FOREGROUND_INTENSITY
+      INFO = 7 # FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE
+      ENDC = ''
+      BOLD = ''
+    else:
       WARNING = '\033[93m'
       FAIL = '\033[91m'
-      ENDC = '\033[0m'
+      INFO = ENDC = '\033[0m'
       BOLD = "\033[1m"
+
+    def set_color(string, color):
+      if WINDOWS:
+        ctypes.windll.kernel32.SetConsoleTextAttribute(stdout_handle, color)
+        return string
+      else:
+        return color + string + ENDC
+
+    def reset_color():
+      if WINDOWS:
+        ctypes.windll.kernel32.SetConsoleTextAttribute(stdout_handle, INFO)
+
+    def log_b2g_message(msg):
       msgs = []
       if 'type' in msg and msg['type'] == 'consoleAPICall':
         msgs = [msg['message']]
@@ -344,16 +376,29 @@ def b2g_log(app_name, clear=False):
         args = m['arguments']
 
         for arg in args:
-          if m['level'] == 'log':
-            color = 'I/'
-          elif m['level'] == 'warn':
-            color = WARNING + 'W/'
-          elif m['level'] == 'error':
-            color = FAIL + 'E/'
-          else:
-            color = m['level'] + '/'
+          if LOG_FORMAT == 'long':
+            text = str(m['functionName']) + '@' + str(m['filename']) + ':' + str(m['lineNumber']) + ': ' + str(arg)
+          elif LOG_FORMAT == 'bare':
+            text = str(arg)
+          else: # Default to 'short'
+            text = str(m['functionName']) + '@' + os.path.basename(str(m['filename'])) + ':' + str(m['lineNumber']) + ': ' + str(arg)
 
-          print color + str(m['functionName']) + '@' + str(m['filename']) + ':' + str(m['lineNumber']) + ': ' + str(arg) + ENDC
+          if m['level'] == 'log':
+            color = INFO
+            channel = 'I/'
+          elif m['level'] == 'warn':
+            color = WARNING
+            channel = 'W/'
+          elif m['level'] == 'error':
+            color = FAIL
+            channel = 'E/'
+          else:
+            color = INFO
+            channel = m['level'] + '/'
+
+          text = set_color(channel + text, color)
+          print text
+          reset_color()
 
     msgs = send_b2g_cmd(consoleActor, 'getCachedMessages', { 'messageTypes': ['PageError', 'ConsoleAPI'] })
     log_b2g_message(msgs)
@@ -511,10 +556,13 @@ def main():
       print ' 4) When launching ffdb, remember to acknowledge the "incoming debug connection" dialog if it pops up on the device.'
       sys.exit(1)
   b2g_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  if WINDOWS:
+    # Python Windows issue: user cannot press Ctrl-C to abort from a socket .recv() Therefore simulate blocking sockets with looping over reads that time out.
+    b2g_socket.settimeout(0.5)
   try:
     b2g_socket.connect((HOST, PORT))
   except Exception, e:
-    if e[0] == 61: # Connection refused
+    if e[0] == 61 or e[0] == 107 or e[0] == 111: # 61 == Connection refused and 107+111 == Transport endpoint is not connected
       if (HOST == 'localhost' or HOST == '127.0.0.1') and not connect_to_simulator:
         cmd = [ADB, 'forward', 'tcp:'+str(PORT), 'localfilesystem:/data/local/debugger-socket']
         print 'Connection to ' + HOST + ':' + str(PORT) + ' refused, attempting to forward device debugger-socket to local address by calling ' + str(cmd) + ':'
@@ -612,6 +660,9 @@ def main():
     else:
       print 'Web browser is not running!'
   elif sys.argv[1] == 'log':
+    if len(sys.argv) < 3:
+      print 'Error! No application name given! Usage: ' + sys.argv[0] + ' ' + sys.argv[1] + ' <app>'
+      return 1
     clear = '-c' in sys.argv or '-clear' in sys.argv or '--clear' in sys.argv
     b2g_log(sys.argv[2], clear)
   elif sys.argv[1] == 'memory':
@@ -662,5 +713,5 @@ if __name__ == '__main__':
     logv('ffdb.py quitting with process exit code ' + str(returncode))
     sys.exit(returncode)
   except KeyboardInterrupt:
-    print ' Aborted by user'
+    print ('^C' if WINDOWS else '') + ' Aborted by user'
     sys.exit(1)

@@ -4,13 +4,10 @@
  * unnecessary.
  */
 
-#include <stdlib.h>
-#include <inttypes.h>
 #include <wchar.h>
 #include <errno.h>
-
 #include "internal.h"
-#include <stdio.h>
+
 int mbtowc(wchar_t *restrict wc, const char *restrict src, size_t n)
 {
 	unsigned c;

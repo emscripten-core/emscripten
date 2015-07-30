@@ -4,12 +4,7 @@
  * unnecessary.
  */
 
-#include <stdlib.h>
-#include <inttypes.h>
 #include <wchar.h>
-#include <errno.h>
-
-#include "internal.h"
 
 size_t wcsrtombs(char *restrict s, const wchar_t **restrict ws, size_t n, mbstate_t *restrict st)
 {
@@ -26,8 +21,13 @@ size_t wcsrtombs(char *restrict s, const wchar_t **restrict ws, size_t n, mbstat
 		}
 		return n;
 	}
-	while (n>=4 && **ws) {
-		if (**ws >= 0x80u) {
+	while (n>=4) {
+		if (**ws-1u >= 0x7fu) {
+			if (!**ws) {
+				*s = 0;
+				*ws = 0;
+				return N-n;
+			}
 			l = wcrtomb(s, **ws, 0);
 			if (!(l+1)) return -1;
 			s += l;
@@ -38,8 +38,13 @@ size_t wcsrtombs(char *restrict s, const wchar_t **restrict ws, size_t n, mbstat
 		}
 		(*ws)++;
 	}
-	while (n && **ws) {
-		if (**ws >= 0x80u) {
+	while (n) {
+		if (**ws-1u >= 0x7fu) {
+			if (!**ws) {
+				*s = 0;
+				*ws = 0;
+				return N-n;
+			}
 			l = wcrtomb(buf, **ws, 0);
 			if (!(l+1)) return -1;
 			if (l>n) return N-n;
@@ -52,7 +57,5 @@ size_t wcsrtombs(char *restrict s, const wchar_t **restrict ws, size_t n, mbstat
 		}
 		(*ws)++;
 	}
-	if (n) *s = 0;
-	*ws = 0;
-	return N-n;
+	return N;
 }

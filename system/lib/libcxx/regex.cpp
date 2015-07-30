@@ -69,8 +69,10 @@ regex_error::~regex_error() throw() {}
 
 namespace {
 
+#if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wpadded"
+#endif
 
 struct collationnames
 {
@@ -78,7 +80,9 @@ struct collationnames
     char char_;
 };
 
+#if defined(__clang__)
 #pragma clang diagnostic pop
+#endif
 
 const collationnames collatenames[] =
 {
@@ -195,16 +199,20 @@ const collationnames collatenames[] =
     {"zero", 0x30}
 };
 
+#if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wpadded"
+#endif
 
 struct classnames
 {
     const char* elem_;
-    ctype_base::mask mask_;
+    regex_traits<char>::char_class_type mask_;
 };
 
+#if defined(__clang__)
 #pragma clang diagnostic pop
+#endif
 
 const classnames ClassNames[] =
 {
@@ -246,12 +254,12 @@ __get_collation_name(const char* s)
     return r;
 }
 
-ctype_base::mask
+regex_traits<char>::char_class_type
 __get_classname(const char* s, bool __icase)
 {
     const classnames* i =
             _VSTD::lower_bound(begin(ClassNames), end(ClassNames), s, use_strcmp());
-    ctype_base::mask r = 0;
+    regex_traits<char>::char_class_type r = 0;
     if (i != end(ClassNames) && strcmp(s, i->elem_) == 0)
     {
         r = i->mask_;

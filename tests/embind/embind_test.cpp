@@ -54,6 +54,30 @@ bool emval_test_not(bool b) {
     return !b;
 }
 
+bool emval_test_is_true(val v) {
+    return v.isTrue();
+}
+
+bool emval_test_is_false(val v) {
+    return v.isFalse();
+}
+
+bool emval_test_is_null(val v) {
+    return v.isNull();
+}
+
+bool emval_test_is_undefined(val v) {
+    return v.isUndefined();
+}
+
+bool emval_test_equals(val v1,val v2) {
+    return v1.equals(v2);
+}
+
+bool emval_test_strictly_equals(val v1, val v2) {
+    return v1.strictlyEquals(v2);
+}
+
 unsigned emval_test_as_unsigned(val v) {
     return v.as<unsigned>();
 }
@@ -95,6 +119,15 @@ std::wstring get_non_ascii_wstring() {
     ws[2] = 2345;
     ws[3] = 65535;
     return ws;
+}
+
+std::wstring get_literal_wstring() {
+    return L"get_literal_wstring";
+}
+
+void force_memory_growth() {
+    auto heapu8 = val::global("Module")["HEAPU8"];
+    delete [] new char[heapu8["byteLength"].as<size_t>() + 1];
 }
 
 std::string emval_test_take_and_return_const_char_star(const char* str) {
@@ -856,8 +889,51 @@ void emval_test_call_function(val v, int i, float f, TupleVector tv, StructVecto
     v(i, f, tv, sv);
 }
 
+class UniquePtrToConstructor {
+public:
+    UniquePtrToConstructor(std::unique_ptr<int> p)
+        : value(*p)
+    {}
+    
+    int getValue() const {
+        return value;
+    }
+    
+private:
+    int value;
+};
+
+std::unique_ptr<int> embind_test_return_unique_ptr(int v) {
+    return std::unique_ptr<int>(new int(v));
+}
+
+UniquePtrToConstructor* embind_test_construct_class_with_unique_ptr(int v) {
+    return new UniquePtrToConstructor(embind_test_return_unique_ptr(v));
+}
+
+int embind_test_accept_unique_ptr(std::unique_ptr<int> p) {
+    return *p.get();
+}
+
 std::unique_ptr<ValHolder> emval_test_return_unique_ptr() {
     return std::unique_ptr<ValHolder>(new ValHolder(val::object()));
+}
+
+class UniquePtrLifetimeMock {
+public:
+    UniquePtrLifetimeMock(val l) : logger(l) {
+        logger(std::string("(constructor)"));
+    }
+    ~UniquePtrLifetimeMock() {
+        logger(std::string("(destructor)"));
+    }
+
+private:
+    val logger;
+};
+
+std::unique_ptr<UniquePtrLifetimeMock> emval_test_return_unique_ptr_lifetime(val logger) {
+    return std::unique_ptr<UniquePtrLifetimeMock>(new UniquePtrLifetimeMock(logger));
 }
 
 std::shared_ptr<ValHolder> emval_test_return_shared_ptr() {
@@ -1072,6 +1148,10 @@ void test_string_with_vec(const std::string& p1, std::vector<std::string>& v1) {
     printf("%s\n", p1.c_str());
 }
 
+val embind_test_getglobal() {
+    return val::global();
+}
+
 val embind_test_new_Object() {
     return val::global("Object").new_();
 }
@@ -1108,22 +1188,19 @@ class AbstractClassWrapper : public wrapper<AbstractClass> {
 public:
     EMSCRIPTEN_WRAPPER(AbstractClassWrapper);
 
-    std::string abstractMethod() const {
+    std::string abstractMethod() const override {
         return call<std::string>("abstractMethod");
     }
 
-    std::string optionalMethod(std::string s) const {
+    std::string optionalMethod(std::string s) const override {
         return call<std::string>("optionalMethod", s);
-        //return optional_call<std::string>(optionalMethod_symbol, [&] {
-        //    return AbstractClass::optionalMethod(s);
-        //}, s);
     }
 
-    std::shared_ptr<Derived> returnsSharedPtr() {
+    std::shared_ptr<Derived> returnsSharedPtr() override {
         return call<std::shared_ptr<Derived> >("returnsSharedPtr");
     }
 
-    void differentArguments(int i, double d, unsigned char f, double q, std::string s) {
+    void differentArguments(int i, double d, unsigned char f, double q, std::string s) override {
         return call<void>("differentArguments", i, d, f, q, s);
     }
 
@@ -1175,6 +1252,8 @@ struct AbstractClassWithConstructor {
         : s(s)
     {}
 
+    virtual ~AbstractClassWithConstructor() {};
+
     virtual std::string abstractMethod() = 0;
     std::string concreteMethod() {
         return s;
@@ -1224,10 +1303,10 @@ EMSCRIPTEN_BINDINGS(interface_tests) {
         .smart_ptr<std::shared_ptr<AbstractClass>>("shared_ptr<AbstractClass>")
         .allow_subclass<AbstractClassWrapper>("AbstractClassWrapper")
         .function("abstractMethod", &AbstractClass::abstractMethod, pure_virtual())
-        // The select_overload is necessary because, otherwise, the C++ compiler
+        // The optional_override is necessary because, otherwise, the C++ compiler
         // cannot deduce the signature of the lambda function.
         .function("optionalMethod", optional_override(
-            [](AbstractClass& this_, std::string s) {
+            [](AbstractClass& this_, const std::string& s) {
                 return this_.AbstractClass::optionalMethod(s);
             }
         ))
@@ -1257,7 +1336,7 @@ EMSCRIPTEN_BINDINGS(interface_tests) {
 
     class_<HeldAbstractClass, base<PolySecondBase>>("HeldAbstractClass")
         .smart_ptr<std::shared_ptr<HeldAbstractClass>>("shared_ptr<HeldAbstractClass>")
-        .allow_subclass<HeldAbstractClassWrapper, std::shared_ptr<HeldAbstractClassWrapper>>("HeldAbstractClassWrapper")
+        .allow_subclass<HeldAbstractClassWrapper, std::shared_ptr<HeldAbstractClassWrapper>>("HeldAbstractClassWrapper", "HeldAbstractClassWrapperPtr")
         .function("method", &HeldAbstractClass::method, pure_virtual())
         ;
     function("passHeldAbstractClass", &passHeldAbstractClass);
@@ -1271,7 +1350,7 @@ constexpr size_t getElementCount(T (&)[sizeOfArray]) {
 static void callWithMemoryView(val v) {
     // static so the JS test can read the memory after callTakeMemoryView runs
     static unsigned char data[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
-    v(memory_view(getElementCount(data), data));
+    v(typed_memory_view(getElementCount(data), data));
     static float f[] = { 1.5f, 2.5f, 3.5f, 4.5f };
     v(typed_memory_view(getElementCount(f), f));
     static short s[] = { 1000, 100, 10, 1 };
@@ -1515,6 +1594,43 @@ std::string unsigned_long_to_string(unsigned long val) {
     return str;
 }
 
+//test loading unsigned value from memory
+static unsigned char uchar;
+void store_unsigned_char(unsigned char arg) {
+	uchar = arg;
+}
+
+unsigned char load_unsigned_char() {
+	return uchar;
+}
+
+static unsigned short ushort;
+void store_unsigned_short(unsigned short arg) {
+	ushort = arg;
+}
+
+unsigned short load_unsigned_short() {
+	return ushort;
+}
+
+static unsigned int uint;
+void store_unsigned_int(unsigned int arg) {
+	uint = arg;
+}
+
+unsigned int load_unsigned_int() {
+	return uint;
+}
+
+static unsigned long ulong;
+void store_unsigned_long(unsigned long arg) {
+	ulong = arg;
+}
+
+unsigned long load_unsigned_long() {
+	return ulong;
+}
+
 EMSCRIPTEN_BINDINGS(tests) {
     register_vector<int>("IntegerVector");
     register_vector<char>("CharVector");
@@ -1535,6 +1651,13 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("emval_test_return_void", &emval_test_return_void);
     function("emval_test_not", &emval_test_not);
 
+    function("emval_test_is_true", &emval_test_is_true);
+    function("emval_test_is_false", &emval_test_is_false);
+    function("emval_test_is_null", &emval_test_is_null);
+    function("emval_test_is_undefined", &emval_test_is_undefined);
+    function("emval_test_equals", &emval_test_equals);
+    function("emval_test_strictly_equals", &emval_test_strictly_equals);
+
     function("emval_test_as_unsigned", &emval_test_as_unsigned);
     function("emval_test_get_length", &emval_test_get_length);
     function("emval_test_add", &emval_test_add);
@@ -1543,6 +1666,9 @@ EMSCRIPTEN_BINDINGS(tests) {
 
     function("get_non_ascii_string", &get_non_ascii_string);
     function("get_non_ascii_wstring", &get_non_ascii_wstring);
+    function("get_literal_wstring", &get_literal_wstring);
+    function("force_memory_growth", &force_memory_growth);
+
     //function("emval_test_take_and_return_const_char_star", &emval_test_take_and_return_const_char_star);
     function("emval_test_take_and_return_std_string", &emval_test_take_and_return_std_string);
     function("emval_test_take_and_return_std_string_const_ref", &emval_test_take_and_return_std_string_const_ref);
@@ -1818,6 +1944,15 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("embind_test_accept_small_class_instance", &embind_test_accept_small_class_instance);
     function("embind_test_accept_big_class_instance", &embind_test_accept_big_class_instance);
 
+    class_<UniquePtrToConstructor>("UniquePtrToConstructor")
+        .constructor<std::unique_ptr<int>>()
+        .function("getValue", &UniquePtrToConstructor::getValue)
+        ;
+
+    function("embind_test_construct_class_with_unique_ptr", embind_test_construct_class_with_unique_ptr, allow_raw_pointer<ret_val>());
+    function("embind_test_return_unique_ptr", embind_test_return_unique_ptr);
+    function("embind_test_accept_unique_ptr", embind_test_accept_unique_ptr);
+
     function("embind_test_return_raw_base_ptr", embind_test_return_raw_base_ptr, allow_raw_pointer<ret_val>());
     function("embind_test_return_raw_derived_ptr_as_base", embind_test_return_raw_derived_ptr_as_base, allow_raw_pointer<ret_val>());
     function("embind_test_return_raw_sibling_derived_ptr_as_base", embind_test_return_raw_sibling_derived_ptr_as_base, allow_raw_pointer<ret_val>());
@@ -1892,6 +2027,9 @@ EMSCRIPTEN_BINDINGS(tests) {
 
     function("emval_test_return_unique_ptr", &emval_test_return_unique_ptr);
 
+    class_<UniquePtrLifetimeMock>("UniquePtrLifetimeMock");
+    function("emval_test_return_unique_ptr_lifetime", &emval_test_return_unique_ptr_lifetime);
+
     function("emval_test_return_shared_ptr", &emval_test_return_shared_ptr);
     function("emval_test_return_empty_shared_ptr", &emval_test_return_empty_shared_ptr);
     function("emval_test_is_shared_ptr_null", &emval_test_is_shared_ptr_null);
@@ -1915,6 +2053,8 @@ EMSCRIPTEN_BINDINGS(tests) {
 
     register_map<std::string, int>("StringIntMap");
     function("embind_test_get_string_int_map", embind_test_get_string_int_map);
+
+    function("embind_test_getglobal", &embind_test_getglobal);
 
     function("embind_test_new_Object", &embind_test_new_Object);
     function("embind_test_new_factory", &embind_test_new_factory);
@@ -1956,6 +2096,15 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("unsigned_int_to_string", &unsigned_int_to_string);
     function("long_to_string", &long_to_string);
     function("unsigned_long_to_string", &unsigned_long_to_string);
+
+    function("store_unsigned_char", &store_unsigned_char);
+    function("load_unsigned_char", &load_unsigned_char);
+    function("store_unsigned_short", &store_unsigned_short);
+    function("load_unsigned_short", &load_unsigned_short);
+    function("store_unsigned_int", &store_unsigned_int);
+    function("load_unsigned_int", &load_unsigned_int);
+    function("store_unsigned_long", &store_unsigned_long);
+    function("load_unsigned_long", &load_unsigned_long);
 }
 
 int overloaded_function(int i) {
@@ -2052,6 +2201,8 @@ public:
         return staticValue;
     }
 };
+
+int MultipleOverloads::staticValue = 0;
 
 class MultipleOverloadsDerived : public MultipleOverloads {
 public:
@@ -2450,7 +2601,7 @@ val construct_with_memory_view(val factory) {
     static const char data[11] = "0123456789";
     return factory.new_(
         std::string("before"),
-        memory_view(10, data),
+        typed_memory_view(10, data),
         std::string("after"));
 }
 
@@ -2621,7 +2772,7 @@ struct Holder {
 EMSCRIPTEN_BINDINGS(intrusive_pointers) {
     class_<IntrusiveClass>("IntrusiveClass")
         .smart_ptr_constructor("intrusive_ptr<IntrusiveClass>", &make_intrusive_ptr<IntrusiveClass>)
-        .allow_subclass<IntrusiveClassWrapper, intrusive_ptr<IntrusiveClassWrapper>>("IntrusiveClassWrapper")
+        .allow_subclass<IntrusiveClassWrapper, intrusive_ptr<IntrusiveClassWrapper>>("IntrusiveClassWrapper", "IntrusiveClassWrapperPtr")
         ;
 
     typedef Holder<intrusive_ptr<IntrusiveClass>> IntrusiveClassHolder;

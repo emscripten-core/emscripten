@@ -6,7 +6,7 @@ target triple = "asmjs-unknown-emscripten"
 
 define void @glSampleCoverage(float %a18, i8 zeroext %invert) {
 entry:
-  %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0 type=i32]
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0 type=i32]
   ret void
 }
 

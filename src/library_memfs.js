@@ -38,7 +38,8 @@ mergeInto(LibraryManager.library, {
               read: MEMFS.stream_ops.read,
               write: MEMFS.stream_ops.write,
               allocate: MEMFS.stream_ops.allocate,
-              mmap: MEMFS.stream_ops.mmap
+              mmap: MEMFS.stream_ops.mmap,
+              msync: MEMFS.stream_ops.msync
             }
           },
           link: {
@@ -55,7 +56,7 @@ mergeInto(LibraryManager.library, {
               setattr: MEMFS.node_ops.setattr
             },
             stream: FS.chrdev_stream_ops
-          },
+          }
         };
       }
       var node = FS.createNode(parent, name, mode, dev);
@@ -88,30 +89,25 @@ mergeInto(LibraryManager.library, {
 
     // Given a file node, returns its file data converted to a regular JS array. You should treat this as read-only.
     getFileDataAsRegularArray: function(node) {
-#if USE_TYPED_ARRAYS == 2
       if (node.contents && node.contents.subarray) {
         var arr = [];
         for (var i = 0; i < node.usedBytes; ++i) arr.push(node.contents[i]);
         return arr; // Returns a copy of the original data.
       }
-#endif
       return node.contents; // No-op, the file contents are already in a JS array. Return as-is.
     },
 
-#if USE_TYPED_ARRAYS == 2
     // Given a file node, returns its file data converted to a typed array.
     getFileDataAsTypedArray: function(node) {
-      if (node.contents && node.contents.subarray) return node.contents.subarray(0, node.usedBytes); // Make sure to not return excess unused bytes.
+      if (!node.contents) return new Uint8Array;
+      if (node.contents.subarray) return node.contents.subarray(0, node.usedBytes); // Make sure to not return excess unused bytes.
       return new Uint8Array(node.contents);
     },
-#endif
 
     // Allocates a new backing store for the given node so that it can fit at least newSize amount of bytes.
     // May allocate more, to provide automatic geometric increase and amortized linear performance appending writes.
     // Never shrinks the storage.
     expandFileStorage: function(node, newCapacity) {
-#if USE_TYPED_ARRAYS == 2
-
 #if !MEMFS_APPEND_TO_TYPED_ARRAYS
       // If we are asked to expand the size of a file that already exists, revert to using a standard JS array to store the file
       // instead of a typed array. This makes resizing the array more flexible because we can just .push() elements at the back to
@@ -136,7 +132,6 @@ mergeInto(LibraryManager.library, {
         if (node.usedBytes > 0) node.contents.set(oldContents.subarray(0, node.usedBytes), 0); // Copy old data over to the new storage.
         return;
       }
-#endif
       // Not using a typed array to back the file storage. Use a standard JS array instead.
       if (!node.contents && newCapacity > 0) node.contents = [];
       while (node.contents.length < newCapacity) node.contents.push(0);
@@ -150,16 +145,15 @@ mergeInto(LibraryManager.library, {
         node.usedBytes = 0;
         return;
       }
-
-#if USE_TYPED_ARRAYS == 2
       if (!node.contents || node.contents.subarray) { // Resize a typed array if that is being used as the backing store.
         var oldContents = node.contents;
         node.contents = new Uint8Array(new ArrayBuffer(newSize)); // Allocate new storage.
-        node.contents.set(oldContents.subarray(0, Math.min(newSize, node.usedBytes))); // Copy old data over to the new storage.
+        if (oldContents) {
+          node.contents.set(oldContents.subarray(0, Math.min(newSize, node.usedBytes))); // Copy old data over to the new storage.
+        }
         node.usedBytes = newSize;
         return;
       }
-#endif
       // Backing with a JS array.
       if (!node.contents) node.contents = [];
       if (node.contents.length > newSize) node.contents.length = newSize;
@@ -271,12 +265,9 @@ mergeInto(LibraryManager.library, {
         if (position >= stream.node.usedBytes) return 0;
         var size = Math.min(stream.node.usedBytes - position, length);
         assert(size >= 0);
-#if USE_TYPED_ARRAYS == 2
         if (size > 8 && contents.subarray) { // non-trivial, and typed array
           buffer.set(contents.subarray(position, position + size), offset);
-        } else
-#endif
-        {
+        } else {
           for (var i = 0; i < size; i++) buffer[offset + i] = contents[position + i];
         }
         return size;
@@ -288,7 +279,6 @@ mergeInto(LibraryManager.library, {
         var node = stream.node;
         node.timestamp = Date.now();
 
-#if USE_TYPED_ARRAYS == 2
         if (buffer.subarray && (!node.contents || node.contents.subarray)) { // This write is from a typed array to a typed array?
           if (canOwn) { // Can we just reuse the buffer we are given?
 #if ASSERTIONS
@@ -306,16 +296,15 @@ mergeInto(LibraryManager.library, {
             return length;
           }
         }
-#endif
+
         // Appending to an existing file and we need to reallocate, or source data did not come as a typed array.
         MEMFS.expandFileStorage(node, position+length);
-#if USE_TYPED_ARRAYS == 2
         if (node.contents.subarray && buffer.subarray) node.contents.set(buffer.subarray(offset, offset + length), position); // Use typed array write if available.
-        else
-#endif
+        else {
           for (var i = 0; i < length; i++) {
            node.contents[position + i] = buffer[offset + i]; // Or fall back to manual write if not.
           }
+        }
         node.usedBytes = Math.max(node.usedBytes, position+length);
         return length;
       },
@@ -332,8 +321,6 @@ mergeInto(LibraryManager.library, {
         if (position < 0) {
           throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
         }
-        stream.ungotten = [];
-        stream.position = position;
         return position;
       },
       allocate: function(stream, offset, length) {
@@ -372,6 +359,19 @@ mergeInto(LibraryManager.library, {
         }
         return { ptr: ptr, allocated: allocated };
       },
+      msync: function(stream, buffer, offset, length, mmapFlags) {
+        if (!FS.isFile(stream.node.mode)) {
+          throw new FS.ErrnoError(ERRNO_CODES.ENODEV);
+        }
+        if (mmapFlags & {{{ cDefine('MAP_PRIVATE') }}}) {
+          // MAP_PRIVATE calls need not to be synced back to underlying fs
+          return 0;
+        }
+
+        var bytesWritten = MEMFS.stream_ops.write(stream, buffer, 0, length, offset, false);
+        // should we check if bytesWritten and length are the same?
+        return 0;
+      }
     }
   }
 });

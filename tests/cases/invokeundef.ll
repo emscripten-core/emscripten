@@ -15,12 +15,12 @@ entry:
   %retval = alloca i32                            ; [#uses=2]
   %0 = alloca i32                                 ; [#uses=2]
   %"alloca point" = bitcast i32 0 to i32          ; [#uses=0]
-  %1 = load i32* bitcast (i32* getelementptr inbounds (%struct.CPU_Regs* @cpu_regs, i32 0, i32 0, i32 1, i32 0, i32 0) to i32*), align 2 ; [#uses=1]
+  %1 = load i32, i32* bitcast (i32* getelementptr inbounds (%struct.CPU_Regs, %struct.CPU_Regs* @cpu_regs, i32 0, i32 0, i32 1, i32 0, i32 0) to i32*), align 2 ; [#uses=1]
   %a1 = trunc i32 %1 to i16
   store i16 %a1, i16* bitcast (%struct.CPU_Regs* @cpu_regs to i16*), align 2
-  %2 = call i32 @puts(i8* getelementptr inbounds ([14 x i8]* @.str, i32 0, i32 0)) ; [#uses=0]
+  %2 = call i32 @puts(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @.str, i32 0, i32 0)) ; [#uses=0]
   store i32 0, i32* %0, align 4
-  %3 = load i32* %0, align 4                      ; [#uses=1]
+  %3 = load i32, i32* %0, align 4                      ; [#uses=1]
   store i32 %3, i32* %retval, align 4
   br label %return
 
@@ -36,7 +36,7 @@ lpad106:
   ret i32 %retval1
 
 return:                                           ; preds = %entry
-  %retval1 = load i32* %retval                    ; [#uses=1]
+  %retval1 = load i32, i32* %retval                    ; [#uses=1]
   ret i32 %retval1
 }
 

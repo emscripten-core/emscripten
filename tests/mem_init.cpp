@@ -5,7 +5,7 @@ extern "C" {
 
 int noted = 0;
 
-void EMSCRIPTEN_KEEPALIVE note(int n) {
+char* EMSCRIPTEN_KEEPALIVE note(int n) {
   EM_ASM_({ Module.print([$0, $1]) }, n, noted);
   noted = noted | n;
   EM_ASM_({ Module.print(['noted is now', $0]) }, noted);
@@ -13,6 +13,7 @@ void EMSCRIPTEN_KEEPALIVE note(int n) {
     int result = noted;
     REPORT_RESULT();
   }
+  return "silly-string";
 }
 
 }

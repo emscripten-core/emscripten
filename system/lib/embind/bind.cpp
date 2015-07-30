@@ -55,6 +55,42 @@ namespace {
         using namespace internal;
         _embind_register_float(TypeID<T>::get(), name, sizeof(T));
     }
+
+
+    // matches typeMapping in embind.js
+    enum TypedArrayIndex {
+        Int8Array,
+        Uint8Array,
+        Int16Array,
+        Uint16Array,
+        Int32Array,
+        Uint32Array,
+        Float32Array,
+        Float64Array,
+    };
+
+    template<typename T>
+    constexpr TypedArrayIndex getTypedArrayIndex() {
+        static_assert(
+            (std::is_floating_point<T>::value && (sizeof(T) == 4 || sizeof(T) == 8)) ||
+            (std::is_integral<T>::value && (sizeof(T) == 1 || sizeof(T) == 2 || sizeof(T) == 4)),
+            "type does not map to a typed array");
+        return std::is_floating_point<T>::value
+            ? (sizeof(T) == 4
+               ? Float32Array
+               : Float64Array)
+            : (sizeof(T) == 1
+               ? (std::is_signed<T>::value ? Int8Array : Uint8Array)
+               : (sizeof(T) == 2
+                  ? (std::is_signed<T>::value ? Int16Array : Uint16Array)
+                  : (std::is_signed<T>::value ? Int32Array : Uint32Array)));
+    }
+
+    template<typename T>
+    static void register_memory_view(const char* name) {
+        using namespace internal;
+        _embind_register_memory_view(TypeID<memory_view<T>>::get(), getTypedArrayIndex<T>(), name);
+    }
 }
 
 EMSCRIPTEN_BINDINGS(native_and_builtin_types) {
@@ -81,5 +117,32 @@ EMSCRIPTEN_BINDINGS(native_and_builtin_types) {
     _embind_register_std_string(TypeID<std::basic_string<unsigned char> >::get(), "std::basic_string<unsigned char>");
     _embind_register_std_wstring(TypeID<std::wstring>::get(), sizeof(wchar_t), "std::wstring");
     _embind_register_emval(TypeID<val>::get(), "emscripten::val");
-    _embind_register_memory_view(TypeID<memory_view>::get(), "emscripten::memory_view");
+
+    // Some of these types are aliases for each other. Luckily,
+    // embind.js's _embind_register_memory_view ignores duplicate
+    // registrations rather than asserting, so the first
+    // register_memory_view call for a particular type will take
+    // precedence.
+
+    register_memory_view<char>("emscripten::memory_view<char>");
+    register_memory_view<signed char>("emscripten::memory_view<signed char>");
+    register_memory_view<unsigned char>("emscripten::memory_view<unsigned char>");
+
+    register_memory_view<short>("emscripten::memory_view<short>");
+    register_memory_view<unsigned short>("emscripten::memory_view<unsigned short>");
+    register_memory_view<int>("emscripten::memory_view<int>");
+    register_memory_view<unsigned int>("emscripten::memory_view<unsigned int>");
+    register_memory_view<long>("emscripten::memory_view<long>");
+    register_memory_view<unsigned long>("emscripten::memory_view<unsigned long>");
+
+    register_memory_view<int8_t>("emscripten::memory_view<int8_t>");
+    register_memory_view<uint8_t>("emscripten::memory_view<uint8_t>");
+    register_memory_view<int16_t>("emscripten::memory_view<int16_t>");
+    register_memory_view<uint16_t>("emscripten::memory_view<uint16_t>");
+    register_memory_view<int32_t>("emscripten::memory_view<int32_t>");
+    register_memory_view<uint32_t>("emscripten::memory_view<uint32_t>");
+
+    register_memory_view<float>("emscripten::memory_view<float>");
+    register_memory_view<double>("emscripten::memory_view<double>");
+    register_memory_view<long double>("emscripten::memory_view<long double>");
 }

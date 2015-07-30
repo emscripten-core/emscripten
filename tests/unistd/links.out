@@ -1,17 +1,17 @@
 readlink(link)
-ret: 17
+ret: 7
 errno: 0
-result: ../test/../there!
+result: /there!
 
 readlink(file)
 ret: -1
 errno: 22
-result: ../test/../there!
+result: /there!
 
 readlink(folder)
 ret: -1
 errno: 22
-result: ../test/../there!
+result: /there!
 
 symlink/overwrite
 ret: -1
@@ -21,11 +21,11 @@ symlink/normal
 ret: 0
 errno: 0
 readlink(created link)
-ret: 20
+ret: 36
 errno: 0
-result: new-nonexistent-path
+result: /working/folder/new-nonexistent-path
 
 readlink(short buffer)
 ret: 3
 errno: 0
-result: ../-nonexistent-path
+result: /thrking/folder/new-nonexistent-path

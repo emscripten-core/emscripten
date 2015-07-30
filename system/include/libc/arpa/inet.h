@@ -20,7 +20,7 @@ int inet_pton (int, const char *__restrict, void *__restrict);
 const char *inet_ntop (int, const void *__restrict, char *__restrict, socklen_t);
 
 int inet_aton (const char *, struct in_addr *);
-struct in_addr inet_makeaddr(int, int);
+struct in_addr inet_makeaddr(in_addr_t, in_addr_t);
 in_addr_t inet_lnaof(struct in_addr);
 in_addr_t inet_netof(struct in_addr);
 

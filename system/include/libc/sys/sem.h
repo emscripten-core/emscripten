@@ -27,22 +27,7 @@ extern "C" {
 
 #include <endian.h>
 
-struct semid_ds {
-	struct ipc_perm sem_perm;
-	long sem_otime;
-	unsigned long __unused1;
-	long sem_ctime;
-	unsigned long __unused2;
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-	unsigned short sem_nsems;
-	char __sem_nsems_pad[sizeof(long)-sizeof(short)];
-#else
-	char __sem_nsems_pad[sizeof(long)-sizeof(short)];
-	unsigned short sem_nsems;
-#endif
-	unsigned long __unused3;
-	unsigned long __unused4;
-};
+#include <bits/sem.h>
 
 #define _SEM_SEMUN_UNDEFINED 1
 

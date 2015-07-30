@@ -122,6 +122,20 @@ int main()
   assert(fopen(tname1, "r"));
   assert(fopen(tname2, "r"));
   assert(!fopen(tname2+1, "r")); // sanity check that we can't open just anything
+
+  {
+    FILE* f = tmpfile();
+    assert(f);
+    fclose(f);
+
+    char* str = tmpnam(NULL);
+    assert(strncmp("/tmp/file", str, 9) == 0);
+  }
+
+  FILE *n = fopen("/dev/null", "w");
+  printf("5 bytes to dev/null: %d\n", fwrite(data, 1, 5, n));
+  fclose(n);
+
   printf("ok.\n");
 
   return 0;

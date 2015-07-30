@@ -5,11 +5,26 @@
 #include <array>
 #include <vector>
 
+
 namespace emscripten {
+
+    class val;
+
     namespace internal {
+
+        template<typename WrapperType>
+        val wrapped_extend(const std::string&, const val&);
+
         // Implemented in JavaScript.  Don't call these directly.
         extern "C" {
             void _emval_register_symbol(const char*);
+
+            enum {
+                _EMVAL_UNDEFINED = 1,
+                _EMVAL_NULL = 2,
+                _EMVAL_TRUE = 3,
+                _EMVAL_FALSE = 4
+            };
 
             typedef struct _EM_VAL* EM_VAL;
             typedef struct _EM_DESTRUCTORS* EM_DESTRUCTORS;
@@ -24,8 +39,6 @@ namespace emscripten {
 
             EM_VAL _emval_new_array();
             EM_VAL _emval_new_object();
-            EM_VAL _emval_undefined();
-            EM_VAL _emval_null();
             EM_VAL _emval_new_cstring(const char*);
 
             EM_VAL _emval_take_value(TYPEID type, EM_VAR_ARGS argv);
@@ -33,7 +46,7 @@ namespace emscripten {
             EM_VAL _emval_new(
                 EM_VAL value,
                 unsigned argCount,
-                internal::TYPEID argTypes[],
+                const TYPEID argTypes[],
                 EM_VAR_ARGS argv);
 
             EM_VAL _emval_get_global(const char* name);
@@ -42,27 +55,31 @@ namespace emscripten {
             void _emval_set_property(EM_VAL object, EM_VAL key, EM_VAL value);
             EM_GENERIC_WIRE_TYPE _emval_as(EM_VAL value, TYPEID returnType, EM_DESTRUCTORS* destructors);
 
+            bool _emval_equals(EM_VAL first, EM_VAL second);
+            bool _emval_strictly_equals(EM_VAL first, EM_VAL second);
+
             EM_VAL _emval_call(
                 EM_VAL value,
                 unsigned argCount,
-                internal::TYPEID argTypes[],
+                const TYPEID argTypes[],
                 EM_VAR_ARGS argv);
 
             // DO NOT call this more than once per signature. It will
             // leak generated function objects!
             EM_METHOD_CALLER _emval_get_method_caller(
                 unsigned argCount, // including return value
-                internal::TYPEID argTypes[]);
+                const TYPEID argTypes[]);
             EM_GENERIC_WIRE_TYPE _emval_call_method(
                 EM_METHOD_CALLER caller,
                 EM_VAL handle,
                 const char* methodName,
                 EM_DESTRUCTORS* destructors,
                 EM_VAR_ARGS argv);
-            bool _emval_has_function(
-                EM_VAL value,
+            void _emval_call_void_method(
+                EM_METHOD_CALLER caller,
+                EM_VAL handle,
                 const char* methodName,
-                internal::TYPEID filter);
+                EM_VAR_ARGS argv);
             EM_VAL _emval_typeof(EM_VAL value);
         }
 
@@ -91,7 +108,7 @@ namespace emscripten {
         private:
             static EM_METHOD_CALLER init_method_caller() {
                 WithPolicies<>::ArgTypeList<ReturnType, Args...> args;
-                return _emval_get_method_caller(args.count, args.types);
+                return _emval_get_method_caller(args.getCount(), args.getTypes());
             }
         };
 
@@ -172,11 +189,11 @@ namespace emscripten {
             ++cursor;
         }
 
-        inline void writeGenericWireType(GenericWireType*& cursor, const memory_view& wt) {
-            cursor[0].w[0].u = static_cast<unsigned>(wt.type);
-            cursor[0].w[1].u = wt.size;
-            cursor[1].w[0].p = wt.data;
-            cursor += 2;
+        template<typename ElementType>
+        inline void writeGenericWireType(GenericWireType*& cursor, const memory_view<ElementType>& wt) {
+            cursor->w[0].u = wt.size;
+            cursor->w[1].p = wt.data;
+            ++cursor;
         }
 
         template<typename T>
@@ -233,15 +250,11 @@ namespace emscripten {
                 auto caller = Signature<void, Args...>::get_method_caller();
 
                 WireTypePack<Args...> argv(std::forward<Args>(args)...);
-                EM_DESTRUCTORS destructors;
-                _emval_call_method(
+                _emval_call_void_method(
                     caller,
                     handle,
                     methodName,
-                    &destructors,
                     argv);
-                DestructorsRunner rd(destructors);
-                // void requires no translation
             }
         };
     }
@@ -276,18 +289,18 @@ namespace emscripten {
         }
 
         static val undefined() {
-            return val(internal::_emval_undefined());
+            return val(internal::EM_VAL(internal::_EMVAL_UNDEFINED));
         }
 
         static val null() {
-            return val(internal::_emval_null());
+            return val(internal::EM_VAL(internal::_EMVAL_NULL));
         }
 
         static val take_ownership(internal::EM_VAL e) {
             return val(e);
         }
 
-        static val global(const char* name) {
+        static val global(const char* name = 0) {
             return val(internal::_emval_get_global(name));
         }
 
@@ -309,7 +322,7 @@ namespace emscripten {
         val() = delete;
 
         explicit val(const char* v)
-            : handle(internal::_emval_new_cstring(v)) 
+            : handle(internal::_emval_new_cstring(v))
         {}
 
         val(val&& v)
@@ -346,44 +359,53 @@ namespace emscripten {
             return val::global("Object")["prototype"]["hasOwnProperty"].call<bool>("call", *this, val(key));
         }
 
+        bool isNull() const {
+            return handle == internal::EM_VAL(internal::_EMVAL_NULL);
+        }
+
+        bool isUndefined() const {
+            return handle == internal::EM_VAL(internal::_EMVAL_UNDEFINED);
+        }
+
+        bool isTrue() const {
+            return handle == internal::EM_VAL(internal::_EMVAL_TRUE);
+        }
+
+        bool isFalse() const {
+            return handle == internal::EM_VAL(internal::_EMVAL_FALSE);
+        }
+
+        bool equals(const val& v) const {
+            return internal::_emval_equals(handle, v.handle);
+        }
+
+        bool strictlyEquals(const val& v) const {
+            return internal::_emval_strictly_equals(handle, v.handle);
+        }
+
         template<typename... Args>
         val new_(Args&&... args) const {
-            using namespace internal;
-
-            WithPolicies<>::ArgTypeList<Args...> argList;
-            WireTypePack<Args...> argv(std::forward<Args>(args)...);
-            // todo: this is awfully similar to operator(), can we
-            // merge them somehow?
-            return val(
-                _emval_new(
-                    handle,
-                    argList.count,
-                    argList.types,
-                    argv));
+            return internalCall(internal::_emval_new,std::forward<Args>(args)...);
         }
-        
+
         template<typename T>
         val operator[](const T& key) const {
             return val(internal::_emval_get_property(handle, val(key).handle));
         }
 
-        template<typename T>
-        void set(const T& key, val v) {
+        template<typename K>
+        void set(const K& key, const val& v) {
             internal::_emval_set_property(handle, val(key).handle, v.handle);
+        }
+
+        template<typename K, typename V>
+        void set(const K& key, const V& value) {
+            internal::_emval_set_property(handle, val(key).handle, val(value).handle);
         }
 
         template<typename... Args>
         val operator()(Args&&... args) {
-            using namespace internal;
-
-            WithPolicies<>::ArgTypeList<Args...> argList;
-            WireTypePack<Args...> argv(std::forward<Args>(args)...);
-            return val(
-                _emval_call(
-                    handle,
-                    argList.count,
-                    argList.types,
-                    argv));
+            return internalCall(internal::_emval_call, std::forward<Args>(args)...);
         }
 
         template<typename ReturnValue, typename... Args>
@@ -391,12 +413,6 @@ namespace emscripten {
             using namespace internal;
 
             return MethodCaller<ReturnValue, Args...>::call(handle, name, std::forward<Args>(args)...);
-        }
-
-        template<typename ClassType>
-        bool has_implementation_defined_function(const char* name) const {
-            using namespace internal;
-            return _emval_has_function(handle, name, TypeID<ClassType>::get());
         }
 
         template<typename T>
@@ -414,11 +430,6 @@ namespace emscripten {
             return fromGenericWireType<T>(result);
         }
 
-        // private: TODO: use a friend?
-        internal::EM_VAL __get_handle() const {
-            return handle;
-        }
-
         val typeof() const {
             return val(_emval_typeof(handle));
         }
@@ -428,6 +439,27 @@ namespace emscripten {
         explicit val(internal::EM_VAL handle)
             : handle(handle)
         {}
+
+        template<typename WrapperType>
+        friend val internal::wrapped_extend(const std::string& , const val& );
+
+        internal::EM_VAL __get_handle() const {
+            return handle;
+        }
+
+        template<typename Implementation, typename... Args>
+        val internalCall(Implementation impl, Args&&... args)const {
+            using namespace internal;
+
+            WithPolicies<>::ArgTypeList<Args...> argList;
+            WireTypePack<Args...> argv(std::forward<Args>(args)...);
+            return val(
+                impl(
+                    handle,
+                    argList.getCount(),
+                    argList.getTypes(),
+                    argv));
+        }
 
         internal::EM_VAL handle;
 

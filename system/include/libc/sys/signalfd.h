@@ -30,11 +30,12 @@ struct signalfd_siginfo {
 	uint32_t  ssi_trapno;
 	int32_t   ssi_status;
 	int32_t   ssi_int;
-	uintptr_t ssi_ptr;
+	uint64_t  ssi_ptr;
 	uint64_t  ssi_utime;
 	uint64_t  ssi_stime;
 	uint64_t  ssi_addr;
-	uint8_t   pad[128-12*4-sizeof(void *)-3*8];
+	uint16_t  ssi_addr_lsb;
+	uint8_t   pad[128-12*4-4*8-2];
 };
 
 #ifdef __cplusplus

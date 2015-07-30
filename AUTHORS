@@ -1,4 +1,4 @@
-﻿The following authors have all licensed their contributions to Emscripten
+The following authors have all licensed their contributions to Emscripten
 under the licensing terms detailed in LICENSE.
 
 (Authors keep copyright of their contributions, of course; they just grant
@@ -9,7 +9,7 @@ a license to everyone to use it as detailed in LICENSE.)
 * Max Shawabkeh <max99x@gmail.com>
 * Sigmund Vik <sigmund_vik@yahoo.com>
 * Jeff Terrace <jterrace@gmail.com>
-* Benoit Tremblay <benoit.tremblay@frimastudio.com>
+* Benoit Tremblay <trembl.ben@gmail.com>
 * Andreas Bergmeier <abergmeier@gmx.net>
 * Ben Schwartz <bens@alum.mit.edu>
 * David Claughton <dave@eclecticdave.com>
@@ -86,7 +86,8 @@ a license to everyone to use it as detailed in LICENSE.)
 * David Barksdale <david.barksdale@adcedosolutions.com>
 * Manfred Manik Nerurkar <nerurkar*at*made-apps.biz> (copyright owned by MADE, GmbH)
 * Joseph Gentle <me@josephg.com>
-* Douglas T. Crosher <dtc-moz@scieneer.com> (copyright owned by Mozilla Founcation)
+* Douglas T. Crosher <dtc-moz@scieneer.com> (copyright owned by Mozilla Foundation)
+* Douglas T. Crosher <info@jsstats.com> (copyright owned by Scieneer Pty Ltd)
 * Soeren Balko <soeren.balko@gmail.com>
 * Ryan Kelly (ryan@rfk.id.au)
 * Michael Lelli <toadking@toadking.com>
@@ -145,3 +146,51 @@ a license to everyone to use it as detailed in LICENSE.)
 * Ningxin Hu <ningxin.hu@intel.com> (copyright owned by Intel)
 * Nicolas Guillemot <nlguillemot@gmail.com>
 * Sathyanarayanan Gunasekaran <gsathya.ceg@gmail.com> (copyright owned by Mozilla Foundation)
+* Nikolay Vorobyov <nik.vorobyov@gmail.com>
+* Jonas Platte <mail@jonasplatte.de>
+* Sebastien Ronsse <sronsse@gmail.com>
+* Glenn R. Wichman <gwichman@zynga.com>
+* Hamish Willee <hamishwillee@gmail.com> (copyright owned by Mozilla Foundation)
+* Sylvain Chevalier <sylvain.chevalier@gmail.com>
+* Nathan Ross <nross.se@gmail.com>
+* Zachary Pomerantz <zmp@umich.edu>
+* Boris Tsarev <boristsarev@gmail.com>
+* Mark Logan <mark@artillery.com> (copyright owned by Artillery Games, Inc.)
+* Коренберг Марк <socketpair@gmail.com>
+* Gauthier Billot <gogoprog@gmail.com>
+* Árpád Goretity <h2co3@h2co3.org>
+* Nicholas Wilson <nicholas@nicholaswilson.me.uk>
+* Aaron Mandle <aaronmandle@gmail.com>
+* Bailey Hayes <Bailey.Hayes@sas.com> (copyright owned by SAS Institute Inc.)
+* Paul Holland <pholland@adobe.com>
+* James Long <longster@gmail.com>
+* David Anderson <danderson@mozilla.com> (copyright owned by Mozilla Foundation)
+* Eric Rannaud <e@nanocritical.com> (copyright owned by Nanocritical Corp.)
+* William Furr <wfurr@google.com> (copyright owned by Google, Inc.)
+* Dan Glastonbury <dglastonbury@mozilla.com> (copyright owned by Mozilla Foundation)
+* Warren Seine <warren.seine@aerys.in> (copyright owned by Aerys SAS)
+* Petr Babicka <babcca@gmail.com>
+* Akira Takahashi <faithandbrave@gmail.com>
+* Victor Costan <costan@gmail.com>
+* Pepijn Van Eeckhoudt <pepijn.vaneeckhoudt@luciad.com> (copyright owned by Luciad NV)
+* Stevie Trujillo <stevie.trujillo@gmail.com>
+* Edward Rudd <urkle@outoforder.cc>
+* Rene Eichhorn <rene.eichhorn1@gmail.com>
+* Nick Desaulniers <nick@mozilla.com> (copyright owned by Mozilla Foundation)
+* Luke Wagner <luke@mozilla.com> (copyright owned by Mozilla Foundation)
+* Matt McCormick <matt.mccormick@kitware.com>
+* Thaddée Tyl <thaddee.tyl@gmail.com>
+* Philipp Wiesemann <philipp.wiesemann@arcor.de>
+* Jan Jongboom <janjongboom@gmail.com> (copyright owned by Telenor Digital AS)
+* Tiago Quelhas <tiagoq@gmail.com>
+* Reinier de Blois <rddeblois@gmail.com>
+* Yuichi Nishiwaki <yuichi.nishiwaki@gmail.com>
+* Jérôme Bernard <jerome.bernard@ercom.fr> (copyright owned by Ercom)
+* Chanhwi Choi <ccwpc@hanmail.net>
+* Fábio Santos <fabiosantosart@gmail.com>
+* Thibaut Despoulain <thibaut@artillery.com> (copyright owned by Artillery Games, Inc.)
+* Wei Tjong Yao <weitjong@gmail.com>
+* Tim Guan-tin Chien <timdream@gmail.com>
+* Krzysztof Jakubowski <nadult@fastmail.fm>
+* Vladimír Vondruš <mosra@centrum.cz>
+* Brion Vibber <brion@pobox.com>

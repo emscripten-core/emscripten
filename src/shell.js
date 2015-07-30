@@ -34,9 +34,20 @@ for (var key in Module) {
 
 // The environment setup code below is customized to use Module.
 // *** Environment setup code ***
-var ENVIRONMENT_IS_NODE = typeof process === 'object' && typeof require === 'function';
 var ENVIRONMENT_IS_WEB = typeof window === 'object';
+var ENVIRONMENT_IS_NODE = typeof process === 'object' && typeof require === 'function' && !ENVIRONMENT_IS_WEB;
+// Three configurations we can be running in:
+// 1) We could be the application main() thread running in the main JS UI thread. (ENVIRONMENT_IS_WORKER == false and ENVIRONMENT_IS_PTHREAD == false)
+// 2) We could be the application main() thread proxied to worker. (with Emscripten -s PROXY_TO_WORKER=1) (ENVIRONMENT_IS_WORKER == true, ENVIRONMENT_IS_PTHREAD == false)
+// 3) We could be an application pthread running in a worker. (ENVIRONMENT_IS_WORKER == true and ENVIRONMENT_IS_PTHREAD == true)
 var ENVIRONMENT_IS_WORKER = typeof importScripts === 'function';
+#if USE_PTHREADS
+var ENVIRONMENT_IS_PTHREAD;
+if (!ENVIRONMENT_IS_PTHREAD) ENVIRONMENT_IS_PTHREAD = false; // ENVIRONMENT_IS_PTHREAD=true will have been preset in pthread-main.js. Make it false in the main runtime thread.
+var PthreadWorkerInit; // Collects together variables that are needed at initialization time for the web workers that host pthreads.
+if (!ENVIRONMENT_IS_PTHREAD) PthreadWorkerInit = {};
+var currentScriptUrl = ENVIRONMENT_IS_WORKER ? undefined : document.currentScript.src;
+#endif
 var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
 
 if (ENVIRONMENT_IS_NODE) {
@@ -70,9 +81,28 @@ if (ENVIRONMENT_IS_NODE) {
     globalEval(read(f));
   };
 
+  if (!Module['thisProgram']) {
+    if (process['argv'].length > 1) {
+      Module['thisProgram'] = process['argv'][1].replace(/\\/g, '/');
+    } else {
+      Module['thisProgram'] = 'unknown-program';
+    }
+  }
+
   Module['arguments'] = process['argv'].slice(2);
 
-  module['exports'] = Module;
+  if (typeof module !== 'undefined') {
+    module['exports'] = Module;
+  }
+
+  process['on']('uncaughtException', function(ex) {
+    // suppress ExitStatus exceptions from showing an error
+    if (!(ex instanceof ExitStatus)) {
+      throw ex;
+    }
+  });
+
+  Module['inspect'] = function () { return '[Emscripten Module object]'; };
 }
 else if (ENVIRONMENT_IS_SHELL) {
   if (!Module['print']) Module['print'] = print;
@@ -85,7 +115,12 @@ else if (ENVIRONMENT_IS_SHELL) {
   }
 
   Module['readBinary'] = function readBinary(f) {
-    return read(f, 'binary');
+    if (typeof readbuffer === 'function') {
+      return new Uint8Array(readbuffer(f));
+    }
+    var data = read(f, 'binary');
+    assert(typeof data === 'object');
+    return data;
   };
 
   if (typeof scriptArgs != 'undefined') {
@@ -93,8 +128,6 @@ else if (ENVIRONMENT_IS_SHELL) {
   } else if (typeof arguments != 'undefined') {
     Module['arguments'] = arguments;
   }
-
-  this['{{{ EXPORT_NAME }}}'] = Module;
 
 #if CLOSURE_COMPILER
   eval("if (typeof gc === 'function' && gc.toString().indexOf('[native code]') > 0) var gc = undefined"); // wipe out the SpiderMonkey shell 'gc' function, which can confuse closure (uses it as a minified name, and it is then initted to a non-falsey value unexpectedly)
@@ -129,10 +162,12 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
     }));
   }
 
-  if (ENVIRONMENT_IS_WEB) {
-    window['{{{ EXPORT_NAME }}}'] = Module;
-  } else {
+  if (ENVIRONMENT_IS_WORKER) {
     Module['load'] = importScripts;
+  }
+
+  if (typeof Module['setWindowTitle'] === 'undefined') {
+    Module['setWindowTitle'] = function(title) { document.title = title };
   }
 }
 else {
@@ -147,7 +182,7 @@ function globalEval(x) {
   throw 'NO_DYNAMIC_EXECUTION was set, cannot eval';
 #endif
 }
-if (!Module['load'] == 'undefined' && Module['read']) {
+if (!Module['load'] && Module['read']) {
   Module['load'] = function load(f) {
     globalEval(Module['read'](f));
   };
@@ -161,6 +196,10 @@ if (!Module['printErr']) {
 if (!Module['arguments']) {
   Module['arguments'] = [];
 }
+if (!Module['thisProgram']) {
+  Module['thisProgram'] = './this.program';
+}
+
 // *** Environment setup code ***
 
 // Closure helpers

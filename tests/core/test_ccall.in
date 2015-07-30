@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <emscripten.h>
 
 extern "C" {
 int get_int() { return 5; }
@@ -16,6 +17,25 @@ int *pointer(int *in) {
   printf("%d\n", *in);
   static int ret = 21;
   return &ret;
+}
+
+// This test checks that ccall restores the stack correctly to whatever it was
+// when ccall was entered.  We save the stack pointer on the heap in stackChecker
+// and verify that ccall restores it correctly.
+struct test_struct {
+  int arg1, arg2, arg3;
+};
+static int* stackChecker = 0;
+int get_stack() { int i; return (int)&i; }
+int uses_stack(test_struct* t1) {
+  if (stackChecker == 0) stackChecker = (int*)malloc(sizeof(int));
+  *stackChecker = get_stack();
+  EM_ASM(Module['ccall']('get_int', 'number'));
+  printf("stack is %s.\n", *stackChecker == get_stack() ? "ok" : "messed up");
+}
+void call_ccall_again() {
+  test_struct t1 = { 1, 2, 3 };
+  uses_stack(&t1);
 }
 }
 

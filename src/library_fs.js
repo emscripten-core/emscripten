@@ -1,9 +1,9 @@
 mergeInto(LibraryManager.library, {
   $FS__deps: ['$ERRNO_CODES', '$ERRNO_MESSAGES', '__setErrNo', '$PATH', '$TTY', '$MEMFS', '$IDBFS', '$NODEFS', 'stdin', 'stdout', 'stderr', 'fflush'],
   $FS__postset: 'FS.staticInit();' +
-                '__ATINIT__.unshift({ func: function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() } });' +
-                '__ATMAIN__.push({ func: function() { FS.ignorePermissions = false } });' +
-                '__ATEXIT__.push({ func: function() { FS.quit() } });' +
+                '__ATINIT__.unshift(function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() });' +
+                '__ATMAIN__.push(function() { FS.ignorePermissions = false });' +
+                '__ATEXIT__.push(function() { FS.quit() });' +
                 // export some names through closure
                 'Module["FS_createFolder"] = FS.createFolder;' +
                 'Module["FS_createPath"] = FS.createPath;' +
@@ -47,6 +47,8 @@ mergeInto(LibraryManager.library, {
     lookupPath: function(path, opts) {
       path = PATH.resolve(FS.cwd(), path);
       opts = opts || {};
+
+      if (!path) return { path: '', node: null };
 
       var defaults = {
         follow_mount: true,
@@ -95,7 +97,7 @@ mergeInto(LibraryManager.library, {
           while (FS.isLink(current.mode)) {
             var link = FS.readlink(current_path);
             current_path = PATH.resolve(PATH.dirname(current_path), link);
-            
+
             var lookup = FS.lookupPath(current_path, { recurse_count: opts.recurse_count });
             current = lookup.node;
 
@@ -159,7 +161,7 @@ mergeInto(LibraryManager.library, {
     lookupNode: function(parent, name) {
       var err = FS.mayLookup(parent);
       if (err) {
-        throw new FS.ErrnoError(err);
+        throw new FS.ErrnoError(err, parent);
       }
       var hash = FS.hashName(parent.id, name);
 #if CASE_INSENSITIVE_FS
@@ -212,11 +214,11 @@ mergeInto(LibraryManager.library, {
             set: function(val) { val ? this.mode |= writeMode : this.mode &= ~writeMode; }
           },
           isFolder: {
-            get: function() { return FS.isDir(this.mode); },
+            get: function() { return FS.isDir(this.mode); }
           },
           isDevice: {
-            get: function() { return FS.isChrdev(this.mode); },
-          },
+            get: function() { return FS.isChrdev(this.mode); }
+          }
         });
       }
 
@@ -309,7 +311,10 @@ mergeInto(LibraryManager.library, {
       return 0;
     },
     mayLookup: function(dir) {
-      return FS.nodePermissions(dir, 'x');
+      var err = FS.nodePermissions(dir, 'x');
+      if (err) return err;
+      if (!dir.node_ops.lookup) return ERRNO_CODES.EACCES;
+      return 0;
     },
     mayCreate: function(dir, name) {
       try {
@@ -422,7 +427,7 @@ mergeInto(LibraryManager.library, {
     // we employ a simple trick: the pointer to a stream is its fd plus 1.  This
     // means that all valid streams have a valid non-zero pointer while allowing
     // the fs for stdin to be the standard value of zero.
-    // 
+    //
     //
     getStreamFromPtr: function(ptr) {
       return FS.streams[ptr - 1];
@@ -607,6 +612,9 @@ mergeInto(LibraryManager.library, {
       var lookup = FS.lookupPath(path, { parent: true });
       var parent = lookup.node;
       var name = PATH.basename(path);
+      if (!name || name === '.' || name === '..') {
+        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+      }
       var err = FS.mayCreate(parent, name);
       if (err) {
         throw new FS.ErrnoError(err);
@@ -638,8 +646,14 @@ mergeInto(LibraryManager.library, {
       return FS.mknod(path, mode, dev);
     },
     symlink: function(oldpath, newpath) {
+      if (!PATH.resolve(oldpath)) {
+        throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
+      }
       var lookup = FS.lookupPath(newpath, { parent: true });
       var parent = lookup.node;
+      if (!parent) {
+        throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
+      }
       var newname = PATH.basename(newpath);
       var err = FS.mayCreate(parent, newname);
       if (err) {
@@ -665,6 +679,7 @@ mergeInto(LibraryManager.library, {
       } catch (e) {
         throw new FS.ErrnoError(ERRNO_CODES.EBUSY);
       }
+      if (!old_dir || !new_dir) throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
       // need to be part of the same mount
       if (old_dir.mount !== new_dir.mount) {
         throw new FS.ErrnoError(ERRNO_CODES.EXDEV);
@@ -817,14 +832,20 @@ mergeInto(LibraryManager.library, {
     readlink: function(path) {
       var lookup = FS.lookupPath(path);
       var link = lookup.node;
+      if (!link) {
+        throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
+      }
       if (!link.node_ops.readlink) {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
-      return link.node_ops.readlink(link);
+      return PATH.resolve(FS.getPath(lookup.node.parent), link.node_ops.readlink(link));
     },
     stat: function(path, dontFollow) {
       var lookup = FS.lookupPath(path, { follow: !dontFollow });
       var node = lookup.node;
+      if (!node) {
+        throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
+      }
       if (!node.node_ops.getattr) {
         throw new FS.ErrnoError(ERRNO_CODES.EPERM);
       }
@@ -932,6 +953,9 @@ mergeInto(LibraryManager.library, {
       });
     },
     open: function(path, flags, mode, fd_start, fd_end) {
+      if (path === "") {
+        throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
+      }
       flags = typeof flags === 'string' ? FS.modeStringToFlags(flags) : flags;
       mode = typeof mode === 'undefined' ? 438 /* 0666 */ : mode;
       if ((flags & {{{ cDefine('O_CREAT') }}})) {
@@ -954,6 +978,7 @@ mergeInto(LibraryManager.library, {
         }
       }
       // perhaps we need to create the node
+      var created = false;
       if ((flags & {{{ cDefine('O_CREAT') }}})) {
         if (node) {
           // if O_CREAT and O_EXCL are set, error out if the node already exists
@@ -963,6 +988,7 @@ mergeInto(LibraryManager.library, {
         } else {
           // node doesn't exist, try to create it
           node = FS.mknod(path, mode, 0);
+          created = true;
         }
       }
       if (!node) {
@@ -972,10 +998,14 @@ mergeInto(LibraryManager.library, {
       if (FS.isChrdev(node.mode)) {
         flags &= ~{{{ cDefine('O_TRUNC') }}};
       }
-      // check permissions
-      var err = FS.mayOpen(node, flags);
-      if (err) {
-        throw new FS.ErrnoError(err);
+      // check permissions, if this is not a file we just created now (it is ok to
+      // create and write to a file with read-only permissions; it is read-only
+      // for later use)
+      if (!created) {
+        var err = FS.mayOpen(node, flags);
+        if (err) {
+          throw new FS.ErrnoError(err);
+        }
       }
       // do truncation if necessary
       if ((flags & {{{ cDefine('O_TRUNC')}}})) {
@@ -1038,7 +1068,9 @@ mergeInto(LibraryManager.library, {
       if (!stream.seekable || !stream.stream_ops.llseek) {
         throw new FS.ErrnoError(ERRNO_CODES.ESPIPE);
       }
-      return stream.stream_ops.llseek(stream, offset, whence);
+      stream.position = stream.stream_ops.llseek(stream, offset, whence);
+      stream.ungotten = [];
+      return stream.position;
     },
     read: function(stream, buffer, offset, length, position) {
       if (length < 0 || position < 0) {
@@ -1122,6 +1154,15 @@ mergeInto(LibraryManager.library, {
       }
       return stream.stream_ops.mmap(stream, buffer, offset, length, position, prot, flags);
     },
+    msync: function(stream, buffer, offset, length, mmapFlags) {
+      if (!stream || !stream.stream_ops.msync) {
+        return 0;
+      }
+      return stream.stream_ops.msync(stream, buffer, offset, length, mmapFlags);
+    },
+    munmap: function(stream) {
+      return 0;
+    },
     ioctl: function(stream, cmd, arg) {
       if (!stream.stream_ops.ioctl) {
         throw new FS.ErrnoError(ERRNO_CODES.ENOTTY);
@@ -1142,11 +1183,7 @@ mergeInto(LibraryManager.library, {
       var buf = new Uint8Array(length);
       FS.read(stream, buf, 0, length, 0);
       if (opts.encoding === 'utf8') {
-        ret = '';
-        var utf8 = new Runtime.UTF8Processor();
-        for (var i = 0; i < length; i++) {
-          ret += utf8.processCChar(buf[i]);
-        }
+        ret = UTF8ArrayToString(buf, 0);
       } else if (opts.encoding === 'binary') {
         ret = buf;
       }
@@ -1162,9 +1199,9 @@ mergeInto(LibraryManager.library, {
       }
       var stream = FS.open(path, opts.flags, opts.mode);
       if (opts.encoding === 'utf8') {
-        var utf8 = new Runtime.UTF8Processor();
-        var buf = new Uint8Array(utf8.processJSString(data));
-        FS.write(stream, buf, 0, buf.length, 0, opts.canOwn);
+        var buf = new Uint8Array(lengthBytesUTF8(data)+1);
+        var actualNumBytes = stringToUTF8Array(data, buf, 0, buf.length);
+        FS.write(stream, buf, 0, actualNumBytes, 0, opts.canOwn);
       } else if (opts.encoding === 'binary') {
         FS.write(stream, data, 0, data.length, 0, opts.canOwn);
       }
@@ -1190,6 +1227,8 @@ mergeInto(LibraryManager.library, {
     },
     createDefaultDirectories: function() {
       FS.mkdir('/tmp');
+      FS.mkdir('/home');
+      FS.mkdir('/home/web_user');
     },
     createDefaultDevices: function() {
       // create /dev
@@ -1197,7 +1236,7 @@ mergeInto(LibraryManager.library, {
       // setup /dev/null
       FS.registerDevice(FS.makedev(1, 3), {
         read: function() { return 0; },
-        write: function() { return 0; }
+        write: function(stream, buffer, offset, length, pos) { return length; }
       });
       FS.mkdev('/dev/null', FS.makedev(1, 3));
       // setup /dev/tty and /dev/tty1
@@ -1207,6 +1246,21 @@ mergeInto(LibraryManager.library, {
       TTY.register(FS.makedev(6, 0), TTY.default_tty1_ops);
       FS.mkdev('/dev/tty', FS.makedev(5, 0));
       FS.mkdev('/dev/tty1', FS.makedev(6, 0));
+      // setup /dev/[u]random
+      var random_device;
+      if (typeof crypto !== 'undefined') {
+        // for modern web browsers
+        var randomBuffer = new Uint8Array(1);
+        random_device = function() { crypto.getRandomValues(randomBuffer); return randomBuffer[0]; };
+      } else if (ENVIRONMENT_IS_NODE) {
+        // for nodejs
+        random_device = function() { return require('crypto').randomBytes(1)[0]; };
+      } else {
+        // default for ES5 platforms
+        random_device = function() { return (Math.random()*256)|0; };
+      }
+      FS.createDevice('/dev', 'random', random_device);
+      FS.createDevice('/dev', 'urandom', random_device);
       // we're not going to emulate the actual shm device,
       // just create the tmp dirs that reside in it commonly
       FS.mkdir('/dev/shm');
@@ -1252,14 +1306,18 @@ mergeInto(LibraryManager.library, {
     },
     ensureErrnoError: function() {
       if (FS.ErrnoError) return;
-      FS.ErrnoError = function ErrnoError(errno) {
-        this.errno = errno;
-        for (var key in ERRNO_CODES) {
-          if (ERRNO_CODES[key] === errno) {
-            this.code = key;
-            break;
+      FS.ErrnoError = function ErrnoError(errno, node) {
+        this.node = node;
+        this.setErrno = function(errno) {
+          this.errno = errno;
+          for (var key in ERRNO_CODES) {
+            if (ERRNO_CODES[key] === errno) {
+              this.code = key;
+              break;
+            }
           }
-        }
+        };
+        this.setErrno(errno);
         this.message = ERRNO_MESSAGES[errno];
 #if ASSERTIONS
         if (this.stack) this.stack = demangleAll(this.stack);
@@ -1504,68 +1562,68 @@ mergeInto(LibraryManager.library, {
           return undefined;
         }
         var chunkOffset = idx % this.chunkSize;
-        var chunkNum = Math.floor(idx / this.chunkSize);
+        var chunkNum = (idx / this.chunkSize)|0;
         return this.getter(chunkNum)[chunkOffset];
       }
       LazyUint8Array.prototype.setDataGetter = function LazyUint8Array_setDataGetter(getter) {
         this.getter = getter;
       }
       LazyUint8Array.prototype.cacheLength = function LazyUint8Array_cacheLength() {
-          // Find length
-          var xhr = new XMLHttpRequest();
-          xhr.open('HEAD', url, false);
-          xhr.send(null);
-          if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
-          var datalength = Number(xhr.getResponseHeader("Content-length"));
-          var header;
-          var hasByteServing = (header = xhr.getResponseHeader("Accept-Ranges")) && header === "bytes";
+        // Find length
+        var xhr = new XMLHttpRequest();
+        xhr.open('HEAD', url, false);
+        xhr.send(null);
+        if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
+        var datalength = Number(xhr.getResponseHeader("Content-length"));
+        var header;
+        var hasByteServing = (header = xhr.getResponseHeader("Accept-Ranges")) && header === "bytes";
 #if SMALL_XHR_CHUNKS
-          var chunkSize = 1024; // Chunk size in bytes
+        var chunkSize = 1024; // Chunk size in bytes
 #else
-          var chunkSize = 1024*1024; // Chunk size in bytes
+        var chunkSize = 1024*1024; // Chunk size in bytes
 #endif
 
-          if (!hasByteServing) chunkSize = datalength;
+        if (!hasByteServing) chunkSize = datalength;
 
-          // Function to get a range from the remote URL.
-          var doXHR = (function(from, to) {
-            if (from > to) throw new Error("invalid range (" + from + ", " + to + ") or no bytes requested!");
-            if (to > datalength-1) throw new Error("only " + datalength + " bytes available! programmer error!");
+        // Function to get a range from the remote URL.
+        var doXHR = (function(from, to) {
+          if (from > to) throw new Error("invalid range (" + from + ", " + to + ") or no bytes requested!");
+          if (to > datalength-1) throw new Error("only " + datalength + " bytes available! programmer error!");
 
-            // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', url, false);
-            if (datalength !== chunkSize) xhr.setRequestHeader("Range", "bytes=" + from + "-" + to);
+          // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
+          var xhr = new XMLHttpRequest();
+          xhr.open('GET', url, false);
+          if (datalength !== chunkSize) xhr.setRequestHeader("Range", "bytes=" + from + "-" + to);
 
-            // Some hints to the browser that we want binary data.
-            if (typeof Uint8Array != 'undefined') xhr.responseType = 'arraybuffer';
-            if (xhr.overrideMimeType) {
-              xhr.overrideMimeType('text/plain; charset=x-user-defined');
-            }
+          // Some hints to the browser that we want binary data.
+          if (typeof Uint8Array != 'undefined') xhr.responseType = 'arraybuffer';
+          if (xhr.overrideMimeType) {
+            xhr.overrideMimeType('text/plain; charset=x-user-defined');
+          }
 
-            xhr.send(null);
-            if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
-            if (xhr.response !== undefined) {
-              return new Uint8Array(xhr.response || []);
-            } else {
-              return intArrayFromString(xhr.responseText || '', true);
-            }
-          });
-          var lazyArray = this;
-          lazyArray.setDataGetter(function(chunkNum) {
-            var start = chunkNum * chunkSize;
-            var end = (chunkNum+1) * chunkSize - 1; // including this byte
-            end = Math.min(end, datalength-1); // if datalength-1 is selected, this is the last block
-            if (typeof(lazyArray.chunks[chunkNum]) === "undefined") {
-              lazyArray.chunks[chunkNum] = doXHR(start, end);
-            }
-            if (typeof(lazyArray.chunks[chunkNum]) === "undefined") throw new Error("doXHR failed!");
-            return lazyArray.chunks[chunkNum];
-          });
+          xhr.send(null);
+          if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
+          if (xhr.response !== undefined) {
+            return new Uint8Array(xhr.response || []);
+          } else {
+            return intArrayFromString(xhr.responseText || '', true);
+          }
+        });
+        var lazyArray = this;
+        lazyArray.setDataGetter(function(chunkNum) {
+          var start = chunkNum * chunkSize;
+          var end = (chunkNum+1) * chunkSize - 1; // including this byte
+          end = Math.min(end, datalength-1); // if datalength-1 is selected, this is the last block
+          if (typeof(lazyArray.chunks[chunkNum]) === "undefined") {
+            lazyArray.chunks[chunkNum] = doXHR(start, end);
+          }
+          if (typeof(lazyArray.chunks[chunkNum]) === "undefined") throw new Error("doXHR failed!");
+          return lazyArray.chunks[chunkNum];
+        });
 
-          this._length = datalength;
-          this._chunkSize = chunkSize;
-          this.lengthKnown = true;
+        this._length = datalength;
+        this._chunkSize = chunkSize;
+        this.lengthKnown = true;
       }
       if (typeof XMLHttpRequest !== 'undefined') {
         if (!ENVIRONMENT_IS_WORKER) throw 'Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc';
@@ -1654,18 +1712,20 @@ mergeInto(LibraryManager.library, {
     // You can also call this with a typed array instead of a url. It will then
     // do preloading for the Image/Audio part, as if the typed array were the
     // result of an XHR that you did manually.
-    createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn) {
+    createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) {
       Browser.init();
       // TODO we should allow people to just pass in a complete filename instead
       // of parent and name being that we just join them anyways
       var fullname = name ? PATH.resolve(PATH.join2(parent, name)) : parent;
+      var dep = getUniqueRunDependency('cp ' + fullname); // might have several active requests for the same fullname
       function processData(byteArray) {
         function finish(byteArray) {
+          if (preFinish) preFinish();
           if (!dontCreateFile) {
             FS.createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
           }
           if (onload) onload();
-          removeRunDependency('cp ' + fullname);
+          removeRunDependency(dep);
         }
         var handled = false;
         Module['preloadPlugins'].forEach(function(plugin) {
@@ -1673,14 +1733,14 @@ mergeInto(LibraryManager.library, {
           if (plugin['canHandle'](fullname)) {
             plugin['handle'](byteArray, fullname, finish, function() {
               if (onerror) onerror();
-              removeRunDependency('cp ' + fullname);
+              removeRunDependency(dep);
             });
             handled = true;
           }
         });
         if (!handled) finish(byteArray);
       }
-      addRunDependency('cp ' + fullname);
+      addRunDependency(dep);
       if (typeof url == 'string') {
         Browser.asyncLoad(url, function(byteArray) {
           processData(byteArray);
@@ -1736,7 +1796,7 @@ mergeInto(LibraryManager.library, {
       openRequest.onerror = onerror;
     },
 
-    // asychronously loads a file from IndexedDB.
+    // asynchronously loads a file from IndexedDB.
     loadFilesFromDB: function(paths, onload, onerror) {
       onload = onload || function(){};
       onerror = onerror || function(){};

@@ -7,7 +7,7 @@ target triple = "asmjs-unknown-emscripten"
 define void @_Z10printFloatf(float %f) #0 {
 entry:
   %conv = fpext float %f to double
-  %call = tail call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([11 x i8]* @.str, i32 0, i32 0), double %conv)
+  %call = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str, i32 0, i32 0), double %conv)
   ret void
 }
 

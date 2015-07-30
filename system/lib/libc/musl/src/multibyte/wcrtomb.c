@@ -4,12 +4,8 @@
  * unnecessary.
  */
 
-#include <stdlib.h>
-#include <inttypes.h>
 #include <wchar.h>
 #include <errno.h>
-
-#include "internal.h"
 
 size_t wcrtomb(char *restrict s, wchar_t wc, mbstate_t *restrict st)
 {

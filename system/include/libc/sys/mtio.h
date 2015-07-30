@@ -102,7 +102,7 @@ struct mt_tape_info {
 	{MT_ISEVEREX_FT40A,	"Everex FT40A, QIC-40"},		      \
 	{MT_ISSCSI1,		"Generic SCSI-1 tape"},			      \
 	{MT_ISSCSI2,		"Generic SCSI-2 tape"},			      \
-	{0, NULL}							      \
+	{0, 0}								      \
 }
 
 struct mtpos {

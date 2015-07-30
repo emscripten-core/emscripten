@@ -5,11 +5,7 @@
  */
 
 #include <stdlib.h>
-#include <inttypes.h>
 #include <wchar.h>
-#include <errno.h>
-
-#include "internal.h"
 
 int wctomb(char *s, wchar_t wc)
 {

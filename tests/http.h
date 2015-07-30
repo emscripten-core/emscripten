@@ -21,7 +21,8 @@ class http {
 		enum Status {
 			ST_PENDING = 0,
 			ST_FAILED,
-			ST_OK
+			ST_OK,
+			ST_ABORTED,
 		};
 
 		enum RequestType {
@@ -37,9 +38,9 @@ class http {
     	static void RegisterAsExtension(bool regis);
     	
     	// Callback
-		static void onLoaded(void* parent, const char * file);
-		static void onError(void* parent, int statuserror);
-		static void onProgress(void* parent, int progress);
+		static void onLoaded(unsigned handle, void* parent, const char * file);
+		static void onError(unsigned handle, void* parent, int statuserror);
+		static void onProgress(unsigned handle, void* parent, int progress);
         
         // Constructeur    
 		http(const char* hostname, int requestType, const char* targetFileName = "");
@@ -51,6 +52,11 @@ class http {
 		* Effectue la requete
 		*/
 		void runRequest(const char* page, int assync);
+
+		/**
+		* Abort the request
+		*/
+		void abortRequest();
 
 		/**
 		* Accede a la reponse
@@ -127,6 +133,9 @@ class http {
 
 		// mode assyncrone courant
 		AssyncMode  _assync;
+
+		// request handle
+		unsigned _handle;
 
 };
 

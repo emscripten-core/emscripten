@@ -7,7 +7,7 @@ target triple = "asmjs-unknown-emscripten"
 ; Function Attrs: nounwind
 define i32 @main() #0 {
   %1 = fmul double 0x370000000000000, 1.0e+300
-  %2 = tail call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([4 x i8]* @.str, i32 0, i32 0), double %1)
+  %2 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), double %1)
   ret i32 0
 }
 

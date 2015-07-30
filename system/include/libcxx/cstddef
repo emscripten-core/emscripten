@@ -35,12 +35,6 @@ Types:
 
 #include <__config>
 
-#ifdef __GLIBC__
-#define __need_NULL
-#define __need_ptrdiff_t
-#define __need_size_t
-#endif  // __GLIBC__
-
 #include <stddef.h>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
@@ -52,7 +46,12 @@ _LIBCPP_BEGIN_NAMESPACE_STD
 using ::ptrdiff_t;
 using ::size_t;
 
+#if defined(__CLANG_MAX_ALIGN_T_DEFINED) || defined(_GCC_MAX_ALIGN_T)
+// Re-use the compiler's <stddef.h> max_align_t where possible.
+using ::max_align_t;
+#else
 typedef long double max_align_t;
+#endif
 
 #ifdef _LIBCPP_HAS_NO_NULLPTR
 

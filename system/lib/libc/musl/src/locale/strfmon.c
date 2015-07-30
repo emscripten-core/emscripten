@@ -3,7 +3,6 @@
 #include <stdarg.h>
 #include <monetary.h>
 #include <errno.h>
-#include <stdarg.h>
 
 static ssize_t vstrfmon_l(char *s, size_t n, locale_t loc, const char *fmt, va_list ap)
 {

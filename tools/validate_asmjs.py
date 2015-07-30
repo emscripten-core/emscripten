@@ -14,28 +14,27 @@
 import subprocess, sys, re, tempfile, os, time
 import shared
 
-# Looks up SpiderMonkey engine using the variable SPIDERMONKEY_ENGINE in ~/.emscripten, and if not set up there, via PATH.
-def find_spidermonkey_engine():
-  sm_engine = shared.SPIDERMONKEY_ENGINE if hasattr(shared, 'SPIDERMONKEY_ENGINE') else ['']
-  if not sm_engine or len(sm_engine[0]) == 0 or not os.path.exists(sm_engine[0]):
-    sm_engine[0] = shared.Building.which('js')
-    if sm_engine[0] == None:
-      return ['js-not-found']
-  return sm_engine
-
 # Given a .js file, returns True/False depending on if that file is valid asm.js
 def validate_asmjs_jsfile(filename, muteOutput):
-  process = subprocess.Popen(find_spidermonkey_engine() + ['-c', filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
+  cmd = shared.SPIDERMONKEY_ENGINE + ['-c', filename]
+  if not shared.SPIDERMONKEY_ENGINE or cmd[0] == 'js-not-found' or len(cmd[0].strip()) == 0:
+    print >> sys.stderr, 'Could not find SpiderMonkey engine! Please set tis location to SPIDERMONKEY_ENGINE in your ~/.emscripten configuration file!'
+    return False
+  try:
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
+  except Exception, e:
+    print >> sys.stderr, 'Executing command ' + str(cmd) + ' failed due to an exception: ' + str(e) + '!'
+    return False
   (stdout, stderr) = process.communicate()
   if not muteOutput:
     if len(stdout.strip()) > 0:
       print stdout.strip()
     if len(stderr.strip()) > 0:
       # Pretty-print the output not to contain a spurious warning.
-      stderr = stderr.replace('warning: successfully compiled asm.js', ' successfully compiled asm.js')
-
+      warning_re = re.compile(re.escape('warning: successfully compiled asm.js'), re.IGNORECASE)
+      stderr = warning_re.sub(' successfully compiled asm.js', stderr)
       print >> sys.stderr, stderr.strip()
-  if 'successfully compiled asm.js' in stderr:
+  if 'successfully compiled asm.js' in stderr.lower():
     return True
   else:
     return False

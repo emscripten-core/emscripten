@@ -48,7 +48,7 @@ class WebsockifyServerHarness:
     # NOTE empty filename support is a hack to support
     # the current test_enet
     if self.filename:
-      Popen([CLANG_CC, path_from_root('tests', self.filename), '-o', 'server', '-DSOCKK=%d' % self.target_port] + self.args).communicate()
+      Popen([CLANG_CC, path_from_root('tests', self.filename), '-o', 'server', '-DSOCKK=%d' % self.target_port] + get_clang_native_args() + self.args).communicate()
       process = Popen([os.path.abspath('server')])
       self.pids.append(process.pid)
 
@@ -80,13 +80,13 @@ class CompiledServerHarness:
   def __enter__(self):
     # assuming this is only used for WebSocket tests at the moment, validate that
     # the ws module is installed
-    child = Popen(listify(NODE_JS) + ['-e', 'require("ws");'])
+    child = Popen(NODE_JS + ['-e', 'require("ws");'])
     child.communicate()
     assert child.returncode == 0, 'ws module for Node.js not installed. Please run \'npm install\' from %s' % EMSCRIPTEN_ROOT
 
     # compile the server
     Popen([PYTHON, EMCC, path_from_root('tests', self.filename), '-o', 'server.js', '-DSOCKK=%d' % self.listen_port] + self.args).communicate()
-    process = Popen(listify(NODE_JS) + ['server.js'])
+    process = Popen(NODE_JS + ['server.js'])
     self.pids.append(process.pid)
 
   def __exit__(self, *args, **kwargs):
@@ -100,7 +100,13 @@ class CompiledServerHarness:
     # we can't truly test datagram sockets until we have
     # proper listen server support.
 
+def filter_harnesses(harnesses):
+  # XXX avoid websockify for now due to intermittent errors. see issue #2700
+  return filter(lambda harness: (harness[0].__class__ if type(harness) is tuple else harness.__class__) is not WebsockifyServerHarness, harnesses)
+
 class sockets(BrowserCore):
+  emcc_args = []
+
   def test_inet(self):
     src = r'''
       #include <stdio.h>
@@ -151,8 +157,6 @@ class sockets(BrowserCore):
     self.do_run(src, '120.86.52.18\n120.86.52.18\n')
 
   def test_inet4(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
-
     src = r'''
       #include <stdio.h>
       #include <arpa/inet.h>
@@ -243,10 +247,32 @@ class sockets(BrowserCore):
       # The following forces non-NULL addr and addlen parameters for the accept call
       (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1'], 49163), 0)
     ]
+    harnesses = filter_harnesses(harnesses)
 
     for harness, datagram in harnesses:
       with harness:
         self.btest(os.path.join('sockets', 'test_sockets_echo_client.c'), expected='0', args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram, sockets_include])
+
+  def test_sockets_async_echo(self):
+    # Run with ./runner.py sockets.test_sockets_async_echo
+    sockets_include = '-I'+path_from_root('tests', 'sockets')
+
+    # Websockify-proxied servers can't run dgram tests
+    harnesses = [
+      (WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_ASYNC=1'], 49165), 0),
+      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0', '-DTEST_ASYNC=1'], 49166), 0),
+      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=1', '-DTEST_ASYNC=1'], 49167), 1),
+      # The following forces non-NULL addr and addlen parameters for the accept call
+      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0', '-DTEST_ACCEPT_ADDR=1', '-DTEST_ASYNC=1'], 49168), 0)
+    ]
+    #harnesses = filter_harnesses(harnesses)
+
+    for harness, datagram in harnesses:
+      with harness:
+        self.btest(os.path.join('sockets', 'test_sockets_echo_client.c'), expected='0', args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram, '-DTEST_ASYNC=1', sockets_include])
+
+    # Deliberately attempt a connection on a port that will fail to test the error callback and getsockopt
+    self.btest(os.path.join('sockets', 'test_sockets_echo_client.c'), expected='0', args=['-DSOCKK=49169', '-DTEST_ASYNC=1', sockets_include])
 
   def test_sockets_echo_bigdata(self):
     sockets_include = '-I'+path_from_root('tests', 'sockets')
@@ -266,6 +292,7 @@ class sockets(BrowserCore):
       (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0'], 49171), 0),
       (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=1'], 49172), 1)
     ]
+    harnesses = filter_harnesses(harnesses)
 
     for harness, datagram in harnesses:
       with harness:
@@ -298,6 +325,7 @@ class sockets(BrowserCore):
         self.btest(os.path.join('sockets', 'test_sockets_select_server_closes_connection_client_rw.c'), expected='266', args=[sockets_include, '-DSOCKK=%d' % harness.listen_port])
 
   def test_enet(self):
+    # this is also a good test of raw usage of emconfigure and emmake
     try_delete(self.in_dir('enet'))
     shutil.copytree(path_from_root('tests', 'enet'), self.in_dir('enet'))
     pwd = os.getcwd()
@@ -338,7 +366,7 @@ class sockets(BrowserCore):
   #       finally:
   #         clean_pids(pids);
 
-  def test_webrtc(self):
+  def zzztest_webrtc(self): # XXX see src/settings.js, this is disabled pending investigation
     host_src = 'webrtc_host.c'
     peer_src = 'webrtc_peer.c'
 
@@ -358,7 +386,7 @@ class sockets(BrowserCore):
     open(os.path.join(self.get_dir(), 'host_pre.js'), 'w').write('''
       var Module = {
         webrtc: {
-          broker: 'http://localhost:8080',
+          broker: 'http://localhost:8182',
           session: undefined,
           onpeer: function(peer, route) {
             window.open('http://localhost:8888/peer.html?' + route);
@@ -382,7 +410,7 @@ class sockets(BrowserCore):
     open(os.path.join(self.get_dir(), 'peer_pre.js'), 'w').write('''
       var Module = {
         webrtc: {
-          broker: 'http://localhost:8080',
+          broker: 'http://localhost:8182',
           session: window.location.toString().split('?')[1],
           onpeer: function(peer, route) {
             peer.connect(Module['webrtc']['session']);
@@ -405,7 +433,7 @@ class sockets(BrowserCore):
 
     # note: you may need to run this manually yourself, if npm is not in the path, or if you need a version that is not in the path
     Popen(['npm', 'install', path_from_root('tests', 'sockets', 'p2p')]).communicate()
-    broker = Popen(listify(NODE_JS) + [path_from_root('tests', 'sockets', 'p2p', 'broker', 'p2p-broker.js')])
+    broker = Popen(NODE_JS + [path_from_root('tests', 'sockets', 'p2p', 'broker', 'p2p-broker.js')])
 
     expected = '1'
     self.run_browser(host_outfile, '.', ['/report_result?' + e for e in expected])
@@ -425,6 +453,7 @@ class sockets(BrowserCore):
       (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0'], 59162), 0),
       (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=1'], 59164), 1)
     ]
+    harnesses = filter_harnesses(harnesses)
 
     # Basic test of node client against both a Websockified and compiled echo server.
     for harness, datagram in harnesses:
@@ -438,23 +467,23 @@ class sockets(BrowserCore):
     # server because as long as the subprotocol list contains binary it will configure itself to accept binary
     # This test also checks that the connect url contains the correct subprotocols.
     print "\nTesting compile time WebSocket configuration.\n"
-    for harness in [
+    for harness in filter_harnesses([
       WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 59166)
-    ]:
+    ]):
       with harness:
         Popen([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_sockets_echo_client.c'), '-o', 'client.js', '-s', 'SOCKET_DEBUG=1', '-s', 'WEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59166', '-DREPORT_RESULT=int dummy'], stdout=PIPE, stderr=PIPE).communicate()
 
         out = run_js('client.js', engine=NODE_JS, full_output=True)
         self.assertContained('do_msg_read: read 14 bytes', out)
-        self.assertContained('connect: ws://127.0.0.1:59166, base64,binary', out)
+        self.assertContained(['connect: ws://127.0.0.1:59166, base64,binary', 'connect: ws://127.0.0.1:59166/, base64,binary'], out)
 
     # Test against a Websockified server with runtime WebSocket configuration. We specify both url and subprotocol.
     # In this test we have *deliberately* used the wrong port '-DSOCKK=12345' to configure the echo_client.c, so
     # the connection would fail without us specifying a valid WebSocket URL in the configuration.
     print "\nTesting runtime WebSocket configuration.\n"
-    for harness in [
+    for harness in filter_harnesses([
       WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 59168)
-    ]:
+    ]):
       with harness:
         open(os.path.join(self.get_dir(), 'websocket_pre.js'), 'w').write('''
         var Module = {

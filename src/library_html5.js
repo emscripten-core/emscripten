@@ -28,11 +28,11 @@ var LibraryJSEvents = {
 
     registerRemoveEventListeners: function() {
       if (!JSEvents.removeEventListenersRegistered) {
-      __ATEXIT__.push({ func: function() {
+      __ATEXIT__.push(function() {
           for(var i = JSEvents.eventHandlers.length-1; i >= 0; --i) {
             JSEvents._removeHandler(i);
           }
-         } });
+         });
         JSEvents.removeEventListenersRegistered = true;
       }
     },
@@ -125,6 +125,16 @@ var LibraryJSEvents = {
 
     isInternetExplorer: function() { return navigator.userAgent.indexOf('MSIE') !== -1 || navigator.appVersion.indexOf('Trident/') > 0; },
 
+    // Removes all event handlers on the given DOM element of the given type. Pass in eventTypeString == undefined/null to remove all event handlers regardless of the type.
+    removeAllHandlersOnTarget: function(target, eventTypeString) {
+      for(var i = 0; i < JSEvents.eventHandlers.length; ++i) {
+        if (JSEvents.eventHandlers[i].target == target && 
+          (!eventTypeString || eventTypeString == JSEvents.eventHandlers[i].eventTypeString)) {
+           JSEvents._removeHandler(i--);
+         }
+      }
+    },
+
     _removeHandler: function(i) {
       var h = JSEvents.eventHandlers[i];
       h.target.removeEventListener(h.eventTypeString, h.eventListenerFunc, h.useCapture);
@@ -197,8 +207,15 @@ var LibraryJSEvents = {
       JSEvents.registerOrRemoveHandler(eventHandler);
     },
 
-    fillMouseEventData: function(eventStruct, e) {
-      var rect = Module['canvas'].getBoundingClientRect();
+    getBoundingClientRectOrZeros: function(target) {
+      return target.getBoundingClientRect ? target.getBoundingClientRect() : { left: 0, top: 0 };
+    },
+
+    // Copies mouse event data from the given JS mouse event 'e' to the specified Emscripten mouse event structure in the HEAP.
+    // eventStruct: the structure to populate.
+    // e: The JS mouse event to read data from.
+    // target: Specifies a target DOM element that will be used as the reference to populate targetX and targetY parameters.
+    fillMouseEventData: function(eventStruct, e, target) {
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.timestamp, 'JSEvents.tick()', 'double') }}};
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.screenX, 'e.screenX', 'i32') }}};
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.screenY, 'e.screenY', 'i32') }}};
@@ -212,8 +229,23 @@ var LibraryJSEvents = {
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.buttons, 'e.buttons', 'i16') }}};
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementX, 'e["movementX"] || e["mozMovementX"] || e["webkitMovementX"] || (e.screenX-JSEvents.previousScreenX)', 'i32') }}};
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementY, 'e["movementY"] || e["mozMovementY"] || e["webkitMovementY"] || (e.screenY-JSEvents.previousScreenY)', 'i32') }}};
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasX, 'e.clientX - rect.left', 'i32') }}};
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasY, 'e.clientY - rect.top', 'i32') }}};
+
+      if (Module['canvas']) {
+        var rect = Module['canvas'].getBoundingClientRect();
+        {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasX, 'e.clientX - rect.left', 'i32') }}};
+        {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasY, 'e.clientY - rect.top', 'i32') }}};
+      } else { // Canvas is not initialized, return 0.
+        {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasX, '0', 'i32') }}};
+        {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasY, '0', 'i32') }}};
+      }
+      if (target) {
+        var rect = JSEvents.getBoundingClientRectOrZeros(target);
+        {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetX, 'e.clientX - rect.left', 'i32') }}};
+        {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetY, 'e.clientY - rect.top', 'i32') }}};        
+      } else { // No specific target passed, return 0.
+        {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetX, '0', 'i32') }}};
+        {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetY, '0', 'i32') }}};
+      }
       JSEvents.previousScreenX = e.screenX;
       JSEvents.previousScreenY = e.screenY;
     },
@@ -222,9 +254,10 @@ var LibraryJSEvents = {
       if (!JSEvents.mouseEvent) {
         JSEvents.mouseEvent = _malloc( {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}} );
       }
+      target = JSEvents.findEventTarget(target);
       var handlerFunc = function(event) {
         var e = event || window.event;
-        JSEvents.fillMouseEventData(JSEvents.mouseEvent, e);
+        JSEvents.fillMouseEventData(JSEvents.mouseEvent, e, target);
         var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.mouseEvent, userData]);
         if (shouldCancel) {
           e.preventDefault();
@@ -232,8 +265,8 @@ var LibraryJSEvents = {
       };
 
       var eventHandler = {
-        target: JSEvents.findEventTarget(target),
-        allowsDeferredCalls: eventTypeString != 'mousemove', // Mouse move events do not allow fullscreen/pointer lock requests to be handled in them!
+        target: target,
+        allowsDeferredCalls: eventTypeString != 'mousemove' && eventTypeString != 'mouseenter' && eventTypeString != 'mouseleave', // Mouse move events do not allow fullscreen/pointer lock requests to be handled in them!
         eventTypeString: eventTypeString,
         callbackfunc: callbackfunc,
         handlerFunc: handlerFunc,
@@ -248,10 +281,11 @@ var LibraryJSEvents = {
       if (!JSEvents.wheelEvent) {
         JSEvents.wheelEvent = _malloc( {{{ C_STRUCTS.EmscriptenWheelEvent.__size__ }}} );
       }
+      target = JSEvents.findEventTarget(target);
       // The DOM Level 3 events spec event 'wheel'
       var wheelHandlerFunc = function(event) {
         var e = event || window.event;
-        JSEvents.fillMouseEventData(JSEvents.wheelEvent, e);
+        JSEvents.fillMouseEventData(JSEvents.wheelEvent, e, target);
         {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaX, 'e["deltaX"]', 'double') }}};
         {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaY, 'e["deltaY"]', 'double') }}};
         {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaZ, 'e["deltaZ"]', 'double') }}};
@@ -264,7 +298,7 @@ var LibraryJSEvents = {
       // The 'mousewheel' event as implemented in Safari 6.0.5
       var mouseWheelHandlerFunc = function(event) {
         var e = event || window.event;
-        JSEvents.fillMouseEventData(JSEvents.wheelEvent, e);
+        JSEvents.fillMouseEventData(JSEvents.wheelEvent, e, target);
         {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaX, 'e["wheelDeltaX"]', 'double') }}};
         {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaY, '-e["wheelDeltaY"] /* Invert to unify direction with the DOM Level 3 wheel event. */', 'double') }}};
         {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaZ, '0 /* Not available */', 'double') }}};
@@ -276,7 +310,7 @@ var LibraryJSEvents = {
       };
 
       var eventHandler = {
-        target: JSEvents.findEventTarget(target),
+        target: target,
         allowsDeferredCalls: true,
         eventTypeString: eventTypeString,
         callbackfunc: callbackfunc,
@@ -562,7 +596,67 @@ var LibraryJSEvents = {
       JSEvents.registerOrRemoveHandler(eventHandler);
     },
 
-    requestFullscreen: function(target) {
+    resizeCanvasForFullscreen: function(target, strategy) {
+      var restoreOldStyle = __registerRestoreOldStyle(target);
+      var cssWidth = strategy.softFullscreen ? window.innerWidth : screen.width;
+      var cssHeight = strategy.softFullscreen ? window.innerHeight : screen.height;
+      var rect = target.getBoundingClientRect();
+      var windowedCssWidth = rect.right - rect.left;
+      var windowedCssHeight = rect.bottom - rect.top;
+      var windowedRttWidth = target.width;
+      var windowedRttHeight = target.height;
+
+      if (strategy.scaleMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_SCALE_CENTER') }}}) {
+        __setLetterbox(target, (cssHeight - windowedCssHeight) / 2, (cssWidth - windowedCssWidth) / 2);
+        cssWidth = windowedCssWidth;
+        cssHeight = windowedCssHeight;
+      } else if (strategy.scaleMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_SCALE_ASPECT') }}}) {
+        if (cssWidth*windowedRttHeight < windowedRttWidth*cssHeight) {
+          var desiredCssHeight = windowedRttHeight * cssWidth / windowedRttWidth;
+          __setLetterbox(target, (cssHeight - desiredCssHeight) / 2, 0);
+          cssHeight = desiredCssHeight;
+        } else {
+          var desiredCssWidth = windowedRttWidth * cssHeight / windowedRttHeight;
+          __setLetterbox(target, 0, (cssWidth - desiredCssWidth) / 2);
+          cssWidth = desiredCssWidth;
+        }
+      }
+
+      // If we are adding padding, must choose a background color or otherwise Chrome will give the
+      // padding a default white color. Do it only if user has not customized their own background color.
+      if (!target.style.backgroundColor) target.style.backgroundColor = 'black';
+      // IE11 does the same, but requires the color to be set in the document body.
+      if (!document.body.style.backgroundColor) document.body.style.backgroundColor = 'black'; // IE11
+      // Firefox always shows black letterboxes independent of style color.
+
+      target.style.width = cssWidth + 'px';
+      target.style.height = cssHeight + 'px';
+
+      if (strategy.filteringMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_FILTERING_NEAREST') }}}) {
+        target.style.imageRendering = 'optimizeSpeed';
+        target.style.imageRendering = '-moz-crisp-edges';
+        target.style.imageRendering = '-o-crisp-edges';
+        target.style.imageRendering = '-webkit-optimize-contrast';
+        target.style.imageRendering = 'optimize-contrast';
+        target.style.imageRendering = 'crisp-edges';
+        target.style.imageRendering = 'pixelated';
+      }
+
+      var dpiScale = (strategy.canvasResolutionScaleMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF') }}}) ? window.devicePixelRatio : 1;
+      if (strategy.canvasResolutionScaleMode != {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE') }}}) {
+        target.width = cssWidth * dpiScale;
+        target.height = cssHeight * dpiScale;
+        if (target.GLctxObject) target.GLctxObject.GLctx.viewport(0, 0, target.width, target.height);
+      }
+      return restoreOldStyle;
+    },
+
+    requestFullscreen: function(target, strategy) {
+      // EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT + EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE is a mode where no extra logic is performed to the DOM elements.
+      if (strategy.scaleMode != {{{ cDefine('EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT') }}} || strategy.canvasResolutionScaleMode != {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE') }}}) {
+        JSEvents.resizeCanvasForFullscreen(target, strategy);
+      }
+
       if (target.requestFullscreen) {
         target.requestFullscreen();
       } else if (target.msRequestFullscreen) {
@@ -580,6 +674,11 @@ var LibraryJSEvents = {
           return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
         }
       }
+
+      if (strategy.canvasResizedCallback) {
+        Runtime.dynCall('iiii', strategy.canvasResizedCallback, [{{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, strategy.canvasResizedCallbackUserData]);
+      }
+
       return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
     },
 
@@ -693,6 +792,8 @@ var LibraryJSEvents = {
         JSEvents.touchEvent = _malloc( {{{ C_STRUCTS.EmscriptenTouchEvent.__size__ }}} );
       }
 
+      target = JSEvents.findEventTarget(target);
+
       var handlerFunc = function(event) {
         var e = event || window.event;
 
@@ -717,7 +818,8 @@ var LibraryJSEvents = {
         {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.altKey, 'e.altKey', 'i32') }}};
         {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.metaKey, 'e.metaKey', 'i32') }}};
         ptr += {{{ C_STRUCTS.EmscriptenTouchEvent.touches }}}; // Advance to the start of the touch array.
-        var rect = Module['canvas'].getBoundingClientRect();
+        var canvasRect = Module['canvas'] ? Module['canvas'].getBoundingClientRect() : undefined;
+        var targetRect = JSEvents.getBoundingClientRectOrZeros(target);
         var numTouches = 0;
         for(var i in touches) {
           var t = touches[i];
@@ -730,8 +832,16 @@ var LibraryJSEvents = {
           {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.pageY, 't.pageY', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.isChanged, 't.changed', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.onTarget, 't.onTarget', 'i32') }}};
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasX, 't.clientX - rect.left', 'i32') }}};
-          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasY, 't.clientY - rect.top', 'i32') }}};
+          if (canvasRect) {
+            {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasX, 't.clientX - canvasRect.left', 'i32') }}};
+            {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasY, 't.clientY - canvasRect.top', 'i32') }}};
+          } else {
+            {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasX, '0', 'i32') }}};
+            {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasY, '0', 'i32') }}};            
+          }
+          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.targetX, 't.clientX - targetRect.left', 'i32') }}};
+          {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.targetY, 't.clientY - targetRect.top', 'i32') }}};
+          
           ptr += {{{ C_STRUCTS.EmscriptenTouchPoint.__size__ }}};
 
           if (++numTouches >= 32) {
@@ -747,7 +857,7 @@ var LibraryJSEvents = {
       };
 
       var eventHandler = {
-        target: JSEvents.findEventTarget(target),
+        target: target,
         allowsDeferredCalls: false, // XXX Currently disabled, see bug https://bugzilla.mozilla.org/show_bug.cgi?id=966493
         // Once the above bug is resolved, enable the following condition if possible:
         // allowsDeferredCalls: eventTypeString == 'touchstart',
@@ -765,10 +875,18 @@ var LibraryJSEvents = {
         {{{ makeSetValue('eventStruct+i*8', C_STRUCTS.EmscriptenGamepadEvent.axis, 'e.axes[i]', 'double') }}};
       }
       for(var i = 0; i < e.buttons.length; ++i) {
-        {{{ makeSetValue('eventStruct+i*8', C_STRUCTS.EmscriptenGamepadEvent.analogButton, 'e.buttons[i].value', 'double') }}};
+        if (typeof(e.buttons[i]) === 'object') {
+          {{{ makeSetValue('eventStruct+i*8', C_STRUCTS.EmscriptenGamepadEvent.analogButton, 'e.buttons[i].value', 'double') }}};
+        } else {
+          {{{ makeSetValue('eventStruct+i*8', C_STRUCTS.EmscriptenGamepadEvent.analogButton, 'e.buttons[i]', 'double') }}};
+        }
       }
       for(var i = 0; i < e.buttons.length; ++i) {
-        {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i].pressed', 'i32') }}};
+        if (typeof(e.buttons[i]) === 'object') {
+          {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i].pressed', 'i32') }}};
+        } else {
+          {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i] == 1.0', 'i32') }}};
+        }
       }
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.connected, 'e.connected', 'i32') }}};
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.index, 'e.index', 'i32') }}};
@@ -933,6 +1051,26 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  emscripten_set_mouseenter_callback: function(target, userData, useCapture, callbackfunc) {
+    JSEvents.registerMouseEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_MOUSEENTER') }}}, "mouseenter");
+    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+  },
+
+  emscripten_set_mouseleave_callback: function(target, userData, useCapture, callbackfunc) {
+    JSEvents.registerMouseEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_MOUSELEAVE') }}}, "mouseleave");
+    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+  },
+
+  emscripten_set_mouseover_callback: function(target, userData, useCapture, callbackfunc) {
+    JSEvents.registerMouseEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_MOUSEOVER') }}}, "mouseover");
+    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+  },
+
+  emscripten_set_mouseout_callback: function(target, userData, useCapture, callbackfunc) {
+    JSEvents.registerMouseEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_MOUSEOUT') }}}, "mouseout");
+    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+  },
+
   emscripten_get_mouse_status: function(mouseState) {
     if (!JSEvents.mouseEvent) return {{{ cDefine('EMSCRIPTEN_RESULT_NO_DATA') }}};
     // HTML5 does not really have a polling API for mouse events, so implement one manually by
@@ -1085,8 +1223,178 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  // https://developer.mozilla.org/en-US/docs/Web/Guide/API/DOM/Using_full_screen_mode
-  emscripten_request_fullscreen: function(target, deferUntilInEventHandler) {
+  _registerRestoreOldStyle: function(canvas) {
+    var oldWidth = canvas.width;
+    var oldHeight = canvas.height;
+    var oldCssWidth = canvas.style.width;
+    var oldCssHeight = canvas.style.height;
+    var oldBackgroundColor = canvas.style.backgroundColor; // Chrome reads color from here.
+    var oldDocumentBackgroundColor = document.body.style.backgroundColor; // IE11 reads color from here.
+    // Firefox always has black background color.
+    var oldPaddingLeft = canvas.style.paddingLeft; // Chrome, FF, Safari
+    var oldPaddingRight = canvas.style.paddingRight;
+    var oldPaddingTop = canvas.style.paddingTop;
+    var oldPaddingBottom = canvas.style.paddingBottom;
+    var oldMarginLeft = canvas.style.marginLeft; // IE11
+    var oldMarginRight = canvas.style.marginRight;
+    var oldMarginTop = canvas.style.marginTop;
+    var oldMarginBottom = canvas.style.marginBottom;
+    var oldDocumentBodyMargin = document.body.style.margin;
+    var oldDocumentOverflow = document.documentElement.style.overflow; // Chrome, Firefox
+    var oldDocumentScroll = document.body.scroll; // IE
+    var oldImageRendering = canvas.style.imageRendering;
+
+    function restoreOldStyle() {
+      var fullscreenElement = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+      if (!fullscreenElement) {
+        document.removeEventListener('fullscreenchange', restoreOldStyle);
+        document.removeEventListener('mozfullscreenchange', restoreOldStyle);
+        document.removeEventListener('webkitfullscreenchange', restoreOldStyle);
+        document.removeEventListener('MSFullscreenChange', restoreOldStyle);
+
+        canvas.width = oldWidth;
+        canvas.height = oldHeight;
+        canvas.style.width = oldCssWidth;
+        canvas.style.height = oldCssHeight;
+        canvas.style.backgroundColor = oldBackgroundColor; // Chrome
+        // IE11 hack: assigning 'undefined' or an empty string to document.body.style.backgroundColor has no effect, so first assign back the default color
+        // before setting the undefined value. Setting undefined value is also important, or otherwise we would later treat that as something that the user
+        // had explicitly set so subsequent fullscreen transitions would not set background color properly.
+        if (!oldDocumentBackgroundColor) document.body.style.backgroundColor = 'white';
+        document.body.style.backgroundColor = oldDocumentBackgroundColor; // IE11
+        canvas.style.paddingLeft = oldPaddingLeft; // Chrome, FF, Safari
+        canvas.style.paddingRight = oldPaddingRight;
+        canvas.style.paddingTop = oldPaddingTop;
+        canvas.style.paddingBottom = oldPaddingBottom;
+        canvas.style.marginLeft = oldMarginLeft; // IE11
+        canvas.style.marginRight = oldMarginRight;
+        canvas.style.marginTop = oldMarginTop;
+        canvas.style.marginBottom = oldMarginBottom;
+        document.body.style.margin = oldDocumentBodyMargin;
+        document.documentElement.style.overflow = oldDocumentOverflow; // Chrome, Firefox
+        document.body.scroll = oldDocumentScroll; // IE
+        canvas.style.imageRendering = oldImageRendering;
+        if (canvas.GLctxObject) canvas.GLctxObject.GLctx.viewport(0, 0, oldWidth, oldHeight);
+
+        if (__currentFullscreenStrategy.canvasResizedCallback) {
+          Runtime.dynCall('iiii', __currentFullscreenStrategy.canvasResizedCallback, [{{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, __currentFullscreenStrategy.canvasResizedCallbackUserData]);
+        }
+      }
+    }
+    document.addEventListener('fullscreenchange', restoreOldStyle);
+    document.addEventListener('mozfullscreenchange', restoreOldStyle);
+    document.addEventListener('webkitfullscreenchange', restoreOldStyle);
+    document.addEventListener('MSFullscreenChange', restoreOldStyle);
+    return restoreOldStyle;
+  },
+
+  // Walks the DOM tree and hides every element by setting "display: none;" except the given element.
+  // Returns a list of [{node: element, displayState: oldDisplayStyle}] entries to allow restoring previous
+  // visibility states after done.
+  _hideEverythingExceptGivenElement: function (onlyVisibleElement) {
+    var child = onlyVisibleElement;
+    var parent = child.parentNode;
+    var hiddenElements = [];
+    while (child != document.body) {
+      var children = parent.children;
+      for (var i = 0; i < children.length; ++i) {
+        if (children[i] != child) {
+          hiddenElements.push({ node: children[i], displayState: children[i].style.display });
+          children[i].style.display = 'none';
+        }
+      }
+      child = parent;
+      parent = parent.parentNode;
+    }
+    return hiddenElements;
+  },
+
+  // Applies old visibility states, given a list of changes returned by hideEverythingExceptGivenElement().
+  _restoreHiddenElements: function(hiddenElements) {
+    for (var i = 0; i < hiddenElements.length; ++i) {
+      hiddenElements[i].node.style.display = hiddenElements[i].displayState;
+    }
+  },
+
+  // Add letterboxes to a fullscreen element in a cross-browser way.
+  _setLetterbox__deps: ['$JSEvents'],
+  _setLetterbox: function(element, topBottom, leftRight) {
+    if (JSEvents.isInternetExplorer()) {
+      // Cannot use padding on IE11, because IE11 computes padding in addition to the size, unlike
+      // other browsers, which treat padding to be part of the size.
+      // e.g.
+      // FF, Chrome: If CSS size = 1920x1080, padding-leftright = 460, padding-topbottomx40, then content size = (1920 - 2*460) x (1080-2*40) = 1000x1000px, and total element size = 1920x1080px.
+      //       IE11: If CSS size = 1920x1080, padding-leftright = 460, padding-topbottomx40, then content size = 1920x1080px and total element size = (1920+2*460) x (1080+2*40)px.
+      // IE11  treats margin like Chrome and FF treat padding.
+      element.style.marginLeft = element.style.marginRight = leftRight + 'px';
+      element.style.marginTop = element.style.marginBottom = topBottom + 'px';
+    } else {
+      // Cannot use margin to specify letterboxes in FF or Chrome, since those ignore margins in fullscreen mode.
+      element.style.paddingLeft = element.style.paddingRight = leftRight + 'px';
+      element.style.paddingTop = element.style.paddingBottom = topBottom + 'px';
+    }
+  },
+
+  _currentFullscreenStrategy: {},
+  _restoreOldWindowedStyle: null,
+
+  _softFullscreenResizeWebGLRenderTarget__deps: ['_setLetterbox', '_currentFullscreenStrategy'],
+  _softFullscreenResizeWebGLRenderTarget: function() {
+    var inHiDPIFullscreenMode = __currentFullscreenStrategy.canvasResolutionScaleMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF') }}};
+    var inAspectRatioFixedFullscreenMode = __currentFullscreenStrategy.scaleMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_SCALE_ASPECT') }}};
+    var inPixelPerfectFullscreenMode = __currentFullscreenStrategy.canvasResolutionScaleMode != {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE') }}};
+    var inCenteredWithoutScalingFullscreenMode = __currentFullscreenStrategy.scaleMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_SCALE_CENTER') }}};
+    var screenWidth = inHiDPIFullscreenMode ? Math.round(window.innerWidth*window.devicePixelRatio) : window.innerWidth;
+    var screenHeight = inHiDPIFullscreenMode ? Math.round(window.innerHeight*window.devicePixelRatio) : window.innerHeight;
+    var w = screenWidth;
+    var h = screenHeight;
+    var canvas = __currentFullscreenStrategy.target;
+    var x = canvas.width;
+    var y = canvas.height;
+    var topMargin;
+
+    if (inAspectRatioFixedFullscreenMode) {
+      if (w*y < x*h) h = (w * y / x) | 0;
+      else if (w*y > x*h) w = (h * x / y) | 0;
+      topMargin = ((screenHeight - h) / 2) | 0;
+    }
+
+    if (inPixelPerfectFullscreenMode) {
+      canvas.width = w;
+      canvas.height = h;
+      if (canvas.GLctxObject) canvas.GLctxObject.GLctx.viewport(0, 0, canvas.width, canvas.height);
+    }
+
+    // Back to CSS pixels.
+    if (inHiDPIFullscreenMode) {
+      topMargin /= window.devicePixelRatio;
+      w /= window.devicePixelRatio;
+      h /= window.devicePixelRatio;
+      // Round to nearest 4 digits of precision.
+      w = Math.round(w*1e4)/1e4;
+      h = Math.round(h*1e4)/1e4;
+      topMargin = Math.round(topMargin*1e4)/1e4;
+    }
+
+    if (inCenteredWithoutScalingFullscreenMode) {
+      var t = (window.innerHeight - parseInt(canvas.style.height)) / 2;
+      var b = (window.innerWidth - parseInt(canvas.style.width)) / 2;
+      __setLetterbox(canvas, t, b);
+    } else {
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      var b = (window.innerWidth - w) / 2;
+      __setLetterbox(canvas, topMargin, b);
+    }
+
+    if (!inCenteredWithoutScalingFullscreenMode && __currentFullscreenStrategy.canvasResizedCallback) {
+      Runtime.dynCall('iiii', __currentFullscreenStrategy.canvasResizedCallback, [{{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, __currentFullscreenStrategy.canvasResizedCallbackUserData]);
+    }
+  },
+
+  // https://developer.mozilla.org/en-US/docs/Web/Guide/API/DOM/Using_full_screen_mode  
+  emscripten_do_request_fullscreen__deps: ['_setLetterbox'],
+  emscripten_do_request_fullscreen: function(target, strategy) {
     if (typeof JSEvents.fullscreenEnabled() === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     if (!JSEvents.fullscreenEnabled()) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
     if (!target) target = '#canvas';
@@ -1101,17 +1409,95 @@ var LibraryJSEvents = {
 
     // Queue this function call if we're not currently in an event handler and the user saw it appropriate to do so.
     if (!canPerformRequests) {
-      if (deferUntilInEventHandler) {
-        JSEvents.deferCall(JSEvents.requestFullscreen, 1 /* priority over pointer lock */, [target]);
+      if (strategy.deferUntilInEventHandler) {
+        JSEvents.deferCall(JSEvents.requestFullscreen, 1 /* priority over pointer lock */, [target, strategy]);
         return {{{ cDefine('EMSCRIPTEN_RESULT_DEFERRED') }}};
       } else {
         return {{{ cDefine('EMSCRIPTEN_RESULT_FAILED_NOT_DEFERRED') }}};
       }
     }
 
-    return JSEvents.requestFullscreen(target);
+    return JSEvents.requestFullscreen(target, strategy);
   },
-  
+
+  emscripten_request_fullscreen__deps: ['emscripten_do_request_fullscreen'],
+  emscripten_request_fullscreen: function(target, deferUntilInEventHandler) {
+    var strategy = {};
+    // These options perform no added logic, but just bare request fullscreen.
+    strategy.scaleMode = {{{ cDefine('EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT') }}};
+    strategy.canvasResolutionScaleMode = {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE') }}};
+    strategy.filteringMode = {{{ cDefine('EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT') }}};
+    strategy.deferUntilInEventHandler = deferUntilInEventHandler;
+
+    return _emscripten_do_request_fullscreen(target, strategy);
+  },
+
+  emscripten_request_fullscreen_strategy__deps: ['emscripten_do_request_fullscreen', '_currentFullscreenStrategy', '_registerRestoreOldStyle'],
+  emscripten_request_fullscreen_strategy: function(target, deferUntilInEventHandler, fullscreenStrategy) {
+    var strategy = {};
+    strategy.scaleMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.scaleMode, 'i32') }}};
+    strategy.canvasResolutionScaleMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResolutionScaleMode, 'i32') }}};
+    strategy.filteringMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.filteringMode, 'i32') }}};
+    strategy.deferUntilInEventHandler = deferUntilInEventHandler;
+    strategy.canvasResizedCallback = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallback, 'i32') }}};
+    strategy.canvasResizedCallbackUserData = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallbackUserData, 'i32') }}};
+    __currentFullscreenStrategy = strategy;
+
+    return _emscripten_do_request_fullscreen(target, strategy);
+  },
+
+  emscripten_enter_soft_fullscreen__deps: ['_setLetterbox', '_hideEverythingExceptGivenElement', '_restoreOldWindowedStyle', '_registerRestoreOldStyle', '_restoreHiddenElements', '_currentFullscreenStrategy', '_softFullscreenResizeWebGLRenderTarget'],
+  emscripten_enter_soft_fullscreen: function(target, fullscreenStrategy) {
+    if (!target) target = '#canvas';
+    target = JSEvents.findEventTarget(target);
+    if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
+
+    var strategy = {};
+    strategy.scaleMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.scaleMode, 'i32') }}};
+    strategy.canvasResolutionScaleMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResolutionScaleMode, 'i32') }}};
+    strategy.filteringMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.filteringMode, 'i32') }}};
+    strategy.canvasResizedCallback = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallback, 'i32') }}};
+    strategy.canvasResizedCallbackUserData = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallbackUserData, 'i32') }}};
+    strategy.target = target;
+    strategy.softFullscreen = true;
+
+    var restoreOldStyle = JSEvents.resizeCanvasForFullscreen(target, strategy);
+
+    document.documentElement.style.overflow = 'hidden';  // Firefox, Chrome
+    document.body.scroll = "no"; // IE11
+    document.body.style.margin = '0px'; // Override default document margin area on all browsers.
+
+    var hiddenElements = __hideEverythingExceptGivenElement(target);
+
+    function restoreWindowedState() {
+      restoreOldStyle();
+      __restoreHiddenElements(hiddenElements);
+      window.removeEventListener('resize', __softFullscreenResizeWebGLRenderTarget);
+      if (strategy.canvasResizedCallback) {
+        Runtime.dynCall('iiii', strategy.canvasResizedCallback, [{{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, strategy.canvasResizedCallbackUserData]);
+      }
+    }
+    __restoreOldWindowedStyle = restoreWindowedState;
+    __currentFullscreenStrategy = strategy;
+    window.addEventListener('resize', __softFullscreenResizeWebGLRenderTarget);
+
+    // Inform the caller that the canvas size has changed.
+    if (strategy.canvasResizedCallback) {
+      Runtime.dynCall('iiii', strategy.canvasResizedCallback, [{{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, strategy.canvasResizedCallbackUserData]);
+    }
+
+    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+  },
+
+  emscripten_exit_soft_fullscreen__deps: ['_restoreOldWindowedStyle'],
+  emscripten_exit_soft_fullscreen: function() {
+    if (__restoreOldWindowedStyle) __restoreOldWindowedStyle();
+    __restoreOldWindowedStyle = null;
+
+    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+  },
+
+  emscripten_exit_fullscreen__deps: ['_currentFullscreenStrategy'],
   emscripten_exit_fullscreen: function() {
     if (typeof JSEvents.fullscreenEnabled() === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     // Make sure no queued up calls will fire after this.
@@ -1128,6 +1514,11 @@ var LibraryJSEvents = {
     } else {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
+
+    if (__currentFullscreenStrategy.canvasResizedCallback) {
+      Runtime.dynCall('iiii', __currentFullscreenStrategy.canvasResizedCallback, [{{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, __currentFullscreenStrategy.canvasResizedCallbackUserData]);
+    }
+
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
@@ -1148,10 +1539,10 @@ var LibraryJSEvents = {
   },
 
   emscripten_get_pointerlock_status: function(pointerlockStatus) {
+    if (pointerlockStatus) JSEvents.fillPointerlockChangeEventData(pointerlockStatus);
     if (!document.body.requestPointerLock && !document.body.mozRequestPointerLock && !document.body.webkitRequestPointerLock && !document.body.msRequestPointerLock) {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
-    JSEvents.fillPointerlockChangeEventData(pointerlockStatus);  
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
@@ -1248,28 +1639,47 @@ var LibraryJSEvents = {
   },
   
   emscripten_set_gamepadconnected_callback: function(userData, useCapture, callbackfunc) {
-    if (!navigator.getGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    if (!navigator.getGamepads && !navigator.webkitGetGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     JSEvents.registerGamepadEventCallback(window, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_GAMEPADCONNECTED') }}}, "gamepadconnected");
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
   
   emscripten_set_gamepaddisconnected_callback: function(userData, useCapture, callbackfunc) {
-    if (!navigator.getGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    if (!navigator.getGamepads && !navigator.webkitGetGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     JSEvents.registerGamepadEventCallback(window, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_GAMEPADDISCONNECTED') }}}, "gamepaddisconnected");
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
  },
   
   emscripten_get_num_gamepads: function() {
-    if (!navigator.getGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
-    return navigator.getGamepads().length;
+    if (!navigator.getGamepads && !navigator.webkitGetGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    if (navigator.getGamepads) {
+      return navigator.getGamepads().length;
+    } else if (navigator.webkitGetGamepads) {
+      return navigator.webkitGetGamepads().length;
+    }
   },
   
   emscripten_get_gamepad_status: function(index, gamepadState) {
-    if (!navigator.getGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
-    var gamepads = navigator.getGamepads();
+    if (!navigator.getGamepads && !navigator.webkitGetGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    var gamepads;
+    if (navigator.getGamepads) {
+      gamepads = navigator.getGamepads();
+    } else if (navigator.webkitGetGamepads) {
+      gamepads = navigator.webkitGetGamepads();
+    }
     if (index < 0 || index >= gamepads.length) {
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
     }
+    // For previously disconnected gamepads there should be a null at the index.
+    // This is because gamepads must keep their original position in the array.
+    // For example, removing the first of two gamepads produces [null, gamepad].
+    // Older implementations of the Gamepad API used undefined instead of null.
+    // The following check works because null and undefined evaluate to false.
+    if (!gamepads[index]) {
+      // There is a "false" but no gamepad at index because it was disconnected.
+      return {{{ cDefine('EMSCRIPTEN_RESULT_NO_DATA') }}};
+    }
+    // There should be a gamepad at index which can be queried.
     JSEvents.fillGamepadEventData(gamepadState, gamepads[index]);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
@@ -1298,6 +1708,65 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
   
+  emscripten_webgl_init_context_attributes: function(attributes) {
+    {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.alpha, 1, 'i32') }}};
+    {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.depth, 1, 'i32') }}};
+    {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.stencil, 0, 'i32') }}};
+    {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.antialias, 1, 'i32') }}};
+    {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha, 1, 'i32') }}};
+    {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer, 0, 'i32') }}};
+    {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.preferLowPowerToHighPerformance, 0, 'i32') }}};
+    {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat, 0, 'i32') }}};
+    {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion, 1, 'i32') }}};
+    {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion, 0, 'i32') }}};
+    {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault, 1, 'i32') }}};
+  },
+
+  emscripten_webgl_create_context__deps: ['$GL'],
+  emscripten_webgl_create_context: function(target, attributes) {
+    var contextAttributes = {};
+    contextAttributes.alpha = !!{{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.alpha, 'i32') }}};
+    contextAttributes.depth = !!{{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.depth, 'i32') }}};
+    contextAttributes.stencil = !!{{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.stencil, 'i32') }}};
+    contextAttributes.antialias = !!{{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.antialias, 'i32') }}};
+    contextAttributes.premultipliedAlpha = !!{{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha, 'i32') }}};
+    contextAttributes.preserveDrawingBuffer = !!{{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer, 'i32') }}};
+    contextAttributes.preferLowPowerToHighPerformance = !!{{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.preferLowPowerToHighPerformance, 'i32') }}};
+    contextAttributes.failIfMajorPerformanceCaveat = !!{{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat, 'i32') }}};
+    contextAttributes.majorVersion = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion, 'i32') }}};
+    contextAttributes.minorVersion = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion, 'i32') }}};
+    var enableExtensionsByDefault = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault, 'i32') }}};
+
+    if (!target) {
+      target = Module['canvas'];
+    } else {
+      target = JSEvents.findEventTarget(target);
+    }
+    var contextHandle = GL.createContext(target, contextAttributes);
+    return contextHandle;
+  },
+
+  emscripten_webgl_make_context_current: function(contextHandle) {
+    var success = GL.makeContextCurrent(contextHandle);
+    return success ? {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}} : {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
+  },
+
+  emscripten_webgl_get_current_context: function() {
+    return GL.currentContext ? GL.currentContext.handle : 0;
+  },
+
+  emscripten_webgl_destroy_context: function(contextHandle) {
+    GL.deleteContext(contextHandle);
+  },
+
+  emscripten_webgl_enable_extension: function(contextHandle, extension) {
+    var context = GL.getContext(contextHandle);
+    var extString = Pointer_stringify(extension);
+    if (extString.indexOf('GL_') == 0) extString = extString.substr(3); // Allow enabling extensions both with "GL_" prefix and without.
+    var ext = context.GLctx.getExtension(extString);
+    return ext ? 1 : 0;
+  },
+
   emscripten_set_webglcontextlost_callback: function(target, userData, useCapture, callbackfunc) {
     JSEvents.registerWebGlEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_WEBGLCONTEXTLOST') }}}, "webglcontextlost");
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
@@ -1312,6 +1781,42 @@ var LibraryJSEvents = {
     // TODO: In the future if multiple GL contexts are supported, use the 'target' parameter to find the canvas to query.
     if (!Module['ctx']) return true; // No context ~> lost context.
     return Module['ctx'].isContextLost();
+  },
+
+  emscripten_set_element_css_size: function(target, width, height) {
+    if (!target) {
+      target = Module['canvas'];
+    } else {
+      target = JSEvents.findEventTarget(target);
+    }
+
+    if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
+
+    target.style.setProperty("width", width + "px");
+    target.style.setProperty("height", height + "px");
+
+    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+  },
+
+  emscripten_get_element_css_size: function(target, width, height) {
+    if (!target) {
+      target = Module['canvas'];
+    } else {
+      target = JSEvents.findEventTarget(target);
+    }
+
+    if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
+
+    if (target.getBoundingClientRect) {
+      var rect = target.getBoundingClientRect();
+      {{{ makeSetValue('width', '0', 'rect.right - rect.left', 'double') }}};
+      {{{ makeSetValue('height', '0', 'rect.bottom - rect.top', 'double') }}};
+    } else {
+      {{{ makeSetValue('width', '0', 'target.clientWidth', 'double') }}};
+      {{{ makeSetValue('height', '0', 'target.clientHeight', 'double') }}};
+    }
+
+    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   }
 };
 

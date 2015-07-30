@@ -54,13 +54,13 @@ from tools.shared import Compression, execute, suffix, unsuffixed, unsuffixed_ba
 from tools.response_file import read_response_file
 
 # endings = dot + a suffix, safe to test by  filename.endswith(endings)
-C_ENDINGS = ('.c', '.C')
-CXX_ENDINGS = ('.cpp', '.cxx', '.cc', '.CPP', '.CXX', '.CC')
-OBJC_ENDINGS = ('.m',)
-OBJCXX_ENDINGS = ('.mm',)
+C_ENDINGS = ('.c', '.C', '.i')
+CXX_ENDINGS = ('.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.CC', '.C++', '.ii')
+OBJC_ENDINGS = ('.m', '.mi')
+OBJCXX_ENDINGS = ('.mm', '.mii')
 SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS
-BITCODE_ENDINGS = ('.bc', '.o', '.obj')
-DYNAMICLIB_ENDINGS = ('.dylib', '.so', '.dll')
+BITCODE_ENDINGS = ('.bc', '.o', '.obj', '.lo')
+DYNAMICLIB_ENDINGS = ('.dylib', '.so') # Windows .dll suffix is not included in this list, since those are never linked to directly on the command line.
 STATICLIB_ENDINGS = ('.a',)
 ASSEMBLY_ENDINGS = ('.ll',)
 HEADER_ENDINGS = ('.h', '.hxx', '.hpp', '.hh', '.H', '.HXX', '.HPP', '.HH')
@@ -69,6 +69,8 @@ SUPPORTED_LINKER_FLAGS = ('--start-group', '-(', '--end-group', '-)')
 LIB_PREFIXES = ('', 'lib')
 
 JS_CONTAINING_SUFFIXES = ('js', 'html')
+
+DEFERRED_REPONSE_FILES = ('EMTERPRETIFY_BLACKLIST', 'EMTERPRETIFY_WHITELIST')
 
 # Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc opt
 # levels 2 and 3 (emcc 3 is unsafe opts, so unsuitable for the only level to get
@@ -91,6 +93,10 @@ LEAVE_INPUTS_RAW = os.environ.get('EMCC_LEAVE_INPUTS_RAW') # Do not compile .ll 
                                                            # specific need.
                                                            # One major limitation with this mode is that libc and libc++ cannot be
                                                            # added in. Also, LLVM optimizations will not be done, nor dead code elimination
+# If emcc is running with LEAVE_INPUTS_RAW and then launches an emcc to build something like the struct info, then we don't want
+# LEAVE_INPUTS_RAW to be active in that emcc subprocess.
+if LEAVE_INPUTS_RAW:
+  del os.environ['EMCC_LEAVE_INPUTS_RAW']
 AUTODEBUG = os.environ.get('EMCC_AUTODEBUG') # If set to 1, we will run the autodebugger (the automatic debugging tool, see tools/autodebugger).
                                              # Note that this will disable inclusion of libraries. This is useful because including
                                              # dlmalloc makes it hard to compare native and js builds
@@ -104,7 +110,11 @@ if DEBUG and LEAVE_INPUTS_RAW: logging.warning('leaving inputs raw')
 stdout = PIPE if not DEBUG else None # suppress output of child processes
 stderr = PIPE if not DEBUG else None # unless we are in DEBUG mode
 
-shared.check_sanity(force=DEBUG)
+EMCC_CXX = '--emscripten-cxx' in sys.argv
+sys.argv = filter(lambda x: x != '--emscripten-cxx', sys.argv)
+
+if len(sys.argv) <= 1 or ('--help' not in sys.argv and len(sys.argv) >= 2 and sys.argv[1] != '--version'):
+  shared.check_sanity(force=DEBUG)
 
 # Handle some global flags
 
@@ -126,432 +136,22 @@ while response_file:
       break
 
 if len(sys.argv) == 1 or '--help' in sys.argv:
-  this = os.path.basename('em++' if os.environ.get('EMMAKEN_CXX') else 'emcc')
-
-  print '''%s [options] file...
-
-Most normal gcc/g++ options will work, for example:
-  --help                   Display this information
-  --version                Display compiler version information
-
-Options that are modified or new in %s include:
-
-  -O0                      No optimizations (default). This is the recommended
-                           setting for starting to port a project, as it
-                           includes various assertions.
-
-  -O1                      Simple optimizations, including asm.js, LLVM -O1
-                           optimizations, relooping, and no runtime assertions
-                           or C++ exception catching (to re-enable
-                           C++ exception catching, use
-                           -s DISABLE_EXCEPTION_CATCHING=0 ), and enables
-
-                              -s ALIASING_FUNCTION_POINTERS=1
-
-                           This is the recommended setting when you want a
-                           reasonably optimized build that is generated as
-                           quickly as possible (it builds much faster than -O2).
-
-                           (Note: for details on the affects of different
-                           opt levels, see apply_opt_level() in
-                           tools/shared.py and also src/settings.js.)
-
-  -O2                      As -O1, plus various js-level optimizations and
-                           LLVM -O3 optimizations. This is the recommended
-                           setting for a release build: slower compilation
-                           time in return for the smallest and fastest
-                           output.
-
-  -Os                      Like -O2 with extra optimizations for size.
-
-  -Oz                      Like -Os but reduces code size further.
-
-  -O3                      Like -O2 plus additional JS optimizations that can
-                           take a significant amount of compilation time and/or
-                           are relatively new. Note that differs from -O2 only
-                           during the bitcode to JS (final link + JS generation)
-                           stage, as it is JS-specific, so you can run -Os
-                           on your source files for example, and -O3 during
-                           JS generation if you want.
-
-                           For tips on optimizing your code, see
-                           https://github.com/kripken/emscripten/wiki/Optimizing-Code
-
-  -s OPTION=VALUE          JavaScript code generation option passed
-                           into the emscripten compiler. For the
-                           available options, see src/settings.js
-                           Note that for options that are lists, you
-                           need quotation marks in most shells, for
-                           example
-
-                            -s RUNTIME_LINKED_LIBS="['liblib.so']"
-
-                           or
-
-                            -s "RUNTIME_LINKED_LIBS=['liblib.so']"
-
-                           (without the external "s in either of those,
-                           you would get an error)
-
-                           You can also specify a file from which the
-                           value would be read, for example,
-
-                            -s DEAD_FUNCTIONS=@/path/to/file
-
-                           The contents of /path/to/file will be read,
-                           JSON.parsed and set into DEAD_FUNCTIONS (so
-                           the file could contain
-
-                            ["_func1", "func2"]
-
-                           ). Note that the path must be absolute, not
-                           relative.
-
-  -g                       Use debug info. When compiling to bitcode,
-                           this is the same as in clang and gcc, it
-                           adds debug info to the object files. When
-                           compiling from source to JS or bitcode to JS,
-                           it is equivalent to -g3 (keep code as debuggable
-                           as possible, except for discarding LLVM
-                           debug info, so no C/C++ line numbers; use
-                           -g4 to get line number debugging info in JS).
-
-  -g<level>                When compiling from bitcode to JS, we can
-                           keep the code debuggable to different
-                           degrees. Each of these levels builds on the
-                           previous:
-
-                            -g0  Make no effort to keep code debuggable.
-                                 Will discard LLVM debug info. (default
-                                 in -O1+)
-                            -g1  Preserve (do not minify) whitespace
-                            -g2  Preserve function names
-                            -g3  Preserve variable names
-                            -g4  Preserve LLVM debug info (if -g was
-                                 used when compiling the C/C++ sources),
-                                 show line number debug comments, and
-                                 generate source maps. This is the highest
-                                 level of debuggability. Note that this
-                                 may make -O1 and above significantly
-                                 slower because JS optimization will be
-                                 limited to 1 core.  (default in -O0)
-
-  -profiling               Use reasonable defaults when emitting JS to
-                           make the build useful for profiling. This
-                           sets -g2 (preserve function names) and may
-                           also enable optimizations that affect
-                           performance and otherwise might not be
-                           performed in -g2.
-
-  --emit-symbol-map        Save a map file between the minified
-                           global names and the original function names.
-                           This allows you to reconstruct meaningful
-                           stack traces, for example. (This is only
-                           relevant when minifying global names, which
-                           happens in -O2 and above, and when no -g
-                           option to prevent minification was specified.)
-
-  --typed-arrays <mode>    0: No typed arrays
-                           1: Parallel typed arrays
-                           2: Shared (C-like) typed arrays (default)
-
-  --js-opts                0: Prevent JS optimizer from running
-                           1: Use JS optimizer (default)
-
-  --llvm-opts <level>      0: No LLVM optimizations (default in -O0)
-                           1: -O1 LLVM optimizations (default in -O1)
-                           2: -O2 LLVM optimizations
-                           3: -O3 LLVM optimizations (default in -O2+)
-
-                           You can also specify arbitrary LLVM options, e.g.
-
-                             --llvm-opts "['-O3', '-somethingelse']"
-
-  --llvm-lto <level>       0: No LLVM LTO (default)
-                           1: LLVM LTO is performed
-                           2: We combine all the bitcode and run LLVM opt -O3
-                              on that (which optimizes across modules, but is
-                              not the same as normal LTO), but do not do normal
-                              LTO
-                           3: We do both 2 and then 1
-                           Note: If LLVM optimizations are not run
-                           (see --llvm-opts), setting this has no
-                           effect.
-
-                           Note that LLVM LTO is not perfectly stable yet,
-                           and can can cause code to behave incorrectly.
-
-  --closure <on>           0: No closure compiler (default in -O2 and below)
-                           1: Run closure compiler. This greatly reduces
-                           code size and may in some cases increase
-                           runtime speed (although the opposite can also
-                           occur). Note that it takes time to run, and
-                           may require some changes to the code.
-
-                           In asm.js mode, closure will only be used on the
-                           'shell' code around the compiled code (the
-                           compiled code will be processed by the custom
-                           asm.js minifier).
-
-                           Note: If closure compiler hits an out-of-memory,
-                           try adjusting JAVA_HEAP_SIZE in the environment
-                           (for example, to 4096m for 4GB).
-
-                           Note: Closure is only run if js opts are being
-                           done (-O2 or above, or --js-opts 1).
-
-  --pre-js <file>          A file whose contents are added before the
-                           generated code. This is done *before*
-                           optimization, so it will be minified
-                           properly if closure compiler is run.
-
-  --post-js <file>         A file whose contents are added after the
-                           generated code This is done *before*
-                           optimization, so it will be minified
-                           properly if closure compiler is run.
-
-  --embed-file <file>      A file to embed inside the generated
-                           JavaScript. The compiled code will be able
-                           to access the file in the current directory
-                           with the same name as given here. So if
-                           you do --embed-file dir/file.dat, then
-                           (1) dir/file.dat must exist relative to
-                           where you run emcc, and (2) your compiled
-                           code will be able to find the file by
-                           reading that same path, dir/file.dat.
-                           If a directory is passed here, its entire
-                           contents will be embedded.
-
-                           Note: Embedding files is much less
-                                 efficient than preloading them. You
-                                 should only use it for small amounts
-                                 of small files. Instead, use
-                                 --preload-file which emits efficient
-                                 binary data.
-
-  --preload-file <name>    A file to preload before running the
-                           compiled code asynchronously. Otherwise
-                           similar to --embed-file, except that this
-                           option is only relevant when generating
-                           HTML (it uses asynchronous binary XHRs),
-                           or JS that will be used in a web page.
-                           If a directory is passed here, its entire
-                           contents will be preloaded.
-                           Preloaded files are stored in filename.data,
-                           where filename.html is the main file you
-                           are compiling to. To run your code, you
-                           will need both the .html and the .data.
-
-                           emcc runs tools/file_packager.py to do the
-                           actual packaging of embedded and preloaded
-                           files. You can run the file packager yourself
-                           if you want, see docs inside that file. You
-                           should then put the output of the file packager
-                           in an emcc --pre-js, so that it executes before
-                           your main compiled code (or run it before in
-                           some other way).
-
-                           For more docs on the options --preload-file
-                           accepts, see  https://github.com/kripken/emscripten/wiki/Filesystem-Guide
-
-  --exclude-file <name>   Files and directories to be excluded from
-                           --embed-file and --preload-file
-                           wildcard is supported
-
-  --shell-file <path>      The path name to a skeleton HTML file used
-                           when generating HTML output. The shell file
-                           used needs to have this token inside it:
-                           {{{ SCRIPT }}}
-                           (see src/shell.html and
-                                src/shell_minimal.html for examples)
-                           Note that this argument is ignored if a
-                           target other than HTML is specified using
-                           the -o option.
-
-  --compression <codec>    **THIS OPTION IS DEPRECATED**
-
-                           Compress both the compiled code and embedded/
-                           preloaded files. <codec> should be a triple,
-
-                              <native_encoder>,<js_decoder>,<js_name>
-
-                           where native_encoder is a native executable
-                           that compresses stdin to stdout (the simplest
-                           possible interface), js_decoder is a
-                           JavaScript file that implements a decoder,
-                           and js_name is the name of the function to
-                           call in the decoder file (which should
-                           receive an array/typed array and return
-                           an array/typed array.
-                           Compression only works when generating HTML.
-                           When compression is on, all filed specified
-                           to be preloaded are compressed in one big
-                           archive, which is given the same name as the
-                           output HTML but with suffix .data.compress
-
-  --minify 0               Identical to -g1
-
-  --js-transform <cmd>     <cmd> will be called on the generated code
-                           before it is optimized. This lets you modify
-                           the JavaScript, for example adding some code
-                           or removing some code, in a way that those
-                           modifications will be optimized together with
-                           the generated code properly. <cmd> will be
-                           called with the filename of the generated
-                           code as a parameter; to modify the code, you
-                           can read the original data and then append to
-                           it or overwrite it with the modified data.
-                           <cmd> is interpreted as a space-separated
-                           list of arguments, for example, <cmd> of
-                           "python processor.py" will cause a python
-                           script to be run.
-
-  --split <size>           Splits the resulting javascript file into pieces
-                           to ease debugging. This option only works if
-                           Javascript is generated (target -o <name>.js).
-                           Files with function declarations must be loaded
-                           before main file upon execution.
-
-                           Without "-g" option:
-                              Creates files with function declarations up
-                              to the given size with the suffix
-                              "_functions.partxxx.js" and a main file with
-                              the suffix ".js".
-
-                           With "-g" option:
-                              Recreates the directory structure of the C
-                              source files and stores function declarations
-                              in their respective C files with the suffix
-                              ".js". If such a file exceeds the given size,
-                              files with the suffix ".partxxx.js" are created.
-                              The main file resides in the base directory and
-                              has the suffix ".js".
-
-                           Note: this option is deprecated (modern JS debuggers
-                                 should work ok even on large files)
-
-  --bind                   Compiles the source code using the "embind"
-                           bindings approach, which connects C/C++ and JS.
-
-  --ignore-dynamic-linking Normally emcc will treat dynamic linking like
-                           static linking, by linking in the code from
-                           the dynamic library. This fails if the same
-                           dynamic library is linked more than once.
-                           With this option, dynamic linking is ignored,
-                           which allows the build system to proceed without
-                           errors. However, you will need to manually
-                           link to the shared libraries later on yourself.
-
-  --js-library <lib>       A JavaScript library to use in addition to
-                           those in Emscripten's src/library_*
-
-  -v                       Turns on verbose output. This will pass
-                           -v to Clang, and also enable EMCC_DEBUG
-                           to details emcc's operations.
-
-                           It will also run emscripten's internal sanity
-                           checks, checking that things like the LLVM directory
-                           path looks correct, etc. This works with or
-                           without other arguments, so it can be useful to run
-
-                              emcc -v
-
-                           if you see odd errors, as it can help diagnose
-                           things.
-
-  --clear-cache            Manually clears the cache of compiled
-                           emscripten system libraries (libc++,
-                           libc++abi, libc). This is normally
-                           handled automatically, but if you update
-                           llvm in-place (instead of having a different
-                           directory for a new version), the caching
-                           mechanism can get confused. Clearing the
-                           cache can fix weird problems related to
-                           cache incompatibilities, like clang failing
-                           to link with library files. This also clears
-                           other cached data like the jcache and
-                           the bootstrapped relooper. After the cache
-                           is cleared, this process will exit.
-
-  --save-bc PATH           When compiling to JavaScript or HTML, this
-                           option will save a copy of the bitcode to
-                           the specified path. The bitcode will include
-                           all files being linked, including standard
-                           libraries, and after any link-time optimizations
-                           (if any).
-
-  --memory-init-file <on>  0: Do not emit a separate memory initialization
-                              file, keep the static initialization inside
-                              the generated JavaScript as text (default)
-                           1: Emit a separate memory initialization file
-                              in binary format. This is more efficient than
-                              storing it as text inside JavaScript, but does
-                              mean you have another file to publish. The
-                              binary file will also be loaded asynchronously,
-                              which means main() will not be called until
-                              the file is downloaded and applied; you cannot
-                              call any C functions until it arrives. (Call
-                              yourself from main() to know when all async
-                              stuff has happened and it is safe to call
-                              library functions, as main() will only be
-                              called at that time. You can also call
-                              addOnPreMain from a preRun.)
-
-  -Wno-warn-absolute-paths If not specified, the compiler will warn about any
-                           uses of absolute paths in -I and -L command line
-                           directives. Pass this flag on the command line
-                           to hide these warnings and acknowledge that the
-                           explicit use of absolute paths is intentional.
-
-  --proxy-to-worker        Generates both html and js files. The main
-                           program is in js, and the html proxies to/from it.
-
-  --emrun                  Enables the generated output to be aware of the
-                           emrun command line tool. This allows stdout, stderr
-                           and exit(returncode) capture when running the
-                           generated application through emrun.
-
-  --em-config              Specifies the location of the .emscripten configuration
-                           file for the current compiler run. If not specified,
-                           the environment variable EM_CONFIG is read for this
-                           file, and if that is not set, the default location
-                           ~/.emscripten is assumed.
-
-  --default-obj-ext .ext   Specifies the file suffix to generate if the location
-                           of a directory name is passed to -o directive, e.g.
-                             emcc -c a.c -o dir/
-                           will by default generate an output name 'dir/a.o',
-                           but this cmdline param can be passed to generate a
-                           file with a custom suffix 'dir/a.ext'.
-  --valid_abspath path     Whitelist an absolute path to prevent warnings about
-                           absolute include paths.
-
-The target file, if specified (-o <target>), defines what will
-be generated:
-
-  <name>.js                JavaScript
-  <name>.html              HTML + side JavaScript file (<name>.js)
-                             (JS on the side improves page load time)
-  <name>.bc                LLVM bitcode (default)
-  <name>.o                 LLVM bitcode (same as .bc)
-
-(Note that if --memory-init-file is used, then in addition to a
-.js or .html file that is generated, a .mem file will also appear.)
-
-The -c option (which tells gcc not to run the linker) will
-cause LLVM bitcode to be generated, as %s only generates
-JavaScript in the final linking stage of building.
-
-The input file(s) can be either source code files that
-Clang can handle (C or C++), LLVM bitcode in binary form,
-or LLVM assembly files in human-readable form.
-
-emcc is affected by several environment variables. For details, view
-the source of emcc (search for 'os.environ').
+  # Documentation for emcc and its options must be updated in: 
+  #    site/source/docs/tools_reference/emcc.rst
+  # A prebuilt local version of the documentation is available at: 
+  #    site/build/text/docs/tools_reference/emcc.txt
+  #    (it is read from there and printed out when --help is invoked)
+  # You can also build docs locally as HTML or other formats in site/
+  # An online HTML version (which may be of a different version of Emscripten)
+  #    is up at http://kripken.github.io/emscripten-site/docs/tools_reference/emcc.html
+
+  print '''%s
+
+------------------------------------------------------------------
 
 emcc: supported targets: llvm bitcode, javascript, NOT elf
 (autoconf likes to see elf above to enable shared object support)
-''' % (this, this, this)
+''' % (open(shared.path_from_root('site', 'build', 'text', 'docs', 'tools_reference', 'emcc.txt')).read())
   exit(0)
 
 elif sys.argv[1] == '--version':
@@ -564,7 +164,7 @@ elif sys.argv[1] == '--version':
     pass
   finally:
     os.chdir(here)
-  print '''emcc (Emscripten GCC-like replacement) %s (%s)
+  print '''emcc (Emscripten gcc/clang-like replacement) %s (%s)
 Copyright (C) 2014 the Emscripten authors (see AUTHORS.txt)
 This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
@@ -572,10 +172,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   exit(0)
 
 elif len(sys.argv) == 2 and sys.argv[1] == '-v': # -v with no inputs
-  print 'emcc (Emscripten GCC-like replacement + linker emulating GNU ld ) %s' % shared.EMSCRIPTEN_VERSION
+  # autoconf likes to see 'GNU' in the output to enable shared object support
+  print 'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION
   code = subprocess.call([shared.CLANG, '-v'])
   shared.check_sanity(force=True)
   exit(code)
+
+elif '-dumpmachine' in sys.argv:
+  print shared.get_llvm_target()
+  exit(0)
 
 def is_minus_s_for_emcc(newargs, i):
   assert newargs[i] == '-s'
@@ -591,9 +196,15 @@ CONFIGURE_CONFIG = (os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in 
 CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(sys.argv)# or 'CMakeCCompilerId' in ' '.join(sys.argv)
 if CONFIGURE_CONFIG or CMAKE_CONFIG:
   debug_configure = 0 # XXX use this to debug configure stuff. ./configure's generally hide our normal output including stderr so we write to a file
-  use_js = os.environ.get('EMCONFIGURE_JS') # whether we fake configure tests using clang - the local, native compiler - or not. if not we generate JS and use node with a shebang
-                   # neither approach is perfect, you can try both, but may need to edit configure scripts in some cases
-                   # XXX False is not fully tested yet
+
+  # Whether we fake configure tests using clang - the local, native compiler - or not. if not we generate JS and use node with a shebang
+  # Beither approach is perfect, you can try both, but may need to edit configure scripts in some cases
+  # By default we configure in js, which can break on local filesystem access, etc., but is otherwise accurate so we
+  # disable this if we think we have to. A value of '2' here will force JS checks in all cases. In summary:
+  # 0 - use native compilation for configure checks
+  # 1 - use js when we think it will work
+  # 2 - always use js for configure checks
+  use_js = int(os.environ.get('EMCONFIGURE_JS') or 1)
 
   if debug_configure:
     tempout = '/tmp/emscripten_temp/out'
@@ -602,7 +213,7 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
 
   src = None
   for arg in sys.argv:
-    if arg.endswith('.c'):
+    if arg.endswith(SOURCE_ENDINGS):
       try:
         src = open(arg).read()
         if debug_configure: open(tempout, 'a').write('============= ' + arg + '\n' + src + '\n=============\n\n')
@@ -610,17 +221,17 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
         pass
     elif arg.endswith('.s'):
       if debug_configure: open(tempout, 'a').write('(compiling .s assembly, must use clang\n')
-      use_js = 0
-    elif arg == '-E':
-      use_js = 0
+      if use_js == 1: use_js = 0
+    elif arg == '-E' or arg == '-M' or arg == '-MM':
+      if use_js == 1: use_js = 0
 
   if src:
     if 'fopen' in src and '"w"' in src:
-      use_js = 0 # we cannot write to files from js!
+      if use_js == 1: use_js = 0 # we cannot write to files from js!
       if debug_configure: open(tempout, 'a').write('Forcing clang since uses fopen to write\n')
 
   compiler = os.environ.get('CONFIGURE_CC') or (shared.CLANG if not use_js else shared.EMCC) # if CONFIGURE_CC is defined, use that. let's you use local gcc etc. if you need that
-  if not ('CXXCompiler' in ' '.join(sys.argv) or os.environ.get('EMMAKEN_CXX')):
+  if not ('CXXCompiler' in ' '.join(sys.argv) or EMCC_CXX):
     compiler = shared.to_cc(compiler)
 
   def filter_emscripten_options(argv):
@@ -637,7 +248,9 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
         yield el
       idx += 1
 
-  cmd = [compiler] + list(filter_emscripten_options(sys.argv[1:]))
+  if compiler == shared.EMCC: compiler = [shared.PYTHON, shared.EMCC]
+  else: compiler = [compiler] 
+  cmd = compiler + list(filter_emscripten_options(sys.argv[1:]))
   if not use_js: cmd += shared.EMSDK_OPTS + ['-D__EMSCRIPTEN__', '-DEMSCRIPTEN']
   if use_js: cmd += ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'] # configure tests should fail when an undefined symbol exists
 
@@ -655,24 +268,28 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
           cmd[i+1] += '.js'
         target = cmd[i+1]
         break
-    print 't1', target
     if not target:
       target = 'a.out.js'
-    print 't2', target, only_object
     os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = '1'
     ret = subprocess.call(cmd)
     os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = ''
-    if not os.path.exists(target): exit(1)
+    if not os.path.exists(target): exit(ret) # note that emcc -c will cause target to have the wrong value here;
+                                             # but then, we don't care about bitcode outputs anyhow, below, so
+                                             # skipping to exit(ret) is fine
     if target.endswith('.js'):
       shutil.copyfile(target, target[:-3])
       target = target[:-3]
-    src = open(target).read()
-    full_node = ' '.join(shared.listify(shared.NODE_JS))
-    if os.path.sep not in full_node:
-      full_node = '/usr/bin/' + full_node # TODO: use whereis etc. And how about non-*NIX?
-    open(target, 'w').write('#!' + full_node + '\n' + src) # add shebang
-    import stat
-    os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable
+    if not target.endswith(BITCODE_ENDINGS):
+      src = open(target).read()
+      full_node = ' '.join(shared.NODE_JS)
+      if os.path.sep not in full_node:
+        full_node = '/usr/bin/' + full_node # TODO: use whereis etc. And how about non-*NIX?
+      open(target, 'w').write('#!' + full_node + '\n' + src) # add shebang
+      import stat
+      try:
+        os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable
+      except:
+        pass # can fail if e.g. writing the executable to /dev/null
     exit(ret)
 
 if os.environ.get('EMMAKEN_COMPILER'):
@@ -683,7 +300,7 @@ else:
 CC = shared.to_cc(CXX)
 
 # If we got here from a redirection through emmakenxx.py, then force a C++ compiler here
-if os.environ.get('EMMAKEN_CXX'):
+if EMCC_CXX:
   CC = CXX
 
 CC_ADDITIONAL_ARGS = shared.COMPILER_OPTS
@@ -713,18 +330,6 @@ for i in range(1, len(sys.argv)):
   if not arg.startswith('-'):
     if arg.endswith(C_ENDINGS + OBJC_ENDINGS):
       use_cxx = False
-
-if '-M' in sys.argv or '-MM' in sys.argv:
-  # Just output dependencies, do not compile. Warning: clang and gcc behave differently with -MF! (clang seems to not recognize it)
-  cmd = [CC] + shared.COMPILER_OPTS + sys.argv[1:]
-  logging.debug('just dependencies: ' + ' '.join(cmd))
-  exit(subprocess.call(cmd))
-
-if '-E' in sys.argv:
-  # Just run the preprocessor
-  cmd = [CC] + sys.argv[1:]
-  logging.debug('just preprocessor ' + ' '.join(cmd))
-  exit(subprocess.call(cmd))
 
 # Check if a target is specified
 target = None
@@ -788,6 +393,8 @@ def log_time(name):
   logging.debug('emcc step "%s" took %.2f seconds', name, now - log_time_last)
   log_time_last = now
 
+misc_temp_files = shared.configuration.get_temp_files()
+
 try:
   call = CXX if use_cxx else CC
 
@@ -797,7 +404,11 @@ try:
 
   opt_level = 0
   debug_level = 0
+  shrink_level = 0
+  requested_debug = ''
   profiling = False
+  profiling_funcs = False
+  tracing = False
   emit_symbol_map = False
   js_opts = None
   llvm_opts = None
@@ -806,7 +417,6 @@ try:
   js_transform = None
   pre_js = ''
   post_js = ''
-  split_js_file = None
   preload_files = []
   embed_files = []
   exclude_files = []
@@ -816,9 +426,8 @@ try:
   js_libraries = []
   bind = False
   emrun = False
-  jcache = False
   save_bc = False
-  memory_init_file = False
+  memory_init_file = None
   use_preload_cache = False
   no_heap_copy = False
   proxy_to_worker = False
@@ -826,6 +435,10 @@ try:
   valid_abspaths = []
 
   def is_valid_abspath(path_name):
+    # Any path that is underneath the emscripten repository root must be ok.
+    if shared.path_from_root().replace('\\', '/') in path_name.replace('\\', '/'):
+      return True
+
     for valid_abspath in valid_abspaths:
       if in_directory(valid_abspath, path_name):
         return True
@@ -858,6 +471,8 @@ try:
       raise Exception(err_msg)
     return level
 
+  should_exit = False
+
   for i in range(len(newargs)):
     newargs[i] = newargs[i].strip() # On Windows Vista (and possibly others), excessive spaces in the command line leak into the items in this array, so trim e.g. 'foo.cpp ' -> 'foo.cpp'
     if newargs[i].startswith('-O'):
@@ -866,15 +481,17 @@ try:
       if requested_level == 's':
         llvm_opts = ['-Os']
         requested_level = 2
+        shrink_level = 1
         settings_changes.append('INLINING_LIMIT=50')
       elif requested_level == 'z':
         llvm_opts = ['-Oz']
         requested_level = 2
+        shrink_level = 2
         settings_changes.append('INLINING_LIMIT=25')
       opt_level = validate_arg_level(requested_level, 3, 'Invalid optimization level: ' + newargs[i])
       # We leave the -O option in place so that the clang front-end runs in that
       # optimization mode, but we disable the actual optimization passes, as we'll
-      # run them seperately.
+      # run them separately.
       newargs.append('-mllvm')
       newargs.append('-disable-llvm-optzns')
     elif newargs[i].startswith('--js-opts'):
@@ -918,25 +535,32 @@ try:
       debug_level = max(1, debug_level)
       newargs[i] = ''
       newargs[i+1] = ''
-    elif newargs[i].startswith('--split'):
-      check_bad_eq(newargs[i])
-      split_js_file = int(newargs[i+1])
-      newargs[i] = ''
-      newargs[i+1] = ''
     elif newargs[i].startswith('-g'):
       requested_level = newargs[i][2:] or '3'
       debug_level = validate_arg_level(requested_level, 4, 'Invalid debug level: ' + newargs[i])
-      newargs[i] = '-g' # we'll need this to get LLVM debug info
-    elif newargs[i] == '-profiling':
+      requested_debug = newargs[i]
+      newargs[i] = ''
+    elif newargs[i] == '-profiling' or newargs[i] == '--profiling':
       debug_level = 2
       profiling = True
       newargs[i] = ''
+    elif newargs[i] == '-profiling-funcs' or newargs[i] == '--profiling-funcs':
+      profiling_funcs = True
+      newargs[i] = ''
+    elif newargs[i] == '--tracing':
+      tracing = True
+      newargs[i] = ''
+      newargs.append('-D__EMSCRIPTEN_TRACING__=1')
+      settings_changes.append("EMSCRIPTEN_TRACING=1")
+      js_libraries.append(shared.path_from_root('src', 'library_trace.js'))
     elif newargs[i] == '--emit-symbol-map':
       emit_symbol_map = True
       newargs[i] = ''
     elif newargs[i] == '--bind':
       bind = True
       newargs[i] = ''
+      js_libraries.append(shared.path_from_root('src', 'embind', 'emval.js'))
+      js_libraries.append(shared.path_from_root('src', 'embind', 'embind.js'))
       if default_cxx_std:
         default_cxx_std = '-std=c++11' # Force C++11 for embind code, but only if user has not explicitly overridden a standard.
     elif newargs[i].startswith('-std='):
@@ -989,14 +613,8 @@ try:
       newargs[i] = ''
     elif newargs[i] == '-v':
       shared.COMPILER_OPTS += ['-v']
-      os.environ['EMCC_DEBUG'] = '1' # send to child processes too
-      if DEBUG != 1:
-        # swap in debug logging
-        DEBUG = 1
-        shared.set_logging()
-        logging.debug('-v invocation: ' + ' '.join(sys.argv))
-        shared.apply_configuration() # reset config to pick up change
-        shared.check_sanity(force=True)
+      #shared.LINK_CMD += ['-v'] # Enable verbose output from llvm-link, since it can take a long time and this gives some indication of progress.
+      shared.check_sanity(force=True)
       newargs[i] = ''
     elif newargs[i].startswith('--shell-file'):
       check_bad_eq(newargs[i])
@@ -1012,15 +630,26 @@ try:
       logging.warning('--remove-duplicates is deprecated as it is no longer needed. If you cannot link without it, file a bug with a testcase')
       newargs[i] = ''
     elif newargs[i] == '--jcache':
-      logging.warning('jcache is deprecated')
-      jcache = True
+      logging.error('jcache is no longer supported')
       newargs[i] = ''
+    elif newargs[i] == '--cache':
+      check_bad_eq(newargs[i])
+      os.environ['EM_CACHE'] = newargs[i+1]
+      shared.reconfigure_cache()
+      newargs[i] = ''
+      newargs[i+1] = ''
     elif newargs[i] == '--clear-cache':
-      newargs[i] = ''
       logging.warning('clearing cache')
       shared.Cache.erase()
       shared.check_sanity(force=True) # this is a good time for a sanity check
-      sys.exit(0)
+      should_exit = True
+    elif newargs[i] == '--clear-ports':
+      logging.warning('clearing ports')
+      system_libs.Ports.erase()
+      should_exit = True
+    elif newargs[i] == '--show-ports':
+      system_libs.show_ports()
+      should_exit = True
     elif newargs[i] == '--save-bc':
       check_bad_eq(newargs[i])
       save_bc = newargs[i+1]
@@ -1046,16 +675,15 @@ try:
     elif newargs[i] == '--emrun':
       emrun = True
       newargs[i] = ''
-    elif newargs[i] == '--em-config':
-      # This option is parsed in tools/shared.py, here only clean it up from being passed to clang.
-      newargs[i] = ''
-      newargs[i+1] = ''
     elif newargs[i] == '--default-obj-ext':
       newargs[i] = ''
       default_object_extension = newargs[i+1]
       if not default_object_extension.startswith('.'):
         default_object_extension = '.' + default_object_extension
       newargs[i+1] = ''
+
+  if should_exit:
+    sys.exit(0)
 
   newargs = [arg for arg in newargs if arg is not '']
 
@@ -1069,11 +697,8 @@ try:
 
   if js_opts is None: js_opts = opt_level >= 2
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
-  if opt_level == 0: debug_level = 4
-
-  if llvm_lto is None and bind:
-    logging.debug('running lto for embind') # XXX this is a workaround for a pointer issue
-    llvm_lto = 1
+  if opt_level == 0: debug_level = max(3, debug_level)
+  if memory_init_file is None: memory_init_file = opt_level >= 2
 
   # TODO: support source maps with js_transform
   if js_transform and debug_level >= 4:
@@ -1087,15 +712,7 @@ try:
       if is_minus_s_for_emcc(newargs, i):
         settings_changes.append(newargs[i+1])
         newargs[i] = newargs[i+1] = ''
-    elif newargs[i].startswith('--typed-arrays'):
-      assert '=' not in newargs[i], 'Invalid typed arrays parameter (do not use "=")'
-      settings_changes.append('USE_TYPED_ARRAYS=' + newargs[i+1])
-      newargs[i] = ''
-      newargs[i+1] = ''
   newargs = [arg for arg in newargs if arg is not '']
-
-  if split_js_file:
-    settings_changes.append("PRINT_SPLIT_FILE_MARKER=1")
 
   # Find input files
 
@@ -1196,6 +813,10 @@ try:
     assert has_source_inputs or has_header_inputs, 'Must have source code or header inputs to use -c'
     target = target_basename + '.o'
     final_suffix = 'o'
+  if '-E' in newargs:
+    final_suffix = 'eout' # not bitcode, not js; but just result from preprocessing stage of the input file
+  if '-M' in newargs or '-MM' in newargs:
+    final_suffix = 'mout' # not bitcode, not js; but just dependency rule of the input file
   final_ending = ('.' + final_suffix) if len(final_suffix) > 0 else ''
 
   # Find library files
@@ -1214,7 +835,8 @@ try:
             break
         if found: break
       if found: break
-    if not found: logging.warning('emcc: cannot find library "%s"', lib)
+    if not found and lib not in ['GL', 'GLU', 'glut', 'm', 'SDL']: # whitelist our default libraries
+      logging.warning('emcc: cannot find library "%s"', lib)
 
   # If not compiling to JS, then we are compiling to an intermediate bitcode objects or library, so
   # ignore dynamic linking, since multiple dynamic linkings can interfere with each other
@@ -1243,78 +865,60 @@ try:
   # Apply optimization level settings
   shared.Settings.apply_opt_level(opt_level, noisy=True)
 
+  if os.environ.get('EMCC_FAST_COMPILER') == '0':
+    logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
+    sys.exit(1)
+
+  # Set ASM_JS default here so that we can override it from the command line.
+  shared.Settings.ASM_JS = 1 if opt_level > 0 else 2
+
+  pre_fastcomp_opts = []
+
   # Apply -s settings in newargs here (after optimization levels, so they can override them)
   for change in settings_changes:
     key, value = change.split('=')
     if value[0] == '@':
-      value = '"@' + os.path.abspath(value[1:]) + '"'
-      value = value.replace('\\\\', '/').replace('\\', '/') # Convert backslash paths to forward slashes on Windows as well, since the JS compiler otherwise needs the backslashes escaped (alternative is to escape all input paths passing to JS, which feels clumsier to read)
+      if key not in DEFERRED_REPONSE_FILES:
+        value = open(value[1:]).read()
+      else:
+        value = '"' + value + '"'
+    else:
+      value = value.replace('\\', '\\\\')
     exec('shared.Settings.' + key + ' = ' + value)
     if key == 'EXPORTED_FUNCTIONS':
       shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = shared.Settings.EXPORTED_FUNCTIONS[:] # used for warnings in emscripten.py
 
-  fastcomp = os.environ.get('EMCC_FAST_COMPILER') != '0'
+  try:
+    assert shared.Settings.ASM_JS > 0, 'ASM_JS must be enabled in fastcomp'
+    assert shared.Settings.SAFE_HEAP in [0, 1], 'safe heap must be 0 or 1 in fastcomp'
+    assert shared.Settings.UNALIGNED_MEMORY == 0, 'forced unaligned memory not supported in fastcomp'
+    assert shared.Settings.FORCE_ALIGNED_MEMORY == 0, 'forced aligned memory is not supported in fastcomp'
+    assert shared.Settings.PGO == 0, 'pgo not supported in fastcomp'
+    assert shared.Settings.USE_TYPED_ARRAYS == 2, 'altering USE_TYPED_ARRAYS is not supported'
+    assert shared.Settings.QUANTUM_SIZE == 4, 'altering the QUANTUM_SIZE is not supported'
+  except Exception, e:
+    logging.error('Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
+    raise e
 
-  if fastcomp:
-    shared.Settings.ASM_JS = 1 if opt_level > 0 else 2
-    try:
-      assert shared.Settings.UNALIGNED_MEMORY == 0, 'forced unaligned memory not supported in fastcomp'
-      assert shared.Settings.CHECK_HEAP_ALIGN == 0, 'check heap align not supported in fastcomp - use SAFE_HEAP instead'
-      assert shared.Settings.SAFE_DYNCALLS == 0, 'safe dyncalls not supported in fastcomp'
-      assert shared.Settings.ASM_HEAP_LOG == 0, 'asm heap log not supported in fastcomp'
-      assert shared.Settings.LABEL_DEBUG == 0, 'label debug not supported in fastcomp'
-      assert shared.Settings.EXECUTION_TIMEOUT == -1, 'execution timeout not supported in fastcomp'
-      assert shared.Settings.NAMED_GLOBALS == 0, 'named globals not supported in fastcomp'
-      assert shared.Settings.PGO == 0, 'pgo not supported in fastcomp'
-      assert shared.Settings.TARGET_ASMJS_UNKNOWN_EMSCRIPTEN == 1, 'fastcomp requires asmjs-unknown-emscripten'
-      assert shared.Settings.USE_TYPED_ARRAYS == 2, 'fastcomp assumes ta2'
-      assert not split_js_file, '--split-js is deprecated and not supported in fastcomp'
-      assert shared.Settings.INIT_HEAP == 0, 'HEAP_INIT is not supported in fastcomp (and should never be needed except for debugging)'
-      assert not shared.Settings.RUNTIME_TYPE_INFO, 'RUNTIME_TYPE_INFO is not supported in fastcomp'
-      assert not shared.Settings.CORRUPTION_CHECK, 'CORRUPTION_CHECK is not supported in asm.js mode, which is what fastcomp can emit (you can use non-asm.js mode in non-fastcomp)'
-      assert not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE, 'Linking modules is not supported in fastcomp'
-    except Exception, e:
-      logging.error('Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended, see https://github.com/kripken/emscripten/wiki/LLVM-Backend')
-      raise e
+  fastcomp_opts = []
+  if shared.Settings.NO_EXIT_RUNTIME:
+    pre_fastcomp_opts += ['-emscripten-no-exit-runtime']
+    if not llvm_lto: fastcomp_opts += ['-globalopt', '-globaldce']
+  fastcomp_opts += ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt']
+  if shared.Settings.DISABLE_EXCEPTION_CATCHING != 1:
+    fastcomp_opts += ['-enable-emscripten-cxx-exceptions']
+    if shared.Settings.DISABLE_EXCEPTION_CATCHING == 2:
+      fastcomp_opts += ['-emscripten-cxx-exceptions-whitelist=' + ','.join(shared.Settings.EXCEPTION_CATCHING_WHITELIST or ['fake'])]
+  if shared.Settings.ASYNCIFY:
+    fastcomp_opts += ['-emscripten-asyncify']
+    fastcomp_opts += ['-emscripten-asyncify-functions=' + ','.join(shared.Settings.ASYNCIFY_FUNCTIONS)]
+    fastcomp_opts += ['-emscripten-asyncify-whitelist=' + ','.join(shared.Settings.ASYNCIFY_WHITELIST)]
 
-    if jcache:
-      logging.warning('jcache is deprecated and not supported in fastcomp (you should not need it anyhow), disabling')
-      jcache = False
+  assert not shared.Settings.PGO, 'cannot run PGO in ASM_JS mode'
 
-    pre_fastcomp_opts = []
-    fastcomp_opts = []
-    if shared.Settings.NO_EXIT_RUNTIME:
-      pre_fastcomp_opts += ['-emscripten-no-exit-runtime']
-      if not llvm_lto: fastcomp_opts += ['-globalopt', '-globaldce']
-    fastcomp_opts += ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt']
-    if shared.Settings.DISABLE_EXCEPTION_CATCHING != 1:
-      fastcomp_opts += ['-enable-emscripten-cxx-exceptions']
-      if shared.Settings.DISABLE_EXCEPTION_CATCHING == 2:
-        fastcomp_opts += ['-emscripten-cxx-exceptions-whitelist=' + ','.join(shared.Settings.EXCEPTION_CATCHING_WHITELIST or ['fake'])]
-
-  if shared.Settings.ASM_JS:
-    assert opt_level >= 1 or fastcomp, 'asm.js requires -O1 or above'
-
-    if bind:
-      shared.Settings.RESERVED_FUNCTION_POINTERS = max(shared.Settings.RESERVED_FUNCTION_POINTERS, 10)
-    if shared.Settings.CORRECT_SIGNS != 1:
-      logging.warning('setting CORRECT_SIGNS to 1 for asm.js code generation')
-      shared.Settings.CORRECT_SIGNS = 1
-    if shared.Settings.CORRECT_OVERFLOWS != 1:
-      logging.warning('setting CORRECT_OVERFLOWS to 1 for asm.js code generation')
-      shared.Settings.CORRECT_OVERFLOWS = 1
-    assert not shared.Settings.PGO, 'cannot run PGO in ASM_JS mode'
-
-    if shared.Settings.SAFE_HEAP and not js_opts:
-      js_opts = True
-      logging.warning('enabling js opts to allow SAFE_HEAP to work properly')
-
-    if shared.Settings.ALLOW_MEMORY_GROWTH:
-      logging.warning('Disabling asm.js validation for memory growth (memory can grow, but you lose some amount of speed)');
-      shared.Settings.ASM_JS = 2
-
-  if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2:
-    debug_level = 4 # must keep debug info to do line-by-line operations
+  if shared.Settings.SAFE_HEAP and not js_opts:
+    js_opts = True
+    logging.debug('enabling js opts for SAFE_HEAP')
 
   if debug_level > 1 and closure:
     logging.warning('disabling closure because debug info was requested')
@@ -1323,47 +927,38 @@ try:
   assert not (shared.Settings.NO_DYNAMIC_EXECUTION and closure), 'cannot have both NO_DYNAMIC_EXECUTION and closure compiler enabled at the same time'
 
   if closure:
-    shared.Settings.CLOSURE_COMPILER = 1
+    shared.Settings.CLOSURE_COMPILER = closure
     assert os.path.exists(shared.CLOSURE_COMPILER), logging.error('fatal: Closure compiler (%s) does not exist', shared.CLOSURE_COMPILER)
-
-  assert shared.LLVM_TARGET in shared.COMPILER_OPTS
-  if shared.LLVM_TARGET == 'i386-pc-linux-gnu':
-    shared.Settings.TARGET_X86 = 1
-    shared.Settings.TARGET_ASMJS_UNKNOWN_EMSCRIPTEN = 0
-    assert 'asmjs-unknown-emscripten' not in shared.COMPILER_OPTS
-  elif shared.LLVM_TARGET == 'asmjs-unknown-emscripten' or \
-       shared.LLVM_TARGET == 'le32-unknown-nacl':
-    # For temporary compatibility, treat 'le32-unknown-nacl' as 'asmjs-unknown-emscripten'.
-    shared.Settings.TARGET_ASMJS_UNKNOWN_EMSCRIPTEN = 1
-    shared.Settings.TARGET_X86 = 0
-    assert 'i386-pc-linux-gnu' not in shared.COMPILER_OPTS
-  else:
-    raise Exception('unknown llvm target: ' + str(shared.LLVM_TARGET))
-
-  if shared.Settings.USE_TYPED_ARRAYS != 2 and llvm_opts > 0:
-    logging.warning('disabling LLVM optimizations, need typed arrays mode 2 for them')
-    llvm_opts = 0
+    if closure == 2 and shared.Settings.ASM_JS == 1:
+      logging.warning('not all asm.js optimizations are possible with --closure 2, disabling those - your code will be run more slowly')
+      shared.Settings.ASM_JS = 2
 
   if shared.Settings.MAIN_MODULE:
     assert not shared.Settings.SIDE_MODULE
     shared.Settings.INCLUDE_FULL_LIBRARY = 1
-    shared.Settings.EXPORT_ALL = 1
   elif shared.Settings.SIDE_MODULE:
     assert not shared.Settings.MAIN_MODULE
+    memory_init_file = False # memory init file is not supported with side modules, must be executable synchronously (for dlopen)
 
   if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
-    assert not memory_init_file, 'memory init file is not supported with module linking'
     assert shared.Settings.ASM_JS, 'module linking requires asm.js output (-s ASM_JS=1)'
     shared.Settings.LINKABLE = 1 # TODO: add FORCE_DCE option for the brave people that do want to dce here and in side modules
-    debug_level = max(debug_level, 2)
+    shared.Settings.RELOCATABLE = 1
+    shared.Settings.PRECISE_I64_MATH = 1 # other might use precise math, we need to be able to print it
+    assert not closure, 'cannot use closure compiler on shared modules'
 
-  if not fastcomp and shared.Settings.ASSERTIONS and shared.Settings.ALIASING_FUNCTION_POINTERS:
-    logging.warning('ALIASING_FUNCTION_POINTERS is on, function pointer comparisons may be invalid across types')
+  if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
+    shared.Settings.ALIASING_FUNCTION_POINTERS = 0
 
   if shared.Settings.STB_IMAGE and final_suffix in JS_CONTAINING_SUFFIXES:
     input_files.append((next_arg_index, shared.path_from_root('third_party', 'stb_image.c')))
     next_arg_index += 1
     shared.Settings.EXPORTED_FUNCTIONS += ['_stbi_load', '_stbi_load_from_memory', '_stbi_image_free']
+
+  forced_stdlibs = []
+  if shared.Settings.DEMANGLE_SUPPORT:
+    shared.Settings.EXPORTED_FUNCTIONS += ['___cxa_demangle']
+    forced_stdlibs += ['libcxxabi']
 
   if type(shared.Settings.EXPORTED_FUNCTIONS) in (list, tuple):
     # always need malloc and free to be kept alive and exported, for internal use and other modules
@@ -1373,16 +968,56 @@ try:
   else:
     logging.debug('using response file for EXPORTED_FUNCTIONS, make sure it includes _malloc and _free')
 
-  if shared.Settings.ASM_JS and shared.Settings.DLOPEN_SUPPORT:
-    assert shared.Settings.DISABLE_EXCEPTION_CATCHING, 'no exceptions support with dlopen in asm yet'
-
   assert not (bind and shared.Settings.NO_DYNAMIC_EXECUTION), 'NO_DYNAMIC_EXECUTION disallows embind'
+
+  if shared.Settings.RELOCATABLE:
+    assert shared.Settings.GLOBAL_BASE < 1
+    shared.Settings.EMULATED_FUNCTION_POINTERS = 1
+    shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = shared.Settings.WARN_ON_UNDEFINED_SYMBOLS = 0
+    if not shared.Settings.SIDE_MODULE:
+      shared.Settings.EXPORT_ALL = 1
+
+  if shared.Settings.EMTERPRETIFY:
+    shared.Settings.FINALIZE_ASM_JS = 0
+    #shared.Settings.GLOBAL_BASE = 8*256 # keep enough space at the bottom for a full stack frame, for z-interpreter
+    shared.Settings.SIMPLIFY_IFS = 0 # this is just harmful for emterpreting
+    shared.Settings.EXPORTED_FUNCTIONS += ['emterpret']
+    if not js_opts:
+      js_opts = True
+      logging.debug('enabling js opts for EMTERPRETIFY')
+    assert closure is not 2, 'EMTERPRETIFY requires valid asm.js, and is incompatible with closure 2 which disables that'
+
+  if shared.Settings.DEAD_FUNCTIONS and not js_opts:
+    js_opts = True
+    logging.debug('enabling js opts for DEAD_FUNCTIONS')
 
   if proxy_to_worker:
     shared.Settings.PROXY_TO_WORKER = 1
 
   if js_opts:
     shared.Settings.RUNNING_JS_OPTS = 1
+
+  if shared.Settings.USE_PTHREADS:
+    if not any(s.startswith('PTHREAD_POOL_SIZE=') for s in settings_changes):
+      settings_changes.append('PTHREAD_POOL_SIZE=0')
+    js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
+    newargs.append('-D__EMSCRIPTEN_PTHREADS__=1')
+  else:
+    js_libraries.append(shared.path_from_root('src', 'library_pthread_stub.js'))
+
+  if shared.Settings.USE_PTHREADS:
+    if shared.Settings.PROXY_TO_WORKER:
+      logging.error('-s PROXY_TO_WORKER=1 is not yet supported with -s USE_PTHREADS=1!')
+      exit(1)
+    if shared.Settings.LINKABLE:
+      logging.error('-s LINKABLE=1 is not supported with -s USE_PTHREADS=1!')
+      exit(1)
+    if shared.Settings.SIDE_MODULE:
+      logging.error('-s SIDE_MODULE=1 is not supported with -s USE_PTHREADS=1!')
+      exit(1)
+    if shared.Settings.MAIN_MODULE:
+      logging.error('-s MAIN_MODULE=1 is not supported with -s USE_PTHREADS=1!')
+      exit(1)
 
   shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
   shared.Settings.OPT_LEVEL = opt_level
@@ -1404,6 +1039,7 @@ try:
     args = newargs + shared.EMSDK_CXX_OPTS + headers
     if specified_target:
       args += ['-o', specified_target]
+    args = system_libs.process_args(args, shared.Settings)
     logging.debug("running (for precompiled headers): " + call + ' ' + ' '.join(args))
     execute([call] + args) # let compiler frontend print directly, so colors are saved (PIPE kills that)
     sys.exit(0)
@@ -1418,8 +1054,34 @@ try:
             return os.path.join(specified_target, os.path.basename(unsuffixed(input_file))) + default_object_extension
           return specified_target
         return unsuffixed(input_file) + final_ending
-      return unsuffixed(input_file) + default_object_extension
+      else:
+        if has_dash_c: return unsuffixed(input_file) + default_object_extension
     return in_temp(unsuffixed(uniquename(input_file)) + default_object_extension)
+
+  # Request LLVM debug info if explicitly specified, or building bitcode with -g, or if building a source all the way to JS with -g
+  if debug_level >= 4 or ((final_suffix not in JS_CONTAINING_SUFFIXES or (has_source_inputs and final_suffix in JS_CONTAINING_SUFFIXES)) and requested_debug == '-g'):
+    if debug_level == 4 or not (final_suffix in JS_CONTAINING_SUFFIXES and js_opts): # do not save llvm debug info if js optimizer will wipe it out anyhow (but if source maps are used, keep it)
+      newargs.append('-g') # preserve LLVM debug info
+      debug_level = 4
+
+  # Bitcode args generation code
+  def get_bitcode_args(input_files):
+    file_ending = filename_type_ending(input_files[0])
+    args = [call] + newargs + input_files
+    if file_ending.endswith(CXX_ENDINGS):
+      args += shared.EMSDK_CXX_OPTS
+    args = system_libs.process_args(args, shared.Settings)
+    return args
+
+  # -E preprocessor-only support
+  if '-E' in newargs or '-M' in newargs or '-MM' in newargs:
+    input_files = map(lambda x: x[1], input_files)
+    cmd = get_bitcode_args(input_files)
+    if specified_target:
+      cmd += ['-o', specified_target]
+    # Do not compile, but just output the result from preprocessing stage or output the dependency rule. Warning: clang and gcc behave differently with -MF! (clang seems to not recognize it)
+    logging.debug(('just preprocessor ' if '-E' in newargs else 'just dependencies: ') + ' '.join(cmd))
+    exit(subprocess.call(cmd))
 
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   for i, input_file in input_files:
@@ -1428,25 +1090,19 @@ try:
       logging.debug('compiling source file: ' + input_file)
       output_file = get_bitcode_file(input_file)
       temp_files.append((i, output_file))
-      args = newargs + ['-emit-llvm', '-c', input_file, '-o', output_file]
-      if file_ending.endswith(CXX_ENDINGS):
-        args += shared.EMSDK_CXX_OPTS
-      logging.debug("running: " + call + ' ' + ' '.join(args))
-      execute([call] + args) # let compiler frontend print directly, so colors are saved (PIPE kills that)
+      args = get_bitcode_args([input_file]) + ['-emit-llvm', '-c', '-o', output_file]
+      logging.debug("running: " + ' '.join(args))
+      execute(args) # let compiler frontend print directly, so colors are saved (PIPE kills that)
       if not os.path.exists(output_file):
         logging.error('compiler frontend failed to generate LLVM bitcode, halting')
         sys.exit(1)
     else: # bitcode
       if file_ending.endswith(BITCODE_ENDINGS):
-        logging.debug('copying bitcode file: ' + input_file)
-        temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
-        shutil.copyfile(input_file, temp_file)
-        temp_files.append((i, temp_file))
+        logging.debug('using bitcode file: ' + input_file)
+        temp_files.append((i, input_file))
       elif file_ending.endswith(DYNAMICLIB_ENDINGS) or shared.Building.is_ar(input_file):
-        logging.debug('copying library file: ' + input_file)
-        temp_file = in_temp(uniquename(input_file))
-        shutil.copyfile(input_file, temp_file)
-        temp_files.append((i, temp_file))
+        logging.debug('using library file: ' + input_file)
+        temp_files.append((i, input_file))
       elif file_ending.endswith(ASSEMBLY_ENDINGS):
         if not LEAVE_INPUTS_RAW:
           logging.debug('assembling assembly file: ' + input_file)
@@ -1467,21 +1123,31 @@ try:
       for pos, (_, input_file) in enumerate(input_files):
         file_ending = filename_type_ending(input_file)
         if file_ending.endswith(SOURCE_ENDINGS):
-          (_, temp_file) = temp_files[pos]
+          temp_file = temp_files[pos][1]
           logging.debug('optimizing %s', input_file)
-          #if DEBUG: shutil.copyfile(temp_file, os.path.join(TEMP_DIR, 'to_opt.bc') # useful when LLVM opt aborts
-          shared.Building.llvm_opt(temp_file, llvm_opts)
+          #if DEBUG: shutil.copyfile(temp_file, os.path.join(shared.configuration.CANONICAL_TEMP_DIR, 'to_opt.bc')) # useful when LLVM opt aborts
+          new_temp_file = in_temp(unsuffixed(uniquename(temp_file)) + '.o')
+          shared.Building.llvm_opt(temp_file, llvm_opts, new_temp_file)
+          temp_files[pos] = (temp_files[pos][0], new_temp_file)
+
+  # Decide what we will link
+  linker_inputs = [val for _, val in sorted(temp_files + link_flags)]
 
   # If we were just asked to generate bitcode, stop there
   if final_suffix not in JS_CONTAINING_SUFFIXES:
     if not specified_target:
-      for _, input_file in input_files:
-        safe_move(get_bitcode_file(input_file), unsuffixed_basename(input_file) + final_ending)
+      assert len(temp_files) == len(input_files)
+      for i in range(len(input_files)):
+        safe_move(temp_files[i][1], unsuffixed_basename(input_files[i][1]) + final_ending)
     else:
       if len(input_files) == 1:
         _, input_file = input_files[0]
         _, temp_file = temp_files[0]
-        safe_move(temp_file, specified_target if specified_target else unsuffixed_basename(input_file) + final_ending)
+        bitcode_target = specified_target if specified_target else unsuffixed_basename(input_file) + final_ending
+        if temp_file != input_file:
+          safe_move(temp_file, bitcode_target)
+        else:
+          shutil.copyfile(temp_file, bitcode_target)
         temp_output_base = unsuffixed(temp_file)
         if os.path.exists(temp_output_base + '.d'):
           # There was a .d file generated, from -MD or -MMD and friends, save a copy of it to where the output resides,
@@ -1495,11 +1161,14 @@ try:
         assert len(original_input_files) == 1 or not has_dash_c, 'fatal error: cannot specify -o with -c with multiple files' + str(sys.argv) + ':' + str(original_input_files)
         # We have a specified target (-o <target>), which is not JavaScript or HTML, and
         # we have multiple files: Link them
-        logging.debug('link: ' + str(temp_files) + specified_target)
+        logging.debug('link: ' + str(linker_inputs) + specified_target)
         # Sort arg tuples and pass the extracted values to link.
-        link_args = [f for (i, f) in sorted(temp_files)]
-        shared.Building.link(link_args, specified_target)
+        shared.Building.link(linker_inputs, specified_target)
     logging.debug('stopping at bitcode')
+    if final_suffix.lower() in ['so', 'dylib', 'dll']:
+      logging.warning('Dynamic libraries (.so, .dylib, .dll) are currently not supported by Emscripten. For build system emulation purposes, Emscripten'
+        + ' will now generate a static library file (.bc) with the suffix \'.' + final_suffix + '\'. For best practices,'
+        + ' please adapt your build system to directly generate a static LLVM bitcode library by setting the output suffix to \'.bc.\')')
     exit(0)
 
   log_time('process inputs')
@@ -1508,27 +1177,34 @@ try:
 
   logging.debug('will generate JavaScript')
 
+  extra_files_to_link = []
+
   if not LEAVE_INPUTS_RAW and \
      not shared.Settings.BUILD_AS_SHARED_LIB and \
      not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
-    extra_files_to_link = system_libs.calculate([f for _, f in sorted(temp_files)], in_temp, stdout, stderr)
-  else:
-    extra_files_to_link = []
+    extra_files_to_link = system_libs.get_ports(shared.Settings)
+    extra_files_to_link += system_libs.calculate([f for _, f in sorted(temp_files)] + extra_files_to_link, in_temp, stdout, stderr, forced=forced_stdlibs)
 
   log_time('calculate system libraries')
 
   # First, combine the bitcode files if there are several. We must also link if we have a singleton .a
   if len(input_files) + len(extra_files_to_link) > 1 or \
      (not LEAVE_INPUTS_RAW and not (suffix(temp_files[0][1]) in BITCODE_ENDINGS or suffix(temp_files[0][1]) in DYNAMICLIB_ENDINGS) and shared.Building.is_ar(temp_files[0][1])):
-    linker_inputs = [val for _, val in sorted(temp_files + link_flags)] + extra_files_to_link
+    linker_inputs += extra_files_to_link
     logging.debug('linking: ' + str(linker_inputs))
-    shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'), force_archive_contents=len([temp for i, temp in temp_files if not temp.endswith(STATICLIB_ENDINGS)]) == 0)
+    # force archive contents to all be included, if just archives, or if linking shared modules
+    force_archive_contents = len([temp for i, temp in temp_files if not temp.endswith(STATICLIB_ENDINGS)]) == 0 or not shared.Building.can_build_standalone()
+    shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'), force_archive_contents=force_archive_contents)
     final = in_temp(target_basename + '.bc')
   else:
     if not LEAVE_INPUTS_RAW:
       _, temp_file = temp_files[0]
-      shutil.move(temp_file, in_temp(target_basename + '.bc'))
+      _, input_file = input_files[0]
       final = in_temp(target_basename + '.bc')
+      if temp_file != input_file:
+        shutil.move(temp_file, final)
+      else:
+        shutil.copyfile(temp_file, final)
     else:
       _, input_file = input_files[0]
       final = in_temp(input_file)
@@ -1537,12 +1213,13 @@ try:
   log_time('link')
 
   if DEBUG:
-    logging.debug('saving intermediate processing steps to %s', shared.EMSCRIPTEN_TEMP_DIR)
+    emscripten_temp_dir = shared.get_emscripten_temp_dir()
+    logging.debug('saving intermediate processing steps to %s', emscripten_temp_dir)
 
     intermediate_counter = 0
     def save_intermediate(name=None, suffix='js'):
       global intermediate_counter
-      shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-%d%s.%s' % (intermediate_counter, '' if name is None else '-' + name, suffix)))
+      shutil.copyfile(final, os.path.join(emscripten_temp_dir, 'emcc-%d%s.%s' % (intermediate_counter, '' if name is None else '-' + name, suffix)))
       intermediate_counter += 1
 
     if not LEAVE_INPUTS_RAW: save_intermediate('basebc', 'bc')
@@ -1552,43 +1229,44 @@ try:
     link_opts = [] if debug_level >= 4 else ['-strip-debug'] # remove LLVM debug if we are not asked for it
 
     if llvm_lto >= 2:
-      logging.debug('running LLVM opt -O3 as pre-LTO')
-      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), ['-O3'])
+      logging.debug('running LLVM opts as pre-LTO')
+      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), llvm_opts)
       if DEBUG: save_intermediate('opt', 'bc')
 
     # If we can LTO, do it before dce, since it opens up dce opportunities
-    if shared.Building.can_build_standalone() and llvm_lto and llvm_lto != 2 and shared.Building.can_use_unsafe_opts():
+    if shared.Building.can_build_standalone() and llvm_lto and llvm_lto != 2:
       if not shared.Building.can_inline(): link_opts.append('-disable-inlining')
-      # do not internalize in std-link-opts - it ignores internalize-public-api-list - and add a manual internalize
-      link_opts += ['-disable-internalize'] + shared.Building.get_safe_internalize() + ['-std-link-opts']
+      # add a manual internalize with the proper things we need to be kept alive during lto
+      link_opts += shared.Building.get_safe_internalize() + ['-std-link-opts']
+      # execute it now, so it is done entirely before we get to the stage of legalization etc.
+      shared.Building.llvm_opt(final, pre_fastcomp_opts + link_opts)
+      if DEBUG: save_intermediate('lto', 'bc')
+      pre_fastcomp_opts = []
+      link_opts = []
     else:
       # At minimum remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
       link_opts += shared.Building.get_safe_internalize() + ['-globaldce']
 
-    if (not save_bc and not fastcomp) or AUTODEBUG:
+    if AUTODEBUG:
       # let llvm opt directly emit ll, to skip writing and reading all the bitcode
       link_opts += ['-S']
       shared.Building.llvm_opt(final, link_opts, final + '.link.ll')
       final = final + '.link.ll'
       if DEBUG: save_intermediate('linktime', 'll')
     else:
-      if fastcomp and not save_bc:
+      if not save_bc:
         # Simplify LLVM bitcode for fastcomp
         link_opts = pre_fastcomp_opts + link_opts + fastcomp_opts
       shared.Building.llvm_opt(final, link_opts)
       if DEBUG: save_intermediate('linktime', 'bc')
       if save_bc:
         shutil.copyfile(final, save_bc)
-        if fastcomp:
-          shared.Building.llvm_opt(final, fastcomp_opts, final + '.adsimp.bc')
-          final += '.adsimp.bc'
-          if DEBUG: save_intermediate('adsimp', 'bc')
+        shared.Building.llvm_opt(final, fastcomp_opts, final + '.adsimp.bc')
+        final += '.adsimp.bc'
+        if DEBUG: save_intermediate('adsimp', 'bc')
 
   # Prepare .ll for Emscripten
-  if not LEAVE_INPUTS_RAW:
-    if save_bc and not fastcomp:
-      final = shared.Building.llvm_dis(final, final + '.ll')
-  else:
+  if LEAVE_INPUTS_RAW:
     assert len(input_files) == 1
   if DEBUG and save_bc: save_intermediate('ll', 'll')
 
@@ -1599,7 +1277,7 @@ try:
     if DEBUG: save_intermediate('autodebug', 'll')
 
   # Simplify bitcode after autodebug
-  if fastcomp and (AUTODEBUG or LEAVE_INPUTS_RAW):
+  if AUTODEBUG or LEAVE_INPUTS_RAW:
     shared.Building.llvm_opt(final, fastcomp_opts, final + '.adsimp.bc')
     final += '.adsimp.bc'
     if DEBUG: save_intermediate('adsimp', 'bc')
@@ -1609,7 +1287,10 @@ try:
   # Emscripten
   logging.debug('LLVM => JS')
   extra_args = [] if not js_libraries else ['--libraries', ','.join(map(os.path.abspath, js_libraries))]
-  if jcache: extra_args.append('--jcache')
+  if memory_init_file:
+    shared.Settings.MEM_INIT_METHOD = 1
+  else:
+    assert shared.Settings.MEM_INIT_METHOD != 1
   final = shared.Building.emscripten(final, append_ext=False, extra_args=extra_args)
   if DEBUG: save_intermediate('original')
 
@@ -1634,6 +1315,8 @@ try:
       file_args.append('--use-preload-cache')
     if no_heap_copy:
       file_args.append('--no-heap-copy')
+    if not closure:
+      file_args.append('--no-closure')
     file_code = execute([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE)[0]
     pre_js = file_code + pre_js
 
@@ -1642,19 +1325,11 @@ try:
     logging.debug('applying pre/postjses')
     src = open(final).read()
     final += '.pp.js'
+    if WINDOWS: # Avoid duplicating \r\n to \r\r\n when writing out.
+      if pre_js: pre_js = pre_js.replace('\r\n', '\n')
+      if post_js: post_js = post_js.replace('\r\n', '\n')
     open(final, 'w').write(pre_js + src + post_js)
     if DEBUG: save_intermediate('pre-post')
-
-  # Add bindings glue if used
-  if bind:
-    logging.debug('adding embind glue')
-    src = open(final).read().replace('// {{PRE_RUN_ADDITIONS}}', '// {{PRE_RUN_ADDITIONS}}\n' +
-            open(shared.path_from_root('src', 'embind', 'embind.js')).read() +
-            open(shared.path_from_root('src', 'embind', 'emval.js')).read()
-          )
-    final += '.bd.js'
-    open(final, 'w').write(src)
-    if DEBUG: save_intermediate('bind')
 
   # Apply a source code transformation, if requested
   if js_transform:
@@ -1667,34 +1342,37 @@ try:
 
   js_transform_tempfiles = [final]
 
-  if memory_init_file:
-    if shared.Settings.USE_TYPED_ARRAYS != 2:
-      if type(memory_init_file) == int: logging.warning('memory init file requires typed arrays mode 2')
-    else:
-      memfile = target + '.mem'
-      shared.try_delete(memfile)
-      def repl(m):
-        # handle chunking of the memory initializer
-        s = m.groups(0)[0]
-        open(memfile, 'wb').write(''.join(map(lambda x: chr(int(x or '0')), s.split(','))))
-        if DEBUG:
-          # Copy into temp dir as well, so can be run there too
-          temp_memfile = os.path.join(shared.EMSCRIPTEN_TEMP_DIR, os.path.basename(memfile))
-          if os.path.abspath(memfile) != os.path.abspath(memfile):
-            shutil.copyfile(memfile, temp_memfile)
-        return 'var memoryInitializer = "%s";' % os.path.basename(memfile)
-      src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
-      open(final + '.mem.js', 'w').write(src)
-      final += '.mem.js'
-      src = None
-      js_transform_tempfiles[-1] = final # simple text substitution preserves comment line number mappings
+  if shared.Settings.MEM_INIT_METHOD > 0:
+    memfile = target + '.mem'
+    shared.try_delete(memfile)
+    def repl(m):
+      # handle chunking of the memory initializer
+      s = m.group(1)
+      if len(s) == 0: return '' # don't emit 0-size ones
+      membytes = [int(x or '0') for x in s.split(',')]
+      while membytes and membytes[-1] == 0:
+        membytes.pop()
+      if not membytes: return ''
+      if not memory_init_file:
+        # memory initializer in a string literal
+        return "memoryInitializer = '%s';" % shared.JS.generate_string_initializer(list(membytes))
+      open(memfile, 'wb').write(''.join(map(chr, membytes)))
       if DEBUG:
-        if os.path.exists(memfile):
-          save_intermediate('meminit')
-          logging.debug('wrote memory initialization to %s', memfile)
-        else:
-          logging.debug('did not see memory initialization')
-  elif shared.Settings.USE_TYPED_ARRAYS == 2 and not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and debug_level < 4:
+        # Copy into temp dir as well, so can be run there too
+        shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
+      return 'memoryInitializer = "%s";' % os.path.basename(memfile)
+    src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
+    open(final + '.mem.js', 'w').write(src)
+    final += '.mem.js'
+    src = None
+    js_transform_tempfiles[-1] = final # simple text substitution preserves comment line number mappings
+    if DEBUG:
+      if os.path.exists(memfile):
+        save_intermediate('meminit')
+        logging.debug('wrote memory initialization to %s', memfile)
+      else:
+        logging.debug('did not see memory initialization')
+  elif not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and debug_level < 4:
     # not writing a binary init, but we can at least optimize them by splitting them up
     src = open(final).read()
     src = shared.JS.optimize_initializer(src)
@@ -1704,52 +1382,91 @@ try:
       final += '.mem.js'
       src = None
 
+  if shared.Settings.USE_PTHREADS:
+    shutil.copyfile(shared.path_from_root('src', 'pthread-main.js'), os.path.join(os.path.dirname(os.path.abspath(target)), 'pthread-main.js'))
+
   log_time('source transforms')
 
   # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing
   js_optimizer_queue = []
   js_optimizer_extra_info = {}
   js_optimizer_queue_history = []
-  def flush_js_optimizer_queue():
+  js_optimizer_blacklist = (os.environ.get('EMCC_JSOPT_BLACKLIST') or '').split(',')
+  minify_whitespace = False
+
+  def flush_js_optimizer_queue(title='js_opts'):
     global final, js_optimizer_queue, js_optimizer_extra_info, js_optimizer_queue_history
-    if len(js_optimizer_extra_info) == 0:
+
+    js_optimizer_queue = filter(lambda p: p not in js_optimizer_blacklist, js_optimizer_queue)
+
+    if js_optimizer_extra_info is not None and len(js_optimizer_extra_info) == 0:
       js_optimizer_extra_info = None
+
     if len(js_optimizer_queue) > 0 and not(not shared.Settings.ASM_JS and len(js_optimizer_queue) == 1 and js_optimizer_queue[0] == 'last'):
 
-      def add_opt_args(args):
-        if shared.Settings.ASM_JS:
-          args = ['asm'] + args
-          if shared.Settings.PRECISE_F32:
-            args = ['asmPreciseF32'] + args
-        return args
-
-      if DEBUG != '2':
-        js_optimizer_queue = add_opt_args(js_optimizer_queue)
-        logging.debug('applying js optimization passes: %s', js_optimizer_queue)
-        final = shared.Building.js_optimizer(final, js_optimizer_queue, jcache, debug_level >= 4, js_optimizer_extra_info)
+      def run_passes(passes, title, just_split, just_concat):
+        global final, minify_whitespace, emit_symbol_map, target
+        passes = ['asm'] + passes
+        if shared.Settings.PRECISE_F32:
+          passes = ['asmPreciseF32'] + passes
+        if emit_symbol_map and 'minifyNames' in passes:
+          passes += ['symbolMap='+target+'.symbols']
+        if profiling_funcs and 'minifyNames' in passes:
+          passes += ['profilingFuncs']
+        if minify_whitespace and 'last' in passes:
+          passes += ['minifyWhitespace']
+        logging.debug('applying js optimization passes: %s', ' '.join(passes))
+        misc_temp_files.note(final)
+        final = shared.Building.js_optimizer(final, passes, debug_level >= 4, js_optimizer_extra_info, just_split=just_split, just_concat=just_concat)
+        misc_temp_files.note(final)
         js_transform_tempfiles.append(final)
-        if DEBUG: save_intermediate('js_opts')
+        if DEBUG: save_intermediate(title, suffix='js' if 'emitJSON' not in passes else 'json')
+
+      passes = js_optimizer_queue[:]
+
+      if DEBUG != '2' or len(passes) < 2:
+        # by assumption, our input is JS, and our output is JS. If a pass is going to run in the native optimizer in C++, then we
+        # must give it JSON and receive from it JSON
+        chunks = []
+        curr = []
+        for p in passes:
+          if len(curr) == 0:
+            curr.append(p)
+          else:
+            native = shared.js_optimizer.use_native(p, source_map=debug_level >= 4)
+            last_native = shared.js_optimizer.use_native(curr[-1], source_map=debug_level >= 4)
+            if native == last_native:
+              curr.append(p)
+            else:
+              curr.append('emitJSON')
+              chunks.append(curr)
+              curr = ['receiveJSON', p]
+        if len(curr) > 0:
+          chunks.append(curr)
+        if len(chunks) == 1:
+          run_passes(chunks[0], title, just_split=False, just_concat=False)
+        else:
+          for i in range(len(chunks)):
+            run_passes(chunks[i], 'js_opts_' + str(i), just_split='receiveJSON' in chunks[i], just_concat='emitJSON' in chunks[i])
       else:
-        for name in js_optimizer_queue:
-          passes = add_opt_args([name])
-          if shared.Settings.ASM_JS:
-            passes = ['asm'] + passes
-          logging.debug('applying js optimization pass: %s', passes)
-          final = shared.Building.js_optimizer(final, passes, jcache, debug_level >= 4, js_optimizer_extra_info)
-          js_transform_tempfiles.append(final)
-          save_intermediate(name)
+        # DEBUG 2, run each pass separately
+        for p in passes:
+          js_optimizer_queue = [p]
+          flush_js_optimizer_queue(p)
       js_optimizer_queue_history += js_optimizer_queue
       js_optimizer_queue = []
     js_optimizer_extra_info = {}
 
+  if shared.Settings.DEAD_FUNCTIONS:
+    js_optimizer_queue += ['eliminateDeadFuncs']
+    js_optimizer_extra_info['dead_functions'] = shared.Settings.DEAD_FUNCTIONS
+
   if opt_level >= 1 and js_opts:
-    logging.debug('running pre-closure post-opts')
+    logging.debug('running js post-opts')
 
     if DEBUG == '2':
       # Clean up the syntax a bit
-      final = shared.Building.js_optimizer(final, [], jcache, debug_level >= 4)
-      js_transform_tempfiles.append(final)
-      if DEBUG: save_intermediate('pretty')
+      js_optimizer_queue += ['noop']
 
     def get_eliminate():
       if shared.Settings.ALLOW_MEMORY_GROWTH:
@@ -1761,55 +1478,142 @@ try:
       js_optimizer_queue += [get_eliminate()]
 
       if shared.Settings.AGGRESSIVE_VARIABLE_ELIMINATION:
+        # note that this happens before registerize/minification, which can obfuscate the name of 'label', which is tricky
         js_optimizer_queue += ['aggressiveVariableElimination']
 
       js_optimizer_queue += ['simplifyExpressions']
 
+      if shared.Settings.EMTERPRETIFY:
+        # emterpreter code will not run through a JS optimizing JIT, do more work ourselves
+        js_optimizer_queue += ['localCSE']
+        # add explicit label setting, as we will run aggressiveVariableElimination late, *after* 'label' is no longer notable by name
+        js_optimizer_queue += ['safeLabelSetting']
+
+  if shared.Settings.EMTERPRETIFY:
+    # add explicit label setting, as we will run aggressiveVariableElimination late, *after* 'label' is no longer notable by name
+    js_optimizer_queue += ['safeLabelSetting']
+
+  if opt_level >= 1 and js_opts:
+    if opt_level >= 2:
       # simplify ifs if it is ok to make the code somewhat unreadable, and unless outlining (simplified ifs
       # with commaified code breaks late aggressive variable elimination)
       if shared.Settings.SIMPLIFY_IFS and (debug_level == 0 or profiling) and shared.Settings.OUTLINING_LIMIT == 0: js_optimizer_queue += ['simplifyIfs']
 
       if shared.Settings.PRECISE_F32: js_optimizer_queue += ['optimizeFrounds']
 
-  if closure and not shared.Settings.ASM_JS:
+  def do_minify():
+    global js_optimizer_queue
+
+    if opt_level >= 2:
+      if debug_level < 2 and not closure == 2:
+        js_optimizer_queue += ['minifyNames']
+      if debug_level == 0:
+        global minify_whitespace
+        minify_whitespace = True
+
+    if closure == 1:
+      js_optimizer_queue += ['closure']
+    elif debug_level <= 2 and shared.Settings.FINALIZE_ASM_JS and not closure:
+      js_optimizer_queue += ['cleanup']
+
+  if js_opts:
+    if shared.Settings.SAFE_HEAP: js_optimizer_queue += ['safeHeap']
+
+    if shared.Settings.OUTLINING_LIMIT > 0:
+      js_optimizer_queue += ['outline']
+      js_optimizer_extra_info['sizeToOutline'] = shared.Settings.OUTLINING_LIMIT
+
+    if opt_level >= 2 and debug_level < 3:
+      if opt_level >= 3 or shrink_level > 0:
+        js_optimizer_queue += ['registerizeHarder']
+      else:
+        js_optimizer_queue += ['registerize']
+
+    if not shared.Settings.EMTERPRETIFY:
+      do_minify()
+
+    if opt_level >= 2:
+      js_optimizer_queue += ['asmLastOpts']
+
+    if shared.Settings.FINALIZE_ASM_JS: js_optimizer_queue += ['last']
+
+    flush_js_optimizer_queue()
+
+  if closure == 2:
     flush_js_optimizer_queue()
 
     logging.debug('running closure')
     # no need to add this to js_transform_tempfiles, because closure and
     # debug_level > 0 are never simultaneously true
-    final = shared.Building.closure_compiler(final)
+    final = shared.Building.closure_compiler(final, pretty=debug_level >= 1)
     if DEBUG: save_intermediate('closure')
 
-  if js_opts:
-    if shared.Settings.ASM_JS and shared.Settings.SAFE_HEAP: js_optimizer_queue += ['safeHeap']
+  log_time('js opts')
 
-    if shared.Settings.OUTLINING_LIMIT > 0 and shared.Settings.ASM_JS:
-      js_optimizer_queue += ['outline']
-      js_optimizer_extra_info['sizeToOutline'] = shared.Settings.OUTLINING_LIMIT
+  if shared.Settings.MODULARIZE:
+    logging.debug('Modularizing, assigning to var ' + shared.Settings.EXPORT_NAME)
+    src = open(final).read()
+    final = final + '.modular.js'
+    f = open(final, 'w')
+    f.write('var ' + shared.Settings.EXPORT_NAME + ' = function(Module) {\n')
+    f.write('  Module = Module || {};\n')
+    f.write('\n')
+    f.write(src)
+    f.write('\n')
+    f.write('  return Module;\n')
+    f.write('};\n')
+    f.close()
+    src = None
 
-    if opt_level >= 2 and (not closure or shared.Settings.ASM_JS) and shared.Settings.RELOOP and debug_level < 3:
-      if shared.Settings.ASM_JS and opt_level >= 3:
-        js_optimizer_queue += ['registerizeHarder']
-      else:
-        js_optimizer_queue += ['registerize']
+  js_target = unsuffixed(target) + '.js'
 
-    if opt_level >= 2:
-      if debug_level < 2 and shared.Settings.ASM_JS:
-        js_optimizer_queue += ['minifyNames']
-        if emit_symbol_map: js_optimizer_queue += ['symbolMap='+target+'.symbols']
-      if debug_level == 0: js_optimizer_queue += ['minifyWhitespace']
+  if shared.Settings.EMTERPRETIFY:
+    flush_js_optimizer_queue()
+    logging.debug('emterpretifying')
+    import json
+    try:
+      # move temp js to final position, alongside its mem init file
+      shutil.move(final, js_target)
+      args = [shared.PYTHON, shared.path_from_root('tools', 'emterpretify.py'), js_target, final + '.em.js', json.dumps(shared.Settings.EMTERPRETIFY_BLACKLIST), json.dumps(shared.Settings.EMTERPRETIFY_WHITELIST), '', str(shared.Settings.SWAPPABLE_ASM_MODULE)]
+      if shared.Settings.EMTERPRETIFY_ASYNC:
+        args += ['ASYNC=1']
+      if shared.Settings.EMTERPRETIFY_ADVISE:
+        args += ['ADVISE=1']
+      if profiling or profiling_funcs:
+        args += ['PROFILING=1']
+      if shared.Settings.ASSERTIONS:
+        args += ['ASSERTIONS=1']
+      if shared.Settings.PRECISE_F32:
+        args += ['FROUND=1']
+      if shared.Settings.ALLOW_MEMORY_GROWTH:
+        args += ['MEMORY_SAFE=1']
+      execute(args)
+      final = final + '.em.js'
+    finally:
+      shared.try_delete(js_target)
 
-    if shared.Settings.ASM_JS:
-      if closure:
-        js_optimizer_queue += ['closure']
-      elif debug_level <= 2 and not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE:
-        js_optimizer_queue += ['cleanup']
+    if shared.Settings.EMTERPRETIFY_ADVISE:
+      logging.warning('halting compilation due to EMTERPRETIFY_ADVISE')
+      sys.exit(0)
 
-    if not shared.Settings.SIDE_MODULE: js_optimizer_queue += ['last'] # side modules are not finalized until after relocation
-
+    # minify (if requested) after emterpreter processing, and finalize output
+    logging.debug('finalizing emterpreted code')
+    shared.Settings.FINALIZE_ASM_JS = 1
+    do_minify()
+    js_optimizer_queue += ['last']
     flush_js_optimizer_queue()
 
-  log_time('js opts')
+    # finalize the original as well, if we will be swapping it in (TODO: add specific option for this)
+    if shared.Settings.SWAPPABLE_ASM_MODULE:
+      real = final
+      original = js_target + '.orig.js' # the emterpretify tool saves the original here
+      final = original
+      logging.debug('finalizing original (non-emterpreted) code at ' + final)
+      do_minify()
+      js_optimizer_queue += ['last']
+      flush_js_optimizer_queue()
+      safe_move(final, original)
+      final = real
 
   # Remove some trivial whitespace # TODO: do not run when compress has already been done on all parts of the code
   #src = open(final).read()
@@ -1829,10 +1633,22 @@ try:
     shell = open(shell_path).read()
     assert '{{{ SCRIPT }}}' in shell, 'HTML shell must contain  {{{ SCRIPT }}}  , see src/shell.html for an example'
     html = open(target, 'w')
-    js_target = unsuffixed(target) + '.js'
     base_js_target = os.path.basename(js_target)
     if proxy_to_worker:
-      html.write(shell.replace('{{{ SCRIPT }}}', '<script>' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', target_basename) + '</script>'))
+      child_js = shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename
+      html.write(shell.replace('{{{ SCRIPT }}}', '''
+<script>
+  if ((',' + window.location.search.substr(1) + ',').indexOf(',noProxy,') < 0) {
+    console.log('running code in a web worker');
+''' + open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + shared.read_and_preprocess(shared.path_from_root('src', 'proxyClient.js')).replace('{{{ filename }}}', child_js).replace('{{{ IDBStore.js }}}', open(shared.path_from_root('src', 'IDBStore.js')).read()) + '''
+  } else {
+    // note: no support for code mods (PRECISE_F32==2)
+    console.log('running code on the main thread');
+    var script = document.createElement('script');
+    script.src = "%s.js";
+    document.body.appendChild(script);
+  }
+</script>''' % child_js))
       shutil.move(final, js_target)
     elif not Compression.on:
       # Normal code generation path
@@ -1972,12 +1788,13 @@ try {
 
     html.close()
   else:
-    if split_js_file:
-      from tools.split import split_javascript_file
-      split_javascript_file(final, unsuffixed(target), split_js_file)
+    if debug_level >= 4: generate_source_map(target)
+    if proxy_to_worker:
+      worker_target_basename = target_basename + '.worker'
+      open(target, 'w').write(open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', shared.Settings.PROXY_TO_WORKER_FILENAME or worker_target_basename).replace('{{{ IDBStore.js }}}', open(shared.path_from_root('src', 'IDBStore.js')).read()))
+      shutil.move(final, target[:-3] + '.worker.js')
     else:
-      if debug_level >= 4: generate_source_map(target)
-      # copy final JS to output
+      # copy final JS to output normally
       shutil.move(final, target)
 
   log_time('final emitting')
@@ -1992,7 +1809,5 @@ finally:
       pass
   else:
     logging.info('emcc saved files are in:' + temp_dir)
-
-#//eliminate a = a in js opt. will kill STACKTOP = STACKTOP in funcs that do not use the C stack! add test for no STACKTOP or sp in such a func
-#// minify if into ?: ?
+  misc_temp_files.clean()
 

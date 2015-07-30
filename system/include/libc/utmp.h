@@ -10,6 +10,7 @@ extern "C" {
 #define ACCOUNTING 9
 #define UT_NAMESIZE 32
 #define UT_HOSTSIZE 256
+#define UT_LINESIZE 32
 
 struct lastlog {
 	time_t ll_time;
@@ -22,6 +23,8 @@ struct lastlog {
 #define ut_addr ut_addr_v6[0]
 #define utmp utmpx
 #define utmpname(x) (-1)
+#define e_exit __e_exit
+#define e_termination __e_termination
 
 void         endutent(void);
 struct utmp *getutent(void);

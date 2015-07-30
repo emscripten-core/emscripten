@@ -42,7 +42,37 @@ if (NOT CMAKE_C_SIZEOF_DATA_PTR)
 	message(FATAL_ERROR "CMAKE_C_SIZEOF_DATA_PTR was not defined!")
 endif()
 
+# with NO_DEFAULT_PATH + ONLY_CMAKE_FIND_ROOT_PATH, we ensure that
+# only ${CMAKE_FIND_ROOT_PATH}/include will be searched for
+# emscripten/emscripten.h
+find_path(EMSCRIPTEN_INCLUDE_DIR emscripten/emscripten.h
+	PATHS /include
+	NO_DEFAULT_PATH
+	ONLY_CMAKE_FIND_ROOT_PATH
+	)
+
+if(NOT EMSCRIPTEN_INCLUDE_DIR)
+	message(FATAL_ERROR "emscripten.h could not be found! Is CMAKE_FIND_ROOT_PATH='${CMAKE_FIND_ROOT_PATH}' correct?")
+endif()
+
+include(CheckIncludeFile)
+
+check_include_file(stdlib.h HAVE_STDLIB_H)
+if (NOT ${HAVE_STDLIB_H})
+	message(FATAL_ERROR "CMake script check_include_file failed! Could not find stdlib.h via it!")
+endif()
+
+if (NOT CMAKE_EXECUTABLE_SUFFIX STREQUAL ".js")
+	message(FATAL_ERROR "The default suffix for building executables should be .js!")
+endif()
 SET(CMAKE_EXECUTABLE_SUFFIX ".html")
+
+# CMake built-in check_include_file() macro interacts with CMAKE_EXECUTABLE_SUFFIX, so make sure it works after user changes that.
+
+check_include_file(math.h HAVE_MATH_H)
+if (NOT ${HAVE_MATH_H})
+	message(FATAL_ERROR "CMake script check_include_file failed! Could not find math.h via it!")
+endif()
 
 add_executable(hello_world_gles ${sourceFiles})
 set_target_properties(hello_world_gles PROPERTIES LINK_FLAGS "${linkFlags}")

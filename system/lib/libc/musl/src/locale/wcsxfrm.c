@@ -6,10 +6,12 @@
 size_t __wcsxfrm_l(wchar_t *restrict dest, const wchar_t *restrict src, size_t n, locale_t loc)
 {
 	size_t l = wcslen(src);
-	if (l >= n) {
+	if (l < n) {
+		wmemcpy(dest, src, l+1);
+	} else if (n) {
 		wmemcpy(dest, src, n-1);
 		dest[n-1] = 0;
-	} else wcscpy(dest, src);
+	}
 	return l;
 }
 

@@ -5,19 +5,16 @@
 echo "builds"
 rm *.out *.bc *.js
 gcc $@ -m32 -I/home/alon/Dev/csmith/runtime -o n1.out &> /dev/null
-/home/alon/Dev/fastcomp/build/Release/bin/clang $@ -m32 -I/home/alon/Dev/csmith/runtime -o n2.out &> /dev/null
-/home/alon/Dev/fastcomp/build/Release/bin/clang $@ -m32 -I/home/alon/Dev/csmith/runtime -emit-llvm -c -o bc.bc &> o
-#EMCC_FAST_COMPILER=0 ~/Dev/emscripten/emcc $@ -I/home/alon/Dev/csmith/runtime -o js.out.js &> /dev/null
-#EMCC_FAST_COMPILER=0~/Dev/emscripten/emcc $@ -s UNALIGNED_MEMORY=1 -I/home/alon/Dev/csmith/runtime -o ua.out.js &> /dev/null
-#EMCC_FAST_COMPILER=0~/Dev/emscripten/emcc $@ -s SAFE_HEAP=1 -I/home/alon/Dev/csmith/runtime -o sh.out.js &> /dev/null
-~/Dev/emscripten/emcc $@ -I/home/alon/Dev/csmith/runtime -o fc.out.js &> /dev/null
-~/Dev/emscripten/emcc $@ -s SAFE_HEAP=1 -I/home/alon/Dev/csmith/runtime -o fc-sh.out.js &> /dev/null
+/home/alon/Dev/fastcomp/build/Release+Asserts/bin/clang -m32 -I/home/alon/Dev/csmith/runtime -o n2.out $@ &> /dev/null
+/home/alon/Dev/fastcomp/build/Release+Asserts/bin/clang -m32 -I/home/alon/Dev/csmith/runtime -emit-llvm -c -o bc.bc $@ &> o
+~/Dev/emscripten/emcc $@ -I/home/alon/Dev/csmith/runtime -s PRECISE_F32=1 -o fc.out.js --memory-init-file 0 -profiling &> /dev/null
+~/Dev/emscripten/emcc $@ -s SAFE_HEAP=1 -I/home/alon/Dev/csmith/runtime -s PRECISE_F32=1 -o fc-sh.out.js &> /dev/null
 echo "run n1"
 ./n1.out &> n1
 echo "run n2"
 ./n2.out &> n2
 echo "run bc"
-/home/alon/Dev/fastcomp/build/Release/bin/lli bc.bc &> bc
+/home/alon/Dev/fastcomp/build/Release+Asserts/bin/lli bc.bc &> bc
 #echo "run js"
 #mozjs js.out.js &> js
 #echo "run ua"
@@ -40,12 +37,12 @@ diff n1 bc
 #diff n1 sh | grep -v warning
 #echo "js/fc"
 #diff fc js | grep -v warning
-#echo "js/fc-sh"
-#diff fc-sh js | grep -v warning
 echo "native/fc"
 grep -v warning fc > fclean
-diff n1 fclean | grep -v warning
+diff -U5 n1 fclean | grep -v warning
 echo "native2/fc"
 grep -v warning fc > fclean
-diff n2 fclean | grep -v warning
+diff -U5 n2 fclean | grep -v warning
+echo "js/fc-sh"
+diff -U5 fc fc-sh | grep -v warning
 

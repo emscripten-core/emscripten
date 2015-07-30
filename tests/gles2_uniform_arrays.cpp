@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <emscripten.h>
 
 void RunTest(int testVariant)
 {
@@ -57,6 +58,7 @@ void RunTest(int testVariant)
     // so to exhibit extra issues in old code (and to keep new code from regressing), must test both with and without excess glGetUniformLocation calls.
     if ((testVariant&1) != 0)
     {
+        printf("check glGetUniformLocation with indexes\n");
         // Deliberately check in odd order to make sure any kind of lazy operations won't affect the indices we get.
         assert(glGetUniformLocation(program, "colors[2]") == loc+2);
         assert(glGetUniformLocation(program, "colors[0]") == loc);
@@ -65,6 +67,7 @@ void RunTest(int testVariant)
         assert(glGetUniformLocation(program, "colors[]") == loc);
         assert(glGetUniformLocation(program, "colors[-100]") == -1);
         assert(glGetUniformLocation(program, "colors[bleh]") == -1);
+        printf("   ...ok\n");
     }
 
     float colors[4*3] = { 1,0,0, 0,0.5,0, 0,0,0.2, 1,1,1 };
@@ -95,13 +98,20 @@ void RunTest(int testVariant)
 
     glDrawArrays(GL_TRIANGLES, 0, 6);
 
-    unsigned char pixel[4];
-    glReadPixels(1,1,1,1,GL_RGBA,GL_UNSIGNED_BYTE, pixel);
-    //printf("%d,%d,%d,%d\n", pixel[0], pixel[1], pixel[2], pixel[3]);
-    assert(pixel[0] == 255);
-    assert(pixel[1] == 178);
-    assert(pixel[2] == 102);
-    assert(pixel[3] == 255);
+    int in_worker = EM_ASM_INT_V({
+      return typeof importScripts !== 'undefined'
+    });
+
+    if (!in_worker) {
+      printf("Doing readpixels check\n");
+      unsigned char pixel[4];
+      glReadPixels(1,1,1,1,GL_RGBA,GL_UNSIGNED_BYTE, pixel);
+      //printf("%d,%d,%d,%d\n", pixel[0], pixel[1], pixel[2], pixel[3]);
+      assert(pixel[0] == 255);
+      assert(pixel[1] == 178);
+      assert(pixel[2] == 102);
+      assert(pixel[3] == 255);
+    }
 
     printf("OK: Case %d passed.\n", testVariant);
     // Lazy, don't clean up afterwards.
@@ -125,6 +135,11 @@ int main(int argc, char *argv[])
 
     for(int i = 0; i < 4; ++i)
         RunTest(i);
+
+#ifdef REPORT_RESULT
+    int result = 1;
+    REPORT_RESULT();
+#endif
 
     return 0;
 }

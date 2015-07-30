@@ -31,7 +31,6 @@ function explore(path) {
 }
 
 FS.currentPath = '/abc';
-explore('');
 explore('/');
 explore('.');
 explore('..');

@@ -22,5 +22,17 @@ int main() {
   printf("%ld ", lrint(-1.5));
   printf("%ld ", lrint(-2.5));
 
+  printf("\n");
+
+  double param, fractpart, intpart;
+
+  param = 3.14159265;
+  fractpart = modf (param , &intpart);
+  printf ("%f = %f + %f \n", param, intpart, fractpart);
+
+  param = -3.14159265;
+  fractpart = modf (param , &intpart);
+  printf ("%f = %f + %f \n", param, intpart, fractpart);
+
   return 0;
 }

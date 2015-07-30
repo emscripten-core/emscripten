@@ -94,12 +94,10 @@ class sanity(RunnerCore):
       self.assertContained('It contains our best guesses for the important paths, which are:', output)
       self.assertContained('LLVM_ROOT', output)
       self.assertContained('NODE_JS', output)
-      self.assertContained('PYTHON', output)
       if platform.system() is not 'Windows':
         # os.chmod can't make files executable on Windows
         self.assertIdentical(temp_bin, re.search("^ *LLVM_ROOT *= (.*)$", output, re.M).group(1))
         self.assertIdentical(os.path.join(temp_bin, 'node'), re.search("^ *NODE_JS *= (.*)$", output, re.M).group(1))
-        self.assertIdentical(os.path.join(temp_bin, 'python2'), re.search("^ *PYTHON *= (.*)$", output, re.M).group(1))
       self.assertContained('Please edit the file if any of those are incorrect', output)
       self.assertContained('This command will now exit. When you are done editing those paths, re-run it.', output)
       assert output.split()[-1].endswith('===='), 'We should have stopped: ' + output
@@ -151,12 +149,12 @@ class sanity(RunnerCore):
     f = open(CONFIG_FILE, 'a')
     f.write('CLOSURE_COMPILER = "/tmp/nowhere/nothingtoseehere/kjadsfkjwelkjsdfkqgas/nonexistent.txt"\n')
     f.close()
-    output = self.check_working([EMCC, '-O2', '-s', 'ASM_JS=0', '--closure', '1', 'tests/hello_world.cpp'], CLOSURE_FATAL)
+    output = self.check_working([EMCC, '-O2', '-s', '--closure', '1', 'tests/hello_world.cpp'], CLOSURE_FATAL)
 
     # With a working path, all is well
     restore()
     try_delete('a.out.js')
-    output = self.check_working([EMCC, '-O2', '-s', 'ASM_JS=0', '--closure', '1', 'tests/hello_world.cpp'], '')
+    output = self.check_working([EMCC, '-O2', '-s', '--closure', '1', 'tests/hello_world.cpp'], '')
     assert os.path.exists('a.out.js'), output
 
   def test_llvm(self):
@@ -198,10 +196,8 @@ class sanity(RunnerCore):
       del os.environ['EM_IGNORE_SANITY']
 
   def test_llvm_fastcomp(self):
-    assert os.environ.get('EMCC_FAST_COMPILER') != '0', 'must be using fastcomp to test fastcomp'
-
     WARNING = 'fastcomp in use, but LLVM has not been built with the JavaScript backend as a target'
-    WARNING2 = 'you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see https://github.com/kripken/emscripten/wiki/LLVM-Backend'
+    WARNING2 = 'you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html'
 
     restore()
 
@@ -240,7 +236,7 @@ class sanity(RunnerCore):
     os.chmod(path_from_root('tests', 'fake', 'bin', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
     os.chmod(path_from_root('tests', 'fake', 'bin', 'clang++'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
     try_delete(SANITY_FILE)
-    output = self.check_working(EMCC, 'did not see a source tree above the LLVM root directory')
+    output = self.check_working(EMCC, 'did not see a source tree above or next to the LLVM root directory')
 
     VERSION_WARNING = 'Emscripten, llvm and clang versions do not match, this is dangerous'
 
@@ -266,7 +262,7 @@ class sanity(RunnerCore):
 
     restore()
 
-    self.check_working([EMCC, 'tests/hello_world.cpp', '-s', 'INIT_HEAP=1'], '''Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended, see https://github.com/kripken/emscripten/wiki/LLVM-Backend''')
+    self.check_working([EMCC, 'tests/hello_world.cpp', '-s', 'ASM_JS=0'], '''Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended''')
 
   def test_node(self):
     NODE_WARNING = 'node version appears too old'
@@ -419,8 +415,8 @@ fi
 
         # Building a file that doesn't need cached stuff should not trigger cache generation
         output = self.do([compiler, path_from_root('tests', 'hello_world.cpp')])
-        assert INCLUDING_MESSAGE.replace('X', 'libc') not in output
-        assert BUILDING_MESSAGE.replace('X', 'libc') not in output
+        assert INCLUDING_MESSAGE.replace('X', 'libcextra') not in output
+        assert BUILDING_MESSAGE.replace('X', 'libcextra') not in output
         self.assertContained('hello, world!', run_js('a.out.js'))
         try_delete('a.out.js')
 
@@ -428,15 +424,15 @@ fi
         dcebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-1-linktime.bc')
         ll_names = [os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-X-ll.ll').replace('X', str(x)) for x in range(2,5)]
 
-        # Building a file that *does* need dlmalloc *should* trigger cache generation, but only the first time
-        for filename, libname in [('hello_malloc.cpp', 'libc'), ('hello_libcxx.cpp', 'libcxx')]:
+        # Building a file that *does* need something *should* trigger cache generation, but only the first time
+        for filename, libname in [('hello_libcxx.cpp', 'libcxx')]:
           for i in range(3):
             print filename, libname, i
             self.clear()
             try_delete(basebc_name) # we might need to check this file later
             try_delete(dcebc_name) # we might need to check this file later
             for ll_name in ll_names: try_delete(ll_name)
-            output = self.do([compiler, '-O' + str(i), '-s', 'RELOOP=0', '--llvm-lto', '0', path_from_root('tests', filename), '--save-bc', 'a.bc'])
+            output = self.do([compiler, '-O' + str(i), '-s', '--llvm-lto', '0', path_from_root('tests', filename), '--save-bc', 'a.bc', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
             #print output
             assert INCLUDING_MESSAGE.replace('X', libname) in output
             if libname == 'libc':
@@ -446,23 +442,13 @@ fi
             assert (BUILDING_MESSAGE.replace('X', libname) in output) == (i == 0), 'Must only build the first time'
             self.assertContained('hello, world!', run_js('a.out.js'))
             assert os.path.exists(EMCC_CACHE)
-            assert os.path.exists(os.path.join(EMCC_CACHE, libname + '.bc'))
+            full_libname = libname + '.bc' if libname != 'libcxx' else libname + '.a'
+            assert os.path.exists(os.path.join(EMCC_CACHE, full_libname))
             if libname == 'libcxx':
-              print os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size, os.stat(basebc_name).st_size, os.stat(dcebc_name).st_size
-              assert os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size > 1000000, 'libc++ is big'
+              print os.stat(os.path.join(EMCC_CACHE, full_libname)).st_size, os.stat(basebc_name).st_size, os.stat(dcebc_name).st_size
+              assert os.stat(os.path.join(EMCC_CACHE, full_libname)).st_size > 1000000, 'libc++ is big'
               assert os.stat(basebc_name).st_size > 1000000, 'libc++ is indeed big'
-              assert os.stat(dcebc_name).st_size < os.stat(basebc_name).st_size/2, 'Dead code elimination must remove most of libc++'
-            # should only have metadata in -O0, not 1 and 2
-            if i > 0:
-              for ll_name in ll_names:
-                ll = None
-                try:
-                  ll = open(ll_name).read()
-                  break
-                except:
-                  pass
-              assert ll
-              assert ll.count('\n!') < 25 # a few lines are left even in -O1 and -O2
+              assert os.stat(dcebc_name).st_size < os.stat(basebc_name).st_size*0.666, 'Dead code elimination must remove most of libc++'
       finally:
         del os.environ['EMCC_DEBUG']
 
@@ -494,59 +480,22 @@ fi
 
     try_delete(CANONICAL_TEMP_DIR)
 
-  def test_relooper(self):
-    assert os.environ.get('EMCC_FAST_COMPILER') is None
-
-    try:
-      os.environ['EMCC_FAST_COMPILER'] = '0'
-
-      RELOOPER = Cache.get_path('relooper.js')
-
-      restore()
-      for phase in range(2): # 0: we wipe the relooper dir. 1: we have it, so should just update
-        if phase == 0: Cache.erase()
-        try_delete(RELOOPER)
-
-        for i in range(4):
-          print >> sys.stderr, phase, i
-          opt = min(i, 2)
-          try_delete('a.out.js')
-          output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_loop.cpp'), '-O' + str(opt), '-g'],
-                         stdout=PIPE, stderr=PIPE).communicate()
-          self.assertContained('hello, world!', run_js('a.out.js'))
-          output = '\n'.join(output)
-          assert ('bootstrapping relooper succeeded' in output) == (i == 1), 'only bootstrap on first O2: ' + output
-          assert os.path.exists(RELOOPER) == (i >= 1), 'have relooper on O2: ' + output
-          src = open('a.out.js').read()
-          main = src.split('function _main()')[1].split('\n}\n')[0]
-          assert ('while (1) {' in main or 'while(1){' in main or 'while(1) {' in main or '} while ($' in main or '}while($' in main) == (i >= 1), 'reloop code on O2: ' + main
-          assert ('switch' not in main) == (i >= 1), 'reloop code on O2: ' + main
-    finally:
-      del os.environ['EMCC_FAST_COMPILER']
-
   def test_nostdincxx(self):
     restore()
     Cache.erase()
 
-    try:
-      old = os.environ.get('EMCC_LLVM_TARGET') or ''
-      for compiler in [EMCC, EMXX]:
-        for target in ['i386-pc-linux-gnu', 'asmjs-unknown-emscripten']:
-          print compiler, target
-          os.environ['EMCC_LLVM_TARGET'] = target
-          out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v'], stdout=PIPE, stderr=PIPE).communicate()
-          out2, err2 = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v', '-nostdinc++'], stdout=PIPE, stderr=PIPE).communicate()
-          assert out == out2
-          def focus(e):
-            assert 'search starts here:' in e, e
-            assert e.count('End of search list.') == 1, e
-            return e[e.index('search starts here:'):e.index('End of search list.')+20]
-          err = focus(err)
-          err2 = focus(err2)
-          assert err == err2, err + '\n\n\n\n' + err2
-    finally:
-      if old:
-        os.environ['EMCC_LLVM_TARGET'] = old
+    for compiler in [EMCC, EMXX]:
+      print compiler
+      out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v'], stdout=PIPE, stderr=PIPE).communicate()
+      out2, err2 = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v', '-nostdinc++'], stdout=PIPE, stderr=PIPE).communicate()
+      assert out == out2
+      def focus(e):
+        assert 'search starts here:' in e, e
+        assert e.count('End of search list.') == 1, e
+        return e[e.index('search starts here:'):e.index('End of search list.')+20]
+      err = focus(err)
+      err2 = focus(err2)
+      assert err == err2, err + '\n\n\n\n' + err2
 
   def test_emconfig(self):
     restore()
@@ -575,4 +524,237 @@ fi
     shutil.rmtree(temp_dir)
 
     self.assertContained('hello, world!', result)
+
+  def test_emcc_ports(self):
+    restore()
+
+    # listing ports
+
+    out = self.do([PYTHON, EMCC, '--show-ports'])
+    assert 'Available ports:' in out, out
+    assert 'SDL2' in out, out
+    assert 'SDL2_image' in out, out
+
+    # using ports
+
+    RETRIEVING_MESSAGE = 'retrieving port'
+    BUILDING_MESSAGE = 'building port'
+
+    from tools import system_libs
+    PORTS_DIR = system_libs.Ports.get_dir()
+
+    for compiler in [EMCC, EMXX]:
+      print compiler
+
+      for i in [0, 1]:
+        print i
+        if i == 0:
+          try_delete(PORTS_DIR)
+        else:
+          self.do([PYTHON, compiler, '--clear-ports'])
+        assert not os.path.exists(PORTS_DIR)
+        if i == 0: Cache.erase() # test with cache erased and without
+
+        # Building a file that doesn't need ports should not trigger anything
+        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp')])
+        assert RETRIEVING_MESSAGE not in output
+        assert BUILDING_MESSAGE not in output
+        assert not os.path.exists(PORTS_DIR)
+
+        # Building a file that need a port does trigger stuff
+        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
+        assert RETRIEVING_MESSAGE in output, output
+        assert BUILDING_MESSAGE in output, output
+        assert os.path.exists(PORTS_DIR)
+
+        def second_use():
+          # Using it again avoids retrieve and build
+          output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
+          assert RETRIEVING_MESSAGE not in output, output
+          assert BUILDING_MESSAGE not in output, output
+
+        second_use()
+
+        # if the version isn't sufficient, we retrieve and rebuild
+        subdir = os.listdir(os.path.join(PORTS_DIR, 'sdl2'))[0]
+        os.rename(os.path.join(PORTS_DIR, 'sdl2', subdir), os.path.join(PORTS_DIR, 'sdl2', 'old-subdir'))
+        import zipfile
+        z = zipfile.ZipFile(os.path.join(PORTS_DIR, 'sdl2' + '.zip'), 'w')
+        if not os.path.exists('old-sub'):
+          os.mkdir('old-sub')
+        open(os.path.join('old-sub', 'a.txt'), 'w').write('waka')
+        open(os.path.join('old-sub', 'b.txt'), 'w').write('waka')
+        z.write(os.path.join('old-sub', 'a.txt'))
+        z.write(os.path.join('old-sub', 'b.txt'))
+        z.close()
+        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
+        assert RETRIEVING_MESSAGE in output, output
+        assert BUILDING_MESSAGE in output, output
+        assert os.path.exists(PORTS_DIR)
+
+        second_use()
+
+  def test_native_optimizer(self):
+    restore()
+
+    def build():
+      return self.check_working([EMCC, '-O2', 'tests/hello_world.c'], 'running js post-opts')
+
+    def test():
+      self.assertContained('hello, world!', run_js('a.out.js'))
+
+    try:
+      os.environ['EMCC_DEBUG'] = '1'
+
+      # basic usage or lack of usage
+      for native in [None, 0, 1]:
+        print 'phase 1, part', native
+        Cache.erase()
+        try:
+          if native is not None: os.environ['EMCC_NATIVE_OPTIMIZER'] = str(native)
+          output = build()
+          assert ('js optimizer using native' in output) == (not not (native or native is None)), output
+          test()
+          if native or native is None: # None means use the default, which is to use the native optimizer
+            assert 'building native optimizer' in output
+            # compile again, no rebuild of optimizer
+            output = build()
+            assert 'building native optimizer' not in output
+            assert 'js optimizer using native' in output
+            test()
+        finally:
+          if native is not None: del os.environ['EMCC_NATIVE_OPTIMIZER']
+
+      # force a build failure, see we fall back to non-native
+
+      try:
+        for native in [1, 'g']:
+          print 'phase 2, part', native
+          Cache.erase()
+          os.environ['EMCC_NATIVE_OPTIMIZER'] = str(native)
+
+          try:
+            # break it
+            f = path_from_root('tools', 'optimizer', 'optimizer.cpp')
+            src = open(f).read()
+            bad = src.replace('main', '!waka waka<')
+            assert bad != src
+            open(f, 'w').write(bad)
+            # first try
+            output = build()
+            assert 'failed to build native optimizer' in output, output
+            if native == 1:
+              assert 'to see compiler errors, build with EMCC_NATIVE_OPTIMIZER=g' in output
+              assert 'waka waka' not in output
+            else:
+              assert 'output from attempt' in output, output
+              assert 'waka waka' in output, output
+            assert 'js optimizer using native' not in output
+            test() # still works, without native optimizer
+            # second try, see previous failure
+            output = build()
+            assert 'failed to build native optimizer' not in output
+            assert 'seeing that optimizer could not be built' in output
+            test() # still works, without native optimizer
+            # clear cache, try again
+            Cache.erase()
+            output = build()
+            assert 'failed to build native optimizer' in output
+            test() # still works, without native optimizer
+          finally:
+            open(f, 'w').write(src)
+
+          Cache.erase()
+
+          # now it should work again
+          output = build()
+          assert 'js optimizer using native' in output
+          test() # still works
+
+      finally:
+        del os.environ['EMCC_NATIVE_OPTIMIZER']
+
+    finally:
+      del os.environ['EMCC_DEBUG']
+
+  def test_embuilder(self):
+    restore()
+
+    for command, expected, success, result_libs in [
+      ([PYTHON, 'embuilder.py'], ['Emscripten System Builder Tool', 'build libc', 'native_optimizer'], True, []),
+      ([PYTHON, 'embuilder.py', 'build', 'waka'], 'ERROR', False, []),
+      ([PYTHON, 'embuilder.py', 'build', 'libc'], ['building and verifying libc', 'success'], True, ['libc.bc']),
+      ([PYTHON, 'embuilder.py', 'build', 'libcxx'], ['success'], True, ['libcxx.a']),
+      ([PYTHON, 'embuilder.py', 'build', 'libcxx_noexcept'], ['success'], True, ['libcxx_noexcept.a']),
+      ([PYTHON, 'embuilder.py', 'build', 'libcxxabi'], ['success'], True, ['libcxxabi.bc']),
+      ([PYTHON, 'embuilder.py', 'build', 'gl'], ['success'], True, ['gl.bc']),
+      ([PYTHON, 'embuilder.py', 'build', 'struct_info'], ['success'], True, ['struct_info.compiled.json']),
+      ([PYTHON, 'embuilder.py', 'build', 'native_optimizer'], ['success'], True, ['optimizer.exe']),
+      ([PYTHON, 'embuilder.py', 'build', 'zlib'], ['building and verifying zlib', 'success'], True, [os.path.join('ports-builds', 'zlib', 'libz.a')]),
+      ([PYTHON, 'embuilder.py', 'build', 'libpng'], ['building and verifying libpng', 'success'], True, [os.path.join('ports-builds', 'libpng', 'libpng.bc')]),
+      ([PYTHON, 'embuilder.py', 'build', 'sdl2'], ['success'], True, [os.path.join('ports-builds', 'sdl2', 'libsdl2.bc')]),
+      ([PYTHON, 'embuilder.py', 'build', 'sdl2-image'], ['success'], True, [os.path.join('ports-builds', 'sdl2-image', 'libsdl2_image.bc')]),
+    ]:
+      print command
+      Cache.erase()
+
+      proc = Popen(command, stdout=PIPE, stderr=STDOUT)
+      out, err = proc.communicate()
+      assert (proc.returncode == 0) == success, out
+      if type(expected) == str: expected = [expected]
+      for ex in expected:
+        print '    seek', ex
+        assert ex in out, out
+      for lib in result_libs:
+        print '    verify', lib
+        assert os.path.exists(Cache.get_path(lib))
+
+  def test_d8_path(self):
+    """ Test that running JS commands works for node, d8, and jsc and is not path dependent """
+    # Fake some JS engines
+    restore()
+
+    sample_script = path_from_root('tests', 'print_args.js')
+
+    # Note that the path contains 'd8'.
+    test_path = path_from_root('tests', 'fake', 'abcd8765')
+    if not os.path.exists(test_path):
+      os.makedirs(test_path)
+
+    try:
+      os.environ['EM_IGNORE_SANITY'] = '1'
+      jsengines = [('d8',     V8_ENGINE),
+                   ('d8_g',   V8_ENGINE),
+                   ('js',     SPIDERMONKEY_ENGINE),
+                   ('node',   NODE_JS),
+                   ('nodejs', NODE_JS)]
+      for filename, engine in jsengines:
+        if type(engine) is list:
+          engine = engine[0]
+        if engine == '':
+            print 'WARNING: Not testing engine %s, not configured.' % (filename)
+            continue
+
+        print filename, engine
+
+        test_engine_path = os.path.join(test_path, filename)
+        f = open(test_engine_path, 'w')
+        f.write('#!/bin/sh\n')
+        f.write('%s $@\n' % (engine))
+        f.close()
+        os.chmod(test_engine_path, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+
+        try:
+          out = jsrun.run_js(sample_script, engine=test_engine_path, args=['--foo'], full_output=True, assert_returncode=0)
+        except Exception as e:
+          if 'd8' in filename:
+            assert False, 'Your d8 version does not correctly parse command-line arguments, please upgrade or delete from ~/.emscripten config file: %s' % (e)
+          else:
+            assert False, 'Error running script command: %s' % (e)
+
+        self.assertEqual('0: --foo', out.strip())
+
+    finally:
+      del os.environ['EM_IGNORE_SANITY']
+
 

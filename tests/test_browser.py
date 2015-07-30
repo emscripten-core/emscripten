@@ -1,5 +1,5 @@
 import BaseHTTPServer, multiprocessing, os, shutil, subprocess, unittest, zlib, webbrowser, time, shlex
-from runner import BrowserCore, path_from_root, nonfastcomp
+from runner import BrowserCore, path_from_root
 from tools.shared import *
 
 # User can specify an environment variable EMSCRIPTEN_BROWSER to force the browser test suite to
@@ -9,6 +9,8 @@ if emscripten_browser:
   cmd = shlex.split(emscripten_browser)
   def run_in_other_browser(url):
     Popen(cmd + [url])
+  if EM_BUILD_VERBOSE_LEVEL >= 3:
+    print >> sys.stderr, "using Emscripten browser: " + str(cmd)
   webbrowser.open_new = run_in_other_browser
 
 def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, checksum):
@@ -58,10 +60,9 @@ class browser(BrowserCore):
     print 'Running the browser tests. Make sure the browser allows popups from localhost.'
     print
 
-  def test_html(self):
-    # test HTML generation.
-    self.btest('hello_world_sdl.cpp', reference='htmltest.png',
-        message='You should see "hello, world!" and a colored cube.')
+  def test_sdl1(self):
+    self.btest('hello_world_sdl.cpp', reference='htmltest.png')
+    self.btest('hello_world_sdl.cpp', reference='htmltest.png', args=['-s', 'USE_SDL=1']) # is the default anyhow
 
   def test_html_source_map(self):
     cpp_file = os.path.join(self.get_dir(), 'src.cpp')
@@ -123,195 +124,6 @@ If manually bisecting:
     finally:
       os.chdir(cwd)
 
-  def test_split(self):
-    def nfc():
-      # test HTML generation.
-      self.reftest(path_from_root('tests', 'htmltest.png'))
-      output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.js', '--split', '100', '--pre-js', 'reftest.js']).communicate()
-      assert os.path.exists(os.path.join(self.get_dir(), 'something.js')), 'must be main js file'
-      assert os.path.exists(os.path.join(self.get_dir(), 'something_functions.js')), 'must be functions js file'
-      assert os.path.exists(os.path.join(self.get_dir(), 'something.include.html')), 'must be js include file'
-
-      open(os.path.join(self.get_dir(), 'something.html'), 'w').write('''
-
-      <!doctype html>
-      <html lang="en-us">
-        <head>
-          <meta charset="utf-8">
-          <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-          <title>Emscripten-Generated Code</title>
-          <style>
-            .emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
-            canvas.emscripten { border: 1px solid black; }
-            textarea.emscripten { font-family: monospace; width: 80%; }
-            div.emscripten { text-align: center; }
-          </style>
-        </head>
-        <body>
-          <hr/>
-          <div class="emscripten" id="status">Downloading...</div>
-          <div class="emscripten">
-            <progress value="0" max="100" id="progress" hidden=1></progress>
-          </div>
-          <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
-          <hr/>
-          <div class="emscripten"><input type="button" value="fullscreen" onclick="Module.requestFullScreen()"></div>
-          <hr/>
-          <textarea class="emscripten" id="output" rows="8"></textarea>
-          <hr>
-          <script type='text/javascript'>
-            // connect to canvas
-            var Module = {
-              preRun: [],
-              postRun: [],
-              print: (function() {
-                var element = document.getElementById('output');
-                element.value = ''; // clear browser cache
-                return function(text) {
-                  // These replacements are necessary if you render to raw HTML
-                  //text = text.replace(/&/g, "&amp;");
-                  //text = text.replace(/</g, "&lt;");
-                  //text = text.replace(/>/g, "&gt;");
-                  //text = text.replace('\\n', '<br>', 'g');
-                  element.value += text + "\\n";
-                  element.scrollTop = element.scrollHeight; // focus on bottom
-                };
-              })(),
-              printErr: function(text) {
-                if (0) { // XXX disabled for safety typeof dump == 'function') {
-                  dump(text + '\\n'); // fast, straight to the real console
-                } else {
-                  console.log(text);
-                }
-              },
-              canvas: document.getElementById('canvas'),
-              setStatus: function(text) {
-                if (Module.setStatus.interval) clearInterval(Module.setStatus.interval);
-                var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
-                var statusElement = document.getElementById('status');
-                var progressElement = document.getElementById('progress');
-                if (m) {
-                  text = m[1];
-                  progressElement.value = parseInt(m[2])*100;
-                  progressElement.max = parseInt(m[4])*100;
-                  progressElement.hidden = false;
-                } else {
-                  progressElement.value = null;
-                  progressElement.max = null;
-                  progressElement.hidden = true;
-                }
-                statusElement.innerHTML = text;
-              },
-              totalDependencies: 0,
-              monitorRunDependencies: function(left) {
-                this.totalDependencies = Math.max(this.totalDependencies, left);
-                Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
-              }
-            };
-            Module.setStatus('Downloading...');
-          </script>''' + open(os.path.join(self.get_dir(), 'something.include.html')).read() + '''
-        </body>
-      </html>
-      ''')
-
-      self.run_browser('something.html', 'You should see "hello, world!" and a colored cube.', '/report_result?0')
-
-    nonfastcomp(nfc)
-
-  def test_split_in_source_filenames(self):
-    def nfc():
-      self.reftest(path_from_root('tests', 'htmltest.png'))
-      output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.js', '-g', '--split', '100', '--pre-js', 'reftest.js']).communicate()
-      assert os.path.exists(os.path.join(self.get_dir(), 'something.js')), 'must be main js file'
-      assert os.path.exists(os.path.join(self.get_dir(), 'something', 'hello_world_sdl.cpp.js')), 'must be functions js file'
-      assert os.path.exists(os.path.join(self.get_dir(), 'something.include.html')), 'must be js include file'
-
-      open(os.path.join(self.get_dir(), 'something.html'), 'w').write('''
-
-      <!doctype html>
-      <html lang="en-us">
-        <head>
-          <meta charset="utf-8">
-          <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-          <title>Emscripten-Generated Code</title>
-          <style>
-            .emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
-            canvas.emscripten { border: 1px solid black; }
-            textarea.emscripten { font-family: monospace; width: 80%; }
-            div.emscripten { text-align: center; }
-          </style>
-        </head>
-        <body>
-          <hr/>
-          <div class="emscripten" id="status">Downloading...</div>
-          <div class="emscripten">
-            <progress value="0" max="100" id="progress" hidden=1></progress>
-          </div>
-          <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
-          <hr/>
-          <div class="emscripten"><input type="button" value="fullscreen" onclick="Module.requestFullScreen()"></div>
-          <hr/>
-          <textarea class="emscripten" id="output" rows="8"></textarea>
-          <hr>
-          <script type='text/javascript'>
-            // connect to canvas
-            var Module = {
-              preRun: [],
-              postRun: [],
-              print: (function() {
-                var element = document.getElementById('output');
-                element.value = ''; // clear browser cache
-                return function(text) {
-                  // These replacements are necessary if you render to raw HTML
-                  //text = text.replace(/&/g, "&amp;");
-                  //text = text.replace(/</g, "&lt;");
-                  //text = text.replace(/>/g, "&gt;");
-                  //text = text.replace('\\n', '<br>', 'g');
-                  element.value += text + "\\n";
-                  element.scrollTop = element.scrollHeight; // focus on bottom
-                };
-              })(),
-              printErr: function(text) {
-                if (0) { // XXX disabled for safety typeof dump == 'function') {
-                  dump(text + '\\n'); // fast, straight to the real console
-                } else {
-                  console.log(text);
-                }
-              },
-              canvas: document.getElementById('canvas'),
-              setStatus: function(text) {
-                if (Module.setStatus.interval) clearInterval(Module.setStatus.interval);
-                var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
-                var statusElement = document.getElementById('status');
-                var progressElement = document.getElementById('progress');
-                if (m) {
-                  text = m[1];
-                  progressElement.value = parseInt(m[2])*100;
-                  progressElement.max = parseInt(m[4])*100;
-                  progressElement.hidden = false;
-                } else {
-                  progressElement.value = null;
-                  progressElement.max = null;
-                  progressElement.hidden = true;
-                }
-                statusElement.innerHTML = text;
-              },
-              totalDependencies: 0,
-              monitorRunDependencies: function(left) {
-                this.totalDependencies = Math.max(this.totalDependencies, left);
-                Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
-              }
-            };
-            Module.setStatus('Downloading...');
-          </script>''' + open(os.path.join(self.get_dir(), 'something.include.html')).read() + '''
-        </body>
-      </html>
-      ''')
-
-      self.run_browser('something.html', 'You should see "hello, world!" and a colored cube.', '/report_result?0')
-
-    nonfastcomp(nfc)
-
   def test_compression(self):
     open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
       #include <stdio.h>
@@ -344,6 +156,7 @@ If manually bisecting:
     
     def make_main(path):
       print 'make main at', path
+      path = path.replace('\\', '\\\\').replace('"', '\\"') # Escape tricky path name for use inside a C string.
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
         #include <stdio.h>
         #include <string.h>
@@ -385,10 +198,18 @@ If manually bisecting:
       make_main(dstpath)
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', srcpath, '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
-
     # Test that '--no-heap-copy' works.
-    make_main('somefile.txt')
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'somefile.txt', '--no-heap-copy', '-o', 'page.html']).communicate()
+    if WINDOWS:
+      # On Windows, the following non-alphanumeric non-control code ASCII characters are supported.
+      # The characters <, >, ", |, ?, * are not allowed, because the Windows filesystem doesn't support those.
+      tricky_filename = '!#$%&\'()+,-. ;=@[]^_`{}~.txt'
+    else:
+      # All 7-bit non-alphanumeric non-control code ASCII characters except /, : and \ are allowed.
+      tricky_filename = '!#$%&\'()+,-. ;=@[]^_`{}~ "*<>?|.txt'
+    open(os.path.join(self.get_dir(), tricky_filename), 'w').write('''load me right before running the code please''')
+    make_main(tricky_filename)
+    # As an Emscripten-specific feature, the character '@' must be escaped in the form '@@' to not confuse with the 'src@dst' notation.
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', tricky_filename.replace('@', '@@'), '--no-heap-copy', '-o', 'page.html']).communicate()
     self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
     # By absolute path
@@ -646,6 +467,10 @@ If manually bisecting:
   def test_sdl_swsurface(self):
     self.btest('sdl_swsurface.c', expected='1')
 
+  def test_sdl_surface_lock_opts(self):
+    # Test Emscripten-specific extensions to optimize SDL_LockSurface and SDL_UnlockSurface.
+    self.btest('hello_world_sdl.cpp', reference='htmltest.png', message='You should see "hello, world!" and a colored cube.', args=['-DTEST_SDL_LOCK_OPTS'])
+
   def test_sdl_image(self):
     # load an image file, get pixel data. Also O2 coverage for --preload-file, and memory-init
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.jpg'))
@@ -693,7 +518,7 @@ If manually bisecting:
   def test_sdl_image_prepare(self):
     # load an image file, get pixel data.
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.not'))
-    self.btest('sdl_image_prepare.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not'])
+    self.btest('sdl_image_prepare.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not'], also_proxied=True)
 
   def test_sdl_image_prepare_data(self):
     # load an image file, get pixel data.
@@ -719,10 +544,11 @@ If manually bisecting:
     self.clear()
     self.btest('sdl_canvas.c', expected='1', args=['-s', 'LEGACY_GL_EMULATION=1', '-O2', '-s', 'SAFE_HEAP=1'])
 
-  def test_sdl_canvas_proxy(self):
-    def post():
-      html = open('test.html').read()
-      html = html.replace('</body>', '''
+  def post_manual_reftest(self, reference=None):
+    self.reftest(path_from_root('tests', self.reference if reference is None else reference))
+
+    html = open('test.html').read()
+    html = html.replace('</body>', '''
 <script>
 function assert(x, y) { if (!x) throw 'assertion failed ' + y }
 
@@ -738,46 +564,93 @@ window.close = function() {
 };
 </script>
 </body>''' % open('reftest.js').read())
-      open('test.html', 'w').write(html)
+    open('test.html', 'w').write(html)
 
+  def test_sdl_canvas_proxy(self):
     open('data.txt', 'w').write('datum')
+    self.btest('sdl_canvas_proxy.c', reference='sdl_canvas_proxy.png', args=['--proxy-to-worker', '--preload-file', 'data.txt'], manual_reference=True, post_build=self.post_manual_reftest)
 
-    self.btest('sdl_canvas_proxy.c', reference='sdl_canvas_proxy.png', args=['--proxy-to-worker', '--preload-file', 'data.txt'], manual_reference=True, post_build=post)
+  def test_glgears_proxy(self):
+    self.btest('hello_world_gles_proxy.c', reference='gears.png', args=['--proxy-to-worker', '-s', 'GL_TESTING=1', '-DSTATIC_GEARS=1'], manual_reference=True, post_build=self.post_manual_reftest)
+
+    # test noProxy option applied at runtime
+
+    # run normally (duplicates above test, but verifies we can run outside of the btest harness
+    self.run_browser('test.html', None, ['/report_result?0'])
+
+    # run with noProxy
+    self.run_browser('test.html?noProxy', None, ['/report_result?0'])
+
+    original = open('test.js').read()
+
+    def copy(to, js_mod):
+      open(to + '.html', 'w').write(open('test.html').read().replace('test.js', to + '.js'))
+      open(to + '.js', 'w').write(js_mod(open('test.js').read()))
+
+    # run with noProxy, but make main thread fail
+    copy('two', lambda original: original.replace('function _main($argc,$argv) {', 'function _main($argc,$argv) { if (ENVIRONMENT_IS_WEB) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:8888/report_result?999");xhr.send(); }'))
+    self.run_browser('two.html?noProxy', None, ['/report_result?999'])
+    self.run_browser('two.html', None, ['/report_result?0']) # this is still cool
+
+    # run without noProxy, so proxy, but make worker fail
+    copy('three', lambda original: original.replace('function _main($argc,$argv) {', 'function _main($argc,$argv) { if (ENVIRONMENT_IS_WORKER) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:8888/report_result?999");xhr.send(); }'))
+    self.run_browser('three.html', None, ['/report_result?999'])
+    self.run_browser('three.html?noProxy', None, ['/report_result?0']) # this is still cool
+
+  def test_glgears_proxy_jstarget(self):
+    # test .js target with --proxy-worker; emits 2 js files, client and worker
+    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_gles_proxy.c'), '-o', 'test.js', '--proxy-to-worker', '-s', 'GL_TESTING=1']).communicate()
+    open('test.html', 'w').write(open(path_from_root('src', 'shell_minimal.html')).read().replace('{{{ SCRIPT }}}', '<script src="test.js"></script>'))
+    self.post_manual_reftest('gears.png')
+    self.run_browser('test.html', None, '/report_result?0')
 
   def test_sdl_canvas_alpha(self):
-    self.btest('sdl_canvas_alpha.c', reference='sdl_canvas_alpha.png', reference_slack=9)
+    open(os.path.join(self.get_dir(), 'flag_0.js'), 'w').write('''
+      Module['arguments'] = ['-0'];
+    ''')
+
+    self.btest('sdl_canvas_alpha.c', reference='sdl_canvas_alpha.png', reference_slack=11)
+    self.btest('sdl_canvas_alpha.c', args=['--pre-js', 'flag_0.js'], reference='sdl_canvas_alpha_flag_0.png', reference_slack=11)
+
 
   def test_sdl_key(self):
-    for defines in [[], ['-DTEST_EMSCRIPTEN_SDL_SETEVENTHANDLER']]:
-      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
-        Module.postRun = function() {
-          function doOne() {
-            Module._one();
-            setTimeout(doOne, 1000/60);
-          }
-          setTimeout(doOne, 1000/60);
-        }
+    for delay in [0, 1]:
+      for defines in [
+        [],
+        ['-DTEST_EMSCRIPTEN_SDL_SETEVENTHANDLER']
+      ]:
+        for emterps in [
+          [],
+          ['-DTEST_SLEEP', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'ASSERTIONS=1', '-s', "SAFE_HEAP=1"]
+        ]:
+          print delay, defines, emterps
+          open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+            function keydown(c) {
+             %s
+              //Module.print('push keydown');
+              var event = document.createEvent("KeyboardEvent");
+              event.initKeyEvent("keydown", true, true, window,
+                                 0, 0, 0, 0,
+                                 c, c);
+              document.dispatchEvent(event);
+             %s
+            }
 
-        function keydown(c) {
-          var event = document.createEvent("KeyboardEvent");
-          event.initKeyEvent("keydown", true, true, window,
-                             0, 0, 0, 0,
-                             c, c);
-          document.dispatchEvent(event);
-        }
+            function keyup(c) {
+             %s
+              //Module.print('push keyup');
+              var event = document.createEvent("KeyboardEvent");
+              event.initKeyEvent("keyup", true, true, window,
+                                 0, 0, 0, 0,
+                                 c, c);
+              document.dispatchEvent(event);
+             %s
+            }
+          ''' % ('setTimeout(function() {' if delay else '', '}, 1);' if delay else '', 'setTimeout(function() {' if delay else '', '}, 1);' if delay else ''))
+          open(os.path.join(self.get_dir(), 'sdl_key.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_key.c')).read()))
 
-        function keyup(c) {
-          var event = document.createEvent("KeyboardEvent");
-          event.initKeyEvent("keyup", true, true, window,
-                             0, 0, 0, 0,
-                             c, c);
-          document.dispatchEvent(event);
-        }
-      ''')
-      open(os.path.join(self.get_dir(), 'sdl_key.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_key.c')).read()))
-
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_key.c'), '-o', 'page.html'] + defines + ['--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''', '-s', 'NO_EXIT_RUNTIME=1']).communicate()
-      self.run_browser('page.html', '', '/report_result?223092870')
+          Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_key.c'), '-o', 'page.html'] + defines + emterps + ['--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main']''', '-s', 'NO_EXIT_RUNTIME=1']).communicate()
+          self.run_browser('page.html', '', '/report_result?223092870')
 
   def test_sdl_key_proxy(self):
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
@@ -942,7 +815,7 @@ keydown(100);keyup(100); // trigger the end
                 var element = document.getElementById('output');
                 element.value = ''; // clear browser cache
                 return function(text) {
-                  text = Array.prototype.slice.call(arguments).join(' ');
+                  if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
                   element.value += text + "\\n";
                   element.scrollTop = element.scrollHeight; // focus on bottom
                 };
@@ -1085,6 +958,10 @@ keydown(100);keyup(100); // trigger the end
   def test_emscripten_get_now(self):
     self.btest('emscripten_get_now.cpp', '1')
 
+  def test_fflush(self):
+    return self.skip('Skipping due to https://github.com/kripken/emscripten/issues/2770')
+    self.btest('test_fflush.cpp', '0', args=['-s', 'NO_EXIT_RUNTIME=1', '--shell-file', path_from_root('tests', 'test_fflush.html')])
+
   def test_file_db(self):
     secret = str(time.time())
     open('moar.txt', 'w').write(secret)
@@ -1099,8 +976,54 @@ keydown(100);keyup(100); // trigger the end
   def test_fs_idbfs_sync(self):
     for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']]:
       secret = str(time.time())
-      self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=mode + ['-DFIRST', '-DSECRET=\'' + secret + '\'', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']'''])
-      self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=mode + ['-DSECRET=\'' + secret + '\'', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']'''])
+      self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=mode + ['-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''])
+      self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=mode + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''])
+
+  def test_fs_idbfs_fsync(self):
+    # sync from persisted state into memory before main()
+    open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+      Module.preRun = function() {
+        addRunDependency('syncfs');
+
+        FS.mkdir('/working1');
+        FS.mount(IDBFS, {}, '/working1');
+        FS.syncfs(true, function (err) {
+          if (err) throw err;
+          removeRunDependency('syncfs');
+        });
+      };
+    ''')
+
+    args = ['--pre-js', 'pre.js', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1'];
+    for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']]:
+      secret = str(time.time())
+      self.btest(path_from_root('tests', 'fs', 'test_idbfs_fsync.c'), '1', force_c=True, args=args + mode + ['-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']'''])
+      self.btest(path_from_root('tests', 'fs', 'test_idbfs_fsync.c'), '1', force_c=True, args=args + mode + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']'''])
+
+  def test_fs_memfs_fsync(self):
+    args = ['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1'];
+    for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']]:
+      secret = str(time.time())
+      self.btest(path_from_root('tests', 'fs', 'test_memfs_fsync.c'), '1', force_c=True, args=args + mode + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main']'''])
+
+  def test_idbstore(self):
+    secret = str(time.time())
+    for stage in [0, 1, 2, 3, 0, 1, 2, 0, 0, 1, 4, 2, 5]:
+      self.clear()
+      self.btest(path_from_root('tests', 'idbstore.c'), str(stage), force_c=True, args=['-DSTAGE=' + str(stage), '-DSECRET=\"' + secret + '\"'])
+
+  def test_idbstore_sync(self):
+    secret = str(time.time())
+    self.clear()
+    self.btest(path_from_root('tests', 'idbstore_sync.c'), '6', force_c=True, args=['-DSECRET=\"' + secret + '\"', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '--memory-init-file', '1', '-O3', '-g2'])
+
+  def test_idbstore_sync_worker(self):
+    secret = str(time.time())
+    self.clear()
+    self.btest(path_from_root('tests', 'idbstore_sync_worker.c'), '6', force_c=True, args=['-DSECRET=\"' + secret + '\"', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '--memory-init-file', '1', '-O3', '-g2', '--proxy-to-worker', '-s', 'TOTAL_MEMORY=75000000'])
+
+  def test_force_exit(self):
+    self.btest('force_exit.c', force_c=True, expected='17')
 
   def test_sdl_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
@@ -1116,15 +1039,18 @@ keydown(100);keyup(100); // trigger the end
     self.btest('sdl_pumpevents.c', expected='7', args=['--pre-js', 'pre.js'])
 
   def test_sdl_canvas_size(self):
-    self.btest('sdl_canvas_size.c', reference='screenshot-gray-purple.png', reference_slack=1,
-      args=['-O2', '--minify', '0', '--shell-file', path_from_root('tests', 'sdl_canvas_size.html'), '--preload-file', path_from_root('tests', 'screenshot.png') + '@/', '-s', 'LEGACY_GL_EMULATION=1'],
-      message='You should see an image with gray at the top.')
+    self.btest('sdl_canvas_size.c', expected='1',
+      args=['-O2', '--minify', '0', '--shell-file', path_from_root('tests', 'sdl_canvas_size.html')])
 
   def test_sdl_gl_read(self):
     # SDL, OpenGL, readPixels
     open(os.path.join(self.get_dir(), 'sdl_gl_read.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_gl_read.c')).read()))
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_gl_read.c'), '-o', 'something.html']).communicate()
     self.run_browser('something.html', '.', '/report_result?1')
+
+  def test_sdl_gl_mapbuffers(self):
+    self.btest('sdl_gl_mapbuffers.c', expected='1', args=['-s', 'FULL_ES3=1'],
+               message='You should see a blue triangle.')
 
   def test_sdl_ogl(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
@@ -1148,7 +1074,7 @@ keydown(100);keyup(100); // trigger the end
   def test_sdl_ogl_proc_alias(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
     self.btest('sdl_ogl_proc_alias.c', reference='screenshot-gray-purple.png', reference_slack=1,
-               args=['-O2', '-g2', '-s', 'INLINING_LIMIT=1', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1', '-s', 'VERBOSE=1'])
+               args=['-O2', '-g2', '-s', 'INLINING_LIMIT=1', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_sdl_fog_simple(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
@@ -1182,6 +1108,11 @@ keydown(100);keyup(100); // trigger the end
 
   def test_glfw(self):
     self.btest('glfw.c', '1', args=['-s', 'LEGACY_GL_EMULATION=1'])
+    self.btest('glfw.c', '1', args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=2'])
+
+  def test_glfw_minimal(self):
+    self.btest('glfw_minimal.c', '1', args=[])
+    self.btest('glfw_minimal.c', '1', args=['-s', 'USE_GLFW=2'])
 
   def test_egl(self):
     open(os.path.join(self.get_dir(), 'test_egl.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'test_egl.c')).read()))
@@ -1307,7 +1238,9 @@ keydown(100);keyup(100); // trigger the end
         message='You should see animating gears.')
 
   def test_glgears_long(self):
-    self.btest('hello_world_gles.c', expected=map(str, range(30, 1000)), args=['-DHAVE_BUILTIN_SINCOS', '-DLONGTEST'])
+    for proxy in [0, 1]:
+      print 'proxy', proxy
+      self.btest('hello_world_gles.c', expected=map(str, range(30, 500)), args=['-DHAVE_BUILTIN_SINCOS', '-DLONGTEST'] + (['--proxy-to-worker'] if proxy else []))
 
   def test_glgears_animation(self):
     es2_suffix = ['', '_full', '_full_944']
@@ -1412,6 +1345,13 @@ keydown(100);keyup(100); // trigger the end
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png')) # preloaded *after* run
     self.btest('emscripten_fs_api_browser.cpp', '1')
 
+  def test_emscripten_fs_api2(self):
+    self.btest('emscripten_fs_api_browser2.cpp', '1', args=['-s', "ASSERTIONS=0"])
+    self.btest('emscripten_fs_api_browser2.cpp', '1', args=['-s', "ASSERTIONS=1"])
+
+  def test_emscripten_main_loop(self):
+    self.btest('emscripten_main_loop.cpp', '0')
+
   def test_sdl_quit(self):
     self.btest('sdl_quit.c', '1')
 
@@ -1427,8 +1367,14 @@ keydown(100);keyup(100); // trigger the end
   def test_sdlglshader(self):
     self.btest('sdlglshader.c', reference='sdlglshader.png', args=['-O2', '--closure', '1', '-s', 'LEGACY_GL_EMULATION=1'])
 
+  def test_sdlglshader2(self):
+    self.btest('sdlglshader2.c', expected='1', args=['-s', 'LEGACY_GL_EMULATION=1'], also_proxied=True)
+
   def test_gl_glteximage(self):
     self.btest('gl_teximage.c', '1')
+
+  def test_gl_textures(self):
+    self.btest('gl_textures.cpp', '0')
 
   def test_gl_ps(self):
     # pointers and a shader
@@ -1456,9 +1402,8 @@ keydown(100);keyup(100); // trigger the end
   def test_gl_vertex_buffer(self):
     self.btest('gl_vertex_buffer.c', reference='gl_vertex_buffer.png', args=['-s', 'GL_UNSAFE_OPTS=0', '-s', 'LEGACY_GL_EMULATION=1'], reference_slack=1)
 
-  # Does not pass due to https://bugzilla.mozilla.org/show_bug.cgi?id=924264 so disabled for now.
-  # def test_gles2_uniform_arrays(self):
-  #  self.btest('gles2_uniform_arrays.cpp', args=['-s', 'GL_ASSERTIONS=1'], expected=['1'])
+  def test_gles2_uniform_arrays(self):
+    self.btest('gles2_uniform_arrays.cpp', args=['-s', 'GL_ASSERTIONS=1'], expected=['1'], also_proxied=True)
 
   def test_gles2_conformance(self):
     self.btest('gles2_conformance.cpp', args=['-s', 'GL_ASSERTIONS=1'], expected=['1'])
@@ -1468,6 +1413,7 @@ keydown(100);keyup(100); // trigger the end
 
   def test_cubegeom_pre(self):
     self.btest('cubegeom_pre.c', reference='cubegeom_pre.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
+    self.btest('cubegeom_pre.c', reference='cubegeom_pre.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'RELOCATABLE=1'])
 
   def test_cubegeom_pre2(self):
     self.btest('cubegeom_pre2.c', reference='cubegeom_pre2.png', args=['-s', 'GL_DEBUG=1', '-s', 'LEGACY_GL_EMULATION=1']) # some coverage for GL_DEBUG not breaking the build
@@ -1476,7 +1422,7 @@ keydown(100);keyup(100); // trigger the end
     self.btest('cubegeom_pre3.c', reference='cubegeom_pre2.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_cubegeom(self):
-    self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-s', 'LEGACY_GL_EMULATION=1'])
+    self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-s', 'LEGACY_GL_EMULATION=1'], also_proxied=True)
 
   def test_cubegeom_proc(self):
     open('side.c', 'w').write(r'''
@@ -1500,10 +1446,10 @@ void *getBindBuffer() {
     self.btest('cubegeom_color.c', reference='cubegeom_color.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_cubegeom_normal(self):
-    self.btest('cubegeom_normal.c', reference='cubegeom_normal.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
+    self.btest('cubegeom_normal.c', reference='cubegeom_normal.png', args=['-s', 'LEGACY_GL_EMULATION=1'], also_proxied=True)
 
   def test_cubegeom_normal_dap(self): # draw is given a direct pointer to clientside memory, no element array buffer
-    self.btest('cubegeom_normal_dap.c', reference='cubegeom_normal.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
+    self.btest('cubegeom_normal_dap.c', reference='cubegeom_normal.png', args=['-s', 'LEGACY_GL_EMULATION=1'], also_proxied=True)
 
   def test_cubegeom_normal_dap_far(self): # indices do nto start from 0
     self.btest('cubegeom_normal_dap_far.c', reference='cubegeom_normal.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
@@ -1521,7 +1467,7 @@ void *getBindBuffer() {
     self.btest('cubegeom_mt.c', reference='cubegeom_mt.png', args=['-s', 'LEGACY_GL_EMULATION=1']) # multitexture
 
   def test_cubegeom_color2(self):
-    self.btest('cubegeom_color2.c', reference='cubegeom_color2.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
+    self.btest('cubegeom_color2.c', reference='cubegeom_color2.png', args=['-s', 'LEGACY_GL_EMULATION=1'], also_proxied=True)
 
   def test_cubegeom_texturematrix(self):
     self.btest('cubegeom_texturematrix.c', reference='cubegeom_texturematrix.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
@@ -1539,7 +1485,7 @@ void *getBindBuffer() {
     self.btest('cubegeom_pre2_vao2.c', reference='cubegeom_pre2_vao2.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_cube_explosion(self):
-    self.btest('cube_explosion.c', reference='cube_explosion.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
+    self.btest('cube_explosion.c', reference='cube_explosion.png', args=['-s', 'LEGACY_GL_EMULATION=1'], also_proxied=True)
 
   def test_glgettexenv(self):
     self.btest('glgettexenv.c', args=['-s', 'LEGACY_GL_EMULATION=1'], expected=['1'])
@@ -1553,8 +1499,14 @@ void *getBindBuffer() {
   def test_sdl_canvas_twice(self):
     self.btest('sdl_canvas_twice.c', reference='sdl_canvas_twice.png')
 
+  def test_sdl_set_clip_rect(self):
+    self.btest('sdl_set_clip_rect.c', reference='sdl_set_clip_rect.png')
+
   def test_sdl_maprgba(self):
     self.btest('sdl_maprgba.c', reference='sdl_maprgba.png', reference_slack=3)
+
+  def test_sdl_create_rgb_surface_from(self):
+    self.btest('sdl_create_rgb_surface_from.c', reference='sdl_create_rgb_surface_from.png')
 
   def test_sdl_rotozoom(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
@@ -1634,7 +1586,7 @@ void *getBindBuffer() {
       # asm.js-ification check
       Popen([PYTHON, EMCC, path_from_root('tests', 'aniso.c'), '-O2', '-g2', '-s', 'LEGACY_GL_EMULATION=1']).communicate()
       Settings.ASM_JS = 1
-      self.run_generated_code(SPIDERMONKEY_ENGINE, 'a.out.js')
+      self.run_generated_code(SPIDERMONKEY_ENGINE, 'a.out.js', assert_returncode=None)
       print 'passed asm test'
 
     shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
@@ -1653,14 +1605,10 @@ void *getBindBuffer() {
     self.btest('perspective.c', reference='perspective.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_runtimelink(self):
-    return self.skip('BUILD_AS_SHARED_LIB=2 is deprecated')
     main, supp = self.setup_runtimelink_test()
-
-    open(self.in_dir('supp.cpp'), 'w').write(supp)
-    Popen([PYTHON, EMCC, self.in_dir('supp.cpp'), '-o', 'supp.js', '-s', 'LINKABLE=1', '-s', 'NAMED_GLOBALS=1', '-s', 'BUILD_AS_SHARED_LIB=2', '-O2', '-s', 'ASM_JS=0']).communicate()
-    shutil.move(self.in_dir('supp.js'), self.in_dir('supp.so'))
-
-    self.btest(main, args=['-s', 'LINKABLE=1', '-s', 'NAMED_GLOBALS=1', '-s', 'RUNTIME_LINKED_LIBS=["supp.so"]', '-DBROWSER=1', '-O2', '-s', 'ASM_JS=0'], expected='76')
+    open('supp.cpp', 'w').write(supp)
+    Popen([PYTHON, EMCC, 'supp.cpp', '-o', 'supp.js', '-s', 'SIDE_MODULE=1', '-O2']).communicate()
+    self.btest(main, args=['-DBROWSER=1', '-s', 'MAIN_MODULE=1', '-O2', '-s', 'RUNTIME_LINKED_LIBS=["supp.js"]'], expected='76')
 
   def test_pre_run_deps(self):
     # Adding a dependency in preRun will delay run
@@ -1690,10 +1638,145 @@ void *getBindBuffer() {
       };
     ''')
     open(os.path.join(self.get_dir(), 'post.js'), 'w').write('''
+      var assert = function(check, text) {
+        if (!check) {
+          var xhr = new XMLHttpRequest();
+          xhr.open('GET', 'http://localhost:8888/report_result?9');
+          xhr.onload = function() {
+            window.close();
+          };
+          xhr.send();
+        }
+      }
       Module._note(4); // this happens too early! and is overwritten when the mem init arrives
     ''')
 
-    self.btest('mem_init.cpp', expected='3', args=['--pre-js', 'pre.js', '--post-js', 'post.js', '--memory-init-file', '1'])
+    # with assertions, we notice when memory was written to too early
+    self.btest('mem_init.cpp', expected='9', args=['--pre-js', 'pre.js', '--post-js', 'post.js', '--memory-init-file', '1'])
+    # otherwise, we just overwrite
+    self.btest('mem_init.cpp', expected='3', args=['--pre-js', 'pre.js', '--post-js', 'post.js', '--memory-init-file', '1', '-s', 'ASSERTIONS=0'])
+
+  def test_mem_init_request(self):
+    def test(what, status):
+      print what, status
+      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+        var xhr = Module.memoryInitializerRequest = new XMLHttpRequest();
+        xhr.open('GET', "''' + what + '''", true);
+        xhr.responseType = 'arraybuffer';
+        xhr.send(null);
+
+        window.onerror = function() {
+          Module.print('fail!');
+          var xhr = new XMLHttpRequest();
+          xhr.open('GET', 'http://localhost:8888/report_result?0');
+          xhr.onload = function() {
+            console.log('close!');
+            window.close();
+          };
+          xhr.send();
+        };
+      ''')
+      self.btest('mem_init_request.cpp', expected=status, args=['--pre-js', 'pre.js', '--memory-init-file', '1'])
+
+    test('test.html.mem', '1')
+    test('nothing.nowhere', '0')
+
+  def test_runtime_misuse(self):
+    post_prep = '''
+      var expected_ok = false;
+      function doCcall(n) {
+        ccall('note', 'string', ['number'], [n]);
+      }
+      var wrapped = cwrap('note', 'string', ['number']); // returns a string to suppress cwrap optimization
+      function doCwrapCall(n) {
+        var str = wrapped(n);
+        Module.print('got ' + str);
+        assert(str === 'silly-string');
+      }
+      function doDirectCall(n) {
+        Module['_note'](n);
+      }
+    '''
+    post_test = '''
+      var ok = false;
+      try {
+        doCcall(1);
+        ok = true; // should fail and not reach here, runtime is not ready yet so ccall will abort
+      } catch(e) {
+        Module.print('expected fail 1');
+        assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
+        ABORT = false; // hackish
+      }
+      assert(ok === expected_ok);
+
+      ok = false;
+      try {
+        doCwrapCall(2);
+        ok = true; // should fail and not reach here, runtime is not ready yet so cwrap call will abort
+      } catch(e) {
+        Module.print('expected fail 2');
+        assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
+        ABORT = false; // hackish
+      }
+      assert(ok === expected_ok);
+
+      ok = false;
+      try {
+        doDirectCall(3);
+        ok = true; // should fail and not reach here, runtime is not ready yet so any code execution
+      } catch(e) {
+        Module.print('expected fail 3');
+        assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
+        ABORT = false; // hackish
+      }
+      assert(ok === expected_ok);
+    '''
+
+    post_hook = r'''
+      function myJSCallback() {
+        // called from main, this is an ok time
+        doCcall(100);
+        doCwrapCall(200);
+        doDirectCall(300);
+      }
+
+      setTimeout(function() {
+        var xhr = new XMLHttpRequest();
+        assert(Module.noted);
+        xhr.open('GET', 'http://localhost:8888/report_result?' + HEAP32[Module.noted>>2]);
+        xhr.send();
+        setTimeout(function() { window.close() }, 1000);
+      }, 1000);
+    '''
+
+    open('pre_main.js', 'w').write(r'''
+      Module._main = function(){
+        myJSCallback();
+        return 0;
+      };
+    ''')
+
+    open('pre_runtime.js', 'w').write(r'''
+      Module.onRuntimeInitialized = function(){
+        myJSCallback();
+      };
+    ''')
+
+    for filename, extra_args, second_code in [
+      ('runtime_misuse.cpp', [], 600),
+      ('runtime_misuse_2.cpp', ['--pre-js', 'pre_main.js'], 600),
+      ('runtime_misuse_2.cpp', ['--pre-js', 'pre_runtime.js'], 601) # 601, because no main means we *do* run another call after exit()
+    ]:
+      print '\n', filename, extra_args
+      print 'mem init, so async, call too early'
+      open(os.path.join(self.get_dir(), 'post.js'), 'w').write(post_prep + post_test + post_hook)
+      self.btest(filename, expected='600', args=['--post-js', 'post.js', '--memory-init-file', '1'] + extra_args)
+      print 'sync startup, call too late'
+      open(os.path.join(self.get_dir(), 'post.js'), 'w').write(post_prep + 'Module.postRun.push(function() { ' + post_test + ' });' + post_hook);
+      self.btest(filename, expected=str(second_code), args=['--post-js', 'post.js', '--memory-init-file', '0'] + extra_args)
+      print 'sync, runtime still alive, so all good'
+      open(os.path.join(self.get_dir(), 'post.js'), 'w').write(post_prep + 'expected_ok = true; Module.postRun.push(function() { ' + post_test + ' });' + post_hook);
+      self.btest(filename, expected='606', args=['--post-js', 'post.js', '--memory-init-file', '0', '-s', 'NO_EXIT_RUNTIME=1'] + extra_args)
 
   def test_worker_api(self):
     Popen([PYTHON, EMCC, path_from_root('tests', 'worker_api_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]']).communicate()
@@ -1707,14 +1790,18 @@ void *getBindBuffer() {
     Popen([PYTHON, EMCC, path_from_root('tests', 'worker_api_3_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]']).communicate()
     self.btest('worker_api_3_main.cpp', expected='5')
 
+  def test_worker_api_sleep(self):
+    Popen([PYTHON, EMCC, path_from_root('tests', 'worker_api_worker_sleep.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1']).communicate()
+    self.btest('worker_api_main.cpp', expected='566')
+
   def test_emscripten_async_wget2(self):
     self.btest('http.cpp', expected='0', args=['-I' + path_from_root('tests')])
 
+  # TODO: test only worked in non-fastcomp
   def test_module(self):
-    def nfc():
-      Popen([PYTHON, EMCC, path_from_root('tests', 'browser_module.cpp'), '-o', 'module.js', '-O2', '-s', 'SIDE_MODULE=1', '-s', 'DLOPEN_SUPPORT=1', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two"]']).communicate()
-      self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE=1', '-s', 'DLOPEN_SUPPORT=1'], expected='8')
-    nonfastcomp(nfc)
+    return self.skip('non-fastcomp is deprecated and fails in 3.5')
+    Popen([PYTHON, EMCC, path_from_root('tests', 'browser_module.cpp'), '-o', 'module.js', '-O2', '-s', 'SIDE_MODULE=1', '-s', 'DLOPEN_SUPPORT=1', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two"]']).communicate()
+    self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE=1', '-s', 'DLOPEN_SUPPORT=1'], expected='8')
 
   def test_mmap_file(self):
     open(self.in_dir('data.dat'), 'w').write('data from the file ' + ('.' * 9000))
@@ -1731,23 +1818,26 @@ void *getBindBuffer() {
     assert 'Traceback' not in result
 
   def test_emrun(self):
-    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_exit.c'), '--emrun', '-o', 'hello_world.html']).communicate()
+    Popen([PYTHON, EMCC, path_from_root('tests', 'test_emrun.c'), '--emrun', '-o', 'hello_world.html']).communicate()
     outdir = os.getcwd()
     # We cannot run emrun from the temp directory the suite will clean up afterwards, since the browser that is launched will have that directory as startup directory,
     # and the browser will not close as part of the test, pinning down the cwd on Windows and it wouldn't be possible to delete it. Therefore switch away from that directory
     # before launching.
     os.chdir(path_from_root())
-    args = [PYTHON, path_from_root('emrun'), '--timeout', '30', '--verbose', os.path.join(outdir, 'hello_world.html'), '1', '2', '3', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
+    args = [PYTHON, path_from_root('emrun'), '--timeout', '30', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
     if emscripten_browser is not None:
       args += ['--browser', emscripten_browser]
+    args += [os.path.join(outdir, 'hello_world.html'), '1', '2', '--3']
     process = subprocess.Popen(args)
     process.communicate()
     stdout = open(os.path.join(outdir, 'stdout.txt'), 'r').read()
     stderr = open(os.path.join(outdir, 'stderr.txt'), 'r').read()
     assert process.returncode == 100
     assert 'argc: 4' in stdout
-    assert 'argv[3]: 3' in stdout
+    assert 'argv[3]: --3' in stdout
     assert 'hello, world!' in stdout
+    assert 'Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~' in stdout
+    assert 'Testing char sequences: %20%21 &auml;' in stdout
     assert 'hello, error stream!' in stderr
 
   def test_uuid(self):
@@ -1757,15 +1847,15 @@ void *getBindBuffer() {
 
     # First run tests in Node and/or SPIDERMONKEY using run_js. Use closure compiler so we can check that
     # require('crypto').randomBytes and window.crypto.getRandomValues doesn't get minified out.
-    Popen([PYTHON, EMCC, '-O2', '--closure', '1', path_from_root('tests', 'uuid', 'test.c'), '-o', path_from_root('tests', 'uuid', 'test.js')], stdout=PIPE, stderr=PIPE).communicate()
+    Popen([PYTHON, EMCC, '-O2', '--closure', '1', path_from_root('tests', 'uuid', 'test.c'), '-o', 'test.js'], stdout=PIPE, stderr=PIPE).communicate()
 
-    test_js_closure = open(path_from_root('tests', 'uuid', 'test.js')).read()
+    test_js_closure = open('test.js').read()
 
     # Check that test.js compiled with --closure 1 contains ").randomBytes" and "window.crypto.getRandomValues"
     assert ").randomBytes" in test_js_closure
     assert "window.crypto.getRandomValues" in test_js_closure
 
-    out = run_js(path_from_root('tests', 'uuid', 'test.js'), full_output=True)
+    out = run_js('test.js', full_output=True)
     print out
 
     # Tidy up files that might have been created by this test.
@@ -1798,6 +1888,16 @@ Module["preRun"].push(function () {
       print opts
       self.btest(path_from_root('tests', 'test_html5.c'), args=opts, expected='0')
 
+  def test_html5_webgl_create_context(self):
+    for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'FULL_ES2=1']]:
+      print opts
+      self.btest(path_from_root('tests', 'webgl_create_context.cpp'), args=opts, expected='0')
+
+  def test_html5_webgl_destroy_context(self):
+    for opts in [[], ['-O2', '-g1'], ['-s', 'FULL_ES2=1']]:
+      print opts
+      self.btest(path_from_root('tests', 'webgl_destroy_context.cpp'), args=opts + ['--shell-file', path_from_root('tests/webgl_destroy_context_shell.html'), '-s', 'NO_EXIT_RUNTIME=1'], expected='0')
+
   def test_sdl_touch(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1']]:
       print opts
@@ -1807,6 +1907,11 @@ Module["preRun"].push(function () {
     for opts in [[], ['-O2', '-g1', '--closure', '1']]:
       print opts
       self.btest(path_from_root('tests', 'test_html5_mouse.c'), args=opts + ['-DAUTOMATE_SUCCESS=1'], expected='0')
+
+  def test_sdl_mousewheel(self):
+    for opts in [[], ['-O2', '-g1', '--closure', '1']]:
+      print opts
+      self.btest(path_from_root('tests', 'test_sdl_mousewheel.c'), args=opts + ['-DAUTOMATE_SUCCESS=1'], expected='0')
 
   def test_codemods(self):
     for opt_level in [0, 2]:
@@ -1840,3 +1945,734 @@ open(filename, 'w').write(replaced)
       self.btest(path_from_root('tests', 'codemods.cpp'), expected='121378', args=[opts, '--shell-file', 'shell.html', '--js-transform', fixer, '-s', 'PRECISE_F32=1']) # proper polyfill was enstated, then it was replaced by the fix so 0 is returned all the time, hence a different result here
       self.btest(path_from_root('tests', 'codemods.cpp'), expected='2', args=[opts, '--shell-file', 'shell.html', '--js-transform', fixer, '-s', 'PRECISE_F32=2']) # we should remove the calls to the polyfill ENTIRELY here, on the clientside, so we should NOT see any calls to fround here, and result should be like double
 
+  def test_wget(self):
+    with open(os.path.join(self.get_dir(), 'test.txt'), 'w') as f:
+      f.write('emscripten')
+    self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'ASYNCIFY=1'])
+    print 'asyncify+emterpreter'
+    self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'ASYNCIFY=1', '-s', 'EMTERPRETIFY=1'])
+
+  def test_wget_data(self):
+    with open(os.path.join(self.get_dir(), 'test.txt'), 'w') as f:
+      f.write('emscripten')
+    self.btest(path_from_root('tests', 'test_wget_data.c'), expected='1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O2', '-g2'])
+    self.btest(path_from_root('tests', 'test_wget_data.c'), expected='1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O2', '-g2', '-s', 'ASSERTIONS=1'])
+
+  def test_locate_file(self):
+    self.clear()
+    open('src.cpp', 'w').write(self.with_report_result(r'''
+      #include <stdio.h>
+      #include <string.h>
+      #include <assert.h>
+      int main() {
+        FILE *f = fopen("data.txt", "r");
+        assert(f && "could not open file");
+        char buf[100];
+        int num = fread(buf, 1, 20, f);
+        assert(num == 20 && "could not read 20 bytes");
+        buf[20] = 0;
+        fclose(f);
+        int result = !strcmp("load me right before", buf);
+        printf("|%s| : %d\n", buf, result);
+        REPORT_RESULT();
+        return 0;
+      }
+    '''))
+    open('data.txt', 'w').write('load me right before...')
+    open('pre.js', 'w').write('Module.locateFile = function(x) { return "sub/" + x };')
+    Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=open('data.js', 'w')).communicate()
+    # put pre.js first, then the file packager data, so locateFile is there for the file loading code
+    Popen([PYTHON, EMCC, 'src.cpp', '-O2', '-g', '--pre-js', 'pre.js', '--pre-js', 'data.js', '-o', 'page.html']).communicate()
+    os.mkdir('sub')
+    shutil.move('page.html.mem', os.path.join('sub', 'page.html.mem'))
+    shutil.move('test.data', os.path.join('sub', 'test.data'))
+    self.run_browser('page.html', None, '/report_result?1')
+
+  def test_glfw3(self):
+    self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3'], expected='1')
+
+  def test_glfw3_events(self):
+    self.btest(path_from_root('tests', 'glfw3_events.c'), args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3'], expected='1')
+
+  def test_asm_swapping(self):
+    self.clear()
+    open('run.js', 'w').write(r'''
+Module['_main'] = function() {
+  // test proper initial result
+  var result = Module._func();
+  console.log('first: ' + result);
+  if (result !== 10) throw 'bad first result';
+
+  // load second module to be swapped in
+  var second = document.createElement('script');
+  second.onload = function() { console.log('loaded second') };
+  second.src = 'second.js';
+  document.body.appendChild(second);
+  console.log('second appended');
+
+  Module['onAsmSwap'] = function() {
+    console.log('swapped');
+    // verify swapped-in result
+    var result = Module._func();
+    console.log('second: ' + result);
+    if (result !== 22) throw 'bad second result';
+    Module._report(999);
+    console.log('reported');
+  };
+};
+''')
+    for opts in [[], ['-O1'], ['-O2', '-profiling'], ['-O2']]:
+      print opts
+      open('second.cpp', 'w').write(self.with_report_result(open(path_from_root('tests', 'asm_swap2.cpp')).read()))
+      Popen([PYTHON, EMCC, 'second.cpp'] + opts).communicate()
+      Popen([PYTHON, path_from_root('tools', 'distill_asm.py'), 'a.out.js', 'second.js', 'swap-in']).communicate()
+      assert os.path.exists('second.js')
+
+      if isinstance(SPIDERMONKEY_ENGINE, list) and len(SPIDERMONKEY_ENGINE[0]) != 0:
+        out = run_js('second.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True, assert_returncode=None)
+        self.validate_asmjs(out)
+      else:
+        print 'Skipping asm validation check, spidermonkey is not configured'
+
+      self.btest(path_from_root('tests', 'asm_swap.cpp'), args=['-s', 'SWAPPABLE_ASM_MODULE=1', '-s', 'NO_EXIT_RUNTIME=1', '--pre-js', 'run.js'] + opts, expected='999')
+
+  def test_sdl2_image(self):
+    # load an image file, get pixel data. Also O2 coverage for --preload-file, and memory-init
+    shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.jpg'))
+    open(os.path.join(self.get_dir(), 'sdl2_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_image.c')).read()))
+
+    for mem in [0, 1]:
+      for dest, dirname, basename in [('screenshot.jpg',                        '/',       'screenshot.jpg'),
+                                      ('screenshot.jpg@/assets/screenshot.jpg', '/assets', 'screenshot.jpg')]:
+        Popen([
+          PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_image.c'), '-o', 'page.html', '-O2', '--memory-init-file', str(mem),
+          '--preload-file', dest, '-DSCREENSHOT_DIRNAME="' + dirname + '"', '-DSCREENSHOT_BASENAME="' + basename + '"', '-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'
+        ]).communicate()
+        self.run_browser('page.html', '', '/report_result?600')
+
+  def test_sdl2_image_jpeg(self):
+    shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.jpeg'))
+    open(os.path.join(self.get_dir(), 'sdl2_image_jpeg.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_image.c')).read()))
+    Popen([
+      PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_image_jpeg.c'), '-o', 'page.html',
+      '--preload-file', 'screenshot.jpeg', '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpeg"', '-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'
+    ]).communicate()
+    self.run_browser('page.html', '', '/report_result?600')
+
+  def test_sdl2_key(self):
+    for defines in [[]]:
+      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+        Module.postRun = function() {
+          function doOne() {
+            Module._one();
+            setTimeout(doOne, 1000/60);
+          }
+          setTimeout(doOne, 1000/60);
+        }
+
+        function keydown(c) {
+          var event = document.createEvent("KeyboardEvent");
+          event.initKeyEvent("keydown", true, true, window,
+                             0, 0, 0, 0,
+                             c, c);
+          document.dispatchEvent(event);
+        }
+
+        function keyup(c) {
+          var event = document.createEvent("KeyboardEvent");
+          event.initKeyEvent("keyup", true, true, window,
+                             0, 0, 0, 0,
+                             c, c);
+          document.dispatchEvent(event);
+        }
+      ''')
+      open(os.path.join(self.get_dir(), 'sdl2_key.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_key.c')).read()))
+
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_key.c'), '-o', 'page.html'] + defines + ['-s', 'USE_SDL=2','--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''', '-s', 'NO_EXIT_RUNTIME=1']).communicate()
+      self.run_browser('page.html', '', '/report_result?7436429')
+
+  def test_sdl2_text(self):
+    open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+      Module.postRun = function() {
+        function doOne() {
+          Module._one();
+          setTimeout(doOne, 1000/60);
+        }
+        setTimeout(doOne, 1000/60);
+      }
+
+      function simulateKeyEvent(charCode) {
+        var event = document.createEvent("KeyboardEvent");
+        event.initKeyEvent("keypress", true, true, window,
+                           0, 0, 0, 0, 0, charCode);
+        document.body.dispatchEvent(event);
+      }
+    ''')
+    open(os.path.join(self.get_dir(), 'sdl2_text.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_text.c')).read()))
+
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_text.c'), '-o', 'page.html', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''', '-s', 'USE_SDL=2']).communicate()
+    self.run_browser('page.html', '', '/report_result?1')
+
+  def test_sdl2_mouse(self):
+    open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+      function simulateMouseEvent(x, y, button) {
+        var event = document.createEvent("MouseEvents");
+        if (button >= 0) {
+          var event1 = document.createEvent("MouseEvents");
+          event1.initMouseEvent('mousedown', true, true, window,
+                     1, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y,
+                     0, 0, 0, 0,
+                     button, null);
+          Module['canvas'].dispatchEvent(event1);
+          var event2 = document.createEvent("MouseEvents");
+          event2.initMouseEvent('mouseup', true, true, window,
+                     1, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y,
+                     0, 0, 0, 0,
+                     button, null);
+          Module['canvas'].dispatchEvent(event2);
+        } else {
+          var event1 = document.createEvent("MouseEvents");
+          event1.initMouseEvent('mousemove', true, true, window,
+                     0, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y,
+                     0, 0, 0, 0,
+                     0, null);
+          Module['canvas'].dispatchEvent(event1);
+        }
+      }
+      window['simulateMouseEvent'] = simulateMouseEvent;
+    ''')
+    open(os.path.join(self.get_dir(), 'sdl2_mouse.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_mouse.c')).read()))
+
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_mouse.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js', '-s', 'USE_SDL=2']).communicate()
+    self.run_browser('page.html', '', '/report_result?712')
+
+  def test_sdl2_mouse_offsets(self):
+    open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+      function simulateMouseEvent(x, y, button) {
+        var event = document.createEvent("MouseEvents");
+        if (button >= 0) {
+          var event1 = document.createEvent("MouseEvents");
+          event1.initMouseEvent('mousedown', true, true, window,
+                     1, x, y, x, y,
+                     0, 0, 0, 0,
+                     button, null);
+          Module['canvas'].dispatchEvent(event1);
+          var event2 = document.createEvent("MouseEvents");
+          event2.initMouseEvent('mouseup', true, true, window,
+                     1, x, y, x, y,
+                     0, 0, 0, 0,
+                     button, null);
+          Module['canvas'].dispatchEvent(event2);
+        } else {
+          var event1 = document.createEvent("MouseEvents");
+          event1.initMouseEvent('mousemove', true, true, window,
+                     0, x, y, x, y,
+                     0, 0, 0, 0,
+                     0, null);
+          Module['canvas'].dispatchEvent(event1);
+        }
+      }
+      window['simulateMouseEvent'] = simulateMouseEvent;
+    ''')
+    open(os.path.join(self.get_dir(), 'page.html'), 'w').write('''
+      <html>
+        <head>
+          <style type="text/css">
+            html, body { margin: 0; padding: 0; }
+            #container {
+              position: absolute;
+              left: 5px; right: 0;
+              top: 5px; bottom: 0;
+            }
+            #canvas {
+              position: absolute;
+              left: 0; width: 600px;
+              top: 0; height: 450px;
+            }
+            textarea {
+              margin-top: 500px;
+              margin-left: 5px;
+              width: 600px;
+            }
+          </style>
+        </head>
+        <body>
+          <div id="container">
+            <canvas id="canvas"></canvas>
+          </div>
+          <textarea id="output" rows="8"></textarea>
+          <script type="text/javascript">
+            var Module = {
+              canvas: document.getElementById('canvas'),
+              print: (function() {
+                var element = document.getElementById('output');
+                element.value = ''; // clear browser cache
+                return function(text) {
+                  if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+                  element.value += text + "\\n";
+                  element.scrollTop = element.scrollHeight; // focus on bottom
+                };
+              })()
+            };
+          </script>
+          <script type="text/javascript" src="sdl2_mouse.js"></script>
+        </body>
+      </html>
+    ''')
+    open(os.path.join(self.get_dir(), 'sdl2_mouse.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_mouse.c')).read()))
+
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_mouse.c'), '-O2', '--minify', '0', '-o', 'sdl2_mouse.js', '--pre-js', 'pre.js', '-s', 'USE_SDL=2']).communicate()
+    self.run_browser('page.html', '', '/report_result?572')
+
+  def test_sdl2glshader(self):
+    self.btest('sdl2glshader.c', reference='sdlglshader.png', args=['-s', 'USE_SDL=2', '-O2', '--closure', '1', '-s', 'LEGACY_GL_EMULATION=1'])
+    self.btest('sdl2glshader.c', reference='sdlglshader.png', args=['-s', 'USE_SDL=2', '-O2', '-s', 'LEGACY_GL_EMULATION=1'], also_proxied=True) # XXX closure fails on proxy
+
+  def test_sdl2_canvas_blank(self):
+    self.btest('sdl2_canvas_blank.c', reference='sdl_canvas_blank.png', args=['-s', 'USE_SDL=2'])
+
+  def test_sdl2_canvas_palette(self):
+    self.btest('sdl2_canvas_palette.c', reference='sdl_canvas_palette.png', args=['-s', 'USE_SDL=2'])
+
+  def test_sdl2_canvas_twice(self):
+    self.btest('sdl2_canvas_twice.c', reference='sdl_canvas_twice.png', args=['-s', 'USE_SDL=2'])
+
+  def zzztest_sdl2_gfx_primitives(self):
+    self.btest('sdl2_gfx_primitives.c', args=['-s', 'USE_SDL=2', '-lSDL2_gfx'], reference='sdl_gfx_primitives.png', reference_slack=1)
+
+  def test_sdl2_canvas_palette_2(self):
+    open(os.path.join(self.get_dir(), 'args-r.js'), 'w').write('''
+      Module['arguments'] = ['-r'];
+    ''')
+
+    open(os.path.join(self.get_dir(), 'args-g.js'), 'w').write('''
+      Module['arguments'] = ['-g'];
+    ''')
+
+    open(os.path.join(self.get_dir(), 'args-b.js'), 'w').write('''
+      Module['arguments'] = ['-b'];
+    ''')
+
+    self.btest('sdl2_canvas_palette_2.c', reference='sdl_canvas_palette_r.png', args=['-s', 'USE_SDL=2', '--pre-js', 'args-r.js'])
+    self.btest('sdl2_canvas_palette_2.c', reference='sdl_canvas_palette_g.png', args=['-s', 'USE_SDL=2', '--pre-js', 'args-g.js'])
+    self.btest('sdl2_canvas_palette_2.c', reference='sdl_canvas_palette_b.png', args=['-s', 'USE_SDL=2', '--pre-js', 'args-b.js'])
+
+  def test_sdl2_swsurface(self):
+    self.btest('sdl2_swsurface.c', expected='1', args=['-s', 'USE_SDL=2'])
+
+  def test_sdl2_image_compressed(self):
+    for image, width in [(path_from_root('tests', 'screenshot2.png'), 300),
+                         (path_from_root('tests', 'screenshot.jpg'), 600)]:
+      self.clear()
+      print image
+
+      basename = os.path.basename(image)
+      shutil.copyfile(image, os.path.join(self.get_dir(), basename))
+      open(os.path.join(self.get_dir(), 'sdl2_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_image.c')).read()))
+
+      self.build_native_lzma()
+      Popen([
+        PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_image.c'), '-o', 'page.html',
+        '--preload-file', basename, '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="' + basename + '"', '-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2',
+        '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
+                                       path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
+                                       'LZMA.decompress')
+      ]).communicate()
+      shutil.move(os.path.join(self.get_dir(), basename), basename + '.renamedsoitcannotbefound');
+      self.run_browser('page.html', '', '/report_result?' + str(width))
+
+  def test_sdl2_image_prepare(self):
+    # load an image file, get pixel data.
+    shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.not'))
+    self.btest('sdl2_image_prepare.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not', '-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'])
+
+  def test_sdl2_canvas_proxy(self):
+    def post():
+      html = open('test.html').read()
+      html = html.replace('</body>', '''
+<script>
+function assert(x, y) { if (!x) throw 'assertion failed ' + y }
+
+%s
+
+var windowClose = window.close;
+window.close = function() {
+  // wait for rafs to arrive and the screen to update before reftesting
+  setTimeout(function() {
+    doReftest();
+    setTimeout(windowClose, 1000);
+  }, 1000);
+};
+</script>
+</body>''' % open('reftest.js').read())
+      open('test.html', 'w').write(html)
+
+    open('data.txt', 'w').write('datum')
+
+    self.btest('sdl2_canvas_proxy.c', reference='sdl2_canvas.png', args=['-s', 'USE_SDL=2', '--proxy-to-worker', '--preload-file', 'data.txt', '-s', 'GL_TESTING=1'], manual_reference=True, post_build=post)
+
+  def test_sdl2_pumpevents(self):
+    # key events should be detected using SDL_PumpEvents
+    open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+      function keydown(c) {
+        var event = document.createEvent("KeyboardEvent");
+        event.initKeyEvent("keydown", true, true, window,
+                           0, 0, 0, 0,
+                           c, c);
+        document.dispatchEvent(event);
+      }
+    ''')
+    self.btest('sdl2_pumpevents.c', expected='7', args=['--pre-js', 'pre.js', '-s', 'USE_SDL=2'])
+
+  def test_sdl2_canvas_size(self):
+    self.btest('sdl2_canvas_size.c', expected='1', args=['-s', 'USE_SDL=2'])
+
+  def test_sdl2_gl_read(self):
+    # SDL, OpenGL, readPixels
+    open(os.path.join(self.get_dir(), 'sdl2_gl_read.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_gl_read.c')).read()))
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_gl_read.c'), '-o', 'something.html', '-s', 'USE_SDL=2']).communicate()
+    self.run_browser('something.html', '.', '/report_result?1')
+
+  def test_sdl2_fog_simple(self):
+    shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
+    self.btest('sdl2_fog_simple.c', reference='screenshot-fog-simple.png',
+      args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2','-O2', '--minify', '0', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'],
+      message='You should see an image with fog.')
+
+  def test_sdl2_fog_negative(self):
+    shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
+    self.btest('sdl2_fog_negative.c', reference='screenshot-fog-negative.png',
+      args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2','--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'],
+      message='You should see an image with fog.')
+
+  def test_sdl2_fog_density(self):
+    shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
+    self.btest('sdl2_fog_density.c', reference='screenshot-fog-density.png',
+      args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2','--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'],
+      message='You should see an image with fog.')
+
+  def test_sdl2_fog_exp2(self):
+    shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
+    self.btest('sdl2_fog_exp2.c', reference='screenshot-fog-exp2.png',
+      args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2','--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'],
+      message='You should see an image with fog.')
+
+  def test_sdl2_fog_linear(self):
+    shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
+    self.btest('sdl2_fog_linear.c', reference='screenshot-fog-linear.png', reference_slack=1,
+      args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2','--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'],
+      message='You should see an image with fog.')
+
+  def test_sdl2_unwasteful(self):
+    self.btest('sdl2_unwasteful.cpp', expected='1', args=['-s', 'USE_SDL=2', '-O1'])
+
+  def test_sdl2_canvas_write(self):
+    self.btest('sdl2_canvas_write.cpp', expected='0', args=['-s', 'USE_SDL=2'])
+
+  def test_emterpreter_async(self):
+    for opts in [0, 1, 2, 3]:
+      print opts
+      self.btest('emterpreter_async.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-g2'])
+
+  def test_emterpreter_async_2(self):
+    self.btest('emterpreter_async_2.cpp', '40', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O3'])
+
+  def test_emterpreter_async_virtual(self):
+    for opts in [0, 1, 2, 3]:
+      print opts
+      self.btest('emterpreter_async_virtual.cpp', '5', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-profiling'])
+
+  def test_emterpreter_async_virtual_2(self):
+    for opts in [0, 1, 2, 3]:
+      print opts
+      self.btest('emterpreter_async_virtual_2.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-s', 'ASSERTIONS=1', '-s', 'SAFE_HEAP=1', '-profiling'])
+
+  def test_emterpreter_async_bad(self):
+    for opts in [0, 1, 2, 3]:
+      print opts
+      self.btest('emterpreter_async_bad.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-s', 'EMTERPRETIFY_BLACKLIST=["_middle"]', '-s', 'ASSERTIONS=1'])
+
+  def test_emterpreter_async_mainloop(self):
+    for opts in [0, 1, 2, 3]:
+      print opts
+      self.btest('emterpreter_async_mainloop.cpp', '121', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts)])
+
+  def test_emterpreter_async_with_manual(self):
+    for opts in [0, 1, 2, 3]:
+      print opts
+      self.btest('emterpreter_async_with_manual.cpp', '121', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-s', 'EMTERPRETIFY_BLACKLIST=["_acall"]'])
+
+  def test_emterpreter_async_sleep2(self):
+    self.btest('emterpreter_async_sleep2.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Oz'])
+
+  def test_sdl_audio_beep_sleep(self):
+    self.btest('sdl_audio_beep_sleep.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Os', '-s', 'ASSERTIONS=1', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-profiling', '-s', 'SAFE_HEAP=1'])
+
+  def test_mainloop_reschedule(self):
+    self.btest('mainloop_reschedule.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Os'])
+
+  def test_modularize(self):
+    for opts in [[], ['-O1'], ['-O2', '-profiling'], ['-O2']]:
+      for args, code in [
+        ([], 'Module();'), # defaults
+        (['-s', 'EXPORT_NAME="HelloWorld"'], '''
+          if (typeof Module !== "undefined") throw "what?!"; // do not pollute the global scope, we are modularized!
+          HelloWorld();
+        '''), # use EXPORT_NAME
+        (['-s', 'EXPORT_NAME="HelloWorld"'], '''
+          var hello = HelloWorld({ noInitialRun: true, onRuntimeInitialized: function() {
+            setTimeout(function() { hello._main(); }); // must be async, because onRuntimeInitialized may be called synchronously, so |hello| is not yet set!
+          } });
+        '''), # pass in a Module option (which prevents main(), which we then invoke ourselves)
+        (['-s', 'EXPORT_NAME="HelloWorld"', '--memory-init-file', '0'], '''
+          var hello = HelloWorld({ noInitialRun: true});
+          hello._main();
+        '''), # similar, but without a mem init file, everything is sync and simple
+      ]:
+        print 'test on', opts, args, code
+        src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
+        open('test.c', 'w').write(self.with_report_result(src))
+        Popen([PYTHON, EMCC, 'test.c', '-s', 'MODULARIZE=1'] + args + opts).communicate()
+        open('a.html', 'w').write('''
+          <script src="a.out.js"></script>
+          <script>
+            %s
+          </script>
+        ''' % code)
+        self.run_browser('a.html', '...', '/report_result?0')
+
+  def test_webidl(self):
+    # see original in test_core.py
+    output = Popen([PYTHON, path_from_root('tools', 'webidl_binder.py'),
+                            path_from_root('tests', 'webidl', 'test.idl'),
+                            'glue']).communicate()[0]
+    assert os.path.exists('glue.cpp')
+    assert os.path.exists('glue.js')
+    self.btest(os.path.join('webidl', 'test.cpp'), '1', args=['--post-js', 'glue.js', '-I' + path_from_root('tests', 'webidl'), '-DBROWSER'])
+
+  def test_dynamic_link(self):
+    open('pre.js', 'w').write('''
+      Module.dynamicLibraries = ['side.js'];
+  ''')
+    open('main.cpp', 'w').write(r'''
+      #include <stdio.h>
+      #include <stdlib.h>
+      #include <string.h>
+      #include <emscripten.h>
+      char *side(const char *data);
+      int main() {
+        char *temp = side("hello through side\n");
+        char *ret = (char*)malloc(strlen(temp)+1);
+        strcpy(ret, temp);
+        temp[1] = 'x';
+        EM_ASM({
+          Module.realPrint = Module.print;
+          Module.print = function(x) {
+            if (!Module.printed) Module.printed = x;
+            Module.realPrint(x);
+          };
+        });
+        puts(ret);
+        EM_ASM({ assert(Module.printed === 'hello through side', ['expected', Module.printed]); });
+        int result = 2;
+        REPORT_RESULT();
+        return 0;
+      }
+    ''')
+    open('side.cpp', 'w').write(r'''
+      #include <stdlib.h>
+      #include <string.h>
+      char *side(const char *data);
+      char *side(const char *data) {
+        char *ret = (char*)malloc(strlen(data)+1);
+        strcpy(ret, data);
+        return ret;
+      }
+    ''')
+    Popen([PYTHON, EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.js']).communicate()
+
+    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js'])
+
+  def test_dynamic_link_glemu(self):
+    open('pre.js', 'w').write('''
+      Module.dynamicLibraries = ['side.js'];
+  ''')
+    open('main.cpp', 'w').write(r'''
+      #include <stdio.h>
+      #include <string.h>
+      #include <assert.h>
+      const char *side();
+      int main() {
+        const char *exts = side();
+        puts(side());
+        assert(strstr(exts, "GL_EXT_texture_env_combine"));
+        int result = 1;
+        REPORT_RESULT();
+        return 0;
+      }
+    ''')
+    open('side.cpp', 'w').write(r'''
+      #include "SDL/SDL.h"
+      #include "SDL/SDL_opengl.h"
+      const char *side() {
+        SDL_Init(SDL_INIT_VIDEO);
+        SDL_SetVideoMode(600, 600, 16, SDL_OPENGL);
+        return (const char *)glGetString(GL_EXTENSIONS);
+      }
+    ''')
+    Popen([PYTHON, EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.js']).communicate()
+
+    self.btest(self.in_dir('main.cpp'), '1', args=['-s', 'MAIN_MODULE=1', '-O2', '-s', 'LEGACY_GL_EMULATION=1', '--pre-js', 'pre.js'])
+
+  def test_memory_growth_during_startup(self):
+    open('data.dat', 'w').write('X' * (30*1024*1024))
+    self.btest('browser_test_hello_world.c', '0', args=['-s', 'ASSERTIONS=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TOTAL_MEMORY=10000', '-s', 'TOTAL_STACK=5000', '--preload-file', 'data.dat'])
+
+  # pthreads tests
+
+  # Test that the emscripten_ atomics api functions work.
+  def test_pthread_atomics(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+
+  # Test 64-bit atomics.
+  def test_pthread_64bit_atomics(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_atomics.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+
+  # Test the old GCC atomic __sync_fetch_and_op builtin operations.
+  def test_pthread_gcc_atomic_fetch_and_op(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_fetch_and_op.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+
+  # 64 bit version of the above test.
+  def test_pthread_gcc_64bit_atomic_fetch_and_op(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_64bit_atomic_fetch_and_op.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+
+  # Test the old GCC atomic __sync_op_and_fetch builtin operations.
+  def test_pthread_gcc_atomic_op_and_fetch(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_op_and_fetch.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+
+  # 64 bit version of the above test.
+  def test_pthread_gcc_64bit_atomic_op_and_fetch(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_64bit_atomic_op_and_fetch.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+
+  # Tests the rest of the remaining GCC atomics after the two above tests.
+  def test_pthread_gcc_atomics(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomics.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+
+  # Test the __sync_lock_test_and_set and __sync_lock_release primitives.
+  def test_pthread_gcc_spinlock(self):
+    for arg in [[], ['-DUSE_EMSCRIPTEN_INTRINSICS']]:
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_spinlock.cpp'), expected='800', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + arg)
+
+  # Test that basic thread creation works.
+  def test_pthread_create(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+
+  # Test that a pthread can spawn another pthread of its own.
+  def test_pthread_create_pthread(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_create_pthread.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'NO_EXIT_RUNTIME=1'])
+
+  # Test another case of pthreads spawning pthreads, but this time the callers immediately join on the threads they created.
+  def test_pthread_nested_spawns(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_nested_spawns.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2'])
+
+  # Test that main thread can wait for a pthread to finish via pthread_join().
+  def test_pthread_join(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_join.cpp'), expected='6765', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+
+  # Test pthread_cancel() operation
+  def test_pthread_cancel(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_cancel.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+
+  # Test pthread_kill() operation
+  def test_pthread_kill(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_kill.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+
+  # Test that pthread cleanup stack (pthread_cleanup_push/_pop) works.
+  def test_pthread_cleanup(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_cleanup.cpp'), expected='907640832', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+
+  # Tests the pthread mutex api.
+  def test_pthread_mutex(self):
+    for arg in [[], ['-DSPINLOCK_TEST']]:
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_mutex.cpp'), expected='50', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + arg)
+
+  # Test that memory allocation is thread-safe.
+  def test_pthread_malloc(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+
+  # Stress test pthreads allocating memory that will call to sbrk(), and main thread has to free up the data.
+  def test_pthread_malloc_free(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc_free.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'TOTAL_MEMORY=268435456'])
+
+  # Test that the pthread_barrier API works ok.
+  def test_pthread_barrier(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_barrier.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+
+  # Test the pthread_once() function.
+  def test_pthread_once(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_once.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+
+  # Test against a certain thread exit time handling bug by spawning tons of threads.
+  def test_pthread_spawns(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_spawns.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+
+  # It is common for code to flip volatile global vars for thread control. This is a bit lax, but nevertheless, test whether that
+  # kind of scheme will work with Emscripten as well.
+  def test_pthread_volatile(self):
+    for arg in [[], ['-DUSE_C_VOLATILE']]:
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_volatile.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + arg)
+
+  # Test thread-specific data (TLS).
+  def test_pthread_thread_local_storage(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_thread_local_storage.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+
+  # Test the pthread condition variable creation and waiting.
+  def test_pthread_condition_variable(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_condition_variable.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+
+  # Test that pthreads are able to do printf.
+  def test_pthread_printf(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_printf.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
+
+  # Test that pthreads are able to do cout. Failed due to https://bugzilla.mozilla.org/show_bug.cgi?id=1154858.
+  def test_pthread_iostream(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_iostream.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
+
+  # Test that the main thread is able to use pthread_set/getspecific.
+  def test_pthread_setspecific_mainthread(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_setspecific_mainthread.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1'])
+
+  # Test the -s PTHREAD_HINT_NUM_CORES=x command line variable.
+  def test_pthread_num_logical_cores(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_num_logical_cores.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_HINT_NUM_CORES=2'])
+
+  # Test that pthreads have access to filesystem.
+  def test_pthread_file_io(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_file_io.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
+
+  # Test that it is possible to send a signal via calling alarm(timeout), which in turn calls to the signal handler set by signal(SIGALRM, func);
+  def test_sigalrm(self):
+    self.btest(path_from_root('tests', 'sigalrm.cpp'), expected='0', args=['-O3'])
+
+  def test_meminit_pairs(self):
+    d = 'const char *data[] = {\n  "'
+    d += '",\n  "'.join(''.join('\\x{:02x}\\x{:02x}'.format(i, j)
+                                for j in range(256)) for i in range(256))
+    with open(path_from_root('tests', 'meminit_pairs.c')) as f:
+      d += '"\n};\n' + f.read()
+    args = ["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1"]
+    self.btest(d, expected='0', args=args + ["--closure", "0"])
+    self.btest(d, expected='0', args=args + ["--closure", "0", "-g"])
+    self.btest(d, expected='0', args=args + ["--closure", "1"])
+
+  def test_meminit_big(self):
+    d = 'const char *data[] = {\n  "'
+    d += '",\n  "'.join([''.join('\\x{:02x}\\x{:02x}'.format(i, j)
+                                 for j in range(256)) for i in range(256)]*256)
+    with open(path_from_root('tests', 'meminit_pairs.c')) as f:
+      d += '"\n};\n' + f.read()
+    assert len(d) > (1 << 27) # more than 32M memory initializer
+    args = ["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1"]
+    self.btest(d, expected='0', args=args + ["--closure", "0"])
+    self.btest(d, expected='0', args=args + ["--closure", "0", "-g"])
+    self.btest(d, expected='0', args=args + ["--closure", "1"])

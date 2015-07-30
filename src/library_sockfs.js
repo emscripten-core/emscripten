@@ -1,8 +1,40 @@
 mergeInto(LibraryManager.library, {
-  $SOCKFS__postset: '__ATINIT__.push({ func: function() { SOCKFS.root = FS.mount(SOCKFS, {}, null); } });',
+  $SOCKFS__postset: '__ATINIT__.push(function() { SOCKFS.root = FS.mount(SOCKFS, {}, null); });',
   $SOCKFS__deps: ['$FS', 'mkport'],
   $SOCKFS: {
     mount: function(mount) {
+      // If Module['websocket'] has already been defined (e.g. for configuring
+      // the subprotocol/url) use that, if not initialise it to a new object.
+      Module['websocket'] = (Module['websocket'] && 
+                             ('object' === typeof Module['websocket'])) ? Module['websocket'] : {};
+
+      // Add the Event registration mechanism to the exported websocket configuration
+      // object so we can register network callbacks from native JavaScript too.
+      // For more documentation see system/include/emscripten/emscripten.h
+      Module['websocket']._callbacks = {};
+      Module['websocket']['on'] = function(event, callback) {
+	    if ('function' === typeof callback) {
+		  this._callbacks[event] = callback;
+        }
+	    return this;
+      };
+
+      Module['websocket'].emit = function(event, param) {
+	    if ('function' === typeof this._callbacks[event]) {
+		  this._callbacks[event].call(this, param);
+        }
+      };
+
+      // If debug is enabled register simple default logging callbacks for each Event.
+#if SOCKET_DEBUG
+      Module['websocket']['on']('error', function(error) {Module.printErr('Socket error ' + error);});
+      Module['websocket']['on']('open', function(fd) {Module.print('Socket open fd = ' + fd);});
+      Module['websocket']['on']('listen', function(fd) {Module.print('Socket listen fd = ' + fd);});
+      Module['websocket']['on']('connection', function(fd) {Module.print('Socket connection fd = ' + fd);});
+      Module['websocket']['on']('message', function(fd) {Module.print('Socket message fd = ' + fd);});
+      Module['websocket']['on']('close', function(fd) {Module.print('Socket close fd = ' + fd);});
+#endif
+
       return FS.createNode(null, '/', {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */, 0);
     },
     createSocket: function(family, type, protocol) {
@@ -17,6 +49,7 @@ mergeInto(LibraryManager.library, {
         type: type,
         protocol: protocol,
         server: null,
+        error: null, // Used in getsockopt for SOL_SOCKET/SO_ERROR test
         peers: {},
         pending: [],
         recv_queue: [],
@@ -71,13 +104,7 @@ mergeInto(LibraryManager.library, {
           // socket is closed
           return 0;
         }
-#if USE_TYPED_ARRAYS == 2
         buffer.set(msg.buffer, offset);
-#else
-        for (var i = 0; i < size; i++) {
-          buffer[offset + i] = msg.buffer[i];
-        }
-#endif
         return msg.buffer.length;
       },
       write: function(stream, buffer, offset, length, position /* ignored */) {
@@ -136,8 +163,8 @@ mergeInto(LibraryManager.library, {
             // runtimeConfig gets set to true if WebSocket runtime configuration is available.
             var runtimeConfig = (Module['websocket'] && ('object' === typeof Module['websocket']));
 
-            // The default value is 'ws://' the replace is needed because the compiler replaces "//" comments with '#'
-            // comments without checking context, so we'd end up with ws:#, the replace swaps the "#" for "//" again.
+            // The default value is 'ws://' the replace is needed because the compiler replaces '//' comments with '#'
+            // comments without checking context, so we'd end up with ws:#, the replace swaps the '#' for '//' again.
             var url = '{{{ WEBSOCKET_URL }}}'.replace('#', '//');
 
             if (runtimeConfig) {
@@ -147,7 +174,8 @@ mergeInto(LibraryManager.library, {
             }
 
             if (url === 'ws://' || url === 'wss://') { // Is the supplied URL config just a prefix, if so complete it.
-              url = url + addr + ':' + port;
+              var parts = addr.split('/');
+              url = url + parts[0] + ":" + port + "/" + parts.slice(1).join('/');
             }
 
             // Make the WebSocket subprotocol (Sec-WebSocket-Protocol) default to binary if no configuration is set.
@@ -224,6 +252,9 @@ mergeInto(LibraryManager.library, {
 #if SOCKET_DEBUG
           Module.print('websocket handle open');
 #endif
+
+          Module['websocket'].emit('open', sock.stream.fd);
+
           try {
             var queued = peer.dgram_send_queue.shift();
             while (queued) {
@@ -264,6 +295,7 @@ mergeInto(LibraryManager.library, {
           }
 
           sock.recv_queue.push({ addr: peer.addr, port: peer.port, data: data });
+          Module['websocket'].emit('message', sock.stream.fd);
         };
 
         if (ENVIRONMENT_IS_NODE) {
@@ -274,13 +306,31 @@ mergeInto(LibraryManager.library, {
             }
             handleMessage((new Uint8Array(data)).buffer);  // copy from node Buffer -> ArrayBuffer
           });
-          peer.socket.on('error', function() {
+          peer.socket.on('close', function() {
+            Module['websocket'].emit('close', sock.stream.fd);
+          });
+          peer.socket.on('error', function(error) {
+            // Although the ws library may pass errors that may be more descriptive than
+            // ECONNREFUSED they are not necessarily the expected error code e.g. 
+            // ENOTFOUND on getaddrinfo seems to be node.js specific, so using ECONNREFUSED
+            // is still probably the most useful thing to do.
+            sock.error = ERRNO_CODES.ECONNREFUSED; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
+            Module['websocket'].emit('error', [sock.stream.fd, sock.error, 'ECONNREFUSED: Connection refused']);
             // don't throw
           });
         } else {
           peer.socket.onopen = handleOpen;
+          peer.socket.onclose = function() {
+            Module['websocket'].emit('close', sock.stream.fd);
+          };
           peer.socket.onmessage = function peer_socket_onmessage(event) {
             handleMessage(event.data);
+          };
+          peer.socket.onerror = function(error) {
+            // The WebSocket spec only allows a 'simple event' to be thrown on error,
+            // so we only really know as much as ECONNREFUSED.
+            sock.error = ERRNO_CODES.ECONNREFUSED; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
+            Module['websocket'].emit('error', [sock.stream.fd, sock.error, 'ECONNREFUSED: Connection refused']);
           };
         }
       },
@@ -380,7 +430,7 @@ mergeInto(LibraryManager.library, {
       },
       connect: function(sock, addr, port) {
         if (sock.server) {
-          throw new FS.ErrnoError(ERRNO_CODS.EOPNOTSUPP);
+          throw new FS.ErrnoError(ERRNO_CODES.EOPNOTSUPP);
         }
 
         // TODO autobind
@@ -425,6 +475,7 @@ mergeInto(LibraryManager.library, {
           port: sock.sport
           // TODO support backlog
         });
+        Module['websocket'].emit('listen', sock.stream.fd); // Send Event with listen fd.
 
         sock.server.on('connection', function(ws) {
 #if SOCKET_DEBUG
@@ -440,17 +491,28 @@ mergeInto(LibraryManager.library, {
 
             // push to queue for accept to pick up
             sock.pending.push(newsock);
+            Module['websocket'].emit('connection', newsock.stream.fd);
           } else {
             // create a peer on the listen socket so calling sendto
             // with the listen socket and an address will resolve
             // to the correct client
             SOCKFS.websocket_sock_ops.createPeer(sock, ws);
+            Module['websocket'].emit('connection', sock.stream.fd);
           }
         });
         sock.server.on('closed', function() {
+          Module['websocket'].emit('close', sock.stream.fd);
           sock.server = null;
         });
-        sock.server.on('error', function() {
+        sock.server.on('error', function(error) {
+          // Although the ws library may pass errors that may be more descriptive than
+          // ECONNREFUSED they are not necessarily the expected error code e.g. 
+          // ENOTFOUND on getaddrinfo seems to be node.js specific, so using EHOSTUNREACH
+          // is still probably the most useful thing to do. This error shouldn't
+          // occur in a well written app as errors should get trapped in the compiled
+          // app's own getaddrinfo call.
+          sock.error = ERRNO_CODES.EHOSTUNREACH; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
+          Module['websocket'].emit('error', [sock.stream.fd, sock.error, 'EHOSTUNREACH: Host is unreachable']);
           // don't throw
         });
       },
@@ -604,5 +666,65 @@ mergeInto(LibraryManager.library, {
         return res;
       }
     }
+  },
+
+  /*
+   * Mechanism to register handlers for the various Socket Events from C code.
+   * The registration functions are mostly variations on a theme, so we use this
+   * generic handler. Most of the callback functions take a file descriptor as a
+   * parameter, which will get passed to them by the emitting call. The error
+   * callback also takes an int representing the errno and a char* representing the
+   * error message, which we extract from the data passed to _callback and convert
+   * to a char* string before calling the registered C callback.
+   * Passing a NULL callback function to a emscripten_set_socket_*_callback call
+   * will deregister the callback registered for that Event.
+   */
+  __set_network_callback: function(event, userData, callback) {
+    function _callback(data) {
+      try {
+        if (event === 'error') {
+          var sp = Runtime.stackSave();
+          var msg = allocate(intArrayFromString(data[2]), 'i8', ALLOC_STACK);
+          Runtime.dynCall('viiii', callback, [data[0], data[1], msg, userData]);
+          Runtime.stackRestore(sp);
+        } else {
+          Runtime.dynCall('vii', callback, [data, userData]);
+        }
+      } catch (e) {
+        if (e instanceof ExitStatus) {
+          return;
+        } else {
+          if (e && typeof e === 'object' && e.stack) Module.printErr('exception thrown: ' + [e, e.stack]);
+          throw e;
+        }
+      }
+    };
+
+    Module['noExitRuntime'] = true;
+    Module['websocket']['on'](event, callback ? _callback : null);
+  },
+  emscripten_set_socket_error_callback__deps: ['__set_network_callback'],
+  emscripten_set_socket_error_callback: function(userData, callback) {
+    ___set_network_callback('error', userData, callback);
+  },
+  emscripten_set_socket_open_callback__deps: ['__set_network_callback'],
+  emscripten_set_socket_open_callback: function(userData, callback) {
+    ___set_network_callback('open', userData, callback);
+  },
+  emscripten_set_socket_listen_callback__deps: ['__set_network_callback'],
+  emscripten_set_socket_listen_callback: function(userData, callback) {
+    ___set_network_callback('listen', userData, callback);
+  },
+  emscripten_set_socket_connection_callback__deps: ['__set_network_callback'],
+  emscripten_set_socket_connection_callback: function(userData, callback) {
+    ___set_network_callback('connection', userData, callback);
+  },
+  emscripten_set_socket_message_callback__deps: ['__set_network_callback'],
+  emscripten_set_socket_message_callback: function(userData, callback) {
+    ___set_network_callback('message', userData, callback);
+  },
+  emscripten_set_socket_close_callback__deps: ['__set_network_callback'],
+  emscripten_set_socket_close_callback: function(userData, callback) {
+    ___set_network_callback('close', userData, callback);
   }
 });

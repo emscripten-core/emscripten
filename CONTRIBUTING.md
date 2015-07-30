@@ -1,6 +1,6 @@
 Contributing
 ============
 
-See our wiki for information about contributing to Emscripten:
+See our site for information about contributing to Emscripten:
 
-[Contribution section on wiki](https://github.com/kripken/emscripten/wiki#contributing)
+[Contribution section on site](http://kripken.github.io/emscripten-site/docs/contributing/contributing.html)

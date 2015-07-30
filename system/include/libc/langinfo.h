@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+#include <features.h>
 #include <nl_types.h>
 
 #define __NEED_locale_t
@@ -75,8 +76,11 @@ extern "C" {
 #define THOUSEP 0x10001
 #define YESEXPR 0x50000
 #define NOEXPR 0x50001
+
+#if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
 #define YESSTR 0x50002
 #define NOSTR 0x50003
+#endif
 
 char *nl_langinfo(nl_item);
 char *nl_langinfo_l(nl_item, locale_t);

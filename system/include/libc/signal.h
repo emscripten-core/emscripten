@@ -77,11 +77,7 @@ extern "C" {
 #define CLD_STOPPED 5
 #define CLD_CONTINUED 6
 
-typedef struct sigaltstack {
-	void *ss_sp;
-	int ss_flags;
-	size_t ss_size;
-} stack_t;
+typedef struct sigaltstack stack_t;
 
 union sigval {
 	int sival_int;
@@ -218,11 +214,8 @@ void (*sigset(int, void (*)(int)))(int);
 #define SIGSTKSZ 8192
 #endif
 
-#if defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE)
-#define NSIG _NSIG
-#endif
-
 #if defined(_BSD_SOURCE) || defined(_GNU_SOURCE)
+#define NSIG _NSIG
 typedef void (*sig_t)(int);
 #endif
 
@@ -230,8 +223,8 @@ typedef void (*sig_t)(int);
 typedef void (*sighandler_t)(int);
 void (*bsd_signal(int, void (*)(int)))(int);
 int sigisemptyset(const sigset_t *);
-int sigorset (sigset_t *, sigset_t *, sigset_t *);
-int sigandset(sigset_t *, sigset_t *, sigset_t *);
+int sigorset (sigset_t *, const sigset_t *, const sigset_t *);
+int sigandset(sigset_t *, const sigset_t *, const sigset_t *);
 
 #define SA_NOMASK SA_NODEFER
 #define SA_ONESHOT SA_RESETHAND

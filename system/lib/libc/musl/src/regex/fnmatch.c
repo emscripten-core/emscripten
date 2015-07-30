@@ -19,7 +19,7 @@
 #include <wchar.h>
 #include <wctype.h>
 
-#define END -1
+#define END 0
 #define UNMATCHABLE -2
 #define BRACKET -3
 #define QUESTION -4
@@ -53,7 +53,7 @@ static int pat_next(const char *pat, size_t m, size_t *step, int flags)
 		return END;
 	}
 	*step = 1;
-	if (pat[0]=='\\' && !(flags & FNM_NOESCAPE)) {
+	if (pat[0]=='\\' && pat[1] && !(flags & FNM_NOESCAPE)) {
 		*step = 2;
 		pat++;
 		esc = 1;
@@ -288,12 +288,19 @@ int fnmatch(const char *pat, const char *str, int flags)
 	if (flags & FNM_PATHNAME) for (;;) {
 		for (s=str; *s && *s!='/'; s++);
 		for (p=pat; (c=pat_next(p, -1, &inc, flags))!=END && c!='/'; p+=inc);
-		if (*s && *p!=*s) return FNM_NOMATCH;
+		if (c!=*s && (!*s || !(flags & FNM_LEADING_DIR)))
+			return FNM_NOMATCH;
 		if (fnmatch_internal(pat, p-pat, str, s-str, flags))
 			return FNM_NOMATCH;
-		if (!*s && c==END) return 0;
+		if (!c) return 0;
 		str = s+1;
-		pat = p+1;
+		pat = p+inc;
+	} else if (flags & FNM_LEADING_DIR) {
+		for (s=str; *s; s++) {
+			if (*s != '/') continue;
+			if (!fnmatch_internal(pat, -1, str, s-str, flags))
+				return 0;
+		}
 	}
 	return fnmatch_internal(pat, -1, str, -1, flags);
 }

@@ -99,7 +99,6 @@ long double __lgammal_r(long double x, int *sg)
 #elif LDBL_MANT_DIG == 64 && LDBL_MAX_EXP == 16384
 static const long double
 pi = 3.14159265358979323846264L,
-two63 = 9.223372036854775808e18L,
 
 /* lgam(1+x) = 0.5 x + x a(x)/b(x)
     -0.268402099609375 <= x <= 0
@@ -201,61 +200,27 @@ w5 =  8.412723297322498080632E-4L,
 w6 = -1.880801938119376907179E-3L,
 w7 =  4.885026142432270781165E-3L;
 
+/* sin(pi*x) assuming x > 2^-1000, if sin(pi*x)==0 the sign is arbitrary */
 static long double sin_pi(long double x)
 {
-	union ldshape u = {x};
-	uint32_t ix = (u.i.se & 0x7fffU)<<16 | u.i.m>>48;
-	long double y, z;
 	int n;
 
-	if (ix < 0x3ffd8000)  /* 0.25 */
-		return sinl(pi * x);
-	y = -x;  /* x is assume negative */
+	/* spurious inexact if odd int */
+	x *= 0.5;
+	x = 2.0*(x - floorl(x));  /* x mod 2.0 */
 
-	/*
-	 * argument reduction, make sure inexact flag not raised if input
-	 * is an integer
-	 */
-	z = floorl(y);
-	if (z != y) {  /* inexact anyway */
-		y *= 0.5;
-		y = 2.0*(y - floorl(y));/* y = |x| mod 2.0 */
-		n = (int) (y*4.0);
-	} else {
-		if (ix >= 0x403f8000) {  /* 2^64 */
-			y = 0.0;  /* y must be even */
-			n = 0;
-		} else {
-			if (ix < 0x403e8000)  /* 2^63 */
-				z = y + two63;  /* exact */
-			u.f = z;
-			n = u.i.m & 1;
-			y = n;
-			n <<= 2;
-		}
-	}
+	n = (int)(x*4.0);
+	n = (n+1)/2;
+	x -= n*0.5f;
+	x *= pi;
 
 	switch (n) {
-	case 0:
-		y = sinl(pi * y);
-		break;
-	case 1:
-	case 2:
-		y = cosl(pi * (0.5 - y));
-		break;
-	case 3:
-	case 4:
-		y = sinl(pi * (1.0 - y));
-		break;
-	case 5:
-	case 6:
-		y = -cosl(pi * (y - 1.5));
-		break;
-	default:
-		y = sinl(pi * (y - 2.0));
-		break;
+	default: /* case 4: */
+	case 0: return __sinl(x, 0.0, 0);
+	case 1: return __cosl(x, 0.0);
+	case 2: return __sinl(-x, 0.0, 0);
+	case 3: return -__cosl(x, 0.0);
 	}
-	return -y;
 }
 
 long double __lgammal_r(long double x, int *sg) {
@@ -267,31 +232,32 @@ long double __lgammal_r(long double x, int *sg) {
 
 	*sg = 1;
 
-	/* purge off +-inf, NaN, +-0, and negative arguments */
+	/* purge off +-inf, NaN, +-0, tiny and negative arguments */
 	if (ix >= 0x7fff0000)
 		return x * x;
-	if (x == 0) {
-		*sg -= 2*sign;
-		return 1.0 / fabsl(x);
-	}
 	if (ix < 0x3fc08000) {  /* |x|<2**-63, return -log(|x|) */
 		if (sign) {
 			*sg = -1;
-			return -logl(-x);
+			x = -x;
 		}
 		return -logl(x);
 	}
 	if (sign) {
-		t = sin_pi (x);
-		if (t == 0.0)
-			return 1.0 / fabsl(t); /* -integer */
-		nadj = logl(pi / fabsl(t * x));
-		if (t < 0.0)
-			*sg = -1;
 		x = -x;
+		t = sin_pi(x);
+		if (t == 0.0)
+			return 1.0 / (x-x); /* -integer */
+		if (t > 0.0)
+			*sg = -1;
+		else
+			t = -t;
+		nadj = logl(pi / (t * x));
 	}
 
-	if (ix < 0x40008000) {  /* x < 2.0 */
+	/* purge off 1 and 2 (so the sign is ok with downward rounding) */
+	if ((ix == 0x3fff8000 || ix == 0x40008000) && u.i.m == 0) {
+		r = 0;
+	} else if (ix < 0x40008000) {  /* x < 2.0 */
 		if (ix <= 0x3ffee666) {  /* 8.99993896484375e-1 */
 			/* lgamma(x) = lgamma(x+1) - log(x) */
 			r = -logl(x);
@@ -341,12 +307,12 @@ long double __lgammal_r(long double x, int *sg) {
 	} else if (ix < 0x40028000) {  /* 8.0 */
 		/* x < 8.0 */
 		i = (int)x;
-		t = 0.0;
 		y = x - (double)i;
 		p = y * (s0 + y * (s1 + y * (s2 + y * (s3 + y * (s4 + y * (s5 + y * s6))))));
 		q = r0 + y * (r1 + y * (r2 + y * (r3 + y * (r4 + y * (r5 + y * (r6 + y))))));
 		r = 0.5 * y + p / q;
-		z = 1.0;/* lgamma(1+s) = log(s) + lgamma(s) */
+		z = 1.0;
+		/* lgamma(1+s) = log(s) + lgamma(s) */
 		switch (i) {
 		case 7:
 			z *= (y + 6.0); /* FALLTHRU */
@@ -376,11 +342,13 @@ long double __lgammal_r(long double x, int *sg) {
 }
 #endif
 
-extern int signgam;
+#if (LDBL_MANT_DIG == 53 && LDBL_MAX_EXP == 1024) || (LDBL_MANT_DIG == 64 && LDBL_MAX_EXP == 16384)
+extern int __signgam;
 
 long double lgammal(long double x)
 {
-	return __lgammal_r(x, &signgam);
+	return __lgammal_r(x, &__signgam);
 }
 
 weak_alias(__lgammal_r, lgammal_r);
+#endif

@@ -8,7 +8,7 @@ wint_t __fputwc_unlocked(wchar_t c, FILE *f)
 	char mbc[MB_LEN_MAX];
 	int l;
 
-#if 0 // XXX EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
 	f->mode |= f->mode+1;
 
 	if (isascii(c)) {

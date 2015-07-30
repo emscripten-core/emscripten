@@ -8,7 +8,7 @@ target triple = "asmjs-unknown-emscripten"
 define i32 @doit(i32 %x, { i32, i32 } %y) {
   %y0 = extractvalue { i32, i32 } %y, 0
   %y1 = extractvalue { i32, i32 } %y, 1
-  %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0), i32 %y0, i32 %y1) ; [#uses=0 type=i32] [debug line = 5:13]
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0), i32 %y0, i32 %y1) ; [#uses=0 type=i32] [debug line = 5:13]
   ret i32 0
 }
 
@@ -27,7 +27,7 @@ cond.null:
 cond.end:                                         ; preds = %cond.false, %cond.true
   %cond = phi { i32, i32 } [ { i32 zext (i8 111 to i32), i32 6 }, %entry ], [ zeroinitializer, %cond.null ] ; [#uses=1]
   store { i32, i32 } %cond, { i32, i32 }* %comp
-  %call = call i32 (i32, { i32, i32 })* @doit(i32 1, { i32, i32 } %cond) ;
+  %call = call i32 (i32, { i32, i32 }) @doit(i32 1, { i32, i32 } %cond) ;
   ret i32 0                             ; [debug line = 6:13]
 }
 
