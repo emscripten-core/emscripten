@@ -5569,6 +5569,7 @@ return malloc(size);
 
   def test_simd(self):
     if self.is_emterpreter(): return self.skip('todo')
+    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
 
     test_path = path_from_root('tests', 'core', 'test_simd')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5577,6 +5578,7 @@ return malloc(size);
 
   def test_simd2(self):
     if self.is_emterpreter(): return self.skip('todo')
+    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
 
     test_path = path_from_root('tests', 'core', 'test_simd2')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5585,6 +5587,7 @@ return malloc(size);
 
   def test_simd3(self):
     return self.skip('FIXME: this appears to be broken')
+    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
 
     test_path = path_from_root('tests', 'core', 'test_simd3')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5594,6 +5597,7 @@ return malloc(size);
   def test_simd4(self):
     # test_simd4 is to test phi node handling of SIMD path
     if self.is_emterpreter(): return self.skip('todo')
+    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
 
     test_path = path_from_root('tests', 'core', 'test_simd4')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5601,6 +5605,8 @@ return malloc(size);
     self.do_run_from_file(src, output)
 
   def test_simd5(self):
+    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
+
     # test_simd5 is to test shufflevector of SIMD path
     test_path = path_from_root('tests', 'core', 'test_simd5')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5610,6 +5616,7 @@ return malloc(size);
   def test_simd6(self):
     # test_simd6 is to test x86 min and max intrinsics on NaN and -0.0
     if self.is_emterpreter(): return self.skip('todo')
+    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
 
     test_path = path_from_root('tests', 'core', 'test_simd6')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5619,6 +5626,7 @@ return malloc(size);
   def test_simd7(self):
     # test_simd7 is to test negative zero handling.
     if self.is_emterpreter(): return self.skip('todo')
+    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
 
     test_path = path_from_root('tests', 'core', 'test_simd7')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5628,6 +5636,7 @@ return malloc(size);
   def test_simd8(self):
     # test_simd8 is to test unaligned load and store
     if self.is_emterpreter(): return self.skip('todo')
+    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
 
     test_path = path_from_root('tests', 'core', 'test_simd8')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5636,6 +5645,7 @@ return malloc(size);
 
   def test_simd_dyncall(self):
     if self.is_emterpreter(): return self.skip('todo')
+    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
 
     test_path = path_from_root('tests', 'core', 'test_simd_dyncall')
     src, output = (test_path + s for s in ('.cpp', '.txt'))
