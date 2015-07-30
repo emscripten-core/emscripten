@@ -7024,6 +7024,7 @@ Module.printErr = Module['printErr'] = function(){};
           os.environ.pop('EMCC_DEBUG', None)
 
   def test_exception_source_map(self):
+    if self.is_wasm(): return self.skip('wasmifying destroys debug info and stack tracability')
     if self.is_emterpreter(): return self.skip('todo')
     if '-g4' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g4')
     if NODE_JS not in JS_ENGINES: return self.skip('sourcemapper requires Node to run')
