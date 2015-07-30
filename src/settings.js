@@ -319,6 +319,10 @@ var EXPORTED_RUNTIME_METHODS = [ // Methods that are exported on Module. By defa
   'removeRunDependency',
 ];
 
+var EXTRA_EXPORTED_RUNTIME_METHODS = []; // Additional methods to those in EXPORTED_RUNTIME_METHODS. Adjusting that list
+                                         // lets you remove methods that would be exported by default; setting values in
+                                         // this list lets you add to the default list without modifying it.
+
 var FS_LOG = 0; // Log all FS operations.  This is especially helpful when you're porting
                 // a new project and want to see a list of file system operations happening
                 // so that you can create a virtual file system with all of the required files.

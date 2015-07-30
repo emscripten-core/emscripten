@@ -338,12 +338,9 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall60: function(which, varargs) { // umask
-#if SYSCALL_DEBUG
-    Module.printErr('warning: untested syscall');
-#endif
     var mask = SYSCALLS.get();
     var old = SYSCALLS.umask;
-    SYSCALLS.umask = newMask;
+    SYSCALLS.umask = mask;
     return old;
   },
   __syscall63: function(which, varargs) { // dup2

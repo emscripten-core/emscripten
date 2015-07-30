@@ -7069,7 +7069,26 @@ Module.printErr = Module['printErr'] = function(){};
       self.banned_js_engines = [SPIDERMONKEY_ENGINE] 
     if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
     Building.COMPILER_TEST_OPTS += ['-DRUN_FROM_JS_SHELL']
-    self.do_run(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read(), "Success!")
+    self.do_run(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read(), '''test print 123
+
+12.345679 9.123457 1.353180
+
+12345678 9123456 1353179
+
+12.345679 9123456 1353179
+
+12345678 9.123457 1353179
+
+12345678 9123456 1.353180
+
+12345678 9.123457 1.353180
+
+12.345679 9123456 1.353180
+
+12.345679 9.123457 1353179
+
+Success!
+''')
 
   def test_float_literals(self):
     self.do_run_from_file(path_from_root('tests', 'test_float_literals.cpp'), path_from_root('tests', 'test_float_literals.out'))
@@ -7420,7 +7439,6 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
       check_sanity(force=True)
       checked_sanity = True
 
-    Building.COMPILER_TEST_OPTS = ['-g']
     os.chdir(self.get_dir()) # Ensure the directory exists and go there
     Building.COMPILER = compiler
 
@@ -7428,9 +7446,7 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
     self.emcc_args = emcc_args[:]
     Settings.load(self.emcc_args)
     Building.LLVM_OPTS = 0
-    if '-O2' in self.emcc_args or '-O3' in self.emcc_args:
-      Building.COMPILER_TEST_OPTS = [] # remove -g in -O2 tests, for more coverage
-    #Building.COMPILER_TEST_OPTS += self.emcc_args
+
     for arg in self.emcc_args:
       if arg.startswith('-O'):
         Building.COMPILER_TEST_OPTS.append(arg) # so bitcode is optimized too, this is for cpp to ll
@@ -7453,8 +7469,7 @@ asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2"])
 asm3 = make_run("asm3", compiler=CLANG, emcc_args=["-O3"])
 asm2f = make_run("asm2f", compiler=CLANG, emcc_args=["-Oz", "-s", "PRECISE_F32=1", "-s", "ALLOW_MEMORY_GROWTH=1"])
 asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "-s", "SAFE_HEAP=1"])
-asm1i = make_run("asm1i", compiler=CLANG, emcc_args=["-O1", '-s', 'EMTERPRETIFY=1'])
-asm3i = make_run("asm3i", compiler=CLANG, emcc_args=["-O3", '-s', 'EMTERPRETIFY=1'])
+asm2i = make_run("asm2i", compiler=CLANG, emcc_args=["-O2", '-s', 'EMTERPRETIFY=1'])
 #asm2m = make_run("asm2m", compiler=CLANG, emcc_args=["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1"])
 asm2w = make_run("asm2w", compiler=CLANG, emcc_args=["-O2", "-s", "WASM=1"]) # TODO: add this mode into the other places, for full testing
 

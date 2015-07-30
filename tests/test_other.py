@@ -4112,6 +4112,7 @@ main(const int argc, const char * const * const argv)
 
   def test_EXPORTED_RUNTIME_METHODS(self):
     def test(opts, has, not_has):
+      print opts, has, not_has
       self.clear()
       Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')] + opts).communicate()
       self.assertContained('hello, world!', run_js('a.out.js'))
@@ -4122,6 +4123,7 @@ main(const int argc, const char * const * const argv)
     test([], 'Module["intArray', 'Module["waka')
     test(['-s', 'EXPORTED_RUNTIME_METHODS=[]'], 'Module["print', 'Module["intArray')
     test(['-s', 'EXPORTED_RUNTIME_METHODS=["intArrayToString"]'], 'Module["intArray', 'Module["waka')
+    test(['-s', 'EXPORTED_RUNTIME_METHODS=[]', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["intArrayToString"]'], 'Module["intArray', 'Module["waka')
 
   def test_stat_fail_alongtheway(self):
     open('src.cpp', 'w').write(r'''
@@ -5050,4 +5052,15 @@ int main() {
       else:
         assert proc.returncode != 0
         self.assertContained(error_message, err)
+
+  def test_umask_0(self):
+    open('src.c', 'w').write(r'''
+#include <sys/stat.h>
+#include <stdio.h>
+int main() {
+  umask(0);
+  printf("hello, world!\n");
+}''')
+    Popen([PYTHON, EMCC, 'src.c']).communicate()
+    self.assertContained('hello, world!', run_js('a.out.js'))
 
