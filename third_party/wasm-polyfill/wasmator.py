@@ -30,6 +30,7 @@ import shared as emscripten
 
 jsfile = sys.argv[1]
 wasmfile = sys.argv[2]
+export_name = sys.argv[3]
 
 tempfile = jsfile + '.temp.js'
 tempfile2 = jsfile + '.temp2.js'
@@ -86,17 +87,20 @@ function runEmscriptenModule(Module, unwasmed_) {
 
 ''' + patched + '''
 
+  return Module;
 }
 
 ''' + open(path_in_polyfill('jslib', 'load-wasm.js')).read() + '''
 
 // note: web worker messages must be queued, as we delay the scripts chance to listen to them
 
+var ''' + export_name + ''';
+
 loadWebAssembly("''' + wasmfile + '''", 'load-wasm-worker.js').then(function(unwasmed) {
   if (typeof importScripts === 'function') {
     onmessage = null;
   }
-  runEmscriptenModule(typeof Module !== 'undefined' ? Module : {}, unwasmed);
+  ''' + export_name + ''' = runEmscriptenModule(typeof Module !== 'undefined' ? Module : {}, unwasmed);
   if (typeof importScripts === 'function' && onmessage) {
     queuedMessages.forEach(function(e) {
       onmessage(e);

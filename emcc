@@ -1820,7 +1820,7 @@ try {
   if shared.Settings.WASM:
     logging.debug('converting to WebAssembly')
     wasm_target = unsuffixed(js_target) + '.wasm'
-    subprocess.check_call([shared.PYTHON, shared.path_from_root('third_party', 'wasm-polyfill', 'wasmator.py'), js_target, wasm_target])
+    subprocess.check_call([shared.PYTHON, shared.path_from_root('third_party', 'wasm-polyfill', 'wasmator.py'), js_target, wasm_target, shared.Settings.EXPORT_NAME])
 
   log_time('final emitting')
 
