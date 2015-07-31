@@ -69,21 +69,17 @@ void vsyslog (int, const char *, va_list);
 #if defined(SYSLOG_NAMES)
 #define	INTERNAL_NOPRI 0x10
 #define	INTERNAL_MARK (LOG_NFACILITIES<<3)
-struct __CODE {
-	const char *c_name;
-	int c_val;
-};
 typedef struct {
 	char *c_name;
 	int c_val;
 } CODE;
-#define prioritynames ((CODE *)(const struct __CODE []){ \
+#define prioritynames ((CODE *)(const CODE []){ \
 	{ "alert", LOG_ALERT }, { "crit", LOG_CRIT }, { "debug", LOG_DEBUG }, \
 	{ "emerg", LOG_EMERG }, { "err", LOG_ERR }, { "error", LOG_ERR }, \
 	{ "info", LOG_INFO }, { "none", INTERNAL_NOPRI }, \
 	{ "notice", LOG_NOTICE }, { "panic", LOG_EMERG }, \
 	{ "warn", LOG_WARNING }, { "warning", LOG_WARNING }, { 0, -1 } })
-#define facilitynames ((CODE *)(const struct __CODE []){ \
+#define facilitynames ((CODE *)(const CODE []){ \
 	{ "auth", LOG_AUTH }, { "authpriv", LOG_AUTHPRIV }, \
 	{ "cron", LOG_CRON }, { "daemon", LOG_DAEMON }, { "ftp", LOG_FTP }, \
 	{ "kern", LOG_KERN }, { "lpr", LOG_LPR }, { "mail", LOG_MAIL }, \

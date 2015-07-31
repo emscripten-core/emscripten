@@ -4,7 +4,7 @@ void *malloc(size_t size) { return (void *)123; }
 int main() {
   void *x = malloc(10);
   printf("got %p\n", x);
-  free(x);
-  printf("freed the faker\n");
+  free(0);
+  printf("freed a fake\n");
   return 1;
 }

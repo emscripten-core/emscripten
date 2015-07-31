@@ -25,7 +25,7 @@ if (memoryInitializer) (function(s) {
   assert(crc === 0, "memory initializer checksum");
 #endif
   for (i = 0; i < n; ++i) {
-    HEAPU8[STATIC_BASE + i] = s.charCodeAt(i);
+    HEAPU8[Runtime.GLOBAL_BASE + i] = s.charCodeAt(i);
   }
 })(memoryInitializer);
 #else
@@ -42,17 +42,17 @@ if (memoryInitializer) {
   }
   if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
     var data = Module['readBinary'](memoryInitializer);
-    HEAPU8.set(data, STATIC_BASE);
+    HEAPU8.set(data, Runtime.GLOBAL_BASE);
   } else {
     addRunDependency('memory initializer');
     var applyMemoryInitializer = function(data) {
       if (data.byteLength) data = new Uint8Array(data);
 #if ASSERTIONS
       for (var i = 0; i < data.length; i++) {
-        assert(HEAPU8[STATIC_BASE + i] === 0, "area for memory initializer should not have been touched before it's loaded");
+        assert(HEAPU8[Runtime.GLOBAL_BASE + i] === 0, "area for memory initializer should not have been touched before it's loaded");
       }
 #endif
-      HEAPU8.set(data, STATIC_BASE);
+      HEAPU8.set(data, Runtime.GLOBAL_BASE);
       removeRunDependency('memory initializer');
     }
     var request = Module['memoryInitializerRequest'];
@@ -125,7 +125,10 @@ Module['callMain'] = Module.callMain = function callMain(args) {
   argv.push(0);
   argv = allocate(argv, 'i32', ALLOC_NORMAL);
 
-  initialStackTop = STACKTOP;
+  initialStackTop = Runtime.stackSave();
+#if EMTERPRETIFY_ASYNC
+  var initialEmtStackTop = asm.emtStackSave();
+#endif
 
   try {
 #if BENCHMARK
@@ -149,6 +152,10 @@ Module['callMain'] = Module.callMain = function callMain(args) {
     } else if (e == 'SimulateInfiniteLoop') {
       // running an evented main loop, don't immediately exit
       Module['noExitRuntime'] = true;
+      Runtime.stackRestore(initialStackTop);
+#if EMTERPRETIFY_ASYNC
+      asm.emtStackRestore(initialEmtStackTop);
+#endif
       return;
     } else {
       if (e && typeof e === 'object' && e.stack) Module.printErr('exception thrown: ' + [e, e.stack]);
@@ -188,9 +195,11 @@ function run(args) {
 
     preMain();
 
+#if ASSERTIONS
     if (ENVIRONMENT_IS_WEB && preloadStartTime !== null) {
       Module.printErr('pre-main prep time: ' + (Date.now() - preloadStartTime) + ' ms');
     }
+#endif
 
     if (Module['onRuntimeInitialized']) Module['onRuntimeInitialized']();
 

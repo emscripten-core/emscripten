@@ -3,8 +3,8 @@
 uint64_t __rand48_step(unsigned short *xi, unsigned short *lc)
 {
 	uint64_t a, x;
-	x = xi[0] | xi[1]<<16 | xi[2]+0ULL<<32;
-	a = lc[0] | lc[1]<<16 | lc[2]+0ULL<<32;
+	x = xi[0] | xi[1]+0U<<16 | xi[2]+0ULL<<32;
+	a = lc[0] | lc[1]+0U<<16 | lc[2]+0ULL<<32;
 	x = a*x + lc[3];
 	xi[0] = x;
 	xi[1] = x>>16;

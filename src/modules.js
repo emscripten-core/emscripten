@@ -98,7 +98,8 @@ var LibraryManager = {
 
     var libraries = [
       'library.js',
-      'library_formatString.js'
+      'library_formatString.js',
+      'library_syscall.js'
     ];
     if (!NO_FILESYSTEM) {
       libraries = libraries.concat([
@@ -224,6 +225,17 @@ var LibraryManager = {
 function cDefine(key) {
 	if (key in C_DEFINES) return C_DEFINES[key];
 	throw 'XXX missing C define ' + key + '!';
+}
+
+var EXPORTED_RUNTIME_METHODS_SET = null;
+
+function maybeExport(name) {
+  if (!EXPORTED_RUNTIME_METHODS_SET) EXPORTED_RUNTIME_METHODS_SET = set(EXPORTED_RUNTIME_METHODS.concat(EXTRA_EXPORTED_RUNTIME_METHODS));
+  if (name in EXPORTED_RUNTIME_METHODS_SET) {
+    return 'Module["' + name + '"] = ' + name + ';';
+  } else {
+    return '';
+  }
 }
 
 var PassManager = {

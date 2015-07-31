@@ -132,12 +132,35 @@ void __attribute__((noinline)) Foo() // Arbitrary function signature to add some
 	bar();
 }
 
+#define TestLog(args...)        emscripten_log(EM_LOG_CONSOLE, args)
+
+void PrintDoubleStuff(double first, double second)
+{
+  double divided = first / second;
+
+  TestLog("%f %f %f\n", first, second, divided);
+  TestLog("%d %d %d\n", (int)(first * 1000000), (int)(second * 1000000), (int)(divided * 1000000));
+  TestLog("%f %d %d\n", first, (int)(second * 1000000), (int)(divided * 1000000));
+  TestLog("%d %f %d\n", (int)(first * 1000000), second, (int)(divided * 1000000));
+  TestLog("%d %d %f\n", (int)(first * 1000000), (int)(second * 1000000), divided);
+  TestLog("%d %f %f\n", (int)(first * 1000000), second, divided);
+  TestLog("%f %d %f\n", first, (int)(second * 1000000), divided);
+  TestLog("%f %f %d\n", first, second, (int)(divided * 1000000));
+}
+
+void DoubleTest() {
+  PrintDoubleStuff(12.3456789, 9.12345678);
+}
+
 int main()
 {
 	int test = 123;
 	emscripten_log(EM_LOG_FUNC_PARAMS | EM_LOG_DEMANGLE | EM_LOG_CONSOLE, "test print %d\n", test);
 
 	Foo<int>();
+
+  DoubleTest();
+
 #ifdef REPORT_RESULT
 	REPORT_RESULT();
 #endif

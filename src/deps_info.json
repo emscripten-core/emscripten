@@ -29,9 +29,11 @@
   "uuid_compare": ["memcmp"],
   "SDL_Init": ["malloc", "free"],
   "SDL_GL_GetProcAddress": ["emscripten_GetProcAddress"],
+  "Mix_LoadWAV_RW": ["fileno"],
   "eglGetProcAddress": ["emscripten_GetProcAddress"],
   "glfwGetProcAddress": ["emscripten_GetProcAddress"],
   "emscripten_GetProcAddress": ["strstr"],
+  "emscripten_get_preloaded_image_data_from_FILE": ["fileno"],
   "__cxa_begin_catch": ["__cxa_can_catch", "__cxa_is_pointer_type"],
   "sleep": ["usleep"]
 }

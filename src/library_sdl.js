@@ -2577,7 +2577,8 @@ var LibrarySDL = {
 
       if (type === 2/*SDL_RWOPS_STDFILE*/) {
         var fp = {{{ makeGetValue('rwopsID + ' + 28 /*hidden.stdio.fp*/, '0', 'i32') }}};
-        var stream = FS.getStreamFromPtr(fp);
+        var fd = Module['_fileno'](file);
+        var stream = FS.getStream(fd);
         if (stream) {
           rwops = { filename: stream.path };
         }

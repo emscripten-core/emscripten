@@ -108,7 +108,7 @@ int main()
   printf("fscanfed: %d - %s\n", number, text);
 
   // temp files
-  const char *tname = "file_XXXXXX.txt";
+  const char *tname = "file_XXXXXX";
   char tname1[100];
   char tname2[100];
   strcpy(tname1, tname);
@@ -129,7 +129,8 @@ int main()
     fclose(f);
 
     char* str = tmpnam(NULL);
-    assert(strncmp("/tmp/file", str, 9) == 0);
+    //printf("temp: %s\n", str);
+    assert(strncmp("/tmp/", str, 5) == 0);
   }
 
   FILE *n = fopen("/dev/null", "w");

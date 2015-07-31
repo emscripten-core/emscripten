@@ -2606,7 +2606,6 @@ val construct_with_memory_view(val factory) {
 }
 
 val construct_with_ints_and_float(val factory) {
-    static const char data[11] = "0123456789";
     return factory.new_(65537, 4.0f, 65538);
 }
 

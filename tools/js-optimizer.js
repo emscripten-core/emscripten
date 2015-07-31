@@ -245,6 +245,11 @@ function traverseGenerated(ast, pre, post) {
   });
 }
 
+function deStat(node) {
+  if (node[0] === 'stat') return node[1];
+  return node;
+}
+
 function emptyNode() { // XXX do we need to create new nodes here? can't we reuse?
   return ['toplevel', []]
 }
@@ -422,6 +427,13 @@ function dumpSrc(ast) {
 function overwrite(x, y) {
   for (var i = 0; i < y.length; i++) x[i] = y[i];
   x.length = y.length;
+}
+
+var STACK_ALIGN = 16;
+
+function stackAlign(x) {
+  if (x % STACK_ALIGN) x += STACK_ALIGN - (x % STACK_ALIGN);
+  return x;
 }
 
 // Closure compiler, when inlining, will insert assignments to
@@ -1070,26 +1082,30 @@ function localCSE(ast) {
   });
 }
 
+function safeLabelSettingInternal(func, asmData) {
+  if ('label' in asmData.vars) {
+    var stats = getStatements(func);
+    var seenVar = false;
+    for (var i = 0; i < stats.length; i++) {
+      var curr = stats[i];
+      if (curr[0] === 'stat') curr = curr[1];
+      if (curr[0] === 'var') {
+        seenVar = true;
+      } else if (seenVar && curr[0] !== 'var') {
+        // first location after the vars
+        stats.splice(i, 0, ['stat', ['assign', true, ['name', 'label'], ['num', 0]]]);
+        break;
+      }
+    }
+  }
+}
+
 function safeLabelSetting(ast) {
   // Add an assign to label, if it exists, so that even after we minify/registerize variable names, we can tell if any vars use the asm init value of 0 - none will, so it's easy to tell
   assert(asm);
   traverseGeneratedFunctions(ast, function(func) {
     var asmData = normalizeAsm(func);
-    if ('label' in asmData.vars) {
-      var stats = getStatements(func);
-      var seenVar = false;
-      for (var i = 0; i < stats.length; i++) {
-        var curr = stats[i];
-        if (curr[0] === 'stat') curr = curr[1];
-        if (curr[0] === 'var') {
-          seenVar = true;
-        } else if (seenVar && curr[0] !== 'var') {
-          // first location after the vars
-          stats.splice(i, 0, ['stat', ['assign', true, ['name', 'label'], ['num', 0]]]);
-          break;
-        }
-      }
-    }
+    safeLabelSettingInternal(func, asmData);
     denormalizeAsm(func, asmData);
   });
 }
@@ -1773,10 +1789,10 @@ function detectType(node, asmInfo, inVarDef) {
       if (node[1][0] === 'name') {
         switch (node[1][1]) {
           case 'Math_fround':          return ASM_FLOAT;
-          case 'SIMD_float32x4':
-          case 'SIMD_float32x4_check': return ASM_FLOAT32X4;
-          case 'SIMD_int32x4':
-          case 'SIMD_int32x4_check':   return ASM_INT32X4;
+          case 'SIMD_Float32x4':
+          case 'SIMD_Float32x4_check': return ASM_FLOAT32X4;
+          case 'SIMD_Int32x4':
+          case 'SIMD_Int32x4_check':   return ASM_INT32X4;
           default: break;
         }
       }
@@ -1838,8 +1854,8 @@ function makeAsmCoercion(node, type) {
     case ASM_INT: return ['binary', '|', node, ['num', 0]];
     case ASM_DOUBLE: return ['unary-prefix', '+', node];
     case ASM_FLOAT: return ['call', ['name', 'Math_fround'], [node]];
-    case ASM_FLOAT32X4: return ['call', ['name', 'SIMD_float32x4_check'], [node]];
-    case ASM_INT32X4: return ['call', ['name', 'SIMD_int32x4_check'], [node]];
+    case ASM_FLOAT32X4: return ['call', ['name', 'SIMD_Float32x4_check'], [node]];
+    case ASM_INT32X4: return ['call', ['name', 'SIMD_Int32x4_check'], [node]];
     case ASM_NONE:
     default: return node; // non-validating code, emit nothing XXX this is dangerous, we should only allow this when we know we are not validating
   }
@@ -1863,10 +1879,10 @@ function makeAsmVarDef(v, type) {
       }
     }
     case ASM_FLOAT32X4: {
-      return [v, ['call', ['name', 'SIMD_float32x4'], [['num', 0], ['num', 0], ['num', 0], ['num', 0]]]];
+      return [v, ['call', ['name', 'SIMD_Float32x4'], [['num', 0], ['num', 0], ['num', 0], ['num', 0]]]];
     }
     case ASM_INT32X4: {
-      return [v, ['call', ['name', 'SIMD_int32x4'], [['num', 0], ['num', 0], ['num', 0], ['num', 0]]]];
+      return [v, ['call', ['name', 'SIMD_Int32x4'], [['num', 0], ['num', 0], ['num', 0], ['num', 0]]]];
     }
     default: throw 'wha? ' + JSON.stringify([v, type]) + new Error().stack;
   }
@@ -4777,6 +4793,17 @@ function aggressiveVariableElimination(ast) {
 }
 
 function outline(ast) {
+  // Move from 'label' to another name. This will avoid optimizations for label later, but we modify control flow so much here, we just give up on them
+  function deLabel(func, asmData) {
+    if (!('label' in asmData.vars)) return;
+    safeLabelSettingInternal(func, asmData);
+    assert(!('fakeLabel' in asmData.vars));
+    asmData.vars.fakeLabel = ASM_INT;
+    delete asmData.vars.label;
+    traverse(func, function(node, type) {
+      if (type === 'name' && node[1] === 'label') node[1] = 'fakeLabel';
+    });
+  }
   // Try to flatten out code as much as possible, to make outlining more feasible.
   function flatten(func, asmData) {
     var minSize = extraInfo.sizeToOutline/4;
@@ -4925,7 +4952,8 @@ function outline(ast) {
     }
     asmData.stackPos = {};
     var stackSize = getStackBumpSize(func);
-    if (stackSize % 8 === 0) stackSize += 8 - (stackSize % 8);
+    assert(stackSize % STACK_ALIGN === 0, 'bad stack! ' + stackSize);
+    stackSize += STACK_ALIGN;
     for (var i = 0; i < stack.length; i++) {
       asmData.stackPos[stack[i]] = stackSize + i*8;
     }
@@ -4937,7 +4965,7 @@ function outline(ast) {
     asmData.maxAttemptedOutlinings = Infinity;
     if (extraInfo.sizeToOutline < 100) asmData.maxAttemptedOutlinings = Math.min(50, asmData.maxAttemptedOutlinings); // tiny sizes, be careful of too many attempts
     asmData.intendedPieces = Math.ceil(size/extraInfo.sizeToOutline);
-    asmData.totalStackSize = stackSize + (stack.length + 2*asmData.maxOutlinings)*8;
+    asmData.totalStackSize = stackAlign(stackSize + (stack.length + 2*asmData.maxOutlinings)*8);
     asmData.controlStackPos = function(i) { return stackSize + (stack.length + i)*8 };
     asmData.controlDataStackPos = function(i) { return stackSize + (stack.length + i)*8 + 4 };
     asmData.splitCounter = 0;
@@ -5444,6 +5472,7 @@ function outline(ast) {
       if (size >= extraInfo.sizeToOutline && maxTotalFunctions > 0) {
         maxTotalFunctions--;
         aggressiveVariableEliminationInternal(func, asmData);
+        deLabel(func, asmData);
         flatten(func, asmData);
         analyzeFunction(func, asmData);
         calculateThreshold(func, asmData);
@@ -5781,7 +5810,7 @@ function emterpretify(ast) {
     return Array.prototype.slice.call(tempUint8, 0, 8);
   }
 
-  var OK_TO_CALL_WHILE_ASYNC = set('stackSave', 'stackRestore', 'stackAlloc', 'setThrew', '_memset'); // functions which are ok to run while async, even if not emterpreted
+  var OK_TO_CALL_WHILE_ASYNC = set('stackSave', 'stackRestore', 'stackAlloc', 'setThrew', '_memset', '_memcpy'); // functions which are ok to run while async, even if not emterpreted
   function okToCallWhileAsync(name) {
     // dynCall *can* be on the stack, they are just bridges; what matters is where they go
     if (/^dynCall_/.test(name)) return true;

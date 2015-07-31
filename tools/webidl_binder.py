@@ -138,9 +138,59 @@ function getClass(obj) {
 }
 Module['getClass'] = getClass;
 
-// Converts a value into a C-style string.
+// Converts a value into a C-style string, storing it in temporary space
+
+var ensureStringCache = {
+  buffer: 0,  // the main buffer of temporary storage
+  size: 0,   // the size of buffer
+  pos: 0,    // the next free offset in buffer
+  temps: [], // extra allocations
+  needed: 0, // the total size we need next time
+
+  prepare: function() {
+    if (this.needed) {
+      // clear the temps
+      for (var i = 0; i < this.temps.length; i++) {
+        Module['_free'](this.temps[i]);
+      }
+      this.temps.length = 0;
+      // prepare to allocate a bigger buffer
+      Module['_free'](this.buffer);
+      this.buffer = 0;
+      this.size += this.needed;
+      // clean up
+      this.needed = 0;
+    }
+    if (!this.buffer) { // happens first time, or when we need to grow
+      this.size += 100; // heuristic, avoid many small grow events
+      this.buffer = Module['_malloc'](this.size);
+      assert(this.buffer);
+    }
+    this.pos = 0;
+  },
+  alloc: function(value) {
+    assert(this.buffer);
+    var array = intArrayFromString(value);
+    var len = array.length;
+    var ret;
+    if (this.pos + len >= this.size) {
+      // we failed to allocate in the buffer, this time around :(
+      assert(len > 0); // null terminator, at least
+      this.needed += len;
+      ret = Module['_malloc'](len);
+      this.temps.push(ret);
+    } else {
+      // we can allocate in the buffer
+      ret = this.buffer + this.pos;
+      this.pos += len;
+    }
+    writeArrayToMemory(array, ret);
+    return ret;
+  },
+};
+
 function ensureString(value) {
-  if (typeof value == 'string') return allocate(intArrayFromString(value), 'i8', ALLOC_STACK);
+  if (typeof value === 'string') return ensureStringCache.alloc(value);
   return value;
 }
 
@@ -255,6 +305,12 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
     body = ''
     pre_arg = []
 
+  for i in range(max_args):
+    arg = all_args[i]
+    if arg.type.isString():
+      body += '  ensureStringCache.prepare();\n'
+      break
+
   full_name = "%s::%s" % (class_name, func_name)
 
   for i in range(max_args):
@@ -314,7 +370,8 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
 
     if do_default:
       body += "  if (arg%d && typeof arg%d === 'object') arg%d = arg%d.ptr;\n" % (i, i, i, i)
-      body += "  else arg%d = ensureString(arg%d);\n" % (i, i)
+      if arg.type.isString():
+        body += "  else arg%d = ensureString(arg%d);\n" % (i, i)
 
 
   for i in range(min_args, max_args):
@@ -406,8 +463,28 @@ for name, interface in interfaces.iteritems():
   if not js_impl: continue
   implements[name] = [js_impl[0]]
 
+# Compute the height in the inheritance tree of each node. Note that the order of interation
+# of `implements` is irrelevant.
+#
+# After one iteration of the loop, all ancestors of child are guaranteed to have a a larger
+# height number than the child, and this is recursively true for each ancestor. If the height
+# of child is later increased, all its ancestors will be readjusted at that time to maintain
+# that invariant. Further, the height of a node never decreases. Therefore, when the loop
+# finishes, all ancestors of a given node should have a larger height number than that node.
+nodeHeight = {}
+for child, parent in implements.iteritems():
+  parent = parent[0]
+  while parent:
+    nodeHeight[parent] = max(nodeHeight.get(parent, 0), nodeHeight.get(child, 0) + 1)
+    grandParent = implements.get(parent)
+    if grandParent:
+      child = parent
+      parent = grandParent[0]
+    else:
+      parent = None
+
 names = interfaces.keys()
-names.sort(lambda x, y: 1 if implements.get(x) and implements[x][0] == y else (-1 if implements.get(y) and implements[y][0] == x else 0))
+names.sort(lambda x, y: nodeHeight.get(y, 0) - nodeHeight.get(x, 0))
 
 for name in names:
   interface = interfaces[name]

@@ -52,10 +52,10 @@ A few useful flags are:
 
 
 	
-Very large projects
-===================
+Code size
+=========
 
-This section describes optimisations and issues that are only relevant to very large projects.
+This section describes optimisations and issues that are relevant to code size. They are useful both for small projects or libraries where you want the smallest footprint you can achieve, and in large projects where the sheer size may cause issues (like slow startup speed) that you want to avoid.
 
 .. _optimizing-code-memory-initialization:
 
@@ -75,19 +75,22 @@ Trading off code size and performance
 -------------------------------------
 You may wish to build the less performance-sensitive source files in your project using :ref:`-Os <emcc-Os>` or :ref:`-Oz <emcc-Oz>` and the remainder using :ref:`-O2 <emcc-O2>` (:ref:`-Os <emcc-Os>` and :ref:`-Oz <emcc-Oz>` are similar to :ref:`-O2 <emcc-O2>`, but reduce code size at the expense of performance. :ref:`-Oz <emcc-Oz>` reduces code size more than :ref:`-Os <emcc-Os>`.) 
 
-.. note:: This only matters when compiling the source to bitcode. There are currently no JavaScript-specific optimization flags for ``-Os`` or ``-Oz``, and these map to ``-O2`` in the bitcode-to-JavaScript phase.
+Miscellaneous code size tips
+----------------------------
 
-Code size
----------
+In addition to the above (defining a separate memory initialization file as :ref:`mentioned above <optimizing-code-memory-initialization>`, and using ``-Os`` or ``-Oz``  as :ref:`mentioned above <optimizing-code-oz-os>`), the following tips can help to reduce code size:
 
-Tips for reducing code size include:
-
-- Define a separate memory initialization file (as :ref:`mentioned above <optimizing-code-memory-initialization>`).
-- Use ``-Os`` or ``-Oz``  (as :ref:`mentioned above <optimizing-code-oz-os>`).
-- Build bitcode to JavaScript with :ref:`-O3 <emcc-O3>`. This runs the expensive variable reuse pass (``registerizeHarder``). It is even more effective than ``-O2`` but slower to compile.
 - Use :ref:`llvm-lto <emcc-llvm-lto>` when compiling from bitcode to JavaScript: ``--llvm-lto 1``. This can break some code as the LTO code path is less tested.
 - Disable :ref:`optimizing-code-inlining`: ``-s INLINING_LIMIT=1``. Compiling with -Os or -Oz generally avoids inlining too.
 - Use :ref:`closure <emcc-closure>` on the outside non-asm.js code: ``--closure 1``. This can break code that doesn't use `closure annotations properly <https://developers.google.com/closure/compiler/docs/api-tutorial3>`_.
+- You can use the ``NO_FILESYSTEM`` and ``NO_BROWSER`` options to disable bundling of filesystem and browser support code, which by default are included. This can be useful if you are building a pure computational library, for example. See ``settings.js`` for more detals.
+- You can use ``EXPORTED_RUNTIME_METHODS`` to define which runtime methods are exported. By default a bunch of useful methods are exported, which you may not need; setting this to a smaller list will cause fewer methods to be exported. In conjunction with the closure compiler, this can be very effective, since closure can eliminate non-exported code. See ``settings.js`` for more detals. See ``test_no_nuthin`` in ``tests/test_other.py`` for an example usage in the test suite.
+
+
+Very large codebases
+====================
+
+The previous section on reducing code size can be helpful on very large codebases. In addition, here are some other topics that might be useful.
 
 .. _optimizing-code-outlining:
 

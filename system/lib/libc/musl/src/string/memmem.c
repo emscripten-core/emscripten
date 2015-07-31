@@ -112,8 +112,8 @@ static char *twoway_memmem(const unsigned char *h, const unsigned char *z, const
 		}
 
 		/* Compare right half */
-		for (k=MAX(ms+1,mem); n[k] && n[k] == h[k]; k++);
-		if (n[k]) {
+		for (k=MAX(ms+1,mem); k<l && n[k] == h[k]; k++);
+		if (k < l) {
 			h += k-ms;
 			mem = 0;
 			continue;

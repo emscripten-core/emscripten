@@ -1,4 +1,4 @@
-import os.path, sys, shutil, time
+import os.path, sys, shutil, time, logging
 
 import tempfiles
 
@@ -27,15 +27,21 @@ class Cache:
 
   # Request a cached file. If it isn't in the cache, it will be created with
   # the given creator function
-  def get(self, shortname, creator, extension='.bc'):
+  def get(self, shortname, creator, extension='.bc', what=None):
     if not shortname.endswith(extension): shortname += extension
     cachename = os.path.join(self.dirname, shortname)
     if os.path.exists(cachename):
       return cachename
+    if what is None:
+      if shortname.endswith(('.bc', '.so', '.a')): what = 'system library'
+      else: what = 'system asset'
+    message = 'generating ' + what + ': ' + shortname + '...'
+    logging.warn(message)
     self.ensure()
     temp = creator()
     if temp != cachename:
       shutil.copyfile(temp, cachename)
+    logging.warn(' '*len(message) + 'ok')
     return cachename
 
 # Given a set of functions of form (ident, text), and a preferred chunk size,

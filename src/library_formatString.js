@@ -7,24 +7,23 @@ mergeInto(LibraryManager.library, {
   _formatString: function(format, varargs) {
     assert((varargs & 3) === 0);
     var textIndex = format;
-    var argIndex = 0;
+    var argIndex = varargs;
     function getNextArg(type) {
       // NOTE: Explicitly ignoring type safety. Otherwise this fails:
       //       int x = 4; printf("%c\n", (char)x);
       var ret;
       argIndex = Runtime.prepVararg(argIndex, type);
       if (type === 'double') {
-        ret = {{{ makeGetValue('varargs', 'argIndex', 'double', undefined, undefined, true, 4) }}};
+        ret = {{{ makeGetValue('argIndex', 0, 'double', undefined, undefined, true) }}};
         argIndex += 8;
       } else if (type == 'i64') {
-        ret = [{{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true, 4) }}},
-               {{{ makeGetValue('varargs', 'argIndex+4', 'i32', undefined, undefined, true, 4) }}}];
-
+        ret = [{{{ makeGetValue('argIndex', 0, 'i32', undefined, undefined, true, 4) }}},
+               {{{ makeGetValue('argIndex', 4, 'i32', undefined, undefined, true, 4) }}}];
         argIndex += 8;
       } else {
         assert((argIndex & 3) === 0);
         type = 'i32'; // varargs are always i32, i64, or double
-        ret = {{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}};
+        ret = {{{ makeGetValue('argIndex', 0, 'i32', undefined, undefined, true) }}};
         argIndex += 4;
       }
       return ret;

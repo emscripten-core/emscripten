@@ -17,8 +17,9 @@ class interactive(BrowserCore):
   @classmethod
   def setUpClass(self):
     super(interactive, self).setUpClass()
+    self.browser_timeout = 60
     print
-    print 'Running the browser tests. Make sure the browser allows popups from localhost.'
+    print 'Running the interactive tests. Make sure the browser allows popups from localhost.'
     print
 
   def test_html5_fullscreen(self):
@@ -118,3 +119,6 @@ class interactive(BrowserCore):
 
   def test_vr(self):
     self.btest(path_from_root('tests', 'test_vr.c'), expected='0')
+
+  def test_glfw_fullscreen(self):
+    self.btest('test_glfw_fullscreen.c', expected='1', args=['-s', 'NO_EXIT_RUNTIME=1', '-s', 'USE_GLFW=3'])

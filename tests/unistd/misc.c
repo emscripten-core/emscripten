@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <grp.h>
+#include <assert.h>
 #include <emscripten.h>
 
 int main() {
@@ -15,6 +16,9 @@ int main() {
   );
 
   int f = open("working", O_RDONLY);
+  assert(f);
+  int t = open("/dev/stdin", O_RDONLY);
+  assert(t);
 
   sync();
 
@@ -32,14 +36,14 @@ int main() {
   printf(", errno: %d\n", errno);
   errno = 0;
 
-  printf("tcgetpgrp(good): %d", tcgetpgrp(f));
+  printf("tcgetpgrp(good): %d", tcgetpgrp(t));
   printf(", errno: %d\n", errno);
   errno = 0;
   printf("tcgetpgrp(bad): %d", tcgetpgrp(42));
   printf(", errno: %d\n", errno);
   errno = 0;
 
-  printf("tcsetpgrp(good): %d", tcsetpgrp(f, 123));
+  printf("tcsetpgrp(good): %d", tcsetpgrp(t, 123));
   printf(", errno: %d\n", errno);
   errno = 0;
   printf("tcsetpgrp(bad): %d", tcsetpgrp(42, 123));
@@ -50,10 +54,10 @@ int main() {
   printf(", errno: %d\n", errno);
   errno = 0;
 
-  printf("lockf(good): %d", lockf(f, 123, 456));
+  printf("lockf(good): %d", lockf(f, F_LOCK, 456));
   printf(", errno: %d\n", errno);
   errno = 0;
-  printf("lockf(bad): %d", lockf(42, 123, 456));
+  printf("lockf(bad): %d", lockf(42, F_LOCK, 456));
   printf(", errno: %d\n", errno);
   errno = 0;
 

@@ -17,10 +17,6 @@
 #define _GNU_SOURCE
 #include "libm.h"
 
-#ifdef __EMSCRIPTEN__
-#include <math.h>
-#endif
-
 /* Small multiples of pi/2 rounded to double precision. */
 static const double
 s1pio2 = 1*M_PI_2, /* 0x3FF921FB, 0x54442D18 */
@@ -30,11 +26,6 @@ s4pio2 = 4*M_PI_2; /* 0x401921FB, 0x54442D18 */
 
 void sincosf(float x, float *sin, float *cos)
 {
-#ifdef __EMSCRIPTEN__
-// XXX Emscripten: Use the browser-optimized versions of sin and cos, since they are faster.
-	*sin = sinf(x);
-	*cos = cosf(x);
-#else
 	double y;
 	float_t s, c;
 	uint32_t ix;
@@ -123,5 +114,4 @@ void sincosf(float x, float *sin, float *cos)
 		*cos = s;
 		break;
 	}
-#endif
 }

@@ -14,9 +14,6 @@ static size_t sn_write(FILE *f, const unsigned char *s, size_t l)
 	return l;
 }
 
-// XXX Emscripten Call to musl-specific vfprintf for better asm.js performance, instead of the handwritten js function.
-#define vfprintf MUSL_vfprintf
-
 int vsnprintf(char *restrict s, size_t n, const char *restrict fmt, va_list ap)
 {
 	int r;
