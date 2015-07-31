@@ -46,6 +46,13 @@ union ldshape {
 #error Unsupported long double representation
 #endif
 
+#ifdef __EMSCRIPTEN__
+/*
+ * asm.js doesn't have user-accessible floating point exceptions, so there's
+ * no point in trying to force expression evaluations to produce them.
+ */
+#define FORCE_EVAL(x)
+#else
 #define FORCE_EVAL(x) do {                        \
 	if (sizeof(x) == sizeof(float)) {         \
 		volatile float __x;               \
@@ -58,6 +65,7 @@ union ldshape {
 		__x = (x);                        \
 	}                                         \
 } while(0)
+#endif
 
 /* Get two 32 bit ints from a double.  */
 #define EXTRACT_WORDS(hi,lo,d)                    \
