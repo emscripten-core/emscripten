@@ -2709,7 +2709,7 @@ window.close = function() {
     def separate():
       print '*** verify that running the wasmator after emcc works'
       Popen([PYTHON, EMCC, 'main.cpp', '-O2', '-o', 'test.o.html']).communicate()
-      subprocess.check_call([PYTHON, path_from_root('third_party', 'wasm-polyfill', 'wasmator.py'), 'test.o.js', 'test.wasm'])
+      subprocess.check_call([PYTHON, path_from_root('third_party', 'wasm-polyfill', 'wasmator.py'), 'test.o.js', 'test.o.wasm', 'Module'])
     def together():
       print '*** verify that running the wasmator using  emcc -s WASM=1  works'
       Popen([PYTHON, EMCC, 'main.cpp', '-O2', '-o', 'test.o.html', '-s', 'WASM=1']).communicate()
@@ -2741,8 +2741,8 @@ window.close = function() {
       self.run_browser('test.o.html', None, '/report_result?7')
       print 'shell'
       self.do_run('', 'Hello!', no_build=True, basename='test') # test in the shell too
-      assert os.path.exists('test.wasm')
-      os.unlink('test.wasm')
+      assert os.path.exists('test.o.wasm')
+      os.unlink('test.o.wasm')
       if check_error:
         print 'error verify'
         self.run_browser('test.o.html', None, '/report_result?99') # without the wasm, we failz
