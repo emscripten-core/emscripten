@@ -547,6 +547,9 @@ var USE_GLFW = 2; // Specify the GLFW version that is being linked against.
                   // Valid options are 2 for GLFW2 and 3 for GLFW3.
 
 var WASM = 0; // If 1, compress the asm.js module into WebAssembly, and ship a decompressor that runs on the client
+              // Note that wasm loading is asynchronous in the browser, and for that reason we wrap the entire emitted
+              // code in a function - things will not reach the global scope by default. You can access things on the
+              // Module object.
 
 // Ports
 
