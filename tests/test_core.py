@@ -926,6 +926,7 @@ base align: 0, 0, 0, 0'''])
       test()
 
   def test_stack_restore(self):
+    if self.is_wasm(): return self.skip('generated code not available in wasm')
     if self.is_emterpreter(): return self.skip('generated code not available in emterpreter')
     self.emcc_args += ['-g3'] # to be able to find the generated code
     test_path = path_from_root('tests', 'core', 'test_stack_restore')
