@@ -85,7 +85,7 @@ var LibraryWebVR = {
   emscripten_vr_get_device_name: function(deviceId) {
     var dev = WebVR.getDeviceByID(deviceId);
     var buffer, devName;
-    devName = dev ? dev.deviceName : ""
+    devName = dev ? dev.deviceName : "";
     buf = _malloc(devName.length + 1);
     writeStringToMemory(devName, buf);
     return buf;
