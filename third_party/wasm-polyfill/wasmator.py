@@ -118,3 +118,6 @@ if (typeof importScripts === 'function') {
 open(jsfile, 'w').write(patched)
 shutil.copyfile(path_in_polyfill('jslib', 'load-wasm-worker.js'), 'load-wasm-worker.js')
 
+os.unlink(tempfile)
+os.unlink(tempfile2)
+
