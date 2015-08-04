@@ -82,6 +82,15 @@ var LibraryWebVR = {
     return WebVR.deviceHardwareIds[dev.hardwareUnitId];
   },
 
+  emscripten_vr_get_device_name: function(deviceId) {
+    var dev = WebVR.getDeviceByID(deviceId);
+    var buffer, devName;
+    devName = dev ? dev.deviceName : ""
+    buf = _malloc(devName.length + 1);
+    writeStringToMemory(devName, buf);
+    return buf;
+  },
+
   emscripten_vr_get_device_type: function(deviceId) {
     var dev = WebVR.getDeviceByID(deviceId);
     if (!dev) return -1;
@@ -116,52 +125,44 @@ var LibraryWebVR = {
     return WebVR.selectedHMDId;
   },
 
-  emscripten_vr_hmd_get_eye_translation: function(deviceId, whichEye, translationPtr) {
-    if (!translationPtr) return 0;
+  emscripten_vr_hmd_get_eye_parameters: function(deviceId, whichEye, eyeParamsPtr) {
+    if (!eyeParamsPtr) return 0;
     var dev = WebVR.getDeviceByID(deviceId);
     if (!dev) return 0;
-    var translation = dev.getEyeTranslation(whichEye == WebVR.EYE_LEFT ? "left" : "right");
-    {{{ makeSetValue('translationPtr', C_STRUCTS.WebVRPoint.x, 'translation.x', 'double') }}};
-    {{{ makeSetValue('translationPtr', C_STRUCTS.WebVRPoint.y, 'translation.y', 'double') }}};
-    {{{ makeSetValue('translationPtr', C_STRUCTS.WebVRPoint.z, 'translation.z', 'double') }}};
-    {{{ makeSetValue('translationPtr', C_STRUCTS.WebVRPoint.w, 'translation.w', 'double') }}};
-    return 1;
-  },
+    var params = dev.getEyeParameters(whichEye == WebVR.EYE_LEFT ? "left" : "right");
 
-  emscripten_vr_hmd_get_current_fov: function(deviceId, whichEye, fovPtr) {
-    if (!fovPtr) return 0;
-    var dev = WebVR.getDeviceByID(deviceId);
-    if (!dev) return 0;
-    var fov = dev.getCurrentEyeFieldOfView(whichEye == WebVR.EYE_LEFT ? "left" : "right");
-    {{{ makeSetValue('fovPtr', C_STRUCTS.WebVRFieldOfView.upDegrees, 'fov.upDegrees', 'double') }}};
-    {{{ makeSetValue('fovPtr', C_STRUCTS.WebVRFieldOfView.downDegrees, 'fov.downDegrees', 'double') }}};
-    {{{ makeSetValue('fovPtr', C_STRUCTS.WebVRFieldOfView.leftDegrees, 'fov.leftDegrees', 'double') }}};
-    {{{ makeSetValue('fovPtr', C_STRUCTS.WebVRFieldOfView.rightDegrees, 'fov.rightDegrees', 'double') }}};
-    return 1;
-  },
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.minimumFieldOfView.upDegrees, 'params.minimumFieldOfView.upDegrees', 'double') }}};
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.minimumFieldOfView.downDegrees, 'params.minimumFieldOfView.downDegrees', 'double') }}};
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.minimumFieldOfView.leftDegrees, 'params.minimumFieldOfView.leftDegrees', 'double') }}};
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.minimumFieldOfView.rightDegrees, 'params.minimumFieldOfView.rightDegrees', 'double') }}};
 
-  emscripten_vr_hmd_get_recommended_fov: function(deviceId, whichEye, fovPtr) {
-    if (!fovPtr) return 0;
-    var dev = WebVR.getDeviceByID(deviceId);
-    if (!dev) return 0;
-    var fov = dev.getRecommendedEyeFieldOfView(whichEye == WebVR.EYE_LEFT ? "left" : "right");
-    {{{ makeSetValue('fovPtr', C_STRUCTS.WebVRFieldOfView.upDegrees, 'fov.upDegrees', 'double') }}};
-    {{{ makeSetValue('fovPtr', C_STRUCTS.WebVRFieldOfView.downDegrees, 'fov.downDegrees', 'double') }}};
-    {{{ makeSetValue('fovPtr', C_STRUCTS.WebVRFieldOfView.leftDegrees, 'fov.leftDegrees', 'double') }}};
-    {{{ makeSetValue('fovPtr', C_STRUCTS.WebVRFieldOfView.rightDegrees, 'fov.rightDegrees', 'double') }}};
-    return 1;
-  },
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.maximumFieldOfView.upDegrees, 'params.maximumFieldOfView.upDegrees', 'double') }}};
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.maximumFieldOfView.downDegrees, 'params.maximumFieldOfView.downDegrees', 'double') }}};
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.maximumFieldOfView.leftDegrees, 'params.maximumFieldOfView.leftDegrees', 'double') }}};
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.maximumFieldOfView.rightDegrees, 'params.maximumFieldOfView.rightDegrees', 'double') }}};
 
-  emscripten_vr_hmd_get_maximum_fov: function(deviceId, whichEye, fovPtr) {
-    if (!fovPtr) return 0;
-    var dev = WebVR.getDeviceByID(deviceId);
-    if (!dev) return 0;
-    var fov = dev.getMaximumEyeFieldOfView(whichEye == WebVR.EYE_LEFT ? "left" : "right");
-    {{{ makeSetValue('fovPtr', C_STRUCTS.WebVRFieldOfView.upDegrees, 'fov.upDegrees', 'double') }}};
-    {{{ makeSetValue('fovPtr', C_STRUCTS.WebVRFieldOfView.downDegrees, 'fov.downDegrees', 'double') }}};
-    {{{ makeSetValue('fovPtr', C_STRUCTS.WebVRFieldOfView.leftDegrees, 'fov.leftDegrees', 'double') }}};
-    {{{ makeSetValue('fovPtr', C_STRUCTS.WebVRFieldOfView.rightDegrees, 'fov.rightDegrees', 'double') }}};
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.recommendedFieldOfView.upDegrees, 'params.recommendedFieldOfView.upDegrees', 'double') }}};
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.recommendedFieldOfView.downDegrees, 'params.recommendedFieldOfView.downDegrees', 'double') }}};
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.recommendedFieldOfView.leftDegrees, 'params.recommendedFieldOfView.leftDegrees', 'double') }}};
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.recommendedFieldOfView.rightDegrees, 'params.recommendedFieldOfView.rightDegrees', 'double') }}};
+
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.eyeTranslation.x, 'params.eyeTranslation.x', 'double') }}};
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.eyeTranslation.y, 'params.eyeTranslation.y', 'double') }}};
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.eyeTranslation.z, 'params.eyeTranslation.z', 'double') }}};
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.eyeTranslation.w, 'params.eyeTranslation.w', 'double') }}};
+
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.currentFieldOfView.upDegrees, 'params.currentFieldOfView.upDegrees', 'double') }}};
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.currentFieldOfView.downDegrees, 'params.currentFieldOfView.downDegrees', 'double') }}};
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.currentFieldOfView.leftDegrees, 'params.currentFieldOfView.leftDegrees', 'double') }}};
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.currentFieldOfView.rightDegrees, 'params.currentFieldOfView.rightDegrees', 'double') }}};
+
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.renderRect.x, 'params.renderRect.x', 'i32') }}};
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.renderRect.y, 'params.renderRect.y', 'i32') }}};
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.renderRect.width, 'params.renderRect.width', 'i32') }}};
+    {{{ makeSetValue('eyeParamsPtr', C_STRUCTS.WebVREyeParameters.renderRect.height, 'params.renderRect.height', 'i32') }}};
+
     return 1;
+
   },
 
   emscripten_vr_hmd_set_fov: function(deviceId, leftFovPtr, rightFovPtr, zNear, zFar) {
@@ -184,23 +185,11 @@ var LibraryWebVR = {
     return 1;
   },
 
-  emscripten_vr_hmd_get_eye_render_rect: function(deviceId, whichEye, rectPtr) {
-    if (!rectPtr) return 0;
-    var dev = WebVR.getDeviceByID(deviceId);
-    if (!dev) return 0;
-    var rect = dev.getRecommendedEyeRenderRect(whichEye == WebVR.EYE_LEFT ? "left" : "right");
-    {{{ makeSetValue('rectPtr', C_STRUCTS.WebVRIntRect.x, 'rect.x', 'i32') }}};
-    {{{ makeSetValue('rectPtr', C_STRUCTS.WebVRIntRect.y, 'rect.y', 'i32') }}};
-    {{{ makeSetValue('rectPtr', C_STRUCTS.WebVRIntRect.width, 'rect.width', 'i32') }}};
-    {{{ makeSetValue('rectPtr', C_STRUCTS.WebVRIntRect.height, 'rect.height', 'i32') }}};
-    return 1;
-  },
-
-  emscripten_vr_sensor_get_state: function(deviceId, timeOffset, statePtr) {
+  emscripten_vr_sensor_get_state: function(deviceId, immediate, statePtr) {
     if (!statePtr) return 0;
     var dev = WebVR.getDeviceByID(deviceId);
     if (!dev) return 0;
-    var state = dev.getState(timeOffset);
+    var state = immediate ? dev.getImmediateState : dev.getState();
 
     {{{ makeSetValue('statePtr', C_STRUCTS.WebVRPositionState.timeStamp, 'state.timeStamp', 'double') }}};
 
@@ -239,7 +228,7 @@ var LibraryWebVR = {
   emscripten_vr_sensor_zero: function(deviceId) {
     var dev = WebVR.getDeviceByID(deviceId);
     if (!dev) return 0;
-    dev.zeroSensor();
+    dev.resetSensor();
     return 1;
   }
 };
