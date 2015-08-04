@@ -488,7 +488,7 @@ def check_sanity(force=False):
         logging.critical('Node.js (%s) does not seem to work, check the paths in %s' % (NODE_JS, EM_CONFIG))
         sys.exit(1)
 
-    for cmd in [CLANG, LINK_CMD[0], LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM, LLVM_INTERPRETER]:
+    for cmd in [CLANG, LLVM_LINK, LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM, LLVM_INTERPRETER]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'): # .exe extension required for Windows
         logging.critical('Cannot find %s, check the paths in %s' % (cmd, EM_CONFIG))
         sys.exit(1)
@@ -529,21 +529,9 @@ try:
 except NameError:
 	CLANG_ADD_VERSION = os.getenv('CLANG_ADD_VERSION')
 
-USING_PNACL_TOOLCHAIN = os.path.exists(os.path.join(LLVM_ROOT, 'pnacl-clang'))
-
-def modify_prefix(tool):
-  if USING_PNACL_TOOLCHAIN:
-    if tool.startswith('llvm-'):
-      tool = tool[5:]
-    tool = 'pnacl-' + tool
-    if WINDOWS:
-      tool += '.bat'
-  return tool
-
 # Some distributions ship with multiple llvm versions so they add
 # the version to the binaries, cope with that
 def build_llvm_tool_path(tool):
-  tool = modify_prefix(tool)
   if LLVM_ADD_VERSION:
     return os.path.join(LLVM_ROOT, tool + "-" + LLVM_ADD_VERSION)
   else:
@@ -552,7 +540,6 @@ def build_llvm_tool_path(tool):
 # Some distributions ship with multiple clang versions so they add
 # the version to the binaries, cope with that
 def build_clang_tool_path(tool):
-  tool = modify_prefix(tool)
   if CLANG_ADD_VERSION:
     return os.path.join(LLVM_ROOT, tool + "-" + CLANG_ADD_VERSION)
   else:
@@ -588,11 +575,7 @@ def get_clang_native_args():
 CLANG_CC=os.path.expanduser(build_clang_tool_path('clang'))
 CLANG_CPP=os.path.expanduser(build_clang_tool_path('clang++'))
 CLANG=CLANG_CPP
-if USING_PNACL_TOOLCHAIN:
-  # The PNaCl toolchain doesn't have llvm-link, but we can fake it
-  LINK_CMD = [build_llvm_tool_path('llvm-ld'), '-nostdlib', '-r']
-else:
-  LINK_CMD = [build_llvm_tool_path('llvm-link')]
+LLVM_LINK=build_llvm_tool_path('llvm-link')
 LLVM_AR=build_llvm_tool_path('llvm-ar')
 LLVM_OPT=os.path.expanduser(build_llvm_tool_path('opt'))
 LLVM_AS=os.path.expanduser(build_llvm_tool_path('llvm-as'))
@@ -1365,15 +1348,15 @@ class Building:
     logging.debug('emcc: llvm-linking: %s to %s', actual_files, target)
 
     # check for too-long command line
-    link_cmd = LINK_CMD + actual_files + ['-o', target]
+    link_cmd = [LLVM_LINK] + actual_files + ['-o', target]
     # 8k is a bit of an arbitrary limit, but a reasonable one
-    # for max command line size before we use a respose file
+    # for max command line size before we use a response file
     response_file = None
     if len(' '.join(link_cmd)) > 8192:
       logging.debug('using response file for llvm-link')
       [response_fd, response_file] = mkstemp(suffix='.response', dir=TEMP_DIR)
 
-      link_cmd = LINK_CMD + ["@" + response_file]
+      link_cmd = [LLVM_LINK] + ["@" + response_file]
 
       response_fh = os.fdopen(response_fd, 'w')
       for arg in actual_files:

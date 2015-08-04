@@ -619,7 +619,6 @@ try:
       newargs[i] = ''
     elif newargs[i] == '-v':
       shared.COMPILER_OPTS += ['-v']
-      #shared.LINK_CMD += ['-v'] # Enable verbose output from llvm-link, since it can take a long time and this gives some indication of progress.
       shared.check_sanity(force=True)
       newargs[i] = ''
     elif newargs[i].startswith('--shell-file'):
