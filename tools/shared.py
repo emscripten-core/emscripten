@@ -1350,7 +1350,7 @@ class Building:
     # check for too-long command line
     link_cmd = [LLVM_LINK] + actual_files + ['-o', target]
     # 8k is a bit of an arbitrary limit, but a reasonable one
-    # for max command line size before we use a respose file
+    # for max command line size before we use a response file
     response_file = None
     if len(' '.join(link_cmd)) > 8192:
       logging.debug('using response file for llvm-link')
