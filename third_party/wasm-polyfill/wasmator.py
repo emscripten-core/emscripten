@@ -96,7 +96,7 @@ function runEmscriptenModule(Module, unwasmed_) {
 
 var ''' + export_name + ''';
 
-loadWebAssembly("''' + wasmfile + '''", 'load-wasm-worker.js').then(function(unwasmed) {
+loadWebAssembly("''' + os.path.basename(wasmfile) + '''", 'load-wasm-worker.js').then(function(unwasmed) {
   if (typeof importScripts === 'function') {
     onmessage = null;
   }
