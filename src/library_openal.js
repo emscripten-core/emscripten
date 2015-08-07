@@ -1036,7 +1036,7 @@ var LibraryOpenAL = {
     case 0x1010 /* AL_SOURCE_STATE */:
     case 0x1015 /* AL_BUFFERS_QUEUED */:
     case 0x1016 /* AL_BUFFERS_PROCESSED */:
-      this._alGetSourcei(source, param, values);
+      _alGetSourcei(source, param, values);
       break;
     default:
 #if OPENAL_DEBUG
@@ -1132,7 +1132,7 @@ var LibraryOpenAL = {
     case 0x1024 /* AL_SEC_OFFSET */:
     case 0x1025 /* AL_SAMPLE_OFFSET */:
     case 0x1026 /* AL_BYTE_OFFSET */:
-      this._alGetSourcef(source, param, values);
+      _alGetSourcef(source, param, values);
       break;
     case 0x1004 /* AL_POSITION */:
       var position = src.position;
