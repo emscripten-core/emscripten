@@ -4989,3 +4989,6 @@ int main() {
     Popen([PYTHON, EMCC, 'src.c']).communicate()
     self.assertContained('hello, world!', run_js('a.out.js'))
 
+  def test_no_missing_symbols(self): # simple hello world should not show any missing symbols
+    check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'])
+
