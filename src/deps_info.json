@@ -21,7 +21,7 @@
   "inet_ntoa": ["malloc"],
   "gethostbyname": ["malloc"],
   "gethostbyname_r": ["free"],
-  "getaddrinfo": ["malloc"],
+  "getaddrinfo": ["malloc", "htonl", "htons", "ntohs"],
   "freeaddrinfo": ["free"],
   "gai_strerror": ["malloc"],
   "setprotoent": ["malloc"],
