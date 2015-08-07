@@ -4068,6 +4068,9 @@ LibraryManager.library = {
     abort('Undefined behavior! ubsan_handle_float_cast_overflow: ' + [id, post]);
   },
 
+  // USE_FULL_LIBRARY hacks
+  realloc: function() { throw 'bad' },
+
   // internal musl requirements that we do, for now
   _pthread_cleanup_push: function(){},
   _pthread_cleanup_pop: function(){},
