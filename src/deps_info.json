@@ -36,6 +36,7 @@
   "emscripten_get_preloaded_image_data_from_FILE": ["fileno"],
   "__cxa_begin_catch": ["__cxa_can_catch", "__cxa_is_pointer_type"],
   "setjmp": ["realloc"],
+  "glfwSleep": ["sleep"],
   "sleep": ["usleep"]
 }
 
