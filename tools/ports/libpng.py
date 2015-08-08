@@ -24,7 +24,7 @@ def get(ports, settings, shared):
     return []
 
 
-def  process_depends(settings):
+def process_dependencies(settings):
   if settings.USE_LIBPNG == 1:
     settings.USE_ZLIB = 1
 
