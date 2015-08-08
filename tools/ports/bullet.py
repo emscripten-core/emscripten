@@ -2,7 +2,7 @@ import os, shutil, logging, subprocess, sys, stat
 
 TAG = 'version_1'
 
-def build_with_configure(ports, shared, path):
+def build_with_configure(ports, shared, path): # not currently used
   if not sys.platform.startswith('win'): #TODO: test on windows
      autogen_path = os.path.join(path, 'bullet', 'autogen.sh')
      os.chmod(autogen_path, os.stat(autogen_path).st_mode | 0111) #Make executable
