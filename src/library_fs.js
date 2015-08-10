@@ -283,8 +283,7 @@ mergeInto(LibraryManager.library, {
     },
     // convert O_* bitmask to a string for nodePermissions
     flagsToPermissionString: function(flag) {
-      var accmode = flag & {{{ cDefine('O_ACCMODE') }}};
-      var perms = ['r', 'w', 'rw'][accmode];
+      var perms = ['r', 'w', 'rw'][flag & 3];
       if ((flag & {{{ cDefine('O_TRUNC') }}})) {
         perms += 'w';
       }

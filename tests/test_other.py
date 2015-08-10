@@ -5000,3 +5000,32 @@ int main() {
   def test_no_missing_symbols(self): # simple hello world should not show any missing symbols
     check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'])
 
+  def test_realpath(self):
+    open('src.c', 'w').write(r'''
+#include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
+ 
+#define TEST_PATH "/boot/README.txt"
+ 
+int
+main(int argc, char **argv)
+{
+  errno = 0;
+  char *t_realpath_buf = realpath(TEST_PATH, NULL);
+  if (NULL == t_realpath_buf) {
+    perror("Resolve failed");
+    return 1;
+  } else {
+    printf("Resolved: %s", t_realpath_buf);
+    free(t_realpath_buf);
+    return 0;
+  }
+}
+''')
+    if not os.path.exists('boot'):
+      os.mkdir('boot')
+    open(os.path.join('boot', 'README.txt'), 'w').write(' ')
+    Popen([PYTHON, EMCC, 'src.c', '--embed-file', 'boot']).communicate()
+    self.assertContained('Resolved: /boot/README.txt', run_js('a.out.js'))
+
