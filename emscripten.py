@@ -457,9 +457,8 @@ function _emscripten_asm_const_%d(%s) {
                  'notEqual', 'lessThanOrEqual', 'greaterThanOrEqual',
                  'select', 'and', 'or', 'xor', 'not',
                  'splat', 'swizzle', 'shuffle',
-                 'withX', 'withY', 'withZ', 'withW',
-                 'extractLane', 'replaceLane',
-                 'load', 'store', 'load1', 'store1', 'load2', 'store2', 'load3', 'store3']
+                 'load', 'store', 'load1', 'store1', 'load2', 'store2', 'load3', 'store3',
+                 'extractLane', 'replaceLane']
     if metadata['simd_int8x16']:
       simdinttypes += ['Int8x16']
       simdfuncs += ['fromInt8x16Bits']
