@@ -82,6 +82,8 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       backend_args += ['-emscripten-global-base=0']
     elif settings['GLOBAL_BASE'] >= 0:
       backend_args += ['-emscripten-global-base=%d' % settings['GLOBAL_BASE']]
+    if settings['OPTIMIZE_IN_BACKEND']:
+      backend_args += ['-emscripten-optimizer']
     backend_args += ['-O' + str(settings['OPT_LEVEL'])]
     if DEBUG:
       logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))
