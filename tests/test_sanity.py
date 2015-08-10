@@ -623,7 +623,7 @@ fi
 
           try:
             # break it
-            f = path_from_root('tools', 'optimizer', 'optimizer.cpp')
+            f = path_from_root('tools', 'optimizer', 'optimizer-main.cpp')
             src = open(f).read()
             bad = src.replace('main', '!waka waka<')
             assert bad != src

@@ -144,6 +144,7 @@ def get_native_optimizer():
                                          shared.path_from_root('tools', 'optimizer', 'parser.cpp'),
                                          shared.path_from_root('tools', 'optimizer', 'simple_ast.cpp'),
                                          shared.path_from_root('tools', 'optimizer', 'optimizer.cpp'),
+                                         shared.path_from_root('tools', 'optimizer', 'optimizer-main.cpp'),
                                          '-O3', '-std=c++11', '-fno-exceptions', '-fno-rtti', '-o', output] + args, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
             outs.append(out)
             errs.append(err)
