@@ -611,13 +611,13 @@ function ftCall_%s(%s) {%s
         basic_funcs.append('ftCall_%s' % sig)
 
     def quote(prop):
-      if settings['CLOSURE_COMPILER'] == 2:
+      if settings['USE_CLOSURE_COMPILER'] == 2:
         return "'" + prop + "'"
       else:
         return prop
 
     def access_quote(prop):
-      if settings['CLOSURE_COMPILER'] == 2:
+      if settings['USE_CLOSURE_COMPILER'] == 2:
         return "['" + prop + "']"
       else:
         return '.' + prop

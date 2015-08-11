@@ -14,7 +14,7 @@
 // before the code. Then that object will be used in the code, and you
 // can continue to use Module afterwards as well.
 var Module;
-#if CLOSURE_COMPILER
+#if USE_CLOSURE_COMPILER
 if (!Module) Module = eval('(function() { try { return {{{ EXPORT_NAME }}} || {} } catch(e) { return {} } })()');
 #else
 if (!Module) Module = (typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_NAME }}} : null) || {};
@@ -129,7 +129,7 @@ else if (ENVIRONMENT_IS_SHELL) {
     Module['arguments'] = arguments;
   }
 
-#if CLOSURE_COMPILER
+#if USE_CLOSURE_COMPILER
   eval("if (typeof gc === 'function' && gc.toString().indexOf('[native code]') > 0) var gc = undefined"); // wipe out the SpiderMonkey shell 'gc' function, which can confuse closure (uses it as a minified name, and it is then initted to a non-falsey value unexpectedly)
 #endif
 }
