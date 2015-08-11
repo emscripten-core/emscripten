@@ -665,12 +665,9 @@ try:
         default_object_extension = '.' + default_object_extension
       newargs[i+1] = ''
     elif newargs[i] == '-msse':
-      settings_changes.append('SSE1=1')
       newargs.append('-D__SSE__=1')
       newargs[i] = ''
     elif newargs[i] == '-msse2':
-      settings_changes.append('SSE1=1')
-      settings_changes.append('SSE2=1')
       newargs.append('-D__SSE__=1')
       newargs.append('-D__SSE2__=1')
       newargs[i] = ''

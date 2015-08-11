@@ -5556,7 +5556,6 @@ return malloc(size);
     native_result, err = Popen('./test_sse1_full', stdout=PIPE, stderr=PIPE).communicate()
 
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
-    Settings.SSE1=1
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
       self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests'), '-msse']
@@ -5572,7 +5571,6 @@ return malloc(size);
     native_result, err = Popen('./test_sse2_full', stdout=PIPE, stderr=PIPE).communicate()
 
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
-    Settings.SSE2=1
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
       self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests'), '-msse2']

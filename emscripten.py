@@ -459,19 +459,19 @@ function _emscripten_asm_const_%d(%s) {
                  'splat', 'swizzle', 'shuffle',
                  'load', 'store', 'load1', 'store1', 'load2', 'store2', 'load3', 'store3',
                  'extractLane', 'replaceLane']
-    if metadata['simd_int8x16']:
+    if metadata['simdInt8x16']:
       simdinttypes += ['Int8x16']
       simdfuncs += ['fromInt8x16Bits']
-    if metadata['simd_int16x8']:
+    if metadata['simdInt16x8']:
       simdinttypes += ['Int16x8']
       simdfuncs += ['fromInt16x8Bits']
-    if metadata['simd_int32x4']:
+    if metadata['simdInt32x4']:
       simdinttypes += ['Int32x4']
       simdfuncs += ['fromInt32x4', 'fromInt32x4Bits']
-    if metadata['simd_float32x4']:
+    if metadata['simdFloat32x4']:
       simdfloattypes += ['Float32x4']
       simdfuncs += ['fromFloat32x4', 'fromFloat32x4Bits']
-    if metadata['simd_float64x2']:
+    if metadata['simdFloat64x2']:
       simdfloattypes += ['Float64x2']
       simdfuncs += ['fromFloat64x2', 'fromFloat64x2Bits']
 
@@ -493,7 +493,7 @@ function _emscripten_asm_const_%d(%s) {
     if settings['ALLOW_MEMORY_GROWTH']: fundamentals.append('byteLength')
     math_envs = []
 
-    provide_fround = settings['PRECISE_F32'] or settings['SIMD'] or settings['SSE1']
+    provide_fround = settings['PRECISE_F32'] or settings['SIMD']
 
     if provide_fround: maths += ['Math.fround']
 

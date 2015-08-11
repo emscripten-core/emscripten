@@ -120,9 +120,6 @@ var SIMD = 0; // Whether to allow autovectorized SIMD code ( https://github.com/
               // (In older versions of emscripten, in particular pre-fastcomp, SIMD=1 was needed to get
               // any SIMD output at all.)
 
-var SSE1 = 0; // If true, enables generating code to target the SSE1 instruction set. Build with -msse to enable this.
-var SSE2 = 0; // If true, enables generating code to target the SSE2 instruction set. Build with -msse2 to enable this.
-
 var USE_CLOSURE_COMPILER = 0; // Whether closure compiling is being run on this output
 
 var SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all in
