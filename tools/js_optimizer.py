@@ -106,7 +106,11 @@ def get_native_optimizer():
           os.mkdir(build_path)
 
         if WINDOWS:
-          cmake_generators = ['Visual Studio 12 Win64', 'Visual Studio 12', 'Visual Studio 11 Win64', 'Visual Studio 11', 'MinGW Makefiles', 'Unix Makefiles']
+          # Poor man's check for whether or not we should attempt 64 bit build
+          if os.environ.get('ProgramFiles(x86)'):
+            cmake_generators = ['Visual Studio 12 Win64', 'Visual Studio 12', 'Visual Studio 11 Win64', 'Visual Studio 11', 'MinGW Makefiles', 'Unix Makefiles']
+          else:
+            cmake_generators = ['Visual Studio 12', 'Visual Studio 11', 'MinGW Makefiles', 'Unix Makefiles']
         else:
           cmake_generators = ['Unix Makefiles']
 
