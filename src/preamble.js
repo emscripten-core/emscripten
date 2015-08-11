@@ -19,7 +19,7 @@ Runtime.GLOBAL_BASE = Runtime.alignMemory(Runtime.GLOBAL_BASE, {{{ MAX_GLOBAL_AL
 #endif
 
 {{{ maybeExport('Runtime') }}}
-#if CLOSURE_COMPILER
+#if USE_CLOSURE_COMPILER
 Runtime['addFunction'] = Runtime.addFunction;
 Runtime['removeFunction'] = Runtime.removeFunction;
 #endif

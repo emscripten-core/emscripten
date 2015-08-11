@@ -120,7 +120,7 @@ var SIMD = 0; // Whether to allow autovectorized SIMD code ( https://github.com/
               // (In older versions of emscripten, in particular pre-fastcomp, SIMD=1 was needed to get
               // any SIMD output at all.)
 
-var CLOSURE_COMPILER = 0; // Whether closure compiling is being run on this output
+var USE_CLOSURE_COMPILER = 0; // Whether closure compiling is being run on this output
 
 var SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all in
                              // functions that have no basic stack usage. But, they

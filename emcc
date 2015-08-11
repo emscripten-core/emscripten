@@ -419,7 +419,7 @@ try:
   js_opts = None
   llvm_opts = None
   llvm_lto = None
-  closure = None
+  use_closure_compiler = None
   js_transform = None
   pre_js = ''
   post_js = ''
@@ -517,7 +517,7 @@ try:
       newargs[i+1] = ''
     elif newargs[i].startswith('--closure'):
       check_bad_eq(newargs[i])
-      closure = int(newargs[i+1])
+      use_closure_compiler = int(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--js-transform'):
@@ -925,16 +925,16 @@ try:
     js_opts = True
     logging.debug('enabling js opts for SAFE_HEAP')
 
-  if debug_level > 1 and closure:
+  if debug_level > 1 and use_closure_compiler:
     logging.warning('disabling closure because debug info was requested')
-    closure = False
+    use_closure_compiler = False
 
-  assert not (shared.Settings.NO_DYNAMIC_EXECUTION and closure), 'cannot have both NO_DYNAMIC_EXECUTION and closure compiler enabled at the same time'
+  assert not (shared.Settings.NO_DYNAMIC_EXECUTION and use_closure_compiler), 'cannot have both NO_DYNAMIC_EXECUTION and closure compiler enabled at the same time'
 
-  if closure:
-    shared.Settings.CLOSURE_COMPILER = closure
+  if use_closure_compiler:
+    shared.Settings.USE_CLOSURE_COMPILER = use_closure_compiler
     assert os.path.exists(shared.CLOSURE_COMPILER), logging.error('fatal: Closure compiler (%s) does not exist', shared.CLOSURE_COMPILER)
-    if closure == 2 and shared.Settings.ASM_JS == 1:
+    if use_closure_compiler == 2 and shared.Settings.ASM_JS == 1:
       logging.warning('not all asm.js optimizations are possible with --closure 2, disabling those - your code will be run more slowly')
       shared.Settings.ASM_JS = 2
 
@@ -950,7 +950,7 @@ try:
     shared.Settings.LINKABLE = 1 # TODO: add FORCE_DCE option for the brave people that do want to dce here and in side modules
     shared.Settings.RELOCATABLE = 1
     shared.Settings.PRECISE_I64_MATH = 1 # other might use precise math, we need to be able to print it
-    assert not closure, 'cannot use closure compiler on shared modules'
+    assert not use_closure_compiler, 'cannot use closure compiler on shared modules'
 
   if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
     shared.Settings.ALIASING_FUNCTION_POINTERS = 0
@@ -990,7 +990,7 @@ try:
     if not js_opts:
       js_opts = True
       logging.debug('enabling js opts for EMTERPRETIFY')
-    assert closure is not 2, 'EMTERPRETIFY requires valid asm.js, and is incompatible with closure 2 which disables that'
+    assert use_closure_compiler is not 2, 'EMTERPRETIFY requires valid asm.js, and is incompatible with closure 2 which disables that'
 
   if shared.Settings.DEAD_FUNCTIONS and not js_opts:
     js_opts = True
@@ -1326,7 +1326,7 @@ try:
       file_args.append('--use-preload-cache')
     if no_heap_copy:
       file_args.append('--no-heap-copy')
-    if not closure:
+    if not use_closure_compiler:
       file_args.append('--no-closure')
     file_code = execute([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE)[0]
     pre_js = file_code + pre_js
@@ -1518,15 +1518,15 @@ try:
     global js_optimizer_queue
 
     if opt_level >= 2:
-      if debug_level < 2 and not closure == 2:
+      if debug_level < 2 and not use_closure_compiler == 2:
         js_optimizer_queue += ['minifyNames']
       if debug_level == 0:
         global minify_whitespace
         minify_whitespace = True
 
-    if closure == 1:
+    if use_closure_compiler == 1:
       js_optimizer_queue += ['closure']
-    elif debug_level <= 2 and shared.Settings.FINALIZE_ASM_JS and not closure:
+    elif debug_level <= 2 and shared.Settings.FINALIZE_ASM_JS and not use_closure_compiler:
       js_optimizer_queue += ['cleanup']
 
   if js_opts:
@@ -1552,7 +1552,7 @@ try:
 
     flush_js_optimizer_queue()
 
-  if closure == 2:
+  if use_closure_compiler == 2:
     flush_js_optimizer_queue()
 
     logging.debug('running closure')
