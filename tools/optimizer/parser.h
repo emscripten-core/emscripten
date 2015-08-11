@@ -276,7 +276,7 @@ class Parser {
         src++;
       } else {
         dump("frag parsing", src);
-        assert(0);
+        abort();
       }
       size = src - start;
     }
@@ -304,12 +304,12 @@ class Parser {
         if (frag.str == OPEN_PAREN) return parseExpression(parseAfterParen(src), src, seps);
         if (frag.str == OPEN_BRACE) return parseExpression(parseAfterBrace(src), src, seps);
         if (frag.str == OPEN_CURLY) return parseExpression(parseAfterCurly(src), src, seps);
-        assert(0);
+        abort();
       }
       case OPERATOR: {
         return parseExpression(frag.str, src, seps);
       }
-      default: /* dump("parseElement", src); printf("bad frag type: %d\n", frag.type); */ assert(0);
+      default: /* dump("parseElement", src); printf("bad frag type: %d\n", frag.type); */ abort();
     }
     return nullptr;
   }
@@ -320,7 +320,7 @@ class Parser {
       case STRING: return Builder::makeString(frag.str);
       case INT:    return Builder::makeInt(uint32_t(frag.num));
       case DOUBLE: return Builder::makeDouble(frag.num);
-      default: assert(0);
+      default: abort();
     }
     return nullptr;
   }
@@ -339,7 +339,7 @@ class Parser {
     else if (frag.str == SWITCH) return parseSwitch(frag, src, seps);
     else if (frag.str == NEW) return parseNew(frag, src, seps);
     dump(frag.str.str, src);
-    assert(0);
+    abort();
     return nullptr;
   }
 
@@ -368,7 +368,7 @@ class Parser {
         src++;
         continue;
       }
-      assert(0);
+      abort();
     }
     assert(*src == ')');
     src++;
@@ -399,7 +399,7 @@ class Parser {
         src++;
         continue;
       }
-      assert(0);
+      abort();
     }
     assert(*src == ';');
     src++;
@@ -553,7 +553,7 @@ class Parser {
         src++;
         continue;
       }
-      assert(0);
+      abort();
     }
     src++;
     assert(expressionPartsStack.back().size() == 0);
@@ -715,7 +715,7 @@ class Parser {
           initial = parseIndexing(initial.getNode(), src);
         } else {
           dump("bad parseExpression state", src);
-          assert(0);
+          abort();
         }
         return parseExpression(initial, src, seps);
       }

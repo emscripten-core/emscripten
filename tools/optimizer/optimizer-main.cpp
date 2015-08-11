@@ -75,7 +75,7 @@ int main(int argc, char **argv) {
     else if (str == "noop") { worked = false; }
     else {
       fprintf(stderr, "unrecognized argument: %s\n", str.c_str());
-      assert(0);
+      abort();
     }
 #ifdef PROFILING
     errv("    %s took %lu microseconds", str.c_str(), clock() - start);
