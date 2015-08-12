@@ -420,7 +420,6 @@ class Ports:
       State.retrieved = True
 
     def check_tag():
-      # find subdir/version.txt
       z = zipfile.ZipFile(fullname + '.zip', 'r')
       names = z.namelist()
       if not (names[0].startswith(subdir + '/') or names[0].startswith(subdir + '\\')):
