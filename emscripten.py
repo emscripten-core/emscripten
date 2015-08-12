@@ -678,7 +678,7 @@ function ftCall_%s(%s) {%s
           if sub in s:
             return True
         return False
-      nonexisting_simd_symbols = ['int32x4_fromInt32x4', 'float32x4_fromFloat32x4']
+      nonexisting_simd_symbols = ['Int32x4_fromInt32x4', 'Float32x4_fromFloat32x4']
 
       asm_global_funcs += ''.join(['  var SIMD_' + ty + '=global' + access_quote('SIMD') + access_quote(ty) + ';\n' for ty in simdtypes])
 
