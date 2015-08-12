@@ -5564,6 +5564,7 @@ return malloc(size);
 
   # Tests the full SSE2 API.
   def test_sse2_full(self):
+    return self.skip('todo: No Float64x2 type available anymore.')
     if self.is_emterpreter(): return self.skip('todo')
     if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('test_sse2_full requires SpiderMonkey to run.')
     if '-O1' in self.emcc_args or '-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args:
