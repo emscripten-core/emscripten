@@ -415,8 +415,6 @@ try:
   proxy_to_worker = False
   default_object_extension = '.o'
   valid_abspaths = []
-  sse1 = False
-  sse2 = False
 
   def is_valid_abspath(path_name):
     # Any path that is underneath the emscripten repository root must be ok.
