@@ -386,10 +386,10 @@ class Ports:
       # for testing. This env var should be in format
       #     name=dir|tag,name=dir|tag
       # e.g.
-      #     sdl2=/home/username/dev/ports/SDL2|SDL2-version_5
+      #     sdl2=/home/username/dev/ports/SDL2|SDL2-master
       # so you could run
-      #     EMCC_LOCAL_PORTS="sdl2=/home/alon/Dev/ports/SDL2|SDL2-version_5" ./tests/runner.py browser.test_sdl2_mouse
-      # note that tag must be the tag in sdl.py, it is where we store to (not where we load from, we just load the local dir)
+      #     EMCC_LOCAL_PORTS="sdl2=/home/alon/Dev/ports/SDL2|SDL2-master" ./tests/runner.py browser.test_sdl2_mouse
+      # note that tag **must** be the tag in sdl.py, it is where we store to (not where we load from, we just load the local dir)
       local_ports = os.environ.get('EMCC_LOCAL_PORTS')
       if local_ports:
         local_ports = map(lambda pair: pair.split('='), local_ports.split(','))
