@@ -6,6 +6,9 @@
 #include <inttypes.h>
 #include <float.h>
 #include <assert.h>
+#ifdef _WIN32
+#include <string>
+#endif
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
@@ -54,11 +57,42 @@ bool always_true() { return time(NULL) != 0; } // This function always returns t
 
 bool IsNan(float f) { return (fcastu(f) << 1) > 0xFF000000u; }
 
+#ifdef _WIN32
+std::string replace(std::string str, std::string a, std::string b)
+{
+	size_t index = 0;
+	while(true)
+	{
+		index = str.find(a, index);
+		if (index == std::string::npos) break;
+		str.replace(index, a.length(), b);
+		index += b.length();
+	}
+	return str;
+}
+
+// sprintf on Windows prints floats a bit differently, but since we
+// are using Clang to compile and not MSVC, we don't seem to have access
+// to the Win32-specific MSVC runtime functions to adjust the output.
+// Therefore just be brute and hacky about unifying the result.
+std::string WinHackCanonicalizeStringComparisons(std::string s)
+{
+	s = replace(s, "e+0", "e+");
+	s = replace(s, "e-0", "e-");
+	s = replace(s, "1.#INF", "inf");
+	return s;
+}
+#endif
+
 char *SerializeFloat(float f, char *dstStr)
 {
 	if (!IsNan(f))
 	{
 		int numChars = sprintf(dstStr, "%.9g", f);
+#ifdef _WIN32
+		std::string s = WinHackCanonicalizeStringComparisons(dstStr);
+		numChars = sprintf(dstStr, "%s", s.c_str());
+#endif		
 		return dstStr + numChars;
 	}
 	else
@@ -78,6 +112,10 @@ char *SerializeDouble(double f, char *dstStr)
 	if (!IsNan(f))
 	{
 		int numChars = sprintf(dstStr, "%.17g", f);
+#ifdef _WIN32
+		std::string s = WinHackCanonicalizeStringComparisons(dstStr);
+		numChars = sprintf(dstStr, "%s", s.c_str());
+#endif		
 		return dstStr + numChars;
 	}
 	else

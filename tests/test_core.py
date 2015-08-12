@@ -5554,6 +5554,7 @@ return malloc(size);
     if self.is_emterpreter(): return self.skip('todo')
     Popen([CLANG, path_from_root('tests', 'test_sse1_full.cpp'), '-o', 'test_sse1_full'] + get_clang_native_args(), stdout=PIPE, stderr=PIPE).communicate()
     native_result, err = Popen('./test_sse1_full', stdout=PIPE, stderr=PIPE).communicate()
+    native_result = native_result.replace('\r\n', '\n') # Windows line endings fix
 
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
     orig_args = self.emcc_args
@@ -5569,6 +5570,7 @@ return malloc(size);
       return self.skip('TODO: SIMD does not currently validate as asm.js in SpiderMonkey, run only in unoptimized mode.')
     Popen([CLANG, path_from_root('tests', 'test_sse2_full.cpp'), '-o', 'test_sse2_full'] + get_clang_native_args(), stdout=PIPE, stderr=PIPE).communicate()
     native_result, err = Popen('./test_sse2_full', stdout=PIPE, stderr=PIPE).communicate()
+    native_result = native_result.replace('\r\n', '\n') # Windows line endings fix
 
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
     orig_args = self.emcc_args
