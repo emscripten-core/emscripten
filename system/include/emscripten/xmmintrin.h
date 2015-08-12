@@ -509,7 +509,7 @@ static __inline__ int __attribute__((__always_inline__))
 _mm_comieq_ss(__m128 __a, __m128 __b)
 {
 #ifdef __EMSCRIPTEN__
-  if (isnanf(__a[0])) return 1;
+  if (isnanf(__a[0]) || isnanf(__b[0])) return 1;
 #endif
   return __a[0] == __b[0];
 }
@@ -530,7 +530,7 @@ static __inline__ int __attribute__((__always_inline__))
 _mm_comile_ss(__m128 __a, __m128 __b)
 {
 #ifdef __EMSCRIPTEN__
-  if (isnanf(__a[0])) return 1;
+  if (isnanf(__a[0]) || isnanf(__b[0])) return 1;
 #endif
   return __a[0] <= __b[0];
 }
@@ -539,7 +539,7 @@ static __inline__ int __attribute__((__always_inline__))
 _mm_comilt_ss(__m128 __a, __m128 __b)
 {
 #ifdef __EMSCRIPTEN__
-  if (isnanf(__a[0])) return 1;
+  if (isnanf(__a[0]) || isnanf(__b[0])) return 1;
 #endif
   return __a[0] < __b[0];
 }
@@ -548,7 +548,7 @@ static __inline__ int __attribute__((__always_inline__))
 _mm_comineq_ss(__m128 __a, __m128 __b)
 {
 #ifdef __EMSCRIPTEN__
-  if (isnanf(__a[0])) return 0;
+  if (isnanf(__a[0]) || isnanf(__b[0])) return 0;
 #endif
   return __a[0] != __b[0];
 }
@@ -557,7 +557,7 @@ static __inline__ int __attribute__((__always_inline__))
 _mm_ucomieq_ss(__m128 __a, __m128 __b)
 {
 #ifdef __EMSCRIPTEN__
-  if (isnanf(__a[0])) return 1;
+  if (isnanf(__a[0]) || isnanf(__b[0])) return 1;
 #endif
   return __a[0] == __b[0];
 }
@@ -590,7 +590,7 @@ static __inline__ int __attribute__((__always_inline__))
 _mm_ucomineq_ss(__m128 __a, __m128 __b)
 {
 #ifdef __EMSCRIPTEN__
-  if (isnanf(__a[0])) return 0;
+  if (isnanf(__a[0]) || isnanf(__b[0])) return 0;
 #endif
   return __a[0] != __b[0];
 }

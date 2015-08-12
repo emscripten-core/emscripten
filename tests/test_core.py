@@ -5695,6 +5695,15 @@ return malloc(size);
     self.emcc_args = self.emcc_args + ['-msse2']
     self.do_run_from_file(src, output)
 
+  def test_simd12(self):
+    if self.is_emterpreter(): return self.skip('todo')
+
+    test_path = path_from_root('tests', 'core', 'test_simd12')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.emcc_args = self.emcc_args + ['-msse']
+    self.do_run_from_file(src, output)
+
   def test_simd_dyncall(self):
     if self.is_emterpreter(): return self.skip('todo')
 
