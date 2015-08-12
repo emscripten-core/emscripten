@@ -45,19 +45,24 @@ def split_funcs(js, just_split=False, know_generated=True):
   return funcs
 
 def find_msbuild(sln_file, make_env):
-  search_paths_vs2013 = [os.path.join(os.environ['ProgramFiles'], 'MSBuild/12.0/Bin/amd64'),
-                        os.path.join(os.environ['ProgramFiles(x86)'], 'MSBuild/12.0/Bin/amd64'),
-                        os.path.join(os.environ['ProgramFiles'], 'MSBuild/12.0/Bin'),
-                        os.path.join(os.environ['ProgramFiles(x86)'], 'MSBuild/12.0/Bin'),]
-  search_paths_old = [os.path.join(os.environ["WINDIR"], 'Microsoft.NET/Framework/v4.0.30319')]
+  search_paths_vs2013 = [('ProgramFiles', 'MSBuild/12.0/Bin/amd64'),
+                         ('ProgramFiles(x86)', 'MSBuild/12.0/Bin/amd64'),
+                         ('ProgramFiles', 'MSBuild/12.0/Bin'),
+                         ('ProgramFiles(x86)', 'MSBuild/12.0/Bin'),]
+  search_paths_old = [("WINDIR", 'Microsoft.NET/Framework/v4.0.30319'),]
   contents = open(sln_file, 'r').read()
   if '# Visual Studio Express 2013' in contents or '# Visual Studio 2013' in contents:
     search_paths = search_paths_vs2013 + search_paths_old
-    make_env['VCTargetsPath'] = os.path.join(os.environ['ProgramFiles(x86)'], 'MSBuild/Microsoft.Cpp/v4.0/V120')
+    pf_path = os.environ.get('ProgramFiles(x86)')
+    if not pf_path:
+      pf_path = os.environ.get('ProgramFiles')
+    make_env['VCTargetsPath'] = os.path.join(pf_path, 'MSBuild/Microsoft.Cpp/v4.0/V120')
   else:
     search_paths = search_paths_old + search_paths_vs2013
-  for path in search_paths:
-    p = os.path.join(path, 'MSBuild.exe')
+  for pf, path in search_paths:
+    pf_path = os.environ.get(pf)
+    if not pf_path: continue
+    p = os.path.join(pf_path, path, 'MSBuild.exe')
     if os.path.isfile(p): return [p, make_env]
   return [None, make_env]
 
@@ -101,7 +106,11 @@ def get_native_optimizer():
           os.mkdir(build_path)
 
         if WINDOWS:
-          cmake_generators = ['Visual Studio 12 Win64', 'Visual Studio 12', 'Visual Studio 11 Win64', 'Visual Studio 11', 'MinGW Makefiles', 'Unix Makefiles']
+          # Poor man's check for whether or not we should attempt 64 bit build
+          if os.environ.get('ProgramFiles(x86)'):
+            cmake_generators = ['Visual Studio 12 Win64', 'Visual Studio 12', 'Visual Studio 11 Win64', 'Visual Studio 11', 'MinGW Makefiles', 'Unix Makefiles']
+          else:
+            cmake_generators = ['Visual Studio 12', 'Visual Studio 11', 'MinGW Makefiles', 'Unix Makefiles']
         else:
           cmake_generators = ['Unix Makefiles']
 
