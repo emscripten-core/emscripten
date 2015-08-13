@@ -2081,7 +2081,15 @@ Module['_main'] = function() {
           event.initKeyEvent("keydown", true, true, window,
                              0, 0, 0, 0,
                              c, c);
-          document.dispatchEvent(event);
+          var prevented = !document.dispatchEvent(event);
+
+          //send keypress if not prevented
+          if (!prevented) {
+            event = document.createEvent("KeyboardEvent");
+            event.initKeyEvent("keypress", true, true, window,
+                               0, 0, 0, 0, 0, c);
+            document.dispatchEvent(event);
+          }
         }
 
         function keyup(c) {
