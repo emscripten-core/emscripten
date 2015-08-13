@@ -272,7 +272,7 @@ def run_on_chunk(command):
       saved = 'save_' + os.path.basename(filename)
       while os.path.exists(saved): saved = 'input' + str(int(saved.replace('input', '').replace('.txt', ''))+1) + '.txt'
       print >> sys.stderr, 'running js optimizer command', ' '.join(map(lambda c: c if c != filename else saved, command))
-      shutil.copyfile(filename, os.path.join('/tmp/emscripten_temp', saved))
+      shutil.copyfile(filename, os.path.join(shared.get_emscripten_temp_dir(), saved))
     if shared.EM_BUILD_VERBOSE_LEVEL >= 3: print >> sys.stderr, 'run_on_chunk: ' + str(command)
     proc = subprocess.Popen(command, stdout=subprocess.PIPE)
     output = proc.communicate()[0]
