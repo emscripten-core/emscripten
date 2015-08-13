@@ -1007,6 +1007,23 @@ keydown(100);keyup(100); // trigger the end
       secret = str(time.time())
       self.btest(path_from_root('tests', 'fs', 'test_memfs_fsync.c'), '1', force_c=True, args=args + mode + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main']'''])
 
+  def test_fs_workerfs_read(self):
+    secret = 'a' * 10;
+    secret2 = 'b' * 10;
+    open(self.in_dir('pre.js'), 'w').write('''
+      var Module = {};
+      Module.preRun = function() {
+        var blob = new Blob(['%s']);
+        var file = new File(['%s'], 'file.txt');
+        FS.mkdir('/work');
+        FS.mount(WORKERFS, {
+          blobs: [{ name: 'blob.txt', data: blob }],
+          files: [file],
+        }, '/work');
+      };
+    ''' % (secret, secret2))
+    self.btest(path_from_root('tests', 'fs', 'test_workerfs_read.c'), '1', force_c=True, args=['--pre-js', 'pre.js', '-DSECRET=\"' + secret + '\"', '-DSECRET2=\"' + secret2 + '\"', '--proxy-to-worker'])
+
   def test_idbstore(self):
     secret = str(time.time())
     for stage in [0, 1, 2, 3, 0, 1, 2, 0, 0, 1, 4, 2, 5]:

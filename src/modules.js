@@ -109,6 +109,7 @@ var LibraryManager = {
         'library_memfs.js',
         'library_nodefs.js',
         'library_sockfs.js',
+        'library_workerfs.js',
         'library_tty.js'
       ]);
     }

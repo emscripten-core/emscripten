@@ -51,7 +51,6 @@ This file system lets a program in *node* directly access files on the local fil
 
 See `this test <https://github.com/kripken/emscripten/blob/master/tests/fs/test_nodefs_rw.c>`_ for an example.
 
-
 .. _filesystem-api-idbfs:
 
 IDBFS
@@ -63,6 +62,14 @@ The *IDBFS* file system implements the :js:func:`FS.syncfs` interface, which whe
 
 This is provided to overcome the limitation that browsers do not offer synchronous APIs for persistent storage, and so (by default) all writes exist only temporarily in-memory. 
 
+.. _filesystem-api-workerfs:
+
+WORKERFS
+-----
+
+.. note:: This file system is only for use when running code inside a worker.
+
+This file system provides read-only access to ``File`` and ``Blob`` objects inside a worker without copying the entire data into memory and can potentially be used for huge files.
 
 Devices
 =======
@@ -133,6 +140,17 @@ File system API
 		
 				FS.mkdir('/working');
 				FS.mount(NODEFS, { root: '.' }, '/working');
+
+        ``WORKERFS`` accepts `files` and `blobs` parameters to map provided flat list of files into the ``mountpoint`` directory:
+
+			::
+
+				var blob = new Blob(['blob data']);
+				FS.mkdir('/working');
+				FS.mount(NODEFS, {
+				  blobs: [{ name: 'blob.txt', data: blob }],
+				  files: files, // Array of File objects or FileList
+				}, '/working');
 
 	:param string mountpoint: A path to an existing local Emscripten directory where the file system is to be mounted. It can be either an absolute path, or something relative to the current directory.
 	
