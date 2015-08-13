@@ -3267,7 +3267,7 @@ void registerizeHarder(Ref ast) {
     // Be sure to visit every junction at least once.
     // This avoids missing some vars because we disconnected them
     // when processing the labelled jumps.
-    for (unsigned i = EXIT_JUNCTION; i < junctions.size(); i++) {
+    for (size_t i = EXIT_JUNCTION; i < junctions.size(); i++) {
       jWorkSet.insert(i);
       for (auto b : junctions[i].inblocks) {
         bWorkSet.insert(b);
@@ -3715,7 +3715,7 @@ void ensureMinifiedNames(int n) { // make sure the nth index in minifiedNames ex
     IString str(strdupe(name.c_str())); // leaked!
     if (!RESERVED.has(str)) minifiedNames.push_back(str);
     // increment the state
-    unsigned i = 0;
+    size_t i = 0;
     while (1) {
       minifiedState[i]++;
       if (minifiedState[i] < (i == 0 ? VALID_MIN_INITS_LEN : VALID_MIN_LATERS_LEN)) break;
