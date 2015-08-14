@@ -39,5 +39,6 @@ Papers
 Books
 =====
 
-- `HTML5 Game Development Insights <http://link.springer.com/book/10.1007/978-1-4302-6698-3>`_ — Book with a chapter on Emscripten
+- `WebGL Insights <https://www.crcpress.com/WebGL-Insights/Cozzi/9781498716079>`_: Desaulniers, N. (2015). **Chapter 5: Emscripten and WebGL**. In P. Cozzi, WebGL Insights (pp. 71-88). Boca Raton, Florida: A K Peters/CRC Press. Amazon CRC Press.
+- `HTML5 Game Development Insights <http://link.springer.com/book/10.1007/978-1-4302-6698-3>`_ — Book with a chapter on Emscripten (2014).
 
