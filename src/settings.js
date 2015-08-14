@@ -557,6 +557,7 @@ var USE_LIBPNG = 0; // 1 = use libpng from emscripten-ports
 var USE_BULLET = 0; // 1 = use bullet from emscripten-ports
 var USE_VORBIS = 0; // 1 = use vorbis from emscripten-ports
 var USE_OGG = 0; // 1 = use ogg from emscripten-ports
+var USE_FREETYPE = 0; // 1 = use freetype from emscripten-ports
 
 
 // Compiler debugging options
