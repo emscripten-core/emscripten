@@ -1482,6 +1482,26 @@ int f() {
     Building.emcc(path_from_root('tests','vorbis_test.c'), ['-s', 'USE_VORBIS=1'], output_filename='a.out.js')
     self.assertContained('ALL OK', Popen(JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).communicate()[0])
 
+  def test_freetype(self):
+    # copy the Liberation Sans Bold truetype file located in the <emscripten_root>/tests/freetype to the compilation folder
+    shutil.copy2(path_from_root('tests/freetype','LiberationSansBold.ttf'), os.getcwd())
+    # build test program with the font file embed in it
+    Building.emcc(path_from_root('tests','freetype_test.c'), ['-s', 'USE_FREETYPE=1', '--embed-file', 'LiberationSansBold.ttf'], output_filename='a.out.js')
+    # the test program will print an ascii representation of a bitmap where the 'w' character has been rendered using the Liberation Sans Bold font
+    expectedOutput = '***   +***+   **\n' + \
+                     '***+  +***+  +**\n' + \
+                     '***+  *****  +**\n' + \
+                     '+**+ +**+**+ +**\n' + \
+                     '+*** +**+**+ ***\n' + \
+                     ' *** +** **+ ***\n' + \
+                     ' ***+**+ +**+**+\n' + \
+                     ' +**+**+ +**+**+\n' + \
+                     ' +*****  +*****+\n' + \
+                     '  *****   ***** \n' + \
+                     '  ****+   +***+ \n' + \
+                     '  +***+   +***+ \n'
+    self.assertContained(expectedOutput, Popen(JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).communicate()[0])
+
   def test_link_memcpy(self):
     # memcpy can show up *after* optimizations, so after our opportunity to link in libc, so it must be special-cased
     open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''

@@ -36,6 +36,7 @@ Available operations and tasks:
         struct_info
         native_optimizer
         bullet
+        freetype
         libpng
         ogg
         sdl2
@@ -148,6 +149,8 @@ if operation == 'build':
       build_port('sdl2', 'libsdl2.bc', ['-s', 'USE_SDL=2'])
     elif what == 'sdl2-image':
       build_port('sdl2-image', 'libsdl2_image.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'])
+    elif what == 'freetype':
+      build_port('freetype', 'libfreetype.a', ['-s', 'USE_FREETYPE=1'])
     else:
       shared.logging.error('unfamiliar build target: ' + what)
       sys.exit(1)
