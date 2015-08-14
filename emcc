@@ -1205,7 +1205,7 @@ try:
     logging.debug('linking: ' + str(linker_inputs))
     # force archive contents to all be included, if just archives, or if linking shared modules
     force_archive_contents = len([temp for i, temp in temp_files if not temp.endswith(STATICLIB_ENDINGS)]) == 0 or not shared.Building.can_build_standalone()
-    shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'), force_archive_contents=force_archive_contents)
+    shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'), force_archive_contents=force_archive_contents, temp_files=misc_temp_files)
     final = in_temp(target_basename + '.bc')
   else:
     if not LEAVE_INPUTS_RAW:
@@ -1822,5 +1822,4 @@ finally:
       pass
   else:
     logging.info('emcc saved files are in:' + temp_dir)
-  misc_temp_files.clean()
 

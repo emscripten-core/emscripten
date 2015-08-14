@@ -1196,14 +1196,15 @@ class Building:
     return generated_libs
 
   @staticmethod
-  def link(files, target, force_archive_contents=False):
+  def link(files, target, force_archive_contents=False, temp_files=None):
+    if not temp_files:
+      temp_files = configuration.get_temp_files()
     actual_files = []
     # Tracking unresolveds is necessary for .a linking, see below.
     # Specify all possible entry points to seed the linking process.
     # For a simple application, this would just be "main".
     unresolved_symbols = set([func[1:] for func in Settings.EXPORTED_FUNCTIONS])
     resolved_symbols = set()
-    temp_dirs = []
     def make_paths_absolute(f):
       if f.startswith('-'): # skip flags
         return f
@@ -1248,10 +1249,7 @@ class Building:
 
       cwd = os.getcwd()
       try:
-        emscripten_temp_dir = get_emscripten_temp_dir()
-        temp_dir = os.path.join(emscripten_temp_dir, 'ar_output_' + str(os.getpid()) + '_' + str(len(temp_dirs)))
-        temp_dirs.append(temp_dir)
-        safe_ensure_dirs(temp_dir)
+        temp_dir = temp_files.get_dir()
         os.chdir(temp_dir)
         contents = filter(lambda x: len(x) > 0, Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].split('\n'))
         # llvm-ar appears to just use basenames inside archives. as a result, files with the same basename
@@ -1354,11 +1352,11 @@ class Building:
     response_file = None
     if len(' '.join(link_cmd)) > 8192:
       logging.debug('using response file for llvm-link')
-      [response_fd, response_file] = mkstemp(suffix='.response', dir=TEMP_DIR)
+      response_file = temp_files.get(suffix='.response').name
 
       link_cmd = [LLVM_LINK] + ["@" + response_file]
 
-      response_fh = os.fdopen(response_fd, 'w')
+      response_fh = open(response_file, 'w')
       for arg in actual_files:
         # we can't put things with spaces in the response file
         if " " in arg:
@@ -1374,12 +1372,7 @@ class Building:
 
     output = Popen(link_cmd, stdout=PIPE).communicate()[0]
 
-    if response_file:
-      os.unlink(response_file)
-
     assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
-    for temp_dir in temp_dirs:
-      try_delete(temp_dir)
 
   # Emscripten optimizations that we run on the .ll file
   @staticmethod
