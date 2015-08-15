@@ -1499,6 +1499,13 @@ class Building:
     # Allow usage of emscripten.py without warning
     os.environ['EMSCRIPTEN_SUPPRESS_USAGE_WARNING'] = '1'
 
+    # EXPORTED_FUNCTIONS can potentially be very large so pass file between processes.
+    exports_response = os.path.join(TEMP_DIR, 'exported_functions')
+    exports_response_file = open(exports_response, 'w')
+    json.dump(Settings.EXPORTED_FUNCTIONS, exports_response_file)
+    Settings.EXPORTED_FUNCTIONS = '@' + exports_response
+    exports_response_file.close()
+
     # Run Emscripten
     settings = Settings.serialize()
     args = settings + extra_args
@@ -1531,9 +1538,14 @@ class Building:
   def get_safe_internalize():
     if not Building.can_build_standalone(): return [] # do not internalize anything
     exps = expand_response(Settings.EXPORTED_FUNCTIONS)
-    exports = ','.join(map(lambda exp: exp[1:], exps))
+    finalized_exports = '\n'.join(map(lambda exp: exp[1:], exps))
+    internalize_list = os.path.join(TEMP_DIR, 'finalized_exports')
+    internalize_list_out = open(internalize_list, 'w')
+    internalize_list_out.write(finalized_exports)
+    internalize_list_out.close()
+
     # internalize carefully, llvm 3.2 will remove even main if not told not to
-    return ['-internalize', '-internalize-public-api-list=' + exports]
+    return ['-internalize', '-internalize-public-api-file=' + internalize_list]
 
   @staticmethod
   def pick_llvm_opts(optimization_level):

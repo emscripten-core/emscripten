@@ -238,7 +238,8 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
 
     # merge forwarded data
     settings['EXPORTED_FUNCTIONS'] = forwarded_json['EXPORTED_FUNCTIONS']
-    all_exported_functions = set(settings['EXPORTED_FUNCTIONS']) # both asm.js and otherwise
+    all_exported_functions = set(shared.expand_response(settings['EXPORTED_FUNCTIONS'])) # both asm.js and otherwise
+
     for additional_export in settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE']: # additional functions to export from asm, if they are implemented
       all_exported_functions.add('_' + additional_export)
     if settings['EXPORT_FUNCTION_TABLES']:
