@@ -1198,6 +1198,14 @@ try:
 
   log_time('calculate system libraries')
 
+  # final will be an array if linking is deferred, otherwise a normal string. 
+  DEFAULT_FINAL = in_temp(target_basename + '.bc')
+  def get_final():
+    global final
+    if type(final) != str:
+      final = DEFAULT_FINAL
+    return final
+
   # First, combine the bitcode files if there are several. We must also link if we have a singleton .a
   if len(input_files) + len(extra_files_to_link) > 1 or \
      (not LEAVE_INPUTS_RAW and not (suffix(temp_files[0][1]) in BITCODE_ENDINGS or suffix(temp_files[0][1]) in DYNAMICLIB_ENDINGS) and shared.Building.is_ar(temp_files[0][1])):
@@ -1205,8 +1213,8 @@ try:
     logging.debug('linking: ' + str(linker_inputs))
     # force archive contents to all be included, if just archives, or if linking shared modules
     force_archive_contents = len([temp for i, temp in temp_files if not temp.endswith(STATICLIB_ENDINGS)]) == 0 or not shared.Building.can_build_standalone()
-    shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'), force_archive_contents=force_archive_contents, temp_files=misc_temp_files)
-    final = in_temp(target_basename + '.bc')
+    just_calculate = DEBUG != '2' # if  EMCC_DEBUG=2 , link now, otherwise defer to be more efficient
+    final = shared.Building.link(linker_inputs, DEFAULT_FINAL, force_archive_contents=force_archive_contents, temp_files=misc_temp_files, just_calculate=just_calculate)
   else:
     if not LEAVE_INPUTS_RAW:
       _, temp_file = temp_files[0]
@@ -1230,7 +1238,11 @@ try:
     intermediate_counter = 0
     def save_intermediate(name=None, suffix='js'):
       global intermediate_counter
-      shutil.copyfile(final, os.path.join(emscripten_temp_dir, 'emcc-%d%s.%s' % (intermediate_counter, '' if name is None else '-' + name, suffix)))
+      name = os.path.join(emscripten_temp_dir, 'emcc-%d%s.%s' % (intermediate_counter, '' if name is None else '-' + name, suffix))
+      if type(final) != str:
+        logging.debug('(not saving intermediate %s because deferring linking)' % name)
+        return
+      shutil.copyfile(final, name)
       intermediate_counter += 1
 
     if not LEAVE_INPUTS_RAW: save_intermediate('basebc', 'bc')
@@ -1241,7 +1253,7 @@ try:
 
     if llvm_lto >= 2:
       logging.debug('running LLVM opts as pre-LTO')
-      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), llvm_opts)
+      final = shared.Building.llvm_opt(in_temp(target_basename + '.bc'), llvm_opts, DEFAULT_FINAL)
       if DEBUG: save_intermediate('opt', 'bc')
 
     # If we can LTO, do it before dce, since it opens up dce opportunities
@@ -1250,7 +1262,7 @@ try:
       # add a manual internalize with the proper things we need to be kept alive during lto
       link_opts += shared.Building.get_safe_internalize() + ['-std-link-opts']
       # execute it now, so it is done entirely before we get to the stage of legalization etc.
-      shared.Building.llvm_opt(final, pre_fastcomp_opts + link_opts)
+      final = shared.Building.llvm_opt(final, pre_fastcomp_opts + link_opts, DEFAULT_FINAL)
       if DEBUG: save_intermediate('lto', 'bc')
       pre_fastcomp_opts = []
       link_opts = []
@@ -1261,19 +1273,17 @@ try:
     if AUTODEBUG:
       # let llvm opt directly emit ll, to skip writing and reading all the bitcode
       link_opts += ['-S']
-      shared.Building.llvm_opt(final, link_opts, final + '.link.ll')
-      final = final + '.link.ll'
+      final = shared.Building.llvm_opt(final, link_opts, get_final() + '.link.ll')
       if DEBUG: save_intermediate('linktime', 'll')
     else:
       if not save_bc:
         # Simplify LLVM bitcode for fastcomp
         link_opts = pre_fastcomp_opts + link_opts + fastcomp_opts
-      shared.Building.llvm_opt(final, link_opts)
+      final = shared.Building.llvm_opt(final, link_opts, DEFAULT_FINAL)
       if DEBUG: save_intermediate('linktime', 'bc')
       if save_bc:
         shutil.copyfile(final, save_bc)
-        shared.Building.llvm_opt(final, fastcomp_opts, final + '.adsimp.bc')
-        final += '.adsimp.bc'
+        final = shared.Building.llvm_opt(final, fastcomp_opts, get_final() + '.adsimp.bc')
         if DEBUG: save_intermediate('adsimp', 'bc')
 
   # Prepare .ll for Emscripten
@@ -1283,15 +1293,17 @@ try:
 
   if AUTODEBUG:
     logging.debug('autodebug')
-    execute([shared.PYTHON, shared.AUTODEBUGGER, final, final + '.ad.ll'])
-    final += '.ad.ll'
+    next = get_final() + '.ad.ll'
+    execute([shared.PYTHON, shared.AUTODEBUGGER, final, next])
+    final = next
     if DEBUG: save_intermediate('autodebug', 'll')
 
   # Simplify bitcode after autodebug
   if AUTODEBUG or LEAVE_INPUTS_RAW:
-    shared.Building.llvm_opt(final, fastcomp_opts, final + '.adsimp.bc')
-    final += '.adsimp.bc'
+    final = shared.Building.llvm_opt(final, fastcomp_opts, get_final() + '.adsimp.bc')
     if DEBUG: save_intermediate('adsimp', 'bc')
+
+  assert type(final) == str, 'we must have linked the final files, if linking was deferred, by this point'
 
   log_time('post-link')
 
