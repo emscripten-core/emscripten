@@ -1500,6 +1500,17 @@ class Building:
     # Allow usage of emscripten.py without warning
     os.environ['EMSCRIPTEN_SUPPRESS_USAGE_WARNING'] = '1'
 
+    # EXPORTED_FUNCTIONS can potentially be very large.
+    # 8k is a bit of an arbitrary limit, but a reasonable one
+    # for max command line size before we use a response file
+    if len(' '.join(Settings.EXPORTED_FUNCTIONS)) > 8192:
+      logging.debug('using response file for EXPORTED_FUNCTIONS')
+      exports_response = configuration.get_temp_files().get(suffix='.response').name
+      exports_response_fh = open(exports_response, 'w')
+      json.dump(Settings.EXPORTED_FUNCTIONS, exports_response_fh)
+      exports_response_fh.close()
+      Settings.EXPORTED_FUNCTIONS = '@' + exports_response
+
     # Run Emscripten
     settings = Settings.serialize()
     args = settings + extra_args
@@ -1531,10 +1542,26 @@ class Building:
   @staticmethod
   def get_safe_internalize():
     if not Building.can_build_standalone(): return [] # do not internalize anything
+
     exps = expand_response(Settings.EXPORTED_FUNCTIONS)
-    exports = ','.join(map(lambda exp: exp[1:], exps))
+    internalize_public_api = '-internalize-public-api-'
+    internalize_list = ','.join(map(lambda exp: exp[1:], exps))
+
+    # EXPORTED_FUNCTIONS can potentially be very large.
+    # 8k is a bit of an arbitrary limit, but a reasonable one
+    # for max command line size before we use a response file
+    if len(internalize_list) > 8192:
+      finalized_exports = '\n'.join(map(lambda exp: exp[1:], exps))
+      internalize_list_file = configuration.get_temp_files().get(suffix='.response').name
+      internalize_list_fh = open(internalize_list_file, 'w')
+      internalize_list_fh.write(finalized_exports)
+      internalize_list_fh.close()
+      internalize_public_api += 'file=' + internalize_list_file
+    else:
+      internalize_public_api += 'list=' + internalize_list
+
     # internalize carefully, llvm 3.2 will remove even main if not told not to
-    return ['-internalize', '-internalize-public-api-list=' + exports]
+    return ['-internalize', internalize_public_api]
 
   @staticmethod
   def pick_llvm_opts(optimization_level):
