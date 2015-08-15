@@ -58,8 +58,13 @@ endif()
 include(CheckIncludeFile)
 
 check_include_file(stdlib.h HAVE_STDLIB_H)
-if (NOT ${HAVE_STDLIB_H})
+if (NOT HAVE_STDLIB_H)
 	message(FATAL_ERROR "CMake script check_include_file failed! Could not find stdlib.h via it!")
+endif()
+
+check_include_file(sys/types.h HAVE_SYS_TYPES_H)
+if (NOT HAVE_SYS_TYPES_H)
+	message(FATAL_ERROR "CMake script check_include_file failed! Could not find sys/types.h via it!")
 endif()
 
 if (NOT CMAKE_EXECUTABLE_SUFFIX STREQUAL ".js")
@@ -70,7 +75,7 @@ SET(CMAKE_EXECUTABLE_SUFFIX ".html")
 # CMake built-in check_include_file() macro interacts with CMAKE_EXECUTABLE_SUFFIX, so make sure it works after user changes that.
 
 check_include_file(math.h HAVE_MATH_H)
-if (NOT ${HAVE_MATH_H})
+if (NOT HAVE_MATH_H)
 	message(FATAL_ERROR "CMake script check_include_file failed! Could not find math.h via it!")
 endif()
 

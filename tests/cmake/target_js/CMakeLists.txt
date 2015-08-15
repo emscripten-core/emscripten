@@ -17,7 +17,7 @@ endif()
 # Test that the CMake-provided macro check_function_exists() works.
 include(CheckFunctionExists)
 check_function_exists("strtod" HAVE_STRTOD)
-if (NOT ${HAVE_STRTOD})
+if (NOT HAVE_STRTOD)
 	message(FATAL_ERROR "CMake script check_function_exists failed! Could not detect if strtod() is supported!")
 endif()
 
@@ -30,7 +30,7 @@ endif()
 # Test that the CMake-provided macro check_include_file() works.
 include(CheckIncludeFile)
 check_include_file(stdlib.h HAVE_STDLIB_H)
-if (NOT ${HAVE_STDLIB_H})
+if (NOT HAVE_STDLIB_H)
 	message(FATAL_ERROR "CMake script check_include_file failed! Could not find stdlib.h via it!")
 endif()
 
@@ -47,7 +47,7 @@ endif()
 # CMake built-in check_include_file() macro interacts with CMAKE_EXECUTABLE_SUFFIX, so make sure it works after user changes that.
 
 check_include_file(math.h HAVE_MATH_H)
-if (NOT ${HAVE_MATH_H})
+if (NOT HAVE_MATH_H)
 	message(FATAL_ERROR "CMake script check_include_file failed! Could not find math.h via it!")
 endif()
 
