@@ -7,39 +7,15 @@ emcc - compiler helper script
 
 emcc is a drop-in replacement for a compiler like gcc or clang.
 
-Tell your build system to use this instead of the compiler, and similarly
-use emar, emranlib etc. instead of the same command without 'em'.
-
-Example uses:
-
- * For configure, instead of ./configure, cmake, etc., run emconfigure.py
-   with that command as an argument, for example
-
-    emconfigure.py ./configure [options]
-
-   emconfigure.py is a tiny script that just sets some environment vars
-   as a convenience. The command just shown is equivalent to
-
-    EMMAKEN_JUST_CONFIGURE=1 RANLIB=PATH/emranlib AR=PATH/emar CXX=PATH/em++ CC=PATH/emcc ./configure [options]
-
-   where PATH is the path to this file.
-
-   EMMAKEN_JUST_CONFIGURE tells emcc that it is being run in ./configure,
-   so it should relay everything to gcc/g++. You should not define that when
-   running make, of course.
-
-After setting that up, run your build system normally.
-
-Note the appearance of em++ instead of emcc
-for the C++ compiler. This is needed for cases where we get
-a C++ file with a C extension, in which case CMake can be told
-to run g++ on it despite the .c extension, see
-
-  https://github.com/kripken/emscripten/issues/6
-
-(If a similar situation occurs with ./configure, you can do the same there too.)
+See  emcc --help  for details.
 
 emcc can be influenced by a few environment variables:
+
+  EMCC_DEBUG - "1" will log out useful information during compilation, as well as
+               save each compiler step as an emcc-* file in the temp dir
+               (by default /tmp/emscripten_temp). "2" will save additional emcc-*
+               steps, that would normally not be separately produced (so this
+               slows down compilation).
 
   EMMAKEN_NO_SDK - Will tell emcc *not* to use the emscripten headers. Instead
                    your system headers will be used.

@@ -906,10 +906,7 @@ Debugging: You can run
 
 in order to save the test runner directory, in /tmp/emscripten_temp. All files
 created by the test will be present there. You can also use EMCC_DEBUG to
-further debug the compiler itself, which works outside of the test suite as
-well: EMCC_DEBUG=1 will emit emcc-* files in that temp dir for each stage
-of the compiler, while EMCC_DEBUG=2 will emit even more files, one for each
-js optimizer phase.
+further debug the compiler itself, see emcc.
 ==============================================================================
 
 '''
