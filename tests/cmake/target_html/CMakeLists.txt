@@ -62,6 +62,10 @@ if (NOT HAVE_STDLIB_H)
 	message(FATAL_ERROR "CMake script check_include_file failed! Could not find stdlib.h via it!")
 endif()
 
+# Artificially make up a long command line. This tests that long command lines work when passed to check_include_file().
+# This fails on Windows with CMake 3.2.0 with mingw32-make (GNU make 4.0) and older. Upgrade to CMake 3.3.1 to fix.
+set(CMAKE_C_FLAGS "-fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char -fsigned-char")
+
 check_include_file(sys/types.h HAVE_SYS_TYPES_H)
 if (NOT HAVE_SYS_TYPES_H)
 	message(FATAL_ERROR "CMake script check_include_file failed! Could not find sys/types.h via it!")
