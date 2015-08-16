@@ -77,8 +77,6 @@ int32x4 emscripten_float64x2_greaterThan(float64x2 __a, float64x2 __b) __attribu
 #define emscripten_float64x2_xor(a, b) emscripten_float64x2_fromInt32x4Bits(emscripten_int32x4_xor(emscripten_int32x4_fromFloat64x2Bits((a)), emscripten_int32x4_fromFloat64x2Bits((b))))
 float64x2 emscripten_float64x2_select(int32x4 __a, float64x2 __b, float64x2 __c) __attribute__((__nothrow__, __const__));
 
-int32x4 emscripten_int32x4_fromFloat32x4Bits(float32x4 __a) __attribute__((__nothrow__, __const__));
-int32x4 emscripten_int32x4_fromFloat32x4(float32x4 __a) __attribute__((__nothrow__, __const__));
 int32x4 emscripten_int32x4_fromFloat64x2Bits(float64x2 __a) __attribute__((__nothrow__, __const__));
 int32x4 emscripten_int32x4_fromFloat64x2(float64x2 __a) __attribute__((__nothrow__, __const__));
 
@@ -108,11 +106,6 @@ int16x8 emscripten_int16x8_not(int16x8 __a) __attribute__((__nothrow__, __const_
 int16x8 emscripten_int16x8_and(int16x8 __a, int16x8 __b) __attribute__((__nothrow__, __const__));
 int16x8 emscripten_int16x8_or(int16x8 __a, int16x8 __b) __attribute__((__nothrow__, __const__));
 int16x8 emscripten_int16x8_xor(int16x8 __a, int16x8 __b) __attribute__((__nothrow__, __const__));
-
-int32x4 emscripten_int32x4_not(int32x4 __a) __attribute__((__nothrow__, __const__));
-int32x4 emscripten_int32x4_and(int32x4 __a, int32x4 __b) __attribute__((__nothrow__, __const__));
-int32x4 emscripten_int32x4_or(int32x4 __a, int32x4 __b) __attribute__((__nothrow__, __const__));
-int32x4 emscripten_int32x4_xor(int32x4 __a, int32x4 __b) __attribute__((__nothrow__, __const__));
 
 float32x4 emscripten_float32x4_load1(const void *__p) __attribute__((__nothrow__, __const__));
 float32x4 emscripten_float32x4_load2(const void *__p) __attribute__((__nothrow__, __const__));
