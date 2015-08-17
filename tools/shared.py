@@ -1196,14 +1196,15 @@ class Building:
     return generated_libs
 
   @staticmethod
-  def link(files, target, force_archive_contents=False):
+  def link(files, target, force_archive_contents=False, temp_files=None, just_calculate=False):
+    if not temp_files:
+      temp_files = configuration.get_temp_files()
     actual_files = []
     # Tracking unresolveds is necessary for .a linking, see below.
     # Specify all possible entry points to seed the linking process.
     # For a simple application, this would just be "main".
     unresolved_symbols = set([func[1:] for func in Settings.EXPORTED_FUNCTIONS])
     resolved_symbols = set()
-    temp_dirs = []
     def make_paths_absolute(f):
       if f.startswith('-'): # skip flags
         return f
@@ -1248,10 +1249,7 @@ class Building:
 
       cwd = os.getcwd()
       try:
-        emscripten_temp_dir = get_emscripten_temp_dir()
-        temp_dir = os.path.join(emscripten_temp_dir, 'ar_output_' + str(os.getpid()) + '_' + str(len(temp_dirs)))
-        temp_dirs.append(temp_dir)
-        safe_ensure_dirs(temp_dir)
+        temp_dir = temp_files.get_dir()
         os.chdir(temp_dir)
         contents = filter(lambda x: len(x) > 0, Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].split('\n'))
         # llvm-ar appears to just use basenames inside archives. as a result, files with the same basename
@@ -1345,41 +1343,38 @@ class Building:
 
     # Finish link
     actual_files = unique_ordered(actual_files) # tolerate people trying to link a.so a.so etc.
-    logging.debug('emcc: llvm-linking: %s to %s', actual_files, target)
 
     # check for too-long command line
-    link_cmd = [LLVM_LINK] + actual_files + ['-o', target]
+    link_args = actual_files
     # 8k is a bit of an arbitrary limit, but a reasonable one
     # for max command line size before we use a response file
     response_file = None
-    if len(' '.join(link_cmd)) > 8192:
+    if len(' '.join(link_args)) > 8192:
       logging.debug('using response file for llvm-link')
-      [response_fd, response_file] = mkstemp(suffix='.response', dir=TEMP_DIR)
+      response_file = temp_files.get(suffix='.response').name
 
-      link_cmd = [LLVM_LINK] + ["@" + response_file]
+      link_args = ["@" + response_file]
 
-      response_fh = os.fdopen(response_fd, 'w')
+      response_fh = open(response_file, 'w')
       for arg in actual_files:
         # we can't put things with spaces in the response file
         if " " in arg:
-          link_cmd.append(arg)
+          link_args.append(arg)
         else:
           response_fh.write(arg + "\n")
       response_fh.close()
-      link_cmd.append("-o")
-      link_cmd.append(target)
 
-      if len(' '.join(link_cmd)) > 8192:
+      if len(' '.join(link_args)) > 8192:
         logging.warning('emcc: link command line is very long, even with response file -- use paths with no spaces')
 
-    output = Popen(link_cmd, stdout=PIPE).communicate()[0]
-
-    if response_file:
-      os.unlink(response_file)
-
-    assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
-    for temp_dir in temp_dirs:
-      try_delete(temp_dir)
+    if not just_calculate:
+      logging.debug('emcc: llvm-linking: %s to %s', actual_files, target)
+      output = Popen([LLVM_LINK] + link_args + ['-o', target], stdout=PIPE).communicate()[0]
+      assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
+      return target
+    else:
+      # just calculating; return the link arguments which is the final list of files to link
+      return link_args
 
   # Emscripten optimizations that we run on the .ll file
   @staticmethod
@@ -1396,6 +1391,11 @@ class Building:
   #            optimization passes passed to llvm opt
   @staticmethod
   def llvm_opt(filename, opts, out=None):
+    inputs = filename
+    if type(inputs) is str:
+      inputs = [inputs]
+    else:
+      assert out, 'must provide out if llvm_opt on a list of inputs'
     if type(opts) is int:
       opts = Building.pick_llvm_opts(opts)
     opts = opts[:]
@@ -1406,12 +1406,13 @@ class Building:
       else:
         opts += ['-bb-vectorize-vector-bits=128', '-force-vector-width=4']
 
-    logging.debug('emcc: LLVM opts: ' + ' '.join(opts))
+    logging.debug('emcc: LLVM opts: ' + ' '.join(opts) + '  [num inputs: ' + str(len(inputs)) + ']')
     target = out or (filename + '.opt.bc')
-    output = Popen([LLVM_OPT, filename] + opts + ['-o', target], stdout=PIPE).communicate()[0]
+    output = Popen([LLVM_OPT] + inputs + opts + ['-o', target], stdout=PIPE).communicate()[0]
     assert os.path.exists(target), 'Failed to run llvm optimizations: ' + output
     if not out:
       shutil.move(filename + '.opt.bc', filename)
+    return target
 
   @staticmethod
   def llvm_opts(filename): # deprecated version, only for test runner. TODO: remove

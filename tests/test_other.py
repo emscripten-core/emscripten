@@ -1878,28 +1878,32 @@ int f() {
       assert 'foo.o: ' in output, '-%s failed to produce the right output: %s' % (opt, output)
       assert 'error' not in err, 'Unexpected stderr: ' + err
 
-  # TODO: test only worked in non-fastcomp
-  def test_chunking(self):
-    return self.skip('non-fastcomp is deprecated and fails in 3.5')
+  def test_emcc_debug_files(self):
     if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
-    if os.environ.get('EMCC_CORES'): return self.skip('cannot run if cores are altered')
-    if multiprocessing.cpu_count() < 2: return self.skip('need multiple cores')
-    try:
-      os.environ['EMCC_DEBUG'] = '1'
-      os.environ['EMCC_CORES'] = '2' # standardize over machines
-      for asm, linkable, chunks in [
-          (0, 0, 2), (0, 1, 2),
-          (1, 0, 2), (1, 1, 2)
-        ]:
-        print asm, linkable, chunks
-        output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1', '-s', 'LINKABLE=%d' % linkable, '-s', 'ASM_JS=%d' % asm] + (['-O2'] if asm else []), stdout=PIPE, stderr=PIPE).communicate()
-        ok = False
-        for c in range(chunks, chunks+2):
-          ok = ok or ('phase 2 working on %d chunks' % c in err)
-        assert ok, err
-    finally:
-      del os.environ['EMCC_DEBUG']
-      del os.environ['EMCC_CORES']
+    if not os.path.exists(CANONICAL_TEMP_DIR):
+      os.makedirs(CANONICAL_TEMP_DIR)
+    for opts in [0, 1, 2, 3]:
+      for debug in [None, '1', '2']:
+        print opts, debug
+        try:
+          if debug: os.environ['EMCC_DEBUG'] = debug
+          for x in os.listdir(CANONICAL_TEMP_DIR):
+            if x.startswith('emcc-'):
+              os.unlink(os.path.join(CANONICAL_TEMP_DIR, x))
+          Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-O'+ str(opts)], stdout=PIPE, stderr=PIPE).communicate()
+          if debug is None:
+            for x in os.listdir(CANONICAL_TEMP_DIR):
+              if x.startswith('emcc-'):
+                assert 0
+          elif debug == '1':
+            assert os.path.exists(os.path.join(CANONICAL_TEMP_DIR, 'emcc-0-linktime.bc'))
+            assert os.path.exists(os.path.join(CANONICAL_TEMP_DIR, 'emcc-1-original.js'))
+          elif debug == '2':
+            assert os.path.exists(os.path.join(CANONICAL_TEMP_DIR, 'emcc-0-basebc.bc'))
+            assert os.path.exists(os.path.join(CANONICAL_TEMP_DIR, 'emcc-1-linktime.bc'))
+            assert os.path.exists(os.path.join(CANONICAL_TEMP_DIR, 'emcc-2-original.js'))
+        finally:
+          if debug: del os.environ['EMCC_DEBUG']
 
   def test_debuginfo(self):
     if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
