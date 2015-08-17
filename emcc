@@ -1226,6 +1226,8 @@ try:
   # Optimize, if asked to
   if not LEAVE_INPUTS_RAW:
     link_opts = [] if debug_level >= 4 else ['-strip-debug'] # remove LLVM debug if we are not asked for it
+    if not shared.Settings.ASSERTIONS:
+      link_opts += ['-disable-verify']
 
     if llvm_lto >= 2:
       logging.debug('running LLVM opts as pre-LTO')
