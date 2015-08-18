@@ -7508,6 +7508,18 @@ int main(int argc, char **argv) {
     self.emcc_args += ['--js-library', os.path.join(self.get_dir(), 'lib.js')]
     self.do_run(open(os.path.join(self.get_dir(), 'main.cpp'), 'r').read(), 'able to run memprof')
 
+  def test_fs_dict(self):
+      open(self.in_dir('pre.js'), 'w').write('''
+        var Module = {};
+        Module['preRun'] = function() {
+            console.log(typeof FS.filesystems['MEMFS']);
+            console.log(typeof FS.filesystems['IDBFS']);
+            console.log(typeof FS.filesystems['NODEFS']);
+        };
+      ''')
+      self.emcc_args += ['--pre-js', 'pre.js']
+      self.do_run('', 'object\nobject\nobject')
+
 # Generate tests for everything
 def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
     typed_arrays=0, emcc_args=None, env=None):
