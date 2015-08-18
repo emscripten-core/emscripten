@@ -28,6 +28,11 @@ int EventHandler(void *userdata, SDL_Event *event) {
         }
       }
       break;
+    case SDL_TEXTINPUT:
+      if (event->text.text[0] == 'A') {
+        printf("a\n");result *= 5;
+      }
+      break;
     default: /* Report an unhandled event */
       printf("I don't know what this event is (type=%d)!\n", event->type);
   }
