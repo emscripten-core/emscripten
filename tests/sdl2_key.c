@@ -16,7 +16,7 @@ int EventHandler(void *userdata, SDL_Event *event) {
         case SDLK_LEFT: printf("left\n"); result *= 11; break;
         case SDLK_DOWN: printf("down\n"); result *= 13; break;
         case SDLK_UP: printf("up\n"); result *= 17; break;
-        case SDLK_a: break;
+        case SDLK_a: printf("a\n"); result *= 19; break;
         default: {
           if (event->key.keysym.scancode == SDL_SCANCODE_B) {
             printf("b scancode\n"); result *= 23; break;
@@ -30,7 +30,7 @@ int EventHandler(void *userdata, SDL_Event *event) {
       break;
     case SDL_TEXTINPUT:
       if (event->text.text[0] == 'A') {
-        printf("a\n");result *= 19;
+        printf("a\n");result *= 5;
       }
       break;
     default: /* Report an unhandled event */

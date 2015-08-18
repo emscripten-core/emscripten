@@ -2103,7 +2103,7 @@ Module['_main'] = function() {
       open(os.path.join(self.get_dir(), 'sdl2_key.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_key.c')).read()))
 
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_key.c'), '-o', 'page.html'] + defines + ['-s', 'USE_SDL=2','--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''', '-s', 'NO_EXIT_RUNTIME=1']).communicate()
-      self.run_browser('page.html', '', '/report_result?7436429')
+      self.run_browser('page.html', '', '/report_result?37182145')
 
   def test_sdl2_text(self):
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
