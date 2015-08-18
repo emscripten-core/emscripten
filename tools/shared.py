@@ -1499,12 +1499,16 @@ class Building:
     # Allow usage of emscripten.py without warning
     os.environ['EMSCRIPTEN_SUPPRESS_USAGE_WARNING'] = '1'
 
-    # EXPORTED_FUNCTIONS can potentially be very large so pass file between processes.
-    exports_response = os.path.join(TEMP_DIR, 'exported_functions')
-    exports_response_file = open(exports_response, 'w')
-    json.dump(Settings.EXPORTED_FUNCTIONS, exports_response_file)
-    Settings.EXPORTED_FUNCTIONS = '@' + exports_response
-    exports_response_file.close()
+    # EXPORTED_FUNCTIONS can potentially be very large.
+    # 8k is a bit of an arbitrary limit, but a reasonable one
+    # for max command line size before we use a response file
+    if len(' '.join(Settings.EXPORTED_FUNCTIONS)) > 8192:
+      logging.debug('using response file for EXPORTED_FUNCTIONS')
+      exports_response = configuration.get_temp_files().get(suffix='.response').name
+      exports_response_fh = open(exports_response, 'w')
+      json.dump(Settings.EXPORTED_FUNCTIONS, exports_response_fh)
+      exports_response_fh.close()
+      Settings.EXPORTED_FUNCTIONS = '@' + exports_response
 
     # Run Emscripten
     settings = Settings.serialize()

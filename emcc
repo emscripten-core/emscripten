@@ -895,10 +895,8 @@ try:
       value = value.replace('\\', '\\\\')
     exec('shared.Settings.' + key + ' = ' + value)
     if key == 'EXPORTED_FUNCTIONS':
-      if original_exported_response:
-        shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = original_exported_response
-      else:
-        shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = shared.Settings.EXPORTED_FUNCTIONS[:] # used for warnings in emscripten.py
+      # used for warnings in emscripten.py
+      shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = original_exported_response or shared.Settings.EXPORTED_FUNCTIONS[:]
 
   try:
     assert shared.Settings.ASM_JS > 0, 'ASM_JS must be enabled in fastcomp'
