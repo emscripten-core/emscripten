@@ -3855,6 +3855,24 @@ var Module = {
       extern charfunc get();
     ''')
 
+  def test_dylink_funcpointers_float(self):
+    self.dylink_test(r'''
+      #include <stdio.h>
+      #include "header.h"
+      int sidey(floatfunc f);
+      float areturn0(float f) { printf("hello 0: %f\n", f); return 0; }
+      float areturn1(float f) { printf("hello 1: %f\n", f); return 1; }
+      float areturn2(float f) { printf("hello 2: %f\n", f); return 2; }
+      int main(int argc, char **argv) {
+        volatile floatfunc table[3] = { areturn0, areturn1, areturn2 };
+        printf("got: %d\n", (int)table[sidey(NULL)](12.34));
+        return 0;
+      }
+    ''', '''
+      #include "header.h"
+      int sidey(floatfunc f) { if (f) f(56.78); return 1; }
+    ''', 'hello 1: 12.340000\ngot: 1\n', header='typedef float (*floatfunc)(float);')
+
   def test_dylink_global_init(self):
     self.dylink_test(r'''
       #include <stdio.h>
