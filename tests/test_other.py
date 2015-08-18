@@ -4933,6 +4933,57 @@ int main(int argc, char** argv) {
       test(['-O' + str(opts)], 'no visible function tables')
       test(['-O' + str(opts), '-s', 'EMULATED_FUNCTION_POINTERS=1'], 'function table: ')
 
+  def test_emulated_function_pointers_2(self):
+    src = r'''
+      #include <emscripten.h>
+      typedef void (*fp)();
+      void one() { EM_ASM( Module.print('one') ); }
+      void two() { EM_ASM( Module.print('two') ); }
+      void test() {
+        volatile fp f = one;
+        f();
+        f = two;
+        f();
+      }
+      int main(int argc, char **argv) {
+        test();
+        // swap them!
+        EM_ASM_INT({
+          var one = $0;
+          var two = $1;
+          if (typeof FUNCTION_TABLE_v === 'undefined') {
+            Module.print('no');
+            return;
+          }
+          var temp = FUNCTION_TABLE_v[one];
+          FUNCTION_TABLE_v[one] = FUNCTION_TABLE_v[two];
+          FUNCTION_TABLE_v[two] = temp;
+        }, (int)&one, (int)&two);
+        test();
+        return 0;
+      }
+    '''
+    open('src.c', 'w').write(src)
+
+    flipped = 'one\ntwo\ntwo\none\n'
+    unchanged = 'one\ntwo\none\ntwo\n'
+    no_table = 'one\ntwo\nno\none\ntwo\n'
+
+    def test(args, expected):
+      print args, expected.replace('\n', ' ')
+      Popen([PYTHON, EMCC, 'src.c'] + args).communicate()
+      self.assertContained(expected, run_js(self.in_dir('a.out.js')))
+
+    for opts in [0, 1, 2]:
+      test(['-O' + str(opts)], no_table)
+      test(['-O' + str(opts), '-s', 'EMULATED_FUNCTION_POINTERS=1'], flipped)
+      test(['-O' + str(opts), '-s', 'EMULATED_FUNCTION_POINTERS=2'], flipped)
+      test(['-O' + str(opts), '-s', 'EMULATED_FUNCTION_POINTERS=1', '-s', 'RELOCATABLE=1'], flipped)
+      test(['-O' + str(opts), '-s', 'EMULATED_FUNCTION_POINTERS=2', '-s', 'RELOCATABLE=1'], unchanged) # with both of those, we optimize and you cannot flip them
+      test(['-O' + str(opts), '-s', 'MAIN_MODULE=1'], unchanged) # default for modules is optimized
+      test(['-O' + str(opts), '-s', 'MAIN_MODULE=1', '-s', 'EMULATED_FUNCTION_POINTERS=2'], unchanged)
+      test(['-O' + str(opts), '-s', 'MAIN_MODULE=1', '-s', 'EMULATED_FUNCTION_POINTERS=1'], flipped) # but you can disable that
+
   def test_file_packager_eval(self):
     BAD = 'Module = eval('
     src = path_from_root('tests', 'hello_world.c')

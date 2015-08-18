@@ -465,7 +465,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
     # extra coverages
     for emulate_casts in [0, 1]:
-      for emulate_fps in [0, 1]:
+      for emulate_fps in [0, 1, 2]:
         print emulate_casts, emulate_fps
         Settings.EMULATE_FUNCTION_POINTER_CASTS = emulate_casts
         Settings.EMULATED_FUNCTION_POINTERS = emulate_fps
