@@ -3646,7 +3646,7 @@ int 123
 ok
 ''', post_build=self.dlfcn_post_build)
 
-  def dylink_test(self, main, side, expected, header=None, main_emcc_args=[], force_c=False, need_reverse=True):
+  def dylink_test(self, main, side, expected, header=None, main_emcc_args=[], force_c=False, need_reverse=True, auto_load=True):
     if header:
       open('header.h', 'w').write(header)
 
@@ -3678,12 +3678,13 @@ ok
       # main settings
       Settings.MAIN_MODULE = 1
       Settings.SIDE_MODULE = 0
-      open('pre.js', 'w').write('''
+      if auto_load:
+        open('pre.js', 'w').write('''
 var Module = {
   dynamicLibraries: ['liblib.so'],
 };
   ''')
-      self.emcc_args += ['--pre-js', 'pre.js'] + main_emcc_args
+        self.emcc_args += ['--pre-js', 'pre.js'] + main_emcc_args
 
       if type(main) == str:
         self.do_run(main, expected, force_c=force_c)
@@ -3770,6 +3771,67 @@ var Module = {
       #include "header.h"
       int sidey(voidfunc f) { if (f) f(); return 1; }
     ''', 'hello 1\n', header='typedef void (*voidfunc)();')
+
+  def test_dylink_funcpointers2(self):
+    self.dylink_test(r'''
+      #include "header.h"
+      #include <emscripten.h>
+      void left1() { printf("left1\n"); }
+      void left2() { printf("left2\n"); }
+      voidfunc getleft1() { return left1; }
+      voidfunc getleft2() { return left2; }
+      int main(int argc, char **argv) {
+        printf("main\n");
+        EM_ASM({
+          // make the function table sizes a non-power-of-two
+          Runtime.alignFunctionTables();
+          Module['FUNCTION_TABLE_v'].push(0, 0, 0, 0, 0);
+          var newSize = Runtime.alignFunctionTables();
+          //Module.print('new size of function tables: ' + newSize);
+          // when masked, the two function pointers 1 and 2 should not happen to fall back to the right place
+          assert(((newSize+1) & 3) !== 1 || ((newSize+2) & 3) !== 2);
+          Runtime.loadDynamicLibrary('liblib.so');
+        });
+        volatilevoidfunc f;
+        f = (volatilevoidfunc)left1;
+        f();
+        f = (volatilevoidfunc)left2;
+        f();
+        f = (volatilevoidfunc)getright1();
+        f();
+        f = (volatilevoidfunc)getright2();
+        f();
+        second();
+        return 0;
+      }
+    ''', r'''
+      #include "header.h"
+      void right1() { printf("right1\n"); }
+      void right2() { printf("right2\n"); }
+      voidfunc getright1() { return right1; }
+      voidfunc getright2() { return right2; }
+      void second() {
+        printf("second\n");
+        volatilevoidfunc f;
+        f = (volatilevoidfunc)getleft1();
+        f();
+        f = (volatilevoidfunc)getleft2();
+        f();
+        f = (volatilevoidfunc)right1;
+        f();
+        f = (volatilevoidfunc)right2;
+        f();
+      }
+    ''', 'main\nleft1\nleft2\nright1\nright2\nsecond\nleft1\nleft2\nright1\nright2\n', header='''
+      #include <stdio.h>
+      typedef void (*voidfunc)();
+      typedef volatile voidfunc volatilevoidfunc;
+      voidfunc getleft1();
+      voidfunc getleft2();
+      voidfunc getright1();
+      voidfunc getright2();
+      void second();
+    ''', need_reverse=False, auto_load=False)
 
   def test_dylink_funcpointers_wrapper(self):
     self.dylink_test(r'''
