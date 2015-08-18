@@ -1541,15 +1541,26 @@ class Building:
   @staticmethod
   def get_safe_internalize():
     if not Building.can_build_standalone(): return [] # do not internalize anything
+
     exps = expand_response(Settings.EXPORTED_FUNCTIONS)
-    finalized_exports = '\n'.join(map(lambda exp: exp[1:], exps))
-    internalize_list = os.path.join(TEMP_DIR, 'finalized_exports')
-    internalize_list_out = open(internalize_list, 'w')
-    internalize_list_out.write(finalized_exports)
-    internalize_list_out.close()
+    internalize_public_api = '-internalize-public-api-'
+    internalize_list = ','.join(map(lambda exp: exp[1:], exps))
+
+    # EXPORTED_FUNCTIONS can potentially be very large.
+    # 8k is a bit of an arbitrary limit, but a reasonable one
+    # for max command line size before we use a response file
+    if len(internalize_list) > 8192:
+      finalized_exports = '\n'.join(map(lambda exp: exp[1:], exps))
+      internalize_list_file = configuration.get_temp_files().get(suffix='.response').name
+      internalize_list_fh = open(internalize_list_file, 'w')
+      internalize_list_fh.write(finalized_exports)
+      internalize_list_fh.close()
+      internalize_public_api += 'file=' + internalize_list_file
+    else:
+      internalize_public_api += 'list=' + internalize_list
 
     # internalize carefully, llvm 3.2 will remove even main if not told not to
-    return ['-internalize', '-internalize-public-api-file=' + internalize_list]
+    return ['-internalize', internalize_public_api]
 
   @staticmethod
   def pick_llvm_opts(optimization_level):
