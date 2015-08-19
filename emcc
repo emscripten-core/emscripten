@@ -858,8 +858,12 @@ try:
   # Apply -s settings in newargs here (after optimization levels, so they can override them)
   for change in settings_changes:
     key, value = change.split('=')
+    original_exported_response = False
+
     if value[0] == '@':
       if key not in DEFERRED_REPONSE_FILES:
+        if key == 'EXPORTED_FUNCTIONS':
+          original_exported_response = value
         value = open(value[1:]).read()
       else:
         value = '"' + value + '"'
@@ -867,7 +871,8 @@ try:
       value = value.replace('\\', '\\\\')
     exec('shared.Settings.' + key + ' = ' + value)
     if key == 'EXPORTED_FUNCTIONS':
-      shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = shared.Settings.EXPORTED_FUNCTIONS[:] # used for warnings in emscripten.py
+      # used for warnings in emscripten.py
+      shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = original_exported_response or shared.Settings.EXPORTED_FUNCTIONS[:]
 
   try:
     assert shared.Settings.ASM_JS > 0, 'ASM_JS must be enabled in fastcomp'

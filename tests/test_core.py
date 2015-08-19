@@ -1,6 +1,6 @@
 # coding=utf-8
 
-import glob, hashlib, os, re, shutil, subprocess, sys
+import glob, hashlib, os, re, shutil, subprocess, sys, json
 from textwrap import dedent
 import tools.shared
 from tools.shared import *
@@ -6486,6 +6486,42 @@ def process(filename):
     self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=@exps']
     self.do_run(src, '''waka 5!''')
     assert 'other_function' in open('src.cpp.o.js').read()
+
+  def test_large_exported_response(self):
+    src = r'''
+      #include <stdio.h>
+      #include <stdlib.h>
+      #include <emscripten.h>
+
+      extern "C" {
+      '''
+
+    js_funcs = []
+    num_exports = 5000
+    count = 0
+    while count < num_exports:
+        src += 'int exported_func_from_response_file_%d () { return %d;}\n' % (count, count)
+        js_funcs.append('_exported_func_from_response_file_%d' % count)
+        count += 1
+
+    src += r'''
+      }
+
+      int main() {
+        int x = EM_ASM_INT_V({ return Module._exported_func_from_response_file_4999() });
+        emscripten_run_script_string(""); // Add a reference to a symbol that exists in src/deps_info.json to uncover issue #2836 in the test suite.
+        printf("waka %d!\n", x);
+        return 0;
+      }
+    '''
+
+    js_funcs.append('_main')
+    exported_func_json_file = os.path.join(self.get_dir(), 'large_exported_response.json')
+    open(exported_func_json_file, 'wb').write(json.dumps(js_funcs))
+
+    self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=@' + exported_func_json_file]
+    self.do_run(src, '''waka 4999!''')
+    assert '_exported_func_from_response_file_1' in open('src.cpp.o.js').read()
 
   def test_add_function(self):
     Settings.INVOKE_RUN = 0
