@@ -1504,7 +1504,7 @@ class Building:
     # 8k is a bit of an arbitrary limit, but a reasonable one
     # for max command line size before we use a response file
     if len(' '.join(Settings.EXPORTED_FUNCTIONS)) > 8192:
-      logging.debug('using response file for EXPORTED_FUNCTIONS')
+      logging.debug('using response file for EXPORTED_FUNCTIONS in emscripten()')
       exports_response = configuration.get_temp_files().get(suffix='.response').name
       exports_response_fh = open(exports_response, 'w')
       json.dump(Settings.EXPORTED_FUNCTIONS, exports_response_fh)
@@ -1551,6 +1551,7 @@ class Building:
     # 8k is a bit of an arbitrary limit, but a reasonable one
     # for max command line size before we use a response file
     if len(internalize_list) > 8192:
+      logging.debug('using response file for EXPORTED_FUNCTIONS in internalize')
       finalized_exports = '\n'.join(map(lambda exp: exp[1:], exps))
       internalize_list_file = configuration.get_temp_files().get(suffix='.response').name
       internalize_list_fh = open(internalize_list_file, 'w')
