@@ -912,22 +912,28 @@ further debug the compiler itself, see emcc.
 '''
     time.sleep(2)
 
-  # If we asked to run random tests, do that
+  # If we were asked to run random tests, do that
   first = sys.argv[1]
   if first.startswith('random'):
     num = 1
     first = first[6:]
+    base_module = 'default'
+    relevant_modes = test_modes
     if len(first) > 0:
+      if first.startswith('other'):
+        base_module = 'other'
+        relevant_modes = ['other']
+        first = first.replace('other', '')
       num = int(first)
     for m in modules:
-      if hasattr(m, 'default'):
+      if hasattr(m, base_module):
         sys.argv = [sys.argv[0]]
-        tests = filter(lambda t: t.startswith('test_'), dir(getattr(m, 'default')))
+        tests = filter(lambda t: t.startswith('test_'), dir(getattr(m, base_module)))
         print
         chosen = set()
         while len(chosen) < num:
           test = random.choice(tests)
-          mode = random.choice(test_modes)
+          mode = random.choice(relevant_modes)
           print '* ' + mode + '.' + test
           chosen.add(mode + '.' + test)
         sys.argv += list(chosen)
