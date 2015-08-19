@@ -916,14 +916,16 @@ try:
 
   if shared.Settings.MAIN_MODULE:
     assert not shared.Settings.SIDE_MODULE
-    shared.Settings.INCLUDE_FULL_LIBRARY = 1
+    if shared.Settings.MAIN_MODULE != 2:
+      shared.Settings.INCLUDE_FULL_LIBRARY = 1
   elif shared.Settings.SIDE_MODULE:
     assert not shared.Settings.MAIN_MODULE
     memory_init_file = False # memory init file is not supported with side modules, must be executable synchronously (for dlopen)
 
   if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
     assert shared.Settings.ASM_JS, 'module linking requires asm.js output (-s ASM_JS=1)'
-    shared.Settings.LINKABLE = 1 # TODO: add FORCE_DCE option for the brave people that do want to dce here and in side modules
+    if shared.Settings.MAIN_MODULE != 2:
+      shared.Settings.LINKABLE = 1
     shared.Settings.RELOCATABLE = 1
     shared.Settings.PRECISE_I64_MATH = 1 # other might use precise math, we need to be able to print it
     assert not use_closure_compiler, 'cannot use closure compiler on shared modules'

@@ -418,6 +418,10 @@ var RELOCATABLE = 0; // If set to 1, we emit relocatable code from the LLVM back
 
 var MAIN_MODULE = 0; // A main module is a file compiled in a way that allows us to link it to
                      // a side module using emlink.py.
+                     //  1: Normal main module.
+                     //  2: DCE'd main module. We eliminate dead code normally. If a side
+                     //     module needs something from main, it is up to you to make sure
+                     //     it is kept alive.
 var SIDE_MODULE = 0; // Corresponds to MAIN_MODULE
 
 var RUNTIME_LINKED_LIBS = []; // If this is a main module (MAIN_MODULE == 1), then
