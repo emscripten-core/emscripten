@@ -954,7 +954,7 @@ int f() {
       _libf2();
     ''')
 
-    Building.emcc(lib_name, ['-s', 'EXPORT_ALL=1', '--post-js', 'main.js'], output_filename='a.out.js')
+    Building.emcc(lib_name, ['-s', 'EXPORT_ALL=1', '-s', 'LINKABLE=1', '--post-js', 'main.js'], output_filename='a.out.js')
 
     self.assertContained('libf1\nlibf2\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 

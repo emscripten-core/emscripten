@@ -2055,6 +2055,7 @@ def process(filename):
       # test EXPORT_ALL
       Settings.EXPORTED_FUNCTIONS = []
       Settings.EXPORT_ALL = 1
+      Settings.LINKABLE = 1
       self.do_run_from_file(src, output, post_build=check)
 
   def test_emscripten_get_now(self):
