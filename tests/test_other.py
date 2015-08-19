@@ -5019,6 +5019,8 @@ int main(int argc, char** argv) {
     printf   = test(                                   library_args=['-DUSE_PRINTF'])                       # printf is not used in main, but libc was linked in, so it's there
     dce      = test(main_args=['-s', 'MAIN_MODULE=2'])                                                      # dce in main, and side happens to be ok since it uses puts as well
     dce_fail = test(main_args=['-s', 'MAIN_MODULE=2'], library_args=['-DUSE_PRINTF'], expected='undefined') # printf is not used in main, and we dce, so we failz
+    dce_save = test(main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_main", "_printf"]'],
+                                                       library_args=['-DUSE_PRINTF'])                       # exporting printf in main keeps it alive for the library
 
     def percent_diff(x, y):
       small = min(x, y)
@@ -5028,6 +5030,7 @@ int main(int argc, char** argv) {
     assert percent_diff(full, printf) < 4
     assert percent_diff(dce, dce_fail) < 4
     assert dce < 0.2*full # big effect, 80%+ is gone
+    assert dce_save > 1.1*dce # save exported all of printf
 
   def test_file_packager_eval(self):
     BAD = 'Module = eval('
