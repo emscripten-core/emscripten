@@ -982,7 +982,7 @@ def main(args, compiler_engine, cache, temp_files, DEBUG, DEBUG_CACHE):
   emscript(args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine,
            temp_files=temp_files, DEBUG=DEBUG, DEBUG_CACHE=DEBUG_CACHE)
 
-def _main(environ, args=None):
+def _main(args=None):
   if args is None:
     args = sys.argv[1:]
 
@@ -1037,7 +1037,7 @@ def _main(environ, args=None):
                     help='Hides debug output')
   parser.add_option('--suppressUsageWarning',
                     action='store_true',
-                    default=environ.get('EMSCRIPTEN_SUPPRESS_USAGE_WARNING'),
+                    default=os.environ.get('EMSCRIPTEN_SUPPRESS_USAGE_WARNING'),
                     help=('Suppress usage warning'))
 
   # Convert to the same format that argparse would have produced.
@@ -1086,4 +1086,5 @@ WARNING: You should normally never use this! Use emcc instead.
   ))
 
 if __name__ == '__main__':
-  _main(environ=os.environ)
+  _main()
+
