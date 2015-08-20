@@ -5643,29 +5643,48 @@ return malloc(size);
       test()
 
   def test_sse1(self):
-    return self.skip('TODO: This test fails due to bugs #2840, #3044, #3045, #3046 and #3048 (also see #3043 and #3049)')
+    if self.is_emterpreter(): return self.skip('todo')
+    if 'SAFE_HEAP=1' in self.emcc_args: return self.skip('SSE with SAFE_HEAP=1 breaks due to NaN canonicalization!')
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
-      self.emcc_args = orig_args + mode
+      self.emcc_args = orig_args + mode + ['-msse']
       self.do_run(open(path_from_root('tests', 'test_sse1.cpp'), 'r').read(), 'Success!')
 
   # Tests the full SSE1 API.
   def test_sse1_full(self):
-    return self.skip('TODO: This test fails due to bugs #2840, #3044, #3045, #3046 and #3048 (also see #3043 and #3049)')
-    if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('test_sse1_full requires SpiderMonkey to run.')
+    if self.is_emterpreter(): return self.skip('todo')
     Popen([CLANG, path_from_root('tests', 'test_sse1_full.cpp'), '-o', 'test_sse1_full'] + get_clang_native_args(), stdout=PIPE, stderr=PIPE).communicate()
     native_result, err = Popen('./test_sse1_full', stdout=PIPE, stderr=PIPE).communicate()
+    native_result = native_result.replace('\r\n', '\n') # Windows line endings fix
 
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
-      self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests')]
+      self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests'), '-msse']
       self.do_run(open(path_from_root('tests', 'test_sse1_full.cpp'), 'r').read(), native_result)
+
+  # Tests the full SSE2 API.
+  def test_sse2_full(self):
+    return self.skip('todo: No Float64x2 type available anymore.')
+    if self.is_emterpreter(): return self.skip('todo')
+    if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('test_sse2_full requires SpiderMonkey to run.')
+    if '-O1' in self.emcc_args or '-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args:
+      return self.skip('TODO: SIMD does not currently validate as asm.js in SpiderMonkey, run only in unoptimized mode.')
+    Popen([CLANG, path_from_root('tests', 'test_sse2_full.cpp'), '-o', 'test_sse2_full'] + get_clang_native_args(), stdout=PIPE, stderr=PIPE).communicate()
+    native_result, err = Popen('./test_sse2_full', stdout=PIPE, stderr=PIPE).communicate()
+    native_result = native_result.replace('\r\n', '\n') # Windows line endings fix
+
+    Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
+    orig_args = self.emcc_args
+    for mode in [[], ['-s', 'SIMD=1']]:
+      self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests'), '-msse2']
+      self.do_run(open(path_from_root('tests', 'test_sse2_full.cpp'), 'r').read(), native_result)
 
   def test_simd(self):
     if self.is_emterpreter(): return self.skip('todo')
+    if SPIDERMONKEY_ENGINE in JS_ENGINES: return self.skip('TODO: SIMD does not currently validate as asm.js in SpiderMonkey, not running in SpiderMonkey.')
 
     test_path = path_from_root('tests', 'core', 'test_simd')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5674,6 +5693,7 @@ return malloc(size);
 
   def test_simd2(self):
     if self.is_emterpreter(): return self.skip('todo')
+    if SPIDERMONKEY_ENGINE in JS_ENGINES: return self.skip('TODO: SIMD does not currently validate as asm.js in SpiderMonkey, not running in SpiderMonkey.')
 
     test_path = path_from_root('tests', 'core', 'test_simd2')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5682,6 +5702,7 @@ return malloc(size);
 
   def test_simd3(self):
     return self.skip('FIXME: this appears to be broken')
+    if SPIDERMONKEY_ENGINE in JS_ENGINES: return self.skip('TODO: SIMD does not currently validate as asm.js in SpiderMonkey, not running in SpiderMonkey.')
 
     test_path = path_from_root('tests', 'core', 'test_simd3')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5691,13 +5712,16 @@ return malloc(size);
   def test_simd4(self):
     # test_simd4 is to test phi node handling of SIMD path
     if self.is_emterpreter(): return self.skip('todo')
+    if SPIDERMONKEY_ENGINE in JS_ENGINES: return self.skip('TODO: SIMD does not currently validate as asm.js in SpiderMonkey, not running in SpiderMonkey.')
 
     test_path = path_from_root('tests', 'core', 'test_simd4')
     src, output = (test_path + s for s in ('.in', '.out'))
 
+    self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
   def test_simd5(self):
+    if SPIDERMONKEY_ENGINE in JS_ENGINES: return self.skip('TODO: SIMD does not currently validate as asm.js in SpiderMonkey, not running in SpiderMonkey.')
     # test_simd5 is to test shufflevector of SIMD path
     test_path = path_from_root('tests', 'core', 'test_simd5')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5707,28 +5731,80 @@ return malloc(size);
   def test_simd6(self):
     # test_simd6 is to test x86 min and max intrinsics on NaN and -0.0
     if self.is_emterpreter(): return self.skip('todo')
+    if SPIDERMONKEY_ENGINE in JS_ENGINES: return self.skip('TODO: SIMD does not currently validate as asm.js in SpiderMonkey, not running in SpiderMonkey.')
 
     test_path = path_from_root('tests', 'core', 'test_simd6')
     src, output = (test_path + s for s in ('.in', '.out'))
 
+    self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
   def test_simd7(self):
-    # test_simd7 is to test negative zero handling.
+    # test_simd7 is to test negative zero handling: https://github.com/kripken/emscripten/issues/2791
     if self.is_emterpreter(): return self.skip('todo')
 
     test_path = path_from_root('tests', 'core', 'test_simd7')
     src, output = (test_path + s for s in ('.in', '.out'))
 
+    self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
   def test_simd8(self):
     # test_simd8 is to test unaligned load and store
     if self.is_emterpreter(): return self.skip('todo')
+    if SPIDERMONKEY_ENGINE in JS_ENGINES: return self.skip('TODO: SIMD does not currently validate as asm.js in SpiderMonkey, not running in SpiderMonkey.')
 
     test_path = path_from_root('tests', 'core', 'test_simd8')
     src, output = (test_path + s for s in ('.in', '.out'))
 
+    self.emcc_args = self.emcc_args + ['-msse']
+    self.do_run_from_file(src, output)
+
+  def test_simd9(self):
+    # test_simd9 is to test a bug where _mm_set_ps(0.f) would generate an expression that did not validate as asm.js
+    if self.is_emterpreter(): return self.skip('todo')
+
+    test_path = path_from_root('tests', 'core', 'test_simd9')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.emcc_args = self.emcc_args + ['-msse']
+    self.do_run_from_file(src, output)
+
+  def test_simd10(self):
+    # test_simd10 is to test that loading and storing arbitrary bit patterns works in SSE1.
+    if self.is_emterpreter(): return self.skip('todo')
+
+    if '-O1' in self.emcc_args or '-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args:
+      return self.skip('TODO: Compiler is too aggressive in optimizing and generates code that breaks due to NaN canonicalization! https://github.com/kripken/emscripten/issues/3403')
+
+    test_path = path_from_root('tests', 'core', 'test_simd10')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.emcc_args = self.emcc_args + ['-msse']
+    self.do_run_from_file(src, output)
+
+  def test_simd11(self):
+    # test_simd11 is to test that _mm_movemask_ps works correctly when handling input floats with 0xFFFFFFFF NaN bit patterns.
+    if self.is_emterpreter(): return self.skip('todo')
+
+    if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('This test cannot be run in the SIMD.js polyfill due to NaN canonicalization bugs!')
+
+    if '-O1' in self.emcc_args or '-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args:
+      return self.skip('TODO: Compiler is too aggressive in optimizing and generates code that breaks due to NaN canonicalization! https://github.com/kripken/emscripten/issues/3403')
+
+    test_path = path_from_root('tests', 'core', 'test_simd11')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.emcc_args = self.emcc_args + ['-msse2']
+    self.do_run_from_file(src, output)
+
+  def test_simd12(self):
+    if self.is_emterpreter(): return self.skip('todo')
+
+    test_path = path_from_root('tests', 'core', 'test_simd12')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
   def test_simd_dyncall(self):
@@ -5736,6 +5812,7 @@ return malloc(size);
 
     test_path = path_from_root('tests', 'core', 'test_simd_dyncall')
     src, output = (test_path + s for s in ('.cpp', '.txt'))
+    self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
   def test_gcc_unmangler(self):

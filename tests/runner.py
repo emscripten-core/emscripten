@@ -830,10 +830,16 @@ if __name__ == '__main__':
   sys.argv = map(lambda arg: arg if not arg.startswith('test_') else 'default.' + arg, sys.argv)
 
   # If a test (e.g. test_html) is specified as ALL.test_html, add an entry for each test_mode
-  if len(sys.argv) == 2 and sys.argv[1].startswith('ALL.'):
-    ignore, test = sys.argv[1].split('.')
-    print 'Running all test modes on test "%s"' % test
-    sys.argv = [sys.argv[0]] + map(lambda mode: mode+'.'+test, test_modes)
+  new_args = [sys.argv[0]]
+  for i in range(1, len(sys.argv)):
+    arg = sys.argv[i]
+    if arg.startswith('ALL.'):
+      ignore, test = arg.split('.')
+      print 'Running all test modes on test "%s"' % test
+      new_args += map(lambda mode: mode+'.'+test, test_modes)
+    else:
+      new_args += [arg]
+  sys.argv = new_args
 
   # Skip requested tests
   for i in range(len(sys.argv)):

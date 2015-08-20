@@ -33,6 +33,10 @@ extern "C" {
 
 typedef short __attribute__((aligned(1))) emscripten_align1_short;
 
+typedef long long __attribute__((aligned(4))) emscripten_align4_int64;
+typedef long long __attribute__((aligned(2))) emscripten_align2_int64;
+typedef long long __attribute__((aligned(1))) emscripten_align1_int64;
+
 typedef int __attribute__((aligned(2))) emscripten_align2_int;
 typedef int __attribute__((aligned(1))) emscripten_align1_int;
 

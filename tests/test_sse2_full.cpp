@@ -26,21 +26,17 @@ int main()
 	M128i_M128i_M128i(_mm_add_epi8);
 	Ret_M128d_M128d(__m128d, _mm_add_pd);
 	Ret_M128d_M128d(__m128d, _mm_add_sd);
-
 	M128i_M128i_M128i(_mm_adds_epi16);
 	M128i_M128i_M128i(_mm_adds_epi8);
 	M128i_M128i_M128i(_mm_adds_epu16);
 	M128i_M128i_M128i(_mm_adds_epu8);
-
 	Ret_M128d_M128d(__m128d, _mm_div_pd);
 	Ret_M128d_M128d(__m128d, _mm_div_sd);
-
 	M128i_M128i_M128i(_mm_madd_epi16);
 	M128i_M128i_M128i(_mm_mul_epu32);
 
 	Ret_M128d_M128d(__m128d, _mm_mul_pd);
 	Ret_M128d_M128d(__m128d, _mm_mul_sd);
-
 	M128i_M128i_M128i(_mm_mulhi_epi16);
 	M128i_M128i_M128i(_mm_mulhi_epu16);
 	M128i_M128i_M128i(_mm_mullo_epi16);
@@ -49,10 +45,8 @@ int main()
 	M128i_M128i_M128i(_mm_sub_epi32);
 	M128i_M128i_M128i(_mm_sub_epi64);
 	M128i_M128i_M128i(_mm_sub_epi8);
-
 	Ret_M128d_M128d(__m128d, _mm_sub_pd);
 	Ret_M128d_M128d(__m128d, _mm_sub_sd);
-
 	M128i_M128i_M128i(_mm_subs_epi16);
 	M128i_M128i_M128i(_mm_subs_epi8);
 	M128i_M128i_M128i(_mm_subs_epu16);
@@ -100,7 +94,6 @@ int main()
 	Ret_M128d_M128d(__m128d, _mm_cmpord_sd);
 	Ret_M128d_M128d(__m128d, _mm_cmpunord_pd);
 	Ret_M128d_M128d(__m128d, _mm_cmpunord_sd);
-
 	Ret_M128d_M128d(int, _mm_comieq_sd);
 	Ret_M128d_M128d(int, _mm_comige_sd);
 	Ret_M128d_M128d(int, _mm_comigt_sd);
@@ -123,35 +116,28 @@ int main()
 	Ret_M128(__m128d,  _mm_cvtps_pd);
 	Ret_M128(double, _mm_cvtsd_f64);
 	Ret_M128d(int, _mm_cvtsd_si32);
-	Ret_M128d(int64_t, _mm_cvtsd_si64);
-//	Ret_M128d(int64_t, _mm_cvtsd_si64x);
+	Ret_M128d(int64_t, _mm_cvtsd_si64); // _mm_cvtsd_si64x is an alias to this.
 	Ret_M128i(int, _mm_cvtsi128_si32);
-	Ret_M128i(int64_t, _mm_cvtsi128_si64);
-//	Ret_M128i(int64_t, _mm_cvtsi128_si64x);
+	Ret_M128i(int64_t, _mm_cvtsi128_si64); // _mm_cvtsi128_si64x is an alias to this.
 	Ret_M128d_int(__m128d, _mm_cvtsi32_sd);
 	Ret_int(__m128i, _mm_cvtsi32_si128);
-	Ret_M128d_int64(__m128d, _mm_cvtsi64_sd);
-	Ret_int64(__m128i, _mm_cvtsi64_si128);
-//	Ret_int64(__m128d, _mm_cvtsi64x_sd);
-//	Ret_int64(__m128i, _mm_cvtsi64x_si128);
+	Ret_M128d_int64(__m128d, _mm_cvtsi64_sd); // _mm_cvtsi64x_sd is an alias to this.
+	Ret_int64(__m128i, _mm_cvtsi64_si128); // _mm_cvtsi64x_si128 is an alias to this.
 	Ret_M128d_M128d(__m128d, _mm_cvtss_sd);
 	Ret_M128d(__m128i, _mm_cvttpd_epi32);
 	Ret_M128(__m128i, _mm_cvttps_epi32);
 	Ret_M128d(int, _mm_cvttsd_si32);
-	Ret_M128d(int64_t, _mm_cvttsd_si64);
-//	Ret_M128d(int64_t, _mm_cvttsd_si64x);
+	Ret_M128d(int64_t, _mm_cvttsd_si64); // _mm_cvttsd_si64x is an alias to this.
 
 	// SSE2 Elementary Math Functions instructions:
 	Ret_M128d(__m128d, _mm_sqrt_pd);
-	Ret_M128d(__m128d, _mm_sqrt_ps);
+	Ret_M128d_M128d(__m128d, _mm_sqrt_sd);
 
 	// SSE2 General Support instructions:
-	/*
-	_mm_clflush
-	_mm_lfence
-	_mm_mfence
-	_mm_pause
-	*/
+	_mm_clflush(interesting_floats);
+	_mm_lfence();
+	_mm_mfence();
+	_mm_pause();
 
 	// SSE2 Load functions:
 	Ret_DoublePtr(__m128d, _mm_load_pd, 2, 2);
@@ -164,7 +150,7 @@ int main()
 	Ret_M128d_DoublePtr(__m128d, _mm_loadl_pd, double*, 1, 1);
 	Ret_DoublePtr(__m128d, _mm_loadr_pd, 2, 2);
 	Ret_DoublePtr(__m128d, _mm_loadu_pd, 2, 1);
-	Ret_IntPtr(__m128i, _mm_loadu_si128, __m128i*, 2, 1);
+	Ret_IntPtr(__m128i, _mm_loadu_si128, __m128i*, 4, 1);
 
 	// SSE2 Logical instructions:
 	Ret_M128d_M128d(__m128d, _mm_and_pd);
@@ -182,7 +168,6 @@ int main()
 	M128i_M128i_M128i(_mm_packs_epi16);
 	M128i_M128i_M128i(_mm_packs_epi32);
 	M128i_M128i_M128i(_mm_packus_epi16);
-	M128i_M128i_M128i(_mm_sad_epu8);
 
 	// SSE2 Move instructions:
 	Ret_M128i(__m128i, _mm_move_epi64);
@@ -191,7 +176,6 @@ int main()
 	// SSE2 Probability/Statistics instructions:
 	M128i_M128i_M128i(_mm_avg_epu16);
 	M128i_M128i_M128i(_mm_avg_epu8);
-
 /*
 	// SSE2 Set functions:
 	_mm_set_epi16
@@ -216,16 +200,15 @@ int main()
 	_mm_setzero_pd
 	_mm_setzero_si128
 */
+
 	// SSE2 Shift instructions:
-//	Ret_M128i_Tint(__m128i, _mm_bslli_si128);
-//	Ret_M128i_Tint(__m128i, _mm_bsrli_si128);
 	M128i_M128i_M128i(_mm_sll_epi16);
 	M128i_M128i_M128i(_mm_sll_epi32);
 	M128i_M128i_M128i(_mm_sll_epi64);
 	Ret_M128i_Tint(__m128i, _mm_slli_epi16);
 	Ret_M128i_Tint(__m128i, _mm_slli_epi32);
 	Ret_M128i_Tint(__m128i, _mm_slli_epi64);
-	Ret_M128i_Tint(__m128i, _mm_slli_si128);
+	Ret_M128i_Tint(__m128i, _mm_slli_si128); // _mm_bslli_si128 is an alias to this.
 	M128i_M128i_M128i(_mm_sra_epi16);
 	M128i_M128i_M128i(_mm_sra_epi32);
 	Ret_M128i_Tint(__m128i, _mm_srai_epi16);
@@ -236,7 +219,7 @@ int main()
 	Ret_M128i_Tint(__m128i, _mm_srli_epi16);
 	Ret_M128i_Tint(__m128i, _mm_srli_epi32);
 	Ret_M128i_Tint(__m128i, _mm_srli_epi64);
-//	Ret_M128i_Tint(__m128i, _mm_srli_epi128);
+	Ret_M128i_Tint(__m128i, _mm_srli_si128); // _mm_bsrli_si128 is an alias to this.
 
 	// SSE2 Special Math instructions:
 	M128i_M128i_M128i(_mm_max_epi16);
@@ -251,10 +234,9 @@ int main()
 	// SSE2 Store instructions:
 	void_M128i_M128i_OutIntPtr(_mm_maskmoveu_si128, char*, 16, 1);
 	void_OutDoublePtr_M128d(_mm_store_pd, double*, 16, 16);
-//	void_OutDoublePtr_M128d(_mm_store_pd1, double*, 16, 16);
 	void_OutDoublePtr_M128d(_mm_store_sd, double*, 8, 1);
 	void_OutIntPtr_M128(_mm_store_si128, __m128i*, 16, 16);
-	void_OutDoublePtr_M128d(_mm_store1_pd, double*, 16, 16);
+	void_OutDoublePtr_M128d(_mm_store1_pd, double*, 16, 16); // _mm_store_pd1 is an alias to this.
 	void_OutDoublePtr_M128d(_mm_storeh_pd, double*, 8, 1);
 	void_OutIntPtr_M128(_mm_storel_epi64, __m128i*, 8, 1);
 	void_OutDoublePtr_M128d(_mm_storel_pd, double*, 8, 1);
@@ -273,7 +255,6 @@ int main()
 	Ret_M128d_M128d_Tint(__m128d, _mm_shuffle_pd);
 	Ret_M128i_Tint(__m128i, _mm_shufflehi_epi16);
 	Ret_M128i_Tint(__m128i, _mm_shufflelo_epi16);
-
 	M128i_M128i_M128i(_mm_unpackhi_epi16);
 	M128i_M128i_M128i(_mm_unpackhi_epi32);
 	M128i_M128i_M128i(_mm_unpackhi_epi64);

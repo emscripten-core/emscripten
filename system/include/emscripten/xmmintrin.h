@@ -3,6 +3,13 @@
 
 #include <vector.h>
 
+#include <math.h>
+#include <string.h>
+
+#ifndef __SSE__
+#error "SSE instruction set not enabled"
+#endif
+
 // Emscripten SIMD support doesn't support MMX/float32x2/__m64.
 // However, we support loading and storing 2-vectors, so
 // treat "__m64 *" as "void *" for that purpose.
@@ -113,6 +120,19 @@ _mm_store_ps(float *__p, __m128 __a)
 // No NTA cache hint available.
 #define _mm_stream_ps _mm_store_ps
 
+#define _MM_HINT_T0 3
+#define _MM_HINT_T1 2
+#define _MM_HINT_T2 1
+#define _MM_HINT_NTA 0
+// No prefetch available, dummy it out.
+#define _mm_prefetch(a, sel) ((void)0)
+
+static __inline__ void __attribute__((__always_inline__))
+_mm_sfence(void)
+{
+  __sync_synchronize(); // Emscripten/SharedArrayBuffer has only a full barrier instruction, which gives a stronger guarantee.
+}
+
 #define _MM_SHUFFLE(w, z, y, x) (((w) << 6) | ((z) << 4) | ((y) << 2) | (x))
 
 // This is defined as a macro because __builtin_shufflevector requires its
@@ -140,7 +160,13 @@ _mm_store_ps1(float *__p, __m128 __a)
 static __inline__ void __attribute__((__always_inline__))
 _mm_store_ss(float *__p, __m128 __a)
 {
-  emscripten_float32x4_store1(__p, __a);
+  /* TODO: Add a build flag EMSCRIPTEN_SIMD_REQUIRE_ELEMENT_ALIGNMENT or something similar to avoid this.
+    Then could do
+    emscripten_float32x4_store1(__p, __a); */
+    struct __unaligned {
+      float __v;
+    } __attribute__((__packed__, __may_alias__));
+    ((struct __unaligned *)__p)->__v = __a[0];
 }
 
 static __inline__ void __attribute__((__always_inline__))
@@ -149,7 +175,6 @@ _mm_storeu_ps(float *__p, __m128 __a)
   struct __unaligned {
     __m128 __v;
   } __attribute__((__packed__, __may_alias__));
-
   ((struct __unaligned *)__p)->__v = __a;
 }
 
@@ -483,6 +508,9 @@ _mm_cmpnlt_ss(__m128 __a, __m128 __b)
 static __inline__ int __attribute__((__always_inline__))
 _mm_comieq_ss(__m128 __a, __m128 __b)
 {
+#ifdef __EMSCRIPTEN__
+  if (isnanf(__a[0]) || isnanf(__b[0])) return 1;
+#endif
   return __a[0] == __b[0];
 }
 
@@ -501,24 +529,36 @@ _mm_comigt_ss(__m128 __a, __m128 __b)
 static __inline__ int __attribute__((__always_inline__))
 _mm_comile_ss(__m128 __a, __m128 __b)
 {
+#ifdef __EMSCRIPTEN__
+  if (isnanf(__a[0]) || isnanf(__b[0])) return 1;
+#endif
   return __a[0] <= __b[0];
 }
 
 static __inline__ int __attribute__((__always_inline__))
 _mm_comilt_ss(__m128 __a, __m128 __b)
 {
+#ifdef __EMSCRIPTEN__
+  if (isnanf(__a[0]) || isnanf(__b[0])) return 1;
+#endif
   return __a[0] < __b[0];
 }
 
 static __inline__ int __attribute__((__always_inline__))
 _mm_comineq_ss(__m128 __a, __m128 __b)
 {
+#ifdef __EMSCRIPTEN__
+  if (isnanf(__a[0]) || isnanf(__b[0])) return 0;
+#endif
   return __a[0] != __b[0];
 }
 
 static __inline__ int __attribute__((__always_inline__))
 _mm_ucomieq_ss(__m128 __a, __m128 __b)
 {
+#ifdef __EMSCRIPTEN__
+  if (isnanf(__a[0]) || isnanf(__b[0])) return 1;
+#endif
   return __a[0] == __b[0];
 }
 
@@ -549,6 +589,9 @@ _mm_ucomilt_ss(__m128 __a, __m128 __b)
 static __inline__ int __attribute__((__always_inline__))
 _mm_ucomineq_ss(__m128 __a, __m128 __b)
 {
+#ifdef __EMSCRIPTEN__
+  if (isnanf(__a[0]) || isnanf(__b[0])) return 0;
+#endif
   return __a[0] != __b[0];
 }
 
@@ -562,13 +605,21 @@ _mm_cvtsi32_ss(__m128 __a, int __b)
 
 static __inline__ int __attribute__((__always_inline__)) _mm_cvtss_si32(__m128 a)
 {
-  return (int)a[0]; // TODO: Rounding mode
+  int x = lrint(a[0]);
+  if (x != 0 || fabsf(a[0]) < 2.f)
+    return x;
+  else
+    return (int)0x80000000;
 }
 #define _mm_cvt_ss2si _mm_cvtss_si32
 
 static __inline__ int __attribute__((__always_inline__)) _mm_cvttss_si32(__m128 a)
 {
-  return (int)a[0]; // TODO: Rounding mode, truncate.
+  int x = lrint(a[0]);
+  if (x != 0 || fabsf(a[0]) < 2.f)
+    return (int)a[0];
+  else
+    return (int)0x80000000;
 }
 #define _mm_cvtt_ss2si _mm_cvttss_si32
 
@@ -582,13 +633,23 @@ _mm_cvtsi64_ss(__m128 __a, long long __b)
 static __inline__ long long __attribute__((__always_inline__))
 _mm_cvtss_si64(__m128 __a)
 {
-  return (long long)__a[0]; // TODO: Rounding mode
+  if (isnan(__a[0]) || isinf(__a[0])) return 0x8000000000000000LL;
+  long long x = llrint(__a[0]);
+  if (x != 0xFFFFFFFF00000000ULL && (x != 0 || fabsf(__a[0]) < 2.f))
+    return x;
+  else
+    return 0x8000000000000000LL;
 }
 
 static __inline__ long long __attribute__((__always_inline__))
 _mm_cvttss_si64(__m128 __a)
 {
-  return (long long)__a[0]; // TODO: Rounding mode, truncate.
+  if (isnan(__a[0]) || isinf(__a[0])) return 0x8000000000000000LL;
+  long long x = llrint(__a[0]);
+  if (x != 0xFFFFFFFF00000000ULL && (x != 0 || fabsf(__a[0]) < 2.f))
+    return (long long)__a[0];
+  else
+    return 0x8000000000000000LL;
 }
 
 static __inline__ float __attribute__((__always_inline__))
