@@ -344,8 +344,9 @@ static void _do_call(em_queued_call *q)
 		case EM_PROXIED_FSETPOS: q->returnValue.i = fsetpos(q->args[0].vp, q->args[1].vp); break;
 		case EM_PROXIED_FTELL: q->returnValue.i = ftell(q->args[0].vp); break;
 		case EM_PROXIED_FWRITE: q->returnValue.i = fwrite(q->args[0].vp, q->args[1].i, q->args[2].i, q->args[3].vp); break;
-		case EM_PROXIED_POPEN: q->returnValue.vp = popen(q->args[0].cp, q->args[1].cp); break;
-		case EM_PROXIED_PCLOSE: q->returnValue.i = pclose(q->args[0].vp); break;
+// Process spawning is not supported. Remove references to these functions (see also https://github.com/kripken/emscripten/issues/3702)
+//		case EM_PROXIED_POPEN: q->returnValue.vp = popen(q->args[0].cp, q->args[1].cp); break;
+//		case EM_PROXIED_PCLOSE: q->returnValue.i = pclose(q->args[0].vp); break;
 		case EM_PROXIED_PERROR: perror(q->args[0].cp); break;
 		case EM_PROXIED_REMOVE: q->returnValue.i = remove(q->args[0].cp); break;
 		case EM_PROXIED_RENAME: q->returnValue.i = rename(q->args[0].cp, q->args[1].cp); break;
