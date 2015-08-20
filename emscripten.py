@@ -982,17 +982,20 @@ def main(args, compiler_engine, cache, temp_files, DEBUG, DEBUG_CACHE):
   emscript(args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine,
            temp_files=temp_files, DEBUG=DEBUG, DEBUG_CACHE=DEBUG_CACHE)
 
-def _main(environ):
+def _main(environ, args=None):
+  if args is None:
+    args = sys.argv[1:]
+
   response_file = True
   while response_file:
     response_file = None
-    for index in range(1, len(sys.argv)):
-      if sys.argv[index][0] == '@':
+    for index in range(len(args)):
+      if args[index][0] == '@':
         # found one, loop again next time
         response_file = True
-        response_file_args = read_response_file(sys.argv[index])
+        response_file_args = read_response_file(args[index])
         # slice in extra_args in place of the response file arg
-        sys.argv[index:index+1] = response_file_args
+        args[index:index+1] = response_file_args
         break
 
   parser = optparse.OptionParser(
@@ -1038,7 +1041,7 @@ def _main(environ):
                     help=('Suppress usage warning'))
 
   # Convert to the same format that argparse would have produced.
-  keywords, positional = parser.parse_args()
+  keywords, positional = parser.parse_args(args)
 
   if not keywords.suppressUsageWarning:
     logging.warning('''
