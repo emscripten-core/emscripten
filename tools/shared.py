@@ -1500,31 +1500,16 @@ class Building:
     # Allow usage of emscripten.py without warning
     os.environ['EMSCRIPTEN_SUPPRESS_USAGE_WARNING'] = '1'
 
-    # EXPORTED_FUNCTIONS can potentially be very large.
-    # 8k is a bit of an arbitrary limit, but a reasonable one
-    # for max command line size before we use a response file
-    if len(' '.join(Settings.EXPORTED_FUNCTIONS)) > 8192:
-      logging.debug('using response file for EXPORTED_FUNCTIONS in emscripten()')
-      exports_response = configuration.get_temp_files().get(suffix='.response').name
-      exports_response_fh = open(exports_response, 'w')
-      json.dump(Settings.EXPORTED_FUNCTIONS, exports_response_fh)
-      exports_response_fh.close()
-      Settings.EXPORTED_FUNCTIONS = '@' + exports_response
-
+    if path_from_root() not in sys.path:
+      sys.path += [path_from_root()]
+    from emscripten import _main as call_emscripten
     # Run Emscripten
     settings = Settings.serialize()
     args = settings + extra_args
-    if WINDOWS:
-      rsp_file = response_file.create_response_file(args, TEMP_DIR)
-      args = ['@' + rsp_file]
-    cmdline = [PYTHON, EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + args
+    cmdline = [filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + args
     if jsrun.TRACK_PROCESS_SPAWNS:
       logging.info('Executing emscripten.py compiler with cmdline "' + ' '.join(cmdline) + '"')
-    jsrun.timeout_run(Popen(cmdline, stdout=PIPE), None, 'Compiling')
-
-    # Clean up .rsp file the compiler used after we are finished.
-    if WINDOWS:
-      try_delete(rsp_file)
+    call_emscripten(cmdline)
 
     # Detect compilation crashes and errors
     assert os.path.exists(filename + '.o.js'), 'Emscripten failed to generate .js'
