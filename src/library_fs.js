@@ -29,6 +29,7 @@ mergeInto(LibraryManager.library, {
     },
     ErrnoError: null, // set during init
     genericErrors: {},
+    filesystems: null,
 
     handleFSError: function(e) {
       if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + stackTrace();
@@ -1347,6 +1348,13 @@ mergeInto(LibraryManager.library, {
       FS.createDefaultDirectories();
       FS.createDefaultDevices();
       FS.createSpecialDirectories();
+
+      FS.filesystems = {
+        'MEMFS': MEMFS,
+        'IDBFS': IDBFS,
+        'NODEFS': NODEFS,
+        'WORKERFS': WORKERFS,
+      };
     },
     init: function(input, output, error) {
       assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
