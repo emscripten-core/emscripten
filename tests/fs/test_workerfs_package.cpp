@@ -20,16 +20,14 @@ void EMSCRIPTEN_KEEPALIVE finish() {
   buffer[5] = 0;
   assert(strcmp(buffer, "first") == 0);
 
-/*
   printf("load second file\n");
   FILE *f2 = fopen("files/sub/file2.txt", "r");
   assert(f2);
   num = fread(buffer, 1, 6, f2);
-  assert(num == 5);
+  assert(num == 6);
   fclose(f2);
   buffer[6] = 0;
   assert(strcmp(buffer, "second") == 0);
-*/
 
   // all done
   printf("success\n");
@@ -54,6 +52,7 @@ int main() {
       Module.print('loading into filesystem');
       meta = JSON.parse(meta);
       FS.mkdir('/files');
+      FS.mkdir('/files/sub');
       FS.mount(WORKERFS, {
         blobs: meta.files.map(function(file) {
           return { name: file.filename.substr(1), data: data.slice(file.start, file.end) };
