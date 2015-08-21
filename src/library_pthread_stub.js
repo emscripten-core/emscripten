@@ -3,6 +3,10 @@ var LibraryPThreadStub = {
   // Stub implementation for pthread.h when not compiling with pthreads support enabled.
   // ===================================================================================
 
+  emscripten_has_threading_support: function() {
+    return 0;
+  },
+
   pthread_mutex_init: function() {},
   pthread_mutex_destroy: function() {},
   pthread_mutexattr_init: function() {},
@@ -115,6 +119,13 @@ var LibraryPThreadStub = {
   pthread_rwlock_init: function() {
     return 0; // XXX
   },
+
+  pthread_attr_setdetachstate: function() {},
+
+  pthread_create: function() {
+    return {{{ cDefine('EAGAIN') }}};
+  },
+  pthread_exit: function() {},
 
   pthread_cond_signal: function() {},
   pthread_equal: function() {},

@@ -486,7 +486,7 @@ function _emscripten_asm_const_%d(%s) {
 
     fundamentals = ['Math']
     if settings['USE_PTHREADS']:
-      fundamentals += ['SharedInt8Array', 'SharedInt16Array', 'SharedInt32Array', 'SharedUint8Array', 'SharedUint16Array', 'SharedUint32Array', 'SharedFloat32Array', 'SharedFloat64Array', 'Atomics']
+      fundamentals += ['I8Array', 'I16Array', 'I32Array', 'U8Array', 'U16Array', 'U32Array', 'F32Array', 'F64Array', 'Atomics']
     else:
       fundamentals += ['Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
     fundamentals += ['NaN', 'Infinity']
@@ -763,6 +763,17 @@ Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
 
       receiving += ''.join(["Module['%s'] = Module['%s']\n" % (k, v) for k, v in metadata['aliases'].iteritems()])
 
+    if settings['USE_PTHREADS']:
+      asm_setup += '''
+var I8Array = typeof SharedInt8Array !== 'undefined' ? SharedInt8Array : Int8Array;
+var I16Array = typeof SharedInt16Array !== 'undefined' ? SharedInt16Array : Int16Array;
+var I32Array = typeof SharedInt32Array !== 'undefined' ? SharedInt32Array : Int32Array;
+var U8Array = typeof SharedUint8Array !== 'undefined' ? SharedUint8Array : Uint8Array;
+var U16Array = typeof SharedUint16Array !== 'undefined' ? SharedUint16Array : Uint16Array;
+var U32Array = typeof SharedUint32Array !== 'undefined' ? SharedUint32Array : Uint32Array;
+var F32Array = typeof SharedFloat32Array !== 'undefined' ? SharedFloat32Array : Float32Array;
+var F64Array = typeof SharedFloat64Array !== 'undefined' ? SharedFloat64Array : Float64Array;
+'''
     funcs_js = ['''
 %s
 Module%s = %s;
@@ -783,14 +794,14 @@ var asm = (function(global, env, buffer) {
   var HEAPU32 = new global%s(buffer);
   var HEAPF32 = new global%s(buffer);
   var HEAPF64 = new global%s(buffer);
-''' % (access_quote('SharedInt8Array' if settings['USE_PTHREADS'] else 'Int8Array'),
-     access_quote('SharedInt16Array' if settings['USE_PTHREADS'] else 'Int16Array'),
-     access_quote('SharedInt32Array' if settings['USE_PTHREADS'] else 'Int32Array'),
-     access_quote('SharedUint8Array' if settings['USE_PTHREADS'] else 'Uint8Array'),
-     access_quote('SharedUint16Array' if settings['USE_PTHREADS'] else 'Uint16Array'),
-     access_quote('SharedUint32Array' if settings['USE_PTHREADS'] else 'Uint32Array'),
-     access_quote('SharedFloat32Array' if settings['USE_PTHREADS'] else 'Float32Array'),
-     access_quote('SharedFloat64Array' if settings['USE_PTHREADS'] else 'Float64Array'))
+''' % (access_quote('I8Array' if settings['USE_PTHREADS'] else 'Int8Array'),
+     access_quote('I16Array' if settings['USE_PTHREADS'] else 'Int16Array'),
+     access_quote('I32Array' if settings['USE_PTHREADS'] else 'Int32Array'),
+     access_quote('U8Array' if settings['USE_PTHREADS'] else 'Uint8Array'),
+     access_quote('U16Array' if settings['USE_PTHREADS'] else 'Uint16Array'),
+     access_quote('U32Array' if settings['USE_PTHREADS'] else 'Uint32Array'),
+     access_quote('F32Array' if settings['USE_PTHREADS'] else 'Float32Array'),
+     access_quote('F64Array' if settings['USE_PTHREADS'] else 'Float64Array'))
      if not settings['ALLOW_MEMORY_GROWTH'] else '''
   var Int8View = global%s;
   var Int16View = global%s;
