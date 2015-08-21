@@ -141,16 +141,29 @@ File system API
 				FS.mkdir('/working');
 				FS.mount(NODEFS, { root: '.' }, '/working');
 
-        ``WORKERFS`` accepts `files` and `blobs` parameters to map provided flat list of files into the ``mountpoint`` directory:
+        ``WORKERFS`` accepts `files` and `blobs` parameters to map a provided flat list of files into the ``mountpoint`` directory:
 
 			::
 
 				var blob = new Blob(['blob data']);
 				FS.mkdir('/working');
-				FS.mount(NODEFS, {
+				FS.mount(WORKERFS, {
 				  blobs: [{ name: 'blob.txt', data: blob }],
 				  files: files, // Array of File objects or FileList
 				}, '/working');
+
+
+        You can also pass in a package of files, created by ``tools/file_packager.py`` with ``--separate-metadata``. You must
+        provide the metadata as a JSON object, and the data as a blob:
+
+			::
+
+				// load metadata and blob using XMLHttpRequests, or IndexedDB, or from someplace else
+				FS.mkdir('/working');
+				FS.mount(WORKERFS, {
+				  packages: [{ metadata: meta, blob: blob }]
+				}, '/working');
+
 
 	:param string mountpoint: A path to an existing local Emscripten directory where the file system is to be mounted. It can be either an absolute path, or something relative to the current directory.
 	

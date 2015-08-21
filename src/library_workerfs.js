@@ -8,12 +8,36 @@ mergeInto(LibraryManager.library, {
       assert(ENVIRONMENT_IS_WORKER);
       if (!WORKERFS.reader) WORKERFS.reader = new FileReaderSync();
       var root = WORKERFS.createNode(null, '/', WORKERFS.DIR_MODE, 0);
+      var createdParents = {};
+      function ensureParent(path) {
+        // return the parent node, creating subdirs as necessary
+        var parts = path.split('/');
+        var parent = root;
+        for (var i = 0; i < parts.length-1; i++) {
+          var curr = parts.slice(0, i+1).join('/');
+          if (!createdParents[curr]) {
+            createdParents[curr] = WORKERFS.createNode(parent, curr, WORKERFS.DIR_MODE, 0);
+          }
+          parent = createdParents[curr];
+        }
+        return parent;
+      }
+      function base(path) {
+        var parts = path.split('/');
+        return parts[parts.length-1];
+      }
       // We also accept FileList here.
-      Array.prototype.forEach.call(mount.opts["files"] || [], function(file) {
-        WORKERFS.createNode(root, file.name, WORKERFS.FILE_MODE, 0, file, file.lastModifiedDate);
+      (mount.opts["files"] || []).forEach(function(file) {
+        WORKERFS.createNode(ensureParent(file.name), base(file.name), WORKERFS.FILE_MODE, 0, file, file.lastModifiedDate);
       });
       (mount.opts["blobs"] || []).forEach(function(obj) {
-        WORKERFS.createNode(root, obj["name"], WORKERFS.FILE_MODE, 0, obj["data"]);
+        WORKERFS.createNode(ensureParent(obj["name"]), base(obj["name"]), WORKERFS.FILE_MODE, 0, obj["data"]);
+      });
+      (mount.opts["packages"] || []).forEach(function(pack) {
+        pack.metadata.files.forEach(function(file) {
+          var name = file.filename.substr(1); // remove initial slash
+          WORKERFS.createNode(ensureParent(name), base(name), WORKERFS.FILE_MODE, 0, pack.blob.slice(file.start, file.end));
+        });
       });
       return root;
     },
@@ -23,13 +47,16 @@ mergeInto(LibraryManager.library, {
       node.node_ops = WORKERFS.node_ops;
       node.stream_ops = WORKERFS.stream_ops;
       node.timestamp = (mtime || new Date).getTime();
-      if (parent) {
+      assert(WORKERFS.FILE_MODE !== WORKERFS.DIR_MODE);
+      if (mode === WORKERFS.FILE_MODE) {
         node.size = contents.size;
         node.contents = contents;
-        parent.contents[name] = node;
       } else {
         node.size = 4096;
         node.contents = {};
+      }
+      if (parent) {
+        parent.contents[name] = node;
       }
       return node;
     },
