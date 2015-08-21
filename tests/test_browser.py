@@ -1024,6 +1024,13 @@ keydown(100);keyup(100); // trigger the end
     ''' % (secret, secret2))
     self.btest(path_from_root('tests', 'fs', 'test_workerfs_read.c'), '1', force_c=True, args=['--pre-js', 'pre.js', '-DSECRET=\"' + secret + '\"', '-DSECRET2=\"' + secret2 + '\"', '--proxy-to-worker'])
 
+  def test_fs_workerfs_package(self):
+    open('file1.txt', 'w').write('first')
+    if not os.path.exists('sub'): os.makedirs('sub')
+    open(os.path.join('sub', 'file2.txt'), 'w').write('second')
+    Popen([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', os.path.join('sub', 'file2.txt'), '--separate-metadata', '--js-output=files.js']).communicate()
+    self.btest(os.path.join('fs', 'test_workerfs_package.cpp'), '1', args=['--proxy-to-worker'])
+
   def test_idbstore(self):
     secret = str(time.time())
     for stage in [0, 1, 2, 3, 0, 1, 2, 0, 0, 1, 4, 2, 5]:
