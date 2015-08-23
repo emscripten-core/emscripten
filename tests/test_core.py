@@ -7542,6 +7542,76 @@ Module['ccall']('main', null, ['number', 'string'], [2, 'waka'], { async: true }
 ''')
       self.do_run(src, 'HelloWorld');
 
+  def test_async_read(self):
+    if not self.is_emterpreter(): return self.skip('emterpreter-only test')
+
+    Settings.EMTERPRETIFY_ASYNC = 1
+    #self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
+
+    open('pre.js', 'w').write(r'''
+var Module = {
+  stdin: (function() {
+    var toByteArray = function(str) {
+      var byteArray = [];
+      for (var i = 0; i < str.length; i++) {
+        if (str.charCodeAt(i) <= 0x7F) {
+          byteArray.push(str.charCodeAt(i));
+        } else {
+          var h = encodeURIComponent(str.charAt(i)).substr(1).split("%");
+          for (var j = 0; j < h.length; j++) {
+            byteArray.push(parseInt(h[j], 16));
+          }
+        }
+      }
+      return byteArray;
+    };
+
+    return function () {
+      if (buffer.length) {
+        return buffer.pop();
+      }
+
+      return new Promise(function(resolve) {
+        setTimeout(function() {
+          buffer = toByteArray("test\n");
+          buffer.push(null);
+          buffer.reverse();
+          resolve(buffer.pop());
+        }, 1000);
+      });
+    }
+  }())
+};
+''')
+
+    src = r'''
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+  char buffer[6] = {0};
+  read(0, buffer, 5);
+  puts(buffer);
+  return 0;
+}
+'''
+
+    src2 = r'''
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+  char buffer[6] = {0};
+  gets(buffer);
+  puts(buffer);
+  return 0;
+}
+'''
+    self.emcc_args += ['--pre-js', 'pre.js']
+
+    self.do_run(src, 'test');
+    self.do_run(src2, 'test');
+
   def test_async_returnvalue(self):
     if not self.is_emterpreter(): return self.skip('emterpreter-only test')
 

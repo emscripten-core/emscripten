@@ -244,12 +244,9 @@ var SyscallsLibrary = {
   __syscall3: function(which, varargs) { // read
     var stream = SYSCALLS.getStreamFromFD(), buf = SYSCALLS.get(), count = SYSCALLS.get();
     return EmterpreterAsync.handle(function (resume) {
-      var result = FS.read(stream, {{{ makeGetSlabs('buf', 'i8', true) }}}, buf, count, null, function (bytesRead) {
+      FS.read(stream, {{{ makeGetSlabs('buf', 'i8', true) }}}, buf, count, undefined, function (bytesRead) {
         resume(function() { bytesRead });
       });
-      if (result) {
-        resume(function() { result });
-      }
     });
   },
 #else
