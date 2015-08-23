@@ -26,17 +26,17 @@ mergeInto(LibraryManager.library, {
         var parts = path.split('/');
         return parts[parts.length-1];
       }
-      // We also accept FileList here.
-      (mount.opts["files"] || []).forEach(function(file) {
+      // We also accept FileList here, by using Array.prototype
+      Array.prototype.forEach.call(mount.opts["files"] || [], function(file) {
         WORKERFS.createNode(ensureParent(file.name), base(file.name), WORKERFS.FILE_MODE, 0, file, file.lastModifiedDate);
       });
       (mount.opts["blobs"] || []).forEach(function(obj) {
         WORKERFS.createNode(ensureParent(obj["name"]), base(obj["name"]), WORKERFS.FILE_MODE, 0, obj["data"]);
       });
       (mount.opts["packages"] || []).forEach(function(pack) {
-        pack.metadata.files.forEach(function(file) {
+        pack['metadata'].files.forEach(function(file) {
           var name = file.filename.substr(1); // remove initial slash
-          WORKERFS.createNode(ensureParent(name), base(name), WORKERFS.FILE_MODE, 0, pack.blob.slice(file.start, file.end));
+          WORKERFS.createNode(ensureParent(name), base(name), WORKERFS.FILE_MODE, 0, pack['blob'].slice(file.start, file.end));
         });
       });
       return root;
