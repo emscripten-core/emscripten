@@ -1055,7 +1055,7 @@ mergeInto(LibraryManager.library, {
       stream.ungotten = [];
       return stream.position;
     },
-    read: function(stream, buffer, offset, length, position) {
+    read: function(stream, buffer, offset, length, position, resume) {
       if (length < 0 || position < 0) {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
@@ -1075,9 +1075,16 @@ mergeInto(LibraryManager.library, {
       } else if (!stream.seekable) {
         throw new FS.ErrnoError(ERRNO_CODES.ESPIPE);
       }
+#if EMTERPRETIFY_ASYNC      
+      var bytesRead = stream.stream_ops.read(stream, buffer, offset, length, position, function(bytesRead) { 
+        if (!seeking) stream.position += bytesRead;
+        resume(bytesRead);
+      });
+#else
       var bytesRead = stream.stream_ops.read(stream, buffer, offset, length, position);
       if (!seeking) stream.position += bytesRead;
       return bytesRead;
+#endif
     },
     write: function(stream, buffer, offset, length, position, canOwn) {
       if (length < 0 || position < 0) {
@@ -1503,6 +1510,52 @@ mergeInto(LibraryManager.library, {
             output({{{ charCode('\n') }}});
           }
         },
+#if EMTERPRETIFY_ASYNC
+        read: function(stream, buffer, offset, length, pos /* ignored */, resume) {
+          var handleAsync = function handleAsync(input, callback) {
+            try {
+              var val = input(callback);
+              if (val && typeof val.then === 'function') {
+                val.then(function (value) {
+                  callback(null, value)
+                }, function(err) {
+                  callback(err);
+                });
+              } else {
+                callback(null, val);
+              }
+            } catch (err) {
+              callback(err);
+            }
+          };
+          var done = function done(bytesRead) {
+            resume (bytesRead);
+            if (bytesRead) {
+              stream.node.timestamp = Date.now();
+            }
+            return;
+          };
+          var inputReader = function inputReader(bytesRead) {
+            if (bytesRead === length) {
+              return done(bytesRead);
+            }
+            handleAsync(input, function (err, byte) {
+              if (err) {
+                throw new FS.ErrnoError(ERRNO_CODES.EIO);
+              }
+              if (byte === undefined && bytesRead === 0) {
+                throw new FS.ErrnoError(ERRNO_CODES.EIO);
+              }
+              if (byte === undefined || byte === null) {
+                return done(bytesRead);
+              }
+              buffer[offset+bytesRead] = byte;
+              inputReader(bytesRead + 1);
+            });
+          };
+          inputReader(0);
+        },
+#else // EMTERPRETIFY_ASYNC
         read: function(stream, buffer, offset, length, pos /* ignored */) {
           var bytesRead = 0;
           for (var i = 0; i < length; i++) {
@@ -1524,6 +1577,7 @@ mergeInto(LibraryManager.library, {
           }
           return bytesRead;
         },
+#endif
         write: function(stream, buffer, offset, length, pos) {
           for (var i = 0; i < length; i++) {
             try {
@@ -1857,4 +1911,3 @@ mergeInto(LibraryManager.library, {
     }
   }
 });
-

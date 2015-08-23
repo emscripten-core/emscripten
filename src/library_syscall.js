@@ -4,7 +4,10 @@ var SyscallsLibrary = {
                    '$FS', '$ERRNO_CODES', '$PATH',
 #endif
 #if SYSCALL_DEBUG
-                   '$ERRNO_MESSAGES'
+                   '$ERRNO_MESSAGES',
+#endif
+#if EMTERPRETIFY_ASYNC
+                   '$EmterpreterAsync'
 #endif
   ],
   $SYSCALLS: {
@@ -119,8 +122,33 @@ var SyscallsLibrary = {
       if (suggest) FS.close(suggest);
       return FS.open(path, flags, 0, suggestFD, suggestFD).fd;
     },
-    doReadv: function(stream, iov, iovcnt, offset) {
+#if EMTERPRETIFY_ASYNC
+    doReadv: function(stream, iov, iovcnt, offset, resume) {
       var ret = 0;
+      var read = function (i) {
+        if (i === iovcnt) {
+          resume(ret);
+          return;
+        }
+        var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
+        var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
+        FS.read(stream, {{{ makeGetSlabs('ptr', 'i8', true) }}}, ptr, len, offset, function(bytesRead) {
+          if (bytesRead < 0) {
+            resume(-1);
+            return;
+          }
+          ret += bytesRead;
+          if (bytesRead < len) {
+            resume(ret);
+            return;
+          }
+          read(++i);
+        });
+      };
+      read(0);
+    },
+#else
+    doReadv: function(stream, iov, iovcnt, offset) {
       for (var i = 0; i < iovcnt; i++) {
         var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
         var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
@@ -131,6 +159,7 @@ var SyscallsLibrary = {
       }
       return ret;
     },
+#endif
     doWritev: function(stream, iov, iovcnt, offset) {
       var ret = 0;
       for (var i = 0; i < iovcnt; i++) {
@@ -211,10 +240,24 @@ var SyscallsLibrary = {
     Module['exit'](status);
     return 0;
   },
+#if EMTERPRETIFY_ASYNC
+  __syscall3: function(which, varargs) { // read
+    var stream = SYSCALLS.getStreamFromFD(), buf = SYSCALLS.get(), count = SYSCALLS.get();
+    return EmterpreterAsync.handle(function (resume) {
+      var result = FS.read(stream, {{{ makeGetSlabs('buf', 'i8', true) }}}, buf, count, null, function (bytesRead) {
+        resume(function() { bytesRead });
+      });
+      if (result) {
+        resume(function() { result });
+      }
+    });
+  },
+#else
   __syscall3: function(which, varargs) { // read
     var stream = SYSCALLS.getStreamFromFD(), buf = SYSCALLS.get(), count = SYSCALLS.get();
     return FS.read(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count);
   },
+#endif //EMTERPRETIFY_ASYNC
   __syscall4: function(which, varargs) { // write
     var stream = SYSCALLS.getStreamFromFD(), buf = SYSCALLS.get(), count = SYSCALLS.get();
     return FS.write(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count);
@@ -514,7 +557,7 @@ var SyscallsLibrary = {
         for (var i = 0; i < num; i++) {
           var iovbase = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_base, 'i8*') }}};
           var iovlen = {{{ makeGetValue('iov', '(' + C_STRUCTS.iovec.__size__ + ' * i) + ' + C_STRUCTS.iovec.iov_len, 'i32') }}};
-          for (var j = 0; j < iovlen; j++) {  
+          for (var j = 0; j < iovlen; j++) {
             view[offset++] = {{{ makeGetValue('iovbase', 'j', 'i8') }}};
           }
         }
@@ -659,7 +702,7 @@ var SyscallsLibrary = {
     assert(!exceptfds, 'exceptfds not supported');
 
     var total = 0;
-    
+
     var srcReadLow = (readfds ? {{{ makeGetValue('readfds', 0, 'i32') }}} : 0),
         srcReadHigh = (readfds ? {{{ makeGetValue('readfds', 4, 'i32') }}} : 0);
     var srcWriteLow = (writefds ? {{{ makeGetValue('writefds', 0, 'i32') }}} : 0),
@@ -726,7 +769,7 @@ var SyscallsLibrary = {
       {{{ makeSetValue('exceptfds', '0', 'dstExceptLow', 'i32') }}};
       {{{ makeSetValue('exceptfds', '4', 'dstExceptHigh', 'i32') }}};
     }
-    
+
     return total;
   },
   __syscall144: function(which, varargs) { // msync
@@ -736,10 +779,23 @@ var SyscallsLibrary = {
     SYSCALLS.doMsync(addr, FS.getStream(info.fd), len, info.flags);
     return 0;
   },
+#if EMTERPRETIFY_ASYNC
+  __syscall145: function(which, varargs) { // readv
+    return EmterpreterAsync.handle(function(resume) {
+      var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
+      SYSCALLS.doReadv(stream, iov, iovcnt, undefined, function(bytesRead) {
+        resume(function() {
+          return bytesRead;
+        });
+      });
+    });
+  },
+#else
   __syscall145: function(which, varargs) { // readv
     var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
     return SYSCALLS.doReadv(stream, iov, iovcnt);
   },
+#endif
   __syscall146: function(which, varargs) { // writev
 #if NO_FILESYSTEM == 0
     var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
@@ -1174,7 +1230,7 @@ var SyscallsLibrary = {
     nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
     var mtime = (seconds*1000) + (nanoseconds/(1000*1000));
     FS.utime(path, atime, mtime);
-    return 0;  
+    return 0;
   },
   __syscall324: function(which, varargs) { // fallocate
     var stream = SYSCALLS.getStreamFromFD(), mode = SYSCALLS.get(), offset = SYSCALLS.get64(), len = SYSCALLS.get64();
@@ -1641,4 +1697,3 @@ SyscallsLibrary.emscripten_syscall = eval('(' + switcher + ')');
 #endif
 
 mergeInto(LibraryManager.library, SyscallsLibrary);
-
