@@ -633,6 +633,51 @@ To expose a C++ :cpp:func:`constant` to JavaScript, simply write:
 ``SOME_CONSTANT`` can have any type known to *embind*.
 
 
+.. _embind-memory-view:
+
+Memory views
+============
+
+In some cases it is valuable to expose raw binary data directly to
+JavaScript code as a typed array, allowing it to be used without copying.
+This is useful for instance for uploading large WebGL textures directly
+from the heap.
+
+Memory views should be treated like raw pointers; lifetime and validity
+are not managed by the runtime and it's easy to corrupt data if the
+underlying object is modified or deallocated.
+
+.. code::cpp
+
+    #include <emscripten/bind.h>
+    #include <emscripten/val.h>
+
+    using namespace emscripten;
+
+    unsigned char *byteBuffer = /* ... */;
+    size_t bufferLength = /* ... */;
+
+    val getBytes() {
+        return val(typed_memory_view(bufferLength, byteBuffer));
+    }
+
+    EMSCRIPTEN_BINDINGS(memory_view_example) {
+        function("getBytes", &getBytes);
+    }
+
+The calling JavaScript code will receive a typed array view into the emscripten heap:
+
+.. code::js
+
+   var myUint8Array = Module.getBytes()
+   var xhr = new XMLHttpRequest();
+   xhr.open('POST', /* ... */);
+   xhr.send(myUint8Array);
+
+The typed array view will be of the appropriate matching type, such as Uint8Array
+for an ``unsigned char`` array or pointer.
+
+
 .. _embind-val-guide:
 
 Using ``val`` to transliterate JavaScript to C++
