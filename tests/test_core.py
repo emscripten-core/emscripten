@@ -3934,6 +3934,25 @@ var Module = {
       }
     ''', 'other says 15724949027125.')
 
+  def test_dylink_i64_b(self):
+    self.dylink_test('''
+      #include <stdio.h>
+      #include <stdint.h>
+      extern int64_t sidey();
+      int main() {
+        printf("other says %lld.", sidey());
+        return 0;
+      }
+    ''', '''
+      #include <stdint.h>
+      int64_t sidey() {
+        volatile int64_t x = 0x12345678abcdef12LL;
+        x += x % 17;
+        x = 18 - x;
+        return x;
+      }
+    ''', 'other says -1311768467750121224.')
+
   def test_dylink_class(self):
     self.dylink_test(header=r'''
       #include <stdio.h>
