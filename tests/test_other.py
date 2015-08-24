@@ -5152,3 +5152,9 @@ main(int argc, char **argv)
     Popen([PYTHON, EMCC, 'src.c', '--embed-file', 'boot']).communicate()
     self.assertContained('Resolved: /boot/README.txt', run_js('a.out.js'))
 
+  def test_o_level_clamp(self):
+    for level in [3, 4, 20]:
+      out, err = Popen([PYTHON, EMCC, '-O' + str(level), path_from_root('tests', 'hello_world.c')], stdout=PIPE, stderr=PIPE).communicate()
+      assert os.path.exists('a.out.js'), '-O' + str(level) + ' should produce output'
+      if level > 3:
+        self.assertContained('Invalid optimization level: -O' + str(level) + '; clamped to 3', err)
