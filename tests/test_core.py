@@ -4082,6 +4082,36 @@ var Module = {
       }
     ''', expected=['main: jslib_x is 148.\nside: jslib_x is 148.\n'], main_emcc_args=['--js-library', 'lib.js'])
 
+  def test_dylink_many_postSets(self):
+    NUM = 1234
+    self.dylink_test(header=r'''
+      #include <stdio.h>
+      typedef void (*voidfunc)();
+      static void simple() {
+        printf("simple.\n");
+      }
+      static volatile voidfunc funcs[''' + str(NUM) + '] = { ' + ','.join(['simple'] * NUM) + r''' };
+      static void test() {
+        volatile int i = ''' + str(NUM-1) + r''';
+        funcs[i]();
+        i = 0;
+        funcs[i]();
+      }
+      extern void more();
+    ''', main=r'''
+      #include "header.h"
+      int main() {
+        test();
+        more();
+        return 0;
+      }
+    ''', side=r'''
+      #include "header.h"
+      void more() {
+        test();
+      }
+    ''', expected=['simple.\nsimple.\nsimple.\nsimple.\n'])
+
   def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
     def test(syslibs, expect_pass=True, need_reverse=True):
       print 'syslibs', syslibs, Settings.ASSERTIONS
