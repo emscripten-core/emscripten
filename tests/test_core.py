@@ -619,6 +619,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 ''')
 
   def test_align_moar(self):
+    self.emcc_args = self.emcc_args + ['-msse']
     def test():
       self.do_run(r'''
 #include <xmmintrin.h>
