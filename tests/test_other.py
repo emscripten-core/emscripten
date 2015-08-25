@@ -4280,22 +4280,28 @@ pass: error == ENOTDIR
       self.validate_asmjs(out)
 
     # generate default shell for js test
-    Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0', '-s', 'GLOBAL_BASE=2048']).communicate()
-    default = open('a.out.js').read()
-    start = default.index('function _main(')
-    end = default.index('}', start)
-    default = default[:start] + '{{{MAIN}}}' + default[end+1:]
-    default_mem = open('a.out.js.mem', 'rb').read()
+    def make_default(args=[]):
+      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--profiling', '-s', 'FINALIZE_ASM_JS=0', '-s', 'GLOBAL_BASE=2048'] + args).communicate()
+      default = open('a.out.js').read()
+      start = default.index('function _main(')
+      end = default.index('}', start)
+      default = default[:start] + '{{{MAIN}}}' + default[end+1:]
+      default_mem = open('a.out.js.mem', 'rb').read()
+      return default, default_mem
+    default, default_mem = make_default()
+    default_float, default_float_mem = make_default(['-s', 'PRECISE_F32=1'])
 
-    def do_js_test(name, source, args, output):
+    def do_js_test(name, source, args, output, floaty=False):
       print
       print 'js', name
       self.clear()
       if '\n' not in source:
         source = open(source).read()
-      source = default.replace('{{{MAIN}}}', source)
+      the_default = default if not floaty else default_float
+      the_default_mem = default_mem if not floaty else default_float_mem
+      source = the_default.replace('{{{MAIN}}}', source)
       open('a.out.js', 'w').write(source)
-      open('a.out.js.mem', 'wb').write(default_mem)
+      open('a.out.js.mem', 'wb').write(the_default_mem)
       Popen([PYTHON, path_from_root('tools', 'emterpretify.py'), 'a.out.js', 'em.out.js', 'ASYNC=0']).communicate()
       sm_no_warn = filter(lambda x: x != '-w', SPIDERMONKEY_ENGINE)
       self.assertTextDataContained(output, run_js('a.out.js', engine=sm_no_warn, args=args)) # run in spidermonkey for print()
@@ -4385,6 +4391,14 @@ int main() {
   return 0;
 }
 ''', [], 'hello, world! -10.00')
+
+    do_js_test('float', r'''
+function _main() {
+  var f = f0;
+  f = f0 + f0;
+  print(f);
+}
+''', [], '0\n', floaty=True)
 
     do_js_test('conditionals', r'''
 function _main() {

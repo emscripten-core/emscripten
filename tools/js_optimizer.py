@@ -23,7 +23,7 @@ DEBUG = os.environ.get('EMCC_DEBUG')
 
 func_sig = re.compile('function ([_\w$]+)\(')
 func_sig_json = re.compile('\["defun", ?"([_\w$]+)",')
-import_sig = re.compile('var ([_\w$]+) *=[^;]+;')
+import_sig = re.compile('(var|const) ([_\w$]+ *=[^;]+);')
 
 NATIVE_OPTIMIZER = os.environ.get('EMCC_NATIVE_OPTIMIZER') or '1' # use native optimizer by default, unless disabled by EMCC_NATIVE_OPTIMIZER=0 in the env
 
