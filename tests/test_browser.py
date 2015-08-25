@@ -2737,3 +2737,24 @@ window.close = function() {
 
   def test_canvas_size_proxy(self):
     self.btest(path_from_root('tests', 'canvas_size_proxy.c'), expected='0', args=['--proxy-to-worker'])
+
+  def test_separate_asm(self):
+    for opts in [0, 1, 2]:
+      print opts
+      open('src.cpp', 'w').write(self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
+      Popen([PYTHON, EMCC, 'src.cpp', '-o', 'test.html', '-O' + str(opts)]).communicate()
+      self.run_browser('test.html', None, '/report_result?0')
+
+      open('one.html', 'w').write('<script src="test.js"></script>')
+      self.run_browser('one.html', None, '/report_result?0')
+
+      Popen([PYTHON, path_from_root('tools', 'separate_asm.py'), 'test.js', 'asm.js', 'rest.js']).communicate()
+      open('two.html', 'w').write('''
+        <script>
+          var Module = {};
+        </script>
+        <script src="asm.js"></script>
+        <script src="rest.js"></script>
+      ''')
+      self.run_browser('two.html', None, '/report_result?0')
+
