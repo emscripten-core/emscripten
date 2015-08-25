@@ -168,7 +168,7 @@ for arg in sys.argv[2:]:
 if (not force) and len(data_files) == 0:
   has_preloaded = False
 if not has_preloaded or jsoutput == None:
-  separate_metadata = False
+  assert not separate_metadata, 'cannot separate-metadata without both --preloaded files and a specified --js-output'
 
 ret = '''
 var Module;

@@ -1,5 +1,5 @@
 mergeInto(LibraryManager.library, {
-  $FS__deps: ['$ERRNO_CODES', '$ERRNO_MESSAGES', '__setErrNo', '$PATH', '$TTY', '$MEMFS', '$IDBFS', '$NODEFS', 'stdin', 'stdout', 'stderr', 'fflush'],
+  $FS__deps: ['$ERRNO_CODES', '$ERRNO_MESSAGES', '__setErrNo', '$PATH', '$TTY', '$MEMFS', '$IDBFS', '$NODEFS', '$WORKERFS', 'stdin', 'stdout', 'stderr'],
   $FS__postset: 'FS.staticInit();' +
                 '__ATINIT__.unshift(function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() });' +
                 '__ATMAIN__.push(function() { FS.ignorePermissions = false });' +
@@ -29,6 +29,7 @@ mergeInto(LibraryManager.library, {
     },
     ErrnoError: null, // set during init
     genericErrors: {},
+    filesystems: null,
 
     handleFSError: function(e) {
       if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + stackTrace();
@@ -283,8 +284,7 @@ mergeInto(LibraryManager.library, {
     },
     // convert O_* bitmask to a string for nodePermissions
     flagsToPermissionString: function(flag) {
-      var accmode = flag & {{{ cDefine('O_ACCMODE') }}};
-      var perms = ['r', 'w', 'rw'][accmode];
+      var perms = ['r', 'w', 'rw'][flag & 3];
       if ((flag & {{{ cDefine('O_TRUNC') }}})) {
         perms += 'w';
       }
@@ -1348,6 +1348,13 @@ mergeInto(LibraryManager.library, {
       FS.createDefaultDirectories();
       FS.createDefaultDevices();
       FS.createSpecialDirectories();
+
+      FS.filesystems = {
+        'MEMFS': MEMFS,
+        'IDBFS': IDBFS,
+        'NODEFS': NODEFS,
+        'WORKERFS': WORKERFS,
+      };
     },
     init: function(input, output, error) {
       assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');

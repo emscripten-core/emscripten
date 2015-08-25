@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 #include <emscripten.h>
 #include <emscripten/vr.h>
 
@@ -40,17 +41,23 @@ mainloop()
             report_result(0);
             return;
         }
+        printf("%d VR devices found\n", gDevCount);
+
 
         int hwid = -1;
+        char *devName;
         for (int i = 0; i < gDevCount; ++i) {
             WebVRDeviceId devid = emscripten_vr_get_device_id(i);
             if (hwid == -1 || hwid == emscripten_vr_get_device_hwid(devid)) {
                 hwid = emscripten_vr_get_device_hwid(devid);
+                devName = emscripten_vr_get_device_name(devid);
 
                 if (emscripten_vr_get_device_type(devid) == WebVRHMDDevice) {
                     gHmdDev = devid;
+                    printf("Using WebVRHMDDevice '%s' (deviceId '%d'; hardwareUnitId '%d'.)\n", devName, gHmdDev,  hwid);
                 } else if (emscripten_vr_get_device_type(devid) == WebVRPositionSensorDevice) {
                     gPosDev = devid;
+                    printf("Using WebVRPositionSensorDevice '%s' (deviceId '%d'; hardwareUnitId '%d').\n", devName, gPosDev,  hwid);
                 }
             }
         }
@@ -62,16 +69,19 @@ mainloop()
             return;
         }
 
-        WebVRFieldOfView leftFov, rightFov;
-        emscripten_vr_hmd_get_current_fov(gHmdDev, WebVREyeLeft, &leftFov);
-        emscripten_vr_hmd_get_current_fov(gHmdDev, WebVREyeRight, &rightFov);
+        WebVREyeParameters leftParams, rightParams;
+        emscripten_vr_hmd_get_eye_parameters(gHmdDev, WebVREyeLeft, &leftParams);
+        emscripten_vr_hmd_get_eye_parameters(gHmdDev, WebVREyeLeft, &rightParams);
 
+        WebVRFieldOfView leftFov = leftParams.currentFieldOfView, rightFov = rightParams.currentFieldOfView;
         printf("Left FOV: %f %f %f %f\n", leftFov.upDegrees, leftFov.downDegrees, leftFov.rightDegrees, leftFov.leftDegrees);
         printf("Right FOV: %f %f %f %f\n", rightFov.upDegrees, rightFov.downDegrees, rightFov.rightDegrees, rightFov.leftDegrees);
     }
 
     WebVRPositionState state;
-    emscripten_vr_sensor_get_state(gPosDev, 0.0, &state);
+    emscripten_vr_sensor_get_state(gPosDev, false, &state);
+    printf("Timestamp: %f, hasPosition: %s , hasOrientation: %s\n", state.timeStamp, 
+           state.hasPosition ? "true" : "false", state.hasOrientation ? "true" : "false");
     printf("State: orientation: [%f %f %f %f] position: [%f %f %f]\n",
            state.orientation.x, state.orientation.y, state.orientation.z, state.orientation.w,
            state.position.x, state.position.y, state.position.z);

@@ -48,7 +48,7 @@ struct Ref {
   bool operator!=(const char *str);
   bool operator==(const IString &str);
   bool operator!=(const IString &str);
-  bool operator==(double d) { assert(0); return false; } // prevent Ref == number, which is potentially ambiguous; use ->getNumber() == number
+  bool operator==(double d) { abort(); return false; } // prevent Ref == number, which is potentially ambiguous; use ->getNumber() == number
   bool operator==(Ref other);
   bool operator!(); // check if null, in effect
 };
@@ -226,7 +226,7 @@ struct Value {
         setBool(other.boo);
         break;
       case Object:
-        assert(0); // TODO
+        abort(); // TODO
     }
     return *this;
   }
@@ -574,14 +574,14 @@ struct JSPrinter {
         buffer = (char*)malloc(size);
         if (!buffer) {
           printf("Out of memory allocating %d bytes for output buffer!", size);
-          assert(0);
+          abort();
         }
       } else {
         char *buf = (char*)realloc(buffer, size);
         if (!buf) {
           free(buffer);
           printf("Out of memory allocating %d bytes for output buffer!", size);
-          assert(0);
+          abort();
         }
         buffer = buf;
       }
@@ -633,45 +633,45 @@ struct JSPrinter {
       case 'a': {
         if (type == ASSIGN) printAssign(node);
         else if (type == ARRAY) printArray(node);
-        else assert(0);
+        else abort();
         break;
       }
       case 'b': {
         if (type == BINARY) printBinary(node);
         else if (type == BLOCK) printBlock(node);
         else if (type == BREAK) printBreak(node);
-        else assert(0);
+        else abort();
         break;
       }
       case 'c': {
         if (type == CALL) printCall(node);
         else if (type == CONDITIONAL) printConditional(node);
         else if (type == CONTINUE) printContinue(node);
-        else assert(0);
+        else abort();
         break;
       }
       case 'd': {
         if (type == DEFUN) printDefun(node);
         else if (type == DO) printDo(node);
         else if (type == DOT) printDot(node);
-        else assert(0);
+        else abort();
         break;
       }
       case 'i': {
         if (type == IF) printIf(node);
-        else assert(0);
+        else abort();
         break;
       }
       case 'l': {
         if (type == LABEL) printLabel(node);
-        else assert(0);
+        else abort();
         break;
       }
       case 'n': {
         if (type == NAME) printName(node);
         else if (type == NUM) printNum(node);
         else if (type == NEW) printNew(node);
-        else assert(0);
+        else abort();
         break;
       }
       case 'o': {
@@ -680,7 +680,7 @@ struct JSPrinter {
       }
       case 'r': {
         if (type == RETURN) printReturn(node);
-        else assert(0);
+        else abort();
         break;
       }
       case 's': {
@@ -689,32 +689,32 @@ struct JSPrinter {
         else if (type == SEQ) printSeq(node);
         else if (type == SWITCH) printSwitch(node);
         else if (type == STRING) printString(node);
-        else assert(0);
+        else abort();
         break;
       }
       case 't': {
         if (type == TOPLEVEL) printToplevel(node);
-        else assert(0);
+        else abort();
         break;
       }
       case 'u': {
         if (type == UNARY_PREFIX) printUnaryPrefix(node);
-        else assert(0);
+        else abort();
         break;
       }
       case 'v': {
         if (type == VAR) printVar(node);
-        else assert(0);
+        else abort();
         break;
       }
       case 'w': {
         if (type == WHILE) printWhile(node);
-        else assert(0);
+        else abort();
         break;
       }
       default: {
         printf("cannot yet print %s\n", type.str);
-        assert(0);
+        abort();
       }
     }
   }
@@ -1306,7 +1306,7 @@ public:
       block[1]->push_back(element);
     } else if (block[0] == DEFUN) {
       block[3]->push_back(element);
-    } else assert(0);
+    } else abort();
   }
 
   static Ref makeCall(Ref target) {

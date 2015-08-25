@@ -829,10 +829,16 @@ if __name__ == '__main__':
   sys.argv = map(lambda arg: arg if not arg.startswith('test_') else 'default.' + arg, sys.argv)
 
   # If a test (e.g. test_html) is specified as ALL.test_html, add an entry for each test_mode
-  if len(sys.argv) == 2 and sys.argv[1].startswith('ALL.'):
-    ignore, test = sys.argv[1].split('.')
-    print 'Running all test modes on test "%s"' % test
-    sys.argv = [sys.argv[0]] + map(lambda mode: mode+'.'+test, test_modes)
+  new_args = [sys.argv[0]]
+  for i in range(1, len(sys.argv)):
+    arg = sys.argv[i]
+    if arg.startswith('ALL.'):
+      ignore, test = arg.split('.')
+      print 'Running all test modes on test "%s"' % test
+      new_args += map(lambda mode: mode+'.'+test, test_modes)
+    else:
+      new_args += [arg]
+  sys.argv = new_args
 
   # Skip requested tests
   for i in range(len(sys.argv)):
@@ -905,31 +911,34 @@ Debugging: You can run
 
 in order to save the test runner directory, in /tmp/emscripten_temp. All files
 created by the test will be present there. You can also use EMCC_DEBUG to
-further debug the compiler itself, which works outside of the test suite as
-well: EMCC_DEBUG=1 will emit emcc-* files in that temp dir for each stage
-of the compiler, while EMCC_DEBUG=2 will emit even more files, one for each
-js optimizer phase.
+further debug the compiler itself, see emcc.
 ==============================================================================
 
 '''
     time.sleep(2)
 
-  # If we asked to run random tests, do that
+  # If we were asked to run random tests, do that
   first = sys.argv[1]
   if first.startswith('random'):
     num = 1
     first = first[6:]
+    base_module = 'default'
+    relevant_modes = test_modes
     if len(first) > 0:
+      if first.startswith('other'):
+        base_module = 'other'
+        relevant_modes = ['other']
+        first = first.replace('other', '')
       num = int(first)
     for m in modules:
-      if hasattr(m, 'default'):
+      if hasattr(m, base_module):
         sys.argv = [sys.argv[0]]
-        tests = filter(lambda t: t.startswith('test_'), dir(getattr(m, 'default')))
+        tests = filter(lambda t: t.startswith('test_'), dir(getattr(m, base_module)))
         print
         chosen = set()
         while len(chosen) < num:
           test = random.choice(tests)
-          mode = random.choice(test_modes)
+          mode = random.choice(relevant_modes)
           print '* ' + mode + '.' + test
           chosen.add(mode + '.' + test)
         sys.argv += list(chosen)

@@ -19,7 +19,7 @@ Runtime.GLOBAL_BASE = Runtime.alignMemory(Runtime.GLOBAL_BASE, {{{ MAX_GLOBAL_AL
 #endif
 
 {{{ maybeExport('Runtime') }}}
-#if CLOSURE_COMPILER
+#if USE_CLOSURE_COMPILER
 Runtime['addFunction'] = Runtime.addFunction;
 Runtime['removeFunction'] = Runtime.removeFunction;
 #endif
@@ -1142,53 +1142,83 @@ assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' 
 var buffer;
 #if USE_PTHREADS
 
-if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') {
 #if IN_TEST_HARNESS
+if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') {
   xhr = new XMLHttpRequest();
   xhr.open('GET', 'http://localhost:8888/report_result?skipped:%20SharedArrayBuffer%20is%20not%20supported!');
   xhr.send();
   setTimeout(function() { window.close() }, 2000);
+}
 #endif
-  abort('Your browser does not support the SharedArrayBuffer and Atomics specification! Try running in Firefox Nightly.');
+
+
+if (typeof SharedArrayBuffer !== 'undefined') {
+  if (!ENVIRONMENT_IS_PTHREAD) buffer = new SharedArrayBuffer(TOTAL_MEMORY);
+  // Currently SharedArrayBuffer does not have a slice() operation, so polyfill it in.
+  // Adapted from https://github.com/ttaubert/node-arraybuffer-slice, (c) 2014 Tim Taubert <tim@timtaubert.de>
+  // arraybuffer-slice may be freely distributed under the MIT license.
+  (function (undefined) {
+    "use strict";
+    function clamp(val, length) {
+      val = (val|0) || 0;
+      if (val < 0) return Math.max(val + length, 0);
+      return Math.min(val, length);
+    }
+    if (typeof SharedArrayBuffer !== 'undefined' && !SharedArrayBuffer.prototype.slice) {
+      SharedArrayBuffer.prototype.slice = function (from, to) {
+        var length = this.byteLength;
+        var begin = clamp(from, length);
+        var end = length;
+        if (to !== undefined) end = clamp(to, length);
+        if (begin > end) return new ArrayBuffer(0);
+        var num = end - begin;
+        var target = new ArrayBuffer(num);
+        var targetArray = new Uint8Array(target);
+        var sourceArray = new SharedUint8Array(this, begin, num);
+        targetArray.set(sourceArray);
+        return target;
+      };
+    }
+  })();
+
+  HEAP8 = new SharedInt8Array(buffer);
+  HEAP16 = new SharedInt16Array(buffer);
+  HEAP32 = new SharedInt32Array(buffer);
+  HEAPU8 = new SharedUint8Array(buffer);
+  HEAPU16 = new SharedUint16Array(buffer);
+  HEAPU32 = new SharedUint32Array(buffer);
+  HEAPF32 = new SharedFloat32Array(buffer);
+  HEAPF64 = new SharedFloat64Array(buffer);
+} else {
+  if (!ENVIRONMENT_IS_PTHREAD) buffer = new ArrayBuffer(TOTAL_MEMORY);
+  HEAP8 = new Int8Array(buffer);
+  HEAP16 = new Int16Array(buffer);
+  HEAP32 = new Int32Array(buffer);
+  HEAPU8 = new Uint8Array(buffer);
+  HEAPU16 = new Uint16Array(buffer);
+  HEAPU32 = new Uint32Array(buffer);
+  HEAPF32 = new Float32Array(buffer);
+  HEAPF64 = new Float64Array(buffer);
 }
 
-if (!ENVIRONMENT_IS_PTHREAD) buffer = new SharedArrayBuffer(TOTAL_MEMORY);
+if (typeof Atomics === 'undefined') {
+  // Polyfill singlethreaded atomics ops from http://lars-t-hansen.github.io/ecmascript_sharedmem/shmem.html#Atomics.add
+  // No thread-safety needed since we don't have multithreading support.
+  Atomics = {};
+  Atomics['add'] = function(t, i, v) { var w = t[i]; t[i] += v; return w; }
+  Atomics['and'] = function(t, i, v) { var w = t[i]; t[i] &= v; return w; }
+  Atomics['compareExchange'] = function(t, i, e, r) { var w = t[i]; if (w == e) t[i] = r; return w; }
+  Atomics['futexWait'] = function(t, i, v, o) { if (t[i] != v) abort('Multithreading is not supported, cannot sleep to wait for futex!'); }
+  Atomics['futexWake'] = function(t, i, c) {}
+  Atomics['futexWakeOrRequeue'] = function(t, i1, c, i2, v) {}
+  Atomics['isLockFree'] = function(s) { return true; }
+  Atomics['load'] = function(t, i) { return t[i]; }
+  Atomics['or'] = function(t, i, v) { var w = t[i]; t[i] |= v; return w; }
+  Atomics['store'] = function(t, i, v) { t[i] = v; return v; }
+  Atomics['sub'] = function(t, i, v) { var w = t[i]; t[i] -= v; return w; }
+  Atomics['xor'] = function(t, i, v) { var w = t[i]; t[i] ^= v; return w; }
+}
 
-// Currently SharedArrayBuffer does not have a slice() operation, so polyfill it in.
-// Adapted from https://github.com/ttaubert/node-arraybuffer-slice, (c) 2014 Tim Taubert <tim@timtaubert.de>
-// arraybuffer-slice may be freely distributed under the MIT license.
-(function (undefined) {
-  "use strict";
-  function clamp(val, length) {
-    val = (val|0) || 0;
-    if (val < 0) return Math.max(val + length, 0);
-    return Math.min(val, length);
-  }
-  if (!SharedArrayBuffer.prototype.slice) {
-    SharedArrayBuffer.prototype.slice = function (from, to) {
-      var length = this.byteLength;
-      var begin = clamp(from, length);
-      var end = length;
-      if (to !== undefined) end = clamp(to, length);
-      if (begin > end) return new ArrayBuffer(0);
-      var num = end - begin;
-      var target = new ArrayBuffer(num);
-      var targetArray = new Uint8Array(target);
-      var sourceArray = new SharedUint8Array(this, begin, num);
-      targetArray.set(sourceArray);
-      return target;
-    };
-  }
-})();
-
-HEAP8 = new SharedInt8Array(buffer);
-HEAP16 = new SharedInt16Array(buffer);
-HEAP32 = new SharedInt32Array(buffer);
-HEAPU8 = new SharedUint8Array(buffer);
-HEAPU16 = new SharedUint16Array(buffer);
-HEAPU32 = new SharedUint32Array(buffer);
-HEAPF32 = new SharedFloat32Array(buffer);
-HEAPF64 = new SharedFloat64Array(buffer);
 #else // USE_PTHREADS
 buffer = new ArrayBuffer(TOTAL_MEMORY);
 HEAP8 = new Int8Array(buffer);
@@ -1640,7 +1670,7 @@ if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() {
 
 #if PTHREAD_POOL_SIZE > 0
 // To work around https://bugzilla.mozilla.org/show_bug.cgi?id=1049079, warm up a worker pool before starting up the application.
-if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() { addRunDependency('pthreads'); PThread.allocateUnusedWorkers({{{PTHREAD_POOL_SIZE}}}, function() { removeRunDependency('pthreads'); }); });
+if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() { if (typeof SharedArrayBuffer !== 'undefined') { addRunDependency('pthreads'); PThread.allocateUnusedWorkers({{{PTHREAD_POOL_SIZE}}}, function() { removeRunDependency('pthreads'); }); }});
 #endif
 
 // === Body ===

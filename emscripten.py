@@ -238,7 +238,8 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
 
     # merge forwarded data
     settings['EXPORTED_FUNCTIONS'] = forwarded_json['EXPORTED_FUNCTIONS']
-    all_exported_functions = set(settings['EXPORTED_FUNCTIONS']) # both asm.js and otherwise
+    all_exported_functions = set(shared.expand_response(settings['EXPORTED_FUNCTIONS'])) # both asm.js and otherwise
+
     for additional_export in settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE']: # additional functions to export from asm, if they are implemented
       all_exported_functions.add('_' + additional_export)
     if settings['EXPORT_FUNCTION_TABLES']:
@@ -416,9 +417,11 @@ function _emscripten_asm_const_%d(%s) {
             specific_bad, specific_bad_func = make_bad(j)
             Counter.pre.append(specific_bad_func)
             return specific_bad if not newline else (specific_bad + '\n')
-        if item not in implemented_functions and not settings['EMULATED_FUNCTION_POINTERS']: # when emulating function pointers, we don't need wrappers
+        clean_item = item.replace("asm['", '').replace("']", '')
+        if clean_item not in implemented_functions and not (settings['EMULATED_FUNCTION_POINTERS'] and not settings['RELOCATABLE']): # when emulating function pointers, we don't need wrappers
+                                                                                                                                     # but if relocating, then we also have the copies in-module, and do
           # this is imported into asm, we must wrap it
-          call_ident = item
+          call_ident = clean_item
           if call_ident in metadata['redirects']: call_ident = metadata['redirects'][call_ident]
           if not call_ident.startswith('_') and not call_ident.startswith('Math_'): call_ident = '_' + call_ident
           code = call_ident + '(' + coerced_params + ')'
@@ -427,8 +430,8 @@ function _emscripten_asm_const_%d(%s) {
             if sig[0] == 'f': code = '+' + code
             code = 'return ' + shared.JS.make_coercion(code, sig[0], settings)
           code += ';'
-          Counter.pre.append(make_func(item + '__wrapper', code, params, coercions))
-          return item + '__wrapper'
+          Counter.pre.append(make_func(clean_item + '__wrapper', code, params, coercions))
+          return clean_item + '__wrapper'
         return item if not newline else (item + '\n')
       if settings['ASSERTIONS'] >= 2:
         debug_tables[sig] = body
@@ -439,8 +442,7 @@ function _emscripten_asm_const_%d(%s) {
     Counter.pre = []
 
     function_tables_defs = '\n'.join([info[0] for info in infos]) + '\n'
-    if not settings['EMULATED_FUNCTION_POINTERS']:
-      function_tables_defs += '\n// EMSCRIPTEN_END_FUNCS\n'
+    function_tables_defs += '\n// EMSCRIPTEN_END_FUNCS\n'
     function_tables_defs += '\n'.join([info[1] for info in infos])
 
     asm_setup = ''
@@ -450,9 +452,8 @@ function _emscripten_asm_const_%d(%s) {
         asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(debug_tables[sig]) + ';'
 
     maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'clz32']]
-    simdfloattypes = ['Float32x4']
-    simdinttypes = ['Int32x4']
-    simdtypes = simdfloattypes + simdinttypes
+    simdfloattypes = []
+    simdinttypes = []
     simdfuncs = ['check', 'add', 'sub', 'neg', 'mul',
                  'equal', 'lessThan', 'greaterThan',
                  'notEqual', 'lessThanOrEqual', 'greaterThanOrEqual',
@@ -460,16 +461,32 @@ function _emscripten_asm_const_%d(%s) {
                  'splat', 'swizzle', 'shuffle',
                  'load', 'store', 'load1', 'store1', 'load2', 'store2', 'load3', 'store3',
                  'extractLane', 'replaceLane']
+    if metadata['simdInt8x16']:
+      simdinttypes += ['Int8x16']
+      simdfuncs += ['fromInt8x16Bits']
+    if metadata['simdInt16x8']:
+      simdinttypes += ['Int16x8']
+      simdfuncs += ['fromInt16x8Bits']
+    if metadata['simdInt32x4']:
+      simdinttypes += ['Int32x4']
+      simdfuncs += ['fromInt32x4', 'fromInt32x4Bits']
+    if metadata['simdFloat32x4']:
+      simdfloattypes += ['Float32x4']
+      simdfuncs += ['fromFloat32x4', 'fromFloat32x4Bits']
+    if metadata['simdFloat64x2']:
+      simdfloattypes += ['Float64x2']
+      simdfuncs += ['fromFloat64x2', 'fromFloat64x2Bits']
+
     simdfloatfuncs = simdfuncs + ['div', 'min', 'max', 'minNum', 'maxNum', 'sqrt',
-                                  'abs', 'fromInt32x4', 'fromInt32x4Bits',
-                                  'reciprocalApproximation', 'reciprocalSqrtApproximation'];
-    simdintfuncs = simdfuncs + ['fromFloat32x4', 'fromFloat32x4Bits',
-                                'shiftRightArithmeticByScalar',
+                                  'abs', 'reciprocalApproximation', 'reciprocalSqrtApproximation'];
+    simdintfuncs = simdfuncs + ['shiftRightArithmeticByScalar',
                                 'shiftRightLogicalByScalar',
                                 'shiftLeftByScalar'];
+    simdtypes = simdfloattypes + simdinttypes
+
     fundamentals = ['Math']
     if settings['USE_PTHREADS']:
-      fundamentals += ['SharedInt8Array', 'SharedInt16Array', 'SharedInt32Array', 'SharedUint8Array', 'SharedUint16Array', 'SharedUint32Array', 'SharedFloat32Array', 'SharedFloat64Array', 'Atomics']
+      fundamentals += ['I8Array', 'I16Array', 'I32Array', 'U8Array', 'U16Array', 'U32Array', 'F32Array', 'F64Array', 'Atomics']
     else:
       fundamentals += ['Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
     fundamentals += ['NaN', 'Infinity']
@@ -610,14 +627,27 @@ function ftCall_%s(%s) {%s
 ''' % (sig, ', '.join(full_args), prelude, table_access, ', '.join(args))
         basic_funcs.append('ftCall_%s' % sig)
 
+        if settings.get('RELOCATABLE'):
+          params = ','.join(['ptr'] + ['p%d' % p for p in range(len(sig)-1)])
+          coerced_params = ','.join([shared.JS.make_coercion('ptr', 'i', settings)] + [shared.JS.make_coercion('p%d', unfloat(sig[p+1]), settings) % p for p in range(len(sig)-1)])
+          coercions = ';'.join(['ptr = ptr | 0'] + ['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, unfloat(sig[p+1]), settings)) for p in range(len(sig)-1)]) + ';'
+          mini_coerced_params = ','.join([shared.JS.make_coercion('p%d', sig[p+1], settings) % p for p in range(len(sig)-1)])
+          maybe_return = '' if sig[0] == 'v' else 'return'
+          final_return = maybe_return + ' ' + shared.JS.make_coercion('ftCall_' + sig + '(' + coerced_params + ')', unfloat(sig[0]), settings) + ';'
+          if settings['EMULATED_FUNCTION_POINTERS'] == 1:
+            body = final_return
+          else:
+            body = 'if (((ptr|0) >= (fb|0)) & ((ptr|0) < (fb + {{{ FTM_' + sig + ' }}} | 0))) { ' + maybe_return + ' ' + shared.JS.make_coercion('FUNCTION_TABLE_' + sig + '[(ptr-fb)&{{{ FTM_' + sig + ' }}}](' + mini_coerced_params + ')', sig[0], settings, ffi_arg=True) + '; ' + ('return;' if sig[0] == 'v' else '') + ' }' + final_return
+          funcs_js.append(make_func('mftCall_' + sig, body, params, coercions) + '\n')
+
     def quote(prop):
-      if settings['CLOSURE_COMPILER'] == 2:
+      if settings['USE_CLOSURE_COMPILER'] == 2:
         return "'" + prop + "'"
       else:
         return prop
 
     def access_quote(prop):
-      if settings['CLOSURE_COMPILER'] == 2:
+      if settings['USE_CLOSURE_COMPILER'] == 2:
         return "['" + prop + "']"
       else:
         return '.' + prop
@@ -658,9 +688,22 @@ function ftCall_%s(%s) {%s
     asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global' + access_quote(g) + ';\n' for g in maths]);
     asm_global_funcs += ''.join(['  var ' + g + '=env' + access_quote(math_fix(g)) + ';\n' for g in basic_funcs + global_funcs])
     if metadata['simd']:
+      def string_contains_any(s, str_list):
+        for sub in str_list:
+          if sub in s:
+            return True
+        return False
+      nonexisting_simd_symbols = ['Int32x4_fromInt32x4', 'Float32x4_fromFloat32x4']
+
       asm_global_funcs += ''.join(['  var SIMD_' + ty + '=global' + access_quote('SIMD') + access_quote(ty) + ';\n' for ty in simdtypes])
-      asm_global_funcs += ''.join(['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdinttypes for g in simdintfuncs])
-      asm_global_funcs += ''.join(['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdfloattypes for g in simdfloatfuncs])
+
+      simd_int_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdinttypes for g in simdintfuncs]
+      simd_int_symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), simd_int_symbols)
+      asm_global_funcs += ''.join(simd_int_symbols)
+
+      simd_float_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdfloattypes for g in simdfloatfuncs]
+      simd_float_symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), simd_float_symbols)
+      asm_global_funcs += ''.join(simd_float_symbols)
     if settings['USE_PTHREADS']:
 #      asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor', 'fence']])
 # TODO: Once bug https://bugzilla.mozilla.org/show_bug.cgi?id=1141986 is implemented, replace the following line with the above one!
@@ -698,16 +741,16 @@ return real_''' + s + '''.apply(null, arguments);
 
     if DEBUG: logging.debug('asm text sizes' + str([map(len, funcs_js), len(asm_setup), len(asm_global_vars), len(asm_global_funcs), len(pre_tables), len('\n'.join(function_tables_impls)), len(function_tables_defs.replace('\n', '\n  ')), len(exports), len(the_global), len(sending), len(receiving)]))
 
-    if not settings.get('EMULATED_FUNCTION_POINTERS'):
-      final_function_tables = '\n'.join(function_tables_impls) + '\n' + function_tables_defs
-    else:
+    final_function_tables = '\n'.join(function_tables_impls) + '\n' + function_tables_defs
+    if settings.get('EMULATED_FUNCTION_POINTERS'):
       asm_setup += '\n' + '\n'.join(function_tables_impls) + '\n'
-      receiving += '\n' + function_tables_defs + '\n' + ''.join(['Module["dynCall_%s"] = dynCall_%s\n' % (sig, sig) for sig in last_forwarded_json['Functions']['tables']])
+      receiving += '\n' + function_tables_defs.replace('// EMSCRIPTEN_END_FUNCS\n', '') + '\n' + ''.join(['Module["dynCall_%s"] = dynCall_%s\n' % (sig, sig) for sig in last_forwarded_json['Functions']['tables']])
       for sig in last_forwarded_json['Functions']['tables'].keys():
         name = 'FUNCTION_TABLE_' + sig
         fullname = name if not settings['SIDE_MODULE'] else ('SIDE_' + name)
         receiving += 'Module["' + name + '"] = ' + fullname + ';\n'
-      final_function_tables = '\n// EMSCRIPTEN_END_FUNCS\n'
+
+      final_function_tables = final_function_tables.replace("asm['", '').replace("']", '').replace('var SIDE_FUNCTION_TABLE_', 'var FUNCTION_TABLE_').replace('var dynCall_', '//')
 
     if settings['RELOCATABLE']:
       receiving += '''
@@ -720,6 +763,17 @@ Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
 
       receiving += ''.join(["Module['%s'] = Module['%s']\n" % (k, v) for k, v in metadata['aliases'].iteritems()])
 
+    if settings['USE_PTHREADS']:
+      asm_setup += '''
+var I8Array = typeof SharedInt8Array !== 'undefined' ? SharedInt8Array : Int8Array;
+var I16Array = typeof SharedInt16Array !== 'undefined' ? SharedInt16Array : Int16Array;
+var I32Array = typeof SharedInt32Array !== 'undefined' ? SharedInt32Array : Int32Array;
+var U8Array = typeof SharedUint8Array !== 'undefined' ? SharedUint8Array : Uint8Array;
+var U16Array = typeof SharedUint16Array !== 'undefined' ? SharedUint16Array : Uint16Array;
+var U32Array = typeof SharedUint32Array !== 'undefined' ? SharedUint32Array : Uint32Array;
+var F32Array = typeof SharedFloat32Array !== 'undefined' ? SharedFloat32Array : Float32Array;
+var F64Array = typeof SharedFloat64Array !== 'undefined' ? SharedFloat64Array : Float64Array;
+'''
     funcs_js = ['''
 %s
 Module%s = %s;
@@ -740,14 +794,14 @@ var asm = (function(global, env, buffer) {
   var HEAPU32 = new global%s(buffer);
   var HEAPF32 = new global%s(buffer);
   var HEAPF64 = new global%s(buffer);
-''' % (access_quote('SharedInt8Array' if settings['USE_PTHREADS'] else 'Int8Array'),
-     access_quote('SharedInt16Array' if settings['USE_PTHREADS'] else 'Int16Array'),
-     access_quote('SharedInt32Array' if settings['USE_PTHREADS'] else 'Int32Array'),
-     access_quote('SharedUint8Array' if settings['USE_PTHREADS'] else 'Uint8Array'),
-     access_quote('SharedUint16Array' if settings['USE_PTHREADS'] else 'Uint16Array'),
-     access_quote('SharedUint32Array' if settings['USE_PTHREADS'] else 'Uint32Array'),
-     access_quote('SharedFloat32Array' if settings['USE_PTHREADS'] else 'Float32Array'),
-     access_quote('SharedFloat64Array' if settings['USE_PTHREADS'] else 'Float64Array'))
+''' % (access_quote('I8Array' if settings['USE_PTHREADS'] else 'Int8Array'),
+     access_quote('I16Array' if settings['USE_PTHREADS'] else 'Int16Array'),
+     access_quote('I32Array' if settings['USE_PTHREADS'] else 'Int32Array'),
+     access_quote('U8Array' if settings['USE_PTHREADS'] else 'Uint8Array'),
+     access_quote('U16Array' if settings['USE_PTHREADS'] else 'Uint16Array'),
+     access_quote('U32Array' if settings['USE_PTHREADS'] else 'Uint32Array'),
+     access_quote('F32Array' if settings['USE_PTHREADS'] else 'Float32Array'),
+     access_quote('F64Array' if settings['USE_PTHREADS'] else 'Float64Array'))
      if not settings['ALLOW_MEMORY_GROWTH'] else '''
   var Int8View = global%s;
   var Int16View = global%s;
@@ -967,17 +1021,20 @@ def main(args, compiler_engine, cache, temp_files, DEBUG, DEBUG_CACHE):
   emscript(args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine,
            temp_files=temp_files, DEBUG=DEBUG, DEBUG_CACHE=DEBUG_CACHE)
 
-def _main(environ):
+def _main(args=None):
+  if args is None:
+    args = sys.argv[1:]
+
   response_file = True
   while response_file:
     response_file = None
-    for index in range(1, len(sys.argv)):
-      if sys.argv[index][0] == '@':
+    for index in range(len(args)):
+      if args[index][0] == '@':
         # found one, loop again next time
         response_file = True
-        response_file_args = read_response_file(sys.argv[index])
+        response_file_args = read_response_file(args[index])
         # slice in extra_args in place of the response file arg
-        sys.argv[index:index+1] = response_file_args
+        args[index:index+1] = response_file_args
         break
 
   parser = optparse.OptionParser(
@@ -1019,11 +1076,11 @@ def _main(environ):
                     help='Hides debug output')
   parser.add_option('--suppressUsageWarning',
                     action='store_true',
-                    default=environ.get('EMSCRIPTEN_SUPPRESS_USAGE_WARNING'),
+                    default=os.environ.get('EMSCRIPTEN_SUPPRESS_USAGE_WARNING'),
                     help=('Suppress usage warning'))
 
   # Convert to the same format that argparse would have produced.
-  keywords, positional = parser.parse_args()
+  keywords, positional = parser.parse_args(args)
 
   if not keywords.suppressUsageWarning:
     logging.warning('''
@@ -1068,4 +1125,5 @@ WARNING: You should normally never use this! Use emcc instead.
   ))
 
 if __name__ == '__main__':
-  _main(environ=os.environ)
+  _main()
+

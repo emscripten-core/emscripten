@@ -5525,6 +5525,7 @@ var LibraryGL = {
 
       // Generate index data in a format suitable for GLES 2.0/WebGL
       var numVertexes = 4 * GLImmediate.vertexCounter / GLImmediate.stride;
+      if (!numVertexes) return;
 #if ASSERTIONS
       assert(numVertexes % 1 == 0, "`numVertexes` must be an integer.");
 #endif

@@ -31,7 +31,6 @@ In addition to the ``-Ox`` options, there are separate compiler options that can
 .. note::
 
 	-  The meanings of the *emcc* optimization flags (``-O1, -O2`` etc.) are different to the similarly-named options in *gcc*, *clang*, and other compilers, because optimizing JavaScript is very different to optimizing native code. The mapping of the *emcc* levels to the LLVM bitcode optimization levels is documented in the reference.
-	-  If you compile several files into a single JavaScript output, be sure to specify the **same** optimization flags when compiling sources into objects, and objects into JavaScript or HTML. See :ref:`Building-Projects` for more details.
 
 
 Advanced compiler settings

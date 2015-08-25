@@ -7,39 +7,15 @@ emcc - compiler helper script
 
 emcc is a drop-in replacement for a compiler like gcc or clang.
 
-Tell your build system to use this instead of the compiler, and similarly
-use emar, emranlib etc. instead of the same command without 'em'.
-
-Example uses:
-
- * For configure, instead of ./configure, cmake, etc., run emconfigure.py
-   with that command as an argument, for example
-
-    emconfigure.py ./configure [options]
-
-   emconfigure.py is a tiny script that just sets some environment vars
-   as a convenience. The command just shown is equivalent to
-
-    EMMAKEN_JUST_CONFIGURE=1 RANLIB=PATH/emranlib AR=PATH/emar CXX=PATH/em++ CC=PATH/emcc ./configure [options]
-
-   where PATH is the path to this file.
-
-   EMMAKEN_JUST_CONFIGURE tells emcc that it is being run in ./configure,
-   so it should relay everything to gcc/g++. You should not define that when
-   running make, of course.
-
-After setting that up, run your build system normally.
-
-Note the appearance of em++ instead of emcc
-for the C++ compiler. This is needed for cases where we get
-a C++ file with a C extension, in which case CMake can be told
-to run g++ on it despite the .c extension, see
-
-  https://github.com/kripken/emscripten/issues/6
-
-(If a similar situation occurs with ./configure, you can do the same there too.)
+See  emcc --help  for details.
 
 emcc can be influenced by a few environment variables:
+
+  EMCC_DEBUG - "1" will log out useful information during compilation, as well as
+               save each compiler step as an emcc-* file in the temp dir
+               (by default /tmp/emscripten_temp). "2" will save additional emcc-*
+               steps, that would normally not be separately produced (so this
+               slows down compilation).
 
   EMMAKEN_NO_SDK - Will tell emcc *not* to use the emscripten headers. Instead
                    your system headers will be used.
@@ -419,7 +395,7 @@ try:
   js_opts = None
   llvm_opts = None
   llvm_lto = None
-  closure = None
+  use_closure_compiler = None
   js_transform = None
   pre_js = ''
   post_js = ''
@@ -517,7 +493,7 @@ try:
       newargs[i+1] = ''
     elif newargs[i].startswith('--closure'):
       check_bad_eq(newargs[i])
-      closure = int(newargs[i+1])
+      use_closure_compiler = int(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--js-transform'):
@@ -619,7 +595,6 @@ try:
       newargs[i] = ''
     elif newargs[i] == '-v':
       shared.COMPILER_OPTS += ['-v']
-      #shared.LINK_CMD += ['-v'] # Enable verbose output from llvm-link, since it can take a long time and this gives some indication of progress.
       shared.check_sanity(force=True)
       newargs[i] = ''
     elif newargs[i].startswith('--shell-file'):
@@ -687,6 +662,13 @@ try:
       if not default_object_extension.startswith('.'):
         default_object_extension = '.' + default_object_extension
       newargs[i+1] = ''
+    elif newargs[i] == '-msse':
+      newargs.append('-D__SSE__=1')
+      newargs[i] = ''
+    elif newargs[i] == '-msse2':
+      newargs.append('-D__SSE__=1')
+      newargs.append('-D__SSE2__=1')
+      newargs[i] = ''
 
   if should_exit:
     sys.exit(0)
@@ -841,7 +823,7 @@ try:
             break
         if found: break
       if found: break
-    if not found and lib not in ['GL', 'GLU', 'glut', 'm', 'SDL']: # whitelist our default libraries
+    if not found and lib not in ['GL', 'GLU', 'glut', 'm', 'SDL', 'stdc++']: # whitelist our default libraries
       logging.warning('emcc: cannot find library "%s"', lib)
 
   # If not compiling to JS, then we are compiling to an intermediate bitcode objects or library, so
@@ -883,8 +865,12 @@ try:
   # Apply -s settings in newargs here (after optimization levels, so they can override them)
   for change in settings_changes:
     key, value = change.split('=')
+    original_exported_response = False
+
     if value[0] == '@':
       if key not in DEFERRED_REPONSE_FILES:
+        if key == 'EXPORTED_FUNCTIONS':
+          original_exported_response = value
         value = open(value[1:]).read()
       else:
         value = '"' + value + '"'
@@ -892,7 +878,8 @@ try:
       value = value.replace('\\', '\\\\')
     exec('shared.Settings.' + key + ' = ' + value)
     if key == 'EXPORTED_FUNCTIONS':
-      shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = shared.Settings.EXPORTED_FUNCTIONS[:] # used for warnings in emscripten.py
+      # used for warnings in emscripten.py
+      shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = original_exported_response or shared.Settings.EXPORTED_FUNCTIONS[:]
 
   try:
     assert shared.Settings.ASM_JS > 0, 'ASM_JS must be enabled in fastcomp'
@@ -926,22 +913,23 @@ try:
     js_opts = True
     logging.debug('enabling js opts for SAFE_HEAP')
 
-  if debug_level > 1 and closure:
+  if debug_level > 1 and use_closure_compiler:
     logging.warning('disabling closure because debug info was requested')
-    closure = False
+    use_closure_compiler = False
 
-  assert not (shared.Settings.NO_DYNAMIC_EXECUTION and closure), 'cannot have both NO_DYNAMIC_EXECUTION and closure compiler enabled at the same time'
+  assert not (shared.Settings.NO_DYNAMIC_EXECUTION and use_closure_compiler), 'cannot have both NO_DYNAMIC_EXECUTION and closure compiler enabled at the same time'
 
-  if closure:
-    shared.Settings.CLOSURE_COMPILER = closure
+  if use_closure_compiler:
+    shared.Settings.USE_CLOSURE_COMPILER = use_closure_compiler
     assert os.path.exists(shared.CLOSURE_COMPILER), logging.error('fatal: Closure compiler (%s) does not exist', shared.CLOSURE_COMPILER)
-    if closure == 2 and shared.Settings.ASM_JS == 1:
+    if use_closure_compiler == 2 and shared.Settings.ASM_JS == 1:
       logging.warning('not all asm.js optimizations are possible with --closure 2, disabling those - your code will be run more slowly')
       shared.Settings.ASM_JS = 2
 
   if shared.Settings.MAIN_MODULE:
     assert not shared.Settings.SIDE_MODULE
-    shared.Settings.INCLUDE_FULL_LIBRARY = 1
+    if shared.Settings.MAIN_MODULE != 2:
+      shared.Settings.INCLUDE_FULL_LIBRARY = 1
   elif shared.Settings.SIDE_MODULE:
     assert not shared.Settings.MAIN_MODULE
     memory_init_file = False # memory init file is not supported with side modules, must be executable synchronously (for dlopen)
@@ -951,10 +939,11 @@ try:
 
   if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
     assert shared.Settings.ASM_JS, 'module linking requires asm.js output (-s ASM_JS=1)'
-    shared.Settings.LINKABLE = 1 # TODO: add FORCE_DCE option for the brave people that do want to dce here and in side modules
+    if shared.Settings.MAIN_MODULE != 2:
+      shared.Settings.LINKABLE = 1
     shared.Settings.RELOCATABLE = 1
     shared.Settings.PRECISE_I64_MATH = 1 # other might use precise math, we need to be able to print it
-    assert not closure, 'cannot use closure compiler on shared modules'
+    assert not use_closure_compiler, 'cannot use closure compiler on shared modules'
 
   if shared.Settings.WASM:
     assert not shared.Settings.ALLOW_MEMORY_GROWTH, 'memory growth is not supported with WASM=1'
@@ -984,7 +973,8 @@ try:
 
   if shared.Settings.RELOCATABLE:
     assert shared.Settings.GLOBAL_BASE < 1
-    shared.Settings.EMULATED_FUNCTION_POINTERS = 1
+    if shared.Settings.EMULATED_FUNCTION_POINTERS == 0:
+      shared.Settings.EMULATED_FUNCTION_POINTERS = 2 # by default, use optimized function pointer emulation
     shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = shared.Settings.WARN_ON_UNDEFINED_SYMBOLS = 0
     if not shared.Settings.SIDE_MODULE:
       shared.Settings.EXPORT_ALL = 1
@@ -997,7 +987,7 @@ try:
     if not js_opts:
       js_opts = True
       logging.debug('enabling js opts for EMTERPRETIFY')
-    assert closure is not 2, 'EMTERPRETIFY requires valid asm.js, and is incompatible with closure 2 which disables that'
+    assert use_closure_compiler is not 2, 'EMTERPRETIFY requires valid asm.js, and is incompatible with closure 2 which disables that'
 
   if shared.Settings.DEAD_FUNCTIONS and not js_opts:
     js_opts = True
@@ -1205,6 +1195,14 @@ try:
 
   log_time('calculate system libraries')
 
+  # final will be an array if linking is deferred, otherwise a normal string. 
+  DEFAULT_FINAL = in_temp(target_basename + '.bc')
+  def get_final():
+    global final
+    if type(final) != str:
+      final = DEFAULT_FINAL
+    return final
+
   # First, combine the bitcode files if there are several. We must also link if we have a singleton .a
   if len(input_files) + len(extra_files_to_link) > 1 or \
      (not LEAVE_INPUTS_RAW and not (suffix(temp_files[0][1]) in BITCODE_ENDINGS or suffix(temp_files[0][1]) in DYNAMICLIB_ENDINGS) and shared.Building.is_ar(temp_files[0][1])):
@@ -1212,8 +1210,8 @@ try:
     logging.debug('linking: ' + str(linker_inputs))
     # force archive contents to all be included, if just archives, or if linking shared modules
     force_archive_contents = len([temp for i, temp in temp_files if not temp.endswith(STATICLIB_ENDINGS)]) == 0 or not shared.Building.can_build_standalone()
-    shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'), force_archive_contents=force_archive_contents)
-    final = in_temp(target_basename + '.bc')
+    just_calculate = DEBUG != '2' # if  EMCC_DEBUG=2 , link now, otherwise defer to be more efficient
+    final = shared.Building.link(linker_inputs, DEFAULT_FINAL, force_archive_contents=force_archive_contents, temp_files=misc_temp_files, just_calculate=just_calculate)
   else:
     if not LEAVE_INPUTS_RAW:
       _, temp_file = temp_files[0]
@@ -1237,7 +1235,11 @@ try:
     intermediate_counter = 0
     def save_intermediate(name=None, suffix='js'):
       global intermediate_counter
-      shutil.copyfile(final, os.path.join(emscripten_temp_dir, 'emcc-%d%s.%s' % (intermediate_counter, '' if name is None else '-' + name, suffix)))
+      name = os.path.join(emscripten_temp_dir, 'emcc-%d%s.%s' % (intermediate_counter, '' if name is None else '-' + name, suffix))
+      if type(final) != str:
+        logging.debug('(not saving intermediate %s because deferring linking)' % name)
+        return
+      shutil.copyfile(final, name)
       intermediate_counter += 1
 
     if not LEAVE_INPUTS_RAW: save_intermediate('basebc', 'bc')
@@ -1245,10 +1247,12 @@ try:
   # Optimize, if asked to
   if not LEAVE_INPUTS_RAW:
     link_opts = [] if debug_level >= 4 else ['-strip-debug'] # remove LLVM debug if we are not asked for it
+    if not shared.Settings.ASSERTIONS:
+      link_opts += ['-disable-verify']
 
     if llvm_lto >= 2:
       logging.debug('running LLVM opts as pre-LTO')
-      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), llvm_opts)
+      final = shared.Building.llvm_opt(in_temp(target_basename + '.bc'), llvm_opts, DEFAULT_FINAL)
       if DEBUG: save_intermediate('opt', 'bc')
 
     # If we can LTO, do it before dce, since it opens up dce opportunities
@@ -1257,7 +1261,7 @@ try:
       # add a manual internalize with the proper things we need to be kept alive during lto
       link_opts += shared.Building.get_safe_internalize() + ['-std-link-opts']
       # execute it now, so it is done entirely before we get to the stage of legalization etc.
-      shared.Building.llvm_opt(final, pre_fastcomp_opts + link_opts)
+      final = shared.Building.llvm_opt(final, pre_fastcomp_opts + link_opts, DEFAULT_FINAL)
       if DEBUG: save_intermediate('lto', 'bc')
       pre_fastcomp_opts = []
       link_opts = []
@@ -1268,19 +1272,17 @@ try:
     if AUTODEBUG:
       # let llvm opt directly emit ll, to skip writing and reading all the bitcode
       link_opts += ['-S']
-      shared.Building.llvm_opt(final, link_opts, final + '.link.ll')
-      final = final + '.link.ll'
+      final = shared.Building.llvm_opt(final, link_opts, get_final() + '.link.ll')
       if DEBUG: save_intermediate('linktime', 'll')
     else:
       if not save_bc:
         # Simplify LLVM bitcode for fastcomp
         link_opts = pre_fastcomp_opts + link_opts + fastcomp_opts
-      shared.Building.llvm_opt(final, link_opts)
+      final = shared.Building.llvm_opt(final, link_opts, DEFAULT_FINAL)
       if DEBUG: save_intermediate('linktime', 'bc')
       if save_bc:
         shutil.copyfile(final, save_bc)
-        shared.Building.llvm_opt(final, fastcomp_opts, final + '.adsimp.bc')
-        final += '.adsimp.bc'
+        final = shared.Building.llvm_opt(final, fastcomp_opts, get_final() + '.adsimp.bc')
         if DEBUG: save_intermediate('adsimp', 'bc')
 
   # Prepare .ll for Emscripten
@@ -1290,15 +1292,17 @@ try:
 
   if AUTODEBUG:
     logging.debug('autodebug')
-    execute([shared.PYTHON, shared.AUTODEBUGGER, final, final + '.ad.ll'])
-    final += '.ad.ll'
+    next = get_final() + '.ad.ll'
+    execute([shared.PYTHON, shared.AUTODEBUGGER, final, next])
+    final = next
     if DEBUG: save_intermediate('autodebug', 'll')
 
   # Simplify bitcode after autodebug
   if AUTODEBUG or LEAVE_INPUTS_RAW:
-    shared.Building.llvm_opt(final, fastcomp_opts, final + '.adsimp.bc')
-    final += '.adsimp.bc'
+    final = shared.Building.llvm_opt(final, fastcomp_opts, get_final() + '.adsimp.bc')
     if DEBUG: save_intermediate('adsimp', 'bc')
+
+  assert type(final) == str, 'we must have linked the final files, if linking was deferred, by this point'
 
   log_time('post-link')
 
@@ -1333,7 +1337,7 @@ try:
       file_args.append('--use-preload-cache')
     if no_heap_copy:
       file_args.append('--no-heap-copy')
-    if not closure:
+    if not use_closure_compiler:
       file_args.append('--no-closure')
     file_code = execute([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE)[0]
     pre_js = file_code + pre_js
@@ -1506,8 +1510,6 @@ try:
       if shared.Settings.EMTERPRETIFY:
         # emterpreter code will not run through a JS optimizing JIT, do more work ourselves
         js_optimizer_queue += ['localCSE']
-        # add explicit label setting, as we will run aggressiveVariableElimination late, *after* 'label' is no longer notable by name
-        js_optimizer_queue += ['safeLabelSetting']
 
   if shared.Settings.EMTERPRETIFY:
     # add explicit label setting, as we will run aggressiveVariableElimination late, *after* 'label' is no longer notable by name
@@ -1525,15 +1527,15 @@ try:
     global js_optimizer_queue
 
     if opt_level >= 2:
-      if debug_level < 2 and not closure == 2:
+      if debug_level < 2 and not use_closure_compiler == 2:
         js_optimizer_queue += ['minifyNames']
       if debug_level == 0:
         global minify_whitespace
         minify_whitespace = True
 
-    if closure == 1:
+    if use_closure_compiler == 1:
       js_optimizer_queue += ['closure']
-    elif debug_level <= 2 and shared.Settings.FINALIZE_ASM_JS and not closure:
+    elif debug_level <= 2 and shared.Settings.FINALIZE_ASM_JS and not use_closure_compiler:
       js_optimizer_queue += ['cleanup']
 
   if js_opts:
@@ -1559,7 +1561,7 @@ try:
 
     flush_js_optimizer_queue()
 
-  if closure == 2:
+  if use_closure_compiler == 2:
     flush_js_optimizer_queue()
 
     logging.debug('running closure')
@@ -1834,5 +1836,4 @@ finally:
       pass
   else:
     logging.info('emcc saved files are in:' + temp_dir)
-  misc_temp_files.clean()
 

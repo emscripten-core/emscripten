@@ -1007,6 +1007,30 @@ keydown(100);keyup(100); // trigger the end
       secret = str(time.time())
       self.btest(path_from_root('tests', 'fs', 'test_memfs_fsync.c'), '1', force_c=True, args=args + mode + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main']'''])
 
+  def test_fs_workerfs_read(self):
+    secret = 'a' * 10;
+    secret2 = 'b' * 10;
+    open(self.in_dir('pre.js'), 'w').write('''
+      var Module = {};
+      Module.preRun = function() {
+        var blob = new Blob(['%s']);
+        var file = new File(['%s'], 'file.txt');
+        FS.mkdir('/work');
+        FS.mount(WORKERFS, {
+          blobs: [{ name: 'blob.txt', data: blob }],
+          files: [file],
+        }, '/work');
+      };
+    ''' % (secret, secret2))
+    self.btest(path_from_root('tests', 'fs', 'test_workerfs_read.c'), '1', force_c=True, args=['--pre-js', 'pre.js', '-DSECRET=\"' + secret + '\"', '-DSECRET2=\"' + secret2 + '\"', '--proxy-to-worker'])
+
+  def test_fs_workerfs_package(self):
+    open('file1.txt', 'w').write('first')
+    if not os.path.exists('sub'): os.makedirs('sub')
+    open(os.path.join('sub', 'file2.txt'), 'w').write('second')
+    Popen([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', os.path.join('sub', 'file2.txt'), '--separate-metadata', '--js-output=files.js']).communicate()
+    self.btest(os.path.join('fs', 'test_workerfs_package.cpp'), '1', args=['--proxy-to-worker'])
+
   def test_idbstore(self):
     secret = str(time.time())
     for stage in [0, 1, 2, 3, 0, 1, 2, 0, 0, 1, 4, 2, 5]:
@@ -2081,7 +2105,15 @@ Module['_main'] = function() {
           event.initKeyEvent("keydown", true, true, window,
                              0, 0, 0, 0,
                              c, c);
-          document.dispatchEvent(event);
+          var prevented = !document.dispatchEvent(event);
+
+          //send keypress if not prevented
+          if (!prevented) {
+            event = document.createEvent("KeyboardEvent");
+            event.initKeyEvent("keypress", true, true, window,
+                               0, 0, 0, 0, 0, c);
+            document.dispatchEvent(event);
+          }
         }
 
         function keyup(c) {
@@ -2095,7 +2127,7 @@ Module['_main'] = function() {
       open(os.path.join(self.get_dir(), 'sdl2_key.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_key.c')).read()))
 
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_key.c'), '-o', 'page.html'] + defines + ['-s', 'USE_SDL=2','--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''', '-s', 'NO_EXIT_RUNTIME=1']).communicate()
-      self.run_browser('page.html', '', '/report_result?7436429')
+      self.run_browser('page.html', '', '/report_result?37182145')
 
   def test_sdl2_text(self):
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
@@ -2667,6 +2699,11 @@ window.close = function() {
   # Test that pthreads have access to filesystem.
   def test_aaa_pthread_file_io(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_file_io.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'], timeout=30)
+
+  # Test that the pthread_create() function operates benignly in the case that threading is not supported.
+  def test_aaa_pthread_supported(self):
+    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8']]:
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_supported.cpp'), expected='0', args=['-O3'] + args, timeout=30)
 
   # Test that it is possible to send a signal via calling alarm(timeout), which in turn calls to the signal handler set by signal(SIGALRM, func);
   def test_sigalrm(self):

@@ -120,7 +120,7 @@ var SIMD = 0; // Whether to allow autovectorized SIMD code ( https://github.com/
               // (In older versions of emscripten, in particular pre-fastcomp, SIMD=1 was needed to get
               // any SIMD output at all.)
 
-var CLOSURE_COMPILER = 0; // Whether closure compiling is being run on this output
+var USE_CLOSURE_COMPILER = 0; // Whether closure compiling is being run on this output
 
 var SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all in
                              // functions that have no basic stack usage. But, they
@@ -176,6 +176,16 @@ var EMULATED_FUNCTION_POINTERS = 0; // By default we implement function pointers
                                     // function tables, which is very fast. With this option,
                                     // we implement them more flexibly by emulating them: we
                                     // call out into JS, which handles the function tables.
+                                    //  1: Full emulation. This means you can modify the
+                                    //     table in JS fully dynamically, not just add to
+                                    //     the end.
+                                    //  2: Optimized emulation. Assumes once something is
+                                    //     added to the table, it will not change. This allows
+                                    //     dynamic linking while keeping performance fast,
+                                    //     as we can do a fast call into the internal table
+                                    //     if the fp is in the right range. Shared modules
+                                    //     (MAIN_MODULE, SIDE_MODULE) do this by default.
+                                    //     This requires RELOCATABLE to be set.
 var EMULATE_FUNCTION_POINTER_CASTS = 0; // Allows function pointers to be cast, wraps each
                                         // call of an incorrect type with a runtime correction.
                                         // This adds overhead and should not be used normally.
@@ -408,6 +418,10 @@ var RELOCATABLE = 0; // If set to 1, we emit relocatable code from the LLVM back
 
 var MAIN_MODULE = 0; // A main module is a file compiled in a way that allows us to link it to
                      // a side module using emlink.py.
+                     //  1: Normal main module.
+                     //  2: DCE'd main module. We eliminate dead code normally. If a side
+                     //     module needs something from main, it is up to you to make sure
+                     //     it is kept alive.
 var SIDE_MODULE = 0; // Corresponds to MAIN_MODULE
 
 var RUNTIME_LINKED_LIBS = []; // If this is a main module (MAIN_MODULE == 1), then
@@ -559,6 +573,10 @@ var USE_SDL = 1; // Specify the SDL version that is being linked against.
 var USE_SDL_IMAGE = 1; // Specify the SDL_image version that is being linked against. Must match USE_SDL
 var USE_ZLIB = 0; // 1 = use zlib from emscripten-ports
 var USE_LIBPNG = 0; // 1 = use libpng from emscripten-ports
+var USE_BULLET = 0; // 1 = use bullet from emscripten-ports
+var USE_VORBIS = 0; // 1 = use vorbis from emscripten-ports
+var USE_OGG = 0; // 1 = use ogg from emscripten-ports
+var USE_FREETYPE = 0; // 1 = use freetype from emscripten-ports
 
 
 // Compiler debugging options

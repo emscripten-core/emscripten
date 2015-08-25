@@ -1,6 +1,6 @@
 import os, shutil, logging
 
-TAG = 'version_7'
+TAG = 'version_9'
 
 def get_with_configure(ports, settings, shared): # not currently used; no real need for configure on emscripten users' machines!
   if settings.USE_SDL == 2:
@@ -51,7 +51,8 @@ def get(ports, settings, shared):
     return []
 
 def process_args(ports, args, settings, shared):
-  if settings.USE_SDL == 1: args += ['-Xclang', '-isystem' + shared.path_from_root('system', 'include', 'SDL')]
+  if settings.USE_SDL == 1:
+      args += ['-Xclang', '-isystem' + shared.path_from_root('system', 'include', 'SDL')]
   elif settings.USE_SDL == 2:
     get(ports, settings, shared)
     args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2', 'include')]

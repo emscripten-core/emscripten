@@ -1,6 +1,6 @@
 # coding=utf-8
 
-import glob, hashlib, os, re, shutil, subprocess, sys
+import glob, hashlib, os, re, shutil, subprocess, sys, json
 from textwrap import dedent
 import tools.shared
 from tools.shared import *
@@ -468,7 +468,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
     # extra coverages
     for emulate_casts in [0, 1]:
-      for emulate_fps in [0, 1]:
+      for emulate_fps in [0, 1, 2]:
         print emulate_casts, emulate_fps
         Settings.EMULATE_FUNCTION_POINTER_CASTS = emulate_casts
         Settings.EMULATED_FUNCTION_POINTERS = emulate_fps
@@ -622,6 +622,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 ''')
 
   def test_align_moar(self):
+    self.emcc_args = self.emcc_args + ['-msse']
     def test():
       self.do_run(r'''
 #include <xmmintrin.h>
@@ -2059,6 +2060,7 @@ def process(filename):
       # test EXPORT_ALL
       Settings.EXPORTED_FUNCTIONS = []
       Settings.EXPORT_ALL = 1
+      Settings.LINKABLE = 1
       self.do_run_from_file(src, output, post_build=check)
 
   def test_emscripten_get_now(self):
@@ -3653,7 +3655,7 @@ int 123
 ok
 ''', post_build=self.dlfcn_post_build)
 
-  def dylink_test(self, main, side, expected, header=None, main_emcc_args=[], force_c=False, need_reverse=True):
+  def dylink_test(self, main, side, expected, header=None, main_emcc_args=[], force_c=False, need_reverse=True, auto_load=True):
     if header:
       open('header.h', 'w').write(header)
 
@@ -3685,12 +3687,13 @@ ok
       # main settings
       Settings.MAIN_MODULE = 1
       Settings.SIDE_MODULE = 0
-      open('pre.js', 'w').write('''
+      if auto_load:
+        open('pre.js', 'w').write('''
 var Module = {
   dynamicLibraries: ['liblib.so'],
 };
   ''')
-      self.emcc_args += ['--pre-js', 'pre.js'] + main_emcc_args
+        self.emcc_args += ['--pre-js', 'pre.js'] + main_emcc_args
 
       if type(main) == str:
         self.do_run(main, expected, force_c=force_c)
@@ -3778,6 +3781,107 @@ var Module = {
       int sidey(voidfunc f) { if (f) f(); return 1; }
     ''', 'hello 1\n', header='typedef void (*voidfunc)();')
 
+  def test_dylink_funcpointers2(self):
+    self.dylink_test(r'''
+      #include "header.h"
+      #include <emscripten.h>
+      void left1() { printf("left1\n"); }
+      void left2() { printf("left2\n"); }
+      voidfunc getleft1() { return left1; }
+      voidfunc getleft2() { return left2; }
+      int main(int argc, char **argv) {
+        printf("main\n");
+        EM_ASM({
+          // make the function table sizes a non-power-of-two
+          Runtime.alignFunctionTables();
+          Module['FUNCTION_TABLE_v'].push(0, 0, 0, 0, 0);
+          var newSize = Runtime.alignFunctionTables();
+          //Module.print('new size of function tables: ' + newSize);
+          // when masked, the two function pointers 1 and 2 should not happen to fall back to the right place
+          assert(((newSize+1) & 3) !== 1 || ((newSize+2) & 3) !== 2);
+          Runtime.loadDynamicLibrary('liblib.so');
+        });
+        volatilevoidfunc f;
+        f = (volatilevoidfunc)left1;
+        f();
+        f = (volatilevoidfunc)left2;
+        f();
+        f = (volatilevoidfunc)getright1();
+        f();
+        f = (volatilevoidfunc)getright2();
+        f();
+        second();
+        return 0;
+      }
+    ''', r'''
+      #include "header.h"
+      void right1() { printf("right1\n"); }
+      void right2() { printf("right2\n"); }
+      voidfunc getright1() { return right1; }
+      voidfunc getright2() { return right2; }
+      void second() {
+        printf("second\n");
+        volatilevoidfunc f;
+        f = (volatilevoidfunc)getleft1();
+        f();
+        f = (volatilevoidfunc)getleft2();
+        f();
+        f = (volatilevoidfunc)right1;
+        f();
+        f = (volatilevoidfunc)right2;
+        f();
+      }
+    ''', 'main\nleft1\nleft2\nright1\nright2\nsecond\nleft1\nleft2\nright1\nright2\n', header='''
+      #include <stdio.h>
+      typedef void (*voidfunc)();
+      typedef volatile voidfunc volatilevoidfunc;
+      voidfunc getleft1();
+      voidfunc getleft2();
+      voidfunc getright1();
+      voidfunc getright2();
+      void second();
+    ''', need_reverse=False, auto_load=False)
+
+  def test_dylink_funcpointers_wrapper(self):
+    self.dylink_test(r'''
+      #include <stdio.h>
+      #include "header.h"
+      int main(int argc, char **argv) {
+        volatile charfunc f = emscripten_run_script;
+        f("Module.print('one')");
+        f = get();
+        f("Module.print('two')");
+        return 0;
+      }
+    ''', '''
+      #include "header.h"
+      charfunc get() {
+        return emscripten_run_script;
+      }
+    ''', 'one\ntwo\n', header='''
+      #include <emscripten.h>
+      typedef void (*charfunc)(const char*);
+      extern charfunc get();
+    ''')
+
+  def test_dylink_funcpointers_float(self):
+    self.dylink_test(r'''
+      #include <stdio.h>
+      #include "header.h"
+      int sidey(floatfunc f);
+      float areturn0(float f) { printf("hello 0: %f\n", f); return 0; }
+      float areturn1(float f) { printf("hello 1: %f\n", f); return 1; }
+      float areturn2(float f) { printf("hello 2: %f\n", f); return 2; }
+      int main(int argc, char **argv) {
+        volatile floatfunc table[3] = { areturn0, areturn1, areturn2 };
+        printf("got: %d\n", (int)table[sidey(NULL)](12.34));
+        return 0;
+      }
+    ''', '''
+      #include "header.h"
+      int sidey(floatfunc f) { if (f) f(56.78); return 1; }
+    ''', 'hello 1: 12.340000\ngot: 1\n', header='typedef float (*floatfunc)(float);')
+
   def test_dylink_global_init(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -3837,6 +3941,25 @@ var Module = {
         return x;
       }
     ''', 'other says 15724949027125.')
+
+  def test_dylink_i64_b(self):
+    self.dylink_test('''
+      #include <stdio.h>
+      #include <stdint.h>
+      extern int64_t sidey();
+      int main() {
+        printf("other says %lld.", sidey());
+        return 0;
+      }
+    ''', '''
+      #include <stdint.h>
+      int64_t sidey() {
+        volatile int64_t x = 0x12345678abcdef12LL;
+        x += x % 17;
+        x = 18 - x;
+        return x;
+      }
+    ''', 'other says -1311768467750121224.')
 
   def test_dylink_class(self):
     self.dylink_test(header=r'''
@@ -3965,6 +4088,36 @@ var Module = {
         printf("side: jslib_x is %d.\n", jslib_x);
       }
     ''', expected=['main: jslib_x is 148.\nside: jslib_x is 148.\n'], main_emcc_args=['--js-library', 'lib.js'])
+
+  def test_dylink_many_postSets(self):
+    NUM = 1234
+    self.dylink_test(header=r'''
+      #include <stdio.h>
+      typedef void (*voidfunc)();
+      static void simple() {
+        printf("simple.\n");
+      }
+      static volatile voidfunc funcs[''' + str(NUM) + '] = { ' + ','.join(['simple'] * NUM) + r''' };
+      static void test() {
+        volatile int i = ''' + str(NUM-1) + r''';
+        funcs[i]();
+        i = 0;
+        funcs[i]();
+      }
+      extern void more();
+    ''', main=r'''
+      #include "header.h"
+      int main() {
+        test();
+        more();
+        return 0;
+      }
+    ''', side=r'''
+      #include "header.h"
+      void more() {
+        test();
+      }
+    ''', expected=['simple.\nsimple.\nsimple.\nsimple.\n'])
 
   def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
     def test(syslibs, expect_pass=True, need_reverse=True):
@@ -5547,26 +5700,46 @@ return malloc(size);
       test()
 
   def test_sse1(self):
-    return self.skip('TODO: This test fails due to bugs #2840, #3044, #3045, #3046 and #3048 (also see #3043 and #3049)')
+    self.banned_js_engines = [NODE_JS] # the test code hits NaN canonicalization on node.js
+    if self.is_emterpreter(): return self.skip('todo')
+    if 'SAFE_HEAP=1' in self.emcc_args: return self.skip('SSE with SAFE_HEAP=1 breaks due to NaN canonicalization!')
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
-      self.emcc_args = orig_args + mode
+      self.emcc_args = orig_args + mode + ['-msse']
       self.do_run(open(path_from_root('tests', 'test_sse1.cpp'), 'r').read(), 'Success!')
 
   # Tests the full SSE1 API.
   def test_sse1_full(self):
-    return self.skip('TODO: This test fails due to bugs #2840, #3044, #3045, #3046 and #3048 (also see #3043 and #3049)')
-    if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('test_sse1_full requires SpiderMonkey to run.')
+    self.banned_js_engines = [NODE_JS] # the test code hits NaN canonicalization on node.js
+    if self.is_emterpreter(): return self.skip('todo')
     Popen([CLANG, path_from_root('tests', 'test_sse1_full.cpp'), '-o', 'test_sse1_full'] + get_clang_native_args(), stdout=PIPE, stderr=PIPE).communicate()
     native_result, err = Popen('./test_sse1_full', stdout=PIPE, stderr=PIPE).communicate()
+    native_result = native_result.replace('\r\n', '\n') # Windows line endings fix
 
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
-      self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests')]
+      self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests'), '-msse']
       self.do_run(open(path_from_root('tests', 'test_sse1_full.cpp'), 'r').read(), native_result)
+
+  # Tests the full SSE2 API.
+  def test_sse2_full(self):
+    return self.skip('todo: No Float64x2 type available anymore.')
+    if self.is_emterpreter(): return self.skip('todo')
+    if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('test_sse2_full requires SpiderMonkey to run.')
+    if '-O1' in self.emcc_args or '-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args:
+      return self.skip('TODO: SIMD does not currently validate as asm.js in SpiderMonkey, run only in unoptimized mode.')
+    Popen([CLANG, path_from_root('tests', 'test_sse2_full.cpp'), '-o', 'test_sse2_full'] + get_clang_native_args(), stdout=PIPE, stderr=PIPE).communicate()
+    native_result, err = Popen('./test_sse2_full', stdout=PIPE, stderr=PIPE).communicate()
+    native_result = native_result.replace('\r\n', '\n') # Windows line endings fix
+
+    Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
+    orig_args = self.emcc_args
+    for mode in [[], ['-s', 'SIMD=1']]:
+      self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests'), '-msse2']
+      self.do_run(open(path_from_root('tests', 'test_sse2_full.cpp'), 'r').read(), native_result)
 
   def test_simd(self):
     if self.is_emterpreter(): return self.skip('todo')
@@ -5587,12 +5760,17 @@ return malloc(size);
     self.do_run_from_file(src, output)
 
   def test_simd3(self):
-    return self.skip('FIXME: this appears to be broken')
-    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
+    if self.is_emterpreter(): return self.skip('todo')
+
+    self.banned_js_engines = [NODE_JS] # fails in simd.js polyfill
+
+    if '-O1' in self.emcc_args or '-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args:
+      return self.skip('TODO: Fails under optimizations')
 
     test_path = path_from_root('tests', 'core', 'test_simd3')
     src, output = (test_path + s for s in ('.in', '.out'))
 
+    self.emcc_args = self.emcc_args + ['-msse2']
     self.do_run_from_file(src, output)
 
   def test_simd4(self):
@@ -5603,6 +5781,7 @@ return malloc(size);
     test_path = path_from_root('tests', 'core', 'test_simd4')
     src, output = (test_path + s for s in ('.in', '.out'))
 
+    self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
   def test_simd5(self):
@@ -5622,16 +5801,18 @@ return malloc(size);
     test_path = path_from_root('tests', 'core', 'test_simd6')
     src, output = (test_path + s for s in ('.in', '.out'))
 
+    self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
   def test_simd7(self):
-    # test_simd7 is to test negative zero handling.
+    # test_simd7 is to test negative zero handling: https://github.com/kripken/emscripten/issues/2791
     if self.is_emterpreter(): return self.skip('todo')
     if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
 
     test_path = path_from_root('tests', 'core', 'test_simd7')
     src, output = (test_path + s for s in ('.in', '.out'))
 
+    self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
   def test_simd8(self):
@@ -5642,6 +5823,56 @@ return malloc(size);
     test_path = path_from_root('tests', 'core', 'test_simd8')
     src, output = (test_path + s for s in ('.in', '.out'))
 
+    self.emcc_args = self.emcc_args + ['-msse']
+    self.do_run_from_file(src, output)
+
+  def test_simd9(self):
+    # test_simd9 is to test a bug where _mm_set_ps(0.f) would generate an expression that did not validate as asm.js
+    if self.is_emterpreter(): return self.skip('todo')
+
+    test_path = path_from_root('tests', 'core', 'test_simd9')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.emcc_args = self.emcc_args + ['-msse']
+    self.do_run_from_file(src, output)
+
+  def test_simd10(self):
+    # test_simd10 is to test that loading and storing arbitrary bit patterns works in SSE1.
+    if self.is_emterpreter(): return self.skip('todo')
+
+    self.banned_js_engines = [NODE_JS] # the test code hits NaN canonicalization on node.js
+
+    if '-O1' in self.emcc_args or '-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args:
+      return self.skip('TODO: Compiler is too aggressive in optimizing and generates code that breaks due to NaN canonicalization! https://github.com/kripken/emscripten/issues/3403')
+
+    test_path = path_from_root('tests', 'core', 'test_simd10')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.emcc_args = self.emcc_args + ['-msse']
+    self.do_run_from_file(src, output)
+
+  def test_simd11(self):
+    # test_simd11 is to test that _mm_movemask_ps works correctly when handling input floats with 0xFFFFFFFF NaN bit patterns.
+    if self.is_emterpreter(): return self.skip('todo')
+
+    self.banned_js_engines = [NODE_JS] # the test code hits NaN canonicalization on node.js
+
+    if '-O1' in self.emcc_args or '-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args:
+      return self.skip('TODO: Compiler is too aggressive in optimizing and generates code that breaks due to NaN canonicalization! https://github.com/kripken/emscripten/issues/3403')
+
+    test_path = path_from_root('tests', 'core', 'test_simd11')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.emcc_args = self.emcc_args + ['-msse2']
+    self.do_run_from_file(src, output)
+
+  def test_simd12(self):
+    if self.is_emterpreter(): return self.skip('todo')
+
+    test_path = path_from_root('tests', 'core', 'test_simd12')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
   def test_simd_dyncall(self):
@@ -5650,6 +5881,7 @@ return malloc(size);
 
     test_path = path_from_root('tests', 'core', 'test_simd_dyncall')
     src, output = (test_path + s for s in ('.cpp', '.txt'))
+    self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
   def test_gcc_unmangler(self):
@@ -6035,7 +6267,7 @@ def process(filename):
     emcc_args = self.emcc_args
 
     # The following tests link to libc, and must be run with EMCC_LEAVE_INPUTS_RAW = 0
-    need_no_leave_inputs_raw = ['muli33_ta2', 'philoop_ta2', 'uadd_overflow_64_ta2', 'i64toi8star', 'legalizer_ta2', 'inttoptr', 'quotedlabel', 'alignedunaligned', 'sillybitcast', 'invokeundef', 'loadbitcastgep', 'sillybitcast2', 'legalizer_b_ta2', 'emptystruct']
+    need_no_leave_inputs_raw = ['muli33_ta2', 'philoop_ta2', 'uadd_overflow_64_ta2', 'i64toi8star', 'legalizer_ta2', 'inttoptr', 'quotedlabel', 'alignedunaligned', 'sillybitcast', 'invokeundef', 'loadbitcastgep', 'sillybitcast2', 'legalizer_b_ta2', 'emptystruct', 'longjmp_tiny', 'longjmp_tiny_phi', 'longjmp_tiny_phi2', 'longjmp_tiny_keepem', 'longjmp_tiny_keepem_cond', 'longjmp_tiny_invoke', 'longjmp_tiny_invoke_phi', 'entry3']
 
     try:
       import random
@@ -6400,6 +6632,42 @@ def process(filename):
     self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=@exps']
     self.do_run(src, '''waka 5!''')
     assert 'other_function' in open('src.cpp.o.js').read()
+
+  def test_large_exported_response(self):
+    src = r'''
+      #include <stdio.h>
+      #include <stdlib.h>
+      #include <emscripten.h>
+
+      extern "C" {
+      '''
+
+    js_funcs = []
+    num_exports = 5000
+    count = 0
+    while count < num_exports:
+        src += 'int exported_func_from_response_file_%d () { return %d;}\n' % (count, count)
+        js_funcs.append('_exported_func_from_response_file_%d' % count)
+        count += 1
+
+    src += r'''
+      }
+
+      int main() {
+        int x = EM_ASM_INT_V({ return Module._exported_func_from_response_file_4999() });
+        emscripten_run_script_string(""); // Add a reference to a symbol that exists in src/deps_info.json to uncover issue #2836 in the test suite.
+        printf("waka %d!\n", x);
+        return 0;
+      }
+    '''
+
+    js_funcs.append('_main')
+    exported_func_json_file = os.path.join(self.get_dir(), 'large_exported_response.json')
+    open(exported_func_json_file, 'wb').write(json.dumps(js_funcs))
+
+    self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=@' + exported_func_json_file]
+    self.do_run(src, '''waka 4999!''')
+    assert '_exported_func_from_response_file_1' in open('src.cpp.o.js').read()
 
   def test_add_function(self):
     Settings.INVOKE_RUN = 0
@@ -7423,6 +7691,18 @@ int main(int argc, char **argv) {
     ''')
     self.emcc_args += ['--js-library', os.path.join(self.get_dir(), 'lib.js')]
     self.do_run(open(os.path.join(self.get_dir(), 'main.cpp'), 'r').read(), 'able to run memprof')
+
+  def test_fs_dict(self):
+      open(self.in_dir('pre.js'), 'w').write('''
+        var Module = {};
+        Module['preRun'] = function() {
+            console.log(typeof FS.filesystems['MEMFS']);
+            console.log(typeof FS.filesystems['IDBFS']);
+            console.log(typeof FS.filesystems['NODEFS']);
+        };
+      ''')
+      self.emcc_args += ['--pre-js', 'pre.js']
+      self.do_run('', 'object\nobject\nobject')
 
 # Generate tests for everything
 def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,

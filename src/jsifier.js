@@ -16,6 +16,8 @@ var INDENTATION = ' ';
 
 var functionStubSigs = {};
 
+var ALWAYS_EMITTED_I64_FUNCS = set('i64Add', 'i64Subtract', 'bitshift64Shl', 'bitshift64Lshr', 'bitshift64Ashr'); // even in side modules
+
 // JSifier
 function JSify(data, functionsOnly) {
   //B.start('jsifier');
@@ -137,6 +139,7 @@ function JSify(data, functionsOnly) {
           LibraryManager.library[shortident] = new Function("Module['printErr']('missing function: " + shortident + "'); abort(-1);");
         } else {
           var target = (MAIN_MODULE ? '' : 'parent') + "Module['_" + shortident + "']";
+          if (SIDE_MODULE && (ident in ALWAYS_EMITTED_I64_FUNCS)) return ''; // we emit i64Add etc. even in side modules (small, and should be fast)
           var assertion = '';
           if (ASSERTIONS) assertion = 'if (!' + target + ') abort("external function \'' + shortident + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");';
           LibraryManager.library[shortident] = new Function(assertion + "return " + target + ".apply(null, arguments);");

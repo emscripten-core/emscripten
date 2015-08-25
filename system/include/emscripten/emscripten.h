@@ -33,6 +33,10 @@ extern "C" {
 
 typedef short __attribute__((aligned(1))) emscripten_align1_short;
 
+typedef long long __attribute__((aligned(4))) emscripten_align4_int64;
+typedef long long __attribute__((aligned(2))) emscripten_align2_int64;
+typedef long long __attribute__((aligned(1))) emscripten_align1_int64;
+
 typedef int __attribute__((aligned(2))) emscripten_align2_int;
 typedef int __attribute__((aligned(1))) emscripten_align1_int;
 
@@ -203,6 +207,8 @@ int emscripten_async_prepare(const char* file, em_str_callback_func onload, em_s
 typedef void (*em_async_prepare_data_onload_func)(void*, const char*);
 void emscripten_async_prepare_data(char* data, int size, const char *suffix, void *arg, em_async_prepare_data_onload_func onload, em_arg_callback_func onerror);
 
+// worker APIs
+
 typedef int worker_handle;
 
 worker_handle emscripten_create_worker(const char *url);
@@ -214,6 +220,8 @@ void emscripten_worker_respond(char *data, int size);
 void emscripten_worker_respond_provisionally(char *data, int size);
 
 int emscripten_get_worker_queue_size(worker_handle worker);
+
+// misc.
 
 int emscripten_get_compiler_setting(const char *name);
 

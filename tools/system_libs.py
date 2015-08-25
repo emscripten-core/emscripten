@@ -326,6 +326,29 @@ import ports
 
 class Ports:
   @staticmethod
+  def build_port(src_path, output_path, includes=[], flags=[], exclude_files=[], exclude_dirs=[]):
+      srcs = []
+      for root, dirs, files in os.walk(src_path, topdown=False):
+        if any((excluded in root) for excluded in exclude_dirs):
+          continue
+        for file in files:
+            if (file.endswith('.c') or file.endswith('.cpp')) and not any((excluded in file) for excluded in exclude_files):
+                srcs.append(os.path.join(root, file))
+      include_commands = ['-I' + src_path ]
+      for include in includes:
+          include_commands.append('-I' + include)
+
+      commands = []
+      objects = []
+      for src in srcs:
+        obj = src + '.o'
+        commands.append([shared.PYTHON, shared.EMCC, src, '-O2', '-o', obj, '-Wno-warn-absolute-paths', '-w'] + include_commands + flags)
+        objects.append(obj)
+
+      run_commands(commands)
+      shared.Building.link(objects, output_path)
+
+  @staticmethod
   def run_commands(commands): # make easily available for port objects
     run_commands(commands)
 
@@ -363,10 +386,10 @@ class Ports:
       # for testing. This env var should be in format
       #     name=dir|tag,name=dir|tag
       # e.g.
-      #     sdl2=/home/username/dev/ports/SDL2|SDL2-version_5
+      #     sdl2=/home/username/dev/ports/SDL2|SDL2-master
       # so you could run
-      #     EMCC_LOCAL_PORTS="sdl2=/home/alon/Dev/ports/SDL2|SDL2-version_5" ./tests/runner.py browser.test_sdl2_mouse
-      # note that tag must be the tag in sdl.py, it is where we store to (not where we load from, we just load the local dir)
+      #     EMCC_LOCAL_PORTS="sdl2=/home/alon/Dev/ports/SDL2|SDL2-master" ./tests/runner.py browser.test_sdl2_mouse
+      # note that tag **must** be the tag in sdl.py, it is where we store to (not where we load from, we just load the local dir)
       local_ports = os.environ.get('EMCC_LOCAL_PORTS')
       if local_ports:
         local_ports = map(lambda pair: pair.split('='), local_ports.split(','))
@@ -397,7 +420,6 @@ class Ports:
       State.retrieved = True
 
     def check_tag():
-      # find subdir/version.txt
       z = zipfile.ZipFile(fullname + '.zip', 'r')
       names = z.namelist()
       if not (names[0].startswith(subdir + '/') or names[0].startswith(subdir + '\\')):
@@ -459,6 +481,7 @@ def get_ports(settings):
 
   ok = False
   try:
+    process_dependencies(settings)
     for port in ports.ports:
       ret += port.get(Ports, settings, shared)
     ok = True
@@ -466,9 +489,16 @@ def get_ports(settings):
     if not ok:
       logging.error('a problem occurred when using an emscripten-ports library. try to run    emcc --clear-cache --clear-ports    and then run this command again')
 
+  ret.reverse()
   return ret
 
+def process_dependencies(settings):
+  for port in reversed(ports.ports):
+    if hasattr(port, "process_dependencies"):
+      port.process_dependencies(settings)
+
 def process_args(args, settings):
+  process_dependencies(settings)
   for port in ports.ports:
     args = port.process_args(Ports, args, settings, shared)
   return args

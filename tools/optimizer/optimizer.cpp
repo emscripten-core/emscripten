@@ -5,6 +5,7 @@
 #include <algorithm>
 
 #include "simple_ast.h"
+#include "optimizer.h"
 
 typedef std::vector<IString> StringVec;
 
@@ -12,10 +13,11 @@ typedef std::vector<IString> StringVec;
 // Globals
 //==================
 
-Ref doc, extraInfo;
+Ref extraInfo;
 
 IString SIMD_INT32X4_CHECK("SIMD_Int32x4_check"),
-        SIMD_FLOAT32X4_CHECK("SIMD_Float32x4_check");
+        SIMD_FLOAT32X4_CHECK("SIMD_Float32x4_check"),
+        SIMD_FLOAT64X2_CHECK("SIMD_Float64x2_check");
 
 //==================
 // Infrastructure
@@ -80,8 +82,9 @@ enum AsmType {
   ASM_DOUBLE = 1,
   ASM_FLOAT = 2,
   ASM_FLOAT32X4 = 3,
-  ASM_INT32X4 = 4,
-  ASM_NONE = 5 // number of types
+  ASM_FLOAT64X2 = 4,
+  ASM_INT32X4 = 5,
+  ASM_NONE = 6 // number of types
 };
 
 AsmType intToAsmType(int type) {
@@ -90,8 +93,9 @@ AsmType intToAsmType(int type) {
     case 1: return ASM_DOUBLE;
     case 2: return ASM_FLOAT;
     case 3: return ASM_FLOAT32X4;
-    case 4: return ASM_INT32X4;
-    case 5: return ASM_NONE;
+    case 4: return ASM_FLOAT64X2;
+    case 5: return ASM_INT32X4;
+    case 6: return ASM_NONE;
     default: assert(0); return ASM_NONE;
   }
 }
@@ -356,6 +360,7 @@ AsmType detectType(Ref node, AsmData *asmData, bool inVarDef) {
           IString name = node[1][1]->getIString();
           if (name == MATH_FROUND) return ASM_FLOAT;
           else if (name == SIMD_FLOAT32X4 || name == SIMD_FLOAT32X4_CHECK) return ASM_FLOAT32X4;
+          else if (name == SIMD_FLOAT64X2 || name == SIMD_FLOAT64X2_CHECK) return ASM_FLOAT64X2;
           else if (name == SIMD_INT32X4   || name == SIMD_INT32X4_CHECK) return ASM_INT32X4;
         }
         return ASM_NONE;
@@ -416,7 +421,7 @@ Ref makePair(Ref x, Ref y) {
   ret->push_back(x);
   ret->push_back(y);
   return ret;
-};
+}
 
 Ref makeNum(double x) {
   Ref ret(makeArray());
@@ -497,6 +502,10 @@ Ref makeAsmVarDef(const IString& v, AsmType type) {
       val = make2(CALL, makeName(SIMD_FLOAT32X4), &(makeArray())->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
       break;
     }
+    case ASM_FLOAT64X2: {
+      val = make2(CALL, makeName(SIMD_FLOAT64X2), &(makeArray())->push_back(makeNum(0)).push_back(makeNum(0)));
+      break;
+    }
     case ASM_INT32X4: {
       val = make2(CALL, makeName(SIMD_INT32X4), &(makeArray())->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
       break;
@@ -512,6 +521,7 @@ Ref makeAsmCoercion(Ref node, AsmType type) {
     case ASM_DOUBLE: return make2(UNARY_PREFIX, PLUS, node);
     case ASM_FLOAT: return make2(CALL, makeName(MATH_FROUND), &(makeArray())->push_back(node));
     case ASM_FLOAT32X4: return make2(CALL, makeName(SIMD_FLOAT32X4_CHECK), &(makeArray())->push_back(node));
+    case ASM_FLOAT64X2: return make2(CALL, makeName(SIMD_FLOAT64X2_CHECK), &(makeArray())->push_back(node));
     case ASM_INT32X4: return make2(CALL, makeName(SIMD_INT32X4_CHECK), &(makeArray())->push_back(node));
     case ASM_NONE:
     default: return node; // non-validating code, emit nothing XXX this is dangerous, we should only allow this when we know we are not validating
@@ -917,7 +927,7 @@ public:
   HASES
 };
 
-void eliminate(Ref ast, bool memSafe=false) {
+void eliminate(Ref ast, bool memSafe) {
   // Find variables that have a single use, and if they can be eliminated, do so
   traverseFunctions(ast, [&memSafe](Ref func) {
     AsmData asmData(func);
@@ -2240,6 +2250,7 @@ const char* getRegPrefix(AsmType type) {
     case ASM_DOUBLE:    return "d"; break;
     case ASM_FLOAT:     return "f"; break;
     case ASM_FLOAT32X4: return "F4"; break;
+    case ASM_FLOAT64X2: return "F2"; break;
     case ASM_INT32X4:   return "I4"; break;
     case ASM_NONE:      return "Z"; break;
     default: assert(0); // type doesn't have a name yet
@@ -3266,7 +3277,7 @@ void registerizeHarder(Ref ast) {
     // Be sure to visit every junction at least once.
     // This avoids missing some vars because we disconnected them
     // when processing the labelled jumps.
-    for (int i = EXIT_JUNCTION; i < junctions.size(); i++) {
+    for (size_t i = EXIT_JUNCTION; i < junctions.size(); i++) {
       jWorkSet.insert(i);
       for (auto b : junctions[i].inblocks) {
         bWorkSet.insert(b);
@@ -3714,7 +3725,7 @@ void ensureMinifiedNames(int n) { // make sure the nth index in minifiedNames ex
     IString str(strdupe(name.c_str())); // leaked!
     if (!RESERVED.has(str)) minifiedNames.push_back(str);
     // increment the state
-    int i = 0;
+    size_t i = 0;
     while (1) {
       minifiedState[i]++;
       if (minifiedState[i] < (i == 0 ? VALID_MIN_INITS_LEN : VALID_MIN_LATERS_LEN)) break;
@@ -3996,107 +4007,5 @@ void eliminateDeadFuncs(Ref ast) {
     asmData.vars.clear();
     asmData.denormalize();
   });
-}
-
-//==================
-// Main
-//==================
-
-#include <string.h> // only use this for param checking
-
-int main(int argc, char **argv) {
-  // Read directives
-  for (int i = 2; i < argc; i++) {
-    std::string str(argv[i]);
-    if (str == "asm") {} // the only possibility for us
-    else if (str == "asmPreciseF32") preciseF32 = true;
-    else if (str == "receiveJSON") receiveJSON = true;
-    else if (str == "emitJSON") emitJSON = true;
-    else if (str == "minifyWhitespace") minifyWhitespace = true;
-    else if (str == "last") last = true;
-  }
-
-  // Read input file
-  FILE *f = fopen(argv[1], "r");
-  assert(f);
-  fseek(f, 0, SEEK_END);
-  int size = ftell(f);
-  char *input = new char[size+1];
-  rewind(f);
-  int num = fread(input, 1, size, f);
-  // On Windows, ftell() gives the byte position (\r\n counts as two bytes), but when
-  // reading, fread() returns the number of characters read (\r\n is read as one char \n, and counted as one),
-  // so return value of fread can be less than size reported by ftell, and that is normal.
-  assert((num > 0 || size == 0) && num <= size);
-  fclose(f);
-  input[num] = 0;
-
-  char *extraInfoStart = strstr(input, "// EXTRA_INFO:");
-  if (extraInfoStart) {
-    extraInfo = arena.alloc();
-    extraInfo->parse(extraInfoStart + 14);
-    *extraInfoStart = 0; // ignore extra info when parsing
-  }
-
-  if (receiveJSON) {
-    // Parse JSON source into the document
-    doc = arena.alloc();
-    doc->parse(input);
-  } else {
-    cashew::Parser<Ref, ValueBuilder> builder;
-    doc = builder.parseToplevel(input);
-  }
-  // do not free input, its contents are used as strings
-
-  // Run passes on the Document
-  for (int i = 2; i < argc; i++) {
-    std::string str(argv[i]);
-#ifdef PROFILING
-    clock_t start = clock();
-    errv("starting %s", str.c_str());
-#endif
-    bool worked = true;
-    if (str == "asm") { worked = false; } // the default for us
-    else if (str == "asmPreciseF32") { worked = false; }
-    else if (str == "receiveJSON" || str == "emitJSON") { worked = false; }
-    else if (str == "eliminateDeadFuncs") eliminateDeadFuncs(doc);
-    else if (str == "eliminate") eliminate(doc);
-    else if (str == "eliminateMemSafe") eliminateMemSafe(doc);
-    else if (str == "simplifyExpressions") simplifyExpressions(doc);
-    else if (str == "optimizeFrounds") optimizeFrounds(doc);
-    else if (str == "simplifyIfs") simplifyIfs(doc);
-    else if (str == "registerize") registerize(doc);
-    else if (str == "registerizeHarder") registerizeHarder(doc);
-    else if (str == "minifyLocals") minifyLocals(doc);
-    else if (str == "minifyWhitespace") { worked = false; }
-    else if (str == "asmLastOpts") asmLastOpts(doc);
-    else if (str == "last") { worked = false; }
-    else if (str == "noop") { worked = false; }
-    else {
-      fprintf(stderr, "unrecognized argument: %s\n", str.c_str());
-      assert(0);
-    }
-#ifdef PROFILING
-    errv("    %s took %lu microseconds", str.c_str(), clock() - start);
-#endif
-#ifdef DEBUGGING
-    if (worked) {
-      std::cerr << "ast after " << str << ":\n";
-      doc->stringify(std::cerr);
-      std::cerr << "\n";
-    }
-#endif
-  }
-
-  // Emit
-  if (emitJSON) {
-    doc->stringify(std::cout);
-    std::cout << "\n";
-  } else {
-    JSPrinter jser(!minifyWhitespace, last, doc);
-    jser.printAst();
-    std::cout << jser.buffer << "\n";
-  }
-  return 0;
 }
 

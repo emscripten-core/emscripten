@@ -488,7 +488,7 @@ def check_sanity(force=False):
         logging.critical('Node.js (%s) does not seem to work, check the paths in %s' % (NODE_JS, EM_CONFIG))
         sys.exit(1)
 
-    for cmd in [CLANG, LINK_CMD[0], LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM, LLVM_INTERPRETER]:
+    for cmd in [CLANG, LLVM_LINK, LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM, LLVM_INTERPRETER]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'): # .exe extension required for Windows
         logging.critical('Cannot find %s, check the paths in %s' % (cmd, EM_CONFIG))
         sys.exit(1)
@@ -529,21 +529,9 @@ try:
 except NameError:
 	CLANG_ADD_VERSION = os.getenv('CLANG_ADD_VERSION')
 
-USING_PNACL_TOOLCHAIN = os.path.exists(os.path.join(LLVM_ROOT, 'pnacl-clang'))
-
-def modify_prefix(tool):
-  if USING_PNACL_TOOLCHAIN:
-    if tool.startswith('llvm-'):
-      tool = tool[5:]
-    tool = 'pnacl-' + tool
-    if WINDOWS:
-      tool += '.bat'
-  return tool
-
 # Some distributions ship with multiple llvm versions so they add
 # the version to the binaries, cope with that
 def build_llvm_tool_path(tool):
-  tool = modify_prefix(tool)
   if LLVM_ADD_VERSION:
     return os.path.join(LLVM_ROOT, tool + "-" + LLVM_ADD_VERSION)
   else:
@@ -552,7 +540,6 @@ def build_llvm_tool_path(tool):
 # Some distributions ship with multiple clang versions so they add
 # the version to the binaries, cope with that
 def build_clang_tool_path(tool):
-  tool = modify_prefix(tool)
   if CLANG_ADD_VERSION:
     return os.path.join(LLVM_ROOT, tool + "-" + CLANG_ADD_VERSION)
   else:
@@ -588,11 +575,7 @@ def get_clang_native_args():
 CLANG_CC=os.path.expanduser(build_clang_tool_path('clang'))
 CLANG_CPP=os.path.expanduser(build_clang_tool_path('clang++'))
 CLANG=CLANG_CPP
-if USING_PNACL_TOOLCHAIN:
-  # The PNaCl toolchain doesn't have llvm-link, but we can fake it
-  LINK_CMD = [build_llvm_tool_path('llvm-ld'), '-nostdlib', '-r']
-else:
-  LINK_CMD = [build_llvm_tool_path('llvm-link')]
+LLVM_LINK=build_llvm_tool_path('llvm-link')
 LLVM_AR=build_llvm_tool_path('llvm-ar')
 LLVM_OPT=os.path.expanduser(build_llvm_tool_path('opt'))
 LLVM_AS=os.path.expanduser(build_llvm_tool_path('llvm-as'))
@@ -1213,14 +1196,15 @@ class Building:
     return generated_libs
 
   @staticmethod
-  def link(files, target, force_archive_contents=False):
+  def link(files, target, force_archive_contents=False, temp_files=None, just_calculate=False):
+    if not temp_files:
+      temp_files = configuration.get_temp_files()
     actual_files = []
     # Tracking unresolveds is necessary for .a linking, see below.
     # Specify all possible entry points to seed the linking process.
     # For a simple application, this would just be "main".
     unresolved_symbols = set([func[1:] for func in Settings.EXPORTED_FUNCTIONS])
     resolved_symbols = set()
-    temp_dirs = []
     def make_paths_absolute(f):
       if f.startswith('-'): # skip flags
         return f
@@ -1265,10 +1249,7 @@ class Building:
 
       cwd = os.getcwd()
       try:
-        emscripten_temp_dir = get_emscripten_temp_dir()
-        temp_dir = os.path.join(emscripten_temp_dir, 'ar_output_' + str(os.getpid()) + '_' + str(len(temp_dirs)))
-        temp_dirs.append(temp_dir)
-        safe_ensure_dirs(temp_dir)
+        temp_dir = temp_files.get_dir()
         os.chdir(temp_dir)
         contents = filter(lambda x: len(x) > 0, Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].split('\n'))
         # llvm-ar appears to just use basenames inside archives. as a result, files with the same basename
@@ -1362,41 +1343,38 @@ class Building:
 
     # Finish link
     actual_files = unique_ordered(actual_files) # tolerate people trying to link a.so a.so etc.
-    logging.debug('emcc: llvm-linking: %s to %s', actual_files, target)
 
     # check for too-long command line
-    link_cmd = LINK_CMD + actual_files + ['-o', target]
+    link_args = actual_files
     # 8k is a bit of an arbitrary limit, but a reasonable one
-    # for max command line size before we use a respose file
+    # for max command line size before we use a response file
     response_file = None
-    if len(' '.join(link_cmd)) > 8192:
+    if len(' '.join(link_args)) > 8192:
       logging.debug('using response file for llvm-link')
-      [response_fd, response_file] = mkstemp(suffix='.response', dir=TEMP_DIR)
+      response_file = temp_files.get(suffix='.response').name
 
-      link_cmd = LINK_CMD + ["@" + response_file]
+      link_args = ["@" + response_file]
 
-      response_fh = os.fdopen(response_fd, 'w')
+      response_fh = open(response_file, 'w')
       for arg in actual_files:
         # we can't put things with spaces in the response file
         if " " in arg:
-          link_cmd.append(arg)
+          link_args.append(arg)
         else:
           response_fh.write(arg + "\n")
       response_fh.close()
-      link_cmd.append("-o")
-      link_cmd.append(target)
 
-      if len(' '.join(link_cmd)) > 8192:
+      if len(' '.join(link_args)) > 8192:
         logging.warning('emcc: link command line is very long, even with response file -- use paths with no spaces')
 
-    output = Popen(link_cmd, stdout=PIPE).communicate()[0]
-
-    if response_file:
-      os.unlink(response_file)
-
-    assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
-    for temp_dir in temp_dirs:
-      try_delete(temp_dir)
+    if not just_calculate:
+      logging.debug('emcc: llvm-linking: %s to %s', actual_files, target)
+      output = Popen([LLVM_LINK] + link_args + ['-o', target], stdout=PIPE).communicate()[0]
+      assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
+      return target
+    else:
+      # just calculating; return the link arguments which is the final list of files to link
+      return link_args
 
   # Emscripten optimizations that we run on the .ll file
   @staticmethod
@@ -1413,6 +1391,11 @@ class Building:
   #            optimization passes passed to llvm opt
   @staticmethod
   def llvm_opt(filename, opts, out=None):
+    inputs = filename
+    if type(inputs) is str:
+      inputs = [inputs]
+    else:
+      assert out, 'must provide out if llvm_opt on a list of inputs'
     if type(opts) is int:
       opts = Building.pick_llvm_opts(opts)
     opts = opts[:]
@@ -1423,12 +1406,13 @@ class Building:
       else:
         opts += ['-bb-vectorize-vector-bits=128', '-force-vector-width=4']
 
-    logging.debug('emcc: LLVM opts: ' + ' '.join(opts))
+    logging.debug('emcc: LLVM opts: ' + ' '.join(opts) + '  [num inputs: ' + str(len(inputs)) + ']')
     target = out or (filename + '.opt.bc')
-    output = Popen([LLVM_OPT, filename] + opts + ['-o', target], stdout=PIPE).communicate()[0]
+    output = Popen([LLVM_OPT] + inputs + opts + ['-o', target], stdout=PIPE).communicate()[0]
     assert os.path.exists(target), 'Failed to run llvm optimizations: ' + output
     if not out:
       shutil.move(filename + '.opt.bc', filename)
+    return target
 
   @staticmethod
   def llvm_opts(filename): # deprecated version, only for test runner. TODO: remove
@@ -1516,20 +1500,16 @@ class Building:
     # Allow usage of emscripten.py without warning
     os.environ['EMSCRIPTEN_SUPPRESS_USAGE_WARNING'] = '1'
 
+    if path_from_root() not in sys.path:
+      sys.path += [path_from_root()]
+    from emscripten import _main as call_emscripten
     # Run Emscripten
     settings = Settings.serialize()
     args = settings + extra_args
-    if WINDOWS:
-      rsp_file = response_file.create_response_file(args, TEMP_DIR)
-      args = ['@' + rsp_file]
-    cmdline = [PYTHON, EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + args
+    cmdline = [filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + args
     if jsrun.TRACK_PROCESS_SPAWNS:
       logging.info('Executing emscripten.py compiler with cmdline "' + ' '.join(cmdline) + '"')
-    jsrun.timeout_run(Popen(cmdline, stdout=PIPE), None, 'Compiling')
-
-    # Clean up .rsp file the compiler used after we are finished.
-    if WINDOWS:
-      try_delete(rsp_file)
+    call_emscripten(cmdline)
 
     # Detect compilation crashes and errors
     assert os.path.exists(filename + '.o.js'), 'Emscripten failed to generate .js'
@@ -1538,7 +1518,7 @@ class Building:
 
   @staticmethod
   def can_build_standalone():
-    return not Settings.BUILD_AS_SHARED_LIB and not Settings.LINKABLE and not Settings.EXPORT_ALL and not Settings.MAIN_MODULE and not Settings.SIDE_MODULE
+    return not Settings.BUILD_AS_SHARED_LIB and not Settings.LINKABLE
 
   @staticmethod
   def can_inline():
@@ -1547,10 +1527,27 @@ class Building:
   @staticmethod
   def get_safe_internalize():
     if not Building.can_build_standalone(): return [] # do not internalize anything
+
     exps = expand_response(Settings.EXPORTED_FUNCTIONS)
-    exports = ','.join(map(lambda exp: exp[1:], exps))
+    internalize_public_api = '-internalize-public-api-'
+    internalize_list = ','.join(map(lambda exp: exp[1:], exps))
+
+    # EXPORTED_FUNCTIONS can potentially be very large.
+    # 8k is a bit of an arbitrary limit, but a reasonable one
+    # for max command line size before we use a response file
+    if len(internalize_list) > 8192:
+      logging.debug('using response file for EXPORTED_FUNCTIONS in internalize')
+      finalized_exports = '\n'.join(map(lambda exp: exp[1:], exps))
+      internalize_list_file = configuration.get_temp_files().get(suffix='.response').name
+      internalize_list_fh = open(internalize_list_file, 'w')
+      internalize_list_fh.write(finalized_exports)
+      internalize_list_fh.close()
+      internalize_public_api += 'file=' + internalize_list_file
+    else:
+      internalize_public_api += 'list=' + internalize_list
+
     # internalize carefully, llvm 3.2 will remove even main if not told not to
-    return ['-internalize', '-internalize-public-api-list=' + exports]
+    return ['-internalize', internalize_public_api]
 
   @staticmethod
   def pick_llvm_opts(optimization_level):

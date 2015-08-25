@@ -417,6 +417,27 @@ mergeInto(LibraryManager.library, {
       }
     }
     return ret;
-  }
+  },
+
+  // printf/puts implementations for when musl is not pulled in - very partial. useful for tests, and when bootstrapping structInfo
+  printf__deps: ['_formatString'],
+  printf: function(format, varargs) {
+    // int printf(const char *restrict format, ...);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
+    // extra effort to support printf, even without a filesystem. very partial, very hackish
+    var result = __formatString(format, varargs);
+    var string = intArrayToString(result);
+    if (string[string.length-1] === '\n') string = string.substr(0, string.length-1); // remove a final \n, as Module.print will do that
+    Module.print(string);
+    return result.length;
+  },
+  puts: function(s) {
+    // extra effort to support puts, even without a filesystem. very partial, very hackish
+    var result = Pointer_stringify(s);
+    var string = result.substr(0);
+    if (string[string.length-1] === '\n') string = string.substr(0, string.length-1); // remove a final \n, as Module.print will do that
+    Module.print(string);
+    return result.length;
+  },
 });
 

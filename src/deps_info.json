@@ -21,7 +21,7 @@
   "inet_ntoa": ["malloc"],
   "gethostbyname": ["malloc"],
   "gethostbyname_r": ["free"],
-  "getaddrinfo": ["malloc"],
+  "getaddrinfo": ["malloc", "htonl", "htons", "ntohs"],
   "freeaddrinfo": ["free"],
   "gai_strerror": ["malloc"],
   "setprotoent": ["malloc"],
@@ -36,6 +36,10 @@
   "emscripten_get_preloaded_image_data_from_FILE": ["fileno"],
   "__cxa_begin_catch": ["__cxa_can_catch", "__cxa_is_pointer_type"],
   "emscripten_log": ["strlen"],
+  "setjmp": ["realloc"],
+  "glfwSleep": ["sleep"],
+  "bind": ["htonl", "htons", "ntohs"],
+  "connect": ["htonl", "htons", "ntohs"],
   "sleep": ["usleep"]
 }
 

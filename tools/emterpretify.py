@@ -55,7 +55,7 @@ sys.argv = filter(handle_arg, sys.argv)
 
 # consts
 
-BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memmove', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', 'runPostSets', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64', '_strncpy', '_strcpy', '_strcat', '_saveSetjmp', '_testSetjmp', '_emscripten_replace_memory', '_bitshift64Shl', '_bitshift64Ashr', '_bitshift64Lshr', 'setAsyncState', 'emtStackSave', 'emtStackRestore'])
+BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memmove', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64', '_strncpy', '_strcpy', '_strcat', '_saveSetjmp', '_testSetjmp', '_emscripten_replace_memory', '_bitshift64Shl', '_bitshift64Ashr', '_bitshift64Lshr', 'setAsyncState', 'emtStackSave', 'emtStackRestore'])
 WHITELIST = []
 
 SYNC_FUNCS = set(['_emscripten_sleep', '_emscripten_sleep_with_yield', '_emscripten_wget_data', '_emscripten_idb_load', '_emscripten_idb_store', '_emscripten_idb_delete'])
@@ -766,13 +766,6 @@ if __name__ == '__main__':
     print "(%d%% out of %d functions)" % (int((100.0*len(advised))/len(can_call)), len(can_call))
     sys.exit(0)
 
-  BLACKLIST = set(list(BLACKLIST) + extra_blacklist)
-
-  if DEBUG or SWAPPABLE:
-    orig = infile + '.orig.js'
-    shared.logging.debug('saving original (non-emterpreted) code to ' + orig)
-    shutil.copyfile(infile, orig)
-
   # final global functions
 
   asm = asm_module.AsmModule(infile)
@@ -782,15 +775,20 @@ if __name__ == '__main__':
   for func in extra_blacklist:
     assert func in asm.funcs, 'requested blacklist of %s but it does not exist' % func
 
-  ## debugging
-  #import hashlib
-  #def hash(s):
-  #  hash_object = hashlib.sha256(s)
-  #  return int(hash_object.hexdigest(), 16)
-  #if len(WHITELIST) == 0 and len(extra_blacklist) == 0:
-  #  WHITELIST = set([func for func in asm.funcs if func[0] == '_' and hash(func) % 3 == 1])
-  #  print >> sys.stderr, 'manual whitelist', len(WHITELIST), '/', len(asm.funcs)
-  ##
+  # blacklist all runPostSet* methods
+
+  for func in asm.funcs:
+    if func.startswith('runPostSet'):
+      extra_blacklist.append(func)
+
+  # finalize blacklist
+
+  BLACKLIST = set(list(BLACKLIST) + extra_blacklist)
+
+  if DEBUG or SWAPPABLE:
+    orig = infile + '.orig.js'
+    shared.logging.debug('saving original (non-emterpreted) code to ' + orig)
+    shutil.copyfile(infile, orig)
 
   if len(WHITELIST) > 0:
     # we are using a whitelist: fill the blacklist with everything not whitelisted
@@ -851,6 +849,11 @@ if __name__ == '__main__':
     global global_var_id
     imp = asm.imports[target]
     ty = asm.get_import_type(imp)
+    if target == 'f0':
+      assert imp == 'Math_fround(0)'
+      # fake it
+      ty = 'd'
+      imp = '+0'
     assert ty in ['i', 'd'], target
     if code[j] == 'GETGLBI' and ty == 'd':
       # the js optimizer doesn't know all types, we must fix it up here

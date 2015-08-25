@@ -1756,16 +1756,18 @@ var ASM_INT = 0;
 var ASM_DOUBLE = 1;
 var ASM_FLOAT = 2;
 var ASM_FLOAT32X4 = 3;
-var ASM_INT32X4 = 4;
-var ASM_NONE = 5;
+var ASM_FLOAT64X2 = 4;
+var ASM_INT32X4 = 5;
+var ASM_NONE = 6;
 
 var ASM_SIG = {
   0: 'i',
   1: 'd',
   2: 'f',
   3: 'F',
-  4: 'I',
-  5: 'v'
+  4: 'D',
+  5: 'I',
+  6: 'v'
 };
 
 var ASM_FLOAT_ZERO = null; // TODO: share the entire node?
@@ -1791,6 +1793,8 @@ function detectType(node, asmInfo, inVarDef) {
           case 'Math_fround':          return ASM_FLOAT;
           case 'SIMD_Float32x4':
           case 'SIMD_Float32x4_check': return ASM_FLOAT32X4;
+          case 'SIMD_Float64x2':
+          case 'SIMD_Float64x2_check': return ASM_FLOAT64X2;
           case 'SIMD_Int32x4':
           case 'SIMD_Int32x4_check':   return ASM_INT32X4;
           default: break;
@@ -1855,6 +1859,7 @@ function makeAsmCoercion(node, type) {
     case ASM_DOUBLE: return ['unary-prefix', '+', node];
     case ASM_FLOAT: return ['call', ['name', 'Math_fround'], [node]];
     case ASM_FLOAT32X4: return ['call', ['name', 'SIMD_Float32x4_check'], [node]];
+    case ASM_FLOAT64X2: return ['call', ['name', 'SIMD_Float64x2_check'], [node]];
     case ASM_INT32X4: return ['call', ['name', 'SIMD_Int32x4_check'], [node]];
     case ASM_NONE:
     default: return node; // non-validating code, emit nothing XXX this is dangerous, we should only allow this when we know we are not validating
@@ -1880,6 +1885,9 @@ function makeAsmVarDef(v, type) {
     }
     case ASM_FLOAT32X4: {
       return [v, ['call', ['name', 'SIMD_Float32x4'], [['num', 0], ['num', 0], ['num', 0], ['num', 0]]]];
+    }
+    case ASM_FLOAT64X2: {
+      return [v, ['call', ['name', 'SIMD_Float64x2'], [['num', 0], ['num', 0]]]];
     }
     case ASM_INT32X4: {
       return [v, ['call', ['name', 'SIMD_Int32x4'], [['num', 0], ['num', 0], ['num', 0], ['num', 0]]]];
@@ -2249,6 +2257,7 @@ function registerize(ast) {
           case ASM_DOUBLE:    ret = 'd'; break;
           case ASM_FLOAT:     ret = 'f'; break;
           case ASM_FLOAT32X4: ret = 'F4'; break;
+          case ASM_FLOAT64X2: ret = 'F2'; break;
           case ASM_INT32X4:   ret = 'I4'; break;
           case ASM_NONE:      ret = 'Z'; break;
           default: assert(false, 'type ' + type + ' doesn\'t have a name yet');

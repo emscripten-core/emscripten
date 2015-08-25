@@ -684,21 +684,21 @@ def which(program):
   return None
 
 def win_get_default_browser():
-  # Manually find the default system browser on Windows without relying on 'start %1' since
-  # that method has an issue, see comment below.
+  # Look in the registry for the default system browser on Windows without relying on
+  # 'start %1' since that method has an issue, see comment below.
+  try:
+    with OpenKey(HKEY_CURRENT_USER, r"Software\Classes\http\shell\open\command") as key:
+      cmd = QueryValue(key, None)
+      if cmd:
+        parts = shlex.split(cmd)
+        if len(parts) > 0:
+          return [parts[0]]
+  except WindowsError:
+    logv("Unable to find default browser key in Windows registry. Trying fallback.")
 
-  # In Py3, this module is called winreg without the underscore
-
-  with OpenKey(HKEY_CURRENT_USER, r"Software\Classes\http\shell\open\command") as key:
-    cmd = QueryValue(key, None)
-    if cmd:
-      parts = shlex.split(cmd)
-      if len(parts) > 0:
-        return [parts[0]]
-
-    # Fall back to 'start %1', which we have to treat as if user passed --serve_forever, since
-    # for some reason, we are not able to detect when the browser closes when this is passed.
-    return ['cmd', '/C', 'start']
+  # Fall back to 'start %1', which we have to treat as if user passed --serve_forever, since
+  # for some reason, we are not able to detect when the browser closes when this is passed.
+  return ['cmd', '/C', 'start']
 
 def find_browser(name):
   if WINDOWS and name == 'start':
