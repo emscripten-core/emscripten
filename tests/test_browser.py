@@ -2758,3 +2758,26 @@ window.close = function() {
       ''')
       self.run_browser('two.html', None, '/report_result?0')
 
+  def test_emterpretify_file(self):
+    open('shell.html', 'w').write('''
+      <!--
+        {{{ SCRIPT }}} // ignore this, we do it ourselves
+      -->
+      <script>
+        var Module = {};
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'code.dat', true);
+        xhr.responseType = 'arraybuffer';
+        xhr.onload = function() {
+          Module.emterpreterFile = xhr.response;
+          var script = document.createElement('script');
+          script.src = "test.js";
+          document.body.appendChild(script);
+        };
+        xhr.send(null);
+      </script>
+''')
+    try_delete('code.dat');
+    self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_FILE="code.dat"', '-O2', '-g', '--shell-file', 'shell.html', '-s', 'ASSERTIONS=1'])
+    assert os.path.exists('code.dat')
+
