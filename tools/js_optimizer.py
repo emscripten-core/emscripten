@@ -275,7 +275,7 @@ def run_on_chunk(command):
     if shared.EM_BUILD_VERBOSE_LEVEL >= 3: print >> sys.stderr, 'run_on_chunk: ' + str(command)
     proc = subprocess.Popen(command, stdout=subprocess.PIPE)
     output = proc.communicate()[0]
-    assert proc.returncode == 0, 'Error in optimizer: ' + output
+    assert proc.returncode == 0, 'Error in optimizer (return code ' + str(proc.returncode) + '): ' + output
     assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in optimizer: ' + output
     filename = temp_files.get(os.path.basename(filename) + '.jo.js').name
     # Important to write out in binary mode, because the data we are writing contains Windows line endings '\r\n' because it was PIPED from console.
