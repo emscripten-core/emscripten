@@ -930,6 +930,10 @@ further debug the compiler itself, see emcc.
         base_module = 'other'
         relevant_modes = ['other']
         first = first.replace('other', '')
+      elif first.startswith('browser'):
+        base_module = 'browser'
+        relevant_modes = ['browser']
+        first = first.replace('browser', '')
       num = int(first)
     for m in modules:
       if hasattr(m, base_module):
