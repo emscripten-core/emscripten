@@ -318,6 +318,25 @@ Audio.prototype.cloneNode = function() {
   return new Audio;
 }
 
+function AudioContext() {
+  Runtime.warnOnce('faking WebAudio elements, no actual sound will play');
+  function makeNode() {
+    return {
+      connect: function(){},
+      disconnect: function(){},
+    }
+  }
+  this.listener = {
+    setPosition: function() {},
+    setOrientation: function() {},
+  };
+  this.decodeAudioData = function() {}; // ignore callbacks
+  this.createBuffer = makeNode;
+  this.createBufferSource = makeNode;
+  this.createGain = makeNode;
+  this.createPanner = makeNode;
+}
+
 var screen = {
   width: 0,
   height: 0
