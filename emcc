@@ -1803,6 +1803,28 @@ try {
 ''' % Compression.js_name)
       decompressor.close()
 
+    if shared.Settings.EMTERPRETIFY_FILE:
+      # We need to load the emterpreter file before anything else, it has to be synchronously ready
+      if script_src:
+        # un-src
+        script_inline = '''
+          var script = document.createElement('script');
+          script.src = "%s";
+          document.body.appendChild(script);
+''' % script_src
+        script_src = None
+
+      script_inline = '''
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', '%s', true);
+        xhr.responseType = 'arraybuffer';
+        xhr.onload = function() {
+          Module.emterpreterFile = xhr.response;
+%s
+        };
+        xhr.send(null);
+''' % (shared.Settings.EMTERPRETIFY_FILE, script_inline)
+
     html = open(target, 'w')
     assert (script_src or script_inline) and not (script_src and script_inline)
     if script_src:

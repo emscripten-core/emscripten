@@ -2781,6 +2781,10 @@ window.close = function() {
     self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_FILE="code.dat"', '-O2', '-g', '--shell-file', 'shell.html', '-s', 'ASSERTIONS=1'])
     assert os.path.exists('code.dat')
 
+    try_delete('code.dat');
+    self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_FILE="code.dat"', '-O2', '-g', '-s', 'ASSERTIONS=1'])
+    assert os.path.exists('code.dat')
+
   def test_vanilla_html_when_proxying(self):
     for opts in [0, 1, 2]:
       print opts
