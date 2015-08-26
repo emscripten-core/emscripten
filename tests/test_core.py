@@ -5707,7 +5707,12 @@ return malloc(size);
   def test_sse1_full(self):
     self.banned_js_engines = [NODE_JS] # the test code hits NaN canonicalization on node.js
     if self.is_emterpreter(): return self.skip('todo')
+    print 'try normally'
     Popen([CLANG, path_from_root('tests', 'test_sse1_full.cpp'), '-o', 'test_sse1_full'] + get_clang_native_args(), stdout=PIPE, stderr=PIPE).communicate()
+    if not os.path.exists('test_sse1_full'):
+      # try again with -m32
+      print 'try -m32'
+      Popen([CLANG, '-m32', path_from_root('tests', 'test_sse1_full.cpp'), '-o', 'test_sse1_full'] + get_clang_native_args()).communicate()
     native_result, err = Popen('./test_sse1_full', stdout=PIPE, stderr=PIPE).communicate()
     native_result = native_result.replace('\r\n', '\n') # Windows line endings fix
 
