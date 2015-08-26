@@ -2781,3 +2781,11 @@ window.close = function() {
     self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_FILE="code.dat"', '-O2', '-g', '--shell-file', 'shell.html', '-s', 'ASSERTIONS=1'])
     assert os.path.exists('code.dat')
 
+  def test_vanilla_html_when_proxying(self):
+    for opts in [0, 1, 2]:
+      print opts
+      open('src.cpp', 'w').write(self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
+      Popen([PYTHON, EMCC, 'src.cpp', '-o', 'test.js', '-O' + str(opts), '--proxy-to-worker']).communicate()
+      open('test.html', 'w').write('<script src="test.js"></script>')
+      self.run_browser('test.html', None, '/report_result?0')
+
