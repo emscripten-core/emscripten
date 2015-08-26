@@ -1650,11 +1650,10 @@ try:
     logging.debug('generating HTML')
     shell = open(shell_path).read()
     assert '{{{ SCRIPT }}}' in shell, 'HTML shell must contain  {{{ SCRIPT }}}  , see src/shell.html for an example'
-    html = open(target, 'w')
     base_js_target = os.path.basename(js_target)
     if proxy_to_worker:
       child_js = shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename
-      html.write(shell.replace('{{{ SCRIPT }}}', '''
+      script_replacement = '''
 <script>
   if ((',' + window.location.search.substr(1) + ',').indexOf(',noProxy,') < 0) {
     console.log('running code in a web worker');
@@ -1666,7 +1665,7 @@ try:
     script.src = "%s.js";
     document.body.appendChild(script);
   }
-</script>''' % child_js))
+</script>''' % child_js
       shutil.move(final, js_target)
     elif not Compression.on:
       # Normal code generation path
@@ -1741,7 +1740,7 @@ try {
 }
 ''' % (base_js_target, fixes)
         script_tag = '''<script>%s</script>''' % code
-      html.write(shell.replace('{{{ SCRIPT }}}', script_tag))
+      script_replacement = script_tag
     else:
       # Compress the main code
       shutil.move(final, js_target)
@@ -1792,7 +1791,7 @@ try {
         };
         compiledCodeXHR.send(null);
 ''' % Compression.compressed_name(base_js_target)
-      html.write(shell.replace('{{{ SCRIPT }}}', '<script>' + decoding + '</script>'))
+      script_replacement = '<script>' + decoding + '</script>'
 
       # Add decompressor with web worker glue code
       decompressor = open('decompress.js', 'w')
@@ -1804,6 +1803,8 @@ try {
 ''' % Compression.js_name)
       decompressor.close()
 
+    html = open(target, 'w')
+    html.write(shell.replace('{{{ SCRIPT }}}', script_replacement))
     html.close()
   else:
     if debug_level >= 4: generate_source_map(target)
