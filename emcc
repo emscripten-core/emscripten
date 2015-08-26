@@ -1651,10 +1651,11 @@ try:
     shell = open(shell_path).read()
     assert '{{{ SCRIPT }}}' in shell, 'HTML shell must contain  {{{ SCRIPT }}}  , see src/shell.html for an example'
     base_js_target = os.path.basename(js_target)
+    script_src = None # if set, we have a script to load with a src attribute
+    script_inline = None # if set, we have the contents of a script to write inline in a script
     if proxy_to_worker:
       child_js = shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename
-      script_replacement = '''
-<script>
+      script_inline = '''
   if ((',' + window.location.search.substr(1) + ',').indexOf(',noProxy,') < 0) {
     console.log('running code in a web worker');
 ''' + open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + shared.read_and_preprocess(shared.path_from_root('src', 'proxyClient.js')).replace('{{{ filename }}}', child_js).replace('{{{ IDBStore.js }}}', open(shared.path_from_root('src', 'IDBStore.js')).read()) + '''
@@ -1665,7 +1666,7 @@ try:
     script.src = "%s.js";
     document.body.appendChild(script);
   }
-</script>''' % child_js
+''' % child_js
       shutil.move(final, js_target)
     elif not Compression.on:
       # Normal code generation path
@@ -1675,7 +1676,7 @@ try:
       need_mods = shared.Settings.PRECISE_F32 == 2
       if not need_mods:
         # Non-modifiable code, just load the code directly
-        script_tag = '''<script async type="text/javascript" src="%s"></script>''' % base_js_target
+        script_src = base_js_target
       else:
         # Potentially-modifiable code, load as text, modify, then execute. This lets you
         # patch the code on the client machine right before it is executed, perhaps based
@@ -1739,8 +1740,7 @@ try {
   codeXHR.send(null);
 }
 ''' % (base_js_target, fixes)
-        script_tag = '''<script>%s</script>''' % code
-      script_replacement = script_tag
+        script_inline = code
     else:
       # Compress the main code
       shutil.move(final, js_target)
@@ -1791,7 +1791,7 @@ try {
         };
         compiledCodeXHR.send(null);
 ''' % Compression.compressed_name(base_js_target)
-      script_replacement = '<script>' + decoding + '</script>'
+      script_inline = decoding
 
       # Add decompressor with web worker glue code
       decompressor = open('decompress.js', 'w')
@@ -1804,6 +1804,11 @@ try {
       decompressor.close()
 
     html = open(target, 'w')
+    assert (script_src or script_inline) and not (script_src and script_inline)
+    if script_src:
+      script_replacement = '<script async type="text/javascript" src="%s"></script>' % script_src
+    else:
+      script_replacement = '<script>\n%s\n</script>' % script_inline
     html.write(shell.replace('{{{ SCRIPT }}}', script_replacement))
     html.close()
   else:
