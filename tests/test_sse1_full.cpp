@@ -85,7 +85,7 @@ int main()
 	Ret_M128_int(__m128, _mm_cvtsi32_ss);
 	Ret_M128(float, _mm_cvtss_f32);
 	Ret_M128(int, _mm_cvtss_si32);
-	Ret_M128(int64_t, _mm_cvtss_si64);
+	Ret_M128(int64_t, _mm_cvttss_si64);
 	Ret_M128(int, _mm_cvtt_ss2si);
 	Ret_M128(int, _mm_cvttss_si32);
 	Ret_M128(int64_t, _mm_cvttss_si64);
