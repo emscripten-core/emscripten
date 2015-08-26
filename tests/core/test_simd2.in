@@ -18,8 +18,6 @@ static inline __m128 __attribute__((always_inline))
   return __A + __B;
 }
 
-using namespace std;
-
 int main(int argc, char **argv) {
   float __attribute__((__aligned__(16))) ar[4];
   __m128 v1 = _mm_set_ps(9.0, 4.0, 0, -9.0);
