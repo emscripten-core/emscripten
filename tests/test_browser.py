@@ -1694,15 +1694,18 @@ void *getBindBuffer() {
         xhr.responseType = 'arraybuffer';
         xhr.send(null);
 
-        window.onerror = function() {
-          Module.print('fail!');
-          var xhr = new XMLHttpRequest();
-          xhr.open('GET', 'http://localhost:8888/report_result?0');
-          xhr.onload = function() {
-            console.log('close!');
-            window.close();
-          };
-          xhr.send();
+        console.warn = function(x) {
+          if (x.indexOf('a problem seems to have happened with Module.memoryInitializerRequest') >= 0) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', 'http://localhost:8888/report_result?0');
+            setTimeout(xhr.onload = function() {
+              console.log('close!');
+              window.close();
+            }, 1000);
+            xhr.send();
+            throw 'halt';
+          }
+          console.log('WARNING: ' + x);
         };
       ''')
       self.btest('mem_init_request.cpp', expected=status, args=['--pre-js', 'pre.js', '--memory-init-file', '1'])
