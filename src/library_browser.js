@@ -1082,7 +1082,7 @@ mergeInto(LibraryManager.library, {
       };
       Browser.mainLoop.method = 'rAF';
     } else if (mode == 2 /*EM_TIMING_SETIMMEDIATE*/) {
-      if (!window.setImmediate) {
+      if (!window['setImmediate']) {
         // Emulate setImmediate. (note: not a complete polyfill, we don't emulate clearImmediate() to keep code size to minimum, since not needed)
         var setImmediates = [];
         var emscriptenMainLoopMessageId = '__emcc';
@@ -1093,13 +1093,13 @@ mergeInto(LibraryManager.library, {
           }
         }
         window.addEventListener("message", Browser_setImmediate_messageHandler, true);
-        window.setImmediate = function Browser_emulated_setImmediate(func) {
+        window['setImmediate'] = function Browser_emulated_setImmediate(func) {
           setImmediates.push(func);
           window.postMessage(emscriptenMainLoopMessageId, "*");
         }
       }
       Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler_setImmediate() {
-        window.setImmediate(Browser.mainLoop.runner);
+        window['setImmediate'](Browser.mainLoop.runner);
       };
       Browser.mainLoop.method = 'immediate';
     }
