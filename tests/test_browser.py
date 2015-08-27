@@ -2017,6 +2017,44 @@ open(filename, 'w').write(replaced)
     shutil.move('test.data', os.path.join('sub', 'test.data'))
     self.run_browser('page.html', None, '/report_result?1')
 
+    # alternatively, put locateFile in the HTML
+    print 'in html'
+
+    open('shell.html', 'w').write('''
+      <body>
+        <script>
+          var Module = {
+            locateFile: function(x) { return "sub/" + x }
+          };
+        </script>
+
+        {{{ SCRIPT }}}
+      </body>
+    ''')
+
+    def in_html(expected):
+      Popen([PYTHON, EMCC, 'src.cpp', '-O2', '-g', '--shell-file', 'shell.html', '--pre-js', 'data.js', '-o', 'page.html']).communicate()
+      self.run_browser('page.html', None, '/report_result?' + expected)
+
+    in_html('1')
+
+    # verify that the mem init request succeeded in the latter case
+    open('src.cpp', 'w').write(self.with_report_result(r'''
+#include<stdio.h>
+#include<emscripten.h>
+
+int main() {
+  int result = EM_ASM_INT_V({
+    return Module['memoryInitializerRequest'].status;
+  });
+  printf("memory init request: %d\n", result);
+  REPORT_RESULT();
+  return 0;
+}
+    '''))
+
+    in_html('200')
+
   def test_glfw3(self):
     self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3'], expected='1')
 
