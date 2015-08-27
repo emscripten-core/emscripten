@@ -944,8 +944,11 @@ further debug the compiler itself, see emcc.
         while len(chosen) < num:
           test = random.choice(tests)
           mode = random.choice(relevant_modes)
-          print '* ' + mode + '.' + test
-          chosen.add(mode + '.' + test)
+          new_test = mode + '.' + test
+          before = len(chosen)
+          chosen.add(new_test)
+          if len(chosen) > before:
+            print '* ' + new_test
         sys.argv += list(chosen)
         std = 0.5/math.sqrt(num)
         print
