@@ -55,29 +55,33 @@ if (memoryInitializer) {
       HEAPU8.set(data, Runtime.GLOBAL_BASE);
       removeRunDependency('memory initializer');
     }
-    var request = Module['memoryInitializerRequest'];
-    if (request) {
-      // a network request has already been created, just use that
-      if (request.response) {
-        setTimeout(function() {
-          applyMemoryInitializer(request.response);
-        }, 0); // it's already here; but, apply it asynchronously
-      } else {
-        request.addEventListener('load', function() { // wait for it
-          if (request.status !== 200 && request.status !== 0) {
-            console.warn('a problem seems to have happened with Module.memoryInitializerRequest, status: ' + request.status);
-          }
-          if (!request.response || typeof request.response !== 'object' || !request.response.byteLength) {
-            console.warn('a problem seems to have happened with Module.memoryInitializerRequest response (expected ArrayBuffer): ' + request.response);
-          }
-          applyMemoryInitializer(request.response);
-        });
-      }
-    } else {
-      // fetch it from the network ourselves
+    function doBrowserLoad() {
       Browser.asyncLoad(memoryInitializer, applyMemoryInitializer, function() {
         throw 'could not load memory initializer ' + memoryInitializer;
       });
+    }
+    var request = Module['memoryInitializerRequest'];
+    if (request) {
+      // a network request has already been created, just use that
+      function useRequest() {
+        if (request.status !== 200 && request.status !== 0) {
+          // If you see this warning, the issue may be that you are using locateFile or memoryInitializerPrefixURL, and defining them in JS. That
+          // means that the HTML file doesn't know about them, and when it tries to create the mem init request early, does it to the wrong place.
+          // Look in your browser's devtools network console to see what's going on.
+          console.warn('a problem seems to have happened with Module.memoryInitializerRequest, status: ' + request.status + ', retrying ' + memoryInitializer);
+          doBrowserLoad();
+          return;
+        }
+        applyMemoryInitializer(request.response);
+      }
+      if (request.response) {
+        setTimeout(useRequest, 0); // it's already here; but, apply it asynchronously
+      } else {
+        request.addEventListener('load', useRequest); // wait for it
+      }
+    } else {
+      // fetch it from the network ourselves
+      doBrowserLoad();
     }
   }
 }
