@@ -1651,8 +1651,20 @@ try:
     shell = open(shell_path).read()
     assert '{{{ SCRIPT }}}' in shell, 'HTML shell must contain  {{{ SCRIPT }}}  , see src/shell.html for an example'
     base_js_target = os.path.basename(js_target)
+
     script_src = None # if set, we have a script to load with a src attribute
     script_inline = None # if set, we have the contents of a script to write inline in a script
+
+    def un_src(): # use this if you want to modify the script and need it to be inline
+      global script_src, script_inline
+      if script_src is None: return
+      script_inline = '''
+        var script = document.createElement('script');
+        script.src = "%s";
+        document.body.appendChild(script);
+''' % script_src
+      script_src = None
+
     if proxy_to_worker:
       child_js = shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename
       script_inline = '''
@@ -1805,15 +1817,7 @@ try {
 
     if shared.Settings.EMTERPRETIFY_FILE:
       # We need to load the emterpreter file before anything else, it has to be synchronously ready
-      if script_src:
-        # un-src
-        script_inline = '''
-          var script = document.createElement('script');
-          script.src = "%s";
-          document.body.appendChild(script);
-''' % script_src
-        script_src = None
-
+      un_src()
       script_inline = '''
         var xhr = new XMLHttpRequest();
         xhr.open('GET', '%s', true);
