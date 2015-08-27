@@ -1829,6 +1829,24 @@ try {
         xhr.send(null);
 ''' % (shared.Settings.EMTERPRETIFY_FILE, script_inline)
 
+    if memory_init_file:
+      # start to load the memory init file in the HTML, in parallel with the JS
+      un_src()
+      script_inline = ('''
+        (function() {
+          var memoryInitializer = '%s';
+          if (typeof Module['locateFile'] === 'function') {
+            memoryInitializer = Module['locateFile'](memoryInitializer);
+          } else if (Module['memoryInitializerPrefixURL']) {
+            memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
+          }
+          var xhr = Module['memoryInitializerRequest'] = new XMLHttpRequest();
+          xhr.open('GET', memoryInitializer, true);
+          xhr.responseType = 'arraybuffer';
+          xhr.send(null);
+        })();
+''' % os.path.basename(memfile)) + script_inline
+
     html = open(target, 'w')
     assert (script_src or script_inline) and not (script_src and script_inline)
     if script_src:

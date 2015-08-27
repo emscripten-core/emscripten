@@ -2796,3 +2796,17 @@ window.close = function() {
       open('test.html', 'w').write('<script src="test.js"></script>')
       self.run_browser('test.html', None, '/report_result?0')
 
+  def test_in_flight_memfile_request(self):
+    for o in [0, 1, 2]:
+      print o
+      opts = ['-O' + str(o)]
+
+      print 'plain html'
+      open('src.cpp', 'w').write(self.with_report_result(open(path_from_root('tests', 'in_flight_memfile_request.c')).read()))
+      Popen([PYTHON, EMCC, 'src.cpp', '-o', 'test.js'] + opts).communicate()
+      open('test.html', 'w').write('<script src="test.js"></script>')
+      self.run_browser('test.html', None, '/report_result?0') # never when we provide our own HTML like this.
+
+      print 'default html'
+      self.btest('in_flight_memfile_request.c', expected='0' if o < 2 else '1', args=opts) # should happen when there is a mem init file (-O2+)
+
