@@ -5819,7 +5819,8 @@ function emterpretify(ast) {
     return Array.prototype.slice.call(tempUint8, 0, 8);
   }
 
-  var OK_TO_CALL_WHILE_ASYNC = set('stackSave', 'stackRestore', 'stackAlloc', 'setThrew', '_memset', '_memcpy'); // functions which are ok to run while async, even if not emterpreted
+  // functions which are ok to run while async, even if not emterpreted
+  var OK_TO_CALL_WHILE_ASYNC = set('stackSave', 'stackRestore', 'stackAlloc', 'setThrew', '_memset', '_memcpy', '_memmove', '_strlen', '_strncpy', '_strcpy', '_strcat');
   function okToCallWhileAsync(name) {
     // dynCall *can* be on the stack, they are just bridges; what matters is where they go
     if (/^dynCall_/.test(name)) return true;
