@@ -65,7 +65,6 @@ var USE_TYPED_ARRAYS = 2; // Use typed arrays for the heap. See https://github.c
                           //   the only supported mode.
 var DOUBLE_MODE = 1; // How to load and store 64-bit doubles.
                      // A potential risk is that doubles may be only 32-bit aligned. Forcing 64-bit alignment
-                     // a potential risk is that doubles may be only 32-bit aligned. Forcing 64-bit alignment
                      // in Clang itself should be able to solve that, or as a workaround in DOUBLE_MODE 1 we
                      // will carefully load in parts, in a way that requires only 32-bit alignment. In DOUBLE_MODE
                      // 0 we will simply store and load doubles as 32-bit floats, so when they are stored/loaded
