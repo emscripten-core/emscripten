@@ -1701,7 +1701,7 @@ try:
             # simple dumb replace
             mods.append('''
 console.log('optimizing out Math.fround calls');
-code = code.replace(/Math_fround\(/g, '(').replace("'use asm'", "'almost asm'")
+code = code.replace(/Math_fround\(/g, '(').replace("'use asm'", "'almost asm'").replace('"use asm"', '"almost asm"');
 ''')
           else:
             # minified, not quite so simple - TODO
@@ -1719,7 +1719,7 @@ try {
     asm = asm.replace(new RegExp('[^a-zA-Z0-9\\\\$\\\\_]' + minified + '\\\\(', 'g'), function(s) { moar = true; return s[0] + '(' });
   } while (moar);
   code = code.substring(0, startAsm) + asm + code.substring(endAsm);
-  code = code.replace("'use asm'", "'almost asm'");
+  code = code.replace("'use asm'", "'almost asm'").replace('"use asm"', '"almost asm"');
 } catch(e) { console.log('failed to optimize out Math.fround calls ' + e) }
 ''')
 
