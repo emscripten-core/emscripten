@@ -11,9 +11,11 @@ else()
 	set(IS_GCC_LIKE FALSE)
 endif()
 
-# -DPROFILING will print crude timing information to stderr for initial
-# identification of areas to profile in more depth with
+# -DCMAKE_CXX_FLAGS=-DPROFILING will print crude timing information to stderr
+# for initial identification of areas to profile in more depth with
 # CALLGRIND_{START,STOP}_INSTRUMENTATION or similar
+# Don't forget to also pass -DCMAKE_BUILD_TYPE=Release to cmake or your build
+# won't be optimized by the compiler!
 
 if (IS_GCC_LIKE)
 	set(cFlags "-std=c++11 -fno-exceptions -fno-rtti")

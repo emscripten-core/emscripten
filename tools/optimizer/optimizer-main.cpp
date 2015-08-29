@@ -15,6 +15,12 @@ int main(int argc, char **argv) {
     else if (str == "last") last = true;
   }
 
+#ifdef PROFILING
+    std::string str("reading and parsing");
+    clock_t start = clock();
+    errv("starting %s", str.c_str());
+#endif
+
   // Read input file
   FILE *f = fopen(argv[1], "r");
   assert(f);
@@ -49,6 +55,10 @@ int main(int argc, char **argv) {
   }
   // do not free input, its contents are used as strings
 
+#ifdef PROFILING
+    errv("    %s took %lu milliseconds", str.c_str(), (clock() - start)/1000);
+#endif
+
   // Run passes on the Document
   for (int i = 2; i < argc; i++) {
     std::string str(argv[i]);
@@ -78,7 +88,7 @@ int main(int argc, char **argv) {
       abort();
     }
 #ifdef PROFILING
-    errv("    %s took %lu microseconds", str.c_str(), clock() - start);
+    errv("    %s took %lu milliseconds", str.c_str(), (clock() - start)/1000);
 #endif
 #ifdef DEBUGGING
     if (worked) {

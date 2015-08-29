@@ -939,9 +939,29 @@ public:
 };
 
 void eliminate(Ref ast, bool memSafe) {
+#ifdef PROFILING
+  clock_t tasmdata = 0;
+  clock_t tfnexamine = 0;
+  clock_t tvarcheck = 0;
+  clock_t tstmtelim = 0;
+  clock_t tstmtscan = 0;
+  clock_t tcleanvars = 0;
+  clock_t treconstruct = 0;
+#endif
+
   // Find variables that have a single use, and if they can be eliminated, do so
-  traverseFunctions(ast, [&memSafe](Ref func) {
+  traverseFunctions(ast, [&](Ref func) {
+
+#ifdef PROFILING
+    clock_t start = clock();
+#endif
+
     AsmData asmData(func);
+
+#ifdef PROFILING
+    tasmdata += clock() - start;
+    start = clock();
+#endif
 
     // First, find the potentially eliminatable functions: that have one definition and one use
 
@@ -988,6 +1008,11 @@ void eliminate(Ref ast, bool memSafe) {
     for (auto used : uses) {
       namings[used.first] += used.second;
     }
+
+#ifdef PROFILING
+    tfnexamine += clock() - start;
+    start = clock();
+#endif
 
     StringSet potentials; // local variables with 1 definition and 1 use
     StringSet sideEffectFree; // whether a local variable has no side effects in its definition. Only relevant when there are no uses
@@ -1049,6 +1074,11 @@ void eliminate(Ref ast, bool memSafe) {
     for (auto name : asmData.locals) {
       processVariable(name.first);
     }
+
+#ifdef PROFILING
+    tvarcheck += clock() - start;
+    start = clock();
+#endif
 
     //printErr('defs: ' + JSON.stringify(definitions));
     //printErr('uses: ' + JSON.stringify(uses));
@@ -1395,12 +1425,25 @@ void eliminate(Ref ast, bool memSafe) {
         }
         // Check for things that affect elimination
         if (ELIMINATION_SAFE_NODES.has(type)) {
+#ifdef PROFILING
+          tstmtelim += clock() - start;
+          start = clock();
+#endif
           scan(node);
+#ifdef PROFILING
+          tstmtscan += clock() - start;
+          start = clock();
+#endif
         } else {
           tracked.clear(); // not a var or assign, break all potential elimination so far
         }
       }
     });
+
+#ifdef PROFILING
+    tstmtelim += clock() - start;
+    start = clock();
+#endif
 
     StringIntMap seenUses;
     StringStringMap helperReplacements; // for looper-helper optimization
@@ -1616,14 +1659,30 @@ void eliminate(Ref ast, bool memSafe) {
       }
     });
 
+#ifdef PROFILING
+    tcleanvars += clock() - start;
+    start = clock();
+#endif
+
     for (auto v : varsToRemove) {
       if (v.second == 2 && asmData.isVar(v.first)) asmData.deleteVar(v.first);
     }
 
     asmData.denormalize();
+
+#ifdef PROFILING
+    treconstruct += clock() - start;
+    start = clock();
+#endif
+
   });
 
   removeAllEmptySubNodes(ast);
+
+#ifdef PROFILING
+  errv("    EL stages: a:%li fe:%li vc:%li se:%li (ss:%li) cv:%li r:%li",
+    tasmdata, tfnexamine, tvarcheck, tstmtelim, tstmtscan, tcleanvars, treconstruct);
+#endif
 }
 
 void eliminateMemSafe(Ref ast) {
