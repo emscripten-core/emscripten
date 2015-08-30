@@ -1183,7 +1183,7 @@ void eliminate(Ref ast, bool memSafe) {
     auto scan = [&](Ref node) {
       bool abort = false;
       bool allowTracking = true; // false inside an if; also prevents recursing in an if
-      std::function<void (Ref, bool, bool)> traverseInOrder = [&](Ref node, bool ignoreSub, bool ignoreName) {
+      std::function<void (Ref, bool)> traverseInOrder = [&](Ref node, bool ignoreSub) {
         if (abort) return;
         Ref type = node[0];
         if (type == ASSIGN) {
@@ -1193,9 +1193,9 @@ void eliminate(Ref ast, bool memSafe) {
           // If this is an assign to a name, handle it below rather than
           // traversing and treating as a read
           if (!nameTarget) {
-            traverseInOrder(target, true, false); // evaluate left
+            traverseInOrder(target, true); // evaluate left
           }
-          traverseInOrder(value,  false, false); // evaluate right
+          traverseInOrder(value,  false); // evaluate right
           // do the actual assignment
           if (nameTarget) {
             IString name = target[1]->getIString();
@@ -1237,9 +1237,9 @@ void eliminate(Ref ast, bool memSafe) {
           // Only keep track of the global array names in memsafe mode i.e.
           // when they may change underneath us due to resizing
           if (node[1][0] != NAME || memSafe) {
-            traverseInOrder(node[1], false, false); // evaluate inner
+            traverseInOrder(node[1], false); // evaluate inner
           }
-          traverseInOrder(node[2], false, false); // evaluate outer
+          traverseInOrder(node[2], false); // evaluate outer
           // ignoreSub means we are a write (happening later), not a read
           if (!ignoreSub && !isTempDoublePtrAccess(node)) {
             // do the memory access
@@ -1254,7 +1254,7 @@ void eliminate(Ref ast, bool memSafe) {
             IString name = vars[i][0]->getIString();
             Ref value;
             if (vars[i]->size() > 1 && !!(value = vars[i][1])) {
-              traverseInOrder(value, false, false);
+              traverseInOrder(value, false);
               if (potentials.has(name) && allowTracking) {
                 track(name, value, node);
               } else {
@@ -1277,34 +1277,32 @@ void eliminate(Ref ast, bool memSafe) {
             node[3] = temp;
             flipped = true;
           }
-          traverseInOrder(node[2], false, false);
-          traverseInOrder(node[3], false, false);
+          traverseInOrder(node[2], false);
+          traverseInOrder(node[3], false);
           if (flipped && NAME_OR_NUM.has(node[2][0])) { // dunno if we optimized, but safe to flip back - and keeps the code closer to the original and more readable
             Ref temp = node[2];
             node[2] = node[3];
             node[3] = temp;
           }
         } else if (type == NAME) {
-          if (!ignoreName) { // ignoreName means we are the name of something like a call or a sub - irrelevant for us
-            IString name = node[1]->getIString();
-            if (tracked.has(name)) {
-              doEliminate(name, node);
-            } else if (!asmData.isLocal(name) && !callsInvalidated) {
-              invalidateCalls();
-              callsInvalidated = true;
-            }
+          IString name = node[1]->getIString();
+          if (tracked.has(name)) {
+            doEliminate(name, node);
+          } else if (!asmData.isLocal(name) && !callsInvalidated) {
+            invalidateCalls();
+            callsInvalidated = true;
           }
         } else if (type == UNARY_PREFIX || type == UNARY_POSTFIX) {
-          traverseInOrder(node[2], false, false);
+          traverseInOrder(node[2], false);
         } else if (IGNORABLE_ELIMINATOR_SCAN_NODES.has(type)) {
         } else if (type == CALL) {
           // Named functions never change and are therefore safe to not track
           if (node[1][0] != NAME) {
-            traverseInOrder(node[1], false, false);
+            traverseInOrder(node[1], false);
           }
           Ref args = node[2];
           for (size_t i = 0; i < args->size(); i++) {
-            traverseInOrder(args[i], false, false);
+            traverseInOrder(args[i], false);
           }
           if (callHasSideEffects(node)) {
             // these two invalidations will also invalidate calls
@@ -1319,14 +1317,14 @@ void eliminate(Ref ast, bool memSafe) {
           }
         } else if (type == IF) {
           if (allowTracking) {
-            traverseInOrder(node[1], false, false); // can eliminate into condition, but nowhere else
+            traverseInOrder(node[1], false); // can eliminate into condition, but nowhere else
             if (!callsInvalidated) { // invalidate calls, since we cannot eliminate them into an if that may not execute!
               invalidateCalls();
               callsInvalidated = true;
             }
             allowTracking = false;
-            traverseInOrder(node[2], false, false); // 2 and 3 could be 'parallel', really..
-            if (!!node[3]) traverseInOrder(node[3], false, false);
+            traverseInOrder(node[2], false); // 2 and 3 could be 'parallel', really..
+            if (!!node[3]) traverseInOrder(node[3], false);
             allowTracking = true;
           } else {
             tracked.clear();
@@ -1335,34 +1333,34 @@ void eliminate(Ref ast, bool memSafe) {
           Ref stats = getStatements(node);
           if (!!stats) {
             for (size_t i = 0; i < stats->size(); i++) {
-              traverseInOrder(stats[i], false, false);
+              traverseInOrder(stats[i], false);
             }
           }
         } else if (type == STAT) {
-          traverseInOrder(node[1], false, false);
+          traverseInOrder(node[1], false);
         } else if (type == LABEL) {
-          traverseInOrder(node[2], false, false);
+          traverseInOrder(node[2], false);
         } else if (type == SEQ) {
-          traverseInOrder(node[1], false, false);
-          traverseInOrder(node[2], false, false);
+          traverseInOrder(node[1], false);
+          traverseInOrder(node[2], false);
         } else if (type == DO) {
           if (node[1][0] == NUM && node[1][1]->getNumber() == 0) { // one-time loop
-            traverseInOrder(node[2], false, false);
+            traverseInOrder(node[2], false);
           } else {
             tracked.clear();
           }
         } else if (type == RETURN) {
-          if (!!node[1]) traverseInOrder(node[1], false, false);
+          if (!!node[1]) traverseInOrder(node[1], false);
         } else if (type == CONDITIONAL) {
           if (!callsInvalidated) { // invalidate calls, since we cannot eliminate them into a branch of an LLVM select/JS conditional that does not execute
             invalidateCalls();
             callsInvalidated = true;
           }
-          traverseInOrder(node[1], false, false);
-          traverseInOrder(node[2], false, false);
-          traverseInOrder(node[3], false, false);
+          traverseInOrder(node[1], false);
+          traverseInOrder(node[2], false);
+          traverseInOrder(node[3], false);
         } else if (type == SWITCH) {
-          traverseInOrder(node[1], false, false);
+          traverseInOrder(node[1], false);
           Tracked originalTracked = tracked;
           Ref cases = node[2];
           for (size_t i = 0; i < cases->size(); i++) {
@@ -1370,7 +1368,7 @@ void eliminate(Ref ast, bool memSafe) {
             assert(c[0]->isNull() || c[0][0] == NUM || (c[0][0] == UNARY_PREFIX && c[0][2][0] == NUM));
             Ref stats = c[1];
             for (size_t j = 0; j < stats->size(); j++) {
-              traverseInOrder(stats[j], false, false);
+              traverseInOrder(stats[j], false);
             }
             // We cannot track from one switch case into another, undo all new trackings TODO: general framework here, use in if-else as well
             std::vector<IString> toDelete;
@@ -1393,7 +1391,7 @@ void eliminate(Ref ast, bool memSafe) {
           abort = true;
         }
       };
-      traverseInOrder(node, false, false);
+      traverseInOrder(node, false);
     };
     //var eliminationLimit = 0; // used to debugging purposes
     doEliminate = [&](IString name, Ref node) {
