@@ -178,6 +178,7 @@ If manually bisecting:
     test_cases = [
      # (source preload-file string, file on target FS to load)
       ("somefile.txt", "somefile.txt"),
+      ("somefile'.txt", "somefile'.txt"),
       (".somefile.txt@somefile.txt", "somefile.txt"),
       ("./somefile.txt", "somefile.txt"),
       ("somefile.txt@file.txt", "file.txt"),
