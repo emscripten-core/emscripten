@@ -1138,9 +1138,9 @@ void eliminate(Ref ast, bool memSafe) {
           ignoreName = false;
         }
       });
-      globalsInvalidated = false;
-      memoryInvalidated = false;
-      callsInvalidated = false;
+      if (track.usesGlobals) globalsInvalidated = false;
+      if (track.usesMemory) memoryInvalidated = false;
+      if (track.doesCall) callsInvalidated = false;
     };
 
     // TODO: invalidate using a sequence number for each type (if you were tracked before the last invalidation, you are cancelled). remove for.in loops
