@@ -1190,7 +1190,11 @@ void eliminate(Ref ast, bool memSafe) {
           Ref target = node[2];
           Ref value = node[3];
           bool nameTarget = target[0] == NAME;
-          traverseInOrder(target, true,  nameTarget); // evaluate left
+          // If this is an assign to a name, handle it below rather than
+          // traversing and treating as a read
+          if (!nameTarget) {
+            traverseInOrder(target, true, false); // evaluate left
+          }
           traverseInOrder(value,  false, false); // evaluate right
           // do the actual assignment
           if (nameTarget) {
@@ -1230,7 +1234,11 @@ void eliminate(Ref ast, bool memSafe) {
             }
           }
         } else if (type == SUB) {
-          traverseInOrder(node[1], false, !memSafe); // evaluate inner
+          // Only keep track of the global array names in memsafe mode i.e.
+          // when they may change underneath us due to resizing
+          if (node[1][0] != NAME || memSafe) {
+            traverseInOrder(node[1], false, false); // evaluate inner
+          }
           traverseInOrder(node[2], false, false); // evaluate outer
           // ignoreSub means we are a write (happening later), not a read
           if (!ignoreSub && !isTempDoublePtrAccess(node)) {
@@ -1290,7 +1298,10 @@ void eliminate(Ref ast, bool memSafe) {
           traverseInOrder(node[2], false, false);
         } else if (IGNORABLE_ELIMINATOR_SCAN_NODES.has(type)) {
         } else if (type == CALL) {
-          traverseInOrder(node[1], false, true);
+          // Named functions never change and are therefore safe to not track
+          if (node[1][0] != NAME) {
+            traverseInOrder(node[1], false, false);
+          }
           Ref args = node[2];
           for (size_t i = 0; i < args->size(); i++) {
             traverseInOrder(args[i], false, false);
