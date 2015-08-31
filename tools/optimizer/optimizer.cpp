@@ -1090,9 +1090,8 @@ void eliminate(Ref ast, bool memSafe) {
     //printErr('potentials: ' + JSON.stringify(potentials));
     // We can now proceed through the function. In each list of statements, we try to eliminate
     struct Tracking {
-      bool usesGlobals, usesMemory;
+      bool usesGlobals, usesMemory, hasDeps;
       Ref defNode;
-      StringSet deps;
       bool doesCall;
     };
     class Tracked : public std::unordered_map<IString, Tracking> {
@@ -1101,6 +1100,8 @@ void eliminate(Ref ast, bool memSafe) {
     };
     Tracked tracked;
     #define dumpTracked() { errv("tracking %d", tracked.size()); for (auto t : tracked) errv("... %s", t.first.c_str()); }
+    // Although a set would be more appropriate, it would also be slower
+    std::unordered_map<IString, StringVec> depMap;
 
     bool globalsInvalidated = false; // do not repeat invalidations, until we track something new
     bool memoryInvalidated = false;
@@ -1109,6 +1110,7 @@ void eliminate(Ref ast, bool memSafe) {
       Tracking& track = tracked[name];
       track.usesGlobals = false;
       track.usesMemory = false;
+      track.hasDeps = false;
       track.defNode = defNode;
       track.doesCall = false;
       bool ignoreName = false; // one-time ignorings of names, as first op in sub and call
@@ -1116,12 +1118,13 @@ void eliminate(Ref ast, bool memSafe) {
         Ref type = node[0];
         if (type == NAME) {
           if (!ignoreName) {
-            IString name = node[1]->getIString();
-            if (!asmData.isLocal(name)) {
+            IString depName = node[1]->getIString();
+            if (!asmData.isLocal(depName)) {
               track.usesGlobals = true;
             }
-            if (!potentials.has(name)) { // deps do not matter for potentials - they are defined once, so no complexity
-              track.deps.insert(name);
+            if (!potentials.has(depName)) { // deps do not matter for potentials - they are defined once, so no complexity
+              depMap[depName].push_back(name);
+              track.hasDeps = true;
             }
           } else {
             ignoreName = false;
@@ -1163,17 +1166,10 @@ void eliminate(Ref ast, bool memSafe) {
     INVALIDATE(Calls, info.doesCall);
 
     auto invalidateByDep = [&](IString dep) {
-      std::vector<IString> temp;
-      for (auto t : tracked) {
-        IString name = t.first;
-        Tracking& info = tracked[name];
-        if (info.deps.has(dep)) {
-          temp.push_back(name);
-        }
+      for (auto name : depMap[dep]) {
+        tracked.erase(name);
       }
-      for (size_t i = 0; i < temp.size(); i++) {
-        tracked.erase(temp[i]);
-      }
+      depMap.erase(dep);
     };
 
     std::function<void (IString name, Ref node)> doEliminate;
@@ -1375,7 +1371,7 @@ void eliminate(Ref ast, bool memSafe) {
             for (auto t : tracked) {
               if (!originalTracked.has(t.first)) {
                 Tracking& info = tracked[t.first];
-                if (info.usesGlobals || info.usesMemory || info.deps.size() > 0) {
+                if (info.usesGlobals || info.usesMemory || info.hasDeps) {
                   toDelete.push_back(t.first);
                 }
               }
