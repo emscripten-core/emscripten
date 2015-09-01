@@ -4,7 +4,7 @@
 # Usage: emrun <options> filename.html <args to program>
 # See emrun --help for more information
 
-import os, platform, optparse, logging, re, pprint, atexit, urlparse, subprocess, sys, SocketServer, BaseHTTPServer, SimpleHTTPServer, time, string, struct, socket, cgi
+import os, platform, optparse, logging, re, pprint, atexit, urlparse, subprocess, sys, SocketServer, BaseHTTPServer, SimpleHTTPServer, time, string, struct, socket, cgi, tempfile, stat, shutil
 from operator import itemgetter
 from urllib import unquote
 from Queue import PriorityQueue
@@ -160,19 +160,92 @@ def unquote_u(source):
     result = result.replace('%u','\\u').decode('unicode_escape')
   return result
 
+temp_firefox_profile_dir = None
+
+# Deletes the temporary created Firefox profile (if one exists)
+def delete_emrun_safe_firefox_profile():
+  global temp_firefox_profile_dir
+  if temp_firefox_profile_dir != None:
+    logv('remove_tree("' + temp_firefox_profile_dir + '")')
+    remove_tree(temp_firefox_profile_dir)
+    temp_firefox_profile_dir = None
+
+# Firefox has a lot of default behavior that makes it unsuitable for automated/unattended run.
+# This function creates a temporary profile directory that customized Firefox with various flags that enable
+# automated runs.
+def create_emrun_safe_firefox_profile():
+  global temp_firefox_profile_dir
+  temp_firefox_profile_dir = tempfile.mkdtemp(prefix='temp_emrun_firefox_profile_')
+  f = open(os.path.join(temp_firefox_profile_dir, 'prefs.js'), 'w')
+  f.write('''
+// Lift the default max 20 workers limit to something higher to avoid hangs when page needs to spawn a lot of threads.
+user_pref("dom.workers.maxPerDomain", 100);
+// Always allow opening popups
+user_pref("browser.popups.showPopupBlocker", false);
+user_pref("dom.disable_open_during_load", false);
+// Don't ask user if he wants to set Firefox as the default system browser
+user_pref("browser.shell.checkDefaultBrowser", false);
+user_pref("browser.shell.skipDefaultBrowserCheck", true);
+// If automated runs crash, don't resume old tabs on the next run or show safe mode dialogs or anything else extra.
+user_pref("browser.sessionstore.resume_from_crash", false);
+user_pref("services.sync.prefs.sync.browser.sessionstore.restore_on_demand", false);
+user_pref("browser.sessionstore.restore_on_demand", false);
+user_pref("browser.sessionstore.max_resumed_crashes", -1);
+user_pref("toolkip.startup.max_resumed_crashes", -1);
+// Don't show the slow script dialog popup
+user_pref("dom.max_script_run_time", 0);
+user_pref("dom.max_chrome_script_run_time", 0);
+// Don't open a home page at startup
+user_pref("startup.homepage_override_url", "about:blank");
+user_pref("startup.homepage_welcome_url", "about:blank");
+user_pref("browser.startup.homepage", "about:blank");
+// Don't try to perform browser (auto)update on the background
+user_pref("app.update.auto", false);
+user_pref("app.update.enabled", false);
+user_pref("app.update.silent", false);
+user_pref("app.update.mode", 0);
+user_pref("app.update.service.enabled", false);
+// Don't check compatibility with add-ons, or (auto)update them
+clearPref("extensions.lastAppVersion"); 
+lockPref("plugins.hide_infobar_for_outdated_plugin", true);
+clearPref("plugins.update.url");
+// Disable health reporter
+lockPref("datareporting.healthreport.service.enabled", false);
+// Disable crash reporter
+lockPref("toolkit.crashreporter.enabled", false);
+Components.classes["@mozilla.org/toolkit/crash-reporter;1"].getService(Components.interfaces.nsICrashReporter).submitReports = false; 
+// Don't show WhatsNew on first run after every update
+pref("browser.startup.homepage_override.mstone","ignore");
+// Don't show 'know your rights' and a bunch of other nag windows at startup
+user_pref("browser.rights.3.shown", true);
+user_pref('devtools.devedition.promo.shown', true);
+user_pref('extensions.shownSelectionUI', true);
+user_pref('browser.newtabpage.introShown', true);
+user_pref('browser.download.panel.shown', true);
+user_pref('browser.customizemode.tip0.shown', true);
+user_pref("browser.toolbarbuttons.introduced.pocket-button", true);
+// Start in private browsing mode to not cache anything to disk (everything will be wiped anyway after this run)
+user_pref("browser.privatebrowsing.autostart", true);
+''')
+  f.close()
+  logv('create_emrun_safe_firefox_profile: Created new Firefox profile "' + temp_firefox_profile_dir + '"')
+  return temp_firefox_profile_dir
+
 # Returns whether the browser page we spawned is still running.
 # (note, not perfect atm, in case we are running in detached mode)
 def is_browser_process_alive():
   global browser_process
   return browser_process and browser_process.poll() == None
   
-# Kills browser_process and processname_killed_atexit.
+# Kills browser_process and processname_killed_atexit. Also removes the temporary Firefox profile that
+# was created, if one exists.
 def kill_browser_process():
   global browser_process, processname_killed_atexit, emrun_options, ADB
   if browser_process:
     try:
       logv('Terminating browser process..')
       browser_process.kill()
+      delete_emrun_safe_firefox_profile()
     except Exception, e:
       logv('Failed with error ' + str(e) + '!')
     browser_process = None
@@ -196,6 +269,7 @@ def kill_browser_process():
             subprocess.call(['killall', processname_killed_atexit])
           except OSError, e:
             loge('Both commands pkill and killall failed to clean up the spawned browser process. Perhaps neither of these utilities is available on your system?')
+      delete_emrun_safe_firefox_profile()
     # Clear the process name to represent that the browser is now dead.
     processname_killed_atexit = ''
 
@@ -275,15 +349,17 @@ class HTTPWebServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
       # Did user close browser?
       if browser_process:
         browser_quit_code = browser_process.poll()
-        if not emrun_options.serve_after_close and browser_quit_code != None:
-          if not have_received_messages:
-            emrun_options.serve_after_close = True
-            logv('Warning: emrun got detached from the target browser process (the process quit with code ' + str(browser_quit_code) + '). Cannot detect when user closes the browser. Behaving as if --serve_after_close was passed in.')
-            if not emrun_options.browser:
-              logv('Try passing the --browser=/path/to/browser option to avoid this from occurring. See https://github.com/kripken/emscripten/issues/3234 for more discussion.')
-          else:
-            self.shutdown()
-            logv('Browser process has quit. Shutting down web server.. Pass --serve_after_close to keep serving the page even after the browser closes.')
+        if browser_quit_code != None:
+          delete_emrun_safe_firefox_profile()
+          if not emrun_options.serve_after_close:
+            if not have_received_messages:
+              emrun_options.serve_after_close = True
+              logv('Warning: emrun got detached from the target browser process (the process quit with code ' + str(browser_quit_code) + '). Cannot detect when user closes the browser. Behaving as if --serve_after_close was passed in.')
+              if not emrun_options.browser:
+                logv('Try passing the --browser=/path/to/browser option to avoid this from occurring. See https://github.com/kripken/emscripten/issues/3234 for more discussion.')
+            else:
+              self.shutdown()
+              logv('Browser process has quit. Shutting down web server.. Pass --serve_after_close to keep serving the page even after the browser closes.')
 
       # Serve HTTP
       self.handle_request()
@@ -853,6 +929,20 @@ def browser_display_name(browser):
     return 'Apple Safari'
   return browser
 
+# Removes a directory tree even if it was readonly, and doesn't throw exception on failure.
+def remove_tree(d):
+  os.chmod(d, stat.S_IWRITE)
+  try:
+    def remove_readonly_and_try_again(func, path, exc_info):
+      if not (os.stat(path).st_mode & stat.S_IWRITE):
+        os.chmod(path, stat.S_IWRITE)
+        func(path)
+      else:
+        raise
+    shutil.rmtree(d, onerror=remove_readonly_and_try_again)
+  except Exception as e:
+    pass
+
 def main():
   global browser_process, processname_killed_atexit, emrun_options, emrun_not_enabled_nag_printed, ADB
   usage_str = "usage: emrun [emrun_options] filename.html [html_cmdline_options]\n\n   where emrun_options specifies command line options for emrun itself, whereas\n   html_cmdline_options specifies startup arguments to the program."
@@ -917,6 +1007,9 @@ def main():
 
   parser.add_option('--browser_info', dest='browser_info', action='store_true',
     help='Prints information about the target browser to launch at startup.')
+
+  parser.add_option('--safe_firefox_profile', dest='safe_firefox_profile', action='store_true',
+    help='If true, the browser is launched into a new clean Firefox profile that is suitable for unattended automated runs. (If target browser != Firefox, this parameter is ignored)')
 
   parser.add_option('--log_html', dest='log_html', action='store_true',
     help='If set, information lines are printed out an HTML-friendly format.')
@@ -1069,6 +1162,12 @@ def main():
     pname = processname_killed_atexit
     kill_browser_process()
     processname_killed_atexit = pname
+
+  # Create temporary Firefox profile to run the page with. This is important to run after kill_browser_process()/kill_on_start op above, since that
+  # cleans up the temporary profile if one exists.
+  if processname_killed_atexit == 'firefox' and options.safe_firefox_profile:
+    profile_dir = create_emrun_safe_firefox_profile()
+    browser += ['-profile', profile_dir.replace('\\', '/')]
 
   if options.system_info:
     logi('Time of run: ' + time.strftime("%x %X"))
