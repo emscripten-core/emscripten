@@ -2134,6 +2134,21 @@ int main() {
 }
 ''', 'hello world…')
 
+  def test_em_asm_unused_arguments(self):
+    src = r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+
+      int main(int argc, char **argv) {
+        int sum = EM_ASM_INT({
+           return $0 + $2;
+        }, 0, 1, 2);
+        printf("0+2=%d\n", sum);
+        return 0;
+      }
+    '''
+    self.do_run(src, '''0+2=2''')
+
   def test_memorygrowth(self):
     self.banned_js_engines = [V8_ENGINE] # stderr printing limitations in v8
 

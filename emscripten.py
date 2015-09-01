@@ -272,16 +272,15 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       if const[0] == '"' and const[-1] == '"':
         const = const[1:-1]
       const = '{ ' + const + ' }'
-      i = 0
       args = []
-      while ('$' + str(i)) in const:
+      arity = metadata['asmConstArities'][k]
+      for i in range(arity):
         args.append('$' + str(i))
-        i += 1
       const = 'function(' + ', '.join(args ) + ') ' + const
       asm_consts[int(k)] = const
 
     asm_const_funcs = []
-    for arity in metadata['asmConstArities']:
+    for arity in set(metadata['asmConstArities'].values()):
       forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_%d' % arity] = 1
       args = ['a%d' % i for i in range(arity)]
       all_args = ['code'] + args
