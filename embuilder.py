@@ -41,6 +41,7 @@ Available operations and tasks:
         ogg
         sdl2
         sdl2-image
+        sdl2-ttf
         vorbis
         zlib
 
@@ -151,6 +152,8 @@ if operation == 'build':
       build_port('sdl2-image', 'libsdl2_image.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'])
     elif what == 'freetype':
       build_port('freetype', 'libfreetype.a', ['-s', 'USE_FREETYPE=1'])
+    elif what == 'sdl2-ttf':
+      build_port('sdl2-ttf', 'libsdl2_ttf.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_TTF=2', '-s', 'USE_FREETYPE=1'])
     else:
       shared.logging.error('unfamiliar build target: ' + what)
       sys.exit(1)
