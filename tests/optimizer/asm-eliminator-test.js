@@ -130,11 +130,11 @@ function label() {
  }
 }
 function switchy() {
- var no = 0, yes = 0;
+ var yes1 = 0, yes = 0;
  var a = 0, b = 0;
  while (1) switch (label | 0) {
   case 1:
-   no = 100; // eliminatable in theory, but eliminator does not look into switch. must leave def above as well.
+   yes1 = 100;
    break;
   case 2:
    yes = 111;
