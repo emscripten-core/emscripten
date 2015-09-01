@@ -337,7 +337,7 @@ function _emscripten_asm_const_%d(%s) {
     def make_params(sig): return ','.join(['p%d' % p for p in range(len(sig)-1)])
     def make_coerced_params(sig): return ','.join([shared.JS.make_coercion('p%d', unfloat(sig[p+1]), settings) % p for p in range(len(sig)-1)])
     def make_coercions(sig): return ';'.join(['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, sig[p+1], settings)) for p in range(len(sig)-1)]) + ';'
-    def make_func(name, code, params, coercions): return 'function %s(%s) { %s %s }' % (name, params, coercions, code)
+    def make_func(name, code, params, coercions): return 'function %s(%s) {\n %s %s\n}' % (name, params, coercions, code)
 
     in_table = set()
 
