@@ -929,6 +929,12 @@ def browser_display_name(browser):
     return 'Apple Safari'
   return browser
 
+def subprocess_env():
+  e = os.environ.copy()
+  # https://bugzilla.mozilla.org/show_bug.cgi?id=745154
+  e['MOZ_DISABLE_AUTO_SAFE_MODE'] = '1'
+  return e
+
 # Removes a directory tree even if it was readonly, and doesn't throw exception on failure.
 def remove_tree(d):
   os.chmod(d, stat.S_IWRITE)
@@ -1207,7 +1213,7 @@ def main():
     logv("Executing %s" % ' '.join(browser))
     if browser[0] == 'cmd':
       serve_forever = True # Workaround an issue where passing 'cmd /C start' is not able to detect when the user closes the page.
-    browser_process = subprocess.Popen(browser)
+    browser_process = subprocess.Popen(browser, env=subprocess_env())
     if options.kill_on_exit:
       atexit.register(kill_browser_process)
     # For Android automation, we execute adb, so this process does not represent a browser and no point killing it.
