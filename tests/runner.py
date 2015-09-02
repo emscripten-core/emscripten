@@ -40,6 +40,20 @@ use_all_engines = os.environ.get('EM_ALL_ENGINES') # generally js engines are eq
 if use_all_engines:
   print '(using ALL js engines)'
 
+# Removes a directory tree even if it was readonly, and doesn't throw exception on failure.
+def remove_tree(d):
+  os.chmod(d, stat.S_IWRITE)
+  try:
+    def remove_readonly_and_try_again(func, path, exc_info):
+      if not (os.stat(path).st_mode & stat.S_IWRITE):
+        os.chmod(path, stat.S_IWRITE)
+        func(path)
+      else:
+        raise
+    shutil.rmtree(d, onerror=remove_readonly_and_try_again)
+  except Exception as e:
+    pass
+
 class RunnerCore(unittest.TestCase):
   emcc_args = None
   save_dir = os.environ.get('EM_SAVE_DIR')
@@ -89,7 +103,7 @@ class RunnerCore(unittest.TestCase):
     if not self.save_dir:
       # rmtree() fails on Windows if the current working directory is inside the tree.
       os.chdir(os.path.join(self.get_dir(), '..'))
-      shutil.rmtree(self.get_dir())
+      remove_tree(self.get_dir())
 
       # Make sure we don't leave stuff around
       #if not self.has_prev_ll:
