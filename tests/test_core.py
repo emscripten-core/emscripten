@@ -5914,6 +5914,7 @@ return malloc(size);
                             os.path.join('objs', '.libs', 'libfreetype.a'))
 
   def test_freetype(self):
+    if WINDOWS: return self.skip('test_freetype uses a ./configure script to build and therefore currently only runs on Linux and OS X.')
     assert 'asm2g' in test_modes
     if self.run_name == 'asm2g':
       Settings.ALIASING_FUNCTION_POINTERS = 1 - Settings.ALIASING_FUNCTION_POINTERS # flip for some more coverage here
@@ -6053,6 +6054,7 @@ def process(filename):
         assert old.count('tempBigInt') > new.count('tempBigInt')
 
   def test_poppler(self):
+    if WINDOWS: return self.skip('test_poppler depends on freetype, which uses a ./configure script to build and therefore currently only runs on Linux and OS X.')
     Settings.NO_EXIT_RUNTIME = 1
 
     Building.COMPILER_TEST_OPTS += [
