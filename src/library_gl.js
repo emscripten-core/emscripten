@@ -982,15 +982,16 @@ var LibraryGL = {
       GL.recordError(0x0502 /* GL_INVALID_OPERATION */); // Calling GLES3/WebGL2 function with a GLES2/WebGL1 context
       return 0;
     }
-    if (GL.stringiCache[name]) {
-      if (index < 0 || index >= GL.stringiCache[name].length) {
+    var stringiCache = GL.stringiCache[name];
+    if (stringiCache) {
+      if (index < 0 || index >= stringiCache.length) {
         GL.recordError(0x0501/*GL_INVALID_VALUE*/);
 #if GL_ASSERTIONS
         Module.printErr('GL_INVALID_VALUE in glGetStringi: index out of range (' + index + ')!');
 #endif
         return 0;
       }
-      return GL.stringiCache[name][index];
+      return stringiCache[index];
     }
     switch(name) {
       case 0x1F03 /* GL_EXTENSIONS */:
@@ -1001,15 +1002,15 @@ var LibraryGL = {
           gl_exts.push(allocate(intArrayFromString(exts[i]), 'i8', ALLOC_NORMAL));
           gl_exts.push(allocate(intArrayFromString("GL_" + exts[i]), 'i8', ALLOC_NORMAL));
         }
-        GL.stringiCache[name] = gl_exts;
-        if (index < 0 || index >= GL.stringiCache[name].length) {
+        stringiCache = GL.stringiCache[name] = gl_exts;
+        if (index < 0 || index >= stringiCache.length) {
           GL.recordError(0x0501/*GL_INVALID_VALUE*/);
 #if GL_ASSERTIONS
           Module.printErr('GL_INVALID_VALUE in glGetStringi: index out of range (' + index + ') in a call to GL_EXTENSIONS!');
 #endif
           return 0;
         }
-        return GL.stringiCache[name][index];
+        return stringiCache[index];
       default:
         GL.recordError(0x0500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
