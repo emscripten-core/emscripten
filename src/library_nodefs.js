@@ -73,10 +73,11 @@ mergeInto(LibraryManager.library, {
       4098/*O_RDWR|O_DSYNC*/: 'rs+'
     },
     flagsToPermissionString: function(flags) {
+      flags &= ~0100000 /*O_LARGEFILE*/; // Ignore this flag from musl, otherwise node.js fails to open the file.
       if (flags in NODEFS.flagsToPermissionStringMap) {
         return NODEFS.flagsToPermissionStringMap[flags];
       } else {
-        return flags;
+        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
     },
     node_ops: {
