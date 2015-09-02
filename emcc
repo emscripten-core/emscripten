@@ -1409,9 +1409,10 @@ try:
   js_optimizer_queue_history = []
   js_optimizer_blacklist = (os.environ.get('EMCC_JSOPT_BLACKLIST') or '').split(',')
   minify_whitespace = False
+  cleanup_shell = False
 
   def flush_js_optimizer_queue(title='js_opts'):
-    global final, js_optimizer_queue, js_optimizer_extra_info, js_optimizer_queue_history
+    global final, js_optimizer_queue, js_optimizer_extra_info, js_optimizer_queue_history, cleanup_shell
 
     js_optimizer_queue = filter(lambda p: p not in js_optimizer_blacklist, js_optimizer_queue)
 
@@ -1431,6 +1432,8 @@ try:
           passes += ['profilingFuncs']
         if minify_whitespace and 'last' in passes:
           passes += ['minifyWhitespace']
+        if cleanup_shell and 'last' in passes:
+          passes += ['cleanup']
         logging.debug('applying js optimization passes: %s', ' '.join(passes))
         misc_temp_files.note(final)
         final = shared.Building.js_optimizer(final, passes, debug_level >= 4, js_optimizer_extra_info, just_split=just_split, just_concat=just_concat)
@@ -1530,7 +1533,8 @@ try:
     if use_closure_compiler == 1:
       js_optimizer_queue += ['closure']
     elif debug_level <= 2 and shared.Settings.FINALIZE_ASM_JS and not use_closure_compiler:
-      js_optimizer_queue += ['cleanup']
+      global cleanup_shell
+      cleanup_shell = True
 
   if js_opts:
     if shared.Settings.SAFE_HEAP: js_optimizer_queue += ['safeHeap']

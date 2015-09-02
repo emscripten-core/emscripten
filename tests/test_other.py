@@ -1890,7 +1890,7 @@ int f() {
           for x in os.listdir(CANONICAL_TEMP_DIR):
             if x.startswith('emcc-'):
               os.unlink(os.path.join(CANONICAL_TEMP_DIR, x))
-          Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-O'+ str(opts)], stdout=PIPE, stderr=PIPE).communicate()
+          check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-O'+ str(opts)], stderr=PIPE)
           if debug is None:
             for x in os.listdir(CANONICAL_TEMP_DIR):
               if x.startswith('emcc-'):
