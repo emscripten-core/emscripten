@@ -1474,6 +1474,7 @@ try:
           js_optimizer_queue = [p]
           flush_js_optimizer_queue(p)
           js_optimizer_extra_info = extra_info # flush wipes it
+          log_time('part of js opts')
       js_optimizer_queue_history += js_optimizer_queue
       js_optimizer_queue = []
     js_optimizer_extra_info = {}
