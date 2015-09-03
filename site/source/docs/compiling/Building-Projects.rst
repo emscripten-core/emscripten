@@ -48,8 +48,6 @@ To build with Emscripten, you would instead use the following commands:
 
 	The file output from *make* might have a different suffix: **.a** for a static library archive, **.so** for a shared library, **.o** or **.bc** for object files (these file extensions are the same as *gcc* would use for the different types). Irrespective of the file extension, these files contain linked LLVM bitcode that *emcc* can compile into JavaScript in the final step.
 
-	Where possible it is better to generate shared library files (**.so**) rather than archives (**.a**) — this is generally a simple change in your project's build system. Shared libraries are simpler, and are more predictable with respect to linking and elimination of unneeded code. 
-
 The last step is to compile the linked bitcode into JavaScript. We do this by calling *emcc* again, specifying the linked LLVM bitcode file as an input, and a JavaScript file as the output.
 
 
@@ -223,6 +221,15 @@ Projects that use *configure*, *cmake*, or some other portable configuration met
 
 .. note:: In general *configure* is not a good match for a cross-compiler like Emscripten. *configure* is designed to build natively for the local setup, and works hard to find the native build system and the local system headers. With a cross-compiler, you are targeting a different system, and ignoring these headers etc.
 
+
+Archive (.a) files
+------------------
+
+Emscripten supports **.a** archive files, which are bundles of object files. This is an old format for libraries, and it has special semantics - for example, the order of linking matters with **.a** files, but not with plain object files (in **.bc**, **.o** or **.so**). For the most part those special semantics should work in Emscripten, however, we support **.a** files using llvm's tools, which have a few limitations.
+
+The main limitation is that if you have multiple files in a single **.a** archive that have the same basename (for example, ``dir1/a.o, dir2/a.o``), then llvm-ar cannot access both of those files. Emscripten will attempt to work around this by adding a hash to the basename, but collisions are still possible in principle.
+
+Where possible it is better to generate shared library files (**.so**) rather than archives (**.a**) — this is generally a simple change in your project's build system. Shared libraries are simpler, and are more predictable with respect to linking.
 
 
 Manually using emcc
