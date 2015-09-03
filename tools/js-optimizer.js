@@ -1757,8 +1757,10 @@ var ASM_DOUBLE = 1;
 var ASM_FLOAT = 2;
 var ASM_FLOAT32X4 = 3;
 var ASM_FLOAT64X2 = 4;
-var ASM_INT32X4 = 5;
-var ASM_NONE = 6;
+var ASM_INT8X16 = 5;
+var ASM_INT16X8 = 6;
+var ASM_INT32X4 = 7;
+var ASM_NONE = 8;
 
 var ASM_SIG = {
   0: 'i',
@@ -1766,8 +1768,10 @@ var ASM_SIG = {
   2: 'f',
   3: 'F',
   4: 'D',
-  5: 'I',
-  6: 'v'
+  5: 'B',
+  6: 'S',
+  7: 'I',
+  8: 'v'
 };
 
 var ASM_FLOAT_ZERO = null; // TODO: share the entire node?
@@ -1795,6 +1799,10 @@ function detectType(node, asmInfo, inVarDef) {
           case 'SIMD_Float32x4_check': return ASM_FLOAT32X4;
           case 'SIMD_Float64x2':
           case 'SIMD_Float64x2_check': return ASM_FLOAT64X2;
+          case 'SIMD_Int8x16':
+          case 'SIMD_Int8x16_check':   return ASM_INT8X16;
+          case 'SIMD_Int16x8':
+          case 'SIMD_Int16x8_check':   return ASM_INT16X8;
           case 'SIMD_Int32x4':
           case 'SIMD_Int32x4_check':   return ASM_INT32X4;
           default: break;
@@ -1860,6 +1868,8 @@ function makeAsmCoercion(node, type) {
     case ASM_FLOAT: return ['call', ['name', 'Math_fround'], [node]];
     case ASM_FLOAT32X4: return ['call', ['name', 'SIMD_Float32x4_check'], [node]];
     case ASM_FLOAT64X2: return ['call', ['name', 'SIMD_Float64x2_check'], [node]];
+    case ASM_INT8X16: return ['call', ['name', 'SIMD_Int8x16_check'], [node]];
+    case ASM_INT16X8: return ['call', ['name', 'SIMD_Int16x8_check'], [node]];
     case ASM_INT32X4: return ['call', ['name', 'SIMD_Int32x4_check'], [node]];
     case ASM_NONE:
     default: return node; // non-validating code, emit nothing XXX this is dangerous, we should only allow this when we know we are not validating
@@ -1888,6 +1898,12 @@ function makeAsmVarDef(v, type) {
     }
     case ASM_FLOAT64X2: {
       return [v, ['call', ['name', 'SIMD_Float64x2'], [['num', 0], ['num', 0]]]];
+    }
+    case ASM_INT8X16: {
+      return [v, ['call', ['name', 'SIMD_Int8x16'], [['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0]]]];
+    }
+    case ASM_INT16X8: {
+      return [v, ['call', ['name', 'SIMD_Int16x8'], [['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0]]]];
     }
     case ASM_INT32X4: {
       return [v, ['call', ['name', 'SIMD_Int32x4'], [['num', 0], ['num', 0], ['num', 0], ['num', 0]]]];
@@ -2258,6 +2274,8 @@ function registerize(ast) {
           case ASM_FLOAT:     ret = 'f'; break;
           case ASM_FLOAT32X4: ret = 'F4'; break;
           case ASM_FLOAT64X2: ret = 'F2'; break;
+          case ASM_INT8X16:   ret = 'I16'; break;
+          case ASM_INT16X8:   ret = 'I8'; break;
           case ASM_INT32X4:   ret = 'I4'; break;
           case ASM_NONE:      ret = 'Z'; break;
           default: assert(false, 'type ' + type + ' doesn\'t have a name yet');

@@ -15,7 +15,9 @@ typedef std::vector<IString> StringVec;
 
 Ref extraInfo;
 
-IString SIMD_INT32X4_CHECK("SIMD_Int32x4_check"),
+IString SIMD_INT8X16_CHECK("SIMD_Int8x16_check"),
+        SIMD_INT16X8_CHECK("SIMD_Int16x8_check"),
+        SIMD_INT32X4_CHECK("SIMD_Int32x4_check"),
         SIMD_FLOAT32X4_CHECK("SIMD_Float32x4_check"),
         SIMD_FLOAT64X2_CHECK("SIMD_Float64x2_check");
 
@@ -79,24 +81,21 @@ Ref getStatements(Ref node) {
 
 enum AsmType {
   ASM_INT = 0,
-  ASM_DOUBLE = 1,
-  ASM_FLOAT = 2,
-  ASM_FLOAT32X4 = 3,
-  ASM_FLOAT64X2 = 4,
-  ASM_INT32X4 = 5,
-  ASM_NONE = 6 // number of types
+  ASM_DOUBLE,
+  ASM_FLOAT,
+  ASM_FLOAT32X4,
+  ASM_FLOAT64X2,
+  ASM_INT8X16,
+  ASM_INT16X8,
+  ASM_INT32X4,
+  ASM_NONE // number of types
 };
 
 AsmType intToAsmType(int type) {
-  switch (type) {
-    case 0: return ASM_INT;
-    case 1: return ASM_DOUBLE;
-    case 2: return ASM_FLOAT;
-    case 3: return ASM_FLOAT32X4;
-    case 4: return ASM_FLOAT64X2;
-    case 5: return ASM_INT32X4;
-    case 6: return ASM_NONE;
-    default: assert(0); return ASM_NONE;
+  if (type >= 0 && type <= ASM_NONE) return (AsmType)type;
+  else {
+    assert(0);
+    return ASM_NONE;
   }
 }
 
@@ -361,6 +360,8 @@ AsmType detectType(Ref node, AsmData *asmData, bool inVarDef) {
           if (name == MATH_FROUND) return ASM_FLOAT;
           else if (name == SIMD_FLOAT32X4 || name == SIMD_FLOAT32X4_CHECK) return ASM_FLOAT32X4;
           else if (name == SIMD_FLOAT64X2 || name == SIMD_FLOAT64X2_CHECK) return ASM_FLOAT64X2;
+          else if (name == SIMD_INT8X16   || name == SIMD_INT8X16_CHECK) return ASM_INT8X16;
+          else if (name == SIMD_INT16X8   || name == SIMD_INT16X8_CHECK) return ASM_INT16X8;
           else if (name == SIMD_INT32X4   || name == SIMD_INT32X4_CHECK) return ASM_INT32X4;
         }
         return ASM_NONE;
@@ -506,6 +507,14 @@ Ref makeAsmVarDef(const IString& v, AsmType type) {
       val = make2(CALL, makeName(SIMD_FLOAT64X2), &(makeArray())->push_back(makeNum(0)).push_back(makeNum(0)));
       break;
     }
+    case ASM_INT8X16: {
+      val = make2(CALL, makeName(SIMD_INT8X16), &(makeArray())->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
+      break;
+    }
+    case ASM_INT16X8: {
+      val = make2(CALL, makeName(SIMD_INT16X8), &(makeArray())->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
+      break;
+    }
     case ASM_INT32X4: {
       val = make2(CALL, makeName(SIMD_INT32X4), &(makeArray())->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
       break;
@@ -522,6 +531,8 @@ Ref makeAsmCoercion(Ref node, AsmType type) {
     case ASM_FLOAT: return make2(CALL, makeName(MATH_FROUND), &(makeArray())->push_back(node));
     case ASM_FLOAT32X4: return make2(CALL, makeName(SIMD_FLOAT32X4_CHECK), &(makeArray())->push_back(node));
     case ASM_FLOAT64X2: return make2(CALL, makeName(SIMD_FLOAT64X2_CHECK), &(makeArray())->push_back(node));
+    case ASM_INT8X16: return make2(CALL, makeName(SIMD_INT8X16_CHECK), &(makeArray())->push_back(node));
+    case ASM_INT16X8: return make2(CALL, makeName(SIMD_INT16X8_CHECK), &(makeArray())->push_back(node));
     case ASM_INT32X4: return make2(CALL, makeName(SIMD_INT32X4_CHECK), &(makeArray())->push_back(node));
     case ASM_NONE:
     default: return node; // non-validating code, emit nothing XXX this is dangerous, we should only allow this when we know we are not validating
@@ -2251,6 +2262,8 @@ const char* getRegPrefix(AsmType type) {
     case ASM_FLOAT:     return "f"; break;
     case ASM_FLOAT32X4: return "F4"; break;
     case ASM_FLOAT64X2: return "F2"; break;
+    case ASM_INT8X16:   return "I16"; break;
+    case ASM_INT16X8:   return "I8"; break;
     case ASM_INT32X4:   return "I4"; break;
     case ASM_NONE:      return "Z"; break;
     default: assert(0); // type doesn't have a name yet
