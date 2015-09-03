@@ -18,20 +18,15 @@
 #define BREAKS_UNDER_OPTIMIZATION
 #endif
 
-int main()
+float *interesting_floats = get_interesting_floats();
+int numInterestingFloats = sizeof(interesting_floats_)/sizeof(interesting_floats_[0]);
+uint32_t *interesting_ints = get_interesting_ints();
+int numInterestingInts = sizeof(interesting_ints_)/sizeof(interesting_ints_[0]);
+double *interesting_doubles = get_interesting_doubles();
+int numInterestingDoubles = sizeof(interesting_doubles_)/sizeof(interesting_doubles_[0]);
+
+void test_arithmetic()
 {
-	float *interesting_floats = get_interesting_floats();
-	int numInterestingFloats = sizeof(interesting_floats_)/sizeof(interesting_floats_[0]);
-	assert(numInterestingFloats % 4 == 0);
-
-	uint32_t *interesting_ints = get_interesting_ints();
-	int numInterestingInts = sizeof(interesting_ints_)/sizeof(interesting_ints_[0]);
-	assert(numInterestingInts % 4 == 0);
-
-	double *interesting_doubles = get_interesting_doubles();
-	int numInterestingDoubles = sizeof(interesting_doubles_)/sizeof(interesting_doubles_[0]);
-	assert(numInterestingDoubles % 4 == 0);
-
 	// SSE2 Arithmetic instructions:
 	M128i_M128i_M128i(_mm_add_epi16);
 	M128i_M128i_M128i(_mm_add_epi32);
@@ -81,7 +76,10 @@ int main()
 	M128i_M128i_M128i(_mm_subs_epu16);
 #endif
 	M128i_M128i_M128i(_mm_subs_epu8);
+}
 
+void test_cast()
+{
 	// SSE2 Cast functions:
 	Ret_M128d(__m128, _mm_castpd_ps);
 	Ret_M128d(__m128i, _mm_castpd_si128);
@@ -89,7 +87,10 @@ int main()
 	Ret_M128(__m128i, _mm_castps_si128);
 	Ret_M128i(__m128d, _mm_castsi128_pd);
 	Ret_M128i(__m128, _mm_castsi128_ps);
+}
 
+void test_compare()
+{
 	// SSE2 Compare instructions:
 	M128i_M128i_M128i(_mm_cmpeq_epi16);
 	M128i_M128i_M128i(_mm_cmpeq_epi32);
@@ -136,7 +137,10 @@ int main()
 	Ret_M128d_M128d(int, _mm_ucomile_sd);
 	Ret_M128d_M128d(int, _mm_ucomilt_sd);
 	Ret_M128d_M128d(int, _mm_ucomineq_sd);
+}
 
+void test_convert()
+{
 	// SSE2 Convert instructions:
 	Ret_M128i(__m128d, _mm_cvtepi32_pd);
 #ifndef BREAKS_UNDER_OPTIMIZATION
@@ -168,17 +172,25 @@ int main()
 #ifndef NO_INT64X2
 	Ret_M128d(int64_t, _mm_cvttsd_si64); // _mm_cvttsd_si64x is an alias to this.
 #endif
-
+}
+void test_elementarymath()
+{
 	// SSE2 Elementary Math Functions instructions:
 	Ret_M128d(__m128d, _mm_sqrt_pd);
 	Ret_M128d_M128d(__m128d, _mm_sqrt_sd);
+}
 
+void test_generalsupport()
+{
 	// SSE2 General Support instructions:
 	_mm_clflush(interesting_floats);
 	_mm_lfence();
 	_mm_mfence();
 	_mm_pause();
+}
 
+void test_load()
+{
 	// SSE2 Load functions:
 	Ret_DoublePtr(__m128d, _mm_load_pd, 2, 2);
 	Ret_DoublePtr(__m128d, _mm_load_pd1, 1, 1);
@@ -195,7 +207,10 @@ int main()
 #ifndef BREAKS_UNDER_OPTIMIZATION
 	Ret_IntPtr(__m128i, _mm_loadu_si128, __m128i*, 4, 1);
 #endif
+}
 
+void test_logical()
+{
 	// SSE2 Logical instructions:
 	Ret_M128d_M128d(__m128d, _mm_and_pd);
 	M128i_M128i_M128i(_mm_and_si128);
@@ -205,7 +220,10 @@ int main()
 	M128i_M128i_M128i(_mm_or_si128);
 	Ret_M128d_M128d(__m128d, _mm_xor_pd);
 	M128i_M128i_M128i(_mm_xor_si128);
+}
 
+void test_misc()
+{
 	// SSE2 Miscellaneous instructions:
 #ifndef BREAKS_UNDER_OPTIMIZATION
 	Ret_M128i(int, _mm_movemask_epi8);
@@ -216,18 +234,28 @@ int main()
 	M128i_M128i_M128i(_mm_packs_epi32);
 #endif
 	M128i_M128i_M128i(_mm_packus_epi16);
+}
 
+void test_move()
+{
 	// SSE2 Move instructions:
 #ifndef NO_INT64X2
 	Ret_M128i(__m128i, _mm_move_epi64);
 #endif
 	Ret_M128d_M128d(__m128d, _mm_move_sd);
+}
 
+void test_probability()
+{
 	// SSE2 Probability/Statistics instructions:
 #ifndef BREAKS_UNDER_OPTIMIZATION
 	M128i_M128i_M128i(_mm_avg_epu16);
 #endif
 	M128i_M128i_M128i(_mm_avg_epu8);
+}
+
+void test_set()
+{
 /*
 	// SSE2 Set functions:
 	_mm_set_epi16
@@ -252,6 +280,10 @@ int main()
 	_mm_setzero_pd
 	_mm_setzero_si128
 */
+}
+
+void test_shift()
+{
 	// SSE2 Shift instructions:
 	M128i_M128i_M128i(_mm_sll_epi16);
 	M128i_M128i_M128i(_mm_sll_epi32);
@@ -281,7 +313,10 @@ int main()
 	Ret_M128i_Tint(__m128i, _mm_srli_epi64);
 #endif
 	Ret_M128i_Tint(__m128i, _mm_srli_si128); // _mm_bsrli_si128 is an alias to this.
+}
 
+void test_specialmath()
+{
 	// SSE2 Special Math instructions:
 #ifndef BREAKS_UNDER_OPTIMIZATION
 	M128i_M128i_M128i(_mm_max_epi16);
@@ -295,7 +330,10 @@ int main()
 #endif
 	Ret_M128d_M128d(__m128d, _mm_min_pd);
 	Ret_M128d_M128d(__m128d, _mm_min_sd);
+}
 
+void test_store()
+{
 	// SSE2 Store instructions:
 	void_M128i_M128i_OutIntPtr(_mm_maskmoveu_si128, char*, 16, 1);
 	void_OutDoublePtr_M128d(_mm_store_pd, double*, 16, 16);
@@ -316,7 +354,10 @@ int main()
 #ifndef NO_INT64X2
 	void_OutIntPtr_int64(_mm_stream_si64, int64_t*, 8, 1);
 #endif
+}
 
+void test_swizzle()
+{
 	// SSE2 Swizzle instructions:
 	Ret_M128i_Tint(int, _mm_extract_epi16);
 	Ret_M128i_int_Tint(__m128i, _mm_insert_epi16);
@@ -338,4 +379,28 @@ int main()
 #endif
 	M128i_M128i_M128i(_mm_unpacklo_epi8);
 	Ret_M128d_M128d(__m128d, _mm_unpacklo_pd);
+}
+
+int main()
+{
+	assert(numInterestingFloats % 4 == 0);
+	assert(numInterestingInts % 4 == 0);
+	assert(numInterestingDoubles % 4 == 0);	
+
+	test_arithmetic();
+	test_cast();
+	test_compare();
+	test_convert();
+	test_elementarymath();
+	test_generalsupport();
+	test_load();
+	test_logical();
+	test_misc();
+	test_move();
+	test_probability();
+	test_set();
+	test_shift();
+	test_specialmath();
+	test_store();
+	test_swizzle();	
 }
