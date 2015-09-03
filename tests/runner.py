@@ -89,7 +89,7 @@ class RunnerCore(unittest.TestCase):
     if not self.save_dir:
       # rmtree() fails on Windows if the current working directory is inside the tree.
       os.chdir(os.path.join(self.get_dir(), '..'))
-      shutil.rmtree(self.get_dir())
+      try_delete(self.get_dir())
 
       # Make sure we don't leave stuff around
       #if not self.has_prev_ll:
