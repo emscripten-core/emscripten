@@ -1918,12 +1918,12 @@ Module["preRun"].push(function () {
   def test_html5(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1']]:
       print opts
-      self.btest(path_from_root('tests', 'test_html5.c'), args=opts, expected='0')
+      self.btest(path_from_root('tests', 'test_html5.c'), args=opts, expected='0', timeout=20)
 
   def test_html5_webgl_create_context(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'FULL_ES2=1']]:
       print opts
-      self.btest(path_from_root('tests', 'webgl_create_context.cpp'), args=opts, expected='0')
+      self.btest(path_from_root('tests', 'webgl_create_context.cpp'), args=opts, expected='0', timeout=20)
 
   def test_html5_webgl_destroy_context(self):
     for opts in [[], ['-O2', '-g1'], ['-s', 'FULL_ES2=1']]:
@@ -2488,7 +2488,7 @@ window.close = function() {
   def test_emterpreter_async_mainloop(self):
     for opts in [0, 1, 2, 3]:
       print opts
-      self.btest('emterpreter_async_mainloop.cpp', '121', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts)])
+      self.btest('emterpreter_async_mainloop.cpp', '121', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts)], timeout=20)
 
   def test_emterpreter_async_with_manual(self):
     for opts in [0, 1, 2, 3]:
@@ -2627,8 +2627,8 @@ window.close = function() {
   # pthreads tests
 
   # Test that the emscripten_ atomics api functions work.
-  def test_aaa_pthread_atomics(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
+  def test_aaa_aaa_pthread_atomics(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=120) # extra time on first test, to be sure to build all libraries
 
   # Test 64-bit atomics.
   def test_aaa_pthread_64bit_atomics(self):
@@ -2756,7 +2756,7 @@ window.close = function() {
 
   # Test that it is possible to send a signal via calling alarm(timeout), which in turn calls to the signal handler set by signal(SIGALRM, func);
   def test_sigalrm(self):
-    self.btest(path_from_root('tests', 'sigalrm.cpp'), expected='0', args=['-O3'])
+    self.btest(path_from_root('tests', 'sigalrm.cpp'), expected='0', args=['-O3'], timeout=30)
 
   def test_meminit_pairs(self):
     d = 'const char *data[] = {\n  "'
