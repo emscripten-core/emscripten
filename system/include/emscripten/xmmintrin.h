@@ -138,7 +138,7 @@ _mm_sfence(void)
 // This is defined as a macro because __builtin_shufflevector requires its
 // mask argument to be a compile-time constant.
 #define _mm_shuffle_ps(a, b, mask) \
-  ((__m128)__builtin_shufflevector((a), (b), \
+  ((__m128)__builtin_shufflevector((__m128)(a), (__m128)(b), \
                                   (((mask) >> 0) & 0x3) + 0, \
                                   (((mask) >> 2) & 0x3) + 0, \
                                   (((mask) >> 4) & 0x3) + 4, \
