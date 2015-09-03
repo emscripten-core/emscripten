@@ -343,55 +343,58 @@ run();
 
 #if BUILD_AS_WORKER
 
-var messageBuffer = null;
-
-function messageResender() {
-  if (runtimeInitialized) {
-    assert(messageBuffer && messageBuffer.length > 0);
-    messageBuffer.forEach(function(message) {
-      onmessage(message);
-    });
-    messageBuffer = null;
-  } else {
-    setTimeout(messageResender, 100);
-  }
-}
-
-var buffer = 0, bufferSize = 0;
 var workerResponded = false, workerCallbackId = -1;
 
-onmessage = function onmessage(msg) {
-  // if main has not yet been called (mem init file, other async things), buffer messages
-  if (!runtimeInitialized) {
-    if (!messageBuffer) {
-      messageBuffer = [];
+(function() {
+  var messageBuffer = null;
+
+  function messageResender() {
+    if (runtimeInitialized) {
+      assert(messageBuffer && messageBuffer.length > 0);
+      messageBuffer.forEach(function(message) {
+        onmessage(message);
+      });
+      messageBuffer = null;
+    } else {
       setTimeout(messageResender, 100);
     }
-    messageBuffer.push(msg);
-    return;
   }
 
-  var func = Module['_' + msg.data['funcName']];
-  if (!func) throw 'invalid worker function to call: ' + msg.data['funcName'];
-  var data = msg.data['data'];
-  if (data) {
-    if (!data.byteLength) data = new Uint8Array(data);
-    if (!buffer || bufferSize < data.length) {
-      if (buffer) _free(buffer);
-      bufferSize = data.length;
-      buffer = _malloc(data.length);
+  var buffer = 0, bufferSize = 0;
+
+  onmessage = function onmessage(msg) {
+    // if main has not yet been called (mem init file, other async things), buffer messages
+    if (!runtimeInitialized) {
+      if (!messageBuffer) {
+        messageBuffer = [];
+        setTimeout(messageResender, 100);
+      }
+      messageBuffer.push(msg);
+      return;
     }
-    HEAPU8.set(data, buffer);
-  }
 
-  workerResponded = false;
-  workerCallbackId = msg.data['callbackId'];
-  if (data) {
-    func(buffer, data.length);
-  } else {
-    func(0, 0);
+    var func = Module['_' + msg.data['funcName']];
+    if (!func) throw 'invalid worker function to call: ' + msg.data['funcName'];
+    var data = msg.data['data'];
+    if (data) {
+      if (!data.byteLength) data = new Uint8Array(data);
+      if (!buffer || bufferSize < data.length) {
+        if (buffer) _free(buffer);
+        bufferSize = data.length;
+        buffer = _malloc(data.length);
+      }
+      HEAPU8.set(data, buffer);
+    }
+
+    workerResponded = false;
+    workerCallbackId = msg.data['callbackId'];
+    if (data) {
+      func(buffer, data.length);
+    } else {
+      func(0, 0);
+    }
   }
-}
+})();
 
 #endif
 
