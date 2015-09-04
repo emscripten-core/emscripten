@@ -980,34 +980,28 @@ void eliminate(Ref ast, bool memSafe) {
         Ref node1 = node[1];
         for (size_t i = 0; i < node1->size(); i++) {
           Ref node1i = node1[i];
-          IString name = node1i[0]->getIString();
           Ref value;
           if (node1i->size() > 1 && !!(value = node1i[1])) {
+            IString name = node1i[0]->getIString();
             definitions[name]++;
             if (!values.has(name)) values[name] = value;
           }
-          uses[name];
         }
       } else if (type == NAME) {
         IString& name = node[1]->getIString();
-        uses[name]++;// = uses[name] + 1;
+        uses[name]++;
+        namings[name]++;
       } else if (type == ASSIGN) {
         Ref target = node[2];
         if (target[0] == NAME) {
           IString& name = target[1]->getIString();
-          definitions[name]++;//= definitions[name] + 1;
-          uses[name]; // zero if not there already
+          definitions[name]++;
           if (!values.has(name)) values[name] = node[3];
           assert(node[1]->isBool(true)); // not +=, -= etc., just =
           uses[name]--; // because the name node will show up by itself in the previous case
-          namings[name]++;// = namings[name] + 1; // offset it here, this tracks the total times we are named
         }
       }
     });
-
-    for (auto used : uses) {
-      namings[used.first] += used.second;
-    }
 
 #ifdef PROFILING
     tfnexamine += clock() - start;
@@ -1135,7 +1129,7 @@ void eliminate(Ref ast, bool memSafe) {
         } else if (type == CALL) {
           track.usesGlobals = true;
           track.usesMemory = true;
-          track.doesCall = true;        
+          track.doesCall = true;
           ignoreName = true;
         } else {
           ignoreName = false;
@@ -1195,28 +1189,26 @@ void eliminate(Ref ast, bool memSafe) {
           // do the actual assignment
           if (nameTarget) {
             IString name = target[1]->getIString();
-            if (!potentials.has(name)) {
-              if (!varsToTryToRemove.has(name)) {
-                // expensive check for invalidating specific tracked vars. This list is generally quite short though, because of
-                // how we just eliminate in short spans and abort when control flow happens TODO: history numbers instead
-                invalidateByDep(name); // can happen more than once per dep..
-                if (!asmData.isLocal(name) && !globalsInvalidated) {
-                  invalidateGlobals();
-                  globalsInvalidated = true;
-                }
-                // if we can track this name (that we assign into), and it has 0 uses and we want to remove its VAR
-                // definition - then remove it right now, there is no later chance
-                if (allowTracking && varsToRemove.has(name) && uses[name] == 0) {
-                  track(name, node[3], node);
-                  doEliminate(name, node);
-                }
-              } else {
-                // replace it in-place
-                safeCopy(node, value);
-                varsToRemove[name] = 2;
-              }
+            if (potentials.has(name) && allowTracking) {
+              track(name, node[3], node);
+            } else if (varsToTryToRemove.has(name)) {
+              // replace it in-place
+              safeCopy(node, value);
+              varsToRemove[name] = 2;
             } else {
-              if (allowTracking) track(name, node[3], node);
+              // expensive check for invalidating specific tracked vars. This list is generally quite short though, because of
+              // how we just eliminate in short spans and abort when control flow happens TODO: history numbers instead
+              invalidateByDep(name); // can happen more than once per dep..
+              if (!asmData.isLocal(name) && !globalsInvalidated) {
+                invalidateGlobals();
+                globalsInvalidated = true;
+              }
+              // if we can track this name (that we assign into), and it has 0 uses and we want to remove its VAR
+              // definition - then remove it right now, there is no later chance
+              if (allowTracking && varsToRemove.has(name) && uses[name] == 0) {
+                track(name, node[3], node);
+                doEliminate(name, node);
+              }
             }
           } else if (target[0] == SUB) {
             if (isTempDoublePtrAccess(target)) {
