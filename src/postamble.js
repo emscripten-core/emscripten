@@ -346,21 +346,24 @@ run();
 var workerResponded = false, workerCallbackId = -1;
 
 (function() {
-  var messageBuffer = null;
+  var messageBuffer = null, buffer = 0, bufferSize = 0;
 
-  function messageResender() {
+  function flushMessages() {
+    if (!messageBuffer) return;
     if (runtimeInitialized) {
-      assert(messageBuffer && messageBuffer.length > 0);
       messageBuffer.forEach(function(message) {
         onmessage(message);
       });
       messageBuffer = null;
-    } else {
-      setTimeout(messageResender, 100);
     }
   }
 
-  var buffer = 0, bufferSize = 0;
+  function messageResender() {
+    flushMessages();
+    if (messageBuffer) {
+      setTimeout(messageResender, 100); // still more to do
+    }
+  }
 
   onmessage = function onmessage(msg) {
     // if main has not yet been called (mem init file, other async things), buffer messages
@@ -372,6 +375,7 @@ var workerResponded = false, workerCallbackId = -1;
       messageBuffer.push(msg);
       return;
     }
+    flushMessages();
 
     var func = Module['_' + msg.data['funcName']];
     if (!func) throw 'invalid worker function to call: ' + msg.data['funcName'];
