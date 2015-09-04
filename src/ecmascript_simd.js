@@ -1334,6 +1334,8 @@ if (typeof SIMD.Uint8x16.shuffle === "undefined") {
      ? global
      : this);
 
+// XXX Emscripten-specific below XXX
+
 // Work around Firefox Nightly bug that Float64x2 comparison return a Int32x4 instead of a Bool64x2.
 try {
   if (SIMD.Int32x4.check(SIMD.Float64x2.equal(SIMD.Float64x2.splat(5.0), SIMD.Float64x2.splat(5.0)))) {
@@ -1396,3 +1398,12 @@ try {
   }
 } catch(e) {}
 
+
+if (!SIMD.Int32x4.fromBool64x2Bits) {
+  SIMD.Int32x4.fromBool64x2Bits = function(bool64x2) {
+    var lane0 = SIMD.Bool64x2.extractLane(bool64x2, 0)?-1:0;
+    var lane1 = SIMD.Bool64x2.extractLane(bool64x2, 1)?-1:0;
+    return SIMD.Int32x4(lane0, lane0, lane1, lane1);
+  }
+  console.log('Warning: Adding unofficial function SIMD.Int32x4.fromBool64x2Bits (Bool64x2 type does not yet exist in the spec)');
+}
