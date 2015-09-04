@@ -5843,9 +5843,6 @@ return malloc(size);
 
     self.banned_js_engines = [NODE_JS] # the test code hits NaN canonicalization on node.js
 
-    if '-O1' in self.emcc_args or '-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args:
-      return self.skip('TODO: Compiler is too aggressive in optimizing and generates code that breaks due to NaN canonicalization! https://github.com/kripken/emscripten/issues/3403')
-
     test_path = path_from_root('tests', 'core', 'test_simd10')
     src, output = (test_path + s for s in ('.in', '.out'))
 
