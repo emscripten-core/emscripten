@@ -351,10 +351,11 @@ var workerResponded = false, workerCallbackId = -1;
   function flushMessages() {
     if (!messageBuffer) return;
     if (runtimeInitialized) {
-      messageBuffer.forEach(function(message) {
+      var temp = messageBuffer;
+      messageBuffer = null;
+      temp.forEach(function(message) {
         onmessage(message);
       });
-      messageBuffer = null;
     }
   }
 
