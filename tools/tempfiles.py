@@ -16,10 +16,10 @@ def try_delete(filename):
     pass
   if not os.path.exists(filename): return
   try:
-    os.chmod(filename, stat.S_IWRITE)
+    os.chmod(filename, os.stat(filename).st_mode | stat.S_IWRITE)
     def remove_readonly_and_try_again(func, path, exc_info):
       if not (os.stat(path).st_mode & stat.S_IWRITE):
-        os.chmod(path, stat.S_IWRITE)
+        os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
         func(path)
       else:
         raise
