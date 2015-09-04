@@ -5737,7 +5737,6 @@ return malloc(size);
   # Tests the full SSE2 API.
   def test_sse2_full(self):
     if self.is_emterpreter(): return self.skip('todo')
-    if self.run_name == 'asm2nn': return self.skip('todo')
     if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('test_sse2_full requires SpiderMonkey to run.')
     args = []
     if '-O0' in self.emcc_args: args += ['-D_DEBUG=1']
