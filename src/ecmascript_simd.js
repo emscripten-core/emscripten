@@ -117,7 +117,14 @@ function simdCheckLaneIndex(index, lanes) {
 var lanes = [];
 
 function simdCreate(type) {
-  return type.fn.apply(type.fn, lanes);
+  // Work around v8 NaN canonicalization issue: if lanes contains floats with non-canonical NaN bit patterns,
+  // type.fn.apply() will canonicalize the NaNs and the bits are lost (most likely as part of float->double expansion).
+  // Directly passing the arguments into the function preserves them.
+  if (type.name == "Float32x4") {
+    return SIMD.Float32x4(lanes[0], lanes[1], lanes[2], lanes[3]);
+  } else {
+    return type.fn.apply(type.fn, lanes);
+  }
 }
 
 function simdToString(type, a) {
@@ -461,7 +468,13 @@ if (typeof SIMD.Float32x4 === "undefined" ||
     if (!(this instanceof SIMD.Float32x4)) {
       return new SIMD.Float32x4(s0, s1, s2, s3);
     }
-    this.s_ = convertArray(_f32x4, [s0, s1, s2, s3]);
+    // Don't use convertArray() here to construct the Float32x4, since v8 mostly due to float->double
+    // expansion will lose noncanonical NaN bits if present, producing an incorrect bit pattern as a result.
+    this.s_ = new Float32Array(new ArrayBuffer(16));
+    this.s_[0] = s0;
+    this.s_[1] = s1;
+    this.s_[2] = s2;
+    this.s_[3] = s3;
   }
 
   SIMD.Float32x4.extractLane = function(v, i) {
