@@ -1410,7 +1410,6 @@ if (!SIMD.Int32x4.fromBool64x2Bits) {
     var lane1 = SIMD.Bool64x2.extractLane(bool64x2, 1)?-1:0;
     return SIMD.Int32x4(lane0, lane0, lane1, lane1);
   }
-  console.log('Warning: Adding unofficial function SIMD.Int32x4.fromBool64x2Bits (Bool64x2 type does not yet exist in the spec)');
 }
 
 // TODO: Remove and replace with shiftRightScalar once https://bugzilla.mozilla.org/show_bug.cgi?id=1201934 lands.
