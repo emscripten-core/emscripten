@@ -1333,3 +1333,66 @@ if (typeof SIMD.Uint8x16.shuffle === "undefined") {
       typeof global === 'object')
      ? global
      : this);
+
+// Work around Firefox Nightly bug that Float64x2 comparison return a Int32x4 instead of a Bool64x2.
+try {
+  if (SIMD.Int32x4.check(SIMD.Float64x2.equal(SIMD.Float64x2.splat(5.0), SIMD.Float64x2.splat(5.0)))) {
+    SIMD.Float64x2.prevEqual = SIMD.Float64x2.equal;
+    SIMD.Float64x2.equal = function(a, b) {
+      var int32x4 = SIMD.Float64x2.prevEqual(a, b);
+      return SIMD.Bool64x2(SIMD.Int32x4.extractLane(int32x4, 1) != 0, SIMD.Int32x4.extractLane(int32x4, 3) != 0);
+    }
+    console.error('Warning: Patching up SIMD.Float64x2.equal to return a Bool64x2 instead of Int32x4!');
+  }
+} catch(e) {}
+try {
+  if (SIMD.Int32x4.check(SIMD.Float64x2.notEqual(SIMD.Float64x2.splat(5.0), SIMD.Float64x2.splat(5.0)))) {
+    SIMD.Float64x2.prevNotEqual = SIMD.Float64x2.notEqual;
+    SIMD.Float64x2.notEqual = function(a, b) {
+      var int32x4 = SIMD.Float64x2.prevNotEqual(a, b);
+      return SIMD.Bool64x2(SIMD.Int32x4.extractLane(int32x4, 1) != 0, SIMD.Int32x4.extractLane(int32x4, 3) != 0);
+    } 
+    console.error('Warning: Patching up SIMD.Float64x2.notEqual to return a Bool64x2 instead of Int32x4!');
+  }
+} catch(e) {}
+try {
+  if (SIMD.Int32x4.check(SIMD.Float64x2.greaterThan(SIMD.Float64x2.splat(5.0), SIMD.Float64x2.splat(5.0)))) {
+    SIMD.Float64x2.prevGreaterThan = SIMD.Float64x2.greaterThan;
+    SIMD.Float64x2.greaterThan = function(a, b) {
+      var int32x4 = SIMD.Float64x2.prevGreaterThan(a, b);
+      return SIMD.Bool64x2(SIMD.Int32x4.extractLane(int32x4, 1) != 0, SIMD.Int32x4.extractLane(int32x4, 3) != 0);
+    } 
+    console.error('Warning: Patching up SIMD.Float64x2.greaterThan to return a Bool64x2 instead of Int32x4!');
+  }
+} catch(e) {}
+try {
+  if (SIMD.Int32x4.check(SIMD.Float64x2.greaterThanOrEqual(SIMD.Float64x2.splat(5.0), SIMD.Float64x2.splat(5.0)))) {
+    SIMD.Float64x2.prevGreaterThanOrEqual = SIMD.Float64x2.greaterThanOrEqual;
+    SIMD.Float64x2.greaterThanOrEqual = function(a, b) {
+      var int32x4 = SIMD.Float64x2.prevGreaterThanOrEqual(a, b);
+      return SIMD.Bool64x2(SIMD.Int32x4.extractLane(int32x4, 1) != 0, SIMD.Int32x4.extractLane(int32x4, 3) != 0);
+    } 
+    console.error('Warning: Patching up SIMD.Float64x2.greaterThanOrEqual to return a Bool64x2 instead of Int32x4!');
+  }
+} catch(e) {}
+try {
+  if (SIMD.Int32x4.check(SIMD.Float64x2.lessThan(SIMD.Float64x2.splat(5.0), SIMD.Float64x2.splat(5.0)))) {
+    SIMD.Float64x2.prevLessThan = SIMD.Float64x2.lessThan;
+    SIMD.Float64x2.lessThan = function(a, b) {
+      var int32x4 = SIMD.Float64x2.prevLessThan(a, b);
+      return SIMD.Bool64x2(SIMD.Int32x4.extractLane(int32x4, 1) != 0, SIMD.Int32x4.extractLane(int32x4, 3) != 0);
+    } 
+    console.error('Warning: Patching up SIMD.Float64x2.lessThan to return a Bool64x2 instead of Int32x4!');
+  }
+} catch(e) {}
+try {
+  if (SIMD.Int32x4.check(SIMD.Float64x2.lessThanOrEqual(SIMD.Float64x2.splat(5.0), SIMD.Float64x2.splat(5.0)))) {
+    SIMD.Float64x2.prevLessThanOrEqual = SIMD.Float64x2.lessThanOrEqual;
+    SIMD.Float64x2.lessThanOrEqual = function(a, b) {
+      var int32x4 = SIMD.Float64x2.prevLessThanOrEqual(a, b);
+      return SIMD.Bool64x2(SIMD.Int32x4.extractLane(int32x4, 1) != 0, SIMD.Int32x4.extractLane(int32x4, 3) != 0);
+    } 
+    console.error('Warning: Patching up SIMD.Float64x2.lessThanOrEqual to return a Bool64x2 instead of Int32x4!');
+  }
+} catch(e) {}
+
