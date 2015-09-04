@@ -822,6 +822,10 @@ var allTypes = [float64x2, float32x4,
                 uint32x4, uint16x8, uint8x16,
                 bool32x4, bool16x8, bool8x16];
 
+// XXX Emscripten XXX
+// Add member functions to Bool64x2 as well.
+allTypes.push(bool64x2);
+
 // SIMD prototype functions.
 var prototypeFns = {
   valueOf:
