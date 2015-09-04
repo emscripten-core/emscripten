@@ -5772,8 +5772,7 @@ return malloc(size);
 
     self.banned_js_engines = [NODE_JS] # fails in simd.js polyfill
 
-    if '-O1' in self.emcc_args or '-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args:
-      return self.skip('TODO: Fails under optimizations')
+    Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
     test_path = path_from_root('tests', 'core', 'test_simd3')
     src, output = (test_path + s for s in ('.in', '.out'))
