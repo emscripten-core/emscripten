@@ -1579,7 +1579,7 @@ class Building:
     return ret
 
   @staticmethod
-  def closure_compiler(filename, pretty=True):
+  def closure_compiler(filename, pretty=True, symbol_map=None):
     if not os.path.exists(CLOSURE_COMPILER):
       raise Exception('Closure compiler appears to be missing, looked at: ' + str(CLOSURE_COMPILER))
 
@@ -1597,7 +1597,6 @@ class Building:
             '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
             '--language_in', 'ECMASCRIPT5',
             '--externs', CLOSURE_EXTERNS,
-            #'--variable_map_output_file', filename + '.vars',
             '--js', filename, '--js_output_file', filename + '.cc.js']
     for extern in NODE_EXTERNS:
         args.append('--externs')
@@ -1605,11 +1604,17 @@ class Building:
     if pretty: args += ['--formatting', 'PRETTY_PRINT']
     if os.environ.get('EMCC_CLOSURE_ARGS'):
       args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))
+    if symbol_map:
+      args += ['--create_renaming_reports']
+      symbol_temp = filename + '.cc_vars_map.out'
     logging.debug('closure compiler: ' + ' '.join(args))
     process = Popen(args, stdout=PIPE, stderr=STDOUT)
     cc_output = process.communicate()[0]
     if process.returncode != 0 or not os.path.exists(filename + '.cc.js'):
       raise Exception('closure compiler error: ' + cc_output + ' (rc: %d)' % process.returncode)
+    if symbol_map:
+      shutil.move(symbol_temp, symbol_map)
+      print >> sys.stderr, 'wrote symbol map file to', symbol_map
 
     return filename + '.cc.js'
 

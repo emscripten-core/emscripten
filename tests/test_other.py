@@ -2875,16 +2875,18 @@ int main()
 
   def test_symbol_map(self):
     for m in [0, 1]:
-      self.clear()
-      cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2']
-      if m: cmd += ['--emit-symbol-map']
-      print cmd
-      stdout, stderr = Popen(cmd, stderr=PIPE).communicate()
-      assert ('''wrote symbol map file''' in stderr) == m, stderr
-      assert (os.path.exists('a.out.js.symbols') == m), stderr
-      if m:
-        symbols = open('a.out.js.symbols').read()
-        assert ':_main' in symbols
+      for c in [0, 1, 2]:
+        self.clear()
+        cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2']
+        if m: cmd += ['--emit-symbol-map']
+        if c: cmd += ['--closure', str(c)]
+        print cmd
+        stdout, stderr = Popen(cmd, stderr=PIPE).communicate()
+        assert ('''wrote symbol map file''' in stderr) == m, stderr
+        assert (os.path.exists('a.out.js.symbols') == m), stderr
+        if m:
+          symbols = open('a.out.js.symbols').read()
+          assert ':_main' in symbols
 
   def test_bc_to_bc(self):
     # emcc should 'process' bitcode to bitcode. build systems can request this if
