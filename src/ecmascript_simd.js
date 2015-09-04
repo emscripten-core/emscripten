@@ -1412,3 +1412,20 @@ if (!SIMD.Int32x4.fromBool64x2Bits) {
   }
   console.log('Warning: Adding unofficial function SIMD.Int32x4.fromBool64x2Bits (Bool64x2 type does not yet exist in the spec)');
 }
+
+// TODO: Remove and replace with shiftRightScalar once https://bugzilla.mozilla.org/show_bug.cgi?id=1201934 lands.
+if (!SIMD.Int8x16.shiftRightLogicalByScalar) {
+  SIMD.Int8x16.shiftRightLogicalByScalar = function(s, v) {
+    return SIMD.Int8x16.fromUint8x16Bits(SIMD.Uint8x16.shiftRightLogicalByScalar(SIMD.Uint8x16.fromInt8x16Bits(s), v));
+  }
+}
+if (!SIMD.Int16x8.shiftRightLogicalByScalar) {
+  SIMD.Int16x8.shiftRightLogicalByScalar = function(s, v) {
+    return SIMD.Int16x8.fromUint16x8Bits(SIMD.Uint16x8.shiftRightLogicalByScalar(SIMD.Uint16x8.fromInt16x8Bits(s), v));
+  }
+}
+if (!SIMD.Int32x4.shiftRightLogicalByScalar) {
+  SIMD.Int32x4.shiftRightLogicalByScalar = function(s, v) {
+    return SIMD.Int32x4.fromUint32x4Bits(SIMD.Uint32x4.shiftRightLogicalByScalar(SIMD.Uint32x4.fromInt32x4Bits(s), v));
+  }
+}
