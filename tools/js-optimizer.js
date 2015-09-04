@@ -2393,7 +2393,7 @@ function registerize(ast) {
     // we just use a fresh register to make sure we avoid this, but it could be
     // optimized to check for safe registers (free, and not used in this loop level).
     var varRegs = {}; // maps variables to the register they will use all their life
-    var freeRegsClasses = asm ? [[], [], [], [], [], []] : []; // two classes for asm, one otherwise XXX - hardcoded length
+    var freeRegsClasses = asm ? [[], [], [], [], [], [], [], [], []] : []; // two classes for asm, one otherwise XXX - hardcoded length
     var nextReg = 1;
     var fullNames = {};
     var loopRegs = {}; // for each loop nesting level, the list of bound variables
@@ -2556,8 +2556,8 @@ function registerizeHarder(ast) {
     // Utilities for allocating register variables.
     // We need distinct register pools for each type of variable.
 
-    var allRegsByType = [{}, {}, {}, {}, {}, {}]; // XXX - hardcoded length
-    var regPrefixByType = ['i', 'd', 'f', 'F4', 'I4', 'n'];
+    var allRegsByType = [{}, {}, {}, {}, {}, {}, {}, {}, {}]; // XXX - hardcoded length
+    var regPrefixByType = ['i', 'd', 'f', 'F4', 'F2', 'I16', 'I8', 'I4', 'n'];
     var nextReg = 1;
 
     function createReg(forName) {
