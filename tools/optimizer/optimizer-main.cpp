@@ -1,3 +1,10 @@
+//==============================================================================
+// Optimizer tool. This is meant to be run after the emscripten compiler has
+// finished generating code. These optimizations are done on the generated
+// code to further improve it. Some of the modifications also work in
+// conjunction with closure compiler.
+//==============================================================================
+
 #include "simple_ast.h"
 #include "optimizer.h"
 
