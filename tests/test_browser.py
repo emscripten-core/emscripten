@@ -1032,11 +1032,13 @@ keydown(100);keyup(100); // trigger the end
     self.btest(os.path.join('fs', 'test_workerfs_package.cpp'), '1', args=['--proxy-to-worker'])
 
   def test_fs_workerfs_package_big(self):
-    #open('file1.txt', 'w').write('0123456789' * (10*1024*1024))
-    #shutil.copyfile('file1.txt', 'file2.txt')
-    #shutil.copyfile('file1.txt', 'file3.txt')
-    #Popen([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'file2.txt', 'file3.txt', '--separate-metadata', '--js-output=files.js']).communicate()
-    self.btest(os.path.join('fs', 'test_workerfs_package_big.cpp'), '1', args=['--proxy-to-worker'])
+    # 8 ok
+    # 9 bad
+    open('file1.txt', 'w').write('0123456789' * (8*1024*1024))
+    shutil.copyfile('file1.txt', 'file2.txt')
+    shutil.copyfile('file1.txt', 'file3.txt')
+    Popen([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'file2.txt', 'file3.txt', '--separate-metadata', '--js-output=files.js']).communicate()
+    self.btest(os.path.join('fs', 'test_workerfs_package_big.cpp'), '1', args=['--proxy-to-worker'], timeout=60)
 
   def test_idbstore(self):
     secret = str(time.time())
