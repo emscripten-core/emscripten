@@ -1,8 +1,11 @@
 //==============================================================================
 // Optimizer tool. This is meant to be run after the emscripten compiler has
 // finished generating code. These optimizations are done on the generated
-// code to further improve it. Some of the modifications also work in
-// conjunction with closure compiler.
+// code to further improve it.
+//
+// Be aware that this is *not* a general JS optimizer. It assumes that the
+// input is valid asm.js and makes strong assumptions based on this. It may do
+// anything from crashing to optimizing incorrectly if the input is not valid!
 //==============================================================================
 
 #include "simple_ast.h"
