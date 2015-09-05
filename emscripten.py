@@ -277,7 +277,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       for i in range(arity):
         args.append('$' + str(i))
       const = 'function(' + ', '.join(args ) + ') ' + const
-      asm_consts[int(k)] = const
+      asm_consts[k] = const
 
     asm_const_funcs = []
     for arity in set(metadata['asmConstArities'].values()):
