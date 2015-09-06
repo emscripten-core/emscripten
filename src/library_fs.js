@@ -1,5 +1,5 @@
 mergeInto(LibraryManager.library, {
-  $FS__deps: ['$ERRNO_CODES', '$ERRNO_MESSAGES', '__setErrNo', '$PATH', '$TTY', '$MEMFS', '$IDBFS', '$NODEFS', '$WORKERFS', 'stdin', 'stdout', 'stderr'],
+  $FS__deps: ['$ERRNO_CODES', '$ERRNO_MESSAGES', '__setErrNo', '$PATH', '$TTY', '$MEMFS', '$IDBFS', '$NODEFS', '$WORKERFS', '$LZ4FS', 'stdin', 'stdout', 'stderr'],
   $FS__postset: 'FS.staticInit();' +
                 '__ATINIT__.unshift(function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() });' +
                 '__ATMAIN__.push(function() { FS.ignorePermissions = false });' +
@@ -1354,6 +1354,7 @@ mergeInto(LibraryManager.library, {
         'IDBFS': IDBFS,
         'NODEFS': NODEFS,
         'WORKERFS': WORKERFS,
+        'LZ4FS': LZ4FS,
       };
     },
     init: function(input, output, error) {

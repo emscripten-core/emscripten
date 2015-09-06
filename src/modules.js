@@ -110,6 +110,7 @@ var LibraryManager = {
         'library_nodefs.js',
         'library_sockfs.js',
         'library_workerfs.js',
+        'library_lz4fs.js',
         'library_tty.js'
       ]);
     }
