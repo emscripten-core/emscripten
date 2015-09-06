@@ -6,15 +6,12 @@ mergeInto(LibraryManager.library, {
     FILE_MODE: {{{ cDefine('S_IFREG') }}} | 511 /* 0777 */,
     CHUNK_SIZE: 2048, // musl libc does readaheads of 1024 bytes, so a multiple of that is a good idea
     LZ4: null,
-    lastChunk: null,
-    lastChunkIndex: -1,
     mount: function (mount) {
       if (!LZ4FS.LZ4) {
         LZ4FS.LZ4 = (function() {
           {{{ read('mini-lz4.js') }}};
           return MiniLZ4;
         })();
-        LZ4FS.lastChunk = new Uint8Array(LZ4FS.CHUNK_SIZE);
       }
       var root = LZ4FS.createNode(null, '/', LZ4FS.DIR_MODE, 0);
       var createdParents = {};
@@ -58,10 +55,15 @@ mergeInto(LibraryManager.library, {
         }
         data = null; // XXX null out pack['data'] too?
         var compressedData = {
-          data: new Uint8Array(total),
+          data: new Uint8Array(total + LZ4FS.CHUNK_SIZE), // store all the compressed data, plus room for one cached decompressed chunk, in one fast array
+          cachedOffset: total,
+          cachedChunk: null,
+          cachedIndex: -1,
           offsets: [], // chunk# => start in compressed data
           sizes: [],
         };
+        compressedData.cachedChunk = compressedData.data.subarray(compressedData.cachedOffset);
+        assert(compressedData.cachedChunk.length === LZ4FS.CHUNK_SIZE);
         offset = 0;
         for (var i = 0; i < compressedChunks.length; i++) {
           compressedData.data.set(compressedChunks[i], offset);
@@ -160,25 +162,26 @@ mergeInto(LibraryManager.library, {
         length = Math.min(length, stream.node.size - position);
         if (length <= 0) return 0;
         var contents = stream.node.contents;
+        var compressedData = contents.compressedData;
         var written = 0;
         while (written < length) {
           var start = contents.start + position + written; // start index in uncompressed data
           var desired = length - written;
           console.log('current read: ' + ['start', start, 'desired', desired]);
           var chunkIndex = Math.floor(start / LZ4FS.CHUNK_SIZE);
-          var compressedStart = contents.compressedData.offsets[chunkIndex];
-          var compressedSize = contents.compressedData.sizes[chunkIndex];
-          if (chunkIndex !== LZ4FS.lastChunkIndex) {
+          var compressedStart = compressedData.offsets[chunkIndex];
+          var compressedSize = compressedData.sizes[chunkIndex];
+          if (chunkIndex !== compressedData.cachedIndex) {
             // decompress the chunk
             console.log('decompressing chunk ' + chunkIndex);
-            var compressed = contents.compressedData.data.subarray(compressedStart, compressedStart + compressedSize);
-            var originalSize = LZ4FS.LZ4.uncompress(compressed, LZ4FS.lastChunk);
+            var compressed = compressedData.data.subarray(compressedStart, compressedStart + compressedSize);
+            var originalSize = LZ4FS.LZ4.uncompress(compressed, compressedData.cachedChunk);
             assert(originalSize === LZ4FS.CHUNK_SIZE);
-            LZ4FS.lastChunkIndex = chunkIndex;
+            compressedData.cachedIndex = chunkIndex;
           }
           var startInChunk = start % LZ4FS.CHUNK_SIZE;
           var endInChunk = Math.min(startInChunk + desired, LZ4FS.CHUNK_SIZE);
-          buffer.set(LZ4FS.lastChunk.subarray(startInChunk, endInChunk), offset + written);
+          buffer.set(compressedData.cachedChunk.subarray(startInChunk, endInChunk), offset + written);
           var currWritten = endInChunk - startInChunk;
           written += currWritten;
         }
