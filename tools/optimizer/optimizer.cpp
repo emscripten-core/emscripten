@@ -983,8 +983,10 @@ void eliminate(Ref ast, bool memSafe) {
           Ref value;
           if (node1i->size() > 1 && !!(value = node1i[1])) {
             IString name = node1i[0]->getIString();
-            definitions[name]++;
-            if (!values.has(name)) values[name] = value;
+            // values is only used if definitions is 1
+            if (definitions[name]++ == 0) {
+              values[name] = value;
+            }
           }
         }
       } else if (type == NAME) {
@@ -995,8 +997,10 @@ void eliminate(Ref ast, bool memSafe) {
         Ref target = node[2];
         if (target[0] == NAME) {
           IString& name = target[1]->getIString();
-          definitions[name]++;
-          if (!values.has(name)) values[name] = node[3];
+          // values is only used if definitions is 1
+          if (definitions[name]++ == 0) {
+            values[name] = node[3];
+          }
           assert(node[1]->isBool(true)); // not +=, -= etc., just =
           uses[name]--; // because the name node will show up by itself in the previous case
         }
