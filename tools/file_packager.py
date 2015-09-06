@@ -55,6 +55,7 @@ import shared
 from shared import Compression, execute, suffix, unsuffixed
 from subprocess import Popen, PIPE, STDOUT
 import fnmatch
+import json
 
 if len(sys.argv) == 1:
   print '''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--exclude C...] [--compress COMPRESSION_DATA] [--no-closure] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy] [--separate-metadata]
@@ -300,8 +301,7 @@ for file_ in data_files:
   for plugin in plugins:
     plugin(file_)
 
-if separate_metadata:
-  metadata = {'files': []}
+metadata = {'files': []}
 
 # Crunch files
 if crunch:
@@ -445,7 +445,7 @@ if has_preloaded:
         } else {
 ''', '' if not crunch else '''
         }
-''', '' if not separate_metadata else '''
+''', '''
         var files = metadata.files;
         for (i = 0; i < files.length; ++i) {
           new DataRequest(files[i].start, files[i].end, files[i].crunched, files[i].audio).open('GET', files[i].filename);
@@ -475,23 +475,13 @@ for file_ in data_files:
     # Preload
     varname = 'filePreload%d' % counter
     counter += 1
-    if separate_metadata:
-      metadata['files'].append({
-        'filename': escape_for_js_string(file_['dstpath']),
-        'start': file_['data_start'],
-        'end': file_['data_end'],
-        'crunched': '1' if crunch and filename.endswith(CRUNCH_INPUT_SUFFIX) else '0',
-        'audio': '1' if filename[-4:] in AUDIO_SUFFIXES else '0',
-      })
-    else:
-      code += '''    new DataRequest(%(start)d, %(end)d, %(crunched)s, %(audio)s).open('GET', '%(filename)s');
-''' % {
-        'filename': escape_for_js_string(file_['dstpath']),
-        'start': file_['data_start'],
-        'end': file_['data_end'],
-        'crunched': '1' if crunch and filename.endswith(CRUNCH_INPUT_SUFFIX) else '0',
-        'audio': '1' if filename[-4:] in AUDIO_SUFFIXES else '0',
-      }
+    metadata['files'].append({
+      'filename': file_['dstpath'],
+      'start': file_['data_start'],
+      'end': file_['data_end'],
+      'crunched': '1' if crunch and filename.endswith(CRUNCH_INPUT_SUFFIX) else '0',
+      'audio': '1' if filename[-4:] in AUDIO_SUFFIXES else '0',
+    })
   else:
     assert 0
 
@@ -548,18 +538,12 @@ if has_preloaded:
                               Module['locateFile'](REMOTE_PACKAGE_BASE) :
                               ((Module['filePackagePrefixURL'] || '') + REMOTE_PACKAGE_BASE);
   ''' % (data_target, remote_package_name)
-  if separate_metadata:
-    metadata['remote_package_size'] = remote_package_size
-    metadata['package_uuid'] = str(package_uuid)
-    ret += '''
-      var REMOTE_PACKAGE_SIZE = metadata.remote_package_size;
-      var PACKAGE_UUID = metadata.package_uuid;
-    '''
-  else:
-    ret += '''
-      var REMOTE_PACKAGE_SIZE = %d;
-      var PACKAGE_UUID = '%s';
-    ''' % (remote_package_size, package_uuid)
+  metadata['remote_package_size'] = remote_package_size
+  metadata['package_uuid'] = str(package_uuid)
+  ret += '''
+    var REMOTE_PACKAGE_SIZE = metadata.remote_package_size;
+    var PACKAGE_UUID = metadata.package_uuid;
+  '''
 
   if use_preload_cache:
     code += r'''
@@ -821,8 +805,8 @@ ret += '''%s
  });
 ''' % {'metadata_file': os.path.basename(jsoutput + '.metadata')} if separate_metadata else '''
  }
- loadPackage();
-''')
+ loadPackage(%s);
+''' % json.dumps(metadata))
 
 if force or len(data_files) > 0:
   if jsoutput == None:
@@ -841,7 +825,6 @@ if force or len(data_files) > 0:
       f.write(ret)
     f.close()
     if separate_metadata:
-      import json
       f = open(jsoutput + '.metadata', 'w')
       json.dump(metadata, f, separators=(',', ':'))
       f.close()
