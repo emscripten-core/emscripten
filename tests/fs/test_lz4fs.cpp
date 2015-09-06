@@ -26,7 +26,7 @@ void EMSCRIPTEN_KEEPALIVE finish() {
   int counter = 0;
   int i = 0;
   printf("read from files\n");
-  for (int i = 0; i < 10*1024*128 - 10; i += 100) {
+  for (int i = 0; i < 10*1024*128 - 5; i += random() % 1000) {
     int which = i % 3;
     FILE *f = files[which];
     //printf("%d read %d: %d (%d)\n", counter, which, i, i % 10);
@@ -45,7 +45,6 @@ void EMSCRIPTEN_KEEPALIVE finish() {
       abort();
     }
     counter++;
-    i += random() % 1024;
   }
   double after = emscripten_get_now();
   fclose(f1);
