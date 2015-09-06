@@ -4,7 +4,7 @@ mergeInto(LibraryManager.library, {
   $LZ4FS: {
     DIR_MODE: {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */,
     FILE_MODE: {{{ cDefine('S_IFREG') }}} | 511 /* 0777 */,
-    CHUNK_SIZE: 1024,
+    CHUNK_SIZE: 2048, // musl libc does readaheads of 1024 bytes, so a multiple of that is a good idea
     LZ4: null,
     lastChunk: null,
     lastChunkIndex: -1,
@@ -37,10 +37,10 @@ mergeInto(LibraryManager.library, {
       }
       mount.opts["packages"].forEach(function(pack) {
         // compress the data in chunks
-        console.log('compressing package');
         var data = pack['data'];
         assert(data instanceof ArrayBuffer);
         data = new Uint8Array(data);
+        console.log('compressing package of size ' + data.length);
         var compressedChunks = [];
         var offset = 0;
         var total = 0;
@@ -80,6 +80,7 @@ mergeInto(LibraryManager.library, {
             end: file.end,
           });
         });
+        console.log('compressed package into ' + compressedData.data.length);
       });
       return root;
     },
@@ -155,12 +156,15 @@ mergeInto(LibraryManager.library, {
     },
     stream_ops: {
       read: function (stream, buffer, offset, length, position) {
+        console.log('LZ4FS read ' + [offset, length, position]);
         length = Math.min(length, stream.node.size - position);
         if (length <= 0) return 0;
         var contents = stream.node.contents;
         var written = 0;
         while (written < length) {
           var start = contents.start + position + written; // start index in uncompressed data
+          var desired = length - written;
+          console.log('current read: ' + ['start', start, 'desired', desired]);
           var chunkIndex = Math.floor(start / LZ4FS.CHUNK_SIZE);
           var compressedStart = contents.compressedData.offsets[chunkIndex];
           var compressedSize = contents.compressedData.sizes[chunkIndex];
@@ -173,7 +177,6 @@ mergeInto(LibraryManager.library, {
             LZ4FS.lastChunkIndex = chunkIndex;
           }
           var startInChunk = start % LZ4FS.CHUNK_SIZE;
-          var desired = length - written;
           var endInChunk = Math.min(startInChunk + desired, LZ4FS.CHUNK_SIZE);
           buffer.set(LZ4FS.lastChunk.subarray(startInChunk, endInChunk), offset + written);
           var currWritten = endInChunk - startInChunk;
