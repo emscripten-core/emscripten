@@ -40,7 +40,7 @@ void EMSCRIPTEN_KEEPALIVE finish() {
     }
     buffer[5] = 0;
     char correct[] = "01234567890123456789";
-    if (strncmp(buffer, correct + off, 5) != 0) {
+    if (strncmp(buffer, correct + which + off, 5) != 0) {
       printf("%d read %d: %d (%d) failed data\n", counter, which, i, i % 10);
       abort();
     }

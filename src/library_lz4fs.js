@@ -175,7 +175,9 @@ mergeInto(LibraryManager.library, {
             // decompress the chunk
             //console.log('decompressing chunk ' + chunkIndex);
             var compressed = compressedData.data.subarray(compressedStart, compressedStart + compressedSize);
+            //var t = Date.now();
             var originalSize = LZ4FS.LZ4.uncompress(compressed, compressedData.cachedChunk);
+            //console.log('decompress time: ' + (Date.now() - t));
             assert(originalSize === LZ4FS.CHUNK_SIZE);
             compressedData.cachedIndex = chunkIndex;
           }
