@@ -39,11 +39,14 @@ mergeInto(LibraryManager.library, {
         // compress the data in chunks
         console.log('compressing package');
         var data = pack['data'];
+        assert(data instanceof ArrayBuffer);
+        data = new Uint8Array(data);
         var compressedChunks = [];
         var offset = 0;
         var total = 0;
         while (offset < data.length) {
           var chunk = data.subarray(offset, offset + LZ4FS.CHUNK_SIZE);
+          //console.log('compress a chunk ' + [offset, total, data.length]);
           offset += LZ4FS.CHUNK_SIZE;
           var bound = LZ4FS.LZ4.compressBound(chunk.length);
           var compressed = new Uint8Array(bound);
@@ -164,7 +167,7 @@ mergeInto(LibraryManager.library, {
           if (chunkIndex !== LZ4FS.lastChunkIndex) {
             // decompress the chunk
             console.log('decompressing chunk ' + chunkIndex);
-            var compressed = compressedData.data.subarray(compressedStart, compressedStart + compressedSize);
+            var compressed = contents.compressedData.data.subarray(compressedStart, compressedStart + compressedSize);
             var originalSize = LZ4FS.LZ4.uncompress(compressed, LZ4FS.lastChunk);
             assert(originalSize === LZ4FS.CHUNK_SIZE);
             LZ4FS.lastChunkIndex = chunkIndex;

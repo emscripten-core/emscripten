@@ -24,7 +24,7 @@ void EMSCRIPTEN_KEEPALIVE finish() {
   FILE *files[] = { f1, f2, f3 };
   double before = emscripten_get_now();
   int counter = 0;
-  for (int i = 0; i < 10*1024*1024 - 10; i += 100*1024) {
+  for (int i = 0; i < 10*1024*128 - 10; i += 100*1024) {
     i += random() % 10;
     int which = i % 3;
     FILE *f = files[which];
@@ -65,16 +65,16 @@ int main() {
   before_it_all = emscripten_get_now();
 
   EM_ASM({
-    var meta, blob;
+    var meta, data;
     function maybeReady() {
-      if (!(meta && blob)) return;
+      if (!(meta && data)) return;
 
       meta = JSON.parse(meta);
 
       Module.print('loading into filesystem');
       FS.mkdir('/files');
       FS.mount(LZ4FS, {
-        packages: [{ metadata: meta, blob: blob }]
+        packages: [{ metadata: meta, data: data }]
       }, '/files');
 
       Module.ccall('finish');
@@ -92,10 +92,10 @@ int main() {
 
     var data_xhr = new XMLHttpRequest();
     data_xhr.open("GET", "files.data", true);
-    data_xhr.responseType = "blob";
+    data_xhr.responseType = "arraybuffer";
     data_xhr.onload = function() {
       Module.print('got data');
-      blob = data_xhr.response;
+      data = data_xhr.response;
       maybeReady();
     };
     data_xhr.send();
