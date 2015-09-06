@@ -71,6 +71,7 @@ mergeInto(LibraryManager.library, {
           compressedData.sizes[i] = compressedChunks[i].length
           offset += compressedChunks[i].length;
         }
+        console.log('compressed package into ' + compressedData.data.length);
         assert(offset === total);
         compressedChunks.length = 0;
         console.log('mounting package');
@@ -82,7 +83,6 @@ mergeInto(LibraryManager.library, {
             end: file.end,
           });
         });
-        console.log('compressed package into ' + compressedData.data.length);
       });
       return root;
     },
@@ -158,7 +158,7 @@ mergeInto(LibraryManager.library, {
     },
     stream_ops: {
       read: function (stream, buffer, offset, length, position) {
-        console.log('LZ4FS read ' + [offset, length, position]);
+        //console.log('LZ4FS read ' + [offset, length, position]);
         length = Math.min(length, stream.node.size - position);
         if (length <= 0) return 0;
         var contents = stream.node.contents;
@@ -167,13 +167,13 @@ mergeInto(LibraryManager.library, {
         while (written < length) {
           var start = contents.start + position + written; // start index in uncompressed data
           var desired = length - written;
-          console.log('current read: ' + ['start', start, 'desired', desired]);
+          //console.log('current read: ' + ['start', start, 'desired', desired]);
           var chunkIndex = Math.floor(start / LZ4FS.CHUNK_SIZE);
           var compressedStart = compressedData.offsets[chunkIndex];
           var compressedSize = compressedData.sizes[chunkIndex];
           if (chunkIndex !== compressedData.cachedIndex) {
             // decompress the chunk
-            console.log('decompressing chunk ' + chunkIndex);
+            //console.log('decompressing chunk ' + chunkIndex);
             var compressed = compressedData.data.subarray(compressedStart, compressedStart + compressedSize);
             var originalSize = LZ4FS.LZ4.uncompress(compressed, compressedData.cachedChunk);
             assert(originalSize === LZ4FS.CHUNK_SIZE);

@@ -24,11 +24,12 @@ void EMSCRIPTEN_KEEPALIVE finish() {
   FILE *files[] = { f1, f2, f3 };
   double before = emscripten_get_now();
   int counter = 0;
-  for (int i = 0; i < 10*1024*128 - 10; i += 100*1024) {
-    i += random() % 10;
+  int i = 0;
+  printf("read from files\n");
+  for (int i = 0; i < 10*1024*128 - 10; i += 100) {
     int which = i % 3;
     FILE *f = files[which];
-    printf("%d read %d: %d (%d)\n", counter, which, i, i % 10);
+    //printf("%d read %d: %d (%d)\n", counter, which, i, i % 10);
     int off = i % 10;
     int ret = fseek(f, i, SEEK_SET);
     assert(ret == 0);
@@ -44,17 +45,15 @@ void EMSCRIPTEN_KEEPALIVE finish() {
       abort();
     }
     counter++;
+    i += random() % 1024;
   }
   double after = emscripten_get_now();
   fclose(f1);
   fclose(f2);
   fclose(f3);
-  printf("read IO time: %f\n", after - before);
-
-  printf("total time: %f\n", after - before_it_all);
+  printf("success. read IO time: %f (%d reads), total time: %f\n", after - before, counter, after - before_it_all);
 
   // all done
-  printf("success\n");
   int result = 1;
   REPORT_RESULT();
 }
