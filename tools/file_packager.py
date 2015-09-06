@@ -500,9 +500,12 @@ if has_preloaded:
       // Reuse the bytearray from the XHR as the source for file reads.
       DataRequest.prototype.byteArray = byteArray;
 '''
-  for file_ in data_files:
-    if file_['mode'] == 'preload':
-      use_data += '          DataRequest.prototype.requests["%s"].onload();\n' % (escape_for_js_string(file_['dstpath']))
+  use_data += '''
+        var files = metadata.files;
+        for (i = 0; i < files.length; ++i) {
+          DataRequest.prototype.requests[files[i].filename].onload();
+        }
+  '''
   use_data += "          Module['removeRunDependency']('datafile_%s');\n" % data_target
 
   if Compression.on:
