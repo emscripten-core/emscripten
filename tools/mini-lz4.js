@@ -72,8 +72,9 @@ exports.uncompress = function (input, output, sIdx, eIdx) {
 		// 2 bytes offset (little endian)
 		var offset = input[i++] | (input[i++] << 8)
 
-		// 0 is an invalid offset value
-		if (offset === 0 || offset > j) return -(i-2)
+		// XXX 0 is an invalid offset value
+		if (offset === 0) return j
+		if (offset > j) return -(i-2)
 
 		// length of match copy
 		var match_length = (token & 0xf)
