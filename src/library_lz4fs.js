@@ -33,58 +33,7 @@ mergeInto(LibraryManager.library, {
         return parts[parts.length-1];
       }
       mount.opts["packages"].forEach(function(pack) {
-        // compress the data in chunks
-        var data = pack['data'];
-        assert(data instanceof ArrayBuffer);
-        data = new Uint8Array(data);
-        console.log('compressing package of size ' + data.length);
-        var compressedChunks = [];
-        var successes = [];
-        var offset = 0;
-        var total = 0;
-        while (offset < data.length) {
-          var chunk = data.subarray(offset, offset + LZ4FS.CHUNK_SIZE);
-          //console.log('compress a chunk ' + [offset, total, data.length]);
-          offset += LZ4FS.CHUNK_SIZE;
-          var bound = LZ4FS.LZ4.compressBound(chunk.length);
-          var compressed = new Uint8Array(bound);
-          var compressedSize = LZ4FS.LZ4.compress(chunk, compressed);
-          if (compressedSize > 0) {
-            assert(compressedSize <= bound);
-            compressed = compressed.subarray(0, compressedSize);
-            compressedChunks.push(compressed);
-            total += compressedSize;
-            successes.push(1);
-          } else {
-            assert(compressedSize === 0);
-            // failure to compress :(
-            compressedChunks.push(chunk);
-            total += LZ4FS.CHUNK_SIZE;
-            successes.push(0);
-          }
-        }
-        data = null; // XXX null out pack['data'] too?
-        var compressedData = {
-          data: new Uint8Array(total + LZ4FS.CHUNK_SIZE), // store all the compressed data, plus room for one cached decompressed chunk, in one fast array
-          cachedOffset: total,
-          cachedChunk: null,
-          cachedIndex: -1,
-          offsets: [], // chunk# => start in compressed data
-          sizes: [],
-          successes: successes, // 1 if chunk is compressed
-        };
-        compressedData.cachedChunk = compressedData.data.subarray(compressedData.cachedOffset);
-        assert(compressedData.cachedChunk.length === LZ4FS.CHUNK_SIZE);
-        offset = 0;
-        for (var i = 0; i < compressedChunks.length; i++) {
-          compressedData.data.set(compressedChunks[i], offset);
-          compressedData.offsets[i] = offset;
-          compressedData.sizes[i] = compressedChunks[i].length
-          offset += compressedChunks[i].length;
-        }
-        console.log('compressed package into ' + compressedData.data.length);
-        assert(offset === total);
-        compressedChunks.length = 0;
+        var compressedData = LZ4FS.compressPackage(pack['data']);
         console.log('mounting package');
         pack['metadata'].files.forEach(function(file) {
           var name = file.filename.substr(1); // remove initial slash
@@ -96,6 +45,59 @@ mergeInto(LibraryManager.library, {
         });
       });
       return root;
+    },
+    compressPackage: function(data) {
+      // compress the data in chunks
+      assert(data instanceof ArrayBuffer);
+      data = new Uint8Array(data);
+      console.log('compressing package of size ' + data.length);
+      var compressedChunks = [];
+      var successes = [];
+      var offset = 0;
+      var total = 0;
+      while (offset < data.length) {
+        var chunk = data.subarray(offset, offset + LZ4FS.CHUNK_SIZE);
+        //console.log('compress a chunk ' + [offset, total, data.length]);
+        offset += LZ4FS.CHUNK_SIZE;
+        var bound = LZ4FS.LZ4.compressBound(chunk.length);
+        var compressed = new Uint8Array(bound);
+        var compressedSize = LZ4FS.LZ4.compress(chunk, compressed);
+        if (compressedSize > 0) {
+          assert(compressedSize <= bound);
+          compressed = compressed.subarray(0, compressedSize);
+          compressedChunks.push(compressed);
+          total += compressedSize;
+          successes.push(1);
+        } else {
+          assert(compressedSize === 0);
+          // failure to compress :(
+          compressedChunks.push(chunk);
+          total += LZ4FS.CHUNK_SIZE;
+          successes.push(0);
+        }
+      }
+      data = null; // XXX null out pack['data'] too?
+      var compressedData = {
+        data: new Uint8Array(total + LZ4FS.CHUNK_SIZE), // store all the compressed data, plus room for one cached decompressed chunk, in one fast array
+        cachedOffset: total,
+        cachedChunk: null,
+        cachedIndex: -1,
+        offsets: [], // chunk# => start in compressed data
+        sizes: [],
+        successes: successes, // 1 if chunk is compressed
+      };
+      compressedData.cachedChunk = compressedData.data.subarray(compressedData.cachedOffset);
+      assert(compressedData.cachedChunk.length === LZ4FS.CHUNK_SIZE);
+      offset = 0;
+      for (var i = 0; i < compressedChunks.length; i++) {
+        compressedData.data.set(compressedChunks[i], offset);
+        compressedData.offsets[i] = offset;
+        compressedData.sizes[i] = compressedChunks[i].length
+        offset += compressedChunks[i].length;
+      }
+      console.log('compressed package into ' + compressedData.data.length);
+      assert(offset === total);
+      return compressedData;
     },
     createNode: function (parent, name, mode, dev, contents, mtime) {
       var node = FS.createNode(parent, name, mode);
