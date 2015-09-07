@@ -269,6 +269,60 @@ function compressBlock (src, dst, pos, hashTable, sIdx, eIdx) {
 	return dpos
 }
 
+exports.CHUNK_SIZE = 2048; // musl libc does readaheads of 1024 bytes, so a multiple of that is a good idea
+
+exports.compressPackage = function(data) {
+  // compress the data in chunks
+  assert(data instanceof ArrayBuffer);
+  data = new Uint8Array(data);
+  console.log('compressing package of size ' + data.length);
+  var compressedChunks = [];
+  var successes = [];
+  var offset = 0;
+  var total = 0;
+  while (offset < data.length) {
+    var chunk = data.subarray(offset, offset + exports.CHUNK_SIZE);
+    //console.log('compress a chunk ' + [offset, total, data.length]);
+    offset += exports.CHUNK_SIZE;
+    var bound = exports.compressBound(chunk.length);
+    var compressed = new Uint8Array(bound);
+    var compressedSize = exports.compress(chunk, compressed);
+    if (compressedSize > 0) {
+      assert(compressedSize <= bound);
+      compressed = compressed.subarray(0, compressedSize);
+      compressedChunks.push(compressed);
+      total += compressedSize;
+      successes.push(1);
+    } else {
+      assert(compressedSize === 0);
+      // failure to compress :(
+      compressedChunks.push(chunk);
+      total += exports.CHUNK_SIZE;
+      successes.push(0);
+    }
+  }
+  data = null; // XXX null out pack['data'] too?
+  var compressedData = {
+    data: new Uint8Array(total + exports.CHUNK_SIZE), // store all the compressed data, plus room for one cached decompressed chunk, in one fast array
+    cachedOffset: total,
+    cachedChunk: null,
+    cachedIndex: -1,
+    offsets: [], // chunk# => start in compressed data
+    sizes: [],
+    successes: successes, // 1 if chunk is compressed
+  };
+  offset = 0;
+  for (var i = 0; i < compressedChunks.length; i++) {
+    compressedData.data.set(compressedChunks[i], offset);
+    compressedData.offsets[i] = offset;
+    compressedData.sizes[i] = compressedChunks[i].length
+    offset += compressedChunks[i].length;
+  }
+  console.log('compressed package into ' + compressedData.data.length);
+  assert(offset === total);
+  return compressedData;
+};
+
 return exports;
 
 })();
