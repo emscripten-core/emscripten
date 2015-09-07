@@ -67,7 +67,12 @@ void EMSCRIPTEN_KEEPALIVE finish() {
   printf("success. read IO time: %f (%d reads), total time: %f\n", after - before, counter, after - before_it_all);
 
   // all done
-  int result = 1;
+  int result;
+#if LOAD_MANUALLY
+  result = 1;
+#else
+  result = 2;
+#endif
   REPORT_RESULT();
 }
 
@@ -76,6 +81,7 @@ void EMSCRIPTEN_KEEPALIVE finish() {
 int main() {
   before_it_all = emscripten_get_now();
 
+#if LOAD_MANUALLY
   EM_ASM({
     var COMPLETE_SIZE = 10*1024*128*3;
 
@@ -122,6 +128,9 @@ int main() {
   });
 
   emscripten_exit_with_live_runtime();
+#else
+  finish();
+#endif
 
   return 1;
 }
