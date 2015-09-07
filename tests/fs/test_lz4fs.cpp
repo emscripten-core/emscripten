@@ -5,6 +5,8 @@
 
 #include <emscripten.h>
 
+#define TOTAL_SIZE (10*1024*128)
+
 double before_it_all;
 
 extern "C" {
@@ -26,7 +28,7 @@ void EMSCRIPTEN_KEEPALIVE finish() {
   int counter = 0;
   int i = 0;
   printf("read from files\n");
-  for (int i = 0; i < 10*1024*128 - 5; i += random() % 1000) {
+  for (int i = 0; i < TOTAL_SIZE - 5; i += random() % 1000) {
     int which = i % 3;
     FILE *f = files[which];
     //printf("%d read %d: %d (%d)\n", counter, which, i, i % 10);
@@ -48,6 +50,7 @@ void EMSCRIPTEN_KEEPALIVE finish() {
     }
     counter++;
   }
+  assert(counter == 2657);
   double after = emscripten_get_now();
 
   printf("final test on random data\n");
@@ -74,6 +77,8 @@ int main() {
   before_it_all = emscripten_get_now();
 
   EM_ASM({
+    var COMPLETE_SIZE = 10*1024*128*3;
+
     var meta, data;
     function maybeReady() {
       if (!(meta && data)) return;
@@ -82,9 +87,15 @@ int main() {
 
       Module.print('loading into filesystem');
       FS.mkdir('/files');
-      FS.mount(LZ4FS, {
+      var root = FS.mount(LZ4FS, {
         packages: [{ metadata: meta, data: data }]
       }, '/files');
+
+      var compressedSize = root.contents['file1.txt'].contents.compressedData.data.length;
+      var low = COMPLETE_SIZE/3;
+      var high = COMPLETE_SIZE/2;
+      console.log('seeing compressed size of ' + compressedSize + ', expect in ' + [low, high]);
+      assert(compressedSize > low && compressedSize < high); // more than 1/3, because 1/3 is uncompressible, but still, less than 1/2
 
       Module.ccall('finish');
     }
