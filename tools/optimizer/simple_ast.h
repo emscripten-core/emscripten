@@ -444,8 +444,7 @@ struct Value {
 
   Ref& operator[](unsigned x) {
     assert(isArray());
-    assert(x < arr->size());
-    return (*arr)[x];
+    return arr->at(x);
   }
 
   Value& push_back(Ref r) {
