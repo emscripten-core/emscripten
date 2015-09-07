@@ -38,18 +38,29 @@ void EMSCRIPTEN_KEEPALIVE finish() {
       printf("%d read %d: %d failed num\n", counter, which, i);
       abort();
     }
-    buffer[5] = 0;
-    char correct[] = "01234567890123456789";
-    if (strncmp(buffer, correct + which + off, 5) != 0) {
-      printf("%d read %d: %d (%d) failed data\n", counter, which, i, i % 10);
-      abort();
+    if (which != 2) {
+      buffer[5] = 0;
+      char correct[] = "01234567890123456789";
+      if (strncmp(buffer, correct + which + off, 5) != 0) {
+        printf("%d read %d: %d (%d) failed data\n", counter, which, i, i % 10);
+        abort();
+      }
     }
     counter++;
   }
   double after = emscripten_get_now();
+
+  printf("final test on random data\n");
+  int ret = fseek(f3, 17, SEEK_SET);
+  assert(ret == 0);
+  num = fread(buffer, 1, 1, f3);
+  assert(num == 1);
+  assert(buffer[0] == 'X');
+
   fclose(f1);
   fclose(f2);
   fclose(f3);
+
   printf("success. read IO time: %f (%d reads), total time: %f\n", after - before, counter, after - before_it_all);
 
   // all done

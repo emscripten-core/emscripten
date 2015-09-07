@@ -1032,9 +1032,12 @@ keydown(100);keyup(100); // trigger the end
     self.btest(os.path.join('fs', 'test_workerfs_package.cpp'), '1', args=['--proxy-to-worker'])
 
   def test_fs_lz4fs_package(self):
+    import random
     open('file1.txt', 'w').write('0123456789' * (1024*128))
     open('file2.txt', 'w').write('1234567890' * (1024*128))
-    open('file3.txt', 'w').write('2345678901' * (1024*128))
+    random_data = [chr(random.randint(0,255)) for x in range(1024*128*10)]
+    random_data[17] = 'X'
+    open('file3.txt', 'w').write(''.join(random_data))
     Popen([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'file2.txt', 'file3.txt', '--separate-metadata', '--js-output=files.js']).communicate()
     self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=[], timeout=60)
 

@@ -39,6 +39,7 @@ mergeInto(LibraryManager.library, {
         data = new Uint8Array(data);
         console.log('compressing package of size ' + data.length);
         var compressedChunks = [];
+        var successes = [];
         var offset = 0;
         var total = 0;
         while (offset < data.length) {
@@ -48,10 +49,19 @@ mergeInto(LibraryManager.library, {
           var bound = LZ4FS.LZ4.compressBound(chunk.length);
           var compressed = new Uint8Array(bound);
           var compressedSize = LZ4FS.LZ4.compress(chunk, compressed);
-          assert(compressedSize > 0 && compressedSize <= bound);
-          compressed = compressed.subarray(0, compressedSize);
-          compressedChunks.push(compressed);
-          total += compressedSize;
+          if (compressedSize > 0) {
+            assert(compressedSize <= bound);
+            compressed = compressed.subarray(0, compressedSize);
+            compressedChunks.push(compressed);
+            total += compressedSize;
+            successes.push(1);
+          } else {
+            assert(compressedSize === 0);
+            // failure to compress :(
+            compressedChunks.push(chunk);
+            total += LZ4FS.CHUNK_SIZE;
+            successes.push(0);
+          }
         }
         data = null; // XXX null out pack['data'] too?
         var compressedData = {
@@ -61,6 +71,7 @@ mergeInto(LibraryManager.library, {
           cachedIndex: -1,
           offsets: [], // chunk# => start in compressed data
           sizes: [],
+          successes: successes, // 1 if chunk is compressed
         };
         compressedData.cachedChunk = compressedData.data.subarray(compressedData.cachedOffset);
         assert(compressedData.cachedChunk.length === LZ4FS.CHUNK_SIZE);
@@ -171,19 +182,26 @@ mergeInto(LibraryManager.library, {
           var chunkIndex = Math.floor(start / LZ4FS.CHUNK_SIZE);
           var compressedStart = compressedData.offsets[chunkIndex];
           var compressedSize = compressedData.sizes[chunkIndex];
-          if (chunkIndex !== compressedData.cachedIndex) {
-            // decompress the chunk
-            //console.log('decompressing chunk ' + chunkIndex);
-            var compressed = compressedData.data.subarray(compressedStart, compressedStart + compressedSize);
-            //var t = Date.now();
-            var originalSize = LZ4FS.LZ4.uncompress(compressed, compressedData.cachedChunk);
-            //console.log('decompress time: ' + (Date.now() - t));
-            assert(originalSize === LZ4FS.CHUNK_SIZE);
-            compressedData.cachedIndex = chunkIndex;
+          var currChunk;
+          if (compressedData.successes[chunkIndex]) {
+            if (chunkIndex !== compressedData.cachedIndex) {
+              // decompress the chunk
+              //console.log('decompressing chunk ' + chunkIndex);
+              var compressed = compressedData.data.subarray(compressedStart, compressedStart + compressedSize);
+              //var t = Date.now();
+              var originalSize = LZ4FS.LZ4.uncompress(compressed, compressedData.cachedChunk);
+              //console.log('decompress time: ' + (Date.now() - t));
+              assert(originalSize === LZ4FS.CHUNK_SIZE);
+              compressedData.cachedIndex = chunkIndex;
+            }
+            currChunk = compressedData.cachedChunk;
+          } else {
+            // uncompressed
+            currChunk = compressedData.data.subarray(compressedStart, compressedStart + LZ4FS.CHUNK_SIZE);
           }
           var startInChunk = start % LZ4FS.CHUNK_SIZE;
           var endInChunk = Math.min(startInChunk + desired, LZ4FS.CHUNK_SIZE);
-          buffer.set(compressedData.cachedChunk.subarray(startInChunk, endInChunk), offset + written);
+          buffer.set(currChunk.subarray(startInChunk, endInChunk), offset + written);
           var currWritten = endInChunk - startInChunk;
           written += currWritten;
         }
