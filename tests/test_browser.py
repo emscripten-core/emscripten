@@ -1051,6 +1051,18 @@ keydown(100);keyup(100); // trigger the end
     subprocess.check_output([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'file2.txt', 'file3.txt', '--separate-metadata', '--js-output=files.js'])
     self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY'], timeout=60)
 
+    '''# non-lz4 for comparison
+    try:
+      os.mkdir('files')
+    except:
+      pass
+    shutil.copyfile('file1.txt', os.path.join('files', 'file1.txt'))
+    shutil.copyfile('file2.txt', os.path.join('files', 'file2.txt'))
+    shutil.copyfile('file3.txt', os.path.join('files', 'file3.txt'))
+    out = subprocess.check_output([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'files/file1.txt', 'files/file2.txt', 'files/file3.txt'])
+    open('files.js', 'w').write(out)
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js'], timeout=60)'''
+
   def test_idbstore(self):
     secret = str(time.time())
     for stage in [0, 1, 2, 3, 0, 1, 2, 0, 0, 1, 4, 2, 5]:
