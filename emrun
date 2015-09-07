@@ -226,6 +226,8 @@ user_pref('browser.customizemode.tip0.shown', true);
 user_pref("browser.toolbarbuttons.introduced.pocket-button", true);
 // Start in private browsing mode to not cache anything to disk (everything will be wiped anyway after this run)
 user_pref("browser.privatebrowsing.autostart", true);
+// Don't ask the user if he wants to close the browser when there are multiple tabs.
+user_pref("browser.tabs.warnOnClose", false);
 ''')
   f.close()
   logv('create_emrun_safe_firefox_profile: Created new Firefox profile "' + temp_firefox_profile_dir + '"')
