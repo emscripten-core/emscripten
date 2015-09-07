@@ -206,16 +206,15 @@ user_pref("app.update.silent", false);
 user_pref("app.update.mode", 0);
 user_pref("app.update.service.enabled", false);
 // Don't check compatibility with add-ons, or (auto)update them
-clearPref("extensions.lastAppVersion"); 
-lockPref("plugins.hide_infobar_for_outdated_plugin", true);
-clearPref("plugins.update.url");
+user_pref("extensions.lastAppVersion", '');
+user_pref("plugins.hide_infobar_for_outdated_plugin", true);
+user_pref("plugins.update.url", '');
 // Disable health reporter
-lockPref("datareporting.healthreport.service.enabled", false);
+user_pref("datareporting.healthreport.service.enabled", false);
 // Disable crash reporter
-lockPref("toolkit.crashreporter.enabled", false);
-Components.classes["@mozilla.org/toolkit/crash-reporter;1"].getService(Components.interfaces.nsICrashReporter).submitReports = false; 
+user_pref("toolkit.crashreporter.enabled", false);
 // Don't show WhatsNew on first run after every update
-pref("browser.startup.homepage_override.mstone","ignore");
+user_pref("browser.startup.homepage_override.mstone","ignore");
 // Don't show 'know your rights' and a bunch of other nag windows at startup
 user_pref("browser.rights.3.shown", true);
 user_pref('devtools.devedition.promo.shown', true);
