@@ -62,8 +62,9 @@ void dump(const char *str, Ref node, bool pretty) {
 
 struct TraverseInfo {
   TraverseInfo() {}
-  TraverseInfo(Ref node) : node(node), index(0) {}
+  TraverseInfo(Ref node, ArrayStorage& arr) : node(node), arr(&arr), index(0) {}
   Ref node;
+  ArrayStorage* arr;
   int index;
 };
 
@@ -123,15 +124,15 @@ void traversePre(Ref node, std::function<void (Ref)> visit) {
   if (!visitable(node)) return;
   visit(node);
   StackedStack<TraverseInfo, TRAV_STACK> stack;
-  stack.push_back(TraverseInfo(node));
+  stack.push_back(TraverseInfo(node, node->getArray()));
   while (stack.size() > 0) {
     TraverseInfo& top = stack.back();
-    if (top.index < (int)top.node->size()) {
-      Ref sub = top.node[top.index];
+    if (top.index < (int)top.arr->size()) {
+      Ref sub = (*top.arr)[top.index];
       top.index++;
       if (visitable(sub)) {
         visit(sub);
-        stack.push_back(TraverseInfo(sub));
+        stack.push_back(TraverseInfo(sub, sub->getArray()));
       }
     } else {
       stack.pop_back();
@@ -144,15 +145,15 @@ void traversePrePost(Ref node, std::function<void (Ref)> visitPre, std::function
   if (!visitable(node)) return;
   visitPre(node);
   StackedStack<TraverseInfo, TRAV_STACK> stack;
-  stack.push_back(TraverseInfo(node));
+  stack.push_back(TraverseInfo(node, node->getArray()));
   while (stack.size() > 0) {
     TraverseInfo& top = stack.back();
-    if (top.index < (int)top.node->size()) {
-      Ref sub = top.node[top.index];
+    if (top.index < (int)top.arr->size()) {
+      Ref sub = (*top.arr)[top.index];
       top.index++;
       if (visitable(sub)) {
         visitPre(sub);
-        stack.push_back(TraverseInfo(sub));
+        stack.push_back(TraverseInfo(sub, sub->getArray()));
       }
     } else {
       visitPost(top.node);
@@ -166,15 +167,15 @@ void traversePrePostConditional(Ref node, std::function<bool (Ref)> visitPre, st
   if (!visitable(node)) return;
   if (!visitPre(node)) return;
   StackedStack<TraverseInfo, TRAV_STACK> stack;
-  stack.push_back(TraverseInfo(node));
+  stack.push_back(TraverseInfo(node, node->getArray()));
   while (stack.size() > 0) {
     TraverseInfo& top = stack.back();
-    if (top.index < (int)top.node->size()) {
-      Ref sub = top.node[top.index];
+    if (top.index < (int)top.arr->size()) {
+      Ref sub = (*top.arr)[top.index];
       top.index++;
       if (visitable(sub)) {
         if (visitPre(sub)) {
-          stack.push_back(TraverseInfo(sub));
+          stack.push_back(TraverseInfo(sub, sub->getArray()));
         }
       }
     } else {
