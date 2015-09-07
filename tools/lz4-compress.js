@@ -127,13 +127,13 @@ if (!Math['imul'] || Math['imul'](0xffffffff, 5) !== -5) Math['imul'] = function
   return (al*bl + ((ah*bl + al*bh) << 16))|0;
 };
 
+console.log = printErr;
+
 // *** Environment setup code ***
 
 var lz4 = arguments_[0];
 var input = arguments_[1];
 var output = arguments_[2];
-
-printErr('lz4-compressor called with ' + [lz4, input, output]);
 
 load(lz4);
 
@@ -142,9 +142,7 @@ if (!(data instanceof ArrayBuffer)) {
   printErr('converting to ArrayBuffer');
   data = new Uint8Array(data).buffer;
 }
-printErr('input size: ' + [data.byteLength]);
 
-printErr('compressing...');
 var compressedData = MiniLZ4.compressPackage(data);
 nodeFS['writeFileSync'](output, Buffer(compressedData.data));
 compressedData.data = null;

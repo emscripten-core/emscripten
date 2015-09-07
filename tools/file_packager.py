@@ -459,7 +459,7 @@ if has_preloaded:
         for (i = 0; i < files.length; ++i) {
           new DataRequest(files[i].start, files[i].end, files[i].crunched, files[i].audio).open('GET', files[i].filename);
         }
-''')
+''' if not lz4 else '')
 
 counter = 0
 for file_ in data_files:
@@ -529,24 +529,18 @@ if has_preloaded:
     # LZ4FS usage
     temp = data_target + '.orig'
     shutil.move(data_target, temp)
-    run_js(shared.path_from_root('tools', 'lz4-compress.js'), shared.NODE_JS, [shared.path_from_root('src', 'mini-lz4.js'), temp, data_target], stdout=PIPE)
+    meta = run_js(shared.path_from_root('tools', 'lz4-compress.js'), shared.NODE_JS, [shared.path_from_root('src', 'mini-lz4.js'), temp, data_target], stdout=PIPE)
     os.unlink(temp)
     use_data = '''
           var LZ4_DIR = '%s';
           FS.mkdir('/' + LZ4_DIR);
+          var compressedData = %s;
+          compressedData.data = byteArray;
           var root = FS.mount(LZ4FS, {
-            packages: [{ metadata: metadata, compressedData: {
-              data:
-              cachedOffset: total,
-              cachedChunk: null,
-              cachedIndex: -1,
-              offsets: 
-              sizes: 
-              successes: 
-            } }]
+            packages: [{ metadata: metadata, compressedData: compressedData }]
           }, '/' + LZ4_DIR);
           Module['removeRunDependency']('datafile_%s');
-    ''' % (lz4, data_target)
+    ''' % (lz4, meta, data_target)
 
   package_uuid = uuid.uuid4();
   package_name = Compression.compressed_name(data_target) if Compression.on else data_target
