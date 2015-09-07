@@ -117,10 +117,7 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 
 #. Install *cmake* if you do not have it yet:
 
-	-  Download and install `cmake-2.8.10.2-Darwin64-universal.dmg <http://www.cmake.org/cmake/resources/software.html>`_.
-	
-	.. tip:: This specific version (2.8.10) is recommended — it has been tested and shown to work. Other versions may not correctly set up the PATH variables, with the result that running *cmake* gives you "not found" errors.
-
+	-  Download and install latest CMake from `Kitware CMake downloads <http://www.cmake.org/download/>`_.
 	
 #. Install *node.js* from http://nodejs.org/ 
 
@@ -156,8 +153,6 @@ Linux
 		
 		# Install cmake
 		sudo apt-get install cmake
-		
-.. note:: You will probably need CMake version 2.8.8 or later.
 		
 - *Python*, *node.js* or *Java* are not provided by *emsdk*. The user is expected to install these beforehand with the *system package manager*:
 
