@@ -1175,7 +1175,7 @@ def main():
   # cleans up the temporary profile if one exists.
   if processname_killed_atexit == 'firefox' and options.safe_firefox_profile:
     profile_dir = create_emrun_safe_firefox_profile()
-    browser += ['-profile', profile_dir.replace('\\', '/')]
+    browser += ['-no-remote', '-profile', profile_dir.replace('\\', '/')]
 
   if options.system_info:
     logi('Time of run: ' + time.strftime("%x %X"))
