@@ -33,7 +33,12 @@ mergeInto(LibraryManager.library, {
         return parts[parts.length-1];
       }
       mount.opts["packages"].forEach(function(pack) {
-        var compressedData = LZ4FS.compressPackage(pack['data']);
+        var compressedData = pack['compressedData'];
+        if (!compressedData) compressedData = LZ4FS.compressPackage(pack['data']);
+        compressedData.cachedChunk = compressedData.data.subarray(compressedData.cachedOffset);
+        assert(compressedData.cachedChunk.length === LZ4FS.CHUNK_SIZE);
+        compressedData.cachedIndex = -1;
+
         console.log('mounting package');
         pack['metadata'].files.forEach(function(file) {
           var name = file.filename.substr(1); // remove initial slash
@@ -86,8 +91,6 @@ mergeInto(LibraryManager.library, {
         sizes: [],
         successes: successes, // 1 if chunk is compressed
       };
-      compressedData.cachedChunk = compressedData.data.subarray(compressedData.cachedOffset);
-      assert(compressedData.cachedChunk.length === LZ4FS.CHUNK_SIZE);
       offset = 0;
       for (var i = 0; i < compressedChunks.length; i++) {
         compressedData.data.set(compressedChunks[i], offset);
