@@ -228,6 +228,8 @@ user_pref("browser.toolbarbuttons.introduced.pocket-button", true);
 user_pref("browser.privatebrowsing.autostart", true);
 // Don't ask the user if he wants to close the browser when there are multiple tabs.
 user_pref("browser.tabs.warnOnClose", false);
+// Allow the launched script window to close itself, so that we don't need to kill the browser process in order to move on.
+user_pref("dom.allow_scripts_to_close_windows", true);
 ''')
   f.close()
   logv('create_emrun_safe_firefox_profile: Created new Firefox profile "' + temp_firefox_profile_dir + '"')
