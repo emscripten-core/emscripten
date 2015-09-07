@@ -60,11 +60,56 @@ void EMSCRIPTEN_KEEPALIVE finish() {
   assert(num == 1);
   assert(buffer[0] == 'X');
 
+  printf("read success. read IO time: %f (%d reads), total time: %f\n", after - before, counter, after - before_it_all);
+
+#if LOAD_MANUALLY
+  printf("caching tests\n");
+  ret = fseek(f3, TOTAL_SIZE - 5, SEEK_SET); assert(ret == 0);
+  num = fread(buffer, 1, 1, f3); assert(num == 1); // read near the end
+  ret = fseek(f3, TOTAL_SIZE - 5000, SEEK_SET); assert(ret == 0);
+  num = fread(buffer, 1, 1, f3); assert(num == 1); // also near the end
+  EM_ASM({
+    assert(!Module.decompressedChunks);
+    Module.compressedData.debug = true;
+    console.log('last cached indexes ' + Module.compressedData.cachedIndexes);
+    assert(Module.compressedData.cachedIndexes.indexOf(0) < 0); // 0 is not cached
+  });
+  printf("multiple reads of same byte\n");
+  for (int i = 0; i < 100; i++) {
+    ret = fseek(f1, 0, SEEK_SET); // read near the start, should trigger one decompress, then all cache hits
+    assert(ret == 0);
+    num = fread(buffer, 1, 1, f1);
+    assert(num == 1);
+  }
+  EM_ASM({
+    assert(Module.decompressedChunks == 1, ['seeing', Module.decompressedChunks, 'decompressed chunks']);
+  });
+  printf("multiple reads of adjoining byte\n");
+  for (int i = 0; i < 100; i++) {
+    ret = fseek(f1, i, SEEK_SET);
+    assert(ret == 0);
+    num = fread(buffer, 1, 1, f1);
+    assert(num == 1);
+  }
+  EM_ASM({
+    assert(Module.decompressedChunks == 1, ['seeing', Module.decompressedChunks, 'decompressed chunks']);
+  });
+  printf("multiple reads across two chunks\n");
+  for (int i = 0; i < 2100; i++) {
+    ret = fseek(f1, i, SEEK_SET);
+    assert(ret == 0);
+    num = fread(buffer, 1, 1, f1);
+    assert(num == 1);
+  }
+  EM_ASM({
+    assert(Module.decompressedChunks == 2, ['seeing', Module.decompressedChunks, 'decompressed chunks']);
+  });
+  printf("caching test ok\n");
+#endif
+
   fclose(f1);
   fclose(f2);
   fclose(f3);
-
-  printf("success. read IO time: %f (%d reads), total time: %f\n", after - before, counter, after - before_it_all);
 
   // all done
   int result;
@@ -97,7 +142,8 @@ int main() {
         packages: [{ metadata: meta, data: data }]
       }, '/files');
 
-      var compressedSize = root.contents['file1.txt'].contents.compressedData.data.length;
+      Module.compressedData = root.contents['file1.txt'].contents.compressedData;
+      var compressedSize = Module.compressedData.data.length;
       var low = COMPLETE_SIZE/3;
       var high = COMPLETE_SIZE/2;
       console.log('seeing compressed size of ' + compressedSize + ', expect in ' + [low, high]);

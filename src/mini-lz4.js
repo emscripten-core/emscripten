@@ -303,10 +303,10 @@ exports.compressPackage = function(data) {
   }
   data = null; // XXX null out pack['data'] too?
   var compressedData = {
-    data: new Uint8Array(total + exports.CHUNK_SIZE), // store all the compressed data, plus room for one cached decompressed chunk, in one fast array
+    data: new Uint8Array(total + exports.CHUNK_SIZE*2), // store all the compressed data, plus room for two cached decompressed chunk, in one fast array
     cachedOffset: total,
-    cachedChunk: null,
-    cachedIndex: -1,
+    cachedIndexes: [-1, -1], // cache last two blocks, so that reading 1,2,3 + preloading another block won't trigger decompress thrashing
+    cachedChunks: [null, null],
     offsets: [], // chunk# => start in compressed data
     sizes: [],
     successes: successes, // 1 if chunk is compressed
