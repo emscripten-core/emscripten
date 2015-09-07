@@ -297,7 +297,7 @@ exports.compressPackage = function(data) {
       assert(compressedSize === 0);
       // failure to compress :(
       compressedChunks.push(chunk);
-      total += exports.CHUNK_SIZE;
+      total += chunk.length; // last chunk may not be the full exports.CHUNK_SIZE size
       successes.push(0);
     }
   }
@@ -318,7 +318,7 @@ exports.compressPackage = function(data) {
     compressedData.sizes[i] = compressedChunks[i].length
     offset += compressedChunks[i].length;
   }
-  console.log('compressed package into ' + compressedData.data.length);
+  console.log('compressed package into ' + [compressedData.data.length]);
   assert(offset === total);
   return compressedData;
 };

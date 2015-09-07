@@ -1036,7 +1036,7 @@ keydown(100);keyup(100); // trigger the end
     import random
     open('file1.txt', 'w').write('0123456789' * (1024*128))
     open('file2.txt', 'w').write('1234567890' * (1024*128))
-    random_data = [chr(random.randint(0,255)) for x in range(1024*128*10)]
+    random_data = [chr(random.randint(0,255)) for x in range(1024*128*10 + 1)]
     random_data[17] = 'X'
     open('file3.txt', 'w').write(''.join(random_data))
 
