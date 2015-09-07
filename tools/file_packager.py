@@ -11,7 +11,7 @@ data downloads.
 
 Usage:
 
-  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--compress COMPRESSION_DATA] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy] [--separate-metadata]
+  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--compress COMPRESSION_DATA] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy] [--separate-metadata] [--lz4=DIR_NAME]
 
   --preload  ,
   --embed    See emcc --help for more details on those options.
@@ -40,6 +40,10 @@ Usage:
 
   --separate-metadata Stores package metadata separately. Only applicable when preloading and js-output file is specified.
 
+  --lz4=DIR_NAME Uses LZ4FS. This compresses the data using LZ4 when this utility is run, then the client decompresses chunks on the fly, avoiding storing
+                 the entire decompressed data in memory at once. DIR_NAME is the name of a directory to mount the files under (LZ4FS cannot be mounted
+                 on /, it has to be a subdirectory)
+
 Notes:
 
   * The file packager generates unix-style file paths. So if you are on windows and a file is accessed at
@@ -53,6 +57,7 @@ import os, sys, shutil, random, uuid, ctypes
 import posixpath
 import shared
 from shared import Compression, execute, suffix, unsuffixed
+from jsrun import run_js
 from subprocess import Popen, PIPE, STDOUT
 import fnmatch
 import json
@@ -95,6 +100,7 @@ no_heap_copy = True
 # If set to True, the package metadata is stored separately from js-output file which makes js-output file immutable to the package content changes.
 # If set to False, the package metadata is stored inside the js-output file which makes js-output file to mutate on each invocation of this packager tool.
 separate_metadata  = False
+lz4 = None
 
 for arg in sys.argv[2:]:
   if arg == '--preload':
@@ -119,6 +125,9 @@ for arg in sys.argv[2:]:
     leading = ''
   elif arg == '--separate-metadata':
     separate_metadata = True
+    leading = ''
+  elif arg.startswith('--lz4='):
+    lz4 = arg.split('=')[1]
     leading = ''
   elif arg.startswith('--js-output'):
     jsoutput = arg.split('=')[1] if '=' in arg else None
@@ -486,35 +495,58 @@ for file_ in data_files:
     assert 0
 
 if has_preloaded:
-  # Get the big archive and split it up
-  if no_heap_copy:
-    use_data = '''
-      // copy the entire loaded file into a spot in the heap. Files will refer to slices in that. They cannot be freed though
-      // (we may be allocating before malloc is ready, during startup).
-      var ptr = Module['getMemory'](byteArray.length);
-      Module['HEAPU8'].set(byteArray, ptr);
-      DataRequest.prototype.byteArray = Module['HEAPU8'].subarray(ptr, ptr+byteArray.length);
-'''
-  else:
-    use_data = '''
-      // Reuse the bytearray from the XHR as the source for file reads.
-      DataRequest.prototype.byteArray = byteArray;
-'''
-  use_data += '''
-        var files = metadata.files;
-        for (i = 0; i < files.length; ++i) {
-          DataRequest.prototype.requests[files[i].filename].onload();
-        }
+  if not lz4:
+    # Get the big archive and split it up
+    if no_heap_copy:
+      use_data = '''
+        // copy the entire loaded file into a spot in the heap. Files will refer to slices in that. They cannot be freed though
+        // (we may be allocating before malloc is ready, during startup).
+        var ptr = Module['getMemory'](byteArray.length);
+        Module['HEAPU8'].set(byteArray, ptr);
+        DataRequest.prototype.byteArray = Module['HEAPU8'].subarray(ptr, ptr+byteArray.length);
   '''
-  use_data += "          Module['removeRunDependency']('datafile_%s');\n" % data_target
+    else:
+      use_data = '''
+        // Reuse the bytearray from the XHR as the source for file reads.
+        DataRequest.prototype.byteArray = byteArray;
+  '''
+    use_data += '''
+          var files = metadata.files;
+          for (i = 0; i < files.length; ++i) {
+            DataRequest.prototype.requests[files[i].filename].onload();
+          }
+    '''
+    use_data += "          Module['removeRunDependency']('datafile_%s');\n" % data_target
 
-  if Compression.on:
+    if Compression.on:
+      use_data = '''
+        Module["decompress"](byteArray, function(decompressed) {
+          byteArray = new Uint8Array(decompressed);
+          %s
+        });
+      ''' % use_data
+  else:
+    # LZ4FS usage
+    temp = data_target + '.orig'
+    shutil.move(data_target, temp)
+    run_js(shared.path_from_root('tools', 'lz4-compress.js'), shared.NODE_JS, [shared.path_from_root('src', 'mini-lz4.js'), temp, data_target], stdout=PIPE)
+    os.unlink(temp)
     use_data = '''
-      Module["decompress"](byteArray, function(decompressed) {
-        byteArray = new Uint8Array(decompressed);
-        %s
-      });
-    ''' % use_data
+          var LZ4_DIR = '%s';
+          FS.mkdir('/' + LZ4_DIR);
+          var root = FS.mount(LZ4FS, {
+            packages: [{ metadata: metadata, compressedData: {
+              data:
+              cachedOffset: total,
+              cachedChunk: null,
+              cachedIndex: -1,
+              offsets: 
+              sizes: 
+              successes: 
+            } }]
+          }, '/' + LZ4_DIR);
+          Module['removeRunDependency']('datafile_%s');
+    ''' % (lz4, data_target)
 
   package_uuid = uuid.uuid4();
   package_name = Compression.compressed_name(data_target) if Compression.on else data_target
