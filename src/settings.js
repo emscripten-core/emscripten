@@ -401,14 +401,16 @@ var EXPORTED_GLOBALS = []; // Global non-function variables that are explicitly
                            // exported, so they are guaranteed to be
                            // accessible outside of the generated code.
 
-var INCLUDE_FULL_LIBRARY = 0; // Whether to include the whole library rather than just the
-                              // functions used by the generated code. This is needed when
-                              // dynamically loading modules that make use of runtime
+var INCLUDE_FULL_LIBRARY = 0; // Include all JS library functions instead of the sum of
+                              // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + any functions used
+                              // by the generated code. This is needed when dynamically
+                              // loading (i.e. dlopen) modules that make use of runtime
                               // library functions that are not used in the main module.
-                              // Note that this includes js libraries but *not* C. You will
-                              // need the main file to include all needed C libraries. For
-                              // example, if a library uses malloc or new, you will need
-                              // to use those in the main file too to link in dlmalloc.
+                              // Note that this only applies to js libraries, *not* C. You
+                              // will need the main file to include all needed C libraries.
+                              // For example, if a module uses malloc or new, you will
+                              // need to use those in the main file too to pull in dlmalloc
+                              // for use by the module.
 
 var SHELL_FILE = 0; // set this to a string to override the shell file used
 
