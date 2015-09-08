@@ -2087,7 +2087,7 @@ seeked= file.
     assert len(out2) > 0
     assert 'below the current directory' not in err2
     def clean(txt):
-      return filter(lambda line: 'PACKAGE_UUID' not in line, txt.split('\n'))
+      return filter(lambda line: 'PACKAGE_UUID' not in line and 'loadPackage({' not in line, txt.split('\n'))
     out = clean(out)
     out2 = clean(out2)
     assert out == out2

@@ -1031,6 +1031,46 @@ keydown(100);keyup(100); // trigger the end
     Popen([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', os.path.join('sub', 'file2.txt'), '--separate-metadata', '--js-output=files.js']).communicate()
     self.btest(os.path.join('fs', 'test_workerfs_package.cpp'), '1', args=['--proxy-to-worker'])
 
+  def test_fs_lz4fs_package(self):
+    # generate data
+    import random
+    try_delete('subdir')
+    os.mkdir('subdir')
+    open('file1.txt', 'w').write('0123456789' * (1024*128))
+    open(os.path.join('subdir', 'file2.txt'), 'w').write('1234567890' * (1024*128))
+    random_data = [chr(random.randint(0,255)) for x in range(1024*128*10 + 1)]
+    random_data[17] = 'X'
+    open('file3.txt', 'w').write(''.join(random_data))
+
+    # compress in the file packager, on the server. the client receives compressed data and can just use it. this is typical usage
+    print 'normal'
+    out = subprocess.check_output([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--lz4'])
+    open('files.js', 'w').write(out)
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js', '-s', 'LZ4=1'], timeout=60)
+    print '    opts'
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js', '-s', 'LZ4=1', '-O2'], timeout=60)
+
+    # load the data into LZ4FS manually at runtime. This means we compress on the client. This is generally not recommended
+    print 'manual'
+    subprocess.check_output([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--separate-metadata', '--js-output=files.js'])
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-s', 'LZ4=1'], timeout=60)
+    print '    opts'
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-O2'], timeout=60)
+    print '    opts+closure'
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-O2', '--closure', '1', '-g1'], timeout=60)
+
+    '''# non-lz4 for comparison
+    try:
+      os.mkdir('files')
+    except:
+      pass
+    shutil.copyfile('file1.txt', os.path.join('files', 'file1.txt'))
+    shutil.copyfile('file2.txt', os.path.join('files', 'file2.txt'))
+    shutil.copyfile('file3.txt', os.path.join('files', 'file3.txt'))
+    out = subprocess.check_output([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'files/file1.txt', 'files/file2.txt', 'files/file3.txt'])
+    open('files.js', 'w').write(out)
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js'], timeout=60)'''
+
   def test_idbstore(self):
     secret = str(time.time())
     for stage in [0, 1, 2, 3, 0, 1, 2, 0, 0, 1, 4, 2, 5]:

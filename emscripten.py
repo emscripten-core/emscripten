@@ -289,7 +289,7 @@ function _emscripten_asm_const_%d(%s) {
  return ASM_CONSTS[code](%s) | 0;
 }''' % (arity, ', '.join(all_args), ', '.join(args)))
 
-    pre = pre.replace('// === Body ===', '// === Body ===\n' + '\nvar ASM_CONSTS = [' + ', '.join(asm_consts) + '];\n' + '\n'.join(asm_const_funcs) + '\n')
+    pre = pre.replace('// === Body ===', '// === Body ===\n' + '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n' + '\n'.join(asm_const_funcs) + '\n')
 
     #if DEBUG: outfile.write('// pre\n')
     outfile.write(pre)
