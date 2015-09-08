@@ -2855,11 +2855,16 @@ var LibraryGL = {
     _emulGlGenVertexArrays(n, arrays);
 #else
 #if GL_ASSERTIONS
-    assert(GL.currentContext.vaoExt, 'Must have OES_vertex_array_object to use vao');
+    assert(GL.currentContext.vaoExt, 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
 
     for(var i = 0; i < n; i++) {
-      var vao = GL.currentContext.vaoExt.createVertexArrayOES();
+      var vao;
+#if USE_WEBGL2
+      if (GL.currentContext.createVertexArray) vao = GL.currentContext.createVertexArray();
+      if (!vao)
+#endif
+        vao = GL.currentContext.vaoExt.createVertexArrayOES();
       if (!vao) {
         GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
 #if GL_ASSERTIONS
@@ -2885,11 +2890,15 @@ var LibraryGL = {
     _emulGlDeleteVertexArrays(n, vaos);
 #else
 #if GL_ASSERTIONS
-    assert(GL.currentContext.vaoExt, 'Must have OES_vertex_array_object to use vao');
+    assert(GL.currentContext.vaoExt, 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
     for(var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('vaos', 'i*4', 'i32') }}};
-      GL.currentContext.vaoExt.deleteVertexArrayOES(GL.vaos[id]);
+#if USE_WEBGL2
+      if (GL.currentContext.deleteVertexArray) GL.currentContext.deleteVertexArray(GL.vaos[id]);
+      else
+#endif
+        GL.currentContext.vaoExt.deleteVertexArrayOES(GL.vaos[id]);
       GL.vaos[id] = null;
     }
 #endif
@@ -2904,10 +2913,13 @@ var LibraryGL = {
     _emulGlBindVertexArray(vao);
 #else
 #if GL_ASSERTIONS
-    assert(GL.currentContext.vaoExt, 'Must have OES_vertex_array_object to use vao');
+    assert(GL.currentContext.vaoExt, 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
-
-    GL.currentContext.vaoExt.bindVertexArrayOES(GL.vaos[vao]);
+#if USE_WEBGL2
+    if (GL.currentContext.bindVertexArray) GL.currentContext.bindVertexArray(GL.vaos[vao]);
+    else
+#endif
+      GL.currentContext.vaoExt.bindVertexArrayOES(GL.vaos[vao]);
 #endif
   },
 
