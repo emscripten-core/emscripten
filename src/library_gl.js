@@ -1883,6 +1883,27 @@ var LibraryGL = {
     GLctx['uniformBlockBinding'](program, uniformBlockIndex, uniformBlockBinding);
   },
 
+  glClearBufferiv__sig: 'viii',
+  glClearBufferiv: function(buffer, drawbuffer, value) {
+    var view = {{{ makeHEAPView('32', 'value', 'value+16') }}};
+    GLctx['clearBufferiv'](buffer, drawbuffer, view);
+  },
+
+  glClearBufferuiv__sig: 'viii',
+  glClearBufferuiv: function(buffer, drawbuffer, value) {
+    var view = {{{ makeHEAPView('32', 'value', 'value+16') }}};
+    GLctx['clearBufferuiv'](buffer, drawbuffer, view);
+  },
+
+  glClearBufferfv__sig: 'viii',
+  glClearBufferfv: function(buffer, drawbuffer, value) {
+    view = GL.miniTempBufferViews[3];
+    view[0] = {{{ makeGetValue('value', '0', 'float') }}};
+    view[1] = {{{ makeGetValue('value', '4', 'float') }}};
+    view[2] = {{{ makeGetValue('value', '8', 'float') }}};
+    view[3] = {{{ makeGetValue('value', '12', 'float') }}};
+    GLctx['clearBufferuiv'](buffer, drawbuffer, view);
+  },
 // ~USE_WEBGL2
 #endif
 
@@ -6815,7 +6836,8 @@ var LibraryGL = {
   glReadBuffer__sig: 'vi',
   glEndQuery__sig: 'vi',
   glRenderbufferStorageMultisample__sig: 'viiiii',
-  glCopyTexSubImage3D__sig: ['viiiiiiiii'],
+  glCopyTexSubImage3D__sig: 'viiiiiiiii',
+  glClearBufferfi__sig: 'viifi',
 #endif
 };
 
@@ -6835,6 +6857,7 @@ var glFuncs = [[0, 'finish flush'],
 #if USE_WEBGL2
 glFuncs[0][1] += ' endTransformFeedback pauseTransformFeedback resumeTransformFeedback';
 glFuncs[1][1] += ' beginTransformFeedback readBuffer endQuery';
+glFuncs[4][1] += ' clearBufferfi';
 glFuncs[5][1] += ' vertexAttribI4i vertexAttribI4ui copyBufferSubData texStorage2D renderbufferStorageMultisample';
 // TODO: Removed as a workaround, see https://bugzilla.mozilla.org/show_bug.cgi?id=1202427
 //glFuncs[6][1] += ' drawRangeElements';
