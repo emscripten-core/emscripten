@@ -221,9 +221,18 @@ an alert, followed by an exception. (Note, however, that under the hood
 Emscripten still does a function call even in this case, which has some
 amount of overhead.)
 
-You can also send values from C into JavaScript inside :c:macro:`EM_ASM_`,
-as well as receive values back (see the :c:macro:`linked macro <EM_ASM_>`
-for details. The following example will print out ``I received: 100``
+You can also send values from C into JavaScript inside :c:macro:`EM_ASM_`
+(note the extra "_" at the end), for example
+
+.. code-block:: cpp
+
+      EM_ASM_({
+        Module.print('I received: ' + $0);
+      }, 100);
+
+This will show ``I received: 100``. 
+
+You can also receive values back, for example the following will print out ``I received: 100``
 and then ``101``.
 
 .. code-block:: cpp
@@ -233,6 +242,8 @@ and then ``101``.
         return $0 + 1;
       }, 100);
       printf("%d\n", x);
+
+See the :c:macro:`emscripten.h docs <EM_ASM_>` for more details.
 
 .. note::
 
