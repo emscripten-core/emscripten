@@ -6782,6 +6782,7 @@ var LibraryGL = {
   glCullFace__sig: 'vi',
   glBlendFunc__sig: 'vii',
   glBlendFuncSeparate__sig: 'viiii',
+  glBlendColor__sig: 'vffff',
   glPolygonOffset__sig: 'vii',
   glColorMask__sig: 'viiii',
   glStencilOp__sig: 'viii',
