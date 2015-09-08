@@ -1370,16 +1370,6 @@ var LibraryGL = {
     GLctx['invalidateSubFramebuffer'](target, list, x, y, width, height);
   },
 
-  glTexStorage2D__sig: 'viiiii',
-  glTexStorage2D: function(target, levels, internalformat, width, height) {
-    GLctx['texStorage2D'](target, levels, internalformat, width, height);
-  },
-
-  glTexStorage3D__sig: 'viiiiii',
-  glTexStorage3D: function(target, levels, internalformat, width, height, depth) {
-    GLctx['texStorage3D'](target, levels, internalformat, width, height, depth);
-  },
-
   glTexImage3D__sig: 'viiiiiiiiii',
   glTexImage3D: function(target, level, internalFormat, width, height, depth, border, format, type, data) {
     GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type,
@@ -1390,17 +1380,6 @@ var LibraryGL = {
   glTexSubImage3D: function(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, data) {
     GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type,
                         HEAPU8.subarray(data));
-  },
-
-  // Framebuffer objects
-  glBlitFramebuffer__sig: 'viiiiiiiiii',
-  glBlitFramebuffer: function(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter) {
-    GLctx['blitFramebuffer'](srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter);
-  },
-
-  glReadBuffer__sig: 'vi',
-  glReadBuffer: function(src) {
-    GLctx['readBuffer'](src);
   },
 
   // Queries
@@ -1450,11 +1429,6 @@ var LibraryGL = {
     GLctx['beginQuery'](target, id ? GL.queries[id] : null);
   },
 
-  glEndQuery__sig: 'vi',
-  glEndQuery: function(target) {
-    GLctx['endQuery'](target);
-  },
-
   glGetQueryiv__sig: 'viii',
   glGetQueryiv: function(target, pname, params) {
 #if GL_ASSERTIONS
@@ -1490,12 +1464,6 @@ var LibraryGL = {
       ret = param;
     }
     {{{ makeSetValue('params', '0', 'ret', 'i32') }}};
-  },
-
-  // Renderbuffer objects
-  glRenderbufferStorageMultisample__sig: 'viiiii',
-  glRenderbufferStorageMultisample: function(target, samples, internalformat, width, height) {
-    GLctx['renderbufferStorageMultisample'](target, samples, internalformat, width, height);
   },
 
   // Sampler objects
@@ -6806,13 +6774,18 @@ var LibraryGL = {
   glVertexAttribI4i__sig: 'viiiii',
   glVertexAttribI4ui__sig: 'viiiii',
   glCopyBufferSubData__sig: 'viiiii',
+  glTexStorage2D__sig: 'viiiii',
+  glTexStorage3D__sig: 'viiiiii',
   glBeginTransformFeedback__sig: 'vi',
   glEndTransformFeedback__sig: 'v',
   glPauseTransformFeedback__sig: 'v',
   glResumeTransformFeedback__sig: 'v',
+  glBlitFramebuffer__sig: 'viiiiiiiiii',
+  glReadBuffer__sig: 'vi',
+  glEndQuery__sig: 'vi',
+  glRenderbufferStorageMultisample__sig: 'viiiii',
 #endif
 };
-
 
 // Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
 var glFuncs = [[0, 'finish flush'],
@@ -6823,14 +6796,18 @@ var glFuncs = [[0, 'finish flush'],
  [5, 'vertexAttrib4f'],
  [6, ''],
  [7, ''],
- [8, 'copyTexImage2D copyTexSubImage2D']];
+ [8, 'copyTexImage2D copyTexSubImage2D'],
+ [9, ''],
+ [10, '']];
 
 #if USE_WEBGL2
 glFuncs[0][1] += ' glEndTransformFeedback glPauseTransformFeedback glResumeTransformFeedback';
-glFuncs[1][1] += ' glBeginTransformFeedback';
-glFuncs[5][1] += ' glVertexAttribI4i glVertexAttribI4ui glCopyBufferSubData';
+glFuncs[1][1] += ' glBeginTransformFeedback glReadBuffer glEndQuery';
+glFuncs[5][1] += ' glVertexAttribI4i glVertexAttribI4ui glCopyBufferSubData glTexStorage2D glRenderbufferStorageMultisample';
 // TODO: Removed as a workaround, see https://bugzilla.mozilla.org/show_bug.cgi?id=1202427
-glFuncs[6][1] += ' glDrawRangeElements';
+//glFuncs[6][1] += ' glDrawRangeElements';
+glFuncs[6][1] += ' glTexStorage3D';
+glFuncs[10][1] += ' glBlitFramebuffer';
 #endif
 
 glFuncs.forEach(function(data) {
