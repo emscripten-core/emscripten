@@ -247,6 +247,15 @@ var STB_IMAGE = 0; // Enables building of stb-image, a tiny public-domain librar
                    // When enabled, stb-image will be used automatically from IMG_Load and IMG_Load_RW. You
                    // can also call the stbi_* functions directly yourself.
 
+var LZ4 = 0; // Enable this to support lz4-compressed file packages. They are stored compressed in memory, and
+             // decompressed on the fly, avoiding storing the entire decompressed data in memory at once.
+             // You can precompress a file package using --lz4 in the file packager, or compress one at
+             // runtime, using LZ4.loadPackage();
+             // Limitations: LZ4-compressed files are only decompressed when needed, so they are not available
+             //              for special preloading operations like pre-decoding of images using browser codecs,
+             //              preloadPlugin stuff, etc.
+
+
 var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catch exceptions. If the code you
                                     // are compiling does not actually rely on catching exceptions (but the
                                     // compiler generates code for it, maybe because of stdlibc++ stuff),

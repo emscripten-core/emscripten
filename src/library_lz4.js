@@ -1,4 +1,4 @@
-// TODO: put behind a flag
+#if LZ4
 mergeInto(LibraryManager.library, {
   $LZ4__deps: ['$FS'],
   $LZ4: {
@@ -175,9 +175,7 @@ mergeInto(LibraryManager.library, {
       },
     },
   },
-  emscripten_init_lz4__deps: ['$LZ4'],
-  emscripten_init_lz4: function() {
-    LZ4.init();
-  },
 });
+LibraryManager.library['$FS__deps'].push('$LZ4'); // LZ4=1, so auto-include us
+#endif
 

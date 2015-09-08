@@ -126,8 +126,6 @@ void EMSCRIPTEN_KEEPALIVE finish() {
 int main() {
   before_it_all = emscripten_get_now();
 
-  emscripten_init_lz4();
-
 #if LOAD_MANUALLY
   EM_ASM({
     var COMPLETE_SIZE = 10*1024*128*3;

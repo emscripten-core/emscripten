@@ -41,9 +41,7 @@ Usage:
   --separate-metadata Stores package metadata separately. Only applicable when preloading and js-output file is specified.
 
   --lz4 Uses LZ4. This compresses the data using LZ4 when this utility is run, then the client decompresses chunks on the fly, avoiding storing
-        the entire decompressed data in memory at once.
-        Limitations: LZ4-compressed files are only decompressed when needed, so they are not ready to be processed during startup, for
-                     preloading of images using browser codecs, for example.
+        the entire decompressed data in memory at once. See LZ4 in src/settings.js, you must build the main program with that flag.
 
 Notes:
 
@@ -535,7 +533,7 @@ if has_preloaded:
     use_data = '''
           var compressedData = %s;
           compressedData.data = byteArray;
-          assert(typeof LZ4 === 'object', 'LZ4 not present - does your app call emscripten_init_lz4(), which should ensure LZ4 is linked in?');
+          assert(typeof LZ4 === 'object', 'LZ4 not present - was your app build with  -s LZ4=1  ?');
           LZ4.loadPackage({ metadata: metadata, compressedData: compressedData });
           Module['removeRunDependency']('datafile_%s');
     ''' % (meta, data_target)

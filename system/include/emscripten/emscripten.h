@@ -208,10 +208,6 @@ int emscripten_async_prepare(const char* file, em_str_callback_func onload, em_s
 typedef void (*em_async_prepare_data_onload_func)(void*, const char*);
 void emscripten_async_prepare_data(char* data, int size, const char *suffix, void *arg, em_async_prepare_data_onload_func onload, em_arg_callback_func onerror);
 
-// init() methods for optional subsystems
-
-void emscripten_init_lz4(void); // see file_packager.py
-
 // worker APIs
 
 typedef int worker_handle;
