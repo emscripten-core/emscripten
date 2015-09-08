@@ -6802,14 +6802,14 @@ var glFuncs = [[0, 'finish flush'],
  [10, '']];
 
 #if USE_WEBGL2
-glFuncs[0][1] += ' glEndTransformFeedback glPauseTransformFeedback glResumeTransformFeedback';
-glFuncs[1][1] += ' glBeginTransformFeedback glReadBuffer glEndQuery';
-glFuncs[5][1] += ' glVertexAttribI4i glVertexAttribI4ui glCopyBufferSubData glTexStorage2D glRenderbufferStorageMultisample';
+glFuncs[0][1] += ' endTransformFeedback pauseTransformFeedback resumeTransformFeedback';
+glFuncs[1][1] += ' beginTransformFeedback readBuffer endQuery';
+glFuncs[5][1] += ' vertexAttribI4i vertexAttribI4ui copyBufferSubData texStorage2D renderbufferStorageMultisample';
 // TODO: Removed as a workaround, see https://bugzilla.mozilla.org/show_bug.cgi?id=1202427
-//glFuncs[6][1] += ' glDrawRangeElements';
-glFuncs[6][1] += ' glTexStorage3D';
-glFuncs[9][1] += ' glCopyTexSubImage3D';
-glFuncs[10][1] += ' glBlitFramebuffer';
+//glFuncs[6][1] += ' drawRangeElements';
+glFuncs[6][1] += ' texStorage3D';
+glFuncs[9][1] += ' copyTexSubImage3D';
+glFuncs[10][1] += ' blitFramebuffer';
 #endif
 
 glFuncs.forEach(function(data) {
