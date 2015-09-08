@@ -42,6 +42,8 @@ Usage:
 
   --lz4 Uses LZ4. This compresses the data using LZ4 when this utility is run, then the client decompresses chunks on the fly, avoiding storing
         the entire decompressed data in memory at once.
+        Limitations: LZ4-compressed files are only decompressed when needed, so they are not ready to be processed during startup, for
+                     preloading of images using browser codecs, for example.
 
 Notes:
 
