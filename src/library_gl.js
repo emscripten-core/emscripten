@@ -2447,6 +2447,20 @@ var LibraryGL = {
     GLctx.vertexAttrib4fv(index, v);
   },
 
+#if USE_WEBGL2
+  glVertexAttribI4iv__sig: 'vii',
+  glVertexAttribI4iv: function(index, v) {
+    v = {{{ makeHEAPView('32', 'v', 'v+' + (4*4)) }}};
+    GLctx.vertexAttribI4iv(index, v);
+  },
+
+  glVertexAttribI4uiv__sig: 'vii',
+  glVertexAttribI4uiv: function(index, v) {
+    v = {{{ makeHEAPView('U32', 'v', 'v+' + (4*4)) }}};
+    GLctx.vertexAttribI4uiv(index, v);
+  },
+#endif
+
   glGetAttribLocation__sig: 'vii',
   glGetAttribLocation: function(program, name) {
     program = GL.programs[program];
