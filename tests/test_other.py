@@ -2091,10 +2091,6 @@ seeked= file.
     out = clean(out)
     out2 = clean(out2)
     assert out == out2
-    # sanity check that we do generate different code for different inputs
-    out3, err3 = Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data2.txt', 'data2.txt@waka.txt'], stdout=PIPE, stderr=PIPE).communicate()
-    out3 = clean(out3)
-    assert out != out3
     # verify '--separate-metadata' option produces separate metadata file
     os.chdir('..')
     Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata']).communicate()
