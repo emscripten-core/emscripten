@@ -1073,46 +1073,74 @@ var LibraryGL = {
 
   glCompressedTexImage2D__sig: 'viiiiiiii',
   glCompressedTexImage2D: function(target, level, internalFormat, width, height, border, imageSize, data) {
+    var heapView;
     if (data) {
-      data = {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}};
+      heapView = {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}};
     } else {
-      data = null;
+      heapView = null;
     }
-    // N.b. using array notation explicitly to not confuse Closure minification.
-    GLctx['compressedTexImage2D'](target, level, internalFormat, width, height, border, data);
+    GLctx['compressedTexImage2D'](target, level, internalFormat, width, height, border, heapView);
   },
+
+#if USE_WEBGL2
+  glCompressedTexImage3D__sig: 'viiiiiiiii',
+  glCompressedTexImage3D: function(target, level, internalFormat, width, height, depth, border, imageSize, data) {
+    var heapView;
+    if (data) {
+      heapView = {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}};
+    } else {
+      heapView = null;
+    }
+    GLctx['compressedTexImage3D'](target, level, internalFormat, width, height, depth, border, heapView);
+  },
+#endif
 
   glCompressedTexSubImage2D__sig: 'viiiiiiiii',
   glCompressedTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, imageSize, data) {
+    var heapView;
     if (data) {
-      data = {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}};
+      heapView = {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}};
     } else {
-      data = null;
+      heapView = null;
     }
-    GLctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, width, height, format, data);
+    GLctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, width, height, format, heapView);
   },
+
+#if USE_WEBGL2
+  glCompressedTexSubImage3D__sig: 'viiiiiiiiiii',
+  glCompressedTexSubImage3D: function(target, level, xoffset, yoffset, zoffset, width, height, depth, format, imageSize, data) {
+    var heapView;
+    if (data) {
+      heapView = {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}};
+    } else {
+      heapView = null;
+    }
+    GLctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, heapView);
+  },
+#endif
 
   glTexImage2D__sig: 'viiiiiiiii',
   glTexImage2D: function(target, level, internalFormat, width, height, border, format, type, pixels) {
+    var pixelData;
     if (pixels) {
       var data = GL.getTexPixelData(type, format, width, height, pixels, internalFormat);
-      pixels = data.pixels;
+      pixelData = data.pixels;
       internalFormat = data.internalFormat;
     } else {
-      pixels = null;
+      pixelData = null;
     }
-    GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
+    GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixelData);
   },
 
   glTexSubImage2D__sig: 'viiiiiiiii',
   glTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, type, pixels) {
+    var pixelData;
     if (pixels) {
-      var data = GL.getTexPixelData(type, format, width, height, pixels, -1);
-      pixels = data.pixels;
+      pixelData = GL.getTexPixelData(type, format, width, height, pixels, -1).pixels;
     } else {
-      pixels = null;
+      pixelData = null;
     }
-    GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
+    GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixelData);
   },
 
   glReadPixels__sig: 'viiiiiii',
