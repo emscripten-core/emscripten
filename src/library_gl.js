@@ -6838,6 +6838,7 @@ var LibraryGL = {
   glRenderbufferStorageMultisample__sig: 'viiiii',
   glCopyTexSubImage3D__sig: 'viiiiiiiii',
   glClearBufferfi__sig: 'viifi',
+  glFramebufferTextureLayer__sig: 'viiiii',
 #endif
 };
 
@@ -6858,7 +6859,7 @@ var glFuncs = [[0, 'finish flush'],
 glFuncs[0][1] += ' endTransformFeedback pauseTransformFeedback resumeTransformFeedback';
 glFuncs[1][1] += ' beginTransformFeedback readBuffer endQuery';
 glFuncs[4][1] += ' clearBufferfi';
-glFuncs[5][1] += ' vertexAttribI4i vertexAttribI4ui copyBufferSubData texStorage2D renderbufferStorageMultisample';
+glFuncs[5][1] += ' vertexAttribI4i vertexAttribI4ui copyBufferSubData texStorage2D renderbufferStorageMultisample framebufferTextureLayer';
 // TODO: Removed as a workaround, see https://bugzilla.mozilla.org/show_bug.cgi?id=1202427
 //glFuncs[6][1] += ' drawRangeElements';
 glFuncs[6][1] += ' texStorage3D';
