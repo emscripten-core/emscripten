@@ -6567,7 +6567,8 @@ var LibraryGL = {
   glVertexAttrib4f__sig: 'viiiii',
 #if USE_WEBGL2
   glVertexAttribI4i__sig: 'viiiii',
-  glVertexAttribI4ui_sig: 'viiiii',
+  glVertexAttribI4ui__sig: 'viiiii',
+  glCopyBufferSubData__sig: 'viiiii',
 #endif
   glCullFace__sig: 'vi',
   glBlendFunc__sig: 'vii',
@@ -6605,7 +6606,7 @@ var glFuncs = [[0, 'finish flush'],
  [8, 'copyTexImage2D copyTexSubImage2D']];
 
 #if USE_WEBGL2
-glFuncs[5] = glFuncs[5].concat(['glVertexAttribI4i', 'glVertexAttribI4ui']);
+glFuncs[5] = glFuncs[5].concat(['glVertexAttribI4i', 'glVertexAttribI4ui', 'glCopyBufferSubData']);
 // TODO: Removed as a workaround, see https://bugzilla.mozilla.org/show_bug.cgi?id=1202427
 //glFuncs[6] = glfuncs[6].concat(['glDrawRangeElements']);
 #endif
