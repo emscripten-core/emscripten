@@ -807,7 +807,6 @@ var LibraryGL = {
     // In GLES2, all extensions are enabled by default without additional operations. Init all extensions we need to give to GLES2 user
     // code here, so that GLES2 code can operate without changing behavior.
     initExtensions: function(context) {
-
       // If this function is called without a specific context object, init the extensions of the currently active context.
       if (!context) context = GL.currentContext;
 
@@ -827,10 +826,10 @@ var LibraryGL = {
 #endif
 
       // Detect the presence of a few extensions manually, this GL interop layer itself will need to know if they exist. 
+#if LEGACY_GL_EMULATION
       context.compressionExt = GLctx.getExtension('WEBGL_compressed_texture_s3tc');
       context.anisotropicExt = GLctx.getExtension('EXT_texture_filter_anisotropic');
-      context.floatExt = GLctx.getExtension('OES_texture_float');
-
+#endif
       // Extension available from Firefox 26 and Google Chrome 30
       context.instancedArraysExt = GLctx.getExtension('ANGLE_instanced_arrays');
       
@@ -1074,9 +1073,6 @@ var LibraryGL = {
 
   glCompressedTexImage2D__sig: 'viiiiiiii',
   glCompressedTexImage2D: function(target, level, internalFormat, width, height, border, imageSize, data) {
-#if ASSERTIONS
-    assert(GL.currentContext.compressionExt);
-#endif
     if (data) {
       data = {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}};
     } else {
@@ -1088,9 +1084,6 @@ var LibraryGL = {
 
   glCompressedTexSubImage2D__sig: 'viiiiiiiii',
   glCompressedTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, imageSize, data) {
-#if ASSERTIONS
-    assert(GL.currentContext.compressionExt);
-#endif
     if (data) {
       data = {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}};
     } else {
