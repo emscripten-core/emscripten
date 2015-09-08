@@ -115,8 +115,8 @@ if (typeof print === 'undefined') {
   this['print'] = printErr;
 }
 
-assert = function(x) {
-  if (!x) throw 'assertion failed ' + new Error().stack;
+assert = function(x, message) {
+  if (!x) throw 'assertion failed: ' + message + ' : ' + new Error().stack;
 }
 
 if (!Math['imul'] || Math['imul'](0xffffffff, 5) !== -5) Math['imul'] = function imul(a, b) {
