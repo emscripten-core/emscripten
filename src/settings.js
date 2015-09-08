@@ -251,10 +251,11 @@ var LZ4 = 0; // Enable this to support lz4-compressed file packages. They are st
              // decompressed on the fly, avoiding storing the entire decompressed data in memory at once.
              // You can precompress a file package using --lz4 in the file packager, or compress one at
              // runtime, using LZ4.loadPackage();
-             // Limitations: LZ4-compressed files are only decompressed when needed, so they are not available
-             //              for special preloading operations like pre-decoding of images using browser codecs,
-             //              preloadPlugin stuff, etc.
-
+             // Limitations:
+             //   * LZ4-compressed files are only decompressed when needed, so they are not available
+             //     for special preloading operations like pre-decoding of images using browser codecs,
+             //     preloadPlugin stuff, etc.
+             //   * LZ4 files are read-only.
 
 var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catch exceptions. If the code you
                                     // are compiling does not actually rely on catching exceptions (but the
