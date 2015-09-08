@@ -2767,6 +2767,33 @@ var LibraryGL = {
     return GLctx.isProgram(program);
   },
 
+#if USE_WEBGL2
+  glProgramParameteri__sig: 'viii',
+  glProgramParameteri: function(program, pname, value) {
+    GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+#if GL_ASSERTIONS
+    Module.printErr("GL_INVALID_ENUM in glProgramParameteri: WebGL does not support binary shader formats! Calls to glProgramParameteri always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4");
+#endif
+  },
+
+  glGetProgramBinary__sig: 'viiiii',
+  glGetProgramBinary: function(program, bufSize, length, binaryFormat, binary) {
+    GL.recordError(0x0502/*GL_INVALID_OPERATION*/);
+#if GL_ASSERTIONS
+    Module.printErr("GL_INVALID_OPERATION in glGetProgramBinary: WebGL does not support binary shader formats! Calls to glGetProgramBinary always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4");
+#endif
+  },
+
+  glProgramBinary__sig: 'viiii',
+  glProgramBinary: function(program, binaryFormat, binary, length) {
+    GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+#if GL_ASSERTIONS
+    Module.printErr("GL_INVALID_ENUM in glProgramBinary: WebGL does not support binary shader formats! Calls to glProgramBinary always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4");
+#endif
+  },
+
+#endif
+
   glBindAttribLocation__sig: 'viii',
   glBindAttribLocation: function(program, index, name) {
 #if GL_ASSERTIONS
@@ -6467,7 +6494,7 @@ var LibraryGL = {
     GL.recordError(0x0500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
     Module.printErr("GL_INVALID_ENUM in glShaderBinary: WebGL does not support binary shader formats! Calls to glShaderBinary always fail.");
-#endif    
+#endif
   },
 
   glReleaseShaderCompiler__sig: 'v',
