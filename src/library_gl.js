@@ -1661,26 +1661,6 @@ var LibraryGL = {
     GLctx['bindTransformFeedback'](target, transformFeedback);
   },
 
-  glBeginTransformFeedback__sig: 'vi',
-  glBeginTransformFeedback: function(primitiveMode) {
-    GLctx['beginTransformFeedback'](primitiveMode);
-  },
-
-  glEndTransformFeedback__sig: 'v',
-  glEndTransformFeedback: function() {
-    GLctx['endTransformFeedback']();
-  },
-
-  glPauseTransformFeedback__sig: 'v',
-  glPauseTransformFeedback: function() {
-    GLctx['pauseTransformFeedback']();
-  },
-
-  glResumeTransformFeedback__sig: 'v',
-  glResumeTransformFeedback: function() {
-    GLctx['resumeTransformFeedback']();
-  },
-
   glTransformFeedbackVaryings__sig: 'viiii',
   glTransformFeedbackVaryings: function(program, count, varyings, bufferMode) {
 #if GL_ASSERTIONS
@@ -6801,11 +6781,6 @@ var LibraryGL = {
   glVertexAttrib2f__sig: 'viii',
   glVertexAttrib3f__sig: 'viiii',
   glVertexAttrib4f__sig: 'viiiii',
-#if USE_WEBGL2
-  glVertexAttribI4i__sig: 'viiiii',
-  glVertexAttribI4ui__sig: 'viiiii',
-  glCopyBufferSubData__sig: 'viiiii',
-#endif
   glCullFace__sig: 'vi',
   glBlendFunc__sig: 'vii',
   glBlendFuncSeparate__sig: 'viiii',
@@ -6827,6 +6802,15 @@ var LibraryGL = {
   glIsEnabled__sig: 'ii',
   glFrontFace__sig: 'vi',
   glSampleCoverage__sig: 'vii',
+#if USE_WEBGL2
+  glVertexAttribI4i__sig: 'viiiii',
+  glVertexAttribI4ui__sig: 'viiiii',
+  glCopyBufferSubData__sig: 'viiiii',
+  glBeginTransformFeedback__sig: 'vi',
+  glEndTransformFeedback__sig: 'v',
+  glPauseTransformFeedback__sig: 'v',
+  glResumeTransformFeedback__sig: 'v',
+#endif
 };
 
 
@@ -6842,6 +6826,8 @@ var glFuncs = [[0, 'finish flush'],
  [8, 'copyTexImage2D copyTexSubImage2D']];
 
 #if USE_WEBGL2
+glFuncs[0][1] += ' glEndTransformFeedback glPauseTransformFeedback glResumeTransformFeedback';
+glFuncs[1][1] += ' glBeginTransformFeedback';
 glFuncs[5][1] += ' glVertexAttribI4i glVertexAttribI4ui glCopyBufferSubData';
 // TODO: Removed as a workaround, see https://bugzilla.mozilla.org/show_bug.cgi?id=1202427
 glFuncs[6][1] += ' glDrawRangeElements';
