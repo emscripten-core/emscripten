@@ -69,7 +69,7 @@ void EMSCRIPTEN_KEEPALIVE finish() {
   ret = fseek(f3, TOTAL_SIZE - 5000, SEEK_SET); assert(ret == 0);
   num = fread(buffer, 1, 1, f3); assert(num == 1); // also near the end
   EM_ASM({
-    assert(!Module.decompressedChunks);
+    assert(!Module['decompressedChunks']);
     Module.compressedData.debug = true;
     console.log('last cached indexes ' + Module.compressedData.cachedIndexes);
     assert(Module.compressedData.cachedIndexes.indexOf(0) < 0); // 0 is not cached
@@ -82,7 +82,7 @@ void EMSCRIPTEN_KEEPALIVE finish() {
     assert(num == 1);
   }
   EM_ASM({
-    assert(Module.decompressedChunks == 1, ['seeing', Module.decompressedChunks, 'decompressed chunks']);
+    assert(Module['decompressedChunks'] == 1, ['seeing', Module['decompressedChunks'], 'decompressed chunks']);
   });
   printf("multiple reads of adjoining byte\n");
   for (int i = 0; i < 100; i++) {
@@ -92,7 +92,7 @@ void EMSCRIPTEN_KEEPALIVE finish() {
     assert(num == 1);
   }
   EM_ASM({
-    assert(Module.decompressedChunks == 1, ['seeing', Module.decompressedChunks, 'decompressed chunks']);
+    assert(Module['decompressedChunks'] == 1, ['seeing', Module['decompressedChunks'], 'decompressed chunks']);
   });
   printf("multiple reads across two chunks\n");
   for (int i = 0; i < 2100; i++) {
@@ -102,7 +102,7 @@ void EMSCRIPTEN_KEEPALIVE finish() {
     assert(num == 1);
   }
   EM_ASM({
-    assert(Module.decompressedChunks == 2, ['seeing', Module.decompressedChunks, 'decompressed chunks']);
+    assert(Module['decompressedChunks'] == 2, ['seeing', Module['decompressedChunks'], 'decompressed chunks']);
   });
   printf("caching test ok\n");
 #endif
@@ -138,7 +138,7 @@ int main() {
 
       Module.print('loading into filesystem');
       FS.mkdir('/files');
-      LZ4.loadPackage({ metadata: meta, data: data });
+      LZ4.loadPackage({ 'metadata': meta, 'data': data });
 
       Module.compressedData = FS.root.contents['file1.txt'].contents.compressedData;
       var compressedSize = Module.compressedData.data.length;
@@ -147,7 +147,7 @@ int main() {
       console.log('seeing compressed size of ' + compressedSize + ', expect in ' + [low, high]);
       assert(compressedSize > low && compressedSize < high); // more than 1/3, because 1/3 is uncompressible, but still, less than 1/2
 
-      Module.ccall('finish');
+      Module['ccall']('finish');
     }
 
     var meta_xhr = new XMLHttpRequest();
