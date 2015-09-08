@@ -271,7 +271,10 @@ function compressBlock (src, dst, pos, hashTable, sIdx, eIdx) {
 
 exports.CHUNK_SIZE = 2048; // musl libc does readaheads of 1024 bytes, so a multiple of that is a good idea
 
-exports.compressPackage = function(data) {
+exports.compressPackage = function(data, verify) {
+  if (verify) {
+    var temp = new Uint8Array(exports.CHUNK_SIZE);
+  }
   // compress the data in chunks
   assert(data instanceof ArrayBuffer);
   data = new Uint8Array(data);
@@ -293,6 +296,13 @@ exports.compressPackage = function(data) {
       compressedChunks.push(compressed);
       total += compressedSize;
       successes.push(1);
+      if (verify) {
+        var back = exports.uncompress(compressed, temp);
+        assert(back === chunk.length, [back, chunk.length]);
+        for (var i = 0; i < chunk.length; i++) {
+          assert(chunk[i] === temp[i]);
+        }
+      }
     } else {
       assert(compressedSize === 0);
       // failure to compress :(
