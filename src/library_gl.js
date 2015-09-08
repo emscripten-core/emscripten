@@ -844,8 +844,8 @@ var LibraryGL = {
         var vaoExt = GLctx.getExtension('OES_vertex_array_object');
         if (vaoExt) {
           GLctx.createVertexArray = function() { return vaoExt.createVertexArrayOES(); }
-          GLctx.deleteVertexArray = function(vao) { return vaoExt.deleteVertexArrayOES(vao); }
-          GLctx.bindVertexArray = function(vao) { return vaoExt.bindVertexArrayOES(vao); }
+          GLctx.deleteVertexArray = function(vao) { vaoExt.deleteVertexArrayOES(vao); }
+          GLctx.bindVertexArray = function(vao) { vaoExt.bindVertexArrayOES(vao); }
           GLctx.isVertexArray = function(vao) { return vaoExt.isVertexArrayOES(vao); }
         }
 
