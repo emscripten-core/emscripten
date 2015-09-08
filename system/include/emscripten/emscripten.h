@@ -210,7 +210,7 @@ void emscripten_async_prepare_data(char* data, int size, const char *suffix, voi
 
 // init() methods for optional subsystems
 
-void emscripten_init_lz4(void);
+void emscripten_init_lz4(void); // see file_packager.py
 
 // worker APIs
 
