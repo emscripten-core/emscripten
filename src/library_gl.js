@@ -6784,6 +6784,7 @@ var LibraryGL = {
   glReadBuffer__sig: 'vi',
   glEndQuery__sig: 'vi',
   glRenderbufferStorageMultisample__sig: 'viiiii',
+  glCopyTexSubImage3D__sig: ['viiiiiiiii'],
 #endif
 };
 
@@ -6807,6 +6808,7 @@ glFuncs[5][1] += ' glVertexAttribI4i glVertexAttribI4ui glCopyBufferSubData glTe
 // TODO: Removed as a workaround, see https://bugzilla.mozilla.org/show_bug.cgi?id=1202427
 //glFuncs[6][1] += ' glDrawRangeElements';
 glFuncs[6][1] += ' glTexStorage3D';
+glFuncs[9][1] += ' glCopyTexSubImage3D';
 glFuncs[10][1] += ' glBlitFramebuffer';
 #endif
 
