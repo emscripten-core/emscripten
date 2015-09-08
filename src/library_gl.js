@@ -848,19 +848,10 @@ var LibraryGL = {
           GLctx.bindVertexArray = function(vao) { return vaoExt.bindVertexArrayOES(vao); }
           GLctx.isVertexArray = function(vao) { return vaoExt.isVertexArrayOES(vao); }
         }
-      }
 
-      if (context.version === 2) {
-        // drawBuffers is available in WebGL2 by default.
-        context.drawBuffersExt = function(n, bufs) {
-          GLctx['drawBuffers'](n, bufs);
-        };
-      } else {
-        var ext = GLctx.getExtension('WEBGL_draw_buffers');
-        if (ext) {
-          context.drawBuffersExt = function(n, bufs) {
-            ext.drawBuffersWEBGL(n, bufs);
-          };
+        var drawBuffersExt = GLctx.getExtension('WEBGL_draw_buffers');
+        if (drawBuffersExt) {
+          GLctx.drawBuffers = function(n, bufs) { drawBuffersExt.drawBuffersWEBGL(n, bufs); }
         }
       }
 
@@ -6756,13 +6747,13 @@ var LibraryGL = {
   glDrawBuffers__sig: 'vii',
   glDrawBuffers: function(n, bufs) {
 #if GL_ASSERTIONS
-    assert(GL.currentContext.drawBuffersExt, 'Must have WebGL2 or WEBGL_draw_buffers extension to use drawBuffers');
+    assert(GL.currentContext.drawBuffers, 'Must have WebGL2 or WEBGL_draw_buffers extension to use drawBuffers');
 #endif
     var bufArray = [];
     for (var i = 0; i < n; i++)
       bufArray.push({{{ makeGetValue('bufs', 'i*4', 'i32') }}});
 
-    GL.currentContext.drawBuffersExt(bufArray);
+    GL.currentContext.drawBuffers(bufArray);
   },
 
   // OpenGL ES 2.0 draw buffer extensions compatibility
