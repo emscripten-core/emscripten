@@ -249,8 +249,9 @@ var STB_IMAGE = 0; // Enables building of stb-image, a tiny public-domain librar
 
 var LZ4 = 0; // Enable this to support lz4-compressed file packages. They are stored compressed in memory, and
              // decompressed on the fly, avoiding storing the entire decompressed data in memory at once.
-             // You can precompress a file package using --lz4 in the file packager, or compress one at
-             // runtime, using LZ4.loadPackage();
+             // You can compress a file package using --lz4 in the file packager.
+             // (You can also manually compress one on the client, using LZ4.loadPackage(), but doing it ahead of
+             // time in the file packager is generally better.)
              // Limitations:
              //   * LZ4-compressed files are only decompressed when needed, so they are not available
              //     for special preloading operations like pre-decoding of images using browser codecs,
