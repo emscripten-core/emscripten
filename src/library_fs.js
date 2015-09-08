@@ -1544,14 +1544,20 @@ mergeInto(LibraryManager.library, {
       var path = PATH.join2(typeof parent === 'string' ? parent : FS.getPath(parent), name);
       return FS.symlink(target, path);
     },
-    ensureFolder: function(path, canRead, canWrite) {
+    // Creates all necessary folders so that path exists and is a directory, if they do
+    // not already exist.
+    // If a non-directory blocks doing so, throws EEXIST.
+    createFolders: function(path, canRead, canWrite) {
       if (path === '/') return;
       var mode = FS.getMode(canRead, canWrite);
       var parts = path.split('/');
       for (var i = 2; i <= parts.length; i++) {
         var curr = parts.slice(0, i).join('/');
-        if (!FS.analyzePath(curr).object) {
+        var seen = FS.analyzePath(curr).object;
+        if (!seen) {
           FS.mkdir(curr, mode);
+        } else if (!FS.isDir(seen.mode)) {
+          throw new FS.ErrnoError(ERRNO_CODES.EEXIST);
         }
       }
     },
