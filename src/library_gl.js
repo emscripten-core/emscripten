@@ -6439,6 +6439,17 @@ var LibraryGL = {
 #endif
   },
 
+#if USE_WEBGL2
+  glDrawRangeElements__sig: 'viiiiii',
+  glDrawRangeElements__deps: ['glDrawElements'],
+  glDrawRangeElements: function(mode, start, end, count, type, indices) {
+    // TODO: This should be a trivial pass-though function, but due to https://bugzilla.mozilla.org/show_bug.cgi?id=1202427,
+    // we work around by ignoring the range.
+    _glDrawElements(mode, count, type, indices);
+    GLctx.drawElements(mode, count, type, indices);
+  },
+#endif
+
   glShaderBinary__sig: 'v',
   glShaderBinary: function() {
     GL.recordError(0x0500/*GL_INVALID_ENUM*/);
@@ -6595,6 +6606,8 @@ var glFuncs = [[0, 'finish flush'],
 
 #if USE_WEBGL2
 glFuncs[5] = glFuncs[5].concat(['glVertexAttribI4i', 'glVertexAttribI4ui']);
+// TODO: Removed as a workaround, see https://bugzilla.mozilla.org/show_bug.cgi?id=1202427
+//glFuncs[6] = glfuncs[6].concat(['glDrawRangeElements']);
 #endif
 
 glFuncs.forEach(function(data) {
