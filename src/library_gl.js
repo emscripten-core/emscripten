@@ -836,7 +836,13 @@ var LibraryGL = {
         context.instancedArraysExt = GLctx.getExtension('ANGLE_instanced_arrays');
 
         // Extension available from Firefox 25 and WebKit
-        context.vaoExt = GLctx.getExtension('OES_vertex_array_object');
+        var vaoExt = GLctx.getExtension('OES_vertex_array_object');
+        if (vaoExt) {
+          GLctx.createVertexArray = function() { return vaoExt.createVertexArrayOES(); }
+          GLctx.deleteVertexArray = function(vao) { return vaoExt.deleteVertexArrayOES(vao); }
+          GLctx.bindVertexArray = function(vao) { return vaoExt.bindVertexArrayOES(vao); }
+          GLctx.isVertexArray = function(vao) { return vaoExt.isVertexArrayOES(vao); }
+        }
       }
 
       if (context.version === 2) {
@@ -3081,16 +3087,11 @@ var LibraryGL = {
     _emulGlGenVertexArrays(n, arrays);
 #else
 #if GL_ASSERTIONS
-    assert(GL.currentContext.createVertexArray || GL.currentContext.vaoExt, 'Must have WebGL2 or OES_vertex_array_object to use vao');
+    assert(GL.currentContext.createVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
 
     for(var i = 0; i < n; i++) {
-      var vao;
-#if USE_WEBGL2
-      if (GL.currentContext.createVertexArray) vao = GL.currentContext.createVertexArray();
-      if (!vao)
-#endif
-        vao = GL.currentContext.vaoExt.createVertexArrayOES();
+      var vao = GL.currentContext.createVertexArray();
       if (!vao) {
         GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
 #if GL_ASSERTIONS
@@ -3116,15 +3117,11 @@ var LibraryGL = {
     _emulGlDeleteVertexArrays(n, vaos);
 #else
 #if GL_ASSERTIONS
-    assert(GL.currentContext.deleteVertexArray || GL.currentContext.vaoExt, 'Must have WebGL2 or OES_vertex_array_object to use vao');
+    assert(GL.currentContext.deleteVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
     for(var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('vaos', 'i*4', 'i32') }}};
-#if USE_WEBGL2
-      if (GL.currentContext.deleteVertexArray) GL.currentContext.deleteVertexArray(GL.vaos[id]);
-      else
-#endif
-        GL.currentContext.vaoExt.deleteVertexArrayOES(GL.vaos[id]);
+      GL.currentContext.deleteVertexArray(GL.vaos[id]);
       GL.vaos[id] = null;
     }
 #endif
@@ -3139,13 +3136,9 @@ var LibraryGL = {
     _emulGlBindVertexArray(vao);
 #else
 #if GL_ASSERTIONS
-    assert(GL.currentContext.bindVertexArray || GL.currentContext.vaoExt, 'Must have WebGL2 or OES_vertex_array_object to use vao');
+    assert(GL.currentContext.bindVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
-#if USE_WEBGL2
-    if (GL.currentContext.bindVertexArray) GL.currentContext.bindVertexArray(GL.vaos[vao]);
-    else
-#endif
-      GL.currentContext.vaoExt.bindVertexArrayOES(GL.vaos[vao]);
+    GL.currentContext.bindVertexArray(GL.vaos[vao]);
 #endif
   },
 
@@ -3158,16 +3151,12 @@ var LibraryGL = {
     return _emulGlIsVertexArray(array);
 #else
 #if GL_ASSERTIONS
-    assert(GL.currentContext.isVertexArray || GL.currentContext.vaoExt, 'Must have WebGL2 or OES_vertex_array_object to use vao');
+    assert(GL.currentContext.isVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif  
 
     var vao = GL.vaos[array];
     if (!vao) return 0;
-#if USE_WEBGL2
-    if (GL.currentContext.isVertexArray) return GL.currentContext.isVertexArray(vao);
-    else
-#endif
-      return GL.currentContext.vaoExt.isVertexArrayOES(vao);
+    return GL.currentContext.isVertexArray(vao);
 #endif
   },
 
