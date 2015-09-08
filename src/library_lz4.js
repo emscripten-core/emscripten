@@ -29,7 +29,7 @@ mergeInto(LibraryManager.library, {
       pack['metadata'].files.forEach(function(file) {
         var dir = PATH.dirname(file.filename);
         var name = PATH.basename(file.filename);
-        FS.createFolders(dir, true, true);
+        FS.createPath('', dir, true, true);
         var parent = FS.analyzePath(dir).object;
         LZ4.createNode(parent, name, LZ4.FILE_MODE, 0, {
           compressedData: compressedData,
