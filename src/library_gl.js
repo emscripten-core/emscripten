@@ -6536,6 +6536,10 @@ var LibraryGL = {
   glVertexAttrib2f__sig: 'viii',
   glVertexAttrib3f__sig: 'viiii',
   glVertexAttrib4f__sig: 'viiiii',
+#if USE_WEBGL2
+  glVertexAttribI4i__sig: 'viiiii',
+  glVertexAttribI4ui_sig: 'viiiii',
+#endif
   glCullFace__sig: 'vi',
   glBlendFunc__sig: 'vii',
   glBlendFuncSeparate__sig: 'viiii',
@@ -6561,13 +6565,21 @@ var LibraryGL = {
 
 
 // Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
-[[0, 'finish flush'],
+var glFuncs = [[0, 'finish flush'],
  [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear lineWidth clearStencil depthMask stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation isEnabled*'],
  [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate hint polygonOffset vertexAttrib1f sampleCoverage'],
  [3, 'texParameteri texParameterf vertexAttrib2f stencilFunc stencilOp'],
  [4, 'viewport clearColor scissor vertexAttrib3f colorMask renderbufferStorage blendFuncSeparate blendColor stencilFuncSeparate stencilOpSeparate'],
  [5, 'vertexAttrib4f'],
- [8, 'copyTexImage2D copyTexSubImage2D']].forEach(function(data) {
+ [6],
+ [7],
+ [8, 'copyTexImage2D copyTexSubImage2D']];
+
+#if USE_WEBGL2
+glFuncs[5] = glFuncs[5].concat(['glVertexAttribI4i', 'glVertexAttribI4ui']);
+#endif
+
+glFuncs.forEach(function(data) {
   var num = data[0];
   var names = data[1];
   var args = range(num).map(function(i) { return 'x' + i }).join(', ');
