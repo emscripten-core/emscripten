@@ -11,7 +11,7 @@ data downloads.
 
 Usage:
 
-  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--compress COMPRESSION_DATA] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy] [--separate-metadata] [--lz4=DIR_NAME]
+  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--compress COMPRESSION_DATA] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy] [--separate-metadata] [--lz4]
 
   --preload  ,
   --embed    See emcc --help for more details on those options.
@@ -40,9 +40,8 @@ Usage:
 
   --separate-metadata Stores package metadata separately. Only applicable when preloading and js-output file is specified.
 
-  --lz4=DIR_NAME Uses LZ4FS. This compresses the data using LZ4 when this utility is run, then the client decompresses chunks on the fly, avoiding storing
-                 the entire decompressed data in memory at once. DIR_NAME is the name of a directory to mount the files under (LZ4FS cannot be mounted
-                 on /, it has to be a subdirectory)
+  --lz4 Uses LZ4. This compresses the data using LZ4 when this utility is run, then the client decompresses chunks on the fly, avoiding storing
+        the entire decompressed data in memory at once.
 
 Notes:
 
@@ -100,7 +99,7 @@ no_heap_copy = True
 # If set to True, the package metadata is stored separately from js-output file which makes js-output file immutable to the package content changes.
 # If set to False, the package metadata is stored inside the js-output file which makes js-output file to mutate on each invocation of this packager tool.
 separate_metadata  = False
-lz4 = None
+lz4 = False
 
 for arg in sys.argv[2:]:
   if arg == '--preload':
@@ -126,8 +125,8 @@ for arg in sys.argv[2:]:
   elif arg == '--separate-metadata':
     separate_metadata = True
     leading = ''
-  elif arg.startswith('--lz4='):
-    lz4 = arg.split('=')[1]
+  elif arg == '--lz4':
+    lz4 = True
     leading = ''
   elif arg.startswith('--js-output'):
     jsoutput = arg.split('=')[1] if '=' in arg else None
@@ -532,13 +531,12 @@ if has_preloaded:
     meta = run_js(shared.path_from_root('tools', 'lz4-compress.js'), shared.NODE_JS, [shared.path_from_root('src', 'mini-lz4.js'), temp, data_target], stdout=PIPE)
     os.unlink(temp)
     use_data = '''
-          var LZ4_DIR = '%s';
-          FS.mkdir('/' + LZ4_DIR);
           var compressedData = %s;
           compressedData.data = byteArray;
-          LZ4FS.loadPackage({ metadata: metadata, compressedData: compressedData });
+          assert(typeof LZ4 === 'object', 'LZ4 not present - does your app call emscripten_init_lz4(), which should ensure LZ4 is linked in?');
+          LZ4.loadPackage({ metadata: metadata, compressedData: compressedData });
           Module['removeRunDependency']('datafile_%s');
-    ''' % (lz4, meta, data_target)
+    ''' % (meta, data_target)
 
   package_uuid = uuid.uuid4();
   package_name = Compression.compressed_name(data_target) if Compression.on else data_target

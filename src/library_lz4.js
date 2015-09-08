@@ -1,31 +1,29 @@
 // TODO: put behind a flag
 mergeInto(LibraryManager.library, {
-  $LZ4FS__deps: ['$FS'],
-  $LZ4FS: {
+  $LZ4__deps: ['$FS'],
+  $LZ4: {
     DIR_MODE: {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */,
     FILE_MODE: {{{ cDefine('S_IFREG') }}} | 511 /* 0777 */,
     CHUNK_SIZE: -1,
-    LZ4: null,
+    codec: null,
+    init: function() {
+      if (LZ4.codec) return;
+      LZ4.codec = (function() {
+        {{{ read('mini-lz4.js') }}};
+        return MiniLZ4;
+      })();
+      LZ4.CHUNK_SIZE = LZ4.codec.CHUNK_SIZE;
+    },
     loadPackage: function (pack) {
-      if (!LZ4FS.LZ4) {
-        LZ4FS.LZ4 = (function() {
-          {{{ read('mini-lz4.js') }}};
-          return MiniLZ4;
-        })();
-        LZ4FS.CHUNK_SIZE = LZ4FS.LZ4.CHUNK_SIZE;
-      }
-      function base(path) {
-        var parts = path.split('/');
-        return parts[parts.length-1];
-      }
+      LZ4.init();
       var compressedData = pack['compressedData'];
-      if (!compressedData) compressedData = LZ4FS.LZ4.compressPackage(pack['data']);
+      if (!compressedData) compressedData = LZ4.codec.compressPackage(pack['data']);
       assert(compressedData.cachedIndexes.length === compressedData.cachedChunks.length);
       for (var i = 0; i < compressedData.cachedIndexes.length; i++) {
         compressedData.cachedIndexes[i] = -1;
-        compressedData.cachedChunks[i] = compressedData.data.subarray(compressedData.cachedOffset + i*LZ4FS.CHUNK_SIZE,
-                                                                      compressedData.cachedOffset + (i+1)*LZ4FS.CHUNK_SIZE);
-        assert(compressedData.cachedChunks[i].length === LZ4FS.CHUNK_SIZE);
+        compressedData.cachedChunks[i] = compressedData.data.subarray(compressedData.cachedOffset + i*LZ4.CHUNK_SIZE,
+                                                                      compressedData.cachedOffset + (i+1)*LZ4.CHUNK_SIZE);
+        assert(compressedData.cachedChunks[i].length === LZ4.CHUNK_SIZE);
       }
       console.log('loading package');
       pack['metadata'].files.forEach(function(file) {
@@ -33,7 +31,7 @@ mergeInto(LibraryManager.library, {
         var name = PATH.basename(file.filename);
         FS.ensureFolder(dir, true, true);
         var parent = FS.analyzePath(dir).object;
-        LZ4FS.createNode(parent, name, LZ4FS.FILE_MODE, 0, {
+        LZ4.createNode(parent, name, LZ4.FILE_MODE, 0, {
           compressedData: compressedData,
           start: file.start,
           end: file.end,
@@ -43,11 +41,11 @@ mergeInto(LibraryManager.library, {
     createNode: function (parent, name, mode, dev, contents, mtime) {
       var node = FS.createNode(parent, name, mode);
       node.mode = mode;
-      node.node_ops = LZ4FS.node_ops;
-      node.stream_ops = LZ4FS.stream_ops;
+      node.node_ops = LZ4.node_ops;
+      node.stream_ops = LZ4.stream_ops;
       node.timestamp = (mtime || new Date).getTime();
-      assert(LZ4FS.FILE_MODE !== LZ4FS.DIR_MODE);
-      if (mode === LZ4FS.FILE_MODE) {
+      assert(LZ4.FILE_MODE !== LZ4.DIR_MODE);
+      if (mode === LZ4.FILE_MODE) {
         node.size = contents.end - contents.start;
         node.contents = contents;
       } else {
@@ -112,7 +110,7 @@ mergeInto(LibraryManager.library, {
     },
     stream_ops: {
       read: function (stream, buffer, offset, length, position) {
-        //console.log('LZ4FS read ' + [offset, length, position]);
+        //console.log('LZ4 read ' + [offset, length, position]);
         length = Math.min(length, stream.node.size - position);
         if (length <= 0) return 0;
         var contents = stream.node.contents;
@@ -122,7 +120,7 @@ mergeInto(LibraryManager.library, {
           var start = contents.start + position + written; // start index in uncompressed data
           var desired = length - written;
           //console.log('current read: ' + ['start', start, 'desired', desired]);
-          var chunkIndex = Math.floor(start / LZ4FS.CHUNK_SIZE);
+          var chunkIndex = Math.floor(start / LZ4.CHUNK_SIZE);
           var compressedStart = compressedData.offsets[chunkIndex];
           var compressedSize = compressedData.sizes[chunkIndex];
           var currChunk;
@@ -142,16 +140,16 @@ mergeInto(LibraryManager.library, {
               }
               var compressed = compressedData.data.subarray(compressedStart, compressedStart + compressedSize);
               //var t = Date.now();
-              var originalSize = LZ4FS.LZ4.uncompress(compressed, currChunk);
+              var originalSize = LZ4.codec.uncompress(compressed, currChunk);
               //console.log('decompress time: ' + (Date.now() - t));
-              assert(originalSize === LZ4FS.CHUNK_SIZE);
+              assert(originalSize === LZ4.CHUNK_SIZE);
             }
           } else {
             // uncompressed
-            currChunk = compressedData.data.subarray(compressedStart, compressedStart + LZ4FS.CHUNK_SIZE);
+            currChunk = compressedData.data.subarray(compressedStart, compressedStart + LZ4.CHUNK_SIZE);
           }
-          var startInChunk = start % LZ4FS.CHUNK_SIZE;
-          var endInChunk = Math.min(startInChunk + desired, LZ4FS.CHUNK_SIZE);
+          var startInChunk = start % LZ4.CHUNK_SIZE;
+          var endInChunk = Math.min(startInChunk + desired, LZ4.CHUNK_SIZE);
           buffer.set(currChunk.subarray(startInChunk, endInChunk), offset + written);
           var currWritten = endInChunk - startInChunk;
           written += currWritten;
@@ -177,4 +175,9 @@ mergeInto(LibraryManager.library, {
       },
     },
   },
+  emscripten_init_lz4__deps: ['$LZ4'],
+  emscripten_init_lz4: function() {
+    LZ4.init();
+  },
 });
+

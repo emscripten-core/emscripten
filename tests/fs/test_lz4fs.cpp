@@ -126,6 +126,8 @@ void EMSCRIPTEN_KEEPALIVE finish() {
 int main() {
   before_it_all = emscripten_get_now();
 
+  emscripten_init_lz4();
+
 #if LOAD_MANUALLY
   EM_ASM({
     var COMPLETE_SIZE = 10*1024*128*3;
@@ -138,7 +140,7 @@ int main() {
 
       Module.print('loading into filesystem');
       FS.mkdir('/files');
-      LZ4FS.loadPackage({ metadata: meta, data: data });
+      LZ4.loadPackage({ metadata: meta, data: data });
 
       Module.compressedData = FS.root.contents['file1.txt'].contents.compressedData;
       var compressedSize = Module.compressedData.data.length;
