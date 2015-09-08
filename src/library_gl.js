@@ -2483,6 +2483,122 @@ var LibraryGL = {
     GLctx.uniformMatrix4fv(location, transpose, view);
   },
 
+#if USE_WEBGL2
+  glUniformMatrix2x3fv__sig: 'viiii',
+  glUniformMatrix2x3fv: function(location, count, transpose, value) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix2x3fv', 'location');
+#endif
+    location = GL.uniforms[location];
+    var view;
+    if (count === 1) {
+      // avoid allocation for the common case of uploading one uniform matrix
+      view = GL.miniTempBufferViews[5];
+      for (var i = 0; i < 6; i++) {
+        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+      }
+    } else {
+      view = {{{ makeHEAPView('F32', 'value', 'value+count*24') }}};
+    }
+    GLctx.uniformMatrix2x3fv(location, transpose, view);
+  },
+
+  glUniformMatrix3x2fv__sig: 'viiii',
+  glUniformMatrix3x2fv: function(location, count, transpose, value) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix3x2fv', 'location');
+#endif
+    location = GL.uniforms[location];
+    var view;
+    if (count === 1) {
+      // avoid allocation for the common case of uploading one uniform matrix
+      view = GL.miniTempBufferViews[5];
+      for (var i = 0; i < 6; i++) {
+        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+      }
+    } else {
+      view = {{{ makeHEAPView('F32', 'value', 'value+count*24') }}};
+    }
+    GLctx.uniformMatrix3x2fv(location, transpose, view);
+  },
+
+  glUniformMatrix2x4fv__sig: 'viiii',
+  glUniformMatrix2x4fv: function(location, count, transpose, value) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix2x4fv', 'location');
+#endif
+    location = GL.uniforms[location];
+    var view;
+    if (count === 1) {
+      // avoid allocation for the common case of uploading one uniform matrix
+      view = GL.miniTempBufferViews[7];
+      for (var i = 0; i < 8; i++) {
+        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+      }
+    } else {
+      view = {{{ makeHEAPView('F32', 'value', 'value+count*32') }}};
+    }
+    GLctx.uniformMatrix2x4fv(location, transpose, view);
+  },
+
+  glUniformMatrix4x2fv__sig: 'viiii',
+  glUniformMatrix4x2fv: function(location, count, transpose, value) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix4x2fv', 'location');
+#endif
+    location = GL.uniforms[location];
+    var view;
+    if (count === 1) {
+      // avoid allocation for the common case of uploading one uniform matrix
+      view = GL.miniTempBufferViews[7];
+      for (var i = 0; i < 8; i++) {
+        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+      }
+    } else {
+      view = {{{ makeHEAPView('F32', 'value', 'value+count*32') }}};
+    }
+    GLctx.uniformMatrix4x2fv(location, transpose, view);
+  },
+
+  glUniformMatrix3x4fv__sig: 'viiii',
+  glUniformMatrix3x4fv: function(location, count, transpose, value) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix3x4fv', 'location');
+#endif
+    location = GL.uniforms[location];
+    var view;
+    if (count === 1) {
+      // avoid allocation for the common case of uploading one uniform matrix
+      view = GL.miniTempBufferViews[11];
+      for (var i = 0; i < 12; i++) {
+        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+      }
+    } else {
+      view = {{{ makeHEAPView('F32', 'value', 'value+count*48') }}};
+    }
+    GLctx.uniformMatrix3x4fv(location, transpose, view);
+  },
+
+  glUniformMatrix3x4fv__sig: 'viiii',
+  glUniformMatrix4x3fv: function(location, count, transpose, value) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix4x3fv', 'location');
+#endif
+    location = GL.uniforms[location];
+    var view;
+    if (count === 1) {
+      // avoid allocation for the common case of uploading one uniform matrix
+      view = GL.miniTempBufferViews[11];
+      for (var i = 0; i < 12; i++) {
+        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+      }
+    } else {
+      view = {{{ makeHEAPView('F32', 'value', 'value+count*48') }}};
+    }
+    GLctx.uniformMatrix4x3fv(location, transpose, view);
+  },
+#endif
+
   glBindBuffer__sig: 'vii',
   glBindBuffer: function(target, buffer) {
 #if GL_ASSERTIONS
