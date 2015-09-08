@@ -830,11 +830,12 @@ var LibraryGL = {
       context.compressionExt = GLctx.getExtension('WEBGL_compressed_texture_s3tc');
       context.anisotropicExt = GLctx.getExtension('EXT_texture_filter_anisotropic');
 #endif
-      // Extension available from Firefox 26 and Google Chrome 30
-      context.instancedArraysExt = GLctx.getExtension('ANGLE_instanced_arrays');
-      
-      // Extension available from Firefox 25 and WebKit
+
       if (context.version < 2) {
+        // Extension available from Firefox 26 and Google Chrome 30
+        context.instancedArraysExt = GLctx.getExtension('ANGLE_instanced_arrays');
+
+        // Extension available from Firefox 25 and WebKit
         context.vaoExt = GLctx.getExtension('OES_vertex_array_object');
       }
 
@@ -6720,44 +6721,38 @@ var LibraryGL = {
 
   glVertexAttribDivisor__sig: 'vii',
   glVertexAttribDivisor: function(index, divisor) {
-#if USE_WEBGL2
-    if (GL.currentContext.vertexAttribDivisor) {
-      GL.currentContext.vertexAttribDivisor(index, divisor);
-      return;
-    }
-#endif
 #if GL_ASSERTIONS
-    assert(GL.currentContext.instancedArraysExt, 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
+    assert(GL.currentContext.vertexAttribDivisor || GL.currentContext.instancedArraysExt, 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
 #endif
-    GL.currentContext.instancedArraysExt.vertexAttribDivisorANGLE(index, divisor);
+#if USE_WEBGL2
+    if (GL.currentContext.vertexAttribDivisor) GL.currentContext.vertexAttribDivisor(index, divisor);
+    else
+#endif
+      GL.currentContext.instancedArraysExt.vertexAttribDivisorANGLE(index, divisor);
   },
 
   glDrawArraysInstanced__sig: 'viiii',
   glDrawArraysInstanced: function(mode, first, count, primcount) {
-#if USE_WEBGL2
-    if (GL.currentContext.drawArraysInstanced) {
-      GL.currentContext.drawArraysInstanced(mode, first, count, primcount);
-      return;
-    }
-#endif
 #if GL_ASSERTIONS
-    assert(GL.currentContext.instancedArraysExt, 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
+    assert(GL.currentContext.drawArraysInstanced || GL.currentContext.instancedArraysExt, 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
 #endif
-    GL.currentContext.instancedArraysExt.drawArraysInstancedANGLE(mode, first, count, primcount);
+#if USE_WEBGL2
+    if (GL.currentContext.drawArraysInstanced) GL.currentContext.drawArraysInstanced(mode, first, count, primcount);
+    else
+#endif
+      GL.currentContext.instancedArraysExt.drawArraysInstancedANGLE(mode, first, count, primcount);
   },
 
   glDrawElementsInstanced__sig: 'viiiii',
   glDrawElementsInstanced: function(mode, count, type, indices, primcount) {
-#if USE_WEBGL2
-    if (GL.currentContext.glDrawElementsInstanced) {
-      GL.currentContext.glDrawElementsInstanced(mode, count, type, indices, primcount);
-      return;
-    }
-#endif
 #if GL_ASSERTIONS
-    assert(GL.currentContext.instancedArraysExt, 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
+    assert(GL.currentContext.glDrawElementsInstanced || GL.currentContext.instancedArraysExt, 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
 #endif
-    GL.currentContext.instancedArraysExt.drawElementsInstancedANGLE(mode, count, type, indices, primcount);
+#if USE_WEBGL2
+    if (GL.currentContext.glDrawElementsInstanced) GL.currentContext.glDrawElementsInstanced(mode, count, type, indices, primcount);
+    else
+#endif
+      GL.currentContext.instancedArraysExt.drawElementsInstancedANGLE(mode, count, type, indices, primcount);
   },
 
   // OpenGL Desktop/ES 2.0 instancing extensions compatibility
