@@ -2033,6 +2033,16 @@ var LibraryGL = {
     }
   },
 
+#if USE_WEBGL2
+  glGetFragDataLocation__sig: 'iii',
+  glGetFragDataLocation: function(program, name) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glGetFragDataLocation', 'program');
+#endif
+    return GL.currentContext.getFragDataLocation(GL.programs[program], Pointer_stringify(name));
+  },
+#endif
+
   glGetVertexAttribfv__sig: 'viii',
   glGetVertexAttribfv: function(index, pname, params) {
 #if GL_ASSERTIONS
@@ -2957,7 +2967,6 @@ var LibraryGL = {
     Module.printErr("GL_INVALID_ENUM in glProgramBinary: WebGL does not support binary shader formats! Calls to glProgramBinary always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4");
 #endif
   },
-
 #endif
 
   glBindAttribLocation__sig: 'viii',
