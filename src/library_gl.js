@@ -2345,6 +2345,87 @@ var LibraryGL = {
     GLctx.uniform4fv(location, view);
   },
 
+#if USE_WEBGL2
+  glUniform1ui__sig: 'vii',
+  glUniform1ui: function(location, v0) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniform1ui', 'location');
+#endif
+    location = GL.uniforms[location];
+    GLctx.uniform1ui(location, v0);
+  },
+
+  glUniform2ui__sig: 'viii',
+  glUniform2ui: function(location, v0, v1) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniform2ui', 'location');
+#endif
+    location = GL.uniforms[location];
+    GLctx.uniform2ui(location, v0, v1);
+  },
+
+  glUniform3ui__sig: 'viiii',
+  glUniform3ui: function(location, v0, v1, v2) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniform3ui', 'location');
+#endif
+    location = GL.uniforms[location];
+    GLctx.uniform3ui(location, v0, v1, v2);
+  },
+
+  glUniform4ui__sig: 'viiiii',
+  glUniform4ui: function(location, v0, v1, v2, v3) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniform4ui', 'location');
+#endif
+    location = GL.uniforms[location];
+    GLctx.uniform4ui(location, v0, v1, v2, v3);
+  },
+
+  glUniform1uiv__sig: 'viii',
+  glUniform1uiv: function(location, count, value) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniform1uiv', 'location');
+#endif
+    location = GL.uniforms[location];
+    value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
+    GLctx.uniform1uiv(location, value);
+  },
+
+  glUniform2uiv__sig: 'viii',
+  glUniform2uiv: function(location, count, value) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniform2uiv', 'location');
+#endif
+    location = GL.uniforms[location];
+    count *= 2;
+    value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
+    GLctx.uniform2uiv(location, value);
+  },
+
+  glUniform3uiv__sig: 'viii',
+  glUniform3uiv: function(location, count, value) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniform3uiv', 'location');
+#endif
+    location = GL.uniforms[location];
+    count *= 3;
+    value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
+    GLctx.uniform3uiv(location, value);
+  },
+
+  glUniform4uiv__sig: 'viii',
+  glUniform4uiv: function(location, count, value) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.uniforms, location, 'glUniform4uiv', 'location');
+#endif
+    location = GL.uniforms[location];
+    count *= 4;
+    value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
+    GLctx.uniform4uiv(location, value);
+  },
+#endif
+
   glUniformMatrix2fv__sig: 'viiii',
   glUniformMatrix2fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
