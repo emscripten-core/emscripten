@@ -6721,14 +6721,14 @@ var glFuncs = [[0, 'finish flush'],
  [3, 'texParameteri texParameterf vertexAttrib2f stencilFunc stencilOp'],
  [4, 'viewport clearColor scissor vertexAttrib3f colorMask renderbufferStorage blendFuncSeparate blendColor stencilFuncSeparate stencilOpSeparate'],
  [5, 'vertexAttrib4f'],
- [6],
- [7],
+ [6, ''],
+ [7, ''],
  [8, 'copyTexImage2D copyTexSubImage2D']];
 
 #if USE_WEBGL2
-glFuncs[5] = glFuncs[5].concat(['glVertexAttribI4i', 'glVertexAttribI4ui', 'glCopyBufferSubData']);
+glFuncs[5][1] += ' glVertexAttribI4i glVertexAttribI4ui glCopyBufferSubData';
 // TODO: Removed as a workaround, see https://bugzilla.mozilla.org/show_bug.cgi?id=1202427
-//glFuncs[6] = glfuncs[6].concat(['glDrawRangeElements']);
+glFuncs[6][1] += ' glDrawRangeElements';
 #endif
 
 glFuncs.forEach(function(data) {
@@ -6739,6 +6739,7 @@ glFuncs.forEach(function(data) {
   var returnStub = '(function(' + args + ') { return GLctx.NAME(' + args + ') })';
   var sigEnd = range(num).map(function() { return 'i' }).join('');
   names.split(' ').forEach(function(name) {
+    if (name.length == 0) return;
     var stub = plainStub;
     var sig;
     if (name[name.length-1] == '*') {
