@@ -1545,6 +1545,17 @@ mergeInto(LibraryManager.library, {
       var path = PATH.join2(typeof parent === 'string' ? parent : FS.getPath(parent), name);
       return FS.symlink(target, path);
     },
+    ensureFolder: function(path, canRead, canWrite) {
+      if (path === '/') return;
+      var mode = FS.getMode(canRead, canWrite);
+      var parts = path.split('/');
+      for (var i = 2; i <= parts.length; i++) {
+        var curr = parts.slice(0, i).join('/');
+        if (!FS.analyzePath(curr).object) {
+          FS.mkdir(curr, mode);
+        }
+      }
+    },
     // Makes sure a file's contents are loaded. Returns whether the file has
     // been loaded successfully. No-op for files that have been loaded already.
     forceLoadFile: function(obj) {
