@@ -1034,21 +1034,25 @@ keydown(100);keyup(100); // trigger the end
   def test_fs_lz4fs_package(self):
     # generate data
     import random
+    try:
+      os.mkdir('subdir')
+    except:
+      pass
     open('file1.txt', 'w').write('0123456789' * (1024*128))
-    open('file2.txt', 'w').write('1234567890' * (1024*128))
+    open(os.path.join('subdir', 'file2.txt'), 'w').write('1234567890' * (1024*128))
     random_data = [chr(random.randint(0,255)) for x in range(1024*128*10 + 1)]
     random_data[17] = 'X'
     open('file3.txt', 'w').write(''.join(random_data))
 
     # compress in the file packager, on the server. the client receives compressed data and can just use it. this is typical usage
     print 'normal'
-    out = subprocess.check_output([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'file2.txt', 'file3.txt', '--lz4=files'])
+    out = subprocess.check_output([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--lz4=files'])
     open('files.js', 'w').write(out)
     self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js'], timeout=60)
 
     # load the data into LZ4FS manually at runtime. This means we compress on the client. This is generally not recommended
     print 'manual'
-    subprocess.check_output([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'file2.txt', 'file3.txt', '--separate-metadata', '--js-output=files.js'])
+    subprocess.check_output([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--separate-metadata', '--js-output=files.js'])
     self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY'], timeout=60)
 
     '''# non-lz4 for comparison

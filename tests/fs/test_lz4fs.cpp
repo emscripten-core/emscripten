@@ -17,11 +17,11 @@ void EMSCRIPTEN_KEEPALIVE finish() {
   int num;
 
   printf("load files\n");
-  FILE *f1 = fopen("files/file1.txt", "r");
+  FILE *f1 = fopen("file1.txt", "r");
   assert(f1);
-  FILE *f2 = fopen("files/file2.txt", "r");
+  FILE *f2 = fopen("subdir/file2.txt", "r");
   assert(f2);
-  FILE *f3 = fopen("files/file3.txt", "r");
+  FILE *f3 = fopen("file3.txt", "r");
   assert(f3);
   FILE *files[] = { f1, f2, f3 };
   double before = emscripten_get_now();
@@ -138,11 +138,9 @@ int main() {
 
       Module.print('loading into filesystem');
       FS.mkdir('/files');
-      var root = FS.mount(LZ4FS, {
-        packages: [{ metadata: meta, data: data }]
-      }, '/files');
+      LZ4FS.loadPackage({ metadata: meta, data: data });
 
-      Module.compressedData = root.contents['file1.txt'].contents.compressedData;
+      Module.compressedData = FS.root.contents['file1.txt'].contents.compressedData;
       var compressedSize = Module.compressedData.data.length;
       var low = COMPLETE_SIZE/3;
       var high = COMPLETE_SIZE/2;

@@ -6,7 +6,7 @@ mergeInto(LibraryManager.library, {
     FILE_MODE: {{{ cDefine('S_IFREG') }}} | 511 /* 0777 */,
     CHUNK_SIZE: -1,
     LZ4: null,
-    mount: function (mount) {
+    loadPackage: function (pack) {
       if (!LZ4FS.LZ4) {
         LZ4FS.LZ4 = (function() {
           {{{ read('mini-lz4.js') }}};
@@ -14,46 +14,31 @@ mergeInto(LibraryManager.library, {
         })();
         LZ4FS.CHUNK_SIZE = LZ4FS.LZ4.CHUNK_SIZE;
       }
-      var root = LZ4FS.createNode(null, '/', LZ4FS.DIR_MODE, 0);
-      var createdParents = {};
-      function ensureParent(path) {
-        // return the parent node, creating subdirs as necessary
-        var parts = path.split('/');
-        var parent = root;
-        for (var i = 0; i < parts.length-1; i++) {
-          var curr = parts.slice(0, i+1).join('/');
-          if (!createdParents[curr]) {
-            createdParents[curr] = LZ4FS.createNode(parent, curr, LZ4FS.DIR_MODE, 0);
-          }
-          parent = createdParents[curr];
-        }
-        return parent;
-      }
       function base(path) {
         var parts = path.split('/');
         return parts[parts.length-1];
       }
-      mount.opts["packages"].forEach(function(pack) {
-        var compressedData = pack['compressedData'];
-        if (!compressedData) compressedData = LZ4FS.LZ4.compressPackage(pack['data']);
-        assert(compressedData.cachedIndexes.length === compressedData.cachedChunks.length);
-        for (var i = 0; i < compressedData.cachedIndexes.length; i++) {
-          compressedData.cachedIndexes[i] = -1;
-          compressedData.cachedChunks[i] = compressedData.data.subarray(compressedData.cachedOffset + i*LZ4FS.CHUNK_SIZE,
-                                                                        compressedData.cachedOffset + (i+1)*LZ4FS.CHUNK_SIZE);
-          assert(compressedData.cachedChunks[i].length === LZ4FS.CHUNK_SIZE);
-        }
-        console.log('mounting package');
-        pack['metadata'].files.forEach(function(file) {
-          var name = file.filename.substr(1); // remove initial slash
-          LZ4FS.createNode(ensureParent(name), base(name), LZ4FS.FILE_MODE, 0, {
-            compressedData: compressedData,
-            start: file.start,
-            end: file.end,
-          });
+      var compressedData = pack['compressedData'];
+      if (!compressedData) compressedData = LZ4FS.LZ4.compressPackage(pack['data']);
+      assert(compressedData.cachedIndexes.length === compressedData.cachedChunks.length);
+      for (var i = 0; i < compressedData.cachedIndexes.length; i++) {
+        compressedData.cachedIndexes[i] = -1;
+        compressedData.cachedChunks[i] = compressedData.data.subarray(compressedData.cachedOffset + i*LZ4FS.CHUNK_SIZE,
+                                                                      compressedData.cachedOffset + (i+1)*LZ4FS.CHUNK_SIZE);
+        assert(compressedData.cachedChunks[i].length === LZ4FS.CHUNK_SIZE);
+      }
+      console.log('loading package');
+      pack['metadata'].files.forEach(function(file) {
+        var dir = PATH.dirname(file.filename);
+        var name = PATH.basename(file.filename);
+        FS.ensureFolder(dir, true, true);
+        var parent = FS.analyzePath(dir).object;
+        LZ4FS.createNode(parent, name, LZ4FS.FILE_MODE, 0, {
+          compressedData: compressedData,
+          start: file.start,
+          end: file.end,
         });
       });
-      return root;
     },
     createNode: function (parent, name, mode, dev, contents, mtime) {
       var node = FS.createNode(parent, name, mode);

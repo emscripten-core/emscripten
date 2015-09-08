@@ -536,9 +536,7 @@ if has_preloaded:
           FS.mkdir('/' + LZ4_DIR);
           var compressedData = %s;
           compressedData.data = byteArray;
-          var root = FS.mount(LZ4FS, {
-            packages: [{ metadata: metadata, compressedData: compressedData }]
-          }, '/' + LZ4_DIR);
+          LZ4FS.loadPackage({ metadata: metadata, compressedData: compressedData });
           Module['removeRunDependency']('datafile_%s');
     ''' % (lz4, meta, data_target)
 
