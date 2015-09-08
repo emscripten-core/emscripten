@@ -142,7 +142,7 @@ mergeInto(LibraryManager.library, {
               //var t = Date.now();
               var originalSize = LZ4.codec.uncompress(compressed, currChunk);
               //console.log('decompress time: ' + (Date.now() - t));
-              assert(originalSize === LZ4.CHUNK_SIZE);
+              if (chunkIndex < compressedData.successes.length-1) assert(originalSize === LZ4.CHUNK_SIZE); // all but the last chunk must be full-size
             }
           } else {
             // uncompressed
