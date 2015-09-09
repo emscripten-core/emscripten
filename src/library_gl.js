@@ -321,7 +321,7 @@ var LibraryGL = {
           ret = 1;
           break;
         case 0x8DF8: // GL_SHADER_BINARY_FORMATS
-          if (type !== 'Integer') {
+          if (type !== 'Integer' && type !== 'Integer64') {
             GL.recordError(0x0500); // GL_INVALID_ENUM
 #if GL_ASSERTIONS
             Module.printErr('GL_INVALID_ENUM in glGet' + type + 'v(GL_SHADER_BINARY_FORMATS): Invalid parameter type!');
@@ -433,6 +433,7 @@ var LibraryGL = {
       }
 
       switch (type) {
+        case 'Integer64': {{{ makeSetValue('p', '0', 'ret', 'i64') }}};    break;
         case 'Integer': {{{ makeSetValue('p', '0', 'ret', 'i32') }}};    break;
         case 'Float':   {{{ makeSetValue('p', '0', 'ret', 'float') }}};  break;
         case 'Boolean': {{{ makeSetValue('p', '0', 'ret ? 1 : 0', 'i8') }}}; break;
@@ -1027,6 +1028,11 @@ var LibraryGL = {
 #endif
         return 0;
     }
+  },
+
+  glGetInteger64v__sig: 'vii',
+  glGetInteger64v: function(name_, p) {
+    GL.get(name_, p, 'Integer64');
   },
 #endif
 
