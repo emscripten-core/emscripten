@@ -442,6 +442,41 @@ var LibraryGL = {
       }
     },
 
+    getVertexAttrib: function(index, pname, params, type) {
+      if (!params) {
+        // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+        // if params == null, issue a GL error to notify user about it. 
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_VALUE in glGetVertexAttrib*v(index=' + index + ', pname=' + pname + ', params=0): Function called with null out pointer!');
+#endif
+        GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+        return;
+      }
+#if FULL_ES2
+      if (GL.currentContext.clientBuffers[index].enabled) {
+        Module.printErr("glGetVertexAttrib*v on client-side array: not supported, bad data returned");
+      }
+#endif
+      var data = GLctx.getVertexAttrib(index, pname);
+      if (typeof data == 'number' || typeof data == 'boolean') {
+        switch (type) {
+          case 'Integer': {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
+          case 'Float': {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
+          case 'FloatToInteger': {{{ makeSetValue('params', '0', 'Math.fround(data)', 'i32') }}}; break;
+          default: throw 'internal GL.getVertexAttrib error, bad type: ' + type;
+        }
+      } else {
+        for (var i = 0; i < data.length; i++) {
+          switch (type) {
+            case 'Integer': {{{ makeSetValue('params', 'i', 'data[i]', 'i32') }}}; break;
+            case 'Float': {{{ makeSetValue('params', 'i', 'data[i]', 'float') }}}; break;
+            case 'FloatToInteger': {{{ makeSetValue('params', 'i', 'Math.fround(data[i])', 'i32') }}}; break;
+            default: throw 'internal GL.getVertexAttrib error, bad type: ' + type;
+          }
+        }
+      }
+    },
+
     getIndexed: function(target, index, data, type) {
       if (!data) {
         // GLES2 specification does not specify how to behave if data is a null pointer. Since calling this function does not make sense
@@ -2210,54 +2245,12 @@ var LibraryGL = {
 
   glGetVertexAttribfv__sig: 'viii',
   glGetVertexAttribfv: function(index, pname, params) {
-    if (!params) {
-      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
-      // if params == null, issue a GL error to notify user about it. 
-#if GL_ASSERTIONS
-      Module.printErr('GL_INVALID_VALUE in glGetVertexAttribfv(index=' + index + ', pname=' + pname + ', params=0): Function called with null out pointer!');
-#endif
-      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
-      return;
-    }
-#if FULL_ES2
-    if (GL.currentContext.clientBuffers[index].enabled) {
-      Module.printErr("glGetVertexAttribfv on client-side array: not supported, bad data returned");
-    }
-#endif
-    var data = GLctx.getVertexAttrib(index, pname);
-    if (typeof data == 'number') {
-      {{{ makeSetValue('params', '0', 'data', 'float') }}};
-    } else {
-      for (var i = 0; i < data.length; i++) {
-        {{{ makeSetValue('params', 'i', 'data[i]', 'float') }}};
-      }
-    }
+    GL.getVertexAttrib(index, pname, params, 'Float');
   },
 
   glGetVertexAttribiv__sig: 'viii',
   glGetVertexAttribiv: function(index, pname, params) {
-    if (!params) {
-      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
-      // if params == null, issue a GL error to notify user about it. 
-#if GL_ASSERTIONS
-      Module.printErr('GL_INVALID_VALUE in glGetVertexAttribiv(index=' + index + ', pname=' + pname + ', params=0): Function called with null out pointer!');
-#endif
-      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
-      return;
-    }
-#if FULL_ES2
-    if (GL.currentContext.clientBuffers[index].enabled) {
-      Module.printErr("glGetVertexAttribiv on client-side array: not supported, bad data returned");
-    }
-#endif
-    var data = GLctx.getVertexAttrib(index, pname);
-    if (typeof data == 'number' || typeof data == 'boolean') {
-      {{{ makeSetValue('params', '0', 'data', 'i32') }}};
-    } else {
-      for (var i = 0; i < data.length; i++) {
-        {{{ makeSetValue('params', 'i', 'data[i]', 'i32') }}};
-      }
-    }
+    GL.getVertexAttrib(index, pname, params, 'FloatToInteger');
   },
 
   glGetVertexAttribPointerv__sig: 'viii',
