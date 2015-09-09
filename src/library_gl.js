@@ -1038,17 +1038,17 @@ var LibraryGL = {
 
   glGetIntegerv__sig: 'vii',
   glGetIntegerv: function(name_, p) {
-    return GL.get(name_, p, 'Integer');
+    GL.get(name_, p, 'Integer');
   },
 
   glGetFloatv__sig: 'vii',
   glGetFloatv: function(name_, p) {
-    return GL.get(name_, p, 'Float');
+    GL.get(name_, p, 'Float');
   },
 
   glGetBooleanv__sig: 'vii',
   glGetBooleanv: function(name_, p) {
-    return GL.get(name_, p, 'Boolean');
+    GL.get(name_, p, 'Boolean');
   },
 
   glGenTextures__sig: 'vii',
