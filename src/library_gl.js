@@ -2245,13 +2245,31 @@ var LibraryGL = {
 
   glGetVertexAttribfv__sig: 'viii',
   glGetVertexAttribfv: function(index, pname, params) {
+    // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttrib*f(),
+    // otherwise the results are undefined. (GLES3 spec 6.1.12)
     GL.getVertexAttrib(index, pname, params, 'Float');
   },
 
   glGetVertexAttribiv__sig: 'viii',
   glGetVertexAttribiv: function(index, pname, params) {
+    // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttrib*f(),
+    // otherwise the results are undefined. (GLES3 spec 6.1.12)
     GL.getVertexAttrib(index, pname, params, 'FloatToInteger');
   },
+
+#if USE_WEBGL2
+  glGetVertexAttribIiv__sig: 'viii',
+  glGetVertexAttribIiv: function(index, pname, params) {
+    // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttribI4iv(),
+    // otherwise the results are undefined. (GLES3 spec 6.1.12)
+    GL.getVertexAttrib(index, pname, params, 'Integer');
+  },
+
+  // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttribI4uiv(),
+  // otherwise the results are undefined. (GLES3 spec 6.1.12)
+  glGetVertexAttribIuiv__sig: 'viii',
+  glGetVertexAttribIuiv: 'glGetVertexAttribIiv',
+#endif
 
   glGetVertexAttribPointerv__sig: 'viii',
   glGetVertexAttribPointerv: function(index, pname, pointer) {
