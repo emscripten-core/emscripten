@@ -2853,6 +2853,13 @@ window.close = function() {
       ''')
       self.run_browser('two.html', None, '/report_result?0')
 
+      self.clear()
+      assert not os.path.exists('tests.asm.js')
+      self.btest('browser_test_hello_world.c', expected='0', args=['-O' + str(opts), '--separate-asm'])
+      assert os.path.exists('test.asm.js')
+      os.unlink('test.asm.js')
+      self.run_browser('test.html', None, '[no http server activity]', timeout=5) # fail without the asm
+
   def test_emterpretify_file(self):
     open('shell.html', 'w').write('''
       <!--

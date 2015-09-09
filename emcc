@@ -415,6 +415,7 @@ try:
   proxy_to_worker = False
   default_object_extension = '.o'
   valid_abspaths = []
+  separate_asm = False
 
   def is_valid_abspath(path_name):
     # Any path that is underneath the emscripten repository root must be ok.
@@ -648,6 +649,9 @@ try:
       valid_abspaths.append(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
+    elif newargs[i] == '--separate-asm':
+      separate_asm = True
+      newargs[i] = ''
     elif newargs[i].startswith(('-I', '-L')):
       path_name = newargs[i][2:]
       if not absolute_warning_shown and os.path.isabs(path_name) and not is_valid_abspath(path_name):
@@ -844,6 +848,8 @@ try:
   newargs = CC_ADDITIONAL_ARGS + newargs
 
   assert not (Compression.on and final_suffix != 'html'), 'Compression only works when generating HTML'
+
+  assert not (separate_asm and final_suffix != 'html'), '--separate-asm requires building to HTML'
 
   # If we are using embind and generating JS, now is the time to link in bind.cpp
   if bind and final_suffix in JS_CONTAINING_SUFFIXES:
@@ -1853,6 +1859,23 @@ try {
           xhr.send(null);
         })();
 ''' % os.path.basename(memfile)) + script_inline
+
+    if separate_asm:
+      un_src()
+      asm_target = js_target[:-3] + '.asm.js'
+      temp_target = misc_temp_files.get(suffix='.js').name
+      execute([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), js_target, asm_target, temp_target])
+      shutil.move(temp_target, js_target)
+      script_inline = '''
+    var script = document.createElement('script');
+    script.src = "%s";
+    script.onload = function() {
+      setTimeout(function() {
+        %s
+      }, 1); // delaying even 1ms is enough to allow compilation memory to be reclaimed
+    };
+    document.body.appendChild(script);
+''' % (os.path.basename(asm_target), script_inline)
 
     html = open(target, 'w')
     assert (script_src or script_inline) and not (script_src and script_inline)

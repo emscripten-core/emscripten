@@ -91,12 +91,16 @@ Very large codebases
 
 The previous section on reducing code size can be helpful on very large codebases. In addition, here are some other topics that might be useful.
 
+.. _optimizing-code-separating_asm:
+
 Avoid memory spikes by separating out asm.js
 --------------------------------------------
 
 By default Emscripten emits one JS file, containing the entire codebase: Both the asm.js code that was compiled, and the general code that sets up the environment, connects to browser APIs, etc. in a very large codebase, this can be inefficient in terms of memory usage, as having all of that in one script means the JS engine might use some memory to parse and compile the asm.js, and might not free it before starting to run the codebase. And in a large game, starting to run the code might allocate a large typed array for memory, so you might see a "spike" of memory, after which temporary compilation memory will be freed. And if big enough, that spike can cause the browser to run out of memory and fail to load the application. This is a known problem on `Chrome <https://code.google.com/p/v8/issues/detail?id=4392>`_ (other browsers do not seem to have this issue).
 
-A workaround is to separate out the asm.js into another file, and to make sure that the browser has a turn of the event loop between compiling the asm.js module and starting to run the application. This can be achieved as follows:
+A workaround is to separate out the asm.js into another file, and to make sure that the browser has a turn of the event loop between compiling the asm.js module and starting to run the application. This can be achieved by running **emcc** with ``--separate-asm``.
+
+You can also do this manually, as follows:
 
  * Run ``tools/separate_asm.py``. This receives as inputs the filename of the full project, and two filenames to emit: the asm.js file and a file for everything else.
  * Load the asm.js script first, then after a turn of the event loop, the other one, for example using code like this in your HTML file:

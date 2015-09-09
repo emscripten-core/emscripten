@@ -438,6 +438,9 @@ Options that are modified or new in *emcc* are listed below:
 ``-c``
 	Tells *emcc* to generate LLVM bitcode (which can then be linked with other bitcode files), instead of compiling all the way to JavaScript.
 
+``--separate-asm``
+	Emits asm.js in one file, and the rest of the code in another, and emits HTML that loads the asm.js first, in order to reduce memory load during startup. See :ref:`optimizing-code-separating_asm`.
+
 	
 .. _emcc-environment-variables:
 
