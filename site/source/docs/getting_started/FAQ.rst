@@ -257,6 +257,10 @@ To make sure a C function remains available to be called from normal JavaScript,
 
 .. note:: 
 
+   `_main` should be in the export list, as in that example, if you have a `main()` function. Otherwise, it will be removed as dead code; there is no special logic to keep `main()` alive by default.
+
+.. note:: 
+
    `EXPORTED_FUNCTIONS` affects compilation to JavaScript. If you first compile to an object file,
    then compile the object to JavaScript, you need that option on the second command.
 

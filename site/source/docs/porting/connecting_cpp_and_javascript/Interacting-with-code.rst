@@ -119,8 +119,13 @@ parameters to pass to the function:
 
      - Exporting is done at compile time. For example:
        ``-s EXPORTED_FUNCTIONS='["_main","_other_function"]'`` exports
-       ``main()`` and ``other_function()``. You need ``_`` at the
+       ``main()`` and ``other_function()``.
+     - Note that you need ``_`` at the
        beginning of the function names in the ``EXPORTED_FUNCTIONS`` list.
+     - Note that ``_main`` is mentioned in that list. If you don't have it there,
+       the compiler will eliminate it as dead code. The list of exported
+       functions is the **entire** list that will be kept alive (unless other
+       code was kept alive in another manner).
      - Emscripten does :ref:`dead code elimination <faq-dead-code-elimination>`
        to minimize code size — exporting ensures the functions you need
        aren't removed.
