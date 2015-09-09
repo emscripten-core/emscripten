@@ -2111,6 +2111,31 @@ var LibraryGL = {
     return GLctx.isSync(sync);
   },
 
+  glGetInternalFormativ__sig: 'viiiii',
+  glGetInternalFormativ: function(target, internalformat, pname, bufSize, params) {
+    if (bufSize < 0) {
+#if GL_ASSERTIONS
+      Module.printErr('GL_INVALID_VALUE in glGetInternalFormativ(target=' + target + ', internalformat=' + internalformat + ', pname=' + pname + ', bufSize=' + bufSize + ', params=' + params + '): Function called with bufSize < 0!');
+#endif
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+    if (!params) {
+      // GLES3 specification does not specify how to behave if values is a null pointer. Since calling this function does not make sense
+      // if values == null, issue a GL error to notify user about it. 
+#if GL_ASSERTIONS
+      Module.printErr('GL_INVALID_VALUE in glGetInternalFormativ(target=' + target + ', internalformat=' + internalformat + ', pname=' + pname + ', bufSize=' + bufSize + ', params=0): Function called with null out pointer!');
+#endif
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+    var ret = GLctx.getInternalFormatParameter(target, internalformat, pname);
+    if (ret === null) return;
+    for(var i = 0; i < ret.length && i < bufSize; ++i) {
+      {{{ makeSetValue('params', 'i', 'ret[i]', 'i32') }}};
+    }
+  },
+
 // ~USE_WEBGL2
 #endif
 
