@@ -5162,3 +5162,7 @@ main(int argc, char **argv)
     Popen([PYTHON, EMCC, 'src.c', '--embed-file', 'boot']).communicate()
     self.assertContained('Resolved: /boot/README.txt', run_js('a.out.js'))
 
+  def test_no_warnings(self):
+    out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp')], stderr=PIPE).communicate()
+    assert err == '', err
+
