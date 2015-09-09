@@ -65,6 +65,13 @@ home directory::
 
     ./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS="['_int_sqrt']"
 
+.. note::
+
+   `EXPORTED_FUNCTIONS` affects compilation to JavaScript. If you first compile to an object file,
+   then compile the object to JavaScript, you need that option on the second command. If you do
+   it all together as in the example here (source straight to JavaScript) then this just works,
+   of course.
+
 After compiling, you can call this function with :js:func:`cwrap` using the
 following JavaScript::
 
