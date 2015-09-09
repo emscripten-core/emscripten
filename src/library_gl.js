@@ -477,6 +477,38 @@ var LibraryGL = {
       }
     },
 
+    getUniform: function(program, location, params, type) {
+      if (!params) {
+        // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+        // if params == null, issue a GL error to notify user about it. 
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_VALUE in glGetUniform*v(program=' + program + ', location=' + location + ', params=0): Function called with null out pointer!');
+#endif
+        GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+        return;
+      }
+#if GL_ASSERTIONS
+      GL.validateGLObjectID(GL.programs, program, 'glGetUniform*v', 'program');
+      GL.validateGLObjectID(GL.uniforms, location, 'glGetUniform*v', 'location');
+#endif
+      var data = GLctx.getUniform(GL.programs[program], GL.uniforms[location]);
+      if (typeof data == 'number' || typeof data == 'boolean') {
+        switch (type) {
+          case 'Integer': {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
+          case 'Float': {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
+          default: throw 'internal GL.getUniform error, bad type: ' + type;
+        }
+      } else {
+        for (var i = 0; i < data.length; i++) {
+          switch (type) {
+            case 'Integer': {{{ makeSetValue('params', 'i', 'data[i]', 'i32') }}}; break;
+            case 'Float': {{{ makeSetValue('params', 'i', 'data[i]', 'float') }}}; break;
+            default: throw 'internal GL.getUniform error, bad type: ' + type;
+          }
+        }
+      }
+    },
+
     getIndexed: function(target, index, data, type) {
       if (!data) {
         // GLES2 specification does not specify how to behave if data is a null pointer. Since calling this function does not make sense
@@ -2151,52 +2183,12 @@ var LibraryGL = {
 
   glGetUniformfv__sig: 'viii',
   glGetUniformfv: function(program, location, params) {
-    if (!params) {
-      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
-      // if params == null, issue a GL error to notify user about it. 
-#if GL_ASSERTIONS
-      Module.printErr('GL_INVALID_VALUE in glGetUniformfv(program=' + program + ', location=' + location + ', params=0): Function called with null out pointer!');
-#endif
-      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
-      return;
-    }
-#if GL_ASSERTIONS
-    GL.validateGLObjectID(GL.programs, program, 'glGetUniformfv', 'program');
-    GL.validateGLObjectID(GL.uniforms, location, 'glGetUniformfv', 'location');
-#endif
-    var data = GLctx.getUniform(GL.programs[program], GL.uniforms[location]);
-    if (typeof data == 'number') {
-      {{{ makeSetValue('params', '0', 'data', 'float') }}};
-    } else {
-      for (var i = 0; i < data.length; i++) {
-        {{{ makeSetValue('params', 'i', 'data[i]', 'float') }}};
-      }
-    }
+    GL.getUniform(program, location, params, 'Float');
   },
 
   glGetUniformiv__sig: 'viii',
   glGetUniformiv: function(program, location, params) {
-    if (!params) {
-      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
-      // if params == null, issue a GL error to notify user about it. 
-#if GL_ASSERTIONS
-      Module.printErr('GL_INVALID_VALUE in glGetUniformiv(program=' + program + ', location=' + location + ', params=0): Function called with null out pointer!');
-#endif
-      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
-      return;
-    }
-#if GL_ASSERTIONS
-    GL.validateGLObjectID(GL.programs, program, 'glGetUniformiv', 'program');
-    GL.validateGLObjectID(GL.uniforms, location, 'glGetUniformiv', 'location');
-#endif
-    var data = GLctx.getUniform(GL.programs[program], GL.uniforms[location]);
-    if (typeof data == 'number' || typeof data == 'boolean') {
-      {{{ makeSetValue('params', '0', 'data', 'i32') }}};
-    } else {
-      for (var i = 0; i < data.length; i++) {
-        {{{ makeSetValue('params', 'i', 'data[i]', 'i32') }}};
-      }
-    }
+    GL.getUniform(program, location, params, 'Integer');
   },
 
   glGetUniformLocation__sig: 'iii',
