@@ -263,6 +263,8 @@ To make sure a C function remains available to be called from normal JavaScript,
 If your function is used in other functions, LLVM may inline it and it will not appear as a unique function in the JavaScript. Prevent inlining by defining the function with :c:type:`EMSCRIPTEN_KEEPALIVE`: ::
 
 	void EMSCRIPTEN_KEEPALIVE yourCfunc() {..}
+
+`EMSCRIPTEN_KEEPALIVE` also exports the function, as if it were on `EXPORTED_FUNCTIONS`.
 	
 .. note:: 
 
