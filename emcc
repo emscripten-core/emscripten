@@ -849,7 +849,8 @@ try:
 
   assert not (Compression.on and final_suffix != 'html'), 'Compression only works when generating HTML'
 
-  assert not (separate_asm and final_suffix != 'html'), '--separate-asm requires building to HTML'
+  if separate_asm and final_suffix != 'html':
+    logging.warning('--separate-asm when not building to HTML will still separate out the asm.js, but it is your responsibility to load the asm.js first and then the rest (building to HTML would emit that code automatically for you in the HTML)')
 
   # If we are using embind and generating JS, now is the time to link in bind.cpp
   if bind and final_suffix in JS_CONTAINING_SUFFIXES:
@@ -1664,6 +1665,15 @@ try:
          '--mapFileBaseName', map_file_base_name,
          '--offset', str(offset)])
 
+  # Separate asm.js, if asked to
+  if separate_asm:
+    asm_target = js_target[:-3] + '.asm.js'
+    temp_target = misc_temp_files.get(suffix='.js').name
+    execute([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), final, asm_target, temp_target])
+    final += '.separated.js'
+    shutil.move(temp_target, final)
+    if DEBUG: save_intermediate('separated asm')
+
   # If we were asked to also generate HTML, do that
   if final_suffix == 'html':
     logging.debug('generating HTML')
@@ -1868,10 +1878,6 @@ try {
 
     if separate_asm:
       un_src()
-      asm_target = js_target[:-3] + '.asm.js'
-      temp_target = misc_temp_files.get(suffix='.js').name
-      execute([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), js_target, asm_target, temp_target])
-      shutil.move(temp_target, js_target)
       script_inline = '''
     var script = document.createElement('script');
     script.src = "%s";
