@@ -11,7 +11,7 @@ data downloads.
 
 Usage:
 
-  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--compress COMPRESSION_DATA] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy] [--separate-metadata]
+  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--compress COMPRESSION_DATA] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy] [--separate-metadata] [--lz4]
 
   --preload  ,
   --embed    See emcc --help for more details on those options.
@@ -40,6 +40,9 @@ Usage:
 
   --separate-metadata Stores package metadata separately. Only applicable when preloading and js-output file is specified.
 
+  --lz4 Uses LZ4. This compresses the data using LZ4 when this utility is run, then the client decompresses chunks on the fly, avoiding storing
+        the entire decompressed data in memory at once. See LZ4 in src/settings.js, you must build the main program with that flag.
+
 Notes:
 
   * The file packager generates unix-style file paths. So if you are on windows and a file is accessed at
@@ -53,8 +56,10 @@ import os, sys, shutil, random, uuid, ctypes
 import posixpath
 import shared
 from shared import Compression, execute, suffix, unsuffixed
+from jsrun import run_js
 from subprocess import Popen, PIPE, STDOUT
 import fnmatch
+import json
 
 if len(sys.argv) == 1:
   print '''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--exclude C...] [--compress COMPRESSION_DATA] [--no-closure] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy] [--separate-metadata]
@@ -94,6 +99,7 @@ no_heap_copy = True
 # If set to True, the package metadata is stored separately from js-output file which makes js-output file immutable to the package content changes.
 # If set to False, the package metadata is stored inside the js-output file which makes js-output file to mutate on each invocation of this packager tool.
 separate_metadata  = False
+lz4 = False
 
 for arg in sys.argv[2:]:
   if arg == '--preload':
@@ -118,6 +124,9 @@ for arg in sys.argv[2:]:
     leading = ''
   elif arg == '--separate-metadata':
     separate_metadata = True
+    leading = ''
+  elif arg == '--lz4':
+    lz4 = True
     leading = ''
   elif arg.startswith('--js-output'):
     jsoutput = arg.split('=')[1] if '=' in arg else None
@@ -300,8 +309,7 @@ for file_ in data_files:
   for plugin in plugins:
     plugin(file_)
 
-if separate_metadata:
-  metadata = {'files': []}
+metadata = {'files': []}
 
 # Crunch files
 if crunch:
@@ -445,12 +453,12 @@ if has_preloaded:
         } else {
 ''', '' if not crunch else '''
         }
-''', '' if not separate_metadata else '''
+''', '''
         var files = metadata.files;
         for (i = 0; i < files.length; ++i) {
           new DataRequest(files[i].start, files[i].end, files[i].crunched, files[i].audio).open('GET', files[i].filename);
         }
-''')
+''' if not lz4 else '')
 
 counter = 0
 for file_ in data_files:
@@ -475,53 +483,60 @@ for file_ in data_files:
     # Preload
     varname = 'filePreload%d' % counter
     counter += 1
-    if separate_metadata:
-      metadata['files'].append({
-        'filename': escape_for_js_string(file_['dstpath']),
-        'start': file_['data_start'],
-        'end': file_['data_end'],
-        'crunched': '1' if crunch and filename.endswith(CRUNCH_INPUT_SUFFIX) else '0',
-        'audio': '1' if filename[-4:] in AUDIO_SUFFIXES else '0',
-      })
-    else:
-      code += '''    new DataRequest(%(start)d, %(end)d, %(crunched)s, %(audio)s).open('GET', '%(filename)s');
-''' % {
-        'filename': escape_for_js_string(file_['dstpath']),
-        'start': file_['data_start'],
-        'end': file_['data_end'],
-        'crunched': '1' if crunch and filename.endswith(CRUNCH_INPUT_SUFFIX) else '0',
-        'audio': '1' if filename[-4:] in AUDIO_SUFFIXES else '0',
-      }
+    metadata['files'].append({
+      'filename': file_['dstpath'],
+      'start': file_['data_start'],
+      'end': file_['data_end'],
+      'crunched': '1' if crunch and filename.endswith(CRUNCH_INPUT_SUFFIX) else '0',
+      'audio': '1' if filename[-4:] in AUDIO_SUFFIXES else '0',
+    })
   else:
     assert 0
 
 if has_preloaded:
-  # Get the big archive and split it up
-  if no_heap_copy:
-    use_data = '''
-      // copy the entire loaded file into a spot in the heap. Files will refer to slices in that. They cannot be freed though
-      // (we may be allocating before malloc is ready, during startup).
-      var ptr = Module['getMemory'](byteArray.length);
-      Module['HEAPU8'].set(byteArray, ptr);
-      DataRequest.prototype.byteArray = Module['HEAPU8'].subarray(ptr, ptr+byteArray.length);
-'''
-  else:
-    use_data = '''
-      // Reuse the bytearray from the XHR as the source for file reads.
-      DataRequest.prototype.byteArray = byteArray;
-'''
-  for file_ in data_files:
-    if file_['mode'] == 'preload':
-      use_data += '          DataRequest.prototype.requests["%s"].onload();\n' % (escape_for_js_string(file_['dstpath']))
-  use_data += "          Module['removeRunDependency']('datafile_%s');\n" % data_target
+  if not lz4:
+    # Get the big archive and split it up
+    if no_heap_copy:
+      use_data = '''
+        // copy the entire loaded file into a spot in the heap. Files will refer to slices in that. They cannot be freed though
+        // (we may be allocating before malloc is ready, during startup).
+        var ptr = Module['getMemory'](byteArray.length);
+        Module['HEAPU8'].set(byteArray, ptr);
+        DataRequest.prototype.byteArray = Module['HEAPU8'].subarray(ptr, ptr+byteArray.length);
+  '''
+    else:
+      use_data = '''
+        // Reuse the bytearray from the XHR as the source for file reads.
+        DataRequest.prototype.byteArray = byteArray;
+  '''
+    use_data += '''
+          var files = metadata.files;
+          for (i = 0; i < files.length; ++i) {
+            DataRequest.prototype.requests[files[i].filename].onload();
+          }
+    '''
+    use_data += "          Module['removeRunDependency']('datafile_%s');\n" % data_target
 
-  if Compression.on:
+    if Compression.on:
+      use_data = '''
+        Module["decompress"](byteArray, function(decompressed) {
+          byteArray = new Uint8Array(decompressed);
+          %s
+        });
+      ''' % use_data
+  else:
+    # LZ4FS usage
+    temp = data_target + '.orig'
+    shutil.move(data_target, temp)
+    meta = run_js(shared.path_from_root('tools', 'lz4-compress.js'), shared.NODE_JS, [shared.path_from_root('src', 'mini-lz4.js'), temp, data_target], stdout=PIPE)
+    os.unlink(temp)
     use_data = '''
-      Module["decompress"](byteArray, function(decompressed) {
-        byteArray = new Uint8Array(decompressed);
-        %s
-      });
-    ''' % use_data
+          var compressedData = %s;
+          compressedData.data = byteArray;
+          assert(typeof LZ4 === 'object', 'LZ4 not present - was your app build with  -s LZ4=1  ?');
+          LZ4.loadPackage({ 'metadata': metadata, 'compressedData': compressedData });
+          Module['removeRunDependency']('datafile_%s');
+    ''' % (meta, data_target)
 
   package_uuid = uuid.uuid4();
   package_name = Compression.compressed_name(data_target) if Compression.on else data_target
@@ -548,18 +563,12 @@ if has_preloaded:
                               Module['locateFile'](REMOTE_PACKAGE_BASE) :
                               ((Module['filePackagePrefixURL'] || '') + REMOTE_PACKAGE_BASE);
   ''' % (data_target, remote_package_name)
-  if separate_metadata:
-    metadata['remote_package_size'] = remote_package_size
-    metadata['package_uuid'] = str(package_uuid)
-    ret += '''
-      var REMOTE_PACKAGE_SIZE = metadata.remote_package_size;
-      var PACKAGE_UUID = metadata.package_uuid;
-    '''
-  else:
-    ret += '''
-      var REMOTE_PACKAGE_SIZE = %d;
-      var PACKAGE_UUID = '%s';
-    ''' % (remote_package_size, package_uuid)
+  metadata['remote_package_size'] = remote_package_size
+  metadata['package_uuid'] = str(package_uuid)
+  ret += '''
+    var REMOTE_PACKAGE_SIZE = metadata.remote_package_size;
+    var PACKAGE_UUID = metadata.package_uuid;
+  '''
 
   if use_preload_cache:
     code += r'''
@@ -703,6 +712,7 @@ if has_preloaded:
     function processPackageData(arrayBuffer) {
       Module.finishedDataFileDownloads++;
       assert(arrayBuffer, 'Loading data file failed.');
+      assert(arrayBuffer instanceof ArrayBuffer, 'bad input to processPackageData');
       var byteArray = new Uint8Array(arrayBuffer);
       var curr;
       %s
@@ -821,8 +831,8 @@ ret += '''%s
  });
 ''' % {'metadata_file': os.path.basename(jsoutput + '.metadata')} if separate_metadata else '''
  }
- loadPackage();
-''')
+ loadPackage(%s);
+''' % json.dumps(metadata))
 
 if force or len(data_files) > 0:
   if jsoutput == None:
@@ -841,7 +851,6 @@ if force or len(data_files) > 0:
       f.write(ret)
     f.close()
     if separate_metadata:
-      import json
       f = open(jsoutput + '.metadata', 'w')
       json.dump(metadata, f, separators=(',', ':'))
       f.close()

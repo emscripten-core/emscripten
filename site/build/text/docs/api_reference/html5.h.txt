@@ -589,8 +589,8 @@ em_mouse_callback_func
    Parameters:
       * **eventType** (*int*) -- The type of "mouse event".
 
-      * **mouseEvent** (*const EmscriptenMouseEvent**) -- Information
-        about the mouse event that occurred.
+      * **mouseEvent** (*const EmscriptenMouseEvent**) --
+        Information about the mouse event that occurred.
 
       * **userData** (*void**) -- The "userData" originally passed
         to the registration function.
@@ -727,8 +727,8 @@ em_wheel_callback_func
       * **eventType** (*int*) -- The type of wheel event
         ("EMSCRIPTEN_EVENT_WHEEL").
 
-      * **wheelEvent** (*const EmscriptenWheelEvent**) -- Information
-        about the wheel event that occurred.
+      * **wheelEvent** (*const EmscriptenWheelEvent**) --
+        Information about the wheel event that occurred.
 
       * **userData** (*void**) -- The "userData" originally passed
         to the registration function.
@@ -933,8 +933,8 @@ em_focus_callback_func
       * **eventType** (*int*) -- The type of focus event
         ("EMSCRIPTEN_EVENT_BLUR").
 
-      * **focusEvent** (*const EmscriptenFocusEvent**) -- Information
-        about the focus event that occurred.
+      * **focusEvent** (*const EmscriptenFocusEvent**) --
+        Information about the focus event that occurred.
 
       * **userData** (*void**) -- The "userData" originally passed
         to the registration function.
@@ -1042,8 +1042,9 @@ em_deviceorientation_callback_func
       * **eventType** (*int*) -- The type of orientation event
         ("EMSCRIPTEN_EVENT_DEVICEORIENTATION").
 
-      * **deviceOrientationEvent** (*const EmscriptenDeviceOrientationEvent**) --
-        Information about the orientation event that occurred.
+      * **deviceOrientationEvent** (*const
+        EmscriptenDeviceOrientationEvent**) -- Information about the
+        orientation event that occurred.
 
       * **userData** (*void**) -- The "userData" originally passed
         to the registration function.
@@ -1158,8 +1159,8 @@ em_devicemotion_callback_func
       * **eventType** (*int*) -- The type of devicemotion event
         ("EMSCRIPTEN_EVENT_DEVICEMOTION").
 
-      * **deviceMotionEvent** (*const EmscriptenDeviceMotionEvent**) --
-        Information about the devicemotion event that occurred.
+      * **deviceMotionEvent** (*const EmscriptenDeviceMotionEvent**)
+        -- Information about the devicemotion event that occurred.
 
       * **userData** (*void**) -- The "userData" originally passed
         to the registration function.
@@ -1281,8 +1282,9 @@ em_orientationchange_callback_func
       * **eventType** (*int*) -- The type of orientationchange event
         ("EMSCRIPTEN_EVENT_ORIENTATIONCHANGE").
 
-      * **orientationChangeEvent** (*const EmscriptenOrientationChangeEvent**) --
-        Information about the orientationchange event that occurred.
+      * **orientationChangeEvent** (*const
+        EmscriptenOrientationChangeEvent**) -- Information about the
+        orientationchange event that occurred.
 
       * **userData** (*void**) -- The "userData" originally passed
         to the registration function.
@@ -1397,8 +1399,8 @@ EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH
 
    Specifies that the Emscripten runtime should explicitly stretch the
    CSS size of the target element to cover the whole screen when
-   transitioning to fullscreen mode. This will change the aspect
-   ratio of the displayed content.
+   transitioning to fullscreen mode. This will change the aspect ratio
+   of the displayed content.
 
 EMSCRIPTEN_FULLSCREEN_SCALE_ASPECT
 
@@ -1567,8 +1569,9 @@ em_fullscreenchange_callback_func
       * **eventType** (*int*) -- The type of fullscreen event
         ("EMSCRIPTEN_EVENT_FULLSCREENCHANGE").
 
-      * **fullscreenChangeEvent** (*const EmscriptenFullscreenChangeEvent**) --
-        Information about the fullscreen event that occurred.
+      * **fullscreenChangeEvent** (*const
+        EmscriptenFullscreenChangeEvent**) -- Information about the
+        fullscreen event that occurred.
 
       * **userData** (*void**) -- The "userData" originally passed
         to the registration function.
@@ -1681,11 +1684,10 @@ EMSCRIPTEN_RESULT emscripten_request_fullscreen_strategy(const char *target, EM
      fullscreen request without any modifications to the DOM.
 
    Parameters:
-      * **EmscriptenFullscreenStrategy *fullscreenStrategy**
-        (*const*) --
-
-        [in] Points to a configuration structure filled by the caller
-        which specifies display options for the fullscreen mode.
+      * **fullscreenStrategy** (*const
+        EmscriptenFullscreenStrategy**) -- [in] Points to a
+        configuration structure filled by the caller which specifies
+        display options for the fullscreen mode.
 
 EMSCRIPTEN_RESULT emscripten_exit_fullscreen(void)
 
@@ -1775,8 +1777,9 @@ em_pointerlockchange_callback_func
       * **eventType** (*int*) -- The type of pointerlockchange event
         ("EMSCRIPTEN_EVENT_POINTERLOCKCHANGE").
 
-      * **pointerlockChangeEvent** (*const EmscriptenPointerlockChangeEvent**) --
-        Information about the pointerlockchange event that occurred.
+      * **pointerlockChangeEvent** (*const
+        EmscriptenPointerlockChangeEvent**) -- Information about the
+        pointerlockchange event that occurred.
 
       * **userData** (*void**) -- The "userData" originally passed
         to the registration function.
@@ -1932,8 +1935,9 @@ em_visibilitychange_callback_func
       * **eventType** (*int*) -- The type of "visibilitychange"
         event ("EMSCRIPTEN_VISIBILITY_HIDDEN").
 
-      * **visibilityChangeEvent** (*const EmscriptenVisibilityChangeEvent**) --
-        Information about the "visibilitychange" event that occurred.
+      * **visibilityChangeEvent** (*const
+        EmscriptenVisibilityChangeEvent**) -- Information about the
+        "visibilitychange" event that occurred.
 
       * **userData** (*void**) -- The "userData" originally passed
         to the registration function.
@@ -2086,8 +2090,8 @@ em_touch_callback_func
       * **eventType** (*int*) -- The type of touch event
         ("EMSCRIPTEN_EVENT_TOUCHSTART").
 
-      * **touchEvent** (*const EmscriptenTouchEvent**) -- Information
-        about the touch event that occurred.
+      * **touchEvent** (*const EmscriptenTouchEvent**) --
+        Information about the touch event that occurred.
 
       * **userData** (*void**) -- The "userData" originally passed
         to the registration function.

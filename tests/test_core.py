@@ -2140,6 +2140,21 @@ int main() {
 }
 ''', 'hello world…')
 
+  def test_em_asm_unused_arguments(self):
+    src = r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+
+      int main(int argc, char **argv) {
+        int sum = EM_ASM_INT({
+           return $0 + $2;
+        }, 0, 1, 2);
+        printf("0+2=%d\n", sum);
+        return 0;
+      }
+    '''
+    self.do_run(src, '''0+2=2''')
+
   def test_memorygrowth(self):
     if self.is_wasm(): return self.skip('wasm support for memory growth in the MVP is yet unclear')
     self.banned_js_engines = [V8_ENGINE] # stderr printing limitations in v8
@@ -5179,6 +5194,8 @@ def process(filename):
     for fs in ['MEMFS', 'NODEFS']:
       src = open(path_from_root('tests', 'unistd', 'unlink.c'), 'r').read()
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
+      # symlinks on node.js on Windows require administrative privileges, so skip testing those bits on that combination.
+      if WINDOWS and fs == 'NODEFS': Building.COMPILER_TEST_OPTS += ['-DNO_SYMLINK=1']
       self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
   def test_unistd_links(self):
@@ -5714,8 +5731,8 @@ return malloc(size);
   def test_sse1_full(self):
     self.banned_js_engines = [NODE_JS] # the test code hits NaN canonicalization on node.js
     if self.is_emterpreter(): return self.skip('todo')
-    Popen([CLANG, path_from_root('tests', 'test_sse1_full.cpp'), '-o', 'test_sse1_full'] + get_clang_native_args(), stdout=PIPE, stderr=PIPE).communicate()
-    native_result, err = Popen('./test_sse1_full', stdout=PIPE, stderr=PIPE).communicate()
+    Popen([CLANG, path_from_root('tests', 'test_sse1_full.cpp'), '-o', 'test_sse1_full', '-D_CRT_SECURE_NO_WARNINGS=1'] + get_clang_native_args(), stdout=PIPE).communicate()
+    native_result, err = Popen('./test_sse1_full', stdout=PIPE).communicate()
     native_result = native_result.replace('\r\n', '\n') # Windows line endings fix
 
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
@@ -5731,8 +5748,8 @@ return malloc(size);
     if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('test_sse2_full requires SpiderMonkey to run.')
     if '-O1' in self.emcc_args or '-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args:
       return self.skip('TODO: SIMD does not currently validate as asm.js in SpiderMonkey, run only in unoptimized mode.')
-    Popen([CLANG, path_from_root('tests', 'test_sse2_full.cpp'), '-o', 'test_sse2_full'] + get_clang_native_args(), stdout=PIPE, stderr=PIPE).communicate()
-    native_result, err = Popen('./test_sse2_full', stdout=PIPE, stderr=PIPE).communicate()
+    Popen([CLANG, path_from_root('tests', 'test_sse2_full.cpp'), '-o', 'test_sse2_full', '-D_CRT_SECURE_NO_WARNINGS=1'] + get_clang_native_args(), stdout=PIPE).communicate()
+    native_result, err = Popen('./test_sse2_full', stdout=PIPE).communicate()
     native_result = native_result.replace('\r\n', '\n') # Windows line endings fix
 
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
@@ -5875,6 +5892,15 @@ return malloc(size);
     self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
+  def test_simd13(self):
+    if self.is_emterpreter(): return self.skip('todo')
+
+    test_path = path_from_root('tests', 'core', 'test_simd13')
+    src, output = (test_path + s for s in ('.in', '.out'))
+
+    self.emcc_args = self.emcc_args + ['-msse']
+    self.do_run_from_file(src, output)
+
   def test_simd_dyncall(self):
     if self.is_emterpreter(): return self.skip('todo')
     if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
@@ -5915,6 +5941,7 @@ return malloc(size);
                             os.path.join('objs', '.libs', 'libfreetype.a'))
 
   def test_freetype(self):
+    if WINDOWS: return self.skip('test_freetype uses a ./configure script to build and therefore currently only runs on Linux and OS X.')
     assert 'asm2g' in test_modes
     if self.run_name == 'asm2g':
       Settings.ALIASING_FUNCTION_POINTERS = 1 - Settings.ALIASING_FUNCTION_POINTERS # flip for some more coverage here
@@ -6054,6 +6081,7 @@ def process(filename):
         assert old.count('tempBigInt') > new.count('tempBigInt')
 
   def test_poppler(self):
+    if WINDOWS: return self.skip('test_poppler depends on freetype, which uses a ./configure script to build and therefore currently only runs on Linux and OS X.')
     Settings.NO_EXIT_RUNTIME = 1
 
     Building.COMPILER_TEST_OPTS += [

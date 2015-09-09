@@ -66,7 +66,6 @@ var USE_TYPED_ARRAYS = 2; // Use typed arrays for the heap. See https://github.c
                           //   the only supported mode.
 var DOUBLE_MODE = 1; // How to load and store 64-bit doubles.
                      // A potential risk is that doubles may be only 32-bit aligned. Forcing 64-bit alignment
-                     // a potential risk is that doubles may be only 32-bit aligned. Forcing 64-bit alignment
                      // in Clang itself should be able to solve that, or as a workaround in DOUBLE_MODE 1 we
                      // will carefully load in parts, in a way that requires only 32-bit alignment. In DOUBLE_MODE
                      // 0 we will simply store and load doubles as 32-bit floats, so when they are stored/loaded
@@ -248,6 +247,18 @@ var STB_IMAGE = 0; // Enables building of stb-image, a tiny public-domain librar
                    // When enabled, stb-image will be used automatically from IMG_Load and IMG_Load_RW. You
                    // can also call the stbi_* functions directly yourself.
 
+var LZ4 = 0; // Enable this to support lz4-compressed file packages. They are stored compressed in memory, and
+             // decompressed on the fly, avoiding storing the entire decompressed data in memory at once.
+             // If you run the file packager separately, you still need to build the main program with this flag,
+             // and also pass --lz4 to the file packager.
+             // (You can also manually compress one on the client, using LZ4.loadPackage(), but that is less
+             // recommended.)
+             // Limitations:
+             //   * LZ4-compressed files are only decompressed when needed, so they are not available
+             //     for special preloading operations like pre-decoding of images using browser codecs,
+             //     preloadPlugin stuff, etc.
+             //   * LZ4 files are read-only.
+
 var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catch exceptions. If the code you
                                     // are compiling does not actually rely on catching exceptions (but the
                                     // compiler generates code for it, maybe because of stdlibc++ stuff),
@@ -402,14 +413,16 @@ var EXPORTED_GLOBALS = []; // Global non-function variables that are explicitly
                            // exported, so they are guaranteed to be
                            // accessible outside of the generated code.
 
-var INCLUDE_FULL_LIBRARY = 0; // Whether to include the whole library rather than just the
-                              // functions used by the generated code. This is needed when
-                              // dynamically loading modules that make use of runtime
+var INCLUDE_FULL_LIBRARY = 0; // Include all JS library functions instead of the sum of
+                              // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + any functions used
+                              // by the generated code. This is needed when dynamically
+                              // loading (i.e. dlopen) modules that make use of runtime
                               // library functions that are not used in the main module.
-                              // Note that this includes js libraries but *not* C. You will
-                              // need the main file to include all needed C libraries. For
-                              // example, if a library uses malloc or new, you will need
-                              // to use those in the main file too to link in dlmalloc.
+                              // Note that this only applies to js libraries, *not* C. You
+                              // will need the main file to include all needed C libraries.
+                              // For example, if a module uses malloc or new, you will
+                              // need to use those in the main file too to pull in dlmalloc
+                              // for use by the module.
 
 var SHELL_FILE = 0; // set this to a string to override the shell file used
 
@@ -542,6 +555,9 @@ var NO_DYNAMIC_EXECUTION = 0; // When enabled, we do not emit eval() and new Fun
                               // privileged firefox app, etc.)
 
 var EMTERPRETIFY = 0; // Runs tools/emterpretify on the compiler output
+var EMTERPRETIFY_FILE = ''; // If defined, a file to write bytecode to, otherwise the default is to embed it in text JS arrays (which is less efficient).
+                            // When emitting HTML, we automatically generate code to load this file and set it to Module.emterpreterFile. If you
+                            // emit JS, you need to make sure that Module.emterpreterFile contains an ArrayBuffer with the bytecode, when the code loads.
 var EMTERPRETIFY_BLACKLIST = []; // Functions to not emterpret, that is, to run normally at full speed
 var EMTERPRETIFY_WHITELIST = []; // If this contains any functions, then only the functions in this list
                                  // are emterpreted (as if all the rest are blacklisted; this overrides the BLACKLIST)

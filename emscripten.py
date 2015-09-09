@@ -272,16 +272,15 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       if const[0] == '"' and const[-1] == '"':
         const = const[1:-1]
       const = '{ ' + const + ' }'
-      i = 0
       args = []
-      while ('$' + str(i)) in const:
+      arity = metadata['asmConstArities'][k]
+      for i in range(arity):
         args.append('$' + str(i))
-        i += 1
       const = 'function(' + ', '.join(args ) + ') ' + const
       asm_consts[int(k)] = const
 
     asm_const_funcs = []
-    for arity in metadata['asmConstArities']:
+    for arity in set(metadata['asmConstArities'].values()):
       forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_%d' % arity] = 1
       args = ['a%d' % i for i in range(arity)]
       all_args = ['code'] + args
@@ -290,7 +289,7 @@ function _emscripten_asm_const_%d(%s) {
  return ASM_CONSTS[code](%s) | 0;
 }''' % (arity, ', '.join(all_args), ', '.join(args)))
 
-    pre = pre.replace('// === Body ===', '// === Body ===\n' + '\nvar ASM_CONSTS = [' + ', '.join(asm_consts) + '];\n' + '\n'.join(asm_const_funcs) + '\n')
+    pre = pre.replace('// === Body ===', '// === Body ===\n' + '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n' + '\n'.join(asm_const_funcs) + '\n')
 
     #if DEBUG: outfile.write('// pre\n')
     outfile.write(pre)
@@ -337,7 +336,7 @@ function _emscripten_asm_const_%d(%s) {
     def make_params(sig): return ','.join(['p%d' % p for p in range(len(sig)-1)])
     def make_coerced_params(sig): return ','.join([shared.JS.make_coercion('p%d', unfloat(sig[p+1]), settings) % p for p in range(len(sig)-1)])
     def make_coercions(sig): return ';'.join(['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, sig[p+1], settings)) for p in range(len(sig)-1)]) + ';'
-    def make_func(name, code, params, coercions): return 'function %s(%s) { %s %s }' % (name, params, coercions, code)
+    def make_func(name, code, params, coercions): return 'function %s(%s) {\n %s %s\n}' % (name, params, coercions, code)
 
     in_table = set()
 

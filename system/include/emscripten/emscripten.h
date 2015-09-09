@@ -74,6 +74,7 @@ extern void emscripten_set_main_loop(em_callback_func func, int fps, int simulat
 
 #define EM_TIMING_SETTIMEOUT 0
 #define EM_TIMING_RAF 1
+#define EM_TIMING_SETIMMEDIATE 2
 
 extern int emscripten_set_main_loop_timing(int mode, int value);
 extern void emscripten_get_main_loop_timing(int *mode, int *value);

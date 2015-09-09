@@ -25,9 +25,10 @@ SWAPPABLE = False
 FROUND = False
 ADVISE = False
 MEMORY_SAFE = False
+OUTPUT_FILE = None
 
 def handle_arg(arg):
-  global ZERO, ASYNC, ASSERTIONS, PROFILING, FROUND, ADVISE, MEMORY_SAFE
+  global ZERO, ASYNC, ASSERTIONS, PROFILING, FROUND, ADVISE, MEMORY_SAFE, OUTPUT_FILE
   if '=' in arg:
     l, r = arg.split('=')
     if l == 'ZERO': ZERO = int(r)
@@ -37,6 +38,7 @@ def handle_arg(arg):
     elif l == 'FROUND': FROUND = int(r)
     elif l == 'ADVISE': ADVISE = int(r)
     elif l == 'MEMORY_SAFE': MEMORY_SAFE = int(r)
+    elif l == 'FILE': OUTPUT_FILE = r[1:-1]
     return False
   return True
 
@@ -1012,26 +1014,57 @@ assert(eb %% 8 === 0);
 __ATPRERUN__.push(function() {
 ''' % len(all_code)]
 
-  CHUNK_SIZE = 10240
+  if OUTPUT_FILE:
+    bytecode_file = open(OUTPUT_FILE, 'wb')
+    n = len(all_code)
+    while n % 4 != 0:
+      n += 1
+    bytecode_file.write(''.join(map(chr, all_code)))
+    for i in range(len(all_code), n):
+      bytecode_file.write(chr(0))
+    for i in range(len(relocations)):
+      bytes = bytify(relocations[i])
+      for j in range(4):
+        bytecode_file.write(chr(bytes[j]))
+    bytecode_file.close()
 
-  i = 0
-  while i < len(all_code):
-    curr = all_code[i:i+CHUNK_SIZE]
-    js += ['''  HEAPU8.set([%s], eb + %d);
+    js += ['''
+  var bytecodeFile = Module['emterpreterFile'];
+  assert(bytecodeFile instanceof ArrayBuffer, 'bad emterpreter file');
+  var codeSize = %d;
+  HEAPU8.set(new Uint8Array(bytecodeFile).subarray(0, codeSize), eb);
+  assert(HEAPU8[eb] === %d);
+  assert(HEAPU8[eb+1] === %d);
+  assert(HEAPU8[eb+2] === %d);
+  assert(HEAPU8[eb+3] === %d);
+  var relocationsStart = (codeSize+3) >> 2;
+  var relocations = (new Uint32Array(bytecodeFile)).subarray(relocationsStart);
+  assert(relocations.length === %d);
+  if (relocations.length > 0) assert(relocations[0] === %d);
+''' % (len(all_code), all_code[0], all_code[1], all_code[2], all_code[3], len(relocations), relocations[0])]
+
+  else:
+    CHUNK_SIZE = 10240
+
+    i = 0
+    while i < len(all_code):
+      curr = all_code[i:i+CHUNK_SIZE]
+      js += ['''  HEAPU8.set([%s], eb + %d);
 ''' % (','.join(map(str, curr)), i)]
-    i += CHUNK_SIZE
+      i += CHUNK_SIZE
 
-  js += ['''
+    js += ['''
   var relocations = [];
 ''']
 
-  i = 0
-  while i < len(relocations):
-    curr = relocations[i:i+CHUNK_SIZE]
-    js += ['''  relocations = relocations.concat([%s]);
+    i = 0
+    while i < len(relocations):
+      curr = relocations[i:i+CHUNK_SIZE]
+      js += ['''  relocations = relocations.concat([%s]);
 ''' % (','.join(map(str, curr)))]
-    i += CHUNK_SIZE
+      i += CHUNK_SIZE
 
+  # same loop to apply relocations for both OUTPUT_FILE and not
   js += ['''
   for (var i = 0; i < relocations.length; i++) {
     assert(relocations[i] %% 4 === 0);

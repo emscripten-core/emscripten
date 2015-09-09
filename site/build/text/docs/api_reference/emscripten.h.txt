@@ -418,12 +418,12 @@ int emscripten_set_main_loop_timing(int mode, int value)
       * **mode** (*int*) --
 
         The timing mode to use. Allowed values are
-        EM_TIMING_SETTIMEOUT, EM_TIMING_RAF.
+        EM_TIMING_SETTIMEOUT, EM_TIMING_RAF and
+        EM_TIMING_SETIMMEDIATE.
 
         param int value:
            The timing value to activate for the main loop. This value
-           interpreted differently according to the
-           >>``<<mode``parameter:
+           interpreted differently according to the "mode" parameter:
 
            * If "mode" is EM_TIMING_SETTIMEOUT, then "value"
              specifies the number of milliseconds to wait between
@@ -444,6 +444,18 @@ int emscripten_set_main_loop_timing(int mode, int value)
              a rate of "60/n" for 60Hz displays, and "120/n" for 120Hz
              displays.
 
+           * If "mode" is EM_TIMING_SETIMMEDIATE, then updates are
+             performed using the "setImmediate" function, or if not
+             available, emulated via "postMessage". See *setImmediate
+             on MDN <https://developer.mozilla.org/en-
+             US/docs/Web/API/Window/setImmediate>* for more
+             information. Note that this mode is **strongly not
+             recommended** to be used when deploying Emscripten output
+             to the web, since it depends on an unstable web extension
+             that is in draft status, browsers other than IE do not
+             currently support it, and its implementation has been
+             considered controversial in review.
+
         rtype:
            int
 
@@ -453,8 +465,8 @@ int emscripten_set_main_loop_timing(int mode, int value)
            loop active before calling this function.
 
         Note: Browsers heavily optimize towards using
-          "requestAnimationFrame" for animation instead of
-          "setTimeout". Because of that, for best experience across
+          "requestAnimationFrame" for animation instead of the other
+          provided modes. Because of that, for best experience across
           browsers, calling this function with "mode=EM_TIMING_RAF"
           and "value=1" will yield best results. Using the JavaScript
           "setTimeout" function is known to cause stutter and
@@ -481,13 +493,11 @@ void emscripten_get_main_loop_timing(int *mode, int *value)
       "emscripten_set_main_loop()".
 
    Parameters:
-      * ***mode** (*int*) --
+      * **mode** (*int**) -- If not null, the used timing mode is
+        returned here.
 
-        If not null, the used timing mode is returned here.
-
-      * ***value** (*int*) --
-
-        If not null, the used timing value is returned here.
+      * **value** (*int**) -- If not null, the used timing value is
+        returned here.
 
 void emscripten_set_main_loop_expected_blockers(int num)
 
@@ -1852,7 +1862,7 @@ void emscripten_idb_exists(const char *db_name, const char *file_id, int* pexist
       * **file_id** -- The name of the file to check
 
       * **pexists** -- An out parameter that will be filled with a
-        non- zero value if the file exists in that database.
+        non-zero value if the file exists in that database.
 
       * **perror** -- An out parameter that will be filled with a
         non- zero value if an error occurred.

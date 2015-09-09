@@ -1,6 +1,6 @@
 mergeInto(LibraryManager.library, {
   $SOCKFS__postset: '__ATINIT__.push(function() { SOCKFS.root = FS.mount(SOCKFS, {}, null); });',
-  $SOCKFS__deps: ['$FS', 'mkport'],
+  $SOCKFS__deps: ['$FS'],
   $SOCKFS: {
     mount: function(mount) {
       // If Module['websocket'] has already been defined (e.g. for configuring
@@ -408,7 +408,7 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(ERRNO_CODES.EINVAL);  // already bound
         }
         sock.saddr = addr;
-        sock.sport = port || _mkport();
+        sock.sport = port;
         // in order to emulate dgram sockets, we need to launch a listen server when
         // binding on a connection-less socket
         // note: this is only required on the server side

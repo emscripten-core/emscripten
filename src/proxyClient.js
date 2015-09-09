@@ -1,6 +1,22 @@
 
 // proxy to/from worker
 
+if (typeof Module === 'undefined') {
+  console.warn('no Module object defined - cannot proxy canvas rendering and input events, etc.');
+  Module = {
+    print: function(x) {
+      console.log(x);
+    },
+    printErr: function(x) {
+      console.log(x);
+    },
+    canvas: {
+      addEventListener: function() {},
+      getBoundingClientRect: function() { return { bottom: 0, height: 0, left: 0, right: 0, top: 0, width: 0 } },
+    },
+  };
+}
+
 // utils
 
 function FPSTracker(text) {

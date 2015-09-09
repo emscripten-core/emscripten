@@ -529,6 +529,50 @@ function WebGLWorker() {
           MAX_TEXTURE_MAX_ANISOTROPY_EXT: 0x84FF
         };
       }
+      case 'WEBGL_draw_buffers': {
+        return {
+          COLOR_ATTACHMENT0_WEBGL     : 0x8CE0,
+          COLOR_ATTACHMENT1_WEBGL     : 0x8CE1,
+          COLOR_ATTACHMENT2_WEBGL     : 0x8CE2,
+          COLOR_ATTACHMENT3_WEBGL     : 0x8CE3,
+          COLOR_ATTACHMENT4_WEBGL     : 0x8CE4,
+          COLOR_ATTACHMENT5_WEBGL     : 0x8CE5,
+          COLOR_ATTACHMENT6_WEBGL     : 0x8CE6,
+          COLOR_ATTACHMENT7_WEBGL     : 0x8CE7,
+          COLOR_ATTACHMENT8_WEBGL     : 0x8CE8,
+          COLOR_ATTACHMENT9_WEBGL     : 0x8CE9,
+          COLOR_ATTACHMENT10_WEBGL    : 0x8CEA,
+          COLOR_ATTACHMENT11_WEBGL    : 0x8CEB,
+          COLOR_ATTACHMENT12_WEBGL    : 0x8CEC,
+          COLOR_ATTACHMENT13_WEBGL    : 0x8CED,
+          COLOR_ATTACHMENT14_WEBGL    : 0x8CEE,
+          COLOR_ATTACHMENT15_WEBGL    : 0x8CEF,
+
+          DRAW_BUFFER0_WEBGL          : 0x8825,
+          DRAW_BUFFER1_WEBGL          : 0x8826,
+          DRAW_BUFFER2_WEBGL          : 0x8827,
+          DRAW_BUFFER3_WEBGL          : 0x8828,
+          DRAW_BUFFER4_WEBGL          : 0x8829,
+          DRAW_BUFFER5_WEBGL          : 0x882A,
+          DRAW_BUFFER6_WEBGL          : 0x882B,
+          DRAW_BUFFER7_WEBGL          : 0x882C,
+          DRAW_BUFFER8_WEBGL          : 0x882D,
+          DRAW_BUFFER9_WEBGL          : 0x882E,
+          DRAW_BUFFER10_WEBGL         : 0x882F,
+          DRAW_BUFFER11_WEBGL         : 0x8830,
+          DRAW_BUFFER12_WEBGL         : 0x8831,
+          DRAW_BUFFER13_WEBGL         : 0x8832,
+          DRAW_BUFFER14_WEBGL         : 0x8833,
+          DRAW_BUFFER15_WEBGL         : 0x8834,
+
+          MAX_COLOR_ATTACHMENTS_WEBGL : 0x8CDF,
+          MAX_DRAW_BUFFERS_WEBGL      : 0x8824,
+
+          drawBuffersWEBGL: function(buffers) {
+            that.drawBuffersWEBGL(buffers);
+          }
+        };
+      }
       case 'OES_standard_derivatives': {
         return { FRAGMENT_SHADER_DERIVATIVE_HINT_OES: 0x8B8B };
       }
@@ -994,6 +1038,18 @@ function WebGLWorker() {
   };
   this.isProgram = function(program) {
     return program && program.what === 'program';
+  };
+  this.blendEquationSeparate = function(rgb, alpha) {
+    commandBuffer.push(77, rgb, alpha);
+  };
+  this.stencilFuncSeparate = function(face, func, ref, mask) {
+    commandBuffer.push(78, face, func, ref, mask);
+  };
+  this.stencilOpSeparate = function(face, fail, zfail, zpass) {
+    commandBuffer.push(79, face, fail, zfail, zpass);
+  };
+  this.drawBuffersWEBGL = function(buffers) {
+    commandBuffer.push(80, buffers);
   };
 
   // Setup

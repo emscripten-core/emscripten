@@ -17,7 +17,7 @@
 #define align1_float emscripten_align1_float
 #define align1_double emscripten_align1_double
 #else
-#define align1_int64 long long
+#define align1_int64 int64_t
 #define align1_int int
 #define align1_float float
 #define align1_double double

@@ -1890,7 +1890,7 @@ int f() {
           for x in os.listdir(CANONICAL_TEMP_DIR):
             if x.startswith('emcc-'):
               os.unlink(os.path.join(CANONICAL_TEMP_DIR, x))
-          Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-O'+ str(opts)], stdout=PIPE, stderr=PIPE).communicate()
+          check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-O'+ str(opts)], stderr=PIPE)
           if debug is None:
             for x in os.listdir(CANONICAL_TEMP_DIR):
               if x.startswith('emcc-'):
@@ -2087,14 +2087,10 @@ seeked= file.
     assert len(out2) > 0
     assert 'below the current directory' not in err2
     def clean(txt):
-      return filter(lambda line: 'PACKAGE_UUID' not in line, txt.split('\n'))
+      return filter(lambda line: 'PACKAGE_UUID' not in line and 'loadPackage({' not in line, txt.split('\n'))
     out = clean(out)
     out2 = clean(out2)
     assert out == out2
-    # sanity check that we do generate different code for different inputs
-    out3, err3 = Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data2.txt', 'data2.txt@waka.txt'], stdout=PIPE, stderr=PIPE).communicate()
-    out3 = clean(out3)
-    assert out != out3
     # verify '--separate-metadata' option produces separate metadata file
     os.chdir('..')
     Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata']).communicate()
@@ -5240,4 +5236,8 @@ main(int argc, char **argv)
     open(os.path.join('boot', 'README.txt'), 'w').write(' ')
     Popen([PYTHON, EMCC, 'src.c', '--embed-file', 'boot']).communicate()
     self.assertContained('Resolved: /boot/README.txt', run_js('a.out.js'))
+
+  def test_no_warnings(self):
+    out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp')], stderr=PIPE).communicate()
+    assert err == '', err
 

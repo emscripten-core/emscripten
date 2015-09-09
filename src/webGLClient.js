@@ -249,6 +249,10 @@ function WebGLClient() {
     74: { name: 'uniform2fv', func: uniform2fv },
     75: { name: 'texParameterf', func: func3 },
     76: { name: 'isContextLost', func: function() { assert(!ctx.isContextLost(), 'context lost which we cannot handle, we are async proxied WebGL') } },
+    77: { name: 'blendEquationSeparate', func: func2 },
+    78: { name: 'stencilFuncSeparate', func: func4 },
+    79: { name: 'stencilOpSeparate', func: func4 },
+    80: { name: 'drawBuffersWEBGL', func: func1 },
   };
 
   function renderCommands(buf) {
@@ -306,12 +310,15 @@ WebGLClient.prefetch = function() {
 
   // Fetch the parameters and proxy them
   var parameters = {};
-  ['MAX_VERTEX_ATTRIBS', 'MAX_TEXTURE_IMAGE_UNITS', 'MAX_TEXTURE_SIZE', 'MAX_CUBE_MAP_TEXTURE_SIZE', 'MAX_VERTEX_UNIFORM_VECTORS', 'MAX_FRAGMENT_UNIFORM_VECTORS', 'MAX_VARYING_VECTORS', 'MAX_COMBINED_TEXTURE_IMAGE_UNITS', 'MAX_VERTEX_TEXTURE_IMAGE_UNITS', 'VENDOR', 'RENDERER', 'VERSION', 'SHADING_LANGUAGE_VERSION', 'COMPRESSED_TEXTURE_FORMATS'].forEach(function(name) {
+  ['MAX_VERTEX_ATTRIBS', 'MAX_TEXTURE_IMAGE_UNITS', 'MAX_TEXTURE_SIZE', 'MAX_CUBE_MAP_TEXTURE_SIZE', 'MAX_VERTEX_UNIFORM_VECTORS', 'MAX_FRAGMENT_UNIFORM_VECTORS',
+   'MAX_VARYING_VECTORS', 'MAX_COMBINED_TEXTURE_IMAGE_UNITS', 'MAX_VERTEX_TEXTURE_IMAGE_UNITS', 'VENDOR', 'RENDERER', 'VERSION', 'SHADING_LANGUAGE_VERSION',
+   'COMPRESSED_TEXTURE_FORMATS', 'RED_BITS', 'GREEN_BITS', 'BLUE_BITS', 'ALPHA_BITS', 'DEPTH_BITS', 'MAX_RENDERBUFFER_SIZE'].forEach(function(name) {
     var id = ctx[name];
     parameters[id] = ctx.getParameter(id);
   });
   // Try to enable some extensions, so we can access their parameters
-  [{ extName: 'EXT_texture_filter_anisotropic', paramName: 'MAX_TEXTURE_MAX_ANISOTROPY_EXT' }].forEach(function(pair) {
+  [{ extName: 'EXT_texture_filter_anisotropic', paramName: 'MAX_TEXTURE_MAX_ANISOTROPY_EXT' },
+   { extName: 'WEBGL_draw_buffers', paramName: 'MAX_COLOR_ATTACHMENTS_WEBGL' }].forEach(function(pair) {
     var ext = ctx.getExtension(pair.extName);
     if (ext) {
       var id = ext[pair.paramName];

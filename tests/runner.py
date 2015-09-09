@@ -89,7 +89,7 @@ class RunnerCore(unittest.TestCase):
     if not self.save_dir:
       # rmtree() fails on Windows if the current working directory is inside the tree.
       os.chdir(os.path.join(self.get_dir(), '..'))
-      shutil.rmtree(self.get_dir())
+      try_delete(self.get_dir())
 
       # Make sure we don't leave stuff around
       #if not self.has_prev_ll:
@@ -929,6 +929,10 @@ further debug the compiler itself, see emcc.
         base_module = 'other'
         relevant_modes = ['other']
         first = first.replace('other', '')
+      elif first.startswith('browser'):
+        base_module = 'browser'
+        relevant_modes = ['browser']
+        first = first.replace('browser', '')
       num = int(first)
     for m in modules:
       if hasattr(m, base_module):
@@ -939,8 +943,11 @@ further debug the compiler itself, see emcc.
         while len(chosen) < num:
           test = random.choice(tests)
           mode = random.choice(relevant_modes)
-          print '* ' + mode + '.' + test
-          chosen.add(mode + '.' + test)
+          new_test = mode + '.' + test
+          before = len(chosen)
+          chosen.add(new_test)
+          if len(chosen) > before:
+            print '* ' + new_test
         sys.argv += list(chosen)
         std = 0.5/math.sqrt(num)
         print

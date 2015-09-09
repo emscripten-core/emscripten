@@ -255,9 +255,7 @@ int main()
 	aeqi(_mm_cmpord_ss(nan1, nan2), fcastu(NAN), 0, 0, 0); // scalar test if both operands are not nan, pass three highest unchanged.
 	// Intel Intrinsics Guide documentation is wrong on _mm_cmpunord_ps and _mm_cmpunord_ss. MSDN is right: http://msdn.microsoft.com/en-us/library/khy6fk1t(v=vs.90).aspx
 	aeqi(_mm_cmpunord_ps(nan1, nan2), 0xFFFFFFFF, 0xFFFFFFFF, 0, 0xFFFFFFFF); // 4-wide test if one of the operands is nan.
-#ifndef __EMSCRIPTEN__ // TODO: The polyfill currently does NaN canonicalization and breaks these.
 	aeqi(_mm_cmpunord_ss(nan1, nan2), fcastu(NAN), 0, 0, 0xFFFFFFFF); // scalar test if one of the operands is nan, pass three highest unchanged.
-#endif
 
 	Assert(_mm_comieq_ss(a, b) == 0); Assert(_mm_comieq_ss(a, a) == 1); // Scalar cmp == of lowest element, return int.
 	Assert(_mm_comige_ss(a, b) == 0); Assert(_mm_comige_ss(a, a) == 1); // Scalar cmp >= of lowest element, return int.
@@ -268,16 +266,12 @@ int main()
 
 	// The ucomi versions are identical to comi, except that ucomi signal a FP exception only if one of the input operands is a SNaN, whereas the comi versions signal a FP
 	// exception when one of the input operands is either a QNaN or a SNaN.
-#ifndef __EMSCRIPTEN__ // TODO: Fix ucomi support in SSE to treat NaNs properly.
 	Assert(_mm_ucomieq_ss(a, b) == 0); Assert(_mm_ucomieq_ss(a, a) == 1); Assert(_mm_ucomieq_ss(a, nan1) == 1);
-#endif
 	Assert(_mm_ucomige_ss(a, b) == 0); Assert(_mm_ucomige_ss(a, a) == 1); Assert(_mm_ucomige_ss(a, nan1) == 0);
 	Assert(_mm_ucomigt_ss(b, a) == 1); Assert(_mm_ucomigt_ss(a, a) == 0); Assert(_mm_ucomigt_ss(a, nan1) == 0);
 	Assert(_mm_ucomile_ss(b, a) == 0); Assert(_mm_ucomile_ss(a, a) == 1); Assert(_mm_ucomile_ss(a, nan1) == 1);
 	Assert(_mm_ucomilt_ss(a, b) == 1); Assert(_mm_ucomilt_ss(a, a) == 0); Assert(_mm_ucomilt_ss(a, nan1) == 1);
-#ifndef __EMSCRIPTEN__ // TODO: Fix ucomi support in SSE to treat NaNs properly.
 	Assert(_mm_ucomineq_ss(a, b) == 1); Assert(_mm_ucomineq_ss(a, a) == 0); Assert(_mm_ucomineq_ss(a, nan1) == 0);
-#endif
 
 	// SSE1 Convert instructions:
 	__m128 c = get_c(); // [1.5, 2.5, 3.5, 4.5]

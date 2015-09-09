@@ -56,6 +56,9 @@ var LibraryGL = {
        } */
 
     stringCache: {},
+#if USE_WEBGL2
+    stringiCache: {},
+#endif
 
     packAlignment: 4,   // default alignment is 4 bytes
     unpackAlignment: 4, // default alignment is 4 bytes
@@ -343,6 +346,16 @@ var LibraryGL = {
         case 0x8B9B: // GL_IMPLEMENTATION_COLOR_READ_FORMAT
           ret = 0x1908; // GL_RGBA
           break;
+#if USE_WEBGL2
+        case 0x821D: // GL_NUM_EXTENSIONS
+          if (GLctx.canvas.GLctxObject.version < 2) {
+            GL.recordError(0x0502 /* GL_INVALID_OPERATION */); // Calling GLES3/WebGL2 function with a GLES2/WebGL1 context
+            return;
+          }
+          var exts = GLctx.getSupportedExtensions();
+          ret = 2*exts.length; // each extension is duplicated, first in unprefixed WebGL form, and then a second time with "GL_" prefix.
+          break;
+#endif
       }
 
       if (ret === undefined) {
@@ -962,6 +975,51 @@ var LibraryGL = {
     GL.stringCache[name_] = ret;
     return ret;
   },
+
+#if USE_WEBGL2
+  glGetStringi: function(name, index) {
+    if (GLctx.canvas.GLctxObject.version < 2) {
+      GL.recordError(0x0502 /* GL_INVALID_OPERATION */); // Calling GLES3/WebGL2 function with a GLES2/WebGL1 context
+      return 0;
+    }
+    var stringiCache = GL.stringiCache[name];
+    if (stringiCache) {
+      if (index < 0 || index >= stringiCache.length) {
+        GL.recordError(0x0501/*GL_INVALID_VALUE*/);
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_VALUE in glGetStringi: index out of range (' + index + ')!');
+#endif
+        return 0;
+      }
+      return stringiCache[index];
+    }
+    switch(name) {
+      case 0x1F03 /* GL_EXTENSIONS */:
+        var exts = GLctx.getSupportedExtensions();
+        var gl_exts = [];
+        // each extension is duplicated, first in unprefixed WebGL form, and then a second time with "GL_" prefix.
+        for (var i in exts) {
+          gl_exts.push(allocate(intArrayFromString(exts[i]), 'i8', ALLOC_NORMAL));
+          gl_exts.push(allocate(intArrayFromString("GL_" + exts[i]), 'i8', ALLOC_NORMAL));
+        }
+        stringiCache = GL.stringiCache[name] = gl_exts;
+        if (index < 0 || index >= stringiCache.length) {
+          GL.recordError(0x0501/*GL_INVALID_VALUE*/);
+#if GL_ASSERTIONS
+          Module.printErr('GL_INVALID_VALUE in glGetStringi: index out of range (' + index + ') in a call to GL_EXTENSIONS!');
+#endif
+          return 0;
+        }
+        return stringiCache[index];
+      default:
+        GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_ENUM in glGetStringi: Unknown parameter ' + name + '!');
+#endif
+        return 0;
+    }
+  },
+#endif
 
   glGetIntegerv__sig: 'vii',
   glGetIntegerv: function(name_, p) {

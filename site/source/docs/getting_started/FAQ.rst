@@ -255,9 +255,16 @@ To make sure a C function remains available to be called from normal JavaScript,
 
 	./emcc -s EXPORTED_FUNCTIONS="['_main', '_my_func']"  ...
 
+.. note:: 
+
+   `EXPORTED_FUNCTIONS` affects compilation to JavaScript. If you first compile to an object file,
+   then compile the object to JavaScript, you need that option on the second command.
+
 If your function is used in other functions, LLVM may inline it and it will not appear as a unique function in the JavaScript. Prevent inlining by defining the function with :c:type:`EMSCRIPTEN_KEEPALIVE`: ::
 
 	void EMSCRIPTEN_KEEPALIVE yourCfunc() {..}
+
+`EMSCRIPTEN_KEEPALIVE` also exports the function, as if it were on `EXPORTED_FUNCTIONS`.
 	
 .. note:: 
 

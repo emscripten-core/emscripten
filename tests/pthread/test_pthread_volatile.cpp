@@ -1,4 +1,5 @@
 #include <pthread.h>
+#include <errno.h>
 #include <emscripten.h>
 #include <emscripten/threading.h>
 
@@ -21,7 +22,15 @@ static void *thread_start(void *arg) // thread: just flip the shared flag and qu
 int main()
 {
   pthread_t thr;
-  pthread_create(&thr, NULL, thread_start, (void*)0);
+  int rc = pthread_create(&thr, NULL, thread_start, (void*)0);
+  if (rc != 0)
+  {
+#ifdef REPORT_RESULT
+    int result = (rc != EAGAIN);
+    REPORT_RESULT();
+    return 0;
+#endif
+  }
 
 #ifdef USE_C_VOLATILE
   while(sharedVar == 0)

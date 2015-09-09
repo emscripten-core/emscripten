@@ -65,6 +65,13 @@ home directory::
 
     ./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS="['_int_sqrt']"
 
+.. note::
+
+   `EXPORTED_FUNCTIONS` affects compilation to JavaScript. If you first compile to an object file,
+   then compile the object to JavaScript, you need that option on the second command. If you do
+   it all together as in the example here (source straight to JavaScript) then this just works,
+   of course.
+
 After compiling, you can call this function with :js:func:`cwrap` using the
 following JavaScript::
 
@@ -73,7 +80,7 @@ following JavaScript::
     int_sqrt(28)
 
 The first parameter is the name of the function to be wrapped, the second is
-the return type of the function, and the third is an array of parameter
+the return type of the function (or a JavaScript `null` value if there isn't one), and the third is an array of parameter
 types (which may be omitted if there are no parameters). The types are
 native JavaScript types, "number" (for a C integer, float, or general
 pointer) or "string" (for a C ``char*`` that represents a string).
@@ -221,9 +228,18 @@ an alert, followed by an exception. (Note, however, that under the hood
 Emscripten still does a function call even in this case, which has some
 amount of overhead.)
 
-You can also send values from C into JavaScript inside :c:macro:`EM_ASM_`,
-as well as receive values back (see the :c:macro:`linked macro <EM_ASM_>`
-for details. The following example will print out ``I received: 100``
+You can also send values from C into JavaScript inside :c:macro:`EM_ASM_`
+(note the extra "_" at the end), for example
+
+.. code-block:: cpp
+
+      EM_ASM_({
+        Module.print('I received: ' + $0);
+      }, 100);
+
+This will show ``I received: 100``. 
+
+You can also receive values back, for example the following will print out ``I received: 100``
 and then ``101``.
 
 .. code-block:: cpp
@@ -233,6 +249,8 @@ and then ``101``.
         return $0 + 1;
       }, 100);
       printf("%d\n", x);
+
+See the :c:macro:`emscripten.h docs <EM_ASM_>` for more details.
 
 .. note::
 

@@ -110,7 +110,8 @@ var LibraryManager = {
         'library_nodefs.js',
         'library_sockfs.js',
         'library_workerfs.js',
-        'library_tty.js'
+        'library_tty.js',
+        'library_lz4.js',
       ]);
     }
     if (!NO_BROWSER) {

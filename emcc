@@ -415,6 +415,7 @@ try:
   proxy_to_worker = False
   default_object_extension = '.o'
   valid_abspaths = []
+  separate_asm = False
 
   def is_valid_abspath(path_name):
     # Any path that is underneath the emscripten repository root must be ok.
@@ -648,6 +649,9 @@ try:
       valid_abspaths.append(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
+    elif newargs[i] == '--separate-asm':
+      separate_asm = True
+      newargs[i] = ''
     elif newargs[i].startswith(('-I', '-L')):
       path_name = newargs[i][2:]
       if not absolute_warning_shown and os.path.isabs(path_name) and not is_valid_abspath(path_name):
@@ -844,6 +848,8 @@ try:
   newargs = CC_ADDITIONAL_ARGS + newargs
 
   assert not (Compression.on and final_suffix != 'html'), 'Compression only works when generating HTML'
+
+  assert not (separate_asm and final_suffix != 'html'), '--separate-asm requires building to HTML'
 
   # If we are using embind and generating JS, now is the time to link in bind.cpp
   if bind and final_suffix in JS_CONTAINING_SUFFIXES:
@@ -1339,6 +1345,8 @@ try:
       file_args.append('--no-heap-copy')
     if not use_closure_compiler:
       file_args.append('--no-closure')
+    if shared.Settings.LZ4:
+      file_args.append('--lz4')
     file_code = execute([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE)[0]
     pre_js = file_code + pre_js
 
@@ -1415,9 +1423,10 @@ try:
   js_optimizer_queue_history = []
   js_optimizer_blacklist = (os.environ.get('EMCC_JSOPT_BLACKLIST') or '').split(',')
   minify_whitespace = False
+  cleanup_shell = False
 
   def flush_js_optimizer_queue(title='js_opts'):
-    global final, js_optimizer_queue, js_optimizer_extra_info, js_optimizer_queue_history
+    global final, js_optimizer_queue, js_optimizer_extra_info, js_optimizer_queue_history, cleanup_shell
 
     js_optimizer_queue = filter(lambda p: p not in js_optimizer_blacklist, js_optimizer_queue)
 
@@ -1437,6 +1446,8 @@ try:
           passes += ['profilingFuncs']
         if minify_whitespace and 'last' in passes:
           passes += ['minifyWhitespace']
+        if cleanup_shell and 'last' in passes:
+          passes += ['cleanup']
         logging.debug('applying js optimization passes: %s', ' '.join(passes))
         misc_temp_files.note(final)
         final = shared.Building.js_optimizer(final, passes, debug_level >= 4, js_optimizer_extra_info, just_split=just_split, just_concat=just_concat)
@@ -1477,6 +1488,7 @@ try:
           js_optimizer_queue = [p]
           flush_js_optimizer_queue(p)
           js_optimizer_extra_info = extra_info # flush wipes it
+          log_time('part of js opts')
       js_optimizer_queue_history += js_optimizer_queue
       js_optimizer_queue = []
     js_optimizer_extra_info = {}
@@ -1536,7 +1548,8 @@ try:
     if use_closure_compiler == 1:
       js_optimizer_queue += ['closure']
     elif debug_level <= 2 and shared.Settings.FINALIZE_ASM_JS and not use_closure_compiler:
-      js_optimizer_queue += ['cleanup']
+      global cleanup_shell
+      cleanup_shell = True
 
   if js_opts:
     if shared.Settings.SAFE_HEAP: js_optimizer_queue += ['safeHeap']
@@ -1609,6 +1622,8 @@ try:
         args += ['FROUND=1']
       if shared.Settings.ALLOW_MEMORY_GROWTH:
         args += ['MEMORY_SAFE=1']
+      if shared.Settings.EMTERPRETIFY_FILE:
+        args += ['FILE="' + shared.Settings.EMTERPRETIFY_FILE + '"']
       execute(args)
       final = final + '.em.js'
     finally:
@@ -1654,12 +1669,24 @@ try:
     logging.debug('generating HTML')
     shell = open(shell_path).read()
     assert '{{{ SCRIPT }}}' in shell, 'HTML shell must contain  {{{ SCRIPT }}}  , see src/shell.html for an example'
-    html = open(target, 'w')
     base_js_target = os.path.basename(js_target)
+
+    script_src = None # if set, we have a script to load with a src attribute
+    script_inline = None # if set, we have the contents of a script to write inline in a script
+
+    def un_src(): # use this if you want to modify the script and need it to be inline
+      global script_src, script_inline
+      if script_src is None: return
+      script_inline = '''
+        var script = document.createElement('script');
+        script.src = "%s";
+        document.body.appendChild(script);
+''' % script_src
+      script_src = None
+
     if proxy_to_worker:
       child_js = shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename
-      html.write(shell.replace('{{{ SCRIPT }}}', '''
-<script>
+      script_inline = '''
   if ((',' + window.location.search.substr(1) + ',').indexOf(',noProxy,') < 0) {
     console.log('running code in a web worker');
 ''' + open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + shared.read_and_preprocess(shared.path_from_root('src', 'proxyClient.js')).replace('{{{ filename }}}', child_js).replace('{{{ IDBStore.js }}}', open(shared.path_from_root('src', 'IDBStore.js')).read()) + '''
@@ -1670,7 +1697,7 @@ try:
     script.src = "%s.js";
     document.body.appendChild(script);
   }
-</script>''' % child_js))
+''' % child_js
       shutil.move(final, js_target)
     elif not Compression.on:
       # Normal code generation path
@@ -1680,7 +1707,7 @@ try:
       need_mods = shared.Settings.PRECISE_F32 == 2
       if not need_mods:
         # Non-modifiable code, just load the code directly
-        script_tag = '''<script async type="text/javascript" src="%s"></script>''' % base_js_target
+        script_src = base_js_target
       else:
         # Potentially-modifiable code, load as text, modify, then execute. This lets you
         # patch the code on the client machine right before it is executed, perhaps based
@@ -1693,7 +1720,7 @@ try:
             # simple dumb replace
             mods.append('''
 console.log('optimizing out Math.fround calls');
-code = code.replace(/Math_fround\(/g, '(').replace("'use asm'", "'almost asm'")
+code = code.replace(/Math_fround\(/g, '(').replace("'use asm'", "'almost asm'").replace('"use asm"', '"almost asm"');
 ''')
           else:
             # minified, not quite so simple - TODO
@@ -1711,7 +1738,7 @@ try {
     asm = asm.replace(new RegExp('[^a-zA-Z0-9\\\\$\\\\_]' + minified + '\\\\(', 'g'), function(s) { moar = true; return s[0] + '(' });
   } while (moar);
   code = code.substring(0, startAsm) + asm + code.substring(endAsm);
-  code = code.replace("'use asm'", "'almost asm'");
+  code = code.replace("'use asm'", "'almost asm'").replace('"use asm"', '"almost asm"');
 } catch(e) { console.log('failed to optimize out Math.fround calls ' + e) }
 ''')
 
@@ -1744,8 +1771,7 @@ try {
   codeXHR.send(null);
 }
 ''' % (base_js_target, fixes)
-        script_tag = '''<script>%s</script>''' % code
-      html.write(shell.replace('{{{ SCRIPT }}}', script_tag))
+        script_inline = code
     else:
       # Compress the main code
       shutil.move(final, js_target)
@@ -1796,7 +1822,7 @@ try {
         };
         compiledCodeXHR.send(null);
 ''' % Compression.compressed_name(base_js_target)
-      html.write(shell.replace('{{{ SCRIPT }}}', '<script>' + decoding + '</script>'))
+      script_inline = decoding
 
       # Add decompressor with web worker glue code
       decompressor = open('decompress.js', 'w')
@@ -1808,6 +1834,62 @@ try {
 ''' % Compression.js_name)
       decompressor.close()
 
+    if shared.Settings.EMTERPRETIFY_FILE:
+      # We need to load the emterpreter file before anything else, it has to be synchronously ready
+      un_src()
+      script_inline = '''
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', '%s', true);
+        xhr.responseType = 'arraybuffer';
+        xhr.onload = function() {
+          Module.emterpreterFile = xhr.response;
+%s
+        };
+        xhr.send(null);
+''' % (shared.Settings.EMTERPRETIFY_FILE, script_inline)
+
+    if memory_init_file:
+      # start to load the memory init file in the HTML, in parallel with the JS
+      un_src()
+      script_inline = ('''
+        (function() {
+          var memoryInitializer = '%s';
+          if (typeof Module['locateFile'] === 'function') {
+            memoryInitializer = Module['locateFile'](memoryInitializer);
+          } else if (Module['memoryInitializerPrefixURL']) {
+            memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
+          }
+          var xhr = Module['memoryInitializerRequest'] = new XMLHttpRequest();
+          xhr.open('GET', memoryInitializer, true);
+          xhr.responseType = 'arraybuffer';
+          xhr.send(null);
+        })();
+''' % os.path.basename(memfile)) + script_inline
+
+    if separate_asm:
+      un_src()
+      asm_target = js_target[:-3] + '.asm.js'
+      temp_target = misc_temp_files.get(suffix='.js').name
+      execute([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), js_target, asm_target, temp_target])
+      shutil.move(temp_target, js_target)
+      script_inline = '''
+    var script = document.createElement('script');
+    script.src = "%s";
+    script.onload = function() {
+      setTimeout(function() {
+        %s
+      }, 1); // delaying even 1ms is enough to allow compilation memory to be reclaimed
+    };
+    document.body.appendChild(script);
+''' % (os.path.basename(asm_target), script_inline)
+
+    html = open(target, 'w')
+    assert (script_src or script_inline) and not (script_src and script_inline)
+    if script_src:
+      script_replacement = '<script async type="text/javascript" src="%s"></script>' % script_src
+    else:
+      script_replacement = '<script>\n%s\n</script>' % script_inline
+    html.write(shell.replace('{{{ SCRIPT }}}', script_replacement))
     html.close()
   else:
     if debug_level >= 4: generate_source_map(target)

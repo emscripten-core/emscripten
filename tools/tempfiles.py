@@ -2,13 +2,30 @@ import os
 import shutil
 import tempfile
 import atexit
+import stat
 
 def try_delete(filename):
   try:
     os.unlink(filename)
   except:
-    if os.path.exists(filename):
-      shutil.rmtree(filename, ignore_errors=True)
+    pass
+  if not os.path.exists(filename): return
+  try:
+    shutil.rmtree(filename, ignore_errors=True)
+  except:
+    pass
+  if not os.path.exists(filename): return
+  try:
+    os.chmod(filename, os.stat(filename).st_mode | stat.S_IWRITE)
+    def remove_readonly_and_try_again(func, path, exc_info):
+      if not (os.stat(path).st_mode & stat.S_IWRITE):
+        os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
+        func(path)
+      else:
+        raise
+    shutil.rmtree(filename, onerror=remove_readonly_and_try_again)
+  except:
+    pass
 
 class TempFiles:
   def __init__(self, tmp, save_debug_files=False):
