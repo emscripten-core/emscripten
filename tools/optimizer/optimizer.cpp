@@ -106,6 +106,7 @@ Ref makeEmpty();
 bool isEmpty(Ref node);
 Ref makeAsmVarDef(const IString& v, AsmType type);
 Ref makeArray();
+Ref makeBool(bool b);
 Ref makeNum(double x);
 Ref makeName(IString str);
 Ref makeAsmCoercion(Ref node, AsmType type);
@@ -240,7 +241,7 @@ struct AsmData {
     for (auto param : func[2]->getArray()) {
       IString str = param->getIString();
       assert(locals.count(str) > 0);
-      stats[next++] = make1(STAT, make3(ASSIGN, &(arena.alloc())->setBool(true), makeName(str.c_str()), makeAsmCoercion(makeName(str.c_str()), locals[str].type)));
+      stats[next++] = make1(STAT, make3(ASSIGN, makeBool(true), makeName(str.c_str()), makeAsmCoercion(makeName(str.c_str()), locals[str].type)));
     }
     if (varDefs->size()) {
       stats[next] = make1(VAR, varDefs);
@@ -406,63 +407,48 @@ Ref makeArray() {
   return &arena.alloc()->setArray();
 }
 
+Ref makeBool(bool b) {
+  return &arena.alloc()->setBool(b);
+}
+
 Ref makeString(const IString& s) {
   return &arena.alloc()->setString(s);
 }
 
 Ref makeEmpty() {
-  Ref ret(makeArray());
-  ret->push_back(makeString(TOPLEVEL));
-  ret->push_back(makeArray());
-  return ret;
-}
-
-Ref makePair(Ref x, Ref y) {
-  Ref ret = makeArray();
-  ret->push_back(x);
-  ret->push_back(y);
-  return ret;
+  return ValueBuilder::makeToplevel();
 }
 
 Ref makeNum(double x) {
-  Ref ret(makeArray());
-  ret->push_back(makeString(NUM));
-  ret->push_back(&arena.alloc()->setNumber(x));
-  return ret;
+  return ValueBuilder::makeDouble(x);
 }
 
 Ref makeName(IString str) {
-  Ref ret(makeArray());
-  ret->push_back(makeString(NAME));
-  ret->push_back(makeString(str));
-  return ret;
+  return ValueBuilder::makeName(str);
 }
 
 Ref makeBlock() {
-  Ref ret(makeArray());
-  ret->push_back(makeString(BLOCK));
-  ret->push_back(makeArray());
-  return ret;
+  return ValueBuilder::makeBlock();
 }
 
-Ref make1(IString type, Ref a) {
+Ref make1(IString s1, Ref a) {
   Ref ret(makeArray());
-  ret->push_back(makeString(type));
+  ret->push_back(makeString(s1));
   ret->push_back(a);
   return ret;
 }
 
-Ref make2(IString type, IString a, Ref b) {
+Ref make2(IString s1, IString s2, Ref a) {
   Ref ret(makeArray());
-  ret->push_back(makeString(type));
-  ret->push_back(makeString(a));
-  ret->push_back(b);
+  ret->push_back(makeString(s1));
+  ret->push_back(makeString(s2));
+  ret->push_back(a);
   return ret;
 }
 
-Ref make2(IString type, Ref a, Ref b) {
+Ref make2(IString s1, Ref a, Ref b) {
   Ref ret(makeArray());
-  ret->push_back(makeString(type));
+  ret->push_back(makeString(s1));
   ret->push_back(a);
   ret->push_back(b);
   return ret;
@@ -521,7 +507,7 @@ Ref makeAsmVarDef(const IString& v, AsmType type) {
     }
     default: assert(0);
   }
-  return makePair(&(arena.alloc()->setString(v)), val);
+  return make1(v, val);
 }
 
 Ref makeAsmCoercion(Ref node, AsmType type) {
@@ -733,19 +719,19 @@ Ref unVarify(Ref vars) { // transform var x=1, y=2 etc. into (x=1, y=2), i.e., t
   Ref ret = makeArray();
   ret->push_back(makeString(STAT));
   if (vars->size() == 1) {
-    ret->push_back(make3(ASSIGN, &(arena.alloc())->setBool(true), makeName(vars[0][0]->getIString()), vars[0][1]));
+    ret->push_back(make3(ASSIGN, makeBool(true), makeName(vars[0][0]->getIString()), vars[0][1]));
   } else {
     ret->push_back(makeArray());
     Ref curr = ret[1];
     for (size_t i = 0; i+1 < vars->size(); i++) {
       curr->push_back(makeString(SEQ));
-      curr->push_back(make3(ASSIGN, &(arena.alloc())->setBool(true), makeName(vars[i][0]->getIString()), vars[i][1]));
+      curr->push_back(make3(ASSIGN, makeBool(true), makeName(vars[i][0]->getIString()), vars[i][1]));
       if (i != vars->size()-2) {
         curr->push_back(makeArray());
         curr = curr[2];
       }
     }
-    curr->push_back(make3(ASSIGN, &(arena.alloc())->setBool(true), makeName(vars->back()[0]->getIString()), vars->back()[1]));
+    curr->push_back(make3(ASSIGN, makeBool(true), makeName(vars->back()[0]->getIString()), vars->back()[1]));
   }
   return ret;
 }
@@ -1615,7 +1601,7 @@ void eliminate(Ref ast, bool memSafe) {
                     traversePrePostConditional(curr, looperToLooptemp, [](Ref node){});
                   }
                   asmData.addVar(temp, asmData.getType(looper));
-                  stats->insert(found, make1(STAT, make3(ASSIGN, &(arena.alloc())->setBool(true), makeName(temp), makeName(looper))));
+                  stats->insert(found, make1(STAT, make3(ASSIGN, makeBool(true), makeName(temp), makeName(looper))));
                 }
               }
             }
