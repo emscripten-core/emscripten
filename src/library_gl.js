@@ -442,15 +442,15 @@ var LibraryGL = {
     },
 
     getIndexed: function(target, index, data, type) {
-#if GL_ASSERTIONS
       if (!data) {
         // GLES2 specification does not specify how to behave if data is a null pointer. Since calling this function does not make sense
         // if data == null, issue a GL error to notify user about it. 
+#if GL_ASSERTIONS
         Module.printErr('GL_INVALID_VALUE in glGetInteger(64)i_v(target=' + target + ', index=' + index + ', data=0): Function called with null out pointer!');
+#endif
         GL.recordError(0x0501 /* GL_INVALID_VALUE */);
         return;
       }
-#endif
       var result = GLctx['getIndexedParameter'](target, index);
       var ret;
       switch (typeof result) {
