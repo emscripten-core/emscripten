@@ -27,6 +27,7 @@ var LibraryGL = {
     queries: [],
     samplers: [],
     transformFeedbacks: [],
+    syncs: [],
 #endif
 
 #if USES_GL_EMULATION
@@ -1975,6 +1976,74 @@ var LibraryGL = {
     view[3] = {{{ makeGetValue('value', '12', 'float') }}};
     GLctx['clearBufferuiv'](buffer, drawbuffer, view);
   },
+
+  glFenceSync__sig: 'iii',
+  glFenceSync: function() {
+    var id = GL.getNewId(GL.syncs);
+    var sync = GLctx.fenceSync();
+    sync.name = id;
+    GL.syncs[id] = sync;
+    return id;
+  },
+
+  glDeleteSync__sig: 'vi',
+  glDeleteSync: function(id) {
+    if (!id) return;
+    var sync = GL.syncs[id];
+    if (!sync) { // glDeleteSync signals an error when deleting a nonexisting object, unlike some other GL delete functions.
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+    GLctx.deleteSync(sync);
+    sync.name = 0;
+    GL.syncs[id] = null;
+  },
+
+  glClientWaitSync__sig: 'iiii',
+  glClientWaitSync: function(sync, flags, timeoutLo, timeoutHi) {
+    // WebGL2 vs GLES3 differences: in GLES3, the timeout parameter is a uint64, where 0xFFFFFFFFFFFFFFFFULL means GL_TIMEOUT_IGNORED.
+    // In JS, there's no 64-bit value types, so instead timeout is taken to be signed, and GL_TIMEOUT_IGNORED is given value -1.
+    // Inherently the value accepted in the timeout is lossy, and can't take in arbitrary u64 bit pattern (but most likely doesn't matter)
+    // See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.15
+    timeoutLo == timeoutLo >>> 0;
+    timeoutHi == timeoutHi >>> 0;
+    var timeout = (timeoutLo == 0xFFFFFFFF && timeoutHi == 0xFFFFFFFF) ? -1 : Runtime.makeBigInt(timeoutLo, timeoutHi, true);
+    return GLctx.clientWaitSync(GL.syncs[sync], flags, timeout);
+  },
+
+  glWaitSync__sig: 'viii',
+  glWaitSync: function(sync, flags, timeoutLo, timeoutHi) {
+    // See WebGL2 vs GLES3 difference on GL_TIMEOUT_IGNORED above (https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.15)
+    timeoutLo == timeoutLo >>> 0;
+    timeoutHi == timeoutHi >>> 0;
+    var timeout = (timeoutLo == 0xFFFFFFFF && timeoutHi == 0xFFFFFFFF) ? -1 : Runtime.makeBigInt(timeoutLo, timeoutHi, true);
+    GLctx.waitSync(GL.syncs[sync], flags, timeout);
+  },
+
+  glGetSynciv__sig: 'viiiii',
+  glGetSynciv: function(sync, pname, bufSize, length, values) {
+    var ret = GLctx.getSyncParameter(GL.syncs[sync], pname);
+    if (values) {
+      {{{ makeSetValue('length', '0', 'ret', 'i32') }}};
+    } else {
+      // GLES3 specification does not specify how to behave if values is a null pointer. Since calling this function does not make sense
+      // if values == null, issue a GL error to notify user about it. 
+#if GL_ASSERTIONS
+      Module.printErr('GL_INVALID_VALUE in glGetSynciv(sync=' + sync + ', pname=' + pname + ', bufSize=' + bufSize + ', length=' + length + ', values=0): Function called with null out pointer!');
+#endif
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+    if (ret !== null && length) {{{ makeSetValue('length', '0', '1', 'i32') }}}; // Report a single value outputted.
+  },
+
+  glIsSync__sig: 'ii',
+  glIsSync: function(sync) {
+    var sync = GL.syncs[sync];
+    if (!sync) return 0;
+    return GLctx.isSync(sync);
+  },
+
 // ~USE_WEBGL2
 #endif
 
