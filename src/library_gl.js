@@ -2191,6 +2191,11 @@ var LibraryGL = {
     GL.getUniform(program, location, params, 'Integer');
   },
 
+#if USE_WEBGL2
+  glGetUniformuiv__sig: 'viii',
+  glGetUniformuiv: 'glGetUniformiv',
+#endif
+
   glGetUniformLocation__sig: 'iii',
   glGetUniformLocation: function(program, name) {
 #if GL_ASSERTIONS
