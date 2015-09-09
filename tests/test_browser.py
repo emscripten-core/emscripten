@@ -1042,6 +1042,12 @@ keydown(100);keyup(100); // trigger the end
     random_data[17] = 'X'
     open('file3.txt', 'w').write(''.join(random_data))
 
+    # compress in emcc,  -s LZ4=1  tells it to tell the file packager
+    print 'emcc-normal'
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['-s', 'LZ4=1', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt'], timeout=60)
+    print '    emcc-opts'
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['-s', 'LZ4=1', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt', '-O2'], timeout=60)
+
     # compress in the file packager, on the server. the client receives compressed data and can just use it. this is typical usage
     print 'normal'
     out = subprocess.check_output([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--lz4'])

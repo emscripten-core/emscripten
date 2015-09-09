@@ -1333,6 +1333,8 @@ try:
       file_args.append('--no-heap-copy')
     if not use_closure_compiler:
       file_args.append('--no-closure')
+    if shared.Settings.LZ4:
+      file_args.append('--lz4')
     file_code = execute([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE)[0]
     pre_js = file_code + pre_js
 
