@@ -1396,6 +1396,7 @@ var LibraryGL = {
     var mem = _malloc(length);
     if (!mem) return 0;
 
+    // TODO: BUG: mappedBuffers should not be a dictionary of target -> mapped object, but buffer object -> mapped object!
     GL.mappedBuffers[target] = {
       offset: offset,
       length: length,
@@ -1403,6 +1404,22 @@ var LibraryGL = {
       access: access,
     };
     return mem;
+  },
+
+  glGetBufferPointerv__sig: 'viii',
+  glGetBufferPointerv: function(target, pname, params) {
+    if (pname == 0x88BD/*GL_BUFFER_MAP_POINTER*/) {
+      var ptr = 0; 
+    // TODO: BUG: mappedBuffers should not be a dictionary of target -> mapped object, but buffer object -> mapped object!
+      var mappedBuffer = GL.mappedBuffers[target];
+      if (mappedBuffer) {
+        ptr = mappedBuffer.mem;
+      }
+      {{{ makeSetValue('params', '0', 'ptr', 'i32') }}};
+    } else {
+      GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+      Module.printErr('GL_INVALID_ENUM in glGetBufferPointerv');      
+    }
   },
 
   glFlushMappedBufferRange__sig: 'viii',
@@ -1413,6 +1430,7 @@ var LibraryGL = {
       return 0;
     }
 
+    // TODO: BUG: mappedBuffers should not be a dictionary of target -> mapped object, but buffer object -> mapped object!
     var mapping = GL.mappedBuffers[target];
     if (!mapping) {
       GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
@@ -1445,6 +1463,7 @@ var LibraryGL = {
       return 0;
     }
 
+    // TODO: BUG: mappedBuffers should not be a dictionary of target -> mapped object, but buffer object -> mapped object!
     var mapping = GL.mappedBuffers[target];
     if (!mapping) {
       GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
