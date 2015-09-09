@@ -80,7 +80,7 @@ following JavaScript::
     int_sqrt(28)
 
 The first parameter is the name of the function to be wrapped, the second is
-the return type of the function, and the third is an array of parameter
+the return type of the function (or a JavaScript `null` value if there isn't one), and the third is an array of parameter
 types (which may be omitted if there are no parameters). The types are
 native JavaScript types, "number" (for a C integer, float, or general
 pointer) or "string" (for a C ``char*`` that represents a string).
