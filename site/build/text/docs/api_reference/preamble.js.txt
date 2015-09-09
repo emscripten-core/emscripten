@@ -228,9 +228,9 @@ getValue(ptr, type[, noSafe])
       * **type** -- An LLVM IR type as a string (see "note" above).
 
       * **noSafe** (*bool*) -- Developers should ignore this
-        variable. It is only used in "SAFE_HEAP" compilation mode, where
-        it can help avoid infinite recursion in some specialist use
-        cases.
+        variable. It is only used in "SAFE_HEAP" compilation mode,
+        where it can help avoid infinite recursion in some specialist
+        use cases.
 
    Returns:
       The value stored at the specified memory address.
