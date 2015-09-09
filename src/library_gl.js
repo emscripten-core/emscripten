@@ -2089,10 +2089,16 @@ var LibraryGL = {
 
   glGetSynciv__sig: 'viiiii',
   glGetSynciv: function(sync, pname, bufSize, length, values) {
-    var ret = GLctx.getSyncParameter(GL.syncs[sync], pname);
-    if (values) {
-      {{{ makeSetValue('length', '0', 'ret', 'i32') }}};
-    } else {
+    if (bufSize < 0) {
+      // GLES3 specification does not specify how to behave if bufSize < 0, however in the spec wording for glGetInternalFormativ, it does say that GL_INVALID_VALUE should be raised,
+      // so raise GL_INVALID_VALUE here as well.
+#if GL_ASSERTIONS
+      Module.printErr('GL_INVALID_VALUE in glGetSynciv(sync=' + sync + ', pname=' + pname + ', bufSize=' + bufSize + ', length=' + length + ', values='+values+'): Function called with bufSize < 0!');
+#endif
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+    if (!values) {
       // GLES3 specification does not specify how to behave if values is a null pointer. Since calling this function does not make sense
       // if values == null, issue a GL error to notify user about it. 
 #if GL_ASSERTIONS
@@ -2101,6 +2107,8 @@ var LibraryGL = {
       GL.recordError(0x0501 /* GL_INVALID_VALUE */);
       return;
     }
+    var ret = GLctx.getSyncParameter(GL.syncs[sync], pname);
+    {{{ makeSetValue('length', '0', 'ret', 'i32') }}};
     if (ret !== null && length) {{{ makeSetValue('length', '0', '1', 'i32') }}}; // Report a single value outputted.
   },
 
