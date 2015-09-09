@@ -1335,6 +1335,22 @@ var LibraryGL = {
     {{{ makeSetValue('data', '0', 'GLctx.getBufferParameter(target, value)', 'i32') }}};
   },
 
+#if USE_WEBGL2
+  glGetBufferParameteri64v__sig: 'viii',
+  glGetBufferParameteri64v: function(target, value, data) {
+#if GL_ASSERTIONS
+    if (!data) {
+      // GLES2 specification does not specify how to behave if data is a null pointer. Since calling this function does not make sense
+      // if data == null, issue a GL error to notify user about it. 
+      Module.printErr('GL_INVALID_VALUE in glGetBufferParameteri64v(target=' + target + ', value=' + value + ', data=0): Function called with null out pointer!');
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+#endif
+    {{{ makeSetValue('data', '0', 'GLctx.getBufferParameter(target, value)', 'i64') }}};
+  },
+#endif
+
   glBufferData__sig: 'viiii',
   glBufferData: function(target, size, data, usage) {
     switch (usage) { // fix usages, WebGL only has *_DRAW
