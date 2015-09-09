@@ -835,23 +835,23 @@ var LibraryGL = {
         // Extension available from Firefox 26 and Google Chrome 30
         var instancedArraysExt = GLctx.getExtension('ANGLE_instanced_arrays');
         if (instancedArraysExt) {
-          GLctx.vertexAttribDivisor = function(index, divisor) { instancedArraysExt.vertexAttribDivisorANGLE(index, divisor); }
-          GLctx.drawArraysInstanced = function(mode, first, count, primcount) { instancedArraysExt.drawArraysInstancedANGLE(mode, first, count, primcount); }
-          GLctx.drawElementsInstanced = function(mode, count, type, indices, primcount) { instancedArraysExt.drawElementsInstancedANGLE(mode, count, type, indices, primcount); }
+          GLctx.vertexAttribDivisor = function(index, divisor) { instancedArraysExt.vertexAttribDivisorANGLE(index, divisor); };
+          GLctx.drawArraysInstanced = function(mode, first, count, primcount) { instancedArraysExt.drawArraysInstancedANGLE(mode, first, count, primcount); };
+          GLctx.drawElementsInstanced = function(mode, count, type, indices, primcount) { instancedArraysExt.drawElementsInstancedANGLE(mode, count, type, indices, primcount); };
         }
 
         // Extension available from Firefox 25 and WebKit
         var vaoExt = GLctx.getExtension('OES_vertex_array_object');
         if (vaoExt) {
-          GLctx.createVertexArray = function() { return vaoExt.createVertexArrayOES(); }
-          GLctx.deleteVertexArray = function(vao) { vaoExt.deleteVertexArrayOES(vao); }
-          GLctx.bindVertexArray = function(vao) { vaoExt.bindVertexArrayOES(vao); }
-          GLctx.isVertexArray = function(vao) { return vaoExt.isVertexArrayOES(vao); }
+          GLctx.createVertexArray = function() { return vaoExt.createVertexArrayOES(); };
+          GLctx.deleteVertexArray = function(vao) { vaoExt.deleteVertexArrayOES(vao); };
+          GLctx.bindVertexArray = function(vao) { vaoExt.bindVertexArrayOES(vao); };
+          GLctx.isVertexArray = function(vao) { return vaoExt.isVertexArrayOES(vao); };
         }
 
         var drawBuffersExt = GLctx.getExtension('WEBGL_draw_buffers');
         if (drawBuffersExt) {
-          GLctx.drawBuffers = function(n, bufs) { drawBuffersExt.drawBuffersWEBGL(n, bufs); }
+          GLctx.drawBuffers = function(n, bufs) { drawBuffersExt.drawBuffersWEBGL(n, bufs); };
         }
       }
 
