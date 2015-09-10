@@ -119,6 +119,12 @@ You can also do this manually, as follows:
 
 .. _optimizing-code-outlining:
 
+Running by itself
+-----------------
+
+If you hit memory limits in browsers, it can help to run your project by itself, as opposed to inside a web page containing other content. If you open a new web page (as a new tab, or a new window) that contains just your project, then you have the best chance at avoiding memory framentation issues.
+
+
 Outlining
 ---------
 
