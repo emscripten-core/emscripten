@@ -285,6 +285,34 @@ class Parser {
     }
   };
 
+  struct ExpressionElement {
+    bool isNode;
+#ifndef _MSC_VER // MSVC does not allow unrestricted unions: http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2008/n2544.pdf
+    union {
+#endif
+      NodeRef node;
+      IString op;
+#ifndef _MSC_VER
+    };
+#endif
+    ExpressionElement(NodeRef n) : isNode(true), node(n) {}
+    ExpressionElement(IString o) : isNode(false), op(o) {}
+
+    NodeRef getNode() {
+      assert(isNode);
+      return node;
+    }
+    IString getOp() {
+      assert(!isNode);
+      return op;
+    }
+  };
+
+  // This is a list of the current stack of node-operator-node-operator-etc.
+  // this works by each parseExpression call appending to the vector; then recursing out, and the toplevel sorts it all
+  typedef std::vector<ExpressionElement> ExpressionParts;
+  std::vector<ExpressionParts> expressionPartsStack;
+
   // Parses an element in a list of such elements, e.g. list of statements in a block, or list of parameters in a call
   NodeRef parseElement(char*& src, const char* seps=";") {
     //dump("parseElement", src);
@@ -643,34 +671,6 @@ class Parser {
     src++;
     return ret;
   }
-
-  struct ExpressionElement {
-    bool isNode;
-#ifndef _MSC_VER // MSVC does not allow unrestricted unions: http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2008/n2544.pdf
-	union {
-#endif
-      NodeRef node;
-      IString op;
-#ifndef _MSC_VER
-    };
-#endif
-    ExpressionElement(NodeRef n) : isNode(true), node(n) {}
-    ExpressionElement(IString o) : isNode(false), op(o) {}
-
-    NodeRef getNode() {
-      assert(isNode);
-      return node;
-    }
-    IString getOp() {
-      assert(!isNode);
-      return op;
-    }
-  };
-
-  // This is a list of the current stack of node-operator-node-operator-etc.
-  // this works by each parseExpression call appending to the vector; then recursing out, and the toplevel sorts it all
-  typedef std::vector<ExpressionElement> ExpressionParts;
-  std::vector<ExpressionParts> expressionPartsStack;
 
   void dumpParts(ExpressionParts& parts, int i) {
     printf("expressionparts: %d (at %d)\n", parts.size(), i);
