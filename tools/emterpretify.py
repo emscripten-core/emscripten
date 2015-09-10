@@ -1044,6 +1044,9 @@ __ATPRERUN__.push(function() {
 ''' % (len(all_code), all_code[0], all_code[1], all_code[2], all_code[3], len(relocations), relocations[0])]
 
   else:
+    if len(all_code) > 1024*1024:
+      shared.logging.warning('warning: emterpreter bytecode is fairly large, %.2f MB. It is recommended to use  -s EMTERPRETIFY_FILE=..  so that it is saved as a binary file, instead of the default behavior which is to embed it as text (as text, it can cause very slow compile and startup times)' % (len(all_code) / (1024*1024.)))
+
     CHUNK_SIZE = 10240
 
     i = 0

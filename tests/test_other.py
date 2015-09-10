@@ -5166,3 +5166,16 @@ main(int argc, char **argv)
     out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp')], stderr=PIPE).communicate()
     assert err == '', err
 
+  def test_emterpreter_file_suggestion(self):
+    for linkable in [0, 1]:
+      for to_file in [0, 1]:
+        self.clear()
+        cmd = [PYTHON, EMCC, '-s', 'EMTERPRETIFY=1', path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'LINKABLE=' + str(linkable), '-O1', '-s', 'USE_ZLIB=1']
+        if to_file:
+          cmd += ['-s', 'EMTERPRETIFY_FILE="code.dat"']
+        print cmd
+        stdout, stderr = Popen(cmd, stderr=PIPE).communicate()
+        need_warning = linkable and not to_file
+        assert ('''warning: emterpreter bytecode is fairly large''' in stderr) == need_warning, stderr
+        assert ('''It is recommended to use  -s EMTERPRETIFY_FILE=..''' in stderr) == need_warning, stderr
+
