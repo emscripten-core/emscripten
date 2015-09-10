@@ -61,9 +61,6 @@ var GLOBAL_BASE = -1; // where global data begins; the start of static memory. -
                       // default, any other value will be used as an override
 
 // Code embetterments
-var USE_TYPED_ARRAYS = 2; // Use typed arrays for the heap. See https://github.com/kripken/emscripten/wiki/Code-Generation-Modes/
-                          // 2 is a single heap, accessible through views as int8, int32, etc. This is
-                          //   the only supported mode.
 var DOUBLE_MODE = 1; // How to load and store 64-bit doubles.
                      // A potential risk is that doubles may be only 32-bit aligned. Forcing 64-bit alignment
                      // in Clang itself should be able to solve that, or as a workaround in DOUBLE_MODE 1 we
