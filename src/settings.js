@@ -86,7 +86,7 @@ var FORCE_ALIGNED_MEMORY = 0; // If enabled, assumes all reads and writes are fu
                               // smaller and faster code, or even the option to turn this flag on.
 var WARN_UNALIGNED = 0; // Warn at compile time about instructions that LLVM tells us are not fully aligned.
                         // This is useful to find places in your code where you might refactor to ensure proper
-                        // alignment. (this option is fastcomp-only)
+                        // alignment.
 var PRECISE_I64_MATH = 1; // If enabled, i64 addition etc. is emulated - which is slow but precise. If disabled,
                           // we use the 'double trick' which is fast but incurs rounding at high values.
                           // If set to 2, we always include the i64 math code, which is necessary in the case
@@ -116,8 +116,6 @@ var SIMD = 0; // Whether to allow autovectorized SIMD code ( https://github.com/
               // also want the autovectorizer to run.
               // Note that SIMD support in browsers is not yet there (as of Sep 2, 2014), so you will be
               // running in a polyfill, which is not fast.
-              // (In older versions of emscripten, in particular pre-fastcomp, SIMD=1 was needed to get
-              // any SIMD output at all.)
 
 var USE_CLOSURE_COMPILER = 0; // Whether closure compiling is being run on this output
 
