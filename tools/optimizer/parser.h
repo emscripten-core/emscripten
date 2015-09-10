@@ -330,23 +330,23 @@ class Parser {
 
   NodeRef parseAfterKeyword(Frag& frag, char*& src, const char* seps) {
     src = skipSpace(src);
-    if (frag.str == FUNCTION) return parseFunction(frag, src, seps);
-    else if (frag.str == VAR) return parseVar(frag, src, seps);
-    else if (frag.str == CONST) return parseVar(frag, src, seps);
-    else if (frag.str == RETURN) return parseReturn(frag, src, seps);
-    else if (frag.str == IF) return parseIf(frag, src, seps);
-    else if (frag.str == DO) return parseDo(frag, src, seps);
-    else if (frag.str == WHILE) return parseWhile(frag, src, seps);
-    else if (frag.str == BREAK) return parseBreak(frag, src, seps);
-    else if (frag.str == CONTINUE) return parseContinue(frag, src, seps);
-    else if (frag.str == SWITCH) return parseSwitch(frag, src, seps);
-    else if (frag.str == NEW) return parseNew(frag, src, seps);
+    if (frag.str == FUNCTION) return parseFunction(src, seps);
+    else if (frag.str == VAR) return parseVar(src, seps, false);
+    else if (frag.str == CONST) return parseVar(src, seps, true);
+    else if (frag.str == RETURN) return parseReturn(src, seps);
+    else if (frag.str == IF) return parseIf(src, seps);
+    else if (frag.str == DO) return parseDo(src, seps);
+    else if (frag.str == WHILE) return parseWhile(src, seps);
+    else if (frag.str == BREAK) return parseBreak(src, seps);
+    else if (frag.str == CONTINUE) return parseContinue(src, seps);
+    else if (frag.str == SWITCH) return parseSwitch(src, seps);
+    else if (frag.str == NEW) return parseNew(src, seps);
     dump(frag.str.str, src);
     abort();
     return nullptr;
   }
 
-  NodeRef parseFunction(Frag& frag, char*& src, const char* seps) {
+  NodeRef parseFunction(char*& src, const char* seps) {
     Frag name(src);
     if (name.type == IDENT) {
       src += name.size;
@@ -380,8 +380,8 @@ class Parser {
     return ret;
   }
 
-  NodeRef parseVar(Frag& frag, char*& src, const char* seps) {
-    NodeRef ret = Builder::makeVar(frag.str == CONST);
+  NodeRef parseVar(char*& src, const char* seps, bool is_const) {
+    NodeRef ret = Builder::makeVar(is_const);
     while (1) {
       src = skipSpace(src);
       if (*src == ';') break;
@@ -409,7 +409,7 @@ class Parser {
     return ret;
   }
 
-  NodeRef parseReturn(Frag& frag, char*& src, const char* seps) {
+  NodeRef parseReturn(char*& src, const char* seps) {
     src = skipSpace(src);
     NodeRef value = !hasChar(seps, *src) ? parseElement(src, seps) : nullptr;
     src = skipSpace(src);
@@ -418,7 +418,7 @@ class Parser {
     return Builder::makeReturn(value);
   }
 
-  NodeRef parseIf(Frag& frag, char*& src, const char* seps) {
+  NodeRef parseIf(char*& src, const char* seps) {
     NodeRef condition = parseParenned(src);
     NodeRef ifTrue = parseMaybeBracketed(src, seps);
     src = skipSpace(src);
@@ -433,7 +433,7 @@ class Parser {
     return Builder::makeIf(condition, ifTrue, ifFalse);
   }
 
-  NodeRef parseDo(Frag& frag, char*& src, const char* seps) {
+  NodeRef parseDo(char*& src, const char* seps) {
     NodeRef body = parseMaybeBracketed(src, seps);
     src = skipSpace(src);
     Frag next(src);
@@ -443,27 +443,27 @@ class Parser {
     return Builder::makeDo(body, condition);
   }
 
-  NodeRef parseWhile(Frag& frag, char*& src, const char* seps) {
+  NodeRef parseWhile(char*& src, const char* seps) {
     NodeRef condition = parseParenned(src);
     NodeRef body = parseMaybeBracketed(src, seps);
     return Builder::makeWhile(condition, body);
   }
 
-  NodeRef parseBreak(Frag& frag, char*& src, const char* seps) {
+  NodeRef parseBreak(char*& src, const char* seps) {
     src = skipSpace(src);
     Frag next(src);
     if (next.type == IDENT) src += next.size;
     return Builder::makeBreak(next.type == IDENT ? next.str : IString());
   }
 
-  NodeRef parseContinue(Frag& frag, char*& src, const char* seps) {
+  NodeRef parseContinue(char*& src, const char* seps) {
     src = skipSpace(src);
     Frag next(src);
     if (next.type == IDENT) src += next.size;
     return Builder::makeContinue(next.type == IDENT ? next.str : IString());
   }
 
-  NodeRef parseSwitch(Frag& frag, char*& src, const char* seps) {
+  NodeRef parseSwitch(char*& src, const char* seps) {
     NodeRef ret = Builder::makeSwitch(parseParenned(src));
     src = skipSpace(src);
     assert(*src == '{');
@@ -518,7 +518,7 @@ class Parser {
     return ret;
   }
 
-  NodeRef parseNew(Frag& frag, char*& src, const char* seps) {
+  NodeRef parseNew(char*& src, const char* seps) {
     return Builder::makeNew(parseElement(src, seps));
   }
 
