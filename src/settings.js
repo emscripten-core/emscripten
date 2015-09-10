@@ -159,7 +159,7 @@ var SIMPLIFY_IFS = 1; // Whether to simplify ifs in js-optimizer.js
 
 // Generated code debugging options
 var SAFE_HEAP = 0; // Check each write to the heap, for example, this will give a clear
-                   // error on what would be segfaults in a native build (like deferencing
+                   // error on what would be segfaults in a native build (like dereferencing
                    // 0). See preamble.js for the actual checks performed.
 var SAFE_HEAP_LOG = 0; // Log out all SAFE_HEAP operations
 
