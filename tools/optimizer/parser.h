@@ -375,7 +375,7 @@ class Parser {
     }
     assert(*src == ')');
     src++;
-    parseBracketedBlock(src, ret);
+    Builder::setBlockContent(ret, parseBracketedBlock(src));
     // TODO: parse expression?
     return ret;
   }
@@ -787,9 +787,9 @@ class Parser {
   }
 
   // Parses a block of code (e.g. a bunch of statements inside {,}, or the top level of o file)
-  NodeRef parseBlock(char*& src, NodeRef block=nullptr, const char* seps=";", IString keywordSep1=IString(), IString keywordSep2=IString()) {
+  NodeRef parseBlock(char*& src, const char* seps=";", IString keywordSep1=IString(), IString keywordSep2=IString()) {
+    NodeRef block = Builder::makeBlock();
     //dump("parseBlock", src);
-    if (!block) block = Builder::makeBlock();
     while (*src) {
       src = skipSpace(src);
       if (*src == 0) break;
@@ -812,12 +812,11 @@ class Parser {
     return block;
   }
 
-  NodeRef parseBracketedBlock(char*& src, NodeRef block=nullptr) {
-    if (!block) block = Builder::makeBlock();
+  NodeRef parseBracketedBlock(char*& src) {
     src = skipSpace(src);
     assert(*src == '{');
     src++;
-    parseBlock(src, block, ";}"); // the two are not symmetrical, ; is just internally separating, } is the final one - parseBlock knows all this
+    NodeRef block = parseBlock(src, ";}"); // the two are not symmetrical, ; is just internally separating, } is the final one - parseBlock knows all this
     assert(*src == '}');
     src++;
     return block;
@@ -845,7 +844,7 @@ class Parser {
 
   NodeRef parseMaybeBracketedBlock(char*& src, const char *seps, IString keywordSep1=IString(), IString keywordSep2=IString()) {
     src = skipSpace(src);
-    return *src == '{' ? parseBracketedBlock(src) : parseBlock(src, nullptr, seps, keywordSep1, keywordSep2);
+    return *src == '{' ? parseBracketedBlock(src) : parseBlock(src, seps, keywordSep1, keywordSep2);
   }
 
   NodeRef parseParenned(char*& src) {
@@ -897,7 +896,9 @@ public:
   NodeRef parseToplevel(char* src) {
     allSource = src;
     allSize = strlen(src);
-    return parseBlock(src, Builder::makeToplevel());
+    NodeRef toplevel = Builder::makeToplevel();
+    Builder::setBlockContent(toplevel, parseBlock(src));
+    return toplevel;
   }
 };
 

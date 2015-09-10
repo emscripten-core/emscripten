@@ -1301,12 +1301,17 @@ public:
                            .push_back(makeRawString(name));
   }
 
-  static void appendToBlock(Ref block, Ref element) {
-    if (block[0] == BLOCK || block[0] == TOPLEVEL) {
-      block[1]->push_back(element);
-    } else if (block[0] == DEFUN) {
-      block[3]->push_back(element);
+  static void setBlockContent(Ref target, Ref block) {
+    if (target[0] == TOPLEVEL) {
+      target[1]->setArray(block[1]->getArray());
+    } else if (target[0] == DEFUN) {
+      target[3]->setArray(block[1]->getArray());
     } else abort();
+  }
+
+  static void appendToBlock(Ref block, Ref element) {
+    assert(block[0] == BLOCK);
+    block[1]->push_back(element);
   }
 
   static Ref makeCall(Ref target) {
