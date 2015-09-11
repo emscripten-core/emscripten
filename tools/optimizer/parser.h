@@ -210,12 +210,6 @@ class Parser {
           *src = temp;
         }
         type = keywords.has(str) ? KEYWORD : IDENT;
-      } else if (*src == '"' || *src == '\'') {
-        char *end = strchr(src+1, *src);
-        *end = 0;
-        str.set(src+1);
-        src = end+1;
-        type = STRING;
       } else if (isDigit(*src) || (src[0] == '.' && isDigit(src[1]))) {
         if (src[0] == '0' && (src[1] == 'x' || src[1] == 'X')) {
           // Explicitly parse hex numbers of form "0x...", because strtod
@@ -277,6 +271,12 @@ class Parser {
         str.set(src, false);
         src[1] = temp;
         src++;
+      } else if (*src == '"' || *src == '\'') {
+        char *end = strchr(src+1, *src);
+        *end = 0;
+        str.set(src+1);
+        src = end+1;
+        type = STRING;
       } else {
         dump("frag parsing", src);
         abort();
