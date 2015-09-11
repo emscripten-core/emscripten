@@ -143,8 +143,10 @@ if (!(data instanceof ArrayBuffer)) {
   data = new Uint8Array(data).buffer;
 }
 
+var start = Date.now();
 var compressedData = MiniLZ4.compressPackage(data);
 nodeFS['writeFileSync'](output, Buffer(compressedData.data));
 compressedData.data = null;
+printErr('compressed in ' + (Date.now() - start) + ' ms');
 print(JSON.stringify(compressedData));
 

@@ -113,6 +113,10 @@ var
 
 ,	hasher 			= /* XXX uint32( */ 2654435761 /* ) */
 
+assert(hashShift === 16);
+var hashTable = new Int16Array(1<<16);
+var hashTable32 = new Int32Array(hashTable.buffer);
+
 // CompressBound returns the maximum length of a lz4 block, given it's uncompressed length
 exports.compressBound = function (isize) {
 	return isize > maxInputSize
@@ -121,15 +125,15 @@ exports.compressBound = function (isize) {
 }
 
 exports.compress = function (src, dst, sIdx, eIdx) {
-	// V8 optimization: non sparse array with integers
-	var hashTable = new Array(hashSize)
-	for (var i = 0; i < hashSize; i++) {
-		hashTable[i] = 0
+	assert(exports.CHUNK_SIZE < (1 << 15)); // we use 16-bit ints as the type of the hash table, chunk size must be smaller
+	assert(hashTable32.length === 32768);
+	for (var i = 0; i < 32768; i++) {
+		hashTable32[i] = 0;
 	}
-	return compressBlock(src, dst, 0, hashTable, sIdx || 0, eIdx || dst.length)
+	return compressBlock(src, dst, 0, sIdx || 0, eIdx || dst.length)
 }
 
-function compressBlock (src, dst, pos, hashTable, sIdx, eIdx) {
+function compressBlock (src, dst, pos, sIdx, eIdx) {
 	// XXX var Hash = uint32() // Reusable unsigned 32 bits integer
 	var dpos = sIdx
 	var dlen = eIdx - sIdx
