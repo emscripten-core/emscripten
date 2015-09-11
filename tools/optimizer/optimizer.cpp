@@ -105,7 +105,7 @@ AsmType detectType(Ref node, AsmData *asmData=nullptr, bool inVarDef=false);
 Ref makeEmpty();
 bool isEmpty(Ref node);
 Ref makeAsmVarDef(const IString& v, AsmType type);
-Ref makeArray();
+Ref makeArray(int size_hint);
 Ref makeBool(bool b);
 Ref makeNum(double x);
 Ref makeName(IString str);
@@ -219,7 +219,7 @@ struct AsmData {
       }
     }
     // calculate variable definitions
-    Ref varDefs = makeArray();
+    Ref varDefs = makeArray(vars.size());
     for (auto v : vars) {
       varDefs->push_back(makeAsmVarDef(v, locals[v].type));
     }
@@ -403,8 +403,8 @@ AsmType detectType(Ref node, AsmData *asmData, bool inVarDef) {
 
 // Constructions TODO: share common constructions, and assert they remain frozen
 
-Ref makeArray() {
-  return &arena.alloc()->setArray();
+Ref makeArray(int size_hint=0) {
+  return &arena.alloc()->setArray(size_hint);
 }
 
 Ref makeBool(bool b) {
@@ -432,14 +432,14 @@ Ref makeBlock() {
 }
 
 Ref make1(IString s1, Ref a) {
-  Ref ret(makeArray());
+  Ref ret(makeArray(2));
   ret->push_back(makeString(s1));
   ret->push_back(a);
   return ret;
 }
 
 Ref make2(IString s1, IString s2, Ref a) {
-  Ref ret(makeArray());
+  Ref ret(makeArray(2));
   ret->push_back(makeString(s1));
   ret->push_back(makeString(s2));
   ret->push_back(a);
@@ -447,7 +447,7 @@ Ref make2(IString s1, IString s2, Ref a) {
 }
 
 Ref make2(IString s1, Ref a, Ref b) {
-  Ref ret(makeArray());
+  Ref ret(makeArray(3));
   ret->push_back(makeString(s1));
   ret->push_back(a);
   ret->push_back(b);
@@ -455,7 +455,7 @@ Ref make2(IString s1, Ref a, Ref b) {
 }
 
 Ref make3(IString type, IString a, Ref b, Ref c) {
-  Ref ret(makeArray());
+  Ref ret(makeArray(4));
   ret->push_back(makeString(type));
   ret->push_back(makeString(a));
   ret->push_back(b);
@@ -464,7 +464,7 @@ Ref make3(IString type, IString a, Ref b, Ref c) {
 }
 
 Ref make3(IString type, Ref a, Ref b, Ref c) {
-  Ref ret(makeArray());
+  Ref ret(makeArray(4));
   ret->push_back(makeString(type));
   ret->push_back(a);
   ret->push_back(b);
@@ -481,28 +481,28 @@ Ref makeAsmVarDef(const IString& v, AsmType type) {
       if (!ASM_FLOAT_ZERO.isNull()) {
         val = makeName(ASM_FLOAT_ZERO);
       } else {
-        val = make2(CALL, makeName(MATH_FROUND), &(makeArray())->push_back(makeNum(0)));
+        val = make2(CALL, makeName(MATH_FROUND), &(makeArray(1))->push_back(makeNum(0)));
       }
       break;
     }
     case ASM_FLOAT32X4: {
-      val = make2(CALL, makeName(SIMD_FLOAT32X4), &(makeArray())->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
+      val = make2(CALL, makeName(SIMD_FLOAT32X4), &(makeArray(4))->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
       break;
     }
     case ASM_FLOAT64X2: {
-      val = make2(CALL, makeName(SIMD_FLOAT64X2), &(makeArray())->push_back(makeNum(0)).push_back(makeNum(0)));
+      val = make2(CALL, makeName(SIMD_FLOAT64X2), &(makeArray(2))->push_back(makeNum(0)).push_back(makeNum(0)));
       break;
     }
     case ASM_INT8X16: {
-      val = make2(CALL, makeName(SIMD_INT8X16), &(makeArray())->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
+      val = make2(CALL, makeName(SIMD_INT8X16), &(makeArray(16))->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
       break;
     }
     case ASM_INT16X8: {
-      val = make2(CALL, makeName(SIMD_INT16X8), &(makeArray())->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
+      val = make2(CALL, makeName(SIMD_INT16X8), &(makeArray(8))->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
       break;
     }
     case ASM_INT32X4: {
-      val = make2(CALL, makeName(SIMD_INT32X4), &(makeArray())->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
+      val = make2(CALL, makeName(SIMD_INT32X4), &(makeArray(4))->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
       break;
     }
     default: assert(0);
@@ -514,12 +514,12 @@ Ref makeAsmCoercion(Ref node, AsmType type) {
   switch (type) {
     case ASM_INT: return make3(BINARY, OR, node, makeNum(0));
     case ASM_DOUBLE: return make2(UNARY_PREFIX, PLUS, node);
-    case ASM_FLOAT: return make2(CALL, makeName(MATH_FROUND), &(makeArray())->push_back(node));
-    case ASM_FLOAT32X4: return make2(CALL, makeName(SIMD_FLOAT32X4_CHECK), &(makeArray())->push_back(node));
-    case ASM_FLOAT64X2: return make2(CALL, makeName(SIMD_FLOAT64X2_CHECK), &(makeArray())->push_back(node));
-    case ASM_INT8X16: return make2(CALL, makeName(SIMD_INT8X16_CHECK), &(makeArray())->push_back(node));
-    case ASM_INT16X8: return make2(CALL, makeName(SIMD_INT16X8_CHECK), &(makeArray())->push_back(node));
-    case ASM_INT32X4: return make2(CALL, makeName(SIMD_INT32X4_CHECK), &(makeArray())->push_back(node));
+    case ASM_FLOAT: return make2(CALL, makeName(MATH_FROUND), &(makeArray(1))->push_back(node));
+    case ASM_FLOAT32X4: return make2(CALL, makeName(SIMD_FLOAT32X4_CHECK), &(makeArray(1))->push_back(node));
+    case ASM_FLOAT64X2: return make2(CALL, makeName(SIMD_FLOAT64X2_CHECK), &(makeArray(1))->push_back(node));
+    case ASM_INT8X16: return make2(CALL, makeName(SIMD_INT8X16_CHECK), &(makeArray(1))->push_back(node));
+    case ASM_INT16X8: return make2(CALL, makeName(SIMD_INT16X8_CHECK), &(makeArray(1))->push_back(node));
+    case ASM_INT32X4: return make2(CALL, makeName(SIMD_INT32X4_CHECK), &(makeArray(1))->push_back(node));
     case ASM_NONE:
     default: return node; // non-validating code, emit nothing XXX this is dangerous, we should only allow this when we know we are not validating
   }
@@ -716,12 +716,12 @@ void removeAllUselessSubNodes(Ref ast) {
 }
 
 Ref unVarify(Ref vars) { // transform var x=1, y=2 etc. into (x=1, y=2), i.e., the same assigns, but without a var definition
-  Ref ret = makeArray();
+  Ref ret = makeArray(1);
   ret->push_back(makeString(STAT));
   if (vars->size() == 1) {
     ret->push_back(make3(ASSIGN, makeBool(true), makeName(vars[0][0]->getIString()), vars[0][1]));
   } else {
-    ret->push_back(makeArray());
+    ret->push_back(makeArray(vars->size()-1));
     Ref curr = ret[1];
     for (size_t i = 0; i+1 < vars->size(); i++) {
       curr->push_back(makeString(SEQ));
@@ -1400,7 +1400,7 @@ void eliminate(Ref ast, bool memSafe) {
       // Look for statements, including while-switch pattern
       Ref stats = getStatements(block);
       if (!stats && (block[0] == WHILE && block[2][0] == SWITCH)) {
-        stats = &(makeArray()->push_back(block[2]));
+        stats = &(makeArray(1)->push_back(block[2]));
       }
       if (!stats) return;
       tracked.clear();
@@ -2173,7 +2173,7 @@ void simplifyIfs(Ref ast) {
               Ref curr = deStat(stats[i]);
               other[1] = make2(SEQ, curr, other[1]);
             }
-            Ref temp = makeArray();
+            Ref temp = makeArray(1);
             temp->push_back(other);
             stats = body[1] = temp;
           }
@@ -2339,7 +2339,7 @@ void registerize(Ref ast) {
       Ref assign = makeNum(0);
       // TODO: will be an isEmpty here, can reuse it.
       fun[3]->insert(0, make1(VAR, fun[2]->map([&assign](Ref param) {
-        return &(makeArray()->push_back(param).push_back(assign));
+        return &(makeArray(2)->push_back(param).push_back(assign));
       })));
     }
     // Replace all var definitions with assignments; we will add var definitions at the top after we registerize
@@ -4062,7 +4062,7 @@ void eliminateDeadFuncs(Ref ast) {
     }
     AsmData asmData(fun);
     fun[3]->setSize(1);
-    fun[3][0] = make1(STAT, make2(CALL, makeName(ABORT), &(makeArray())->push_back(makeNum(-1))));
+    fun[3][0] = make1(STAT, make2(CALL, makeName(ABORT), &(makeArray(1))->push_back(makeNum(-1))));
     asmData.vars.clear();
     asmData.denormalize();
   });
