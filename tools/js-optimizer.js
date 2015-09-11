@@ -5698,10 +5698,10 @@ function safeHeap(ast) {
               return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', 1]]], ASM_INT);
             }
             case 'HEAPF32': {
-              return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD_D'], [ptr, ['num', 4], ['num', 0]]], ASM_DOUBLE);
+              return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD_D'], [ptr, ['num', 4]]], ASM_DOUBLE);
             }
             case 'HEAPF64': {
-              return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD_D'], [ptr, ['num', 8], ['num', 0]]], ASM_DOUBLE);
+              return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD_D'], [ptr, ['num', 8]]], ASM_DOUBLE);
             }
             default: throw 'bad heap ' + heap;
           }

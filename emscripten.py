@@ -991,10 +991,9 @@ function SAFE_HEAP_LOAD(dest, bytes, unsigned) {
   if (unsigned) return HEAPU16[dest>>1] | 0;
   return HEAP16[dest>>1] | 0;
 }
-function SAFE_HEAP_LOAD_D(dest, bytes, unsigned) {
+function SAFE_HEAP_LOAD_D(dest, bytes) {
   dest = dest | 0;
   bytes = bytes | 0;
-  unsigned = unsigned | 0;
   if ((dest|0) <= 0) segfault();
   if ((dest + bytes|0) > (DYNAMICTOP|0)) segfault();
   if ((bytes|0) == 8) {
