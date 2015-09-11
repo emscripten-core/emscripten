@@ -55,19 +55,23 @@ struct Ref {
 
 // Arena allocation, free it all on process exit
 
+typedef std::vector<Ref> ArrayStorage;
+
 struct Arena {
   #define CHUNK_SIZE 1000
   std::vector<Value*> chunks;
   int index; // in last chunk
 
-  Arena() : index(0) {}
+  std::vector<ArrayStorage*> arr_chunks;
+  int arr_index;
+
+  Arena() : index(0), arr_index{0} {}
 
   Ref alloc();
+  ArrayStorage* allocArr();
 };
 
 extern Arena arena;
-
-typedef std::vector<Ref> ArrayStorage;
 
 // Main value type
 struct Value {
@@ -116,7 +120,7 @@ struct Value {
   }
 
   void free() {
-    if (type == Array) delete arr;
+    if (type == Array) { arr->clear(); arr->shrink_to_fit(); }
     else if (type == Object) delete obj;
     type = Null;
     num = 0;
@@ -143,14 +147,14 @@ struct Value {
   Value& setArray(ArrayStorage &a) {
     free();
     type = Array;
-    arr = new ArrayStorage();
+    arr = arena.allocArr();
     *arr = a;
     return *this;
   }
   Value& setArray(int size_hint=0) {
     free();
     type = Array;
-    arr = new ArrayStorage();
+    arr = arena.allocArr();
     arr->reserve(size_hint);
     return *this;
   }
