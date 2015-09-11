@@ -627,6 +627,9 @@ var LibraryGLFW = {
         Module.ctx = Browser.createContext(Module['canvas'], true, true, contextAttributes);
       }
 
+      // If context creation failed, do not return a valid window
+      if (!Module.ctx) return 0;
+
       // Get non alive id
       var win = new GLFW.Window(id, width, height, title, monitor, share);
 
