@@ -192,7 +192,6 @@ class Parser {
     }
 
     explicit Frag(char* src) {
-      assert(!isSpace(*src));
       char *start = src;
       if (isIdentInit(*src)) {
         // read an identifier or a keyword
@@ -252,8 +251,8 @@ class Parser {
           case '^': str = XOR; break;
           case '|': str = OR; break;
           case '~': str = B_NOT; break;
+          default: abort();
         }
-        assert(!str.isNull());
         size = strlen(str.str);
 #ifndef NDEBUG
         char temp = start[size];
@@ -326,7 +325,6 @@ class Parser {
       case STRING:
       case INT:
       case DOUBLE: {
-        skipSpace(src);
         if (frag.type == IDENT) return parseAfterIdent(frag, src, seps);
         else return parseExpression(parseFrag(frag), src, seps);
       }
@@ -550,7 +548,7 @@ class Parser {
   }
 
   NodeRef parseAfterIdent(Frag& frag, char*& src, const char* seps) {
-    assert(!isSpace(*src));
+    skipSpace(src);
     if (*src == '(') return parseExpression(parseCall(parseFrag(frag), src), src, seps);
     if (*src == '[') return parseExpression(parseIndexing(parseFrag(frag), src), src, seps);
     if (*src == ':' && expressionPartsStack.back().size() == 0) {
@@ -789,7 +787,7 @@ class Parser {
   NodeRef parseBlock(char*& src, const char* seps=";", IString keywordSep1=IString(), IString keywordSep2=IString()) {
     NodeRef block = Builder::makeBlock();
     //dump("parseBlock", src);
-    while (*src) {
+    while (1) {
       skipSpace(src);
       if (*src == 0) break;
       if (*src == ';') {
