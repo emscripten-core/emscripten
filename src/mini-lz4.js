@@ -115,7 +115,7 @@ var
 
 assert(hashShift === 16);
 var hashTable = new Int16Array(1<<16);
-var hashTable64 = new Float64Array(hashTable.buffer);
+var empty = new Int16Array(hashTable.length);
 
 // CompressBound returns the maximum length of a lz4 block, given it's uncompressed length
 exports.compressBound = function (isize) {
@@ -125,11 +125,7 @@ exports.compressBound = function (isize) {
 }
 
 exports.compress = function (src, dst, sIdx, eIdx) {
-	assert(exports.CHUNK_SIZE < (1 << 15)); // we use 16-bit ints as the type of the hash table, chunk size must be smaller
-	assert(hashTable64.length === 16384);
-	for (var i = 0; i < 16384; i++) {
-		hashTable64[i] = 0;
-	}
+	hashTable.set(empty);
 	return compressBlock(src, dst, 0, sIdx || 0, eIdx || dst.length)
 }
 
@@ -336,6 +332,8 @@ exports.compressPackage = function(data, verify) {
   assert(offset === total);
   return compressedData;
 };
+
+assert(exports.CHUNK_SIZE < (1 << 15)); // we use 16-bit ints as the type of the hash table, chunk size must be smaller
 
 return exports;
 
