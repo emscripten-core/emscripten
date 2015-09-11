@@ -1251,7 +1251,7 @@ try:
 
     if llvm_lto >= 2:
       logging.debug('running LLVM opts as pre-LTO')
-      final = shared.Building.llvm_opt(in_temp(target_basename + '.bc'), llvm_opts, DEFAULT_FINAL)
+      final = shared.Building.llvm_opt(final, llvm_opts, DEFAULT_FINAL)
       if DEBUG: save_intermediate('opt', 'bc')
 
     # If we can LTO, do it before dce, since it opens up dce opportunities

@@ -5179,3 +5179,16 @@ main(int argc, char **argv)
         assert ('''warning: emterpreter bytecode is fairly large''' in stderr) == need_warning, stderr
         assert ('''It is recommended to use  -s EMTERPRETIFY_FILE=..''' in stderr) == need_warning, stderr
 
+  def test_llvm_lto(self):
+    sizes = {}
+    for lto in [0, 1, 2, 3]:
+      cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O2', '--llvm-lto', str(lto)]
+      print cmd
+      check_execute(cmd)
+      self.assertContained('hello, world!', run_js('a.out.js'))
+      sizes[lto] = os.stat('a.out.js').st_size
+    print sizes
+    assert sizes[1] < sizes[0] # lto reduces size
+    assert sizes[2] > sizes[0] # fake lto is aggressive at increasing code size
+    assert sizes[3] not in set([sizes[0], sizes[1], sizes[2]]) # mode 3 is different (deterministic builds means this tests an actual change)
+
