@@ -2929,13 +2929,7 @@ int main() {
               if emulate_casts:
                 assert 'Hello, world.' in output, output
               elif safe:
-                if relocate:
-                  assert 'Function table mask error' in output, output
-                else:
-                  if opts < 2:
-                    assert 'Function table mask error' in output or 'SAFE_FT_MASK' in output, output # less nice error message when optimized safe heap
-                  else: # minified is less nice
-                    assert 'Function table mask error' in output or 'abort(-7)' in output, output # less nice error message when optimized safe heap
+                assert 'Function table mask error' in output, output
               else:
                 if opts == 0:
                   assert 'Invalid function pointer called' in output, output

@@ -533,7 +533,11 @@ function _emscripten_asm_const_%d(%s) {
 
     asm_safe_heap = settings['SAFE_HEAP'] and not settings['SAFE_HEAP_LOG'] and not settings['RELOCATABLE'] # optimized safe heap in asm, when we can
 
-    if settings['SAFE_HEAP'] and not asm_safe_heap: basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_LOAD_D', 'SAFE_HEAP_STORE', 'SAFE_HEAP_STORE_D', 'SAFE_FT_MASK']
+    if settings['SAFE_HEAP']:
+      if asm_safe_heap:
+        basic_funcs += ['segfault', 'alignfault', 'ftfault']
+      else:
+        basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_LOAD_D', 'SAFE_HEAP_STORE', 'SAFE_HEAP_STORE_D', 'SAFE_FT_MASK']
     if settings['ASSERTIONS']:
       if settings['ASSERTIONS'] >= 2: import difflib
       for sig in last_forwarded_json['Functions']['tables'].iterkeys():
@@ -941,15 +945,15 @@ function SAFE_HEAP_STORE(dest, value, bytes) {
   dest = dest | 0;
   value = value | 0;
   bytes = bytes | 0;
-  if ((dest|0) <= 0) abort(-1);
-  if (((dest + bytes)|0) > (DYNAMICTOP|0)) abort(-2);
+  if ((dest|0) <= 0) segfault();
+  if (((dest + bytes)|0) > (DYNAMICTOP|0)) segfault();
   if ((bytes|0) == 4) {
-    if ((dest&3)) abort(-3);
+    if ((dest&3)) alignfault();
     HEAP32[dest>>2] = value;
   } else if ((bytes|0) == 1) {
     HEAP8[dest>>0] = value;
   } else {
-    if ((dest&1)) abort(-4);
+    if ((dest&1)) alignfault();
     HEAP16[dest>>1] = value;
   }
 }
@@ -957,13 +961,13 @@ function SAFE_HEAP_STORE_D(dest, value, bytes) {
   dest = dest | 0;
   value = +value;
   bytes = bytes | 0;
-  if ((dest|0) <= 0) abort(-5);
-  if (((dest + bytes)|0) > (DYNAMICTOP|0)) abort(-6);
+  if ((dest|0) <= 0) segfault();
+  if (((dest + bytes)|0) > (DYNAMICTOP|0)) segfault();
   if ((bytes|0) == 8) {
-    if ((dest&7)) abort(-7);
+    if ((dest&7)) alignfault();
     HEAPF64[dest>>3] = value;
   } else {
-    if ((dest&3)) abort(-8);
+    if ((dest&3)) alignfault();
     HEAPF32[dest>>2] = value;
   }
 }
@@ -971,10 +975,10 @@ function SAFE_HEAP_LOAD(dest, bytes, unsigned) {
   dest = dest | 0;
   bytes = bytes | 0;
   unsigned = unsigned | 0;
-  if ((dest|0) <= 0) abort(-9);
-  if ((dest + bytes|0) > (DYNAMICTOP|0)) abort(-10);
+  if ((dest|0) <= 0) segfault();
+  if ((dest + bytes|0) > (DYNAMICTOP|0)) segfault();
   if ((bytes|0) == 4) {
-    if ((dest&3)) abort(-11);
+    if ((dest&3)) alignfault();
     return HEAP32[dest>>2] | 0;
   } else if ((bytes|0) == 1) {
     if (unsigned) {
@@ -983,7 +987,7 @@ function SAFE_HEAP_LOAD(dest, bytes, unsigned) {
       return HEAP8[dest>>0] | 0;
     }
   }
-  if ((dest&1)) abort(-12);
+  if ((dest&1)) alignfault();
   if (unsigned) return HEAPU16[dest>>1] | 0;
   return HEAP16[dest>>1] | 0;
 }
@@ -991,13 +995,13 @@ function SAFE_HEAP_LOAD_D(dest, bytes, unsigned) {
   dest = dest | 0;
   bytes = bytes | 0;
   unsigned = unsigned | 0;
-  if ((dest|0) <= 0) abort(-13);
-  if ((dest + bytes|0) > (DYNAMICTOP|0)) abort(-14);
+  if ((dest|0) <= 0) segfault();
+  if ((dest + bytes|0) > (DYNAMICTOP|0)) segfault();
   if ((bytes|0) == 8) {
-    if ((dest&7)) abort(-15);
+    if ((dest&7)) alignfault();
     return +HEAPF64[dest>>3];
   }
-  if ((dest&3)) abort(-16);
+  if ((dest&3)) alignfault();
   return +HEAPF32[dest>>2];
 }
 function SAFE_FT_MASK(value, mask) {
@@ -1005,7 +1009,7 @@ function SAFE_FT_MASK(value, mask) {
   mask = mask | 0;
   var ret = 0;
   ret = value & mask;
-  if ((ret|0) != (value|0)) abort(-7);
+  if ((ret|0) != (value|0)) ftfault();
   return ret | 0;
 }
 '''] + ['''

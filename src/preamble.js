@@ -82,6 +82,16 @@ function SAFE_FT_MASK(value, mask) {
   }
   return ret;
 }
+
+function segfault() {
+  abort('segmentation fault');
+}
+function alignfault() {
+  abort('alignment fault');
+}
+function ftfault() {
+  abort('Function table mask error');
+}
 #endif
 
 //========================================
