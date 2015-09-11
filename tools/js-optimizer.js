@@ -5642,73 +5642,77 @@ function safeHeap(ast) {
     ptr = ['binary', '|', ptr, ['num', 0]];
     return ptr;
   }
-  traverseGenerated(ast, function(node, type) {
-    if (type === 'assign') {
-      if (node[1] === true && node[2][0] === 'sub') {
-        var heap = node[2][1][1];
-        var ptr = fixPtr(node[2][2], heap);
-        var value = node[3];
-        // SAFE_HEAP_STORE(ptr, value, bytes, isFloat) 
-        switch (heap) {
-          case 'HEAP8':   case 'HEAPU8': {
-            return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_INT), ['num', 1]]];
+  var SAFE_HEAP_FUNCS = set('SAFE_HEAP_LOAD', 'SAFE_HEAP_LOAD_D', 'SAFE_HEAP_STORE', 'SAFE_HEAP_STORE_D', 'SAFE_FT_MASK');
+  traverseGeneratedFunctions(ast, function(func) {
+    if (func[1] in SAFE_HEAP_FUNCS) return null;
+    traverseGenerated(func, function(node, type) {
+      if (type === 'assign') {
+        if (node[1] === true && node[2][0] === 'sub') {
+          var heap = node[2][1][1];
+          var ptr = fixPtr(node[2][2], heap);
+          var value = node[3];
+          // SAFE_HEAP_STORE(ptr, value, bytes, isFloat) 
+          switch (heap) {
+            case 'HEAP8':   case 'HEAPU8': {
+              return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_INT), ['num', 1]]];
+            }
+            case 'HEAP16':  case 'HEAPU16': {
+              return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_INT), ['num', 2]]];
+            }
+            case 'HEAP32':  case 'HEAPU32': {
+              return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_INT), ['num', 4]]];
+            }
+            case 'HEAPF32': {
+              return ['call', ['name', 'SAFE_HEAP_STORE_D'], [ptr, makeAsmCoercion(value, ASM_DOUBLE), ['num', 4]]];
+            }
+            case 'HEAPF64': {
+              return ['call', ['name', 'SAFE_HEAP_STORE_D'], [ptr, makeAsmCoercion(value, ASM_DOUBLE), ['num', 8]]];
+            }
+            default: throw 'bad heap ' + heap;
           }
-          case 'HEAP16':  case 'HEAPU16': {
-            return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_INT), ['num', 2]]];
+        }
+      } else if (type === 'sub') {
+        var target = node[1][1];
+        if (target[0] === 'H') {
+          // heap access
+          var heap = target;
+          var ptr = fixPtr(node[2], heap);
+          // SAFE_HEAP_LOAD(ptr, bytes, isFloat) 
+          switch (heap) {
+            case 'HEAP8': {
+              return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 1], ['num', 0]]], ASM_INT);
+            }
+            case 'HEAPU8': {
+              return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 1], ['num', 1]]], ASM_INT);
+            }
+            case 'HEAP16': {
+              return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 2], ['num', 0]]], ASM_INT);
+            }
+            case 'HEAPU16': {
+              return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 2], ['num', 1]]], ASM_INT);
+            }
+            case 'HEAP32': {
+              return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', 0]]], ASM_INT);
+            }
+            case 'HEAPU32': {
+              return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', 1]]], ASM_INT);
+            }
+            case 'HEAPF32': {
+              return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD_D'], [ptr, ['num', 4], ['num', 0]]], ASM_DOUBLE);
+            }
+            case 'HEAPF64': {
+              return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD_D'], [ptr, ['num', 8], ['num', 0]]], ASM_DOUBLE);
+            }
+            default: throw 'bad heap ' + heap;
           }
-          case 'HEAP32':  case 'HEAPU32': {
-            return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_INT), ['num', 4]]];
-          }
-          case 'HEAPF32': {
-            return ['call', ['name', 'SAFE_HEAP_STORE_D'], [ptr, makeAsmCoercion(value, ASM_DOUBLE), ['num', 4]]];
-          }
-          case 'HEAPF64': {
-            return ['call', ['name', 'SAFE_HEAP_STORE_D'], [ptr, makeAsmCoercion(value, ASM_DOUBLE), ['num', 8]]];
-          }
-          default: throw 'bad heap ' + heap;
+        } else {
+          assert(target[0] == 'F');
+          // function table indexing mask
+          assert(node[2][0] === 'binary' && node[2][1] === '&');
+          node[2][2] = makeAsmCoercion(['call', ['name', 'SAFE_FT_MASK'], [makeAsmCoercion(node[2][2], ASM_INT), makeAsmCoercion(node[2][3], ASM_INT)]], ASM_INT);
         }
       }
-    } else if (type === 'sub') {
-      var target = node[1][1];
-      if (target[0] === 'H') {
-        // heap access
-        var heap = target;
-        var ptr = fixPtr(node[2], heap);
-        // SAFE_HEAP_LOAD(ptr, bytes, isFloat) 
-        switch (heap) {
-          case 'HEAP8': {
-            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 1], ['num', 0]]], ASM_INT);
-          }
-          case 'HEAPU8': {
-            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 1], ['num', 1]]], ASM_INT);
-          }
-          case 'HEAP16': {
-            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 2], ['num', 0]]], ASM_INT);
-          }
-          case 'HEAPU16': {
-            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 2], ['num', 1]]], ASM_INT);
-          }
-          case 'HEAP32': {
-            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', 0]]], ASM_INT);
-          }
-          case 'HEAPU32': {
-            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', 1]]], ASM_INT);
-          }
-          case 'HEAPF32': {
-            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD_D'], [ptr, ['num', 4], ['num', 0]]], ASM_DOUBLE);
-          }
-          case 'HEAPF64': {
-            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD_D'], [ptr, ['num', 8], ['num', 0]]], ASM_DOUBLE);
-          }
-          default: throw 'bad heap ' + heap;
-        }
-      } else {
-        assert(target[0] == 'F');
-        // function table indexing mask
-        assert(node[2][0] === 'binary' && node[2][1] === '&');
-        node[2][2] = makeAsmCoercion(['call', ['name', 'SAFE_FT_MASK'], [makeAsmCoercion(node[2][2], ASM_INT), makeAsmCoercion(node[2][3], ASM_INT)]], ASM_INT);
-      }
-    }
+    });
   });
 }
 
