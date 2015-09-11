@@ -883,7 +883,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
     if (printType !== 'null' && printType[0] !== '#') printType = '"' + safeQuote(printType) + '"';
     if (printType[0] === '#') printType = printType.substr(1);
     if (!ignore) {
-      return asmCoercion('SAFE_HEAP_LOAD(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + ((type in Compiletime.FLOAT_TYPES)|0) + ', ' + (!!unsigned+0) + ')', type);
+      return asmCoercion('SAFE_HEAP_LOAD' + ((type in Compiletime.FLOAT_TYPES) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + Runtime.getNativeTypeSize(type) + ', ' + (!!unsigned+0) + ')', type);
     }
   }
   var ret = makeGetSlabs(ptr, type, false, unsigned)[0] + '[' + getHeapOffset(offset, type) + ']';
@@ -971,7 +971,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
     if (printType !== 'null' && printType[0] !== '#') printType = '"' + safeQuote(printType) + '"';
     if (printType[0] === '#') printType = printType.substr(1);
     if (!ignore) {
-      return asmCoercion('SAFE_HEAP_STORE(' + asmCoercion(offset, 'i32') + ', ' + asmCoercion(value, type) + ', ' + Runtime.getNativeTypeSize(type) + ', ' + ((type in Compiletime.FLOAT_TYPES)|0) + ')', type);
+      return 'SAFE_HEAP_STORE' + ((type in Compiletime.FLOAT_TYPES) ? '_D' : '') + '(' + asmCoercion(offset, 'i32') + ', ' + asmCoercion(value, type) + ', ' + Runtime.getNativeTypeSize(type) + ')';
     }
   }
   return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + getHeapOffset(offset, type) + ']=' + value }).join(sep);
