@@ -1036,6 +1036,11 @@ Runtime.stackSave = asm['stackSave'];
 Runtime.stackRestore = asm['stackRestore'];
 Runtime.establishStackSpace = asm['establishStackSpace'];
 ''')
+      if settings['SAFE_HEAP']:
+        funcs_js.append('''
+Runtime.setDynamicTop = asm['setDynamicTop'];
+''')
+
     if not settings['RELOCATABLE']:
       funcs_js.append('''
 Runtime.setTempRet0 = asm['setTempRet0'];
