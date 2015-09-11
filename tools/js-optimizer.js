@@ -5651,19 +5651,19 @@ function safeHeap(ast) {
         // SAFE_HEAP_STORE(ptr, value, bytes, isFloat) 
         switch (heap) {
           case 'HEAP8':   case 'HEAPU8': {
-            return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_INT), ['num', 1], ['num', 0]]];
+            return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_INT), ['num', 1]]];
           }
           case 'HEAP16':  case 'HEAPU16': {
-            return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_INT), ['num', 2], ['num', 0]]];
+            return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_INT), ['num', 2]]];
           }
           case 'HEAP32':  case 'HEAPU32': {
-            return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_INT), ['num', 4], ['num', 0]]];
+            return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_INT), ['num', 4]]];
           }
           case 'HEAPF32': {
-            return ['call', ['name', 'SAFE_HEAP_STORE_D'], [ptr, makeAsmCoercion(value, ASM_DOUBLE), ['num', 4], ['num', 1]]];
+            return ['call', ['name', 'SAFE_HEAP_STORE_D'], [ptr, makeAsmCoercion(value, ASM_DOUBLE), ['num', 4]]];
           }
           case 'HEAPF64': {
-            return ['call', ['name', 'SAFE_HEAP_STORE_D'], [ptr, makeAsmCoercion(value, ASM_DOUBLE), ['num', 8], ['num', 1]]];
+            return ['call', ['name', 'SAFE_HEAP_STORE_D'], [ptr, makeAsmCoercion(value, ASM_DOUBLE), ['num', 8]]];
           }
           default: throw 'bad heap ' + heap;
         }
@@ -5677,28 +5677,28 @@ function safeHeap(ast) {
         // SAFE_HEAP_LOAD(ptr, bytes, isFloat) 
         switch (heap) {
           case 'HEAP8': {
-            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 1], ['num', 0], ['num', 0]]], ASM_INT);
+            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 1], ['num', 0]]], ASM_INT);
           }
           case 'HEAPU8': {
-            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 1], ['num', 0], ['num', 1]]], ASM_INT);
+            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 1], ['num', 1]]], ASM_INT);
           }
           case 'HEAP16': {
-            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 2], ['num', 0], ['num', 0]]], ASM_INT);
+            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 2], ['num', 0]]], ASM_INT);
           }
           case 'HEAPU16': {
-            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 2], ['num', 0], ['num', 1]]], ASM_INT);
+            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 2], ['num', 1]]], ASM_INT);
           }
           case 'HEAP32': {
-            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', 0], ['num', 0]]], ASM_INT);
+            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', 0]]], ASM_INT);
           }
           case 'HEAPU32': {
-            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', 0], ['num', 1]]], ASM_INT);
+            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 4], ['num', 1]]], ASM_INT);
           }
           case 'HEAPF32': {
-            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD_D'], [ptr, ['num', 4], ['num', 1], ['num', 0]]], ASM_DOUBLE);
+            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD_D'], [ptr, ['num', 4], ['num', 0]]], ASM_DOUBLE);
           }
           case 'HEAPF64': {
-            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD_D'], [ptr, ['num', 8], ['num', 1], ['num', 0]]], ASM_DOUBLE);
+            return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD_D'], [ptr, ['num', 8], ['num', 0]]], ASM_DOUBLE);
           }
           default: throw 'bad heap ' + heap;
         }
