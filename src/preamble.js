@@ -54,6 +54,7 @@ function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
   assert(DYNAMICTOP <= TOTAL_MEMORY);
   setValue(dest, value, getSafeHeapType(bytes, isFloat), 1);
 }
+var SAFE_HEAP_STORE_D = SAFE_HEAP_STORE;
 
 function SAFE_HEAP_LOAD(dest, bytes, isFloat, unsigned) {
   if (dest <= 0) abort('segmentation fault loading ' + bytes + ' bytes from address ' + dest);
@@ -68,6 +69,7 @@ function SAFE_HEAP_LOAD(dest, bytes, isFloat, unsigned) {
 #endif
   return ret;
 }
+var SAFE_HEAP_LOAD_D = SAFE_HEAP_LOAD;
 
 function SAFE_FT_MASK(value, mask) {
   var ret = value & mask;

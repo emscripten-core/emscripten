@@ -530,7 +530,7 @@ function _emscripten_asm_const_%d(%s) {
              '"); ' + extra
 
     basic_funcs = ['abort', 'assert'] + [m.replace('.', '_') for m in math_envs]
-    if settings['SAFE_HEAP']: basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE', 'SAFE_FT_MASK']
+    if settings['SAFE_HEAP']: basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_LOAD_D', 'SAFE_HEAP_STORE', 'SAFE_HEAP_STORE_D', 'SAFE_FT_MASK']
     if settings['ASSERTIONS']:
       if settings['ASSERTIONS'] >= 2: import difflib
       for sig in last_forwarded_json['Functions']['tables'].iterkeys():
