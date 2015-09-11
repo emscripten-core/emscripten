@@ -26,6 +26,9 @@ int main(int argc, char **argv) {
   sum = 0;
   sum = EM_ASM_INT_V({ return globalVar }); // no inputs, just output
   printf("sum: %d\n", sum);
+  printf("|%.2f|\n", EM_ASM_DOUBLE({
+    return $0; // return double properly
+  }, 1.2));
   for (int i = 0; i < argc*2; i++) loop_iter();
   return 0;
 }

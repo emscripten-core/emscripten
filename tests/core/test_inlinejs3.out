@@ -12,5 +12,6 @@ i: 0,0.00
 i: 1,0.08
 i: 2,0.17
 sum: 6
+|1.20|
 loop iter!
 loop iter!

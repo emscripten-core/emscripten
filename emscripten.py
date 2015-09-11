@@ -286,7 +286,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       all_args = ['code'] + args
       asm_const_funcs.append(r'''
 function _emscripten_asm_const_%d(%s) {
- return ASM_CONSTS[code](%s) | 0;
+ return ASM_CONSTS[code](%s);
 }''' % (arity, ', '.join(all_args), ', '.join(args)))
 
     pre = pre.replace('// === Body ===', '// === Body ===\n' + '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n' + '\n'.join(asm_const_funcs) + '\n')
