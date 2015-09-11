@@ -188,6 +188,22 @@ int main() {
     finish(EXIT_FAILURE);
   }
 
+  {
+    int z;
+    struct sockaddr_in adr_inet;
+    socklen_t len_inet = sizeof adr_inet;
+    z = getsockname(server.fd, (struct sockaddr *)&adr_inet, &len_inet);
+    if (z != 0) {
+      perror("getsockname");
+      finish(EXIT_FAILURE);
+    }
+    char buffer[1000];
+    sprintf(buffer, "%s:%u\n", inet_ntoa(adr_inet.sin_addr), (unsigned)ntohs(adr_inet.sin_port));
+    char *correct = "127.0.0.1:49161\n";
+    printf("got (expected) socket: %s (%s), size %d (%d)\n", buffer, correct, strlen(buffer), strlen(correct));
+    assert(strncmp(buffer, correct, 10) == 0);
+  }
+
 #ifdef __EMSCRIPTEN__
 #if TEST_ASYNC
   // The first parameter being passed is actually an arbitrary userData pointer

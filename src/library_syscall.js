@@ -446,6 +446,12 @@ var SyscallsLibrary = {
         }
         return newsock.stream.fd;
       }
+      case 6: { // getsockname
+        var sock = SYSCALLS.getSocketFromFD(), addr = SYSCALLS.get(), addrlen = SYSCALLS.get();
+        var res = __write_sockaddr(addr, sock.family, DNS.lookup_name(sock.daddr), sock.dport);
+        assert(!res.errno);
+        return 0;
+      }
       case 11: { // sendto
         var sock = SYSCALLS.getSocketFromFD(), message = SYSCALLS.get(), length = SYSCALLS.get(), flags = SYSCALLS.get(), dest = SYSCALLS.getSocketAddress(true);
         var slab = {{{ makeGetSlabs('message', 'i8', true) }}};
