@@ -1034,7 +1034,7 @@ keydown(100);keyup(100); // trigger the end
   def test_fs_lz4fs_package(self):
     # generate data
     import random
-    try_delete('subdir')
+    self.clear()
     os.mkdir('subdir')
     open('file1.txt', 'w').write('0123456789' * (1024*128))
     open(os.path.join('subdir', 'file2.txt'), 'w').write('1234567890' * (1024*128))
@@ -1045,6 +1045,8 @@ keydown(100);keyup(100); // trigger the end
     # compress in emcc,  -s LZ4=1  tells it to tell the file packager
     print 'emcc-normal'
     self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['-s', 'LZ4=1', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt'], timeout=60)
+    assert os.stat('file1.txt').st_size + os.stat(os.path.join('subdir', 'file2.txt')).st_size + os.stat('file3.txt').st_size == 3*1024*128*10 + 1
+    assert os.stat('test.data').st_size < (3*1024*128*10)/2 # over half is gone
     print '    emcc-opts'
     self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['-s', 'LZ4=1', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt', '-O2'], timeout=60)
 
