@@ -391,14 +391,13 @@ class Parser {
       src += arg.size;
       Builder::appendArgumentToFunction(ret, arg.str);
       skipSpace(src);
-      if (*src && *src == ')') break;
-      if (*src && *src == ',') {
+      if (*src == ')') break;
+      if (*src == ',') {
         src++;
         continue;
       }
       abort();
     }
-    assert(*src == ')');
     src++;
     Builder::setBlockContent(ret, parseBracketedBlock(src));
     // TODO: parse expression?
@@ -422,14 +421,13 @@ class Parser {
       }
       Builder::appendToVar(ret, name.str, value);
       skipSpace(src);
-      if (*src && *src == ';') break;
-      if (*src && *src == ',') {
+      if (*src == ';') break;
+      if (*src == ',') {
         src++;
         continue;
       }
       abort();
     }
-    assert(*src == ';');
     src++;
     return ret;
   }
@@ -448,7 +446,7 @@ class Parser {
     NodeRef ifTrue = parseMaybeBracketed(src, seps);
     skipSpace(src);
     NodeRef ifFalse;
-    if (*src && !hasChar(seps, *src)) {
+    if (!hasChar(seps, *src)) {
       Frag next(src);
       if (next.type == KEYWORD && next.str == ELSE) {
         src += next.size;
@@ -576,8 +574,8 @@ class Parser {
       if (*src == ')') break;
       Builder::appendToCall(ret, parseElement(src, ",)"));
       skipSpace(src);
-      if (*src && *src == ')') break;
-      if (*src && *src == ',') {
+      if (*src == ')') break;
+      if (*src == ',') {
         src++;
         continue;
       }
@@ -633,12 +631,13 @@ class Parser {
       NodeRef element = parseElement(src, ",]");
       Builder::appendToArray(ret, element);
       skipSpace(src);
+      if (*src == ']') break;
       if (*src == ',') {
         src++;
         continue;
-      } else assert(*src == ']');
+      }
+      abort();
     }
-    assert(*src == ']');
     src++;
     return ret;
   }
@@ -659,12 +658,13 @@ class Parser {
       NodeRef value = parseElement(src, ",}");
       Builder::appendToObject(ret, key.str, value);
       skipSpace(src);
+      if (*src == '}') break;
       if (*src == ',') {
         src++;
         continue;
-      } else assert(*src == '}');
+      }
+      abort();
     }
-    assert(*src == '}');
     src++;
     return ret;
   }
