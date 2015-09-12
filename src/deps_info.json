@@ -39,6 +39,7 @@
   "glfwSleep": ["sleep"],
   "bind": ["htonl", "htons", "ntohs"],
   "connect": ["htonl", "htons", "ntohs"],
+  "socket": ["htonl", "htons", "ntohs"],
   "sleep": ["usleep"]
 }
 
