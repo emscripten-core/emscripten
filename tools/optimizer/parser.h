@@ -321,12 +321,13 @@ class Parser {
       case KEYWORD: {
         return parseAfterKeyword(frag, src, seps);
       }
-      case IDENT:
+      case IDENT: {
+        return parseAfterIdent(frag, src, seps);
+      }
       case STRING:
       case INT:
       case DOUBLE: {
-        if (frag.type == IDENT) return parseAfterIdent(frag, src, seps);
-        else return parseExpression(parseFrag(frag), src, seps);
+        return parseExpression(parseFrag(frag), src, seps);
       }
       case SEPARATOR: {
         if (frag.str == OPEN_PAREN) return parseExpression(parseAfterParen(src), src, seps);
@@ -533,7 +534,8 @@ class Parser {
       // not case X: or default: or }, so must be some code
       skipSpace(src);
       bool explicitBlock = *src == '{';
-      Builder::appendCodeToSwitch(ret, parseMaybeBracketedBlock(src, ";}", CASE, DEFAULT), explicitBlock);
+      NodeRef subBlock = explicitBlock ? parseBracketedBlock(src) : parseBlock(src, ";}", CASE, DEFAULT);
+      Builder::appendCodeToSwitch(ret, subBlock, explicitBlock);
     }
     skipSpace(src);
     assert(*src == '}');
@@ -837,11 +839,6 @@ class Parser {
   NodeRef parseMaybeBracketed(char*& src, const char *seps) {
     skipSpace(src);
     return *src == '{' ? parseBracketedBlock(src) : parseElementOrStatement(src, seps);
-  }
-
-  NodeRef parseMaybeBracketedBlock(char*& src, const char *seps, IString keywordSep1=IString(), IString keywordSep2=IString()) {
-    skipSpace(src);
-    return *src == '{' ? parseBracketedBlock(src) : parseBlock(src, seps, keywordSep1, keywordSep2);
   }
 
   NodeRef parseParenned(char*& src) {
