@@ -168,7 +168,8 @@ struct AsmData {
       stats[i] = makeEmpty();
       i++;
     }
-    // process initial variable definitions
+    // process initial variable definitions and remove '= 0' etc parts - these
+    // are not actually assignments in asm.js
     while (i < stats->size()) {
       Ref node = stats[i];
       if (node[0] != VAR) break;
@@ -194,7 +195,7 @@ struct AsmData {
         Ref type = node[0];
         if (type == VAR) {
           dump("bad, seeing a var in need of fixing", func);
-          assert(0); //, 'should be no vars to fix! ' + func[1] + ' : ' + JSON.stringify(node));
+          abort(); //, 'should be no vars to fix! ' + func[1] + ' : ' + JSON.stringify(node));
         }
       });
       i++;
@@ -893,7 +894,7 @@ Ref simplifyCondition(Ref node) {
 // In memSafe mode, we are more careful and assume functions can replace HEAP and FUNCTION_TABLE, which
 // can happen in ALLOW_MEMORY_GROWTH mode
 
-StringSet ELIMINATION_SAFE_NODES("var assign call if toplevel do return label switch binary unary-prefix"); // do is checked carefully, however
+StringSet ELIMINATION_SAFE_NODES("assign call if toplevel do return label switch binary unary-prefix"); // do is checked carefully, however
 StringSet IGNORABLE_ELIMINATOR_SCAN_NODES("num toplevel string break continue dot"); // dot can only be STRING_TABLE.*
 StringSet ABORTING_ELIMINATOR_SCAN_NODES("new object function defun for while array throw"); // we could handle some of these, TODO, but nontrivial (e.g. for while, the condition is hit multiple times after the body)
 
@@ -962,20 +963,7 @@ void eliminate(Ref ast, bool memSafe) {
     // examine body and note locals
     traversePre(func, [&](Ref node) {
       Ref type = node[0];
-      if (type == VAR) {
-        Ref node1 = node[1];
-        for (size_t i = 0; i < node1->size(); i++) {
-          Ref node1i = node1[i];
-          Ref value;
-          if (node1i->size() > 1 && !!(value = node1i[1])) {
-            IString name = node1i[0]->getIString();
-            // values is only used if definitions is 1
-            if (definitions[name]++ == 0) {
-              values[name] = value;
-            }
-          }
-        }
-      } else if (type == NAME) {
+      if (type == NAME) {
         IString& name = node[1]->getIString();
         uses[name]++;
         namings[name]++;
@@ -1226,26 +1214,6 @@ void eliminate(Ref ast, bool memSafe) {
               callsInvalidated = true;
             }
           }
-        } else if (type == VAR) {
-          Ref vars = node[1];
-          for (size_t i = 0; i < vars->size(); i++) {
-            IString name = vars[i][0]->getIString();
-            Ref value;
-            if (vars[i]->size() > 1 && !!(value = vars[i][1])) {
-              traverseInOrder(value, false);
-              if (potentials.has(name) && allowTracking) {
-                track(name, value, node);
-              } else {
-                invalidateByDep(name);
-              }
-              if (vars->size() == 1 && varsToTryToRemove.has(name) && !!value) {
-                // replace it in-place
-                value = make1(STAT, value);
-                safeCopy(node, value);
-                varsToRemove[name] = 2;
-              }
-            }
-          }
         } else if (type == BINARY) {
           bool flipped = false;
           if (ASSOCIATIVE_BINARIES.has(node[1]) && !NAME_OR_NUM.has(node[2][0]) && NAME_OR_NUM.has(node[3][0])) { // TODO recurse here?
@@ -1421,6 +1389,8 @@ void eliminate(Ref ast, bool memSafe) {
           tstmtscan += clock() - start;
           start = clock();
 #endif
+        } else if (type == VAR) {
+          continue; // asm normalisation has reduced 'var' to just the names
         } else {
           tracked.clear(); // not a var or assign, break all potential elimination so far
         }
