@@ -130,8 +130,10 @@ function JSify(data, functionsOnly) {
       if ((!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) || SIDE_MODULE) {
         if (notDep) {
           if (VERBOSE || ident.substr(0, 11) !== 'emscripten_') { // avoid warning on emscripten_* functions which are for internal usage anyhow
-            if (ERROR_ON_UNDEFINED_SYMBOLS) error('unresolved symbol: ' + ident);
-            else if (VERBOSE || (WARN_ON_UNDEFINED_SYMBOLS && !LINKABLE)) warn('unresolved symbol: ' + ident);
+            if (!LINKABLE) {
+              if (ERROR_ON_UNDEFINED_SYMBOLS) error('unresolved symbol: ' + ident);
+              else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) warn('unresolved symbol: ' + ident);
+            }
           }
         }
         if (!(MAIN_MODULE || SIDE_MODULE)) {
