@@ -1251,7 +1251,7 @@ HEAPF64 = new Float64Array(buffer);
 // make sure total memory is a multiple of the split memory size
 var SPLIT_MEMORY = {{{ SPLIT_MEMORY }}};
 var SPLIT_MEMORY_MASK = SPLIT_MEMORY - 1;
-var SPLIT_MEMORY_BITS = 0;
+var SPLIT_MEMORY_BITS = -1;
 if (TOTAL_MEMORY % SPLIT_MEMORY) {
   TOTAL_MEMORY += SPLIT_MEMORY - (TOTAL_MEMORY % SPLIT_MEMORY);
   Module.printErr('increasing TOTAL_MEMORY to ' + TOTAL_MEMORY + ' to be a multiple of the split memory size ' + SPLIT_MEMORY + ')');
