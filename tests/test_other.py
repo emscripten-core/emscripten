@@ -5224,6 +5224,7 @@ int main() {
   }, &x);
 }
 ''')
-    Popen([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000']).communicate()
-    self.assertContained('success.', run_js('a.out.js'))
+    for opts in [0, 1, 2]:
+      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
+      self.assertContained('success.', run_js('a.out.js'))
 
