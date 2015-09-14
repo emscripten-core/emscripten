@@ -5601,8 +5601,7 @@ function fixPtr(ptr, heap, shell) {
   switch (heap) {
     case 'HEAP8':   case 'HEAPU8': break;
     case 'HEAP16':  case 'HEAPU16': {
-      if (ptr[0] === 'binary') {
-        assert(ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 1);
+      if (ptr[0] === 'binary' && ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 1) {
         ptr = ptr[2]; // skip the shift
       } else {
         ptr = ['binary', '*', ptr, ['num', 2]]; // was unshifted, convert to absolute address
@@ -5610,8 +5609,7 @@ function fixPtr(ptr, heap, shell) {
       break;
     }
     case 'HEAP32':  case 'HEAPU32': {
-      if (ptr[0] === 'binary') {
-        assert(ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 2);
+      if (ptr[0] === 'binary' && ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 2) {
         ptr = ptr[2]; // skip the shift
       } else {
         ptr = ['binary', '*', ptr, ['num', 4]]; // was unshifted, convert to absolute address
@@ -5619,8 +5617,7 @@ function fixPtr(ptr, heap, shell) {
       break;
     }
     case 'HEAPF32': {
-      if (ptr[0] === 'binary') {
-        assert(ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 2);
+      if (ptr[0] === 'binary' && ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 2) {
         ptr = ptr[2]; // skip the shift
       } else {
         ptr = ['binary', '*', ptr, ['num', 4]]; // was unshifted, convert to absolute address
@@ -5628,8 +5625,7 @@ function fixPtr(ptr, heap, shell) {
       break;
     }
     case 'HEAPF64': {
-      if (ptr[0] === 'binary') {
-        assert(ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 3);
+      if (ptr[0] === 'binary' && ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 3) {
         ptr = ptr[2]; // skip the shift
       } else {
         ptr = ['binary', '*', ptr, ['num', 8]]; // was unshifted, convert to absolute address
