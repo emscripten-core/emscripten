@@ -5195,3 +5195,35 @@ main(int argc, char **argv)
     assert sizes[2] > sizes[0] # fake lto is aggressive at increasing code size
     assert sizes[3] not in set([sizes[0], sizes[1], sizes[2]]) # mode 3 is different (deterministic builds means this tests an actual change)
 
+  def test_split_memory(self): # make sure multiple split memory chunks get used
+    open('src.c', 'w').write(r'''
+#include <emscripten.h>
+#include <stdlib.h>
+int main() {
+  int x = 5;
+  EM_ASM_({
+    var ptr = $0;
+    assert(ptr >= STACK_BASE && ptr < STACK_MAX, 'ptr should be on stack, but ' + [STACK_BASE, STACK_MAX, ptr]);
+    function getIndex(x) {
+      return x >> SPLIT_MEMORY_BITS;
+    }
+    assert(ptr < SPLIT_MEMORY, 'in first chunk');
+    assert(getIndex(ptr) === 0, 'definitely in first chunk');
+    // allocate into other chunks
+    do {
+      var t = Module._malloc(1024*1024);
+      Module.print('allocating, got in ' + getIndex(t));
+    } while (getIndex(t) === 0);
+    assert(getIndex(t) === 1, 'allocated into second chunk');
+    do {
+      var t = Module._malloc(1024*1024);
+      Module.print('more allocating, got in ' + getIndex(t));
+    } while (getIndex(t) === 1);
+    assert(getIndex(t) === 2, 'into third chunk');
+    Module.print('success.');
+  }, &x);
+}
+''')
+    Popen([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000']).communicate()
+    self.assertContained('success.', run_js('a.out.js'))
+
