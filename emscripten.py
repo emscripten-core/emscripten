@@ -774,29 +774,9 @@ Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
 
       receiving += ''.join(["Module['%s'] = Module['%s']\n" % (k, v) for k, v in metadata['aliases'].iteritems()])
 
-    if settings['USE_PTHREADS']:
-      asm_setup += '''
-var I8Array = typeof SharedInt8Array !== 'undefined' ? SharedInt8Array : Int8Array;
-var I16Array = typeof SharedInt16Array !== 'undefined' ? SharedInt16Array : Int16Array;
-var I32Array = typeof SharedInt32Array !== 'undefined' ? SharedInt32Array : Int32Array;
-var U8Array = typeof SharedUint8Array !== 'undefined' ? SharedUint8Array : Uint8Array;
-var U16Array = typeof SharedUint16Array !== 'undefined' ? SharedUint16Array : Uint16Array;
-var U32Array = typeof SharedUint32Array !== 'undefined' ? SharedUint32Array : Uint32Array;
-var F32Array = typeof SharedFloat32Array !== 'undefined' ? SharedFloat32Array : Float32Array;
-var F64Array = typeof SharedFloat64Array !== 'undefined' ? SharedFloat64Array : Float64Array;
-'''
-    funcs_js = ['''
-%s
-Module%s = %s;
-Module%s = %s;
-// EMSCRIPTEN_START_ASM
-var asm = (function(global, env, buffer) {
-  %s
-  %s
-''' % (asm_setup,
-       access_quote('asmGlobalArg'), the_global,
-       access_quote('asmLibraryArg'), sending,
-       "'use asm';" if not metadata.get('hasInlineJS') and settings['ASM_JS'] == 1 else "'almost asm';", '''
+    the_arrays = ''
+    if not settings['SPLIT_MEMORY']:
+      the_arrays = '''
   var HEAP8 = new global%s(buffer);
   var HEAP16 = new global%s(buffer);
   var HEAP32 = new global%s(buffer);
@@ -812,8 +792,7 @@ var asm = (function(global, env, buffer) {
      access_quote('U16Array' if settings['USE_PTHREADS'] else 'Uint16Array'),
      access_quote('U32Array' if settings['USE_PTHREADS'] else 'Uint32Array'),
      access_quote('F32Array' if settings['USE_PTHREADS'] else 'Float32Array'),
-     access_quote('F64Array' if settings['USE_PTHREADS'] else 'Float64Array'))
-     if not settings['ALLOW_MEMORY_GROWTH'] else '''
+     access_quote('F64Array' if settings['USE_PTHREADS'] else 'Float64Array')) if not settings['ALLOW_MEMORY_GROWTH'] else '''
   var Int8View = global%s;
   var Int16View = global%s;
   var Int32View = global%s;
@@ -838,7 +817,31 @@ var asm = (function(global, env, buffer) {
      access_quote('Uint16Array'),
      access_quote('Uint32Array'),
      access_quote('Float32Array'),
-     access_quote('Float64Array'))) + '\n' + asm_global_vars + ('''
+     access_quote('Float64Array'))
+
+    if settings['USE_PTHREADS']:
+      asm_setup += '''
+var I8Array = typeof SharedInt8Array !== 'undefined' ? SharedInt8Array : Int8Array;
+var I16Array = typeof SharedInt16Array !== 'undefined' ? SharedInt16Array : Int16Array;
+var I32Array = typeof SharedInt32Array !== 'undefined' ? SharedInt32Array : Int32Array;
+var U8Array = typeof SharedUint8Array !== 'undefined' ? SharedUint8Array : Uint8Array;
+var U16Array = typeof SharedUint16Array !== 'undefined' ? SharedUint16Array : Uint16Array;
+var U32Array = typeof SharedUint32Array !== 'undefined' ? SharedUint32Array : Uint32Array;
+var F32Array = typeof SharedFloat32Array !== 'undefined' ? SharedFloat32Array : Float32Array;
+var F64Array = typeof SharedFloat64Array !== 'undefined' ? SharedFloat64Array : Float64Array;
+'''
+    funcs_js = ['''
+%s
+Module%s = %s;
+Module%s = %s;
+// EMSCRIPTEN_START_ASM
+var asm = (function(global, env, buffer) {
+  %s
+  %s
+''' % (asm_setup,
+       access_quote('asmGlobalArg'), the_global,
+       access_quote('asmLibraryArg'), sending,
+       "'use asm';" if not metadata.get('hasInlineJS') and settings['ASM_JS'] == 1 else "'almost asm';", the_arrays) + '\n' + asm_global_vars + ('''
   var __THREW__ = 0;
   var threwValue = 0;
   var setjmpId = 0;
