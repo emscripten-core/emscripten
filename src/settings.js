@@ -563,6 +563,8 @@ var EMTERPRETIFY_ADVISE = 0; // Performs a static analysis to suggest which func
                              // emcc argument when compiling later.
 
 var SPLIT_MEMORY = 0; // If > 0, we split memory into chunks, of the size given in this parameter.
+                      // Limitations:
+                      //              * No pthreads/atomics
                       // TODO: docs
 
 var RUNNING_JS_OPTS = 0; // whether js opts will be run, after the main compiler
