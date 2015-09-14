@@ -530,7 +530,14 @@ function _emscripten_asm_const_%d(%s) {
              '"); ' + extra
 
     basic_funcs = ['abort', 'assert'] + [m.replace('.', '_') for m in math_envs]
-    if settings['SAFE_HEAP']: basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE', 'SAFE_FT_MASK']
+
+    asm_safe_heap = settings['SAFE_HEAP'] and not settings['SAFE_HEAP_LOG'] and not settings['RELOCATABLE'] # optimized safe heap in asm, when we can
+
+    if settings['SAFE_HEAP']:
+      if asm_safe_heap:
+        basic_funcs += ['segfault', 'alignfault', 'ftfault']
+      else:
+        basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_LOAD_D', 'SAFE_HEAP_STORE', 'SAFE_HEAP_STORE_D', 'SAFE_FT_MASK']
     if settings['ASSERTIONS']:
       if settings['ASSERTIONS'] >= 2: import difflib
       for sig in last_forwarded_json['Functions']['tables'].iterkeys():
@@ -539,6 +546,8 @@ function _emscripten_asm_const_%d(%s) {
 
     basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
     basic_float_vars = []
+
+    if settings['SAFE_HEAP']: basic_vars += ['DYNAMICTOP']
 
     if metadata.get('preciseI64MathUsed'):
       basic_vars += ['cttz_i8']
@@ -569,6 +578,9 @@ function _emscripten_asm_const_%d(%s) {
       asm_runtime_funcs += ['emterpret']
       if settings.get('EMTERPRETIFY_ASYNC'):
         asm_runtime_funcs += ['setAsyncState', 'emtStackSave', 'emtStackRestore']
+
+    if settings['SAFE_HEAP']:
+      asm_runtime_funcs += ['setDynamicTop']
 
     # function tables
     if not settings['EMULATED_FUNCTION_POINTERS']:
@@ -923,6 +935,82 @@ function copyTempDouble(ptr) {
   HEAP8[tempDoublePtr+6>>0] = HEAP8[ptr+6>>0];
   HEAP8[tempDoublePtr+7>>0] = HEAP8[ptr+7>>0];
 }
+'''] + ['' if not settings['SAFE_HEAP'] else '''
+function setDynamicTop(value) {
+  value = value | 0;
+  DYNAMICTOP = value;
+}
+'''] + ['' if not asm_safe_heap else '''
+function SAFE_HEAP_STORE(dest, value, bytes) {
+  dest = dest | 0;
+  value = value | 0;
+  bytes = bytes | 0;
+  if ((dest|0) <= 0) segfault();
+  if (((dest + bytes)|0) > (DYNAMICTOP|0)) segfault();
+  if ((bytes|0) == 4) {
+    if ((dest&3)) alignfault();
+    HEAP32[dest>>2] = value;
+  } else if ((bytes|0) == 1) {
+    HEAP8[dest>>0] = value;
+  } else {
+    if ((dest&1)) alignfault();
+    HEAP16[dest>>1] = value;
+  }
+}
+function SAFE_HEAP_STORE_D(dest, value, bytes) {
+  dest = dest | 0;
+  value = +value;
+  bytes = bytes | 0;
+  if ((dest|0) <= 0) segfault();
+  if (((dest + bytes)|0) > (DYNAMICTOP|0)) segfault();
+  if ((bytes|0) == 8) {
+    if ((dest&7)) alignfault();
+    HEAPF64[dest>>3] = value;
+  } else {
+    if ((dest&3)) alignfault();
+    HEAPF32[dest>>2] = value;
+  }
+}
+function SAFE_HEAP_LOAD(dest, bytes, unsigned) {
+  dest = dest | 0;
+  bytes = bytes | 0;
+  unsigned = unsigned | 0;
+  if ((dest|0) <= 0) segfault();
+  if ((dest + bytes|0) > (DYNAMICTOP|0)) segfault();
+  if ((bytes|0) == 4) {
+    if ((dest&3)) alignfault();
+    return HEAP32[dest>>2] | 0;
+  } else if ((bytes|0) == 1) {
+    if (unsigned) {
+      return HEAPU8[dest>>0] | 0;
+    } else {
+      return HEAP8[dest>>0] | 0;
+    }
+  }
+  if ((dest&1)) alignfault();
+  if (unsigned) return HEAPU16[dest>>1] | 0;
+  return HEAP16[dest>>1] | 0;
+}
+function SAFE_HEAP_LOAD_D(dest, bytes) {
+  dest = dest | 0;
+  bytes = bytes | 0;
+  if ((dest|0) <= 0) segfault();
+  if ((dest + bytes|0) > (DYNAMICTOP|0)) segfault();
+  if ((bytes|0) == 8) {
+    if ((dest&7)) alignfault();
+    return +HEAPF64[dest>>3];
+  }
+  if ((dest&3)) alignfault();
+  return +HEAPF32[dest>>2];
+}
+function SAFE_FT_MASK(value, mask) {
+  value = value | 0;
+  mask = mask | 0;
+  var ret = 0;
+  ret = value & mask;
+  if ((ret|0) != (value|0)) ftfault();
+  return ret | 0;
+}
 '''] + ['''
 function setTempRet0(value) {
   value = value|0;
@@ -951,6 +1039,11 @@ Runtime.stackSave = asm['stackSave'];
 Runtime.stackRestore = asm['stackRestore'];
 Runtime.establishStackSpace = asm['establishStackSpace'];
 ''')
+      if settings['SAFE_HEAP']:
+        funcs_js.append('''
+Runtime.setDynamicTop = asm['setDynamicTop'];
+''')
+
     if not settings['RELOCATABLE']:
       funcs_js.append('''
 Runtime.setTempRet0 = asm['setTempRet0'];

@@ -2915,23 +2915,26 @@ int main() {
       for safe in [0, 1]:
         for emulate_casts in [0, 1]:
           for emulate_fps in [0, 1]:
-            cmd = [PYTHON, EMCC, 'src.cpp', '-O' + str(opts), '-s', 'SAFE_HEAP=' + str(safe)]
-            if emulate_casts:
-              cmd += ['-s', 'EMULATE_FUNCTION_POINTER_CASTS=1']
-            if emulate_fps:
-              cmd += ['-s', 'EMULATED_FUNCTION_POINTERS=1']
-            print cmd
-            Popen(cmd).communicate()
-            output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
-            if emulate_casts:
-              assert 'Hello, world.' in output, output
-            elif safe:
-              assert 'Function table mask error' in output, output
-            else:
-              if opts == 0:
-                assert 'Invalid function pointer called' in output, output
+            for relocate in [0, 1]:
+              cmd = [PYTHON, EMCC, 'src.cpp', '-O' + str(opts), '-s', 'SAFE_HEAP=' + str(safe)]
+              if emulate_casts:
+                cmd += ['-s', 'EMULATE_FUNCTION_POINTER_CASTS=1']
+              if emulate_fps:
+                cmd += ['-s', 'EMULATED_FUNCTION_POINTERS=1']
+              if relocate:
+                cmd += ['-s', 'RELOCATABLE=1'] # disables asm-optimized safe heap
+              print cmd
+              Popen(cmd).communicate()
+              output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
+              if emulate_casts:
+                assert 'Hello, world.' in output, output
+              elif safe:
+                assert 'Function table mask error' in output, output
               else:
-                assert 'abort()' in output, output
+                if opts == 0:
+                  assert 'Invalid function pointer called' in output, output
+                else:
+                  assert 'abort()' in output, output
 
   def test_aliased_func_pointers(self):
     open('src.cpp', 'w').write(r'''

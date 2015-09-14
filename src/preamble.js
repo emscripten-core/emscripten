@@ -54,8 +54,11 @@ function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
   assert(DYNAMICTOP <= TOTAL_MEMORY);
   setValue(dest, value, getSafeHeapType(bytes, isFloat), 1);
 }
+function SAFE_HEAP_STORE_D(dest, value, bytes) {
+  SAFE_HEAP_STORE(dest, value, bytes, true);
+}
 
-function SAFE_HEAP_LOAD(dest, bytes, isFloat, unsigned) {
+function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
   if (dest <= 0) abort('segmentation fault loading ' + bytes + ' bytes from address ' + dest);
   if (dest % bytes !== 0) abort('alignment error loading from address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
   if (dest + bytes > Math.max(DYNAMICTOP, STATICTOP)) abort('segmentation fault, exceeded the top of the available heap when loading ' + bytes + ' bytes from address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + DYNAMICTOP);
@@ -68,6 +71,9 @@ function SAFE_HEAP_LOAD(dest, bytes, isFloat, unsigned) {
 #endif
   return ret;
 }
+function SAFE_HEAP_LOAD_D(dest, bytes, unsigned) {
+  return SAFE_HEAP_LOAD(dest, bytes, unsigned, true);
+}
 
 function SAFE_FT_MASK(value, mask) {
   var ret = value & mask;
@@ -75,6 +81,16 @@ function SAFE_FT_MASK(value, mask) {
     abort('Function table mask error: function pointer is ' + value + ' which is masked by ' + mask + ', the likely cause of this is that the function pointer is being called by the wrong type.');
   }
   return ret;
+}
+
+function segfault() {
+  abort('segmentation fault');
+}
+function alignfault() {
+  abort('alignment fault');
+}
+function ftfault() {
+  abort('Function table mask error');
 }
 #endif
 

@@ -64,7 +64,10 @@ var RuntimeGenerator = {
     if (typeof ENVIRONMENT_IS_PTHREAD !== 'undefined' && ENVIRONMENT_IS_PTHREAD) throw 'Runtime.dynamicAlloc is not available in pthreads!'; // This is because each worker has its own copy of DYNAMICTOP, of which main thread is authoritative.
 #endif
     var ret = RuntimeGenerator.alloc(size, 'DYNAMIC');
-    ret += '; if (DYNAMICTOP >= TOTAL_MEMORY) { var success = enlargeMemory(); if (!success) { DYNAMICTOP = ret; return 0; } }'
+    if (SAFE_HEAP) ret += '; if (asm) { Runtime.setDynamicTop(DYNAMICTOP); }';
+    ret += '; if (DYNAMICTOP >= TOTAL_MEMORY) { var success = enlargeMemory(); if (!success) { DYNAMICTOP = ret; ';
+    if (SAFE_HEAP) ret += 'if (asm) { Runtime.setDynamicTop(DYNAMICTOP); }';
+    ret += ' return 0; } }'
     return ret;
   },
 
