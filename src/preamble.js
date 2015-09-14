@@ -1236,6 +1236,8 @@ if (typeof Atomics === 'undefined') {
 }
 
 #else // USE_PTHREADS
+
+#if SPLIT_MEMORY == 0
 buffer = new ArrayBuffer(TOTAL_MEMORY);
 HEAP8 = new Int8Array(buffer);
 HEAP16 = new Int16Array(buffer);
@@ -1245,6 +1247,136 @@ HEAPU16 = new Uint16Array(buffer);
 HEAPU32 = new Uint32Array(buffer);
 HEAPF32 = new Float32Array(buffer);
 HEAPF64 = new Float64Array(buffer);
+#else // SPLIT_MEMORY
+// make sure total memory is a multiple of the split memory size
+var SPLIT_MEMORY = {{{ SPLIT_MEMORY }}};
+var SPLIT_MEMORY_MASK = SPLIT_MEMORY - 1;
+var SPLIT_MEMORY_BITS = 0;
+if (TOTAL_MEMORY % SPLIT_MEMORY) {
+  TOTAL_MEMORY += SPLIT_MEMORY - (TOTAL_MEMORY % SPLIT_MEMORY);
+  Module.printErr('increasing TOTAL_MEMORY to ' + TOTAL_MEMORY + ' to be a multiple of the split memory size ' + SPLIT_MEMORY + ')');
+}
+var buffers = [], HEAP8s = [], HEAP16s = [], HEAP32s = [], HEAPU8s = [], HEAPU16s = [], HEAPU32s = [], HEAPF32s = [], HEAPF64s = [];
+(function() {
+  var temp = SPLIT_MEMORY;
+  while (temp) {
+    temp >>= 1;
+    SPLIT_MEMORY_BITS++;
+  }
+  for (var i = 0; i < TOTAL_MEMORY / SPLIT_MEMORY; i++) {
+    var curr = new ArrayBuffer(SPLIT_MEMORY);
+    buffers.push(curr);
+    HEAP8s.push(new Int8Array(curr));
+    HEAP16s.push(new Int16Array(curr));
+    HEAP32s.push(new Int32Array(curr));
+    HEAPU8s.push(new Uint8Array(curr));
+    HEAPU16s.push(new Uint16Array(curr));
+    HEAPU32s.push(new Uint32Array(curr));
+    HEAPF32s.push(new Float32Array(curr));
+    HEAPF64s.push(new Float64Array(curr));
+  }
+  // support HEAP8.subarray etc.
+  function fake(real) {
+    return {
+      set: function(array, offset) {
+        if (offset === undefined) offset = 0;
+        assert((offset & SPLIT_MEMORY_MASK) + (array.length * real[0].BYTES_PER_ELEMENT) < SPLIT_MEMORY, 'TODO: set over split chunks')
+        var index = offset >> SPLIT_MEMORY_BITS;
+        return real[index].set(array, offset & SPLIT_MEMORY_MASK);
+      },
+      subarray: function(from, to) {
+        if (to === undefined) to = SPLIT_MEMORY;
+        var start = from >> SPLIT_MEMORY_BITS;
+        var end = from >> SPLIT_MEMORY_BITS;
+        assert(start === end, 'subarray cannot span split chunks');
+        return real[start].subarray(from & SPLIT_MEMORY_MASK, to & SPLIT_MEMORY_MASK);
+      }
+    };
+  }
+  HEAP8 = fake(HEAP8s);
+  HEAP16 = fake(HEAP16s);
+  HEAP32 = fake(HEAP32s);
+  HEAPU8 = fake(HEAPU8s);
+  HEAPU16 = fake(HEAPU16s);
+  HEAPU32 = fake(HEAPU32s);
+  HEAPF32 = fake(HEAPF32s);
+  HEAPF64 = fake(HEAPF64s);
+})();
+// TODO: add SAFE_HEAP here
+function get8(ptr) {
+  ptr = ptr | 0;
+  return HEAP8s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 0] | 0;
+}
+function get16(ptr) {
+  ptr = ptr | 0;
+  return HEAP16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] | 0;
+}
+function get32(ptr) {
+  ptr = ptr | 0;
+  return HEAP32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] | 0;
+}
+function getU8(ptr) {
+  ptr = ptr | 0;
+  return HEAPU8s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 0] | 0;
+}
+function getU16(ptr) {
+  ptr = ptr | 0;
+  return HEAPU16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] | 0;
+}
+function getU32(ptr) {
+  ptr = ptr | 0;
+  return HEAPU32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] | 0;
+}
+function getF32(ptr) {
+  ptr = ptr | 0;
+  return +HEAPF32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2];
+}
+function getF64(ptr) {
+  ptr = ptr | 0;
+  return +HEAPF64s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 3];
+}
+function set8(ptr, value) {
+  ptr = ptr | 0;
+  value = value | 0;
+  HEAP8s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 0] = value;
+}
+function set16(ptr, value) {
+  ptr = ptr | 0;
+  value = value | 0;
+  HEAP16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] = value;
+}
+function set32(ptr, value) {
+  ptr = ptr | 0;
+  value = value | 0;
+  HEAP32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] = value;
+}
+function setU8(ptr, value) {
+  ptr = ptr | 0;
+  value = value | 0;
+  HEAPU8s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 0] = value;
+}
+function setU16(ptr, value) {
+  ptr = ptr | 0;
+  value = value | 0;
+  HEAPU16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] = value;
+}
+function setU32(ptr, value) {
+  ptr = ptr | 0;
+  value = value | 0;
+  HEAPU32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] = value;
+}
+function setF32(ptr, value) {
+  ptr = ptr | 0;
+  value = +value;
+  HEAPF32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] = value;
+}
+function setF64(ptr, value) {
+  ptr = ptr | 0;
+  value = +value;
+  HEAPF64s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 3] = value;
+}
+#endif // SPLIT_MEMORY
+
 #endif // USE_PTHREADS
 
 // Endianness check (note: assumes compiler arch was little-endian)

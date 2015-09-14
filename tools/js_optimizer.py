@@ -305,7 +305,6 @@ def run_on_js(filename, passes, js_engine, source_map=False, extra_info=None, ju
     suffix_end = js.find('\n', suffix_start)
     suffix = js[suffix_start:suffix_end] + '\n'
     # if there is metadata, we will run only on the generated functions. If there isn't, we will run on everything.
-    generated = set(eval(suffix[len(suffix_marker)+1:]))
 
   # Find markers
   start_funcs = js.find(start_funcs_marker)
@@ -329,6 +328,10 @@ def run_on_js(filename, passes, js_engine, source_map=False, extra_info=None, ju
   cleanup = 'cleanup' in passes
   if cleanup:
     passes = filter(lambda p: p != 'cleanup', passes) # we will do it manually
+
+  split_memory = 'splitMemory' in passes
+  if cleanup:
+    passes = filter(lambda p: p != 'splitMemory', passes) # we will do it manually
 
   if not minify_globals:
     pre = js[:start_funcs + len(start_funcs_marker)]
@@ -447,7 +450,7 @@ EMSCRIPTEN_FUNCS();
 
   for filename in filenames: temp_files.note(filename)
 
-  if closure or cleanup:
+  if closure or cleanup or split_memory:
     # run on the shell code, everything but what we js-optimize
     start_asm = '// EMSCRIPTEN_START_ASM\n'
     end_asm = '// EMSCRIPTEN_END_ASM\n'
@@ -461,14 +464,23 @@ EMSCRIPTEN_FUNCS();
     c.write(cl_sep)
     c.write(post_2)
     c.close()
+    cld = cle
+    if split_memory:
+      if DEBUG: print >> sys.stderr, 'running splitMemory on shell code'
+      cld = run_on_chunk(js_engine + [JS_OPTIMIZER, cld, 'splitMemoryShell'])
+      f = open(cld, 'a')
+      f.write(suffix_marker)
+      f.close()
     if closure:
       if DEBUG: print >> sys.stderr, 'running closure on shell code'
-      cld = shared.Building.closure_compiler(cle, pretty='minifyWhitespace' not in passes)
-    else:
+      cld = shared.Building.closure_compiler(cld, pretty='minifyWhitespace' not in passes)
+      temp_files.note(cld)
+    elif cleanup:
       if DEBUG: print >> sys.stderr, 'running cleanup on shell code'
-      cld = cle + '.js'
-      subprocess.Popen(js_engine + [JS_OPTIMIZER, cle, 'noPrintMetadata'] + (['minifyWhitespace'] if 'minifyWhitespace' in passes else []), stdout=open(cld, 'w')).communicate()
-    temp_files.note(cld)
+      next = cld + '.cl.js'
+      temp_files.note(next)
+      subprocess.Popen(js_engine + [JS_OPTIMIZER, cld, 'noPrintMetadata'] + (['minifyWhitespace'] if 'minifyWhitespace' in passes else []), stdout=open(next, 'w')).communicate()
+      cld = next
     coutput = open(cld).read()
     coutput = coutput.replace('wakaUnknownBefore();', start_asm)
     after = 'wakaUnknownAfter'

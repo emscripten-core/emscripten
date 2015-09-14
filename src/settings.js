@@ -562,6 +562,9 @@ var EMTERPRETIFY_ADVISE = 0; // Performs a static analysis to suggest which func
                              // After showing the suggested list, compilation will halt. You can apply the provided list as an
                              // emcc argument when compiling later.
 
+var SPLIT_MEMORY = 0; // If > 0, we split memory into chunks, of the size given in this parameter.
+                      // TODO: docs
+
 var RUNNING_JS_OPTS = 0; // whether js opts will be run, after the main compiler
 var BOOTSTRAPPING_STRUCT_INFO = 0; // whether we are in the generate struct_info bootstrap phase
 

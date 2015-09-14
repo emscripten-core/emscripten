@@ -950,6 +950,18 @@ try:
   if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
     shared.Settings.ALIASING_FUNCTION_POINTERS = 0
 
+  if shared.Settings.SPLIT_MEMORY:
+    assert shared.Settings.SPLIT_MEMORY >= 1024*1024, 'SPLIT_MEMORY must be of at least 1048576, chunk size cannot be too small'
+    assert shared.Settings.SPLIT_MEMORY & (shared.Settings.SPLIT_MEMORY-1) == 0, 'SPLIT_MEMORY must be a power of 2'
+    if shared.Settings.ASM_JS == 1:
+      logging.warning('not all asm.js optimizations are possible with SPLIT_MEMORY, disabling those')
+      shared.Settings.ASM_JS = 2
+    assert not shared.Settings.ALLOW_MEMORY_GROWTH, 'TODO: memory growth with SPLIT_MEMORY'
+    assert not shared.Settings.SAFE_HEAP, 'TODO: safe heap with SPLIT_MEMORY'
+    if not js_opts:
+      js_opts = True
+      logging.debug('enabling js opts for SPLIT_MEMORY')
+
   if shared.Settings.STB_IMAGE and final_suffix in JS_CONTAINING_SUFFIXES:
     input_files.append((next_arg_index, shared.path_from_root('third_party', 'stb_image.c')))
     next_arg_index += 1
@@ -1546,6 +1558,8 @@ try:
 
   if js_opts:
     if shared.Settings.SAFE_HEAP: js_optimizer_queue += ['safeHeap']
+
+    if shared.Settings.SPLIT_MEMORY: js_optimizer_queue += ['splitMemory']
 
     if shared.Settings.OUTLINING_LIMIT > 0:
       js_optimizer_queue += ['outline']

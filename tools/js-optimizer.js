@@ -5597,51 +5597,55 @@ function outline(ast) {
   });
 }
 
-function safeHeap(ast) {
-  function fixPtr(ptr, heap) {
-    switch (heap) {
-      case 'HEAP8':   case 'HEAPU8': break;
-      case 'HEAP16':  case 'HEAPU16': {
-        if (ptr[0] === 'binary') {
-          assert(ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 1);
-          ptr = ptr[2]; // skip the shift
-        } else {
-          ptr = ['binary', '*', ptr, ['num', 2]]; // was unshifted, convert to absolute address
-        }
-        break;
+function fixPtr(ptr, heap, shell) {
+  switch (heap) {
+    case 'HEAP8':   case 'HEAPU8': break;
+    case 'HEAP16':  case 'HEAPU16': {
+      if (ptr[0] === 'binary') {
+        assert(ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 1);
+        ptr = ptr[2]; // skip the shift
+      } else {
+        ptr = ['binary', '*', ptr, ['num', 2]]; // was unshifted, convert to absolute address
       }
-      case 'HEAP32':  case 'HEAPU32': {
-        if (ptr[0] === 'binary') {
-          assert(ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 2);
-          ptr = ptr[2]; // skip the shift
-        } else {
-          ptr = ['binary', '*', ptr, ['num', 4]]; // was unshifted, convert to absolute address
-        }
-        break;
-      }
-      case 'HEAPF32': {
-        if (ptr[0] === 'binary') {
-          assert(ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 2);
-          ptr = ptr[2]; // skip the shift
-        } else {
-          ptr = ['binary', '*', ptr, ['num', 4]]; // was unshifted, convert to absolute address
-        }
-        break;
-      }
-      case 'HEAPF64': {
-        if (ptr[0] === 'binary') {
-          assert(ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 3);
-          ptr = ptr[2]; // skip the shift
-        } else {
-          ptr = ['binary', '*', ptr, ['num', 8]]; // was unshifted, convert to absolute address
-        }
-        break;
-      }
-      default: throw 'bad heap ' + heap;
+      break;
     }
-    ptr = ['binary', '|', ptr, ['num', 0]];
-    return ptr;
+    case 'HEAP32':  case 'HEAPU32': {
+      if (ptr[0] === 'binary') {
+        assert(ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 2);
+        ptr = ptr[2]; // skip the shift
+      } else {
+        ptr = ['binary', '*', ptr, ['num', 4]]; // was unshifted, convert to absolute address
+      }
+      break;
+    }
+    case 'HEAPF32': {
+      if (ptr[0] === 'binary') {
+        assert(ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 2);
+        ptr = ptr[2]; // skip the shift
+      } else {
+        ptr = ['binary', '*', ptr, ['num', 4]]; // was unshifted, convert to absolute address
+      }
+      break;
+    }
+    case 'HEAPF64': {
+      if (ptr[0] === 'binary') {
+        assert(ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 3);
+        ptr = ptr[2]; // skip the shift
+      } else {
+        ptr = ['binary', '*', ptr, ['num', 8]]; // was unshifted, convert to absolute address
+      }
+      break;
+    }
+    default: {
+      if (!shell) throw 'bad heap ' + heap;
+      return ptr; // unchanged
+    }
   }
+  ptr = ['binary', '|', ptr, ['num', 0]];
+  return ptr;
+}
+
+function safeHeap(ast) {
   var SAFE_HEAP_FUNCS = set('SAFE_HEAP_LOAD', 'SAFE_HEAP_LOAD_D', 'SAFE_HEAP_STORE', 'SAFE_HEAP_STORE_D', 'SAFE_FT_MASK');
   traverseGeneratedFunctions(ast, function(func) {
     if (func[1] in SAFE_HEAP_FUNCS) return null;
@@ -5714,6 +5718,51 @@ function safeHeap(ast) {
       }
     });
   });
+}
+
+function splitMemory(ast, shell) {
+  traverse(ast, function(node, type) {
+    if (type === 'assign') {
+      if (node[1] === true && node[2][0] === 'sub') {
+        var heap = node[2][1][1];
+        var ptr = fixPtr(node[2][2], heap, shell);
+        var value = node[3];
+        switch (heap) {
+          case 'HEAP8': return ['call', ['name', 'set8'], [ptr, makeAsmCoercion(value, ASM_INT)]];
+          case 'HEAP16': return ['call', ['name', 'set16'], [ptr, makeAsmCoercion(value, ASM_INT)]];
+          case 'HEAP32': return ['call', ['name', 'set32'], [ptr, makeAsmCoercion(value, ASM_INT)]];
+          case 'HEAPU8': return ['call', ['name', 'setU8'], [ptr, makeAsmCoercion(value, ASM_INT)]];
+          case 'HEAPU16': return ['call', ['name', 'setU16'], [ptr, makeAsmCoercion(value, ASM_INT)]];
+          case 'HEAPU32': return ['call', ['name', 'setU32'], [ptr, makeAsmCoercion(value, ASM_INT)]];
+          case 'HEAPF32': return ['call', ['name', 'setF32'], [ptr, makeAsmCoercion(value, ASM_DOUBLE)]];
+          case 'HEAPF64': return ['call', ['name', 'setF64'], [ptr, makeAsmCoercion(value, ASM_DOUBLE)]];
+          default: if (!shell) throw 'bad heap ' + heap;
+        }
+      }
+    } else if (type === 'sub') {
+      var target = node[1][1];
+      if (target[0] === 'H') {
+        // heap access
+        var heap = target;
+        var ptr = fixPtr(node[2], heap, shell);
+        switch (heap) {
+          case 'HEAP8': return ['call', ['name', 'get8'], [ptr]];
+          case 'HEAP16': return ['call', ['name', 'get16'], [ptr]];
+          case 'HEAP32': return ['call', ['name', 'get32'], [ptr]];
+          case 'HEAPU8': return ['call', ['name', 'getU8'], [ptr]];
+          case 'HEAPU16': return ['call', ['name', 'getU16'], [ptr]];
+          case 'HEAPU32': return ['call', ['name', 'getU32'], [ptr]];
+          case 'HEAPF32': return ['call', ['name', 'getF32'], [ptr]];
+          case 'HEAPF64': return ['call', ['name', 'getF64'], [ptr]];
+          default: if (!shell) throw 'bad heap ' + heap;
+        }
+      }
+    }
+  });
+}
+
+function splitMemoryShell(ast) {
+  splitMemory(ast, true);
 }
 
 function optimizeFrounds(ast) {
@@ -7559,6 +7608,8 @@ var passes = {
   relocate: relocate,
   outline: outline,
   safeHeap: safeHeap,
+  splitMemory: splitMemory,
+  splitMemoryShell: splitMemoryShell,
   optimizeFrounds: optimizeFrounds,
   ensureLabelSet: ensureLabelSet,
   emterpretify: emterpretify,
