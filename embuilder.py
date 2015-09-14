@@ -44,6 +44,8 @@ Available operations and tasks:
         vorbis
         zlib
 
+Issuing 'embuilder.py build ALL' causes each task to be built.
+
 It is also possible to build native_optimizer manually by using CMake. To
 do that, run
 
@@ -72,11 +74,14 @@ def build_port(port_name, lib_name, params):
     int main() {}
   ''', [os.path.join('ports-builds', port_name, lib_name)], params)
 
-
 operation = sys.argv[1]
 
 if operation == 'build':
-  for what in sys.argv[2:]:
+  tasks = sys.argv[2:]
+  if 'ALL' in tasks:
+    tasks = ['libc', 'libc-mt', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'gl', 'struct_info', 'native_optimizer', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'vorbis', 'zlib']
+
+  for what in tasks:
     shared.logging.info('building and verifying ' + what)
     if what in ('libc', 'dlmalloc'):
       build('''
