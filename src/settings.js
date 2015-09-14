@@ -565,6 +565,7 @@ var EMTERPRETIFY_ADVISE = 0; // Performs a static analysis to suggest which func
 var SPLIT_MEMORY = 0; // If > 0, we split memory into chunks, of the size given in this parameter.
                       // Limitations:
                       //              * No pthreads/atomics
+                      //              * No dynamic linking
                       // TODO: more docs
                       // TODO: add malloc-split to embuilder
 
