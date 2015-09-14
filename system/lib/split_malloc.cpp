@@ -19,6 +19,7 @@ void* sbrk(intptr_t increment) {
   EM_ASM({
     Module.printErr("sbrk() should never be called when SPLIT_MEMORY!");
   });
+  abort();
 }
 
 }
