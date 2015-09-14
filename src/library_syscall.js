@@ -124,7 +124,7 @@ var SyscallsLibrary = {
       for (var i = 0; i < iovcnt; i++) {
         var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
         var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
-        var curr = FS.read(stream, {{{ makeGetSlabs('ptr', 'i8', true) }}}, ptr, len, offset);
+        var curr = FS.read(stream, {{{ heapAndOffset('HEAP8', 'ptr') }}}, len, offset);
         if (curr < 0) return -1;
         ret += curr;
         if (curr < len) break; // nothing more to read
@@ -136,7 +136,7 @@ var SyscallsLibrary = {
       for (var i = 0; i < iovcnt; i++) {
         var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
         var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
-        var curr = FS.write(stream, {{{ makeGetSlabs('ptr', 'i8', true) }}}, ptr, len, offset);
+        var curr = FS.write(stream, {{{ heapAndOffset('HEAP8', 'ptr') }}}, len, offset);
         if (curr < 0) return -1;
         ret += curr;
       }
@@ -213,11 +213,11 @@ var SyscallsLibrary = {
   },
   __syscall3: function(which, varargs) { // read
     var stream = SYSCALLS.getStreamFromFD(), buf = SYSCALLS.get(), count = SYSCALLS.get();
-    return FS.read(stream, {{{ makeGetSlabs('buf', 'i8', true) }}}, buf, count);
+    return FS.read(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count);
   },
   __syscall4: function(which, varargs) { // write
     var stream = SYSCALLS.getStreamFromFD(), buf = SYSCALLS.get(), count = SYSCALLS.get();
-    return FS.write(stream, {{{ makeGetSlabs('ptr', 'i8', true) }}}, buf, count);
+    return FS.write(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count);
   },
   __syscall5: function(which, varargs) { // open
     var pathname = SYSCALLS.getStr(), flags = SYSCALLS.get(), mode = SYSCALLS.get() // optional TODO
@@ -810,14 +810,14 @@ var SyscallsLibrary = {
   },
   __syscall180: function(which, varargs) { // pread64
     var stream = SYSCALLS.getStreamFromFD(), buf = SYSCALLS.get(), count = SYSCALLS.get(), zero = SYSCALLS.getZero(), offset = SYSCALLS.get64();
-    return FS.read(stream, {{{ makeGetSlabs('buf', 'i8', true) }}}, buf, count, offset);
+    return FS.read(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count, offset);
   },
   __syscall181: function(which, varargs) { // pwrite64
 #if SYSCALL_DEBUG
     Module.printErr('warning: untested syscall');
 #endif
     var stream = SYSCALLS.getStreamFromFD(), buf = SYSCALLS.get(), count = SYSCALLS.get(), zero = SYSCALLS.getZero(), offset = SYSCALLS.get64();
-    return FS.write(stream, {{{ makeGetSlabs('buf', 'i8', true) }}}, buf, nbyte, offset);
+    return FS.write(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, nbyte, offset);
   },
   __syscall183: function(which, varargs) { // getcwd
     var buf = SYSCALLS.get(), size = SYSCALLS.get();
