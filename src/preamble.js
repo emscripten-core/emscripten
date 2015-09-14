@@ -562,7 +562,7 @@ function UTF8ArrayToString(u8Array, idx) {
 // a copy of that string as a Javascript String object.
 
 function UTF8ToString(ptr) {
-  return UTF8ArrayToString(HEAPU8, ptr);
+  return UTF8ArrayToString({{{ heapAndOffset('HEAPU8', 'ptr') }}});
 }
 {{{ maybeExport('UTF8ToString') }}}
 
@@ -640,7 +640,7 @@ function stringToUTF8(str, outPtr, maxBytesToWrite) {
 #if ASSERTIONS
   assert(typeof maxBytesToWrite == 'number', 'stringToUTF8(str, outPtr, maxBytesToWrite) is missing the third parameter that specifies the length of the output buffer!');
 #endif
-  return stringToUTF8Array(str, HEAPU8, outPtr, maxBytesToWrite);
+  return stringToUTF8Array(str, {{{ heapAndOffset('HEAPU8', 'outPtr') }}}, maxBytesToWrite);
 }
 {{{ maybeExport('stringToUTF8') }}}
 

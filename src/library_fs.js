@@ -1128,6 +1128,9 @@ mergeInto(LibraryManager.library, {
       stream.stream_ops.allocate(stream, offset, length);
     },
     mmap: function(stream, buffer, offset, length, position, prot, flags) {
+#if ASSERTIONS
+      assert(offset + length < buffer.byteLength);
+#endif
       // TODO if PROT is PROT_WRITE, make sure we have write access
       if ((stream.flags & {{{ cDefine('O_ACCMODE') }}}) === {{{ cDefine('O_WRONLY')}}}) {
         throw new FS.ErrnoError(ERRNO_CODES.EACCES);

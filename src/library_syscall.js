@@ -65,7 +65,7 @@ var SyscallsLibrary = {
       return 0;
     },
     doMsync: function(addr, stream, len, flags) {
-      var buffer = new Uint8Array(HEAPU8.buffer, addr, len);
+      var buffer = new Uint8Array(HEAPU8.subarray(addr, addr + len));
       FS.msync(stream, buffer, 0, len, flags);
     },
     doMkdir: function(path, mode) {
@@ -851,7 +851,7 @@ var SyscallsLibrary = {
     } else {
       var info = FS.getStream(fd);
       if (!info) return -ERRNO_CODES.EBADF;
-      var res = FS.mmap(info, HEAPU8, addr, len, off, prot, flags);
+      var res = FS.mmap(info, {{{ heapAndOffset('HEAPU8', 'addr') }}}, len, off, prot, flags);
       ptr = res.ptr;
       allocated = res.allocated;
     }
