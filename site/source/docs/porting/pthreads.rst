@@ -26,7 +26,7 @@ The Emscripten implementation for the pthreads API should follow the POSIX stand
 
 - When -s PTHREAD_POOL_SIZE=<integer> is not specified and pthread_create() is called, the new thread will not actually start to run immediately, but the main JS thread must yield execution back to browser first. This behavior is a result of `#1049079 <https://bugzilla.mozilla.org/show_bug.cgi?id=1049079>`.
 
-- Currently several of the functions in the C runtime, such as filesystem functions like fopen(), fread(), printf(), fprintf() etc. are not multithreaded, but instead their execution is proxied over to the main application thread. Memory allocation via malloc() and free() is fully multithreaded though.
+- Currently several of the functions in the C runtime, such as filesystem functions like fopen(), fread(), printf(), fprintf() etc. are not multithreaded, but instead their execution is proxied over to the main application thread. Memory allocation via malloc() and free() is fully multithreaded though. This proxying can generate a deadlock in a special situation that native code running pthreads does not have. See `bug 3495 <https://github.com/kripken/emscripten/issues/3495>` for more information and how to work around this until proxying is no longer needed in Emscripten.
 
 - The Emscripten implementation does not support `POSIX signals <http://man7.org/linux/man-pages/man7/signal.7.html>`, which are sometimes used in conjunction with pthreads. This is because it is not possible to send signals to web workers and pre-empt their execution. The only exception to this is pthread_kill() which can be used as normal to forcibly terminate a running thread.
 
