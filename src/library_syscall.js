@@ -454,13 +454,12 @@ var SyscallsLibrary = {
       }
       case 11: { // sendto
         var sock = SYSCALLS.getSocketFromFD(), message = SYSCALLS.get(), length = SYSCALLS.get(), flags = SYSCALLS.get(), dest = SYSCALLS.getSocketAddress(true);
-        var slab = {{{ makeGetSlabs('message', 'i8', true) }}};
         if (!dest) {
           // send, no address provided
-          return FS.write(sock.stream, slab, message, length);
+          return FS.write(sock.stream, {{{ heapAndOffset('HEAP8', 'message') }}}, length);
         } else {
           // sendto an address
-          return sock.sock_ops.sendmsg(sock, slab, message, length, dest.addr, dest.port);
+          return sock.sock_ops.sendmsg(sock, {{{ heapAndOffset('HEAP8', 'message') }}}, length, dest.addr, dest.port);
         }
       }
       case 12: { // recvfrom
