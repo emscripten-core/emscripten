@@ -79,6 +79,7 @@ void* malloc(size_t size) {
 }
 
 void free(void* ptr) {
+  if (ptr == 0) return;
   if (!initialized) abort();
   unsigned index = space_index(ptr);
   if (index == 0 || index >= num_spaces) {
