@@ -166,6 +166,7 @@ def add_coloring_to_emit_ansi(fn):
   return new
 
 WINDOWS = sys.platform.startswith('win')
+OSX = sys.platform == 'darwin'
 
 if WINDOWS:
   logging.StreamHandler.emit = add_coloring_to_emit_windows(logging.StreamHandler.emit)
@@ -563,7 +564,7 @@ def get_clang_native_args():
   global CACHED_CLANG_NATIVE_ARGS
   if CACHED_CLANG_NATIVE_ARGS is not None: return CACHED_CLANG_NATIVE_ARGS
   CACHED_CLANG_NATIVE_ARGS = []
-  if sys.platform == 'darwin':
+  if OSX:
     sdk_path = osx_find_native_sdk_path()
     if sdk_path:
       CACHED_CLANG_NATIVE_ARGS = ['-isysroot', osx_find_native_sdk_path()]
