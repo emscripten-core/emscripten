@@ -85,6 +85,7 @@ void free(void* ptr) {
 }
 
 void* realloc(void* ptr, size_t newsize) {
+  if (!ptr) return malloc(newsize);
   void* ret = mspace_realloc(get_space(ptr), ptr, newsize);
   if (ret) return ret;
   ret = malloc(newsize);
