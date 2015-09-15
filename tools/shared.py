@@ -224,7 +224,7 @@ else:
     config_file = config_file.replace('\'{{{ EMSCRIPTEN_ROOT }}}\'', repr(__rootpath__))
     llvm_root = os.path.dirname(find_executable('llvm-dis') or '/usr/bin/llvm-dis')
     config_file = config_file.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
-    node = find_executable('node') or find_executable('nodejs') or 'node'
+    node = find_executable('nodejs') or find_executable('node') or 'node'
     config_file = config_file.replace('\'{{{ NODE }}}\'', repr(node))
     if WINDOWS:
       tempdir = os.environ.get('TEMP') or os.environ.get('TMP') or 'c:\\temp'
