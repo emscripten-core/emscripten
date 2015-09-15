@@ -133,7 +133,7 @@ void traversePre(Ref node, std::function<void (Ref)> visit) {
   visit(node);
   StackedStack<TraverseInfo, TRAV_STACK> stack;
   stack.push_back(TraverseInfo(node, node->getArray()));
-  while (stack.size() > 0) {
+  while (1) {
     TraverseInfo& top = stack.back();
     if (top.index < (int)top.arr->size()) {
       Ref sub = (*top.arr)[top.index];
@@ -144,6 +144,7 @@ void traversePre(Ref node, std::function<void (Ref)> visit) {
       }
     } else {
       stack.pop_back();
+      if (stack.size() == 0) break;
     }
   }
 }
@@ -154,7 +155,7 @@ void traversePrePost(Ref node, std::function<void (Ref)> visitPre, std::function
   visitPre(node);
   StackedStack<TraverseInfo, TRAV_STACK> stack;
   stack.push_back(TraverseInfo(node, node->getArray()));
-  while (stack.size() > 0) {
+  while (1) {
     TraverseInfo& top = stack.back();
     if (top.index < (int)top.arr->size()) {
       Ref sub = (*top.arr)[top.index];
@@ -166,6 +167,7 @@ void traversePrePost(Ref node, std::function<void (Ref)> visitPre, std::function
     } else {
       visitPost(top.node);
       stack.pop_back();
+      if (stack.size() == 0) break;
     }
   }
 }
@@ -176,7 +178,7 @@ void traversePrePostConditional(Ref node, std::function<bool (Ref)> visitPre, st
   if (!visitPre(node)) return;
   StackedStack<TraverseInfo, TRAV_STACK> stack;
   stack.push_back(TraverseInfo(node, node->getArray()));
-  while (stack.size() > 0) {
+  while (1) {
     TraverseInfo& top = stack.back();
     if (top.index < (int)top.arr->size()) {
       Ref sub = (*top.arr)[top.index];
@@ -189,6 +191,7 @@ void traversePrePostConditional(Ref node, std::function<bool (Ref)> visitPre, st
     } else {
       visitPost(top.node);
       stack.pop_back();
+      if (stack.size() == 0) break;
     }
   }
 }
