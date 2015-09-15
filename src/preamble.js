@@ -1260,7 +1260,9 @@ if (totalMemory % SPLIT_MEMORY) {
 if (totalMemory === SPLIT_MEMORY) totalMemory *= 2;
 if (totalMemory !== TOTAL_MEMORY) {
   TOTAL_MEMORY = totalMemory;
+#if ASSERTIONS == 2
   Module.printErr('increasing TOTAL_MEMORY to ' + TOTAL_MEMORY + ' to be a multiple>1 of the split memory size ' + SPLIT_MEMORY + ')');
+#endif
 }
 
 var buffers = [], HEAP8s = [], HEAP16s = [], HEAP32s = [], HEAPU8s = [], HEAPU16s = [], HEAPU32s = [], HEAPF32s = [], HEAPF64s = [];
