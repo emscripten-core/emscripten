@@ -7779,7 +7779,7 @@ asm3 = make_run("asm3", compiler=CLANG, emcc_args=["-O3"])
 asm2f = make_run("asm2f", compiler=CLANG, emcc_args=["-Oz", "-s", "PRECISE_F32=1", "-s", "ALLOW_MEMORY_GROWTH=1"])
 asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "-s", "SAFE_HEAP=1"])
 asm2i = make_run("asm2i", compiler=CLANG, emcc_args=["-O2", '-s', 'EMTERPRETIFY=1'])
-asms = make_run("asms", compiler=CLANG, emcc_args=['-s', 'SPLIT_MEMORY=8388608'])
+asms = make_run("asms", compiler=CLANG, emcc_args=['-s', 'SPLIT_MEMORY=16777216'])
 #asm2m = make_run("asm2m", compiler=CLANG, emcc_args=["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1"])
 
 # Legacy test modes - 
