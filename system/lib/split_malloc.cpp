@@ -18,11 +18,6 @@ void mspace_free(mspace space, void* ptr);
 void* mspace_realloc(mspace msp, void* oldmem, size_t bytes);
 void* mspace_memalign(mspace msp, size_t alignment, size_t bytes);
 
-void* sbrk(intptr_t increment) {
-  EM_ASM({ Module.printErr("sbrk() should never be called when SPLIT_MEMORY!"); });
-  abort();
-}
-
 }
 
 #define MAX_SPACES 1000
@@ -129,6 +124,25 @@ void* memalign(size_t alignment, size_t size) {
     if (next == start) break;
   }
   return 0; // we cycled, so none of them can allocate
+}
+
+// very minimal sbrk, within one chunk
+void* sbrk(intptr_t increment) {
+  const int SBRK_CHUNK = split_memory - 1024;
+  static size_t start = -1;
+  static size_t curr = 0;
+  if (start == -1) {
+    start = (size_t)malloc(SBRK_CHUNK);
+    if (!start) {
+      EM_ASM({ Module.printErr("sbrk() failed to get space"); });
+      abort();
+    }
+    curr = start;
+  }
+  if (curr - start + increment >= SBRK_CHUNK || curr + increment < start) return (void*)-1;
+  size_t ret = curr;
+  curr += increment;
+  return (void*)ret;
 }
 
 }

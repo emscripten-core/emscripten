@@ -5268,3 +5268,41 @@ int main() {
       check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
       self.assertContained('success.', run_js('a.out.js'))
 
+  def test_split_memory_sbrk(self):
+    open('src.c', 'w').write(r'''
+#include <emscripten.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <assert.h>
+int split_memory;
+int where(int x) {
+  return x / split_memory;
+}
+int main() {
+  split_memory = EM_ASM_INT_V({
+    return SPLIT_MEMORY;
+  });
+  int sbrk_0 = (int)sbrk(0);
+  printf("sbrk(0): %d\n", sbrk_0);
+  assert(sbrk_0 > 0 && sbrk_0 != -1);
+  int sbrk_index = where(sbrk_0);
+  assert(sbrk_index > 0 && sbrk_index < 10);
+  assert(sbrk(0) == (void*)sbrk_0);
+  int one = (int)sbrk(10);
+  printf("one: %d\n", one);
+  assert(sbrk_0 + 10 == sbrk(0));
+  int two = (int)sbrk(20);
+  printf("two: %d\n", two);
+  assert(sbrk_0 + 10 == two);
+  assert(sbrk(-20) == (void*)(two + 20));
+  assert(sbrk(-10) == (void*)two);
+  int bad = sbrk(split_memory * 2);
+  assert(bad == -1);
+  EM_ASM( Module.print('success.') );
+}
+''')
+    for opts in [0, 1, 2]:
+      print opts
+      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
+      self.assertContained('success.', run_js('a.out.js'))
+
