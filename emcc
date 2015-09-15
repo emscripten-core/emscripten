@@ -963,6 +963,9 @@ try:
     if not js_opts:
       js_opts = True
       logging.debug('enabling js opts for SPLIT_MEMORY')
+    if use_closure_compiler:
+      use_closure_compiler = False
+      logging.warning('cannot use closure compiler on split memory, for now, disabling')
 
   if shared.Settings.STB_IMAGE and final_suffix in JS_CONTAINING_SUFFIXES:
     input_files.append((next_arg_index, shared.path_from_root('third_party', 'stb_image.c')))
