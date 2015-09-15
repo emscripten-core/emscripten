@@ -31,9 +31,14 @@ variables so that emcc etc. are used. Typical usage:
 (but you can run any command instead of configure)
 
 '''
+elif 'cmake' in sys.argv[1]:
+  node_js = shared.NODE_JS
+  if type(node_js) is list: node_js = ' '.join(node_js)
+  node_js = node_js.replace('"', '\"')
+  sys.argv = sys.argv[:2] + ['-DCMAKE_CROSSCOMPILING_EMULATOR="' + node_js +'"'] + sys.argv[2:]
 
 try:
-	shared.Building.configure(sys.argv[1:])
+  shared.Building.configure(sys.argv[1:])
 except CalledProcessError, e:
-	sys.exit(e.returncode)
+  sys.exit(e.returncode)
 

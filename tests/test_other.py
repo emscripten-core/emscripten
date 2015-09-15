@@ -433,6 +433,7 @@ f.close()
                 cmd = [emconfigure, 'cmake', '-DCMAKE_BUILD_TYPE=' + configuration, cmake_arguments[i], '-G', generator, cmakelistsdir]
                 env = os.environ.copy()
 
+              print str(cmd)
               ret = Popen(cmd, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else PIPE, stderr=None if EM_BUILD_VERBOSE_LEVEL >= 1 else PIPE, env=env).communicate()
               if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
                 logging.error(ret[1]) # If there were any errors, print them directly to console for diagnostics.
