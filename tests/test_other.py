@@ -690,7 +690,6 @@ This pointer might make sense in another type signature:''', '''Invalid function
           Popen([PYTHON, EMCC, src] + libs + ['-o', 'test.js', '-O2'] + debug + ['-s', 'OUTLINING_LIMIT=%d' % outlining_limit] + args).communicate()
           assert os.path.exists('test.js')
           shutil.copyfile('test.js', '%d_test.js' % outlining_limit)
-          assert len(JS_ENGINES) > 1
           for engine in JS_ENGINES:
             if engine == V8_ENGINE: continue # ban v8, weird failures
             out = run_js('test.js', engine=engine, stderr=PIPE, full_output=True)
