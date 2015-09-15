@@ -1335,6 +1335,9 @@ try:
   log_time('emscript (llvm=>js)')
 
   # Embed and preload files
+  if shared.Settings.SPLIT_MEMORY:
+    no_heap_copy = True # copying into the heap is risky when split - the chunks might be too small for the file package!
+
   if len(preload_files) + len(embed_files) > 0:
     logging.debug('setting up files')
     file_args = []
