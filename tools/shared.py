@@ -210,8 +210,10 @@ if not EM_CONFIG:
   EM_CONFIG = '~/.emscripten'
 if '\n' in EM_CONFIG:
   CONFIG_FILE = None
+  logging.debug('EM_CONFIG is specified inline without a file')
 else:
   CONFIG_FILE = os.path.expanduser(EM_CONFIG)
+  logging.debug('EM_CONFIG is located in ' + CONFIG_FILE)
   if not os.path.exists(CONFIG_FILE):
     # Note: repr is used to ensure the paths are escaped correctly on Windows.
     # The full string is replaced so that the template stays valid Python.
@@ -259,6 +261,12 @@ try:
 except Exception, e:
   logging.error('Error in evaluating %s (at %s): %s, text: %s' % (EM_CONFIG, CONFIG_FILE, str(e), config_text))
   sys.exit(1)
+
+# Returns a suggestion where current .emscripten config file might be located (if EM_CONFIG env. var is used 
+# without a file, this hints to "default" location at ~/.emscripten)
+def hint_config_file_location():
+  if CONFIG_FILE: return CONFIG_FILE
+  else: return '~/.emscripten'
 
 def listify(x):
   if type(x) is not list: return [x]
@@ -501,7 +509,7 @@ def check_sanity(force=False):
     try:
       subprocess.call([JAVA, '-version'], stdout=PIPE, stderr=PIPE)
     except:
-      logging.warning('java does not seem to exist, required for closure compiler, which is optional (define JAVA in ~/.emscripten if you want it)')
+      logging.warning('java does not seem to exist, required for closure compiler, which is optional (define JAVA in ' + hint_config_file_location() + ' if you want it)')
 
     if not os.path.exists(CLOSURE_COMPILER):
      logging.warning('Closure compiler (%s) does not exist, check the paths in %s. -O2 and above will fail' % (CLOSURE_COMPILER, EM_CONFIG))
@@ -639,8 +647,8 @@ class Configuration:
     except NameError:
       self.TEMP_DIR = find_temp_directory()
       if self.TEMP_DIR == None:
-        logging.critical('TEMP_DIR not defined in ' + os.path.expanduser('~\\.emscripten') + ", and could not detect a suitable directory! Please configure .emscripten to contain a variable TEMP_DIR='/path/to/temp/dir'.")
-      logging.debug('TEMP_DIR not defined in ~/.emscripten, using ' + self.TEMP_DIR)
+        logging.critical('TEMP_DIR not defined in ' + hint_config_file_location() + ", and could not detect a suitable directory! Please configure .emscripten to contain a variable TEMP_DIR='/path/to/temp/dir'.")
+      logging.debug('TEMP_DIR not defined in ' + hint_config_file_location() + ', using ' + self.TEMP_DIR)
 
     if not os.path.isdir(self.TEMP_DIR):
       logging.critical("The temp directory TEMP_DIR='" + self.TEMP_DIR + "' doesn't seem to exist! Please make sure that the path is correct.")
@@ -652,7 +660,7 @@ class Configuration:
         self.EMSCRIPTEN_TEMP_DIR = self.CANONICAL_TEMP_DIR
         safe_ensure_dirs(self.EMSCRIPTEN_TEMP_DIR)
       except Exception, e:
-        logging.error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ~/.emscripten')
+        logging.error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + hint_config_file_location())
 
   def get_temp_files(self):
     return tempfiles.TempFiles(
@@ -694,13 +702,13 @@ except:
 try:
   PYTHON
 except:
-  logging.debug('PYTHON not defined in ~/.emscripten, using "%s"' % (sys.executable,))
+  logging.debug('PYTHON not defined in ' + hint_config_file_location() + ', using "%s"' % (sys.executable,))
   PYTHON = sys.executable
 
 try:
   JAVA
 except:
-  logging.debug('JAVA not defined in ~/.emscripten, using "java"')
+  logging.debug('JAVA not defined in ' + hint_config_file_location() + ', using "java"')
   JAVA = 'java'
 
 # Additional compiler options
