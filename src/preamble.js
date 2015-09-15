@@ -1286,7 +1286,7 @@ var buffers = [], HEAP8s = [], HEAP16s = [], HEAP32s = [], HEAPU8s = [], HEAPU16
   }
   // support HEAP8.subarray etc.
   function fake(real) {
-    return {
+    var that = {
       set: function(array, offset) {
         if (offset === undefined) offset = 0;
         assert((offset & SPLIT_MEMORY_MASK) + (array.length * real[0].BYTES_PER_ELEMENT) < SPLIT_MEMORY, 'TODO: set over split chunks')
@@ -1294,13 +1294,24 @@ var buffers = [], HEAP8s = [], HEAP16s = [], HEAP32s = [], HEAPU8s = [], HEAPU16
         return real[index].set(array, offset & SPLIT_MEMORY_MASK);
       },
       subarray: function(from, to) {
-        if (to === undefined) to = SPLIT_MEMORY;
         var start = from >> SPLIT_MEMORY_BITS;
-        var end = from >> SPLIT_MEMORY_BITS;
+        if (to === undefined) to = (start + 1) << SPLIT_MEMORY_BITS;
+        var end = (to - 1) >> SPLIT_MEMORY_BITS; // -1, since we do not actually read the last address
         assert(start === end, 'subarray cannot span split chunks');
+        if (to > from && (to & SPLIT_MEMORY_MASK) == 0) {
+          // avoid the mask on the next line giving 0 for the end
+          return real[start].subarray(from & SPLIT_MEMORY_MASK); // just return to the end of the chunk
+        }
         return real[start].subarray(from & SPLIT_MEMORY_MASK, to & SPLIT_MEMORY_MASK);
-      }
+      },
+      buffer: {
+        slice: function(from, to) {
+          assert(to, 'TODO: this is an actual copy, so we could support a slice across multiple chunks');
+          return new Uint8Array(HEAPU8.subarray(from, to)).buffer;
+        },
+      },
     };
+    return that;
   }
   HEAP8 = fake(HEAP8s);
   HEAP16 = fake(HEAP16s);

@@ -5306,3 +5306,54 @@ int main() {
       check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
       self.assertContained('success.', run_js('a.out.js'))
 
+  def test_split_memory_faking(self): # fake HEAP8 etc. objects have some faked fake method. they are fake
+    open('src.c', 'w').write(r'''
+#include <emscripten.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <assert.h>
+int main() {
+  EM_ASM({
+    var x = Module._malloc(1024);
+    // set
+    HEAPU8.set([1,2,3,4], x);
+    assert(get8(x+0) === 1);
+    assert(get8(x+1) === 2);
+    assert(get8(x+2) === 3);
+    assert(get8(x+3) === 4);
+    // subarray
+    var s1 = HEAPU8.subarray(x+2, x+4);
+    assert(s1 instanceof Uint8Array);
+    assert(s1.length === 2);
+    assert(s1[0] === 3);
+    assert(s1[1] === 4);
+    assert(get8(x+2) === 3);
+    s1[0] = 57;
+    assert(get8(x+2) === 57);
+    // subarray without second param
+    var s2 = HEAPU8.subarray(x+2);
+    assert(s2 instanceof Uint8Array);
+    assert(s2.length > 2);
+    assert(s2[0] === 57);
+    assert(s2[1] === 4);
+    assert(get8(x+2) === 57);
+    s2[0] = 98;
+    assert(get8(x+2) === 98);
+    // buffer.slice
+    var b = HEAPU8.buffer.slice(x, x+4);
+    assert(b instanceof ArrayBuffer);
+    assert(b.byteLength === 4);
+    var s = Uint8Array(b);
+    assert(s[0] === 1);
+    assert(s[1] === 2);
+    assert(s[2] === 98);
+    assert(s[3] === 4);
+    Module.print('success.');
+  });
+}
+''')
+    for opts in [0, 1, 2]:
+      print opts
+      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
+      self.assertContained('success.', run_js('a.out.js'))
+
