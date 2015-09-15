@@ -850,7 +850,7 @@ var SyscallsLibrary = {
     } else {
       var info = FS.getStream(fd);
       if (!info) return -ERRNO_CODES.EBADF;
-      var res = FS.mmap(info, {{{ heapAndOffset('HEAPU8', 'addr') }}}, len, off, prot, flags);
+      var res = FS.mmap(info, HEAPU8, addr, len, off, prot, flags);
       ptr = res.ptr;
       allocated = res.allocated;
     }
