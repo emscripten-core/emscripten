@@ -5225,6 +5225,46 @@ int main() {
 }
 ''')
     for opts in [0, 1, 2]:
+      print opts
+      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
+      self.assertContained('success.', run_js('a.out.js'))
+
+  def test_split_memory_2(self): # make allocation starts in the first chunk, and moves forward properly
+    open('src.c', 'w').write(r'''
+#include <emscripten.h>
+#include <stdlib.h>
+#include <assert.h>
+int split_memory = 0;
+int alloc_where_is_it() {
+  static void *last;
+  void *ptr = malloc(1024);
+  static int counter = 0;
+  if (last && (counter++ % 2 == 1)) ptr = realloc(last, 512*1024); // throw in some reallocs of a previous allocation
+  last = ptr;
+  unsigned x = (unsigned)ptr;
+  return x / split_memory;
+}
+int main() {
+  split_memory = EM_ASM_INT_V({
+    return SPLIT_MEMORY;
+  });
+  int counter = 0;
+  while (alloc_where_is_it() == 1) {
+    counter++;
+  }
+  printf("allocations in first chunk: %d\n", counter);
+  assert(counter > 20);
+  counter = 0;
+  while (alloc_where_is_it() == 2) {
+    counter++;
+  }
+  printf("allocations in second chunk: %d\n", counter);
+  assert(counter > 20);
+  EM_ASM( Module.print('success.') );
+}
+''')
+    for opts in [0, 1, 2]:
+      print opts
       check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
       self.assertContained('success.', run_js('a.out.js'))
 
