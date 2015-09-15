@@ -2730,7 +2730,7 @@ int main()
 
   def test_llvm_lit(self):
     llvm_src = get_fastcomp_src_dir()
-    cmd = [os.path.join(LLVM_ROOT, 'llvm-lit'), '-v', os.path.join(llvm_src, 'test', 'CodeGen', 'JS')]
+    cmd = [PYTHON, os.path.join(LLVM_ROOT, 'llvm-lit.py'), '-v', os.path.join(llvm_src, 'test', 'CodeGen', 'JS')]
     print cmd
     p = Popen(cmd)
     p.communicate()
