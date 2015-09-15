@@ -1252,10 +1252,17 @@ HEAPF64 = new Float64Array(buffer);
 var SPLIT_MEMORY = {{{ SPLIT_MEMORY }}};
 var SPLIT_MEMORY_MASK = SPLIT_MEMORY - 1;
 var SPLIT_MEMORY_BITS = -1;
-if (TOTAL_MEMORY % SPLIT_MEMORY) {
-  TOTAL_MEMORY += SPLIT_MEMORY - (TOTAL_MEMORY % SPLIT_MEMORY);
-  Module.printErr('increasing TOTAL_MEMORY to ' + TOTAL_MEMORY + ' to be a multiple of the split memory size ' + SPLIT_MEMORY + ')');
+
+totalMemory = TOTAL_MEMORY;
+if (totalMemory % SPLIT_MEMORY) {
+  totalMemory += SPLIT_MEMORY - (totalMemory % SPLIT_MEMORY);
 }
+if (totalMemory === SPLIT_MEMORY) totalMemory *= 2;
+if (totalMemory !== TOTAL_MEMORY) {
+  TOTAL_MEMORY = totalMemory;
+  Module.printErr('increasing TOTAL_MEMORY to ' + TOTAL_MEMORY + ' to be a multiple>1 of the split memory size ' + SPLIT_MEMORY + ')');
+}
+
 var buffers = [], HEAP8s = [], HEAP16s = [], HEAP32s = [], HEAPU8s = [], HEAPU16s = [], HEAPU32s = [], HEAPF32s = [], HEAPF64s = [];
 (function() {
   var temp = SPLIT_MEMORY;
