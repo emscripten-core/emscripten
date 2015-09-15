@@ -138,7 +138,7 @@ for arg in sys.argv[2:]:
     try:
       from shared import CRUNCH
     except Exception, e:
-      print >> sys.stderr, 'could not import CRUNCH (make sure it is defined properly in ~/.emscripten)'
+      print >> sys.stderr, 'could not import CRUNCH (make sure it is defined properly in ' + shared.hint_config_file_location() + ')'
       raise e
     crunch = arg.split('=')[1] if '=' in arg else '128'
     leading = ''
