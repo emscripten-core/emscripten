@@ -1253,6 +1253,8 @@ var SPLIT_MEMORY = {{{ SPLIT_MEMORY }}};
 var SPLIT_MEMORY_MASK = SPLIT_MEMORY - 1;
 var SPLIT_MEMORY_BITS = -1;
 
+Module['SPLIT_MEMORY'] = SPLIT_MEMORY;
+
 totalMemory = TOTAL_MEMORY;
 if (totalMemory % SPLIT_MEMORY) {
   totalMemory += SPLIT_MEMORY - (totalMemory % SPLIT_MEMORY);
@@ -1287,11 +1289,26 @@ var buffers = [], HEAP8s = [], HEAP16s = [], HEAP32s = [], HEAPU8s = [], HEAPU16
   // support HEAP8.subarray etc.
   function fake(real) {
     var that = {
+      BYTES_PER_ELEMENT: real[0].BYTES_PER_ELEMENT,
       set: function(array, offset) {
         if (offset === undefined) offset = 0;
-        assert((offset & SPLIT_MEMORY_MASK) + (array.length * real[0].BYTES_PER_ELEMENT) < SPLIT_MEMORY, 'TODO: set over split chunks')
-        var index = offset >> SPLIT_MEMORY_BITS;
-        return real[index].set(array, offset & SPLIT_MEMORY_MASK);
+        // potentially split over multiple chunks
+        while (array.length > 0) {
+          var chunk = offset >> SPLIT_MEMORY_BITS;
+          var relative = offset & SPLIT_MEMORY_MASK;
+          if (relative + (array.length * that.BYTES_PER_ELEMENT) < SPLIT_MEMORY) {
+            real[chunk].set(array, relative); // all fits in this chunk
+            break;
+          } else {
+            var currSize = SPLIT_MEMORY - relative;
+            assert(currSize % that.BYTES_PER_ELEMENT === 0);
+            var lastIndex = currSize / that.BYTES_PER_ELEMENT;
+            real[chunk].set(array.subarray(0, lastIndex), relative);
+            // increments
+            array = array.subarray(lastIndex);
+            offset += currSize;
+          }
+        }
       },
       subarray: function(from, to) {
         var start = from >> SPLIT_MEMORY_BITS;

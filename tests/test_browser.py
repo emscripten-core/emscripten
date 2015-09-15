@@ -2911,3 +2911,7 @@ window.close = function() {
       print 'default html'
       self.btest('in_flight_memfile_request.c', expected='0' if o < 2 else '1', args=opts) # should happen when there is a mem init file (-O2+)
 
+  def test_split_memory_large_file(self):
+    open('huge.dat', 'w').write('a'*(1024*1024*25)) # larger than a memory chunk
+    self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=100000000', '--preload-file', 'huge.dat'])
+
