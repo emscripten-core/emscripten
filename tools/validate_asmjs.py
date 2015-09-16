@@ -18,7 +18,7 @@ import shared
 def validate_asmjs_jsfile(filename, muteOutput):
   cmd = shared.SPIDERMONKEY_ENGINE + ['-c', filename]
   if not shared.SPIDERMONKEY_ENGINE or cmd[0] == 'js-not-found' or len(cmd[0].strip()) == 0:
-    print >> sys.stderr, 'Could not find SpiderMonkey engine! Please set tis location to SPIDERMONKEY_ENGINE in your ~/.emscripten configuration file!'
+    print >> sys.stderr, 'Could not find SpiderMonkey engine! Please set tis location to SPIDERMONKEY_ENGINE in your ' + shared.hint_config_file_location() + ' configuration file!'
     return False
   try:
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
