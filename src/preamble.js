@@ -1028,7 +1028,12 @@ var STACK_BASE = 0, STACKTOP = 0, STACK_MAX = 0; // stack area
 var DYNAMIC_BASE = 0, DYNAMICTOP = 0; // dynamic area handled by sbrk
 
 #if USE_PTHREADS
-if (ENVIRONMENT_IS_PTHREAD) staticSealed = true; // The static memory area has been initialized already in the main thread, pthreads skip this.
+if (ENVIRONMENT_IS_PTHREAD) {
+  staticSealed = true; // The static memory area has been initialized already in the main thread, pthreads skip this.
+#if SEPARATE_ASM != 0
+  importScripts('{{{ SEPARATE_ASM }}}'); // load the separated-out asm.js
+#endif
+}
 #endif
 
 function enlargeMemory() {

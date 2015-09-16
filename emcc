@@ -811,6 +811,13 @@ try:
     final_suffix = 'mout' # not bitcode, not js; but just dependency rule of the input file
   final_ending = ('.' + final_suffix) if len(final_suffix) > 0 else ''
 
+  # target is now finalized, can finalize other _target s
+  js_target = unsuffixed(target) + '.js'
+
+  if separate_asm:
+    asm_target = js_target[:-3] + '.asm.js'
+    shared.Settings.SEPARATE_ASM = asm_target
+
   # Find library files
   for i, lib in libs:
     logging.debug('looking for library "%s"', lib)
@@ -1593,8 +1600,6 @@ try:
     f.close()
     src = None
 
-  js_target = unsuffixed(target) + '.js'
-
   if shared.Settings.EMTERPRETIFY:
     flush_js_optimizer_queue()
     logging.debug('emterpretifying')
@@ -1861,7 +1866,6 @@ try {
 
     if separate_asm:
       un_src()
-      asm_target = js_target[:-3] + '.asm.js'
       temp_target = misc_temp_files.get(suffix='.js').name
       execute([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), js_target, asm_target, temp_target])
       shutil.move(temp_target, js_target)

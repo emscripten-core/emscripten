@@ -526,6 +526,8 @@ var SWAPPABLE_ASM_MODULE = 0; // If 1, then all exports from the asm.js module w
                               // as we depend on them being a drop-in replacement for each
                               // other (same globals on the heap at the same locations, etc.)
 
+var SEPARATE_ASM = 0; // see emcc --separate-asm
+
 var PGO = 0; // Enables profile-guided optimization in the form of runtime checks for
              // which functions are actually called. Emits a list during shutdown that you
              // can pass to DEAD_FUNCTIONS (you can also emit the list manually by
