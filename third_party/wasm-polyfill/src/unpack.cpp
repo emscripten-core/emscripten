@@ -272,7 +272,7 @@ public:
     uint32_t len;
 
 #if __EMSCRIPTEN__
-    len = emscripten_print_double(d, buf);
+    len = emscripten_print_double(d, buf, 100);
     assert(len < N-1);
     buf[len] = 0;
 #else

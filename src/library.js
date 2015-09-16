@@ -3973,10 +3973,13 @@ LibraryManager.library = {
     debugger;
   },
 
-  emscripten_print_double: function(x, to) {
+  emscripten_print_double: function(x, to, max) {
+    max = max >>> 0;
     var str = x + '';
+    var ret = str.length;
+    if (str.length > max) str = str.substring(0, max);
     if (to) writeStringToMemory(str, to, true);
-    return str.length;
+    return ret;
   },
 
   //============================

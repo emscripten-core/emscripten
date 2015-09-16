@@ -244,7 +244,7 @@ void emscripten_log(int flags, ...);
 
 int emscripten_get_callstack(int flags, char *out, int maxbytes);
 
-int emscripten_print_double(double x, char *to);
+int emscripten_print_double(double x, char *to, unsigned max);
 
 /* ===================================== */
 /* Internal APIs. Be careful with these. */
