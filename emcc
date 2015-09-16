@@ -951,7 +951,6 @@ try:
     shared.Settings.ALIASING_FUNCTION_POINTERS = 0
 
   if shared.Settings.SPLIT_MEMORY:
-    assert shared.Settings.SPLIT_MEMORY >= 1024*1024, 'SPLIT_MEMORY must be of at least 1048576, chunk size cannot be too small'
     assert shared.Settings.SPLIT_MEMORY & (shared.Settings.SPLIT_MEMORY-1) == 0, 'SPLIT_MEMORY must be a power of 2'
     if shared.Settings.ASM_JS == 1:
       logging.warning('not all asm.js optimizations are possible with SPLIT_MEMORY, disabling those')
