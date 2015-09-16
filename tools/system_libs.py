@@ -90,7 +90,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   def create_libc(libname):
     logging.debug(' building libc for cache')
     libc_files = [
-      'dlmalloc.c',
     ]
     musl_srcdir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src')
     blacklist = set(
