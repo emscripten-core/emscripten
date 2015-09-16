@@ -56,7 +56,7 @@ void* malloc(size_t size) {
     static bool warned = false;
     if (!warned) {
       EM_ASM_({
-        Module.print("trying to malloc " + $0 + ", a size larger than SPLIT_MEMORY (" + $1 + "), increase SPLIT_MEMORY if you want that to work");
+        Module.print("trying to malloc " + $0 + ", a size >= than SPLIT_MEMORY (" + $1 + "), increase SPLIT_MEMORY if you want that to work");
       }, size, split_memory);
       warned = true;
     }
