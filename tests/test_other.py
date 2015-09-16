@@ -426,6 +426,7 @@ f.close()
               if invoke_method == 'cmake':
                 # Test invoking cmake directly.
                 cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+path_from_root('cmake', 'Modules', 'Platform', 'Emscripten.cmake'),
+                                '-DCMAKE_CROSSCOMPILING_EMULATOR="' + ' '.join(NODE_JS) + '"',
                                 '-DCMAKE_BUILD_TYPE=' + configuration, cmake_arguments[i], '-G', generator, cmakelistsdir]
                 env = tools.shared.Building.remove_sh_exe_from_path(os.environ)
               else:
