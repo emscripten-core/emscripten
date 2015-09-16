@@ -134,16 +134,20 @@ void traversePre(Ref node, std::function<void (Ref)> visit) {
   StackedStack<TraverseInfo, TRAV_STACK> stack;
   int index = 0;
   ArrayStorage* arr = &node->getArray();
+  int arrsize = (int)arr->size();
+  Ref* arrdata = arr->data();
   stack.push_back(TraverseInfo(node, arr));
   while (1) {
-    if (index < (int)arr->size()) {
-      Ref sub = (*arr)[index];
+    if (index < arrsize) {
+      Ref sub = *(arrdata+index);
       index++;
       if (visitable(sub)) {
         stack.back().index = index;
         index = 0;
         visit(sub);
         arr = &sub->getArray();
+        arrsize = (int)arr->size();
+        arrdata = arr->data();
         stack.push_back(TraverseInfo(sub, arr));
       }
     } else {
@@ -152,6 +156,8 @@ void traversePre(Ref node, std::function<void (Ref)> visit) {
       TraverseInfo& back = stack.back();
       index = back.index;
       arr = back.arr;
+      arrsize = (int)arr->size();
+      arrdata = arr->data();
     }
   }
 }
@@ -163,16 +169,20 @@ void traversePrePost(Ref node, std::function<void (Ref)> visitPre, std::function
   StackedStack<TraverseInfo, TRAV_STACK> stack;
   int index = 0;
   ArrayStorage* arr = &node->getArray();
+  int arrsize = (int)arr->size();
+  Ref* arrdata = arr->data();
   stack.push_back(TraverseInfo(node, arr));
   while (1) {
-    if (index < (int)arr->size()) {
-      Ref sub = (*arr)[index];
+    if (index < arrsize) {
+      Ref sub = *(arrdata+index);
       index++;
       if (visitable(sub)) {
         stack.back().index = index;
         index = 0;
         visitPre(sub);
         arr = &sub->getArray();
+        arrsize = (int)arr->size();
+        arrdata = arr->data();
         stack.push_back(TraverseInfo(sub, arr));
       }
     } else {
@@ -182,6 +192,8 @@ void traversePrePost(Ref node, std::function<void (Ref)> visitPre, std::function
       TraverseInfo& back = stack.back();
       index = back.index;
       arr = back.arr;
+      arrsize = (int)arr->size();
+      arrdata = arr->data();
     }
   }
 }
@@ -193,16 +205,20 @@ void traversePrePostConditional(Ref node, std::function<bool (Ref)> visitPre, st
   StackedStack<TraverseInfo, TRAV_STACK> stack;
   int index = 0;
   ArrayStorage* arr = &node->getArray();
+  int arrsize = (int)arr->size();
+  Ref* arrdata = arr->data();
   stack.push_back(TraverseInfo(node, arr));
   while (1) {
-    if (index < (int)arr->size()) {
-      Ref sub = (*arr)[index];
+    if (index < arrsize) {
+      Ref sub = *(arrdata+index);
       index++;
       if (visitable(sub)) {
         if (visitPre(sub)) {
           stack.back().index = index;
           index = 0;
           arr = &sub->getArray();
+          arrsize = (int)arr->size();
+          arrdata = arr->data();
           stack.push_back(TraverseInfo(sub, arr));
         }
       }
@@ -213,6 +229,8 @@ void traversePrePostConditional(Ref node, std::function<bool (Ref)> visitPre, st
       TraverseInfo& back = stack.back();
       index = back.index;
       arr = back.arr;
+      arrsize = (int)arr->size();
+      arrdata = arr->data();
     }
   }
 }
