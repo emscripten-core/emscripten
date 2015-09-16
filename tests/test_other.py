@@ -5348,6 +5348,11 @@ int main() {
     assert(s[1] === 2);
     assert(s[2] === 98);
     assert(s[3] === 4);
+    // check for a bananabread-discovered bug
+    var s32 = HEAPU32.subarray(x >> 2, x + 4 >> 2);
+    assert(s32 instanceof Uint32Array);
+    assert(s32.length === 1);
+    assert(s32[0] === 0x04620201, s32[0]);
     Module.print('success.');
   });
 }

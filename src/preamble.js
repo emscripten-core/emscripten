@@ -1287,22 +1287,26 @@ var buffers = [], HEAP8s = [], HEAP16s = [], HEAP32s = [], HEAPU8s = [], HEAPU16
     HEAPF64s.push(new Float64Array(curr));
   }
   // support HEAP8.subarray etc.
+  var SHIFT_TABLE = [0, 0, 1, 0, 2, 0, 0, 0, 3];
   function fake(real) {
+    var bytes = real[0].BYTES_PER_ELEMENT;
+    var shifts = SHIFT_TABLE[bytes];
+    assert(shifts > 0 || bytes == 1);
     var that = {
-      BYTES_PER_ELEMENT: real[0].BYTES_PER_ELEMENT,
+      BYTES_PER_ELEMENT: bytes,
       set: function(array, offset) {
         if (offset === undefined) offset = 0;
         // potentially split over multiple chunks
         while (array.length > 0) {
           var chunk = offset >> SPLIT_MEMORY_BITS;
           var relative = offset & SPLIT_MEMORY_MASK;
-          if (relative + (array.length * that.BYTES_PER_ELEMENT) < SPLIT_MEMORY) {
+          if (relative + (array.length << shifts) < SPLIT_MEMORY) {
             real[chunk].set(array, relative); // all fits in this chunk
             break;
           } else {
             var currSize = SPLIT_MEMORY - relative;
             assert(currSize % that.BYTES_PER_ELEMENT === 0);
-            var lastIndex = currSize / that.BYTES_PER_ELEMENT;
+            var lastIndex = currSize >> shifts;
             real[chunk].set(array.subarray(0, lastIndex), relative);
             // increments
             array = array.subarray(lastIndex);
@@ -1311,15 +1315,20 @@ var buffers = [], HEAP8s = [], HEAP16s = [], HEAP32s = [], HEAPU8s = [], HEAPU16
         }
       },
       subarray: function(from, to) {
+        from = from << shifts;
         var start = from >> SPLIT_MEMORY_BITS;
-        if (to === undefined) to = (start + 1) << SPLIT_MEMORY_BITS;
+        if (to === undefined) {
+          to = (start + 1) << SPLIT_MEMORY_BITS;
+        } else {
+          to = to << shifts;
+        }
         var end = (to - 1) >> SPLIT_MEMORY_BITS; // -1, since we do not actually read the last address
         assert(start === end, 'subarray cannot span split chunks');
         if (to > from && (to & SPLIT_MEMORY_MASK) == 0) {
           // avoid the mask on the next line giving 0 for the end
-          return real[start].subarray(from & SPLIT_MEMORY_MASK); // just return to the end of the chunk
+          return real[start].subarray((from & SPLIT_MEMORY_MASK) >> shifts); // just return to the end of the chunk
         }
-        return real[start].subarray(from & SPLIT_MEMORY_MASK, to & SPLIT_MEMORY_MASK);
+        return real[start].subarray((from & SPLIT_MEMORY_MASK) >> shifts, (to & SPLIT_MEMORY_MASK) >> shifts);
       },
       buffer: {
         slice: function(from, to) {
