@@ -11,6 +11,9 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def is_emterpreter(self):
     return 'EMTERPRETIFY=1' in self.emcc_args
 
+  def is_split_memory(self):
+    return 'SPLIT_MEMORY=' in str(self.emcc_args)
+
   def test_hello_world(self):
       test_path = path_from_root('tests', 'core', 'test_hello_world')
       src, output = (test_path + s for s in ('.in', '.out'))
@@ -5985,6 +5988,7 @@ def process(filename):
     self.banned_js_engines = [NODE_JS] # OOM in older node
     if '-O' not in str(self.emcc_args):
       self.banned_js_engines += [SPIDERMONKEY_ENGINE] # SM bug 1066759
+    if self.is_split_memory(): return self.skip('SM bug 1205121')
 
     Settings.DISABLE_EXCEPTION_CATCHING = 1
     Settings.EXPORTED_FUNCTIONS += ['_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free', '_callback'];
