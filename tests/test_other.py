@@ -5403,3 +5403,45 @@ int main() {
       check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
       self.assertContained('success.', run_js('a.out.js'))
 
+  def test_split_memory_release(self):
+    open('src.c', 'w').write(r'''
+#include <emscripten.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <assert.h>
+int main() {
+  EM_ASM({
+    assert(buffers[0]); // always here
+    assert(buffers[1]); // callMain allocates a little, so always one chunk
+    assert(!buffers[2]);
+    function getIndex(x) {
+      return x >> SPLIT_MEMORY_BITS;
+    }
+    var allocations = [];
+    do {
+      var t = Module._malloc(1024*1024);
+      Module.print('allocating, got in ' + getIndex(t));
+      allocations.push(t);
+    } while (getIndex(t) === 1);
+    assert(getIndex(t) === 2, 'allocated into second chunk');
+    assert(buffers[2]); // has been allocated now
+    Module._free(t);
+    assert(!buffers[2]); // has been freed now
+    var more = [];
+    for (var i = 0 ; i < 1024; i++) {
+      more.push(Module._malloc(10));
+    }
+    assert(buffers[2]); // has been allocated again
+    for (var i = 0 ; i < 1024; i++) {
+      Module._free(more[i]);
+    }
+    assert(!buffers[2]); // has been freed again
+    Module.print('success.');
+  });
+}
+''')
+    for opts in [0, 1, 2]:
+      print opts
+      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
+      self.assertContained('success.', run_js('a.out.js'))
+
