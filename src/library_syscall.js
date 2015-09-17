@@ -860,10 +860,21 @@ var SyscallsLibrary = {
     }
     return nonzero;
   },
+#if EMTERPRETIFY_ASYNC
+  __syscall180: function(which, varargs) { // pread64
+    var stream = SYSCALLS.getStreamFromFD(), buf = SYSCALLS.get(), count = SYSCALLS.get();
+    return EmterpreterAsync.handle(function (resume) {
+      FS.read(stream, {{{ makeGetSlabs('buf', 'i8', true) }}}, buf, count, undefined, function (bytesRead) {
+        resume(function() { bytesRead });
+      });
+    });
+  },
+#else
   __syscall180: function(which, varargs) { // pread64
     var stream = SYSCALLS.getStreamFromFD(), buf = SYSCALLS.get(), count = SYSCALLS.get(), zero = SYSCALLS.getZero(), offset = SYSCALLS.get64();
     return FS.read(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count, offset);
   },
+#endif
   __syscall181: function(which, varargs) { // pwrite64
 #if SYSCALL_DEBUG
     Module.printErr('warning: untested syscall');
@@ -1247,6 +1258,21 @@ var SyscallsLibrary = {
   __syscall331: function(which, varargs) { // pipe2
     return -ERRNO_CODES.ENOSYS; // unsupported feature
   },
+#if EMTERPRETIFY_ASYNC
+  __syscall333: function(which, varargs) { // preadv
+#if SYSCALL_DEBUG
+    Module.printErr('warning: untested syscall');
+#endif
+    return EmterpreterAsync.handle(function(resume) {
+      var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get(), offset = SYSCALLS.get();
+      SYSCALLS.doReadv(stream, iov, iovcnt, offset, function(bytesRead) {
+        resume(function() {
+          return bytesRead;
+        });
+      });
+    });
+  },
+#else
   __syscall333: function(which, varargs) { // preadv
 #if SYSCALL_DEBUG
     Module.printErr('warning: untested syscall');
@@ -1254,6 +1280,7 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get(), offset = SYSCALLS.get();
     return SYSCALLS.doReadv(stream, iov, iovcnt, offset);
   },
+#endif
   __syscall334: function(which, varargs) { // pwritev
 #if SYSCALL_DEBUG
     Module.printErr('warning: untested syscall');
