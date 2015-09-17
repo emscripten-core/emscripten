@@ -3977,8 +3977,8 @@ LibraryManager.library = {
     max = max >>> 0;
     var str = x + '';
     var ret = str.length;
-    if (str.length > max) str = str.substring(0, max);
-    if (to) writeStringToMemory(str, to, true);
+    if (str.length + 1 > max) str = str.substring(0, max - 1);
+    if (to) writeStringToMemory(str, to);
     return ret;
   },
 

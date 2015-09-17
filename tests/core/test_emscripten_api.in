@@ -16,18 +16,21 @@ int main() {
   double d = 0.1234567891231219886553;
   int len = emscripten_print_double(d, NULL, -1);
   char buffer[len+1];
-  emscripten_print_double(d, buffer, len);
-  buffer[len] = 0;
+  buffer[len] = 255;
+  emscripten_print_double(d, buffer, len+1);
+  assert(buffer[len] == 0); // null terminated
   double e;
   sscanf(buffer, "%lf", &e);
   printf("%.30lf : %s : %.30lf  (%d)\n", d, buffer, e, len);
 
   buffer[0] = 1;
   buffer[1] = 2;
-  int n = emscripten_print_double(d, buffer, 1);
+  buffer[2] = 3;
+  int n = emscripten_print_double(d, buffer, 2);
   assert(n == len);
   assert(buffer[0] == '0'); // touched
-  assert(buffer[1] == 2); // untouched
+  assert(buffer[1] == 0); // touched
+  assert(buffer[2] == 3); // untouched
   puts("success\n");
 
   return 0;
