@@ -7439,27 +7439,6 @@ Success!
   def test_locale(self):
     self.do_run_from_file(path_from_root('tests', 'test_locale.c'), path_from_root('tests', 'test_locale.out'))
 
-  def test_sixtyfour_bit_return_value(self):
-    # This test checks that the most significant 32 bits of a 64 bit long are correctly made available
-    # to native JavaScript applications that wish to interact with compiled code returning 64 bit longs.
-    # The MS 32 bits should be available in Runtime.getTempRet0() even when compiled with -O2 --closure 1
-
-    # Compile test.c and wrap it in a native JavaScript binding so we can call our compiled function from JS.
-    Popen([PYTHON, EMCC, path_from_root('tests', 'return64bit', 'test.c'), '--pre-js', path_from_root('tests', 'return64bit', 'testbindstart.js'), '--pre-js', path_from_root('tests', 'return64bit', 'testbind.js'), '--post-js', path_from_root('tests', 'return64bit', 'testbindend.js'), '-s', 'EXPORTED_FUNCTIONS=["_test"]', '-o', 'test.js', '-O2', '--closure', '1'], stdout=PIPE, stderr=PIPE).communicate()
-
-    # Simple test program to load the test.js binding library and call the binding to the
-    # C function returning the 64 bit long.
-    open(os.path.join(self.get_dir(), 'testrun.js'), 'w').write('''
-      var test = require("./test.js");
-      test.runtest();
-    ''')
-
-    # Run the test and confirm the output is as expected.
-    if NODE_JS in JS_ENGINES:
-      out = run_js('testrun.js', engine=NODE_JS, full_output=True)
-      assert "low = 5678" in out
-      assert "high = 1234" in out
-
   def test_async(self):
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
 

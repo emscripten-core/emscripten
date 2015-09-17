@@ -5200,3 +5200,23 @@ main(int argc, char **argv)
     assert sizes[2] > sizes[0] # fake lto is aggressive at increasing code size
     assert sizes[3] not in set([sizes[0], sizes[1], sizes[2]]) # mode 3 is different (deterministic builds means this tests an actual change)
 
+  def test_sixtyfour_bit_return_value(self):
+    # This test checks that the most significant 32 bits of a 64 bit long are correctly made available
+    # to native JavaScript applications that wish to interact with compiled code returning 64 bit longs.
+    # The MS 32 bits should be available in Runtime.getTempRet0() even when compiled with -O2 --closure 1
+
+    # Compile test.c and wrap it in a native JavaScript binding so we can call our compiled function from JS.
+    check_execute([PYTHON, EMCC, path_from_root('tests', 'return64bit', 'test.c'), '--pre-js', path_from_root('tests', 'return64bit', 'testbindstart.js'), '--pre-js', path_from_root('tests', 'return64bit', 'testbind.js'), '--post-js', path_from_root('tests', 'return64bit', 'testbindend.js'), '-s', 'EXPORTED_FUNCTIONS=["_test"]', '-o', 'test.js', '-O2', '--closure', '1'])
+
+    # Simple test program to load the test.js binding library and call the binding to the
+    # C function returning the 64 bit long.
+    open(os.path.join(self.get_dir(), 'testrun.js'), 'w').write('''
+      var test = require("./test.js");
+      test.runtest();
+    ''')
+
+    # Run the test and confirm the output is as expected.
+    out = run_js('testrun.js', full_output=True)
+    assert "low = 5678" in out
+    assert "high = 1234" in out
+
