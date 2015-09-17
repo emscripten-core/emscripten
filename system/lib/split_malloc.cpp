@@ -30,6 +30,7 @@ static size_t split_memory = 0;
 static size_t num_spaces = 0;
 static bool allocated[MAX_SPACES]; // whether storage is allocated for this chunk, both an ArrayBuffer in JS and an mspace here
 static mspace spaces[MAX_SPACES]; // 0 is for the stack, static, etc - not used by malloc # TODO: make a small space in there?
+static size_t counts[MAX_SPACES]; // how many allocations are in the space
 
 static void init() {
   total_memory = EM_ASM_INT_V({ return TOTAL_MEMORY; });
@@ -38,15 +39,18 @@ static void init() {
   if (num_spaces >= MAX_SPACES) abort();
   allocated[0] = true; // but never used from here
   spaces[0] = 0; // never used
+  counts[0] = 0; // never used
   for (int i = 1; i < num_spaces; i++) {
     allocated[i] = false;
     spaces[i] = 0;
+    counts[i] = 0;
   }
   initialized = true;
 }
 
 static void allocate_space(int i) {
   assert(!allocated[i]);
+  assert(counts[i] == 0);
   allocated[i] = true;
   EM_ASM_({ allocateSplitChunk($0) }, i);
   spaces[i] = create_mspace_with_base((void*)(split_memory*i), split_memory, 0);
@@ -54,6 +58,7 @@ static void allocate_space(int i) {
 
 static void free_space(int i) {
   assert(allocated[i]);
+  assert(counts[i] == 0);
   allocated[i] = false;
   destroy_mspace((void*)(split_memory*i));
   EM_ASM_({ freeSplitChunk($0) }, i);
@@ -67,6 +72,7 @@ static void free_space(int i) {
 static mspace get_space(void* ptr) { // for a valid pointer, so the space must already exist
   int index = space_index(ptr);
   assert(allocated[index]);
+  assert(counts[index] > 0);
   return spaces[index];
 }
 
@@ -91,7 +97,10 @@ void* malloc(size_t size) {
   while (1) { // simple round-robin, while keeping to use the same one as long as it keeps succeeding
     if (!allocated[next]) allocate_space(next);
     void *ret = mspace_malloc(spaces[next], size);
-    if (ret) return ret;
+    if (ret) {
+      counts[next]++;
+      return ret;
+    }
     next++;
     if (next == num_spaces) next = 1;
     if (next == start) break;
@@ -101,7 +110,13 @@ void* malloc(size_t size) {
 
 void free(void* ptr) {
   if (ptr == 0) return;
+  int index = space_index(ptr);
+  assert(counts[index] > 0);
   mspace_free(get_space(ptr), ptr);
+  counts[index]--;
+  if (counts[index] == 0) {
+    free_space(index);
+  }
 }
 
 void* realloc(void* ptr, size_t newsize) {
@@ -144,7 +159,10 @@ void* memalign(size_t alignment, size_t size) {
   while (1) { // simple round-robin, while keeping to use the same one as long as it keeps succeeding
     if (!allocated[next]) allocate_space(next);
     void *ret = mspace_memalign(spaces[next], alignment, size);
-    if (ret) return ret;
+    if (ret) {
+      counts[next]++;
+      return ret;
+    }
     next++;
     if (next == num_spaces) next = 1;
     if (next == start) break;
