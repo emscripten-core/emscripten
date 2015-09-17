@@ -1268,24 +1268,39 @@ if (totalMemory !== TOTAL_MEMORY) {
 }
 
 var buffers = [], HEAP8s = [], HEAP16s = [], HEAP32s = [], HEAPU8s = [], HEAPU16s = [], HEAPU32s = [], HEAPF32s = [], HEAPF64s = [];
+
+function allocateSplitChunk(i) {
+  assert(!buffers[i] && !HEAP8s[i]);
+  var curr = new ArrayBuffer(SPLIT_MEMORY);
+  buffers[i] = curr;
+  HEAP8s[i] = new Int8Array(curr);
+  HEAP16s[i] = new Int16Array(curr);
+  HEAP32s[i] = new Int32Array(curr);
+  HEAPU8s[i] = new Uint8Array(curr);
+  HEAPU16s[i] = new Uint16Array(curr);
+  HEAPU32s[i] = new Uint32Array(curr);
+  HEAPF32s[i] = new Float32Array(curr);
+  HEAPF64s[i] = new Float64Array(curr);
+}
+function freeSplitChunk(i) {
+  assert(buffers[i] && HEAP8s[i]);
+  assert(i > 0); // cannot free the first chunk
+  buffers[i] = HEAP8s[i] = HEAP16s[i] = HEAP32s[i] = HEAPU8s[i] = HEAPU16s[i] = HEAPU32s[i] = HEAPF32s[i] = HEAPF64s[i] = null;
+}
+
 (function() {
+  for (var i = 0; i < TOTAL_MEMORY / SPLIT_MEMORY; i++) {
+    buffers[i] = HEAP8s[i] = HEAP16s[i] = HEAP32s[i] = HEAPU8s[i] = HEAPU16s[i] = HEAPU32s[i] = HEAPF32s[i] = HEAPF64s[i] = null;
+  }
+
   var temp = SPLIT_MEMORY;
   while (temp) {
     temp >>= 1;
     SPLIT_MEMORY_BITS++;
   }
-  for (var i = 0; i < TOTAL_MEMORY / SPLIT_MEMORY; i++) {
-    var curr = new ArrayBuffer(SPLIT_MEMORY);
-    buffers.push(curr);
-    HEAP8s.push(new Int8Array(curr));
-    HEAP16s.push(new Int16Array(curr));
-    HEAP32s.push(new Int32Array(curr));
-    HEAPU8s.push(new Uint8Array(curr));
-    HEAPU16s.push(new Uint16Array(curr));
-    HEAPU32s.push(new Uint32Array(curr));
-    HEAPF32s.push(new Float32Array(curr));
-    HEAPF64s.push(new Float64Array(curr));
-  }
+
+  allocateSplitChunk(0); // first chunk is for core runtime, static, stack, etc., always must be initialized
+
   // support HEAP8.subarray etc.
   var SHIFT_TABLE = [0, 0, 1, 0, 2, 0, 0, 0, 3];
   function fake(real) {
@@ -1351,6 +1366,7 @@ var buffers = [], HEAP8s = [], HEAP16s = [], HEAP32s = [], HEAPU8s = [], HEAPU16
   HEAPF32 = fake(HEAPF32s);
   HEAPF64 = fake(HEAPF64s);
 })();
+
 // TODO: add SAFE_HEAP here
 function get8(ptr) {
   ptr = ptr | 0;

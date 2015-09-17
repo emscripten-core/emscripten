@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <assert.h>
 
 #include <emscripten.h>
 
@@ -13,6 +14,7 @@ extern "C" {
 typedef void* mspace;
 
 mspace create_mspace_with_base(void* base, size_t capacity, int locked);
+size_t destroy_mspace(mspace msp);
 void* mspace_malloc(mspace space, size_t size);
 void mspace_free(mspace space, void* ptr);
 void* mspace_realloc(mspace msp, void* oldmem, size_t bytes);
@@ -26,25 +28,47 @@ static bool initialized = false;
 static size_t total_memory = 0;
 static size_t split_memory = 0;
 static size_t num_spaces = 0;
+static bool allocated[MAX_SPACES]; // whether storage is allocated for this chunk, both an ArrayBuffer in JS and an mspace here
 static mspace spaces[MAX_SPACES]; // 0 is for the stack, static, etc - not used by malloc # TODO: make a small space in there?
 
-void init() {
+static void init() {
   total_memory = EM_ASM_INT_V({ return TOTAL_MEMORY; });
   split_memory = EM_ASM_INT_V({ return SPLIT_MEMORY; });
   num_spaces = EM_ASM_INT_V({ return HEAPU8s.length; });
   if (num_spaces >= MAX_SPACES) abort();
-  spaces[0] = 0;
+  allocated[0] = true; // but never used from here
+  spaces[0] = 0; // never used
   for (int i = 1; i < num_spaces; i++) {
-    spaces[i] = create_mspace_with_base((void*)(split_memory*i), split_memory, 0);
+    allocated[i] = false;
+    spaces[i] = 0;
   }
   initialized = true;
+}
+
+static void allocate_space(int i) {
+  assert(!allocated[i]);
+  allocated[i] = true;
+  EM_ASM_({ allocateSplitChunk($0) }, i);
+  spaces[i] = create_mspace_with_base((void*)(split_memory*i), split_memory, 0);
+}
+
+static void free_space(int i) {
+  assert(allocated[i]);
+  allocated[i] = false;
+  destroy_mspace((void*)(split_memory*i));
+  EM_ASM_({ freeSplitChunk($0) }, i);
 }
 
 // TODO: optimize, these are powers of 2
 // TODO: add optional asserts in these
 #define space_index(ptr) (((unsigned)ptr) / split_memory)
 #define space_relative(ptr) (((unsigned)ptr) % split_memory)
-#define get_space(ptr) spaces[space_index(ptr)]
+
+static mspace get_space(void* ptr) { // for a valid pointer, so the space must already exist
+  int index = space_index(ptr);
+  assert(allocated[index]);
+  return spaces[index];
+}
 
 extern "C" {
 
@@ -65,6 +89,7 @@ void* malloc(size_t size) {
   static int next = 1;
   int start = next;
   while (1) { // simple round-robin, while keeping to use the same one as long as it keeps succeeding
+    if (!allocated[next]) allocate_space(next);
     void *ret = mspace_malloc(spaces[next], size);
     if (ret) return ret;
     next++;
@@ -117,6 +142,7 @@ void* memalign(size_t alignment, size_t size) {
   static int next = 1;
   int start = next;
   while (1) { // simple round-robin, while keeping to use the same one as long as it keeps succeeding
+    if (!allocated[next]) allocate_space(next);
     void *ret = mspace_memalign(spaces[next], alignment, size);
     if (ret) return ret;
     next++;
