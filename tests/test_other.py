@@ -5353,7 +5353,48 @@ int main() {
     assert(s32 instanceof Uint32Array);
     assert(s32.length === 1);
     assert(s32[0] === 0x04620201, s32[0]);
-    Module.print('success.');
+    // misc subarrays, check assertions only
+    SPLIT_MEMORY = 256;
+    SPLIT_MEMORY_BITS = 8;
+    function getChunk(x) {
+      return x >> SPLIT_MEMORY_BITS;
+    }
+    assert(TOTAL_MEMORY >= SPLIT_MEMORY*3);
+    var p = Module.print;
+    var e = Module.printErr;
+    Module.printErr = Module.print = function(){};
+    var fail = false;
+    TOP:
+    for (var i = 0; i < SPLIT_MEMORY*3; i++) {
+      HEAPU8.subarray(i);
+      if ((i&3) === 0) HEAPU32.subarray(i >> 2);
+      for (var j = 1; j < SPLIT_MEMORY*3; j++) {
+        //printErr([i, j]);
+        if (getChunk(i) == getChunk(j-1) || j <= i) {
+          HEAPU8.subarray(i, j);
+          if ((i&3) === 0) HEAPU32.subarray(i >> 2, j >> 2);
+        } else {
+          // expect failures
+          try {
+            HEAPU8.subarray(i, j);
+            fail = ['U8', i, j];
+            break TOP;
+          } catch (e) {}
+          if ((i&3) === 0 && (j&3) === 0) {
+            try {
+              HEAPU32.subarray(i >> 2, j >> 2);
+              fail = ['U32', i, j];
+              break TOP;
+            } catch (e) {}
+          }
+          break; // stop inner loop, once we saw different chunks, go to a new i
+        }
+      }
+    }
+    Module.print = p;
+    Module.printErr = e;
+    if (fail) Module.print('FAIL. ' + fail);
+    else Module.print('success.');
   });
 }
 ''')

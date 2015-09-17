@@ -1322,8 +1322,11 @@ var buffers = [], HEAP8s = [], HEAP16s = [], HEAP32s = [], HEAPU8s = [], HEAPU16
         } else {
           to = to << shifts;
         }
-        var end = (to - 1) >> SPLIT_MEMORY_BITS; // -1, since we do not actually read the last address
-        assert(start === end, 'subarray cannot span split chunks');
+        to = Math.max(from, to); // if to is smaller, we'll get nothing anyway, same as to == from
+        if (from < to) {
+          var end = (to - 1) >> SPLIT_MEMORY_BITS; // -1, since we do not actually read the last address
+          assert(start === end, 'subarray cannot span split chunks');
+        }
         if (to > from && (to & SPLIT_MEMORY_MASK) == 0) {
           // avoid the mask on the next line giving 0 for the end
           return real[start].subarray((from & SPLIT_MEMORY_MASK) >> shifts); // just return to the end of the chunk
