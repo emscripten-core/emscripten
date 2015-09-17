@@ -117,7 +117,15 @@ function simdCheckLaneIndex(index, lanes) {
 var lanes = [];
 
 function simdCreate(type) {
-  return type.fn.apply(type.fn, lanes);
+  // XXX Emscripten:
+  // Work around v8 NaN canonicalization issue: if lanes contains floats with non-canonical NaN bit patterns,
+  // type.fn.apply() will canonicalize the NaNs and the bits are lost (most likely as part of float->double expansion).
+  // Directly passing the arguments into the function preserves them.
+  if (type.name == "Float32x4") {
+    return SIMD.Float32x4(lanes[0], lanes[1], lanes[2], lanes[3]);
+  } else {
+    return type.fn.apply(type.fn, lanes);
+  }
 }
 
 function simdToString(type, a) {
@@ -461,7 +469,14 @@ if (typeof SIMD.Float32x4 === "undefined" ||
     if (!(this instanceof SIMD.Float32x4)) {
       return new SIMD.Float32x4(s0, s1, s2, s3);
     }
-    this.s_ = convertArray(_f32x4, [s0, s1, s2, s3]);
+    // XXX Emscripten:
+    // Don't use convertArray() here to construct the Float32x4, since v8 most likely due to float->double
+    // expansion will lose noncanonical NaN bits if present, producing an incorrect bit pattern as a result.
+    this.s_ = new Float32Array(new ArrayBuffer(16));
+    this.s_[0] = s0;
+    this.s_[1] = s1;
+    this.s_[2] = s2;
+    this.s_[3] = s3;
   }
 
   SIMD.Float32x4.extractLane = function(v, i) {
@@ -808,6 +823,11 @@ var allTypes = [float64x2, float32x4,
                 int32x4, int16x8, int8x16,
                 uint32x4, uint16x8, uint8x16,
                 bool32x4, bool16x8, bool8x16];
+
+// XXX Emscripten: Add member functions to Bool64x2 as well.
+allTypes.push(bool64x2);
+// XXX Emscripten: Float64x2 value conversion to other types (In two lowest channels. Two highest channels zero).
+float64x2.from = [int32x4, uint32x4, float32x4];
 
 // SIMD prototype functions.
 var prototypeFns = {
@@ -1320,3 +1340,93 @@ if (typeof SIMD.Uint8x16.shuffle === "undefined") {
       typeof global === 'object')
      ? global
      : this);
+
+// XXX Emscripten-specific below XXX
+
+// Work around Firefox Nightly bug that Float64x2 comparison return a Int32x4 instead of a Bool64x2.
+try {
+  if (SIMD.Int32x4.check(SIMD.Float64x2.equal(SIMD.Float64x2.splat(5.0), SIMD.Float64x2.splat(5.0)))) {
+    SIMD.Float64x2.prevEqual = SIMD.Float64x2.equal;
+    SIMD.Float64x2.equal = function(a, b) {
+      var int32x4 = SIMD.Float64x2.prevEqual(a, b);
+      return SIMD.Bool64x2(SIMD.Int32x4.extractLane(int32x4, 1) != 0, SIMD.Int32x4.extractLane(int32x4, 3) != 0);
+    }
+    console.error('Warning: Patching up SIMD.Float64x2.equal to return a Bool64x2 instead of Int32x4!');
+  }
+} catch(e) {}
+try {
+  if (SIMD.Int32x4.check(SIMD.Float64x2.notEqual(SIMD.Float64x2.splat(5.0), SIMD.Float64x2.splat(5.0)))) {
+    SIMD.Float64x2.prevNotEqual = SIMD.Float64x2.notEqual;
+    SIMD.Float64x2.notEqual = function(a, b) {
+      var int32x4 = SIMD.Float64x2.prevNotEqual(a, b);
+      return SIMD.Bool64x2(SIMD.Int32x4.extractLane(int32x4, 1) != 0, SIMD.Int32x4.extractLane(int32x4, 3) != 0);
+    } 
+    console.error('Warning: Patching up SIMD.Float64x2.notEqual to return a Bool64x2 instead of Int32x4!');
+  }
+} catch(e) {}
+try {
+  if (SIMD.Int32x4.check(SIMD.Float64x2.greaterThan(SIMD.Float64x2.splat(5.0), SIMD.Float64x2.splat(5.0)))) {
+    SIMD.Float64x2.prevGreaterThan = SIMD.Float64x2.greaterThan;
+    SIMD.Float64x2.greaterThan = function(a, b) {
+      var int32x4 = SIMD.Float64x2.prevGreaterThan(a, b);
+      return SIMD.Bool64x2(SIMD.Int32x4.extractLane(int32x4, 1) != 0, SIMD.Int32x4.extractLane(int32x4, 3) != 0);
+    } 
+    console.error('Warning: Patching up SIMD.Float64x2.greaterThan to return a Bool64x2 instead of Int32x4!');
+  }
+} catch(e) {}
+try {
+  if (SIMD.Int32x4.check(SIMD.Float64x2.greaterThanOrEqual(SIMD.Float64x2.splat(5.0), SIMD.Float64x2.splat(5.0)))) {
+    SIMD.Float64x2.prevGreaterThanOrEqual = SIMD.Float64x2.greaterThanOrEqual;
+    SIMD.Float64x2.greaterThanOrEqual = function(a, b) {
+      var int32x4 = SIMD.Float64x2.prevGreaterThanOrEqual(a, b);
+      return SIMD.Bool64x2(SIMD.Int32x4.extractLane(int32x4, 1) != 0, SIMD.Int32x4.extractLane(int32x4, 3) != 0);
+    } 
+    console.error('Warning: Patching up SIMD.Float64x2.greaterThanOrEqual to return a Bool64x2 instead of Int32x4!');
+  }
+} catch(e) {}
+try {
+  if (SIMD.Int32x4.check(SIMD.Float64x2.lessThan(SIMD.Float64x2.splat(5.0), SIMD.Float64x2.splat(5.0)))) {
+    SIMD.Float64x2.prevLessThan = SIMD.Float64x2.lessThan;
+    SIMD.Float64x2.lessThan = function(a, b) {
+      var int32x4 = SIMD.Float64x2.prevLessThan(a, b);
+      return SIMD.Bool64x2(SIMD.Int32x4.extractLane(int32x4, 1) != 0, SIMD.Int32x4.extractLane(int32x4, 3) != 0);
+    } 
+    console.error('Warning: Patching up SIMD.Float64x2.lessThan to return a Bool64x2 instead of Int32x4!');
+  }
+} catch(e) {}
+try {
+  if (SIMD.Int32x4.check(SIMD.Float64x2.lessThanOrEqual(SIMD.Float64x2.splat(5.0), SIMD.Float64x2.splat(5.0)))) {
+    SIMD.Float64x2.prevLessThanOrEqual = SIMD.Float64x2.lessThanOrEqual;
+    SIMD.Float64x2.lessThanOrEqual = function(a, b) {
+      var int32x4 = SIMD.Float64x2.prevLessThanOrEqual(a, b);
+      return SIMD.Bool64x2(SIMD.Int32x4.extractLane(int32x4, 1) != 0, SIMD.Int32x4.extractLane(int32x4, 3) != 0);
+    } 
+    console.error('Warning: Patching up SIMD.Float64x2.lessThanOrEqual to return a Bool64x2 instead of Int32x4!');
+  }
+} catch(e) {}
+
+
+if (!SIMD.Int32x4.fromBool64x2Bits) {
+  SIMD.Int32x4.fromBool64x2Bits = function(bool64x2) {
+    var lane0 = SIMD.Bool64x2.extractLane(bool64x2, 0)?-1:0;
+    var lane1 = SIMD.Bool64x2.extractLane(bool64x2, 1)?-1:0;
+    return SIMD.Int32x4(lane0, lane0, lane1, lane1);
+  }
+}
+
+// TODO: Remove and replace with shiftRightScalar once https://bugzilla.mozilla.org/show_bug.cgi?id=1201934 lands.
+if (!SIMD.Int8x16.shiftRightLogicalByScalar) {
+  SIMD.Int8x16.shiftRightLogicalByScalar = function(s, v) {
+    return SIMD.Int8x16.fromUint8x16Bits(SIMD.Uint8x16.shiftRightLogicalByScalar(SIMD.Uint8x16.fromInt8x16Bits(s), v));
+  }
+}
+if (!SIMD.Int16x8.shiftRightLogicalByScalar) {
+  SIMD.Int16x8.shiftRightLogicalByScalar = function(s, v) {
+    return SIMD.Int16x8.fromUint16x8Bits(SIMD.Uint16x8.shiftRightLogicalByScalar(SIMD.Uint16x8.fromInt16x8Bits(s), v));
+  }
+}
+if (!SIMD.Int32x4.shiftRightLogicalByScalar) {
+  SIMD.Int32x4.shiftRightLogicalByScalar = function(s, v) {
+    return SIMD.Int32x4.fromUint32x4Bits(SIMD.Uint32x4.shiftRightLogicalByScalar(SIMD.Uint32x4.fromInt32x4Bits(s), v));
+  }
+}

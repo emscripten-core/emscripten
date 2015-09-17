@@ -259,9 +259,15 @@ class RunnerCore(unittest.TestCase):
         assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
 
   def validate_asmjs(self, err):
-    if "asm.js type error: 'Float32x4' is not a standard SIMD type" in err:
-      err = err.replace("asm.js type error: 'Float32x4' is not a standard SIMD type", "")
-      print >> sys.stderr, "\nWARNING: ignoring asm.js type error due to old SpiderMonkey\n"
+    if "asm.js type error: 'Int8x16' is not a standard SIMD type" in err:
+      err = err.replace("asm.js type error: 'Int8x16' is not a standard SIMD type", "")
+      print >> sys.stderr, "\nWARNING: ignoring asm.js type error from Int8x16 due to implementation not yet available in SpiderMonkey\n"
+    if "asm.js type error: 'Int16x8' is not a standard SIMD type" in err:
+      err = err.replace("asm.js type error: 'Int16x8' is not a standard SIMD type", "")
+      print >> sys.stderr, "\nWARNING: ignoring asm.js type error from Int16x8 due to implementation not yet available in SpiderMonkey\n"
+    if "asm.js type error: 'Float64x2' is not a standard SIMD type" in err:
+      err = err.replace("asm.js type error: 'Float64x2' is not a standard SIMD type", "")
+      print >> sys.stderr, "\nWARNING: ignoring asm.js type error from Float64x2 due to implementation not yet available in SpiderMonkey\n"
 
     if 'uccessfully compiled asm.js code' in err and 'asm.js link error' not in err:
       print >> sys.stderr, "[was asm.js'ified]"
