@@ -36,13 +36,34 @@ tempfile = jsfile + '.temp.js'
 tempfile2 = jsfile + '.temp2.js'
 
 print 'build executables'
-dir = os.getcwd()
-try:
-  os.chdir(path_from_root('third_party', 'wasm-polyfill'))
-  #proc = check_call([PYTHON, path_from_root('emmake'), 'make', 'clean'])
-  proc = check_call([PYTHON, path_from_root('emmake'), 'make'])
-finally:
-  os.chdir(dir)
+
+def create_pack_asmjs():
+  emscripten.logging.debug('building pack-asmjs')
+  output = emscripten.Cache.get_path('pack-asmjs.js')
+  emscripten.try_delete(output)
+  check_call([emscripten.EMCC, emscripten.path_from_root('third_party', 'wasm-polyfill', 'src', 'pack-asmjs.cpp'),
+                               emscripten.path_from_root('third_party', 'wasm-polyfill', 'src', 'unpack.cpp'),
+                               emscripten.path_from_root('tools', 'optimizer', 'parser.cpp'),
+                               '-o', output] + \
+                               '-O3 -std=c++11 -DCHECKED_OUTPUT_SIZE --memory-init-file 0 --llvm-lto 1 -s TOTAL_MEMORY=67108864 -s WASM=0 -s INVOKE_RUN=0'.split(' ') + \
+                              ['-I' + emscripten.path_from_root('tools', 'optimizer')])
+  assert os.path.exists(output)
+  open(output, 'a').write(open(emscripten.path_from_root('third_party', 'wasm-polyfill', 'src', 'pack-asmjs.js')).read())
+  return output
+pack_asmjs = emscripten.Cache.get('pack-asmjs.js', create_pack_asmjs, extension='js')
+
+def create_load_wasm_worker():
+  emscripten.logging.debug('building load-wasm-worker')
+  output = emscripten.Cache.get_path('load-wasm-worker.js')
+  emscripten.try_delete(output)
+  check_call([emscripten.EMCC, emscripten.path_from_root('third_party', 'wasm-polyfill', 'src', 'unpack.cpp'),
+                               emscripten.path_from_root('tools', 'optimizer', 'parser.cpp'),
+                               '-o', output] + \
+                               '-O3 -std=c++11 --memory-init-file 0 --llvm-lto 1 -s TOTAL_MEMORY=67108864 -s WASM=0'.split(' '))
+  assert os.path.exists(output)
+  open(output, 'a').write(open(emscripten.path_from_root('third_party', 'wasm-polyfill', 'src', 'load-wasm-worker.js')).read())
+  return output
+load_wasm_worker = emscripten.Cache.get('load-wasm-worker.js', create_load_wasm_worker, extension='js')
 
 print 'save the before js'
 emscripten.safe_copy(jsfile, 'before.js')
@@ -68,9 +89,9 @@ try:
   os.chdir(os.path.dirname(os.path.abspath(tempfile2)))
   # try in spidermonkey first, because it's faster
   try:
-    out = emscripten.run_js(path_in_polyfill('tools', 'pack-asmjs.js'), args=[os.path.basename(tempfile2), 'output.binary'], stdout=PIPE, engine=emscripten.SPIDERMONKEY_ENGINE)
+    out = emscripten.run_js(pack_asmjs, args=[os.path.basename(tempfile2), 'output.binary'], stdout=PIPE, engine=emscripten.SPIDERMONKEY_ENGINE)
   except:
-    out = emscripten.run_js(path_in_polyfill('tools', 'pack-asmjs.js'), args=[os.path.basename(tempfile2), 'output.binary'], stdout=PIPE)
+    out = emscripten.run_js(pack_asmjs, args=[os.path.basename(tempfile2), 'output.binary'], stdout=PIPE)
 finally:
   os.chdir(dir)
 out = json.loads(out)
@@ -116,7 +137,7 @@ if (typeof importScripts === 'function') {
 }
 '''
 open(jsfile, 'w').write(patched)
-shutil.copyfile(path_in_polyfill('jslib', 'load-wasm-worker.js'), 'load-wasm-worker.js')
+shutil.copyfile(load_wasm_worker, 'load-wasm-worker.js')
 
 os.unlink(tempfile)
 os.unlink(tempfile2)
