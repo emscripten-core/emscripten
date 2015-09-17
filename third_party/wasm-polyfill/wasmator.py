@@ -41,12 +41,12 @@ def create_pack_asmjs():
   emscripten.logging.debug('building pack-asmjs')
   output = emscripten.Cache.get_path('pack-asmjs.js')
   emscripten.try_delete(output)
-  check_call([emscripten.EMCC, emscripten.path_from_root('third_party', 'wasm-polyfill', 'src', 'pack-asmjs.cpp'),
-                               emscripten.path_from_root('third_party', 'wasm-polyfill', 'src', 'unpack.cpp'),
-                               emscripten.path_from_root('tools', 'optimizer', 'parser.cpp'),
-                               '-o', output] + \
-                               '-O3 -std=c++11 -DCHECKED_OUTPUT_SIZE --memory-init-file 0 --llvm-lto 1 -s TOTAL_MEMORY=67108864 -s WASM=0 -s INVOKE_RUN=0'.split(' ') + \
-                              ['-I' + emscripten.path_from_root('tools', 'optimizer')])
+  check_call([PYTHON, emscripten.EMCC, emscripten.path_from_root('third_party', 'wasm-polyfill', 'src', 'pack-asmjs.cpp'),
+                      emscripten.path_from_root('third_party', 'wasm-polyfill', 'src', 'unpack.cpp'),
+                      emscripten.path_from_root('tools', 'optimizer', 'parser.cpp'),
+                      '-o', output] + \
+                      '-O3 -std=c++11 -DCHECKED_OUTPUT_SIZE --memory-init-file 0 --llvm-lto 1 -s TOTAL_MEMORY=67108864 -s WASM=0 -s INVOKE_RUN=0'.split(' ') + \
+                     ['-I' + emscripten.path_from_root('tools', 'optimizer')])
   assert os.path.exists(output)
   open(output, 'a').write(open(emscripten.path_from_root('third_party', 'wasm-polyfill', 'src', 'pack-asmjs.js')).read())
   return output
@@ -56,10 +56,10 @@ def create_load_wasm_worker():
   emscripten.logging.debug('building load-wasm-worker')
   output = emscripten.Cache.get_path('load-wasm-worker.js')
   emscripten.try_delete(output)
-  check_call([emscripten.EMCC, emscripten.path_from_root('third_party', 'wasm-polyfill', 'src', 'unpack.cpp'),
-                               emscripten.path_from_root('tools', 'optimizer', 'parser.cpp'),
-                               '-o', output] + \
-                               '-O3 -std=c++11 --memory-init-file 0 --llvm-lto 1 -s TOTAL_MEMORY=67108864 -s WASM=0'.split(' '))
+  check_call([PYTHON, emscripten.EMCC, emscripten.path_from_root('third_party', 'wasm-polyfill', 'src', 'unpack.cpp'),
+                      emscripten.path_from_root('tools', 'optimizer', 'parser.cpp'),
+                      '-o', output] + \
+                      '-O3 -std=c++11 --memory-init-file 0 --llvm-lto 1 -s TOTAL_MEMORY=67108864 -s WASM=0'.split(' '))
   assert os.path.exists(output)
   open(output, 'a').write(open(emscripten.path_from_root('third_party', 'wasm-polyfill', 'src', 'load-wasm-worker.js')).read())
   return output
