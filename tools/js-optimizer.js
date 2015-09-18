@@ -5716,12 +5716,60 @@ function safeHeap(ast) {
   });
 }
 
+function fixPtrSlim(ptr, heap, shell) {
+  switch (heap) {
+    case 'HEAP8':   case 'HEAPU8': {
+      if (ptr[0] === 'binary' && ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 0) {
+        ptr = ['binary', '|', ptr[2], ['num', 0]]; // smaller
+      }
+      break;
+    }
+    case 'HEAP16':  case 'HEAPU16': {
+      if (ptr[0] === 'binary' && ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 1) {
+        ptr = ptr[2]; // skip the shift
+      } else {
+        ptr = ['binary', '*', ptr, ['num', 2]]; // was unshifted, convert to absolute address
+      }
+      break;
+    }
+    case 'HEAP32':  case 'HEAPU32': {
+      if (ptr[0] === 'binary' && ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 2) {
+        ptr = ptr[2]; // skip the shift
+      } else {
+        ptr = ['binary', '*', ptr, ['num', 4]]; // was unshifted, convert to absolute address
+      }
+      break;
+    }
+    case 'HEAPF32': {
+      if (ptr[0] === 'binary' && ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 2) {
+        ptr = ptr[2]; // skip the shift
+      } else {
+        ptr = ['binary', '*', ptr, ['num', 4]]; // was unshifted, convert to absolute address
+      }
+      break;
+    }
+    case 'HEAPF64': {
+      if (ptr[0] === 'binary' && ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 3) {
+        ptr = ptr[2]; // skip the shift
+      } else {
+        ptr = ['binary', '*', ptr, ['num', 8]]; // was unshifted, convert to absolute address
+      }
+      break;
+    }
+    default: {
+      if (!shell) throw 'bad heap ' + heap;
+      return ptr; // unchanged
+    }
+  }
+  return ptr;
+}
+
 function splitMemory(ast, shell) {
   traverse(ast, function(node, type) {
     if (type === 'assign') {
       if (node[1] === true && node[2][0] === 'sub') {
         var heap = node[2][1][1];
-        var ptr = fixPtr(node[2][2], heap, shell);
+        var ptr = fixPtrSlim(node[2][2], heap, shell);
         var value = node[3];
         switch (heap) {
           case 'HEAP8': return ['call', ['name', 'set8'], [ptr, value]];
@@ -5740,7 +5788,7 @@ function splitMemory(ast, shell) {
       if (target[0] === 'H') {
         // heap access
         var heap = target;
-        var ptr = fixPtr(node[2], heap, shell);
+        var ptr = fixPtrSlim(node[2], heap, shell);
         switch (heap) {
           case 'HEAP8': return ['call', ['name', 'get8'], [ptr]];
           case 'HEAP16': return ['call', ['name', 'get16'], [ptr]];

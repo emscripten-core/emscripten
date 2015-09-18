@@ -1792,6 +1792,8 @@ int f() {
        ['asm', 'registerizeHarder', 'asmLastOpts', 'minifyWhitespace']), # issue 3520
       (path_from_root('tests', 'optimizer', 'null_else.js'), [open(path_from_root('tests', 'optimizer', 'null_else-output.js')).read(), open(path_from_root('tests', 'optimizer', 'null_else-output2.js')).read()],
        ['asm', 'registerizeHarder', 'asmLastOpts', 'minifyWhitespace']), # issue 3549
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer-splitMemory.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-splitMemory-output.js')).read(),
+       ['splitMemory']),
     ]:
       print input, passes
 
