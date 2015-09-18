@@ -28,40 +28,45 @@ static bool initialized = false;
 static size_t total_memory = 0;
 static size_t split_memory = 0;
 static size_t num_spaces = 0;
-static bool allocated[MAX_SPACES]; // whether storage is allocated for this chunk, both an ArrayBuffer in JS and an mspace here
-static mspace spaces[MAX_SPACES]; // 0 is for the stack, static, etc - not used by malloc # TODO: make a small space in there?
-static size_t counts[MAX_SPACES]; // how many allocations are in the space
+
+struct Space {
+  mspace space;
+  bool allocated; // whether storage is allocated for this chunk, both an ArrayBuffer in JS and an mspace here
+  size_t count; // how many allocations are in the space
+  size_t index; // the index of this space, it then represents memory at SPLIT_MEMORY*index
+
+  Space() : space(0), allocated(false), count(0), index(0) {}
+
+  void allocate() {
+    assert(!allocated);
+    assert(count == 0);
+    assert(index > 0); // 0 is never allocated, it is for the stack, static, etc. # TODO: make a small space in there?
+    allocated = true;
+    EM_ASM_({ allocateSplitChunk($0) }, index);
+    space = create_mspace_with_base((void*)(split_memory*index), split_memory, 0);
+  }
+
+  void free() {
+    assert(allocated);
+    assert(count == 0);
+    assert(index > 0);
+    allocated = false;
+    destroy_mspace((void*)(split_memory*index));
+    EM_ASM_({ freeSplitChunk($0) }, index);
+  }
+};
+
+static Space spaces[MAX_SPACES];
 
 static void init() {
   total_memory = EM_ASM_INT_V({ return TOTAL_MEMORY; });
   split_memory = EM_ASM_INT_V({ return SPLIT_MEMORY; });
   num_spaces = EM_ASM_INT_V({ return HEAPU8s.length; });
   if (num_spaces >= MAX_SPACES) abort();
-  allocated[0] = true; // but never used from here
-  spaces[0] = 0; // never used
-  counts[0] = 0; // never used
-  for (int i = 1; i < num_spaces; i++) {
-    allocated[i] = false;
-    spaces[i] = 0;
-    counts[i] = 0;
+  for (int i = 0; i < num_spaces; i++) {
+    spaces[i].index = i;
   }
   initialized = true;
-}
-
-static void allocate_space(int i) {
-  assert(!allocated[i]);
-  assert(counts[i] == 0);
-  allocated[i] = true;
-  EM_ASM_({ allocateSplitChunk($0) }, i);
-  spaces[i] = create_mspace_with_base((void*)(split_memory*i), split_memory, 0);
-}
-
-static void free_space(int i) {
-  assert(allocated[i]);
-  assert(counts[i] == 0);
-  allocated[i] = false;
-  destroy_mspace((void*)(split_memory*i));
-  EM_ASM_({ freeSplitChunk($0) }, i);
 }
 
 // TODO: optimize, these are powers of 2
@@ -71,9 +76,10 @@ static void free_space(int i) {
 
 static mspace get_space(void* ptr) { // for a valid pointer, so the space must already exist
   int index = space_index(ptr);
-  assert(allocated[index]);
-  assert(counts[index] > 0);
-  return spaces[index];
+  Space& space = spaces[index];
+  assert(space.allocated);
+  assert(space.count > 0);
+  return space.space;
 }
 
 extern "C" {
@@ -95,10 +101,10 @@ void* malloc(size_t size) {
   static int next = 1;
   int start = next;
   while (1) { // simple round-robin, while keeping to use the same one as long as it keeps succeeding
-    if (!allocated[next]) allocate_space(next);
-    void *ret = mspace_malloc(spaces[next], size);
+    if (!spaces[next].allocated) spaces[next].allocate();
+    void *ret = mspace_malloc(spaces[next].space, size);
     if (ret) {
-      counts[next]++;
+      spaces[next].count++;
       return ret;
     }
     next++;
@@ -111,11 +117,12 @@ void* malloc(size_t size) {
 void free(void* ptr) {
   if (ptr == 0) return;
   int index = space_index(ptr);
-  assert(counts[index] > 0);
+  Space& space = spaces[index];
+  assert(space.count > 0);
   mspace_free(get_space(ptr), ptr);
-  counts[index]--;
-  if (counts[index] == 0) {
-    free_space(index);
+  space.count--;
+  if (space.count == 0) {
+    spaces[index].free();
   }
 }
 
@@ -157,10 +164,10 @@ void* memalign(size_t alignment, size_t size) {
   static int next = 1;
   int start = next;
   while (1) { // simple round-robin, while keeping to use the same one as long as it keeps succeeding
-    if (!allocated[next]) allocate_space(next);
-    void *ret = mspace_memalign(spaces[next], alignment, size);
+    if (!spaces[next].allocated) spaces[next].allocate();
+    void *ret = mspace_memalign(spaces[next].space, alignment, size);
     if (ret) {
-      counts[next]++;
+      spaces[next].count++;
       return ret;
     }
     next++;
