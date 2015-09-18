@@ -5366,6 +5366,7 @@ int main() {
     var e = Module.printErr;
     Module.printErr = Module.print = function(){};
     var fail = false;
+    allocateSplitChunk(2); // we will slice into this
     TOP:
     for (var i = 0; i < SPLIT_MEMORY*3; i++) {
       HEAPU8.subarray(i);
