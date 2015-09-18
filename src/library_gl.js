@@ -475,14 +475,18 @@ var LibraryGL = {
           sizePerPixel = numChannels*1;
           break;
         case 0x1403 /* GL_UNSIGNED_SHORT */:
+#if USE_WEBGL2
+        case 0x140B /* GL_HALF_FLOAT */:
+#else
         case 0x8D61 /* GL_HALF_FLOAT_OES */:
+#endif
           sizePerPixel = numChannels*2;
           break;
         case 0x1405 /* GL_UNSIGNED_INT */:
         case 0x1406 /* GL_FLOAT */:
           sizePerPixel = numChannels*4;
           break;
-        case 0x84FA /* UNSIGNED_INT_24_8_WEBGL */:
+        case 0x84FA /* UNSIGNED_INT_24_8 */:
           sizePerPixel = 4;
           break;
         case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
