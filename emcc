@@ -1566,7 +1566,7 @@ try:
   if js_opts:
     if shared.Settings.SAFE_HEAP: js_optimizer_queue += ['safeHeap']
 
-    if shared.Settings.SPLIT_MEMORY: js_optimizer_queue += ['splitMemory']
+    if shared.Settings.SPLIT_MEMORY: js_optimizer_queue += ['splitMemory', 'simplifyExpressions']
 
     if shared.Settings.OUTLINING_LIMIT > 0:
       js_optimizer_queue += ['outline']
