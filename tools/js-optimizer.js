@@ -5724,14 +5724,14 @@ function splitMemory(ast, shell) {
         var ptr = fixPtr(node[2][2], heap, shell);
         var value = node[3];
         switch (heap) {
-          case 'HEAP8': return ['call', ['name', 'set8'], [ptr, makeAsmCoercion(value, ASM_INT)]];
-          case 'HEAP16': return ['call', ['name', 'set16'], [ptr, makeAsmCoercion(value, ASM_INT)]];
-          case 'HEAP32': return ['call', ['name', 'set32'], [ptr, makeAsmCoercion(value, ASM_INT)]];
-          case 'HEAPU8': return ['call', ['name', 'setU8'], [ptr, makeAsmCoercion(value, ASM_INT)]];
-          case 'HEAPU16': return ['call', ['name', 'setU16'], [ptr, makeAsmCoercion(value, ASM_INT)]];
-          case 'HEAPU32': return ['call', ['name', 'setU32'], [ptr, makeAsmCoercion(value, ASM_INT)]];
-          case 'HEAPF32': return ['call', ['name', 'setF32'], [ptr, makeAsmCoercion(value, ASM_DOUBLE)]];
-          case 'HEAPF64': return ['call', ['name', 'setF64'], [ptr, makeAsmCoercion(value, ASM_DOUBLE)]];
+          case 'HEAP8': return ['call', ['name', 'set8'], [ptr, value]];
+          case 'HEAP16': return ['call', ['name', 'set16'], [ptr, value]];
+          case 'HEAP32': return ['call', ['name', 'set32'], [ptr, value]];
+          case 'HEAPU8': return ['call', ['name', 'setU8'], [ptr, value]];
+          case 'HEAPU16': return ['call', ['name', 'setU16'], [ptr, value]];
+          case 'HEAPU32': return ['call', ['name', 'setU32'], [ptr, value]];
+          case 'HEAPF32': return ['call', ['name', 'setF32'], [ptr, value]];
+          case 'HEAPF64': return ['call', ['name', 'setF64'], [ptr, value]];
           default: if (!shell) throw 'bad heap ' + heap;
         }
       }
