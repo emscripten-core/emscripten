@@ -4,8 +4,11 @@
 //==============================================================================
 // Optimizer tool. This is meant to be run after the emscripten compiler has
 // finished generating code. These optimizations are done on the generated
-// code to further improve it. Some of the modifications also work in
-// conjunction with closure compiler.
+// code to further improve it.
+//
+// Be aware that this is *not* a general JS optimizer. It assumes that the
+// input is valid asm.js and makes strong assumptions based on this. It may do
+// anything from crashing to optimizing incorrectly if the input is not valid!
 //
 // TODO: Optimize traverse to modify a node we want to replace, in-place,
 //       instead of returning it to the previous call frame where we check?
@@ -4066,7 +4069,9 @@ function eliminate(ast, memSafe) {
             for (var j = 0; j < stats.length; j++) {
               traverseInOrder(stats[j]);
             }
-            // We cannot track from one switch case into another, undo all new trackings TODO: general framework here, use in if-else as well
+            // We cannot track from one switch case into another if there are external dependencies, undo all new trackings
+            // Otherwise we can track, e.g. a var used in a case before assignment in another case is UB in asm.js, so no need for the assignment
+            // TODO: general framework here, use in if-else as well
             for (var t in tracked) {
               if (!(t in originalTracked)) {
                 var info = tracked[t];

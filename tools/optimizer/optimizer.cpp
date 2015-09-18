@@ -1331,7 +1331,9 @@ void eliminate(Ref ast, bool memSafe) {
             for (size_t j = 0; j < stats->size(); j++) {
               traverseInOrder(stats[j], false, false);
             }
-            // We cannot track from one switch case into another, undo all new trackings TODO: general framework here, use in if-else as well
+            // We cannot track from one switch case into another if there are external dependencies, undo all new trackings
+            // Otherwise we can track, e.g. a var used in a case before assignment in another case is UB in asm.js, so no need for the assignment
+            // TODO: general framework here, use in if-else as well
             std::vector<IString> toDelete;
             for (auto t : tracked) {
               if (!originalTracked.has(t.first)) {
