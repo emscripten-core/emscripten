@@ -5597,7 +5597,7 @@ function outline(ast) {
   });
 }
 
-function fixPtr(ptr, heap, shell) {
+function fixPtr(ptr, heap) {
   switch (heap) {
     case 'HEAP8':   case 'HEAPU8': break;
     case 'HEAP16':  case 'HEAPU16': {
@@ -5633,7 +5633,6 @@ function fixPtr(ptr, heap, shell) {
       break;
     }
     default: {
-      if (!shell) throw 'bad heap ' + heap;
       return ptr; // unchanged
     }
   }
