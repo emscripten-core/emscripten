@@ -105,7 +105,8 @@ AsmType detectType(Ref node, AsmData *asmData=nullptr, bool inVarDef=false);
 Ref makeEmpty();
 bool isEmpty(Ref node);
 Ref makeAsmVarDef(const IString& v, AsmType type);
-Ref makeArray();
+Ref makeArray(int size_hint);
+Ref makeBool(bool b);
 Ref makeNum(double x);
 Ref makeName(IString str);
 Ref makeAsmCoercion(Ref node, AsmType type);
@@ -167,7 +168,8 @@ struct AsmData {
       stats[i] = makeEmpty();
       i++;
     }
-    // process initial variable definitions
+    // process initial variable definitions and remove '= 0' etc parts - these
+    // are not actually assignments in asm.js
     while (i < stats->size()) {
       Ref node = stats[i];
       if (node[0] != VAR) break;
@@ -193,7 +195,7 @@ struct AsmData {
         Ref type = node[0];
         if (type == VAR) {
           dump("bad, seeing a var in need of fixing", func);
-          assert(0); //, 'should be no vars to fix! ' + func[1] + ' : ' + JSON.stringify(node));
+          abort(); //, 'should be no vars to fix! ' + func[1] + ' : ' + JSON.stringify(node));
         }
       });
       i++;
@@ -218,7 +220,7 @@ struct AsmData {
       }
     }
     // calculate variable definitions
-    Ref varDefs = makeArray();
+    Ref varDefs = makeArray(vars.size());
     for (auto v : vars) {
       varDefs->push_back(makeAsmVarDef(v, locals[v].type));
     }
@@ -240,7 +242,7 @@ struct AsmData {
     for (auto param : func[2]->getArray()) {
       IString str = param->getIString();
       assert(locals.count(str) > 0);
-      stats[next++] = make1(STAT, make3(ASSIGN, &(arena.alloc())->setBool(true), makeName(str.c_str()), makeAsmCoercion(makeName(str.c_str()), locals[str].type)));
+      stats[next++] = make1(STAT, make3(ASSIGN, makeBool(true), makeName(str.c_str()), makeAsmCoercion(makeName(str.c_str()), locals[str].type)));
     }
     if (varDefs->size()) {
       stats[next] = make1(VAR, varDefs);
@@ -402,8 +404,12 @@ AsmType detectType(Ref node, AsmData *asmData, bool inVarDef) {
 
 // Constructions TODO: share common constructions, and assert they remain frozen
 
-Ref makeArray() {
-  return &arena.alloc()->setArray();
+Ref makeArray(int size_hint=0) {
+  return &arena.alloc()->setArray(size_hint);
+}
+
+Ref makeBool(bool b) {
+  return &arena.alloc()->setBool(b);
 }
 
 Ref makeString(const IString& s) {
@@ -411,65 +417,46 @@ Ref makeString(const IString& s) {
 }
 
 Ref makeEmpty() {
-  Ref ret(makeArray());
-  ret->push_back(makeString(TOPLEVEL));
-  ret->push_back(makeArray());
-  return ret;
-}
-
-Ref makePair(Ref x, Ref y) {
-  Ref ret = makeArray();
-  ret->push_back(x);
-  ret->push_back(y);
-  return ret;
+  return ValueBuilder::makeToplevel();
 }
 
 Ref makeNum(double x) {
-  Ref ret(makeArray());
-  ret->push_back(makeString(NUM));
-  ret->push_back(&arena.alloc()->setNumber(x));
-  return ret;
+  return ValueBuilder::makeDouble(x);
 }
 
 Ref makeName(IString str) {
-  Ref ret(makeArray());
-  ret->push_back(makeString(NAME));
-  ret->push_back(makeString(str));
-  return ret;
+  return ValueBuilder::makeName(str);
 }
 
 Ref makeBlock() {
-  Ref ret(makeArray());
-  ret->push_back(makeString(BLOCK));
-  ret->push_back(makeArray());
-  return ret;
+  return ValueBuilder::makeBlock();
 }
 
-Ref make1(IString type, Ref a) {
-  Ref ret(makeArray());
-  ret->push_back(makeString(type));
+Ref make1(IString s1, Ref a) {
+  Ref ret(makeArray(2));
+  ret->push_back(makeString(s1));
   ret->push_back(a);
   return ret;
 }
 
-Ref make2(IString type, IString a, Ref b) {
-  Ref ret(makeArray());
-  ret->push_back(makeString(type));
-  ret->push_back(makeString(a));
-  ret->push_back(b);
+Ref make2(IString s1, IString s2, Ref a) {
+  Ref ret(makeArray(2));
+  ret->push_back(makeString(s1));
+  ret->push_back(makeString(s2));
+  ret->push_back(a);
   return ret;
 }
 
-Ref make2(IString type, Ref a, Ref b) {
-  Ref ret(makeArray());
-  ret->push_back(makeString(type));
+Ref make2(IString s1, Ref a, Ref b) {
+  Ref ret(makeArray(3));
+  ret->push_back(makeString(s1));
   ret->push_back(a);
   ret->push_back(b);
   return ret;
 }
 
 Ref make3(IString type, IString a, Ref b, Ref c) {
-  Ref ret(makeArray());
+  Ref ret(makeArray(4));
   ret->push_back(makeString(type));
   ret->push_back(makeString(a));
   ret->push_back(b);
@@ -478,7 +465,7 @@ Ref make3(IString type, IString a, Ref b, Ref c) {
 }
 
 Ref make3(IString type, Ref a, Ref b, Ref c) {
-  Ref ret(makeArray());
+  Ref ret(makeArray(4));
   ret->push_back(makeString(type));
   ret->push_back(a);
   ret->push_back(b);
@@ -495,45 +482,45 @@ Ref makeAsmVarDef(const IString& v, AsmType type) {
       if (!ASM_FLOAT_ZERO.isNull()) {
         val = makeName(ASM_FLOAT_ZERO);
       } else {
-        val = make2(CALL, makeName(MATH_FROUND), &(makeArray())->push_back(makeNum(0)));
+        val = make2(CALL, makeName(MATH_FROUND), &(makeArray(1))->push_back(makeNum(0)));
       }
       break;
     }
     case ASM_FLOAT32X4: {
-      val = make2(CALL, makeName(SIMD_FLOAT32X4), &(makeArray())->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
+      val = make2(CALL, makeName(SIMD_FLOAT32X4), &(makeArray(4))->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
       break;
     }
     case ASM_FLOAT64X2: {
-      val = make2(CALL, makeName(SIMD_FLOAT64X2), &(makeArray())->push_back(makeNum(0)).push_back(makeNum(0)));
+      val = make2(CALL, makeName(SIMD_FLOAT64X2), &(makeArray(2))->push_back(makeNum(0)).push_back(makeNum(0)));
       break;
     }
     case ASM_INT8X16: {
-      val = make2(CALL, makeName(SIMD_INT8X16), &(makeArray())->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
+      val = make2(CALL, makeName(SIMD_INT8X16), &(makeArray(16))->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
       break;
     }
     case ASM_INT16X8: {
-      val = make2(CALL, makeName(SIMD_INT16X8), &(makeArray())->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
+      val = make2(CALL, makeName(SIMD_INT16X8), &(makeArray(8))->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
       break;
     }
     case ASM_INT32X4: {
-      val = make2(CALL, makeName(SIMD_INT32X4), &(makeArray())->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
+      val = make2(CALL, makeName(SIMD_INT32X4), &(makeArray(4))->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
       break;
     }
     default: assert(0);
   }
-  return makePair(&(arena.alloc()->setString(v)), val);
+  return make1(v, val);
 }
 
 Ref makeAsmCoercion(Ref node, AsmType type) {
   switch (type) {
     case ASM_INT: return make3(BINARY, OR, node, makeNum(0));
     case ASM_DOUBLE: return make2(UNARY_PREFIX, PLUS, node);
-    case ASM_FLOAT: return make2(CALL, makeName(MATH_FROUND), &(makeArray())->push_back(node));
-    case ASM_FLOAT32X4: return make2(CALL, makeName(SIMD_FLOAT32X4_CHECK), &(makeArray())->push_back(node));
-    case ASM_FLOAT64X2: return make2(CALL, makeName(SIMD_FLOAT64X2_CHECK), &(makeArray())->push_back(node));
-    case ASM_INT8X16: return make2(CALL, makeName(SIMD_INT8X16_CHECK), &(makeArray())->push_back(node));
-    case ASM_INT16X8: return make2(CALL, makeName(SIMD_INT16X8_CHECK), &(makeArray())->push_back(node));
-    case ASM_INT32X4: return make2(CALL, makeName(SIMD_INT32X4_CHECK), &(makeArray())->push_back(node));
+    case ASM_FLOAT: return make2(CALL, makeName(MATH_FROUND), &(makeArray(1))->push_back(node));
+    case ASM_FLOAT32X4: return make2(CALL, makeName(SIMD_FLOAT32X4_CHECK), &(makeArray(1))->push_back(node));
+    case ASM_FLOAT64X2: return make2(CALL, makeName(SIMD_FLOAT64X2_CHECK), &(makeArray(1))->push_back(node));
+    case ASM_INT8X16: return make2(CALL, makeName(SIMD_INT8X16_CHECK), &(makeArray(1))->push_back(node));
+    case ASM_INT16X8: return make2(CALL, makeName(SIMD_INT16X8_CHECK), &(makeArray(1))->push_back(node));
+    case ASM_INT32X4: return make2(CALL, makeName(SIMD_INT32X4_CHECK), &(makeArray(1))->push_back(node));
     case ASM_NONE:
     default: return node; // non-validating code, emit nothing XXX this is dangerous, we should only allow this when we know we are not validating
   }
@@ -730,22 +717,22 @@ void removeAllUselessSubNodes(Ref ast) {
 }
 
 Ref unVarify(Ref vars) { // transform var x=1, y=2 etc. into (x=1, y=2), i.e., the same assigns, but without a var definition
-  Ref ret = makeArray();
+  Ref ret = makeArray(1);
   ret->push_back(makeString(STAT));
   if (vars->size() == 1) {
-    ret->push_back(make3(ASSIGN, &(arena.alloc())->setBool(true), makeName(vars[0][0]->getIString()), vars[0][1]));
+    ret->push_back(make3(ASSIGN, makeBool(true), makeName(vars[0][0]->getIString()), vars[0][1]));
   } else {
-    ret->push_back(makeArray());
+    ret->push_back(makeArray(vars->size()-1));
     Ref curr = ret[1];
     for (size_t i = 0; i+1 < vars->size(); i++) {
       curr->push_back(makeString(SEQ));
-      curr->push_back(make3(ASSIGN, &(arena.alloc())->setBool(true), makeName(vars[i][0]->getIString()), vars[i][1]));
+      curr->push_back(make3(ASSIGN, makeBool(true), makeName(vars[i][0]->getIString()), vars[i][1]));
       if (i != vars->size()-2) {
         curr->push_back(makeArray());
         curr = curr[2];
       }
     }
-    curr->push_back(make3(ASSIGN, &(arena.alloc())->setBool(true), makeName(vars->back()[0]->getIString()), vars->back()[1]));
+    curr->push_back(make3(ASSIGN, makeBool(true), makeName(vars->back()[0]->getIString()), vars->back()[1]));
   }
   return ret;
 }
@@ -907,7 +894,7 @@ Ref simplifyCondition(Ref node) {
 // In memSafe mode, we are more careful and assume functions can replace HEAP and FUNCTION_TABLE, which
 // can happen in ALLOW_MEMORY_GROWTH mode
 
-StringSet ELIMINATION_SAFE_NODES("var assign call if toplevel do return label switch binary unary-prefix"); // do is checked carefully, however
+StringSet ELIMINATION_SAFE_NODES("assign call if toplevel do return label switch binary unary-prefix"); // do is checked carefully, however
 StringSet IGNORABLE_ELIMINATOR_SCAN_NODES("num toplevel string break continue dot"); // dot can only be STRING_TABLE.*
 StringSet ABORTING_ELIMINATOR_SCAN_NODES("new object function defun for while array throw"); // we could handle some of these, TODO, but nontrivial (e.g. for while, the condition is hit multiple times after the body)
 
@@ -939,9 +926,29 @@ public:
 };
 
 void eliminate(Ref ast, bool memSafe) {
+#ifdef PROFILING
+  clock_t tasmdata = 0;
+  clock_t tfnexamine = 0;
+  clock_t tvarcheck = 0;
+  clock_t tstmtelim = 0;
+  clock_t tstmtscan = 0;
+  clock_t tcleanvars = 0;
+  clock_t treconstruct = 0;
+#endif
+
   // Find variables that have a single use, and if they can be eliminated, do so
-  traverseFunctions(ast, [&memSafe](Ref func) {
+  traverseFunctions(ast, [&](Ref func) {
+
+#ifdef PROFILING
+    clock_t start = clock();
+#endif
+
     AsmData asmData(func);
+
+#ifdef PROFILING
+    tasmdata += clock() - start;
+    start = clock();
+#endif
 
     // First, find the potentially eliminatable functions: that have one definition and one use
 
@@ -956,38 +963,28 @@ void eliminate(Ref ast, bool memSafe) {
     // examine body and note locals
     traversePre(func, [&](Ref node) {
       Ref type = node[0];
-      if (type == VAR) {
-        Ref node1 = node[1];
-        for (size_t i = 0; i < node1->size(); i++) {
-          Ref node1i = node1[i];
-          IString name = node1i[0]->getIString();
-          Ref value;
-          if (node1i->size() > 1 && !!(value = node1i[1])) {
-            definitions[name]++;
-            if (!values.has(name)) values[name] = value;
-          }
-          uses[name];
-        }
-      } else if (type == NAME) {
+      if (type == NAME) {
         IString& name = node[1]->getIString();
-        uses[name]++;// = uses[name] + 1;
+        uses[name]++;
+        namings[name]++;
       } else if (type == ASSIGN) {
         Ref target = node[2];
         if (target[0] == NAME) {
           IString& name = target[1]->getIString();
-          definitions[name]++;//= definitions[name] + 1;
-          uses[name]; // zero if not there already
-          if (!values.has(name)) values[name] = node[3];
+          // values is only used if definitions is 1
+          if (definitions[name]++ == 0) {
+            values[name] = node[3];
+          }
           assert(node[1]->isBool(true)); // not +=, -= etc., just =
           uses[name]--; // because the name node will show up by itself in the previous case
-          namings[name]++;// = namings[name] + 1; // offset it here, this tracks the total times we are named
         }
       }
     });
 
-    for (auto used : uses) {
-      namings[used.first] += used.second;
-    }
+#ifdef PROFILING
+    tfnexamine += clock() - start;
+    start = clock();
+#endif
 
     StringSet potentials; // local variables with 1 definition and 1 use
     StringSet sideEffectFree; // whether a local variable has no side effects in its definition. Only relevant when there are no uses
@@ -1050,6 +1047,11 @@ void eliminate(Ref ast, bool memSafe) {
       processVariable(name.first);
     }
 
+#ifdef PROFILING
+    tvarcheck += clock() - start;
+    start = clock();
+#endif
+
     //printErr('defs: ' + JSON.stringify(definitions));
     //printErr('uses: ' + JSON.stringify(uses));
     //printErr('values: ' + JSON.stringify(values));
@@ -1060,9 +1062,8 @@ void eliminate(Ref ast, bool memSafe) {
     //printErr('potentials: ' + JSON.stringify(potentials));
     // We can now proceed through the function. In each list of statements, we try to eliminate
     struct Tracking {
-      bool usesGlobals, usesMemory;
+      bool usesGlobals, usesMemory, hasDeps;
       Ref defNode;
-      StringSet deps;
       bool doesCall;
     };
     class Tracked : public std::unordered_map<IString, Tracking> {
@@ -1071,6 +1072,8 @@ void eliminate(Ref ast, bool memSafe) {
     };
     Tracked tracked;
     #define dumpTracked() { errv("tracking %d", tracked.size()); for (auto t : tracked) errv("... %s", t.first.c_str()); }
+    // Although a set would be more appropriate, it would also be slower
+    std::unordered_map<IString, StringVec> depMap;
 
     bool globalsInvalidated = false; // do not repeat invalidations, until we track something new
     bool memoryInvalidated = false;
@@ -1079,6 +1082,7 @@ void eliminate(Ref ast, bool memSafe) {
       Tracking& track = tracked[name];
       track.usesGlobals = false;
       track.usesMemory = false;
+      track.hasDeps = false;
       track.defNode = defNode;
       track.doesCall = false;
       bool ignoreName = false; // one-time ignorings of names, as first op in sub and call
@@ -1086,12 +1090,13 @@ void eliminate(Ref ast, bool memSafe) {
         Ref type = node[0];
         if (type == NAME) {
           if (!ignoreName) {
-            IString name = node[1]->getIString();
-            if (!asmData.isLocal(name)) {
+            IString depName = node[1]->getIString();
+            if (!asmData.isLocal(depName)) {
               track.usesGlobals = true;
             }
-            if (!potentials.has(name)) { // deps do not matter for potentials - they are defined once, so no complexity
-              track.deps.insert(name);
+            if (!potentials.has(depName)) { // deps do not matter for potentials - they are defined once, so no complexity
+              depMap[depName].push_back(name);
+              track.hasDeps = true;
             }
           } else {
             ignoreName = false;
@@ -1102,15 +1107,15 @@ void eliminate(Ref ast, bool memSafe) {
         } else if (type == CALL) {
           track.usesGlobals = true;
           track.usesMemory = true;
-          track.doesCall = true;        
+          track.doesCall = true;
           ignoreName = true;
         } else {
           ignoreName = false;
         }
       });
-      globalsInvalidated = false;
-      memoryInvalidated = false;
-      callsInvalidated = false;
+      if (track.usesGlobals) globalsInvalidated = false;
+      if (track.usesMemory) memoryInvalidated = false;
+      if (track.doesCall) callsInvalidated = false;
     };
 
     // TODO: invalidate using a sequence number for each type (if you were tracked before the last invalidation, you are cancelled). remove for.in loops
@@ -1133,17 +1138,10 @@ void eliminate(Ref ast, bool memSafe) {
     INVALIDATE(Calls, info.doesCall);
 
     auto invalidateByDep = [&](IString dep) {
-      std::vector<IString> temp;
-      for (auto t : tracked) {
-        IString name = t.first;
-        Tracking& info = tracked[name];
-        if (info.deps.has(dep)) {
-          temp.push_back(name);
-        }
+      for (auto name : depMap[dep]) {
+        tracked.erase(name);
       }
-      for (size_t i = 0; i < temp.size(); i++) {
-        tracked.erase(temp[i]);
-      }
+      depMap.erase(dep);
     };
 
     std::function<void (IString name, Ref node)> doEliminate;
@@ -1153,40 +1151,42 @@ void eliminate(Ref ast, bool memSafe) {
     auto scan = [&](Ref node) {
       bool abort = false;
       bool allowTracking = true; // false inside an if; also prevents recursing in an if
-      std::function<void (Ref, bool, bool)> traverseInOrder = [&](Ref node, bool ignoreSub, bool ignoreName) {
+      std::function<void (Ref, bool)> traverseInOrder = [&](Ref node, bool ignoreSub) {
         if (abort) return;
         Ref type = node[0];
         if (type == ASSIGN) {
           Ref target = node[2];
           Ref value = node[3];
           bool nameTarget = target[0] == NAME;
-          traverseInOrder(target, true,  nameTarget); // evaluate left
-          traverseInOrder(value,  false, false); // evaluate right
+          // If this is an assign to a name, handle it below rather than
+          // traversing and treating as a read
+          if (!nameTarget) {
+            traverseInOrder(target, true); // evaluate left
+          }
+          traverseInOrder(value,  false); // evaluate right
           // do the actual assignment
           if (nameTarget) {
             IString name = target[1]->getIString();
-            if (!potentials.has(name)) {
-              if (!varsToTryToRemove.has(name)) {
-                // expensive check for invalidating specific tracked vars. This list is generally quite short though, because of
-                // how we just eliminate in short spans and abort when control flow happens TODO: history numbers instead
-                invalidateByDep(name); // can happen more than once per dep..
-                if (!asmData.isLocal(name) && !globalsInvalidated) {
-                  invalidateGlobals();
-                  globalsInvalidated = true;
-                }
-                // if we can track this name (that we assign into), and it has 0 uses and we want to remove its VAR
-                // definition - then remove it right now, there is no later chance
-                if (allowTracking && varsToRemove.has(name) && uses[name] == 0) {
-                  track(name, node[3], node);
-                  doEliminate(name, node);
-                }
-              } else {
-                // replace it in-place
-                safeCopy(node, value);
-                varsToRemove[name] = 2;
-              }
+            if (potentials.has(name) && allowTracking) {
+              track(name, node[3], node);
+            } else if (varsToTryToRemove.has(name)) {
+              // replace it in-place
+              safeCopy(node, value);
+              varsToRemove[name] = 2;
             } else {
-              if (allowTracking) track(name, node[3], node);
+              // expensive check for invalidating specific tracked vars. This list is generally quite short though, because of
+              // how we just eliminate in short spans and abort when control flow happens TODO: history numbers instead
+              invalidateByDep(name); // can happen more than once per dep..
+              if (!asmData.isLocal(name) && !globalsInvalidated) {
+                invalidateGlobals();
+                globalsInvalidated = true;
+              }
+              // if we can track this name (that we assign into), and it has 0 uses and we want to remove its VAR
+              // definition - then remove it right now, there is no later chance
+              if (allowTracking && varsToRemove.has(name) && uses[name] == 0) {
+                track(name, node[3], node);
+                doEliminate(name, node);
+              }
             }
           } else if (target[0] == SUB) {
             if (isTempDoublePtrAccess(target)) {
@@ -1200,34 +1200,18 @@ void eliminate(Ref ast, bool memSafe) {
             }
           }
         } else if (type == SUB) {
-          traverseInOrder(node[1], false, !memSafe); // evaluate inner
-          traverseInOrder(node[2], false, false); // evaluate outer
+          // Only keep track of the global array names in memsafe mode i.e.
+          // when they may change underneath us due to resizing
+          if (node[1][0] != NAME || memSafe) {
+            traverseInOrder(node[1], false); // evaluate inner
+          }
+          traverseInOrder(node[2], false); // evaluate outer
           // ignoreSub means we are a write (happening later), not a read
           if (!ignoreSub && !isTempDoublePtrAccess(node)) {
             // do the memory access
             if (!callsInvalidated) {
               invalidateCalls();
               callsInvalidated = true;
-            }
-          }
-        } else if (type == VAR) {
-          Ref vars = node[1];
-          for (size_t i = 0; i < vars->size(); i++) {
-            IString name = vars[i][0]->getIString();
-            Ref value;
-            if (vars[i]->size() > 1 && !!(value = vars[i][1])) {
-              traverseInOrder(value, false, false);
-              if (potentials.has(name) && allowTracking) {
-                track(name, value, node);
-              } else {
-                invalidateByDep(name);
-              }
-              if (vars->size() == 1 && varsToTryToRemove.has(name) && !!value) {
-                // replace it in-place
-                value = make1(STAT, value);
-                safeCopy(node, value);
-                varsToRemove[name] = 2;
-              }
             }
           }
         } else if (type == BINARY) {
@@ -1239,31 +1223,32 @@ void eliminate(Ref ast, bool memSafe) {
             node[3] = temp;
             flipped = true;
           }
-          traverseInOrder(node[2], false, false);
-          traverseInOrder(node[3], false, false);
+          traverseInOrder(node[2], false);
+          traverseInOrder(node[3], false);
           if (flipped && NAME_OR_NUM.has(node[2][0])) { // dunno if we optimized, but safe to flip back - and keeps the code closer to the original and more readable
             Ref temp = node[2];
             node[2] = node[3];
             node[3] = temp;
           }
         } else if (type == NAME) {
-          if (!ignoreName) { // ignoreName means we are the name of something like a call or a sub - irrelevant for us
-            IString name = node[1]->getIString();
-            if (tracked.has(name)) {
-              doEliminate(name, node);
-            } else if (!asmData.isLocal(name) && !callsInvalidated) {
-              invalidateCalls();
-              callsInvalidated = true;
-            }
+          IString name = node[1]->getIString();
+          if (tracked.has(name)) {
+            doEliminate(name, node);
+          } else if (!asmData.isLocal(name) && !callsInvalidated) {
+            invalidateCalls();
+            callsInvalidated = true;
           }
         } else if (type == UNARY_PREFIX || type == UNARY_POSTFIX) {
-          traverseInOrder(node[2], false, false);
+          traverseInOrder(node[2], false);
         } else if (IGNORABLE_ELIMINATOR_SCAN_NODES.has(type)) {
         } else if (type == CALL) {
-          traverseInOrder(node[1], false, true);
+          // Named functions never change and are therefore safe to not track
+          if (node[1][0] != NAME) {
+            traverseInOrder(node[1], false);
+          }
           Ref args = node[2];
           for (size_t i = 0; i < args->size(); i++) {
-            traverseInOrder(args[i], false, false);
+            traverseInOrder(args[i], false);
           }
           if (callHasSideEffects(node)) {
             // these two invalidations will also invalidate calls
@@ -1278,14 +1263,14 @@ void eliminate(Ref ast, bool memSafe) {
           }
         } else if (type == IF) {
           if (allowTracking) {
-            traverseInOrder(node[1], false, false); // can eliminate into condition, but nowhere else
+            traverseInOrder(node[1], false); // can eliminate into condition, but nowhere else
             if (!callsInvalidated) { // invalidate calls, since we cannot eliminate them into an if that may not execute!
               invalidateCalls();
               callsInvalidated = true;
             }
             allowTracking = false;
-            traverseInOrder(node[2], false, false); // 2 and 3 could be 'parallel', really..
-            if (!!node[3]) traverseInOrder(node[3], false, false);
+            traverseInOrder(node[2], false); // 2 and 3 could be 'parallel', really..
+            if (!!node[3]) traverseInOrder(node[3], false);
             allowTracking = true;
           } else {
             tracked.clear();
@@ -1294,34 +1279,34 @@ void eliminate(Ref ast, bool memSafe) {
           Ref stats = getStatements(node);
           if (!!stats) {
             for (size_t i = 0; i < stats->size(); i++) {
-              traverseInOrder(stats[i], false, false);
+              traverseInOrder(stats[i], false);
             }
           }
         } else if (type == STAT) {
-          traverseInOrder(node[1], false, false);
+          traverseInOrder(node[1], false);
         } else if (type == LABEL) {
-          traverseInOrder(node[2], false, false);
+          traverseInOrder(node[2], false);
         } else if (type == SEQ) {
-          traverseInOrder(node[1], false, false);
-          traverseInOrder(node[2], false, false);
+          traverseInOrder(node[1], false);
+          traverseInOrder(node[2], false);
         } else if (type == DO) {
           if (node[1][0] == NUM && node[1][1]->getNumber() == 0) { // one-time loop
-            traverseInOrder(node[2], false, false);
+            traverseInOrder(node[2], false);
           } else {
             tracked.clear();
           }
         } else if (type == RETURN) {
-          if (!!node[1]) traverseInOrder(node[1], false, false);
+          if (!!node[1]) traverseInOrder(node[1], false);
         } else if (type == CONDITIONAL) {
           if (!callsInvalidated) { // invalidate calls, since we cannot eliminate them into a branch of an LLVM select/JS conditional that does not execute
             invalidateCalls();
             callsInvalidated = true;
           }
-          traverseInOrder(node[1], false, false);
-          traverseInOrder(node[2], false, false);
-          traverseInOrder(node[3], false, false);
+          traverseInOrder(node[1], false);
+          traverseInOrder(node[2], false);
+          traverseInOrder(node[3], false);
         } else if (type == SWITCH) {
-          traverseInOrder(node[1], false, false);
+          traverseInOrder(node[1], false);
           Tracked originalTracked = tracked;
           Ref cases = node[2];
           for (size_t i = 0; i < cases->size(); i++) {
@@ -1329,7 +1314,7 @@ void eliminate(Ref ast, bool memSafe) {
             assert(c[0]->isNull() || c[0][0] == NUM || (c[0][0] == UNARY_PREFIX && c[0][2][0] == NUM));
             Ref stats = c[1];
             for (size_t j = 0; j < stats->size(); j++) {
-              traverseInOrder(stats[j], false, false);
+              traverseInOrder(stats[j], false);
             }
             // We cannot track from one switch case into another if there are external dependencies, undo all new trackings
             // Otherwise we can track, e.g. a var used in a case before assignment in another case is UB in asm.js, so no need for the assignment
@@ -1338,7 +1323,7 @@ void eliminate(Ref ast, bool memSafe) {
             for (auto t : tracked) {
               if (!originalTracked.has(t.first)) {
                 Tracking& info = tracked[t.first];
-                if (info.usesGlobals || info.usesMemory || info.deps.size() > 0) {
+                if (info.usesGlobals || info.usesMemory || info.hasDeps) {
                   toDelete.push_back(t.first);
                 }
               }
@@ -1354,7 +1339,7 @@ void eliminate(Ref ast, bool memSafe) {
           abort = true;
         }
       };
-      traverseInOrder(node, false, false);
+      traverseInOrder(node, false);
     };
     //var eliminationLimit = 0; // used to debugging purposes
     doEliminate = [&](IString name, Ref node) {
@@ -1385,7 +1370,7 @@ void eliminate(Ref ast, bool memSafe) {
       // Look for statements, including while-switch pattern
       Ref stats = getStatements(block);
       if (!stats && (block[0] == WHILE && block[2][0] == SWITCH)) {
-        stats = &(makeArray()->push_back(block[2]));
+        stats = &(makeArray(1)->push_back(block[2]));
       }
       if (!stats) return;
       tracked.clear();
@@ -1397,12 +1382,27 @@ void eliminate(Ref ast, bool memSafe) {
         }
         // Check for things that affect elimination
         if (ELIMINATION_SAFE_NODES.has(type)) {
+#ifdef PROFILING
+          tstmtelim += clock() - start;
+          start = clock();
+#endif
           scan(node);
+#ifdef PROFILING
+          tstmtscan += clock() - start;
+          start = clock();
+#endif
+        } else if (type == VAR) {
+          continue; // asm normalisation has reduced 'var' to just the names
         } else {
           tracked.clear(); // not a var or assign, break all potential elimination so far
         }
       }
     });
+
+#ifdef PROFILING
+    tstmtelim += clock() - start;
+    start = clock();
+#endif
 
     StringIntMap seenUses;
     StringStringMap helperReplacements; // for looper-helper optimization
@@ -1573,7 +1573,7 @@ void eliminate(Ref ast, bool memSafe) {
                     traversePrePostConditional(curr, looperToLooptemp, [](Ref node){});
                   }
                   asmData.addVar(temp, asmData.getType(looper));
-                  stats->insert(found, make1(STAT, make3(ASSIGN, &(arena.alloc())->setBool(true), makeName(temp), makeName(looper))));
+                  stats->insert(found, make1(STAT, make3(ASSIGN, makeBool(true), makeName(temp), makeName(looper))));
                 }
               }
             }
@@ -1618,14 +1618,30 @@ void eliminate(Ref ast, bool memSafe) {
       }
     });
 
+#ifdef PROFILING
+    tcleanvars += clock() - start;
+    start = clock();
+#endif
+
     for (auto v : varsToRemove) {
       if (v.second == 2 && asmData.isVar(v.first)) asmData.deleteVar(v.first);
     }
 
     asmData.denormalize();
+
+#ifdef PROFILING
+    treconstruct += clock() - start;
+    start = clock();
+#endif
+
   });
 
   removeAllEmptySubNodes(ast);
+
+#ifdef PROFILING
+  errv("    EL stages: a:%li fe:%li vc:%li se:%li (ss:%li) cv:%li r:%li",
+    tasmdata, tfnexamine, tvarcheck, tstmtelim, tstmtscan, tcleanvars, treconstruct);
+#endif
 }
 
 void eliminateMemSafe(Ref ast) {
@@ -2129,7 +2145,7 @@ void simplifyIfs(Ref ast) {
               Ref curr = deStat(stats[i]);
               other[1] = make2(SEQ, curr, other[1]);
             }
-            Ref temp = makeArray();
+            Ref temp = makeArray(1);
             temp->push_back(other);
             stats = body[1] = temp;
           }
@@ -2295,7 +2311,7 @@ void registerize(Ref ast) {
       Ref assign = makeNum(0);
       // TODO: will be an isEmpty here, can reuse it.
       fun[3]->insert(0, make1(VAR, fun[2]->map([&assign](Ref param) {
-        return &(makeArray()->push_back(param).push_back(assign));
+        return &(makeArray(2)->push_back(param).push_back(assign));
       })));
     }
     // Replace all var definitions with assignments; we will add var definitions at the top after we registerize
@@ -4018,7 +4034,7 @@ void eliminateDeadFuncs(Ref ast) {
     }
     AsmData asmData(fun);
     fun[3]->setSize(1);
-    fun[3][0] = make1(STAT, make2(CALL, makeName(ABORT), &(makeArray())->push_back(makeNum(-1))));
+    fun[3][0] = make1(STAT, make2(CALL, makeName(ABORT), &(makeArray(1))->push_back(makeNum(-1))));
     asmData.vars.clear();
     asmData.denormalize();
   });
