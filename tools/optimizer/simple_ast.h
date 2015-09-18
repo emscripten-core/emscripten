@@ -65,10 +65,10 @@ struct Arena {
   std::vector<ArrayStorage*> arr_chunks;
   int arr_index;
 
-  Arena() : index(0), arr_index{0} {}
+  Arena() : index(0), arr_index(0) {}
 
   Ref alloc();
-  ArrayStorage* allocArr();
+  ArrayStorage* allocArray();
 };
 
 extern Arena arena;
@@ -147,14 +147,14 @@ struct Value {
   Value& setArray(ArrayStorage &a) {
     free();
     type = Array;
-    arr = arena.allocArr();
+    arr = arena.allocArray();
     *arr = a;
     return *this;
   }
   Value& setArray(int size_hint=0) {
     free();
     type = Array;
-    arr = arena.allocArr();
+    arr = arena.allocArray();
     arr->reserve(size_hint);
     return *this;
   }

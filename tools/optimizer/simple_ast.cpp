@@ -47,7 +47,7 @@ Ref Arena::alloc() {
   return &chunks.back()[index++];
 }
 
-ArrayStorage* Arena::allocArr() {
+ArrayStorage* Arena::allocArray() {
   if (arr_chunks.size() == 0 || arr_index == CHUNK_SIZE) {
     arr_chunks.push_back(new ArrayStorage[CHUNK_SIZE]);
     arr_index = 0;
