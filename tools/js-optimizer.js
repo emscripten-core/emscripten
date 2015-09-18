@@ -5803,6 +5803,14 @@ function splitMemory(ast, shell) {
       }
     }
   });
+  var SPLIT_GETS = set('get8', 'get16', 'get32', 'getU8', 'getU16', 'getU32', 'getF32', 'getF64');
+  traverse(ast, function(node, type) {
+    if (type === 'binary' && node[1] === '|' && node[2][0] === 'call' && node[2][1][0] === 'name' && node[2][1][1] in SPLIT_GETS && node[3][0] === 'num' && node[3][1] === 0) {
+      return node[2];
+    } else if (type === 'unary-prefix' && node[1] === '+' && node[2][0] === 'call' && node[2][1][0] === 'name' && node[2][1][1] in SPLIT_GETS) {
+      return node[2];
+    }
+  });
 }
 
 function splitMemoryShell(ast) {
