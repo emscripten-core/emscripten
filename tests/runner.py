@@ -29,6 +29,56 @@ try:
 except:
   raise Exception('Cannot find "COMPILER_OPTS" definition. Is %s set up properly? You may need to copy the template settings file into it.' % EM_CONFIG)
 
+HELP_TEXT = '''
+==============================================================================
+Running the main part of the test suite. Don't forget to run the other parts!
+A recommended order is:
+
+  sanity - tests for first run, etc., modifies ~/.emscripten
+  (the main test suite)
+  other - tests separate from the main suite
+  browser - runs pages in a web browser
+  interactive - runs interactive browser tests that need human verification, and could not be automated
+  sockets - runs websocket networking tests
+  benchmark - run before and after each set of changes before pushing to
+              master, verify no regressions
+
+To run one of those parts, do something like
+
+  python tests/runner.py sanity
+
+To run a specific set of tests, you can do things like
+
+  python tests/runner.py asm2
+
+(that runs the asm2 (asm.js, -O2) tests). You can run individual tests with
+
+  python tests/runner.py test_hello_world
+
+Combinations work too, for example
+
+  python tests/runner.py browser.test_sdl_image
+
+In the main test suite, you can run all variations (O0, O1, O2, etc.) of
+an individual test with
+
+  python tests/runner.py ALL.test_hello_world
+
+You can run a random set of N tests with a command like
+
+  python tests/runner.py random50
+
+Debugging: You can run
+
+  EM_SAVE_DIR=1 python tests/runner.py ALL.test_hello_world
+
+in order to save the test runner directory, in /tmp/emscripten_temp. All files
+created by the test will be present there. You can also use EMCC_DEBUG to
+further debug the compiler itself, see emcc.
+==============================================================================
+
+'''
+
 # Core test runner class, shared between normal tests and benchmarks
 checked_sanity = False
 test_modes = ['default', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g', 'asm2i', 'asm2nn']
@@ -807,6 +857,10 @@ def get_bullet_library(runner_core, use_cmake):
   return runner_core.get_library('bullet', generated_libs, configure=configure_commands, configure_args=configure_args, cache_name_extra=configure_commands[0])
 
 if __name__ == '__main__':
+  if len(sys.argv) == 2 and sys.argv[1] in ['--help', '-h']:
+    print HELP_TEXT
+    sys.exit(0)
+
   # Sanity checks
   total_engines = len(JS_ENGINES)
   JS_ENGINES = filter(check_engine, JS_ENGINES)
@@ -873,55 +927,7 @@ if __name__ == '__main__':
   # If no tests were specified, run the core suite
   if len(sys.argv) == 1:
     sys.argv = [sys.argv[0]] + map(lambda mode: mode, test_modes)
-    print '''
-==============================================================================
-Running the main part of the test suite. Don't forget to run the other parts!
-A recommended order is:
-
-  sanity - tests for first run, etc., modifies ~/.emscripten
-  (the main test suite)
-  other - tests separate from the main suite
-  browser - runs pages in a web browser
-  interactive - runs interactive browser tests that need human verification, and could not be automated
-  sockets - runs websocket networking tests
-  benchmark - run before and after each set of changes before pushing to
-              master, verify no regressions
-
-To run one of those parts, do something like
-
-  python tests/runner.py sanity
-
-To run a specific set of tests, you can do things like
-
-  python tests/runner.py asm2
-
-(that runs the asm2 (asm.js, -O2) tests). You can run individual tests with
-
-  python tests/runner.py test_hello_world
-
-Combinations work too, for example
-
-  python tests/runner.py browser.test_sdl_image
-
-In the main test suite, you can run all variations (O0, O1, O2, etc.) of
-an individual test with
-
-  python tests/runner.py ALL.test_hello_world
-
-You can run a random set of N tests with a command like
-
-  python tests/runner.py random50
-
-Debugging: You can run
-
-  EM_SAVE_DIR=1 python tests/runner.py ALL.test_hello_world
-
-in order to save the test runner directory, in /tmp/emscripten_temp. All files
-created by the test will be present there. You can also use EMCC_DEBUG to
-further debug the compiler itself, see emcc.
-==============================================================================
-
-'''
+    print HELP_TEXT
     time.sleep(2)
 
   # If we were asked to run random tests, do that
