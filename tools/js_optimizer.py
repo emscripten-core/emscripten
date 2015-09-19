@@ -330,8 +330,6 @@ def run_on_js(filename, passes, js_engine, source_map=False, extra_info=None, ju
     passes = filter(lambda p: p != 'cleanup', passes) # we will do it manually
 
   split_memory = 'splitMemory' in passes
-  if cleanup:
-    passes = filter(lambda p: p != 'splitMemory', passes) # we will do it manually
 
   if not minify_globals:
     pre = js[:start_funcs + len(start_funcs_marker)]
