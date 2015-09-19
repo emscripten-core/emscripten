@@ -1004,5 +1004,6 @@ if __name__ == '__main__':
     numFailures += len(results.errors) + len(results.failures)
 
   # Return the number of failures as the process exit code for automating success/failure reporting.
-  exit(numFailures)
+  exitcode = min(numFailures, 255)
+  sys.exit(exitcode)
 
