@@ -5204,6 +5204,11 @@ main(int argc, char **argv)
 int main() {
   int x = 5;
   EM_ASM_({
+    var allocs = [];
+    allocs.push([]);
+    allocs.push([]);
+    allocs.push([]);
+    allocs.push([]);
     var ptr = $0;
     assert(ptr >= STACK_BASE && ptr < STACK_MAX, 'ptr should be on stack, but ' + [STACK_BASE, STACK_MAX, ptr]);
     function getIndex(x) {
@@ -5214,14 +5219,36 @@ int main() {
     // allocate into other chunks
     do {
       var t = Module._malloc(1024*1024);
+      allocs[getIndex(t)].push(t);
       Module.print('allocating, got in ' + getIndex(t));
     } while (getIndex(t) === 0);
     assert(getIndex(t) === 1, 'allocated into second chunk');
     do {
       var t = Module._malloc(1024*1024);
+      allocs[getIndex(t)].push(t);
       Module.print('more allocating, got in ' + getIndex(t));
     } while (getIndex(t) === 1);
     assert(getIndex(t) === 2, 'into third chunk');
+    do {
+      var t = Module._malloc(1024*1024);
+      allocs[getIndex(t)].push(t);
+      Module.print('more allocating, got in ' + getIndex(t));
+    } while (getIndex(t) === 2);
+    assert(getIndex(t) === 3, 'into third chunk');
+    // write values
+    assert(allocs[1].length > 5 && allocs[2].length > 5);
+    for (var i = 0; i < allocs[1].length; i++) {
+      HEAPU8[allocs[1][i]] = i & 255
+    }
+    for (var i = 0; i < allocs[2].length; i++) {
+      HEAPU8[allocs[2][i]] = (i*i) & 255;
+    }
+    for (var i = 0; i < allocs[1].length; i++) {
+      assert(HEAPU8[allocs[1][i]] === (i & 255));
+    }
+    for (var i = 0; i < allocs[2].length; i++) {
+      assert(HEAPU8[allocs[2][i]] === ((i*i) & 255));
+    }
     Module.print('success.');
   }, &x);
 }
