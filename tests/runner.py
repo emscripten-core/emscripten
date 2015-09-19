@@ -87,9 +87,6 @@ test_index = 0
 use_all_engines = os.environ.get('EM_ALL_ENGINES') # generally js engines are equivalent, testing 1 is enough. set this
                                                    # to force testing on all js engines, good to find js engine bugs
 
-if use_all_engines:
-  print '(using ALL js engines)'
-
 class RunnerCore(unittest.TestCase):
   emcc_args = None
   save_dir = os.environ.get('EM_SAVE_DIR')
@@ -860,6 +857,9 @@ if __name__ == '__main__':
   if len(sys.argv) == 2 and sys.argv[1] in ['--help', '-h']:
     print HELP_TEXT
     sys.exit(0)
+
+  if use_all_engines:
+    print '(using ALL js engines)'
 
   # Sanity checks
   total_engines = len(JS_ENGINES)
