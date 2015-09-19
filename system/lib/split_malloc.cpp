@@ -35,8 +35,6 @@ struct Space {
   size_t count; // how many allocations are in the space
   size_t index; // the index of this space, it then represents memory at SPLIT_MEMORY*index
 
-  Space() : space(0), allocated(false), count(0), index(0) {}
-
   void allocate() {
     assert(!allocated);
     assert(count == 0);
@@ -64,6 +62,9 @@ static void init() {
   num_spaces = EM_ASM_INT_V({ return HEAPU8s.length; });
   if (num_spaces >= MAX_SPACES) abort();
   for (int i = 0; i < num_spaces; i++) {
+    spaces[i].space = 0;
+    spaces[i].allocated = false;
+    spaces[i].count = 0;
     spaces[i].index = i;
   }
   initialized = true;
