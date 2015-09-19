@@ -5712,6 +5712,11 @@ return malloc(size);
       self.emcc_args += ['-s', 'EMTERPRETIFY_WHITELIST=["_frexpl"]'] # test double call assertions
       test()
 
+    print 'split memory'
+    Settings.SPLIT_MEMORY = 8*1024*1024
+    test()
+    Settings.SPLIT_MEMORY = 0
+
   def test_sse1(self):
     self.banned_js_engines = [NODE_JS] # the test code hits NaN canonicalization on node.js
     if self.is_emterpreter(): return self.skip('todo')
