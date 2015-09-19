@@ -568,6 +568,7 @@ var SPLIT_MEMORY = 0; // If > 0, we split memory into chunks, of the size given 
                       //    better since it can free chunks in the middle.
                       // TODO: more docs
                       // TODO: add malloc-split to embuilder
+var SAFE_SPLIT_MEMORY = 0; // Similar to SAFE_HEAP, but for SPLIT_MEMORY.
 
 var RUNNING_JS_OPTS = 0; // whether js opts will be run, after the main compiler
 var BOOTSTRAPPING_STRUCT_INFO = 0; // whether we are in the generate struct_info bootstrap phase

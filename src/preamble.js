@@ -1367,77 +1367,132 @@ function freeSplitChunk(i) {
   HEAPF64 = fake(HEAPF64s);
 })();
 
-// TODO: add SAFE_HEAP here
+#if SAFE_SPLIT_MEMORY
+function checkPtr(ptr, shifts) {
+  if (ptr <= 0) abort('segmentation fault storing to address ' + ptr);
+  if (ptr !== ((ptr >> shifts) << shifts)) abort('alignment error storing to address ' + ptr + ', which was expected to be aligned to a shift of ' + shifts);
+  if ((ptr >> SPLIT_MEMORY_BITS) !== (ptr + Math.pow(2, shifts) - 1 >> SPLIT_MEMORY_BITS)) abort('segmentation fault, write spans split chunks ' + [ptr, shifts]); 
+}
+#endif
+
 function get8(ptr) {
   ptr = ptr | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 0);
+#endif
   return HEAP8s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 0] | 0;
 }
 function get16(ptr) {
   ptr = ptr | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 1);
+#endif
   return HEAP16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] | 0;
 }
 function get32(ptr) {
   ptr = ptr | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 2);
+#endif
   return HEAP32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] | 0;
 }
 function getU8(ptr) {
   ptr = ptr | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 0);
+#endif
   return HEAPU8s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 0] | 0;
 }
 function getU16(ptr) {
   ptr = ptr | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 1);
+#endif
   return HEAPU16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] | 0;
 }
 function getU32(ptr) {
   ptr = ptr | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 2);
+#endif
   return HEAPU32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] | 0;
 }
 function getF32(ptr) {
   ptr = ptr | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 2);
+#endif
   return +HEAPF32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2];
 }
 function getF64(ptr) {
   ptr = ptr | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 3);
+#endif
   return +HEAPF64s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 3];
 }
 function set8(ptr, value) {
   ptr = ptr | 0;
   value = value | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 0);
+#endif
   HEAP8s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 0] = value;
 }
 function set16(ptr, value) {
   ptr = ptr | 0;
   value = value | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 1);
+#endif
   HEAP16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] = value;
 }
 function set32(ptr, value) {
   ptr = ptr | 0;
   value = value | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 2);
+#endif
   HEAP32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] = value;
 }
 function setU8(ptr, value) {
   ptr = ptr | 0;
   value = value | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 0);
+#endif
   HEAPU8s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 0] = value;
 }
 function setU16(ptr, value) {
   ptr = ptr | 0;
   value = value | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 1);
+#endif
   HEAPU16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] = value;
 }
 function setU32(ptr, value) {
   ptr = ptr | 0;
   value = value | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 2);
+#endif
   HEAPU32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] = value;
 }
 function setF32(ptr, value) {
   ptr = ptr | 0;
   value = +value;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 2);
+#endif
   HEAPF32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] = value;
 }
 function setF64(ptr, value) {
   ptr = ptr | 0;
   value = +value;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 3);
+#endif
   HEAPF64s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 3] = value;
 }
 #endif // SPLIT_MEMORY
@@ -1445,8 +1500,10 @@ function setF64(ptr, value) {
 #endif // USE_PTHREADS
 
 // Endianness check (note: assumes compiler arch was little-endian)
+#if SAFE_SPLIT_MEMORY == 0
 HEAP32[0] = 255;
 assert(HEAPU8[0] === 255 && HEAPU8[3] === 0, 'Typed arrays 2 must be run on a little-endian system');
+#endif
 
 Module['HEAP'] = HEAP;
 Module['buffer'] = buffer;

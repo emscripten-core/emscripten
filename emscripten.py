@@ -869,7 +869,7 @@ function _emscripten_replace_memory(newBuffer) {
   buffer = newBuffer;
   return true;
 }
-'''] + ['' if not settings['SPLIT_MEMORY'] else '''
+'''] + ['' if not settings['SPLIT_MEMORY'] or settings['SAFE_SPLIT_MEMORY'] else '''
 function get8(ptr) {
   ptr = ptr | 0;
   return HEAP8s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 0] | 0;
