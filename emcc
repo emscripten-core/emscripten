@@ -1548,8 +1548,10 @@ try:
 
       if shared.Settings.PRECISE_F32: js_optimizer_queue += ['optimizeFrounds']
 
-  def do_minify():
+  def do_minify(): # minifies the code. this is also when we do certain optimizations that must be done right before or after minification
     global js_optimizer_queue
+
+    if shared.Settings.SPLIT_MEMORY: js_optimizer_queue += ['splitMemory', 'simplifyExpressions'] # must be done before minification
 
     if opt_level >= 2:
       if debug_level < 2 and not use_closure_compiler == 2:
@@ -1566,8 +1568,6 @@ try:
 
   if js_opts:
     if shared.Settings.SAFE_HEAP: js_optimizer_queue += ['safeHeap']
-
-    if shared.Settings.SPLIT_MEMORY: js_optimizer_queue += ['splitMemory', 'simplifyExpressions']
 
     if shared.Settings.OUTLINING_LIMIT > 0:
       js_optimizer_queue += ['outline']
