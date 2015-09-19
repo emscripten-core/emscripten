@@ -9,7 +9,7 @@ Simple test runner. Consider using parallel_test_core.py for faster iteration ti
 
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer, multiprocessing, functools, stat, string, random
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer, multiprocessing, functools, stat, string, random, operator
 from urllib import unquote
 
 # Setup
@@ -974,25 +974,34 @@ if __name__ == '__main__':
 
   # Filter and load tests from the discovered modules
   loader = unittest.TestLoader()
-  names = sys.argv[1:]
+  names = set(sys.argv[1:])
   suites = []
   for m in modules:
-    try:
-      suites.append(loader.loadTestsFromNames(names, m))
-    except:
-      pass
+    mnames = []
+    for name in list(names):
+      try:
+        operator.attrgetter(name)(m)
+        mnames.append(name)
+        names.remove(name)
+      except AttributeError:
+        pass
+    if len(mnames) > 0:
+      suites.append(loader.loadTestsFromNames(sorted(mnames), m))
 
   numFailures = 0 # Keep count of the total number of failing tests.
 
-  # Run the discovered tests
   if not len(suites):
-    print >> sys.stderr, 'No tests found for %s' % str(sys.argv[1:])
+    print >> sys.stderr, 'No tests at all found!'
     numFailures = 1
-  else:
-    testRunner = unittest.TextTestRunner(verbosity=2)
-    for suite in suites:
-      results = testRunner.run(suite)
-      numFailures += len(results.errors) + len(results.failures)
+  elif len(names) > 0:
+    print 'WARNING: could not find the following tests: ' + ' '.join(names)
+    numFailures = len(names)
+
+  # Run the discovered tests
+  testRunner = unittest.TextTestRunner(verbosity=2)
+  for suite in suites:
+    results = testRunner.run(suite)
+    numFailures += len(results.errors) + len(results.failures)
 
   # Return the number of failures as the process exit code for automating success/failure reporting.
   exit(numFailures)
