@@ -858,6 +858,12 @@ if __name__ == '__main__':
     print HELP_TEXT
     sys.exit(0)
 
+  # If no tests were specified, run the core suite
+  if len(sys.argv) == 1:
+    sys.argv = [sys.argv[0]] + map(lambda mode: mode, test_modes)
+    print HELP_TEXT
+    time.sleep(2)
+
   if use_all_engines:
     print '(using ALL js engines)'
 
@@ -923,12 +929,6 @@ if __name__ == '__main__':
             pass
       sys.argv[i] = None
   sys.argv = filter(lambda arg: arg is not None, sys.argv)
-
-  # If no tests were specified, run the core suite
-  if len(sys.argv) == 1:
-    sys.argv = [sys.argv[0]] + map(lambda mode: mode, test_modes)
-    print HELP_TEXT
-    time.sleep(2)
 
   # If we were asked to run random tests, do that
   first = sys.argv[1]
