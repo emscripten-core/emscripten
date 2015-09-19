@@ -955,7 +955,6 @@ try:
     if shared.Settings.ASM_JS == 1:
       logging.warning('not all asm.js optimizations are possible with SPLIT_MEMORY, disabling those')
       shared.Settings.ASM_JS = 2
-    assert not shared.Settings.ALLOW_MEMORY_GROWTH, 'TODO: memory growth with SPLIT_MEMORY'
     assert not shared.Settings.SAFE_HEAP, 'TODO: safe heap with SPLIT_MEMORY'
     assert not shared.Settings.RELOCATABLE, 'no SPLIT_MEMORY with RELOCATABLE'
     assert not shared.Settings.USE_PTHREADS, 'no SPLIT_MEMORY with pthreads'

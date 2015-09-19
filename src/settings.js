@@ -563,6 +563,9 @@ var EMTERPRETIFY_ADVISE = 0; // Performs a static analysis to suggest which func
                              // emcc argument when compiling later.
 
 var SPLIT_MEMORY = 0; // If > 0, we split memory into chunks, of the size given in this parameter.
+                      //  * TOTAL_MEMORY becomes the maximum amount of memory, as chunks are allocated on
+                      //    demand. That means this achieves a result similar to ALLOW_MEMORY_GROWTH, but
+                      //    better since it can free chunks in the middle.
                       // TODO: more docs
                       // TODO: add malloc-split to embuilder
 
