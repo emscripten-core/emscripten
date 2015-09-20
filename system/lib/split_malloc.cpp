@@ -42,13 +42,29 @@ struct Space {
     index = i;
   }
 
-  void allocate() {
+  bool allocate() {
     assert(!allocated);
     assert(count == 0);
     allocated = true;
     int start;
     if (index > 0) {
-      EM_ASM_({ allocateSplitChunk($0) }, index);
+      if (int(split_memory*(index+1)) < 0) {
+        // 32-bit pointer overflow. we could support more than this 2G, up to 4GB, if we made all pointer shifts >>>. likely slower though
+        return false;
+      }
+      int success = EM_ASM_INT({
+        if (!ALLOW_MEMORY_GROWTH) {
+          allocateSplitChunk($0);
+          return 1;
+        }
+        try {
+          allocateSplitChunk($0);
+          return 1;
+        } catch(e) {
+          return 0; // failed to allocate
+        }
+      }, index);
+      if (!success) return false;
       start = split_memory*index;
     } else {
       // small area in existing chunk 0
@@ -64,6 +80,7 @@ struct Space {
       }
     }
     assert(space);
+    return true;
   }
 
   void free() {
@@ -120,7 +137,9 @@ static void* get_memory(size_t size, bool malloc=true, size_t alignment=-1, bool
   static int next = 0;
   int start = next;
   while (1) { // simple round-robin, while keeping to use the same one as long as it keeps succeeding
-    if (!spaces[next].allocated) spaces[next].allocate();
+    if (!spaces[next].allocated) {
+      if (!spaces[next].allocate()) return 0; // might fail to allocate in memory growth mode
+    }
     void *ret;
     if (malloc) {
       ret = mspace_malloc(spaces[next].space, size);
