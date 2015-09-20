@@ -5278,6 +5278,11 @@ int main() {
     return SPLIT_MEMORY;
   });
   int counter = 0;
+  while (alloc_where_is_it() == 0) {
+    counter++;
+  }
+  printf("allocations in first chunk: %d\n", counter);
+  assert(counter > 10); // less in first chunk
   while (alloc_where_is_it() == 1) {
     counter++;
   }
@@ -5393,7 +5398,8 @@ int main() {
     var e = Module.printErr;
     Module.printErr = Module.print = function(){};
     var fail = false;
-    allocateSplitChunk(2); // we will slice into this
+    if (!buffers[1]) allocateSplitChunk(1); // we will slice into this
+    if (!buffers[2]) allocateSplitChunk(2); // we will slice into this
     TOP:
     for (var i = 0; i < SPLIT_MEMORY*3; i++) {
       HEAPU8.subarray(i);
@@ -5442,16 +5448,20 @@ int main() {
 int main() {
   EM_ASM({
     assert(buffers[0]); // always here
-    assert(buffers[1]); // callMain allocates a little, so always one chunk
+    assert(!buffers[1]);
     assert(!buffers[2]);
     function getIndex(x) {
       return x >> SPLIT_MEMORY_BITS;
     }
-    var allocations = [];
     do {
       var t = Module._malloc(1024*1024);
       Module.print('allocating, got in ' + getIndex(t));
-      allocations.push(t);
+    } while (getIndex(t) === 0);
+    assert(getIndex(t) === 1, 'allocated into first chunk');
+    assert(buffers[1]); // has been allocated now
+    do {
+      var t = Module._malloc(1024*1024);
+      Module.print('allocating, got in ' + getIndex(t));
     } while (getIndex(t) === 1);
     assert(getIndex(t) === 2, 'allocated into second chunk');
     assert(buffers[2]); // has been allocated now

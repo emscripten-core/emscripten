@@ -38,19 +38,35 @@ struct Space {
   void allocate() {
     assert(!allocated);
     assert(count == 0);
-    assert(index > 0); // 0 is never allocated, it is for the stack, static, etc. # TODO: make a small space in there?
     allocated = true;
-    EM_ASM_({ allocateSplitChunk($0) }, index);
-    space = create_mspace_with_base((void*)(split_memory*index), split_memory, 0);
+    int start;
+    if (index > 0) {
+      EM_ASM_({ allocateSplitChunk($0) }, index);
+      start = split_memory*index;
+    } else {
+      // small area in existing chunk 0
+      start = EM_ASM_INT_V({ return (DYNAMICTOP+3)&-4; });
+      assert(start < split_memory);
+    }
+    int size = (split_memory*(index+1)) - start;
+    if (index > 0) assert(size == split_memory);
+    space = create_mspace_with_base((void*)start, size, 0);
+    if (index == 0) {
+      if (!space) {
+        EM_ASM({ Module.printErr("failed to create space in the first split memory chunk - SPLIT_MEMORY might need to be larger"); });
+      }
+    }
+    assert(space);
   }
 
   void free() {
     assert(allocated);
     assert(count == 0);
-    assert(index > 0);
     allocated = false;
     destroy_mspace((void*)(split_memory*index));
-    EM_ASM_({ freeSplitChunk($0) }, index);
+    if (index > 0) {
+      EM_ASM_({ freeSplitChunk($0) }, index);
+    }
   }
 };
 
@@ -99,7 +115,7 @@ void* malloc(size_t size) {
     }
     return 0;
   }
-  static int next = 1;
+  static int next = 0;
   int start = next;
   while (1) { // simple round-robin, while keeping to use the same one as long as it keeps succeeding
     if (!spaces[next].allocated) spaces[next].allocate();
@@ -109,7 +125,7 @@ void* malloc(size_t size) {
       return ret;
     }
     next++;
-    if (next == num_spaces) next = 1;
+    if (next == num_spaces) next = 0;
     if (next == start) break;
   }
   return 0; // we cycled, so none of them can allocate
@@ -162,7 +178,7 @@ void* memalign(size_t alignment, size_t size) {
     }
     return 0;
   }
-  static int next = 1;
+  static int next = 0;
   int start = next;
   while (1) { // simple round-robin, while keeping to use the same one as long as it keeps succeeding
     if (!spaces[next].allocated) spaces[next].allocate();
@@ -172,7 +188,7 @@ void* memalign(size_t alignment, size_t size) {
       return ret;
     }
     next++;
-    if (next == num_spaces) next = 1;
+    if (next == num_spaces) next = 0;
     if (next == start) break;
   }
   return 0; // we cycled, so none of them can allocate
