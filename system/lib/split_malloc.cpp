@@ -35,6 +35,13 @@ struct Space {
   size_t count; // how many allocations are in the space
   size_t index; // the index of this space, it then represents memory at SPLIT_MEMORY*index
 
+  void init(int i) {
+    space = 0;
+    allocated = false;
+    count = 0;
+    index = i;
+  }
+
   void allocate() {
     assert(!allocated);
     assert(count == 0);
@@ -78,10 +85,7 @@ static void init() {
   num_spaces = EM_ASM_INT_V({ return HEAPU8s.length; });
   if (num_spaces >= MAX_SPACES) abort();
   for (int i = 0; i < num_spaces; i++) {
-    spaces[i].space = 0;
-    spaces[i].allocated = false;
-    spaces[i].count = 0;
-    spaces[i].index = i;
+    spaces[i].init(i);
   }
   initialized = true;
 }
@@ -99,7 +103,7 @@ static mspace get_space(void* ptr) { // for a valid pointer, so the space must a
   return space.space;
 }
 
-static void* get_memory(size_t size, bool malloc=true, size_t alignment=-1) {
+static void* get_memory(size_t size, bool malloc=true, size_t alignment=-1, bool must_succeed=false) {
   if (!initialized) {
     init();
   }
@@ -127,11 +131,26 @@ static void* get_memory(size_t size, bool malloc=true, size_t alignment=-1) {
       spaces[next].count++;
       return ret;
     }
+    if (must_succeed) {
+      EM_ASM({ Module.printErr("failed to allocate in a new space after memory growth, perhaps increase SPLIT_MEMORY?"); });
+      abort();
+    }
     next++;
     if (next == num_spaces) next = 0;
     if (next == start) break;
   }
-  return 0; // we cycled, so none of them can allocate
+  // we cycled, so none of them can allocate
+  EM_ASM({
+    if (!ALLOW_MEMORY_GROWTH) {
+      abort('Cannot enlarge memory arrays. Either (1) compile with -s TOTAL_MEMORY=X with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with ALLOW_MEMORY_GROWTH which adjusts the size at runtime but prevents some optimizations, or (3) set Module.TOTAL_MEMORY to a higher value before the program runs.');
+    }
+  });
+  // memory growth is on, add another chunk
+  if (num_spaces + 1 >= MAX_SPACES) abort();
+  spaces[num_spaces].init(num_spaces);
+  next = num_spaces;
+  num_spaces++;
+  return get_memory(size, malloc, alignment, true);
 }
 
 extern "C" {

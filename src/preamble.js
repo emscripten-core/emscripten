@@ -1036,7 +1036,7 @@ function enlargeMemory() {
   abort('Cannot enlarge memory arrays, since compiling with pthreads support enabled (-s USE_PTHREADS=1).');
 #else
 #if ALLOW_MEMORY_GROWTH == 0
-  abort('Cannot enlarge memory arrays. Either (1) compile with -s TOTAL_MEMORY=X with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with ALLOW_MEMORY_GROWTH which adjusts the size at runtime but prevents some optimizations, or (3) set Module.TOTAL_MEMORY before the program runs.');
+  abort('Cannot enlarge memory arrays. Either (1) compile with -s TOTAL_MEMORY=X with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with ALLOW_MEMORY_GROWTH which adjusts the size at runtime but prevents some optimizations, or (3) set Module.TOTAL_MEMORY to a higher value before the program runs.');
 #else
   // TOTAL_MEMORY is the current size of the actual array, and DYNAMICTOP is the new top.
 #if ASSERTIONS
@@ -1252,6 +1252,7 @@ HEAPF64 = new Float64Array(buffer);
 var SPLIT_MEMORY = {{{ SPLIT_MEMORY }}};
 var SPLIT_MEMORY_MASK = SPLIT_MEMORY - 1;
 var SPLIT_MEMORY_BITS = -1;
+var ALLOW_MEMORY_GROWTH = {{{ ALLOW_MEMORY_GROWTH }}};
 
 Module['SPLIT_MEMORY'] = SPLIT_MEMORY;
 

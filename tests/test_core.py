@@ -2213,6 +2213,81 @@ int main() {
       win = win[win.find(code_start):]
       assert len(fail) < len(win), 'failing code - without memory growth on - is more optimized, and smaller' + str([len(fail), len(win)])
 
+  def test_memorygrowth_2(self):
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0'] # start with 0
+
+    emcc_args = self.emcc_args[:]
+
+    def test():
+      self.emcc_args = emcc_args[:]
+
+      # With typed arrays in particular, it is dangerous to use more memory than TOTAL_MEMORY,
+      # since we then need to enlarge the heap(s).
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+        #include <string.h>
+        #include <assert.h>
+        #include "emscripten.h"
+
+        int main(int argc, char **argv)
+        {
+          char *buf1 = (char*)malloc(100);
+          char *data1 = "hello";
+          memcpy(buf1, data1, strlen(data1)+1);
+
+          float *buf2 = (float*)malloc(100);
+          float pie = 4.955;
+          memcpy(buf2, &pie, sizeof(float));
+
+          printf("*pre: %s,%.3f*\n", buf1, buf2[0]);
+
+          int totalMemory = emscripten_run_script_int("TOTAL_MEMORY");
+          int chunk = 1024*1024;
+          char *buf3;
+          for (int i = 0; i < (totalMemory/chunk)+1; i++) {
+            buf3 = (char*)malloc(chunk);
+            buf3[argc] = (int)buf2;
+          }
+          if (argc % 7 == 6) printf("%d\n", memcpy(buf3, buf1, argc));
+          char *buf4 = (char*)malloc(100);
+          float *buf5 = (float*)malloc(100);
+          //printf("totalMemory: %d bufs: %d,%d,%d,%d,%d\n", totalMemory, buf1, buf2, buf3, buf4, buf5);
+          assert((int)buf4 > (int)totalMemory && (int)buf5 > (int)totalMemory);
+
+          printf("*%s,%.3f*\n", buf1, buf2[0]); // the old heap data should still be there
+
+          memcpy(buf4, buf1, strlen(data1)+1);
+          memcpy(buf5, buf2, sizeof(float));
+          printf("*%s,%.3f*\n", buf4, buf5[0]); // and the new heap space should work too
+
+          return 0;
+        }
+      '''
+
+      # Fail without memory growth
+      self.do_run(src, 'Cannot enlarge memory arrays.')
+      fail = open('src.cpp.o.js').read()
+
+      # Win with it
+      self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
+      self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+      win = open('src.cpp.o.js').read()
+
+      if '-O2' in self.emcc_args:
+        # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
+        code_start = 'var TOTAL_MEMORY'
+        fail = fail[fail.find(code_start):]
+        win = win[win.find(code_start):]
+        assert len(fail) < len(win), 'failing code - without memory growth on - is more optimized, and smaller' + str([len(fail), len(win)])
+
+    test()
+
+    print 'split memory'
+    Settings.SPLIT_MEMORY = 16*1024*1024
+    test()
+    Settings.SPLIT_MEMORY = 0
+
   def test_ssr(self): # struct self-ref
       src = '''
         #include <stdio.h>
