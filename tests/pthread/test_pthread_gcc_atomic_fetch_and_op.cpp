@@ -87,9 +87,12 @@ int main()
 		assert(y == 5);
 		assert(x == 15);
 		volatile int n = 1;
-		for(int i = 0; i < NUM_THREADS; ++i) pthread_create(&thread[i], NULL, thread_fetch_and_add, (void*)&n);
-		for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
-		assert(n == NUM_THREADS*10000+1);
+		if (emscripten_has_threading_support())
+		{
+			for(int i = 0; i < NUM_THREADS; ++i) pthread_create(&thread[i], NULL, thread_fetch_and_add, (void*)&n);
+			for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
+			assert(n == NUM_THREADS*10000+1);
+		}
 	}
 	{
 		T x = 5;
@@ -97,9 +100,12 @@ int main()
 		assert(y == 5);
 		assert(x == -5);
 		volatile int n = 1;
-		for(int i = 0; i < NUM_THREADS; ++i) pthread_create(&thread[i], NULL, thread_fetch_and_sub, (void*)&n);
-		for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
-		assert(n == 1-NUM_THREADS*10000);
+		if (emscripten_has_threading_support())
+		{
+			for(int i = 0; i < NUM_THREADS; ++i) pthread_create(&thread[i], NULL, thread_fetch_and_sub, (void*)&n);
+			for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
+			assert(n == 1-NUM_THREADS*10000);
+		}
 	}
 	{
 		T x = 5;
@@ -109,9 +115,12 @@ int main()
 		for(int x = 0; x < 100; ++x) // Test a few times for robustness, since this test is so short-lived.
 		{
 			fetch_and_or_data = (1<<NUM_THREADS);
-			for(int i = 0; i < NUM_THREADS; ++i) pthread_create(&thread[i], NULL, thread_fetch_and_or, (void*)(1<<i));
-			for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
-			assert(fetch_and_or_data == (1<<(NUM_THREADS+1))-1);
+			if (emscripten_has_threading_support())
+			{
+				for(int i = 0; i < NUM_THREADS; ++i) pthread_create(&thread[i], NULL, thread_fetch_and_or, (void*)(1<<i));
+				for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
+				assert(fetch_and_or_data == (1<<(NUM_THREADS+1))-1);
+			}
 		}
 	}
 	{
@@ -122,9 +131,12 @@ int main()
 		for(int x = 0; x < 100; ++x) // Test a few times for robustness, since this test is so short-lived.
 		{
 			fetch_and_and_data = (1<<(NUM_THREADS+1))-1;
-			for(int i = 0; i < NUM_THREADS; ++i) pthread_create(&thread[i], NULL, thread_fetch_and_and, (void*)(~(1<<i)));
-			for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
-			assert(fetch_and_and_data == 1<<NUM_THREADS);
+			if (emscripten_has_threading_support())
+			{
+				for(int i = 0; i < NUM_THREADS; ++i) pthread_create(&thread[i], NULL, thread_fetch_and_and, (void*)(~(1<<i)));
+				for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
+				assert(fetch_and_and_data == 1<<NUM_THREADS);
+			}
 		}
 	}
 	{
@@ -135,9 +147,12 @@ int main()
 		for(int x = 0; x < 100; ++x) // Test a few times for robustness, since this test is so short-lived.
 		{
 			fetch_and_xor_data = 1<<NUM_THREADS;
-			for(int i = 0; i < NUM_THREADS; ++i) pthread_create(&thread[i], NULL, thread_fetch_and_xor, (void*)(~(1<<i)));
-			for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
-			assert(fetch_and_xor_data == (1<<(NUM_THREADS+1))-1);
+			if (emscripten_has_threading_support())
+			{
+				for(int i = 0; i < NUM_THREADS; ++i) pthread_create(&thread[i], NULL, thread_fetch_and_xor, (void*)(~(1<<i)));
+				for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
+				assert(fetch_and_xor_data == (1<<(NUM_THREADS+1))-1);
+			}
 		}
 	}
 // XXX NAND support does not exist in Atomics API.

@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <emscripten.h>
+#include <emscripten/threading.h>
 
 // Stores/encodes the results of calling to cleanup handlers.
 int cleanupState = 1;
@@ -63,6 +64,18 @@ pthread_t thr[4];
 
 int main()
 {
+   int result = 0;
+
+   if (!emscripten_has_threading_support())
+   {
+#ifdef REPORT_RESULT
+      result = 907640832;
+      REPORT_RESULT();
+#endif
+      printf("Skipped: Threading is not supported.\n");
+      return 0;
+   }
+
    pthread_cleanup_push(cleanup_handler1, (void*)9998);
    pthread_cleanup_push(cleanup_handler1, (void*)9999);
 
@@ -84,7 +97,7 @@ int main()
    EM_ASM_INT( { console.log('Cleanup state variable: ' + $0); }, cleanupState);
 
 #ifdef REPORT_RESULT
-   int result = cleanupState;
+   result = cleanupState;
    REPORT_RESULT();
 #endif
 

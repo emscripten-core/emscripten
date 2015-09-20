@@ -1,5 +1,6 @@
 // This file tests pthread barrier usage.
 
+#include <emscripten/threading.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -66,11 +67,14 @@ int main(int argc, char **argv)
     assert(ret == 0); 
 
     for(int i = 0; i < THREADS; ++i) pthread_create(&thr[i], NULL, &thread_main, (void*)i);
-    for(int i = 0; i < THREADS; ++i)
+    if (emscripten_has_threading_support())
     {
-        int totalSum = 0;
-        pthread_join(thr[i], (void**)&totalSum);
-        assert(totalSum == expectedTotalSum);
+        for(int i = 0; i < THREADS; ++i)
+        {
+            int totalSum = 0;
+            pthread_join(thr[i], (void**)&totalSum);
+            assert(totalSum == expectedTotalSum);
+        }
     }
 
 #ifdef REPORT_RESULT

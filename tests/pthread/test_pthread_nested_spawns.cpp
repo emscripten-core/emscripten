@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <pthread.h>
+#include <emscripten/threading.h>
 
 int result = 0;
 
@@ -21,7 +22,11 @@ int main(void) {
   pthread_t thread;
   puts("a");
   pthread_create(&thread, NULL, thread_func, NULL);
-  pthread_join(thread, NULL);
+  if (emscripten_has_threading_support()) {
+    pthread_join(thread, NULL);
+  } else {
+    result = 1;
+  }
 
 #ifdef REPORT_RESULT
   REPORT_RESULT();
