@@ -1592,8 +1592,9 @@ class Building:
 
   @staticmethod
   def closure_compiler(filename, pretty=True):
-    if not os.path.exists(CLOSURE_COMPILER):
-      raise Exception('Closure compiler appears to be missing, looked at: ' + str(CLOSURE_COMPILER))
+    if not check_closure_compiler():
+      logging.error('Cannot run closure compiler')
+      raise Exception('closure compiler check failed')
 
     CLOSURE_EXTERNS = path_from_root('src', 'closure-externs.js')
     NODE_EXTERNS_BASE = path_from_root('third_party', 'closure-compiler', 'node-externs')
