@@ -403,6 +403,15 @@ def check_node_version():
     logging.warning('cannot check node version: %s',  e)
     return False
 
+def check_closure_compiler():
+  try:
+    subprocess.call([JAVA, '-version'], stdout=PIPE, stderr=PIPE)
+  except:
+    logging.warning('java does not seem to exist, required for closure compiler, which is optional (define JAVA in ' + hint_config_file_location() + ' if you want it)')
+
+  if not os.path.exists(CLOSURE_COMPILER):
+    logging.warning('Closure compiler (%s) does not exist, check the paths in %s' % (CLOSURE_COMPILER, EM_CONFIG))
+
 # Finds the system temp directory without resorting to using the one configured in .emscripten
 def find_temp_directory():
   if WINDOWS:
@@ -506,15 +515,9 @@ def check_sanity(force=False):
       logging.critical('failing sanity checks due to previous fastcomp failure')
       sys.exit(1)
 
-    try:
-      subprocess.call([JAVA, '-version'], stdout=PIPE, stderr=PIPE)
-    except:
-      logging.warning('java does not seem to exist, required for closure compiler, which is optional (define JAVA in ' + hint_config_file_location() + ' if you want it)')
-
-    if not os.path.exists(CLOSURE_COMPILER):
-     logging.warning('Closure compiler (%s) does not exist, check the paths in %s. -O2 and above will fail' % (CLOSURE_COMPILER, EM_CONFIG))
-
     # Sanity check passed!
+    if not check_closure_compiler():
+      logging.warning('closure compiler will not be available')
 
     if not force:
       # Only create/update this file if the sanity check succeeded, i.e., we got here
@@ -1589,8 +1592,9 @@ class Building:
 
   @staticmethod
   def closure_compiler(filename, pretty=True):
-    if not os.path.exists(CLOSURE_COMPILER):
-      raise Exception('Closure compiler appears to be missing, looked at: ' + str(CLOSURE_COMPILER))
+    if not check_closure_compiler():
+      logging.error('Cannot run closure compiler')
+      raise Exception('closure compiler check failed')
 
     CLOSURE_EXTERNS = path_from_root('src', 'closure-externs.js')
     NODE_EXTERNS_BASE = path_from_root('third_party', 'closure-compiler', 'node-externs')
