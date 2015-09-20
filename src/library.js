@@ -3974,7 +3974,6 @@ LibraryManager.library = {
   },
 
   emscripten_print_double: function(x, to, max) {
-    max = max >>> 0;
     var str = x + '';
     var ret = str.length;
     if (str.length + 1 > max) str = str.substring(0, max - 1);
