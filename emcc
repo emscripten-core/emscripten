@@ -1657,6 +1657,8 @@ try:
 ''' % script_src
       script_src = None
 
+    asm_mods = []
+
     if proxy_to_worker:
       child_js = shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename
       script_inline = '''
@@ -1677,27 +1679,23 @@ try:
       if debug_level >= 4:
         generate_source_map(target)
       shutil.move(final, js_target)
-      need_mods = shared.Settings.PRECISE_F32 == 2
-      if not need_mods:
-        # Non-modifiable code, just load the code directly
-        script_src = base_js_target
-      else:
+      script_src = base_js_target
+
+      # Optional code modifications
+      if shared.Settings.PRECISE_F32 == 2:
+        assert separate_asm, 'options that modify code on the client, like PRECISE_F32=2, require --separate-asm'
         # Potentially-modifiable code, load as text, modify, then execute. This lets you
         # patch the code on the client machine right before it is executed, perhaps based
         # on information about the client.
-        checks = []
-        mods = []
-        if shared.Settings.PRECISE_F32 == 2:
-          checks.append('!Math.fround')
-          if 'minifyNames' not in js_optimizer_queue_history:
-            # simple dumb replace
-            mods.append('''
+        if 'minifyNames' not in js_optimizer_queue_history:
+          # simple dumb replace
+          mod = '''
 console.log('optimizing out Math.fround calls');
 code = code.replace(/Math_fround\(/g, '(').replace("'use asm'", "'almost asm'").replace('"use asm"', '"almost asm"');
-''')
-          else:
-            # minified, not quite so simple - TODO
-            mods.append('''
+'''
+        else:
+          # minified, not quite so simple
+          mod = '''
 try {
   console.log('optimizing out Math.fround calls');
   var m = /var ([^=]+)=global\.Math\.fround;/.exec(code);
@@ -1713,38 +1711,8 @@ try {
   code = code.substring(0, startAsm) + asm + code.substring(endAsm);
   code = code.replace("'use asm'", "'almost asm'").replace('"use asm"', '"almost asm"');
 } catch(e) { console.log('failed to optimize out Math.fround calls ' + e) }
-''')
-
-        fixes = ''
-        for i in range(len(checks)):
-          fixes += 'if (' + checks[i] + ') { ' + mods[i] + ' }\n'
-
-        # if all the checks are negative, just emit a script tag normally, that's better.
-        # otherwise, do an xhr to get the code as text, modify, and load asynchronously
-        code = 'if (!(' + ' || '.join(checks) + ''')) {
-  var script = document.createElement('script');
-  script.src = "''' + base_js_target + '''";
-  document.body.appendChild(script);
-} else {
-  var codeXHR = new XMLHttpRequest();
-  codeXHR.open('GET', '%s', true);
-  codeXHR.onload = function() {
-    var code = codeXHR.responseText;
-    %s
-    var blob = new Blob([code], { type: 'text/javascript' });
-    codeXHR = null;
-    var src = URL.createObjectURL(blob);
-    var script = document.createElement('script');
-    script.src = URL.createObjectURL(blob);
-    script.onload = function() {
-      URL.revokeObjectURL(script.src);
-    };
-    document.body.appendChild(script);
-  };
-  codeXHR.send(null);
-}
-''' % (base_js_target, fixes)
-        script_inline = code
+'''
+        asm_mods.append('if (!Math.fround) { ' + mod + ' }')
 
     if shared.Settings.EMTERPRETIFY_FILE:
       # We need to load the emterpreter file before anything else, it has to be synchronously ready
@@ -1783,7 +1751,9 @@ try {
       temp_target = misc_temp_files.get(suffix='.js').name
       execute([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), js_target, asm_target, temp_target])
       shutil.move(temp_target, js_target)
-      script_inline = '''
+      if len(asm_mods) == 0:
+        # just load the asm, then load the rest
+        script_inline = '''
     var script = document.createElement('script');
     script.src = "%s";
     script.onload = function() {
@@ -1793,6 +1763,29 @@ try {
     };
     document.body.appendChild(script);
 ''' % (os.path.basename(asm_target), script_inline)
+      else:
+        # may need to modify the asm code, load it as text, modify, and load asynchronously
+        script_inline = '''
+    var codeXHR = new XMLHttpRequest();
+    codeXHR.open('GET', '%s', true);
+    codeXHR.onload = function() {
+      var code = codeXHR.responseText;
+      %s
+      var blob = new Blob([code], { type: 'text/javascript' });
+      codeXHR = null;
+      var src = URL.createObjectURL(blob);
+      var script = document.createElement('script');
+      script.src = URL.createObjectURL(blob);
+      script.onload = function() {
+        setTimeout(function() {
+          %s
+        }, 1); // delaying even 1ms is enough to allow compilation memory to be reclaimed
+        URL.revokeObjectURL(script.src);
+      };
+      document.body.appendChild(script);
+    };
+    codeXHR.send(null);
+''' % (os.path.basename(asm_target), '\n'.join(asm_mods), script_inline)
 
     html = open(target, 'w')
     assert (script_src or script_inline) and not (script_src and script_inline)
