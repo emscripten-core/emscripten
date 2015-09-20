@@ -1687,29 +1687,25 @@ try:
         # Potentially-modifiable code, load as text, modify, then execute. This lets you
         # patch the code on the client machine right before it is executed, perhaps based
         # on information about the client.
+        mod = '''
+console.log('optimizing out Math.fround calls');
+code = code.replace("'use asm'", "'almost asm'").replace('"use asm"', '"almost asm"');
+'''
         if 'minifyNames' not in js_optimizer_queue_history:
           # simple dumb replace
-          mod = '''
-console.log('optimizing out Math.fround calls');
-code = code.replace(/Math_fround\(/g, '(').replace("'use asm'", "'almost asm'").replace('"use asm"', '"almost asm"');
-'''
+          mod += "code = code.replace(/Math_fround\(/g, '(')\n";
         else:
           # minified, not quite so simple
-          mod = '''
+          mod += '''
 try {
   console.log('optimizing out Math.fround calls');
   var m = /var ([^=]+)=global\.Math\.fround;/.exec(code);
   var minified = m[1];
   if (!minified) throw 'fail';
-  var startAsm = code.indexOf('// EMSCRIPTEN_START_FUNCS');
-  var endAsm = code.indexOf('// EMSCRIPTEN_END_FUNCS');
-  var asm = code.substring(startAsm, endAsm);
   do {
     var moar = false; // we need to re-do, as x(x( will not be fixed
-    asm = asm.replace(new RegExp('[^a-zA-Z0-9\\\\$\\\\_]' + minified + '\\\\(', 'g'), function(s) { moar = true; return s[0] + '(' });
+    code = code.replace(new RegExp('[^a-zA-Z0-9\\\\$\\\\_]' + minified + '\\\\(', 'g'), function(s) { moar = true; return s[0] + '(' });
   } while (moar);
-  code = code.substring(0, startAsm) + asm + code.substring(endAsm);
-  code = code.replace("'use asm'", "'almost asm'").replace('"use asm"', '"almost asm"');
 } catch(e) { console.log('failed to optimize out Math.fround calls ' + e) }
 '''
         asm_mods.append('if (!Math.fround) { ' + mod + ' }')
