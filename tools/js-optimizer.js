@@ -5770,8 +5770,9 @@ function fixPtrSlim(ptr, heap, shell) {
 function splitMemory(ast, shell) {
   traverse(ast, function(node, type) {
     if (type === 'assign') {
-      if (node[1] === true && node[2][0] === 'sub') {
+      if (node[2][0] === 'sub') {
         var heap = node[2][1][1];
+        if (node[1] !== true) assert(0, 'bad assign, split memory cannot handle ' + node[1] + '= to a HEAP');
         var ptr = fixPtrSlim(node[2][2], heap, shell);
         var value = node[3];
         switch (heap) {
