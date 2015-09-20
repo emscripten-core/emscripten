@@ -876,7 +876,7 @@ function _emscripten_replace_memory(newBuffer) {
 '''] + ['' if not settings['SPLIT_MEMORY'] or settings['SAFE_SPLIT_MEMORY'] else '''
 function get8(ptr) {
   ptr = ptr | 0;
-  return HEAP8s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 0] | 0;
+  return HEAP8s[ptr >> SPLIT_MEMORY_BITS][ptr & SPLIT_MEMORY_MASK] | 0;
 }
 function get16(ptr) {
   ptr = ptr | 0;
@@ -909,7 +909,7 @@ function getF64(ptr) {
 function set8(ptr, value) {
   ptr = ptr | 0;
   value = value | 0;
-  HEAP8s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 0] = value;
+  HEAP8s[ptr >> SPLIT_MEMORY_BITS][ptr & SPLIT_MEMORY_MASK] = value;
 }
 function set16(ptr, value) {
   ptr = ptr | 0;
