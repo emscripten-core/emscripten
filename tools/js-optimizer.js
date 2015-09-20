@@ -4444,6 +4444,10 @@ function minifyGlobals(ast) {
         ensureMinifiedNames(next);
         vars[i][0] = minified[name] = minifiedNames[next++];
       }
+    } else if (type === 'defun') {
+      var name = node[1];
+      ensureMinifiedNames(next);
+      node[1] = minified[name] = minifiedNames[next++];
     }
   });
   // add all globals in function chunks, i.e. not here but passed to us
