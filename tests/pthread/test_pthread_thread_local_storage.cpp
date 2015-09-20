@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <emscripten.h>
+#include <emscripten/threading.h>
+#include <errno.h>
 #include <assert.h>
 #include <inttypes.h>
 
@@ -48,14 +50,13 @@ void CreateThread(int i)
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 	int rc = pthread_create(&thread[i], &attr, ThreadMain, (void*)i);
-	assert(rc == 0);
+	if (emscripten_has_threading_support()) assert(rc == 0);
+	else assert(rc == EAGAIN);
 	pthread_attr_destroy(&attr);
 }
 
 int main()
 {
-	malloc(4); // Work around bug https://github.com/kripken/emscripten/issues/2621
-
 	for(int i = 0; i < NUM_KEYS; ++i)
 		pthread_key_create(&keys[i], NULL);
 
@@ -64,20 +65,23 @@ int main()
 		CreateThread(i);
 
 	// Join all threads and create more.
-	for(int i = 0; i < NUM_THREADS; ++i)
+	if (emscripten_has_threading_support())
 	{
-		if (thread[i])
+		for(int i = 0; i < NUM_THREADS; ++i)
 		{
-			int status;
-			int rc = pthread_join(thread[i], (void**)&status);
-			assert(rc == 0);
-			EM_ASM_INT( { Module['printErr']('Main: Joined thread idx ' + $0 + ' with status ' + $1); }, i, (int)status);
-			assert(status == 0);
-			thread[i] = 0;
-			if (numThreadsToCreate > 0)
+			if (thread[i])
 			{
-				--numThreadsToCreate;
-				CreateThread(i);
+				int status;
+				int rc = pthread_join(thread[i], (void**)&status);
+				assert(rc == 0);
+				EM_ASM_INT( { Module['printErr']('Main: Joined thread idx ' + $0 + ' with status ' + $1); }, i, (int)status);
+				assert(status == 0);
+				thread[i] = 0;
+				if (numThreadsToCreate > 0)
+				{
+					--numThreadsToCreate;
+					CreateThread(i);
+				}
 			}
 		}
 	}

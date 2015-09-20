@@ -41,6 +41,17 @@ void *ThreadMain(void *arg)
 
 int main()
 {
+	int result = 0;
+	if (!emscripten_has_threading_support())
+	{
+#ifdef REPORT_RESULT
+		result = 800;
+		REPORT_RESULT();
+#endif
+		printf("Skipped: Threading is not supported.\n");
+		return 0;
+	}
+
 	pthread_t thread[NUM_THREADS];
 
 	for(int i = 0; i < NUM_THREADS; ++i)
@@ -62,7 +73,7 @@ int main()
 
 	printf("counter: %d\n", counter);
 #ifdef REPORT_RESULT
-	int result = counter;
+	result = counter;
 	REPORT_RESULT();
 #endif
 }

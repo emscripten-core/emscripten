@@ -132,7 +132,16 @@ int main()
 {
 	globalDouble = 5.0;
 	globalU64 = 5;
-	malloc(4); // Work around bug https://github.com/kripken/emscripten/issues/2621
+
+	int result = 0;
+	if (!emscripten_has_threading_support())
+	{
+#ifdef REPORT_RESULT
+		REPORT_RESULT();
+#endif
+		printf("Skipped: Threading is not supported.\n");
+		return 0;
+	}
 
 	for(int i = 0; i < 7; ++i)
 		RunTest(i);
@@ -151,7 +160,6 @@ int main()
 	else
 		printf("64-bit CAS test failed! totalRead != totalWritten (%llu != %llu)\n", totalRead, totalWritten);
 #ifdef REPORT_RESULT
-	int result = 0;
 	if (totalRead != totalWritten) result = 1;
 	REPORT_RESULT();
 #else

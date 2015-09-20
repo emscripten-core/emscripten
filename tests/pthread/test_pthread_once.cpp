@@ -27,8 +27,11 @@ int main()
 {
 	assert(numInitialized == 0);
 	for(int i = 0; i < NUM_THREADS; ++i) pthread_create(&thread[i], NULL, thread_main, 0);
-	for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
-	assert(numInitialized == 1);
+
+	if (emscripten_has_threading_support()) {
+		for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
+		assert(numInitialized == 1);
+	}
 
 #ifdef REPORT_RESULT
 	int result = 0;

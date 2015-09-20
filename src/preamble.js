@@ -1163,9 +1163,9 @@ assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' 
        'JS engine does not provide full typed array support');
 
 var buffer;
-#if USE_PTHREADS
 
 #if IN_TEST_HARNESS
+#if USE_PTHREADS == 1
 if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') {
   xhr = new XMLHttpRequest();
   xhr.open('GET', 'http://localhost:8888/report_result?skipped:%20SharedArrayBuffer%20is%20not%20supported!');
@@ -1173,8 +1173,9 @@ if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') 
   setTimeout(function() { window.close() }, 2000);
 }
 #endif
+#endif
 
-
+#if USE_PTHREADS
 if (typeof SharedArrayBuffer !== 'undefined') {
   if (!ENVIRONMENT_IS_PTHREAD) buffer = new SharedArrayBuffer(TOTAL_MEMORY);
   // Currently SharedArrayBuffer does not have a slice() operation, so polyfill it in.
