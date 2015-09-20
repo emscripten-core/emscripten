@@ -125,29 +125,6 @@ If manually bisecting:
     finally:
       os.chdir(cwd)
 
-  def test_compression(self):
-    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
-      #include <stdio.h>
-      #include <emscripten.h>
-      int main() {
-        printf("hello compressed world\n");
-        int result = 1;
-        REPORT_RESULT();
-        return 0;
-      }
-    '''))
-
-    self.build_native_lzma()
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'page.html',
-           '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
-                                          path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
-                                          'LZMA.decompress')]).communicate()
-    assert os.path.exists(os.path.join(self.get_dir(), 'page.js')), 'must be side js'
-    assert os.path.exists(os.path.join(self.get_dir(), 'page.js.compress')), 'must be side compressed js'
-    assert os.stat(os.path.join(self.get_dir(), 'page.js')).st_size > os.stat(os.path.join(self.get_dir(), 'page.js.compress')).st_size, 'compressed file must be smaller'
-    shutil.move(os.path.join(self.get_dir(), 'page.js'), 'page.js.renamedsoitcannotbefound');
-    self.run_browser('page.html', '', '/report_result?1')
-
   def test_preload_file(self):
     absolute_src_path = os.path.join(self.get_dir(), 'somefile.txt').replace('\\', '/')
     open(absolute_src_path, 'w').write('''load me right before running the code please''')
@@ -428,43 +405,6 @@ If manually bisecting:
     #open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { filePackagePrefixURL: "http:/localhost:8888/cdn/", '))
     #test()
 
-  def test_compressed_file(self):
-    open(os.path.join(self.get_dir(), 'datafile.txt'), 'w').write('compress this please' + (2000*'.'))
-    open(os.path.join(self.get_dir(), 'datafile2.txt'), 'w').write('moar' + (100*'!'))
-    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
-      #include <stdio.h>
-      #include <string.h>
-      #include <emscripten.h>
-      int main() {
-        char buf[21];
-        FILE *f = fopen("datafile.txt", "r");
-        fread(buf, 1, 20, f);
-        buf[20] = 0;
-        fclose(f);
-        printf("file says: |%s|\n", buf);
-        int result = !strcmp("compress this please", buf);
-        FILE *f2 = fopen("datafile2.txt", "r");
-        fread(buf, 1, 5, f2);
-        buf[5] = 0;
-        fclose(f2);
-        result = result && !strcmp("moar!", buf);
-        printf("file 2 says: |%s|\n", buf);
-        REPORT_RESULT();
-        return 0;
-      }
-    '''))
-
-    self.build_native_lzma()
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'page.html', '--preload-file', 'datafile.txt', '--preload-file', 'datafile2.txt',
-           '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
-                                          path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
-                                          'LZMA.decompress')]).communicate()
-    assert os.path.exists(os.path.join(self.get_dir(), 'datafile.txt')), 'must be data file'
-    assert os.path.exists(os.path.join(self.get_dir(), 'page.data.compress')), 'must be data file in compressed form'
-    assert os.stat(os.path.join(self.get_dir(), 'page.js')).st_size != os.stat(os.path.join(self.get_dir(), 'page.js.compress')).st_size, 'compressed file must be different'
-    shutil.move(os.path.join(self.get_dir(), 'datafile.txt'), 'datafile.txt.renamedsoitcannotbefound');
-    self.run_browser('page.html', '', '/report_result?1')
-
   def test_sdl_swsurface(self):
     self.btest('sdl_swsurface.c', expected='1')
 
@@ -494,27 +434,6 @@ If manually bisecting:
       '--preload-file', 'screenshot.jpeg', '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpeg"'
     ]).communicate()
     self.run_browser('page.html', '', '/report_result?600')
-
-  def test_sdl_image_compressed(self):
-    for image, width in [(path_from_root('tests', 'screenshot2.png'), 300),
-                         (path_from_root('tests', 'screenshot.jpg'), 600)]:
-      self.clear()
-      print image
-
-      basename = os.path.basename(image)
-      shutil.copyfile(image, os.path.join(self.get_dir(), basename))
-      open(os.path.join(self.get_dir(), 'sdl_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image.c')).read()))
-
-      self.build_native_lzma()
-      Popen([
-        PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '-o', 'page.html',
-        '--preload-file', basename, '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="' + basename + '"',
-        '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
-                                       path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
-                                       'LZMA.decompress')
-      ]).communicate()
-      shutil.move(os.path.join(self.get_dir(), basename), basename + '.renamedsoitcannotbefound');
-      self.run_browser('page.html', '', '/report_result?' + str(width))
 
   def test_sdl_image_prepare(self):
     # load an image file, get pixel data.
@@ -2391,27 +2310,6 @@ Module['_main'] = function() {
 
   def test_sdl2_swsurface(self):
     self.btest('sdl2_swsurface.c', expected='1', args=['-s', 'USE_SDL=2'])
-
-  def test_sdl2_image_compressed(self):
-    for image, width in [(path_from_root('tests', 'screenshot2.png'), 300),
-                         (path_from_root('tests', 'screenshot.jpg'), 600)]:
-      self.clear()
-      print image
-
-      basename = os.path.basename(image)
-      shutil.copyfile(image, os.path.join(self.get_dir(), basename))
-      open(os.path.join(self.get_dir(), 'sdl2_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_image.c')).read()))
-
-      self.build_native_lzma()
-      Popen([
-        PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_image.c'), '-o', 'page.html',
-        '--preload-file', basename, '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="' + basename + '"', '-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2',
-        '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
-                                       path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
-                                       'LZMA.decompress')
-      ]).communicate()
-      shutil.move(os.path.join(self.get_dir(), basename), basename + '.renamedsoitcannotbefound');
-      self.run_browser('page.html', '', '/report_result?' + str(width))
 
   def test_sdl2_image_prepare(self):
     # load an image file, get pixel data.

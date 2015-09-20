@@ -292,20 +292,6 @@ Options that are modified or new in *emcc* are listed below:
 		- See `src/shell.html <https://github.com/kripken/emscripten/blob/master/src/shell.html>`_ and `src/shell_minimal.html <https://github.com/kripken/emscripten/blob/master/src/shell_minimal.html>`_ for examples.                  
 		- This argument is ignored if a target other than HTML is specified using the ``-o`` option.
 	
-``--compression <codec>``
-	Compress both the compiled code and embedded/ preloaded files. 
-	
-	.. warning:: This option is deprecated.
-
-	``<codec>`` should be a triple: ``<native_encoder>,<js_decoder>,<js_name>``, where:
-
-		- ``native_encoder`` is a native executable that compresses ``stdin`` to ``stdout`` (the simplest possible interface).
-		- ``js_decoder`` is a JavaScript file that implements a decoder.
-		- ``js_name`` is the name of the function to call in the decoder file (which should receive an array/typed array and return an array/typed array. 
-		
-	Compression only works when generating HTML. When compression is on, all files specified to be preloaded are compressed in one big archive, which is given the same name as the output HTML but with suffix **.data.compress**.
-
-	
 .. _emcc-minify:
 						   
 ``--minify 0``

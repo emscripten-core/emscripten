@@ -26,7 +26,7 @@ emcc can be influenced by a few environment variables:
 import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging
 from subprocess import PIPE
 from tools import shared, jsrun, system_libs
-from tools.shared import Compression, execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_move
+from tools.shared import execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_move
 from tools.response_file import read_response_file
 
 # endings = dot + a suffix, safe to test by  filename.endswith(endings)
@@ -402,7 +402,6 @@ try:
   preload_files = []
   embed_files = []
   exclude_files = []
-  compression = None
   ignore_dynamic_linking = False
   shell_path = shared.path_from_root('src', 'shell.html')
   js_libraries = []
@@ -561,28 +560,6 @@ try:
     elif newargs[i].startswith('--exclude-file'):
       check_bad_eq(newargs[i])
       exclude_files.append(newargs[i+1])
-      newargs[i] = ''
-      newargs[i+1] = ''
-    elif newargs[i].startswith('--compression'):
-      logging.warning('--compression is deprecated. Instead, it is recommended you use native gzip compression in your webserver')
-      check_bad_eq(newargs[i])
-      parts = newargs[i+1].split(',')
-      assert len(parts) == 3, '--compression requires specifying    native_encoder,js_decoder,js_name  - see emcc --help. got: %s' % newargs[i+1]
-      def locate(tool):
-        if WINDOWS:
-          if os.path.exists(tool+'.exe'):
-            return tool+'.exe'
-          if os.path.exists(tool+'.bat'):
-            return tool+'.bat'
-          if os.path.exists(tool+'.cmd'):
-            return tool+'.cmd'
-        return tool
-      Compression.encoder = locate(parts[0])
-      Compression.decoder = locate(parts[1])
-      Compression.js_name = parts[2]
-      assert os.path.exists(Compression.encoder), 'native encoder %s does not exist' % Compression.encoder
-      assert os.path.exists(Compression.decoder), 'js decoder %s does not exist' % Compression.decoder
-      Compression.on = True
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--use-preload-cache'):
@@ -853,8 +830,6 @@ try:
     exit(1)
 
   newargs = CC_ADDITIONAL_ARGS + newargs
-
-  assert not (Compression.on and final_suffix != 'html'), 'Compression only works when generating HTML'
 
   assert not (separate_asm and final_suffix != 'html'), '--separate-asm requires building to HTML'
 
@@ -1339,8 +1314,6 @@ try:
     if len(exclude_files) > 0:
       file_args.append('--exclude')
       file_args += exclude_files
-    if Compression.on:
-      file_args += ['--compress', Compression.encoder, Compression.decoder, Compression.js_name]
     if use_preload_cache:
       file_args.append('--use-preload-cache')
     if no_heap_copy:
@@ -1699,7 +1672,7 @@ try:
   }
 ''' % child_js
       shutil.move(final, js_target)
-    elif not Compression.on:
+    else:
       # Normal code generation path
       if debug_level >= 4:
         generate_source_map(target)
@@ -1772,67 +1745,6 @@ try {
 }
 ''' % (base_js_target, fixes)
         script_inline = code
-    else:
-      # Compress the main code
-      shutil.move(final, js_target)
-      Compression.compress(js_target)
-
-      # Run the decompressor in a worker, and add code to
-      #   1. download the compressed file
-      #   2. decompress to a typed array
-      #   3. convert to a string of source code
-      #   4. insert a script element with that source code (more effective than eval)
-      decoding = '''
-        var decompressWorker = new Worker('decompress.js');
-        var decompressCallbacks = [];
-        var decompressions = 0;
-        Module["decompress"] = function(data, callback) {
-          var id = decompressCallbacks.length;
-          decompressCallbacks.push(callback);
-          decompressWorker.postMessage({ data: data, id: id });
-          if (Module['setStatus']) {
-            decompressions++;
-            Module['setStatus']('Decompressing...');
-          }
-        };
-        decompressWorker.onmessage = function(event) {
-          decompressCallbacks[event.data.id](event.data.data);
-          decompressCallbacks[event.data.id] = null;
-          if (Module['setStatus']) {
-            decompressions--;
-            if (decompressions == 0) {
-              Module['setStatus']('');
-            }
-          }
-        };
-        var compiledCodeXHR = new XMLHttpRequest();
-        compiledCodeXHR.open('GET', '%s', true);
-        compiledCodeXHR.responseType = 'arraybuffer';
-        compiledCodeXHR.onload = function() {
-          var arrayBuffer = compiledCodeXHR.response;
-          if (!arrayBuffer) throw('Loading compressed code failed.');
-          var byteArray = new Uint8Array(arrayBuffer);
-          Module.decompress(byteArray, function(decompressed) {
-            var source = Array.prototype.slice.apply(decompressed).map(function(x) { return String.fromCharCode(x) }).join(''); // createObjectURL instead?
-            var scriptTag = document.createElement('script');
-            scriptTag.setAttribute('type', 'text/javascript');
-            scriptTag.innerHTML = source;
-            document.body.appendChild(scriptTag);
-          });
-        };
-        compiledCodeXHR.send(null);
-''' % Compression.compressed_name(base_js_target)
-      script_inline = decoding
-
-      # Add decompressor with web worker glue code
-      decompressor = open('decompress.js', 'w')
-      decompressor.write(open(Compression.decoder).read())
-      decompressor.write('''
-        onmessage = function(event) {
-          postMessage({ data: %s(event.data.data), id: event.data.id });
-        };
-''' % Compression.js_name)
-      decompressor.close()
 
     if shared.Settings.EMTERPRETIFY_FILE:
       # We need to load the emterpreter file before anything else, it has to be synchronously ready

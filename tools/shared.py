@@ -1851,22 +1851,6 @@ class JS:
     def escape(x): return '\\x{:02x}'.format(ord(x.group()))
     return re.sub('[\x80-\xff]', escape, s)
 
-# Compression of code and data for smaller downloads
-class Compression:
-  on = False
-
-  @staticmethod
-  def compressed_name(filename):
-    return filename + '.compress'
-
-  @staticmethod
-  def compress(filename):
-    execute(Compression.encoder, stdin=open(filename, 'rb'), stdout=open(Compression.compressed_name(filename), 'wb'))
-
-  @staticmethod
-  def worth_it(original, compressed):
-    return compressed < original - 1500 # save at least one TCP packet or so
-
 def execute(cmd, *args, **kw):
   try:
     return Popen(cmd, *args, **kw).communicate() # let compiler frontend print directly, so colors are saved (PIPE kills that)
