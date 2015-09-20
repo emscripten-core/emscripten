@@ -99,9 +99,7 @@ static mspace get_space(void* ptr) { // for a valid pointer, so the space must a
   return space.space;
 }
 
-extern "C" {
-
-void* malloc(size_t size) {
+static void* get_memory(size_t size, bool malloc=true, size_t alignment=-1) {
   if (!initialized) {
     init();
   }
@@ -109,7 +107,7 @@ void* malloc(size_t size) {
     static bool warned = false;
     if (!warned) {
       EM_ASM_({
-        Module.print("trying to malloc " + $0 + ", a size >= than SPLIT_MEMORY (" + $1 + "), increase SPLIT_MEMORY if you want that to work");
+        Module.print("trying to get " + $0 + ", a size >= than SPLIT_MEMORY (" + $1 + "), increase SPLIT_MEMORY if you want that to work");
       }, size, split_memory);
       warned = true;
     }
@@ -119,7 +117,12 @@ void* malloc(size_t size) {
   int start = next;
   while (1) { // simple round-robin, while keeping to use the same one as long as it keeps succeeding
     if (!spaces[next].allocated) spaces[next].allocate();
-    void *ret = mspace_malloc(spaces[next].space, size);
+    void *ret;
+    if (malloc) {
+      ret = mspace_malloc(spaces[next].space, size);
+    } else {
+      ret = mspace_memalign(spaces[next].space, alignment, size);
+    }
     if (ret) {
       spaces[next].count++;
       return ret;
@@ -129,6 +132,16 @@ void* malloc(size_t size) {
     if (next == start) break;
   }
   return 0; // we cycled, so none of them can allocate
+}
+
+extern "C" {
+
+void* malloc(size_t size) {
+  return get_memory(size);
+}
+
+void* memalign(size_t alignment, size_t size) {
+  return get_memory(size, false, alignment);
 }
 
 void free(void* ptr) {
@@ -162,36 +175,6 @@ void* calloc(size_t num, size_t size) {
   if (!ret) return 0;
   memset(ret, 0, bytes);
   return ret;
-}
-
-void* memalign(size_t alignment, size_t size) {
-  if (!initialized) {
-    init();
-  }
-  if (size >= split_memory) {
-    static bool warned = false;
-    if (!warned) {
-      EM_ASM_({
-        Module.print("trying to malloc " + $0 + ", a size larger than SPLIT_MEMORY (" + $1 + "), increase SPLIT_MEMORY if you want that to work");
-      }, size, split_memory);
-      warned = true;
-    }
-    return 0;
-  }
-  static int next = 0;
-  int start = next;
-  while (1) { // simple round-robin, while keeping to use the same one as long as it keeps succeeding
-    if (!spaces[next].allocated) spaces[next].allocate();
-    void *ret = mspace_memalign(spaces[next].space, alignment, size);
-    if (ret) {
-      spaces[next].count++;
-      return ret;
-    }
-    next++;
-    if (next == num_spaces) next = 0;
-    if (next == start) break;
-  }
-  return 0; // we cycled, so none of them can allocate
 }
 
 // very minimal sbrk, within one chunk
