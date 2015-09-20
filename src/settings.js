@@ -565,7 +565,10 @@ var EMTERPRETIFY_ADVISE = 0; // Performs a static analysis to suggest which func
 var SPLIT_MEMORY = 0; // If > 0, we split memory into chunks, of the size given in this parameter.
                       //  * TOTAL_MEMORY becomes the maximum amount of memory, as chunks are allocated on
                       //    demand. That means this achieves a result similar to ALLOW_MEMORY_GROWTH, but
-                      //    better since it can free chunks in the middle.
+                      //    better since it can free chunks in the middle. You still to set
+                      //    ALLOW_MEMORY_GROWTH if you want memory to grow beyond the initial TOTAL_MEMORY
+                      //    target.
+                      //  * Larger SPLIT_MEMORY sizes are generally faster to run.
                       // TODO: more docs
                       // TODO: add malloc-split to embuilder
 var SAFE_SPLIT_MEMORY = 0; // Similar to SAFE_HEAP, but for SPLIT_MEMORY.
