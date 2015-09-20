@@ -225,9 +225,13 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
 
     staticbump = mem_init.count(',')+1
     while staticbump % 16 != 0: staticbump += 1
-    pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;
+    pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;%s
   /* global initializers */ %s __ATINIT__.push(%s);
-  %s''' % (staticbump, 'if (!ENVIRONMENT_IS_PTHREAD)' if settings['USE_PTHREADS'] else '', global_initializers, mem_init)) # XXX wrong size calculation!
+  %s''' % (staticbump,
+           'assert(STATICTOP < SPLIT_MEMORY, "SPLIT_MEMORY size must be big enough so the entire static memory, need " + STATICTOP);' if settings['SPLIT_MEMORY'] else '',
+           'if (!ENVIRONMENT_IS_PTHREAD)' if settings['USE_PTHREADS'] else '',
+           global_initializers,
+           mem_init))
 
     if settings['SIDE_MODULE']:
       pre = pre.replace('Runtime.GLOBAL_BASE', 'gb').replace('{{{ STATIC_BUMP }}}', str(staticbump))
