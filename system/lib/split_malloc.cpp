@@ -29,6 +29,12 @@ static size_t total_memory = 0;
 static size_t split_memory = 0;
 static size_t num_spaces = 0;
 
+enum AllocateResult {
+  OK = 0,
+  NO_MEMORY = 1,
+  ALREADY_USED = 2
+};
+
 struct Space {
   mspace space;
   bool allocated; // whether storage is allocated for this chunk, both an ArrayBuffer in JS and an mspace here
@@ -42,7 +48,7 @@ struct Space {
     index = i;
   }
 
-  bool allocate() {
+  AllocateResult allocate() {
     assert(!allocated);
     assert(count == 0);
     allocated = true;
@@ -50,21 +56,18 @@ struct Space {
     if (index > 0) {
       if (int(split_memory*(index+1)) < 0) {
         // 32-bit pointer overflow. we could support more than this 2G, up to 4GB, if we made all pointer shifts >>>. likely slower though
-        return false;
+        return NO_MEMORY;
       }
-      int success = EM_ASM_INT({
-        if (!ALLOW_MEMORY_GROWTH) {
-          allocateSplitChunk($0);
-          return 1;
-        }
+      AllocateResult result = (AllocateResult)EM_ASM_INT({
+        // can fail due to the browser not have enough memory for the chunk, or if the slice
+        // is already used, which can happen if other code allocated it
         try {
-          allocateSplitChunk($0);
-          return 1;
+          return allocateSplitChunk($0) ? $1 : $3;
         } catch(e) {
-          return 0; // failed to allocate
+          return $2; // failed to allocate
         }
-      }, index);
-      if (!success) return false;
+      }, index, OK, NO_MEMORY, ALREADY_USED);
+      if (result != OK) return result;
       start = split_memory*index;
     } else {
       // small area in existing chunk 0
@@ -80,7 +83,7 @@ struct Space {
       }
     }
     assert(space);
-    return true;
+    return OK;
   }
 
   void free() {
@@ -137,22 +140,28 @@ static void* get_memory(size_t size, bool malloc=true, size_t alignment=-1, bool
   static int next = 0;
   int start = next;
   while (1) { // simple round-robin, while keeping to use the same one as long as it keeps succeeding
+    AllocateResult result = OK;
     if (!spaces[next].allocated) {
-      if (!spaces[next].allocate()) return 0; // might fail to allocate in memory growth mode
+      result = spaces[next].allocate();
+      if (result == NO_MEMORY) return 0; // mallocation failure
     }
-    void *ret;
-    if (malloc) {
-      ret = mspace_malloc(spaces[next].space, size);
+    if (result == OK) {
+      void *ret;
+      if (malloc) {
+        ret = mspace_malloc(spaces[next].space, size);
+      } else {
+        ret = mspace_memalign(spaces[next].space, alignment, size);
+      }
+      if (ret) {
+        spaces[next].count++;
+        return ret;
+      }
+      if (must_succeed) {
+        EM_ASM({ Module.printErr("failed to allocate in a new space after memory growth, perhaps increase SPLIT_MEMORY?"); });
+        abort();
+      }
     } else {
-      ret = mspace_memalign(spaces[next].space, alignment, size);
-    }
-    if (ret) {
-      spaces[next].count++;
-      return ret;
-    }
-    if (must_succeed) {
-      EM_ASM({ Module.printErr("failed to allocate in a new space after memory growth, perhaps increase SPLIT_MEMORY?"); });
-      abort();
+      assert(result == ALREADY_USED); // continue on to the next space
     }
     next++;
     if (next == num_spaces) next = 0;

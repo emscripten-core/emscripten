@@ -5489,3 +5489,44 @@ int main() {
       check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
       self.assertContained('success.', run_js('a.out.js'))
 
+  def test_split_memory_use_existing(self):
+    open('src.c', 'w').write(r'''
+#include <emscripten.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <assert.h>
+int main() {
+  EM_ASM({
+    function getIndex(x) {
+      return x >> SPLIT_MEMORY_BITS;
+    }
+    var t;
+    do {
+      t = Module._malloc(1024*1024);
+    } while (getIndex(t) === 0);
+    assert(getIndex(t) === 1, 'allocated into first chunk');
+    assert(!buffers[2]);
+    var existing = new Uint8Array(1024); // ok to be smaller
+    allocateSplitChunk(2, existing.buffer);
+    assert(buffers[2]);
+    existing[0] = 12;
+    existing[50] = 98;
+    var p = SPLIT_MEMORY*2;
+    assert(HEAPU8[p+0] === 12 && HEAPU8[p+50] === 98); // mapped into the normal memory space!
+    HEAPU8[p+33] = 201;
+    assert(existing[33] === 201); // works both ways
+    do {
+      t = Module._malloc(1024*1024);
+    } while (getIndex(t) === 1);
+    assert(getIndex(t) === 3, 'should skip chunk 2, since it is used by us, but seeing ' + getIndex(t));
+    assert(HEAPU8[p+0] === 12 && HEAPU8[p+50] === 98);
+    assert(existing[33] === 201);
+    Module.print('success.');
+  });
+}
+''')
+    for opts in [0, 1, 2]:
+      print opts
+      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
+      self.assertContained('success.', run_js('a.out.js'))
+

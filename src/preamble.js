@@ -1270,9 +1270,15 @@ if (totalMemory !== TOTAL_MEMORY) {
 
 var buffers = [], HEAP8s = [], HEAP16s = [], HEAP32s = [], HEAPU8s = [], HEAPU16s = [], HEAPU32s = [], HEAPF32s = [], HEAPF64s = [];
 
-function allocateSplitChunk(i) {
-  assert(!buffers[i] && !HEAP8s[i]);
-  var curr = new ArrayBuffer(SPLIT_MEMORY);
+// Allocates a split chunk, a range of memory of size SPLIT_MEMORY. Generally data is not provided, and a new
+// buffer is allocated, this is what happens when malloc works. However, you can provide your own buffer,
+// which then lets you access it at address [ i*SPLIT_MEMORY, (i+1)*SPLIT_MEMORY ).
+// The function returns true if it succeeds. It can also throw an exception if no data is provided and
+// the browser fails to allocate the buffer.
+function allocateSplitChunk(i, data) {
+  if (buffers[i]) return false; // already taken
+  var curr = data ? data : new ArrayBuffer(SPLIT_MEMORY);
+  assert(curr instanceof ArrayBuffer);
   buffers[i] = curr;
   HEAP8s[i] = new Int8Array(curr);
   HEAP16s[i] = new Int16Array(curr);
@@ -1282,6 +1288,7 @@ function allocateSplitChunk(i) {
   HEAPU32s[i] = new Uint32Array(curr);
   HEAPF32s[i] = new Float32Array(curr);
   HEAPF64s[i] = new Float64Array(curr);
+  return true;
 }
 function freeSplitChunk(i) {
   assert(buffers[i] && HEAP8s[i]);
