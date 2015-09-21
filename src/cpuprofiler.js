@@ -161,7 +161,7 @@ function cpuprofiler_add_hooks() {
   cpuprofiler = document.getElementById('cpuprofiler');
   if (!cpuprofiler) {
     var div = document.createElement("div");
-    div.innerHTML = "<div style='border: 2px solid black; padding: 2px;'><button style='display:inline;' onclick='Module.noExitRuntime=false;Module.exit();'>Halt</button><span id='fpsResult'></span><canvas style='border: 1px solid black;' id='cpuprofiler_canvas' width='800' height='200'></canvas><div id='cpuprofiler'></div>";
+    div.innerHTML = "<div style='border: 2px solid black; padding: 2px;'><button style='display:inline;' onclick='Module.noExitRuntime=false;Module.exit();'>Halt</button><span id='fpsResult'></span><canvas style='border: 1px solid black; margin-left:auto; margin-right:auto; display: block;' id='cpuprofiler_canvas' width='800px' height='200'></canvas><div id='cpuprofiler'></div>";
     document.body.appendChild(div);
     cpuprofiler = document.getElementById('cpuprofiler');
   }
@@ -297,7 +297,24 @@ function cpuprofiler_update_ui(startX, endX) {
 //  for(var x in cpuprofiler_histogram) {
 //    maxTime = Math.max(cpuprofiler_histogram[x], maxTime);
 //  }
-  
+
+  // Poll whether user as changed the browser window, and if so, resize the profiler window and redraw it.
+  if (cpuprofiler_canvas.width != document.documentElement.clientWidth - 32) {
+    cpuprofiler_canvas.width = document.documentElement.clientWidth - 32;
+    cpuprofiler_canvas_size = cpuprofiler_canvas.width * cpuprofiler_canvas.height;
+    if (cpuprofiler_t_mainloop.length > cpuprofiler_canvas.width) cpuprofiler_t_mainloop.length = cpuprofiler_canvas.width;
+    if (cpuprofiler_t_outside_mainloop.length > cpuprofiler_canvas.width) cpuprofiler_t_outside_mainloop.length = cpuprofiler_canvas.width;
+    if (cpuprofiler_ui_lastupdate_endX >= cpuprofiler_canvas.width) cpuprofiler_ui_lastupdate_endX = 0;
+    if (cpuprofiler_histogram_x >= cpuprofiler_canvas.width) cpuprofiler_histogram_x = 0;
+    for(var i in sections) {
+      var sect = sections[i];
+      if (sect.frametimes.length > cpuprofiler_canvas.width) sect.frametimes.length = cpuprofiler_canvas.width;
+    }
+    cpuprofiler_clear_ui(0, cpuprofiler_canvas.width);
+    cpuprofiler_draw_graph_labels();
+    startX = 0; // Full redraw all columns.
+  }
+
   var clearDistance = CPUPROFILER_UI_UPDATE_INTERVAL*2+1;
   var clearStart = endX + clearDistance;
   var clearEnd = clearStart + CPUPROFILER_UI_UPDATE_INTERVAL;
@@ -305,9 +322,9 @@ function cpuprofiler_update_ui(startX, endX) {
     cpuprofiler_clear_ui(clearStart, clearEnd);
     cpuprofiler_clear_ui(0, endX+clearDistance+CPUPROFILER_UI_UPDATE_INTERVAL);
     cpuprofiler_draw_graph_labels();
-    
-  } else
-  cpuprofiler_clear_ui(clearStart, clearEnd);
+  } else {
+    cpuprofiler_clear_ui(clearStart, clearEnd);
+  }
 
   if (endX < startX) {
     for(var x = startX; x < cpuprofiler_canvas.width; ++x) {
@@ -333,4 +350,4 @@ function cpuprofiler_update_ui(startX, endX) {
     cpuprofiler_drawBar(x, msecs, maxTime);*/
 }
 
-cpuprofiler_add_hooks();
+if (typeof Module !== 'undefined') cpuprofiler_add_hooks();
