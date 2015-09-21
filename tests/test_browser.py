@@ -125,29 +125,6 @@ If manually bisecting:
     finally:
       os.chdir(cwd)
 
-  def test_compression(self):
-    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
-      #include <stdio.h>
-      #include <emscripten.h>
-      int main() {
-        printf("hello compressed world\n");
-        int result = 1;
-        REPORT_RESULT();
-        return 0;
-      }
-    '''))
-
-    self.build_native_lzma()
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'page.html',
-           '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
-                                          path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
-                                          'LZMA.decompress')]).communicate()
-    assert os.path.exists(os.path.join(self.get_dir(), 'page.js')), 'must be side js'
-    assert os.path.exists(os.path.join(self.get_dir(), 'page.js.compress')), 'must be side compressed js'
-    assert os.stat(os.path.join(self.get_dir(), 'page.js')).st_size > os.stat(os.path.join(self.get_dir(), 'page.js.compress')).st_size, 'compressed file must be smaller'
-    shutil.move(os.path.join(self.get_dir(), 'page.js'), 'page.js.renamedsoitcannotbefound');
-    self.run_browser('page.html', '', '/report_result?1')
-
   def test_preload_file(self):
     absolute_src_path = os.path.join(self.get_dir(), 'somefile.txt').replace('\\', '/')
     open(absolute_src_path, 'w').write('''load me right before running the code please''')
@@ -428,43 +405,6 @@ If manually bisecting:
     #open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { filePackagePrefixURL: "http:/localhost:8888/cdn/", '))
     #test()
 
-  def test_compressed_file(self):
-    open(os.path.join(self.get_dir(), 'datafile.txt'), 'w').write('compress this please' + (2000*'.'))
-    open(os.path.join(self.get_dir(), 'datafile2.txt'), 'w').write('moar' + (100*'!'))
-    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
-      #include <stdio.h>
-      #include <string.h>
-      #include <emscripten.h>
-      int main() {
-        char buf[21];
-        FILE *f = fopen("datafile.txt", "r");
-        fread(buf, 1, 20, f);
-        buf[20] = 0;
-        fclose(f);
-        printf("file says: |%s|\n", buf);
-        int result = !strcmp("compress this please", buf);
-        FILE *f2 = fopen("datafile2.txt", "r");
-        fread(buf, 1, 5, f2);
-        buf[5] = 0;
-        fclose(f2);
-        result = result && !strcmp("moar!", buf);
-        printf("file 2 says: |%s|\n", buf);
-        REPORT_RESULT();
-        return 0;
-      }
-    '''))
-
-    self.build_native_lzma()
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'page.html', '--preload-file', 'datafile.txt', '--preload-file', 'datafile2.txt',
-           '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
-                                          path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
-                                          'LZMA.decompress')]).communicate()
-    assert os.path.exists(os.path.join(self.get_dir(), 'datafile.txt')), 'must be data file'
-    assert os.path.exists(os.path.join(self.get_dir(), 'page.data.compress')), 'must be data file in compressed form'
-    assert os.stat(os.path.join(self.get_dir(), 'page.js')).st_size != os.stat(os.path.join(self.get_dir(), 'page.js.compress')).st_size, 'compressed file must be different'
-    shutil.move(os.path.join(self.get_dir(), 'datafile.txt'), 'datafile.txt.renamedsoitcannotbefound');
-    self.run_browser('page.html', '', '/report_result?1')
-
   def test_sdl_swsurface(self):
     self.btest('sdl_swsurface.c', expected='1')
 
@@ -494,27 +434,6 @@ If manually bisecting:
       '--preload-file', 'screenshot.jpeg', '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpeg"'
     ]).communicate()
     self.run_browser('page.html', '', '/report_result?600')
-
-  def test_sdl_image_compressed(self):
-    for image, width in [(path_from_root('tests', 'screenshot2.png'), 300),
-                         (path_from_root('tests', 'screenshot.jpg'), 600)]:
-      self.clear()
-      print image
-
-      basename = os.path.basename(image)
-      shutil.copyfile(image, os.path.join(self.get_dir(), basename))
-      open(os.path.join(self.get_dir(), 'sdl_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image.c')).read()))
-
-      self.build_native_lzma()
-      Popen([
-        PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '-o', 'page.html',
-        '--preload-file', basename, '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="' + basename + '"',
-        '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
-                                       path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
-                                       'LZMA.decompress')
-      ]).communicate()
-      shutil.move(os.path.join(self.get_dir(), basename), basename + '.renamedsoitcannotbefound');
-      self.run_browser('page.html', '', '/report_result?' + str(width))
 
   def test_sdl_image_prepare(self):
     # load an image file, get pixel data.
@@ -2009,7 +1928,7 @@ Module["preRun"].push(function () {
       # sanity checks, building with and without precise float semantics generates different results
       self.btest(path_from_root('tests', 'codemods.cpp'), expected='2', args=[opts])
       self.btest(path_from_root('tests', 'codemods.cpp'), expected='1', args=[opts, '-s', 'PRECISE_F32=1'])
-      self.btest(path_from_root('tests', 'codemods.cpp'), expected='1', args=[opts, '-s', 'PRECISE_F32=2']) # empty polyfill, but browser has support, so semantics are like float
+      self.btest(path_from_root('tests', 'codemods.cpp'), expected='1', args=[opts, '-s', 'PRECISE_F32=2', '--separate-asm']) # empty polyfill, but browser has support, so semantics are like float
 
       # now use a shell to remove the browser's fround support
       open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', '''
@@ -2018,7 +1937,7 @@ Module["preRun"].push(function () {
   '''))
       self.btest(path_from_root('tests', 'codemods.cpp'), expected='2', args=[opts, '--shell-file', 'shell.html'])
       self.btest(path_from_root('tests', 'codemods.cpp'), expected='1', args=[opts, '--shell-file', 'shell.html', '-s', 'PRECISE_F32=1'])
-      self.btest(path_from_root('tests', 'codemods.cpp'), expected='2', args=[opts, '--shell-file', 'shell.html', '-s', 'PRECISE_F32=2']) # empty polyfill, no browser support, so semantics are like double
+      self.btest(path_from_root('tests', 'codemods.cpp'), expected='2', args=[opts, '--shell-file', 'shell.html', '-s', 'PRECISE_F32=2', '--separate-asm']) # empty polyfill, no browser support, so semantics are like double
 
       # finally, remove fround, patch up fround as the code executes (after polyfilling etc.), to verify that we got rid of it entirely on the client side
       fixer = 'python fix.py'
@@ -2032,7 +1951,7 @@ open(filename, 'w').write(replaced)
   ''')
       self.btest(path_from_root('tests', 'codemods.cpp'), expected='2', args=[opts, '--shell-file', 'shell.html', '--js-transform', fixer]) # no fround anyhow
       self.btest(path_from_root('tests', 'codemods.cpp'), expected='121378', args=[opts, '--shell-file', 'shell.html', '--js-transform', fixer, '-s', 'PRECISE_F32=1']) # proper polyfill was enstated, then it was replaced by the fix so 0 is returned all the time, hence a different result here
-      self.btest(path_from_root('tests', 'codemods.cpp'), expected='2', args=[opts, '--shell-file', 'shell.html', '--js-transform', fixer, '-s', 'PRECISE_F32=2']) # we should remove the calls to the polyfill ENTIRELY here, on the clientside, so we should NOT see any calls to fround here, and result should be like double
+      self.btest(path_from_root('tests', 'codemods.cpp'), expected='2', args=[opts, '--shell-file', 'shell.html', '--js-transform', fixer, '-s', 'PRECISE_F32=2', '--separate-asm']) # we should remove the calls to the polyfill ENTIRELY here, on the clientside, so we should NOT see any calls to fround here, and result should be like double
 
   def test_wget(self):
     with open(os.path.join(self.get_dir(), 'test.txt'), 'w') as f:
@@ -2396,27 +2315,6 @@ Module['_main'] = function() {
   def test_sdl2_swsurface(self):
     self.btest('sdl2_swsurface.c', expected='1', args=['-s', 'USE_SDL=2'])
 
-  def test_sdl2_image_compressed(self):
-    for image, width in [(path_from_root('tests', 'screenshot2.png'), 300),
-                         (path_from_root('tests', 'screenshot.jpg'), 600)]:
-      self.clear()
-      print image
-
-      basename = os.path.basename(image)
-      shutil.copyfile(image, os.path.join(self.get_dir(), basename))
-      open(os.path.join(self.get_dir(), 'sdl2_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_image.c')).read()))
-
-      self.build_native_lzma()
-      Popen([
-        PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_image.c'), '-o', 'page.html',
-        '--preload-file', basename, '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="' + basename + '"', '-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2',
-        '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
-                                       path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
-                                       'LZMA.decompress')
-      ]).communicate()
-      shutil.move(os.path.join(self.get_dir(), basename), basename + '.renamedsoitcannotbefound');
-      self.run_browser('page.html', '', '/report_result?' + str(width))
-
   def test_sdl2_image_prepare(self):
     # load an image file, get pixel data.
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.not'))
@@ -2680,131 +2578,139 @@ window.close = function() {
 
   # Test that the emscripten_ atomics api functions work.
   def test_aaa_aaa_pthread_atomics(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=120) # extra time on first test, to be sure to build all libraries
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=120) # extra time on first test, to be sure to build all libraries
 
   # Test 64-bit atomics.
   def test_aaa_pthread_64bit_atomics(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_atomics.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_atomics.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Test the old GCC atomic __sync_fetch_and_op builtin operations.
   def test_aaa_pthread_gcc_atomic_fetch_and_op(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_fetch_and_op.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
+    # We need to resort to using regexes to optimize out SharedArrayBuffer when pthreads are not supported, which is brittle!
+    # Therefore perform very extensive testing of different codegen modes to catch any problems.
+    for opt in [[], ['-O1'], ['-O2'], ['-O3'], ['-Os'], ['-Oz']]:
+      for debug in [[], ['-g1'], ['-g2'], ['-g4']]:
+        for f32 in [[], ['-s', 'PRECISE_F32=1']]:
+          self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_fetch_and_op.cpp'), expected='0', args=opt+debug+f32+['-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # 64 bit version of the above test.
   def test_aaa_pthread_gcc_64bit_atomic_fetch_and_op(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_64bit_atomic_fetch_and_op.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_64bit_atomic_fetch_and_op.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Test the old GCC atomic __sync_op_and_fetch builtin operations.
   def test_aaa_pthread_gcc_atomic_op_and_fetch(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_op_and_fetch.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_op_and_fetch.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # 64 bit version of the above test.
   def test_aaa_pthread_gcc_64bit_atomic_op_and_fetch(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_64bit_atomic_op_and_fetch.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_64bit_atomic_op_and_fetch.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Tests the rest of the remaining GCC atomics after the two above tests.
   def test_aaa_pthread_gcc_atomics(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomics.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomics.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Test the __sync_lock_test_and_set and __sync_lock_release primitives.
   def test_aaa_pthread_gcc_spinlock(self):
     for arg in [[], ['-DUSE_EMSCRIPTEN_INTRINSICS']]:
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_spinlock.cpp'), expected='800', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + arg, timeout=30)
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_spinlock.cpp'), expected='800', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'] + arg, timeout=30)
 
   # Test that basic thread creation works.
   def test_aaa_pthread_create(self):
-    print '0'
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=['-O0', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
-    print '3'
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
+    for opt in [['-O0'], ['-O3']]:
+      for pthreads in [['-s', 'USE_PTHREADS=1'], ['-s', 'USE_PTHREADS=2', '--separate-asm']]:
+        print str(opt) + ' ' + str(pthreads)
+        self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=opt + pthreads + ['-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Test that a pthread can spawn another pthread of its own.
   def test_aaa_pthread_create_pthread(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_create_pthread.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'NO_EXIT_RUNTIME=1'], timeout=30)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_create_pthread.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'NO_EXIT_RUNTIME=1'], timeout=30)
 
   # Test another case of pthreads spawning pthreads, but this time the callers immediately join on the threads they created.
   def test_aaa_pthread_nested_spawns(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_nested_spawns.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2'], timeout=30)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_nested_spawns.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=2'], timeout=30)
 
   # Test that main thread can wait for a pthread to finish via pthread_join().
   def test_aaa_pthread_join(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_join.cpp'), expected='6765', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_join.cpp'), expected='6765', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Test pthread_cancel() operation
   def test_aaa_pthread_cancel(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_cancel.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_cancel.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Test pthread_kill() operation
   def test_aaa_pthread_kill(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_kill.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_kill.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Test that pthread cleanup stack (pthread_cleanup_push/_pop) works.
   def test_aaa_pthread_cleanup(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_cleanup.cpp'), expected='907640832', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_cleanup.cpp'), expected='907640832', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Tests the pthread mutex api.
   def test_aaa_pthread_mutex(self):
     for arg in [[], ['-DSPINLOCK_TEST']]:
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_mutex.cpp'), expected='50', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + arg, timeout=20)
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_mutex.cpp'), expected='50', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'] + arg, timeout=20)
 
   # Test that memory allocation is thread-safe.
   def test_aaa_pthread_malloc(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Stress test pthreads allocating memory that will call to sbrk(), and main thread has to free up the data.
   def test_aaa_pthread_malloc_free(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc_free.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'TOTAL_MEMORY=268435456'], timeout=30)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc_free.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'TOTAL_MEMORY=268435456'], timeout=30)
 
   # Test that the pthread_barrier API works ok.
   def test_aaa_pthread_barrier(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_barrier.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_barrier.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Test the pthread_once() function.
   def test_aaa_pthread_once(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_once.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_once.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Test against a certain thread exit time handling bug by spawning tons of threads.
   def test_aaa_pthread_spawns(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_spawns.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_spawns.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # It is common for code to flip volatile global vars for thread control. This is a bit lax, but nevertheless, test whether that
   # kind of scheme will work with Emscripten as well.
   def test_aaa_pthread_volatile(self):
     for arg in [[], ['-DUSE_C_VOLATILE']]:
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_volatile.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + arg, timeout=30)
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_volatile.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'] + arg, timeout=30)
 
   # Test thread-specific data (TLS).
   def test_aaa_pthread_thread_local_storage(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_thread_local_storage.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_thread_local_storage.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Test the pthread condition variable creation and waiting.
   def test_aaa_pthread_condition_variable(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_condition_variable.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_condition_variable.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Test that pthreads are able to do printf.
   def test_aaa_pthread_printf(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_printf.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'], timeout=30)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_printf.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=1'], timeout=30)
 
   # Test that pthreads are able to do cout. Failed due to https://bugzilla.mozilla.org/show_bug.cgi?id=1154858.
   def test_aaa_pthread_iostream(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_iostream.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'], timeout=30)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_iostream.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=1'], timeout=30)
 
   # Test that the main thread is able to use pthread_set/getspecific.
   def test_aaa_pthread_setspecific_mainthread(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_setspecific_mainthread.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1'], timeout=30)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_setspecific_mainthread.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm'], timeout=30)
 
   # Test the -s PTHREAD_HINT_NUM_CORES=x command line variable.
   def test_aaa_pthread_num_logical_cores(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_num_logical_cores.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_HINT_NUM_CORES=2'], timeout=30)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_num_logical_cores.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_HINT_NUM_CORES=2'], timeout=30)
 
   # Test that pthreads have access to filesystem.
   def test_aaa_pthread_file_io(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_file_io.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'], timeout=30)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_file_io.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=1'], timeout=30)
 
   # Test that the pthread_create() function operates benignly in the case that threading is not supported.
   def test_aaa_pthread_supported(self):
-    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8']]:
+    for args in [[], ['-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8']]:
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_supported.cpp'), expected='0', args=['-O3'] + args, timeout=30)
+
+  def test_aaa_separate_asm_pthreads(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '--separate-asm', '--profiling'], timeout=30)
 
   # Test that it is possible to send a signal via calling alarm(timeout), which in turn calls to the signal handler set by signal(SIGALRM, func);
   def test_sigalrm(self):

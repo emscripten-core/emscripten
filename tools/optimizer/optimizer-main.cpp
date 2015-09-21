@@ -1,3 +1,13 @@
+//==============================================================================
+// Optimizer tool. This is meant to be run after the emscripten compiler has
+// finished generating code. These optimizations are done on the generated
+// code to further improve it.
+//
+// Be aware that this is *not* a general JS optimizer. It assumes that the
+// input is valid asm.js and makes strong assumptions based on this. It may do
+// anything from crashing to optimizing incorrectly if the input is not valid!
+//==============================================================================
+
 #include "simple_ast.h"
 #include "optimizer.h"
 
@@ -14,6 +24,12 @@ int main(int argc, char **argv) {
     else if (str == "minifyWhitespace") minifyWhitespace = true;
     else if (str == "last") last = true;
   }
+
+#ifdef PROFILING
+    std::string str("reading and parsing");
+    clock_t start = clock();
+    errv("starting %s", str.c_str());
+#endif
 
   // Read input file
   FILE *f = fopen(argv[1], "r");
@@ -49,6 +65,10 @@ int main(int argc, char **argv) {
   }
   // do not free input, its contents are used as strings
 
+#ifdef PROFILING
+    errv("    %s took %lu milliseconds", str.c_str(), (clock() - start)/1000);
+#endif
+
   // Run passes on the Document
   for (int i = 2; i < argc; i++) {
     std::string str(argv[i]);
@@ -78,7 +98,7 @@ int main(int argc, char **argv) {
       abort();
     }
 #ifdef PROFILING
-    errv("    %s took %lu microseconds", str.c_str(), clock() - start);
+    errv("    %s took %lu milliseconds", str.c_str(), (clock() - start)/1000);
 #endif
 #ifdef DEBUGGING
     if (worked) {

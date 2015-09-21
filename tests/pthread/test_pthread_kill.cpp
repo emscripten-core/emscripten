@@ -33,6 +33,17 @@ void BusySleep(double msecs)
 
 int main()
 {
+  int result;
+  if (!emscripten_has_threading_support())
+  {
+#ifdef REPORT_RESULT
+    result = 0;
+    REPORT_RESULT();
+#endif
+    printf("Skipped: Threading is not supported.\n");
+    return 0;
+  }
+
   sharedVar = 0;
   int s = pthread_create(&thr, NULL, thread_start, 0);
   assert(s == 0);
@@ -65,7 +76,7 @@ int main()
   assert(emscripten_atomic_load_u32((void*)&sharedVar) == 0);
   EM_ASM_INT( { Module['print']('Main: Done. Successfully killed thread. sharedVar: '+$0+'.'); }, sharedVar);
 #ifdef REPORT_RESULT
-  int result = sharedVar;
+  result = sharedVar;
   REPORT_RESULT();
 #endif
 }

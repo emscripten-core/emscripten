@@ -11,7 +11,7 @@ data downloads.
 
 Usage:
 
-  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--compress COMPRESSION_DATA] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy] [--separate-metadata] [--lz4]
+  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy] [--separate-metadata] [--lz4]
 
   --preload  ,
   --embed    See emcc --help for more details on those options.
@@ -55,14 +55,14 @@ TODO:        You can also provide .crn files yourself, pre-crunched. With this o
 import os, sys, shutil, random, uuid, ctypes
 import posixpath
 import shared
-from shared import Compression, execute, suffix, unsuffixed
+from shared import execute, suffix, unsuffixed
 from jsrun import run_js
 from subprocess import Popen, PIPE, STDOUT
 import fnmatch
 import json
 
 if len(sys.argv) == 1:
-  print '''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--exclude C...] [--compress COMPRESSION_DATA] [--no-closure] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy] [--separate-metadata]
+  print '''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--exclude C...] [--no-closure] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy] [--separate-metadata]
 See the source for more details.'''
   sys.exit(0)
 
@@ -109,10 +109,6 @@ for arg in sys.argv[2:]:
     leading = 'embed'
   elif arg == '--exclude':
     leading = 'exclude'
-  elif arg == '--compress':
-    compress_cnt = 1
-    Compression.on = True
-    leading = 'compress'
   elif arg == '--no-force':
     force = False
     leading = ''
@@ -138,7 +134,7 @@ for arg in sys.argv[2:]:
     try:
       from shared import CRUNCH
     except Exception, e:
-      print >> sys.stderr, 'could not import CRUNCH (make sure it is defined properly in ~/.emscripten)'
+      print >> sys.stderr, 'could not import CRUNCH (make sure it is defined properly in ' + shared.hint_config_file_location() + ')'
       raise e
     crunch = arg.split('=')[1] if '=' in arg else '128'
     leading = ''
@@ -160,16 +156,6 @@ for arg in sys.argv[2:]:
       print >> sys.stderr, 'Warning: ' + arg + ' does not exist, ignoring.'
   elif leading == 'exclude':
     excluded_patterns.append(arg)
-  elif leading == 'compress':
-    if compress_cnt == 1:
-      Compression.encoder = arg
-      compress_cnt = 2
-    elif compress_cnt == 2:
-      Compression.decoder = arg
-      compress_cnt = 3
-    elif compress_cnt == 3:
-      Compression.js_name = arg
-      compress_cnt = 0
   else:
     print >> sys.stderr, 'Unknown parameter:', arg
     sys.exit(1)
@@ -400,8 +386,6 @@ if has_preloaded:
   # TODO: sha256sum on data_target
   if start > 256*1024*1024:
     print >> sys.stderr, 'warning: file packager is creating an asset bundle of %d MB. this is very large, and browsers might have trouble loading it. see https://hacks.mozilla.org/2015/02/synchronous-execution-and-filesystem-access-in-emscripten/' % (start/(1024*1024))
-  if Compression.on:
-    Compression.compress(data_target)
 
   # Data requests - for getting a block of data out of the big archive - have a similar API to XHRs
   code += '''
@@ -518,13 +502,6 @@ if has_preloaded:
     '''
     use_data += "          Module['removeRunDependency']('datafile_%s');\n" % data_target
 
-    if Compression.on:
-      use_data = '''
-        Module["decompress"](byteArray, function(decompressed) {
-          byteArray = new Uint8Array(decompressed);
-          %s
-        });
-      ''' % use_data
   else:
     # LZ4FS usage
     temp = data_target + '.orig'
@@ -540,7 +517,7 @@ if has_preloaded:
     ''' % (meta, data_target)
 
   package_uuid = uuid.uuid4();
-  package_name = Compression.compressed_name(data_target) if Compression.on else data_target
+  package_name = data_target
   statinfo = os.stat(package_name)
   remote_package_size = statinfo.st_size
   remote_package_name = os.path.basename(package_name)

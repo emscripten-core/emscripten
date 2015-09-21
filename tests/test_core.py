@@ -5793,9 +5793,10 @@ return malloc(size);
     Settings.SPLIT_MEMORY = 0
 
   def test_sse1(self):
-    self.banned_js_engines = [NODE_JS] # the test code hits NaN canonicalization on node.js
     if self.is_emterpreter(): return self.skip('todo')
-    if 'SAFE_HEAP=1' in self.emcc_args: return self.skip('SSE with SAFE_HEAP=1 breaks due to NaN canonicalization!')
+    if 'SAFE_HEAP=1' in self.emcc_args and SPIDERMONKEY_ENGINE in JS_ENGINES:
+      self.banned_js_engines += [SPIDERMONKEY_ENGINE]
+      print 'Skipping test_sse1 with SAFE_HEAP=1 on SpiderMonkey, since it fails due to NaN canonicalization.'
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
     orig_args = self.emcc_args
@@ -5805,7 +5806,6 @@ return malloc(size);
 
   # Tests the full SSE1 API.
   def test_sse1_full(self):
-    self.banned_js_engines = [NODE_JS] # the test code hits NaN canonicalization on node.js
     if self.is_emterpreter(): return self.skip('todo')
     Popen([CLANG, path_from_root('tests', 'test_sse1_full.cpp'), '-o', 'test_sse1_full', '-D_CRT_SECURE_NO_WARNINGS=1'] + get_clang_native_args(), stdout=PIPE).communicate()
     native_result, err = Popen('./test_sse1_full', stdout=PIPE).communicate()
@@ -5819,19 +5819,17 @@ return malloc(size);
 
   # Tests the full SSE2 API.
   def test_sse2_full(self):
-    return self.skip('todo: No Float64x2 type available anymore.')
     if self.is_emterpreter(): return self.skip('todo')
-    if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('test_sse2_full requires SpiderMonkey to run.')
-    if '-O1' in self.emcc_args or '-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args:
-      return self.skip('TODO: SIMD does not currently validate as asm.js in SpiderMonkey, run only in unoptimized mode.')
-    Popen([CLANG, path_from_root('tests', 'test_sse2_full.cpp'), '-o', 'test_sse2_full', '-D_CRT_SECURE_NO_WARNINGS=1'] + get_clang_native_args(), stdout=PIPE).communicate()
+    args = []
+    if '-O0' in self.emcc_args: args += ['-D_DEBUG=1']
+    Popen([CLANG, path_from_root('tests', 'test_sse2_full.cpp'), '-o', 'test_sse2_full', '-D_CRT_SECURE_NO_WARNINGS=1'] + args + get_clang_native_args(), stdout=PIPE).communicate()
     native_result, err = Popen('./test_sse2_full', stdout=PIPE).communicate()
     native_result = native_result.replace('\r\n', '\n') # Windows line endings fix
 
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
-      self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests'), '-msse2']
+      self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests'), '-msse2'] + args
       self.do_run(open(path_from_root('tests', 'test_sse2_full.cpp'), 'r').read(), native_result)
 
   def test_simd(self):
@@ -5853,10 +5851,7 @@ return malloc(size);
   def test_simd3(self):
     if self.is_emterpreter(): return self.skip('todo')
 
-    self.banned_js_engines = [NODE_JS] # fails in simd.js polyfill
-
-    if '-O1' in self.emcc_args or '-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args:
-      return self.skip('TODO: Fails under optimizations')
+    Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
 
     test_path = path_from_root('tests', 'core', 'test_simd3')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5925,11 +5920,6 @@ return malloc(size);
     # test_simd10 is to test that loading and storing arbitrary bit patterns works in SSE1.
     if self.is_emterpreter(): return self.skip('todo')
 
-    self.banned_js_engines = [NODE_JS] # the test code hits NaN canonicalization on node.js
-
-    if '-O1' in self.emcc_args or '-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args:
-      return self.skip('TODO: Compiler is too aggressive in optimizing and generates code that breaks due to NaN canonicalization! https://github.com/kripken/emscripten/issues/3403')
-
     test_path = path_from_root('tests', 'core', 'test_simd10')
     src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -5939,11 +5929,6 @@ return malloc(size);
   def test_simd11(self):
     # test_simd11 is to test that _mm_movemask_ps works correctly when handling input floats with 0xFFFFFFFF NaN bit patterns.
     if self.is_emterpreter(): return self.skip('todo')
-
-    self.banned_js_engines = [NODE_JS] # the test code hits NaN canonicalization on node.js
-
-    if '-O1' in self.emcc_args or '-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args:
-      return self.skip('TODO: Compiler is too aggressive in optimizing and generates code that breaks due to NaN canonicalization! https://github.com/kripken/emscripten/issues/3403')
 
     test_path = path_from_root('tests', 'core', 'test_simd11')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -7522,27 +7507,6 @@ Success!
 
   def test_locale(self):
     self.do_run_from_file(path_from_root('tests', 'test_locale.c'), path_from_root('tests', 'test_locale.out'))
-
-  def test_sixtyfour_bit_return_value(self):
-    # This test checks that the most significant 32 bits of a 64 bit long are correctly made available
-    # to native JavaScript applications that wish to interact with compiled code returning 64 bit longs.
-    # The MS 32 bits should be available in Runtime.getTempRet0() even when compiled with -O2 --closure 1
-
-    # Compile test.c and wrap it in a native JavaScript binding so we can call our compiled function from JS.
-    Popen([PYTHON, EMCC, path_from_root('tests', 'return64bit', 'test.c'), '--pre-js', path_from_root('tests', 'return64bit', 'testbindstart.js'), '--pre-js', path_from_root('tests', 'return64bit', 'testbind.js'), '--post-js', path_from_root('tests', 'return64bit', 'testbindend.js'), '-s', 'EXPORTED_FUNCTIONS=["_test"]', '-o', 'test.js', '-O2', '--closure', '1'], stdout=PIPE, stderr=PIPE).communicate()
-
-    # Simple test program to load the test.js binding library and call the binding to the
-    # C function returning the 64 bit long.
-    open(os.path.join(self.get_dir(), 'testrun.js'), 'w').write('''
-      var test = require("./test.js");
-      test.runtest();
-    ''')
-
-    # Run the test and confirm the output is as expected.
-    if NODE_JS in JS_ENGINES:
-      out = run_js('testrun.js', engine=NODE_JS, full_output=True)
-      assert "low = 5678" in out
-      assert "high = 1234" in out
 
   def test_async(self):
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has

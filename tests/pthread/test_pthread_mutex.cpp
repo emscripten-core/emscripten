@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <emscripten.h>
+#include <emscripten/threading.h>
 #include <unistd.h>
 
 #define NUM_THREADS 8
@@ -91,9 +92,18 @@ int main()
 {
 	pthread_mutex_init(&lock, NULL);
 
-	// Create new threads in parallel.
-	for(int i = 0; i < NUM_THREADS; ++i)
-		CreateThread(i, threadNum++);
+	if (emscripten_has_threading_support()) {
+		// Create new threads in parallel.
+		for(int i = 0; i < NUM_THREADS; ++i)
+			CreateThread(i, threadNum++);
 
-	emscripten_set_main_loop(WaitToJoin, 0, 0);
+		emscripten_set_main_loop(WaitToJoin, 0, 0);
+	} else {
+		pthread_mutex_lock(&lock);
+		pthread_mutex_unlock(&lock);
+#ifdef REPORT_RESULT
+		int result = 50;
+		REPORT_RESULT();
+#endif
+	}
 }

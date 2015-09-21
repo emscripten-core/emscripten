@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <emscripten/emscripten.h>
+#include <emscripten/threading.h>
 
 #define NUM_THREADS  3
 #define TCOUNT 10
@@ -87,11 +88,14 @@ int main (int argc, char *argv[])
   pthread_create(&threads[1], &attr, inc_count, (void *)t2);
   pthread_create(&threads[2], &attr, inc_count, (void *)t3);
 
-  /* Wait for all threads to complete */
-  for (i=0; i<NUM_THREADS; i++) {
-    pthread_join(threads[i], NULL);
+  if (emscripten_has_threading_support())
+  {
+    /* Wait for all threads to complete */
+    for (i=0; i<NUM_THREADS; i++) {
+      pthread_join(threads[i], NULL);
+    }
+    printf ("Main(): Waited on %d  threads. Done.\n", NUM_THREADS);
   }
-  printf ("Main(): Waited on %d  threads. Done.\n", NUM_THREADS);
 
   /* Clean up and exit */
   pthread_attr_destroy(&attr);

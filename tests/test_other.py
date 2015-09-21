@@ -426,6 +426,7 @@ f.close()
               if invoke_method == 'cmake':
                 # Test invoking cmake directly.
                 cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+path_from_root('cmake', 'Modules', 'Platform', 'Emscripten.cmake'),
+                                '-DCMAKE_CROSSCOMPILING_EMULATOR="' + ' '.join(NODE_JS) + '"',
                                 '-DCMAKE_BUILD_TYPE=' + configuration, cmake_arguments[i], '-G', generator, cmakelistsdir]
                 env = tools.shared.Building.remove_sh_exe_from_path(os.environ)
               else:
@@ -433,6 +434,7 @@ f.close()
                 cmd = [emconfigure, 'cmake', '-DCMAKE_BUILD_TYPE=' + configuration, cmake_arguments[i], '-G', generator, cmakelistsdir]
                 env = os.environ.copy()
 
+              print str(cmd)
               ret = Popen(cmd, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else PIPE, stderr=None if EM_BUILD_VERBOSE_LEVEL >= 1 else PIPE, env=env).communicate()
               if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
                 logging.error(ret[1]) # If there were any errors, print them directly to console for diagnostics.
@@ -689,7 +691,6 @@ This pointer might make sense in another type signature:''', '''Invalid function
           Popen([PYTHON, EMCC, src] + libs + ['-o', 'test.js', '-O2'] + debug + ['-s', 'OUTLINING_LIMIT=%d' % outlining_limit] + args).communicate()
           assert os.path.exists('test.js')
           shutil.copyfile('test.js', '%d_test.js' % outlining_limit)
-          assert len(JS_ENGINES) > 1
           for engine in JS_ENGINES:
             if engine == V8_ENGINE: continue # ban v8, weird failures
             out = run_js('test.js', engine=engine, stderr=PIPE, full_output=True)
@@ -1978,6 +1979,8 @@ int f() {
         assert "FAIL" not in output, output
 
   def test_llvm_nativizer(self):
+    if WINDOWS: return self.skip('test_llvm_nativizer does not work on Windows: https://github.com/kripken/emscripten/issues/702')
+    if OSX: return self.skip('test_llvm_nativizer does not work on OS X: https://github.com/kripken/emscripten/issues/709')
     try:
       Popen(['as', '--version'], stdout=PIPE, stderr=PIPE).communicate()
     except:
@@ -1988,8 +1991,10 @@ int f() {
     open(os.path.join(self.get_dir(), 'somefile.binary'), 'w').write('''waka waka############################''')
     open(os.path.join(self.get_dir(), 'test.file'), 'w').write('''ay file..............,,,,,,,,,,,,,,''')
     open(os.path.join(self.get_dir(), 'stdin'), 'w').write('''inter-active''')
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'files.cpp'), '-c']).communicate()
-    Popen([PYTHON, path_from_root('tools', 'nativize_llvm.py'), os.path.join(self.get_dir(), 'files.o')], stdout=PIPE, stderr=PIPE).communicate(input)
+    subprocess.check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'files.cpp'), '-c'])
+    nativize_llvm = Popen([PYTHON, path_from_root('tools', 'nativize_llvm.py'), os.path.join(self.get_dir(), 'files.o')], stdout=PIPE, stderr=PIPE)
+    nativize_llvm.communicate(input)
+    assert nativize_llvm.returncode == 0
     output = Popen([os.path.join(self.get_dir(), 'files.o.run')], stdin=open(os.path.join(self.get_dir(), 'stdin')), stdout=PIPE, stderr=PIPE).communicate()
     self.assertContained('''size: 37
 data: 119,97,107,97,32,119,97,107,97,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35
@@ -2731,7 +2736,7 @@ int main()
 
   def test_llvm_lit(self):
     llvm_src = get_fastcomp_src_dir()
-    cmd = [os.path.join(LLVM_ROOT, 'llvm-lit'), '-v', os.path.join(llvm_src, 'test', 'CodeGen', 'JS')]
+    cmd = [PYTHON, os.path.join(LLVM_ROOT, 'llvm-lit.py'), '-v', os.path.join(llvm_src, 'test', 'CodeGen', 'JS')]
     print cmd
     p = Popen(cmd)
     p.communicate()
@@ -5529,4 +5534,24 @@ int main() {
       print opts
       check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
       self.assertContained('success.', run_js('a.out.js'))
+
+  def test_sixtyfour_bit_return_value(self):
+    # This test checks that the most significant 32 bits of a 64 bit long are correctly made available
+    # to native JavaScript applications that wish to interact with compiled code returning 64 bit longs.
+    # The MS 32 bits should be available in Runtime.getTempRet0() even when compiled with -O2 --closure 1
+
+    # Compile test.c and wrap it in a native JavaScript binding so we can call our compiled function from JS.
+    check_execute([PYTHON, EMCC, path_from_root('tests', 'return64bit', 'test.c'), '--pre-js', path_from_root('tests', 'return64bit', 'testbindstart.js'), '--pre-js', path_from_root('tests', 'return64bit', 'testbind.js'), '--post-js', path_from_root('tests', 'return64bit', 'testbindend.js'), '-s', 'EXPORTED_FUNCTIONS=["_test"]', '-o', 'test.js', '-O2', '--closure', '1'])
+
+    # Simple test program to load the test.js binding library and call the binding to the
+    # C function returning the 64 bit long.
+    open(os.path.join(self.get_dir(), 'testrun.js'), 'w').write('''
+      var test = require("./test.js");
+      test.runtest();
+    ''')
+
+    # Run the test and confirm the output is as expected.
+    out = run_js('testrun.js', full_output=True)
+    assert "low = 5678" in out
+    assert "high = 1234" in out
 

@@ -91,10 +91,13 @@ int main()
 		assert(y == HILO(6, 4));
 		assert(x == HILO(6, 4));
 		volatile T n = HILO(2, 1);
-		for(int i = 0; i < NUM_THREADS; ++i) pthread_create(&thread[i], NULL, thread_add_and_fetch, (void*)&n);
-		for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
-		printf("n: %llx\n", n);
-		assert(n == HILO(NUM_THREADS*10000ULL+2ULL, NUM_THREADS*10000ULL+1ULL));
+		if (emscripten_has_threading_support())
+		{
+			for(int i = 0; i < NUM_THREADS; ++i) pthread_create(&thread[i], NULL, thread_add_and_fetch, (void*)&n);
+			for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
+			printf("n: %llx\n", n);
+			assert(n == HILO(NUM_THREADS*10000ULL+2ULL, NUM_THREADS*10000ULL+1ULL));
+		}
 	}
 	{
 		T x = HILO(15, 13);
@@ -102,10 +105,13 @@ int main()
 		assert(y == HILO(5, 3));
 		assert(x == HILO(5, 3));
 		volatile T n = HILO(NUM_THREADS*10000ULL+5ULL, NUM_THREADS*10000ULL+3ULL);
-		for(int i = 0; i < NUM_THREADS; ++i) pthread_create(&thread[i], NULL, thread_sub_and_fetch, (void*)&n);
-		for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
-		printf("n: %llx\n", n);
-		assert(n == HILO(5,3));
+		if (emscripten_has_threading_support())
+		{
+			for(int i = 0; i < NUM_THREADS; ++i) pthread_create(&thread[i], NULL, thread_sub_and_fetch, (void*)&n);
+			for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
+			printf("n: %llx\n", n);
+			assert(n == HILO(5,3));
+		}
 	}
 	{
 		T x = HILO(32768 + 5, 5);
@@ -115,13 +121,16 @@ int main()
 		for(int x = 0; x < 100; ++x) // Test a few times for robustness, since this test is so short-lived.
 		{
 			or_and_fetch_data = HILO(65536 + (1<<NUM_THREADS), 1<<NUM_THREADS);
-			for(int i = 0; i < NUM_THREADS; ++i)
+			if (emscripten_has_threading_support())
 			{
-				threadArg[i] = DUP(1 << i);
-				pthread_create(&thread[i], NULL, thread_or_and_fetch, (void*)&threadArg[i]);
+				for(int i = 0; i < NUM_THREADS; ++i)
+				{
+					threadArg[i] = DUP(1 << i);
+					pthread_create(&thread[i], NULL, thread_or_and_fetch, (void*)&threadArg[i]);
+				}
+				for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
+				assert(or_and_fetch_data == HILO(65536 + (1<<(NUM_THREADS+1))-1, (1<<(NUM_THREADS+1))-1));
 			}
-			for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
-			assert(or_and_fetch_data == HILO(65536 + (1<<(NUM_THREADS+1))-1, (1<<(NUM_THREADS+1))-1));
 		}
 	}
 	{
@@ -129,16 +138,19 @@ int main()
 		T y = __sync_and_and_fetch(&x, HILO(32768 + 9, 9));
 		assert(y == HILO(32768 + 1, 1));
 		assert(x == HILO(32768 + 1, 1));
-		for(int x = 0; x < 100; ++x) // Test a few times for robustness, since this test is so short-lived.
+		if (emscripten_has_threading_support())
 		{
-			and_and_fetch_data = HILO(65536 + (1<<(NUM_THREADS+1))-1, (1<<(NUM_THREADS+1))-1);
-			for(int i = 0; i < NUM_THREADS; ++i)
+			for(int x = 0; x < 100; ++x) // Test a few times for robustness, since this test is so short-lived.
 			{
-				threadArg[i] = DUP(~(1UL<<i));
-				pthread_create(&thread[i], NULL, thread_and_and_fetch, (void*)&threadArg[i]);
+				and_and_fetch_data = HILO(65536 + (1<<(NUM_THREADS+1))-1, (1<<(NUM_THREADS+1))-1);
+				for(int i = 0; i < NUM_THREADS; ++i)
+				{
+					threadArg[i] = DUP(~(1UL<<i));
+					pthread_create(&thread[i], NULL, thread_and_and_fetch, (void*)&threadArg[i]);
+				}
+				for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
+				assert(and_and_fetch_data == HILO(65536 + (1<<NUM_THREADS), 1<<NUM_THREADS));
 			}
-			for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
-			assert(and_and_fetch_data == HILO(65536 + (1<<NUM_THREADS), 1<<NUM_THREADS));
 		}
 	}
 	{
@@ -146,16 +158,19 @@ int main()
 		T y = __sync_xor_and_fetch(&x, HILO(16384 + 9, 9));
 		assert(y == HILO(32768 + 16384 + 12, 12));
 		assert(x == HILO(32768 + 16384 + 12, 12));
-		for(int x = 0; x < 100; ++x) // Test a few times for robustness, since this test is so short-lived.
+		if (emscripten_has_threading_support())
 		{
-			xor_and_fetch_data = HILO(32768 + (1<<NUM_THREADS), 1<<NUM_THREADS);
-			for(int i = 0; i < NUM_THREADS; ++i)
+			for(int x = 0; x < 100; ++x) // Test a few times for robustness, since this test is so short-lived.
 			{
-				threadArg[i] = DUP(~(1UL<<i));
-				pthread_create(&thread[i], NULL, thread_xor_and_fetch, (void*)&threadArg[i]);
+				xor_and_fetch_data = HILO(32768 + (1<<NUM_THREADS), 1<<NUM_THREADS);
+				for(int i = 0; i < NUM_THREADS; ++i)
+				{
+					threadArg[i] = DUP(~(1UL<<i));
+					pthread_create(&thread[i], NULL, thread_xor_and_fetch, (void*)&threadArg[i]);
+				}
+				for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
+				assert(xor_and_fetch_data == HILO(32768 + ((1<<(NUM_THREADS+1))-1), (1<<(NUM_THREADS+1))-1));
 			}
-			for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
-			assert(xor_and_fetch_data == HILO(32768 + ((1<<(NUM_THREADS+1))-1), (1<<(NUM_THREADS+1))-1));
 		}
 	}
 // XXX NAND support does not exist in Atomics API.

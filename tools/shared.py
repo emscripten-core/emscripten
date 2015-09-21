@@ -166,6 +166,7 @@ def add_coloring_to_emit_ansi(fn):
   return new
 
 WINDOWS = sys.platform.startswith('win')
+OSX = sys.platform == 'darwin'
 
 if WINDOWS:
   logging.StreamHandler.emit = add_coloring_to_emit_windows(logging.StreamHandler.emit)
@@ -209,8 +210,10 @@ if not EM_CONFIG:
   EM_CONFIG = '~/.emscripten'
 if '\n' in EM_CONFIG:
   CONFIG_FILE = None
+  logging.debug('EM_CONFIG is specified inline without a file')
 else:
   CONFIG_FILE = os.path.expanduser(EM_CONFIG)
+  logging.debug('EM_CONFIG is located in ' + CONFIG_FILE)
   if not os.path.exists(CONFIG_FILE):
     # Note: repr is used to ensure the paths are escaped correctly on Windows.
     # The full string is replaced so that the template stays valid Python.
@@ -221,7 +224,7 @@ else:
     config_file = config_file.replace('\'{{{ EMSCRIPTEN_ROOT }}}\'', repr(__rootpath__))
     llvm_root = os.path.dirname(find_executable('llvm-dis') or '/usr/bin/llvm-dis')
     config_file = config_file.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
-    node = find_executable('node') or find_executable('nodejs') or 'node'
+    node = find_executable('nodejs') or find_executable('node') or 'node'
     config_file = config_file.replace('\'{{{ NODE }}}\'', repr(node))
     if WINDOWS:
       tempdir = os.environ.get('TEMP') or os.environ.get('TMP') or 'c:\\temp'
@@ -258,6 +261,12 @@ try:
 except Exception, e:
   logging.error('Error in evaluating %s (at %s): %s, text: %s' % (EM_CONFIG, CONFIG_FILE, str(e), config_text))
   sys.exit(1)
+
+# Returns a suggestion where current .emscripten config file might be located (if EM_CONFIG env. var is used 
+# without a file, this hints to "default" location at ~/.emscripten)
+def hint_config_file_location():
+  if CONFIG_FILE: return CONFIG_FILE
+  else: return '~/.emscripten'
 
 def listify(x):
   if type(x) is not list: return [x]
@@ -394,6 +403,17 @@ def check_node_version():
     logging.warning('cannot check node version: %s',  e)
     return False
 
+def check_closure_compiler():
+  try:
+    subprocess.call([JAVA, '-version'], stdout=PIPE, stderr=PIPE)
+  except:
+    logging.warning('java does not seem to exist, required for closure compiler, which is optional (define JAVA in ' + hint_config_file_location() + ' if you want it)')
+    return False
+  if not os.path.exists(CLOSURE_COMPILER):
+    logging.warning('Closure compiler (%s) does not exist, check the paths in %s' % (CLOSURE_COMPILER, EM_CONFIG))
+    return False
+  return True
+
 # Finds the system temp directory without resorting to using the one configured in .emscripten
 def find_temp_directory():
   if WINDOWS:
@@ -497,15 +517,9 @@ def check_sanity(force=False):
       logging.critical('failing sanity checks due to previous fastcomp failure')
       sys.exit(1)
 
-    try:
-      subprocess.call([JAVA, '-version'], stdout=PIPE, stderr=PIPE)
-    except:
-      logging.warning('java does not seem to exist, required for closure compiler, which is optional (define JAVA in ~/.emscripten if you want it)')
-
-    if not os.path.exists(CLOSURE_COMPILER):
-     logging.warning('Closure compiler (%s) does not exist, check the paths in %s. -O2 and above will fail' % (CLOSURE_COMPILER, EM_CONFIG))
-
     # Sanity check passed!
+    if not check_closure_compiler():
+      logging.warning('closure compiler will not be available')
 
     if not force:
       # Only create/update this file if the sanity check succeeded, i.e., we got here
@@ -563,7 +577,7 @@ def get_clang_native_args():
   global CACHED_CLANG_NATIVE_ARGS
   if CACHED_CLANG_NATIVE_ARGS is not None: return CACHED_CLANG_NATIVE_ARGS
   CACHED_CLANG_NATIVE_ARGS = []
-  if sys.platform == 'darwin':
+  if OSX:
     sdk_path = osx_find_native_sdk_path()
     if sdk_path:
       CACHED_CLANG_NATIVE_ARGS = ['-isysroot', osx_find_native_sdk_path()]
@@ -638,8 +652,8 @@ class Configuration:
     except NameError:
       self.TEMP_DIR = find_temp_directory()
       if self.TEMP_DIR == None:
-        logging.critical('TEMP_DIR not defined in ' + os.path.expanduser('~\\.emscripten') + ", and could not detect a suitable directory! Please configure .emscripten to contain a variable TEMP_DIR='/path/to/temp/dir'.")
-      logging.debug('TEMP_DIR not defined in ~/.emscripten, using ' + self.TEMP_DIR)
+        logging.critical('TEMP_DIR not defined in ' + hint_config_file_location() + ", and could not detect a suitable directory! Please configure .emscripten to contain a variable TEMP_DIR='/path/to/temp/dir'.")
+      logging.debug('TEMP_DIR not defined in ' + hint_config_file_location() + ', using ' + self.TEMP_DIR)
 
     if not os.path.isdir(self.TEMP_DIR):
       logging.critical("The temp directory TEMP_DIR='" + self.TEMP_DIR + "' doesn't seem to exist! Please make sure that the path is correct.")
@@ -651,7 +665,7 @@ class Configuration:
         self.EMSCRIPTEN_TEMP_DIR = self.CANONICAL_TEMP_DIR
         safe_ensure_dirs(self.EMSCRIPTEN_TEMP_DIR)
       except Exception, e:
-        logging.error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ~/.emscripten')
+        logging.error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + hint_config_file_location())
 
   def get_temp_files(self):
     return tempfiles.TempFiles(
@@ -693,13 +707,13 @@ except:
 try:
   PYTHON
 except:
-  logging.debug('PYTHON not defined in ~/.emscripten, using "%s"' % (sys.executable,))
+  logging.debug('PYTHON not defined in ' + hint_config_file_location() + ', using "%s"' % (sys.executable,))
   PYTHON = sys.executable
 
 try:
   JAVA
 except:
-  logging.debug('JAVA not defined in ~/.emscripten, using "java"')
+  logging.debug('JAVA not defined in ' + hint_config_file_location() + ', using "java"')
   JAVA = 'java'
 
 # Additional compiler options
@@ -1580,8 +1594,9 @@ class Building:
 
   @staticmethod
   def closure_compiler(filename, pretty=True):
-    if not os.path.exists(CLOSURE_COMPILER):
-      raise Exception('Closure compiler appears to be missing, looked at: ' + str(CLOSURE_COMPILER))
+    if not check_closure_compiler():
+      logging.error('Cannot run closure compiler')
+      raise Exception('closure compiler check failed')
 
     CLOSURE_EXTERNS = path_from_root('src', 'closure-externs.js')
     NODE_EXTERNS_BASE = path_from_root('third_party', 'closure-compiler', 'node-externs')
@@ -1837,22 +1852,6 @@ class JS:
     s = s.replace('\n', '\\n').replace('\r', '\\r')
     def escape(x): return '\\x{:02x}'.format(ord(x.group()))
     return re.sub('[\x80-\xff]', escape, s)
-
-# Compression of code and data for smaller downloads
-class Compression:
-  on = False
-
-  @staticmethod
-  def compressed_name(filename):
-    return filename + '.compress'
-
-  @staticmethod
-  def compress(filename):
-    execute(Compression.encoder, stdin=open(filename, 'rb'), stdout=open(Compression.compressed_name(filename), 'wb'))
-
-  @staticmethod
-  def worth_it(original, compressed):
-    return compressed < original - 1500 # save at least one TCP packet or so
 
 def execute(cmd, *args, **kw):
   try:

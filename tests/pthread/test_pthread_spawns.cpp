@@ -1,4 +1,5 @@
 #include <pthread.h>
+#include <emscripten/threading.h>
 
 #define NUM_THREADS 2
 
@@ -14,7 +15,8 @@ int main()
 	for(int x = 0; x < 1000; ++x)
 	{
 		for(int i = 0; i < NUM_THREADS; ++i) pthread_create(&thread[i], NULL, thread_main, 0);
-		for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
+		if (emscripten_has_threading_support())
+			for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
 	}
 #ifdef REPORT_RESULT
 	int result = 0;

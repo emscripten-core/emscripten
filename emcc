@@ -26,7 +26,7 @@ emcc can be influenced by a few environment variables:
 import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging
 from subprocess import PIPE
 from tools import shared, jsrun, system_libs
-from tools.shared import Compression, execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_move
+from tools.shared import execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_move
 from tools.response_file import read_response_file
 
 # endings = dot + a suffix, safe to test by  filename.endswith(endings)
@@ -402,7 +402,6 @@ try:
   preload_files = []
   embed_files = []
   exclude_files = []
-  compression = None
   ignore_dynamic_linking = False
   shell_path = shared.path_from_root('src', 'shell.html')
   js_libraries = []
@@ -561,28 +560,6 @@ try:
     elif newargs[i].startswith('--exclude-file'):
       check_bad_eq(newargs[i])
       exclude_files.append(newargs[i+1])
-      newargs[i] = ''
-      newargs[i+1] = ''
-    elif newargs[i].startswith('--compression'):
-      logging.warning('--compression is deprecated. Instead, it is recommended you use native gzip compression in your webserver')
-      check_bad_eq(newargs[i])
-      parts = newargs[i+1].split(',')
-      assert len(parts) == 3, '--compression requires specifying    native_encoder,js_decoder,js_name  - see emcc --help. got: %s' % newargs[i+1]
-      def locate(tool):
-        if WINDOWS:
-          if os.path.exists(tool+'.exe'):
-            return tool+'.exe'
-          if os.path.exists(tool+'.bat'):
-            return tool+'.bat'
-          if os.path.exists(tool+'.cmd'):
-            return tool+'.cmd'
-        return tool
-      Compression.encoder = locate(parts[0])
-      Compression.decoder = locate(parts[1])
-      Compression.js_name = parts[2]
-      assert os.path.exists(Compression.encoder), 'native encoder %s does not exist' % Compression.encoder
-      assert os.path.exists(Compression.decoder), 'js decoder %s does not exist' % Compression.decoder
-      Compression.on = True
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--use-preload-cache'):
@@ -811,6 +788,13 @@ try:
     final_suffix = 'mout' # not bitcode, not js; but just dependency rule of the input file
   final_ending = ('.' + final_suffix) if len(final_suffix) > 0 else ''
 
+  # target is now finalized, can finalize other _target s
+  js_target = unsuffixed(target) + '.js'
+
+  if separate_asm:
+    asm_target = js_target[:-3] + '.asm.js'
+    shared.Settings.SEPARATE_ASM = asm_target
+
   # Find library files
   for i, lib in libs:
     logging.debug('looking for library "%s"', lib)
@@ -846,8 +830,6 @@ try:
     exit(1)
 
   newargs = CC_ADDITIONAL_ARGS + newargs
-
-  assert not (Compression.on and final_suffix != 'html'), 'Compression only works when generating HTML'
 
   assert not (separate_asm and final_suffix != 'html'), '--separate-asm requires building to HTML'
 
@@ -926,7 +908,9 @@ try:
 
   if use_closure_compiler:
     shared.Settings.USE_CLOSURE_COMPILER = use_closure_compiler
-    assert os.path.exists(shared.CLOSURE_COMPILER), logging.error('fatal: Closure compiler (%s) does not exist', shared.CLOSURE_COMPILER)
+    if not shared.check_closure_compiler():
+      logging.error('fatal: closure compiler is not configured correctly')
+      sys.exit(1)
     if use_closure_compiler == 2 and shared.Settings.ASM_JS == 1:
       logging.warning('not all asm.js optimizations are possible with --closure 2, disabling those - your code will be run more slowly')
       shared.Settings.ASM_JS = 2
@@ -1350,8 +1334,6 @@ try:
     if len(exclude_files) > 0:
       file_args.append('--exclude')
       file_args += exclude_files
-    if Compression.on:
-      file_args += ['--compress', Compression.encoder, Compression.decoder, Compression.js_name]
     if use_preload_cache:
       file_args.append('--use-preload-cache')
     if no_heap_copy:
@@ -1615,8 +1597,6 @@ try:
     f.close()
     src = None
 
-  js_target = unsuffixed(target) + '.js'
-
   if shared.Settings.EMTERPRETIFY:
     flush_js_optimizer_queue()
     logging.debug('emterpretifying')
@@ -1699,6 +1679,8 @@ try:
 ''' % script_src
       script_src = None
 
+    asm_mods = []
+
     if proxy_to_worker:
       child_js = shared.Settings.PROXY_TO_WORKER_FILENAME or target_basename
       script_inline = '''
@@ -1714,140 +1696,173 @@ try:
   }
 ''' % child_js
       shutil.move(final, js_target)
-    elif not Compression.on:
+    else:
       # Normal code generation path
       if debug_level >= 4:
         generate_source_map(target)
       shutil.move(final, js_target)
-      need_mods = shared.Settings.PRECISE_F32 == 2
-      if not need_mods:
-        # Non-modifiable code, just load the code directly
-        script_src = base_js_target
-      else:
+      script_src = base_js_target
+
+      # Optional code modifications
+      if shared.Settings.PRECISE_F32 == 2:
+        assert separate_asm, 'options that modify code on the client, like PRECISE_F32=2, require --separate-asm'
         # Potentially-modifiable code, load as text, modify, then execute. This lets you
         # patch the code on the client machine right before it is executed, perhaps based
         # on information about the client.
-        checks = []
-        mods = []
-        if shared.Settings.PRECISE_F32 == 2:
-          checks.append('!Math.fround')
-          if 'minifyNames' not in js_optimizer_queue_history:
-            # simple dumb replace
-            mods.append('''
+        mod = '''
 console.log('optimizing out Math.fround calls');
-code = code.replace(/Math_fround\(/g, '(').replace("'use asm'", "'almost asm'").replace('"use asm"', '"almost asm"');
-''')
-          else:
-            # minified, not quite so simple - TODO
-            mods.append('''
+code = code.replace("'use asm'", "'almost asm'").replace('"use asm"', '"almost asm"');
+'''
+        if 'minifyNames' not in js_optimizer_queue_history:
+          # simple dumb replace
+          mod += "code = code.replace(/Math_fround\(/g, '(')\n";
+        else:
+          # minified, not quite so simple
+          mod += '''
 try {
   console.log('optimizing out Math.fround calls');
   var m = /var ([^=]+)=global\.Math\.fround;/.exec(code);
   var minified = m[1];
   if (!minified) throw 'fail';
-  var startAsm = code.indexOf('// EMSCRIPTEN_START_FUNCS');
-  var endAsm = code.indexOf('// EMSCRIPTEN_END_FUNCS');
-  var asm = code.substring(startAsm, endAsm);
   do {
     var moar = false; // we need to re-do, as x(x( will not be fixed
-    asm = asm.replace(new RegExp('[^a-zA-Z0-9\\\\$\\\\_]' + minified + '\\\\(', 'g'), function(s) { moar = true; return s[0] + '(' });
+    code = code.replace(new RegExp('[^a-zA-Z0-9\\\\$\\\\_]' + minified + '\\\\(', 'g'), function(s) { moar = true; return s[0] + '(' });
   } while (moar);
-  code = code.substring(0, startAsm) + asm + code.substring(endAsm);
-  code = code.replace("'use asm'", "'almost asm'").replace('"use asm"', '"almost asm"');
 } catch(e) { console.log('failed to optimize out Math.fround calls ' + e) }
+'''
+        asm_mods.append('if (!Math.fround) { ' + mod + ' }')
+
+      if shared.Settings.USE_PTHREADS == 2:
+        assert separate_asm, 'options that modify code on the client, like PRECISE_F32=2, require --separate-asm'
+        asm_mods.append('''if (typeof SharedInt8Array === "undefined") {
+try {
+  console.log('This browser does not support SharedArrayBuffer/Atomics/pthreads! Patching out SharedArrayBuffer usage...');
+  var t0 = performance.now();
+  // "new global.SharedInt8Array(buffer)" -> "new global.Int8Array(buffer)" and likewise for other buffer types.
+  code = code.replace(/new\s+global\.Shared(.*?)Array\(buffer\);/g, "new global.$1Array(buffer);");
+
+  // In minified builds the interesting symbol names are mangled, so we have to first find what they are.
+  var math_fround = /var\s+([^=]+?)\s*=\s*global\.Math\.fround;/.exec(code);
+  var cp;
+  var zero;
+  if (math_fround && math_fround.length >= 2) {
+    math_fround = math_fround[1] + '(';
+    cp = ')';
+    zero = math_fround + '0)';
+  } else {
+    math_fround = "+";
+    cp = '';
+    zero = '0.0';
+  }
+  var heap8 = /var\s+([^=]+?)\s*=\s*new global\.Int8Array\(buffer\);/.exec(code)[1];
+  var heap16 = /var\s+([^=]+?)\s*=\s*new global\.Int16Array\(buffer\);/.exec(code)[1];
+  var heap32 = /var\s+([^=]+?)\s*=\s*new global\.Int32Array\(buffer\);/.exec(code)[1];
+  var heapf32 = /var\s+([^=]+?)\s*=\s*new global\.Float32Array\(buffer\);/.exec(code)[1];
+  var heapf64 = /var\s+([^=]+?)\s*=\s*new global\.Float64Array\(buffer\);/.exec(code)[1];
+  var atomics_load = /var\s+([^=]+?)\s*=\s*global\.Atomics\.load;/.exec(code)[1];
+  var atomics_store = /var\s+([^=]+?)\s*=\s*global\.Atomics\.store;/.exec(code)[1];
+  var atomics_compareExchange = /var\s+([^=]+?)\s*=\s*global\.Atomics\.compareExchange;/.exec(code)[1];
+  var atomics_add = /var\s+([^=]+?)\s*=\s*global\.Atomics\.add;/.exec(code)[1];
+  var atomics_sub = /var\s+([^=]+?)\s*=\s*global\.Atomics\.sub;/.exec(code)[1];
+  var atomics_and = /var\s+([^=]+?)\s*=\s*global\.Atomics\.and;/.exec(code)[1];
+  var atomics_or = /var\s+([^=]+?)\s*=\s*global\.Atomics\.or;/.exec(code)[1];
+  var atomics_xor = /var\s+([^=]+?)\s*=\s*global\.Atomics\.xor;/.exec(code)[1];
+  var atomics_fence = /var\s+([^=]+?)\s*=\s*global\.Atomics\.fence;/.exec(code)[1];
+
+  // "Atomics_load(HEAP32, index)" -> "HEAP32[index]|0" and same for other heap types.
+  code = code.replace(new RegExp('\\\\b' + atomics_load + '\\\\((' + heap8 + ')\w*,(.*?)\\\\\)', 'g'), "($1[$2]|0)");
+  code = code.replace(new RegExp('\\\\b' + atomics_load + '\\\\((' + heap16 + ')\w*,(.*?)\\\\\)', 'g'), "($1[$2]|0)");
+  code = code.replace(new RegExp('\\\\b' + atomics_load + '\\\\((' + heap32 + ')\w*,(.*?)\\\\\)', 'g'), "($1[$2]|0)");
+  code = code.replace(new RegExp('\\\\b' + atomics_load + '\\\\((' + heapf32 + ')\w*,(.*?)\\\\\)', 'g'), math_fround + "$1[$2]"+cp);
+  code = code.replace(new RegExp('\\\\b' + atomics_load + '\\\\((' + heapf64 + ')\w*,(.*?)\\\\\)', 'g'), "(+$1[$2])");
+
+  // "Atomics_store(HEAP32, index, value)" -> "HEAP32[index] = value" and same for other heap types.
+  code = code.replace(new RegExp('\\\\b' + atomics_store + '\\\\((.*?),(.*?),(.*?)\\\\\)', 'g'), "($1[$2] = $3)");
+
+  // The Atomics built-ins take as first parameter the heap object, however when replacing those with
+  // polyfill versions, it is not possible to pass a heap object as the first parameter. Therefore
+  // route each call to Atomics to a polyfill function for each type, e.g. "Atomics_add(HEAP32, index, val)" -> "Atomics_add_32(index, val)"
+  code = code.replace(new RegExp('\\\\b' + atomics_add + '\\\\('+heap8+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_add + "_8($1,$2)|0)|0)");
+  code = code.replace(new RegExp('\\\\b' + atomics_add + '\\\\('+heap16+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_add + "_16($1,$2)|0)|0)");
+  code = code.replace(new RegExp('\\\\b' + atomics_add + '\\\\('+heap32+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_add + "_32($1,$2)|0)|0)");
+  code = code.replace(new RegExp('\\\\b' + atomics_add + '\\\\('+heapf32+',(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_add + "_f32($1,$2)|0)");
+  code = code.replace(new RegExp('\\\\b' + atomics_add + '\\\\('+heapf64+',(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_add + "_f64($1,$2)|0)");
+
+  code = code.replace(new RegExp('\\\\b' + atomics_sub + '\\\\('+heap8+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_sub + "_8($1,$2)|0)|0)");
+  code = code.replace(new RegExp('\\\\b' + atomics_sub + '\\\\('+heap16+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_sub + "_16($1,$2)|0)|0)");
+  code = code.replace(new RegExp('\\\\b' + atomics_sub + '\\\\('+heap32+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_sub + "_32($1,$2)|0)|0)");
+  code = code.replace(new RegExp('\\\\b' + atomics_sub + '\\\\('+heapf32+',(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_sub + "_f32($1,$2)|0)");
+  code = code.replace(new RegExp('\\\\b' + atomics_sub + '\\\\('+heapf64+',(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_sub + "_f64($1,$2)|0)");
+
+  code = code.replace(new RegExp('\\\\b' + atomics_and + '\\\\('+heap8+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_and + "_8($1,$2)|0)|0)");
+  code = code.replace(new RegExp('\\\\b' + atomics_and + '\\\\('+heap16+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_and + "_16($1,$2)|0)|0)");
+  code = code.replace(new RegExp('\\\\b' + atomics_and + '\\\\('+heap32+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_and + "_32($1,$2)|0)|0)");
+
+  code = code.replace(new RegExp('\\\\b' + atomics_or + '\\\\('+heap8+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_or + "_8($1,$2)|0)|0)");
+  code = code.replace(new RegExp('\\\\b' + atomics_or + '\\\\('+heap16+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_or + "_16($1,$2)|0)|0)");
+  code = code.replace(new RegExp('\\\\b' + atomics_or + '\\\\('+heap32+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_or + "_32($1,$2)|0)|0)");
+
+  code = code.replace(new RegExp('\\\\b' + atomics_xor + '\\\\('+heap8+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_xor + "_8($1,$2)|0)|0)");
+  code = code.replace(new RegExp('\\\\b' + atomics_xor + '\\\\('+heap16+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_xor + "_16($1,$2)|0)|0)");
+  code = code.replace(new RegExp('\\\\b' + atomics_xor + '\\\\('+heap32+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_xor + "_32($1,$2)|0)|0)");
+
+  code = code.replace(new RegExp('\\\\b' + atomics_compareExchange + '\\\\('+heap8+',(.*?),(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_compareExchange + "_8($1,$2,$3)|0)");
+  code = code.replace(new RegExp('\\\\b' + atomics_compareExchange + '\\\\('+heap16+',(.*?),(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_compareExchange + "_16($1,$2,$3)|0)");
+  code = code.replace(new RegExp('\\\\b' + atomics_compareExchange + '\\\\('+heap32+',(.*?),(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_compareExchange + "_32($1,$2,$3)|0)");
+  code = code.replace(new RegExp('\\\\b' + atomics_compareExchange + '\\\\('+heapf32+',(.*?),(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_compareExchange + "_f32($1,$2,$3)|0)");
+  code = code.replace(new RegExp('\\\\b' + atomics_compareExchange + '\\\\('+heapf64+',(.*?),(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_compareExchange + "_f64($1,$2,$3)|0)");
+
+  // Remove the import statements of Atomics built-ins.
+  code = code.replace(new RegExp("var " + atomics_load + "\\\\s*=\\\\s*global\\.Atomics\\.load;"), "");
+  code = code.replace(new RegExp("var " + atomics_store + "\\\\s*=\\\\s*global\\.Atomics\\.store;"), "");
+  code = code.replace(new RegExp("var " + atomics_compareExchange + "\\\\s*=\\\\s*global\\.Atomics\\.compareExchange;"), "");
+  code = code.replace(new RegExp("var " + atomics_add + "\\\\s*=\\\\s*global\\.Atomics\\.add;"), "");
+  code = code.replace(new RegExp("var " + atomics_sub + "\\\\s*=\\\\s*global\\.Atomics\\.sub;"), "");
+  code = code.replace(new RegExp("var " + atomics_and + "\\\\s*=\\\\s*global\\.Atomics\\.and;"), "");
+  code = code.replace(new RegExp("var " + atomics_or + "\\\\s*=\\\\s*global\\.Atomics\\.or;"), "");
+  code = code.replace(new RegExp("var " + atomics_xor + "\\\\s*=\\\\s*global\\.Atomics\\.xor;"), "");
+  code = code.replace(new RegExp("var " + atomics_fence + "\\\\s*=\\\\s*global\\.Atomics\\.fence;"), "");
+
+  // Implement polyfill versions of Atomics intrinsics inside the asm.js scope.
+  code = code.replace("// EMSCRIPTEN_START_FUNCS", "// EMSCRIPTEN_START_FUNCS\\n"
+    + "function " + atomics_add + "_8(i,v) { i=i|0; v=v|0; var w=0; w="+heap8+"[i>>0]|0; "+heap8+"[i>>0]=("+heap8+"[i>>0]|0)+(v|0); return w|0; }\\n"
+    + "function " + atomics_add + "_16(i,v) { i=i|0; v=v|0; var w=0; w="+heap16+"[i<<1>>1]|0; "+heap16+"[i<<1>>1]=("+heap16+"[i<<1>>1]|0)+(v|0); return w|0; }\\n"
+    + "function " + atomics_add + "_32(i,v) { i=i|0; v=v|0; var w=0; w="+heap32+"[i<<2>>2]|0; "+heap32+"[i<<2>>2]=("+heap32+"[i<<2>>2]|0)+(v|0); return w|0; }\\n"
+    + "function " + atomics_add + "_f32(i,v) { i=i|0; v="+math_fround+"v"+cp+"; var w="+zero+"; w="+math_fround+heapf32+"[i<<2>>2]"+cp+"; "+heapf32+"[i<<2>>2]="+math_fround+heapf32+"[i<<2>>2]"+cp+"+v; return w; }\\n"
+    + "function " + atomics_add + "_f64(i,v) { i=i|0; v=+v; var w=0.0; w=+"+heapf64+"[i<<3>>3]; "+heapf64+"[i<<3>>3]="+heapf64+"[i<<3>>3]+v; return w; }\\n"
+
+    + "function " + atomics_sub + "_8(i,v) { i=i|0; v=v|0; var w=0; w="+heap8+"[i>>0]|0; "+heap8+"[i>>0]=("+heap8+"[i>>0]|0)-(v|0); return w|0; }\\n"
+    + "function " + atomics_sub + "_16(i,v) { i=i|0; v=v|0; var w=0; w="+heap16+"[i<<1>>1]|0; "+heap16+"[i<<1>>1]=("+heap16+"[i<<1>>1]|0)-(v|0); return w|0; }\\n"
+    + "function " + atomics_sub + "_32(i,v) { i=i|0; v=v|0; var w=0; w="+heap32+"[i<<2>>2]|0; "+heap32+"[i<<2>>2]=("+heap32+"[i<<2>>2]|0)-(v|0); return w|0; }\\n"
+    + "function " + atomics_sub + "_f32(i,v) { i=i|0; v="+math_fround+"v"+cp+"; var w="+zero+"; w="+math_fround+heapf32+"[i<<2>>2]"+cp+"; "+heapf32+"[i<<2>>2]="+math_fround+heapf32+"[i<<2>>2]"+cp+"-v; return w; }\\n"
+    + "function " + atomics_sub + "_f64(i,v) { i=i|0; v=+v; var w=0.0; w=+"+heapf64+"[i<<3>>3]; "+heapf64+"[i<<3>>3]="+heapf64+"[i<<3>>3]-v; return w; }\\n"
+
+    + "function " + atomics_and + "_8(i,v) { i=i|0; v=v|0; var w=0; w="+heap8+"[i>>0]|0; "+heap8+"[i>>0]=("+heap8+"[i>>0]|0)&(v|0); return w|0; }\\n"
+    + "function " + atomics_and + "_16(i,v) { i=i|0; v=v|0; var w=0; w="+heap16+"[i<<1>>1]|0; "+heap16+"[i<<1>>1]=("+heap16+"[i<<1>>1]|0)&(v|0); return w|0; }\\n"
+    + "function " + atomics_and + "_32(i,v) { i=i|0; v=v|0; var w=0; w="+heap32+"[i<<2>>2]|0; "+heap32+"[i<<2>>2]=("+heap32+"[i<<2>>2]|0)&(v|0); return w|0; }\\n"
+
+    + "function " + atomics_or + "_8(i,v) { i=i|0; v=v|0; var w=0; w="+heap8+"[i>>0]|0; "+heap8+"[i>>0]=("+heap8+"[i>>0]|0)|(v|0); return w|0; }\\n"
+    + "function " + atomics_or + "_16(i,v) { i=i|0; v=v|0; var w=0; w="+heap16+"[i<<1>>1]|0; "+heap16+"[i<<1>>1]=("+heap16+"[i<<1>>1]|0)|(v|0); return w|0; }\\n"
+    + "function " + atomics_or + "_32(i,v) { i=i|0; v=v|0; var w=0; w="+heap32+"[i<<2>>2]|0; "+heap32+"[i<<2>>2]=("+heap32+"[i<<2>>2]|0)|(v|0); return w|0; }\\n"
+
+    + "function " + atomics_xor + "_8(i,v) { i=i|0; v=v|0; var w=0; w="+heap8+"[i>>0]|0; "+heap8+"[i>>0]=("+heap8+"[i>>0]|0)^(v|0); return w|0; }\\n"
+    + "function " + atomics_xor + "_16(i,v) { i=i|0; v=v|0; var w=0; w="+heap16+"[i<<1>>1]|0; "+heap16+"[i<<1>>1]=("+heap16+"[i<<1>>1]|0)^(v|0); return w|0; }\\n"
+    + "function " + atomics_xor + "_32(i,v) { i=i|0; v=v|0; var w=0; w="+heap32+"[i<<2>>2]|0; "+heap32+"[i<<2>>2]=("+heap32+"[i<<2>>2]|0)^(v|0); return w|0; }\\n"
+
+    + "function " + atomics_compareExchange + "_8(i,e,r) { i=i|0; e=e|0; r=r|0; var w=0; w="+heap8+"[i>>0]|0; if ((w|0) == (e|0)) "+heap8+"[i>>0]=r; return w|0; }\\n"
+    + "function " + atomics_compareExchange + "_16(i,e,r) { i=i|0; e=e|0; r=r|0; var w=0; w="+heap16+"[i<<1>>1]|0; if ((w|0) == (e|0)) "+heap16+"[i<<1>>1]=r; return w|0; }\\n"
+    + "function " + atomics_compareExchange + "_32(i,e,r) { i=i|0; e=e|0; r=r|0; var w=0; w="+heap32+"[i<<2>>2]|0; if ((w|0) == (e|0)) "+heap32+"[i<<2>>2]=r; return w|0; }\\n"
+    + "function " + atomics_compareExchange + "_f32(i,e,r) { i=i|0; e="+math_fround+"e"+cp+"; r="+math_fround+"r"+cp+"; var w="+zero+"; w="+math_fround+heapf32+"[i<<2>>2]"+cp+"; if (w == e) "+heapf32+"[i<<2>>2]=r; return w; }\\n"
+    + "function " + atomics_compareExchange + "_f64(i,e,r) { i=i|0; e=+e; r=+r; var w=0.0; w=+"+heapf64+"[i<<3>>3]; if (+w == +e) "+heapf64+"[i<<3>>3]=r; return w; }\\n"
+
+    + "function " + atomics_fence + "() {}\\n"
+    );
+
+  var t1 = performance.now();
+  console.log('SAB+Atomics removed in ' + (t1-t0) + ' msecs.');
+} catch(e) { console.log('Failed to optimize out SharedArrayBuffer calls ' + e); }
+} // if no SharedInt8Array
 ''')
-
-        fixes = ''
-        for i in range(len(checks)):
-          fixes += 'if (' + checks[i] + ') { ' + mods[i] + ' }\n'
-
-        # if all the checks are negative, just emit a script tag normally, that's better.
-        # otherwise, do an xhr to get the code as text, modify, and load asynchronously
-        code = 'if (!(' + ' || '.join(checks) + ''')) {
-  var script = document.createElement('script');
-  script.src = "''' + base_js_target + '''";
-  document.body.appendChild(script);
-} else {
-  var codeXHR = new XMLHttpRequest();
-  codeXHR.open('GET', '%s', true);
-  codeXHR.onload = function() {
-    var code = codeXHR.responseText;
-    %s
-    var blob = new Blob([code], { type: 'text/javascript' });
-    codeXHR = null;
-    var src = URL.createObjectURL(blob);
-    var script = document.createElement('script');
-    script.src = URL.createObjectURL(blob);
-    script.onload = function() {
-      URL.revokeObjectURL(script.src);
-    };
-    document.body.appendChild(script);
-  };
-  codeXHR.send(null);
-}
-''' % (base_js_target, fixes)
-        script_inline = code
-    else:
-      # Compress the main code
-      shutil.move(final, js_target)
-      Compression.compress(js_target)
-
-      # Run the decompressor in a worker, and add code to
-      #   1. download the compressed file
-      #   2. decompress to a typed array
-      #   3. convert to a string of source code
-      #   4. insert a script element with that source code (more effective than eval)
-      decoding = '''
-        var decompressWorker = new Worker('decompress.js');
-        var decompressCallbacks = [];
-        var decompressions = 0;
-        Module["decompress"] = function(data, callback) {
-          var id = decompressCallbacks.length;
-          decompressCallbacks.push(callback);
-          decompressWorker.postMessage({ data: data, id: id });
-          if (Module['setStatus']) {
-            decompressions++;
-            Module['setStatus']('Decompressing...');
-          }
-        };
-        decompressWorker.onmessage = function(event) {
-          decompressCallbacks[event.data.id](event.data.data);
-          decompressCallbacks[event.data.id] = null;
-          if (Module['setStatus']) {
-            decompressions--;
-            if (decompressions == 0) {
-              Module['setStatus']('');
-            }
-          }
-        };
-        var compiledCodeXHR = new XMLHttpRequest();
-        compiledCodeXHR.open('GET', '%s', true);
-        compiledCodeXHR.responseType = 'arraybuffer';
-        compiledCodeXHR.onload = function() {
-          var arrayBuffer = compiledCodeXHR.response;
-          if (!arrayBuffer) throw('Loading compressed code failed.');
-          var byteArray = new Uint8Array(arrayBuffer);
-          Module.decompress(byteArray, function(decompressed) {
-            var source = Array.prototype.slice.apply(decompressed).map(function(x) { return String.fromCharCode(x) }).join(''); // createObjectURL instead?
-            var scriptTag = document.createElement('script');
-            scriptTag.setAttribute('type', 'text/javascript');
-            scriptTag.innerHTML = source;
-            document.body.appendChild(scriptTag);
-          });
-        };
-        compiledCodeXHR.send(null);
-''' % Compression.compressed_name(base_js_target)
-      script_inline = decoding
-
-      # Add decompressor with web worker glue code
-      decompressor = open('decompress.js', 'w')
-      decompressor.write(open(Compression.decoder).read())
-      decompressor.write('''
-        onmessage = function(event) {
-          postMessage({ data: %s(event.data.data), id: event.data.id });
-        };
-''' % Compression.js_name)
-      decompressor.close()
 
     if shared.Settings.EMTERPRETIFY_FILE:
       # We need to load the emterpreter file before anything else, it has to be synchronously ready
@@ -1883,11 +1898,12 @@ try {
 
     if separate_asm:
       un_src()
-      asm_target = js_target[:-3] + '.asm.js'
       temp_target = misc_temp_files.get(suffix='.js').name
       execute([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), js_target, asm_target, temp_target])
       shutil.move(temp_target, js_target)
-      script_inline = '''
+      if len(asm_mods) == 0:
+        # just load the asm, then load the rest
+        script_inline = '''
     var script = document.createElement('script');
     script.src = "%s";
     script.onload = function() {
@@ -1897,6 +1913,31 @@ try {
     };
     document.body.appendChild(script);
 ''' % (os.path.basename(asm_target), script_inline)
+      else:
+        # may need to modify the asm code, load it as text, modify, and load asynchronously
+        script_inline = '''
+    var codeXHR = new XMLHttpRequest();
+    codeXHR.open('GET', '%s', true);
+    codeXHR.onload = function() {
+      var code = codeXHR.responseText;
+      %s
+      var blob = new Blob([code], { type: 'text/javascript' });
+      codeXHR = null;
+      var src = URL.createObjectURL(blob);
+      var script = document.createElement('script');
+      script.src = URL.createObjectURL(blob);
+      script.onload = function() {
+        setTimeout(function() {
+          %s
+        }, 1); // delaying even 1ms is enough to allow compilation memory to be reclaimed
+        URL.revokeObjectURL(script.src);
+      };
+      document.body.appendChild(script);
+    };
+    codeXHR.send(null);
+''' % (os.path.basename(asm_target), '\n'.join(asm_mods), script_inline)
+    else:
+      assert len(asm_mods) == 0, 'no --separate-asm means no client code mods are possible'
 
     html = open(target, 'w')
     assert (script_src or script_inline) and not (script_src and script_inline)

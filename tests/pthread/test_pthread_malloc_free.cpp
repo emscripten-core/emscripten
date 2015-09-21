@@ -26,6 +26,14 @@ static void *thread_start(void *arg)
 
 int main()
 {
+  int result = 0;
+  if (!emscripten_has_threading_support()) {
+#ifdef REPORT_RESULT
+    REPORT_RESULT();
+#endif
+    printf("Skipped: threading support is not available!\n");
+    return 0;
+  }
   pthread_t thr[NUM_THREADS];
   for(int i = 0; i < NUM_THREADS; ++i)
   {
@@ -33,7 +41,7 @@ int main()
     if (rc != 0)
     {
 #ifdef REPORT_RESULT
-      int result = (rc != EAGAIN);
+      result = (rc != EAGAIN);
       REPORT_RESULT();
       return 0;
 #endif
@@ -58,7 +66,6 @@ int main()
   }
   printf("Test finished successfully!\n");
 #ifdef REPORT_RESULT
-  int result = 0;
   REPORT_RESULT();
 #endif
 }

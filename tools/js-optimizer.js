@@ -4,8 +4,11 @@
 //==============================================================================
 // Optimizer tool. This is meant to be run after the emscripten compiler has
 // finished generating code. These optimizations are done on the generated
-// code to further improve it. Some of the modifications also work in
-// conjunction with closure compiler.
+// code to further improve it.
+//
+// Be aware that this is *not* a general JS optimizer. It assumes that the
+// input is valid asm.js and makes strong assumptions based on this. It may do
+// anything from crashing to optimizing incorrectly if the input is not valid!
 //
 // TODO: Optimize traverse to modify a node we want to replace, in-place,
 //       instead of returning it to the previous call frame where we check?
@@ -2393,7 +2396,7 @@ function registerize(ast) {
     // we just use a fresh register to make sure we avoid this, but it could be
     // optimized to check for safe registers (free, and not used in this loop level).
     var varRegs = {}; // maps variables to the register they will use all their life
-    var freeRegsClasses = asm ? [[], [], [], [], [], []] : []; // two classes for asm, one otherwise XXX - hardcoded length
+    var freeRegsClasses = asm ? [[], [], [], [], [], [], [], [], []] : []; // two classes for asm, one otherwise XXX - hardcoded length
     var nextReg = 1;
     var fullNames = {};
     var loopRegs = {}; // for each loop nesting level, the list of bound variables
@@ -2556,8 +2559,8 @@ function registerizeHarder(ast) {
     // Utilities for allocating register variables.
     // We need distinct register pools for each type of variable.
 
-    var allRegsByType = [{}, {}, {}, {}, {}, {}]; // XXX - hardcoded length
-    var regPrefixByType = ['i', 'd', 'f', 'F4', 'I4', 'n'];
+    var allRegsByType = [{}, {}, {}, {}, {}, {}, {}, {}, {}]; // XXX - hardcoded length
+    var regPrefixByType = ['i', 'd', 'f', 'F4', 'F2', 'I16', 'I8', 'I4', 'n'];
     var nextReg = 1;
 
     function createReg(forName) {
@@ -4066,7 +4069,9 @@ function eliminate(ast, memSafe) {
             for (var j = 0; j < stats.length; j++) {
               traverseInOrder(stats[j]);
             }
-            // We cannot track from one switch case into another, undo all new trackings TODO: general framework here, use in if-else as well
+            // We cannot track from one switch case into another if there are external dependencies, undo all new trackings
+            // Otherwise we can track, e.g. a var used in a case before assignment in another case is UB in asm.js, so no need for the assignment
+            // TODO: general framework here, use in if-else as well
             for (var t in tracked) {
               if (!(t in originalTracked)) {
                 var info = tracked[t];

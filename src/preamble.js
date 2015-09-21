@@ -1028,7 +1028,12 @@ var STACK_BASE = 0, STACKTOP = 0, STACK_MAX = 0; // stack area
 var DYNAMIC_BASE = 0, DYNAMICTOP = 0; // dynamic area handled by sbrk
 
 #if USE_PTHREADS
-if (ENVIRONMENT_IS_PTHREAD) staticSealed = true; // The static memory area has been initialized already in the main thread, pthreads skip this.
+if (ENVIRONMENT_IS_PTHREAD) {
+  staticSealed = true; // The static memory area has been initialized already in the main thread, pthreads skip this.
+#if SEPARATE_ASM != 0
+  importScripts('{{{ SEPARATE_ASM }}}'); // load the separated-out asm.js
+#endif
+}
 #endif
 
 function enlargeMemory() {
@@ -1146,7 +1151,9 @@ while (totalMemory < TOTAL_MEMORY || totalMemory < 2*TOTAL_STACK) {
 totalMemory = Math.max(totalMemory, 16*1024*1024);
 #endif
 if (totalMemory !== TOTAL_MEMORY) {
+#if ASSERTIONS
   Module.printErr('increasing TOTAL_MEMORY to ' + totalMemory + ' to be compliant with the asm.js spec (and given that TOTAL_STACK=' + TOTAL_STACK + ')');
+#endif
   TOTAL_MEMORY = totalMemory;
 }
 
@@ -1156,9 +1163,9 @@ assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' 
        'JS engine does not provide full typed array support');
 
 var buffer;
-#if USE_PTHREADS
 
 #if IN_TEST_HARNESS
+#if USE_PTHREADS == 1
 if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') {
   xhr = new XMLHttpRequest();
   xhr.open('GET', 'http://localhost:8888/report_result?skipped:%20SharedArrayBuffer%20is%20not%20supported!');
@@ -1166,8 +1173,9 @@ if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') 
   setTimeout(function() { window.close() }, 2000);
 }
 #endif
+#endif
 
-
+#if USE_PTHREADS
 if (typeof SharedArrayBuffer !== 'undefined') {
   if (!ENVIRONMENT_IS_PTHREAD) buffer = new SharedArrayBuffer(TOTAL_MEMORY);
   // Currently SharedArrayBuffer does not have a slice() operation, so polyfill it in.
