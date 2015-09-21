@@ -1,353 +1,266 @@
-// CONFIGURATION: UI update interval in milliseconds:
-var CPUPROFILER_UI_UPDATE_INTERVAL = 1;
-var cpuprofiler_ui_lastupdate_endX = 0;
+var emscripten_cpuprofiler = {
+  // UI update interval in milliseconds.
+  uiUpdateInterval: 1,
 
-var cpuprofiler_t_mainloop = [];
-var cpuprofiler_t_outside_mainloop = [];
+  // Specifies the pixel column where the previous UI update finished at. (current "draw cursor" position next draw will resume from)
+  lastUiUpdateEndX: 0,
 
-var cpuprofiler_histogram_x = 0;
+  // An array which stores samples of msec durations spent in the emscripten main loop (emscripten_set_main_loop).
+  // Carries # samples equal to the pixel width of the profiler display window, and old samples are erased in a rolling window fashion.
+  timeSpentInMainloop: [],
 
-var cpuprofiler_currentframe_starttime = 0;
-var cpuprofiler_prevframe_endtime = 0;
-var cpuprofiler_time_between_frameupdates = 0;
+  // Similar to 'timeSpentInMainloop', except this stores msec durations outside the emscripten main loop callback. (either idle CPU time, browser processing, or something else)
+  timeSpentOutsideMainloop: [],
 
-var sections = [];
+  // Specifies the sample coordinate into the timeSpentIn/OutsideMainloop arrays that is currently being populated.
+  currentHistogramX: 0,
 
-// FPSCounter
-var fpsCounterTicks = [];
-var fpsCounterLastPrint = performance.now();
-var avgs = [];
-function fpsReset() { avgs = []; }
+  // Wallclock time denoting when the currently executing main loop callback tick began.
+  currentFrameStartTime: 0,
 
-function fpsCounter()
-{
-  var t = performance.now();
-  fpsCounterTicks.push(t);
-  var i = 0;
-  if (fpsCounterTicks.length > 120) fpsCounterTicks = fpsCounterTicks.slice(fpsCounterTicks.length-120, fpsCounterTicks.length);
+  // Wallclock time denoting when the previously executing main loop was finished.
+  previousFrameEndTime: 0,
+
+  // The total time spent in a frame can be further subdivided down into 'sections'. This array stores info structures representing each section.
+  sections: [],
+
+  // The 2D canvas DOM element to which the CPU profiler graph is rendered to.
+  canvas: null,
+
+  // The 2D drawing context on the canvas.
+  drawContext: null,
+
+  // How many milliseconds in total to fit vertically into the displayed CPU profiler window? Frametimes longer than this are out the graph and not visible.
+  verticalTimeScale: 40,
+
+  // History of wallclock times of N most recent frame times. Used to estimate current FPS.
+  fpsCounterTicks: [],
+
+  // When was the FPS UI display last updated?
+  fpsCounterLastPrint: performance.now(),
+
+  // fpsCounter() is called once per frame to record an executed frame time, and to periodically update the FPS counter display.
+  fpsCounter: function fpsCounter() {
+    // Record the new frame time sample, and prune the history to 120 most recent frames.
+    var now = performance.now();
+    this.fpsCounterTicks.push(now);
+    if (this.fpsCounterTicks.length > 120) this.fpsCounterTicks = this.fpsCounterTicks.slice(this.fpsCounterTicks.length - 120, this.fpsCounterTicks.length);
   
-  if (t - fpsCounterLastPrint > 2000)
-  {
-    var fps = ((fpsCounterTicks.length-1) * 1000.0 / (fpsCounterTicks[fpsCounterTicks.length-1]-fpsCounterTicks[0]));
-    /*
-    avgs.push(fps);
-    if (avgs.length > 60) avgs = avgs.slice(avgs.length-60, avgs.length);
-    var avgsSorted = avgs.slice(0);
-    avgsSorted.sort();
-    var avgFps = (avgsSorted[(avgsSorted.length/2)|0]).toFixed(2);
-*/
-    var totalDt = 0;
-    var totalRAFDt = 0;
-    var minDt = 99999999;
-    var maxDt = 0;
-    var nSamples = 0;
-    for(var i = 0; i < cpuprofiler_t_mainloop.length; ++i)
-    {
-      var dt = cpuprofiler_t_mainloop[i] + cpuprofiler_t_outside_mainloop[i];
-      totalRAFDt += cpuprofiler_t_mainloop[i];
-      if (dt > 0) ++nSamples;
-      totalDt += dt;
-      minDt = Math.min(minDt, dt);
-      maxDt = Math.max(maxDt, dt);
+    if (now - this.fpsCounterLastPrint > 2000) {
+      var fps = ((this.fpsCounterTicks.length - 1) * 1000.0 / (this.fpsCounterTicks[this.fpsCounterTicks.length - 1] - this.fpsCounterTicks[0]));
+      var totalDt = 0;
+      var totalRAFDt = 0;
+      var minDt = 99999999;
+      var maxDt = 0;
+      var nSamples = 0;
+      for (var i = 0; i < this.timeSpentInMainloop.length; ++i) {
+        var dt = this.timeSpentInMainloop[i] + this.timeSpentOutsideMainloop[i];
+        totalRAFDt += this.timeSpentInMainloop[i];
+        if (dt > 0) ++nSamples;
+        totalDt += dt;
+        minDt = Math.min(minDt, dt);
+        maxDt = Math.max(maxDt, dt);
+      }
+      var avgDt = totalDt / nSamples;
+      var avgFps = 1000.0 / avgDt;
+      var dtVariance = 0;
+      for(var i = 1; i < this.timeSpentInMainloop.length; ++i) {
+        var dt = this.timeSpentInMainloop[i] + this.timeSpentOutsideMainloop[i];
+        var d = dt - avgDt;
+        dtVariance += d*d;
+      }
+      dtVariance /= nSamples;
+
+      var asmJSLoad = totalRAFDt * 100.0 / totalDt;
+
+      var str = 'Last FPS: ' + fps.toFixed(2) + ', avg FPS:' + avgFps.toFixed(2) + ', min/avg/max dt: '
+       + minDt.toFixed(2) + '/' + avgDt.toFixed(2) + '/' + maxDt.toFixed(2) + ' msecs, dt variance: ' + dtVariance.toFixed(3)
+       + ', JavaScript CPU load: ' + asmJSLoad.toFixed(2) + '%';
+      document.getElementById('fpsResult').innerHTML = str;
+      this.fpsCounterLastPrint = now;
     }
-    var avgDt = totalDt / nSamples;
-    var avgFps = 1000.0 / avgDt;
-    var dtVariance = 0;
-    for(var i = 1; i < cpuprofiler_t_mainloop.length; ++i)
-    {
-      var dt = cpuprofiler_t_mainloop[i] + cpuprofiler_t_outside_mainloop[i];
-      var d = dt - avgDt;
-      dtVariance += d*d;      
+  },
+
+  // Creates a new section. Call once at startup.
+  createSection: function createSection(number, name, drawColor) {
+    var sect = this.sections[number];
+    if (!sect) {
+      sect = {
+        count: 0,
+        name: name,
+        startTick: 0,
+        accumulatedTime: 0,
+        frametimes: [],
+        drawColor: drawColor
+      };
     }
-    dtVariance /= nSamples;
-    /*
-    var avgDt = (fpsCounterTicks[fpsCounterTicks.length-1] - fpsCounterTicks[0]) / (fpsCounterTicks.length-1);
-    var dtVariance = 0;
-    for(var i = 1; i < fpsCounterTicks.length; ++i)
-    {
-      var d = (fpsCounterTicks[i] - fpsCounterTicks[i-1]) - avgDt;
-      dtVariance += d*d;
+    sect.name = name;
+    this.sections[number] = sect;
+  },
+
+  // Call at runtime whenever the code execution enter a given profiling section.
+  enterSection: function enterSection(sectionNumber) {
+    var sect = this.sections[sectionNumber];
+    // Handle recursive entering without getting confused (subsequent re-entering is ignored)
+    ++sect.count;
+    if (sect.count == 1) sect.startTick = performance.now();
+  },
+
+  // Call at runtime when the code execution exits the given profiling section.
+  // Be sure to match each startSection(x) call with a call to endSection(x).
+  endSection: function endSection(sectionNumber) {
+    var sect = this.sections[sectionNumber];
+    --sect.count;
+    if (sect.count == 0) sect.accumulatedTime += performance.now() - sect.startTick;
+  },
+
+  // Called in the beginning of each main loop frame tick.
+  frameStart: function frameStart() {
+    this.currentFrameStartTime = performance.now();
+    this.fpsCounter();
+  },
+
+  // Called in the end of each main loop frame tick.
+  frameEnd: function frameEnd() {
+    // Aggregate total times spent in each section to memory store to wait until the next stats UI redraw period.
+    var totalTimeInSections = 0;
+    for(var i in this.sections) {
+      var sect = this.sections[i];
+      sect.frametimes[this.currentHistogramX] = sect.accumulatedTime;
+      totalTimeInSections += sect.accumulatedTime;
+      sect.accumulatedTime = 0;
     }
-    dtVariance /= fpsCounterTicks.length-1;
-    */
+    
+    var t = performance.now();
+    var cpuMainLoopDuration = t - this.currentFrameStartTime;
+    var durationBetweenFrameUpdates = t - this.previousFrameEndTime;
+    this.previousFrameEndTime = t;
 
-//    var str = 'Last FPS: ' + fps.toFixed(2) + ', avg FPS:' + avgFps + ' (' + avgsSorted.length + ' samples), min/avg/max dt: '
-//     + minDt.toFixed(2) + '/' + avgDt.toFixed(2) + '/' + maxDt.toFixed(2) + ' msecs, dt variance: ' + dtVariance.toFixed(3);
+    this.timeSpentInMainloop[this.currentHistogramX] = cpuMainLoopDuration - totalTimeInSections;
+    this.timeSpentOutsideMainloop[this.currentHistogramX] = durationBetweenFrameUpdates - cpuMainLoopDuration;
 
-    var asmJSLoad = totalRAFDt * 100.0 / totalDt;
+    this.currentHistogramX = (this.currentHistogramX + 1) % this.canvas.width;
+    // Redraw the UI if it is now time to do so.
+    if ((this.currentHistogramX - this.lastUiUpdateEndX + this.canvas.width) % this.canvas.width >= this.uiUpdateInterval) {
+      this.updateUi(this.lastUiUpdateEndX, this.currentHistogramX);
+      this.lastUiUpdateEndX = this.currentHistogramX;
+    }
+  },
 
-    var str = 'Last FPS: ' + fps.toFixed(2) + ', avg FPS:' + avgFps.toFixed(2) + ', min/avg/max dt: '
-     + minDt.toFixed(2) + '/' + avgDt.toFixed(2) + '/' + maxDt.toFixed(2) + ' msecs, dt variance: ' + dtVariance.toFixed(3)
-     + ', JavaScript CPU load: ' + asmJSLoad.toFixed(2) + '%';
-    document.getElementById('fpsResult').innerHTML = str;
-    fpsCounterLastPrint = t;
-  }
-}
-// ~FPSCounter
-
-function cpuprofiler_createSection(number, name, drawColor) {
-  var sect = sections[number];
-  if (!sect) {
-    sect = {
-      count: 0,
-      name: name,
-      startTick: 0,
-      accumulatedTime: 0,
-      frametimes: [],
-      drawColor: drawColor
-    };
-  }
-  sect.name = name;
-  sections[number] = sect;
-}
-
-function cpuprofiler_startSection(sectionNumber) {
-  var sect = sections[sectionNumber];
-  sect.count++;
-  if (sect.count == 1) {
-    sect.startTick = performance.now();
-  }
-}
-
-function cpuprofiler_endSection(sectionNumber) {
-  var sect = sections[sectionNumber];
-  sect.count--;
-  if (sect.count == 0) {
-    sect.accumulatedTime += performance.now() - sect.startTick;
-  }
-}
-
-function cpuprofiler_frameStart() {
-  cpuprofiler_currentframe_starttime = performance.now();//_emscripten_get_now();
-  fpsCounter();
-}
-
-function cpuprofiler_frameEnd() {
-  var maxTime = 40.0; // Always show at least 20 msecs.
-
-  // Aggregate total times to memory store to wait until the next stats UI redraw period.
-  var totalTimeInSections = 0;
-  for(var i in sections) {
-    var sect = sections[i];
-    sect.frametimes[cpuprofiler_histogram_x] = sect.accumulatedTime;
-    totalTimeInSections += sect.accumulatedTime;
-    sect.accumulatedTime = 0;
-  }
-  
-  var t = performance.now();//_emscripten_get_now();
-  var cpuMainLoopDuration = t - cpuprofiler_currentframe_starttime;
-  var durationBetweenFrameUpdates = t - cpuprofiler_prevframe_endtime;
-  cpuprofiler_prevframe_endtime = t;
-/* xx
-  if (cpuprofiler_histogram_x == 0) {
-    cpuprofiler_clear_ui();
-  }
-  */
-  cpuprofiler_t_mainloop[cpuprofiler_histogram_x] = cpuMainLoopDuration - totalTimeInSections;
-  cpuprofiler_t_outside_mainloop[cpuprofiler_histogram_x] = durationBetweenFrameUpdates - cpuMainLoopDuration;
-//  cpuprofiler_drawBar(cpuprofiler_histogram_x, duration, maxTime);
-// xx  cpuprofiler_drawStackedBar(cpuprofiler_histogram_x, durationBetweenFrameUpdates-cpuMainLoopDuration, cpuMainLoopDuration, maxTime);
-
-  cpuprofiler_histogram_x = (cpuprofiler_histogram_x+1)%cpuprofiler_canvas.width;
-
-  if ((cpuprofiler_histogram_x - cpuprofiler_ui_lastupdate_endX + cpuprofiler_canvas.width) % cpuprofiler_canvas.width >= CPUPROFILER_UI_UPDATE_INTERVAL) {
-    cpuprofiler_update_ui(cpuprofiler_ui_lastupdate_endX, cpuprofiler_histogram_x);
-    cpuprofiler_ui_lastupdate_endX = cpuprofiler_histogram_x;
-  }
-}
-
-// Installs startup hook and periodic UI update timer.
-function cpuprofiler_add_hooks() {
-  cpuprofiler = document.getElementById('cpuprofiler');
-  if (!cpuprofiler) {
-    var div = document.createElement("div");
-    div.innerHTML = "<div style='border: 2px solid black; padding: 2px;'><button style='display:inline;' onclick='Module.noExitRuntime=false;Module.exit();'>Halt</button><span id='fpsResult'></span><canvas style='border: 1px solid black; margin-left:auto; margin-right:auto; display: block;' id='cpuprofiler_canvas' width='800px' height='200'></canvas><div id='cpuprofiler'></div>";
-    document.body.appendChild(div);
+  // Installs the startup hooks and periodic UI update timer.
+  initialize: function initialize() {
+    // Create the UI display if it doesn't yet exist. If you want to customize the location/style of the cpuprofiler UI,
+    // you can manually create this beforehand.
     cpuprofiler = document.getElementById('cpuprofiler');
-  }
-  
-  cpuprofiler_canvas = document.getElementById('cpuprofiler_canvas');
-  cpuprofiler_canvas.width = document.documentElement.clientWidth - 32;
-  cpuprofiler_canvas_size = cpuprofiler_canvas.width * cpuprofiler_canvas.height;
-  cpuprofiler_canvas_context = cpuprofiler_canvas.getContext('2d');
-  if (document.getElementById('output'))
-    document.getElementById('output').style.display = 'none';
-  if (document.getElementById('status'))
-    document.getElementById('status').style.display = 'none';
-
-  cpuprofiler_histogram = [];
-//  setInterval(cpuprofiler_update_ui, CPUPROFILER_UI_UPDATE_INTERVAL);
-
-  cpuprofiler_clear_ui(0, cpuprofiler_canvas.width);
-  cpuprofiler_draw_graph_labels();
-  cpuprofiler_update_ui();
-  Module['preMainLoop'] = cpuprofiler_frameStart;
-  Module['postMainLoop'] = cpuprofiler_frameEnd;
-  
-  cpuprofiler_createSection(0, 'GL', '#FF00FF');
-}
-/*
-function cpuprofiler_setBarColor(msecs, dark) {
-  if (msecs <= 17) {
-    if (dark) {
-      cpuprofiler_canvas_context.fillStyle="#008000";
-    } else {
-      cpuprofiler_canvas_context.fillStyle="#00FF00";
+    if (!cpuprofiler) {
+      var div = document.createElement("div");
+      div.innerHTML = "<div style='border: 2px solid black; padding: 2px;'><button style='display:inline;' onclick='Module.noExitRuntime=false;Module.exit();'>Halt</button><span id='fpsResult'></span><canvas style='border: 1px solid black; margin-left:auto; margin-right:auto; display: block;' id='cpuprofiler_canvas' width='800px' height='200'></canvas><div id='cpuprofiler'></div>";
+      document.body.appendChild(div);
+      cpuprofiler = document.getElementById('cpuprofiler');
     }
-  } else if (msecs <= 34) {
-    if (dark) {
-      cpuprofiler_canvas_context.fillStyle="#808000";
-    } else {
-      cpuprofiler_canvas_context.fillStyle="#FFFF00";
-    }
-  } else {
-    if (dark) {
-      cpuprofiler_canvas_context.fillStyle="#800000";
-    } else {
-      cpuprofiler_canvas_context.fillStyle="#FF0000";
-    }
-  }
-}
-*/
-// Graphs a range of allocated memory. The memory range will be drawn as a top-to-bottom, left-to-right stripes or columns of pixels.
-function cpuprofiler_drawBar(x, msecs, maxTime) {
-  cpuprofiler_setBarColor(msecs, false);
-  var height = msecs * cpuprofiler_canvas.height / maxTime;
-  cpuprofiler_canvas_context.fillRect(x,cpuprofiler_canvas.height-height,1,height);
-}
+    
+    this.canvas = document.getElementById('cpuprofiler_canvas');
+    this.canvas.width = document.documentElement.clientWidth - 32;
+    this.drawContext = this.canvas.getContext('2d');
+//    if (document.getElementById('output')) document.getElementById('output').style.display = 'none';
+//    if (document.getElementById('status')) document.getElementById('status').style.display = 'none';
 
-function cpuprofiler_drawStackedBar(x, msecs1, msecs2, maxTime) {
-  var height1 = msecs1 * cpuprofiler_canvas.height / maxTime;
-  var height2 = msecs2 * cpuprofiler_canvas.height / maxTime;
-  var totalHeight = height1+height2;
-  //cpuprofiler_setBarColor(msecs1+msecs2, true);
-  cpuprofiler_canvas_context.fillStyle="#A0A0A0";
-  cpuprofiler_canvas_context.fillRect(x,cpuprofiler_canvas.height-totalHeight,1,height2);
-//  cpuprofiler_setBarColor(msecs1+msecs2, false);
-  cpuprofiler_canvas_context.fillStyle="#0000BB";
-  cpuprofiler_canvas_context.fillRect(x,cpuprofiler_canvas.height-height1,1,height1);
-}
+    this.clearUi(0, this.canvas.width);
+    this.drawGraphLabels();
+    this.updateUi();
+    Module['preMainLoop'] = function cpuprofiler_frameStart() { emscripten_cpuprofiler.frameStart(); }
+    Module['postMainLoop'] = function cpuprofiler_frameEnd() { emscripten_cpuprofiler.frameEnd(); }
+    
+    this.createSection(0, 'GL', '#FF00FF');
+  },
 
-function cpuprofiler_drawHorizontalLine(startX, endX, pixelThickness, msecs, maxTime) {
-  var height = msecs * cpuprofiler_canvas.height / maxTime;
-//  cpuprofiler_canvas_context.fillRect(0,cpuprofiler_canvas.height-height,cpuprofiler_canvas.width,pixelThickness);
-  cpuprofiler_canvas_context.fillRect(startX,cpuprofiler_canvas.height-height,endX-startX,pixelThickness);
-}
+  drawHorizontalLine: function drawHorizontalLine(startX, endX, pixelThickness, msecs) {
+    var height = msecs * this.canvas.height / this.verticalTimeScale;
+    this.drawContext.fillRect(startX,this.canvas.height - height, endX - startX, pixelThickness);
+  },
 
-function cpuprofiler_clear_ui(startX, endX) {  
-  // Background clear
-  cpuprofiler_canvas_context.fillStyle="#324B4B";
-//  cpuprofiler_canvas_context.fillRect(0, 0, cpuprofiler_canvas.width, cpuprofiler_canvas.height);
-  cpuprofiler_canvas_context.fillRect(startX, 0, endX-startX, cpuprofiler_canvas.height);
+  clearUi: function clearUi(startX, endX) {  
+    // Background clear
+    this.drawContext.fillStyle="#324B4B";
+    this.drawContext.fillRect(startX, 0, endX - startX, this.canvas.height);
 
-  var maxTime = 40.0; // Always show at least 20 msecs.
-//  for(var x in cpuprofiler_histogram) {
-//    maxTime = Math.max(cpuprofiler_histogram[x], maxTime);
-//  }
-  
-  cpuprofiler_canvas_context.fillStyle="#00FF00";
-  cpuprofiler_drawHorizontalLine(startX, endX, 1, 16.6666666, maxTime);
-  cpuprofiler_canvas_context.fillStyle="#FFFF00";
-  cpuprofiler_drawHorizontalLine(startX, endX, 1, 33.3333333, maxTime);
-}
+    this.drawContext.fillStyle="#00FF00";
+    this.drawHorizontalLine(startX, endX, 1, 16.6666666);
+    this.drawContext.fillStyle="#FFFF00";
+    this.drawHorizontalLine(startX, endX, 1, 33.3333333);
+  },
 
-function cpuprofiler_draw_graph_labels() {
-  var maxTime = 40.0; // Always show at least 20 msecs.
+  drawGraphLabels: function drawGraphLabels() {
+    this.drawContext.fillStyle = "#C0C0C0";
+    this.drawContext.font = "bold 10px Arial";
+    this.drawContext.textAlign = "right";
+    this.drawContext.fillText("16.66... ms", this.canvas.width - 3, this.canvas.height - 16.6666 * this.canvas.height / this.verticalTimeScale - 3);
+    this.drawContext.fillText("33.33... ms", this.canvas.width - 3, this.canvas.height - 33.3333 * this.canvas.height / this.verticalTimeScale - 3);
+  },
 
-  cpuprofiler_canvas_context.fillStyle = "#C0C0C0";
-  cpuprofiler_canvas_context.font = "bold 10px Arial";
-  cpuprofiler_canvas_context.textAlign = "right";
-  cpuprofiler_canvas_context.fillText("16.66... ms", cpuprofiler_canvas.width - 3, cpuprofiler_canvas.height - 16.6666*cpuprofiler_canvas.height/maxTime-3);
-  cpuprofiler_canvas_context.fillText("33.33... ms", cpuprofiler_canvas.width - 3, cpuprofiler_canvas.height - 33.3333*cpuprofiler_canvas.height/maxTime-3);
-}
-
-var maxTime = 40.0; // Always show at least 20 msecs.
-
-function drawBar(x) {
-//  cpuprofiler_drawStackedBar(x, cpuprofiler_t_mainloop[x], cpuprofiler_t_outside_mainloop[x], maxTime);
-  
-  var scale = cpuprofiler_canvas.height / maxTime;
-  var y = cpuprofiler_canvas.height;
-  var h = cpuprofiler_t_mainloop[x] * scale;
-  y -= h;
-  cpuprofiler_canvas_context.fillStyle="#0000BB";
-  cpuprofiler_canvas_context.fillRect(x,y,1,h);
-  for(var i in sections) {
-    var sect = sections[i];
-    var h = sect.frametimes[x] * scale;
+  drawBar: function drawBar(x) {
+    var scale = this.canvas.height / this.verticalTimeScale;
+    var y = this.canvas.height;
+    var h = this.timeSpentInMainloop[x] * scale;
     y -= h;
-    cpuprofiler_canvas_context.fillStyle = sect.drawColor;
-    cpuprofiler_canvas_context.fillRect(x,y,1,h);
-  }
-  var h = cpuprofiler_t_outside_mainloop[x] * scale;
-  y -= h;
-  var fps60Limit = cpuprofiler_canvas.height - (16.666666666 + 1.0) * cpuprofiler_canvas.height / maxTime; // Be very lax, allow 1msec extra jitter.
-  var fps30Limit = cpuprofiler_canvas.height - (33.333333333 + 1.0) * cpuprofiler_canvas.height / maxTime; // Be very lax, allow 1msec extra jitter.
-  if (y < fps30Limit)
-    cpuprofiler_canvas_context.fillStyle="#FF0000";
-  else if (y < fps60Limit) 
-    cpuprofiler_canvas_context.fillStyle="#FFFF00";
-  else
-    cpuprofiler_canvas_context.fillStyle="#60A060";
-  cpuprofiler_canvas_context.fillRect(x,y,1,h);
-}
-
-// Main UI update entry point.
-function cpuprofiler_update_ui(startX, endX) {  
-//  for(var x in cpuprofiler_histogram) {
-//    maxTime = Math.max(cpuprofiler_histogram[x], maxTime);
-//  }
-
-  // Poll whether user as changed the browser window, and if so, resize the profiler window and redraw it.
-  if (cpuprofiler_canvas.width != document.documentElement.clientWidth - 32) {
-    cpuprofiler_canvas.width = document.documentElement.clientWidth - 32;
-    cpuprofiler_canvas_size = cpuprofiler_canvas.width * cpuprofiler_canvas.height;
-    if (cpuprofiler_t_mainloop.length > cpuprofiler_canvas.width) cpuprofiler_t_mainloop.length = cpuprofiler_canvas.width;
-    if (cpuprofiler_t_outside_mainloop.length > cpuprofiler_canvas.width) cpuprofiler_t_outside_mainloop.length = cpuprofiler_canvas.width;
-    if (cpuprofiler_ui_lastupdate_endX >= cpuprofiler_canvas.width) cpuprofiler_ui_lastupdate_endX = 0;
-    if (cpuprofiler_histogram_x >= cpuprofiler_canvas.width) cpuprofiler_histogram_x = 0;
-    for(var i in sections) {
-      var sect = sections[i];
-      if (sect.frametimes.length > cpuprofiler_canvas.width) sect.frametimes.length = cpuprofiler_canvas.width;
+    this.drawContext.fillStyle = "#0000BB";
+    this.drawContext.fillRect(x, y, 1, h);
+    for(var i in this.sections) {
+      var sect = this.sections[i];
+      var h = sect.frametimes[x] * scale;
+      y -= h;
+      this.drawContext.fillStyle = sect.drawColor;
+      this.drawContext.fillRect(x, y, 1, h);
     }
-    cpuprofiler_clear_ui(0, cpuprofiler_canvas.width);
-    cpuprofiler_draw_graph_labels();
-    startX = 0; // Full redraw all columns.
-  }
+    var h = this.timeSpentOutsideMainloop[x] * scale;
+    y -= h;
+    var fps60Limit = this.canvas.height - (16.666666666 + 1.0) * this.canvas.height / this.verticalTimeScale; // Be very lax, allow 1msec extra jitter.
+    var fps30Limit = this.canvas.height - (33.333333333 + 1.0) * this.canvas.height / this.verticalTimeScale; // Be very lax, allow 1msec extra jitter.
+    if (y < fps30Limit) this.drawContext.fillStyle = "#FF0000";
+    else if (y < fps60Limit) this.drawContext.fillStyle = "#FFFF00";
+    else this.drawContext.fillStyle = "#60A060";
+    this.drawContext.fillRect(x, y, 1, h);
+  },
 
-  var clearDistance = CPUPROFILER_UI_UPDATE_INTERVAL*2+1;
-  var clearStart = endX + clearDistance;
-  var clearEnd = clearStart + CPUPROFILER_UI_UPDATE_INTERVAL;
-  if (endX < startX) {
-    cpuprofiler_clear_ui(clearStart, clearEnd);
-    cpuprofiler_clear_ui(0, endX+clearDistance+CPUPROFILER_UI_UPDATE_INTERVAL);
-    cpuprofiler_draw_graph_labels();
-  } else {
-    cpuprofiler_clear_ui(clearStart, clearEnd);
-  }
-
-  if (endX < startX) {
-    for(var x = startX; x < cpuprofiler_canvas.width; ++x) {
-      drawBar(x);
+  // Main UI update/redraw entry point. Drawing occurs incrementally to touch as few pixels as possible and to cause the least impact to the overall performance
+  // while profiling.
+  updateUi: function updateUi(startX, endX) {  
+    // Poll whether user as changed the browser window, and if so, resize the profiler window and redraw it.
+    if (this.canvas.width != document.documentElement.clientWidth - 32) {
+      this.canvas.width = document.documentElement.clientWidth - 32;
+      if (this.timeSpentInMainloop.length > this.canvas.width) this.timeSpentInMainloop.length = this.canvas.width;
+      if (this.timeSpentOutsideMainloop.length > this.canvas.width) this.timeSpentOutsideMainloop.length = this.canvas.width;
+      if (this.lastUiUpdateEndX >= this.canvas.width) this.lastUiUpdateEndX = 0;
+      if (this.currentHistogramX >= this.canvas.width) this.currentHistogramX = 0;
+      for(var i in this.sections) {
+        var sect = this.sections[i];
+        if (sect.frametimes.length > this.canvas.width) sect.frametimes.length = this.canvas.width;
+      }
+      this.clearUi(0, this.canvas.width);
+      this.drawGraphLabels();
+      startX = 0; // Full redraw all columns.
     }
-    startX = 0;
-  }
-  for(var x = startX; x < endX; ++x) {
-    drawBar(x);
-  }
 
-//  for(var x in cpuprofiler_histogram) {
-//    cpuprofiler_drawStackedBar(x, cpuprofiler_t_mainloop[x], cpuprofiler_t_outside_mainloop[x], maxTime);
-/*
-    var msecs = cpuprofiler_histogram[x];
-    if (msecs <= 17) {
-      cpuprofiler_canvas_context.fillStyle="#00FF00";
-    } else if (msecs <= 34) {
-      cpuprofiler_canvas_context.fillStyle="#FFFF00";
+    var clearDistance = this.uiUpdateInterval * 2 + 1;
+    var clearStart = endX + clearDistance;
+    var clearEnd = clearStart + this.uiUpdateInterval;
+    if (endX < startX) {
+      this.clearUi(clearStart, clearEnd);
+      this.clearUi(0, endX + clearDistance+this.uiUpdateInterval);
+      this.drawGraphLabels();
     } else {
-      cpuprofiler_canvas_context.fillStyle="#FF0000";
+      this.clearUi(clearStart, clearEnd);
     }
-    cpuprofiler_drawBar(x, msecs, maxTime);*/
-}
 
-if (typeof Module !== 'undefined') cpuprofiler_add_hooks();
+    if (endX < startX) {
+      for (var x = startX; x < this.canvas.width; ++x) this.drawBar(x);
+      startX = 0;
+    }
+    for (var x = startX; x < endX; ++x) this.drawBar(x);
+  }
+};
+
+// Backwards compatibility with previously compiled code. Don't call this anymore!
+function cpuprofiler_add_hooks() { emscripten_cpuprofiler.initialize(); }
+
+if (typeof Module !== 'undefined') emscripten_cpuprofiler.initialize();
