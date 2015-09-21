@@ -407,6 +407,7 @@ try:
   js_libraries = []
   bind = False
   emrun = False
+  cpuprofiler = False
   save_bc = False
   memory_init_file = None
   use_preload_cache = False
@@ -637,6 +638,9 @@ try:
     elif newargs[i] == '--emrun':
       emrun = True
       newargs[i] = ''
+    elif newargs[i] == '--cpuprofiler':
+      cpuprofiler = True
+      newargs[i] = ''
     elif newargs[i] == '--default-obj-ext':
       newargs[i] = ''
       default_object_extension = newargs[i+1]
@@ -663,6 +667,9 @@ try:
   if emrun:
     pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
     post_js += open(shared.path_from_root('src', 'emrun_postjs.js')).read() + '\n'
+
+  if cpuprofiler:
+    post_js += open(shared.path_from_root('src', 'cpuprofiler.js')).read() + '\n'
 
   if js_opts is None: js_opts = opt_level >= 2
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
