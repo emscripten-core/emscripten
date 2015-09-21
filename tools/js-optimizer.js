@@ -5775,21 +5775,23 @@ function fixPtrSlim(ptr, heap, shell) {
 function splitMemory(ast, shell) {
   traverse(ast, function(node, type) {
     if (type === 'assign') {
-      if (node[2][0] === 'sub') {
+      if (node[2][0] === 'sub' && node[2][1][0] === 'name') {
         var heap = node[2][1][1];
-        if (node[1] !== true) assert(0, 'bad assign, split memory cannot handle ' + node[1] + '= to a HEAP');
-        var ptr = fixPtrSlim(node[2][2], heap, shell);
-        var value = node[3];
-        switch (heap) {
-          case 'HEAP8': return ['call', ['name', 'set8'], [ptr, value]];
-          case 'HEAP16': return ['call', ['name', 'set16'], [ptr, value]];
-          case 'HEAP32': return ['call', ['name', 'set32'], [ptr, value]];
-          case 'HEAPU8': return ['call', ['name', 'setU8'], [ptr, value]];
-          case 'HEAPU16': return ['call', ['name', 'setU16'], [ptr, value]];
-          case 'HEAPU32': return ['call', ['name', 'setU32'], [ptr, value]];
-          case 'HEAPF32': return ['call', ['name', 'setF32'], [ptr, value]];
-          case 'HEAPF64': return ['call', ['name', 'setF64'], [ptr, value]];
-          default: if (!shell) throw 'bad heap ' + heap;
+        if (parseHeap(heap)) {
+          if (node[1] !== true) assert(0, 'bad assign, split memory cannot handle ' + JSON.stringify(node) + '= to a HEAP');
+          var ptr = fixPtrSlim(node[2][2], heap, shell);
+          var value = node[3];
+          switch (heap) {
+            case 'HEAP8': return ['call', ['name', 'set8'], [ptr, value]];
+            case 'HEAP16': return ['call', ['name', 'set16'], [ptr, value]];
+            case 'HEAP32': return ['call', ['name', 'set32'], [ptr, value]];
+            case 'HEAPU8': return ['call', ['name', 'setU8'], [ptr, value]];
+            case 'HEAPU16': return ['call', ['name', 'setU16'], [ptr, value]];
+            case 'HEAPU32': return ['call', ['name', 'setU32'], [ptr, value]];
+            case 'HEAPF32': return ['call', ['name', 'setF32'], [ptr, value]];
+            case 'HEAPF64': return ['call', ['name', 'setF64'], [ptr, value]];
+            default: if (!shell) throw 'bad heap ' + heap;
+          }
         }
       }
     } else if (type === 'sub') {
