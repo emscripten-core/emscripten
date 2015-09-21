@@ -5109,6 +5109,54 @@ int main() { printf("Mary had a little lamb.\n"); }
     out = run_js('a.out.js', assert_returncode=None, stderr=subprocess.STDOUT)
     self.assertContained('Assertion failed: memory initializer checksum', out)
 
+  def test_emscripten_print_double(self):
+    with open('src.c', 'w') as f:
+      f.write(r'''
+#include <stdio.h>
+#include <assert.h>
+#include <emscripten.h>
+
+void test(double d) {
+  char buffer[100], buffer2[100];
+  unsigned len, len2, len3;
+  len = emscripten_print_double(d, NULL, -1);
+  len2 = emscripten_print_double(d, buffer, len+1);
+  assert(len == len2);
+  buffer[len] = 0;
+  len3 = snprintf(buffer2, 100, "%g", d);
+  printf("|%g : %u : %s : %s : %d|\n", d, len, buffer, buffer2, len3);
+}
+int main() {
+  printf("\n");
+  test(0);
+  test(1);
+  test(-1);
+  test(1.234);
+  test(-1.234);
+  test(1.1234E20);
+  test(-1.1234E20);
+  test(1.1234E-20);
+  test(-1.1234E-20);
+  test(1.0/0.0);
+  test(-1.0/0.0);
+}
+''')
+    Popen([PYTHON, EMCC, 'src.c']).communicate()
+    out = run_js('a.out.js')
+    self.assertContained('''
+|0 : 1 : 0 : 0 : 1|
+|1 : 1 : 1 : 1 : 1|
+|-1 : 2 : -1 : -1 : 2|
+|1.234 : 5 : 1.234 : 1.234 : 5|
+|-1.234 : 6 : -1.234 : -1.234 : 6|
+|1.1234e+20 : 21 : 112340000000000000000 : 1.1234e+20 : 10|
+|-1.1234e+20 : 22 : -112340000000000000000 : -1.1234e+20 : 11|
+|1.1234e-20 : 10 : 1.1234e-20 : 1.1234e-20 : 10|
+|-1.1234e-20 : 11 : -1.1234e-20 : -1.1234e-20 : 11|
+|inf : 8 : Infinity : inf : 3|
+|-inf : 9 : -Infinity : -inf : 4|
+''', out)
+
   def test_no_warn_exported_jslibfunc(self):
     out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["alGetError"]', '-s', 'EXPORTED_FUNCTIONS=["_main", "_alGetError"]'], stdout=PIPE, stderr=PIPE).communicate()
     self.assertNotContained('''function requested to be exported, but not implemented: "_alGetError"''', err)
@@ -5126,6 +5174,33 @@ int main() { printf("Mary had a little lamb.\n"); }
     out, err = proc.communicate()
     assert proc.returncode == 0
     self.assertContained('#define __EMSCRIPTEN__ 1', out) # all our defines should show up
+
+  def test_emcc_wasm_0(self):
+    default_error_message = 'cannot use WASM=1 when full asm.js validation was disabled'
+    for args, ok, error_message in [
+      ([], False, ''),
+      (['-O1'], True, ''),
+      (['-O2'], True, ''),
+      (['-O3'], True, ''),
+      (['-O2', '-g'], True, ''),
+      (['-s', 'ASM_JS=1'], True, ''),
+      (['-s', 'WASM=0'], True, ''),
+      (['-s', 'WASM=1'], False, ''),
+      (['-s', 'ALLOW_MEMORY_GROWTH=1'], False, 'memory growth is not supported with WASM=1'),
+      (['-s', 'ALLOW_MEMORY_GROWTH=1', '-O1'], False, 'memory growth is not supported with WASM=1'),
+      (['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_WHITELIST=["_main"]', '-O2', '-s', 'ASSERTIONS=1'], True, ''),
+    ]:
+      print args, ok
+      if not error_message: error_message = default_error_message
+      proc = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1'] + args, stdout=PIPE, stderr=PIPE)
+      out, err = proc.communicate()
+      if ok:
+        assert proc.returncode == 0
+        self.assertNotContained(error_message, err)
+        self.assertContained('hello, world!', run_js('a.out.js'))
+      else:
+        assert proc.returncode != 0
+        self.assertContained(error_message, err)
 
   def test_umask_0(self):
     open('src.c', 'w').write(r'''

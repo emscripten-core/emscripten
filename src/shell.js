@@ -75,7 +75,14 @@ if (ENVIRONMENT_IS_NODE) {
     return ret;
   };
 
-  Module['readBinary'] = function readBinary(filename) { return Module['read'](filename, true) };
+  Module['readBinary'] = function readBinary(filename) {
+    var ret = Module['read'](filename, true);
+    if (!ret.buffer) {
+      ret = new Uint8Array(ret);
+    }
+    assert(ret.buffer);
+    return ret;
+  };
 
   Module['load'] = function load(f) {
     globalEval(read(f));

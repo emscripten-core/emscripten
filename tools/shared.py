@@ -1876,7 +1876,7 @@ def check_execute(cmd, *args, **kw):
 def check_call(cmd, *args, **kw):
   try:
     subprocess.check_call(cmd, *args, **kw)
-    logging.debug("Successfuly executed %s" % " ".join(cmd))
+    logging.debug("Successfully executed %s" % " ".join(cmd))
   except subprocess.CalledProcessError as e:
     logging.error("'%s' failed" % " ".join(cmd))
     raise

@@ -11,6 +11,9 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def is_emterpreter(self):
     return 'EMTERPRETIFY=1' in self.emcc_args
 
+  def is_wasm(self):
+    return 'WASM=1' in self.emcc_args
+
   def test_hello_world(self):
       test_path = path_from_root('tests', 'core', 'test_hello_world')
       src, output = (test_path + s for s in ('.in', '.out'))
@@ -924,6 +927,7 @@ base align: 0, 0, 0, 0'''])
       test()
 
   def test_stack_restore(self):
+    if self.is_wasm(): return self.skip('generated code not available in wasm')
     if self.is_emterpreter(): return self.skip('generated code not available in emterpreter')
     self.emcc_args += ['-g3'] # to be able to find the generated code
     test_path = path_from_root('tests', 'core', 'test_stack_restore')
@@ -2096,6 +2100,8 @@ def process(filename):
       self.do_run_from_file(src, output)
 
   def test_inlinejs3(self):
+    if self.is_wasm(): return self.skip('wasm requires a proper asm module')
+
     test_path = path_from_root('tests', 'core', 'test_inlinejs3')
     src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -2150,6 +2156,7 @@ int main() {
     self.do_run(src, '''0+2=2''')
 
   def test_memorygrowth(self):
+    if self.is_wasm(): return self.skip('wasm support for memory growth in the MVP is yet unclear')
     self.banned_js_engines = [V8_ENGINE] # stderr printing limitations in v8
 
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0'] # start with 0
@@ -5751,6 +5758,7 @@ return malloc(size);
 
   def test_simd(self):
     if self.is_emterpreter(): return self.skip('todo')
+    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
 
     test_path = path_from_root('tests', 'core', 'test_simd')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5759,6 +5767,7 @@ return malloc(size);
 
   def test_simd2(self):
     if self.is_emterpreter(): return self.skip('todo')
+    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
 
     test_path = path_from_root('tests', 'core', 'test_simd2')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5779,6 +5788,7 @@ return malloc(size);
   def test_simd4(self):
     # test_simd4 is to test phi node handling of SIMD path
     if self.is_emterpreter(): return self.skip('todo')
+    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
 
     test_path = path_from_root('tests', 'core', 'test_simd4')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5787,6 +5797,8 @@ return malloc(size);
     self.do_run_from_file(src, output)
 
   def test_simd5(self):
+    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
+
     # test_simd5 is to test shufflevector of SIMD path
     test_path = path_from_root('tests', 'core', 'test_simd5')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5796,6 +5808,7 @@ return malloc(size);
   def test_simd6(self):
     # test_simd6 is to test x86 min and max intrinsics on NaN and -0.0
     if self.is_emterpreter(): return self.skip('todo')
+    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
 
     test_path = path_from_root('tests', 'core', 'test_simd6')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5806,6 +5819,7 @@ return malloc(size);
   def test_simd7(self):
     # test_simd7 is to test negative zero handling: https://github.com/kripken/emscripten/issues/2791
     if self.is_emterpreter(): return self.skip('todo')
+    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
 
     test_path = path_from_root('tests', 'core', 'test_simd7')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5816,6 +5830,7 @@ return malloc(size);
   def test_simd8(self):
     # test_simd8 is to test unaligned load and store
     if self.is_emterpreter(): return self.skip('todo')
+    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
 
     test_path = path_from_root('tests', 'core', 'test_simd8')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5873,6 +5888,7 @@ return malloc(size);
 
   def test_simd_dyncall(self):
     if self.is_emterpreter(): return self.skip('todo')
+    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
 
     test_path = path_from_root('tests', 'core', 'test_simd_dyncall')
     src, output = (test_path + s for s in ('.cpp', '.txt'))
@@ -6316,7 +6332,7 @@ def process(filename):
       self.emcc_args = emcc_args
 
   def test_fuzz(self):
-    Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'fuzz', 'include'), '-Wno-warn-absolute-paths']
+    Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'fuzz', 'include'), '-Wno-warn-absolute-paths', '-w']
 
     def run_all(x):
       print x
@@ -7303,6 +7319,7 @@ Module.printErr = Module['printErr'] = function(){};
           os.environ.pop('EMCC_DEBUG', None)
 
   def test_exception_source_map(self):
+    if self.is_wasm(): return self.skip('wasmifying destroys debug info and stack tracability')
     if self.is_emterpreter(): return self.skip('todo')
     if '-g4' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g4')
     if NODE_JS not in JS_ENGINES: return self.skip('sourcemapper requires Node to run')
@@ -7343,6 +7360,7 @@ Module.printErr = Module['printErr'] = function(){};
     self.build(src, dirname, os.path.join(dirname, 'src.cpp'), post_build=(None, post))
 
   def test_emscripten_log(self):
+    if self.is_wasm(): return self.skip('wasmifying destroys debug info and stack tracability')
     if self.is_emterpreter():
       self.emcc_args += ['--profiling-funcs'] # without this, stack traces are not useful (we jump emterpret=>emterpret)
       Building.COMPILER_TEST_OPTS += ['-DEMTERPRETER'] # even so, we get extra emterpret() calls on the stack
@@ -7744,6 +7762,7 @@ asm2f = make_run("asm2f", compiler=CLANG, emcc_args=["-Oz", "-s", "PRECISE_F32=1
 asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "-s", "SAFE_HEAP=1"])
 asm2i = make_run("asm2i", compiler=CLANG, emcc_args=["-O2", '-s', 'EMTERPRETIFY=1'])
 #asm2m = make_run("asm2m", compiler=CLANG, emcc_args=["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1"])
+#asm2w = make_run("asm2w", compiler=CLANG, emcc_args=["-O2", "-s", "WASM=1"])
 
 # Legacy test modes - 
 asm2nn = make_run("asm2nn", compiler=CLANG, emcc_args=["-O2"], env={"EMCC_NATIVE_OPTIMIZER": "0"})

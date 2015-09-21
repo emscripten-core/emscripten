@@ -922,6 +922,9 @@ try:
   elif shared.Settings.SIDE_MODULE:
     assert not shared.Settings.MAIN_MODULE
     memory_init_file = False # memory init file is not supported with side modules, must be executable synchronously (for dlopen)
+    if shared.Settings.WASM:
+      logging.warning('disabling WASM in SIDE_MODULE')
+      shared.Settings.WASM = 0
 
   if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
     assert shared.Settings.ASM_JS, 'module linking requires asm.js output (-s ASM_JS=1)'
@@ -930,6 +933,9 @@ try:
     shared.Settings.RELOCATABLE = 1
     shared.Settings.PRECISE_I64_MATH = 1 # other might use precise math, we need to be able to print it
     assert not use_closure_compiler, 'cannot use closure compiler on shared modules'
+
+  if shared.Settings.WASM:
+    assert not shared.Settings.ALLOW_MEMORY_GROWTH, 'memory growth is not supported with WASM=1'
 
   if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
     shared.Settings.ALIASING_FUNCTION_POINTERS = 0
@@ -1776,6 +1782,11 @@ try:
     else:
       # copy final JS to output normally
       shutil.move(final, target)
+
+  if shared.Settings.WASM:
+    logging.debug('converting to WebAssembly')
+    wasm_target = unsuffixed(js_target) + '.wasm'
+    subprocess.check_call([shared.PYTHON, shared.path_from_root('third_party', 'wasm-polyfill', 'wasmator.py'), js_target, wasm_target, shared.Settings.EXPORT_NAME])
 
   log_time('final emitting')
 
