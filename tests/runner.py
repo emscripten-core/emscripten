@@ -216,7 +216,7 @@ class RunnerCore(unittest.TestCase):
                ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
                map(lambda include: '-I' + include, includes) + \
                ['-c', f, '-o', f + '.o']
-        output = subprocess.check_call(args, stdout=PIPE, stderr=self.stderr_redirect if not DEBUG else None)
+        output = subprocess.check_call(args, stderr=self.stderr_redirect if not DEBUG else None)
         assert os.path.exists(f + '.o')
 
       # Link all files
@@ -246,7 +246,7 @@ class RunnerCore(unittest.TestCase):
              map(lambda include: '-I' + include, includes) + \
              all_files + \
              ['-o', filename + '.o.js']
-      output = subprocess.check_call(args, stdout=PIPE, stderr=self.stderr_redirect if not DEBUG else None)
+      output = subprocess.check_call(args, stderr=self.stderr_redirect if not DEBUG else None)
       assert os.path.exists(filename + '.o.js')
 
     if output_processor is not None:
