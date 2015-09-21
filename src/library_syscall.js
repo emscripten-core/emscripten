@@ -862,9 +862,9 @@ var SyscallsLibrary = {
   },
 #if EMTERPRETIFY_ASYNC
   __syscall180: function(which, varargs) { // pread64
-    var stream = SYSCALLS.getStreamFromFD(), buf = SYSCALLS.get(), count = SYSCALLS.get();
+    var stream = SYSCALLS.getStreamFromFD(), buf = SYSCALLS.get(), count = SYSCALLS.get(), zero = SYSCALLS.getZero(), offset = SYSCALLS.get64();
     return EmterpreterAsync.handle(function (resume) {
-      FS.read(stream, {{{ makeGetSlabs('buf', 'i8', true) }}}, buf, count, undefined, function (bytesRead) {
+      FS.read(stream, {{{ makeGetSlabs('buf', 'i8', true) }}}, buf, count, offset, function (bytesRead) {
         resume(function() { bytesRead });
       });
     });
