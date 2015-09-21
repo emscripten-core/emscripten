@@ -490,10 +490,7 @@ function _emscripten_asm_const_%d(%s) {
     simdtypes = simdfloattypes + simdinttypes
 
     fundamentals = ['Math']
-    if settings['USE_PTHREADS']:
-      fundamentals += ['I8Array', 'I16Array', 'I32Array', 'U8Array', 'U16Array', 'U32Array', 'F32Array', 'F64Array', 'Atomics']
-    else:
-      fundamentals += ['Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
+    fundamentals += ['Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
     fundamentals += ['NaN', 'Infinity']
     if metadata['simd']:
         fundamentals += ['SIMD']
@@ -721,6 +718,9 @@ function ftCall_%s(%s) {%s
       simd_float_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdfloattypes for g in simdfloatfuncs]
       simd_float_symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), simd_float_symbols)
       asm_global_funcs += ''.join(simd_float_symbols)
+      # Unofficial, Bool64x2 does not yet exist, but needed for Float64x2 comparisons.
+      if metadata['simdFloat64x2']:
+        asm_global_funcs += '  var SIMD_Int32x4_fromBool64x2Bits = global.SIMD.Int32x4.fromBool64x2Bits;\n';
     if settings['USE_PTHREADS']:
 #      asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor', 'fence']])
 # TODO: Once bug https://bugzilla.mozilla.org/show_bug.cgi?id=1141986 is implemented, replace the following line with the above one!
@@ -780,75 +780,24 @@ Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
 
       receiving += ''.join(["Module['%s'] = Module['%s']\n" % (k, v) for k, v in metadata['aliases'].iteritems()])
 
-    the_arrays = ''
-    if not settings['SPLIT_MEMORY']:
-      the_arrays = '''
-  var HEAP8 = new global%s(buffer);
-  var HEAP16 = new global%s(buffer);
-  var HEAP32 = new global%s(buffer);
-  var HEAPU8 = new global%s(buffer);
-  var HEAPU16 = new global%s(buffer);
-  var HEAPU32 = new global%s(buffer);
-  var HEAPF32 = new global%s(buffer);
-  var HEAPF64 = new global%s(buffer);
-''' % (access_quote('I8Array' if settings['USE_PTHREADS'] else 'Int8Array'),
-     access_quote('I16Array' if settings['USE_PTHREADS'] else 'Int16Array'),
-     access_quote('I32Array' if settings['USE_PTHREADS'] else 'Int32Array'),
-     access_quote('U8Array' if settings['USE_PTHREADS'] else 'Uint8Array'),
-     access_quote('U16Array' if settings['USE_PTHREADS'] else 'Uint16Array'),
-     access_quote('U32Array' if settings['USE_PTHREADS'] else 'Uint32Array'),
-     access_quote('F32Array' if settings['USE_PTHREADS'] else 'Float32Array'),
-     access_quote('F64Array' if settings['USE_PTHREADS'] else 'Float64Array')) if not settings['ALLOW_MEMORY_GROWTH'] else '''
-  var Int8View = global%s;
-  var Int16View = global%s;
-  var Int32View = global%s;
-  var Uint8View = global%s;
-  var Uint16View = global%s;
-  var Uint32View = global%s;
-  var Float32View = global%s;
-  var Float64View = global%s;
-  var HEAP8 = new Int8View(buffer);
-  var HEAP16 = new Int16View(buffer);
-  var HEAP32 = new Int32View(buffer);
-  var HEAPU8 = new Uint8View(buffer);
-  var HEAPU16 = new Uint16View(buffer);
-  var HEAPU32 = new Uint32View(buffer);
-  var HEAPF32 = new Float32View(buffer);
-  var HEAPF64 = new Float64View(buffer);
-  var byteLength = global.byteLength;
-''' % (access_quote('Int8Array'),
-     access_quote('Int16Array'),
-     access_quote('Int32Array'),
-     access_quote('Uint8Array'),
-     access_quote('Uint16Array'),
-     access_quote('Uint32Array'),
-     access_quote('Float32Array'),
-     access_quote('Float64Array'))
-
     if settings['USE_PTHREADS']:
-      asm_setup += '''
-var I8Array = typeof SharedInt8Array !== 'undefined' ? SharedInt8Array : Int8Array;
-var I16Array = typeof SharedInt16Array !== 'undefined' ? SharedInt16Array : Int16Array;
-var I32Array = typeof SharedInt32Array !== 'undefined' ? SharedInt32Array : Int32Array;
-var U8Array = typeof SharedUint8Array !== 'undefined' ? SharedUint8Array : Uint8Array;
-var U16Array = typeof SharedUint16Array !== 'undefined' ? SharedUint16Array : Uint16Array;
-var U32Array = typeof SharedUint32Array !== 'undefined' ? SharedUint32Array : Uint32Array;
-var F32Array = typeof SharedFloat32Array !== 'undefined' ? SharedFloat32Array : Float32Array;
-var F64Array = typeof SharedFloat64Array !== 'undefined' ? SharedFloat64Array : Float64Array;
+      shared_array_buffer = '''if (typeof SharedArrayBuffer !== 'undefined') Module.asmGlobalArg['Atomics'] = Atomics;
+if (typeof SharedInt8Array !== 'undefined') Module.asmGlobalArg['SharedInt8Array'] = SharedInt8Array;
+if (typeof SharedInt16Array !== 'undefined') Module.asmGlobalArg['SharedInt16Array'] = SharedInt16Array;
+if (typeof SharedInt32Array !== 'undefined') Module.asmGlobalArg['SharedInt32Array'] = SharedInt32Array;
+if (typeof SharedUint8Array !== 'undefined') Module.asmGlobalArg['SharedUint8Array'] = SharedUint8Array;
+if (typeof SharedUint16Array !== 'undefined') Module.asmGlobalArg['SharedUint16Array'] = SharedUint16Array;
+if (typeof SharedUint32Array !== 'undefined') Module.asmGlobalArg['SharedUint32Array'] = SharedUint32Array;
+if (typeof SharedFloat32Array !== 'undefined') Module.asmGlobalArg['SharedFloat32Array'] = SharedFloat32Array;
+if (typeof SharedFloat64Array !== 'undefined') Module.asmGlobalArg['SharedFloat64Array'] = SharedFloat64Array;
 '''
-    funcs_js = ['''
-%s
-Module%s = %s;
-Module%s = %s;
-// EMSCRIPTEN_START_ASM
-var asm = (function(global, env, buffer) {
-  %s
-  %s
-  %s
-''' % (asm_setup,
-       access_quote('asmGlobalArg'), the_global,
-       access_quote('asmLibraryArg'), sending,
-       "'use asm';" if not metadata.get('hasInlineJS') and settings['ASM_JS'] == 1 else "'almost asm';", '' if not settings['SPLIT_MEMORY'] or settings['SAFE_SPLIT_MEMORY'] else '''
+    else:
+      shared_array_buffer = ''
+
+    first_in_asm = ''
+    if settings['SPLIT_MEMORY']:
+      if not settings['SAFE_SPLIT_MEMORY']:
+        first_in_asm += '''
 function get8(ptr) {
   ptr = ptr | 0;
   return HEAP8s[ptr >> SPLIT_MEMORY_BITS][ptr & SPLIT_MEMORY_MASK] | 0;
@@ -921,7 +870,68 @@ function setF64(ptr, value) {
   value = +value;
   HEAPF64s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 3] = value;
 }
-''', the_arrays) + '\n' + asm_global_vars + ('''
+'''
+      first_in_asm += 'buffer = new ArrayBuffer(32); // fake\n'
+
+    funcs_js = ['''
+%s
+Module%s = %s;
+%s
+Module%s = %s;
+// EMSCRIPTEN_START_ASM
+var asm = (function(global, env, buffer) {
+  %s
+  %s
+  %s
+''' % (asm_setup,
+       access_quote('asmGlobalArg'), the_global,
+       shared_array_buffer,
+       access_quote('asmLibraryArg'), sending,
+       "'use asm';" if not metadata.get('hasInlineJS') and settings['ASM_JS'] == 1 else "'almost asm';", 
+       first_in_asm,
+       '''
+  var HEAP8 = new global%s(buffer);
+  var HEAP16 = new global%s(buffer);
+  var HEAP32 = new global%s(buffer);
+  var HEAPU8 = new global%s(buffer);
+  var HEAPU16 = new global%s(buffer);
+  var HEAPU32 = new global%s(buffer);
+  var HEAPF32 = new global%s(buffer);
+  var HEAPF64 = new global%s(buffer);
+''' % (access_quote('SharedInt8Array' if settings['USE_PTHREADS'] else 'Int8Array'),
+     access_quote('SharedInt16Array' if settings['USE_PTHREADS'] else 'Int16Array'),
+     access_quote('SharedInt32Array' if settings['USE_PTHREADS'] else 'Int32Array'),
+     access_quote('SharedUint8Array' if settings['USE_PTHREADS'] else 'Uint8Array'),
+     access_quote('SharedUint16Array' if settings['USE_PTHREADS'] else 'Uint16Array'),
+     access_quote('SharedUint32Array' if settings['USE_PTHREADS'] else 'Uint32Array'),
+     access_quote('SharedFloat32Array' if settings['USE_PTHREADS'] else 'Float32Array'),
+     access_quote('SharedFloat64Array' if settings['USE_PTHREADS'] else 'Float64Array'))
+     if not settings['ALLOW_MEMORY_GROWTH'] else '''
+  var Int8View = global%s;
+  var Int16View = global%s;
+  var Int32View = global%s;
+  var Uint8View = global%s;
+  var Uint16View = global%s;
+  var Uint32View = global%s;
+  var Float32View = global%s;
+  var Float64View = global%s;
+  var HEAP8 = new Int8View(buffer);
+  var HEAP16 = new Int16View(buffer);
+  var HEAP32 = new Int32View(buffer);
+  var HEAPU8 = new Uint8View(buffer);
+  var HEAPU16 = new Uint16View(buffer);
+  var HEAPU32 = new Uint32View(buffer);
+  var HEAPF32 = new Float32View(buffer);
+  var HEAPF64 = new Float64View(buffer);
+  var byteLength = global.byteLength;
+''' % (access_quote('Int8Array'),
+     access_quote('Int16Array'),
+     access_quote('Int32Array'),
+     access_quote('Uint8Array'),
+     access_quote('Uint16Array'),
+     access_quote('Uint32Array'),
+     access_quote('Float32Array'),
+     access_quote('Float64Array'))) + '\n' + asm_global_vars + ('''
   var __THREW__ = 0;
   var threwValue = 0;
   var setjmpId = 0;
