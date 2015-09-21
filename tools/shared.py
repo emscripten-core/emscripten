@@ -408,9 +408,11 @@ def check_closure_compiler():
     subprocess.call([JAVA, '-version'], stdout=PIPE, stderr=PIPE)
   except:
     logging.warning('java does not seem to exist, required for closure compiler, which is optional (define JAVA in ' + hint_config_file_location() + ' if you want it)')
-
+    return False
   if not os.path.exists(CLOSURE_COMPILER):
     logging.warning('Closure compiler (%s) does not exist, check the paths in %s' % (CLOSURE_COMPILER, EM_CONFIG))
+    return False
+  return True
 
 # Finds the system temp directory without resorting to using the one configured in .emscripten
 def find_temp_directory():
