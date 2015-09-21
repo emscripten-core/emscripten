@@ -240,21 +240,18 @@ var SyscallsLibrary = {
     Module['exit'](status);
     return 0;
   },
-#if EMTERPRETIFY_ASYNC
   __syscall3: function(which, varargs) { // read
     var stream = SYSCALLS.getStreamFromFD(), buf = SYSCALLS.get(), count = SYSCALLS.get();
+#if EMTERPRETIFY_ASYNC
     return EmterpreterAsync.handle(function (resume) {
-      FS.read(stream, {{{ makeGetSlabs('buf', 'i8', true) }}}, buf, count, undefined, function (bytesRead) {
+      FS.read(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count, undefined, function (bytesRead) {
         resume(function() { bytesRead });
       });
     });
-  },
 #else
-  __syscall3: function(which, varargs) { // read
-    var stream = SYSCALLS.getStreamFromFD(), buf = SYSCALLS.get(), count = SYSCALLS.get();
     return FS.read(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count);
-  },
 #endif //EMTERPRETIFY_ASYNC
+  },
   __syscall4: function(which, varargs) { // write
     var stream = SYSCALLS.getStreamFromFD(), buf = SYSCALLS.get(), count = SYSCALLS.get();
     return FS.write(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count);
@@ -776,23 +773,20 @@ var SyscallsLibrary = {
     SYSCALLS.doMsync(addr, FS.getStream(info.fd), len, info.flags);
     return 0;
   },
-#if EMTERPRETIFY_ASYNC
   __syscall145: function(which, varargs) { // readv
+    var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
+#if EMTERPRETIFY_ASYNC
     return EmterpreterAsync.handle(function(resume) {
-      var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
       SYSCALLS.doReadv(stream, iov, iovcnt, undefined, function(bytesRead) {
         resume(function() {
           return bytesRead;
         });
       });
     });
-  },
 #else
-  __syscall145: function(which, varargs) { // readv
-    var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
     return SYSCALLS.doReadv(stream, iov, iovcnt);
-  },
 #endif
+  },
   __syscall146: function(which, varargs) { // writev
 #if NO_FILESYSTEM == 0
     var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
@@ -860,21 +854,18 @@ var SyscallsLibrary = {
     }
     return nonzero;
   },
-#if EMTERPRETIFY_ASYNC
   __syscall180: function(which, varargs) { // pread64
     var stream = SYSCALLS.getStreamFromFD(), buf = SYSCALLS.get(), count = SYSCALLS.get(), zero = SYSCALLS.getZero(), offset = SYSCALLS.get64();
+#if EMTERPRETIFY_ASYNC
     return EmterpreterAsync.handle(function (resume) {
-      FS.read(stream, {{{ makeGetSlabs('buf', 'i8', true) }}}, buf, count, offset, function (bytesRead) {
+      FS.read(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count, offset, function (bytesRead) {
         resume(function() { bytesRead });
       });
     });
-  },
 #else
-  __syscall180: function(which, varargs) { // pread64
-    var stream = SYSCALLS.getStreamFromFD(), buf = SYSCALLS.get(), count = SYSCALLS.get(), zero = SYSCALLS.getZero(), offset = SYSCALLS.get64();
     return FS.read(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count, offset);
-  },
 #endif
+  },
   __syscall181: function(which, varargs) { // pwrite64
 #if SYSCALL_DEBUG
     Module.printErr('warning: untested syscall');
@@ -1258,29 +1249,23 @@ var SyscallsLibrary = {
   __syscall331: function(which, varargs) { // pipe2
     return -ERRNO_CODES.ENOSYS; // unsupported feature
   },
-#if EMTERPRETIFY_ASYNC
   __syscall333: function(which, varargs) { // preadv
 #if SYSCALL_DEBUG
     Module.printErr('warning: untested syscall');
 #endif
+    var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get(), offset = SYSCALLS.get();
+#if EMTERPRETIFY_ASYNC
     return EmterpreterAsync.handle(function(resume) {
-      var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get(), offset = SYSCALLS.get();
       SYSCALLS.doReadv(stream, iov, iovcnt, offset, function(bytesRead) {
         resume(function() {
           return bytesRead;
         });
       });
     });
-  },
 #else
-  __syscall333: function(which, varargs) { // preadv
-#if SYSCALL_DEBUG
-    Module.printErr('warning: untested syscall');
-#endif
-    var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get(), offset = SYSCALLS.get();
     return SYSCALLS.doReadv(stream, iov, iovcnt, offset);
-  },
 #endif
+  },
   __syscall334: function(which, varargs) { // pwritev
 #if SYSCALL_DEBUG
     Module.printErr('warning: untested syscall');
