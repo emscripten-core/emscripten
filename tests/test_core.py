@@ -4837,7 +4837,7 @@ def process(filename):
       char buf[32];
       int main()
       {
-        char *r = "SUCCESS";
+        const char *r = "SUCCESS";
         FILE *f = fopen("eol.txt", "r");
         while (fgets(buf, 32, f) != NULL) {
           if (buf[0] == '\0') {
