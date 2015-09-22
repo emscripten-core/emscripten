@@ -5,7 +5,7 @@
 extern "C" {
 int get_int() { return 5; }
 float get_float() { return 3.14; }
-char *get_string() { return "hello world"; }
+const char *get_string() { return "hello world"; }
 void print_int(int x) { printf("%d\n", x); }
 void print_float(float x) { printf("%.2f\n", x); }
 void print_string(char *x) { printf("%s\n", x); }
@@ -32,6 +32,7 @@ int uses_stack(test_struct* t1) {
   *stackChecker = get_stack();
   EM_ASM(Module['ccall']('get_int', 'number'));
   printf("stack is %s.\n", *stackChecker == get_stack() ? "ok" : "messed up");
+  return 0;
 }
 void call_ccall_again() {
   test_struct t1 = { 1, 2, 3 };
