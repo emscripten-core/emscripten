@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 int main() {
-  char *date = "18.07.2013w";
+  const char *date = "18.07.2013w";
   char c[10];
   memset(c, 0, 10);
   int y, m, d, i;
@@ -13,7 +13,8 @@ int main() {
          y, c, i);
 
   {
-    char *date = "18.07.2013", c;
+    const char *date = "18.07.2013";
+    char c;
     int y, m, d, i;
     if ((i = sscanf(date, "%d.%d.%4d%c", &d, &m, &y, &c)) == 3)
     {
