@@ -37,7 +37,7 @@ int main() {
     isprint,
     isgraph
   };
-  char* funcNames[] = {
+  const char* funcNames[] = {
     "isascii",
     "islower",
     "isupper",

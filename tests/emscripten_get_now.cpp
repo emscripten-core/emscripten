@@ -3,7 +3,7 @@
 
 #ifndef REPORT_RESULT
 // To be able to run this test outside the browser harness in node.js/spidermonkey:
-#define REPORT_RESULT int dummy
+#define REPORT_RESULT()
 #endif
 
 int result = 0;

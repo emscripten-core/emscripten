@@ -53,7 +53,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
           long long x = 0x0000def123450789ULL; // any bigger than this, and we
           long long y = 0x00020ef123456089ULL; // start to run into the double precision limit!
-          printf("*%lld,%lld,%lld,%lld,%lld*\\n", x, y, x | y, x & y, x ^ y, x >> 2, y << 2);
+          printf("*%lld,%lld,%lld,%lld,%lld*\\n", x, y, x | y, x & y, x ^ y);
 
           printf("*");
           long long z = 13;
@@ -1548,7 +1548,7 @@ int main () {
   try
   {
     Polymorphic * pb = 0;
-    typeid(*pb);  // throws a bad_typeid exception
+    const std::type_info& ti = typeid(*pb);  // throws a bad_typeid exception
   }
   catch (std::exception& e)
   {
@@ -2173,7 +2173,7 @@ int main() {
       int main(int argc, char **argv)
       {
         char *buf1 = (char*)malloc(100);
-        char *data1 = "hello";
+        char *data1 = (char*)"hello";
         memcpy(buf1, data1, strlen(data1)+1);
 
         float *buf2 = (float*)malloc(100);
@@ -2185,7 +2185,7 @@ int main() {
         int totalMemory = emscripten_run_script_int("TOTAL_MEMORY");
         char *buf3 = (char*)malloc(totalMemory+1);
         buf3[argc] = (int)buf2;
-        if (argc % 7 == 6) printf("%d\n", memcpy(buf3, buf1, argc));
+        if (argc % 7 == 6) printf("%d\n", (int)memcpy(buf3, buf1, argc));
         char *buf4 = (char*)malloc(100);
         float *buf5 = (float*)malloc(100);
         //printf("totalMemory: %d bufs: %d,%d,%d,%d,%d\n", totalMemory, buf1, buf2, buf3, buf4, buf5);
@@ -5534,7 +5534,7 @@ struct one_const addr_of_my_consts = {
 };
 
 int main(void) {
-  printf("%li\n", !!addr_of_my_consts.a);
+  printf("%li\n", (long)!!addr_of_my_consts.a);
   return 0;
 }
     ''', '1')
@@ -5607,8 +5607,10 @@ int main(void) {
   def test_dlmalloc_partial(self):
     # present part of the symbols of dlmalloc, not all
     src = open(path_from_root('tests', 'new.cpp')).read().replace('{{{ NEW }}}', 'new int').replace('{{{ DELETE }}}', 'delete') + '''
+#include <new>
+
 void *
-operator new(size_t size)
+operator new(size_t size) throw(std::bad_alloc)
 {
 printf("new %d!\\n", size);
 return malloc(size);
@@ -7745,6 +7747,8 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
     self.emcc_args = emcc_args[:]
     Settings.load(self.emcc_args)
     Building.LLVM_OPTS = 0
+
+    Building.COMPILER_TEST_OPTS += ['-Wno-dynamic-class-memaccess', '-Wno-format', '-Wno-format-extra-args', '-Wno-format-security', '-Wno-pointer-bool-conversion', '-Wno-unused-volatile-lvalue', '-Wno-c++11-compat-deprecated-writable-strings', '-Wno-invalid-pp-token']
 
     for arg in self.emcc_args:
       if arg.startswith('-O'):
