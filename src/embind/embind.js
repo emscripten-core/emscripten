@@ -56,7 +56,7 @@ var LibraryEmbind = {
     throw new BindingError(message);
   },
 
-  $throwUnboundTypeError__deps: ['$registeredTypes', '$typeDependencies', '$UnboundTypeError'],
+  $throwUnboundTypeError__deps: ['$registeredTypes', '$typeDependencies', '$UnboundTypeError', '$getTypeName'],
   $throwUnboundTypeError: function(message, types) {
     var unboundTypes = [];
     var seen = {};
@@ -76,7 +76,7 @@ var LibraryEmbind = {
     }
     types.forEach(visit);
 
-    throw new UnboundTypeError(message + ': ' + unboundTypes.map(___getTypeName).join([', ']));
+    throw new UnboundTypeError(message + ': ' + unboundTypes.map(getTypeName).join([', ']));
   },
 
   // Creates a function overload resolution table to the given method 'methodName' in the given prototype,
