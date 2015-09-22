@@ -2155,6 +2155,30 @@ int main() {
     '''
     self.do_run(src, '''0+2=2''')
 
+  def test_em_asm_parameter_pack(self):
+    Building.COMPILER_TEST_OPTS += ['-std=c++11']
+    src = r'''
+      #include <emscripten.h>
+
+      template <typename... Args>
+      int call(Args... args) {
+        return(EM_ASM_INT(
+          {
+            console.log(Array.prototype.join.call(arguments, ','));
+          },
+          args...
+        ));
+      }
+
+      int main(int argc, char **argv) {
+        call(1);
+        call(1, 2);
+        call(1, 2, 3);
+        return 0;
+      }
+    '''
+    self.do_run(src, '''1\n1,2\n1,2,3''')
+
   def test_memorygrowth(self):
     if self.is_wasm(): return self.skip('wasm support for memory growth in the MVP is yet unclear')
     self.banned_js_engines = [V8_ENGINE] # stderr printing limitations in v8
