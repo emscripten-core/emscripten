@@ -21,7 +21,7 @@ int main() {
   );
 
   {
-    char* path = "/working/symlink/test";
+    const char* path = "/working/symlink/test";
     printf("reading %s\n", path);
 
     FILE* fd = fopen(path, "r");
@@ -39,7 +39,7 @@ int main() {
   printf("\n");
 
   {
-    char* path = "/direct-link/test";
+    const char* path = "/direct-link/test";
     printf("reading %s\n", path);
 
     FILE* fd = fopen(path, "r");
