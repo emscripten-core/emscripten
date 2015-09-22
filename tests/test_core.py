@@ -1154,7 +1154,7 @@ base align: 0, 0, 0, 0'''])
       #include <stdio.h>
       #include <setjmp.h>
 
-      int main(int argc) {
+      int main(int argc, char** argv) {
         jmp_buf buf;
         for (int i = 0; i < NUM; i++) printf("%d\n", setjmp(buf));
         if (argc-- == 1131) longjmp(buf, 11);
