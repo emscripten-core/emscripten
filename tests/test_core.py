@@ -3543,6 +3543,7 @@ ok
     self.prep_dlfcn_lib()
     lib_src = r'''
       #include <setjmp.h>
+      #include <stdio.h>
 
       void jumpy(jmp_buf buf) {
         static int i = 0;
