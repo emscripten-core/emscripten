@@ -240,6 +240,20 @@ var emscripten_memoryprofiler = {
     return totalMemory;
   },
 
+  // Print accurate map of individual allocations. This will show information about
+  // memory fragmentation and allocation sizes.
+  // Warning: This will walk through all allocations, so it is slow!
+  printAllocsWithCyclingColors: function printAllocsWithCyclingColors(colors, allocs) {
+    var colorIndex = 0;
+    for (var i in allocs) {
+      this.drawContext.fillStyle = colors[colorIndex];
+      colorIndex = (colorIndex + 1) % colors.length;
+      var start = i|0;
+      var sz = allocs[start]|0;
+      this.fillLine(start, start + sz);
+    }
+  },
+
   // Main UI update entry point.
   updateUi: function updateUi() {
     function colorBar(color) {
@@ -313,22 +327,8 @@ var emscripten_memoryprofiler = {
     this.fillLine(DYNAMIC_BASE, DYNAMICTOP);
 
     if (this.detailedHeapUsage) {
-      // Print accurate map of individual allocations. This will show information about
-      // memory fragmentation and allocation sizes.
-      // Warning: This will walk through all allocations, so it is slow!
-      function printAllocsWithCyclingColors(colors, allocs) {
-        var colorIndex = 0;
-        for (var i in allocs) {
-          this.drawContext.fillStyle = colors[colorIndex];
-          colorIndex = (colorIndex + 1) % colors.length;
-          var start = i|0;
-          var sz = allocs[start]|0;
-          this.fillLine(start, start + sz);
-        }
-      }
-
-      printAllocsWithCyclingColors(["#6699CC", "#003366", "#0000FF"], this.allocatedPtrSizes);
-      printAllocsWithCyclingColors(["#FF9900", "#FFDD33"], this.preRunMallocs);
+      this.printAllocsWithCyclingColors(["#6699CC", "#003366", "#0000FF"], this.allocatedPtrSizes);
+      this.printAllocsWithCyclingColors(["#FF9900", "#FFDD33"], this.preRunMallocs);
     } else {
       // Print only a single naive blob of individual allocations. This will not be accurate, but is constant-time.
       this.drawContext.fillStyle = "#0000FF";
