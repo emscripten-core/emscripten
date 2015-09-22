@@ -76,7 +76,7 @@ var LibraryEmbind = {
     }
     types.forEach(visit);
 
-    throw new UnboundTypeError(message + ': ' + unboundTypes.map(getTypeName).join([', ']));
+    throw new UnboundTypeError(message + ': ' + unboundTypes.map(___getTypeName).join([', ']));
   },
 
   // Creates a function overload resolution table to the given method 'methodName' in the given prototype,
