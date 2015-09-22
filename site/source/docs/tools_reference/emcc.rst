@@ -389,6 +389,12 @@ Options that are modified or new in *emcc* are listed below:
 ``--emrun``
 	Enables the generated output to be aware of the :ref:`emrun <Running-html-files-with-emrun>` command line tool. This allows ``stdout``, ``stderr`` and ``exit(returncode)`` capture when running the generated application through *emrun*.     
 
+``--cpuprofiler``
+	Embeds a simple CPU profiler onto the generated page. Use this to perform cursory interactive performance profiling.
+
+``--memoryprofiler``
+	Embeds a memory allocation tracker onto the generated page. Use this to profile the application usage of the Emscripten HEAP.
+
 .. _emcc-config:
 	
 ``--em-config``
