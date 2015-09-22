@@ -174,13 +174,13 @@ var emscripten_memoryprofiler = {
     memoryprofiler = document.getElementById('memoryprofiler');
     if (!memoryprofiler) {
       var div = document.createElement("div");
-      div.innerHTML = "<div style='border: 2px solid black; padding: 2px;'><canvas style='border: 1px solid black;' id='memoryprofiler_canvas' width='800' height='50'></canvas>this.trackedCallstackMinSizeBytes=<input id='memoryprofiler_min_tracked_alloc_size' type=number onChange='this.trackedCallstackMinSizeBytes=this.value;' value="+this.trackedCallstackMinSizeBytes+"></input><br/><input type='checkbox' onchange='this.allocateStatistics=this.checked;'>Print allocation statistics by callstack to html log (warning: slow!)</input><input type='button' value='Clear alloc stats' onclick='this.allocationSiteStatistics = {}; this.allocationSitePtrs = {};'></input><div id='memoryprofiler'></div>";
+      div.innerHTML = "<div style='border: 2px solid black; padding: 2px;'><canvas style='border: 1px solid black; margin-left: auto; margin-right: auto; display: block;' id='memoryprofiler_canvas' width='100%' height='50'></canvas>this.trackedCallstackMinSizeBytes=<input id='memoryprofiler_min_tracked_alloc_size' type=number onChange='this.trackedCallstackMinSizeBytes=this.value;' value="+this.trackedCallstackMinSizeBytes+"></input><br/><input type='checkbox' onchange='this.allocateStatistics=this.checked;'>Print allocation statistics by callstack to html log (warning: slow!)</input><input type='button' value='Clear alloc stats' onclick='this.allocationSiteStatistics = {}; this.allocationSitePtrs = {};'></input><div id='memoryprofiler'></div>";
       document.body.appendChild(div);
       memoryprofiler = document.getElementById('memoryprofiler');
     }
   
     this.canvas = document.getElementById('memoryprofiler_canvas');
-    this.canvas.width = document.documentElement.clientWidth - 64;
+    this.canvas.width = document.documentElement.clientWidth - 32;
     this.drawContext = this.canvas.getContext('2d');
 
     this.updateUi();
@@ -261,6 +261,11 @@ var emscripten_memoryprofiler = {
       var str = i.toString(16);
       while(str.length < width) str = '0' + str;
       return '0x'+str;
+    }
+
+    // Poll whether user as changed the browser window, and if so, resize the profiler window and redraw it.
+    if (this.canvas.width != document.documentElement.clientWidth - 32) {
+      this.canvas.width = document.documentElement.clientWidth - 32;
     }
 
     var width = (nBits(TOTAL_MEMORY) + 3) / 4; // Pointer 'word width'
