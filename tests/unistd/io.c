@@ -109,7 +109,7 @@ int main() {
   printf("errno: %d\n\n", errno);
   errno = 0;
 
-  printf("pread past end of file: %d\n", pread(f, readBuffer, sizeof readBuffer, 99999999999));
+  printf("pread past end of file: %d\n", pread(f, readBuffer, sizeof readBuffer, 999999999));
   printf("data: %s\n", readBuffer);
   memset(readBuffer, 0, sizeof readBuffer);
   printf("errno: %d\n\n", errno);

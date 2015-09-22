@@ -3,7 +3,7 @@
 
 int main() {
   char test[80], blah[80];
-  char *sep = "\\/:;=-";
+  const char *sep = "\\/:;=-";
   char *word, *phrase, *brkt, *brkb;
 
   strcpy(test, "This;is.a:test:of=the/string\\tokenizer-function.");

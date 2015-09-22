@@ -24,7 +24,7 @@ public:
 class ExChild : public ExQuux {
 public:
   ExChild(int x) : ExQuux(x) { printf("*CREATING A CHILD\n"); }
-  ExChild(const ExChild& other) : ExQuux(x)  { x=other.x; printf("*COPYING CHILD\n"); }
+  ExChild(const ExChild& other) : ExQuux(other.x)  { printf("*COPYING CHILD\n"); }
   ~ExChild() { printf("*DESTROYING A CHILD (%d)\n", x); }
 } ExChildInstance(44);
 

@@ -1154,7 +1154,7 @@ base align: 0, 0, 0, 0'''])
       #include <stdio.h>
       #include <setjmp.h>
 
-      int main(int argc) {
+      int main(int argc, char** argv) {
         jmp_buf buf;
         for (int i = 0; i < NUM; i++) printf("%d\n", setjmp(buf));
         if (argc-- == 1131) longjmp(buf, 11);
@@ -3543,6 +3543,7 @@ ok
     self.prep_dlfcn_lib()
     lib_src = r'''
       #include <setjmp.h>
+      #include <stdio.h>
 
       void jumpy(jmp_buf buf) {
         static int i = 0;
@@ -4837,7 +4838,7 @@ def process(filename):
       char buf[32];
       int main()
       {
-        char *r = "SUCCESS";
+        const char *r = "SUCCESS";
         FILE *f = fopen("eol.txt", "r");
         while (fgets(buf, 32, f) != NULL) {
           if (buf[0] == '\0') {
