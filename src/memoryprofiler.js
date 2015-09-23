@@ -1,4 +1,4 @@
-var emscripten_memoryprofiler = {
+var emscriptenMemoryProfiler = {
   // If true, walks all allocated pointers at graphing time to print a detailed memory fragmentation map. If false, used
   // memory is only graphed in one block (at the bottom of DYNAMIC memory space). Set this to false to improve performance at the expense of
   // accuracy.
@@ -153,19 +153,19 @@ var emscripten_memoryprofiler = {
   // Installs startup hook and periodic UI update timer.
   initialize: function initialize() {
     // Inject the memoryprofiler hooks.
-    Module['onMalloc'] = function onMalloc(ptr, size) { emscripten_memoryprofiler.onMalloc(ptr, size); };
-    Module['onRealloc'] = function onRealloc(oldAddress, newAddress, size) { emscripten_memoryprofiler.onRealloc(oldAddress, newAddress, size); };
-    Module['onFree'] = function onFree(ptr) { emscripten_memoryprofiler.onFree(ptr); };
+    Module['onMalloc'] = function onMalloc(ptr, size) { emscriptenMemoryProfiler.onMalloc(ptr, size); };
+    Module['onRealloc'] = function onRealloc(oldAddress, newAddress, size) { emscriptenMemoryProfiler.onRealloc(oldAddress, newAddress, size); };
+    Module['onFree'] = function onFree(ptr) { emscriptenMemoryProfiler.onFree(ptr); };
 
     // Add a tracking mechanism to detect when VFS loading is complete.
-    Module['preRun'].push(function() { emscripten_memoryprofiler.onPreloadComplete(); });
-    Module['postRun'].push(function() { emscripten_memoryprofiler.onPreloadComplete(); });
+    Module['preRun'].push(function() { emscriptenMemoryProfiler.onPreloadComplete(); });
+    Module['postRun'].push(function() { emscriptenMemoryProfiler.onPreloadComplete(); });
 
     if (this.hookStackAlloc) {
       // Inject stack allocator.
       var prevStackAlloc = Runtime.stackAlloc;
       function hookedStackAlloc(size) {
-        emscripten_memoryprofiler.stackTopWatermark = Math.max(emscripten_memoryprofiler.stackTopWatermark, STACKTOP + size);
+        emscriptenMemoryProfiler.stackTopWatermark = Math.max(emscriptenMemoryProfiler.stackTopWatermark, STACKTOP + size);
         return prevStackAlloc(size);
       }
       Runtime.stackAlloc = hookedStackAlloc;
@@ -184,7 +184,7 @@ var emscripten_memoryprofiler = {
     this.drawContext = this.canvas.getContext('2d');
 
     this.updateUi();
-    setInterval(function() { emscripten_memoryprofiler.updateUi() }, this.uiUpdateIntervalMsecs);
+    setInterval(function() { emscriptenMemoryProfiler.updateUi() }, this.uiUpdateIntervalMsecs);
   },
 
   // Given a pointer 'bytes', compute the linear 1D position on the graph as pixels, rounding down for start address of a block.
@@ -374,6 +374,6 @@ var emscripten_memoryprofiler = {
 };
 
 // Backwards compatibility with previously compiled code. Don't call this anymore!
-function memoryprofiler_add_hooks() { emscripten_memoryprofiler.initialize(); }
+function memoryprofiler_add_hooks() { emscriptenMemoryProfiler.initialize(); }
 
-if (typeof Module !== 'undefined') emscripten_memoryprofiler.initialize();
+if (typeof Module !== 'undefined') emscriptenMemoryProfiler.initialize();

@@ -1,4 +1,4 @@
-var emscripten_cpuprofiler = {
+var emscriptenCpuProfiler = {
   // UI update interval in milliseconds.
   uiUpdateInterval: 1,
 
@@ -168,8 +168,8 @@ var emscripten_cpuprofiler = {
     this.clearUi(0, this.canvas.width);
     this.drawGraphLabels();
     this.updateUi();
-    Module['preMainLoop'] = function cpuprofiler_frameStart() { emscripten_cpuprofiler.frameStart(); }
-    Module['postMainLoop'] = function cpuprofiler_frameEnd() { emscripten_cpuprofiler.frameEnd(); }
+    Module['preMainLoop'] = function cpuprofiler_frameStart() { emscriptenCpuProfiler.frameStart(); }
+    Module['postMainLoop'] = function cpuprofiler_frameEnd() { emscriptenCpuProfiler.frameEnd(); }
     
     this.createSection(0, 'GL', '#FF00FF');
   },
@@ -261,6 +261,6 @@ var emscripten_cpuprofiler = {
 };
 
 // Backwards compatibility with previously compiled code. Don't call this anymore!
-function cpuprofiler_add_hooks() { emscripten_cpuprofiler.initialize(); }
+function cpuprofiler_add_hooks() { emscriptenCpuProfiler.initialize(); }
 
-if (typeof Module !== 'undefined') emscripten_cpuprofiler.initialize();
+if (typeof Module !== 'undefined') emscriptenCpuProfiler.initialize();
