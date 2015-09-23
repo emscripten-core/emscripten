@@ -263,7 +263,7 @@ var emscriptenMemoryProfiler = {
     // Naive function to compute how many bits will be needed to represent the number 'n' in binary. This will be our pointer 'word width' in the UI.
     function nBits(n) {
       var i = 0;
-      while(n >= 1) {
+      while (n >= 1) {
         ++i;
         n /= 2;
       }
@@ -273,7 +273,7 @@ var emscriptenMemoryProfiler = {
     // Returns i formatted to string as fixed-width hexadecimal.
     function toHex(i, width) {
       var str = i.toString(16);
-      while(str.length < width) str = '0' + str;
+      while (str.length < width) str = '0' + str;
       return '0x'+str;
     }
 

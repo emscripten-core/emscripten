@@ -64,7 +64,7 @@ var emscriptenCpuProfiler = {
       var avgDt = totalDt / nSamples;
       var avgFps = 1000.0 / avgDt;
       var dtVariance = 0;
-      for(var i = 1; i < this.timeSpentInMainloop.length; ++i) {
+      for (var i = 1; i < this.timeSpentInMainloop.length; ++i) {
         var dt = this.timeSpentInMainloop[i] + this.timeSpentOutsideMainloop[i];
         var d = dt - avgDt;
         dtVariance += d*d;
@@ -124,7 +124,7 @@ var emscriptenCpuProfiler = {
   frameEnd: function frameEnd() {
     // Aggregate total times spent in each section to memory store to wait until the next stats UI redraw period.
     var totalTimeInSections = 0;
-    for(var i in this.sections) {
+    for (var i in this.sections) {
       var sect = this.sections[i];
       sect.frametimes[this.currentHistogramX] = sect.accumulatedTime;
       totalTimeInSections += sect.accumulatedTime;
@@ -205,7 +205,7 @@ var emscriptenCpuProfiler = {
     y -= h;
     this.drawContext.fillStyle = "#0000BB";
     this.drawContext.fillRect(x, y, 1, h);
-    for(var i in this.sections) {
+    for (var i in this.sections) {
       var sect = this.sections[i];
       var h = sect.frametimes[x] * scale;
       y -= h;
@@ -232,7 +232,7 @@ var emscriptenCpuProfiler = {
       if (this.timeSpentOutsideMainloop.length > this.canvas.width) this.timeSpentOutsideMainloop.length = this.canvas.width;
       if (this.lastUiUpdateEndX >= this.canvas.width) this.lastUiUpdateEndX = 0;
       if (this.currentHistogramX >= this.canvas.width) this.currentHistogramX = 0;
-      for(var i in this.sections) {
+      for (var i in this.sections) {
         var sect = this.sections[i];
         if (sect.frametimes.length > this.canvas.width) sect.frametimes.length = this.canvas.width;
       }
