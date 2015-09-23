@@ -435,6 +435,7 @@ ok.
   #         clean_pids(pids);
 
   def test_webrtc(self): # XXX see src/settings.js, this is disabled pending investigation
+    return self.skip('WebRTC support is not up to date.')
     host_src = 'webrtc_host.c'
     peer_src = 'webrtc_peer.c'
 
