@@ -2155,6 +2155,10 @@ int main() {
     '''
     self.do_run(src, '''0+2=2''')
 
+  # Verify that EM_ASM macros support getting called with multiple arities.
+  # Maybe tests will later be joined into larger compilation units?
+  # Then this must still be compiled separately from other code using EM_ASM
+  # macros with arities 1-3. Otherwise this may incorrectly report a success.
   def test_em_asm_parameter_pack(self):
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
     src = r'''
