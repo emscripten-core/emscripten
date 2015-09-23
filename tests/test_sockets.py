@@ -2,6 +2,12 @@ import os, multiprocessing, subprocess
 from runner import BrowserCore, path_from_root
 from tools.shared import *
 
+node_ws_module_installed = False
+try:
+  NPM = os.path.join(os.path.dirname(NODE_JS[0]), 'npm')
+except:
+  pass
+
 def clean_pids(pids):
   import signal, errno
   def pid_exists(pid):
@@ -76,6 +82,10 @@ class CompiledServerHarness:
     self.filename = filename
     self.listen_port = listen_port
     self.args = args or []
+    global node_ws_module_installed
+    if not node_ws_module_installed:
+      Popen([NPM, 'install', path_from_root('tests', 'sockets', 'ws')], cwd=os.path.dirname(EMCC)).communicate()
+      node_ws_module_installed = True
 
   def __enter__(self):
     # assuming this is only used for WebSocket tests at the moment, validate that
@@ -490,7 +500,7 @@ ok.
     Popen([PYTHON, EMCC, temp_peer_filepath, '-o', peer_outfile] + ['-s', 'GL_TESTING=1', '--pre-js', 'peer_pre.js', '-s', 'SOCKET_WEBRTC=1', '-s', 'SOCKET_DEBUG=1']).communicate()
 
     # note: you may need to run this manually yourself, if npm is not in the path, or if you need a version that is not in the path
-    Popen(['npm', 'install', path_from_root('tests', 'sockets', 'p2p')]).communicate()
+    Popen([NPM, 'install', path_from_root('tests', 'sockets', 'p2p')]).communicate()
     broker = Popen(NODE_JS + [path_from_root('tests', 'sockets', 'p2p', 'broker', 'p2p-broker.js')])
 
     expected = '1'
