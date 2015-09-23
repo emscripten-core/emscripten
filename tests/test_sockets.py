@@ -462,6 +462,9 @@ ok.
             console.error(error);
           }
         },
+        setStatus: function(text) {
+          console.log('status: ' + text);
+        }
       };
     ''')
 
@@ -481,7 +484,10 @@ ok.
           },
           onerror: function(error) {
             console.error(error);
-          }
+          },
+        },
+        setStatus: function(text) {
+          console.log('status: ' + text);
         }
       };
     ''')
