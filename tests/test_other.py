@@ -5176,6 +5176,7 @@ int main() {
     self.assertContained('#define __EMSCRIPTEN__ 1', out) # all our defines should show up
 
   def test_emcc_wasm_0(self):
+    try_delete(Cache.get_path('load-wasm-worker.js')) # XXX force a rebuild, for temporary testing purposes
     default_error_message = 'cannot use WASM=1 when full asm.js validation was disabled'
     for args, ok, error_message in [
       ([], False, ''),
@@ -5190,7 +5191,7 @@ int main() {
       (['-s', 'ALLOW_MEMORY_GROWTH=1', '-O1'], False, 'memory growth is not supported with WASM=1'),
       (['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_WHITELIST=["_main"]', '-O2', '-s', 'ASSERTIONS=1'], True, ''),
     ]:
-      print args, ok
+      print 'emcc_wasm_0', args, ok
       if not error_message: error_message = default_error_message
       proc = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1'] + args, stdout=PIPE, stderr=PIPE)
       out, err = proc.communicate()
