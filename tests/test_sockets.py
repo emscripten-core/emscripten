@@ -4,7 +4,7 @@ from tools.shared import *
 
 node_ws_module_installed = False
 try:
-  NPM = os.path.join(os.path.dirname(NODE_JS[0]), 'npm')
+  NPM = os.path.join(os.path.dirname(NODE_JS[0]), 'npm.cmd' if WINDOWS else 'npm')
 except:
   pass
 
@@ -393,6 +393,7 @@ ok.
         self.btest(os.path.join('sockets', 'test_sockets_select_server_closes_connection_client_rw.c'), expected='266', args=[sockets_include, '-DSOCKK=%d' % harness.listen_port])
 
   def test_enet(self):
+    if WINDOWS: return self.skip('This test uses Unix-specific build architecture.')
     # this is also a good test of raw usage of emconfigure and emmake
     try_delete(self.in_dir('enet'))
     shutil.copytree(path_from_root('tests', 'enet'), self.in_dir('enet'))
