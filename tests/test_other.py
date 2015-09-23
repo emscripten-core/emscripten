@@ -2734,7 +2734,12 @@ int main()
 
   def test_llvm_lit(self):
     llvm_src = get_fastcomp_src_dir()
-    cmd = [PYTHON, os.path.join(LLVM_ROOT, 'llvm-lit.py'), '-v', os.path.join(llvm_src, 'test', 'CodeGen', 'JS')]
+    LLVM_LIT = os.path.join(LLVM_ROOT, 'llvm-lit.py')
+    if not os.path.exists(LLVM_LIT):
+      LLVM_LIT = os.path.join(LLVM_ROOT, 'llvm-lit')
+      if not os.path.exists(LLVM_LIT):
+        raise Exception('cannot find llvm-lit tool')
+    cmd = [PYTHON, LLVM_LIT, '-v', os.path.join(llvm_src, 'test', 'CodeGen', 'JS')]
     print cmd
     p = Popen(cmd)
     p.communicate()
