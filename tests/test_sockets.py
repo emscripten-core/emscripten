@@ -8,31 +8,21 @@ try:
 except:
   pass
 
-def clean_pids(pids):
+def clean_processes(processes):
   import signal, errno
-  def pid_exists(pid):
-    try:
-      # NOTE: may just kill the process in Windows
-      os.kill(pid, 0)
-    except OSError, e:
-      return e.errno == errno.EPERM
-    else:
-        return True
-  def kill_pids(pids, sig):
-    for pid in pids:
-      if not pid_exists(pid):
-        break
-      print '[killing %d]' % pid
+  for p in processes:
+    if (not hasattr(p, 'exitcode') or p.exitcode == None) and (not hasattr(p, 'returncode') or p.returncode == None):
+      # ask nicely (to try and catch the children)
       try:
-        os.kill(pid, sig)
-        print '[kill succeeded]'
+        p.terminate() # SIGTERM
       except:
-        print '[kill fail]'
-  # ask nicely (to try and catch the children)
-  kill_pids(pids, signal.SIGTERM)
-  time.sleep(1)
-  # extreme prejudice, may leave children
-  kill_pids(pids, signal.SIGKILL)
+        pass
+      time.sleep(1)
+      # send a forcible kill immediately afterwards. If the process did not die before, this should clean it.
+      try:
+        p.kill() # SIGKILL
+      except:
+        pass
 
 def make_relay_server(port1, port2):
   print >> sys.stderr, 'creating relay server on ports %d,%d' % (port1, port2)
@@ -41,7 +31,7 @@ def make_relay_server(port1, port2):
 
 class WebsockifyServerHarness:
   def __init__(self, filename, args, listen_port):
-    self.pids = []
+    self.processes = []
     self.filename = filename
     self.listen_port = listen_port
     self.target_port = listen_port-1
@@ -56,15 +46,15 @@ class WebsockifyServerHarness:
     if self.filename:
       Popen([CLANG_CC, path_from_root('tests', self.filename), '-o', 'server', '-DSOCKK=%d' % self.target_port] + get_clang_native_args() + self.args).communicate()
       process = Popen([os.path.abspath('server')])
-      self.pids.append(process.pid)
+      self.processes.append(process)
 
     # start the websocket proxy
     print >> sys.stderr, 'running websockify on %d, forward to tcp %d' % (self.listen_port, self.target_port)
     wsp = websockify.WebSocketProxy(verbose=True, listen_port=self.listen_port, target_host="127.0.0.1", target_port=self.target_port, run_once=True)
     self.websockify = multiprocessing.Process(target=wsp.start_server)
     self.websockify.start()
-    self.pids.append(self.websockify.pid)
-    print '[Websockify on process %s]' % str(self.pids[-2:])
+    self.processes.append(self.websockify)
+    print '[Websockify on process %s]' % str(self.processes[-2:])
 
   def __exit__(self, *args, **kwargs):
     # try to kill the websockify proxy gracefully
@@ -73,12 +63,12 @@ class WebsockifyServerHarness:
     self.websockify.join()
 
     # clean up any processes we started
-    clean_pids(self.pids)
+    clean_processes(self.processes)
 
 
 class CompiledServerHarness:
   def __init__(self, filename, args, listen_port):
-    self.pids = []
+    self.processes = []
     self.filename = filename
     self.listen_port = listen_port
     self.args = args or []
@@ -101,11 +91,11 @@ class CompiledServerHarness:
     # compile the server
     Popen([PYTHON, EMCC, path_from_root('tests', self.filename), '-o', 'server.js', '-DSOCKK=%d' % self.listen_port] + self.args).communicate()
     process = Popen(NODE_JS + ['server.js'])
-    self.pids.append(process.pid)
+    self.processes.append(process)
 
   def __exit__(self, *args, **kwargs):
     # clean up any processes we started
-    clean_pids(self.pids)
+    clean_processes(self.processes)
 
     # always run these tests last
     # make sure to use different ports in each one because it takes a while for the processes to be cleaned up
@@ -184,7 +174,7 @@ class sockets(BrowserCore):
       #include <arpa/inet.h>
       #include <sys/socket.h>
 
-      void test(char *test_addr, bool first=true){
+      void test(const char *test_addr, bool first=true){
           char str[40];
           struct in6_addr addr;
           unsigned char *p = (unsigned char*)&addr;
@@ -289,7 +279,7 @@ ok.
         }
         char buffer[1000];
         sprintf(buffer, "%s:%u\n", inet_ntoa(adr_inet.sin_addr), (unsigned)ntohs(adr_inet.sin_port));
-        char *correct = "0.0.0.0:0\n";
+        const char *correct = "0.0.0.0:0\n";
         printf("got (expected) socket: %s (%s), size %d (%d)\n", buffer, correct, strlen(buffer), strlen(correct));
         puts("success.");
       }
@@ -326,6 +316,7 @@ ok.
         self.btest(os.path.join('sockets', 'test_sockets_echo_client.c'), expected='0', args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram, sockets_include])
 
   def test_sockets_async_echo(self):
+    if WINDOWS: return self.skip('This test is Unix-specific.')
     # Run with ./runner.py sockets.test_sockets_async_echo
     sockets_include = '-I'+path_from_root('tests', 'sockets')
 
@@ -371,6 +362,7 @@ ok.
         self.btest(output, expected='0', args=[sockets_include, '-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram], force_c=True)
 
   def test_sockets_partial(self):
+    if WINDOWS: return self.skip('This test is Unix-specific.')
     for harness in [
       WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_partial_server.c'), [], 49180),
       CompiledServerHarness(os.path.join('sockets', 'test_sockets_partial_server.c'), [], 49181)
@@ -379,6 +371,7 @@ ok.
         self.btest(os.path.join('sockets', 'test_sockets_partial_client.c'), expected='165', args=['-DSOCKK=%d' % harness.listen_port])
 
   def test_sockets_select_server_down(self):
+    if WINDOWS: return self.skip('This test is Unix-specific.')
     for harness in [
       WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_select_server_down_server.c'), [], 49190),
       CompiledServerHarness(os.path.join('sockets', 'test_sockets_select_server_down_server.c'), [], 49191)
@@ -387,6 +380,7 @@ ok.
         self.btest(os.path.join('sockets', 'test_sockets_select_server_down_client.c'), expected='266', args=['-DSOCKK=%d' % harness.listen_port])
 
   def test_sockets_select_server_closes_connection_rw(self):
+    if WINDOWS: return self.skip('This test is Unix-specific.')
     sockets_include = '-I'+path_from_root('tests', 'sockets')
 
     for harness in [
