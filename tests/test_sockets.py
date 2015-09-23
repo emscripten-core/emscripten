@@ -82,17 +82,21 @@ class CompiledServerHarness:
     self.filename = filename
     self.listen_port = listen_port
     self.args = args or []
-    global node_ws_module_installed
-    if not node_ws_module_installed:
-      Popen([NPM, 'install', path_from_root('tests', 'sockets', 'ws')], cwd=os.path.dirname(EMCC)).communicate()
-      node_ws_module_installed = True
 
   def __enter__(self):
     # assuming this is only used for WebSocket tests at the moment, validate that
     # the ws module is installed
     child = Popen(NODE_JS + ['-e', 'require("ws");'])
     child.communicate()
-    assert child.returncode == 0, 'ws module for Node.js not installed. Please run \'npm install\' from %s' % EMSCRIPTEN_ROOT
+    global node_ws_module_installed
+    # Attempt to automatically install ws module for Node.js.
+    if child.returncode != 0 and not node_ws_module_installed:
+      node_ws_module_installed = True
+      Popen([NPM, 'install', path_from_root('tests', 'sockets', 'ws')], cwd=os.path.dirname(EMCC)).communicate()
+      # Did installation succeed?
+      child = Popen(NODE_JS + ['-e', 'require("ws");'])
+      child.communicate()
+    assert child.returncode == 0, 'ws module for Node.js not installed, and automatic installation failed! Please run \'npm install\' from %s' % EMSCRIPTEN_ROOT
 
     # compile the server
     Popen([PYTHON, EMCC, path_from_root('tests', self.filename), '-o', 'server.js', '-DSOCKK=%d' % self.listen_port] + self.args).communicate()
