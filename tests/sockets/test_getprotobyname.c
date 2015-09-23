@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-void checkEntryByValue(char* name, int port, char** aliasArray) {
+void checkEntryByValue(const char* name, int port, const char** aliasArray) {
     struct protoent* entry;
     char** aliases;
 
@@ -66,7 +66,7 @@ void checkEntryDatabase() {
 
 int main() {
     // First check getprotobyname() and getprotobynumber()
-    char* aliases[] = {"TCP"};
+    const char* aliases[] = {"TCP"};
     checkEntryByValue("tcp", 6, aliases);
 
     aliases[0] = "UDP";
