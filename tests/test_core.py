@@ -6842,6 +6842,35 @@ def process(filename):
     '''
     self.do_run(src, 'lerp 166');
 
+  def test_embind_3(self):
+    Settings.NO_EXIT_RUNTIME = 1 # we emit some post.js that we need to see
+    Building.COMPILER_TEST_OPTS += ['--bind', '--post-js', 'post.js']
+    open('post.js', 'w').write('''
+      function ready() {
+        try {
+          Module.compute(new Uint8Array([1,2,3]));
+        } catch(e) {
+          Module.print(e);
+        }
+      }
+    ''')
+    src = r'''
+      #include <emscripten.h>
+      #include <emscripten/bind.h>
+      using namespace emscripten;
+      int compute(int array[]) {
+          return 0;
+      }
+      EMSCRIPTEN_BINDINGS(my_module) {
+          function("compute", &compute, allow_raw_pointers());
+      }
+      int main(int argc, char **argv) {
+          EM_ASM(ready());
+          return 0;
+      }
+    '''
+    self.do_run(src, 'UnboundTypeError: Cannot call compute due to unbound types: Pi');
+
   def test_scriptaclass(self):
       Settings.EXPORT_BINDINGS = 1
 
