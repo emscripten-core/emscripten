@@ -95,7 +95,7 @@ try:
 finally:
   os.chdir(dir)
 out = json.loads(out)
-open(wasmfile, 'w').write(''.join(map(chr, out)))
+open(wasmfile, 'wb').write(''.join(map(chr, out)))
 
 print 'create patched out js'
 js = open(jsfile).read()
