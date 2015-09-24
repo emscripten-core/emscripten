@@ -1418,7 +1418,7 @@ class Building:
       if not Settings.SIMD:
         opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false', '-vectorize-slp-aggressive=false']
       else:
-        opts += ['-bb-vectorize-vector-bits=128', '-force-vector-width=4']
+        opts += ['-bb-vectorize-vector-bits=128']
 
     logging.debug('emcc: LLVM opts: ' + ' '.join(opts) + '  [num inputs: ' + str(len(inputs)) + ']')
     target = out or (filename + '.opt.bc')
@@ -1876,7 +1876,7 @@ def check_execute(cmd, *args, **kw):
 def check_call(cmd, *args, **kw):
   try:
     subprocess.check_call(cmd, *args, **kw)
-    logging.debug("Successfuly executed %s" % " ".join(cmd))
+    logging.debug("Successfully executed %s" % " ".join(cmd))
   except subprocess.CalledProcessError as e:
     logging.error("'%s' failed" % " ".join(cmd))
     raise

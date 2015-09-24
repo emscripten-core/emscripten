@@ -5,7 +5,7 @@ int main() {
   char szTolwr[] = "EMSCRIPTEN";
   strupr(szToupr);
   strlwr(szTolwr);
-  printf(szToupr);
-  printf(szTolwr);
+  puts(szToupr);
+  puts(szTolwr);
   return 0;
 }

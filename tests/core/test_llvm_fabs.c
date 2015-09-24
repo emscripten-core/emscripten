@@ -22,7 +22,7 @@ int main()
 {
   printf("%f\n", __builtin_fabsf(negative10()));
   printf("%f\n", __builtin_fabsf(positive42()));
-  printf("%f\n", __builtin_fabsf(negative_dbl_max()));
+  printf("%f\n", __builtin_fabsf((float)negative_dbl_max()));
 
   printf("%f\n", __builtin_fabs(negative10()));
   printf("%f\n", __builtin_fabs(positive42()));

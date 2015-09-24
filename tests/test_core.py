@@ -10,9 +10,10 @@ from runner import RunnerCore, path_from_root, checked_sanity, test_modes, get_z
 class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
   def is_emterpreter(self):
     return 'EMTERPRETIFY=1' in self.emcc_args
-
   def is_split_memory(self):
     return 'SPLIT_MEMORY=' in str(self.emcc_args)
+  def is_wasm(self):
+    return 'WASM=1' in self.emcc_args
 
   def test_hello_world(self):
       test_path = path_from_root('tests', 'core', 'test_hello_world')
@@ -53,7 +54,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
 
           long long x = 0x0000def123450789ULL; // any bigger than this, and we
           long long y = 0x00020ef123456089ULL; // start to run into the double precision limit!
-          printf("*%lld,%lld,%lld,%lld,%lld*\\n", x, y, x | y, x & y, x ^ y, x >> 2, y << 2);
+          printf("*%lld,%lld,%lld,%lld,%lld*\\n", x, y, x | y, x & y, x ^ y);
 
           printf("*");
           long long z = 13;
@@ -927,6 +928,7 @@ base align: 0, 0, 0, 0'''])
       test()
 
   def test_stack_restore(self):
+    if self.is_wasm(): return self.skip('generated code not available in wasm')
     if self.is_emterpreter(): return self.skip('generated code not available in emterpreter')
     self.emcc_args += ['-g3'] # to be able to find the generated code
     test_path = path_from_root('tests', 'core', 'test_stack_restore')
@@ -1153,7 +1155,7 @@ base align: 0, 0, 0, 0'''])
       #include <stdio.h>
       #include <setjmp.h>
 
-      int main(int argc) {
+      int main(int argc, char** argv) {
         jmp_buf buf;
         for (int i = 0; i < NUM; i++) printf("%d\n", setjmp(buf));
         if (argc-- == 1131) longjmp(buf, 11);
@@ -1547,7 +1549,7 @@ int main () {
   try
   {
     Polymorphic * pb = 0;
-    typeid(*pb);  // throws a bad_typeid exception
+    const std::type_info& ti = typeid(*pb);  // throws a bad_typeid exception
   }
   catch (std::exception& e)
   {
@@ -2099,6 +2101,8 @@ def process(filename):
       self.do_run_from_file(src, output)
 
   def test_inlinejs3(self):
+    if self.is_wasm(): return self.skip('wasm requires a proper asm module')
+
     test_path = path_from_root('tests', 'core', 'test_inlinejs3')
     src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -2152,7 +2156,36 @@ int main() {
     '''
     self.do_run(src, '''0+2=2''')
 
+  # Verify that EM_ASM macros support getting called with multiple arities.
+  # Maybe tests will later be joined into larger compilation units?
+  # Then this must still be compiled separately from other code using EM_ASM
+  # macros with arities 1-3. Otherwise this may incorrectly report a success.
+  def test_em_asm_parameter_pack(self):
+    Building.COMPILER_TEST_OPTS += ['-std=c++11']
+    src = r'''
+      #include <emscripten.h>
+
+      template <typename... Args>
+      int call(Args... args) {
+        return(EM_ASM_INT(
+          {
+            console.log(Array.prototype.join.call(arguments, ','));
+          },
+          args...
+        ));
+      }
+
+      int main(int argc, char **argv) {
+        call(1);
+        call(1, 2);
+        call(1, 2, 3);
+        return 0;
+      }
+    '''
+    self.do_run(src, '''1\n1,2\n1,2,3''')
+
   def test_memorygrowth(self):
+    if self.is_wasm(): return self.skip('wasm support for memory growth in the MVP is yet unclear')
     self.banned_js_engines = [V8_ENGINE] # stderr printing limitations in v8
 
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0'] # start with 0
@@ -2169,7 +2202,7 @@ int main() {
       int main(int argc, char **argv)
       {
         char *buf1 = (char*)malloc(100);
-        char *data1 = "hello";
+        char *data1 = (char*)"hello";
         memcpy(buf1, data1, strlen(data1)+1);
 
         float *buf2 = (float*)malloc(100);
@@ -2181,7 +2214,7 @@ int main() {
         int totalMemory = emscripten_run_script_int("TOTAL_MEMORY");
         char *buf3 = (char*)malloc(totalMemory+1);
         buf3[argc] = (int)buf2;
-        if (argc % 7 == 6) printf("%d\n", memcpy(buf3, buf1, argc));
+        if (argc % 7 == 6) printf("%d\n", (int)memcpy(buf3, buf1, argc));
         char *buf4 = (char*)malloc(100);
         float *buf5 = (float*)malloc(100);
         //printf("totalMemory: %d bufs: %d,%d,%d,%d,%d\n", totalMemory, buf1, buf2, buf3, buf4, buf5);
@@ -3614,6 +3647,7 @@ ok
     self.prep_dlfcn_lib()
     lib_src = r'''
       #include <setjmp.h>
+      #include <stdio.h>
 
       void jumpy(jmp_buf buf) {
         static int i = 0;
@@ -4908,7 +4942,7 @@ def process(filename):
       char buf[32];
       int main()
       {
-        char *r = "SUCCESS";
+        const char *r = "SUCCESS";
         FILE *f = fopen("eol.txt", "r");
         while (fgets(buf, 32, f) != NULL) {
           if (buf[0] == '\0') {
@@ -5604,7 +5638,7 @@ struct one_const addr_of_my_consts = {
 };
 
 int main(void) {
-  printf("%li\n", !!addr_of_my_consts.a);
+  printf("%li\n", (long)!!addr_of_my_consts.a);
   return 0;
 }
     ''', '1')
@@ -5677,8 +5711,10 @@ int main(void) {
   def test_dlmalloc_partial(self):
     # present part of the symbols of dlmalloc, not all
     src = open(path_from_root('tests', 'new.cpp')).read().replace('{{{ NEW }}}', 'new int').replace('{{{ DELETE }}}', 'delete') + '''
+#include <new>
+
 void *
-operator new(size_t size)
+operator new(size_t size) throw(std::bad_alloc)
 {
 printf("new %d!\\n", size);
 return malloc(size);
@@ -5687,7 +5723,7 @@ return malloc(size);
     self.do_run(src, 'new 4!\n*1,0*')
 
   def test_dlmalloc_partial_2(self):
-    if 'SAFE_HEAP' in str(self.emcc_args): return self.skip('only emcc will link in dlmalloc, and we do unsafe stuff')
+    if 'SAFE_HEAP' in str(self.emcc_args): return self.skip('we do unsafe stuff here')
     # present part of the symbols of dlmalloc, not all. malloc is harder to link than new which is weak.
 
     test_path = path_from_root('tests', 'core', 'test_dlmalloc_partial_2')
@@ -5834,6 +5870,7 @@ return malloc(size);
 
   def test_simd(self):
     if self.is_emterpreter(): return self.skip('todo')
+    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
 
     test_path = path_from_root('tests', 'core', 'test_simd')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5842,6 +5879,7 @@ return malloc(size);
 
   def test_simd2(self):
     if self.is_emterpreter(): return self.skip('todo')
+    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
 
     test_path = path_from_root('tests', 'core', 'test_simd2')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5862,6 +5900,7 @@ return malloc(size);
   def test_simd4(self):
     # test_simd4 is to test phi node handling of SIMD path
     if self.is_emterpreter(): return self.skip('todo')
+    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
 
     test_path = path_from_root('tests', 'core', 'test_simd4')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5870,6 +5909,8 @@ return malloc(size);
     self.do_run_from_file(src, output)
 
   def test_simd5(self):
+    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
+
     # test_simd5 is to test shufflevector of SIMD path
     test_path = path_from_root('tests', 'core', 'test_simd5')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5879,6 +5920,7 @@ return malloc(size);
   def test_simd6(self):
     # test_simd6 is to test x86 min and max intrinsics on NaN and -0.0
     if self.is_emterpreter(): return self.skip('todo')
+    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
 
     test_path = path_from_root('tests', 'core', 'test_simd6')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5889,6 +5931,7 @@ return malloc(size);
   def test_simd7(self):
     # test_simd7 is to test negative zero handling: https://github.com/kripken/emscripten/issues/2791
     if self.is_emterpreter(): return self.skip('todo')
+    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
 
     test_path = path_from_root('tests', 'core', 'test_simd7')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5899,6 +5942,7 @@ return malloc(size);
   def test_simd8(self):
     # test_simd8 is to test unaligned load and store
     if self.is_emterpreter(): return self.skip('todo')
+    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
 
     test_path = path_from_root('tests', 'core', 'test_simd8')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -5954,8 +5998,16 @@ return malloc(size);
     self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
+  def test_simd14(self):
+    if self.is_emterpreter(): return self.skip('todo')
+    test_path = path_from_root('tests', 'core', 'test_simd14')
+    src, output = (test_path + s for s in ('.c', '.out'))
+    self.emcc_args = self.emcc_args + ['-msse', '-msse2']
+    self.do_run_from_file(src, output)
+
   def test_simd_dyncall(self):
     if self.is_emterpreter(): return self.skip('todo')
+    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
 
     test_path = path_from_root('tests', 'core', 'test_simd_dyncall')
     src, output = (test_path + s for s in ('.cpp', '.txt'))
@@ -6348,7 +6400,7 @@ def process(filename):
     emcc_args = self.emcc_args
 
     # The following tests link to libc, and must be run with EMCC_LEAVE_INPUTS_RAW = 0
-    need_no_leave_inputs_raw = ['muli33_ta2', 'philoop_ta2', 'uadd_overflow_64_ta2', 'i64toi8star', 'legalizer_ta2', 'inttoptr', 'quotedlabel', 'alignedunaligned', 'sillybitcast', 'invokeundef', 'loadbitcastgep', 'sillybitcast2', 'legalizer_b_ta2', 'emptystruct', 'longjmp_tiny', 'longjmp_tiny_phi', 'longjmp_tiny_phi2', 'longjmp_tiny_keepem', 'longjmp_tiny_keepem_cond', 'longjmp_tiny_invoke', 'longjmp_tiny_invoke_phi', 'entry3']
+    need_no_leave_inputs_raw = ['muli33_ta2', 'philoop_ta2', 'uadd_overflow_64_ta2', 'i64toi8star', 'legalizer_ta2', 'quotedlabel', 'alignedunaligned', 'sillybitcast', 'invokeundef', 'loadbitcastgep', 'sillybitcast2', 'legalizer_b_ta2', 'emptystruct', 'entry3']
 
     try:
       import random
@@ -6400,7 +6452,7 @@ def process(filename):
       self.emcc_args = emcc_args
 
   def test_fuzz(self):
-    Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'fuzz', 'include'), '-Wno-warn-absolute-paths']
+    Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'fuzz', 'include'), '-Wno-warn-absolute-paths', '-w']
 
     def run_all(x):
       print x
@@ -6903,6 +6955,35 @@ def process(filename):
     '''
     self.do_run(src, 'lerp 166');
 
+  def test_embind_3(self):
+    Settings.NO_EXIT_RUNTIME = 1 # we emit some post.js that we need to see
+    Building.COMPILER_TEST_OPTS += ['--bind', '--post-js', 'post.js']
+    open('post.js', 'w').write('''
+      function ready() {
+        try {
+          Module.compute(new Uint8Array([1,2,3]));
+        } catch(e) {
+          Module.print(e);
+        }
+      }
+    ''')
+    src = r'''
+      #include <emscripten.h>
+      #include <emscripten/bind.h>
+      using namespace emscripten;
+      int compute(int array[]) {
+          return 0;
+      }
+      EMSCRIPTEN_BINDINGS(my_module) {
+          function("compute", &compute, allow_raw_pointers());
+      }
+      int main(int argc, char **argv) {
+          EM_ASM(ready());
+          return 0;
+      }
+    '''
+    self.do_run(src, 'UnboundTypeError: Cannot call compute due to unbound types: Pi');
+
   def test_scriptaclass(self):
       Settings.EXPORT_BINDINGS = 1
 
@@ -7387,6 +7468,7 @@ Module.printErr = Module['printErr'] = function(){};
           os.environ.pop('EMCC_DEBUG', None)
 
   def test_exception_source_map(self):
+    if self.is_wasm(): return self.skip('wasmifying destroys debug info and stack tracability')
     if self.is_emterpreter(): return self.skip('todo')
     if '-g4' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g4')
     if NODE_JS not in JS_ENGINES: return self.skip('sourcemapper requires Node to run')
@@ -7427,6 +7509,7 @@ Module.printErr = Module['printErr'] = function(){};
     self.build(src, dirname, os.path.join(dirname, 'src.cpp'), post_build=(None, post))
 
   def test_emscripten_log(self):
+    if self.is_wasm(): return self.skip('wasmifying destroys debug info and stack tracability')
     if self.is_emterpreter():
       self.emcc_args += ['--profiling-funcs'] # without this, stack traces are not useful (we jump emterpret=>emterpret)
       Building.COMPILER_TEST_OPTS += ['-DEMTERPRETER'] # even so, we get extra emterpret() calls on the stack
@@ -7804,6 +7887,8 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
     Settings.load(self.emcc_args)
     Building.LLVM_OPTS = 0
 
+    Building.COMPILER_TEST_OPTS += ['-Wno-dynamic-class-memaccess', '-Wno-format', '-Wno-format-extra-args', '-Wno-format-security', '-Wno-pointer-bool-conversion', '-Wno-unused-volatile-lvalue', '-Wno-c++11-compat-deprecated-writable-strings', '-Wno-invalid-pp-token']
+
     for arg in self.emcc_args:
       if arg.startswith('-O'):
         Building.COMPILER_TEST_OPTS.append(arg) # so bitcode is optimized too, this is for cpp to ll
@@ -7828,6 +7913,7 @@ asm2f = make_run("asm2f", compiler=CLANG, emcc_args=["-Oz", "-s", "PRECISE_F32=1
 asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "-s", "SAFE_HEAP=1"])
 asm2i = make_run("asm2i", compiler=CLANG, emcc_args=["-O2", '-s', 'EMTERPRETIFY=1'])
 #asm2m = make_run("asm2m", compiler=CLANG, emcc_args=["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1"])
+#asm2w = make_run("asm2w", compiler=CLANG, emcc_args=["-O2", "-s", "WASM=1"])
 
 # Legacy test modes - 
 asm2nn = make_run("asm2nn", compiler=CLANG, emcc_args=["-O2"], env={"EMCC_NATIVE_OPTIMIZER": "0"})

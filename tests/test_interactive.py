@@ -122,3 +122,6 @@ class interactive(BrowserCore):
 
   def test_glfw_fullscreen(self):
     self.btest('test_glfw_fullscreen.c', expected='1', args=['-s', 'NO_EXIT_RUNTIME=1', '-s', 'USE_GLFW=3'])
+
+  def test_cpuprofiler_memoryprofiler(self):
+    self.btest('hello_world_gles.c', expected='0', args=['-DLONGTEST=1', '-DTEST_MEMORYPROFILER_ALLOCATIONS_MAP=1', '-O2', '--cpuprofiler', '--memoryprofiler'])

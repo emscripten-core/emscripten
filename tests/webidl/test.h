@@ -119,7 +119,7 @@ class TypeTestClass {
   unsigned short int ReturnUnsignedShortMethod() { return (2<<15)-1; }
   void AcceptUnsignedShortMethod(unsigned short x) { printf("unsigned short int: %u\n", x); }
 
-  unsigned long ReturnUnsignedLongMethod() { return (2<<31)-1; }
+  unsigned long ReturnUnsignedLongMethod() { return 0xffffffff; }
   void AcceptUnsignedLongMethod(unsigned long x) { printf("unsigned long int: %u\n", x); }
 };
 

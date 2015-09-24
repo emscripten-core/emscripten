@@ -35,6 +35,7 @@
   "emscripten_GetProcAddress": ["strstr"],
   "emscripten_get_preloaded_image_data_from_FILE": ["fileno"],
   "__cxa_begin_catch": ["__cxa_can_catch", "__cxa_is_pointer_type"],
+  "emscripten_log": ["strlen"],
   "setjmp": ["realloc"],
   "glfwSleep": ["sleep"],
   "bind": ["htonl", "htons", "ntohs"],

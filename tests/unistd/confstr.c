@@ -21,7 +21,7 @@ int main() {
     _CS_POSIX_V6_ILP32_OFFBIG_LDFLAGS,
     _CS_POSIX_V6_ILP32_OFFBIG_CFLAGS
   };
-  char* names[] = {
+  const char* names[] = {
     "_CS_PATH",
     "_CS_POSIX_V6_WIDTH_RESTRICTED_ENVS",
     "_CS_GNU_LIBC_VERSION",

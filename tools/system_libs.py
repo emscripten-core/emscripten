@@ -40,9 +40,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     return set(symbols)
 
   default_opts = []
-  # If we're building tracing, we should build the system libraries that way too.
-  if shared.Settings.EMSCRIPTEN_TRACING:
-    default_opts.append('--tracing')
 
   # XXX We also need to add libc symbols that use malloc, for example strdup. It's very rare to use just them and not
   #     a normal malloc symbol (like free, after calling strdup), so we haven't hit this yet, but it is possible.
@@ -93,7 +90,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   def create_libc(libname):
     logging.debug(' building libc for cache')
     libc_files = [
-      'dlmalloc.c',
     ]
     musl_srcdir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src')
     blacklist = set(
@@ -190,8 +186,14 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   def create_dlmalloc_singlethreaded(libname):
     return create_dlmalloc(libname, ['-O2'])
 
+  def create_dlmalloc_singlethreaded_tracing(libname):
+    return create_dlmalloc(libname, ['-O2', '--tracing'])
+
   def create_dlmalloc_multithreaded(libname):
     return create_dlmalloc(libname, ['-O2', '-s', 'USE_PTHREADS=1'])
+
+  def create_dlmalloc_multithreaded_tracing(libname):
+    return create_dlmalloc(libname, ['-O2', '-s', 'USE_PTHREADS=1', '--tracing'])
 
   def create_dlmalloc_split(libname):
     dlmalloc_o = in_temp('dl' + libname)
@@ -276,19 +278,28 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # malloc dependency is force-added, so when using pthreads, it must be force-added
   # as well, since malloc needs to be thread-safe, so it depends on mutexes.
   if shared.Settings.USE_PTHREADS:
-    system_libs += [('libc-mt',             'bc', create_libc,                   libc_symbols,     [],       False),
-                    ('pthreads',            'bc', create_pthreads,               pthreads_symbols, ['libc'], False),
-                    ('dlmalloc_threadsafe', 'bc', create_dlmalloc_multithreaded, [],               [],       False)]
+    system_libs += [('libc-mt',                     'bc', create_libc,                           libc_symbols,     [],       False),
+                    ('pthreads',                    'bc', create_pthreads,                       pthreads_symbols, ['libc'], False),
+                    ('dlmalloc_threadsafe',         'bc', create_dlmalloc_multithreaded,         [],               [],       False),
+                    ('dlmalloc_threadsafe_tracing', 'bc', create_dlmalloc_multithreaded_tracing, [],               [],       False)]
     force.add('pthreads')
-    force.add('dlmalloc_threadsafe')
-  else:
-    system_libs += [('libc',     'bc', create_libc, libc_symbols, [], False)]
-    if not shared.Settings.SPLIT_MEMORY:
-      system_libs += [('dlmalloc', 'bc', create_dlmalloc_singlethreaded, [], [], False)]
-      force.add('dlmalloc')
+    if shared.Settings.EMSCRIPTEN_TRACING:
+      force.add('dlmalloc_threadsafe_tracing')
     else:
-      system_libs += [('malloc-split', 'bc', create_dlmalloc_split, [], [], False)]
-      force.add('malloc-split')
+      force.add('dlmalloc_threadsafe')
+  else:
+    system_libs += [('libc',             'bc', create_libc,                            libc_symbols, [], False),
+                    ('dlmalloc',         'bc', create_dlmalloc_singlethreaded,         [],           [], False),
+                    ('dlmalloc_tracing', 'bc', create_dlmalloc_singlethreaded_tracing, [],           [], False),
+                    ('dlmalloc_split',   'bc', create_dlmalloc_split,                  [],           [], False)]
+
+    if shared.Settings.EMSCRIPTEN_TRACING:
+      force.add('dlmalloc_tracing')
+    else:
+      if shared.Settings.SPLIT_MEMORY:
+        force.add('dlmalloc_split')
+      else:
+        force.add('dlmalloc')
 
   # Go over libraries to figure out which we must include
   def maybe_noexcept(name):

@@ -216,8 +216,8 @@ class RunnerCore(unittest.TestCase):
                ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
                map(lambda include: '-I' + include, includes) + \
                ['-c', f, '-o', f + '.o']
-        output = Popen(args, stdout=PIPE, stderr=self.stderr_redirect if not DEBUG else None).communicate()[0]
-        assert os.path.exists(f + '.o'), 'Source compilation error: ' + output
+        output = subprocess.check_call(args, stderr=self.stderr_redirect if not DEBUG else None)
+        assert os.path.exists(f + '.o')
 
       # Link all files
       if len(additional_files) + len(libraries) > 0:
@@ -246,8 +246,8 @@ class RunnerCore(unittest.TestCase):
              map(lambda include: '-I' + include, includes) + \
              all_files + \
              ['-o', filename + '.o.js']
-      output = Popen(args, stdout=PIPE, stderr=self.stderr_redirect if not DEBUG else None).communicate()[0]
-      assert os.path.exists(filename + '.o.js'), 'Source compilation error: ' + output
+      output = subprocess.check_call(args, stderr=self.stderr_redirect if not DEBUG else None)
+      assert os.path.exists(filename + '.o.js')
 
     if output_processor is not None:
       output_processor(open(filename + '.o.js').read())
@@ -268,7 +268,6 @@ class RunnerCore(unittest.TestCase):
     if "asm.js type error: 'Float64x2' is not a standard SIMD type" in err:
       err = err.replace("asm.js type error: 'Float64x2' is not a standard SIMD type", "")
       print >> sys.stderr, "\nWARNING: ignoring asm.js type error from Float64x2 due to implementation not yet available in SpiderMonkey\n"
-
     if 'uccessfully compiled asm.js code' in err and 'asm.js link error' not in err:
       print >> sys.stderr, "[was asm.js'ified]"
     elif 'asm.js' in err: # if no asm.js error, then not an odin build

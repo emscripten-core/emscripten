@@ -32,7 +32,7 @@ int main() {
     c = c->next;
   } while (c != chunk);
 
-  printf("*%d,%d*\n", total, b.next);
+  printf("*%d,%p*\n", total, b.next);
   // NULL *is* 0, in C/C++. No JS null! (null == 0 is false, etc.)
 
   return 0;

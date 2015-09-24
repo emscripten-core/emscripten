@@ -3973,6 +3973,14 @@ LibraryManager.library = {
     debugger;
   },
 
+  emscripten_print_double: function(x, to, max) {
+    var str = x + '';
+    var ret = str.length;
+    if (str.length + 1 > max) str = str.substring(0, max - 1);
+    if (to) writeStringToMemory(str, to);
+    return ret;
+  },
+
   //============================
   // i64 math
   //============================

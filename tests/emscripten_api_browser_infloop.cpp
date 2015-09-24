@@ -26,6 +26,17 @@ struct Class {
 
   void start() {
     instance = this;
+
+    EM_ASM({
+      var initial = Runtime.stackSave();
+      Module.print('seeing initial stack of ' + initial);
+      setTimeout(function() {
+        var current = Runtime.stackSave();
+        Module.print('seeing later stack of   ' + current);
+        assert(current === initial);
+      }, 0);
+    });
+
     // important if we simulate an infinite loop here or not. With an infinite loop, the
     // destructor should *NOT* have been called
     emscripten_set_main_loop(Class::callback, 3, 1);

@@ -455,9 +455,11 @@ var LibraryGL = {
           numChannels = 2;
           break;
         case 0x1907 /* GL_RGB */:
+        case 0x8C40 /* GL_SRGB_EXT */:
           numChannels = 3;
           break;
         case 0x1908 /* GL_RGBA */:
+        case 0x8C42 /* GL_SRGB_ALPHA_EXT */:
           numChannels = 4;
           break;
         default:
