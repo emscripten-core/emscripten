@@ -1839,6 +1839,11 @@ void *getBindBuffer() {
     assert 'Testing char sequences: %20%21 &auml;' in stdout
     assert 'hello, error stream!' in stderr
 
+  # This does not actually verify anything except that --cpuprofiler and --memoryprofiler compiles.
+  # Run interactive.test_cpuprofiler_memoryprofiler for interactive testing.
+  def test_cpuprofiler_memoryprofiler(self):
+    self.btest('hello_world_gles.c', expected='0', args=['-DLONGTEST=1', '-DTEST_MEMORYPROFILER_ALLOCATIONS_MAP=1', '-O2', '--cpuprofiler', '--memoryprofiler'])
+
   def test_uuid(self):
     # Run with ./runner.py browser.test_uuid
     # We run this test in Node/SPIDERMONKEY and browser environments because we try to make use of
