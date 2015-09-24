@@ -1418,7 +1418,7 @@ class Building:
       if not Settings.SIMD:
         opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false', '-vectorize-slp-aggressive=false']
       else:
-        opts += ['-bb-vectorize-vector-bits=128', '-force-vector-width=4']
+        opts += ['-bb-vectorize-vector-bits=128']
 
     logging.debug('emcc: LLVM opts: ' + ' '.join(opts) + '  [num inputs: ' + str(len(inputs)) + ']')
     target = out or (filename + '.opt.bc')
