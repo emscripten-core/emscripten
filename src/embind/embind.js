@@ -56,7 +56,7 @@ var LibraryEmbind = {
     throw new BindingError(message);
   },
 
-  $throwUnboundTypeError__deps: ['$registeredTypes', '$typeDependencies', '$UnboundTypeError'],
+  $throwUnboundTypeError__deps: ['$registeredTypes', '$typeDependencies', '$UnboundTypeError', '$getTypeName'],
   $throwUnboundTypeError: function(message, types) {
     var unboundTypes = [];
     var seen = {};
