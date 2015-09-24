@@ -159,7 +159,6 @@ var emscriptenMemoryProfiler = {
 
     // Add a tracking mechanism to detect when VFS loading is complete.
     Module['preRun'].push(function() { emscriptenMemoryProfiler.onPreloadComplete(); });
-    Module['postRun'].push(function() { emscriptenMemoryProfiler.onPreloadComplete(); });
 
     if (this.hookStackAlloc) {
       // Inject stack allocator.
