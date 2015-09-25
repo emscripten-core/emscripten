@@ -5181,7 +5181,6 @@ int main() {
     self.assertContained('#define __EMSCRIPTEN__ 1', out) # all our defines should show up
 
   def test_emcc_wasm_0(self):
-    try_delete(Cache.get_path('load-wasm-worker.js')) # XXX force a rebuild, for temporary testing purposes
     default_error_message = 'cannot use WASM=1 when full asm.js validation was disabled'
     for args, ok, error_message in [
       ([], False, ''),
