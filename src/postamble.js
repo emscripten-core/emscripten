@@ -156,6 +156,7 @@ Module['callMain'] = Module.callMain = function callMain(args) {
       // running an evented main loop, don't immediately exit
       Module['noExitRuntime'] = true;
 #if EMTERPRETIFY_ASYNC
+      // an infinite loop keeps the C stack around, but the emterpreter stack must be unwound - we do not want to restore the call stack at infinite loop
       asm.emtStackRestore(initialEmtStackTop);
 #endif
       return;
