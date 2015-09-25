@@ -7,10 +7,8 @@ function a(x, y) {
 function b(i, j) {
  i = i | 0;
  j = j | 0;
- var I = SIMD_Int32x4(0, 0, 0, 0), k = 0;
+ var I = SIMD_Int32x4(0, 0, 0, 0);
  I = SIMD_Int32x4_add(SIMD_Int32x4_splat(Math_fround(0)), SIMD_Int32x4(0, 1, 2, 3));
- k = i + (j << 2) | 0;
- SIMD_Int32x4_store(HEAPU8, k, I);
+ SIMD_Int32x4_store(HEAPU8, i + (j << 2) | 0, I);
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b"]
 
