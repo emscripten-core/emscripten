@@ -2344,22 +2344,26 @@ int main()
       out = run_js('a.out.js', engine=engine, stderr=PIPE, full_output=True)
       self.assertContained('File size: 724', out)
 
-  def check_simds(self, expected):
+  def check_simd(self, expected_simds, expected_out):
+    if SPIDERMONKEY_ENGINE in JS_ENGINES:
+      out = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True)
+      self.validate_asmjs(out)
+    else:
+      out = run_js('a.out.js')
+    self.assertContained(expected_out, out)
+
     src = open('a.out.js').read()
     asm = src[src.find('// EMSCRIPTEN_START_FUNCS'):src.find('// EMSCRIPTEN_END_FUNCS')]
     simds = asm.count('SIMD_')
-    assert simds >= expected, 'expecting to see at least %d SIMD* uses, but seeing %d' % (expected, simds)
+    assert simds >= expected_simds, 'expecting to see at least %d SIMD* uses, but seeing %d' % (expected_simds, simds)
 
   def test_autovectorize_linpack(self):
-    assert get_clang_version() == '3.7'
     Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-s', 'SIMD=1', '-DSP', '-s', 'PRECISE_F32=1', '--profiling']).communicate()
-    self.assertContained('Unrolled Single  Precision', run_js('a.out.js'))
-    self.check_simds(100)
+    self.check_simd(100, 'Unrolled Single  Precision')
 
   def test_autovectorize_bullet(self):
-    Building.emcc(path_from_root('tests','bullet_hello_world.cpp'), ['-O2', '-s', 'SIMD=1', '--llvm-lto', '2', '-s', 'USE_BULLET=1', '-profiling'], output_filename='a.out.js')
-    #self.assertContained('BULLET RUNNING', run_js('a.out.js'))
-    self.check_simds(100)
+    Building.emcc(path_from_root('tests','bullet_hello_world.cpp'), ['-O2', '-s', 'SIMD=1', '-s', 'INLINING_LIMIT=1', '--llvm-lto', '2', '-s', 'USE_BULLET=1', '-profiling'], output_filename='a.out.js')
+    self.check_simd(100, 'BULLET RUNNING')
 
   def test_dependency_file(self):
     # Issue 1732: -MMD (and friends) create dependency files that need to be
