@@ -986,22 +986,32 @@ if __name__ == '__main__':
       except AttributeError:
         pass
     if len(mnames) > 0:
-      suites.append(loader.loadTestsFromNames(sorted(mnames), m))
+      suites.append((m.__name__, loader.loadTestsFromNames(sorted(mnames), m)))
 
-  numFailures = 0 # Keep count of the total number of failing tests.
+  resultMessages = []
+  numFailures = 0
 
-  if not len(suites):
-    print >> sys.stderr, 'No tests at all found!'
-    numFailures = 1
-  elif len(names) > 0:
+  if len(names) > 0:
     print 'WARNING: could not find the following tests: ' + ' '.join(names)
-    numFailures = len(names)
+    numFailures += len(names)
+    resultMessages.append('Could not find %s tests' % (len(names),))
 
   # Run the discovered tests
   testRunner = unittest.TextTestRunner(verbosity=2)
-  for suite in suites:
-    results = testRunner.run(suite)
-    numFailures += len(results.errors) + len(results.failures)
+  for mod_name, suite in suites:
+    res = testRunner.run(suite)
+    msg = '%s: %s run, %s errors, %s failures, %s skipped' % (mod_name,
+        res.testsRun, len(res.errors), len(res.failures), len(res.skipped)
+    )
+    numFailures += len(res.errors) + len(res.failures)
+    resultMessages.append(msg)
+
+  if len(resultMessages) > 1:
+    print '===================='
+    print
+    print 'TEST SUMMARY'
+    for msg in resultMessages:
+      print '    ' + msg
 
   # Return the number of failures as the process exit code for automating success/failure reporting.
   exitcode = min(numFailures, 255)
