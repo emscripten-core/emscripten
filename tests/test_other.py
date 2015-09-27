@@ -5332,3 +5332,7 @@ main(int argc, char **argv)
     assert "low = 5678" in out
     assert "high = 1234" in out
 
+  def test_lib_include_flags(self):
+    process = Popen([PYTHON, EMCC] + '-l m -l c -I'.split() + [path_from_root('tests', 'include_test'), path_from_root('tests', 'lib_include_flags.c')], stdout=PIPE, stderr=PIPE)
+    process.communicate()
+    assert process.returncode is 0, 'Empty -l/-L/-I flags should read the next arg as a param'

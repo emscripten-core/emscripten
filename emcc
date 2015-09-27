@@ -439,11 +439,15 @@ try:
 
   absolute_warning_shown = False
 
-  # Scan for warning suppression message in advance from other cmdline flags, so that it works even if -I or -L directives are present before this.
   for i in range(len(newargs)):
+    # Scan for warning suppression message in advance from other cmdline flags, so that it works even if -I or -L directives are present before this.
     if newargs[i] == '-Wno-warn-absolute-paths':
       newargs[i] = ''
       absolute_warning_shown = True
+    # Scan for individual -l/-L/-I arguments and concatenate the next arg on if there is no suffix
+    if newargs[i] in ['-l', '-L', '-I']:
+      newargs[i] += newargs[i+1]
+      newargs[i+1] = ''
 
   settings_changes = []
 
@@ -824,7 +828,7 @@ try:
             break
         if found: break
       if found: break
-    if not found and lib not in ['GL', 'GLU', 'glut', 'm', 'SDL', 'stdc++']: # whitelist our default libraries
+    if not found and lib not in ['GL', 'GLU', 'glut', 'm', 'c', 'SDL', 'stdc++']: # whitelist our default libraries
       logging.warning('emcc: cannot find library "%s"', lib)
 
   # If not compiling to JS, then we are compiling to an intermediate bitcode objects or library, so
