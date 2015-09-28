@@ -437,13 +437,14 @@ try:
   def check_bad_eq(arg):
     assert '=' not in arg, 'Invalid parameter (do not use "=" with "--" options)'
 
-  absolute_warning_shown = False
+  # Defaults to not showing absolute path warnings
+  absolute_warning_shown = True
 
   for i in range(len(newargs)):
-    # Scan for warning suppression message in advance from other cmdline flags, so that it works even if -I or -L directives are present before this.
-    if newargs[i] == '-Wno-warn-absolute-paths':
+    # Scan for path warning flag in advance from other cmdline flags, so that it works even if -I or -L directives are present before this.
+    if newargs[i] == '-Wwarn-absolute-paths':
       newargs[i] = ''
-      absolute_warning_shown = True
+      absolute_warning_shown = False
     # Scan for individual -l/-L/-I arguments and concatenate the next arg on if there is no suffix
     if newargs[i] in ['-l', '-L', '-I']:
       newargs[i] += newargs[i+1]
@@ -640,7 +641,7 @@ try:
     elif newargs[i].startswith(('-I', '-L')):
       path_name = newargs[i][2:]
       if not absolute_warning_shown and os.path.isabs(path_name) and not is_valid_abspath(path_name):
-        logging.warning('-I or -L of an absolute path "' + newargs[i] + '" encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript). Pass \'-Wno-warn-absolute-paths\' to emcc to hide this warning.') # Of course an absolute path to a non-system-specific library or header is fine, and you can ignore this warning. The danger are system headers that are e.g. x86 specific and nonportable. The emscripten bundled headers are modified to be portable, local system ones are generally not
+        logging.warning('-I or -L of an absolute path "' + newargs[i] + '" encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript).') # Of course an absolute path to a non-system-specific library or header is fine, and you can ignore this warning. The danger are system headers that are e.g. x86 specific and nonportable. The emscripten bundled headers are modified to be portable, local system ones are generally not
         absolute_warning_shown = True
     elif newargs[i] == '--emrun':
       emrun = True
