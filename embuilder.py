@@ -67,7 +67,7 @@ def build(src, result_libs, args=[]):
   shared.Building.emcc(temp, args, output_filename=temp_js)
   assert os.path.exists(temp_js), 'failed to build file'
   for lib in result_libs:
-    assert os.path.exists(shared.Cache.get_path(lib)), 'not seeing that requested library %s has been built' % lib
+    assert os.path.exists(shared.Cache.get_path(lib)), 'not seeing that requested library %s has been built because file %s does not exist' % (lib, shared.Cache.get_path(lib))
 
 def build_port(port_name, lib_name, params):
   build('''
@@ -79,8 +79,13 @@ operation = sys.argv[1]
 if operation == 'build':
   tasks = sys.argv[2:]
   if 'ALL' in tasks:
-    tasks = ['libc', 'libc-mt', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'gl', 'struct_info', 'native_optimizer', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'vorbis', 'zlib']
-
+    tasks = ['libc', 'libc-mt', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'gl', 'struct_info', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'vorbis', 'zlib']
+    if os.environ.get('EMSCRIPTEN_NATIVE_OPTIMIZER'):
+      print 'Skipping building of native-optimizer since environment variable EMSCRIPTEN_NATIVE_OPTIMIZER is present and set to point to a prebuilt native optimizer path.'
+    elif hasattr(shared, 'EMSCRIPTEN_NATIVE_OPTIMIZER'):
+      print 'Skipping building of native-optimizer since .emscripten config file has set EMSCRIPTEN_NATIVE_OPTIMIZER to point to a prebuilt native optimizer path.'
+    else:
+      tasks += ['native_optimizer']
   for what in tasks:
     shared.logging.info('building and verifying ' + what)
     if what in ('libc', 'dlmalloc'):

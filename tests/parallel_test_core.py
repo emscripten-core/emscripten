@@ -82,8 +82,7 @@ def main():
       os.unlink(mode + '.err')
 
   # prebuild the cache before starting the parallel run of the whole suite to avoid a race condition where each thread would start building the cache separately
-  proc = subprocess.Popen([PYTHON, path_from_root('embuilder.py'), 'build', 'ALL'])
-  proc.communicate()
+  subprocess.check_call([PYTHON, path_from_root('embuilder.py'), 'build', 'ALL'])
 
   watcher = Watcher()
   watcher.start()
