@@ -9,7 +9,7 @@ Simple test runner. Consider using parallel_test_core.py for faster iteration ti
 
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer, multiprocessing, functools, stat, string, random
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer, multiprocessing, functools, stat, string, random, operator
 from urllib import unquote
 
 # Setup
@@ -29,6 +29,56 @@ try:
 except:
   raise Exception('Cannot find "COMPILER_OPTS" definition. Is %s set up properly? You may need to copy the template settings file into it.' % EM_CONFIG)
 
+HELP_TEXT = '''
+==============================================================================
+Running the main part of the test suite. Don't forget to run the other parts!
+A recommended order is:
+
+  sanity - tests for first run, etc., modifies ~/.emscripten
+  (the main test suite)
+  other - tests separate from the main suite
+  browser - runs pages in a web browser
+  interactive - runs interactive browser tests that need human verification, and could not be automated
+  sockets - runs websocket networking tests
+  benchmark - run before and after each set of changes before pushing to
+              master, verify no regressions
+
+To run one of those parts, do something like
+
+  python tests/runner.py sanity
+
+To run a specific set of tests, you can do things like
+
+  python tests/runner.py asm2
+
+(that runs the asm2 (asm.js, -O2) tests). You can run individual tests with
+
+  python tests/runner.py test_hello_world
+
+Combinations work too, for example
+
+  python tests/runner.py browser.test_sdl_image
+
+In the main test suite, you can run all variations (O0, O1, O2, etc.) of
+an individual test with
+
+  python tests/runner.py ALL.test_hello_world
+
+You can run a random set of N tests with a command like
+
+  python tests/runner.py random50
+
+Debugging: You can run
+
+  EM_SAVE_DIR=1 python tests/runner.py ALL.test_hello_world
+
+in order to save the test runner directory, in /tmp/emscripten_temp. All files
+created by the test will be present there. You can also use EMCC_DEBUG to
+further debug the compiler itself, see emcc.
+==============================================================================
+
+'''
+
 # Core test runner class, shared between normal tests and benchmarks
 checked_sanity = False
 test_modes = ['default', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g', 'asm2i', 'asm2nn']
@@ -36,9 +86,6 @@ test_index = 0
 
 use_all_engines = os.environ.get('EM_ALL_ENGINES') # generally js engines are equivalent, testing 1 is enough. set this
                                                    # to force testing on all js engines, good to find js engine bugs
-
-if use_all_engines:
-  print '(using ALL js engines)'
 
 class RunnerCore(unittest.TestCase):
   emcc_args = None
@@ -806,6 +853,19 @@ def get_bullet_library(runner_core, use_cmake):
   return runner_core.get_library('bullet', generated_libs, configure=configure_commands, configure_args=configure_args, cache_name_extra=configure_commands[0])
 
 if __name__ == '__main__':
+  if len(sys.argv) == 2 and sys.argv[1] in ['--help', '-h']:
+    print HELP_TEXT
+    sys.exit(0)
+
+  # If no tests were specified, run the core suite
+  if len(sys.argv) == 1:
+    sys.argv = [sys.argv[0]] + map(lambda mode: mode, test_modes)
+    print HELP_TEXT
+    time.sleep(2)
+
+  if use_all_engines:
+    print '(using ALL js engines)'
+
   # Sanity checks
   total_engines = len(JS_ENGINES)
   JS_ENGINES = filter(check_engine, JS_ENGINES)
@@ -869,60 +929,6 @@ if __name__ == '__main__':
       sys.argv[i] = None
   sys.argv = filter(lambda arg: arg is not None, sys.argv)
 
-  # If no tests were specified, run the core suite
-  if len(sys.argv) == 1:
-    sys.argv = [sys.argv[0]] + map(lambda mode: mode, test_modes)
-    print '''
-==============================================================================
-Running the main part of the test suite. Don't forget to run the other parts!
-A recommended order is:
-
-  sanity - tests for first run, etc., modifies ~/.emscripten
-  (the main test suite)
-  other - tests separate from the main suite
-  browser - runs pages in a web browser
-  interactive - runs interactive browser tests that need human verification, and could not be automated
-  sockets - runs websocket networking tests
-  benchmark - run before and after each set of changes before pushing to
-              master, verify no regressions
-
-To run one of those parts, do something like
-
-  python tests/runner.py sanity
-
-To run a specific set of tests, you can do things like
-
-  python tests/runner.py asm2
-
-(that runs the asm2 (asm.js, -O2) tests). You can run individual tests with
-
-  python tests/runner.py test_hello_world
-
-Combinations work too, for example
-
-  python tests/runner.py browser.test_sdl_image
-
-In the main test suite, you can run all variations (O0, O1, O2, etc.) of
-an individual test with
-
-  python tests/runner.py ALL.test_hello_world
-
-You can run a random set of N tests with a command like
-
-  python tests/runner.py random50
-
-Debugging: You can run
-
-  EM_SAVE_DIR=1 python tests/runner.py ALL.test_hello_world
-
-in order to save the test runner directory, in /tmp/emscripten_temp. All files
-created by the test will be present there. You can also use EMCC_DEBUG to
-further debug the compiler itself, see emcc.
-==============================================================================
-
-'''
-    time.sleep(2)
-
   # If we were asked to run random tests, do that
   first = sys.argv[1]
   if first.startswith('random'):
@@ -967,26 +973,46 @@ further debug the compiler itself, see emcc.
 
   # Filter and load tests from the discovered modules
   loader = unittest.TestLoader()
-  names = sys.argv[1:]
+  names = set(sys.argv[1:])
   suites = []
   for m in modules:
-    try:
-      suites.append(loader.loadTestsFromNames(names, m))
-    except:
-      pass
+    mnames = []
+    for name in list(names):
+      try:
+        operator.attrgetter(name)(m)
+        mnames.append(name)
+        names.remove(name)
+      except AttributeError:
+        pass
+    if len(mnames) > 0:
+      suites.append((m.__name__, loader.loadTestsFromNames(sorted(mnames), m)))
 
-  numFailures = 0 # Keep count of the total number of failing tests.
+  resultMessages = []
+  numFailures = 0
+
+  if len(names) > 0:
+    print 'WARNING: could not find the following tests: ' + ' '.join(names)
+    numFailures += len(names)
+    resultMessages.append('Could not find %s tests' % (len(names),))
 
   # Run the discovered tests
-  if not len(suites):
-    print >> sys.stderr, 'No tests found for %s' % str(sys.argv[1:])
-    numFailures = 1
-  else:
-    testRunner = unittest.TextTestRunner(verbosity=2)
-    for suite in suites:
-      results = testRunner.run(suite)
-      numFailures += len(results.errors) + len(results.failures)
+  testRunner = unittest.TextTestRunner(verbosity=2)
+  for mod_name, suite in suites:
+    res = testRunner.run(suite)
+    msg = '%s: %s run, %s errors, %s failures, %s skipped' % (mod_name,
+        res.testsRun, len(res.errors), len(res.failures), len(res.skipped)
+    )
+    numFailures += len(res.errors) + len(res.failures)
+    resultMessages.append(msg)
+
+  if len(resultMessages) > 1:
+    print '===================='
+    print
+    print 'TEST SUMMARY'
+    for msg in resultMessages:
+      print '    ' + msg
 
   # Return the number of failures as the process exit code for automating success/failure reporting.
-  exit(numFailures)
+  exitcode = min(numFailures, 255)
+  sys.exit(exitcode)
 
