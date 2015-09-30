@@ -757,23 +757,6 @@ var LibraryGL = {
       }
     },
 #endif
-
-    validateBufferTarget: function(target) {
-      switch (target) {
-        case 0x8892: // GL_ARRAY_BUFFER
-        case 0x8893: // GL_ELEMENT_ARRAY_BUFFER
-        case 0x8F36: // GL_COPY_READ_BUFFER
-        case 0x8F37: // GL_COPY_WRITE_BUFFER
-        case 0x88EB: // GL_PIXEL_PACK_BUFFER
-        case 0x88EC: // GL_PIXEL_UNPACK_BUFFER
-        case 0x8C2A: // GL_TEXTURE_BUFFER
-        case 0x8C8E: // GL_TRANSFORM_FEEDBACK_BUFFER
-        case 0x8A11: // GL_UNIFORM_BUFFER
-          return true;
-        default:
-          return false;
-      }
-    },
     
     // Returns the context handle to the new context.
     createContext: function(canvas, webGLContextAttributes) {
@@ -1448,14 +1431,49 @@ var LibraryGL = {
   },
 
 #if FULL_ES3
+  $emscriptenWebGLGetBufferBinding: function(target) {
+    switch(target) {
+      case 0x8892 /*GL_ARRAY_BUFFER*/: target = 0x8894 /*GL_ARRAY_BUFFER_BINDING*/; break;
+      case 0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/: target = 0x8895 /*GL_ELEMENT_ARRAY_BUFFER_BINDING*/; break;
+      case 0x88EB /*GL_PIXEL_PACK_BUFFER*/: target = 0x88ED /*GL_PIXEL_PACK_BUFFER_BINDING*/; break;
+      case 0x88EC /*GL_PIXEL_UNPACK_BUFFER*/: target = 0x88EF /*GL_PIXEL_UNPACK_BUFFER_BINDING*/; break;
+      case 0x8C8E /*GL_TRANSFORM_FEEDBACK_BUFFER*/: target = 0x8C8F /*GL_TRANSFORM_FEEDBACK_BUFFER_BINDING*/; break;
+      case 0x8F36 /*GL_COPY_READ_BUFFER*/: target = 0x8F36 /*GL_COPY_READ_BUFFER_BINDING*/; break;
+      case 0x8F37 /*GL_COPY_WRITE_BUFFER*/: target = 0x8F37 /*GL_COPY_WRITE_BUFFER_BINDING*/; break;
+      case 0x8A11 /*GL_UNIFORM_BUFFER*/: target = 0x8A28 /*GL_UNIFORM_BUFFER_BINDING*/; break;
+      // In default case, fall through and assume passed one of the _BINDING enums directly.
+    }
+    var buffer = GLctx.getParameter(target);
+    if (buffer) return buffer.name|0;
+    else return 0;
+  },
+
+  $emscriptenWebGLValidateMapBufferTarget: function(target) {
+    switch (target) {
+      case 0x8892: // GL_ARRAY_BUFFER
+      case 0x8893: // GL_ELEMENT_ARRAY_BUFFER
+      case 0x8F36: // GL_COPY_READ_BUFFER
+      case 0x8F37: // GL_COPY_WRITE_BUFFER
+      case 0x88EB: // GL_PIXEL_PACK_BUFFER
+      case 0x88EC: // GL_PIXEL_UNPACK_BUFFER
+      case 0x8C2A: // GL_TEXTURE_BUFFER
+      case 0x8C8E: // GL_TRANSFORM_FEEDBACK_BUFFER
+      case 0x8A11: // GL_UNIFORM_BUFFER
+        return true;
+      default:
+        return false;
+    }
+  },
+
   glMapBufferRange__sig: 'iiiii',
+  glMapBufferRange__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget'],
   glMapBufferRange: function(target, offset, length, access) {
     if (access != 0x1A && access != 0xA) {
       Module.printErr("glMapBufferRange is only supported when access is MAP_WRITE|INVALIDATE_BUFFER");
       return 0;
     }
 
-    if (!GL.validateBufferTarget(target)) {
+    if (!emscriptenWebGLValidateMapBufferTarget(target)) {
       GL.recordError(0x0500/*GL_INVALID_ENUM*/);
       Module.printErr('GL_INVALID_ENUM in glMapBufferRange');
       return 0;
@@ -1464,8 +1482,7 @@ var LibraryGL = {
     var mem = _malloc(length);
     if (!mem) return 0;
 
-    // TODO: BUG: mappedBuffers should not be a dictionary of target -> mapped object, but buffer object -> mapped object!
-    GL.mappedBuffers[target] = {
+    GL.mappedBuffers[emscriptenWebGLGetBufferBinding(target)] = {
       offset: offset,
       length: length,
       mem: mem,
@@ -1475,31 +1492,31 @@ var LibraryGL = {
   },
 
   glGetBufferPointerv__sig: 'viii',
+  glGetBufferPointerv__deps: ['$emscriptenWebGLGetBufferBinding'],
   glGetBufferPointerv: function(target, pname, params) {
     if (pname == 0x88BD/*GL_BUFFER_MAP_POINTER*/) {
       var ptr = 0; 
-    // TODO: BUG: mappedBuffers should not be a dictionary of target -> mapped object, but buffer object -> mapped object!
-      var mappedBuffer = GL.mappedBuffers[target];
+      var mappedBuffer = GL.mappedBuffers[emscriptenWebGLGetBufferBinding(target)];
       if (mappedBuffer) {
         ptr = mappedBuffer.mem;
       }
       {{{ makeSetValue('params', '0', 'ptr', 'i32') }}};
     } else {
       GL.recordError(0x0500/*GL_INVALID_ENUM*/);
-      Module.printErr('GL_INVALID_ENUM in glGetBufferPointerv');      
+      Module.printErr('GL_INVALID_ENUM in glGetBufferPointerv');
     }
   },
 
   glFlushMappedBufferRange__sig: 'viii',
+  glFlushMappedBufferRange__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget'],
   glFlushMappedBufferRange: function(target, offset, length) {
-    if (!GL.validateBufferTarget(target)) {
+    if (!emscriptenWebGLValidateMapBufferTarget(target)) {
       GL.recordError(0x0500/*GL_INVALID_ENUM*/);
       Module.printErr('GL_INVALID_ENUM in glUnmapBuffer');
       return 0;
     }
 
-    // TODO: BUG: mappedBuffers should not be a dictionary of target -> mapped object, but buffer object -> mapped object!
-    var mapping = GL.mappedBuffers[target];
+    var mapping = GL.mappedBuffers[emscriptenWebGLGetBufferBinding(target)];
     if (!mapping) {
       GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
       Module.printError('buffer was never mapped in glFlushMappedBufferRange');
@@ -1524,21 +1541,22 @@ var LibraryGL = {
   },
 
   glUnmapBuffer__sig: 'ii',
+  glUnmapBuffer__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget'],
   glUnmapBuffer: function(target) {
-    if (!GL.validateBufferTarget(target)) {
+    if (!emscriptenWebGLValidateMapBufferTarget(target)) {
       GL.recordError(0x0500/*GL_INVALID_ENUM*/);
       Module.printErr('GL_INVALID_ENUM in glUnmapBuffer');
       return 0;
     }
 
-    // TODO: BUG: mappedBuffers should not be a dictionary of target -> mapped object, but buffer object -> mapped object!
-    var mapping = GL.mappedBuffers[target];
+    var buffer = emscriptenWebGLGetBufferBinding(target);
+    var mapping = GL.mappedBuffers[buffer];
     if (!mapping) {
       GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
       Module.printError('buffer was never mapped in glUnmapBuffer');
       return 0;
     }
-    GL.mappedBuffers[target] = null;
+    GL.mappedBuffers[buffer] = null;
 
     if (!(mapping.access & 0x10)) /* GL_MAP_FLUSH_EXPLICIT_BIT */
       GLctx.bufferSubData(target, mapping.offset, HEAPU8.subarray(mapping.mem, mapping.mem+mapping.length));
