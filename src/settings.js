@@ -48,6 +48,13 @@ var TOTAL_STACK = 5*1024*1024; // The total stack size. There is no way to enlar
 var TOTAL_MEMORY = 16777216;     // The total amount of memory to use. Using more memory than this will
                                  // cause us to expand the heap, which can be costly with typed arrays:
                                  // we need to copy the old heap into a new one in that case.
+var ABORTING_MALLOC = 1; // If 1, then when malloc would fail we abort(). This is nonstandard behavior,
+                         // but makes sense for the web since we have a fixed amount of memory that
+                         // must all be allocated up front, and so (a) failing mallocs are much more
+                         // likely than on other platforms, and (b) people need a way to find out
+                         // how big that initial allocation (TOTAL_MEMORY) must be.
+                         // If you set this to 0, then you get the standard malloc behavior of
+                         // returning NULL (0) when it fails.
 var ALLOW_MEMORY_GROWTH = 0; // If false, we abort with an error if we try to allocate more memory than
                              // we can (TOTAL_MEMORY). If true, we will grow the memory arrays at
                              // runtime, seamlessly and dynamically. This has a performance cost though,
@@ -56,6 +63,10 @@ var ALLOW_MEMORY_GROWTH = 0; // If false, we abort with an error if we try to al
                              // eliminator).
                              // See https://code.google.com/p/v8/issues/detail?id=3907 regarding
                              // memory growth performance in chrome.
+                             // Setting this option on will disable ABORTING_MALLOC, in other words,
+                             // ALLOW_MEMORY_GROWTH enables fully standard behavior, of both malloc
+                             // returning 0 when it fails, and also of being able to allocate more
+                             // memory from the system as necessary.
 
 var GLOBAL_BASE = -1; // where global data begins; the start of static memory. -1 means use the
                       // default, any other value will be used as an override

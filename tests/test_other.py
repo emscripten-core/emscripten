@@ -4881,9 +4881,13 @@ int main() {
     self.assertContained('''Warning: Enlarging memory arrays, this is not fast! 16777216,1543503872\n''', output)
 
   def test_failing_alloc(self):
-    for pre_fail, post_fail in [('', ''), ('EM_ASM( Module.temp = DYNAMICTOP );', 'EM_ASM( assert(Module.temp === DYNAMICTOP, "must not adjust DYNAMICTOP when an alloc fails!") );')]:
-      print 'test opts:', pre_fail, post_fail, '.'
-      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
+    for pre_fail, post_fail in [
+      ('', ''),
+      ('EM_ASM( Module.temp = DYNAMICTOP );', 'EM_ASM( assert(Module.temp === DYNAMICTOP, "must not adjust DYNAMICTOP when an alloc fails!") );')
+    ]:
+      for growth in [0, 1]:
+        for aborting in [0, 1]:
+          open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
@@ -4910,6 +4914,7 @@ int main() {
   assert(has);
   printf("an allocation failed!\n");
   while (1) {
+    assert(allocs.size() > 0);
     void *curr = allocs.back();
     allocs.pop_back();
     free(curr);
@@ -4918,12 +4923,21 @@ int main() {
   }
   printf("managed another malloc!\n");
 }
-      ''' % (pre_fail, post_fail))
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'ALLOW_MEMORY_GROWTH=1']).communicate()[1]
-      assert os.path.exists('a.out.js')
-      output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
-      # just care about message regarding allocating over 1GB of memory
-      self.assertContained('''managed another malloc!\n''', output)
+''' % (pre_fail, post_fail))
+          args = [PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')]
+          if growth: args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
+          if not aborting: args += ['-s', 'ABORTING_MALLOC=0']
+          print args, pre_fail
+          check_execute(args)
+          output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
+          if (not aborting) or growth: # growth also disables aborting
+            # we should fail eventually, then free, then succeed
+            self.assertContained('''managed another malloc!\n''', output)
+          else:
+            # we should see an abort
+            self.assertContained('''abort("Cannot enlarge memory arrays''', output)
+            self.assertContained('''compile with  -s ALLOW_MEMORY_GROWTH=1 ''', output)
+            self.assertContained('''compile with  -s ABORTING_MALLOC=0 ''', output)
 
   def test_libcxx_minimal(self):
     open('vector.cpp', 'w').write(r'''
