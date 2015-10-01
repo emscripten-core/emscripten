@@ -11,7 +11,7 @@ data downloads.
 
 Usage:
 
-  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy] [--separate-metadata] [--lz4]
+  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy] [--separate-metadata] [--lz4] [--use-preload-plugins]
 
   --preload  ,
   --embed    See emcc --help for more details on those options.
@@ -42,6 +42,9 @@ Usage:
 
   --lz4 Uses LZ4. This compresses the data using LZ4 when this utility is run, then the client decompresses chunks on the fly, avoiding storing
         the entire decompressed data in memory at once. See LZ4 in src/settings.js, you must build the main program with that flag.
+
+  --use-preload-plugins Tells the file packager to run preload plugins on the files as they are loaded. This performs tasks like decoding images
+                        and audio using the browser's codecs.
 
 Notes:
 
@@ -100,6 +103,7 @@ no_heap_copy = True
 # If set to False, the package metadata is stored inside the js-output file which makes js-output file to mutate on each invocation of this packager tool.
 separate_metadata  = False
 lz4 = False
+use_preload_plugins = False
 
 for arg in sys.argv[2:]:
   if arg == '--preload':
@@ -123,6 +127,9 @@ for arg in sys.argv[2:]:
     leading = ''
   elif arg == '--lz4':
     lz4 = True
+    leading = ''
+  elif arg == '--use-preload-plugins':
+    use_preload_plugins = True
     leading = ''
   elif arg.startswith('--js-output'):
     jsoutput = arg.split('=')[1] if '=' in arg else None
@@ -387,6 +394,22 @@ if has_preloaded:
   if start > 256*1024*1024:
     print >> sys.stderr, 'warning: file packager is creating an asset bundle of %d MB. this is very large, and browsers might have trouble loading it. see https://hacks.mozilla.org/2015/02/synchronous-execution-and-filesystem-access-in-emscripten/' % (start/(1024*1024))
 
+  create_preloaded = '''
+        Module['FS_createPreloadedFile'](this.name, null, byteArray, true, true, function() {
+          Module['removeRunDependency']('fp ' + that.name);
+        }, function() {
+          if (that.audio) {
+            Module['removeRunDependency']('fp ' + that.name); // workaround for chromium bug 124926 (still no audio with this, but at least we don't hang)
+          } else {
+            Module.printErr('Preloading file ' + that.name + ' failed');
+          }
+        }, false, true); // canOwn this data in the filesystem, it is a slide into the heap that will never change
+'''
+  create_data = '''
+        Module['FS_createDataFile'](this.name, null, byteArray, true, true, true); // canOwn this data in the filesystem, it is a slide into the heap that will never change
+        Module['removeRunDependency']('fp ' + that.name);
+'''
+
   # Data requests - for getting a block of data out of the big archive - have a similar API to XHRs
   code += '''
     function DataRequest(start, end, crunched, audio) {
@@ -411,15 +434,7 @@ if has_preloaded:
       },
       finish: function(byteArray) {
         var that = this;
-        Module['FS_createPreloadedFile'](this.name, null, byteArray, true, true, function() {
-          Module['removeRunDependency']('fp ' + that.name);
-        }, function() {
-          if (that.audio) {
-            Module['removeRunDependency']('fp ' + that.name); // workaround for chromium bug 124926 (still no audio with this, but at least we don't hang)
-          } else {
-            Module.printErr('Preloading file ' + that.name + ' failed');
-          }
-        }, false, true); // canOwn this data in the filesystem, it is a slide into the heap that will never change
+%s
         this.requests[this.name] = null;
       },
     };
@@ -437,7 +452,7 @@ if has_preloaded:
         } else {
 ''', '' if not crunch else '''
         }
-''', '''
+''', create_preloaded if use_preload_plugins else create_data, '''
         var files = metadata.files;
         for (i = 0; i < files.length; ++i) {
           new DataRequest(files[i].start, files[i].end, files[i].crunched, files[i].audio).open('GET', files[i].filename);

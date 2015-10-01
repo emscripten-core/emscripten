@@ -413,6 +413,7 @@ try:
   memory_init_file = None
   use_preload_cache = False
   no_heap_copy = False
+  use_preload_plugins = False
   proxy_to_worker = False
   default_object_extension = '.o'
   valid_abspaths = []
@@ -571,6 +572,9 @@ try:
       newargs[i] = ''
     elif newargs[i].startswith('--no-heap-copy'):
       no_heap_copy = True
+      newargs[i] = ''
+    elif newargs[i].startswith('--use-preload-plugins'):
+      use_preload_plugins = True
       newargs[i] = ''
     elif newargs[i] == '--ignore-dynamic-linking':
       ignore_dynamic_linking = True
@@ -1341,6 +1345,8 @@ try:
       file_args.append('--no-closure')
     if shared.Settings.LZ4:
       file_args.append('--lz4')
+    if use_preload_plugins:
+      file_args.append('--use-preload-plugins')
     file_code = execute([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE)[0]
     pre_js = file_code + pre_js
 
