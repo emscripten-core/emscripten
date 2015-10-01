@@ -835,23 +835,23 @@ var LibraryGL = {
         // Extension available from Firefox 26 and Google Chrome 30
         var instancedArraysExt = GLctx.getExtension('ANGLE_instanced_arrays');
         if (instancedArraysExt) {
-          GLctx.vertexAttribDivisor = function(index, divisor) { instancedArraysExt.vertexAttribDivisorANGLE(index, divisor); };
-          GLctx.drawArraysInstanced = function(mode, first, count, primcount) { instancedArraysExt.drawArraysInstancedANGLE(mode, first, count, primcount); };
-          GLctx.drawElementsInstanced = function(mode, count, type, indices, primcount) { instancedArraysExt.drawElementsInstancedANGLE(mode, count, type, indices, primcount); };
+          GLctx['vertexAttribDivisor'] = function(index, divisor) { instancedArraysExt['vertexAttribDivisorANGLE'](index, divisor); };
+          GLctx['drawArraysInstanced'] = function(mode, first, count, primcount) { instancedArraysExt['drawArraysInstancedANGLE'](mode, first, count, primcount); };
+          GLctx['drawElementsInstanced'] = function(mode, count, type, indices, primcount) { instancedArraysExt['drawElementsInstancedANGLE'](mode, count, type, indices, primcount); };
         }
 
         // Extension available from Firefox 25 and WebKit
         var vaoExt = GLctx.getExtension('OES_vertex_array_object');
         if (vaoExt) {
-          GLctx.createVertexArray = function() { return vaoExt.createVertexArrayOES(); };
-          GLctx.deleteVertexArray = function(vao) { vaoExt.deleteVertexArrayOES(vao); };
-          GLctx.bindVertexArray = function(vao) { vaoExt.bindVertexArrayOES(vao); };
-          GLctx.isVertexArray = function(vao) { return vaoExt.isVertexArrayOES(vao); };
+          GLctx['createVertexArray'] = function() { return vaoExt['createVertexArrayOES'](); };
+          GLctx['deleteVertexArray'] = function(vao) { vaoExt['deleteVertexArrayOES'](vao); };
+          GLctx['bindVertexArray'] = function(vao) { vaoExt['bindVertexArrayOES'](vao); };
+          GLctx['isVertexArray'] = function(vao) { return vaoExt['isVertexArrayOES'](vao); };
         }
 
         var drawBuffersExt = GLctx.getExtension('WEBGL_draw_buffers');
         if (drawBuffersExt) {
-          GLctx.drawBuffers = function(n, bufs) { drawBuffersExt.drawBuffersWEBGL(n, bufs); };
+          GLctx['drawBuffers'] = function(n, bufs) { drawBuffersExt['drawBuffersWEBGL'](n, bufs); };
         }
       }
 
@@ -2065,7 +2065,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetFragDataLocation', 'program');
 #endif
-    return GL.currentContext.getFragDataLocation(GL.programs[program], Pointer_stringify(name));
+    return GLctx['getFragDataLocation'](GL.programs[program], Pointer_stringify(name));
   },
 #endif
 
@@ -3083,11 +3083,11 @@ var LibraryGL = {
     _emulGlGenVertexArrays(n, arrays);
 #else
 #if GL_ASSERTIONS
-    assert(GL.currentContext.createVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
+    assert(GLctx['createVertexArray'], 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
 
     for(var i = 0; i < n; i++) {
-      var vao = GL.currentContext.createVertexArray();
+      var vao = GLctx['createVertexArray']();
       if (!vao) {
         GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
 #if GL_ASSERTIONS
@@ -3113,11 +3113,11 @@ var LibraryGL = {
     _emulGlDeleteVertexArrays(n, vaos);
 #else
 #if GL_ASSERTIONS
-    assert(GL.currentContext.deleteVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
+    assert(GLctx['deleteVertexArray'], 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
     for(var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('vaos', 'i*4', 'i32') }}};
-      GL.currentContext.deleteVertexArray(GL.vaos[id]);
+      GLctx['deleteVertexArray'](GL.vaos[id]);
       GL.vaos[id] = null;
     }
 #endif
@@ -3132,9 +3132,9 @@ var LibraryGL = {
     _emulGlBindVertexArray(vao);
 #else
 #if GL_ASSERTIONS
-    assert(GL.currentContext.bindVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
+    assert(GLctx['bindVertexArray'], 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
-    GL.currentContext.bindVertexArray(GL.vaos[vao]);
+    GLctx['bindVertexArray'](GL.vaos[vao]);
 #endif
   },
 
@@ -3147,12 +3147,12 @@ var LibraryGL = {
     return _emulGlIsVertexArray(array);
 #else
 #if GL_ASSERTIONS
-    assert(GL.currentContext.isVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
+    assert(GLctx['isVertexArray'], 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif  
 
     var vao = GL.vaos[array];
     if (!vao) return 0;
-    return GL.currentContext.isVertexArray(vao);
+    return GLctx['isVertexArray'](vao);
 #endif
   },
 
@@ -6707,25 +6707,25 @@ var LibraryGL = {
   glVertexAttribDivisor__sig: 'vii',
   glVertexAttribDivisor: function(index, divisor) {
 #if GL_ASSERTIONS
-    assert(GL.currentContext.vertexAttribDivisor, 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
+    assert(GLctx['vertexAttribDivisor'], 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
 #endif
-    GL.currentContext.vertexAttribDivisor(index, divisor);
+    GLctx['vertexAttribDivisor'](index, divisor);
   },
 
   glDrawArraysInstanced__sig: 'viiii',
   glDrawArraysInstanced: function(mode, first, count, primcount) {
 #if GL_ASSERTIONS
-    assert(GL.currentContext.drawArraysInstanced, 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
+    assert(GLctx['drawArraysInstanced'], 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
 #endif
-    GL.currentContext.drawArraysInstanced(mode, first, count, primcount);
+    GLctx['drawArraysInstanced'](mode, first, count, primcount);
   },
 
   glDrawElementsInstanced__sig: 'viiiii',
   glDrawElementsInstanced: function(mode, count, type, indices, primcount) {
 #if GL_ASSERTIONS
-    assert(GL.currentContext.glDrawElementsInstanced, 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
+    assert(GLctx['drawElementsInstanced'], 'Must have ANGLE_instanced_arrays extension or WebGL 2 to use WebGL instancing');
 #endif
-    GL.currentContext.glDrawElementsInstanced(mode, count, type, indices, primcount);
+    GLctx['drawElementsInstanced'](mode, count, type, indices, primcount);
   },
 
   // OpenGL Desktop/ES 2.0 instancing extensions compatibility
@@ -6747,13 +6747,13 @@ var LibraryGL = {
   glDrawBuffers__sig: 'vii',
   glDrawBuffers: function(n, bufs) {
 #if GL_ASSERTIONS
-    assert(GL.currentContext.drawBuffers, 'Must have WebGL2 or WEBGL_draw_buffers extension to use drawBuffers');
+    assert(GLctx['drawBuffers'], 'Must have WebGL2 or WEBGL_draw_buffers extension to use drawBuffers');
 #endif
     var bufArray = [];
     for (var i = 0; i < n; i++)
       bufArray.push({{{ makeGetValue('bufs', 'i*4', 'i32') }}});
 
-    GL.currentContext.drawBuffers(bufArray);
+    GLctx['drawBuffers'](bufArray);
   },
 
   // OpenGL ES 2.0 draw buffer extensions compatibility
