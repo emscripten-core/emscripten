@@ -304,144 +304,6 @@ var LibraryGL = {
                ((height - 1) * alignedRowSize + plainRowSize);
     },
 
-    get: function(name_, p, type) {
-      // Guard against user passing a null pointer.
-      // Note that GLES2 spec does not say anything about how passing a null pointer should be treated.
-      // Testing on desktop core GL 3, the application crashes on glGetIntegerv to a null pointer, but
-      // better to report an error instead of doing anything random.
-      if (!p) {
-#if GL_ASSERTIONS
-        Module.printErr('GL_INVALID_VALUE in glGet' + type + 'v(name=' + name_ + ': Function called with null out pointer!');
-#endif
-        GL.recordError(0x0501 /* GL_INVALID_VALUE */);
-        return;
-      }
-      var ret = undefined;
-      switch(name_) { // Handle a few trivial GLES values
-        case 0x8DFA: // GL_SHADER_COMPILER
-          ret = 1;
-          break;
-        case 0x8DF8: // GL_SHADER_BINARY_FORMATS
-          if (type !== 'Integer' && type !== 'Integer64') {
-            GL.recordError(0x0500); // GL_INVALID_ENUM
-#if GL_ASSERTIONS
-            Module.printErr('GL_INVALID_ENUM in glGet' + type + 'v(GL_SHADER_BINARY_FORMATS): Invalid parameter type!');
-#endif
-          }
-          return; // Do not write anything to the out pointer, since no binary formats are supported.
-#if USE_WEBGL2
-        case 0x87FE: // GL_NUM_PROGRAM_BINARY_FORMATS
-#endif
-        case 0x8DF9: // GL_NUM_SHADER_BINARY_FORMATS
-          ret = 0;
-          break;
-        case 0x86A2: // GL_NUM_COMPRESSED_TEXTURE_FORMATS
-          // WebGL doesn't have GL_NUM_COMPRESSED_TEXTURE_FORMATS (it's obsolete since GL_COMPRESSED_TEXTURE_FORMATS returns a JS array that can be queried for length),
-          // so implement it ourselves to allow C++ GLES2 code get the length.
-          var formats = GLctx.getParameter(0x86A3 /*GL_COMPRESSED_TEXTURE_FORMATS*/);
-          ret = formats.length;
-          break;
-        case 0x8B9A: // GL_IMPLEMENTATION_COLOR_READ_TYPE
-          ret = 0x1401; // GL_UNSIGNED_BYTE
-          break;
-        case 0x8B9B: // GL_IMPLEMENTATION_COLOR_READ_FORMAT
-          ret = 0x1908; // GL_RGBA
-          break;
-#if USE_WEBGL2
-        case 0x821D: // GL_NUM_EXTENSIONS
-          if (GLctx.canvas.GLctxObject.version < 2) {
-            GL.recordError(0x0502 /* GL_INVALID_OPERATION */); // Calling GLES3/WebGL2 function with a GLES2/WebGL1 context
-            return;
-          }
-          var exts = GLctx.getSupportedExtensions();
-          ret = 2*exts.length; // each extension is duplicated, first in unprefixed WebGL form, and then a second time with "GL_" prefix.
-          break;
-#endif
-      }
-
-      if (ret === undefined) {
-        var result = GLctx.getParameter(name_);
-        switch (typeof(result)) {
-          case "number":
-            ret = result;
-            break;
-          case "boolean":
-            ret = result ? 1 : 0;
-            break;
-          case "string":
-            GL.recordError(0x0500); // GL_INVALID_ENUM
-#if GL_ASSERTIONS
-            Module.printErr('GL_INVALID_ENUM in glGet' + type + 'v(' + name_ + ') on a name which returns a string!');
-#endif
-            return;
-          case "object":
-            if (result === null) {
-              // null is a valid result for some (e.g., which buffer is bound - perhaps nothing is bound), but otherwise
-              // can mean an invalid name_, which we need to report as an error
-              switch(name_) {
-                case 0x8894: // ARRAY_BUFFER_BINDING
-                case 0x8B8D: // CURRENT_PROGRAM
-                case 0x8895: // ELEMENT_ARRAY_BUFFER_BINDING
-                case 0x8CA6: // FRAMEBUFFER_BINDING
-                case 0x8CA7: // RENDERBUFFER_BINDING
-                case 0x8069: // TEXTURE_BINDING_2D
-                case 0x8514: { // TEXTURE_BINDING_CUBE_MAP
-                  ret = 0;
-                  break;
-                }
-                default: {
-                  GL.recordError(0x0500); // GL_INVALID_ENUM
-#if GL_ASSERTIONS
-                  Module.printErr('GL_INVALID_ENUM in glGet' + type + 'v(' + name_ + ') and it returns null!');
-#endif
-                  return;
-                }
-              }
-            } else if (result instanceof Float32Array ||
-                       result instanceof Uint32Array ||
-                       result instanceof Int32Array ||
-                       result instanceof Array) {
-              for (var i = 0; i < result.length; ++i) {
-                switch (type) {
-                  case 'Integer': {{{ makeSetValue('p', 'i*4', 'result[i]',     'i32') }}};   break;
-                  case 'Float':   {{{ makeSetValue('p', 'i*4', 'result[i]',     'float') }}}; break;
-                  case 'Boolean': {{{ makeSetValue('p', 'i',   'result[i] ? 1 : 0', 'i8') }}};    break;
-                  default: throw 'internal glGet error, bad type: ' + type;
-                }
-              }
-              return;
-            } else if (result instanceof WebGLBuffer ||
-                       result instanceof WebGLProgram ||
-                       result instanceof WebGLFramebuffer ||
-                       result instanceof WebGLRenderbuffer ||
-                       result instanceof WebGLTexture) {
-              ret = result.name | 0;
-            } else {
-              GL.recordError(0x0500); // GL_INVALID_ENUM
-#if GL_ASSERTIONS
-              Module.printErr('GL_INVALID_ENUM in glGet' + type + 'v: Unknown object returned from WebGL getParameter(' + name_ + ')!');
-#endif
-              return;
-            }
-            break;
-          default:
-            GL.recordError(0x0500); // GL_INVALID_ENUM
-#if GL_ASSERTIONS
-            Module.printErr('GL_INVALID_ENUM in glGetIntegerv: Native code calling glGet' + type + 'v(' + name_ + ') and it returns ' + result + ' of type ' + typeof(result) + '!');
-#endif
-            return;
-        }
-      }
-
-      switch (type) {
-        case 'Integer64': {{{ makeSetValue('p', '0', 'ret', 'i64') }}};    break;
-        case 'Integer': {{{ makeSetValue('p', '0', 'ret', 'i32') }}};    break;
-        case 'Float':   {{{ makeSetValue('p', '0', 'ret', 'float') }}};  break;
-        case 'Boolean': {{{ makeSetValue('p', '0', 'ret ? 1 : 0', 'i8') }}}; break;
-        default: throw 'internal glGet error, bad type: ' + type;
-      }
-    },
-
     getTexPixelData: function(type, format, width, height, pixels, internalFormat) {
       var sizePerPixel;
       var numChannels;
@@ -970,6 +832,144 @@ var LibraryGL = {
     return ret;
   },
 
+  $emscriptenWebGLGet: function(name_, p, type) {
+    // Guard against user passing a null pointer.
+    // Note that GLES2 spec does not say anything about how passing a null pointer should be treated.
+    // Testing on desktop core GL 3, the application crashes on glGetIntegerv to a null pointer, but
+    // better to report an error instead of doing anything random.
+    if (!p) {
+#if GL_ASSERTIONS
+      Module.printErr('GL_INVALID_VALUE in glGet' + type + 'v(name=' + name_ + ': Function called with null out pointer!');
+#endif
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+    var ret = undefined;
+    switch(name_) { // Handle a few trivial GLES values
+      case 0x8DFA: // GL_SHADER_COMPILER
+        ret = 1;
+        break;
+      case 0x8DF8: // GL_SHADER_BINARY_FORMATS
+        if (type !== 'Integer' && type !== 'Integer64') {
+          GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+          Module.printErr('GL_INVALID_ENUM in glGet' + type + 'v(GL_SHADER_BINARY_FORMATS): Invalid parameter type!');
+#endif
+        }
+        return; // Do not write anything to the out pointer, since no binary formats are supported.
+#if USE_WEBGL2
+      case 0x87FE: // GL_NUM_PROGRAM_BINARY_FORMATS
+#endif
+      case 0x8DF9: // GL_NUM_SHADER_BINARY_FORMATS
+        ret = 0;
+        break;
+      case 0x86A2: // GL_NUM_COMPRESSED_TEXTURE_FORMATS
+        // WebGL doesn't have GL_NUM_COMPRESSED_TEXTURE_FORMATS (it's obsolete since GL_COMPRESSED_TEXTURE_FORMATS returns a JS array that can be queried for length),
+        // so implement it ourselves to allow C++ GLES2 code get the length.
+        var formats = GLctx.getParameter(0x86A3 /*GL_COMPRESSED_TEXTURE_FORMATS*/);
+        ret = formats.length;
+        break;
+      case 0x8B9A: // GL_IMPLEMENTATION_COLOR_READ_TYPE
+        ret = 0x1401; // GL_UNSIGNED_BYTE
+        break;
+      case 0x8B9B: // GL_IMPLEMENTATION_COLOR_READ_FORMAT
+        ret = 0x1908; // GL_RGBA
+        break;
+#if USE_WEBGL2
+      case 0x821D: // GL_NUM_EXTENSIONS
+        if (GLctx.canvas.GLctxObject.version < 2) {
+          GL.recordError(0x0502 /* GL_INVALID_OPERATION */); // Calling GLES3/WebGL2 function with a GLES2/WebGL1 context
+          return;
+        }
+        var exts = GLctx.getSupportedExtensions();
+        ret = 2*exts.length; // each extension is duplicated, first in unprefixed WebGL form, and then a second time with "GL_" prefix.
+        break;
+#endif
+    }
+
+    if (ret === undefined) {
+      var result = GLctx.getParameter(name_);
+      switch (typeof(result)) {
+        case "number":
+          ret = result;
+          break;
+        case "boolean":
+          ret = result ? 1 : 0;
+          break;
+        case "string":
+          GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+          Module.printErr('GL_INVALID_ENUM in glGet' + type + 'v(' + name_ + ') on a name which returns a string!');
+#endif
+          return;
+        case "object":
+          if (result === null) {
+            // null is a valid result for some (e.g., which buffer is bound - perhaps nothing is bound), but otherwise
+            // can mean an invalid name_, which we need to report as an error
+            switch(name_) {
+              case 0x8894: // ARRAY_BUFFER_BINDING
+              case 0x8B8D: // CURRENT_PROGRAM
+              case 0x8895: // ELEMENT_ARRAY_BUFFER_BINDING
+              case 0x8CA6: // FRAMEBUFFER_BINDING
+              case 0x8CA7: // RENDERBUFFER_BINDING
+              case 0x8069: // TEXTURE_BINDING_2D
+              case 0x8514: { // TEXTURE_BINDING_CUBE_MAP
+                ret = 0;
+                break;
+              }
+              default: {
+                GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+                Module.printErr('GL_INVALID_ENUM in glGet' + type + 'v(' + name_ + ') and it returns null!');
+#endif
+                return;
+              }
+            }
+          } else if (result instanceof Float32Array ||
+                     result instanceof Uint32Array ||
+                     result instanceof Int32Array ||
+                     result instanceof Array) {
+            for (var i = 0; i < result.length; ++i) {
+              switch (type) {
+                case 'Integer': {{{ makeSetValue('p', 'i*4', 'result[i]',     'i32') }}};   break;
+                case 'Float':   {{{ makeSetValue('p', 'i*4', 'result[i]',     'float') }}}; break;
+                case 'Boolean': {{{ makeSetValue('p', 'i',   'result[i] ? 1 : 0', 'i8') }}};    break;
+                default: throw 'internal glGet error, bad type: ' + type;
+              }
+            }
+            return;
+          } else if (result instanceof WebGLBuffer ||
+                     result instanceof WebGLProgram ||
+                     result instanceof WebGLFramebuffer ||
+                     result instanceof WebGLRenderbuffer ||
+                     result instanceof WebGLTexture) {
+            ret = result.name | 0;
+          } else {
+            GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+            Module.printErr('GL_INVALID_ENUM in glGet' + type + 'v: Unknown object returned from WebGL getParameter(' + name_ + ')!');
+#endif
+            return;
+          }
+          break;
+        default:
+          GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+          Module.printErr('GL_INVALID_ENUM in glGetIntegerv: Native code calling glGet' + type + 'v(' + name_ + ') and it returns ' + result + ' of type ' + typeof(result) + '!');
+#endif
+          return;
+      }
+    }
+
+    switch (type) {
+      case 'Integer64': {{{ makeSetValue('p', '0', 'ret', 'i64') }}};    break;
+      case 'Integer': {{{ makeSetValue('p', '0', 'ret', 'i32') }}};    break;
+      case 'Float':   {{{ makeSetValue('p', '0', 'ret', 'float') }}};  break;
+      case 'Boolean': {{{ makeSetValue('p', '0', 'ret ? 1 : 0', 'i8') }}}; break;
+      default: throw 'internal glGet error, bad type: ' + type;
+    }
+  },
+
 #if USE_WEBGL2
   glGetStringi: function(name, index) {
     if (GLctx.canvas.GLctxObject.version < 2) {
@@ -1015,24 +1015,28 @@ var LibraryGL = {
   },
 
   glGetInteger64v__sig: 'vii',
+  glGetInteger64v__deps: ['$emscriptenWebGLGet'],
   glGetInteger64v: function(name_, p) {
-    GL.get(name_, p, 'Integer64');
+    emscriptenWebGLGet(name_, p, 'Integer64');
   },
 #endif
 
   glGetIntegerv__sig: 'vii',
+  glGetIntegerv__deps: ['$emscriptenWebGLGet'],
   glGetIntegerv: function(name_, p) {
-    GL.get(name_, p, 'Integer');
+    emscriptenWebGLGet(name_, p, 'Integer');
   },
 
   glGetFloatv__sig: 'vii',
+  glGetFloatv__deps: ['$emscriptenWebGLGet'],
   glGetFloatv: function(name_, p) {
-    GL.get(name_, p, 'Float');
+    emscriptenWebGLGet(name_, p, 'Float');
   },
 
   glGetBooleanv__sig: 'vii',
+  glGetBooleanv__deps: ['$emscriptenWebGLGet'],
   glGetBooleanv: function(name_, p) {
-    GL.get(name_, p, 'Boolean');
+    emscriptenWebGLGet(name_, p, 'Boolean');
   },
 
   glGenTextures__sig: 'vii',
