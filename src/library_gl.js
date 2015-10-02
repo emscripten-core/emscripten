@@ -1891,12 +1891,20 @@ var LibraryGL = {
   glClearBufferiv__sig: 'viii',
   glClearBufferiv: function(buffer, drawbuffer, value) {
     var view = {{{ makeHEAPView('32', 'value', 'value+16') }}};
+#if USE_PTHREADS
+    // TODO: This is temporary to cast SharedInt32Array to a Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    view = new Int32Array(view);
+#endif
     GLctx['clearBufferiv'](buffer, drawbuffer, view);
   },
 
   glClearBufferuiv__sig: 'viii',
   glClearBufferuiv: function(buffer, drawbuffer, value) {
     var view = {{{ makeHEAPView('U32', 'value', 'value+16') }}};
+#if USE_PTHREADS
+    // TODO: This is temporary to cast SharedUint32Array to a Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    view = new Uint32Array(view);
+#endif
     GLctx['clearBufferuiv'](buffer, drawbuffer, view);
   },
 
@@ -2240,6 +2248,10 @@ var LibraryGL = {
 #endif
     location = GL.uniforms[location];
     value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
+#if USE_PTHREADS
+    // TODO: This is temporary to cast SharedInt32Array to a Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    value = new Int32Array(value);
+#endif
     GLctx.uniform1iv(location, value);
   },
 
@@ -2251,6 +2263,10 @@ var LibraryGL = {
     location = GL.uniforms[location];
     count *= 2;
     value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
+#if USE_PTHREADS
+    // TODO: This is temporary to cast SharedInt32Array to a Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    value = new Int32Array(value);
+#endif
     GLctx.uniform2iv(location, value);
   },
 
@@ -2262,6 +2278,10 @@ var LibraryGL = {
     location = GL.uniforms[location];
     count *= 3;
     value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
+#if USE_PTHREADS
+    // TODO: This is temporary to cast SharedInt32Array to a Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    value = new Int32Array(value);
+#endif
     GLctx.uniform3iv(location, value);
   },
 
@@ -2273,6 +2293,10 @@ var LibraryGL = {
     location = GL.uniforms[location];
     count *= 4;
     value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
+#if USE_PTHREADS
+    // TODO: This is temporary to cast SharedInt32Array to a Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    value = new Int32Array(value);
+#endif
     GLctx.uniform4iv(location, value);
   },
 
@@ -2289,6 +2313,10 @@ var LibraryGL = {
       view[0] = {{{ makeGetValue('value', '0', 'float') }}};
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
+#if USE_PTHREADS
+      // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+      view = new Float32Array(view);
+#endif
     }
     GLctx.uniform1fv(location, view);
   },
@@ -2307,6 +2335,10 @@ var LibraryGL = {
       view[1] = {{{ makeGetValue('value', '4', 'float') }}};
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*8') }}};
+#if USE_PTHREADS
+      // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+      view = new Float32Array(view);
+#endif
     }
     GLctx.uniform2fv(location, view);
   },
@@ -2326,6 +2358,10 @@ var LibraryGL = {
       view[2] = {{{ makeGetValue('value', '8', 'float') }}};
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*12') }}};
+#if USE_PTHREADS
+      // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+      view = new Float32Array(view);
+#endif
     }
     GLctx.uniform3fv(location, view);
   },
@@ -2346,6 +2382,10 @@ var LibraryGL = {
       view[3] = {{{ makeGetValue('value', '12', 'float') }}};
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*16') }}};
+#if USE_PTHREADS
+      // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+      view = new Float32Array(view);
+#endif
     }
     GLctx.uniform4fv(location, view);
   },
@@ -2394,6 +2434,10 @@ var LibraryGL = {
 #endif
     location = GL.uniforms[location];
     value = {{{ makeHEAPView('U32', 'value', 'value+count*4') }}};
+#if USE_PTHREADS
+    // TODO: This is temporary to cast SharedUint32Array to a Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    value = new Uint32Array(value);
+#endif
     GLctx.uniform1uiv(location, value);
   },
 
@@ -2405,6 +2449,10 @@ var LibraryGL = {
     location = GL.uniforms[location];
     count *= 2;
     value = {{{ makeHEAPView('U32', 'value', 'value+count*4') }}};
+#if USE_PTHREADS
+    // TODO: This is temporary to cast SharedUint32Array to a Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    value = new Uint32Array(value);
+#endif
     GLctx.uniform2uiv(location, value);
   },
 
@@ -2416,6 +2464,10 @@ var LibraryGL = {
     location = GL.uniforms[location];
     count *= 3;
     value = {{{ makeHEAPView('U32', 'value', 'value+count*4') }}};
+#if USE_PTHREADS
+    // TODO: This is temporary to cast SharedUint32Array to a Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    value = new Uint32Array(value);
+#endif
     GLctx.uniform3uiv(location, value);
   },
 
@@ -2427,6 +2479,10 @@ var LibraryGL = {
     location = GL.uniforms[location];
     count *= 4;
     value = {{{ makeHEAPView('U32', 'value', 'value+count*4') }}};
+#if USE_PTHREADS
+    // TODO: This is temporary to cast SharedUint32Array to a Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    value = new Uint32Array(value);
+#endif
     GLctx.uniform4uiv(location, value);
   },
 #endif
@@ -2446,6 +2502,10 @@ var LibraryGL = {
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*16') }}};
+#if USE_PTHREADS
+      // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+      view = new Float32Array(view);
+#endif
     }
     GLctx.uniformMatrix2fv(location, transpose, view);
   },
@@ -2465,6 +2525,10 @@ var LibraryGL = {
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*36') }}};
+#if USE_PTHREADS
+      // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+      view = new Float32Array(view);
+#endif
     }
     GLctx.uniformMatrix3fv(location, transpose, view);
   },
@@ -2484,6 +2548,10 @@ var LibraryGL = {
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*64') }}};
+#if USE_PTHREADS
+      // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+      view = new Float32Array(view);
+#endif
     }
     GLctx.uniformMatrix4fv(location, transpose, view);
   },
@@ -2504,6 +2572,10 @@ var LibraryGL = {
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*24') }}};
+#if USE_PTHREADS
+      // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+      view = new Float32Array(view);
+#endif
     }
     GLctx.uniformMatrix2x3fv(location, transpose, view);
   },
@@ -2523,6 +2595,10 @@ var LibraryGL = {
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*24') }}};
+#if USE_PTHREADS
+      // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+      view = new Float32Array(view);
+#endif
     }
     GLctx.uniformMatrix3x2fv(location, transpose, view);
   },
@@ -2542,6 +2618,10 @@ var LibraryGL = {
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*32') }}};
+#if USE_PTHREADS
+      // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+      view = new Float32Array(view);
+#endif
     }
     GLctx.uniformMatrix2x4fv(location, transpose, view);
   },
@@ -2561,6 +2641,10 @@ var LibraryGL = {
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*32') }}};
+#if USE_PTHREADS
+      // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+      view = new Float32Array(view);
+#endif
     }
     GLctx.uniformMatrix4x2fv(location, transpose, view);
   },
@@ -2580,6 +2664,10 @@ var LibraryGL = {
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*48') }}};
+#if USE_PTHREADS
+      // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+      view = new Float32Array(view);
+#endif
     }
     GLctx.uniformMatrix3x4fv(location, transpose, view);
   },
@@ -2599,6 +2687,10 @@ var LibraryGL = {
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*48') }}};
+#if USE_PTHREADS
+      // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+      view = new Float32Array(view);
+#endif
     }
     GLctx.uniformMatrix4x3fv(location, transpose, view);
   },
@@ -2628,24 +2720,40 @@ var LibraryGL = {
   glVertexAttrib1fv__sig: 'vii',
   glVertexAttrib1fv: function(index, v) {
     v = {{{ makeHEAPView('F32', 'v', 'v+' + (1*4)) }}};
+#if USE_PTHREADS
+    // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    v = new Float32Array(v);
+#endif
     GLctx.vertexAttrib1fv(index, v);
   },
 
   glVertexAttrib2fv__sig: 'vii',
   glVertexAttrib2fv: function(index, v) {
     v = {{{ makeHEAPView('F32', 'v', 'v+' + (2*4)) }}};
+#if USE_PTHREADS
+    // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    v = new Float32Array(v);
+#endif
     GLctx.vertexAttrib2fv(index, v);
   },
 
   glVertexAttrib3fv__sig: 'vii',
   glVertexAttrib3fv: function(index, v) {
     v = {{{ makeHEAPView('F32', 'v', 'v+' + (3*4)) }}};
+#if USE_PTHREADS
+    // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    v = new Float32Array(v);
+#endif
     GLctx.vertexAttrib3fv(index, v);
   },
 
   glVertexAttrib4fv__sig: 'vii',
   glVertexAttrib4fv: function(index, v) {
     v = {{{ makeHEAPView('F32', 'v', 'v+' + (4*4)) }}};
+#if USE_PTHREADS
+    // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    v = new Float32Array(v);
+#endif
     GLctx.vertexAttrib4fv(index, v);
   },
 
@@ -2653,12 +2761,20 @@ var LibraryGL = {
   glVertexAttribI4iv__sig: 'vii',
   glVertexAttribI4iv: function(index, v) {
     v = {{{ makeHEAPView('32', 'v', 'v+' + (4*4)) }}};
+#if USE_PTHREADS
+    // TODO: This is temporary to cast SharedInt32Array to a Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    v = new Int32Array(v);
+#endif
     GLctx.vertexAttribI4iv(index, v);
   },
 
   glVertexAttribI4uiv__sig: 'vii',
   glVertexAttribI4uiv: function(index, v) {
     v = {{{ makeHEAPView('U32', 'v', 'v+' + (4*4)) }}};
+#if USE_PTHREADS
+    // TODO: This is temporary to cast SharedUint32Array to a Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    v = new Uint32Array(v);
+#endif
     GLctx.vertexAttribI4uiv(index, v);
   },
 #endif
