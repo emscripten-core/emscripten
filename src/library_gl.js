@@ -1896,7 +1896,7 @@ var LibraryGL = {
 
   glClearBufferuiv__sig: 'viii',
   glClearBufferuiv: function(buffer, drawbuffer, value) {
-    var view = {{{ makeHEAPView('32', 'value', 'value+16') }}};
+    var view = {{{ makeHEAPView('U32', 'value', 'value+16') }}};
     GLctx['clearBufferuiv'](buffer, drawbuffer, view);
   },
 
@@ -2393,7 +2393,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform1uiv', 'location');
 #endif
     location = GL.uniforms[location];
-    value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
+    value = {{{ makeHEAPView('U32', 'value', 'value+count*4') }}};
     GLctx.uniform1uiv(location, value);
   },
 
@@ -2404,7 +2404,7 @@ var LibraryGL = {
 #endif
     location = GL.uniforms[location];
     count *= 2;
-    value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
+    value = {{{ makeHEAPView('U32', 'value', 'value+count*4') }}};
     GLctx.uniform2uiv(location, value);
   },
 
@@ -2415,7 +2415,7 @@ var LibraryGL = {
 #endif
     location = GL.uniforms[location];
     count *= 3;
-    value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
+    value = {{{ makeHEAPView('U32', 'value', 'value+count*4') }}};
     GLctx.uniform3uiv(location, value);
   },
 
@@ -2426,7 +2426,7 @@ var LibraryGL = {
 #endif
     location = GL.uniforms[location];
     count *= 4;
-    value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
+    value = {{{ makeHEAPView('U32', 'value', 'value+count*4') }}};
     GLctx.uniform4uiv(location, value);
   },
 #endif
