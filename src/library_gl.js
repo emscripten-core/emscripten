@@ -442,38 +442,6 @@ var LibraryGL = {
       }
     },
 
-    getUniform: function(program, location, params, type) {
-      if (!params) {
-        // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
-        // if params == null, issue a GL error to notify user about it. 
-#if GL_ASSERTIONS
-        Module.printErr('GL_INVALID_VALUE in glGetUniform*v(program=' + program + ', location=' + location + ', params=0): Function called with null out pointer!');
-#endif
-        GL.recordError(0x0501 /* GL_INVALID_VALUE */);
-        return;
-      }
-#if GL_ASSERTIONS
-      GL.validateGLObjectID(GL.programs, program, 'glGetUniform*v', 'program');
-      GL.validateGLObjectID(GL.uniforms, location, 'glGetUniform*v', 'location');
-#endif
-      var data = GLctx.getUniform(GL.programs[program], GL.uniforms[location]);
-      if (typeof data == 'number' || typeof data == 'boolean') {
-        switch (type) {
-          case 'Integer': {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
-          case 'Float': {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
-          default: throw 'internal GL.getUniform error, bad type: ' + type;
-        }
-      } else {
-        for (var i = 0; i < data.length; i++) {
-          switch (type) {
-            case 'Integer': {{{ makeSetValue('params', 'i', 'data[i]', 'i32') }}}; break;
-            case 'Float': {{{ makeSetValue('params', 'i', 'data[i]', 'float') }}}; break;
-            default: throw 'internal GL.getUniform error, bad type: ' + type;
-          }
-        }
-      }
-    },
-
     getTexPixelData: function(type, format, width, height, pixels, internalFormat) {
       var sizePerPixel;
       var numChannels;
@@ -2207,18 +2175,53 @@ var LibraryGL = {
     return GLctx.isRenderbuffer(rb);
   },
 
+  $emscriptenWebGLGetUniform: function(program, location, params, type) {
+    if (!params) {
+      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+      // if params == null, issue a GL error to notify user about it. 
+#if GL_ASSERTIONS
+      Module.printErr('GL_INVALID_VALUE in glGetUniform*v(program=' + program + ', location=' + location + ', params=0): Function called with null out pointer!');
+#endif
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glGetUniform*v', 'program');
+    GL.validateGLObjectID(GL.uniforms, location, 'glGetUniform*v', 'location');
+#endif
+    var data = GLctx.getUniform(GL.programs[program], GL.uniforms[location]);
+    if (typeof data == 'number' || typeof data == 'boolean') {
+      switch (type) {
+        case 'Integer': {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
+        case 'Float': {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
+        default: throw 'internal emscriptenWebGLGetUniform() error, bad type: ' + type;
+      }
+    } else {
+      for (var i = 0; i < data.length; i++) {
+        switch (type) {
+          case 'Integer': {{{ makeSetValue('params', 'i', 'data[i]', 'i32') }}}; break;
+          case 'Float': {{{ makeSetValue('params', 'i', 'data[i]', 'float') }}}; break;
+          default: throw 'internal emscriptenWebGLGetUniform() error, bad type: ' + type;
+        }
+      }
+    }
+  },
+
   glGetUniformfv__sig: 'viii',
+  glGetUniformfv__deps: ['$emscriptenWebGLGetUniform'],
   glGetUniformfv: function(program, location, params) {
-    GL.getUniform(program, location, params, 'Float');
+    emscriptenWebGLGetUniform(program, location, params, 'Float');
   },
 
   glGetUniformiv__sig: 'viii',
+  glGetUniformiv__deps: ['$emscriptenWebGLGetUniform'],
   glGetUniformiv: function(program, location, params) {
-    GL.getUniform(program, location, params, 'Integer');
+    emscriptenWebGLGetUniform(program, location, params, 'Integer');
   },
 
 #if USE_WEBGL2
   glGetUniformuiv__sig: 'viii',
+  glGetUniformuiv__deps: ['$emscriptenWebGLGetUniform'],
   glGetUniformuiv: 'glGetUniformiv',
 #endif
 
