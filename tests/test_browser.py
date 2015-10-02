@@ -2107,6 +2107,11 @@ Module['_main'] = function() {
     ]).communicate()
     self.run_browser('page.html', '', '/report_result?600')
 
+  def test_sdl2_image_formats(self):
+    shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
+    self.btest('sdl2_image.c', expected='512', args=['--preload-file', 'screenshot.png', '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.png"',
+                                                     '-DNO_PRELOADED','-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'SDL2_IMAGE_FORMATS=["png"]'])
+
   def test_sdl2_key(self):
     for defines in [[]]:
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
