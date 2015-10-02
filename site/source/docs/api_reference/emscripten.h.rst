@@ -423,13 +423,13 @@ Typedefs
 		typedef void (*em_async_wget2_data_onprogress_func)(void*, int, int)
 
 		
-.. c:type:: em_async_prepare_data_onload_func
+.. c:type:: em_run_preload_plugins_data_onload_func
 
-	Function pointer type for the ``onload`` callback of :c:func:`emscripten_async_prepare_data` (specific values of the parameters documented in that method).
+	Function pointer type for the ``onload`` callback of :c:func:`emscripten_run_preload_plugins_data` (specific values of the parameters documented in that method).
 
 	Defined as: :: 
 
-		typedef void (*em_async_prepare_data_onload_func)(void*, const char*)	
+		typedef void (*em_run_preload_plugins_data_onload_func)(void*, const char*)	
 
 	
 
@@ -440,7 +440,7 @@ Functions
 
 	Load file from url in *synchronously*. For the asynchronous version, see the :c:func:`emscripten_async_wget`.
 
-	In addition to fetching the URL from the network, the contents are prepared so that the data is usable in ``IMG_Load`` and so forth (we synchronously do the work to make the browser decode the image or audio etc.).
+	In addition to fetching the URL from the network, preload plugins are executed so that the data is usable in ``IMG_Load`` and so forth (we synchronously do the work to make the browser decode the image or audio etc.).
  
 	This function is blocking; it won't return until all operations are finished. You can then open and read the file if it succeeded.
 
@@ -454,7 +454,7 @@ Functions
 		 
 	Loads a file from a URL asynchronously. 
 
-	In addition to fetching the URL from the network, the contents are prepared so that the data is usable in ``IMG_Load`` and so forth (we asynchronously do the work to make the browser decode the image or audio etc.).
+	In addition to fetching the URL from the network, preload plugins are executed so that the data is usable in ``IMG_Load`` and so forth (we asynchronously do the work to make the browser decode the image or audio etc.).
 
 	When the file is ready the ``onload`` callback will be called. If any error occurs ``onerror`` will be called. The callbacks are called with the file as their argument.
 	
@@ -476,7 +476,7 @@ Functions
 	
 	This is the "data" version of :c:func:`emscripten_async_wget`.  
 
-	Instead of writing to a file, this function writes to a buffer directly in memory. This avoids the overhead of using the emulated file system; note however that since files are not used, it cannot do the 'prepare' stage to set things up for ``IMG_Load`` and so forth (``IMG_Load`` etc. work on files).
+	Instead of writing to a file, this function writes to a buffer directly in memory. This avoids the overhead of using the emulated file system; note however that since files are not used, it cannot run preload plugins to set things up for ``IMG_Load`` and so forth (``IMG_Load`` etc. work on files).
 
 	When the file is ready then the ``onload`` callback will be called. If any error occurred ``onerror`` will be called.
 	
@@ -500,7 +500,7 @@ Functions
 	
 	This is an **experimental** "more feature-complete" version of :c:func:`emscripten_async_wget`. 
 	
-	In addition to fetching the URL from the network, the contents are prepared so that the data is usable in ``IMG_Load`` and so forth (we asynchronously do the work to make the browser decode the image, audio, etc.).
+	In addition to fetching the URL from the network, preload plugins are executed so that the data is usable in ``IMG_Load`` and so forth (we asynchronously do the work to make the browser decode the image, audio, etc.).
 
 	When the file is ready the ``onload`` callback will be called with the object pointers given in ``arg`` and ``file``. During the download the ``onprogress`` callback is called.
 	
@@ -537,10 +537,8 @@ Functions
 	
 	This is the "data" version of :c:func:`emscripten_async_wget2`. It is an **experimental** "more feature complete" version of :c:func:`emscripten_async_wget_data`. 	
 
-	Instead of writing to a file, this function writes to a buffer directly in memory. This avoids the overhead of using the emulated file system; note however that since files are not used, it cannot do the 'prepare' stage to set things up for ``IMG_Load`` and so forth (``IMG_Load`` etc. work on files).
+	Instead of writing to a file, this function writes to a buffer directly in memory. This avoids the overhead of using the emulated file system; note however that since files are not used, it cannot run preload plugins to set things up for ``IMG_Load`` and so forth (``IMG_Load`` etc. work on files).
 	
-	In addition to fetching the URL from the network, the contents are prepared so that the data is usable in ``IMG_Load`` and so forth (we asynchronously do the work to make the browser decode the image or audio etc.).
-
 	When the file is ready the ``onload`` callback will be called with the object pointers given in ``arg``, a pointer to the buffer in memory, and an unsigned integer containing the size of the buffer. During the download the ``onprogress`` callback is called with progress information. If an error occurs, ``onerror`` will be called with the HTTP status code and a string containing the status description.
 	
 	:param url: The URL of the file to load.
@@ -580,19 +578,19 @@ Functions
 	:param int handle: A handle to request to be aborted.
 
 
-.. c:function:: void emscripten_async_prepare_data(char* data, int size, const char *suffix, void *arg, em_async_prepare_data_onload_func onload, em_arg_callback_func onerror)
+.. c:function:: void emscripten_run_preload_plugins_data(char* data, int size, const char *suffix, void *arg, em_run_preload_plugins_data_onload_func onload, em_arg_callback_func onerror)
 		 
-	Prepares a buffer of data asynchronously. This is a "data" version of :c:func:`emscripten_async_prepare`, which receives raw data as input instead of a filename (this can prevent the need to write data to a file first). 
+	Runs preload plugins on a buffer of data asynchronously. This is a "data" version of :c:func:`emscripten_run_preload_plugins`, which receives raw data as input instead of a filename (this can prevent the need to write data to a file first). 
 	
 	When file is loaded then the ``onload`` callback will be called. If any error occurs ``onerror`` will be called.
 	
 	``onload`` also receives a second parameter, which is a 'fake' filename which you can pass into ``IMG_Load`` (it is not an actual file, but it identifies this image for ``IMG_Load`` to be able to process it). Note that the user of this API is responsible for ``free()`` ing the memory allocated for the fake filename.
 
-	:param char* data: The buffer of data to prepare.
+	:param char* data: The buffer of data to process.
 	:param suffix: The file suffix, e.g. 'png' or 'jpg'.
 	:type suffix: const char* 
 	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be used by a callback to identify the associated call.
-	:param em_async_prepare_data_onload_func onload: Callback on successful preparation of the file. The callback function parameter values are:	
+	:param em_run_preload_plugins_data_onload_func onload: Callback on successful processing of the data. The callback function parameter values are:	
 	
 		- *(void*)* : Equal to ``arg`` (user defined data).
 		- *(const char*)* : A 'fake' filename which you can pass into ``IMG_Load``. See above for more information.
@@ -682,23 +680,21 @@ Emscripten Asynchronous IndexedDB API
 
 
 
-.. c:function:: int emscripten_async_prepare(const char* file, em_str_callback_func onload, em_str_callback_func onerror)
+.. c:function:: int emscripten_run_preload_plugins(const char* file, em_str_callback_func onload, em_str_callback_func onerror)
 		 
-	Prepares a file asynchronously.
+	Runs preload plugins on a file asynchronously. It works on file data already present and performs any required asynchronous operations available as preload plugins, such as decoding images for use in ``IMG_Load``, or decoding audio for use in ``Mix_LoadWAV``. 
 	
-	This does just the preparation part of :c:func:`emscripten_async_wget`. That is, it works on file data already present and performs any required asynchronous operations (for example, decoding images for use in ``IMG_Load``, decoding audio for use in ``Mix_LoadWAV``, etc.). 
-	
-	Once the operations are complete (the file is prepared), the ``onload`` callback will be called. If any error occurs ``onerror`` will be called. The callbacks are called with the file as their argument.
+	Once the operations are complete, the ``onload`` callback will be called. If any error occurs ``onerror`` will be called. The callbacks are called with the file as their argument.
 
-	:param file: The name of the file to prepare.
+	:param file: The name of the file to process.
 	:type file: const char* 
-	:param em_str_callback_func onload: Callback on successful preparation of the file. The callback function parameter value is:
+	:param em_str_callback_func onload: Callback on successful processing of the file. The callback function parameter value is:
 	
-		- *(const char*)* : The name of the ``file`` that was prepared.
+		- *(const char*)* : The name of the ``file`` that was processed.
 		
 	:param em_str_callback_func onerror: Callback in the event of failure. The callback function parameter value is:	
 	
-		- *(const char*)* : The name of the ``file`` for which the prepare failed.
+		- *(const char*)* : The name of the ``file`` for which the operation failed.
 		
 	:return: 0 if successful, -1 if the file does not exist
 	:rtype: int

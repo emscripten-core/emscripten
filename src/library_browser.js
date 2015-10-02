@@ -981,7 +981,7 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  emscripten_async_prepare: function(file, onload, onerror) {
+  emscripten_run_preload_plugins: function(file, onload, onerror) {
     Module['noExitRuntime'] = true;
 
     var _file = Pointer_stringify(file);
@@ -1002,7 +1002,7 @@ mergeInto(LibraryManager.library, {
     return 0;
   },
 
-  emscripten_async_prepare_data: function(data, size, suffix, arg, onload, onerror) {
+  emscripten_run_preload_plugins_data: function(data, size, suffix, arg, onload, onerror) {
     Module['noExitRuntime'] = true;
 
     var _suffix = Pointer_stringify(suffix);
