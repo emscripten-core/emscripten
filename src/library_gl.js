@@ -304,87 +304,6 @@ var LibraryGL = {
                ((height - 1) * alignedRowSize + plainRowSize);
     },
 
-    getTexPixelData: function(type, format, width, height, pixels, internalFormat) {
-      var sizePerPixel;
-      var numChannels;
-      switch(format) {
-        case 0x1906 /* GL_ALPHA */:
-        case 0x1909 /* GL_LUMINANCE */:
-        case 0x1902 /* GL_DEPTH_COMPONENT */:
-        case 0x1903 /* GL_RED */:
-          numChannels = 1;
-          break;
-        case 0x190A /* GL_LUMINANCE_ALPHA */:
-        case 0x8227 /* GL_RG */:
-          numChannels = 2;
-          break;
-        case 0x1907 /* GL_RGB */:
-        case 0x8C40 /* GL_SRGB_EXT */:
-          numChannels = 3;
-          break;
-        case 0x1908 /* GL_RGBA */:
-        case 0x8C42 /* GL_SRGB_ALPHA_EXT */:
-          numChannels = 4;
-          break;
-        default:
-          GL.recordError(0x0500); // GL_INVALID_ENUM
-#if GL_ASSERTIONS
-          Module.printErr('GL_INVALID_ENUM due to unknown format in getTexPixelData, type: ' + type + ', format: ' + format);
-#endif
-          return {
-            pixels: null,
-            internalFormat: 0x0
-          };
-      }
-      switch (type) {
-        case 0x1401 /* GL_UNSIGNED_BYTE */:
-          sizePerPixel = numChannels*1;
-          break;
-        case 0x1403 /* GL_UNSIGNED_SHORT */:
-#if USE_WEBGL2
-        case 0x140B /* GL_HALF_FLOAT */:
-#endif
-        case 0x8D61 /* GL_HALF_FLOAT_OES */:
-          sizePerPixel = numChannels*2;
-          break;
-        case 0x1405 /* GL_UNSIGNED_INT */:
-        case 0x1406 /* GL_FLOAT */:
-          sizePerPixel = numChannels*4;
-          break;
-        case 0x84FA /* UNSIGNED_INT_24_8_WEBGL/UNSIGNED_INT_24_8 */:
-          sizePerPixel = 4;
-          break;
-        case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
-        case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
-        case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
-          sizePerPixel = 2;
-          break;
-        default:
-          GL.recordError(0x0500); // GL_INVALID_ENUM
-#if GL_ASSERTIONS
-          Module.printErr('GL_INVALID_ENUM in glTex[Sub]Image/glReadPixels, type: ' + type + ', format: ' + format);
-#endif
-          return {
-            pixels: null,
-            internalFormat: 0x0
-          };
-      }
-      var bytes = GL.computeImageSize(width, height, sizePerPixel, GL.unpackAlignment);
-      if (type == 0x1401 /* GL_UNSIGNED_BYTE */) {
-        pixels = {{{ makeHEAPView('U8', 'pixels', 'pixels+bytes') }}};
-      } else if (type == 0x1406 /* GL_FLOAT */) {
-        pixels = {{{ makeHEAPView('F32', 'pixels', 'pixels+bytes') }}};
-      } else if (type == 0x1405 /* GL_UNSIGNED_INT */ || type == 0x84FA /* UNSIGNED_INT_24_8_WEBGL */) {
-        pixels = {{{ makeHEAPView('U32', 'pixels', 'pixels+bytes') }}};
-      } else {
-        pixels = {{{ makeHEAPView('U16', 'pixels', 'pixels+bytes') }}};
-      }
-      return {
-        pixels: pixels,
-        internalFormat: internalFormat
-      };
-    },
-
 #if GL_FFP_ONLY
     enabledClientAttribIndices: [],
     enableVertexAttribArray: function enableVertexAttribArray(index) {
@@ -1118,11 +1037,93 @@ var LibraryGL = {
   },
 #endif
 
+  $emscriptenWebGLGetTexPixelData: function(type, format, width, height, pixels, internalFormat) {
+    var sizePerPixel;
+    var numChannels;
+    switch(format) {
+      case 0x1906 /* GL_ALPHA */:
+      case 0x1909 /* GL_LUMINANCE */:
+      case 0x1902 /* GL_DEPTH_COMPONENT */:
+      case 0x1903 /* GL_RED */:
+        numChannels = 1;
+        break;
+      case 0x190A /* GL_LUMINANCE_ALPHA */:
+      case 0x8227 /* GL_RG */:
+        numChannels = 2;
+        break;
+      case 0x1907 /* GL_RGB */:
+      case 0x8C40 /* GL_SRGB_EXT */:
+        numChannels = 3;
+        break;
+      case 0x1908 /* GL_RGBA */:
+      case 0x8C42 /* GL_SRGB_ALPHA_EXT */:
+        numChannels = 4;
+        break;
+      default:
+        GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_ENUM due to unknown format in getTexPixelData, type: ' + type + ', format: ' + format);
+#endif
+        return {
+          pixels: null,
+          internalFormat: 0x0
+        };
+    }
+    switch (type) {
+      case 0x1401 /* GL_UNSIGNED_BYTE */:
+        sizePerPixel = numChannels*1;
+        break;
+      case 0x1403 /* GL_UNSIGNED_SHORT */:
+#if USE_WEBGL2
+      case 0x140B /* GL_HALF_FLOAT */:
+#endif
+      case 0x8D61 /* GL_HALF_FLOAT_OES */:
+        sizePerPixel = numChannels*2;
+        break;
+      case 0x1405 /* GL_UNSIGNED_INT */:
+      case 0x1406 /* GL_FLOAT */:
+        sizePerPixel = numChannels*4;
+        break;
+      case 0x84FA /* UNSIGNED_INT_24_8_WEBGL/UNSIGNED_INT_24_8 */:
+        sizePerPixel = 4;
+        break;
+      case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
+      case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
+      case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
+        sizePerPixel = 2;
+        break;
+      default:
+        GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_ENUM in glTex[Sub]Image/glReadPixels, type: ' + type + ', format: ' + format);
+#endif
+        return {
+          pixels: null,
+          internalFormat: 0x0
+        };
+    }
+    var bytes = GL.computeImageSize(width, height, sizePerPixel, GL.unpackAlignment);
+    if (type == 0x1401 /* GL_UNSIGNED_BYTE */) {
+      pixels = {{{ makeHEAPView('U8', 'pixels', 'pixels+bytes') }}};
+    } else if (type == 0x1406 /* GL_FLOAT */) {
+      pixels = {{{ makeHEAPView('F32', 'pixels', 'pixels+bytes') }}};
+    } else if (type == 0x1405 /* GL_UNSIGNED_INT */ || type == 0x84FA /* UNSIGNED_INT_24_8_WEBGL */) {
+      pixels = {{{ makeHEAPView('U32', 'pixels', 'pixels+bytes') }}};
+    } else {
+      pixels = {{{ makeHEAPView('U16', 'pixels', 'pixels+bytes') }}};
+    }
+    return {
+      pixels: pixels,
+      internalFormat: internalFormat
+    };
+  },
+
   glTexImage2D__sig: 'viiiiiiiii',
+  glTexImage2D__deps: ['$emscriptenWebGLGetTexPixelData'],
   glTexImage2D: function(target, level, internalFormat, width, height, border, format, type, pixels) {
     var pixelData;
     if (pixels) {
-      var data = GL.getTexPixelData(type, format, width, height, pixels, internalFormat);
+      var data = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, internalFormat);
       pixelData = data.pixels;
       internalFormat = data.internalFormat;
     } else {
@@ -1132,10 +1133,11 @@ var LibraryGL = {
   },
 
   glTexSubImage2D__sig: 'viiiiiiiii',
+  glTexSubImage2D__deps: ['$emscriptenWebGLGetTexPixelData'],
   glTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, type, pixels) {
     var pixelData;
     if (pixels) {
-      pixelData = GL.getTexPixelData(type, format, width, height, pixels, -1).pixels;
+      pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, -1).pixels;
     } else {
       pixelData = null;
     }
@@ -1143,8 +1145,9 @@ var LibraryGL = {
   },
 
   glReadPixels__sig: 'viiiiiii',
+  glReadPixels__deps: ['$emscriptenWebGLGetTexPixelData'],
   glReadPixels: function(x, y, width, height, format, type, pixels) {
-    var data = GL.getTexPixelData(type, format, width, height, pixels, format);
+    var data = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, format);
     if (!data.pixels) {
       GL.recordError(0x0500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
