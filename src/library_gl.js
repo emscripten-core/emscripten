@@ -509,67 +509,6 @@ var LibraryGL = {
       }
     },
 
-    getIndexed: function(target, index, data, type) {
-      if (!data) {
-        // GLES2 specification does not specify how to behave if data is a null pointer. Since calling this function does not make sense
-        // if data == null, issue a GL error to notify user about it. 
-#if GL_ASSERTIONS
-        Module.printErr('GL_INVALID_VALUE in glGetInteger(64)i_v(target=' + target + ', index=' + index + ', data=0): Function called with null out pointer!');
-#endif
-        GL.recordError(0x0501 /* GL_INVALID_VALUE */);
-        return;
-      }
-      var result = GLctx['getIndexedParameter'](target, index);
-      var ret;
-      switch (typeof result) {
-        case 'boolean':
-          ret = result ? 1 : 0;
-          break;
-        case 'number':
-          ret = result;
-          break;
-        case 'object':
-          if (result === null) {
-            switch (target) {
-              case 0x8C8F: // TRANSFORM_FEEDBACK_BUFFER_BINDING
-              case 0x8A28: // UNIFORM_BUFFER_BINDING
-                ret = 0;
-                break;
-              default: {
-                GL.recordError(0x0500); // GL_INVALID_ENUM
-#if GL_ASSERTIONS
-                Module.printErr('GL_INVALID_ENUM in glGetInteger(64)i_v(' + target + ') and it returns null!');
-#endif
-                return;
-              }
-            }
-          } else if (result instanceof WebGLBuffer) {
-            ret = result.name | 0;
-          } else {
-            GL.recordError(0x0500); // GL_INVALID_ENUM
-#if GL_ASSERTIONS
-            Module.printErr('GL_INVALID_ENUM in glGetInteger(64)i_v: Unknown object returned from WebGL getIndexedParameter(' + target + ')!');
-#endif
-            return;
-          }
-          break;
-        default:
-          GL.recordError(0x0500); // GL_INVALID_ENUM
-#if GL_ASSERTIONS
-          Module.printErr('GL_INVALID_ENUM in glGetInteger(64)i_v: Native code calling glGetInteger(64)i_v(' + target + ') and it returns ' + result + ' of type ' + typeof(result) + '!');
-#endif
-          return;
-      }
-
-      switch (type) {
-        case 'Integer64': {{{ makeSetValue('data', '0', 'ret', 'i64') }}};    break;
-        case 'Integer': {{{ makeSetValue('data', '0', 'ret', 'i32') }}};    break;
-        case 'Float':   {{{ makeSetValue('data', '0', 'ret', 'float') }}};  break;
-        case 'Boolean': {{{ makeSetValue('data', '0', 'ret ? 1 : 0', 'i8') }}}; break;
-        default: throw 'internal GL.getIndexed error, bad type: ' + type;
-      }
-    },
-
     getTexPixelData: function(type, format, width, height, pixels, internalFormat) {
       var sizePerPixel;
       var numChannels;
@@ -1879,15 +1818,78 @@ var LibraryGL = {
     if (type) {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
   },
 
+  $emscriptenWebGLGetIndexed: function(target, index, data, type) {
+    if (!data) {
+      // GLES2 specification does not specify how to behave if data is a null pointer. Since calling this function does not make sense
+      // if data == null, issue a GL error to notify user about it. 
+#if GL_ASSERTIONS
+      Module.printErr('GL_INVALID_VALUE in glGetInteger(64)i_v(target=' + target + ', index=' + index + ', data=0): Function called with null out pointer!');
+#endif
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+    var result = GLctx['getIndexedParameter'](target, index);
+    var ret;
+    switch (typeof result) {
+      case 'boolean':
+        ret = result ? 1 : 0;
+        break;
+      case 'number':
+        ret = result;
+        break;
+      case 'object':
+        if (result === null) {
+          switch (target) {
+            case 0x8C8F: // TRANSFORM_FEEDBACK_BUFFER_BINDING
+            case 0x8A28: // UNIFORM_BUFFER_BINDING
+              ret = 0;
+              break;
+            default: {
+              GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+              Module.printErr('GL_INVALID_ENUM in glGetInteger(64)i_v(' + target + ') and it returns null!');
+#endif
+              return;
+            }
+          }
+        } else if (result instanceof WebGLBuffer) {
+          ret = result.name | 0;
+        } else {
+          GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+          Module.printErr('GL_INVALID_ENUM in glGetInteger(64)i_v: Unknown object returned from WebGL getIndexedParameter(' + target + ')!');
+#endif
+          return;
+        }
+        break;
+      default:
+        GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_ENUM in glGetInteger(64)i_v: Native code calling glGetInteger(64)i_v(' + target + ') and it returns ' + result + ' of type ' + typeof(result) + '!');
+#endif
+        return;
+    }
+
+    switch (type) {
+      case 'Integer64': {{{ makeSetValue('data', '0', 'ret', 'i64') }}};    break;
+      case 'Integer': {{{ makeSetValue('data', '0', 'ret', 'i32') }}};    break;
+      case 'Float':   {{{ makeSetValue('data', '0', 'ret', 'float') }}};  break;
+      case 'Boolean': {{{ makeSetValue('data', '0', 'ret ? 1 : 0', 'i8') }}}; break;
+      default: throw 'internal emscriptenWebGLGetIndexed() error, bad type: ' + type;
+    }
+  },
+
   glGetIntegeri_v__sig: 'viii',
+  glGetIntegeri_v__deps: ['$emscriptenWebGLGetIndexed'],
   glGetIntegeri_v: function(target, index, data) {
-    GL.getIndexed(target, index, data, 'Integer');
+    emscriptenWebGLGetIndexed(target, index, data, 'Integer');
   },
 
 #if USE_WEBGL2
   glGetInteger64i_v__sig: 'viii',
+  glGetInteger64i_v__deps: ['$emscriptenWebGLGetIndexed'],
   glGetInteger64i_v: function(target, index, data) {
-    GL.getIndexed(target, index, data, 'Integer64');
+    emscriptenWebGLGetIndexed(target, index, data, 'Integer64');
   },
 #endif
 
