@@ -294,16 +294,6 @@ var LibraryGL = {
       return source;
     },
 
-    computeImageSize: function(width, height, sizePerPixel, alignment) {
-      function roundedToNextMultipleOf(x, y) {
-        return Math.floor((x + y - 1) / y) * y
-      }
-      var plainRowSize = width * sizePerPixel;
-      var alignedRowSize = roundedToNextMultipleOf(plainRowSize, alignment);
-      return (height <= 0) ? 0 :
-               ((height - 1) * alignedRowSize + plainRowSize);
-    },
-
 #if GL_FFP_ONLY
     enabledClientAttribIndices: [],
     enableVertexAttribArray: function enableVertexAttribArray(index) {
@@ -1037,6 +1027,17 @@ var LibraryGL = {
   },
 #endif
 
+  $emscriptenWebGLComputeImageSize: function(width, height, sizePerPixel, alignment) {
+    function roundedToNextMultipleOf(x, y) {
+      return Math.floor((x + y - 1) / y) * y
+    }
+    var plainRowSize = width * sizePerPixel;
+    var alignedRowSize = roundedToNextMultipleOf(plainRowSize, alignment);
+    return (height <= 0) ? 0 :
+             ((height - 1) * alignedRowSize + plainRowSize);
+  },
+
+  $emscriptenWebGLGetTexPixelData__deps: ['$emscriptenWebGLComputeImageSize'],
   $emscriptenWebGLGetTexPixelData: function(type, format, width, height, pixels, internalFormat) {
     var sizePerPixel;
     var numChannels;
