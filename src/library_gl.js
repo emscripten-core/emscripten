@@ -1103,7 +1103,7 @@ var LibraryGL = {
           internalFormat: 0x0
         };
     }
-    var bytes = GL.computeImageSize(width, height, sizePerPixel, GL.unpackAlignment);
+    var bytes = emscriptenWebGLComputeImageSize(width, height, sizePerPixel, GL.unpackAlignment);
     if (type == 0x1401 /* GL_UNSIGNED_BYTE */) {
       pixels = {{{ makeHEAPView('U8', 'pixels', 'pixels+bytes') }}};
     } else if (type == 0x1406 /* GL_FLOAT */) {
