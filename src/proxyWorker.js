@@ -135,7 +135,9 @@ window.alert = function(text) {
 
 window.scrollX = window.scrollY = 0; // TODO: proxy these
 
-window.WebGLRenderingContext = WebGLWorker;
+if (Module.proxyGL) {
+  window.WebGLRenderingContext = WebGLWorker;
+}
 
 window.requestAnimationFrame = (function() {
   // similar to Browser.requestAnimationFrame
@@ -155,7 +157,9 @@ window.requestAnimationFrame = (function() {
   };
 })();
 
-var webGLWorker = new WebGLWorker();
+if (Module.proxyGL) {
+  var webGLWorker = new WebGLWorker();
+}
 
 var document = new EventListener();
 
@@ -212,6 +216,7 @@ document.createElement = function document_createElement(what) {
             }
           };
         } else {
+          assert(Module.proxyGL);
           return webGLWorker;
         }
       };
@@ -417,7 +422,15 @@ onmessage = function onmessage(message) {
       break;
     }
     case 'gl': {
-      webGLWorker.onmessage(message.data);
+      if (!message.data.canvas) {
+        assert(Module.proxyGL);
+        webGLWorker.onmessage(message.data);
+      } else {
+        assert(!Module.proxyGL);
+        assert(message.data.op === 'setPrefetched');
+        Module.canvas = message.data.canvas; // a proxy to the canvas, we have WebGL in this worker
+        removeRunDependency('gl-prefetch');
+      }
       break;
     }
     case 'tock': {

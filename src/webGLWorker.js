@@ -1,3 +1,7 @@
+if (typeof WebGLBuffer === 'undefined') {
+
+Module.proxyGL = true;
+
 // WebGLWorker worker code
 
 function WebGLBuffer(id) {
@@ -1102,3 +1106,8 @@ WebGLWorker.prototype.prefetchedParameters = {};
 WebGLWorker.prototype.prefetchedExtensions = {};
 WebGLWorker.prototype.prefetchedPrecisions = {};
 
+} else { // typeof WebGLBuffer === 'undefined'
+
+  Module.proxyGL = false;
+
+}

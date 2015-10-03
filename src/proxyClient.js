@@ -17,6 +17,8 @@ if (typeof Module === 'undefined') {
   };
 }
 
+Module.proxyGL = !Module.canvas['transferControlToOffscreen']; // if no transferable canvases, then we proxy GL
+
 // utils
 
 function FPSTracker(text) {
@@ -99,7 +101,9 @@ var frameId = 0;
 
 var worker = new Worker('{{{ filename }}}.js');
 
-WebGLClient.prefetch();
+if (Module.proxyGL) {
+  WebGLClient.prefetch();
+}
 
 setTimeout(function() {
   worker.postMessage({
@@ -108,7 +112,17 @@ setTimeout(function() {
     height: Module.canvas.height,
     boundingClientRect: cloneObject(Module.canvas.getBoundingClientRect()),
     URL: document.URL,
-    preMain: true });
+    preMain: true
+  });
+  if (!Module.proxyGL) {
+    // we have WebGL support in the worker, no need to proxy GL commands. Send just a proxy to the canvas itself.
+    var proxy = Module.canvas.transferControlToOffscreen();
+    worker.postMessage({
+      target: 'gl',
+      op: 'setPrefetched',
+      canvas: proxy,
+    }, [proxy]);
+  }
 }, 0); // delay til next frame, to make sure html is ready
 
 var workerResponded = false;
@@ -140,6 +154,7 @@ worker.onmessage = function worker_onmessage(event) {
           Module.ctx = Module.canvas.getContext(data.type, data.attributes);
           if (data.type !== '2d') {
             // possible GL_DEBUG entry point: Module.ctx = wrapDebugGL(Module.ctx);
+            assert(Module.proxyGL);
             Module.glClient = new WebGLClient();
           }
           break;
@@ -171,6 +186,7 @@ worker.onmessage = function worker_onmessage(event) {
       break;
     }
     case 'gl': {
+      assert(Module.proxyGL);
       Module.glClient.onmessage(data);
       break;
     }
