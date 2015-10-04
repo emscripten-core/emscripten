@@ -54,8 +54,8 @@ Options that are modified or new in *emcc* are listed below:
        see "apply_opt_level()" in tools/shared.py and also
        src/settings.js.
 
-     * To re-enable C++ exception catching, use *-s
-       DISABLE_EXCEPTION_CATCHING=0*.
+     * To re-enable C++ exception catching, use -s
+       DISABLE_EXCEPTION_CATCHING=0.
 
 "-O2"
    Like "-O1", but with various JavaScript-level optimizations and
@@ -85,8 +85,7 @@ Options that are modified or new in *emcc* are listed below:
      JavaScript- specific, so you can run "-Os" on your source files
      for example, and "-O3" during JavaScript generation if you want.
 
-   Note: For more tips on optimizing your code, see *Optimizing
-     Code*.
+   Note: For more tips on optimizing your code, see Optimizing Code.
 
 "-s OPTION=VALUE"
    JavaScript code generation option passed into the Emscripten
@@ -120,9 +119,9 @@ Options that are modified or new in *emcc* are listed below:
      *gcc* (it adds debug information to the object files).
 
    * When compiling from source to JavaScript or bitcode to
-     JavaScript, it is equivalent to *-g3* (discards LLVM debug info
+     JavaScript, it is equivalent to -g3 (discards LLVM debug info
      including C/C++ line numbers, but otherwise keeps as much debug
-     information as possible). Use *-g4* to get line number debugging
+     information as possible). Use -g4 to get line number debugging
      information in JavaScript.
 
 "-g<level>"
@@ -130,7 +129,7 @@ Options that are modified or new in *emcc* are listed below:
    bitcode to JavaScript. Each level builds on the previous level:
 
       * "-g0": Make no effort to keep code debuggable. Will discard
-        LLVM debug information (this is done by default in *-01* and
+        LLVM debug information (this is done by default in -01 and
         higher).
 
       * "-g1": Preserve whitespace (do not minify).
@@ -149,7 +148,7 @@ Options that are modified or new in *emcc* are listed below:
                       _printAnInteger(a + b | 0); // _printAnInteger is human readable.
               }
 
-      * "-g3": Preserve variable names (this is the same as *-g*).
+      * "-g3": Preserve variable names (this is the same as -g).
 
               function _addAndPrint($left, $right) {
                       $left = $left | 0;
@@ -169,9 +168,9 @@ Options that are modified or new in *emcc* are listed below:
 
            Note: * This debugging level may make compilation at
 
-               optimization level *-O1* and above significantly
-               slower, because JavaScript optimization will be limited
-               to one core (the default in "-O0").
+               optimization level -O1 and above significantly slower,
+               because JavaScript optimization will be limited to one
+               core (the default in "-O0").
 
              * Source maps allow you to view and debug the *C/C++
                source code* in your browser's debugger! This works in
@@ -191,7 +190,7 @@ Options that are modified or new in *emcc* are listed below:
    names, but do *not* intend to read the emitted code.
 
 "--tracing"
-   Enable the *Emscripten Tracing API*.
+   Enable the Emscripten Tracing API.
 
 "--emit-symbol-map"
    Save a map file between the minified global names and the original
@@ -305,12 +304,12 @@ Options that are modified or new in *emcc* are listed below:
    then "dir/file.dat" must exist relative to the directory where you
    run *emcc*.
 
-   Note: Embedding files is much less efficient than *preloading*
+   Note: Embedding files is much less efficient than preloading
      them. You should only use it for small files, in small numbers.
      Instead use "--preload-file", which emits efficient binary data.
 
    For more information about the "--embed-file" options, see
-   *Packaging Files*.
+   Packaging Files.
 
 "--preload-file <name>"
    Specify a file to preload before running the compiled code
@@ -322,23 +321,22 @@ Options that are modified or new in *emcc* are listed below:
    **filename.html** is the main file you are compiling to. To run
    your code, you will need both the **.html** and the **.data**.
 
-   Note: This option is similar to *--embed-file*, except that it is
+   Note: This option is similar to --embed-file, except that it is
      only relevant when generating HTML (it uses asynchronous binary
      *XHRs*), or JavaScript that will be used in a web page.
 
    *emcc* runs tools/file_packager.py to do the actual packaging of
    embedded and preloaded files. You can run the file packager
-   yourself if you want (see *Packaging using the file packager
-   tool*). You should then put the output of the file packager in an
-   emcc "--pre-js", so that it executes before your main compiled
-   code.
+   yourself if you want (see Packaging using the file packager tool).
+   You should then put the output of the file packager in an emcc "--
+   pre-js", so that it executes before your main compiled code.
 
    For more information about the "--preload-file" options, see
-   *Packaging Files*.
+   Packaging Files.
 
 "--exclude-file <name>"
-   Files and directories to be excluded from *--embed-file* and
-   *--preload-file*. Wildcards (*) are supported.
+   Files and directories to be excluded from --embed-file and
+   --preload-file. Wildcards (*) are supported.
 
 "--shell-file <path>"
    The path name to a skeleton HTML file used when generating HTML
@@ -351,28 +349,6 @@ Options that are modified or new in *emcc* are listed below:
 
      * This argument is ignored if a target other than HTML is
        specified using the "-o" option.
-
-"--compression <codec>"
-   Compress both the compiled code and embedded/ preloaded files.
-
-   Warning: This option is deprecated.
-
-   "<codec>" should be a triple:
-   "<native_encoder>,<js_decoder>,<js_name>", where:
-
-      * "native_encoder" is a native executable that compresses
-        "stdin" to "stdout" (the simplest possible interface).
-
-      * "js_decoder" is a JavaScript file that implements a decoder.
-
-      * "js_name" is the name of the function to call in the decoder
-        file (which should receive an array/typed array and return an
-        array/typed array.
-
-   Compression only works when generating HTML. When compression is
-   on, all files specified to be preloaded are compressed in one big
-   archive, which is given the same name as the output HTML but with
-   suffix **.data.compress**.
 
 "--minify 0"
    Identical to "-g1".
@@ -392,8 +368,8 @@ Options that are modified or new in *emcc* are listed below:
    script to be run.
 
 "--bind"
-   Compiles the source code using the *Embind* bindings to connect
-   C/C++ and JavaScript.
+   Compiles the source code using the Embind bindings to connect C/C++
+   and JavaScript.
 
 "--ignore-dynamic-linking"
    Tells the compiler to ignore dynamic linking (the user will need to
@@ -478,9 +454,9 @@ Options that are modified or new in *emcc* are listed below:
         and applied; you cannot call any C functions until it arrives.
         This is the default setting when compiling with -O2 or higher.
 
-           Note: The *safest way* to ensure that it is safe to call
-             C functions (the initialisation file has loaded) is to
-             call a notifier function from "main()".
+           Note: The safest way to ensure that it is safe to call C
+             functions (the initialisation file has loaded) is to call
+             a notifier function from "main()".
 
            Note: If you assign a network request to
              "Module.memoryInitializerRequest" (before the script
@@ -494,10 +470,11 @@ Options that are modified or new in *emcc* are listed below:
              all it must provide is a ".response" property containing
              an ArrayBuffer.)
 
-"-Wno-warn-absolute-paths"
-   Suppress warnings about the use of absolute paths in "-I" and "-L"
-   command line directives. This is used to hide the warnings and
-   acknowledge that the explicit use of absolute paths is intentional.
+"-Wwarn-absolute-paths"
+   Enables warnings about the use of absolute paths in "-I" and "-L"
+   command line directives. This is used to warn against unintentional
+   use of absolute paths, which is sometimes dangerous when referring
+   to nonportable local system headers.
 
 "--proxy-to-worker"
    Runs the main application code in a worker, proxying events to it
@@ -508,9 +485,17 @@ Options that are modified or new in *emcc* are listed below:
    suffix ".worker.js" will contain the worker portion.
 
 "--emrun"
-   Enables the generated output to be aware of the *emrun* command
-   line tool. This allows "stdout", "stderr" and "exit(returncode)"
-   capture when running the generated application through *emrun*.
+   Enables the generated output to be aware of the emrun command line
+   tool. This allows "stdout", "stderr" and "exit(returncode)" capture
+   when running the generated application through *emrun*.
+
+"--cpuprofiler"
+   Embeds a simple CPU profiler onto the generated page. Use this to
+   perform cursory interactive performance profiling.
+
+"--memoryprofiler"
+   Embeds a memory allocation tracker onto the generated page. Use
+   this to profile the application usage of the Emscripten HEAP.
 
 "--em-config"
    Specifies the location of the **.emscripten** configuration file
@@ -558,8 +543,8 @@ Options that are modified or new in *emcc* are listed below:
 "--separate-asm"
    Emits asm.js in one file, and the rest of the code in another, and
    emits HTML that loads the asm.js first, in order to reduce memory
-   load during startup. See *Avoid memory spikes by separating out
-   asm.js*.
+   load during startup. See Avoid memory spikes by separating out
+   asm.js.
 
 
 Environment variables

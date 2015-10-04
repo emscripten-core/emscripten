@@ -378,8 +378,8 @@ Options that are modified or new in *emcc* are listed below:
 			.. note:: If you assign a network request to ``Module.memoryInitializerRequest`` (before the script runs), then it will use that request instead of automatically starting a download for you. This is beneficial in that you can, in your HTML, fire off a request for the memory init file before the script actually arrives. For this to work, the network request should be an XMLHttpRequest with responseType set to ``'arraybuffer'``. (You can also put any other object here, all it must provide is a ``.response`` property containing an ArrayBuffer.) 
 
 	
-``-Wno-warn-absolute-paths``
-	Suppress warnings about the use of absolute paths in ``-I`` and ``-L`` command line directives. This is used to hide the warnings and acknowledge that the explicit use of absolute paths is intentional.
+``-Wwarn-absolute-paths``
+  Enables warnings about the use of absolute paths in ``-I`` and ``-L`` command line directives. This is used to warn against unintentional use of absolute paths, which is sometimes dangerous when referring to nonportable local system headers.
 	 
 ``--proxy-to-worker``
 	Runs the main application code in a worker, proxying events to it and output from it. If emitting HTML, this emits a **.html** file, and a separate **.js** file containing the JavaScript to be run in a worker. If emitting JavaScript, the target file name contains the part to be run on the main thread, while a second **.js** file with suffix ".worker.js" will contain the worker portion.
