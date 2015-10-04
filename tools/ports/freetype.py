@@ -78,7 +78,7 @@ def get(ports, settings, shared):
         commands.append([shared.PYTHON, shared.EMCC, os.path.join(dest_path, src), '-DFT2_BUILD_LIBRARY', '-O2', '-o', o, '-I' + dest_path + '/include',
                          '-I' + dest_path + '/truetype', '-I' + dest_path + '/sfnt', '-I' + dest_path + '/autofit', '-I' + dest_path + '/smooth', 
                          '-I' + dest_path + '/raster', '-I' + dest_path + '/psaux', '-I' + dest_path + '/psnames', '-I' + dest_path + '/truetype', 
-                         '-Wno-warn-absolute-paths', '-w',])
+                         '-w',])
         o_s.append(o)
 
       ports.run_commands(commands)

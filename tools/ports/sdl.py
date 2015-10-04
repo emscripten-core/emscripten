@@ -40,7 +40,7 @@ def get(ports, settings, shared):
       for src in srcs:
         o = os.path.join(ports.get_build_dir(), 'sdl2', 'src', src + '.o')
         shared.safe_ensure_dirs(os.path.dirname(o))
-        commands.append([shared.PYTHON, shared.EMCC, os.path.join(ports.get_dir(), 'sdl2', 'SDL2-' + TAG, 'src', src), '-O2', '-o', o, '-I' + dest_include_path, '-O2', '-DUSING_GENERATED_CONFIG_H', '-Wno-warn-absolute-paths', '-w'])
+        commands.append([shared.PYTHON, shared.EMCC, os.path.join(ports.get_dir(), 'sdl2', 'SDL2-' + TAG, 'src', src), '-O2', '-o', o, '-I' + dest_include_path, '-O2', '-DUSING_GENERATED_CONFIG_H', '-w'])
         o_s.append(o)
       ports.run_commands(commands)
       final = os.path.join(ports.get_build_dir(), 'sdl2', 'libsdl2.bc')
