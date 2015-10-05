@@ -168,11 +168,14 @@ static void* get_memory(size_t size, bool malloc=true, size_t alignment=-1, bool
     if (next == start) break;
   }
   // we cycled, so none of them can allocate
-  EM_ASM({
+  int returnNull = EM_ASM_INT_V({
+    if (!ABORTING_MALLOC && !ALLOW_MEMORY_GROWTH) return 1; // malloc can return 0, and we cannot grow
     if (!ALLOW_MEMORY_GROWTH) {
-      abort('Cannot enlarge memory arrays. Either (1) compile with -s TOTAL_MEMORY=X with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with ALLOW_MEMORY_GROWTH which adjusts the size at runtime but prevents some optimizations, or (3) set Module.TOTAL_MEMORY to a higher value before the program runs.');
+      abort(CANNOT_GROW_MEMORY_MESSAGE);
     }
+    return 0;
   });
+  if (returnNull) return 0;
   // memory growth is on, add another chunk
   if (num_spaces + 1 >= MAX_SPACES) abort();
   spaces[num_spaces].init(num_spaces);

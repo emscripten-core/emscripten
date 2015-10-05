@@ -1036,13 +1036,17 @@ if (ENVIRONMENT_IS_PTHREAD) {
 }
 #endif
 
+#if ALLOW_MEMORY_GROWTH == 0
+var CANNOT_GROW_MEMORY_MESSAGE = 'Cannot enlarge memory arrays. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which adjusts the size at runtime but prevents some optimizations, (3) set Module.TOTAL_MEMORY to a higher value before the program runs, or if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ';
+#endif
+
 function enlargeMemory() {
 #if USE_PTHREADS
   abort('Cannot enlarge memory arrays, since compiling with pthreads support enabled (-s USE_PTHREADS=1).');
 #else
 #if ALLOW_MEMORY_GROWTH == 0
 #if ABORTING_MALLOC
-  abort('Cannot enlarge memory arrays. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which adjusts the size at runtime but prevents some optimizations, (3) set Module.TOTAL_MEMORY to a higher value before the program runs, or if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
+  abort(CANNOT_GROW_MEMORY_MESSAGE);
 #else
   return false; // malloc will report failure
 #endif
@@ -1265,6 +1269,7 @@ var SPLIT_MEMORY = {{{ SPLIT_MEMORY }}};
 var SPLIT_MEMORY_MASK = SPLIT_MEMORY - 1;
 var SPLIT_MEMORY_BITS = -1;
 var ALLOW_MEMORY_GROWTH = {{{ ALLOW_MEMORY_GROWTH }}};
+var ABORTING_MALLOC = {{{ ABORTING_MALLOC }}};
 
 Module['SPLIT_MEMORY'] = SPLIT_MEMORY;
 
