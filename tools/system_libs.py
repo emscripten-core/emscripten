@@ -288,17 +288,17 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     else:
       force.add('dlmalloc_threadsafe')
   else:
-    system_libs += [('libc',             'bc', create_libc,                            libc_symbols, [], False),
-                    ('dlmalloc',         'bc', create_dlmalloc_singlethreaded,         [],           [], False),
-                    ('dlmalloc_tracing', 'bc', create_dlmalloc_singlethreaded_tracing, [],           [], False),
-                    ('dlmalloc_split',   'bc', create_dlmalloc_split,                  [],           [], False)]
+    system_libs += [('libc', 'bc', create_libc, libc_symbols, [], False)]
 
     if shared.Settings.EMSCRIPTEN_TRACING:
+      system_libs += [('dlmalloc_tracing', 'bc', create_dlmalloc_singlethreaded_tracing, [], [], False)]
       force.add('dlmalloc_tracing')
     else:
       if shared.Settings.SPLIT_MEMORY:
+        system_libs += [('dlmalloc_split', 'bc', create_dlmalloc_split, [], [], False)]
         force.add('dlmalloc_split')
       else:
+        system_libs += [('dlmalloc', 'bc', create_dlmalloc_singlethreaded, [], [], False)]
         force.add('dlmalloc')
 
   # Go over libraries to figure out which we must include
