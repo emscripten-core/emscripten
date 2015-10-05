@@ -4451,6 +4451,10 @@ function minifyGlobals(ast) {
         ensureMinifiedNames(next);
         vars[i][0] = minified[name] = minifiedNames[next++];
       }
+    } else if (type === 'defun') {
+      var name = node[1];
+      ensureMinifiedNames(next);
+      node[1] = minified[name] = minifiedNames[next++];
     }
   });
   // add all globals in function chunks, i.e. not here but passed to us
@@ -5604,51 +5608,50 @@ function outline(ast) {
   });
 }
 
-function safeHeap(ast) {
-  function fixPtr(ptr, heap) {
-    switch (heap) {
-      case 'HEAP8':   case 'HEAPU8': break;
-      case 'HEAP16':  case 'HEAPU16': {
-        if (ptr[0] === 'binary') {
-          assert(ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 1);
-          ptr = ptr[2]; // skip the shift
-        } else {
-          ptr = ['binary', '*', ptr, ['num', 2]]; // was unshifted, convert to absolute address
-        }
-        break;
+function fixPtr(ptr, heap) {
+  switch (heap) {
+    case 'HEAP8':   case 'HEAPU8': break;
+    case 'HEAP16':  case 'HEAPU16': {
+      if (ptr[0] === 'binary' && ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 1) {
+        ptr = ptr[2]; // skip the shift
+      } else {
+        ptr = ['binary', '*', ptr, ['num', 2]]; // was unshifted, convert to absolute address
       }
-      case 'HEAP32':  case 'HEAPU32': {
-        if (ptr[0] === 'binary') {
-          assert(ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 2);
-          ptr = ptr[2]; // skip the shift
-        } else {
-          ptr = ['binary', '*', ptr, ['num', 4]]; // was unshifted, convert to absolute address
-        }
-        break;
-      }
-      case 'HEAPF32': {
-        if (ptr[0] === 'binary') {
-          assert(ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 2);
-          ptr = ptr[2]; // skip the shift
-        } else {
-          ptr = ['binary', '*', ptr, ['num', 4]]; // was unshifted, convert to absolute address
-        }
-        break;
-      }
-      case 'HEAPF64': {
-        if (ptr[0] === 'binary') {
-          assert(ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 3);
-          ptr = ptr[2]; // skip the shift
-        } else {
-          ptr = ['binary', '*', ptr, ['num', 8]]; // was unshifted, convert to absolute address
-        }
-        break;
-      }
-      default: throw 'bad heap ' + heap;
+      break;
     }
-    ptr = ['binary', '|', ptr, ['num', 0]];
-    return ptr;
+    case 'HEAP32':  case 'HEAPU32': {
+      if (ptr[0] === 'binary' && ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 2) {
+        ptr = ptr[2]; // skip the shift
+      } else {
+        ptr = ['binary', '*', ptr, ['num', 4]]; // was unshifted, convert to absolute address
+      }
+      break;
+    }
+    case 'HEAPF32': {
+      if (ptr[0] === 'binary' && ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 2) {
+        ptr = ptr[2]; // skip the shift
+      } else {
+        ptr = ['binary', '*', ptr, ['num', 4]]; // was unshifted, convert to absolute address
+      }
+      break;
+    }
+    case 'HEAPF64': {
+      if (ptr[0] === 'binary' && ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 3) {
+        ptr = ptr[2]; // skip the shift
+      } else {
+        ptr = ['binary', '*', ptr, ['num', 8]]; // was unshifted, convert to absolute address
+      }
+      break;
+    }
+    default: {
+      return ptr; // unchanged
+    }
   }
+  ptr = ['binary', '|', ptr, ['num', 0]];
+  return ptr;
+}
+
+function safeHeap(ast) {
   var SAFE_HEAP_FUNCS = set('SAFE_HEAP_LOAD', 'SAFE_HEAP_LOAD_D', 'SAFE_HEAP_STORE', 'SAFE_HEAP_STORE_D', 'SAFE_FT_MASK');
   traverseGeneratedFunctions(ast, function(func) {
     if (func[1] in SAFE_HEAP_FUNCS) return null;
@@ -5721,6 +5724,110 @@ function safeHeap(ast) {
       }
     });
   });
+}
+
+function fixPtrSlim(ptr, heap, shell) {
+  switch (heap) {
+    case 'HEAP8':   case 'HEAPU8': {
+      if (ptr[0] === 'binary' && ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 0) {
+        ptr = ['binary', '|', ptr[2], ['num', 0]]; // smaller
+      }
+      break;
+    }
+    case 'HEAP16':  case 'HEAPU16': {
+      if (ptr[0] === 'binary' && ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 1) {
+        ptr = ptr[2]; // skip the shift
+      } else {
+        ptr = ['binary', '*', ptr, ['num', 2]]; // was unshifted, convert to absolute address
+      }
+      break;
+    }
+    case 'HEAP32':  case 'HEAPU32': {
+      if (ptr[0] === 'binary' && ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 2) {
+        ptr = ptr[2]; // skip the shift
+      } else {
+        ptr = ['binary', '*', ptr, ['num', 4]]; // was unshifted, convert to absolute address
+      }
+      break;
+    }
+    case 'HEAPF32': {
+      if (ptr[0] === 'binary' && ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 2) {
+        ptr = ptr[2]; // skip the shift
+      } else {
+        ptr = ['binary', '*', ptr, ['num', 4]]; // was unshifted, convert to absolute address
+      }
+      break;
+    }
+    case 'HEAPF64': {
+      if (ptr[0] === 'binary' && ptr[1] === '>>' && ptr[3][0] === 'num' && ptr[3][1] === 3) {
+        ptr = ptr[2]; // skip the shift
+      } else {
+        ptr = ['binary', '*', ptr, ['num', 8]]; // was unshifted, convert to absolute address
+      }
+      break;
+    }
+    default: {
+      if (!shell) throw 'bad heap ' + heap;
+      return ptr; // unchanged
+    }
+  }
+  return ptr;
+}
+
+function splitMemory(ast, shell) {
+  traverse(ast, function(node, type) {
+    if (type === 'assign') {
+      if (node[2][0] === 'sub' && node[2][1][0] === 'name') {
+        var heap = node[2][1][1];
+        if (parseHeap(heap)) {
+          if (node[1] !== true) assert(0, 'bad assign, split memory cannot handle ' + JSON.stringify(node) + '= to a HEAP');
+          var ptr = fixPtrSlim(node[2][2], heap, shell);
+          var value = node[3];
+          switch (heap) {
+            case 'HEAP8': return ['call', ['name', 'set8'], [ptr, value]];
+            case 'HEAP16': return ['call', ['name', 'set16'], [ptr, value]];
+            case 'HEAP32': return ['call', ['name', 'set32'], [ptr, value]];
+            case 'HEAPU8': return ['call', ['name', 'setU8'], [ptr, value]];
+            case 'HEAPU16': return ['call', ['name', 'setU16'], [ptr, value]];
+            case 'HEAPU32': return ['call', ['name', 'setU32'], [ptr, value]];
+            case 'HEAPF32': return ['call', ['name', 'setF32'], [ptr, value]];
+            case 'HEAPF64': return ['call', ['name', 'setF64'], [ptr, value]];
+            default: if (!shell) throw 'bad heap ' + heap;
+          }
+        }
+      }
+    } else if (type === 'sub') {
+      var target = node[1][1];
+      if (target[0] === 'H') {
+        // heap access
+        var heap = target;
+        var ptr = fixPtrSlim(node[2], heap, shell);
+        switch (heap) {
+          case 'HEAP8': return ['call', ['name', 'get8'], [ptr]];
+          case 'HEAP16': return ['call', ['name', 'get16'], [ptr]];
+          case 'HEAP32': return ['call', ['name', 'get32'], [ptr]];
+          case 'HEAPU8': return ['call', ['name', 'getU8'], [ptr]];
+          case 'HEAPU16': return ['call', ['name', 'getU16'], [ptr]];
+          case 'HEAPU32': return ['call', ['name', 'getU32'], [ptr]];
+          case 'HEAPF32': return ['call', ['name', 'getF32'], [ptr]];
+          case 'HEAPF64': return ['call', ['name', 'getF64'], [ptr]];
+          default: if (!shell) throw 'bad heap ' + heap;
+        }
+      }
+    }
+  });
+  var SPLIT_GETS = set('get8', 'get16', 'get32', 'getU8', 'getU16', 'getU32', 'getF32', 'getF64');
+  traverse(ast, function(node, type) {
+    if (type === 'binary' && node[1] === '|' && node[2][0] === 'call' && node[2][1][0] === 'name' && node[2][1][1] in SPLIT_GETS && node[3][0] === 'num' && node[3][1] === 0) {
+      return node[2];
+    } else if (type === 'unary-prefix' && node[1] === '+' && node[2][0] === 'call' && node[2][1][0] === 'name' && node[2][1][1] in SPLIT_GETS) {
+      return node[2];
+    }
+  });
+}
+
+function splitMemoryShell(ast) {
+  splitMemory(ast, true);
 }
 
 function optimizeFrounds(ast) {
@@ -7566,6 +7673,8 @@ var passes = {
   relocate: relocate,
   outline: outline,
   safeHeap: safeHeap,
+  splitMemory: splitMemory,
+  splitMemoryShell: splitMemoryShell,
   optimizeFrounds: optimizeFrounds,
   ensureLabelSet: ensureLabelSet,
   emterpretify: emterpretify,

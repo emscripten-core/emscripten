@@ -376,6 +376,9 @@ function JSify(data, functionsOnly) {
       print('DYNAMIC_BASE = DYNAMICTOP = Runtime.alignMemory(STACK_MAX);\n');
       print('assert(DYNAMIC_BASE < TOTAL_MEMORY, "TOTAL_MEMORY not big enough for stack");\n');
     }
+    if (SPLIT_MEMORY) {
+      print('assert(STACK_MAX < SPLIT_MEMORY, "SPLIT_MEMORY size must be big enough so the entire static memory + stack can fit in one chunk, need " + STACK_MAX);\n');
+    }
 
     if (asmLibraryFunctions.length > 0) {
       print('// ASM_LIBRARY FUNCTIONS');

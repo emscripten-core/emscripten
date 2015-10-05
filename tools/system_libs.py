@@ -195,6 +195,15 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   def create_dlmalloc_multithreaded_tracing(libname):
     return create_dlmalloc(libname, ['-O2', '-s', 'USE_PTHREADS=1', '--tracing'])
 
+  def create_dlmalloc_split(libname):
+    dlmalloc_o = in_temp('dl' + libname)
+    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-o', dlmalloc_o, '-O2', '-DMSPACES', '-DONLY_MSPACES'])
+    split_malloc_o = in_temp('sm' + libname)
+    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'split_malloc.cpp'), '-o', split_malloc_o, '-O2'])
+    lib = in_temp(libname)
+    shared.Building.link([dlmalloc_o, split_malloc_o], lib)
+    return lib
+
   # Setting this in the environment will avoid checking dependencies and make building big projects a little faster
   # 1 means include everything; otherwise it can be the name of a lib (libcxx, etc.)
   # You can provide 1 to include everything, or a comma-separated list with the ones you want
@@ -279,13 +288,18 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     else:
       force.add('dlmalloc_threadsafe')
   else:
-    system_libs += [('libc',             'bc', create_libc,                            libc_symbols, [], False),
-                    ('dlmalloc',         'bc', create_dlmalloc_singlethreaded,         [],           [], False),
-                    ('dlmalloc_tracing', 'bc', create_dlmalloc_singlethreaded_tracing, [],           [], False)]
+    system_libs += [('libc', 'bc', create_libc, libc_symbols, [], False)]
+
     if shared.Settings.EMSCRIPTEN_TRACING:
+      system_libs += [('dlmalloc_tracing', 'bc', create_dlmalloc_singlethreaded_tracing, [], [], False)]
       force.add('dlmalloc_tracing')
     else:
-      force.add('dlmalloc')
+      if shared.Settings.SPLIT_MEMORY:
+        system_libs += [('dlmalloc_split', 'bc', create_dlmalloc_split, [], [], False)]
+        force.add('dlmalloc_split')
+      else:
+        system_libs += [('dlmalloc', 'bc', create_dlmalloc_singlethreaded, [], [], False)]
+        force.add('dlmalloc')
 
   # Go over libraries to figure out which we must include
   def maybe_noexcept(name):

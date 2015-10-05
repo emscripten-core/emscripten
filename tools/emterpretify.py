@@ -1073,7 +1073,7 @@ __ATPRERUN__.push(function() {
     assert(relocations[i] %% 4 === 0);
     assert(relocations[i] >= 0 && relocations[i] < eb + %d); // in range
     assert(HEAPU32[eb + relocations[i] >> 2] + eb < (-1 >>> 0), [i, relocations[i]]); // no overflows
-    HEAPU32[eb + relocations[i] >> 2] += eb;
+    HEAPU32[eb + relocations[i] >> 2] = HEAPU32[eb + relocations[i] >> 2] + eb;
   }
 });
 ''' % len(all_code)]

@@ -1795,6 +1795,8 @@ int f() {
        ['asm', 'registerizeHarder', 'asmLastOpts', 'minifyWhitespace']), # issue 3520
       (path_from_root('tests', 'optimizer', 'null_else.js'), [open(path_from_root('tests', 'optimizer', 'null_else-output.js')).read(), open(path_from_root('tests', 'optimizer', 'null_else-output2.js')).read()],
        ['asm', 'registerizeHarder', 'asmLastOpts', 'minifyWhitespace']), # issue 3549
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer-splitMemory.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-splitMemory-output.js')).read(),
+       ['splitMemory']),
     ]:
       print input, passes
 
@@ -4881,9 +4883,10 @@ int main() {
     self.assertContained('''Warning: Enlarging memory arrays, this is not fast! 16777216,1543503872\n''', output)
 
   def test_failing_alloc(self):
-    for pre_fail, post_fail in [
-      ('', ''),
-      ('EM_ASM( Module.temp = DYNAMICTOP );', 'EM_ASM( assert(Module.temp === DYNAMICTOP, "must not adjust DYNAMICTOP when an alloc fails!") );')
+    for pre_fail, post_fail, opts in [
+      ('', '', []),
+      ('EM_ASM( Module.temp = DYNAMICTOP );', 'EM_ASM( assert(Module.temp === DYNAMICTOP, "must not adjust DYNAMICTOP when an alloc fails!") );', []),
+      ('', '', ['-s', 'SPLIT_MEMORY=' + str(16*1024*1024)]),
     ]:
       for growth in [0, 1]:
         for aborting in [0, 1]:
@@ -4924,7 +4927,7 @@ int main() {
   printf("managed another malloc!\n");
 }
 ''' % (pre_fail, post_fail))
-          args = [PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')]
+          args = [PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')] + opts
           if growth: args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
           if not aborting: args += ['-s', 'ABORTING_MALLOC=0']
           print args, pre_fail
@@ -5311,6 +5314,335 @@ main(int argc, char **argv)
     assert sizes[1] < sizes[0] # lto reduces size
     assert sizes[2] > sizes[0] # fake lto is aggressive at increasing code size
     assert sizes[3] not in set([sizes[0], sizes[1], sizes[2]]) # mode 3 is different (deterministic builds means this tests an actual change)
+
+  def test_split_memory(self): # make sure multiple split memory chunks get used
+    open('src.c', 'w').write(r'''
+#include <emscripten.h>
+#include <stdlib.h>
+int main() {
+  int x = 5;
+  EM_ASM_({
+    var allocs = [];
+    allocs.push([]);
+    allocs.push([]);
+    allocs.push([]);
+    allocs.push([]);
+    var ptr = $0;
+    assert(ptr >= STACK_BASE && ptr < STACK_MAX, 'ptr should be on stack, but ' + [STACK_BASE, STACK_MAX, ptr]);
+    function getIndex(x) {
+      return x >> SPLIT_MEMORY_BITS;
+    }
+    assert(ptr < SPLIT_MEMORY, 'in first chunk');
+    assert(getIndex(ptr) === 0, 'definitely in first chunk');
+    // allocate into other chunks
+    do {
+      var t = Module._malloc(1024*1024);
+      allocs[getIndex(t)].push(t);
+      Module.print('allocating, got in ' + getIndex(t));
+    } while (getIndex(t) === 0);
+    assert(getIndex(t) === 1, 'allocated into second chunk');
+    do {
+      var t = Module._malloc(1024*1024);
+      allocs[getIndex(t)].push(t);
+      Module.print('more allocating, got in ' + getIndex(t));
+    } while (getIndex(t) === 1);
+    assert(getIndex(t) === 2, 'into third chunk');
+    do {
+      var t = Module._malloc(1024*1024);
+      allocs[getIndex(t)].push(t);
+      Module.print('more allocating, got in ' + getIndex(t));
+    } while (getIndex(t) === 2);
+    assert(getIndex(t) === 3, 'into third chunk');
+    // write values
+    assert(allocs[1].length > 5 && allocs[2].length > 5);
+    for (var i = 0; i < allocs[1].length; i++) {
+      HEAPU8[allocs[1][i]] = i & 255
+    }
+    for (var i = 0; i < allocs[2].length; i++) {
+      HEAPU8[allocs[2][i]] = (i*i) & 255;
+    }
+    for (var i = 0; i < allocs[1].length; i++) {
+      assert(HEAPU8[allocs[1][i]] === (i & 255));
+    }
+    for (var i = 0; i < allocs[2].length; i++) {
+      assert(HEAPU8[allocs[2][i]] === ((i*i) & 255));
+    }
+    Module.print('success.');
+  }, &x);
+}
+''')
+    for opts in [0, 1, 2]:
+      print opts
+      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
+      self.assertContained('success.', run_js('a.out.js'))
+
+  def test_split_memory_2(self): # make allocation starts in the first chunk, and moves forward properly
+    open('src.c', 'w').write(r'''
+#include <emscripten.h>
+#include <stdlib.h>
+#include <assert.h>
+int split_memory = 0;
+int alloc_where_is_it() {
+  static void *last;
+  void *ptr = malloc(1024);
+  static int counter = 0;
+  if (last && (counter++ % 2 == 1)) ptr = realloc(last, 512*1024); // throw in some reallocs of a previous allocation
+  last = ptr;
+  unsigned x = (unsigned)ptr;
+  return x / split_memory;
+}
+int main() {
+  split_memory = EM_ASM_INT_V({
+    return SPLIT_MEMORY;
+  });
+  int counter = 0;
+  while (alloc_where_is_it() == 0) {
+    counter++;
+  }
+  printf("allocations in first chunk: %d\n", counter);
+  assert(counter > 10); // less in first chunk
+  while (alloc_where_is_it() == 1) {
+    counter++;
+  }
+  printf("allocations in first chunk: %d\n", counter);
+  assert(counter > 20);
+  counter = 0;
+  while (alloc_where_is_it() == 2) {
+    counter++;
+  }
+  printf("allocations in second chunk: %d\n", counter);
+  assert(counter > 20);
+  EM_ASM( Module.print('success.') );
+}
+''')
+    for opts in [0, 1, 2]:
+      print opts
+      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
+      self.assertContained('success.', run_js('a.out.js'))
+
+  def test_split_memory_sbrk(self):
+    open('src.c', 'w').write(r'''
+#include <emscripten.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <assert.h>
+int split_memory;
+int where(int x) {
+  return x / split_memory;
+}
+int main() {
+  split_memory = EM_ASM_INT_V({
+    return SPLIT_MEMORY;
+  });
+  int sbrk_0 = (int)sbrk(0);
+  printf("sbrk(0): %d\n", sbrk_0);
+  assert(sbrk_0 > 0 && sbrk_0 != -1);
+  int sbrk_index = where(sbrk_0);
+  assert(sbrk_index > 0 && sbrk_index < 10);
+  assert(sbrk(0) == (void*)sbrk_0);
+  int one = (int)sbrk(10);
+  printf("one: %d\n", one);
+  assert(sbrk_0 + 10 == sbrk(0));
+  int two = (int)sbrk(20);
+  printf("two: %d\n", two);
+  assert(sbrk_0 + 10 == two);
+  assert(sbrk(-20) == (void*)(two + 20));
+  assert(sbrk(-10) == (void*)two);
+  int bad = sbrk(split_memory * 2);
+  assert(bad == -1);
+  EM_ASM( Module.print('success.') );
+}
+''')
+    for opts in [0, 1, 2]:
+      print opts
+      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
+      self.assertContained('success.', run_js('a.out.js'))
+
+  def test_split_memory_faking(self): # fake HEAP8 etc. objects have some faked fake method. they are fake
+    open('src.c', 'w').write(r'''
+#include <emscripten.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <assert.h>
+int main() {
+  EM_ASM({
+    var x = Module._malloc(1024);
+    // set
+    HEAPU8.set([1,2,3,4], x);
+    assert(get8(x+0) === 1);
+    assert(get8(x+1) === 2);
+    assert(get8(x+2) === 3);
+    assert(get8(x+3) === 4);
+    // subarray
+    var s1 = HEAPU8.subarray(x+2, x+4);
+    assert(s1 instanceof Uint8Array);
+    assert(s1.length === 2);
+    assert(s1[0] === 3);
+    assert(s1[1] === 4);
+    assert(get8(x+2) === 3);
+    s1[0] = 57;
+    assert(get8(x+2) === 57);
+    // subarray without second param
+    var s2 = HEAPU8.subarray(x+2);
+    assert(s2 instanceof Uint8Array);
+    assert(s2.length > 2);
+    assert(s2[0] === 57);
+    assert(s2[1] === 4);
+    assert(get8(x+2) === 57);
+    s2[0] = 98;
+    assert(get8(x+2) === 98);
+    // buffer.slice
+    var b = HEAPU8.buffer.slice(x, x+4);
+    assert(b instanceof ArrayBuffer);
+    assert(b.byteLength === 4);
+    var s = Uint8Array(b);
+    assert(s[0] === 1);
+    assert(s[1] === 2);
+    assert(s[2] === 98);
+    assert(s[3] === 4);
+    // check for a bananabread-discovered bug
+    var s32 = HEAPU32.subarray(x >> 2, x + 4 >> 2);
+    assert(s32 instanceof Uint32Array);
+    assert(s32.length === 1);
+    assert(s32[0] === 0x04620201, s32[0]);
+    // misc subarrays, check assertions only
+    SPLIT_MEMORY = 256;
+    SPLIT_MEMORY_BITS = 8;
+    function getChunk(x) {
+      return x >> SPLIT_MEMORY_BITS;
+    }
+    assert(TOTAL_MEMORY >= SPLIT_MEMORY*3);
+    var p = Module.print;
+    var e = Module.printErr;
+    Module.printErr = Module.print = function(){};
+    var fail = false;
+    if (!buffers[1]) allocateSplitChunk(1); // we will slice into this
+    if (!buffers[2]) allocateSplitChunk(2); // we will slice into this
+    TOP:
+    for (var i = 0; i < SPLIT_MEMORY*3; i++) {
+      HEAPU8.subarray(i);
+      if ((i&3) === 0) HEAPU32.subarray(i >> 2);
+      for (var j = 1; j < SPLIT_MEMORY*3; j++) {
+        //printErr([i, j]);
+        if (getChunk(i) == getChunk(j-1) || j <= i) {
+          HEAPU8.subarray(i, j);
+          if ((i&3) === 0) HEAPU32.subarray(i >> 2, j >> 2);
+        } else {
+          // expect failures
+          try {
+            HEAPU8.subarray(i, j);
+            fail = ['U8', i, j];
+            break TOP;
+          } catch (e) {}
+          if ((i&3) === 0 && (j&3) === 0) {
+            try {
+              HEAPU32.subarray(i >> 2, j >> 2);
+              fail = ['U32', i, j];
+              break TOP;
+            } catch (e) {}
+          }
+          break; // stop inner loop, once we saw different chunks, go to a new i
+        }
+      }
+    }
+    Module.print = p;
+    Module.printErr = e;
+    if (fail) Module.print('FAIL. ' + fail);
+    else Module.print('success.');
+  });
+}
+''')
+    for opts in [0, 1, 2]:
+      print opts
+      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
+      self.assertContained('success.', run_js('a.out.js'))
+
+  def test_split_memory_release(self):
+    open('src.c', 'w').write(r'''
+#include <emscripten.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <assert.h>
+int main() {
+  EM_ASM({
+    assert(buffers[0]); // always here
+    assert(!buffers[1]);
+    assert(!buffers[2]);
+    function getIndex(x) {
+      return x >> SPLIT_MEMORY_BITS;
+    }
+    do {
+      var t = Module._malloc(1024*1024);
+      Module.print('allocating, got in ' + getIndex(t));
+    } while (getIndex(t) === 0);
+    assert(getIndex(t) === 1, 'allocated into first chunk');
+    assert(buffers[1]); // has been allocated now
+    do {
+      var t = Module._malloc(1024*1024);
+      Module.print('allocating, got in ' + getIndex(t));
+    } while (getIndex(t) === 1);
+    assert(getIndex(t) === 2, 'allocated into second chunk');
+    assert(buffers[2]); // has been allocated now
+    Module._free(t);
+    assert(!buffers[2]); // has been freed now
+    var more = [];
+    for (var i = 0 ; i < 1024; i++) {
+      more.push(Module._malloc(10));
+    }
+    assert(buffers[2]); // has been allocated again
+    for (var i = 0 ; i < 1024; i++) {
+      Module._free(more[i]);
+    }
+    assert(!buffers[2]); // has been freed again
+    Module.print('success.');
+  });
+}
+''')
+    for opts in [0, 1, 2]:
+      print opts
+      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
+      self.assertContained('success.', run_js('a.out.js'))
+
+  def test_split_memory_use_existing(self):
+    open('src.c', 'w').write(r'''
+#include <emscripten.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <assert.h>
+int main() {
+  EM_ASM({
+    function getIndex(x) {
+      return x >> SPLIT_MEMORY_BITS;
+    }
+    var t;
+    do {
+      t = Module._malloc(1024*1024);
+    } while (getIndex(t) === 0);
+    assert(getIndex(t) === 1, 'allocated into first chunk');
+    assert(!buffers[2]);
+    var existing = new Uint8Array(1024); // ok to be smaller
+    allocateSplitChunk(2, existing.buffer);
+    assert(buffers[2]);
+    existing[0] = 12;
+    existing[50] = 98;
+    var p = SPLIT_MEMORY*2;
+    assert(HEAPU8[p+0] === 12 && HEAPU8[p+50] === 98); // mapped into the normal memory space!
+    HEAPU8[p+33] = 201;
+    assert(existing[33] === 201); // works both ways
+    do {
+      t = Module._malloc(1024*1024);
+    } while (getIndex(t) === 1);
+    assert(getIndex(t) === 3, 'should skip chunk 2, since it is used by us, but seeing ' + getIndex(t));
+    assert(HEAPU8[p+0] === 12 && HEAPU8[p+50] === 98);
+    assert(existing[33] === 201);
+    Module.print('success.');
+  });
+}
+''')
+    for opts in [0, 1, 2]:
+      print opts
+      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
+      self.assertContained('success.', run_js('a.out.js'))
 
   def test_sixtyfour_bit_return_value(self):
     # This test checks that the most significant 32 bits of a 64 bit long are correctly made available

@@ -957,6 +957,23 @@ try:
   if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
     shared.Settings.ALIASING_FUNCTION_POINTERS = 0
 
+  if shared.Settings.SPLIT_MEMORY:
+    assert shared.Settings.SPLIT_MEMORY & (shared.Settings.SPLIT_MEMORY-1) == 0, 'SPLIT_MEMORY must be a power of 2'
+    if shared.Settings.ASM_JS == 1:
+      logging.warning('not all asm.js optimizations are possible with SPLIT_MEMORY, disabling those')
+      shared.Settings.ASM_JS = 2
+    if shared.Settings.SAFE_HEAP:
+      shared.Settings.SAFE_HEAP = 0
+      shared.Settings.SAFE_SPLIT_MEMORY = 1 # we use our own infrastructure
+    assert not shared.Settings.RELOCATABLE, 'no SPLIT_MEMORY with RELOCATABLE'
+    assert not shared.Settings.USE_PTHREADS, 'no SPLIT_MEMORY with pthreads'
+    if not js_opts:
+      js_opts = True
+      logging.debug('enabling js opts for SPLIT_MEMORY')
+    if use_closure_compiler:
+      use_closure_compiler = False
+      logging.warning('cannot use closure compiler on split memory, for now, disabling')
+
   if shared.Settings.STB_IMAGE and final_suffix in JS_CONTAINING_SUFFIXES:
     input_files.append((next_arg_index, shared.path_from_root('third_party', 'stb_image.c')))
     next_arg_index += 1
@@ -1325,6 +1342,9 @@ try:
   log_time('emscript (llvm=>js)')
 
   # Embed and preload files
+  if shared.Settings.SPLIT_MEMORY:
+    no_heap_copy = True # copying into the heap is risky when split - the chunks might be too small for the file package!
+
   if len(preload_files) + len(embed_files) > 0:
     logging.debug('setting up files')
     file_args = []
@@ -1535,8 +1555,10 @@ try:
 
       if shared.Settings.PRECISE_F32: js_optimizer_queue += ['optimizeFrounds']
 
-  def do_minify():
+  def do_minify(): # minifies the code. this is also when we do certain optimizations that must be done right before or after minification
     global js_optimizer_queue
+
+    if shared.Settings.SPLIT_MEMORY: js_optimizer_queue += ['splitMemory', 'simplifyExpressions'] # must be done before minification
 
     if opt_level >= 2:
       if debug_level < 2 and not use_closure_compiler == 2:

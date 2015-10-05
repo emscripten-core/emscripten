@@ -5890,7 +5890,7 @@ var LibraryGL = {
         if (!GL.currArrayBuffer) {
           GLImmediate.firstVertex = end ? start : TOTAL_MEMORY; // if we don't know the start, set an invalid value and we will calculate it later from the indices
           GLImmediate.lastVertex = end ? end+1 : 0;
-          GLImmediate.vertexData = {{{ makeHEAPView('F32', 'GLImmediate.vertexPointer', '(end ? GLImmediate.vertexPointer + (end+1)*GLImmediate.stride : TOTAL_MEMORY)') }}}; // XXX assuming float
+          GLImmediate.vertexData = HEAPF32.subarray(GLImmediate.vertexPointer >> 2, end ? (GLImmediate.vertexPointer + (end+1)*GLImmediate.stride) >> 2 : undefined); // XXX assuming float
         }
         GLImmediate.flush(count, 0, indices);
         GLImmediate.mode = -1;

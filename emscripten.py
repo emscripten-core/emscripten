@@ -182,6 +182,8 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
 
     settings['MAX_GLOBAL_ALIGN'] = metadata['maxGlobalAlign']
 
+    assert not (metadata['simd'] and settings['SPLIT_MEMORY']), 'SIMD is used, but not supported in SPLIT_MEMORY'
+
     # Save settings to a file to work around v8 issue 1579
     settings_file = temp_files.get('.txt').name
     def save_settings():
@@ -223,9 +225,13 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
 
     staticbump = mem_init.count(',')+1
     while staticbump % 16 != 0: staticbump += 1
-    pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;
+    pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;%s
   /* global initializers */ %s __ATINIT__.push(%s);
-  %s''' % (staticbump, 'if (!ENVIRONMENT_IS_PTHREAD)' if settings['USE_PTHREADS'] else '', global_initializers, mem_init)) # XXX wrong size calculation!
+  %s''' % (staticbump,
+           'assert(STATICTOP < SPLIT_MEMORY, "SPLIT_MEMORY size must be big enough so the entire static memory, need " + STATICTOP);' if settings['SPLIT_MEMORY'] else '',
+           'if (!ENVIRONMENT_IS_PTHREAD)' if settings['USE_PTHREADS'] else '',
+           global_initializers,
+           mem_init))
 
     if settings['SIDE_MODULE']:
       pre = pre.replace('Runtime.GLOBAL_BASE', 'gb').replace('{{{ STATIC_BUMP }}}', str(staticbump))
@@ -789,6 +795,85 @@ if (typeof SharedFloat64Array !== 'undefined') Module.asmGlobalArg['SharedFloat6
     else:
       shared_array_buffer = ''
 
+    first_in_asm = ''
+    if settings['SPLIT_MEMORY']:
+      if not settings['SAFE_SPLIT_MEMORY']:
+        first_in_asm += '''
+function get8(ptr) {
+  ptr = ptr | 0;
+  return HEAP8s[ptr >> SPLIT_MEMORY_BITS][ptr & SPLIT_MEMORY_MASK] | 0;
+}
+function get16(ptr) {
+  ptr = ptr | 0;
+  return HEAP16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] | 0;
+}
+function get32(ptr) {
+  ptr = ptr | 0;
+  return HEAP32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] | 0;
+}
+function getU8(ptr) {
+  ptr = ptr | 0;
+  return HEAPU8s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 0] | 0;
+}
+function getU16(ptr) {
+  ptr = ptr | 0;
+  return HEAPU16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] | 0;
+}
+function getU32(ptr) {
+  ptr = ptr | 0;
+  return HEAPU32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] | 0;
+}
+function getF32(ptr) {
+  ptr = ptr | 0;
+  return +HEAPF32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2]; // TODO: fround when present
+}
+function getF64(ptr) {
+  ptr = ptr | 0;
+  return +HEAPF64s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 3];
+}
+function set8(ptr, value) {
+  ptr = ptr | 0;
+  value = value | 0;
+  HEAP8s[ptr >> SPLIT_MEMORY_BITS][ptr & SPLIT_MEMORY_MASK] = value;
+}
+function set16(ptr, value) {
+  ptr = ptr | 0;
+  value = value | 0;
+  HEAP16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] = value;
+}
+function set32(ptr, value) {
+  ptr = ptr | 0;
+  value = value | 0;
+  HEAP32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] = value;
+}
+function setU8(ptr, value) {
+  ptr = ptr | 0;
+  value = value | 0;
+  HEAPU8s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 0] = value;
+}
+function setU16(ptr, value) {
+  ptr = ptr | 0;
+  value = value | 0;
+  HEAPU16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] = value;
+}
+function setU32(ptr, value) {
+  ptr = ptr | 0;
+  value = value | 0;
+  HEAPU32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] = value;
+}
+function setF32(ptr, value) {
+  ptr = ptr | 0;
+  value = +value;
+  HEAPF32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] = value;
+}
+function setF64(ptr, value) {
+  ptr = ptr | 0;
+  value = +value;
+  HEAPF64s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 3] = value;
+}
+'''
+      first_in_asm += 'buffer = new ArrayBuffer(32); // fake\n'
+
     funcs_js = ['''
 %s
 Module%s = %s;
@@ -798,11 +883,14 @@ Module%s = %s;
 var asm = (function(global, env, buffer) {
   %s
   %s
+  %s
 ''' % (asm_setup,
        access_quote('asmGlobalArg'), the_global,
        shared_array_buffer,
        access_quote('asmLibraryArg'), sending,
-       "'use asm';" if not metadata.get('hasInlineJS') and settings['ASM_JS'] == 1 else "'almost asm';", '''
+       "'use asm';" if not metadata.get('hasInlineJS') and settings['ASM_JS'] == 1 else "'almost asm';", 
+       first_in_asm,
+       '''
   var HEAP8 = new global%s(buffer);
   var HEAP16 = new global%s(buffer);
   var HEAP32 = new global%s(buffer);

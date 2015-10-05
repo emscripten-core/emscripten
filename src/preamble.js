@@ -562,7 +562,7 @@ function UTF8ArrayToString(u8Array, idx) {
 // a copy of that string as a Javascript String object.
 
 function UTF8ToString(ptr) {
-  return UTF8ArrayToString(HEAPU8, ptr);
+  return UTF8ArrayToString({{{ heapAndOffset('HEAPU8', 'ptr') }}});
 }
 {{{ maybeExport('UTF8ToString') }}}
 
@@ -640,7 +640,7 @@ function stringToUTF8(str, outPtr, maxBytesToWrite) {
 #if ASSERTIONS
   assert(typeof maxBytesToWrite == 'number', 'stringToUTF8(str, outPtr, maxBytesToWrite) is missing the third parameter that specifies the length of the output buffer!');
 #endif
-  return stringToUTF8Array(str, HEAPU8, outPtr, maxBytesToWrite);
+  return stringToUTF8Array(str, {{{ heapAndOffset('HEAPU8', 'outPtr') }}}, maxBytesToWrite);
 }
 {{{ maybeExport('stringToUTF8') }}}
 
@@ -1036,13 +1036,17 @@ if (ENVIRONMENT_IS_PTHREAD) {
 }
 #endif
 
+#if ALLOW_MEMORY_GROWTH == 0
+var CANNOT_GROW_MEMORY_MESSAGE = 'Cannot enlarge memory arrays. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which adjusts the size at runtime but prevents some optimizations, (3) set Module.TOTAL_MEMORY to a higher value before the program runs, or if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ';
+#endif
+
 function enlargeMemory() {
 #if USE_PTHREADS
   abort('Cannot enlarge memory arrays, since compiling with pthreads support enabled (-s USE_PTHREADS=1).');
 #else
 #if ALLOW_MEMORY_GROWTH == 0
 #if ABORTING_MALLOC
-  abort('Cannot enlarge memory arrays. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which adjusts the size at runtime but prevents some optimizations, (3) set Module.TOTAL_MEMORY to a higher value before the program runs, or if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
+  abort(CANNOT_GROW_MEMORY_MESSAGE);
 #else
   return false; // malloc will report failure
 #endif
@@ -1248,6 +1252,8 @@ if (typeof Atomics === 'undefined') {
 }
 
 #else // USE_PTHREADS
+
+#if SPLIT_MEMORY == 0
 buffer = new ArrayBuffer(TOTAL_MEMORY);
 HEAP8 = new Int8Array(buffer);
 HEAP16 = new Int16Array(buffer);
@@ -1257,11 +1263,272 @@ HEAPU16 = new Uint16Array(buffer);
 HEAPU32 = new Uint32Array(buffer);
 HEAPF32 = new Float32Array(buffer);
 HEAPF64 = new Float64Array(buffer);
+#else // SPLIT_MEMORY
+// make sure total memory is a multiple of the split memory size
+var SPLIT_MEMORY = {{{ SPLIT_MEMORY }}};
+var SPLIT_MEMORY_MASK = SPLIT_MEMORY - 1;
+var SPLIT_MEMORY_BITS = -1;
+var ALLOW_MEMORY_GROWTH = {{{ ALLOW_MEMORY_GROWTH }}};
+var ABORTING_MALLOC = {{{ ABORTING_MALLOC }}};
+
+Module['SPLIT_MEMORY'] = SPLIT_MEMORY;
+
+totalMemory = TOTAL_MEMORY;
+if (totalMemory % SPLIT_MEMORY) {
+  totalMemory += SPLIT_MEMORY - (totalMemory % SPLIT_MEMORY);
+}
+if (totalMemory === SPLIT_MEMORY) totalMemory *= 2;
+if (totalMemory !== TOTAL_MEMORY) {
+  TOTAL_MEMORY = totalMemory;
+#if ASSERTIONS == 2
+  Module.printErr('increasing TOTAL_MEMORY to ' + TOTAL_MEMORY + ' to be a multiple>1 of the split memory size ' + SPLIT_MEMORY + ')');
+#endif
+}
+
+var buffers = [], HEAP8s = [], HEAP16s = [], HEAP32s = [], HEAPU8s = [], HEAPU16s = [], HEAPU32s = [], HEAPF32s = [], HEAPF64s = [];
+
+// Allocates a split chunk, a range of memory of size SPLIT_MEMORY. Generally data is not provided, and a new
+// buffer is allocated, this is what happens when malloc works. However, you can provide your own buffer,
+// which then lets you access it at address [ i*SPLIT_MEMORY, (i+1)*SPLIT_MEMORY ).
+// The function returns true if it succeeds. It can also throw an exception if no data is provided and
+// the browser fails to allocate the buffer.
+function allocateSplitChunk(i, data) {
+  if (buffers[i]) return false; // already taken
+  var curr = data ? data : new ArrayBuffer(SPLIT_MEMORY);
+  assert(curr instanceof ArrayBuffer);
+  buffers[i] = curr;
+  HEAP8s[i] = new Int8Array(curr);
+  HEAP16s[i] = new Int16Array(curr);
+  HEAP32s[i] = new Int32Array(curr);
+  HEAPU8s[i] = new Uint8Array(curr);
+  HEAPU16s[i] = new Uint16Array(curr);
+  HEAPU32s[i] = new Uint32Array(curr);
+  HEAPF32s[i] = new Float32Array(curr);
+  HEAPF64s[i] = new Float64Array(curr);
+  return true;
+}
+function freeSplitChunk(i) {
+  assert(buffers[i] && HEAP8s[i]);
+  assert(i > 0); // cannot free the first chunk
+  buffers[i] = HEAP8s[i] = HEAP16s[i] = HEAP32s[i] = HEAPU8s[i] = HEAPU16s[i] = HEAPU32s[i] = HEAPF32s[i] = HEAPF64s[i] = null;
+}
+
+(function() {
+  for (var i = 0; i < TOTAL_MEMORY / SPLIT_MEMORY; i++) {
+    buffers[i] = HEAP8s[i] = HEAP16s[i] = HEAP32s[i] = HEAPU8s[i] = HEAPU16s[i] = HEAPU32s[i] = HEAPF32s[i] = HEAPF64s[i] = null;
+  }
+
+  var temp = SPLIT_MEMORY;
+  while (temp) {
+    temp >>= 1;
+    SPLIT_MEMORY_BITS++;
+  }
+
+  allocateSplitChunk(0); // first chunk is for core runtime, static, stack, etc., always must be initialized
+
+  // support HEAP8.subarray etc.
+  var SHIFT_TABLE = [0, 0, 1, 0, 2, 0, 0, 0, 3];
+  function fake(real) {
+    var bytes = real[0].BYTES_PER_ELEMENT;
+    var shifts = SHIFT_TABLE[bytes];
+    assert(shifts > 0 || bytes == 1);
+    var that = {
+      BYTES_PER_ELEMENT: bytes,
+      set: function(array, offset) {
+        if (offset === undefined) offset = 0;
+        // potentially split over multiple chunks
+        while (array.length > 0) {
+          var chunk = offset >> SPLIT_MEMORY_BITS;
+          var relative = offset & SPLIT_MEMORY_MASK;
+          if (relative + (array.length << shifts) < SPLIT_MEMORY) {
+            real[chunk].set(array, relative); // all fits in this chunk
+            break;
+          } else {
+            var currSize = SPLIT_MEMORY - relative;
+            assert(currSize % that.BYTES_PER_ELEMENT === 0);
+            var lastIndex = currSize >> shifts;
+            real[chunk].set(array.subarray(0, lastIndex), relative);
+            // increments
+            array = array.subarray(lastIndex);
+            offset += currSize;
+          }
+        }
+      },
+      subarray: function(from, to) {
+        from = from << shifts;
+        var start = from >> SPLIT_MEMORY_BITS;
+        if (to === undefined) {
+          to = (start + 1) << SPLIT_MEMORY_BITS;
+        } else {
+          to = to << shifts;
+        }
+        to = Math.max(from, to); // if to is smaller, we'll get nothing anyway, same as to == from
+        if (from < to) {
+          var end = (to - 1) >> SPLIT_MEMORY_BITS; // -1, since we do not actually read the last address
+          assert(start === end, 'subarray cannot span split chunks');
+        }
+        if (to > from && (to & SPLIT_MEMORY_MASK) == 0) {
+          // avoid the mask on the next line giving 0 for the end
+          return real[start].subarray((from & SPLIT_MEMORY_MASK) >> shifts); // just return to the end of the chunk
+        }
+        return real[start].subarray((from & SPLIT_MEMORY_MASK) >> shifts, (to & SPLIT_MEMORY_MASK) >> shifts);
+      },
+      buffer: {
+        slice: function(from, to) {
+          assert(to, 'TODO: this is an actual copy, so we could support a slice across multiple chunks');
+          return new Uint8Array(HEAPU8.subarray(from, to)).buffer;
+        },
+      },
+    };
+    return that;
+  }
+  HEAP8 = fake(HEAP8s);
+  HEAP16 = fake(HEAP16s);
+  HEAP32 = fake(HEAP32s);
+  HEAPU8 = fake(HEAPU8s);
+  HEAPU16 = fake(HEAPU16s);
+  HEAPU32 = fake(HEAPU32s);
+  HEAPF32 = fake(HEAPF32s);
+  HEAPF64 = fake(HEAPF64s);
+})();
+
+#if SAFE_SPLIT_MEMORY
+function checkPtr(ptr, shifts) {
+  if (ptr <= 0) abort('segmentation fault storing to address ' + ptr);
+  if (ptr !== ((ptr >> shifts) << shifts)) abort('alignment error storing to address ' + ptr + ', which was expected to be aligned to a shift of ' + shifts);
+  if ((ptr >> SPLIT_MEMORY_BITS) !== (ptr + Math.pow(2, shifts) - 1 >> SPLIT_MEMORY_BITS)) abort('segmentation fault, write spans split chunks ' + [ptr, shifts]); 
+}
+#endif
+
+function get8(ptr) {
+  ptr = ptr | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 0);
+#endif
+  return HEAP8s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 0] | 0;
+}
+function get16(ptr) {
+  ptr = ptr | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 1);
+#endif
+  return HEAP16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] | 0;
+}
+function get32(ptr) {
+  ptr = ptr | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 2);
+#endif
+  return HEAP32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] | 0;
+}
+function getU8(ptr) {
+  ptr = ptr | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 0);
+#endif
+  return HEAPU8s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 0] | 0;
+}
+function getU16(ptr) {
+  ptr = ptr | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 1);
+#endif
+  return HEAPU16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] | 0;
+}
+function getU32(ptr) {
+  ptr = ptr | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 2);
+#endif
+  return HEAPU32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] | 0;
+}
+function getF32(ptr) {
+  ptr = ptr | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 2);
+#endif
+  return +HEAPF32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2];
+}
+function getF64(ptr) {
+  ptr = ptr | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 3);
+#endif
+  return +HEAPF64s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 3];
+}
+function set8(ptr, value) {
+  ptr = ptr | 0;
+  value = value | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 0);
+#endif
+  HEAP8s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 0] = value;
+}
+function set16(ptr, value) {
+  ptr = ptr | 0;
+  value = value | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 1);
+#endif
+  HEAP16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] = value;
+}
+function set32(ptr, value) {
+  ptr = ptr | 0;
+  value = value | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 2);
+#endif
+  HEAP32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] = value;
+}
+function setU8(ptr, value) {
+  ptr = ptr | 0;
+  value = value | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 0);
+#endif
+  HEAPU8s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 0] = value;
+}
+function setU16(ptr, value) {
+  ptr = ptr | 0;
+  value = value | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 1);
+#endif
+  HEAPU16s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 1] = value;
+}
+function setU32(ptr, value) {
+  ptr = ptr | 0;
+  value = value | 0;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 2);
+#endif
+  HEAPU32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] = value;
+}
+function setF32(ptr, value) {
+  ptr = ptr | 0;
+  value = +value;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 2);
+#endif
+  HEAPF32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] = value;
+}
+function setF64(ptr, value) {
+  ptr = ptr | 0;
+  value = +value;
+#if SAFE_SPLIT_MEMORY
+  checkPtr(ptr, 3);
+#endif
+  HEAPF64s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 3] = value;
+}
+#endif // SPLIT_MEMORY
+
 #endif // USE_PTHREADS
 
 // Endianness check (note: assumes compiler arch was little-endian)
+#if SAFE_SPLIT_MEMORY == 0
 HEAP32[0] = 255;
 assert(HEAPU8[0] === 255 && HEAPU8[3] === 0, 'Typed arrays 2 must be run on a little-endian system');
+#endif
 
 Module['HEAP'] = HEAP;
 Module['buffer'] = buffer;
