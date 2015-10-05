@@ -486,8 +486,8 @@ for file_ in data_files:
       'filename': file_['dstpath'],
       'start': file_['data_start'],
       'end': file_['data_end'],
-      'crunched': '1' if crunch and filename.endswith(CRUNCH_INPUT_SUFFIX) else '0',
-      'audio': '1' if filename[-4:] in AUDIO_SUFFIXES else '0',
+      'crunched': 1 if crunch and filename.endswith(CRUNCH_INPUT_SUFFIX) else 0,
+      'audio': 1 if filename[-4:] in AUDIO_SUFFIXES else 0,
     })
   else:
     assert 0

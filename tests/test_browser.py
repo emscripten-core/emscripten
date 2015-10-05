@@ -1565,15 +1565,20 @@ void *getBindBuffer() {
     self.btest('s3tc.c', reference='s3tc.png', args=['--preload-file', 'screenshot.dds', '-s', 'LEGACY_GL_EMULATION=1', '-s', 'GL_FFP_ONLY=1'])
 
   def test_s3tc_crunch(self):
-    shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
-    shutil.copyfile(path_from_root('tests', 'bloom.dds'), 'bloom.dds')
-    shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
-    Popen([PYTHON, FILE_PACKAGER, 'test.data', '--crunch', '--preload', 'ship.dds', 'bloom.dds', 'water.dds'], stdout=open('pre.js', 'w')).communicate()
-    assert os.stat('test.data').st_size < 0.5*(os.stat('ship.dds').st_size+os.stat('bloom.dds').st_size+os.stat('water.dds').st_size), 'Compressed should be smaller than dds'
-    shutil.move('ship.dds', 'ship.donotfindme.dds') # make sure we load from the compressed
-    shutil.move('bloom.dds', 'bloom.donotfindme.dds') # make sure we load from the compressed
-    shutil.move('water.dds', 'water.donotfindme.dds') # make sure we load from the compressed
-    self.btest('s3tc_crunch.c', reference='s3tc_crunch.png', reference_slack=11, args=['--pre-js', 'pre.js', '-s', 'LEGACY_GL_EMULATION=1'])
+    def test(args):
+      print args
+      shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
+      shutil.copyfile(path_from_root('tests', 'bloom.dds'), 'bloom.dds')
+      shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
+      open('text.txt', 'w').write('123')
+      Popen([PYTHON, FILE_PACKAGER, 'test.data', '--crunch', '--preload', 'ship.dds', 'bloom.dds', 'water.dds'] + args, stdout=open('pre.js', 'w')).communicate()
+      assert os.stat('test.data').st_size < 0.5*(os.stat('ship.dds').st_size+os.stat('bloom.dds').st_size+os.stat('water.dds').st_size), 'Compressed should be smaller than dds'
+      shutil.move('ship.dds', 'ship.donotfindme.dds') # make sure we load from the compressed
+      shutil.move('bloom.dds', 'bloom.donotfindme.dds') # make sure we load from the compressed
+      shutil.move('water.dds', 'water.donotfindme.dds') # make sure we load from the compressed
+      self.btest('s3tc_crunch.c', reference='s3tc_crunch.png', reference_slack=11, args=['--pre-js', 'pre.js', '-s', 'LEGACY_GL_EMULATION=1'])
+    test([])
+    test(['text.txt']) # also package a non-crunch file
 
   def test_s3tc_crunch_split(self): # load several datafiles/outputs of file packager
     shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
