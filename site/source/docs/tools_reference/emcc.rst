@@ -282,6 +282,9 @@ Options that are modified or new in *emcc* are listed below:
 ``--exclude-file <name>``
 	Files and directories to be excluded from :ref:`--embed-file <emcc-embed-file>` and :ref:`--preload-file <emcc-preload-file>`. Wildcards (*) are supported.
 
+``--use-preload-plugins``
+	Tells the file packager to run preload plugins on the files as they are loaded. This performs tasks like decoding images and audio using the browser's codecs.
+
 .. _emcc-shell-file:
 	
 ``--shell-file <path>``

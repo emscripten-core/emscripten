@@ -42,7 +42,7 @@ int main() {
 
   printf("prepare..\n");
 
-  assert(emscripten_async_prepare("screenshot.jpg", ready, NULL) == 0);
+  assert(emscripten_run_preload_plugins("screenshot.jpg", ready, NULL) == 0);
 
   return 0;
 }
