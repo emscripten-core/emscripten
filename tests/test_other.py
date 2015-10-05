@@ -5495,7 +5495,7 @@ int main() {
     var b = HEAPU8.buffer.slice(x, x+4);
     assert(b instanceof ArrayBuffer);
     assert(b.byteLength === 4);
-    var s = Uint8Array(b);
+    var s = new Uint8Array(b);
     assert(s[0] === 1);
     assert(s[1] === 2);
     assert(s[2] === 98);
