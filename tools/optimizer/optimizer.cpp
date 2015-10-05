@@ -897,6 +897,7 @@ Ref simplifyCondition(Ref node) {
 StringSet ELIMINATION_SAFE_NODES("assign call if toplevel do return label switch binary unary-prefix"); // do is checked carefully, however
 StringSet IGNORABLE_ELIMINATOR_SCAN_NODES("num toplevel string break continue dot"); // dot can only be STRING_TABLE.*
 StringSet ABORTING_ELIMINATOR_SCAN_NODES("new object function defun for while array throw"); // we could handle some of these, TODO, but nontrivial (e.g. for while, the condition is hit multiple times after the body)
+StringSet HEAP_NAMES("HEAP8 HEAP16 HEAP32 HEAPU8 HEAPU16 HEAPU32 HEAPF32 HEAPF64");
 
 bool isTempDoublePtrAccess(Ref node) { // these are used in bitcasts; they are not really affecting memory, and should cause no invalidation
   assert(node[0] == SUB);
@@ -1234,7 +1235,8 @@ void eliminate(Ref ast, bool memSafe) {
           IString name = node[1]->getIString();
           if (tracked.has(name)) {
             doEliminate(name, node);
-          } else if (!asmData.isLocal(name) && !callsInvalidated) {
+          } else if (!asmData.isLocal(name) && !callsInvalidated && (memSafe || !HEAP_NAMES.has(name))) { // ignore HEAP8 etc when not memory safe, these are ok to
+                                                                                                          // access, e.g. SIMD_Int32x4_load(HEAP8, ...)
             invalidateCalls();
             callsInvalidated = true;
           }

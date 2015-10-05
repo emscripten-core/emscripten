@@ -1787,6 +1787,8 @@ int f() {
        ['asm', 'eliminate', 'registerize', 'asmLastOpts', 'last']),
       (path_from_root('tests', 'optimizer', 'simd.js'), open(path_from_root('tests', 'optimizer', 'simd-output.js')).read(),
        ['asm', 'eliminate']), # eliminate, just enough to trigger asm normalization/denormalization
+      (path_from_root('tests', 'optimizer', 'simd.js'), open(path_from_root('tests', 'optimizer', 'simd-output-memSafe.js')).read(),
+       ['asm', 'eliminateMemSafe']),
       (path_from_root('tests', 'optimizer', 'safeLabelSetting.js'), open(path_from_root('tests', 'optimizer', 'safeLabelSetting-output.js')).read(),
        ['asm', 'safeLabelSetting']), # eliminate, just enough to trigger asm normalization/denormalization
       (path_from_root('tests', 'optimizer', 'null_if.js'), [open(path_from_root('tests', 'optimizer', 'null_if-output.js')).read(), open(path_from_root('tests', 'optimizer', 'null_if-output2.js')).read()],
@@ -2344,10 +2346,26 @@ int main()
       out = run_js('a.out.js', engine=engine, stderr=PIPE, full_output=True)
       self.assertContained('File size: 724', out)
 
-  def test_simd(self):
-    assert get_clang_version() == '3.7'
-    Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-s', 'SIMD=1', '-DSP', '-s', 'PRECISE_F32=1']).communicate()
-    self.assertContained('Unrolled Single  Precision', run_js('a.out.js'))
+  def check_simd(self, expected_simds, expected_out):
+    if SPIDERMONKEY_ENGINE in JS_ENGINES:
+      out = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True)
+      self.validate_asmjs(out)
+    else:
+      out = run_js('a.out.js')
+    self.assertContained(expected_out, out)
+
+    src = open('a.out.js').read()
+    asm = src[src.find('// EMSCRIPTEN_START_FUNCS'):src.find('// EMSCRIPTEN_END_FUNCS')]
+    simds = asm.count('SIMD_')
+    assert simds >= expected_simds, 'expecting to see at least %d SIMD* uses, but seeing %d' % (expected_simds, simds)
+
+  def test_autovectorize_linpack(self):
+    Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-s', 'SIMD=1', '-DSP', '-s', 'PRECISE_F32=1', '--profiling']).communicate()
+    self.check_simd(100, 'Unrolled Single  Precision')
+
+  def test_autovectorize_bullet(self):
+    Building.emcc(path_from_root('tests','bullet_hello_world.cpp'), ['-O2', '-s', 'SIMD=1', '-s', 'INLINING_LIMIT=1', '--llvm-lto', '2', '-s', 'USE_BULLET=1', '-profiling'], output_filename='a.out.js')
+    self.check_simd(100, 'BULLET RUNNING')
 
   def test_dependency_file(self):
     # Issue 1732: -MMD (and friends) create dependency files that need to be
@@ -4870,8 +4888,9 @@ int main() {
       ('EM_ASM( Module.temp = DYNAMICTOP );', 'EM_ASM( assert(Module.temp === DYNAMICTOP, "must not adjust DYNAMICTOP when an alloc fails!") );', []),
       ('', '', ['-s', 'SPLIT_MEMORY=' + str(16*1024*1024)]),
     ]:
-      print 'test opts:', pre_fail, post_fail, opts
-      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
+      for growth in [0, 1]:
+        for aborting in [0, 1]:
+          open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
@@ -4898,6 +4917,7 @@ int main() {
   assert(has);
   printf("an allocation failed!\n");
   while (1) {
+    assert(allocs.size() > 0);
     void *curr = allocs.back();
     allocs.pop_back();
     free(curr);
@@ -4906,12 +4926,21 @@ int main() {
   }
   printf("managed another malloc!\n");
 }
-      ''' % (pre_fail, post_fail))
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'ALLOW_MEMORY_GROWTH=1'] + opts).communicate()[1]
-      assert os.path.exists('a.out.js')
-      output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
-      # just care about message regarding allocating over 1GB of memory
-      self.assertContained('''managed another malloc!\n''', output)
+''' % (pre_fail, post_fail))
+          args = [PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')] + opts
+          if growth: args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
+          if not aborting: args += ['-s', 'ABORTING_MALLOC=0']
+          print args, pre_fail
+          check_execute(args)
+          output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
+          if (not aborting) or growth: # growth also disables aborting
+            # we should fail eventually, then free, then succeed
+            self.assertContained('''managed another malloc!\n''', output)
+          else:
+            # we should see an abort
+            self.assertContained('''abort("Cannot enlarge memory arrays''', output)
+            self.assertContained('''compile with  -s ALLOW_MEMORY_GROWTH=1 ''', output)
+            self.assertContained('''compile with  -s ABORTING_MALLOC=0 ''', output)
 
   def test_libcxx_minimal(self):
     open('vector.cpp', 'w').write(r'''
@@ -5187,7 +5216,6 @@ int main() {
     self.assertContained('#define __EMSCRIPTEN__ 1', out) # all our defines should show up
 
   def test_emcc_wasm_0(self):
-    try_delete(Cache.get_path('load-wasm-worker.js')) # XXX force a rebuild, for temporary testing purposes
     default_error_message = 'cannot use WASM=1 when full asm.js validation was disabled'
     for args, ok, error_message in [
       ([], False, ''),

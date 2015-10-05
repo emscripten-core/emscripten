@@ -59,7 +59,7 @@ def create_load_wasm_worker():
   check_call([PYTHON, emscripten.EMCC, emscripten.path_from_root('third_party', 'wasm-polyfill', 'src', 'unpack.cpp'),
                       emscripten.path_from_root('tools', 'optimizer', 'parser.cpp'),
                       '-o', output] + \
-                      '-O3 -profiling -std=c++11 --memory-init-file 0 --llvm-lto 1 -s TOTAL_MEMORY=67108864 -s WASM=0'.split(' ')) # XXX profiling for temporary testing purposes
+                      '-O3 -std=c++11 --memory-init-file 0 --llvm-lto 1 -s TOTAL_MEMORY=67108864 -s WASM=0'.split(' '))
   assert os.path.exists(output)
   open(output, 'a').write(open(emscripten.path_from_root('third_party', 'wasm-polyfill', 'src', 'load-wasm-worker.js')).read())
   return output

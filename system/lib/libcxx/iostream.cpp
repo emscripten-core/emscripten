@@ -31,7 +31,7 @@ _ALIGNAS_TYPE (wostream) _LIBCPP_FUNC_VIS char wcout[sizeof(wostream)];
 _ALIGNAS_TYPE (wostream) _LIBCPP_FUNC_VIS char wcerr[sizeof(wostream)];
 _ALIGNAS_TYPE (wostream) _LIBCPP_FUNC_VIS char wclog[sizeof(wostream)];
 
-ios_base::Init __start_std_streams;
+ios_base::Init __attribute__((init_priority(101))) __start_std_streams; // XXX EMSCRIPTEN: ensure a high priority for this constructor, see #3824
 
 ios_base::Init::Init()
 {

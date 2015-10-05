@@ -3632,6 +3632,7 @@ function registerizeHarder(ast) {
 var ELIMINATION_SAFE_NODES = set('var', 'assign', 'call', 'if', 'toplevel', 'do', 'return', 'label', 'switch', 'binary', 'unary-prefix'); // do is checked carefully, however
 var IGNORABLE_ELIMINATOR_SCAN_NODES = set('num', 'toplevel', 'string', 'break', 'continue', 'dot'); // dot can only be STRING_TABLE.*
 var ABORTING_ELIMINATOR_SCAN_NODES = set('new', 'object', 'function', 'defun', 'for', 'while', 'array', 'throw'); // we could handle some of these, TODO, but nontrivial (e.g. for while, the condition is hit multiple times after the body)
+var HEAP_NAMES = set('HEAP8', 'HEAP16', 'HEAP32', 'HEAPU8', 'HEAPU16', 'HEAPU32', 'HEAPF32', 'HEAPF64');
 
 function isTempDoublePtrAccess(node) { // these are used in bitcasts; they are not really affecting memory, and should cause no invalidation
   assert(node[0] === 'sub');
@@ -3986,7 +3987,8 @@ function eliminate(ast, memSafe) {
             var name = node[1];
             if (name in tracked) {
               doEliminate(name, node);
-            } else if (!(name in locals) && !callsInvalidated) {
+            } else if (!(name in locals) && !callsInvalidated && (memSafe || !(name in HEAP_NAMES))) { // ignore HEAP8 etc when not memory safe, these are ok to
+                                                                                                       // access, e.g. SIMD_Int32x4_load(HEAP8, ...)
               invalidateCalls();
               callsInvalidated = true;
             }

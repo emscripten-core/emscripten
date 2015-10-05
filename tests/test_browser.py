@@ -2417,6 +2417,13 @@ window.close = function() {
       open('test.html', 'w').write(html2)
     self.btest('sdl2_gl_frames_swap.c', reference='sdl2_gl_frames_swap.png', args=['--proxy-to-worker', '-s', 'GL_TESTING=1', '-s', 'USE_SDL=2'], manual_reference=True, post_build=post_build)
 
+  def test_sdl2_ttf(self):
+    shutil.copy2(path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), self.get_dir())
+    self.btest('sdl2_ttf.c', reference='sdl2_ttf.png',
+      args=['-O2', '-s', 'USE_SDL=2', '-s', 'USE_SDL_TTF=2', '--embed-file', 'LiberationSansBold.ttf'],
+      message='You should see colorful "hello" and "world" in the window',
+      timeout=30)
+
   def test_emterpreter_async(self):
     for opts in [0, 1, 2, 3]:
       print opts
@@ -2458,6 +2465,9 @@ window.close = function() {
 
   def test_mainloop_reschedule(self):
     self.btest('mainloop_reschedule.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Os'], timeout=30)
+
+  def test_mainloop_infloop(self):
+    self.btest('mainloop_infloop.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1'], timeout=30)
 
   def test_emterpreter_async_iostream(self):
     self.btest('emterpreter_async_iostream.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1'])

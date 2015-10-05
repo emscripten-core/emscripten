@@ -1559,6 +1559,21 @@ int main () {
 }
     ''', 'exception caught: std::bad_typeid')
 
+  def test_iostream_ctors(self): # iostream stuff must be globally constructed before user global constructors, so iostream works in global constructors
+    self.do_run(r'''
+#include <iostream>
+
+struct A {
+  A() { std::cout << "bug"; }
+};
+A a;
+
+int main() {
+  std::cout << "free code" << std::endl;
+  return 0;
+}
+''', "bugfree code")
+
   def test_exit_stack(self):
     if Settings.ASM_JS: return self.skip('uses report_stack without exporting')
 

@@ -129,6 +129,10 @@ Module['callMain'] = Module.callMain = function callMain(args) {
   argv.push(0);
   argv = allocate(argv, 'i32', ALLOC_NORMAL);
 
+#if EMTERPRETIFY_ASYNC
+  var initialEmtStackTop = asm.emtStackSave();
+#endif
+
   try {
 #if BENCHMARK
     var start = Date.now();
@@ -151,6 +155,10 @@ Module['callMain'] = Module.callMain = function callMain(args) {
     } else if (e == 'SimulateInfiniteLoop') {
       // running an evented main loop, don't immediately exit
       Module['noExitRuntime'] = true;
+#if EMTERPRETIFY_ASYNC
+      // an infinite loop keeps the C stack around, but the emterpreter stack must be unwound - we do not want to restore the call stack at infinite loop
+      asm.emtStackRestore(initialEmtStackTop);
+#endif
       return;
     } else {
       if (e && typeof e === 'object' && e.stack) Module.printErr('exception thrown: ' + [e, e.stack]);
