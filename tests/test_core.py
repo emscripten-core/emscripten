@@ -6020,6 +6020,13 @@ return malloc(size);
     self.emcc_args = self.emcc_args + ['-msse', '-msse2']
     self.do_run_from_file(src, output)
 
+  def test_simd15(self):
+    if self.is_emterpreter(): return self.skip('todo')
+    test_path = path_from_root('tests', 'core', 'test_simd15')
+    src, output = (test_path + s for s in ('.c', '.out'))
+    self.emcc_args = self.emcc_args + ['-msse', '-msse2']
+    self.do_run_from_file(src, output)
+
   def test_simd_dyncall(self):
     if self.is_emterpreter(): return self.skip('todo')
     if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
