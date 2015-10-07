@@ -1847,7 +1847,9 @@ void *getBindBuffer() {
     os.chdir(path_from_root())
     args = [PYTHON, path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
     if emscripten_browser is not None:
-      args += ['--browser', emscripten_browser]
+      # If EMSCRIPTEN_BROWSER carried command line arguments to pass to the browser, (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun, so strip them out.
+      browser_name = shlex.split(emscripten_browser)[0]
+      args += ['--browser', browser_name]
     args += [os.path.join(outdir, 'hello_world.html'), '1', '2', '--3']
     process = subprocess.Popen(args)
     process.communicate()
