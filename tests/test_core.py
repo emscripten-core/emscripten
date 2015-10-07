@@ -6022,6 +6022,7 @@ return malloc(size);
 
   def test_simd15(self):
     if self.is_emterpreter(): return self.skip('todo')
+    if self.run_name == 'asm1': return self.skip('legalizing -O1 output is much harder, and not worth it - we work on -O0 and -O2+')
     test_path = path_from_root('tests', 'core', 'test_simd15')
     src, output = (test_path + s for s in ('.c', '.out'))
     self.emcc_args = self.emcc_args + ['-msse', '-msse2']
