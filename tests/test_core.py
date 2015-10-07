@@ -6440,8 +6440,11 @@ def process(filename):
           'quoted', # current fastcomp limitations FIXME
           'atomicrmw_unaligned', # TODO XXX
         ]: continue
-        if self.is_emterpreter() and os.path.basename(shortname) in ['funcptr']: continue # test writes to memory we store out bytecode! test is invalid
-
+        if self.is_emterpreter() and os.path.basename(shortname) in [
+          'funcptr', # test writes to memory we store out bytecode! test is invalid
+          'i1282vecnback', # uses simd
+        ]:
+          continue
         if os.path.basename(shortname) in need_no_leave_inputs_raw:
           if 'EMCC_LEAVE_INPUTS_RAW' in os.environ: del os.environ['EMCC_LEAVE_INPUTS_RAW']
           Settings.NO_FILESYSTEM = 0
