@@ -2126,6 +2126,10 @@ seeked= file.
       assert False
 
   def test_crunch(self):
+    try:
+      print 'Crunch is located at ' + CRUNCH
+    except:
+      return self.skip('Skipped: Crunch is not present on the current system. Please install it (manually or via emsdk) and make sure it is activated in the Emscripten configuration file.')
     # crunch should not be run if a .crn exists that is more recent than the .dds
     shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
     time.sleep(0.1)

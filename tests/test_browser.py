@@ -1565,6 +1565,10 @@ void *getBindBuffer() {
     self.btest('s3tc.c', reference='s3tc.png', args=['--preload-file', 'screenshot.dds', '-s', 'LEGACY_GL_EMULATION=1', '-s', 'GL_FFP_ONLY=1'])
 
   def test_s3tc_crunch(self):
+    try:
+      print 'Crunch is located at ' + CRUNCH
+    except:
+      return self.skip('Skipped: Crunch is not present on the current system. Please install it (manually or via emsdk) and make sure it is activated in the Emscripten configuration file.')
     def test(args):
       print args
       shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
@@ -1581,6 +1585,10 @@ void *getBindBuffer() {
     test(['text.txt']) # also package a non-crunch file
 
   def test_s3tc_crunch_split(self): # load several datafiles/outputs of file packager
+    try:
+      print 'Crunch is located at ' + CRUNCH
+    except:
+      return self.skip('Skipped: Crunch is not present on the current system. Please install it (manually or via emsdk) and make sure it is activated in the Emscripten configuration file.')
     shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
     shutil.copyfile(path_from_root('tests', 'bloom.dds'), 'bloom.dds')
     shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
