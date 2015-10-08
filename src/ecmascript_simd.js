@@ -1339,7 +1339,9 @@ if (typeof SIMD.Uint8x16.shuffle === "undefined") {
       typeof require === 'function' &&
       typeof global === 'object')
      ? global
-     : this);
+     : typeof self === 'object'
+       ? self
+       : this);
 
 // XXX Emscripten-specific below XXX
 
