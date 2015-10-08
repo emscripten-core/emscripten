@@ -11,6 +11,7 @@ def SIMD(f):
   def decorated(self):
     if self.is_emterpreter(): return self.skip('simd not supported in emterpreter yet')
     if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
+    self.use_all_engines = True # checks both native in spidermonkey and polyfill in others
     f(self)
   return decorated
 

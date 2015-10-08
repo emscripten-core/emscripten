@@ -113,6 +113,7 @@ class RunnerCore(unittest.TestCase):
   def setUp(self):
     Settings.reset()
     self.banned_js_engines = []
+    self.use_all_engines = use_all_engines
     if not self.save_dir:
       dirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
     else:
@@ -546,12 +547,13 @@ class RunnerCore(unittest.TestCase):
     for engine in self.banned_js_engines: assert type(engine) == list
     js_engines = filter(lambda engine: engine[0] not in map(lambda engine: engine[0], self.banned_js_engines), js_engines)
     if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
-    if len(js_engines) > 1 and not use_all_engines:
+    if len(js_engines) > 1 and not self.use_all_engines:
       if SPIDERMONKEY_ENGINE in js_engines: # make sure to get asm.js validation checks, using sm
         js_engines = [SPIDERMONKEY_ENGINE]
       else:
         js_engines = js_engines[:1]
     for engine in js_engines:
+      #print 'test in', engine
       js_output = self.run_generated_code(engine, filename + '.o.js', args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
       try:
         self.assertContained(expected_output, js_output.replace('\r\n', '\n'))
