@@ -13,22 +13,40 @@ def get(ports, settings, shared):
       srcs = 'IMG.c IMG_bmp.c IMG_gif.c IMG_jpg.c IMG_lbm.c IMG_pcx.c IMG_png.c IMG_pnm.c IMG_tga.c IMG_tif.c IMG_xcf.c IMG_xpm.c IMG_xv.c IMG_webp.c IMG_ImageIO.m'.split(' ')
       commands = []
       o_s = []
+      defs = []
+
+      for fmt in settings.SDL2_IMAGE_FORMATS:
+        defs.append('-DLOAD_' + fmt.upper())
+
+      if 'png' in settings.SDL2_IMAGE_FORMATS:
+        defs += ['-s', 'USE_LIBPNG=1']
+
       for src in srcs:
         o = os.path.join(ports.get_build_dir(), 'sdl2-image', src + '.o')
-        commands.append([shared.PYTHON, shared.EMCC, os.path.join(ports.get_dir(), 'sdl2-image', 'SDL2_image-' + TAG, src), '-O2', '-s', 'USE_SDL=2', '-o', o, '-w'])
+        commands.append([shared.PYTHON, shared.EMCC, os.path.join(ports.get_dir(), 'sdl2-image', 'SDL2_image-' + TAG, src), '-O2', '-s', 'USE_SDL=2', '-o', o, '-w'] + defs)
         o_s.append(o)
       shared.safe_ensure_dirs(os.path.dirname(o_s[0]))
       ports.run_commands(commands)
       final = os.path.join(ports.get_build_dir(), 'sdl2-image', 'libsdl2_image.bc')
       shared.Building.link(o_s, final)
       return final
-    return [shared.Cache.get('sdl2-image', create, what='port')]
+
+    settings.SDL2_IMAGE_FORMATS.sort()
+    formats = '-'.join(settings.SDL2_IMAGE_FORMATS)
+
+    name = 'sdl2-image'
+    if formats != '':
+        name = name + '-' + formats
+
+    return [shared.Cache.get(name, create, what='port')]
   else:
     return []
 
 def process_dependencies(settings):
   if settings.USE_SDL_IMAGE == 2:
     settings.USE_SDL = 2
+  if 'png' in settings.SDL2_IMAGE_FORMATS:
+    settings.USE_LIBPNG = 1
 
 def process_args(ports, args, settings, shared):
   if settings.USE_SDL_IMAGE == 2:

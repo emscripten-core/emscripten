@@ -18,12 +18,14 @@ int testImage(SDL_Renderer* renderer, const char* fileName) {
   assert(image->pitch == 4*image->w);
   int result = image->w;
 
+#ifndef NO_PRELOADED
   int w, h;
   char *data = emscripten_get_preloaded_image_data(fileName, &w, &h);
 
   assert(data);
   assert(w == image->w);
   assert(h == image->h);
+#endif
 
   SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer, image);
 
@@ -32,7 +34,10 @@ int testImage(SDL_Renderer* renderer, const char* fileName) {
   SDL_DestroyTexture (tex);
 
   SDL_FreeSurface (image);
+
+#ifndef NO_PRELOADED
   free(data);
+#endif
 
   return result;
 }
