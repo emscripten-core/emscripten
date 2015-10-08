@@ -1582,54 +1582,6 @@ int main() {
 }
 ''', "bugfree code")
 
-  def test_exit_stack(self):
-    if Settings.ASM_JS: return self.skip('uses report_stack without exporting')
-
-    Settings.INLINING_LIMIT = 50
-    Settings.NO_EXIT_RUNTIME = 1
-
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
-
-      extern "C" {
-        extern void report_stack(int x);
-      }
-
-      char moar() {
-        char temp[125];
-        for (int i = 0; i < 125; i++) temp[i] = i*i;
-        for (int i = 1; i < 125; i++) temp[i] += temp[i-1]/2;
-        if (temp[100] != 99) exit(1);
-        return temp[120];
-      }
-
-      int main(int argc, char *argv[]) {
-        report_stack((int)alloca(4));
-        printf("*%d*\n", moar());
-        return 0;
-      }
-    '''
-
-    open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
-      var initialStack = -1;
-      var _report_stack = function(x) {
-        Module.print('reported');
-        initialStack = x;
-      }
-      var Module = {
-        postRun: function() {
-          Module.print('Exit Status: ' + EXITSTATUS);
-          Module.print('postRun');
-          assert(initialStack == STACKTOP, [initialStack, STACKTOP]);
-          Module.print('ok.');
-        }
-      };
-    ''')
-
-    self.emcc_args += ['--pre-js', 'pre.js']
-    self.do_run(src, '''reported\n*0*\nExit Status: 0\npostRun\nok.\n''')
-
   def test_class(self):
     test_path = path_from_root('tests', 'core', 'test_class')
     src, output = (test_path + s for s in ('.in', '.out'))
