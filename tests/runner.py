@@ -865,6 +865,8 @@ if __name__ == '__main__':
 
   if use_all_engines:
     print '(using ALL js engines)'
+  else:
+    logging.warning('use EM_ALL_ENGINES=1 in the env to run against all JS engines, which is slower but provides more coverage')
 
   # Sanity checks
   total_engines = len(JS_ENGINES)
