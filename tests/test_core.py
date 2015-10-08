@@ -7,6 +7,13 @@ from tools.shared import *
 from tools.line_endings import check_line_endings
 from runner import RunnerCore, path_from_root, checked_sanity, test_modes, get_zlib_library, get_bullet_library
 
+def SIMD(f):
+  def decorated(self):
+    if self.is_emterpreter(): return self.skip('simd not supported in emterpreter yet')
+    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
+    f(self)
+  return decorated
+
 class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
   def is_emterpreter(self):
     return 'EMTERPRETIFY=1' in self.emcc_args
@@ -5843,8 +5850,8 @@ return malloc(size);
     test()
     Settings.SPLIT_MEMORY = 0
 
+  @SIMD
   def test_sse1(self):
-    if self.is_emterpreter(): return self.skip('todo')
     if 'SAFE_HEAP=1' in self.emcc_args and SPIDERMONKEY_ENGINE in JS_ENGINES:
       self.banned_js_engines += [SPIDERMONKEY_ENGINE]
       print 'Skipping test_sse1 with SAFE_HEAP=1 on SpiderMonkey, since it fails due to NaN canonicalization.'
@@ -5856,8 +5863,8 @@ return malloc(size);
       self.do_run(open(path_from_root('tests', 'test_sse1.cpp'), 'r').read(), 'Success!')
 
   # Tests the full SSE1 API.
+  @SIMD
   def test_sse1_full(self):
-    if self.is_emterpreter(): return self.skip('todo')
     Popen([CLANG, path_from_root('tests', 'test_sse1_full.cpp'), '-o', 'test_sse1_full', '-D_CRT_SECURE_NO_WARNINGS=1'] + get_clang_native_args(), stdout=PIPE).communicate()
     native_result, err = Popen('./test_sse1_full', stdout=PIPE).communicate()
     native_result = native_result.replace('\r\n', '\n') # Windows line endings fix
@@ -5869,8 +5876,8 @@ return malloc(size);
       self.do_run(open(path_from_root('tests', 'test_sse1_full.cpp'), 'r').read(), native_result)
 
   # Tests the full SSE2 API.
+  @SIMD
   def test_sse2_full(self):
-    if self.is_emterpreter(): return self.skip('todo')
     args = []
     if '-O0' in self.emcc_args: args += ['-D_DEBUG=1']
     Popen([CLANG, path_from_root('tests', 'test_sse2_full.cpp'), '-o', 'test_sse2_full', '-D_CRT_SECURE_NO_WARNINGS=1'] + args + get_clang_native_args(), stdout=PIPE).communicate()
@@ -5883,155 +5890,121 @@ return malloc(size);
       self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests'), '-msse2'] + args
       self.do_run(open(path_from_root('tests', 'test_sse2_full.cpp'), 'r').read(), native_result)
 
+  @SIMD
   def test_simd(self):
-    if self.is_emterpreter(): return self.skip('todo')
-    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
-
     test_path = path_from_root('tests', 'core', 'test_simd')
     src, output = (test_path + s for s in ('.in', '.out'))
-
     self.do_run_from_file(src, output)
 
+  @SIMD
   def test_simd2(self):
-    if self.is_emterpreter(): return self.skip('todo')
-    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
-
     test_path = path_from_root('tests', 'core', 'test_simd2')
     src, output = (test_path + s for s in ('.in', '.out'))
-
     self.do_run_from_file(src, output)
 
+  @SIMD
   def test_simd3(self):
-    if self.is_emterpreter(): return self.skip('todo')
-
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
-
     test_path = path_from_root('tests', 'core', 'test_simd3')
     src, output = (test_path + s for s in ('.in', '.out'))
-
     self.emcc_args = self.emcc_args + ['-msse2']
     self.do_run_from_file(src, output)
 
+  @SIMD
   def test_simd4(self):
     # test_simd4 is to test phi node handling of SIMD path
-    if self.is_emterpreter(): return self.skip('todo')
-    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
-
     test_path = path_from_root('tests', 'core', 'test_simd4')
     src, output = (test_path + s for s in ('.in', '.out'))
-
     self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
+  @SIMD
   def test_simd5(self):
-    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
-
     # test_simd5 is to test shufflevector of SIMD path
     test_path = path_from_root('tests', 'core', 'test_simd5')
     src, output = (test_path + s for s in ('.in', '.out'))
 
     self.do_run_from_file(src, output)
 
+  @SIMD
   def test_simd6(self):
     # test_simd6 is to test x86 min and max intrinsics on NaN and -0.0
-    if self.is_emterpreter(): return self.skip('todo')
-    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
-
     test_path = path_from_root('tests', 'core', 'test_simd6')
     src, output = (test_path + s for s in ('.in', '.out'))
-
     self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
+  @SIMD
   def test_simd7(self):
     # test_simd7 is to test negative zero handling: https://github.com/kripken/emscripten/issues/2791
-    if self.is_emterpreter(): return self.skip('todo')
-    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
-
     test_path = path_from_root('tests', 'core', 'test_simd7')
     src, output = (test_path + s for s in ('.in', '.out'))
-
     self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
+  @SIMD
   def test_simd8(self):
     # test_simd8 is to test unaligned load and store
-    if self.is_emterpreter(): return self.skip('todo')
-    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
-
     test_path = path_from_root('tests', 'core', 'test_simd8')
     src, output = (test_path + s for s in ('.in', '.out'))
-
     self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
+  @SIMD
   def test_simd9(self):
     # test_simd9 is to test a bug where _mm_set_ps(0.f) would generate an expression that did not validate as asm.js
-    if self.is_emterpreter(): return self.skip('todo')
-
     test_path = path_from_root('tests', 'core', 'test_simd9')
     src, output = (test_path + s for s in ('.in', '.out'))
-
     self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
+  @SIMD
   def test_simd10(self):
     # test_simd10 is to test that loading and storing arbitrary bit patterns works in SSE1.
-    if self.is_emterpreter(): return self.skip('todo')
-
     test_path = path_from_root('tests', 'core', 'test_simd10')
     src, output = (test_path + s for s in ('.in', '.out'))
-
     self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
+  @SIMD
   def test_simd11(self):
     # test_simd11 is to test that _mm_movemask_ps works correctly when handling input floats with 0xFFFFFFFF NaN bit patterns.
-    if self.is_emterpreter(): return self.skip('todo')
-
     test_path = path_from_root('tests', 'core', 'test_simd11')
     src, output = (test_path + s for s in ('.in', '.out'))
-
     self.emcc_args = self.emcc_args + ['-msse2']
     self.do_run_from_file(src, output)
 
+  @SIMD
   def test_simd12(self):
-    if self.is_emterpreter(): return self.skip('todo')
-
     test_path = path_from_root('tests', 'core', 'test_simd12')
     src, output = (test_path + s for s in ('.in', '.out'))
-
     self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
+  @SIMD
   def test_simd13(self):
-    if self.is_emterpreter(): return self.skip('todo')
-
     test_path = path_from_root('tests', 'core', 'test_simd13')
     src, output = (test_path + s for s in ('.in', '.out'))
-
     self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
+  @SIMD
   def test_simd14(self):
-    if self.is_emterpreter(): return self.skip('todo')
     test_path = path_from_root('tests', 'core', 'test_simd14')
     src, output = (test_path + s for s in ('.c', '.out'))
     self.emcc_args = self.emcc_args + ['-msse', '-msse2']
     self.do_run_from_file(src, output)
 
+  @SIMD
   def test_simd15(self):
-    if self.is_emterpreter(): return self.skip('todo')
     if self.run_name == 'asm1': return self.skip('legalizing -O1 output is much harder, and not worth it - we work on -O0 and -O2+')
     test_path = path_from_root('tests', 'core', 'test_simd15')
     src, output = (test_path + s for s in ('.c', '.out'))
     self.emcc_args = self.emcc_args + ['-msse', '-msse2']
     self.do_run_from_file(src, output)
 
+  @SIMD
   def test_simd_dyncall(self):
-    if self.is_emterpreter(): return self.skip('todo')
-    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
-
     test_path = path_from_root('tests', 'core', 'test_simd_dyncall')
     src, output = (test_path + s for s in ('.cpp', '.txt'))
     self.emcc_args = self.emcc_args + ['-msse']
