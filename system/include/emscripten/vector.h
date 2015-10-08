@@ -107,8 +107,8 @@ int16x8 emscripten_int16x8_and(int16x8 __a, int16x8 __b) __attribute__((__nothro
 int16x8 emscripten_int16x8_or(int16x8 __a, int16x8 __b) __attribute__((__nothrow__, __const__));
 int16x8 emscripten_int16x8_xor(int16x8 __a, int16x8 __b) __attribute__((__nothrow__, __const__));
 
-float32x4 emscripten_float32x4_load1(const void *__p) __attribute__((__nothrow__, __const__));
-float32x4 emscripten_float32x4_load2(const void *__p) __attribute__((__nothrow__, __const__));
+float32x4 emscripten_float32x4_load1(const void *__p) __attribute__((__nothrow__, __pure__));
+float32x4 emscripten_float32x4_load2(const void *__p) __attribute__((__nothrow__, __pure__));
 void emscripten_float32x4_store1(const void *__p, float32x4 __a) __attribute__((__nothrow__));
 void emscripten_float32x4_store2(const void *__p, float32x4 __a) __attribute__((__nothrow__));
 
