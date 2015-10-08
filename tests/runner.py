@@ -962,6 +962,11 @@ if __name__ == '__main__':
           chosen.add(new_test)
           if len(chosen) > before:
             print '* ' + new_test
+          else:
+            # we may have hit the limit
+            if len(chosen) == len(tests)*len(relevant_modes):
+              print '(all possible tests chosen! %d = %d*%d)' % (len(chosen), len(tests), len(relevant_modes))
+              break
         sys.argv += list(chosen)
         std = 0.5/math.sqrt(num)
         print
