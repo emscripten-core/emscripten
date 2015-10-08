@@ -7,11 +7,19 @@ from tools.shared import *
 from tools.line_endings import check_line_endings
 from runner import RunnerCore, path_from_root, checked_sanity, test_modes, get_zlib_library, get_bullet_library
 
+# decorators for limiting which modes a test can run in
+
 def SIMD(f):
   def decorated(self):
     if self.is_emterpreter(): return self.skip('simd not supported in emterpreter yet')
     if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
     self.use_all_engines = True # checks both native in spidermonkey and polyfill in others
+    f(self)
+  return decorated
+
+def no_emterpreter(f):
+  def decorated(self):
+    if self.is_emterpreter(): return self.skip('todo')
     f(self)
   return decorated
 
@@ -935,9 +943,9 @@ base align: 0, 0, 0, 0'''])
       Settings.OUTLINING_LIMIT = 60
       test()
 
+  @no_emterpreter
   def test_stack_restore(self):
     if self.is_wasm(): return self.skip('generated code not available in wasm')
-    if self.is_emterpreter(): return self.skip('generated code not available in emterpreter')
     self.emcc_args += ['-g3'] # to be able to find the generated code
     test_path = path_from_root('tests', 'core', 'test_stack_restore')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -2020,8 +2028,6 @@ value = real 1.25 imag 0.00''', force_c=True)
     self.do_run_from_file(src, output)
 
   def test_emscripten_api(self):
-      #if Building.LLVM_OPTS: return self.skip('FIXME')
-
       test_path = path_from_root('tests', 'core', 'test_emscripten_api')
       src, output = (test_path + s for s in ('.in', '.out'))
 
@@ -2345,8 +2351,8 @@ int main() {
 
     self.do_run_from_file(src, output)
 
+  @no_emterpreter
   def test_bigswitch(self):
-    if self.is_emterpreter(): return self.skip('todo')
     self.banned_js_engines = [SPIDERMONKEY_ENGINE] # bug 1174230
     src = open(path_from_root('tests', 'bigswitch.cpp')).read()
     self.do_run(src, '''34962: GL_ARRAY_BUFFER (0x8892)
@@ -2355,8 +2361,8 @@ int main() {
 3060: what?
 ''', args=['34962', '26214', '35040', str(0xbf4)])
 
+  @no_emterpreter
   def test_biggerswitch(self):
-    if self.is_emterpreter(): return self.skip('todo')
     self.banned_js_engines = [SPIDERMONKEY_ENGINE] # bug 1174230
     num_cases = 20000
     switch_case, err = Popen([PYTHON, path_from_root('tests', 'gen_large_switchcase.py'), str(num_cases)], stdout=PIPE, stderr=PIPE).communicate()
@@ -7267,8 +7273,8 @@ Module.printErr = Module['printErr'] = function(){};
       # This test *should* fail, by throwing this exception
       assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
 
+  @no_emterpreter
   def test_source_map(self):
-    if self.is_emterpreter(): return self.skip('todo')
     if NODE_JS not in JS_ENGINES: return self.skip('sourcemapper requires Node to run')
     if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
 
@@ -7346,9 +7352,9 @@ Module.printErr = Module['printErr'] = function(){};
         else:
           os.environ.pop('EMCC_DEBUG', None)
 
+  @no_emterpreter
   def test_exception_source_map(self):
     if self.is_wasm(): return self.skip('wasmifying destroys debug info and stack tracability')
-    if self.is_emterpreter(): return self.skip('todo')
     if '-g4' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g4')
     if NODE_JS not in JS_ENGINES: return self.skip('sourcemapper requires Node to run')
 
