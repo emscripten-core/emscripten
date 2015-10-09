@@ -631,9 +631,12 @@ This pointer might make sense in another type signature:''', '''Invalid function
     test(['-O1', '-s', 'EMULATE_FUNCTION_POINTER_CASTS=1'], '''my func\n''') # emulate so it works
 
   def test_l_link(self):
-    # Linking with -lLIBNAME and -L/DIRNAME should work
+    # Linking with -lLIBNAME and -L/DIRNAME should work, also should work with spaces
 
-    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
+    def build(path, args):
+        check_execute([PYTHON, EMCC, self.in_dir(*path)] + args)
+
+    open(self.in_dir('main.cpp'), 'w').write('''
       extern void printey();
       int main() {
         printey();
@@ -642,21 +645,35 @@ This pointer might make sense in another type signature:''', '''Invalid function
     ''')
 
     try:
-      os.makedirs(os.path.join(self.get_dir(), 'libdir'));
+      os.makedirs(self.in_dir('libdir'))
     except:
       pass
 
-    open(os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), 'w').write('''
+    open(self.in_dir('libdir', 'libfile.cpp'), 'w').write('''
       #include <stdio.h>
       void printey() {
         printf("hello from lib\\n");
       }
     ''')
 
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), '-c']).communicate()
-    shutil.move(os.path.join(self.get_dir(), 'libfile.o'), os.path.join(self.get_dir(), 'libdir', 'libfile.so'))
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile']).communicate()
-    self.assertContained('hello from lib', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+    libfile = self.in_dir('libdir', 'libfile.so')
+    aout = self.in_dir('a.out.js')
+
+    # Test linking the library built here by emcc
+    build(['libdir', 'libfile.cpp'], ['-c'])
+    shutil.move(self.in_dir('libfile.o'), libfile)
+    build(['main.cpp'], ['-L' + self.in_dir('libdir'), '-lfile'])
+
+    self.assertContained('hello from lib', run_js(aout))
+
+    # Also test execution with `-l c` and space-separated library linking syntax
+    os.remove(aout)
+    build(['libdir', 'libfile.cpp'], ['-c', '-l', 'c'])
+    shutil.move(self.in_dir('libfile.o'), libfile)
+    build(['main.cpp'], ['-L', self.in_dir('libdir'), '-l', 'file'])
+
+    self.assertContained('hello from lib', run_js(aout))
+
     assert not os.path.exists('a.out') and not os.path.exists('a.exe'), 'Must not leave unneeded linker stubs'
 
   def test_outline(self):
