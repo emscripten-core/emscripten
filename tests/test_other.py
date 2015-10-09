@@ -631,9 +631,12 @@ This pointer might make sense in another type signature:''', '''Invalid function
     test(['-O1', '-s', 'EMULATE_FUNCTION_POINTER_CASTS=1'], '''my func\n''') # emulate so it works
 
   def test_l_link(self):
-    # Linking with -lLIBNAME and -L/DIRNAME should work
+    # Linking with -lLIBNAME and -L/DIRNAME should work, also should work with spaces
 
-    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
+    def build(path, args):
+        check_execute([PYTHON, EMCC, self.in_dir(*path)] + args)
+
+    open(self.in_dir('main.cpp'), 'w').write('''
       extern void printey();
       int main() {
         printey();
@@ -642,21 +645,35 @@ This pointer might make sense in another type signature:''', '''Invalid function
     ''')
 
     try:
-      os.makedirs(os.path.join(self.get_dir(), 'libdir'));
+      os.makedirs(self.in_dir('libdir'))
     except:
       pass
 
-    open(os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), 'w').write('''
+    open(self.in_dir('libdir', 'libfile.cpp'), 'w').write('''
       #include <stdio.h>
       void printey() {
         printf("hello from lib\\n");
       }
     ''')
 
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), '-c']).communicate()
-    shutil.move(os.path.join(self.get_dir(), 'libfile.o'), os.path.join(self.get_dir(), 'libdir', 'libfile.so'))
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile']).communicate()
-    self.assertContained('hello from lib', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+    libfile = self.in_dir('libdir', 'libfile.so')
+    aout = self.in_dir('a.out.js')
+
+    # Test linking the library built here by emcc
+    build(['libdir', 'libfile.cpp'], ['-c'])
+    shutil.move(self.in_dir('libfile.o'), libfile)
+    build(['main.cpp'], ['-L' + self.in_dir('libdir'), '-lfile'])
+
+    self.assertContained('hello from lib', run_js(aout))
+
+    # Also test execution with `-l c` and space-separated library linking syntax
+    os.remove(aout)
+    build(['libdir', 'libfile.cpp'], ['-c', '-l', 'c'])
+    shutil.move(self.in_dir('libfile.o'), libfile)
+    build(['main.cpp'], ['-L', self.in_dir('libdir'), '-l', 'file'])
+
+    self.assertContained('hello from lib', run_js(aout))
+
     assert not os.path.exists('a.out') and not os.path.exists('a.exe'), 'Must not leave unneeded linker stubs'
 
   def test_outline(self):
@@ -1011,12 +1028,12 @@ int f() {
 
     shutil.copyfile(path_from_root('tests', 'hello_world.c'), 'main.c')
 
-    for args, expected in [(['-I/usr/something'], True),
-                           (['-L/usr/something'], True),
-                           (['-I/usr/something', '-Wno-warn-absolute-paths'], False),
-                           (['-L/usr/something', '-Wno-warn-absolute-paths'], False),
-                           (['-Isubdir/something'], False),
-                           (['-Lsubdir/something'], False),
+    for args, expected in [(['-I/usr/something', '-Wwarn-absolute-paths'], True),
+                           (['-L/usr/something', '-Wwarn-absolute-paths'], True),
+                           (['-I/usr/something'], False),
+                           (['-L/usr/something'], False),
+                           (['-Isubdir/something', '-Wwarn-absolute-paths'], False),
+                           (['-Lsubdir/something', '-Wwarn-absolute-paths'], False),
                            ([], False)]:
       err = Popen([PYTHON, EMCC, 'main.c'] + args, stderr=PIPE).communicate()[1]
       assert ('encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)' in err) == expected, err
@@ -2784,20 +2801,20 @@ int main()
   def test_valid_abspath(self):
     # Test whether abspath warning appears
     abs_include_path = os.path.abspath(self.get_dir())
-    process = Popen([PYTHON, EMCC, '-I%s' % abs_include_path, path_from_root('tests', 'hello_world.c')], stdout=PIPE, stderr=PIPE)
+    process = Popen([PYTHON, EMCC, '-I%s' % abs_include_path, '-Wwarn-absolute-paths', path_from_root('tests', 'hello_world.c')], stdout=PIPE, stderr=PIPE)
     out, err = process.communicate()
-    warning = '-I or -L of an absolute path "-I%s" encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript). Pass \'-Wno-warn-absolute-paths\' to emcc to hide this warning.' % abs_include_path
+    warning = '-I or -L of an absolute path "-I%s" encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript).' % abs_include_path
     assert(warning in err)
 
     # Passing an absolute path to a directory inside the emscripten tree is always ok and should not issue a warning.
     abs_include_path = path_from_root('tests')
-    process = Popen([PYTHON, EMCC, '-I%s' % abs_include_path, path_from_root('tests', 'hello_world.c')], stdout=PIPE, stderr=PIPE)
+    process = Popen([PYTHON, EMCC, '-I%s' % abs_include_path, '-Wwarn-absolute-paths', path_from_root('tests', 'hello_world.c')], stdout=PIPE, stderr=PIPE)
     out, err = process.communicate()
-    warning = '-I or -L of an absolute path "-I%s" encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript). Pass \'-Wno-warn-absolute-paths\' to emcc to hide this warning.' % abs_include_path
+    warning = '-I or -L of an absolute path "-I%s" encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript).' % abs_include_path
     assert(warning not in err)
 
     # Hide warning for this include path
-    process = Popen([PYTHON, EMCC, '--valid-abspath', abs_include_path,'-I%s' % abs_include_path, path_from_root('tests', 'hello_world.c')], stdout=PIPE, stderr=PIPE)
+    process = Popen([PYTHON, EMCC, '--valid-abspath', abs_include_path,'-I%s' % abs_include_path, '-Wwarn-absolute-paths', path_from_root('tests', 'hello_world.c')], stdout=PIPE, stderr=PIPE)
     out, err = process.communicate()
     assert(warning not in err)
 
@@ -3387,15 +3404,15 @@ EMSCRIPTEN_KEEPALIVE __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny
     test(['--bind'])
 
   def test_dashE_consistent(self): # issue #3365
-    normal = Popen([PYTHON, EMXX, '-v', '-Wno-warn-absolute-paths', path_from_root('tests', 'hello_world.cpp'), '-c'], stdout=PIPE, stderr=PIPE).communicate()[1]
-    dash_e = Popen([PYTHON, EMXX, '-v', '-Wno-warn-absolute-paths', path_from_root('tests', 'hello_world.cpp'), '-E'], stdout=PIPE, stderr=PIPE).communicate()[1]
+    normal = Popen([PYTHON, EMXX, '-v', '-Wwarn-absolute-paths', path_from_root('tests', 'hello_world.cpp'), '-c'], stdout=PIPE, stderr=PIPE).communicate()[1]
+    dash_e = Popen([PYTHON, EMXX, '-v', '-Wwarn-absolute-paths', path_from_root('tests', 'hello_world.cpp'), '-E'], stdout=PIPE, stderr=PIPE).communicate()[1]
 
     import difflib
     diff = [a.rstrip()+'\n' for a in difflib.unified_diff(normal.split('\n'), dash_e.split('\n'), fromfile='normal', tofile='dash_e')]
     left_std = filter(lambda x: x.startswith('-') and '-std=' in x, diff)
     right_std = filter(lambda x: x.startswith('+') and '-std=' in x, diff)
     assert len(left_std) == len(right_std) == 1, '\n\n'.join(diff)
-    bad = filter(lambda x: '-Wno-warn-absolute-paths' in x, diff)
+    bad = filter(lambda x: '-Wwarn-absolute-paths' in x, diff)
     assert len(bad) == 0, '\n\n'.join(diff)
 
   def test_dashE_respect_dashO(self): # issue #3365
@@ -3409,15 +3426,15 @@ EMSCRIPTEN_KEEPALIVE __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny
     self.assertContained('hello_world.o:', out) # Verify output is just a dependency rule instead of bitcode or js
 
   def test_dashM_consistent(self):
-    normal = Popen([PYTHON, EMXX, '-v', '-Wno-warn-absolute-paths', path_from_root('tests', 'hello_world.cpp'), '-c'], stdout=PIPE, stderr=PIPE).communicate()[1]
-    dash_m = Popen([PYTHON, EMXX, '-v', '-Wno-warn-absolute-paths', path_from_root('tests', 'hello_world.cpp'), '-M'], stdout=PIPE, stderr=PIPE).communicate()[1]
+    normal = Popen([PYTHON, EMXX, '-v', '-Wwarn-absolute-paths', path_from_root('tests', 'hello_world.cpp'), '-c'], stdout=PIPE, stderr=PIPE).communicate()[1]
+    dash_m = Popen([PYTHON, EMXX, '-v', '-Wwarn-absolute-paths', path_from_root('tests', 'hello_world.cpp'), '-M'], stdout=PIPE, stderr=PIPE).communicate()[1]
 
     import difflib
     diff = [a.rstrip()+'\n' for a in difflib.unified_diff(normal.split('\n'), dash_m.split('\n'), fromfile='normal', tofile='dash_m')]
     left_std = filter(lambda x: x.startswith('-') and '-std=' in x, diff)
     right_std = filter(lambda x: x.startswith('+') and '-std=' in x, diff)
     assert len(left_std) == len(right_std) == 1, '\n\n'.join(diff)
-    bad = filter(lambda x: '-Wno-warn-absolute-paths' in x, diff)
+    bad = filter(lambda x: '-Wwarn-absolute-paths' in x, diff)
     assert len(bad) == 0, '\n\n'.join(diff)
 
   def test_dashM_respect_dashO(self):
@@ -5668,3 +5685,7 @@ int main() {
     assert "low = 5678" in out
     assert "high = 1234" in out
 
+  def test_lib_include_flags(self):
+    process = Popen([PYTHON, EMCC] + '-l m -l c -I'.split() + [path_from_root('tests', 'include_test'), path_from_root('tests', 'lib_include_flags.c')], stdout=PIPE, stderr=PIPE)
+    process.communicate()
+    assert process.returncode is 0, 'Empty -l/-L/-I flags should read the next arg as a param'

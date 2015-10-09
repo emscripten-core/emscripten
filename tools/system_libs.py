@@ -151,7 +151,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'regex.cpp',
       'strstream.cpp'
     ]
-    return build_libcxx(os.path.join('system', 'lib', 'libcxx'), libname, libcxx_files, ['-Oz', '-Wno-warn-absolute-paths', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')], has_noexcept_version=True)
+    return build_libcxx(os.path.join('system', 'lib', 'libcxx'), libname, libcxx_files, ['-Oz', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')], has_noexcept_version=True)
 
   # libcxxabi - just for dynamic_cast for now
   def create_libcxxabi(libname):
@@ -170,7 +170,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'private_typeinfo.cpp',
       os.path.join('..', '..', 'libcxx', 'new.cpp'),
     ]
-    return build_libcxx(os.path.join('system', 'lib', 'libcxxabi', 'src'), libname, libcxxabi_files, ['-Oz', '-Wno-warn-absolute-paths', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')])
+    return build_libcxx(os.path.join('system', 'lib', 'libcxxabi', 'src'), libname, libcxxabi_files, ['-Oz', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')])
 
   # gl
   def create_gl(libname): # libname is ignored, this is just one .o file
@@ -366,7 +366,7 @@ class Ports:
       objects = []
       for src in srcs:
         obj = src + '.o'
-        commands.append([shared.PYTHON, shared.EMCC, src, '-O2', '-o', obj, '-Wno-warn-absolute-paths', '-w'] + include_commands + flags)
+        commands.append([shared.PYTHON, shared.EMCC, src, '-O2', '-o', obj, '-w'] + include_commands + flags)
         objects.append(obj)
 
       run_commands(commands)

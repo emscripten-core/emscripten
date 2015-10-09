@@ -5897,7 +5897,7 @@ return malloc(size);
     self.do_run_from_file(src, output)
 
   def test_gcc_unmangler(self):
-    Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('third_party'), '-Wno-warn-absolute-paths']
+    Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('third_party')]
 
     self.do_run(open(path_from_root('third_party', 'gcc_demangler.c')).read(), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'])
 
@@ -6073,8 +6073,7 @@ def process(filename):
 
     Building.COMPILER_TEST_OPTS += [
       '-I' + path_from_root('tests', 'freetype', 'include'),
-      '-I' + path_from_root('tests', 'poppler', 'include'),
-      '-Wno-warn-absolute-paths'
+      '-I' + path_from_root('tests', 'poppler', 'include')
     ]
 
     Settings.INVOKE_RUN = 0 # We append code that does run() ourselves
@@ -6337,7 +6336,7 @@ def process(filename):
       self.emcc_args = emcc_args
 
   def test_fuzz(self):
-    Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'fuzz', 'include'), '-Wno-warn-absolute-paths', '-w']
+    Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'fuzz', 'include'), '-w']
 
     def run_all(x):
       print x

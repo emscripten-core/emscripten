@@ -8,7 +8,7 @@ functions, accessing memory, converting pointers to JavaScript
 "Strings" and "Strings" to pointers (with different
 encodings/formats), and other convenience functions.
 
-Note: All functions should be called though the *Module* object (for
+Note: All functions should be called though the Module object (for
   example: "Module.functionName"). At optimisation "-O2" (and higher)
   function names are minified by the closure compiler, and calling
   them directly will fail.
@@ -256,6 +256,33 @@ Pointer_stringify(ptr[, length])
    Return type:
       String
 
+UTF8ToString(ptr)
+
+   Given a pointer "ptr" to a null-terminated UTF8-encoded string in
+   the Emscripten HEAP, returns a copy of that string as a JavaScript
+   "String" object.
+
+   Arguments:
+      * **ptr** -- A pointer to a null-terminated UTF8-encoded
+        string in the Emscripten HEAP.
+
+   Returns:
+      A JavaScript "String" object
+
+stringToUTF8(str, outPtr[, maxBytesToWrite])
+
+   Copies the given JavaScript "String" object "str" to the Emscripten
+   HEAP at address "outPtr", null-terminated and encoded in UTF8 form.
+
+   Arguments:
+      * **str** (*String*) -- A JavaScript "String" object.
+
+      * **outPtr** -- Pointer to data copied from "str", encoded in
+        UTF8 format and null-terminated.
+
+      * **maxBytesToWrite** -- A limit on the number of bytes to
+        write out.
+
 UTF16ToString(ptr)
 
    Given a pointer "ptr" to a null-terminated UTF16LE-encoded string
@@ -269,7 +296,7 @@ UTF16ToString(ptr)
    Returns:
       A JavaScript "String" object
 
-stringToUTF16(str, outPtr)
+stringToUTF16(str, outPtr[, maxBytesToWrite])
 
    Copies the given JavaScript "String" object "str" to the Emscripten
    HEAP at address "outPtr", null-terminated and encoded in UTF16LE
@@ -284,6 +311,9 @@ stringToUTF16(str, outPtr)
       * **outPtr** -- Pointer to data copied from "str", encoded in
         UTF16LE format and null-terminated.
 
+      * **maxBytesToWrite** -- A limit on the number of bytes to
+        write out.
+
 UTF32ToString(ptr)
 
    Given a pointer "ptr" to a null-terminated UTF32LE-encoded string
@@ -297,7 +327,7 @@ UTF32ToString(ptr)
    Returns:
       A JavaScript "String" object.
 
-stringToUTF32(str, outPtr)
+stringToUTF32(str, outPtr[, maxBytesToWrite])
 
    Copies the given JavaScript "String" object "str" to the Emscripten
    HEAP at address "outPtr", null-terminated and encoded in UTF32LE
@@ -313,6 +343,9 @@ stringToUTF32(str, outPtr)
 
       * **outPtr** -- Pointer to data copied from "str", encoded in
         encoded in UTF32LE format and null-terminated.
+
+      * **maxBytesToWrite** -- A limit on the number of bytes to
+        write out.
 
 intArrayFromString(stringy, dontAddNull[, length])
 
@@ -442,7 +475,7 @@ stackTrace()
 Type accessors for the memory model
 ===================================
 
-The *Emscripten memory representation* uses a typed array buffer
+The Emscripten memory representation uses a typed array buffer
 ("ArrayBuffer") to represent memory, with different views into it
 giving access to the different types. The views for accessing
 different types of memory are listed below.

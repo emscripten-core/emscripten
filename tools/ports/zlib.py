@@ -33,8 +33,7 @@ def get(ports, settings, shared):
       for src in srcs:
         o = os.path.join(ports.get_build_dir(), 'zlib', src + '.o')
         shared.safe_ensure_dirs(os.path.dirname(o))
-        commands.append([shared.PYTHON, shared.EMCC, os.path.join(dest_path, src), '-O2', '-o', o, '-I' + dest_path,
-                         '-Wno-warn-absolute-paths', '-w',])
+        commands.append([shared.PYTHON, shared.EMCC, os.path.join(dest_path, src), '-O2', '-o', o, '-I' + dest_path,'-w',])
         o_s.append(o)
 
       ports.run_commands(commands)

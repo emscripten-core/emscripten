@@ -5,10 +5,10 @@ html5.h
 The C++ APIs in html5.h define the Emscripten low-level glue bindings
 to interact with HTML5 events from native code.
 
-Tip: The C++ APIs map closely to their *equivalent HTML5 JavaScript
-  APIs*. The HTML5 specifications listed below provide additional
+Tip: The C++ APIs map closely to their equivalent HTML5 JavaScript
+  APIs. The HTML5 specifications listed below provide additional
   detailed reference "over and above" the information provided in this
-  document.In addition, the *Test/Example code* can be reviewed to see
+  document.In addition, the Test/Example code can be reviewed to see
   how the code is used.
 
 The HTML5 specifications for APIs that are mapped by **html5.h**
@@ -258,9 +258,9 @@ EMSCRIPTEN_RESULT
 
    EMSCRIPTEN_RESULT_DEFERRED
 
-      The requested operation cannot be completed now for *web
-      security reasons*, and has been deferred for completion in the
-      next event handler.
+      The requested operation cannot be completed now for web security
+      reasons, and has been deferred for completion in the next event
+      handler.
 
    EMSCRIPTEN_RESULT_NOT_SUPPORTED
 
@@ -270,8 +270,8 @@ EMSCRIPTEN_RESULT
 
    EMSCRIPTEN_RESULT_FAILED_NOT_DEFERRED
 
-      The requested operation could not be completed now for *web
-      security reasons*. It failed because the user requested the
+      The requested operation could not be completed now for web
+      security reasons. It failed because the user requested the
       operation not be deferred.
 
    EMSCRIPTEN_RESULT_INVALID_TARGET
@@ -441,7 +441,7 @@ em_key_callback_func
 
    Returns:
       "true" (non zero) to indicate that the event was consumed by the
-      *callback handler*.
+      callback handler.
 
    Return type:
       "EM_BOOL"
@@ -458,12 +458,12 @@ EMSCRIPTEN_RESULT emscripten_set_keyup_callback(const char *target, void *user
    keyboard input events.
 
    Parameters:
-      * **target** (*const char**) -- *Target HTML element id*.
+      * **target** (*const char**) -- Target HTML element id.
 
-      * **userData** (*void**) -- *User-defined data* to be passed
-        to the callback (opaque to the API).
+      * **userData** (*void**) -- User-defined data to be passed to
+        the callback (opaque to the API).
 
-      * **useCapture** (*EM_BOOL*) -- Set "true" to *use capture*.
+      * **useCapture** (*EM_BOOL*) -- Set "true" to use capture.
 
       * **callback** (*em_key_callback_func*) -- A callback
         function. The function is called with the type of event,
@@ -597,7 +597,7 @@ em_mouse_callback_func
 
    Returns:
       "true" (non zero) to indicate that the event was consumed by the
-      *callback handler*.
+      callback handler.
 
    Return type:
       "EM_BOOL"
@@ -618,12 +618,12 @@ EMSCRIPTEN_RESULT emscripten_set_mouseleave_callback(const char *target, void 
    input events.
 
    Parameters:
-      * **target** (*const char**) -- *Target HTML element id*.
+      * **target** (*const char**) -- Target HTML element id.
 
-      * **userData** (*void**) -- *User-defined data* to be passed
-        to the callback (opaque to the API).
+      * **userData** (*void**) -- User-defined data to be passed to
+        the callback (opaque to the API).
 
-      * **useCapture** (*EM_BOOL*) -- Set "true" to *use capture*.
+      * **useCapture** (*EM_BOOL*) -- Set "true" to use capture.
 
       * **callback** (*em_mouse_callback_func*) -- A callback
         function. The function is called with the type of event,
@@ -735,7 +735,7 @@ em_wheel_callback_func
 
    Returns:
       "true" (non zero) to indicate that the event was consumed by the
-      *callback handler*.
+      callback handler.
 
    Return type:
       "EM_BOOL"
@@ -750,12 +750,12 @@ EMSCRIPTEN_RESULT emscripten_set_wheel_callback(const char *target, void *user
    mousewheel events.
 
    Parameters:
-      * **target** (*const char**) -- *Target HTML element id*.
+      * **target** (*const char**) -- Target HTML element id.
 
-      * **userData** (*void**) -- *User-defined data* to be passed
-        to the callback (opaque to the API).
+      * **userData** (*void**) -- User-defined data to be passed to
+        the callback (opaque to the API).
 
-      * **useCapture** (*EM_BOOL*) -- Set "true" to *use capture*.
+      * **useCapture** (*EM_BOOL*) -- Set "true" to use capture.
 
       * **callback** (*em_wheel_callback_func*) -- A callback
         function. The function is called with the type of event,
@@ -837,7 +837,7 @@ em_ui_callback_func
 
    Returns:
       "true" (non zero) to indicate that the event was consumed by the
-      *callback handler*.
+      callback handler.
 
    Return type:
       "EM_BOOL"
@@ -863,12 +863,12 @@ EMSCRIPTEN_RESULT emscripten_set_scroll_callback(const char *target, void *use
        to fire "resize" events for these.
 
    Parameters:
-      * **target** (*const char**) -- *Target HTML element id*.
+      * **target** (*const char**) -- Target HTML element id.
 
-      * **userData** (*void**) -- *User-defined data* to be passed
-        to the callback (opaque to the API).
+      * **userData** (*void**) -- User-defined data to be passed to
+        the callback (opaque to the API).
 
-      * **useCapture** (*EM_BOOL*) -- Set "true" to *use capture*.
+      * **useCapture** (*EM_BOOL*) -- Set "true" to use capture.
 
       * **callback** (*em_ui_callback_func*) -- A callback function.
         The function is called with the type of event, information
@@ -941,7 +941,7 @@ em_focus_callback_func
 
    Returns:
       "true" (non zero) to indicate that the event was consumed by the
-      *callback handler*.
+      callback handler.
 
    Return type:
       "EM_BOOL"
@@ -959,12 +959,12 @@ EMSCRIPTEN_RESULT emscripten_set_focusout_callback(const char *target, void *u
    focus, focusin and focusout events.
 
    Parameters:
-      * **target** (*const char**) -- *Target HTML element id*.
+      * **target** (*const char**) -- Target HTML element id.
 
-      * **userData** (*void**) -- *User-defined data* to be passed
-        to the callback (opaque to the API).
+      * **userData** (*void**) -- User-defined data to be passed to
+        the callback (opaque to the API).
 
-      * **useCapture** (*EM_BOOL*) -- Set "true" to *use capture*.
+      * **useCapture** (*EM_BOOL*) -- Set "true" to use capture.
 
       * **callback** (*em_focus_callback_func*) -- A callback
         function. The function is called with the type of event,
@@ -1051,7 +1051,7 @@ em_deviceorientation_callback_func
 
    Returns:
       "true" (non zero) to indicate that the event was consumed by the
-      *callback handler*.
+      callback handler.
 
    Return type:
       "EM_BOOL"
@@ -1066,10 +1066,10 @@ EMSCRIPTEN_RESULT emscripten_set_deviceorientation_callback(void *userData, EM_
    event.
 
    Parameters:
-      * **userData** (*void**) -- *User-defined data* to be passed
-        to the callback (opaque to the API).
+      * **userData** (*void**) -- User-defined data to be passed to
+        the callback (opaque to the API).
 
-      * **useCapture** (*EM_BOOL*) -- Set "true" to *use capture*.
+      * **useCapture** (*EM_BOOL*) -- Set "true" to use capture.
 
       * **callback** (*em_deviceorientation_callback_func*) -- A
         callback function. The function is called with the type of
@@ -1167,7 +1167,7 @@ em_devicemotion_callback_func
 
    Returns:
       "true" (non zero) to indicate that the event was consumed by the
-      *callback handler*.
+      callback handler.
 
    Return type:
       "EM_BOOL"
@@ -1181,10 +1181,10 @@ EMSCRIPTEN_RESULT emscripten_set_devicemotion_callback(void *userData, EM_BOOL�
    Registers a callback function for receiving the devicemotion event.
 
    Parameters:
-      * **userData** (*void**) -- *User-defined data* to be passed
-        to the callback (opaque to the API).
+      * **userData** (*void**) -- User-defined data to be passed to
+        the callback (opaque to the API).
 
-      * **useCapture** (*EM_BOOL*) -- Set "true" to *use capture*.
+      * **useCapture** (*EM_BOOL*) -- Set "true" to use capture.
 
       * **callback** (*em_devicemotion_callback_func*) -- A callback
         function. The function is called with the type of event,
@@ -1291,7 +1291,7 @@ em_orientationchange_callback_func
 
    Returns:
       "true" (non zero) to indicate that the event was consumed by the
-      *callback handler*.
+      callback handler.
 
    Return type:
       "EM_BOOL"
@@ -1306,10 +1306,10 @@ EMSCRIPTEN_RESULT emscripten_set_orientationchange_callback(void *userData, EM_
    event.
 
    Parameters:
-      * **userData** (*void**) -- *User-defined data* to be passed
-        to the callback (opaque to the API).
+      * **userData** (*void**) -- User-defined data to be passed to
+        the callback (opaque to the API).
 
-      * **useCapture** (*EM_BOOL*) -- Set "true" to *use capture*.
+      * **useCapture** (*EM_BOOL*) -- Set "true" to use capture.
 
       * **callback** (*em_orientationchange_callback_func*) -- A
         callback function. The function is called with the type of
@@ -1578,7 +1578,7 @@ em_fullscreenchange_callback_func
 
    Returns:
       "true" (non zero) to indicate that the event was consumed by the
-      *callback handler*.
+      callback handler.
 
    Return type:
       "EM_BOOL"
@@ -1593,12 +1593,12 @@ EMSCRIPTEN_RESULT emscripten_set_fullscreenchange_callback(const char *target, 
    event.
 
    Parameters:
-      * **target** (*const char**) -- *Target HTML element id*.
+      * **target** (*const char**) -- Target HTML element id.
 
-      * **userData** (*void**) -- *User-defined data* to be passed
-        to the callback (opaque to the API).
+      * **userData** (*void**) -- User-defined data to be passed to
+        the callback (opaque to the API).
 
-      * **useCapture** (*EM_BOOL*) -- Set "true" to *use capture*.
+      * **useCapture** (*EM_BOOL*) -- Set "true" to use capture.
 
       * **callback** (*em_fullscreenchange_callback_func*) -- A
         callback function. The function is called with the type of
@@ -1635,8 +1635,8 @@ EMSCRIPTEN_RESULT emscripten_request_fullscreen(const char *target, EM_BOOL de
      reasons its associated *request* can only be raised inside the
      event handler for a user-generated event (for example a key,
      mouse or touch press/release). This has implications for porting
-     and the value of "deferUntilInEventHandler"  — see *Functions
-     affected by web security* for more information.
+     and the value of "deferUntilInEventHandler"  — see Functions
+     affected by web security for more information.
 
    Note: This function only performs a fullscreen request without
      changing any parameters of the DOM element that is to be
@@ -1652,7 +1652,7 @@ EMSCRIPTEN_RESULT emscripten_request_fullscreen(const char *target, EM_BOOL de
      with the developer's use case in some way.
 
    Parameters:
-      * **target** (*const char**) -- *Target HTML element id*.
+      * **target** (*const char**) -- Target HTML element id.
 
       * **deferUntilInEventHandler** (*EM_BOOL*) -- If "true"
         requests made outside of a user-generated event handler are
@@ -1786,7 +1786,7 @@ em_pointerlockchange_callback_func
 
    Returns:
       "true" (non zero) to indicate that the event was consumed by the
-      *callback handler*.
+      callback handler.
 
    Return type:
       "EM_BOOL"
@@ -1805,12 +1805,12 @@ EMSCRIPTEN_RESULT emscripten_set_pointerlockchange_callback(const char *target,
    event.
 
    Parameters:
-      * **target** (*const char**) -- *Target HTML element id*.
+      * **target** (*const char**) -- Target HTML element id.
 
-      * **userData** (*void**) -- *User-defined data* to be passed
-        to the callback (opaque to the API).
+      * **userData** (*void**) -- User-defined data to be passed to
+        the callback (opaque to the API).
 
-      * **useCapture** (*EM_BOOL*) -- Set "true" to *use capture*.
+      * **useCapture** (*EM_BOOL*) -- Set "true" to use capture.
 
       * **callback** (*em_pointerlockchange_callback_func*) -- A
         callback function. The function is called with the type of
@@ -1846,11 +1846,11 @@ EMSCRIPTEN_RESULT emscripten_request_pointerlock(const char *target, EM_BOOL d
      reasons its associated *request* can only be raised inside the
      event handler for a user-generated event (for example a key,
      mouse or touch press/release). This has implications for porting
-     and the value of "deferUntilInEventHandler"  — see *Functions
-     affected by web security* for more information.
+     and the value of "deferUntilInEventHandler"  — see Functions
+     affected by web security for more information.
 
    Parameters:
-      * **target** (*const char**) -- *Target HTML element id*.
+      * **target** (*const char**) -- Target HTML element id.
 
       * **deferUntilInEventHandler** (*EM_BOOL*) -- If "true"
         requests made outside of a user-generated event handler are
@@ -1944,7 +1944,7 @@ em_visibilitychange_callback_func
 
    Returns:
       "true" (non zero) to indicate that the event was consumed by the
-      *callback handler*.
+      callback handler.
 
    Return type:
       "EM_BOOL"
@@ -1959,10 +1959,10 @@ EMSCRIPTEN_RESULT emscripten_set_visibilitychange_callback(void *userData, EM_B
    event.
 
    Parameters:
-      * **userData** (*void**) -- *User-defined data* to be passed
-        to the callback (opaque to the API).
+      * **userData** (*void**) -- User-defined data to be passed to
+        the callback (opaque to the API).
 
-      * **useCapture** (*EM_BOOL*) -- Set "true" to *use capture*.
+      * **useCapture** (*EM_BOOL*) -- Set "true" to use capture.
 
       * **callback** (*em_visibilitychange_callback_func*) -- A
         callback function. The function is called with the type of
@@ -2098,7 +2098,7 @@ em_touch_callback_func
 
    Returns:
       "true" (non zero) to indicate that the event was consumed by the
-      *callback handler*.
+      callback handler.
 
    Return type:
       "EM_BOOL"
@@ -2116,12 +2116,12 @@ EMSCRIPTEN_RESULT emscripten_set_touchcancel_callback(const char *target, void�
    touchstart, touchend, touchmove and touchcancel.
 
    Parameters:
-      * **target** (*const char**) -- *Target HTML element id*.
+      * **target** (*const char**) -- Target HTML element id.
 
-      * **userData** (*void**) -- *User-defined data* to be passed
-        to the callback (opaque to the API).
+      * **userData** (*void**) -- User-defined data to be passed to
+        the callback (opaque to the API).
 
-      * **useCapture** (*EM_BOOL*) -- Set "true" to *use capture*.
+      * **useCapture** (*EM_BOOL*) -- Set "true" to use capture.
 
       * **callback** (*em_touch_callback_func*) -- A callback
         function. The function is called with the type of event,
@@ -2227,7 +2227,7 @@ em_gamepad_callback_func
 
    Returns:
       "true" (non zero) to indicate that the event was consumed by the
-      *callback handler*.
+      callback handler.
 
    Return type:
       "EM_BOOL"
@@ -2243,10 +2243,10 @@ EMSCRIPTEN_RESULT emscripten_set_gamepaddisconnected_callback(void *userData, E
    gamepadconnected and gamepaddisconnected.
 
    Parameters:
-      * **userData** (*void**) -- *User-defined data* to be passed
-        to the callback (opaque to the API).
+      * **userData** (*void**) -- User-defined data to be passed to
+        the callback (opaque to the API).
 
-      * **useCapture** (*EM_BOOL*) -- Set "true" to *use capture*.
+      * **useCapture** (*EM_BOOL*) -- Set "true" to use capture.
 
       * **callback** (*em_gamepad_callback_func*) -- A callback
         function. The function is called with the type of event,
@@ -2354,7 +2354,7 @@ em_battery_callback_func
 
    Returns:
       "true" (non zero) to indicate that the event was consumed by the
-      *callback handler*.
+      callback handler.
 
    Return type:
       "EM_BOOL"
@@ -2370,10 +2370,10 @@ EMSCRIPTEN_RESULT emscripten_set_batterylevelchange_callback(void *userData, em
    events: "chargingchange" and "levelchange".
 
    Parameters:
-      * **userData** (*void**) -- *User-defined data* to be passed
-        to the callback (opaque to the API).
+      * **userData** (*void**) -- User-defined data to be passed to
+        the callback (opaque to the API).
 
-      * **useCapture** (*EM_BOOL*) -- Set "true" to *use capture*.
+      * **useCapture** (*EM_BOOL*) -- Set "true" to use capture.
 
       * **callback** (*em_battery_callback_func*) -- A callback
         function. The function is called with the type of event,
@@ -2495,8 +2495,8 @@ EMSCRIPTEN_RESULT emscripten_set_beforeunload_callback(void *userData, em_befor
    really wants to leave the page).
 
    Parameters:
-      * **userData** (*void**) -- *User-defined data* to be passed
-        to the callback (opaque to the API).
+      * **userData** (*void**) -- User-defined data to be passed to
+        the callback (opaque to the API).
 
       * **callback** (*em_beforeunload_callback*) -- A callback
         function. The function is called with the type of event,
@@ -2631,7 +2631,7 @@ em_webgl_context_callback
 
    Returns:
       "true" (non zero) to indicate that the event was consumed by the
-      *callback handler*.
+      callback handler.
 
    Return type:
       "EM_BOOL"
@@ -2647,12 +2647,12 @@ EMSCRIPTEN_RESULT emscripten_set_webglcontextrestored_callback(const char *targ
    "webglcontextlost" and "webglcontextrestored".
 
    Parameters:
-      * **target** (*const char**) -- *Target HTML element id*.
+      * **target** (*const char**) -- Target HTML element id.
 
-      * **userData** (*void**) -- *User-defined data* to be passed
-        to the callback (opaque to the API).
+      * **userData** (*void**) -- User-defined data to be passed to
+        the callback (opaque to the API).
 
-      * **useCapture** (*EM_BOOL*) -- Set "true" to *use capture*.
+      * **useCapture** (*EM_BOOL*) -- Set "true" to use capture.
 
       * **callback** (*em_webgl_context_callback*) -- A callback
         function. The function is called with the type of event,
