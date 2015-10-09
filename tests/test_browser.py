@@ -2780,6 +2780,7 @@ window.close = function() {
     self.btest(d, expected='0', args=args + ["--closure", "1"])
 
   def test_wasm_polyfill_prototype(self):
+    try_delete(Cache.get_path('pack-asmjs.js')) # XXX force a rebuild, for temporary testing purposes
     self.clear()
     open('main.cpp', 'w').write(self.with_report_result(r'''
       #include <iostream>
