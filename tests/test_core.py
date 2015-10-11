@@ -5758,6 +5758,10 @@ return malloc(size);
   # Tests the full SSE2 API.
   @SIMD
   def test_sse2_full(self):
+    import platform
+    is_64bits = platform.architecture()[0] == '64bit'
+    if not is_64bits: return self.skip('This test requires 64-bit system, since it tests SSE2 intrinsics only available in 64-bit mode!')
+
     args = []
     if '-O0' in self.emcc_args: args += ['-D_DEBUG=1']
     Popen([CLANG, path_from_root('tests', 'test_sse2_full.cpp'), '-o', 'test_sse2_full', '-D_CRT_SECURE_NO_WARNINGS=1'] + args + get_clang_native_args(), stdout=PIPE).communicate()
