@@ -772,8 +772,9 @@ try:
             logging.error(arg + ': Unknown format, not a static library!')
           exit(1)
       else:
-        logging.error(arg + ": Input file has an unknown suffix, don't know what to do with it!")
-        exit(1)
+        logging.debug(arg + ": Input file has an unknown suffix, trying to compile it anyway")
+        input_files.append((i, arg))
+        has_source_inputs = True
     elif arg.startswith('-L'):
       lib_dirs.append(arg[2:])
       newargs[i] = ''
