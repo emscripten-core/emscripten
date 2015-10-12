@@ -1265,7 +1265,6 @@ NumLit::NumLit(Module& m, const AstNode& n)
         u.f64_ = -0;
         asmjs_type_ = AsmJSType::Double;
       } else {
-        fprintf(stderr, "bad NumLit?: %u | %u (greaterthan? %d)\n", u.u32_, INT32_MAX, u.u32_ > INT32_MAX); // XXX for temporary testing purposes
         assert(u.u32_ > INT32_MAX);
         asmjs_type_ = AsmJSType::Signed;
       }
