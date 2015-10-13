@@ -5745,7 +5745,7 @@ return malloc(size);
   # Tests the full SSE1 API.
   @SIMD
   def test_sse1_full(self):
-    Popen([CLANG, path_from_root('tests', 'test_sse1_full.cpp'), '-o', 'test_sse1_full', '-D_CRT_SECURE_NO_WARNINGS=1'] + get_clang_native_args(), stdout=PIPE).communicate()
+    Popen([CLANG, path_from_root('tests', 'test_sse1_full.cpp'), '-o', 'test_sse1_full', '-D_CRT_SECURE_NO_WARNINGS=1'] + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE).communicate()
     native_result, err = Popen('./test_sse1_full', stdout=PIPE).communicate()
     native_result = native_result.replace('\r\n', '\n') # Windows line endings fix
 
@@ -5764,7 +5764,7 @@ return malloc(size);
 
     args = []
     if '-O0' in self.emcc_args: args += ['-D_DEBUG=1']
-    Popen([CLANG, path_from_root('tests', 'test_sse2_full.cpp'), '-o', 'test_sse2_full', '-D_CRT_SECURE_NO_WARNINGS=1'] + args + get_clang_native_args(), stdout=PIPE).communicate()
+    Popen([CLANG, path_from_root('tests', 'test_sse2_full.cpp'), '-o', 'test_sse2_full', '-D_CRT_SECURE_NO_WARNINGS=1'] + args + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE).communicate()
     native_result, err = Popen('./test_sse2_full', stdout=PIPE).communicate()
     native_result = native_result.replace('\r\n', '\n') # Windows line endings fix
 

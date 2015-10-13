@@ -44,7 +44,7 @@ class WebsockifyServerHarness:
     # NOTE empty filename support is a hack to support
     # the current test_enet
     if self.filename:
-      Popen([CLANG_CC, path_from_root('tests', self.filename), '-o', 'server', '-DSOCKK=%d' % self.target_port] + get_clang_native_args() + self.args).communicate()
+      Popen([CLANG_CC, path_from_root('tests', self.filename), '-o', 'server', '-DSOCKK=%d' % self.target_port] + get_clang_native_args() + self.args, env=get_clang_native_env()).communicate()
       process = Popen([os.path.abspath('server')])
       self.processes.append(process)
 
