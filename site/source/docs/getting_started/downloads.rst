@@ -231,9 +231,9 @@ You can always install old SDK and compiler toolchains using a *current SDK*. Se
 
 On Windows, you can also install one of the **old versions** via an offline NSIS installer:
 
-- `emsdk-1.34.1-full-64bit.exe` <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.34.1-full-64bit.exe`_ (first release based on Clang 3.7)
-- `emsdk-1.30.0-full-64bit.exe` <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.30.0-full-64bit.exe`_ (first and last release based on Clang 3.5)
-- `emsdk-1.29.0-full-64bit.exe` <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.29.0-full-64bit.exe`_ (first and last release based on Clang 3.4)
+- `emsdk-1.34.1-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.34.1-full-64bit.exe>`_ (first release based on Clang 3.7)
+- `emsdk-1.30.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.30.0-full-64bit.exe>`_ (first and last release based on Clang 3.5)
+- `emsdk-1.29.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.29.0-full-64bit.exe>`_ (first and last release based on Clang 3.4)
 - `emsdk-1.27.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.27.0-full-64bit.exe>`_
 - `emsdk-1.25.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.25.0-full-64bit.exe>`_
 - `emsdk-1.22.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.22.0-full-64bit.exe>`_
