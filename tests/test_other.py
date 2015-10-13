@@ -2793,7 +2793,7 @@ int main()
     assert 'asm.js' in output, 'spidermonkey should mention asm.js compilation: ' + output
 
   def test_bad_triple(self):
-    Popen([CLANG, path_from_root('tests', 'hello_world.c'), '-c', '-emit-llvm', '-o', 'a.bc'] + get_clang_native_args(), stdout=PIPE, stderr=PIPE).communicate()
+    Popen([CLANG, path_from_root('tests', 'hello_world.c'), '-c', '-emit-llvm', '-o', 'a.bc'] + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE, stderr=PIPE).communicate()
     out, err = Popen([PYTHON, EMCC, 'a.bc'], stdout=PIPE, stderr=PIPE).communicate()
     assert 'warning' in err or 'WARNING' in err, err
     assert 'incorrect target triple' in err or 'different target triples' in err, err

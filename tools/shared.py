@@ -586,6 +586,51 @@ def get_clang_native_args():
     # TODO: If Windows.h et al. are needed, will need to add something like '-isystemC:/Program Files (x86)/Microsoft SDKs/Windows/v7.1A/Include'.
   return CACHED_CLANG_NATIVE_ARGS
 
+# This environment needs to be present when targeting a native host system executable
+CACHED_CLANG_NATIVE_ENV=None
+def get_clang_native_env():
+  global CACHED_CLANG_NATIVE_ENV
+  if CACHED_CLANG_NATIVE_ENV is not None: return CACHED_CLANG_NATIVE_ENV
+  env = os.environ.copy()
+
+  if WINDOWS:
+    # If already running in Visual Studio Command Prompt manually, no need to add anything here, so just return.
+    if 'VSINSTALLDIR' in env and 'INCLUDE' in env and 'LIB' in env:
+      CACHED_CLANG_NATIVE_ENV = env
+      return env
+
+    if 'VSINSTALLDIR' in env:
+      visual_studio_2013_path = env['VSINSTALLDIR']
+    elif 'VS120COMNTOOLS' in env:
+      visual_studio_2013_path = os.path.normpath(os.path.join(env['VS120COMNTOOLS'], '../..'))
+    elif 'ProgramFiles(x86)' in env:
+      visual_studio_2013_path = os.path.normpath(os.path.join(env['ProgramFiles(x86)'], 'Microsoft Visual Studio 12.0'))
+    elif 'ProgramFiles' in env:
+      visual_studio_2013_path = os.path.normpath(os.path.join(env['ProgramFiles'], 'Microsoft Visual Studio 12.0'))
+    else:
+      visual_studio_2013_path = 'C:\\Program Files (x86)\\Microsoft Visual Studio 12.0'
+    if not os.path.isdir(visual_studio_2013_path):
+      raise Exception('Visual Studio 2013 was not found in "' + visual_studio_2013_path + '"! Run in Visual Studio command prompt to avoid the need to autoguess this location (or set VSINSTALLDIR env var).')
+
+    if 'WindowsSdkDir' in env:
+      windows_sdk_dir = env['WindowsSdkDir']
+    elif 'ProgramFiles(x86)' in env:
+      windows_sdk_dir = os.path.normpath(os.path.join(env['ProgramFiles(x86)'], 'Windows Kits\\8.1'))
+    elif 'ProgramFiles' in env:
+      windows_sdk_dir = os.path.normpath(os.path.join(env['ProgramFiles'], 'Windows Kits\\8.1'))
+    else:
+      windows_sdk_dir = 'C:\\Program Files (x86)\\Windows Kits\\8.1'
+    if not os.path.isdir(windows_sdk_dir):
+      raise Exception('Windows SDK was not found in "' + windows_sdk_dir + '"! Run in Visual Studio command prompt to avoid the need to autoguess this location (or set WindowsSdkDir env var).')
+
+    env['INCLUDE'] = os.path.join(visual_studio_2013_path, 'VC\\INCLUDE')
+    env['LIB'] = os.path.join(visual_studio_2013_path, 'VC\\LIB\\amd64') + ';' + os.path.join(windows_sdk_dir, 'lib\\winv6.3\\um\\x64')
+
+  # Current configuration above is all Visual Studio -specific, so on non-Windowses, no action needed.
+
+  CACHED_CLANG_NATIVE_ENV = env
+  return env
+
 CLANG_CC=os.path.expanduser(build_clang_tool_path('clang'))
 CLANG_CPP=os.path.expanduser(build_clang_tool_path('clang++'))
 CLANG=CLANG_CPP
