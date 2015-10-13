@@ -9,7 +9,7 @@ def generate(env, emscripten_path=None, **kw):
 	# Use same method as Emscripten's shared.py
 	EM_CONFIG = os.environ.get('EM_CONFIG')
 	if not EM_CONFIG:
-		EM_CONFIG = '~/.emscripten'
+		EM_CONFIG = os.path.expanduser('~/.emscripten')
 
 	if emscripten_path is None:
 		
