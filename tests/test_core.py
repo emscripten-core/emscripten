@@ -1,6 +1,6 @@
 # coding=utf-8
 
-import glob, hashlib, os, re, shutil, subprocess, sys, json
+import glob, hashlib, os, re, shutil, subprocess, sys, json, random
 from textwrap import dedent
 import tools.shared
 from tools.shared import *
@@ -5432,7 +5432,7 @@ PORT: 3979
 
   # libc++ tests
 
-  def test_iostream(self):
+  def test_iostream_and_determinism(self):
     src = '''
       #include <iostream>
 
@@ -5442,9 +5442,21 @@ PORT: 3979
         return 0;
       }
     '''
-
-    # FIXME: should not have so many newlines in output here
-    self.do_run(src, 'hello world\n77.\n')
+    num = 5
+    def test():
+      print '(iteration)'
+      time.sleep(random.random()/(10*num)) # add some timing nondeterminism here, not that we need it, but whatever
+      self.do_run(src, 'hello world\n77.\n')
+      return open('src.cpp.o.js').read()
+    builds = map(lambda i: test(), range(num))
+    print map(len, builds)
+    uniques = set(builds)
+    if len(uniques) != 1:
+      i = 0
+      for unique in uniques:
+        open('unique_' + str(i) + '.js', 'w').write(unique)
+        i += 1
+      assert 0, 'builds must be deterministic, see unique_X.js'
 
   def test_stdvec(self):
     test_path = path_from_root('tests', 'core', 'test_stdvec')
