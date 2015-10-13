@@ -3,6 +3,7 @@
 #include <cmath>
 #include <string>
 #include <algorithm>
+#include <map>
 
 #include "simple_ast.h"
 #include "optimizer.h"
@@ -2589,7 +2590,7 @@ void registerizeHarder(Ref ast) {
     // Utilities for allocating register variables.
     // We need distinct register pools for each type of variable.
 
-    typedef std::unordered_map<int, IString> IntStringMap;
+    typedef std::map<int, IString> IntStringMap;
     std::vector<IntStringMap> allRegsByType;
     allRegsByType.resize(ASM_NONE+1);
     int nextReg = 1;
@@ -2621,15 +2622,15 @@ void registerizeHarder(Ref ast) {
 
     struct Junction {
       int id;
-      std::unordered_set<int> inblocks, outblocks;
-      StringSet live;
+      std::set<int> inblocks, outblocks;
+      IOrderedStringSet live;
       Junction(int id_) : id(id_) {}
     };
     struct Node {
     };
     struct Block {
       int id, entry, exit;
-      std::unordered_set<int> labels;
+      std::set<int> labels;
       std::vector<Ref> nodes;
       std::vector<bool> isexpr;
       StringIntMap use;
@@ -3097,7 +3098,7 @@ void registerizeHarder(Ref ast) {
     // with that value of LABEL as precondition, we tweak the flow graph so
     // that the former jumps straight to the later.
 
-    std::unordered_map<int, Block*> labelledBlocks;
+    std::map<int, Block*> labelledBlocks;
     typedef std::pair<Ref, Block*> Jump;
     std::vector<Jump> labelledJumps;
 
@@ -3184,10 +3185,10 @@ void registerizeHarder(Ref ast) {
 
     auto analyzeJunction = [&](Junction& junc) {
       // Update the live set for this junction.
-      StringSet live;
+      IOrderedStringSet live;
       for (auto b : junc.outblocks) {
         Block* block = blocks[b];
-        StringSet& liveSucc = junctions[block->exit].live;
+        IOrderedStringSet& liveSucc = junctions[block->exit].live;
         for (auto name : liveSucc) {
           if (!block->kill.has(name)) {
             live.insert(name);
@@ -3328,7 +3329,7 @@ void registerizeHarder(Ref ast) {
         --last;
         Junction& junc = junctions[*last];
         jWorkSet.erase(last);
-        StringSet oldLive = junc.live; // copy it here, to check for changes later
+        IOrderedStringSet oldLive = junc.live; // copy it here, to check for changes later
         analyzeJunction(junc);
         if (oldLive != junc.live) {
           // Live set changed, updated predecessor blocks and junctions.
@@ -3374,7 +3375,7 @@ void registerizeHarder(Ref ast) {
 
     struct JuncVar {
       std::vector<bool> conf;
-      StringSet link;
+      IOrderedStringSet link;
       std::unordered_set<int> excl;
       int reg;
       bool used;
@@ -3398,10 +3399,9 @@ void registerizeHarder(Ref ast) {
         jVar.conf.assign(numLocals, false);
       }
     }
-    std::unordered_map<IString, std::vector<Block*>> possibleBlockConflictsMap;
+    std::map<IString, std::vector<Block*>> possibleBlockConflictsMap;
     std::vector<std::pair<size_t, std::vector<Block*>>> possibleBlockConflicts;
     std::unordered_map<IString, std::vector<Block*>> possibleBlockLinks;
-    possibleBlockConflictsMap.reserve(numLocals);
     possibleBlockConflicts.reserve(numLocals);
     possibleBlockLinks.reserve(numLocals);
 

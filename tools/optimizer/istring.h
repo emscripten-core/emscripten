@@ -2,6 +2,7 @@
 
 #include <unordered_set>
 #include <unordered_map>
+#include <set>
 
 #include <string.h>
 #include <stdint.h>
@@ -133,6 +134,13 @@ public:
     }
   }
 
+  bool has(const IString& str) {
+    return count(str) > 0;
+  }
+};
+
+class IOrderedStringSet : public std::set<IString> {
+public:
   bool has(const IString& str) {
     return count(str) > 0;
   }
