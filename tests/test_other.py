@@ -2154,7 +2154,7 @@ seeked= file.
     assert os.stat('test.data').st_size < 0.25*os.stat('ship.dds').st_size, 'Compressed should be much smaller than dds'
     crunch_time = os.stat('ship.crn').st_mtime
     dds_time = os.stat('ship.dds').st_mtime
-    assert crunch_time > dds_time, 'Crunch is more recent'
+    assert crunch_time >= dds_time, 'Crunch is more recent'
     # run again, should not recrunch!
     time.sleep(0.1)
     Popen([PYTHON, FILE_PACKAGER, 'test.data', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
