@@ -171,7 +171,7 @@ static void* get_memory(size_t size, bool malloc=true, size_t alignment=-1, bool
   int returnNull = EM_ASM_INT_V({
     if (!ABORTING_MALLOC && !ALLOW_MEMORY_GROWTH) return 1; // malloc can return 0, and we cannot grow
     if (!ALLOW_MEMORY_GROWTH) {
-      abort(CANNOT_GROW_MEMORY_MESSAGE);
+      abortOnCannotGrowMemory();
     }
     return 0;
   });
