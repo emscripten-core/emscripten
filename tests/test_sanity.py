@@ -56,7 +56,7 @@ class sanity(RunnerCore):
       if command[0] == EMCC or (len(command) >= 2 and command[1] == EMCC):
         expected = 'no input files'
       else:
-        expected = "No tests found for ['blahblah']"
+        expected = "could not find the following tests: blahblah"
 
     output = self.do(command)
     self.assertContained(expected, output)
