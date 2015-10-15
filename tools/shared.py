@@ -1938,8 +1938,9 @@ class JS:
     s = ''.join(map(chr, s))
     s = s.replace('\\', '\\\\').replace("'", "\\'")
     s = s.replace('\n', '\\n').replace('\r', '\\r')
+    # Escape the ^Z (= 0x1a = substitute) ASCII character and all characters higher than 7-bit ASCII.
     def escape(x): return '\\x{:02x}'.format(ord(x.group()))
-    return re.sub('[\x80-\xff]', escape, s)
+    return re.sub('[\x1a\x80-\xff]', escape, s)
 
 def execute(cmd, *args, **kw):
   try:
