@@ -10,13 +10,165 @@ Not all changes are documented here. In particular, new features, user-oriented 
 Current trunk code
 ------------------
  - To see a list of commits in the active development branch 'incoming', which have not yet been packaged in a release, see
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.1...incoming
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.34.1...incoming
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.34.1...incoming
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.12...incoming
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.34.12...incoming
+    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.34.12...incoming
+
+v1.34.12: 10/13/2015
+--------------------
+ - Added new experimental build option -s SPLIT_MEMORY=1, which splits up the Emscripten HEAP to multiple smaller slabs.
+ - Added SDL2_ttf to Emscripten ports.
+ - Added support for building GLES3 code to target WebGL 2. (#3757, #3782)
+ - Fixed certain glUniform*() functions to work properly when called in conjunction with -s USE_PTHREADS=1.
+ - Fixed support for -l, -L and -I command line parameters to accept a space between the path, i.e. "-l SDL". (#3777)
+ - Fixed SSE2 support in optimized builds.
+ - Changed the default behavior of warning when absolute paths are passed to -I to be silent. To enable the absolute paths warning, pass "-Wwarn-absolute-paths" flag to emcc.
+ - Added new linker option -s ABORTING_MALLOC=0 that can be used to make malloc() return 0 on failed allocation (Current default is to abort execution of the page on OOM) (#3822)
+ - Removed the default behavior of automatically decoding all preloaded assets on page startup (#3785)
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.11...1.34.12
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.34.11...1.34.12
+    - Emscripten-Clang: no changes.
+
+v1.34.11: 9/29/2015
+-------------------
+ - Fixed asm.js validation on autovectorized output
+ - Fix an issue with printing to iostream in global ctors (#3824)
+ - Added support for LLVM pow intrinsics with integer exponent.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.10...1.34.11
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.34.10...1.34.11
+    - Emscripten-Clang: no changes.
+
+v1.34.10: 9/25/2015
+-------------------
+ - Added wasm compressor/decompressor polyfill (#3766)
+ - Added support for sRGB texture formats.
+ - Removed the deprecated --compression option.
+ - Fixed an issue with with asm.js validation for pthreads being broken since v1.34.7 (#3719)
+ - Added built-in cpu performance profiler, which is enabled with linker flag --cpuprofiler. (#3781)
+ - Added build-in memory usage profiler, which is enabled with linker flag --memoryprofiler. (#3781)
+ - Fixed multiple arities per EM_ASM block (#3804)
+ - Fixed issues with SSE2 an NaN bit patterns. (emscripten-fastcomp #116)
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.9...1.34.10
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.34.9...1.34.10
+    - Emscripten-Clang: no changes.
+
+v1.34.9: 9/18/2015
+------------------
+ - Fixed an issue with --llvm-lto 3 builds (#3765)
+ - Optimized LZ4 compression
+ - Fixed a bug where glfwCreateWindow would return success even on failure (#3764)
+ - Greatly optimized the -s SAFE_HEAP=1 linker flag option by executing the heap checks in asm.js side instead.
+ - Fixed the return value of EM_ASM_DOUBLE (#3770)
+ - Implemented getsockname syscall (#3769)
+ - Don't warn on unresolved symbols when LINKABLE is specified.
+ - Fixed various issues with SSE2 compilation in optimized builds.
+ - Fixed a breakage with -s USE_PTHREADS=2 (#3774)
+ - Added support for GL_HALF_FLOAT in WebGL 2. (#3790)
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.8...1.34.9
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.34.8...1.34.9
+    - Emscripten-Clang: no changes.
+
+v1.34.8: 9/9/2015
+-----------------
+ - Fixed a race condition at worker startup (#3741)
+ - Update emrun to latest, which improves unit test run automation with emrun.
+ - Added support for LZ4 compressing file packages, used with the -s LZ4=1 linker flag. (#3754)
+ - Fixed noisy build warning on "unexpected number of arguments in call to strtold" (#3760)
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.7...1.34.8
+    - Emscripten-LLVM: no changes.
+    - Emscripten-Clang: no changes.
+
+v1.34.7: 9/5/2015
+-----------------
+ - Fixed uses of i64* in side modules.
+ - Improved GL support when proxying, and fake WebAudio calls when proxying.
+ - Added new main loop timing mode EM_TIMING_SETIMMEDIATE for rendering with vsync disabled (#3717)
+ - Updated emrun to latest version, adds --safe_firefox_profile option to run emrun pages in clean isolated environment.
+ - Implemented glGetStringi() method for WebGL2/GLES3. (#3472, #3725)
+ - Automatically emit loading code for EMTERPRETIFY_FILE if emitting html.
+ - Added new build option -s USE_PTHREADS2= for running pthreads-enabled pages in browsers that do not support SharedArrayBuffer.
+ - Added support for building SSE2 intrinsics based code (emmintrin.h), when -msse2 is passed to the build.
+ - Added exports for getting FS objects by their name (#3690)
+ - Updated LLVM to latest upstream PNaCl version (Clang 3.7, July 29th).
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.6...1.34.7
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.34.6...1.34.7
+    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.34.6...1.34.7
+
+v1.34.6: 8/20/2015
+------------------
+ - Added new build option -s EMULATED_FUNCTION_POINTERS=2.
+ - Fixed a bug with calling functions pointers that take float as parameter across dynamic modules.
+ - Improved dynamic linking support with -s LINKABLE=1.
+ - Added new build option -s MAIN_MODULE=2.
+ - Cleaned up a few redundant linker warnings (#3702, #3704)
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.5...1.34.6
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.34.5...1.34.6
+    - Emscripten-Clang: no changes.
+
+v1.34.5: 8/18/2015
+------------------
+ - Added Bullet physics, ogg and vorbis to emscripten-ports.
+ - Added FreeType 2.6 to emscripten-ports.
+ - Fixed CMake handling when building OpenCV.
+ - Fixed and issue with exceptions being thrown in empty glBegin()-glEnd() blocks (#3693)
+ - Improved function pointer handling between dynamically linked modules
+ - Fixed some OpenAL alGetSource get calls (#3669)
+ - Fixed issues with building the optimizer on 32-bit Windows (#3673)
+ - Increased optimizer stack size on Windows to 10MB (#3679)
+ - Added support for passing multiple input files to opt, to speed up optimization and linking in opt.  
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.4...1.34.5
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.34.4...1.34.5
+    - Emscripten-Clang: no changes.
+
+v1.34.4: 8/4/2015
+-----------------
+ - Add special handling support for /dev/null as an input file (#3552)
+ - Added basic printf support in NO_FILESYSTEM mode (#3627)
+ - Update WebVR support to the latest specification, and add support for retrieving device names
+ - Improved --proxy-to-worker build mode with proxying (#3568, #3623)
+ - Generalized EXPORT_FS_METHODS to EXPORT_RUNTIME_METHODS
+ - Added node externs for closure
+ - Fixed a memory allocation bug in pthreads code (#3636)
+ - Cleaned up some debug assertion messages behind #ifdef ASSERTIONS (#3639)
+ - Fixed umask syscall (#3637)
+ - Fixed double alignment issue with formatStrind and emscripten_log (#3647)
+ - Added new EXTRA_EXPORTED_RUNTIME_METHODS build option
+ - Updated emrun to latest version
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.3...1.34.4
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.34.3...1.34.4
+    - Emscripten-Clang: no changes.
 
 v1.34.3: 7/15/2015
 ------------------
  - Move libc to musl+syscalls
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.2...1.34.3
+    - Emscripten-LLVM: no changes.
+    - Emscripten-Clang: no changes.
+
+v1.34.2: 7/14/2015
+------------------
+ - Upgrade to new SIMD.js polyfill version and improved SIMD support.
+ - Improved WebGL support in --proxy-to-worker mode (#3569)
+ - Removed warning on unimplemented JS library functions
+ - Fix WebGL 2 support with closure compiler
+ - Fixed an issue with WebRTC support (#3574)
+ - Fixed emcc to return a correct error process exit code when invoked with no input files
+ - Fixed a compiler problem where global data might not get aligned correctly for SIMD.
+ - Fixed a LLVM backend problem which caused recursive stack behavior when linking large codebases, which was seen to cause a stack overflow crash on Windows.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.1...1.34.2
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.34.1...1.34.2
+    - Emscripten-Clang: no changes.
 
 v1.34.1: 6/18/2015
 ------------------
