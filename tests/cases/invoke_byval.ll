@@ -8,7 +8,7 @@ target triple = "asmjs-unknown-emscripten"
 
 declare void @_Z4chak5point(%struct.point* byval align 1) #0
 
-define i32 @main(i32 %argc, i8** %argv) #0 {
+define i32 @main(i32 %argc, i8** %argv) #0 personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {
   %1 = alloca i32, align 4
   %2 = alloca i32, align 4
   %3 = alloca i8**, align 4
@@ -64,7 +64,7 @@ define i32 @main(i32 %argc, i8** %argv) #0 {
   br label %44
 
 ; <label>:31                                      ; preds = %23, %0
-  %32 = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*)
+  %32 = landingpad { i8*, i32 }
           catch i8* bitcast ({ i8*, i8* }* @_ZTIi to i8*)
   %33 = extractvalue { i8*, i32 } %32, 0
   store i8* %33, i8** %5
