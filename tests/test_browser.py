@@ -2447,7 +2447,7 @@ window.close = function() {
     self.btest('sdl2_ttf.c', reference='sdl2_ttf.png',
       args=['-O2', '-s', 'USE_SDL=2', '-s', 'USE_SDL_TTF=2', '--embed-file', 'LiberationSansBold.ttf'],
       message='You should see colorful "hello" and "world" in the window',
-      timeout=30, reference_slack=3)
+      timeout=30)
 
   def test_emterpreter_async(self):
     for opts in [0, 1, 2, 3]:

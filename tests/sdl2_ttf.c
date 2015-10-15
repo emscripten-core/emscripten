@@ -11,8 +11,8 @@ void frame()
 {
     static SDL_Color colorA = { 0xff, 0x99, 0x00, 0xff };
     static SDL_Color colorB = { 0x11, 0xff, 0xff, 0xff };
-    static SDL_Rect upperRect = {0, 0, 600, 200};
-    static SDL_Rect lowerRect = {0, 200, 600, 200};
+    static SDL_Rect upperRect = {0, 0, 640, 240};
+    static SDL_Rect lowerRect = {0, 240, 640, 240};
 
     SDL_Surface *helloSurface = TTF_RenderText_Shaded(font, "hello", colorA, colorB);
     SDL_Surface *worldSurface = TTF_RenderText_Shaded(font, "world", colorB, colorA);
@@ -35,8 +35,7 @@ int main()
 {
     SDL_Init(SDL_INIT_VIDEO);
     TTF_Init();
-    window = SDL_CreateWindow("test", 0, 0, 640, 480, SDL_WINDOW_SHOWN);
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    SDL_CreateWindowAndRenderer(640, 480, 0, &window, &renderer);
     font = TTF_OpenFont("LiberationSansBold.ttf", 40);
     emscripten_set_main_loop(frame, -1, 1);
 }
