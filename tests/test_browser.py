@@ -960,11 +960,11 @@ keydown(100);keyup(100); // trigger the end
     import random
     self.clear()
     os.mkdir('subdir')
-    open('file1.txt', 'w').write('0123456789' * (1024*128))
-    open(os.path.join('subdir', 'file2.txt'), 'w').write('1234567890' * (1024*128))
+    open('file1.txt', 'wb').write('0123456789' * (1024*128))
+    open(os.path.join('subdir', 'file2.txt'), 'wb').write('1234567890' * (1024*128))
     random_data = [chr(random.randint(0,255)) for x in range(1024*128*10 + 1)]
     random_data[17] = 'X'
-    open('file3.txt', 'w').write(''.join(random_data))
+    open('file3.txt', 'wb').write(''.join(random_data))
 
     # compress in emcc,  -s LZ4=1  tells it to tell the file packager
     print 'emcc-normal'
@@ -977,7 +977,7 @@ keydown(100);keyup(100); // trigger the end
     # compress in the file packager, on the server. the client receives compressed data and can just use it. this is typical usage
     print 'normal'
     out = subprocess.check_output([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--lz4'])
-    open('files.js', 'w').write(out)
+    open('files.js', 'wb').write(out)
     self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js', '-s', 'LZ4=1'], timeout=60)
     print '    opts'
     self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js', '-s', 'LZ4=1', '-O2'], timeout=60)
@@ -1000,7 +1000,7 @@ keydown(100);keyup(100); // trigger the end
     shutil.copyfile('file2.txt', os.path.join('files', 'file2.txt'))
     shutil.copyfile('file3.txt', os.path.join('files', 'file3.txt'))
     out = subprocess.check_output([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'files/file1.txt', 'files/file2.txt', 'files/file3.txt'])
-    open('files.js', 'w').write(out)
+    open('files.js', 'wb').write(out)
     self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js'], timeout=60)'''
 
   def test_idbstore(self):
