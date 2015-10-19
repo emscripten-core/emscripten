@@ -164,7 +164,7 @@ elif '-dumpmachine' in sys.argv:
 
 def is_minus_s_for_emcc(newargs, i):
   assert newargs[i] == '-s'
-  if i+1 < len(newargs) and '=' in newargs[i+1]: # -s OPT=VALUE is for us, -s by itself is a linker option
+  if i+1 < len(newargs) and '=' in newargs[i+1] and not newargs[i+1].startswith('-'): # -s OPT=VALUE is for us, -s by itself is a linker option
     return True
   else:
     logging.warning('treating -s as linker option and not as -s OPT=VALUE for js compilation')
