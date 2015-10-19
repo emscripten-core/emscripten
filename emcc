@@ -167,7 +167,7 @@ def is_minus_s_for_emcc(newargs, i):
   if i+1 < len(newargs) and '=' in newargs[i+1] and not newargs[i+1].startswith('-'): # -s OPT=VALUE is for us, -s by itself is a linker option
     return True
   else:
-    logging.warning('treating -s as linker option and not as -s OPT=VALUE for js compilation')
+    logging.debug('treating -s as linker option and not as -s OPT=VALUE for js compilation')
     return False
 
 # If this is a configure-type thing, do not compile to JavaScript, instead use clang
