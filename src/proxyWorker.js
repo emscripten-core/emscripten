@@ -427,8 +427,10 @@ onmessage = function onmessage(message) {
         webGLWorker.onmessage(message.data);
       } else {
         assert(!Module.proxyGL);
-        assert(message.data.op === 'setPrefetched');
+        assert(message.data.op === 'setCanvas');
         Module.canvas = message.data.canvas; // a proxy to the canvas, we have WebGL in this worker
+        assert(!Module.canvas.style); // worker canvasses lack style
+        Module.canvas.style = new PropertyBag(); // fake it
         removeRunDependency('gl-prefetch');
       }
       break;

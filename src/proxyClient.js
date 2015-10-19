@@ -119,8 +119,9 @@ setTimeout(function() {
     var proxy = Module.canvas.transferControlToOffscreen();
     worker.postMessage({
       target: 'gl',
-      op: 'setPrefetched',
+      op: 'setCanvas',
       canvas: proxy,
+      preMain: true,
     }, [proxy]);
   }
 }, 0); // delay til next frame, to make sure html is ready
