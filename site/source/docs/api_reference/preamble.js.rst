@@ -359,12 +359,7 @@ The :ref:`emscripten-memory-model` uses a typed array buffer (``ArrayBuffer``) t
 
 .. js:data:: HEAPU8
 
-	View for 32-bit unsigned memory. 
-
-	
-.. js:data:: HEAPU8
-
-	View for 32-bit unsigned memory.
+	View for 8-bit unsigned memory. 
 
 	
 .. js:data:: HEAPU16
