@@ -370,20 +370,32 @@ def check_fastcomp():
       logging.critical('you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
       return False
 
+    # check repo versions
     d = get_fastcomp_src_dir()
+    shown_repo_version_error = False
     if d is not None:
-      llvm_version = open(os.path.join(d, 'emscripten-version.txt')).read().strip()
+      llvm_version = get_emscripten_version(os.path.join(d, 'emscripten-version.txt'))
       if os.path.exists(os.path.join(d, 'tools', 'clang', 'emscripten-version.txt')):
-        clang_version = open(os.path.join(d, 'tools', 'clang', 'emscripten-version.txt')).read().strip()
+        clang_version = get_emscripten_version(os.path.join(d, 'tools', 'clang', 'emscripten-version.txt'))
       elif os.path.exists(os.path.join(d, 'tools', 'clang')):
         clang_version = '?' # Looks like the LLVM compiler tree has an old checkout from the time before it contained a version.txt: Should update!
       else:
         clang_version = llvm_version # This LLVM compiler tree does not have a tools/clang, so it's probably an out-of-source build directory. No need for separate versioning.
       if EMSCRIPTEN_VERSION != llvm_version or EMSCRIPTEN_VERSION != clang_version:
-        logging.error('Emscripten, llvm and clang versions do not match, this is dangerous (%s, %s, %s)', EMSCRIPTEN_VERSION, llvm_version, clang_version)
+        logging.error('Emscripten, llvm and clang repo versions do not match, this is dangerous (%s, %s, %s)', EMSCRIPTEN_VERSION, llvm_version, clang_version)
         logging.error('Make sure to use the same branch in each repo, and to be up-to-date on each. See http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
+        shown_repo_version_error = True
     else:
       logging.warning('did not see a source tree above or next to the LLVM root directory (guessing based on directory of %s), could not verify version numbers match' % LLVM_COMPILER)
+
+    # check build versions. don't show it if the repos are wrong, user should fix that first
+    if not shown_repo_version_error:
+      clang_v = Popen([CLANG, '--version'], stdout=PIPE).communicate()[0]
+      llvm_build_version, clang_build_version = clang_v.split('(emscripten ')[1].split(')')[0].split(' : ')
+      if EMSCRIPTEN_VERSION != llvm_build_version or EMSCRIPTEN_VERSION != clang_build_version:
+        logging.error('Emscripten, llvm and clang build versions do not match, this is dangerous (%s, %s, %s)', EMSCRIPTEN_VERSION, llvm_build_version, clang_build_version)
+        logging.error('Make sure to rebuild llvm and clang after updating repos')
+
     return True
   except Exception, e:
     logging.warning('could not check fastcomp: %s' % str(e))
@@ -428,6 +440,9 @@ def find_temp_directory():
   else:
     return '/tmp'
 
+def get_emscripten_version(path):
+  return open(path).read().strip().replace('"', '')
+
 # Check that basic stuff we need (a JS engine to compile, Node.js, and Clang and LLVM)
 # exists.
 # The test runner always does this check (through |force|). emcc does this less frequently,
@@ -436,7 +451,7 @@ def find_temp_directory():
 # We also re-check sanity and clear the cache when the version changes
 
 try:
-  EMSCRIPTEN_VERSION = open(path_from_root('emscripten-version.txt')).read().strip()
+  EMSCRIPTEN_VERSION = get_emscripten_version(path_from_root('emscripten-version.txt'))
   try:
     parts = map(int, EMSCRIPTEN_VERSION.split('.'))
     EMSCRIPTEN_VERSION_MAJOR = parts[0]

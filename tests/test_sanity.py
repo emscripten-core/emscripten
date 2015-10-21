@@ -241,7 +241,7 @@ class sanity(RunnerCore):
     try_delete(SANITY_FILE)
     output = self.check_working(EMCC, 'did not see a source tree above or next to the LLVM root directory')
 
-    VERSION_WARNING = 'Emscripten, llvm and clang versions do not match, this is dangerous'
+    VERSION_WARNING = 'Emscripten, llvm and clang repo versions do not match, this is dangerous'
 
     # add version number
     open(path_from_root('tests', 'fake', 'emscripten-version.txt'), 'w').write('waka')

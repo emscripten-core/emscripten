@@ -23,6 +23,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       output = Popen([PYTHON, compiler, '-v'], stdout=PIPE, stderr=PIPE).communicate()
       self.assertContained('''clang version %s.0 ''' % '.'.join(map(str, EXPECTED_LLVM_VERSION)), output[1].replace('\r', ''), output[1].replace('\r', ''))
       self.assertContained('''GNU''', output[0])
+      self.assertNotContained('this is dangerous', output[0])
+      self.assertNotContained('this is dangerous', output[1])
 
       # --help
       output = Popen([PYTHON, compiler, '--help'], stdout=PIPE, stderr=PIPE).communicate()
