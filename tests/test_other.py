@@ -468,7 +468,12 @@ f.close()
                 self.assertTextDataIdentical(open(cmakelistsdir + '/out.txt', 'r').read().strip(), ret.strip())
             finally:
               os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
-              shutil.rmtree(tempdirname)
+              #there is a race condition under windows here causing an exception in shutil.rmtree because the directory is not empty yet
+              try:
+                shutil.rmtree(tempdirname)
+              except:
+                time.sleep(0.1)
+                shutil.rmtree(tempdirname)
 
   def test_failure_error_code(self):
     for compiler in [EMCC, EMXX]:
