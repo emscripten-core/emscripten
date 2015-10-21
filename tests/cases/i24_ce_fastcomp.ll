@@ -8222,7 +8222,7 @@ declare i32 @sysconf(i32) #5
 
 declare i32 @time(i32*) #5
 
-define weak i8* @_Znwj(i32 %size) #5 {
+define weak i8* @_Znwj(i32 %size) #5 personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {
 entry:
   %cmp = icmp eq i32 %size, 0
   %.size = select i1 %cmp, i32 1, i32 %size
@@ -8244,12 +8244,12 @@ if.then3:                                         ; preds = %while.body
           to label %invoke.cont unwind label %lpad.loopexit
 
 lpad.loopexit:                                    ; preds = %if.then3
-  %lpad.loopexit4 = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*)
+  %lpad.loopexit4 = landingpad { i8*, i32 }
           filter [1 x i8*] [i8* bitcast ({ i8*, i8*, i8* }* @_ZTISt9bad_alloc to i8*)]
   br label %lpad
 
 lpad.nonloopexit:                                 ; preds = %if.else
-  %lpad.nonloopexit5 = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*)
+  %lpad.nonloopexit5 = landingpad { i8*, i32 }
           filter [1 x i8*] [i8* bitcast ({ i8*, i8*, i8* }* @_ZTISt9bad_alloc to i8*)]
   br label %lpad
 
@@ -8298,13 +8298,13 @@ declare void @__cxa_throw(i8*, i8*, i8*)
 declare void @__cxa_call_unexpected(i8*)
 
 ; Function Attrs: nounwind
-define weak noalias i8* @_ZnwjRKSt9nothrow_t(i32 %size, %"struct.std::nothrow_t"*) #0 {
+define weak noalias i8* @_ZnwjRKSt9nothrow_t(i32 %size, %"struct.std::nothrow_t"*) #0 personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {
 entry:
   %call = invoke noalias i8* @_Znwj(i32 %size)
           to label %try.cont unwind label %lpad
 
 lpad:                                             ; preds = %entry
-  %1 = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*)
+  %1 = landingpad { i8*, i32 }
           catch i8* null
   %2 = extractvalue { i8*, i32 } %1, 0
   %3 = tail call i8* @__cxa_begin_catch(i8* %2) #1
@@ -8316,7 +8316,7 @@ try.cont:                                         ; preds = %lpad, %entry
   ret i8* %p.0
 
 lpad1:                                            ; preds = %lpad
-  %4 = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*)
+  %4 = landingpad { i8*, i32 }
           filter [0 x i8*] zeroinitializer
   %5 = extractvalue { i8*, i32 } %4, 0
   tail call void @__cxa_call_unexpected(i8* %5) #6
@@ -8327,7 +8327,7 @@ declare i8* @__cxa_begin_catch(i8*)
 
 declare void @__cxa_end_catch()
 
-define weak noalias i8* @_Znaj(i32 %size) #5 {
+define weak noalias i8* @_Znaj(i32 %size) #5 personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {
 entry:
   %call = invoke noalias i8* @_Znwj(i32 %size)
           to label %invoke.cont unwind label %lpad
@@ -8336,7 +8336,7 @@ invoke.cont:                                      ; preds = %entry
   ret i8* %call
 
 lpad:                                             ; preds = %entry
-  %0 = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*)
+  %0 = landingpad { i8*, i32 }
           filter [1 x i8*] [i8* bitcast ({ i8*, i8*, i8* }* @_ZTISt9bad_alloc to i8*)]
   %1 = extractvalue { i8*, i32 } %0, 1
   %ehspec.fails = icmp slt i32 %1, 0
@@ -8352,13 +8352,13 @@ eh.resume:                                        ; preds = %lpad
 }
 
 ; Function Attrs: nounwind
-define weak noalias i8* @_ZnajRKSt9nothrow_t(i32 %size, %"struct.std::nothrow_t"*) #0 {
+define weak noalias i8* @_ZnajRKSt9nothrow_t(i32 %size, %"struct.std::nothrow_t"*) #0 personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {
 entry:
   %call = invoke noalias i8* @_Znaj(i32 %size)
           to label %try.cont unwind label %lpad
 
 lpad:                                             ; preds = %entry
-  %1 = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*)
+  %1 = landingpad { i8*, i32 }
           catch i8* null
   %2 = extractvalue { i8*, i32 } %1, 0
   %3 = tail call i8* @__cxa_begin_catch(i8* %2) #1
@@ -8370,7 +8370,7 @@ try.cont:                                         ; preds = %lpad, %entry
   ret i8* %p.0
 
 lpad1:                                            ; preds = %lpad
-  %4 = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*)
+  %4 = landingpad { i8*, i32 }
           filter [0 x i8*] zeroinitializer
   %5 = extractvalue { i8*, i32 } %4, 0
   tail call void @__cxa_call_unexpected(i8* %5) #6

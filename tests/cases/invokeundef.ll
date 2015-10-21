@@ -10,7 +10,7 @@ target triple = "asmjs-unknown-emscripten"
 @.str = private unnamed_addr constant [14 x i8] c"hello, world!\00", align 1 ; [#uses=1]
 
 ; [#uses=0]
-define i32 @main() {
+define i32 @main() personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {
 entry:
   %retval = alloca i32                            ; [#uses=2]
   %0 = alloca i32                                 ; [#uses=2]
@@ -31,7 +31,7 @@ invcont33:
   ret i32 %retval1
 
 lpad106:
-  %Z = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*)
+  %Z = landingpad { i8*, i32 }
        cleanup
   ret i32 %retval1
 
