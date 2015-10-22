@@ -566,6 +566,10 @@ if has_preloaded:
   if use_preload_cache:
     code += r'''
       var indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+      if (navigator.userAgent.indexOf('Chrome') >= 0) { // XXX
+        console.log('not using IndexedDB caching in Chrome due to a severe memory leak in that browser https://code.google.com/p/chromium/issues/detail?id=533648');
+        indexedDB = null;
+      }
       var IDB_RO = "readonly";
       var IDB_RW = "readwrite";
       var DB_NAME = 'EM_PRELOAD_CACHE';
