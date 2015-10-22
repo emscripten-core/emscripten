@@ -870,8 +870,6 @@ try:
   # Set ASM_JS default here so that we can override it from the command line.
   shared.Settings.ASM_JS = 1 if opt_level > 0 else 2
 
-  pre_fastcomp_opts = []
-
   # Apply -s settings in newargs here (after optimization levels, so they can override them)
   for change in settings_changes:
     key, value = change.split('=')
@@ -901,20 +899,6 @@ try:
   except Exception, e:
     logging.error('Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
     raise e
-
-  fastcomp_opts = []
-  if shared.Settings.NO_EXIT_RUNTIME:
-    pre_fastcomp_opts += ['-emscripten-no-exit-runtime']
-    if not llvm_lto: fastcomp_opts += ['-globalopt', '-globaldce']
-  fastcomp_opts += ['-pnacl-abi-simplify-preopt', '-pnacl-abi-simplify-postopt']
-  if shared.Settings.DISABLE_EXCEPTION_CATCHING != 1:
-    fastcomp_opts += ['-enable-emscripten-cxx-exceptions']
-    if shared.Settings.DISABLE_EXCEPTION_CATCHING == 2:
-      fastcomp_opts += ['-emscripten-cxx-exceptions-whitelist=' + ','.join(shared.Settings.EXCEPTION_CATCHING_WHITELIST or ['fake'])]
-  if shared.Settings.ASYNCIFY:
-    fastcomp_opts += ['-emscripten-asyncify']
-    fastcomp_opts += ['-emscripten-asyncify-functions=' + ','.join(shared.Settings.ASYNCIFY_FUNCTIONS)]
-    fastcomp_opts += ['-emscripten-asyncify-whitelist=' + ','.join(shared.Settings.ASYNCIFY_WHITELIST)]
 
   assert not shared.Settings.PGO, 'cannot run PGO in ASM_JS mode'
 
@@ -1278,7 +1262,7 @@ try:
     if not shared.Settings.ASSERTIONS:
       link_opts += ['-disable-verify']
 
-    if llvm_lto >= 2:
+    if llvm_lto >= 2 and llvm_opts > 0:
       logging.debug('running LLVM opts as pre-LTO')
       final = shared.Building.llvm_opt(final, llvm_opts, DEFAULT_FINAL)
       if DEBUG: save_intermediate('opt', 'bc')
@@ -1289,9 +1273,8 @@ try:
       # add a manual internalize with the proper things we need to be kept alive during lto
       link_opts += shared.Building.get_safe_internalize() + ['-std-link-opts']
       # execute it now, so it is done entirely before we get to the stage of legalization etc.
-      final = shared.Building.llvm_opt(final, pre_fastcomp_opts + link_opts, DEFAULT_FINAL)
+      final = shared.Building.llvm_opt(final, link_opts, DEFAULT_FINAL)
       if DEBUG: save_intermediate('lto', 'bc')
-      pre_fastcomp_opts = []
       link_opts = []
     else:
       # At minimum remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
@@ -1303,15 +1286,11 @@ try:
       final = shared.Building.llvm_opt(final, link_opts, get_final() + '.link.ll')
       if DEBUG: save_intermediate('linktime', 'll')
     else:
-      if not save_bc:
-        # Simplify LLVM bitcode for fastcomp
-        link_opts = pre_fastcomp_opts + link_opts + fastcomp_opts
-      final = shared.Building.llvm_opt(final, link_opts, DEFAULT_FINAL)
-      if DEBUG: save_intermediate('linktime', 'bc')
+      if len(link_opts) > 0:
+        final = shared.Building.llvm_opt(final, link_opts, DEFAULT_FINAL)
+        if DEBUG: save_intermediate('linktime', 'bc')
       if save_bc:
         shutil.copyfile(final, save_bc)
-        final = shared.Building.llvm_opt(final, fastcomp_opts, get_final() + '.adsimp.bc')
-        if DEBUG: save_intermediate('adsimp', 'bc')
 
   # Prepare .ll for Emscripten
   if LEAVE_INPUTS_RAW:
@@ -1324,11 +1303,6 @@ try:
     execute([shared.PYTHON, shared.AUTODEBUGGER, final, next])
     final = next
     if DEBUG: save_intermediate('autodebug', 'll')
-
-  # Simplify bitcode after autodebug
-  if AUTODEBUG or LEAVE_INPUTS_RAW:
-    final = shared.Building.llvm_opt(final, fastcomp_opts, get_final() + '.adsimp.bc')
-    if DEBUG: save_intermediate('adsimp', 'bc')
 
   assert type(final) == str, 'we must have linked the final files, if linking was deferred, by this point'
 
