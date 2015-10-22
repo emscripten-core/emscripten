@@ -417,65 +417,66 @@ f.close()
           # CMake can be invoked in two ways, using 'emconfigure cmake', or by directly running 'cmake'.
           # Test both methods.
           for invoke_method in ['cmake', 'emconfigure']:
-
-            # Create a temp workspace folder
-            cmakelistsdir = path_from_root('tests', 'cmake', cmake_cases[i])
-            tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
-            try:
-              os.chdir(tempdirname)
-
-              # Run Cmake
-              if invoke_method == 'cmake':
-                # Test invoking cmake directly.
-                cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+path_from_root('cmake', 'Modules', 'Platform', 'Emscripten.cmake'),
-                                '-DCMAKE_CROSSCOMPILING_EMULATOR="' + ' '.join(NODE_JS) + '"',
-                                '-DCMAKE_BUILD_TYPE=' + configuration, cmake_arguments[i], '-G', generator, cmakelistsdir]
-                env = tools.shared.Building.remove_sh_exe_from_path(os.environ)
-              else:
-                # Test invoking via 'emconfigure cmake'
-                cmd = [emconfigure, 'cmake', '-DCMAKE_BUILD_TYPE=' + configuration, cmake_arguments[i], '-G', generator, cmakelistsdir]
-                env = os.environ.copy()
-
-              print str(cmd)
-              ret = Popen(cmd, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else PIPE, stderr=None if EM_BUILD_VERBOSE_LEVEL >= 1 else PIPE, env=env).communicate()
-              if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
-                logging.error(ret[1]) # If there were any errors, print them directly to console for diagnostics.
-              if len(ret) > 1 and ret[1] != None and 'error' in ret[1].lower():
-                logging.error('Failed command: ' + ' '.join(cmd))
-                logging.error('Result:\n' + ret[1])
-                raise Exception('cmake call failed!')
-
-              if prebuild:
-                prebuild(configuration, tempdirname)
-
-              # Build
-              cmd = make
-              if EM_BUILD_VERBOSE_LEVEL >= 3 and 'Ninja' not in generator:
-                cmd += ['VERBOSE=1']
-              ret = Popen(cmd, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else PIPE).communicate()
-              if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
-                logging.error(ret[1]) # If there were any errors, print them directly to console for diagnostics.
-              if len(ret) > 0 and ret[0] != None and 'error' in ret[0].lower() and not '0 error(s)' in ret[0].lower():
-                logging.error('Failed command: ' + ' '.join(cmd))
-                logging.error('Result:\n' + ret[0])
-                raise Exception('make failed!')
-              assert os.path.exists(tempdirname + '/' + cmake_outputs[i]), 'Building a cmake-generated Makefile failed to produce an output file %s!' % tempdirname + '/' + cmake_outputs[i]
-
-              if postbuild:
-                postbuild(configuration, tempdirname)
-
-              # Run through node, if CMake produced a .js file.
-              if cmake_outputs[i].endswith('.js'):
-                ret = Popen(NODE_JS + [tempdirname + '/' + cmake_outputs[i]], stdout=PIPE).communicate()[0]
-                self.assertTextDataIdentical(open(cmakelistsdir + '/out.txt', 'r').read().strip(), ret.strip())
-            finally:
-              os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
-              #there is a race condition under windows here causing an exception in shutil.rmtree because the directory is not empty yet
+            for cpp_lib_type in ['STATIC', 'SHARED']:
+              # Create a temp workspace folder
+              cmakelistsdir = path_from_root('tests', 'cmake', cmake_cases[i])
+              tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
               try:
-                shutil.rmtree(tempdirname)
-              except:
-                time.sleep(0.1)
-                shutil.rmtree(tempdirname)
+                os.chdir(tempdirname)
+
+                # Run Cmake
+                if invoke_method == 'cmake':
+                  # Test invoking cmake directly.
+                  cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+path_from_root('cmake', 'Modules', 'Platform', 'Emscripten.cmake'),
+                                  '-DCPP_LIBRARY_TYPE='+cpp_lib_type,
+                                  '-DCMAKE_CROSSCOMPILING_EMULATOR="' + ' '.join(NODE_JS) + '"',
+                                  '-DCMAKE_BUILD_TYPE=' + configuration, cmake_arguments[i], '-G', generator, cmakelistsdir]
+                  env = tools.shared.Building.remove_sh_exe_from_path(os.environ)
+                else:
+                  # Test invoking via 'emconfigure cmake'
+                  cmd = [emconfigure, 'cmake', '-DCMAKE_BUILD_TYPE=' + configuration, cmake_arguments[i], '-G', generator, cmakelistsdir]
+                  env = os.environ.copy()
+
+                print str(cmd)
+                ret = Popen(cmd, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else PIPE, stderr=None if EM_BUILD_VERBOSE_LEVEL >= 1 else PIPE, env=env).communicate()
+                if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
+                  logging.error(ret[1]) # If there were any errors, print them directly to console for diagnostics.
+                if len(ret) > 1 and ret[1] != None and 'error' in ret[1].lower():
+                  logging.error('Failed command: ' + ' '.join(cmd))
+                  logging.error('Result:\n' + ret[1])
+                  raise Exception('cmake call failed!')
+
+                if prebuild:
+                  prebuild(configuration, tempdirname)
+
+                # Build
+                cmd = make
+                if EM_BUILD_VERBOSE_LEVEL >= 3 and 'Ninja' not in generator:
+                  cmd += ['VERBOSE=1']
+                ret = Popen(cmd, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else PIPE).communicate()
+                if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
+                  logging.error(ret[1]) # If there were any errors, print them directly to console for diagnostics.
+                if len(ret) > 0 and ret[0] != None and 'error' in ret[0].lower() and not '0 error(s)' in ret[0].lower():
+                  logging.error('Failed command: ' + ' '.join(cmd))
+                  logging.error('Result:\n' + ret[0])
+                  raise Exception('make failed!')
+                assert os.path.exists(tempdirname + '/' + cmake_outputs[i]), 'Building a cmake-generated Makefile failed to produce an output file %s!' % tempdirname + '/' + cmake_outputs[i]
+
+                if postbuild:
+                  postbuild(configuration, tempdirname)
+
+                # Run through node, if CMake produced a .js file.
+                if cmake_outputs[i].endswith('.js'):
+                  ret = Popen(NODE_JS + [tempdirname + '/' + cmake_outputs[i]], stdout=PIPE).communicate()[0]
+                  self.assertTextDataIdentical(open(cmakelistsdir + '/out.txt', 'r').read().strip(), ret.strip())
+              finally:
+                os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
+                #there is a race condition under windows here causing an exception in shutil.rmtree because the directory is not empty yet
+                try:
+                  shutil.rmtree(tempdirname)
+                except:
+                  time.sleep(0.1)
+                  shutil.rmtree(tempdirname)
 
   def test_failure_error_code(self):
     for compiler in [EMCC, EMXX]:
