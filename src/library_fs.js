@@ -30,6 +30,7 @@ mergeInto(LibraryManager.library, {
     ErrnoError: null, // set during init
     genericErrors: {},
     filesystems: null,
+    syncFSRequests: 0, // we warn if there are multiple in flight at once
 
     handleFSError: function(e) {
       if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + stackTrace();
@@ -476,19 +477,31 @@ mergeInto(LibraryManager.library, {
         populate = false;
       }
 
+      FS.syncFSRequests++;
+
+      if (FS.syncFSRequests > 1) {
+        console.log('warning: ' + FS.syncFSRequests + ' FS.syncfs operations in flight at once, probably just doing extra work');
+      }
+
       var mounts = FS.getMounts(FS.root.mount);
       var completed = 0;
+
+      function doCallback(err) {
+        assert(FS.syncFSRequests > 0);
+        FS.syncFSRequests--;
+        return callback(err);
+      }
 
       function done(err) {
         if (err) {
           if (!done.errored) {
             done.errored = true;
-            return callback(err);
+            return doCallback(err);
           }
           return;
         }
         if (++completed >= mounts.length) {
-          callback(null);
+          doCallback(null);
         }
       };
 
