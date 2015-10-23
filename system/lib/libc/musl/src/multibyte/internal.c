@@ -4,8 +4,6 @@
  * unnecessary.
  */
 
-#include <inttypes.h>
-
 #include "internal.h"
 
 #define C(x) ( x<2 ? -1 : ( R(0x80,0xc0) | x ) )

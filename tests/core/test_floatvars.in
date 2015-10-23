@@ -15,13 +15,8 @@ int main(int argc, char **argv) {
 
   printf("small: %.10f\n", argc * 0.000001);
 
-  /*
-  // Rounding behavior
-  float fs[6] = { -2.75, -2.50, -2.25, 2.25, 2.50, 2.75 };
-  double ds[6] = { -2.75, -2.50, -2.25, 2.25, 2.50, 2.75 };
-  for (int i = 0; i < 6; i++)
-    printf("*int(%.2f)=%d,%d*\n", fs[i], int(fs[i]), int(ds[i]));
-  */
+  double d = 1.12345678901234567890123e21;
+  printf("double: %f\n", d);
 
   return 0;
 }

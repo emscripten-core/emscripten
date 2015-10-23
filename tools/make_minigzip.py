@@ -5,9 +5,10 @@ import shared
 
 print 'Building zlib'
 
-zlib = shared.Building.build_library('zlib', shared.EMSCRIPTEN_TEMP_DIR, shared.EMSCRIPTEN_TEMP_DIR, ['libz.a'], make_args=['libz.a'], copy_project=True, source_dir=shared.path_from_root('tests', 'zlib'))[0]
+emscripten_temp_dir = shared.get_emscripten_temp_dir()
+zlib = shared.Building.build_library('zlib', emscripten_temp_dir, emscripten_temp_dir, ['libz.a'], make_args=['libz.a'], copy_project=True, source_dir=shared.path_from_root('tests', 'zlib'))[0]
 
 print 'Building minigzip'
 
-Popen(['python2', shared.EMCC, '-O2', shared.path_from_root('tests', 'zlib', 'minigzip.c'), zlib, '-o', shared.path_from_root('tools', 'minigzip.js')]).communicate()
+Popen([shared.PYTHON, shared.EMCC, '-O2', shared.path_from_root('tests', 'zlib', 'minigzip.c'), zlib, '-o', shared.path_from_root('tools', 'minigzip.js')]).communicate()
 

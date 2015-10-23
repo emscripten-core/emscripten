@@ -30,7 +30,6 @@
 */
 
 #include <string.h>
-#include <errno.h>
 #include <stdlib.h>
 #include <regex.h>
 #include <limits.h>
@@ -516,7 +515,7 @@ tre_new_item(tre_mem_t mem, int min, int max, int *i, int *max_i,
       if (*max_i > 1024)
 	return REG_ESPACE;
       *max_i *= 2;
-      new_items = xrealloc(array, sizeof(*items) * *max_i);
+      new_items = xrealloc(array, sizeof(*array) * *max_i);
       if (new_items == NULL)
 	return REG_ESPACE;
       *items = array = new_items;
@@ -765,7 +764,7 @@ tre_parse_bracket(tre_parse_ctx_t *ctx, tre_ast_node_t **result)
 	  if (num_neg_classes > 0)
 	    {
 	      l->neg_classes = tre_mem_alloc(ctx->mem,
-					     (sizeof(l->neg_classes)
+					     (sizeof(*l->neg_classes)
 					      * (num_neg_classes + 1)));
 	      if (l->neg_classes == NULL)
 		{
@@ -805,7 +804,7 @@ tre_parse_bracket(tre_parse_ctx_t *ctx, tre_ast_node_t **result)
 	  if (num_neg_classes > 0)
 	    {
 	      l->neg_classes = tre_mem_alloc(ctx->mem,
-					     (sizeof(l->neg_classes)
+					     (sizeof(*l->neg_classes)
 					      * (num_neg_classes + 1)));
 	      if (l->neg_classes == NULL)
 		{
@@ -1299,10 +1298,7 @@ tre_parse(tre_parse_ctx_t *ctx)
 		  else
 		    {
 		      /* Escaped character. */
-		      result = tre_ast_new_literal(ctx->mem, *ctx->re, *ctx->re,
-						   ctx->position);
-		      ctx->position++;
-		      ctx->re++;
+		      goto parse_literal;
 		    }
 		  break;
 		}
@@ -2143,6 +2139,11 @@ tre_copy_ast(tre_mem_t mem, tre_stack_t *stack, tre_ast_node_t *ast,
 		*result = tre_ast_new_literal(mem, min, max, pos);
 		if (*result == NULL)
 		  status = REG_ESPACE;
+		else {
+		  tre_literal_t *p = (*result)->obj;
+		  p->class = lit->class;
+		  p->neg_classes = lit->neg_classes;
+		}
 
 		if (pos > *max_pos)
 		  *max_pos = pos;
@@ -3167,7 +3168,7 @@ regcomp(regex_t *restrict preg, const char *restrict regex, int cflags)
 		 sizeof(*tag_directions) * (tnfa->num_tags + 1));
 	}
       tnfa->minimal_tags = xcalloc((unsigned)tnfa->num_tags * 2 + 1,
-				   sizeof(tnfa->minimal_tags));
+				   sizeof(*tnfa->minimal_tags));
       if (tnfa->minimal_tags == NULL)
 	ERROR_EXIT(REG_ESPACE);
 

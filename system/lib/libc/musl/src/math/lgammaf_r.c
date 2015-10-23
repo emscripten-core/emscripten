@@ -17,7 +17,6 @@
 #include "libc.h"
 
 static const float
-two23= 8.3886080000e+06, /* 0x4b000000 */
 pi  =  3.1415927410e+00, /* 0x40490fdb */
 a0  =  7.7215664089e-02, /* 0x3d9e233f */
 a1  =  3.2246702909e-01, /* 0x3ea51a66 */
@@ -82,87 +81,58 @@ w4  = -5.9518753551e-04, /* 0xba1c065c */
 w5  =  8.3633989561e-04, /* 0x3a5b3dd2 */
 w6  = -1.6309292987e-03; /* 0xbad5c4e8 */
 
-static float sin_pif(float x)
+/* sin(pi*x) assuming x > 2^-100, if sin(pi*x)==0 the sign is arbitrary */
+static float sin_pi(float x)
 {
-	float y,z;
-	int n,ix;
+	double_t y;
+	int n;
 
-	GET_FLOAT_WORD(ix, x);
-	ix &= 0x7fffffff;
+	/* spurious inexact if odd int */
+	x = 2*(x*0.5f - floorf(x*0.5f));  /* x mod 2.0 */
 
-	if(ix < 0x3e800000)
-		return __sindf(pi*x);
-
-	y = -x;  /* negative x is assumed */
-
-	/*
-	 * argument reduction, make sure inexact flag not raised if input
-	 * is an integer
-	 */
-	z = floorf(y);
-	if (z != y) {   /* inexact anyway */
-		y *= 0.5f;
-		y  = 2.0f*(y - floorf(y));   /* y = |x| mod 2.0 */
-		n  = (int)(y*4.0f);
-	} else {
-		if (ix >= 0x4b800000) {
-			y = 0.0f;  /* y must be even */
-			n = 0;
-		} else {
-			if (ix < 0x4b000000)
-				z = y + two23;  /* exact */
-			GET_FLOAT_WORD(n, z);
-			n &= 1;
-			y = n;
-			n <<= 2;
-		}
-	}
+	n = (int)(x*4);
+	n = (n+1)/2;
+	y = x - n*0.5f;
+	y *= 3.14159265358979323846;
 	switch (n) {
-	case 0:  y =  __sindf(pi*y); break;
-	case 1:
-	case 2:  y =  __cosdf(pi*(0.5f - y)); break;
-	case 3:
-	case 4:  y =  __sindf(pi*(1.0f - y)); break;
-	case 5:
-	case 6:  y = -__cosdf(pi*(y - 1.5f)); break;
-	default: y =  __sindf(pi*(y - 2.0f)); break;
+	default: /* case 4: */
+	case 0: return __sindf(y);
+	case 1: return __cosdf(y);
+	case 2: return __sindf(-y);
+	case 3: return -__cosdf(y);
 	}
-	return -y;
 }
-
 
 float __lgammaf_r(float x, int *signgamp)
 {
+	union {float f; uint32_t i;} u = {x};
 	float t,y,z,nadj,p,p1,p2,p3,q,r,w;
-	int32_t hx;
-	int i,ix;
-
-	GET_FLOAT_WORD(hx, x);
+	uint32_t ix;
+	int i,sign;
 
 	/* purge off +-inf, NaN, +-0, tiny and negative arguments */
 	*signgamp = 1;
-	ix = hx & 0x7fffffff;
+	sign = u.i>>31;
+	ix = u.i & 0x7fffffff;
 	if (ix >= 0x7f800000)
 		return x*x;
-	if (ix == 0)
-		return 1.0f/0.0f;
 	if (ix < 0x35000000) {  /* |x| < 2**-21, return -log(|x|) */
-		if (hx < 0) {
+		if (sign) {
 			*signgamp = -1;
-			return -logf(-x);
+			x = -x;
 		}
 		return -logf(x);
 	}
-	if (hx < 0) {
-		if (ix >= 0x4b000000)  /* |x| >= 2**23, must be -integer */
-			return 1.0f/0.0f;
-		t = sin_pif(x);
-		if (t == 0.0f) /* -integer */
-			return 1.0f/0.0f;
-		nadj = logf(pi/fabsf(t*x));
-		if (t < 0.0f)
-			*signgamp = -1;
+	if (sign) {
 		x = -x;
+		t = sin_pi(x);
+		if (t == 0.0f) /* -integer */
+			return 1.0f/(x-x);
+		if (t > 0.0f)
+			*signgamp = -1;
+		else
+			t = -t;
+		nadj = logf(pi/(t*x));
 	}
 
 	/* purge off 1 and 2 */
@@ -241,7 +211,7 @@ float __lgammaf_r(float x, int *signgamp)
 		r = (x-0.5f)*(t-1.0f)+w;
 	} else                         /* 2**58 <= x <= inf */
 		r =  x*(logf(x)-1.0f);
-	if (hx < 0)
+	if (sign)
 		r = nadj - r;
 	return r;
 }

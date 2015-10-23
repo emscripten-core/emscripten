@@ -1,8 +1,10 @@
 function headlessCanvas() {
-  return {
+  var that = this;
+  var ret = {
     headless: true,
     getContext: function(which) {
       switch(which) {
+        case 'webgl':
         case 'experimental-webgl': {
           return {
             /* ClearBufferMask */
@@ -598,7 +600,10 @@ function headlessCanvas() {
       });
     },
     exitPointerLock: function(){},
-    style: {},
+    style: {
+      setProperty: function() {},
+      removeProperty: function() {},
+    },
     eventListeners: {},
     addEventListener: function(){},
     removeEventListener: function(){},
@@ -615,6 +620,9 @@ function headlessCanvas() {
       add: function(){},
       remove: function(){},
     },
+    insertBefore: function(){},
   };
+  ret.parentNode = ret;
+  return ret;
 }
 

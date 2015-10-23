@@ -6,7 +6,7 @@
 
 
 int main(int argc, char **argv) {
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   // include GL stuff, to check that we can compile hybrid 2d/GL apps
   extern void glBegin(int mode);
   extern void glBindBuffer(int target, int buffer);
@@ -56,9 +56,6 @@ int main(int argc, char **argv) {
   SDL_Quit();
 
   printf("done.\n");
-
-  int result = sum > 3000 && sum < 5000; // varies a little on different browsers, font differences?
-  REPORT_RESULT();
 
   return 0;
 }

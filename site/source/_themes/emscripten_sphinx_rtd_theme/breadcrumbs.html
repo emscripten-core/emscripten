@@ -1,0 +1,11 @@
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <div class="breadcrumb-box">
+     <a class="breadcrumb-box-item" href="{{ pathto(master_doc) }}">Home</a> 
+      {% for doc in parents %}
+          <a class="breadcrumb-box-item" href="{{ doc.link|e }}">&raquo;&nbsp;{{ doc.title }}</a>
+      {% endfor %}
+    <div class="breadcrumb-box-item">&raquo;&nbsp;{{ title }}</div>
+  </div>
+ 
+</div>

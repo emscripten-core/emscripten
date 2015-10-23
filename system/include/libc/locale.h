@@ -7,7 +7,11 @@ extern "C" {
 
 #include <features.h>
 
+#ifdef __cplusplus
 #define NULL 0L
+#else
+#define NULL ((void*)0)
+#endif
 
 #define LC_CTYPE    0
 #define LC_NUMERIC  1

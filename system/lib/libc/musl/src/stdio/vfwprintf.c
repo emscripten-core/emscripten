@@ -149,7 +149,7 @@ static void pop_arg(union arg *arg, int type, va_list *ap)
 
 static void out(FILE *f, const wchar_t *s, size_t l)
 {
-	while (l--) fputwc(*s++, f);
+	while (l-- && !(f->flags & F_ERR)) fputwc(*s++, f);
 }
 
 static int getint(wchar_t **s) {
@@ -167,7 +167,7 @@ static const char sizeprefix['y'-'a'] = {
 
 static int wprintf_core(FILE *f, const wchar_t *fmt, va_list *ap, union arg *nl_arg, int *nl_type)
 {
-	wchar_t *a, *z, *s=(wchar_t *)fmt, *s0;
+	wchar_t *a, *z, *s=(wchar_t *)fmt;
 	unsigned l10n=0, litpct, fl;
 	int w, p;
 	union arg arg;
@@ -242,7 +242,6 @@ static int wprintf_core(FILE *f, const wchar_t *fmt, va_list *ap, union arg *nl_
 		} else p = -1;
 
 		/* Format specifier state machine */
-		s0=s;
 		st=0;
 		do {
 			if (OOB(*s)) return -1;
@@ -254,7 +253,6 @@ static int wprintf_core(FILE *f, const wchar_t *fmt, va_list *ap, union arg *nl_
 		/* Check validity of argument type (nl/normal) */
 		if (st==NOARG) {
 			if (argpos>=0) return -1;
-			else if (!f) continue;
 		} else {
 			if (argpos>=0) nl_type[argpos]=st, arg=nl_arg[argpos];
 			else if (f) pop_arg(&arg, st, ap);
@@ -288,8 +286,7 @@ static int wprintf_core(FILE *f, const wchar_t *fmt, va_list *ap, union arg *nl_
 		case 'S':
 			a = arg.p;
 			z = wmemchr(a, 0, p);
-			if (!z) z=a+p;
-			else p=z-a;
+			if (z) p=z-a;
 			if (w<p) w=p;
 			if (!(fl&LEFT_ADJ)) fprintf(f, "%.*s", w-p, "");
 			out(f, a, p);
@@ -348,13 +345,23 @@ int vfwprintf(FILE *restrict f, const wchar_t *restrict fmt, va_list ap)
 	va_list ap2;
 	int nl_type[NL_ARGMAX] = {0};
 	union arg nl_arg[NL_ARGMAX];
+	int olderr;
 	int ret;
 
+	/* the copy allows passing va_list* even if va_list is an array */
 	va_copy(ap2, ap);
-	if (wprintf_core(0, fmt, &ap2, nl_arg, nl_type) < 0) return -1;
+	if (wprintf_core(0, fmt, &ap2, nl_arg, nl_type) < 0) {
+		va_end(ap2);
+		return -1;
+	}
 
 	FLOCK(f);
+	f->mode |= f->mode+1;
+	olderr = f->flags & F_ERR;
+	f->flags &= ~F_ERR;
 	ret = wprintf_core(f, fmt, &ap2, nl_arg, nl_type);
+	if (f->flags & F_ERR) ret = -1;
+	f->flags |= olderr;
 	FUNLOCK(f);
 	va_end(ap2);
 	return ret;

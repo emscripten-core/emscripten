@@ -1,6 +1,6 @@
 mergeInto(LibraryManager.library, {
   $NODEFS__deps: ['$FS', '$PATH'],
-  $NODEFS__postset: 'if (ENVIRONMENT_IS_NODE) { var fs = require("fs"); NODEFS.staticInit(); }',
+  $NODEFS__postset: 'if (ENVIRONMENT_IS_NODE) { var fs = require("fs"); var NODEJS_PATH = require("path"); NODEFS.staticInit(); }',
   $NODEFS: {
     isWindows: false,
     staticInit: function() {
@@ -24,7 +24,7 @@ mergeInto(LibraryManager.library, {
       try {
         stat = fs.lstatSync(path);
         if (NODEFS.isWindows) {
-          // On Windows, directories return permission bits 'rw-rw-rw-', even though they have 'rwxrwxrwx', so 
+          // On Windows, directories return permission bits 'rw-rw-rw-', even though they have 'rwxrwxrwx', so
           // propagate write bits to execute bits.
           stat.mode = stat.mode | ((stat.mode & 146) >> 1);
         }
@@ -73,10 +73,11 @@ mergeInto(LibraryManager.library, {
       4098/*O_RDWR|O_DSYNC*/: 'rs+'
     },
     flagsToPermissionString: function(flags) {
+      flags &= ~0100000 /*O_LARGEFILE*/; // Ignore this flag from musl, otherwise node.js fails to open the file.
       if (flags in NODEFS.flagsToPermissionStringMap) {
         return NODEFS.flagsToPermissionStringMap[flags];
       } else {
-        return flags;
+        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
     },
     node_ops: {
@@ -203,7 +204,9 @@ mergeInto(LibraryManager.library, {
       readlink: function(node) {
         var path = NODEFS.realPath(node);
         try {
-          return fs.readlinkSync(path);
+          path = fs.readlinkSync(path);
+          path = NODEJS_PATH.relative(NODEJS_PATH.resolve(node.mount.opts.root), path);
+          return path;
         } catch (e) {
           if (!e.code) throw e;
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
@@ -233,6 +236,7 @@ mergeInto(LibraryManager.library, {
         }
       },
       read: function (stream, buffer, offset, length, position) {
+        if (length === 0) return 0; // node errors on 0 length reads
         // FIXME this is terrible.
         var nbuffer = new Buffer(length);
         var res;
@@ -278,7 +282,6 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
         }
 
-        stream.position = position;
         return position;
       }
     }

@@ -10,7 +10,7 @@ void check_error() {
 }
 
 int main() {
-  char* test_values[] = {
+  const char* test_values[] = {
     "-9223372036854775809",
     "-9223372036854775808",
     "-9223372036854775807",

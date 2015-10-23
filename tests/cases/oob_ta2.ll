@@ -1,6 +1,6 @@
 ; ModuleID = 'tests/hello_world.bc'
-target datalayout = "e-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-p:32:32:32-v128:32:32"
-target triple = "le32-unknown-nacl"
+target datalayout = "e-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-p:32:32:32-v128:32:128-n32-S128"
+target triple = "asmjs-unknown-emscripten"
 
 %structy = type { [2 x [10 x i8]] }
 
@@ -16,8 +16,8 @@ entry:
   %retval = alloca i32, align 4                   ; [#uses=1 type=i32*]
   store i32 0, i32* %retval
   %ind = add i32 %argc, 13
-  %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([2 x %structy]* @.stry, i32 0, i32 2, i32 0, i32 %ind))
-  %call2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0 type=i32]
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x %structy], [2 x %structy]* @.stry, i32 0, i32 2, i32 0, i32 %ind))
+  %call2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0 type=i32]
   ret i32 1  ret i32 1
 }
 

@@ -1,10 +1,11 @@
 List:
-USER=root
+LOGNAME=web_user
+USER=web_user
 PATH=/
 PWD=/
-HOME=/home/emscripten
-LANG=en_US.UTF-8
-_=./this.program
+HOME=/home/web_user
+LANG=C
+_={{{ THIS_PROGRAM }}}
 
 getenv(PATH): /
 getenv(NONEXISTENT): (null)

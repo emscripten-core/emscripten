@@ -102,7 +102,7 @@ void xmlvm_init()
     xmlvm_clear_constant_pool_cache();
     
 #ifndef XMLVM_NO_GC
-#ifndef EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
     GC_finalize_on_demand = 1;
     GC_java_finalization = 1;
     java_lang_Thread* finalizerThread = (java_lang_Thread*) org_xmlvm_runtime_FinalizerNotifier_startFinalizerThread__();
@@ -115,7 +115,7 @@ void xmlvm_init()
 
 void xmlvm_destroy(java_lang_Thread* mainThread)
 {
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 	return; // Let the JS engine handle clean up
 #endif
 

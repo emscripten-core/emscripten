@@ -188,7 +188,6 @@ template <class _Tp, class _VoidPtr> struct __forward_list_node;
 template <class _NodePtr>
 struct __forward_begin_node
 {
-    typedef __forward_begin_node __self;
     typedef _NodePtr pointer;
 
     pointer __next_;
@@ -197,16 +196,22 @@ struct __forward_begin_node
 };
 
 template <class _Tp, class _VoidPtr>
-struct __forward_list_node
-    : public __forward_begin_node
-             <
-                 typename pointer_traits<_VoidPtr>::template
+struct _LIBCPP_HIDDEN __begin_node_of
+{
+    typedef __forward_begin_node
+        <
+             typename pointer_traits<_VoidPtr>::template
 #ifndef _LIBCPP_HAS_NO_TEMPLATE_ALIASES
-                     rebind<__forward_list_node<_Tp, _VoidPtr> >
+                 rebind<__forward_list_node<_Tp, _VoidPtr> >
 #else
-                     rebind<__forward_list_node<_Tp, _VoidPtr> >::other
+                 rebind<__forward_list_node<_Tp, _VoidPtr> >::other
 #endif
-             >
+         > type;
+};
+
+template <class _Tp, class _VoidPtr>
+struct __forward_list_node
+    : public __begin_node_of<_Tp, _VoidPtr>::type
 {
     typedef _Tp value_type;
 
@@ -357,9 +362,9 @@ protected:
     typedef _Tp    value_type;
     typedef _Alloc allocator_type;
 
-    typedef typename allocator_traits<allocator_type>::void_pointer void_pointer;
-    typedef __forward_list_node<value_type, void_pointer>           __node;
-    typedef typename __node::__self                                 __begin_node;
+    typedef typename allocator_traits<allocator_type>::void_pointer  void_pointer;
+    typedef __forward_list_node<value_type, void_pointer>            __node;
+    typedef typename __begin_node_of<value_type, void_pointer>::type __begin_node;
     typedef typename allocator_traits<allocator_type>::template
 #ifndef _LIBCPP_HAS_NO_TEMPLATE_ALIASES
                 rebind_alloc<__node>
@@ -1416,6 +1421,7 @@ template <class _Tp, class _Alloc>
 void
 forward_list<_Tp, _Alloc>::remove(const value_type& __v)
 {
+    forward_list<_Tp, _Alloc> __deleted_nodes; // collect the nodes we're removing
     iterator __e = end();
     for (iterator __i = before_begin(); __i.__ptr_->__next_ != nullptr;)
     {
@@ -1424,7 +1430,7 @@ forward_list<_Tp, _Alloc>::remove(const value_type& __v)
             iterator __j = _VSTD::next(__i, 2);
             for (; __j != __e && *__j == __v; ++__j)
                 ;
-            erase_after(__i, __j);
+			__deleted_nodes.splice_after(__deleted_nodes.before_begin(), *this, __i, __j);
             if (__j == __e)
                 break;
             __i = __j;

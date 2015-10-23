@@ -10,11 +10,11 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
-void main_loop(void *arg) {
+void main_loop() {
 }
 
 int main() {
@@ -47,10 +47,10 @@ int main() {
 
   close(serverfd);
 
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   emscripten_set_main_loop(main_loop, 60, 0);
 #else
-  while (1) main_loop(NULL); sleep(1);
+  while (1) main_loop(); sleep(1);
 #endif
 
   return EXIT_SUCCESS;

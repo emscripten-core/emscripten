@@ -107,11 +107,14 @@ int main() {
     onLoaded,
     onError);
 
+  char name[40];
+  strcpy(name, "/tmp/screen_shot.png"); // test for issue #2349, name being free'd
   emscripten_async_wget(
     "http://localhost:8888/screenshot.png", 
-    "/tmp/screen_shot.png",
+    name,
     onLoaded,
     onError);
+  memset(name, 0, 30);
 
   emscripten_set_main_loop(wait_wgets, 0, 0);
 

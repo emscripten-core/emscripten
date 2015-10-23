@@ -12,7 +12,7 @@ RESULTING FROM THE USE, MODIFICATION, OR
 REDISTRIBUTION OF THIS SOFTWARE.
 */
 
-#if !EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
 #define USE_GLEW 1
 #endif
 
@@ -308,7 +308,7 @@ int main(int argc, char *argv[])
 
     SDL_GL_SwapBuffers();
 
-#if !EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
     SDL_Delay(1500);
 #endif
 

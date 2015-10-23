@@ -547,6 +547,10 @@ gears_draw(void)
    draw_gear(gear3, transform, -3.1, 4.2, -2 * angle - 25.0, blue);
 
    glutSwapBuffers();
+
+#ifdef LONGTEST
+   glutPostRedisplay(); // check for issues with not throttling calls
+#endif
 }
 
 /**
@@ -609,6 +613,14 @@ gears_idle(void)
    if (angle > 3600.0)
       angle -= 3600.0;
 
+#ifdef TEST_MEMORYPROFILER_ALLOCATIONS_MAP
+   // This file is used to test --memoryprofiler linker flag, in which case
+   // add some allocation noise.
+   static void *allocatedPtr = 0;
+   free(allocatedPtr);
+   allocatedPtr = malloc(rand() % 10485760);
+#endif
+
    glutPostRedisplay();
    frames++;
 
@@ -621,6 +633,17 @@ gears_idle(void)
             fps);
       tRate0 = t;
       frames = 0;
+#ifdef LONGTEST
+      static runs = 0;
+      runs++;
+      if (runs == 4) {
+        int result = fps;
+#ifdef TEST_MEMORYPROFILER_ALLOCATIONS_MAP
+        result = 0;
+#endif
+        REPORT_RESULT();
+      }
+#endif
    }
 }
 
@@ -721,6 +744,9 @@ gears_init(void)
 int
 main(int argc, char *argv[])
 {
+#ifdef TEST_MEMORYPROFILER_ALLOCATIONS_MAP
+   printf("You should see an interactive CPU profiler graph below, and below that an allocation map of the Emscripten main HEAP, with a long blue block of allocated memory.\n");
+#endif
    /* Initialize the window */
    glutInit(&argc, argv);
    glutInitWindowSize(300, 300);

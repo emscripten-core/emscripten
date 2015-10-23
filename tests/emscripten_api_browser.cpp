@@ -31,6 +31,18 @@ void five(void *arg) {
   emscripten_resume_main_loop();
 }
 
+void argey(void* arg) {
+  static int counter = 0;
+  assert((int)arg == 17);
+  counter++;
+  printf("argey: %d\n", counter);
+  if (counter == 5) {
+    emscripten_cancel_main_loop();
+    int result = 1;
+    REPORT_RESULT();
+  }
+}
+
 void mainey() {
   static int counter = 0;
   printf("mainey: %d\n", counter++);
@@ -45,8 +57,8 @@ void mainey() {
     assert(pre1ed);
     assert(pre2ed);
     printf("Good!\n");
-    int result = 1;
-    REPORT_RESULT();
+    emscripten_cancel_main_loop();
+    emscripten_set_main_loop_arg(argey, (void*)17, 0, 0);
   }
 }
 
@@ -82,6 +94,13 @@ int main() {
   SDL_Init(0);
   last = SDL_GetTicks();
   printf("frist! %d\n", last);
+
+  double ratio = emscripten_get_device_pixel_ratio();
+  double ratio2 = EM_ASM_DOUBLE_V({
+    return window.devicePixelRatio || 1.0;
+  });
+
+  assert(ratio == ratio2);
 
   atexit(never); // should never be called - it is wrong to exit the runtime orderly if we have async calls!
 

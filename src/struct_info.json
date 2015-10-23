@@ -14,7 +14,14 @@
                 "d_name"
             ]
         }
-    }, 
+    },
+    {
+        "file": "libc/limits.h",
+        "defines": [
+            "INT_MAX"
+        ],
+        "structs": {}
+    },
     {
         "file": "libc/utime.h", 
         "defines": [],
@@ -91,7 +98,25 @@
                 "f_namemax"
             ]
         }
-    }, 
+    },
+    {
+        "file": "libc/sys/statfs.h",
+        "defines": [],
+        "structs": {
+            "statfs": [
+                "f_bsize",
+                "f_frsize",
+                "f_blocks",
+                "f_bfree",
+                "f_bavail",
+                "f_files",
+                "f_ffree",
+                "f_fsid",
+                "f_flags",
+                "f_namelen"
+            ]
+        } 
+    },
     {
         "file": "libc/fcntl.h", 
         "defines": [
@@ -108,7 +133,9 @@
             "O_ACCMODE", 
             "F_DUPFD", 
             "F_SETLK", 
-            "O_WRONLY"
+            "O_WRONLY",
+            "AT_FDCWD",
+            "AT_SYMLINK_NOFOLLOW"
         ],
         "structs": {
             "flock": [
@@ -155,6 +182,13 @@
         }
     }, 
     {
+        "file": "libc/limits.h",
+        "defines": [
+            "PTHREAD_KEYS_MAX"
+        ],
+        "structs": {}
+    },
+    {
         "file": "libc/sys/utsname.h", 
         "defines": [],
         "structs": {
@@ -172,7 +206,8 @@
         "file": "libc/time.h", 
         "defines": [
             ["li", "CLOCKS_PER_SEC"],
-            "CLOCK_REALTIME"
+            "CLOCK_REALTIME",
+            "CLOCK_MONOTONIC"
         ],
         "structs": {
             "timezone": [
@@ -417,7 +452,7 @@
         "structs": {}
     }, 
     {
-        "file": "libc/bits/fcntl.h", 
+        "file": "bits/fcntl.h", 
         "defines": [
             "O_CREAT", 
             "O_SYNC", 
@@ -427,7 +462,9 @@
             "O_APPEND", 
             "F_SETOWN", 
             "O_TRUNC", 
+            "O_DIRECTORY",
             "F_GETOWN", 
+            "F_GETOWN_EX",
             "F_SETFD", 
             "O_EXCL", 
             "F_GETFL"
@@ -441,14 +478,20 @@
             "SOCK_STREAM", 
             "AF_INET", 
             "AF_UNSPEC", 
-            "AF_INET6"
+            "AF_INET6",
+            "SOL_SOCKET", 
+            "SO_ERROR"
         ],
         "structs": {}
     }, 
     {
-        "file": "libc/bits/ioctl.h", 
+        "file": "bits/ioctl.h", 
         "defines": [
-            "FIONREAD"
+            "FIONREAD",
+            "TCGETS",
+            "TCSETS",
+            "TIOCGPGRP",
+            "TIOCSPGRP"
         ],
         "structs": {}
     }, 
@@ -473,6 +516,7 @@
             "_PC_CHOWN_RESTRICTED", 
             "_SC_MQ_PRIO_MAX", 
             "_SC_PAGE_SIZE", 
+            "_SC_PHYS_PAGES",
             "_SC_BARRIERS", 
             "_SC_2_LOCALEDEF", 
             "_SC_STREAM_MAX", 
@@ -621,7 +665,7 @@
         "structs": {}
     }, 
     {
-        "file": "libc/bits/errno.h", 
+        "file": "bits/errno.h", 
         "defines": [
             "ETXTBSY", 
             "ETOOMANYREFS", 
@@ -835,7 +879,7 @@
         "structs": {}
     },
     {
-        "file": "libc/bits/mman.h",
+        "file": "bits/mman.h",
         "defines": [
             "MAP_PRIVATE"
         ],
@@ -871,7 +915,7 @@
     },
     {
         "file": "SDL/SDL_pixels.h",
-        "defines": [],
+        "defines": ["SDL_PIXELFORMAT_RGBA8888"], 
         "structs": {
             "SDL_Palette": [
                 "ncolors", 
@@ -932,6 +976,16 @@
         "file": "SDL/SDL_events.h",
         "defines": [],
         "structs": {
+            "SDL_WindowEvent": [
+                "type", 
+                "windowID", 
+                "event",
+                "padding1", 
+                "padding2", 
+                "padding3", 
+                "data1", 
+                "data2" 
+            ],
             "SDL_KeyboardEvent": [
                 "type", 
                 "windowID", 
@@ -948,11 +1002,10 @@
             ],
             "SDL_MouseMotionEvent": [
                 "type", 
+                "timestamp", 
                 "windowID", 
+                "which", 
                 "state", 
-                "padding1", 
-                "padding2", 
-                "padding3", 
                 "x", 
                 "y", 
                 "xrel", 
@@ -960,11 +1013,21 @@
             ],
             "SDL_MouseButtonEvent": [
                 "type", 
+                "timestamp", 
                 "windowID", 
+                "which", 
                 "button", 
                 "state", 
                 "padding1", 
                 "padding2", 
+                "x", 
+                "y"
+            ],
+            "SDL_MouseWheelEvent": [
+                "type", 
+                "timestamp", 
+                "windowID", 
+                "which", 
                 "x", 
                 "y"
             ],
@@ -983,12 +1046,28 @@
                 "state", 
                 "padding1"
             ],
+            "SDL_TouchFingerEvent": [
+                "type", 
+                "timestamp", 
+                "touchId", 
+                "fingerId", 
+                "x", 
+                "y", 
+                "dx", 
+                "dy", 
+                "pressure"
+            ],
             "SDL_ResizeEvent": [
                 "type", 
                 "w", 
                 "h"
             ]
         }
+    },
+    {
+        "file": "SDL/SDL_touch.h",
+        "defines": ["SDL_TOUCH_MOUSEID"],
+        "structs": {}
     },
     {
         "file": "SDL/SDL_audio.h", 
@@ -1114,6 +1193,11 @@
             "EMSCRIPTEN_EVENT_BATTERYLEVELCHANGE",
             "EMSCRIPTEN_EVENT_WEBGLCONTEXTLOST",
             "EMSCRIPTEN_EVENT_WEBGLCONTEXTRESTORED",
+            "EMSCRIPTEN_EVENT_MOUSEENTER",
+            "EMSCRIPTEN_EVENT_MOUSELEAVE",
+            "EMSCRIPTEN_EVENT_MOUSEOVER",
+            "EMSCRIPTEN_EVENT_MOUSEOUT",
+            "EMSCRIPTEN_EVENT_CANVASRESIZED",
 
             "EMSCRIPTEN_RESULT_SUCCESS",
             "EMSCRIPTEN_RESULT_DEFERRED",
@@ -1123,7 +1207,18 @@
             "EMSCRIPTEN_RESULT_INVALID_PARAM",
             "EMSCRIPTEN_RESULT_NOT_SUPPORTED",
             "EMSCRIPTEN_RESULT_FAILED",
-            "EMSCRIPTEN_RESULT_NO_DATA"
+            "EMSCRIPTEN_RESULT_NO_DATA",
+
+            "EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT",
+            "EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH",
+            "EMSCRIPTEN_FULLSCREEN_SCALE_ASPECT",
+            "EMSCRIPTEN_FULLSCREEN_SCALE_CENTER",
+            "EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE",
+            "EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_STDDEF",
+            "EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF",
+            "EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT",
+            "EMSCRIPTEN_FULLSCREEN_FILTERING_NEAREST",
+            "EMSCRIPTEN_FULLSCREEN_FILTERING_BILINEAR"
         ],
         "structs": {
             "EmscriptenKeyboardEvent": [
@@ -1155,6 +1250,8 @@
               "buttons",
               "movementX",
               "movementY",
+              "targetX",
+              "targetY",
               "canvasX",
               "canvasY"
             ],
@@ -1207,7 +1304,11 @@
               "isFullscreen",
               "fullscreenEnabled",
               "nodeName",
-              "id"
+              "id",
+              "elementWidth",
+              "elementHeight",
+              "screenWidth",
+              "screenHeight"
             ],
             "EmscriptenPointerlockChangeEvent": [
               "isActive",
@@ -1228,6 +1329,8 @@
               "pageY",
               "isChanged",
               "onTarget",
+              "targetX",
+              "targetY",
               "canvasX",
               "canvasY"
             ],
@@ -1256,7 +1359,116 @@
               "dischargingTime",
               "level",
               "charging"
+            ],
+            "EmscriptenWebGLContextAttributes": [
+              "alpha",
+              "depth",
+              "stencil",
+              "antialias",
+              "premultipliedAlpha",
+              "preserveDrawingBuffer",
+              "preferLowPowerToHighPerformance",
+              "failIfMajorPerformanceCaveat",
+              "majorVersion",
+              "minorVersion",
+              "enableExtensionsByDefault"
+            ],
+            "EmscriptenFullscreenStrategy": [
+              "scaleMode",
+              "canvasResolutionScaleMode",
+              "filteringMode",
+              "canvasResizedCallback",
+              "canvasResizedCallbackUserData"
             ]
         }
+    },
+    // ===========================================
+    // emscripten WebVR library
+    // ===========================================
+    {
+        "file": "emscripten/vr.h",
+        "defines": [],
+        "structs": {
+            "WebVRFieldOfView": [
+              "upDegrees",
+              "rightDegrees",
+              "downDegrees",
+              "leftDegrees"
+            ],
+            "WebVRPoint": [
+              "x",
+              "y",
+              "z",
+              "w"
+	    ],
+            "WebVRIntRect": [
+              "x",
+              "y",
+              "width",
+              "height"
+            ],
+	    "WebVRPositionState": [
+	      "timeStamp",
+	      "hasPosition",
+	      { "position": [ "x", "y", "z", "w" ] },
+	      { "linearVelocity": [ "x", "y", "z", "w" ] },
+	      { "linearAcceleration": [ "x", "y", "z", "w" ] },
+	      "hasOrientation",
+	      { "orientation": [ "x", "y", "z", "w" ] },
+	      { "angularVelocity": [ "x", "y", "z", "w" ] },
+	      { "angularAcceleration": [ "x", "y", "z", "w" ] }
+	    ],
+        "WebVREyeParameters": [
+          { "minimumFieldOfView": [ "upDegrees", "rightDegrees", "downDegrees", "leftDegrees" ] },
+          { "maximumFieldOfView": [ "upDegrees", "rightDegrees", "downDegrees", "leftDegrees" ] },
+          { "recommendedFieldOfView": [ "upDegrees", "rightDegrees", "downDegrees", "leftDegrees" ] },
+          { "eyeTranslation": [ "x", "y", "z", "w" ] },
+          { "currentFieldOfView": [ "upDegrees", "rightDegrees", "downDegrees", "leftDegrees" ] },
+          { "renderRect": [ "x", "y", "width", "height"] }
+	    ]
+        }
+    },
+    {
+        "file": "emscripten/threading.h",
+        "structs": {},
+        "defines": [
+            "EM_PROXIED_UTIME",
+            "EM_PROXIED_UTIMES",
+            "EM_PROXIED_CHROOT",
+            "EM_PROXIED_FPATHCONF",
+            "EM_PROXIED_CONFSTR",
+            "EM_PROXIED_SYSCONF",
+            "EM_PROXIED_SBRK",
+            "EM_PROXIED_ATEXIT",
+            "EM_PROXIED_GETENV",
+            "EM_PROXIED_CLEARENV",
+            "EM_PROXIED_SETENV",
+            "EM_PROXIED_UNSETENV",
+            "EM_PROXIED_PUTENV",
+            "EM_PROXIED_TZSET",
+            "EM_PROXIED_PTHREAD_CREATE",
+            "EM_PROXIED_SYSCALL"
+            ]
+    },
+    {
+        "file": "../lib/libc/musl/src/internal/pthread_impl.h",
+        "structs": {
+            "pthread": [
+              "threadStatus",
+              "threadExitCode",
+              "self",
+              "tsd",
+              "tsd_used",
+              "detached",
+              "stack",
+              "stack_size",
+              "attr",
+              "tid",
+              "pid",
+              "canceldisable",
+              "cancelasync"
+            ]
+        },
+        "defines": []
     }
  ]

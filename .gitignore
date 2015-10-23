@@ -1,16 +1,14 @@
+# vim/emacs temporary/backup files
+*~
+*.swp
+
 *.diff
 *.pyc
-*~
 *.bc
-src/relooper*.js
 
 node_modules/
 
 # Ignore generated files
-src/relooper.js
-src/relooper.js.raw.js
-src/relooper/*.o
-src/relooper/*.out
 
 tests/fake/
 tests/freetype/objs/*.o
@@ -19,3 +17,5 @@ tests/freetype/objs/*.lo
 third_party/lzma.js/lzip/*.o
 third_party/lzma.js/lzma-native
 third_party/lzma.js/lzma-native.exe
+
+tools/optimizer_build/

@@ -12,7 +12,7 @@ int main(int argc, char** argv) {
 
   SDL_Quit();
 
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   int result = 1;
   REPORT_RESULT();
 #endif

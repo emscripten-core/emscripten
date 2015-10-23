@@ -25,7 +25,7 @@ int main()
         SDL_FreeSurface(text);
     }
 
-#if __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__
     result = 1;
     REPORT_RESULT();
 #endif

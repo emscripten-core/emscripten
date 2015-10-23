@@ -12,29 +12,71 @@
 #include <memory>
 #include <string>
 
+#define EMSCRIPTEN_ALWAYS_INLINE __attribute__((always_inline))
+
 namespace emscripten {
+    #ifndef EMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES
+    #define EMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES 1
+    #endif
+
+
+    #if EMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES
+    constexpr bool has_unbound_type_names = true;
+    #else
+    constexpr bool has_unbound_type_names = false;
+    #endif
+
     namespace internal {
-        typedef void (*GenericFunction)();
+        typedef const void* TYPEID;
 
-        typedef const struct _TYPEID* TYPEID;
+        // We don't need the full std::type_info implementation.  We
+        // just need a unique identifier per type and polymorphic type
+        // identification.
+        
+        template<typename T>
+        struct CanonicalizedID {
+            static char c;
+            static constexpr TYPEID get() {
+                return &c;
+            }
+        };
 
-        // This implementation is technically not legal, as it's not
-        // required that two calls to typeid produce the same exact
-        // std::type_info instance.  That said, it's likely to work
-        // given Emscripten compiles everything into one binary.
-        // Should it not work in the future: replace TypeID with an
-        // int, and store all TypeInfo we see in a map, allocating new
-        // TypeIDs as we add new items to the map.
+        template<typename T>
+        char CanonicalizedID<T>::c;
+
+        template<typename T>
+        struct Canonicalized {
+            typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type type;
+        };
+
+        template<typename T>
+        struct LightTypeID {
+            static constexpr TYPEID get() {
+                typedef typename Canonicalized<T>::type C;
+                return (has_unbound_type_names || std::is_polymorphic<C>::value)
+                    ? &typeid(C)
+                    : CanonicalizedID<C>::get();
+            }
+        };
+
+        template<typename T>
+        constexpr TYPEID getLightTypeID(const T& value) {
+            typedef typename Canonicalized<T>::type C;
+            return (has_unbound_type_names || std::is_polymorphic<C>::value)
+                ? &typeid(value)
+                : LightTypeID<T>::get();
+        }
+
         template<typename T>
         struct TypeID {
-            static TYPEID get() {
-                return reinterpret_cast<TYPEID>(&typeid(T));
+            static constexpr TYPEID get() {
+                return LightTypeID<T>::get();
             }
         };
 
         template<typename T>
         struct TypeID<std::unique_ptr<T>> {
-            static TYPEID get() {
+            static constexpr TYPEID get() {
                 return TypeID<T>::get();
             }
         };
@@ -50,8 +92,8 @@ namespace emscripten {
 
         template<typename T>
         struct TypeID<AllowedRawPointer<T>> {
-            static TYPEID get() {
-                return reinterpret_cast<TYPEID>(&typeid(T*));
+            static constexpr TYPEID get() {
+                return LightTypeID<T*>::get();
             }
         };
         
@@ -79,40 +121,89 @@ namespace emscripten {
             };
         };
 
-        // ArgTypes<>
+        // TypeList<>
 
-        template<int Index, typename... Args>
-        struct ArgTypes;
+        template<typename...>
+        struct TypeList {};
 
-        template<int Index>
-        struct ArgTypes<Index> {
-            template<typename... Policies>
-            static void fill(TYPEID* argTypes) {
-            }
+        // Cons :: T, TypeList<types...> -> Cons<T, types...>
+
+        template<typename First, typename TypeList>
+        struct Cons;
+
+        template<typename First, typename... Rest>
+        struct Cons<First, TypeList<Rest...>> {
+            typedef TypeList<First, Rest...> type;
         };
 
-        template<int Index, typename T, typename... Remaining>
-        struct ArgTypes<Index, T, Remaining...> {
-            template<typename... Policies>
-            static void fill(TYPEID* argTypes) {
-                typedef typename ExecutePolicies<Policies...>::template With<T, Index>::type TransformT;
-                *argTypes = TypeID<TransformT>::get();
-                return ArgTypes<Index + 1, Remaining...>::template fill<Policies...>(argTypes + 1);
+        // Apply :: T, TypeList<types...> -> T<types...>
+
+        template<template<typename...> class Output, typename TypeList>
+        struct Apply;
+
+        template<template<typename...> class Output, typename... Types>
+        struct Apply<Output, TypeList<Types...>> {
+            typedef Output<Types...> type;
+        };
+
+        // MapWithIndex_
+
+        template<template<size_t, typename> class Mapper, size_t CurrentIndex, typename... Args>
+        struct MapWithIndex_;
+
+        template<template<size_t, typename> class Mapper, size_t CurrentIndex, typename First, typename... Rest>
+        struct MapWithIndex_<Mapper, CurrentIndex, First, Rest...> {
+            typedef typename Cons<
+                typename Mapper<CurrentIndex, First>::type,
+                typename MapWithIndex_<Mapper, CurrentIndex + 1, Rest...>::type
+                >::type type;
+        };
+
+        template<template<size_t, typename> class Mapper, size_t CurrentIndex>
+        struct MapWithIndex_<Mapper, CurrentIndex> {
+            typedef TypeList<> type;
+        };
+
+        template<template<typename...> class Output, template<size_t, typename> class Mapper, typename... Args>
+        struct MapWithIndex {
+            typedef typename internal::Apply<
+                Output,
+                typename MapWithIndex_<Mapper, 0, Args...>::type
+            >::type type;
+        };
+
+
+        template<typename ArgList>
+        struct ArgArrayGetter;
+
+        template<typename... Args>
+        struct ArgArrayGetter<TypeList<Args...>> {
+            static const TYPEID* get() {
+                static constexpr TYPEID types[] = { TypeID<Args>::get()... };
+                return types;
             }
         };
 
         // WithPolicies<...>::ArgTypeList<...>
+
         template<typename... Policies>
         struct WithPolicies {
+            template<size_t Index, typename T>
+            struct MapWithPolicies {
+                typedef typename ExecutePolicies<Policies...>::template With<T, Index>::type type;
+            };
+
             template<typename... Args>
             struct ArgTypeList {
-                ArgTypeList() {
-                    count = sizeof...(Args);
-                    ArgTypes<0, Args...>::template fill<Policies...>(types);
+                unsigned getCount() const {
+                    return sizeof...(Args);
                 }
 
-                unsigned count;
-                TYPEID types[sizeof...(Args)];
+                const TYPEID* getTypes() const {
+                    return ArgArrayGetter<
+                        typename MapWithIndex<TypeList, MapWithPolicies, Args...>::type
+                    >::get();
+                }
             };
         };
 
@@ -247,13 +338,16 @@ namespace emscripten {
             }
         };
 
-        // Is this necessary?
         template<typename T>
         struct GenericBindingType<std::unique_ptr<T>> {
-            typedef typename BindingType<T>::WireType WireType;
+            typedef typename BindingType<T*>::WireType WireType;
 
             static WireType toWireType(std::unique_ptr<T> p) {
-                return BindingType<T>::toWireType(*p);
+                return BindingType<T*>::toWireType(p.release());
+            }
+
+            static std::unique_ptr<T> fromWireType(WireType wt) {
+                return std::unique_ptr<T>(BindingType<T*>::fromWireType(wt));
             }
         };
 
@@ -283,70 +377,30 @@ namespace emscripten {
         }
     }
 
+    template<typename ElementType>
     struct memory_view {
-        enum class Type {
-            Int8Array,
-            Uint8Array,
-            Int16Array,
-            Uint16Array,
-            Int32Array,
-            Uint32Array,
-            Float32Array,
-            Float64Array,
-        };
-
         memory_view() = delete;
-        explicit memory_view(size_t size, const void* data)
-            : type(Type::Uint8Array)
-            , size(size)
-            , data(data)
-        {}
-        explicit memory_view(Type type, size_t size, const void* data)
-            : type(type)
-            , size(size)
+        explicit memory_view(size_t size, const ElementType* data)
+            : size(size)
             , data(data)
         {}
 
-        const Type type;
         const size_t size; // in elements, not bytes
         const void* const data;
     };
 
-    inline memory_view typed_memory_view(size_t size, const int8_t* data) {
-        return memory_view(memory_view::Type::Int8Array, size, data);
-    }
-
-    inline memory_view typed_memory_view(size_t size, const uint8_t* data) {
-        return memory_view(memory_view::Type::Uint8Array, size, data);
-    }
-
-    inline memory_view typed_memory_view(size_t size, const int16_t* data) {
-        return memory_view(memory_view::Type::Int16Array, size, data);
-    }
-
-    inline memory_view typed_memory_view(size_t size, const uint16_t* data) {
-        return memory_view(memory_view::Type::Uint16Array, size, data);
-    }
-
-    inline memory_view typed_memory_view(size_t size, const int32_t* data) {
-        return memory_view(memory_view::Type::Int32Array, size, data);
-    }
-
-    inline memory_view typed_memory_view(size_t size, const uint32_t* data) {
-        return memory_view(memory_view::Type::Uint32Array, size, data);
-    }
-
-    inline memory_view typed_memory_view(size_t size, const float* data) {
-        return memory_view(memory_view::Type::Float32Array, size, data);
-    }
-
-    inline memory_view typed_memory_view(size_t size, const double* data) {
-        return memory_view(memory_view::Type::Float64Array, size, data);
+    // Note that 'data' is marked const just so it can accept both
+    // const and nonconst pointers.  It is certainly possible for
+    // JavaScript to modify the C heap through the typed array given,
+    // as it merely aliases the C heap.
+    template<typename T>
+    inline memory_view<T> typed_memory_view(size_t size, const T* data) {
+        return memory_view<T>(size, data);
     }
 
     namespace internal {
-        template<>
-        struct BindingType<memory_view> {
+        template<typename ElementType>
+        struct BindingType<memory_view<ElementType>> {
             // This non-word-sized WireType only works because I
             // happen to know that clang will pass aggregates as
             // pointers to stack elements and we never support
@@ -354,8 +408,8 @@ namespace emscripten {
             // memory_view.  (That is, fromWireType is not implemented
             // on the C++ side, nor is toWireType implemented in
             // JavaScript.)
-            typedef memory_view WireType;
-            static WireType toWireType(const memory_view& mv) {
+            typedef memory_view<ElementType> WireType;
+            static WireType toWireType(const memory_view<ElementType>& mv) {
                 return mv;
             }
         };

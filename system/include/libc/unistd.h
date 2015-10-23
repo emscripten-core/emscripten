@@ -15,7 +15,11 @@ extern "C" {
 #define SEEK_CUR 1
 #define SEEK_END 2
 
+#ifdef __cplusplus
 #define NULL 0L
+#else
+#define NULL ((void*)0)
+#endif
 
 #define __NEED_size_t
 #define __NEED_ssize_t
@@ -31,6 +35,7 @@ extern "C" {
 int pipe(int [2]);
 int pipe2(int [2], int);
 int close(int);
+int posix_close(int, int);
 int dup(int);
 int dup2(int, int);
 int dup3(int, int, int);
@@ -171,7 +176,7 @@ void setusershell(void);
 void endusershell(void);
 char *getusershell(void);
 int acct(const char *);
-long syscall(long, ...);
+/* XXX EMSCRIPTEN long syscall(long, ...); */
 #endif
 
 #ifdef _GNU_SOURCE
@@ -195,6 +200,8 @@ int eaccess(const char *, int);
 #define lockf64 lockf
 #define off64_t off_t
 #endif
+
+#define POSIX_CLOSE_RESTART     0
 
 #define _XOPEN_VERSION          700
 #define _XOPEN_UNIX             1
@@ -239,7 +246,9 @@ int eaccess(const char *, int);
 #define _POSIX_READER_WRITER_LOCKS _POSIX_VERSION
 #define _POSIX_ASYNCHRONOUS_IO  _POSIX_VERSION
 #define _POSIX_SEMAPHORES       _POSIX_VERSION
-#undef _POSIX_SHARED_MEMORY_OBJECTS
+#ifndef __EMSCRIPTEN__
+#define _POSIX_SHARED_MEMORY_OBJECTS _POSIX_VERSION
+#endif
 
 #define _POSIX2_C_BIND          _POSIX_VERSION
 

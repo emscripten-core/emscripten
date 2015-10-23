@@ -3,13 +3,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
 int line = 0;
 
-void main_loop(void *arg)
+void main_loop()
 {
   char str[10] = {0};
   int ret;
@@ -25,8 +25,9 @@ void main_loop(void *arg)
       if (ret > 0) puts(str);
     }
 
+    int err = ferror(stdin);
     if (ferror(stdin) && errno != EAGAIN) {
-      puts("error");
+      printf("error %d\n", err);
       exit(EXIT_FAILURE);
     }
 
@@ -46,12 +47,12 @@ int main(int argc, char const *argv[])
   // SM shell doesn't implement an event loop and therefor doesn't support
   // emscripten_set_main_loop. However, its stdin reads are sync so it
   // should exit out after calling main_loop once.
-  main_loop(NULL);
+  main_loop();
 
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   emscripten_set_main_loop(main_loop, 60, 0);
 #else
-  while (1) main_loop(NULL); sleep(1);
+  while (1) main_loop(); sleep(1);
 #endif
   return 0;
 }

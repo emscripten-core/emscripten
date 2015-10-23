@@ -10,7 +10,7 @@
 JAVA_INT java_lang_String_toLowerCaseImpl___int(JAVA_OBJECT me, JAVA_INT n1)
 {
     //XMLVM_BEGIN_NATIVE[java_lang_String_toLowerCaseImpl___int]
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 	return tolower(n1);
 #else
     return towlower(n1);
@@ -21,7 +21,7 @@ JAVA_INT java_lang_String_toLowerCaseImpl___int(JAVA_OBJECT me, JAVA_INT n1)
 JAVA_INT java_lang_String_toUpperCaseImpl___int(JAVA_OBJECT me, JAVA_INT n1)
 {
     //XMLVM_BEGIN_NATIVE[java_lang_String_toUpperCaseImpl___int]
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 	return toupper(n1);
 #else
 	return towupper(n1);

@@ -1,6 +1,6 @@
 #include <SDL/SDL.h>
 
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
@@ -19,8 +19,6 @@ int main(int argc, char **argv) {
   SDL_UnlockSurface(screen);
 
   SDL_Flip(screen);
-
-  while(1) { SDL_WaitEvent(NULL); }
 
   return 0;
 }

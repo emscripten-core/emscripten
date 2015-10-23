@@ -200,11 +200,11 @@ function dprint() {
   printErr(text);
 }
 
-var PROF_ORIGIN = Date.now();
-var PROF_TIME = PROF_ORIGIN;
+var _PROF_ORIGIN = Date.now();
+var _PROF_TIME = _PROF_ORIGIN;
 function PROF(pass) {
   if (!pass) {
-    dprint("Profiling: " + ((Date.now() - PROF_TIME)/1000) + ' seconds, total: ' + ((Date.now() - PROF_ORIGIN)/1000));
+    dprint("Profiling: " + ((Date.now() - _PROF_TIME)/1000) + ' seconds, total: ' + ((Date.now() - _PROF_ORIGIN)/1000));
   }
   PROF_TIME = Date.now();
 }
@@ -215,7 +215,7 @@ function concatenator(x, y) {
 }
 
 function mergeInto(obj, other) {
-  for (i in other) {
+  for (var i in other) {
     obj[i] = other[i];
   }
   return obj;
@@ -286,7 +286,7 @@ function numberedSet() {
 
 function setSub(x, y) {
   var ret = set(keys(x));
-  for (yy in y) {
+  for (var yy in y) {
     if (yy in ret) {
       delete ret[yy];
     }
@@ -297,7 +297,7 @@ function setSub(x, y) {
 // Intersection of 2 sets. Faster if |xx| << |yy|
 function setIntersect(x, y) {
   var ret = {};
-  for (xx in x) {
+  for (var xx in x) {
     if (xx in y) {
       ret[xx] = 0;
     }
@@ -307,7 +307,7 @@ function setIntersect(x, y) {
 
 function setUnion(x, y) {
   var ret = set(keys(x));
-  for (yy in y) {
+  for (var yy in y) {
     ret[yy] = 0;
   }
   return ret;

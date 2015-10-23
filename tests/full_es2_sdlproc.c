@@ -704,6 +704,8 @@ gears_init(void)
    gear3 = create_gear(1.3, 2.0, 0.5, 10, 0.7);
 }
 
+#include "SDL/SDL.h"
+
 int
 main(int argc, char *argv[])
 {

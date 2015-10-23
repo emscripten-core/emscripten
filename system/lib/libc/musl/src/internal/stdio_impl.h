@@ -7,15 +7,9 @@
 
 #define UNGET 8
 
-#if 1 // XXX EMSCRIPTEN
-#define FFINALLOCK(f) 0
-#define FLOCK(f) 0
-#define FUNLOCK(f) 0
-#else
 #define FFINALLOCK(f) ((f)->lock>=0 ? __lockfile((f)) : 0)
 #define FLOCK(f) int __need_unlock = ((f)->lock>=0 ? __lockfile((f)) : 0)
 #define FUNLOCK(f) if (__need_unlock) __unlockfile((f)); else
-#endif
 
 #define F_PERM 1
 #define F_NORD 4
@@ -23,6 +17,7 @@
 #define F_EOF 16
 #define F_ERR 32
 #define F_SVB 64
+#define F_APP 128
 
 struct _IO_FILE {
 	unsigned flags;

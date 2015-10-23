@@ -2,6 +2,7 @@
 #include <emmintrin.h>
 #include <assert.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <bitset>
 
 using namespace std;

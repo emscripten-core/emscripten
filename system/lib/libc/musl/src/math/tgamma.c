@@ -26,7 +26,7 @@ most ideas and constants are from boost and python
 
 static const double pi = 3.141592653589793238462643383279502884;
 
-/* sin(pi x) with x > 0 && isnormal(x) assumption */
+/* sin(pi x) with x > 0x1p-100, if sin(pi*x)==0 the sign is arbitrary */
 static double sinpi(double x)
 {
 	int n;
@@ -49,8 +49,7 @@ static double sinpi(double x)
 	case 1:
 		return __cos(x, 0);
 	case 2:
-		/* sin(0-x) and -sin(x) have different sign at 0 */
-		return __sin(0-x, 0, 0);
+		return __sin(-x, 0, 0);
 	case 3:
 		return -__cos(x, 0);
 	}
@@ -108,35 +107,33 @@ static double S(double x)
 
 double tgamma(double x)
 {
-	double absx, y, dy, z, r;
+	union {double f; uint64_t i;} u = {x};
+	double absx, y;
+	double_t dy, z, r;
+	uint32_t ix = u.i>>32 & 0x7fffffff;
+	int sign = u.i>>63;
 
 	/* special cases */
-	if (!isfinite(x))
+	if (ix >= 0x7ff00000)
 		/* tgamma(nan)=nan, tgamma(inf)=inf, tgamma(-inf)=nan with invalid */
 		return x + INFINITY;
+	if (ix < (0x3ff-54)<<20)
+		/* |x| < 2^-54: tgamma(x) ~ 1/x, +-0 raises div-by-zero */
+		return 1/x;
 
 	/* integer arguments */
 	/* raise inexact when non-integer */
 	if (x == floor(x)) {
-		if (x == 0)
-			/* tgamma(+-0)=+-inf with divide-by-zero */
-			return 1/x;
-		if (x < 0)
+		if (sign)
 			return 0/0.0;
 		if (x <= sizeof fact/sizeof *fact)
 			return fact[(int)x - 1];
 	}
 
-	absx = fabs(x);
-
-	/* x ~ 0: tgamma(x) ~ 1/x */
-	if (absx < 0x1p-54)
-		return 1/x;
-
 	/* x >= 172: tgamma(x)=inf with overflow */
 	/* x =< -184: tgamma(x)=+-0 with underflow */
-	if (absx >= 184) {
-		if (x < 0) {
+	if (ix >= 0x40670000) { /* |x| >= 184 */
+		if (sign) {
 			FORCE_EVAL((float)(0x1p-126/x));
 			if (floor(x) * 0.5 == floor(x * 0.5))
 				return 0;
@@ -145,6 +142,8 @@ double tgamma(double x)
 		x *= 0x1p1023;
 		return x;
 	}
+
+	absx = sign ? -x : x;
 
 	/* handle the error of x + g - 0.5 */
 	y = absx + gmhalf;
@@ -160,20 +159,21 @@ double tgamma(double x)
 	r = S(absx) * exp(-y);
 	if (x < 0) {
 		/* reflection formula for negative x */
+		/* sinpi(absx) is not 0, integers are already handled */
 		r = -pi / (sinpi(absx) * absx * r);
 		dy = -dy;
 		z = -z;
 	}
 	r += dy * (gmhalf+0.5) * r / y;
 	z = pow(y, 0.5*z);
-	r = r * z * z;
-	return r;
+	y = r * z * z;
+	return y;
 }
 
 #if 0
 double __lgamma_r(double x, int *sign)
 {
-	double r, absx, z, zz, w;
+	double r, absx;
 
 	*sign = 1;
 

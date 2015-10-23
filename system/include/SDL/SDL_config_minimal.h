@@ -33,7 +33,7 @@
 #include <stddef.h>
 #include <stdarg.h>
 
-#if !defined(EMSCRIPTEN) && !defined(_STDINT_H_) && (!defined(HAVE_STDINT_H) || !_HAVE_STDINT_H)
+#if !defined(__EMSCRIPTEN__) && !defined(_STDINT_H_) && (!defined(HAVE_STDINT_H) || !_HAVE_STDINT_H)
 typedef unsigned int size_t;
 typedef signed char int8_t;
 typedef unsigned char uint8_t;

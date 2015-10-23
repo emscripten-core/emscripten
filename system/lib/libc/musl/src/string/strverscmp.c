@@ -1,7 +1,6 @@
 #define _GNU_SOURCE
 #include <ctype.h>
 #include <string.h>
-#include <sys/types.h>
 
 int strverscmp(const char *l, const char *r)
 {

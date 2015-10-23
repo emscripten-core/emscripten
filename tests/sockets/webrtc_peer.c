@@ -9,7 +9,7 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <assert.h>
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
@@ -25,7 +25,7 @@ struct iovec iov[1];
 struct msghdr hdr;
 int done = 0;
 
-void iter(void* arg) {
+void iter() {
   int n;
   n = sendmsg(sock, &hdr, 0);
 
@@ -46,7 +46,7 @@ void iter(void* arg) {
 }
 
 int main(void)
-{  
+{
   memset(&si_host, 0, sizeof(struct sockaddr_in));
 
   si_host.sin_family = AF_INET;
@@ -63,7 +63,7 @@ int main(void)
 
   iov[0].iov_base = buf;
   iov[0].iov_len = sizeof(buf);
-  
+
   memset (&hdr, 0, sizeof (struct msghdr));
 
   hdr.msg_name = &si_host;
@@ -71,10 +71,10 @@ int main(void)
   hdr.msg_iov = iov;
   hdr.msg_iovlen = 1;
 
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   emscripten_set_main_loop(iter, 0, 0);
 #else
-  while (!done) iter(NULL);
+  while (!done) iter();
 #endif
 
   return EXIT_SUCCESS;

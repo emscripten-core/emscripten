@@ -108,7 +108,7 @@ int main()
   printf("fscanfed: %d - %s\n", number, text);
 
   // temp files
-  const char *tname = "file_XXXXXX.txt";
+  const char *tname = "file_XXXXXX";
   char tname1[100];
   char tname2[100];
   strcpy(tname1, tname);
@@ -122,6 +122,21 @@ int main()
   assert(fopen(tname1, "r"));
   assert(fopen(tname2, "r"));
   assert(!fopen(tname2+1, "r")); // sanity check that we can't open just anything
+
+  {
+    FILE* f = tmpfile();
+    assert(f);
+    fclose(f);
+
+    char* str = tmpnam(NULL);
+    //printf("temp: %s\n", str);
+    assert(strncmp("/tmp/", str, 5) == 0);
+  }
+
+  FILE *n = fopen("/dev/null", "w");
+  printf("5 bytes to dev/null: %d\n", fwrite(data, 1, 5, n));
+  fclose(n);
+
   printf("ok.\n");
 
   return 0;

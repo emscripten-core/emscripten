@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #include <AL/al.h>
 #include <AL/alc.h>
@@ -68,7 +68,7 @@ void iter() {
 
   // Exit once we've processed the entire clip.
   if (offset >= size) {
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
     int result = 0;
     REPORT_RESULT();
 #endif
@@ -87,7 +87,7 @@ int main(int argc, char* argv[]) {
   //
   // Read in the audio sample.
   //
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   FILE* fp = fopen("the_entertainer.wav", "rb");
 #else
   FILE* fp = fopen("sounds/the_entertainer.wav", "rb");
@@ -176,7 +176,7 @@ int main(int argc, char* argv[]) {
   //
   // Cycle and refill the buffers until we're done.
   //
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   emscripten_set_main_loop(iter, 0, 0);
 #else
   while (1) {

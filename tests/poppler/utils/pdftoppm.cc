@@ -183,7 +183,7 @@ static void savePageSlice(PDFDoc *doc,
       bitmap->writePNMFile(ppmFile);
     }
   } else {
-#if EMSCRIPTEN // XXX EMSCRIPTEN: avoid writing to stdout, better for benchmarking
+#ifdef __EMSCRIPTEN__ // XXX EMSCRIPTEN: avoid writing to stdout, better for benchmarking
     printf("avoiding writing to stdout\n");
 #else
 

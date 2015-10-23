@@ -5,10 +5,6 @@
 #define STRINGIZE_HELPER(x) #x
 #define STRINGIZE(x) STRINGIZE_HELPER(x)
 
-#ifndef REPORT_RESULT
-#define REPORT_RESULT int dummy
-#endif
-
 int result = 1; // If 1, this test succeeded.
 
 // A custom assert macro to test varargs routing to emscripten_log().
@@ -83,14 +79,14 @@ void __attribute__((noinline)) bar(int = 0, char * = 0, double = 0) // Arbitrary
 
 	if ((flags & EM_LOG_C_STACK) != 0)
 	{
-		MYASSERT(!!strstr(callstack, "at bar(int, char*, double) (src.cpp:"), "Callstack was %s!", callstack);
-		MYASSERT(!!strstr(callstack, "at void Foo<int>() (src.cpp:"), "Callstack was %s!", callstack);
+		MYASSERT(!!strstr(callstack, ".cpp:"), "Callstack was %s!", callstack);
 	}
 	else
 	{
-		MYASSERT(!!strstr(callstack, "at bar(int, char*, double) (src.cpp.o.js:"), "Callstack was %s!", callstack);
-		MYASSERT(!!strstr(callstack, "at void Foo<int>() (src.cpp.o.js:"), "Callstack was %s!", callstack);
+		MYASSERT(!!strstr(callstack, ".js:"), "Callstack was %s!", callstack);
 	}
+	MYASSERT(!!strstr(callstack, "at bar(int, char*, double)"), "Callstack was %s!", callstack);
+	MYASSERT(!!strstr(callstack, "at void Foo<int>()"), "Callstack was %s!", callstack);
 
 	// 5. Clean up.
 	delete[] callstack;
@@ -98,6 +94,19 @@ void __attribute__((noinline)) bar(int = 0, char * = 0, double = 0) // Arbitrary
 	// Or alternatively use a fixed-size buffer for the callstack (and get a truncated output if it was too small).
 	char str[1024];
 	emscripten_get_callstack(EM_LOG_NO_PATHS | EM_LOG_JS_STACK, str, 1024);
+
+	// Test that obtaining a truncated callstack works. (https://github.com/kripken/emscripten/issues/2171)
+	char *buffer = new char[21];
+	buffer[20] = 0x01; // Magic sentinel that should not change its value.
+	emscripten_get_callstack(EM_LOG_C_STACK | EM_LOG_DEMANGLE | EM_LOG_NO_PATHS | EM_LOG_FUNC_PARAMS, buffer, 20);
+#if EMTERPRETER
+	MYASSERT(!!strstr(buffer, "at emterpret ("), "Truncated emterpreter callstack was %s!", buffer);
+	MYASSERT(buffer[20] == 0x01);
+#else
+	MYASSERT(!!strstr(buffer, "at bar(int,"), "Truncated callstack was %s!", buffer);
+	MYASSERT(buffer[20] == 0x01);
+#endif
+	delete[] buffer;
 
 	/* With EM_LOG_JS_STACK, the callstack will be
 		at __Z3bariPcd (src.cpp.o.js:5394:12)
@@ -123,14 +132,39 @@ void __attribute__((noinline)) Foo() // Arbitrary function signature to add some
 	bar();
 }
 
+#define TestLog(args...)        emscripten_log(EM_LOG_CONSOLE, args)
+
+void PrintDoubleStuff(double first, double second)
+{
+  double divided = first / second;
+
+  TestLog("%f %f %f\n", first, second, divided);
+  TestLog("%d %d %d\n", (int)(first * 1000000), (int)(second * 1000000), (int)(divided * 1000000));
+  TestLog("%f %d %d\n", first, (int)(second * 1000000), (int)(divided * 1000000));
+  TestLog("%d %f %d\n", (int)(first * 1000000), second, (int)(divided * 1000000));
+  TestLog("%d %d %f\n", (int)(first * 1000000), (int)(second * 1000000), divided);
+  TestLog("%d %f %f\n", (int)(first * 1000000), second, divided);
+  TestLog("%f %d %f\n", first, (int)(second * 1000000), divided);
+  TestLog("%f %f %d\n", first, second, (int)(divided * 1000000));
+}
+
+void DoubleTest() {
+  PrintDoubleStuff(12.3456789, 9.12345678);
+}
+
 int main()
 {
+	int test = 123;
+	emscripten_log(EM_LOG_FUNC_PARAMS | EM_LOG_DEMANGLE | EM_LOG_CONSOLE, "test print %d\n", test);
+
 	Foo<int>();
-#ifndef RUN_FROM_JS_SHELL
+
+  DoubleTest();
+
+#ifdef REPORT_RESULT
 	REPORT_RESULT();
-	return 0;
-#else
+#endif
 	if (result)
 		printf("Success!\n");
-#endif
+	return 0;
 }

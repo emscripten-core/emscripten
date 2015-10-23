@@ -1,8 +1,7 @@
 mergeInto(LibraryManager.library, {
   $TTY__deps: ['$FS'],
-  $TTY__postset: '__ATINIT__.unshift({ func: function() { TTY.init() } });' +
-                 '__ATEXIT__.push({ func: function() { TTY.shutdown() } });' +
-                 'TTY.utf8 = new Runtime.UTF8Processor();',
+  $TTY__postset: '__ATINIT__.unshift(function() { TTY.init() });' +
+                 '__ATEXIT__.push(function() { TTY.shutdown() });',
   $TTY: {
     ttys: [],
     init: function () {
@@ -41,9 +40,10 @@ mergeInto(LibraryManager.library, {
       },
       close: function(stream) {
         // flush any pending line data
-        if (stream.tty.output.length) {
-          stream.tty.ops.put_char(stream.tty, {{{ charCode('\n') }}});
-        }
+        stream.tty.ops.flush(stream.tty);
+      },
+      flush: function(stream) {
+        stream.tty.ops.flush(stream.tty);
       },
       read: function(stream, buffer, offset, length, pos /* ignored */) {
         if (!stream.tty || !stream.tty.ops.get_char) {
@@ -95,13 +95,28 @@ mergeInto(LibraryManager.library, {
         if (!tty.input.length) {
           var result = null;
           if (ENVIRONMENT_IS_NODE) {
-            result = process['stdin']['read']();
-            if (!result) {
-              if (process['stdin']['_readableState'] && process['stdin']['_readableState']['ended']) {
-                return null;  // EOF
-              }
-              return undefined;  // no data available
+            // we will read data by chunks of BUFSIZE
+            var BUFSIZE = 256;
+            var buf = new Buffer(BUFSIZE);
+            var bytesRead = 0;
+
+            var fd = process.stdin.fd;
+            // Linux and Mac cannot use process.stdin.fd (which isn't set up as sync)
+            var usingDevice = false;
+            try {
+              fd = fs.openSync('/dev/stdin', 'r');
+              usingDevice = true;
+            } catch (e) {}
+
+            bytesRead = fs.readSync(fd, buf, 0, BUFSIZE, null);
+
+            if (usingDevice) { fs.closeSync(fd); }
+            if (bytesRead > 0) {
+              result = buf.slice(0, bytesRead).toString('utf-8');
+            } else {
+              result = null;
             }
+
           } else if (typeof window != 'undefined' &&
             typeof window.prompt == 'function') {
             // Browser.
@@ -125,20 +140,32 @@ mergeInto(LibraryManager.library, {
       },
       put_char: function(tty, val) {
         if (val === null || val === {{{ charCode('\n') }}}) {
-          Module['print'](tty.output.join(''));
+          Module['print'](UTF8ArrayToString(tty.output, 0));
           tty.output = [];
         } else {
-          tty.output.push(TTY.utf8.processCChar(val));
+          if (val != 0) tty.output.push(val); // val == 0 would cut text output off in the middle.
+        }
+      },
+      flush: function(tty) {
+        if (tty.output && tty.output.length > 0) {
+          Module['print'](UTF8ArrayToString(tty.output, 0));
+          tty.output = [];
         }
       }
     },
     default_tty1_ops: {
       put_char: function(tty, val) {
         if (val === null || val === {{{ charCode('\n') }}}) {
-          Module['printErr'](tty.output.join(''));
+          Module['printErr'](UTF8ArrayToString(tty.output, 0));
           tty.output = [];
         } else {
-          tty.output.push(TTY.utf8.processCChar(val));
+          if (val != 0) tty.output.push(val);
+        }
+      },
+      flush: function(tty) {
+        if (tty.output && tty.output.length > 0) {
+          Module['printErr'](UTF8ArrayToString(tty.output, 0));
+          tty.output = [];
         }
       }
     }

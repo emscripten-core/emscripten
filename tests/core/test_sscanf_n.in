@@ -1,6 +1,6 @@
 #include <stdio.h>
 int main() {
-  char *line = "version 1.0";
+  const char *line = "version 1.0";
   int i, l, lineno;
   char word[80];
   if (sscanf(line, "%s%n", word, &l) != 1) {

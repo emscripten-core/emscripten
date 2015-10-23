@@ -9,7 +9,7 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <assert.h>
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
@@ -22,11 +22,11 @@ char buf[BUFLEN];
 char expected[] = "emscripten";
 struct sockaddr_in si_host,
                    si_peer;
-struct iovec iov[1];                   
+struct iovec iov[1];
 struct msghdr hdr;
 int done = 0;
 
-void iter(void* arg) {
+void iter() {
   int n;
   n = recvmsg(sock, &hdr, 0);
 
@@ -37,8 +37,11 @@ void iter(void* arg) {
     shutdown(sock, SHUT_RDWR);
     close(sock);
 
-#if EMSCRIPTEN
-    int result = 1;
+#ifdef __EMSCRIPTEN__
+    if(strlen((char*)hdr.msg_iov[0].iov_base) == strlen(expected) &&
+       0 == strncmp((char*)hdr.msg_iov[0].iov_base, expected, strlen(expected))) {
+      result = 1;
+    }
     REPORT_RESULT();
     exit(EXIT_SUCCESS);
     emscripten_cancel_main_loop();
@@ -68,10 +71,10 @@ int main(void)
     perror("cannot bind host socket");
     exit(EXIT_FAILURE);
   }
-  
+
   iov[0].iov_base = buf;
   iov[0].iov_len = sizeof(buf);
-  
+
   memset (&hdr, 0, sizeof (struct msghdr));
 
   hdr.msg_name = &si_peer;
@@ -79,10 +82,10 @@ int main(void)
   hdr.msg_iov = iov;
   hdr.msg_iovlen = 1;
 
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   emscripten_set_main_loop(iter, 0, 0);
 #else
-  while (!done) iter(NULL);
+  while (!done) iter();
 #endif
 
   return EXIT_SUCCESS;

@@ -108,3 +108,63 @@ var flags = {};
 flags.binary;
 
 
+/**
+ * @fileoverview Definitions for W3C's Gamepad specification.
+ * @see http://www.w3.org/TR/gamepad/
+ * @externs
+ */
+
+/**
+ * @typedef {{id: string, index: number, timestamp: number, axes: Array.<number>, buttons: Array.<number>}}
+ */
+var Gamepad;
+
+/**
+* @type {Array.<number>}
+*/
+Gamepad.buttons;
+
+/**
+* @type {Array.<number>}
+*/
+Gamepad.axes;
+
+/**
+* @type {number}
+*/
+Gamepad.index;
+
+/**
+* @type {string}
+*/
+Gamepad.id;
+
+/**
+* @type {number}
+*/
+Gamepad.timestamp;
+
+/**
+ * @return {Array.<Gamepad>}
+ */
+navigator.getGamepads = function() {};
+
+/**
+ * @return {Array.<Gamepad>}
+ */
+navigator.webkitGetGamepads = function() {};
+
+/**
+ * @return {Array.<Gamepad>}
+ */
+navigator.webkitGamepads = function() {};
+
+/**
+ * @return {Array.<Gamepad>}
+ */
+navigator.mozGamepads = function() {};
+
+/**
+ * @return {Array.<Gamepad>}
+ */
+navigator.gamepads = function() {};

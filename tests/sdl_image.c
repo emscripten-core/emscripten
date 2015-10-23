@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <emscripten.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 int testImage(SDL_Surface* screen, const char* fileName) {
   SDL_Surface *image = IMG_Load(fileName);
@@ -18,7 +19,16 @@ int testImage(SDL_Surface* screen, const char* fileName) {
   int result = image->w;
 
   SDL_BlitSurface (image, NULL, screen, NULL);
+
+  int w, h;
+  char *data = emscripten_get_preloaded_image_data(fileName, &w, &h);
+
+  assert(data);
+  assert(w == image->w);
+  assert(h == image->h);
+
   SDL_FreeSurface (image);
+  free(data);
 
   return result;
 }
@@ -42,7 +52,9 @@ int main() {
 
   SDL_Quit();
 
+#ifdef REPORT_RESULT
   REPORT_RESULT();
+#endif
 
   return 0;
 }

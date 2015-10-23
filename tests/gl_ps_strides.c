@@ -22,7 +22,7 @@ RESULTING FROM THE USE, MODIFICATION, OR
 REDISTRIBUTION OF THIS SOFTWARE.
 */
 
-#if !EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
 #define USE_GLEW 1
 #endif
 
@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
 
     glClearColor( 0, 0, 0, 0 );
     
-#if !EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
     glEnable( GL_TEXTURE_2D ); // Need this to display a texture XXX unnecessary in OpenGL ES 2.0/WebGL
 #endif
 
@@ -227,7 +227,7 @@ int main(int argc, char *argv[])
 
     SDL_GL_SwapBuffers();
     
-#if !EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
     // Wait for 3 seconds to give us a chance to see the image
     SDL_Delay(3000);
 #endif

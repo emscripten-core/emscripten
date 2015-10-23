@@ -31,7 +31,7 @@ typedef struct {
 	const char *dli_sname;
 	void *dli_saddr;
 } Dl_info;
-int dladdr(void *, Dl_info *);
+int dladdr(const void *, Dl_info *);
 int dlinfo(void *, int, void *);
 #endif
 

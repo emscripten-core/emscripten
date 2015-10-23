@@ -1,5 +1,5 @@
 
-import sys, re
+import sys, re, itertools
 
 import shared, js_optimizer
 
@@ -19,9 +19,15 @@ class AsmModule():
     self.asm_js = self.js[self.start_asm:self.end_asm]
 
     # heap initializer
-    self.staticbump = int(re.search(shared.JS.memory_staticbump_pattern, self.pre_js).group(1))
+    try:
+      self.staticbump = int(re.search(shared.JS.memory_staticbump_pattern, self.pre_js).group(1))
+    except:
+      self.staticbump = 0
     if self.staticbump:
-      self.mem_init_js = re.search(shared.JS.memory_initializer_pattern, self.pre_js).group(0)
+      try:
+        self.mem_init_js = re.search(shared.JS.memory_initializer_pattern, self.pre_js).group(0)
+      except:
+        self.mem_init_js = ''
 
     # global initializers
     global_inits = re.search(shared.JS.global_initializers_pattern, self.pre_js)
@@ -37,14 +43,23 @@ class AsmModule():
     self.pre_imports_js = self.js[self.start_asm:first_var]
     self.imports_js = self.js[first_var:self.start_funcs]
     self.imports = {}
-    for imp in js_optimizer.import_sig.finditer(self.imports_js):
-      key, value = imp.group(0).split('var ')[1][:-1].split('=', 1)
-      self.imports[key.strip()] = value.strip()
+    for i in js_optimizer.import_sig.finditer(self.imports_js):
+      imp = i.group(2)
+      if ',' not in imp:
+        key, value = imp.split('=', 1)
+        self.imports[key.strip()] = value.strip()
+      else:
+        for part in imp.split(','):
+          assert part.count('(') == part.count(')') # we must not break ',' in func(x, y)!
+          assert part.count('=') == 1
+          key, value = part.split('=')
+          self.imports[key.strip()] = value.strip()
+
     #print >> sys.stderr, 'imports', self.imports
 
     # funcs
     self.funcs_js = self.js[self.start_funcs:self.end_funcs]
-    self.funcs = set([m.group(2) for m in js_optimizer.func_sig.finditer(self.funcs_js)])
+    self.funcs = set([m.group(1) for m in js_optimizer.func_sig.finditer(self.funcs_js)])
     #print 'funcs', self.funcs
 
     # tables and exports
@@ -63,11 +78,18 @@ class AsmModule():
       self.sendings[sending[:colon].replace('"', '')] = sending[colon+1:].strip()
     self.module_defs = set(re.findall('var [\w\d_$]+ = Module\["[\w\d_$]+"\] = asm\["[\w\d_$]+"\];\n', self.post_js))
 
+    self.extra_funcs_js = ''
+
+  def set_pre_js(self, staticbump=None, js=None):
+    if staticbump is None: staticbump = self.staticbump
+    if js is None: js = self.mem_init_js
+    self.pre_js = re.sub(shared.JS.memory_staticbump_pattern, 'STATICTOP = STATIC_BASE + %d;\n' % (staticbump,) + js, self.pre_js, count=1)
+
   def relocate_into(self, main):
     # heap initializer
     if self.staticbump > 0:
       new_mem_init = self.mem_init_js[:self.mem_init_js.rfind(', ')] + ', Runtime.GLOBAL_BASE+%d)' % main.staticbump
-      main.pre_js = re.sub(shared.JS.memory_staticbump_pattern, 'STATICTOP = STATIC_BASE + %d;\n' % (main.staticbump + self.staticbump) + new_mem_init, main.pre_js, count=1)
+      main.set_pre_js(main.staticbump + self.staticbump, new_mem_init)
 
     # Find function name replacements TODO: do not rename duplicate names with duplicate contents, just merge them
     replacements = {}
@@ -191,7 +213,7 @@ class AsmModule():
     # global initializers
     if self.global_inits:
       my_global_inits = map(lambda init: replacements[init] if init in replacements else init, self.global_inits)
-      all_global_inits = map(lambda init: '{ func: function() { %s() } }' % init, main.global_inits + my_global_inits)
+      all_global_inits = map(lambda init: 'function() { %s() }' % init, main.global_inits + my_global_inits)
       all_global_inits_js = '/* global initializers */ __ATINIT__.push(' + ','.join(all_global_inits) + ');'
       if main.global_inits:
         target = main.global_inits_js
@@ -275,4 +297,43 @@ class AsmModule():
     self.tables_js = '// EMSCRIPTEN_END_FUNCS\n'
     for table, data in self.tables.iteritems():
       self.tables_js += 'var %s = %s;\n' % (table, data)
+
+  def get_table_funcs(self):
+    return set(itertools.chain.from_iterable(map(lambda x: map(lambda y: y.strip(), x[1:-1].split(',')), self.tables.values())))
+
+  def get_funcs_map(self):
+    funcs = js_optimizer.split_funcs(self.funcs_js)
+    ret = {}
+    for name, content in funcs:
+      ret[name] = content
+    return ret
+
+  def apply_funcs_map(self, funcs_map): # assumes self.funcs is the set of funcs, in the right order
+    jses = []
+    for f in self.funcs:
+      if f in funcs_map: # TODO: fix
+        jses.append(funcs_map[f])
+    self.funcs_js = '\n'.join(jses)
+
+  def get_import_type(self, imp):
+    def is_int(x):
+      try:
+        int(x)
+        return True
+      except:
+        return False
+
+    def is_float(x):
+      try:
+        float(x)
+        return True
+      except:
+        return False
+
+    if '|0' in imp or '| 0' in imp or (is_int(imp) and not '.0' in imp or '+' in imp):
+      return 'i'
+    elif '.0' in imp or '+' in imp or is_float(imp):
+      return 'd'
+    else:
+      return '?'
 

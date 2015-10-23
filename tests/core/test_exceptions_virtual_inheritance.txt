@@ -1,0 +1,2 @@
+Throwing ::my_exception
+Caught std::runtime_error: my_what

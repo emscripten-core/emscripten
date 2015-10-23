@@ -32,21 +32,28 @@ long double strtold(const char *restrict s, char **restrict p)
 	return strtox(s, p, 2);
 }
 
-float strtof_l(const char *restrict s, char **restrict p, struct __locale_struct *loc)
+#ifndef __EMSCRIPTEN__
+weak_alias(strtof, strtof_l);
+weak_alias(strtod, strtod_l);
+weak_alias(strtold, strtold_l);
+weak_alias(strtof, __strtof_l);
+weak_alias(strtod, __strtod_l);
+weak_alias(strtold, __strtold_l);
+#else
+// can't just drop last parameter in emscripten, undefined behavior
+float strtof_l(const char *restrict s, char **restrict p, struct __locale_struct *l)
 {
   return strtof(s, p);
 }
 
-double strtod_l(const char *restrict s, char **restrict p, struct __locale_struct *loc)
+double strtod_l(const char *restrict s, char **restrict p, struct __locale_struct *l)
 {
   return strtod(s, p);
 }
 
-long double strtold_l(const char *restrict s, char **restrict p, struct __locale_struct *loc)
+long double strtold_l(const char *restrict s, char **restrict p, struct __locale_struct *l)
 {
   return strtold(s, p);
 }
+#endif
 
-weak_alias(strtof_l, __strtof_l);
-weak_alias(strtod_l, __strtod_l);
-weak_alias(strtold_l, __strtold_l);

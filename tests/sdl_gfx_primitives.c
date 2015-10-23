@@ -1,7 +1,7 @@
 #include "SDL/SDL.h"
 #include "SDL/SDL_gfxPrimitives.h"
 
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include "emscripten.h"
 #endif
 
@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
 
     SDL_UpdateRect(screen, 0, 0, 0, 0);
 
-#ifndef EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
     SDL_Event evt;
     SDL_SaveBMP(screen, "native_output.bmp");
     while (1) {

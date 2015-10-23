@@ -85,7 +85,7 @@ mergeInto(LibraryManager.library, {
         if (typeof path !== 'string') {
           throw new TypeError('Arguments to path.resolve must be strings');
         } else if (!path) {
-          continue;
+          return ''; // an invalid portion invalidates the whole thing
         }
         resolvedPath = path + '/' + resolvedPath;
         resolvedAbsolute = path.charAt(0) === '/';

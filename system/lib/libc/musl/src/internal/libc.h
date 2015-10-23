@@ -3,23 +3,26 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <limits.h>
 
 struct __libc {
 	void *main_thread;
 	int threaded;
 	int secure;
 	size_t *auxv;
-	int (*atexit)(void (*)(void));
-	void (*fini)(void);
-	void (*ldso_fini)(void);
 	volatile int threads_minus_1;
 	int canceldisable;
 	FILE *ofl_head;
 	int ofl_lock[2];
 	size_t tls_size;
+	size_t page_size;
 };
 
 extern size_t __hwcap;
+
+#ifndef PAGE_SIZE
+#define PAGE_SIZE libc.page_size
+#endif
 
 #if !defined(__PIC__) || (100*__GNUC__+__GNUC_MINOR__ >= 303 && !defined(__PCC__))
 
@@ -50,8 +53,8 @@ void __lock(volatile int *) ATTR_LIBC_VISIBILITY;
 void __unlock(volatile int *) ATTR_LIBC_VISIBILITY;
 int __lockfile(FILE *) ATTR_LIBC_VISIBILITY;
 void __unlockfile(FILE *) ATTR_LIBC_VISIBILITY;
-#define LOCK(x) (libc.threads_minus_1 ? (__lock(x),1) : ((void)(x),1))
-#define UNLOCK(x) (libc.threads_minus_1 ? (__unlock(x),1) : ((void)(x),1))
+#define LOCK(x) __lock(x)
+#define UNLOCK(x) __unlock(x)
 
 void __synccall(void (*)(void *), void *);
 int __setxid(int, int, int, int);

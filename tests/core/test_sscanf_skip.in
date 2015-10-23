@@ -8,8 +8,8 @@ int main() {
 
   int64_t large, val2;
   printf("%d\n", sscanf("1000000 -1125899906842620 -123 -1073741823",
-                        "%lld %*lld %ld %*d", &large, &val2));
-  printf("%lld,%d\n", large, val2);
+                        "%lld %*lld %lld %*d", &large, &val2));
+  printf("%lld,%lld\n", large, val2);
 
   return 0;
 }

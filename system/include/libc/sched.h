@@ -78,7 +78,7 @@ int __sched_cpucount(size_t, const cpu_set_t *);
 int sched_getaffinity(pid_t, size_t, cpu_set_t *);
 int sched_setaffinity(pid_t, size_t, const cpu_set_t *);
 
-#define __CPU_op_S(i, size, set, op) ( (i)/8 >= (size) ? 0 : \
+#define __CPU_op_S(i, size, set, op) ( (i)/8U >= (size) ? 0 : \
 	((set)->__bits[(i)/8/sizeof(long)] op (1UL<<((i)%(8*sizeof(long))))) )
 
 #define CPU_SET_S(i, size, set) __CPU_op_S(i, size, set, |=)
@@ -122,7 +122,7 @@ __CPU_op_func_S(XOR, ^)
 #define CPU_XOR(d,s1,s2) CPU_XOR_S(sizeof(cpu_set_t),d,s1,s2)
 #define CPU_COUNT(set) CPU_COUNT_S(sizeof(cpu_set_t),set)
 #define CPU_ZERO(set) CPU_ZERO_S(sizeof(cpu_set_t),set)
-#define CPU_EQUAL(set) CPU_EQUAL_S(sizeof(cpu_set_t),set)
+#define CPU_EQUAL(s1,s2) CPU_EQUAL_S(sizeof(cpu_set_t),s1,s2)
 
 #endif
 

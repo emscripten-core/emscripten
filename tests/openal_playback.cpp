@@ -5,7 +5,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <unistd.h>
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
@@ -25,7 +25,7 @@ void playSource(void* arg)
   alGetSourcei(source, AL_SOURCE_STATE, &state);
   assert(state == AL_STOPPED);
 
-#ifdef EMSCRIPTEN
+#ifdef REPORT_RESULT
   int result = 1;
   REPORT_RESULT();
 #endif
@@ -63,7 +63,7 @@ int main() {
 
   alGenBuffers(1, buffers);
 
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   FILE* source = fopen("audio.wav", "rb");
 #else
   FILE* source = fopen("sounds/audio.wav", "rb");
@@ -146,7 +146,7 @@ int main() {
   alGetSourcei(sources[0], AL_SOURCE_STATE, &state);
   assert(state == AL_PLAYING);
 
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   emscripten_async_call(playSource, reinterpret_cast<void*>(sources[0]), 700);
 #else
   usleep(700000);

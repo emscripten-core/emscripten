@@ -1,0 +1,106 @@
+<footer>
+  {% if next or prev %}
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      {% if next %}
+        <a href="{{ next.link|e }}" class="btn btn-neutral float-right" title="{{ next.title|striptags|e }}"/>Next <span class="fa fa-arrow-circle-right"></span></a>
+      {% endif %}
+      {% if prev %}
+        <a href="{{ prev.link|e }}" class="btn btn-neutral" title="{{ prev.title|striptags|e }}"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      {% endif %}
+    </div>
+  {% endif %}
+
+     
+  <!--begin hamishw addition -->
+  
+    
+  
+  <!--  -->
+   
+   <!--Footer important links
+    If no such page exists then nav item is not created. CSS defines which of the long or short version is 
+	displayed.   -->
+
+	
+   {% set footer_links = [
+    ('docs/getting_started/bug_reports', 'Report Bug', 'Report Bug'),
+    ('docs/introducing_emscripten/emscripten_license', 'Licensing', 'Licensing'),
+	('docs/contributing/contributing', 'Contributing', 'Contributing'),
+	('https://groups.google.com/forum/#!forum/emscripten-discuss', 'Mailing list', 'Mailing list'),
+	('https://github.com/kripken/emscripten/wiki', 'Wiki', 'Wiki'),
+	('docs/introducing_emscripten/release_notes', 'Release notes', 'Release notes'),
+	('docs/introducing_emscripten/community', 'Blogs', 'Blogs'),
+	('docs/introducing_emscripten/community', 'Help', 'Contact'),
+] -%}
+
+   <div class="footer-nav-bar" style="">
+     <div class="footer-options">
+   
+        {% for document, shorttext, longtext in footer_links %}
+            {%- if hasdoc(document) %}
+              <a class="footer-navlink-short" title="{{ shorttext }}" href="{{ pathto(document) }}">{{ shorttext }}</a><a class="footer-navlink-long" title="{{ longtext }}" href="{{ pathto(document) }}">{{ longtext }}</a>
+	        {%- elif document | truncate(4, True, end='') == 'http' %} 
+		      <a class="footer-navlink-short external" href="{{ document }}">{{ shorttext }}</a><a class="footer-navlink-long external" href="{{ document }}">{{ longtext }}</a>
+			{%- else %}  
+			  {{ shorttext }}
+            {%- endif %}
+        {% endfor %} 
+				
+     </div>
+	 
+	
+ 
+   </div>
+  
+    <!-- {% include "breadcrumbs.html" %} -->
+  
+    <!-- {% trans %}<a href="https://github.com/snide/sphinx_rtd_theme">Sphinx theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>{% endtrans %} --.
+   <!--end hamishw addition -->
+  
+  
+	  
+<!-- end section moved here by hamishw -->
+  <div role="contentinfo" class="copyright-box">
+    <!-- section moved here by hamishw - needs tidying, which is why it is still in breadcrumbs mode --> 
+  <ul class="wy-breadcrumbs">
+      <li class="wy-breadcrumbs-aside">
+        {% if display_github %}
+          <a href="https://github.com/{{ github_user }}/{{ github_repo }}/blob/{{ github_version }}{{ conf_py_path }}{{ pagename }}.rst" class="fa fa-github"> Edit on GitHub</a>
+        {% elif display_bitbucket %}
+          <a href="https://bitbucket.org/{{ bitbucket_user }}/{{ bitbucket_repo }}/src/{{ bitbucket_version}}{{ conf_py_path }}{{ pagename }}.rst" class="fa fa-bitbucket"> Edit on Bitbucket</a>
+        {% elif show_source and has_source and sourcename %}
+          <a href="{{ pathto('_sources/' + sourcename, true)|e }}" rel="nofollow"> View page source</a>
+        {% endif %}
+      </li>
+
+	  <li class="wy-breadcrumbs-aside">
+	    {%- if hasdoc('docs/site/about') %}
+         <a href="{{pathto('docs/site/about')}}">About site</a>
+        {%- endif %}
+      </li>
+	  
+	  <li class="wy-breadcrumbs-aside">
+        <a href="https://github.com/kripken/emscripten/issues/new?title=Bug%20in%20page:{{title|urlencode()}}%20&body=REPLACE%20THIS%20TEXT%20WITH%20BUG%20DESCRIPTION%20%0A%0AURL:%20{{ url_root }}{{pagename|urlencode()}}&labels=bug">Page bug</a>
+      </li>
+  </ul>
+  
+    <p>
+    {%- if show_copyright %}
+      {%- if hasdoc('copyright') %}
+        {% trans path=pathto('copyright'), copyright=copyright|e %}&copy; <a href="{{ path }}">Copyright</a> {{ copyright }}.{% endtrans %} 
+      {%- else %}
+        <!-- {% trans copyright=copyright|e %}&copy; Copyright {{ copyright }}.{% endtrans %} -->
+		&copy; Copyright {{ copyright }} <a href="{{ pathto("docs/contributing/AUTHORS") }}">Emscripten Contributors</a>.
+		<!-- update theme to remove the translation stuff here - it was breaking due to link to AUTHORS file. This is a cludge to allow specific link to my authors file -->
+      {%- endif %}
+    {%- endif %}
+
+    {%- if last_updated %}
+      {% trans last_updated=last_updated|e %}Last updated on {{ last_updated }}.{% endtrans %}
+    {%- endif %}
+    </p>
+	
+  </div>
+  
+  
+</footer>

@@ -1,5 +1,6 @@
 #define GL_GLEXT_PROTOTYPES
 #define EGL_EGLEXT_PROTOTYPES
+#include <cassert>
 #include <cmath>
 #include <iostream>
 #include <vector>
@@ -61,7 +62,13 @@ static void updateFloatTexture() {
         ++count;
     }
     glBindTexture(GL_TEXTURE_2D, nodeTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, nbNodes, 1, 0, GL_RGBA, GL_FLOAT, data);
+#ifdef __EMSCRIPTEN__ // In GLES2 and WebGL1, we must use unsized texture internal formats.
+    const GLenum internalFormat = GL_RGBA;
+#else
+    // In desktop GL, we can also use sized internal formats.
+    const GLenum internalFormat = GL_RGBA32F;
+#endif
+    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, nbNodes, 1, 0, GL_RGBA, GL_FLOAT, data);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glBindTexture(GL_TEXTURE_2D, NULL);
@@ -77,7 +84,7 @@ static void glut_draw_callback(void) {
     glActiveTexture(GL_TEXTURE0);
     updateFloatTexture(); //we change the texture each time to create the effect (it is just for the test)
     glBindTexture(GL_TEXTURE_2D, nodeTexture);
-    glUniform1i(nodeSamplerLocation, GL_TEXTURE0);
+    glUniform1i(nodeSamplerLocation, 0);
     glEnableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, indicesVBO);
     glVertexAttribPointer(0, 1, GL_FLOAT, GL_FALSE, 0, NULL);
@@ -91,6 +98,7 @@ GLuint createShader(const char source[], int type) {
     glCompileShader(shader);
     glGetShaderInfoLog(shader, sizeof msg, NULL, msg);
     std::cout << "Shader info: " << msg << std::endl;
+    assert(msg[0] == '\0');
     return shader;
 }
 static void gl_init(void) {
@@ -101,6 +109,7 @@ static void gl_init(void) {
     char msg[512];
     glGetProgramInfoLog(program, sizeof msg, NULL, msg);
     std::cout << "info: " <<  msg << std::endl;
+    assert(msg[0] == '\0');
     glUseProgram(program);
     std::vector<float> elements(nbNodes);
     int count = 0;
@@ -117,9 +126,11 @@ static void gl_init(void) {
     /* Get the locations of the uniforms so we can access them */
     nodeSamplerLocation      = glGetUniformLocation(program, "nodeInfo");
     glBindAttribLocation(program, 0, "indices");
+#ifndef __EMSCRIPTEN__ // GLES2 & WebGL do not have these, only pre 3.0 desktop GL and compatibility mode GL3.0+ GL do.
     //Enable glPoint size in shader, always enable in Open Gl ES 2.
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
     glEnable(GL_POINT_SPRITE);
+#endif
 }
 int main(int argc, char *argv[]) {
     glutInit(&argc, argv);

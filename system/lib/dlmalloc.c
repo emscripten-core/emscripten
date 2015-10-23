@@ -1,11 +1,20 @@
 
 /* XXX Emscripten XXX */
-#if EMSCRIPTEN
+#if __EMSCRIPTEN__
 #define DLMALLOC_EXPORT __attribute__((__weak__, __visibility__("default")))
 /* mmap uses malloc, so malloc can't use mmap */
 #define HAVE_MMAP 0
 /* we can only grow the heap up anyhow, so don't try to trim */
 #define MORECORE_CANNOT_TRIM 1
+/* XXX Emscripten Tracing API. This defines away the code if tracing is disabled. */
+#include <emscripten/trace.h>
+
+/* Make malloc() and free() threadsafe by securing the memory allocations with pthread mutexes. */
+#if __EMSCRIPTEN_PTHREADS__
+#define USE_LOCKS 1
+#define USE_SPIN_LOCKS 0 // Ensure we use pthread_mutex_t.
+#endif
+
 #endif
 
 
@@ -2015,6 +2024,7 @@ static void init_malloc_global_mutex() {
 }
 
 #else /* pthreads-based locks */
+
 #define MLOCK_T               pthread_mutex_t
 #define ACQUIRE_LOCK(lk)      pthread_mutex_lock(lk)
 #define RELEASE_LOCK(lk)      pthread_mutex_unlock(lk)
@@ -4683,6 +4693,10 @@ void* dlmalloc(size_t bytes) {
         
     postaction:
         POSTACTION(gm);
+#if __EMSCRIPTEN__
+        /* XXX Emscripten Tracing API. */
+        emscripten_trace_record_allocation(mem, bytes);
+#endif
         return mem;
     }
     
@@ -4699,6 +4713,10 @@ void dlfree(void* mem) {
      */
     
     if (mem != 0) {
+#if __EMSCRIPTEN__
+        /* XXX Emscripten Tracing API. */
+        emscripten_trace_record_free(mem);
+#endif
         mchunkptr p  = mem2chunk(mem);
 #if FOOTERS
         mstate fm = get_mstate_for(p);
@@ -5235,6 +5253,10 @@ void* dlrealloc(void* oldmem, size_t bytes) {
                 }
             }
         }
+#if __EMSCRIPTEN__
+        /* XXX Emscripten Tracing API. */
+        emscripten_trace_record_reallocation(oldmem, mem, bytes);
+#endif
     }
     return mem;
 }

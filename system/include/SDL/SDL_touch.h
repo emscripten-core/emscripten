@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2011 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2013 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,9 +19,15 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
+/*
+  ================================= IMPORTANT ================================
+  This header taken from SDL2
+  ============================================================================
+*/  
+
 /**
  *  \file SDL_touch.h
- *  
+ *
  *  Include file for SDL touch event handling.
  */
 
@@ -35,90 +41,52 @@
 #include "begin_code.h"
 /* Set up for C function definitions, even when using C++ */
 #ifdef __cplusplus
-/* *INDENT-OFF* */
 extern "C" {
-/* *INDENT-ON* */
 #endif
-
 
 typedef Sint64 SDL_TouchID;
 typedef Sint64 SDL_FingerID;
 
+typedef struct SDL_Finger
+{
+    SDL_FingerID id;
+    float x;
+    float y;
+    float pressure;
+} SDL_Finger;
 
-struct SDL_Finger {
-  SDL_FingerID id;
-  Uint16 x;
-  Uint16 y;
-  Uint16 pressure;
-  Uint16 xdelta;
-  Uint16 ydelta;
-  Uint16 last_x, last_y,last_pressure;  /* the last reported coordinates */
-  SDL_bool down;
-};
-
-typedef struct SDL_Touch SDL_Touch;
-typedef struct SDL_Finger SDL_Finger;
-
-
-struct SDL_Touch {
-  
-  /* Free the touch when it's time */
-  void (*FreeTouch) (SDL_Touch * touch);
-  
-  /* data common for tablets */
-  float pressure_max, pressure_min;
-  float x_max,x_min;
-  float y_max,y_min;
-  Uint16 xres,yres,pressureres;
-  float native_xres,native_yres,native_pressureres;
-  float tilt;                   /* for future use */
-  float rotation;               /* for future use */
-  
-  /* Data common to all touch */
-  SDL_TouchID id;
-  SDL_Window *focus;
-  
-  char *name;
-  Uint8 buttonstate;
-  SDL_bool relative_mode;
-  SDL_bool flush_motion;
-
-  int num_fingers;
-  int max_fingers;
-  SDL_Finger** fingers;
-    
-  void *driverdata;
-};
-
+/* Used as the device ID for mouse events simulated with touch input */
+#define SDL_TOUCH_MOUSEID ((Uint32)-1)
 
 
 /* Function prototypes */
 
 /**
- *  \brief Get the touch object at the given id.
- *
- *
+ *  \brief Get the number of registered touch devices.
  */
-  extern DECLSPEC SDL_Touch* SDLCALL SDL_GetTouch(SDL_TouchID id);
-
-
+extern DECLSPEC int SDLCALL SDL_GetNumTouchDevices(void);
 
 /**
- *  \brief Get the finger object of the given touch, at the given id.
- *
- *
+ *  \brief Get the touch ID with the given index, or 0 if the index is invalid.
  */
-  extern 
-  DECLSPEC SDL_Finger* SDLCALL SDL_GetFinger(SDL_Touch *touch, SDL_FingerID id);
+extern DECLSPEC SDL_TouchID SDLCALL SDL_GetTouchDevice(int index);
+
+/**
+ *  \brief Get the number of active fingers for a given touch device.
+ */
+extern DECLSPEC int SDLCALL SDL_GetNumTouchFingers(SDL_TouchID touchID);
+
+/**
+ *  \brief Get the finger object of the given touch, with the given index.
+ */
+extern DECLSPEC SDL_Finger * SDLCALL SDL_GetTouchFinger(SDL_TouchID touchID, int index);
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus
-/* *INDENT-OFF* */
 }
-/* *INDENT-ON* */
 #endif
 #include "close_code.h"
 
-#endif /* _SDL_mouse_h */
+#endif /* _SDL_touch_h */
 
 /* vi: set ts=4 sw=4 expandtab: */

@@ -1,6 +1,61 @@
 #!/usr/bin/env python2
 
 '''
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+XXX THIS IS DEPRECATED, see webidl_binder.py XXX
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Use CppHeaderParser to parse some C++ headers, and generate binding code for them.
 
 Usage:

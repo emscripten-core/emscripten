@@ -1,6 +1,7 @@
 module({
     Emscripten: '../../../../build/embind_test.js',
 }, function(imports) {
+    /*jshint sub:true */
     var cm = imports.Emscripten;
 
     var CheckForLeaks = fixture("check for leaks", function() {
@@ -8,15 +9,12 @@ module({
             cm.setDelayFunction(undefined);
 
             if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
-                cm._mallocDebug(2);
                 assert.equal(0, cm.count_emval_handles());
-                cm._mallocAssertAllMemoryFree();
             }
         });
         this.tearDown(function() {
             cm.flushPendingDeletes();
             if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
-                cm._mallocAssertAllMemoryFree();
                 assert.equal(0, cm.count_emval_handles());
             }
         });
@@ -28,35 +26,6 @@ module({
         test("temp test", function() {
         });
     });
-
-    if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
-
-    BaseFixture.extend("leak testing", function() {
-        test("no memory allocated at start of test", function() {
-            cm._mallocAssertAllMemoryFree();
-        });
-        test("assert when memory is allocated", function() {
-            var ptr = cm._malloc(42);
-            assert.throws(cm._MemoryAllocationError, function() {
-                cm._mallocAssertAllMemoryFree();
-            });
-            cm._free(ptr);
-        });
-        test("allocated memory counts down again for free", function() {
-            var ptr = cm._malloc(42);
-            cm._free(ptr);
-            cm._mallocAssertAllMemoryFree();
-        });
-        test("free without malloc throws MemoryAllocationError", function() {
-            var ptr = cm._malloc(42);
-            cm._free(ptr);
-            assert.throws(cm._MemoryAllocationError, function() {
-                cm._free(ptr);
-            });
-        });
-    });
-
-    }
 
     BaseFixture.extend("access to base class members", function() {
         test("method name in derived class silently overrides inherited name", function() {
@@ -442,6 +411,21 @@ module({
             var e = cm.emval_test_take_and_return_std_string((new Int8Array([65, 66, 67, 68])).buffer);
             assert.equal('ABCD', e);
         });
+        
+        test("can pass Uint8Array to std::basic_string<unsigned char>", function() {
+            var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char(new Uint8Array([65, 66, 67, 68]));
+            assert.equal('ABCD', e);
+        });
+
+        test("can pass Int8Array to std::basic_string<unsigned char>", function() {
+            var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char(new Int8Array([65, 66, 67, 68]));
+            assert.equal('ABCD', e);
+        });
+
+        test("can pass ArrayBuffer to std::basic_string<unsigned char>", function() {
+            var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char((new Int8Array([65, 66, 67, 68])).buffer);
+            assert.equal('ABCD', e);
+        });
 
         test("non-ascii wstrings", function() {
             var expected = String.fromCharCode(10) +
@@ -458,6 +442,14 @@ module({
                 String.fromCharCode(65535);
             assert.equal(expected, cm.take_and_return_std_wstring(expected));
         });
+
+        if (cm.isMemoryGrowthEnabled) {
+            test("can access a literal wstring after a memory growth", function() {
+                cm.force_memory_growth();
+                assert.equal("get_literal_wstring", cm.get_literal_wstring());
+            });
+        }
+
     });
 
     BaseFixture.extend("embind", function() {
@@ -491,6 +483,65 @@ module({
         test("booleans can be marshalled", function() {
             assert.equal(false, cm.emval_test_not(true));
             assert.equal(true, cm.emval_test_not(false));
+        });
+
+        test("val.is_undefined() is functional",function() {
+            assert.equal(true, cm.emval_test_is_undefined(undefined));
+            assert.equal(false, cm.emval_test_is_undefined(true));
+            assert.equal(false, cm.emval_test_is_undefined(false));
+            assert.equal(false, cm.emval_test_is_undefined(null));
+            assert.equal(false, cm.emval_test_is_undefined({}));
+        });
+
+        test("val.is_null() is functional",function() {
+            assert.equal(true, cm.emval_test_is_null(null));
+            assert.equal(false, cm.emval_test_is_null(true));
+            assert.equal(false, cm.emval_test_is_null(false));
+            assert.equal(false, cm.emval_test_is_null(undefined));
+            assert.equal(false, cm.emval_test_is_null({}));
+        });
+
+        test("val.is_true() is functional",function() {
+            assert.equal(true, cm.emval_test_is_true(true));
+            assert.equal(false, cm.emval_test_is_true(false));
+            assert.equal(false, cm.emval_test_is_true(null));
+            assert.equal(false, cm.emval_test_is_true(undefined));
+            assert.equal(false, cm.emval_test_is_true({}));
+        });
+
+        test("val.is_false() is functional",function() {
+            assert.equal(true, cm.emval_test_is_false(false));
+            assert.equal(false, cm.emval_test_is_false(true));
+            assert.equal(false, cm.emval_test_is_false(null));
+            assert.equal(false, cm.emval_test_is_false(undefined));
+            assert.equal(false, cm.emval_test_is_false({}));
+        });
+
+        test("val.equals() is functional",function() {
+            var values = [undefined, null, true, false, {}];
+
+            for(var i=0;i<values.length;++i){
+                var first = values[i];
+                for(var j=i;j<values.length;++j)
+                {
+                    var second = values[j];
+                    /*jshint eqeqeq:false*/
+                    assert.equal((first == second), cm.emval_test_equals(first, second));
+                }
+            }
+        });
+
+        test("val.strictlyEquals() is functional", function() {
+            var values = [undefined, null, true, false, {}];
+
+            for(var i=0;i<values.length;++i){
+                var first = values[i];
+                for(var j=i;j<values.length;++j)
+                {
+                    var second = values[j];
+                    assert.equal(first===second, cm.emval_test_strictly_equals(first, second));
+                }
+            }
         });
 
         test("can pass booleans as integers", function() {
@@ -537,6 +588,11 @@ module({
 
         test("no memory leak when passing strings in by const reference", function() {
             cm.emval_test_take_and_return_std_string_const_ref("foobar");
+        });
+
+        test("can get global", function(){
+            /*jshint evil:true*/
+            assert.equal((new Function("return this;"))(), cm.embind_test_getglobal());
         });
 
         test("can create new object", function() {
@@ -586,6 +642,18 @@ module({
             var c = new cm.BigClass();
             var m = cm.embind_test_accept_big_class_instance(c);
             assert.equal(11, m);
+            c.delete();
+        });
+
+        test("can pass unique_ptr", function() {
+            var p = cm.embind_test_return_unique_ptr(42);
+            var m = cm.embind_test_accept_unique_ptr(p);
+            assert.equal(42, m);
+        });
+
+        test("can pass unique_ptr to constructor", function() {
+            var c = new cm.embind_test_construct_class_with_unique_ptr(42);
+            assert.equal(42, c.getValue());
             c.delete();
         });
 
@@ -670,6 +738,27 @@ module({
             assert.throws(TypeError, function() { cm.long_to_string(2147483648); });
             assert.throws(TypeError, function() { cm.unsigned_long_to_string(-1); });
             assert.throws(TypeError, function() { cm.unsigned_long_to_string(4294967296); });
+        });
+
+        test("unsigned values are correctly returned when stored in memory", function() {
+            cm.store_unsigned_char(255);
+            assert.equal(255, cm.load_unsigned_char());
+
+            cm.store_unsigned_short(32768);
+            assert.equal(32768, cm.load_unsigned_short());
+
+            cm.store_unsigned_int(2147483648);
+            assert.equal(2147483648, cm.load_unsigned_int());
+
+            cm.store_unsigned_long(2147483648);
+            assert.equal(2147483648, cm.load_unsigned_long());
+        });
+
+        test("throws appropriate type error when attempting to coerce null to int", function() {
+            var e = assert.throws(TypeError, function() {
+                cm.int_to_string(null);
+            });
+            assert.equal('Cannot convert "null" to int', e.message);
         });
 
         test("access multiple class ctors", function() {
@@ -849,6 +938,29 @@ module({
             var str = vec.get(0);
             assert.equal('string #1', str.get());
             str.delete();
+            vec.delete();
+        });
+
+        test("resize appends the given value", function() {
+            var vec = cm.emval_test_return_vector();
+
+            vec.resize(5, 42);
+            assert.equal(5, vec.size());
+            assert.equal(10, vec.get(0));
+            assert.equal(20, vec.get(1));
+            assert.equal(30, vec.get(2));
+            assert.equal(42, vec.get(3));
+            assert.equal(42, vec.get(4));
+            vec.delete();
+        });
+
+        test("resize preserves content when shrinking", function() {
+            var vec = cm.emval_test_return_vector();
+
+            vec.resize(2, 42);
+            assert.equal(2, vec.size());
+            assert.equal(10, vec.get(0));
+            assert.equal(20, vec.get(1));
             vec.delete();
         });
     });
@@ -1236,6 +1348,21 @@ module({
             });
         });
 
+        test("returned unique_ptr does not call destructor", function() {
+            var logged = "";
+            var c = new cm.emval_test_return_unique_ptr_lifetime(function (s) { logged += s; });
+            assert.equal("(constructor)", logged);
+            c.delete();
+        });
+
+        test("returned unique_ptr calls destructor on delete", function() {
+            var logged = "";
+            var c = new cm.emval_test_return_unique_ptr_lifetime(function (s) { logged += s; });
+            logged = "";
+            c.delete();
+            assert.equal("(destructor)", logged);
+        });
+
         test("StringHolder", function() {
             var a = new cm.StringHolder("foobar");
             assert.equal("foobar", a.get());
@@ -1408,7 +1535,7 @@ module({
             var e = assert.throws(cm.BindingError, function() {
                 cm.passThroughCustomSmartPtr(o);
             });
-            assert.equal('Cannot convert argument of type NSt3__110shared_ptrI20HeldByCustomSmartPtrEE to parameter type 14CustomSmartPtrI20HeldByCustomSmartPtrE', e.message);
+            assert.equal('Cannot convert argument of type shared_ptr<HeldByCustomSmartPtr> to parameter type CustomSmartPtr<HeldByCustomSmartPtr>', e.message);
             o.delete();
         });
 
@@ -1533,7 +1660,7 @@ module({
         });
     });
 
-    BaseFixture.extend("abstract methods", function() {
+    BaseFixture.extend("implementing abstract methods with JS objects", function() {
         test("can call abstract methods", function() {
             var obj = cm.getAbstractClass();
             assert.equal("from concrete", obj.abstractMethod());
@@ -1565,7 +1692,6 @@ module({
             };
 
             var impl = cm.AbstractClass.implement(new MyImplementation);
-            assert.equal(expected, impl.optionalMethod(expected));
             assert.equal(expected, cm.callOptionalMethod(impl, expected));
             impl.delete();
         });
@@ -1573,7 +1699,6 @@ module({
         test("if not implemented then optional method runs default", function() {
             var impl = cm.AbstractClass.implement({});
             assert.equal("optionalfoo", impl.optionalMethod("foo"));
-            assert.equal("optionalfoo", cm.callOptionalMethod(impl, "foo"));
             impl.delete();
         });
 
@@ -1623,6 +1748,364 @@ module({
 
             impl.delete();
         });
+
+        test("returning a cached new shared pointer from interfaces implemented in JS code does not leak", function() {
+            var derived = cm.embind_test_return_smart_derived_ptr();
+            var impl = cm.AbstractClass.implement({
+                returnsSharedPtr: function() {
+                    return derived;
+                }
+            });
+            cm.callReturnsSharedPtrMethod(impl);
+            impl.delete();
+            derived.delete();
+            // Let the memory leak test superfixture check that no leaks occurred.
+        });
+    });
+
+    BaseFixture.extend("constructor prototype class inheritance", function() {
+        var Empty = cm.AbstractClass.extend("Empty", {
+            abstractMethod: function() {
+            }
+        });
+
+        test("can extend, construct, and delete", function() {
+            var instance = new Empty;
+            instance.delete();
+        });
+
+        test("properties set in constructor are externally visible", function() {
+            var HasProperty = cm.AbstractClass.extend("HasProperty", {
+                __construct: function(x) {
+                    this.__parent.__construct.call(this);
+                    this.property = x;
+                },
+                abstractMethod: function() {
+                }
+            });
+            var instance = new HasProperty(10);
+            assert.equal(10, instance.property);
+            instance.delete();
+        });
+        
+        test("pass derived object to c++", function() {
+            var Implementation = cm.AbstractClass.extend("Implementation", {
+                abstractMethod: function() {
+                    return "abc";
+                },
+            });
+            var instance = new Implementation;
+            var result = cm.callAbstractMethod(instance);
+            instance.delete();
+            assert.equal("abc", result);
+        });
+
+        test("properties set in constructor are visible in overridden methods", function() {
+            var HasProperty = cm.AbstractClass.extend("HasProperty", {
+                __construct: function(x) {
+                    this.__parent.__construct.call(this);
+                    this.x = x;
+                },
+                abstractMethod: function() {
+                    return this.x;
+                },
+            });
+            var instance = new HasProperty("xyz");
+            var result = cm.callAbstractMethod(instance);
+            instance.delete();
+            assert.equal("xyz", result);
+        });
+
+        test("interface methods are externally visible", function() {
+            var instance = new Empty;
+            var result = instance.concreteMethod();
+            instance.delete();
+            assert.equal("concrete", result);
+        });
+
+        test("optional methods are externally visible", function() {
+            var instance = new Empty;
+            var result = instance.optionalMethod("_123");
+            instance.delete();
+            assert.equal("optional_123", result);
+        });
+
+        test("optional methods: not defined", function() {
+            var instance = new Empty;
+            var result = cm.callOptionalMethod(instance, "_123");
+            instance.delete();
+            assert.equal("optional_123", result);
+        });
+
+        // Calling C++ implementations of optional functions can be
+        // made to work, but requires an interface change on the C++
+        // side, using a technique similar to the one described at
+        // https://wiki.python.org/moin/boost.python/OverridableVirtualFunctions
+        //
+        // The issue is that, in a standard binding, calling
+        // parent.prototype.optionalMethod invokes the wrapper
+        // function, which checks that the JS object implements
+        // 'optionalMethod', which it does.  Thus, C++ calls back into
+        // JS, resulting in an infinite loop.
+        //
+        // The solution, for optional methods, is to bind a special
+        // concrete implementation that specifically calls the base
+        // class's implementation.  See the binding of
+        // AbstractClass::optionalMethod in embind_test.cpp.
+
+        test("can call parent implementation from within derived implementation", function() {
+            var parent = cm.AbstractClass;
+            var ExtendsOptionalMethod = parent.extend("ExtendsOptionalMethod", {
+                abstractMethod: function() {
+                },
+                optionalMethod: function(s) {
+                    return "optionaljs_" + parent.prototype.optionalMethod.call(this, s);
+                },
+            });
+            var instance = new ExtendsOptionalMethod;
+            var result = cm.callOptionalMethod(instance, "_123");
+            instance.delete();
+            assert.equal("optionaljs_optional_123", result);
+        });
+
+        test("instanceof", function() {
+            var instance = new Empty;
+            assert.instanceof(instance, Empty);
+            assert.instanceof(instance, cm.AbstractClass);
+            instance.delete();
+        });
+
+        test("returning null shared pointer from interfaces implemented in JS code does not leak", function() {
+            var C = cm.AbstractClass.extend("C", {
+                abstractMethod: function() {
+                },
+                returnsSharedPtr: function() {
+                    return null;
+                }
+            });
+            var impl = new C;
+            cm.callReturnsSharedPtrMethod(impl);
+            impl.delete();
+            // Let the memory leak test superfixture check that no leaks occurred.
+        });
+
+        test("returning a new shared pointer from interfaces implemented in JS code does not leak", function() {
+            var C = cm.AbstractClass.extend("C", {
+                abstractMethod: function() {
+                },
+                returnsSharedPtr: function() {
+                    return cm.embind_test_return_smart_derived_ptr().deleteLater();
+                }
+            });
+            var impl = new C;
+            cm.callReturnsSharedPtrMethod(impl);
+            impl.delete();
+            // Let the memory leak test superfixture check that no leaks occurred.
+        });
+
+        test("void methods work", function() {
+            var saved = {};
+            var C = cm.AbstractClass.extend("C", {
+                abstractMethod: function() {
+                },
+                differentArguments: function(i, d, f, q, s) {
+                    saved.i = i;
+                    saved.d = d;
+                    saved.f = f;
+                    saved.q = q;
+                    saved.s = s;
+                }
+            });
+            var impl = new C;
+
+            cm.callDifferentArguments(impl, 1, 2, 3, 4, "foo");
+
+            assert.deepEqual(saved, {
+                i: 1,
+                d: 2,
+                f: 3,
+                q: 4,
+                s: "foo",
+            });
+
+            impl.delete();
+        });
+
+        test("returning a cached new shared pointer from interfaces implemented in JS code does not leak", function() {
+            var derived = cm.embind_test_return_smart_derived_ptr();
+            var C = cm.AbstractClass.extend("C", {
+                abstractMethod: function() {
+                },
+                returnsSharedPtr: function() {
+                    return derived;
+                }
+            });
+            var impl = new C;
+            cm.callReturnsSharedPtrMethod(impl);
+            impl.delete();
+            derived.delete();
+            // Let the memory leak test superfixture check that no leaks occurred.
+        });
+
+        test("calling pure virtual function gives good error message", function() {
+            var C = cm.AbstractClass.extend("C", {});
+            var error = assert.throws(cm.PureVirtualError, function() {
+                new C;
+            });
+            assert.equal('Pure virtual function abstractMethod must be implemented in JavaScript', error.message);
+        });
+
+        test("can extend from C++ class with constructor arguments", function() {
+            var parent = cm.AbstractClassWithConstructor;
+            var C = parent.extend("C", {
+                __construct: function(x) {
+                    this.__parent.__construct.call(this, x);
+                },
+                abstractMethod: function() {
+                    return this.concreteMethod();
+                }
+            });
+
+            var impl = new C("hi");
+            var rv = cm.callAbstractMethod2(impl);
+            impl.delete();
+
+            assert.equal("hi", rv);
+        });
+
+        test("__destruct is called when object is destroyed", function() {
+            var parent = cm.HeldAbstractClass;
+            var calls = [];
+            var C = parent.extend("C", {
+                method: function() {
+                },
+                __destruct: function() {
+                    calls.push("__destruct");
+                    this.__parent.__destruct.call(this);
+                }
+            });
+            var impl = new C;
+            var copy = impl.clone();
+            impl.delete();
+            assert.deepEqual([], calls);
+            copy.delete();
+            assert.deepEqual(["__destruct"], calls);
+        });
+
+        test("if JavaScript implementation of interface is returned, don't wrap in new handle", function() {
+            var parent = cm.HeldAbstractClass;
+            var C = parent.extend("C", {
+                method: function() {
+                }
+            });
+            var impl = new C;
+            var rv = cm.passHeldAbstractClass(impl);
+            impl.delete();
+            assert.equal(impl, rv);
+            rv.delete();
+        });
+
+        test("can instantiate two wrappers with constructors", function() {
+            var parent = cm.HeldAbstractClass;
+            var C = parent.extend("C", {
+                __construct: function() {
+                    this.__parent.__construct.call(this);
+                },
+                method: function() {
+                }
+            });
+            var a = new C;
+            var b = new C;
+            a.delete();
+            b.delete();
+        });
+
+        test("incorrectly calling parent is an error", function() {
+            var parent = cm.HeldAbstractClass;
+            var C = parent.extend("C", {
+                __construct: function() {
+                    this.__parent.__construct();
+                },
+                method: function() {
+                }
+            });
+            assert.throws(cm.BindingError, function() {
+                new C;
+            });
+        });
+
+        test("deleteLater() works for JavaScript implementations", function() {
+            var parent = cm.HeldAbstractClass;
+            var C = parent.extend("C", {
+                method: function() {
+                }
+            });
+            var impl = new C;
+            var rv = cm.passHeldAbstractClass(impl);
+            impl.deleteLater();
+            rv.deleteLater();
+            cm.flushPendingDeletes();
+        });
+
+        test("deleteLater() combined with delete() works for JavaScript implementations", function() {
+            var parent = cm.HeldAbstractClass;
+            var C = parent.extend("C", {
+                method: function() {
+                }
+            });
+            var impl = new C;
+            var rv = cm.passHeldAbstractClass(impl);
+            impl.deleteLater();
+            rv.delete();
+            cm.flushPendingDeletes();
+        });
+
+        test("method arguments with pointer ownership semantics are cleaned up after call", function() {
+            var parent = cm.AbstractClass;
+            var C = parent.extend("C", {
+                abstractMethod: function() {
+                },
+            });
+            var impl = new C;
+            cm.passShared(impl);
+            impl.delete();
+        });
+
+        test("method arguments with pointer ownership semantics can be cloned", function() {
+            var parent = cm.AbstractClass;
+            var owned;
+            var C = parent.extend("C", {
+                abstractMethod: function() {
+                },
+                passShared: function(p) {
+                    owned = p.clone();
+                }
+            });
+            var impl = new C;
+            cm.passShared(impl);
+            impl.delete();
+
+            assert.equal("Derived", owned.getClassName());
+            owned.delete();
+        });
+
+        test("emscripten::val method arguments don't leak", function() {
+            var parent = cm.AbstractClass;
+            var got;
+            var C = parent.extend("C", {
+                abstractMethod: function() {
+                },
+                passVal: function(g) {
+                    got = g;
+                }
+            });
+            var impl = new C;
+            var v = {};
+            cm.passVal(impl, v);
+            impl.delete();
+
+            assert.equal(v, got);
+        });
     });
 
     BaseFixture.extend("registration order", function() {
@@ -1646,6 +2129,10 @@ module({
     if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
 
     BaseFixture.extend("unbound types", function() {
+        if (!cm.hasUnboundTypeNames) {
+            return;
+        }
+
         function assertMessage(fn, message) {
             var e = assert.throws(cm.UnboundTypeError, fn);
             assert.equal(message, e.message);
@@ -1814,6 +2301,13 @@ module({
             });
         });
 
+        test("can clone instances that have been scheduled for deletion", function() {
+            var v = new cm.ValHolder({});
+            v.deleteLater();
+            var v2 = v.clone();
+            v2.delete();
+        });
+
         test("deleteLater returns the object", function() {
             var v = (new cm.ValHolder({})).deleteLater();
             assert.deepEqual({}, v.getVal());
@@ -1926,22 +2420,127 @@ module({
         });
     });
 
-    test("returning a cached new shared pointer from interfaces implemented in JS code does not leak", function() {
-        var derived = cm.embind_test_return_smart_derived_ptr();
-        var impl = cm.AbstractClass.implement({
-            returnsSharedPtr: function() {
-                return derived;
-            }
+    BaseFixture.extend("val::as", function() {
+        test("built-ins", function() {
+            assert.equal(true,  cm.val_as_bool(true));
+            assert.equal(false, cm.val_as_bool(false));
+            assert.equal(127,   cm.val_as_char(127));
+            assert.equal(32767, cm.val_as_short(32767));
+            assert.equal(65536, cm.val_as_int(65536));
+            assert.equal(65536, cm.val_as_long(65536));
+            assert.equal(10.5,  cm.val_as_float(10.5));
+            assert.equal(10.5,  cm.val_as_double(10.5));
+
+            assert.equal("foo", cm.val_as_string("foo"));
+            assert.equal("foo", cm.val_as_wstring("foo"));
+
+            var obj = {};
+            assert.equal(obj, cm.val_as_val(obj));
+
+            // JS->C++ memory view not implemented
+            //var ab = cm.val_as_memory_view(new ArrayBuffer(13));
+            //assert.equal(13, ab.byteLength);
         });
-        cm.callReturnsSharedPtrMethod(impl);
-        impl.delete();
-        derived.delete();
-        // Let the memory leak test superfixture check that no leaks occurred.
+
+        test("value types", function() {
+            var tuple = [1, 2, 3, 4];
+            assert.deepEqual(tuple, cm.val_as_value_array(tuple));
+
+            var struct = {x: 1, y: 2, z: 3, w: 4};
+            assert.deepEqual(struct, cm.val_as_value_object(struct));
+        });
+
+        test("enums", function() {
+            assert.equal(cm.Enum.ONE, cm.val_as_enum(cm.Enum.ONE));
+        });
+    });
+
+    BaseFixture.extend("val::new_", function() {
+        test("variety of types", function() {
+            function factory() {
+                this.arguments = Array.prototype.slice.call(arguments, 0);
+            }
+            var instance = cm.construct_with_6_arguments(factory);
+            assert.deepEqual(
+                [6, -12.5, "a3", {x: 1, y: 2, z: 3, w: 4}, cm.EnumClass.TWO, [-1, -2, -3, -4]],
+                instance.arguments);
+        });
+
+        test("memory view", function() {
+            function factory(before, view, after) {
+                this.before = before;
+                this.view = view;
+                this.after = after;
+            }
+
+            var instance = cm.construct_with_memory_view(factory);
+            assert.equal("before", instance.before);
+            assert.equal(10, instance.view.byteLength);
+            assert.equal("after", instance.after);
+        });
+
+        test("ints_and_float", function() {
+            function factory(a, b, c) {
+                this.a = a;
+                this.b = b;
+                this.c = c;
+            }
+
+            var instance = cm.construct_with_ints_and_float(factory);
+            assert.equal(65537, instance.a);
+            assert.equal(4.0, instance.b);
+            assert.equal(65538, instance.c);
+        });
+    });
+
+    BaseFixture.extend("intrusive pointers", function() {
+        test("can pass intrusive pointers", function() {
+            var ic = new cm.IntrusiveClass;
+            var d = cm.passThroughIntrusiveClass(ic);
+            assert.true(ic.isAliasOf(d));
+            ic.delete();
+            d.delete();
+        });
+
+        test("can hold intrusive pointers", function() {
+            var ic = new cm.IntrusiveClass;
+            var holder = new cm.IntrusiveClassHolder;
+            holder.set(ic);
+            ic.delete();
+            var d = holder.get();
+            d.delete();
+            holder.delete();
+        });
+
+        test("can extend from intrusive pointer class and still preserve reference in JavaScript", function() {
+            var C = cm.IntrusiveClass.extend("C", {
+            });
+            var instance = new C;
+            var holder = new cm.IntrusiveClassHolder;
+            holder.set(instance);
+            instance.delete();
+
+            var back = holder.get();
+            assert.equal(back, instance);
+            holder.delete();
+            back.delete();
+        });
+    });
+
+    BaseFixture.extend("typeof", function() {
+        test("typeof", function() {
+            assert.equal("object", cm.getTypeOfVal(null));
+            assert.equal("object", cm.getTypeOfVal({}));
+            assert.equal("function", cm.getTypeOfVal(function(){}));
+            assert.equal("number", cm.getTypeOfVal(1));
+            assert.equal("string", cm.getTypeOfVal("hi"));
+        });
     });
 });
 
 /* global run_all_tests */
 // If running as part of the emscripten test runner suite, and not as part of the IMVU suite,
 // we launch the test execution from here. IMVU suite uses its own dedicated mechanism instead of this.
-if (typeof run_all_tests !== "undefined")
+if (typeof run_all_tests !== "undefined") {
     run_all_tests();
+}

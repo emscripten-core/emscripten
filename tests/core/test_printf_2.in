@@ -8,7 +8,7 @@ int main() {
   float f = 5.5;
   double d = 6.6;
 
-  printf("%c,%hd,%d,%lld,%.1f,%.1llf\n", c, s, i, l, f, d);
+  printf("%c,%hd,%d,%lld,%.1f,%.1f\n", c, s, i, l, f, d);
   printf("%#x,%#x\n", 1, 0);
 
   return 0;

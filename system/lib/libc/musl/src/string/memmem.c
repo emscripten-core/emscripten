@@ -1,6 +1,5 @@
 #define _GNU_SOURCE
 #include <string.h>
-#include <stdlib.h>
 #include <stdint.h>
 
 static char *twobyte_memmem(const unsigned char *h, size_t k, const unsigned char *n)
@@ -113,15 +112,15 @@ static char *twoway_memmem(const unsigned char *h, const unsigned char *z, const
 		}
 
 		/* Compare right half */
-		for (k=MAX(ms+1,mem); n[k] && n[k] == h[k]; k++);
-		if (n[k]) {
+		for (k=MAX(ms+1,mem); k<l && n[k] == h[k]; k++);
+		if (k < l) {
 			h += k-ms;
 			mem = 0;
 			continue;
 		}
 		/* Compare left half */
 		for (k=ms+1; k>mem && n[k-1] == h[k-1]; k--);
-		if (k == mem) return (char *)h;
+		if (k <= mem) return (char *)h;
 		h += p;
 		mem = mem0;
 	}
@@ -140,6 +139,7 @@ void *memmem(const void *h0, size_t k, const void *n0, size_t l)
 	/* Use faster algorithms for short needles */
 	h = memchr(h0, *n, k);
 	if (!h || l==1) return (void *)h;
+	k -= h - (const unsigned char *)h0;
 	if (l==2) return twobyte_memmem(h, k, n);
 	if (l==3) return threebyte_memmem(h, k, n);
 	if (l==4) return fourbyte_memmem(h, k, n);

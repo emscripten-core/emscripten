@@ -65,7 +65,7 @@
 #endif
 #if defined(HAVE_INTTYPES_H)
 # include <inttypes.h>
-#elif defined(EMSCRIPTEN) || defined(HAVE_STDINT_H)
+#elif defined(__EMSCRIPTEN__) || defined(HAVE_STDINT_H)
 # include <stdint.h>
 #endif
 #ifdef HAVE_CTYPE_H

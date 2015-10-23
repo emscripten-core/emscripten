@@ -7,7 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
@@ -23,7 +23,7 @@ static void create_file(const char *path, const char *buffer, int mode) {
 
 void setup() {
   mkdir("working", 0777);
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   EM_ASM(
 #if NODEFS
     FS.mount(NODEFS, { root: '.' }, 'working');
@@ -33,9 +33,13 @@ void setup() {
   chdir("working");
   create_file("file", "test", 0777);
   create_file("file1", "test", 0777);
+#ifndef NO_SYMLINK
   symlink("file1", "file1-link");
+#endif
   mkdir("dir-empty", 0777);
+#ifndef NO_SYMLINK
   symlink("dir-empty", "dir-empty-link");
+#endif
   mkdir("dir-readonly", 0777);
   create_file("dir-readonly/anotherfile", "test", 0777);
   mkdir("dir-readonly/anotherdir", 0777);
@@ -47,9 +51,13 @@ void setup() {
 void cleanup() {
   unlink("file");
   unlink("file1");
+#ifndef NO_SYMLINK
   unlink("file1-link");
+#endif
   rmdir("dir-empty");
+#ifndef NO_SYMLINK
   unlink("dir-empty-link");
+#endif
   chmod("dir-readonly", 0777);
   unlink("dir-readonly/anotherfile");
   rmdir("dir-readonly/anotherdir");
@@ -81,14 +89,18 @@ void test() {
   assert(err == -1);
   assert(errno == EACCES);
 
+#ifndef NO_SYMLINK
   // try unlinking the symlink first to make sure
   // we don't follow the link
   err = unlink("file1-link");
   assert(!err);
+#endif
   err = access("file1", F_OK);
   assert(!err);
+#ifndef NO_SYMLINK
   err = access("file1-link", F_OK);
   assert(err == -1);
+#endif
 
   err = unlink("file");
   assert(!err);
@@ -130,9 +142,11 @@ void test() {
   assert(errno == EBUSY);
 #endif
 
+#ifndef NO_SYMLINK
   err = rmdir("dir-empty-link");
   assert(err == -1);
   assert(errno == ENOTDIR);
+#endif
 
   err = rmdir("dir-empty");
   assert(!err);

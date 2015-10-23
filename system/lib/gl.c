@@ -2,7 +2,7 @@
 
 #include <string.h>
 #include <stdlib.h>
-#include <stdio.h>
+#include <emscripten.h>
 
 #define GL_GLEXT_PROTOTYPES
 #include <GL/gl.h>
@@ -1543,10 +1543,14 @@ GLAPI void APIENTRY emscripten_glVertexAttribDivisor (GLuint index, GLuint divis
 void* emscripten_GetProcAddress(const char *name_) {
   char *name = malloc(strlen(name_)+1);
   strcpy(name, name_);
-  // remove EXT|ARB suffixes
+  // remove EXT|ARB|OES|ANGLE suffixes
   char *end = strstr(name, "EXT");
   if (end) *end = 0;
   end = strstr(name, "ARB");
+  if (end) *end = 0;
+  end = strstr(name, "OES");
+  if (end) *end = 0;
+  end = strstr(name, "ANGLE");
   if (end) *end = 0;
   // misc renamings
   if (!strcmp(name, "glCreateProgramObject")) name = "glCreateProgram";
@@ -1722,8 +1726,11 @@ void* emscripten_GetProcAddress(const char *name_) {
   else if (!strcmp(name, "glVertexAttrib4f")) return emscripten_glVertexAttrib4f;
   else if (!strcmp(name, "glCopyTexImage2D")) return emscripten_glCopyTexImage2D;
   else if (!strcmp(name, "glCopyTexSubImage2D")) return emscripten_glCopyTexSubImage2D;
+  else if (!strcmp(name, "glDrawBuffers")) return emscripten_glDrawBuffers;
 
-  fprintf(stderr, "bad name in getProcAddress: %s | %s\n", name_, name);
+  EM_ASM_({
+    Module.printErr('bad name in getProcAddress: ' + [Pointer_stringify($0), Pointer_stringify($1)]);
+  }, name_, name);
   return 0;
 }
 

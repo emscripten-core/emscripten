@@ -59,7 +59,7 @@ int main() {
 
     // The following lets the browser test exit cleanly.
     int result = 1;
-    #if EMSCRIPTEN
+    #if defined(__EMSCRIPTEN__)
         #ifdef REPORT_RESULT
             REPORT_RESULT();
         #endif

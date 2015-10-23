@@ -268,13 +268,17 @@ var LibraryEGL = {
     // So user must pass EGL_CONTEXT_CLIENT_VERSION == 2 to initialize EGL.
     var glesContextVersion = 1;
     for(;;) {
-        var param = {{{ makeGetValue('contextAttribs', '0', 'i32') }}};
-        if (!param) break;
-        var value = {{{ makeGetValue('contextAttribs', '4', 'i32') }}};
-        if (param == 0x3098 /*EGL_CONTEXT_CLIENT_VERSION*/) {
-          glesContextVersion = value;
-        }
-        contextAttribs += 8;
+      var param = {{{ makeGetValue('contextAttribs', '0', 'i32') }}};
+      if (param == 0x3098 /*EGL_CONTEXT_CLIENT_VERSION*/) {
+        glesContextVersion = {{{ makeGetValue('contextAttribs', '4', 'i32') }}};
+      } else if (param == 0x3038 /*EGL_NONE*/) {
+        break;
+      } else {
+        /* EGL1.4 specifies only EGL_CONTEXT_CLIENT_VERSION as supported attribute */
+        EGL.setErrorCode(0x3004 /*EGL_BAD_ATTRIBUTE*/);
+        return 0;
+      }
+      contextAttribs += 8;
     }
     if (glesContextVersion != 2) {
 #if GL_ASSERTIONS
@@ -284,7 +288,7 @@ var LibraryEGL = {
       return 0; /* EGL_NO_CONTEXT */
     }
 
-    _glutInitDisplayMode(0x92 /* GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE */);
+    _glutInitDisplayMode(0xB2 /* GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE | GLUT_STENCIL */);
     EGL.windowID = _glutCreateWindow();
     if (EGL.windowID != 0) {
       EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
@@ -492,14 +496,21 @@ var LibraryEGL = {
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
     return 1;
   },
-  
+
+
+  // EGLAPI EGLBoolean EGLAPIENTRY eglWaitGL(void);
+  eglWaitGL: 'eglWaitClient',
+
   // EGLAPI EGLBoolean EGLAPIENTRY eglSwapInterval(EGLDisplay dpy, EGLint interval);
+  eglSwapInterval__deps: ['emscripten_set_main_loop_timing'],
   eglSwapInterval: function(display, interval) {
     if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0;
     }
-    // \todo Could we use this function to specify the rate for requestAnimationFrame+main loop? 
+    if (interval == 0) _emscripten_set_main_loop_timing(0/*EM_TIMING_SETTIMEOUT*/, 0);
+    else _emscripten_set_main_loop_timing(1/*EM_TIMING_RAF*/, interval);
+
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
     return 1;
   },
@@ -550,13 +561,43 @@ var LibraryEGL = {
   
   // EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surface);
   eglSwapBuffers: function() {
-    EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
+#if PROXY_TO_WORKER
+    if (Browser.doSwapBuffers) Browser.doSwapBuffers();
+#endif
+
+    if (!EGL.defaultDisplayInitialized) {
+      EGL.setErrorCode(0x3001 /* EGL_NOT_INITIALIZED */);
+    } else if (!Module.ctx) {
+      EGL.setErrorCode(0x3002 /* EGL_BAD_ACCESS */);
+    } else if (Module.ctx.isContextLost()) {
+      EGL.setErrorCode(0x300E /* EGL_CONTEXT_LOST */);
+    } else {
+      // According to documentation this does an implicit flush.
+      // Due to discussion at https://github.com/kripken/emscripten/pull/1871
+      // the flush was removed since this _may_ result in slowing code down.
+      //_glFlush();
+      EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
+      return 1 /* EGL_TRUE */;
+    }
+    return 0 /* EGL_FALSE */;
   },
 
   eglGetProcAddress__deps: ['emscripten_GetProcAddress'],
   eglGetProcAddress: function(name_) {
     return _emscripten_GetProcAddress(name_);
   },
+
+  eglReleaseThread: function() {
+    // Equivalent to eglMakeCurrent with EGL_NO_CONTEXT and EGL_NO_SURFACE.
+    EGL.currentContext = 0;
+    EGL.currentReadSurface = 0;
+    EGL.currentDrawSurface = 0;
+    // EGL spec v1.4 p.55:
+    // "calling eglGetError immediately following a successful call to eglReleaseThread should not be done.
+    //  Such a call will return EGL_SUCCESS - but will also result in reallocating per-thread state."                     
+    EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
+    return 1 /* EGL_TRUE */;
+  }
 };
 
 autoAddDeps(LibraryEGL, '$EGL');

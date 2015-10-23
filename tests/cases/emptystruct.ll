@@ -1,6 +1,6 @@
-; ModuleID = 'emptystruct.c'
-target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:64-f32:32:32-f64:32:64-v64:64:64-v128:128:128-a0:0:64-f80:32:32-n8:16:32-S128"
-target triple = "i386-pc-linux-gnu"
+; ModuleID = '/tmp/tmpe4Pk1F/a.out.bc'
+target datalayout = "e-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-p:32:32:32-v128:32:128-n32-S128"
+target triple = "asmjs-unknown-emscripten"
 
 %struct.s = type { {}, i32 }
 
@@ -13,7 +13,7 @@ entry:
   %z = alloca %struct.s, align 4
   %0 = bitcast %struct.s* %z to i8*
   call void @llvm.memset.p0i8.i32(i8* %0, i8 0, i32 4, i32 4, i1 false)
-  %1 = call i32 bitcast (i32 (i8*)* @puts to i32 (i32*)*)(i8* getelementptr inbounds ([14 x i8]* @.str, i32 0, i32 0)) ; [#uses=0]
+  %1 = call i32 bitcast (i32 (i8*)* @puts to i32 (i32*)*)(i32* bitcast (i8* getelementptr inbounds ([14 x i8], [14 x i8]* @.str, i32 0, i32 0) to i32*)) ; [#uses=0]
   ret i32 0
 }
 

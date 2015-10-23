@@ -13,7 +13,7 @@ extern "C" {
 typedef enum { FIND, ENTER } ACTION;
 typedef enum { preorder, postorder, endorder, leaf } VISIT;
 
-typedef struct {
+typedef struct entry {
 	char *key;
 	void *data;
 } ENTRY;

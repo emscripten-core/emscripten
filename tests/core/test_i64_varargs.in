@@ -16,6 +16,7 @@ int64_t ccv_cache_generate_signature(char *msg, int len, int64_t sig_start,
 }
 
 int main(int argc, char **argv) {
+  argv[0] = (char*)"...";
   for (int i = 0; i < argc; i++) {
     int64_t x;
     if (i % 123123 == 0)

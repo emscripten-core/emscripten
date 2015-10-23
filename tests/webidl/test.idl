@@ -1,0 +1,128 @@
+
+// Part 1
+
+interface Parent {
+  void Parent(long val);
+  long getVal();
+  void mulVal(long mul);
+  void parentFunc();
+  [Const] Parent getAsConst();
+  VoidPtr voidStar(VoidPtr something);
+
+  readonly attribute long immutableAttr;
+};
+
+interface Child1 {
+  void Child1(optional long val);
+  long getValSqr(optional long more);
+  long getValTimes(optional long times=1);
+  void parentFunc(long x); // redefinition, name collides with parent
+};
+
+Child1 implements Parent;
+
+interface Child2 {
+  void Child2();
+  long getValCube();
+  static void printStatic();
+  void virtualFunc();
+  void virtualFunc2();
+  void virtualFunc3(long x);
+  void virtualFunc4(long x);
+  static void runVirtualFunc(Child2 self);
+  static void runVirtualFunc3(Child2 self, long x);
+};
+
+Child2 implements Parent;
+
+[JSImplementation="Child2"]
+interface Child2JS {
+  void Child2JS();
+  void virtualFunc();
+  void virtualFunc2();
+  void virtualFunc3(long x);
+  void virtualFunc4(long x);
+};
+
+// Part 2
+
+interface StringUser {
+  void StringUser();
+  void StringUser(DOMString str, long i);
+  void Print(long anotherInteger, DOMString anotherString);
+  void PrintFloat(float f);
+  [Const] DOMString returnAString();
+};
+
+interface RefUser {
+  void RefUser();
+  void RefUser(long value);
+  long getValue([Ref] RefUser b);
+  [Ref] RefUser getMe();
+  [Value] RefUser getCopy(); // must have zero-arg constructor
+  [Value] StringUser getAnother();
+};
+
+interface VoidPointerUser {
+  void VoidPointerUser();
+
+  any GetVoidPointer();
+  void SetVoidPointer(any ptr);
+};
+
+[Prefix="Space::"]
+interface Inner {
+  void Inner();
+  long get();
+  [Operator="*=", Ref] Inner mul(float x);
+};
+
+enum AnEnum {
+  "enum_value1",
+  "enum_value2"
+};
+
+enum EnumClass_EnumWithinClass {
+  "EnumClass::e_val"
+};
+
+enum EnumNamespace_EnumInNamespace {
+  "EnumNamespace::e_namespace_val"
+};
+
+interface EnumClass {
+  void EnumClass();
+
+  EnumClass_EnumWithinClass GetEnum();
+
+  EnumNamespace_EnumInNamespace GetEnumFromNameSpace();
+};
+
+interface TypeTestClass {
+  void TypeTestClass();
+
+  byte ReturnCharMethod();
+  void AcceptCharMethod(byte x);
+
+  octet ReturnUnsignedCharMethod();
+  void AcceptUnsignedCharMethod(octet x);
+
+  unsigned short ReturnUnsignedShortMethod();
+  void AcceptUnsignedShortMethod(unsigned short x);
+
+  unsigned long ReturnUnsignedLongMethod();
+  void AcceptUnsignedLongMethod(unsigned long x);
+};
+
+interface StructInArray {
+  void StructInArray(long attr1, long attr2);
+  attribute long attr1;
+  attribute long attr2;
+};
+
+interface ArrayClass {
+  void ArrayClass();
+  [BoundsChecked] attribute long[] int_array;
+  [Value] attribute StructInArray[] struct_array;
+  attribute StructInArray[] struct_ptr_array;
+};
