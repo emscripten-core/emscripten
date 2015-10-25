@@ -19,11 +19,11 @@ struct Arena {
 
   template<class T>
   T* alloc() {
-    const size_t CHUNK_SIZE = 10000;
+    const size_t CHUNK = 10000;
     size_t currSize = (sizeof(T) + 7) & (-8); // same alignment as malloc TODO optimize?
-    assert(currSize < CHUNK_SIZE);
-    if (chunks.size() == 0 || index + currSize >= CHUNK_SIZE) {
-      chunks.push_back(new char[CHUNK_SIZE]);
+    assert(currSize < CHUNK);
+    if (chunks.size() == 0 || index + currSize >= CHUNK) {
+      chunks.push_back(new char[CHUNK]);
       index = 0;
     }
     T* ret = (T*)(chunks.back() + index);
@@ -247,8 +247,11 @@ struct NameType {
   BasicType type;
 };
 
-class CustomType {
+class GeneralType {
 public:
+  GeneralType(BasicType basic) : basic(basic) {}
+
+  BasicType basic; // if none, then custom, and other params matter
   NameType self;
   std::vector<NameType> params;
 };
@@ -262,8 +265,8 @@ public:
 
 class Import {
 public:
-  Name name;
-  CustomType type;
+  Name name, module, base; // name = module.base
+  GeneralType type;
 };
 
 class Export {
@@ -279,7 +282,7 @@ public:
 
 class Module {
   // wasm contents
-  std::vector<CustomType> customTypes;
+  std::vector<GeneralType> customTypes;
   std::vector<Function> functions;
   std::vector<Import> imports;
   std::vector<Export> exports;
