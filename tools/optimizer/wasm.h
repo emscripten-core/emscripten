@@ -5,11 +5,14 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <map>
 #include <vector>
 
 namespace wasm {
 
 // Basics
+
+typedef const char *Name;
 
 // A 'var' in the spec.
 class Var {
@@ -17,22 +20,23 @@ class Var {
     MAX_NUM = 1000000 // less than this, a num, higher, a string; 0 = null
   };
   union {
-    unsigned num;    // numeric ID
-    const char *str; // string
+    unsigned num; // numeric ID
+    Name str;     // string
   };
 public:
   Var() : num(0) {}
   Var(unsigned num) : num(num) {
     assert(num > 0 && num < MAX_NUM);
   }
-  Var(const char *str) : str(str) {
+  Var(Name str) : str(str) {
     assert(((size_t)str) > MAX_NUM);
   }
 };
 
 // Types
 
-enum Type {
+enum BasicType {
+  none,
   i32,
   i64,
   f32,
@@ -40,7 +44,7 @@ enum Type {
 };
 
 struct Literal {
-  Type type;
+  BasicType type;
   union value {
     int32_t i32;
     int64_t i64;
@@ -188,6 +192,48 @@ class Convert : public Expression {
 class Host : public Expression {
   HostOp op;
   ExpressionList operands;
+};
+
+// Globals
+
+struct NameType {
+  Name name;
+  BasicType type;
+};
+
+class CustomType {
+  NameType self;
+  std::vector<NameType> params;
+};
+
+class Function {
+  NameType self;
+  std::vector<NameType> params;
+  std::vector<NameType> locals;
+};
+
+class Import {
+  Name name;
+  CustomType type;
+};
+
+class Export {
+  Name name;
+  Var value;
+};
+
+class Table {
+  std::vector<Var> vars;
+};
+
+class Module {
+  std::map<Var, void*> map; // maps var ids/names to things
+
+  std::vector<CustomType> customTypes;
+  std::vector<Function> functions;
+  std::vector<Import> imports;
+  std::vector<Export> exports;
+  Table table;
 };
 
 } // namespace wasm
