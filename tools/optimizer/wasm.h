@@ -2,17 +2,20 @@
 // WebAssembly representation and processing library
 //
 
-#include <assert.h>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <vector>
 
 namespace wasm {
 
-// Vars
+// Basics
 
 // A 'var' in the spec.
 class Var {
   enum {
     MAX_NUM = 1000000 // less than this, a num, higher, a string; 0 = null
-  }
+  };
   union {
     unsigned num;    // numeric ID
     const char *str; // string
@@ -27,32 +30,59 @@ public:
   }
 };
 
+// Types
+
+enum Type {
+  i32,
+  i64,
+  f32,
+  f64
+};
+
+struct Literal {
+  Type type;
+  union value {
+    int32_t i32;
+    int64_t i64;
+    float f32;
+    double f64;
+  };
+};
+
 // Operators
 
-namespace IntOp {
-  enum unop { Clz, Ctz, Popcnt }
-  enum binop { Add, Sub, Mul, DivS, DivU, RemS, RemU, And, Or, Xor, Shl, ShrU, ShrS }
-  enum relop { Eq, Ne, LtS, LtU, LeS, LeU, GtS, GtU, GeS, GeU }
-  enum cvt { ExtendSInt32, ExtendUInt32, WrapInt64, TruncSFloat32, TruncUFloat32, TruncSFloat64, TruncUFloat64, ReinterpretFloat }
-}
+enum UnaryOp {
+  Clz, Ctz, Popcnt, // int
+  Neg, Abs, Ceil, Floor, Trunc, Nearest, Sqrt // float
+};
 
-namespace FloatOp {
-  enum unop { Neg, Abs, Ceil, Floor, Trunc, Nearest, Sqrt }
-  enum binop { Add, Sub, Mul, Div, CopySign, Min, Max }
-  enum relop { Eq, Ne, Lt, Le, Gt, Ge }
-  enum cvt { ConvertSInt32, ConvertUInt32, ConvertSInt64, ConvertUInt64, PromoteFloat32, DemoteFloat64, ReinterpretInt }
-}
+enum BinaryOp {
+  Add, Sub, Mul, // int or float
+  DivS, DivU, RemS, RemU, And, Or, Xor, Shl, ShrU, ShrS, // int
+  Div, CopySign, Min, Max // float
+};
 
-namespace HostOp {
-  enum hostop { PageSize, MemorySize, GrowMemory, HasFeature }
-}
+enum RelationalOp {
+  Eq, Ne, // int or float
+  LtS, LtU, LeS, LeU, GtS, GtU, GeS, GeU, // int
+  Lt, Le, Gt, Ge // float
+};
+
+enum ConvertOp {
+  ExtendSInt32, ExtendUInt32, WrapInt64, TruncSFloat32, TruncUFloat32, TruncSFloat64, TruncUFloat64, ReinterpretFloat, // int
+  ConvertSInt32, ConvertUInt32, ConvertSInt64, ConvertUInt64, PromoteFloat32, DemoteFloat64, ReinterpretInt // float
+};
+
+enum HostOp {
+  PageSize, MemorySize, GrowMemory, HasFeature
+};
 
 // Expressions
 
-typedef std::vector<Expression*> ExpressionList; // TODO: optimize  
-
 class Expression {
 };
+
+typedef std::vector<Expression*> ExpressionList; // TODO: optimize  
 
 class Nop : public Expression {
 };
@@ -118,7 +148,7 @@ class SetLocal : public Expression {
 
 class Load : public Expression {
   unsigned bytes;
-  bool unsigned;
+  bool signed_;
   int offset;
   unsigned align;
   Expression *ptr;
@@ -136,27 +166,27 @@ class Const : public Expression {
 };
 
 class Unary : public Expression {
-  IntOp::unop op;
+  UnaryOp op;
   Expression *value;
 };
 
 class Binary : public Expression {
-  IntOp::binop op;
+  BinaryOp op;
   Expression *left, *right;
 };
 
 class Compare : public Expression {
-  IntOp::relop op;
+  RelationalOp op;
   Expression *left, *right;
 };
 
 class Convert : public Expression {
-  IntOp::cvt op;
+  ConvertOp op;
   Expression *value;
 };
 
 class Host : public Expression {
-  HostOp::hostop op;
+  HostOp op;
   ExpressionList operands;
 };
 
