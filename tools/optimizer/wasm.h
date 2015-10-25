@@ -10,6 +10,34 @@
 
 namespace wasm {
 
+// Utilities
+
+// Arena allocation for mixed-type data.
+struct Arena {
+  std::vector<char*> chunks;
+  int index; // in last chunk
+
+  template<class T>
+  T* alloc() {
+    const size_t CHUNK_SIZE = 10000;
+    size_t currSize = (sizeof(T) + 7) & (-8); // same alignment as malloc TODO optimize?
+    assert(currSize < CHUNK_SIZE);
+    if (chunks.size() == 0 || index + currSize >= CHUNK_SIZE) {
+      chunks.push_back(new char[CHUNK_SIZE]);
+      index = 0;
+    }
+    T* ret = (T*)(chunks.back() + index);
+    index += currSize;
+    return ret;
+  }
+
+  ~Arena() {
+    for (char* chunk : chunks) {
+      delete[] chunk;
+    }
+  }
+};
+
 // Basics
 
 typedef const char *Name;
@@ -92,29 +120,35 @@ class Nop : public Expression {
 };
 
 class Block : public Expression {
+public:
   Var var;
   ExpressionList list;
 };
 
 class If : public Expression {
+public:
   Expression *condition, *ifTrue, *ifFalse;
 };
 
 class Loop : public Expression {
+public:
   Var out, in;
   Expression *body;
 };
 
 class Label : public Expression {
+public:
   Var var;
 };
 
 class Break : public Expression {
+public:
   Var var;
   Expression *condition;
 };
 
 class Switch : public Expression {
+public:
   struct Case {
     Literal value;
     Expression *body;
@@ -128,6 +162,7 @@ class Switch : public Expression {
 };
 
 class Call : public Expression {
+public:
   Var target;
   ExpressionList operands;
 };
@@ -136,21 +171,25 @@ class CallImport : public Call {
 };
 
 class CallIndirect : public Expression {
+public:
   Var type;
   Expression *target;
   ExpressionList operands;
 };
 
 class GetLocal : public Expression {
+public:
   Var id;
 };
 
 class SetLocal : public Expression {
+public:
   Var id;
   Expression *value;
 };
 
 class Load : public Expression {
+public:
   unsigned bytes;
   bool signed_;
   int offset;
@@ -159,6 +198,7 @@ class Load : public Expression {
 };
 
 class Store : public Expression {
+public:
   unsigned bytes;
   int offset;
   unsigned align;
@@ -166,30 +206,36 @@ class Store : public Expression {
 };
 
 class Const : public Expression {
+public:
   Literal value;
 };
 
 class Unary : public Expression {
+public:
   UnaryOp op;
   Expression *value;
 };
 
 class Binary : public Expression {
+public:
   BinaryOp op;
   Expression *left, *right;
 };
 
 class Compare : public Expression {
+public:
   RelationalOp op;
   Expression *left, *right;
 };
 
 class Convert : public Expression {
+public:
   ConvertOp op;
   Expression *value;
 };
 
 class Host : public Expression {
+public:
   HostOp op;
   ExpressionList operands;
 };
@@ -202,38 +248,50 @@ struct NameType {
 };
 
 class CustomType {
+public:
   NameType self;
   std::vector<NameType> params;
 };
 
 class Function {
+public:
   NameType self;
   std::vector<NameType> params;
   std::vector<NameType> locals;
 };
 
 class Import {
+public:
   Name name;
   CustomType type;
 };
 
 class Export {
+public:
   Name name;
   Var value;
 };
 
 class Table {
+public:
   std::vector<Var> vars;
 };
 
 class Module {
-  std::map<Var, void*> map; // maps var ids/names to things
-
+  // wasm contents
   std::vector<CustomType> customTypes;
   std::vector<Function> functions;
   std::vector<Import> imports;
   std::vector<Export> exports;
   Table table;
+
+  // internals
+  std::map<Var, void*> map; // maps var ids/names to things
+  unsigned nextVar;
+  Arena allocator;
+
+public:
+  Module() : nextVar(1) {}
 };
 
 } // namespace wasm
