@@ -94,6 +94,7 @@ void Asm2WasmModule::processAsm(Ref ast) {
     } else if (type != BasicType::none) {
       import.type.basic = type;
     } else {
+      assert(importedFunctionTypes.find(name) != importedFunctionTypes.end());
       import.type = importedFunctionTypes[name];
     }
     imports.push_back(import);
