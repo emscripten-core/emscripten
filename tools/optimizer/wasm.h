@@ -73,7 +73,7 @@ enum BasicType {
 
 struct Literal {
   BasicType type;
-  union value {
+  union {
     int32_t i32;
     int64_t i64;
     float f32;
