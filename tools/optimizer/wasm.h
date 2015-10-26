@@ -100,13 +100,13 @@ enum BasicType {
   f64
 };
 
-std::ostream& print(std::ostream &o, BasicType type) {
+std::ostream& printBasicType(std::ostream &o, BasicType type) {
   switch (type) {
-    case BasicType::none: o << "none";
-    case BasicType::i32: o << "i32";
-    case BasicType::i64: o << "i64";
-    case BasicType::f32: o << "f32";
-    case BasicType::f64: o << "f64";
+    case BasicType::none: o << "none"; break;
+    case BasicType::i32: o << "i32"; break;
+    case BasicType::i64: o << "i64"; break;
+    case BasicType::f32: o << "f32"; break;
+    case BasicType::f64: o << "f64"; break;
   }
   return o;
 }
@@ -123,10 +123,10 @@ struct Literal {
   std::ostream& print(std::ostream &o) {
     switch (type) {
       case none: abort();
-      case BasicType::i32: o << i32;
-      case BasicType::i64: o << i64;
-      case BasicType::f32: o << f32;
-      case BasicType::f64: o << f64;
+      case BasicType::i32: o << i32; break;
+      case BasicType::i64: o << i64; break;
+      case BasicType::f32: o << f32; break;
+      case BasicType::f64: o << f64; break;
     }
     return o;
   }
@@ -338,10 +338,10 @@ struct NameType {
 std::ostream& printParamsAndResult(std::ostream &o, unsigned indent, BasicType result, std::vector<NameType>& params) {
   for (auto& param : params) {
     o << "(param " << param.name.str << " ";
-    print(o, param.type) << ") ";
+    printBasicType(o, param.type) << ") ";
   }
   o << "(result ";
-  print(o, result) << ")";
+  printBasicType(o, result) << ")";
 }
 
 class GeneralType {
@@ -354,10 +354,14 @@ public:
   BasicType result;
   std::vector<NameType> params;
 
-  std::ostream& print(std::ostream &o, unsigned indent) {
+  std::ostream& print(std::ostream &o, unsigned indent, bool shortIfBasic) {
+    if (basic != none && shortIfBasic) {
+      printBasicType(o, basic);
+      return o;
+    }
     o << "(type " << name.str;
     if (basic != none) {
-      print(o, basic) << ')';
+      printBasicType(o, basic) << ')';
     } else {
       incIndent(o, indent);
       printParamsAndResult(o, indent, result, params);
@@ -396,8 +400,8 @@ public:
   GeneralType type;
 
   std::ostream& print(std::ostream &o, unsigned indent) {
-    o << "(import " << name.str << " \"" << module.str << "\" \"" << base.str << "\"";
-    type.print(o, indent); // XXX
+    o << "(import " << name.str << " \"" << module.str << "\" \"" << base.str << "\" ";
+    type.print(o, indent, true);
     o << ')';
     return o;
   }
@@ -451,17 +455,27 @@ public:
     o << "(module";
     incIndent(o, indent);
     for (auto& curr : customTypes) {
-      curr.print(o, indent);
+      doIndent(o, indent);
+      curr.print(o, indent, false);
+      o << '\n';
     }
     for (auto& curr : imports) {
+      doIndent(o, indent);
       curr.print(o, indent);
+      o << '\n';
     }
     for (auto& curr : exports) {
+      doIndent(o, indent);
       curr.print(o, indent);
+      o << '\n';
     }
+    doIndent(o, indent);
     table.print(o, indent);
+    o << '\n';
     for (auto& curr : functions) {
+      doIndent(o, indent);
       curr->print(o, indent);
+      o << '\n';
     }
     decIndent(o, indent);
     o << '\n';

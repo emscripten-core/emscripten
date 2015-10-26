@@ -2,6 +2,8 @@
 #include "simple_ast.h"
 #include "wasm.h"
 
+IString GLOBAL("global"), NAN_("NaN"), INFINITY_("Infinity");
+
 static void abort_on(std::string why, Ref element) {
   std::cerr << why << ' ';
   element->stringify(std::cerr);
@@ -86,7 +88,10 @@ void Asm2WasmModule::processAsm(Ref ast) {
     import.name = name;
     import.module = module[1]->getIString();
     import.base = imported[2]->getIString();
-    if (type != BasicType::none) {
+    // special-case some asm builtins
+    if (import.module == GLOBAL && (import.base == NAN_ || import.base == INFINITY_)) {
+      import.type.basic = BasicType::f64;
+    } else if (type != BasicType::none) {
       import.type.basic = type;
     } else {
       import.type = importedFunctionTypes[name];
