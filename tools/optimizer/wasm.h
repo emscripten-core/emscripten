@@ -335,6 +335,15 @@ struct NameType {
   NameType(Name name, BasicType type) : name(name), type(type) {}
 };
 
+std::ostream& printParamsAndResult(std::ostream &o, unsigned indent, BasicType result, std::vector<NameType>& params) {
+  for (auto& param : params) {
+    o << "(param " << param.name.str << " ";
+    print(o, param.type) << ") ";
+  }
+  o << "(result ";
+  print(o, result) << ")";
+}
+
 class GeneralType {
 public:
   GeneralType() : basic(BasicType::none) {}
@@ -344,6 +353,18 @@ public:
   Name name;
   BasicType result;
   std::vector<NameType> params;
+
+  std::ostream& print(std::ostream &o, unsigned indent) {
+    o << "(type " << name.str;
+    if (basic != none) {
+      print(o, basic) << ')';
+    } else {
+      incIndent(o, indent);
+      printParamsAndResult(o, indent, result, params);
+      decIndent(o, indent);
+    }
+    return o;
+  }
 };
 
 class Function {
@@ -356,12 +377,7 @@ public:
 
   std::ostream& print(std::ostream &o, unsigned indent) {
     o << "(func " << name.str << " ";
-    for (auto& param : params) {
-      o << "(param " << param.name.str << " ";
-      print(o, param.type) << ") ";
-    }
-    o << "(result ";
-    print(o, result) << ")";
+    printParamsAndResult(o, indent, result, params);
     incIndent(o, indent);
     for (auto& local : locals) {
       doIndent(o, indent);
@@ -378,17 +394,40 @@ class Import {
 public:
   Name name, module, base; // name = module.base
   GeneralType type;
+
+  std::ostream& print(std::ostream &o, unsigned indent) {
+    o << "(import " << name.str << " \"" << module.str << "\" \"" << base.str << "\"";
+    type.print(o, indent); // XXX
+    o << ')';
+    return o;
+  }
 };
 
 class Export {
 public:
   Name name;
   Var value;
+
+  std::ostream& print(std::ostream &o, unsigned indent) {
+    o << "(export \"" << name.str << "\" ";
+    value.print(o);
+    o << ')';
+    return o;
+  }
 };
 
 class Table {
 public:
   std::vector<Var> vars;
+
+  std::ostream& print(std::ostream &o, unsigned indent) {
+    o << "(table ";
+    for (auto var : vars) {
+      var.print(o) << ' ';
+    }
+    o << ')';
+    return o;
+  }
 };
 
 class Module {
@@ -411,7 +450,6 @@ public:
     unsigned indent = 0;
     o << "(module";
     incIndent(o, indent);
-    /*
     for (auto& curr : customTypes) {
       curr.print(o, indent);
     }
@@ -421,14 +459,12 @@ public:
     for (auto& curr : exports) {
       curr.print(o, indent);
     }
-    for (auto& curr : table) {
-      curr.print(o, indent);
-    }
-    */
+    table.print(o, indent);
     for (auto& curr : functions) {
       curr->print(o, indent);
     }
     decIndent(o, indent);
+    o << '\n';
   }
 };
 
