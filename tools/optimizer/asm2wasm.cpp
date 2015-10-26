@@ -31,7 +31,13 @@ public:
   void processAsm(Ref ast);
 
 private:
-  void processFunction(Ref ast);
+  BasicType wasmTypeFromCoercion(Ref ast) {
+    if (ast[0] == BINARY) return BasicType::i32;
+    if (ast[0] == UNARY_PREFIX) return BasicType::f64;
+    abort();
+  }
+
+  Function* processFunction(Ref ast);
 };
 
 void Asm2WasmModule::processAsm(Ref ast) {
@@ -109,7 +115,7 @@ void Asm2WasmModule::processAsm(Ref ast) {
       }
     } else if (curr[0] == FUNCTION) {
       // function
-      processFunction(curr);
+      functions.push_back(processFunction(curr));
     } else if (curr[0] == RETURN) {
       // exports
       Ref object = curr[1];
@@ -144,7 +150,27 @@ void Asm2WasmModule::processAsm(Ref ast) {
   }
 }
 
-void Asm2WasmModule::processFunction(Ref ast) {
-  abort();
+Function* Asm2WasmModule::processFunction(Ref ast) {
+  auto function = allocator.alloc<Function>();
+  function->name = ast[1]->getIString();
+  Ref params = ast[2];
+  Ref body = ast[3];
+  for (unsigned i = 0; i < params->size(); i++) {
+    Ref curr = body[i];
+    assert(curr[0] == ASSIGN && curr[2][0] == NAME);
+    function->params.emplace_back(curr[2][1]->getIString(), wasmTypeFromCoercion(curr[3]));
+  }
+  unsigned start = params->size();
+  while (start < body->size() && body[start][0] == VAR) {
+    Ref curr = body[start];
+    for (unsigned j = 0; j < curr[1]->size(); j++) {
+      Ref pair = curr[1][j];
+      function->locals.emplace_back(pair[0]->getIString(), wasmTypeFromCoercion(pair[1]));
+    }
+    start++;
+  }
+  function->returnType = BasicType::none; // updated if we see a return
+  function->body = processStatements(body, start);
+  return function;
 }
 

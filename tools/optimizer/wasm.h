@@ -245,6 +245,7 @@ public:
 struct NameType {
   Name name;
   BasicType type;
+  NameType(Name name, BasicType type) : name(name), type(type) {}
 };
 
 class GeneralType {
@@ -252,16 +253,19 @@ public:
   GeneralType() : basic(BasicType::none) {}
   GeneralType(BasicType basic) : basic(basic) {}
 
-  BasicType basic; // if none, then custom, and other params matter
-  NameType self;
+  BasicType basic; // if none, then custom/function, and other params matter
+  Name name;
+  BasicType returnType;
   std::vector<NameType> params;
 };
 
 class Function {
 public:
-  NameType self;
+  Name name;
+  BasicType returnType;
   std::vector<NameType> params;
   std::vector<NameType> locals;
+  Expression body;
 };
 
 class Import {
@@ -285,10 +289,10 @@ class Module {
 protected:
   // wasm contents
   std::vector<GeneralType> customTypes;
-  std::vector<Function> functions;
   std::vector<Import> imports;
   std::vector<Export> exports;
   Table table;
+  std::vector<Function*> functions;
 
   // internals
   std::map<Var, void*> map; // maps var ids/names to things
