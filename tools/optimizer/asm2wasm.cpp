@@ -200,7 +200,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
     }
     start++;
   }
-  function->returnType = BasicType::none; // updated if we see a return
+  function->result = BasicType::none; // updated if we see a return
   // processors
   std::function<Expression* (Ref)> process = [&](Ref ast) -> Expression* {
     IString what = ast[0]->getIString();
@@ -283,6 +283,9 @@ int main(int argc, char **argv) {
   printf("wasming...\n");
   Asm2WasmModule wasm;
   wasm.processAsm(asmjs);
+
+  printf("printing...\n");
+  wasm.print(std::cout);
 
   printf("done.\n");
   printf("TODO: get memory for globals, and clear it to zero\n");
