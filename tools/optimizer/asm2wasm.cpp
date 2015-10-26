@@ -132,6 +132,12 @@ void Asm2WasmModule::processAsm(Ref ast) {
         } else if (value[0] == NEW) {
           // ignore imports of typed arrays, but note the names of the arrays
           // XXX
+        } else if (value[0] == ARRAY) {
+          // function table
+          Ref contents = value[1];
+          for (unsigned k = 0; k < contents->size(); k++) {
+            table.vars.push_back(contents[k][1]->getIString());
+          }
         } else {
           abort_on("invalid var element", pair);
         }
@@ -142,10 +148,12 @@ void Asm2WasmModule::processAsm(Ref ast) {
     } else if (curr[0] == RETURN) {
       // exports
       Ref object = curr[1];
-      for (auto pair : *object->obj) {
-        IString key = pair.first;
-        Ref value = pair.second;
-        assert(value[0] == STRING);
+      Ref contents = curr[1][1];
+      for (unsigned k = 0; k < contents->size(); k++) {
+        Ref pair = contents[k];
+        IString key = pair[0]->getIString();
+        Ref value = pair[1];
+        assert(value[0] == NAME);
         Export export_;
         export_.name = key;
         export_.value = value[1]->getIString();
@@ -278,5 +286,6 @@ int main(int argc, char **argv) {
 
   printf("done.\n");
   printf("TODO: get memory for globals, and clear it to zero\n");
+  printf("TODO: assert on no aliasing function pointers\n");
 }
 
