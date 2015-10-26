@@ -38,6 +38,22 @@ struct Arena {
   }
 };
 
+std::ostream &doIndent(std::ostream &o, unsigned indent) {
+  for (unsigned i = 0; i < indent; i++) {
+    o << "  ";
+  }
+  return o;
+}
+void incIndent(std::ostream &o, unsigned& indent) {
+  o << '\n';
+  indent++;    
+}
+void decIndent(std::ostream &o, unsigned& indent) {
+  indent--;
+  doIndent(o, indent);
+  o << ')';
+}
+
 // Basics
 
 typedef cashew::IString Name;
@@ -59,6 +75,19 @@ public:
   Var(Name str) : str(str) {
     assert(num > MAX_NUM);
   }
+
+  bool is() {
+    return num != 0;
+  }
+
+  std::ostream& print(std::ostream &o) {
+    if (num < MAX_NUM) {
+      o << num;
+    } else {
+      o << str.str;
+    }
+    return o;
+  }
 };
 
 // Types
@@ -71,6 +100,17 @@ enum BasicType {
   f64
 };
 
+std::ostream& print(std::ostream &o, BasicType type) {
+  switch (type) {
+    case BasicType::none: o << "none";
+    case BasicType::i32: o << "i32";
+    case BasicType::i64: o << "i64";
+    case BasicType::f32: o << "f32";
+    case BasicType::f64: o << "f64";
+  }
+  return o;
+}
+
 struct Literal {
   BasicType type;
   union {
@@ -79,6 +119,17 @@ struct Literal {
     float f32;
     double f64;
   };
+
+  std::ostream& print(std::ostream &o) {
+    switch (type) {
+      case none: abort();
+      case BasicType::i32: o << i32;
+      case BasicType::i64: o << i64;
+      case BasicType::f32: o << f32;
+      case BasicType::f64: o << f64;
+    }
+    return o;
+  }
 };
 
 // Operators
@@ -112,22 +163,58 @@ enum HostOp {
 // Expressions
 
 class Expression {
+public:
+  virtual std::ostream& print(std::ostream &o, unsigned indent) = 0;
 };
+
+std::ostream& printFullLine(std::ostream &o, unsigned indent, Expression *expression) {
+  doIndent(o, indent);
+  expression->print(o, indent);
+  o << '\n';
+}
 
 typedef std::vector<Expression*> ExpressionList; // TODO: optimize  
 
 class Nop : public Expression {
+  std::ostream& print(std::ostream &o, unsigned indent) override {
+    o << "nop";
+    return o;
+  }
 };
 
 class Block : public Expression {
 public:
   Var var;
   ExpressionList list;
+
+  std::ostream& print(std::ostream &o, unsigned indent) override {
+    o << "(block";
+    if (var.is()) {
+      o << " ";
+      var.print(o);
+    }
+    incIndent(o, indent);
+    for (auto expression : list) {
+      printFullLine(o, indent, expression);
+    }
+    decIndent(o, indent);
+    return o;
+  }
 };
 
 class If : public Expression {
 public:
   Expression *condition, *ifTrue, *ifFalse;
+
+  std::ostream& print(std::ostream &o, unsigned indent) override {
+    o << "(if";
+    incIndent(o, indent);
+    printFullLine(o, indent, condition);
+    printFullLine(o, indent, ifTrue);
+    if (ifFalse) printFullLine(o, indent, ifFalse);
+    decIndent(o, indent);
+    return o;
+  }
 };
 
 class Loop : public Expression {
@@ -255,17 +342,36 @@ public:
 
   BasicType basic; // if none, then custom/function, and other params matter
   Name name;
-  BasicType returnType;
+  BasicType result;
   std::vector<NameType> params;
 };
 
 class Function {
 public:
   Name name;
-  BasicType returnType;
+  BasicType result;
   std::vector<NameType> params;
   std::vector<NameType> locals;
   Expression *body;
+
+  std::ostream& print(std::ostream &o, unsigned indent) {
+    o << "(func " << name.str << " ";
+    for (auto& param : params) {
+      o << "(param " << param.name.str << " ";
+      print(o, param.type) << ") ";
+    }
+    o << "(result ";
+    print(o, result) << ")";
+    incIndent(o, indent);
+    for (auto& local : locals) {
+      doIndent(o, indent);
+      o << "(local " << local.name.str << " ";
+      print(o, local.type) << ")\n";
+    }
+    printFullLine(o, indent, body);
+    decIndent(o, indent);
+    return o;
+  }
 };
 
 class Import {
@@ -300,6 +406,30 @@ protected:
 
 public:
   Module() : nextVar(1) {}
+
+  std::ostream& print(std::ostream &o) {
+    unsigned indent = 0;
+    o << "(module";
+    incIndent(o, indent);
+    /*
+    for (auto& curr : customTypes) {
+      curr.print(o, indent);
+    }
+    for (auto& curr : imports) {
+      curr.print(o, indent);
+    }
+    for (auto& curr : exports) {
+      curr.print(o, indent);
+    }
+    for (auto& curr : table) {
+      curr.print(o, indent);
+    }
+    */
+    for (auto& curr : functions) {
+      curr->print(o, indent);
+    }
+    decIndent(o, indent);
+  }
 };
 
 } // namespace wasm
