@@ -132,8 +132,14 @@ set(CMAKE_C_RESPONSE_FILE_LINK_FLAG "@")
 set(CMAKE_CXX_RESPONSE_FILE_LINK_FLAG "@")
 
 # Specify the program to use when building static libraries. Force Emscripten-related command line options to clang.
-set(CMAKE_C_CREATE_STATIC_LIBRARY "<CMAKE_AR> rc <TARGET> <LINK_FLAGS> <OBJECTS>")
-set(CMAKE_CXX_CREATE_STATIC_LIBRARY "<CMAKE_AR> rc <TARGET> <LINK_FLAGS> <OBJECTS>")
+# Use emcc/em++ to create static libraries with .bc extensions, otherwise use emar by default.
+if ("${CMAKE_STATIC_LIBRARY_SUFFIX}" STREQUAL ".bc")
+	set(CMAKE_C_CREATE_STATIC_LIBRARY "<CMAKE_C_COMPILER> -o <TARGET> <LINK_FLAGS> <OBJECTS>")
+	set(CMAKE_CXX_CREATE_STATIC_LIBRARY "<CMAKE_CXX_COMPILER> -o <TARGET> <LINK_FLAGS> <OBJECTS>")
+else()
+	set(CMAKE_C_CREATE_STATIC_LIBRARY "<CMAKE_AR> rc <TARGET> <LINK_FLAGS> <OBJECTS>")
+	set(CMAKE_CXX_CREATE_STATIC_LIBRARY "<CMAKE_AR> rc <TARGET> <LINK_FLAGS> <OBJECTS>")
+endif()
 
 # Set a global EMSCRIPTEN variable that can be used in client CMakeLists.txt to detect when building using Emscripten.
 set(EMSCRIPTEN 1 CACHE BOOL "If true, we are targeting Emscripten output.")
