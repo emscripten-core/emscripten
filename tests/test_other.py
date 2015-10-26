@@ -1040,11 +1040,18 @@ int f() {
                            (['-L/usr/something', '-Wwarn-absolute-paths'], True),
                            (['-I/usr/something'], False),
                            (['-L/usr/something'], False),
+                           (['-I/usr/something', '-Wno-warn-absolute-paths'], False),
+                           (['-L/usr/something', '-Wno-warn-absolute-paths'], False),
                            (['-Isubdir/something', '-Wwarn-absolute-paths'], False),
                            (['-Lsubdir/something', '-Wwarn-absolute-paths'], False),
                            ([], False)]:
-      err = Popen([PYTHON, EMCC, 'main.c'] + args, stderr=PIPE).communicate()[1]
+      print args, expected
+      proc = Popen([PYTHON, EMCC, 'main.c'] + args, stderr=PIPE)
+      err = proc.communicate()[1]
+      assert proc.returncode is 0
       assert ('encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)' in err) == expected, err
+      if not expected:
+        assert err == '', err
 
   def test_local_link(self):
     # Linking a local library directly, like /usr/lib/libsomething.so, cannot work of course since it

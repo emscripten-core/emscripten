@@ -446,8 +446,11 @@ try:
     if newargs[i] == '-Wwarn-absolute-paths':
       newargs[i] = ''
       absolute_warning_shown = False
-    # Scan for individual -l/-L/-I arguments and concatenate the next arg on if there is no suffix
-    if newargs[i] in ['-l', '-L', '-I']:
+    elif newargs[i] == '-Wno-warn-absolute-paths':
+      newargs[i] = ''
+      absolute_warning_shown = True
+    elif newargs[i] in ['-l', '-L', '-I']:
+      # Scan for individual -l/-L/-I arguments and concatenate the next arg on if there is no suffix
       newargs[i] += newargs[i+1]
       newargs[i+1] = ''
 
