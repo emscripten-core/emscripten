@@ -265,7 +265,7 @@ public:
   BasicType returnType;
   std::vector<NameType> params;
   std::vector<NameType> locals;
-  Expression body;
+  Expression *body;
 };
 
 class Import {
