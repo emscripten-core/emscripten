@@ -2,6 +2,13 @@
 #include "simple_ast.h"
 #include "wasm.h"
 
+static void abort_on(std::string why, Ref element) {
+  std::cerr << why << ' ';
+  element->stringify(std::cerr);
+  std::cerr << "\n";
+  abort();
+}
+
 using namespace cashew;
 using namespace wasm;
 
@@ -27,7 +34,7 @@ class Asm2WasmModule : public wasm::Module {
   std::map<IString, GeneralType> importedFunctionTypes;
 
 public:
-  Asm2WasmModule() : nextGlobal(8), maxGlobal(100) {}
+  Asm2WasmModule() : nextGlobal(8), maxGlobal(1000) {}
   void processAsm(Ref ast);
 
 private:
@@ -74,7 +81,7 @@ void Asm2WasmModule::processAsm(Ref ast) {
       // we can have (global.Math).floor; skip the 'Math'
       module = module[1];
     }
-    assert(module[0] == STRING);
+    assert(module[0] == NAME);
     Import import;
     import.name = name;
     import.module = module[1]->getIString();
@@ -97,9 +104,9 @@ void Asm2WasmModule::processAsm(Ref ast) {
         Ref pair = curr[1][j];
         IString name = pair[0]->getIString();
         Ref value = pair[1];
-        if (value->isNumber()) {
+        if (value[0] == NUM) {
           // global int
-          assert(value->getNumber() == 0);
+          assert(value[1]->getInteger() == 0);
           allocateGlobal(name);
         } else if (value[0] == BINARY) {
           // int import
@@ -126,7 +133,7 @@ void Asm2WasmModule::processAsm(Ref ast) {
           // ignore imports of typed arrays, but note the names of the arrays
           // XXX
         } else {
-          abort();
+          abort_on("invalid var element", pair);
         }
       }
     } else if (curr[0] == FUNCTION) {
@@ -270,5 +277,6 @@ int main(int argc, char **argv) {
   wasm.processAsm(asmjs);
 
   printf("done.\n");
+  printf("TODO: get memory for globals, and clear it to zero\n");
 }
 
