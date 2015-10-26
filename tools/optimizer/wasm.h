@@ -40,7 +40,7 @@ struct Arena {
 
 // Basics
 
-typedef const char *Name;
+typedef cashew::IString Name;
 
 // A 'var' in the spec.
 class Var {
@@ -57,7 +57,7 @@ public:
     assert(num > 0 && num < MAX_NUM);
   }
   Var(Name str) : str(str) {
-    assert(((size_t)str) > MAX_NUM);
+    assert(num > MAX_NUM);
   }
 };
 
@@ -249,6 +249,7 @@ struct NameType {
 
 class GeneralType {
 public:
+  GeneralType() : basic(BasicType::none) {}
   GeneralType(BasicType basic) : basic(basic) {}
 
   BasicType basic; // if none, then custom, and other params matter
@@ -281,6 +282,7 @@ public:
 };
 
 class Module {
+protected:
   // wasm contents
   std::vector<GeneralType> customTypes;
   std::vector<Function> functions;
@@ -291,7 +293,6 @@ class Module {
   // internals
   std::map<Var, void*> map; // maps var ids/names to things
   unsigned nextVar;
-  Arena allocator;
 
 public:
   Module() : nextVar(1) {}
