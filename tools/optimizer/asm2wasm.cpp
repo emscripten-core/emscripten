@@ -5,7 +5,11 @@
 using namespace cashew;
 using namespace wasm;
 
-class Asm2WasmModule : public Module {
+class Asm2WasmModule : public wasm::Module {
+  wasm::Arena allocator;
+
+  // globals
+
   unsigned nextGlobal; // next place to put a global
   unsigned maxGlobal; // highest address we can put a global
   std::map<IString, unsigned> globalAddresses;
@@ -17,13 +21,17 @@ class Asm2WasmModule : public Module {
     assert(nextGlobal < maxGlobal);
   }
 
-  GeneralType getFunctionType(IString module, IString base) {
-    // XXX need an oracle here
-  }
+  // function types. we fill in this information as we see
+  // uses, in the first pass
+
+  std::map<IString, GeneralType> importedFunctionTypes;
 
 public:
   Asm2WasmModule() : nextGlobal(8), maxGlobal(100) {}
   void processAsm(Ref ast);
+
+private:
+  void processFunction(Ref ast);
 };
 
 void Asm2WasmModule::processAsm(Ref ast) {
@@ -35,35 +43,37 @@ void Asm2WasmModule::processAsm(Ref ast) {
   assert(ast[0] == ASSIGN && ast[2][0] == FUNCTION);
   Ref asmFunction = ast[2];
   Ref body = asmFunction[2];
-  assert(body[0][0] == STRING && body[0][1]->getString() == IString("use asm"));
+  assert(body[0][0] == STRING && body[0][1]->getIString() == IString("use asm"));
 
-  auto addImport = [&](IString name, Ref import, BasicType type) {
-    assert(import[0] == DOT);
-    Ref module = import[1];
+  auto addImport = [&](IString name, Ref imported, BasicType type) {
+    assert(imported[0] == DOT);
+    Ref module = imported[1];
     if (module[0] == DOT) {
       // we can have (global.Math).floor; skip the 'Math'
       module = module[1];
     }
     assert(module[0] == STRING);
-    auto import = allocator.alloc<Import>();
-    import->name = name;
-    import->module = module[1]->getString();
-    import->base = import[2]->getString();
+    Import import;
+    import.name = name;
+    import.module = module[1]->getIString();
+    import.base = imported[2]->getIString();
     if (type != BasicType::none) {
-      import->type.basic = type;
+      import.type.basic = type;
     } else {
-      import->type = getFunctionType(import->module, import->base);
+      import.type = importedFunctionTypes[name];
     }
     imports.push_back(import);
   };
 
-  for (var i = 1; i < body->size(); i++) {
+  // first pass - do almost everything, but function imports
+
+  for (unsigned i = 1; i < body->size(); i++) {
     Ref curr = body[i];
     if (curr[0] == VAR) {
       // import, global, or table
-      for (var j = 0; j < curr[1].size(); j++) {
+      for (unsigned j = 0; j < curr[1]->size(); j++) {
         Ref pair = curr[1][j];
-        IString name = pair[0]->getString();
+        IString name = pair[0]->getIString();
         Ref value = pair[1];
         if (value->isNumber()) {
           // global int
@@ -88,6 +98,7 @@ void Asm2WasmModule::processAsm(Ref ast) {
           }
         } else if (value[0] == DOT) {
           // function import
+          // we have to do this later, since we don't know the type yet.
           addImport(name, value, BasicType::none);
         } else if (value[0] == NEW) {
           // ignore imports of typed arrays, but note the names of the arrays
@@ -98,9 +109,42 @@ void Asm2WasmModule::processAsm(Ref ast) {
       }
     } else if (curr[0] == FUNCTION) {
       // function
+      processFunction(curr);
     } else if (curr[0] == RETURN) {
       // exports
+      Ref object = curr[1];
+      for (auto pair : *object->obj) {
+        IString key = pair.first;
+        Ref value = pair.second;
+        assert(value[0] == STRING);
+        Export export_;
+        export_.name = key;
+        export_.value = value[1]->getIString();
+        exports.push_back(export_);
+      }
     }
   }
+
+  // second pass - function imports
+
+  for (unsigned i = 1; i < body->size(); i++) {
+    Ref curr = body[i];
+    if (curr[0] == VAR) {
+      for (unsigned j = 0; j < curr[1]->size(); j++) {
+        Ref pair = curr[1][j];
+        IString name = pair[0]->getIString();
+        Ref value = pair[1];
+        if (value[0] == DOT) {
+          // function import
+          // we can do this now, after having seen the type based on the use
+          addImport(name, value, BasicType::none);
+        }
+      }
+    }
+  }
+}
+
+void Asm2WasmModule::processFunction(Ref ast) {
+  abort();
 }
 
