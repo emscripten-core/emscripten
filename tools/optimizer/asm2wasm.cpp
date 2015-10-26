@@ -40,10 +40,10 @@ public:
   void processAsm(Ref ast);
 
 private:
-  BasicType wasmTypeFromCoercion(Ref ast) {
-    if (ast[0] == BINARY) return BasicType::i32;
+  BasicType detectWasmType(Ref ast) {
+    if (ast[0] == BINARY || ast[0] == NUM) return BasicType::i32;
     if (ast[0] == UNARY_PREFIX) return BasicType::f64;
-    abort();
+    abort_on("confused detectWasmType", ast);
   }
 
   bool isUnsignedCoercion(Ref ast) {
@@ -134,7 +134,6 @@ void Asm2WasmModule::processAsm(Ref ast) {
         } else if (value[0] == DOT) {
           // function import
           // we have to do this later, since we don't know the type yet.
-          addImport(name, value, BasicType::none);
         } else if (value[0] == NEW) {
           // ignore imports of typed arrays, but note the names of the arrays
           // XXX
@@ -148,7 +147,7 @@ void Asm2WasmModule::processAsm(Ref ast) {
           abort_on("invalid var element", pair);
         }
       }
-    } else if (curr[0] == FUNCTION) {
+    } else if (curr[0] == DEFUN) {
       // function
       functions.push_back(processFunction(curr));
     } else if (curr[0] == RETURN) {
@@ -190,19 +189,22 @@ void Asm2WasmModule::processAsm(Ref ast) {
 Function* Asm2WasmModule::processFunction(Ref ast) {
   auto function = allocator.alloc<Function>();
   function->name = ast[1]->getIString();
+std::cerr << "processFunction " << function->name.str << "\n";
   Ref params = ast[2];
   Ref body = ast[3];
   for (unsigned i = 0; i < params->size(); i++) {
     Ref curr = body[i];
+    assert(curr[0] == STAT);
+    curr = curr[1];
     assert(curr[0] == ASSIGN && curr[2][0] == NAME);
-    function->params.emplace_back(curr[2][1]->getIString(), wasmTypeFromCoercion(curr[3]));
+    function->params.emplace_back(curr[2][1]->getIString(), detectWasmType(curr[3]));
   }
   unsigned start = params->size();
   while (start < body->size() && body[start][0] == VAR) {
     Ref curr = body[start];
     for (unsigned j = 0; j < curr[1]->size(); j++) {
       Ref pair = curr[1][j];
-      function->locals.emplace_back(pair[0]->getIString(), wasmTypeFromCoercion(pair[1]));
+      function->locals.emplace_back(pair[0]->getIString(), detectWasmType(pair[1]));
     }
     start++;
   }
@@ -210,7 +212,9 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
   // processors
   std::function<Expression* (Ref)> process = [&](Ref ast) -> Expression* {
     IString what = ast[0]->getIString();
-    if (what == ASSIGN) {
+    if (what == STAT) {
+      return process(ast[1]); // and drop return value, if any
+    } else if (what == ASSIGN) {
       if (ast[2][0] == NAME) {
         auto ret = allocator.alloc<SetLocal>();
         ret->id = ast[2][1]->getIString();
@@ -237,9 +241,9 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         ret->value.f64 = ast[2][1]->getNumber();
         return ret;
       }
-      abort();
+      abort_on("confusing unary-prefix", ast[2]);
     }
-    abort();
+    abort_on("confusing expression", ast);
   };
   auto processStatements = [&](Ref ast, unsigned from) {
     auto block = allocator.alloc<Block>();
