@@ -37,6 +37,26 @@ private:
     abort();
   }
 
+  bool isUnsignedCoercion(Ref ast) {
+    if (ast[0] == BINARY && ast[1] == TRSHIFT) return true;
+    return false;
+  }
+
+  BinaryOp wasmBinaryOp(IString op, Ref left, Ref right) {
+    if (op == PLUS) return BinaryOp::Add;
+    if (op == MINUS) return BinaryOp::Sub;
+    if (op == MUL) return BinaryOp::Mul;
+    if (op == AND) return BinaryOp::And;
+    if (op == OR) return BinaryOp::Or;
+    if (op == XOR) return BinaryOp::Xor;
+    if (op == LSHIFT) return BinaryOp::Shl;
+    if (op == RSHIFT) return BinaryOp::ShrS;
+    if (op == TRSHIFT) return BinaryOp::ShrU;
+    if (op == DIV) {
+      return isUnsignedCoercion(left) ? BinaryOp::DivU : BinaryOp::DivS;
+    }
+  }
+
   Function* processFunction(Ref ast);
 };
 
@@ -170,6 +190,36 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
     start++;
   }
   function->returnType = BasicType::none; // updated if we see a return
+  // processors
+  std::function<Expression* (Ref)> process = [&](Ref ast) -> Expression* {
+    IString what = ast[0]->getIString();
+    if (what == ASSIGN) {
+      if (ast[2][0] == NAME) {
+        auto ret = allocator.alloc<SetLocal>();
+        ret->id = ast[2][1]->getIString();
+        ret->value = process(ast[3]);
+        return ret;
+      } else {
+        abort();
+      }
+    } else if (what == BINARY) {
+      auto ret = allocator.alloc<Binary>();
+      ret->op = wasmBinaryOp(ast[1]->getIString(), ast[2], ast[3]);
+      ret->left = process(ast[2]);
+      ret->right = process(ast[3]);
+      return ret;
+    } else {
+      abort();
+    }
+  };
+  auto processStatements = [&](Ref ast, unsigned from) {
+    auto block = allocator.alloc<Block>();
+    for (unsigned i = from; i < ast->size(); i++) {
+      block->list.push_back(process(ast[i]));
+    }
+    return block;
+  };
+  // body
   function->body = processStatements(body, start);
   return function;
 }
