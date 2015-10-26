@@ -208,9 +208,21 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       ret->left = process(ast[2]);
       ret->right = process(ast[3]);
       return ret;
-    } else {
+    } else if (what == NUM) {
+      auto ret = allocator.alloc<Const>();
+      ret->value.type = BasicType::i32;
+      ret->value.i32 = ast[1]->getInteger();
+      return ret;
+    } else if (what == UNARY_PREFIX) {
+      if (ast[2][0] == NUM) {
+        auto ret = allocator.alloc<Const>();
+        ret->value.type = BasicType::f64;
+        ret->value.f64 = ast[2][1]->getNumber();
+        return ret;
+      }
       abort();
     }
+    abort();
   };
   auto processStatements = [&](Ref ast, unsigned from) {
     auto block = allocator.alloc<Block>();
