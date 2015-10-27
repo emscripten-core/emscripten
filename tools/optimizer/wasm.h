@@ -186,6 +186,11 @@ enum HostOp {
 class Expression {
 public:
   virtual std::ostream& print(std::ostream &o, unsigned indent) = 0;
+
+  template<class T>
+  bool is() {
+    return !!dynamic_cast<T*>(this);
+  }
 };
 
 std::ostream& printFullLine(std::ostream &o, unsigned indent, Expression *expression) {

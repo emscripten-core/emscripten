@@ -11,7 +11,9 @@ IString GLOBAL("global"), NAN_("NaN"), INFINITY_("Infinity"),
         UINT16ARRAY("Uint16Array"),
         UINT32ARRAY("Uint32Array"),
         FLOAT32ARRAY("Float32Array"),
-        FLOAT64ARRAY("Float64Array");
+        FLOAT64ARRAY("Float64Array"),
+        IMPOSSIBLE_CONTINUE("impossible-continue");
+
 
 static void abort_on(std::string why, Ref element) {
   std::cerr << why << ' ';
@@ -513,6 +515,43 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       ret->body = process(ast[2]);
       continueStack.pop_back();
       breakStack.pop_back();
+      return ret;
+    } else if (what == DO) {
+      if (ast[1][0] == NUM && ast[1][1]->getInteger() == 0) {
+        // one-time loop
+        auto block = allocator.alloc<Block>();
+        IString stop = getNextId("do-once");
+        block->var = stop;
+        breakStack.push_back(stop);
+        continueStack.push_back(IMPOSSIBLE_CONTINUE);
+        block->list.push_back(process(ast[2]));
+        continueStack.pop_back();
+        breakStack.pop_back();
+        return block;
+      }
+      // general do-while loop
+      auto ret = allocator.alloc<Loop>();
+      IString out = getNextId("do-out");
+      IString in = getNextId("do-in");
+      ret->out = out;
+      ret->in = in;
+      breakStack.push_back(out);
+      continueStack.push_back(in);
+      ret->body = process(ast[2]);
+      continueStack.pop_back();
+      breakStack.pop_back();
+      Break *continueIf = allocator.alloc<Break>();
+      continueIf->var = in;
+      continueIf->condition = process(ast[1]);
+      continueIf->value = nullptr;
+      if (Block *block = dynamic_cast<Block*>(ret->body)) {
+        block->list.push_back(continueIf);
+      } else {
+        auto newBody = allocator.alloc<Block>();
+        newBody->list.push_back(ret->body);
+        newBody->list.push_back(continueIf);
+        ret->body = newBody;
+      }
       return ret;
     } else if (what == SWITCH) {
       IString name = getNextId("switch");
