@@ -124,6 +124,16 @@ private:
     abort();
   }
 
+  Literal getLiteral(Ref ast) {
+    if (ast[0] == NUM) {
+      return Literal((int32_t)ast[1]->getInteger());
+    } else if (ast[0] == UNARY_PREFIX) {
+      assert(ast[1] == MINUS && ast[2][0] == NUM);
+      return Literal((int32_t)-ast[2][1]->getInteger());
+    }
+    abort();
+  }
+
   Function* processFunction(Ref ast);
 };
 
@@ -281,7 +291,14 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
   Ref params = ast[2];
   Ref body = ast[3];
 
+  unsigned nextId = 0;
+  auto getNextId = [&nextId](std::string prefix) {
+    return IString((prefix + std::to_string(nextId++)).c_str(), false);
+  };
+
   IStringSet functionVariables; // params or locals 
+  std::vector<IString> breakStack; // where a break will go
+  std::vector<IString> continueStack; // where a continue will go
 
   for (unsigned i = 0; i < params->size(); i++) {
     Ref curr = body[i];
@@ -422,6 +439,29 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       return ret;
     } else if (what == BLOCK) {
       return processStatements(ast[1], 0);
+    } else if (what == SWITCH) {
+      IString name = getNextId("switch");
+      breakStack.push_back(name);
+      auto ret = allocator.alloc<Switch>();
+      ret->var = name;
+      ret->value =  process(ast[1]);
+      Ref cases = ast[2];
+      for (unsigned i = 0; i < cases->size(); i++) {
+        Ref curr = cases[i];
+        Ref condition = curr[0];
+        Ref body = curr[1];
+        if (condition[0] == NUM || condition[0] == UNARY_PREFIX) {
+          Switch::Case case_;
+          case_.value = getLiteral(condition);
+          case_.body = process(body);
+          case_.fallthru = false; // XXX we assume no fallthru, ever
+          ret->cases.push_back(case_);
+        } else {
+          assert(condition->isNull());
+          ret->default_ = process(body);
+        }
+      }
+      return ret;
     }
     abort_on("confusing expression", ast);
   };
@@ -439,6 +479,9 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
     topmost->list.push_back(function->body);
     function->body = topmost;
   }
+  // cleanups/checks
+  assert(breakStack.size() == 0 && continueStack.size() == 0);
+
   return function;
 }
 
