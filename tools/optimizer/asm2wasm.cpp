@@ -328,11 +328,17 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
     return IString((prefix + '$' + std::to_string(nextId++)).c_str(), false);
   };
 
-  auto getLabelName = [](IString label) {
-    return IString((std::string("label$") + label.str).c_str(), false);
+  // given an asm.js label, returns the wasm label for breaks or continues
+  auto getBreakLabelName = [](IString label) {
+    return IString((std::string("label$break$") + label.str).c_str(), false);
+  };
+  auto getContinueLabelName = [](IString label) {
+    return IString((std::string("label$continue$") + label.str).c_str(), false);
   };
 
   IStringSet functionVariables; // params or locals 
+
+  IString parentLabel; // set in LABEL, then read in WHILE/DO
   std::vector<IString> breakStack; // where a break will go
   std::vector<IString> continueStack; // where a continue will go
 
@@ -510,8 +516,15 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
     } else if (what == WHILE) {
       assert(ast[1][0] == NUM && ast[1][1]->getInteger() == 1);
       auto ret = allocator.alloc<Loop>();
-      IString out = getNextId("while-out");
-      IString in = getNextId("while-in");
+      IString out, in;
+      if (!parentLabel.isNull()) {
+        out = getBreakLabelName(parentLabel);
+        in = getContinueLabelName(parentLabel);
+        parentLabel = IString();
+      } else {
+        out = getNextId("while-out");
+        in = getNextId("while-in");
+      }
       ret->out = out;
       ret->in = in;
       breakStack.push_back(out);
@@ -524,7 +537,13 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       if (ast[1][0] == NUM && ast[1][1]->getInteger() == 0) {
         // one-time loop
         auto block = allocator.alloc<Block>();
-        IString stop = getNextId("do-once");
+        IString stop;
+        if (!parentLabel.isNull()) {
+          stop = getBreakLabelName(parentLabel);
+          parentLabel = IString();
+        } else {
+          stop = getNextId("do-once");
+        }
         block->var = stop;
         breakStack.push_back(stop);
         continueStack.push_back(IMPOSSIBLE_CONTINUE);
@@ -535,8 +554,15 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       }
       // general do-while loop
       auto ret = allocator.alloc<Loop>();
-      IString out = getNextId("do-out");
-      IString in = getNextId("do-in");
+      IString out, in;
+      if (!parentLabel.isNull()) {
+        out = getBreakLabelName(parentLabel);
+        in = getContinueLabelName(parentLabel);
+        parentLabel = IString();
+      } else {
+        out = getNextId("do-out");
+        in = getNextId("do-in");
+      }
       ret->out = out;
       ret->in = in;
       breakStack.push_back(out);
@@ -558,11 +584,8 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       }
       return ret;
     } else if (what == LABEL) {
-      auto ret = allocator.alloc<Block>();
-      IString name = getLabelName(ast[1]->getIString());
-      ret->var = name;
-      ret->list.push_back(process(ast[2]));
-      return ret;
+      parentLabel = ast[1]->getIString();
+      return process(ast[2]);
     } else if (what == SWITCH) {
       IString name = getNextId("switch");
       breakStack.push_back(name);
