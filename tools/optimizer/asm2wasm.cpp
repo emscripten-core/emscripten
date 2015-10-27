@@ -3,7 +3,15 @@
 #include "wasm.h"
 
 IString GLOBAL("global"), NAN_("NaN"), INFINITY_("Infinity"),
-        TOPMOST("topmost");
+        TOPMOST("topmost"),
+        INT8ARRAY("Int8Array"),
+        INT16ARRAY("Int16Array"),
+        INT32ARRAY("Int32Array"),
+        UINT8ARRAY("Uint8Array"),
+        UINT16ARRAY("Uint16Array"),
+        UINT32ARRAY("Uint32Array"),
+        FLOAT32ARRAY("Float32Array"),
+        FLOAT64ARRAY("Float64Array");
 
 static void abort_on(std::string why, Ref element) {
   std::cerr << why << ' ';
@@ -81,6 +89,35 @@ private:
     if (op == DIV) {
       return isUnsignedCoercion(left) ? BinaryOp::DivU : BinaryOp::DivS;
     }
+  }
+
+  unsigned bytesToShift(unsigned bytes) {
+    switch (bytes) {
+      case 1: return 0;
+      case 2: return 1;
+      case 4: return 2;
+      case 8: return 3;
+      default: abort();
+    }
+  }
+
+  std::map<unsigned, Value> tempNums;
+
+  // given HEAP32[addr >> 2], we need an absolute address, and would like to remove that shift.
+  // if there is a shift, we can just look through it, etc.
+  Ref unshift(Ref ptr, unsigned bytes) {
+    unsigned shifts = bytesToShift(bytes);
+    if (ptr[0] == BINARY && ptr[1] == RSHIFT && ptr[3][0] == NUM && ptr[3][1]->getInteger() == shifts) {
+      return ptr[2]; // look through it
+    } else if (ptr[0] == NUM) {
+      // constant, apply a shift (e.g. HEAP32[1] is address 4)
+      unsigned addr = ptr[1]->getInteger();
+      if (tempNums.find(addr) == tempNums.end()) {
+        tempNums.emplace(addr, Value(addr));
+      }
+      return Ref(&tempNums[addr]);
+    }
+    abort();
   }
 
   Function* processFunction(Ref ast);
@@ -162,25 +199,25 @@ void Asm2WasmModule::processAsm(Ref ast) {
           IString heap = constructor[2]->getIString();
           unsigned bytes;
           bool integer, signed_;
-          if (heap == HEAP8) {
+          if (heap == INT8ARRAY) {
             bytes = 1; integer = true; signed_ = true;
-          } else if (heap == HEAP16) {
+          } else if (heap == INT16ARRAY) {
             bytes = 2; integer = true; signed_ = true;
-          } else if (heap == HEAP32) {
+          } else if (heap == INT32ARRAY) {
             bytes = 4; integer = true; signed_ = true;
-          } else if (heap == HEAPU8) {
+          } else if (heap == UINT8ARRAY) {
             bytes = 1; integer = true; signed_ = false;
-          } else if (heap == HEAPU16) {
+          } else if (heap == UINT16ARRAY) {
             bytes = 2; integer = true; signed_ = false;
-          } else if (heap == HEAPU32) {
+          } else if (heap == UINT32ARRAY) {
             bytes = 4; integer = true; signed_ = false;
-          } else if (heap == HEAPF32) {
+          } else if (heap == FLOAT32ARRAY) {
             bytes = 4; integer = false; signed_ = true;
-          } else if (heap == HEAPF64) {
+          } else if (heap == FLOAT64ARRAY) {
             bytes = 8; integer = false; signed_ = true;
           }
-          assert(views.find(heap) == views.end());
-          views.emplace(heap, View(bytes, integer, signed_));
+          assert(views.find(name) == views.end());
+          views.emplace(name, View(bytes, integer, signed_));
         } else if (value[0] == ARRAY) {
           // function table
           Ref contents = value[1];
@@ -277,12 +314,13 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         Ref target = ast[2];
         assert(target[1][0] == NAME);
         IString heap = target[1][1]->getIString();
+        assert(views.find(heap) != views.end());
         View& view = views[heap];
         auto ret = allocator.alloc<Store>();
         ret->bytes = view.bytes;
         ret->offset = 0;
         ret->align = view.bytes;
-        ret->ptr = process(target[2]);
+        ret->ptr = process(unshift(target[2], view.bytes));
         ret->value = process(ast[3]);
       }
       abort_on("confusing assign", ast);
