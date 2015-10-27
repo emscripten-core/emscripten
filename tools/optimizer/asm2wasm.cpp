@@ -492,7 +492,16 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         }
         return ret;
       }
-      abort(); // TODO: function pointers
+      // function pointers
+      auto ret = allocator.alloc<CallIndirect>();
+      Ref target = ast[1];
+      assert(target[0] == SUB && target[1][0] == NAME && target[2][0] == BINARY && target[2][1] == AND && target[2][3][0] == NUM); // FUNCTION_TABLE[(expr) & mask]
+      ret->target = process(target[2][2]);
+      Ref args = ast[2];
+      for (unsigned i = 0; i < args->size(); i++) {
+        ret->operands.push_back(process(args[i]));
+      }
+      return ret;
     } else if (what == RETURN) {
       // wasm has no return, so we just break on the topmost block
       if (!topmost) {
