@@ -149,25 +149,6 @@ private:
 
   std::map<unsigned, Ref> tempNums;
 
-  // given HEAP32[addr >> 2], we need an absolute address, and would like to remove that shift.
-  // if there is a shift, we can just look through it, etc.
-  Ref unshift(Ref ptr, unsigned bytes) {
-    unsigned shifts = bytesToShift(bytes);
-    if (ptr[0] == BINARY && ptr[1] == RSHIFT && ptr[3][0] == NUM && ptr[3][1]->getInteger() == shifts) {
-      return ptr[2]; // look through it
-    } else if (ptr[0] == NUM) {
-      // constant, apply a shift (e.g. HEAP32[1] is address 4)
-      unsigned addr = ptr[1]->getInteger();
-      if (tempNums.find(addr) == tempNums.end()) {
-        Ref temp = tempAllocator.alloc<Value>();
-        temp->setNumber(addr);
-        tempNums[addr] = temp;;
-      }
-      return tempNums[addr];
-    }
-    abort();
-  }
-
   Literal getLiteral(Ref ast) {
     if (ast[0] == NUM) {
       return Literal((int32_t)ast[1]->getInteger());
@@ -368,6 +349,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
   Block *topmost = nullptr; // created if we need one for a return
   // processors
   std::function<Expression* (Ref, unsigned)> processStatements;
+  std::function<Expression* (Ref, unsigned)> processUnshifted;
 
   bool debug = !!getenv("ASM2WASM_DEBUG");
 
@@ -396,7 +378,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         ret->bytes = view.bytes;
         ret->offset = 0;
         ret->align = view.bytes;
-        ret->ptr = process(unshift(target[2], view.bytes));
+        ret->ptr = processUnshifted(target[2], view.bytes);
         ret->value = process(ast[3]);
         return ret;
       }
@@ -461,7 +443,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       ret->signed_ = view.signed_;
       ret->offset = 0;
       ret->align = view.bytes;
-      ret->ptr = process(unshift(ast[2], view.bytes));
+      ret->ptr = processUnshifted(ast[2], view.bytes);
       return ret;
     } else if (what == UNARY_PREFIX) {
       if (ast[2][0] == NUM) {
@@ -553,6 +535,24 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       return ret;
     }
     abort_on("confusing expression", ast);
+  };
+
+  // given HEAP32[addr >> 2], we need an absolute address, and would like to remove that shift.
+  // if there is a shift, we can just look through it, etc.
+  processUnshifted = [&](Ref ptr, unsigned bytes) {
+    unsigned shifts = bytesToShift(bytes);
+    if (ptr[0] == BINARY && ptr[1] == RSHIFT && ptr[3][0] == NUM && ptr[3][1]->getInteger() == shifts) {
+      return process(ptr[2]); // look through it
+    } else if (ptr[0] == NUM) {
+      // constant, apply a shift (e.g. HEAP32[1] is address 4)
+      unsigned addr = ptr[1]->getInteger();
+      unsigned shifted = addr << shifts;
+      auto ret = allocator.alloc<Const>();
+      ret->value.type = BasicType::i32;
+      ret->value.i32 = shifted;
+      return (Expression*)ret;
+    }
+    abort_on("bad processUnshifted", ptr);
   };
 
   processStatements = [&](Ref ast, unsigned from) {
