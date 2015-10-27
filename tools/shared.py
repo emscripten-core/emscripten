@@ -1472,6 +1472,7 @@ class Building:
       assert out, 'must provide out if llvm_opt on a list of inputs'
     if type(opts) is int:
       opts = Building.pick_llvm_opts(opts)
+    assert len(opts) > 0, 'should not call opt with nothing to do'
     opts = opts[:]
     #opts += ['-debug-pass=Arguments']
     if get_clang_version() >= '3.4':
