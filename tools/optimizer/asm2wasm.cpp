@@ -2,7 +2,8 @@
 #include "simple_ast.h"
 #include "wasm.h"
 
-IString GLOBAL("global"), NAN_("NaN"), INFINITY_("Infinity");
+IString GLOBAL("global"), NAN_("NaN"), INFINITY_("Infinity"),
+        TOPMOST("topmost");
 
 static void abort_on(std::string why, Ref element) {
   std::cerr << why << ' ';
@@ -224,6 +225,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
     start++;
   }
   function->result = BasicType::none; // updated if we see a return
+  Block *topmost = nullptr; // created if we need one for a return
   // processors
   std::function<Expression* (Ref)> process = [&](Ref ast) -> Expression* {
     IString what = ast[0]->getIString();
@@ -301,6 +303,17 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         return ret;
       }
       abort(); // TODO: function pointers
+    } else if (what == RETURN) {
+      // wasm has no return, so we just break on the topmost block
+      if (!topmost) {
+        topmost = allocator.alloc<Block>();
+        topmost->var = TOPMOST;
+      }
+      auto ret = allocator.alloc<Break>();
+      ret->var = TOPMOST;
+      ret->condition = nullptr;
+      ret->value = !!ast[1] ? process(ast[1]) : nullptr;
+      return ret;
     }
     abort_on("confusing expression", ast);
   };
@@ -313,6 +326,10 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
   };
   // body
   function->body = processStatements(body, start);
+  if (topmost) {
+    topmost->list.push_back(function->body);
+    function->body = topmost;
+  }
   return function;
 }
 
