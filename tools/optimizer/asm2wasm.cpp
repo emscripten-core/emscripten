@@ -369,10 +369,14 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
   // processors
   std::function<Expression* (Ref, unsigned)> processStatements;
 
+  bool debug = !!getenv("ASM2WASM_DEBUG");
+
   std::function<Expression* (Ref)> process = [&](Ref ast) -> Expression* {
-    //std::cout << "at: ";
-    //ast->stringify(std::cout);
-    //std::cout << "\n";
+    if (debug) {
+      std::cout << "at: ";
+      ast->stringify(std::cout);
+      std::cout << "\n";
+    }
     IString what = ast[0]->getIString();
     if (what == STAT) {
       return process(ast[1]); // and drop return value, if any
