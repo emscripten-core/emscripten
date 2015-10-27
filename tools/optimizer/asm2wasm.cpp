@@ -278,6 +278,12 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         return ret;
       }
       abort_on("confusing unary-prefix", ast[2]);
+    } else if (what == IF) {
+      auto ret = allocator.alloc<If>();
+      ret->condition = process(ast[1]);
+      ret->ifTrue = process(ast[2]);
+      ret->ifFalse = !!ast[3] ? process(ast[2]) : nullptr;
+      return ret;
     }
     abort_on("confusing expression", ast);
   };
