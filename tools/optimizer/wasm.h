@@ -334,9 +334,19 @@ class CallImport : public Call {
 
 class CallIndirect : public Expression {
 public:
-  Var type;
   Expression *target;
   ExpressionList operands;
+
+  std::ostream& print(std::ostream &o, unsigned indent) override {
+    o << "(callindirect ";
+    incIndent(o, indent);
+    printFullLine(o, indent, target);
+    for (auto operand : operands) {
+      printFullLine(o, indent, operand);
+    }
+    decIndent(o, indent);
+    return o;
+  }
 };
 
 class GetLocal : public Expression {
