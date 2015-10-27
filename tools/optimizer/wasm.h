@@ -31,10 +31,15 @@ struct Arena {
     return ret;
   }
 
-  ~Arena() {
+  void clear() {
     for (char* chunk : chunks) {
       delete[] chunk;
     }
+    chunks.clear();
+  }
+
+  ~Arena() {
+    clear();
   }
 };
 
