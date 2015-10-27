@@ -507,6 +507,13 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       return ret;
     } else if (what == BLOCK) {
       return processStatements(ast[1], 0);
+    } else if (what == BREAK) {
+      auto ret = allocator.alloc<Break>();
+      assert(breakStack.size() > 0);
+      ret->var = !!ast[1] ? ast[1]->getIString() : breakStack.back();
+      ret->condition = nullptr;
+      ret->value = nullptr;
+      return ret;
     } else if (what == SWITCH) {
       IString name = getNextId("switch");
       breakStack.push_back(name);
@@ -518,17 +525,18 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         Ref curr = cases[i];
         Ref condition = curr[0];
         Ref body = curr[1];
-        if (condition[0] == NUM || condition[0] == UNARY_PREFIX) {
+        if (condition->isNull()) {
+          ret->default_ = processStatements(body, 0);
+        } else {
+          assert(condition[0] == NUM || condition[0] == UNARY_PREFIX);
           Switch::Case case_;
           case_.value = getLiteral(condition);
           case_.body = processStatements(body, 0);
           case_.fallthru = false; // XXX we assume no fallthru, ever
           ret->cases.push_back(case_);
-        } else {
-          assert(condition->isNull());
-          ret->default_ = processStatements(body, 0);
         }
       }
+      breakStack.pop_back();
       return ret;
     }
     abort_on("confusing expression", ast);
