@@ -370,6 +370,9 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
   std::function<Expression* (Ref, unsigned)> processStatements;
 
   std::function<Expression* (Ref)> process = [&](Ref ast) -> Expression* {
+    //std::cout << "at: ";
+    //ast->stringify(std::cout);
+    //std::cout << "\n";
     IString what = ast[0]->getIString();
     if (what == STAT) {
       return process(ast[1]); // and drop return value, if any
@@ -508,12 +511,12 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         if (condition[0] == NUM || condition[0] == UNARY_PREFIX) {
           Switch::Case case_;
           case_.value = getLiteral(condition);
-          case_.body = process(body);
+          case_.body = processStatements(body, 0);
           case_.fallthru = false; // XXX we assume no fallthru, ever
           ret->cases.push_back(case_);
         } else {
           assert(condition->isNull());
-          ret->default_ = process(body);
+          ret->default_ = processStatements(body, 0);
         }
       }
       return ret;
