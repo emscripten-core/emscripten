@@ -248,6 +248,22 @@ class Loop : public Expression {
 public:
   Var out, in;
   Expression *body;
+
+  std::ostream& print(std::ostream &o, unsigned indent) override {
+    o << "(loop";
+    if (out.is()) {
+      o << " ";
+      out.print(o);
+      if (in.is()) {
+        o << " ";
+        in.print(o);
+      }
+    }
+    incIndent(o, indent);
+    printFullLine(o, indent, body);
+    decIndent(o, indent);
+    return o;
+  }
 };
 
 class Label : public Expression {
@@ -259,6 +275,16 @@ class Break : public Expression {
 public:
   Var var;
   Expression *condition, *value;
+
+  std::ostream& print(std::ostream &o, unsigned indent) override {
+    o << "(break ";
+    var.print(o);
+    incIndent(o, indent);
+    if (condition) printFullLine(o, indent, condition);
+    if (value) printFullLine(o, indent, value);
+    decIndent(o, indent);
+    return o;
+  }
 };
 
 class Switch : public Expression {
@@ -273,12 +299,34 @@ public:
   Expression *value;
   std::vector<Case> cases;
   Expression *default_;
+
+  std::ostream& print(std::ostream &o, unsigned indent) override {
+    o << "(switch ";
+    var.print(o);
+    incIndent(o, indent);
+    printFullLine(o, indent, value);
+    o << "TODO: cases/default\n";
+    decIndent(o, indent);
+    return o;
+  }
+
 };
 
 class Call : public Expression {
 public:
   Var target;
   ExpressionList operands;
+
+  std::ostream& print(std::ostream &o, unsigned indent) override {
+    o << "(call ";
+    target.print(o);
+    incIndent(o, indent);
+    for (auto operand : operands) {
+      printFullLine(o, indent, operand);
+    }
+    decIndent(o, indent);
+    return o;
+  }
 };
 
 class CallImport : public Call {
@@ -294,12 +342,27 @@ public:
 class GetLocal : public Expression {
 public:
   Var id;
+
+  std::ostream& print(std::ostream &o, unsigned indent) override {
+    o << "(setlocal ";
+    id.print(o) << ')';
+    return o;
+  }
 };
 
 class SetLocal : public Expression {
 public:
   Var id;
   Expression *value;
+
+  std::ostream& print(std::ostream &o, unsigned indent) override {
+    o << "(setlocal ";
+    id.print(o);
+    incIndent(o, indent);
+    printFullLine(o, indent, value);
+    decIndent(o, indent);
+    return o;
+  }
 };
 
 class Load : public Expression {
@@ -309,6 +372,14 @@ public:
   int offset;
   unsigned align;
   Expression *ptr;
+
+  std::ostream& print(std::ostream &o, unsigned indent) override {
+    o << "(load " << bytes << ' ' << signed_ << ' ' << offset << ' ' << align;
+    incIndent(o, indent);
+    printFullLine(o, indent, ptr);
+    decIndent(o, indent);
+    return o;
+  }
 };
 
 class Store : public Expression {
@@ -317,11 +388,26 @@ public:
   int offset;
   unsigned align;
   Expression *ptr, *value;
+
+  std::ostream& print(std::ostream &o, unsigned indent) override {
+    o << "(load " << bytes << ' ' << ' ' << offset << ' ' << align;
+    incIndent(o, indent);
+    printFullLine(o, indent, ptr);
+    printFullLine(o, indent, value);
+    decIndent(o, indent);
+    return o;
+  }
 };
 
 class Const : public Expression {
 public:
   Literal value;
+
+  std::ostream& print(std::ostream &o, unsigned indent) override {
+    o << "(literal ";
+    value.print(o);
+    o << ')';
+  }
 };
 
 class Unary : public Expression {
@@ -334,12 +420,67 @@ class Binary : public Expression {
 public:
   BinaryOp op;
   Expression *left, *right;
+
+  std::ostream& print(std::ostream &o, unsigned indent) override {
+    o << "(binary ";
+    switch (op) {
+      case Add:      o << "add"; break;
+      case Sub:      o << "sub"; break;
+      case Mul:      o << "mul"; break;
+      case DivS:     o << "divs"; break;
+      case DivU:     o << "divu"; break;
+      case RemS:     o << "rems"; break;
+      case RemU:     o << "remu"; break;
+      case And:      o << "and"; break;
+      case Or:       o << "or"; break;
+      case Xor:      o << "xor"; break;
+      case Shl:      o << "shl"; break;
+      case ShrU:     o << "shru"; break;
+      case ShrS:     o << "shrs"; break;
+      case Div:      o << "div"; break;
+      case CopySign: o << "copysign"; break;
+      case Min:      o << "min"; break;
+      case Max:      o << "max"; break;
+      default: abort();
+    }
+    incIndent(o, indent);
+    printFullLine(o, indent, left);
+    printFullLine(o, indent, right);
+    decIndent(o, indent);
+    return o;
+  }
 };
 
 class Compare : public Expression {
 public:
   RelationalOp op;
   Expression *left, *right;
+
+  std::ostream& print(std::ostream &o, unsigned indent) override {
+    o << "(compare ";
+    switch (op) {
+      case Eq:  o << "eq"; break;
+      case Ne:  o << "ne"; break;
+      case LtS: o << "lts"; break;
+      case LtU: o << "ltu"; break;
+      case LeS: o << "les"; break;
+      case LeU: o << "leu"; break;
+      case GtS: o << "gts"; break;
+      case GtU: o << "gtu"; break;
+      case GeS: o << "ges"; break;
+      case GeU: o << "geu"; break;
+      case Lt:  o << "lt"; break;
+      case Le:  o << "le"; break;
+      case Gt:  o << "gt"; break;
+      case Ge:  o << "ge"; break;
+      default: abort();
+    }
+    incIndent(o, indent);
+    printFullLine(o, indent, left);
+    printFullLine(o, indent, right);
+    decIndent(o, indent);
+    return o;
+  }
 };
 
 class Convert : public Expression {
