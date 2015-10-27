@@ -420,8 +420,14 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       }
     } else if (what == NUM) {
       auto ret = allocator.alloc<Const>();
-      ret->value.type = BasicType::i32;
-      ret->value.i32 = ast[1]->getInteger();
+      double num = ast[1]->getNumber();
+      if (fmod(num, 1) == 0 && double(int(num)) == num) {
+        ret->value.type = BasicType::i32;
+        ret->value.i32 = num;
+      } else {
+        ret->value.type = BasicType::f64;
+        ret->value.f64 = num;
+      }
       return ret;
     } else if (what == NAME) {
       IString name = ast[1]->getIString();
