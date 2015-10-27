@@ -101,7 +101,9 @@ private:
     }
   }
 
-  std::map<unsigned, Value> tempNums;
+  wasm::Arena tempAllocator;
+
+  std::map<unsigned, Ref> tempNums;
 
   // given HEAP32[addr >> 2], we need an absolute address, and would like to remove that shift.
   // if there is a shift, we can just look through it, etc.
@@ -113,9 +115,11 @@ private:
       // constant, apply a shift (e.g. HEAP32[1] is address 4)
       unsigned addr = ptr[1]->getInteger();
       if (tempNums.find(addr) == tempNums.end()) {
-        tempNums.emplace(addr, Value(addr));
+        Ref temp = tempAllocator.alloc<Value>();
+        temp->setNumber(addr);
+        tempNums[addr] = temp;;
       }
-      return Ref(&tempNums[addr]);
+      return tempNums[addr];
     }
     abort();
   }
@@ -265,6 +269,10 @@ void Asm2WasmModule::processAsm(Ref ast) {
       }
     }
   }
+
+  // cleanups
+
+  tempAllocator.clear();
 }
 
 Function* Asm2WasmModule::processFunction(Ref ast) {
