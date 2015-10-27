@@ -21,11 +21,17 @@ class Asm2WasmModule : public wasm::Module {
 
   unsigned nextGlobal; // next place to put a global
   unsigned maxGlobal; // highest address we can put a global
-  std::map<IString, unsigned> globalAddresses;
+  struct MappedGlobal {
+    unsigned address;
+    BasicType type;
+    MappedGlobal() : address(0), type(none) {}
+    MappedGlobal(unsigned address, BasicType type) : address(address), type(type) {}
+  };
+  std::map<IString, MappedGlobal> mappedGlobals;
 
-  void allocateGlobal(IString name) {
-    assert(globalAddresses.find(name) == globalAddresses.end());
-    globalAddresses[name] = nextGlobal;
+  void allocateGlobal(IString name, BasicType type) {
+    assert(mappedGlobals.find(name) == mappedGlobals.end());
+    mappedGlobals.emplace(name, MappedGlobal(nextGlobal, type));
     nextGlobal += 8;
     assert(nextGlobal < maxGlobal);
   }
@@ -113,7 +119,7 @@ void Asm2WasmModule::processAsm(Ref ast) {
         if (value[0] == NUM) {
           // global int
           assert(value[1]->getInteger() == 0);
-          allocateGlobal(name);
+          allocateGlobal(name, BasicType::i32);
         } else if (value[0] == BINARY) {
           // int import
           assert(value[1] == OR && value[3][0] == NUM && value[3][1]->getNumber() == 0);
@@ -126,7 +132,7 @@ void Asm2WasmModule::processAsm(Ref ast) {
           if (import[0] == NUM) {
             // global
             assert(import[1]->getNumber() == 0);
-            allocateGlobal(name);
+            allocateGlobal(name, BasicType::f64);
           } else {
             // import
             addImport(name, import, BasicType::f64);
@@ -189,22 +195,28 @@ void Asm2WasmModule::processAsm(Ref ast) {
 Function* Asm2WasmModule::processFunction(Ref ast) {
   auto function = allocator.alloc<Function>();
   function->name = ast[1]->getIString();
-std::cerr << "processFunction " << function->name.str << "\n";
   Ref params = ast[2];
   Ref body = ast[3];
+
+  IStringSet functionVariables; // params or locals 
+
   for (unsigned i = 0; i < params->size(); i++) {
     Ref curr = body[i];
     assert(curr[0] == STAT);
     curr = curr[1];
     assert(curr[0] == ASSIGN && curr[2][0] == NAME);
-    function->params.emplace_back(curr[2][1]->getIString(), detectWasmType(curr[3]));
+    IString name = curr[2][1]->getIString();
+    function->params.emplace_back(name, detectWasmType(curr[3]));
+    functionVariables.insert(name);
   }
   unsigned start = params->size();
   while (start < body->size() && body[start][0] == VAR) {
     Ref curr = body[start];
     for (unsigned j = 0; j < curr[1]->size(); j++) {
       Ref pair = curr[1][j];
-      function->locals.emplace_back(pair[0]->getIString(), detectWasmType(pair[1]));
+      IString name = pair[0]->getIString();
+      function->locals.emplace_back(name, detectWasmType(pair[1]));
+      functionVariables.insert(name);
     }
     start++;
   }
@@ -233,6 +245,27 @@ std::cerr << "processFunction " << function->name.str << "\n";
       auto ret = allocator.alloc<Const>();
       ret->value.type = BasicType::i32;
       ret->value.i32 = ast[1]->getInteger();
+      return ret;
+    } else if (what == NAME) {
+      IString name = ast[1]->getIString();
+      if (functionVariables.has(name)) {
+        // var in scope
+        auto ret = allocator.alloc<GetLocal>();
+        ret->id = name;
+        return ret;
+      } else if 
+      // global var, do a load from memory
+      assert(mappedGlobals.find(name) != mappedGlobals.end());
+      MappedGlobal global = mappedGlobals[name];
+      auto ret = allocator.alloc<Load>();
+      ret->bytes = getBasicTypeSize(global.type);
+      ret->signed_ = true; // but doesn't matter
+      ret->offset = 0;
+      ret->align = ret->bytes;
+      auto ptr = allocator.alloc<Const>();
+      ptr->value.type = BasicType::i32; // XXX for wasm64, need 64
+      ptr->value.i32 = global.address;
+      ret->ptr = ptr;
       return ret;
     } else if (what == UNARY_PREFIX) {
       if (ast[2][0] == NUM) {

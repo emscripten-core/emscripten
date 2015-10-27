@@ -111,6 +111,16 @@ std::ostream& printBasicType(std::ostream &o, BasicType type) {
   return o;
 }
 
+unsigned getBasicTypeSize(BasicType type) {
+  switch (type) {
+    case BasicType::none: abort();
+    case BasicType::i32: return 4;
+    case BasicType::i64: return 8;
+    case BasicType::f32: return 4;
+    case BasicType::f64: return 8;
+  }
+}
+
 struct Literal {
   BasicType type;
   union {
