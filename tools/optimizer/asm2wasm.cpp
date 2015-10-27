@@ -227,6 +227,8 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
   function->result = BasicType::none; // updated if we see a return
   Block *topmost = nullptr; // created if we need one for a return
   // processors
+  std::function<Expression* (Ref, unsigned)> processStatements;
+
   std::function<Expression* (Ref)> process = [&](Ref ast) -> Expression* {
     IString what = ast[0]->getIString();
     if (what == STAT) {
@@ -314,10 +316,13 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       ret->condition = nullptr;
       ret->value = !!ast[1] ? process(ast[1]) : nullptr;
       return ret;
+    } else if (what == BLOCK) {
+      return processStatements(ast[1], 0);
     }
     abort_on("confusing expression", ast);
   };
-  auto processStatements = [&](Ref ast, unsigned from) {
+
+  processStatements = [&](Ref ast, unsigned from) {
     auto block = allocator.alloc<Block>();
     for (unsigned i = from; i < ast->size(); i++) {
       block->list.push_back(process(ast[i]));
