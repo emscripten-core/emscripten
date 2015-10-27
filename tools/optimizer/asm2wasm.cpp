@@ -470,7 +470,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         ret->value.f64 = ast[2][1]->getNumber();
         return ret;
       }
-      abort_on("confusing unary-prefix", ast[2]);
+      return process(ast[2]); // look through the coercion
     } else if (what == IF) {
       auto ret = allocator.alloc<If>();
       ret->condition = process(ast[1]);
