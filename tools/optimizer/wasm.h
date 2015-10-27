@@ -135,6 +135,12 @@ struct Literal {
     double f64;
   };
 
+  Literal() : type(BasicType::none) {}
+  Literal(int32_t init) : type(BasicType::i32), i32(init) {}
+  Literal(int64_t init) : type(BasicType::i64), i64(init) {}
+  Literal(float   init) : type(BasicType::f32), f32(init) {}
+  Literal(double  init) : type(BasicType::f64), f64(init) {}
+
   std::ostream& print(std::ostream &o) {
     switch (type) {
       case none: abort();
