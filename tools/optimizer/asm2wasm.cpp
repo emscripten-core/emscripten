@@ -474,7 +474,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       auto ret = allocator.alloc<If>();
       ret->condition = process(ast[1]);
       ret->ifTrue = process(ast[2]);
-      ret->ifFalse = !!ast[3] ? process(ast[2]) : nullptr;
+      ret->ifFalse = !!ast[3] ? process(ast[3]) : nullptr;
       return ret;
     } else if (what == CALL) {
       if (ast[1][0] == NAME) {
@@ -595,6 +595,12 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
     } else if (what == LABEL) {
       parentLabel = ast[1]->getIString();
       return process(ast[2]);
+    } else if (what == CONDITIONAL) {
+      auto ret = allocator.alloc<If>();
+      ret->condition = process(ast[1]);
+      ret->ifTrue = process(ast[2]);
+      ret->ifFalse = process(ast[3]);
+      return ret;
     } else if (what == SWITCH) {
       IString name = getNextId("switch");
       breakStack.push_back(name);
