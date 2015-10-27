@@ -241,7 +241,7 @@ public:
 class Break : public Expression {
 public:
   Var var;
-  Expression *condition;
+  Expression *condition, *value;
 };
 
 class Switch : public Expression {
