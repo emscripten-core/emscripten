@@ -75,8 +75,13 @@ private:
     abort_on("confused detectWasmType", ast);
   }
 
+  bool isInteger(double num) {
+    return fmod(num, 1) == 0 && double(int(num)) == num;
+  }
+
   bool isIntegerCoercion(Ref ast) {
     if (ast[0] == BINARY && (ast[1] == OR || ast[1] == TRSHIFT)) return true;
+    if (ast[0] == NUM) return isInteger(ast[1]->getNumber());
     return false;
   }
  
@@ -403,7 +408,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
     } else if (what == NUM) {
       auto ret = allocator.alloc<Const>();
       double num = ast[1]->getNumber();
-      if (fmod(num, 1) == 0 && double(int(num)) == num) {
+      if (isInteger(num)) {
         ret->value.type = BasicType::i32;
         ret->value.i32 = num;
       } else {
