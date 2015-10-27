@@ -322,6 +322,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         ret->align = view.bytes;
         ret->ptr = process(unshift(target[2], view.bytes));
         ret->value = process(ast[3]);
+        return ret;
       }
       abort_on("confusing assign", ast);
     } else if (what == BINARY) {
@@ -355,6 +356,19 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       ptr->value.type = BasicType::i32; // XXX for wasm64, need 64
       ptr->value.i32 = global.address;
       ret->ptr = ptr;
+      return ret;
+    } else if (what == SUB) {
+      Ref target = ast[1];
+      assert(target[0] == NAME);
+      IString heap = target[1]->getIString();
+      assert(views.find(heap) != views.end());
+      View& view = views[heap];
+      auto ret = allocator.alloc<Load>();
+      ret->bytes = view.bytes;
+      ret->signed_ = view.signed_;
+      ret->offset = 0;
+      ret->align = view.bytes;
+      ret->ptr = process(unshift(ast[2], view.bytes));
       return ret;
     } else if (what == UNARY_PREFIX) {
       if (ast[2][0] == NUM) {
