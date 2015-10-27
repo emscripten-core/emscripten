@@ -75,23 +75,62 @@ private:
     abort_on("confused detectWasmType", ast);
   }
 
+  bool isIntegerCoercion(Ref ast) {
+    if (ast[0] == BINARY && (ast[1] == OR || ast[1] == TRSHIFT)) return true;
+    return false;
+  }
+ 
   bool isUnsignedCoercion(Ref ast) {
     if (ast[0] == BINARY && ast[1] == TRSHIFT) return true;
     return false;
   }
 
-  BinaryOp wasmBinaryOp(IString op, Ref left, Ref right) {
-    if (op == PLUS) return BinaryOp::Add;
-    if (op == MINUS) return BinaryOp::Sub;
-    if (op == MUL) return BinaryOp::Mul;
-    if (op == AND) return BinaryOp::And;
-    if (op == OR) return BinaryOp::Or;
-    if (op == XOR) return BinaryOp::Xor;
-    if (op == LSHIFT) return BinaryOp::Shl;
-    if (op == RSHIFT) return BinaryOp::ShrS;
-    if (op == TRSHIFT) return BinaryOp::ShrU;
+  // an asm.js binary op can either be a binary or a relational in wasm
+  bool parseAsmBinaryOp(IString op, Ref left, Ref right, BinaryOp &binary, RelationalOp &relational) {
+    if (op == PLUS) { binary = BinaryOp::Add; return true; }
+    if (op == MINUS) { binary = BinaryOp::Sub; return true; }
+    if (op == MUL) { binary = BinaryOp::Mul; return true; }
+    if (op == AND) { binary = BinaryOp::And; return true; }
+    if (op == OR) { binary = BinaryOp::Or; return true; }
+    if (op == XOR) { binary = BinaryOp::Xor; return true; }
+    if (op == LSHIFT) { binary = BinaryOp::Shl; return true; }
+    if (op == RSHIFT) { binary = BinaryOp::ShrS; return true; }
+    if (op == TRSHIFT) { binary = BinaryOp::ShrU; return true; }
+    if (op == EQ) { relational = RelationalOp::Eq; return false; }
+    if (op == NE) { relational = RelationalOp::Ne; return false; }
+    bool isInteger = isIntegerCoercion(left);
+    assert(isInteger == isIntegerCoercion(right));
+    bool isUnsigned = isUnsignedCoercion(left);
+    assert(isUnsigned == isUnsignedCoercion(right));
     if (op == DIV) {
-      return isUnsignedCoercion(left) ? BinaryOp::DivU : BinaryOp::DivS;
+      if (isInteger) {
+        { binary = isUnsigned ? BinaryOp::DivU : BinaryOp::DivS; return true; }
+      }
+      { binary = BinaryOp::Div; return true; }
+    }
+    if (op == GE) {
+      if (isInteger) {
+        { relational = isUnsigned ? RelationalOp::GeU : RelationalOp::GeS; return false; }
+      }
+      { relational = RelationalOp::Ge; return false; }
+    }
+    if (op == GT) {
+      if (isInteger) {
+        { relational = isUnsigned ? RelationalOp::GtU : RelationalOp::GtS; return false; }
+      }
+      { relational = RelationalOp::Gt; return false; }
+    }
+    if (op == LE) {
+      if (isInteger) {
+        { relational = isUnsigned ? RelationalOp::LeU : RelationalOp::LeS; return false; }
+      }
+      { relational = RelationalOp::Le; return false; }
+    }
+    if (op == LT) {
+      if (isInteger) {
+        { relational = isUnsigned ? RelationalOp::LtU : RelationalOp::LtS; return false; }
+      }
+      { relational = RelationalOp::Lt; return false; }
     }
     abort_on("bad wasm binary op", op);
   }
@@ -356,11 +395,22 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       }
       abort_on("confusing assign", ast);
     } else if (what == BINARY) {
-      auto ret = allocator.alloc<Binary>();
-      ret->op = wasmBinaryOp(ast[1]->getIString(), ast[2], ast[3]);
-      ret->left = process(ast[2]);
-      ret->right = process(ast[3]);
-      return ret;
+      BinaryOp binary;
+      RelationalOp relational;
+      bool isBinary = parseAsmBinaryOp(ast[1]->getIString(), ast[2], ast[3], binary, relational);
+      if (isBinary) {
+        auto ret = allocator.alloc<Binary>();
+        ret->op = binary;
+        ret->left = process(ast[2]);
+        ret->right = process(ast[3]);
+        return ret;
+      } else {
+        auto ret = allocator.alloc<Compare>();
+        ret->op = relational;
+        ret->left = process(ast[2]);
+        ret->right = process(ast[3]);
+        return ret;
+      }
     } else if (what == NUM) {
       auto ret = allocator.alloc<Const>();
       ret->value.type = BasicType::i32;
