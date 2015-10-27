@@ -19,6 +19,10 @@ static void abort_on(std::string why, Ref element) {
   std::cerr << "\n";
   abort();
 }
+static void abort_on(std::string why, IString element) {
+  std::cerr << why << ' ' << element.str << "\n";
+  abort();
+}
 
 using namespace cashew;
 using namespace wasm;
@@ -89,6 +93,7 @@ private:
     if (op == DIV) {
       return isUnsignedCoercion(left) ? BinaryOp::DivU : BinaryOp::DivS;
     }
+    abort_on("bad wasm binary op", op);
   }
 
   unsigned bytesToShift(unsigned bytes) {
