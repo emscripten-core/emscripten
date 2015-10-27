@@ -325,7 +325,11 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
 
   unsigned nextId = 0;
   auto getNextId = [&nextId](std::string prefix) {
-    return IString((prefix + std::to_string(nextId++)).c_str(), false);
+    return IString((prefix + '$' + std::to_string(nextId++)).c_str(), false);
+  };
+
+  auto getLabelName = [](IString label) {
+    return IString((std::string("label$") + label.str).c_str(), false);
   };
 
   IStringSet functionVariables; // params or locals 
@@ -552,6 +556,12 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         newBody->list.push_back(continueIf);
         ret->body = newBody;
       }
+      return ret;
+    } else if (what == LABEL) {
+      auto ret = allocator.alloc<Block>();
+      IString name = getLabelName(ast[1]->getIString());
+      ret->var = name;
+      ret->list.push_back(process(ast[2]));
       return ret;
     } else if (what == SWITCH) {
       IString name = getNextId("switch");
