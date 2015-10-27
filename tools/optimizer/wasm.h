@@ -28,6 +28,7 @@ struct Arena {
     }
     T* ret = (T*)(chunks.back() + index);
     index += currSize;
+    new (ret) T();
     return ret;
   }
 
