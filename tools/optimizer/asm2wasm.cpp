@@ -240,7 +240,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         ret->value = process(ast[3]);
         return ret;
       } else {
-        abort();
+        abort_on("confusing assign", ast);
       }
     } else if (what == BINARY) {
       auto ret = allocator.alloc<Binary>();
