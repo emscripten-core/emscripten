@@ -1647,21 +1647,23 @@ mergeInto(LibraryManager.library, {
       if (typeof XMLHttpRequest !== 'undefined') {
         if (!ENVIRONMENT_IS_WORKER) throw 'Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc';
         var lazyArray = new LazyUint8Array();
-        Object.defineProperty(lazyArray, "length", {
+        Object.defineProperties(lazyArray, {
+          length: {
             get: function() {
-                if(!this.lengthKnown) {
-                    this.cacheLength();
-                }
-                return this._length;
+              if(!this.lengthKnown) {
+                this.cacheLength();
+              }
+              return this._length;
             }
-        });
-        Object.defineProperty(lazyArray, "chunkSize", {
+          },
+          chunkSize: {
             get: function() {
-                if(!this.lengthKnown) {
-                    this.cacheLength();
-                }
-                return this._chunkSize;
+              if(!this.lengthKnown) {
+                this.cacheLength();
+              }
+              return this._chunkSize;
             }
+          }
         });
 
         var properties = { isDevice: false, contents: lazyArray };
@@ -1680,8 +1682,10 @@ mergeInto(LibraryManager.library, {
         node.url = properties.url;
       }
       // Add a function that defers querying the file size until it is asked the first time.
-      Object.defineProperty(node, "usedBytes", {
+      Object.defineProperties(node, {
+        usedBytes: {
           get: function() { return this.contents.length; }
+        }
       });
       // override each stream op with one that tries to force load the lazy file first
       var stream_ops = {};
