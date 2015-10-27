@@ -448,7 +448,7 @@ class Module {
 protected:
   // wasm contents
   std::vector<GeneralType> customTypes;
-  std::vector<Import> imports;
+  std::map<Name, Import> imports;
   std::vector<Export> exports;
   Table table;
   std::vector<Function*> functions;
@@ -471,7 +471,7 @@ public:
     }
     for (auto& curr : imports) {
       doIndent(o, indent);
-      curr.print(o, indent);
+      curr.second.print(o, indent);
       o << '\n';
     }
     for (auto& curr : exports) {

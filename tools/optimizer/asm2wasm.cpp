@@ -103,7 +103,7 @@ void Asm2WasmModule::processAsm(Ref ast) {
       assert(importedFunctionTypes.find(name) != importedFunctionTypes.end());
       import.type = importedFunctionTypes[name];
     }
-    imports.push_back(import);
+    imports.emplace(name, import);
   };
 
   // first pass - do almost everything, but function imports
@@ -253,7 +253,11 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         auto ret = allocator.alloc<GetLocal>();
         ret->id = name;
         return ret;
-      } else if 
+      } else if (imports.find(name) != imports.end()) {
+        // imported var
+        Import& import = imports[name];
+        abort(); // XXX
+      }
       // global var, do a load from memory
       assert(mappedGlobals.find(name) != mappedGlobals.end());
       MappedGlobal global = mappedGlobals[name];
