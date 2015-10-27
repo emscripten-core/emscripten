@@ -24,14 +24,15 @@ class Asm2WasmModule : public wasm::Module {
   struct MappedGlobal {
     unsigned address;
     BasicType type;
-    MappedGlobal() : address(0), type(none) {}
-    MappedGlobal(unsigned address, BasicType type) : address(address), type(type) {}
+    bool import; // if true, this is an import - we should read the value, not just set a zero
+    MappedGlobal() : address(0), type(none), import(false) {}
+    MappedGlobal(unsigned address, BasicType type, bool import) : address(address), type(type), import(import) {}
   };
   std::map<IString, MappedGlobal> mappedGlobals;
 
-  void allocateGlobal(IString name, BasicType type) {
+  void allocateGlobal(IString name, BasicType type, bool import) {
     assert(mappedGlobals.find(name) == mappedGlobals.end());
-    mappedGlobals.emplace(name, MappedGlobal(nextGlobal, type));
+    mappedGlobals.emplace(name, MappedGlobal(nextGlobal, type, import));
     nextGlobal += 8;
     assert(nextGlobal < maxGlobal);
   }
@@ -96,14 +97,16 @@ void Asm2WasmModule::processAsm(Ref ast) {
     import.base = imported[2]->getIString();
     // special-case some asm builtins
     if (import.module == GLOBAL && (import.base == NAN_ || import.base == INFINITY_)) {
-      import.type.basic = BasicType::f64;
-    } else if (type != BasicType::none) {
-      import.type.basic = type;
+      type = BasicType::f64;
+    }
+    if (type != BasicType::none) {
+      // wasm has no imported constants, so allocate a global, and we need to write the value into that
+      allocateGlobal(name, type, true);
     } else {
       assert(importedFunctionTypes.find(name) != importedFunctionTypes.end());
       import.type = importedFunctionTypes[name];
+      imports.emplace(name, import);
     }
-    imports.emplace(name, import);
   };
 
   // first pass - do almost everything, but function imports
@@ -119,7 +122,7 @@ void Asm2WasmModule::processAsm(Ref ast) {
         if (value[0] == NUM) {
           // global int
           assert(value[1]->getInteger() == 0);
-          allocateGlobal(name, BasicType::i32);
+          allocateGlobal(name, BasicType::i32, false);
         } else if (value[0] == BINARY) {
           // int import
           assert(value[1] == OR && value[3][0] == NUM && value[3][1]->getNumber() == 0);
@@ -132,7 +135,7 @@ void Asm2WasmModule::processAsm(Ref ast) {
           if (import[0] == NUM) {
             // global
             assert(import[1]->getNumber() == 0);
-            allocateGlobal(name, BasicType::f64);
+            allocateGlobal(name, BasicType::f64, false);
           } else {
             // import
             addImport(name, import, BasicType::f64);
@@ -253,10 +256,6 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         auto ret = allocator.alloc<GetLocal>();
         ret->id = name;
         return ret;
-      } else if (imports.find(name) != imports.end()) {
-        // imported var
-        Import& import = imports[name];
-        abort(); // XXX
       }
       // global var, do a load from memory
       assert(mappedGlobals.find(name) != mappedGlobals.end());
@@ -335,7 +334,7 @@ int main(int argc, char **argv) {
   wasm.print(std::cout);
 
   printf("done.\n");
-  printf("TODO: get memory for globals, and clear it to zero\n");
+  printf("TODO: get memory for globals, and clear it to zero; and read values for imports\n");
   printf("TODO: assert on no aliasing function pointers\n");
 }
 

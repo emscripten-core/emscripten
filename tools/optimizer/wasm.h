@@ -364,8 +364,8 @@ public:
   BasicType result;
   std::vector<NameType> params;
 
-  std::ostream& print(std::ostream &o, unsigned indent, bool shortIfBasic) {
-    if (basic != none && shortIfBasic) {
+  std::ostream& print(std::ostream &o, unsigned indent) {
+    if (basic != none) {
       printBasicType(o, basic);
       return o;
     }
@@ -411,7 +411,7 @@ public:
 
   std::ostream& print(std::ostream &o, unsigned indent) {
     o << "(import " << name.str << " \"" << module.str << "\" \"" << base.str << "\" ";
-    type.print(o, indent, true);
+    type.print(o, indent);
     o << ')';
     return o;
   }
@@ -466,7 +466,7 @@ public:
     incIndent(o, indent);
     for (auto& curr : customTypes) {
       doIndent(o, indent);
-      curr.print(o, indent, false);
+      curr.print(o, indent);
       o << '\n';
     }
     for (auto& curr : imports) {
