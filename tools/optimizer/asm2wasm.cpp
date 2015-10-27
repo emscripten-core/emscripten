@@ -284,6 +284,23 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       ret->ifTrue = process(ast[2]);
       ret->ifFalse = !!ast[3] ? process(ast[2]) : nullptr;
       return ret;
+    } else if (what == CALL) {
+      if (ast[1][0] == NAME) {
+        IString name = ast[1][1]->getIString();
+        Call* ret;
+        if (imports.find(name) != imports.end()) {
+          ret = allocator.alloc<CallImport>();
+        } else {
+          ret = allocator.alloc<Call>();
+        }
+        ret->target = name;
+        Ref args = ast[2];
+        for (unsigned i = 0; i < args->size(); i++) {
+          ret->operands.push_back(process(args[i]));
+        }
+        return ret;
+      }
+      abort(); // TODO: function pointers
     }
     abort_on("confusing expression", ast);
   };
