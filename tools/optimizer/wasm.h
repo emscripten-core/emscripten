@@ -353,6 +353,7 @@ public:
 struct NameType {
   Name name;
   BasicType type;
+  NameType() : name(nullptr), type(none) {}
   NameType(Name name, BasicType type) : name(name), type(type) {}
 };
 
