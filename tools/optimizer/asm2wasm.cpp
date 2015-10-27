@@ -38,6 +38,15 @@ class Asm2WasmModule : public wasm::Module {
     assert(nextGlobal < maxGlobal);
   }
 
+  struct View {
+    unsigned bytes;
+    bool integer, signed_;
+    View() : bytes(0) {}
+    View(unsigned bytes, bool integer, bool signed_) : bytes(bytes), integer(integer), signed_(signed_) {}
+  };
+
+  std::map<IString, View> views; // name (e.g. HEAP8) => view info
+
   // function types. we fill in this information as we see
   // uses, in the first pass
 
@@ -146,7 +155,32 @@ void Asm2WasmModule::processAsm(Ref ast) {
           // we have to do this later, since we don't know the type yet.
         } else if (value[0] == NEW) {
           // ignore imports of typed arrays, but note the names of the arrays
-          // XXX
+          value = value[1];
+          assert(value[0] == CALL);
+          Ref constructor = value[1];
+          assert(constructor[0] == DOT); // global.*Array
+          IString heap = constructor[2]->getIString();
+          unsigned bytes;
+          bool integer, signed_;
+          if (heap == HEAP8) {
+            bytes = 1; integer = true; signed_ = true;
+          } else if (heap == HEAP16) {
+            bytes = 2; integer = true; signed_ = true;
+          } else if (heap == HEAP32) {
+            bytes = 4; integer = true; signed_ = true;
+          } else if (heap == HEAPU8) {
+            bytes = 1; integer = true; signed_ = false;
+          } else if (heap == HEAPU16) {
+            bytes = 2; integer = true; signed_ = false;
+          } else if (heap == HEAPU32) {
+            bytes = 4; integer = true; signed_ = false;
+          } else if (heap == HEAPF32) {
+            bytes = 4; integer = false; signed_ = true;
+          } else if (heap == HEAPF64) {
+            bytes = 8; integer = false; signed_ = true;
+          }
+          assert(views.find(heap) == views.end());
+          views.emplace(heap, View(bytes, integer, signed_));
         } else if (value[0] == ARRAY) {
           // function table
           Ref contents = value[1];
@@ -239,9 +273,19 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         ret->id = ast[2][1]->getIString();
         ret->value = process(ast[3]);
         return ret;
-      } else {
-        abort_on("confusing assign", ast);
+      } else if (ast[2][0] == SUB) {
+        Ref target = ast[2];
+        assert(target[1][0] == NAME);
+        IString heap = target[1][1]->getIString();
+        View& view = views[heap];
+        auto ret = allocator.alloc<Store>();
+        ret->bytes = view.bytes;
+        ret->offset = 0;
+        ret->align = view.bytes;
+        ret->ptr = process(target[2]);
+        ret->value = process(ast[3]);
       }
+      abort_on("confusing assign", ast);
     } else if (what == BINARY) {
       auto ret = allocator.alloc<Binary>();
       ret->op = wasmBinaryOp(ast[1]->getIString(), ast[2], ast[3]);
