@@ -4,7 +4,7 @@
 Pthreads support
 ==============================
 
-Low level multithreading is currently supported in Firefox Nightly release channel via an experimental extension to JavaScript Web Workers. This is a work-in-progress research project, and the prototype specification can be located `here <https://docs.google.com/document/d/1NDGA_gZJ7M7w1Bh8S0AoDyEqwDdRh4uSoTPSNn77PFk/edit?usp=sharing>`.
+Low level multithreading is currently supported in Firefox Nightly release channel via an experimental extension to JavaScript Web Workers. This is a work-in-progress research project, and the prototype specification can be located `here <https://docs.google.com/document/d/1NDGA_gZJ7M7w1Bh8S0AoDyEqwDdRh4uSoTPSNn77PFk/edit?usp=sharing>`_.
 
 The proposed specification allows Emscripten applications to share the main memory heap between web workers. This along with primitives for low level atomics and futex support enables Emscripten to implement support for the Pthreads (POSIX threads) API.
 
@@ -26,15 +26,15 @@ The Emscripten implementation for the pthreads API should follow the POSIX stand
 
 - If a page is built with the -s USE_PTHREADS=1 flag, then it will not run backwards compatibly in a non-supporting browser. In order to enable backwards compatibility so that multithreaded pages can run in non-supporting browsers (except with pthread_create() disabled), pass the flag -s USE_PTHREADS=2 instead. At runtime, you can use the emscripten_has_threading_support() function to test whether the current browser does have the capability to launch pthreads with pthread_create(). If a browser does not support threads, calls to pthread_create() will fail with error code EAGAIN.
 
-- When -s PTHREAD_POOL_SIZE=<integer> is not specified and pthread_create() is called, the new thread will not actually start to run immediately, but the main JS thread must yield execution back to browser first. This behavior is a result of `#1049079 <https://bugzilla.mozilla.org/show_bug.cgi?id=1049079>`.
+- When -s PTHREAD_POOL_SIZE=<integer> is not specified and pthread_create() is called, the new thread will not actually start to run immediately, but the main JS thread must yield execution back to browser first. This behavior is a result of `#1049079 <https://bugzilla.mozilla.org/show_bug.cgi?id=1049079>`_.
 
-- Currently several of the functions in the C runtime, such as filesystem functions like fopen(), fread(), printf(), fprintf() etc. are not multithreaded, but instead their execution is proxied over to the main application thread. Memory allocation via malloc() and free() is fully multithreaded though. This proxying can generate a deadlock in a special situation that native code running pthreads does not have. See `bug 3495 <https://github.com/kripken/emscripten/issues/3495>` for more information and how to work around this until proxying is no longer needed in Emscripten.
+- Currently several of the functions in the C runtime, such as filesystem functions like fopen(), fread(), printf(), fprintf() etc. are not multithreaded, but instead their execution is proxied over to the main application thread. Memory allocation via malloc() and free() is fully multithreaded though. This proxying can generate a deadlock in a special situation that native code running pthreads does not have. See `bug 3495 <https://github.com/kripken/emscripten/issues/3495>`_ for more information and how to work around this until proxying is no longer needed in Emscripten.
 
-- The Emscripten implementation does not support `POSIX signals <http://man7.org/linux/man-pages/man7/signal.7.html>`, which are sometimes used in conjunction with pthreads. This is because it is not possible to send signals to web workers and pre-empt their execution. The only exception to this is pthread_kill() which can be used as normal to forcibly terminate a running thread.
+- The Emscripten implementation does not support `POSIX signals <http://man7.org/linux/man-pages/man7/signal.7.html>`_, which are sometimes used in conjunction with pthreads. This is because it is not possible to send signals to web workers and pre-empt their execution. The only exception to this is pthread_kill() which can be used as normal to forcibly terminate a running thread.
 
 - The Emscripten implementation does also not support multiprocessing via fork() and join().
 
-- For web security purposes, there exists a fixed limit (by default 20) of threads that can be spawned when running in Firefox Nightly. `#1052398 <https://bugzilla.mozilla.org/show_bug.cgi?id=1052398>`. To adjust the limit, navigate to about:config and change the value of the pref "dom.workers.maxPerDomain".
+- For web security purposes, there exists a fixed limit (by default 20) of threads that can be spawned when running in Firefox Nightly. `#1052398 <https://bugzilla.mozilla.org/show_bug.cgi?id=1052398>`_. To adjust the limit, navigate to about:config and change the value of the pref "dom.workers.maxPerDomain".
 
 - Some of the features in the pthreads specification are unsupported since the upstream musl library that Emscripten utilizes does not support them, or they are marked optional and a conformant implementation need not support them. Such unsupported features in Emscripten include prioritization of threads, and pthread_rwlock_unlock() is not performed in thread priority order. The functions pthread_mutexattr_set/getprotocol(), pthread_mutexattr_set/getprioceiling() and pthread_attr_set/getscope() are no-ops.
 
@@ -49,6 +49,6 @@ Any code that is compiled with pthreads support enabled will currently only work
 
 - The Emscripten unit test suite contains several pthreads-specific tests in the "browser." suite. Run any of the tests named browser.test_pthread_*.
 
-- An Emscripten-specialized version of the `Open POSIX Test Suite <http://posixtest.sourceforge.net/>` is available at `juj/posixtestsuite <https://github.com/juj/posixtestsuite>` GitHub repository. This suite contains about 300 tests for pthreads conformance. To run this suite, the pref dom.workers.maxPerDomain should first be increased to at least 50.
+- An Emscripten-specialized version of the `Open POSIX Test Suite <http://posixtest.sourceforge.net/>`_ is available at `juj/posixtestsuite <https://github.com/juj/posixtestsuite>`_ GitHub repository. This suite contains about 300 tests for pthreads conformance. To run this suite, the pref dom.workers.maxPerDomain should first be increased to at least 50.
 
 Please check these first in case of any issues. Bugs can be reported to the Emscripten bug tracker as usual.
