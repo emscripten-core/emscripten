@@ -1,6 +1,9 @@
 
 #include "simple_ast.h"
 #include "wasm.h"
+#include "optimizer.h"
+
+#include "optimizer-shared.cpp"
 
 IString GLOBAL("global"), NAN_("NaN"), INFINITY_("Infinity"),
         TOPMOST("topmost"),
@@ -72,21 +75,19 @@ public:
 
 private:
   BasicType detectWasmType(Ref ast) {
-    if (ast[0] == BINARY || ast[0] == NUM) return BasicType::i32;
-    if (ast[0] == UNARY_PREFIX) return BasicType::f64;
+    AsmType asmType = detectType(ast);
+    if (asmType == ASM_INT) return BasicType::i32;
+    if (asmType == ASM_DOUBLE) return BasicType::f64;
     abort_on("confused detectWasmType", ast);
   }
 
   bool isInteger(double num) {
     return fmod(num, 1) == 0 && double(int(num)) == num;
   }
-
-  bool isIntegerCoercion(Ref ast) {
-    if (ast[0] == BINARY && (ast[1] == OR || ast[1] == TRSHIFT)) return true;
-    if (ast[0] == NUM) return isInteger(ast[1]->getNumber());
-    return false;
+  bool isInteger(Ref ast) {
+    return ast[0] == NUM && isInteger(ast[1]->getNumber());
   }
- 
+
   bool isUnsignedCoercion(Ref ast) {
     if (ast[0] == BINARY && ast[1] == TRSHIFT) return true;
     return false;
@@ -105,8 +106,8 @@ private:
     if (op == TRSHIFT) { binary = BinaryOp::ShrU; return true; }
     if (op == EQ) { relational = RelationalOp::Eq; return false; }
     if (op == NE) { relational = RelationalOp::Ne; return false; }
-    bool isInteger = isIntegerCoercion(left);
-    assert(isInteger == isIntegerCoercion(right));
+    BasicType leftType = detectWasmType(left);
+    bool isInteger = leftType == BasicType::i32;
     bool isUnsigned = isUnsignedCoercion(left);
     assert(isUnsigned == isUnsignedCoercion(right));
     if (op == DIV) {
