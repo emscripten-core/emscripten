@@ -385,7 +385,7 @@ void Asm2WasmModule::processAsm(Ref ast) {
             if (table.vars.size() <= k) {
               table.vars.push_back(curr);
             } else {
-              if (isNullThunk(table.vars[k].getName())) {
+              if (isNullThunk(table.vars[k])) {
                 table.vars[k] = curr;
               } else {
                 assert(isNullThunk(curr) && "cannot have aliasing function pointers");

@@ -62,41 +62,14 @@ void decIndent(std::ostream &o, unsigned& indent) {
 
 // Basics
 
-typedef cashew::IString Name;
-
-// A 'var' in the spec.
-class Var {
-  enum {
-    MAX_NUM = 1000000 // less than this, a num, higher, a string; 0 = null
-  };
-  union {
-    unsigned num; // numeric ID
-    Name str;     // string
-  };
-public:
-  Var() : num(0) {}
-  Var(unsigned num) : num(num) {
-    assert(num > 0 && num < MAX_NUM);
-  }
-  Var(Name str) : str(str) {
-    assert(num > MAX_NUM);
-  }
-
-  bool is() {
-    return num != 0;
-  }
-
-  Name getName() {
-    assert(num > MAX_NUM);
-    return str;
-  }
+struct Name : public cashew::IString {
+  Name() : cashew::IString() {}
+  Name(const char *str) : cashew::IString(str) {}
+  Name(cashew::IString str) : cashew::IString(str) {}
 
   std::ostream& print(std::ostream &o) {
-    if (num < MAX_NUM) {
-      o << num;
-    } else {
-      o << str.str;
-    }
+    assert(str);
+    o << str;
     return o;
   }
 };
@@ -238,7 +211,7 @@ class Nop : public Expression {
 
 class Block : public Expression {
 public:
-  Var var;
+  Name var;
   ExpressionList list;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
@@ -273,7 +246,7 @@ public:
 
 class Loop : public Expression {
 public:
-  Var out, in;
+  Name out, in;
   Expression *body;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
@@ -295,12 +268,12 @@ public:
 
 class Label : public Expression {
 public:
-  Var var;
+  Name var;
 };
 
 class Break : public Expression {
 public:
-  Var var;
+  Name var;
   Expression *condition, *value;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
@@ -322,7 +295,7 @@ public:
     bool fallthru;
   };
 
-  Var var;
+  Name var;
   Expression *value;
   std::vector<Case> cases;
   Expression *default_;
@@ -341,7 +314,7 @@ public:
 
 class Call : public Expression {
 public:
-  Var target;
+  Name target;
   ExpressionList operands;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
@@ -382,7 +355,7 @@ public:
 
 class GetLocal : public Expression {
 public:
-  Var id;
+  Name id;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
     o << "(get_local ";
@@ -393,7 +366,7 @@ public:
 
 class SetLocal : public Expression {
 public:
-  Var id;
+  Name id;
   Expression *value;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
@@ -694,7 +667,7 @@ public:
 class Export {
 public:
   Name name;
-  Var value;
+  Name value;
 
   std::ostream& print(std::ostream &o, unsigned indent) {
     o << "(export \"" << name.str << "\" ";
@@ -706,7 +679,7 @@ public:
 
 class Table {
 public:
-  std::vector<Var> vars;
+  std::vector<Name> vars;
 
   std::ostream& print(std::ostream &o, unsigned indent) {
     o << "(table";
@@ -729,7 +702,7 @@ protected:
   std::vector<Function*> functions;
 
   // internals
-  std::map<Var, void*> map; // maps var ids/names to things
+  std::map<Name, void*> map; // maps var ids/names to things
   unsigned nextVar;
 
 public:
