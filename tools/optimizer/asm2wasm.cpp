@@ -583,7 +583,16 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
           ret->value = getLiteral(ast);
           return ret;
         }
-        assert(detectType(ast[2], &asmData) == ASM_DOUBLE);
+        AsmType asmType = detectType(ast[2], &asmData);
+        if (asmType == ASM_INT) {
+          // wasm has no unary negation for int, so do 0-
+          auto ret = allocator.alloc<Binary>();
+          ret->op = Sub;
+          ret->left = allocator.alloc<Const>()->set(Literal(0));
+          ret->right = process(ast[2]);
+          return ret;
+        }
+        assert(asmType == ASM_DOUBLE);
         auto ret = allocator.alloc<Unary>();
         ret->op = Neg;
         ret->value = process(ast[2]);
