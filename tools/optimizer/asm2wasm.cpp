@@ -364,11 +364,21 @@ void Asm2WasmModule::processAsm(Ref ast) {
 
   // second pass - function imports
 
+  std::vector<IString> toErase;
+
   for (auto& pair : imports) {
     IString name = pair.first;
     Import& import = pair.second;
-    assert(importedFunctionTypes.find(name) != importedFunctionTypes.end());
-    import.type = importedFunctionTypes[name];
+    if (importedFunctionTypes.find(name) != importedFunctionTypes.end()) {
+      import.type = importedFunctionTypes[name];
+    } else {
+      // never actually used
+      toErase.push_back(name);
+    }
+  }
+
+  for (auto curr : toErase) {
+    imports.erase(curr);
   }
 
   // cleanups
