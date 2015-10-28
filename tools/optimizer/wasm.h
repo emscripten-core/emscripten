@@ -86,6 +86,11 @@ public:
     return num != 0;
   }
 
+  Name getName() {
+    assert(num > MAX_NUM);
+    return str;
+  }
+
   std::ostream& print(std::ostream &o) {
     if (num < MAX_NUM) {
       o << num;
