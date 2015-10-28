@@ -550,15 +550,6 @@ struct NameType {
   NameType(Name name, BasicType type) : name(name), type(type) {}
 };
 
-std::ostream& printParamsAndResult(std::ostream &o, unsigned indent, BasicType result, std::vector<NameType>& params) {
-  for (auto& param : params) {
-    o << "(param " << param.name.str << " ";
-    printBasicType(o, param.type) << ") ";
-  }
-  o << "(result ";
-  printBasicType(o, result) << ")";
-}
-
 class FunctionType {
 public:
   Name name;
@@ -605,8 +596,17 @@ public:
   Expression *body;
 
   std::ostream& print(std::ostream &o, unsigned indent) {
-    o << "(func " << name.str << " ";
-    printParamsAndResult(o, indent, result, params);
+    o << "(func " << name.str;
+    if (params.size() > 0) {
+      for (auto& param : params) {
+        o << " (param " << param.name.str << " ";
+        printBasicType(o, param.type) << ")";
+      }
+    }
+    if (result != none) {
+      o << " (result ";
+      printBasicType(o, result) << ")";
+    }
     incIndent(o, indent);
     for (auto& local : locals) {
       doIndent(o, indent);
