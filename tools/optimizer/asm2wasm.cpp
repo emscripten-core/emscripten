@@ -326,7 +326,7 @@ void Asm2WasmModule::processAsm(Ref ast) {
         Ref value = pair[1];
         if (value[0] == NUM) {
           // global int
-          assert(value[1]->getInteger() == 0);
+          assert(value[1]->getNumber() == 0);
           allocateGlobal(name, BasicType::i32, false);
         } else if (value[0] == BINARY) {
           // int import
@@ -535,6 +535,9 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       }
       abort_on("confusing assign", ast);
     } else if (what == BINARY) {
+      if (ast[1] == OR && ast[3][0] == NUM && ast[3][1]->getNumber() == 0) {
+        return process(ast[2]); // just look through the ()|0 coercion
+      }
       BinaryOp binary;
       RelationalOp relational;
       bool isBinary = parseAsmBinaryOp(ast[1]->getIString(), ast[2], ast[3], binary, relational, &asmData);
@@ -621,7 +624,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
           return ret;
         }
         assert(childType == ASM_NONE); // e.g. a coercion on a call
-        return process(ast[2]); // just look through the coercion
+        return process(ast[2]); // just look through the +() coercion
       } else if (ast[1] == MINUS) {
         if (ast[2][0] == NUM) {
           auto ret = allocator.alloc<Const>();
@@ -776,7 +779,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       breakStack.pop_back();
       return ret;
     } else if (what == DO) {
-      if (ast[1][0] == NUM && ast[1][1]->getInteger() == 0) {
+      if (ast[1][0] == NUM && ast[1][1]->getNumber() == 0) {
         // one-time loop
         auto block = allocator.alloc<Block>();
         IString stop;
