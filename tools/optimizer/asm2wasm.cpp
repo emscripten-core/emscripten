@@ -276,6 +276,12 @@ void Asm2WasmModule::processAsm(Ref ast) {
     Ref module = imported[1];
     if (module[0] == DOT) {
       // we can have (global.Math).floor; skip the 'Math'
+      assert(module[1][0] == NAME);
+      if (module[2] == MATH && imported[2] == IMUL) {
+        assert(Math_imul.isNull());
+        Math_imul = name;
+        return;
+      }
       module = module[1];
     }
     assert(module[0] == NAME);
@@ -286,10 +292,6 @@ void Asm2WasmModule::processAsm(Ref ast) {
     // special-case some asm builtins
     if (import.module == GLOBAL && (import.base == NAN_ || import.base == INFINITY_)) {
       type = BasicType::f64;
-    } else if (import.module == MATH && import.base == IMUL) {
-      assert(Math_imul.isNull());
-      Math_imul = name;
-      return;
     }
     if (type != BasicType::none) {
       // wasm has no imported constants, so allocate a global, and we need to write the value into that
