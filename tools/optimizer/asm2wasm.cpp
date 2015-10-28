@@ -561,24 +561,46 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       ret->ptr = processUnshifted(ast[2], view.bytes);
       return ret;
     } else if (what == UNARY_PREFIX) {
-      assert(ast[1] == PLUS);
-      if (ast[2][0] == NUM) {
-        auto ret = allocator.alloc<Const>();
-        ret->value.type = BasicType::f64;
-        ret->value.f64 = ast[2][1]->getNumber();
-        return ret;
-      }
-      AsmType childType = detectType(ast[2], AsmData);
-      if (childType != ASM_DOUBLE) {
-        if (childType == ASM_INT) {
-          auto ret = allocator.alloc<Convert>();
-          ret->op = isUnsignedCoercion(ast[2]) ? ConvertUInt32 : ConvertSInt32;
-          ret->value = process(ast[2]);
+      if (ast[1] == PLUS) {
+        if (ast[2][0] == NUM) {
+          auto ret = allocator.alloc<Const>();
+          ret->value.type = BasicType::f64;
+          ret->value.f64 = ast[2][1]->getNumber();
           return ret;
         }
-        abort_on("bad to_double", childType);
+        AsmType childType = detectType(ast[2], &asmData);
+        if (childType != ASM_DOUBLE) {
+          if (childType == ASM_INT) {
+            auto ret = allocator.alloc<Convert>();
+            ret->op = isUnsignedCoercion(ast[2]) ? ConvertUInt32 : ConvertSInt32;
+            ret->value = process(ast[2]);
+            return ret;
+          }
+          abort_on("bad to_double", childType);
+        }
+        return process(ast[2]); // just look through the coercion
+      } else if (ast[1] == MINUS) {
+        if (ast[2][0] == NUM) {
+          auto ret = allocator.alloc<Const>();
+          ret->value = getLiteral(ast);
+          return ret;
+        }
+        assert(detectType(ast[2], &asmData) == ASM_DOUBLE);
+        auto ret = allocator.alloc<Unary>();
+        ret->op = Neg;
+        ret->value = process(ast[2]);
+        return ret;
+      } else if (ast[1] == B_NOT) {
+        // ~, might be ~~ as a coercion or just a not
+        if (ast[2][0] == UNARY_PREFIX && ast[2][1] == B_NOT) {
+          auto ret = allocator.alloc<Convert>();
+          ret->op = TruncSFloat64; // equivalent to U, except for error handling, which asm.js doesn't have anyhow
+          ret->value = process(ast[2][2]);
+          return ret;
+        }
+        abort_on("wasm has no unary not, logical or bitwise", ast);
       }
-      return process(ast[2]); // just look through the coercion
+      abort_on("bad unary", ast);
     } else if (what == IF) {
       auto ret = allocator.alloc<If>();
       ret->condition = process(ast[1]);

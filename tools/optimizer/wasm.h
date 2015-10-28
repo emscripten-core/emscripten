@@ -424,6 +424,18 @@ class Unary : public Expression {
 public:
   UnaryOp op;
   Expression *value;
+
+  std::ostream& print(std::ostream &o, unsigned indent) override {
+    o << "(unary ";
+    switch (op) {
+      case Neg: o << "neg";
+      default: abort();
+    }
+    incIndent(o, indent);
+    printFullLine(o, indent, value);
+    decIndent(o, indent);
+    return o;
+  }
 };
 
 class Binary : public Expression {
@@ -497,6 +509,20 @@ class Convert : public Expression {
 public:
   ConvertOp op;
   Expression *value;
+
+  std::ostream& print(std::ostream &o, unsigned indent) override {
+    o << "(convert ";
+    switch (op) {
+      case ConvertUInt32: o << "uint32toDouble";
+      case ConvertSInt32: o << "sint32toDouble";
+      case TruncSFloat64: o << "float64tosint32";
+      default: abort();
+    }
+    incIndent(o, indent);
+    printFullLine(o, indent, value);
+    decIndent(o, indent);
+    return o;
+  }
 };
 
 class Host : public Expression {
