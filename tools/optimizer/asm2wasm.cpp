@@ -569,15 +569,13 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
           return ret;
         }
         AsmType childType = detectType(ast[2], &asmData);
-        if (childType != ASM_DOUBLE) {
-          if (childType == ASM_INT) {
-            auto ret = allocator.alloc<Convert>();
-            ret->op = isUnsignedCoercion(ast[2]) ? ConvertUInt32 : ConvertSInt32;
-            ret->value = process(ast[2]);
-            return ret;
-          }
-          abort_on("bad to_double", childType);
+        if (childType == ASM_INT) {
+          auto ret = allocator.alloc<Convert>();
+          ret->op = isUnsignedCoercion(ast[2]) ? ConvertUInt32 : ConvertSInt32;
+          ret->value = process(ast[2]);
+          return ret;
         }
+        assert(childType == ASM_NONE); // e.g. a coercion on a call
         return process(ast[2]); // just look through the coercion
       } else if (ast[1] == MINUS) {
         if (ast[2][0] == NUM) {
