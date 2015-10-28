@@ -569,7 +569,7 @@ public:
     for (auto& local : locals) {
       doIndent(o, indent);
       o << "(local " << local.name.str << " ";
-      print(o, local.type) << ")\n";
+      printBasicType(o, local.type) << ")\n";
     }
     printFullLine(o, indent, body);
     decIndent(o, indent);
