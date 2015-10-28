@@ -523,30 +523,33 @@ std::ostream& printParamsAndResult(std::ostream &o, unsigned indent, BasicType r
   printBasicType(o, result) << ")";
 }
 
-class GeneralType {
+class FunctionType {
 public:
-  GeneralType() : basic(BasicType::none) {}
-  GeneralType(BasicType basic) : basic(basic) {}
-
-  BasicType basic; // if none, then custom/function, and other params matter
   Name name;
   BasicType result;
-  std::vector<NameType> params;
+  std::vector<BasicType> params;
 
   std::ostream& print(std::ostream &o, unsigned indent) {
-    if (basic != none) {
-      printBasicType(o, basic);
-      return o;
-    }
     o << "(type " << name.str;
-    if (basic != none) {
-      printBasicType(o, basic) << ')';
-    } else {
-      incIndent(o, indent);
-      printParamsAndResult(o, indent, result, params);
-      decIndent(o, indent);
+    incIndent(o, indent);
+    for (auto& param : params) {
+      o << "(param ";
+      printBasicType(o, param) << ") ";
     }
+    o << "(result ";
+    printBasicType(o, result) << ")";
+    decIndent(o, indent);
     return o;
+  }
+
+  bool operator==(FunctionType& b) {
+    if (name != b.name) return false; // XXX
+    if (result != b.result) return false;
+    if (params.size() != b.params.size()) return false;
+    for (size_t i = 0; i < params.size(); i++) {
+      if (params[i] != b.params[i]) return false;
+    }
+    return true;
   }
 };
 
@@ -576,7 +579,7 @@ public:
 class Import {
 public:
   Name name, module, base; // name = module.base
-  GeneralType type;
+  FunctionType type;
 
   std::ostream& print(std::ostream &o, unsigned indent) {
     o << "(import " << name.str << " \"" << module.str << "\" \"" << base.str << "\" ";
@@ -616,7 +619,7 @@ public:
 class Module {
 protected:
   // wasm contents
-  std::vector<GeneralType> customTypes;
+  std::vector<FunctionType> functionTypes;
   std::map<Name, Import> imports;
   std::vector<Export> exports;
   Table table;
@@ -633,7 +636,7 @@ public:
     unsigned indent = 0;
     o << "(module";
     incIndent(o, indent);
-    for (auto& curr : customTypes) {
+    for (auto& curr : functionTypes) {
       doIndent(o, indent);
       curr.print(o, indent);
       o << '\n';
