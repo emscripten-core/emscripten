@@ -433,7 +433,7 @@ public:
   std::ostream& print(std::ostream &o, unsigned indent) override {
     o << "(unary ";
     switch (op) {
-      case Neg: o << "neg";
+      case Neg: o << "neg"; break;
       default: abort();
     }
     incIndent(o, indent);
@@ -518,9 +518,9 @@ public:
   std::ostream& print(std::ostream &o, unsigned indent) override {
     o << "(convert ";
     switch (op) {
-      case ConvertUInt32: o << "uint32toDouble";
-      case ConvertSInt32: o << "sint32toDouble";
-      case TruncSFloat64: o << "float64tosint32";
+      case ConvertUInt32: o << "uint32toDouble"; break;
+      case ConvertSInt32: o << "sint32toDouble"; break;
+      case TruncSFloat64: o << "float64tosint32"; break;
       default: abort();
     }
     incIndent(o, indent);
