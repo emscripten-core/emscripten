@@ -20,7 +20,9 @@ IString GLOBAL("global"), NAN_("NaN"), INFINITY_("Infinity"),
         UINT32ARRAY("Uint32Array"),
         FLOAT32ARRAY("Float32Array"),
         FLOAT64ARRAY("Float64Array"),
-        IMPOSSIBLE_CONTINUE("impossible-continue");
+        IMPOSSIBLE_CONTINUE("impossible-continue"),
+        MATH("Math"),
+        IMUL("imul");
 
 
 static void abort_on(std::string why) {
@@ -94,6 +96,7 @@ class Asm2WasmModule : public wasm::Module {
   };
 
   std::map<IString, View> views; // name (e.g. HEAP8) => view info
+  IString Math_imul; // imported name of Math.imul
 
   // function types. we fill in this information as we see
   // uses, in the first pass
@@ -283,6 +286,10 @@ void Asm2WasmModule::processAsm(Ref ast) {
     // special-case some asm builtins
     if (import.module == GLOBAL && (import.base == NAN_ || import.base == INFINITY_)) {
       type = BasicType::f64;
+    } else if (import.module == MATH && import.base == IMUL) {
+      assert(Math_imul.isNull());
+      Math_imul = name;
+      return;
     }
     if (type != BasicType::none) {
       // wasm has no imported constants, so allocate a global, and we need to write the value into that
@@ -629,6 +636,13 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
     } else if (what == CALL) {
       if (ast[1][0] == NAME) {
         IString name = ast[1][1]->getIString();
+        if (name == Math_imul) {
+          auto ret = allocator.alloc<Binary>();
+          ret->op = Mul;
+          ret->left = process(ast[2][0]);
+          ret->right = process(ast[2][1]);
+          return ret;
+        }
         Call* ret;
         if (imports.find(name) != imports.end()) {
           ret = allocator.alloc<CallImport>();
