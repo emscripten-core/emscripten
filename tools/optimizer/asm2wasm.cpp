@@ -378,6 +378,7 @@ void Asm2WasmModule::processAsm(Ref ast) {
           views.emplace(name, View(bytes, integer, signed_));
         } else if (value[0] == ARRAY) {
           // function table. we "merge" them, so e.g.   [foo, b1] , [b2, bar]  =>  [foo, bar] , assuming b* are the aborting thunks
+          // TODO: we can drop some b*s at the end of the table
           Ref contents = value[1];
           for (unsigned k = 0; k < contents->size(); k++) {
             IString curr = contents[k][1]->getIString();

@@ -650,9 +650,10 @@ public:
   std::vector<Var> vars;
 
   std::ostream& print(std::ostream &o, unsigned indent) {
-    o << "(table ";
+    o << "(table";
     for (auto var : vars) {
-      var.print(o) << ' ';
+      o << ' ';
+      var.print(o);
     }
     o << ')';
     return o;
