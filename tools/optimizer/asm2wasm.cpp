@@ -628,6 +628,11 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       ret->ifTrue = process(ast[2]);
       ret->ifFalse = process(ast[3]);
       return ret;
+    } else if (what == SEQ) {
+      auto ret = allocator.alloc<Block>();
+      ret->list.push_back(process(ast[1]));
+      ret->list.push_back(process(ast[2]));
+      return ret;
     } else if (what == SWITCH) {
       IString name = getNextId("switch");
       breakStack.push_back(name);
