@@ -552,6 +552,9 @@ public:
     }
     return true;
   }
+  bool operator!=(FunctionType& b) {
+    return !(*this == b);
+  }
 };
 
 class Function {
