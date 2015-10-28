@@ -347,11 +347,15 @@ public:
   std::ostream& print(std::ostream &o, unsigned indent) override {
     o << "(call ";
     target.print(o);
-    incIndent(o, indent);
-    for (auto operand : operands) {
-      printFullLine(o, indent, operand);
+    if (operands.size() > 0) {
+      incIndent(o, indent);
+      for (auto operand : operands) {
+        printFullLine(o, indent, operand);
+      }
+      decIndent(o, indent);
+    } else {
+      o << ')';
     }
-    decIndent(o, indent);
     return o;
   }
 };
