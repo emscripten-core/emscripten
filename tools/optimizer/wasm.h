@@ -132,6 +132,21 @@ unsigned getBasicTypeSize(BasicType type) {
   }
 }
 
+bool isFloat(BasicType type) {
+  switch (type) {
+    case f32:
+    case f64: return true;
+  }
+  return false;
+}
+
+BasicType getBasicType(unsigned size, bool float_) {
+  if (size < 4) return BasicType::i32;
+  if (size == 4) return float_ ? BasicType::f32 : BasicType::i32;
+  if (size == 8) return float_ ? BasicType::f64 : BasicType::i64;
+  abort();
+}
+
 struct Literal {
   BasicType type;
   union {
@@ -384,12 +399,26 @@ class Load : public Expression {
 public:
   unsigned bytes;
   bool signed_;
+  bool float_;
   int offset;
   unsigned align;
   Expression *ptr;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    o << "(load " << bytes << ' ' << signed_ << ' ' << offset << ' ' << align;
+    o << '(';
+    printBasicType(o, getBasicType(bytes, float_)) << ".load";
+    if (bytes < 4) {
+      if (bytes == 1) {
+        o << '8';
+      } else if (bytes == 2) {
+        o << "16";
+      } else {
+        abort();
+      }
+      if (!signed_) o << "_u";
+    }
+    o << " align=" << align;
+    assert(!offset);
     incIndent(o, indent);
     printFullLine(o, indent, ptr);
     decIndent(o, indent);
@@ -400,12 +429,26 @@ public:
 class Store : public Expression {
 public:
   unsigned bytes;
+  bool float_;
   int offset;
   unsigned align;
   Expression *ptr, *value;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    o << "(load " << bytes << ' ' << ' ' << offset << ' ' << align;
+
+    o << '(';
+    printBasicType(o, getBasicType(bytes, float_)) << ".store";
+    if (bytes < 4) {
+      if (bytes == 1) {
+        o << '8';
+      } else if (bytes == 2) {
+        o << "16";
+      } else {
+        abort();
+      }
+    }
+    o << " align=" << align;
+    assert(!offset);
     incIndent(o, indent);
     printFullLine(o, indent, ptr);
     printFullLine(o, indent, value);
