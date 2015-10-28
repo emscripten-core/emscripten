@@ -5,6 +5,11 @@
 
 #include "optimizer-shared.cpp"
 
+using namespace cashew;
+using namespace wasm;
+
+// Utilities
+
 IString GLOBAL("global"), NAN_("NaN"), INFINITY_("Infinity"),
         TOPMOST("topmost"),
         INT8ARRAY("Int8Array"),
@@ -33,8 +38,26 @@ static void abort_on(std::string why, IString element) {
   abort();
 }
 
-using namespace cashew;
-using namespace wasm;
+// useful when we need to see our parent, in an expression stack
+struct AstStackHelper {
+  static std::vector<Ref> astStack;
+  AstStackHelper(Ref curr) {
+    astStack.push_back(curr);
+  }
+  ~AstStackHelper() {
+    astStack.pop_back();
+  }
+  Ref getParent() {
+    assert(astStack.size() >= 2);
+    return astStack[astStack.size()-2];
+  }
+};
+
+std::vector<Ref> AstStackHelper::astStack;
+
+//
+// Asm2WasmModule - converts an asm.js module into WebAssembly
+//
 
 class Asm2WasmModule : public wasm::Module {
   wasm::Arena allocator;
@@ -71,7 +94,26 @@ class Asm2WasmModule : public wasm::Module {
   // function types. we fill in this information as we see
   // uses, in the first pass
 
-  std::map<IString, GeneralType> importedFunctionTypes;
+  std::map<IString, FunctionType> importedFunctionTypes;
+
+  void noteImportedFunctionCall(Ref ast, Ref parent) {
+    assert(ast[0] == CALL && ast[1][0] == NAME);
+    IString importName = ast[1][1]->getIString();
+    FunctionType type;
+    type.name = IString((std::string("type$") + importName.str).c_str(), false); // TODO: make a list of such types
+    BasicType result = detectWasmType(parent);
+    Ref args = ast[2];
+    for (unsigned i = 0; i < args->size(); i++) {
+      type.params.push_back(detectWasmType(args[i]));
+    }
+    // if we already saw this signature, verify it's the same (or else we need to split)
+    if (imports.find(importName) != imports.end()) {
+      FunctionType& previous = importedFunctionTypes[importName];
+      assert(type == previous);
+    } else {
+      importedFunctionTypes[importName] = type;
+    }
+  }
 
 public:
   Asm2WasmModule() : nextGlobal(8), maxGlobal(1000) {}
@@ -216,8 +258,6 @@ void Asm2WasmModule::processAsm(Ref ast) {
       // wasm has no imported constants, so allocate a global, and we need to write the value into that
       allocateGlobal(name, type, true);
     } else {
-      assert(importedFunctionTypes.find(name) != importedFunctionTypes.end());
-      import.type = importedFunctionTypes[name];
       imports.emplace(name, import);
     }
   };
@@ -255,7 +295,7 @@ void Asm2WasmModule::processAsm(Ref ast) {
           }
         } else if (value[0] == DOT) {
           // function import
-          // we have to do this later, since we don't know the type yet.
+          addImport(name, value, BasicType::none);
         } else if (value[0] == NEW) {
           // ignore imports of typed arrays, but note the names of the arrays
           value = value[1];
@@ -316,20 +356,11 @@ void Asm2WasmModule::processAsm(Ref ast) {
 
   // second pass - function imports
 
-  for (unsigned i = 1; i < body->size(); i++) {
-    Ref curr = body[i];
-    if (curr[0] == VAR) {
-      for (unsigned j = 0; j < curr[1]->size(); j++) {
-        Ref pair = curr[1][j];
-        IString name = pair[0]->getIString();
-        Ref value = pair[1];
-        if (value[0] == DOT) {
-          // function import
-          // we can do this now, after having seen the type based on the use
-          addImport(name, value, BasicType::none);
-        }
-      }
-    }
+  for (auto& pair : imports) {
+    IString name = pair.first;
+    Import& import = pair.second;
+    assert(importedFunctionTypes.find(name) != importedFunctionTypes.end());
+    import.type = importedFunctionTypes[name];
   }
 
   // cleanups
@@ -391,6 +422,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
   bool debug = !!getenv("ASM2WASM_DEBUG");
 
   std::function<Expression* (Ref)> process = [&](Ref ast) -> Expression* {
+    AstStackHelper astStackHelper(ast); // TODO: only create one when we need it?
     if (debug) {
       std::cout << "at: ";
       ast->stringify(std::cout);
@@ -502,6 +534,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         Call* ret;
         if (imports.find(name) != imports.end()) {
           ret = allocator.alloc<CallImport>();
+          noteImportedFunctionCall(ast, astStackHelper.getParent());
         } else {
           ret = allocator.alloc<Call>();
         }
