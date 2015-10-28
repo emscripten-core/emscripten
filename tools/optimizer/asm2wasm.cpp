@@ -515,6 +515,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         auto ret = allocator.alloc<SetLocal>();
         ret->id = ast[2][1]->getIString();
         ret->value = process(ast[3]);
+        ret->type = ret->value->type;
         return ret;
       } else if (ast[2][0] == SUB) {
         Ref target = ast[2];
@@ -529,6 +530,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         ret->align = view.bytes;
         ret->ptr = processUnshifted(target[2], view.bytes);
         ret->value = process(ast[3]);
+        ret->type = ret->value->type;
         return ret;
       }
       abort_on("confusing assign", ast);
@@ -541,6 +543,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         ret->op = binary;
         ret->left = process(ast[2]);
         ret->right = process(ast[3]);
+        ret->type = ret->left->type;
         return ret;
       } else {
         auto ret = allocator.alloc<Compare>();
@@ -559,6 +562,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         ret->value.type = BasicType::f64;
         ret->value.f64 = num;
       }
+      ret->type = ret->value.type;
       return ret;
     } else if (what == NAME) {
       IString name = ast[1]->getIString();
@@ -566,6 +570,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         // var in scope
         auto ret = allocator.alloc<GetLocal>();
         ret->id = name;
+        ret->type = asmToWasmType(asmData.getType(name));
         return ret;
       }
       // global var, do a load from memory
@@ -581,6 +586,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       ptr->value.type = BasicType::i32; // XXX for wasm64, need 64
       ptr->value.i32 = global.address;
       ret->ptr = ptr;
+      ret->type = global.type;
       return ret;
     } else if (what == SUB) {
       Ref target = ast[1];
@@ -595,6 +601,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       ret->offset = 0;
       ret->align = view.bytes;
       ret->ptr = processUnshifted(ast[2], view.bytes);
+      ret->type = getBasicType(view.bytes, !view.integer);
       return ret;
     } else if (what == UNARY_PREFIX) {
       if (ast[1] == PLUS) {
@@ -602,6 +609,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
           auto ret = allocator.alloc<Const>();
           ret->value.type = BasicType::f64;
           ret->value.f64 = ast[2][1]->getNumber();
+          ret->type = ret->value.type;
           return ret;
         }
         AsmType childType = detectType(ast[2], &asmData);
@@ -609,6 +617,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
           auto ret = allocator.alloc<Convert>();
           ret->op = isUnsignedCoercion(ast[2]) ? ConvertUInt32 : ConvertSInt32;
           ret->value = process(ast[2]);
+          ret->type = BasicType::i32;
           return ret;
         }
         assert(childType == ASM_NONE); // e.g. a coercion on a call
@@ -617,6 +626,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         if (ast[2][0] == NUM) {
           auto ret = allocator.alloc<Const>();
           ret->value = getLiteral(ast);
+          ret->type = ret->value.type;
           return ret;
         }
         AsmType asmType = detectType(ast[2], &asmData);
@@ -624,14 +634,16 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
           // wasm has no unary negation for int, so do 0-
           auto ret = allocator.alloc<Binary>();
           ret->op = Sub;
-          ret->left = allocator.alloc<Const>()->set(Literal(0));
+          ret->left = allocator.alloc<Const>()->set(Literal((int32_t)0));
           ret->right = process(ast[2]);
+          ret->type = BasicType::i32;
           return ret;
         }
         assert(asmType == ASM_DOUBLE);
         auto ret = allocator.alloc<Unary>();
         ret->op = Neg;
         ret->value = process(ast[2]);
+        ret->type = BasicType::f64;
         return ret;
       } else if (ast[1] == B_NOT) {
         // ~, might be ~~ as a coercion or just a not
@@ -639,6 +651,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
           auto ret = allocator.alloc<Convert>();
           ret->op = TruncSFloat64; // equivalent to U, except for error handling, which asm.js doesn't have anyhow
           ret->value = process(ast[2][2]);
+          ret->type = BasicType::i32;
           return ret;
         }
         // no bitwise unary not, so do xor with -1
@@ -646,6 +659,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         ret->op = Xor;
         ret->left = process(ast[2]);
         ret->right = allocator.alloc<Const>()->set(Literal(int32_t(-1)));
+        ret->type = BasicType::i32;
         return ret;
       } else if (ast[1] == L_NOT) {
         // no logical unary not, so do == 0
@@ -670,6 +684,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
           ret->op = Mul;
           ret->left = process(ast[2][0]);
           ret->right = process(ast[2][1]);
+          ret->type = BasicType::i32;
           return ret;
         }
         Call* ret;

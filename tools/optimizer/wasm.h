@@ -209,6 +209,10 @@ enum HostOp {
 
 class Expression {
 public:
+  BasicType type;
+
+  Expression() : type(type) {}
+
   virtual std::ostream& print(std::ostream &o, unsigned indent) = 0;
 
   template<class T>
@@ -377,7 +381,7 @@ public:
   Var id;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    o << "(setlocal ";
+    o << "(getlocal ";
     id.print(o) << ')';
     return o;
   }
@@ -499,7 +503,8 @@ public:
   Expression *left, *right;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    o << "(binary ";
+    o << '(';
+    printBasicType(o, type) << '.';
     switch (op) {
       case Add:      o << "add"; break;
       case Sub:      o << "sub"; break;
@@ -532,6 +537,10 @@ class Compare : public Expression {
 public:
   RelationalOp op;
   Expression *left, *right;
+
+  Compare() {
+    type = BasicType::i32;
+  }
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
     o << "(compare ";
