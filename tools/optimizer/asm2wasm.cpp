@@ -27,6 +27,10 @@ static void abort_on(std::string why) {
   std::cerr << why << '\n';
   abort();
 }
+static void abort_on(std::string why, int x) {
+  std::cerr << why << ' ' << x << '\n';
+  abort();
+}
 static void abort_on(std::string why, Ref element) {
   std::cerr << why << ' ';
   element->stringify(std::cerr);
@@ -96,15 +100,15 @@ class Asm2WasmModule : public wasm::Module {
 
   std::map<IString, FunctionType> importedFunctionTypes;
 
-  void noteImportedFunctionCall(Ref ast, Ref parent) {
+  void noteImportedFunctionCall(Ref ast, Ref parent, AsmData *asmData) {
     assert(ast[0] == CALL && ast[1][0] == NAME);
     IString importName = ast[1][1]->getIString();
     FunctionType type;
     type.name = IString((std::string("type$") + importName.str).c_str(), false); // TODO: make a list of such types
-    type.result = detectWasmType(parent);
+    type.result = detectWasmType(parent, asmData);
     Ref args = ast[2];
     for (unsigned i = 0; i < args->size(); i++) {
-      type.params.push_back(detectWasmType(args[i]));
+      type.params.push_back(detectWasmType(args[i], asmData));
     }
     // if we already saw this signature, verify it's the same (or else handle that)
     if (importedFunctionTypes.find(importName) != importedFunctionTypes.end()) {
@@ -140,13 +144,17 @@ public:
   void processAsm(Ref ast);
 
 private:
-  BasicType detectWasmType(Ref ast) {
-    switch (detectType(ast)) {
+  BasicType asmToWasmType(AsmType asmType) {
+    switch (asmType) {
       case ASM_INT: return BasicType::i32;
       case ASM_DOUBLE: return BasicType::f64;
       case ASM_NONE: return BasicType::none;
-      default: abort_on("confused detectWasmType", ast);
+      default: abort_on("confused detectWasmType", asmType);
     }
+  }
+
+  BasicType detectWasmType(Ref ast, AsmData *data) {
+    return asmToWasmType(detectType(ast, data));
   }
 
   bool isInteger(double num) {
@@ -162,7 +170,7 @@ private:
   }
 
   // an asm.js binary op can either be a binary or a relational in wasm
-  bool parseAsmBinaryOp(IString op, Ref left, Ref right, BinaryOp &binary, RelationalOp &relational) {
+  bool parseAsmBinaryOp(IString op, Ref left, Ref right, BinaryOp &binary, RelationalOp &relational, AsmData *asmData) {
     if (op == PLUS) { binary = BinaryOp::Add; return true; }
     if (op == MINUS) { binary = BinaryOp::Sub; return true; }
     if (op == MUL) { binary = BinaryOp::Mul; return true; }
@@ -174,7 +182,7 @@ private:
     if (op == TRSHIFT) { binary = BinaryOp::ShrU; return true; }
     if (op == EQ) { relational = RelationalOp::Eq; return false; }
     if (op == NE) { relational = RelationalOp::Ne; return false; }
-    BasicType leftType = detectWasmType(left);
+    BasicType leftType = detectWasmType(left, asmData);
 #if 0
     std::cout << "CHECK\n";
     left->stringify(std::cout);
@@ -183,7 +191,7 @@ private:
     std::cout << '\n';
     right->stringify(std::cout);
     std::cout << " => ";
-    printBasicType(std::cout, detectWasmType(right));
+    printBasicType(std::cout, detectWasmType(right, asmData));
 #endif
     bool isInteger = leftType == BasicType::i32;
     bool isUnsigned = isUnsignedCoercion(left) || isUnsignedCoercion(right);
@@ -425,14 +433,18 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
   std::vector<IString> breakStack; // where a break will go
   std::vector<IString> continueStack; // where a continue will go
 
+  AsmData asmData; // need to know var and param types, for asm type detection
+
   for (unsigned i = 0; i < params->size(); i++) {
     Ref curr = body[i];
     assert(curr[0] == STAT);
     curr = curr[1];
     assert(curr[0] == ASSIGN && curr[2][0] == NAME);
     IString name = curr[2][1]->getIString();
-    function->params.emplace_back(name, detectWasmType(curr[3]));
+    AsmType asmType = detectType(curr[3]);
+    function->params.emplace_back(name, asmToWasmType(asmType));
     functionVariables.insert(name);
+    asmData.addParam(name, asmType);
   }
   unsigned start = params->size();
   while (start < body->size() && body[start][0] == VAR) {
@@ -440,8 +452,10 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
     for (unsigned j = 0; j < curr[1]->size(); j++) {
       Ref pair = curr[1][j];
       IString name = pair[0]->getIString();
-      function->locals.emplace_back(name, detectWasmType(pair[1]));
+      AsmType asmType = detectType(pair[1], nullptr, true);
+      function->locals.emplace_back(name, asmToWasmType(asmType));
       functionVariables.insert(name);
+      asmData.addVar(name, asmType);
     }
     start++;
   }
@@ -487,7 +501,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
     } else if (what == BINARY) {
       BinaryOp binary;
       RelationalOp relational;
-      bool isBinary = parseAsmBinaryOp(ast[1]->getIString(), ast[2], ast[3], binary, relational);
+      bool isBinary = parseAsmBinaryOp(ast[1]->getIString(), ast[2], ast[3], binary, relational, &asmData);
       if (isBinary) {
         auto ret = allocator.alloc<Binary>();
         ret->op = binary;
@@ -566,7 +580,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         Call* ret;
         if (imports.find(name) != imports.end()) {
           ret = allocator.alloc<CallImport>();
-          noteImportedFunctionCall(ast, astStackHelper.getParent());
+          noteImportedFunctionCall(ast, astStackHelper.getParent(), &asmData);
         } else {
           ret = allocator.alloc<Call>();
         }
