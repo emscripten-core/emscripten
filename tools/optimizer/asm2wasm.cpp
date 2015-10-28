@@ -106,7 +106,7 @@ class Asm2WasmModule : public wasm::Module {
     for (unsigned i = 0; i < args->size(); i++) {
       type.params.push_back(detectWasmType(args[i]));
     }
-    // if we already saw this signature, verify it's the same (or else we need to split)
+    // if we already saw this signature, verify it's the same (or else handle that)
     if (importedFunctionTypes.find(importName) != importedFunctionTypes.end()) {
       FunctionType& previous = importedFunctionTypes[importName];
 #if 0
@@ -115,7 +115,21 @@ class Asm2WasmModule : public wasm::Module {
       std::cout << "\nsecond: ";
       previous.print(std::cout, 0) << ".\n";
 #endif
-      assert(type == previous);
+      if (type != previous) {
+        // merge it in. we'll add on extra 0 parameters for ones not actually used, etc.
+        for (size_t i = 0; i < type.params.size(); i++) {
+          if (previous.params.size() > i) {
+            if (previous.params[i] == none) {
+              previous.params[i] = type.params[i]; // use a more concrete type
+            } else {
+              previous.params.push_back(type.params[i]); // add a new param
+            }
+          }
+        }
+        if (previous.result == none) {
+          previous.result = type.result; // use a more concrete type
+        }
+      }
     } else {
       importedFunctionTypes[importName] = type;
     }
