@@ -898,8 +898,6 @@ mergeInto(LibraryManager.library, {
     if (_request == "POST") {
       //Send the proper header information along with the request
       http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-      http.setRequestHeader("Content-length", _param.length);
-      http.setRequestHeader("Connection", "close");
       http.send(_param);
     } else {
       http.send(null);
@@ -962,8 +960,6 @@ mergeInto(LibraryManager.library, {
     if (_request == "POST") {
       //Send the proper header information along with the request
       http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-      http.setRequestHeader("Content-length", _param.length);
-      http.setRequestHeader("Connection", "close");
       http.send(_param);
     } else {
       http.send(null);
