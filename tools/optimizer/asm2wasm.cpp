@@ -596,7 +596,19 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
           ret->value = process(ast[2][2]);
           return ret;
         }
-        abort_on("wasm has no unary not, logical or bitwise", ast);
+        // no bitwise unary not, so do xor with -1
+        auto ret = allocator.alloc<Binary>();
+        ret->op = Xor;
+        ret->left = process(ast[2]);
+        ret->right = allocator.alloc<Const>()->set(Literal(int32_t(-1)));
+        return ret;
+      } else if (ast[1] == L_NOT) {
+        // no logical unary not, so do == 0
+        auto ret = allocator.alloc<Compare>();
+        ret->op = Eq;
+        ret->left = process(ast[2]);
+        ret->right = allocator.alloc<Const>()->set(Literal(0));
+        return ret;
       }
       abort_on("bad unary", ast);
     } else if (what == IF) {

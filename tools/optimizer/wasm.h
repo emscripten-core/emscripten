@@ -413,6 +413,11 @@ class Const : public Expression {
 public:
   Literal value;
 
+  Const* set(Literal value_) {
+    value = value_;
+    return this;
+  }
+
   std::ostream& print(std::ostream &o, unsigned indent) override {
     o << "(literal ";
     value.print(o);
