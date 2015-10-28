@@ -114,8 +114,8 @@ AsmType detectType(Ref node, AsmData *asmData, bool inVarDef) {
       break;
     }
   }
-  dump("horrible", node);
-  assert(0);
+  //dump("horrible", node);
+  //assert(0);
   return ASM_NONE;
 }
 

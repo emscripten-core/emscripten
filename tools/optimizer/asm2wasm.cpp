@@ -101,14 +101,20 @@ class Asm2WasmModule : public wasm::Module {
     IString importName = ast[1][1]->getIString();
     FunctionType type;
     type.name = IString((std::string("type$") + importName.str).c_str(), false); // TODO: make a list of such types
-    BasicType result = detectWasmType(parent);
+    type.result = detectWasmType(parent);
     Ref args = ast[2];
     for (unsigned i = 0; i < args->size(); i++) {
       type.params.push_back(detectWasmType(args[i]));
     }
     // if we already saw this signature, verify it's the same (or else we need to split)
-    if (imports.find(importName) != imports.end()) {
+    if (importedFunctionTypes.find(importName) != importedFunctionTypes.end()) {
       FunctionType& previous = importedFunctionTypes[importName];
+#if 0
+      std::cout << "compare " << importName.str << "\nfirst: ";
+      type.print(std::cout, 0);
+      std::cout << "\nsecond: ";
+      previous.print(std::cout, 0) << ".\n";
+#endif
       assert(type == previous);
     } else {
       importedFunctionTypes[importName] = type;
@@ -121,10 +127,12 @@ public:
 
 private:
   BasicType detectWasmType(Ref ast) {
-    AsmType asmType = detectType(ast);
-    if (asmType == ASM_INT) return BasicType::i32;
-    if (asmType == ASM_DOUBLE) return BasicType::f64;
-    abort_on("confused detectWasmType", ast);
+    switch (detectType(ast)) {
+      case ASM_INT: return BasicType::i32;
+      case ASM_DOUBLE: return BasicType::f64;
+      case ASM_NONE: return BasicType::none;
+      default: abort_on("confused detectWasmType", ast);
+    }
   }
 
   bool isInteger(double num) {
@@ -134,7 +142,7 @@ private:
     return ast[0] == NUM && isInteger(ast[1]->getNumber());
   }
 
-  bool isUnsignedCoercion(Ref ast) {
+  bool isUnsignedCoercion(Ref ast) { // TODO: use detectSign?
     if (ast[0] == BINARY && ast[1] == TRSHIFT) return true;
     return false;
   }

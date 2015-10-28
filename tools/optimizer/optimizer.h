@@ -32,6 +32,7 @@ enum AsmType {
 };
 
 struct AsmData;
+
 AsmType detectType(Ref node, AsmData *asmData=nullptr, bool inVarDef=false);
 
 struct AsmData {

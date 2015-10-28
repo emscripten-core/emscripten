@@ -532,12 +532,13 @@ public:
   std::ostream& print(std::ostream &o, unsigned indent) {
     o << "(type " << name.str;
     incIndent(o, indent);
+    doIndent(o, indent);
     for (auto& param : params) {
       o << "(param ";
       printBasicType(o, param) << ") ";
     }
     o << "(result ";
-    printBasicType(o, result) << ")";
+    printBasicType(o, result) << ")\n";
     decIndent(o, indent);
     return o;
   }
