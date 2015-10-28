@@ -18,14 +18,18 @@ IString GLOBAL("global"), NAN_("NaN"), INFINITY_("Infinity"),
         IMPOSSIBLE_CONTINUE("impossible-continue");
 
 
+static void abort_on(std::string why) {
+  std::cerr << why << '\n';
+  abort();
+}
 static void abort_on(std::string why, Ref element) {
   std::cerr << why << ' ';
   element->stringify(std::cerr);
-  std::cerr << "\n";
+  std::cerr << '\n';
   abort();
 }
 static void abort_on(std::string why, IString element) {
-  std::cerr << why << ' ' << element.str << "\n";
+  std::cerr << why << ' ' << element.str << '\n';
   abort();
 }
 
@@ -112,7 +116,7 @@ private:
     left->stringify(std::cout);
     std::cout << " => ";
     printBasicType(std::cout, leftType);
-    std::cout << "\n";
+    std::cout << '\n';
     right->stringify(std::cout);
     std::cout << " => ";
     printBasicType(std::cout, detectWasmType(right));
@@ -124,6 +128,12 @@ private:
         { binary = isUnsigned ? BinaryOp::DivU : BinaryOp::DivS; return true; }
       }
       { binary = BinaryOp::Div; return true; }
+    }
+    if (op == MOD) {
+      if (isInteger) {
+        { binary = isUnsigned ? BinaryOp::RemU : BinaryOp::RemS; return true; }
+      }
+      abort_on("non-integer rem");
     }
     if (op == GE) {
       if (isInteger) {
@@ -384,7 +394,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
     if (debug) {
       std::cout << "at: ";
       ast->stringify(std::cout);
-      std::cout << "\n";
+      std::cout << '\n';
     }
     IString what = ast[0]->getIString();
     if (what == STAT) {
@@ -714,7 +724,7 @@ int main(int argc, char **argv) {
   Ref asmjs = builder.parseToplevel(input);
 
   //asmjs->stringify(std::cout);
-  //std::cout << "\n";
+  //std::cout << '\n';
 
   printf("wasming...\n");
   Asm2WasmModule wasm;
