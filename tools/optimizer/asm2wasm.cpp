@@ -491,7 +491,8 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
     }
     start++;
   }
-  function->result = BasicType::none; // updated if we see a return
+
+  bool seenReturn = false; // function->result is updated if we see a return
   Block *topmost = nullptr; // created if we need one for a return
   // processors
   std::function<Expression* (Ref, unsigned)> processStatements;
@@ -693,6 +694,12 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       }
       return ret;
     } else if (what == RETURN) {
+      BasicType type = !!ast[1] ? detectWasmType(ast[1], &asmData) : none;
+      if (seenReturn) {
+        assert(function->result == type);
+      } else {
+        function->result = type;
+      }
       // wasm has no return, so we just break on the topmost block
       if (!topmost) {
         topmost = allocator.alloc<Block>();
