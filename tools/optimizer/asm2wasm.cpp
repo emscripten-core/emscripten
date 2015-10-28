@@ -528,7 +528,14 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
     } else if (what == BREAK) {
       auto ret = allocator.alloc<Break>();
       assert(breakStack.size() > 0);
-      ret->var = !!ast[1] ? ast[1]->getIString() : breakStack.back();
+      ret->var = !!ast[1] ? getBreakLabelName(ast[1]->getIString()) : breakStack.back();
+      ret->condition = nullptr;
+      ret->value = nullptr;
+      return ret;
+    } else if (what == CONTINUE) {
+      auto ret = allocator.alloc<Break>();
+      assert(continueStack.size() > 0);
+      ret->var = !!ast[1] ? getContinueLabelName(ast[1]->getIString()) : continueStack.back();
       ret->condition = nullptr;
       ret->value = nullptr;
       return ret;
