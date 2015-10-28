@@ -163,6 +163,8 @@ struct Literal {
   Literal(double  init) : type(BasicType::f64), f64(init) {}
 
   std::ostream& print(std::ostream &o) {
+    o << '(';
+    printBasicType(o, type) << ".const ";
     switch (type) {
       case none: abort();
       case BasicType::i32: o << i32; break;
@@ -170,6 +172,7 @@ struct Literal {
       case BasicType::f32: o << f32; break;
       case BasicType::f64: o << f64; break;
     }
+    o << ')';
     return o;
   }
 };
@@ -467,9 +470,8 @@ public:
   }
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    o << "(literal ";
     value.print(o);
-    o << ')';
+    return o;
   }
 };
 
