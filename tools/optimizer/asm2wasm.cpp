@@ -561,13 +561,24 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       ret->ptr = processUnshifted(ast[2], view.bytes);
       return ret;
     } else if (what == UNARY_PREFIX) {
+      assert(ast[1] == PLUS);
       if (ast[2][0] == NUM) {
         auto ret = allocator.alloc<Const>();
         ret->value.type = BasicType::f64;
         ret->value.f64 = ast[2][1]->getNumber();
         return ret;
       }
-      return process(ast[2]); // look through the coercion
+      AsmType childType = detectType(ast[2], AsmData);
+      if (childType != ASM_DOUBLE) {
+        if (childType == ASM_INT) {
+          auto ret = allocator.alloc<Convert>();
+          ret->op = isUnsignedCoercion(ast[2]) ? ConvertUInt32 : ConvertSInt32;
+          ret->value = process(ast[2]);
+          return ret;
+        }
+        abort_on("bad to_double", childType);
+      }
+      return process(ast[2]); // just look through the coercion
     } else if (what == IF) {
       auto ret = allocator.alloc<If>();
       ret->condition = process(ast[1]);
