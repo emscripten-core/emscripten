@@ -107,9 +107,18 @@ private:
     if (op == EQ) { relational = RelationalOp::Eq; return false; }
     if (op == NE) { relational = RelationalOp::Ne; return false; }
     BasicType leftType = detectWasmType(left);
+#if 0
+    std::cout << "CHECK\n";
+    left->stringify(std::cout);
+    std::cout << " => ";
+    printBasicType(std::cout, leftType);
+    std::cout << "\n";
+    right->stringify(std::cout);
+    std::cout << " => ";
+    printBasicType(std::cout, detectWasmType(right));
+#endif
     bool isInteger = leftType == BasicType::i32;
-    bool isUnsigned = isUnsignedCoercion(left);
-    assert(isUnsigned == isUnsignedCoercion(right));
+    bool isUnsigned = isUnsignedCoercion(left) || isUnsignedCoercion(right);
     if (op == DIV) {
       if (isInteger) {
         { binary = isUnsigned ? BinaryOp::DivU : BinaryOp::DivS; return true; }
