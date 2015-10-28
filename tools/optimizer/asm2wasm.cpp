@@ -550,7 +550,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       ret->value = nullptr;
       return ret;
     } else if (what == WHILE) {
-      assert(ast[1][0] == NUM && ast[1][1]->getInteger() == 1);
+      bool forever = ast[1][0] == NUM && ast[1][1]->getInteger() == 1;
       auto ret = allocator.alloc<Loop>();
       IString out, in;
       if (!parentLabel.isNull()) {
@@ -565,7 +565,18 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       ret->in = in;
       breakStack.push_back(out);
       continueStack.push_back(in);
-      ret->body = process(ast[2]);
+      if (forever) {
+        ret->body = process(ast[2]);
+      } else {
+        Break *continueWhile = allocator.alloc<Break>();
+        continueWhile->var = in;
+        continueWhile->condition = process(ast[1]);
+        continueWhile->value = nullptr;
+        auto body = allocator.alloc<Block>();
+        body->list.push_back(continueWhile);
+        body->list.push_back(process(ast[2]));
+        ret->body = body;
+      }
       continueStack.pop_back();
       breakStack.pop_back();
       return ret;
