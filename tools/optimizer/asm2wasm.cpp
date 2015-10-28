@@ -247,6 +247,19 @@ private:
     }
   }
 
+  // function table null thunks are always named b\d+
+  bool isNullThunk(IString name) {
+    const char *str = name.str;
+    if (*str != 'b') return false;
+    str++;
+    while (1) {
+      if (*str < '0' || *str > '9') return false;
+      str++;
+      if (*str == 0) break;
+    }
+    return true;
+  }
+
   wasm::Arena tempAllocator;
 
   std::map<unsigned, Ref> tempNums;
@@ -364,10 +377,19 @@ void Asm2WasmModule::processAsm(Ref ast) {
           assert(views.find(name) == views.end());
           views.emplace(name, View(bytes, integer, signed_));
         } else if (value[0] == ARRAY) {
-          // function table
+          // function table. we "merge" them, so e.g.   [foo, b1] , [b2, bar]  =>  [foo, bar] , assuming b* are the aborting thunks
           Ref contents = value[1];
           for (unsigned k = 0; k < contents->size(); k++) {
-            table.vars.push_back(contents[k][1]->getIString());
+            IString curr = contents[k][1]->getIString();
+            if (table.vars.size() <= k) {
+              table.vars.push_back(curr);
+            } else {
+              if (isNullThunk(table.vars[k].getName())) {
+                table.vars[k] = curr;
+              } else {
+                assert(isNullThunk(curr) && "cannot have aliasing function pointers");
+              }
+            }
           }
         } else {
           abort_on("invalid var element", pair);
@@ -898,6 +920,5 @@ int main(int argc, char **argv) {
 
   printf("done.\n");
   printf("TODO: get memory for globals, and clear it to zero; and read values for imports\n");
-  printf("TODO: assert on no aliasing function pointers\n");
 }
 
