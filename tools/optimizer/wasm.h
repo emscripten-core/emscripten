@@ -561,16 +561,19 @@ public:
   std::vector<BasicType> params;
 
   std::ostream& print(std::ostream &o, unsigned indent) {
-    o << "(type " << name.str;
-    incIndent(o, indent);
-    doIndent(o, indent);
-    for (auto& param : params) {
-      o << "(param ";
-      printBasicType(o, param) << ") ";
+    if (params.size() > 0) {
+      o << "(param";
+      for (auto& param : params) {
+        o << ' ';
+        printBasicType(o, param);
+      }
+      o << ')';
     }
-    o << "(result ";
-    printBasicType(o, result) << ")\n";
-    decIndent(o, indent);
+    if (result != none) {
+      if (params.size() > 0) o << ' ';
+      o << "(result ";
+      printBasicType(o, result) << ')';
+    }
     return o;
   }
 
