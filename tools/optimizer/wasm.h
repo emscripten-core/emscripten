@@ -381,7 +381,7 @@ public:
   Var id;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    o << "(getlocal ";
+    o << "(get_local ";
     id.print(o) << ')';
     return o;
   }
@@ -393,7 +393,7 @@ public:
   Expression *value;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    o << "(setlocal ";
+    o << "(set_local ";
     id.print(o);
     incIndent(o, indent);
     printFullLine(o, indent, value);
@@ -509,16 +509,16 @@ public:
       case Add:      o << "add"; break;
       case Sub:      o << "sub"; break;
       case Mul:      o << "mul"; break;
-      case DivS:     o << "divs"; break;
-      case DivU:     o << "divu"; break;
-      case RemS:     o << "rems"; break;
-      case RemU:     o << "remu"; break;
+      case DivS:     o << "div_s"; break;
+      case DivU:     o << "div_u"; break;
+      case RemS:     o << "rem_s"; break;
+      case RemU:     o << "rem_u"; break;
       case And:      o << "and"; break;
       case Or:       o << "or"; break;
       case Xor:      o << "xor"; break;
       case Shl:      o << "shl"; break;
-      case ShrU:     o << "shru"; break;
-      case ShrS:     o << "shrs"; break;
+      case ShrU:     o << "shr_u"; break;
+      case ShrS:     o << "shr_s"; break;
       case Div:      o << "div"; break;
       case CopySign: o << "copysign"; break;
       case Min:      o << "min"; break;
@@ -543,18 +543,19 @@ public:
   }
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    o << "(compare ";
+    o << '(';
+    printBasicType(o, type) << '.';
     switch (op) {
       case Eq:  o << "eq"; break;
       case Ne:  o << "ne"; break;
-      case LtS: o << "lts"; break;
-      case LtU: o << "ltu"; break;
-      case LeS: o << "les"; break;
-      case LeU: o << "leu"; break;
-      case GtS: o << "gts"; break;
-      case GtU: o << "gtu"; break;
-      case GeS: o << "ges"; break;
-      case GeU: o << "geu"; break;
+      case LtS: o << "lt_s"; break;
+      case LtU: o << "lt_u"; break;
+      case LeS: o << "le_s"; break;
+      case LeU: o << "le_u"; break;
+      case GtS: o << "gt_s"; break;
+      case GtU: o << "gt_u"; break;
+      case GeS: o << "ge_s"; break;
+      case GeU: o << "ge_u"; break;
       case Lt:  o << "lt"; break;
       case Le:  o << "le"; break;
       case Gt:  o << "gt"; break;
