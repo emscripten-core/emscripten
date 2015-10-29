@@ -142,6 +142,38 @@ class Asm2WasmModule : public wasm::Module {
     }
   }
 
+  char getSigFromType(BasicType type) {
+    switch (type) {
+      case i32:  return 'i';
+      case f64:  return 'd';
+      case none: return 'v';
+      default: abort();
+    }
+  }
+
+  FunctionType *getFunctionType(Ref parent, ExpressionList& operands) {
+    // generate signature
+    BasicType result = detectWasmType(parent, nullptr);
+    std::string str = "FUNCSIG$";
+    str += getSigFromType(result);
+    for (auto operand : operands) {
+      str += getSigFromType(operand->type);
+    }
+    IString sig(str.c_str(), false);
+    if (functionTypes.find(sig) == functionTypes.end()) {
+      // add new type
+      auto type = allocator.alloc<FunctionType>();
+      type->name = sig;
+      type->result = result;
+      for (auto operand : operands) {
+        type->params.push_back(operand->type);
+      }
+      functionTypes[sig] = type;
+      assert(functionTypes.find(sig) != functionTypes.end());
+    }
+    return functionTypes[sig];
+  }
+
 public:
   Asm2WasmModule() : nextGlobal(8), maxGlobal(1000) {}
   void processAsm(Ref ast);
@@ -735,6 +767,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       for (unsigned i = 0; i < args->size(); i++) {
         ret->operands.push_back(process(args[i]));
       }
+      ret->type = getFunctionType(astStackHelper.getParent(), ret->operands);
       return ret;
     } else if (what == RETURN) {
       BasicType type = !!ast[1] ? detectWasmType(ast[1], &asmData) : none;
