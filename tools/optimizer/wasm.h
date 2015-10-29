@@ -71,7 +71,7 @@ struct Name : public cashew::IString {
 
   std::ostream& print(std::ostream &o) {
     assert(str);
-    o << str;
+    o << '$' << str; // reference interpreter requires we prefix all names
     return o;
   }
 };
@@ -682,11 +682,13 @@ public:
   Expression *body;
 
   std::ostream& print(std::ostream &o, unsigned indent) {
-    printOpening(o, "func ", true) << name.str;
+    printOpening(o, "func ", true);
+    name.print(o);
     if (params.size() > 0) {
       for (auto& param : params) {
         o << ' ';
-        printMinorOpening(o, "param ") << param.name.str << " ";
+        printMinorOpening(o, "param ");
+        param.name.print(o) << param.name.str << " ";
         printBasicType(o, param.type) << ")";
       }
     }
@@ -698,7 +700,8 @@ public:
     incIndent(o, indent);
     for (auto& local : locals) {
       doIndent(o, indent);
-      printMinorOpening(o, "local ") << local.name.str << " ";
+      printMinorOpening(o, "local ");
+      local.name.print(o) << " ";
       printBasicType(o, local.type) << ")\n";
     }
     printFullLine(o, indent, body);
@@ -713,7 +716,8 @@ public:
   FunctionType type;
 
   std::ostream& print(std::ostream &o, unsigned indent) {
-    printOpening(o, "import ") << name.str << ' ';
+    printOpening(o, "import ");
+    name.print(o) << ' ';
     printText(o, module.str) << ' ';
     printText(o, base.str) << ' ';
     type.print(o, indent);
@@ -729,6 +733,7 @@ public:
 
   std::ostream& print(std::ostream &o, unsigned indent) {
     printOpening(o, "export") << ' ';
+    name.print(o) << ' ';
     printText(o, name.str) << ' ';
     value.print(o);
     o << ')';
