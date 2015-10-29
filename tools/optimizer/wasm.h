@@ -743,7 +743,6 @@ public:
 
   std::ostream& print(std::ostream &o, unsigned indent) {
     printOpening(o, "export") << ' ';
-    name.print(o) << ' ';
     printText(o, name.str) << ' ';
     value.print(o);
     o << ')';
