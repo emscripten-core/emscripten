@@ -39,6 +39,7 @@ struct IString {
 
   IString() : str(nullptr) {}
   IString(const char *s, bool reuse=true) { // if reuse=true, then input is assumed to remain alive; not copied
+    assert(s);
     set(s, reuse);
   }
 
