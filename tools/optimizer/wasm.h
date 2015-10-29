@@ -122,6 +122,33 @@ BasicType getBasicType(unsigned size, bool float_) {
   abort();
 }
 
+void prepareMajorColor(std::ostream &o) {
+  Colors::red(o);
+  Colors::bold(o);
+}
+
+void prepareColor(std::ostream &o) {
+  Colors::magenta(o);
+  Colors::bold(o);
+}
+
+void prepareMinorColor(std::ostream &o) {
+  Colors::orange(o);
+}
+
+void restoreNormalColor(std::ostream &o) {
+  Colors::normal(o);
+}
+
+std::ostream& printText(std::ostream &o, const char *str) {
+  o << '"';
+  Colors::green(o);
+  o << str;
+  Colors::normal(o);
+  o << '"';
+  return o;
+}
+
 struct Literal {
   BasicType type;
   union {
@@ -139,6 +166,7 @@ struct Literal {
 
   std::ostream& print(std::ostream &o) {
     o << '(';
+    prepareMinorColor(o);
     printBasicType(o, type) << ".const ";
     switch (type) {
       case none: abort();
@@ -147,6 +175,7 @@ struct Literal {
       case BasicType::f32: o << f32; break;
       case BasicType::f64: o << f64; break;
     }
+    restoreNormalColor(o);
     o << ')';
     return o;
   }
@@ -202,19 +231,19 @@ std::ostream& printFullLine(std::ostream &o, unsigned indent, Expression *expres
   o << '\n';
 }
 
-std::ostream& printOpening(std::ostream &o, const char *str) {
+std::ostream& printOpening(std::ostream &o, const char *str, bool major=false) {
   o << '(';
-  Colors::red(o);
+  major ? prepareMajorColor(o) : prepareColor(o);
   o << str;
-  Colors::normal(o);
+  restoreNormalColor(o);
   return o;
 }
 
 std::ostream& printMinorOpening(std::ostream &o, const char *str) {
   o << '(';
-  Colors::orange(o);
+  prepareMinorColor(o);
   o << str;
-  Colors::normal(o);
+  restoreNormalColor(o);
   return o;
 }
 
@@ -408,6 +437,7 @@ public:
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
     o << '(';
+    prepareColor(o);
     printBasicType(o, getBasicType(bytes, float_)) << ".load";
     if (bytes < 4) {
       if (bytes == 1) {
@@ -419,6 +449,7 @@ public:
       }
       if (!signed_) o << "_u";
     }
+    restoreNormalColor(o);
     o << " align=" << align;
     assert(!offset);
     incIndent(o, indent);
@@ -437,8 +468,8 @@ public:
   Expression *ptr, *value;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-
     o << '(';
+    prepareColor(o);
     printBasicType(o, getBasicType(bytes, float_)) << ".store";
     if (bytes < 4) {
       if (bytes == 1) {
@@ -449,6 +480,7 @@ public:
         abort();
       }
     }
+    restoreNormalColor(o);
     o << " align=" << align;
     assert(!offset);
     incIndent(o, indent);
@@ -499,6 +531,7 @@ public:
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
     o << '(';
+    prepareColor(o);
     printBasicType(o, type) << '.';
     switch (op) {
       case Add:      o << "add"; break;
@@ -520,6 +553,7 @@ public:
       case Max:      o << "max"; break;
       default: abort();
     }
+    restoreNormalColor(o);
     incIndent(o, indent);
     printFullLine(o, indent, left);
     printFullLine(o, indent, right);
@@ -539,6 +573,7 @@ public:
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
     o << '(';
+    prepareColor(o);
     printBasicType(o, type) << '.';
     switch (op) {
       case Eq:  o << "eq"; break;
@@ -557,6 +592,7 @@ public:
       case Ge:  o << "ge"; break;
       default: abort();
     }
+    restoreNormalColor(o);
     incIndent(o, indent);
     printFullLine(o, indent, left);
     printFullLine(o, indent, right);
@@ -646,10 +682,11 @@ public:
   Expression *body;
 
   std::ostream& print(std::ostream &o, unsigned indent) {
-    printOpening(o, "func ") << name.str;
+    printOpening(o, "func ", true) << name.str;
     if (params.size() > 0) {
       for (auto& param : params) {
-        printMinorOpening(o, " (param ") << param.name.str << " ";
+        o << ' ';
+        printMinorOpening(o, "param ") << param.name.str << " ";
         printBasicType(o, param.type) << ")";
       }
     }
@@ -676,7 +713,9 @@ public:
   FunctionType type;
 
   std::ostream& print(std::ostream &o, unsigned indent) {
-    printOpening(o, "import ") << name.str << " \"" << module.str << "\" \"" << base.str << "\" ";
+    printOpening(o, "import ") << name.str << ' ';
+    printText(o, module.str) << ' ';
+    printText(o, base.str) << ' ';
     type.print(o, indent);
     o << ')';
     return o;
@@ -689,7 +728,8 @@ public:
   Name value;
 
   std::ostream& print(std::ostream &o, unsigned indent) {
-    printOpening(o, "export") << " \"" << name.str << "\" ";
+    printOpening(o, "export") << ' ';
+    printText(o, name.str) << ' ';
     value.print(o);
     o << ')';
     return o;
@@ -729,7 +769,7 @@ public:
 
   std::ostream& print(std::ostream &o) {
     unsigned indent = 0;
-    printOpening(o, "module");
+    printOpening(o, "module", true);
     incIndent(o, indent);
     for (auto& curr : functionTypes) {
       doIndent(o, indent);
