@@ -8,6 +8,8 @@
 #include <map>
 #include <vector>
 
+#include "colors.h"
+
 namespace wasm {
 
 // Utilities
@@ -200,6 +202,22 @@ std::ostream& printFullLine(std::ostream &o, unsigned indent, Expression *expres
   o << '\n';
 }
 
+std::ostream& printOpening(std::ostream &o, const char *str) {
+  o << '(';
+  Colors::red(o);
+  o << str;
+  Colors::normal(o);
+  return o;
+}
+
+std::ostream& printMinorOpening(std::ostream &o, const char *str) {
+  o << '(';
+  Colors::orange(o);
+  o << str;
+  Colors::normal(o);
+  return o;
+}
+
 typedef std::vector<Expression*> ExpressionList; // TODO: optimize  
 
 class Nop : public Expression {
@@ -215,7 +233,7 @@ public:
   ExpressionList list;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    o << "(block";
+    printOpening(o, "block");
     if (var.is()) {
       o << " ";
       var.print(o);
@@ -234,7 +252,7 @@ public:
   Expression *condition, *ifTrue, *ifFalse;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    o << "(if";
+    printOpening(o, "if");
     incIndent(o, indent);
     printFullLine(o, indent, condition);
     printFullLine(o, indent, ifTrue);
@@ -250,7 +268,7 @@ public:
   Expression *body;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    o << "(loop";
+    printOpening(o, "loop");
     if (out.is()) {
       o << " ";
       out.print(o);
@@ -277,7 +295,7 @@ public:
   Expression *condition, *value;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    o << "(break ";
+    printOpening(o, "break ");
     var.print(o);
     incIndent(o, indent);
     if (condition) printFullLine(o, indent, condition);
@@ -301,7 +319,7 @@ public:
   Expression *default_;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    o << "(switch ";
+    printOpening(o, "switch ");
     var.print(o);
     incIndent(o, indent);
     printFullLine(o, indent, value);
@@ -318,7 +336,7 @@ public:
   ExpressionList operands;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    o << "(call ";
+    printOpening(o, "call ");
     target.print(o);
     if (operands.size() > 0) {
       incIndent(o, indent);
@@ -342,7 +360,7 @@ public:
   ExpressionList operands;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    o << "(callindirect ";
+    printOpening(o, "callindirect ");
     incIndent(o, indent);
     printFullLine(o, indent, target);
     for (auto operand : operands) {
@@ -358,7 +376,7 @@ public:
   Name id;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    o << "(get_local ";
+    printOpening(o, "get_local ");
     id.print(o) << ')';
     return o;
   }
@@ -370,7 +388,7 @@ public:
   Expression *value;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    o << "(set_local ";
+    printOpening(o, "set_local ");
     id.print(o);
     incIndent(o, indent);
     printFullLine(o, indent, value);
@@ -462,7 +480,7 @@ public:
   Expression *value;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    o << "(unary ";
+    printOpening(o, "unary ");
     switch (op) {
       case Neg: o << "neg"; break;
       default: abort();
@@ -553,7 +571,7 @@ public:
   Expression *value;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    o << "(convert ";
+    printOpening(o, "convert ");
     switch (op) {
       case ConvertUInt32: o << "uint32toDouble"; break;
       case ConvertSInt32: o << "sint32toDouble"; break;
@@ -590,7 +608,7 @@ public:
 
   std::ostream& print(std::ostream &o, unsigned indent) {
     if (params.size() > 0) {
-      o << "(param";
+      printMinorOpening(o, "param");
       for (auto& param : params) {
         o << ' ';
         printBasicType(o, param);
@@ -599,7 +617,7 @@ public:
     }
     if (result != none) {
       if (params.size() > 0) o << ' ';
-      o << "(result ";
+      printMinorOpening(o, "result ");
       printBasicType(o, result) << ')';
     }
     return o;
@@ -628,21 +646,22 @@ public:
   Expression *body;
 
   std::ostream& print(std::ostream &o, unsigned indent) {
-    o << "(func " << name.str;
+    printOpening(o, "func ") << name.str;
     if (params.size() > 0) {
       for (auto& param : params) {
-        o << " (param " << param.name.str << " ";
+        printMinorOpening(o, " (param ") << param.name.str << " ";
         printBasicType(o, param.type) << ")";
       }
     }
     if (result != none) {
-      o << " (result ";
+      o << ' ';
+      printMinorOpening(o, "result ");
       printBasicType(o, result) << ")";
     }
     incIndent(o, indent);
     for (auto& local : locals) {
       doIndent(o, indent);
-      o << "(local " << local.name.str << " ";
+      printMinorOpening(o, "local ") << local.name.str << " ";
       printBasicType(o, local.type) << ")\n";
     }
     printFullLine(o, indent, body);
@@ -657,7 +676,7 @@ public:
   FunctionType type;
 
   std::ostream& print(std::ostream &o, unsigned indent) {
-    o << "(import " << name.str << " \"" << module.str << "\" \"" << base.str << "\" ";
+    printOpening(o, "import ") << name.str << " \"" << module.str << "\" \"" << base.str << "\" ";
     type.print(o, indent);
     o << ')';
     return o;
@@ -670,7 +689,7 @@ public:
   Name value;
 
   std::ostream& print(std::ostream &o, unsigned indent) {
-    o << "(export \"" << name.str << "\" ";
+    printOpening(o, "export") << " \"" << name.str << "\" ";
     value.print(o);
     o << ')';
     return o;
@@ -682,7 +701,7 @@ public:
   std::vector<Name> vars;
 
   std::ostream& print(std::ostream &o, unsigned indent) {
-    o << "(table";
+    printOpening(o, "table");
     for (auto var : vars) {
       o << ' ';
       var.print(o);
@@ -710,7 +729,7 @@ public:
 
   std::ostream& print(std::ostream &o) {
     unsigned indent = 0;
-    o << "(module";
+    printOpening(o, "module");
     incIndent(o, indent);
     for (auto& curr : functionTypes) {
       doIndent(o, indent);
