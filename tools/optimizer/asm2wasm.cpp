@@ -316,7 +316,7 @@ void Asm2WasmModule::processAsm(Ref ast) {
   Ref asmFunction = ast[1][0];
   assert(asmFunction[0] == DEFUN);
   Ref body = asmFunction[3];
-  assert(body[0][0] == STAT && body[0][1][0] == STRING && body[0][1][1]->getIString() == IString("use asm"));
+  assert(body[0][0] == STAT && body[0][1][0] == STRING && (body[0][1][1]->getIString() == IString("use asm") || body[0][1][1]->getIString() == IString("almost asm")));
 
   auto addImport = [&](IString name, Ref imported, BasicType type) {
     assert(imported[0] == DOT);
