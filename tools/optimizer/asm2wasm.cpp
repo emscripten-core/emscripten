@@ -91,7 +91,7 @@ struct WasmWalker {
     }
     if (If *cast = dynamic_cast<If*>(curr)) {
       cast->condition = walk(cast->condition);
-      cast->ifTrue = walk(cast->ifFalse);
+      cast->ifTrue = walk(cast->ifTrue);
       cast->ifFalse = walk(cast->ifFalse);
       return walkIf(cast);
     }
@@ -1110,9 +1110,8 @@ void Asm2WasmModule::optimize() {
 
     Expression* walkBlock(Block *curr) override {
       if (curr->list.size() != 1) return curr;
-      // if just one element, maybe we can return just the element
+      // just one element; maybe we can return just the element
       if (curr->var.isNull()) return curr->list[0];
-
       // we might be broken to, but if it's a trivial singleton child break, we can optimize here as well
       Break *child = dynamic_cast<Break*>(curr->list[0]);
       if (!child || child->var != curr->var || !child->value) return curr;
