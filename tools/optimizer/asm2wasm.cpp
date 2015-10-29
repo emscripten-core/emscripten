@@ -512,10 +512,28 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       return process(ast[1]); // and drop return value, if any
     } else if (what == ASSIGN) {
       if (ast[2][0] == NAME) {
-        auto ret = allocator.alloc<SetLocal>();
-        ret->id = ast[2][1]->getIString();
+        IString name = ast[2][1]->getIString();
+        if (functionVariables.has(name)) {
+          auto ret = allocator.alloc<SetLocal>();
+          ret->id = ast[2][1]->getIString();
+          ret->value = process(ast[3]);
+          ret->type = ret->value->type;
+          return ret;
+        }
+        // global var, do a store to memory
+        assert(mappedGlobals.find(name) != mappedGlobals.end());
+        MappedGlobal global = mappedGlobals[name];
+        auto ret = allocator.alloc<Store>();
+        ret->bytes = getBasicTypeSize(global.type);
+        ret->float_ = isFloat(global.type);
+        ret->offset = 0;
+        ret->align = ret->bytes;
+        auto ptr = allocator.alloc<Const>();
+        ptr->value.type = BasicType::i32; // XXX for wasm64, need 64
+        ptr->value.i32 = global.address;
+        ret->ptr = ptr;
         ret->value = process(ast[3]);
-        ret->type = ret->value->type;
+        ret->type = global.type;
         return ret;
       } else if (ast[2][0] == SUB) {
         Ref target = ast[2];
