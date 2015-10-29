@@ -46,7 +46,149 @@ static void abort_on(std::string why, IString element) {
   abort();
 }
 
-// useful when we need to see our parent, in an expression stack
+//
+// Simple WebAssembly optimizer, improves common patterns we get in asm2wasm.
+// Operates in-place.
+//
+
+class WasmOptimizer {
+  wasm::Arena& allocator; // use an existing allocator
+
+public:
+  WasmOptimizer(wasm::Arena& allocator) : allocator(allocator) {}
+
+  // Each method receives an AST pointer, and it is replaced with what is returned.
+  struct Walker {
+    virtual Expression* walkBlock(Block *curr) { return curr; };
+    virtual Expression* walkIf(If *curr) { return curr; };
+    virtual Expression* walkLoop(Loop *curr) { return curr; };
+    virtual Expression* walkLabel(Label *curr) { return curr; };
+    virtual Expression* walkBreak(Break *curr) { return curr; };
+    virtual Expression* walkSwitch(Switch *curr) { return curr; };
+    virtual Expression* walkCall(Call *curr) { return curr; };
+    virtual Expression* walkCallImport(CallImport *curr) { return curr; };
+    virtual Expression* walkCallIndirect(CallIndirect *curr) { return curr; };
+    virtual Expression* walkGetLocal(GetLocal *curr) { return curr; };
+    virtual Expression* walkSetLocal(SetLocal *curr) { return curr; };
+    virtual Expression* walkLoad(Load *curr) { return curr; };
+    virtual Expression* walkStore(Store *curr) { return curr; };
+    virtual Expression* walkConst(Const *curr) { return curr; };
+    virtual Expression* walkUnary(Unary *curr) { return curr; };
+    virtual Expression* walkBinary(Binary *curr) { return curr; };
+    virtual Expression* walkCompare(Compare *curr) { return curr; };
+    virtual Expression* walkConvert(Convert *curr) { return curr; };
+    virtual Expression* walkHost(Host *curr) { return curr; };
+  };
+
+  // children-first
+  Expression *walk(Expression *curr, Walker& walker) {
+    if (Block *cast = dynamic_cast<Block*>(curr)) {
+      ExpressionList& list = cast->list;
+      for (size_t z = 0; z < list.size(); z++) {
+        list[z] = walk(list[z], walker);
+      }
+      return walker.walkBlock(cast);
+    }
+    if (If *cast = dynamic_cast<If*>(curr)) {
+      cast->condition = walk(cast->condition, walker);
+      cast->ifTrue = walk(cast->ifFalse, walker);
+      cast->ifFalse = walk(cast->ifFalse, walker);
+      return walker.walkIf(cast);
+    }
+    if (Loop *cast = dynamic_cast<Loop*>(curr)) {
+      cast->body = walk(cast->body, walker);
+      return walker.walkLoop(cast);
+    }
+    if (Label *cast = dynamic_cast<Label*>(curr)) {
+      return walker.walkLabel(cast);
+    }
+    if (Break *cast = dynamic_cast<Break*>(curr)) {
+      cast->condition = walk(cast->condition, walker);
+      cast->value = walk(cast->value, walker);
+      return walker.walkBreak(cast);
+    }
+    if (Switch *cast = dynamic_cast<Switch*>(curr)) {
+      cast->value = walk(cast->value, walker);
+      for (auto& curr : cast->cases) {
+        curr.body = walk(curr.body, walker);
+      }
+      cast->default_ = walk(cast->default_, walker);
+      return walker.walkSwitch(cast);
+    }
+    if (Call *cast = dynamic_cast<Call*>(curr)) {
+      ExpressionList& list = cast->operands;
+      for (size_t z = 0; z < list.size(); z++) {
+        list[z] = walk(list[z], walker);
+      }
+      return walker.walkCall(cast);
+    }
+    if (CallImport *cast = dynamic_cast<CallImport*>(curr)) {
+      ExpressionList& list = cast->operands;
+      for (size_t z = 0; z < list.size(); z++) {
+        list[z] = walk(list[z], walker);
+      }
+      return walker.walkCallImport(cast);
+    }
+    if (CallIndirect *cast = dynamic_cast<CallIndirect*>(curr)) {
+      cast->target = walk(cast->target, walker);
+      ExpressionList& list = cast->operands;
+      for (size_t z = 0; z < list.size(); z++) {
+        list[z] = walk(list[z], walker);
+      }
+      return walker.walkCallIndirect(cast);
+    }
+    if (GetLocal *cast = dynamic_cast<GetLocal*>(curr)) {
+      return walker.walkGetLocal(cast);
+    }
+    if (SetLocal *cast = dynamic_cast<SetLocal*>(curr)) {
+      cast->value = walk(cast->value, walker);
+      return walker.walkSetLocal(cast);
+    }
+    if (Load *cast = dynamic_cast<Load*>(curr)) {
+      cast->ptr = walk(cast->ptr, walker);
+      return walker.walkLoad(cast);
+    }
+    if (Store *cast = dynamic_cast<Store*>(curr)) {
+      cast->ptr = walk(cast->ptr, walker);
+      cast->value = walk(cast->value, walker);
+      return walker.walkStore(cast);
+    }
+    if (Const *cast = dynamic_cast<Const*>(curr)) {
+      return walker.walkConst(cast);
+    }
+    if (Unary *cast = dynamic_cast<Unary*>(curr)) {
+      cast->value = walk(cast->value, walker);
+      return walker.walkUnary(cast);
+    }
+    if (Binary *cast = dynamic_cast<Binary*>(curr)) {
+      cast->left = walk(cast->left, walker);
+      cast->right = walk(cast->right, walker);
+      return walker.walkBinary(cast);
+    }
+    if (Compare *cast = dynamic_cast<Compare*>(curr)) {
+      cast->left = walk(cast->left, walker);
+      cast->right = walk(cast->right, walker);
+      return walker.walkCompare(cast);
+    }
+    if (Convert *cast = dynamic_cast<Convert*>(curr)) {
+      cast->value = walk(cast->value, walker);
+      return walker.walkConvert(cast);
+    }
+    if (Host *cast = dynamic_cast<Host*>(curr)) {
+      ExpressionList& list = cast->operands;
+      for (size_t z = 0; z < list.size(); z++) {
+        list[z] = walk(list[z], walker);
+      }
+      return walker.walkHost(cast);
+    }
+  }
+
+  void optimizeFunction(Function *func, Walker& walker) {
+    func->body = walk(func->body, walker);
+  }
+};
+
+// useful when we need to see our parent, in an asm.js expression stack
 struct AstStackHelper {
   static std::vector<Ref> astStack;
   AstStackHelper(Ref curr) {
@@ -959,6 +1101,8 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
 
   return function;
 }
+
+// main
 
 int main(int argc, char **argv) {
   debug = !!getenv("ASM2WASM_DEBUG") && getenv("ASM2WASM_DEBUG")[0] != '0';
