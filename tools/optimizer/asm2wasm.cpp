@@ -8,6 +8,8 @@
 using namespace cashew;
 using namespace wasm;
 
+bool debug;
+
 // Utilities
 
 IString GLOBAL("global"), NAN_("NaN"), INFINITY_("Infinity"),
@@ -530,14 +532,12 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
   std::function<Expression* (Ref, unsigned)> processStatements;
   std::function<Expression* (Ref, unsigned)> processUnshifted;
 
-  bool debug = !!getenv("ASM2WASM_DEBUG") && getenv("ASM2WASM_DEBUG")[0] != '0';
-
   std::function<Expression* (Ref)> process = [&](Ref ast) -> Expression* {
     AstStackHelper astStackHelper(ast); // TODO: only create one when we need it?
     if (debug) {
-      std::cout << "at: ";
-      ast->stringify(std::cout);
-      std::cout << '\n';
+      std::cerr << "at: ";
+      ast->stringify(std::cerr);
+      std::cerr << '\n';
     }
     IString what = ast[0]->getIString();
     if (what == STAT) {
@@ -961,9 +961,11 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
 }
 
 int main(int argc, char **argv) {
+  debug = !!getenv("ASM2WASM_DEBUG") && getenv("ASM2WASM_DEBUG")[0] != '0';
+
   char *infile = argv[1];
 
-  printf("loading '%s'...\n", infile);
+  if (debug) std::cerr << "loading '%s'...\n", infile;
   FILE *f = fopen(argv[1], "r");
   assert(f);
   fseek(f, 0, SEEK_END);
@@ -986,21 +988,17 @@ int main(int argc, char **argv) {
   // , we can remove the part until the function.
   */
 
-  printf("parsing...\n");
+  if (debug) std::cerr << "parsing...\n";
   cashew::Parser<Ref, ValueBuilder> builder;
   Ref asmjs = builder.parseToplevel(input);
 
-  //asmjs->stringify(std::cout);
-  //std::cout << '\n';
-
-  printf("wasming...\n");
+  if (debug) std::cerr << "wasming...\n";
   Asm2WasmModule wasm;
   wasm.processAsm(asmjs);
 
-  printf("printing...\n");
+  if (debug) std::cerr << "printing...\n";
   wasm.print(std::cout);
 
-  printf("done.\n");
-  printf("TODO: get memory for globals, and clear it to zero; and read values for imports\n");
+  if (debug) std::cerr << "done.\n";
 }
 
