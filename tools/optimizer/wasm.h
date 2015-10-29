@@ -383,13 +383,60 @@ public:
 class CallImport : public Call {
 };
 
+class FunctionType {
+public:
+  Name name;
+  BasicType result;
+  std::vector<BasicType> params;
+
+  std::ostream& print(std::ostream &o, unsigned indent, bool full=false) {
+    if (full) {
+      printOpening(o, "type") << ' ';
+      name.print(o);
+    }
+    if (params.size() > 0) {
+      o << ' ';
+      printMinorOpening(o, "param");
+      for (auto& param : params) {
+        o << ' ';
+        printBasicType(o, param);
+      }
+      o << ')';
+    }
+    if (result != none) {
+      o << ' ';
+      printMinorOpening(o, "result ");
+      printBasicType(o, result) << ')';
+    }
+    if (full) {
+      o << ')';
+    }
+    return o;
+  }
+
+  bool operator==(FunctionType& b) {
+    if (name != b.name) return false; // XXX
+    if (result != b.result) return false;
+    if (params.size() != b.params.size()) return false;
+    for (size_t i = 0; i < params.size(); i++) {
+      if (params[i] != b.params[i]) return false;
+    }
+    return true;
+  }
+  bool operator!=(FunctionType& b) {
+    return !(*this == b);
+  }
+};
+
 class CallIndirect : public Expression {
 public:
+  FunctionType *type;
   Expression *target;
   ExpressionList operands;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    printOpening(o, "callindirect ");
+    printOpening(o, "call_indirect ");
+    type->name.print(o);
     incIndent(o, indent);
     printFullLine(o, indent, target);
     for (auto operand : operands) {
@@ -636,43 +683,6 @@ struct NameType {
   NameType(Name name, BasicType type) : name(name), type(type) {}
 };
 
-class FunctionType {
-public:
-  Name name;
-  BasicType result;
-  std::vector<BasicType> params;
-
-  std::ostream& print(std::ostream &o, unsigned indent) {
-    if (params.size() > 0) {
-      printMinorOpening(o, "param");
-      for (auto& param : params) {
-        o << ' ';
-        printBasicType(o, param);
-      }
-      o << ')';
-    }
-    if (result != none) {
-      if (params.size() > 0) o << ' ';
-      printMinorOpening(o, "result ");
-      printBasicType(o, result) << ')';
-    }
-    return o;
-  }
-
-  bool operator==(FunctionType& b) {
-    if (name != b.name) return false; // XXX
-    if (result != b.result) return false;
-    if (params.size() != b.params.size()) return false;
-    for (size_t i = 0; i < params.size(); i++) {
-      if (params[i] != b.params[i]) return false;
-    }
-    return true;
-  }
-  bool operator!=(FunctionType& b) {
-    return !(*this == b);
-  }
-};
-
 class Function {
 public:
   Name name;
@@ -759,7 +769,7 @@ public:
 class Module {
 protected:
   // wasm contents
-  std::vector<FunctionType> functionTypes;
+  std::map<Name, FunctionType*> functionTypes;
   std::map<Name, Import> imports;
   std::vector<Export> exports;
   Table table;
@@ -778,7 +788,7 @@ public:
     incIndent(o, indent);
     for (auto& curr : functionTypes) {
       doIndent(o, indent);
-      curr.print(o, indent);
+      curr.second->print(o, indent, true);
       o << '\n';
     }
     for (auto& curr : imports) {
