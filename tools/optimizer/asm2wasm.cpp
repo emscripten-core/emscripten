@@ -498,7 +498,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
   std::function<Expression* (Ref, unsigned)> processStatements;
   std::function<Expression* (Ref, unsigned)> processUnshifted;
 
-  bool debug = !!getenv("ASM2WASM_DEBUG");
+  bool debug = !!getenv("ASM2WASM_DEBUG") && getenv("ASM2WASM_DEBUG")[0] != '0';
 
   std::function<Expression* (Ref)> process = [&](Ref ast) -> Expression* {
     AstStackHelper astStackHelper(ast); // TODO: only create one when we need it?
