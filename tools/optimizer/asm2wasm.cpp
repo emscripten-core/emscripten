@@ -536,7 +536,9 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       abort_on("confusing assign", ast);
     } else if (what == BINARY) {
       if (ast[1] == OR && ast[3][0] == NUM && ast[3][1]->getNumber() == 0) {
-        return process(ast[2]); // just look through the ()|0 coercion
+        auto ret = process(ast[2]); // just look through the ()|0 coercion
+        ret->type = BasicType::i32; // we add it here for e.g. call coercions
+        return ret;
       }
       BinaryOp binary;
       RelationalOp relational;
@@ -624,7 +626,9 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
           return ret;
         }
         assert(childType == ASM_NONE); // e.g. a coercion on a call
-        return process(ast[2]); // just look through the +() coercion
+        auto ret = process(ast[2]); // just look through the +() coercion
+        ret->type = BasicType::f64; // we add it here for e.g. call coercions
+        return ret;
       } else if (ast[1] == MINUS) {
         if (ast[2][0] == NUM) {
           auto ret = allocator.alloc<Const>();
