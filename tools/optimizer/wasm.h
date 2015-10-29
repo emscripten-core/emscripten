@@ -801,8 +801,8 @@ public:
       curr.print(o, indent);
       o << '\n';
     }
-    doIndent(o, indent);
     if (table.vars.size() > 0) {
+      doIndent(o, indent);
       table.print(o, indent);
       o << '\n';
     }
