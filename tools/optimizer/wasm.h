@@ -392,7 +392,7 @@ public:
   std::ostream& print(std::ostream &o, unsigned indent, bool full=false) {
     if (full) {
       printOpening(o, "type") << ' ';
-      name.print(o);
+      name.print(o) << " (func";
     }
     if (params.size() > 0) {
       o << ' ';
@@ -409,7 +409,7 @@ public:
       printBasicType(o, result) << ')';
     }
     if (full) {
-      o << ')';
+      o << "))";;
     }
     return o;
   }
