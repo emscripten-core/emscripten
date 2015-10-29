@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include <cstdlib>
 #include <ostream>
 
@@ -54,7 +55,8 @@ struct Colors {
   }
 
   Colors() {
-    use = !getenv("COLORS") || getenv("COLORS")[0] != '0';
+    use = (getenv("COLORS") && getenv("COLORS")[0] == '1') || // forced
+          (isatty(STDOUT_FILENO) && (!getenv("COLORS") || getenv("COLORS")[0] != '0')); // implicit
   }
 } colors;
 
