@@ -698,7 +698,7 @@ public:
       for (auto& param : params) {
         o << ' ';
         printMinorOpening(o, "param ");
-        param.name.print(o) << param.name.str << " ";
+        param.name.print(o) << " ";
         printBasicType(o, param.type) << ")";
       }
     }
