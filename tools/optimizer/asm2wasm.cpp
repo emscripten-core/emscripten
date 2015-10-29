@@ -980,13 +980,24 @@ int main(int argc, char **argv) {
   fclose(f);
   input[num] = 0;
 
-  /*
-  // Separate asm modules look like
+  // emcc --separate-asm modules look like
   //
   //    Module["asm"] = (function(global, env, buffer) {
+  //      ..
+  //    });
   //
-  // , we can remove the part until the function.
-  */
+  // we need to clean that up.
+  if (*input == 'M') {
+    while (*input != 'f') {
+      input++;
+      num--;
+    }
+    char *end = input + num - 1;
+    while (*end != '}') {
+      *end = 0;
+      end--;
+    }
+  }
 
   if (debug) std::cerr << "parsing...\n";
   cashew::Parser<Ref, ValueBuilder> builder;
