@@ -1093,7 +1093,10 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
     abort_on("bad processUnshifted", ptr);
   };
 
-  processStatements = [&](Ref ast, unsigned from) {
+  processStatements = [&](Ref ast, unsigned from) -> Expression* {
+    unsigned size = ast->size() - from;
+    if (size == 0) return allocator.alloc<Nop>();
+    if (size == 1) return process(ast[from]);
     auto block = allocator.alloc<Block>();
     for (unsigned i = from; i < ast->size(); i++) {
       block->list.push_back(process(ast[i]));
@@ -1104,7 +1107,12 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
   function->body = processStatements(body, start);
   if (needTopmost) {
     Block* topmost = dynamic_cast<Block*>(function->body);
-    assert(topmost);
+    // if there's no block there, or there is a block but it already has a var, we need a new block.
+    if (!topmost || topmost->var.is()) {
+      topmost = allocator.alloc<Block>();
+      topmost->list.push_back(function->body);
+      function->body = topmost;
+    }
     topmost->var = TOPMOST;
   }
   // cleanups/checks
