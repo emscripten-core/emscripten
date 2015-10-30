@@ -830,7 +830,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
           ret->type = BasicType::f64;
           return ret;
         }
-        assert(childType == ASM_NONE); // e.g. a coercion on a call
+        assert(childType == ASM_NONE || childType == ASM_DOUBLE); // e.g. a coercion on a call or for a return
         auto ret = process(ast[2]); // just look through the +() coercion
         ret->type = BasicType::f64; // we add it here for e.g. call coercions
         return ret;
