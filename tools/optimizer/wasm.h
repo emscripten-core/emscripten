@@ -69,9 +69,9 @@ struct Name : public cashew::IString {
   Name(const char *str) : cashew::IString(str) {}
   Name(cashew::IString str) : cashew::IString(str) {}
 
-  std::ostream& print(std::ostream &o) {
-    assert(str);
-    o << '$' << str; // reference interpreter requires we prefix all names
+  friend std::ostream& operator<<(std::ostream &o, Name name) {
+    assert(name.str);
+    o << '$' << name.str; // reference interpreter requires we prefix all names
     return o;
   }
 };
@@ -264,8 +264,7 @@ public:
   std::ostream& print(std::ostream &o, unsigned indent) override {
     printOpening(o, "block");
     if (name.is()) {
-      o << " ";
-      name.print(o);
+      o << ' ' << name;
     }
     incIndent(o, indent);
     for (auto expression : list) {
@@ -299,12 +298,10 @@ public:
   std::ostream& print(std::ostream &o, unsigned indent) override {
     printOpening(o, "loop");
     if (out.is()) {
-      o << " ";
-      out.print(o);
+      o << ' ' << out;
       if (in.is()) {
-        o << " ";
-        in.print(o);
-      }
+        o << ' ' << in;
+        }
     }
     incIndent(o, indent);
     printFullLine(o, indent, body);
@@ -324,8 +321,7 @@ public:
   Expression *condition, *value;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    printOpening(o, "break ");
-    name.print(o);
+    printOpening(o, "break ") << name;
     incIndent(o, indent);
     if (condition) printFullLine(o, indent, condition);
     if (value) printFullLine(o, indent, value);
@@ -348,8 +344,7 @@ public:
   Expression *default_;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    printOpening(o, "switch ");
-    name.print(o);
+    printOpening(o, "switch ") << name;
     incIndent(o, indent);
     printFullLine(o, indent, value);
     o << "TODO: cases/default\n";
@@ -365,7 +360,7 @@ public:
   ExpressionList operands;
 
   std::ostream& printBody(std::ostream &o, unsigned indent) {
-    target.print(o);
+    o << target;
     if (operands.size() > 0) {
       incIndent(o, indent);
       for (auto operand : operands) {
@@ -399,8 +394,7 @@ public:
 
   std::ostream& print(std::ostream &o, unsigned indent, bool full=false) {
     if (full) {
-      printOpening(o, "type") << ' ';
-      name.print(o) << " (func";
+      printOpening(o, "type") << ' ' << name << " (func";
     }
     if (params.size() > 0) {
       o << ' ';
@@ -443,8 +437,7 @@ public:
   ExpressionList operands;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    printOpening(o, "call_indirect ");
-    type->name.print(o);
+    printOpening(o, "call_indirect ") << type->name;
     incIndent(o, indent);
     printFullLine(o, indent, target);
     for (auto operand : operands) {
@@ -460,8 +453,7 @@ public:
   Name id;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    printOpening(o, "get_local ");
-    id.print(o) << ')';
+    printOpening(o, "get_local ") << id << ')';
     return o;
   }
 };
@@ -472,8 +464,7 @@ public:
   Expression *value;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    printOpening(o, "set_local ");
-    id.print(o);
+    printOpening(o, "set_local ") << id;
     incIndent(o, indent);
     printFullLine(o, indent, value);
     decIndent(o, indent);
@@ -707,13 +698,11 @@ public:
   Expression *body;
 
   std::ostream& print(std::ostream &o, unsigned indent) {
-    printOpening(o, "func ", true);
-    name.print(o);
+    printOpening(o, "func ", true) << name;
     if (params.size() > 0) {
       for (auto& param : params) {
         o << ' ';
-        printMinorOpening(o, "param ");
-        param.name.print(o) << " ";
+        printMinorOpening(o, "param ") << param.name << ' ';
         printWasmType(o, param.type) << ")";
       }
     }
@@ -725,8 +714,7 @@ public:
     incIndent(o, indent);
     for (auto& local : locals) {
       doIndent(o, indent);
-      printMinorOpening(o, "local ");
-      local.name.print(o) << " ";
+      printMinorOpening(o, "local ") << local.name << ' ';
       printWasmType(o, local.type) << ")\n";
     }
     printFullLine(o, indent, body);
@@ -741,8 +729,7 @@ public:
   FunctionType type;
 
   std::ostream& print(std::ostream &o, unsigned indent) {
-    printOpening(o, "import ");
-    name.print(o) << ' ';
+    printOpening(o, "import ") << name << ' ';
     printText(o, module.str) << ' ';
     printText(o, base.str) << ' ';
     type.print(o, indent);
@@ -757,10 +744,7 @@ public:
   Name value;
 
   std::ostream& print(std::ostream &o, unsigned indent) {
-    printOpening(o, "export") << ' ';
-    printText(o, name.str) << ' ';
-    value.print(o);
-    o << ')';
+    printOpening(o, "export") << " \"" << name.str << "\" " << value << ')';
     return o;
   }
 };
@@ -772,8 +756,7 @@ public:
   std::ostream& print(std::ostream &o, unsigned indent) {
     printOpening(o, "table");
     for (auto name : names) {
-      o << ' ';
-      name.print(o);
+      o << ' ' << name;
     }
     o << ')';
     return o;
