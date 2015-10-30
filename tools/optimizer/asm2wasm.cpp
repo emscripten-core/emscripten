@@ -1037,6 +1037,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       ret->condition = process(ast[1]);
       ret->ifTrue = process(ast[2]);
       ret->ifFalse = process(ast[3]);
+      ret->type = ret->ifTrue->type;
       return ret;
     } else if (what == SEQ) {
       auto ret = allocator.alloc<Block>();
