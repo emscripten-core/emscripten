@@ -821,7 +821,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
           auto ret = allocator.alloc<Convert>();
           ret->op = isUnsignedCoercion(ast[2]) ? ConvertUInt32 : ConvertSInt32;
           ret->value = process(ast[2]);
-          ret->type = BasicType::i32;
+          ret->type = BasicType::f64;
           return ret;
         }
         assert(childType == ASM_NONE); // e.g. a coercion on a call

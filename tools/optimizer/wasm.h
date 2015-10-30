@@ -654,13 +654,16 @@ public:
   Expression *value;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    printOpening(o, "convert ");
+    o << '(';
+    prepareColor(o);
+    printBasicType(o, type) << ".convert_";
     switch (op) {
-      case ConvertUInt32: o << "uint32toDouble"; break;
-      case ConvertSInt32: o << "sint32toDouble"; break;
-      case TruncSFloat64: o << "float64tosint32"; break;
+      case ConvertUInt32: o << "u/i32"; break;
+      case ConvertSInt32: o << "s/i32"; break;
+      case TruncSFloat64: o << "s/f64"; break;
       default: abort();
     }
+    restoreNormalColor(o);
     incIndent(o, indent);
     printFullLine(o, indent, value);
     decIndent(o, indent);
