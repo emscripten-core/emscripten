@@ -8,7 +8,7 @@
 using namespace cashew;
 using namespace wasm;
 
-bool debug;
+int debug;
 
 // Utilities
 
@@ -631,12 +631,14 @@ void Asm2WasmModule::processAsm(Ref ast) {
 }
 
 Function* Asm2WasmModule::processFunction(Ref ast) {
-  //if (ast[1] !=IString("_fmod")) return nullptr;
+  //if (ast[1] != IString("qta")) return nullptr;
 
   if (debug) {
-    std::cout << "\nfunc: ";
-    ast->stringify(std::cout);
-    std::cout << '\n';
+    std::cout << "\nfunc: " << ast[1]->getIString().str << '\n';
+    if (debug >= 2) {
+      ast->stringify(std::cout);
+      std::cout << '\n';
+    }
   }
 
   auto function = allocator.alloc<Function>();
@@ -698,7 +700,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
 
   std::function<Expression* (Ref)> process = [&](Ref ast) -> Expression* {
     AstStackHelper astStackHelper(ast); // TODO: only create one when we need it?
-    if (debug) {
+    if (debug >= 2) {
       std::cout << "at: ";
       ast->stringify(std::cout);
       std::cout << '\n';
@@ -1196,7 +1198,7 @@ void Asm2WasmModule::optimize() {
 // main
 
 int main(int argc, char **argv) {
-  debug = !!getenv("ASM2WASM_DEBUG") && getenv("ASM2WASM_DEBUG")[0] != '0';
+  debug = getenv("ASM2WASM_DEBUG") ? getenv("ASM2WASM_DEBUG")[0] - '0' : 0;
 
   char *infile = argv[1];
 
