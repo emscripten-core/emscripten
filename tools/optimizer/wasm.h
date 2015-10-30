@@ -225,7 +225,7 @@ enum HostOp {
 
 class Expression {
 public:
-  WasmType type;
+  WasmType type; // the type of the expression: its output, not necessarily its input(s)
 
   Expression() : type(type) {}
 
@@ -607,15 +607,16 @@ public:
 class Compare : public Expression {
 public:
   RelationalOp op;
+  WasmType inputType;
   Expression *left, *right;
 
   Compare() {
-    type = WasmType::i32;
+    type = WasmType::i32; // output is always i32
   }
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
     o << '(';
-    prepareColor(o) << printWasmType(type) << '.';
+    prepareColor(o) << printWasmType(inputType) << '.';
     switch (op) {
       case Eq:  o << "eq"; break;
       case Ne:  o << "ne"; break;

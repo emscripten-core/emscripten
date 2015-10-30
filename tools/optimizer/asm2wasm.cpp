@@ -780,6 +780,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         ret->op = relational;
         ret->left = process(ast[2]);
         ret->right = process(ast[3]);
+        ret->inputType = ret->left->type;
         return ret;
       }
     } else if (what == NUM) {
@@ -899,6 +900,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         ret->op = Eq;
         ret->left = process(ast[2]);
         ret->right = allocator.alloc<Const>()->set(Literal(0));
+        ret->inputType = ret->left->type;
         return ret;
       }
       abort_on("bad unary", ast);
