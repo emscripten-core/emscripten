@@ -167,15 +167,15 @@ struct Literal {
   Literal(float   init) : type(WasmType::f32), f32(init) {}
   Literal(double  init) : type(WasmType::f64), f64(init) {}
 
-  std::ostream& print(std::ostream &o) {
+  friend std::ostream& operator<<(std::ostream &o, Literal literal) {
     o << '(';
-    prepareMinorColor(o) << printWasmType(type) << ".const ";
-    switch (type) {
+    prepareMinorColor(o) << printWasmType(literal.type) << ".const ";
+    switch (literal.type) {
       case none: abort();
-      case WasmType::i32: o << i32; break;
-      case WasmType::i64: o << i64; break;
-      case WasmType::f32: o << JSPrinter::numToString(f32); break;
-      case WasmType::f64: o << JSPrinter::numToString(f64); break;
+      case WasmType::i32: o << literal.i32; break;
+      case WasmType::i64: o << literal.i64; break;
+      case WasmType::f32: o << JSPrinter::numToString(literal.f32); break;
+      case WasmType::f64: o << JSPrinter::numToString(literal.f64); break;
     }
     restoreNormalColor(o);
     o << ')';
@@ -545,8 +545,7 @@ public:
   }
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    value.print(o);
-    return o;
+    return o << value;
   }
 };
 
