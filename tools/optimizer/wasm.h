@@ -86,15 +86,14 @@ enum WasmType {
   f64
 };
 
-std::ostream& printWasmType(std::ostream &o, WasmType type) {
+const char* printWasmType(WasmType type) {
   switch (type) {
-    case WasmType::none: o << "none"; break;
-    case WasmType::i32: o << "i32"; break;
-    case WasmType::i64: o << "i64"; break;
-    case WasmType::f32: o << "f32"; break;
-    case WasmType::f64: o << "f64"; break;
+    case WasmType::none: return "none";
+    case WasmType::i32: return "i32";
+    case WasmType::i64: return "i64";
+    case WasmType::f32: return "f32";
+    case WasmType::f64: return "f64";
   }
-  return o;
 }
 
 unsigned getWasmTypeSize(WasmType type) {
@@ -122,22 +121,26 @@ WasmType getWasmType(unsigned size, bool float_) {
   abort();
 }
 
-void prepareMajorColor(std::ostream &o) {
+std::ostream &prepareMajorColor(std::ostream &o) {
   Colors::red(o);
   Colors::bold(o);
+  return o;
 }
 
-void prepareColor(std::ostream &o) {
+std::ostream &prepareColor(std::ostream &o) {
   Colors::magenta(o);
   Colors::bold(o);
+  return o;
 }
 
-void prepareMinorColor(std::ostream &o) {
+std::ostream &prepareMinorColor(std::ostream &o) {
   Colors::orange(o);
+  return o;
 }
 
-void restoreNormalColor(std::ostream &o) {
+std::ostream &restoreNormalColor(std::ostream &o) {
   Colors::normal(o);
+  return o;
 }
 
 std::ostream& printText(std::ostream &o, const char *str) {
@@ -166,8 +169,7 @@ struct Literal {
 
   std::ostream& print(std::ostream &o) {
     o << '(';
-    prepareMinorColor(o);
-    printWasmType(o, type) << ".const ";
+    prepareMinorColor(o) << printWasmType(type) << ".const ";
     switch (type) {
       case none: abort();
       case WasmType::i32: o << i32; break;
@@ -400,15 +402,13 @@ public:
       o << ' ';
       printMinorOpening(o, "param");
       for (auto& param : params) {
-        o << ' ';
-        printWasmType(o, param);
+        o << ' ' << printWasmType(param);
       }
       o << ')';
     }
     if (result != none) {
       o << ' ';
-      printMinorOpening(o, "result ");
-      printWasmType(o, result) << ')';
+      printMinorOpening(o, "result ") << printWasmType(result) << ')';
     }
     if (full) {
       o << "))";;
@@ -483,8 +483,7 @@ public:
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
     o << '(';
-    prepareColor(o);
-    printWasmType(o, getWasmType(bytes, float_)) << ".load";
+    prepareColor(o) << printWasmType(getWasmType(bytes, float_)) << ".load";
     if (bytes < 4) {
       if (bytes == 1) {
         o << '8';
@@ -515,8 +514,7 @@ public:
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
     o << '(';
-    prepareColor(o);
-    printWasmType(o, getWasmType(bytes, float_)) << ".store";
+    prepareColor(o) << printWasmType(getWasmType(bytes, float_)) << ".store";
     if (bytes < 4) {
       if (bytes == 1) {
         o << '8';
@@ -559,8 +557,7 @@ public:
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
     o << '(';
-    prepareColor(o);
-    printWasmType(o, type) << '.';
+    prepareColor(o) << printWasmType(type) << '.';
     switch (op) {
       case Clz: o << "clz"; break;
       case Neg: o << "neg"; break;
@@ -581,8 +578,7 @@ public:
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
     o << '(';
-    prepareColor(o);
-    printWasmType(o, type) << '.';
+    prepareColor(o) << printWasmType(type) << '.';
     switch (op) {
       case Add:      o << "add"; break;
       case Sub:      o << "sub"; break;
@@ -623,8 +619,7 @@ public:
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
     o << '(';
-    prepareColor(o);
-    printWasmType(o, type) << '.';
+    prepareColor(o) << printWasmType(type) << '.';
     switch (op) {
       case Eq:  o << "eq"; break;
       case Ne:  o << "ne"; break;
@@ -658,8 +653,7 @@ public:
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
     o << '(';
-    prepareColor(o);
-    printWasmType(o, type) << ".convert_";
+    prepareColor(o) << printWasmType(type) << ".convert_";
     switch (op) {
       case ConvertUInt32: o << "u/i32"; break;
       case ConvertSInt32: o << "s/i32"; break;
@@ -702,20 +696,17 @@ public:
     if (params.size() > 0) {
       for (auto& param : params) {
         o << ' ';
-        printMinorOpening(o, "param ") << param.name << ' ';
-        printWasmType(o, param.type) << ")";
+        printMinorOpening(o, "param ") << param.name << ' ' << printWasmType(param.type) << ")";
       }
     }
     if (result != none) {
       o << ' ';
-      printMinorOpening(o, "result ");
-      printWasmType(o, result) << ")";
+      printMinorOpening(o, "result ") << printWasmType(result) << ")";
     }
     incIndent(o, indent);
     for (auto& local : locals) {
       doIndent(o, indent);
-      printMinorOpening(o, "local ") << local.name << ' ';
-      printWasmType(o, local.type) << ")\n";
+      printMinorOpening(o, "local ") << local.name << ' ' << printWasmType(local.type) << ")\n";
     }
     printFullLine(o, indent, body);
     decIndent(o, indent);
