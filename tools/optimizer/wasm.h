@@ -494,7 +494,7 @@ public:
       } else {
         abort();
       }
-      if (!signed_) o << "_u";
+      o << (signed_ ? "_s" : "_u");
     }
     restoreNormalColor(o);
     o << " align=" << align;
