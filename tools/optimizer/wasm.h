@@ -735,7 +735,8 @@ public:
   Name value;
 
   std::ostream& print(std::ostream &o, unsigned indent) {
-    printOpening(o, "export") << " \"" << name.str << "\" " << value << ')';
+    printOpening(o, "export ");
+    printText(o, name.str) << ' ' << value << ')';
     return o;
   }
 };
