@@ -251,7 +251,7 @@ typedef std::vector<Expression*> ExpressionList; // TODO: optimize
 
 class Nop : public Expression {
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    o << "nop";
+    printMinorOpening(o, "nop") << ')';
     return o;
   }
 };
