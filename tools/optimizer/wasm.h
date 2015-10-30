@@ -569,7 +569,9 @@ public:
   std::ostream& print(std::ostream &o, unsigned indent) override {
     printOpening(o, "unary ");
     switch (op) {
+      case Clz: o << "clz"; break;
       case Neg: o << "neg"; break;
+      case Floor: o << "floor"; break;
       default: abort();
     }
     incIndent(o, indent);

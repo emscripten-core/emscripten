@@ -24,7 +24,8 @@ IString GLOBAL("global"), NAN_("NaN"), INFINITY_("Infinity"),
         FLOAT64ARRAY("Float64Array"),
         IMPOSSIBLE_CONTINUE("impossible-continue"),
         MATH("Math"),
-        IMUL("imul");
+        IMUL("imul"),
+        CLZ32("clz32");
 
 
 static void abort_on(std::string why) {
@@ -246,6 +247,7 @@ class Asm2WasmModule : public wasm::Module {
 
   std::map<IString, View> views; // name (e.g. HEAP8) => view info
   IString Math_imul; // imported name of Math.imul
+  IString Math_clz32; // imported name of Math.imul
 
   // function types. we fill in this information as we see
   // uses, in the first pass
@@ -466,10 +468,16 @@ void Asm2WasmModule::processAsm(Ref ast) {
     if (module[0] == DOT) {
       // we can have (global.Math).floor; skip the 'Math'
       assert(module[1][0] == NAME);
-      if (module[2] == MATH && imported[2] == IMUL) {
-        assert(Math_imul.isNull());
-        Math_imul = name;
-        return;
+      if (module[2] == MATH) {
+        if (imported[2] == IMUL) {
+          assert(Math_imul.isNull());
+          Math_imul = name;
+          return;
+        } else if (imported[2] == CLZ32) {
+          assert(Math_clz32.isNull());
+          Math_clz32 = name;
+          return;
+        }
       }
       module = module[1];
     }
@@ -885,10 +893,19 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       if (ast[1][0] == NAME) {
         IString name = ast[1][1]->getIString();
         if (name == Math_imul) {
+          assert(ast[2]->size() == 2);
           auto ret = allocator.alloc<Binary>();
           ret->op = Mul;
           ret->left = process(ast[2][0]);
           ret->right = process(ast[2][1]);
+          ret->type = BasicType::i32;
+          return ret;
+        }
+        if (name == Math_clz32) {
+          assert(ast[2]->size() == 1);
+          auto ret = allocator.alloc<Unary>();
+          ret->op = Clz;
+          ret->value = process(ast[2][0]);
           ret->type = BasicType::i32;
           return ret;
         }
