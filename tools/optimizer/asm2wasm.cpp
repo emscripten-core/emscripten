@@ -337,12 +337,30 @@ private:
       case ASM_INT: return BasicType::i32;
       case ASM_DOUBLE: return BasicType::f64;
       case ASM_NONE: return BasicType::none;
-      default: abort_on("confused detectWasmType", asmType);
+      default: abort_on("confused asmType", asmType);
+    }
+  }
+  AsmType wasmToAsmType(BasicType type) {
+    switch (type) {
+      case BasicType::i32: return ASM_INT;
+      case BasicType::f64: return ASM_DOUBLE;
+      case BasicType::none: return ASM_NONE;
+      default: abort_on("confused wasmType", type);
     }
   }
 
+  AsmType detectAsmType(Ref ast, AsmData *data) {
+    if (ast[0] == NAME) {
+      IString name = ast[1]->getIString();
+      if (mappedGlobals.find(name) != mappedGlobals.end()) {
+        return wasmToAsmType(mappedGlobals[name].type);
+      }
+    }
+    return detectType(ast, data);
+  }
+
   BasicType detectWasmType(Ref ast, AsmData *data) {
-    return asmToWasmType(detectType(ast, data));
+    return asmToWasmType(detectAsmType(ast, data));
   }
 
   bool isUnsignedCoercion(Ref ast) { // TODO: use detectSign?
@@ -833,7 +851,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
           ret->type = ret->value.type;
           return ret;
         }
-        AsmType childType = detectType(ast[2], &asmData);
+        AsmType childType = detectAsmType(ast[2], &asmData);
         if (childType == ASM_INT) {
           auto ret = allocator.alloc<Convert>();
           ret->op = isUnsignedCoercion(ast[2]) ? ConvertUInt32 : ConvertSInt32;
@@ -852,7 +870,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
           ret->type = ret->value.type;
           return ret;
         }
-        AsmType asmType = detectType(ast[2], &asmData);
+        AsmType asmType = detectAsmType(ast[2], &asmData);
         if (asmType == ASM_INT) {
           // wasm has no unary negation for int, so do 0-
           auto ret = allocator.alloc<Binary>();
@@ -922,7 +940,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         Call* ret;
         if (imports.find(name) != imports.end()) {
           // no imports yet in reference interpreter, fake it
-          AsmType asmType = detectType(astStackHelper.getParent(), &asmData);
+          AsmType asmType = detectAsmType(astStackHelper.getParent(), &asmData);
           if (asmType == ASM_NONE) return allocator.alloc<Nop>();
           if (asmType == ASM_INT) return allocator.alloc<Const>()->set(Literal((int32_t)0));
           if (asmType == ASM_DOUBLE) return allocator.alloc<Const>()->set(Literal((double)0.0));
