@@ -1039,6 +1039,11 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       ret->list.push_back(process(ast[2]));
       return ret;
     } else if (what == SWITCH) {
+      // XXX switch is still in flux in the spec repo, just emit a placeholder
+      auto ret = allocator.alloc<Block>();
+      ret->var = IString("SWITCH_PLACEHOLDER");
+      return ret;
+#if 0
       IString name = getNextId("switch");
       breakStack.push_back(name);
       auto ret = allocator.alloc<Switch>();
@@ -1062,6 +1067,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       }
       breakStack.pop_back();
       return ret;
+#endif
     }
     abort_on("confusing expression", ast);
   };
