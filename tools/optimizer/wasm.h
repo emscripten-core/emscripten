@@ -567,7 +567,9 @@ public:
   Expression *value;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    printOpening(o, "unary ");
+    o << '(';
+    prepareColor(o);
+    printBasicType(o, type) << '.';
     switch (op) {
       case Clz: o << "clz"; break;
       case Neg: o << "neg"; break;
