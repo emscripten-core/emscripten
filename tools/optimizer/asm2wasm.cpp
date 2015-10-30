@@ -583,11 +583,11 @@ void Asm2WasmModule::processAsm(Ref ast) {
           }
           for (unsigned k = 0; k < contents->size(); k++) {
             IString curr = contents[k][1]->getIString();
-            if (table.vars.size() <= k) {
-              table.vars.push_back(curr);
+            if (table.names.size() <= k) {
+              table.names.push_back(curr);
             } else {
               if (counts[curr] == 1) { // if just one appearance, not a null thunk
-                table.vars[k] = curr;
+                table.names[k] = curr;
               }
             }
           }
@@ -971,7 +971,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       // wasm has no return, so we just break on the topmost block
       needTopmost = true;
       auto ret = allocator.alloc<Break>();
-      ret->var = TOPMOST;
+      ret->name = TOPMOST;
       ret->condition = nullptr;
       ret->value = !!ast[1] ? process(ast[1]) : nullptr;
       return ret;
@@ -980,14 +980,14 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
     } else if (what == BREAK) {
       auto ret = allocator.alloc<Break>();
       assert(breakStack.size() > 0);
-      ret->var = !!ast[1] ? getBreakLabelName(ast[1]->getIString()) : breakStack.back();
+      ret->name = !!ast[1] ? getBreakLabelName(ast[1]->getIString()) : breakStack.back();
       ret->condition = nullptr;
       ret->value = nullptr;
       return ret;
     } else if (what == CONTINUE) {
       auto ret = allocator.alloc<Break>();
       assert(continueStack.size() > 0);
-      ret->var = !!ast[1] ? getContinueLabelName(ast[1]->getIString()) : continueStack.back();
+      ret->name = !!ast[1] ? getContinueLabelName(ast[1]->getIString()) : continueStack.back();
       ret->condition = nullptr;
       ret->value = nullptr;
       return ret;
@@ -1011,7 +1011,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         ret->body = process(ast[2]);
       } else {
         Break *continueWhile = allocator.alloc<Break>();
-        continueWhile->var = in;
+        continueWhile->name = in;
         continueWhile->condition = process(ast[1]);
         continueWhile->value = nullptr;
         auto body = allocator.alloc<Block>();
@@ -1033,7 +1033,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         } else {
           stop = getNextId("do-once");
         }
-        block->var = stop;
+        block->name = stop;
         breakStack.push_back(stop);
         continueStack.push_back(IMPOSSIBLE_CONTINUE);
         block->list.push_back(process(ast[2]));
@@ -1060,7 +1060,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       continueStack.pop_back();
       breakStack.pop_back();
       Break *continueIf = allocator.alloc<Break>();
-      continueIf->var = in;
+      continueIf->name = in;
       continueIf->condition = process(ast[1]);
       continueIf->value = nullptr;
       if (Block *block = dynamic_cast<Block*>(ret->body)) {
@@ -1094,7 +1094,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       IString name = getNextId("switch");
       breakStack.push_back(name);
       auto ret = allocator.alloc<Switch>();
-      ret->var = name;
+      ret->name = name;
       ret->value =  process(ast[1]);
       Ref cases = ast[2];
       for (unsigned i = 0; i < cases->size(); i++) {
@@ -1151,13 +1151,13 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
   function->body = processStatements(body, start);
   if (needTopmost) {
     Block* topmost = dynamic_cast<Block*>(function->body);
-    // if there's no block there, or there is a block but it already has a var, we need a new block.
-    if (!topmost || topmost->var.is()) {
+    // if there's no block there, or there is a block but it already has a name, we need a new block.
+    if (!topmost || topmost->name.is()) {
       topmost = allocator.alloc<Block>();
       topmost->list.push_back(function->body);
       function->body = topmost;
     }
-    topmost->var = TOPMOST;
+    topmost->name = TOPMOST;
   }
   // cleanups/checks
   assert(breakStack.size() == 0 && continueStack.size() == 0);
@@ -1172,10 +1172,10 @@ void Asm2WasmModule::optimize() {
     Expression* walkBlock(Block *curr) override {
       if (curr->list.size() != 1) return curr;
       // just one element; maybe we can return just the element
-      if (curr->var.isNull()) return curr->list[0];
+      if (curr->name.isNull()) return curr->list[0];
       // we might be broken to, but if it's a trivial singleton child break, we can optimize here as well
       Break *child = dynamic_cast<Break*>(curr->list[0]);
-      if (!child || child->var != curr->var || !child->value) return curr;
+      if (!child || child->name != curr->name || !child->value) return curr;
 
       struct BreakSeeker : public WasmWalker {
         IString target; // look for this one
@@ -1184,12 +1184,12 @@ void Asm2WasmModule::optimize() {
         BreakSeeker(IString target) : target(target), found(false) {}
 
         Expression* walkBreak(Break *curr) override {
-          if (curr->var == target) found++;
+          if (curr->name == target) found++;
         }
       };
 
-      // look in the child's children to see if there are more uses of this var
-      BreakSeeker breakSeeker(curr->var);
+      // look in the child's children to see if there are more uses of this name
+      BreakSeeker breakSeeker(curr->name);
       breakSeeker.walk(child->condition);
       breakSeeker.walk(child->value);
       if (breakSeeker.found == 0) return child->value;

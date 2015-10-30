@@ -258,14 +258,14 @@ class Nop : public Expression {
 
 class Block : public Expression {
 public:
-  Name var;
+  Name name;
   ExpressionList list;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
     printOpening(o, "block");
-    if (var.is()) {
+    if (name.is()) {
       o << " ";
-      var.print(o);
+      name.print(o);
     }
     incIndent(o, indent);
     for (auto expression : list) {
@@ -315,17 +315,17 @@ public:
 
 class Label : public Expression {
 public:
-  Name var;
+  Name name;
 };
 
 class Break : public Expression {
 public:
-  Name var;
+  Name name;
   Expression *condition, *value;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
     printOpening(o, "break ");
-    var.print(o);
+    name.print(o);
     incIndent(o, indent);
     if (condition) printFullLine(o, indent, condition);
     if (value) printFullLine(o, indent, value);
@@ -342,14 +342,14 @@ public:
     bool fallthru;
   };
 
-  Name var;
+  Name name;
   Expression *value;
   std::vector<Case> cases;
   Expression *default_;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
     printOpening(o, "switch ");
-    var.print(o);
+    name.print(o);
     incIndent(o, indent);
     printFullLine(o, indent, value);
     o << "TODO: cases/default\n";
@@ -767,13 +767,13 @@ public:
 
 class Table {
 public:
-  std::vector<Name> vars;
+  std::vector<Name> names;
 
   std::ostream& print(std::ostream &o, unsigned indent) {
     printOpening(o, "table");
-    for (auto var : vars) {
+    for (auto name : names) {
       o << ' ';
-      var.print(o);
+      name.print(o);
     }
     o << ')';
     return o;
@@ -789,12 +789,8 @@ protected:
   Table table;
   std::vector<Function*> functions;
 
-  // internals
-  std::map<Name, void*> map; // maps var ids/names to things
-  unsigned nextVar;
-
 public:
-  Module() : nextVar(1) {}
+  Module() {}
 
   std::ostream& print(std::ostream &o) {
     unsigned indent = 0;
@@ -819,7 +815,7 @@ public:
       curr.print(o, indent);
       o << '\n';
     }
-    if (table.vars.size() > 0) {
+    if (table.names.size() > 0) {
       doIndent(o, indent);
       table.print(o, indent);
       o << '\n';
