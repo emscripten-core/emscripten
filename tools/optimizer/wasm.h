@@ -52,14 +52,15 @@ std::ostream &doIndent(std::ostream &o, unsigned indent) {
   }
   return o;
 }
-void incIndent(std::ostream &o, unsigned& indent) {
+std::ostream &incIndent(std::ostream &o, unsigned& indent) {
   o << '\n';
-  indent++;    
+  indent++;
+  return o; 
 }
-void decIndent(std::ostream &o, unsigned& indent) {
+std::ostream &decIndent(std::ostream &o, unsigned& indent) {
   indent--;
   doIndent(o, indent);
-  o << ')';
+  return o << ')';
 }
 
 // Basics
@@ -71,8 +72,7 @@ struct Name : public cashew::IString {
 
   friend std::ostream& operator<<(std::ostream &o, Name name) {
     assert(name.str);
-    o << '$' << name.str; // reference interpreter requires we prefix all names
-    return o;
+    return o << '$' << name.str; // reference interpreter requires we prefix all names
   }
 };
 
@@ -148,8 +148,7 @@ std::ostream& printText(std::ostream &o, const char *str) {
   Colors::green(o);
   o << str;
   Colors::normal(o);
-  o << '"';
-  return o;
+  return o << '"';
 }
 
 struct Literal {
@@ -178,8 +177,7 @@ struct Literal {
       case WasmType::f64: o << JSPrinter::numToString(literal.f64); break;
     }
     restoreNormalColor(o);
-    o << ')';
-    return o;
+    return o << ')';
   }
 };
 
@@ -253,8 +251,7 @@ typedef std::vector<Expression*> ExpressionList; // TODO: optimize
 
 class Nop : public Expression {
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    printMinorOpening(o, "nop") << ')';
-    return o;
+    return printMinorOpening(o, "nop") << ')';
   }
 };
 
@@ -272,8 +269,7 @@ public:
     for (auto expression : list) {
       printFullLine(o, indent, expression);
     }
-    decIndent(o, indent);
-    return o;
+    return decIndent(o, indent);
   }
 };
 
@@ -287,8 +283,7 @@ public:
     printFullLine(o, indent, condition);
     printFullLine(o, indent, ifTrue);
     if (ifFalse) printFullLine(o, indent, ifFalse);
-    decIndent(o, indent);
-    return o;
+    return decIndent(o, indent);
   }
 };
 
@@ -307,8 +302,7 @@ public:
     }
     incIndent(o, indent);
     printFullLine(o, indent, body);
-    decIndent(o, indent);
-    return o;
+    return decIndent(o, indent);
   }
 };
 
@@ -327,8 +321,7 @@ public:
     incIndent(o, indent);
     if (condition) printFullLine(o, indent, condition);
     if (value) printFullLine(o, indent, value);
-    decIndent(o, indent);
-    return o;
+    return decIndent(o, indent);
   }
 };
 
@@ -350,8 +343,7 @@ public:
     incIndent(o, indent);
     printFullLine(o, indent, value);
     o << "TODO: cases/default\n";
-    decIndent(o, indent);
-    return o;
+    return decIndent(o, indent);
   }
 
 };
@@ -443,8 +435,7 @@ public:
     for (auto operand : operands) {
       printFullLine(o, indent, operand);
     }
-    decIndent(o, indent);
-    return o;
+    return decIndent(o, indent);
   }
 };
 
@@ -453,8 +444,7 @@ public:
   Name id;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    printOpening(o, "get_local ") << id << ')';
-    return o;
+    return printOpening(o, "get_local ") << id << ')';
   }
 };
 
@@ -467,8 +457,7 @@ public:
     printOpening(o, "set_local ") << id;
     incIndent(o, indent);
     printFullLine(o, indent, value);
-    decIndent(o, indent);
-    return o;
+    return decIndent(o, indent);
   }
 };
 
@@ -499,8 +488,7 @@ public:
     assert(!offset);
     incIndent(o, indent);
     printFullLine(o, indent, ptr);
-    decIndent(o, indent);
-    return o;
+    return decIndent(o, indent);
   }
 };
 
@@ -530,8 +518,7 @@ public:
     incIndent(o, indent);
     printFullLine(o, indent, ptr);
     printFullLine(o, indent, value);
-    decIndent(o, indent);
-    return o;
+    return decIndent(o, indent);
   }
 };
 
@@ -565,8 +552,7 @@ public:
     }
     incIndent(o, indent);
     printFullLine(o, indent, value);
-    decIndent(o, indent);
-    return o;
+    return decIndent(o, indent);
   }
 };
 
@@ -602,8 +588,7 @@ public:
     incIndent(o, indent);
     printFullLine(o, indent, left);
     printFullLine(o, indent, right);
-    decIndent(o, indent);
-    return o;
+    return decIndent(o, indent);
   }
 };
 
@@ -640,8 +625,7 @@ public:
     incIndent(o, indent);
     printFullLine(o, indent, left);
     printFullLine(o, indent, right);
-    decIndent(o, indent);
-    return o;
+    return decIndent(o, indent);
   }
 };
 
@@ -662,8 +646,7 @@ public:
     restoreNormalColor(o);
     incIndent(o, indent);
     printFullLine(o, indent, value);
-    decIndent(o, indent);
-    return o;
+    return decIndent(o, indent);
   }
 };
 
@@ -708,8 +691,7 @@ public:
       printMinorOpening(o, "local ") << local.name << ' ' << printWasmType(local.type) << ")\n";
     }
     printFullLine(o, indent, body);
-    decIndent(o, indent);
-    return o;
+    return decIndent(o, indent);
   }
 };
 
@@ -723,8 +705,7 @@ public:
     printText(o, module.str) << ' ';
     printText(o, base.str) << ' ';
     type.print(o, indent);
-    o << ')';
-    return o;
+    return o << ')';
   }
 };
 
@@ -735,8 +716,7 @@ public:
 
   std::ostream& print(std::ostream &o, unsigned indent) {
     printOpening(o, "export ");
-    printText(o, name.str) << ' ' << value << ')';
-    return o;
+    return printText(o, name.str) << ' ' << value << ')';
   }
 };
 
@@ -749,8 +729,7 @@ public:
     for (auto name : names) {
       o << ' ' << name;
     }
-    o << ')';
-    return o;
+    return o << ')';
   }
 };
 
@@ -766,41 +745,41 @@ protected:
 public:
   Module() {}
 
-  std::ostream& print(std::ostream &o) {
+  friend std::ostream& operator<<(std::ostream &o, Module module) {
     unsigned indent = 0;
     printOpening(o, "module", true);
     incIndent(o, indent);
     doIndent(o, indent);
     printOpening(o, "memory") << " 16777216)\n"; // XXX
-    for (auto& curr : functionTypes) {
+    for (auto& curr : module.functionTypes) {
       doIndent(o, indent);
       curr.second->print(o, indent, true);
       o << '\n';
     }
 #if 0
-    for (auto& curr : imports) {
+    for (auto& curr : module.imports) {
       doIndent(o, indent);
       curr.second.print(o, indent);
       o << '\n';
     }
 #endif
-    for (auto& curr : exports) {
+    for (auto& curr : module.exports) {
       doIndent(o, indent);
       curr.print(o, indent);
       o << '\n';
     }
-    if (table.names.size() > 0) {
+    if (module.table.names.size() > 0) {
       doIndent(o, indent);
-      table.print(o, indent);
+      module.table.print(o, indent);
       o << '\n';
     }
-    for (auto& curr : functions) {
+    for (auto& curr : module.functions) {
       doIndent(o, indent);
       curr->print(o, indent);
       o << '\n';
     }
     decIndent(o, indent);
-    o << '\n';
+    return o << '\n';
   }
 };
 

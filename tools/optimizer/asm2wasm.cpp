@@ -1257,7 +1257,7 @@ int main(int argc, char **argv) {
   wasm.optimize();
 
   if (debug) std::cerr << "printing...\n";
-  wasm.print(std::cout);
+  std::cout << wasm;
 
   if (debug) std::cerr << "done.\n";
 }
