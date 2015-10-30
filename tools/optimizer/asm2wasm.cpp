@@ -77,6 +77,7 @@ struct WasmWalker {
   virtual Expression* walkCompare(Compare *curr) { return curr; };
   virtual Expression* walkConvert(Convert *curr) { return curr; };
   virtual Expression* walkHost(Host *curr) { return curr; };
+  virtual Expression* walkNop(Nop *curr) { return curr; };
 
   // children-first
   Expression *walk(Expression *curr) {
@@ -181,6 +182,10 @@ struct WasmWalker {
       }
       return walkHost(cast);
     }
+    if (Nop *cast = dynamic_cast<Nop*>(curr)) {
+      return walkNop(cast);
+    }
+    abort();
   }
 
   void startWalk(Function *func) {
@@ -1040,9 +1045,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       return ret;
     } else if (what == SWITCH) {
       // XXX switch is still in flux in the spec repo, just emit a placeholder
-      auto ret = allocator.alloc<Block>();
-      ret->var = IString("SWITCH_PLACEHOLDER");
-      return ret;
+      return allocator.alloc<Nop>();
 #if 0
       IString name = getNextId("switch");
       breakStack.push_back(name);
