@@ -446,8 +446,14 @@ private:
     if (ast[0] == NUM) {
       return Literal((int32_t)ast[1]->getInteger());
     } else if (ast[0] == UNARY_PREFIX) {
-      assert(ast[1] == MINUS && ast[2][0] == NUM);
-      return Literal((int32_t)-ast[2][1]->getInteger());
+      if (ast[1] == MINUS && ast[2][0] == NUM) {
+        double num = -ast[2][1]->getNumber();
+        assert(isInteger32(num));
+        return Literal((int32_t)num);
+      }
+      if (ast[1] == MINUS && ast[2][0] == UNARY_PREFIX && ast[2][1] == PLUS && ast[2][2][0] == NUM) {
+        return Literal((double)-ast[2][2][1]->getNumber());
+      }
     }
     abort();
   }
@@ -625,8 +631,10 @@ void Asm2WasmModule::processAsm(Ref ast) {
 }
 
 Function* Asm2WasmModule::processFunction(Ref ast) {
+  //if (ast[1] !=IString("_fmod")) return nullptr;
+
   if (debug) {
-    std::cout << "func: ";
+    std::cout << "\nfunc: ";
     ast->stringify(std::cout);
     std::cout << '\n';
   }
@@ -836,7 +844,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         ret->type = BasicType::f64; // we add it here for e.g. call coercions
         return ret;
       } else if (ast[1] == MINUS) {
-        if (ast[2][0] == NUM) {
+        if (ast[2][0] == NUM || (ast[2][0] == UNARY_PREFIX && ast[2][1] == PLUS && ast[2][2][0] == NUM)) {
           auto ret = allocator.alloc<Const>();
           ret->value = getLiteral(ast);
           ret->type = ret->value.type;
@@ -1192,7 +1200,7 @@ int main(int argc, char **argv) {
 
   char *infile = argv[1];
 
-  if (debug) std::cerr << "loading '%s'...\n", infile;
+  if (debug) std::cerr << "loading '" << infile << "'...\n";
   FILE *f = fopen(argv[1], "r");
   assert(f);
   fseek(f, 0, SEEK_END);
