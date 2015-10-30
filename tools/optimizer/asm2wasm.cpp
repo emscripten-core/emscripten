@@ -443,19 +443,6 @@ private:
     }
   }
 
-  // function table null thunks are always named b\d+
-  bool isNullThunk(IString name) {
-    const char *str = name.str;
-    if (*str != 'b') return false;
-    str++;
-    while (1) {
-      if (*str < '0' || *str > '9') return false;
-      str++;
-      if (*str == 0) break;
-    }
-    return true;
-  }
-
   wasm::Arena tempAllocator;
 
   std::map<unsigned, Ref> tempNums;
@@ -586,17 +573,21 @@ void Asm2WasmModule::processAsm(Ref ast) {
           views.emplace(name, View(bytes, integer, signed_));
         } else if (value[0] == ARRAY) {
           // function table. we "merge" them, so e.g.   [foo, b1] , [b2, bar]  =>  [foo, bar] , assuming b* are the aborting thunks
+          // when minified, we can't tell from the name b\d+, but null thunks appear multiple times in a table; others never do
           // TODO: we can drop some b*s at the end of the table
           Ref contents = value[1];
+          std::map<IString, unsigned> counts; // name -> how many times seen
+          for (unsigned k = 0; k < contents->size(); k++) {
+            IString curr = contents[k][1]->getIString();
+            counts[curr]++;
+          }
           for (unsigned k = 0; k < contents->size(); k++) {
             IString curr = contents[k][1]->getIString();
             if (table.vars.size() <= k) {
               table.vars.push_back(curr);
             } else {
-              if (isNullThunk(table.vars[k])) {
+              if (counts[curr] == 1) { // if just one appearance, not a null thunk
                 table.vars[k] = curr;
-              } else {
-                assert(isNullThunk(curr) && "cannot have aliasing function pointers");
               }
             }
           }
