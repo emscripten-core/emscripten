@@ -172,8 +172,8 @@ struct Literal {
       case none: abort();
       case BasicType::i32: o << i32; break;
       case BasicType::i64: o << i64; break;
-      case BasicType::f32: o << f32; break;
-      case BasicType::f64: o << f64; break;
+      case BasicType::f32: o << JSPrinter::numToString(f32); break;
+      case BasicType::f64: o << JSPrinter::numToString(f64); break;
     }
     restoreNormalColor(o);
     o << ')';
