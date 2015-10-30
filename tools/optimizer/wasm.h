@@ -364,8 +364,7 @@ public:
   Name target;
   ExpressionList operands;
 
-  std::ostream& print(std::ostream &o, unsigned indent) override {
-    printOpening(o, "call ");
+  std::ostream& printBody(std::ostream &o, unsigned indent) {
     target.print(o);
     if (operands.size() > 0) {
       incIndent(o, indent);
@@ -378,9 +377,18 @@ public:
     }
     return o;
   }
+
+  std::ostream& print(std::ostream &o, unsigned indent) override {
+    printOpening(o, "call ");
+    return printBody(o, indent);
+  }
 };
 
 class CallImport : public Call {
+  std::ostream& print(std::ostream &o, unsigned indent) override {
+    printOpening(o, "call_import ");
+    return printBody(o, indent);
+  }
 };
 
 class FunctionType {
