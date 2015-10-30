@@ -1516,3 +1516,11 @@ public:
   }
 };
 
+// Tolerates 0.0 in the input; does not trust a +() to be there.
+class DotZeroValueBuilder : public ValueBuilder {
+public:
+  static Ref makeDouble(double num) {
+    return makePrefix(PLUS, ValueBuilder::makeDouble(num));
+  }
+};
+
