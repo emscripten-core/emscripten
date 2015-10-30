@@ -343,13 +343,6 @@ private:
     return asmToWasmType(detectType(ast, data));
   }
 
-  bool isInteger(double num) {
-    return fmod(num, 1) == 0 && double(int(num)) == num;
-  }
-  bool isInteger(Ref ast) {
-    return ast[0] == NUM && isInteger(ast[1]->getNumber());
-  }
-
   bool isUnsignedCoercion(Ref ast) { // TODO: use detectSign?
     if (ast[0] == BINARY && ast[1] == TRSHIFT) return true;
     return false;
@@ -765,7 +758,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
     } else if (what == NUM) {
       auto ret = allocator.alloc<Const>();
       double num = ast[1]->getNumber();
-      if (isInteger(num)) {
+      if (isInteger32(num)) {
         ret->value.type = BasicType::i32;
         ret->value.i32 = num;
       } else {
