@@ -807,11 +807,13 @@ public:
       curr.second->print(o, indent, true);
       o << '\n';
     }
+#if 0
     for (auto& curr : imports) {
       doIndent(o, indent);
       curr.second.print(o, indent);
       o << '\n';
     }
+#endif
     for (auto& curr : exports) {
       doIndent(o, indent);
       curr.print(o, indent);

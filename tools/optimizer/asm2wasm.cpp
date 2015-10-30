@@ -911,8 +911,16 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         }
         Call* ret;
         if (imports.find(name) != imports.end()) {
+          // no imports yet in reference interpreter, fake it
+          AsmType asmType = detectType(astStackHelper.getParent(), &asmData);
+          if (asmType == ASM_NONE) return allocator.alloc<Nop>();
+          if (asmType == ASM_INT) return allocator.alloc<Const>()->set(Literal((int32_t)0));
+          if (asmType == ASM_DOUBLE) return allocator.alloc<Const>()->set(Literal((double)0.0));
+          abort();
+#if 0
           ret = allocator.alloc<CallImport>();
           noteImportedFunctionCall(ast, astStackHelper.getParent(), &asmData);
+#endif
         } else {
           ret = allocator.alloc<Call>();
         }
