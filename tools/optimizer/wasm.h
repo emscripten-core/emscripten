@@ -796,6 +796,8 @@ public:
     unsigned indent = 0;
     printOpening(o, "module", true);
     incIndent(o, indent);
+    doIndent(o, indent);
+    printOpening(o, "memory") << " 16777216)\n"; // XXX
     for (auto& curr : functionTypes) {
       doIndent(o, indent);
       curr.second->print(o, indent, true);
