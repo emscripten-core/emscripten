@@ -78,7 +78,7 @@ struct Name : public cashew::IString {
 
 // Types
 
-enum BasicType {
+enum WasmType {
   none,
   i32,
   i64,
@@ -86,28 +86,28 @@ enum BasicType {
   f64
 };
 
-std::ostream& printBasicType(std::ostream &o, BasicType type) {
+std::ostream& printWasmType(std::ostream &o, WasmType type) {
   switch (type) {
-    case BasicType::none: o << "none"; break;
-    case BasicType::i32: o << "i32"; break;
-    case BasicType::i64: o << "i64"; break;
-    case BasicType::f32: o << "f32"; break;
-    case BasicType::f64: o << "f64"; break;
+    case WasmType::none: o << "none"; break;
+    case WasmType::i32: o << "i32"; break;
+    case WasmType::i64: o << "i64"; break;
+    case WasmType::f32: o << "f32"; break;
+    case WasmType::f64: o << "f64"; break;
   }
   return o;
 }
 
-unsigned getBasicTypeSize(BasicType type) {
+unsigned getWasmTypeSize(WasmType type) {
   switch (type) {
-    case BasicType::none: abort();
-    case BasicType::i32: return 4;
-    case BasicType::i64: return 8;
-    case BasicType::f32: return 4;
-    case BasicType::f64: return 8;
+    case WasmType::none: abort();
+    case WasmType::i32: return 4;
+    case WasmType::i64: return 8;
+    case WasmType::f32: return 4;
+    case WasmType::f64: return 8;
   }
 }
 
-bool isFloat(BasicType type) {
+bool isFloat(WasmType type) {
   switch (type) {
     case f32:
     case f64: return true;
@@ -115,10 +115,10 @@ bool isFloat(BasicType type) {
   return false;
 }
 
-BasicType getBasicType(unsigned size, bool float_) {
-  if (size < 4) return BasicType::i32;
-  if (size == 4) return float_ ? BasicType::f32 : BasicType::i32;
-  if (size == 8) return float_ ? BasicType::f64 : BasicType::i64;
+WasmType getWasmType(unsigned size, bool float_) {
+  if (size < 4) return WasmType::i32;
+  if (size == 4) return float_ ? WasmType::f32 : WasmType::i32;
+  if (size == 8) return float_ ? WasmType::f64 : WasmType::i64;
   abort();
 }
 
@@ -150,7 +150,7 @@ std::ostream& printText(std::ostream &o, const char *str) {
 }
 
 struct Literal {
-  BasicType type;
+  WasmType type;
   union {
     int32_t i32;
     int64_t i64;
@@ -158,22 +158,22 @@ struct Literal {
     double f64;
   };
 
-  Literal() : type(BasicType::none) {}
-  Literal(int32_t init) : type(BasicType::i32), i32(init) {}
-  Literal(int64_t init) : type(BasicType::i64), i64(init) {}
-  Literal(float   init) : type(BasicType::f32), f32(init) {}
-  Literal(double  init) : type(BasicType::f64), f64(init) {}
+  Literal() : type(WasmType::none) {}
+  Literal(int32_t init) : type(WasmType::i32), i32(init) {}
+  Literal(int64_t init) : type(WasmType::i64), i64(init) {}
+  Literal(float   init) : type(WasmType::f32), f32(init) {}
+  Literal(double  init) : type(WasmType::f64), f64(init) {}
 
   std::ostream& print(std::ostream &o) {
     o << '(';
     prepareMinorColor(o);
-    printBasicType(o, type) << ".const ";
+    printWasmType(o, type) << ".const ";
     switch (type) {
       case none: abort();
-      case BasicType::i32: o << i32; break;
-      case BasicType::i64: o << i64; break;
-      case BasicType::f32: o << JSPrinter::numToString(f32); break;
-      case BasicType::f64: o << JSPrinter::numToString(f64); break;
+      case WasmType::i32: o << i32; break;
+      case WasmType::i64: o << i64; break;
+      case WasmType::f32: o << JSPrinter::numToString(f32); break;
+      case WasmType::f64: o << JSPrinter::numToString(f64); break;
     }
     restoreNormalColor(o);
     o << ')';
@@ -213,7 +213,7 @@ enum HostOp {
 
 class Expression {
 public:
-  BasicType type;
+  WasmType type;
 
   Expression() : type(type) {}
 
@@ -394,8 +394,8 @@ class CallImport : public Call {
 class FunctionType {
 public:
   Name name;
-  BasicType result;
-  std::vector<BasicType> params;
+  WasmType result;
+  std::vector<WasmType> params;
 
   std::ostream& print(std::ostream &o, unsigned indent, bool full=false) {
     if (full) {
@@ -407,14 +407,14 @@ public:
       printMinorOpening(o, "param");
       for (auto& param : params) {
         o << ' ';
-        printBasicType(o, param);
+        printWasmType(o, param);
       }
       o << ')';
     }
     if (result != none) {
       o << ' ';
       printMinorOpening(o, "result ");
-      printBasicType(o, result) << ')';
+      printWasmType(o, result) << ')';
     }
     if (full) {
       o << "))";;
@@ -493,7 +493,7 @@ public:
   std::ostream& print(std::ostream &o, unsigned indent) override {
     o << '(';
     prepareColor(o);
-    printBasicType(o, getBasicType(bytes, float_)) << ".load";
+    printWasmType(o, getWasmType(bytes, float_)) << ".load";
     if (bytes < 4) {
       if (bytes == 1) {
         o << '8';
@@ -525,7 +525,7 @@ public:
   std::ostream& print(std::ostream &o, unsigned indent) override {
     o << '(';
     prepareColor(o);
-    printBasicType(o, getBasicType(bytes, float_)) << ".store";
+    printWasmType(o, getWasmType(bytes, float_)) << ".store";
     if (bytes < 4) {
       if (bytes == 1) {
         o << '8';
@@ -569,7 +569,7 @@ public:
   std::ostream& print(std::ostream &o, unsigned indent) override {
     o << '(';
     prepareColor(o);
-    printBasicType(o, type) << '.';
+    printWasmType(o, type) << '.';
     switch (op) {
       case Clz: o << "clz"; break;
       case Neg: o << "neg"; break;
@@ -591,7 +591,7 @@ public:
   std::ostream& print(std::ostream &o, unsigned indent) override {
     o << '(';
     prepareColor(o);
-    printBasicType(o, type) << '.';
+    printWasmType(o, type) << '.';
     switch (op) {
       case Add:      o << "add"; break;
       case Sub:      o << "sub"; break;
@@ -627,13 +627,13 @@ public:
   Expression *left, *right;
 
   Compare() {
-    type = BasicType::i32;
+    type = WasmType::i32;
   }
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
     o << '(';
     prepareColor(o);
-    printBasicType(o, type) << '.';
+    printWasmType(o, type) << '.';
     switch (op) {
       case Eq:  o << "eq"; break;
       case Ne:  o << "ne"; break;
@@ -668,7 +668,7 @@ public:
   std::ostream& print(std::ostream &o, unsigned indent) override {
     o << '(';
     prepareColor(o);
-    printBasicType(o, type) << ".convert_";
+    printWasmType(o, type) << ".convert_";
     switch (op) {
       case ConvertUInt32: o << "u/i32"; break;
       case ConvertSInt32: o << "s/i32"; break;
@@ -693,15 +693,15 @@ public:
 
 struct NameType {
   Name name;
-  BasicType type;
+  WasmType type;
   NameType() : name(nullptr), type(none) {}
-  NameType(Name name, BasicType type) : name(name), type(type) {}
+  NameType(Name name, WasmType type) : name(name), type(type) {}
 };
 
 class Function {
 public:
   Name name;
-  BasicType result;
+  WasmType result;
   std::vector<NameType> params;
   std::vector<NameType> locals;
   Expression *body;
@@ -714,20 +714,20 @@ public:
         o << ' ';
         printMinorOpening(o, "param ");
         param.name.print(o) << " ";
-        printBasicType(o, param.type) << ")";
+        printWasmType(o, param.type) << ")";
       }
     }
     if (result != none) {
       o << ' ';
       printMinorOpening(o, "result ");
-      printBasicType(o, result) << ")";
+      printWasmType(o, result) << ")";
     }
     incIndent(o, indent);
     for (auto& local : locals) {
       doIndent(o, indent);
       printMinorOpening(o, "local ");
       local.name.print(o) << " ";
-      printBasicType(o, local.type) << ")\n";
+      printWasmType(o, local.type) << ")\n";
     }
     printFullLine(o, indent, body);
     decIndent(o, indent);

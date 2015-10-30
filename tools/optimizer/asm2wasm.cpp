@@ -224,14 +224,14 @@ class Asm2WasmModule : public wasm::Module {
   unsigned maxGlobal; // highest address we can put a global
   struct MappedGlobal {
     unsigned address;
-    BasicType type;
+    WasmType type;
     bool import; // if true, this is an import - we should read the value, not just set a zero
     MappedGlobal() : address(0), type(none), import(false) {}
-    MappedGlobal(unsigned address, BasicType type, bool import) : address(address), type(type), import(import) {}
+    MappedGlobal(unsigned address, WasmType type, bool import) : address(address), type(type), import(import) {}
   };
   std::map<IString, MappedGlobal> mappedGlobals;
 
-  void allocateGlobal(IString name, BasicType type, bool import) {
+  void allocateGlobal(IString name, WasmType type, bool import) {
     assert(mappedGlobals.find(name) == mappedGlobals.end());
     mappedGlobals.emplace(name, MappedGlobal(nextGlobal, type, import));
     nextGlobal += 8;
@@ -293,7 +293,7 @@ class Asm2WasmModule : public wasm::Module {
     }
   }
 
-  char getSigFromType(BasicType type) {
+  char getSigFromType(WasmType type) {
     switch (type) {
       case i32:  return 'i';
       case f64:  return 'd';
@@ -304,7 +304,7 @@ class Asm2WasmModule : public wasm::Module {
 
   FunctionType *getFunctionType(Ref parent, ExpressionList& operands) {
     // generate signature
-    BasicType result = detectWasmType(parent, nullptr);
+    WasmType result = detectWasmType(parent, nullptr);
     std::string str = "FUNCSIG$";
     str += getSigFromType(result);
     for (auto operand : operands) {
@@ -332,19 +332,19 @@ public:
   void optimize();
 
 private:
-  BasicType asmToWasmType(AsmType asmType) {
+  WasmType asmToWasmType(AsmType asmType) {
     switch (asmType) {
-      case ASM_INT: return BasicType::i32;
-      case ASM_DOUBLE: return BasicType::f64;
-      case ASM_NONE: return BasicType::none;
+      case ASM_INT: return WasmType::i32;
+      case ASM_DOUBLE: return WasmType::f64;
+      case ASM_NONE: return WasmType::none;
       default: abort_on("confused asmType", asmType);
     }
   }
-  AsmType wasmToAsmType(BasicType type) {
+  AsmType wasmToAsmType(WasmType type) {
     switch (type) {
-      case BasicType::i32: return ASM_INT;
-      case BasicType::f64: return ASM_DOUBLE;
-      case BasicType::none: return ASM_NONE;
+      case WasmType::i32: return ASM_INT;
+      case WasmType::f64: return ASM_DOUBLE;
+      case WasmType::none: return ASM_NONE;
       default: abort_on("confused wasmType", type);
     }
   }
@@ -359,7 +359,7 @@ private:
     return detectType(ast, data);
   }
 
-  BasicType detectWasmType(Ref ast, AsmData *data) {
+  WasmType detectWasmType(Ref ast, AsmData *data) {
     return asmToWasmType(detectAsmType(ast, data));
   }
 
@@ -381,18 +381,18 @@ private:
     if (op == TRSHIFT) { binary = BinaryOp::ShrU; return true; }
     if (op == EQ) { relational = RelationalOp::Eq; return false; }
     if (op == NE) { relational = RelationalOp::Ne; return false; }
-    BasicType leftType = detectWasmType(left, asmData);
+    WasmType leftType = detectWasmType(left, asmData);
 #if 0
     std::cout << "CHECK\n";
     left->stringify(std::cout);
     std::cout << " => ";
-    printBasicType(std::cout, leftType);
+    printWasmType(std::cout, leftType);
     std::cout << '\n';
     right->stringify(std::cout);
     std::cout << " => ";
-    printBasicType(std::cout, detectWasmType(right, asmData));
+    printWasmType(std::cout, detectWasmType(right, asmData));
 #endif
-    bool isInteger = leftType == BasicType::i32;
+    bool isInteger = leftType == WasmType::i32;
     bool isUnsigned = isUnsignedCoercion(left) || isUnsignedCoercion(right);
     if (op == DIV) {
       if (isInteger) {
@@ -473,7 +473,7 @@ void Asm2WasmModule::processAsm(Ref ast) {
   Ref body = asmFunction[3];
   assert(body[0][0] == STAT && body[0][1][0] == STRING && (body[0][1][1]->getIString() == IString("use asm") || body[0][1][1]->getIString() == IString("almost asm")));
 
-  auto addImport = [&](IString name, Ref imported, BasicType type) {
+  auto addImport = [&](IString name, Ref imported, WasmType type) {
     assert(imported[0] == DOT);
     Ref module = imported[1];
     if (module[0] == DOT) {
@@ -499,9 +499,9 @@ void Asm2WasmModule::processAsm(Ref ast) {
     import.base = imported[2]->getIString();
     // special-case some asm builtins
     if (import.module == GLOBAL && (import.base == NAN_ || import.base == INFINITY_)) {
-      type = BasicType::f64;
+      type = WasmType::f64;
     }
-    if (type != BasicType::none) {
+    if (type != WasmType::none) {
       // wasm has no imported constants, so allocate a global, and we need to write the value into that
       allocateGlobal(name, type, true);
     } else {
@@ -522,12 +522,12 @@ void Asm2WasmModule::processAsm(Ref ast) {
         if (value[0] == NUM) {
           // global int
           assert(value[1]->getNumber() == 0);
-          allocateGlobal(name, BasicType::i32, false);
+          allocateGlobal(name, WasmType::i32, false);
         } else if (value[0] == BINARY) {
           // int import
           assert(value[1] == OR && value[3][0] == NUM && value[3][1]->getNumber() == 0);
           Ref import = value[2]; // env.what
-          addImport(name, import, BasicType::i32);
+          addImport(name, import, WasmType::i32);
         } else if (value[0] == UNARY_PREFIX) {
           // double import or global
           assert(value[1] == PLUS);
@@ -535,14 +535,14 @@ void Asm2WasmModule::processAsm(Ref ast) {
           if (import[0] == NUM) {
             // global
             assert(import[1]->getNumber() == 0);
-            allocateGlobal(name, BasicType::f64, false);
+            allocateGlobal(name, WasmType::f64, false);
           } else {
             // import
-            addImport(name, import, BasicType::f64);
+            addImport(name, import, WasmType::f64);
           }
         } else if (value[0] == DOT) {
           // function import
-          addImport(name, value, BasicType::none);
+          addImport(name, value, WasmType::none);
         } else if (value[0] == NEW) {
           // ignore imports of typed arrays, but note the names of the arrays
           value = value[1];
@@ -731,12 +731,12 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         assert(mappedGlobals.find(name) != mappedGlobals.end());
         MappedGlobal global = mappedGlobals[name];
         auto ret = allocator.alloc<Store>();
-        ret->bytes = getBasicTypeSize(global.type);
+        ret->bytes = getWasmTypeSize(global.type);
         ret->float_ = isFloat(global.type);
         ret->offset = 0;
         ret->align = ret->bytes;
         auto ptr = allocator.alloc<Const>();
-        ptr->value.type = BasicType::i32; // XXX for wasm64, need 64
+        ptr->value.type = WasmType::i32; // XXX for wasm64, need 64
         ptr->value.i32 = global.address;
         ret->ptr = ptr;
         ret->value = process(ast[3]);
@@ -762,7 +762,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
     } else if (what == BINARY) {
       if (ast[1] == OR && ast[3][0] == NUM && ast[3][1]->getNumber() == 0) {
         auto ret = process(ast[2]); // just look through the ()|0 coercion
-        ret->type = BasicType::i32; // we add it here for e.g. call coercions
+        ret->type = WasmType::i32; // we add it here for e.g. call coercions
         return ret;
       }
       BinaryOp binary;
@@ -786,10 +786,10 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       auto ret = allocator.alloc<Const>();
       double num = ast[1]->getNumber();
       if (isInteger32(num)) {
-        ret->value.type = BasicType::i32;
+        ret->value.type = WasmType::i32;
         ret->value.i32 = num;
       } else {
-        ret->value.type = BasicType::f64;
+        ret->value.type = WasmType::f64;
         ret->value.f64 = num;
       }
       ret->type = ret->value.type;
@@ -807,13 +807,13 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       assert(mappedGlobals.find(name) != mappedGlobals.end());
       MappedGlobal global = mappedGlobals[name];
       auto ret = allocator.alloc<Load>();
-      ret->bytes = getBasicTypeSize(global.type);
+      ret->bytes = getWasmTypeSize(global.type);
       ret->signed_ = true; // but doesn't matter
       ret->float_ = isFloat(global.type);
       ret->offset = 0;
       ret->align = ret->bytes;
       auto ptr = allocator.alloc<Const>();
-      ptr->value.type = BasicType::i32; // XXX for wasm64, need 64
+      ptr->value.type = WasmType::i32; // XXX for wasm64, need 64
       ptr->value.i32 = global.address;
       ret->ptr = ptr;
       ret->type = global.type;
@@ -831,13 +831,13 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       ret->offset = 0;
       ret->align = view.bytes;
       ret->ptr = processUnshifted(ast[2], view.bytes);
-      ret->type = getBasicType(view.bytes, !view.integer);
+      ret->type = getWasmType(view.bytes, !view.integer);
       return ret;
     } else if (what == UNARY_PREFIX) {
       if (ast[1] == PLUS) {
         if (ast[2][0] == NUM) {
           auto ret = allocator.alloc<Const>();
-          ret->value.type = BasicType::f64;
+          ret->value.type = WasmType::f64;
           ret->value.f64 = ast[2][1]->getNumber();
           ret->type = ret->value.type;
           return ret;
@@ -847,12 +847,12 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
           auto ret = allocator.alloc<Convert>();
           ret->op = isUnsignedCoercion(ast[2]) ? ConvertUInt32 : ConvertSInt32;
           ret->value = process(ast[2]);
-          ret->type = BasicType::f64;
+          ret->type = WasmType::f64;
           return ret;
         }
         assert(childType == ASM_NONE || childType == ASM_DOUBLE); // e.g. a coercion on a call or for a return
         auto ret = process(ast[2]); // just look through the +() coercion
-        ret->type = BasicType::f64; // we add it here for e.g. call coercions
+        ret->type = WasmType::f64; // we add it here for e.g. call coercions
         return ret;
       } else if (ast[1] == MINUS) {
         if (ast[2][0] == NUM || (ast[2][0] == UNARY_PREFIX && ast[2][1] == PLUS && ast[2][2][0] == NUM)) {
@@ -868,14 +868,14 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
           ret->op = Sub;
           ret->left = allocator.alloc<Const>()->set(Literal((int32_t)0));
           ret->right = process(ast[2]);
-          ret->type = BasicType::i32;
+          ret->type = WasmType::i32;
           return ret;
         }
         assert(asmType == ASM_DOUBLE);
         auto ret = allocator.alloc<Unary>();
         ret->op = Neg;
         ret->value = process(ast[2]);
-        ret->type = BasicType::f64;
+        ret->type = WasmType::f64;
         return ret;
       } else if (ast[1] == B_NOT) {
         // ~, might be ~~ as a coercion or just a not
@@ -883,7 +883,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
           auto ret = allocator.alloc<Convert>();
           ret->op = TruncSFloat64; // equivalent to U, except for error handling, which asm.js doesn't have anyhow
           ret->value = process(ast[2][2]);
-          ret->type = BasicType::i32;
+          ret->type = WasmType::i32;
           return ret;
         }
         // no bitwise unary not, so do xor with -1
@@ -891,7 +891,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         ret->op = Xor;
         ret->left = process(ast[2]);
         ret->right = allocator.alloc<Const>()->set(Literal(int32_t(-1)));
-        ret->type = BasicType::i32;
+        ret->type = WasmType::i32;
         return ret;
       } else if (ast[1] == L_NOT) {
         // no logical unary not, so do == 0
@@ -917,7 +917,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
           ret->op = Mul;
           ret->left = process(ast[2][0]);
           ret->right = process(ast[2][1]);
-          ret->type = BasicType::i32;
+          ret->type = WasmType::i32;
           return ret;
         }
         if (name == Math_clz32) {
@@ -925,7 +925,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
           auto ret = allocator.alloc<Unary>();
           ret->op = Clz;
           ret->value = process(ast[2][0]);
-          ret->type = BasicType::i32;
+          ret->type = WasmType::i32;
           return ret;
         }
         Call* ret;
@@ -962,7 +962,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       ret->type = getFunctionType(astStackHelper.getParent(), ret->operands);
       return ret;
     } else if (what == RETURN) {
-      BasicType type = !!ast[1] ? detectWasmType(ast[1], &asmData) : none;
+      WasmType type = !!ast[1] ? detectWasmType(ast[1], &asmData) : none;
       if (seenReturn) {
         assert(function->result == type);
       } else {
@@ -1130,7 +1130,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
       unsigned addr = ptr[1]->getInteger();
       unsigned shifted = addr << shifts;
       auto ret = allocator.alloc<Const>();
-      ret->value.type = BasicType::i32;
+      ret->value.type = WasmType::i32;
       ret->value.i32 = shifted;
       return (Expression*)ret;
     }
