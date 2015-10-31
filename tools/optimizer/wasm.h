@@ -540,6 +540,7 @@ public:
 
   Const* set(Literal value_) {
     value = value_;
+    type = value.type;
     return this;
   }
 
