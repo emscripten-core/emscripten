@@ -11,6 +11,7 @@
 #include <map>
 #include <vector>
 
+#include "simple_ast.h"
 #include "colors.h"
 
 namespace wasm {
