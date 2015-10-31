@@ -650,11 +650,11 @@ public:
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
     o << '(';
-    prepareColor(o) << printWasmType(type) << ".convert_";
+    prepareColor(o);
     switch (op) {
-      case ConvertUInt32: o << "u/i32"; break;
-      case ConvertSInt32: o << "s/i32"; break;
-      case TruncSFloat64: o << "s/f64"; break;
+      case ConvertUInt32: o << "f64.convert_u/i32"; break;
+      case ConvertSInt32: o << "f64.convert_s/i32"; break;
+      case TruncSFloat64: o << "i32.trunc_s/f64"; break;
       default: abort();
     }
     restoreNormalColor(o);
