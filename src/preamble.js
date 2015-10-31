@@ -1256,7 +1256,13 @@ if (typeof Atomics === 'undefined') {
 #else // USE_PTHREADS
 
 #if SPLIT_MEMORY == 0
-buffer = new ArrayBuffer(TOTAL_MEMORY);
+// Use a provided buffer, if there is one, or else allocate a new one
+if (Module['buffer']) {
+  buffer = Module['buffer'];
+  assert(buffer.byteLength === TOTAL_MEMORY, 'provided buffer should be ' + TOTAL_MEMORY + ' bytes, but it is ' + buffer.byteLength);
+} else {
+  buffer = new ArrayBuffer(TOTAL_MEMORY);
+}
 HEAP8 = new Int8Array(buffer);
 HEAP16 = new Int16Array(buffer);
 HEAP32 = new Int32Array(buffer);
