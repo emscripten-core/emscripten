@@ -1,5 +1,4 @@
 
-#include "simple_ast.h"
 #include "wasm.h"
 #include "optimizer.h"
 
@@ -1028,7 +1027,7 @@ void Asm2WasmBuilder::optimize() {
   struct BlockRemover : public WasmWalker {
     BlockRemover() : WasmWalker(nullptr) {}
 
-    Expression* walkBlock(Block *curr) override {
+    Expression* visitBlock(Block *curr) override {
       if (curr->list.size() != 1) return curr;
       // just one element; maybe we can return just the element
       if (curr->name.isNull()) return curr->list[0];
@@ -1042,7 +1041,7 @@ void Asm2WasmBuilder::optimize() {
 
         BreakSeeker(IString target) : target(target), found(false) {}
 
-        Expression* walkBreak(Break *curr) override {
+        Expression* visitBreak(Break *curr) override {
           if (curr->name == target) found++;
         }
       };
