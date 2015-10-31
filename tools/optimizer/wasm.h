@@ -461,20 +461,20 @@ public:
 
 class GetLocal : public Expression {
 public:
-  Name id;
+  Name name;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    return printOpening(o, "get_local ") << id << ')';
+    return printOpening(o, "get_local ") << name << ')';
   }
 };
 
 class SetLocal : public Expression {
 public:
-  Name id;
+  Name name;
   Expression *value;
 
   std::ostream& print(std::ostream &o, unsigned indent) override {
-    printOpening(o, "set_local ") << id;
+    printOpening(o, "set_local ") << name;
     incIndent(o, indent);
     printFullLine(o, indent, value);
     return decIndent(o, indent);
