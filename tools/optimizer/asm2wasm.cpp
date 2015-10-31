@@ -576,7 +576,7 @@ Function* Asm2WasmBuilder::processFunction(Ref ast) {
         IString name = ast[2][1]->getIString();
         if (functionVariables.has(name)) {
           auto ret = allocator.alloc<SetLocal>();
-          ret->id = ast[2][1]->getIString();
+          ret->name = ast[2][1]->getIString();
           ret->value = process(ast[3]);
           ret->type = ret->value->type;
           return ret;
@@ -655,7 +655,7 @@ Function* Asm2WasmBuilder::processFunction(Ref ast) {
       if (functionVariables.has(name)) {
         // var in scope
         auto ret = allocator.alloc<GetLocal>();
-        ret->id = name;
+        ret->name = name;
         ret->type = asmToWasmType(asmData.getType(name));
         return ret;
       }
