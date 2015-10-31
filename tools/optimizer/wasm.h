@@ -803,31 +803,31 @@ public:
 // Simple WebAssembly AST visiting and children-first walking
 //
 
+template<class ReturnType>
 struct WasmVisitor {
-  // The Walker uses the return values to replace nodes
-  virtual Expression* visitBlock(Block *curr) = 0;
-  virtual Expression* visitIf(If *curr) = 0;
-  virtual Expression* visitLoop(Loop *curr) = 0;
-  virtual Expression* visitLabel(Label *curr) = 0;
-  virtual Expression* visitBreak(Break *curr) = 0;
-  virtual Expression* visitSwitch(Switch *curr) = 0;
-  virtual Expression* visitCall(Call *curr) = 0;
-  virtual Expression* visitCallImport(CallImport *curr) = 0;
-  virtual Expression* visitCallIndirect(CallIndirect *curr) = 0;
-  virtual Expression* visitGetLocal(GetLocal *curr) = 0;
-  virtual Expression* visitSetLocal(SetLocal *curr) = 0;
-  virtual Expression* visitLoad(Load *curr) = 0;
-  virtual Expression* visitStore(Store *curr) = 0;
-  virtual Expression* visitConst(Const *curr) = 0;
-  virtual Expression* visitUnary(Unary *curr) = 0;
-  virtual Expression* visitBinary(Binary *curr) = 0;
-  virtual Expression* visitCompare(Compare *curr) = 0;
-  virtual Expression* visitConvert(Convert *curr) = 0;
-  virtual Expression* visitHost(Host *curr) = 0;
-  virtual Expression* visitNop(Nop *curr) = 0;
+  virtual ReturnType visitBlock(Block *curr) = 0;
+  virtual ReturnType visitIf(If *curr) = 0;
+  virtual ReturnType visitLoop(Loop *curr) = 0;
+  virtual ReturnType visitLabel(Label *curr) = 0;
+  virtual ReturnType visitBreak(Break *curr) = 0;
+  virtual ReturnType visitSwitch(Switch *curr) = 0;
+  virtual ReturnType visitCall(Call *curr) = 0;
+  virtual ReturnType visitCallImport(CallImport *curr) = 0;
+  virtual ReturnType visitCallIndirect(CallIndirect *curr) = 0;
+  virtual ReturnType visitGetLocal(GetLocal *curr) = 0;
+  virtual ReturnType visitSetLocal(SetLocal *curr) = 0;
+  virtual ReturnType visitLoad(Load *curr) = 0;
+  virtual ReturnType visitStore(Store *curr) = 0;
+  virtual ReturnType visitConst(Const *curr) = 0;
+  virtual ReturnType visitUnary(Unary *curr) = 0;
+  virtual ReturnType visitBinary(Binary *curr) = 0;
+  virtual ReturnType visitCompare(Compare *curr) = 0;
+  virtual ReturnType visitConvert(Convert *curr) = 0;
+  virtual ReturnType visitHost(Host *curr) = 0;
+  virtual ReturnType visitNop(Nop *curr) = 0;
 
-  Expression *visit(Expression *curr) {
-    if (!curr) return curr;
+  ReturnType visit(Expression *curr) {
+    assert(curr);
     if (Block *cast = dynamic_cast<Block*>(curr)) return visitBlock(cast);
     if (If *cast = dynamic_cast<If*>(curr)) return visitIf(cast);
     if (Loop *cast = dynamic_cast<Loop*>(curr)) return visitLoop(cast);
@@ -852,7 +852,7 @@ struct WasmVisitor {
   }
 };
 
-struct WasmWalker : public WasmVisitor {
+struct WasmWalker : public WasmVisitor<Expression*> {
   wasm::Arena* allocator; // use an existing allocator, or null if no allocations
 
   WasmWalker() : allocator(nullptr) {}
