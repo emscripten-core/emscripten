@@ -780,6 +780,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         ret->op = relational;
         ret->left = process(ast[2]);
         ret->right = process(ast[3]);
+        assert(ret->left->type == ret->right->type);
         ret->inputType = ret->left->type;
         return ret;
       }
@@ -900,6 +901,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
         ret->op = Eq;
         ret->left = process(ast[2]);
         ret->right = allocator.alloc<Const>()->set(Literal(0));
+        assert(ret->left->type == ret->right->type);
         ret->inputType = ret->left->type;
         return ret;
       }
