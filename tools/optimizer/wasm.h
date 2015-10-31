@@ -860,26 +860,26 @@ struct WasmWalker : public WasmVisitor<Expression*> {
   WasmWalker(wasm::Arena* allocator) : allocator(allocator) {}
 
   // Each method receives an AST pointer, and it is replaced with what is returned.
-  virtual Expression* visitBlock(Block *curr) { return curr; };
-  virtual Expression* visitIf(If *curr) { return curr; };
-  virtual Expression* visitLoop(Loop *curr) { return curr; };
-  virtual Expression* visitLabel(Label *curr) { return curr; };
-  virtual Expression* visitBreak(Break *curr) { return curr; };
-  virtual Expression* visitSwitch(Switch *curr) { return curr; };
-  virtual Expression* visitCall(Call *curr) { return curr; };
-  virtual Expression* visitCallImport(CallImport *curr) { return curr; };
-  virtual Expression* visitCallIndirect(CallIndirect *curr) { return curr; };
-  virtual Expression* visitGetLocal(GetLocal *curr) { return curr; };
-  virtual Expression* visitSetLocal(SetLocal *curr) { return curr; };
-  virtual Expression* visitLoad(Load *curr) { return curr; };
-  virtual Expression* visitStore(Store *curr) { return curr; };
-  virtual Expression* visitConst(Const *curr) { return curr; };
-  virtual Expression* visitUnary(Unary *curr) { return curr; };
-  virtual Expression* visitBinary(Binary *curr) { return curr; };
-  virtual Expression* visitCompare(Compare *curr) { return curr; };
-  virtual Expression* visitConvert(Convert *curr) { return curr; };
-  virtual Expression* visitHost(Host *curr) { return curr; };
-  virtual Expression* visitNop(Nop *curr) { return curr; };
+  Expression* visitBlock(Block *curr) override { return curr; };
+  Expression* visitIf(If *curr) override { return curr; };
+  Expression* visitLoop(Loop *curr) override { return curr; };
+  Expression* visitLabel(Label *curr) override { return curr; };
+  Expression* visitBreak(Break *curr) override { return curr; };
+  Expression* visitSwitch(Switch *curr) override { return curr; };
+  Expression* visitCall(Call *curr) override { return curr; };
+  Expression* visitCallImport(CallImport *curr) override { return curr; };
+  Expression* visitCallIndirect(CallIndirect *curr) override { return curr; };
+  Expression* visitGetLocal(GetLocal *curr) override { return curr; };
+  Expression* visitSetLocal(SetLocal *curr) override { return curr; };
+  Expression* visitLoad(Load *curr) override { return curr; };
+  Expression* visitStore(Store *curr) override { return curr; };
+  Expression* visitConst(Const *curr) override { return curr; };
+  Expression* visitUnary(Unary *curr) override { return curr; };
+  Expression* visitBinary(Binary *curr) override { return curr; };
+  Expression* visitCompare(Compare *curr) override { return curr; };
+  Expression* visitConvert(Convert *curr) override { return curr; };
+  Expression* visitHost(Host *curr) override { return curr; };
+  Expression* visitNop(Nop *curr) override { return curr; };
 
   // children-first
   Expression *walk(Expression *curr) {
