@@ -1,4 +1,7 @@
 
+#ifndef __simple_ast_h__
+#define __simple_ast_h__
+
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -23,7 +26,7 @@
 #define errv(str, ...) fprintf(stderr, str "\n", __VA_ARGS__);
 #define printErr err
 
-using namespace cashew;
+namespace cashew {
 
 struct Ref;
 struct Value;
@@ -1532,4 +1535,8 @@ public:
     return makePrefix(PLUS, ValueBuilder::makeDouble(num));
   }
 };
+
+} // namespace cashew
+
+#endif // __simple_ast_h__
 
