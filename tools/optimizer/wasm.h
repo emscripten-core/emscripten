@@ -114,8 +114,8 @@ bool isFloat(WasmType type) {
   switch (type) {
     case f32:
     case f64: return true;
+    default: return false;
   }
-  return false;
 }
 
 WasmType getWasmType(unsigned size, bool float_) {
@@ -230,8 +230,6 @@ enum HostOp {
 class Expression {
 public:
   WasmType type; // the type of the expression: its output, not necessarily its input(s)
-
-  Expression() : type(type) {}
 
   virtual std::ostream& print(std::ostream &o, unsigned indent) = 0;
 
