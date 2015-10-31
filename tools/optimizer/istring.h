@@ -68,6 +68,10 @@ struct IString {
     str = s.str;
   }
 
+  void clear() {
+    str = nullptr;
+  }
+
   bool operator==(const IString& other) const {
     //assert((str == other.str) == !strcmp(str, other.str));
     return str == other.str; // fast!
