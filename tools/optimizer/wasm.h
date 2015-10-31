@@ -2,6 +2,9 @@
 // WebAssembly representation and processing library
 //
 
+#ifndef __wasm_h__
+#define __wasm_h__
+
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -797,4 +800,6 @@ public:
 };
 
 } // namespace wasm
+
+#endif // __wasm_h__
 
