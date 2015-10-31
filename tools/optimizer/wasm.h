@@ -164,7 +164,7 @@ struct Literal {
     double f64;
   };
 
-  Literal() : type(WasmType::none) {}
+  Literal() : type(WasmType::none), f64(0) {}
   Literal(int32_t init) : type(WasmType::i32), i32(init) {}
   Literal(int64_t init) : type(WasmType::i64), i64(init) {}
   Literal(float   init) : type(WasmType::f32), f32(init) {}
