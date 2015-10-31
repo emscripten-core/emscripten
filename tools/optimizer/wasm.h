@@ -748,7 +748,7 @@ public:
 };
 
 class Module {
-protected:
+public:
   // wasm contents
   std::map<Name, FunctionType*> functionTypes;
   std::map<Name, Import> imports;
@@ -756,7 +756,6 @@ protected:
   Table table;
   std::vector<Function*> functions;
 
-public:
   Module() {}
 
   friend std::ostream& operator<<(std::ostream &o, Module module) {

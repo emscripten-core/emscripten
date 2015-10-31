@@ -212,10 +212,12 @@ struct AstStackHelper {
 std::vector<Ref> AstStackHelper::astStack;
 
 //
-// Asm2WasmModule - converts an asm.js module into WebAssembly
+// Asm2WasmBuilder - converts an asm.js module into WebAssembly
 //
 
-class Asm2WasmModule : public wasm::Module {
+class Asm2WasmBuilder {
+  Module& wasm;
+
   wasm::Arena allocator;
 
   // globals
@@ -311,7 +313,7 @@ class Asm2WasmModule : public wasm::Module {
       str += getSigFromType(operand->type);
     }
     IString sig(str.c_str(), false);
-    if (functionTypes.find(sig) == functionTypes.end()) {
+    if (wasm.functionTypes.find(sig) == wasm.functionTypes.end()) {
       // add new type
       auto type = allocator.alloc<FunctionType>();
       type->name = sig;
@@ -319,14 +321,14 @@ class Asm2WasmModule : public wasm::Module {
       for (auto operand : operands) {
         type->params.push_back(operand->type);
       }
-      functionTypes[sig] = type;
-      assert(functionTypes.find(sig) != functionTypes.end());
+      wasm.functionTypes[sig] = type;
+      assert(wasm.functionTypes.find(sig) != wasm.functionTypes.end());
     }
-    return functionTypes[sig];
+    return wasm.functionTypes[sig];
   }
 
 public:
-  Asm2WasmModule() : nextGlobal(8), maxGlobal(1000) {}
+  Asm2WasmBuilder(Module& wasm) : wasm(wasm), nextGlobal(8), maxGlobal(1000) {}
 
   void processAsm(Ref ast);
   void optimize();
@@ -466,7 +468,7 @@ private:
   Function* processFunction(Ref ast);
 };
 
-void Asm2WasmModule::processAsm(Ref ast) {
+void Asm2WasmBuilder::processAsm(Ref ast) {
   assert(ast[0] == TOPLEVEL);
   Ref asmFunction = ast[1][0];
   assert(asmFunction[0] == DEFUN);
@@ -505,7 +507,7 @@ void Asm2WasmModule::processAsm(Ref ast) {
       // wasm has no imported constants, so allocate a global, and we need to write the value into that
       allocateGlobal(name, type, true);
     } else {
-      imports.emplace(name, import);
+      wasm.imports.emplace(name, import);
     }
   };
 
@@ -583,11 +585,11 @@ void Asm2WasmModule::processAsm(Ref ast) {
           }
           for (unsigned k = 0; k < contents->size(); k++) {
             IString curr = contents[k][1]->getIString();
-            if (table.names.size() <= k) {
-              table.names.push_back(curr);
+            if (wasm.table.names.size() <= k) {
+              wasm.table.names.push_back(curr);
             } else {
               if (counts[curr] == 1) { // if just one appearance, not a null thunk
-                table.names[k] = curr;
+                wasm.table.names[k] = curr;
               }
             }
           }
@@ -597,7 +599,7 @@ void Asm2WasmModule::processAsm(Ref ast) {
       }
     } else if (curr[0] == DEFUN) {
       // function
-      functions.push_back(processFunction(curr));
+      wasm.functions.push_back(processFunction(curr));
     } else if (curr[0] == RETURN) {
       // exports
       Ref object = curr[1];
@@ -610,7 +612,7 @@ void Asm2WasmModule::processAsm(Ref ast) {
         Export export_;
         export_.name = key;
         export_.value = value[1]->getIString();
-        exports.push_back(export_);
+        wasm.exports.push_back(export_);
       }
     }
   }
@@ -619,7 +621,7 @@ void Asm2WasmModule::processAsm(Ref ast) {
 
   std::vector<IString> toErase;
 
-  for (auto& pair : imports) {
+  for (auto& pair : wasm.imports) {
     IString name = pair.first;
     Import& import = pair.second;
     if (importedFunctionTypes.find(name) != importedFunctionTypes.end()) {
@@ -631,7 +633,7 @@ void Asm2WasmModule::processAsm(Ref ast) {
   }
 
   for (auto curr : toErase) {
-    imports.erase(curr);
+    wasm.imports.erase(curr);
   }
 
   // cleanups
@@ -639,7 +641,7 @@ void Asm2WasmModule::processAsm(Ref ast) {
   tempAllocator.clear();
 }
 
-Function* Asm2WasmModule::processFunction(Ref ast) {
+Function* Asm2WasmBuilder::processFunction(Ref ast) {
   //if (ast[1] != IString("qta")) return nullptr;
 
   if (debug) {
@@ -933,7 +935,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
           return ret;
         }
         Call* ret;
-        if (imports.find(name) != imports.end()) {
+        if (wasm.imports.find(name) != wasm.imports.end()) {
           // no imports yet in reference interpreter, fake it
           AsmType asmType = detectAsmType(astStackHelper.getParent(), &asmData);
           if (asmType == ASM_NONE) return allocator.alloc<Nop>();
@@ -1169,7 +1171,7 @@ Function* Asm2WasmModule::processFunction(Ref ast) {
   return function;
 }
 
-void Asm2WasmModule::optimize() {
+void Asm2WasmBuilder::optimize() {
   struct BlockRemover : public WasmWalker {
     BlockRemover() : WasmWalker(nullptr) {}
 
@@ -1203,7 +1205,7 @@ void Asm2WasmModule::optimize() {
   };
 
   BlockRemover blockRemover;
-  for (auto function : functions) {
+  for (auto function : wasm.functions) {
     blockRemover.startWalk(function);
   }
 }
@@ -1254,11 +1256,12 @@ int main(int argc, char **argv) {
   Ref asmjs = builder.parseToplevel(input);
 
   if (debug) std::cerr << "wasming...\n";
-  Asm2WasmModule wasm;
-  wasm.processAsm(asmjs);
+  Module wasm;
+  Asm2WasmBuilder asm2wasm(wasm);
+  asm2wasm.processAsm(asmjs);
 
   if (debug) std::cerr << "optimizing...\n";
-  wasm.optimize();
+  asm2wasm.optimize();
 
   if (debug) std::cerr << "printing...\n";
   std::cout << wasm;
