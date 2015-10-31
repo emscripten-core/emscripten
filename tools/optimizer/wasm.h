@@ -176,7 +176,7 @@ struct Literal {
   double  getf64() { assert(type == WasmType::f64); return f64; }
 
   void printDouble(std::ostream &o, double d) {
-    const char *text = JSPrinter::numToString(d);
+    const char *text = cashew::JSPrinter::numToString(d);
     // spec interpreter hates floats starting with '.'
     if (text[0] == '.') {
       o << '0';

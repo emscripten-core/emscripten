@@ -8,7 +8,7 @@
 #include "simple_ast.h"
 #include "optimizer.h"
 
-#include "optimizer-shared.cpp"
+using namespace cashew;
 
 typedef std::vector<IString> StringVec;
 

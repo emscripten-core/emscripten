@@ -1,4 +1,8 @@
 
+#include "optimizer.h"
+
+using namespace cashew;
+
 IString ASM_FLOAT_ZERO;
 
 IString SIMD_INT8X16_CHECK("SIMD_Int8x16_check"),
