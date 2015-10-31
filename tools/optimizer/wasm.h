@@ -170,6 +170,11 @@ struct Literal {
   Literal(float   init) : type(WasmType::f32), f32(init) {}
   Literal(double  init) : type(WasmType::f64), f64(init) {}
 
+  int32_t geti32() { assert(type == WasmType::i32); return i32; }
+  int64_t geti64() { assert(type == WasmType::i64); return i64; }
+  float   getf32() { assert(type == WasmType::f32); return f32; }
+  double  getf64() { assert(type == WasmType::f64); return f64; }
+
   void printDouble(std::ostream &o, double d) {
     const char *text = JSPrinter::numToString(d);
     // spec interpreter hates floats starting with '.'
@@ -242,7 +247,7 @@ public:
 std::ostream& printFullLine(std::ostream &o, unsigned indent, Expression *expression) {
   doIndent(o, indent);
   expression->print(o, indent);
-  o << '\n';
+  return o << '\n';
 }
 
 std::ostream& printOpening(std::ostream &o, const char *str, bool major=false) {
@@ -323,6 +328,7 @@ public:
 class Label : public Expression {
 public:
   Name name;
+  Expression* body;
 };
 
 class Break : public Expression {
