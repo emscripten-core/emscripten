@@ -352,7 +352,9 @@ private:
   AsmType detectAsmType(Ref ast, AsmData *data) {
     if (ast[0] == NAME) {
       IString name = ast[1]->getIString();
-      if (mappedGlobals.find(name) != mappedGlobals.end()) {
+      if (!data->isLocal(name)) {
+        // must be global
+        assert(mappedGlobals.find(name) != mappedGlobals.end());
         return wasmToAsmType(mappedGlobals[name].type);
       }
     }
@@ -385,12 +387,10 @@ private:
 #if 0
     std::cout << "CHECK\n";
     left->stringify(std::cout);
-    std::cout << " => ";
-    printWasmType(std::cout, leftType);
+    std::cout << " => " << printWasmType(leftType);
     std::cout << '\n';
     right->stringify(std::cout);
-    std::cout << " => ";
-    printWasmType(std::cout, detectWasmType(right, asmData));
+    std::cout << " => " << printWasmType(detectWasmType(right, asmData)) << "\n";
 #endif
     bool isInteger = leftType == WasmType::i32;
     bool isUnsigned = isUnsignedCoercion(left) || isUnsignedCoercion(right);
