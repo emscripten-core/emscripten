@@ -15,12 +15,36 @@ ALLOW_MISC = True
 MEMCPY = False
 MEMCPY2 = False
 NO_DLMALLOC = True
+JS_LIB_PRINTING = False
 
 POSTAMBLE = '''
 @.emscripten.autodebug.str = private constant [10 x i8] c"AD:%d,%d\\0A\\00", align 1 ; [#uses=1]
 @.emscripten.autodebug.str.f = private constant [11 x i8] c"AD:%d,%lf\\0A\\00", align 1 ; [#uses=1]
 @.emscripten.autodebug.str.64 = private constant [13 x i8] c"AD:%d,%d,%d\\0A\\00", align 1 ; [#uses=1]
+'''
 
+if JS_LIB_PRINTING:
+  POSTAMBLE += '''
+; [#uses=1]
+declare void @emscripten_autodebug_i64(i32 %line, i64 %value)
+
+; [#uses=1]
+declare void @emscripten_autodebug_i32(i32 %line, i32 %value)
+
+; [#uses=1]
+declare void @emscripten_autodebug_i16(i32 %line, i16 %value)
+
+; [#uses=1]
+declare void @emscripten_autodebug_i8(i32 %line, i8 %value)
+
+; [#uses=1]
+declare void @emscripten_autodebug_float(i32 %line, float %value)
+
+; [#uses=1]
+declare void @emscripten_autodebug_double(i32 %line, double %value)
+'''
+else:
+  POSTAMBLE += '''
 ; [#uses=1]
 define void @emscripten_autodebug_i64(i32 %line, i64 %value) {
 entry:
