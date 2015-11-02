@@ -4089,6 +4089,27 @@ LibraryManager.library = {
   __pthread_self: function() { abort() },
   pthread_setcancelstate: function() { return 0 },
 
+  // autodebugging
+
+  emscripten_autodebug_i64: function(line, valuel, valueh) {
+    Module.print('AD:' + [line, valuel, valueh]);
+  },
+  emscripten_autodebug_i32: function(line, value) {
+    Module.print('AD:' + [line, value]);
+  },
+  emscripten_autodebug_i16: function(line, value) {
+    Module.print('AD:' + [line, value]);
+  },
+  emscripten_autodebug_i8: function(line, value) {
+    Module.print('AD:' + [line, value]);
+  },
+  emscripten_autodebug_float: function(line, value) {
+    Module.print('AD:' + [line, value]);
+  },
+  emscripten_autodebug_double: function(line, value) {
+    Module.print('AD:' + [line, value]);
+  },
+
   // misc definitions to avoid unnecessary unresolved symbols from fastcomp
   emscripten_prep_setjmp: true,
   emscripten_cleanup_setjmp: true,
