@@ -10,12 +10,12 @@ Warning: You probably want to compile with SKIP_STACK_IN_SMALL=0! Otherwise
 
 import os, sys, re
 
-ALLOW_POINTERS = False
+ALLOW_POINTERS = True
 ALLOW_MISC = True
 MEMCPY = False
 MEMCPY2 = False
-NO_DLMALLOC = True
-JS_LIB_PRINTING = False
+NO_DLMALLOC = False
+JS_LIB_PRINTING = True
 
 POSTAMBLE = '''
 @.emscripten.autodebug.str = private constant [10 x i8] c"AD:%d,%d\\0A\\00", align 1 ; [#uses=1]
@@ -197,7 +197,8 @@ for i in range(len(lines)):
       if in_func:
         added_entry = False
       if 'printf' in lines[i] or '__fwritex' in lines[i] or '__towrite' in lines[i] or 'pop_arg391' in lines[i] or 'fmt_u' in lines[i] or 'pad(' in lines[i] or 'stdout_write' in lines[i] or 'stdio_write' in lines[i] or 'syscall' in lines[i]:
-        in_func = False # do not add logging in musl printing code, which would infinitely recurse
+        if not JS_LIB_PRINTING:
+          in_func = False # do not add logging in musl printing code, which would infinitely recurse
     elif lines[i].startswith('}'):
       in_func = False
     elif in_func and not added_entry and ' = alloca' not in lines[i] and lines[i].startswith('  '):
@@ -244,7 +245,7 @@ for i in range(len(lines)):
                         '\n  call void @emscripten_autodebug_i8(i32 %d, i8 %%adtemp%d)' % (index, index)
             lines_added += 3
             continue
-      m = re.match('[^ ] .*; preds = ', lines[i])
+      m = re.match('[^ ].*; preds = ', lines[i])
       if m:
         # basic block
         if len(lines) > i+1 and 'phi' not in lines[i+1] and 'landingpad' not in lines[i+1]:
