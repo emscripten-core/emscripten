@@ -942,6 +942,7 @@ try:
     shared.Settings.RELOCATABLE = 1
     shared.Settings.PRECISE_I64_MATH = 1 # other might use precise math, we need to be able to print it
     assert not use_closure_compiler, 'cannot use closure compiler on shared modules'
+    assert not shared.Settings.ALLOW_MEMORY_GROWTH, 'memory growth is not supported with shared modules yet'
 
   if shared.Settings.WASM:
     assert not shared.Settings.ALLOW_MEMORY_GROWTH, 'memory growth is not supported with WASM=1'

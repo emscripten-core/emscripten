@@ -2998,6 +2998,7 @@ The current type of b is: 9
     self.do_run(main, 'supp: 54,2\nmain: 56\nsupp see: 543\nmain see: 76\nok.')
 
   def can_dlfcn(self):
+    if Settings.ALLOW_MEMORY_GROWTH == 1: return self.skip('no dlfcn with memory growth yet')
     return True
 
   def prep_dlfcn_lib(self):
@@ -3757,6 +3758,8 @@ ok
 ''', post_build=self.dlfcn_post_build)
 
   def dylink_test(self, main, side, expected, header=None, main_emcc_args=[], force_c=False, need_reverse=True, auto_load=True):
+    if Settings.ALLOW_MEMORY_GROWTH == 1: return self.skip('no dynamic linking with memory growth yet')
+
     if header:
       open('header.h', 'w').write(header)
 
