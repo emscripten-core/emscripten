@@ -4335,6 +4335,8 @@ var Module = {
     ''', expected=['starting main\nBase\nDerived\nOK'])
 
   def test_dylink_hyper_dupe(self):
+    if Settings.ALLOW_MEMORY_GROWTH == 1: return self.skip('no memory growth in shared modules yet')
+
     Settings.TOTAL_MEMORY = 64*1024*1024
 
     if Settings.ASSERTIONS: self.emcc_args += ['-s', 'ASSERTIONS=2']
