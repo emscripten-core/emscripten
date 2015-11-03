@@ -825,9 +825,10 @@ int main()
 
       self.do_run_from_file(src, output)
 
-      print 'main module'
-      Settings.MAIN_MODULE = 1
-      self.do_run_from_file(src, output)
+      if Settings.ALLOW_MEMORY_GROWTH == 0:
+        print 'main module'
+        Settings.MAIN_MODULE = 1
+        self.do_run_from_file(src, output)
 
   def test_frexp(self):
       test_path = path_from_root('tests', 'core', 'test_frexp')
@@ -4224,6 +4225,8 @@ var Module = {
     ''', expected=['simple.\nsimple.\nsimple.\nsimple.\n'])
 
   def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
+    if Settings.ALLOW_MEMORY_GROWTH == 1: return self.skip('no memory growth in shared modules yet')
+
     def test(syslibs, expect_pass=True, need_reverse=True):
       print 'syslibs', syslibs, Settings.ASSERTIONS
       passed = True
@@ -5422,9 +5425,10 @@ PORT: 3979
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
     self.do_run_from_file(src, output)
 
-    print 'main module'
-    Settings.MAIN_MODULE = 1
-    self.do_run_from_file(src, output)
+    if Settings.ALLOW_MEMORY_GROWTH == 0:
+      print 'main module'
+      Settings.MAIN_MODULE = 1
+      self.do_run_from_file(src, output)
 
   def test_phiundef(self):
     test_path = path_from_root('tests', 'core', 'test_phiundef')
