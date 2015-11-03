@@ -242,6 +242,8 @@ LibraryManager.library = {
   execv: 'execl',
   execve: 'execl',
   execvp: 'execl',
+  __execvpe: 'execl',
+  fexecve: 'execl',
 
   _exit: function(status) {
     // void _exit(int status);
@@ -258,6 +260,8 @@ LibraryManager.library = {
     return -1;
   },
   vfork: 'fork',
+  posix_spawn: 'fork',
+  posix_spawnp: 'fork',
 
   setgroups__deps: ['__setErrNo', '$ERRNO_CODES', 'sysconf'],
   setgroups: function(ngroups, gidset) {
