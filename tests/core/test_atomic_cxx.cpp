@@ -1,9 +1,9 @@
 //------------------------------------------------------------------------------
 //  test C++11 atomics
 //  compile native version with:
-//  clang -std=c++11 -Wno-format atomic_test.cpp 
+//  clang -std=c++11 -Wno-format test_atomic_cxx.cpp
 //  compile emscripten version with:
-//  emcc -std=c++11 -Wno-format atomic_test.cpp
+//  emcc -std=c++11 -Wno-format test_atomic_cxx.cpp
 //------------------------------------------------------------------------------
 #include <atomic>
 #include <cstdio>
@@ -51,16 +51,16 @@ template<typename TYPE, typename UNSIGNED_TYPE> void test(TYPE mask0, TYPE mask1
     }
 
     // fetch_add
-    atomicDog = 0;
+    atomicDog = mask2;
     for (TYPE i = 0; i < numMemoryOrders; i++) {
         TYPE old = atomicDog.fetch_add(1, memoryOrder[i]);
-        printf("fetch_add %lld: old=%lld new=%lld\n", (long long)i, (long long)old, (long long)TYPE(atomicDog));
+        printf("fetch_add %lld: old=%llx new=%llx\n", (long long)i, (long long)old, (long long)TYPE(atomicDog));
     }
 
     // fetch_sub
     for (TYPE i = 0; i < numMemoryOrders; i++) {
         TYPE old = atomicDog.fetch_sub(1, memoryOrder[i]);
-        printf("fetch_sub %lld: old=%lld new=%lld\n", (long long)i, (long long)old, (long long)TYPE(atomicDog));
+        printf("fetch_sub %lld: old=%llx new=%llx\n", (long long)i, (long long)old, (long long)TYPE(atomicDog));
     }
 
     // fetch_and
