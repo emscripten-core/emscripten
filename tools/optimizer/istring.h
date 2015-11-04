@@ -1,5 +1,8 @@
 // Interned String type, 100% interned on creation. Comparisons are always just a pointer comparison
 
+#ifndef __istring_h__
+#define __istring_h__
+
 #include <unordered_set>
 #include <unordered_map>
 #include <set>
@@ -39,6 +42,7 @@ struct IString {
 
   IString() : str(nullptr) {}
   IString(const char *s, bool reuse=true) { // if reuse=true, then input is assumed to remain alive; not copied
+    assert(s);
     set(s, reuse);
   }
 
@@ -67,6 +71,10 @@ struct IString {
     str = s.str;
   }
 
+  void clear() {
+    str = nullptr;
+  }
+
   bool operator==(const IString& other) const {
     //assert((str == other.str) == !strcmp(str, other.str));
     return str == other.str; // fast!
@@ -90,6 +98,7 @@ struct IString {
   const char *c_str() const { return str; }
   bool equals(const char *other) const { return !strcmp(str, other); }
 
+  bool is()     { return str != nullptr; }
   bool isNull() { return str == nullptr; }
 };
 
@@ -147,4 +156,6 @@ public:
 };
 
 } // namespace cashew
+
+#endif // __istring_h__
 

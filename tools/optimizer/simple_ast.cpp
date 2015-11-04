@@ -1,6 +1,8 @@
 
 #include "simple_ast.h"
 
+namespace cashew {
+
 // Ref methods
 
 Ref& Ref::operator[](unsigned x) {
@@ -252,4 +254,6 @@ void traverseFunctions(Ref ast, std::function<void (Ref)> visit) {
 // ValueBuilder
 
 IStringSet ValueBuilder::statable("assign call binary unary-prefix if name num conditional dot new sub seq string object array");
+
+} // namespace cashew
 

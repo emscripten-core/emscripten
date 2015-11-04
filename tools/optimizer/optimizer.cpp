@@ -8,6 +8,8 @@
 #include "simple_ast.h"
 #include "optimizer.h"
 
+using namespace cashew;
+
 typedef std::vector<IString> StringVec;
 
 //==================
@@ -15,12 +17,6 @@ typedef std::vector<IString> StringVec;
 //==================
 
 Ref extraInfo;
-
-IString SIMD_INT8X16_CHECK("SIMD_Int8x16_check"),
-        SIMD_INT16X8_CHECK("SIMD_Int16x8_check"),
-        SIMD_INT32X4_CHECK("SIMD_Int32x4_check"),
-        SIMD_FLOAT32X4_CHECK("SIMD_Float32x4_check"),
-        SIMD_FLOAT64X2_CHECK("SIMD_Float64x2_check");
 
 //==================
 // Infrastructure
@@ -41,15 +37,6 @@ int jsD2I(double x) {
 char *strdupe(const char *str) {
   char *ret = (char *)malloc(strlen(str)+1); // leaked!
   strcpy(ret, str);
-  return ret;
-}
-
-int parseInt(const char *str) {
-  int ret = *str - '0';
-  while (*(++str)) {
-    ret *= 10;
-    ret += *str - '0';
-  }
   return ret;
 }
 
@@ -80,18 +67,6 @@ Ref getStatements(Ref node) {
 
 // Types
 
-enum AsmType {
-  ASM_INT = 0,
-  ASM_DOUBLE,
-  ASM_FLOAT,
-  ASM_FLOAT32X4,
-  ASM_FLOAT64X2,
-  ASM_INT8X16,
-  ASM_INT16X8,
-  ASM_INT32X4,
-  ASM_NONE // number of types
-};
-
 AsmType intToAsmType(int type) {
   if (type >= 0 && type <= ASM_NONE) return (AsmType)type;
   else {
@@ -101,8 +76,6 @@ AsmType intToAsmType(int type) {
 }
 
 // forward decls
-struct AsmData;
-AsmType detectType(Ref node, AsmData *asmData=nullptr, bool inVarDef=false);
 Ref makeEmpty();
 bool isEmpty(Ref node);
 Ref makeAsmVarDef(const IString& v, AsmType type);
@@ -114,293 +87,127 @@ Ref makeAsmCoercion(Ref node, AsmType type);
 Ref make1(IString type, Ref a);
 Ref make3(IString type, Ref a, Ref b, Ref c);
 
-struct AsmData {
-  struct Local {
-    Local() {}
-    Local(AsmType type, bool param) : type(type), param(param) {}
-    AsmType type;
-    bool param; // false if a var
-  };
-  typedef std::unordered_map<IString, Local> Locals;
+AsmData::AsmData(Ref f) {
+  func = f;
 
-  Locals locals;
-  std::vector<IString> params; // in order
-  std::vector<IString> vars; // in order
-  AsmType ret;
-
-  Ref func;
-
-  AsmType getType(const IString& name) {
-    auto ret = locals.find(name);
-    if (ret != locals.end()) return ret->second.type;
-    return ASM_NONE;
+  // process initial params
+  Ref stats = func[3];
+  size_t i = 0;
+  while (i < stats->size()) {
+    Ref node = stats[i];
+    if (node[0] != STAT || node[1][0] != ASSIGN || node[1][2][0] != NAME) break;
+    node = node[1];
+    Ref name = node[2][1];
+    int index = func[2]->indexOf(name);
+    if (index < 0) break; // not an assign into a parameter, but a global
+    IString& str = name->getIString();
+    if (locals.count(str) > 0) break; // already done that param, must be starting function body
+    locals[str] = Local(detectType(node[3]), true);
+    params.push_back(str);
+    stats[i] = makeEmpty();
+    i++;
   }
-  void setType(const IString& name, AsmType type) {
-    locals[name].type = type;
-  }
-
-  bool isLocal(const IString& name) {
-    return locals.count(name) > 0;
-  }
-  bool isParam(const IString& name) {
-    return isLocal(name) && locals[name].param;
-  }
-  bool isVar(const IString& name) {
-    return isLocal(name) && !locals[name].param;
-  }
-
-  AsmData(Ref f) {
-    func = f;
-
-    // process initial params
-    Ref stats = func[3];
-    size_t i = 0;
-    while (i < stats->size()) {
-      Ref node = stats[i];
-      if (node[0] != STAT || node[1][0] != ASSIGN || node[1][2][0] != NAME) break;
-      node = node[1];
-      Ref name = node[2][1];
-      int index = func[2]->indexOf(name);
-      if (index < 0) break; // not an assign into a parameter, but a global
-      IString& str = name->getIString();
-      if (locals.count(str) > 0) break; // already done that param, must be starting function body
-      locals[str] = Local(detectType(node[3]), true);
-      params.push_back(str);
-      stats[i] = makeEmpty();
-      i++;
-    }
-    // process initial variable definitions and remove '= 0' etc parts - these
-    // are not actually assignments in asm.js
-    while (i < stats->size()) {
-      Ref node = stats[i];
-      if (node[0] != VAR) break;
-      for (size_t j = 0; j < node[1]->size(); j++) {
-        Ref v = node[1][j];
-        IString& name = v[0]->getIString();
-        Ref value = v[1];
-        if (locals.count(name) == 0) {
-          locals[name] = Local(detectType(value, nullptr, true), false);
-          vars.push_back(name);
-          v->setSize(1); // make an un-assigning var
-        } else {
-          assert(j == 0); // cannot break in the middle
-          goto outside;
-        }
-      }
-      i++;
-    }
-    outside:
-    // look for other var definitions and collect them
-    while (i < stats->size()) {
-      traversePre(stats[i], [&](Ref node) {
-        Ref type = node[0];
-        if (type == VAR) {
-          dump("bad, seeing a var in need of fixing", func);
-          abort(); //, 'should be no vars to fix! ' + func[1] + ' : ' + JSON.stringify(node));
-        }
-      });
-      i++;
-    }
-    // look for final RETURN statement to get return type.
-    Ref retStmt = stats->back();
-    if (!!retStmt && retStmt[0] == RETURN && !!retStmt[1]) {
-      ret = detectType(retStmt[1]);
-    } else {
-      ret = ASM_NONE;
-    }
-  }
-
-  void denormalize() {
-    Ref stats = func[3];
-    // Remove var definitions, if any
-    for (size_t i = 0; i < stats->size(); i++) {
-      if (stats[i][0] == VAR) {
-        stats[i] = makeEmpty();
+  // process initial variable definitions and remove '= 0' etc parts - these
+  // are not actually assignments in asm.js
+  while (i < stats->size()) {
+    Ref node = stats[i];
+    if (node[0] != VAR) break;
+    for (size_t j = 0; j < node[1]->size(); j++) {
+      Ref v = node[1][j];
+      IString& name = v[0]->getIString();
+      Ref value = v[1];
+      if (locals.count(name) == 0) {
+        locals[name] = Local(detectType(value, nullptr, true), false);
+        vars.push_back(name);
+        v->setSize(1); // make an un-assigning var
       } else {
-        if (!isEmpty(stats[i])) break;
+        assert(j == 0); // cannot break in the middle
+        goto outside;
       }
     }
-    // calculate variable definitions
-    Ref varDefs = makeArray(vars.size());
-    for (auto v : vars) {
-      varDefs->push_back(makeAsmVarDef(v, locals[v].type));
-    }
-    // each param needs a line; reuse emptyNodes as much as we can
-    size_t numParams = params.size();
-    size_t emptyNodes = 0;
-    while (emptyNodes < stats->size()) {
-      if (!isEmpty(stats[emptyNodes])) break;
-      emptyNodes++;
-    }
-    size_t neededEmptyNodes = numParams + (varDefs->size() ? 1 : 0); // params plus one big var if there are vars
-    if (neededEmptyNodes > emptyNodes) {
-      stats->insert(0, neededEmptyNodes - emptyNodes);
-    } else if (neededEmptyNodes < emptyNodes) {
-      stats->splice(0, emptyNodes - neededEmptyNodes);
-    }
-    // add param coercions
-    int next = 0;
-    for (auto param : func[2]->getArray()) {
-      IString str = param->getIString();
-      assert(locals.count(str) > 0);
-      stats[next++] = make1(STAT, make3(ASSIGN, makeBool(true), makeName(str.c_str()), makeAsmCoercion(makeName(str.c_str()), locals[str].type)));
-    }
-    if (varDefs->size()) {
-      stats[next] = make1(VAR, varDefs);
-    }
-    /*
-    if (inlines->size() > 0) {
-      var i = 0;
-      traverse(func, function(node, type) {
-        if (type == CALL && node[1][0] == NAME && node[1][1] == 'inlinejs') {
-          node[1] = inlines[i++]; // swap back in the body
-        }
-      });
-    }
-    */
-    // ensure that there's a final RETURN statement if needed.
-    if (ret != ASM_NONE) {
-      Ref retStmt = stats->back();
-      if (!retStmt || retStmt[0] != RETURN) {
-        Ref retVal = makeNum(0);
-        if (ret != ASM_INT) {
-          retVal = makeAsmCoercion(retVal, ret);
-        }
-        stats->push_back(make1(RETURN, retVal));
+    i++;
+  }
+  outside:
+  // look for other var definitions and collect them
+  while (i < stats->size()) {
+    traversePre(stats[i], [&](Ref node) {
+      Ref type = node[0];
+      if (type == VAR) {
+        dump("bad, seeing a var in need of fixing", func);
+        abort(); //, 'should be no vars to fix! ' + func[1] + ' : ' + JSON.stringify(node));
       }
-    }
-    //printErr('denormalized \n\n' + astToSrc(func) + '\n\n');
+    });
+    i++;
   }
-
-  void addParam(IString name, AsmType type) {
-    locals[name] = Local(type, true);
-    params.push_back(name);
+  // look for final RETURN statement to get return type.
+  Ref retStmt = stats->back();
+  if (!!retStmt && retStmt[0] == RETURN && !!retStmt[1]) {
+    ret = detectType(retStmt[1]);
+  } else {
+    ret = ASM_NONE;
   }
-  void addVar(IString name, AsmType type) {
-    locals[name] = Local(type, false);
-    vars.push_back(name);
-  }
-
-  void deleteVar(IString name) {
-    locals.erase(name);
-    for (size_t i = 0; i < vars.size(); i++) {
-      if (vars[i] == name) {
-        vars.erase(vars.begin() + i);
-        break;
-      }
-    }
-  }
-};
-
-struct HeapInfo {
-  bool valid, unsign, floaty;
-  int bits;
-  AsmType type;
-};
-
-HeapInfo parseHeap(const char *name) {
-  HeapInfo ret;
-  if (name[0] != 'H' || name[1] != 'E' || name[2] != 'A' || name[3] != 'P') {
-    ret.valid = false;
-    return ret;
-  }
-  ret.valid = true;
-  ret.unsign = name[4] == 'U';
-  ret.floaty = name[4] == 'F';
-  ret.bits = parseInt(name + (ret.unsign || ret.floaty ? 5 : 4));
-  ret.type = !ret.floaty ? ASM_INT : (ret.bits == 64 ? ASM_DOUBLE : ASM_FLOAT);
-  return ret;
 }
 
-bool isInteger(double x) {
-  return fmod(x, 1) == 0;
-}
-
-bool isInteger32(double x) {
-  return isInteger(x) && (x == (int32_t)x || x == (uint32_t)x);
-}
-
-IString ASM_FLOAT_ZERO;
-
-AsmType detectType(Ref node, AsmData *asmData, bool inVarDef) {
-  switch (node[0]->getCString()[0]) {
-    case 'n': {
-      if (node[0] == NUM) {
-        if (!isInteger(node[1]->getNumber())) return ASM_DOUBLE;
-        return ASM_INT;
-      } else if (node[0] == NAME) {
-        if (asmData) {
-          AsmType ret = asmData->getType(node[1]->getCString());
-          if (ret != ASM_NONE) return ret;
-        }
-        if (!inVarDef) {
-          if (node[1] == INF || node[1] == NaN) return ASM_DOUBLE;
-          if (node[1] == TEMP_RET0) return ASM_INT;
-          return ASM_NONE;
-        }
-        // We are in a variable definition, where Math_fround(0) optimized into a global constant becomes f0 = Math_fround(0)
-        if (ASM_FLOAT_ZERO.isNull()) ASM_FLOAT_ZERO = node[1]->getIString();
-        else assert(node[1] == ASM_FLOAT_ZERO);
-        return ASM_FLOAT;
-      }
-      break;
-    }
-    case 'u': {
-      if (node[0] == UNARY_PREFIX) {
-        switch (node[1]->getCString()[0]) {
-          case '+': return ASM_DOUBLE;
-          case '-': return detectType(node[2], asmData, inVarDef);
-          case '!': case '~': return ASM_INT;
-        }
-        break;
-      }
-      break;
-    }
-    case 'c': {
-      if (node[0] == CALL) {
-        if (node[1][0] == NAME) {
-          IString name = node[1][1]->getIString();
-          if (name == MATH_FROUND) return ASM_FLOAT;
-          else if (name == SIMD_FLOAT32X4 || name == SIMD_FLOAT32X4_CHECK) return ASM_FLOAT32X4;
-          else if (name == SIMD_FLOAT64X2 || name == SIMD_FLOAT64X2_CHECK) return ASM_FLOAT64X2;
-          else if (name == SIMD_INT8X16   || name == SIMD_INT8X16_CHECK) return ASM_INT8X16;
-          else if (name == SIMD_INT16X8   || name == SIMD_INT16X8_CHECK) return ASM_INT16X8;
-          else if (name == SIMD_INT32X4   || name == SIMD_INT32X4_CHECK) return ASM_INT32X4;
-        }
-        return ASM_NONE;
-      } else if (node[0] == CONDITIONAL) {
-        return detectType(node[2], asmData, inVarDef);
-      }
-      break;
-    }
-    case 'b': {
-      if (node[0] == BINARY) {
-        switch (node[1]->getCString()[0]) {
-          case '+': case '-':
-          case '*': case '/': case '%': return detectType(node[2], asmData, inVarDef);
-          case '|': case '&': case '^': case '<': case '>': // handles <<, >>, >>=, <=, >=
-          case '=': case '!': { // handles ==, !=
-            return ASM_INT;
-          }
-        }
-      }
-      break;
-    }
-    case 's': {
-      if (node[0] == SEQ) {
-        return detectType(node[2], asmData, inVarDef);
-      } else if (node[0] == SUB) {
-        assert(node[1][0] == NAME);
-        HeapInfo info = parseHeap(node[1][1]->getCString());
-        if (info.valid) return ASM_NONE;
-        return info.floaty ? ASM_DOUBLE : ASM_INT; // XXX ASM_FLOAT?
-      }
-      break;
+void AsmData::denormalize() {
+  Ref stats = func[3];
+  // Remove var definitions, if any
+  for (size_t i = 0; i < stats->size(); i++) {
+    if (stats[i][0] == VAR) {
+      stats[i] = makeEmpty();
+    } else {
+      if (!isEmpty(stats[i])) break;
     }
   }
-  dump("horrible", node);
-  assert(0);
-  return ASM_NONE;
+  // calculate variable definitions
+  Ref varDefs = makeArray(vars.size());
+  for (auto v : vars) {
+    varDefs->push_back(makeAsmVarDef(v, locals[v].type));
+  }
+  // each param needs a line; reuse emptyNodes as much as we can
+  size_t numParams = params.size();
+  size_t emptyNodes = 0;
+  while (emptyNodes < stats->size()) {
+    if (!isEmpty(stats[emptyNodes])) break;
+    emptyNodes++;
+  }
+  size_t neededEmptyNodes = numParams + (varDefs->size() ? 1 : 0); // params plus one big var if there are vars
+  if (neededEmptyNodes > emptyNodes) {
+    stats->insert(0, neededEmptyNodes - emptyNodes);
+  } else if (neededEmptyNodes < emptyNodes) {
+    stats->splice(0, emptyNodes - neededEmptyNodes);
+  }
+  // add param coercions
+  int next = 0;
+  for (auto param : func[2]->getArray()) {
+    IString str = param->getIString();
+    assert(locals.count(str) > 0);
+    stats[next++] = make1(STAT, make3(ASSIGN, makeBool(true), makeName(str.c_str()), makeAsmCoercion(makeName(str.c_str()), locals[str].type)));
+  }
+  if (varDefs->size()) {
+    stats[next] = make1(VAR, varDefs);
+  }
+  /*
+  if (inlines->size() > 0) {
+    var i = 0;
+    traverse(func, function(node, type) {
+      if (type == CALL && node[1][0] == NAME && node[1][1] == 'inlinejs') {
+        node[1] = inlines[i++]; // swap back in the body
+      }
+    });
+  }
+  */
+  // ensure that there's a final RETURN statement if needed.
+  if (ret != ASM_NONE) {
+    Ref retStmt = stats->back();
+    if (!retStmt || retStmt[0] != RETURN) {
+      Ref retVal = makeNum(0);
+      if (ret != ASM_INT) {
+        retVal = makeAsmCoercion(retVal, ret);
+      }
+      stats->push_back(make1(RETURN, retVal));
+    }
+  }
+  //printErr('denormalized \n\n' + astToSrc(func) + '\n\n');
 }
 
 // Constructions TODO: share common constructions, and assert they remain frozen
