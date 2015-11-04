@@ -294,7 +294,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       for i in range(arity):
         args.append('$' + str(i))
       const = 'function(' + ', '.join(args ) + ') ' + const
-      asm_consts[int(k)] = const
+      asm_consts[k] = const
 
     flatten_list_of_lists = lambda outer: (item for inner in outer for item in inner)
     asm_const_funcs = []
