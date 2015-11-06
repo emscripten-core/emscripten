@@ -528,6 +528,10 @@ def check_sanity(force=False):
         logging.critical('Cannot find %s, check the paths in %s' % (cmd, EM_CONFIG))
         sys.exit(1)
 
+    if not os.path.exists(PYTHON) and not os.path.exists(cmd + '.exe'):
+      logging.critical('Cannot find %s, check the paths in %s' % (PYTHON, EM_CONFIG))
+      sys.exit(1)
+
     if not fastcomp_ok:
       logging.critical('failing sanity checks due to previous fastcomp failure')
       sys.exit(1)
