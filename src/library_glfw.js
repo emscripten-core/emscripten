@@ -513,6 +513,58 @@ var LibraryGLFW = {
       win.windowRefreshFunc = cbfun;
     },
 
+    onClickRequestPointerLock: function(e) {
+      if (!Browser.pointerLock && Module['canvas'].requestPointerLock) {
+        Module['canvas'].requestPointerLock();
+        e.preventDefault();
+      }
+    },
+
+    setInputMode: function(winid, mode, value) {
+      var win = GLFW.WindowFromId(winid);
+      if (!win) return;
+
+      switch(mode) {
+        case 0x00033001: // GLFW_CURSOR
+        {
+          switch(value) {
+            case 0x00034001: // GLFW_CURSOR_NORMAL
+              win.inputModes[mode] = value;
+              Module['canvas'].removeEventListener('click', GLFW.onClickRequestPointerLock, true);
+              Module['canvas'].exitPointerLock();
+              break;
+
+            case 0x00034002: // GLFW_CURSOR_HIDDEN
+              console.log("glfwSetInputMode called with GLFW_CURSOR_HIDDEN value not implemented.");
+              break;
+
+            case 0x00034003: // GLFW_CURSOR_DISABLED
+              win.inputModes[mode] = value;
+              Module['canvas'].addEventListener('click', GLFW.onClickRequestPointerLock, true);
+              Module['canvas'].requestPointerLock();
+              break;
+            
+            default:
+              console.log("glfwSetInputMode called with unknown value parameter value: " + value + ".");
+              break;
+          }
+        }
+        break;
+
+        case 0x00033002: // GLFW_STICKY_KEYS
+          console.log("glfwSetInputMode called with GLFW_STICKY_KEYS mode not implemented.");
+          break;
+
+        case 0x00033003: // GLFW_STICKY_MOUSE_BUTTONS
+          console.log("glfwSetInputMode called with GLFW_STICKY_MOUSE_BUTTONS mode not implemented.");
+          break;
+
+        default:
+          console.log("glfwSetInputMode called with unknown mode parameter value: " + mode + ".");
+          break;
+      }
+    },
+
     getKey: function(winid, key) {
       var win = GLFW.WindowFromId(winid);
       if (!win) return 0;
@@ -588,14 +640,14 @@ var LibraryGLFW = {
         }
       }
 
-      if (!win.windowResizeFunc) return;
+      if (!win.windowSizeFunc) return;
 
 #if USE_GLFW == 2
-      Runtime.dynCall('vii', win.windowResizeFunc, [width, height]);
+      Runtime.dynCall('vii', win.windowSizeFunc, [width, height]);
 #endif
 
 #if USE_GLFW == 3
-      Runtime.dynCall('viii', win.windowResizeFunc, [win.id, width, height]);
+      Runtime.dynCall('viii', win.windowSizeFunc, [win.id, width, height]);
 #endif
     },
 
@@ -1004,11 +1056,9 @@ var LibraryGLFW = {
     return win.inputModes[mode];
   },
 
-  // TODO: implement
-  // GLFW_STICKY_KEYS == key stays pressed until pressed second time
-  // GLFW_STICKY_MOUSE_BUTTONS == same as above but for mouse buttons
-  // GLFW_CURSOR == NORMAL, HIDDEN (no pointer), DISABLED (hidden && always centered)
-  glfwSetInputMode: function(winid, mode, value) {},
+  glfwSetInputMode: function(winid, mode, value) {
+    GLFW.setInputMode(winid, mode, value);
+  },
 
   glfwGetKey: function(winid, key) {
     return GLFW.getKey(winid, key);
