@@ -525,43 +525,43 @@ var LibraryGLFW = {
       if (!win) return;
 
       switch(mode) {
-        case 0x00033001: // GLFW_CURSOR
-        {
+        case 0x00033001: { // GLFW_CURSOR
           switch(value) {
-            case 0x00034001: // GLFW_CURSOR_NORMAL
+            case 0x00034001: { // GLFW_CURSOR_NORMAL
               win.inputModes[mode] = value;
               Module['canvas'].removeEventListener('click', GLFW.onClickRequestPointerLock, true);
               Module['canvas'].exitPointerLock();
               break;
-
-            case 0x00034002: // GLFW_CURSOR_HIDDEN
+            }
+            case 0x00034002: { // GLFW_CURSOR_HIDDEN
               console.log("glfwSetInputMode called with GLFW_CURSOR_HIDDEN value not implemented.");
               break;
-
-            case 0x00034003: // GLFW_CURSOR_DISABLED
+            }
+            case 0x00034003: { // GLFW_CURSOR_DISABLED
               win.inputModes[mode] = value;
               Module['canvas'].addEventListener('click', GLFW.onClickRequestPointerLock, true);
               Module['canvas'].requestPointerLock();
               break;
-            
-            default:
+            }
+            default: {
               console.log("glfwSetInputMode called with unknown value parameter value: " + value + ".");
               break;
+            }
           }
+          break;
         }
-        break;
-
-        case 0x00033002: // GLFW_STICKY_KEYS
+        case 0x00033002: { // GLFW_STICKY_KEYS
           console.log("glfwSetInputMode called with GLFW_STICKY_KEYS mode not implemented.");
           break;
-
-        case 0x00033003: // GLFW_STICKY_MOUSE_BUTTONS
+        }
+        case 0x00033003: { // GLFW_STICKY_MOUSE_BUTTONS
           console.log("glfwSetInputMode called with GLFW_STICKY_MOUSE_BUTTONS mode not implemented.");
           break;
-
-        default:
+        }
+        default: {
           console.log("glfwSetInputMode called with unknown mode parameter value: " + mode + ".");
           break;
+        }
       }
     },
 
