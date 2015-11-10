@@ -1,6 +1,8 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
+{{{ maybeExport('FS') }}}
+
 #if MEM_INIT_METHOD == 2
 #if USE_PTHREADS
 if (memoryInitializer && !ENVIRONMENT_IS_PTHREAD) (function(s) {
