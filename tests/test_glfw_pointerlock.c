@@ -46,7 +46,7 @@ int main() {
   glfwSetInputMode(g_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
   // Main loop
-  printf("Click the canvas to enter pointer lock mode. The browser might offer to allow hidding mouse pointer. Make sure to accept it.\n");
+  printf("Click the canvas to enter pointer lock mode. The browser might offer to allow hiding mouse pointer. Make sure to accept it.\n");
   printf("Escaping the pointer lock mode should work again upon clicking the canvas.\n");
   emscripten_set_main_loop(render, 0, 1);
 
