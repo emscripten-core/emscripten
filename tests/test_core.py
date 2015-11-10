@@ -837,12 +837,14 @@ int main()
       self.do_run_from_file(src, output)
 
   def test_rounding(self):
-      Settings.PRECISE_F32 = 1 # in the move to llvm 3.7, froundf in musl became more sensitive to float/double differences
+      for precise_f32 in [0, 1]:
+        print precise_f32
+        Settings.PRECISE_F32 = precise_f32
 
-      test_path = path_from_root('tests', 'core', 'test_rounding')
-      src, output = (test_path + s for s in ('.in', '.out'))
+        test_path = path_from_root('tests', 'core', 'test_rounding')
+        src, output = (test_path + s for s in ('.in', '.out'))
 
-      self.do_run_from_file(src, output)
+        self.do_run_from_file(src, output)
 
   def test_fcvt(self):
       test_path = path_from_root('tests', 'core', 'test_fcvt')

@@ -1480,6 +1480,20 @@ LibraryManager.library = {
   llvm_exp_f32: 'Math_exp',
   llvm_exp_f64: 'Math_exp',
 
+  round__asm: true,
+  round__sig: 'dd',
+  round: function(d) {
+    d = +d;
+    return d >= +0 ? +Math_floor(d + +0.5) : +Math_ceil(d - +0.5);
+  },
+
+  roundf__asm: true,
+  roundf__sig: 'dd',
+  roundf: function(f) {
+    f = +f;
+    return f >= +0 ? +Math_floor(f + +0.5) : +Math_ceil(f - +0.5); // TODO: use fround?
+  },
+
   _reallyNegative: function(x) {
     return x < 0 || (x === 0 && (1/x) === -Infinity);
   },
