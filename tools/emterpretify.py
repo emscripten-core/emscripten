@@ -635,8 +635,8 @@ def make_emterpreter(zero=False):
   lx = (inst >> 8) & 255;
   ly = (inst >> 16) & 255;
   lz = inst >>> 24;
-  //Module.print([pc, inst&255, %s[inst&255], lx, ly, lz, HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]].join(', '));
-''' % (json.dumps(OPCODES))
+  //Module.print([pc, inst&255, ''' + json.dumps(OPCODES) + '''[inst&255], lx, ly, lz, HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]]);
+'''
 
   if not INNERTERPRETER_LAST_OPCODE:
     main_loop = main_loop_prefix + r'''
