@@ -5321,6 +5321,54 @@ main(int argc, char **argv)
     Popen([PYTHON, EMCC, 'src.c', '--embed-file', 'boot']).communicate()
     self.assertContained('Resolved: /boot/README.txt', run_js('a.out.js'))
 
+  def test_realpath_2(self):
+    open('src.c', 'w').write(r'''
+#include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
+
+int testrealpath(const char* path)    {
+  errno = 0;
+  char *t_realpath_buf = realpath(path, NULL);
+  if (NULL == t_realpath_buf) {
+    printf("Resolve failed: \"%s\"\n",path);fflush(stdout);
+    return 1;
+  } else {
+    printf("Resolved: \"%s\" => \"%s\"\n", path, t_realpath_buf);fflush(stdout);
+    free(t_realpath_buf);
+    return 0;
+  }
+}
+
+int main(int argc, char **argv)
+{
+    // files:
+    testrealpath("testfile.txt");
+    testrealpath("Folder/testfile.txt");
+    testrealpath("testnonexistentfile.txt");
+    // folders
+    testrealpath("Folder");
+    testrealpath("/Folder");
+    testrealpath("./");
+    testrealpath("");
+    testrealpath("/");
+    return 0;
+}
+''')
+    open('testfile.txt', 'w').write('')
+    if not os.path.exists('Folder'): os.mkdir('Folder')
+    open(os.path.join('Folder', 'testfile.txt'), 'w').write('')
+    check_execute([PYTHON, EMCC, 'src.c', '--embed-file', 'testfile.txt', '--embed-file', 'Folder'])
+    self.assertContained('''Resolved: "testfile.txt" => "/testfile.txt"
+Resolved: "Folder/testfile.txt" => "/Folder/testfile.txt"
+Resolve failed: "testnonexistentfile.txt"
+Resolved: "Folder" => "/Folder"
+Resolved: "/Folder" => "/Folder"
+Resolved: "./" => "/"
+Resolve failed: ""
+Resolved: "/" => "/"
+''', run_js('a.out.js'))
+
   def test_no_warnings(self):
     out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp')], stderr=PIPE).communicate()
     assert err == '', err

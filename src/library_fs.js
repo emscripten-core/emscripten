@@ -350,8 +350,8 @@ mergeInto(LibraryManager.library, {
       if (FS.isLink(node.mode)) {
         return ERRNO_CODES.ELOOP;
       } else if (FS.isDir(node.mode)) {
-        if ((flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY')}}} ||  // opening for write
-            (flags & {{{ cDefine('O_TRUNC') }}})) {
+        if (FS.flagsToPermissionString(flags) !== 'r' || // opening for write
+            (flags & {{{ cDefine('O_TRUNC') }}})) { // TODO: check for O_SEARCH? (== search for dir only)
           return ERRNO_CODES.EISDIR;
         }
       }
