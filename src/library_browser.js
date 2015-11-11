@@ -1132,7 +1132,11 @@ mergeInto(LibraryManager.library, {
         }
         console.log('main loop blocker "' + blocker.name + '" took ' + (Date.now() - start) + ' ms'); //, left: ' + Browser.mainLoop.remainingBlockers);
         Browser.mainLoop.updateStatus();
-        setTimeout(arguments.callee, 0);
+        
+        // catches pause/resume main loop from blocker execution
+        if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) return;
+        
+        setTimeout(Browser.mainLoop.runner, 0);
         return;
       }
 
