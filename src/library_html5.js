@@ -993,9 +993,9 @@ var LibraryJSEvents = {
       var handlerFunc = function(event) {
         var e = event || window.event;
 
-        if(target.GLctxObject) {
-          if(eventTypeId == {{{ cDefine('EMSCRIPTEN_EVENT_WEBGLCONTEXTLOST') }}}) target.GLctxObject.initExtensionsDone = false;
-          if(eventTypeId == {{{ cDefine('EMSCRIPTEN_EVENT_WEBGLCONTEXTRESTORED') }}}) GL.initExtensions(target.GLctxObject);
+        if (target.GLctxObject) {
+          if (eventTypeId == {{{ cDefine('EMSCRIPTEN_EVENT_WEBGLCONTEXTLOST') }}}) target.GLctxObject.initExtensionsDone = false;
+          if (eventTypeId == {{{ cDefine('EMSCRIPTEN_EVENT_WEBGLCONTEXTRESTORED') }}}) GL.initExtensions(target.GLctxObject);
         }
 
         var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, 0, userData]);
