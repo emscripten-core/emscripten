@@ -5757,3 +5757,16 @@ int main() {
     print check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', '-std=c++03'])
     self.assertContained('hello, world!', run_js('a.out.js'))
 
+  def python_2_3(self): # check emcc/em++ can be called by any python
+    print
+    for python in ['python', 'python2', 'python3']:
+      try:
+        check_execute([python, '--version'])
+        has = True
+      except:
+        has = False
+      print python, has
+      if has:
+        print 'checking...'
+        check_execute([python, EMCC, '--version'])
+
