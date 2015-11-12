@@ -1521,6 +1521,9 @@ LibraryManager.library = {
   // void* dlopen(const char* filename, int flag);
   dlopen__deps: ['$DLFCN', '$FS', '$ENV'],
   dlopen: function(filename, flag) {
+#if MAIN_MODULE == 0
+    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/kripken/emscripten/wiki/Linking");
+#endif
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
     filename = filename === 0 ? '__self__' : (ENV['LD_LIBRARY_PATH'] || '/') + Pointer_stringify(filename);
