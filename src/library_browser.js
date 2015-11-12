@@ -1340,11 +1340,16 @@ mergeInto(LibraryManager.library, {
       });
       info.awaited++;
     }
-    info.worker.postMessage({
+    var transferObject = {
       'funcName': funcName,
       'callbackId': callbackId,
-      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0 // XXX copy to a new typed array as a workaround for chrome bug 169705
-    });
+      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0  
+    };
+    if (data) {
+      info.worker.postMessage(transferObject,[transferObject.data.buffer]);
+    } else { 
+      info.worker.postMessage(transferObject);
+    }
   },
 
   emscripten_worker_respond_provisionally: function(data, size) {
