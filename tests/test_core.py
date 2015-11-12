@@ -825,10 +825,9 @@ int main()
 
       self.do_run_from_file(src, output)
 
-      if Settings.ALLOW_MEMORY_GROWTH == 0:
-        print 'main module'
-        Settings.MAIN_MODULE = 1
-        self.do_run_from_file(src, output)
+      print 'main module'
+      Settings.MAIN_MODULE = 1
+      self.do_run_from_file(src, output)
 
   def test_frexp(self):
       test_path = path_from_root('tests', 'core', 'test_frexp')
@@ -837,14 +836,12 @@ int main()
       self.do_run_from_file(src, output)
 
   def test_rounding(self):
-      for precise_f32 in [0, 1]:
-        print precise_f32
-        Settings.PRECISE_F32 = precise_f32
+      Settings.PRECISE_F32 = 1 # in the move to llvm 3.7, froundf in musl became more sensitive to float/double differences
 
-        test_path = path_from_root('tests', 'core', 'test_rounding')
-        src, output = (test_path + s for s in ('.in', '.out'))
+      test_path = path_from_root('tests', 'core', 'test_rounding')
+      src, output = (test_path + s for s in ('.in', '.out'))
 
-        self.do_run_from_file(src, output)
+      self.do_run_from_file(src, output)
 
   def test_fcvt(self):
       test_path = path_from_root('tests', 'core', 'test_fcvt')
@@ -3001,7 +2998,6 @@ The current type of b is: 9
     self.do_run(main, 'supp: 54,2\nmain: 56\nsupp see: 543\nmain see: 76\nok.')
 
   def can_dlfcn(self):
-    if Settings.ALLOW_MEMORY_GROWTH == 1: return self.skip('no dlfcn with memory growth yet')
     return True
 
   def prep_dlfcn_lib(self):
@@ -3761,8 +3757,6 @@ ok
 ''', post_build=self.dlfcn_post_build)
 
   def dylink_test(self, main, side, expected, header=None, main_emcc_args=[], force_c=False, need_reverse=True, auto_load=True):
-    if Settings.ALLOW_MEMORY_GROWTH == 1: return self.skip('no dynamic linking with memory growth yet')
-
     if header:
       open('header.h', 'w').write(header)
 
@@ -4227,8 +4221,6 @@ var Module = {
     ''', expected=['simple.\nsimple.\nsimple.\nsimple.\n'])
 
   def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
-    if Settings.ALLOW_MEMORY_GROWTH == 1: return self.skip('no memory growth in shared modules yet')
-
     def test(syslibs, expect_pass=True, need_reverse=True):
       print 'syslibs', syslibs, Settings.ASSERTIONS
       passed = True
@@ -4337,8 +4329,6 @@ var Module = {
     ''', expected=['starting main\nBase\nDerived\nOK'])
 
   def test_dylink_hyper_dupe(self):
-    if Settings.ALLOW_MEMORY_GROWTH == 1: return self.skip('no memory growth in shared modules yet')
-
     Settings.TOTAL_MEMORY = 64*1024*1024
 
     if Settings.ASSERTIONS: self.emcc_args += ['-s', 'ASSERTIONS=2']
@@ -5190,10 +5180,6 @@ def process(filename):
     self.emcc_args += ['--closure', '1']
     self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
-  def test_fs_nodefs_cloexec(self):
-    src = open(path_from_root('tests', 'fs', 'test_nodefs_cloexec.c'), 'r').read()
-    self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
-
   def test_fs_trackingdelegate(self):
     src = path_from_root('tests', 'fs', 'test_trackingdelegate.c')
     out = path_from_root('tests', 'fs', 'test_trackingdelegate.out')
@@ -5429,10 +5415,9 @@ PORT: 3979
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
     self.do_run_from_file(src, output)
 
-    if Settings.ALLOW_MEMORY_GROWTH == 0:
-      print 'main module'
-      Settings.MAIN_MODULE = 1
-      self.do_run_from_file(src, output)
+    print 'main module'
+    Settings.MAIN_MODULE = 1
+    self.do_run_from_file(src, output)
 
   def test_phiundef(self):
     test_path = path_from_root('tests', 'core', 'test_phiundef')

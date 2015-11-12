@@ -415,6 +415,10 @@ var LIBRARY_DEPS_TO_AUTOEXPORT = ['memcpy']; // This list is also used to determ
                                              // so we must export so that if they are implemented in C
                                              // they will be accessible, in ASM_JS mode).
 
+var EXPORTED_GLOBALS = []; // Global non-function variables that are explicitly
+                           // exported, so they are guaranteed to be
+                           // accessible outside of the generated code.
+
 var INCLUDE_FULL_LIBRARY = 0; // Include all JS library functions instead of the sum of
                               // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + any functions used
                               // by the generated code. This is needed when dynamically

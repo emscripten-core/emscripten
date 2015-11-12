@@ -21,10 +21,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # -v, without input files
       output = Popen([PYTHON, compiler, '-v'], stdout=PIPE, stderr=PIPE).communicate()
-      self.assertContained('''clang version %s.0 ''' % '.'.join(map(str, EXPECTED_LLVM_VERSION)), output[1].replace('\r', ''), output[1].replace('\r', ''))
+      self.assertContained('''clang version''', output[1].replace('\r', ''), output[1].replace('\r', ''))
       self.assertContained('''GNU''', output[0])
-      self.assertNotContained('this is dangerous', output[0])
-      self.assertNotContained('this is dangerous', output[1])
 
       # --help
       output = Popen([PYTHON, compiler, '--help'], stdout=PIPE, stderr=PIPE).communicate()
@@ -417,66 +415,60 @@ f.close()
           # CMake can be invoked in two ways, using 'emconfigure cmake', or by directly running 'cmake'.
           # Test both methods.
           for invoke_method in ['cmake', 'emconfigure']:
-            for cpp_lib_type in ['STATIC', 'SHARED']:
-              # Create a temp workspace folder
-              cmakelistsdir = path_from_root('tests', 'cmake', cmake_cases[i])
-              tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
-              try:
-                os.chdir(tempdirname)
 
-                # Run Cmake
-                if invoke_method == 'cmake':
-                  # Test invoking cmake directly.
-                  cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+path_from_root('cmake', 'Modules', 'Platform', 'Emscripten.cmake'),
-                                  '-DCPP_LIBRARY_TYPE='+cpp_lib_type,
-                                  '-DCMAKE_CROSSCOMPILING_EMULATOR="' + ' '.join(NODE_JS) + '"',
-                                  '-DCMAKE_BUILD_TYPE=' + configuration, cmake_arguments[i], '-G', generator, cmakelistsdir]
-                  env = tools.shared.Building.remove_sh_exe_from_path(os.environ)
-                else:
-                  # Test invoking via 'emconfigure cmake'
-                  cmd = [emconfigure, 'cmake', '-DCMAKE_BUILD_TYPE=' + configuration, cmake_arguments[i], '-G', generator, cmakelistsdir]
-                  env = os.environ.copy()
+            # Create a temp workspace folder
+            cmakelistsdir = path_from_root('tests', 'cmake', cmake_cases[i])
+            tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
+            try:
+              os.chdir(tempdirname)
 
-                print str(cmd)
-                ret = Popen(cmd, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else PIPE, stderr=None if EM_BUILD_VERBOSE_LEVEL >= 1 else PIPE, env=env).communicate()
-                if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
-                  logging.error(ret[1]) # If there were any errors, print them directly to console for diagnostics.
-                if len(ret) > 1 and ret[1] != None and 'error' in ret[1].lower():
-                  logging.error('Failed command: ' + ' '.join(cmd))
-                  logging.error('Result:\n' + ret[1])
-                  raise Exception('cmake call failed!')
+              # Run Cmake
+              if invoke_method == 'cmake':
+                # Test invoking cmake directly.
+                cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+path_from_root('cmake', 'Modules', 'Platform', 'Emscripten.cmake'),
+                                '-DCMAKE_CROSSCOMPILING_EMULATOR="' + ' '.join(NODE_JS) + '"',
+                                '-DCMAKE_BUILD_TYPE=' + configuration, cmake_arguments[i], '-G', generator, cmakelistsdir]
+                env = tools.shared.Building.remove_sh_exe_from_path(os.environ)
+              else:
+                # Test invoking via 'emconfigure cmake'
+                cmd = [emconfigure, 'cmake', '-DCMAKE_BUILD_TYPE=' + configuration, cmake_arguments[i], '-G', generator, cmakelistsdir]
+                env = os.environ.copy()
 
-                if prebuild:
-                  prebuild(configuration, tempdirname)
+              print str(cmd)
+              ret = Popen(cmd, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else PIPE, stderr=None if EM_BUILD_VERBOSE_LEVEL >= 1 else PIPE, env=env).communicate()
+              if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
+                logging.error(ret[1]) # If there were any errors, print them directly to console for diagnostics.
+              if len(ret) > 1 and ret[1] != None and 'error' in ret[1].lower():
+                logging.error('Failed command: ' + ' '.join(cmd))
+                logging.error('Result:\n' + ret[1])
+                raise Exception('cmake call failed!')
 
-                # Build
-                cmd = make
-                if EM_BUILD_VERBOSE_LEVEL >= 3 and 'Ninja' not in generator:
-                  cmd += ['VERBOSE=1']
-                ret = Popen(cmd, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else PIPE).communicate()
-                if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
-                  logging.error(ret[1]) # If there were any errors, print them directly to console for diagnostics.
-                if len(ret) > 0 and ret[0] != None and 'error' in ret[0].lower() and not '0 error(s)' in ret[0].lower():
-                  logging.error('Failed command: ' + ' '.join(cmd))
-                  logging.error('Result:\n' + ret[0])
-                  raise Exception('make failed!')
-                assert os.path.exists(tempdirname + '/' + cmake_outputs[i]), 'Building a cmake-generated Makefile failed to produce an output file %s!' % tempdirname + '/' + cmake_outputs[i]
+              if prebuild:
+                prebuild(configuration, tempdirname)
 
-                if postbuild:
-                  postbuild(configuration, tempdirname)
+              # Build
+              cmd = make
+              if EM_BUILD_VERBOSE_LEVEL >= 3 and 'Ninja' not in generator:
+                cmd += ['VERBOSE=1']
+              ret = Popen(cmd, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else PIPE).communicate()
+              if len(ret) > 1 and ret[1] != None and len(ret[1].strip()) > 0:
+                logging.error(ret[1]) # If there were any errors, print them directly to console for diagnostics.
+              if len(ret) > 0 and ret[0] != None and 'error' in ret[0].lower() and not '0 error(s)' in ret[0].lower():
+                logging.error('Failed command: ' + ' '.join(cmd))
+                logging.error('Result:\n' + ret[0])
+                raise Exception('make failed!')
+              assert os.path.exists(tempdirname + '/' + cmake_outputs[i]), 'Building a cmake-generated Makefile failed to produce an output file %s!' % tempdirname + '/' + cmake_outputs[i]
 
-                # Run through node, if CMake produced a .js file.
-                if cmake_outputs[i].endswith('.js'):
-                  ret = Popen(NODE_JS + [tempdirname + '/' + cmake_outputs[i]], stdout=PIPE).communicate()[0]
-                  self.assertTextDataIdentical(open(cmakelistsdir + '/out.txt', 'r').read().strip(), ret.strip())
-              finally:
-                os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
-                #there is a race condition under windows here causing an exception in shutil.rmtree because the directory is not empty yet
-                try:
-                  shutil.rmtree(tempdirname)
-                except:
-                  time.sleep(0.1)
-                  shutil.rmtree(tempdirname)
+              if postbuild:
+                postbuild(configuration, tempdirname)
+
+              # Run through node, if CMake produced a .js file.
+              if cmake_outputs[i].endswith('.js'):
+                ret = Popen(NODE_JS + [tempdirname + '/' + cmake_outputs[i]], stdout=PIPE).communicate()[0]
+                self.assertTextDataIdentical(open(cmakelistsdir + '/out.txt', 'r').read().strip(), ret.strip())
+            finally:
+              os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
+              shutil.rmtree(tempdirname)
 
   def test_failure_error_code(self):
     for compiler in [EMCC, EMXX]:
@@ -1040,18 +1032,11 @@ int f() {
                            (['-L/usr/something', '-Wwarn-absolute-paths'], True),
                            (['-I/usr/something'], False),
                            (['-L/usr/something'], False),
-                           (['-I/usr/something', '-Wno-warn-absolute-paths'], False),
-                           (['-L/usr/something', '-Wno-warn-absolute-paths'], False),
                            (['-Isubdir/something', '-Wwarn-absolute-paths'], False),
                            (['-Lsubdir/something', '-Wwarn-absolute-paths'], False),
                            ([], False)]:
-      print args, expected
-      proc = Popen([PYTHON, EMCC, 'main.c'] + args, stderr=PIPE)
-      err = proc.communicate()[1]
-      assert proc.returncode is 0
+      err = Popen([PYTHON, EMCC, 'main.c'] + args, stderr=PIPE).communicate()[1]
       assert ('encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)' in err) == expected, err
-      if not expected:
-        assert err == '', err
 
   def test_local_link(self):
     # Linking a local library directly, like /usr/lib/libsomething.so, cannot work of course since it
@@ -2088,6 +2073,7 @@ seeked= file.
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'supp.cpp'), '-o', 'supp.o']).communicate()
 
     output = Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.o'), '-s', os.path.join(self.get_dir(), 'supp.o'), '-s', 'SAFE_HEAP=1'], stderr=PIPE).communicate()
+    self.assertContained('treating -s as linker option', output[1])
     output = run_js('a.out.js')
     assert 'yello' in output, 'code works'
     code = open('a.out.js').read()
@@ -4558,13 +4544,13 @@ function _main() {
       assert expected == seen or (seen in expected if type(expected) in [list, tuple] else False), ['expect', expected, 'but see', seen]
 
     do_log_test(path_from_root('tests', 'primes.cpp'), range(88, 92), '_main')
-    do_log_test(path_from_root('tests', 'fannkuch.cpp'), range(226, 235), '__Z15fannkuch_workerPv')
+    do_log_test(path_from_root('tests', 'fannkuch.cpp'), range(227, 230), '__Z15fannkuch_workerPv')
 
     # test non-native as well, registerizeHarder can be a little more efficient here
     old_native = os.environ.get('EMCC_NATIVE_OPTIMIZER')
     try:
       os.environ['EMCC_NATIVE_OPTIMIZER'] = '0'
-      do_log_test(path_from_root('tests', 'fannkuch.cpp'), range(226, 235), '__Z15fannkuch_workerPv')
+      do_log_test(path_from_root('tests', 'fannkuch.cpp'), range(227, 230), '__Z15fannkuch_workerPv')
     finally:
       if old_native: os.environ['EMCC_NATIVE_OPTIMIZER'] = old_native
       else: del os.environ['EMCC_NATIVE_OPTIMIZER']
@@ -5321,54 +5307,6 @@ main(int argc, char **argv)
     Popen([PYTHON, EMCC, 'src.c', '--embed-file', 'boot']).communicate()
     self.assertContained('Resolved: /boot/README.txt', run_js('a.out.js'))
 
-  def test_realpath_2(self):
-    open('src.c', 'w').write(r'''
-#include <stdlib.h>
-#include <stdio.h>
-#include <errno.h>
-
-int testrealpath(const char* path)    {
-  errno = 0;
-  char *t_realpath_buf = realpath(path, NULL);
-  if (NULL == t_realpath_buf) {
-    printf("Resolve failed: \"%s\"\n",path);fflush(stdout);
-    return 1;
-  } else {
-    printf("Resolved: \"%s\" => \"%s\"\n", path, t_realpath_buf);fflush(stdout);
-    free(t_realpath_buf);
-    return 0;
-  }
-}
-
-int main(int argc, char **argv)
-{
-    // files:
-    testrealpath("testfile.txt");
-    testrealpath("Folder/testfile.txt");
-    testrealpath("testnonexistentfile.txt");
-    // folders
-    testrealpath("Folder");
-    testrealpath("/Folder");
-    testrealpath("./");
-    testrealpath("");
-    testrealpath("/");
-    return 0;
-}
-''')
-    open('testfile.txt', 'w').write('')
-    if not os.path.exists('Folder'): os.mkdir('Folder')
-    open(os.path.join('Folder', 'testfile.txt'), 'w').write('')
-    check_execute([PYTHON, EMCC, 'src.c', '--embed-file', 'testfile.txt', '--embed-file', 'Folder'])
-    self.assertContained('''Resolved: "testfile.txt" => "/testfile.txt"
-Resolved: "Folder/testfile.txt" => "/Folder/testfile.txt"
-Resolve failed: "testnonexistentfile.txt"
-Resolved: "Folder" => "/Folder"
-Resolved: "/Folder" => "/Folder"
-Resolved: "./" => "/"
-Resolve failed: ""
-Resolved: "/" => "/"
-''', run_js('a.out.js'))
-
   def test_no_warnings(self):
     out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp')], stderr=PIPE).communicate()
     assert err == '', err
@@ -5752,8 +5690,3 @@ int main() {
     process = Popen([PYTHON, EMCC] + '-l m -l c -I'.split() + [path_from_root('tests', 'include_test'), path_from_root('tests', 'lib_include_flags.c')], stdout=PIPE, stderr=PIPE)
     process.communicate()
     assert process.returncode is 0, 'Empty -l/-L/-I flags should read the next arg as a param'
-
-  def test_dash_s(self):
-    print check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', '-std=c++03'])
-    self.assertContained('hello, world!', run_js('a.out.js'))
-

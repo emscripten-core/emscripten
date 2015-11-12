@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 2.8)
 
 project(test_cmake)
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../cpp_lib ${CMAKE_CURRENT_BINARY_DIR}/cpp_lib)
-
 option(BUILD_SHARED_LIBS "Build with shared libraries." OFF) 
 
 if (CMAKE_BUILD_TYPE STREQUAL Debug)
@@ -24,7 +22,6 @@ foreach(i RANGE ${MAX_SRC_FILE_INDEX})
 endforeach()
 
 add_library(test_cmake ${TEST_SOURCES})
-target_link_libraries(test_cmake cpp_lib)
 
 if (WIN32)
 	message(FATAL_ERROR "WIN32 should not be defined when cross-compiling!")

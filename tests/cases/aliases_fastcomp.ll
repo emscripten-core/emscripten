@@ -4,13 +4,13 @@ target triple = "asmjs-unknown-emscripten"
 
 @.str = private unnamed_addr constant [18 x i8] c"hello, world! %d\0A\00", align 1 ; [#uses=1 type=[18 x i8]*]
 
-@othername = internal alias void (i32), void (i32)* @doit
-@othername2 = internal alias void (i32), void (i32)* @othername
-@othername3 = internal alias void (i32), void (i32)* @othername2
+@othername = internal alias void (i32)* @doit
+@othername2 = internal alias void (i32)* @othername
+@othername3 = internal alias void (i32)* @othername2
 
 @value = global i32 17
-@value2 = alias i32, i32* @value
-@value3 = alias i32, i32* @value
+@value2 = alias i32* @value
+@value3 = alias i32* @value
 
 define internal void @doit(i32 %x) {
   %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([18 x i8], [18 x i8]* @.str, i32 0, i32 0), i32 %x) ; [#uses=0 type=i32]

@@ -100,7 +100,7 @@ Calling compiled C functions from JavaScript
 				my_func(12)
 
 	:param ident: The name of the C function to be called.	
-	:param returnType: The return type of the function. This can be ``"number"``, ``"string"`` or ``"array"``, which correspond to the appropriate JavaScript types (use ``"number"`` for any C pointer, and ``"array"`` for JavaScript arrays and typed arrays; note that arrays are 8-bit), or for a void function it can be ``null`` (note: the JavaScript ``null`` value, not a string containing the word "null").
+	:param returnType: The return type of the function. This will be one of the JavaScript types ``number``, ``string`` or ``array`` (use ``number`` for any C pointer, and ``array`` for JavaScript arrays and typed arrays; note that arrays are 8-bit).
 	:param argTypes: An array of the types of arguments for the function (if there are no arguments, this can be omitted). Types are as in ``returnType``, except that ``array`` is not supported as there is no way for us to know the length of the array).
 	:returns: A JavaScript function that can be used for running the C function. 	
 
@@ -359,7 +359,12 @@ The :ref:`emscripten-memory-model` uses a typed array buffer (``ArrayBuffer``) t
 
 .. js:data:: HEAPU8
 
-	View for 8-bit unsigned memory. 
+	View for 32-bit unsigned memory. 
+
+	
+.. js:data:: HEAPU8
+
+	View for 32-bit unsigned memory.
 
 	
 .. js:data:: HEAPU16

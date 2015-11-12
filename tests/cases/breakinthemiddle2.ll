@@ -27,4 +27,5 @@ label999:                                     ; preds = %555
 }
 
 declare i32 @printf(i8*)
+declare i32 @__gxx_personality_v0(...)
 

@@ -1123,7 +1123,7 @@ var LibrarySDL = {
           // graph will send the onended signal, but we don't want to process that, since pausing should not clear/destroy the audio
           // channel.
           audio.webAudioNode['onended'] = undefined;
-          audio.webAudioNode.stop(0); // 0 is a default parameter, but WebKit is confused by it #3861
+          audio.webAudioNode.stop();
           audio.webAudioNode = undefined;
         } catch(e) {
           Module.printErr('pauseWebAudio failed: ' + e);

@@ -350,8 +350,8 @@ mergeInto(LibraryManager.library, {
       if (FS.isLink(node.mode)) {
         return ERRNO_CODES.ELOOP;
       } else if (FS.isDir(node.mode)) {
-        if (FS.flagsToPermissionString(flags) !== 'r' || // opening for write
-            (flags & {{{ cDefine('O_TRUNC') }}})) { // TODO: check for O_SEARCH? (== search for dir only)
+        if ((flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY')}}} ||  // opening for write
+            (flags & {{{ cDefine('O_TRUNC') }}})) {
           return ERRNO_CODES.EISDIR;
         }
       }
@@ -1596,8 +1596,6 @@ mergeInto(LibraryManager.library, {
         var datalength = Number(xhr.getResponseHeader("Content-length"));
         var header;
         var hasByteServing = (header = xhr.getResponseHeader("Accept-Ranges")) && header === "bytes";
-        var usesGzip = (header = xhr.getResponseHeader("Content-Encoding")) && header === "gzip";
-
 #if SMALL_XHR_CHUNKS
         var chunkSize = 1024; // Chunk size in bytes
 #else
@@ -1642,14 +1640,6 @@ mergeInto(LibraryManager.library, {
           return lazyArray.chunks[chunkNum];
         });
 
-        if (usesGzip || !datalength) {
-          // if the server uses gzip or doesn't supply the length, we have to download the whole file to get the (uncompressed) length
-          chunkSize = datalength = 1; // this will force getter(0)/doXHR do download the whole file
-          datalength = this.getter(0).length;
-          chunkSize = datalength;
-          console.log("LazyFiles on gzip forces download of the whole file when length is accessed");
-        }
-
         this._length = datalength;
         this._chunkSize = chunkSize;
         this.lengthKnown = true;
@@ -1657,23 +1647,21 @@ mergeInto(LibraryManager.library, {
       if (typeof XMLHttpRequest !== 'undefined') {
         if (!ENVIRONMENT_IS_WORKER) throw 'Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc';
         var lazyArray = new LazyUint8Array();
-        Object.defineProperties(lazyArray, {
-          length: {
+        Object.defineProperty(lazyArray, "length", {
             get: function() {
-              if(!this.lengthKnown) {
-                this.cacheLength();
-              }
-              return this._length;
+                if(!this.lengthKnown) {
+                    this.cacheLength();
+                }
+                return this._length;
             }
-          },
-          chunkSize: {
+        });
+        Object.defineProperty(lazyArray, "chunkSize", {
             get: function() {
-              if(!this.lengthKnown) {
-                this.cacheLength();
-              }
-              return this._chunkSize;
+                if(!this.lengthKnown) {
+                    this.cacheLength();
+                }
+                return this._chunkSize;
             }
-          }
         });
 
         var properties = { isDevice: false, contents: lazyArray };
@@ -1692,10 +1680,8 @@ mergeInto(LibraryManager.library, {
         node.url = properties.url;
       }
       // Add a function that defers querying the file size until it is asked the first time.
-      Object.defineProperties(node, {
-        usedBytes: {
+      Object.defineProperty(node, "usedBytes", {
           get: function() { return this.contents.length; }
-        }
       });
       // override each stream op with one that tries to force load the lazy file first
       var stream_ops = {};

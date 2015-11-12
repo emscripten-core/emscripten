@@ -83,17 +83,6 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     elif settings['GLOBAL_BASE'] >= 0:
       backend_args += ['-emscripten-global-base=%d' % settings['GLOBAL_BASE']]
     backend_args += ['-O' + str(settings['OPT_LEVEL'])]
-    if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
-      backend_args += ['-enable-emscripten-cxx-exceptions']
-      if settings['DISABLE_EXCEPTION_CATCHING'] == 2:
-        backend_args += ['-emscripten-cxx-exceptions-whitelist=' + ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['fake'])]
-    if settings['ASYNCIFY']:
-      backend_args += ['-emscripten-asyncify']
-      backend_args += ['-emscripten-asyncify-functions=' + ','.join(settings['ASYNCIFY_FUNCTIONS'])]
-      backend_args += ['-emscripten-asyncify-whitelist=' + ','.join(settings['ASYNCIFY_WHITELIST'])]
-    if settings['NO_EXIT_RUNTIME']:
-      backend_args += ['-emscripten-no-exit-runtime']
-
     if DEBUG:
       logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))
       t = time.time()

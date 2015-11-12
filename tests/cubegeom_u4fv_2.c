@@ -28,7 +28,6 @@ REDISTRIBUTION OF THIS SOFTWARE.
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
-#include <stdlib.h>
 
 int main(int argc, char *argv[])
 {
@@ -55,7 +54,7 @@ int main(int argc, char *argv[])
 
     // Create a texture
 
-    GLint boundTex = 123;
+    GLuint boundTex = 123;
     assert(!glGetError());
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &boundTex);
     assert(!glGetError());

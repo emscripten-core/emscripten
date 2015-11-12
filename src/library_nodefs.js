@@ -74,7 +74,6 @@ mergeInto(LibraryManager.library, {
     },
     flagsToPermissionString: function(flags) {
       flags &= ~0100000 /*O_LARGEFILE*/; // Ignore this flag from musl, otherwise node.js fails to open the file.
-      flags &= ~02000000 /*O_CLOEXEC*/; // Some applications may pass it; it makes no sense for a single process.
       if (flags in NODEFS.flagsToPermissionStringMap) {
         return NODEFS.flagsToPermissionStringMap[flags];
       } else {

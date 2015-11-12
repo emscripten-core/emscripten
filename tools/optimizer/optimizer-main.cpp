@@ -13,8 +13,6 @@
 
 #include <string.h> // only use this for param checking
 
-using namespace cashew;
-
 int main(int argc, char **argv) {
   // Read directives
   for (int i = 2; i < argc; i++) {

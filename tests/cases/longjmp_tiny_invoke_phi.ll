@@ -7,7 +7,7 @@ target triple = "asmjs-unknown-emscripten"
 @.str1 = private unnamed_addr constant [6 x i8] c"more\0A\00", align 1
 @.str2 = private unnamed_addr constant [6 x i8] c"fair\0A\00", align 1
 
-define i32 @main() personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {
+define i32 @main() {
 entry:
   %retval = alloca i32, align 4
   store i32 0, i32* %retval
@@ -35,7 +35,7 @@ if.end:                                           ; preds = %if.else, %if.then
   ret i32 0
 
 awful:
-  %Z = landingpad { i8*, i32 }
+  %Z = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*)
        cleanup
   ret i32 1
 }

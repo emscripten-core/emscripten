@@ -105,9 +105,9 @@ Manual print debugging
 
 You can also manually instrument the source code with ``printf()`` statements, then compile and run the code to investigate issues.
 
-If you have a good idea of the problem line you can add ``print(new Error().stack)`` to the JavaScript to get a stack trace at that point. Also available is :js:func:`stackTrace`, which emits a stack trace and tries to demangle C++ function names (if you don't want or need C++ demangling, you can call :js:func:`jsStackTrace`).
+If you have a good idea of the problem line you can add ``print(new Error().stack)`` to the JavaScript to get a stack trace at that point. Also available is :js:func:`stackTrace`, which emits a stack trace and tries to demangle C++ function names. Debug printouts can even execute arbitrary JavaScript.
 
-Debug printouts can even execute arbitrary JavaScript. For example:
+For example:
 
 .. code-block:: cpp
 

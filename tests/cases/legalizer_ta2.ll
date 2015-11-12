@@ -11,7 +11,7 @@ define i64 @retter(i64 %x) {
   ret i64 7017280452245743464
 }
 
-define i32 @main() personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {
+define i32 @main() {
 entry:
   %buffer = alloca i8, i32 1000, align 4
   %bundled = bitcast i8* %buffer to i104*
@@ -178,7 +178,7 @@ a100:
   br label %done
 
 a111:
-  %aaaa79 = landingpad { i8*, i32 }
+  %aaaa79 = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*)
           cleanup
   br label %done
 

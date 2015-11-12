@@ -242,8 +242,6 @@ LibraryManager.library = {
   execv: 'execl',
   execve: 'execl',
   execvp: 'execl',
-  __execvpe: 'execl',
-  fexecve: 'execl',
 
   _exit: function(status) {
     // void _exit(int status);
@@ -260,8 +258,6 @@ LibraryManager.library = {
     return -1;
   },
   vfork: 'fork',
-  posix_spawn: 'fork',
-  posix_spawnp: 'fork',
 
   setgroups__deps: ['__setErrNo', '$ERRNO_CODES', 'sysconf'],
   setgroups: function(ngroups, gidset) {
@@ -1480,20 +1476,6 @@ LibraryManager.library = {
   llvm_exp_f32: 'Math_exp',
   llvm_exp_f64: 'Math_exp',
 
-  round__asm: true,
-  round__sig: 'dd',
-  round: function(d) {
-    d = +d;
-    return d >= +0 ? +Math_floor(d + +0.5) : +Math_ceil(d - +0.5);
-  },
-
-  roundf__asm: true,
-  roundf__sig: 'dd',
-  roundf: function(f) {
-    f = +f;
-    return f >= +0 ? +Math_floor(f + +0.5) : +Math_ceil(f - +0.5); // TODO: use fround?
-  },
-
   _reallyNegative: function(x) {
     return x < 0 || (x === 0 && (1/x) === -Infinity);
   },
@@ -1521,9 +1503,6 @@ LibraryManager.library = {
   // void* dlopen(const char* filename, int flag);
   dlopen__deps: ['$DLFCN', '$FS', '$ENV'],
   dlopen: function(filename, flag) {
-#if MAIN_MODULE == 0
-    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/kripken/emscripten/wiki/Linking");
-#endif
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
     filename = filename === 0 ? '__self__' : (ENV['LD_LIBRARY_PATH'] || '/') + Pointer_stringify(filename);
@@ -4105,27 +4084,6 @@ LibraryManager.library = {
   _pthread_cleanup_pop: function(){},
   __pthread_self: function() { abort() },
   pthread_setcancelstate: function() { return 0 },
-
-  // autodebugging
-
-  emscripten_autodebug_i64: function(line, valuel, valueh) {
-    Module.print('AD:' + [line, valuel, valueh]);
-  },
-  emscripten_autodebug_i32: function(line, value) {
-    Module.print('AD:' + [line, value]);
-  },
-  emscripten_autodebug_i16: function(line, value) {
-    Module.print('AD:' + [line, value]);
-  },
-  emscripten_autodebug_i8: function(line, value) {
-    Module.print('AD:' + [line, value]);
-  },
-  emscripten_autodebug_float: function(line, value) {
-    Module.print('AD:' + [line, value]);
-  },
-  emscripten_autodebug_double: function(line, value) {
-    Module.print('AD:' + [line, value]);
-  },
 
   // misc definitions to avoid unnecessary unresolved symbols from fastcomp
   emscripten_prep_setjmp: true,

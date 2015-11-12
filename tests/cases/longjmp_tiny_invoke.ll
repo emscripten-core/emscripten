@@ -6,7 +6,7 @@ target triple = "asmjs-unknown-emscripten"
 @.str = private unnamed_addr constant [13 x i8] c"hello world\0A\00", align 1
 @.str1 = private unnamed_addr constant [6 x i8] c"more\0A\00", align 1
 
-define i32 @main() personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {
+define i32 @main() {
   %retval = alloca i32, align 4
   store i32 0, i32* %retval
   %call = invoke i32 @setjmp(i16* getelementptr inbounds ([20 x i16], [20 x i16]* @_ZL3buf, i32 0, i32 0)) returns_twice
@@ -22,7 +22,7 @@ if.else:                                          ; preds = %entry
 if.end:                                           ; preds = %if.else, %if.then
   ret i32 0
 awful:
-  %Z = landingpad { i8*, i32 }
+  %Z = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*)
        cleanup
   ret i32 1
 }
