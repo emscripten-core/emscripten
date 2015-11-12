@@ -433,6 +433,8 @@ fi
       try:
         os.environ['EMCC_DEBUG'] ='1'
         self.working_dir = os.path.join(TEMP_DIR, 'emscripten_temp')
+        if not os.path.exists(self.working_dir):
+          os.mkdir(self.working_dir)
 
         basebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-0-basebc.bc')
         dcebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-1-linktime.bc')
