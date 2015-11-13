@@ -1343,11 +1343,11 @@ mergeInto(LibraryManager.library, {
     var transferObject = {
       'funcName': funcName,
       'callbackId': callbackId,
-      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0  
+      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0
     };
     if (data) {
-      info.worker.postMessage(transferObject,[transferObject.data.buffer]);
-    } else { 
+      info.worker.postMessage(transferObject, [transferObject.data.buffer]);
+    } else {
       info.worker.postMessage(transferObject);
     }
   },
@@ -1360,7 +1360,7 @@ mergeInto(LibraryManager.library, {
       'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0
     };
     if (data) {
-      postMessage(transferObject,[transferObject.data.buffer]);
+      postMessage(transferObject, [transferObject.data.buffer]);
     } else {
       postMessage(transferObject);
     }
@@ -1375,7 +1375,7 @@ mergeInto(LibraryManager.library, {
       'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0
     };
     if (data) {
-      postMessage(transferObject,[transferObject.data.buffer]);
+      postMessage(transferObject, [transferObject.data.buffer]);
     } else {
       postMessage(transferObject);
     }
