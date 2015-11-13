@@ -91,7 +91,7 @@ v1.34.7: 9/5/2015
  - Updated emrun to latest version, adds --safe_firefox_profile option to run emrun pages in clean isolated environment.
  - Implemented glGetStringi() method for WebGL2/GLES3. (#3472, #3725)
  - Automatically emit loading code for EMTERPRETIFY_FILE if emitting html.
- - Added new build option -s USE_PTHREADS2= for running pthreads-enabled pages in browsers that do not support SharedArrayBuffer.
+ - Added new build option -s USE_PTHREADS=2 for running pthreads-enabled pages in browsers that do not support SharedArrayBuffer.
  - Added support for building SSE2 intrinsics based code (emmintrin.h), when -msse2 is passed to the build.
  - Added exports for getting FS objects by their name (#3690)
  - Updated LLVM to latest upstream PNaCl version (Clang 3.7, July 29th).
