@@ -5770,3 +5770,16 @@ int main() {
         print 'checking...'
         check_execute([python, EMCC, '--version'])
 
+  def test_zeroinit(self):
+    open('src.c', 'w').write(r'''
+#include <stdio.h>
+int buf[1048576];
+int main() {
+  printf("hello, world! %d\n", buf[123456]);
+  return 0;
+}
+''')
+    check_execute([PYTHON, EMCC, 'src.c', '-O2', '-g'])
+    size = os.stat('a.out.js.mem').st_size
+    assert size < 4096, size
+

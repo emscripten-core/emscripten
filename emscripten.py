@@ -234,7 +234,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     if settings['SIMD'] == 1:
       pre = open(path_from_root(os.path.join('src', 'ecmascript_simd.js'))).read() + '\n\n' + pre
 
-    staticbump = mem_init.count(',')+1
+    staticbump = metadata['staticBump']
     while staticbump % 16 != 0: staticbump += 1
     pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;%s
   /* global initializers */ %s __ATINIT__.push(%s);

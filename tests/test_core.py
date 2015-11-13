@@ -659,10 +659,10 @@ __m128 m;
 
 int main()
 {
-    printf("Alignment: %d addr: %x\n", ((int)&v) % 16, (int)&v);
-    printf("Alignment: %d addr: %x\n", ((int)&m) % 16, (int)&m);
+    printf("Alignment: %d addr: 0x%x\n", ((int)&v) % 16, (int)&v);
+    printf("Alignment: %d addr: 0x%x\n", ((int)&m) % 16, (int)&m);
 }
-    ''', 'Alignment: 0 addr: 10\nAlignment: 0 addr: 50\n') # hardcoded addresses, just to track if this ever changes by surprise. will need normal updates.
+    ''', 'Alignment: 0 addr: 0xa20\nAlignment: 0 addr: 0xa60\n') # hardcoded addresses, just to track if this ever changes by surprise. will need normal updates.
 
     test()
     print 'relocatable'
