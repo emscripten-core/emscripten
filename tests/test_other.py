@@ -5639,7 +5639,7 @@ int main() {
     for opts in [0, 1, 2]:
       print opts
       check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
-      self.assertContained('success.', run_js('a.out.js'))
+      self.assertContained('success.', run_js('a.out.js', stderr=PIPE, assert_returncode=None))
 
   def test_split_memory_release(self):
     open('src.c', 'w').write(r'''
