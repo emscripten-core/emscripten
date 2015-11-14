@@ -9,6 +9,8 @@ sme.parentFunc(90);
 TheModule.print(typeof sme.getAsConst());
 TheModule.print(typeof sme.voidStar(sme));
 TheModule.print(sme.get_immutableAttr());
+TheModule.print(typeof sme.getBoolean());
+TheModule.print(sme.getBoolean());
 
 TheModule.print('c1');
 
@@ -20,6 +22,7 @@ TheModule.print(c1.getValSqr());
 TheModule.print(c1.getValSqr(3));
 TheModule.print(c1.getValTimes()); // default argument should be 1
 TheModule.print(c1.getValTimes(2));
+TheModule.print(sme.getBoolean());
 c1.parentFunc(90);
 
 TheModule.print('c1 v2');
@@ -30,6 +33,7 @@ c1.mulVal(2);
 TheModule.print(c1.getVal());
 TheModule.print(c1.getValSqr());
 TheModule.print(c1.getValSqr(3));
+TheModule.print(sme.getBoolean());
 
 TheModule.print('c2')
 
