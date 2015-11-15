@@ -2064,7 +2064,23 @@ int main() {
     self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3'], expected='1')
 
   def test_glfw3_events(self):
-    self.btest(path_from_root('tests', 'glfw3_events.c'), args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3'], expected='1')
+    open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+      function keydown(c) {
+        var event = document.createEvent("KeyboardEvent");
+        event.initKeyEvent('keydown', true, true, window,
+                           0, 0, 0, 0,
+                           c, c);
+        document.dispatchEvent(event);
+      }
+      function keyup(c) {
+        var event = document.createEvent("KeyboardEvent");
+        event.initKeyEvent('keyup', true, true, window,
+                           0, 0, 0, 0,
+                           c, c);
+        document.dispatchEvent(event);
+      }
+    ''')
+    self.btest(path_from_root('tests', 'glfw3_events.c'), args=['--pre-js', 'pre.js', '-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3'], expected='1')
 
   def test_asm_swapping(self):
     self.clear()

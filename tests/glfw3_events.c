@@ -27,6 +27,12 @@ test_t g_tests[] = {
     { "Module.injectMouseEvent(10.0, 40.0, 'mouseup', 2)", { 10.0, 40.0, GLFW_MOUSE_BUTTON_2, GLFW_RELEASE, -1 } },
     //{ "Module.injectMouseEvent(10.0, 50.0, 'mousewheel', 0)", { 10.0, 50.0, -1, -1, -1 } },
     //{ "Module.injectMouseEvent(10.0, 60.0, 'mousemove', 0)", { 10.0, 60.0, -1, -1, -1 } }
+    { "keydown(32)", { 0, 0, GLFW_KEY_SPACE, GLFW_PRESS, -1 } },
+    { "keyup(32)", { 0, 0, GLFW_KEY_SPACE, GLFW_RELEASE, -1 } },
+    { "keydown(32)", { 0, 0, GLFW_KEY_SPACE, GLFW_PRESS, -1 } },
+    { "keydown(32)", { 0, 0, GLFW_KEY_SPACE, GLFW_REPEAT, -1 } },
+    { "keydown(32)", { 0, 0, GLFW_KEY_SPACE, GLFW_REPEAT, -1 } },
+    { "keyup(32)", { 0, 0, GLFW_KEY_SPACE, GLFW_RELEASE, -1 } },
 };
 
 static unsigned int g_test_actual = 0;
@@ -72,6 +78,19 @@ static void on_mouse_wheel(GLFWwindow* window, double x, double y)
     }
 }
 
+static void on_key_action(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    test_args_t args = g_tests[g_test_actual].args;
+    if (args.button == key && args.action == action)
+    {
+        g_state |= 1 << g_test_actual;
+    }
+    else
+    {
+        printf("Test %d: FAIL\n", g_test_actual);
+    }
+}
+
 static void on_error(int error, const char *msg)
 {
     printf("%d: %s\n", error, msg);
@@ -103,8 +122,8 @@ int main()
     glfwSetMouseButtonCallback(_mainWindow, on_mouse_callback);
     glfwSetCursorPosCallback(_mainWindow, on_mouse_move);
     glfwSetScrollCallback(_mainWindow, on_mouse_wheel);
+    glfwSetKeyCallback(_mainWindow, on_key_action);
     //glfwSetCharCallback(_mainWindow, ...);
-    //glfwSetKeyCallback(_mainWindow, ...);
 
     for (int i = 0; i < g_test_count; ++i)
     {
