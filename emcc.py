@@ -1667,9 +1667,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     #src = re.sub(r'\n+[ \n]*\n+', '\n', src)
     #open(final, 'w').write(src)
 
+    # Move final output to the js target
+    shutil.move(final, js_target)
+
+    # Separate out the asm.js code, if asked
+    if separate_asm:
+      temp_target = misc_temp_files.get(suffix='.js').name
+      execute([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), js_target, asm_target, temp_target])
+      shutil.move(temp_target, js_target)
+
     def generate_source_map(map_file_base_name, offset=0):
       jsrun.run_js(shared.path_from_root('tools', 'source-maps', 'sourcemapper.js'),
-        shared.NODE_JS, js_transform_tempfiles +
+        shared.NODE_JS, [js_target] +
           ['--sourceRoot', os.getcwd(),
            '--mapFileBaseName', map_file_base_name,
            '--offset', str(offset)])
@@ -1707,12 +1716,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     document.body.appendChild(script);
   }
 ''' % child_js
-        shutil.move(final, js_target)
       else:
         # Normal code generation path
         if debug_level >= 4:
           generate_source_map(target)
-        shutil.move(final, js_target)
         script_src = base_js_target
 
         from tools import client_mods
@@ -1752,9 +1759,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if separate_asm:
         un_src()
-        temp_target = misc_temp_files.get(suffix='.js').name
-        execute([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), js_target, asm_target, temp_target])
-        shutil.move(temp_target, js_target)
         if len(asm_mods) == 0:
           # just load the asm, then load the rest
           script_inline = '''
@@ -1801,15 +1805,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         script_replacement = '<script>\n%s\n</script>' % script_inline
       html.write(shell.replace('{{{ SCRIPT }}}', script_replacement))
       html.close()
-    else:
+    else: # final_suffix != html
       if debug_level >= 4: generate_source_map(target)
       if proxy_to_worker:
+        shutil.move(js_target, js_target[:-3] + '.worker.js') # compiler output goes in .worker.js file
         worker_target_basename = target_basename + '.worker'
         open(target, 'w').write(open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', shared.Settings.PROXY_TO_WORKER_FILENAME or worker_target_basename).replace('{{{ IDBStore.js }}}', open(shared.path_from_root('src', 'IDBStore.js')).read()))
-        shutil.move(final, target[:-3] + '.worker.js')
-      else:
-        # copy final JS to output normally
-        shutil.move(final, target)
 
     if shared.Settings.WASM:
       logging.debug('converting to WebAssembly')
