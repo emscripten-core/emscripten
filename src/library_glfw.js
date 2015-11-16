@@ -284,6 +284,9 @@ var LibraryGLFW = {
       var key = GLFW.DOMToGLFWKeyCode(event.keyCode);
       if (key == -1) return;
 
+#if USE_GLFW == 3
+      var repeat = status && GLFW.active.keys[key];
+#endif
       GLFW.active.keys[key] = status;
       if (!GLFW.active.keyFunc) return;
 
@@ -292,12 +295,13 @@ var LibraryGLFW = {
 #endif
 
 #if USE_GLFW == 3
+      if (repeat) status = 2; // GLFW_REPEAT
       Runtime.dynCall('viiiii', GLFW.active.keyFunc, [GLFW.active.id, key, event.keyCode, status, GLFW.getModBits(GLFW.active)]);
 #endif
     },
 
     onKeydown: function(event) {
-      GLFW.onKeyChanged(event, 1); // GLFW_PRESS
+      GLFW.onKeyChanged(event, 1); // GLFW_PRESS or GLFW_REPEAT
 
       // This logic comes directly from the sdl implementation. We cannot
       // call preventDefault on all keydown events otherwise onKeyPress will
