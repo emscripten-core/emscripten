@@ -2,12 +2,15 @@
 
 # This script should work in python 2 *or* 3. It loads emcc.py, which needs python 2.
 
+
 import sys
+
+
 
 if sys.version_info.major == 2:
   import emcc
   emcc.run()
 else:
-  import subprocess
-  sys.exit(subprocess.call(['python2'] + sys.argv))
+  import os, subprocess
+  sys.exit(subprocess.call(['python2', os.path.join(os.path.dirname(__file__), 'emcc.py')] + sys.argv[1:]))
 
