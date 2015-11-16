@@ -1672,6 +1672,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     #src = re.sub(r'\n+[ \n]*\n+', '\n', src)
     #open(final, 'w').write(src)
 
+    # Emit source maps, if needed
+    if debug_level >= 4:
+      logging.debug('generating source maps')
+      jsrun.run_js(shared.path_from_root('tools', 'source-maps', 'sourcemapper.js'),
+        shared.NODE_JS, js_transform_tempfiles +
+          ['--sourceRoot', os.getcwd(),
+           '--mapFileBaseName', target,
+           '--offset', str(0)])
+
     # Move final output to the js target
     shutil.move(final, js_target)
 
@@ -1698,13 +1707,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       combined.write(wasm_js)
       combined.write(js)
       combined.close()
-
-    def generate_source_map(map_file_base_name, offset=0):
-      jsrun.run_js(shared.path_from_root('tools', 'source-maps', 'sourcemapper.js'),
-        shared.NODE_JS, [js_target] +
-          ['--sourceRoot', os.getcwd(),
-           '--mapFileBaseName', map_file_base_name,
-           '--offset', str(offset)])
 
     # If we were asked to also generate HTML, do that
     if final_suffix == 'html':
@@ -1741,8 +1743,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 ''' % child_js
       else:
         # Normal code generation path
-        if debug_level >= 4:
-          generate_source_map(target)
         script_src = base_js_target
 
         from tools import client_mods
@@ -1829,7 +1829,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       html.write(shell.replace('{{{ SCRIPT }}}', script_replacement))
       html.close()
     else: # final_suffix != html
-      if debug_level >= 4: generate_source_map(target)
       if proxy_to_worker:
         shutil.move(js_target, js_target[:-3] + '.worker.js') # compiler output goes in .worker.js file
         worker_target_basename = target_basename + '.worker'
