@@ -19,7 +19,7 @@ void looper() {
   double curTime = emscripten_get_now();
   double timeSincePrevious = (prevTime >= 0) ? (curTime - prevTime) : (1000.0/60.0);
   printf("frame: %d. dt: %g\n", frame, timeSincePrevious);
-  if (timeSincePrevious <= 16.0)
+  if (timeSincePrevious <= 1.0)
   {
     printf("Abort: main loop tick was called too quickly after the previous frame!\n");
     int result = 1;
@@ -63,11 +63,6 @@ void looper() {
   }
 }
 
-void main_loop_blocker(void*) {
-  emscripten_resume_main_loop();
-}
-
 int main() {
-  emscripten_push_uncounted_main_loop_blocker(main_loop_blocker, NULL);
   emscripten_set_main_loop(looper, 5, 1);
 }
