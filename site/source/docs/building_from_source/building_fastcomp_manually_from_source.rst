@@ -16,10 +16,10 @@ This article explains how you can build Fastcomp's sources using a fully manual 
 What you'll need
 ================
 
-First follow the instructions for your platform showing how to :ref:`manually build Emscripten from source <installing-from-source>`.
+First verify you have :ref:'the compiler toolchain <compiler-toolchain>` for your platform, download and install them as  necessary. 
 
-Then :ref:`download and install the compiler toolchain <compiler-toolchain>` for your platform.
-
+Then follow the instructions for your platform showing how to :ref:`manually build Emscripten from source <installing-from-source>` steps 1-6, and return to this page at step 6. When you're done here return to those instructions.
+ 		 
 .. _building-fastcomp-from-source-building:
 
 Building Fastcomp
