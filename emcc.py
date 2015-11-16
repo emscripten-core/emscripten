@@ -1830,5 +1830,5 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       logging.info('emcc saved files are in:' + temp_dir)
 
 if __name__ == '__main__':
-  run(sys.argv)
+  run()
 
