@@ -827,8 +827,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # target is now finalized, can finalize other _target s
     js_target = unsuffixed(target) + '.js'
 
+    asm_target = js_target[:-3] + '.asm.js' # might not be used, but if it is, this is the name
     if separate_asm:
-      asm_target = js_target[:-3] + '.asm.js'
       shared.Settings.SEPARATE_ASM = asm_target
 
     # Find library files
@@ -1052,6 +1052,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.MAIN_MODULE:
         logging.error('-s MAIN_MODULE=1 is not supported with -s USE_PTHREADS=1!')
         exit(1)
+
+    if shared.Settings.BINARYEN:
+      debug_level = max(1, debug_level) # keep whitespace readable, for asm.js parser simplicity
+      shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
+      shared.Settings.ALIASING_FUNCTION_POINTERS = 0 # WebAssembly does not support aliased function pointers
 
     shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
     shared.Settings.OPT_LEVEL = opt_level
@@ -1670,11 +1675,29 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Move final output to the js target
     shutil.move(final, js_target)
 
-    # Separate out the asm.js code, if asked
-    if separate_asm:
+    # Separate out the asm.js code, if asked. Or, if necessary for another option
+    if separate_asm or shared.Settings.BINARYEN:
       temp_target = misc_temp_files.get(suffix='.js').name
       execute([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), js_target, asm_target, temp_target])
       shutil.move(temp_target, js_target)
+
+    if shared.Settings.BINARYEN:
+      # Create a customized copy of wasm.js
+      binaryen_bin = os.path.join(shared.Settings.BINARYEN, 'bin')
+      wasm_js = open(os.path.join(binaryen_bin, 'wasm.js')).read()
+      wasm_js = wasm_js.replace("Module['asmjsCodeFile']", '"' + asm_target + '"') # " or '? who knows :)
+      wasm_js = wasm_js.replace('Module["asmjsCodeFile"]', '"' + asm_target + '"')
+      wasm_js = wasm_js.replace("Module['providedTotalMemory']", str(shared.Settings.TOTAL_MEMORY))
+      wasm_js = wasm_js.replace('Module["providedTotalMemory"]', str(shared.Settings.TOTAL_MEMORY))
+      # Insert it before the rest of the main js file
+      js = open(js_target).read()
+      combined = open(js_target, 'w')
+      if final_suffix == 'js':
+        assert not use_closure_compiler
+        combined.write('if (typeof Module === "undefined") Module = {}\n') # in html, we have a Module object, but in raw JS, we might not. wasm.js must write to it, so ensure it exists
+      combined.write(wasm_js)
+      combined.write(js)
+      combined.close()
 
     def generate_source_map(map_file_base_name, offset=0):
       jsrun.run_js(shared.path_from_root('tools', 'source-maps', 'sourcemapper.js'),

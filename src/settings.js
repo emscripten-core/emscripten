@@ -592,7 +592,16 @@ var USE_GLFW = 2; // Specify the GLFW version that is being linked against.
                   // Only relevant, if you are linking against the GLFW library.
                   // Valid options are 2 for GLFW2 and 3 for GLFW3.
 
-var WASM = 0; // If 1, compress the asm.js module into WebAssembly, and ship a decompressor that runs on the client
+var BINARYEN = ""; // Path to [Binaryen](https://github.com/WebAssembly/binaryen), which we use to
+                   // compile (at runtime) our asm.js output into WebAssembly. That then runs in
+                   // a shipped Binaryen interpreter for WebAssembly, or, once browsers get native
+                   // WebAssembly support, it will run directly.
+                   // This path should be to the root Binaryen directory (not the /bin subfolder).
+                   // You need to build Binaryen, so that /bin/wasm.js under the Binaryen
+                   // directory exists.
+
+var WASM = 0; // Older WebAssembly experiment. Compress the asm.js module into an early proposal for WebAssembly,
+              // and ship a decompressor that runs on the client.
               // Note that wasm loading is asynchronous in the browser, and for that reason we wrap the entire emitted
               // code in a function - things will not reach the global scope by default. You can access things on the
               // Module object.
