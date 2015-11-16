@@ -44,6 +44,7 @@ static void on_mouse_callback(GLFWwindow* window, int button, int action, int mo
     test_args_t args = g_tests[g_test_actual].args;
     if (args.button == button && args.action == action)
     {
+        printf("Test on_mouse_callback: OK\n");
         g_state |= 1 << g_test_actual;
     }
     else
@@ -57,6 +58,7 @@ static void on_mouse_move(GLFWwindow* window, double x, double y)
     test_args_t args = g_tests[g_test_actual].args;
     if (args.x == x && args.y == y)
     {
+        printf("Test on_mouse_move: OK\n");
         g_state |= 1 << g_test_actual;
     }
     else
@@ -70,6 +72,7 @@ static void on_mouse_wheel(GLFWwindow* window, double x, double y)
     test_args_t args = g_tests[g_test_actual].args;
     if (args.x == x && args.y == y)
     {
+        printf("Test on_mouse_wheel: OK\n");
         g_state |= 1 << g_test_actual;
     }
     else
@@ -83,6 +86,7 @@ static void on_key_action(GLFWwindow* window, int key, int scancode, int action,
     test_args_t args = g_tests[g_test_actual].args;
     if (args.button == key && args.action == action)
     {
+        printf("Test on_key_action: OK\n");
         g_state |= 1 << g_test_actual;
     }
     else
