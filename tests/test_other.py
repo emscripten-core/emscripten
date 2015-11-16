@@ -5767,10 +5767,12 @@ int main() {
         has = False
       print python, has
       if has:
-        print 'checking emcc...'
+        print '  checking emcc...'
         check_execute([python, EMCC, '--version'])
+        print '  checking em++...'
+        check_execute([python, EMXX, '--version'])
         if python == 'python2':
-          print 'checking emcc.py...'
+          print '  checking emcc.py...'
           check_execute([python, EMCC + '.py', '--version'])
 
   def test_zeroinit(self):
