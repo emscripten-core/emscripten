@@ -654,6 +654,15 @@ var PTHREAD_POOL_SIZE = 0; // Specifies the number of web workers that are preal
 // to show a popup dialog at startup so the user can configure this dynamically.
 var PTHREAD_HINT_NUM_CORES = 4;
 
+// If 1 (default), the contents of the pthread bootstrap script "src/pthread-main.js" is embedded to the final generated output
+// to avoid needing to host a separate file for this on the web server. If 0, then the pthread main script is  deployed alongside
+// the generated output file. Generally set only to 0 if you need to debug something regarding the pthread internals.
+var EMBED_PTHREAD_MAIN_JS = 1;
+
+// A dummy placeholder that will contain the contents of src/pthread-main.js at link. Specified
+// here to quieten a false positive warning message.
+var PTHREAD_MAIN_CODE = '';
+
 var MAX_GLOBAL_ALIGN = -1; // received from the backend
 
 // Reserved: variables containing POINTER_MASKING.

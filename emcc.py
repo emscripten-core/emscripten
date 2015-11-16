@@ -1053,6 +1053,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logging.error('-s MAIN_MODULE=1 is not supported with -s USE_PTHREADS=1!')
         exit(1)
 
+      # Load pthread-main.js to a variable so that it can be embedded as a string to the generated page without needing to host
+      # the output in two files.
+      shared.Settings.PTHREAD_MAIN_CODE = open(shared.path_from_root('src/pthread-main.js')).read();
+      def remove_comments(text):
+        def replacer(match): return ' ' if match.group(0).startswith('/') else match.group(0)
+        return re.sub(re.compile(r'//.*?$|/\*.*?\*/|\'(?:\\.|[^\\\'])*\'|"(?:\\.|[^\\"])*"', re.DOTALL | re.MULTILINE), replacer, text)
+      def collapse_whitespace(text):
+        return re.compile(r'\s+').sub(' ', text.replace('\r\n', ' ').replace('\n', ' '))
+      shared.Settings.PTHREAD_MAIN_CODE = '"' + collapse_whitespace(remove_comments(shared.Settings.PTHREAD_MAIN_CODE)).replace('"', '\\"') + '"'
+
     if shared.Settings.BINARYEN:
       debug_level = max(1, debug_level) # keep whitespace readable, for asm.js parser simplicity
       shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
@@ -1431,7 +1441,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         final += '.mem.js'
         src = None
 
-    if shared.Settings.USE_PTHREADS:
+    if shared.Settings.USE_PTHREADS and not shared.Settings.EMBED_PTHREAD_MAIN_JS:
       shutil.copyfile(shared.path_from_root('src', 'pthread-main.js'), os.path.join(os.path.dirname(os.path.abspath(target)), 'pthread-main.js'))
 
     log_time('source transforms')

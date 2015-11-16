@@ -1031,7 +1031,9 @@ var DYNAMIC_BASE = 0, DYNAMICTOP = 0; // dynamic area handled by sbrk
 if (ENVIRONMENT_IS_PTHREAD) {
   staticSealed = true; // The static memory area has been initialized already in the main thread, pthreads skip this.
 #if SEPARATE_ASM != 0
-  importScripts('{{{ SEPARATE_ASM }}}'); // load the separated-out asm.js
+  // Specify the script to import by absolute URL, or otherwise it won't be located since the pthread may have been
+  // constructed via a blob url, and importing via a relative url won't work.
+  importScripts(currentScriptUrl.split('/').slice(0, -1).join('/') + '/{{{ SEPARATE_ASM }}}'); // load the separated-out asm.js
 #endif
 }
 #endif
