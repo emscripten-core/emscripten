@@ -30,6 +30,8 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     return 'SPLIT_MEMORY=' in str(self.emcc_args)
   def is_wasm(self):
     return 'WASM=1' in self.emcc_args
+  def is_binaryen(self):
+    return 'BINARYEN' in str(self.emcc_args)
 
   def test_hello_world(self):
       test_path = path_from_root('tests', 'core', 'test_hello_world')
@@ -6331,6 +6333,10 @@ def process(filename):
         ]: continue
         if self.is_emterpreter() and os.path.basename(shortname) in [
           'funcptr', # test writes to memory we store out bytecode! test is invalid
+          'i1282vecnback', # uses simd
+        ]:
+          continue
+        if self.is_binaryen() and os.path.basename(shortname) in [
           'i1282vecnback', # uses simd
         ]:
           continue
