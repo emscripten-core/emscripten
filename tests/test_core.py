@@ -7829,6 +7829,7 @@ asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTI
 asm2i = make_run("asm2i", compiler=CLANG, emcc_args=["-O2", '-s', 'EMTERPRETIFY=1'])
 #asm2m = make_run("asm2m", compiler=CLANG, emcc_args=["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1"])
 #asm2w = make_run("asm2w", compiler=CLANG, emcc_args=["-O2", "-s", "WASM=1"])
+#binaryen = make_run("binaryen", compiler=CLANG, emcc_args=["-s", "BINARYEN='..path..'"])
 
 # Legacy test modes - 
 asm2nn = make_run("asm2nn", compiler=CLANG, emcc_args=["-O2"], env={"EMCC_NATIVE_OPTIMIZER": "0"})
