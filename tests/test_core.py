@@ -6462,10 +6462,7 @@ def process(filename):
   def test_ccall(self):
     post = '''
 def process(filename):
-  src = \'\'\'
-    var Module = { 'noInitialRun': true };
-    \'\'\' + open(filename, 'r').read() + \'\'\'
-    addOnExit(function () {
+  src = open(filename, 'r').read() + \'\'\'
       Module.print('*');
       var ret;
       ret = Module['ccall']('get_int', 'number'); Module.print([typeof ret, ret]);
@@ -6493,8 +6490,6 @@ def process(filename):
       }
       Module.print('stack is ok.');
       ccall('call_ccall_again', null);
-    });
-    Module.callMain();
   \'\'\'
   open(filename, 'w').write(src)
 '''
