@@ -124,16 +124,6 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 
 	.. _getting-started-on-osx-install-python2:
 
-#. Setup *python2* (this step is needed to workaround a bug reported in `#763 <https://github.com/kripken/emscripten/issues/763>`_):
-
-	-  In terminal, type ``python2 --version``. If you get a "command not found", type the following: ::
-	
-		cd /usr/bin
-		sudo ln python python2
-		sudo ln ../../System/Library/Frameworks/Python.framework/Versions/2.7/bin/python2.7 python22.7
-		
-	-  Enter ``python2 --version`` again. It should now print Python 2.7.2
-
 Linux
 ++++++++
 
