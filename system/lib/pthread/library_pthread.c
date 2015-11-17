@@ -234,17 +234,19 @@ static uint32_t dummyZeroAddress = 0;
 
 int usleep(unsigned usec)
 {
+	int is_main_thread = emscripten_is_main_runtime_thread();
 	double now = emscripten_get_now();
 	double target = now + usec * 1e-3;
 	while(now < target) {
+		if (is_main_thread) emscripten_main_thread_process_queued_calls(); // Assist other threads by executing proxied operations that are effectively singlethreaded.
+		pthread_testcancel(); // pthreads spec: usleep is a cancellation point, so it must test if this thread is cancelled during the sleep.
+		now = emscripten_get_now();
 		double msecsToSleep = target - now;
 		if (msecsToSleep > 1.0) {
 			if (msecsToSleep > 100.0) msecsToSleep = 100.0;
-			pthread_testcancel(); // pthreads spec: usleep is a cancellation point, so it must test if this thread is cancelled during the sleep.
-			if (emscripten_is_main_runtime_thread()) emscripten_main_thread_process_queued_calls(); // Assist other threads by executing proxied operations that are effectively singlethreaded.
+			if (is_main_thread && msecsToSleep > 1) msecsToSleep = 1; // main thread may need to run proxied calls, so sleep in very small slices to be responsive.
 			emscripten_futex_wait(&dummyZeroAddress, 0, msecsToSleep);
 		}
-		now = emscripten_get_now();
 	}
 	return 0;
 }
