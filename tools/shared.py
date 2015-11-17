@@ -1482,11 +1482,10 @@ class Building:
     assert len(opts) > 0, 'should not call opt with nothing to do'
     opts = opts[:]
     #opts += ['-debug-pass=Arguments']
-    if get_clang_version() >= '3.4':
-      if not Settings.SIMD:
-        opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false', '-vectorize-slp-aggressive=false']
-      else:
-        opts += ['-bb-vectorize-vector-bits=128']
+    if not Settings.SIMD:
+      opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false', '-vectorize-slp-aggressive=false']
+    else:
+      opts += ['-bb-vectorize-vector-bits=128']
 
     logging.debug('emcc: LLVM opts: ' + ' '.join(opts) + '  [num inputs: ' + str(len(inputs)) + ']')
     target = out or (filename + '.opt.bc')
