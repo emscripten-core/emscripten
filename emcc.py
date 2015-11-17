@@ -1056,7 +1056,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.BINARYEN:
       debug_level = max(1, debug_level) # keep whitespace readable, for asm.js parser simplicity
       shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
-      shared.Settings.ALIASING_FUNCTION_POINTERS = 0 # WebAssembly does not support aliased function pointers
       assert not shared.Settings.SPLIT_MEMORY, 'WebAssembly does not support split memory'
 
     shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
