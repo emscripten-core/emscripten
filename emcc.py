@@ -1057,6 +1057,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       debug_level = max(1, debug_level) # keep whitespace readable, for asm.js parser simplicity
       shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
       shared.Settings.ALIASING_FUNCTION_POINTERS = 0 # WebAssembly does not support aliased function pointers
+      assert not shared.Settings.EMULATE_FUNCTION_POINTER_CASTS, 'we cannot convert emulated function pointer casts into wasm, we need a clear structure on the function tables as we merge them'
 
     shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
     shared.Settings.OPT_LEVEL = opt_level
