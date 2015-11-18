@@ -830,6 +830,16 @@ class Parser {
       src++;
       return Builder::makeBlock(); // we don't need the brackets here, but oh well
     }
+    if (*src == '{') { // detect a trivial {} in a statement context
+      char *before = src;
+      src++;
+      skipSpace(src);
+      if (*src == '}') {
+        src++;
+        return Builder::makeBlock(); // we don't need the brackets here, but oh well
+      }
+      src = before;
+    }
     NodeRef ret = parseElement(src, seps);
     skipSpace(src);
     if (*src == ';') {
