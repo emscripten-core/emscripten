@@ -123,5 +123,14 @@ struct HeapInfo {
 
 HeapInfo parseHeap(const char *name);
 
+enum AsmSign {
+  ASM_FLEXIBLE = 0, // small constants can be signed or unsigned, variables are also flexible
+  ASM_SIGNED = 1,
+  ASM_UNSIGNED = 2,
+  ASM_NONSIGNED = 3,
+};
+
+extern AsmSign detectSign(cashew::Ref node);
+
 #endif // __optimizer_h__
 

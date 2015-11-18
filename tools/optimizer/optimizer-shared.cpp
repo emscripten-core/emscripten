@@ -123,3 +123,41 @@ AsmType detectType(Ref node, AsmData *asmData, bool inVarDef) {
   return ASM_NONE;
 }
 
+AsmSign detectSign(Ref node) {
+  IString type = node[0]->getIString();
+  if (type == BINARY) {
+    IString op = node[1]->getIString();
+    switch (op.str[0]) {
+      case '>': {
+        if (op == TRSHIFT) return ASM_UNSIGNED;
+        // fallthrough
+      }
+      case '|': case '&': case '^': case '<': case '=': case '!': return ASM_SIGNED;
+      case '+': case '-': return ASM_FLEXIBLE;
+      case '*': case '/': return ASM_NONSIGNED; // without a coercion, these are double
+      default: abort();
+    }
+  } else if (type == UNARY_PREFIX) {
+    IString op = node[1]->getIString();
+    switch (op.str[0]) {
+      case '-': return ASM_FLEXIBLE;
+      case '+': return ASM_NONSIGNED; // XXX double
+      case '~': return ASM_SIGNED;
+      default: abort();
+    }
+  } else if (type == NUM) {
+    double value = node[1]->getNumber();
+    if (value < 0) return ASM_SIGNED;
+    if (value > uint32_t(-1) || fmod(value, 1) != 0) return ASM_NONSIGNED;
+    if (value == int32_t(value)) return ASM_FLEXIBLE;
+    return ASM_UNSIGNED;
+  } else if (type == NAME) {
+    return ASM_FLEXIBLE;
+  } else if (type == CONDITIONAL) {
+    return detectSign(node[2]);
+  } else if (type == CALL) {
+    if (node[1][0] == NAME && node[1][1] == MATH_FROUND) return ASM_NONSIGNED;
+  }
+  abort();
+}
+
