@@ -284,28 +284,30 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
           logging.warning('function requested to be exported, but not implemented: "%s"', requested)
 
     asm_consts = [0]*len(metadata['asmConsts'])
+    all_sigs = []
     for k, v in metadata['asmConsts'].iteritems():
-      const = v.encode('utf-8')
+      const = v[0].encode('utf-8')
+      sigs = v[1]
       if const[0] == '"' and const[-1] == '"':
         const = const[1:-1]
       const = '{ ' + const + ' }'
       args = []
-      arity = max(metadata['asmConstArities'][k])
+      arity = max(map(len, sigs)) - 1
       for i in range(arity):
         args.append('$' + str(i))
-      const = 'function(' + ', '.join(args ) + ') ' + const
+      const = 'function(' + ', '.join(args) + ') ' + const
       asm_consts[int(k)] = const
+      all_sigs += sigs
 
-    flatten_list_of_lists = lambda outer: (item for inner in outer for item in inner)
     asm_const_funcs = []
-    for arity in set(flatten_list_of_lists(metadata['asmConstArities'].values())):
-      forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_%d' % arity] = 1
-      args = ['a%d' % i for i in range(arity)]
+    for sig in set(all_sigs):
+      forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_' + sig] = 1
+      args = ['a%d' % i for i in range(len(sig)-1)]
       all_args = ['code'] + args
       asm_const_funcs.append(r'''
-function _emscripten_asm_const_%d(%s) {
+function _emscripten_asm_const_%s(%s) {
  return ASM_CONSTS[code](%s);
-}''' % (arity, ', '.join(all_args), ', '.join(args)))
+}''' % (sig.encode('utf-8'), ', '.join(all_args), ', '.join(args)))
 
     pre = pre.replace('// === Body ===', '// === Body ===\n' + '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n' + '\n'.join(asm_const_funcs) + '\n')
 
