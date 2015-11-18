@@ -1434,6 +1434,23 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.USE_PTHREADS:
       shutil.copyfile(shared.path_from_root('src', 'pthread-main.js'), os.path.join(os.path.dirname(os.path.abspath(target)), 'pthread-main.js'))
 
+    if shared.Settings.BINARYEN:
+      # Create a customized copy of wasm.js
+      binaryen_bin = os.path.join(shared.Settings.BINARYEN, 'bin')
+      wasm_js = open(os.path.join(binaryen_bin, 'wasm.js')).read()
+      wasm_js = wasm_js.replace("Module['asmjsCodeFile']", '"' + asm_target + '"') # " or '? who knows :)
+      wasm_js = wasm_js.replace('Module["asmjsCodeFile"]', '"' + asm_target + '"')
+      wasm_js = wasm_js.replace("Module['providedTotalMemory']", str(shared.Settings.TOTAL_MEMORY))
+      wasm_js = wasm_js.replace('Module["providedTotalMemory"]', str(shared.Settings.TOTAL_MEMORY))
+      wasm_js = wasm_js.replace('EMSCRIPTEN_', 'emscripten_') # do not confuse the markers
+      # Insert it before the rest of the main js file
+      js = open(final).read()
+      js = js.replace('// {{PREAMBLE_ADDITIONS}}', '//========wasm.js build\n' + wasm_js + '\n//========end wasm.js build\n// {{PREAMBLE_ADDITIONS}}')
+      final += '.binaryen.js'
+      combined = open(final, 'w')
+      combined.write(js)
+      combined.close()
+
     log_time('source transforms')
 
     # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing
@@ -1689,24 +1706,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       temp_target = misc_temp_files.get(suffix='.js').name
       execute([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), js_target, asm_target, temp_target])
       shutil.move(temp_target, js_target)
-
-    if shared.Settings.BINARYEN:
-      # Create a customized copy of wasm.js
-      binaryen_bin = os.path.join(shared.Settings.BINARYEN, 'bin')
-      wasm_js = open(os.path.join(binaryen_bin, 'wasm.js')).read()
-      wasm_js = wasm_js.replace("Module['asmjsCodeFile']", '"' + asm_target + '"') # " or '? who knows :)
-      wasm_js = wasm_js.replace('Module["asmjsCodeFile"]', '"' + asm_target + '"')
-      wasm_js = wasm_js.replace("Module['providedTotalMemory']", str(shared.Settings.TOTAL_MEMORY))
-      wasm_js = wasm_js.replace('Module["providedTotalMemory"]', str(shared.Settings.TOTAL_MEMORY))
-      # Insert it before the rest of the main js file
-      js = open(js_target).read()
-      combined = open(js_target, 'w')
-      if final_suffix == 'js':
-        assert not use_closure_compiler
-        combined.write('if (typeof Module === "undefined") Module = {}\n') # in html, we have a Module object, but in raw JS, we might not. wasm.js must write to it, so ensure it exists
-      combined.write(wasm_js)
-      combined.write(js)
-      combined.close()
 
     # If we were asked to also generate HTML, do that
     if final_suffix == 'html':

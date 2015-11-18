@@ -1,3 +1,5 @@
+// {{PREAMBLE_ADDITIONS}}
+
 // === Preamble library stuff ===
 
 // Documentation for the public APIs defined in this file must be updated in: 
