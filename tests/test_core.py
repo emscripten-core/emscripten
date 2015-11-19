@@ -3004,6 +3004,7 @@ The current type of b is: 9
 
   def can_dlfcn(self):
     if Settings.ALLOW_MEMORY_GROWTH == 1: return self.skip('no dlfcn with memory growth yet')
+    if self.is_binaryen(): return self.skip('no shared modules in wasm')
     return True
 
   def prep_dlfcn_lib(self):
@@ -3764,6 +3765,7 @@ ok
 
   def dylink_test(self, main, side, expected, header=None, main_emcc_args=[], force_c=False, need_reverse=True, auto_load=True):
     if Settings.ALLOW_MEMORY_GROWTH == 1: return self.skip('no dynamic linking with memory growth yet')
+    if self.is_binaryen(): return self.skip('no shared modules in wasm')
 
     if header:
       open('header.h', 'w').write(header)
@@ -4230,6 +4232,7 @@ var Module = {
 
   def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
     if Settings.ALLOW_MEMORY_GROWTH == 1: return self.skip('no memory growth in shared modules yet')
+    if self.is_binaryen(): return self.skip('no shared modules in wasm')
 
     def test(syslibs, expect_pass=True, need_reverse=True):
       print 'syslibs', syslibs, Settings.ASSERTIONS
