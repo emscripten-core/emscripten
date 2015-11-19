@@ -3764,8 +3764,7 @@ ok
 ''', post_build=self.dlfcn_post_build)
 
   def dylink_test(self, main, side, expected, header=None, main_emcc_args=[], force_c=False, need_reverse=True, auto_load=True):
-    if Settings.ALLOW_MEMORY_GROWTH == 1: return self.skip('no dynamic linking with memory growth yet')
-    if self.is_binaryen(): return self.skip('no shared modules in wasm')
+    if not self.can_dlfcn(): return
 
     if header:
       open('header.h', 'w').write(header)
@@ -4008,6 +4007,7 @@ var Module = {
     ''', 'a new Class\n')
 
   def test_dylink_global_inits(self):
+    if not self.can_dlfcn(): return
     def test():
       self.dylink_test(header=r'''
         #include <stdio.h>
@@ -4231,8 +4231,7 @@ var Module = {
     ''', expected=['simple.\nsimple.\nsimple.\nsimple.\n'])
 
   def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
-    if Settings.ALLOW_MEMORY_GROWTH == 1: return self.skip('no memory growth in shared modules yet')
-    if self.is_binaryen(): return self.skip('no shared modules in wasm')
+    if not self.can_dlfcn(): return
 
     def test(syslibs, expect_pass=True, need_reverse=True):
       print 'syslibs', syslibs, Settings.ASSERTIONS
@@ -4342,7 +4341,7 @@ var Module = {
     ''', expected=['starting main\nBase\nDerived\nOK'])
 
   def test_dylink_hyper_dupe(self):
-    if Settings.ALLOW_MEMORY_GROWTH == 1: return self.skip('no memory growth in shared modules yet')
+    if not self.can_dlfcn(): return
 
     Settings.TOTAL_MEMORY = 64*1024*1024
 
