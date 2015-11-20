@@ -1042,6 +1042,25 @@ if (ENVIRONMENT_IS_PTHREAD) {
 function abortOnCannotGrowMemory() {
   abort('Cannot enlarge memory arrays. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which adjusts the size at runtime but prevents some optimizations, (3) set Module.TOTAL_MEMORY to a higher value before the program runs, or if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
 }
+#else // ALLOW_MEMORY_GROWTH
+if (!Module['reallocBuffer']) Module['reallocBuffer'] = function(size) {
+  var ret;
+  try {
+    if (ArrayBuffer.transfer) {
+      ret = ArrayBuffer.transfer(buffer, size);
+    } else {
+      var oldHEAP8 = HEAP8;
+      ret = new ArrayBuffer(size);
+      var temp = new Int8Array(ret);
+      temp.set(oldHEAP8);
+    }
+  } catch(e) {
+    return false;
+  }
+  var success = _emscripten_replace_memory(ret);
+  if (!success) return false;
+  return ret;
+};
 #endif
 
 function enlargeMemory() {
@@ -1100,19 +1119,9 @@ function enlargeMemory() {
   var start = Date.now();
 #endif
 
-  try {
-    if (ArrayBuffer.transfer) {
-      buffer = ArrayBuffer.transfer(buffer, TOTAL_MEMORY);
-    } else {
-      var oldHEAP8 = HEAP8;
-      buffer = new ArrayBuffer(TOTAL_MEMORY);
-    }
-  } catch(e) {
-    return false;
-  }
-
-  var success = _emscripten_replace_memory(buffer);
-  if (!success) return false;
+  var replacement = Module['reallocBuffer'](TOTAL_MEMORY);
+  if (!replacement) return false;
+  buffer = replacement;
 
   // everything worked
 
@@ -1125,9 +1134,6 @@ function enlargeMemory() {
   Module['HEAPU32'] = HEAPU32 = new Uint32Array(buffer);
   Module['HEAPF32'] = HEAPF32 = new Float32Array(buffer);
   Module['HEAPF64'] = HEAPF64 = new Float64Array(buffer);
-  if (!ArrayBuffer.transfer) {
-    HEAP8.set(oldHEAP8);
-  }
 
 #if ASSERTIONS
   Module.printErr('enlarged memory arrays from ' + OLD_TOTAL_MEMORY + ' to ' + TOTAL_MEMORY + ', took ' + (Date.now() - start) + ' ms (has ArrayBuffer.transfer? ' + (!!ArrayBuffer.transfer) + ')');
