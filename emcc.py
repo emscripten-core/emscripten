@@ -1435,21 +1435,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shutil.copyfile(shared.path_from_root('src', 'pthread-main.js'), os.path.join(os.path.dirname(os.path.abspath(target)), 'pthread-main.js'))
 
     if shared.Settings.BINARYEN:
-      # Create a customized copy of wasm.js
-      binaryen_bin = os.path.join(shared.Settings.BINARYEN, 'bin')
-      wasm_js = open(os.path.join(binaryen_bin, 'wasm.js')).read()
-      wasm_js = wasm_js.replace("Module['asmjsCodeFile']", '"' + asm_target + '"') # " or '? who knows :)
-      wasm_js = wasm_js.replace('Module["asmjsCodeFile"]', '"' + asm_target + '"')
-      wasm_js = wasm_js.replace("Module['providedTotalMemory']", str(shared.Settings.TOTAL_MEMORY))
-      wasm_js = wasm_js.replace('Module["providedTotalMemory"]', str(shared.Settings.TOTAL_MEMORY))
-      wasm_js = wasm_js.replace('EMSCRIPTEN_', 'emscripten_') # do not confuse the markers
-      # Insert it before the rest of the main js file
+      # Insert a call to integrate with wasm.js
       js = open(final).read()
-      js = js.replace('// {{PREAMBLE_ADDITIONS}}', '//========wasm.js build\n' + wasm_js + '\n//========end wasm.js build\n// {{PREAMBLE_ADDITIONS}}')
+      js = js.replace('// {{PREAMBLE_ADDITIONS}}', 'integrateWasmJS(Module);\n// {{PREAMBLE_ADDITIONS}}')
       final += '.binaryen.js'
-      combined = open(final, 'w')
-      combined.write(js)
-      combined.close()
+      open(final, 'w').write(js)
 
     log_time('source transforms')
 
@@ -1683,6 +1673,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         JSOptimizer.flush()
         safe_move(final, original)
         final = real
+
+    if shared.Settings.BINARYEN:
+      # Emit wasm.js at the top of the js. TODO: for html, it could be a separate script tag
+      binaryen_bin = os.path.join(shared.Settings.BINARYEN, 'bin')
+      wasm_js = open(os.path.join(binaryen_bin, 'wasm.js')).read()
+      wasm_js = wasm_js.replace("Module['asmjsCodeFile']", '"' + asm_target + '"') # " or '? who knows :)
+      wasm_js = wasm_js.replace('Module["asmjsCodeFile"]', '"' + asm_target + '"')
+      wasm_js = wasm_js.replace("Module['providedTotalMemory']", str(shared.Settings.TOTAL_MEMORY))
+      wasm_js = wasm_js.replace('Module["providedTotalMemory"]', str(shared.Settings.TOTAL_MEMORY))
+      wasm_js = wasm_js.replace('EMSCRIPTEN_', 'emscripten_') # do not confuse the markers
+      js = open(final).read()
+      final += '.binaryen.js'
+      combined = open(final, 'w')
+      combined.write(wasm_js)
+      combined.write(js)
+      combined.close()
 
     # Remove some trivial whitespace # TODO: do not run when compress has already been done on all parts of the code
     #src = open(final).read()
