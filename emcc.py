@@ -1674,23 +1674,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         safe_move(final, original)
         final = real
 
-    if shared.Settings.BINARYEN:
-      # Emit wasm.js at the top of the js. TODO: for html, it could be a separate script tag
-      binaryen_bin = os.path.join(shared.Settings.BINARYEN, 'bin')
-      wasm_js = open(os.path.join(binaryen_bin, 'wasm.js')).read()
-      wasm_js = wasm_js.replace("Module['asmjsCodeFile']", '"' + asm_target + '"') # " or '? who knows :)
-      wasm_js = wasm_js.replace('Module["asmjsCodeFile"]', '"' + asm_target + '"')
-      wasm_js = wasm_js.replace("Module['providedTotalMemory']", str(shared.Settings.TOTAL_MEMORY))
-      wasm_js = wasm_js.replace('Module["providedTotalMemory"]', str(shared.Settings.TOTAL_MEMORY))
-      wasm_js = wasm_js.replace('EMSCRIPTEN_', 'emscripten_') # do not confuse the markers
-      js = open(final).read()
-      final += '.binaryen.js'
-      combined = open(final, 'w')
-      combined.write(wasm_js)
-      combined.write('\n//^wasm.js\n')
-      combined.write(js)
-      combined.close()
-
     # Remove some trivial whitespace # TODO: do not run when compress has already been done on all parts of the code
     #src = open(final).read()
     #src = re.sub(r'\n+[ \n]*\n+', '\n', src)
@@ -1713,6 +1696,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       temp_target = misc_temp_files.get(suffix='.js').name
       execute([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), js_target, asm_target, temp_target])
       shutil.move(temp_target, js_target)
+
+    if shared.Settings.BINARYEN:
+      # Emit wasm.js at the top of the js. TODO: for html, it could be a separate script tag
+      binaryen_bin = os.path.join(shared.Settings.BINARYEN, 'bin')
+      wasm_js = open(os.path.join(binaryen_bin, 'wasm.js')).read()
+      wasm_js = wasm_js.replace("Module['asmjsCodeFile']", '"' + asm_target + '"') # " or '? who knows :)
+      wasm_js = wasm_js.replace('Module["asmjsCodeFile"]', '"' + asm_target + '"')
+      wasm_js = wasm_js.replace("Module['providedTotalMemory']", str(shared.Settings.TOTAL_MEMORY))
+      wasm_js = wasm_js.replace('Module["providedTotalMemory"]', str(shared.Settings.TOTAL_MEMORY))
+      wasm_js = wasm_js.replace('EMSCRIPTEN_', 'emscripten_') # do not confuse the markers
+      js = open(js_target).read()
+      combined = open(js_target, 'w')
+      combined.write(wasm_js)
+      combined.write('\n//^wasm.js\n')
+      combined.write(js)
+      combined.close()
 
     # If we were asked to also generate HTML, do that
     if final_suffix == 'html':
