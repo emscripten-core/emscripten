@@ -2868,10 +2868,10 @@ window.close = function() {
     self.btest(path_from_root('tests', 'canvas_size_proxy.c'), expected='0', args=['--proxy-to-worker'])
 
   def test_separate_asm(self):
-    for opts in [0, 1, 2]:
+    for opts in [['-O0'], ['-O1'], ['-O2'], ['-O2', '--closure', '1']]:
       print opts
       open('src.cpp', 'w').write(self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
-      Popen([PYTHON, EMCC, 'src.cpp', '-o', 'test.html', '-O' + str(opts)]).communicate()
+      Popen([PYTHON, EMCC, 'src.cpp', '-o', 'test.html'] + opts).communicate()
       self.run_browser('test.html', None, '/report_result?0')
 
       open('one.html', 'w').write('<script src="test.js"></script>')
@@ -2889,7 +2889,7 @@ window.close = function() {
 
       self.clear()
       assert not os.path.exists('tests.asm.js')
-      self.btest('browser_test_hello_world.c', expected='0', args=['-O' + str(opts), '--separate-asm'])
+      self.btest('browser_test_hello_world.c', expected='0', args=opts + ['--separate-asm'])
       assert os.path.exists('test.asm.js')
       os.unlink('test.asm.js')
       self.run_browser('test.html', None, '[no http server activity]', timeout=5) # fail without the asm
