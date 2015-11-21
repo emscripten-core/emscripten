@@ -1687,6 +1687,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       final += '.binaryen.js'
       combined = open(final, 'w')
       combined.write(wasm_js)
+      combined.write('\n//^wasm.js\n')
       combined.write(js)
       combined.close()
 
