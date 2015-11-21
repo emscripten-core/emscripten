@@ -689,6 +689,9 @@ if has_preloaded:
           if (Module['setStatus']) Module['setStatus']('Downloading data...');
         }
       };
+      xhr.onerror = function(event) {
+        throw new Error("NetworkError for: " + packageName);
+      }
       xhr.onload = function(event) {
         if (xhr.status == 200 || xhr.status == 304 || xhr.status == 206) {
           var packageData = xhr.response;
@@ -696,7 +699,6 @@ if has_preloaded:
         } else {
           throw new Error(xhr.statusText + " : " + xhr.responseURL);
         }
-        
       };
       xhr.send(null);
     };

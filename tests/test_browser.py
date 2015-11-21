@@ -401,6 +401,70 @@ If manually bisecting:
 
     test()
 
+  def test_missing_data_throws_error(self):
+    def setup(assetLocalization):
+      self.clear()
+      open(self.in_dir("data.txt"), "w").write('''data''');
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
+        #include <stdio.h>
+        #include <string.h>
+        #include <emscripten.h>
+        int main() {
+          // This code should never be executed in terms of missing required dependency file.
+          int result = 0;
+          REPORT_RESULT();
+          return 0;
+        }
+      '''))
+      open(os.path.join(self.get_dir(), 'on_window_error_shell.html'), 'w').write(r'''
+      <html>
+          <center><canvas id='canvas' width='256' height='256'></canvas></center>
+          <hr><div id='output'></div><hr>
+          <script type='text/javascript'>
+            window.onerror = function(error) {
+              window.onerror = null;
+              var result = error.indexOf("test.data") >= 0 ? 1 : 0;
+              var xhr = new XMLHttpRequest();
+              if (!result) alert(error);
+              xhr.open('GET', 'http://localhost:8888/report_result?' + result, true);
+              xhr.send();
+              setTimeout(function() { window.close() }, 1000);
+            }
+            var Module = {
+              filePackagePrefixURL: "''' + assetLocalization + r'''",
+              print: (function() {
+                var element = document.getElementById('output');
+                return function(text) { element.innerHTML += text.replace('\n', '<br>', 'g') + '<br>';};
+              })(),
+              canvas: document.getElementById('canvas')
+            };
+          </script>
+          {{{ SCRIPT }}}
+        </body>
+      </html>'''
+      )
+
+    def test():
+      # test test missing file should run xhr.onload with status different than 200, 304 or 206
+      setup("");
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html']).communicate()
+      shutil.move('test.data','missing.data');
+      self.run_browser('test.html', '', '/report_result?1')
+      
+      # test unknown protocol should go through xhr.onerror
+      setup("unknown_protocol://");
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html']).communicate()
+      self.run_browser('test.html', '', '/report_result?1')
+      
+      # test wrong protocol and port
+      setup("https://localhost:8800/");
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html']).communicate()
+      self.run_browser('test.html', '', '/report_result?1')
+
+    test()
+
+
+    
     # TODO: CORS, test using a full url for filePackagePrefixURL
     #open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { filePackagePrefixURL: "http:/localhost:8888/cdn/", '))
     #test()
