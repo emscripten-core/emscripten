@@ -425,7 +425,6 @@ If manually bisecting:
               window.onerror = null;
               var result = error.indexOf("test.data") >= 0 ? 1 : 0;
               var xhr = new XMLHttpRequest();
-              if (!result) alert(error);
               xhr.open('GET', 'http://localhost:8888/report_result?' + result, true);
               xhr.send();
               setTimeout(function() { window.close() }, 1000);
@@ -464,7 +463,6 @@ If manually bisecting:
     test()
 
 
-    
     # TODO: CORS, test using a full url for filePackagePrefixURL
     #open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { filePackagePrefixURL: "http:/localhost:8888/cdn/", '))
     #test()
