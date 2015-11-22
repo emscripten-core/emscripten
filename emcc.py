@@ -1703,6 +1703,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       wasm_js = open(os.path.join(binaryen_bin, 'wasm.js')).read()
       wasm_js = wasm_js.replace("Module['asmjsCodeFile']", '"' + asm_target + '"') # " or '? who knows :)
       wasm_js = wasm_js.replace('Module["asmjsCodeFile"]', '"' + asm_target + '"')
+      wasm_target = asm_target.replace('.asm.js', '.wast')
+      wasm_js = wasm_js.replace("Module['wasmCodeFile']", '"' + wasm_target + '"') # " or '? who knows :)
+      wasm_js = wasm_js.replace('Module["wasmCodeFile"]', '"' + wasm_target + '"')
       wasm_js = wasm_js.replace("Module['providedTotalMemory']", str(shared.Settings.TOTAL_MEMORY))
       wasm_js = wasm_js.replace('Module["providedTotalMemory"]', str(shared.Settings.TOTAL_MEMORY))
       wasm_js = wasm_js.replace('EMSCRIPTEN_', 'emscripten_') # do not confuse the markers
@@ -1712,6 +1715,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       combined.write('\n//^wasm.js\n')
       combined.write(js)
       combined.close()
+      # generate .wast file
+      subprocess.check_call([os.path.join(binaryen_bin, 'asm2wasm'), asm_target], stdout=open(wasm_target, 'w'))
 
     # If we were asked to also generate HTML, do that
     if final_suffix == 'html':
