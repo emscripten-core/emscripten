@@ -2677,10 +2677,11 @@ window.close = function() {
 
   # Test that basic thread creation works.
   def test_zzz_pthread_create(self):
-    for opt in [['-O0'], ['-O3']]:
-      for pthreads in [['-s', 'USE_PTHREADS=1'], ['-s', 'USE_PTHREADS=2', '--separate-asm']]:
-        print str(opt) + ' ' + str(pthreads)
-        self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=opt + pthreads + ['-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
+    for embed in [[], ['-s', 'EMBED_PTHREAD_MAIN_JS=0']]:
+      for opt in [['-O0'], ['-O3']]:
+        for pthreads in [['-s', 'USE_PTHREADS=1'], ['-s', 'USE_PTHREADS=2', '--separate-asm']]:
+          print str(opt) + ' ' + str(pthreads)
+          self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=embed + opt + pthreads + ['-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Test that a pthread can spawn another pthread of its own.
   def test_zzz_pthread_create_pthread(self):

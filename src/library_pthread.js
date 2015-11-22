@@ -130,7 +130,22 @@ var LibraryPThread = {
 
       var numWorkersLoaded = 0;
       for (var i = 0; i < numWorkers; ++i) {
+#if EMBED_PTHREAD_MAIN_JS
+        var pthreadMainCode = {{{ PTHREAD_MAIN_CODE }}};
+        if (!PThread.pthreadMainBlobURL) {
+          try {
+            PThread.pthreadMainBlobURL = URL.createObjectURL(new Blob([pthreadMainCode], {type: 'application/javascript'}));
+          } catch (e) {
+            window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder || window.MozBlobBuilder;
+            var blob = new BlobBuilder();
+            blob.append(pthreadMainCode);
+            PThread.pthreadMainBlobURL = URL.createObjectURL(blob.getBlob());
+          }
+        }
+        var worker = new Worker(PThread.pthreadMainBlobURL);
+#else
         var worker = new Worker('pthread-main.js');
+#endif
 
         worker.onmessage = function(e) {
           if (e.data.cmd === 'processQueuedMainThreadWork') {
