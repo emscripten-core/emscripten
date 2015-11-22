@@ -1023,7 +1023,23 @@ function alignMemoryPage(x) {
 }
 
 var HEAP;
+var buffer;
 var HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32, HEAPF64;
+
+function updateGlobalBuffer(buf) {
+  Module['buffer'] = buffer = buf;
+}
+
+function updateGlobalBufferViews() {
+  Module['HEAP8'] = HEAP8 = new Int8Array(buffer);
+  Module['HEAP16'] = HEAP16 = new Int16Array(buffer);
+  Module['HEAP32'] = HEAP32 = new Int32Array(buffer);
+  Module['HEAPU8'] = HEAPU8 = new Uint8Array(buffer);
+  Module['HEAPU16'] = HEAPU16 = new Uint16Array(buffer);
+  Module['HEAPU32'] = HEAPU32 = new Uint32Array(buffer);
+  Module['HEAPF32'] = HEAPF32 = new Float32Array(buffer);
+  Module['HEAPF64'] = HEAPF64 = new Float64Array(buffer);
+}
 
 var STATIC_BASE = 0, STATICTOP = 0, staticSealed = false; // static area
 var STACK_BASE = 0, STACKTOP = 0, STACK_MAX = 0; // stack area
@@ -1121,19 +1137,11 @@ function enlargeMemory() {
 
   var replacement = Module['reallocBuffer'](TOTAL_MEMORY);
   if (!replacement) return false;
-  buffer = replacement;
 
   // everything worked
 
-  Module['buffer'] = buffer;
-  Module['HEAP8'] = HEAP8 = new Int8Array(buffer);
-  Module['HEAP16'] = HEAP16 = new Int16Array(buffer);
-  Module['HEAP32'] = HEAP32 = new Int32Array(buffer);
-  Module['HEAPU8'] = HEAPU8 = new Uint8Array(buffer);
-  Module['HEAPU16'] = HEAPU16 = new Uint16Array(buffer);
-  Module['HEAPU32'] = HEAPU32 = new Uint32Array(buffer);
-  Module['HEAPF32'] = HEAPF32 = new Float32Array(buffer);
-  Module['HEAPF64'] = HEAPF64 = new Float64Array(buffer);
+  updateGlobalBuffer(replacement);
+  updateGlobalBufferViews();
 
 #if ASSERTIONS
   Module.printErr('enlarged memory arrays from ' + OLD_TOTAL_MEMORY + ' to ' + TOTAL_MEMORY + ', took ' + (Date.now() - start) + ' ms (has ArrayBuffer.transfer? ' + (!!ArrayBuffer.transfer) + ')');
@@ -1179,8 +1187,6 @@ if (totalMemory !== TOTAL_MEMORY) {
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' && !!(new Int32Array(1)['subarray']) && !!(new Int32Array(1)['set']),
        'JS engine does not provide full typed array support');
-
-var buffer;
 
 #if IN_TEST_HARNESS
 #if USE_PTHREADS == 1
