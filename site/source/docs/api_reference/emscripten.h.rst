@@ -110,7 +110,7 @@ Functions
 
 .. c:function:: void emscripten_run_script(const char *script)
 
-	Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. 
+	Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note: If -s NO_DYNAMIC_EXECUTION=1 is set, this function will not be available.
 
 	:param script: The script to evaluate.
 	:type script: const char* 
@@ -119,7 +119,7 @@ Functions
 	
 .. c:function:: int emscripten_run_script_int(const char *script)
 
-	Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. 
+	Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note: If -s NO_DYNAMIC_EXECUTION=1 is set, this function will not be available.
 
 	:param script: The script to evaluate.
 	:type script: const char* 
@@ -129,7 +129,7 @@ Functions
 	
 .. c:function:: char *emscripten_run_script_string(const char *script)
 
-	Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note that this overload uses a single buffer shared between calls.
+	Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note that this overload uses a single buffer shared between calls. Note: If -s NO_DYNAMIC_EXECUTION=1 is set, this function will not be available.
 
 	:param script: The script to evaluate.
 	:type script: const char* 
