@@ -183,10 +183,16 @@ else {
 }
 
 function globalEval(x) {
-#if NO_DYNAMIC_EXECUTION == 0
-  eval.call(null, x);
+#if NO_DYNAMIC_EXECUTION == 1
+  // Treat eval as error.
+  throw 'NO_DYNAMIC_EXECUTION=1 was set, cannot eval';
 #else
-  throw 'NO_DYNAMIC_EXECUTION was set, cannot eval';
+#if NO_DYNAMIC_EXECUTION == 2
+    // Warn on evals, but proceed.
+    Module.printErr('Warning: NO_DYNAMIC_EXECUTION=2 was set, but calling eval in the following location:');
+    Module.printErr(stackTrace());
+#endif
+  eval.call(null, x);
 #endif
 }
 if (!Module['load'] && Module['read']) {

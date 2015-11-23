@@ -3069,6 +3069,50 @@ int main(int argc, char **argv) {
     assert 'eval(' not in src
     assert 'eval.' not in src
     assert 'new Function' not in src
+    try_delete('a.out.js')
+
+    # Test that --preload-file doesn't add an use of eval().
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1', '--preload-file', 'temp.txt']
+    stdout, stderr = Popen(cmd, stderr=PIPE).communicate()
+    self.assertContained('hello, world!', run_js('a.out.js'))
+    src = open('a.out.js').read()
+    assert 'eval(' not in src
+    assert 'eval.' not in src
+    assert 'new Function' not in src
+    try_delete('a.out.js')
+
+    # Test that -s NO_DYNAMIC_EXECUTION=1 and --closure 1 are not allowed together.
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1', '--closure', '1']
+    proc = Popen(cmd, stderr=PIPE)
+    proc.communicate()
+    assert proc.returncode != 0
+    try_delete('a.out.js')
+
+    # Test that -s NO_DYNAMIC_EXECUTION=1 and -s RELOCATABLE=1 are not allowed together.
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1', '-s', 'RELOCATABLE=1']
+    proc = Popen(cmd, stderr=PIPE)
+    proc.communicate()
+    assert proc.returncode != 0
+    try_delete('a.out.js')
+
+    open('test.c', 'w').write(r'''
+      #include <emscripten/emscripten.h>
+      int main() {
+        emscripten_run_script("console.log('hello from script');");
+        return 0;
+      }
+      ''')
+
+    # Test that emscripten_run_script() aborts when -s NO_DYNAMIC_EXECUTION=1
+    Popen([PYTHON, EMCC, 'test.c', '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1']).communicate()
+    self.assertContained('NO_DYNAMIC_EXECUTION=1 was set, cannot eval', run_js(os.path.join(self.get_dir(), 'a.out.js'), assert_returncode=None, full_output=True, stderr=PIPE))
+    try_delete('a.out.js')
+
+    # Test that emscripten_run_script() posts a warning when -s NO_DYNAMIC_EXECUTION=2
+    Popen([PYTHON, EMCC, 'test.c', '-O1', '-s', 'NO_DYNAMIC_EXECUTION=2']).communicate()
+    self.assertContained('Warning: NO_DYNAMIC_EXECUTION=2 was set, but calling eval in the following location:', run_js(os.path.join(self.get_dir(), 'a.out.js'), assert_returncode=None, full_output=True, stderr=PIPE))
+    self.assertContained('hello from script', run_js(os.path.join(self.get_dir(), 'a.out.js'), assert_returncode=None, full_output=True, stderr=PIPE))
+    try_delete('a.out.js')
 
   def test_init_file_at_offset(self):
     open('src.cpp', 'w').write(r'''
