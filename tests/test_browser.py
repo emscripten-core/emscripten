@@ -2773,6 +2773,45 @@ window.close = function() {
   def test_zzz_separate_asm_pthreads(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '--separate-asm', '--profiling'], timeout=30)
 
+  def test_zzz_pthread_custom_pthread_main_url(self):
+    self.clear()
+    os.makedirs(os.path.join(self.get_dir(), 'cdn'));
+    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
+      #include <stdio.h>
+      #include <string.h>
+      #include <emscripten/emscripten.h>
+      #include <emscripten/threading.h>
+      #include <pthread.h>
+      int result = 0;
+      void *thread_main(void *arg) {
+        emscripten_atomic_store_u32(&result, 1);
+        pthread_exit(0);
+      }
+
+      int main() {
+        pthread_t t;
+        if (emscripten_has_threading_support()) {
+          pthread_create(&t, 0, thread_main, 0);
+          pthread_join(t, 0);
+        } else {
+          result = 1;
+        }
+        REPORT_RESULT();
+      }
+    '''))
+
+    # Test that it is possible to define "Module.pthreadMainPrefixURL" string to locate where pthread-main.js will be loaded from.
+    open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { pthreadMainPrefixURL: "cdn/", '))
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'shell.html', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-o', 'test.html']).communicate()
+    shutil.move('pthread-main.js', os.path.join('cdn', 'pthread-main.js'))
+    self.run_browser('test.html', '', '/report_result?1')
+
+    # Test that it is possible to define "Module.locateDFile(foo)" function to locate where pthread-main.js will be loaded from.
+    open(self.in_dir('shell2.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "pthread-main.js") return "cdn/pthread-main.js"; else return filename; }, '))
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'shell2.html', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-o', 'test2.html']).communicate()
+    try_delete('pthread-main.js')
+    self.run_browser('test2.html', '', '/report_result?1')
+
   # Test that it is possible to send a signal via calling alarm(timeout), which in turn calls to the signal handler set by signal(SIGALRM, func);
   def test_sigalrm(self):
     self.btest(path_from_root('tests', 'sigalrm.cpp'), expected='0', args=['-O3'], timeout=30)
