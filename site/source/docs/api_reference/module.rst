@@ -103,3 +103,21 @@ Other methods
 
 	:param obj: The JavaScript-wrapped C++ object to be destroyed.
 	
+Overriding execution environment
+================================
+
+The generated program is able to detect its execution environment by checking the presence of some typical objects of the environment itself (such as ``window`` for browsers).
+
+However, sometimes it may be needed to override the detected environment: a typical use case would be module bundlers (like webpack): they are executed by nodejs but the final output is for browser.
+
+In order to do that, you can dictate your preferred execution environment by setting the ``Module.ENVIRONMENT`` variable to one of those allowed values: 
+
+``WEB``
+
+``WORKER``
+
+``NODE``
+
+``SHELL``
+
+In that case, ``Module`` will honor your preference and skip auto detection.
