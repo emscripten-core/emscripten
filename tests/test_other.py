@@ -3069,6 +3069,28 @@ int main(int argc, char **argv) {
     assert 'eval(' not in src
     assert 'eval.' not in src
     assert 'new Function' not in src
+    try_delete('a.out.js')
+
+    # Test that --preload-file doesn't add an use of eval().
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1', '--preload-file', 'temp.txt']
+    stdout, stderr = Popen(cmd, stderr=PIPE).communicate()
+    self.assertContained('hello, world!', run_js('a.out.js'))
+    src = open('a.out.js').read()
+    assert 'eval(' not in src
+    assert 'eval.' not in src
+    assert 'new Function' not in src
+
+    # Test that -s NO_DYNAMIC_EXECUTION=1 and --closure 1 are not allowed together.
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1', '--closure', '1']
+    proc = Popen(cmd, stderr=PIPE)
+    proc.communicate()
+    assert proc.returncode != 0
+
+    # Test that -s NO_DYNAMIC_EXECUTION=1 and -s RELOCATABLE=1 are not allowed together.
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1', '-s', 'RELOCATABLE=1']
+    proc = Popen(cmd, stderr=PIPE)
+    proc.communicate()
+    assert proc.returncode != 0
 
   def test_init_file_at_offset(self):
     open('src.cpp', 'w').write(r'''
