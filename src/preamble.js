@@ -124,19 +124,7 @@ var globalScope = this;
 function getCFunc(ident) {
   var func = Module['_' + ident]; // closure exported function
   if (!func) {
-#if NO_DYNAMIC_EXECUTION == 1
-    // Treat eval as error.
-    abort('NO_DYNAMIC_EXECUTION=1 was set, cannot eval - ccall/cwrap are not functional');
-#else
-#if NO_DYNAMIC_EXECUTION == 2
-    // Warn on evals, but proceed.
-    Module.printErr('Warning: NO_DYNAMIC_EXECUTION=2 was set, but calling eval in the following location:');
-    Module.printErr(stackTrace());
-#endif
-    try {
-      func = eval('_' + ident); // explicit lookup
-    } catch(e) {}
-#endif
+    {{{ makeEval("try { func = eval('_' + ident); } catch(e) {}") }}}
   }
   assert(func, 'Cannot call unknown function ' + ident + ' (perhaps LLVM optimizations or closure removed it?)');
   return func;

@@ -3729,15 +3729,15 @@ LibraryManager.library = {
   // ==========================================================================
 
   emscripten_run_script: function(ptr) {
-    globalEval(Pointer_stringify(ptr));
+    {{{ makeEval('eval(Pointer_stringify(ptr));') }}}
   },
 
   emscripten_run_script_int: function(ptr) {
-    return globalEval(Pointer_stringify(ptr))|0;
+    {{{ makeEval('return eval(Pointer_stringify(ptr))|0;') }}}
   },
 
   emscripten_run_script_string: function(ptr) {
-    var s = globalEval(Pointer_stringify(ptr)) + '';
+    {{{ makeEval("var s = eval(Pointer_stringify(ptr)) + '';") }}}
     var me = _emscripten_run_script_string;
     if (!me.bufferSize || me.bufferSize < s.length+1) {
       if (me.bufferSize) _free(me.buffer);
