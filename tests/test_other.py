@@ -5832,3 +5832,15 @@ int main() {
     size = os.stat('a.out.js.mem').st_size
     assert size < 4096, size
 
+  def test_separate_asm_warning(self):
+    # Test that -s PRECISE_F32=2 raises a warning that --separate-asm is implied.
+    stdout, stderr = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'PRECISE_F32=2'], stderr=PIPE).communicate()
+    self.assertContained('forcing separate asm output', stderr)
+
+    # Test that -s PRECISE_F32=2 --separate-asm should not post a warning.
+    stdout, stderr = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'PRECISE_F32=2', '--separate-asm'], stderr=PIPE).communicate()
+    self.assertNotContained('forcing separate asm output', stderr)
+
+    # Test that -s PRECISE_F32=1 should not post a warning.
+    stdout, stderr = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'PRECISE_F32=1'], stderr=PIPE).communicate()
+    self.assertNotContained('forcing separate asm output', stderr)
