@@ -271,6 +271,13 @@ emscripten_coroutine emscripten_coroutine_create(em_arg_callback_func func, void
 int emscripten_coroutine_next(emscripten_coroutine);
 void emscripten_yield(void);
 
+#define getenv(name)\
+    (char*) EM_ASM_INT ( {\
+    var envar = JSON.stringify(name);\
+    var ret  =allocate(intArrayFromString(envar), 'i8', ALLOC_NORMAL);\
+    return ret ;\
+    }, NULL  ) 
+  
 
 #ifdef __cplusplus
 }
