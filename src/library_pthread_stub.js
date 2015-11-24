@@ -183,7 +183,7 @@ var LibraryPThreadStub = {
   // gnu atomics
 
   __atomic_is_lock_free: function(size, ptr) {
-    return true;
+    return size <= 4 && (size & (size-1)) == 0 && (ptr&(size-1)) == 0;
   },
 
   __atomic_load_8: function(ptr, memmodel) {
