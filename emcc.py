@@ -569,7 +569,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         js_libraries.append(shared.path_from_root('src', 'embind', 'embind.js'))
         if default_cxx_std:
           default_cxx_std = '-std=c++11' # Force C++11 for embind code, but only if user has not explicitly overridden a standard.
-      elif newargs[i].startswith('-std='):
+      elif newargs[i].startswith('-std=') or newargs[i].startswith('--std='):
         default_cxx_std = '' # User specified a standard to use, clear Emscripten from specifying it.
       elif newargs[i].startswith('--embed-file'):
         check_bad_eq(newargs[i])
