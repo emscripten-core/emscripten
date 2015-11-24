@@ -224,7 +224,7 @@ var LibraryPThreadStub = {
     var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
     var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
     {{{ makeSetValue('ptr', 0, '_llvm_uadd_with_overflow_i64(l, h, vall, valh)', 'i32') }}};
-    {{{ makeSetValue('ptr', 4, 'asm["getTempRet0"]()', 'i32') }}};
+    {{{ makeSetValue('ptr', 4, 'Runtime["getTempRet0"]()', 'i32') }}};
     {{{ makeStructuralReturn(['l', 'h']) }}};
   },
 
@@ -233,7 +233,7 @@ var LibraryPThreadStub = {
     var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
     var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
     {{{ makeSetValue('ptr', 0, '_i64Subtract(l, h, vall, valh)', 'i32') }}};
-    {{{ makeSetValue('ptr', 4, 'asm["getTempRet0"]()', 'i32') }}};
+    {{{ makeSetValue('ptr', 4, 'Runtime["getTempRet0"]()', 'i32') }}};
     {{{ makeStructuralReturn(['l', 'h']) }}};
   },
 
