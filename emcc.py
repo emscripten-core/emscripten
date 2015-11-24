@@ -828,7 +828,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     js_target = unsuffixed(target) + '.js'
 
     asm_target = js_target[:-3] + '.asm.js' # might not be used, but if it is, this is the name
-    if not separate_asm and 'PRECISE_F32=2' in settings_changes or 'USE_PTHREADS=2' in settings_changes:
+    if final_suffix == 'html' and not separate_asm and 'PRECISE_F32=2' in settings_changes or 'USE_PTHREADS=2' in settings_changes:
       separate_asm = True
       logging.warning('forcing separate asm output (--separate-asm), because -s PRECISE_F32=2 or -s USE_PTHREADS=2 was passed.')
     if separate_asm:
