@@ -642,3 +642,58 @@ uint64_t EMSCRIPTEN_KEEPALIVE _emscripten_atomic_fetch_and_xor_u64(void *addr, u
 	SPINLOCK_RELEASE(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
 	return oldVal;
 }
+
+int llvm_memory_barrier()
+{
+	emscripten_atomic_fence();
+}
+
+int llvm_atomic_load_add_i32_p0i32(int *ptr, int delta)
+{
+	return emscripten_atomic_add_u32(ptr, delta) - delta;
+}
+
+uint64_t __atomic_load_8(void *ptr, int memmodel)
+{
+	return emscripten_atomic_load_u64(ptr);
+}
+
+uint64_t __atomic_store_8(void *ptr, uint64_t value, int memmodel)
+{
+	return emscripten_atomic_store_u64(ptr, value);
+}
+
+uint64_t __atomic_exchange_8(void *ptr, uint64_t value, int memmodel)
+{
+	return emscripten_atomic_exchange_u64(ptr, value);
+}
+
+uint64_t __atomic_compare_exchange_8(void *ptr, uint64_t *expected, uint64_t desired, int weak, int success_memmodel, int failure_memmodel)
+{
+	return emscripten_atomic_cas_u64(ptr, *expected, desired);
+}
+
+uint64_t __atomic_fetch_add_8(void *ptr, uint64_t value, int memmodel)
+{
+	return _emscripten_atomic_fetch_and_add_u64(ptr, value);
+}
+
+uint64_t __atomic_fetch_sub_8(void *ptr, uint64_t value, int memmodel)
+{
+	return _emscripten_atomic_fetch_and_sub_u64(ptr, value);
+}
+
+uint64_t __atomic_fetch_and_8(void *ptr, uint64_t value, int memmodel)
+{
+	return _emscripten_atomic_fetch_and_and_u64(ptr, value);
+}
+
+uint64_t __atomic_fetch_or_8(void *ptr, uint64_t value, int memmodel)
+{
+	return _emscripten_atomic_fetch_and_or_u64(ptr, value);
+}
+
+uint64_t __atomic_fetch_xor_8(void *ptr, uint64_t value, int memmodel)
+{
+	return _emscripten_atomic_fetch_and_xor_u64(ptr, value);
+}
