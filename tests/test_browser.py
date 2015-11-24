@@ -2706,6 +2706,12 @@ window.close = function() {
   def test_zzz_pthread_64bit_atomics(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_atomics.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
+  # Test 64-bit C++11 atomics.
+  def test_zzz_pthread_64bit_cxx11_atomics(self):
+    for opt in [['-O0'], ['-O3']]:
+      for pthreads in [[], ['-s', 'USE_PTHREADS=1']]:
+        self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_cxx11_atomics.cpp'), expected='0', args=opt + pthreads + ['-std=c++11'], timeout=30)
+
   # Test the old GCC atomic __sync_fetch_and_op builtin operations.
   def test_zzz_pthread_gcc_atomic_fetch_and_op(self):
     # We need to resort to using regexes to optimize out SharedArrayBuffer when pthreads are not supported, which is brittle!

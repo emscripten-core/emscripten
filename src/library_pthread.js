@@ -692,6 +692,10 @@ var LibraryPThread = {
     if (ret >= 0) return ret;
     throw 'Atomics.futexWakeOrRequeue returned an unexpected value ' + ret;
   },
+
+  __atomic_is_lock_free: function(size, ptr) {
+    return size <= 4 && (size & (size-1)) == 0 && (ptr&(size-1)) == 0;
+  }
 };
 
 autoAddDeps(LibraryPThread, '$PThread');
