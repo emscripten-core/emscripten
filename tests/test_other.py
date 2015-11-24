@@ -5844,3 +5844,27 @@ int main() {
     # Test that -s PRECISE_F32=1 should not post a warning.
     stdout, stderr = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'PRECISE_F32=1'], stderr=PIPE).communicate()
     self.assertNotContained('forcing separate asm output', stderr)
+
+  def test_canonicalize_nan_warning(self):
+    open('src.cpp', 'w').write(r'''
+#include <stdio.h>
+
+union U {
+  int x;
+  float y;
+} a;
+
+
+int main() {
+  a.x = 0x7FC01234;
+  printf("%f\n", a.y);
+}
+''')
+
+    stdout, stderr = Popen([PYTHON, EMCC, 'src.cpp', '-O1'], stderr=PIPE).communicate()
+    self.assertContained("emcc: warning: cannot represent a NaN literal", stderr)
+
+    stdout, stderr = Popen([PYTHON, EMCC, 'src.cpp', '-O1', '-g'], stderr=PIPE).communicate()
+    self.assertContained("emcc: warning: cannot represent a NaN literal", stderr)
+    self.assertContained('//@line 12 "src.cpp"', stderr)
+
