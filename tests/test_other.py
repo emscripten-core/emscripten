@@ -493,10 +493,11 @@ f.close()
       assert process.returncode is 0, 'By default, emscripten should build using -std=c++03!'
 
   def test_cxx11(self):
-    for compiler in [EMCC, EMXX]:
-      process = Popen([PYTHON, compiler, '-std=c++11', path_from_root('tests', 'hello_cxx11.cpp')], stdout=PIPE, stderr=PIPE)
-      process.communicate()
-      assert process.returncode is 0, 'User should be able to specify custom -std= on the command line!'
+    for std in ['-std=c++11', '--std=c++11']:
+      for compiler in [EMCC, EMXX]:
+        process = Popen([PYTHON, compiler, std, path_from_root('tests', 'hello_cxx11.cpp')], stdout=PIPE, stderr=PIPE)
+        process.communicate()
+        assert process.returncode is 0, 'User should be able to specify custom -std= on the command line!'
 
   def test_odd_suffixes(self):
     for suffix in ['CPP', 'c++', 'C++', 'cxx', 'CXX', 'cc', 'CC', 'i', 'ii']:
