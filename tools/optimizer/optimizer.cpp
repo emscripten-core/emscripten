@@ -200,11 +200,7 @@ void AsmData::denormalize() {
   if (ret != ASM_NONE) {
     Ref retStmt = stats->back();
     if (!retStmt || retStmt[0] != RETURN) {
-      Ref retVal = makeNum(0);
-      if (ret != ASM_INT) {
-        retVal = makeAsmCoercion(retVal, ret);
-      }
-      stats->push_back(make1(RETURN, retVal));
+      stats->push_back(make1(RETURN, makeAsmCoercedZero(ret)));
     }
   }
   //printErr('denormalized \n\n' + astToSrc(func) + '\n\n');
