@@ -1885,34 +1885,38 @@ function makeSignedAsmCoercion(node, type, sign) {
   assert(0);
 }
 
-function makeAsmVarDef(v, type) {
+function makeAsmCoercedZero(type) {
   switch (type) {
-    case ASM_INT: return [v, ['num', 0]];
-    case ASM_DOUBLE: return [v, ['unary-prefix', '+', ['num', 0]]];
+    case ASM_INT: return ['num', 0];
+    case ASM_DOUBLE: return ['unary-prefix', '+', ['num', 0]];
     case ASM_FLOAT: {
       if (ASM_FLOAT_ZERO) {
-        return [v, ['name', ASM_FLOAT_ZERO]];
+        return ['name', ASM_FLOAT_ZERO];
       } else {
-        return [v, ['call', ['name', 'Math_fround'], [['num', 0]]]];
+        return ['call', ['name', 'Math_fround'], [['num', 0]]];
       }
     }
     case ASM_FLOAT32X4: {
-      return [v, ['call', ['name', 'SIMD_Float32x4'], [['num', 0], ['num', 0], ['num', 0], ['num', 0]]]];
+      return ['call', ['name', 'SIMD_Float32x4'], [['num', 0], ['num', 0], ['num', 0], ['num', 0]]];
     }
     case ASM_FLOAT64X2: {
-      return [v, ['call', ['name', 'SIMD_Float64x2'], [['num', 0], ['num', 0]]]];
+      return ['call', ['name', 'SIMD_Float64x2'], [['num', 0], ['num', 0]]];
     }
     case ASM_INT8X16: {
-      return [v, ['call', ['name', 'SIMD_Int8x16'], [['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0]]]];
+      return ['call', ['name', 'SIMD_Int8x16'], [['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0]]];
     }
     case ASM_INT16X8: {
-      return [v, ['call', ['name', 'SIMD_Int16x8'], [['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0]]]];
+      return ['call', ['name', 'SIMD_Int16x8'], [['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0]]];
     }
     case ASM_INT32X4: {
-      return [v, ['call', ['name', 'SIMD_Int32x4'], [['num', 0], ['num', 0], ['num', 0], ['num', 0]]]];
+      return ['call', ['name', 'SIMD_Int32x4'], [['num', 0], ['num', 0], ['num', 0], ['num', 0]]];
     }
-    default: throw 'wha? ' + JSON.stringify([v, type]) + new Error().stack;
+    default: throw 'wha? ' + JSON.stringify(type) + new Error().stack;
   }
+}
+
+function makeAsmVarDef(v, type) {
+  return [v, makeAsmCoercedZero(type)];
 }
 
 function getAsmType(name, asmInfo) {
@@ -2137,11 +2141,7 @@ function denormalizeAsm(func, data) {
   if (data.ret !== undefined) {
     var retStmt = stats[stats.length - 1];
     if (!retStmt || retStmt[0] !== 'return') {
-      var retVal = ['num', 0];
-      if (data.ret !== ASM_INT) {
-        retVal = makeAsmCoercion(retVal, data.ret);
-      }
-      stats.push(['return', retVal]);
+      stats.push(['return', makeAsmCoercedZero(data.ret)]);
     }
   }
   //printErr('denormalized \n\n' + astToSrc(func) + '\n\n');

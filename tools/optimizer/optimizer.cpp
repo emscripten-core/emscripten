@@ -78,7 +78,7 @@ AsmType intToAsmType(int type) {
 // forward decls
 Ref makeEmpty();
 bool isEmpty(Ref node);
-Ref makeAsmVarDef(const IString& v, AsmType type);
+Ref makeAsmCoercedZero(AsmType type);
 Ref makeArray(int size_hint);
 Ref makeBool(bool b);
 Ref makeNum(double x);
@@ -161,7 +161,7 @@ void AsmData::denormalize() {
   // calculate variable definitions
   Ref varDefs = makeArray(vars.size());
   for (auto v : vars) {
-    varDefs->push_back(makeAsmVarDef(v, locals[v].type));
+    varDefs->push_back(make1(v, makeAsmCoercedZero(locals[v].type)));
   }
   // each param needs a line; reuse emptyNodes as much as we can
   size_t numParams = params.size();
@@ -281,42 +281,41 @@ Ref make3(IString type, Ref a, Ref b, Ref c) {
   return ret;
 }
 
-Ref makeAsmVarDef(const IString& v, AsmType type) {
-  Ref val;
+Ref makeAsmCoercedZero(AsmType type) {
   switch (type) {
-    case ASM_INT: val = makeNum(0); break;
-    case ASM_DOUBLE: val = make2(UNARY_PREFIX, PLUS, makeNum(0)); break;
+    case ASM_INT: return makeNum(0); break;
+    case ASM_DOUBLE: return make2(UNARY_PREFIX, PLUS, makeNum(0)); break;
     case ASM_FLOAT: {
       if (!ASM_FLOAT_ZERO.isNull()) {
-        val = makeName(ASM_FLOAT_ZERO);
+        return makeName(ASM_FLOAT_ZERO);
       } else {
-        val = make2(CALL, makeName(MATH_FROUND), &(makeArray(1))->push_back(makeNum(0)));
+        return make2(CALL, makeName(MATH_FROUND), &(makeArray(1))->push_back(makeNum(0)));
       }
       break;
     }
     case ASM_FLOAT32X4: {
-      val = make2(CALL, makeName(SIMD_FLOAT32X4), &(makeArray(4))->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
+      return make2(CALL, makeName(SIMD_FLOAT32X4), &(makeArray(4))->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
       break;
     }
     case ASM_FLOAT64X2: {
-      val = make2(CALL, makeName(SIMD_FLOAT64X2), &(makeArray(2))->push_back(makeNum(0)).push_back(makeNum(0)));
+      return make2(CALL, makeName(SIMD_FLOAT64X2), &(makeArray(2))->push_back(makeNum(0)).push_back(makeNum(0)));
       break;
     }
     case ASM_INT8X16: {
-      val = make2(CALL, makeName(SIMD_INT8X16), &(makeArray(16))->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
+      return make2(CALL, makeName(SIMD_INT8X16), &(makeArray(16))->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
       break;
     }
     case ASM_INT16X8: {
-      val = make2(CALL, makeName(SIMD_INT16X8), &(makeArray(8))->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
+      return make2(CALL, makeName(SIMD_INT16X8), &(makeArray(8))->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
       break;
     }
     case ASM_INT32X4: {
-      val = make2(CALL, makeName(SIMD_INT32X4), &(makeArray(4))->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
+      return make2(CALL, makeName(SIMD_INT32X4), &(makeArray(4))->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
       break;
     }
     default: assert(0);
   }
-  return make1(v, val);
+  abort();
 }
 
 Ref makeAsmCoercion(Ref node, AsmType type) {
