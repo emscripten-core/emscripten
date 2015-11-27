@@ -240,7 +240,13 @@ function cloneObject(event) {
 ['keydown', 'keyup', 'keypress', 'blur', 'visibilitychange'].forEach(function(event) {
   document.addEventListener(event, function(event) {
     worker.postMessage({ target: 'document', event: cloneObject(event) });
-    event.preventDefault();
+    
+    // Do not prevent default on keydown as that will prevent the dispatch of
+    // the following keypress event
+    if (event.type != 'keydown')
+    {
+      event.preventDefault();
+    }
   });
 });
 

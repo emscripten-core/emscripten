@@ -685,6 +685,53 @@ keydown(100);keyup(100); // trigger the end
 
     self.btest('sdl_key_proxy.c', '223092870', args=['--proxy-to-worker', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''', '-s', 'NO_EXIT_RUNTIME=1'], manual_reference=True, post_build=post)
 
+  def test_keydown_preventdefault_proxy(self):
+    def post():
+      html = open('test.html').read()
+      html = html.replace('</body>', '''
+<script>
+function keydown(c) {
+  var event = document.createEvent("KeyboardEvent");
+  event.initKeyEvent("keydown", true, true, window,
+                     0, 0, 0, 0,
+                     c, c);
+  return document.dispatchEvent(event);
+}
+
+function keypress(c) {
+  var event = document.createEvent("KeyboardEvent");
+  event.initKeyEvent("keypress", true, true, window,
+                     0, 0, 0, 0,
+                     c, c);
+  return document.dispatchEvent(event);
+}
+
+function keyup(c) {
+  var event = document.createEvent("KeyboardEvent");
+  event.initKeyEvent("keyup", true, true, window,
+                     0, 0, 0, 0,
+                     c, c);
+  return document.dispatchEvent(event);
+}
+
+// Send 'a'. Simulate the sending of the keypress event when the
+// prior keydown event is not prevent defaulted.
+if (keydown(65) === false) {
+  console.log('keydown prevent defaulted, NOT sending keypress!!!');
+} else {
+  keypress(65);
+}
+
+keyup(65);
+
+keydown(100);keyup(100); // trigger the end
+</script>
+</body>''')
+
+      open('test.html', 'w').write(html)
+
+    self.btest('keydown_preventdefault_proxy.cpp', '30', args=['--proxy-to-worker', '-s', '''EXPORTED_FUNCTIONS=['_main']''', '-s', 'NO_EXIT_RUNTIME=1'], manual_reference=True, post_build=post)
+
   def test_sdl_text(self):
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
       Module.postRun = function() {
