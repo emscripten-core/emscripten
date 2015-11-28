@@ -245,7 +245,9 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
            mem_init))
 
     if settings['SIDE_MODULE']:
-      pre = pre.replace('Runtime.GLOBAL_BASE', 'gb').replace('{{{ STATIC_BUMP }}}', str(staticbump))
+      pre = pre.replace('Runtime.GLOBAL_BASE', 'gb')
+    if settings['SIDE_MODULE'] or settings['BINARYEN']:
+      pre = pre.replace('{{{ STATIC_BUMP }}}', str(staticbump))
 
     funcs_js = [funcs]
     parts = pre.split('// ASM_LIBRARY FUNCTIONS\n')
