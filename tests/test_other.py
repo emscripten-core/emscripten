@@ -2397,7 +2397,7 @@ int main()
 
   def test_autovectorize_linpack(self):
     Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-s', 'SIMD=1', '-DSP', '-s', 'PRECISE_F32=1', '--profiling']).communicate()
-    self.check_simd(100, 'Unrolled Single  Precision')
+    self.check_simd(30, 'Unrolled Single  Precision')
 
   def test_autovectorize_bullet(self):
     Building.emcc(path_from_root('tests','bullet_hello_world.cpp'), ['-O2', '-s', 'SIMD=1', '-s', 'INLINING_LIMIT=1', '--llvm-lto', '2', '-s', 'USE_BULLET=1', '-profiling'], output_filename='a.out.js')
