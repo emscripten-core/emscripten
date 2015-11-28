@@ -1543,8 +1543,8 @@ class Building:
     for line in output.split('\n'):
       if len(line) == 0: continue
       parts = filter(lambda seg: len(seg) > 0, line.split(' '))
-      # pnacl-nm will print zero offsets for bitcode
-      if len(parts) == 3 and parts[0] == "00000000":
+      # pnacl-nm will print zero offsets for bitcode, and newer llvm-nm will print present symbols as  -------- T name
+      if len(parts) == 3 and parts[0] in ["00000000", "--------"]:
         parts.pop(0)
       if len(parts) == 2: # ignore lines with absolute offsets, these are not bitcode anyhow (e.g. |00000630 t d_source_name|)
         status, symbol = parts
