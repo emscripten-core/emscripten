@@ -1706,11 +1706,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # Emit wasm.js at the top of the js. TODO: for html, it could be a separate script tag
       binaryen_bin = os.path.join(shared.Settings.BINARYEN, 'bin')
       wasm_js = open(os.path.join(binaryen_bin, 'wasm.js')).read()
-      wasm_js = wasm_js.replace("Module['asmjsCodeFile']", '"' + asm_target + '"') # " or '? who knows :)
-      wasm_js = wasm_js.replace('Module["asmjsCodeFile"]', '"' + asm_target + '"')
+      wasm_js = wasm_js.replace("Module['asmjsCodeFile']", '"' + os.path.basename(asm_target) + '"') # " or '? who knows :)
+      wasm_js = wasm_js.replace('Module["asmjsCodeFile"]', '"' + os.path.basename(asm_target) + '"')
       wasm_target = asm_target.replace('.asm.js', '.wast')
-      wasm_js = wasm_js.replace("Module['wasmCodeFile']", '"' + wasm_target + '"') # " or '? who knows :)
-      wasm_js = wasm_js.replace('Module["wasmCodeFile"]', '"' + wasm_target + '"')
+      wasm_js = wasm_js.replace("Module['wasmCodeFile']", '"' + os.path.basename(wasm_target) + '"') # " or '? who knows :)
+      wasm_js = wasm_js.replace('Module["wasmCodeFile"]', '"' + os.path.basename(wasm_target) + '"')
       wasm_js = wasm_js.replace("Module['providedTotalMemory']", str(shared.Settings.TOTAL_MEMORY))
       wasm_js = wasm_js.replace('Module["providedTotalMemory"]', str(shared.Settings.TOTAL_MEMORY))
       wasm_js = wasm_js.replace('EMSCRIPTEN_', 'emscripten_') # do not confuse the markers
