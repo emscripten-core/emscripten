@@ -1724,7 +1724,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       combined.write(js)
       combined.close()
       # generate .wast file
-      subprocess.check_call([os.path.join(binaryen_bin, 'asm2wasm'), asm_target], stdout=open(wasm_target, 'w'))
+      subprocess.check_call([os.path.join(binaryen_bin, 'asm2wasm'), asm_target, wasm_target + '.mappedGlobals'], stdout=open(wasm_target, 'w'))
 
     # If we were asked to also generate HTML, do that
     if final_suffix == 'html':
