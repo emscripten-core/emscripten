@@ -1715,8 +1715,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       wasm_js = wasm_js.replace('Module["providedTotalMemory"]', str(shared.Settings.TOTAL_MEMORY))
       wasm_js = wasm_js.replace('EMSCRIPTEN_', 'emscripten_') # do not confuse the markers
       if shared.Settings.BINARYEN_METHOD:
-        wasm_js = wasm_js.replace("Module['wasmJSMethod']", '"' + shared.Settings.BINARYEN_METHOD + '"') # " or '? who knows :)
-        wasm_js = wasm_js.replace('Module["wasmJSMethod"]', '"' + shared.Settings.BINARYEN_METHOD + '"')
+        method = '(Module[\'wasmJSMethod\'] || "' + shared.Settings.BINARYEN_METHOD + '")'
+        wasm_js = wasm_js.replace("Module['wasmJSMethod']", method) # " or '? who knows :)
+        wasm_js = wasm_js.replace('Module["wasmJSMethod"]', method)
       js = open(js_target).read()
       combined = open(js_target, 'w')
       combined.write(wasm_js)
