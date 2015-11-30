@@ -616,9 +616,7 @@ var BINARYEN = ""; // Path to [Binaryen](https://github.com/WebAssembly/binaryen
                    // This path should be to the root Binaryen directory (not the /bin subfolder).
                    // You need to build Binaryen, so that /bin/wasm.js under the Binaryen
                    // directory exists.
-var BINARYEN_METHOD = ""; // Either 'asm2wasm', in which case we parse asm.js into wasm on the
-                          // client, or 'wasm-s-parser' in which case we parse wasm s-expression
-                          // code.
+var BINARYEN_METHOD = ""; // See binaryen's src/js/post.js for details.
 
 var WASM = 0; // Older WebAssembly experiment. Compress the asm.js module into an early proposal for WebAssembly,
               // and ship a decompressor that runs on the client.
