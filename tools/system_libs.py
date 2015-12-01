@@ -110,6 +110,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
               break
           if not cancel:
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
+    compiler_rt_srcdir = shared.path_from_root('system', 'lib', 'compiler-rt')
+    compiler_rt_files = ['mulsc3.c', 'muldc3.c']
+    libc_files.extend(os.path.join(compiler_rt_srcdir, f) for f in compiler_rt_files)
     args = ['-Os']
     if shared.Settings.USE_PTHREADS:
       args += ['-s', 'USE_PTHREADS=1']
