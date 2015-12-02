@@ -448,16 +448,17 @@ LibraryManager.library = {
     }
     return ret;  // Previous break location.
   },
-
   system__deps: ['__setErrNo', '$ERRNO_CODES'],
-  system: function(command) {
-    // int system(const char *command);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/system.html
-    // Can't call external programs.
-    ___setErrNo(ERRNO_CODES.EAGAIN);
-    return -1;
+  system: function(command) 
+  {
+	var cmd = Pointer_stringify(command);
+	var sys = require('util');
+	var exec = require('child_process').exec;
+	function out(error, stdout, stderr) {console.log(stdout)}
+	exec( cmd , out);
+    return 0;
   },
-
+  
   // ==========================================================================
   // stdlib.h
   // ==========================================================================
