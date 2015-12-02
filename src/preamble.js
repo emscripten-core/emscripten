@@ -241,7 +241,7 @@ var cwrap, ccall;
         var convertCode = JSsource[type + 'ToC']; // [code, return]
         funcstr += 'var ' + convertCode.arguments + ' = ' + arg + ';';
         funcstr += convertCode.body + ';';
-        funcstr += arg + '=' + convertCode.returnValue + ';';
+        funcstr += arg + '=(' + convertCode.returnValue + ');';
       }
     }
 
