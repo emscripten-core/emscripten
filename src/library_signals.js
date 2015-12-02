@@ -1,37 +1,40 @@
 // 'use strict'
-var funs = {
-  _sigalrm_handler: 0,
+var funs = 
+{
+	signal__deps: ['_sig_handler_'],
 
-  signal__deps: ['_sigalrm_handler'],
-  signal: function(sig, func) {
-    if (sig == 14 /*SIGALRM*/) {
-      __sigalrm_handler = func;
-    } else {
-#if ASSERTIONS
-      Module.printErr('Calling stub instead of signal()');
-#endif
-    }
-    return 0;
-  },
-  sigemptyset: function(set) {
-    {{{ makeSetValue('set', '0', '0', 'i32') }}};
-    return 0;
-  },
-  sigfillset: function(set) {
-    {{{ makeSetValue('set', '0', '-1>>>0', 'i32') }}};
-    return 0;
-  },
-  sigaddset: function(set, signum) {
-    {{{ makeSetValue('set', '0', makeGetValue('set', '0', 'i32') + '| (1 << (signum-1))', 'i32') }}};
-    return 0;
-  },
-  sigdelset: function(set, signum) {
-    {{{ makeSetValue('set', '0', makeGetValue('set', '0', 'i32') + '& (~(1 << (signum-1)))', 'i32') }}};
-    return 0;
-  },
-  sigismember: function(set, signum) {
-    return {{{ makeGetValue('set', '0', 'i32') }}} & (1 << (signum-1));
-  },
+	signal: function(sig, func) 
+	{
+		if ( typeof signal__deps === 'undefined' ) signal__deps = [] ;
+		if ( typeof signal__deps['_sig_handler_'] === 'undefined' ) signal__deps['_sig_handler_'] = [] ;
+		signal__deps['_sig_handler_'][sig] = func ;
+
+		return sig;
+	},
+	sigemptyset: function(set) 
+	{
+		{{{ makeSetValue('set', '0', '0', 'i32') }}};
+		return 0;
+	},
+	sigfillset: function(set) 
+	{
+		{{{ makeSetValue('set', '0', '-1>>>0', 'i32') }}};
+		return 0;
+	},
+	sigaddset: function(set, signum) 
+	{
+		{{{ makeSetValue('set', '0', makeGetValue('set', '0', 'i32') + '| (1 << (signum-1))', 'i32') }}};
+		return 0;
+	},
+	sigdelset: function(set, signum) 
+	{
+		{{{ makeSetValue('set', '0', makeGetValue('set', '0', 'i32') + '& (~(1 << (signum-1)))', 'i32') }}};
+		return 0;
+	},
+	sigismember: function(set, signum) 
+	{
+		return {{{ makeGetValue('set', '0', 'i32') }}} & (1 << (signum-1));
+	},
   sigaction: function(signum, act, oldact) {
     //int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact);
 #if ASSERTIONS
@@ -39,23 +42,33 @@ var funs = {
 #endif
     return 0;
   },
-  sigprocmask: function() {
-#if ASSERTIONS
-    Module.printErr('Calling stub instead of sigprocmask()');
-#endif
-    return 0;
+  sigprocmask: function( how , set , old ) 
+  {
+	var SIG_BLOCK = 1;
+	var EINVAL = 22 ;
+
+    if ( how - SIG_BLOCK >2 ) return EINVAL ;
+	//ret = -__syscall(SYS_rt_sigprocmask, how, set, old, _NSIG/8);
+	ret = 0 ;
+	if (!ret && old) 
+	{
+		{{{ makeSetValue('old', '0', '~0x80000000', 'i32') }}};
+		{{{ makeSetValue('old', '1', '~0x00000003', 'i32') }}};				
+	}	
+    return ret;
   },
-  __libc_current_sigrtmin: function() {
-#if ASSERTIONS
-    Module.printErr('Calling stub instead of __libc_current_sigrtmin');
-#endif
-    return 0;
+  __libc_current_sigrtmin: function() 
+  {
+	// POSIX timers use __SIGRTMIN + 0.
+	// libbacktrace uses __SIGRTMIN + 1.
+	// libcore uses __SIGRTMIN + 2.
+	var __SIGRTMIN	= 34 
+    return __SIGRTMIN+3;
   },
-  __libc_current_sigrtmax: function() {
-#if ASSERTIONS
-    Module.printErr('Calling stub instead of __libc_current_sigrtmax');
-#endif
-    return 0;
+  __libc_current_sigrtmax: function() 
+  {
+	var  __SIGRTMAX	= 64;
+    return __SIGRTMAX;
   },
   kill__deps: ['$ERRNO_CODES', '__setErrNo'],
   kill: function(pid, sig) {
@@ -68,7 +81,6 @@ var funs = {
     ___setErrNo(ERRNO_CODES.EPERM);
     return -1;
   },
-
   killpg__deps: ['$ERRNO_CODES', '__setErrNo'],
   killpg: function() {
 #if ASSERTIONS
@@ -83,19 +95,34 @@ var funs = {
 #endif
     return 0;
   },
-
-  raise__deps: ['$ERRNO_CODES', '__setErrNo'],
-  raise: function(sig) {
-#if ASSERTIONS
-    Module.printErr('Calling stub instead of raise()');
-#endif
-  ___setErrNo(ERRNO_CODES.ENOSYS);
-#if ASSERTIONS
-      Runtime.warnOnce('raise() returning an error as we do not support it');
-#endif
-    return -1;
-  },
-
+	raise: function(sig) 
+	{
+		if ( typeof signal__deps === 'undefined' )
+			return -1 ;		
+		if ( typeof signal__deps['_sig_handler_'] === 'undefined' )
+		{
+			Module.printErr ( 'undefined signal handler : ' + sig);
+			return -1 ;
+		}
+		if ( typeof signal__deps['_sig_handler_'][sig] === 'undefined' )
+		{
+			Module.printErr ( 'undefined signal handler :' + sig );
+			return -1;	
+		}
+	
+		var ff = signal__deps['_sig_handler_'][sig] ;
+		
+		if ( ff == 0 ) 
+		{
+			Module.printErr ( 'undefined signal handler :' + sig );
+			return -1;	
+		}
+		
+		Runtime.dynCall('vi', ff, [0]);
+		___setErrNo(ERRNO_CODES.ENOSYS);
+			
+		return sig;
+	},
   // http://pubs.opengroup.org/onlinepubs/000095399/functions/alarm.html
   alarm__deps: ['_sigalrm_handler'],
   alarm: function(seconds) {
@@ -113,21 +140,18 @@ var funs = {
     throw 'getitimer() is not implemented yet';
   },
 
-  pause__deps: ['__setErrNo', '$ERRNO_CODES'],
-  pause: function() {
-    // int pause(void);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/pause.html
-    // We don't support signals, so we return immediately.
-#if ASSERTIONS
-    Module.printErr('Calling stub instead of pause()');
-#endif
-    ___setErrNo(ERRNO_CODES.EINTR);
-    return -1;
-  },
-  sigpending: function(set) {
-    {{{ makeSetValue('set', 0, 0, 'i32') }}};
-    return 0;
-  }
+	pause__deps: ['__setErrNo', '$ERRNO_CODES'],
+	pause: function() 
+	{
+		// implemened as #define in emscripten.h
+		// #define pause( t ) 
+	},
+	
+	sigpending: function(set) 
+	{
+		{{{ makeSetValue('set', 0, 0, 'i32') }}};
+		return 0;
+	}
   //signalfd
   //ppoll
   //epoll_pwait
