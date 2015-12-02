@@ -16,7 +16,7 @@ int main ()
  
 v4.1.1
 
- Il volume nell'unit� C � ROOT
+ Il volume nell'unita C ROOT
  Numero di serie del volume: 06E6-D93D
 
  Directory di c:\windows
@@ -32,10 +32,10 @@ v4.1.1
               23 File    721.754.485 byte
               70 Directory  170.484.563.968 byte disponibili
 
- Il volume nell'unit� C � ROOT
+ Il volume nell'unita C ROOT
  Numero di serie del volume: 06E6-D93D
 
- Directory di C:\wamp\www\em\bug
+ Directory di C:\wamp\www\em\ 
 
 02/12/2015  15.44    <DIR>          .
 02/12/2015  15.44    <DIR>          ..
@@ -47,8 +47,6 @@ v4.1.1
 23/11/2015  14.58               946 type.signal.CPP
               10 File        376.049 byte
                2 Directory  170.484.563.968 byte disponibili
-
-
 
 */
 
