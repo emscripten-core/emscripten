@@ -51,9 +51,22 @@ entry:
   ret void
 }
 
+define void @just_nil(i32 %w, {} %nil) {
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([24 x i8], [24 x i8]* @.str, i32 0, i32 0), i32 10, i32 21, i32 %w)
+  ret void
+}
+
 define i32 @main() {
 entry:
+  call void @just_nil(i32 33, {} undef)
+
+  %fp1 = bitcast void (i32, {})* @just_nil to void (i32)*
+  %fp2 = bitcast void (i32)*     %fp1      to void (i32, {})*
+  call void (i32, {}) %fp2(i32 44, {} undef)
+
   call void (%structy (%structy)*) @caller(%structy (%structy)* @structy_user)
+
   call void (%structy (%structy, {})*, {}) @caller_nil(%structy (%structy, {})* @structy_user_nil, {} undef)
+
   ret i32 0
 }
