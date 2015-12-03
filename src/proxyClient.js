@@ -237,10 +237,24 @@ function cloneObject(event) {
   return ret;
 };
 
+// Only prevent default on backspace/tab because we don't want unexpected navigation.
+// Do not prevent default on the rest as we need the keypress event.
+function shouldPreventDefault(event) {
+  if (event.type === 'keydown' && event.keyCode !== 8 /* backspace */ && event.keyCode !== 9 /* tab */) {
+    return false; // keypress, back navigation
+  } else {
+    return true; // NO keypress, NO back navigation
+  }
+};
+
 ['keydown', 'keyup', 'keypress', 'blur', 'visibilitychange'].forEach(function(event) {
   document.addEventListener(event, function(event) {
     worker.postMessage({ target: 'document', event: cloneObject(event) });
-    event.preventDefault();
+    
+    var preventDefault = shouldPreventDefault(event);
+    if (true === preventDefault) {
+      event.preventDefault();
+    }
   });
 });
 
