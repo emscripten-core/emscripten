@@ -1149,6 +1149,9 @@ LibraryManager.library = {
   __gxx_personality_v0: function() {
   },
 
+  __gcc_personality_v0: function() {
+  },
+
   // Finds a suitable catch clause for when an exception is thrown.
   // In normal compilers, this functionality is handled by the C++
   // 'personality' routine. This is passed a fairly complex structure
@@ -4060,6 +4063,7 @@ LibraryManager.library = {
   UItoD: true,
   BItoD: true,
   llvm_dbg_value: true,
+  llvm_debugtrap: true,
   llvm_ctlz_i32: true,
   emscripten_asm_const: true,
   emscripten_asm_const_int: true,
