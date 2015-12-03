@@ -4019,6 +4019,34 @@ LibraryManager.library = {
   __pthread_self: function() { abort() },
   pthread_setcancelstate: function() { return 0 },
 
+  // libunwind
+
+  _Unwind_Backtrace__deps: ['emscripten_get_callstack_js'],
+  _Unwind_Backtrace: function(func, arg) {
+    var trace = _emscripten_get_callstack_js();
+    var parts = trace.split('\n');
+    for (var i = 0; i < parts.length; i++) {
+      var ret = Module.dynCall('iii', [0, arg]);
+      if (ret !== 0) return;
+    }
+  },
+
+  _Unwind_GetIPInfo: function() {
+    abort('Unwind_GetIPInfo');
+  },
+
+  _Unwind_FindEnclosingFunction: function() {
+    return 0; // we cannot succeed
+  },
+
+  _Unwind_RaiseException: function(ex) {
+    abort('Unwind_RaiseException');
+  },
+
+  _Unwind_DeleteException: function(ex) {
+    Module.printErr('TODO: Unwind_DeleteException');
+  },
+
   // autodebugging
 
   emscripten_autodebug_i64: function(line, valuel, valueh) {
