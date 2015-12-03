@@ -508,6 +508,7 @@ LibraryManager.library = {
     __ATEXIT__.unshift({ func: func, arg: arg });
   },
   __cxa_atexit: 'atexit',
+  __cxa_thread_atexit_impl: 'atexit', // TODO: special behavior in pthreads mode?
 
   abort: function() {
     Module['abort']();
