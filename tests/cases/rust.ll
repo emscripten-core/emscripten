@@ -29,8 +29,31 @@ entry:
   ret void
 }
 
+define void @print_structy_nil(%structy %s, {} %nil) {
+entry:
+  %x = extractvalue %structy %s, 0
+  %y = extractvalue %structy %s, 1
+  %z = extractvalue %structy %s, 2
+  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([24 x i8], [24 x i8]* @.str, i32 0, i32 0), i32 %x, i32 %y, i32 %z)
+  ret void
+}
+
+define %structy @structy_user_nil(%structy %s, {} %nil) {
+entry:
+  call void (%structy, {}) @print_structy_nil(%structy %s, {} undef)
+  ret %structy %s
+}
+
+define void @caller_nil(%structy (%structy, {})* %x, {} %nil) {
+entry:
+  %temp = call %structy (%structy, {}) %x(%structy { i32 9, i32 15, i32 77 }, {} undef)
+  call void (%structy, {}) @print_structy_nil(%structy %temp, {} undef)
+  ret void
+}
+
 define i32 @main() {
 entry:
   call void (%structy (%structy)*) @caller(%structy (%structy)* @structy_user)
+  call void (%structy (%structy, {})*, {}) @caller_nil(%structy (%structy, {})* @structy_user_nil, {} undef)
   ret i32 0
 }
