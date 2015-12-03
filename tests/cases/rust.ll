@@ -5,6 +5,8 @@ target triple = "asmjs-unknown-emscripten"
 
 @.str = private unnamed_addr constant [24 x i8] c"hello, world! %d %d %d\0A\00", align 1
 
+@vtable38087 = internal unnamed_addr constant { void (i32, {})* } { void (i32, {})* @just_nil }, align 4
+
 declare i32 @printf(i8*, ...)
 
 define void @print_structy(%structy %s) {
@@ -68,5 +70,8 @@ entry:
 
   call void (%structy (%structy, {})*, {}) @caller_nil(%structy (%structy, {})* @structy_user_nil, {} undef)
 
-  ret i32 0
+  %x = getelementptr inbounds { void (i32, {})* }, { void (i32, {})* }* @vtable38087, i32 0, i32 0
+  %y = ptrtoint void (i32, {})** %x to i32
+
+  ret i32 %y
 }
