@@ -9,7 +9,7 @@ extern "C"
 {
   EM_BOOL keydown_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData)
   {
-    if (e->keyCode == 65)
+    if ((e->keyCode == 65) || (e->keyCode == 8))
     {
       result *= 2;
     }
@@ -35,7 +35,10 @@ extern "C"
 {
   EM_BOOL keyup_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData)
   {
-    result *= 5;
+    if ((e->keyCode == 65) || (e->keyCode == 8))
+    {
+      result *= 5;
+    }
     return 0;
   }
 }

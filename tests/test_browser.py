@@ -714,15 +714,24 @@ function keyup(c) {
   return document.dispatchEvent(event);
 }
 
-// Send 'a'. Simulate the sending of the keypress event when the
-// prior keydown event is not prevent defaulted.
-if (keydown(65) === false) {
-  console.log('keydown prevent defaulted, NOT sending keypress!!!');
-} else {
-  keypress(65);
+function sendKey(c) {
+  // Simulate the sending of the keypress event when the
+  // prior keydown event is not prevent defaulted.
+  if (keydown(c) === false) {
+    console.log('keydown prevent defaulted, NOT sending keypress!!!');
+  } else {
+    keypress(c);
+  }
+  keyup(c);
 }
 
-keyup(65);
+// Send 'a'. Simulate the sending of the keypress event when the
+// prior keydown event is not prevent defaulted.
+sendKey(65);
+
+// Send backspace. Keypress should not be sent over as default handling of
+// the Keydown event should be prevented.
+sendKey(8);
 
 keydown(100);keyup(100); // trigger the end
 </script>
@@ -730,7 +739,7 @@ keydown(100);keyup(100); // trigger the end
 
       open('test.html', 'w').write(html)
 
-    self.btest('keydown_preventdefault_proxy.cpp', '30', args=['--proxy-to-worker', '-s', '''EXPORTED_FUNCTIONS=['_main']''', '-s', 'NO_EXIT_RUNTIME=1'], manual_reference=True, post_build=post)
+    self.btest('keydown_preventdefault_proxy.cpp', '300', args=['--proxy-to-worker', '-s', '''EXPORTED_FUNCTIONS=['_main']''', '-s', 'NO_EXIT_RUNTIME=1'], manual_reference=True, post_build=post)
 
   def test_sdl_text(self):
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
