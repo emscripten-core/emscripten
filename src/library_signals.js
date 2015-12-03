@@ -1,40 +1,34 @@
 // 'use strict'
 var funs = 
 {
-	signal__deps: ['_sig_handler_'],
+  signal__deps: ['_sig_handler_'],
 
-	signal: function(sig, func) 
-	{
-		if ( typeof signal__deps === 'undefined' ) signal__deps = [] ;
-		if ( typeof signal__deps['_sig_handler_'] === 'undefined' ) signal__deps['_sig_handler_'] = [] ;
-		signal__deps['_sig_handler_'][sig] = func ;
+  signal: function(sig, func)   {
+    if ( typeof signal__deps === 'undefined' ) signal__deps = [] ;
+    if ( typeof signal__deps['_sig_handler_'] === 'undefined' ) signal__deps['_sig_handler_'] = [] ;
+    signal__deps['_sig_handler_'][sig] = func ;
 
-		return sig;
-	},
-	sigemptyset: function(set) 
-	{
-		{{{ makeSetValue('set', '0', '0', 'i32') }}};
-		return 0;
-	},
-	sigfillset: function(set) 
-	{
-		{{{ makeSetValue('set', '0', '-1>>>0', 'i32') }}};
-		return 0;
-	},
-	sigaddset: function(set, signum) 
-	{
-		{{{ makeSetValue('set', '0', makeGetValue('set', '0', 'i32') + '| (1 << (signum-1))', 'i32') }}};
-		return 0;
-	},
-	sigdelset: function(set, signum) 
-	{
-		{{{ makeSetValue('set', '0', makeGetValue('set', '0', 'i32') + '& (~(1 << (signum-1)))', 'i32') }}};
-		return 0;
-	},
-	sigismember: function(set, signum) 
-	{
-		return {{{ makeGetValue('set', '0', 'i32') }}} & (1 << (signum-1));
-	},
+	return sig;
+  },
+  sigemptyset: function(set)   {
+	{{{ makeSetValue('set', '0', '0', 'i32') }}};
+	return 0;
+  },
+  sigfillset: function(set)  {
+	{{{ makeSetValue('set', '0', '-1>>>0', 'i32') }}};
+	return 0;
+  },
+  sigaddset: function(set, signum) {
+	{{{ makeSetValue('set', '0', makeGetValue('set', '0', 'i32') + '| (1 << (signum-1))', 'i32') }}};
+	return 0;
+  },
+  sigdelset: function(set, signum) {
+    {{{ makeSetValue('set', '0', makeGetValue('set', '0', 'i32') + '& (~(1 << (signum-1)))', 'i32') }}};
+    return 0;
+  },
+  sigismember: function(set, signum) {
+	return {{{ makeGetValue('set', '0', 'i32') }}} & (1 << (signum-1));
+  },
   sigaction: function(signum, act, oldact) {
     //int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact);
 #if ASSERTIONS
@@ -42,23 +36,19 @@ var funs =
 #endif
     return 0;
   },
-  sigprocmask: function( how , set , old ) 
-  {
-	var SIG_BLOCK = 1;
-	var EINVAL = 22 ;
-
+  sigprocmask: function( how , set , old )   {
+    var SIG_BLOCK = 1;
+    var EINVAL = 22 ;
     if ( how - SIG_BLOCK >2 ) return EINVAL ;
 	//ret = -__syscall(SYS_rt_sigprocmask, how, set, old, _NSIG/8);
 	ret = 0 ;
-	if (!ret && old) 
-	{
-		{{{ makeSetValue('old', '0', '~0x80000000', 'i32') }}};
-		{{{ makeSetValue('old', '1', '~0x00000003', 'i32') }}};				
-	}	
+     if (!ret && old) {
+	{{{ makeSetValue('old', '0', '~0x80000000', 'i32') }}};
+	{{{ makeSetValue('old', '1', '~0x00000003', 'i32') }}};				
+    }	
     return ret;
   },
-  __libc_current_sigrtmin: function() 
-  {
+  __libc_current_sigrtmin: function()  {
 	// POSIX timers use __SIGRTMIN + 0.
 	// libbacktrace uses __SIGRTMIN + 1.
 	// libcore uses __SIGRTMIN + 2.
@@ -95,34 +85,27 @@ var funs =
 #endif
     return 0;
   },
-	raise: function(sig) 
-	{
-		if ( typeof signal__deps === 'undefined' )
-			return -1 ;		
-		if ( typeof signal__deps['_sig_handler_'] === 'undefined' )
-		{
-			Module.printErr ( 'undefined signal handler : ' + sig);
-			return -1 ;
-		}
-		if ( typeof signal__deps['_sig_handler_'][sig] === 'undefined' )
-		{
-			Module.printErr ( 'undefined signal handler :' + sig );
-			return -1;	
-		}
-	
-		var ff = signal__deps['_sig_handler_'][sig] ;
-		
-		if ( ff == 0 ) 
-		{
-			Module.printErr ( 'undefined signal handler :' + sig );
-			return -1;	
-		}
-		
-		Runtime.dynCall('vi', ff, [0]);
-		___setErrNo(ERRNO_CODES.ENOSYS);
-			
-		return sig;
-	},
+  raise: function(sig)	{
+    if ( typeof signal__deps === 'undefined' )
+	return -1 ;		
+    if ( typeof signal__deps['_sig_handler_'] === 'undefined' )	{
+	Module.printErr ( 'undefined signal handler : ' + sig);
+	return -1 ;
+    }
+    if ( typeof signal__deps['_sig_handler_'][sig] === 'undefined' ){
+	Module.printErr ( 'undefined signal handler :' + sig );
+	return -1;	
+    }
+    var ff = signal__deps['_sig_handler_'][sig] ;
+
+    if ( ff == 0 ) 	{
+	Module.printErr ( 'undefined signal handler :' + sig );
+	return -1;	
+    }
+    Runtime.dynCall('vi', ff, [0]);
+    ___setErrNo(ERRNO_CODES.ENOSYS);
+    return sig;
+  },
   // http://pubs.opengroup.org/onlinepubs/000095399/functions/alarm.html
   alarm__deps: ['_sigalrm_handler'],
   alarm: function(seconds) {
@@ -139,19 +122,15 @@ var funs =
   getitimer: function() {
     throw 'getitimer() is not implemented yet';
   },
-
-	pause__deps: ['__setErrNo', '$ERRNO_CODES'],
-	pause: function() 
-	{
-		// implemened as #define in emscripten.h
-		// #define pause( t ) 
-	},
-	
-	sigpending: function(set) 
-	{
-		{{{ makeSetValue('set', 0, 0, 'i32') }}};
-		return 0;
-	}
+  pause__deps: ['__setErrNo', '$ERRNO_CODES'],
+  pause: function() {
+	// implemened as #define in emscripten.h
+	// #define pause( t ) 
+  },
+  sigpending: function(set)   {
+	{{{ makeSetValue('set', 0, 0, 'i32') }}};
+	return 0;
+  }
   //signalfd
   //ppoll
   //epoll_pwait
