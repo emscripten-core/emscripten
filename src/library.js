@@ -450,11 +450,13 @@ LibraryManager.library = {
   },
   system__deps: ['__setErrNo', '$ERRNO_CODES'],
   system: function(command) {
-    var cmd = Pointer_stringify(command);
-    var sys = require('util');
-    var exec = require('child_process').exec;
-    function out(error, stdout, stderr) {console.log(stdout)}
-    exec( cmd , out);
+    if (ENVIRONMENT_IS_NODE) {	
+      var cmd = Pointer_stringify(command);
+      var sys = require('util');
+      var exec = require('child_process').exec;
+      function out(error, stdout, stderr) {console.log(stdout)}
+      exec( cmd , out);
+    }
     return 0;
   },
   // ==========================================================================
