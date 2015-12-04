@@ -58,6 +58,8 @@ define void @just_nil(i32 %w, {} %nil) {
   ret void
 }
 
+declare i1 @llvm.expect.i1(i1, i1)
+
 define i32 @main() {
 entry:
   call void @just_nil(i32 33, {} undef)
@@ -73,5 +75,11 @@ entry:
   %x = getelementptr inbounds { void (i32, {})* }, { void (i32, {})* }* @vtable38087, i32 0, i32 0
   %y = ptrtoint void (i32, {})** %x to i32
 
-  ret i32 %y
+  %y1 = trunc i32 %y to i1
+  %z = call i1 @llvm.expect.i1(i1 %y1, i1 false)
+  %z32 = zext i1 %z to i32
+
+  call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([24 x i8], [24 x i8]* @.str, i32 0, i32 0), i32 -12, i32 11, i32 -10)
+
+  ret i32 %z32
 }
