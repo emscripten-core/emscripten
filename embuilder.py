@@ -41,6 +41,7 @@ Available operations and tasks:
         sdl2
         sdl2-image
         sdl2-ttf
+        sdl2-net
         vorbis
         zlib
 
@@ -79,7 +80,7 @@ operation = sys.argv[1]
 if operation == 'build':
   tasks = sys.argv[2:]
   if 'ALL' in tasks:
-    tasks = ['libc', 'libc-mt', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'gl', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'vorbis', 'zlib']
+    tasks = ['libc', 'libc-mt', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'gl', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'sdl2-ttf', 'sdl2-net', 'vorbis', 'zlib']
     if os.environ.get('EMSCRIPTEN_NATIVE_OPTIMIZER'):
       print 'Skipping building of native-optimizer since environment variable EMSCRIPTEN_NATIVE_OPTIMIZER is present and set to point to a prebuilt native optimizer path.'
     elif hasattr(shared, 'EMSCRIPTEN_NATIVE_OPTIMIZER'):
