@@ -1,4 +1,7 @@
 
+#ifndef __simple_ast_h__
+#define __simple_ast_h__
+
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -23,7 +26,7 @@
 #define errv(str, ...) fprintf(stderr, str "\n", __VA_ARGS__);
 #define printErr err
 
-using namespace cashew;
+namespace cashew {
 
 struct Ref;
 struct Value;
@@ -811,14 +814,14 @@ struct JSPrinter {
     emit(node[1]->getCString());
   }
 
-  void printNum(Ref node) {
-    double d = node[1]->getNumber();
+  static char* numToString(double d, bool finalize=true) {
     bool neg = d < 0;
     if (neg) d = -d;
     // try to emit the fewest necessary characters
     bool integer = fmod(d, 1) == 0;
     #define BUFFERSIZE 1000
-    static char storage_f[BUFFERSIZE], storage_e[BUFFERSIZE]; // f is normal, e is scientific for float, x for integer
+    static char full_storage_f[BUFFERSIZE], full_storage_e[BUFFERSIZE]; // f is normal, e is scientific for float, x for integer
+    static char *storage_f = full_storage_f + 1, *storage_e = full_storage_e + 1; // full has one more char, for a possible '-'
     double err_f, err_e;
     for (int e = 0; e <= 1; e++) {
       char *buffer = e ? storage_e : storage_f;
@@ -919,12 +922,21 @@ struct JSPrinter {
       //errv("..current attempt: %.18f  =>  %s", d, buffer);
     }
     //fprintf(stderr, "options:\n%s\n%s\n (first? %d)\n", storage_e, storage_f, strlen(storage_e) < strlen(storage_f));
-    if (neg) emit('-');
+    char *ret;
     if (err_e == err_f) {
-      emit(strlen(storage_e) < strlen(storage_f) ? storage_e : storage_f);
+      ret = strlen(storage_e) < strlen(storage_f) ? storage_e : storage_f;
     } else {
-      emit(err_e < err_f ? storage_e : storage_f);
+      ret = err_e < err_f ? storage_e : storage_f;
     }
+    if (neg) {
+      ret--; // safe to go back one, there is one more char in full_*
+      *ret = '-';
+    }
+    return ret;
+  }
+
+  void printNum(Ref node) {
+    emit(numToString(node[1]->getNumber(), finalize));
   }
 
   void printString(Ref node) {
@@ -1515,4 +1527,16 @@ public:
                                          .push_back(value));
   }
 };
+
+// Tolerates 0.0 in the input; does not trust a +() to be there.
+class DotZeroValueBuilder : public ValueBuilder {
+public:
+  static Ref makeDouble(double num) {
+    return makePrefix(PLUS, ValueBuilder::makeDouble(num));
+  }
+};
+
+} // namespace cashew
+
+#endif // __simple_ast_h__
 

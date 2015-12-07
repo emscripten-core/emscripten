@@ -296,6 +296,9 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
     elif return_type == 'String':
       call_prefix += 'Pointer_stringify('
       call_postfix += ')'
+    elif return_type == 'Boolean':
+      call_prefix += '!!('
+      call_postfix += ')'
 
   args = ['arg%d' % i for i in range(max_args)]
   if not constructor:

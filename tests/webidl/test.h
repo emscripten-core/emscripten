@@ -14,6 +14,7 @@ public:
   void parentFunc() {}
   const Parent *getAsConst() { return NULL; }
   void *voidStar(void *something) { return something; }
+  bool getBoolean() { return true; }
 
   const int immutableAttr;
 };

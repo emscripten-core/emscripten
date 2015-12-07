@@ -415,10 +415,6 @@ var LIBRARY_DEPS_TO_AUTOEXPORT = ['memcpy']; // This list is also used to determ
                                              // so we must export so that if they are implemented in C
                                              // they will be accessible, in ASM_JS mode).
 
-var EXPORTED_GLOBALS = []; // Global non-function variables that are explicitly
-                           // exported, so they are guaranteed to be
-                           // accessible outside of the generated code.
-
 var INCLUDE_FULL_LIBRARY = 0; // Include all JS library functions instead of the sum of
                               // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + any functions used
                               // by the generated code. This is needed when dynamically
@@ -557,10 +553,27 @@ var EXPLICIT_ZEXT = 0; // If 1, generate an explicit conversion of zext i1 to i3
 var EXPORT_NAME = 'Module'; // Global variable to export the module as for environments without a standardized module
                             // loading system (e.g. the browser and SM shell).
 
-var NO_DYNAMIC_EXECUTION = 0; // When enabled, we do not emit eval() and new Function(), which disables some functionality
+var NO_DYNAMIC_EXECUTION = 0; // When set to 1, we do not emit eval() and new Function(), which disables some functionality
                               // (causing runtime errors if attempted to be used), but allows the emitted code to be
-                              // acceptable in places that disallow dynamic code execution (chrome packaged app, non-
-                              // privileged firefox app, etc.)
+                              // acceptable in places that disallow dynamic code execution (chrome packaged app,
+                              // privileged firefox app, etc.). Pass this flag when developing an Emscripten application
+                              // that is targeting a privileged or a certified execution environment, see
+                              // Firefox Content Security Policy (CSP) webpage for details:
+                              // https://developer.mozilla.org/en-US/Apps/Build/Building_apps_for_Firefox_OS/CSP
+                              // When this flag is set, the following features (linker flags) are unavailable:
+                              //  --closure 1: When using closure compiler, eval() would be needed to locate the Module object.
+                              //  -s RELOCATABLE=1: the function Runtime.loadDynamicLibrary would need to eval().
+                              //  --bind: Embind would need to eval().
+                              // Additionally, the following Emscripten runtime functions are unavailable when
+                              // NO_DYNAMIC_EXECUTION=1 is set, and an attempt to call them will throw an exception:
+                              // - emscripten_run_script(),
+                              // - emscripten_run_script_int(),
+                              // - emscripten_run_script_string(),
+                              // - dlopen(),
+                              // - the functions ccall() and cwrap() are still available, but they are restricted to only
+                              //   being able to call functions that have been exported in the Module object in advance.
+                              // When set to -s NO_DYNAMIC_EXECUTION=2 flag is set, attempts to call to eval() are demoted
+                              // to warnings instead of throwing an exception.
 
 var EMTERPRETIFY = 0; // Runs tools/emterpretify on the compiler output
 var EMTERPRETIFY_FILE = ''; // If defined, a file to write bytecode to, otherwise the default is to embed it in text JS arrays (which is less efficient).
@@ -596,7 +609,17 @@ var USE_GLFW = 2; // Specify the GLFW version that is being linked against.
                   // Only relevant, if you are linking against the GLFW library.
                   // Valid options are 2 for GLFW2 and 3 for GLFW3.
 
-var WASM = 0; // If 1, compress the asm.js module into WebAssembly, and ship a decompressor that runs on the client
+var BINARYEN = ""; // Path to [Binaryen](https://github.com/WebAssembly/binaryen), which we use to
+                   // compile (at runtime) our asm.js output into WebAssembly. That then runs in
+                   // a shipped Binaryen interpreter for WebAssembly, or, once browsers get native
+                   // WebAssembly support, it will run directly.
+                   // This path should be to the root Binaryen directory (not the /bin subfolder).
+                   // You need to build Binaryen, so that /bin/wasm.js under the Binaryen
+                   // directory exists.
+var BINARYEN_METHOD = ""; // See binaryen's src/js/post.js for details.
+
+var WASM = 0; // Older WebAssembly experiment. Compress the asm.js module into an early proposal for WebAssembly,
+              // and ship a decompressor that runs on the client.
               // Note that wasm loading is asynchronous in the browser, and for that reason we wrap the entire emitted
               // code in a function - things will not reach the global scope by default. You can access things on the
               // Module object.

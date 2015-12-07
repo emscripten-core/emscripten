@@ -1,3 +1,5 @@
+// {{PREAMBLE_ADDITIONS}}
+
 // === Preamble library stuff ===
 
 // Documentation for the public APIs defined in this file must be updated in: 
@@ -122,13 +124,7 @@ var globalScope = this;
 function getCFunc(ident) {
   var func = Module['_' + ident]; // closure exported function
   if (!func) {
-#if NO_DYNAMIC_EXECUTION == 0
-    try {
-      func = eval('_' + ident); // explicit lookup
-    } catch(e) {}
-#else
-    abort('NO_DYNAMIC_EXECUTION was set, cannot eval - ccall/cwrap are not functional');
-#endif
+    {{{ makeEval("try { func = eval('_' + ident); } catch(e) {}") }}}
   }
   assert(func, 'Cannot call unknown function ' + ident + ' (perhaps LLVM optimizations or closure removed it?)');
   return func;
@@ -245,7 +241,7 @@ var cwrap, ccall;
         var convertCode = JSsource[type + 'ToC']; // [code, return]
         funcstr += 'var ' + convertCode.arguments + ' = ' + arg + ';';
         funcstr += convertCode.body + ';';
-        funcstr += arg + '=' + convertCode.returnValue + ';';
+        funcstr += arg + '=(' + convertCode.returnValue + ');';
       }
     }
 
@@ -1021,7 +1017,23 @@ function alignMemoryPage(x) {
 }
 
 var HEAP;
+var buffer;
 var HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32, HEAPF64;
+
+function updateGlobalBuffer(buf) {
+  Module['buffer'] = buffer = buf;
+}
+
+function updateGlobalBufferViews() {
+  Module['HEAP8'] = HEAP8 = new Int8Array(buffer);
+  Module['HEAP16'] = HEAP16 = new Int16Array(buffer);
+  Module['HEAP32'] = HEAP32 = new Int32Array(buffer);
+  Module['HEAPU8'] = HEAPU8 = new Uint8Array(buffer);
+  Module['HEAPU16'] = HEAPU16 = new Uint16Array(buffer);
+  Module['HEAPU32'] = HEAPU32 = new Uint32Array(buffer);
+  Module['HEAPF32'] = HEAPF32 = new Float32Array(buffer);
+  Module['HEAPF64'] = HEAPF64 = new Float64Array(buffer);
+}
 
 var STATIC_BASE = 0, STATICTOP = 0, staticSealed = false; // static area
 var STACK_BASE = 0, STACKTOP = 0, STACK_MAX = 0; // stack area
@@ -1040,6 +1052,25 @@ if (ENVIRONMENT_IS_PTHREAD) {
 function abortOnCannotGrowMemory() {
   abort('Cannot enlarge memory arrays. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which adjusts the size at runtime but prevents some optimizations, (3) set Module.TOTAL_MEMORY to a higher value before the program runs, or if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
 }
+#else // ALLOW_MEMORY_GROWTH
+if (!Module['reallocBuffer']) Module['reallocBuffer'] = function(size) {
+  var ret;
+  try {
+    if (ArrayBuffer.transfer) {
+      ret = ArrayBuffer.transfer(buffer, size);
+    } else {
+      var oldHEAP8 = HEAP8;
+      ret = new ArrayBuffer(size);
+      var temp = new Int8Array(ret);
+      temp.set(oldHEAP8);
+    }
+  } catch(e) {
+    return false;
+  }
+  var success = _emscripten_replace_memory(ret);
+  if (!success) return false;
+  return ret;
+};
 #endif
 
 function enlargeMemory() {
@@ -1098,34 +1129,13 @@ function enlargeMemory() {
   var start = Date.now();
 #endif
 
-  try {
-    if (ArrayBuffer.transfer) {
-      buffer = ArrayBuffer.transfer(buffer, TOTAL_MEMORY);
-    } else {
-      var oldHEAP8 = HEAP8;
-      buffer = new ArrayBuffer(TOTAL_MEMORY);
-    }
-  } catch(e) {
-    return false;
-  }
-
-  var success = _emscripten_replace_memory(buffer);
-  if (!success) return false;
+  var replacement = Module['reallocBuffer'](TOTAL_MEMORY);
+  if (!replacement) return false;
 
   // everything worked
 
-  Module['buffer'] = buffer;
-  Module['HEAP8'] = HEAP8 = new Int8Array(buffer);
-  Module['HEAP16'] = HEAP16 = new Int16Array(buffer);
-  Module['HEAP32'] = HEAP32 = new Int32Array(buffer);
-  Module['HEAPU8'] = HEAPU8 = new Uint8Array(buffer);
-  Module['HEAPU16'] = HEAPU16 = new Uint16Array(buffer);
-  Module['HEAPU32'] = HEAPU32 = new Uint32Array(buffer);
-  Module['HEAPF32'] = HEAPF32 = new Float32Array(buffer);
-  Module['HEAPF64'] = HEAPF64 = new Float64Array(buffer);
-  if (!ArrayBuffer.transfer) {
-    HEAP8.set(oldHEAP8);
-  }
+  updateGlobalBuffer(replacement);
+  updateGlobalBufferViews();
 
 #if ASSERTIONS
   Module.printErr('enlarged memory arrays from ' + OLD_TOTAL_MEMORY + ' to ' + TOTAL_MEMORY + ', took ' + (Date.now() - start) + ' ms (has ArrayBuffer.transfer? ' + (!!ArrayBuffer.transfer) + ')');
@@ -1171,8 +1181,6 @@ if (totalMemory !== TOTAL_MEMORY) {
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' && !!(new Int32Array(1)['subarray']) && !!(new Int32Array(1)['set']),
        'JS engine does not provide full typed array support');
-
-var buffer;
 
 #if IN_TEST_HARNESS
 #if USE_PTHREADS == 1
@@ -1256,7 +1264,13 @@ if (typeof Atomics === 'undefined') {
 #else // USE_PTHREADS
 
 #if SPLIT_MEMORY == 0
-buffer = new ArrayBuffer(TOTAL_MEMORY);
+// Use a provided buffer, if there is one, or else allocate a new one
+if (Module['buffer']) {
+  buffer = Module['buffer'];
+  assert(buffer.byteLength === TOTAL_MEMORY, 'provided buffer should be ' + TOTAL_MEMORY + ' bytes, but it is ' + buffer.byteLength);
+} else {
+  buffer = new ArrayBuffer(TOTAL_MEMORY);
+}
 HEAP8 = new Int8Array(buffer);
 HEAP16 = new Int16Array(buffer);
 HEAP32 = new Int32Array(buffer);
@@ -1968,6 +1982,10 @@ if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() {
 #if PTHREAD_POOL_SIZE > 0
 // To work around https://bugzilla.mozilla.org/show_bug.cgi?id=1049079, warm up a worker pool before starting up the application.
 if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() { if (typeof SharedArrayBuffer !== 'undefined') { addRunDependency('pthreads'); PThread.allocateUnusedWorkers({{{PTHREAD_POOL_SIZE}}}, function() { removeRunDependency('pthreads'); }); }});
+#endif
+
+#if BINARYEN
+var STATIC_BUMP = {{{ STATIC_BUMP }}};
 #endif
 
 // === Body ===

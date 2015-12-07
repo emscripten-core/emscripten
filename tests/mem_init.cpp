@@ -3,7 +3,7 @@
 
 extern "C" {
 
-int noted = 0;
+int noted = 1;
 
 char* EMSCRIPTEN_KEEPALIVE note(int n) {
   EM_ASM_({ Module.print([$0, $1]) }, n, noted);

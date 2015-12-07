@@ -152,7 +152,6 @@ if (settings_file) {
 
 
 EXPORTED_FUNCTIONS = set(EXPORTED_FUNCTIONS);
-EXPORTED_GLOBALS = set(EXPORTED_GLOBALS);
 EXCEPTION_CATCHING_WHITELIST = set(EXCEPTION_CATCHING_WHITELIST);
 
 // TODO: Implement support for proper preprocessing, e.g. "#if A || B" and "#if defined(A) || defined(B)" to

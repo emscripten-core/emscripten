@@ -130,7 +130,13 @@ var LibraryPThread = {
 
       var numWorkersLoaded = 0;
       for (var i = 0; i < numWorkers; ++i) {
-        var worker = new Worker('pthread-main.js');
+        var pthreadMainJs = 'pthread-main.js';
+        // Allow HTML module to configure the location where the 'pthread-main.js' file will be loaded from,
+        // either via Module.locateFile() function, or via Module.pthreadMainPrefixURL string. If neither
+        // of these are passed, then the default URL 'pthread-main.js' relative to the main html file is loaded.
+        if (typeof Module['locateFile'] === 'function') pthreadMainJs = Module['locateFile'](pthreadMainJs);
+        else if (Module['pthreadMainPrefixURL']) pthreadMainJs = Module['pthreadMainPrefixURL'] + pthreadMainJs;
+        var worker = new Worker(pthreadMainJs);
 
         worker.onmessage = function(e) {
           if (e.data.cmd === 'processQueuedMainThreadWork') {
@@ -446,7 +452,7 @@ var LibraryPThread = {
       // In main runtime thread (the thread that initialized the Emscripten C runtime and launched main()), assist pthreads in performing operations
       // that they need to access the Emscripten main runtime for.
       if (!ENVIRONMENT_IS_PTHREAD) _emscripten_main_thread_process_queued_calls();
-      _emscripten_futex_wait(thread + {{{ C_STRUCTS.pthread.threadStatus }}}, threadStatus, 100);
+      _emscripten_futex_wait(thread + {{{ C_STRUCTS.pthread.threadStatus }}}, threadStatus, ENVIRONMENT_IS_PTHREAD ? 100 : 1);
     }
   },
 
@@ -686,6 +692,10 @@ var LibraryPThread = {
     if (ret >= 0) return ret;
     throw 'Atomics.futexWakeOrRequeue returned an unexpected value ' + ret;
   },
+
+  __atomic_is_lock_free: function(size, ptr) {
+    return size <= 4 && (size & (size-1)) == 0 && (ptr&(size-1)) == 0;
+  }
 };
 
 autoAddDeps(LibraryPThread, '$PThread');

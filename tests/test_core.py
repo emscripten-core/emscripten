@@ -30,6 +30,8 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     return 'SPLIT_MEMORY=' in str(self.emcc_args)
   def is_wasm(self):
     return 'WASM=1' in self.emcc_args
+  def is_binaryen(self):
+    return 'BINARYEN' in str(self.emcc_args)
 
   def test_hello_world(self):
       test_path = path_from_root('tests', 'core', 'test_hello_world')
@@ -504,25 +506,15 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
     self.do_run(open(path_from_root('tests', 'cube2md5.cpp')).read(), open(path_from_root('tests', 'cube2md5.ok')).read())
 
   def test_cube2hash(self):
-    # extra testing for various codegen modes
-    try:
-      old_chunk_size = os.environ.get('EMSCRIPT_MAX_CHUNK_SIZE') or ''
+    # A good test of i64 math
+    self.do_run('', 'Usage: hashstring <seed>',
+                libraries=self.get_library('cube2hash', ['cube2hash.bc'], configure=None),
+                includes=[path_from_root('tests', 'cube2hash')])
 
-      for chunk_size in ['1', old_chunk_size]: # test splitting out each function to a chunk in emscripten.py (21 functions here)
-        print '  chunks', chunk_size
-        os.environ['EMSCRIPT_MAX_CHUNK_SIZE'] = chunk_size
-
-        # A good test of i64 math
-        self.do_run('', 'Usage: hashstring <seed>',
-                    libraries=self.get_library('cube2hash', ['cube2hash.bc'], configure=None),
-                    includes=[path_from_root('tests', 'cube2hash')])
-
-        for text, output in [('fleefl', '892BDB6FD3F62E863D63DA55851700FDE3ACF30204798CE9'),
-                             ('fleefl2', 'AA2CC5F96FC9D540CA24FDAF1F71E2942753DB83E8A81B61'),
-                             ('64bitisslow', '64D8470573635EC354FEE7B7F87C566FCAF1EFB491041670')]:
-          self.do_run('', 'hash value: ' + output, [text], no_build=True)
-    finally:
-      os.environ['EMSCRIPT_MAX_CHUNK_SIZE'] = old_chunk_size
+    for text, output in [('fleefl', '892BDB6FD3F62E863D63DA55851700FDE3ACF30204798CE9'),
+                         ('fleefl2', 'AA2CC5F96FC9D540CA24FDAF1F71E2942753DB83E8A81B61'),
+                         ('64bitisslow', '64D8470573635EC354FEE7B7F87C566FCAF1EFB491041670')]:
+      self.do_run('', 'hash value: ' + output, [text], no_build=True)
 
   def test_unaligned(self):
       return self.skip('LLVM marks the reads of s as fully aligned, making this test invalid')
@@ -659,10 +651,10 @@ __m128 m;
 
 int main()
 {
-    printf("Alignment: %d addr: %x\n", ((int)&v) % 16, (int)&v);
-    printf("Alignment: %d addr: %x\n", ((int)&m) % 16, (int)&m);
+    printf("Alignment: %d addr: 0x%x\n", ((int)&v) % 16, (int)&v);
+    printf("Alignment: %d addr: 0x%x\n", ((int)&m) % 16, (int)&m);
 }
-    ''', 'Alignment: 0 addr: 10\nAlignment: 0 addr: 50\n') # hardcoded addresses, just to track if this ever changes by surprise. will need normal updates.
+    ''', 'Alignment: 0 addr: 0xa20\nAlignment: 0 addr: 0xa60\n') # hardcoded addresses, just to track if this ever changes by surprise. will need normal updates.
 
     test()
     print 'relocatable'
@@ -825,9 +817,10 @@ int main()
 
       self.do_run_from_file(src, output)
 
-      print 'main module'
-      Settings.MAIN_MODULE = 1
-      self.do_run_from_file(src, output)
+      if Settings.ALLOW_MEMORY_GROWTH == 0:
+        print 'main module'
+        Settings.MAIN_MODULE = 1
+        self.do_run_from_file(src, output)
 
   def test_frexp(self):
       test_path = path_from_root('tests', 'core', 'test_frexp')
@@ -836,12 +829,14 @@ int main()
       self.do_run_from_file(src, output)
 
   def test_rounding(self):
-      Settings.PRECISE_F32 = 1 # in the move to llvm 3.7, froundf in musl became more sensitive to float/double differences
+      for precise_f32 in [0, 1]:
+        print precise_f32
+        Settings.PRECISE_F32 = precise_f32
 
-      test_path = path_from_root('tests', 'core', 'test_rounding')
-      src, output = (test_path + s for s in ('.in', '.out'))
+        test_path = path_from_root('tests', 'core', 'test_rounding')
+        src, output = (test_path + s for s in ('.in', '.out'))
 
-      self.do_run_from_file(src, output)
+        self.do_run_from_file(src, output)
 
   def test_fcvt(self):
       test_path = path_from_root('tests', 'core', 'test_fcvt')
@@ -2998,6 +2993,8 @@ The current type of b is: 9
     self.do_run(main, 'supp: 54,2\nmain: 56\nsupp see: 543\nmain see: 76\nok.')
 
   def can_dlfcn(self):
+    if Settings.ALLOW_MEMORY_GROWTH == 1: return self.skip('no dlfcn with memory growth yet')
+    if self.is_binaryen(): return self.skip('no shared modules in wasm')
     return True
 
   def prep_dlfcn_lib(self):
@@ -3757,6 +3754,8 @@ ok
 ''', post_build=self.dlfcn_post_build)
 
   def dylink_test(self, main, side, expected, header=None, main_emcc_args=[], force_c=False, need_reverse=True, auto_load=True):
+    if not self.can_dlfcn(): return
+
     if header:
       open('header.h', 'w').write(header)
 
@@ -3998,6 +3997,7 @@ var Module = {
     ''', 'a new Class\n')
 
   def test_dylink_global_inits(self):
+    if not self.can_dlfcn(): return
     def test():
       self.dylink_test(header=r'''
         #include <stdio.h>
@@ -4221,6 +4221,8 @@ var Module = {
     ''', expected=['simple.\nsimple.\nsimple.\nsimple.\n'])
 
   def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
+    if not self.can_dlfcn(): return
+
     def test(syslibs, expect_pass=True, need_reverse=True):
       print 'syslibs', syslibs, Settings.ASSERTIONS
       passed = True
@@ -4329,6 +4331,8 @@ var Module = {
     ''', expected=['starting main\nBase\nDerived\nOK'])
 
   def test_dylink_hyper_dupe(self):
+    if not self.can_dlfcn(): return
+
     Settings.TOTAL_MEMORY = 64*1024*1024
 
     if Settings.ASSERTIONS: self.emcc_args += ['-s', 'ASSERTIONS=2']
@@ -5180,6 +5184,10 @@ def process(filename):
     self.emcc_args += ['--closure', '1']
     self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
+  def test_fs_nodefs_cloexec(self):
+    src = open(path_from_root('tests', 'fs', 'test_nodefs_cloexec.c'), 'r').read()
+    self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
+
   def test_fs_trackingdelegate(self):
     src = path_from_root('tests', 'fs', 'test_trackingdelegate.c')
     out = path_from_root('tests', 'fs', 'test_trackingdelegate.out')
@@ -5415,9 +5423,10 @@ PORT: 3979
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
     self.do_run_from_file(src, output)
 
-    print 'main module'
-    Settings.MAIN_MODULE = 1
-    self.do_run_from_file(src, output)
+    if Settings.ALLOW_MEMORY_GROWTH == 0:
+      print 'main module'
+      Settings.MAIN_MODULE = 1
+      self.do_run_from_file(src, output)
 
   def test_phiundef(self):
     test_path = path_from_root('tests', 'core', 'test_phiundef')
@@ -6319,6 +6328,10 @@ def process(filename):
           'i1282vecnback', # uses simd
         ]:
           continue
+        if self.is_binaryen() and os.path.basename(shortname) in [
+          'i1282vecnback', # uses simd
+        ]:
+          continue
         if os.path.basename(shortname) in need_no_leave_inputs_raw:
           if 'EMCC_LEAVE_INPUTS_RAW' in os.environ: del os.environ['EMCC_LEAVE_INPUTS_RAW']
           Settings.NO_FILESYSTEM = 0
@@ -6441,10 +6454,7 @@ def process(filename):
   def test_ccall(self):
     post = '''
 def process(filename):
-  src = \'\'\'
-    var Module = { 'noInitialRun': true };
-    \'\'\' + open(filename, 'r').read() + \'\'\'
-    addOnExit(function () {
+  src = open(filename, 'r').read() + \'\'\'
       Module.print('*');
       var ret;
       ret = Module['ccall']('get_int', 'number'); Module.print([typeof ret, ret]);
@@ -6472,8 +6482,6 @@ def process(filename):
       }
       Module.print('stack is ok.');
       ccall('call_ccall_again', null);
-    });
-    Module.callMain();
   \'\'\'
   open(filename, 'w').write(src)
 '''
@@ -7814,6 +7822,8 @@ asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTI
 asm2i = make_run("asm2i", compiler=CLANG, emcc_args=["-O2", '-s', 'EMTERPRETIFY=1'])
 #asm2m = make_run("asm2m", compiler=CLANG, emcc_args=["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1"])
 #asm2w = make_run("asm2w", compiler=CLANG, emcc_args=["-O2", "-s", "WASM=1"])
+#binaryen = make_run("binaryen", compiler=CLANG, emcc_args=["-s", "BINARYEN='..path..'"])
+#normalyen = make_run("normalyen", compiler=CLANG, emcc_args=['-s', 'GLOBAL_BASE=1024']) # useful comparison to binaryen
 
 # Legacy test modes - 
 asm2nn = make_run("asm2nn", compiler=CLANG, emcc_args=["-O2"], env={"EMCC_NATIVE_OPTIMIZER": "0"})

@@ -83,6 +83,17 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     elif settings['GLOBAL_BASE'] >= 0:
       backend_args += ['-emscripten-global-base=%d' % settings['GLOBAL_BASE']]
     backend_args += ['-O' + str(settings['OPT_LEVEL'])]
+    if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
+      backend_args += ['-enable-emscripten-cxx-exceptions']
+      if settings['DISABLE_EXCEPTION_CATCHING'] == 2:
+        backend_args += ['-emscripten-cxx-exceptions-whitelist=' + ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['fake'])]
+    if settings['ASYNCIFY']:
+      backend_args += ['-emscripten-asyncify']
+      backend_args += ['-emscripten-asyncify-functions=' + ','.join(settings['ASYNCIFY_FUNCTIONS'])]
+      backend_args += ['-emscripten-asyncify-whitelist=' + ','.join(settings['ASYNCIFY_WHITELIST'])]
+    if settings['NO_EXIT_RUNTIME']:
+      backend_args += ['-emscripten-no-exit-runtime']
+
     if DEBUG:
       logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))
       t = time.time()
@@ -223,7 +234,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     if settings['SIMD'] == 1:
       pre = open(path_from_root(os.path.join('src', 'ecmascript_simd.js'))).read() + '\n\n' + pre
 
-    staticbump = mem_init.count(',')+1
+    staticbump = metadata['staticBump']
     while staticbump % 16 != 0: staticbump += 1
     pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;%s
   /* global initializers */ %s __ATINIT__.push(%s);
@@ -234,7 +245,9 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
            mem_init))
 
     if settings['SIDE_MODULE']:
-      pre = pre.replace('Runtime.GLOBAL_BASE', 'gb').replace('{{{ STATIC_BUMP }}}', str(staticbump))
+      pre = pre.replace('Runtime.GLOBAL_BASE', 'gb')
+    if settings['SIDE_MODULE'] or settings['BINARYEN']:
+      pre = pre.replace('{{{ STATIC_BUMP }}}', str(staticbump))
 
     funcs_js = [funcs]
     parts = pre.split('// ASM_LIBRARY FUNCTIONS\n')
@@ -273,28 +286,30 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
           logging.warning('function requested to be exported, but not implemented: "%s"', requested)
 
     asm_consts = [0]*len(metadata['asmConsts'])
+    all_sigs = []
     for k, v in metadata['asmConsts'].iteritems():
-      const = v.encode('utf-8')
+      const = v[0].encode('utf-8')
+      sigs = v[1]
       if const[0] == '"' and const[-1] == '"':
         const = const[1:-1]
       const = '{ ' + const + ' }'
       args = []
-      arity = max(metadata['asmConstArities'][k])
+      arity = max(map(len, sigs)) - 1
       for i in range(arity):
         args.append('$' + str(i))
-      const = 'function(' + ', '.join(args ) + ') ' + const
+      const = 'function(' + ', '.join(args) + ') ' + const
       asm_consts[int(k)] = const
+      all_sigs += sigs
 
-    flatten_list_of_lists = lambda outer: (item for inner in outer for item in inner)
     asm_const_funcs = []
-    for arity in set(flatten_list_of_lists(metadata['asmConstArities'].values())):
-      forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_%d' % arity] = 1
-      args = ['a%d' % i for i in range(arity)]
+    for sig in set(all_sigs):
+      forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_' + sig] = 1
+      args = ['a%d' % i for i in range(len(sig)-1)]
       all_args = ['code'] + args
       asm_const_funcs.append(r'''
-function _emscripten_asm_const_%d(%s) {
+function _emscripten_asm_const_%s(%s) {
  return ASM_CONSTS[code](%s);
-}''' % (arity, ', '.join(all_args), ', '.join(args)))
+}''' % (sig.encode('utf-8'), ', '.join(all_args), ', '.join(args)))
 
     pre = pre.replace('// === Body ===', '// === Body ===\n' + '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n' + '\n'.join(asm_const_funcs) + '\n')
 
@@ -723,9 +738,9 @@ function ftCall_%s(%s) {%s
       if metadata['simdFloat64x2']:
         asm_global_funcs += '  var SIMD_Int32x4_fromBool64x2Bits = global.SIMD.Int32x4.fromBool64x2Bits;\n';
     if settings['USE_PTHREADS']:
-#      asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor', 'fence']])
+#      asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor']])
 # TODO: Once bug https://bugzilla.mozilla.org/show_bug.cgi?id=1141986 is implemented, replace the following line with the above one!
-      asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor', 'fence']])
+      asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor']])
     asm_global_vars = ''.join(['  var ' + g + '=env' + access_quote(g) + '|0;\n' for g in basic_vars + global_vars])
 
     # sent data

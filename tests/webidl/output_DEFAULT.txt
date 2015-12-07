@@ -4,6 +4,8 @@ Parent:42
 object
 object
 8
+boolean
+true
 c1
 Parent:7
 Child1:7
@@ -13,6 +15,7 @@ Child1:7
 588
 14
 28
+true
 Child1::parentFunc(90)
 c1 v2
 Parent:16
@@ -21,6 +24,7 @@ Child1:15
 30
 900
 2700
+true
 c2
 Parent:9
 Child2:9

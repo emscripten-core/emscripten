@@ -155,5 +155,9 @@ function deadCondExpr(input) {
   dead = (!input ? -1 : input)|0;
   return temp|0;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "_doit", "stackRestore", "switchey", "switchey2", "iffey", "labelledJump", "linkedVars", "deadCondExpr"]
+function b1() {
+ abort(1);
+ return SIMD_Float32x4_check(SIMD_Float32x4(0, 0, 0, 0));
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "_doit", "stackRestore", "switchey", "switchey2", "iffey", "labelledJump", "linkedVars", "deadCondExpr", "b1"]
 

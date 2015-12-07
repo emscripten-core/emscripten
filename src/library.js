@@ -242,6 +242,8 @@ LibraryManager.library = {
   execv: 'execl',
   execve: 'execl',
   execvp: 'execl',
+  __execvpe: 'execl',
+  fexecve: 'execl',
 
   _exit: function(status) {
     // void _exit(int status);
@@ -258,6 +260,8 @@ LibraryManager.library = {
     return -1;
   },
   vfork: 'fork',
+  posix_spawn: 'fork',
+  posix_spawnp: 'fork',
 
   setgroups__deps: ['__setErrNo', '$ERRNO_CODES', 'sysconf'],
   setgroups: function(ngroups, gidset) {
@@ -504,6 +508,7 @@ LibraryManager.library = {
     __ATEXIT__.unshift({ func: func, arg: arg });
   },
   __cxa_atexit: 'atexit',
+  __cxa_thread_atexit_impl: 'atexit', // TODO: special behavior in pthreads mode?
 
   abort: function() {
     Module['abort']();
@@ -1145,6 +1150,9 @@ LibraryManager.library = {
   __gxx_personality_v0: function() {
   },
 
+  __gcc_personality_v0: function() {
+  },
+
   // Finds a suitable catch clause for when an exception is thrown.
   // In normal compilers, this functionality is handled by the C++
   // 'personality' routine. This is passed a fairly complex structure
@@ -1278,14 +1286,6 @@ LibraryManager.library = {
     return -1; // 'indeterminable' for FLT_ROUNDS
   },
 
-  llvm_memory_barrier: function(){},
-
-  llvm_atomic_load_add_i32_p0i32: function(ptr, delta) {
-    var ret = {{{ makeGetValue('ptr', '0', 'i32') }}};
-    {{{ makeSetValue('ptr', '0', 'ret+delta', 'i32') }}};
-    return ret;
-  },
-
   llvm_expect_i32__inline: function(val, expected) {
     return '(' + val + ')';
   },
@@ -1307,89 +1307,6 @@ LibraryManager.library = {
   llvm_nacl_atomic_cmpxchg_i8__inline: true,
   llvm_nacl_atomic_cmpxchg_i16__inline: true,
   llvm_nacl_atomic_cmpxchg_i32__inline: true,
-
-  // gnu atomics
-
-  __atomic_is_lock_free: function(size, ptr) {
-    return size <= 4 && (ptr&(size-1)) == 0;
-  },
-
-  __atomic_load_8: function(ptr, memmodel) {
-    {{{ makeStructuralReturn([makeGetValue('ptr', 0, 'i32'), makeGetValue('ptr', 4, 'i32')]) }}};
-  },
-
-  __atomic_store_8: function(ptr, vall, valh, memmodel) {
-    {{{ makeSetValue('ptr', 0, 'vall', 'i32') }}};
-    {{{ makeSetValue('ptr', 4, 'valh', 'i32') }}};
-  },
-
-  __atomic_exchange_8: function(ptr, vall, valh, memmodel) {
-    var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
-    var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
-    {{{ makeSetValue('ptr', 0, 'vall', 'i32') }}};
-    {{{ makeSetValue('ptr', 4, 'valh', 'i32') }}};
-    {{{ makeStructuralReturn(['l', 'h']) }}};
-  },
-
-  __atomic_compare_exchange_8: function(ptr, expected, desiredl, desiredh, weak, success_memmodel, failure_memmodel) {
-    var pl = {{{ makeGetValue('ptr', 0, 'i32') }}};
-    var ph = {{{ makeGetValue('ptr', 4, 'i32') }}};
-    var el = {{{ makeGetValue('expected', 0, 'i32') }}};
-    var eh = {{{ makeGetValue('expected', 4, 'i32') }}};
-    if (pl === el && ph === eh) {
-      {{{ makeSetValue('ptr', 0, 'desiredl', 'i32') }}};
-      {{{ makeSetValue('ptr', 4, 'desiredh', 'i32') }}};
-      return 1;
-    } else {
-      {{{ makeSetValue('expected', 0, 'pl', 'i32') }}};
-      {{{ makeSetValue('expected', 4, 'ph', 'i32') }}};
-      return 0;
-    }
-  },
-
-  __atomic_fetch_add_8__deps: ['llvm_uadd_with_overflow_i64'],
-  __atomic_fetch_add_8: function(ptr, vall, valh, memmodel) {
-    var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
-    var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
-    {{{ makeSetValue('ptr', 0, '_llvm_uadd_with_overflow_i64(l, h, vall, valh)', 'i32') }}};
-    {{{ makeSetValue('ptr', 4, makeGetTempRet0(), 'i32') }}};
-    {{{ makeStructuralReturn(['l', 'h']) }}};
-  },
-
-  __atomic_fetch_sub_8__deps: ['i64Subtract'],
-  __atomic_fetch_sub_8: function(ptr, vall, valh, memmodel) {
-    var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
-    var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
-    {{{ makeSetValue('ptr', 0, '_i64Subtract(l, h, vall, valh)', 'i32') }}};
-    {{{ makeSetValue('ptr', 4, makeGetTempRet0(), 'i32') }}};
-    {{{ makeStructuralReturn(['l', 'h']) }}};
-  },
-
-  __atomic_fetch_and_8__deps: ['i64Subtract'],
-  __atomic_fetch_and_8: function(ptr, vall, valh, memmodel) {
-    var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
-    var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
-    {{{ makeSetValue('ptr', 0, 'l&vall', 'i32') }}};
-    {{{ makeSetValue('ptr', 4, 'h&valh', 'i32') }}};
-    {{{ makeStructuralReturn(['l', 'h']) }}};
-  },
-
-  __atomic_fetch_or_8: function(ptr, vall, valh, memmodel) {
-    var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
-    var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
-    {{{ makeSetValue('ptr', 0, 'l|vall', 'i32') }}};
-    {{{ makeSetValue('ptr', 4, 'h|valh', 'i32') }}};
-    {{{ makeStructuralReturn(['l', 'h']) }}};
-  },
-
-  __atomic_fetch_xor_8: function(ptr, vall, valh, memmodel) {
-    var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
-    var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
-    {{{ makeSetValue('ptr', 0, 'l^vall', 'i32') }}};
-    {{{ makeSetValue('ptr', 4, 'h^valh', 'i32') }}};
-    {{{ makeStructuralReturn(['l', 'h']) }}};
-  },
-
 
   // ==========================================================================
   // llvm-mono integration
@@ -1476,6 +1393,20 @@ LibraryManager.library = {
   llvm_exp_f32: 'Math_exp',
   llvm_exp_f64: 'Math_exp',
 
+  round__asm: true,
+  round__sig: 'dd',
+  round: function(d) {
+    d = +d;
+    return d >= +0 ? +Math_floor(d + +0.5) : +Math_ceil(d - +0.5);
+  },
+
+  roundf__asm: true,
+  roundf__sig: 'dd',
+  roundf: function(f) {
+    f = +f;
+    return f >= +0 ? +Math_floor(f + +0.5) : +Math_ceil(f - +0.5); // TODO: use fround?
+  },
+
   _reallyNegative: function(x) {
     return x < 0 || (x === 0 && (1/x) === -Infinity);
   },
@@ -1503,6 +1434,9 @@ LibraryManager.library = {
   // void* dlopen(const char* filename, int flag);
   dlopen__deps: ['$DLFCN', '$FS', '$ENV'],
   dlopen: function(filename, flag) {
+#if MAIN_MODULE == 0
+    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/kripken/emscripten/wiki/Linking");
+#endif
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
     filename = filename === 0 ? '__self__' : (ENV['LD_LIBRARY_PATH'] || '/') + Pointer_stringify(filename);
@@ -3708,15 +3642,15 @@ LibraryManager.library = {
   // ==========================================================================
 
   emscripten_run_script: function(ptr) {
-    eval(Pointer_stringify(ptr));
+    {{{ makeEval('eval(Pointer_stringify(ptr));') }}}
   },
 
   emscripten_run_script_int: function(ptr) {
-    return eval(Pointer_stringify(ptr))|0;
+    {{{ makeEval('return eval(Pointer_stringify(ptr))|0;') }}}
   },
 
   emscripten_run_script_string: function(ptr) {
-    var s = eval(Pointer_stringify(ptr)) + '';
+    {{{ makeEval("var s = eval(Pointer_stringify(ptr)) + '';") }}}
     var me = _emscripten_run_script_string;
     if (!me.bufferSize || me.bufferSize < s.length+1) {
       if (me.bufferSize) _free(me.buffer);
@@ -4085,6 +4019,55 @@ LibraryManager.library = {
   __pthread_self: function() { abort() },
   pthread_setcancelstate: function() { return 0 },
 
+  // libunwind
+
+  _Unwind_Backtrace__deps: ['emscripten_get_callstack_js'],
+  _Unwind_Backtrace: function(func, arg) {
+    var trace = _emscripten_get_callstack_js();
+    var parts = trace.split('\n');
+    for (var i = 0; i < parts.length; i++) {
+      var ret = Module.dynCall('iii', [0, arg]);
+      if (ret !== 0) return;
+    }
+  },
+
+  _Unwind_GetIPInfo: function() {
+    abort('Unwind_GetIPInfo');
+  },
+
+  _Unwind_FindEnclosingFunction: function() {
+    return 0; // we cannot succeed
+  },
+
+  _Unwind_RaiseException: function(ex) {
+    abort('Unwind_RaiseException');
+  },
+
+  _Unwind_DeleteException: function(ex) {
+    Module.printErr('TODO: Unwind_DeleteException');
+  },
+
+  // autodebugging
+
+  emscripten_autodebug_i64: function(line, valuel, valueh) {
+    Module.print('AD:' + [line, valuel, valueh]);
+  },
+  emscripten_autodebug_i32: function(line, value) {
+    Module.print('AD:' + [line, value]);
+  },
+  emscripten_autodebug_i16: function(line, value) {
+    Module.print('AD:' + [line, value]);
+  },
+  emscripten_autodebug_i8: function(line, value) {
+    Module.print('AD:' + [line, value]);
+  },
+  emscripten_autodebug_float: function(line, value) {
+    Module.print('AD:' + [line, value]);
+  },
+  emscripten_autodebug_double: function(line, value) {
+    Module.print('AD:' + [line, value]);
+  },
+
   // misc definitions to avoid unnecessary unresolved symbols from fastcomp
   emscripten_prep_setjmp: true,
   emscripten_cleanup_setjmp: true,
@@ -4109,6 +4092,7 @@ LibraryManager.library = {
   UItoD: true,
   BItoD: true,
   llvm_dbg_value: true,
+  llvm_debugtrap: true,
   llvm_ctlz_i32: true,
   emscripten_asm_const: true,
   emscripten_asm_const_int: true,

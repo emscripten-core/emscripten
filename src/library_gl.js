@@ -7088,6 +7088,17 @@ var LibraryGL = {
     for (var i = 0; i < n; i++)
       bufArray.push({{{ makeGetValue('bufs', 'i*4', 'i32') }}});
 
+    // Work around Firefox WebGL 2 bug, see https://github.com/kripken/emscripten/issues/3890.
+    if (n == 0) {
+      // If a FBO is bound, glDrawBuffers(0, *) means glDrawBuffers(1, GL_NONE).
+      // If an FBO is not bound, glDrawBuffers(0, *) is an error.
+      if (GLctx.getParameter(GLctx['DRAW_FRAMEBUFFER_BINDING']) != 0) bufArray.push(GLctx['NONE']);
+      else {
+        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+        return;
+      }
+    }
+
     GLctx['drawBuffers'](bufArray);
   },
 

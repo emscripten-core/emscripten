@@ -17,18 +17,18 @@ exchange 4: old=3 new=4
 exchange 5: old=4 new=5
 compare_exchange_weak 5: success = false
 compare_exchange_strong 5: success = false
-fetch_add 0: old=0 new=1
-fetch_add 1: old=1 new=2
-fetch_add 2: old=2 new=3
-fetch_add 3: old=3 new=4
-fetch_add 4: old=4 new=5
-fetch_add 5: old=5 new=6
-fetch_sub 0: old=6 new=5
-fetch_sub 1: old=5 new=4
-fetch_sub 2: old=4 new=3
-fetch_sub 3: old=3 new=2
-fetch_sub 4: old=2 new=1
-fetch_sub 5: old=1 new=0
+fetch_add 0: old=f new=10
+fetch_add 1: old=10 new=11
+fetch_add 2: old=11 new=12
+fetch_add 3: old=12 new=13
+fetch_add 4: old=13 new=14
+fetch_add 5: old=14 new=15
+fetch_sub 0: old=15 new=14
+fetch_sub 1: old=14 new=13
+fetch_sub 2: old=13 new=12
+fetch_sub 3: old=12 new=11
+fetch_sub 4: old=11 new=10
+fetch_sub 5: old=10 new=f
 fetch_and 0: old=ff, new=1
 fetch_and 1: old=ff, new=2
 fetch_and 2: old=ff, new=4
@@ -73,18 +73,18 @@ exchange 4: old=3 new=4
 exchange 5: old=4 new=5
 compare_exchange_weak 5: success = false
 compare_exchange_strong 5: success = false
-fetch_add 0: old=0 new=1
-fetch_add 1: old=1 new=2
-fetch_add 2: old=2 new=3
-fetch_add 3: old=3 new=4
-fetch_add 4: old=4 new=5
-fetch_add 5: old=5 new=6
-fetch_sub 0: old=6 new=5
-fetch_sub 1: old=5 new=4
-fetch_sub 2: old=4 new=3
-fetch_sub 3: old=3 new=2
-fetch_sub 4: old=2 new=1
-fetch_sub 5: old=1 new=0
+fetch_add 0: old=f0f new=f10
+fetch_add 1: old=f10 new=f11
+fetch_add 2: old=f11 new=f12
+fetch_add 3: old=f12 new=f13
+fetch_add 4: old=f13 new=f14
+fetch_add 5: old=f14 new=f15
+fetch_sub 0: old=f15 new=f14
+fetch_sub 1: old=f14 new=f13
+fetch_sub 2: old=f13 new=f12
+fetch_sub 3: old=f12 new=f11
+fetch_sub 4: old=f11 new=f10
+fetch_sub 5: old=f10 new=f0f
 fetch_and 0: old=ffff, new=1
 fetch_and 1: old=ffff, new=2
 fetch_and 2: old=ffff, new=4
@@ -129,18 +129,18 @@ exchange 4: old=3 new=4
 exchange 5: old=4 new=5
 compare_exchange_weak 5: success = false
 compare_exchange_strong 5: success = false
-fetch_add 0: old=0 new=1
-fetch_add 1: old=1 new=2
-fetch_add 2: old=2 new=3
-fetch_add 3: old=3 new=4
-fetch_add 4: old=4 new=5
-fetch_add 5: old=5 new=6
-fetch_sub 0: old=6 new=5
-fetch_sub 1: old=5 new=4
-fetch_sub 2: old=4 new=3
-fetch_sub 3: old=3 new=2
-fetch_sub 4: old=2 new=1
-fetch_sub 5: old=1 new=0
+fetch_add 0: old=f0f0f0f new=f0f0f10
+fetch_add 1: old=f0f0f10 new=f0f0f11
+fetch_add 2: old=f0f0f11 new=f0f0f12
+fetch_add 3: old=f0f0f12 new=f0f0f13
+fetch_add 4: old=f0f0f13 new=f0f0f14
+fetch_add 5: old=f0f0f14 new=f0f0f15
+fetch_sub 0: old=f0f0f15 new=f0f0f14
+fetch_sub 1: old=f0f0f14 new=f0f0f13
+fetch_sub 2: old=f0f0f13 new=f0f0f12
+fetch_sub 3: old=f0f0f12 new=f0f0f11
+fetch_sub 4: old=f0f0f11 new=f0f0f10
+fetch_sub 5: old=f0f0f10 new=f0f0f0f
 fetch_and 0: old=ffffffff, new=1
 fetch_and 1: old=ffffffff, new=2
 fetch_and 2: old=ffffffff, new=4
@@ -185,18 +185,18 @@ exchange 4: old=3 new=4
 exchange 5: old=4 new=5
 compare_exchange_weak 5: success = false
 compare_exchange_strong 5: success = false
-fetch_add 0: old=0 new=1
-fetch_add 1: old=1 new=2
-fetch_add 2: old=2 new=3
-fetch_add 3: old=3 new=4
-fetch_add 4: old=4 new=5
-fetch_add 5: old=5 new=6
-fetch_sub 0: old=6 new=5
-fetch_sub 1: old=5 new=4
-fetch_sub 2: old=4 new=3
-fetch_sub 3: old=3 new=2
-fetch_sub 4: old=2 new=1
-fetch_sub 5: old=1 new=0
+fetch_add 0: old=f0f0f0f0f0f0f0f new=f0f0f0f0f0f0f10
+fetch_add 1: old=f0f0f0f0f0f0f10 new=f0f0f0f0f0f0f11
+fetch_add 2: old=f0f0f0f0f0f0f11 new=f0f0f0f0f0f0f12
+fetch_add 3: old=f0f0f0f0f0f0f12 new=f0f0f0f0f0f0f13
+fetch_add 4: old=f0f0f0f0f0f0f13 new=f0f0f0f0f0f0f14
+fetch_add 5: old=f0f0f0f0f0f0f14 new=f0f0f0f0f0f0f15
+fetch_sub 0: old=f0f0f0f0f0f0f15 new=f0f0f0f0f0f0f14
+fetch_sub 1: old=f0f0f0f0f0f0f14 new=f0f0f0f0f0f0f13
+fetch_sub 2: old=f0f0f0f0f0f0f13 new=f0f0f0f0f0f0f12
+fetch_sub 3: old=f0f0f0f0f0f0f12 new=f0f0f0f0f0f0f11
+fetch_sub 4: old=f0f0f0f0f0f0f11 new=f0f0f0f0f0f0f10
+fetch_sub 5: old=f0f0f0f0f0f0f10 new=f0f0f0f0f0f0f0f
 fetch_and 0: old=ffffffffffffffff, new=1
 fetch_and 1: old=ffffffffffffffff, new=2
 fetch_and 2: old=ffffffffffffffff, new=4

@@ -8,6 +8,7 @@ interface Parent {
   void parentFunc();
   [Const] Parent getAsConst();
   VoidPtr voidStar(VoidPtr something);
+  boolean getBoolean();
 
   readonly attribute long immutableAttr;
 };

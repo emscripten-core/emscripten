@@ -145,7 +145,7 @@ if operation == 'build':
     elif what == 'native_optimizer':
       build('''
         int main() {}
-      ''', ['optimizer.exe'], ['-O2'])
+      ''', ['optimizer.2.exe'], ['-O2'])
     elif what == 'zlib':
       build_port('zlib', 'libz.a', ['-s', 'USE_ZLIB=1'])
     elif what == 'bullet':

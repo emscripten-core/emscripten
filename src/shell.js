@@ -183,11 +183,7 @@ else {
 }
 
 function globalEval(x) {
-#if NO_DYNAMIC_EXECUTION == 0
-  eval.call(null, x);
-#else
-  throw 'NO_DYNAMIC_EXECUTION was set, cannot eval';
-#endif
+  {{{ makeEval('eval.call(null, x);') }}}
 }
 if (!Module['load'] && Module['read']) {
   Module['load'] = function load(f) {

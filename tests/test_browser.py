@@ -401,6 +401,68 @@ If manually bisecting:
 
     test()
 
+  def test_missing_data_throws_error(self):
+    def setup(assetLocalization):
+      self.clear()
+      open(self.in_dir("data.txt"), "w").write('''data''');
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
+        #include <stdio.h>
+        #include <string.h>
+        #include <emscripten.h>
+        int main() {
+          // This code should never be executed in terms of missing required dependency file.
+          int result = 0;
+          REPORT_RESULT();
+          return 0;
+        }
+      '''))
+      open(os.path.join(self.get_dir(), 'on_window_error_shell.html'), 'w').write(r'''
+      <html>
+          <center><canvas id='canvas' width='256' height='256'></canvas></center>
+          <hr><div id='output'></div><hr>
+          <script type='text/javascript'>
+            window.onerror = function(error) {
+              window.onerror = null;
+              var result = error.indexOf("test.data") >= 0 ? 1 : 0;
+              var xhr = new XMLHttpRequest();
+              xhr.open('GET', 'http://localhost:8888/report_result?' + result, true);
+              xhr.send();
+              setTimeout(function() { window.close() }, 1000);
+            }
+            var Module = {
+              filePackagePrefixURL: "''' + assetLocalization + r'''",
+              print: (function() {
+                var element = document.getElementById('output');
+                return function(text) { element.innerHTML += text.replace('\n', '<br>', 'g') + '<br>';};
+              })(),
+              canvas: document.getElementById('canvas')
+            };
+          </script>
+          {{{ SCRIPT }}}
+        </body>
+      </html>'''
+      )
+
+    def test():
+      # test test missing file should run xhr.onload with status different than 200, 304 or 206
+      setup("");
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html']).communicate()
+      shutil.move('test.data','missing.data');
+      self.run_browser('test.html', '', '/report_result?1')
+      
+      # test unknown protocol should go through xhr.onerror
+      setup("unknown_protocol://");
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html']).communicate()
+      self.run_browser('test.html', '', '/report_result?1')
+      
+      # test wrong protocol and port
+      setup("https://localhost:8800/");
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html']).communicate()
+      self.run_browser('test.html', '', '/report_result?1')
+
+    test()
+
+
     # TODO: CORS, test using a full url for filePackagePrefixURL
     #open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { filePackagePrefixURL: "http:/localhost:8888/cdn/", '))
     #test()
@@ -900,9 +962,10 @@ keydown(100);keyup(100); // trigger the end
 
   def test_fs_idbfs_sync(self):
     for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']]:
-      secret = str(time.time())
-      self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=mode + ['-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''])
-      self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=mode + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''])
+      for extra in [[], ['-DEXTRA_WORK']]:
+        secret = str(time.time())
+        self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=mode + ['-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''])
+        self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=mode + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''] + extra)
 
   def test_fs_idbfs_fsync(self):
     # sync from persisted state into memory before main()
@@ -1348,6 +1411,9 @@ keydown(100);keyup(100); // trigger the end
 
   def test_emscripten_main_loop(self):
     self.btest('emscripten_main_loop.cpp', '0')
+
+  def test_emscripten_main_loop_and_blocker(self):
+    self.btest('emscripten_main_loop_and_blocker.cpp', '0')
 
   def test_sdl_quit(self):
     self.btest('sdl_quit.c', '1')
@@ -2063,7 +2129,23 @@ int main() {
     self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3'], expected='1')
 
   def test_glfw3_events(self):
-    self.btest(path_from_root('tests', 'glfw3_events.c'), args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3'], expected='1')
+    open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+      function keydown(c) {
+        var event = document.createEvent("KeyboardEvent");
+        event.initKeyEvent('keydown', true, true, window,
+                           0, 0, 0, 0,
+                           c, c);
+        document.dispatchEvent(event);
+      }
+      function keyup(c) {
+        var event = document.createEvent("KeyboardEvent");
+        event.initKeyEvent('keyup', true, true, window,
+                           0, 0, 0, 0,
+                           c, c);
+        document.dispatchEvent(event);
+      }
+    ''')
+    self.btest(path_from_root('tests', 'glfw3_events.c'), args=['--pre-js', 'pre.js', '-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3'], expected='1')
 
   def test_asm_swapping(self):
     self.clear()
@@ -2624,6 +2706,12 @@ window.close = function() {
   def test_zzz_pthread_64bit_atomics(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_atomics.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
+  # Test 64-bit C++11 atomics.
+  def test_zzz_pthread_64bit_cxx11_atomics(self):
+    for opt in [['-O0'], ['-O3']]:
+      for pthreads in [[], ['-s', 'USE_PTHREADS=1']]:
+        self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_cxx11_atomics.cpp'), expected='0', args=opt + pthreads + ['-std=c++11'], timeout=30)
+
   # Test the old GCC atomic __sync_fetch_and_op builtin operations.
   def test_zzz_pthread_gcc_atomic_fetch_and_op(self):
     # We need to resort to using regexes to optimize out SharedArrayBuffer when pthreads are not supported, which is brittle!
@@ -2753,6 +2841,45 @@ window.close = function() {
   def test_zzz_separate_asm_pthreads(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '--separate-asm', '--profiling'], timeout=30)
 
+  def test_zzz_pthread_custom_pthread_main_url(self):
+    self.clear()
+    os.makedirs(os.path.join(self.get_dir(), 'cdn'));
+    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
+      #include <stdio.h>
+      #include <string.h>
+      #include <emscripten/emscripten.h>
+      #include <emscripten/threading.h>
+      #include <pthread.h>
+      int result = 0;
+      void *thread_main(void *arg) {
+        emscripten_atomic_store_u32(&result, 1);
+        pthread_exit(0);
+      }
+
+      int main() {
+        pthread_t t;
+        if (emscripten_has_threading_support()) {
+          pthread_create(&t, 0, thread_main, 0);
+          pthread_join(t, 0);
+        } else {
+          result = 1;
+        }
+        REPORT_RESULT();
+      }
+    '''))
+
+    # Test that it is possible to define "Module.pthreadMainPrefixURL" string to locate where pthread-main.js will be loaded from.
+    open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { pthreadMainPrefixURL: "cdn/", '))
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'shell.html', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-o', 'test.html']).communicate()
+    shutil.move('pthread-main.js', os.path.join('cdn', 'pthread-main.js'))
+    self.run_browser('test.html', '', '/report_result?1')
+
+    # Test that it is possible to define "Module.locateDFile(foo)" function to locate where pthread-main.js will be loaded from.
+    open(self.in_dir('shell2.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "pthread-main.js") return "cdn/pthread-main.js"; else return filename; }, '))
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'shell2.html', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-o', 'test2.html']).communicate()
+    try_delete('pthread-main.js')
+    self.run_browser('test2.html', '', '/report_result?1')
+
   # Test that it is possible to send a signal via calling alarm(timeout), which in turn calls to the signal handler set by signal(SIGALRM, func);
   def test_sigalrm(self):
     self.btest(path_from_root('tests', 'sigalrm.cpp'), expected='0', args=['-O3'], timeout=30)
@@ -2848,10 +2975,10 @@ window.close = function() {
     self.btest(path_from_root('tests', 'canvas_size_proxy.c'), expected='0', args=['--proxy-to-worker'])
 
   def test_separate_asm(self):
-    for opts in [0, 1, 2]:
+    for opts in [['-O0'], ['-O1'], ['-O2'], ['-O2', '--closure', '1']]:
       print opts
       open('src.cpp', 'w').write(self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
-      Popen([PYTHON, EMCC, 'src.cpp', '-o', 'test.html', '-O' + str(opts)]).communicate()
+      Popen([PYTHON, EMCC, 'src.cpp', '-o', 'test.html'] + opts).communicate()
       self.run_browser('test.html', None, '/report_result?0')
 
       open('one.html', 'w').write('<script src="test.js"></script>')
@@ -2869,7 +2996,7 @@ window.close = function() {
 
       self.clear()
       assert not os.path.exists('tests.asm.js')
-      self.btest('browser_test_hello_world.c', expected='0', args=['-O' + str(opts), '--separate-asm'])
+      self.btest('browser_test_hello_world.c', expected='0', args=opts + ['--separate-asm'])
       assert os.path.exists('test.asm.js')
       os.unlink('test.asm.js')
       self.run_browser('test.html', None, '[no http server activity]', timeout=5) # fail without the asm

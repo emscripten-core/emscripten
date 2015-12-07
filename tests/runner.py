@@ -147,6 +147,7 @@ class RunnerCore(unittest.TestCase):
 
   def skip(self, why):
     print >> sys.stderr, '<skipping: %s> ' % why,
+    return False
 
   def get_dir(self):
     return self.working_dir
