@@ -48,7 +48,9 @@ Defines
 	Input-output versions of EM_ASM.
  	
 	:c:macro:`EM_ASM_` (an extra "_" is added) or :c:macro:`EM_ASM_ARGS` allow values (``int`` or ``double``) to be sent into the code.
-	
+
+	.. note:: The C preprocessor does not have a full understanding of JavaScript tokens, of course. An issue you might see is that it is not aware of nesting due to ``{`` or ``[``, it is only aware of ``,`` and ``(``. As a result, if you have a JavaScript array ``[1,2,3]`` then you might get an error, but can fix things with parentheses: ``([1,2,3])``.
+
 	If you also want a return value, :c:macro:`EM_ASM_INT` receives arguments (of ``int`` or ``double`` type) and returns an ``int``; :c:macro:`EM_ASM_DOUBLE` does the same and returns a ``double``.
 	
 	Arguments arrive as ``$0``, ``$1`` etc. The output value should be returned: ::
