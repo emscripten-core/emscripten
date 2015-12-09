@@ -38,12 +38,10 @@ class Pthreads:
   @staticmethod
   def get(settings, minified):
     if settings.USE_PTHREADS == 2:
-      return ['''if (typeof SharedInt8Array === "undefined") {
+      return ['''if (typeof SharedArrayBuffer === "undefined") {
 try {
   console.log('This browser does not support SharedArrayBuffer/Atomics/pthreads! Patching out SharedArrayBuffer usage...');
   var t0 = performance.now();
-  // "new global.SharedInt8Array(buffer)" -> "new global.Int8Array(buffer)" and likewise for other buffer types.
-  code = code.replace(/new\s+global\.Shared(.*?)Array\(buffer\);/g, "new global.$1Array(buffer);");
 
   // In minified builds the interesting symbol names are mangled, so we have to first find what they are.
   var math_fround = /var\s+([^=]+?)\s*=\s*global\.Math\.fround;/.exec(code);
@@ -165,7 +163,7 @@ try {
   var t1 = performance.now();
   console.log('SAB+Atomics removed in ' + (t1-t0) + ' msecs.');
 } catch(e) { console.log('Failed to optimize out SharedArrayBuffer calls ' + e); }
-} // if no SharedInt8Array
+} // if no SharedArrayBuffer
 ''']
     return []
 

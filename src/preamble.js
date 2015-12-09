@@ -1216,32 +1216,16 @@ if (typeof SharedArrayBuffer !== 'undefined') {
         var num = end - begin;
         var target = new ArrayBuffer(num);
         var targetArray = new Uint8Array(target);
-        var sourceArray = new SharedUint8Array(this, begin, num);
+        var sourceArray = new Uint8Array(this, begin, num);
         targetArray.set(sourceArray);
         return target;
       };
     }
   })();
-
-  HEAP8 = new SharedInt8Array(buffer);
-  HEAP16 = new SharedInt16Array(buffer);
-  HEAP32 = new SharedInt32Array(buffer);
-  HEAPU8 = new SharedUint8Array(buffer);
-  HEAPU16 = new SharedUint16Array(buffer);
-  HEAPU32 = new SharedUint32Array(buffer);
-  HEAPF32 = new SharedFloat32Array(buffer);
-  HEAPF64 = new SharedFloat64Array(buffer);
 } else {
   if (!ENVIRONMENT_IS_PTHREAD) buffer = new ArrayBuffer(TOTAL_MEMORY);
-  HEAP8 = new Int8Array(buffer);
-  HEAP16 = new Int16Array(buffer);
-  HEAP32 = new Int32Array(buffer);
-  HEAPU8 = new Uint8Array(buffer);
-  HEAPU16 = new Uint16Array(buffer);
-  HEAPU32 = new Uint32Array(buffer);
-  HEAPF32 = new Float32Array(buffer);
-  HEAPF64 = new Float64Array(buffer);
 }
+updateGlobalBufferViews();
 
 if (typeof Atomics === 'undefined') {
   // Polyfill singlethreaded atomics ops from http://lars-t-hansen.github.io/ecmascript_sharedmem/shmem.html#Atomics.add
@@ -1271,14 +1255,7 @@ if (Module['buffer']) {
 } else {
   buffer = new ArrayBuffer(TOTAL_MEMORY);
 }
-HEAP8 = new Int8Array(buffer);
-HEAP16 = new Int16Array(buffer);
-HEAP32 = new Int32Array(buffer);
-HEAPU8 = new Uint8Array(buffer);
-HEAPU16 = new Uint16Array(buffer);
-HEAPU32 = new Uint32Array(buffer);
-HEAPF32 = new Float32Array(buffer);
-HEAPF64 = new Float64Array(buffer);
+updateGlobalBufferViews();
 #else // SPLIT_MEMORY
 // make sure total memory is a multiple of the split memory size
 var SPLIT_MEMORY = {{{ SPLIT_MEMORY }}};
