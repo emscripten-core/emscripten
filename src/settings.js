@@ -533,6 +533,11 @@ var SWAPPABLE_ASM_MODULE = 0; // If 1, then all exports from the asm.js module w
 
 var SEPARATE_ASM = 0; // see emcc --separate-asm
 
+var ONLY_MY_CODE = 0; // This disables linking and other causes of adding extra code
+                      // automatically, and as a result, your output compiled code
+                      // (in the .asm.js file, if you emit with --separate-asm) will
+                      //  contain only the functions you provide.
+
 var PGO = 0; // Enables profile-guided optimization in the form of runtime checks for
              // which functions are actually called. Emits a list during shutdown that you
              // can pass to DEAD_FUNCTIONS (you can also emit the list manually by

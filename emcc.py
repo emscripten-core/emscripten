@@ -992,13 +992,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EXPORTED_FUNCTIONS += ['___cxa_demangle']
       forced_stdlibs += ['libcxxabi']
 
-    if type(shared.Settings.EXPORTED_FUNCTIONS) in (list, tuple):
-      # always need malloc and free to be kept alive and exported, for internal use and other modules
-      for required_export in ['_malloc', '_free']:
-        if required_export not in shared.Settings.EXPORTED_FUNCTIONS:
-          shared.Settings.EXPORTED_FUNCTIONS.append(required_export)
-    else:
-      logging.debug('using response file for EXPORTED_FUNCTIONS, make sure it includes _malloc and _free')
+    if not shared.Settings.ONLY_MY_CODE:
+      if type(shared.Settings.EXPORTED_FUNCTIONS) in (list, tuple):
+        # always need malloc and free to be kept alive and exported, for internal use and other modules
+        for required_export in ['_malloc', '_free']:
+          if required_export not in shared.Settings.EXPORTED_FUNCTIONS:
+            shared.Settings.EXPORTED_FUNCTIONS.append(required_export)
+      else:
+        logging.debug('using response file for EXPORTED_FUNCTIONS, make sure it includes _malloc and _free')
 
     assert not (bind and shared.Settings.NO_DYNAMIC_EXECUTION), 'NO_DYNAMIC_EXECUTION disallows embind'
 
@@ -1032,7 +1033,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if js_opts:
       shared.Settings.RUNNING_JS_OPTS = 1
 
-    if not shared.Settings.NO_FILESYSTEM:
+    if not shared.Settings.NO_FILESYSTEM and not shared.Settings.ONLY_MY_CODE:
       shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location'] # so FS can report errno back to C
       if not shared.Settings.NO_EXIT_RUNTIME:
         shared.Settings.EXPORTED_FUNCTIONS += ['_fflush'] # to flush the streams on FS quit
@@ -1063,6 +1064,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       debug_level = max(1, debug_level) # keep whitespace readable, for asm.js parser simplicity
       shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
       assert not shared.Settings.SPLIT_MEMORY, 'WebAssembly does not support split memory'
+
+    if shared.Settings.ONLY_MY_CODE:
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
 
     shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
     shared.Settings.OPT_LEVEL = opt_level
@@ -1227,6 +1231,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if not LEAVE_INPUTS_RAW and \
        not shared.Settings.BUILD_AS_SHARED_LIB and \
        not shared.Settings.BOOTSTRAPPING_STRUCT_INFO and \
+       not shared.Settings.ONLY_MY_CODE and \
        not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
       extra_files_to_link = system_libs.get_ports(shared.Settings)
       extra_files_to_link += system_libs.calculate([f for _, f in sorted(temp_files)] + extra_files_to_link, in_temp, stdout, stderr, forced=forced_stdlibs)
