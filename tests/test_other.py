@@ -5876,19 +5876,24 @@ int main() {
     self.assertContained("emcc: warning: cannot represent a NaN literal", stderr)
     self.assertContained('//@line 12 "src.cpp"', stderr)
 
-  def test_no_linking(self):
+  def test_only_my_code(self):
     check_execute([PYTHON, EMCC, '-O1', path_from_root('tests', 'hello_world.c'), '--separate-asm'])
     count = open('a.out.asm.js').read().count('function ')
     assert count > 30, count # libc brings in a bunch of stuff
 
-    check_execute([PYTHON, EMCC, '-O1', path_from_root('tests', 'hello_world.c'), '--separate-asm', '-s', 'ONLY_MY_CODE=1'])
-    count = open('a.out.asm.js').read().count('function ')
-    assert count == 2, count # without libc, we are minimal, just the _main we wrote ourselves (plus the asm function itself)
-    full = 'var Module = {};\n' + open('a.out.asm.js').read()
-    open('asm.js', 'w').write(full)
-    if SPIDERMONKEY_ENGINE in JS_ENGINES:
-      out = run_js('asm.js', engine=SPIDERMONKEY_ENGINE, stderr=STDOUT)
-      self.validate_asmjs(out)
-    else:
-      print '(skipping asm.js validation check)'
+    def test(filename, opts, expected):
+      print filename, opts
+      check_execute([PYTHON, EMCC, path_from_root('tests', filename), '--separate-asm', '-s', 'ONLY_MY_CODE=1'] + opts)
+      full = 'var Module = {};\n' + open('a.out.asm.js').read()
+      open('asm.js', 'w').write(full)
+      count = open('a.out.asm.js').read().count('function ')
+      assert count == expected, count # without libc, we are minimal, just the code we wrote ourselves (plus the asm function itself)
+      if SPIDERMONKEY_ENGINE in JS_ENGINES:
+        out = run_js('asm.js', engine=SPIDERMONKEY_ENGINE, stderr=STDOUT)
+        self.validate_asmjs(out)
+      else:
+        print '(skipping asm.js validation check)'
+
+    test('hello_123.c', ['-O1'], 2)
+    test('fasta.cpp', ['-O3', '-g2'], 3)
 
