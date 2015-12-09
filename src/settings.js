@@ -370,7 +370,7 @@ var NO_BROWSER = 0; // If set, disables building in browser support using the Br
 var NODE_STDOUT_FLUSH_WORKAROUND = 1; // Whether or not to work around node issues with not flushing stdout. This
                                       // can cause unnecessary whitespace to be printed.
 
-var EXPORTED_FUNCTIONS = ['_main', '_malloc'];
+var EXPORTED_FUNCTIONS = ['_main'];
                                     // Functions that are explicitly exported. These functions are kept alive
                                     // through LLVM dead code elimination, and also made accessible outside of
                                     // the generated code even after running closure compiler (on "Module").
@@ -379,8 +379,6 @@ var EXPORTED_FUNCTIONS = ['_main', '_malloc'];
                                     // have a main() function and want it to run, you must include it in this
                                     // list (as _main is by default in this value, and if you override it
                                     // without keeping it there, you are in effect removing it).
-                                    //
-                                    // malloc should always be here, as it is used for internal allocations.
 
 var EXPORT_ALL = 0; // If true, we export all the symbols. Note that this does *not* affect LLVM, so it can
                     // still eliminate functions as dead. This just exports them on the Module object.
