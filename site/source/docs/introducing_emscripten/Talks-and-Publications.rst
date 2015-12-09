@@ -7,6 +7,8 @@ Talks and Publications
 Presentations
 =============
 
+- Slides from Mozlando 2015: `Emscripten, WebAssembly, and Binaryen <https://kripken.github.io/talks/wasm.html>`_ (`kripken <https://github.com/kripken>`_)
+
 - Slides from CppCon 2014: 
 
 	- `Emscripten & asm.js: C++'s role in the modern web <http://kripken.github.io/mloc_emscripten_talk/cppcon.html>`_ (`kripken <https://github.com/kripken>`_)
