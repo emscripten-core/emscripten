@@ -5846,6 +5846,13 @@ int main() {
     stdout, stderr = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'PRECISE_F32=1', '-o', 'a.html'], stderr=PIPE).communicate()
     self.assertNotContained('forcing separate asm output', stderr)
 
+    # Manually doing separate asm should show a warning, if not targeting html
+    warning = '--separate-asm works best when compiling to HTML'
+    stdout, stderr = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--separate-asm'], stderr=PIPE).communicate()
+    self.assertContained(warning, stderr)
+    stdout, stderr = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--separate-asm', '-o', 'a.html'], stderr=PIPE).communicate()
+    self.assertNotContained(warning, stderr)
+
   def test_canonicalize_nan_warning(self):
     open('src.cpp', 'w').write(r'''
 #include <stdio.h>

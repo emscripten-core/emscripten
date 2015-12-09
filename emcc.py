@@ -870,7 +870,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     newargs = CC_ADDITIONAL_ARGS + newargs
 
-    assert not (separate_asm and final_suffix != 'html'), '--separate-asm requires building to HTML'
+    if separate_asm and final_suffix != 'html':
+      logging.warning("--separate-asm works best when compiling to HTML. otherwise, you must yourself load the '.asm.js' file that is emitted separately, and must do so before loading the main '.js` file")
 
     # If we are using embind and generating JS, now is the time to link in bind.cpp
     if bind and final_suffix in JS_CONTAINING_SUFFIXES:
