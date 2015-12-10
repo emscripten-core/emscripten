@@ -117,7 +117,11 @@ var emscriptenMemoryProfiler = {
 
     // Decrement global stats.
     var sz = this.allocatedPtrSizes[ptr];
-    this.totalMemoryAllocated -= sz;
+    if(!isNaN(sz))
+    {
+      this.totalMemoryAllocated -= sz;
+    }
+    
     delete this.allocatedPtrSizes[ptr];
     delete this.preRunMallocs[ptr]; // Also free if this happened to be a _malloc performed at preRun time.
     this.stackTopWatermark = Math.max(this.stackTopWatermark, STACKTOP);
@@ -142,8 +146,8 @@ var emscriptenMemoryProfiler = {
   },
 
   onRealloc: function onRealloc(oldAddress, newAddress, size) {
-    onFree(oldAddress);
-    onMalloc(newAddress, size);
+    this.onFree(oldAddress);
+    this.onMalloc(newAddress, size);
   },
 
   onPreloadComplete: function onPreloadComplete() {
@@ -173,9 +177,15 @@ var emscriptenMemoryProfiler = {
     memoryprofiler = document.getElementById('memoryprofiler');
     if (!memoryprofiler) {
       var div = document.createElement("div");
-      div.innerHTML = "<div style='border: 2px solid black; padding: 2px;'><canvas style='border: 1px solid black; margin-left: auto; margin-right: auto; display: block;' id='memoryprofiler_canvas' width='100%' height='50'></canvas>trackedCallstackMinSizeBytes=<input id='memoryprofiler_min_tracked_alloc_size' type=number onChange='this.trackedCallstackMinSizeBytes=this.value;' value="+this.trackedCallstackMinSizeBytes+"></input><br/><input type='checkbox' onchange='this.allocateStatistics=this.checked;'>Print allocation statistics by callstack to html log (warning: slow!)</input><input type='button' value='Clear alloc stats' onclick='this.allocationSiteStatistics = {}; this.allocationSitePtrs = {};'></input><div id='memoryprofiler'></div>";
+      div.innerHTML = "<div style='border: 2px solid black; padding: 2px;'><canvas style='border: 1px solid black; margin-left: auto; margin-right: auto; display: block;' id='memoryprofiler_canvas' width='100%' height='50'></canvas>trackedCallstackMinSizeBytes=<input id='memoryprofiler_min_tracked_alloc_size' type=number value="+this.trackedCallstackMinSizeBytes+"></input><br/><input id='memoryprofiler_enable_allocation_stats' type='checkbox'>Print allocation statistics by callstack to html log (warning: slow!)</input><input id='memoryprofiler_clear_alloc_stats' type='button' value='Clear alloc stats' ></input><div id='memoryprofiler'></div>";
       document.body.appendChild(div);
       memoryprofiler = document.getElementById('memoryprofiler');
+
+      self = this;
+
+      document.getElementById('memoryprofiler_min_tracked_alloc_size').addEventListener("change", function(e){self.trackedCallstackMinSizeBytes=this.value;});
+      document.getElementById('memoryprofiler_clear_alloc_stats').addEventListener("click", function(e){self.allocationSiteStatistics = {}; self.allocationSitePtrs = {};});
+      document.getElementById('memoryprofiler_enable_allocation_stats').addEventListener("change", function(e){self.allocateStatistics=this.checked;});
     }
   
     this.canvas = document.getElementById('memoryprofiler_canvas');
@@ -354,7 +364,8 @@ var emscriptenMemoryProfiler = {
         if (numcalls >= this.allocateStatisticsMinReported) calls.push(i);
       }
 
-      calls.sort(function(a,b) { return this.allocationSiteStatistics[b] - this.allocationSiteStatistics[a]; });
+      self = this;
+      calls.sort(function(a,b) { return self.allocationSiteStatistics[b] - self.allocationSiteStatistics[a]; });
       html += '<h4>Allocated pointers by call stack:<h4>';
       var ndemangled = 10;
       for (var i in calls) {
