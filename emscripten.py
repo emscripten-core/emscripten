@@ -1197,6 +1197,27 @@ Runtime.registerFunctions(%(sigs)s, Module);
       outfile.close()
       shared.try_delete(outfile.name) # remove partial output
 
+def emscript_wasm_backend(infile, settings, outfile, libraries=[], compiler_engine=None,
+                          temp_files=None, DEBUG=None, DEBUG_CACHE=None):
+  # Overview:
+  #   * Run LLVM backend to emit JS. JS includes function bodies, memory initializer,
+  #     and various metadata
+  #   * Run compiler.js on the metadata to emit the shell js code, pre/post-ambles,
+  #     JS library dependencies, etc.
+
+  temp_wasm = temp_files.get('.wb.s').name
+  backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
+  backend_args = [backend_compiler, infile, '-march=wasm32', '-filetype=asm', '-o', temp_wasm]
+  if DEBUG:
+    logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))
+    t = time.time()
+  shared.jsrun.timeout_run(subprocess.Popen(backend_args, stdout=subprocess.PIPE))
+  if DEBUG:
+    logging.debug('  emscript: llvm backend took %s seconds' % (time.time() - t))
+    t = time.time()
+  print open(temp_wasm).read()
+  1/0
+
 if os.environ.get('EMCC_FAST_COMPILER') == '0':
   logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
   sys.exit(1)
@@ -1219,8 +1240,10 @@ def main(args, compiler_engine, cache, temp_files, DEBUG, DEBUG_CACHE):
     shared.Building.ensure_struct_info(struct_info)
     if DEBUG: logging.debug('  emscript: bootstrapping struct info complete')
 
-  emscript(args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine,
-           temp_files=temp_files, DEBUG=DEBUG, DEBUG_CACHE=DEBUG_CACHE)
+  emscripter = emscript_wasm_backend
+
+  emscripter(args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine,
+             temp_files=temp_files, DEBUG=DEBUG, DEBUG_CACHE=DEBUG_CACHE)
 
 def _main(args=None):
   if args is None:
