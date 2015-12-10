@@ -7646,6 +7646,49 @@ function eliminateDeadFuncs(ast) {
   });
 }
 
+// Cleans up globals in an asm.js module that are not used. Assumes it
+// receives a full asm.js module, as from the side file in --separate-asm
+function eliminateDeadGlobals(ast) {
+  traverse(ast, function(func, type) {
+    if (type !== 'function') return;
+    // find all symbols used by name that are not locals, so they must be globals
+    var stats = func[3];
+    var used = {};
+    for (var i = 0; i < stats.length; i++) {
+      var asmFunc = stats[i];
+      if (asmFunc[0] !== 'defun') continue;
+      var asmData = normalizeAsm(asmFunc);
+      traverse(asmFunc, function(node, type) {
+        if (type == 'name') {
+          var name = node[1];
+          if (!(name in asmData.params || name in asmData.vars)) {
+            used[name] = 1;
+          }
+        }
+      });
+      denormalizeAsm(asmFunc, asmData);
+    }
+    for (var i = 0; i < stats.length; i++) {
+      var node = stats[i];
+      if (node[0] != 'var') continue;
+      for (var j = 0; j < node[1].length; j++) {
+        var v = node[1][j];
+        var name = v[0];
+        var value = v[1];
+        if (!(name in used)) {
+          node[1].splice(j, 1);
+          j--;
+          if (node[1].length == 0) {
+            // remove the whole var
+            stats[i] = emptyNode();
+          }
+        }
+      }
+    }
+    removeEmptySubNodes(func);
+  });
+}
+
 // Passes table
 
 var minifyWhitespace = false, printMetadata = true, asm = false, asmPreciseF32 = false, emitJSON = false, last = false;
@@ -7665,6 +7708,7 @@ var passes = {
   registerize: registerize,
   registerizeHarder: registerizeHarder,
   eliminateDeadFuncs: eliminateDeadFuncs,
+  eliminateDeadGlobals: eliminateDeadGlobals,
   eliminate: eliminate,
   eliminateMemSafe: eliminateMemSafe,
   aggressiveVariableElimination: aggressiveVariableElimination,
