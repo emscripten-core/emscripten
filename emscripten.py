@@ -687,7 +687,8 @@ function ftCall_%s(%s) {%s
 
     # calculate exports
     exported_implemented_functions = list(exported_implemented_functions) + metadata['initializers']
-    exported_implemented_functions.append('runPostSets')
+    if not settings['ONLY_MY_CODE']:
+      exported_implemented_functions.append('runPostSets')
     if settings['ALLOW_MEMORY_GROWTH']:
       exported_implemented_functions.append('_emscripten_replace_memory')
     all_exported = exported_implemented_functions + asm_runtime_funcs + function_tables
