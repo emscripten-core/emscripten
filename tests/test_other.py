@@ -5898,6 +5898,6 @@ int main() {
       else:
         print '(skipping asm.js validation check)'
 
-    test('hello_123.c', ['-O1'], 2, 2)
-    test('fasta.cpp', ['-O3', '-g2'], 3, 13)
+    test('hello_123.c', ['-O1'], 1, 2)
+    test('fasta.cpp', ['-O3', '-g2'], 2, 13)
 
