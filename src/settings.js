@@ -621,6 +621,10 @@ var BINARYEN = ""; // Path to [Binaryen](https://github.com/WebAssembly/binaryen
                    // directory exists.
 var BINARYEN_METHOD = ""; // See binaryen's src/js/post.js for details.
 
+var WASM_BACKEND = 0; // Whether to use the WebAssembly backend that is in development in LLVM.
+                      // This requires that BINARYEN be set, as we use Binaryen's s2wasm to
+                      // translate the backend output.
+
 var WASM = 0; // Older WebAssembly experiment. Compress the asm.js module into an early proposal for WebAssembly,
               // and ship a decompressor that runs on the client.
               // Note that wasm loading is asynchronous in the browser, and for that reason we wrap the entire emitted

@@ -1197,6 +1197,41 @@ Runtime.registerFunctions(%(sigs)s, Module);
       outfile.close()
       shared.try_delete(outfile.name) # remove partial output
 
+def emscript_wasm_backend(infile, settings, outfile, libraries=[], compiler_engine=None,
+                          temp_files=None, DEBUG=None, DEBUG_CACHE=None):
+  # Overview:
+  #   * Run LLVM backend to emit .s
+  #   * Run Binaryen's s2wasm to generate WebAssembly.
+  #   * We may also run some Binaryen passes here.
+
+  temp_s = temp_files.get('.wb.s').name
+  backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
+  backend_args = [backend_compiler, infile, '-march=wasm32', '-filetype=asm', '-o', temp_s]
+  if DEBUG:
+    logging.debug('emscript: llvm wasm backend: ' + ' '.join(backend_args))
+    t = time.time()
+  shared.check_call(backend_args)
+  if DEBUG:
+    logging.debug('  emscript: llvm wasm backend took %s seconds' % (time.time() - t))
+    t = time.time()
+    import shutil
+    shutil.copyfile(temp_s, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-llvm-backend-output.s'))
+
+  assert settings['BINARYEN'], 'need BINARYEN option set so we can use Binaryen s2wasm on the backend output'
+  temp_wasm = temp_files.get('.wb.wast').name
+  s2wasm_args = [os.path.join(settings['BINARYEN'], 'bin', 's2wasm'), temp_s]
+  if DEBUG:
+    logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
+    t = time.time()
+  shared.check_call(s2wasm_args, stdout=open(temp_wasm, 'w'))
+  if DEBUG:
+    logging.debug('  emscript: binaryen s2wasm took %s seconds' % (time.time() - t))
+    t = time.time()
+    import shutil
+    shutil.copyfile(temp_wasm, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-s2wasm-output.wast'))
+
+  1/0
+
 if os.environ.get('EMCC_FAST_COMPILER') == '0':
   logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
   sys.exit(1)
@@ -1219,8 +1254,10 @@ def main(args, compiler_engine, cache, temp_files, DEBUG, DEBUG_CACHE):
     shared.Building.ensure_struct_info(struct_info)
     if DEBUG: logging.debug('  emscript: bootstrapping struct info complete')
 
-  emscript(args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine,
-           temp_files=temp_files, DEBUG=DEBUG, DEBUG_CACHE=DEBUG_CACHE)
+  emscripter = emscript_wasm_backend if settings['WASM_BACKEND'] else emscript
+
+  emscripter(args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine,
+             temp_files=temp_files, DEBUG=DEBUG, DEBUG_CACHE=DEBUG_CACHE)
 
 def _main(args=None):
   if args is None:
