@@ -5883,19 +5883,21 @@ int main() {
     count = open('a.out.asm.js').read().count('function ')
     assert count > 30, count # libc brings in a bunch of stuff
 
-    def test(filename, opts, expected):
+    def test(filename, opts, expected_funcs, expected_vars):
       print filename, opts
       check_execute([PYTHON, EMCC, path_from_root('tests', filename), '--separate-asm', '-s', 'ONLY_MY_CODE=1'] + opts)
       full = 'var Module = {};\n' + open('a.out.asm.js').read()
       open('asm.js', 'w').write(full)
-      count = open('a.out.asm.js').read().count('function ')
-      assert count == expected, count # without libc, we are minimal, just the code we wrote ourselves (plus the asm function itself)
+      funcs = open('a.out.asm.js').read().count('function ')
+      vars_ = open('a.out.asm.js').read().count('var ')
+      assert funcs == expected_funcs, funcs
+      assert vars_ == expected_vars, vars_
       if SPIDERMONKEY_ENGINE in JS_ENGINES:
         out = run_js('asm.js', engine=SPIDERMONKEY_ENGINE, stderr=STDOUT)
         self.validate_asmjs(out)
       else:
         print '(skipping asm.js validation check)'
 
-    test('hello_123.c', ['-O1'], 2)
-    test('fasta.cpp', ['-O3', '-g2'], 3)
+    test('hello_123.c', ['-O1'], 2, 2)
+    test('fasta.cpp', ['-O3', '-g2'], 3, 13)
 

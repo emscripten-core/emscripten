@@ -1067,6 +1067,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.ONLY_MY_CODE:
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
+      separate_asm = True
+      shared.Settings.FINALIZE_ASM_JS = False
 
     shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
     shared.Settings.OPT_LEVEL = opt_level
@@ -1707,6 +1709,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       temp_target = misc_temp_files.get(suffix='.js').name
       execute([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), js_target, asm_target, temp_target])
       shutil.move(temp_target, js_target)
+
+      # extra only-my-code logic
+      if shared.Settings.ONLY_MY_CODE:
+        temp = asm_target + '.only.js'
+        print jsrun.run_js(shared.path_from_root('tools', 'js-optimizer.js'), shared.NODE_JS, args=[asm_target, 'eliminateDeadGlobals', 'last', 'asm'], stdout=open(temp, 'w'))
+        shutil.move(temp, asm_target)
 
     if shared.Settings.BINARYEN:
       # Emit wasm.js at the top of the js. TODO: for html, it could be a separate script tag
