@@ -167,7 +167,6 @@ Module["asm"] = (function(global, env, buffer) {
   HEAP32[128] = 0;
   return;
  }
- function runPostSets() {}
  return {
   _main: _main
  };
