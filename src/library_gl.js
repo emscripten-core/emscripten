@@ -2002,7 +2002,7 @@ var LibraryGL = {
     view[1] = {{{ makeGetValue('value', '4', 'float') }}};
     view[2] = {{{ makeGetValue('value', '8', 'float') }}};
     view[3] = {{{ makeGetValue('value', '12', 'float') }}};
-    GLctx['clearBufferuiv'](buffer, drawbuffer, view);
+    GLctx['clearBufferfv'](buffer, drawbuffer, view);
   },
 
   glFenceSync__sig: 'iii',
