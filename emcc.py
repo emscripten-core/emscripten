@@ -987,6 +987,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       input_files.append((next_arg_index, shared.path_from_root('third_party', 'stb_image.c')))
       next_arg_index += 1
       shared.Settings.EXPORTED_FUNCTIONS += ['_stbi_load', '_stbi_load_from_memory', '_stbi_image_free']
+      # stb_image 2.x need to have STB_IMAGE_IMPLEMENTATION defined to include the implementation when compiling
+      newargs.append('-DSTB_IMAGE_IMPLEMENTATION')
 
     forced_stdlibs = []
     if shared.Settings.DEMANGLE_SUPPORT:
