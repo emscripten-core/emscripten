@@ -1456,7 +1456,7 @@ Module%s = %s;
 ''' % (access_quote('asmGlobalArg'), the_global,
        shared_array_buffer,
        access_quote('asmLibraryArg'), sending) + '''
-(%s, %s, buffer);
+var asm = Module['asm'](%s, %s, buffer);
 %s;
 ''' % ('Module' + access_quote('asmGlobalArg'),
        'Module' + access_quote('asmLibraryArg'),
