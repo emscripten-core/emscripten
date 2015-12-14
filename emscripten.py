@@ -1280,6 +1280,12 @@ def emscript_wasm_backend(infile, settings, outfile, outfile_name, libraries=[],
 
     last_forwarded_json = forwarded_json = json.loads(forwarded_data)
 
+    # XXX
+    outfile.write(glue)
+    # XXX
+
+    outfile.close()
+
 if os.environ.get('EMCC_FAST_COMPILER') == '0':
   logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
   sys.exit(1)
