@@ -2162,7 +2162,7 @@ var LibrarySDL = {
         if (!raw) {
           if (raw === null) Module.printErr('Trying to reuse preloaded image, but freePreloadedMediaOnUse is set!');
 #if STB_IMAGE
-          var name = Module['_malloc'](filename.length+1);
+          var name = Module['_malloc'](lengthBytesUTF8(filename)+1);
           writeStringToMemory(filename, name);
           addCleanup(function() {
             Module['_free'](name);
