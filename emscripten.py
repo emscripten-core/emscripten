@@ -1236,13 +1236,24 @@ def emscript_wasm_backend(infile, settings, outfile, outfile_name, libraries=[],
 
     # Integrate info from backend
 
-    metadata = { # metadata from backend, TODO
+    metadata = {
       'declares': [],
       'implementedFunctions': [],
       'externs': [],
       'simd': False,
       'maxGlobalAlign': 0,
     }
+
+    # TODO: emit it from s2wasm; for now, we parse it right here
+    for line in open(wasm).readlines():
+      if line.startswith('  (import '):
+        parts = line.split(' ')
+        metadata['declares'].append(parts[3][1:-1])
+      elif line.startswith('  (func '):
+        parts = line.split(' ')
+        metadata['implementedFunctions'].append(parts[3][1:])
+
+    if DEBUG: logging.debug(repr(metadata))
 
     settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
       set(settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + map(shared.JS.to_nice_ident, metadata['declares'])).difference(
