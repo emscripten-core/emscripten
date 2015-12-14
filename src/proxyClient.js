@@ -251,8 +251,7 @@ function shouldPreventDefault(event) {
   document.addEventListener(event, function(event) {
     worker.postMessage({ target: 'document', event: cloneObject(event) });
     
-    var preventDefault = shouldPreventDefault(event);
-    if (true === preventDefault) {
+    if (shouldPreventDefault(event)) {
       event.preventDefault();
     }
   });
