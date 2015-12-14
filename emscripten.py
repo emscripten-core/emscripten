@@ -1242,6 +1242,10 @@ def emscript_wasm_backend(infile, settings, outfile, outfile_name, libraries=[],
       'externs': [],
       'simd': False,
       'maxGlobalAlign': 0,
+      'initializers': [],
+      'staticBump': 0,
+      'exports': [],
+      'asmConsts': {},
     }
 
     # TODO: emit it from s2wasm; for now, we parse it right here
@@ -1252,6 +1256,9 @@ def emscript_wasm_backend(infile, settings, outfile, outfile_name, libraries=[],
       elif line.startswith('  (func '):
         parts = line.split(' ')
         metadata['implementedFunctions'].append(parts[3][1:])
+      elif line.startswith('  (export '):
+        parts = line.split(' ')
+        metadata['exports'].append(parts[1][1:-1])
 
     if DEBUG: logging.debug(repr(metadata))
 
@@ -1264,8 +1271,6 @@ def emscript_wasm_backend(infile, settings, outfile, outfile_name, libraries=[],
       settings['SIMD'] = 1
 
     settings['MAX_GLOBAL_ALIGN'] = metadata['maxGlobalAlign']
-
-    assert not (metadata['simd'] and settings['SPLIT_MEMORY']), 'SIMD is used, but not supported in SPLIT_MEMORY'
 
     # Save settings to a file to work around v8 issue 1579
     settings_file = temp_files.get('.txt').name
@@ -1291,9 +1296,191 @@ def emscript_wasm_backend(infile, settings, outfile, outfile_name, libraries=[],
 
     last_forwarded_json = forwarded_json = json.loads(forwarded_data)
 
-    # XXX
-    outfile.write(glue)
-    # XXX
+    pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
+
+    # memory and global initializers
+
+    global_initializers = str(', '.join(map(lambda i: '{ func: function() { %s() } }' % i, metadata['initializers'])))
+
+    staticbump = metadata['staticBump']
+    while staticbump % 16 != 0: staticbump += 1
+    pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;%s
+  /* global initializers */ %s __ATINIT__.push(%s);
+''' % (staticbump,
+           'assert(STATICTOP < SPLIT_MEMORY, "SPLIT_MEMORY size must be big enough so the entire static memory, need " + STATICTOP);' if settings['SPLIT_MEMORY'] else '',
+           'if (!ENVIRONMENT_IS_PTHREAD)' if settings['USE_PTHREADS'] else '',
+           global_initializers))
+
+    pre = pre.replace('{{{ STATIC_BUMP }}}', str(staticbump))
+
+    # merge forwarded data
+    settings['EXPORTED_FUNCTIONS'] = forwarded_json['EXPORTED_FUNCTIONS']
+    all_exported_functions = set(shared.expand_response(settings['EXPORTED_FUNCTIONS'])) # both asm.js and otherwise
+
+    for additional_export in settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE']: # additional functions to export from asm, if they are implemented
+      all_exported_functions.add('_' + additional_export)
+    exported_implemented_functions = set(metadata['exports'])
+    export_bindings = settings['EXPORT_BINDINGS']
+    export_all = settings['EXPORT_ALL']
+    all_implemented = metadata['implementedFunctions'] + forwarded_json['Functions']['implementedFunctions'].keys() # XXX perf?
+    for key in all_implemented:
+      if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
+        exported_implemented_functions.add(key)
+    implemented_functions = set(metadata['implementedFunctions'])
+    if settings['ASSERTIONS'] and settings.get('ORIGINAL_EXPORTED_FUNCTIONS'):
+      original_exports = settings['ORIGINAL_EXPORTED_FUNCTIONS']
+      if original_exports[0] == '@': original_exports = json.loads(open(original_exports[1:]).read())
+      for requested in original_exports:
+        # check if already implemented
+        # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS \
+        if requested not in all_implemented and \
+           requested != '_malloc' and \
+           (('function ' + requested.encode('utf-8')) not in pre): # could be a js library func
+          logging.warning('function requested to be exported, but not implemented: "%s"', requested)
+
+    asm_consts = [0]*len(metadata['asmConsts'])
+    all_sigs = []
+    for k, v in metadata['asmConsts'].iteritems():
+      const = v[0].encode('utf-8')
+      sigs = v[1]
+      if const[0] == '"' and const[-1] == '"':
+        const = const[1:-1]
+      const = '{ ' + const + ' }'
+      args = []
+      arity = max(map(len, sigs)) - 1
+      for i in range(arity):
+        args.append('$' + str(i))
+      const = 'function(' + ', '.join(args) + ') ' + const
+      asm_consts[int(k)] = const
+      all_sigs += sigs
+
+    asm_const_funcs = []
+    for sig in set(all_sigs):
+      forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_' + sig] = 1
+      args = ['a%d' % i for i in range(len(sig)-1)]
+      all_args = ['code'] + args
+      asm_const_funcs.append(r'''
+function _emscripten_asm_const_%s(%s) {
+ return ASM_CONSTS[code](%s);
+}''' % (sig.encode('utf-8'), ', '.join(all_args), ', '.join(args)))
+
+    pre = pre.replace('// === Body ===', '// === Body ===\n' + '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n' + '\n'.join(asm_const_funcs) + '\n')
+
+    outfile.write(pre)
+    pre = None
+
+    basic_funcs = ['abort', 'assert']
+
+    asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace', 'setThrew']
+    asm_runtime_funcs += ['setTempRet0', 'getTempRet0']
+
+    if settings['ONLY_MY_CODE']:
+      asm_runtime_funcs = []
+
+    def quote(prop):
+      if settings['USE_CLOSURE_COMPILER'] == 2:
+        return "'" + prop + "'"
+      else:
+        return prop
+
+    def access_quote(prop):
+      if settings['USE_CLOSURE_COMPILER'] == 2:
+        return "['" + prop + "']"
+      else:
+        return '.' + prop
+
+    # calculate exports
+    exported_implemented_functions = list(exported_implemented_functions) + metadata['initializers']
+    if not settings['ONLY_MY_CODE']:
+      exported_implemented_functions.append('runPostSets')
+    if settings['ALLOW_MEMORY_GROWTH']:
+      exported_implemented_functions.append('_emscripten_replace_memory')
+    all_exported = exported_implemented_functions + asm_runtime_funcs
+    exported_implemented_functions = list(set(exported_implemented_functions))
+    if settings['EMULATED_FUNCTION_POINTERS']:
+      all_exported = list(set(all_exported).union(in_table))
+    exports = []
+    for export in all_exported:
+      exports.append(quote(export) + ": " + export)
+    exports = '{ ' + ', '.join(exports) + ' }'
+    # calculate globals
+    try:
+      del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
+    except:
+      pass
+    if not settings['RELOCATABLE']:
+      global_vars = metadata['externs']
+    else:
+      global_vars = [] # linkable code accesses globals through function calls
+    global_funcs = list(set([key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2]).difference(set(global_vars)).difference(implemented_functions))
+    def math_fix(g):
+      return g if not g.startswith('Math_') else g.split('_')[1]
+
+    basic_vars = ['STACKTOP', 'STACK_MAX', 'ABORT']
+    basic_float_vars = []
+
+    # sent data
+    the_global = '{}'
+    sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars]) + ' }'
+    # received
+    receiving = ''
+    if settings['ASSERTIONS']:
+      # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
+      # some support code
+      receiving = '\n'.join(['var real_' + s + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {
+assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+return real_''' + s + '''.apply(null, arguments);
+};
+''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', 'runPostSets', '_emscripten_replace_memory']])
+
+    if not settings['SWAPPABLE_ASM_MODULE']:
+      receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions])
+    else:
+      receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + s + ' = Module["' + s + '"] = function() { return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions])
+    receiving += ';\n'
+
+    # finalize
+
+    if settings['USE_PTHREADS']:
+      shared_array_buffer = "if (typeof SharedArrayBuffer !== 'undefined') Module.asmGlobalArg['Atomics'] = Atomics;"
+    else:
+      shared_array_buffer = ''
+
+    runtime_funcs = []
+
+    funcs_js = ['''
+Module%s = %s;
+%s
+Module%s = %s;
+''' % (access_quote('asmGlobalArg'), the_global,
+       shared_array_buffer,
+       access_quote('asmLibraryArg'), sending) + '''
+(%s, %s, buffer);
+%s;
+''' % ('Module' + access_quote('asmGlobalArg'),
+       'Module' + access_quote('asmLibraryArg'),
+       receiving)]
+
+    funcs_js.append('''
+Runtime.stackAlloc = asm['stackAlloc'];
+Runtime.stackSave = asm['stackSave'];
+Runtime.stackRestore = asm['stackRestore'];
+Runtime.establishStackSpace = asm['establishStackSpace'];
+''')
+
+    funcs_js.append('''
+Runtime.setTempRet0 = asm['setTempRet0'];
+Runtime.getTempRet0 = asm['getTempRet0'];
+''')
+
+    for i in range(len(funcs_js)): # do this loop carefully to save memory
+      if WINDOWS: funcs_js[i] = funcs_js[i].replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
+      outfile.write(funcs_js[i])
+    funcs_js = None
+
+    if WINDOWS: post = post.replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
+    outfile.write(post)
 
     outfile.close()
 
