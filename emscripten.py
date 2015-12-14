@@ -37,7 +37,7 @@ if STDERR_FILE:
   logging.info('logging stderr in js compiler phase into %s' % STDERR_FILE)
   STDERR_FILE = open(STDERR_FILE, 'w')
 
-def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
+def emscript(infile, settings, outfile, outfile_name, libraries=[], compiler_engine=None,
              temp_files=None, DEBUG=None, DEBUG_CACHE=None):
   """Runs the emscripten LLVM-to-JS compiler.
 
@@ -1197,7 +1197,7 @@ Runtime.registerFunctions(%(sigs)s, Module);
       outfile.close()
       shared.try_delete(outfile.name) # remove partial output
 
-def emscript_wasm_backend(infile, settings, outfile, libraries=[], compiler_engine=None,
+def emscript_wasm_backend(infile, settings, outfile, outfile_name, libraries=[], compiler_engine=None,
                           temp_files=None, DEBUG=None, DEBUG_CACHE=None):
   # Overview:
   #   * Run LLVM backend to emit .s
@@ -1218,19 +1218,17 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=[], compiler_engi
     shutil.copyfile(temp_s, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-llvm-backend-output.s'))
 
   assert settings['BINARYEN'], 'need BINARYEN option set so we can use Binaryen s2wasm on the backend output'
-  temp_wasm = temp_files.get('.wb.wast').name
+  wasm = outfile_name[:-3] + '.wast'
   s2wasm_args = [os.path.join(settings['BINARYEN'], 'bin', 's2wasm'), temp_s]
   if DEBUG:
     logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
     t = time.time()
-  shared.check_call(s2wasm_args, stdout=open(temp_wasm, 'w'))
+  shared.check_call(s2wasm_args, stdout=open(wasm, 'w'))
   if DEBUG:
     logging.debug('  emscript: binaryen s2wasm took %s seconds' % (time.time() - t))
     t = time.time()
     import shutil
-    shutil.copyfile(temp_wasm, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-s2wasm-output.wast'))
-
-  1/0
+    shutil.copyfile(wasm, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-s2wasm-output.wast'))
 
 if os.environ.get('EMCC_FAST_COMPILER') == '0':
   logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
@@ -1256,7 +1254,7 @@ def main(args, compiler_engine, cache, temp_files, DEBUG, DEBUG_CACHE):
 
   emscripter = emscript_wasm_backend if settings['WASM_BACKEND'] else emscript
 
-  emscripter(args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine,
+  emscripter(args.infile, settings, args.outfile, args.outfile_name, libraries, compiler_engine=compiler_engine,
              temp_files=temp_files, DEBUG=DEBUG, DEBUG_CACHE=DEBUG_CACHE)
 
 def _main(args=None):
@@ -1330,6 +1328,7 @@ WARNING: You should normally never use this! Use emcc instead.
   if len(positional) != 1:
     raise RuntimeError('Must provide exactly one positional argument. Got ' + str(len(positional)) + ': "' + '", "'.join(positional) + '"')
   keywords.infile = os.path.abspath(positional[0])
+  keywords.outfile_name = keywords.outfile
   if isinstance(keywords.outfile, basestring):
     keywords.outfile = open(keywords.outfile, 'w')
 

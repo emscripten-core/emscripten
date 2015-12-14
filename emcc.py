@@ -828,6 +828,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     js_target = unsuffixed(target) + '.js'
 
     asm_target = js_target[:-3] + '.asm.js' # might not be used, but if it is, this is the name
+    wasm_target = asm_target.replace('.asm.js', '.wast') # ditto, might not be used
     if final_suffix == 'html' and not separate_asm and 'PRECISE_F32=2' in settings_changes or 'USE_PTHREADS=2' in settings_changes:
       separate_asm = True
       logging.warning('forcing separate asm output (--separate-asm), because -s PRECISE_F32=2 or -s USE_PTHREADS=2 was passed.')
@@ -1351,7 +1352,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     final = shared.Building.emscripten(final, append_ext=False, extra_args=extra_args)
     if DEBUG: save_intermediate('original')
 
-    log_time('emscript (llvm=>js)')
+    if shared.Settings.WASM_BACKEND:
+      # we also received wasm at this stage
+      wasm_temp = final[:-3] + '.wast'
+      shutil.move(wasm_temp, wasm_target)
+
+    log_time('emscript (llvm=>%s)' % ('wasm' if shared.Settings.BINARYEN else 'js'))
 
     # Embed and preload files
     if shared.Settings.SPLIT_MEMORY:
@@ -1705,7 +1711,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     shutil.move(final, js_target)
 
     # Separate out the asm.js code, if asked. Or, if necessary for another option
-    if separate_asm or shared.Settings.BINARYEN:
+    if (separate_asm or shared.Settings.BINARYEN) and not shared.Settings.WASM_BACKEND:
       temp_target = misc_temp_files.get(suffix='.js').name
       execute([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), js_target, asm_target, temp_target])
       shutil.move(temp_target, js_target)
@@ -1722,7 +1728,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       wasm_js = open(os.path.join(binaryen_bin, 'wasm.js')).read()
       wasm_js = wasm_js.replace("Module['asmjsCodeFile']", '"' + os.path.basename(asm_target) + '"') # " or '? who knows :)
       wasm_js = wasm_js.replace('Module["asmjsCodeFile"]', '"' + os.path.basename(asm_target) + '"')
-      wasm_target = asm_target.replace('.asm.js', '.wast')
       wasm_js = wasm_js.replace("Module['wasmCodeFile']", '"' + os.path.basename(wasm_target) + '"') # " or '? who knows :)
       wasm_js = wasm_js.replace('Module["wasmCodeFile"]', '"' + os.path.basename(wasm_target) + '"')
       wasm_js = wasm_js.replace("Module['providedTotalMemory']", str(shared.Settings.TOTAL_MEMORY))
@@ -1738,8 +1743,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       combined.write('\n//^wasm.js\n')
       combined.write(js)
       combined.close()
-      # generate .wast file
-      subprocess.check_call([os.path.join(binaryen_bin, 'asm2wasm'), asm_target, wasm_target + '.mappedGlobals'], stdout=open(wasm_target, 'w'))
+      if not shared.Settings.WASM_BACKEND:
+        # generate .wast file
+        subprocess.check_call([os.path.join(binaryen_bin, 'asm2wasm'), asm_target, wasm_target + '.mappedGlobals'], stdout=open(wasm_target, 'w'))
 
     # If we were asked to also generate HTML, do that
     if final_suffix == 'html':
