@@ -37,7 +37,7 @@ extern "C" {
 #endif
         } else {
             char str[80];
-            sprintf(str, "%p", ti);
+            sprintf(str, "%p", reinterpret_cast<const void*>(ti));
             return strdup(str);
         }
     }
