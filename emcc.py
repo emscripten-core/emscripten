@@ -1475,6 +1475,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       def flush(title='js_opts'):
         JSOptimizer.queue = filter(lambda p: p not in JSOptimizer.blacklist, JSOptimizer.queue)
 
+        if shared.Settings.WASM_BACKEND:
+          logging.debug('ignoring js-optimizer passes since emitting pure wasm: ' + ' '.join(JSOptimizer.queue))
+          return
+
         if JSOptimizer.extra_info is not None and len(JSOptimizer.extra_info) == 0:
           JSOptimizer.extra_info = None
 
