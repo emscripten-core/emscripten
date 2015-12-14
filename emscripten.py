@@ -1255,10 +1255,11 @@ def emscript_wasm_backend(infile, settings, outfile, outfile_name, libraries=[],
         metadata['declares'].append(parts[3][1:-1])
       elif line.startswith('  (func '):
         parts = line.split(' ')
-        metadata['implementedFunctions'].append(parts[3][1:])
+        func = parts[3][1:]
+        metadata['implementedFunctions'].append(func)
       elif line.startswith('  (export '):
         parts = line.split(' ')
-        metadata['exports'].append(parts[1][1:-1])
+        metadata['exports'].append('_' + parts[3][1:-1])
 
     if DEBUG: logging.debug(repr(metadata))
 
@@ -1389,20 +1390,6 @@ function _emscripten_asm_const_%s(%s) {
       else:
         return '.' + prop
 
-    # calculate exports
-    exported_implemented_functions = list(exported_implemented_functions) + metadata['initializers']
-    if not settings['ONLY_MY_CODE']:
-      exported_implemented_functions.append('runPostSets')
-    if settings['ALLOW_MEMORY_GROWTH']:
-      exported_implemented_functions.append('_emscripten_replace_memory')
-    all_exported = exported_implemented_functions + asm_runtime_funcs
-    exported_implemented_functions = list(set(exported_implemented_functions))
-    if settings['EMULATED_FUNCTION_POINTERS']:
-      all_exported = list(set(all_exported).union(in_table))
-    exports = []
-    for export in all_exported:
-      exports.append(quote(export) + ": " + export)
-    exports = '{ ' + ', '.join(exports) + ' }'
     # calculate globals
     try:
       del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
@@ -1435,9 +1422,9 @@ return real_''' + s + '''.apply(null, arguments);
 ''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', 'runPostSets', '_emscripten_replace_memory']])
 
     if not settings['SWAPPABLE_ASM_MODULE']:
-      receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions])
+      receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s[1:] + '"]' for s in exported_implemented_functions])
     else:
-      receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + s + ' = Module["' + s + '"] = function() { return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions])
+      receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + s + ' = Module["' + s + '"] = function() { return Module["asm"]["' + s[1:] + '"].apply(null, arguments) }' for s in exported_implemented_functions])
     receiving += ';\n'
 
     # finalize

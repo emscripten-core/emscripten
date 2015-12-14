@@ -1356,6 +1356,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # we also received wasm at this stage
       wasm_temp = final[:-3] + '.wast'
       shutil.move(wasm_temp, wasm_target)
+      open(wasm_target + '.mappedGlobals', 'w').write('{}') # no need for mapped globals for now, but perhaps some day
 
     log_time('emscript (llvm=>%s)' % ('wasm' if shared.Settings.BINARYEN else 'js'))
 
