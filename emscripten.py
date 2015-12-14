@@ -1230,6 +1230,56 @@ def emscript_wasm_backend(infile, settings, outfile, outfile_name, libraries=[],
     import shutil
     shutil.copyfile(wasm, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-s2wasm-output.wast'))
 
+    # js compiler
+
+    if DEBUG: logging.debug('emscript: js compiler glue')
+
+    # Integrate info from backend
+
+    metadata = { # metadata from backend, TODO
+      'declares': [],
+      'implementedFunctions': [],
+      'externs': [],
+      'simd': False,
+      'maxGlobalAlign': 0,
+    }
+
+    settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
+      set(settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] + map(shared.JS.to_nice_ident, metadata['declares'])).difference(
+        map(lambda x: x[1:], metadata['implementedFunctions'])
+      )
+    ) + map(lambda x: x[1:], metadata['externs'])
+    if metadata['simd']:
+      settings['SIMD'] = 1
+
+    settings['MAX_GLOBAL_ALIGN'] = metadata['maxGlobalAlign']
+
+    assert not (metadata['simd'] and settings['SPLIT_MEMORY']), 'SIMD is used, but not supported in SPLIT_MEMORY'
+
+    # Save settings to a file to work around v8 issue 1579
+    settings_file = temp_files.get('.txt').name
+    def save_settings():
+      global settings_text
+      settings_text = json.dumps(settings, sort_keys=True)
+      s = open(settings_file, 'w')
+      s.write(settings_text)
+      s.close()
+    save_settings()
+
+    # Call js compiler
+    if DEBUG: t = time.time()
+    out = jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
+                       [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
+                       cwd=path_from_root('src'), error_limit=300)
+    assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
+    glue, forwarded_data = out.split('//FORWARDED_DATA:')
+
+    if DEBUG:
+      logging.debug('  emscript: glue took %s seconds' % (time.time() - t))
+      t = time.time()
+
+    last_forwarded_json = forwarded_json = json.loads(forwarded_data)
+
 if os.environ.get('EMCC_FAST_COMPILER') == '0':
   logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
   sys.exit(1)
