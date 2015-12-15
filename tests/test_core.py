@@ -4029,7 +4029,7 @@ var Module = {
       #include <stdint.h>
       extern int64_t sidey();
       int main() {
-        printf("other says %lld.", sidey());
+        printf("other says %llx.\\n", sidey());
         return 0;
       }
     ''', '''
@@ -4039,9 +4039,19 @@ var Module = {
         x = x * x * x * x;
         x += x % 17;
         x += (x * (1 << 30));
+        x -= 96;
+        x = (x + 1000) / ((x % 5) + 1);
+        volatile uint64_t y = x / 2;
+        x = y / 3;
+        y = y * y * y * y;
+        y += y % 17;
+        y += (y * (1 << 30));
+        y -= 121;
+        y = (y + 1000) / ((y % 5) + 1);
+        x += y;
         return x;
       }
-    ''', 'other says 15724949027125.')
+    ''', 'other says 175a1ddee82b8c31.')
 
   def test_dylink_i64_b(self):
     self.dylink_test('''
