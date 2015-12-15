@@ -693,7 +693,7 @@ if has_preloaded:
         throw new Error("NetworkError for: " + packageName);
       }
       xhr.onload = function(event) {
-        if (xhr.status == 200 || xhr.status == 304 || xhr.status == 206) {
+        if (xhr.status == 200 || xhr.status == 304 || xhr.status == 206 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
           var packageData = xhr.response;
           callback(packageData);
         } else {
