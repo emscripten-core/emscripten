@@ -1252,7 +1252,7 @@ def emscript_wasm_backend(infile, settings, outfile, outfile_name, libraries=[],
     for line in open(wasm).readlines():
       if line.startswith('  (import '):
         parts = line.split(' ')
-        metadata['declares'].append(parts[3][1:-1])
+        metadata['declares'].append(parts[3][1:])
       elif line.startswith('  (func '):
         parts = line.split(' ')
         func = parts[3][1:]
