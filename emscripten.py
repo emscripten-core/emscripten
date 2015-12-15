@@ -1236,6 +1236,19 @@ def emscript_wasm_backend(infile, settings, outfile, outfile_name, libraries=[],
 
   # Integrate info from backend
 
+  output = open(wasm).read()
+  parts = output.split('\n; METADATA:')
+  assert len(parts) == 2
+  metadata_raw = parts[1]
+  parts = output = None
+
+  if DEBUG: logging.debug("METAraw %s", metadata_raw)
+  try:
+    metadata_json = json.loads(metadata_raw)
+  except Exception, e:
+    logging.error('emscript: failure to parse metadata output from s2wasm. raw output is: \n' + metadata_raw)
+    raise e
+
   metadata = {
     'declares': [],
     'implementedFunctions': [],
@@ -1245,7 +1258,7 @@ def emscript_wasm_backend(infile, settings, outfile, outfile_name, libraries=[],
     'initializers': [],
     'staticBump': 0,
     'exports': [],
-    'asmConsts': {},
+    'asmConsts': metadata_json['asmConsts'],
   }
 
   # TODO: emit it from s2wasm; for now, we parse it right here
