@@ -271,14 +271,6 @@ emscripten_coroutine emscripten_coroutine_create(em_arg_callback_func func, void
 int emscripten_coroutine_next(emscripten_coroutine);
 void emscripten_yield(void);
 
-//  node.js : getenv
-#define getenv(name)\
-	(char*) EM_ASM_INT ( {\
-	if(typeof _getenv_ret !== 'undefined')_free( _getenv_ret);\
-	var envar = JSON.stringify(name);\
-	var  _getenv_ret  = allocate(intArrayFromString(envar), 'i8', ALLOC_NORMAL);\
-	return  _getenv_ret ;\
-	}, NULL  ) 
 //  library_signal.js : pause
 #define pause( t ) raise(SIGSTOP);emscripten_sleep(t);raise(SIGCONT);
 #define __SIGRTMIN	34
