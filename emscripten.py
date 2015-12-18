@@ -1237,7 +1237,7 @@ def emscript_wasm_backend(infile, settings, outfile, outfile_name, libraries=[],
   # Integrate info from backend
 
   output = open(wasm).read()
-  parts = output.split('\n; METADATA:')
+  parts = output.split('\n;; METADATA:')
   assert len(parts) == 2
   metadata_raw = parts[1]
   parts = output = None
