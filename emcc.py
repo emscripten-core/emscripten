@@ -419,6 +419,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     bind = False
     emrun = False
     cpu_profiler = False
+    thread_profiler = False
     memory_profiler = False
     save_bc = False
     memory_init_file = None
@@ -667,6 +668,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       elif newargs[i] == '--cpuprofiler':
         cpu_profiler = True
         newargs[i] = ''
+      elif newargs[i] == '--threadprofiler':
+        thread_profiler = True
+        settings_changes.append('PTHREADS_PROFILING=1')
+        newargs[i] = ''
       elif newargs[i] == '--default-obj-ext':
         newargs[i] = ''
         default_object_extension = newargs[i+1]
@@ -699,6 +704,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if memory_profiler:
       post_js += open(shared.path_from_root('src', 'memoryprofiler.js')).read() + '\n'
+
+    if thread_profiler:
+      post_js += open(shared.path_from_root('src', 'threadprofiler.js')).read() + '\n'
 
     if js_opts is None: js_opts = opt_level >= 2
     if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]

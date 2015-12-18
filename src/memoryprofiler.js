@@ -385,4 +385,4 @@ var emscriptenMemoryProfiler = {
 // Backwards compatibility with previously compiled code. Don't call this anymore!
 function memoryprofiler_add_hooks() { emscriptenMemoryProfiler.initialize(); }
 
-if (typeof Module !== 'undefined') emscriptenMemoryProfiler.initialize();
+if (typeof Module !== 'undefined' && typeof document !== 'undefined') emscriptenMemoryProfiler.initialize();

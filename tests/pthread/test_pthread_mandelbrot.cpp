@@ -286,12 +286,24 @@ void *mandelbrot_thread(void *arg)
 {
   int idx = (int)arg;
 
+  char threadName[32];
+  sprintf(threadName, "Worker %d", idx);
+  emscripten_set_thread_name(pthread_self(), threadName);
+
   for(;;)
   {
     emscripten_futex_wait(&tasksPending[idx], 0, INFINITY);
     emscripten_atomic_store_u32(&tasksPending[idx], 0);
     double t0 = emscripten_get_now();
     int ni;
+#ifdef TEST_THREAD_PROFILING
+    // If building as part of the harness, do silly things that show up in --threadprofiler,
+    // such as sleeping and proxied file i/o ops
+    usleep(2000);
+    FILE *handle = fopen("a.txt", "w");
+    fputs("hello", handle);
+    fclose(handle);
+#endif
     if (use_sse)
       ni = ComputeMandelbrot_SSE(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, 0, idx, numTasks, W, H, left, top, incrX, incrY, numItersDoneOnCanvas, numItersPerFrame);
     else
@@ -357,7 +369,7 @@ void wait_tasks()
     int td = tasksDone;
     if (td >= numTasks)
       break;
-    emscripten_futex_wait(&tasksDone, td, INFINITY);
+    emscripten_futex_wait(&tasksDone, td, 1);
     emscripten_main_thread_process_queued_calls();
   }
 #endif
@@ -367,6 +379,14 @@ void main_tick()
 {
   wait_tasks();
   numItersDoneOnCanvas += numItersPerFrame;
+
+#ifdef TEST_THREAD_PROFILING
+  int result = 0;
+  if (numItersDoneOnCanvas > 50000)
+  {
+    REPORT_RESULT();
+  }
+#endif
 
   double t = emscripten_get_now();
   double dt = t - prevT;
@@ -530,6 +550,8 @@ int main(int argc, char** argv)
     pthread_attr_destroy(&attr);
   }
 #endif
+
+  emscripten_set_thread_name(pthread_self(), "Mandelbrot main");
 
   EM_ASM("SDL.defaults.copyOnLock = false; SDL.defaults.discardOnLock = true; SDL.defaults.opaqueFrontBuffer = false;");
 

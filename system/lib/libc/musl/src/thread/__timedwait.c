@@ -77,7 +77,13 @@ int __timedwait(volatile int *addr, int val,
 	if (!cleanup) pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
 	pthread_cleanup_push(cleanup, arg);
 
+#ifdef __EMSCRIPTEN__
+	emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_WAITMUTEX);
+#endif
 	r = do_wait(addr, val, clk, at, priv);
+#ifdef __EMSCRIPTEN__
+	emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_WAITMUTEX, EM_THREAD_STATUS_RUNNING);
+#endif
 
 	pthread_cleanup_pop(0);
 	if (!cleanup) pthread_setcancelstate(cs, 0);
