@@ -47,6 +47,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   libcxx_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'symbols'), exclude=libc_symbols)
   libcxxabi_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols'), exclude=libc_symbols)
   gl_symbols = read_symbols(shared.path_from_root('system', 'lib', 'gl.symbols'))
+  compiler_rt_symbols = read_symbols(shared.path_from_root('system', 'lib', 'compiler-rt.symbols'))
   pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads.symbols'))
 
   # XXX we should disable EMCC_DEBUG when building libs, just like in the relooper
@@ -178,6 +179,21 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'gl.c'), '-o', o])
     return o
 
+  def create_compiler_rt(libname):
+    srcdir = shared.path_from_root('system', 'lib', 'compiler-rt')
+    filenames = ['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c']
+    files = (os.path.join(srcdir, f) for f in filenames)
+
+    o_s = []
+    commands = []
+    for src in files:
+      o = in_temp(os.path.basename(src) + '.o')
+      commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o])
+      o_s.append(o)
+    run_commands(commands)
+    shared.Building.link(o_s, in_temp(libname))
+    return in_temp(libname)
+
   def create_dlmalloc(out_name, clflags):
     o = in_temp(out_name)
     check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-o', o] + clflags)
@@ -271,9 +287,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   for symbols in symbolses:
     all_needed.difference_update(symbols.defs)
 
-  system_libs = [('libcxx',    'a',  create_libcxx,    libcxx_symbols,    ['libcxxabi'], True),
-                 ('libcxxabi', 'bc', create_libcxxabi, libcxxabi_symbols, ['libc'],      False),
-                 ('gl',        'bc', create_gl,        gl_symbols,        ['libc'],      False)]
+  system_libs = [('libcxx',      'a',  create_libcxx,      libcxx_symbols,      ['libcxxabi'], True),
+                 ('libcxxabi',   'bc', create_libcxxabi,   libcxxabi_symbols,   ['libc'],      False),
+                 ('gl',          'bc', create_gl,          gl_symbols,          ['libc'],      False),
+                 ('compiler-rt', 'bc', create_compiler_rt, compiler_rt_symbols, ['libc'],      False)]
 
   # malloc dependency is force-added, so when using pthreads, it must be force-added
   # as well, since malloc needs to be thread-safe, so it depends on mutexes.
