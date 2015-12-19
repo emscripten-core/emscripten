@@ -117,8 +117,7 @@ var emscriptenMemoryProfiler = {
 
     // Decrement global stats.
     var sz = this.allocatedPtrSizes[ptr];
-    if(!isNaN(sz))
-    {
+    if (!isNaN(sz)) {
       this.totalMemoryAllocated -= sz;
     }
     
@@ -181,7 +180,7 @@ var emscriptenMemoryProfiler = {
       document.body.appendChild(div);
       memoryprofiler = document.getElementById('memoryprofiler');
 
-      self = this;
+      var self = this;
 
       document.getElementById('memoryprofiler_min_tracked_alloc_size').addEventListener("change", function(e){self.trackedCallstackMinSizeBytes=this.value;});
       document.getElementById('memoryprofiler_clear_alloc_stats').addEventListener("click", function(e){self.allocationSiteStatistics = {}; self.allocationSitePtrs = {};});
@@ -364,7 +363,7 @@ var emscriptenMemoryProfiler = {
         if (numcalls >= this.allocateStatisticsMinReported) calls.push(i);
       }
 
-      self = this;
+      var self = this;
       calls.sort(function(a,b) { return self.allocationSiteStatistics[b] - self.allocationSiteStatistics[a]; });
       html += '<h4>Allocated pointers by call stack:<h4>';
       var ndemangled = 10;
