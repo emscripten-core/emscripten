@@ -1291,7 +1291,6 @@ class Building:
         return f
       else:
         return os.path.abspath(f)
-    files = map(make_paths_absolute, files)
     # Paths of already included object files from archives.
     added_contents = set()
     # Map of archive name to list of extracted object file paths.
@@ -1299,7 +1298,7 @@ class Building:
     has_ar = False
     for f in files:
       if not f.startswith('-'):
-        has_ar = has_ar or Building.is_ar(f)
+        has_ar = has_ar or Building.is_ar(make_paths_absolute(f))
 
     # If we have only one archive or the force_archive_contents flag is set,
     # then we will add every object file we see, regardless of whether it
@@ -1383,6 +1382,7 @@ class Building:
 
     current_archive_group = None
     for f in files:
+      absolute_path_f = make_paths_absolute(f)
       if f.startswith('-'):
         if f in ['--start-group', '-(']:
           assert current_archive_group is None, 'Nested --start-group, missing --end-group?'
@@ -1402,10 +1402,10 @@ class Building:
           current_archive_group = None
         else:
           logging.debug('Ignoring unsupported link flag: %s' % f)
-      elif not Building.is_ar(f):
-        if Building.is_bitcode(f):
+      elif not Building.is_ar(absolute_path_f):
+        if Building.is_bitcode(absolute_path_f):
           if has_ar:
-            consider_object(f, force_add=True)
+            consider_object(absolute_path_f, force_add=True)
           else:
             # If there are no archives then we can simply link all valid bitcode
             # files and skip the symbol table stuff.
@@ -1413,11 +1413,11 @@ class Building:
       else:
         # Extract object files from ar archives, and link according to gnu ld semantics
         # (link in an entire .o from the archive if it supplies symbols still unresolved)
-        consider_archive(f)
+        consider_archive(absolute_path_f)
         # If we're inside a --start-group/--end-group section, add to the list
         # so we can loop back around later.
         if current_archive_group is not None:
-          current_archive_group.append(f)
+          current_archive_group.append(absolute_path_f)
     assert current_archive_group is None, '--start-group without matching --end-group'
 
     try_delete(target)
