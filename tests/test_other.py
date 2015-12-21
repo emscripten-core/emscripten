@@ -5901,3 +5901,31 @@ int main() {
     test('hello_123.c', ['-O1'], 1, 2)
     test('fasta.cpp', ['-O3', '-g2'], 2, 13)
 
+  def test_link_response_file_does_not_force_absolute_paths(self):
+    with_space = 'with space'
+    directory_with_space_name = os.path.join(self.get_dir(), with_space)
+    if not os.path.exists(directory_with_space_name):
+      os.makedirs(directory_with_space_name)
+
+    main = '''
+      int main() {
+        return 0;
+      }
+    '''
+    main_file_name = 'main.cpp'
+    main_path_name = os.path.join(directory_with_space_name, main_file_name)
+    open(main_path_name, 'w').write(main)
+    main_object_file_name = 'main.cpp.o'
+
+    Building.emcc(main_path_name, ['-g'])
+
+    current_directory = os.getcwd()
+    os.chdir(os.path.join(current_directory, with_space))
+
+    link_args = Building.link([main_object_file_name], os.path.join(self.get_dir(), 'all.bc'), just_calculate=True)
+
+    os.chdir(current_directory)
+
+    # We want only the relative path to be in the linker args, it should not be converted to an absolute path.
+    self.assertItemsEqual(link_args, [main_object_file_name])
+
