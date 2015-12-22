@@ -153,7 +153,7 @@ int anyzero_ps(__m128 m)
   m = _mm_and_ps(m, y);
   __m128 z = _mm_movehl_ps(m, m);
   m = _mm_and_ps(m, z);
-  return _mm_ucomieq_ss(m, _mm_setzero_ps());
+  return _mm_ucomige_ss(m, m);
 }
 
 int any_ps(__m128 m)
@@ -161,17 +161,18 @@ int any_ps(__m128 m)
   __m128 y = _mm_shuffle_ps(m, m, _MM_SHUFFLE(2,3,0,1));
   m = _mm_or_ps(m, y);
   __m128 z = _mm_movehl_ps(m, m);
-  m = _mm_or_ps(m, z);  
-  return _mm_ucomineq_ss(m, _mm_setzero_ps());
+  m = _mm_or_ps(m, z);
+  return !_mm_ucomige_ss(m, m);
 }
 
-int xnotzero_ss(__m128 m) { return _mm_ucomineq_ss(m, _mm_setzero_ps()); }
-int ynotzero_ss(__m128 m) { return _mm_ucomineq_ss(_mm_shuffle_ps(m, m, _MM_SHUFFLE(1,1,1,1)), _mm_setzero_ps()); }
-int znotzero_ss(__m128 m) { return _mm_ucomineq_ss(_mm_movehl_ps(m, m), _mm_setzero_ps()); }
-int wnotzero_ss(__m128 m) { return _mm_ucomineq_ss(_mm_shuffle_ps(m, m, _MM_SHUFFLE(3,3,3,3)), _mm_setzero_ps()); }
+int xnan_ss(__m128 m) { return !_mm_ucomige_ss(m, m); }
+int ynan_ss(__m128 m) { return xnan_ss(_mm_shuffle_ps(m, m, _MM_SHUFFLE(1,1,1,1))); }
+int znan_ss(__m128 m) { return xnan_ss(_mm_movehl_ps(m, m)); }
+int wnan_ss(__m128 m) { return xnan_ss(_mm_shuffle_ps(m, m, _MM_SHUFFLE(3,3,3,3))); }
 
 unsigned long long ComputeMandelbrot_SSE(float *srcReal, float *srcImag, uint32_t *dst, int strideSrc, int strideDst, int x, int y, int yIncr, int w, int h, float left, float top, float incrX, float incrY, unsigned int numItersBefore, unsigned int numIters)
 {
+  const __m128 four = _mm_set1_ps(4.f);
   for(int Y = y; Y < h; Y += yIncr)
   {
     float *sr = (float*)((uintptr_t)srcReal + strideSrc * Y) + x;
@@ -179,7 +180,6 @@ unsigned long long ComputeMandelbrot_SSE(float *srcReal, float *srcImag, uint32_
     uint32_t *d = (uint32_t*)((uintptr_t)dst + strideDst * Y) + x;
     float imag = top + Y * incrY;
     __m128 Imag = _mm_set1_ps(imag);
-    __m128 four = _mm_set1_ps(4.f);
     for(int X = 0; X < w; X += 4)
     {
       float real = left + (x + X) * incrX;
@@ -222,10 +222,10 @@ unsigned long long ComputeMandelbrot_SSE(float *srcReal, float *srcImag, uint32_
             if (any_ps(divergedNow))
             {
               uint32_t color = ColorMap(numItersBefore + i);
-              if (xnotzero_ss(divergedNow)) d[X] = color;
-              if (ynotzero_ss(divergedNow)) d[X+1] = color;
-              if (znotzero_ss(divergedNow)) d[X+2] = color;
-              if (wnotzero_ss(divergedNow)) d[X+3] = color;
+              if (xnan_ss(divergedNow)) d[X] = color;
+              if (ynan_ss(divergedNow)) d[X+1] = color;
+              if (znan_ss(divergedNow)) d[X+2] = color;
+              if (wnan_ss(divergedNow)) d[X+3] = color;
 //              _mm_storeu_ps((float*)d+X, _mm_or_ps(old, diverged));
             }
             /*
