@@ -209,37 +209,45 @@ void array_bounds_check(const int array_size, const int array_idx) {
 
 C_FLOATS = ['float', 'double']
 
+def full_typename(arg):
+  return arg.type.name + ('[]' if arg.type.isArray() else '')
+
 def type_to_c(t, non_pointing=False):
   #print 'to c ', t
   t = t.replace(' (Wrapper)', '')
+  suffix = ''
+  if '[]' in t:
+    suffix = '*'
+    t = t.replace('[]', '')
   if t == 'Long':
-    return 'int'
+    ret = 'int'
   elif t == 'UnsignedLong':
-    return 'unsigned int'
+    ret = 'unsigned int'
   elif t == 'Short':
-    return 'short'
+    ret = 'short'
   elif t == 'UnsignedShort':
-    return 'unsigned short'
+    ret = 'unsigned short'
   elif t == 'Byte':
-    return 'char'
+    ret = 'char'
   elif t == 'Octet':
-    return 'unsigned char'
+    ret = 'unsigned char'
   elif t == 'Void':
-    return 'void'
+    ret = 'void'
   elif t == 'String':
-    return 'char*'
+    ret = 'char*'
   elif t == 'Float':
-    return 'float'
+    ret = 'float'
   elif t == 'Double':
-    return 'double'
+    ret = 'double'
   elif t == 'Boolean':
-    return 'bool'
+    ret = 'bool'
   elif t == 'Any' or t == 'VoidPtr':
-    return 'void*'
+    ret = 'void*'
   elif t in interfaces:
-    return (interfaces[t].getExtendedAttribute('Prefix') or [''])[0] + t + ('' if non_pointing else '*')
+    ret = (interfaces[t].getExtendedAttribute('Prefix') or [''])[0] + t + ('' if non_pointing else '*')
   else:
-    return t
+    ret = t
+  return ret + suffix
 
 def take_addr_if_nonpointer(m):
   if m.getExtendedAttribute('Ref') or m.getExtendedAttribute('Value'):
@@ -261,7 +269,7 @@ def type_to_cdec(raw):
     return ret
   return ret + '*'
 
-def render_function(class_name, func_name, sigs, return_type, non_pointer, copy, operator, constructor, func_scope, call_content=None, const=False):
+def render_function(class_name, func_name, sigs, return_type, non_pointer, copy, operator, constructor, func_scope, call_content=None, const=False, array_attribute=False):
   global mid_c, mid_js, js_impl_methods
 
   legacy_mode = CHECKS not in ['ALL', 'FAST']
@@ -393,7 +401,9 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
   for i in range(min_args, max_args+1):
     raw = sigs.get(i)
     if raw is None: continue
-    sig = [arg.type.name for arg in raw]
+    sig = map(full_typename, raw)
+    if array_attribute:
+      sig = map(lambda x: x.replace('[]', ''), sig) # for arrays, ignore that this is an array - our get/set methods operate on the elements
 
     c_arg_types = map(type_to_c, sig)
 
@@ -585,7 +595,8 @@ for name in names:
                     False,
                     func_scope=interface,
                     call_content=get_call_content,
-                    const=m.getExtendedAttribute('Const'))
+                    const=m.getExtendedAttribute('Const'),
+                    array_attribute=m.type.isArray())
 
     if not m.readonly:
       set_name = 'set_' + attr
@@ -599,7 +610,8 @@ for name in names:
                       False,
                       func_scope=interface,
                       call_content=set_call_content,
-                      const=m.getExtendedAttribute('Const'))
+                      const=m.getExtendedAttribute('Const'),
+                      array_attribute=m.type.isArray())
 
   if not interface.getExtendedAttribute('NoDelete'):
     mid_js += [r'''

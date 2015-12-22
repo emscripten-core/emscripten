@@ -205,7 +205,6 @@ arrayClass.set_struct_ptr_array(0, struct);
 TheModule.print('struct_ptr_array[0]->attr1 == ' + arrayClass.get_struct_ptr_array(0).get_attr1());
 TheModule.print('struct_ptr_array[0]->attr2 == ' + arrayClass.get_struct_ptr_array(0).get_attr2());
 
-
 // Test IDL_CHECKS=ALL
 
 try {

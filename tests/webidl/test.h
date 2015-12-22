@@ -144,3 +144,4 @@ class ArrayClass {
   StructInArray struct_array[8];
   StructInArray* struct_ptr_array[8];
 };
+
