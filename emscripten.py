@@ -478,7 +478,7 @@ function _emscripten_asm_const_%s(%s) {
     simdfuncs = ['check', 'add', 'sub', 'neg', 'mul',
                  'equal', 'lessThan', 'greaterThan',
                  'notEqual', 'lessThanOrEqual', 'greaterThanOrEqual',
-                 'select', 'and', 'or', 'xor', 'not',
+                 'select',
                  'splat', 'swizzle', 'shuffle',
                  'load', 'store', 'load1', 'store1', 'load2', 'store2', 'load3', 'store3',
                  'extractLane', 'replaceLane']
@@ -502,7 +502,8 @@ function _emscripten_asm_const_%s(%s) {
                                   'abs', 'reciprocalApproximation', 'reciprocalSqrtApproximation'];
     simdintfuncs = simdfuncs + ['shiftRightArithmeticByScalar',
                                 'shiftRightLogicalByScalar',
-                                'shiftLeftByScalar'];
+                                'shiftLeftByScalar',
+                                'and', 'or', 'xor', 'not'];
     simdtypes = simdfloattypes + simdinttypes
 
     fundamentals = ['Math']
