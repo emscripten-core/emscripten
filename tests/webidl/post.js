@@ -205,6 +205,11 @@ arrayClass.set_struct_ptr_array(0, struct);
 TheModule.print('struct_ptr_array[0]->attr1 == ' + arrayClass.get_struct_ptr_array(0).get_attr1());
 TheModule.print('struct_ptr_array[0]->attr2 == ' + arrayClass.get_struct_ptr_array(0).get_attr2());
 
+// receiving arrays
+
+var receiver = new TheModule.ReceiveArrays();
+receiver.giveMeArrays([0.5, 0.25, 0.01, -20.42], [1, 4, 9, 10], 4);
+
 // Test IDL_CHECKS=ALL
 
 try {

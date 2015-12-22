@@ -145,3 +145,11 @@ class ArrayClass {
   StructInArray* struct_ptr_array[8];
 };
 
+struct ReceiveArrays {
+  void giveMeArrays(float* vertices, int* triangles, int num) {
+    for (int i = 0; i < num; i++) {
+      printf("%d : %.2f\n", triangles[i], vertices[i]);
+    }
+  }
+};
+

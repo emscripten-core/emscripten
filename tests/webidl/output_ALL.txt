@@ -92,6 +92,10 @@ struct_array[7].attr1 == 14
 struct_array[7].attr2 == 18
 struct_ptr_array[0]->attr1 == 100
 struct_ptr_array[0]->attr2 == 101
+1 : 0.50
+4 : 0.25
+9 : 0.01
+10 : -20.42
 Assertion failed: [CHECK FAILED] Parent::Parent(arg0:val): Expecting <integer>
 Parent:42
 Assertion failed: [CHECK FAILED] Parent::voidStar(arg0:something): Expecting <pointer>

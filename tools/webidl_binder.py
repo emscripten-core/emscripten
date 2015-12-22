@@ -138,9 +138,9 @@ function getClass(obj) {
 }
 Module['getClass'] = getClass;
 
-// Converts a value into a C-style string, storing it in temporary space
+// Converts big (string or array) values into a C-style storage, in temporary space
 
-var ensureStringCache = {
+var ensureCache = {
   buffer: 0,  // the main buffer of temporary storage
   size: 0,   // the size of buffer
   pos: 0,    // the next free offset in buffer
@@ -162,16 +162,17 @@ var ensureStringCache = {
       this.needed = 0;
     }
     if (!this.buffer) { // happens first time, or when we need to grow
-      this.size += 100; // heuristic, avoid many small grow events
+      this.size += 128; // heuristic, avoid many small grow events
       this.buffer = Module['_malloc'](this.size);
       assert(this.buffer);
     }
     this.pos = 0;
   },
-  alloc: function(value) {
+  alloc: function(array, view) {
     assert(this.buffer);
-    var array = intArrayFromString(value);
-    var len = array.length;
+    var bytes = view.BYTES_PER_ELEMENT;
+    var len = array.length * bytes;
+    len = (len + 7) & -8; // keep things aligned to 8 byte boundaries
     var ret;
     if (this.pos + len >= this.size) {
       // we failed to allocate in the buffer, this time around :(
@@ -184,13 +185,41 @@ var ensureStringCache = {
       ret = this.buffer + this.pos;
       this.pos += len;
     }
-    writeArrayToMemory(array, ret);
+    var retShifted = ret;
+    switch (bytes) {
+      case 2: retShifted >>= 1; break;
+      case 4: retShifted >>= 2; break;
+      case 8: retShifted >>= 3; break;
+    }
+    for (var i = 0; i < array.length; i++) {
+      view[retShifted + i] = array[i];
+    }
     return ret;
   },
 };
 
 function ensureString(value) {
-  if (typeof value === 'string') return ensureStringCache.alloc(value);
+  if (typeof value === 'string') return ensureCache.alloc(intArrayFromString(value), HEAP8);
+  return value;
+}
+function ensureInt8(value) {
+  if (typeof value === 'object') return ensureCache.alloc(value, HEAP8);
+  return value;
+}
+function ensureInt16(value) {
+  if (typeof value === 'object') return ensureCache.alloc(value, HEAP16);
+  return value;
+}
+function ensureInt32(value) {
+  if (typeof value === 'object') return ensureCache.alloc(value, HEAP32);
+  return value;
+}
+function ensureFloat32(value) {
+  if (typeof value === 'object') return ensureCache.alloc(value, HEAPF32);
+  return value;
+}
+function ensureFloat64(value) {
+  if (typeof value === 'object') return ensureCache.alloc(value, HEAPF64);
   return value;
 }
 
@@ -319,7 +348,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
   for i in range(max_args):
     arg = all_args[i]
     if arg.type.isString():
-      body += '  ensureStringCache.prepare();\n'
+      body += '  ensureCache.prepare();\n'
       break
 
   full_name = "%s::%s" % (class_name, func_name)
@@ -380,10 +409,23 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
       do_default = True
 
     if do_default:
-      body += "  if (arg%d && typeof arg%d === 'object') arg%d = arg%d.ptr;\n" % (i, i, i, i)
-      if arg.type.isString():
-        body += "  else arg%d = ensureString(arg%d);\n" % (i, i)
-
+      if not (arg.type.isArray() and not array_attribute):
+        body += "  if (arg%d && typeof arg%d === 'object') arg%d = arg%d.ptr;\n" % (i, i, i, i)
+        if arg.type.isString():
+          body += "  else arg%d = ensureString(arg%d);\n" % (i, i)
+      else:
+        # an array can be received here
+        arg_type = arg.type.name
+        if arg_type in ['Byte', 'Octet']:
+          body += "  if (typeof arg%d == 'object') { arg%d = ensureInt8(arg%d); }\n" % (i, i, i)
+        elif arg_type in ['Short', 'UnsignedShort']:
+          body += "  if (typeof arg%d == 'object') { arg%d = ensureInt16(arg%d); }\n" % (i, i, i)
+        elif arg_type in ['Long', 'UnsignedLong']:
+          body += "  if (typeof arg%d == 'object') { arg%d = ensureInt32(arg%d); }\n" % (i, i, i)
+        elif arg_type == 'Float':
+          body += "  if (typeof arg%d == 'object') { arg%d = ensureFloat32(arg%d); }\n" % (i, i, i)
+        elif arg_type == 'Double':
+          body += "  if (typeof arg%d == 'object') { arg%d = ensureFloat64(arg%d); }\n" % (i, i, i)
 
   for i in range(min_args, max_args):
     c_names[i] = 'emscripten_bind_%s_%d' % (bindings_name, i)
