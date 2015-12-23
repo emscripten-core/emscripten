@@ -1223,6 +1223,7 @@ def emscript_wasm_backend(infile, settings, outfile, outfile_name, libraries=[],
   if DEBUG:
     logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
     t = time.time()
+    s2wasm_args += ['--debug']
   shared.check_call(s2wasm_args, stdout=open(wasm, 'w'))
   if DEBUG:
     logging.debug('  emscript: binaryen s2wasm took %s seconds' % (time.time() - t))
