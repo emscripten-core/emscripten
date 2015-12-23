@@ -1258,10 +1258,11 @@ def emscript_wasm_backend(infile, settings, outfile, outfile_name, libraries=[],
     'simd': False,
     'maxGlobalAlign': 0,
     'initializers': [],
-    'staticBump': 0,
     'exports': [],
-    'asmConsts': metadata_json['asmConsts'],
   }
+
+  for k, v in metadata_json.iteritems():
+    metadata[k] = v
 
   # TODO: emit it from s2wasm; for now, we parse it right here
   for line in open(wasm).readlines():
