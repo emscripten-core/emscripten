@@ -290,6 +290,9 @@ function JSify(data, functionsOnly) {
           print('gb = Runtime.alignMemory(getMemory({{{ STATIC_BUMP }}}, ' + MAX_GLOBAL_ALIGN + ' || 1));\n');
           print('// STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n'); // comment as metadata only
         }
+        if (BINARYEN) {
+          print('var STATIC_BUMP = {{{ STATIC_BUMP }}};');
+        }
       }
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
       print(generated.map(function(item) { return item.JS; }).join('\n'));

@@ -1961,8 +1961,4 @@ if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() {
 if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() { if (typeof SharedArrayBuffer !== 'undefined') { addRunDependency('pthreads'); PThread.allocateUnusedWorkers({{{PTHREAD_POOL_SIZE}}}, function() { removeRunDependency('pthreads'); }); }});
 #endif
 
-#if BINARYEN
-var STATIC_BUMP = {{{ STATIC_BUMP }}};
-#endif
-
 // === Body ===
