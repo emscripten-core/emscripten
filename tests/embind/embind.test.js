@@ -2536,6 +2536,15 @@ module({
             assert.equal("string", cm.getTypeOfVal("hi"));
         });
     });
+
+    BaseFixture.extend("static member", function() {
+        test("static members", function() {
+            assert.equal(10, cm.HasStaticMember.c);
+            assert.equal(20, cm.HasStaticMember.v);
+            cm.HasStaticMember.v = 30;
+            assert.equal(30, cm.HasStaticMember.v);
+        });
+    });
 });
 
 /* global run_all_tests */

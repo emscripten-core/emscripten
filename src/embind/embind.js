@@ -2082,6 +2082,71 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_class_class_property__deps: [
+    '$readLatin1String', '$requireFunction', '$runDestructors',
+    '$throwBindingError', '$throwUnboundTypeError',
+    '$whenDependentTypesAreResolved', '$validateThis'],
+  _embind_register_class_class_property: function(
+    rawClassType,
+    fieldName,
+    rawFieldType,
+    rawFieldPtr,
+    getterSignature,
+    getter,
+    setterSignature,
+    setter
+  ) {
+    fieldName = readLatin1String(fieldName);
+    getter = requireFunction(getterSignature, getter);
+
+    whenDependentTypesAreResolved([], [rawClassType], function(classType) {
+        classType = classType[0];
+        var humanName = classType.name + '.' + fieldName;
+        var desc = {
+            get: function() {
+                throwUnboundTypeError('Cannot access ' + humanName + ' due to unbound types', [getterReturnType, setterArgumentType]);
+            },
+            enumerable: true,
+            configurable: true
+        };
+        if (setter) {
+            desc.set = function() {
+                throwUnboundTypeError('Cannot access ' + humanName + ' due to unbound types', [getterReturnType, setterArgumentType]);
+            };
+        } else {
+            desc.set = function(v) {
+                throwBindingError(humanName + ' is a read-only property');
+            };
+        }
+
+        Object.defineProperty(classType.registeredClass.constructor, fieldName, desc);
+
+        whenDependentTypesAreResolved([], [rawFieldType], function(fieldType) {
+            fieldType = fieldType[0];
+            var desc = {
+                get: function() {
+                    return fieldType['fromWireType'](getter(rawFieldPtr));
+                },
+                enumerable: true
+            };
+
+            if (setter) {
+                setter = requireFunction(setterSignature, setter);
+                desc.set = function(v) {
+                    var destructors = [];
+                    setter(rawFieldPtr, fieldType['toWireType'](destructors, v));
+                    runDestructors(destructors);
+                };
+            }
+
+            Object.defineProperty(classType.registeredClass.constructor, fieldName, desc);
+            return [];
+        });
+
+        return [];
+    });
+  },
+
   _embind_create_inheriting_constructor__deps: [
     '$createNamedFunction', '_emval_register',
     '$PureVirtualError', '$readLatin1String',
