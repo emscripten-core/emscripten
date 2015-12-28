@@ -309,6 +309,22 @@ Ref makeAsmCoercedZero(AsmType type) {
       return make2(CALL, makeName(SIMD_INT32X4), &(makeArray(4))->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
       break;
     }
+    case ASM_BOOL8X16: {
+      return make2(CALL, makeName(SIMD_BOOL8X16), &(makeArray(16))->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
+      break;
+    }
+    case ASM_BOOL16X8: {
+      return make2(CALL, makeName(SIMD_BOOL16X8), &(makeArray(8))->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
+      break;
+    }
+    case ASM_BOOL32X4: {
+      return make2(CALL, makeName(SIMD_BOOL32X4), &(makeArray(4))->push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)).push_back(makeNum(0)));
+      break;
+    }
+    case ASM_BOOL64X2: {
+      return make2(CALL, makeName(SIMD_BOOL64X2), &(makeArray(2))->push_back(makeNum(0)).push_back(makeNum(0)));
+      break;
+    }
     default: assert(0);
   }
   abort();
@@ -2088,6 +2104,10 @@ const char* getRegPrefix(AsmType type) {
     case ASM_INT8X16:   return "I16"; break;
     case ASM_INT16X8:   return "I8"; break;
     case ASM_INT32X4:   return "I4"; break;
+    case ASM_BOOL8X16:  return "B16"; break;
+    case ASM_BOOL16X8:  return "B8"; break;
+    case ASM_BOOL32X4:  return "B4"; break;
+    case ASM_BOOL64X2:  return "B2"; break;
     case ASM_NONE:      return "Z"; break;
     default: assert(0); // type doesn't have a name yet
   }
