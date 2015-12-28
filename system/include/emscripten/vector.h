@@ -30,6 +30,10 @@ inline int32x4 emscripten_float32x4_equal(float32x4 __a, float32x4 __b) __attrib
 inline int32x4 emscripten_float32x4_notEqual(float32x4 __a, float32x4 __b) __attribute__((__nothrow__, __const__)) { return __a != __b; }
 inline int32x4 emscripten_float32x4_greaterThanOrEqual(float32x4 __a, float32x4 __b) __attribute__((__nothrow__, __const__)) { return __a >= __b; }
 inline int32x4 emscripten_float32x4_greaterThan(float32x4 __a, float32x4 __b) __attribute__((__nothrow__, __const__)) { return __a > __b; }
+#define emscripten_float32x4_not(x) emscripten_float32x4_fromInt32x4Bits(emscripten_int32x4_not(emscripten_int32x4_fromFloat32x4Bits((x))))
+#define emscripten_float32x4_and(a, b) emscripten_float32x4_fromInt32x4Bits(emscripten_int32x4_and(emscripten_int32x4_fromFloat32x4Bits((a)), emscripten_int32x4_fromFloat32x4Bits((b))))
+#define emscripten_float32x4_or(a, b) emscripten_float32x4_fromInt32x4Bits(emscripten_int32x4_or(emscripten_int32x4_fromFloat32x4Bits((a)), emscripten_int32x4_fromFloat32x4Bits((b))))
+#define emscripten_float32x4_xor(a, b) emscripten_float32x4_fromInt32x4Bits(emscripten_int32x4_xor(emscripten_int32x4_fromFloat32x4Bits((a)), emscripten_int32x4_fromFloat32x4Bits((b))))
 float32x4 emscripten_float32x4_select(int32x4 __a, float32x4 __b, float32x4 __c) __attribute__((__nothrow__, __const__));
 
 inline int32x4 emscripten_int32x4_and(int32x4 __a, int32x4 __b) __attribute__((__nothrow__, __const__)) { return __a & __b; }
