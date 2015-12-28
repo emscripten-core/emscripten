@@ -76,7 +76,7 @@ The ``userData`` parameter is a user-defined value that is passed (unchanged) to
 
 The ``useCapture`` parameter  maps to ``useCapture`` in `EventTarget.addEventListener <https://developer.mozilla.org/en-US/docs/Web/API/EventTarget.addEventListener>`_. It indicates whether or not to initiate *capture*: if ``true`` the callback will be invoked only for the DOM capture and target phases; if ``false`` the callback will be triggered during the target and bubbling phases. See `DOM Level 3 Events <http://www.w3.org/TR/2003/NOTE-DOM-Level-3-Events-20031107/events.html#Events-phases>`_ for a more detailed explanation.
 
-Most functions return the result using the type :c:data:`EMSCRIPTEN_RESULT`. Non-zero and positive values denote success. Negative values signal failure. None of the functions fail or abort by throwing a JavaScript or C++ exception. If a particular browser does not support the given feature, the value :c:data:`EMSCRIPTEN_RESULT_NOT_SUPPORTED` will be returned at the time the callback is registered.
+Most functions return the result using the type :c:data:`EMSCRIPTEN_RESULT`. Zero and positive values denote success. Negative values signal failure. None of the functions fail or abort by throwing a JavaScript or C++ exception. If a particular browser does not support the given feature, the value :c:data:`EMSCRIPTEN_RESULT_NOT_SUPPORTED` will be returned at the time the callback is registered.
 
 	
 Callback functions
@@ -147,7 +147,7 @@ Most functions in this API return a result of type :c:data:`EMSCRIPTEN_RESULT`. 
 	
 .. c:macro:: EMSCRIPTEN_RESULT
 
-	This type is used to return the result of most functions in this API.  Positive values denote success, while zero and negative values signal failure. Possible values are listed below.
+	This type is used to return the result of most functions in this API. Zero and positive values denote success, while negative values signal failure. Possible values are listed below.
 	
 	
 	.. c:macro:: EMSCRIPTEN_RESULT_SUCCESS
