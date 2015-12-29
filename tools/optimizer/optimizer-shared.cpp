@@ -9,7 +9,11 @@ IString SIMD_INT8X16_CHECK("SIMD_Int8x16_check"),
         SIMD_INT16X8_CHECK("SIMD_Int16x8_check"),
         SIMD_INT32X4_CHECK("SIMD_Int32x4_check"),
         SIMD_FLOAT32X4_CHECK("SIMD_Float32x4_check"),
-        SIMD_FLOAT64X2_CHECK("SIMD_Float64x2_check");
+        SIMD_FLOAT64X2_CHECK("SIMD_Float64x2_check"),
+        SIMD_BOOL8X16_CHECK("SIMD_Bool8x16_check"),
+        SIMD_BOOL16X8_CHECK("SIMD_Bool16x8_check"),
+        SIMD_BOOL32X4_CHECK("SIMD_Bool32x4_check"),
+        SIMD_BOOL64X2_CHECK("SIMD_Bool64x2_check");
 
 bool isInteger(double x) {
   return fmod(x, 1) == 0;
@@ -86,6 +90,10 @@ AsmType detectType(Ref node, AsmData *asmData, bool inVarDef) {
           else if (name == SIMD_INT8X16   || name == SIMD_INT8X16_CHECK) return ASM_INT8X16;
           else if (name == SIMD_INT16X8   || name == SIMD_INT16X8_CHECK) return ASM_INT16X8;
           else if (name == SIMD_INT32X4   || name == SIMD_INT32X4_CHECK) return ASM_INT32X4;
+          else if (name == SIMD_BOOL8X16  || name == SIMD_BOOL8X16_CHECK) return ASM_BOOL8X16;
+          else if (name == SIMD_BOOL16X8  || name == SIMD_BOOL16X8_CHECK) return ASM_BOOL16X8;
+          else if (name == SIMD_BOOL32X4  || name == SIMD_BOOL32X4_CHECK) return ASM_BOOL32X4;
+          else if (name == SIMD_BOOL64X2  || name == SIMD_BOOL64X2_CHECK) return ASM_BOOL64X2;
         }
         return ASM_NONE;
       } else if (node[0] == CONDITIONAL) {
