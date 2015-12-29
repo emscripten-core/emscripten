@@ -754,8 +754,8 @@ function ftCall_%s(%s) {%s
       asm_global_funcs += ''.join(simd_bool_symbols)
 
       # Unofficial, Bool64x2 does not yet exist, but needed for Float64x2 comparisons.
-#      if metadata['simdFloat64x2']:
-#        asm_global_funcs += '  var SIMD_Int32x4_fromBool64x2Bits = global.SIMD.Int32x4.fromBool64x2Bits;\n';
+      if metadata['simdFloat64x2']:
+        asm_global_funcs += '  var SIMD_Int32x4_fromBool64x2Bits = global.SIMD.Int32x4.fromBool64x2Bits;\n';
     if settings['USE_PTHREADS']:
 #      asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor']])
 # TODO: Once bug https://bugzilla.mozilla.org/show_bug.cgi?id=1141986 is implemented, replace the following line with the above one!
