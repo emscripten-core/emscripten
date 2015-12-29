@@ -380,10 +380,10 @@ void main_tick()
   wait_tasks();
   numItersDoneOnCanvas += numItersPerFrame;
 
-#ifdef TEST_THREAD_PROFILING
-  int result = 0;
+#if defined(TEST_THREAD_PROFILING) && defined(REPORT_RESULT)
   if (numItersDoneOnCanvas > 50000)
   {
+    int result = 0;
     REPORT_RESULT();
   }
 #endif
