@@ -1547,7 +1547,7 @@ var LibrarySDL = {
 
   // Copy data from the C++-accessible storage to the canvas backing
   SDL_UnlockSurface: function(surf) {
-    assert(!SDL.GL); // in GL mode we do not keep around 2D canvases and contexts
+    //assert(!SDL.GL); // in GL mode we do not keep around 2D canvases and contexts
 
     var surfData = SDL.surfaces[surf];
 
@@ -2229,7 +2229,7 @@ var LibrarySDL = {
       surfData.locked--; // The surface is not actually locked in this hack
       if (SDL.GL) {
         // After getting the pixel data, we can free the canvas and context if we do not need to do 2D canvas blitting
-        surfData.canvas = surfData.ctx = null;
+        //surfData.canvas = surfData.ctx = null;
       }
       return surf;
     } finally {
