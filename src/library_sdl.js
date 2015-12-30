@@ -1764,7 +1764,12 @@ var LibrarySDL = {
   SDL_free: 'free',
 
   SDL_CreateRGBSurface: function(flags, width, height, depth, rmask, gmask, bmask, amask) {
-    return SDL.makeSurface(width, height, flags, false, 'CreateRGBSurface', rmask, gmask, bmask, amask);
+    var surf =  SDL.makeSurface(width, height, flags, false, 'CreateRGBSurface', rmask, gmask, bmask, amask);
+	var pitch = width * 4;
+    var data = SDL.surfaces[surf];
+    var image = data.ctx.createImageData(width, height);
+    data.ctx.putImageData(image, 0, 0);
+	return surf;
   },
 
   SDL_CreateRGBSurfaceFrom: function(pixels, width, height, depth, pitch, rmask, gmask, bmask, amask) {
