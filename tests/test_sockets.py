@@ -264,7 +264,7 @@ ok.
       #include <assert.h>
       #include <sys/socket.h>
       #include <netinet/in.h>
-      #include <arpa/inet.h> 
+      #include <arpa/inet.h>
       #include <string.h>
       int main() {
         int fd;
@@ -278,12 +278,38 @@ ok.
           return 1;
         }
         char buffer[1000];
-        sprintf(buffer, "%s:%u\n", inet_ntoa(adr_inet.sin_addr), (unsigned)ntohs(adr_inet.sin_port));
-        const char *correct = "0.0.0.0:0\n";
+        sprintf(buffer, "%s:%u", inet_ntoa(adr_inet.sin_addr), (unsigned)ntohs(adr_inet.sin_port));
+        const char *correct = "0.0.0.0:0";
         printf("got (expected) socket: %s (%s), size %d (%d)\n", buffer, correct, strlen(buffer), strlen(correct));
+        assert(strlen(buffer) == strlen(correct));
+        assert(strcmp(buffer, correct) == 0);
         puts("success.");
       }
     ''', 'success.')
+
+  def test_getpeername_null(self):
+    self.do_run(r'''
+      #include <sys/socket.h>
+      #include <stdio.h>
+      #include <assert.h>
+      #include <sys/socket.h>
+      #include <netinet/in.h>
+      #include <arpa/inet.h>
+      #include <string.h>
+      int main() {
+        int fd;
+        int z;
+        fd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+        struct sockaddr_in adr_inet;
+        socklen_t len_inet = sizeof adr_inet;
+        z = getpeername(fd, (struct sockaddr *)&adr_inet, &len_inet);
+        if (z != 0) {
+          perror("getpeername error");
+          return 1;
+        }
+        puts("unexpected success.");
+      }
+    ''', 'getpeername error: Socket not connected')
 
   def test_getaddrinfo(self):
     self.emcc_args=[]
