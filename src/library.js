@@ -1643,10 +1643,10 @@ LibraryManager.library = {
     var winterOffset = start.getTimezoneOffset();
     var dstOffset = Math.min(winterOffset, summerOffset); // DST is in December in South
     if (dst < 0) {
-      {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'Number(winterOffset != guessedOffset)', 'i32') }}};
-    } else if ((dst > 0) != (winterOffset != guessedOffset)) {
-      var summerOffset = new Date(date.getFullYear(), 6, 1).getTimezoneOffset();
-      var trueOffset = dst > 0 ? summerOffset : winterOffset;
+      {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'Number(dstOffset == guessedOffset)', 'i32') }}};
+    } else if ((dst > 0) != (dstOffset == guessedOffset)) {
+      var nonDstOffset = Math.max(winterOffset, summerOffset);
+      var trueOffset = dst > 0 ? dstOffset : nonDstOffset;
       // Don't try setMinutes(date.getMinutes() + ...) -- it's messed up.
       date.setTime(date.getTime() + (trueOffset - guessedOffset)*60000);
     }
