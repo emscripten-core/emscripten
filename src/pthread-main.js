@@ -51,6 +51,7 @@ this.onmessage = function(e) {
     postMessage({ cmd: 'loaded' });
   } else if (e.data.cmd === 'run') { // This worker was idle, and now should start executing its pthread entry point.
     threadInfoStruct = e.data.threadInfoStruct;
+    __register_pthread_ptr(threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0); // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
     assert(threadInfoStruct);
     selfThreadId = e.data.selfThreadId;
     assert(selfThreadId);

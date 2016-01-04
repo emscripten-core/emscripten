@@ -1,6 +1,6 @@
 var LibraryPThread = {
   $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock();',
-  $PThread__deps: ['$PROCINFO'],
+  $PThread__deps: ['$PROCINFO', '_register_pthread_ptr'],
   $PThread: {
     MAIN_THREAD_ID: 1, // A special constant that identifies the main JS thread ID.
     mainThreadInfo: {
@@ -17,6 +17,8 @@ var LibraryPThread = {
     initMainThreadBlock: function() {
       if (ENVIRONMENT_IS_PTHREAD) return undefined;
       PThread.mainThreadBlock = allocate({{{ C_STRUCTS.pthread.__size__ }}}, "i32*", ALLOC_STATIC);
+      __register_pthread_ptr(PThread.mainThreadBlock, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1); // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
+
       for (var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}}/4; ++i) HEAPU32[PThread.mainThreadBlock/4+i] = 0;
 
       // The pthread struct has a field that points to itself - this is used as a magic ID to detect whether the pthread_t
@@ -144,6 +146,7 @@ var LibraryPThread = {
         PThread.runExitHandlers();
 
         _emscripten_futex_wake(tb + {{{ C_STRUCTS.pthread.threadStatus }}}, {{{ cDefine('INT_MAX') }}});
+        __register_pthread_ptr(0, 0, 0); // Unregister the thread block also inside the asm.js scope.
         threadInfoStruct = 0;
         if (ENVIRONMENT_IS_PTHREAD) {
           postMessage({ cmd: 'exit' });
@@ -157,6 +160,7 @@ var LibraryPThread = {
       Atomics.store(HEAPU32, (threadInfoStruct + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 1); // Mark the thread as no longer running.
       _emscripten_futex_wake(threadInfoStruct + {{{ C_STRUCTS.pthread.threadStatus }}}, {{{ cDefine('INT_MAX') }}}); // wake all threads
       threadInfoStruct = selfThreadId = 0; // Not hosting a pthread anymore in this worker, reset the info structures to null.
+      __register_pthread_ptr(0, 0, 0); // Unregister the thread block also inside the asm.js scope.
       postMessage({ cmd: 'cancelDone' });
     },
 
@@ -607,18 +611,38 @@ var LibraryPThread = {
     else PThread.threadExit(status);
   },
 
+  _pthread_ptr: 0,
+  _pthread_is_main_runtime_thread: 0,
+  _pthread_is_main_browser_thread: 0,
+
+  _register_pthread_ptr__asm: true,
+  _register_pthread_ptr__deps: ['_pthread_ptr', '_pthread_is_main_runtime_thread', '_pthread_is_main_browser_thread'],
+  _register_pthread_ptr: function(pthreadPtr, isMainBrowserThread, isMainRuntimeThread) {
+    pthreadPtr = pthreadPtr|0;
+    isMainBrowserThread = isMainBrowserThread|0;
+    isMainRuntimeThread = isMainRuntimeThread|0;
+    __pthread_ptr = pthreadPtr;
+    __pthread_is_main_browser_thread = isMainBrowserThread;
+    __pthread_is_main_runtime_thread = isMainRuntimeThread;
+  },
+
   // Public pthread_self() function which returns a unique ID for the thread.
+  pthread_self__asm: true,
+  pthread_self__deps: ['_pthread_ptr'],
   pthread_self: function() {
-    if (ENVIRONMENT_IS_PTHREAD) return threadInfoStruct;
-    return PThread.mainThreadBlock; // Main JS thread.
+    return __pthread_ptr|0;
   },
 
+  emscripten_is_main_runtime_thread__asm: true,
+  emscripten_is_main_runtime_thread__deps: ['_pthread_is_main_runtime_thread'],
   emscripten_is_main_runtime_thread: function() {
-    return !ENVIRONMENT_IS_PTHREAD;
+    return __pthread_is_main_runtime_thread|0; // Semantically the same as testing "!ENVIRONMENT_IS_PTHREAD" outside the asm.js scope
   },
 
+  emscripten_is_main_browser_thread__asm: true,
+  emscripten_is_main_browser_thread__deps: ['_pthread_is_main_browser_thread'],
   emscripten_is_main_browser_thread: function() {
-    return !ENVIRONMENT_IS_WORKER;
+    return __pthread_is_main_browser_thread|0; // Semantically the same as testing "!ENVIRONMENT_IS_WORKER" outside the asm.js scope
   },
 
   pthread_getschedparam: function(thread, policy, schedparam) {
