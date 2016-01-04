@@ -2026,7 +2026,10 @@ LibraryManager.library = {
         return leadingNulls(date.tm_hour, 2);
       },
       '%I': function(date) {
-        return leadingNulls(date.tm_hour < 13 ? date.tm_hour : date.tm_hour-12, 2);
+        var twelveHour = date.tm_hour;
+        if (twelveHour == 0) twelveHour = 12;
+        else if (twelveHour > 12) twelveHour -= 12;
+        return leadingNulls(twelveHour, 2);
       },
       '%j': function(date) {
         // Day of the year (001-366)
@@ -2042,7 +2045,7 @@ LibraryManager.library = {
         return '\n';
       },
       '%p': function(date) {
-        if (date.tm_hour > 0 && date.tm_hour < 13) {
+        if (date.tm_hour >= 0 && date.tm_hour < 12) {
           return 'AM';
         } else {
           return 'PM';
