@@ -757,9 +757,7 @@ function ftCall_%s(%s) {%s
       if metadata['simdFloat64x2']:
         asm_global_funcs += '  var SIMD_Int32x4_fromBool64x2Bits = global.SIMD.Int32x4.fromBool64x2Bits;\n';
     if settings['USE_PTHREADS']:
-#      asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor']])
-# TODO: Once bug https://bugzilla.mozilla.org/show_bug.cgi?id=1141986 is implemented, replace the following line with the above one!
-      asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor']])
+      asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor']])
     asm_global_vars = ''.join(['  var ' + g + '=env' + access_quote(g) + '|0;\n' for g in basic_vars + global_vars])
 
     # sent data
