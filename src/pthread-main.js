@@ -62,6 +62,9 @@ this.onmessage = function(e) {
     assert(STACK_MAX > STACK_BASE);
     Runtime.establishStackSpace(e.data.stackBase, e.data.stackBase + e.data.stackSize);
     var result = 0;
+
+    PThread.setThreadStatus(_pthread_self(), 1/*EM_THREAD_STATUS_RUNNING*/);
+
     try {
       // HACK: Some code in the wild has instead signatures of form 'void *ThreadMain()', which seems to be ok in native code.
       // To emulate supporting both in test suites, use the following form. This is brittle!

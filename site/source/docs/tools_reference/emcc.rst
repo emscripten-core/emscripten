@@ -398,6 +398,9 @@ Options that are modified or new in *emcc* are listed below:
 ``--memoryprofiler``
 	Embeds a memory allocation tracker onto the generated page. Use this to profile the application usage of the Emscripten HEAP.
 
+``--threadprofiler``
+	Embeds a thread activity profiler onto the generated page. Use this to profile the application usage of pthreads when targeting multithreaded builds (-s USE_PTHREADS=1/2).
+
 .. _emcc-config:
 	
 ``--em-config``

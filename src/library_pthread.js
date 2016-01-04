@@ -29,12 +29,86 @@ var LibraryPThread = {
       Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.tsd }}} ) >> 2, tlsMemory); // Init thread-local-storage memory array.
       Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.tid }}} ) >> 2, PThread.mainThreadBlock); // Main thread ID.
       Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.pid }}} ) >> 2, PROCINFO.pid); // Process ID.
+
+#if PTHREADS_PROFILING
+      PThread.createProfilerBlock(PThread.mainThreadBlock);
+      PThread.setThreadName(PThread.mainThreadBlock, "main thread");
+      PThread.setThreadStatus(PThread.mainThreadBlock, {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
+#endif
     },
     // Maps pthread_t to pthread info objects
     pthreads: {},
     pthreadIdCounter: 2, // 0: invalid thread, 1: main JS UI thread, 2+: IDs for pthreads
 
     exitHandlers: null, // An array of C functions to run when this thread exits.
+
+#if PTHREADS_PROFILING
+    createProfilerBlock: function(pthreadPtr) {
+      var profilerBlock = (pthreadPtr == PThread.mainThreadBlock) ? allocate({{{ C_STRUCTS.thread_profiler_block.__size__ }}}, "i32*", ALLOC_STATIC) : _malloc({{{ C_STRUCTS.thread_profiler_block.__size__ }}});
+      Atomics.store(HEAPU32, (pthreadPtr + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2, profilerBlock);
+
+      // Zero fill contents at startup.
+      for(var i = 0; i < {{{ C_STRUCTS.thread_profiler_block.__size__ }}}; i += 4) Atomics.store(HEAPU32, (profilerBlock + i) >> 2, 0);
+      Atomics.store(HEAPU32, (pthreadPtr + {{{ C_STRUCTS.thread_profiler_block.currentStatusStartTime }}} ) >> 2, performance.now());
+    },
+
+    // Sets the current thread status, but only if it was in the given expected state before. This is used
+    // to allow high-level control flow "override" the thread status before low-level (futex wait) operations set it.
+    setThreadStatusConditional: function(pthreadPtr, expectedStatus, newStatus) {
+      var profilerBlock = Atomics.load(HEAPU32, (pthreadPtr + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2);
+      if (!profilerBlock) return;
+
+      var prevStatus = Atomics.load(HEAPU32, (profilerBlock + {{{ C_STRUCTS.thread_profiler_block.threadStatus }}} ) >> 2);
+
+      if (prevStatus != newStatus && (prevStatus == expectedStatus || expectedStatus == -1)) {
+        var now = performance.now();
+        var startState = HEAPF64[(profilerBlock + {{{ C_STRUCTS.thread_profiler_block.currentStatusStartTime }}} ) >> 3];
+        var duration = now - startState;
+
+        HEAPF64[((profilerBlock + {{{ C_STRUCTS.thread_profiler_block.timeSpentInStatus }}} ) >> 3) + prevStatus] += duration;
+        Atomics.store(HEAPU32, (profilerBlock + {{{ C_STRUCTS.thread_profiler_block.threadStatus }}} ) >> 2, newStatus);
+        HEAPF64[(profilerBlock + {{{ C_STRUCTS.thread_profiler_block.currentStatusStartTime }}} ) >> 3] = now;
+      }
+    },
+
+    // Unconditionally sets the thread status.
+    setThreadStatus: function(pthreadPtr, newStatus) {
+      PThread.setThreadStatusConditional(pthreadPtr, -1, newStatus);
+    },
+
+    setThreadName: function(pthreadPtr, name) {
+      var profilerBlock = Atomics.load(HEAPU32, (pthreadPtr + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2);
+      if (!profilerBlock) return;
+      stringToUTF8(name, profilerBlock + {{{ C_STRUCTS.thread_profiler_block.name }}}, 32);
+    },
+
+    getThreadName: function(pthreadPtr) {
+      var profilerBlock = Atomics.load(HEAPU32, (pthreadPtr + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2);
+      if (!profilerBlock) return "";
+      return UTF8ToString(profilerBlock + {{{ C_STRUCTS.thread_profiler_block.name }}});
+    },
+
+    threadStatusToString: function(threadStatus) {
+      switch(threadStatus) {
+        case 0: return "not yet started";
+        case 1: return "running";
+        case 2: return "sleeping";
+        case 3: return "waiting for a futex";
+        case 4: return "waiting for a mutex";
+        case 5: return "waiting for a proxied operation";
+        case 6: return "finished execution";
+        default: return "unknown (corrupt?!)";
+      }
+    },
+
+    threadStatusAsString: function(pthreadPtr) {
+      var profilerBlock = Atomics.load(HEAPU32, (pthreadPtr + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2);
+      var status = (profilerBlock == 0) ? 0 : Atomics.load(HEAPU32, (profilerBlock + {{{ C_STRUCTS.thread_profiler_block.threadStatus }}} ) >> 2);
+      return PThread.threadStatusToString(status);
+    },
+#else
+    setThreadStatus: function() {},
+#endif
 
     runExitHandlers: function() {
       if (PThread.exitHandlers !== null) {
@@ -53,6 +127,11 @@ var LibraryPThread = {
     threadExit: function(exitCode) {
       var tb = _pthread_self();
       if (tb) { // If we haven't yet exited?
+#if PTHREADS_PROFILING
+        var profilerBlock = Atomics.load(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2);
+        Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2, 0);
+        _free(profilerBlock);
+#endif
         Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, exitCode);
         // When we publish this, the main thread is free to deallocate the thread object and we are done.
         // Therefore set threadInfoStruct = 0; above to 'release' the object in this worker thread.
@@ -262,6 +341,7 @@ var LibraryPThread = {
     };
     Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0); // threadStatus <- 0, meaning not yet exited.
     Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, 0); // threadExitCode <- 0.
+    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2, 0); // profilerBlock <- 0.
     Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, threadParams.detached);
     Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.tsd }}} ) >> 2, tlsMemory); // Init thread-local-storage memory array.
     Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.tsd_used }}} ) >> 2, 0); // Mark initial status to unused.
@@ -275,6 +355,10 @@ var LibraryPThread = {
     Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 12) >> 2, threadParams.detached);
     Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 20) >> 2, threadParams.schedPolicy);
     Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 24) >> 2, threadParams.schedPrio);
+
+#if PTHREADS_PROFILING
+    PThread.createProfilerBlock(pthread.threadInfoStruct);
+#endif
 
     worker.pthread = pthread;
 
@@ -663,8 +747,14 @@ var LibraryPThread = {
   emscripten_futex_wait: function(addr, val, timeout) {
     if (addr <= 0 || addr > HEAP8.length || addr&3 != 0) return -{{{ cDefine('EINVAL') }}};
 //    dump('futex_wait addr:' + addr + ' by thread: ' + _pthread_self() + (ENVIRONMENT_IS_PTHREAD?'(pthread)':'') + '\n');
+#if PTHREADS_PROFILING
+    PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}}, {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}});
+#endif
     var ret = Atomics.futexWait(HEAP32, addr >> 2, val, timeout);
 //    dump('futex_wait done by thread: ' + _pthread_self() + (ENVIRONMENT_IS_PTHREAD?'(pthread)':'') + '\n');
+#if PTHREADS_PROFILING
+    PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}}, {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
+#endif
     if (ret == Atomics.TIMEDOUT) return -{{{ cDefine('ETIMEDOUT') }}};
     if (ret == Atomics.NOTEQUAL) return -{{{ cDefine('EWOULDBLOCK') }}};
     if (ret == 0) return 0;
@@ -695,6 +785,58 @@ var LibraryPThread = {
 
   __atomic_is_lock_free: function(size, ptr) {
     return size <= 4 && (size & (size-1)) == 0 && (ptr&(size-1)) == 0;
+  },
+
+  emscripten_conditional_set_current_thread_status_js: function(expectedStatus, newStatus) {
+#if PTHREADS_PROFILING
+    PThread.setThreadStatusConditional(_pthread_self(), expectedStatus, newStatus);
+#endif
+  },
+
+  emscripten_set_current_thread_status_js: function(newStatus) {
+#if PTHREADS_PROFILING
+    PThread.setThreadStatus(_pthread_self(), newStatus);
+#endif
+  },
+
+  emscripten_set_thread_name_js: function(threadId, name) {
+#if PTHREADS_PROFILING
+    PThread.setThreadName(threadId, UTF8ToString(name));
+#endif
+  },
+
+  // The profiler setters are defined twice, here in asm.js so that they can be #ifdeffed out 
+  // without having to pay the impact of a FFI transition for a no-op in non-profiling builds.
+  emscripten_conditional_set_current_thread_status__asm: true,
+  emscripten_conditional_set_current_thread_status__sig: 'vii',
+  emscripten_conditional_set_current_thread_status__deps: ['emscripten_conditional_set_current_thread_status_js'],
+  emscripten_conditional_set_current_thread_status: function(expectedStatus, newStatus) {
+    expectedStatus = expectedStatus|0;
+    newStatus = newStatus|0;
+#if PTHREADS_PROFILING
+    _emscripten_conditional_set_current_thread_status_js(expectedStatus|0, newStatus|0);
+#endif
+  },
+
+  emscripten_set_current_thread_status__asm: true,
+  emscripten_set_current_thread_status__sig: 'vi',
+  emscripten_set_current_thread_status__deps: ['emscripten_set_current_thread_status_js'],
+  emscripten_set_current_thread_status: function(newStatus) {
+    newStatus = newStatus|0;
+#if PTHREADS_PROFILING
+    _emscripten_set_current_thread_status_js(newStatus|0);
+#endif
+  },
+
+  emscripten_set_thread_name__asm: true,
+  emscripten_set_thread_name__sig: 'vii',
+  emscripten_set_thread_name__deps: ['emscripten_set_thread_name_js'],
+  emscripten_set_thread_name: function(threadId, name) {
+    threadId = threadId|0;
+    name = name|0;
+#if PTHREADS_PROFILING
+    _emscripten_set_thread_name_js(threadId|0, name|0);
+#endif
   }
 };
 
