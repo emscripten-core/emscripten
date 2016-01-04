@@ -69,7 +69,6 @@ try {
   var atomics_and = /var\s+([^=]+?)\s*=\s*global\.Atomics\.and;/.exec(code)[1];
   var atomics_or = /var\s+([^=]+?)\s*=\s*global\.Atomics\.or;/.exec(code)[1];
   var atomics_xor = /var\s+([^=]+?)\s*=\s*global\.Atomics\.xor;/.exec(code)[1];
-  var atomics_fence = /var\s+([^=]+?)\s*=\s*global\.Atomics\.fence;/.exec(code)[1];
 
   // "Atomics_load(HEAP32, index)" -> "HEAP32[index]|0" and same for other heap types.
   code = code.replace(new RegExp('\\\\b' + atomics_load + '\\\\((' + heap8 + ')\w*,(.*?)\\\\\)', 'g'), "($1[$2]|0)");
@@ -123,7 +122,6 @@ try {
   code = code.replace(new RegExp("var " + atomics_and + "\\\\s*=\\\\s*global\\.Atomics\\.and;"), "");
   code = code.replace(new RegExp("var " + atomics_or + "\\\\s*=\\\\s*global\\.Atomics\\.or;"), "");
   code = code.replace(new RegExp("var " + atomics_xor + "\\\\s*=\\\\s*global\\.Atomics\\.xor;"), "");
-  code = code.replace(new RegExp("var " + atomics_fence + "\\\\s*=\\\\s*global\\.Atomics\\.fence;"), "");
 
   // Implement polyfill versions of Atomics intrinsics inside the asm.js scope.
   code = code.replace("// EMSCRIPTEN_START_FUNCS", "// EMSCRIPTEN_START_FUNCS\\n"
@@ -156,8 +154,6 @@ try {
     + "function " + atomics_compareExchange + "_32(i,e,r) { i=i|0; e=e|0; r=r|0; var w=0; w="+heap32+"[i<<2>>2]|0; if ((w|0) == (e|0)) "+heap32+"[i<<2>>2]=r; return w|0; }\\n"
     + "function " + atomics_compareExchange + "_f32(i,e,r) { i=i|0; e="+math_fround+"e"+cp+"; r="+math_fround+"r"+cp+"; var w="+zero+"; w="+math_fround+heapf32+"[i<<2>>2]"+cp+"; if (w == e) "+heapf32+"[i<<2>>2]=r; return w; }\\n"
     + "function " + atomics_compareExchange + "_f64(i,e,r) { i=i|0; e=+e; r=+r; var w=0.0; w=+"+heapf64+"[i<<3>>3]; if (+w == +e) "+heapf64+"[i<<3>>3]=r; return w; }\\n"
-
-    + "function " + atomics_fence + "() {}\\n"
     );
 
   var t1 = performance.now();
