@@ -87,14 +87,10 @@ try {
   code = code.replace(new RegExp('\\\\b' + atomics_add + '\\\\('+heap8+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_add + "_8($1,$2)|0)|0)");
   code = code.replace(new RegExp('\\\\b' + atomics_add + '\\\\('+heap16+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_add + "_16($1,$2)|0)|0)");
   code = code.replace(new RegExp('\\\\b' + atomics_add + '\\\\('+heap32+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_add + "_32($1,$2)|0)|0)");
-  code = code.replace(new RegExp('\\\\b' + atomics_add + '\\\\('+heapf32+',(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_add + "_f32($1,$2)|0)");
-  code = code.replace(new RegExp('\\\\b' + atomics_add + '\\\\('+heapf64+',(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_add + "_f64($1,$2)|0)");
 
   code = code.replace(new RegExp('\\\\b' + atomics_sub + '\\\\('+heap8+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_sub + "_8($1,$2)|0)|0)");
   code = code.replace(new RegExp('\\\\b' + atomics_sub + '\\\\('+heap16+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_sub + "_16($1,$2)|0)|0)");
   code = code.replace(new RegExp('\\\\b' + atomics_sub + '\\\\('+heap32+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_sub + "_32($1,$2)|0)|0)");
-  code = code.replace(new RegExp('\\\\b' + atomics_sub + '\\\\('+heapf32+',(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_sub + "_f32($1,$2)|0)");
-  code = code.replace(new RegExp('\\\\b' + atomics_sub + '\\\\('+heapf64+',(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_sub + "_f64($1,$2)|0)");
 
   code = code.replace(new RegExp('\\\\b' + atomics_and + '\\\\('+heap8+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_and + "_8($1,$2)|0)|0)");
   code = code.replace(new RegExp('\\\\b' + atomics_and + '\\\\('+heap16+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_and + "_16($1,$2)|0)|0)");
@@ -111,14 +107,10 @@ try {
   code = code.replace(new RegExp('\\\\b' + atomics_exchange + '\\\\('+heap8+',(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_exchange + "_8($1,$2)|0)");
   code = code.replace(new RegExp('\\\\b' + atomics_exchange + '\\\\('+heap16+',(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_exchange + "_16($1,$2)|0)");
   code = code.replace(new RegExp('\\\\b' + atomics_exchange + '\\\\('+heap32+',(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_exchange + "_32($1,$2)|0)");
-  code = code.replace(new RegExp('\\\\b' + atomics_exchange + '\\\\('+heapf32+',(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_exchange + "_f32($1,$2)|0)");
-  code = code.replace(new RegExp('\\\\b' + atomics_exchange + '\\\\('+heapf64+',(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_exchange + "_f64($1,$2)|0)");
 
   code = code.replace(new RegExp('\\\\b' + atomics_compareExchange + '\\\\('+heap8+',(.*?),(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_compareExchange + "_8($1,$2,$3)|0)");
   code = code.replace(new RegExp('\\\\b' + atomics_compareExchange + '\\\\('+heap16+',(.*?),(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_compareExchange + "_16($1,$2,$3)|0)");
   code = code.replace(new RegExp('\\\\b' + atomics_compareExchange + '\\\\('+heap32+',(.*?),(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_compareExchange + "_32($1,$2,$3)|0)");
-  code = code.replace(new RegExp('\\\\b' + atomics_compareExchange + '\\\\('+heapf32+',(.*?),(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_compareExchange + "_f32($1,$2,$3)|0)");
-  code = code.replace(new RegExp('\\\\b' + atomics_compareExchange + '\\\\('+heapf64+',(.*?),(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_compareExchange + "_f64($1,$2,$3)|0)");
 
   // Remove the import statements of Atomics built-ins.
   code = code.replace(new RegExp("var " + atomics_load + "\\\\s*=\\\\s*global\\.Atomics\\.load;"), "");
@@ -136,14 +128,10 @@ try {
     + "function " + atomics_add + "_8(i,v) { i=i|0; v=v|0; var w=0; w="+heap8+"[i>>0]|0; "+heap8+"[i>>0]=("+heap8+"[i>>0]|0)+(v|0); return w|0; }\\n"
     + "function " + atomics_add + "_16(i,v) { i=i|0; v=v|0; var w=0; w="+heap16+"[i<<1>>1]|0; "+heap16+"[i<<1>>1]=("+heap16+"[i<<1>>1]|0)+(v|0); return w|0; }\\n"
     + "function " + atomics_add + "_32(i,v) { i=i|0; v=v|0; var w=0; w="+heap32+"[i<<2>>2]|0; "+heap32+"[i<<2>>2]=("+heap32+"[i<<2>>2]|0)+(v|0); return w|0; }\\n"
-    + "function " + atomics_add + "_f32(i,v) { i=i|0; v="+math_fround+"v"+cp+"; var w="+zero+"; w="+math_fround+heapf32+"[i<<2>>2]"+cp+"; "+heapf32+"[i<<2>>2]="+math_fround+heapf32+"[i<<2>>2]"+cp+"+v; return w; }\\n"
-    + "function " + atomics_add + "_f64(i,v) { i=i|0; v=+v; var w=0.0; w=+"+heapf64+"[i<<3>>3]; "+heapf64+"[i<<3>>3]="+heapf64+"[i<<3>>3]+v; return w; }\\n"
 
     + "function " + atomics_sub + "_8(i,v) { i=i|0; v=v|0; var w=0; w="+heap8+"[i>>0]|0; "+heap8+"[i>>0]=("+heap8+"[i>>0]|0)-(v|0); return w|0; }\\n"
     + "function " + atomics_sub + "_16(i,v) { i=i|0; v=v|0; var w=0; w="+heap16+"[i<<1>>1]|0; "+heap16+"[i<<1>>1]=("+heap16+"[i<<1>>1]|0)-(v|0); return w|0; }\\n"
     + "function " + atomics_sub + "_32(i,v) { i=i|0; v=v|0; var w=0; w="+heap32+"[i<<2>>2]|0; "+heap32+"[i<<2>>2]=("+heap32+"[i<<2>>2]|0)-(v|0); return w|0; }\\n"
-    + "function " + atomics_sub + "_f32(i,v) { i=i|0; v="+math_fround+"v"+cp+"; var w="+zero+"; w="+math_fround+heapf32+"[i<<2>>2]"+cp+"; "+heapf32+"[i<<2>>2]="+math_fround+heapf32+"[i<<2>>2]"+cp+"-v; return w; }\\n"
-    + "function " + atomics_sub + "_f64(i,v) { i=i|0; v=+v; var w=0.0; w=+"+heapf64+"[i<<3>>3]; "+heapf64+"[i<<3>>3]="+heapf64+"[i<<3>>3]-v; return w; }\\n"
 
     + "function " + atomics_and + "_8(i,v) { i=i|0; v=v|0; var w=0; w="+heap8+"[i>>0]|0; "+heap8+"[i>>0]=("+heap8+"[i>>0]|0)&(v|0); return w|0; }\\n"
     + "function " + atomics_and + "_16(i,v) { i=i|0; v=v|0; var w=0; w="+heap16+"[i<<1>>1]|0; "+heap16+"[i<<1>>1]=("+heap16+"[i<<1>>1]|0)&(v|0); return w|0; }\\n"
@@ -160,14 +148,10 @@ try {
     + "function " + atomics_exchange + "_8(i,e,r) { i=i|0; e=e|0; r=r|0; var w=0; w="+heap8+"[i>>0]|0; "+heap8+"[i>>0]=r; return w|0; }\\n"
     + "function " + atomics_exchange + "_16(i,e,r) { i=i|0; e=e|0; r=r|0; var w=0; w="+heap16+"[i<<1>>1]|0; "+heap16+"[i<<1>>1]=r; return w|0; }\\n"
     + "function " + atomics_exchange + "_32(i,e,r) { i=i|0; e=e|0; r=r|0; var w=0; w="+heap32+"[i<<2>>2]|0; "+heap32+"[i<<2>>2]=r; return w|0; }\\n"
-    + "function " + atomics_exchange + "_f32(i,e,r) { i=i|0; e="+math_fround+"e"+cp+"; r="+math_fround+"r"+cp+"; var w="+zero+"; w="+math_fround+heapf32+"[i<<2>>2]"+cp+"; "+heapf32+"[i<<2>>2]=r; return w; }\\n"
-    + "function " + atomics_exchange + "_f64(i,e,r) { i=i|0; e=+e; r=+r; var w=0.0; w=+"+heapf64+"[i<<3>>3]; "+heapf64+"[i<<3>>3]=r; return w; }\\n"
 
     + "function " + atomics_compareExchange + "_8(i,e,r) { i=i|0; e=e|0; r=r|0; var w=0; w="+heap8+"[i>>0]|0; if ((w|0) == (e|0)) "+heap8+"[i>>0]=r; return w|0; }\\n"
     + "function " + atomics_compareExchange + "_16(i,e,r) { i=i|0; e=e|0; r=r|0; var w=0; w="+heap16+"[i<<1>>1]|0; if ((w|0) == (e|0)) "+heap16+"[i<<1>>1]=r; return w|0; }\\n"
     + "function " + atomics_compareExchange + "_32(i,e,r) { i=i|0; e=e|0; r=r|0; var w=0; w="+heap32+"[i<<2>>2]|0; if ((w|0) == (e|0)) "+heap32+"[i<<2>>2]=r; return w|0; }\\n"
-    + "function " + atomics_compareExchange + "_f32(i,e,r) { i=i|0; e="+math_fround+"e"+cp+"; r="+math_fround+"r"+cp+"; var w="+zero+"; w="+math_fround+heapf32+"[i<<2>>2]"+cp+"; if (w == e) "+heapf32+"[i<<2>>2]=r; return w; }\\n"
-    + "function " + atomics_compareExchange + "_f64(i,e,r) { i=i|0; e=+e; r=+r; var w=0.0; w=+"+heapf64+"[i<<3>>3]; if (+w == +e) "+heapf64+"[i<<3>>3]=r; return w; }\\n"
     );
 
   var t1 = performance.now();
