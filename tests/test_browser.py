@@ -2534,7 +2534,7 @@ window.close = function() {
                             'glue']).communicate()[0]
     assert os.path.exists('glue.cpp')
     assert os.path.exists('glue.js')
-    self.btest(os.path.join('webidl', 'test.cpp'), '1', args=['-s', 'EXPORTED_FUNCTIONS=["_malloc"]', '--post-js', 'glue.js', '-I' + path_from_root('tests', 'webidl'), '-DBROWSER'])
+    self.btest(os.path.join('webidl', 'test.cpp'), '1', args=['--post-js', 'glue.js', '-I' + path_from_root('tests', 'webidl'), '-DBROWSER'])
 
   def test_dynamic_link(self):
     open('pre.js', 'w').write('''
