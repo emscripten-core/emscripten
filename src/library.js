@@ -3186,11 +3186,11 @@ LibraryManager.library = {
     lookup_name: function (name) {
       // If the name is already a valid ipv4 / ipv6 address, don't generate a fake one.
       var res = __inet_pton4_raw(name);
-      if (res) {
+      if (res !== null) {
         return name;
       }
       res = __inet_pton6_raw(name);
-      if (res) {
+      if (res !== null) {
         return name;
       }
 
