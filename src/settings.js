@@ -681,4 +681,9 @@ var PTHREADS_PROFILING = 0; // True when building with --threadprofiler
 
 var MAX_GLOBAL_ALIGN = -1; // received from the backend
 
+// Duplicate function elimination
+var ELIMINATE_DUPLICATE_FUNCTIONS = 0; // disabled by default
+var ELIMINATE_DUPLICATE_FUNCTIONS_PASSES = 5;
+var ELIMINATE_DUPLICATE_FUNCTIONS_DUMP_EQUIVALENT_FUNCTIONS = 0;
+
 // Reserved: variables containing POINTER_MASKING.

@@ -96,7 +96,16 @@ further debug the compiler itself, see emcc.
 
 # Core test runner class, shared between normal tests and benchmarks
 checked_sanity = False
-test_modes = ['default', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g', 'asm2i', 'asm2nn']
+test_modes = [
+  'default',
+  'asm1',
+  'asm2',
+  'asm3',
+  'asm2f',
+  'asm2g',
+  'asm2i',
+  'asm2nn'
+]
 test_index = 0
 
 use_all_engines = os.environ.get('EM_ALL_ENGINES') # generally js engines are equivalent, testing 1 is enough. set this
@@ -359,6 +368,22 @@ class RunnerCore(unittest.TestCase):
         if n == 0: return src[start:t+1]
       t += 1
       assert t < len(src)
+
+  def count_funcs(self, javascript_file):
+    num_funcs = 0
+    start_tok = "// EMSCRIPTEN_START_FUNCS"
+    end_tok = "// EMSCRIPTEN_END_FUNCS"
+    start_off = 0
+    end_off = 0
+
+    with open (javascript_file, 'rt') as fin:
+      blob = "".join(fin.readlines())
+      start_off = blob.find(start_tok) + len(start_tok)
+      end_off = blob.find(end_tok)
+      asm_chunk = blob[start_off:end_off]
+      num_funcs = asm_chunk.count('function ')
+
+    return num_funcs
 
   def run_generated_code(self, engine, filename, args=[], check_timeout=True, output_nicerizer=None, assert_returncode=0):
     stdout = os.path.join(self.get_dir(), 'stdout') # use files, as PIPE can get too full and hang us

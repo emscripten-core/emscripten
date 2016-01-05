@@ -6055,3 +6055,130 @@ int main() {
     check_execute([PYTHON, EMCC, 'src.cpp', '-O2']) # optimized, so no assertions
     self.assertNotContained(WARNING, open('a.out.js').read())
 
+  ############################################################
+  # Function eliminator tests
+  ############################################################
+  def normalize_line_endings(self, input):
+    return input.replace('\r\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n')
+
+  def get_file_contents(self, file):
+    file_contents = ""
+    with open(file) as fout:
+      file_contents = "".join(fout.readlines())
+
+    file_contents = self.normalize_line_endings(file_contents)
+
+    return file_contents
+
+  def function_eliminator_test_helper(self, input_file, expected_output_file, use_hash_info=False):
+    input_file = path_from_root('tests', 'optimizer', input_file)
+    expected_output_file = path_from_root('tests', 'optimizer', expected_output_file)
+    command = [path_from_root('tools', 'eliminate-duplicate-functions.js'), input_file, '--no-minimize-whitespace', '--use-asm-ast']
+
+    if use_hash_info:
+      command.append('--use-hash-info')
+
+    output, err = Popen(NODE_JS + command, stdin=PIPE, stderr=PIPE, stdout=PIPE).communicate()
+    assert err == '', err
+    expected_output = self.get_file_contents(expected_output_file)
+    output = self.normalize_line_endings(output)
+
+    self.assertIdentical(expected_output, output)
+
+  def test_function_eliminator_simple(self):
+    self.function_eliminator_test_helper('test-function-eliminator-simple.js',
+                                         'test-function-eliminator-simple-output.js')
+
+  def test_function_eliminator_replace_function_call(self):
+    self.function_eliminator_test_helper('test-function-eliminator-replace-function-call.js',
+                                        'test-function-eliminator-replace-function-call-output.js')
+
+  def test_function_eliminator_replace_function_call_two_passes(self):
+    self.function_eliminator_test_helper('test-function-eliminator-replace-function-call-output.js',
+                                         'test-function-eliminator-replace-function-call-two-passes-output.js')
+
+  def test_function_eliminator_replace_array_value(self):
+    import tools.duplicate_function_eliminator
+    output_file = 'output.js'
+
+    try:
+      tools.shared.safe_copy(path_from_root('tests', 'optimizer', 'test-function-eliminator-replace-array-value.js'), output_file)
+
+      tools.duplicate_function_eliminator.run(output_file)
+
+      output_file_contents = self.get_file_contents(output_file)
+
+      expected_file_contents = self.get_file_contents(path_from_root('tests', 'optimizer', 'test-function-eliminator-replace-array-value-output.js'))
+
+      self.assertIdentical(output_file_contents, expected_file_contents)
+    finally:
+      tools.tempfiles.try_delete(output_file)
+
+  def test_function_eliminator_replace_object_value_assignment(self):
+    self.function_eliminator_test_helper('test-function-eliminator-replace-object-value-assignment.js',
+                                         'test-function-eliminator-replace-object-value-assignment-output.js')
+
+  def test_function_eliminator_variable_clash(self):
+    self.function_eliminator_test_helper('test-function-eliminator-variable-clash.js',
+                                         'test-function-eliminator-variable-clash-output.js')
+
+  def test_function_eliminator_replace_variable_value(self):
+    self.function_eliminator_test_helper('test-function-eliminator-replace-variable-value.js',
+                                         'test-function-eliminator-replace-variable-value-output.js')
+
+  def test_function_eliminator_double_parsed_correctly(self):
+    # This is a test that makes sure that when we perform final optimization on
+    # the JS file, doubles are preserved (and not converted to ints).
+    import tools.tempfiles
+    import tools.duplicate_function_eliminator
+    import tools.js_optimizer
+
+    output_file = 'output.js'
+
+    try:
+      tools.shared.safe_copy(path_from_root('tests', 'optimizer', 'test-function-eliminator-double-parsed-correctly.js'), output_file)
+
+      # Run duplicate function elimination
+      tools.duplicate_function_eliminator.run(output_file)
+
+      # Run last opts
+      tools.shared.safe_copy(tools.js_optimizer.run(output_file, ['last', 'asm']), output_file)
+      output_file_contents = self.get_file_contents(output_file)
+
+      # Compare
+      expected_file_contents = self.get_file_contents(path_from_root('tests', 'optimizer', 'test-function-eliminator-double-parsed-correctly-output.js'))
+      self.assertIdentical(output_file_contents, expected_file_contents)
+    finally:
+      tools.tempfiles.try_delete(output_file)
+
+  # Now do the same, but using a pre-generated equivalent function hash info that
+  # comes in handy for parallel processing
+  def test_function_eliminator_simple_with_hash_info(self):
+    self.function_eliminator_test_helper('test-function-eliminator-simple-with-hash-info.js',
+                                         'test-function-eliminator-simple-output.js',
+                                         use_hash_info=True)
+
+  def test_function_eliminator_replace_function_call_with_hash_info(self):
+    self.function_eliminator_test_helper('test-function-eliminator-replace-function-call-with-hash-info.js',
+                                         'test-function-eliminator-replace-function-call-output.js',
+                                         use_hash_info=True)
+
+  def test_function_eliminator_replace_function_call_two_passes_with_hash_info(self):
+    self.function_eliminator_test_helper('test-function-eliminator-replace-function-call-output-with-hash-info.js',
+                                         'test-function-eliminator-replace-function-call-two-passes-output.js',
+                                         use_hash_info=True)
+
+  def test_function_eliminator_replace_object_value_assignment_with_hash_info(self):
+    self.function_eliminator_test_helper('test-function-eliminator-replace-object-value-assignment-with-hash-info.js',
+                                         'test-function-eliminator-replace-object-value-assignment-output.js',
+                                         use_hash_info=True)
+
+  def test_function_eliminator_variable_clash_with_hash_info(self):
+    self.function_eliminator_test_helper('test-function-eliminator-variable-clash-with-hash-info.js',
+                                         'test-function-eliminator-variable-clash-output.js',
+                                         use_hash_info=True)
+
+  def test_function_eliminator_replace_variable_value_with_hash_info(self):
+    self.function_eliminator_test_helper('test-function-eliminator-replace-variable-value-with-hash-info.js',
+                                         'test-function-eliminator-replace-variable-value-output.js',
+                                         use_hash_info=True)

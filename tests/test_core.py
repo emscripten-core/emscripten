@@ -6164,21 +6164,23 @@ def process(filename):
 
   def test_poppler(self):
     if WINDOWS: return self.skip('test_poppler depends on freetype, which uses a ./configure script to build and therefore currently only runs on Linux and OS X.')
-    Settings.NO_EXIT_RUNTIME = 1
 
-    Building.COMPILER_TEST_OPTS += [
-      '-I' + path_from_root('tests', 'freetype', 'include'),
-      '-I' + path_from_root('tests', 'poppler', 'include')
-    ]
+    def test():
+      Settings.NO_EXIT_RUNTIME = 1
 
-    Settings.INVOKE_RUN = 0 # We append code that does run() ourselves
+      Building.COMPILER_TEST_OPTS += [
+        '-I' + path_from_root('tests', 'freetype', 'include'),
+        '-I' + path_from_root('tests', 'poppler', 'include')
+      ]
 
-    # See post(), below
-    input_file = open(os.path.join(self.get_dir(), 'paper.pdf.js'), 'w')
-    input_file.write(str(map(ord, open(path_from_root('tests', 'poppler', 'paper.pdf'), 'rb').read())))
-    input_file.close()
+      Settings.INVOKE_RUN = 0 # We append code that does run() ourselves
 
-    post = '''
+      # See post(), below
+      input_file = open(os.path.join(self.get_dir(), 'paper.pdf.js'), 'w')
+      input_file.write(str(map(ord, open(path_from_root('tests', 'poppler', 'paper.pdf'), 'rb').read())))
+      input_file.close()
+
+      post = '''
 def process(filename):
   # To avoid loading this large file to memory and altering it, we simply append to the end
   src = open(filename, 'a')
@@ -6191,28 +6193,44 @@ def process(filename):
   )
   src.close()
 '''
+ 
+ #fontconfig = self.get_library('fontconfig', [os.path.join('src', '.libs', 'libfontconfig.a')]) # Used in file, but not needed, mostly
 
-    #fontconfig = self.get_library('fontconfig', [os.path.join('src', '.libs', 'libfontconfig.a')]) # Used in file, but not needed, mostly
+      freetype = self.get_freetype()
 
-    freetype = self.get_freetype()
+      poppler = self.get_library('poppler',
+                                 [os.path.join('utils', 'pdftoppm.o'),
+                                  os.path.join('utils', 'parseargs.o'),
+                                  os.path.join('poppler', '.libs', 'libpoppler.a')],
+                                 env_init={ 'FONTCONFIG_CFLAGS': ' ', 'FONTCONFIG_LIBS': ' ' },
+                                 configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--enable-shared=no'])
 
-    poppler = self.get_library('poppler',
-                               [os.path.join('utils', 'pdftoppm.o'),
-                                os.path.join('utils', 'parseargs.o'),
-                                os.path.join('poppler', '.libs', 'libpoppler.a')],
-                               env_init={ 'FONTCONFIG_CFLAGS': ' ', 'FONTCONFIG_LIBS': ' ' },
-                               configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--enable-shared=no'])
+      # Combine libraries
 
-    # Combine libraries
+      combined = os.path.join(self.get_dir(), 'poppler-combined.bc')
+      Building.link(poppler + freetype, combined)
 
-    combined = os.path.join(self.get_dir(), 'poppler-combined.bc')
-    Building.link(poppler + freetype, combined)
+      self.do_ll_run(combined,
+                     map(ord, open(path_from_root('tests', 'poppler', 'ref.ppm'), 'r').read()).__str__().replace(' ', ''),
+                     args='-scale-to 512 paper.pdf filename'.split(' '),
+                     post_build=post)
+                     #, build_ll_hook=self.do_autodebug)
 
-    self.do_ll_run(combined,
-                   map(ord, open(path_from_root('tests', 'poppler', 'ref.ppm'), 'r').read()).__str__().replace(' ', ''),
-                   args='-scale-to 512 paper.pdf filename'.split(' '),
-                   post_build=post)
-                   #, build_ll_hook=self.do_autodebug)
+    test()
+    num_original_funcs = self.count_funcs('src.cpp.o.js')
+
+    # Run with duplicate function elimination turned on
+    dfe_supported_opt_levels = ['-O2', '-O3', '-Oz', '-Os']
+
+    for opt_level in dfe_supported_opt_levels:
+      if opt_level in self.emcc_args:
+        print >> sys.stderr, "Testing poppler with ELIMINATE_DUPLICATE_FUNCTIONS set to 1"
+        Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 1
+        test()
+
+        # Make sure that DFE ends up eliminating more than 200 functions
+        assert(num_original_funcs - self.count_funcs('src.cpp.o.js')) > 200
+        break
 
   def test_openjpeg(self):
     Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS) # remove -g, so we have one test without it by default
