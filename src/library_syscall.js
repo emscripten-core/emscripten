@@ -455,8 +455,7 @@ var SyscallsLibrary = {
       }
       case 7: { // getpeername
         var sock = SYSCALLS.getSocketFromFD(), addr = SYSCALLS.get(), addrlen = SYSCALLS.get();
-        if (!sock.daddr)
-        {
+        if (!sock.daddr) {
           return -ERRNO_CODES.ENOTCONN; // The socket is not connected.
         }
         var res = __write_sockaddr(addr, sock.family, DNS.lookup_name(sock.daddr), sock.dport);
