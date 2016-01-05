@@ -257,7 +257,7 @@ ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff - ffff:ffff:ffff:ffff:ffff:ffff:ffff:fff
 ok.
 ''')
 
-  def test_getsockname_null(self):
+  def test_getsockname_unconnected_socket(self):
     self.do_run(r'''
       #include <sys/socket.h>
       #include <stdio.h>
@@ -287,7 +287,7 @@ ok.
       }
     ''', 'success.')
 
-  def test_getpeername_null(self):
+  def test_getpeername_unconnected_socket(self):
     self.do_run(r'''
       #include <sys/socket.h>
       #include <stdio.h>
