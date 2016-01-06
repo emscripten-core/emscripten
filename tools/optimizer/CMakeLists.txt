@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.10)
 
 project(asmjs_optimizer)
 
@@ -18,7 +18,13 @@ endif()
 # won't be optimized by the compiler!
 
 if (IS_GCC_LIKE)
-	set(cFlags "-std=c++11 -fno-exceptions -fno-rtti")
+	set(cFlags "-fno-exceptions -fno-rtti")
+
+	if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.7")
+		set(cFlags "${cFlags} -std=c++0x")
+	else()
+		set(cFlags "${cFlags} -std=c++11")
+	endif()
 endif()
 
 if (MSVC)

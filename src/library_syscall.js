@@ -448,7 +448,17 @@ var SyscallsLibrary = {
       }
       case 6: { // getsockname
         var sock = SYSCALLS.getSocketFromFD(), addr = SYSCALLS.get(), addrlen = SYSCALLS.get();
-        var res = __write_sockaddr(addr, sock.family, DNS.lookup_name(sock.daddr || '0.0.0.0'), sock.dport);
+        // TODO: sock.saddr should never be undefined, see TODO in websocket_sock_ops.getname
+        var res = __write_sockaddr(addr, sock.family, DNS.lookup_name(sock.saddr || '0.0.0.0'), sock.sport);
+        assert(!res.errno);
+        return 0;
+      }
+      case 7: { // getpeername
+        var sock = SYSCALLS.getSocketFromFD(), addr = SYSCALLS.get(), addrlen = SYSCALLS.get();
+        if (!sock.daddr) {
+          return -ERRNO_CODES.ENOTCONN; // The socket is not connected.
+        }
+        var res = __write_sockaddr(addr, sock.family, DNS.lookup_name(sock.daddr), sock.dport);
         assert(!res.errno);
         return 0;
       }

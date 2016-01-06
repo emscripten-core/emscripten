@@ -237,6 +237,9 @@ int usleep(unsigned usec)
 	int is_main_thread = emscripten_is_main_runtime_thread();
 	double now = emscripten_get_now();
 	double target = now + usec * 1e-3;
+#ifdef __EMSCRIPTEN__
+	emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_SLEEPING);
+#endif
 	while(now < target) {
 		if (is_main_thread) emscripten_main_thread_process_queued_calls(); // Assist other threads by executing proxied operations that are effectively singlethreaded.
 		pthread_testcancel(); // pthreads spec: usleep is a cancellation point, so it must test if this thread is cancelled during the sleep.
@@ -248,6 +251,9 @@ int usleep(unsigned usec)
 			emscripten_futex_wait(&dummyZeroAddress, 0, msecsToSleep);
 		}
 	}
+#ifdef __EMSCRIPTEN__
+	emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_SLEEPING, EM_THREAD_STATUS_RUNNING);
+#endif
 	return 0;
 }
 
@@ -301,9 +307,11 @@ void EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread(em_queued_call *cal
 	}
 	pthread_mutex_unlock(&call_queue_lock);
 	int r;
+	emscripten_set_current_thread_status(EM_THREAD_STATUS_WAITPROXY);
 	do {
 		r = emscripten_futex_wait(&call->operationDone, 0, INFINITY);
 	} while(r != 0 && call->operationDone == 0);
+	emscripten_set_current_thread_status(EM_THREAD_STATUS_RUNNING);
 }
 
 void * EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_1(int function, void *arg1)

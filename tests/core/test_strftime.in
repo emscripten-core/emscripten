@@ -148,4 +148,27 @@ int main() {
   test((size == 5) && strchr(s, ahead ? '+' : '-'), "strftime zone test #3", s);
   size = strftime(s, 50, "%Z", &tm);
   test(strcmp(s, tzname[tm.tm_isdst]) == 0, "strftime zone test #4", s);
+
+  // AM/PM
+  tm.tm_sec = 0;
+  tm.tm_min = 0;
+
+  tm.tm_hour = 0;
+  size = strftime(s, 10, "%I %p", &tm);
+  test(!cmp(s, "12 AM"), "strftime test #32", s);
+
+  tm.tm_hour = 12;
+  size = strftime(s, 10, "%I %p", &tm);
+  test(!cmp(s, "12 PM"), "strftime test #33", s);
+
+  tm.tm_min = 1;
+
+  tm.tm_hour = 0;
+  size = strftime(s, 10, "%I %M %p", &tm);
+  test(!cmp(s, "12 01 AM"), "strftime test #34", s);
+
+  tm.tm_hour = 12;
+  size = strftime(s, 10, "%I %M %p", &tm);
+  test(!cmp(s, "12 01 PM"), "strftime test #35", s);
+
 }

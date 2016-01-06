@@ -1300,6 +1300,17 @@ LibraryManager.library = {
 
   llvm_dbg_declare__inline: function() { throw 'llvm_debug_declare' }, // avoid warning
 
+  llvm_bitreverse_i32__asm: true,
+  llvm_bitreverse_i32__sig: 'ii',
+  llvm_bitreverse_i32: function(x) {
+    x = x|0;
+    x = ((x & 0xaaaaaaaa) >>> 1) | ((x & 0x55555555) << 1);
+    x = ((x & 0xcccccccc) >>> 2) | ((x & 0x33333333) << 2);
+    x = ((x & 0xf0f0f0f0) >>> 4) | ((x & 0x0f0f0f0f) << 4);
+    x = ((x & 0xff00ff00) >>> 8) | ((x & 0x00ff00ff) << 8);
+    return (x >>> 16) | (x << 16);
+  },
+
   // llvm-nacl
 
   llvm_nacl_atomic_store_i32__inline: true,
@@ -2026,7 +2037,10 @@ LibraryManager.library = {
         return leadingNulls(date.tm_hour, 2);
       },
       '%I': function(date) {
-        return leadingNulls(date.tm_hour < 13 ? date.tm_hour : date.tm_hour-12, 2);
+        var twelveHour = date.tm_hour;
+        if (twelveHour == 0) twelveHour = 12;
+        else if (twelveHour > 12) twelveHour -= 12;
+        return leadingNulls(twelveHour, 2);
       },
       '%j': function(date) {
         // Day of the year (001-366)
@@ -2042,7 +2056,7 @@ LibraryManager.library = {
         return '\n';
       },
       '%p': function(date) {
-        if (date.tm_hour > 0 && date.tm_hour < 13) {
+        if (date.tm_hour >= 0 && date.tm_hour < 12) {
           return 'AM';
         } else {
           return 'PM';
@@ -3183,11 +3197,11 @@ LibraryManager.library = {
     lookup_name: function (name) {
       // If the name is already a valid ipv4 / ipv6 address, don't generate a fake one.
       var res = __inet_pton4_raw(name);
-      if (res) {
+      if (res !== null) {
         return name;
       }
       res = __inet_pton6_raw(name);
-      if (res) {
+      if (res !== null) {
         return name;
       }
 

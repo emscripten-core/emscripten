@@ -419,6 +419,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     bind = False
     emrun = False
     cpu_profiler = False
+    thread_profiler = False
     memory_profiler = False
     save_bc = False
     memory_init_file = None
@@ -667,6 +668,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       elif newargs[i] == '--cpuprofiler':
         cpu_profiler = True
         newargs[i] = ''
+      elif newargs[i] == '--threadprofiler':
+        thread_profiler = True
+        settings_changes.append('PTHREADS_PROFILING=1')
+        newargs[i] = ''
       elif newargs[i] == '--default-obj-ext':
         newargs[i] = ''
         default_object_extension = newargs[i+1]
@@ -699,6 +704,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if memory_profiler:
       post_js += open(shared.path_from_root('src', 'memoryprofiler.js')).read() + '\n'
+
+    if thread_profiler:
+      post_js += open(shared.path_from_root('src', 'threadprofiler.js')).read() + '\n'
 
     if js_opts is None: js_opts = opt_level >= 2
     if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
@@ -959,6 +967,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.PRECISE_I64_MATH = 1 # other might use precise math, we need to be able to print it
       assert not use_closure_compiler, 'cannot use closure compiler on shared modules'
       assert not shared.Settings.ALLOW_MEMORY_GROWTH, 'memory growth is not supported with shared modules yet'
+
+    if shared.Settings.ALLOW_MEMORY_GROWTH:
+      logging.warning('not all asm.js optimizations are possible with ALLOW_MEMORY_GROWTH, disabling those')
+      shared.Settings.ASM_JS = 2 # memory growth does not validate as asm.js http://discourse.wicg.io/t/request-for-comments-switching-resizing-heaps-in-asm-js/641/23
 
     if shared.Settings.WASM:
       assert not shared.Settings.ALLOW_MEMORY_GROWTH, 'memory growth is not supported with WASM=1'

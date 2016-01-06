@@ -63,13 +63,13 @@ try {
   var heapf64 = /var\s+([^=]+?)\s*=\s*new global\.Float64Array\(buffer\);/.exec(code)[1];
   var atomics_load = /var\s+([^=]+?)\s*=\s*global\.Atomics\.load;/.exec(code)[1];
   var atomics_store = /var\s+([^=]+?)\s*=\s*global\.Atomics\.store;/.exec(code)[1];
+  var atomics_exchange = /var\s+([^=]+?)\s*=\s*global\.Atomics\.exchange;/.exec(code)[1];
   var atomics_compareExchange = /var\s+([^=]+?)\s*=\s*global\.Atomics\.compareExchange;/.exec(code)[1];
   var atomics_add = /var\s+([^=]+?)\s*=\s*global\.Atomics\.add;/.exec(code)[1];
   var atomics_sub = /var\s+([^=]+?)\s*=\s*global\.Atomics\.sub;/.exec(code)[1];
   var atomics_and = /var\s+([^=]+?)\s*=\s*global\.Atomics\.and;/.exec(code)[1];
   var atomics_or = /var\s+([^=]+?)\s*=\s*global\.Atomics\.or;/.exec(code)[1];
   var atomics_xor = /var\s+([^=]+?)\s*=\s*global\.Atomics\.xor;/.exec(code)[1];
-  var atomics_fence = /var\s+([^=]+?)\s*=\s*global\.Atomics\.fence;/.exec(code)[1];
 
   // "Atomics_load(HEAP32, index)" -> "HEAP32[index]|0" and same for other heap types.
   code = code.replace(new RegExp('\\\\b' + atomics_load + '\\\\((' + heap8 + ')\w*,(.*?)\\\\\)', 'g'), "($1[$2]|0)");
@@ -87,14 +87,10 @@ try {
   code = code.replace(new RegExp('\\\\b' + atomics_add + '\\\\('+heap8+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_add + "_8($1,$2)|0)|0)");
   code = code.replace(new RegExp('\\\\b' + atomics_add + '\\\\('+heap16+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_add + "_16($1,$2)|0)|0)");
   code = code.replace(new RegExp('\\\\b' + atomics_add + '\\\\('+heap32+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_add + "_32($1,$2)|0)|0)");
-  code = code.replace(new RegExp('\\\\b' + atomics_add + '\\\\('+heapf32+',(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_add + "_f32($1,$2)|0)");
-  code = code.replace(new RegExp('\\\\b' + atomics_add + '\\\\('+heapf64+',(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_add + "_f64($1,$2)|0)");
 
   code = code.replace(new RegExp('\\\\b' + atomics_sub + '\\\\('+heap8+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_sub + "_8($1,$2)|0)|0)");
   code = code.replace(new RegExp('\\\\b' + atomics_sub + '\\\\('+heap16+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_sub + "_16($1,$2)|0)|0)");
   code = code.replace(new RegExp('\\\\b' + atomics_sub + '\\\\('+heap32+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_sub + "_32($1,$2)|0)|0)");
-  code = code.replace(new RegExp('\\\\b' + atomics_sub + '\\\\('+heapf32+',(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_sub + "_f32($1,$2)|0)");
-  code = code.replace(new RegExp('\\\\b' + atomics_sub + '\\\\('+heapf64+',(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_sub + "_f64($1,$2)|0)");
 
   code = code.replace(new RegExp('\\\\b' + atomics_and + '\\\\('+heap8+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_and + "_8($1,$2)|0)|0)");
   code = code.replace(new RegExp('\\\\b' + atomics_and + '\\\\('+heap16+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_and + "_16($1,$2)|0)|0)");
@@ -108,36 +104,34 @@ try {
   code = code.replace(new RegExp('\\\\b' + atomics_xor + '\\\\('+heap16+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_xor + "_16($1,$2)|0)|0)");
   code = code.replace(new RegExp('\\\\b' + atomics_xor + '\\\\('+heap32+',(.*?),(.*?)\\\\\)', 'g'), '((' + atomics_xor + "_32($1,$2)|0)|0)");
 
+  code = code.replace(new RegExp('\\\\b' + atomics_exchange + '\\\\('+heap8+',(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_exchange + "_8($1,$2)|0)");
+  code = code.replace(new RegExp('\\\\b' + atomics_exchange + '\\\\('+heap16+',(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_exchange + "_16($1,$2)|0)");
+  code = code.replace(new RegExp('\\\\b' + atomics_exchange + '\\\\('+heap32+',(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_exchange + "_32($1,$2)|0)");
+
   code = code.replace(new RegExp('\\\\b' + atomics_compareExchange + '\\\\('+heap8+',(.*?),(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_compareExchange + "_8($1,$2,$3)|0)");
   code = code.replace(new RegExp('\\\\b' + atomics_compareExchange + '\\\\('+heap16+',(.*?),(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_compareExchange + "_16($1,$2,$3)|0)");
   code = code.replace(new RegExp('\\\\b' + atomics_compareExchange + '\\\\('+heap32+',(.*?),(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_compareExchange + "_32($1,$2,$3)|0)");
-  code = code.replace(new RegExp('\\\\b' + atomics_compareExchange + '\\\\('+heapf32+',(.*?),(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_compareExchange + "_f32($1,$2,$3)|0)");
-  code = code.replace(new RegExp('\\\\b' + atomics_compareExchange + '\\\\('+heapf64+',(.*?),(.*?),(.*?)\\\\\)', 'g'), '(' + atomics_compareExchange + "_f64($1,$2,$3)|0)");
 
   // Remove the import statements of Atomics built-ins.
   code = code.replace(new RegExp("var " + atomics_load + "\\\\s*=\\\\s*global\\.Atomics\\.load;"), "");
   code = code.replace(new RegExp("var " + atomics_store + "\\\\s*=\\\\s*global\\.Atomics\\.store;"), "");
+  code = code.replace(new RegExp("var " + atomics_exchange + "\\\\s*=\\\\s*global\\.Atomics\\.exchange;"), "");
   code = code.replace(new RegExp("var " + atomics_compareExchange + "\\\\s*=\\\\s*global\\.Atomics\\.compareExchange;"), "");
   code = code.replace(new RegExp("var " + atomics_add + "\\\\s*=\\\\s*global\\.Atomics\\.add;"), "");
   code = code.replace(new RegExp("var " + atomics_sub + "\\\\s*=\\\\s*global\\.Atomics\\.sub;"), "");
   code = code.replace(new RegExp("var " + atomics_and + "\\\\s*=\\\\s*global\\.Atomics\\.and;"), "");
   code = code.replace(new RegExp("var " + atomics_or + "\\\\s*=\\\\s*global\\.Atomics\\.or;"), "");
   code = code.replace(new RegExp("var " + atomics_xor + "\\\\s*=\\\\s*global\\.Atomics\\.xor;"), "");
-  code = code.replace(new RegExp("var " + atomics_fence + "\\\\s*=\\\\s*global\\.Atomics\\.fence;"), "");
 
   // Implement polyfill versions of Atomics intrinsics inside the asm.js scope.
   code = code.replace("// EMSCRIPTEN_START_FUNCS", "// EMSCRIPTEN_START_FUNCS\\n"
     + "function " + atomics_add + "_8(i,v) { i=i|0; v=v|0; var w=0; w="+heap8+"[i>>0]|0; "+heap8+"[i>>0]=("+heap8+"[i>>0]|0)+(v|0); return w|0; }\\n"
     + "function " + atomics_add + "_16(i,v) { i=i|0; v=v|0; var w=0; w="+heap16+"[i<<1>>1]|0; "+heap16+"[i<<1>>1]=("+heap16+"[i<<1>>1]|0)+(v|0); return w|0; }\\n"
     + "function " + atomics_add + "_32(i,v) { i=i|0; v=v|0; var w=0; w="+heap32+"[i<<2>>2]|0; "+heap32+"[i<<2>>2]=("+heap32+"[i<<2>>2]|0)+(v|0); return w|0; }\\n"
-    + "function " + atomics_add + "_f32(i,v) { i=i|0; v="+math_fround+"v"+cp+"; var w="+zero+"; w="+math_fround+heapf32+"[i<<2>>2]"+cp+"; "+heapf32+"[i<<2>>2]="+math_fround+heapf32+"[i<<2>>2]"+cp+"+v; return w; }\\n"
-    + "function " + atomics_add + "_f64(i,v) { i=i|0; v=+v; var w=0.0; w=+"+heapf64+"[i<<3>>3]; "+heapf64+"[i<<3>>3]="+heapf64+"[i<<3>>3]+v; return w; }\\n"
 
     + "function " + atomics_sub + "_8(i,v) { i=i|0; v=v|0; var w=0; w="+heap8+"[i>>0]|0; "+heap8+"[i>>0]=("+heap8+"[i>>0]|0)-(v|0); return w|0; }\\n"
     + "function " + atomics_sub + "_16(i,v) { i=i|0; v=v|0; var w=0; w="+heap16+"[i<<1>>1]|0; "+heap16+"[i<<1>>1]=("+heap16+"[i<<1>>1]|0)-(v|0); return w|0; }\\n"
     + "function " + atomics_sub + "_32(i,v) { i=i|0; v=v|0; var w=0; w="+heap32+"[i<<2>>2]|0; "+heap32+"[i<<2>>2]=("+heap32+"[i<<2>>2]|0)-(v|0); return w|0; }\\n"
-    + "function " + atomics_sub + "_f32(i,v) { i=i|0; v="+math_fround+"v"+cp+"; var w="+zero+"; w="+math_fround+heapf32+"[i<<2>>2]"+cp+"; "+heapf32+"[i<<2>>2]="+math_fround+heapf32+"[i<<2>>2]"+cp+"-v; return w; }\\n"
-    + "function " + atomics_sub + "_f64(i,v) { i=i|0; v=+v; var w=0.0; w=+"+heapf64+"[i<<3>>3]; "+heapf64+"[i<<3>>3]="+heapf64+"[i<<3>>3]-v; return w; }\\n"
 
     + "function " + atomics_and + "_8(i,v) { i=i|0; v=v|0; var w=0; w="+heap8+"[i>>0]|0; "+heap8+"[i>>0]=("+heap8+"[i>>0]|0)&(v|0); return w|0; }\\n"
     + "function " + atomics_and + "_16(i,v) { i=i|0; v=v|0; var w=0; w="+heap16+"[i<<1>>1]|0; "+heap16+"[i<<1>>1]=("+heap16+"[i<<1>>1]|0)&(v|0); return w|0; }\\n"
@@ -151,13 +145,13 @@ try {
     + "function " + atomics_xor + "_16(i,v) { i=i|0; v=v|0; var w=0; w="+heap16+"[i<<1>>1]|0; "+heap16+"[i<<1>>1]=("+heap16+"[i<<1>>1]|0)^(v|0); return w|0; }\\n"
     + "function " + atomics_xor + "_32(i,v) { i=i|0; v=v|0; var w=0; w="+heap32+"[i<<2>>2]|0; "+heap32+"[i<<2>>2]=("+heap32+"[i<<2>>2]|0)^(v|0); return w|0; }\\n"
 
+    + "function " + atomics_exchange + "_8(i,e,r) { i=i|0; e=e|0; r=r|0; var w=0; w="+heap8+"[i>>0]|0; "+heap8+"[i>>0]=r; return w|0; }\\n"
+    + "function " + atomics_exchange + "_16(i,e,r) { i=i|0; e=e|0; r=r|0; var w=0; w="+heap16+"[i<<1>>1]|0; "+heap16+"[i<<1>>1]=r; return w|0; }\\n"
+    + "function " + atomics_exchange + "_32(i,e,r) { i=i|0; e=e|0; r=r|0; var w=0; w="+heap32+"[i<<2>>2]|0; "+heap32+"[i<<2>>2]=r; return w|0; }\\n"
+
     + "function " + atomics_compareExchange + "_8(i,e,r) { i=i|0; e=e|0; r=r|0; var w=0; w="+heap8+"[i>>0]|0; if ((w|0) == (e|0)) "+heap8+"[i>>0]=r; return w|0; }\\n"
     + "function " + atomics_compareExchange + "_16(i,e,r) { i=i|0; e=e|0; r=r|0; var w=0; w="+heap16+"[i<<1>>1]|0; if ((w|0) == (e|0)) "+heap16+"[i<<1>>1]=r; return w|0; }\\n"
     + "function " + atomics_compareExchange + "_32(i,e,r) { i=i|0; e=e|0; r=r|0; var w=0; w="+heap32+"[i<<2>>2]|0; if ((w|0) == (e|0)) "+heap32+"[i<<2>>2]=r; return w|0; }\\n"
-    + "function " + atomics_compareExchange + "_f32(i,e,r) { i=i|0; e="+math_fround+"e"+cp+"; r="+math_fround+"r"+cp+"; var w="+zero+"; w="+math_fround+heapf32+"[i<<2>>2]"+cp+"; if (w == e) "+heapf32+"[i<<2>>2]=r; return w; }\\n"
-    + "function " + atomics_compareExchange + "_f64(i,e,r) { i=i|0; e=+e; r=+r; var w=0.0; w=+"+heapf64+"[i<<3>>3]; if (+w == +e) "+heapf64+"[i<<3>>3]=r; return w; }\\n"
-
-    + "function " + atomics_fence + "() {}\\n"
     );
 
   var t1 = performance.now();

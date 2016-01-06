@@ -475,35 +475,45 @@ function _emscripten_asm_const_%s(%s) {
     maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'clz32']]
     simdfloattypes = []
     simdinttypes = []
-    simdfuncs = ['check', 'add', 'sub', 'neg', 'mul',
-                 'equal', 'lessThan', 'greaterThan',
-                 'notEqual', 'lessThanOrEqual', 'greaterThanOrEqual',
-                 'select', 'and', 'or', 'xor', 'not',
-                 'splat', 'swizzle', 'shuffle',
-                 'load', 'store', 'load1', 'store1', 'load2', 'store2', 'load3', 'store3',
-                 'extractLane', 'replaceLane']
+    simdbooltypes = []
+    simdfuncs = ['splat', 'check', 'extractLane', 'replaceLane']
+    simdintfloatfuncs = ['add', 'sub', 'neg', 'mul',
+                         'equal', 'lessThan', 'greaterThan',
+                         'notEqual', 'lessThanOrEqual', 'greaterThanOrEqual',
+                         'select', 'swizzle', 'shuffle',
+                         'load', 'store', 'load1', 'store1', 'load2', 'store2', 'load3', 'store3']
+    simdintboolfuncs = ['and', 'xor', 'or', 'not']
     if metadata['simdInt8x16']:
       simdinttypes += ['Int8x16']
-      simdfuncs += ['fromInt8x16Bits']
+      simdintfloatfuncs += ['fromInt8x16Bits']
     if metadata['simdInt16x8']:
       simdinttypes += ['Int16x8']
-      simdfuncs += ['fromInt16x8Bits']
+      simdintfloatfuncs += ['fromInt16x8Bits']
     if metadata['simdInt32x4']:
       simdinttypes += ['Int32x4']
-      simdfuncs += ['fromInt32x4', 'fromInt32x4Bits']
+      simdintfloatfuncs += ['fromInt32x4', 'fromInt32x4Bits']
     if metadata['simdFloat32x4']:
       simdfloattypes += ['Float32x4']
-      simdfuncs += ['fromFloat32x4', 'fromFloat32x4Bits']
+      simdintfloatfuncs += ['fromFloat32x4', 'fromFloat32x4Bits']
     if metadata['simdFloat64x2']:
       simdfloattypes += ['Float64x2']
-      simdfuncs += ['fromFloat64x2', 'fromFloat64x2Bits']
+      simdintfloatfuncs += ['fromFloat64x2', 'fromFloat64x2Bits']
+    if metadata['simdBool8x16']:
+      simdbooltypes += ['Bool8x16']
+    if metadata['simdBool16x8']:
+      simdbooltypes += ['Bool16x8']
+    if metadata['simdBool32x4']:
+      simdbooltypes += ['Bool32x4']
+    if metadata['simdBool64x2']:
+      simdbooltypes += ['Bool64x2']
 
-    simdfloatfuncs = simdfuncs + ['div', 'min', 'max', 'minNum', 'maxNum', 'sqrt',
+    simdfloatfuncs = simdfuncs + simdintfloatfuncs + ['div', 'min', 'max', 'minNum', 'maxNum', 'sqrt',
                                   'abs', 'reciprocalApproximation', 'reciprocalSqrtApproximation'];
-    simdintfuncs = simdfuncs + ['shiftRightArithmeticByScalar',
+    simdintfuncs = simdfuncs + simdintfloatfuncs + simdintboolfuncs + ['shiftRightArithmeticByScalar',
                                 'shiftRightLogicalByScalar',
                                 'shiftLeftByScalar'];
-    simdtypes = simdfloattypes + simdinttypes
+    simdboolfuncs = simdfuncs + simdintboolfuncs + ['anyTrue', 'allTrue']
+    simdtypes = simdfloattypes + simdinttypes + simdbooltypes
 
     fundamentals = ['Math']
     fundamentals += ['Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
@@ -727,7 +737,7 @@ function ftCall_%s(%s) {%s
           if sub in s:
             return True
         return False
-      nonexisting_simd_symbols = ['Int32x4_fromInt32x4', 'Float32x4_fromFloat32x4']
+      nonexisting_simd_symbols = ['Int8x16_fromInt8x16', 'Int16x8_fromInt16x8', 'Int32x4_fromInt32x4', 'Float32x4_fromFloat32x4', 'Float64x2_fromFloat64x2']
 
       asm_global_funcs += ''.join(['  var SIMD_' + ty + '=global' + access_quote('SIMD') + access_quote(ty) + ';\n' for ty in simdtypes])
 
@@ -738,13 +748,16 @@ function ftCall_%s(%s) {%s
       simd_float_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdfloattypes for g in simdfloatfuncs]
       simd_float_symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), simd_float_symbols)
       asm_global_funcs += ''.join(simd_float_symbols)
+
+      simd_bool_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdbooltypes for g in simdboolfuncs]
+      simd_bool_symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), simd_bool_symbols)
+      asm_global_funcs += ''.join(simd_bool_symbols)
+
       # Unofficial, Bool64x2 does not yet exist, but needed for Float64x2 comparisons.
       if metadata['simdFloat64x2']:
         asm_global_funcs += '  var SIMD_Int32x4_fromBool64x2Bits = global.SIMD.Int32x4.fromBool64x2Bits;\n';
     if settings['USE_PTHREADS']:
-#      asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor']])
-# TODO: Once bug https://bugzilla.mozilla.org/show_bug.cgi?id=1141986 is implemented, replace the following line with the above one!
-      asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor']])
+      asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor']])
     asm_global_vars = ''.join(['  var ' + g + '=env' + access_quote(g) + '|0;\n' for g in basic_vars + global_vars])
 
     # sent data
