@@ -51,17 +51,28 @@ mergeInto(LibraryManager.library, {
       if (typeof flags === "string") {
         flags = VFS.modeStringToFlags(flags)
       }
+
       var nfd = fs.openSync(path, NODEFS.flagsForNode(flags), mode);
       var fd = suggestFD != null ? suggestFD : FS.nextfd(nfd);
-      var stream = { fd: fd, nfd: nfd, position: 0, path: path, flags: flags, seekable: true };
-      FS.streams[fd] = stream;
+      var stream = FS.createStream({
+        fd: fd,
+        nfd: nfd,
+        refcount: 1,
+        position: 0,
+        path: path,
+        flags: flags,
+        seekable: true,
+      }, fd, fd);
       return stream;
     },
     close: function(stream) {
-      if (!stream.stream_ops) {
+      stream.shared.refcount -= 1;
+
+      if (!stream.stream_ops && !stream.shared.refcount) {
         // this stream is created by in-memory filesystem
         fs.closeSync(stream.nfd);
       }
+
       FS.closeStream(stream.fd);
     },
     llseek: function(stream, offset, whence) {

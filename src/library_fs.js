@@ -400,10 +400,8 @@ mergeInto(LibraryManager.library, {
     getStream: function(fd) {
       return FS.streams[fd];
     },
-    // TODO parameterize this function such that a stream
-    // object isn't directly passed in. not possible until
-    // SOCKFS is completed.
-    createStream: function(stream, fd_start, fd_end) {
+    duplicateStream: function(stream) {
+      // Some properties are shared between duplicates
       if (!FS.FSStream) {
         FS.FSStream = function(){};
         FS.FSStream.prototype = {};
@@ -421,15 +419,61 @@ mergeInto(LibraryManager.library, {
           },
           isAppend: {
             get: function() { return (this.flags & {{{ cDefine('O_APPEND') }}}); }
-          }
+          },
+          flags: {
+            get: function() { return this.shared.flags; },
+            set: function(value) { this.shared.flags = value; }
+          },
+          position: {
+            get: function() { return this.shared.position; },
+            set: function(value) { this.shared.position = value; }
+          },
+#if NODERAWFS
+          /* refcount is a stream attribute only used by NODERAWFS
+           *
+           * Duplicated streams share flags and seek position, as described in dup(2):
+           *
+           *   http://man7.org/linux/man-pages/man2/dup.2.html
+           *
+           * In-memory streams simply use a shared object to accomplish this, so that
+           * updating either property on one fd will change it on duplicated fds as well.
+           *
+           * Node, however, creates a node fd upon opening a file, and closing
+           * the node fd will also break duplicated fds. To work around this,
+           * we increment the refcount for the fd upon duplicating the stream, and
+           * only close the fd when all streams referencing the fd are closed.
+           */
+          refcount: {
+            get: function() { return this.shared.refcount; },
+            set: function(value) { this.shared.refcount = value; }
+	  }
+#endif
         });
       }
-      // clone it, so we can return an instance of FSStream
+
       var newStream = new FS.FSStream();
+      if (!newStream.shared) {
+        newStream.shared = {};
+      }
+
       for (var p in stream) {
         newStream[p] = stream[p];
       }
-      stream = newStream;
+
+#if NODERAWFS
+      if (newStream.shared.refcount) {
+        newStream.refcount += 1;
+      }
+#endif
+
+      return newStream;
+    },
+    // TODO parameterize this function such that a stream
+    // object isn't directly passed in. not possible until
+    // SOCKFS is completed.
+    createStream: function(stream, fd_start, fd_end) {
+      // clone it, so we can return an instance of FSStream
+      stream = FS.duplicateStream(stream);
       var fd = FS.nextfd(fd_start, fd_end);
       stream.fd = fd;
       FS.streams[fd] = stream;
