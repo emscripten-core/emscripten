@@ -114,10 +114,12 @@ var SyscallsLibrary = {
       }
       return 0;
     },
-    doDup: function(path, flags, suggestFD) {
+    doDup: function(stream, suggestFD) {
       var suggest = FS.getStream(suggestFD);
       if (suggest) FS.close(suggest);
-      return FS.open(path, flags, 0, suggestFD, suggestFD).fd;
+
+      FS.streams[suggestFD] = stream;
+      return suggestFD;
     },
     doReadv: function(stream, iov, iovcnt, offset) {
       var ret = 0;
@@ -286,7 +288,7 @@ var SyscallsLibrary = {
   },
   __syscall41: function(which, varargs) { // dup
     var old = SYSCALLS.getStreamFromFD();
-    return FS.open(old.path, old.flags, 0).fd;
+    return SYSCALLS.doDup(old, FS.nextfd());
   },
   __syscall42: '__syscall51',      // pipe
   __syscall51: function(which, varargs) { // acct
@@ -346,7 +348,7 @@ var SyscallsLibrary = {
   __syscall63: function(which, varargs) { // dup2
     var old = SYSCALLS.getStreamFromFD(), suggestFD = SYSCALLS.get();
     if (old.fd === suggestFD) return suggestFD;
-    return SYSCALLS.doDup(old.path, old.flags, suggestFD);
+    return SYSCALLS.doDup(old, suggestFD);
   },
   __syscall64__deps: ['$PROCINFO'],
   __syscall64: function(which, varargs) { // getppid
@@ -985,14 +987,14 @@ var SyscallsLibrary = {
   __syscall221: function(which, varargs) { // fcntl64
     var stream = SYSCALLS.getStreamFromFD(), cmd = SYSCALLS.get();
     switch (cmd) {
+      // TODO: FreeBSD also defines F_DUP2FD and F_DUP2FD_CLOEXEC
+      case {{{ cDefine('F_DUPFD_CLOEXEC') }}}: // ignore O_CLOEXEC in single process environment
       case {{{ cDefine('F_DUPFD') }}}: {
         var arg = SYSCALLS.get();
         if (arg < 0) {
           return -ERRNO_CODES.EINVAL;
         }
-        var newStream;
-        newStream = FS.open(stream.path, stream.flags, 0, arg);
-        return newStream.fd;
+        return SYSCALLS.doDup(stream, FS.nextfd(arg));
       }
       case {{{ cDefine('F_GETFD') }}}:
       case {{{ cDefine('F_SETFD') }}}:
@@ -1197,9 +1199,13 @@ var SyscallsLibrary = {
     Module.printErr('warning: untested syscall');
 #endif
     var old = SYSCALLS.getStreamFromFD(), suggestFD = SYSCALLS.get(), flags = SYSCALLS.get();
-    assert(!flags);
     if (old.fd === suggestFD) return -ERRNO_CODES.EINVAL;
-    return SYSCALLS.doDup(old.path, old.flags, suggestFD);
+
+    // intentionally ignore flags, since O_CLOEXEC make no sense in
+    // singleprocess environment
+    if (flags & ~{{{ cDefine('O_CLOEXEC') }}}) return -ERRNO_CODES.EINVAL;
+
+    return SYSCALLS.doDup(old, suggestFD);
   },
   __syscall331: function(which, varargs) { // pipe2
     return -ERRNO_CODES.ENOSYS; // unsupported feature
