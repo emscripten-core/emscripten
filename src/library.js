@@ -917,12 +917,14 @@ LibraryManager.library = {
   },
 
   llvm_ctpop_i32: function(x) {
-    var ret = 0;
-    while (x) {
-      if (x&1) ret++;
-      x >>>= 1;
-    }
-    return ret;
+    // http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
+    x = x|0;
+    x = x - ((x >>> 1) & 0x55555555)|0;
+    x = (x & 0x33333333) + ((x >>> 2) & 0x33333333)|0;
+
+    // next line is asm.js friendly, but unfortunatelly gives WRONG result
+    // return (((x + (x >>> 4) & 0xF0F0F0F)|0 * 0x1010101) >>> 24)|0;
+    return (((x + (x >>> 4) & 0xF0F0F0F) * 0x1010101) >>> 24)|0;
   },
 
   llvm_ctpop_i64__deps: ['llvm_ctpop_i32'],

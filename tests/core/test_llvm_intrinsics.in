@@ -40,8 +40,18 @@ int main(void) {
          llvm_cttz_i32(1 << 10, 0));
   printf("%d,%d\n", (int)llvm_ctpop_i64((0x3101ULL << 32) | 1),
          llvm_ctpop_i32(0x3101));
-  printf("%d\n", (int)llvm_ctpop_i32(-594093059));
 
+  printf("llvm_ctpop_i32:\n");
+  printf("%d\n", (int)llvm_ctpop_i32(-594093059)); // 22
+  printf("%d\n", (int)llvm_ctpop_i32(0xdeadbeef)); // 24
+  printf("%d\n", (int)llvm_ctpop_i32(0x00000000)); // 0
+  printf("%d\n", (int)llvm_ctpop_i32(0xffffffff)); // 32
+  printf("%d\n", (int)llvm_ctpop_i32(0x55555555)); // 16
+  printf("%d\n", (int)llvm_ctpop_i32(0xa55a5aa5)); // 16
+  printf("%d\n", (int)llvm_ctpop_i32(0xaaaaaaaa)); // 16
+  printf("%d\n", (int)llvm_ctpop_i32(0x80000000)); // 1
+  printf("%d\n", (int)llvm_ctpop_i32(0x00000001)); // 1
+  printf("llvm_expect_i32:\n");
   printf("%d\n", llvm_expect_i32(x % 27, 3));
 
   int64_t a = 1;
