@@ -325,20 +325,6 @@ var LibraryGLFW = {
         case 0x5D:return 348; // DOM_VK_CONTEXT_MENU -> GLFW_KEY_MENU
         // XXX: GLFW_KEY_WORLD_1, GLFW_KEY_WORLD_2 what are these?
 #endif
-
-        
-       
-        
-       
-        
-       
-        
-        
-        
-       
-        
-        
-        
         default:return -1; // GLFW_KEY_UNKNOWN
       };
     },
