@@ -928,16 +928,12 @@ if __name__ == '__main__':
 
   # Create a list of all known tests so that we can choose from them based on a wildcard search
   all_tests = []
-  suites = ['default', 'other', 'browser', 'sanity', 'sockets', 'interactive']
+  suites = test_modes + ['other', 'browser', 'sanity', 'sockets', 'interactive']
   for m in modules:
     for s in suites:
       if hasattr(m, s):
         tests = filter(lambda t: t.startswith('test_'), dir(getattr(m, s)))
-        if s == 'default':
-          for mode in test_modes:
-            all_tests += map(lambda t: mode + '.' + t, tests)
-        else:
-          all_tests += map(lambda t: s + '.' + t, tests)
+        all_tests += map(lambda t: s + '.' + t, tests)
 
   # Process wildcards, e.g. "browser.test_pthread_*" should expand to list all pthread tests
   new_args = [sys.argv[0]]
@@ -952,6 +948,9 @@ if __name__ == '__main__':
         new_args += fnmatch.filter(all_tests, arg)
     else:
       new_args += [arg]
+  if len(new_args) == 1 and len(sys.argv) > 1:
+    print 'No tests found to run in set ' + str(sys.argv[1:])
+    sys.exit(0)
   sys.argv = new_args
 
   # Skip requested tests
