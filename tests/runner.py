@@ -76,7 +76,12 @@ Passing a wildcard allows choosing a subset of tests in a suite, e.g.
 
   python tests/runner.py browser.test_pthread_*
 
-will run all the pthreads related tests.
+will run all the pthreads related tests. Wildcards can also be passed in skip,
+so
+
+  python tests/runner.py browser skip:browser.test_pthread_*
+
+will run the whole browser suite except for all the pthread tests in it.
 
 Debugging: You can run
 
@@ -939,8 +944,12 @@ if __name__ == '__main__':
   for i in range(1, len(sys.argv)):
     arg = sys.argv[i]
     if '*' in arg:
-      matching_tests = fnmatch.filter(all_tests, arg)
-      new_args += matching_tests
+      if arg.startswith('skip:'):
+        arg = arg[5:]
+        matching_tests = fnmatch.filter(all_tests, arg)
+        new_args += map(lambda t: 'skip:' + t, matching_tests)
+      else:
+        new_args += fnmatch.filter(all_tests, arg)
     else:
       new_args += [arg]
   sys.argv = new_args
