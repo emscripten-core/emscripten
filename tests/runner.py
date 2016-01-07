@@ -9,7 +9,7 @@ Simple test runner. Consider using parallel_test_core.py for faster iteration ti
 
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer, multiprocessing, functools, stat, string, random, operator
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer, multiprocessing, functools, stat, string, random, operator, fnmatch
 from urllib import unquote
 
 # Setup
@@ -67,6 +67,21 @@ an individual test with
 You can run a random set of N tests with a command like
 
   python tests/runner.py random50
+
+An individual test can be skipped by passing the "skip:" prefix. E.g.
+
+  python tests/runner.py other skip:other.test_cmake
+
+Passing a wildcard allows choosing a subset of tests in a suite, e.g.
+
+  python tests/runner.py browser.test_pthread_*
+
+will run all the pthreads related tests. Wildcards can also be passed in skip,
+so
+
+  python tests/runner.py browser skip:browser.test_pthread_*
+
+will run the whole browser suite except for all the pthread tests in it.
 
 Debugging: You can run
 
@@ -909,6 +924,33 @@ if __name__ == '__main__':
       new_args += map(lambda mode: mode+'.'+test, test_modes)
     else:
       new_args += [arg]
+  sys.argv = new_args
+
+  # Create a list of all known tests so that we can choose from them based on a wildcard search
+  all_tests = []
+  suites = test_modes + ['other', 'browser', 'sanity', 'sockets', 'interactive']
+  for m in modules:
+    for s in suites:
+      if hasattr(m, s):
+        tests = filter(lambda t: t.startswith('test_'), dir(getattr(m, s)))
+        all_tests += map(lambda t: s + '.' + t, tests)
+
+  # Process wildcards, e.g. "browser.test_pthread_*" should expand to list all pthread tests
+  new_args = [sys.argv[0]]
+  for i in range(1, len(sys.argv)):
+    arg = sys.argv[i]
+    if '*' in arg:
+      if arg.startswith('skip:'):
+        arg = arg[5:]
+        matching_tests = fnmatch.filter(all_tests, arg)
+        new_args += map(lambda t: 'skip:' + t, matching_tests)
+      else:
+        new_args += fnmatch.filter(all_tests, arg)
+    else:
+      new_args += [arg]
+  if len(new_args) == 1 and len(sys.argv) > 1:
+    print 'No tests found to run in set ' + str(sys.argv[1:])
+    sys.exit(0)
   sys.argv = new_args
 
   # Skip requested tests
