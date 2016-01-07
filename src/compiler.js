@@ -123,6 +123,15 @@ if (typeof print === 'undefined') {
 
 DEBUG_MEMORY = false;
 
+// Polyfilling
+
+if (!String.prototype.startsWith) {
+  String.prototype.startsWith = function(searchString, position) {
+    position = position || 0;
+    return this.indexOf(searchString, position) === position;
+  };
+}
+
 // Basic utilities
 
 load('utility.js');
