@@ -514,6 +514,9 @@ var MODULARIZE = 0; // By default we emit all code in a straightforward way into
                     //
                     //   var instance = EXPORT_NAME({ option: value, ... });
                     //
+                    // Note the parentheses - we are calling EXPORT_NAME in order to instantiate
+                    // the module. (This allows, in particular, for you to create multiple
+                    // instantiations, etc.)
 
 var BENCHMARK = 0; // If 1, will just time how long main() takes to execute, and not
                    // print out anything at all whatsoever. This is useful for benchmarking.
