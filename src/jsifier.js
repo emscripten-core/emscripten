@@ -102,6 +102,14 @@ function JSify(data, functionsOnly) {
 
   // functionStub
   function functionStubHandler(item) {
+    // special logic
+    if (item.ident.startsWith('___cxa_find_matching_catch_')) {
+      var num = +item.ident.split('_').slice(-1)[0];
+      LibraryManager.library[item.ident.substr(1)] = function() {
+        return ___cxa_find_matching_catch.apply(null, arguments);
+      };
+    }
+
     // note the signature
     if (item.returnType && item.params) {
       functionStubSigs[item.ident] = Functions.getSignature(item.returnType.text, item.params.map(function(arg) { return arg.type }), false);
