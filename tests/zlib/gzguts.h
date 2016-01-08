@@ -27,6 +27,10 @@
 #endif
 #include <fcntl.h>
 
+#ifdef __unix__
+#include <unistd.h>
+#endif
+
 #ifdef NO_DEFLATE       /* for compatibility with old definition */
 #  define NO_GZCOMPRESS
 #endif
