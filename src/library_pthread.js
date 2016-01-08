@@ -767,43 +767,118 @@ var LibraryPThread = {
     return 0;
   },
 
+  // Stores the memory address that the main thread is futexWaiting on, if any.
+  _main_thread_futex_wait_address: '; if (ENVIRONMENT_IS_PTHREAD) __main_thread_futex_wait_address = PthreadWorkerInit.__main_thread_futex_wait_address; else PthreadWorkerInit.__main_thread_futex_wait_address = __main_thread_futex_wait_address = allocate(1, "i32*", ALLOC_STATIC)',
+
   // Returns 0 on success, or one of the values -ETIMEDOUT, -EWOULDBLOCK or -EINVAL on error.
+  emscripten_futex_wait__deps: ['_main_thread_futex_wait_address'],
   emscripten_futex_wait: function(addr, val, timeout) {
     if (addr <= 0 || addr > HEAP8.length || addr&3 != 0) return -{{{ cDefine('EINVAL') }}};
 //    dump('futex_wait addr:' + addr + ' by thread: ' + _pthread_self() + (ENVIRONMENT_IS_PTHREAD?'(pthread)':'') + '\n');
+    if (ENVIRONMENT_IS_WORKER) {
 #if PTHREADS_PROFILING
-    PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}}, {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}});
+      PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}}, {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}});
 #endif
-    var ret = Atomics.futexWait(HEAP32, addr >> 2, val, timeout);
+      var ret = Atomics.futexWait(HEAP32, addr >> 2, val, timeout);
 //    dump('futex_wait done by thread: ' + _pthread_self() + (ENVIRONMENT_IS_PTHREAD?'(pthread)':'') + '\n');
 #if PTHREADS_PROFILING
-    PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}}, {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
+      PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}}, {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
 #endif
-    if (ret == Atomics.TIMEDOUT) return -{{{ cDefine('ETIMEDOUT') }}};
-    if (ret == Atomics.NOTEQUAL) return -{{{ cDefine('EWOULDBLOCK') }}};
-    if (ret == 0) return 0;
-    throw 'Atomics.futexWait returned an unexpected value ' + ret;
+      if (ret == Atomics.TIMEDOUT) return -{{{ cDefine('ETIMEDOUT') }}};
+      if (ret == Atomics.NOTEQUAL) return -{{{ cDefine('EWOULDBLOCK') }}};
+      if (ret == 0) return 0;
+      throw 'Atomics.futexWait returned an unexpected value ' + ret;
+    } else {
+      // Atomics.futexWait is not available in the main browser thread, so simulate it via busy spinning.
+      var loadedVal = Atomics.load(HEAP32, addr >> 2);
+      if (val != loadedVal) return -{{{ cDefine('EWOULDBLOCK') }}};
+
+      var tNow = performance.now();
+      var tEnd = tNow + timeout;
+
+#if PTHREADS_PROFILING
+      PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}}, {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}});
+#endif
+
+      // Register globally which address the main thread is simulating to be futexWaiting on. When zero, main thread is not waiting on anything,
+      // and on nonzero, the contents of address pointed by __main_thread_futex_wait_address tell which address the main thread is simulating its wait on.
+      Atomics.store(HEAP32, __main_thread_futex_wait_address >> 2, addr);
+      while (addr) {
+        tNow = performance.now();
+        if (tNow > tEnd) {
+#if PTHREADS_PROFILING
+          PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}}, {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}});
+#endif
+          return -{{{ cDefine('ETIMEDOUT') }}};
+        }
+        addr = Atomics.load(HEAP32, __main_thread_futex_wait_address >> 2); // Look for a worker thread waking us up.
+      }
+#if PTHREADS_PROFILING
+      PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}}, {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}});
+#endif
+      return 0;
+    }
   },
 
   // Returns the number of threads (>= 0) woken up, or the value -EINVAL on error.
   // Pass count == INT_MAX to wake up all threads.
+  emscripten_futex_wake__deps: ['_main_thread_futex_wait_address'],
   emscripten_futex_wake: function(addr, count) {
     if (addr <= 0 || addr > HEAP8.length || addr&3 != 0 || count < 0) return -{{{ cDefine('EINVAL') }}};
+    if (count == 0) return 0;
 //    dump('futex_wake addr:' + addr + ' by thread: ' + _pthread_self() + (ENVIRONMENT_IS_PTHREAD?'(pthread)':'') + '\n');
+
+    // See if main thread is waiting on this address? If so, wake it up by resetting its wake location to zero.
+    // Note that this is not a fair procedure, since we always wake main thread first before any workers, so
+    // this scheme does not adhere to real queue-based waiting.
+    var mainThreadWaitAddress = Atomics.load(HEAP32, __main_thread_futex_wait_address >> 2);
+    var mainThreadWoken = 0;
+    if (mainThreadWaitAddress == addr) {
+      var loadedAddr = Atomics.compareExchange(HEAP32, __main_thread_futex_wait_address >> 2, mainThreadWaitAddress, 0);
+      if (loadedAddr == mainThreadWaitAddress) {
+        --count;
+        mainThreadWoken = 1;
+        if (count <= 0) return 1;
+      }
+    }
+
+    // Wake any workers waiting on this address.
     var ret = Atomics.futexWake(HEAP32, addr >> 2, count);
-    if (ret >= 0) return ret;
+    if (ret >= 0) return ret + mainThreadWoken;
     throw 'Atomics.futexWake returned an unexpected value ' + ret;
   },
 
   // Returns the number of threads (>= 0) woken up, or one of the values -EINVAL or -EAGAIN on error.
+  emscripten_futex_wake_or_requeue__deps: ['_main_thread_futex_wait_address'],
   emscripten_futex_wake_or_requeue: function(addr, count, cmpValue, addr2) {
     if (addr <= 0 || addr2 <= 0 || addr >= HEAP8.length || addr2 >= HEAP8.length || count < 0
       || addr&3 != 0 || addr2&3 != 0) {
       return -{{{ cDefine('EINVAL') }}};
     }
+
+    // See if main thread is waiting on this address? If so, wake it up by resetting its wake location to zero,
+    // or move it to wait on addr2. Note that this is not a fair procedure, since we always wake main thread first before
+    // any workers, so this scheme does not adhere to real queue-based waiting.
+    var mainThreadWaitAddress = Atomics.load(HEAP32, __main_thread_futex_wait_address >> 2);
+    var mainThreadWoken = 0;
+    if (mainThreadWaitAddress == addr) {
+      // Check cmpValue precondition before taking any action.
+      var val1 = Atomics.load(HEAP32, addr >> 2);
+      if (val1 != cmpValue) return -{{{ cDefine('EAGAIN') }}};
+
+      // If we are actually waking any waiters, then new main thread wait location is reset, otherwise requeue it to wait on addr2.
+      var newMainThreadWaitAddress = (count > 0) ? 0 : addr2;
+      var loadedAddr = Atomics.compareExchange(HEAP32, __main_thread_futex_wait_address >> 2, mainThreadWaitAddress, newMainThreadWaitAddress);
+      if (loadedAddr == mainThreadWaitAddress && count > 0) {
+        --count; // Main thread was woken, so one less workers to wake up.
+        mainThreadWoken = 1;
+      }
+    }
+
+    // Wake any workers waiting on this address.
     var ret = Atomics.futexWakeOrRequeue(HEAP32, addr >> 2, count, cmpValue, addr >> 2);
     if (ret == Atomics.NOTEQUAL) return -{{{ cDefine('EAGAIN') }}};
-    if (ret >= 0) return ret;
+    if (ret >= 0) return ret + mainThreadWoken;
     throw 'Atomics.futexWakeOrRequeue returned an unexpected value ' + ret;
   },
 
