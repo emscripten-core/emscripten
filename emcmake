@@ -1,8 +1,17 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
-import os, subprocess, sys
-from tools import shared
+# This script should work in python 2 *or* 3. It loads emcmake.py, which needs python 2.
 
-configure_path = shared.path_from_root('emconfigure')
 
-exit(subprocess.call([shared.PYTHON, configure_path] + sys.argv[1:]))
+import sys
+
+
+
+if sys.version_info.major == 2:
+  import emcmake
+  if __name__ == '__main__':
+    emcmake.run()
+else:
+  import os, subprocess
+  if __name__ == '__main__':
+    sys.exit(subprocess.call(['python2', os.path.join(os.path.dirname(__file__), 'emcmake.py')] + sys.argv[1:]))
