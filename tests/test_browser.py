@@ -2936,6 +2936,11 @@ window.close = function() {
     try_delete('pthread-main.js')
     self.run_browser('test2.html', '', '/report_result?1')
 
+  # test atomicrmw i64
+  def test_atomicrmw_i64(self):
+    Popen([PYTHON, EMCC, path_from_root('tests', 'atomicrmw_i64.ll'), '-s', 'USE_PTHREADS=1', '-o', 'test.html']).communicate()
+    self.run_browser('test.html', None, '/report_result?0')
+
   # Test that it is possible to send a signal via calling alarm(timeout), which in turn calls to the signal handler set by signal(SIGALRM, func);
   def test_sigalrm(self):
     self.btest(path_from_root('tests', 'sigalrm.cpp'), expected='0', args=['-O3'], timeout=30)
