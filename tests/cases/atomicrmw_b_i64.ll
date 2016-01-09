@@ -19,3 +19,5 @@ entry:
 
 declare i32 @emscripten_asm_const_int(i8*, ...) #1
 
+declare i64 @_emscripten_atomic_fetch_and_add_u64(i8*, i64)
+
