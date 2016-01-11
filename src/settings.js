@@ -11,6 +11,10 @@
 // mode. See apply_opt_level in tools/shared.py for how -O1,2,3 affect these
 // flags.
 //
+// These flags should only have an effect when compiling to JS, so there
+// should not be a need to have them when just compiling source to
+// bitcode. However, there will also be no harm either, so it is ok to.
+//
 
 // Tuning
 var QUANTUM_SIZE = 4; // This is the size of an individual field in a structure. 1 would
