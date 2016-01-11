@@ -153,6 +153,7 @@ var CONTINUE_CAPTURERS = LOOP;
 var COMMABLE = set('assign', 'binary', 'unary-prefix', 'unary-postfix', 'name', 'num', 'call', 'seq', 'conditional', 'sub');
 
 var CONDITION_CHECKERS = set('if', 'do', 'while', 'switch');
+var BOOLEAN_RECEIVERS = set('if', 'do', 'while', 'conditional');
 
 var FUNCTIONS_THAT_ALWAYS_THROW = set('abort', '___resumeException', '___cxa_throw', '___cxa_rethrow');
 
@@ -945,11 +946,23 @@ function simplifyExpressions(ast) {
     });
   }
 
+  function simplifyNotZero(ast) {
+    traverse(ast, function(node, type) {
+      if (node[0] in BOOLEAN_RECEIVERS) {
+        var boolean = node[1];
+        if (boolean[0] === 'binary' && boolean[1] === '!=' && boolean[3][0] === 'num' && boolean[3][1] === 0) {
+          node[1] = boolean[2];
+        }
+      }
+    });
+  }
+
   traverseGeneratedFunctions(ast, function(func) {
     simplifyIntegerConversions(func);
     simplifyOps(func);
     simplifyNotComps(func);
     conditionalize(func);
+    simplifyNotZero(func);
   });
 }
 

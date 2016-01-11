@@ -624,6 +624,7 @@ StringSet ASSOCIATIVE_BINARIES("+ * | & ^"),
           LOOP("do while for"),
           NAME_OR_NUM("name num"),
           CONDITION_CHECKERS("if do while switch"),
+          BOOLEAN_RECEIVERS("if do while conditional"),
           SAFE_TO_DROP_COERCION("unary-prefix name num");
 
 StringSet BREAK_CAPTURERS("do while for switch"),
@@ -1898,6 +1899,17 @@ void simplifyExpressions(Ref ast) {
     });
   };
 
+  auto simplifyNotZero = [](Ref ast) {
+    traversePre(ast, [](Ref node) {
+      if (BOOLEAN_RECEIVERS.has(node[0])) {
+        auto boolean = node[1];
+        if (boolean[0] == BINARY && boolean[1] == NE && boolean[3][0] == NUM && boolean[3][1]->getNumber() == 0) {
+          node[1] = boolean[2];
+        }
+      }
+    });
+  };
+
   traverseFunctions(ast, [&](Ref func) {
     simplifyIntegerConversions(func);
     simplifyOps(func);
@@ -1908,6 +1920,7 @@ void simplifyExpressions(Ref ast) {
       }
     });
     conditionalize(func);
+    simplifyNotZero(func);
   });
 }
 
