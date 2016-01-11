@@ -129,6 +129,7 @@ var LibraryGLFW = {
     /* https://developer.mozilla.org/en/Document_Object_Model_%28DOM%29/KeyboardEvent and GLFW/glfw3.h */
     DOMToGLFWKeyCode: function(keycode) {
       switch (keycode) {
+        // these keycodes are only defined for GLFW3, assume they are the same for GLFW2
         case 0x20:return 32; // DOM_VK_SPACE -> GLFW_KEY_SPACE
         case 0xDE:return 39; // DOM_VK_QUOTE -> GLFW_KEY_APOSTROPHE
         case 0xBC:return 44; // DOM_VK_COMMA -> GLFW_KEY_COMMA
@@ -177,6 +178,81 @@ var LibraryGLFW = {
         case 0xDC:return 92; // DOM_VK_BACKSLASH -> GLFW_KEY_BACKSLASH
         case 0xDD:return 93; // DOM_VK_CLOSE_BRACKET -> GLFW_KEY_RIGHT_BRACKET
         case 0xC0:return 94; // DOM_VK_BACK_QUOTE -> GLFW_KEY_GRAVE_ACCENT
+        
+#if USE_GLFW == 2
+        //#define GLFW_KEY_SPECIAL      256
+        case 0x1B:return (256+1); // DOM_VK_ESCAPE -> GLFW_KEY_ESC
+        case 0x70:return (256+2); // DOM_VK_F1 -> GLFW_KEY_F1
+        case 0x71:return (256+3); // DOM_VK_F2 -> GLFW_KEY_F2
+        case 0x72:return (256+4); // DOM_VK_F3 -> GLFW_KEY_F3
+        case 0x73:return (256+5); // DOM_VK_F4 -> GLFW_KEY_F4
+        case 0x74:return (256+6); // DOM_VK_F5 -> GLFW_KEY_F5
+        case 0x75:return (256+7); // DOM_VK_F6 -> GLFW_KEY_F6
+        case 0x76:return (256+8); // DOM_VK_F7 -> GLFW_KEY_F7
+        case 0x77:return (256+9); // DOM_VK_F8 -> GLFW_KEY_F8
+        case 0x78:return (256+10); // DOM_VK_F9 -> GLFW_KEY_F9
+        case 0x79:return (256+11); // DOM_VK_F10 -> GLFW_KEY_F10
+        case 0x7A:return (256+12); // DOM_VK_F11 -> GLFW_KEY_F11
+        case 0x7B:return (256+13); // DOM_VK_F12 -> GLFW_KEY_F12
+        case 0x7C:return (256+14); // DOM_VK_F13 -> GLFW_KEY_F13
+        case 0x7D:return (256+15); // DOM_VK_F14 -> GLFW_KEY_F14
+        case 0x7E:return (256+16); // DOM_VK_F15 -> GLFW_KEY_F15
+        case 0x7F:return (256+17); // DOM_VK_F16 -> GLFW_KEY_F16
+        case 0x80:return (256+18); // DOM_VK_F17 -> GLFW_KEY_F17
+        case 0x81:return (256+19); // DOM_VK_F18 -> GLFW_KEY_F18
+        case 0x82:return (256+20); // DOM_VK_F19 -> GLFW_KEY_F19
+        case 0x83:return (256+21); // DOM_VK_F20 -> GLFW_KEY_F20
+        case 0x84:return (256+22); // DOM_VK_F21 -> GLFW_KEY_F21
+        case 0x85:return (256+23); // DOM_VK_F22 -> GLFW_KEY_F22
+        case 0x86:return (256+24); // DOM_VK_F23 -> GLFW_KEY_F23
+        case 0x87:return (256+25); // DOM_VK_F24 -> GLFW_KEY_F24
+        case 0x88:return (256+26); // 0x88 (not used?) -> GLFW_KEY_F25
+        case 0x27:return (256+27); // DOM_VK_RIGHT -> GLFW_KEY_RIGHT
+        case 0x25:return (256+28); // DOM_VK_LEFT -> GLFW_KEY_LEFT
+        case 0x28:return (256+29); // DOM_VK_DOWN -> GLFW_KEY_DOWN
+        case 0x26:return (256+30); // DOM_VK_UP -> GLFW_KEY_UP
+        case 0x10:return (256+31); // DOM_VK_SHIFT -> GLFW_KEY_LSHIFT
+        // #define GLFW_KEY_RSHIFT       (GLFW_KEY_SPECIAL+32)
+        case 0x11:return (256+33); // DOM_VK_CONTROL -> GLFW_KEY_LCTRL
+        // #define GLFW_KEY_RCTRL        (GLFW_KEY_SPECIAL+34)
+        case 0x12:return (256+35); // DOM_VK_ALT -> GLFW_KEY_LALT
+        // #define GLFW_KEY_RALT         (GLFW_KEY_SPECIAL+36)
+        case 0x09:return (256+37); // DOM_VK_TAB -> GLFW_KEY_TAB
+        case 0x0D:return (256+38); // DOM_VK_RETURN -> GLFW_KEY_ENTER
+        case 0x08:return (256+39); // DOM_VK_BACK -> GLFW_KEY_BACKSPACE
+        case 0x2D:return (256+40); // DOM_VK_INSERT -> GLFW_KEY_INSERT
+        case 0x2E:return (256+41); // DOM_VK_DELETE -> GLFW_KEY_DEL
+        case 0x21:return (256+42); // DOM_VK_PAGE_UP -> GLFW_KEY_PAGEUP
+        case 0x22:return (256+43); // DOM_VK_PAGE_DOWN -> GLFW_KEY_PAGEDOWN
+        case 0x24:return (256+44); // DOM_VK_HOME -> GLFW_KEY_HOME
+        case 0x23:return (256+45); // DOM_VK_END -> GLFW_KEY_END
+        case 0x60:return (256+46); // DOM_VK_NUMPAD0 -> GLFW_KEY_KP_0
+        case 0x61:return (256+47); // DOM_VK_NUMPAD1 -> GLFW_KEY_KP_1
+        case 0x62:return (256+48); // DOM_VK_NUMPAD2 -> GLFW_KEY_KP_2
+        case 0x63:return (256+49); // DOM_VK_NUMPAD3 -> GLFW_KEY_KP_3
+        case 0x64:return (256+50); // DOM_VK_NUMPAD4 -> GLFW_KEY_KP_4
+        case 0x65:return (256+51); // DOM_VK_NUMPAD5 -> GLFW_KEY_KP_5
+        case 0x66:return (256+52); // DOM_VK_NUMPAD6 -> GLFW_KEY_KP_6
+        case 0x67:return (256+53); // DOM_VK_NUMPAD7 -> GLFW_KEY_KP_7
+        case 0x68:return (256+54); // DOM_VK_NUMPAD8 -> GLFW_KEY_KP_8
+        case 0x69:return (256+55); // DOM_VK_NUMPAD9 -> GLFW_KEY_KP_9
+        case 0x6F:return (256+56); // DOM_VK_DIVIDE -> GLFW_KEY_KP_DIVIDE
+        case 0x6A:return (256+57); // DOM_VK_MULTIPLY -> GLFW_KEY_KP_MULTIPLY
+        case 0x6D:return (256+58); // DOM_VK_SUBTRACT -> GLFW_KEY_KP_SUBTRACT
+        case 0x6B:return (256+59); // DOM_VK_ADD -> GLFW_KEY_KP_ADD
+        case 0x6E:return (256+60); // DOM_VK_DECIMAL -> GLFW_KEY_KP_DECIMAL
+        // #define GLFW_KEY_KP_EQUAL     (GLFW_KEY_SPECIAL+61)
+        // #define GLFW_KEY_KP_ENTER     (GLFW_KEY_SPECIAL+62)
+        case 0x90:return (256+63); // DOM_VK_NUM_LOCK -> GLFW_KEY_KP_NUM_LOCK
+        case 0x14:return (256+64); // DOM_VK_CAPS_LOCK -> GLFW_KEY_CAPS_LOCK
+        case 0x91:return (256+65); // DOM_VK_SCROLL_LOCK -> GLFW_KEY_SCROLL_LOCK
+        case 0x13:return (256+66); // DOM_VK_PAUSE -> GLFW_KEY_PAUSE
+        case 0x5B:return (256+67); // DOM_VK_WIN -> GLFW_KEY_LSUPER
+        // #define GLFW_KEY_RSUPER       (GLFW_KEY_SPECIAL+68)
+        case 0x5D:return (256+69); // DOM_VK_CONTEXT_MENU -> GLFW_KEY_MENU
+#endif
+
+#if USE_GLFW == 3
         case 0x1B:return 256; // DOM_VK_ESCAPE -> GLFW_KEY_ESCAPE
         case 0x0D:return 257; // DOM_VK_RETURN -> GLFW_KEY_ENTER
         case 0x09:return 258; // DOM_VK_TAB -> GLFW_KEY_TAB
@@ -247,8 +323,8 @@ var LibraryGLFW = {
         // case 0x12:return 346; // DOM_VK_ALT -> GLFW_KEY_RIGHT_ALT (DOM_KEY_LOCATION_RIGHT)
         // case 0x5B:return 347; // DOM_VK_WIN -> GLFW_KEY_RIGHT_SUPER (DOM_KEY_LOCATION_RIGHT)
         case 0x5D:return 348; // DOM_VK_CONTEXT_MENU -> GLFW_KEY_MENU
-
         // XXX: GLFW_KEY_WORLD_1, GLFW_KEY_WORLD_2 what are these?
+#endif
         default:return -1; // GLFW_KEY_UNKNOWN
       };
     },
