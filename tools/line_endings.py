@@ -13,8 +13,13 @@ def check_line_endings(filename, print_errors=True):
     if print_errors: print >> sys.stderr, "Unable to read file '" + filename + "', or file was empty!"
     return 1
 
-  if "\r\r\n" in data:
-    if print_errors: print >> sys.stderr, "File '" + filename + "' contains BAD line endings of form \\r\\r\\n!"
+  bad_line_ending_index = data.find("\r\r\n")
+  if bad_line_ending_index != -1:
+    if print_errors:
+      print >> sys.stderr, "File '" + filename + "' contains BAD line endings of form \\r\\r\\n!"
+      bad_line = data[max(0,bad_line_ending_index-50):min(len(data), bad_line_ending_index+50)]
+      bad_line = bad_line.replace('\r', '\\r').replace('\n', '\\n')
+      print >> sys.stderr, "Content around the location: '" + bad_line + "'"
     return 1 # Bad line endings in file, return a non-zero process exit code.
 
   has_dos_line_endings = False

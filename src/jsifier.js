@@ -87,7 +87,10 @@ function JSify(data, functionsOnly) {
   }
 
   function processLibraryFunction(snippet, ident, finalName) {
-    snippet = snippet.toString();
+    // It is possible that when printing the function as a string on Windows, the js interpreter we are in returns the string with Windows
+    // line endings \r\n. This is undesirable, since line endings are managed in the form \n in the output for binary file writes, so
+    // make sure the endings are uniform.
+    snippet = snippet.toString().replace(/\r\n/gm,"\n");
     assert(snippet.indexOf('XXX missing C define') == -1,
            'Trying to include a library function with missing C defines: ' + finalName + ' | ' + snippet);
 
