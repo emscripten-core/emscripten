@@ -728,7 +728,11 @@ var LibraryGL = {
         ret = allocate(intArrayFromString(gl_exts.join(' ')), 'i8', ALLOC_NORMAL);
         break;
       case 0x8B8C /* GL_SHADING_LANGUAGE_VERSION */:
+#if USE_WEBGL2
+        ret = allocate(intArrayFromString('OpenGL ES GLSL 3.00 (WebGL2)'), 'i8', ALLOC_NORMAL);
+#else
         ret = allocate(intArrayFromString('OpenGL ES GLSL 1.00 (WebGL)'), 'i8', ALLOC_NORMAL);
+#endif
         break;
       default:
         GL.recordError(0x0500/*GL_INVALID_ENUM*/);
