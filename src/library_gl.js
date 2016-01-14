@@ -728,7 +728,13 @@ var LibraryGL = {
         ret = allocate(intArrayFromString(gl_exts.join(' ')), 'i8', ALLOC_NORMAL);
         break;
       case 0x8B8C /* GL_SHADING_LANGUAGE_VERSION */:
-        ret = allocate(intArrayFromString('OpenGL ES GLSL 1.00 (WebGL)'), 'i8', ALLOC_NORMAL);
+        var glslVersion = GLctx.getParameter(GLctx.SHADING_LANGUAGE_VERSION);
+        // Map WebGL GL_SHADING_LANGUAGE_VERSION string format to GLES format.
+        if (glslVersion.indexOf('WebGL GLSL ES 1.0') != -1) glslVersion = 'OpenGL ES GLSL 1.00 (WebGL)';
+#if USE_WEBGL2
+        else if (glslVersion.indexOf('WebGL GLSL ES 3.00') != -1) glslVersion = 'OpenGL ES GLSL 3.00 (WebGL 2)';
+#endif
+        ret = allocate(intArrayFromString(glslVersion), 'i8', ALLOC_NORMAL);
         break;
       default:
         GL.recordError(0x0500/*GL_INVALID_ENUM*/);
