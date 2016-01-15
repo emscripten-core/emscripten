@@ -939,6 +939,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.ASSERTIONS:
       shared.Settings.STACK_OVERFLOW_CHECK = 2
 
+    # Use settings
+
+    if not shared.Settings.WASM_BACKEND:
+      shared.set_llvm_target('asmjs-unknown-emscripten')
+    else:
+      shared.set_llvm_target('wasm32-unknown-unknown')
+
+    newargs += shared.get_llvm_target_command()
+
     try:
       assert shared.Settings.ASM_JS > 0, 'ASM_JS must be enabled in fastcomp'
       assert shared.Settings.SAFE_HEAP in [0, 1], 'safe heap must be 0 or 1 in fastcomp'

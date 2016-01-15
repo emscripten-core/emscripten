@@ -788,10 +788,18 @@ except:
 
 # Additional compiler options
 
-# Target choice. Must be synced with src/settings.js (TARGET_*)
-def get_llvm_target():
-  return 'asmjs-unknown-emscripten'
-LLVM_TARGET = get_llvm_target()
+# Target choice.
+LLVM_TARGET = None
+
+def set_llvm_target(target):
+  global LLVM_TARGET
+  assert LLVM_TARGET is None
+  LLVM_TARGET = target
+
+def get_llvm_target_command():
+  global LLVM_TARGET
+  assert LLVM_TARGET is not None
+  return ['-target', LLVM_TARGET]
 
 # COMPILER_OPTS: options passed to clang when generating bitcode for us
 try:
@@ -799,19 +807,18 @@ try:
 except:
   COMPILER_OPTS = []
 COMPILER_OPTS = COMPILER_OPTS + [#'-fno-threadsafe-statics', # disabled due to issue 1289
-                                 '-target', LLVM_TARGET,
                                  '-D__EMSCRIPTEN_major__=' + str(EMSCRIPTEN_VERSION_MAJOR),
                                  '-D__EMSCRIPTEN_minor__=' + str(EMSCRIPTEN_VERSION_MINOR),
                                  '-D__EMSCRIPTEN_tiny__=' + str(EMSCRIPTEN_VERSION_TINY)]
 
 # Changes to default clang behavior
-if LLVM_TARGET == 'asmjs-unknown-emscripten':
-  # Implicit functions can cause horribly confusing asm.js function pointer type errors, see #2175
-  # If your codebase really needs them - very unrecommended! - you can disable the error with
-  #   -Wno-error=implicit-function-declaration
-  # or disable even a warning about it with
-  #   -Wno-implicit-function-declaration
-  COMPILER_OPTS += ['-Werror=implicit-function-declaration']
+
+# Implicit functions can cause horribly confusing function pointer type errors, see #2175
+# If your codebase really needs them - very unrecommended! - you can disable the error with
+#   -Wno-error=implicit-function-declaration
+# or disable even a warning about it with
+#   -Wno-implicit-function-declaration
+COMPILER_OPTS += ['-Werror=implicit-function-declaration']
 
 USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
 
@@ -845,9 +852,6 @@ if USE_EMSDK:
 else:
   EMSDK_OPTS = []
   EMSDK_CXX_OPTS = []
-
-#print >> sys.stderr, 'SDK opts', ' '.join(EMSDK_OPTS)
-#print >> sys.stderr, 'Compiler opts', ' '.join(COMPILER_OPTS)
 
 # Engine tweaks
 
