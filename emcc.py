@@ -1304,7 +1304,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       logging.debug('linking: ' + str(linker_inputs))
       # force archive contents to all be included, if just archives, or if linking shared modules
       force_archive_contents = len([temp for i, temp in temp_files if not temp.endswith(STATICLIB_ENDINGS)]) == 0 or not shared.Building.can_build_standalone()
-      just_calculate = DEBUG != '2' # if  EMCC_DEBUG=2 , link now, otherwise defer to be more efficient
+
+      # if  EMCC_DEBUG=2  then we must link now, so the temp files are complete.
+      # if using the wasm backend, we might be using vanilla LLVM, which does not allow our fastcomp deferred linking opts.
+      # TODO: we could check if this is a fastcomp build, and still speed things up here
+      just_calculate = DEBUG != '2' and not shared.Settings.WASM_BACKEND
       final = shared.Building.link(linker_inputs, DEFAULT_FINAL, force_archive_contents=force_archive_contents, temp_files=misc_temp_files, just_calculate=just_calculate)
     else:
       if not LEAVE_INPUTS_RAW:
