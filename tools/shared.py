@@ -471,7 +471,7 @@ except Exception, e:
   EMSCRIPTEN_VERSION = 'unknown'
 
 def generate_sanity():
-  return EMSCRIPTEN_VERSION + '|' + get_llvm_target() + '|' + LLVM_ROOT + '|' + get_clang_version()
+  return EMSCRIPTEN_VERSION + '|' + LLVM_ROOT + '|' + get_clang_version()
 
 def check_sanity(force=False):
   try:
