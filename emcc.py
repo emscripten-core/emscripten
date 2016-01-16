@@ -1125,6 +1125,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.GLOBAL_BASE < 0:
       shared.Settings.GLOBAL_BASE = 8 # default if nothing else sets it
 
+    if shared.Settings.WASM_BACKEND:
+      # to bootstrap struct_info, we need binaryen
+      os.environ['WASM_BACKEND_BINARYEN'] = shared.Settings.BINARYEN
+
     shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
     shared.Settings.OPT_LEVEL = opt_level
     shared.Settings.DEBUG_LEVEL = debug_level
