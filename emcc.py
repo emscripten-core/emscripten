@@ -946,7 +946,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     else:
       shared.set_llvm_target('wasm32-unknown-unknown')
       # use a separate directory for wasm
-      os.environ['EM_CACHE'] = os.path.join(shared.Cache.dirname, 'wasm')
+      os.environ['EM_CACHE'] = shared.Cache.dirname + '_wasm'
       shared.reconfigure_cache()
 
     newargs += shared.get_llvm_target_command()
