@@ -361,13 +361,22 @@ def get_fastcomp_src_dir():
       d = os.path.dirname(d)
   return None
 
+def get_llc_targets():
+  llc_version_info = Popen([LLVM_COMPILER, '--version'], stdout=PIPE).communicate()[0]
+  pre, targets = llc_version_info.split('Registered Targets:')
+  return targets
+
+def has_asm_js_target(targets):
+  return 'js' in targets and 'JavaScript (asm.js, emscripten) backend' in targets
+
+def has_wasm_target(targets):
+  return 'wasm32' in targets and 'WebAssembly 32-bit' in targets
+
 def check_fastcomp():
   try:
-    llc_version_info = Popen([LLVM_COMPILER, '--version'], stdout=PIPE).communicate()[0]
-    pre, targets = llc_version_info.split('Registered Targets:')
-
+    targets = get_llc_targets()
     if get_llvm_target() == ASM_JS_TARGET:
-      if 'js' not in targets or 'JavaScript (asm.js, emscripten) backend' not in targets:
+      if not has_asm_js_target(targets):
         logging.critical('fastcomp in use, but LLVM has not been built with the JavaScript backend as a target, llc reports:')
         print >> sys.stderr, '==========================================================================='
         print >> sys.stderr, llc_version_info,
@@ -376,7 +385,7 @@ def check_fastcomp():
         return False
     else:
       assert get_llvm_target() == WASM_TARGET
-      if 'wasm32' not in targets or 'WebAssembly 32-bit' not in targets:
+      if not has_wasm_target(targets):
         logging.critical('WebAssembly set as target, but LLVM has not been built with the WebAssembly backend, llc reports:')
         print >> sys.stderr, '==========================================================================='
         print >> sys.stderr, llc_version_info,
@@ -808,7 +817,13 @@ WASM_TARGET = 'wasm32-unknown-unknown'
 if os.environ.get('EMCC_WASM_BACKEND') and os.environ.get('EMCC_WASM_BACKEND') != '0':
   LLVM_TARGET = WASM_TARGET
 else:
-  LLVM_TARGET = ASM_JS_TARGET
+  # if we are using vanilla LLVM, i.e. we don't have our asm.js backend, then we
+  # must use wasm (or at least try to)
+  if not has_asm_js_target(get_llc_targets()):
+    logging.debug('asm.js target not found, assuming we should use wasm target instead (set EMCC_WASM_BACKEND=1 in the env to do that directly, and avoid this message)')
+    LLVM_TARGET = WASM_TARGET
+  else:
+    LLVM_TARGET = ASM_JS_TARGET
 
 def get_llvm_target():
   global LLVM_TARGET
