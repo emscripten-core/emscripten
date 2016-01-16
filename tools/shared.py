@@ -819,9 +819,13 @@ if os.environ.get('EMCC_WASM_BACKEND') and os.environ.get('EMCC_WASM_BACKEND') !
 else:
   # if we are using vanilla LLVM, i.e. we don't have our asm.js backend, then we
   # must use wasm (or at least try to)
-  if not has_asm_js_target(get_llc_targets()):
-    logging.debug('asm.js target not found, assuming we should use wasm target instead (set EMCC_WASM_BACKEND=1 in the env to do that directly, and avoid this message)')
-    LLVM_TARGET = WASM_TARGET
+  if os.environ.get('EMCC_WASM_BACKEND') != '0':
+    logging.debug('testing for asm.js target, because if not present, we will use the wasm target instead (set EMCC_WASM_BACKEND=0 to skip this check, avoid this message)')
+    if not has_asm_js_target(get_llc_targets()):
+      logging.debug('asm.js target not found, assuming we should use wasm target instead (set EMCC_WASM_BACKEND=1 in the env to do that directly, and avoid this message)')
+      LLVM_TARGET = WASM_TARGET
+    else:
+      LLVM_TARGET = ASM_JS_TARGET
   else:
     LLVM_TARGET = ASM_JS_TARGET
 
