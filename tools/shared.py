@@ -494,6 +494,8 @@ def check_sanity(force=False):
     else:
       settings_mtime = os.stat(CONFIG_FILE).st_mtime
       sanity_file = CONFIG_FILE + '_sanity'
+      if get_llvm_target() == WASM_TARGET:
+        sanity_file += '_wasm'
       if os.path.exists(sanity_file):
         try:
           sanity_mtime = os.stat(sanity_file).st_mtime
