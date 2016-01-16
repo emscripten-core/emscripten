@@ -377,7 +377,7 @@ def inspect_code(headers, cpp_opts, structs, defines):
       del safe_env[opt]
 
   # Refer to binaryen, if necessary
-  binaryen = os.environ.get('WASM_BACKEND_BINARYEN')
+  binaryen = os.environ.get('EMCC_WASM_BACKEND_BINARYEN')
   if binaryen:
     cpp_opts += ['-s', 'BINARYEN="' + binaryen + '"']
 

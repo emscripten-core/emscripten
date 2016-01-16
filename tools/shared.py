@@ -805,7 +805,7 @@ except:
 ASM_JS_TARGET = 'asmjs-unknown-emscripten'
 WASM_TARGET = 'wasm32-unknown-unknown'
 
-if os.environ.get('WASM_BACKEND') and os.environ.get('WASM_BACKEND') != '0':
+if os.environ.get('EMCC_WASM_BACKEND') and os.environ.get('EMCC_WASM_BACKEND') != '0':
   LLVM_TARGET = WASM_TARGET
 else:
   LLVM_TARGET = ASM_JS_TARGET
