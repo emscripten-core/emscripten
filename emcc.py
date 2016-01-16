@@ -942,9 +942,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Use settings
 
     if not shared.Settings.WASM_BACKEND:
-      shared.set_llvm_target('asmjs-unknown-emscripten')
+      shared.set_llvm_target(shared.ASM_JS_TARGET)
     else:
-      shared.set_llvm_target('wasm32-unknown-unknown')
+      shared.set_llvm_target(shared.WASM_TARGET)
       # use a separate directory for wasm
       os.environ['EM_CACHE'] = shared.Cache.dirname + '_wasm'
       shared.reconfigure_cache()

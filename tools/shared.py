@@ -365,13 +365,23 @@ def check_fastcomp():
   try:
     llc_version_info = Popen([LLVM_COMPILER, '--version'], stdout=PIPE).communicate()[0]
     pre, targets = llc_version_info.split('Registered Targets:')
-    if 'js' not in targets or 'JavaScript (asm.js, emscripten) backend' not in targets:
-      logging.critical('fastcomp in use, but LLVM has not been built with the JavaScript backend as a target, llc reports:')
-      print >> sys.stderr, '==========================================================================='
-      print >> sys.stderr, llc_version_info,
-      print >> sys.stderr, '==========================================================================='
-      logging.critical('you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
-      return False
+
+    if get_llvm_target() == ASM_JS_TARGET:
+      if 'js' not in targets or 'JavaScript (asm.js, emscripten) backend' not in targets:
+        logging.critical('fastcomp in use, but LLVM has not been built with the JavaScript backend as a target, llc reports:')
+        print >> sys.stderr, '==========================================================================='
+        print >> sys.stderr, llc_version_info,
+        print >> sys.stderr, '==========================================================================='
+        logging.critical('you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
+        return False
+    else:
+      assert get_llvm_target() == WASM_TARGET
+      if 'wasm32' not in targets or 'WebAssembly 32-bit' not in targets:
+        logging.critical('WebAssembly set as target, but LLVM has not been built with the WebAssembly backend, llc reports:')
+        print >> sys.stderr, '==========================================================================='
+        print >> sys.stderr, llc_version_info,
+        print >> sys.stderr, '==========================================================================='
+        return False
 
     # check repo versions
     d = get_fastcomp_src_dir()
@@ -791,10 +801,18 @@ except:
 # Target choice.
 LLVM_TARGET = None
 
+ASM_JS_TARGET = 'asmjs-unknown-emscripten'
+WASM_TARGET = 'wasm32-unknown-unknown'
+
 def set_llvm_target(target):
   global LLVM_TARGET
   assert LLVM_TARGET is None
   LLVM_TARGET = target
+
+def get_llvm_target():
+  global LLVM_TARGET
+  assert LLVM_TARGET is not None
+  return LLVM_TARGET
 
 def get_llvm_target_command():
   global LLVM_TARGET
