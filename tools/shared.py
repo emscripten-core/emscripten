@@ -799,15 +799,13 @@ except:
 # Additional compiler options
 
 # Target choice.
-LLVM_TARGET = None
-
 ASM_JS_TARGET = 'asmjs-unknown-emscripten'
 WASM_TARGET = 'wasm32-unknown-unknown'
 
-def set_llvm_target(target):
-  global LLVM_TARGET
-  assert LLVM_TARGET is None
-  LLVM_TARGET = target
+if os.environ.get('WASM_BACKEND') and os.environ.get('WASM_BACKEND') != '0':
+  LLVM_TARGET = WASM_TARGET
+else:
+  LLVM_TARGET = ASM_JS_TARGET
 
 def get_llvm_target():
   global LLVM_TARGET
@@ -817,7 +815,6 @@ def get_llvm_target():
 def get_llvm_target_command():
   global LLVM_TARGET
   assert LLVM_TARGET is not None
-  return ['-target', LLVM_TARGET]
 
 # COMPILER_OPTS: options passed to clang when generating bitcode for us
 try:
@@ -825,9 +822,15 @@ try:
 except:
   COMPILER_OPTS = []
 COMPILER_OPTS = COMPILER_OPTS + [#'-fno-threadsafe-statics', # disabled due to issue 1289
+                                 '-target', get_llvm_target(),
                                  '-D__EMSCRIPTEN_major__=' + str(EMSCRIPTEN_VERSION_MAJOR),
                                  '-D__EMSCRIPTEN_minor__=' + str(EMSCRIPTEN_VERSION_MINOR),
                                  '-D__EMSCRIPTEN_tiny__=' + str(EMSCRIPTEN_VERSION_TINY)]
+
+if LLVM_TARGET == WASM_TARGET:
+  # wasm target does not automatically define emscripten stuff, so do it here
+  COMPILER_OPTS = COMPILER_OPTS + ['-DEMSCRIPTEN',
+                                   '-D__EMSCRIPTEN__']
 
 # Changes to default clang behavior
 
