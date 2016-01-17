@@ -429,7 +429,7 @@ f.close()
                   # Test invoking cmake directly.
                   cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+path_from_root('cmake', 'Modules', 'Platform', 'Emscripten.cmake'),
                                   '-DCPP_LIBRARY_TYPE='+cpp_lib_type,
-                                  '-DCMAKE_CROSSCOMPILING_EMULATOR="' + ' '.join(NODE_JS) + '"',
+                                  '-DCMAKE_CROSSCOMPILING_EMULATOR="' + Building.which(' '.join(NODE_JS)) + '"',
                                   '-DCMAKE_BUILD_TYPE=' + configuration, cmake_arguments[i], '-G', generator, cmakelistsdir]
                   env = tools.shared.Building.remove_sh_exe_from_path(os.environ)
                 else:

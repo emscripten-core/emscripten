@@ -38,6 +38,7 @@ def run():
   elif 'cmake' in sys.argv[1]:
     node_js = shared.NODE_JS
     if type(node_js) is list: node_js = ' '.join(node_js)
+    node_js = shared.Building.which(node_js)
     node_js = node_js.replace('"', '\"')
     sys.argv = sys.argv[:2] + ['-DCMAKE_CROSSCOMPILING_EMULATOR="' + node_js +'"'] + sys.argv[2:]
 
