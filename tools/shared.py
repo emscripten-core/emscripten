@@ -379,7 +379,7 @@ def check_fastcomp():
       if not has_asm_js_target(targets):
         logging.critical('fastcomp in use, but LLVM has not been built with the JavaScript backend as a target, llc reports:')
         print >> sys.stderr, '==========================================================================='
-        print >> sys.stderr, llc_version_info,
+        print >> sys.stderr, targets
         print >> sys.stderr, '==========================================================================='
         logging.critical('you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
         return False
@@ -388,7 +388,7 @@ def check_fastcomp():
       if not has_wasm_target(targets):
         logging.critical('WebAssembly set as target, but LLVM has not been built with the WebAssembly backend, llc reports:')
         print >> sys.stderr, '==========================================================================='
-        print >> sys.stderr, llc_version_info,
+        print >> sys.stderr, targets
         print >> sys.stderr, '==========================================================================='
         return False
 
