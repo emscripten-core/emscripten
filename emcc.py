@@ -741,8 +741,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     for i in range(len(newargs)):
       if newargs[i] == '-s':
         if is_minus_s_for_emcc(newargs, i):
-          settings_changes.append(newargs[i+1])
+          key = newargs[i+1]
+          settings_changes.append(key)
           newargs[i] = newargs[i+1] = ''
+          assert key != 'WASM_BACKEND', 'do not set -s WASM_BACKEND, instead set EMCC_WASM_BACKEND=1 in the environment'
     newargs = [arg for arg in newargs if arg is not '']
 
     # Find input files
@@ -933,7 +935,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if key == 'EXPORTED_FUNCTIONS':
         # used for warnings in emscripten.py
         shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = original_exported_response or shared.Settings.EXPORTED_FUNCTIONS[:]
-      assert key != 'WASM_BACKEND', 'do not set -s WASM_BACKEND, instead set EMCC_WASM_BACKEND=1 in the environment'
 
     # -s ASSERTIONS=1 implies the heaviest stack overflow check mode. Set the implication here explicitly to avoid having to
     # do preprocessor "#if defined(ASSERTIONS) || defined(STACK_OVERFLOW_CHECK)" in .js files, which is not supported.
