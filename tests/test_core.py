@@ -1640,6 +1640,12 @@ int main(int argc, char**argv)
    printf("value = real %.2f imag %.2f\n",creal(z4),cimag(z4));
    float complex z5 =  cargf(z1); 
    printf("value = real %.2f imag %.2f\n",creal(z5),cimag(z5));
+   float complex z6 = 0.5 + 0.5 * I;
+   float complex z7 = 0.5 - 0.5 * I;
+   float complex z8 = z6 * z7;
+   float complex z9 = z6 / z7;
+   printf("value = real %.2f imag %.2f\n",creal(z8),cimag(z8));
+   printf("value = real %.2f imag %.2f\n",creal(z9),cimag(z9));
    return 0;
 }
 ''', '''value = real 1.00 imag 3.00
@@ -1647,7 +1653,9 @@ abs = 3.16
 value = real 1.00 imag -3.00
 value = real -2.69 imag 0.38
 value = real 1.00 imag -3.00
-value = real 1.25 imag 0.00''', force_c=True)
+value = real 1.25 imag 0.00
+value = real 0.50 imag 0.00
+value = real 0.00 imag 1.00''', force_c=True)
 
   def test_segfault(self):
     Settings.SAFE_HEAP = 1

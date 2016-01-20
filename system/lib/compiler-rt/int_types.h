@@ -136,5 +136,12 @@ typedef union
     long double f;
 } long_double_bits;
 
+typedef float _Complex Fcomplex;
+typedef double _Complex Dcomplex;
+typedef long double _Complex Lcomplex;
+
+#define COMPLEX_REAL(x) __real__(x)
+#define COMPLEX_IMAGINARY(x) __imag__(x)
+
 #endif /* INT_TYPES_H */
 
