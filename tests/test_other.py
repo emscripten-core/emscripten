@@ -4842,6 +4842,12 @@ print os.environ.get('CROSS_COMPILE')
     check('emconfigure', [PYTHON, 'test.py'], expect=path_from_root('em'))
     check('emmake', [PYTHON, 'test.py'], expect=path_from_root('em'))
 
+    open('test.py', 'w').write('''
+import os
+print os.environ.get('NM')
+''')
+    check('emconfigure', [PYTHON, 'test.py'], expect=tools.shared.LLVM_NM)
+
   def test_sdl2_config(self):
     for args, expected in [
       [['--version'], '2.0.0'],
