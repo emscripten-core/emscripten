@@ -1257,6 +1257,8 @@ var LibrarySDL = {
     // Converts the double-based browser axis value [-1, 1] into SDL's 16-bit
     // value [-32768, 32767]
     joystickAxisValueConversion: function(value) {
+      // Make sure value is properly clamped
+      value = Math.min(1, Math.max(value, -1));
       // Ensures that 0 is 0, 1 is 32767, and -1 is 32768.
       return Math.ceil(((value+1) * 32767.5) - 32768);
     },
