@@ -187,6 +187,71 @@ LibraryManager.library = {
   ccall__deps: ['__ccallSupport'],
   ccall: 0,
 
+  $setValue: function(ptr, value, type, noSafe) {
+    type = type || 'i8';
+    if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
+#if SAFE_HEAP
+    if (noSafe) {
+      switch(type) {
+        case 'i1': {{{ makeSetValue('ptr', '0', 'value', 'i1', undefined, undefined, undefined, '1') }}}; break;
+        case 'i8': {{{ makeSetValue('ptr', '0', 'value', 'i8', undefined, undefined, undefined, '1') }}}; break;
+        case 'i16': {{{ makeSetValue('ptr', '0', 'value', 'i16', undefined, undefined, undefined, '1') }}}; break;
+        case 'i32': {{{ makeSetValue('ptr', '0', 'value', 'i32', undefined, undefined, undefined, '1') }}}; break;
+        case 'i64': {{{ makeSetValue('ptr', '0', 'value', 'i64', undefined, undefined, undefined, '1') }}}; break;
+        case 'float': {{{ makeSetValue('ptr', '0', 'value', 'float', undefined, undefined, undefined, '1') }}}; break;
+        case 'double': {{{ makeSetValue('ptr', '0', 'value', 'double', undefined, undefined, undefined, '1') }}}; break;
+        default: abort('invalid type for setValue: ' + type);
+      }
+    } else {
+#endif
+      switch(type) {
+        case 'i1': {{{ makeSetValue('ptr', '0', 'value', 'i1') }}}; break;
+        case 'i8': {{{ makeSetValue('ptr', '0', 'value', 'i8') }}}; break;
+        case 'i16': {{{ makeSetValue('ptr', '0', 'value', 'i16') }}}; break;
+        case 'i32': {{{ makeSetValue('ptr', '0', 'value', 'i32') }}}; break;
+        case 'i64': {{{ makeSetValue('ptr', '0', 'value', 'i64') }}}; break;
+        case 'float': {{{ makeSetValue('ptr', '0', 'value', 'float') }}}; break;
+        case 'double': {{{ makeSetValue('ptr', '0', 'value', 'double') }}}; break;
+        default: abort('invalid type for setValue: ' + type);
+      }
+#if SAFE_HEAP
+    }
+#endif
+  },
+
+  $getValue: function(ptr, type, noSafe) {
+    type = type || 'i8';
+    if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
+#if SAFE_HEAP
+    if (noSafe) {
+      switch(type) {
+        case 'i1': return {{{ makeGetValue('ptr', '0', 'i1', undefined, undefined, undefined, undefined, '1') }}};
+        case 'i8': return {{{ makeGetValue('ptr', '0', 'i8', undefined, undefined, undefined, undefined, '1') }}};
+        case 'i16': return {{{ makeGetValue('ptr', '0', 'i16', undefined, undefined, undefined, undefined, '1') }}};
+        case 'i32': return {{{ makeGetValue('ptr', '0', 'i32', undefined, undefined, undefined, undefined, '1') }}};
+        case 'i64': return {{{ makeGetValue('ptr', '0', 'i64', undefined, undefined, undefined, undefined, '1') }}};
+        case 'float': return {{{ makeGetValue('ptr', '0', 'float', undefined, undefined, undefined, undefined, '1') }}};
+        case 'double': return {{{ makeGetValue('ptr', '0', 'double', undefined, undefined, undefined, undefined, '1') }}};
+        default: abort('invalid type for setValue: ' + type);
+      }
+    } else {
+#endif
+      switch(type) {
+        case 'i1': return {{{ makeGetValue('ptr', '0', 'i1') }}};
+        case 'i8': return {{{ makeGetValue('ptr', '0', 'i8') }}};
+        case 'i16': return {{{ makeGetValue('ptr', '0', 'i16') }}};
+        case 'i32': return {{{ makeGetValue('ptr', '0', 'i32') }}};
+        case 'i64': return {{{ makeGetValue('ptr', '0', 'i64') }}};
+        case 'float': return {{{ makeGetValue('ptr', '0', 'float') }}};
+        case 'double': return {{{ makeGetValue('ptr', '0', 'double') }}};
+        default: abort('invalid type for setValue: ' + type);
+      }
+#if SAFE_HEAP
+    }
+#endif
+    return null;
+  },
+
   // --
 
   // keep this low in memory, because we flatten arrays with them in them
