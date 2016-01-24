@@ -408,7 +408,7 @@ var DEBUG_LEVEL = 0;         // this will contain the debug level (-gx). you sho
 // For example, if you do not use some emscripten_*
 // C API call from C, but you want to call it from JS,
 // add it here (and in EXPORTED FUNCTIONS with prefix
-// "_", for closure).
+// "_", if you use closure compiler).
 var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = ['memcpy', 'memset', 'malloc', 'free', '$Browser'];
 
 var LIBRARY_DEPS_TO_AUTOEXPORT = ['memcpy']; // This list is also used to determine
