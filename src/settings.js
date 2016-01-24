@@ -409,7 +409,10 @@ var DEBUG_LEVEL = 0;         // this will contain the debug level (-gx). you sho
 // C API call from C, but you want to call it from JS,
 // add it here (and in EXPORTED FUNCTIONS with prefix
 // "_", if you use closure compiler).
-var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = ['memcpy', 'memset', 'malloc', 'free', '$Browser'];
+var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [
+  'memcpy', 'memset', 'malloc', 'free', '$Browser',
+  'ccall', 'cwrap'
+];
 
 var LIBRARY_DEPS_TO_AUTOEXPORT = ['memcpy']; // This list is also used to determine
                                              // auto-exporting of library dependencies (i.e., functions that
