@@ -1,8 +1,7 @@
 //"use strict";
 
-// An implementation of a libc for the web. Basically, implementations of
-// the various standard C libraries, that can be called from compiled code,
-// and work using the actual JavaScript environment.
+// An implementation of basic necessary libraries for the web. This integrates
+// with a compiled libc and with the rest of the JS runtime.
 //
 // We search the Library object when there is an external function. If the
 // entry in the Library is a function, we insert it. If it is a string, we
