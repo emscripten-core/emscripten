@@ -301,7 +301,10 @@ var ASYNCIFY_WHITELIST = ['qsort',   // Functions in this list are never conside
                           'MUSL_vfprintf']; 
 
 var EXPORTED_RUNTIME_METHODS = [ // Methods that are exported on Module. By default we export quite a bit, you can reduce this list to lower your code size,
-  'FS_createFolder',             // especially when closure is run (exporting prevents closure from eliminating code)
+                                 // especially when closure is run (exporting prevents closure from eliminating code)
+                                 // Note that methods on this list are only exported if they are included (either automatically from linking, or due to being
+                                 // in DEFAULT_LIBRARY_FUNCS_TO_INCLUDE)
+  'FS_createFolder',
   'FS_createPath',
   'FS_createDataFile',
   'FS_createPreloadedFile',
