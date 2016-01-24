@@ -181,11 +181,11 @@ LibraryManager.library = {
     {{{ maybeExport('cwrap') }}}
   },
 
-  cwrap__deps: ['__ccallSupport'],
-  cwrap: 0,
+  $cwrap__deps: ['__ccallSupport'],
+  $cwrap: 0,
 
-  ccall__deps: ['__ccallSupport'],
-  ccall: 0,
+  $ccall__deps: ['__ccallSupport'],
+  $ccall: 0,
 
   $setValue: function(ptr, value, type, noSafe) {
     type = type || 'i8';

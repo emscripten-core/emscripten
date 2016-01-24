@@ -414,7 +414,7 @@ var DEBUG_LEVEL = 0;         // this will contain the debug level (-gx). you sho
 // "_", if you use closure compiler).
 var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [
   'memcpy', 'memset', 'malloc', 'free', '$Browser',
-  'ccall', 'cwrap', '$getValue', '$setValue'
+  '$ccall', '$cwrap', '$getValue', '$setValue'
 ];
 
 var LIBRARY_DEPS_TO_AUTOEXPORT = ['memcpy']; // This list is also used to determine
