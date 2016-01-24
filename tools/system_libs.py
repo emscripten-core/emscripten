@@ -357,6 +357,16 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       ret.append(libfile)
       force = force.union(deps)
   ret.sort(key=lambda x: x.endswith('.a')) # make sure to put .a files at the end.
+
+  for actual in ret:
+    if os.path.basename(actual) == 'libcxxabi.bc':
+      # libcxxabi and libcxx *static* linking is tricky. e.g. cxa_demangle.cpp disables c++
+      # exceptions, but since the string methods in the headers are *weakly* linked, then
+      # we might have exception-supporting versions of them from elsewhere, and if libcxxabi
+      # is first then it would "win", breaking exception throwing from those string
+      # header methods. To avoid that, we link libcxxabi last.
+      ret = filter(lambda f: f != actual, ret) + [actual]
+
   return ret
 
 #---------------------------------------------------------------------------

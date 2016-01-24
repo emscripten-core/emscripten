@@ -1550,6 +1550,12 @@ int main(int argc, char **argv)
     src, output = (test_path + s for s in ('.cpp', '.txt'))
     self.do_run_from_file(src, output)
 
+  def test_exceptions_libcxx(self):
+    Settings.DISABLE_EXCEPTION_CATCHING = 0
+    test_path = path_from_root('tests', 'core', 'test_exceptions_libcxx')
+    src, output = (test_path + s for s in ('.cpp', '.txt'))
+    self.do_run_from_file(src, output)
+
   def test_bad_typeid(self):
     Settings.ERROR_ON_UNDEFINED_SYMBOLS = 1
     Settings.DISABLE_EXCEPTION_CATCHING = 0
