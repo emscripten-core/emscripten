@@ -16,6 +16,18 @@ void render() {
   glClear(GL_COLOR_BUFFER_BIT);
 }
 
+int actions = 0;
+
+void OnMouseClick(GLFWwindow *window, int button, int action, int mods) {
+  actions++;
+  printf("mouse actions: %d / 4\n", actions);
+  if (actions >= 4) {
+    printf("done.\n");
+    REPORT_RESULT();
+    emscripten_cancel_main_loop();
+  }
+}
+
 int main() {
   // Setup g_window
   glfwSetErrorCallback(error_callback);
@@ -45,6 +57,9 @@ int main() {
   // Try to disable cursor by entering pointer lock. If pointer lock failed (because glfwSetInputMode wasn't called in a user event),
   // then clicking the canvas should also try to lock the pointer, as long as the cursor mode is GLFW_CURSOR_DISABLED.
   glfwSetInputMode(g_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+  // When we see enough clicks, we close the window
+  glfwSetMouseButtonCallback(g_window, OnMouseClick);
 
   // Main loop
   printf("Click the canvas to enter pointer lock mode. The browser should offer to hide the mouse pointer. Make sure to accept it.\n");
