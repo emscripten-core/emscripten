@@ -1832,6 +1832,8 @@ int f() {
        ['asm', 'registerizeHarder', 'asmLastOpts', 'minifyWhitespace']), # issue 3549
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-splitMemory.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-splitMemory-output.js')).read(),
        ['splitMemory']),
+      (path_from_root('tests', 'optimizer', 'JSDCE.js'), open(path_from_root('tests', 'optimizer', 'JSDCE-output.js')).read(),
+       ['JSDCE']),
     ]:
       print input, passes
 
