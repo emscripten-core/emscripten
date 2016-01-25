@@ -24,16 +24,30 @@ def check_line_endings(filename, print_errors=True):
 
   has_dos_line_endings = False
   has_unix_line_endings = False
+  dos_line_ending_example = ''
+  dos_line_ending_count = 0
+  unix_line_ending_example = ''
+  unix_line_ending_count = 0
   if '\r\n' in data:
+    dos_line_ending_example = data[max(0, data.find('\r\n') - 50):min(len(data), data.find('\r\n')+50)].replace('\r', '\\r').replace('\n', '\\n')
+    dos_line_ending_count = data.count('\r\n')
     has_dos_line_endings = True
     data = data.replace('\r\n', 'A') # Replace all DOS line endings with some other character, and continue testing what's left.
   if '\n' in data:
+    unix_line_ending_example = data[max(0, data.find('\n') - 50):min(len(data), data.find('\n')+50)].replace('\r', '\\r').replace('\n', '\\n')
+    unix_line_ending_count = data.count('\n')
     has_unix_line_endings = True
   if '\r' in data:
-    if print_errors: print >> sys.stderr, 'File \'' + filename + '\' contains OLD OSX line endings "\\r"'
+    old_osx_line_ending_example = data[max(0, data.find('\r') - 50):min(len(data), data.find('\r')+50)].replace('\r', '\\r').replace('\n', '\\n')
+    if print_errors:
+      print >> sys.stderr, 'File \'' + filename + '\' contains OLD OSX line endings "\\r"'
+      print >> sys.stderr, "Content around an OLD OSX line ending location: '" + old_osx_line_ending_example + "'"
     return 1 # Return a non-zero process exit code since we don't want to use the old OSX (9.x) line endings anywhere.
   if has_dos_line_endings and has_unix_line_endings:
-    if print_errors: print >> sys.stderr, 'File \'' + filename + '\' contains both DOS "\\r\\n" and UNIX "\\n" line endings!'
+    if print_errors:
+      print >> sys.stderr, 'File \'' + filename + '\' contains both DOS "\\r\\n" and UNIX "\\n" line endings! (' + str(dos_line_ending_count) + ' DOS line endings, ' + str(unix_line_ending_count) + ' UNIX line endings)'
+      print >> sys.stderr, "Content around a DOS line ending location: '" + dos_line_ending_example + "'"
+      print >> sys.stderr, "Content around an UNIX line ending location: '" + unix_line_ending_example + "'"
     return 1 # Mixed line endings
   else: return 0
 
