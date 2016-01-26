@@ -627,7 +627,7 @@ def harness_server_func(q):
   httpd = BaseHTTPServer.HTTPServer(('localhost', 9999), TestServerHandler)
   httpd.serve_forever() # test runner will kill us
 
-def server_func(dir, q):
+def server_func(dir, q, back_queue):
   class TestServerHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def do_GET(self):
       if 'report_' in self.path:
@@ -642,6 +642,7 @@ def server_func(dir, q):
       pass
   os.chdir(dir)
   httpd = BaseHTTPServer.HTTPServer(('localhost', 8888), TestServerHandler)
+  back_queue.put(True) # Send a message back to parent to signal that the server hosting the test page is now running
   httpd.serve_forever() # test runner will kill us
 
 class BrowserCore(RunnerCore):
@@ -671,8 +672,16 @@ class BrowserCore(RunnerCore):
     if expectedResult is not None:
       try:
         queue = multiprocessing.Queue()
-        server = multiprocessing.Process(target=functools.partial(server_func, self.get_dir()), args=(queue,))
+        back_queue = multiprocessing.Queue()
+        server = multiprocessing.Process(target=functools.partial(server_func, self.get_dir()), args=(queue, back_queue))
         server.start()
+        # Starting the web page server above is an asynchronous procedure, so before we tell the browser below to navigate to
+        # the test page, we need to know that the server has started up and is ready to process the site navigation.
+        # Therefore block until we get a message from the server telling that the server has started up.
+        try:
+          back_queue.get(True, 10)
+        except:
+          raise Exception('[Test harness server failed to start up in a timely manner]')
         self.harness_queue.put('http://localhost:8888/' + html_file)
         output = '[no http server activity]'
         start = time.time()
