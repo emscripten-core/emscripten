@@ -2003,7 +2003,14 @@ function detectSign(node) {
         case '|': case '&': case '^': case '<<': case '>>': return ASM_SIGNED;
         case '>>>': return ASM_UNSIGNED;
         case '+': case '-': return ASM_FLEXIBLE;
-        case '*': case '/': return ASM_NONSIGNED; // without a coercion, these are double
+        case '*': {
+          // a double, unless one is a small int and the other is an int, in
+          // which case one is a num. that can't be a double, since then it
+          // would be a +num.
+          if (node[2][0] === 'num' || node[3][0] === 'num') return ASM_FLEXIBLE;
+          return ASM_NONSIGNED;
+        }
+        case '/': return ASM_NONSIGNED; // without a coercion, this is double
         case '==': case '!=': case '<': case '<=': case '>': case '>=': return ASM_SIGNED;
         default: throw 'yikes ' + node[1];
       }
