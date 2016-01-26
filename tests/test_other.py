@@ -5942,3 +5942,41 @@ int main() {
     src = open('a.out.js').read()
     assert 'use asm' not in src
 
+  def test_override_environment(self):
+    open('main.cpp', 'w').write(r'''
+      #include <emscripten.h>
+      int main() {
+        EM_ASM({
+          Module.print('environment is WEB? ' + ENVIRONMENT_IS_WEB);
+          Module.print('environment is WORKER? ' + ENVIRONMENT_IS_WORKER);
+          Module.print('environment is NODE? ' + ENVIRONMENT_IS_NODE);
+          Module.print('environment is SHELL? ' + ENVIRONMENT_IS_SHELL);
+        });
+      }
+''')
+    check_execute([PYTHON, EMCC, 'main.cpp'])
+    src = open('a.out.js').read()
+    envs = ['WEB', 'WORKER', 'NODE', 'SHELL']
+    for env in envs:
+      curr = 'var Module = { ENVIRONMENT: "%s" };\n' % env
+      open('test.js', 'w').write(curr + src)
+      for engine in JS_ENGINES:
+        if engine == V8_ENGINE: continue # ban v8, weird failures
+        actual = 'NODE' if engine == NODE_JS else 'SHELL'
+        print env, actual, engine
+        fail = False
+        try:
+          seen = run_js('test.js', engine=engine, stderr=PIPE)
+        except:
+          fail = True
+        if fail:
+          print '-- acceptable fail'
+          assert actual != env, 'ok to fail if in the wrong environment'
+        else:
+          for other in envs:
+            if env == other:
+              assert ('environment is %s? true' % other) in seen, seen
+            else:
+              assert ('environment is %s? false' % other) in seen, seen
+          print '-- verified proper env is shown'
+
