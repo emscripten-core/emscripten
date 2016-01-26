@@ -191,15 +191,17 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-js-opts: 
 	
 ``--js-opts <level>``
-	Enables JavaScript optimizations. Possible ``level`` values are:
+	Enables JavaScript optimizations, relevant when we generate JavaScript. Possible ``level`` values are:
 	 
 		- ``0``: Prevent JavaScript optimizer from running.
 		- ``1``: Use JavaScript optimizer (default).
 
+	You normally don't need to specify this option, as ``-O`` with an optimization level will set a good value.
+
 .. _emcc-llvm-opts: 
 		
 ``--llvm-opts <level>``
-	Enables LLVM optimizations. Possible ``level`` values are:
+	Enables LLVM optimizations, relevant when we call the LLVM optimizer (which is done when building source files to object files / bitcode). Possible ``level`` values are:
 	 
 		- ``0``: No LLVM optimizations (default in -O0).
 		- ``1``: LLVM ``-O1`` optimizations (default in -O1).
@@ -209,6 +211,8 @@ Options that are modified or new in *emcc* are listed below:
 	You can also specify arbitrary LLVM options, e.g.::
 	
 		--llvm-opts "['-O3', '-somethingelse']"
+
+	You normally don't need to specify this option, as ``-O`` with an optimization level will set a good value.
 
 .. _emcc-llvm-lto: 
 		
