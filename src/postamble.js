@@ -55,7 +55,10 @@ if (memoryInitializer) {
       }
 #endif
       HEAPU8.set(data, Runtime.GLOBAL_BASE);
-      delete Module['memoryInitializerRequest'];
+      // Delete the typed array that contains the large blob of the memory initializer request response so that
+      // we won't keep unnecessary memory lying around. However, keep the XHR object itself alive so that e.g.
+      // its .status field can still be accessed later.
+      if (Module['memoryInitializerRequest']) delete Module['memoryInitializerRequest'].response;
       removeRunDependency('memory initializer');
     }
     function doBrowserLoad() {
