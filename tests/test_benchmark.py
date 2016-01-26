@@ -305,7 +305,11 @@ void webMain() {
     dirs_to_delete = []
     try:
       # print(cheerp_args)
-      cmd = [CHEERP_BIN + 'clang++'] + cheerp_args + [
+      if filename.endswith('.c'):
+        compiler = CHEERP_BIN + '/clang'
+      else:
+        compiler = CHEERP_BIN + '/clang++'
+      cmd = [compiler] + cheerp_args + [
         '-cheerp-linear-heap-size=256',
         '-cheerp-wasm-loader=' + final,
         cheerp_temp,
