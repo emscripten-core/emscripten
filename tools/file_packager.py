@@ -71,7 +71,7 @@ See the source for more details.'''
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 
-data_target = sys.argv[1]
+data_target = sys.argv[1].replace('\\','/')
 
 IMAGE_SUFFIXES = ('.jpg', '.png', '.bmp')
 AUDIO_SUFFIXES = ('.ogg', '.wav', '.mp3')
