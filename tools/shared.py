@@ -1439,15 +1439,9 @@ class Building:
 
       response_fh = open(response_file, 'w')
       for arg in actual_files:
-        # we can't put things with spaces in the response file
-        if " " in arg:
-          link_args.append(arg)
-        else:
-          response_fh.write(arg + "\n")
+        # escaped double quotes allows 'space' characters in pathname the response file can use
+        response_fh.write("\"" + arg + "\"\n")
       response_fh.close()
-
-      if len(' '.join(link_args)) > 8192:
-        logging.warning('emcc: link command line is very long, even with response file -- use paths with no spaces')
 
     if not just_calculate:
       logging.debug('emcc: llvm-linking: %s to %s', actual_files, target)
