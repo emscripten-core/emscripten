@@ -153,13 +153,14 @@ Say you have a C library that exposes some procedures:
 
     //api_example.c
     #include<stdio.h>
+    #include<emscripten.h>
 
-    __attribute__((used))
-    char* sayHi() {
-      return "Hi!";
+    EMSCRIPTEN_KEEPALIVE
+    void sayHi() {
+      printf("Hi!\n");
     }
 
-    __attribute__((used))
+    EMSCRIPTEN_KEEPALIVE
     int daysInWeek() {
       return 7;
     }
@@ -168,22 +169,19 @@ Compile the library with emcc:
 
 .. code:: bash
 
-    emcc api_example.c
+    emcc api_example.c -o api_example.js
 
-Require the library and call it's procedures from node:
+Require the library and call its procedures from node:
 
 .. code:: javascript
 
-    var em_module = require('./a.out.js');
+    var em_module = require('./api_example.js');
 
-    var $ptr = em_module._sayHi();
-    var uint8Arr = em_module.HEAPU8.subarray($ptr,$ptr+3);
-    var str = String.fromCharCode.apply(null, uint8Arr);
+    em_module._sayHi(); // direct calling works
+    em_module.ccall("sayHi"); // using ccall etc. also work
+    console.log(em_module._daysInWeek()); // values can be returned, etc.
 
-    console.log(str);                      // Hi!
-    console.log(em_module._daysInWeek());  // 7
 
-    
 .. _interacting-with-code-direct-function-calls:
 
 Call compiled C/C++ code "directly" from JavaScript
