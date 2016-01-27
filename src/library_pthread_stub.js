@@ -170,7 +170,108 @@ var LibraryPThreadStub = {
       }
     }
     return 0;
-  }
+  },
+
+  llvm_memory_barrier: function(){},
+
+  llvm_atomic_load_add_i32_p0i32: function(ptr, delta) {
+    var ret = {{{ makeGetValue('ptr', '0', 'i32') }}};
+    {{{ makeSetValue('ptr', '0', 'ret+delta', 'i32') }}};
+    return ret;
+  },
+
+  // gnu atomics
+
+  __atomic_is_lock_free: function(size, ptr) {
+    return size <= 4 && (size & (size-1)) == 0 && (ptr&(size-1)) == 0;
+  },
+
+  __atomic_load_8: function(ptr, memmodel) {
+    {{{ makeStructuralReturn([makeGetValue('ptr', 0, 'i32'), makeGetValue('ptr', 4, 'i32')]) }}};
+  },
+
+  __atomic_store_8: function(ptr, vall, valh, memmodel) {
+    {{{ makeSetValue('ptr', 0, 'vall', 'i32') }}};
+    {{{ makeSetValue('ptr', 4, 'valh', 'i32') }}};
+  },
+
+  __atomic_exchange_8: function(ptr, vall, valh, memmodel) {
+    var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
+    var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
+    {{{ makeSetValue('ptr', 0, 'vall', 'i32') }}};
+    {{{ makeSetValue('ptr', 4, 'valh', 'i32') }}};
+    {{{ makeStructuralReturn(['l', 'h']) }}};
+  },
+
+  __atomic_compare_exchange_8: function(ptr, expected, desiredl, desiredh, weak, success_memmodel, failure_memmodel) {
+    var pl = {{{ makeGetValue('ptr', 0, 'i32') }}};
+    var ph = {{{ makeGetValue('ptr', 4, 'i32') }}};
+    var el = {{{ makeGetValue('expected', 0, 'i32') }}};
+    var eh = {{{ makeGetValue('expected', 4, 'i32') }}};
+    if (pl === el && ph === eh) {
+      {{{ makeSetValue('ptr', 0, 'desiredl', 'i32') }}};
+      {{{ makeSetValue('ptr', 4, 'desiredh', 'i32') }}};
+      return 1;
+    } else {
+      {{{ makeSetValue('expected', 0, 'pl', 'i32') }}};
+      {{{ makeSetValue('expected', 4, 'ph', 'i32') }}};
+      return 0;
+    }
+  },
+
+  __atomic_fetch_add_8__deps: ['llvm_uadd_with_overflow_i64'],
+  __atomic_fetch_add_8: function(ptr, vall, valh, memmodel) {
+    var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
+    var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
+    {{{ makeSetValue('ptr', 0, '_llvm_uadd_with_overflow_i64(l, h, vall, valh)', 'i32') }}};
+    {{{ makeSetValue('ptr', 4, 'Runtime["getTempRet0"]()', 'i32') }}};
+    {{{ makeStructuralReturn(['l', 'h']) }}};
+  },
+
+  __atomic_fetch_sub_8__deps: ['i64Subtract'],
+  __atomic_fetch_sub_8: function(ptr, vall, valh, memmodel) {
+    var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
+    var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
+    {{{ makeSetValue('ptr', 0, '_i64Subtract(l, h, vall, valh)', 'i32') }}};
+    {{{ makeSetValue('ptr', 4, 'Runtime["getTempRet0"]()', 'i32') }}};
+    {{{ makeStructuralReturn(['l', 'h']) }}};
+  },
+
+  __atomic_fetch_and_8__deps: ['i64Subtract'],
+  __atomic_fetch_and_8: function(ptr, vall, valh, memmodel) {
+    var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
+    var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
+    {{{ makeSetValue('ptr', 0, 'l&vall', 'i32') }}};
+    {{{ makeSetValue('ptr', 4, 'h&valh', 'i32') }}};
+    {{{ makeStructuralReturn(['l', 'h']) }}};
+  },
+
+  __atomic_fetch_or_8: function(ptr, vall, valh, memmodel) {
+    var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
+    var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
+    {{{ makeSetValue('ptr', 0, 'l|vall', 'i32') }}};
+    {{{ makeSetValue('ptr', 4, 'h|valh', 'i32') }}};
+    {{{ makeStructuralReturn(['l', 'h']) }}};
+  },
+
+  __atomic_fetch_xor_8: function(ptr, vall, valh, memmodel) {
+    var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
+    var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
+    {{{ makeSetValue('ptr', 0, 'l^vall', 'i32') }}};
+    {{{ makeSetValue('ptr', 4, 'h^valh', 'i32') }}};
+    {{{ makeStructuralReturn(['l', 'h']) }}};
+  },
+
+  emscripten_atomic_add_u32: 'llvm_atomic_load_add_i32_p0i32',
+  emscripten_atomic_load_u64: '__atomic_load_8',
+  emscripten_atomic_store_u64: '__atomic_store_8',
+  emscripten_atomic_cas_u64: '__atomic_compare_exchange_8',
+  emscripten_atomic_exchange_u64: '__atomic_exchange_8',
+  _emscripten_atomic_fetch_and_add_u64: '__atomic_fetch_add_8',
+  _emscripten_atomic_fetch_and_sub_u64: '__atomic_fetch_sub_8',
+  _emscripten_atomic_fetch_and_and_u64: '__atomic_fetch_and_8',
+  _emscripten_atomic_fetch_and_or_u64: '__atomic_fetch_or_8',
+  _emscripten_atomic_fetch_and_xor_u64: '__atomic_fetch_xor_8',
 };
 
 mergeInto(LibraryManager.library, LibraryPThreadStub);

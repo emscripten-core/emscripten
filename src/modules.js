@@ -137,6 +137,10 @@ var LibraryManager = {
     ]).concat(additionalLibraries);
 
     if (BOOTSTRAPPING_STRUCT_INFO) libraries = ['library_bootstrap_structInfo.js', 'library_formatString.js'];
+    if (ONLY_MY_CODE) {
+      libraries = [];
+      LibraryManager.library = {};
+    }
 
     for (var i = 0; i < libraries.length; i++) {
       var filename = libraries[i];

@@ -15,7 +15,17 @@ everything = open(infile).read()
 module = asm_module.AsmModule(infile).asm_js
 
 module = module[module.find('=')+1:] # strip the initial "var asm =" bit, leave just the raw module as a function
-everything = everything.replace(module, 'Module["asm"]')
+if 'var Module' in everything:
+  everything = everything.replace(module, 'Module["asm"]')
+else:
+  # closure compiler removes |var Module|, we need to find the closured name
+  evil = everything.find('eval(')
+  evil = everything.rfind('=', 0, evil)
+  start = evil
+  while everything[start] in [' ', '=']: start -= 1
+  while everything[start] not in [' ', ',', '(']: start -= 1
+  closured_name = everything[start+1:evil].strip()
+  everything = everything.replace(module, closured_name + '["asm"]')
 
 o = open(asmfile, 'w')
 o.write('Module["asm"] = ')

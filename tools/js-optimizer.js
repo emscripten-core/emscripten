@@ -153,6 +153,7 @@ var CONTINUE_CAPTURERS = LOOP;
 var COMMABLE = set('assign', 'binary', 'unary-prefix', 'unary-postfix', 'name', 'num', 'call', 'seq', 'conditional', 'sub');
 
 var CONDITION_CHECKERS = set('if', 'do', 'while', 'switch');
+var BOOLEAN_RECEIVERS = set('if', 'do', 'while', 'conditional');
 
 var FUNCTIONS_THAT_ALWAYS_THROW = set('abort', '___resumeException', '___cxa_throw', '___cxa_rethrow');
 
@@ -945,11 +946,23 @@ function simplifyExpressions(ast) {
     });
   }
 
+  function simplifyNotZero(ast) {
+    traverse(ast, function(node, type) {
+      if (node[0] in BOOLEAN_RECEIVERS) {
+        var boolean = node[1];
+        if (boolean[0] === 'binary' && boolean[1] === '!=' && boolean[3][0] === 'num' && boolean[3][1] === 0) {
+          node[1] = boolean[2];
+        }
+      }
+    });
+  }
+
   traverseGeneratedFunctions(ast, function(func) {
     simplifyIntegerConversions(func);
     simplifyOps(func);
     simplifyNotComps(func);
     conditionalize(func);
+    simplifyNotZero(func);
   });
 }
 
@@ -1763,7 +1776,11 @@ var ASM_FLOAT64X2 = 4;
 var ASM_INT8X16 = 5;
 var ASM_INT16X8 = 6;
 var ASM_INT32X4 = 7;
-var ASM_NONE = 8;
+var ASM_BOOL8X16 = 8;
+var ASM_BOOL16X8 = 9;
+var ASM_BOOL32X4 = 10;
+var ASM_BOOL64X2 = 11;
+var ASM_NONE = 12;
 
 var ASM_SIG = {
   0: 'i',
@@ -1774,7 +1791,11 @@ var ASM_SIG = {
   5: 'B',
   6: 'S',
   7: 'I',
-  8: 'v'
+  8: 'Z', // For Bool SIMD.js types, arbitrarily use consecutive letters ZXCV.
+  9: 'X',
+  10: 'C',
+  11: 'V',
+  12: 'v'
 };
 
 var ASM_FLOAT_ZERO = null; // TODO: share the entire node?
@@ -1808,6 +1829,14 @@ function detectType(node, asmInfo, inVarDef) {
           case 'SIMD_Int16x8_check':   return ASM_INT16X8;
           case 'SIMD_Int32x4':
           case 'SIMD_Int32x4_check':   return ASM_INT32X4;
+          case 'SIMD_Bool8x16':
+          case 'SIMD_Bool8x16_check':  return ASM_BOOL8X16;
+          case 'SIMD_Bool16x8':
+          case 'SIMD_Bool16x8_check':  return ASM_BOOL16X8;
+          case 'SIMD_Bool32x4':
+          case 'SIMD_Bool32x4_check':  return ASM_BOOL32X4;
+          case 'SIMD_Bool64x2':
+          case 'SIMD_Bool64x2_check':  return ASM_BOOL64X2;
           default: break;
         }
       }
@@ -1866,14 +1895,18 @@ function isAsmCoercion(node) {
 
 function makeAsmCoercion(node, type) {
   switch (type) {
-    case ASM_INT: return ['binary', '|', node, ['num', 0]];
-    case ASM_DOUBLE: return ['unary-prefix', '+', node];
-    case ASM_FLOAT: return ['call', ['name', 'Math_fround'], [node]];
+    case ASM_INT:       return ['binary', '|', node, ['num', 0]];
+    case ASM_DOUBLE:    return ['unary-prefix', '+', node];
+    case ASM_FLOAT:     return ['call', ['name', 'Math_fround'], [node]];
     case ASM_FLOAT32X4: return ['call', ['name', 'SIMD_Float32x4_check'], [node]];
     case ASM_FLOAT64X2: return ['call', ['name', 'SIMD_Float64x2_check'], [node]];
-    case ASM_INT8X16: return ['call', ['name', 'SIMD_Int8x16_check'], [node]];
-    case ASM_INT16X8: return ['call', ['name', 'SIMD_Int16x8_check'], [node]];
-    case ASM_INT32X4: return ['call', ['name', 'SIMD_Int32x4_check'], [node]];
+    case ASM_INT8X16:   return ['call', ['name', 'SIMD_Int8x16_check'],   [node]];
+    case ASM_INT16X8:   return ['call', ['name', 'SIMD_Int16x8_check'],   [node]];
+    case ASM_INT32X4:   return ['call', ['name', 'SIMD_Int32x4_check'],   [node]];
+    case ASM_BOOL8X16:  return ['call', ['name', 'SIMD_Bool8x16_check'],  [node]];
+    case ASM_BOOL16X8:  return ['call', ['name', 'SIMD_Bool16x8_check'],  [node]];
+    case ASM_BOOL32X4:  return ['call', ['name', 'SIMD_Bool32x4_check'],  [node]];
+    case ASM_BOOL64X2:  return ['call', ['name', 'SIMD_Bool64x2_check'],  [node]];
     case ASM_NONE:
     default: return node; // non-validating code, emit nothing XXX this is dangerous, we should only allow this when we know we are not validating
   }
@@ -1885,34 +1918,50 @@ function makeSignedAsmCoercion(node, type, sign) {
   assert(0);
 }
 
-function makeAsmVarDef(v, type) {
+function makeAsmCoercedZero(type) {
   switch (type) {
-    case ASM_INT: return [v, ['num', 0]];
-    case ASM_DOUBLE: return [v, ['unary-prefix', '+', ['num', 0]]];
+    case ASM_INT: return ['num', 0];
+    case ASM_DOUBLE: return ['unary-prefix', '+', ['num', 0]];
     case ASM_FLOAT: {
       if (ASM_FLOAT_ZERO) {
-        return [v, ['name', ASM_FLOAT_ZERO]];
+        return ['name', ASM_FLOAT_ZERO];
       } else {
-        return [v, ['call', ['name', 'Math_fround'], [['num', 0]]]];
+        return ['call', ['name', 'Math_fround'], [['num', 0]]];
       }
     }
     case ASM_FLOAT32X4: {
-      return [v, ['call', ['name', 'SIMD_Float32x4'], [['num', 0], ['num', 0], ['num', 0], ['num', 0]]]];
+      return ['call', ['name', 'SIMD_Float32x4'], [['num', 0], ['num', 0], ['num', 0], ['num', 0]]];
     }
     case ASM_FLOAT64X2: {
-      return [v, ['call', ['name', 'SIMD_Float64x2'], [['num', 0], ['num', 0]]]];
+      return ['call', ['name', 'SIMD_Float64x2'], [['num', 0], ['num', 0]]];
     }
     case ASM_INT8X16: {
-      return [v, ['call', ['name', 'SIMD_Int8x16'], [['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0]]]];
+      return ['call', ['name', 'SIMD_Int8x16'], [['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0]]];
     }
     case ASM_INT16X8: {
-      return [v, ['call', ['name', 'SIMD_Int16x8'], [['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0]]]];
+      return ['call', ['name', 'SIMD_Int16x8'], [['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0]]];
     }
     case ASM_INT32X4: {
-      return [v, ['call', ['name', 'SIMD_Int32x4'], [['num', 0], ['num', 0], ['num', 0], ['num', 0]]]];
+      return ['call', ['name', 'SIMD_Int32x4'], [['num', 0], ['num', 0], ['num', 0], ['num', 0]]];
     }
-    default: throw 'wha? ' + JSON.stringify([v, type]) + new Error().stack;
+    case ASM_BOOL8X16: {
+      return ['call', ['name', 'SIMD_Bool8x16'], [['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0]]];
+    }
+    case ASM_BOOL16X8: {
+      return ['call', ['name', 'SIMD_Bool16x8'], [['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0]]];
+    }
+    case ASM_BOOL32X4: {
+      return ['call', ['name', 'SIMD_Bool32x4'], [['num', 0], ['num', 0], ['num', 0], ['num', 0]]];
+    }
+    case ASM_BOOL64X2: {
+      return ['call', ['name', 'SIMD_Bool64x2'], [['num', 0], ['num', 0]]];
+    }
+    default: throw 'wha? ' + JSON.stringify(type) + new Error().stack;
   }
+}
+
+function makeAsmVarDef(v, type) {
+  return [v, makeAsmCoercedZero(type)];
 }
 
 function getAsmType(name, asmInfo) {
@@ -2137,11 +2186,7 @@ function denormalizeAsm(func, data) {
   if (data.ret !== undefined) {
     var retStmt = stats[stats.length - 1];
     if (!retStmt || retStmt[0] !== 'return') {
-      var retVal = ['num', 0];
-      if (data.ret !== ASM_INT) {
-        retVal = makeAsmCoercion(retVal, data.ret);
-      }
-      stats.push(['return', retVal]);
+      stats.push(['return', makeAsmCoercedZero(data.ret)]);
     }
   }
   //printErr('denormalized \n\n' + astToSrc(func) + '\n\n');
@@ -2280,6 +2325,10 @@ function registerize(ast) {
           case ASM_INT8X16:   ret = 'I16'; break;
           case ASM_INT16X8:   ret = 'I8'; break;
           case ASM_INT32X4:   ret = 'I4'; break;
+          case ASM_BOOL8X16:  ret = 'B16'; break;
+          case ASM_BOOL16X8:  ret = 'B8'; break;
+          case ASM_BOOL32X4:  ret = 'B4'; break;
+          case ASM_BOOL64X2:  ret = 'B2'; break;
           case ASM_NONE:      ret = 'Z'; break;
           default: assert(false, 'type ' + type + ' doesn\'t have a name yet');
         }
@@ -2396,7 +2445,7 @@ function registerize(ast) {
     // we just use a fresh register to make sure we avoid this, but it could be
     // optimized to check for safe registers (free, and not used in this loop level).
     var varRegs = {}; // maps variables to the register they will use all their life
-    var freeRegsClasses = asm ? [[], [], [], [], [], [], [], [], []] : []; // two classes for asm, one otherwise XXX - hardcoded length
+    var freeRegsClasses = asm ? [[], [], [], [], [], [], [], [], [], [], [], [], []] : []; // two classes for asm, one otherwise XXX - hardcoded length
     var nextReg = 1;
     var fullNames = {};
     var loopRegs = {}; // for each loop nesting level, the list of bound variables
@@ -2559,8 +2608,8 @@ function registerizeHarder(ast) {
     // Utilities for allocating register variables.
     // We need distinct register pools for each type of variable.
 
-    var allRegsByType = [{}, {}, {}, {}, {}, {}, {}, {}, {}]; // XXX - hardcoded length
-    var regPrefixByType = ['i', 'd', 'f', 'F4', 'F2', 'I16', 'I8', 'I4', 'n'];
+    var allRegsByType = [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}]; // XXX - hardcoded length
+    var regPrefixByType = ['i', 'd', 'f', 'F4', 'F2', 'I16', 'I8', 'I4', 'B16', 'B8', 'B4', 'B2', 'n'];
     var nextReg = 1;
 
     function createReg(forName) {
@@ -7646,6 +7695,62 @@ function eliminateDeadFuncs(ast) {
   });
 }
 
+// Cleans up globals in an asm.js module that are not used. Assumes it
+// receives a full asm.js module, as from the side file in --separate-asm
+function eliminateDeadGlobals(ast) {
+  traverse(ast, function(func, type) {
+    if (type !== 'function') return;
+    // find all symbols used by name that are not locals, so they must be globals
+    var stats = func[3];
+    var used = {};
+    for (var i = 0; i < stats.length; i++) {
+      var asmFunc = stats[i];
+      if (asmFunc[0] === 'defun') {
+        var asmData = normalizeAsm(asmFunc);
+        traverse(asmFunc, function(node, type) {
+          if (type == 'name') {
+            var name = node[1];
+            if (!(name in asmData.params || name in asmData.vars)) {
+              used[name] = 1;
+            }
+          }
+        });
+        denormalizeAsm(asmFunc, asmData);
+      } else {
+        traverse(asmFunc, function(node, type) {
+          if (type == 'name') {
+            var name = node[1];
+            used[name] = 1;
+          }
+        });
+      }
+    }
+    for (var i = 0; i < stats.length; i++) {
+      var node = stats[i];
+      if (node[0] === 'var') {
+        for (var j = 0; j < node[1].length; j++) {
+          var v = node[1][j];
+          var name = v[0];
+          var value = v[1];
+          if (!(name in used)) {
+            node[1].splice(j, 1);
+            j--;
+            if (node[1].length == 0) {
+              // remove the whole var
+              stats[i] = emptyNode();
+            }
+          }
+        }
+      } else if (node[0] === 'defun') {
+        if (!(node[1] in used)) {
+          stats[i] = emptyNode();
+        }
+      }
+    }
+    removeEmptySubNodes(func);
+  });
+}
+
 // Passes table
 
 var minifyWhitespace = false, printMetadata = true, asm = false, asmPreciseF32 = false, emitJSON = false, last = false;
@@ -7665,6 +7770,7 @@ var passes = {
   registerize: registerize,
   registerizeHarder: registerizeHarder,
   eliminateDeadFuncs: eliminateDeadFuncs,
+  eliminateDeadGlobals: eliminateDeadGlobals,
   eliminate: eliminate,
   eliminateMemSafe: eliminateMemSafe,
   aggressiveVariableElimination: aggressiveVariableElimination,

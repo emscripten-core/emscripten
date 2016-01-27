@@ -234,18 +234,26 @@ static uint32_t dummyZeroAddress = 0;
 
 int usleep(unsigned usec)
 {
+	int is_main_thread = emscripten_is_main_runtime_thread();
 	double now = emscripten_get_now();
 	double target = now + usec * 1e-3;
+#ifdef __EMSCRIPTEN__
+	emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_SLEEPING);
+#endif
 	while(now < target) {
+		if (is_main_thread) emscripten_main_thread_process_queued_calls(); // Assist other threads by executing proxied operations that are effectively singlethreaded.
+		pthread_testcancel(); // pthreads spec: usleep is a cancellation point, so it must test if this thread is cancelled during the sleep.
+		now = emscripten_get_now();
 		double msecsToSleep = target - now;
 		if (msecsToSleep > 1.0) {
 			if (msecsToSleep > 100.0) msecsToSleep = 100.0;
-			pthread_testcancel(); // pthreads spec: usleep is a cancellation point, so it must test if this thread is cancelled during the sleep.
-			if (emscripten_is_main_runtime_thread()) emscripten_main_thread_process_queued_calls(); // Assist other threads by executing proxied operations that are effectively singlethreaded.
+			if (is_main_thread && msecsToSleep > 1) msecsToSleep = 1; // main thread may need to run proxied calls, so sleep in very small slices to be responsive.
 			emscripten_futex_wait(&dummyZeroAddress, 0, msecsToSleep);
 		}
-		now = emscripten_get_now();
 	}
+#ifdef __EMSCRIPTEN__
+	emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_SLEEPING, EM_THREAD_STATUS_RUNNING);
+#endif
 	return 0;
 }
 
@@ -299,9 +307,11 @@ void EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread(em_queued_call *cal
 	}
 	pthread_mutex_unlock(&call_queue_lock);
 	int r;
+	emscripten_set_current_thread_status(EM_THREAD_STATUS_WAITPROXY);
 	do {
 		r = emscripten_futex_wait(&call->operationDone, 0, INFINITY);
 	} while(r != 0 && call->operationDone == 0);
+	emscripten_set_current_thread_status(EM_THREAD_STATUS_RUNNING);
 }
 
 void * EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_1(int function, void *arg1)
@@ -639,4 +649,59 @@ uint64_t EMSCRIPTEN_KEEPALIVE _emscripten_atomic_fetch_and_xor_u64(void *addr, u
 	*(uint64_t *)addr = oldVal ^ val;
 	SPINLOCK_RELEASE(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
 	return oldVal;
+}
+
+int llvm_memory_barrier()
+{
+	emscripten_atomic_fence();
+}
+
+int llvm_atomic_load_add_i32_p0i32(int *ptr, int delta)
+{
+	return emscripten_atomic_add_u32(ptr, delta) - delta;
+}
+
+uint64_t __atomic_load_8(void *ptr, int memmodel)
+{
+	return emscripten_atomic_load_u64(ptr);
+}
+
+uint64_t __atomic_store_8(void *ptr, uint64_t value, int memmodel)
+{
+	return emscripten_atomic_store_u64(ptr, value);
+}
+
+uint64_t __atomic_exchange_8(void *ptr, uint64_t value, int memmodel)
+{
+	return emscripten_atomic_exchange_u64(ptr, value);
+}
+
+uint64_t __atomic_compare_exchange_8(void *ptr, uint64_t *expected, uint64_t desired, int weak, int success_memmodel, int failure_memmodel)
+{
+	return emscripten_atomic_cas_u64(ptr, *expected, desired);
+}
+
+uint64_t __atomic_fetch_add_8(void *ptr, uint64_t value, int memmodel)
+{
+	return _emscripten_atomic_fetch_and_add_u64(ptr, value);
+}
+
+uint64_t __atomic_fetch_sub_8(void *ptr, uint64_t value, int memmodel)
+{
+	return _emscripten_atomic_fetch_and_sub_u64(ptr, value);
+}
+
+uint64_t __atomic_fetch_and_8(void *ptr, uint64_t value, int memmodel)
+{
+	return _emscripten_atomic_fetch_and_and_u64(ptr, value);
+}
+
+uint64_t __atomic_fetch_or_8(void *ptr, uint64_t value, int memmodel)
+{
+	return _emscripten_atomic_fetch_and_or_u64(ptr, value);
+}
+
+uint64_t __atomic_fetch_xor_8(void *ptr, uint64_t value, int memmodel)
+{
+	return _emscripten_atomic_fetch_and_xor_u64(ptr, value);
 }

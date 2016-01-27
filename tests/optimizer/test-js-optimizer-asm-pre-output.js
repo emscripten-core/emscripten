@@ -352,7 +352,7 @@ function _main($argc, $argv) {
  $118 = $world + 102952 | 0;
  HEAP32[$116 + 96 >> 2] = HEAP32[$118 >> 2];
  $121 = HEAP32[$118 >> 2] | 0;
- if (($121 | 0) != 0) {
+ if ($121 | 0) {
   HEAP32[$121 + 92 >> 2] = $116;
  }
  HEAP32[$118 >> 2] = $116;
@@ -442,7 +442,7 @@ function _main($argc, $argv) {
    $y_sroa_0_0_insert_insert$1 = +$y_sroa_1_4_load293550;
    HEAPF32[$185 >> 2] = $y_sroa_0_0_load283451;
    HEAPF32[$185 + 4 >> 2] = $y_sroa_0_0_insert_insert$1;
-   if ((HEAP32[$98 >> 2] & 2 | 0) != 0) {
+   if (HEAP32[$98 >> 2] & 2 | 0) {
     label = 65;
     break L82;
    }
@@ -457,7 +457,7 @@ function _main($argc, $argv) {
    HEAP32[$209 + 92 >> 2] = 0;
    HEAP32[$209 + 96 >> 2] = HEAP32[$118 >> 2];
    $213 = HEAP32[$118 >> 2] | 0;
-   if (($213 | 0) != 0) {
+   if ($213 | 0) {
     HEAP32[$213 + 92 >> 2] = $209;
    }
    HEAP32[$118 >> 2] = $209;

@@ -9,6 +9,8 @@ sme.parentFunc(90);
 TheModule.print(typeof sme.getAsConst());
 TheModule.print(typeof sme.voidStar(sme));
 TheModule.print(sme.get_immutableAttr());
+TheModule.print(typeof sme.getBoolean());
+TheModule.print(sme.getBoolean());
 
 TheModule.print('c1');
 
@@ -20,6 +22,7 @@ TheModule.print(c1.getValSqr());
 TheModule.print(c1.getValSqr(3));
 TheModule.print(c1.getValTimes()); // default argument should be 1
 TheModule.print(c1.getValTimes(2));
+TheModule.print(sme.getBoolean());
 c1.parentFunc(90);
 
 TheModule.print('c1 v2');
@@ -30,6 +33,7 @@ c1.mulVal(2);
 TheModule.print(c1.getVal());
 TheModule.print(c1.getValSqr());
 TheModule.print(c1.getValSqr(3));
+TheModule.print(sme.getBoolean());
 
 TheModule.print('c2')
 
@@ -201,6 +205,10 @@ arrayClass.set_struct_ptr_array(0, struct);
 TheModule.print('struct_ptr_array[0]->attr1 == ' + arrayClass.get_struct_ptr_array(0).get_attr1());
 TheModule.print('struct_ptr_array[0]->attr2 == ' + arrayClass.get_struct_ptr_array(0).get_attr2());
 
+// receiving arrays
+
+var receiver = new TheModule.ReceiveArrays();
+receiver.giveMeArrays([0.5, 0.25, 0.01, -20.42], [1, 4, 9, 10], 4);
 
 // Test IDL_CHECKS=ALL
 

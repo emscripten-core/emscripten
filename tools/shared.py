@@ -315,7 +315,7 @@ EM_BUILD_VERBOSE_LEVEL = int(os.getenv('EM_BUILD_VERBOSE')) if os.getenv('EM_BUI
 
 # Expectations
 
-EXPECTED_LLVM_VERSION = (3, 7)
+EXPECTED_LLVM_VERSION = (3, 9)
 
 actual_clang_version = None
 
@@ -370,20 +370,32 @@ def check_fastcomp():
       logging.critical('you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
       return False
 
+    # check repo versions
     d = get_fastcomp_src_dir()
+    shown_repo_version_error = False
     if d is not None:
-      llvm_version = open(os.path.join(d, 'emscripten-version.txt')).read().strip()
+      llvm_version = get_emscripten_version(os.path.join(d, 'emscripten-version.txt'))
       if os.path.exists(os.path.join(d, 'tools', 'clang', 'emscripten-version.txt')):
-        clang_version = open(os.path.join(d, 'tools', 'clang', 'emscripten-version.txt')).read().strip()
+        clang_version = get_emscripten_version(os.path.join(d, 'tools', 'clang', 'emscripten-version.txt'))
       elif os.path.exists(os.path.join(d, 'tools', 'clang')):
         clang_version = '?' # Looks like the LLVM compiler tree has an old checkout from the time before it contained a version.txt: Should update!
       else:
         clang_version = llvm_version # This LLVM compiler tree does not have a tools/clang, so it's probably an out-of-source build directory. No need for separate versioning.
       if EMSCRIPTEN_VERSION != llvm_version or EMSCRIPTEN_VERSION != clang_version:
-        logging.error('Emscripten, llvm and clang versions do not match, this is dangerous (%s, %s, %s)', EMSCRIPTEN_VERSION, llvm_version, clang_version)
+        logging.error('Emscripten, llvm and clang repo versions do not match, this is dangerous (%s, %s, %s)', EMSCRIPTEN_VERSION, llvm_version, clang_version)
         logging.error('Make sure to use the same branch in each repo, and to be up-to-date on each. See http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
+        shown_repo_version_error = True
     else:
       logging.warning('did not see a source tree above or next to the LLVM root directory (guessing based on directory of %s), could not verify version numbers match' % LLVM_COMPILER)
+
+    # check build versions. don't show it if the repos are wrong, user should fix that first
+    if not shown_repo_version_error:
+      clang_v = Popen([CLANG, '--version'], stdout=PIPE).communicate()[0]
+      llvm_build_version, clang_build_version = clang_v.split('(emscripten ')[1].split(')')[0].split(' : ')
+      if EMSCRIPTEN_VERSION != llvm_build_version or EMSCRIPTEN_VERSION != clang_build_version:
+        logging.error('Emscripten, llvm and clang build versions do not match, this is dangerous (%s, %s, %s)', EMSCRIPTEN_VERSION, llvm_build_version, clang_build_version)
+        logging.error('Make sure to rebuild llvm and clang after updating repos')
+
     return True
   except Exception, e:
     logging.warning('could not check fastcomp: %s' % str(e))
@@ -428,6 +440,9 @@ def find_temp_directory():
   else:
     return '/tmp'
 
+def get_emscripten_version(path):
+  return open(path).read().strip().replace('"', '')
+
 # Check that basic stuff we need (a JS engine to compile, Node.js, and Clang and LLVM)
 # exists.
 # The test runner always does this check (through |force|). emcc does this less frequently,
@@ -436,7 +451,7 @@ def find_temp_directory():
 # We also re-check sanity and clear the cache when the version changes
 
 try:
-  EMSCRIPTEN_VERSION = open(path_from_root('emscripten-version.txt')).read().strip()
+  EMSCRIPTEN_VERSION = get_emscripten_version(path_from_root('emscripten-version.txt'))
   try:
     parts = map(int, EMSCRIPTEN_VERSION.split('.'))
     EMSCRIPTEN_VERSION_MAJOR = parts[0]
@@ -511,6 +526,13 @@ def check_sanity(force=False):
     for cmd in [CLANG, LLVM_LINK, LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM, LLVM_INTERPRETER]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'): # .exe extension required for Windows
         logging.critical('Cannot find %s, check the paths in %s' % (cmd, EM_CONFIG))
+        sys.exit(1)
+
+    if not os.path.exists(PYTHON) and not os.path.exists(cmd + '.exe'):
+      try:
+        subprocess.check_call([PYTHON, '--version'], stdout=PIPE, stderr=PIPE)
+      except:
+        logging.critical('Cannot find %s, check the paths in %s' % (PYTHON, EM_CONFIG))
         sys.exit(1)
 
     if not fastcomp_ok:
@@ -1064,24 +1086,24 @@ class Building:
     def is_exe(fpath):
       return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
 
+    if os.path.isabs(program):
+      if os.path.isfile(program): return program
+
+      if WINDOWS:
+        for suffix in ['.exe', '.cmd', '.bat']:
+          if is_exe(program + suffix): return program + suffix
+
     fpath, fname = os.path.split(program)
     if fpath:
-      if is_exe(program):
-        return program
+      if is_exe(program): return program
     else:
       for path in os.environ["PATH"].split(os.pathsep):
         path = path.strip('"')
         exe_file = os.path.join(path, program)
-        if is_exe(exe_file):
-          return exe_file
-
-        if WINDOWS and not '.' in fname:
-          if is_exe(exe_file + '.exe'):
-            return exe_file + '.exe'
-          if is_exe(exe_file + '.cmd'):
-            return exe_file + '.cmd'
-          if is_exe(exe_file + '.bat'):
-            return exe_file + '.bat'
+        if is_exe(exe_file): return exe_file
+        if WINDOWS:
+          for suffix in ['.exe', '.cmd', '.bat']:
+            if is_exe(exe_file + suffix): return exe_file + suffix
 
     return None
 
@@ -1269,7 +1291,6 @@ class Building:
         return f
       else:
         return os.path.abspath(f)
-    files = map(make_paths_absolute, files)
     # Paths of already included object files from archives.
     added_contents = set()
     # Map of archive name to list of extracted object file paths.
@@ -1277,7 +1298,7 @@ class Building:
     has_ar = False
     for f in files:
       if not f.startswith('-'):
-        has_ar = has_ar or Building.is_ar(f)
+        has_ar = has_ar or Building.is_ar(make_paths_absolute(f))
 
     # If we have only one archive or the force_archive_contents flag is set,
     # then we will add every object file we see, regardless of whether it
@@ -1361,6 +1382,7 @@ class Building:
 
     current_archive_group = None
     for f in files:
+      absolute_path_f = make_paths_absolute(f)
       if f.startswith('-'):
         if f in ['--start-group', '-(']:
           assert current_archive_group is None, 'Nested --start-group, missing --end-group?'
@@ -1380,10 +1402,10 @@ class Building:
           current_archive_group = None
         else:
           logging.debug('Ignoring unsupported link flag: %s' % f)
-      elif not Building.is_ar(f):
-        if Building.is_bitcode(f):
+      elif not Building.is_ar(absolute_path_f):
+        if Building.is_bitcode(absolute_path_f):
           if has_ar:
-            consider_object(f, force_add=True)
+            consider_object(absolute_path_f, force_add=True)
           else:
             # If there are no archives then we can simply link all valid bitcode
             # files and skip the symbol table stuff.
@@ -1391,11 +1413,11 @@ class Building:
       else:
         # Extract object files from ar archives, and link according to gnu ld semantics
         # (link in an entire .o from the archive if it supplies symbols still unresolved)
-        consider_archive(f)
+        consider_archive(absolute_path_f)
         # If we're inside a --start-group/--end-group section, add to the list
         # so we can loop back around later.
         if current_archive_group is not None:
-          current_archive_group.append(f)
+          current_archive_group.append(absolute_path_f)
     assert current_archive_group is None, '--start-group without matching --end-group'
 
     try_delete(target)
@@ -1457,13 +1479,13 @@ class Building:
       assert out, 'must provide out if llvm_opt on a list of inputs'
     if type(opts) is int:
       opts = Building.pick_llvm_opts(opts)
+    assert len(opts) > 0, 'should not call opt with nothing to do'
     opts = opts[:]
     #opts += ['-debug-pass=Arguments']
-    if get_clang_version() >= '3.4':
-      if not Settings.SIMD:
-        opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false', '-vectorize-slp-aggressive=false']
-      else:
-        opts += ['-bb-vectorize-vector-bits=128']
+    if not Settings.SIMD:
+      opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false', '-vectorize-slp-aggressive=false']
+    else:
+      opts += ['-bb-vectorize-vector-bits=128']
 
     logging.debug('emcc: LLVM opts: ' + ' '.join(opts) + '  [num inputs: ' + str(len(inputs)) + ']')
     target = out or (filename + '.opt.bc')
@@ -1521,8 +1543,8 @@ class Building:
     for line in output.split('\n'):
       if len(line) == 0: continue
       parts = filter(lambda seg: len(seg) > 0, line.split(' '))
-      # pnacl-nm will print zero offsets for bitcode
-      if len(parts) == 3 and parts[0] == "00000000":
+      # pnacl-nm will print zero offsets for bitcode, and newer llvm-nm will print present symbols as  -------- T name
+      if len(parts) == 3 and parts[0] in ["00000000", "--------"]:
         parts.pop(0)
       if len(parts) == 2: # ignore lines with absolute offsets, these are not bitcode anyhow (e.g. |00000630 t d_source_name|)
         status, symbol = parts
@@ -1741,6 +1763,16 @@ class JS:
       return '0'
     elif sig == 'f' and settings.get('PRECISE_F32'):
       return 'Math_fround(0)'
+    elif sig == 'F':
+      return 'SIMD_Float32x4_check(SIMD_Float32x4(0,0,0,0))'
+    elif sig == 'D':
+      return 'SIMD_Float64x2_check(SIMD_Float64x2(0,0,0,0))'
+    elif sig == 'B':
+      return 'SIMD_Int8x16_check(SIMD_Int8x16(0,0,0,0))'
+    elif sig == 'S':
+      return 'SIMD_Int16x8_check(SIMD_Int16x8(0,0,0,0))'
+    elif sig == 'I':
+      return 'SIMD_Int32x4_check(SIMD_Int32x4(0,0,0,0))'
     else:
       return '+0'
 
@@ -1763,6 +1795,16 @@ class JS:
         return 'Math_fround(' + value + ')'
     elif sig == 'd' or sig == 'f':
       return '+' + value
+    elif sig == 'F':
+      return 'SIMD_Float32x4_check(' + value + ')'
+    elif sig == 'D':
+      return 'SIMD_Float64x2_check(' + value + ')'
+    elif sig == 'B':
+      return 'SIMD_Int8x16_check(' + value + ')'
+    elif sig == 'S':
+      return 'SIMD_Int16x8_check(' + value + ')'
+    elif sig == 'I':
+      return 'SIMD_Int32x4_check(' + value + ')'
     else:
       return value
 
@@ -1911,7 +1953,6 @@ def check_execute(cmd, *args, **kw):
   # TODO: use in more places. execute doesn't actually check that return values
   # are nonzero
   try:
-    kw['stderr'] = STDOUT
     subprocess.check_output(cmd, *args, **kw)
     logging.debug("Successfuly executed %s" % " ".join(cmd))
   except subprocess.CalledProcessError as e:

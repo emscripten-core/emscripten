@@ -123,6 +123,15 @@ if (typeof print === 'undefined') {
 
 DEBUG_MEMORY = false;
 
+// Polyfilling
+
+if (!String.prototype.startsWith) {
+  String.prototype.startsWith = function(searchString, position) {
+    position = position || 0;
+    return this.indexOf(searchString, position) === position;
+  };
+}
+
 // Basic utilities
 
 load('utility.js');
@@ -152,7 +161,6 @@ if (settings_file) {
 
 
 EXPORTED_FUNCTIONS = set(EXPORTED_FUNCTIONS);
-EXPORTED_GLOBALS = set(EXPORTED_GLOBALS);
 EXCEPTION_CATCHING_WHITELIST = set(EXCEPTION_CATCHING_WHITELIST);
 
 // TODO: Implement support for proper preprocessing, e.g. "#if A || B" and "#if defined(A) || defined(B)" to

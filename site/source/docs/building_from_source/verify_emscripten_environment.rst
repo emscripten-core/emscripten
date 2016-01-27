@@ -94,10 +94,5 @@ Other common problems to check for are:
    -  Errors in the paths in :ref:`.emscripten <compiler-configuration-file>`. These are less likely if you update the file using :ref:`emsdk <emsdk>`.
    -  Using older versions of Node or JavaScript engines. Use the default versions for the SDK as listed with :ref:`emsdk list <emsdk>`.
    -  Using older versions of LLVM. The correct versions come with the SDK, but if you're building the environment from source see :ref:`LLVM-Backend` for the proper repos for LLVM and Clang.
-   -  Not having *python2* defined in your system. For compatibility with systems that install python 2.x alongside 3.x, we look for *python2*. If you only have python 2.x installed, symlink *python2*  to *python* and update :ref:`.emscripten <compiler-configuration-file>`.  You can also invoke the python scripts directly: ::
-   
-		python emcc
-
-.. COMMENT : **HamishW** Need to clarify if this last point on Python2 is Linux/Mac only, and if not, what needs to be done on Windows.
 
 If none of the above is helpful, then please :ref:`contact us <contact>` for help.

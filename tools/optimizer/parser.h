@@ -3,6 +3,9 @@
 // XXX All parsing methods assume they take ownership of the input string. This lets them reuse
 //     parts of it. You will segfault if the input string cannot be reused and written to.
 
+#ifndef __parser_h__
+#define __parser_h__
+
 #include <vector>
 #include <iostream>
 #include <algorithm>
@@ -51,6 +54,10 @@ extern IString TOPLEVEL,
                SIMD_INT8X16,
                SIMD_INT16X8,
                SIMD_INT32X4,
+               SIMD_BOOL8X16,
+               SIMD_BOOL16X8,
+               SIMD_BOOL32X4,
+               SIMD_BOOL64X2,
                PLUS,
                MINUS,
                OR,
@@ -827,6 +834,16 @@ class Parser {
       src++;
       return Builder::makeBlock(); // we don't need the brackets here, but oh well
     }
+    if (*src == '{') { // detect a trivial {} in a statement context
+      char *before = src;
+      src++;
+      skipSpace(src);
+      if (*src == '}') {
+        src++;
+        return Builder::makeBlock(); // we don't need the brackets here, but oh well
+      }
+      src = before;
+    }
     NodeRef ret = parseElement(src, seps);
     skipSpace(src);
     if (*src == ';') {
@@ -897,4 +914,6 @@ public:
 };
 
 } // namespace cashew
+
+#endif // __parser_h__
 

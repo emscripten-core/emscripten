@@ -401,6 +401,68 @@ If manually bisecting:
 
     test()
 
+  def test_missing_data_throws_error(self):
+    def setup(assetLocalization):
+      self.clear()
+      open(self.in_dir("data.txt"), "w").write('''data''');
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
+        #include <stdio.h>
+        #include <string.h>
+        #include <emscripten.h>
+        int main() {
+          // This code should never be executed in terms of missing required dependency file.
+          int result = 0;
+          REPORT_RESULT();
+          return 0;
+        }
+      '''))
+      open(os.path.join(self.get_dir(), 'on_window_error_shell.html'), 'w').write(r'''
+      <html>
+          <center><canvas id='canvas' width='256' height='256'></canvas></center>
+          <hr><div id='output'></div><hr>
+          <script type='text/javascript'>
+            window.onerror = function(error) {
+              window.onerror = null;
+              var result = error.indexOf("test.data") >= 0 ? 1 : 0;
+              var xhr = new XMLHttpRequest();
+              xhr.open('GET', 'http://localhost:8888/report_result?' + result, true);
+              xhr.send();
+              setTimeout(function() { window.close() }, 1000);
+            }
+            var Module = {
+              filePackagePrefixURL: "''' + assetLocalization + r'''",
+              print: (function() {
+                var element = document.getElementById('output');
+                return function(text) { element.innerHTML += text.replace('\n', '<br>', 'g') + '<br>';};
+              })(),
+              canvas: document.getElementById('canvas')
+            };
+          </script>
+          {{{ SCRIPT }}}
+        </body>
+      </html>'''
+      )
+
+    def test():
+      # test test missing file should run xhr.onload with status different than 200, 304 or 206
+      setup("");
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html']).communicate()
+      shutil.move('test.data','missing.data');
+      self.run_browser('test.html', '', '/report_result?1')
+      
+      # test unknown protocol should go through xhr.onerror
+      setup("unknown_protocol://");
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html']).communicate()
+      self.run_browser('test.html', '', '/report_result?1')
+      
+      # test wrong protocol and port
+      setup("https://localhost:8800/");
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html']).communicate()
+      self.run_browser('test.html', '', '/report_result?1')
+
+    test()
+
+
     # TODO: CORS, test using a full url for filePackagePrefixURL
     #open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { filePackagePrefixURL: "http:/localhost:8888/cdn/", '))
     #test()
@@ -622,6 +684,62 @@ keydown(100);keyup(100); // trigger the end
       open('test.html', 'w').write(html)
 
     self.btest('sdl_key_proxy.c', '223092870', args=['--proxy-to-worker', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''', '-s', 'NO_EXIT_RUNTIME=1'], manual_reference=True, post_build=post)
+
+  def test_keydown_preventdefault_proxy(self):
+    def post():
+      html = open('test.html').read()
+      html = html.replace('</body>', '''
+<script>
+function keydown(c) {
+  var event = document.createEvent("KeyboardEvent");
+  event.initKeyEvent("keydown", true, true, window,
+                     0, 0, 0, 0,
+                     c, c);
+  return document.dispatchEvent(event);
+}
+
+function keypress(c) {
+  var event = document.createEvent("KeyboardEvent");
+  event.initKeyEvent("keypress", true, true, window,
+                     0, 0, 0, 0,
+                     c, c);
+  return document.dispatchEvent(event);
+}
+
+function keyup(c) {
+  var event = document.createEvent("KeyboardEvent");
+  event.initKeyEvent("keyup", true, true, window,
+                     0, 0, 0, 0,
+                     c, c);
+  return document.dispatchEvent(event);
+}
+
+function sendKey(c) {
+  // Simulate the sending of the keypress event when the
+  // prior keydown event is not prevent defaulted.
+  if (keydown(c) === false) {
+    console.log('keydown prevent defaulted, NOT sending keypress!!!');
+  } else {
+    keypress(c);
+  }
+  keyup(c);
+}
+
+// Send 'a'. Simulate the sending of the keypress event when the
+// prior keydown event is not prevent defaulted.
+sendKey(65);
+
+// Send backspace. Keypress should not be sent over as default handling of
+// the Keydown event should be prevented.
+sendKey(8);
+
+keydown(100);keyup(100); // trigger the end
+</script>
+</body>''')
+
+      open('test.html', 'w').write(html)
+
+    self.btest('keydown_preventdefault_proxy.cpp', '300', args=['--proxy-to-worker', '-s', '''EXPORTED_FUNCTIONS=['_main']''', '-s', 'NO_EXIT_RUNTIME=1'], manual_reference=True, post_build=post)
 
   def test_sdl_text(self):
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
@@ -900,9 +1018,10 @@ keydown(100);keyup(100); // trigger the end
 
   def test_fs_idbfs_sync(self):
     for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']]:
-      secret = str(time.time())
-      self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=mode + ['-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''])
-      self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=mode + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''])
+      for extra in [[], ['-DEXTRA_WORK']]:
+        secret = str(time.time())
+        self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=mode + ['-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''])
+        self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=mode + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''] + extra)
 
   def test_fs_idbfs_fsync(self):
     # sync from persisted state into memory before main()
@@ -1348,6 +1467,9 @@ keydown(100);keyup(100); // trigger the end
 
   def test_emscripten_main_loop(self):
     self.btest('emscripten_main_loop.cpp', '0')
+
+  def test_emscripten_main_loop_and_blocker(self):
+    self.btest('emscripten_main_loop_and_blocker.cpp', '0')
 
   def test_sdl_quit(self):
     self.btest('sdl_quit.c', '1')
@@ -2062,8 +2184,9 @@ int main() {
   def test_glfw3(self):
     self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3'], expected='1')
 
-  def test_glfw3_events(self):
-    self.btest(path_from_root('tests', 'glfw3_events.c'), args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3'], expected='1')
+  def test_glfw_events(self):
+    self.btest(path_from_root('tests', 'glfw_events.c'), args=['-s', 'USE_GLFW=2', "-DUSE_GLFW=2"], expected='1')
+    self.btest(path_from_root('tests', 'glfw_events.c'), args=['-s', 'USE_GLFW=3', "-DUSE_GLFW=3"], expected='1')
 
   def test_asm_swapping(self):
     self.clear()
@@ -2617,141 +2740,191 @@ window.close = function() {
   # pthreads tests
 
   # Test that the emscripten_ atomics api functions work.
-  def test_zzz_aaa_pthread_atomics(self):
+  def test_pthread_atomics(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=120) # extra time on first test, to be sure to build all libraries
 
   # Test 64-bit atomics.
-  def test_zzz_pthread_64bit_atomics(self):
+  def test_pthread_64bit_atomics(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_atomics.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
+  # Test 64-bit C++11 atomics.
+  def test_pthread_64bit_cxx11_atomics(self):
+    for opt in [['-O0'], ['-O3']]:
+      for pthreads in [[], ['-s', 'USE_PTHREADS=1']]:
+        self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_cxx11_atomics.cpp'), expected='0', args=opt + pthreads + ['-std=c++11'], timeout=30)
+
   # Test the old GCC atomic __sync_fetch_and_op builtin operations.
-  def test_zzz_pthread_gcc_atomic_fetch_and_op(self):
+  def test_pthread_gcc_atomic_fetch_and_op(self):
     # We need to resort to using regexes to optimize out SharedArrayBuffer when pthreads are not supported, which is brittle!
     # Therefore perform very extensive testing of different codegen modes to catch any problems.
-    for opt in [[], ['-O1'], ['-O2'], ['-O3'], ['-Os'], ['-Oz']]:
+    for opt in [[], ['-O1'], ['-O2'], ['-O3'], ['-O3', '-s', 'AGGRESSIVE_VARIABLE_ELIMINATION=1'], ['-Os'], ['-Oz']]:
       for debug in [[], ['-g1'], ['-g2'], ['-g4']]:
         for f32 in [[], ['-s', 'PRECISE_F32=1']]:
           print opt, debug, f32
           self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_fetch_and_op.cpp'), expected='0', args=opt+debug+f32+['-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=60)
 
   # 64 bit version of the above test.
-  def test_zzz_pthread_gcc_64bit_atomic_fetch_and_op(self):
+  def test_pthread_gcc_64bit_atomic_fetch_and_op(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_64bit_atomic_fetch_and_op.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Test the old GCC atomic __sync_op_and_fetch builtin operations.
-  def test_zzz_pthread_gcc_atomic_op_and_fetch(self):
+  def test_pthread_gcc_atomic_op_and_fetch(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_op_and_fetch.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # 64 bit version of the above test.
-  def test_zzz_pthread_gcc_64bit_atomic_op_and_fetch(self):
+  def test_pthread_gcc_64bit_atomic_op_and_fetch(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_64bit_atomic_op_and_fetch.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Tests the rest of the remaining GCC atomics after the two above tests.
-  def test_zzz_pthread_gcc_atomics(self):
+  def test_pthread_gcc_atomics(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomics.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Test the __sync_lock_test_and_set and __sync_lock_release primitives.
-  def test_zzz_pthread_gcc_spinlock(self):
+  def test_pthread_gcc_spinlock(self):
     for arg in [[], ['-DUSE_EMSCRIPTEN_INTRINSICS']]:
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_spinlock.cpp'), expected='800', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'] + arg, timeout=30)
 
   # Test that basic thread creation works.
-  def test_zzz_pthread_create(self):
+  def test_pthread_create(self):
     for opt in [['-O0'], ['-O3']]:
       for pthreads in [['-s', 'USE_PTHREADS=1'], ['-s', 'USE_PTHREADS=2', '--separate-asm']]:
         print str(opt) + ' ' + str(pthreads)
         self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=opt + pthreads + ['-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Test that a pthread can spawn another pthread of its own.
-  def test_zzz_pthread_create_pthread(self):
+  def test_pthread_create_pthread(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_create_pthread.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'NO_EXIT_RUNTIME=1'], timeout=30)
 
   # Test another case of pthreads spawning pthreads, but this time the callers immediately join on the threads they created.
-  def test_zzz_pthread_nested_spawns(self):
+  def test_pthread_nested_spawns(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_nested_spawns.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=2'], timeout=30)
 
   # Test that main thread can wait for a pthread to finish via pthread_join().
-  def test_zzz_pthread_join(self):
+  def test_pthread_join(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_join.cpp'), expected='6765', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Test pthread_cancel() operation
-  def test_zzz_pthread_cancel(self):
+  def test_pthread_cancel(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_cancel.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Test pthread_kill() operation
-  def test_zzz_pthread_kill(self):
+  def test_pthread_kill(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_kill.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Test that pthread cleanup stack (pthread_cleanup_push/_pop) works.
-  def test_zzz_pthread_cleanup(self):
+  def test_pthread_cleanup(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_cleanup.cpp'), expected='907640832', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Tests the pthread mutex api.
-  def test_zzz_pthread_mutex(self):
+  def test_pthread_mutex(self):
     for arg in [[], ['-DSPINLOCK_TEST']]:
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_mutex.cpp'), expected='50', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'] + arg, timeout=20)
 
   # Test that memory allocation is thread-safe.
-  def test_zzz_pthread_malloc(self):
+  def test_pthread_malloc(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Stress test pthreads allocating memory that will call to sbrk(), and main thread has to free up the data.
-  def test_zzz_pthread_malloc_free(self):
+  def test_pthread_malloc_free(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc_free.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'TOTAL_MEMORY=268435456'], timeout=30)
 
   # Test that the pthread_barrier API works ok.
-  def test_zzz_pthread_barrier(self):
+  def test_pthread_barrier(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_barrier.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Test the pthread_once() function.
-  def test_zzz_pthread_once(self):
+  def test_pthread_once(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_once.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Test against a certain thread exit time handling bug by spawning tons of threads.
-  def test_zzz_pthread_spawns(self):
+  def test_pthread_spawns(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_spawns.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # It is common for code to flip volatile global vars for thread control. This is a bit lax, but nevertheless, test whether that
   # kind of scheme will work with Emscripten as well.
-  def test_zzz_pthread_volatile(self):
+  def test_pthread_volatile(self):
     for arg in [[], ['-DUSE_C_VOLATILE']]:
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_volatile.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'] + arg, timeout=30)
 
   # Test thread-specific data (TLS).
-  def test_zzz_pthread_thread_local_storage(self):
+  def test_pthread_thread_local_storage(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_thread_local_storage.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Test the pthread condition variable creation and waiting.
-  def test_zzz_pthread_condition_variable(self):
+  def test_pthread_condition_variable(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_condition_variable.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Test that pthreads are able to do printf.
-  def test_zzz_pthread_printf(self):
+  def test_pthread_printf(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_printf.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=1'], timeout=30)
 
   # Test that pthreads are able to do cout. Failed due to https://bugzilla.mozilla.org/show_bug.cgi?id=1154858.
-  def test_zzz_pthread_iostream(self):
+  def test_pthread_iostream(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_iostream.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=1'], timeout=30)
 
   # Test that the main thread is able to use pthread_set/getspecific.
-  def test_zzz_pthread_setspecific_mainthread(self):
+  def test_pthread_setspecific_mainthread(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_setspecific_mainthread.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm'], timeout=30)
 
   # Test the -s PTHREAD_HINT_NUM_CORES=x command line variable.
-  def test_zzz_pthread_num_logical_cores(self):
+  def test_pthread_num_logical_cores(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_num_logical_cores.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_HINT_NUM_CORES=2'], timeout=30)
 
   # Test that pthreads have access to filesystem.
-  def test_zzz_pthread_file_io(self):
+  def test_pthread_file_io(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_file_io.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=1'], timeout=30)
 
   # Test that the pthread_create() function operates benignly in the case that threading is not supported.
-  def test_zzz_pthread_supported(self):
+  def test_pthread_supported(self):
     for args in [[], ['-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8']]:
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_supported.cpp'), expected='0', args=['-O3'] + args, timeout=30)
 
-  def test_zzz_separate_asm_pthreads(self):
+  def test_pthread_separate_asm_pthreads(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '--separate-asm', '--profiling'], timeout=30)
+
+  def test_pthread_custom_pthread_main_url(self):
+    self.clear()
+    os.makedirs(os.path.join(self.get_dir(), 'cdn'));
+    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
+      #include <stdio.h>
+      #include <string.h>
+      #include <emscripten/emscripten.h>
+      #include <emscripten/threading.h>
+      #include <pthread.h>
+      int result = 0;
+      void *thread_main(void *arg) {
+        emscripten_atomic_store_u32(&result, 1);
+        pthread_exit(0);
+      }
+
+      int main() {
+        pthread_t t;
+        if (emscripten_has_threading_support()) {
+          pthread_create(&t, 0, thread_main, 0);
+          pthread_join(t, 0);
+        } else {
+          result = 1;
+        }
+        REPORT_RESULT();
+      }
+    '''))
+
+    # Test that it is possible to define "Module.pthreadMainPrefixURL" string to locate where pthread-main.js will be loaded from.
+    open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { pthreadMainPrefixURL: "cdn/", '))
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'shell.html', '-s', 'IN_TEST_HARNESS=1', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-o', 'test.html']).communicate()
+    shutil.move('pthread-main.js', os.path.join('cdn', 'pthread-main.js'))
+    self.run_browser('test.html', '', '/report_result?1')
+
+    # Test that it is possible to define "Module.locateFile(foo)" function to locate where pthread-main.js will be loaded from.
+    open(self.in_dir('shell2.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "pthread-main.js") return "cdn/pthread-main.js"; else return filename; }, '))
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'shell2.html', '-s', 'IN_TEST_HARNESS=1', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-o', 'test2.html']).communicate()
+    try_delete('pthread-main.js')
+    self.run_browser('test2.html', '', '/report_result?1')
+
+  # test atomicrmw i64
+  def test_atomicrmw_i64(self):
+    Popen([PYTHON, EMCC, path_from_root('tests', 'atomicrmw_i64.ll'), '-s', 'USE_PTHREADS=1', '-s', 'IN_TEST_HARNESS=1', '-o', 'test.html']).communicate()
+    self.run_browser('test.html', None, '/report_result?0')
 
   # Test that it is possible to send a signal via calling alarm(timeout), which in turn calls to the signal handler set by signal(SIGALRM, func);
   def test_sigalrm(self):
@@ -2848,10 +3021,10 @@ window.close = function() {
     self.btest(path_from_root('tests', 'canvas_size_proxy.c'), expected='0', args=['--proxy-to-worker'])
 
   def test_separate_asm(self):
-    for opts in [0, 1, 2]:
+    for opts in [['-O0'], ['-O1'], ['-O2'], ['-O2', '--closure', '1']]:
       print opts
       open('src.cpp', 'w').write(self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
-      Popen([PYTHON, EMCC, 'src.cpp', '-o', 'test.html', '-O' + str(opts)]).communicate()
+      Popen([PYTHON, EMCC, 'src.cpp', '-o', 'test.html'] + opts).communicate()
       self.run_browser('test.html', None, '/report_result?0')
 
       open('one.html', 'w').write('<script src="test.js"></script>')
@@ -2869,7 +3042,7 @@ window.close = function() {
 
       self.clear()
       assert not os.path.exists('tests.asm.js')
-      self.btest('browser_test_hello_world.c', expected='0', args=['-O' + str(opts), '--separate-asm'])
+      self.btest('browser_test_hello_world.c', expected='0', args=opts + ['--separate-asm'])
       assert os.path.exists('test.asm.js')
       os.unlink('test.asm.js')
       self.run_browser('test.html', None, '[no http server activity]', timeout=5) # fail without the asm

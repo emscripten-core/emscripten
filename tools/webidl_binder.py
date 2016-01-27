@@ -138,9 +138,9 @@ function getClass(obj) {
 }
 Module['getClass'] = getClass;
 
-// Converts a value into a C-style string, storing it in temporary space
+// Converts big (string or array) values into a C-style storage, in temporary space
 
-var ensureStringCache = {
+var ensureCache = {
   buffer: 0,  // the main buffer of temporary storage
   size: 0,   // the size of buffer
   pos: 0,    // the next free offset in buffer
@@ -162,16 +162,17 @@ var ensureStringCache = {
       this.needed = 0;
     }
     if (!this.buffer) { // happens first time, or when we need to grow
-      this.size += 100; // heuristic, avoid many small grow events
+      this.size += 128; // heuristic, avoid many small grow events
       this.buffer = Module['_malloc'](this.size);
       assert(this.buffer);
     }
     this.pos = 0;
   },
-  alloc: function(value) {
+  alloc: function(array, view) {
     assert(this.buffer);
-    var array = intArrayFromString(value);
-    var len = array.length;
+    var bytes = view.BYTES_PER_ELEMENT;
+    var len = array.length * bytes;
+    len = (len + 7) & -8; // keep things aligned to 8 byte boundaries
     var ret;
     if (this.pos + len >= this.size) {
       // we failed to allocate in the buffer, this time around :(
@@ -184,13 +185,41 @@ var ensureStringCache = {
       ret = this.buffer + this.pos;
       this.pos += len;
     }
-    writeArrayToMemory(array, ret);
+    var retShifted = ret;
+    switch (bytes) {
+      case 2: retShifted >>= 1; break;
+      case 4: retShifted >>= 2; break;
+      case 8: retShifted >>= 3; break;
+    }
+    for (var i = 0; i < array.length; i++) {
+      view[retShifted + i] = array[i];
+    }
     return ret;
   },
 };
 
 function ensureString(value) {
-  if (typeof value === 'string') return ensureStringCache.alloc(value);
+  if (typeof value === 'string') return ensureCache.alloc(intArrayFromString(value), HEAP8);
+  return value;
+}
+function ensureInt8(value) {
+  if (typeof value === 'object') return ensureCache.alloc(value, HEAP8);
+  return value;
+}
+function ensureInt16(value) {
+  if (typeof value === 'object') return ensureCache.alloc(value, HEAP16);
+  return value;
+}
+function ensureInt32(value) {
+  if (typeof value === 'object') return ensureCache.alloc(value, HEAP32);
+  return value;
+}
+function ensureFloat32(value) {
+  if (typeof value === 'object') return ensureCache.alloc(value, HEAPF32);
+  return value;
+}
+function ensureFloat64(value) {
+  if (typeof value === 'object') return ensureCache.alloc(value, HEAPF64);
   return value;
 }
 
@@ -209,37 +238,45 @@ void array_bounds_check(const int array_size, const int array_idx) {
 
 C_FLOATS = ['float', 'double']
 
+def full_typename(arg):
+  return arg.type.name + ('[]' if arg.type.isArray() else '')
+
 def type_to_c(t, non_pointing=False):
   #print 'to c ', t
   t = t.replace(' (Wrapper)', '')
+  suffix = ''
+  if '[]' in t:
+    suffix = '*'
+    t = t.replace('[]', '')
   if t == 'Long':
-    return 'int'
+    ret = 'int'
   elif t == 'UnsignedLong':
-    return 'unsigned int'
+    ret = 'unsigned int'
   elif t == 'Short':
-    return 'short'
+    ret = 'short'
   elif t == 'UnsignedShort':
-    return 'unsigned short'
+    ret = 'unsigned short'
   elif t == 'Byte':
-    return 'char'
+    ret = 'char'
   elif t == 'Octet':
-    return 'unsigned char'
+    ret = 'unsigned char'
   elif t == 'Void':
-    return 'void'
+    ret = 'void'
   elif t == 'String':
-    return 'char*'
+    ret = 'char*'
   elif t == 'Float':
-    return 'float'
+    ret = 'float'
   elif t == 'Double':
-    return 'double'
+    ret = 'double'
   elif t == 'Boolean':
-    return 'bool'
+    ret = 'bool'
   elif t == 'Any' or t == 'VoidPtr':
-    return 'void*'
+    ret = 'void*'
   elif t in interfaces:
-    return (interfaces[t].getExtendedAttribute('Prefix') or [''])[0] + t + ('' if non_pointing else '*')
+    ret = (interfaces[t].getExtendedAttribute('Prefix') or [''])[0] + t + ('' if non_pointing else '*')
   else:
-    return t
+    ret = t
+  return ret + suffix
 
 def take_addr_if_nonpointer(m):
   if m.getExtendedAttribute('Ref') or m.getExtendedAttribute('Value'):
@@ -261,7 +298,7 @@ def type_to_cdec(raw):
     return ret
   return ret + '*'
 
-def render_function(class_name, func_name, sigs, return_type, non_pointer, copy, operator, constructor, func_scope, call_content=None, const=False):
+def render_function(class_name, func_name, sigs, return_type, non_pointer, copy, operator, constructor, func_scope, call_content=None, const=False, array_attribute=False):
   global mid_c, mid_js, js_impl_methods
 
   legacy_mode = CHECKS not in ['ALL', 'FAST']
@@ -296,6 +333,9 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
     elif return_type == 'String':
       call_prefix += 'Pointer_stringify('
       call_postfix += ')'
+    elif return_type == 'Boolean':
+      call_prefix += '!!('
+      call_postfix += ')'
 
   args = ['arg%d' % i for i in range(max_args)]
   if not constructor:
@@ -307,8 +347,8 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
 
   for i in range(max_args):
     arg = all_args[i]
-    if arg.type.isString():
-      body += '  ensureStringCache.prepare();\n'
+    if arg.type.isString() or arg.type.isArray():
+      body += '  ensureCache.prepare();\n'
       break
 
   full_name = "%s::%s" % (class_name, func_name)
@@ -369,10 +409,23 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
       do_default = True
 
     if do_default:
-      body += "  if (arg%d && typeof arg%d === 'object') arg%d = arg%d.ptr;\n" % (i, i, i, i)
-      if arg.type.isString():
-        body += "  else arg%d = ensureString(arg%d);\n" % (i, i)
-
+      if not (arg.type.isArray() and not array_attribute):
+        body += "  if (arg%d && typeof arg%d === 'object') arg%d = arg%d.ptr;\n" % (i, i, i, i)
+        if arg.type.isString():
+          body += "  else arg%d = ensureString(arg%d);\n" % (i, i)
+      else:
+        # an array can be received here
+        arg_type = arg.type.name
+        if arg_type in ['Byte', 'Octet']:
+          body += "  if (typeof arg%d == 'object') { arg%d = ensureInt8(arg%d); }\n" % (i, i, i)
+        elif arg_type in ['Short', 'UnsignedShort']:
+          body += "  if (typeof arg%d == 'object') { arg%d = ensureInt16(arg%d); }\n" % (i, i, i)
+        elif arg_type in ['Long', 'UnsignedLong']:
+          body += "  if (typeof arg%d == 'object') { arg%d = ensureInt32(arg%d); }\n" % (i, i, i)
+        elif arg_type == 'Float':
+          body += "  if (typeof arg%d == 'object') { arg%d = ensureFloat32(arg%d); }\n" % (i, i, i)
+        elif arg_type == 'Double':
+          body += "  if (typeof arg%d == 'object') { arg%d = ensureFloat64(arg%d); }\n" % (i, i, i)
 
   for i in range(min_args, max_args):
     c_names[i] = 'emscripten_bind_%s_%d' % (bindings_name, i)
@@ -390,7 +443,9 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
   for i in range(min_args, max_args+1):
     raw = sigs.get(i)
     if raw is None: continue
-    sig = [arg.type.name for arg in raw]
+    sig = map(full_typename, raw)
+    if array_attribute:
+      sig = map(lambda x: x.replace('[]', ''), sig) # for arrays, ignore that this is an array - our get/set methods operate on the elements
 
     c_arg_types = map(type_to_c, sig)
 
@@ -582,7 +637,8 @@ for name in names:
                     False,
                     func_scope=interface,
                     call_content=get_call_content,
-                    const=m.getExtendedAttribute('Const'))
+                    const=m.getExtendedAttribute('Const'),
+                    array_attribute=m.type.isArray())
 
     if not m.readonly:
       set_name = 'set_' + attr
@@ -596,7 +652,8 @@ for name in names:
                       False,
                       func_scope=interface,
                       call_content=set_call_content,
-                      const=m.getExtendedAttribute('Const'))
+                      const=m.getExtendedAttribute('Const'),
+                      array_attribute=m.type.isArray())
 
   if not interface.getExtendedAttribute('NoDelete'):
     mid_js += [r'''

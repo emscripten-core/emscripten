@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 2.8)
 
 project(hello_world_gles)
 
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../cpp_lib ${CMAKE_CURRENT_BINARY_DIR}/cpp_lib)
+
 file(GLOB sourceFiles ../../hello_world_gles.c)
 
 if (CMAKE_BUILD_TYPE STREQUAL Debug)
@@ -84,6 +86,7 @@ if (NOT HAVE_MATH_H)
 endif()
 
 add_executable(hello_world_gles ${sourceFiles})
+target_link_libraries(hello_world_gles cpp_lib)
 set_target_properties(hello_world_gles PROPERTIES LINK_FLAGS "${linkFlags}")
 
 # Validating asm.js requires SpiderMonkey JS VM - detect its presence via the SPIDERMONKEY environment variable.

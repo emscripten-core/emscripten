@@ -183,11 +183,7 @@ else {
 }
 
 function globalEval(x) {
-#if NO_DYNAMIC_EXECUTION == 0
-  eval.call(null, x);
-#else
-  throw 'NO_DYNAMIC_EXECUTION was set, cannot eval';
-#endif
+  {{{ makeEval('eval.call(null, x);') }}}
 }
 if (!Module['load'] && Module['read']) {
   Module['load'] = function load(f) {
@@ -223,6 +219,9 @@ for (var key in moduleOverrides) {
     Module[key] = moduleOverrides[key];
   }
 }
+// Free the object hierarchy contained in the overrides, this lets the GC
+// reclaim data used e.g. in memoryInitializerRequest, which is a large typed array.
+moduleOverrides = undefined;
 
 {{BODY}}
 

@@ -47,6 +47,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   libcxx_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'symbols'), exclude=libc_symbols)
   libcxxabi_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols'), exclude=libc_symbols)
   gl_symbols = read_symbols(shared.path_from_root('system', 'lib', 'gl.symbols'))
+  compiler_rt_symbols = read_symbols(shared.path_from_root('system', 'lib', 'compiler-rt.symbols'))
   pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads.symbols'))
 
   # XXX we should disable EMCC_DEBUG when building libs, just like in the relooper
@@ -95,7 +96,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     blacklist = set(
       ['ipc', 'passwd', 'thread', 'signal', 'sched', 'ipc', 'time', 'linux', 'aio', 'exit', 'legacy', 'mq', 'process', 'search', 'setjmp', 'env', 'ldso', 'conf'] + # musl modules
       ['memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c', 'inet_addr.c', 'res_query.c', 'gai_strerror.c', 'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c', 'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c', 'usleep.c', 'alarm.c', 'syscall.c'] + # individual files
-      ['abs.c', 'cos.c', 'cosf.c', 'cosl.c', 'sin.c', 'sinf.c', 'sinl.c', 'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c', 'asin.c', 'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c', 'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c', 'log.c', 'logf.c', 'logl.c', 'sqrt.c', 'sqrtf.c', 'sqrtl.c', 'fabs.c', 'fabsf.c', 'fabsl.c', 'ceil.c', 'ceilf.c', 'ceill.c', 'floor.c', 'floorf.c', 'floorl.c', 'pow.c', 'powf.c', 'powl.c'] # individual math files
+      ['abs.c', 'cos.c', 'cosf.c', 'cosl.c', 'sin.c', 'sinf.c', 'sinl.c', 'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c', 'asin.c', 'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c', 'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c', 'log.c', 'logf.c', 'logl.c', 'sqrt.c', 'sqrtf.c', 'sqrtl.c', 'fabs.c', 'fabsf.c', 'fabsl.c', 'ceil.c', 'ceilf.c', 'ceill.c', 'floor.c', 'floorf.c', 'floorl.c', 'pow.c', 'powf.c', 'powl.c', 'round.c', 'roundf.c'] # individual math files
     )
     # TODO: consider using more math code from musl, doing so makes box2d faster
     for dirpath, dirnames, filenames in os.walk(musl_srcdir):
@@ -177,6 +178,21 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     o = in_temp('gl.o')
     check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'gl.c'), '-o', o])
     return o
+
+  def create_compiler_rt(libname):
+    srcdir = shared.path_from_root('system', 'lib', 'compiler-rt')
+    filenames = ['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c']
+    files = (os.path.join(srcdir, f) for f in filenames)
+
+    o_s = []
+    commands = []
+    for src in files:
+      o = in_temp(os.path.basename(src) + '.o')
+      commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-O2', '-o', o])
+      o_s.append(o)
+    run_commands(commands)
+    shared.Building.link(o_s, in_temp(libname))
+    return in_temp(libname)
 
   def create_dlmalloc(out_name, clflags):
     o = in_temp(out_name)
@@ -271,9 +287,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   for symbols in symbolses:
     all_needed.difference_update(symbols.defs)
 
-  system_libs = [('libcxx',    'a',  create_libcxx,    libcxx_symbols,    ['libcxxabi'], True),
-                 ('libcxxabi', 'bc', create_libcxxabi, libcxxabi_symbols, ['libc'],      False),
-                 ('gl',        'bc', create_gl,        gl_symbols,        ['libc'],      False)]
+  system_libs = [('libcxx',      'a',  create_libcxx,      libcxx_symbols,      ['libcxxabi'], True),
+                 ('libcxxabi',   'bc', create_libcxxabi,   libcxxabi_symbols,   ['libc'],      False),
+                 ('gl',          'bc', create_gl,          gl_symbols,          ['libc'],      False),
+                 ('compiler-rt', 'bc', create_compiler_rt, compiler_rt_symbols, ['libc'],      False)]
 
   # malloc dependency is force-added, so when using pthreads, it must be force-added
   # as well, since malloc needs to be thread-safe, so it depends on mutexes.

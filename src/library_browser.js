@@ -898,8 +898,6 @@ mergeInto(LibraryManager.library, {
     if (_request == "POST") {
       //Send the proper header information along with the request
       http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-      http.setRequestHeader("Content-length", _param.length);
-      http.setRequestHeader("Connection", "close");
       http.send(_param);
     } else {
       http.send(null);
@@ -962,8 +960,6 @@ mergeInto(LibraryManager.library, {
     if (_request == "POST") {
       //Send the proper header information along with the request
       http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-      http.setRequestHeader("Content-length", _param.length);
-      http.setRequestHeader("Connection", "close");
       http.send(_param);
     } else {
       http.send(null);
@@ -1136,6 +1132,10 @@ mergeInto(LibraryManager.library, {
         }
         console.log('main loop blocker "' + blocker.name + '" took ' + (Date.now() - start) + ' ms'); //, left: ' + Browser.mainLoop.remainingBlockers);
         Browser.mainLoop.updateStatus();
+        
+        // catches pause/resume main loop from blocker execution
+        if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) return;
+        
         setTimeout(Browser.mainLoop.runner, 0);
         return;
       }
@@ -1344,30 +1344,45 @@ mergeInto(LibraryManager.library, {
       });
       info.awaited++;
     }
-    info.worker.postMessage({
+    var transferObject = {
       'funcName': funcName,
       'callbackId': callbackId,
-      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0 // XXX copy to a new typed array as a workaround for chrome bug 169705
-    });
+      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0
+    };
+    if (data) {
+      info.worker.postMessage(transferObject, [transferObject.data.buffer]);
+    } else {
+      info.worker.postMessage(transferObject);
+    }
   },
 
   emscripten_worker_respond_provisionally: function(data, size) {
     if (workerResponded) throw 'already responded with final response!';
-    postMessage({
+    var transferObject = {
       'callbackId': workerCallbackId,
       'finalResponse': false,
-      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0 // XXX copy to a new typed array as a workaround for chrome bug 169705
-    });
+      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0
+    };
+    if (data) {
+      postMessage(transferObject, [transferObject.data.buffer]);
+    } else {
+      postMessage(transferObject);
+    }
   },
 
   emscripten_worker_respond: function(data, size) {
     if (workerResponded) throw 'already responded with final response!';
     workerResponded = true;
-    postMessage({
+    var transferObject = {
       'callbackId': workerCallbackId,
       'finalResponse': true,
-      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0 // XXX copy to a new typed array as a workaround for chrome bug 169705
-    });
+      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0
+    };
+    if (data) {
+      postMessage(transferObject, [transferObject.data.buffer]);
+    } else {
+      postMessage(transferObject);
+    }
   },
 
   emscripten_get_worker_queue_size: function(id) {

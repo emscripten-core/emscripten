@@ -87,7 +87,10 @@ function JSify(data, functionsOnly) {
   }
 
   function processLibraryFunction(snippet, ident, finalName) {
-    snippet = snippet.toString();
+    // It is possible that when printing the function as a string on Windows, the js interpreter we are in returns the string with Windows
+    // line endings \r\n. This is undesirable, since line endings are managed in the form \n in the output for binary file writes, so
+    // make sure the endings are uniform.
+    snippet = snippet.toString().replace(/\r\n/gm,"\n");
     assert(snippet.indexOf('XXX missing C define') == -1,
            'Trying to include a library function with missing C defines: ' + finalName + ' | ' + snippet);
 
@@ -102,6 +105,14 @@ function JSify(data, functionsOnly) {
 
   // functionStub
   function functionStubHandler(item) {
+    // special logic
+    if (item.ident.startsWith('___cxa_find_matching_catch_')) {
+      var num = +item.ident.split('_').slice(-1)[0];
+      LibraryManager.library[item.ident.substr(1)] = function() {
+        return ___cxa_find_matching_catch.apply(null, arguments);
+      };
+    }
+
     // note the signature
     if (item.returnType && item.params) {
       functionStubSigs[item.ident] = Functions.getSignature(item.returnType.text, item.params.map(function(arg) { return arg.type }), false);
@@ -289,6 +300,9 @@ function JSify(data, functionsOnly) {
         } else {
           print('gb = Runtime.alignMemory(getMemory({{{ STATIC_BUMP }}}, ' + MAX_GLOBAL_ALIGN + ' || 1));\n');
           print('// STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n'); // comment as metadata only
+        }
+        if (BINARYEN) {
+          print('var STATIC_BUMP = {{{ STATIC_BUMP }}};');
         }
       }
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);

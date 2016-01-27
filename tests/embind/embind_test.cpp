@@ -2791,3 +2791,18 @@ std::string getTypeOfVal(const val& v) {
 EMSCRIPTEN_BINDINGS(typeof) {
     function("getTypeOfVal", &getTypeOfVal);
 }
+
+struct HasStaticMember {
+    static const int c;
+    static int v;
+};
+
+const int HasStaticMember::c = 10;
+int HasStaticMember::v = 20;
+
+EMSCRIPTEN_BINDINGS(static_member) {
+    class_<HasStaticMember>("HasStaticMember")
+        .class_property("c", &HasStaticMember::c)
+        .class_property("v", &HasStaticMember::v)
+        ;
+}

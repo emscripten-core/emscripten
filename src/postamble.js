@@ -1,6 +1,8 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
+{{{ maybeExport('FS') }}}
+
 #if MEM_INIT_METHOD == 2
 #if USE_PTHREADS
 if (memoryInitializer && !ENVIRONMENT_IS_PTHREAD) (function(s) {
@@ -53,6 +55,7 @@ if (memoryInitializer) {
       }
 #endif
       HEAPU8.set(data, Runtime.GLOBAL_BASE);
+      delete Module['memoryInitializerRequest'];
       removeRunDependency('memory initializer');
     }
     function doBrowserLoad() {
@@ -60,10 +63,10 @@ if (memoryInitializer) {
         throw 'could not load memory initializer ' + memoryInitializer;
       });
     }
-    var request = Module['memoryInitializerRequest'];
-    if (request) {
+    if (Module['memoryInitializerRequest']) {
       // a network request has already been created, just use that
       function useRequest() {
+        var request = Module['memoryInitializerRequest'];
         if (request.status !== 200 && request.status !== 0) {
           // If you see this warning, the issue may be that you are using locateFile or memoryInitializerPrefixURL, and defining them in JS. That
           // means that the HTML file doesn't know about them, and when it tries to create the mem init request early, does it to the wrong place.
@@ -74,10 +77,10 @@ if (memoryInitializer) {
         }
         applyMemoryInitializer(request.response);
       }
-      if (request.response) {
+      if (Module['memoryInitializerRequest'].response) {
         setTimeout(useRequest, 0); // it's already here; but, apply it asynchronously
       } else {
-        request.addEventListener('load', useRequest); // wait for it
+        Module['memoryInitializerRequest'].addEventListener('load', useRequest); // wait for it
       }
     } else {
       // fetch it from the network ourselves

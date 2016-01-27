@@ -90,7 +90,7 @@ copyright = u'2015, '
 # built documents.
 #
 
-emscripten_version = open(os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'emscripten-version.txt'))).read().strip()
+emscripten_version = open(os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'emscripten-version.txt'))).read().strip().replace('"', '')
 
 # The short X.Y version.
 version = emscripten_version[:emscripten_version.rindex('.')]
