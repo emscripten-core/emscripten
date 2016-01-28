@@ -1080,6 +1080,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
       assert not shared.Settings.SPLIT_MEMORY, 'WebAssembly does not support split memory'
 
+    if tracing:
+      if shared.Settings.ALLOW_MEMORY_GROWTH:
+        shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_trace_report_memory_layout']
+
     if shared.Settings.ONLY_MY_CODE:
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
       separate_asm = True

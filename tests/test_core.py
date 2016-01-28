@@ -2242,6 +2242,11 @@ int main() {
       win = win[win.find(code_start):]
       assert len(fail) < len(win), 'failing code - without memory growth on - is more optimized, and smaller' + str([len(fail), len(win)])
 
+    # Tracing of memory growths should work
+    Settings.EMSCRIPTEN_TRACING = 1
+    self.emcc_args += ['--tracing']
+    self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+
   def test_memorygrowth_2(self):
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0'] # start with 0
 
