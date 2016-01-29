@@ -614,7 +614,7 @@ static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cvtps_pd(__m128 __a)
 {
 #ifdef __EMSCRIPTEN__
-  return emscripten_float64x2_fromFloat32x4(__a);
+  return (__m128d) { (double)__a[0], (double)__a[1] };
 #else
   return __builtin_ia32_cvtps2pd(__a);
 #endif
@@ -624,7 +624,7 @@ static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_cvtepi32_pd(__m128i __a)
 {
 #ifdef __EMSCRIPTEN__
-  return emscripten_float64x2_fromInt32x4(__a);
+  return (__m128d) { (double)__a[0], (double)__a[1] };
 #else
   return __builtin_ia32_cvtdq2pd((__v4si)__a);
 #endif
@@ -1494,7 +1494,7 @@ static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_srai_epi16(__m128i __a, int __count)
 {
 #ifdef __EMSCRIPTEN__
-  return emscripten_int16x8_shiftRightArithmeticByScalar(__a, __count);
+  return emscripten_int16x8_shiftRightByScalar(__a, __count);
 #else
   return (__m128i)__builtin_ia32_psrawi128((__v8hi)__a, __count);
 #endif
@@ -1504,7 +1504,7 @@ static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_sra_epi16(__m128i __a, __m128i __count)
 {
 #ifdef __EMSCRIPTEN__
-  return emscripten_int16x8_shiftRightArithmeticByScalar(__a, __count[1] == 0 ? __count[0] : 16);
+  return emscripten_int16x8_shiftRightByScalar(__a, __count[1] == 0 ? __count[0] : 16);
 #else
   return (__m128i)__builtin_ia32_psraw128((__v8hi)__a, (__v8hi)__count);
 #endif
@@ -1514,7 +1514,7 @@ static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_srai_epi32(__m128i __a, int __count)
 {
 #ifdef __EMSCRIPTEN__
-  return emscripten_int32x4_shiftRightArithmeticByScalar(__a, __count);
+  return emscripten_int32x4_shiftRightByScalar(__a, __count);
 #else
   return (__m128i)__builtin_ia32_psradi128((__v4si)__a, __count);
 #endif
@@ -1524,7 +1524,7 @@ static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_sra_epi32(__m128i __a, __m128i __count)
 {
 #ifdef __EMSCRIPTEN__
-  return emscripten_int32x4_shiftRightArithmeticByScalar(__a, __count[1] == 0 ? __count[0] : 32);
+  return emscripten_int32x4_shiftRightByScalar(__a, __count[1] == 0 ? __count[0] : 32);
 #else
   return (__m128i)__builtin_ia32_psrad128((__v4si)__a, (__v4si)__count);
 #endif
@@ -1557,7 +1557,7 @@ static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_srli_epi16(__m128i __a, int __count)
 {
 #ifdef __EMSCRIPTEN__
-  return emscripten_int16x8_shiftRightLogicalByScalar(__a, __count);
+  return (int16x8)emscripten_uint16x8_shiftRightByScalar((uint16x8)__a, __count);
 #else
   return (__m128i)__builtin_ia32_psrlwi128((__v8hi)__a, __count);
 #endif
@@ -1567,7 +1567,7 @@ static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_srl_epi16(__m128i __a, __m128i __count)
 {
 #ifdef __EMSCRIPTEN__
-  return emscripten_int16x8_shiftRightLogicalByScalar(__a, __count[1] == 0 ? __count[0] : 16);
+  return (int16x8)emscripten_uint16x8_shiftRightByScalar((uint16x8)__a, __count[1] == 0 ? __count[0] : 16);
 #else
   return (__m128i)__builtin_ia32_psrlw128((__v8hi)__a, (__v8hi)__count);
 #endif
@@ -1577,7 +1577,7 @@ static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_srli_epi32(__m128i __a, int __count)
 {
 #ifdef __EMSCRIPTEN__
-  return emscripten_int32x4_shiftRightLogicalByScalar(__a, __count);
+  return (int32x4)emscripten_uint32x4_shiftRightByScalar((uint32x4)__a, __count);
 #else
   return (__m128i)__builtin_ia32_psrldi128((__v4si)__a, __count);
 #endif
@@ -1587,7 +1587,7 @@ static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_srl_epi32(__m128i __a, __m128i __count)
 {
 #ifdef __EMSCRIPTEN__
-  return emscripten_int16x8_shiftRightLogicalByScalar(__a, __count[1] == 0 ? __count[0] : 16);
+  return (int32x4)emscripten_uint32x4_shiftRightByScalar((uint32x4)__a, __count[1] == 0 ? __count[0] : 32);
 #else
   return (__m128i)__builtin_ia32_psrld128((__v4si)__a, (__v4si)__count);
 #endif
