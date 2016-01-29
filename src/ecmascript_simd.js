@@ -306,6 +306,13 @@ function simdLoad(type, tarray, index, count) {
   for (var i = 0; i < bytes; i++) {
     dst[i] = src[i];
   }
+
+  // XXX Emscripten: Work around to fix bug https://github.com/tc39/ecmascript_simd/issues/313
+  for (var i = bytes; i < 16; ++i) {
+    dst[i] = 0;
+  }
+  // XXX Emscripten
+
   return newValue;
 }
 
@@ -804,6 +811,9 @@ var simdTypes = [float32x4,
                  uint32x4, uint16x8, uint8x16,
                  bool32x4, bool16x8, bool8x16];
 
+// XXX Emscripten: Enable SIMD phase 2 types for Float64x2 and Bool64x2 to enable targeting SSE2 support.
+simdPhase2 = true;
+
 // SIMD Phase2 types.
 
 if (typeof simdPhase2 !== 'undefined') {
@@ -891,12 +901,15 @@ if (typeof simdPhase2 !== 'undefined') {
   float64x2.fromBits = [float32x4, int32x4, int16x8, int8x16,
                         uint32x4, uint16x8, uint8x16];
 
+/*
+  // XXX Emscripten: Removed to fix https://github.com/tc39/ecmascript_simd/issues/314
   int32x4.fromBits = [float32x4, int16x8, int8x16, uint32x4, uint16x8, uint8x16];
   int16x8.fromBits = [float32x4, int32x4, int8x16, uint32x4, uint16x8, uint8x16];
   int8x16.fromBits = [float32x4, int32x4, int16x8, uint32x4, uint16x8, uint8x16];
   uint32x4.fromBits = [float32x4, int32x4, int16x8, int8x16, uint16x8, uint8x16];
   uint16x8.fromBits = [float32x4, int32x4, int16x8, int8x16, uint32x4, uint8x16];
   uint8x16.fromBits = [float32x4, int32x4, int16x8, int8x16, uint32x4, uint16x8];
+*/
 
   simdTypes.push(float64x2);
   simdTypes.push(bool64x2);
@@ -1280,3 +1293,77 @@ simdTypes.forEach(function(type) {
      : typeof self === 'object'
        ? self
        : this);
+
+
+// XXX Emscripten-specific below XXX
+
+// Work around Firefox Nightly bug that Float64x2 comparison return a Int32x4 instead of a Bool64x2.
+try {
+  if (SIMD.Int32x4.check(SIMD.Float64x2.equal(SIMD.Float64x2.splat(5.0), SIMD.Float64x2.splat(5.0)))) {
+    SIMD.Float64x2.prevEqual = SIMD.Float64x2.equal;
+    SIMD.Float64x2.equal = function(a, b) {
+      var int32x4 = SIMD.Float64x2.prevEqual(a, b);
+      return SIMD.Bool64x2(SIMD.Int32x4.extractLane(int32x4, 1) != 0, SIMD.Int32x4.extractLane(int32x4, 3) != 0);
+    }
+    console.error('Warning: Patching up SIMD.Float64x2.equal to return a Bool64x2 instead of Int32x4!');
+  }
+} catch(e) {}
+try {
+  if (SIMD.Int32x4.check(SIMD.Float64x2.notEqual(SIMD.Float64x2.splat(5.0), SIMD.Float64x2.splat(5.0)))) {
+    SIMD.Float64x2.prevNotEqual = SIMD.Float64x2.notEqual;
+    SIMD.Float64x2.notEqual = function(a, b) {
+      var int32x4 = SIMD.Float64x2.prevNotEqual(a, b);
+      return SIMD.Bool64x2(SIMD.Int32x4.extractLane(int32x4, 1) != 0, SIMD.Int32x4.extractLane(int32x4, 3) != 0);
+    } 
+    console.error('Warning: Patching up SIMD.Float64x2.notEqual to return a Bool64x2 instead of Int32x4!');
+  }
+} catch(e) {}
+try {
+  if (SIMD.Int32x4.check(SIMD.Float64x2.greaterThan(SIMD.Float64x2.splat(5.0), SIMD.Float64x2.splat(5.0)))) {
+    SIMD.Float64x2.prevGreaterThan = SIMD.Float64x2.greaterThan;
+    SIMD.Float64x2.greaterThan = function(a, b) {
+      var int32x4 = SIMD.Float64x2.prevGreaterThan(a, b);
+      return SIMD.Bool64x2(SIMD.Int32x4.extractLane(int32x4, 1) != 0, SIMD.Int32x4.extractLane(int32x4, 3) != 0);
+    } 
+    console.error('Warning: Patching up SIMD.Float64x2.greaterThan to return a Bool64x2 instead of Int32x4!');
+  }
+} catch(e) {}
+try {
+  if (SIMD.Int32x4.check(SIMD.Float64x2.greaterThanOrEqual(SIMD.Float64x2.splat(5.0), SIMD.Float64x2.splat(5.0)))) {
+    SIMD.Float64x2.prevGreaterThanOrEqual = SIMD.Float64x2.greaterThanOrEqual;
+    SIMD.Float64x2.greaterThanOrEqual = function(a, b) {
+      var int32x4 = SIMD.Float64x2.prevGreaterThanOrEqual(a, b);
+      return SIMD.Bool64x2(SIMD.Int32x4.extractLane(int32x4, 1) != 0, SIMD.Int32x4.extractLane(int32x4, 3) != 0);
+    } 
+    console.error('Warning: Patching up SIMD.Float64x2.greaterThanOrEqual to return a Bool64x2 instead of Int32x4!');
+  }
+} catch(e) {}
+try {
+  if (SIMD.Int32x4.check(SIMD.Float64x2.lessThan(SIMD.Float64x2.splat(5.0), SIMD.Float64x2.splat(5.0)))) {
+    SIMD.Float64x2.prevLessThan = SIMD.Float64x2.lessThan;
+    SIMD.Float64x2.lessThan = function(a, b) {
+      var int32x4 = SIMD.Float64x2.prevLessThan(a, b);
+      return SIMD.Bool64x2(SIMD.Int32x4.extractLane(int32x4, 1) != 0, SIMD.Int32x4.extractLane(int32x4, 3) != 0);
+    } 
+    console.error('Warning: Patching up SIMD.Float64x2.lessThan to return a Bool64x2 instead of Int32x4!');
+  }
+} catch(e) {}
+try {
+  if (SIMD.Int32x4.check(SIMD.Float64x2.lessThanOrEqual(SIMD.Float64x2.splat(5.0), SIMD.Float64x2.splat(5.0)))) {
+    SIMD.Float64x2.prevLessThanOrEqual = SIMD.Float64x2.lessThanOrEqual;
+    SIMD.Float64x2.lessThanOrEqual = function(a, b) {
+      var int32x4 = SIMD.Float64x2.prevLessThanOrEqual(a, b);
+      return SIMD.Bool64x2(SIMD.Int32x4.extractLane(int32x4, 1) != 0, SIMD.Int32x4.extractLane(int32x4, 3) != 0);
+    } 
+    console.error('Warning: Patching up SIMD.Float64x2.lessThanOrEqual to return a Bool64x2 instead of Int32x4!');
+  }
+} catch(e) {}
+
+
+if (!SIMD.Int32x4.fromBool64x2Bits) {
+  SIMD.Int32x4.fromBool64x2Bits = function(bool64x2) {
+    var lane0 = SIMD.Bool64x2.extractLane(bool64x2, 0)?-1:0;
+    var lane1 = SIMD.Bool64x2.extractLane(bool64x2, 1)?-1:0;
+    return SIMD.Int32x4(lane0, lane0, lane1, lane1);
+  }
+}

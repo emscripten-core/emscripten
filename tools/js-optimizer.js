@@ -1780,7 +1780,10 @@ var ASM_BOOL8X16 = 8;
 var ASM_BOOL16X8 = 9;
 var ASM_BOOL32X4 = 10;
 var ASM_BOOL64X2 = 11;
-var ASM_NONE = 12;
+var ASM_UINT32X4 = 12;
+var ASM_UINT16X8 = 13;
+var ASM_UINT8X16 = 14;
+var ASM_NONE = 15;
 
 var ASM_SIG = {
   0: 'i',
@@ -1795,7 +1798,10 @@ var ASM_SIG = {
   9: 'X',
   10: 'C',
   11: 'V',
-  12: 'v'
+  12: 'N', // Unsigned integer SIMD.js types have letters NML.
+  13: 'M',
+  14: 'L',
+  15: 'v'
 };
 
 var ASM_FLOAT_ZERO = null; // TODO: share the entire node?
@@ -1829,6 +1835,12 @@ function detectType(node, asmInfo, inVarDef) {
           case 'SIMD_Int16x8_check':   return ASM_INT16X8;
           case 'SIMD_Int32x4':
           case 'SIMD_Int32x4_check':   return ASM_INT32X4;
+          case 'SIMD_Uint8x16':
+          case 'SIMD_Uint8x16_check':  return ASM_UINT8X16;
+          case 'SIMD_Uint16x8':
+          case 'SIMD_Uint16x8_check':  return ASM_UINT16X8;
+          case 'SIMD_Uint32x4':
+          case 'SIMD_Uint32x4_check':  return ASM_UINT32X4;
           case 'SIMD_Bool8x16':
           case 'SIMD_Bool8x16_check':  return ASM_BOOL8X16;
           case 'SIMD_Bool16x8':
@@ -1903,6 +1915,9 @@ function makeAsmCoercion(node, type) {
     case ASM_INT8X16:   return ['call', ['name', 'SIMD_Int8x16_check'],   [node]];
     case ASM_INT16X8:   return ['call', ['name', 'SIMD_Int16x8_check'],   [node]];
     case ASM_INT32X4:   return ['call', ['name', 'SIMD_Int32x4_check'],   [node]];
+    case ASM_UINT8X16:  return ['call', ['name', 'SIMD_Uint8x16_check'],  [node]];
+    case ASM_UINT16X8:  return ['call', ['name', 'SIMD_Uint16x8_check'],  [node]];
+    case ASM_UINT32X4:  return ['call', ['name', 'SIMD_Uint32x4_check'],  [node]];
     case ASM_BOOL8X16:  return ['call', ['name', 'SIMD_Bool8x16_check'],  [node]];
     case ASM_BOOL16X8:  return ['call', ['name', 'SIMD_Bool16x8_check'],  [node]];
     case ASM_BOOL32X4:  return ['call', ['name', 'SIMD_Bool32x4_check'],  [node]];
@@ -1943,6 +1958,15 @@ function makeAsmCoercedZero(type) {
     }
     case ASM_INT32X4: {
       return ['call', ['name', 'SIMD_Int32x4'], [['num', 0], ['num', 0], ['num', 0], ['num', 0]]];
+    }
+    case ASM_UINT8X16: {
+      return ['call', ['name', 'SIMD_Uint8x16'], [['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0]]];
+    }
+    case ASM_UINT16X8: {
+      return ['call', ['name', 'SIMD_Uint16x8'], [['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0]]];
+    }
+    case ASM_UINT32X4: {
+      return ['call', ['name', 'SIMD_Uint32x4'], [['num', 0], ['num', 0], ['num', 0], ['num', 0]]];
     }
     case ASM_BOOL8X16: {
       return ['call', ['name', 'SIMD_Bool8x16'], [['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0], ['num', 0]]];
@@ -2332,6 +2356,9 @@ function registerize(ast) {
           case ASM_INT8X16:   ret = 'I16'; break;
           case ASM_INT16X8:   ret = 'I8'; break;
           case ASM_INT32X4:   ret = 'I4'; break;
+          case ASM_UINT8X16:  ret = 'U16'; break;
+          case ASM_UINT16X8:  ret = 'U8'; break;
+          case ASM_UINT32X4:  ret = 'U4'; break;
           case ASM_BOOL8X16:  ret = 'B16'; break;
           case ASM_BOOL16X8:  ret = 'B8'; break;
           case ASM_BOOL32X4:  ret = 'B4'; break;
@@ -2452,7 +2479,7 @@ function registerize(ast) {
     // we just use a fresh register to make sure we avoid this, but it could be
     // optimized to check for safe registers (free, and not used in this loop level).
     var varRegs = {}; // maps variables to the register they will use all their life
-    var freeRegsClasses = asm ? [[], [], [], [], [], [], [], [], [], [], [], [], []] : []; // two classes for asm, one otherwise XXX - hardcoded length
+    var freeRegsClasses = asm ? [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []] : []; // two classes for asm, one otherwise XXX - hardcoded length
     var nextReg = 1;
     var fullNames = {};
     var loopRegs = {}; // for each loop nesting level, the list of bound variables
@@ -2615,8 +2642,8 @@ function registerizeHarder(ast) {
     // Utilities for allocating register variables.
     // We need distinct register pools for each type of variable.
 
-    var allRegsByType = [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}]; // XXX - hardcoded length
-    var regPrefixByType = ['i', 'd', 'f', 'F4', 'F2', 'I16', 'I8', 'I4', 'B16', 'B8', 'B4', 'B2', 'n'];
+    var allRegsByType = [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}]; // XXX - hardcoded length
+    var regPrefixByType = ['i', 'd', 'f', 'F4', 'F2', 'I16', 'I8', 'I4', 'B16', 'B8', 'B4', 'B2', 'U16', 'U8', 'U4', 'n'];
     var nextReg = 1;
 
     function createReg(forName) {
