@@ -8,6 +8,13 @@ extern "C" {
 // Direct mappings to the SIMD.js API specification as intrinsic functions: http://tc39.github.io/ecmascript_simd/
 // These can be used as an alternative to using SSEx intrinsics and LLVM/GCC built-in intrinsics support.
 
+// Note: Since there are a lot of types and functions, when modifying this file, please keep a canonical sorted ordering of types
+// float64x2->float32x4->int64x2->uint64x2->int32x4->uint32x4->int16x8->uint16x8->int8x16->uint8x16->bool64x2->bool32x4->bool16x8->bool8x16
+// and all functions in the list order specified in the EcmaScript SIMD.js specification
+// so that cross-referencing changes against the implementation and the specification is much easier.
+
+// Also, if changing this file, remember to do the matching changes in LLVM side at https://github.com/kripken/emscripten-fastcomp/blob/incoming/lib/Target/JSBackend/CallHandlers.h
+
 typedef double float64x2 __attribute__((__vector_size__(16), __may_alias__));
 typedef float float32x4 __attribute__((__vector_size__(16), __may_alias__));
 typedef long long int64x2 __attribute__((__vector_size__(16), __may_alias__));
@@ -21,8 +28,7 @@ typedef unsigned char uint8x16 __attribute__((__vector_size__(16), __may_alias__
 
 // C/C++ side code does not actually have the boolean types, these are marked for documentation purposes. Feel free
 // to use the int SIMD types in user code as well.
-//typedef int64x2 bool64x2;
-typedef int32x4 bool64x2;
+typedef int32x4 bool64x2; // int64x2 would give trouble, since that type doesn't exist and we aren't prepared to handle it in LLVM side.
 typedef int32x4 bool32x4;
 typedef int16x8 bool16x8;
 typedef int8x16 bool8x16;
