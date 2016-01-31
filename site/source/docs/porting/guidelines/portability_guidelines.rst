@@ -24,6 +24,8 @@ The following types of code would need to be re-written in order to work with Em
 	
 	.. note:: Code of this type might be used for conservative garbage collection. You can do conservative scanning when there is no other code on the stack, e.g. from an iteration of the main event loop.
 
+-  Code with architecture-specific inline assembly (like an ``asm()`` containing x86 code) is not portable. That code would need to be replaced with portable C or C++. Sometimes a codebase will have both portable code and optional inline assembly as an optimization, so you might find an option to disable the inline assembly.
+
 
 Code that compiles but might run slowly
 =======================================
