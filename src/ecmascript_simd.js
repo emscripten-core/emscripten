@@ -878,6 +878,11 @@ if (typeof simdPhase2 !== 'undefined') {
           "load", "store"],
   }
 
+  // XXX Emscripten: Need these functions for intrinsics, see https://github.com/tc39/ecmascript_simd/issues/316.
+  float64x2.fns.push("load1");
+  float64x2.fns.push("store1");
+  // XXX Emscripten
+
   var bool64x2 = {
     name: "Bool64x2",
     fn: SIMD.Bool64x2,
