@@ -1,0 +1,26 @@
+v: -1.000000 0.000000 1.000000 3.500000
+w: 2.000000 2.000000 2.000000 2.000000
+emscripten_float32x4_add(v, w): 1.000000 2.000000 3.000000 5.500000
+emscripten_float32x4_sub(v, w): -3.000000 -2.000000 -1.000000 1.500000
+emscripten_float32x4_mul(v, w): -2.000000 0.000000 2.000000 7.000000
+emscripten_float32x4_div(v, w): -0.500000 0.000000 0.500000 1.750000
+emscripten_float32x4_max(v, w): 2.000000 2.000000 2.000000 3.500000
+emscripten_float32x4_min(v, w): -1.000000 0.000000 1.000000 2.000000
+emscripten_float32x4_maxNum(v, w): 2.000000 2.000000 2.000000 3.500000
+emscripten_float32x4_minNum(v, w): -1.000000 0.000000 1.000000 2.000000
+emscripten_float32x4_neg(v): 1.000000 -0.000000 -1.000000 -3.500000
+emscripten_float32x4_sqrt(v): nan 0.000000 1.000000 1.870829
+emscripten_float32x4_reciprocalApproximation(v): -1.000000 inf 1.000000 0.285714
+emscripten_float32x4_reciprocalSqrtApproximation(v): nan inf 1.000000 0.534522
+emscripten_float32x4_abs(v): 1.000000 0.000000 1.000000 3.500000
+emscripten_float32x4_and(v, w): 0.000000 0.000000 0.000000 2.000000
+emscripten_float32x4_xor(v, w): -inf 2.000000 inf 0.000000
+emscripten_float32x4_or(v, w): -inf 2.000000 inf 3.500000
+emscripten_float32x4_not(v): 4.000000 nan -4.000000 -1.250000
+emscripten_float32x4_lessThan(v, w): nan nan nan 0.000000
+emscripten_float32x4_lessThanOrEqual(v, w): nan nan nan 0.000000
+emscripten_float32x4_greaterThan(v, w): 0.000000 0.000000 0.000000 nan
+emscripten_float32x4_greaterThanOrEqual(v, w): 0.000000 0.000000 0.000000 nan
+emscripten_float32x4_equal(v, w): 0.000000 0.000000 0.000000 0.000000
+emscripten_float32x4_notEqual(v, w): nan nan nan nan
+ 
