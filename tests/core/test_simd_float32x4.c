@@ -36,5 +36,41 @@ int main()
     DUMP(emscripten_float32x4_greaterThanOrEqual(v, w));
     DUMP(emscripten_float32x4_equal(v, w));
     DUMP(emscripten_float32x4_notEqual(v, w));
-}
+    bool32x4 b = emscripten_int32x4_set(0, -1, 0, -1);
+    DUMP(emscripten_float32x4_select(b, v, w));
+    DUMP(emscripten_float32x4_replaceLane(v, 0, 9.f));
+    DUMP(emscripten_float32x4_replaceLane(v, 1, -3.f));
+    DUMP(emscripten_float32x4_replaceLane(v, 2, 0.f));
+    DUMP(emscripten_float32x4_replaceLane(v, 3, -0.f));
+    // TODO: emscripten_float32x4_store
+    // TODO: emscripten_float32x4_store1
+    // TODO: emscripten_float32x4_store2
+    // TODO: emscripten_float32x4_store3
+    // TODO: emscripten_float32x4_load
+    // TODO: emscripten_float32x4_load1
+    // TODO: emscripten_float32x4_load2
+    // TODO: emscripten_float32x4_load3
+    // TODO: emscripten_float32x4_fromFloat64x2Bits
+    // TODO: emscripten_float32x4_fromInt32x4Bits
+    // TODO: emscripten_float32x4_fromUint32x4Bits
+    // TODO: emscripten_float32x4_fromInt16x8Bits
+    // TODO: emscripten_float32x4_fromUint16x8Bits
+    // TODO: emscripten_float32x4_fromInt8x16Bits
+    // TODO: emscripten_float32x4_fromUint8x16Bits
+    // TODO: emscripten_float32x4_fromInt32x4
+    // TODO: emscripten_float32x4_fromUint32x4
+    DUMP(emscripten_float32x4_swizzle(v, 0, 1, 2, 3));
+    DUMP(emscripten_float32x4_swizzle(v, 3, 2, 1, 0));
+    DUMP(emscripten_float32x4_swizzle(v, 0, 0, 0, 0));
+    DUMP(emscripten_float32x4_swizzle(v, 0, 3, 0, 3));
+    DUMP(emscripten_float32x4_swizzle(v, 3, 3, 3, 3));
+    float32x4 z = emscripten_float32x4_set(-5.f, 20.f, 14.f, 9.f);
+    DUMP(z);
+    DUMP(emscripten_float32x4_shuffle(v, z, 0, 0, 0, 0));
+    DUMP(emscripten_float32x4_shuffle(v, z, 4, 4, 4, 4));
+    DUMP(emscripten_float32x4_shuffle(v, z, 7, 7, 7, 7));
+    DUMP(emscripten_float32x4_shuffle(v, z, 0, 2, 4, 6));
+    DUMP(emscripten_float32x4_shuffle(v, z, 7, 0, 3, 5));
 
+    printf("Done!\n");
+}
