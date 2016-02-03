@@ -1,11 +1,22 @@
 #include <emscripten/vector.h>
 #include <stdio.h>
+#include <string.h>
+#include <inttypes.h>
 
 void dump(const char *name, float32x4 vec)
 {
     printf("%s: %f %f %f %f\n", name, emscripten_float32x4_extractLane(vec, 0), emscripten_float32x4_extractLane(vec, 1), emscripten_float32x4_extractLane(vec, 2), emscripten_float32x4_extractLane(vec, 3));
 }
 #define DUMP(V) dump(#V, (V))
+
+void dumpBytes(const char *name, const void *bytes, int n)
+{
+    printf("%s: ", name);
+    for(int i = 0; i < n; ++i)
+        printf("%02X ", ((uint8_t*)bytes)[i]);
+    printf("\n");
+}
+#define DUMPBYTES(name, bytes) dumpBytes(name, bytes, sizeof(bytes))
 
 int main()
 {
@@ -42,14 +53,25 @@ int main()
     DUMP(emscripten_float32x4_replaceLane(v, 1, -3.f));
     DUMP(emscripten_float32x4_replaceLane(v, 2, 0.f));
     DUMP(emscripten_float32x4_replaceLane(v, 3, -0.f));
-    // TODO: emscripten_float32x4_store
-    // TODO: emscripten_float32x4_store1
-    // TODO: emscripten_float32x4_store2
-    // TODO: emscripten_float32x4_store3
-    // TODO: emscripten_float32x4_load
-    // TODO: emscripten_float32x4_load1
-    // TODO: emscripten_float32x4_load2
-    // TODO: emscripten_float32x4_load3
+    uint8_t bytes[16];
+    memset(bytes, 0xFF, sizeof(bytes));
+    emscripten_float32x4_store(bytes, v);
+    DUMPBYTES("emscripten_float32x4_store", bytes);
+    memset(bytes, 0xFF, sizeof(bytes));
+    emscripten_float32x4_store1(bytes, v);
+    DUMPBYTES("emscripten_float32x4_store1", bytes);
+    memset(bytes, 0xFF, sizeof(bytes));
+    emscripten_float32x4_store2(bytes, v);
+    DUMPBYTES("emscripten_float32x4_store2", bytes);
+    memset(bytes, 0xFF, sizeof(bytes));
+    emscripten_float32x4_store3(bytes, v);
+    DUMPBYTES("emscripten_float32x4_store3", bytes);
+
+    emscripten_float32x4_store(bytes, v);
+    DUMP(emscripten_float32x4_load(bytes));
+    DUMP(emscripten_float32x4_load1(bytes));
+    DUMP(emscripten_float32x4_load2(bytes));
+    DUMP(emscripten_float32x4_load3(bytes));
     // TODO: emscripten_float32x4_fromFloat64x2Bits
     // TODO: emscripten_float32x4_fromInt32x4Bits
     // TODO: emscripten_float32x4_fromUint32x4Bits
