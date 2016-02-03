@@ -11,9 +11,9 @@ void dump(const char *name, float32x4 vec)
 
 void dumpBytes(const char *name, const void *bytes, int n)
 {
-    printf("%s: ", name);
+    printf("%s:", name);
     for(int i = 0; i < n; ++i)
-        printf("%02X ", ((uint8_t*)bytes)[i]);
+        printf(" %02X", ((uint8_t*)bytes)[i]);
     printf("\n");
 }
 #define DUMPBYTES(name, bytes) dumpBytes(name, bytes, sizeof(bytes))
