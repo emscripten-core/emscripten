@@ -67,8 +67,8 @@ float64x2 emscripten_float64x2_select(bool64x2 __a, float64x2 __b, float64x2 __c
 // n.b. No emscripten_float64x2_subSaturate, only defined on 8-bit and 16-bit integer SIMD types.
 // n.b. No emscripten_float64x2_shiftLeftByScalar, only defined on integer SIMD types.
 // n.b. No emscripten_float64x2_shiftRightByScalar, only defined on integer SIMD types.
-inline float emscripten_float64x2_extractLane(float64x2 __a, int __lane) __attribute__((__nothrow__, __const__)) { return __a[__lane]; }
-inline float64x2 emscripten_float64x2_replaceLane(float64x2 __a, int __lane, float __s) __attribute__((__nothrow__, __const__)) { __a[__lane] = __s; return __a; }
+inline double emscripten_float64x2_extractLane(float64x2 __a, int __lane) __attribute__((__nothrow__, __const__)) { return __a[__lane]; }
+inline float64x2 emscripten_float64x2_replaceLane(float64x2 __a, int __lane, double __s) __attribute__((__nothrow__, __const__)) { __a[__lane] = __s; return __a; }
 void emscripten_float64x2_store(const void *__p, float64x2 __a) __attribute__((__nothrow__));
 void emscripten_float64x2_store1(const void *__p, float64x2 __a) __attribute__((__nothrow__));
 float64x2 emscripten_float64x2_load(const void *__p) __attribute__((__nothrow__, __pure__));
