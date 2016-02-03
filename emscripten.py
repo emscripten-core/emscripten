@@ -517,8 +517,8 @@ function _emscripten_asm_const_%s(%s) {
       simdbooltypes += ['Bool64x2']
 
     simdfloatfuncs = simdfuncs + simdintfloatfuncs + ['div', 'min', 'max', 'minNum', 'maxNum', 'sqrt',
-                                  'abs', 'reciprocalApproximation', 'reciprocalSqrtApproximation'];
-    simdintfuncs = simdfuncs + simdintfloatfuncs + simdintboolfuncs + ['shiftLeftByScalar', 'shiftRightByScalar'];
+                                  'abs', 'reciprocalApproximation', 'reciprocalSqrtApproximation']
+    simdintfuncs = simdfuncs + simdintfloatfuncs + simdintboolfuncs + ['shiftLeftByScalar', 'shiftRightByScalar', 'addSaturate', 'subSaturate']
     simdboolfuncs = simdfuncs + simdintboolfuncs + ['anyTrue', 'allTrue']
     simdtypes = simdfloattypes + simdinttypes + simdbooltypes
 
@@ -744,7 +744,7 @@ function ftCall_%s(%s) {%s
           if sub in s:
             return True
         return False
-      nonexisting_simd_symbols = ['Int8x16_fromInt8x16', 'Int16x8_fromInt16x8', 'Int32x4_fromInt32x4', 'Float32x4_fromFloat32x4', 'Float64x2_fromFloat64x2']
+      nonexisting_simd_symbols = ['Int8x16_fromInt8x16', 'Uint8x16_fromUint8x16', 'Int16x8_fromInt16x8', 'Uint16x8_fromUint16x8', 'Int32x4_fromInt32x4', 'Uint32x4_fromUint32x4', 'Float32x4_fromFloat32x4', 'Float64x2_fromFloat64x2', 'Int32x4_addSaturate', 'Int32x4_subSaturate', 'Uint32x4_addSaturate', 'Uint32x4_subSaturate']
 
       asm_global_funcs += ''.join(['  var SIMD_' + ty + '=global' + access_quote('SIMD') + access_quote(ty) + ';\n' for ty in simdtypes])
 

@@ -58,6 +58,8 @@ int main()
     DUMP(emscripten_int8x16_shiftRightByScalar(v, 48));
     bool32x4 b = emscripten_int8x16_set(0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1);
     DUMP(emscripten_int8x16_select(b, v, w));
+    DUMP(emscripten_int8x16_addSaturate(v, w));
+    DUMP(emscripten_int8x16_subSaturate(v, w));
     DUMP(emscripten_int8x16_replaceLane(v, 0, 9));
     DUMP(emscripten_int8x16_replaceLane(v, 1, 3));
     DUMP(emscripten_int8x16_replaceLane(v, 2, 0));

@@ -27,6 +27,8 @@ emscripten_int16x8_shiftRightByScalar(v, 16): 0 0 0 0 -1 0 0 -1
 emscripten_int16x8_shiftRightByScalar(v, 32): 0 0 0 0 -1 0 0 -1
 emscripten_int16x8_shiftRightByScalar(v, 48): 0 0 0 0 -1 0 0 -1
 emscripten_int16x8_select(b, v, w): 2 0 2 32767 2 9 2 -32768
+emscripten_int16x8_addSaturate(v, w): 3 2 3 32767 0 11 15 -32766
+emscripten_int16x8_subSaturate(v, w): -1 -2 -1 32765 -4 7 11 -32768
 emscripten_int16x8_replaceLane(v, 0, 9): 9 0 1 32767 -2 9 13 -32768
 emscripten_int16x8_replaceLane(v, 1, 3): 1 3 1 32767 -2 9 13 -32768
 emscripten_int16x8_replaceLane(v, 2, 0): 1 0 0 32767 -2 9 13 -32768
