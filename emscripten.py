@@ -483,15 +483,24 @@ function _emscripten_asm_const_%s(%s) {
                          'select', 'swizzle', 'shuffle',
                          'load', 'store', 'load1', 'store1', 'load2', 'store2', 'load3', 'store3']
     simdintboolfuncs = ['and', 'xor', 'or', 'not']
+    if metadata['simdUint8x16']:
+      simdinttypes += ['Uint8x16']
+      simdintfloatfuncs += ['fromUint8x16Bits']
     if metadata['simdInt8x16']:
-      simdinttypes += ['Int8x16', 'Uint8x16']
-      simdintfloatfuncs += ['fromInt8x16Bits', 'fromUint8x16Bits']
+      simdinttypes += ['Int8x16']
+      simdintfloatfuncs += ['fromInt8x16Bits']
+    if metadata['simdUint16x8']:
+      simdinttypes += ['Uint16x8']
+      simdintfloatfuncs += ['fromUint16x8Bits']
     if metadata['simdInt16x8']:
-      simdinttypes += ['Int16x8', 'Uint16x8']
-      simdintfloatfuncs += ['fromInt16x8Bits', 'fromUint16x8Bits']
+      simdinttypes += ['Int16x8']
+      simdintfloatfuncs += ['fromInt16x8Bits']
+    if metadata['simdUint32x4']:
+      simdinttypes += ['Uint32x4']
+      simdintfloatfuncs += ['fromUint32x4', 'fromUint32x4Bits']
     if metadata['simdInt32x4']:
-      simdinttypes += ['Int32x4', 'Uint32x4']
-      simdintfloatfuncs += ['fromInt32x4', 'fromInt32x4Bits', 'fromUint32x4Bits']
+      simdinttypes += ['Int32x4']
+      simdintfloatfuncs += ['fromInt32x4', 'fromInt32x4Bits']
     if metadata['simdFloat32x4']:
       simdfloattypes += ['Float32x4']
       simdintfloatfuncs += ['fromFloat32x4', 'fromFloat32x4Bits']
@@ -508,8 +517,8 @@ function _emscripten_asm_const_%s(%s) {
       simdbooltypes += ['Bool64x2']
 
     simdfloatfuncs = simdfuncs + simdintfloatfuncs + ['div', 'min', 'max', 'minNum', 'maxNum', 'sqrt',
-                                  'abs', 'reciprocalApproximation', 'reciprocalSqrtApproximation'];
-    simdintfuncs = simdfuncs + simdintfloatfuncs + simdintboolfuncs + ['shiftLeftByScalar', 'shiftRightByScalar'];
+                                  'abs', 'reciprocalApproximation', 'reciprocalSqrtApproximation']
+    simdintfuncs = simdfuncs + simdintfloatfuncs + simdintboolfuncs + ['shiftLeftByScalar', 'shiftRightByScalar', 'addSaturate', 'subSaturate']
     simdboolfuncs = simdfuncs + simdintboolfuncs + ['anyTrue', 'allTrue']
     simdtypes = simdfloattypes + simdinttypes + simdbooltypes
 
@@ -735,7 +744,10 @@ function ftCall_%s(%s) {%s
           if sub in s:
             return True
         return False
-      nonexisting_simd_symbols = ['Int8x16_fromInt8x16', 'Int16x8_fromInt16x8', 'Int32x4_fromInt32x4', 'Float32x4_fromFloat32x4', 'Float64x2_fromFloat64x2']
+      nonexisting_simd_symbols = ['Int8x16_fromInt8x16', 'Uint8x16_fromUint8x16', 'Int16x8_fromInt16x8', 'Uint16x8_fromUint16x8', 'Int32x4_fromInt32x4', 'Uint32x4_fromUint32x4', 'Float32x4_fromFloat32x4', 'Float64x2_fromFloat64x2']
+      nonexisting_simd_symbols += ['Int32x4_addSaturate', 'Int32x4_subSaturate', 'Uint32x4_addSaturate', 'Uint32x4_subSaturate']
+      nonexisting_simd_symbols += [(x + '_' + y) for x in ['Int8x16', 'Uint8x16', 'Int16x8', 'Uint16x8', 'Float64x2'] for y in ['load2', 'load3', 'store2', 'store3']]
+      nonexisting_simd_symbols += [(x + '_' + y) for x in ['Int8x16', 'Uint8x16', 'Int16x8', 'Uint16x8'] for y in ['load1', 'load1']]
 
       asm_global_funcs += ''.join(['  var SIMD_' + ty + '=global' + access_quote('SIMD') + access_quote(ty) + ';\n' for ty in simdtypes])
 

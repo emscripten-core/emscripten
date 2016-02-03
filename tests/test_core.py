@@ -5951,6 +5951,31 @@ return malloc(size);
     self.do_run_from_file(src, output)
 
   @SIMD
+  def test_simd_float64x2(self):
+    src, output = (path_from_root('tests', 'core', 'test_simd_float64x2') + s for s in ('.c', '.out'))
+    self.do_run_from_file(src, output)
+
+  @SIMD
+  def test_simd_float32x4(self):
+    src, output = (path_from_root('tests', 'core', 'test_simd_float32x4') + s for s in ('.c', '.out'))
+    self.do_run_from_file(src, output)
+
+  @SIMD
+  def test_simd_int32x4(self):
+    src, output = (path_from_root('tests', 'core', 'test_simd_int32x4') + s for s in ('.c', '.out'))
+    self.do_run_from_file(src, output)
+
+  @SIMD
+  def test_simd_int16x8(self):
+    src, output = (path_from_root('tests', 'core', 'test_simd_int16x8') + s for s in ('.c', '.out'))
+    self.do_run_from_file(src, output)
+
+  @SIMD
+  def test_simd_int8x16(self):
+    src, output = (path_from_root('tests', 'core', 'test_simd_int8x16') + s for s in ('.c', '.out'))
+    self.do_run_from_file(src, output)
+
+  @SIMD
   def test_simd_dyncall(self):
     test_path = path_from_root('tests', 'core', 'test_simd_dyncall')
     src, output = (test_path + s for s in ('.cpp', '.txt'))
