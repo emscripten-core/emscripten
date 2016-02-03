@@ -450,20 +450,20 @@ uint8x16 emscripten_uint8x16_swizzle(uint8x16 __a, int __lane0, int __lane1, int
 uint8x16 emscripten_uint8x16_shuffle(uint8x16 __a, uint8x16 __b, int __lane0, int __lane1, int __lane2, int __lane3, int __lane4, int __lane5, int __lane6, int __lane7, int __lane8, int __lane9, int __lane10, int __lane11, int __lane12, int __lane13, int __lane14, int __lane15) __attribute__((__nothrow__, __const__));
 
 // Bool64x2
-bool emscripten_bool64x2_anyTrue(bool64x2 __a, bool64x2 __b) __attribute__((__nothrow__, __const__));
-bool emscripten_bool64x2_allTrue(bool64x2 __a, bool64x2 __b) __attribute__((__nothrow__, __const__));
+int emscripten_bool64x2_anyTrue(bool64x2 __a, bool64x2 __b) __attribute__((__nothrow__, __const__));
+int emscripten_bool64x2_allTrue(bool64x2 __a, bool64x2 __b) __attribute__((__nothrow__, __const__));
 
 // Bool32x4
-bool emscripten_bool32x4_anyTrue(bool32x4 __a, bool32x4 __b) __attribute__((__nothrow__, __const__));
-bool emscripten_bool32x4_allTrue(bool32x4 __a, bool32x4 __b) __attribute__((__nothrow__, __const__));
+int emscripten_bool32x4_anyTrue(bool32x4 __a, bool32x4 __b) __attribute__((__nothrow__, __const__));
+int emscripten_bool32x4_allTrue(bool32x4 __a, bool32x4 __b) __attribute__((__nothrow__, __const__));
 
 // Bool16x8
-bool emscripten_bool16x8_anyTrue(bool16x8 __a, bool16x8 __b) __attribute__((__nothrow__, __const__));
-bool emscripten_bool16x8_allTrue(bool16x8 __a, bool16x8 __b) __attribute__((__nothrow__, __const__));
+int emscripten_bool16x8_anyTrue(bool16x8 __a, bool16x8 __b) __attribute__((__nothrow__, __const__));
+int emscripten_bool16x8_allTrue(bool16x8 __a, bool16x8 __b) __attribute__((__nothrow__, __const__));
 
 // Bool8x16
-bool emscripten_bool8x16_anyTrue(bool8x16 __a, bool8x16 __b) __attribute__((__nothrow__, __const__));
-bool emscripten_bool8x16_allTrue(bool8x16 __a, bool8x16 __b) __attribute__((__nothrow__, __const__));
+int emscripten_bool8x16_anyTrue(bool8x16 __a, bool8x16 __b) __attribute__((__nothrow__, __const__));
+int emscripten_bool8x16_allTrue(bool8x16 __a, bool8x16 __b) __attribute__((__nothrow__, __const__));
 
 #ifdef __cplusplus
 }
