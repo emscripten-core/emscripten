@@ -10,8 +10,6 @@ emscripten_float64x2_maxNum(v, w): 1.500000 2.500000
 emscripten_float64x2_minNum(v, w): -1.500000 1.500000
 emscripten_float64x2_neg(v): 1.500000 -2.500000
 emscripten_float64x2_sqrt(v): nan 1.581139
-emscripten_float64x2_reciprocalApproximation(v): -0.666667 0.400000
-emscripten_float64x2_reciprocalSqrtApproximation(v): nan 0.632456
 emscripten_float64x2_abs(v): 1.500000 2.500000
 emscripten_float64x2_and(v, w): 1.500000 0.000000
 emscripten_float64x2_xor(v, w): -0.000000 nan

@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
+#include <math.h>
+#include <assert.h>
 
 void dump(const char *name, float32x4 vec)
 {
@@ -34,8 +36,16 @@ int main()
     DUMP(emscripten_float32x4_minNum(v, w));
     DUMP(emscripten_float32x4_neg(v));
     DUMP(emscripten_float32x4_sqrt(v));
-    DUMP(emscripten_float32x4_reciprocalApproximation(v));
-    DUMP(emscripten_float32x4_reciprocalSqrtApproximation(v));
+    float32x4 rcp = emscripten_float32x4_reciprocalApproximation(v);
+    assert(fabs(emscripten_float32x4_extractLane(rcp, 0) - 1.0 / emscripten_float32x4_extractLane(v, 0)) < 0.1);
+    assert(isinf(emscripten_float32x4_extractLane(rcp, 1)));
+    assert(fabs(emscripten_float32x4_extractLane(rcp, 2) - 1.0 / emscripten_float32x4_extractLane(v, 2)) < 0.1);
+    assert(fabs(emscripten_float32x4_extractLane(rcp, 3) - 1.0 / emscripten_float32x4_extractLane(v, 3)) < 0.1);
+    float32x4 rcpSqrt = emscripten_float32x4_reciprocalSqrtApproximation(v);
+    assert(isnan(emscripten_float32x4_extractLane(rcpSqrt, 0)));
+    assert(isinf(emscripten_float32x4_extractLane(rcpSqrt, 1)));
+    assert(fabs(emscripten_float32x4_extractLane(rcpSqrt, 2) - 1.0 / sqrt(emscripten_float32x4_extractLane(v, 2))) < 0.1);
+    assert(fabs(emscripten_float32x4_extractLane(rcpSqrt, 3) - 1.0 / sqrt(emscripten_float32x4_extractLane(v, 3))) < 0.1);
     DUMP(emscripten_float32x4_abs(v));
     DUMP(emscripten_float32x4_and(v, w));
     DUMP(emscripten_float32x4_xor(v, w));

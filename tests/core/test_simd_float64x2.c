@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
+#include <math.h>
+#include <assert.h>
 
 void dump(const char *name, float64x2 vec)
 {
@@ -34,8 +36,12 @@ int main()
     DUMP(emscripten_float64x2_minNum(v, w));
     DUMP(emscripten_float64x2_neg(v));
     DUMP(emscripten_float64x2_sqrt(v));
-    DUMP(emscripten_float64x2_reciprocalApproximation(v));
-    DUMP(emscripten_float64x2_reciprocalSqrtApproximation(v));
+    float64x2 rcp = emscripten_float64x2_reciprocalApproximation(v);
+    assert(fabs(emscripten_float64x2_extractLane(rcp, 0) - 1.0 / emscripten_float64x2_extractLane(v, 0)) < 0.1);
+    assert(fabs(emscripten_float64x2_extractLane(rcp, 1) - 1.0 / emscripten_float64x2_extractLane(v, 1)) < 0.1);
+    float64x2 rcpSqrt = emscripten_float64x2_reciprocalSqrtApproximation(v);
+    // assert(isnan(emscripten_float64x2_extractLane(rcpSqrt, 0))); XXX TODO Enable once Float64x2 type lands in SIMD.js.
+    assert(fabs(emscripten_float64x2_extractLane(rcpSqrt, 1) - 1.0 / sqrt(emscripten_float64x2_extractLane(v, 1))) < 0.1);
     DUMP(emscripten_float64x2_abs(v));
     DUMP(emscripten_float64x2_and(v, w));
     DUMP(emscripten_float64x2_xor(v, w));

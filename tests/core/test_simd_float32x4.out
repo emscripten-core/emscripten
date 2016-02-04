@@ -10,8 +10,6 @@ emscripten_float32x4_maxNum(v, w): 2.000000 2.000000 2.000000 3.500000
 emscripten_float32x4_minNum(v, w): -1.000000 0.000000 1.000000 2.000000
 emscripten_float32x4_neg(v): 1.000000 -0.000000 -1.000000 -3.500000
 emscripten_float32x4_sqrt(v): nan 0.000000 1.000000 1.870829
-emscripten_float32x4_reciprocalApproximation(v): -1.000000 inf 1.000000 0.285714
-emscripten_float32x4_reciprocalSqrtApproximation(v): nan inf 1.000000 0.534522
 emscripten_float32x4_abs(v): 1.000000 0.000000 1.000000 3.500000
 emscripten_float32x4_and(v, w): 0.000000 0.000000 0.000000 2.000000
 emscripten_float32x4_xor(v, w): -inf 2.000000 inf 0.000000
