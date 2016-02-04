@@ -118,7 +118,7 @@ function JSify(data, functionsOnly) {
       functionStubSigs[item.ident] = Functions.getSignature(item.returnType.text, item.params.map(function(arg) { return arg.type }), false);
     }
 
-    function addFromLibrary(ident, notDep) {
+    function addFromLibrary(ident) {
       if (ident in addedLibraryItems) return '';
       addedLibraryItems[ident] = true;
 
@@ -139,7 +139,7 @@ function JSify(data, functionsOnly) {
       var noExport = false;
 
       if ((!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) || SIDE_MODULE) {
-        if (notDep) {
+        if (!(finalName in IMPLEMENTED_FUNCTIONS)) {
           if (VERBOSE || ident.substr(0, 11) !== 'emscripten_') { // avoid warning on emscripten_* functions which are for internal usage anyhow
             if (!LINKABLE) {
               if (ERROR_ON_UNDEFINED_SYMBOLS) error('unresolved symbol: ' + ident);
@@ -260,7 +260,7 @@ function JSify(data, functionsOnly) {
           delete LibraryManager.library[shortident + '__deps'];
         }
       }
-      item.JS = addFromLibrary(shortident, true);
+      item.JS = addFromLibrary(shortident);
     }
   }
 

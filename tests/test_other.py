@@ -5347,6 +5347,54 @@ int main() {
   def test_no_missing_symbols(self): # simple hello world should not show any missing symbols
     check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'])
 
+    # main() is implemented in C, and even if requested from JS, we should not warn
+    open('library_foo.js', 'w').write('''
+mergeInto(LibraryManager.library, {
+  my_js__deps: ['main'],
+  my_js: (function() {
+      return function() {
+        console.log("hello " + _nonexistingvariable);
+      };
+  }()),
+});
+''')
+    open('test.cpp', 'w').write('''
+#include<stdio.h>
+#include<stdlib.h>
+
+extern "C" {
+  extern void my_js();
+}
+
+int main() {
+  my_js();
+  return EXIT_SUCCESS;
+}
+''')
+    check_execute([PYTHON, EMCC, 'test.cpp', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1', '--js-library', 'library_foo.js'])
+
+    # but we do error on a missing js var
+    open('library_foo.js', 'w').write('''
+mergeInto(LibraryManager.library, {
+  my_js__deps: ['main', 'nonexistingvariable'],
+  my_js: (function() {
+      return function() {
+        console.log("hello " + _nonexistingvariable);
+      };
+  }()),
+});
+''')
+    proc = Popen([PYTHON, EMCC, 'test.cpp', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1', '--js-library', 'library_foo.js'], stderr=PIPE)
+    out, err = proc.communicate()
+    assert proc.returncode != 0
+    assert 'unresolved symbol' in err
+
+    # and also for missing C code, of course (without the --js-library, it's just a missing C method)
+    proc = Popen([PYTHON, EMCC, 'test.cpp', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'], stderr=PIPE)
+    out, err = proc.communicate()
+    assert proc.returncode != 0
+    assert 'unresolved symbol' in err
+
   def test_realpath(self):
     open('src.c', 'w').write(r'''
 #include <stdlib.h>

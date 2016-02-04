@@ -193,6 +193,8 @@ def emscript(infile, settings, outfile, outfile_name, libraries=[], compiler_eng
 
     settings['MAX_GLOBAL_ALIGN'] = metadata['maxGlobalAlign']
 
+    settings['IMPLEMENTED_FUNCTIONS'] = metadata['implementedFunctions']
+
     assert not (metadata['simd'] and settings['SPLIT_MEMORY']), 'SIMD is used, but not supported in SPLIT_MEMORY'
 
     # Save settings to a file to work around v8 issue 1579
