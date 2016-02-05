@@ -177,7 +177,7 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
       console.log(x);
     };
     if (!Module['printErr']) Module['printErr'] = function printErr(x) {
-      console.log(x);
+      console.warn(x);
     };
   } else {
     // Probably a worker, and without console.log. We can do very little here...
