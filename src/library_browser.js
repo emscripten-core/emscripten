@@ -2,7 +2,7 @@
 
 // Utilities for browser environments
 mergeInto(LibraryManager.library, {
-  $Browser__deps: ['$PATH', 'emscripten_set_main_loop', 'emscripten_set_main_loop_timing'],
+  $Browser__deps: ['emscripten_set_main_loop', 'emscripten_set_main_loop_timing'],
   $Browser__postset: 'Module["requestFullScreen"] = function Module_requestFullScreen(lockPointer, resizeCanvas, vrDevice) { Browser.requestFullScreen(lockPointer, resizeCanvas, vrDevice) };\n' + // exports
                      'Module["requestAnimationFrame"] = function Module_requestAnimationFrame(func) { Browser.requestAnimationFrame(func) };\n' +
                      'Module["setCanvasSize"] = function Module_setCanvasSize(width, height, noUpdates) { Browser.setCanvasSize(width, height, noUpdates) };\n' +
@@ -746,7 +746,7 @@ mergeInto(LibraryManager.library, {
   },
 
 #if ASYNCIFY
-  emscripten_wget__deps: ['emscripten_async_resume'],
+  emscripten_wget__deps: ['emscripten_async_resume', '$PATH'],
   emscripten_wget: function(url, file) {
     var _url = Pointer_stringify(url);
     var _file = Pointer_stringify(file);
@@ -766,6 +766,7 @@ mergeInto(LibraryManager.library, {
   },
 #endif
 
+  emscripten_async_wget__deps: ['$PATH'],
   emscripten_async_wget: function(url, file, onload, onerror) {
     Module['noExitRuntime'] = true;
 
@@ -977,6 +978,7 @@ mergeInto(LibraryManager.library, {
     }
   },
 
+  emscripten_run_preload_plugins__deps: ['$PATH'],
   emscripten_run_preload_plugins: function(file, onload, onerror) {
     Module['noExitRuntime'] = true;
 
@@ -1391,6 +1393,7 @@ mergeInto(LibraryManager.library, {
     return info.awaited;
   },
 
+  emscripten_get_preloaded_image_data__deps: ['$PATH'],
   emscripten_get_preloaded_image_data: function(path, w, h) {
     if (typeof path === "number") {
       path = Pointer_stringify(path);
