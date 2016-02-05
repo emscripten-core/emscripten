@@ -81,10 +81,13 @@ if (ENVIRONMENT_IS_NODE) {
     process['stderr'].write(x + '\n');
   };
 
-  var nodeFS = require('fs');
-  var nodePath = require('path');
+  var nodeFS;
+  var nodePath;
 
   Module['read'] = function read(filename, binary) {
+    if (!nodeFS) nodeFS = require('fs');
+    if (!nodePath) nodePath = require('path');
+
     filename = nodePath['normalize'](filename);
     var ret = nodeFS['readFileSync'](filename);
     // The path is absolute if the normalized version is the same as the resolved.
