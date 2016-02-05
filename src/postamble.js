@@ -257,24 +257,9 @@ function exit(status, implicit) {
     if (Module['onExit']) Module['onExit'](status);
   }
 
-#if NODE_STDOUT_FLUSH_WORKAROUND
   if (ENVIRONMENT_IS_NODE) {
-    // Work around a node.js bug where stdout buffer is not flushed at process exit:
-    // Instead of process.exit() directly, wait for stdout flush event.
-    // See https://github.com/joyent/node/issues/1669 and https://github.com/kripken/emscripten/issues/2582
-    // Workaround is based on https://github.com/RReverser/acorn/commit/50ab143cecc9ed71a2d66f78b4aec3bb2e9844f6
-    process['stdout']['once']('drain', function () {
-      process['exit'](status);
-    });
-    console.log(' '); // Make sure to print something to force the drain event to occur, in case the stdout buffer was empty.
-    // Work around another node bug where sometimes 'drain' is never fired - make another effort
-    // to emit the exit status, after a significant delay (if node hasn't fired drain by then, give up)
-    setTimeout(function() {
-      process['exit'](status);
-    }, 500);
-  } else
-#endif
-  if (ENVIRONMENT_IS_SHELL && typeof quit === 'function') {
+    process['exit'](status);
+  } else if (ENVIRONMENT_IS_SHELL && typeof quit === 'function') {
     quit(status);
   }
   // if we reach here, we must throw an exception to halt the current execution

@@ -74,12 +74,8 @@ var currentScriptUrl = ENVIRONMENT_IS_WORKER ? undefined : document.currentScrip
 if (ENVIRONMENT_IS_NODE) {
   // Expose functionality in the same simple way that the shells work
   // Note that we pollute the global namespace here, otherwise we break in node
-  if (!Module['print']) Module['print'] = function print(x) {
-    process['stdout'].write(x + '\n');
-  };
-  if (!Module['printErr']) Module['printErr'] = function printErr(x) {
-    process['stderr'].write(x + '\n');
-  };
+  if (!Module['print']) Module['print'] = console.log;
+  if (!Module['printErr']) Module['printErr'] = console.warn;
 
   var nodeFS;
   var nodePath;

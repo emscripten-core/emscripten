@@ -4664,7 +4664,7 @@ int main(void) {
     inname = path_from_root('tests', 'hello_world.c')
     Building.emcc(inname, output_filename='a.out.js')
     output = Popen(NODE_JS + ['-e', 'require("./a.out.js")'], stdout=PIPE, stderr=PIPE).communicate()
-    assert output == ('hello, world!\n \n', ''), 'expected no output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % output
+    assert output == ('hello, world!\n', ''), 'expected no output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % output
 
   def test_native_optimizer(self):
     def test(args, expected):

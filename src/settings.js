@@ -374,9 +374,6 @@ var NO_BROWSER = 0; // If set, disables building in browser support using the Br
                     // just doing pure computation in a library, and don't need any browser capabilities like a main loop
                     // (emscripten_set_main_loop), or setTimeout, etc.
 
-var NODE_STDOUT_FLUSH_WORKAROUND = 1; // Whether or not to work around node issues with not flushing stdout. This
-                                      // can cause unnecessary whitespace to be printed.
-
 var EXPORTED_FUNCTIONS = ['_main'];
                                     // Functions that are explicitly exported. These functions are kept alive
                                     // through LLVM dead code elimination, and also made accessible outside of
