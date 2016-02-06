@@ -694,13 +694,13 @@ function ftCall_%s(%s) {%s
 
     def quote(prop):
       if settings['USE_CLOSURE_COMPILER'] == 2:
-        return "'" + prop + "'"
+        return ''.join(map(lambda p: "'" + p + "'", prop.split('.')))
       else:
         return prop
 
     def access_quote(prop):
       if settings['USE_CLOSURE_COMPILER'] == 2:
-        return "['" + prop + "']"
+        return ''.join(map(lambda p: "['" + p + "']", prop.split('.')))
       else:
         return '.' + prop
 

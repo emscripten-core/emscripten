@@ -4851,6 +4851,11 @@ Pass: 0.000012 0.000012''')
     if '-O2' in self.emcc_args:
       self.emcc_args += ['--closure', '1'] # Use closure here, to test we don't break FS stuff
       self.emcc_args = filter(lambda x: x != '-g', self.emcc_args) # ensure we test --closure 1 --memory-init-file 1 (-g would disable closure)
+    elif '-O3' in self.emcc_args:
+      print 'closure 2'
+      self.emcc_args += ['--closure', '2'] # Use closure 2 here for some additional coverage
+
+    print 'base', self.emcc_args
 
     post = '''
 def process(filename):
