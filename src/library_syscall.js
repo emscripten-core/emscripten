@@ -752,6 +752,9 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
     return SYSCALLS.doReadv(stream, iov, iovcnt);
   },
+#if NO_FILESYSTEM
+  __syscall146__postset: '/* flush anything remaining in the buffer during shutdown */ __ATEXIT__.push(function() { var fflush = Module["_fflush"]; if (fflush) fflush(0); var buffer = ___syscall146.buffer; if (buffer && buffer.length > 0) Module["print"](UTF8ArrayToString(buffer, 0)); });',
+#endif
   __syscall146: function(which, varargs) { // writev
 #if NO_FILESYSTEM == 0
     var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
@@ -760,7 +763,9 @@ var SyscallsLibrary = {
     // hack to support printf in NO_FILESYSTEM
     var stream = SYSCALLS.get(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
     var ret = 0;
-    if (!___syscall146.buffer) ___syscall146.buffer = [];
+    if (!___syscall146.buffer) {
+      ___syscall146.buffer = [];
+    }
     var buffer = ___syscall146.buffer;
     for (var i = 0; i < iovcnt; i++) {
       var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
