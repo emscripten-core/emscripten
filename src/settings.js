@@ -370,9 +370,6 @@ var NO_FILESYSTEM = 0; // If set, does not build in any filesystem support. Usef
                        // computation, but not reading files or using any streams (including fprintf, and other
                        // stdio.h things) or anything related. The one exception is there is partial support for printf,
                        // and puts, hackishly.
-var NO_BROWSER = 0; // If set, disables building in browser support using the Browser object. Useful if you are
-                    // just doing pure computation in a library, and don't need any browser capabilities like a main loop
-                    // (emscripten_set_main_loop), or setTimeout, etc.
 
 var EXPORTED_FUNCTIONS = ['_main'];
                                     // Functions that are explicitly exported. These functions are kept alive
@@ -409,7 +406,7 @@ var DEBUG_LEVEL = 0;         // this will contain the debug level (-gx). you sho
 // C API call from C, but you want to call it from JS,
 // add it here (and in EXPORTED FUNCTIONS with prefix
 // "_", if you use closure compiler).
-var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = ['memcpy', 'memset', 'malloc', 'free', '$Browser'];
+var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = ['memcpy', 'memset', 'malloc', 'free'];
 
 var LIBRARY_DEPS_TO_AUTOEXPORT = ['memcpy']; // This list is also used to determine
                                              // auto-exporting of library dependencies (i.e., functions that

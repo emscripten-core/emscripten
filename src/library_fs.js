@@ -1759,7 +1759,7 @@ mergeInto(LibraryManager.library, {
     // do preloading for the Image/Audio part, as if the typed array were the
     // result of an XHR that you did manually.
     createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) {
-      Browser.init();
+      Browser.init(); // XXX perhaps this method should move onto Browser?
       // TODO we should allow people to just pass in a complete filename instead
       // of parent and name being that we just join them anyways
       var fullname = name ? PATH.resolve(PATH.join2(parent, name)) : parent;

@@ -4236,24 +4236,28 @@ main(const int argc, const char * const * const argv)
         self.assertContained('hello, world!', run_js(name + '.js'))
       do('normal', [])
       do('no_fs', ['-s', 'NO_FILESYSTEM=1'])
-      do('no_browser', ['-s', 'NO_BROWSER=1'])
-      do('no_nuthin', ['-s', 'NO_FILESYSTEM=1', '-s', 'NO_BROWSER=1'])
-      do('no_nuthin_less', ['-s', 'NO_FILESYSTEM=1', '-s', 'NO_BROWSER=1', '-s', 'EXPORTED_RUNTIME_METHODS=[]'])
+      do('no_nuthin', ['-s', 'NO_FILESYSTEM=1', '-s', 'EXPORTED_RUNTIME_METHODS=[]'])
       print '  ', sizes
       assert sizes['no_fs'] < sizes['normal']
-      assert sizes['no_browser'] < sizes['normal']
       assert sizes['no_nuthin'] < sizes['no_fs']
-      assert sizes['no_nuthin'] < sizes['no_browser']
       assert sizes['no_nuthin'] < ratio*sizes['normal']
       assert sizes['no_nuthin'] < absolute
-      assert sizes['no_nuthin_less'] < sizes['no_nuthin']
       if '--closure' in opts: # no EXPORTED_RUNTIME_METHODS makes closure much more effective
-        assert sizes['no_nuthin_less'] < 0.93*sizes['no_nuthin']
+        assert sizes['no_nuthin'] < 0.93*sizes['no_fs']
     test([], 0.66, 250000)
     test(['-O1'], 0.66, 225000)
     test(['-O2'], 0.50, 75000)
     test(['-O3', '--closure', '1'], 0.60, 60000)
     test(['-O3', '--closure', '2'], 0.60, 41000) # might change now and then
+
+  def test_no_browser(self):
+    BROWSER_INIT = 'var Browser'
+
+    check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')])
+    assert BROWSER_INIT not in open('a.out.js').read()
+
+    check_execute([PYTHON, EMCC, path_from_root('tests', 'browser_main_loop.c')]) # uses emscripten_set_main_loop, which needs Browser
+    assert BROWSER_INIT in open('a.out.js').read()
 
   def test_EXPORTED_RUNTIME_METHODS(self):
     def test(opts, has, not_has):

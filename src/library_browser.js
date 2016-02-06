@@ -1,7 +1,7 @@
 //"use strict";
 
 // Utilities for browser environments
-mergeInto(LibraryManager.library, {
+var LibraryBrowser = {
   $Browser__deps: ['emscripten_set_main_loop', 'emscripten_set_main_loop_timing'],
   $Browser__postset: 'Module["requestFullScreen"] = function Module_requestFullScreen(lockPointer, resizeCanvas, vrDevice) { Browser.requestFullScreen(lockPointer, resizeCanvas, vrDevice) };\n' + // exports
                      'Module["requestAnimationFrame"] = function Module_requestAnimationFrame(func) { Browser.requestAnimationFrame(func) };\n' +
@@ -620,23 +620,8 @@ mergeInto(LibraryManager.library, {
       }
     },
 
-    xhrLoad: function(url, onload, onerror) {
-      var xhr = new XMLHttpRequest();
-      xhr.open('GET', url, true);
-      xhr.responseType = 'arraybuffer';
-      xhr.onload = function xhr_onload() {
-        if (xhr.status == 200 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
-          onload(xhr.response);
-        } else {
-          onerror();
-        }
-      };
-      xhr.onerror = onerror;
-      xhr.send(null);
-    },
-
     asyncLoad: function(url, onload, onerror, noRunDep) {
-      Browser.xhrLoad(url, function(arrayBuffer) {
+      Module['readAsync'](url, function(arrayBuffer) {
         assert(arrayBuffer, 'Loading data file "' + url + '" failed (no arrayBuffer).');
         onload(new Uint8Array(arrayBuffer));
         if (!noRunDep) removeRunDependency('al ' + url);
@@ -1427,7 +1412,11 @@ mergeInto(LibraryManager.library, {
 
     return 0;
   }
-});
+};
+
+autoAddDeps(LibraryBrowser, '$Browser');
+
+mergeInto(LibraryManager.library, LibraryBrowser);
 
 /* Useful stuff for browser debugging
 

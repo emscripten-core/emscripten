@@ -175,10 +175,6 @@ DEAD_FUNCTIONS = numberedSet(DEAD_FUNCTIONS);
 
 RUNTIME_DEBUG = LIBRARY_DEBUG || GL_DEBUG;
 
-if (NO_BROWSER) {
-  DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.filter(function(func) { return func !== '$Browser' });
-}
-
 // Output some info and warnings based on settings
 
 if (VERBOSE) printErr('VERBOSE is on, this generates a lot of output and can slow down compilation');

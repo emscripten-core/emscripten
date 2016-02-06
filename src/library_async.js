@@ -52,7 +52,7 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  emscripten_sleep__deps: ['emscripten_async_resume'],
+  emscripten_sleep__deps: ['emscripten_async_resume', '$Browser'],
   emscripten_sleep: function(ms) {
     asm.setAsync(); // tell the scheduler that we have a callback on hold
     Browser.safeSetTimeout(_emscripten_async_resume, ms);

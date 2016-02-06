@@ -1045,6 +1045,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if proxy_to_worker:
       shared.Settings.PROXY_TO_WORKER = 1
 
+    if proxy_to_worker or use_preload_plugins:
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$Browser']
+
     if js_opts:
       shared.Settings.RUNNING_JS_OPTS = 1
 

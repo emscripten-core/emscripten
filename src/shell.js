@@ -168,6 +168,21 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
     return xhr.responseText;
   };
 
+  Module['readAsync'] = function readAsync(url, onload, onerror) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.responseType = 'arraybuffer';
+    xhr.onload = function xhr_onload() {
+      if (xhr.status == 200 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
+        onload(xhr.response);
+      } else {
+        onerror();
+      }
+    };
+    xhr.onerror = onerror;
+    xhr.send(null);
+  };
+
   if (typeof arguments != 'undefined') {
     Module['arguments'] = arguments;
   }

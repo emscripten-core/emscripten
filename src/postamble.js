@@ -62,7 +62,7 @@ if (memoryInitializer) {
       removeRunDependency('memory initializer');
     }
     function doBrowserLoad() {
-      Browser.asyncLoad(memoryInitializer, applyMemoryInitializer, function() {
+      Module['readAsync'](memoryInitializer, applyMemoryInitializer, function() {
         throw 'could not load memory initializer ' + memoryInitializer;
       });
     }

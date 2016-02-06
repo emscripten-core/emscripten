@@ -98,6 +98,7 @@ var LibraryManager = {
 
     var libraries = [
       'library.js',
+      'library_browser.js',
       'library_formatString.js',
       'library_syscall.js'
     ];
@@ -112,11 +113,6 @@ var LibraryManager = {
         'library_workerfs.js',
         'library_tty.js',
         'library_lz4.js',
-      ]);
-    }
-    if (!NO_BROWSER) {
-      libraries = libraries.concat([
-        'library_browser.js'
       ]);
     }
     libraries = libraries.concat([
