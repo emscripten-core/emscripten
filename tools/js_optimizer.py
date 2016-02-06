@@ -481,7 +481,7 @@ EMSCRIPTEN_FUNCS();
       if DEBUG: print >> sys.stderr, 'running cleanup on shell code'
       next = cld + '.cl.js'
       temp_files.note(next)
-      subprocess.Popen(js_engine + [JS_OPTIMIZER, cld, 'noPrintMetadata'] + (['minifyWhitespace'] if 'minifyWhitespace' in passes else []), stdout=open(next, 'w')).communicate()
+      subprocess.Popen(js_engine + [JS_OPTIMIZER, cld, 'noPrintMetadata', 'JSDCE'] + (['minifyWhitespace'] if 'minifyWhitespace' in passes else []), stdout=open(next, 'w')).communicate()
       cld = next
     coutput = open(cld).read()
     coutput = coutput.replace('wakaUnknownBefore();', start_asm)
