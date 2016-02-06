@@ -594,7 +594,9 @@ var SyscallsLibrary = {
   __syscall114: function(which, varargs) { // wait4
     abort('cannot wait on child processes');
   },
+#if EMTERPRETIFY_ASYNC
   __syscall118__deps: ['$EmterpreterAsync'],
+#endif
   __syscall118: function(which, varargs) { // fsync
     var stream = SYSCALLS.getStreamFromFD();
 #if EMTERPRETIFY_ASYNC
