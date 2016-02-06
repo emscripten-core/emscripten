@@ -56,7 +56,7 @@ class browser(BrowserCore):
   @classmethod
   def setUpClass(self):
     super(browser, self).setUpClass()
-    self.browser_timeout = 10
+    self.browser_timeout = 20
     print
     print 'Running the browser tests. Make sure the browser allows popups from localhost.'
     print
@@ -546,7 +546,7 @@ window.close = function() {
   // wait for rafs to arrive and the screen to update before reftesting
   setTimeout(function() {
     doReftest();
-    setTimeout(windowClose, 1000);
+    setTimeout(windowClose, 5000);
   }, 1000);
 };
 </script>
@@ -2487,7 +2487,7 @@ window.close = function() {
   // wait for rafs to arrive and the screen to update before reftesting
   setTimeout(function() {
     doReftest();
-    setTimeout(windowClose, 1000);
+    setTimeout(windowClose, 5000);
   }, 1000);
 };
 </script>

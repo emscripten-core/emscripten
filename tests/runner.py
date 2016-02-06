@@ -793,7 +793,7 @@ class BrowserCore(RunnerCore):
       };
       Module['postRun'] = doReftest;
       Module['preRun'].push(function() {
-        setTimeout(doReftest, 1000); // if run() throws an exception and postRun is not called, this will kick in
+        setTimeout(doReftest, 5000); // if run() throws an exception and postRun is not called, this will kick in
       });
 
       if (typeof WebGLClient !== 'undefined') {
@@ -801,7 +801,7 @@ class BrowserCore(RunnerCore):
         var realRAF = window.requestAnimationFrame;
         window.requestAnimationFrame = function(func) {
           realRAF(func);
-          setTimeout(doReftest, 1000);
+          setTimeout(doReftest, 5000);
         };
 
         // trigger reftest from canvas render too, for workers not doing GL
@@ -809,7 +809,7 @@ class BrowserCore(RunnerCore):
         worker.onmessage = function(event) {
           realWOM(event);
           if (event.data.target === 'canvas' && event.data.op === 'render') {
-            setTimeout(doReftest, 1000);
+            setTimeout(doReftest, 5000);
           }
         };
       }
