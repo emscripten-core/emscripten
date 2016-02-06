@@ -1045,6 +1045,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if proxy_to_worker:
       shared.Settings.PROXY_TO_WORKER = 1
 
+    if use_preload_plugins:
+      shared.Settings.FORCE_FILESYSTEM = 1 # preload plugins require preload support which is part of the filesystem
+
     if proxy_to_worker or use_preload_plugins:
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$Browser']
 
@@ -1055,12 +1058,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location'] # so FS can report errno back to C
       if not shared.Settings.NO_EXIT_RUNTIME:
         shared.Settings.EXPORTED_FUNCTIONS += ['_fflush'] # to flush the streams on FS quit
+                                                          # TODO this forces 4 syscalls, maybe we should avoid it?
 
     if shared.Settings.USE_PTHREADS:
       if not any(s.startswith('PTHREAD_POOL_SIZE=') for s in settings_changes):
         settings_changes.append('PTHREAD_POOL_SIZE=0')
       js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
       newargs.append('-D__EMSCRIPTEN_PTHREADS__=1')
+      shared.Settings.FORCE_FILESYSTEM = 1 # proxying of utime requires the filesystem
     else:
       js_libraries.append(shared.path_from_root('src', 'library_pthread_stub.js'))
 

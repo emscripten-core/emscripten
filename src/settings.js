@@ -364,6 +364,12 @@ var NO_FILESYSTEM = 0; // If set, does not build in any filesystem support. Usef
                        // computation, but not reading files or using any streams (including fprintf, and other
                        // stdio.h things) or anything related. The one exception is there is partial support for printf,
                        // and puts, hackishly.
+                       // The compiler will automatically set this if it detects that syscall usage (which is static)
+                       // does not require a full filesystem. If you still want filesystem support, use
+                       // FORCE_FILESYSTEM
+var FORCE_FILESYSTEM = 0; // Makes full filesystem support be included, even if statically it looks like it is not
+                          // used. For example, if your C code uses no files, but you include some JS that does,
+                          // you might need this.
 
 var EXPORTED_FUNCTIONS = ['_main'];
                                     // Functions that are explicitly exported. These functions are kept alive

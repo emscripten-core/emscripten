@@ -177,6 +177,25 @@ def emscript(infile, settings, outfile, outfile_name, libraries=[], compiler_eng
 
     metadata['declares'] = filter(lambda i64_func: i64_func not in ['getHigh32', 'setHigh32', '__muldi3', '__divdi3', '__remdi3', '__udivdi3', '__uremdi3'], metadata['declares']) # FIXME: do these one by one as normal js lib funcs
 
+    # Syscalls optimization. Our syscalls are static, and so if we see a very limited set of them - in particular,
+    # no open() syscall and just simple writing - then we don't need full filesystem support.
+    # If FORCE_FILESYSTEM is set, we can't do this. We also don't do it if INCLUDE_FULL_LIBRARY, since
+    # not including the filesystem would mean not including the full JS libraries.
+    if not settings['NO_FILESYSTEM'] and not settings['FORCE_FILESYSTEM'] and not settings['INCLUDE_FULL_LIBRARY']:
+      syscall_prefix = '__syscall'
+      syscalls = filter(lambda declare: declare.startswith(syscall_prefix), metadata['declares'])
+      def is_int(x):
+        try:
+          int(x)
+          return True
+        except:
+          return False
+      syscalls = filter(lambda declare: is_int(declare[len(syscall_prefix):]), syscalls)
+      syscalls = map(lambda declare: int(declare[len(syscall_prefix):]), syscalls)
+      if set(syscalls).issubset(set([6, 54, 140, 146])): # close, ioctl, llseek, writev
+        if DEBUG: logging.debug('very limited syscalls (%s) so disabling full filesystem support' % ', '.join(map(str, syscalls)))
+        settings['NO_FILESYSTEM'] = 1
+
     # Integrate info from backend
     if settings['SIDE_MODULE']:
       settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = [] # we don't need any JS library contents in side modules

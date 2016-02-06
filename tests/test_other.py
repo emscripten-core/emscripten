@@ -4214,16 +4214,52 @@ main(const int argc, const char * const * const argv)
     test(['-O1'])
 
   def test_no_filesystem(self):
-    check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'])
+    FS_MARKER = 'var FS'
+    # fopen forces full filesystem support
+    check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world_fopen.c'), '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'])
     yes_size = os.stat('a.out.js').st_size
     self.assertContained('hello, world!', run_js('a.out.js'))
-    check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1', '-s', 'NO_FILESYSTEM=1'])
+    assert FS_MARKER in open('a.out.js').read()
+    check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'])
     no_size = os.stat('a.out.js').st_size
     self.assertContained('hello, world!', run_js('a.out.js'))
+    assert FS_MARKER not in open('a.out.js').read()
     print 'yes fs, no fs:', yes_size, no_size
     assert yes_size - no_size > 100000 # 100K of FS code is removed
+    assert no_size < 315000
 
   def test_no_nuthin(self):
+    print 'part one: check NO_FILESYSTEM is automatically set, and effective'
+    def test(opts, ratio, absolute):
+      print 'opts, ratio, absolute:', opts, ratio, absolute
+      def get_size(name):
+        return os.stat(name).st_size
+      sizes = {}
+      def do(name, source, moar_opts):
+        self.clear()
+        Popen([PYTHON, EMCC, path_from_root('tests', source), '-o', name + '.js'] + opts + moar_opts).communicate()
+        sizes[name] = get_size(name + '.js')
+        self.assertContained('hello, world!', run_js(name + '.js'))
+      do('normal', 'hello_world_fopen.c', [])
+      do('no_fs', 'hello_world.c', []) # without fopen, we should auto-detect we do not need full fs support and can do NO_FILESYSTEM
+      do('no_fs_manual', 'hello_world.c', ['-s', 'NO_FILESYSTEM=1'])
+      do('no_nuthin', 'hello_world.c', ['-s', 'EXPORTED_RUNTIME_METHODS=[]'])
+      print '  ', sizes
+      assert sizes['no_fs'] < sizes['normal']
+      assert sizes['no_nuthin'] < sizes['no_fs']
+      assert sizes['no_nuthin'] < ratio*sizes['normal']
+      assert sizes['no_nuthin'] < absolute
+      if '--closure' in opts: # no EXPORTED_RUNTIME_METHODS makes closure much more effective
+        assert sizes['no_nuthin'] < 0.975*sizes['no_fs']
+      assert sizes['no_fs_manual'] < sizes['no_fs'] # manual can remove a tiny bit more
+      assert sizes['no_fs'] < 1.02*sizes['no_fs_manual']
+    test([], 0.75, 320000)
+    test(['-O1'], 0.66, 210000)
+    test(['-O2'], 0.50, 70000)
+    test(['-O3', '--closure', '1'], 0.60, 50000)
+    test(['-O3', '--closure', '2'], 0.60, 41000) # might change now and then
+
+    print 'part two: focus on EXPORTED_RUNTIME_METHODS effects, on hello_world_em_asm'
     def test(opts, ratio, absolute):
       print 'opts, ratio, absolute:', opts, ratio, absolute
       def get_size(name):
@@ -4235,20 +4271,18 @@ main(const int argc, const char * const * const argv)
         sizes[name] = get_size(name + '.js')
         self.assertContained('hello, world!', run_js(name + '.js'))
       do('normal', [])
-      do('no_fs', ['-s', 'NO_FILESYSTEM=1'])
-      do('no_nuthin', ['-s', 'NO_FILESYSTEM=1', '-s', 'EXPORTED_RUNTIME_METHODS=[]'])
+      do('no_nuthin', ['-s', 'EXPORTED_RUNTIME_METHODS=[]'])
       print '  ', sizes
-      assert sizes['no_fs'] < sizes['normal']
-      assert sizes['no_nuthin'] < sizes['no_fs']
+      assert sizes['no_nuthin'] < sizes['normal']
       assert sizes['no_nuthin'] < ratio*sizes['normal']
       assert sizes['no_nuthin'] < absolute
       if '--closure' in opts: # no EXPORTED_RUNTIME_METHODS makes closure much more effective
-        assert sizes['no_nuthin'] < 0.93*sizes['no_fs']
-    test([], 0.66, 250000)
-    test(['-O1'], 0.66, 225000)
-    test(['-O2'], 0.50, 75000)
-    test(['-O3', '--closure', '1'], 0.60, 60000)
-    test(['-O3', '--closure', '2'], 0.60, 41000) # might change now and then
+        assert sizes['no_nuthin'] < 0.975*sizes['normal']
+    test([], 1, 200000)
+    test(['-O1'], 1, 200000)
+    test(['-O2'], 0.99, 75000)
+    test(['-O3', '--closure', '1'], 0.975, 50000)
+    test(['-O3', '--closure', '2'], 0.975, 41000) # might change now and then
 
   def test_no_browser(self):
     BROWSER_INIT = 'var Browser'
