@@ -180,8 +180,9 @@ def emscript(infile, settings, outfile, outfile_name, libraries=[], compiler_eng
     # Syscalls optimization. Our syscalls are static, and so if we see a very limited set of them - in particular,
     # no open() syscall and just simple writing - then we don't need full filesystem support.
     # If FORCE_FILESYSTEM is set, we can't do this. We also don't do it if INCLUDE_FULL_LIBRARY, since
-    # not including the filesystem would mean not including the full JS libraries.
-    if not settings['NO_FILESYSTEM'] and not settings['FORCE_FILESYSTEM'] and not settings['INCLUDE_FULL_LIBRARY']:
+    # not including the filesystem would mean not including the full JS libraries, and the same for
+    # MAIN_MODULE since a side module might need the filesystem.
+    if not settings['NO_FILESYSTEM'] and not settings['FORCE_FILESYSTEM'] and not settings['INCLUDE_FULL_LIBRARY'] and not settings['MAIN_MODULE']:
       syscall_prefix = '__syscall'
       syscalls = filter(lambda declare: declare.startswith(syscall_prefix), metadata['declares'])
       def is_int(x):
