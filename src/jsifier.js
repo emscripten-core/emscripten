@@ -201,7 +201,7 @@ function JSify(data, functionsOnly) {
         addedLibraryItems[postsetId] = true;
         itemsDict.GlobalVariablePostSet.push({
           intertype: 'GlobalVariablePostSet',
-          JS: postset
+          JS: postset + ';'
         });
       }
 
