@@ -2954,7 +2954,7 @@ var LibrarySDL = {
   },
 
   TTF_OpenFont: function(filename, size) {
-    filename = FS.standardizePath(Pointer_stringify(filename));
+    filename = PATH.normalize(Pointer_stringify(filename));
     var id = SDL.fonts.length;
     SDL.fonts.push({
       name: filename, // but we don't actually do anything with it..

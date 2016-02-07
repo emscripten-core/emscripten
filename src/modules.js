@@ -100,11 +100,11 @@ var LibraryManager = {
       'library.js',
       'library_browser.js',
       'library_formatString.js',
+      'library_path.js',
       'library_syscall.js'
     ];
     if (!NO_FILESYSTEM) {
       libraries = libraries.concat([
-        'library_path.js',
         'library_fs.js',
         'library_idbfs.js',
         'library_memfs.js',
