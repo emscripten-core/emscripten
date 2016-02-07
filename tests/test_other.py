@@ -2244,36 +2244,12 @@ done.
       }
     ''')
 
-    Popen([PYTHON, EMCC, 'src.cpp', '-s', 'LINKABLE=1']).communicate()
-    output = run_js('a.out.js')
-    self.assertContained('''operator new()
-main()
-f2()
-abcdabcdabcd(int)
-abcdabcdabcd(int)
-test(char, short, int, float, double, void*, int*, char*)
-test::moarr(char, short, long, float, double, void*, int*, char*)
-Waka::f::a23412341234::point()
-void Foo<int>()
-void Foo<int, double>(int)
-void Foo::Bar<5>()
-__cxxabiv1::__si_class_type_info::search_below_dst(__cxxabiv1::__dynamic_cast_info*, void*, int, bool)
-parseword(char*&, int, int&)
-multi(wchar_t, signed char, unsigned char, unsigned short, unsigned int, unsigned long, long long, unsigned long long, ...)
-a(int [32], char [5]*)
-FWakaGLXFleeflsMarfoo::FWakaGLXFleeflsMarfoo(unsigned int, unsigned int, unsigned int, void*, bool, unsigned int, unsigned int)
-void wakaw::Cm::RasterBase<wakaw::watwat::Polocator?>(unsigned int*, unsigned int)
-''', output)
-    # test for multiple functions in one stack trace
-    assert 'one(int)' in output
-    assert 'two(char)' in output
-
     # full demangle support
 
-    Popen([PYTHON, EMCC, 'src.cpp', '-s', 'LINKABLE=1', '-s', 'DEMANGLE_SUPPORT=1']).communicate()
+    Popen([PYTHON, EMCC, 'src.cpp', '-s', 'DEMANGLE_SUPPORT=1']).communicate()
     output = run_js('a.out.js')
     self.assertContained('''operator new(unsigned int)
-main()
+_main
 f2()
 abcdabcdabcd(int)
 abcdabcdabcd(int)
