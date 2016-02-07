@@ -59,6 +59,8 @@ Options that are modified or new in *emcc* are listed below:
 	
 	.. note:: This is a reasonable setting for a release build.
 
+	.. note:: These JavaScript optimizations can reduce code size by removing things that the compiler does not see being used, in particular, parts of the runtime may be stripped if they are not exported on the ``Module`` object. The compiler is aware of code in :ref:`--pre-js <emcc-pre-js>` and :ref:`--post-js <emcc-post-js>`, so you can safely use the runtime from there. Alternatively, you can use ``EXTRA_EXPORTED_RUNTIME_METHODS``, see `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_.
+
 .. _emcc-O3:
 
 ``-O3``
