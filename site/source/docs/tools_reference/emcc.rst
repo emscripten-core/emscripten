@@ -57,12 +57,14 @@ Options that are modified or new in *emcc* are listed below:
 ``-O2``
 	Like ``-O1``, but with various JavaScript-level optimizations and LLVM ``-O3`` optimizations. 
 	
-	.. note:: This is the recommended setting for a release build, offering slower compilation time in return for the smallest and fastest output.
+	.. note:: This is a reasonable setting for a release build.
 
 .. _emcc-O3:
 
 ``-O3``
 	Like ``-O2``, but with additional JavaScript optimizations that can take a significant amount of compilation time.
+
+	.. note:: This is a good setting for a release build.
 
 .. _emcc-Os: 
 	
