@@ -59,22 +59,20 @@ Options that are modified or new in *emcc* are listed below:
 	
 	.. note:: This is the recommended setting for a release build, offering slower compilation time in return for the smallest and fastest output.
 
+.. _emcc-O3:
+
+``-O3``
+	Like ``-O2``, but with additional JavaScript optimizations that can take a significant amount of compilation time.
+
 .. _emcc-Os: 
 	
 ``-Os``
-	Like ``-O2``, but with extra optimizations that reduce code size at the expense of performance. This applies only for bitcode optimization (``-O2`` is used for JavaScript optimizations).
+	Like ``-O3``, but with extra optimizations that reduce code size at the expense of performance. This can effect both bitcode generation and JavaScript.
 
 .. _emcc-Oz: 
 	
 ``-Oz``
-	Like ``-Os``, but reduces code size even further. This applies only for bitcode optimization (``-O2`` is used for JavaScript optimizations).
-
-.. _emcc-O3:
-
-``-O3``
-	Like ``-O2``, but with additional JavaScript optimizations that can take a significant amount of compilation time and/or are relatively new. 
-	
-	.. note:: This differs from ``-O2`` only during the bitcode to JavaScript (final link and JavaScript generation) stage. It is JavaScript-specific, so you can run ``-Os`` on your source files for example, and ``-O3`` during JavaScript generation if you want.
+	Like ``-Os``, but reduces code size even further. This can effect both bitcode generation and JavaScript.
 
  	.. note:: For more tips on optimizing your code, see :ref:`Optimizing-Code`.
 
