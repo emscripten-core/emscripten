@@ -979,6 +979,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.ALIASING_FUNCTION_POINTERS = 0
 
     if shared.Settings.SPLIT_MEMORY:
+      assert shared.Settings.SPLIT_MEMORY > shared.Settings.TOTAL_STACK, 'SPLIT_MEMORY must be at least TOTAL_STACK (stack must fit in first chunk)'
       assert shared.Settings.SPLIT_MEMORY & (shared.Settings.SPLIT_MEMORY-1) == 0, 'SPLIT_MEMORY must be a power of 2'
       if shared.Settings.ASM_JS == 1:
         logging.warning('not all asm.js optimizations are possible with SPLIT_MEMORY, disabling those')
