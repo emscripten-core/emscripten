@@ -6518,17 +6518,17 @@ def process(filename):
   src = open(filename, 'r').read() + \'\'\'
       Module.print('*');
       var ret;
-      ret = Module['ccall']('get_int', 'number'); Module.print([typeof ret, ret]);
-      ret = ccall('get_float', 'number'); Module.print([typeof ret, ret.toFixed(2)]);
-      ret = ccall('get_string', 'string'); Module.print([typeof ret, ret]);
+      ret = Module['ccall']('get_int', 'number'); Module.print([typeof ret, ret].join(','));
+      ret = ccall('get_float', 'number'); Module.print([typeof ret, ret.toFixed(2)].join(','));
+      ret = ccall('get_string', 'string'); Module.print([typeof ret, ret].join(','));
       ret = ccall('print_int', null, ['number'], [12]); Module.print(typeof ret);
       ret = ccall('print_float', null, ['number'], [14.56]); Module.print(typeof ret);
       ret = ccall('print_string', null, ['string'], ["cheez"]); Module.print(typeof ret);
       ret = ccall('print_string', null, ['array'], [[97, 114, 114, 45, 97, 121, 0]]); Module.print(typeof ret);
-      ret = ccall('multi', 'number', ['number', 'number', 'number', 'string'], [2, 1.4, 3, 'more']); Module.print([typeof ret, ret]);
+      ret = ccall('multi', 'number', ['number', 'number', 'number', 'string'], [2, 1.4, 3, 'more']); Module.print([typeof ret, ret].join(','));
       var p = ccall('malloc', 'pointer', ['number'], [4]);
       setValue(p, 650, 'i32');
-      ret = ccall('pointer', 'pointer', ['pointer'], [p]); Module.print([typeof ret, getValue(ret, 'i32')]);
+      ret = ccall('pointer', 'pointer', ['pointer'], [p]); Module.print([typeof ret, getValue(ret, 'i32')].join(','));
       Module.print('*');
       // part 2: cwrap
       var noThirdParam = Module['cwrap']('get_int', 'number');
