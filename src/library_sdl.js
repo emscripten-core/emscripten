@@ -10,7 +10,12 @@
 //                   or otherwise).
 
 var LibrarySDL = {
-  $SDL__deps: ['$FS', '$PATH', '$Browser', 'SDL_GetTicks'],
+  $SDL__deps: [
+#if NO_FILESYSTEM == 0
+    '$FS',
+#endif
+    '$PATH', '$Browser', 'SDL_GetTicks'
+  ],
   $SDL: {
     defaults: {
       width: 320,
