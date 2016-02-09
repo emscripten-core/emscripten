@@ -383,54 +383,27 @@ object where all JavaScript library code should be.
 JavaScript Limits in library files
 ----------------------------------
 
-If you're not familar with JavaScript, like you're a C/C++ programmer
-and just using emscripten these issues probably won't come up but
+If you're not familar with JavaScript, say if you're a C/C++ programmer
+and just using emscripten, then the following issues probably won't come up, but
 if you're an experienced JavaScript programmer you need to be aware
-some common JavaScript practices can not be used in emscripten
+some common JavaScript practices can not be used in certain ways in emscripten
 library files.
 
 To save space, by default, emscripten only includes library properties
 referenced from C/C++. It does this by calling ``toString`` on each 
-used property. This means
+used property on the JavaScript libraries that are linked in. That means
+that you can't use a closure directly, for example, as ``toString``
+isn't compatible with that - just like when using a string to create
+a Web Worker, where you also can't pass a closure. (Note that this
+limitation is just for the values for the keys of the object
+passes to ``mergeInto`` in the JS library, that is, the toplevel
+key-value pairs are special. Interior code inside a function can
+have arbitrary JS, of course).
 
--  You can not use ES6 object shorthand function syntax.
--  You can not reference/bind other functions directly.
--  You can not use a closure directly.
--  You can not use ES6 arrow syntax.
--  You can not use other function transformations like currying.
-
-.. code-block:: javascript
-
-   mergeInto(LibraryManager.library, {
-     // bad: ES6 object shorthand function syntax not allowwed
-     bad_01() {
-       alert('hi');
-     },
-     
-     // bad: Can not bind/reference other functions directly.
-     bad_02: document.querySelector.bind(document),
-     
-     // bad: You can not use a closure directly
-     bad_03: (function() {
-       var callCount = 0;
-       return function() {
-         console.log("times called: ", ++callCount);
-       };
-     }()),
-     
-     // bad: You can not use ES6 arrow syntax
-     bad_04: () => { console.log("hi!"); },
-     
-     // bad: You can not curry/transform
-     bad_05: curry(scrollTo, 0),  
-   });
-   
-To avoid these issues you can put code in another file using
-a ``<script>`` tag or use ``--pre-js`` OR ``--post-js`` options
-to emscripten. Of course many of these features work deeper in a
-function but the function directly attached to the objet passed
-to ``mergeInto`` must be a plain old vanilla JavaScript ES5
-function.
+To avoid this limitation of JS libraries, you can put code in another file using
+the ``--pre-js`` OR ``--post-js`` options, which allow arbitary normal
+JS, and it is included and optimized with the rest of the output. That is
+the recommended approach for most cases. Another option is another ``<script>`` tag.
 
 Alternatively, if you prefer to use a JS library file, you can
 have a function replace itself and have it called during
@@ -534,6 +507,46 @@ Note: If you are using node 4.1 or newer you can use multi-line strings.
 They are only used at compile time not runtime so output will still run in
 ES5 based environments.
 
+Another option is to put most of your code in an object, not
+a function,
+
+.. code-block:: javascript
+
+  mergeInto(LibraryManager.library, {
+    $method_support__postset: 'method_support();',
+    $method_support: {
+      init: function() {
+        var SomeLib = function() {                   
+          this.callCount = 0;                        
+        };                                           
+                                                     
+        SomeLib.prototype.getCallCount = function() {
+          return this.callCount;                     
+        };                                           
+                                                     
+        SomeLib.prototype.process = function() {     
+          ++this.callCount;                          
+        };                                           
+                                                     
+        SomeLib.prototype.reset = function() {       
+          this.callCount = 0;                        
+        };                                           
+                                                     
+        var inst = new SomeLib();                    
+        _method_01 = inst.getCallCount.bind(inst);   
+        _method_02 = inst.process.bind(inst);        
+        _method_03 = inst.reset.bind(inst);          
+      }                                         
+    },
+    method_01: function() {}, 
+    method_01__deps: ['$method_support'],
+    method_02: function() {},
+    method_01__deps: ['$method_support'],
+    method_03: function() {},
+    method_01__deps: ['$method_support'],
+   });
+
+
 See the `library_*.js`_ files for other examples.
 
 .. note::
@@ -553,8 +566,8 @@ See the `library_*.js`_ files for other examples.
      "deps_info" in `tools/system_libs.py`_.
    - The keys passed into `mergeInto` generate functions that are prefixed
      by ``_``. In other words ``my_func: function() {},`` becomes
-     ``function _my_func() {}``. keys starting with ``$`` have the ``$``
-     striped and no underscore added.
+     ``function _my_func() {}``, as all C methods in emscripten have a ``_`` prefix. Keys starting with ``$`` have the ``$``
+     stripped and no underscore added.
 
 
 .. _interacting-with-code-call-function-pointers-from-c:
