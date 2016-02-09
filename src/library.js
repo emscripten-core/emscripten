@@ -25,11 +25,11 @@ LibraryManager.library = {
   _impure_ptr: '; if (ENVIRONMENT_IS_PTHREAD) __impure_ptr = PthreadWorkerInit.__impure_ptr; else PthreadWorkerInit.__impure_ptr __impure_ptr = allocate(1, "i32*", ALLOC_STATIC)',
   __dso_handle: '; if (ENVIRONMENT_IS_PTHREAD) ___dso_handle = PthreadWorkerInit.___dso_handle; else PthreadWorkerInit.___dso_handle = ___dso_handle = allocate(1, "i32*", ALLOC_STATIC)',
 #else
-  stdin: 'allocate(1, "i32*", ALLOC_STATIC)',
-  stdout: 'allocate(1, "i32*", ALLOC_STATIC)',
-  stderr: 'allocate(1, "i32*", ALLOC_STATIC)',
-  _impure_ptr: 'allocate(1, "i32*", ALLOC_STATIC)',
-  __dso_handle: 'allocate(1, "i32*", ALLOC_STATIC)',
+  stdin: '{{{ makeStaticAlloc(1) }}}',
+  stdout: '{{{ makeStaticAlloc(1) }}}',
+  stderr: '{{{ makeStaticAlloc(1) }}}',
+  _impure_ptr: '{{{ makeStaticAlloc(1) }}}',
+  __dso_handle: '{{{ makeStaticAlloc(1) }}}',
 #endif
 
   $PROCINFO: {
@@ -517,7 +517,7 @@ LibraryManager.library = {
 #if USE_PTHREADS
   environ: '; if (ENVIRONMENT_IS_PTHREAD) _environ = PthreadWorkerInit._environ; else PthreadWorkerInit._environ = _environ = allocate(1, "i32*", ALLOC_STATIC)',
 #else
-  environ: 'allocate(1, "i32*", ALLOC_STATIC)',
+  environ: '{{{ makeStaticAlloc(1) }}}',
 #endif
   __environ__deps: ['environ'],
   __environ: 'environ',
@@ -1626,11 +1626,11 @@ LibraryManager.library = {
   __tm_timezone: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_timezone = PthreadWorkerInit.___tm_timezone; else PthreadWorkerInit.___tm_timezone = ___tm_timezone = allocate(intArrayFromString("GMT"), "i8", ALLOC_STATIC)',
   __tm_formatted: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_formatted = PthreadWorkerInit.___tm_formatted; else PthreadWorkerInit.___tm_formatted = ___tm_formatted = allocate({{{ C_STRUCTS.tm.__size__ }}}, "i8", ALLOC_STATIC)',
 #else
-  __tm_current: 'allocate({{{ C_STRUCTS.tm.__size__ }}}, "i8", ALLOC_STATIC)',
+  __tm_current: '{{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
   // Statically allocated copy of the string "GMT" for gmtime() to point to
   __tm_timezone: 'allocate(intArrayFromString("GMT"), "i8", ALLOC_STATIC)',
   // Statically allocated time strings.
-  __tm_formatted: 'allocate({{{ C_STRUCTS.tm.__size__ }}}, "i8", ALLOC_STATIC)',
+  __tm_formatted: '{{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
 #endif
   mktime__deps: ['tzset'],
   mktime: function(tmPtr) {
@@ -1801,9 +1801,9 @@ LibraryManager.library = {
   daylight: '; if (ENVIRONMENT_IS_PTHREAD) _daylight = PthreadWorkerInit._daylight; else PthreadWorkerInit._daylight = _daylight = allocate(1, "i32*", ALLOC_STATIC)',
   timezone: '; if (ENVIRONMENT_IS_PTHREAD) _timezone = PthreadWorkerInit._timezone; else PthreadWorkerInit._timezone = _timezone = allocate(1, "i32*", ALLOC_STATIC)',
 #else
-  tzname: 'allocate({{{ 2*Runtime.QUANTUM_SIZE }}}, "i32*", ALLOC_STATIC)',
-  daylight: 'allocate(1, "i32*", ALLOC_STATIC)',
-  timezone: 'allocate(1, "i32*", ALLOC_STATIC)',
+  tzname: '{{{ makeStaticAlloc(2*Runtime.QUANTUM_SIZE) }}}',
+  daylight: '{{{ makeStaticAlloc(1) }}}',
+  timezone: '{{{ makeStaticAlloc(1) }}}',
 #endif
   tzset__deps: ['tzname', 'daylight', 'timezone'],
   tzset: function() {

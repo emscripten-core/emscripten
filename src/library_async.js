@@ -21,7 +21,7 @@ mergeInto(LibraryManager.library, {
  */
   __async: 0, // whether a truly async function has been called
   __async_unwind: 1, // whether to unwind the async stack frame
-  __async_retval: 'allocate(2, "i32", ALLOC_STATIC)', // store the return value for async functions
+  __async_retval: '{{{ makeStaticAlloc(2) }}}', // store the return value for async functions
   __async_cur_frame: 0, // address to the current frame, which stores previous frame, stack pointer and async context
 
   // __async_retval is not actually required in emscripten_async_resume

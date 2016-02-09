@@ -345,9 +345,9 @@ function JSify(data, functionsOnly) {
           print('var tempDoublePtr;\n');
           print('if (!ENVIRONMENT_IS_PTHREAD) tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
         } else {
-          print('var tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
+          print('var tempDoublePtr = ' + makeStaticAlloc(8) + '\n');
         }
-        print('assert(tempDoublePtr % 8 == 0);\n');
+        if (ASSERTIONS) print('assert(tempDoublePtr % 8 == 0);\n');
         print('function copyTempFloat(ptr) { // functions, because inlining this code increases code size too much\n');
         print('  HEAP8[tempDoublePtr] = HEAP8[ptr];\n');
         print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];\n');
@@ -388,7 +388,7 @@ function JSify(data, functionsOnly) {
       print('staticSealed = true; // seal the static portion of memory\n');
       print('STACK_MAX = STACK_BASE + TOTAL_STACK;\n');
       print('DYNAMIC_BASE = DYNAMICTOP = Runtime.alignMemory(STACK_MAX);\n');
-      print('assert(DYNAMIC_BASE < TOTAL_MEMORY, "TOTAL_MEMORY not big enough for stack");\n');
+      if (ASSERTIONS) print('assert(DYNAMIC_BASE < TOTAL_MEMORY, "TOTAL_MEMORY not big enough for stack");\n');
     }
     if (SPLIT_MEMORY) {
       print('assert(STACK_MAX < SPLIT_MEMORY, "SPLIT_MEMORY size must be big enough so the entire static memory + stack can fit in one chunk, need " + STACK_MAX);\n');
