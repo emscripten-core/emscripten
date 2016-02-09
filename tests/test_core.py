@@ -5691,6 +5691,8 @@ return malloc(size);
     if 'SAFE_HEAP' in str(self.emcc_args): return self.skip('we do unsafe stuff here')
     # present part of the symbols of dlmalloc, not all. malloc is harder to link than new which is weak.
 
+    Settings.NO_EXIT_RUNTIME = 1 # if we exit, then we flush streams, but the bad malloc we install here messes that up
+
     test_path = path_from_root('tests', 'core', 'test_dlmalloc_partial_2')
     src, output = (test_path + s for s in ('.in', '.out'))
 
