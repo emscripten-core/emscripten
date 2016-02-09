@@ -198,15 +198,21 @@ var cwrap, ccall;
     var parsed = jsfunc.toString().match(sourceRegex).slice(1);
     return {arguments : parsed[0], body : parsed[1], returnValue: parsed[2]}
   }
-  var JSsource = {};
-  for (var fun in JSfuncs) {
-    if (JSfuncs.hasOwnProperty(fun)) {
-      // Elements of toCsource are arrays of three items:
-      // the code, and the return value
-      JSsource[fun] = parseJSFunc(JSfuncs[fun]);
+
+  // sources of useful functions. we create this lazily as it can trigger a source decompression on this entire file
+  var JSsource = null;
+  function ensureJSsource() {
+    if (!JSsource) {
+      JSsource = {};
+      for (var fun in JSfuncs) {
+        if (JSfuncs.hasOwnProperty(fun)) {
+          // Elements of toCsource are arrays of three items:
+          // the code, and the return value
+          JSsource[fun] = parseJSFunc(JSfuncs[fun]);
+        }
+      }
     }
   }
-
   
   cwrap = function cwrap(ident, returnType, argTypes) {
     argTypes = argTypes || [];
@@ -225,6 +231,7 @@ var cwrap, ccall;
     if (!numericArgs) {
       // Generate the code needed to convert the arguments from javascript
       // values to pointers
+      ensureJSsource();
       funcstr += 'var stack = ' + JSsource['stackSave'].body + ';';
       for (var i = 0; i < nargs; i++) {
         var arg = argNames[i], type = argTypes[i];
@@ -250,6 +257,7 @@ var cwrap, ccall;
 #endif
     if (!numericArgs) {
       // If we had a stack, restore it
+      ensureJSsource();
       funcstr += JSsource['stackRestore'].body.replace('()', '(stack)') + ';';
     }
     funcstr += 'return ret})';
