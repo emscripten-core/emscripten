@@ -1027,9 +1027,11 @@ if (totalMemory !== TOTAL_MEMORY) {
 }
 
 // Initialize the runtime's memory
+#if ASSERTIONS
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' && !!(new Int32Array(1)['subarray']) && !!(new Int32Array(1)['set']),
        'JS engine does not provide full typed array support');
+#endif
 
 #if IN_TEST_HARNESS
 #if USE_PTHREADS == 1
@@ -1100,7 +1102,9 @@ if (typeof Atomics === 'undefined') {
 // Use a provided buffer, if there is one, or else allocate a new one
 if (Module['buffer']) {
   buffer = Module['buffer'];
+#if ASSERTIONS
   assert(buffer.byteLength === TOTAL_MEMORY, 'provided buffer should be ' + TOTAL_MEMORY + ' bytes, but it is ' + buffer.byteLength);
+#endif
 } else {
   buffer = new ArrayBuffer(TOTAL_MEMORY);
 }
@@ -1137,7 +1141,9 @@ var buffers = [], HEAP8s = [], HEAP16s = [], HEAP32s = [], HEAPU8s = [], HEAPU16
 function allocateSplitChunk(i, data) {
   if (buffers[i]) return false; // already taken
   var curr = data ? data : new ArrayBuffer(SPLIT_MEMORY);
+#if ASSERTIONS
   assert(curr instanceof ArrayBuffer);
+#endif
   buffers[i] = curr;
   HEAP8s[i] = new Int8Array(curr);
   HEAP16s[i] = new Int16Array(curr);
@@ -1150,8 +1156,10 @@ function allocateSplitChunk(i, data) {
   return true;
 }
 function freeSplitChunk(i) {
+#if ASSERTIONS
   assert(buffers[i] && HEAP8s[i]);
   assert(i > 0); // cannot free the first chunk
+#endif
   buffers[i] = HEAP8s[i] = HEAP16s[i] = HEAP32s[i] = HEAPU8s[i] = HEAPU16s[i] = HEAPU32s[i] = HEAPF32s[i] = HEAPF64s[i] = null;
 }
 
@@ -1173,7 +1181,9 @@ function freeSplitChunk(i) {
   function fake(real) {
     var bytes = real[0].BYTES_PER_ELEMENT;
     var shifts = SHIFT_TABLE[bytes];
+#if ASSERTIONS
     assert(shifts > 0 || bytes == 1);
+#endif
     var that = {
       BYTES_PER_ELEMENT: bytes,
       set: function(array, offset) {
@@ -1187,7 +1197,9 @@ function freeSplitChunk(i) {
             break;
           } else {
             var currSize = SPLIT_MEMORY - relative;
+#if ASSERTIONS
             assert(currSize % that.BYTES_PER_ELEMENT === 0);
+#endif
             var lastIndex = currSize >> shifts;
             real[chunk].set(array.subarray(0, lastIndex), relative);
             // increments
@@ -1207,7 +1219,9 @@ function freeSplitChunk(i) {
         to = Math.max(from, to); // if to is smaller, we'll get nothing anyway, same as to == from
         if (from < to) {
           var end = (to - 1) >> SPLIT_MEMORY_BITS; // -1, since we do not actually read the last address
+#if ASSERTIONS
           assert(start === end, 'subarray cannot span split chunks');
+#endif
         }
         if (to > from && (to & SPLIT_MEMORY_MASK) == 0) {
           // avoid the mask on the next line giving 0 for the end
@@ -1217,7 +1231,9 @@ function freeSplitChunk(i) {
       },
       buffer: {
         slice: function(from, to) {
+#if ASSERTIONS
           assert(to, 'TODO: this is an actual copy, so we could support a slice across multiple chunks');
+#endif
           return new Uint8Array(HEAPU8.subarray(from, to)).buffer;
         },
       },
@@ -1368,8 +1384,10 @@ function setF64(ptr, value) {
 
 // Endianness check (note: assumes compiler arch was little-endian)
 #if SAFE_SPLIT_MEMORY == 0
+#if ASSERTIONS
 HEAP32[0] = 255;
 assert(HEAPU8[0] === 255 && HEAPU8[3] === 0, 'Typed arrays 2 must be run on a little-endian system');
+#endif
 #endif
 
 Module['HEAP'] = HEAP;
