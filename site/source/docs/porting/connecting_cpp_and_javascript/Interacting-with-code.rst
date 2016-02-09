@@ -317,8 +317,7 @@ Implement a C API in JavaScript
 ===============================
 
 It is possible to implement a C API in JavaScript! This is the approach
-that was used to write Emscripten's implementations of :term:`SDL` and
-*libc*.
+used in many of Emscripten's libraries, like SDL1 and OpenGL.
 
 You can use it to write your own APIs to call from C/C++. To do this
 you define the interface, decorating with ``extern`` to mark the methods
@@ -328,7 +327,7 @@ default). When compiling the C code, the compiler looks in the JavaScript
 libraries for relevant external symbols.
 
 By default, the implementation is added to **library.js** (and this is
-where you'll find the Emscripten implementation of *libc*). You can put
+where you'll find parts of Emscripten's *libc*). You can put
 the JavaScript implementation in your own library file and add it using
 the :ref:`emcc option <emcc-js-library>` ``--js-library``. See
 `test_js_libraries`_ in **tests/test_other.py** for a complete working
@@ -401,7 +400,7 @@ key-value pairs are special. Interior code inside a function can
 have arbitrary JS, of course).
 
 To avoid this limitation of JS libraries, you can put code in another file using
-the ``--pre-js`` OR ``--post-js`` options, which allow arbitary normal
+the ``--pre-js`` or ``--post-js`` options, which allow arbitary normal
 JS, and it is included and optimized with the rest of the output. That is
 the recommended approach for most cases. Another option is another ``<script>`` tag.
 
