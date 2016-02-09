@@ -653,7 +653,7 @@ File system API
 
 .. js:function:: FS.createPreloadedFile(parent, name, url, canRead, canWrite)
 
-	Preloads a file asynchronously. You should call this in ``preRun``, ``run()`` will be delayed until all preloaded files are ready. This is how the :ref:`preload-file <emcc-preload-file>` option works in *emcc*.
+	Preloads a file asynchronously, and uses preload plugins to prepare its content. You should call this in ``preRun``, ``run()`` will be delayed until all preloaded files are ready. This is how the :ref:`preload-file <emcc-preload-file>` option works in *emcc* when ``--use-preload-plugins`` has been specified (if you use this method by itself, you will need to build the program with that option).
 	
 	:param parent: The parent folder, either as a path (e.g. **'/usr/lib'**) or an object previously returned from a `FS.createFolder()` or `FS.createPath()` call.
 	:type parent: string/object
