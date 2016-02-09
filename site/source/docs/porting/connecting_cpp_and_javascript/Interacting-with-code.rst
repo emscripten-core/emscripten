@@ -380,6 +380,160 @@ If you add it to your own file, you should write something like
 first, so this add ``my_js`` onto ``LibraryManager.library``, the global
 object where all JavaScript library code should be.
 
+JavaScript Limits in library files
+----------------------------------
+
+If you're not familar with JavaScript, like you're a C/C++ programmer
+and just using emscripten these issues probably won't come up but
+if you're an experienced JavaScript programmer you need to be aware
+some common JavaScript practices can not be used in emscripten
+library files.
+
+To save space, by default, emscripten only includes library properties
+referenced from C/C++. It does this by calling ``toString`` on each 
+used property. This means
+
+-  You can not use ES6 object shorthand function syntax.
+-  You can not reference/bind other functions directly.
+-  You can not use a closure directly.
+-  You can not use ES6 arrow syntax.
+-  You can not use other function transformations like currying.
+
+.. code-block:: javascript
+
+   mergeInto(LibraryManager.library, {
+     // bad: ES6 object shorthand function syntax not allowwed
+     bad_01() {
+       alert('hi');
+     },
+     
+     // bad: Can not bind/reference other functions directly.
+     bad_02: document.querySelector.bind(document),
+     
+     // bad: You can not use a closure directly
+     bad_03: (function() {
+       var callCount = 0;
+       return function() {
+         console.log("times called: ", ++callCount);
+       };
+     }()),
+     
+     // bad: You can not use ES6 arrow syntax
+     bad_04: () => { console.log("hi!"); },
+     
+     // bad: You can not curry/transform
+     bad_05: curry(scrollTo, 0),  
+   });
+   
+To avoid these issues you can put code in another file using
+a ``<script>`` tag or use ``--pre-js`` OR ``--post-js`` options
+to emscripten. Of course many of these features work deeper in a
+function but the function directly attached to the objet passed
+to ``mergeInto`` must be a plain old vanilla JavaScript ES5
+function.
+
+Alternatively, if you prefer to use a JS library file, you can
+have a function replace itself and have it called during
+initialization.
+
+.. code-block:: javascript
+
+   mergeInto(LibraryManager.library, {
+
+     // Solution for bind or referencing other functions directly
+     good_02__postset: '_good_02();',
+     good_02: function() {
+       _good_02 = document.querySelector.bind(document);
+     },
+     
+     // Solution for closures
+     good_03__postset: '_good_03();',
+     good_03: function() {
+       var callCount = 0;
+       _good_03 = function() {
+         console.log("times called: ", ++callCount);
+       };
+     },
+     
+     // Solution for curry/transform
+     good_05__postset: '_good_05();',
+     good_05: function() {
+       _good_05 = curry(scrollTo, 0);  
+    },
+
+   });
+
+A `__postset` is a string the compiler will emit directly to the
+output file. For the example above this code will be emited.
+
+.. code-block:: javascript
+
+     function _good_02() {
+       _good_o2 = document.querySelector.bind(document);
+     }
+     
+     function _good_03() {
+       var callCount = 0;
+       _good_03 = function() {
+         console.log("times called: ", ++callCount);
+       };
+     }
+     
+     function _good_05() {
+       _good_05 = curry(scrollTo, 0);  
+    };
+    
+    // Call each function once so it will replace itself
+    _good_02();
+    _good_03();
+    _good_05();
+
+You can also put most of your code in the ``xxx__postset`` strings. 
+The example below each method declares a dependency on ``$method_support``
+and are otherwise dummy functions. ``$method_support`` itself has a
+corresponding ``__postset`` property with all the code to set the
+various methods to the functions we actually want.
+
+.. code-block:: javascript
+
+  mergeInto(LibraryManager.library, {
+    $method_support: {},
+    $method_support__postset: [
+      '(function() {                                  ',
+      '  var SomeLib = function() {                   ',
+      '    this.callCount = 0;                        ',
+      '  };                                           ',
+      '                                               ',
+      '  SomeLib.prototype.getCallCount = function() {',
+      '    return this.callCount;                     ',
+      '  };                                           ',
+      '                                               ',
+      '  SomeLib.prototype.process = function() {     ',
+      '    ++this.callCount;                          ',
+      '  };                                           ',
+      '                                               ',
+      '  SomeLib.prototype.reset = function() {       ',
+      '    this.callCount = 0;                        ',
+      '  };                                           ',
+      '                                               ',
+      '  var inst = new SomeLib();                    ',
+      '  _method_01 = inst.getCallCount.bind(inst);   ',
+      '  _method_02 = inst.process.bind(inst);        ',
+      '  _method_03 = inst.reset.bind(inst);          ',
+      '}());                                          ',
+    ].join('\n'),
+    method_01: function() {}, 
+    method_01__deps: ['$method_support'],
+    method_02: function() {},
+    method_01__deps: ['$method_support'],
+    method_03: function() {},
+    method_01__deps: ['$method_support'],
+   });
+
+Note: If you are using node 4.1 or newer you can use multi-line strings.
+They are only used at compile time not runtime so output will still run in
+ES5 based environments.
+
 See the `library_*.js`_ files for other examples.
 
 .. note::
@@ -397,6 +551,10 @@ See the `library_*.js`_ files for other examples.
    - If a JavaScript library depends on a compiled C library (like most
      of *libc*), you must edit `src/deps_info.json`_. Search for
      "deps_info" in `tools/system_libs.py`_.
+   - The keys passed into `mergeInto` generate functions that are prefixed
+     by ``_``. In other words ``my_func: function() {},`` becomes
+     ``function _my_func() {}``. keys starting with ``$`` have the ``$``
+     striped and no underscore added.
 
 
 .. _interacting-with-code-call-function-pointers-from-c:
