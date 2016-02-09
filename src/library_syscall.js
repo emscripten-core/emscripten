@@ -753,7 +753,7 @@ var SyscallsLibrary = {
     return SYSCALLS.doReadv(stream, iov, iovcnt);
   },
 #if NO_FILESYSTEM
-  __syscall146__postset: '/* flush anything remaining in the buffer during shutdown */ __ATEXIT__.push(function() { var fflush = Module["_fflush"]; if (fflush) fflush(0); var buffer = ___syscall146.buffer; if (buffer && buffer.length > 0) Module["print"](UTF8ArrayToString(buffer, 0)); });',
+  __syscall146__postset: '/* flush anything remaining in the buffer during shutdown */ __ATEXIT__.push(function() { var fflush = Module["_fflush"]; if (fflush) fflush(0); var printChar = ___syscall146.printChar; if (!printChar) return; var buffers = ___syscall146.buffers; if (buffers[1].length) printChar(1, {{{ charCode("\n") }}}); if (buffers[2].length) printChar(2, {{{ charCode("\n") }}}); });',
 #endif
   __syscall146: function(which, varargs) { // writev
 #if NO_FILESYSTEM == 0
@@ -764,20 +764,23 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.get(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
     var ret = 0;
     if (!___syscall146.buffer) {
-      ___syscall146.buffer = [];
-    }
-    var buffer = ___syscall146.buffer;
-    for (var i = 0; i < iovcnt; i++) {
-      var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
-      var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
-      for (var j = 0; j < len; j++) {
-        var curr = HEAPU8[ptr+j];
+      ___syscall146.buffers = [null, [], []]; // 1 => stdout, 2 => stderr
+      ___syscall146.printChar = function(stream, curr) {
+        var buffer = ___syscall146.buffers[stream];
+        assert(buffer);
         if (curr === 0 || curr === {{{ charCode('\n') }}}) {
-          Module['print'](UTF8ArrayToString(buffer, 0));
+          (stream === 1 ? Module['print'] : Module['printErr'])(UTF8ArrayToString(buffer, 0));
           buffer.length = 0;
         } else {
           buffer.push(curr);
         }
+      };
+    }
+    for (var i = 0; i < iovcnt; i++) {
+      var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
+      var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
+      for (var j = 0; j < len; j++) {
+        ___syscall146.printChar(stream, HEAPU8[ptr+j]);
       }
       ret += len;
     }
