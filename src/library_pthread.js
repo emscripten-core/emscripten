@@ -850,7 +850,7 @@ var LibraryPThread = {
 
   // Returns the number of threads (>= 0) woken up, or one of the values -EINVAL or -EAGAIN on error.
   emscripten_futex_wake_or_requeue__deps: ['_main_thread_futex_wait_address'],
-  emscripten_futex_wake_or_requeue: function(addr, count, cmpValue, addr2) {
+  emscripten_futex_wake_or_requeue: function(addr, count, addr2, cmpValue) {
     if (addr <= 0 || addr2 <= 0 || addr >= HEAP8.length || addr2 >= HEAP8.length || count < 0
       || addr&3 != 0 || addr2&3 != 0) {
       return -{{{ cDefine('EINVAL') }}};
@@ -876,7 +876,7 @@ var LibraryPThread = {
     }
 
     // Wake any workers waiting on this address.
-    var ret = Atomics.futexWakeOrRequeue(HEAP32, addr >> 2, count, cmpValue, addr >> 2);
+    var ret = Atomics.futexWakeOrRequeue(HEAP32, addr >> 2, count, addr2 >> 2, cmpValue);
     if (ret == Atomics.NOTEQUAL) return -{{{ cDefine('EAGAIN') }}};
     if (ret >= 0) return ret + mainThreadWoken;
     throw 'Atomics.futexWakeOrRequeue returned an unexpected value ' + ret;
