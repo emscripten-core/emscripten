@@ -10,7 +10,12 @@
 //                   or otherwise).
 
 var LibrarySDL = {
-  $SDL__deps: ['$FS', '$PATH', '$Browser', 'SDL_GetTicks'],
+  $SDL__deps: [
+#if NO_FILESYSTEM == 0
+    '$FS',
+#endif
+    '$PATH', '$Browser', 'SDL_GetTicks'
+  ],
   $SDL: {
     defaults: {
       width: 320,
@@ -2954,7 +2959,7 @@ var LibrarySDL = {
   },
 
   TTF_OpenFont: function(filename, size) {
-    filename = FS.standardizePath(Pointer_stringify(filename));
+    filename = PATH.normalize(Pointer_stringify(filename));
     var id = SDL.fonts.length;
     SDL.fonts.push({
       name: filename, // but we don't actually do anything with it..

@@ -111,6 +111,7 @@ process(sys.argv[1])
                     '-O3', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
                     '--memory-init-file', '0', '--js-transform', 'python hardcode.py',
                     '-s', 'TOTAL_MEMORY=128*1024*1024',
+                    '-s', 'NO_EXIT_RUNTIME=1', '-s', 'EXPORTED_RUNTIME_METHODS=[]',
                     #'--profiling',
                     #'--closure', '1',
                     '-o', final] + shared_args + emcc_args + self.extra_args, stdout=PIPE, stderr=PIPE, env=self.env).communicate()

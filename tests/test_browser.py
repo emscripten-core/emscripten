@@ -56,7 +56,7 @@ class browser(BrowserCore):
   @classmethod
   def setUpClass(self):
     super(browser, self).setUpClass()
-    self.browser_timeout = 10
+    self.browser_timeout = 20
     print
     print 'Running the browser tests. Make sure the browser allows popups from localhost.'
     print
@@ -265,11 +265,11 @@ If manually bisecting:
 
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
       Module.preRun = function() {
-        FS.createPreloadedFile('/', 'someotherfile.txt', 'somefile.txt', true, false);
+        FS.createPreloadedFile('/', 'someotherfile.txt', 'somefile.txt', true, false); // we need --use-preload-plugins for this.
       };
     ''')
     make_main('someotherfile.txt')
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '-o', 'page.html']).communicate()
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '-o', 'page.html', '--use-preload-plugins']).communicate()
     self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
   def test_preload_caching(self):
@@ -546,7 +546,7 @@ window.close = function() {
   // wait for rafs to arrive and the screen to update before reftesting
   setTimeout(function() {
     doReftest();
-    setTimeout(windowClose, 1000);
+    setTimeout(windowClose, 5000);
   }, 1000);
 };
 </script>
@@ -2487,7 +2487,7 @@ window.close = function() {
   // wait for rafs to arrive and the screen to update before reftesting
   setTimeout(function() {
     doReftest();
-    setTimeout(windowClose, 1000);
+    setTimeout(windowClose, 5000);
   }, 1000);
 };
 </script>

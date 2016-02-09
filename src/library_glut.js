@@ -1,5 +1,6 @@
 
 var LibraryGLUT = {
+  $GLUT__deps: ['$Browser'],
   $GLUT: {
     initTime: null,
     idleFunc: null,

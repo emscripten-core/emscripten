@@ -382,7 +382,7 @@ var LibraryPThread = {
   _num_logical_cores__deps: ['emscripten_force_num_logical_cores'],
   _num_logical_cores: '; if (ENVIRONMENT_IS_PTHREAD) __num_logical_cores = PthreadWorkerInit.__num_logical_cores; else { PthreadWorkerInit.__num_logical_cores = __num_logical_cores = allocate(1, "i32*", ALLOC_STATIC); HEAPU32[__num_logical_cores>>2] = navigator["hardwareConcurrency"] || ' + {{{ PTHREAD_HINT_NUM_CORES }}} + '; }',
 #else
-  _num_logical_cores: 'allocate(1, "i32*", ALLOC_STATIC)',
+  _num_logical_cores: '{{{ makeStaticAlloc(1) }}}',
 #endif
 
   emscripten_has_threading_support: function() {

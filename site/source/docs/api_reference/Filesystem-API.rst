@@ -18,6 +18,13 @@ The automatic tests in `tests/test_core.py <https://github.com/kripken/emscripte
 
 A high level overview of the way File Systems work in Emscripten-ported code is provided in the :ref:`file-system-overview`. 
 
+Including File System Support
+=============================
+
+Emscripten decides whether to include file system support automatically. Many programs don't need files, and file system support is not negligible in size, so Emscripten avoids including it when it doesn't see a reason to. That means that if your C/C++ code does not access files, then  the ``FS`` object and other file system APIs will not be included in the output. And, on the other hand, if your C/C++ code does use files, then file system support will be automatically included. So normally things will "just work" and you don't need to think about this at all.
+
+However, if your C/C++ code doesn't use files, but you want to use them from JavaScript, then you can build with ``-s FORCE_FILESYSTEM=1``, which will make the compiler include file system support even though it doesn't see it being used.
+
 
 .. _filesystem-api-persist-data:
 
@@ -646,7 +653,7 @@ File system API
 
 .. js:function:: FS.createPreloadedFile(parent, name, url, canRead, canWrite)
 
-	Preloads a file asynchronously. You should call this in ``preRun``, ``run()`` will be delayed until all preloaded files are ready. This is how the :ref:`preload-file <emcc-preload-file>` option works in *emcc*.
+	Preloads a file asynchronously, and uses preload plugins to prepare its content. You should call this in ``preRun``, ``run()`` will be delayed until all preloaded files are ready. This is how the :ref:`preload-file <emcc-preload-file>` option works in *emcc* when ``--use-preload-plugins`` has been specified (if you use this method by itself, you will need to build the program with that option).
 	
 	:param parent: The parent folder, either as a path (e.g. **'/usr/lib'**) or an object previously returned from a `FS.createFolder()` or `FS.createPath()` call.
 	:type parent: string/object

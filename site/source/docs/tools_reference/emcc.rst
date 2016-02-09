@@ -57,24 +57,26 @@ Options that are modified or new in *emcc* are listed below:
 ``-O2``
 	Like ``-O1``, but with various JavaScript-level optimizations and LLVM ``-O3`` optimizations. 
 	
-	.. note:: This is the recommended setting for a release build, offering slower compilation time in return for the smallest and fastest output.
+	.. note:: This is a reasonable setting for a release build.
 
-.. _emcc-Os: 
-	
-``-Os``
-	Like ``-O2``, but with extra optimizations that reduce code size at the expense of performance. This applies only for bitcode optimization (``-O2`` is used for JavaScript optimizations).
-
-.. _emcc-Oz: 
-	
-``-Oz``
-	Like ``-Os``, but reduces code size even further. This applies only for bitcode optimization (``-O2`` is used for JavaScript optimizations).
+	.. note:: These JavaScript optimizations can reduce code size by removing things that the compiler does not see being used, in particular, parts of the runtime may be stripped if they are not exported on the ``Module`` object. The compiler is aware of code in :ref:`--pre-js <emcc-pre-js>` and :ref:`--post-js <emcc-post-js>`, so you can safely use the runtime from there. Alternatively, you can use ``EXTRA_EXPORTED_RUNTIME_METHODS``, see `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_.
 
 .. _emcc-O3:
 
 ``-O3``
-	Like ``-O2``, but with additional JavaScript optimizations that can take a significant amount of compilation time and/or are relatively new. 
+	Like ``-O2``, but with additional JavaScript optimizations that can take a significant amount of compilation time.
+
+	.. note:: This is a good setting for a release build.
+
+.. _emcc-Os: 
 	
-	.. note:: This differs from ``-O2`` only during the bitcode to JavaScript (final link and JavaScript generation) stage. It is JavaScript-specific, so you can run ``-Os`` on your source files for example, and ``-O3`` during JavaScript generation if you want.
+``-Os``
+	Like ``-O3``, but with extra optimizations that reduce code size at the expense of performance. This can effect both bitcode generation and JavaScript.
+
+.. _emcc-Oz: 
+	
+``-Oz``
+	Like ``-Os``, but reduces code size even further. This can effect both bitcode generation and JavaScript.
 
  	.. note:: For more tips on optimizing your code, see :ref:`Optimizing-Code`.
 

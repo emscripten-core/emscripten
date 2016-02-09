@@ -4851,6 +4851,11 @@ Pass: 0.000012 0.000012''')
     if '-O2' in self.emcc_args:
       self.emcc_args += ['--closure', '1'] # Use closure here, to test we don't break FS stuff
       self.emcc_args = filter(lambda x: x != '-g', self.emcc_args) # ensure we test --closure 1 --memory-init-file 1 (-g would disable closure)
+    elif '-O3' in self.emcc_args:
+      print 'closure 2'
+      self.emcc_args += ['--closure', '2'] # Use closure 2 here for some additional coverage
+
+    print 'base', self.emcc_args
 
     post = '''
 def process(filename):
@@ -4883,7 +4888,7 @@ def process(filename):
       print mode
       self.emcc_args = orig_args + mode
       try_delete(mem_file)
-      self.do_run(src, map(lambda x: x if 'SYSCALL_DEBUG=1' not in mode else ('syscall! 146,SYS_writev' if self.run_name == 'default' else 'syscall! 146'), ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n \ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n')),
+      self.do_run(src, map(lambda x: x if 'SYSCALL_DEBUG=1' not in mode else ('syscall! 146,SYS_writev' if self.run_name == 'default' else 'syscall! 146'), ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n')),
                   post_build=post, extra_emscripten_args=['-H', 'libc/fcntl.h'])
       if self.uses_memory_init_file():
         assert os.path.exists(mem_file)
@@ -4920,6 +4925,7 @@ def process(filename):
     self.do_run(src, ('got: 35\ngot: 45\ngot: 25\ngot: 15\n \nisatty? 0,0,1\n', 'got: 35\ngot: 45\ngot: 25\ngot: 15\nisatty? 0,0,1\n', 'isatty? 0,0,1\ngot: 35\ngot: 45\ngot: 25\ngot: 15\n'), post_build=post, output_nicerizer=clean)
 
   def test_mount(self):
+    Settings.FORCE_FILESYSTEM = 1
     src = open(path_from_root('tests', 'fs', 'test_mount.c'), 'r').read()
     self.do_run(src, 'success', force_c=True)
 
@@ -5158,6 +5164,7 @@ def process(filename):
     self.do_run_from_file(src, output)
 
   def test_utf32(self):
+    Settings.EXTRA_EXPORTED_RUNTIME_METHODS = ['UTF32ToString', 'stringToUTF32', 'lengthBytesUTF32']
     self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.')
     self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.', args=['-fshort-wchar'])
 
@@ -5683,6 +5690,8 @@ return malloc(size);
   def test_dlmalloc_partial_2(self):
     if 'SAFE_HEAP' in str(self.emcc_args): return self.skip('we do unsafe stuff here')
     # present part of the symbols of dlmalloc, not all. malloc is harder to link than new which is weak.
+
+    Settings.NO_EXIT_RUNTIME = 1 # if we exit, then we flush streams, but the bad malloc we install here messes that up
 
     test_path = path_from_root('tests', 'core', 'test_dlmalloc_partial_2')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -6518,17 +6527,17 @@ def process(filename):
   src = open(filename, 'r').read() + \'\'\'
       Module.print('*');
       var ret;
-      ret = Module['ccall']('get_int', 'number'); Module.print([typeof ret, ret]);
-      ret = ccall('get_float', 'number'); Module.print([typeof ret, ret.toFixed(2)]);
-      ret = ccall('get_string', 'string'); Module.print([typeof ret, ret]);
+      ret = Module['ccall']('get_int', 'number'); Module.print([typeof ret, ret].join(','));
+      ret = ccall('get_float', 'number'); Module.print([typeof ret, ret.toFixed(2)].join(','));
+      ret = ccall('get_string', 'string'); Module.print([typeof ret, ret].join(','));
       ret = ccall('print_int', null, ['number'], [12]); Module.print(typeof ret);
       ret = ccall('print_float', null, ['number'], [14.56]); Module.print(typeof ret);
       ret = ccall('print_string', null, ['string'], ["cheez"]); Module.print(typeof ret);
       ret = ccall('print_string', null, ['array'], [[97, 114, 114, 45, 97, 121, 0]]); Module.print(typeof ret);
-      ret = ccall('multi', 'number', ['number', 'number', 'number', 'string'], [2, 1.4, 3, 'more']); Module.print([typeof ret, ret]);
+      ret = ccall('multi', 'number', ['number', 'number', 'number', 'string'], [2, 1.4, 3, 'more']); Module.print([typeof ret, ret].join(','));
       var p = ccall('malloc', 'pointer', ['number'], [4]);
       setValue(p, 650, 'i32');
-      ret = ccall('pointer', 'pointer', ['pointer'], [p]); Module.print([typeof ret, getValue(ret, 'i32')]);
+      ret = ccall('pointer', 'pointer', ['pointer'], [p]); Module.print([typeof ret, getValue(ret, 'i32')].join(','));
       Module.print('*');
       // part 2: cwrap
       var noThirdParam = Module['cwrap']('get_int', 'number');
@@ -6866,7 +6875,9 @@ def process(filename):
     self.do_run(src, '|1.266,1|\n')
 
   def test_demangle_stacks(self):
-    if Settings.ASM_JS: return self.skip('spidermonkey has stack trace issues')
+    Settings.DEMANGLE_SUPPORT = 1
+    if '-O' in str(self.emcc_args):
+      self.emcc_args += ['--profiling-funcs', '--llvm-opts', '0']
 
     test_path = path_from_root('tests', 'core', 'test_demangle_stacks')
     src, output = (test_path + s for s in ('.in', '.out'))
@@ -7479,6 +7490,7 @@ Module.printErr = Module['printErr'] = function(){};
 
   def test_emscripten_log(self):
     if self.is_wasm(): return self.skip('wasmifying destroys debug info and stack tracability')
+    self.emcc_args += ['-s', 'DEMANGLE_SUPPORT=1']
     if self.is_emterpreter():
       self.emcc_args += ['--profiling-funcs'] # without this, stack traces are not useful (we jump emterpret=>emterpret)
       Building.COMPILER_TEST_OPTS += ['-DEMTERPRETER'] # even so, we get extra emterpret() calls on the stack
@@ -7803,6 +7815,7 @@ int main(int argc, char **argv) {
     self.do_run(open(os.path.join(self.get_dir(), 'main.cpp'), 'r').read(), 'able to run memprof')
 
   def test_fs_dict(self):
+      Settings.FORCE_FILESYSTEM = 1
       open(self.in_dir('pre.js'), 'w').write('''
         var Module = {};
         Module['preRun'] = function() {
