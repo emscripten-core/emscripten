@@ -113,8 +113,10 @@ dependenciesFulfilled = function runCaller() {
 }
 
 Module['callMain'] = Module.callMain = function callMain(args) {
+#if ASSERTIONS
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on __ATMAIN__)');
   assert(__ATPRERUN__.length == 0, 'cannot call main when preRun functions remain to be called');
+#endif
 
   args = args || [];
 
