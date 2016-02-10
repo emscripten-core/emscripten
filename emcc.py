@@ -955,9 +955,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     elif shared.Settings.SIDE_MODULE:
       assert not shared.Settings.MAIN_MODULE
       memory_init_file = False # memory init file is not supported with side modules, must be executable synchronously (for dlopen)
-      if shared.Settings.WASM:
-        logging.warning('disabling WASM in SIDE_MODULE')
-        shared.Settings.WASM = 0
 
     if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
       assert shared.Settings.ASM_JS, 'module linking requires asm.js output (-s ASM_JS=1)'
@@ -971,9 +968,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.ALLOW_MEMORY_GROWTH:
       logging.warning('not all asm.js optimizations are possible with ALLOW_MEMORY_GROWTH, disabling those')
       shared.Settings.ASM_JS = 2 # memory growth does not validate as asm.js http://discourse.wicg.io/t/request-for-comments-switching-resizing-heaps-in-asm-js/641/23
-
-    if shared.Settings.WASM:
-      assert not shared.Settings.ALLOW_MEMORY_GROWTH, 'memory growth is not supported with WASM=1'
 
     if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
       shared.Settings.ALIASING_FUNCTION_POINTERS = 0
@@ -1904,11 +1898,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shutil.move(js_target, js_target[:-3] + '.worker.js') # compiler output goes in .worker.js file
         worker_target_basename = target_basename + '.worker'
         open(target, 'w').write(open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', shared.Settings.PROXY_TO_WORKER_FILENAME or worker_target_basename).replace('{{{ IDBStore.js }}}', open(shared.path_from_root('src', 'IDBStore.js')).read()))
-
-    if shared.Settings.WASM:
-      logging.debug('converting to WebAssembly')
-      wasm_target = unsuffixed(js_target) + '.wasm'
-      subprocess.check_call([shared.PYTHON, shared.path_from_root('third_party', 'wasm-polyfill', 'wasmator.py'), js_target, wasm_target, shared.Settings.EXPORT_NAME])
 
     log_time('final emitting')
 

@@ -5320,33 +5320,6 @@ int main() {
     assert proc.returncode == 0
     self.assertContained('#define __EMSCRIPTEN__ 1', out) # all our defines should show up
 
-  def test_emcc_wasm_0(self):
-    default_error_message = 'cannot use WASM=1 when full asm.js validation was disabled'
-    for args, ok, error_message in [
-      ([], False, ''),
-      (['-O1'], True, ''),
-      (['-O2'], True, ''),
-      (['-O3'], True, ''),
-      (['-O2', '-g'], True, ''),
-      (['-s', 'ASM_JS=1'], True, ''),
-      (['-s', 'WASM=0'], True, ''),
-      (['-s', 'WASM=1'], False, ''),
-      (['-s', 'ALLOW_MEMORY_GROWTH=1'], False, 'memory growth is not supported with WASM=1'),
-      (['-s', 'ALLOW_MEMORY_GROWTH=1', '-O1'], False, 'memory growth is not supported with WASM=1'),
-      (['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_WHITELIST=["_main"]', '-O2', '-s', 'ASSERTIONS=1'], True, ''),
-    ]:
-      print 'emcc_wasm_0', args, ok
-      if not error_message: error_message = default_error_message
-      proc = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1'] + args, stdout=PIPE, stderr=PIPE)
-      out, err = proc.communicate()
-      if ok:
-        assert proc.returncode == 0
-        self.assertNotContained(error_message, err)
-        self.assertContained('hello, world!', run_js('a.out.js'))
-      else:
-        assert proc.returncode != 0
-        self.assertContained(error_message, err)
-
   def test_umask_0(self):
     open('src.c', 'w').write(r'''
 #include <sys/stat.h>

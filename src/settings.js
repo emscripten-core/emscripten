@@ -629,12 +629,6 @@ var WASM_BACKEND = 0; // Whether to use the WebAssembly backend that is in devel
                       // This requires that BINARYEN be set, as we use Binaryen's s2wasm to
                       // translate the backend output.
 
-var WASM = 0; // Older WebAssembly experiment. Compress the asm.js module into an early proposal for WebAssembly,
-              // and ship a decompressor that runs on the client.
-              // Note that wasm loading is asynchronous in the browser, and for that reason we wrap the entire emitted
-              // code in a function - things will not reach the global scope by default. You can access things on the
-              // Module object.
-
 // Ports
 
 var USE_SDL = 1; // Specify the SDL version that is being linked against.

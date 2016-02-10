@@ -2957,67 +2957,6 @@ window.close = function() {
     self.btest(d, expected='0', args=args + ["--closure", "0", "-g"])
     self.btest(d, expected='0', args=args + ["--closure", "1"])
 
-  def test_wasm_polyfill_prototype(self):
-    self.clear()
-    open('main.cpp', 'w').write(self.with_report_result(r'''
-      #include <iostream>
-      int main() {
-        std::cout << "Hello!\n";
-        int result = 7;
-        REPORT_RESULT();
-        return 0;
-      }
-    '''))
-    def separate():
-      print '*** verify that running the wasmator after emcc works'
-      Popen([PYTHON, EMCC, 'main.cpp', '-O2', '-o', 'test.o.html']).communicate()
-      subprocess.check_call([PYTHON, path_from_root('third_party', 'wasm-polyfill', 'wasmator.py'), 'test.o.js', 'test.o.wasm', 'Module'])
-    def together():
-      print '*** verify that running the wasmator using  emcc -s WASM=1  works'
-      Popen([PYTHON, EMCC, 'main.cpp', '-O2', '-o', 'test.o.html', '-s', 'WASM=1']).communicate()
-    def together_worker():
-      print '*** verify that running the wasmator using  emcc -s WASM=1  works, running in a worker'
-      Popen([PYTHON, EMCC, 'main.cpp', '-O2', '-o', 'test.o.html', '-s', 'WASM=1', '--proxy-to-worker']).communicate()
-    for build, check_error in [
-      (separate,        True),
-      (together,        True),
-      (together_worker, False) # onerror does not work in workers
-    ]:
-      build()
-      src = open('test.o.js').read()
-      open('test.o.js', 'w').write('''
-        onerror = function() {
-          Module.print('fail!');
-          var xhr = new XMLHttpRequest();
-          xhr.open('GET', 'http://localhost:8888/report_result?99');
-          xhr.onload = function() {
-            console.log('close!');
-            window.close();
-          };
-          setTimeout(xhr.onload, 2000); 
-          xhr.send();
-        };
-
-      ''' + src)
-      print 'browser'
-      self.run_browser('test.o.html', None, '/report_result?7')
-      print 'shell'
-      self.do_run('', 'Hello!', no_build=True, basename='test') # test in the shell too
-      assert os.path.exists('test.o.wasm')
-      os.unlink('test.o.wasm')
-      if check_error:
-        print 'error verify'
-        self.run_browser('test.o.html', None, '/report_result?99') # without the wasm, we failz
-        print 'shell'
-        ok = False
-        try:
-          self.do_run('', 'Hello!', no_build=True, basename='test') # test in the shell too
-          ok = True
-        except:
-          pass
-        assert not ok
-      os.unlink('test.o.js')
-
   def test_canvas_style_proxy(self):
     self.btest('canvas_style_proxy.c', expected='1', args=['--proxy-to-worker', '--shell-file', path_from_root('tests/canvas_style_proxy_shell.html'), '--pre-js', path_from_root('tests/canvas_style_proxy_pre.js')])
 
