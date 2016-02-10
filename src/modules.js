@@ -164,9 +164,10 @@ var LibraryManager = {
       if (typeof lib[x] === 'string') {
         var target = x;
         while (typeof lib[target] === 'string') {
-          if (lib[target].indexOf('(') >= 0) continue libloop;
+          // ignore code, aliases are just simple names
+          if (lib[target].search(/[({; ]/) >= 0) continue libloop;
+          // ignore trivial pass-throughs to Math.*
           if (lib[target].indexOf('Math_') == 0) continue libloop;
-          if (lib[target].indexOf(';') > 0) continue libloop; // ignore code
           target = lib[target];
         }
         if (lib[target + '__asm']) continue; // This is an alias of an asm library function. Also needs to be fully optimized.
