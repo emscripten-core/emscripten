@@ -4202,7 +4202,7 @@ main(const int argc, const char * const * const argv)
     assert FS_MARKER not in open('a.out.js').read()
     print 'yes fs, no fs:', yes_size, no_size
     assert yes_size - no_size > 100000 # 100K of FS code is removed
-    assert no_size < 315000
+    assert no_size < 360000
 
   def test_no_nuthin(self):
     print 'part one: check NO_FILESYSTEM is automatically set, and effective'
@@ -4229,7 +4229,7 @@ main(const int argc, const char * const * const argv)
         assert sizes['no_nuthin'] < 0.975*sizes['no_fs']
       assert sizes['no_fs_manual'] < sizes['no_fs'] # manual can remove a tiny bit more
       assert sizes['no_fs'] < 1.02*sizes['no_fs_manual']
-    test([], 0.75, 320000)
+    test([], 0.75, 360000)
     test(['-O1'], 0.66, 210000)
     test(['-O2'], 0.50, 70000)
     test(['-O3', '--closure', '1'], 0.60, 50000)
@@ -4254,8 +4254,8 @@ main(const int argc, const char * const * const argv)
       assert sizes['no_nuthin'] < absolute
       if '--closure' in opts: # no EXPORTED_RUNTIME_METHODS makes closure much more effective
         assert sizes['no_nuthin'] < 0.975*sizes['normal']
-    test([], 1, 200000)
-    test(['-O1'], 1, 200000)
+    test([], 1, 220000)
+    test(['-O1'], 1, 215000)
     test(['-O2'], 0.99, 75000)
     test(['-O3', '--closure', '1'], 0.975, 50000)
     test(['-O3', '--closure', '2'], 0.975, 41000) # might change now and then
