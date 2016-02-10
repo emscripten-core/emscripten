@@ -6015,3 +6015,43 @@ int main() {
               assert ('environment is %s? false' % other) in seen, seen
           print '-- verified proper env is shown'
 
+  def test_warn_no_filesystem(self):
+    WARNING = 'Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with  -s FORCE_FILESYSTEM=1'
+
+    check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')])
+    seen = run_js('a.out.js', stderr=PIPE)
+    assert WARNING not in seen
+
+    def test(contents):
+      open('src.cpp', 'w').write(r'''
+  #include<stdio.h>
+  #include<emscripten.h>
+  int main() {
+    EM_ASM({ %s });
+    printf("hello, world!\n");
+    return 0;
+  }
+  ''' % contents)
+      check_execute([PYTHON, EMCC, 'src.cpp'])
+      self.assertContained(WARNING, run_js('a.out.js', stderr=PIPE, assert_returncode=None))
+
+    # might appear in handwritten code
+    test("FS.init()")
+    test("FS.createPreloadedFile('waka waka, just warning check')");
+    test("FS.createDataFile('waka waka, just warning check')");
+    test("FS.analyzePath('waka waka, just warning check')");
+    test("FS.loadFilesFromDB('waka waka, just warning check')");
+    # might appear in filesystem code from a separate script tag
+    test("Module['FS_createDataFile']('waka waka, just warning check')");
+    test("Module['FS_createPreloadedFile']('waka waka, just warning check')");
+
+    # text is in the source when needed, but when forcing FS, it isn't there
+    check_execute([PYTHON, EMCC, 'src.cpp'])
+    self.assertContained(WARNING, open('a.out.js').read())
+    check_execute([PYTHON, EMCC, 'src.cpp', '-s', 'FORCE_FILESYSTEM=1']) # forcing FS means no need
+    self.assertNotContained(WARNING, open('a.out.js').read())
+    check_execute([PYTHON, EMCC, 'src.cpp', '-s', 'ASSERTIONS=0']) # no assertions, no need
+    self.assertNotContained(WARNING, open('a.out.js').read())
+    check_execute([PYTHON, EMCC, 'src.cpp', '-O2']) # optimized, so no assertions
+    self.assertNotContained(WARNING, open('a.out.js').read())
+
