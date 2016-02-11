@@ -1040,8 +1040,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if proxy_to_worker:
       shared.Settings.PROXY_TO_WORKER = 1
 
-    if use_preload_plugins:
-      shared.Settings.FORCE_FILESYSTEM = 1 # preload plugins require preload support which is part of the filesystem
+    if use_preload_plugins or len(preload_files) > 0 or len(embed_files) > 0:
+      # if we include any files, or intend to use preload plugins, then we definitely need filesystem support
+      shared.Settings.FORCE_FILESYSTEM = 1
 
     if proxy_to_worker or use_preload_plugins:
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$Browser']
