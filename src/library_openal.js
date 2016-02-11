@@ -1169,7 +1169,7 @@ var LibraryOpenAL = {
     }
   },
 
-  alGetListenerf: function(pname, values) {
+  alGetListenerf: function(pname, value) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
       console.error("alGetListenerf called without a valid context");
