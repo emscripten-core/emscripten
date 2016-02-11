@@ -860,7 +860,6 @@ var LibraryOpenAL = {
     }
   },
 
-  alSourcePlay__deps: ['setSourceState'],
   alSourcePlay: function(source) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
@@ -879,7 +878,6 @@ var LibraryOpenAL = {
     AL.setSourceState(src, 0x1012 /* AL_PLAYING */);
   },
 
-  alSourceStop__deps: ['setSourceState'],
   alSourceStop: function(source) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
@@ -898,7 +896,6 @@ var LibraryOpenAL = {
     AL.setSourceState(src, 0x1014 /* AL_STOPPED */);
   },
 
-  alSourceRewind__deps: ['setSourceState'],
   alSourceRewind: function(source) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
@@ -920,7 +917,6 @@ var LibraryOpenAL = {
     AL.setSourceState(src, 0x1011 /* AL_INITIAL */);
   },
 
-  alSourcePause__deps: ['setSourceState'],
   alSourcePause: function(source) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
