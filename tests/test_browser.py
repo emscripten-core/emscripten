@@ -1010,7 +1010,7 @@ keydown(100);keyup(100); // trigger the end
     open('moar.txt', 'w').write(secret)
     self.btest('file_db.cpp', '1', args=['--preload-file', 'moar.txt', '-DFIRST'])
     shutil.copyfile('test.html', 'first.html')
-    self.btest('file_db.cpp', secret)
+    self.btest('file_db.cpp', secret, args=['-s', 'FORCE_FILESYSTEM=1'])
     shutil.copyfile('test.html', 'second.html')
     open('moar.txt', 'w').write('aliantha')
     self.btest('file_db.cpp', secret, args=['--preload-file', 'moar.txt']) # even with a file there, we load over it
