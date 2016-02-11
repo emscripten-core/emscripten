@@ -472,7 +472,7 @@ var LibraryOpenAL = {
           // Disconnect from the panner.
           src.gain.disconnect();
 
-          src.gain.connect(AL.currentContext.ctx.destination);
+          src.gain.connect(AL.currentContext.gain);
         }
       } else if (value === 0 /* AL_FALSE */) {
         if (!src.panner) {
@@ -484,7 +484,7 @@ var LibraryOpenAL = {
           panner.rolloffFactor = src.rolloffFactor;
           panner.setPosition(src.position[0], src.position[1], src.position[2]);
           panner.setVelocity(src.velocity[0], src.velocity[1], src.velocity[2]);
-          panner.connect(AL.currentContext.ctx.destination);
+          panner.connect(AL.currentContext.gain);
 
           // Disconnect from the default source.
           src.gain.disconnect();
@@ -1169,7 +1169,7 @@ var LibraryOpenAL = {
     }
   },
 
-  alGetListenerf: function(pname, values) {
+  alGetListenerf: function(pname, value) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
       console.error("alGetListenerf called without a valid context");
@@ -1178,7 +1178,7 @@ var LibraryOpenAL = {
     }
     switch (pname) {
     case 0x100A /* AL_GAIN */:
-      {{{ makeSetValue('value', '0', 'AL.currentContext.gain.gain', 'float') }}}
+      {{{ makeSetValue('value', '0', 'AL.currentContext.gain.gain.value', 'float') }}}
       break;
     default:
 #if OPENAL_DEBUG
