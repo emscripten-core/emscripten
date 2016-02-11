@@ -472,7 +472,7 @@ var LibraryOpenAL = {
           // Disconnect from the panner.
           src.gain.disconnect();
 
-          src.gain.connect(AL.currentContext.ctx.destination);
+          src.gain.connect(AL.currentContext.gain);
         }
       } else if (value === 0 /* AL_FALSE */) {
         if (!src.panner) {
@@ -484,7 +484,7 @@ var LibraryOpenAL = {
           panner.rolloffFactor = src.rolloffFactor;
           panner.setPosition(src.position[0], src.position[1], src.position[2]);
           panner.setVelocity(src.velocity[0], src.velocity[1], src.velocity[2]);
-          panner.connect(AL.currentContext.ctx.destination);
+          panner.connect(AL.currentContext.gain);
 
           // Disconnect from the default source.
           src.gain.disconnect();
