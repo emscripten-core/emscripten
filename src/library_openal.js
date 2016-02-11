@@ -1178,7 +1178,7 @@ var LibraryOpenAL = {
     }
     switch (pname) {
     case 0x100A /* AL_GAIN */:
-      {{{ makeSetValue('value', '0', 'AL.currentContext.gain.gain', 'float') }}}
+      {{{ makeSetValue('value', '0', 'AL.currentContext.gain.gain.value', 'float') }}}
       break;
     default:
 #if OPENAL_DEBUG
