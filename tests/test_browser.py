@@ -2158,8 +2158,8 @@ open(filename, 'w').write(replaced)
       </body>
     ''')
 
-    def in_html(expected):
-      Popen([PYTHON, EMCC, 'src.cpp', '-O2', '-g', '--shell-file', 'shell.html', '--pre-js', 'data.js', '-o', 'page.html']).communicate()
+    def in_html(expected, args=[]):
+      Popen([PYTHON, EMCC, 'src.cpp', '-O2', '-g', '--shell-file', 'shell.html', '--pre-js', 'data.js', '-o', 'page.html'] + args).communicate()
       self.run_browser('page.html', None, '/report_result?' + expected)
 
     in_html('1')
@@ -2179,7 +2179,7 @@ int main() {
 }
     '''))
 
-    in_html('200')
+    in_html('200', ['-s', 'FORCE_FILESYSTEM=1'])
 
   def test_glfw3(self):
     self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3'], expected='1')
