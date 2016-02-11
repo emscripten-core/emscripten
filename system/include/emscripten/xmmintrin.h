@@ -125,7 +125,12 @@ _mm_store_ps(float *__p, __m128 __a)
 #define _MM_HINT_T2 1
 #define _MM_HINT_NTA 0
 // No prefetch available, dummy it out.
-#define _mm_prefetch(a, sel) ((void)0)
+static __inline__ void __attribute__((__always_inline__))
+_mm_prefetch(void *__p, int __i)
+{
+  ((void)__p);
+  ((void)__i);
+}
 
 static __inline__ void __attribute__((__always_inline__))
 _mm_sfence(void)
