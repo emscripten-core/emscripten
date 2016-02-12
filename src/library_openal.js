@@ -1250,7 +1250,7 @@ var LibraryOpenAL = {
     }
     switch (param) {
     case 0x100A /* AL_GAIN */:
-      AL.currentContext.gain.value = value;
+      AL.currentContext.gain.gain.value = value;
       break;
     default:
 #if OPENAL_DEBUG
