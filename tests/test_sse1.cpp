@@ -321,8 +321,8 @@ int main()
 	_MM_SET_ROUNDING_MODE(roundingMode);
 	unsigned int csr = _mm_getcsr();
 	_mm_setcsr(csr);
-	unsigned char dummyData[4096];
 #endif
+	unsigned char dummyData[4096];
 	_mm_prefetch(dummyData, _MM_HINT_T0);
 	_mm_prefetch(dummyData, _MM_HINT_T1);
 	_mm_prefetch(dummyData, _MM_HINT_T2);
