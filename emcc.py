@@ -1634,6 +1634,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         else:
           JSOptimizer.queue += ['registerize']
 
+      # NOTE: Important that this comes after registerize/registerizeHarder
+      if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS and opt_level >= 2:
+        JSOptimizer.flush()
+        shared.Building.eliminate_duplicate_funcs(final)
+
       if not shared.Settings.EMTERPRETIFY:
         do_minify()
 

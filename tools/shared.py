@@ -1655,6 +1655,11 @@ class Building:
     return ret
 
   @staticmethod
+  def eliminate_duplicate_funcs(filename):
+    import duplicate_function_eliminator
+    duplicate_function_eliminator.eliminate_duplicate_funcs(filename)
+
+  @staticmethod
   def closure_compiler(filename, pretty=True):
     if not check_closure_compiler():
       logging.error('Cannot run closure compiler')
