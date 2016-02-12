@@ -6229,7 +6229,7 @@ def process(filename):
         test()
 
         # Make sure that DFE ends up eliminating more than 200 functions
-        assert(num_original_funcs - self.count_funcs('src.cpp.o.js')) > 200
+        assert (num_original_funcs - self.count_funcs('src.cpp.o.js')) > 200
         break
 
   def test_openjpeg(self):

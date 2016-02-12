@@ -681,7 +681,12 @@ var PTHREADS_PROFILING = 0; // True when building with --threadprofiler
 
 var MAX_GLOBAL_ALIGN = -1; // received from the backend
 
-// Duplicate function elimination
+// Duplicate function elimination. This coalesces function bodies that are
+// identical, which can happen e.g. if two methods have different C/C++
+// or LLVM types, but end up identical at the asm.js level (all pointers
+// are the same as int32_t in asm.js, for example).
+// This option is quite slow to run, as it processes and hashes all methods
+// in the codebase in multiple passes.
 var ELIMINATE_DUPLICATE_FUNCTIONS = 0; // disabled by default
 var ELIMINATE_DUPLICATE_FUNCTIONS_PASSES = 5;
 var ELIMINATE_DUPLICATE_FUNCTIONS_DUMP_EQUIVALENT_FUNCTIONS = 0;
