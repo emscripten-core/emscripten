@@ -1207,7 +1207,7 @@ var LibraryOpenAL = {
       {{{ makeSetValue('values', '8', 'velocity[2]', 'float') }}}
       break;
     case 0x100F /* AL_ORIENTATION */:
-      var orientation = AL.currentContext.ctx.listener._orientation || [0,0,0,0,0,0];
+      var orientation = AL.currentContext.ctx.listener._orientation || [0,0,-1,0,1,0];
       {{{ makeSetValue('values', '0', 'orientation[0]', 'float') }}}
       {{{ makeSetValue('values', '4', 'orientation[1]', 'float') }}}
       {{{ makeSetValue('values', '8', 'orientation[2]', 'float') }}}
