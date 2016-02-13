@@ -579,6 +579,11 @@ var LibraryGLFW = {
       var win = GLFW.WindowFromId(winid);
       if (!win) return;
       win.windowSizeFunc = cbfun;
+     
+#if USE_GLFW == 2
+      if (!win.windowSizeFunc) return;
+      Runtime.dynCall('vii', win.windowSizeFunc, [win.width, win.height]);
+#endif
     },
 
     setWindowCloseCallback: function(winid, cbfun) {
