@@ -465,7 +465,7 @@ var LibraryOpenAL = {
       AL.updateSource(src);
       break;
     case 0x202 /* AL_SOURCE_RELATIVE */:
-      if (value === 1 /* AL_TRUE */) {
+      if (value === 0 /* AL_FALSE */) {
         if (src.panner) {
           src.panner = null;
 
@@ -474,7 +474,7 @@ var LibraryOpenAL = {
 
           src.gain.connect(AL.currentContext.gain);
         }
-      } else if (value === 0 /* AL_FALSE */) {
+      } else if (value === 1 /* AL_TRUE */) {
         if (!src.panner) {
           var panner = src.panner = AL.currentContext.ctx.createPanner();
           panner.panningModel = "equalpower";
