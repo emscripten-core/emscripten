@@ -1298,7 +1298,7 @@ var LibraryOpenAL = {
   alListener3f: function(param, v1, v2, v3) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
-      console.error("alListenerfv called without a valid context");
+      console.error("alListener3f called without a valid context");
 #endif
       return;
     }
