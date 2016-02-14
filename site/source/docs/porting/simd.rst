@@ -17,7 +17,7 @@ There are three different ways to generate code to benefit from SIMD instruction
 
 - Emscripten supports the GCC/Clang compiler specific `SIMD Vector Extensions <https://gcc.gnu.org/onlinedocs/gcc/Vector-Extensions.html>`_. These constructs do not require any changes to the command line build flags, but any code that utilizes the vector built-ins will always unconditionally emit SIMD.js vector instructions.
 
-- A third option is to use the x86 SSE intrinsics. Emscripten has full support for compiling code that utilizes the SSE1, SSE2 and SSE3 intrinsic function calls. To enable SSE1 intrinsics support, pass the compiler flag -msse, and add in a #include <xmmintrin.h>. To build SSE2 intrinsics code, pass the compiler flag -msse2, and use #include <emmintrin.h>. For SSE3, pass -msse3 and #include <pmmintrin.h>.
+- A third option is to use the x86 SSE intrinsics. Emscripten has full support for compiling code that utilizes the SSE1, SSE2, SSE3 and SSSE3 intrinsic function calls. To enable SSE1 intrinsics support, pass the compiler flag -msse, and add in a #include <xmmintrin.h>. To build SSE2 intrinsics code, pass the compiler flag -msse2, and use #include <emmintrin.h>. For SSE3, pass -msse3 and #include <pmmintrin.h>, and for SSSE3, pass -mssse3 and #include <tmmintrin.h>.
 
 These three methods are not mutually exclusive, but may freely be combined.
 
@@ -30,9 +30,9 @@ When porting native SIMD code, it should be noted that because of portability co
 
  - The SIMD types supported by SIMD.js are Float32x4, Int32x4, Uint32x4, Int16x8, Uint16x8, Int8x16 and Uint8x16. In particular, Float64x2 and Int64x2 are currently not supported, however Float64x2 is emulated in software in the current polyfill. 256-bit or wider SIMD types (AVX) are not supported either.
 
- - Even though the full set of SSE1, SSE2 and SSE3 intrinsics are supported, because of the platform-abstract nature of SIMD.js, some of these intrinsics will compile down to scalarized instructions to emulate. To verify which instructions are accelerated and which are not, examine the code in the platform headers `xmmintrin.h <https://github.com/kripken/emscripten/blob/incoming/system/include/emscripten/xmmintrin.h>`_ and `emmintrin.h <https://github.com/kripken/emscripten/blob/incoming/system/include/emscripten/xmmintrin.h>`_.
+ - Even though the full set of SSE1, SSE2, SSE3 and SSSE3 intrinsics are supported, because of the platform-abstract nature of SIMD.js, some of these intrinsics will compile down to scalarized instructions to emulate. To verify which instructions are accelerated and which are not, examine the code in the platform headers `xmmintrin.h <https://github.com/kripken/emscripten/blob/incoming/system/include/emscripten/xmmintrin.h>`_ and `emmintrin.h <https://github.com/kripken/emscripten/blob/incoming/system/include/emscripten/xmmintrin.h>`_.
 
- - Currently the Intel x86 SIMD support is limited to SSE1, SSE2 and SSE3 instruction sets. The Intel x86 SSSE3, SSE4.1, SSE4.2, AVX, AVX2 and FMA instruction sets or newer are not supported. Also, the old Intel x86 MMX instruction set is not supported.
+ - Currently the Intel x86 SIMD support is limited to SSE1, SSE2, SSE3 and SSSE3 instruction sets. The Intel x86 SSE4.1, SSE4.2, AVX, AVX2 and FMA instruction sets or newer are not supported. Also, the old Intel x86 MMX instruction set is not supported.
 
  - SIMD.js does not have control over managing floating point rounding modes or handling denormals.
 
