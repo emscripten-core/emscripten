@@ -276,6 +276,17 @@ __m128 ExtractInRandomOrder(float *arr, int i, int n, int prime)
 				printf("%s(%s, %s) = %s\n", #func, str, str2, str3); \
 			}
 
+#define Ret_M128_Tint_body(Ret_type, func, Tint) \
+	for(int i = 0; i < numInterestingFloats / 4; ++i) \
+		for(int k = 0; k < 4; ++k) \
+		{ \
+			__m128 m1 = E1(interesting_floats, i*4+k, numInterestingFloats); \
+			Ret_type ret = func(m1, Tint); \
+			char str[256]; tostr(&m1, str); \
+			char str2[256]; tostr(&ret, str2); \
+			printf("%s(%s, %d) = %s\n", #func, str, Tint, str2); \
+		}
+
 #define Ret_M128i_Tint_body(Ret_type, func, Tint) \
 	for(int i = 0; i < numInterestingInts / 4; ++i) \
 		for(int k = 0; k < 4; ++k) \
@@ -306,6 +317,20 @@ __m128 ExtractInRandomOrder(float *arr, int i, int n, int prime)
 			{ \
 				__m128d m1 = E1(interesting_doubles, i*2+k, numInterestingDoubles); \
 				__m128d m2 = E2(interesting_doubles, j*2, numInterestingDoubles); \
+				Ret_type ret = func(m1, m2, Tint); \
+				char str[256]; tostr(&m1, str); \
+				char str2[256]; tostr(&m2, str2); \
+				char str3[256]; tostr(&ret, str3); \
+				printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3); \
+			}
+
+#define Ret_M128i_M128i_Tint_body(Ret_type, func, Tint) \
+	for(int i = 0; i < numInterestingInts / 4; ++i) \
+		for(int k = 0; k < 4; ++k) \
+			for(int j = 0; j < numInterestingInts / 4; ++j) \
+			{ \
+				__m128i m1 = E1(interesting_ints, i*4+k, numInterestingInts); \
+				__m128i m2 = E2(interesting_ints, j*4, numInterestingInts); \
 				Ret_type ret = func(m1, m2, Tint); \
 				char str[256]; tostr(&m1, str); \
 				char str2[256]; tostr(&m2, str2); \
@@ -354,8 +379,10 @@ __m128 ExtractInRandomOrder(float *arr, int i, int n, int prime)
 	F(Ret_type, func, 255); \
 	F(Ret_type, func, 309);
 
+#define Ret_M128_Tint(Ret_type, func) const_int8_unroll(Ret_type, Ret_M128_Tint_body, func)
 #define Ret_M128i_Tint(Ret_type, func) const_int8_unroll(Ret_type, Ret_M128i_Tint_body, func)
 #define Ret_M128i_int_Tint(Ret_type, func) const_int8_unroll(Ret_type, Ret_M128i_int_Tint_body, func)
+#define Ret_M128i_M128i_Tint(Ret_type, func) const_int8_unroll(Ret_type, Ret_M128i_M128i_Tint_body, func)
 #define Ret_M128d_M128d_Tint(Ret_type, func) const_int8_unroll(Ret_type, Ret_M128d_M128d_Tint_body, func)
 #define Ret_M128_M128_Tint(Ret_type, func) const_int8_unroll(Ret_type, Ret_M128_M128_Tint_body, func)
 

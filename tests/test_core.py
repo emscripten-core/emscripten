@@ -5856,6 +5856,34 @@ return malloc(size);
       self.do_run(open(path_from_root('tests', 'test_sse3_full.cpp'), 'r').read(), native_result)
 
   @SIMD
+  def test_ssse3_full(self):
+    args = []
+    if '-O0' in self.emcc_args: args += ['-D_DEBUG=1']
+    Popen([CLANG, path_from_root('tests', 'test_ssse3_full.cpp'), '-o', 'test_ssse3_full', '-D_CRT_SECURE_NO_WARNINGS=1', '-mssse3'] + args + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE).communicate()
+    native_result, err = Popen('./test_ssse3_full', stdout=PIPE).communicate()
+    native_result = native_result.replace('\r\n', '\n') # Windows line endings fix
+
+    Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
+    orig_args = self.emcc_args
+    for mode in [[], ['-s', 'SIMD=1']]:
+      self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests'), '-mssse3'] + args
+      self.do_run(open(path_from_root('tests', 'test_ssse3_full.cpp'), 'r').read(), native_result)
+
+  @SIMD
+  def test_sse4_1_full(self):
+    args = []
+    if '-O0' in self.emcc_args: args += ['-D_DEBUG=1']
+    Popen([CLANG, path_from_root('tests', 'test_sse4_1_full.cpp'), '-o', 'test_sse4_1_full', '-D_CRT_SECURE_NO_WARNINGS=1', '-msse4.1'] + args + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE).communicate()
+    native_result, err = Popen('./test_sse4_1_full', stdout=PIPE).communicate()
+    native_result = native_result.replace('\r\n', '\n') # Windows line endings fix
+
+    Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
+    orig_args = self.emcc_args
+    for mode in [[], ['-s', 'SIMD=1']]:
+      self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests'), '-msse4.1'] + args
+      self.do_run(open(path_from_root('tests', 'test_sse4_1_full.cpp'), 'r').read(), native_result)
+
+  @SIMD
   def test_simd(self):
     test_path = path_from_root('tests', 'core', 'test_simd')
     src, output = (test_path + s for s in ('.in', '.out'))

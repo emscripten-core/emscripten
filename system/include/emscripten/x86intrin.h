@@ -17,4 +17,12 @@
 #include <pmmintrin.h>
 #endif
 
+#if __SSSE3__
+#include <tmmintrin.h>
+#endif
+
+#if __SSE4_1__
+#include <smmintrin.h>
+#endif
+
 #endif
