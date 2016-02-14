@@ -494,6 +494,10 @@ LibraryManager.library = {
   exit: function(status) {
     __exit(status);
   },
+  _Exit__deps: ['exit'],
+  _Exit: function(status) {
+    __exit(status);
+  },
 
   _ZSt9terminatev__deps: ['exit'],
   _ZSt9terminatev: function() {

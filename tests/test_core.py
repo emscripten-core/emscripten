@@ -7567,7 +7567,12 @@ Success!
       int main() {
         atexit(cleanup); // this atexit should still be called
         printf("hello, world!\n");
-        exit(118); // Unusual exit status to make sure it's working!
+        // Unusual exit status to make sure it's working!
+        if (CAPITAL_EXIT) {
+          _Exit(118);
+        } else {
+          exit(118);
+        }
       }
     '''
     open('post.js', 'w').write('''
@@ -7577,7 +7582,8 @@ Success!
       Module.callMain();
     ''')
     self.emcc_args += ['-s', 'INVOKE_RUN=0', '--post-js', 'post.js']
-    self.do_run(src, 'hello, world!\ncleanup\nI see exit status: 118')
+    self.do_run(src.replace('CAPITAL_EXIT', '0'), 'hello, world!\ncleanup\nI see exit status: 118')
+    self.do_run(src.replace('CAPITAL_EXIT', '1'), 'hello, world!\ncleanup\nI see exit status: 118')
 
   def test_noexitruntime(self):
     src = r'''
