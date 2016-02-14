@@ -69,12 +69,9 @@ EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userD
 
   if (e->screenX != 0 && e->screenY != 0 && e->clientX != 0 && e->clientY != 0 && e->canvasX != 0 && e->canvasY != 0 && e->targetX != 0 && e->targetY != 0)
   {
-    if (e->buttons != 0)
-    {
-      if (eventType == EMSCRIPTEN_EVENT_CLICK) gotClick = 1;
-      if (eventType == EMSCRIPTEN_EVENT_MOUSEDOWN) gotMouseDown = 1;
-      if (eventType == EMSCRIPTEN_EVENT_DBLCLICK) gotDblClick = 1;
-    }
+    if (eventType == EMSCRIPTEN_EVENT_CLICK) gotClick = 1;
+    if (eventType == EMSCRIPTEN_EVENT_MOUSEDOWN && e->buttons != 0) gotMouseDown = 1;
+    if (eventType == EMSCRIPTEN_EVENT_DBLCLICK) gotDblClick = 1;
     if (eventType == EMSCRIPTEN_EVENT_MOUSEUP) gotMouseUp = 1;
     if (eventType == EMSCRIPTEN_EVENT_MOUSEMOVE && (e->movementX != 0 || e->movementY != 0)) gotMouseMove = 1;
   }
@@ -107,6 +104,8 @@ EM_BOOL wheel_callback(int eventType, const EmscriptenWheelEvent *e, void *userD
 
 int main()
 {
+  emscripten_set_canvas_size(400, 300);
+
   EMSCRIPTEN_RESULT ret = emscripten_set_click_callback(0, 0, 1, mouse_callback);
   TEST_RESULT(emscripten_set_click_callback);
   ret = emscripten_set_mousedown_callback(0, 0, 1, mouse_callback);
