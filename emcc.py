@@ -690,6 +690,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         newargs.append('-D__SSE2__=1')
         newargs.append('-D__SSE3__=1')
         newargs[i] = ''
+      elif newargs[i] == '-mssse3':
+        newargs.append('-D__SSE__=1')
+        newargs.append('-D__SSE2__=1')
+        newargs.append('-D__SSE3__=1')
+        newargs.append('-D__SSSE3__=1')
+        newargs[i] = ''
 
     if should_exit:
       sys.exit(0)
