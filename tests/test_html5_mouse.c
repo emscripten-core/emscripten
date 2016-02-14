@@ -104,7 +104,9 @@ EM_BOOL wheel_callback(int eventType, const EmscriptenWheelEvent *e, void *userD
 
 int main()
 {
+  // Make the canvas area stand out from the background.
   emscripten_set_canvas_size(400, 300);
+  EM_ASM(Module['canvas'].style.backgroundColor = 'black';);
 
   EMSCRIPTEN_RESULT ret = emscripten_set_click_callback(0, 0, 1, mouse_callback);
   TEST_RESULT(emscripten_set_click_callback);
@@ -141,10 +143,10 @@ int main()
       for(var d in data) event[d] = data[d];
       window.dispatchEvent(event);
     }
-    sendEvent('click', { screenX: -500000, screenY: -500000, clientX: -500000, clientY: -500000, button: 0, buttons: 1 }); // Send a dummy event that should not be received.
+    sendEvent('click', { screenX: -500000, screenY: -500000, clientX: -500000, clientY: -500000, button: 0, buttons: 0 }); // Send a dummy event that should not be received.
     sendEvent('mousedown', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 1 });
     sendEvent('mouseup', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 0 });
-    sendEvent('dblclick', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 1 });
+    sendEvent('dblclick', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 0 });
     sendEvent('mousemove', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 0, 'movementX': 1, 'movementY': 1 });
     sendEvent('wheel', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 0, 'deltaX': 1, 'deltaY': 1, 'deltaZ': 1, 'deltaMode': 1 });
     sendEvent('mousewheel', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 0, 'wheelDeltaX': 1, 'wheelDeltaY': 1 });
