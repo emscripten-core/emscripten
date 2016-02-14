@@ -1,3 +1,5 @@
+# coding=utf-8
+
 import multiprocessing, os, pipes, re, shutil, subprocess, sys
 import glob
 import tools.shared
@@ -2160,6 +2162,24 @@ seeked= file.
       uuid = uuid.UUID(metadata['package_uuid'], version = 4) # can only assert the uuid format is correct, the uuid's value is expected to differ in between invocation
     except ValueError:
       assert False
+
+  def test_file_packager_unicode(self):
+    unicode_name = 'unicode…☃'
+    if not os.path.exists(unicode_name):
+      try:
+        os.mkdir(unicode_name)
+      except:
+        print "we failed to even create a unicode dir, so on this OS, we can't test this"
+        return
+    full = os.path.join(unicode_name, 'data.txt')
+    open(full, 'w').write('data')
+    proc = Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', full], stdout=PIPE, stderr=PIPE)
+    out, err = proc.communicate()
+    assert proc.returncode == 0, err
+    assert len(out) > 0, err
+    assert len(err) == 0, err
+    assert unicode_name in out, out
+    print len(err)
 
   def test_crunch(self):
     try:
