@@ -581,6 +581,10 @@ var LibraryGLFW = {
       win.windowSizeFunc = cbfun;
      
 #if USE_GLFW == 2
+      // As documented in GLFW2 API (http://www.glfw.org/GLFWReference27.pdf#page=22), when size
+      // callback function is set, it will be called with the current window size before this
+      // function returns.
+      // GLFW3 on the over hand doesn't have this behavior (https://github.com/glfw/glfw/issues/62).
       if (!win.windowSizeFunc) return;
       Runtime.dynCall('vii', win.windowSizeFunc, [win.width, win.height]);
 #endif
