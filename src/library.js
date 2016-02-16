@@ -942,16 +942,6 @@ LibraryManager.library = {
     throw 'Assertion failed: ' + (condition ? Pointer_stringify(condition) : 'unknown condition') + ', at: ' + [filename ? Pointer_stringify(filename) : 'unknown filename', line, func ? Pointer_stringify(func) : 'unknown function'] + ' at ' + stackTrace();
   },
 
-  __cxa_guard_acquire: function(variable) {
-    if (!{{{ makeGetValue(0, 'variable', 'i8', null, null, 1) }}}) { // ignore SAFE_HEAP stuff because llvm mixes i64 and i8 here
-      {{{ makeSetValue(0, 'variable', '1', 'i8') }}};
-      return 1;
-    }
-    return 0;
-  },
-  __cxa_guard_release: function() {},
-  __cxa_guard_abort: function() {},
-
   $EXCEPTIONS: {
     last: 0,
     caught: [],
