@@ -163,6 +163,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'cxa_default_handlers.cpp',
       'cxa_demangle.cpp',
       'cxa_exception_storage.cpp',
+      'cxa_guard.cpp',
       'cxa_new_delete.cpp',
       'cxa_handlers.cpp',
       'exception.cpp',
