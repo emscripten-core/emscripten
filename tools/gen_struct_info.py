@@ -312,10 +312,10 @@ def gen_inspect_code(path, struct, code):
   c_descent(path[-1], code)
   
   if len(path) == 1:
-    c_set('__size__', 'i%u', 'sizeof (' + prefix + path[0] + ')', code)
+    c_set('__size__', 'i%zu', 'sizeof (' + prefix + path[0] + ')', code)
   else:
-    c_set('__size__', 'i%u', 'sizeof ((' + prefix + path[0] + ' *)0)->' + '.'.join(path[1:]), code)
-    #c_set('__offset__', 'i%u', 'offsetof(' + prefix + path[0] + ', ' + '.'.join(path[1:]) + ')', code)
+    c_set('__size__', 'i%zu', 'sizeof ((' + prefix + path[0] + ' *)0)->' + '.'.join(path[1:]), code)
+    #c_set('__offset__', 'i%zu', 'offsetof(' + prefix + path[0] + ', ' + '.'.join(path[1:]) + ')', code)
   
   for field in struct:
     if isinstance(field, dict):
@@ -323,7 +323,7 @@ def gen_inspect_code(path, struct, code):
       fname = field.keys()[0]
       gen_inspect_code(path + [fname], field[fname], code)
     else:
-      c_set(field, 'i%u', 'offsetof(' + prefix + path[0] + ', ' + '.'.join(path[1:] + [field]) + ')', code)
+      c_set(field, 'i%zu', 'offsetof(' + prefix + path[0] + ', ' + '.'.join(path[1:] + [field]) + ')', code)
   
   c_ascent(code)
 
