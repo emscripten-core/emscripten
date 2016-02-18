@@ -332,24 +332,23 @@ class RunnerCore(unittest.TestCase):
         assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
 
   def validate_asmjs(self, err):
-    if "asm.js type error: 'Int8x16' is not a standard SIMD type" in err:
-      err = err.replace("asm.js type error: 'Int8x16' is not a standard SIMD type", "")
-      print >> sys.stderr, "\nWARNING: ignoring asm.js type error from Int8x16 due to implementation not yet available in SpiderMonkey. See https://bugzilla.mozilla.org/show_bug.cgi?id=1136226\n"
-    if "asm.js type error: 'Int16x8' is not a standard SIMD type" in err:
-      err = err.replace("asm.js type error: 'Int16x8' is not a standard SIMD type", "")
-      print >> sys.stderr, "\nWARNING: ignoring asm.js type error from Int16x8 due to implementation not yet available in SpiderMonkey. See https://bugzilla.mozilla.org/show_bug.cgi?id=1136226\n"
-    if "asm.js type error: 'Uint8x16' is not a standard SIMD type" in err:
-      err = err.replace("asm.js type error: 'Uint8x16' is not a standard SIMD type", "")
-      print >> sys.stderr, "\nWARNING: ignoring asm.js type error from Uint8x16 due to implementation not yet available in SpiderMonkey. See https://bugzilla.mozilla.org/show_bug.cgi?id=1244117\n"
-    if "asm.js type error: 'Uint16x8' is not a standard SIMD type" in err:
-      err = err.replace("asm.js type error: 'Uint16x8' is not a standard SIMD type", "")
-      print >> sys.stderr, "\nWARNING: ignoring asm.js type error from Uint16x8 due to implementation not yet available in SpiderMonkey. See https://bugzilla.mozilla.org/show_bug.cgi?id=1244117\n"
-    if "asm.js type error: 'Uint32x4' is not a standard SIMD type" in err:
-      err = err.replace("asm.js type error: 'Uint32x4' is not a standard SIMD type", "")
-      print >> sys.stderr, "\nWARNING: ignoring asm.js type error from Uint32x4 due to implementation not yet available in SpiderMonkey. See https://bugzilla.mozilla.org/show_bug.cgi?id=1240796\n"
-    if "asm.js type error: 'Float64x2' is not a standard SIMD type" in err:
-      err = err.replace("asm.js type error: 'Float64x2' is not a standard SIMD type", "")
-      print >> sys.stderr, "\nWARNING: ignoring asm.js type error from Float64x2 due to implementation not yet available in SpiderMonkey. See https://bugzilla.mozilla.org/show_bug.cgi?id=1124205\n"
+    m = re.search("asm.js type error: '(\w+)' is not a (standard|supported) SIMD type", err)
+    if m:
+      # Bug numbers for missing SIMD types:
+      bugs = {
+        'Int8x16'  : 1136226,
+        'Int16x8'  : 1136226,
+        'Uint8x16' : 1244117,
+        'Uint16x8' : 1244117,
+        'Uint32x4' : 1240796,
+        'Float64x2': 1124205,
+      }
+      simd = m.group(1)
+      if simd in bugs:
+        print >> sys.stderr, ("\nWARNING: ignoring asm.js type error from {} due to implementation not yet available in SpiderMonkey." +
+            " See https://bugzilla.mozilla.org/show_bug.cgi?id={}\n").format(simd, bugs[simd])
+        err = err.replace(m.group(0), '')
+
     if 'uccessfully compiled asm.js code' in err and 'asm.js link error' not in err:
       print >> sys.stderr, "[was asm.js'ified]"
     elif 'asm.js' in err: # if no asm.js error, then not an odin build
