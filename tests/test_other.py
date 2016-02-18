@@ -2540,36 +2540,47 @@ var Module = { print: function(x) { throw '<{(' + x + ')}>' } };
     assert r'<{(123456789)}>' in output, output
 
   def test_precompiled_headers(self):
-    self.clear()
+    for suffix in ['gch', 'pch']:
+      print suffix
+      self.clear()
 
-    open('header.h', 'w').write('#define X 5\n')
-    Popen([PYTHON, EMCC, '-xc++-header', 'header.h', '-c']).communicate()
-    assert os.path.exists('header.h.gch')
+      open('header.h', 'w').write('#define X 5\n')
+      Popen([PYTHON, EMCC, '-xc++-header', 'header.h', '-c']).communicate()
+      assert os.path.exists('header.h.gch') # default output is gch
+      if suffix != 'gch':
+        Popen([PYTHON, EMCC, '-xc++-header', 'header.h', '-o', 'header.h.' + suffix]).communicate()
+        assert open('header.h.gch').read() == open('header.h.' + suffix).read()
 
-    open('src.cpp', 'w').write(r'''
+      open('src.cpp', 'w').write(r'''
 #include <stdio.h>
 int main() {
   printf("|%d|\n", X);
   return 0;
 }
 ''')
-    Popen([PYTHON, EMCC, 'src.cpp', '-include', 'header.h']).communicate()
+      Popen([PYTHON, EMCC, 'src.cpp', '-include', 'header.h']).communicate()
 
-    output = run_js(self.in_dir('a.out.js'), stderr=PIPE, full_output=True, engine=NODE_JS)
-    assert '|5|' in output, output
+      output = run_js(self.in_dir('a.out.js'), stderr=PIPE, full_output=True, engine=NODE_JS)
+      assert '|5|' in output, output
 
-    # also verify that the gch is actually used
-    err = Popen([PYTHON, EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).communicate()
-    self.assertTextDataContained('*** PCH/Modules Loaded:\nModule: header.h.gch', err[1])
-    # and sanity check it is not mentioned when not
-    try_delete('header.h.gch')
-    err = Popen([PYTHON, EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).communicate()
-    assert '*** PCH/Modules Loaded:\nModule: header.h.gch' not in err[1].replace('\r\n', '\n'), err[1]
+      # also verify that the gch is actually used
+      err = Popen([PYTHON, EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).communicate()
+      self.assertTextDataContained('*** PCH/Modules Loaded:\nModule: header.h.' + suffix, err[1])
+      # and sanity check it is not mentioned when not
+      try_delete('header.h.' + suffix)
+      err = Popen([PYTHON, EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).communicate()
+      assert '*** PCH/Modules Loaded:\nModule: header.h.' + suffix not in err[1].replace('\r\n', '\n'), err[1]
 
-    # with specified target via -o
-    try_delete('header.h.gch')
-    Popen([PYTHON, EMCC, '-xc++-header', 'header.h', '-o', 'my.gch']).communicate()
-    assert os.path.exists('my.gch')
+      # with specified target via -o
+      try_delete('header.h.' + suffix)
+      Popen([PYTHON, EMCC, '-xc++-header', 'header.h', '-o', 'my.' + suffix]).communicate()
+      assert os.path.exists('my.' + suffix)
+
+      # -include-pch flag
+      Popen([PYTHON, EMCC, '-xc++-header', 'header.h', '-o', 'header.h.' + suffix]).communicate()
+      check_execute([PYTHON, EMCC, 'src.cpp', '-include-pch', 'header.h.' + suffix])
+      output = run_js('a.out.js')
+      assert '|5|' in output, output
 
   def test_warn_unaligned(self):
     open('src.cpp', 'w').write(r'''
