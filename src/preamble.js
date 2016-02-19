@@ -922,6 +922,31 @@ if (!Module['reallocBuffer']) Module['reallocBuffer'] = function(size) {
 };
 #endif
 
+/**
+ * Calculates the new size of the Emscripten heap.
+ * Can be overridden externally.
+ * All sizes are in measured in bytes.
+ * @param OLD_TOTAL_MEMORY The old size of the Emscripten heap.
+ * @param DYNAMICTOP The new top of the heap.
+ * @param LIMIT The maximum practical limit of the size of the heap.
+ * @returns The new total size of the Emscripten heap.
+ *          The returned size should be larger than DYNAMICTOP and smaller than or equal to LIMIT.
+ *          The returned value does not have to be aligned.
+ *          Alignment will happen afterwards with Runtime.alignMemory / alignMemoryPage.
+ */
+Module['calculateNewTotalMemorySize'] = function(OLD_TOTAL_MEMORY, DYNAMICTOP, LIMIT) {
+  var NEW_MEMORY_SIZE = OLD_TOTAL_MEMORY;
+  while (NEW_MEMORY_SIZE <= DYNAMICTOP) { // Simple heuristic.
+    if (NEW_MEMORY_SIZE < LIMIT/2) {
+      NEW_MEMORY_SIZE = alignMemoryPage(2*TOTAL_MEMORY); // double until 1GB
+    } else {
+      NEW_MEMORY_SIZE = alignMemoryPage((3*TOTAL_MEMORY + LIMIT)/4); // add smaller increments towards 2GB, which we cannot reach
+    }
+  }
+  return NEW_MEMORY_SIZE;
+};
+
+
 function enlargeMemory() {
 #if USE_PTHREADS
   abort('Cannot enlarge memory arrays, since compiling with pthreads support enabled (-s USE_PTHREADS=1).');
@@ -950,15 +975,9 @@ function enlargeMemory() {
                                // and JS engines seem unhappy to give us 2GB arrays currently
   if (DYNAMICTOP >= LIMIT) return false;
 
-  while (TOTAL_MEMORY <= DYNAMICTOP) { // Simple heuristic.
-    if (TOTAL_MEMORY < LIMIT/2) {
-      TOTAL_MEMORY = alignMemoryPage(2*TOTAL_MEMORY); // double until 1GB
-    } else {
-      var last = TOTAL_MEMORY;
-      TOTAL_MEMORY = alignMemoryPage((3*TOTAL_MEMORY + LIMIT)/4); // add smaller increments towards 2GB, which we cannot reach
-      if (TOTAL_MEMORY <= last) return false;
-    }
-  }
+  var nonAlignedMemorySize = Module['calculateNewTotalMemorySize'](OLD_TOTAL_MEMORY, DYNAMICTOP, LIMIT);
+  TOTAL_MEMORY = alignMemoryPage(Runtime.alignMemory(nonAlignedMemorySize, 16*1024*1024));
+  if (TOTAL_MEMORY <= DYNAMICTOP) return false;
 
   TOTAL_MEMORY = Math.max(TOTAL_MEMORY, 16*1024*1024);
 
