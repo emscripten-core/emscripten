@@ -2743,6 +2743,14 @@ window.close = function() {
 
   # pthreads tests
 
+  def prep_no_SAB(self):
+    open('html.html', 'w').write(open(path_from_root('src', 'shell_minimal.html')).read().replace('''<body>''', '''<body>
+      <script>
+        SharedArrayBuffer = undefined;
+        Atomics = undefined;
+      </script>
+    '''))
+
   # Test that the emscripten_ atomics api functions work.
   def test_pthread_atomics(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=120) # extra time on first test, to be sure to build all libraries
@@ -2794,6 +2802,10 @@ window.close = function() {
       for pthreads in [['-s', 'USE_PTHREADS=1'], ['-s', 'USE_PTHREADS=2', '--separate-asm']]:
         print str(opt) + ' ' + str(pthreads)
         self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=opt + pthreads + ['-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
+
+        if 'USE_PTHREADS=2' in pthreads:
+          self.prep_no_SAB()
+          self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=opt + pthreads + ['-s', 'PTHREAD_POOL_SIZE=8', '--shell-file', 'html.html'], timeout=30)
 
   # Test that a pthread can spawn another pthread of its own.
   def test_pthread_create_pthread(self):
@@ -2870,9 +2882,15 @@ window.close = function() {
   def test_pthread_setspecific_mainthread(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_setspecific_mainthread.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm'], timeout=30)
 
+    self.prep_no_SAB()
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_setspecific_mainthread.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '--shell-file', 'html.html'], timeout=30)
+
   # Test the -s PTHREAD_HINT_NUM_CORES=x command line variable.
   def test_pthread_num_logical_cores(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_num_logical_cores.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_HINT_NUM_CORES=2'], timeout=30)
+
+    self.prep_no_SAB()
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_num_logical_cores.cpp'), expected='0', args=['-O3', '-g', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_HINT_NUM_CORES=2', '--shell-file', 'html.html'], timeout=30)
 
   # Test that pthreads have access to filesystem.
   def test_pthread_file_io(self):
