@@ -1349,7 +1349,7 @@ keydown(100);keyup(100); // trigger the end
       time.sleep(2)
 
   def test_glgears(self):
-    self.btest('hello_world_gles.c', reference='gears.png', reference_slack=2,
+    self.btest('hello_world_gles.c', reference='gears.png', reference_slack=3,
         args=['-DHAVE_BUILTIN_SINCOS'], outfile='something.html',
         message='You should see animating gears.')
 
