@@ -570,18 +570,22 @@ window.close = function() {
 
     original = open('test.js').read()
 
-    def copy(to, js_mod):
-      open(to + '.html', 'w').write(open('test.html').read().replace('test.js', to + '.js'))
+    def copy(to, js_mod, html_mod = lambda x: x):
+      open(to + '.html', 'w').write(html_mod(open('test.html').read().replace('test.js', to + '.js')))
       open(to + '.js', 'w').write(js_mod(open('test.js').read()))
 
     # run with noProxy, but make main thread fail
-    copy('two', lambda original: original.replace('function _main($argc,$argv) {', 'function _main($argc,$argv) { if (ENVIRONMENT_IS_WEB) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:8888/report_result?999");xhr.send(); }'))
+    copy('two', lambda original: original.replace('function _main($argc,$argv) {', 'function _main($argc,$argv) { if (ENVIRONMENT_IS_WEB) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:8888/report_result?999");xhr.send(); }'),
+                lambda original: original.replace('function doReftest() {', 'function doReftest() { return; ')) # don't reftest on main thread, it would race
     self.run_browser('two.html?noProxy', None, ['/report_result?999'])
+    copy('two', lambda original: original.replace('function _main($argc,$argv) {', 'function _main($argc,$argv) { if (ENVIRONMENT_IS_WEB) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:8888/report_result?999");xhr.send(); }'))
     self.run_browser('two.html', None, ['/report_result?0']) # this is still cool
 
     # run without noProxy, so proxy, but make worker fail
-    copy('three', lambda original: original.replace('function _main($argc,$argv) {', 'function _main($argc,$argv) { if (ENVIRONMENT_IS_WORKER) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:8888/report_result?999");xhr.send(); }'))
+    copy('three', lambda original: original.replace('function _main($argc,$argv) {', 'function _main($argc,$argv) { if (ENVIRONMENT_IS_WORKER) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:8888/report_result?999");xhr.send(); }'),
+                lambda original: original.replace('function doReftest() {', 'function doReftest() { return; ')) # don't reftest on main thread, it would race
     self.run_browser('three.html', None, ['/report_result?999'])
+    copy('three', lambda original: original.replace('function _main($argc,$argv) {', 'function _main($argc,$argv) { if (ENVIRONMENT_IS_WORKER) { var xhr = new XMLHttpRequest(); xhr.open("GET", "http://localhost:8888/report_result?999");xhr.send(); }'))
     self.run_browser('three.html?noProxy', None, ['/report_result?0']) # this is still cool
 
   def test_glgears_proxy_jstarget(self):
