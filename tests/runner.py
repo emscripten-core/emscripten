@@ -816,16 +816,15 @@ class BrowserCore(RunnerCore):
         img.src = '%s';
       };
       Module['postRun'] = doReftest;
-      Module['preRun'].push(function() {
-        setTimeout(doReftest, 5000); // if run() throws an exception and postRun is not called, this will kick in
-      });
 
       if (typeof WebGLClient !== 'undefined') {
         // trigger reftest from RAF as well, needed for workers where there is no pre|postRun on the main thread
         var realRAF = window.requestAnimationFrame;
         window.requestAnimationFrame = function(func) {
-          realRAF(func);
-          setTimeout(doReftest, 5000);
+          realRAF(function() {
+            func();
+            realRAF(doReftest);
+          });
         };
 
         // trigger reftest from canvas render too, for workers not doing GL
@@ -833,7 +832,7 @@ class BrowserCore(RunnerCore):
         worker.onmessage = function(event) {
           realWOM(event);
           if (event.data.target === 'canvas' && event.data.op === 'render') {
-            setTimeout(doReftest, 5000);
+            realRAF(doReftest);
           }
         };
       }
