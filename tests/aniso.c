@@ -219,6 +219,8 @@ int main(int argc, char *argv[])
     SDL_Quit();
 
     // check for asm compilation bug with aliased functions with different sigs
+
+    glBegin( GL_TRIANGLE_STRIP );
     void (*f)(int, int) = glVertex2i;
     if ((int)f % 16 == 4) f(5, 7);
     void (*g)(int, int) = glVertex3f;

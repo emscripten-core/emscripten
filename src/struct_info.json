@@ -1430,7 +1430,14 @@
     },
     {
         "file": "emscripten/threading.h",
-        "structs": {},
+        "structs": {
+            "thread_profiler_block": [
+                "threadStatus",
+                "currentStatusStartTime",
+                "timeSpentInStatus",
+                "name"
+            ]
+        },
         "defines": [
             "EM_PROXIED_UTIME",
             "EM_PROXIED_UTIMES",
@@ -1447,7 +1454,13 @@
             "EM_PROXIED_PUTENV",
             "EM_PROXIED_TZSET",
             "EM_PROXIED_PTHREAD_CREATE",
-            "EM_PROXIED_SYSCALL"
+            "EM_PROXIED_SYSCALL",
+            "EM_THREAD_STATUS_NOTSTARTED",
+            "EM_THREAD_STATUS_RUNNING",
+            "EM_THREAD_STATUS_SLEEPING",
+            "EM_THREAD_STATUS_WAITFUTEX",
+            "EM_THREAD_STATUS_WAITPROXY",
+            "EM_THREAD_STATUS_FINISHED"
             ]
     },
     {
@@ -1456,6 +1469,7 @@
             "pthread": [
               "threadStatus",
               "threadExitCode",
+              "profilerBlock",
               "self",
               "tsd",
               "tsd_used",

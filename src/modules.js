@@ -98,12 +98,13 @@ var LibraryManager = {
 
     var libraries = [
       'library.js',
+      'library_browser.js',
       'library_formatString.js',
+      'library_path.js',
       'library_syscall.js'
     ];
     if (!NO_FILESYSTEM) {
       libraries = libraries.concat([
-        'library_path.js',
         'library_fs.js',
         'library_idbfs.js',
         'library_memfs.js',
@@ -112,11 +113,6 @@ var LibraryManager = {
         'library_workerfs.js',
         'library_tty.js',
         'library_lz4.js',
-      ]);
-    }
-    if (!NO_BROWSER) {
-      libraries = libraries.concat([
-        'library_browser.js'
       ]);
     }
     libraries = libraries.concat([
@@ -168,7 +164,9 @@ var LibraryManager = {
       if (typeof lib[x] === 'string') {
         var target = x;
         while (typeof lib[target] === 'string') {
-          if (lib[target].indexOf('(') >= 0) continue libloop;
+          // ignore code, aliases are just simple names
+          if (lib[target].search(/[({; ]/) >= 0) continue libloop;
+          // ignore trivial pass-throughs to Math.*
           if (lib[target].indexOf('Math_') == 0) continue libloop;
           target = lib[target];
         }

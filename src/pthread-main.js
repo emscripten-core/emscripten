@@ -51,6 +51,7 @@ this.onmessage = function(e) {
     postMessage({ cmd: 'loaded' });
   } else if (e.data.cmd === 'run') { // This worker was idle, and now should start executing its pthread entry point.
     threadInfoStruct = e.data.threadInfoStruct;
+    __register_pthread_ptr(threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0); // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
     assert(threadInfoStruct);
     selfThreadId = e.data.selfThreadId;
     assert(selfThreadId);
@@ -62,6 +63,9 @@ this.onmessage = function(e) {
     assert(STACK_MAX > STACK_BASE);
     Runtime.establishStackSpace(e.data.stackBase, e.data.stackBase + e.data.stackSize);
     var result = 0;
+
+    PThread.setThreadStatus(_pthread_self(), 1/*EM_THREAD_STATUS_RUNNING*/);
+
     try {
       // HACK: Some code in the wild has instead signatures of form 'void *ThreadMain()', which seems to be ok in native code.
       // To emulate supporting both in test suites, use the following form. This is brittle!

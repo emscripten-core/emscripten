@@ -419,6 +419,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     bind = False
     emrun = False
     cpu_profiler = False
+    thread_profiler = False
     memory_profiler = False
     save_bc = False
     memory_init_file = None
@@ -667,6 +668,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       elif newargs[i] == '--cpuprofiler':
         cpu_profiler = True
         newargs[i] = ''
+      elif newargs[i] == '--threadprofiler':
+        thread_profiler = True
+        settings_changes.append('PTHREADS_PROFILING=1')
+        newargs[i] = ''
       elif newargs[i] == '--default-obj-ext':
         newargs[i] = ''
         default_object_extension = newargs[i+1]
@@ -679,6 +684,24 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       elif newargs[i] == '-msse2':
         newargs.append('-D__SSE__=1')
         newargs.append('-D__SSE2__=1')
+        newargs[i] = ''
+      elif newargs[i] == '-msse3':
+        newargs.append('-D__SSE__=1')
+        newargs.append('-D__SSE2__=1')
+        newargs.append('-D__SSE3__=1')
+        newargs[i] = ''
+      elif newargs[i] == '-mssse3':
+        newargs.append('-D__SSE__=1')
+        newargs.append('-D__SSE2__=1')
+        newargs.append('-D__SSE3__=1')
+        newargs.append('-D__SSSE3__=1')
+        newargs[i] = ''
+      elif newargs[i] == '-msse4.1':
+        newargs.append('-D__SSE__=1')
+        newargs.append('-D__SSE2__=1')
+        newargs.append('-D__SSE3__=1')
+        newargs.append('-D__SSSE3__=1')
+        newargs.append('-D__SSE4_1__=1')
         newargs[i] = ''
 
     if should_exit:
@@ -699,6 +722,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if memory_profiler:
       post_js += open(shared.path_from_root('src', 'memoryprofiler.js')).read() + '\n'
+
+    if thread_profiler:
+      post_js += open(shared.path_from_root('src', 'threadprofiler.js')).read() + '\n'
 
     if js_opts is None: js_opts = opt_level >= 2
     if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
@@ -745,7 +771,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if i > 0:
         prev = newargs[i-1]
-        if prev in ['-MT', '-MF', '-MQ', '-D', '-U', '-o', '-x', '-Xpreprocessor', '-include', '-imacros', '-idirafter', '-iprefix', '-iwithprefix', '-iwithprefixbefore', '-isysroot', '-imultilib', '-A', '-isystem', '-iquote', '-install_name', '-compatibility_version', '-current_version', '-I', '-L']: continue # ignore this gcc-style argument
+        if prev in ['-MT', '-MF', '-MQ', '-D', '-U', '-o', '-x', '-Xpreprocessor', '-include', '-imacros', '-idirafter', '-iprefix', '-iwithprefix', '-iwithprefixbefore', '-isysroot', '-imultilib', '-A', '-isystem', '-iquote', '-install_name', '-compatibility_version', '-current_version', '-I', '-L', '-include-pch']: continue # ignore this gcc-style argument
 
       if os.path.islink(arg) and os.path.realpath(arg).endswith(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS):
         arg = os.path.realpath(arg)
@@ -947,9 +973,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     elif shared.Settings.SIDE_MODULE:
       assert not shared.Settings.MAIN_MODULE
       memory_init_file = False # memory init file is not supported with side modules, must be executable synchronously (for dlopen)
-      if shared.Settings.WASM:
-        logging.warning('disabling WASM in SIDE_MODULE')
-        shared.Settings.WASM = 0
 
     if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
       assert shared.Settings.ASM_JS, 'module linking requires asm.js output (-s ASM_JS=1)'
@@ -960,13 +983,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       assert not use_closure_compiler, 'cannot use closure compiler on shared modules'
       assert not shared.Settings.ALLOW_MEMORY_GROWTH, 'memory growth is not supported with shared modules yet'
 
-    if shared.Settings.WASM:
-      assert not shared.Settings.ALLOW_MEMORY_GROWTH, 'memory growth is not supported with WASM=1'
+    if shared.Settings.ALLOW_MEMORY_GROWTH:
+      logging.warning('not all asm.js optimizations are possible with ALLOW_MEMORY_GROWTH, disabling those')
+      shared.Settings.ASM_JS = 2 # memory growth does not validate as asm.js http://discourse.wicg.io/t/request-for-comments-switching-resizing-heaps-in-asm-js/641/23
 
     if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
       shared.Settings.ALIASING_FUNCTION_POINTERS = 0
 
     if shared.Settings.SPLIT_MEMORY:
+      assert shared.Settings.SPLIT_MEMORY > shared.Settings.TOTAL_STACK, 'SPLIT_MEMORY must be at least TOTAL_STACK (stack must fit in first chunk)'
       assert shared.Settings.SPLIT_MEMORY & (shared.Settings.SPLIT_MEMORY-1) == 0, 'SPLIT_MEMORY must be a power of 2'
       if shared.Settings.ASM_JS == 1:
         logging.warning('not all asm.js optimizations are possible with SPLIT_MEMORY, disabling those')
@@ -1033,6 +1058,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if proxy_to_worker:
       shared.Settings.PROXY_TO_WORKER = 1
 
+    if use_preload_plugins or len(preload_files) > 0 or len(embed_files) > 0:
+      # if we include any files, or intend to use preload plugins, then we definitely need filesystem support
+      shared.Settings.FORCE_FILESYSTEM = 1
+
+    if proxy_to_worker or use_preload_plugins:
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$Browser']
+
     if js_opts:
       shared.Settings.RUNNING_JS_OPTS = 1
 
@@ -1040,12 +1072,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location'] # so FS can report errno back to C
       if not shared.Settings.NO_EXIT_RUNTIME:
         shared.Settings.EXPORTED_FUNCTIONS += ['_fflush'] # to flush the streams on FS quit
+                                                          # TODO this forces 4 syscalls, maybe we should avoid it?
 
     if shared.Settings.USE_PTHREADS:
       if not any(s.startswith('PTHREAD_POOL_SIZE=') for s in settings_changes):
         settings_changes.append('PTHREAD_POOL_SIZE=0')
       js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
       newargs.append('-D__EMSCRIPTEN_PTHREADS__=1')
+      shared.Settings.FORCE_FILESYSTEM = 1 # proxying of utime requires the filesystem
     else:
       js_libraries.append(shared.path_from_root('src', 'library_pthread_stub.js'))
 
@@ -1067,6 +1101,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       debug_level = max(1, debug_level) # keep whitespace readable, for asm.js parser simplicity
       shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
       assert not shared.Settings.SPLIT_MEMORY, 'WebAssembly does not support split memory'
+
+    if tracing:
+      if shared.Settings.ALLOW_MEMORY_GROWTH:
+        shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_trace_report_memory_layout']
 
     if shared.Settings.ONLY_MY_CODE:
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
@@ -1614,6 +1652,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         else:
           JSOptimizer.queue += ['registerize']
 
+      # NOTE: Important that this comes after registerize/registerizeHarder
+      if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS and opt_level >= 2:
+        JSOptimizer.flush()
+        shared.Building.eliminate_duplicate_funcs(final)
+
       if not shared.Settings.EMTERPRETIFY:
         do_minify()
 
@@ -1752,7 +1795,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       combined.close()
       if not shared.Settings.WASM_BACKEND:
         # generate .wast file
-        subprocess.check_call([os.path.join(binaryen_bin, 'asm2wasm'), asm_target, wasm_target + '.mappedGlobals'], stdout=open(wasm_target, 'w'))
+        subprocess.check_call([os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--mapped-globals=' + wasm_target + '.mappedGlobals'], stdout=open(wasm_target, 'w'))
 
     # If we were asked to also generate HTML, do that
     if final_suffix == 'html':
@@ -1879,11 +1922,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shutil.move(js_target, js_target[:-3] + '.worker.js') # compiler output goes in .worker.js file
         worker_target_basename = target_basename + '.worker'
         open(target, 'w').write(open(shared.path_from_root('src', 'webGLClient.js')).read() + '\n' + open(shared.path_from_root('src', 'proxyClient.js')).read().replace('{{{ filename }}}', shared.Settings.PROXY_TO_WORKER_FILENAME or worker_target_basename).replace('{{{ IDBStore.js }}}', open(shared.path_from_root('src', 'IDBStore.js')).read()))
-
-    if shared.Settings.WASM:
-      logging.debug('converting to WebAssembly')
-      wasm_target = unsuffixed(js_target) + '.wasm'
-      subprocess.check_call([shared.PYTHON, shared.path_from_root('third_party', 'wasm-polyfill', 'wasmator.py'), js_target, wasm_target, shared.Settings.EXPORT_NAME])
 
     log_time('final emitting')
 

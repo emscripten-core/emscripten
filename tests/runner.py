@@ -9,7 +9,7 @@ Simple test runner. Consider using parallel_test_core.py for faster iteration ti
 
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer, multiprocessing, functools, stat, string, random, operator
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, SimpleHTTPServer, multiprocessing, functools, stat, string, random, operator, fnmatch
 from urllib import unquote
 
 # Setup
@@ -68,6 +68,21 @@ You can run a random set of N tests with a command like
 
   python tests/runner.py random50
 
+An individual test can be skipped by passing the "skip:" prefix. E.g.
+
+  python tests/runner.py other skip:other.test_cmake
+
+Passing a wildcard allows choosing a subset of tests in a suite, e.g.
+
+  python tests/runner.py browser.test_pthread_*
+
+will run all the pthreads related tests. Wildcards can also be passed in skip,
+so
+
+  python tests/runner.py browser skip:browser.test_pthread_*
+
+will run the whole browser suite except for all the pthread tests in it.
+
 Debugging: You can run
 
   EM_SAVE_DIR=1 python tests/runner.py ALL.test_hello_world
@@ -81,7 +96,16 @@ further debug the compiler itself, see emcc.
 
 # Core test runner class, shared between normal tests and benchmarks
 checked_sanity = False
-test_modes = ['default', 'asm1', 'asm2', 'asm3', 'asm2f', 'asm2g', 'asm2i', 'asm2nn']
+test_modes = [
+  'default',
+  'asm1',
+  'asm2',
+  'asm3',
+  'asm2f',
+  'asm2g',
+  'asm2i',
+  'asm2nn'
+]
 test_index = 0
 
 use_all_engines = os.environ.get('EM_ALL_ENGINES') # generally js engines are equivalent, testing 1 is enough. set this
@@ -308,15 +332,23 @@ class RunnerCore(unittest.TestCase):
         assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
 
   def validate_asmjs(self, err):
-    if "asm.js type error: 'Int8x16' is not a standard SIMD type" in err:
-      err = err.replace("asm.js type error: 'Int8x16' is not a standard SIMD type", "")
-      print >> sys.stderr, "\nWARNING: ignoring asm.js type error from Int8x16 due to implementation not yet available in SpiderMonkey\n"
-    if "asm.js type error: 'Int16x8' is not a standard SIMD type" in err:
-      err = err.replace("asm.js type error: 'Int16x8' is not a standard SIMD type", "")
-      print >> sys.stderr, "\nWARNING: ignoring asm.js type error from Int16x8 due to implementation not yet available in SpiderMonkey\n"
-    if "asm.js type error: 'Float64x2' is not a standard SIMD type" in err:
-      err = err.replace("asm.js type error: 'Float64x2' is not a standard SIMD type", "")
-      print >> sys.stderr, "\nWARNING: ignoring asm.js type error from Float64x2 due to implementation not yet available in SpiderMonkey\n"
+    m = re.search("asm.js type error: '(\w+)' is not a (standard|supported) SIMD type", err)
+    if m:
+      # Bug numbers for missing SIMD types:
+      bugs = {
+        'Int8x16'  : 1136226,
+        'Int16x8'  : 1136226,
+        'Uint8x16' : 1244117,
+        'Uint16x8' : 1244117,
+        'Uint32x4' : 1240796,
+        'Float64x2': 1124205,
+      }
+      simd = m.group(1)
+      if simd in bugs:
+        print >> sys.stderr, ("\nWARNING: ignoring asm.js type error from {} due to implementation not yet available in SpiderMonkey." +
+            " See https://bugzilla.mozilla.org/show_bug.cgi?id={}\n").format(simd, bugs[simd])
+        err = err.replace(m.group(0), '')
+
     if 'uccessfully compiled asm.js code' in err and 'asm.js link error' not in err:
       print >> sys.stderr, "[was asm.js'ified]"
     elif 'asm.js' in err: # if no asm.js error, then not an odin build
@@ -335,6 +367,22 @@ class RunnerCore(unittest.TestCase):
         if n == 0: return src[start:t+1]
       t += 1
       assert t < len(src)
+
+  def count_funcs(self, javascript_file):
+    num_funcs = 0
+    start_tok = "// EMSCRIPTEN_START_FUNCS"
+    end_tok = "// EMSCRIPTEN_END_FUNCS"
+    start_off = 0
+    end_off = 0
+
+    with open (javascript_file, 'rt') as fin:
+      blob = "".join(fin.readlines())
+      start_off = blob.find(start_tok) + len(start_tok)
+      end_off = blob.find(end_tok)
+      asm_chunk = blob[start_off:end_off]
+      num_funcs = asm_chunk.count('function ')
+
+    return num_funcs
 
   def run_generated_code(self, engine, filename, args=[], check_timeout=True, output_nicerizer=None, assert_returncode=0):
     stdout = os.path.join(self.get_dir(), 'stdout') # use files, as PIPE can get too full and hang us
@@ -612,7 +660,7 @@ def harness_server_func(q):
   httpd = BaseHTTPServer.HTTPServer(('localhost', 9999), TestServerHandler)
   httpd.serve_forever() # test runner will kill us
 
-def server_func(dir, q):
+def server_func(dir, q, back_queue):
   class TestServerHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def do_GET(self):
       if 'report_' in self.path:
@@ -627,6 +675,7 @@ def server_func(dir, q):
       pass
   os.chdir(dir)
   httpd = BaseHTTPServer.HTTPServer(('localhost', 8888), TestServerHandler)
+  back_queue.put(True) # Send a message back to parent to signal that the server hosting the test page is now running
   httpd.serve_forever() # test runner will kill us
 
 class BrowserCore(RunnerCore):
@@ -656,8 +705,16 @@ class BrowserCore(RunnerCore):
     if expectedResult is not None:
       try:
         queue = multiprocessing.Queue()
-        server = multiprocessing.Process(target=functools.partial(server_func, self.get_dir()), args=(queue,))
+        back_queue = multiprocessing.Queue()
+        server = multiprocessing.Process(target=functools.partial(server_func, self.get_dir()), args=(queue, back_queue))
         server.start()
+        # Starting the web page server above is an asynchronous procedure, so before we tell the browser below to navigate to
+        # the test page, we need to know that the server has started up and is ready to process the site navigation.
+        # Therefore block until we get a message from the server telling that the server has started up.
+        try:
+          back_queue.get(True, 10)
+        except:
+          raise Exception('[Test harness server failed to start up in a timely manner]')
         self.harness_queue.put('http://localhost:8888/' + html_file)
         output = '[no http server activity]'
         start = time.time()
@@ -759,16 +816,15 @@ class BrowserCore(RunnerCore):
         img.src = '%s';
       };
       Module['postRun'] = doReftest;
-      Module['preRun'].push(function() {
-        setTimeout(doReftest, 1000); // if run() throws an exception and postRun is not called, this will kick in
-      });
 
       if (typeof WebGLClient !== 'undefined') {
         // trigger reftest from RAF as well, needed for workers where there is no pre|postRun on the main thread
         var realRAF = window.requestAnimationFrame;
         window.requestAnimationFrame = function(func) {
-          realRAF(func);
-          setTimeout(doReftest, 1000);
+          realRAF(function() {
+            func();
+            realRAF(doReftest);
+          });
         };
 
         // trigger reftest from canvas render too, for workers not doing GL
@@ -776,7 +832,7 @@ class BrowserCore(RunnerCore):
         worker.onmessage = function(event) {
           realWOM(event);
           if (event.data.target === 'canvas' && event.data.op === 'render') {
-            setTimeout(doReftest, 1000);
+            realRAF(doReftest);
           }
         };
       }
@@ -909,6 +965,33 @@ if __name__ == '__main__':
       new_args += map(lambda mode: mode+'.'+test, test_modes)
     else:
       new_args += [arg]
+  sys.argv = new_args
+
+  # Create a list of all known tests so that we can choose from them based on a wildcard search
+  all_tests = []
+  suites = test_modes + ['other', 'browser', 'sanity', 'sockets', 'interactive']
+  for m in modules:
+    for s in suites:
+      if hasattr(m, s):
+        tests = filter(lambda t: t.startswith('test_'), dir(getattr(m, s)))
+        all_tests += map(lambda t: s + '.' + t, tests)
+
+  # Process wildcards, e.g. "browser.test_pthread_*" should expand to list all pthread tests
+  new_args = [sys.argv[0]]
+  for i in range(1, len(sys.argv)):
+    arg = sys.argv[i]
+    if '*' in arg:
+      if arg.startswith('skip:'):
+        arg = arg[5:]
+        matching_tests = fnmatch.filter(all_tests, arg)
+        new_args += map(lambda t: 'skip:' + t, matching_tests)
+      else:
+        new_args += fnmatch.filter(all_tests, arg)
+    else:
+      new_args += [arg]
+  if len(new_args) == 1 and len(sys.argv) > 1:
+    print 'No tests found to run in set ' + str(sys.argv[1:])
+    sys.exit(0)
   sys.argv = new_args
 
   # Skip requested tests

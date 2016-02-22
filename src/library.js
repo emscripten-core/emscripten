@@ -1,8 +1,7 @@
 //"use strict";
 
-// An implementation of a libc for the web. Basically, implementations of
-// the various standard C libraries, that can be called from compiled code,
-// and work using the actual JavaScript environment.
+// An implementation of basic necessary libraries for the web. This integrates
+// with a compiled libc and with the rest of the JS runtime.
 //
 // We search the Library object when there is an external function. If the
 // entry in the Library is a function, we insert it. If it is a string, we
@@ -26,11 +25,11 @@ LibraryManager.library = {
   _impure_ptr: '; if (ENVIRONMENT_IS_PTHREAD) __impure_ptr = PthreadWorkerInit.__impure_ptr; else PthreadWorkerInit.__impure_ptr __impure_ptr = allocate(1, "i32*", ALLOC_STATIC)',
   __dso_handle: '; if (ENVIRONMENT_IS_PTHREAD) ___dso_handle = PthreadWorkerInit.___dso_handle; else PthreadWorkerInit.___dso_handle = ___dso_handle = allocate(1, "i32*", ALLOC_STATIC)',
 #else
-  stdin: 'allocate(1, "i32*", ALLOC_STATIC)',
-  stdout: 'allocate(1, "i32*", ALLOC_STATIC)',
-  stderr: 'allocate(1, "i32*", ALLOC_STATIC)',
-  _impure_ptr: 'allocate(1, "i32*", ALLOC_STATIC)',
-  __dso_handle: 'allocate(1, "i32*", ALLOC_STATIC)',
+  stdin: '{{{ makeStaticAlloc(1) }}}',
+  stdout: '{{{ makeStaticAlloc(1) }}}',
+  stderr: '{{{ makeStaticAlloc(1) }}}',
+  _impure_ptr: '{{{ makeStaticAlloc(1) }}}',
+  __dso_handle: '{{{ makeStaticAlloc(1) }}}',
 #endif
 
   $PROCINFO: {
@@ -495,6 +494,10 @@ LibraryManager.library = {
   exit: function(status) {
     __exit(status);
   },
+  _Exit__deps: ['exit'],
+  _Exit: function(status) {
+    __exit(status);
+  },
 
   _ZSt9terminatev__deps: ['exit'],
   _ZSt9terminatev: function() {
@@ -518,7 +521,7 @@ LibraryManager.library = {
 #if USE_PTHREADS
   environ: '; if (ENVIRONMENT_IS_PTHREAD) _environ = PthreadWorkerInit._environ; else PthreadWorkerInit._environ = _environ = allocate(1, "i32*", ALLOC_STATIC)',
 #else
-  environ: 'allocate(1, "i32*", ALLOC_STATIC)',
+  environ: '{{{ makeStaticAlloc(1) }}}',
 #endif
   __environ__deps: ['environ'],
   __environ: 'environ',
@@ -1300,6 +1303,17 @@ LibraryManager.library = {
 
   llvm_dbg_declare__inline: function() { throw 'llvm_debug_declare' }, // avoid warning
 
+  llvm_bitreverse_i32__asm: true,
+  llvm_bitreverse_i32__sig: 'ii',
+  llvm_bitreverse_i32: function(x) {
+    x = x|0;
+    x = ((x & 0xaaaaaaaa) >>> 1) | ((x & 0x55555555) << 1);
+    x = ((x & 0xcccccccc) >>> 2) | ((x & 0x33333333) << 2);
+    x = ((x & 0xf0f0f0f0) >>> 4) | ((x & 0x0f0f0f0f) << 4);
+    x = ((x & 0xff00ff00) >>> 8) | ((x & 0x00ff00ff) << 8);
+    return (x >>> 16) | (x << 16);
+  },
+
   // llvm-nacl
 
   llvm_nacl_atomic_store_i32__inline: true,
@@ -1616,11 +1630,11 @@ LibraryManager.library = {
   __tm_timezone: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_timezone = PthreadWorkerInit.___tm_timezone; else PthreadWorkerInit.___tm_timezone = ___tm_timezone = allocate(intArrayFromString("GMT"), "i8", ALLOC_STATIC)',
   __tm_formatted: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_formatted = PthreadWorkerInit.___tm_formatted; else PthreadWorkerInit.___tm_formatted = ___tm_formatted = allocate({{{ C_STRUCTS.tm.__size__ }}}, "i8", ALLOC_STATIC)',
 #else
-  __tm_current: 'allocate({{{ C_STRUCTS.tm.__size__ }}}, "i8", ALLOC_STATIC)',
+  __tm_current: '{{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
   // Statically allocated copy of the string "GMT" for gmtime() to point to
   __tm_timezone: 'allocate(intArrayFromString("GMT"), "i8", ALLOC_STATIC)',
   // Statically allocated time strings.
-  __tm_formatted: 'allocate({{{ C_STRUCTS.tm.__size__ }}}, "i8", ALLOC_STATIC)',
+  __tm_formatted: '{{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
 #endif
   mktime__deps: ['tzset'],
   mktime: function(tmPtr) {
@@ -1643,10 +1657,10 @@ LibraryManager.library = {
     var winterOffset = start.getTimezoneOffset();
     var dstOffset = Math.min(winterOffset, summerOffset); // DST is in December in South
     if (dst < 0) {
-      {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'Number(winterOffset != guessedOffset)', 'i32') }}};
-    } else if ((dst > 0) != (winterOffset != guessedOffset)) {
-      var summerOffset = new Date(date.getFullYear(), 6, 1).getTimezoneOffset();
-      var trueOffset = dst > 0 ? summerOffset : winterOffset;
+      {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'Number(dstOffset == guessedOffset)', 'i32') }}};
+    } else if ((dst > 0) != (dstOffset == guessedOffset)) {
+      var nonDstOffset = Math.max(winterOffset, summerOffset);
+      var trueOffset = dst > 0 ? dstOffset : nonDstOffset;
       // Don't try setMinutes(date.getMinutes() + ...) -- it's messed up.
       date.setTime(date.getTime() + (trueOffset - guessedOffset)*60000);
     }
@@ -1791,9 +1805,9 @@ LibraryManager.library = {
   daylight: '; if (ENVIRONMENT_IS_PTHREAD) _daylight = PthreadWorkerInit._daylight; else PthreadWorkerInit._daylight = _daylight = allocate(1, "i32*", ALLOC_STATIC)',
   timezone: '; if (ENVIRONMENT_IS_PTHREAD) _timezone = PthreadWorkerInit._timezone; else PthreadWorkerInit._timezone = _timezone = allocate(1, "i32*", ALLOC_STATIC)',
 #else
-  tzname: 'allocate({{{ 2*Runtime.QUANTUM_SIZE }}}, "i32*", ALLOC_STATIC)',
-  daylight: 'allocate(1, "i32*", ALLOC_STATIC)',
-  timezone: 'allocate(1, "i32*", ALLOC_STATIC)',
+  tzname: '{{{ makeStaticAlloc(2*Runtime.QUANTUM_SIZE) }}}',
+  daylight: '{{{ makeStaticAlloc(1) }}}',
+  timezone: '{{{ makeStaticAlloc(1) }}}',
 #endif
   tzset__deps: ['tzname', 'daylight', 'timezone'],
   tzset: function() {
@@ -2026,7 +2040,10 @@ LibraryManager.library = {
         return leadingNulls(date.tm_hour, 2);
       },
       '%I': function(date) {
-        return leadingNulls(date.tm_hour < 13 ? date.tm_hour : date.tm_hour-12, 2);
+        var twelveHour = date.tm_hour;
+        if (twelveHour == 0) twelveHour = 12;
+        else if (twelveHour > 12) twelveHour -= 12;
+        return leadingNulls(twelveHour, 2);
       },
       '%j': function(date) {
         // Day of the year (001-366)
@@ -2042,7 +2059,7 @@ LibraryManager.library = {
         return '\n';
       },
       '%p': function(date) {
-        if (date.tm_hour > 0 && date.tm_hour < 13) {
+        if (date.tm_hour >= 0 && date.tm_hour < 12) {
           return 'AM';
         } else {
           return 'PM';
@@ -3183,11 +3200,11 @@ LibraryManager.library = {
     lookup_name: function (name) {
       // If the name is already a valid ipv4 / ipv6 address, don't generate a fake one.
       var res = __inet_pton4_raw(name);
-      if (res) {
+      if (res !== null) {
         return name;
       }
       res = __inet_pton6_raw(name);
-      if (res) {
+      if (res !== null) {
         return name;
       }
 

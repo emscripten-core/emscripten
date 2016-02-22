@@ -1459,3 +1459,8 @@ function makeEval(code) {
   return ret;
 }
 
+function makeStaticAlloc(size) {
+  size = (size + (STACK_ALIGN-1)) & -STACK_ALIGN;
+  return 'STATICTOP; STATICTOP += ' + size + ';';
+}
+

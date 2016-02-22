@@ -100,17 +100,8 @@ function ftfault() {
 // Runtime essentials
 //========================================
 
-var __THREW__ = 0; // Used in checking for thrown exceptions.
-
 var ABORT = false; // whether we are quitting the application. no code should run after this. set in exit() and abort()
 var EXITSTATUS = 0;
-
-var undef = 0;
-// tempInt is used for 32-bit signed values or smaller. tempBigInt is used
-// for 32-bit unsigned values or more than 32 bits. TODO: audit all uses of tempInt
-var tempValue, tempInt, tempBigInt, tempInt2, tempBigInt2, tempPair, tempBigIntI, tempBigIntR, tempBigIntS, tempBigIntP, tempBigIntD, tempDouble, tempFloat;
-var tempI64, tempI64b;
-var tempRet0, tempRet1, tempRet2, tempRet3, tempRet4, tempRet5, tempRet6, tempRet7, tempRet8, tempRet9;
 
 function assert(condition, text) {
   if (!condition) {
@@ -201,21 +192,27 @@ var cwrap, ccall;
   }
 
 #if NO_DYNAMIC_EXECUTION == 0
-  var sourceRegex = /^function\s*\(([^)]*)\)\s*{\s*([^*]*?)[\s;]*(?:return\s*(.*?)[;\s]*)?}$/;
+  var sourceRegex = /^function\s*[a-zA-Z$_0-9]*\s*\(([^)]*)\)\s*{\s*([^*]*?)[\s;]*(?:return\s*(.*?)[;\s]*)?}$/;
   function parseJSFunc(jsfunc) {
     // Match the body and the return value of a javascript function source
     var parsed = jsfunc.toString().match(sourceRegex).slice(1);
     return {arguments : parsed[0], body : parsed[1], returnValue: parsed[2]}
   }
-  var JSsource = {};
-  for (var fun in JSfuncs) {
-    if (JSfuncs.hasOwnProperty(fun)) {
-      // Elements of toCsource are arrays of three items:
-      // the code, and the return value
-      JSsource[fun] = parseJSFunc(JSfuncs[fun]);
+
+  // sources of useful functions. we create this lazily as it can trigger a source decompression on this entire file
+  var JSsource = null;
+  function ensureJSsource() {
+    if (!JSsource) {
+      JSsource = {};
+      for (var fun in JSfuncs) {
+        if (JSfuncs.hasOwnProperty(fun)) {
+          // Elements of toCsource are arrays of three items:
+          // the code, and the return value
+          JSsource[fun] = parseJSFunc(JSfuncs[fun]);
+        }
+      }
     }
   }
-
   
   cwrap = function cwrap(ident, returnType, argTypes) {
     argTypes = argTypes || [];
@@ -234,6 +231,7 @@ var cwrap, ccall;
     if (!numericArgs) {
       // Generate the code needed to convert the arguments from javascript
       // values to pointers
+      ensureJSsource();
       funcstr += 'var stack = ' + JSsource['stackSave'].body + ';';
       for (var i = 0; i < nargs; i++) {
         var arg = argNames[i], type = argTypes[i];
@@ -259,6 +257,7 @@ var cwrap, ccall;
 #endif
     if (!numericArgs) {
       // If we had a stack, restore it
+      ensureJSsource();
       funcstr += JSsource['stackRestore'].body.replace('()', '(stack)') + ';';
     }
     funcstr += 'return ret})';
@@ -818,165 +817,15 @@ function demangle(func) {
       // otherwise, libcxxabi failed, we can try ours which may return a partial result
     } catch(e) {
       // failure when using libcxxabi, we can try ours which may return a partial result
+      return func;
     } finally {
       if (buf) _free(buf);
       if (status) _free(status);
       if (ret) _free(ret);
     }
   }
-  var i = 3;
-  // params, etc.
-  var basicTypes = {
-    'v': 'void',
-    'b': 'bool',
-    'c': 'char',
-    's': 'short',
-    'i': 'int',
-    'l': 'long',
-    'f': 'float',
-    'd': 'double',
-    'w': 'wchar_t',
-    'a': 'signed char',
-    'h': 'unsigned char',
-    't': 'unsigned short',
-    'j': 'unsigned int',
-    'm': 'unsigned long',
-    'x': 'long long',
-    'y': 'unsigned long long',
-    'z': '...'
-  };
-  var subs = [];
-  var first = true;
-  function dump(x) {
-    //return;
-    if (x) Module.print(x);
-    Module.print(func);
-    var pre = '';
-    for (var a = 0; a < i; a++) pre += ' ';
-    Module.print (pre + '^');
-  }
-  function parseNested() {
-    i++;
-    if (func[i] === 'K') i++; // ignore const
-    var parts = [];
-    while (func[i] !== 'E') {
-      if (func[i] === 'S') { // substitution
-        i++;
-        var next = func.indexOf('_', i);
-        var num = func.substring(i, next) || 0;
-        parts.push(subs[num] || '?');
-        i = next+1;
-        continue;
-      }
-      if (func[i] === 'C') { // constructor
-        parts.push(parts[parts.length-1]);
-        i += 2;
-        continue;
-      }
-      var size = parseInt(func.substr(i));
-      var pre = size.toString().length;
-      if (!size || !pre) { i--; break; } // counter i++ below us
-      var curr = func.substr(i + pre, size);
-      parts.push(curr);
-      subs.push(curr);
-      i += pre + size;
-    }
-    i++; // skip E
-    return parts;
-  }
-  function parse(rawList, limit, allowVoid) { // main parser
-    limit = limit || Infinity;
-    var ret = '', list = [];
-    function flushList() {
-      return '(' + list.join(', ') + ')';
-    }
-    var name;
-    if (func[i] === 'N') {
-      // namespaced N-E
-      name = parseNested().join('::');
-      limit--;
-      if (limit === 0) return rawList ? [name] : name;
-    } else {
-      // not namespaced
-      if (func[i] === 'K' || (first && func[i] === 'L')) i++; // ignore const and first 'L'
-      var size = parseInt(func.substr(i));
-      if (size) {
-        var pre = size.toString().length;
-        name = func.substr(i + pre, size);
-        i += pre + size;
-      }
-    }
-    first = false;
-    if (func[i] === 'I') {
-      i++;
-      var iList = parse(true);
-      var iRet = parse(true, 1, true);
-      ret += iRet[0] + ' ' + name + '<' + iList.join(', ') + '>';
-    } else {
-      ret = name;
-    }
-    paramLoop: while (i < func.length && limit-- > 0) {
-      //dump('paramLoop');
-      var c = func[i++];
-      if (c in basicTypes) {
-        list.push(basicTypes[c]);
-      } else {
-        switch (c) {
-          case 'P': list.push(parse(true, 1, true)[0] + '*'); break; // pointer
-          case 'R': list.push(parse(true, 1, true)[0] + '&'); break; // reference
-          case 'L': { // literal
-            i++; // skip basic type
-            var end = func.indexOf('E', i);
-            var size = end - i;
-            list.push(func.substr(i, size));
-            i += size + 2; // size + 'EE'
-            break;
-          }
-          case 'A': { // array
-            var size = parseInt(func.substr(i));
-            i += size.toString().length;
-            if (func[i] !== '_') throw '?';
-            i++; // skip _
-            list.push(parse(true, 1, true)[0] + ' [' + size + ']');
-            break;
-          }
-          case 'E': break paramLoop;
-          default: ret += '?' + c; break paramLoop;
-        }
-      }
-    }
-    if (!allowVoid && list.length === 1 && list[0] === 'void') list = []; // avoid (void)
-    if (rawList) {
-      if (ret) {
-        list.push(ret + '?');
-      }
-      return list;
-    } else {
-      return ret + flushList();
-    }
-  }
-  var parsed = func;
-  try {
-    // Special-case the entry point, since its name differs from other name mangling.
-    if (func == 'Object._main' || func == '_main') {
-      return 'main()';
-    }
-    if (typeof func === 'number') func = Pointer_stringify(func);
-    if (func[0] !== '_') return func;
-    if (func[1] !== '_') return func; // C function
-    if (func[2] !== 'Z') return func;
-    switch (func[3]) {
-      case 'n': return 'operator new()';
-      case 'd': return 'operator delete()';
-    }
-    parsed = parse();
-  } catch(e) {
-    parsed += '?';
-  }
-  if (parsed.indexOf('?') >= 0 && !hasLibcxxabi) {
-    Runtime.warnOnce('warning: a problem occurred in builtin C++ name demangling; build with  -s DEMANGLE_SUPPORT=1  to link in libcxxabi demangling');
-  }
-  return parsed;
+  Runtime.warnOnce('warning: build with  -s DEMANGLE_SUPPORT=1  to link in libcxxabi demangling');
+  return func;
 }
 
 function demangleAll(text) {
@@ -1178,9 +1027,11 @@ if (totalMemory !== TOTAL_MEMORY) {
 }
 
 // Initialize the runtime's memory
+#if ASSERTIONS
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' && !!(new Int32Array(1)['subarray']) && !!(new Int32Array(1)['set']),
        'JS engine does not provide full typed array support');
+#endif
 
 #if IN_TEST_HARNESS
 #if USE_PTHREADS == 1
@@ -1251,7 +1102,9 @@ if (typeof Atomics === 'undefined') {
 // Use a provided buffer, if there is one, or else allocate a new one
 if (Module['buffer']) {
   buffer = Module['buffer'];
+#if ASSERTIONS
   assert(buffer.byteLength === TOTAL_MEMORY, 'provided buffer should be ' + TOTAL_MEMORY + ' bytes, but it is ' + buffer.byteLength);
+#endif
 } else {
   buffer = new ArrayBuffer(TOTAL_MEMORY);
 }
@@ -1288,7 +1141,9 @@ var buffers = [], HEAP8s = [], HEAP16s = [], HEAP32s = [], HEAPU8s = [], HEAPU16
 function allocateSplitChunk(i, data) {
   if (buffers[i]) return false; // already taken
   var curr = data ? data : new ArrayBuffer(SPLIT_MEMORY);
+#if ASSERTIONS
   assert(curr instanceof ArrayBuffer);
+#endif
   buffers[i] = curr;
   HEAP8s[i] = new Int8Array(curr);
   HEAP16s[i] = new Int16Array(curr);
@@ -1301,8 +1156,10 @@ function allocateSplitChunk(i, data) {
   return true;
 }
 function freeSplitChunk(i) {
+#if ASSERTIONS
   assert(buffers[i] && HEAP8s[i]);
   assert(i > 0); // cannot free the first chunk
+#endif
   buffers[i] = HEAP8s[i] = HEAP16s[i] = HEAP32s[i] = HEAPU8s[i] = HEAPU16s[i] = HEAPU32s[i] = HEAPF32s[i] = HEAPF64s[i] = null;
 }
 
@@ -1324,7 +1181,9 @@ function freeSplitChunk(i) {
   function fake(real) {
     var bytes = real[0].BYTES_PER_ELEMENT;
     var shifts = SHIFT_TABLE[bytes];
+#if ASSERTIONS
     assert(shifts > 0 || bytes == 1);
+#endif
     var that = {
       BYTES_PER_ELEMENT: bytes,
       set: function(array, offset) {
@@ -1338,7 +1197,9 @@ function freeSplitChunk(i) {
             break;
           } else {
             var currSize = SPLIT_MEMORY - relative;
+#if ASSERTIONS
             assert(currSize % that.BYTES_PER_ELEMENT === 0);
+#endif
             var lastIndex = currSize >> shifts;
             real[chunk].set(array.subarray(0, lastIndex), relative);
             // increments
@@ -1358,7 +1219,9 @@ function freeSplitChunk(i) {
         to = Math.max(from, to); // if to is smaller, we'll get nothing anyway, same as to == from
         if (from < to) {
           var end = (to - 1) >> SPLIT_MEMORY_BITS; // -1, since we do not actually read the last address
+#if ASSERTIONS
           assert(start === end, 'subarray cannot span split chunks');
+#endif
         }
         if (to > from && (to & SPLIT_MEMORY_MASK) == 0) {
           // avoid the mask on the next line giving 0 for the end
@@ -1368,7 +1231,9 @@ function freeSplitChunk(i) {
       },
       buffer: {
         slice: function(from, to) {
+#if ASSERTIONS
           assert(to, 'TODO: this is an actual copy, so we could support a slice across multiple chunks');
+#endif
           return new Uint8Array(HEAPU8.subarray(from, to)).buffer;
         },
       },
@@ -1520,7 +1385,7 @@ function setF64(ptr, value) {
 // Endianness check (note: assumes compiler arch was little-endian)
 #if SAFE_SPLIT_MEMORY == 0
 HEAP32[0] = 255;
-assert(HEAPU8[0] === 255 && HEAPU8[3] === 0, 'Typed arrays 2 must be run on a little-endian system');
+if (HEAPU8[0] !== 255 || HEAPU8[3] !== 0) throw 'Typed arrays 2 must be run on a little-endian system';
 #endif
 
 Module['HEAP'] = HEAP;
@@ -1961,8 +1826,27 @@ if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() {
 if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() { if (typeof SharedArrayBuffer !== 'undefined') { addRunDependency('pthreads'); PThread.allocateUnusedWorkers({{{PTHREAD_POOL_SIZE}}}, function() { removeRunDependency('pthreads'); }); }});
 #endif
 
-#if BINARYEN
-var STATIC_BUMP = {{{ STATIC_BUMP }}};
+#if ASSERTIONS
+#if NO_FILESYSTEM
+var /* show errors on likely calls to FS when it was not included */ FS = {
+  error: function() {
+    abort('Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with  -s FORCE_FILESYSTEM=1');
+  },
+  init: function() { FS.error() },
+  createDataFile: function() { FS.error() },
+  createPreloadedFile: function() { FS.error() },
+  createLazyFile: function() { FS.error() },
+  open: function() { FS.error() },
+  mkdev: function() { FS.error() },
+  registerDevice: function() { FS.error() },
+  analyzePath: function() { FS.error() },
+  loadFilesFromDB: function() { FS.error() },
+
+  ErrnoError: function ErrnoError() { FS.error() },
+};
+Module['FS_createDataFile'] = FS.createDataFile;
+Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
+#endif
 #endif
 
 // === Body ===

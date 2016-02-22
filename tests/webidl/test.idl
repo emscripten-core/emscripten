@@ -127,3 +127,10 @@ interface ArrayClass {
   [Value] attribute StructInArray[] struct_array;
   attribute StructInArray[] struct_ptr_array;
 };
+
+interface ReceiveArrays {
+  void ReceiveArrays();
+
+  void giveMeArrays(float[] vertices, long[] triangles, long num);
+};
+

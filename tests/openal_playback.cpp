@@ -59,6 +59,16 @@ int main() {
   alListenerfv(AL_VELOCITY, listenerVel);
   alListenerfv(AL_ORIENTATION, listenerOri);
 
+  // check getting and setting global gain
+  ALfloat volume;
+  alGetListenerf(AL_GAIN, &volume);
+  assert(volume == 1.0);
+  alListenerf(AL_GAIN, 0.0);
+  alGetListenerf(AL_GAIN, &volume);
+  assert(volume == 0.0);
+
+  alListenerf(AL_GAIN, 1.0); // reset gain to default
+
   ALuint buffers[1];
 
   alGenBuffers(1, buffers);

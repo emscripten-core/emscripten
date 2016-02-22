@@ -1,0 +1,53 @@
+v: 1 0 1 4
+w: 2 2 2 2
+emscripten_int32x4_add(v, w): 3 2 3 6
+emscripten_int32x4_sub(v, w): -1 -2 -1 2
+emscripten_int32x4_mul(v, w): 2 0 2 8
+emscripten_int32x4_neg(v): -1 0 -1 -4
+emscripten_int32x4_and(v, w): 0 0 0 0
+emscripten_int32x4_xor(v, w): 3 2 3 6
+emscripten_int32x4_or(v, w): 3 2 3 6
+emscripten_int32x4_not(v): -2 -1 -2 -5
+emscripten_int32x4_lessThan(v, w): -1 -1 -1 0
+emscripten_int32x4_lessThanOrEqual(v, w): -1 -1 -1 0
+emscripten_int32x4_greaterThan(v, w): 0 0 0 -1
+emscripten_int32x4_greaterThanOrEqual(v, w): 0 0 0 -1
+emscripten_int32x4_equal(v, w): 0 0 0 0
+emscripten_int32x4_notEqual(v, w): -1 -1 -1 -1
+emscripten_int32x4_shiftLeftByScalar(v, 0): 1 0 1 4
+emscripten_int32x4_shiftLeftByScalar(v, 1): 2 0 2 8
+emscripten_int32x4_shiftLeftByScalar(v, 2): 4 0 4 16
+emscripten_int32x4_shiftLeftByScalar(v, 16): 65536 0 65536 262144
+emscripten_int32x4_shiftLeftByScalar(v, 32): 0 0 0 0
+emscripten_int32x4_shiftLeftByScalar(v, 48): 0 0 0 0
+emscripten_int32x4_shiftRightByScalar(v, 0): 1 0 1 4
+emscripten_int32x4_shiftRightByScalar(v, 1): 0 0 0 2
+emscripten_int32x4_shiftRightByScalar(v, 2): 0 0 0 1
+emscripten_int32x4_shiftRightByScalar(v, 16): 0 0 0 0
+emscripten_int32x4_shiftRightByScalar(v, 32): 0 0 0 0
+emscripten_int32x4_shiftRightByScalar(v, 48): 0 0 0 0
+emscripten_int32x4_select(b, v, w): 2 0 2 4
+emscripten_int32x4_replaceLane(v, 0, 9): 9 0 1 4
+emscripten_int32x4_replaceLane(v, 1, 3): 1 3 1 4
+emscripten_int32x4_replaceLane(v, 2, 0): 1 0 0 4
+emscripten_int32x4_replaceLane(v, 3, 91): 1 0 1 91
+emscripten_int32x4_store: 01 00 00 00 00 00 00 00 01 00 00 00 04 00 00 00
+emscripten_int32x4_store1: 01 00 00 00 FF FF FF FF FF FF FF FF FF FF FF FF
+emscripten_int32x4_store2: 01 00 00 00 00 00 00 00 FF FF FF FF FF FF FF FF
+emscripten_int32x4_store3: 01 00 00 00 00 00 00 00 01 00 00 00 FF FF FF FF
+emscripten_int32x4_load(bytes): 1 0 1 4
+emscripten_int32x4_load1(bytes): 1 0 0 0
+emscripten_int32x4_load2(bytes): 1 0 0 0
+emscripten_int32x4_load3(bytes): 1 0 1 0
+emscripten_int32x4_swizzle(v, 0, 1, 2, 3): 1 0 1 4
+emscripten_int32x4_swizzle(v, 3, 2, 1, 0): 4 1 0 1
+emscripten_int32x4_swizzle(v, 0, 0, 0, 0): 1 1 1 1
+emscripten_int32x4_swizzle(v, 0, 3, 0, 3): 1 4 1 4
+emscripten_int32x4_swizzle(v, 3, 3, 3, 3): 4 4 4 4
+z: -5 20 14 9
+emscripten_int32x4_shuffle(v, z, 0, 0, 0, 0): 1 1 1 1
+emscripten_int32x4_shuffle(v, z, 4, 4, 4, 4): -5 -5 -5 -5
+emscripten_int32x4_shuffle(v, z, 7, 7, 7, 7): 9 9 9 9
+emscripten_int32x4_shuffle(v, z, 0, 2, 4, 6): 1 1 -5 14
+emscripten_int32x4_shuffle(v, z, 7, 0, 3, 5): 9 1 4 20
+Done!

@@ -11,5 +11,5 @@ int main() {
       "Module.print([Pointer_stringify(cheez), Module.getValue(cheez, "
       "'i8')&0xff, Module.getValue(cheez+1, 'i8')&0xff, "
       "Module.getValue(cheez+2, 'i8')&0xff, Module.getValue(cheez+3, "
-      "'i8')&0xff, ]);");
+      "'i8')&0xff].join(','));");
 }

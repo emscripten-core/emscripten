@@ -198,8 +198,15 @@ mergeInto(LibraryManager.library, {
             Module.print('connect: ' + url + ', ' + subProtocols.toString());
 #endif
             // If node we use the ws library.
-            var WebSocket = ENVIRONMENT_IS_NODE ? require('ws') : window['WebSocket'];
-            ws = new WebSocket(url, opts);
+            var WebSocketConstructor;
+            if (ENVIRONMENT_IS_NODE) {
+              WebSocketConstructor = require('ws');
+            } else if (ENVIRONMENT_IS_WEB) {
+              WebSocketConstructor = window['WebSocket'];
+            } else {
+              WebSocketConstructor = WebSocket;
+            }
+            ws = new WebSocketConstructor(url, opts);
             ws.binaryType = 'arraybuffer';
           } catch (e) {
             throw new FS.ErrnoError(ERRNO_CODES.EHOSTUNREACH);

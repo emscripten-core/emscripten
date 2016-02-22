@@ -1,3 +1,5 @@
+# coding=utf-8
+
 import multiprocessing, os, pipes, re, shutil, subprocess, sys
 import glob
 import tools.shared
@@ -429,7 +431,7 @@ f.close()
                   # Test invoking cmake directly.
                   cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+path_from_root('cmake', 'Modules', 'Platform', 'Emscripten.cmake'),
                                   '-DCPP_LIBRARY_TYPE='+cpp_lib_type,
-                                  '-DCMAKE_CROSSCOMPILING_EMULATOR="' + ' '.join(NODE_JS) + '"',
+                                  '-DCMAKE_CROSSCOMPILING_EMULATOR="' + Building.which(NODE_JS[0] if type(NODE_JS) is list else NODE_JS) + '"',
                                   '-DCMAKE_BUILD_TYPE=' + configuration, cmake_arguments[i], '-G', generator, cmakelistsdir]
                   env = tools.shared.Building.remove_sh_exe_from_path(os.environ)
                 else:
@@ -1832,6 +1834,8 @@ int f() {
        ['asm', 'registerizeHarder', 'asmLastOpts', 'minifyWhitespace']), # issue 3549
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-splitMemory.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-splitMemory-output.js')).read(),
        ['splitMemory']),
+      (path_from_root('tests', 'optimizer', 'JSDCE.js'), open(path_from_root('tests', 'optimizer', 'JSDCE-output.js')).read(),
+       ['JSDCE']),
     ]:
       print input, passes
 
@@ -2159,6 +2163,24 @@ seeked= file.
     except ValueError:
       assert False
 
+  def test_file_packager_unicode(self):
+    unicode_name = 'unicode…☃'
+    if not os.path.exists(unicode_name):
+      try:
+        os.mkdir(unicode_name)
+      except:
+        print "we failed to even create a unicode dir, so on this OS, we can't test this"
+        return
+    full = os.path.join(unicode_name, 'data.txt')
+    open(full, 'w').write('data')
+    proc = Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', full], stdout=PIPE, stderr=PIPE)
+    out, err = proc.communicate()
+    assert proc.returncode == 0, err
+    assert len(out) > 0, err
+    assert len(err) == 0, err
+    assert unicode_name in out, out
+    print len(err)
+
   def test_crunch(self):
     try:
       print 'Crunch is located at ' + CRUNCH
@@ -2242,36 +2264,12 @@ done.
       }
     ''')
 
-    Popen([PYTHON, EMCC, 'src.cpp', '-s', 'LINKABLE=1']).communicate()
-    output = run_js('a.out.js')
-    self.assertContained('''operator new()
-main()
-f2()
-abcdabcdabcd(int)
-abcdabcdabcd(int)
-test(char, short, int, float, double, void*, int*, char*)
-test::moarr(char, short, long, float, double, void*, int*, char*)
-Waka::f::a23412341234::point()
-void Foo<int>()
-void Foo<int, double>(int)
-void Foo::Bar<5>()
-__cxxabiv1::__si_class_type_info::search_below_dst(__cxxabiv1::__dynamic_cast_info*, void*, int, bool)
-parseword(char*&, int, int&)
-multi(wchar_t, signed char, unsigned char, unsigned short, unsigned int, unsigned long, long long, unsigned long long, ...)
-a(int [32], char [5]*)
-FWakaGLXFleeflsMarfoo::FWakaGLXFleeflsMarfoo(unsigned int, unsigned int, unsigned int, void*, bool, unsigned int, unsigned int)
-void wakaw::Cm::RasterBase<wakaw::watwat::Polocator?>(unsigned int*, unsigned int)
-''', output)
-    # test for multiple functions in one stack trace
-    assert 'one(int)' in output
-    assert 'two(char)' in output
-
     # full demangle support
 
-    Popen([PYTHON, EMCC, 'src.cpp', '-s', 'LINKABLE=1', '-s', 'DEMANGLE_SUPPORT=1']).communicate()
+    Popen([PYTHON, EMCC, 'src.cpp', '-s', 'DEMANGLE_SUPPORT=1']).communicate()
     output = run_js('a.out.js')
     self.assertContained('''operator new(unsigned int)
-main()
+_main
 f2()
 abcdabcdabcd(int)
 abcdabcdabcd(int)
@@ -2542,36 +2540,47 @@ var Module = { print: function(x) { throw '<{(' + x + ')}>' } };
     assert r'<{(123456789)}>' in output, output
 
   def test_precompiled_headers(self):
-    self.clear()
+    for suffix in ['gch', 'pch']:
+      print suffix
+      self.clear()
 
-    open('header.h', 'w').write('#define X 5\n')
-    Popen([PYTHON, EMCC, '-xc++-header', 'header.h', '-c']).communicate()
-    assert os.path.exists('header.h.gch')
+      open('header.h', 'w').write('#define X 5\n')
+      Popen([PYTHON, EMCC, '-xc++-header', 'header.h', '-c']).communicate()
+      assert os.path.exists('header.h.gch') # default output is gch
+      if suffix != 'gch':
+        Popen([PYTHON, EMCC, '-xc++-header', 'header.h', '-o', 'header.h.' + suffix]).communicate()
+        assert open('header.h.gch').read() == open('header.h.' + suffix).read()
 
-    open('src.cpp', 'w').write(r'''
+      open('src.cpp', 'w').write(r'''
 #include <stdio.h>
 int main() {
   printf("|%d|\n", X);
   return 0;
 }
 ''')
-    Popen([PYTHON, EMCC, 'src.cpp', '-include', 'header.h']).communicate()
+      Popen([PYTHON, EMCC, 'src.cpp', '-include', 'header.h']).communicate()
 
-    output = run_js(self.in_dir('a.out.js'), stderr=PIPE, full_output=True, engine=NODE_JS)
-    assert '|5|' in output, output
+      output = run_js(self.in_dir('a.out.js'), stderr=PIPE, full_output=True, engine=NODE_JS)
+      assert '|5|' in output, output
 
-    # also verify that the gch is actually used
-    err = Popen([PYTHON, EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).communicate()
-    self.assertTextDataContained('*** PCH/Modules Loaded:\nModule: header.h.gch', err[1])
-    # and sanity check it is not mentioned when not
-    try_delete('header.h.gch')
-    err = Popen([PYTHON, EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).communicate()
-    assert '*** PCH/Modules Loaded:\nModule: header.h.gch' not in err[1].replace('\r\n', '\n'), err[1]
+      # also verify that the gch is actually used
+      err = Popen([PYTHON, EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).communicate()
+      self.assertTextDataContained('*** PCH/Modules Loaded:\nModule: header.h.' + suffix, err[1])
+      # and sanity check it is not mentioned when not
+      try_delete('header.h.' + suffix)
+      err = Popen([PYTHON, EMCC, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).communicate()
+      assert '*** PCH/Modules Loaded:\nModule: header.h.' + suffix not in err[1].replace('\r\n', '\n'), err[1]
 
-    # with specified target via -o
-    try_delete('header.h.gch')
-    Popen([PYTHON, EMCC, '-xc++-header', 'header.h', '-o', 'my.gch']).communicate()
-    assert os.path.exists('my.gch')
+      # with specified target via -o
+      try_delete('header.h.' + suffix)
+      Popen([PYTHON, EMCC, '-xc++-header', 'header.h', '-o', 'my.' + suffix]).communicate()
+      assert os.path.exists('my.' + suffix)
+
+      # -include-pch flag
+      Popen([PYTHON, EMCC, '-xc++-header', 'header.h', '-o', 'header.h.' + suffix]).communicate()
+      check_execute([PYTHON, EMCC, 'src.cpp', '-include-pch', 'header.h.' + suffix])
+      output = run_js('a.out.js')
+      assert '|5|' in output, output
 
   def test_warn_unaligned(self):
     open('src.cpp', 'w').write(r'''
@@ -2783,7 +2792,7 @@ int main()
       for asserts in [0, 1]:
         extra = []
         if opts != 1-asserts: extra = ['-s', 'ASSERTIONS=' + str(asserts)]
-        cmd = [PYTHON, EMCC, path_from_root('tests', 'cases', 'sillyfuncast2_noasm.ll'), '-O' + str(opts)] + extra
+        cmd = [PYTHON, EMCC, path_from_root('tests', 'sillyfuncast2_noasm.ll'), '-O' + str(opts)] + extra
         print cmd
         stdout, stderr = Popen(cmd, stderr=PIPE).communicate()
         assert ('''unexpected number of arguments 3 in call to 'doit', should be 2''' in stderr) == asserts, stderr
@@ -4212,16 +4221,52 @@ main(const int argc, const char * const * const argv)
     test(['-O1'])
 
   def test_no_filesystem(self):
-    check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'])
+    FS_MARKER = 'var FS'
+    # fopen forces full filesystem support
+    check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world_fopen.c'), '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'])
     yes_size = os.stat('a.out.js').st_size
     self.assertContained('hello, world!', run_js('a.out.js'))
-    check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1', '-s', 'NO_FILESYSTEM=1'])
+    assert FS_MARKER in open('a.out.js').read()
+    check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'])
     no_size = os.stat('a.out.js').st_size
     self.assertContained('hello, world!', run_js('a.out.js'))
+    assert FS_MARKER not in open('a.out.js').read()
     print 'yes fs, no fs:', yes_size, no_size
     assert yes_size - no_size > 100000 # 100K of FS code is removed
+    assert no_size < 360000
 
   def test_no_nuthin(self):
+    print 'part one: check NO_FILESYSTEM is automatically set, and effective'
+    def test(opts, ratio, absolute):
+      print 'opts, ratio, absolute:', opts, ratio, absolute
+      def get_size(name):
+        return os.stat(name).st_size
+      sizes = {}
+      def do(name, source, moar_opts):
+        self.clear()
+        Popen([PYTHON, EMCC, path_from_root('tests', source), '-o', name + '.js'] + opts + moar_opts).communicate()
+        sizes[name] = get_size(name + '.js')
+        self.assertContained('hello, world!', run_js(name + '.js'))
+      do('normal', 'hello_world_fopen.c', [])
+      do('no_fs', 'hello_world.c', []) # without fopen, we should auto-detect we do not need full fs support and can do NO_FILESYSTEM
+      do('no_fs_manual', 'hello_world.c', ['-s', 'NO_FILESYSTEM=1'])
+      do('no_nuthin', 'hello_world.c', ['-s', 'EXPORTED_RUNTIME_METHODS=[]'])
+      print '  ', sizes
+      assert sizes['no_fs'] < sizes['normal']
+      assert sizes['no_nuthin'] < sizes['no_fs']
+      assert sizes['no_nuthin'] < ratio*sizes['normal']
+      assert sizes['no_nuthin'] < absolute
+      if '--closure' in opts: # no EXPORTED_RUNTIME_METHODS makes closure much more effective
+        assert sizes['no_nuthin'] < 0.975*sizes['no_fs']
+      assert sizes['no_fs_manual'] < sizes['no_fs'] # manual can remove a tiny bit more
+      assert sizes['no_fs'] < 1.02*sizes['no_fs_manual']
+    test([], 0.75, 360000)
+    test(['-O1'], 0.66, 210000)
+    test(['-O2'], 0.50, 70000)
+    test(['-O3', '--closure', '1'], 0.60, 50000)
+    test(['-O3', '--closure', '2'], 0.60, 41000) # might change now and then
+
+    print 'part two: focus on EXPORTED_RUNTIME_METHODS effects, on hello_world_em_asm'
     def test(opts, ratio, absolute):
       print 'opts, ratio, absolute:', opts, ratio, absolute
       def get_size(name):
@@ -4233,25 +4278,27 @@ main(const int argc, const char * const * const argv)
         sizes[name] = get_size(name + '.js')
         self.assertContained('hello, world!', run_js(name + '.js'))
       do('normal', [])
-      do('no_fs', ['-s', 'NO_FILESYSTEM=1'])
-      do('no_browser', ['-s', 'NO_BROWSER=1'])
-      do('no_nuthin', ['-s', 'NO_FILESYSTEM=1', '-s', 'NO_BROWSER=1'])
-      do('no_nuthin_less', ['-s', 'NO_FILESYSTEM=1', '-s', 'NO_BROWSER=1', '-s', 'EXPORTED_RUNTIME_METHODS=[]'])
+      do('no_nuthin', ['-s', 'EXPORTED_RUNTIME_METHODS=[]'])
       print '  ', sizes
-      assert sizes['no_fs'] < sizes['normal']
-      assert sizes['no_browser'] < sizes['normal']
-      assert sizes['no_nuthin'] < sizes['no_fs']
-      assert sizes['no_nuthin'] < sizes['no_browser']
+      assert sizes['no_nuthin'] < sizes['normal']
       assert sizes['no_nuthin'] < ratio*sizes['normal']
       assert sizes['no_nuthin'] < absolute
-      assert sizes['no_nuthin_less'] < sizes['no_nuthin']
       if '--closure' in opts: # no EXPORTED_RUNTIME_METHODS makes closure much more effective
-        assert sizes['no_nuthin_less'] < 0.93*sizes['no_nuthin']
-    test([], 0.66, 250000)
-    test(['-O1'], 0.66, 225000)
-    test(['-O2'], 0.50, 75000)
-    test(['-O3', '--closure', '1'], 0.60, 60000)
-    test(['-O3', '--closure', '2'], 0.60, 41000) # might change now and then
+        assert sizes['no_nuthin'] < 0.975*sizes['normal']
+    test([], 1, 220000)
+    test(['-O1'], 1, 215000)
+    test(['-O2'], 0.99, 75000)
+    test(['-O3', '--closure', '1'], 0.975, 50000)
+    test(['-O3', '--closure', '2'], 0.975, 41000) # might change now and then
+
+  def test_no_browser(self):
+    BROWSER_INIT = 'var Browser'
+
+    check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')])
+    assert BROWSER_INIT not in open('a.out.js').read()
+
+    check_execute([PYTHON, EMCC, path_from_root('tests', 'browser_main_loop.c')]) # uses emscripten_set_main_loop, which needs Browser
+    assert BROWSER_INIT in open('a.out.js').read()
 
   def test_EXPORTED_RUNTIME_METHODS(self):
     def test(opts, has, not_has):
@@ -4604,7 +4651,7 @@ function _main() {
       print '  seen', seen, ', expected ', expected, type(seen), type(expected)
       assert expected == seen or (seen in expected if type(expected) in [list, tuple] else False), ['expect', expected, 'but see', seen]
 
-    do_log_test(path_from_root('tests', 'primes.cpp'), range(88, 92), '_main')
+    do_log_test(path_from_root('tests', 'primes.cpp'), range(88, 94), '_main')
     do_log_test(path_from_root('tests', 'fannkuch.cpp'), range(226, 235), '__Z15fannkuch_workerPv')
 
     # test non-native as well, registerizeHarder can be a little more efficient here
@@ -4662,7 +4709,7 @@ int main(void) {
     inname = path_from_root('tests', 'hello_world.c')
     Building.emcc(inname, output_filename='a.out.js')
     output = Popen(NODE_JS + ['-e', 'require("./a.out.js")'], stdout=PIPE, stderr=PIPE).communicate()
-    assert output == ('hello, world!\n \n', ''), 'expected no output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % output
+    assert output == ('hello, world!\n', ''), 'expected no output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % output
 
   def test_native_optimizer(self):
     def test(args, expected):
@@ -4841,6 +4888,12 @@ print os.environ.get('CROSS_COMPILE')
 ''')
     check('emconfigure', [PYTHON, 'test.py'], expect=path_from_root('em'))
     check('emmake', [PYTHON, 'test.py'], expect=path_from_root('em'))
+
+    open('test.py', 'w').write('''
+import os
+print os.environ.get('NM')
+''')
+    check('emconfigure', [PYTHON, 'test.py'], expect=tools.shared.LLVM_NM)
 
   def test_sdl2_config(self):
     for args, expected in [
@@ -5298,33 +5351,6 @@ int main() {
     assert proc.returncode == 0
     self.assertContained('#define __EMSCRIPTEN__ 1', out) # all our defines should show up
 
-  def test_emcc_wasm_0(self):
-    default_error_message = 'cannot use WASM=1 when full asm.js validation was disabled'
-    for args, ok, error_message in [
-      ([], False, ''),
-      (['-O1'], True, ''),
-      (['-O2'], True, ''),
-      (['-O3'], True, ''),
-      (['-O2', '-g'], True, ''),
-      (['-s', 'ASM_JS=1'], True, ''),
-      (['-s', 'WASM=0'], True, ''),
-      (['-s', 'WASM=1'], False, ''),
-      (['-s', 'ALLOW_MEMORY_GROWTH=1'], False, 'memory growth is not supported with WASM=1'),
-      (['-s', 'ALLOW_MEMORY_GROWTH=1', '-O1'], False, 'memory growth is not supported with WASM=1'),
-      (['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_WHITELIST=["_main"]', '-O2', '-s', 'ASSERTIONS=1'], True, ''),
-    ]:
-      print 'emcc_wasm_0', args, ok
-      if not error_message: error_message = default_error_message
-      proc = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1'] + args, stdout=PIPE, stderr=PIPE)
-      out, err = proc.communicate()
-      if ok:
-        assert proc.returncode == 0
-        self.assertNotContained(error_message, err)
-        self.assertContained('hello, world!', run_js('a.out.js'))
-      else:
-        assert proc.returncode != 0
-        self.assertContained(error_message, err)
-
   def test_umask_0(self):
     open('src.c', 'w').write(r'''
 #include <sys/stat.h>
@@ -5338,6 +5364,54 @@ int main() {
 
   def test_no_missing_symbols(self): # simple hello world should not show any missing symbols
     check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'])
+
+    # main() is implemented in C, and even if requested from JS, we should not warn
+    open('library_foo.js', 'w').write('''
+mergeInto(LibraryManager.library, {
+  my_js__deps: ['main'],
+  my_js: (function() {
+      return function() {
+        console.log("hello " + _nonexistingvariable);
+      };
+  }()),
+});
+''')
+    open('test.cpp', 'w').write('''
+#include<stdio.h>
+#include<stdlib.h>
+
+extern "C" {
+  extern void my_js();
+}
+
+int main() {
+  my_js();
+  return EXIT_SUCCESS;
+}
+''')
+    check_execute([PYTHON, EMCC, 'test.cpp', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1', '--js-library', 'library_foo.js'])
+
+    # but we do error on a missing js var
+    open('library_foo.js', 'w').write('''
+mergeInto(LibraryManager.library, {
+  my_js__deps: ['main', 'nonexistingvariable'],
+  my_js: (function() {
+      return function() {
+        console.log("hello " + _nonexistingvariable);
+      };
+  }()),
+});
+''')
+    proc = Popen([PYTHON, EMCC, 'test.cpp', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1', '--js-library', 'library_foo.js'], stderr=PIPE)
+    out, err = proc.communicate()
+    assert proc.returncode != 0
+    assert 'unresolved symbol' in err
+
+    # and also for missing C code, of course (without the --js-library, it's just a missing C method)
+    proc = Popen([PYTHON, EMCC, 'test.cpp', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'], stderr=PIPE)
+    out, err = proc.communicate()
+    assert proc.returncode != 0
+    assert 'unresolved symbol' in err
 
   def test_realpath(self):
     open('src.c', 'w').write(r'''
@@ -5685,7 +5759,7 @@ int main() {
 ''')
     for opts in [0, 1, 2]:
       print opts
-      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts)])
+      check_execute([PYTHON, EMCC, 'src.c', '-s', 'SPLIT_MEMORY=8388608', '-s', 'TOTAL_MEMORY=50000000', '-O' + str(opts), '-s', 'ASSERTIONS=1'])
       self.assertContained('success.', run_js('a.out.js', stderr=PIPE, assert_returncode=None))
 
   def test_split_memory_release(self):
@@ -5901,3 +5975,241 @@ int main() {
     test('hello_123.c', ['-O1'], 1, 2)
     test('fasta.cpp', ['-O3', '-g2'], 2, 13)
 
+  def test_link_response_file_does_not_force_absolute_paths(self):
+    with_space = 'with space'
+    directory_with_space_name = os.path.join(self.get_dir(), with_space)
+    if not os.path.exists(directory_with_space_name):
+      os.makedirs(directory_with_space_name)
+
+    main = '''
+      int main() {
+        return 0;
+      }
+    '''
+    main_file_name = 'main.cpp'
+    main_path_name = os.path.join(directory_with_space_name, main_file_name)
+    open(main_path_name, 'w').write(main)
+    main_object_file_name = 'main.cpp.o'
+
+    Building.emcc(main_path_name, ['-g'])
+
+    current_directory = os.getcwd()
+    os.chdir(os.path.join(current_directory, with_space))
+
+    link_args = Building.link([main_object_file_name], os.path.join(self.get_dir(), 'all.bc'), just_calculate=True)
+
+    os.chdir(current_directory)
+
+    # We want only the relative path to be in the linker args, it should not be converted to an absolute path.
+    self.assertItemsEqual(link_args, [main_object_file_name])
+
+  def test_memory_growth_noasm(self):
+    check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '-s', 'ALLOW_MEMORY_GROWTH=1'])
+    src = open('a.out.js').read()
+    assert 'use asm' not in src
+
+  def test_override_environment(self):
+    open('main.cpp', 'w').write(r'''
+      #include <emscripten.h>
+      int main() {
+        EM_ASM({
+          Module.print('environment is WEB? ' + ENVIRONMENT_IS_WEB);
+          Module.print('environment is WORKER? ' + ENVIRONMENT_IS_WORKER);
+          Module.print('environment is NODE? ' + ENVIRONMENT_IS_NODE);
+          Module.print('environment is SHELL? ' + ENVIRONMENT_IS_SHELL);
+        });
+      }
+''')
+    check_execute([PYTHON, EMCC, 'main.cpp'])
+    src = open('a.out.js').read()
+    envs = ['WEB', 'WORKER', 'NODE', 'SHELL']
+    for env in envs:
+      curr = 'var Module = { ENVIRONMENT: "%s" };\n' % env
+      open('test.js', 'w').write(curr + src)
+      for engine in JS_ENGINES:
+        if engine == V8_ENGINE: continue # ban v8, weird failures
+        actual = 'NODE' if engine == NODE_JS else 'SHELL'
+        print env, actual, engine
+        fail = False
+        try:
+          seen = run_js('test.js', engine=engine, stderr=PIPE)
+        except:
+          fail = True
+        if fail:
+          print '-- acceptable fail'
+          assert actual != env, 'ok to fail if in the wrong environment'
+        else:
+          for other in envs:
+            if env == other:
+              assert ('environment is %s? true' % other) in seen, seen
+            else:
+              assert ('environment is %s? false' % other) in seen, seen
+          print '-- verified proper env is shown'
+
+  def test_warn_no_filesystem(self):
+    WARNING = 'Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with  -s FORCE_FILESYSTEM=1'
+
+    check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')])
+    seen = run_js('a.out.js', stderr=PIPE)
+    assert WARNING not in seen
+
+    def test(contents):
+      open('src.cpp', 'w').write(r'''
+  #include<stdio.h>
+  #include<emscripten.h>
+  int main() {
+    EM_ASM({ %s });
+    printf("hello, world!\n");
+    return 0;
+  }
+  ''' % contents)
+      check_execute([PYTHON, EMCC, 'src.cpp'])
+      self.assertContained(WARNING, run_js('a.out.js', stderr=PIPE, assert_returncode=None))
+
+    # might appear in handwritten code
+    test("FS.init()")
+    test("FS.createPreloadedFile('waka waka, just warning check')");
+    test("FS.createDataFile('waka waka, just warning check')");
+    test("FS.analyzePath('waka waka, just warning check')");
+    test("FS.loadFilesFromDB('waka waka, just warning check')");
+    # might appear in filesystem code from a separate script tag
+    test("Module['FS_createDataFile']('waka waka, just warning check')");
+    test("Module['FS_createPreloadedFile']('waka waka, just warning check')");
+
+    # text is in the source when needed, but when forcing FS, it isn't there
+    check_execute([PYTHON, EMCC, 'src.cpp'])
+    self.assertContained(WARNING, open('a.out.js').read())
+    check_execute([PYTHON, EMCC, 'src.cpp', '-s', 'FORCE_FILESYSTEM=1']) # forcing FS means no need
+    self.assertNotContained(WARNING, open('a.out.js').read())
+    check_execute([PYTHON, EMCC, 'src.cpp', '-s', 'ASSERTIONS=0']) # no assertions, no need
+    self.assertNotContained(WARNING, open('a.out.js').read())
+    check_execute([PYTHON, EMCC, 'src.cpp', '-O2']) # optimized, so no assertions
+    self.assertNotContained(WARNING, open('a.out.js').read())
+
+  ############################################################
+  # Function eliminator tests
+  ############################################################
+  def normalize_line_endings(self, input):
+    return input.replace('\r\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n')
+
+  def get_file_contents(self, file):
+    file_contents = ""
+    with open(file) as fout:
+      file_contents = "".join(fout.readlines())
+
+    file_contents = self.normalize_line_endings(file_contents)
+
+    return file_contents
+
+  def function_eliminator_test_helper(self, input_file, expected_output_file, use_hash_info=False):
+    input_file = path_from_root('tests', 'optimizer', input_file)
+    expected_output_file = path_from_root('tests', 'optimizer', expected_output_file)
+    command = [path_from_root('tools', 'eliminate-duplicate-functions.js'), input_file, '--no-minimize-whitespace', '--use-asm-ast']
+
+    if use_hash_info:
+      command.append('--use-hash-info')
+
+    output, err = Popen(NODE_JS + command, stdin=PIPE, stderr=PIPE, stdout=PIPE).communicate()
+    assert err == '', err
+    expected_output = self.get_file_contents(expected_output_file)
+    output = self.normalize_line_endings(output)
+
+    self.assertIdentical(expected_output, output)
+
+  def test_function_eliminator_simple(self):
+    self.function_eliminator_test_helper('test-function-eliminator-simple.js',
+                                         'test-function-eliminator-simple-output.js')
+
+  def test_function_eliminator_replace_function_call(self):
+    self.function_eliminator_test_helper('test-function-eliminator-replace-function-call.js',
+                                        'test-function-eliminator-replace-function-call-output.js')
+
+  def test_function_eliminator_replace_function_call_two_passes(self):
+    self.function_eliminator_test_helper('test-function-eliminator-replace-function-call-output.js',
+                                         'test-function-eliminator-replace-function-call-two-passes-output.js')
+
+  def test_function_eliminator_replace_array_value(self):
+    import tools.duplicate_function_eliminator
+    output_file = 'output.js'
+
+    try:
+      tools.shared.safe_copy(path_from_root('tests', 'optimizer', 'test-function-eliminator-replace-array-value.js'), output_file)
+
+      tools.duplicate_function_eliminator.run(output_file)
+
+      output_file_contents = self.get_file_contents(output_file)
+
+      expected_file_contents = self.get_file_contents(path_from_root('tests', 'optimizer', 'test-function-eliminator-replace-array-value-output.js'))
+
+      self.assertIdentical(output_file_contents, expected_file_contents)
+    finally:
+      tools.tempfiles.try_delete(output_file)
+
+  def test_function_eliminator_replace_object_value_assignment(self):
+    self.function_eliminator_test_helper('test-function-eliminator-replace-object-value-assignment.js',
+                                         'test-function-eliminator-replace-object-value-assignment-output.js')
+
+  def test_function_eliminator_variable_clash(self):
+    self.function_eliminator_test_helper('test-function-eliminator-variable-clash.js',
+                                         'test-function-eliminator-variable-clash-output.js')
+
+  def test_function_eliminator_replace_variable_value(self):
+    self.function_eliminator_test_helper('test-function-eliminator-replace-variable-value.js',
+                                         'test-function-eliminator-replace-variable-value-output.js')
+
+  def test_function_eliminator_double_parsed_correctly(self):
+    # This is a test that makes sure that when we perform final optimization on
+    # the JS file, doubles are preserved (and not converted to ints).
+    import tools.tempfiles
+    import tools.duplicate_function_eliminator
+    import tools.js_optimizer
+
+    output_file = 'output.js'
+
+    try:
+      tools.shared.safe_copy(path_from_root('tests', 'optimizer', 'test-function-eliminator-double-parsed-correctly.js'), output_file)
+
+      # Run duplicate function elimination
+      tools.duplicate_function_eliminator.run(output_file)
+
+      # Run last opts
+      tools.shared.safe_copy(tools.js_optimizer.run(output_file, ['last', 'asm']), output_file)
+      output_file_contents = self.get_file_contents(output_file)
+
+      # Compare
+      expected_file_contents = self.get_file_contents(path_from_root('tests', 'optimizer', 'test-function-eliminator-double-parsed-correctly-output.js'))
+      self.assertIdentical(output_file_contents, expected_file_contents)
+    finally:
+      tools.tempfiles.try_delete(output_file)
+
+  # Now do the same, but using a pre-generated equivalent function hash info that
+  # comes in handy for parallel processing
+  def test_function_eliminator_simple_with_hash_info(self):
+    self.function_eliminator_test_helper('test-function-eliminator-simple-with-hash-info.js',
+                                         'test-function-eliminator-simple-output.js',
+                                         use_hash_info=True)
+
+  def test_function_eliminator_replace_function_call_with_hash_info(self):
+    self.function_eliminator_test_helper('test-function-eliminator-replace-function-call-with-hash-info.js',
+                                         'test-function-eliminator-replace-function-call-output.js',
+                                         use_hash_info=True)
+
+  def test_function_eliminator_replace_function_call_two_passes_with_hash_info(self):
+    self.function_eliminator_test_helper('test-function-eliminator-replace-function-call-output-with-hash-info.js',
+                                         'test-function-eliminator-replace-function-call-two-passes-output.js',
+                                         use_hash_info=True)
+
+  def test_function_eliminator_replace_object_value_assignment_with_hash_info(self):
+    self.function_eliminator_test_helper('test-function-eliminator-replace-object-value-assignment-with-hash-info.js',
+                                         'test-function-eliminator-replace-object-value-assignment-output.js',
+                                         use_hash_info=True)
+
+  def test_function_eliminator_variable_clash_with_hash_info(self):
+    self.function_eliminator_test_helper('test-function-eliminator-variable-clash-with-hash-info.js',
+                                         'test-function-eliminator-variable-clash-output.js',
+                                         use_hash_info=True)
+
+  def test_function_eliminator_replace_variable_value_with_hash_info(self):
+    self.function_eliminator_test_helper('test-function-eliminator-replace-variable-value-with-hash-info.js',
+                                         'test-function-eliminator-replace-variable-value-output.js',
+                                         use_hash_info=True)

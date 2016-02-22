@@ -422,9 +422,6 @@ EMSCRIPTEN_FUNCS();
   else:
     filenames = []
 
-  if shared.Settings.WASM:
-    passes = filter(lambda p: p != 'minifyWhitespace', passes) # if we are going to wasmify the asm module, no need to minify it before hand
-
   if len(filenames) > 0:
     if not use_native(passes, source_map) or not get_native_optimizer():
       commands = map(lambda filename: js_engine +
@@ -481,7 +478,9 @@ EMSCRIPTEN_FUNCS();
       if DEBUG: print >> sys.stderr, 'running cleanup on shell code'
       next = cld + '.cl.js'
       temp_files.note(next)
-      subprocess.Popen(js_engine + [JS_OPTIMIZER, cld, 'noPrintMetadata'] + (['minifyWhitespace'] if 'minifyWhitespace' in passes else []), stdout=open(next, 'w')).communicate()
+      proc = subprocess.Popen(js_engine + [JS_OPTIMIZER, cld, 'noPrintMetadata', 'JSDCE'] + (['minifyWhitespace'] if 'minifyWhitespace' in passes else []), stdout=open(next, 'w'))
+      proc.communicate()
+      assert proc.returncode == 0
       cld = next
     coutput = open(cld).read()
     coutput = coutput.replace('wakaUnknownBefore();', start_asm)

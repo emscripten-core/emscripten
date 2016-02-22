@@ -177,6 +177,26 @@ def emscript(infile, settings, outfile, outfile_name, libraries=[], compiler_eng
 
     metadata['declares'] = filter(lambda i64_func: i64_func not in ['getHigh32', 'setHigh32', '__muldi3', '__divdi3', '__remdi3', '__udivdi3', '__uremdi3'], metadata['declares']) # FIXME: do these one by one as normal js lib funcs
 
+    # Syscalls optimization. Our syscalls are static, and so if we see a very limited set of them - in particular,
+    # no open() syscall and just simple writing - then we don't need full filesystem support.
+    # If FORCE_FILESYSTEM is set, we can't do this. We also don't do it if INCLUDE_FULL_LIBRARY, since
+    # not including the filesystem would mean not including the full JS libraries, and the same for
+    # MAIN_MODULE since a side module might need the filesystem.
+    if not settings['NO_FILESYSTEM'] and not settings['FORCE_FILESYSTEM'] and not settings['INCLUDE_FULL_LIBRARY'] and not settings['MAIN_MODULE']:
+      syscall_prefix = '__syscall'
+      syscalls = filter(lambda declare: declare.startswith(syscall_prefix), metadata['declares'])
+      def is_int(x):
+        try:
+          int(x)
+          return True
+        except:
+          return False
+      syscalls = filter(lambda declare: is_int(declare[len(syscall_prefix):]), syscalls)
+      syscalls = map(lambda declare: int(declare[len(syscall_prefix):]), syscalls)
+      if set(syscalls).issubset(set([6, 54, 140, 146])): # close, ioctl, llseek, writev
+        if DEBUG: logging.debug('very limited syscalls (%s) so disabling full filesystem support' % ', '.join(map(str, syscalls)))
+        settings['NO_FILESYSTEM'] = 1
+
     # Integrate info from backend
     if settings['SIDE_MODULE']:
       settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = [] # we don't need any JS library contents in side modules
@@ -192,6 +212,8 @@ def emscript(infile, settings, outfile, outfile_name, libraries=[], compiler_eng
       settings['ASM_JS'] = 2
 
     settings['MAX_GLOBAL_ALIGN'] = metadata['maxGlobalAlign']
+
+    settings['IMPLEMENTED_FUNCTIONS'] = metadata['implementedFunctions']
 
     assert not (metadata['simd'] and settings['SPLIT_MEMORY']), 'SIMD is used, but not supported in SPLIT_MEMORY'
 
@@ -475,35 +497,52 @@ function _emscripten_asm_const_%s(%s) {
     maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'clz32']]
     simdfloattypes = []
     simdinttypes = []
-    simdfuncs = ['check', 'add', 'sub', 'neg', 'mul',
-                 'equal', 'lessThan', 'greaterThan',
-                 'notEqual', 'lessThanOrEqual', 'greaterThanOrEqual',
-                 'select', 'and', 'or', 'xor', 'not',
-                 'splat', 'swizzle', 'shuffle',
-                 'load', 'store', 'load1', 'store1', 'load2', 'store2', 'load3', 'store3',
-                 'extractLane', 'replaceLane']
+    simdbooltypes = []
+    simdfuncs = ['splat', 'check', 'extractLane', 'replaceLane']
+    simdintfloatfuncs = ['add', 'sub', 'neg', 'mul',
+                         'equal', 'lessThan', 'greaterThan',
+                         'notEqual', 'lessThanOrEqual', 'greaterThanOrEqual',
+                         'select', 'swizzle', 'shuffle',
+                         'load', 'store', 'load1', 'store1', 'load2', 'store2', 'load3', 'store3']
+    simdintboolfuncs = ['and', 'xor', 'or', 'not']
+    if metadata['simdUint8x16']:
+      simdinttypes += ['Uint8x16']
+      simdintfloatfuncs += ['fromUint8x16Bits']
     if metadata['simdInt8x16']:
       simdinttypes += ['Int8x16']
-      simdfuncs += ['fromInt8x16Bits']
+      simdintfloatfuncs += ['fromInt8x16Bits']
+    if metadata['simdUint16x8']:
+      simdinttypes += ['Uint16x8']
+      simdintfloatfuncs += ['fromUint16x8Bits']
     if metadata['simdInt16x8']:
       simdinttypes += ['Int16x8']
-      simdfuncs += ['fromInt16x8Bits']
+      simdintfloatfuncs += ['fromInt16x8Bits']
+    if metadata['simdUint32x4']:
+      simdinttypes += ['Uint32x4']
+      simdintfloatfuncs += ['fromUint32x4', 'fromUint32x4Bits']
     if metadata['simdInt32x4']:
       simdinttypes += ['Int32x4']
-      simdfuncs += ['fromInt32x4', 'fromInt32x4Bits']
+      simdintfloatfuncs += ['fromInt32x4', 'fromInt32x4Bits']
     if metadata['simdFloat32x4']:
       simdfloattypes += ['Float32x4']
-      simdfuncs += ['fromFloat32x4', 'fromFloat32x4Bits']
+      simdintfloatfuncs += ['fromFloat32x4', 'fromFloat32x4Bits']
     if metadata['simdFloat64x2']:
       simdfloattypes += ['Float64x2']
-      simdfuncs += ['fromFloat64x2', 'fromFloat64x2Bits']
+      simdintfloatfuncs += ['fromFloat64x2', 'fromFloat64x2Bits']
+    if metadata['simdBool8x16']:
+      simdbooltypes += ['Bool8x16']
+    if metadata['simdBool16x8']:
+      simdbooltypes += ['Bool16x8']
+    if metadata['simdBool32x4']:
+      simdbooltypes += ['Bool32x4']
+    if metadata['simdBool64x2']:
+      simdbooltypes += ['Bool64x2']
 
-    simdfloatfuncs = simdfuncs + ['div', 'min', 'max', 'minNum', 'maxNum', 'sqrt',
-                                  'abs', 'reciprocalApproximation', 'reciprocalSqrtApproximation'];
-    simdintfuncs = simdfuncs + ['shiftRightArithmeticByScalar',
-                                'shiftRightLogicalByScalar',
-                                'shiftLeftByScalar'];
-    simdtypes = simdfloattypes + simdinttypes
+    simdfloatfuncs = simdfuncs + simdintfloatfuncs + ['div', 'min', 'max', 'minNum', 'maxNum', 'sqrt',
+                                  'abs', 'reciprocalApproximation', 'reciprocalSqrtApproximation']
+    simdintfuncs = simdfuncs + simdintfloatfuncs + simdintboolfuncs + ['shiftLeftByScalar', 'shiftRightByScalar', 'addSaturate', 'subSaturate']
+    simdboolfuncs = simdfuncs + simdintboolfuncs + ['anyTrue', 'allTrue']
+    simdtypes = simdfloattypes + simdinttypes + simdbooltypes
 
     fundamentals = ['Math']
     fundamentals += ['Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
@@ -675,13 +714,13 @@ function ftCall_%s(%s) {%s
 
     def quote(prop):
       if settings['USE_CLOSURE_COMPILER'] == 2:
-        return "'" + prop + "'"
+        return ''.join(map(lambda p: "'" + p + "'", prop.split('.')))
       else:
         return prop
 
     def access_quote(prop):
       if settings['USE_CLOSURE_COMPILER'] == 2:
-        return "['" + prop + "']"
+        return ''.join(map(lambda p: "['" + p + "']", prop.split('.')))
       else:
         return '.' + prop
 
@@ -727,7 +766,10 @@ function ftCall_%s(%s) {%s
           if sub in s:
             return True
         return False
-      nonexisting_simd_symbols = ['Int32x4_fromInt32x4', 'Float32x4_fromFloat32x4']
+      nonexisting_simd_symbols = ['Int8x16_fromInt8x16', 'Uint8x16_fromUint8x16', 'Int16x8_fromInt16x8', 'Uint16x8_fromUint16x8', 'Int32x4_fromInt32x4', 'Uint32x4_fromUint32x4', 'Float32x4_fromFloat32x4', 'Float64x2_fromFloat64x2']
+      nonexisting_simd_symbols += ['Int32x4_addSaturate', 'Int32x4_subSaturate', 'Uint32x4_addSaturate', 'Uint32x4_subSaturate']
+      nonexisting_simd_symbols += [(x + '_' + y) for x in ['Int8x16', 'Uint8x16', 'Int16x8', 'Uint16x8', 'Float64x2'] for y in ['load2', 'load3', 'store2', 'store3']]
+      nonexisting_simd_symbols += [(x + '_' + y) for x in ['Int8x16', 'Uint8x16', 'Int16x8', 'Uint16x8'] for y in ['load1', 'store1']]
 
       asm_global_funcs += ''.join(['  var SIMD_' + ty + '=global' + access_quote('SIMD') + access_quote(ty) + ';\n' for ty in simdtypes])
 
@@ -738,13 +780,16 @@ function ftCall_%s(%s) {%s
       simd_float_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdfloattypes for g in simdfloatfuncs]
       simd_float_symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), simd_float_symbols)
       asm_global_funcs += ''.join(simd_float_symbols)
+
+      simd_bool_symbols = ['  var SIMD_' + ty + '_' + g + '=SIMD_' + ty + access_quote(g) + ';\n' for ty in simdbooltypes for g in simdboolfuncs]
+      simd_bool_symbols = filter(lambda x: not string_contains_any(x, nonexisting_simd_symbols), simd_bool_symbols)
+      asm_global_funcs += ''.join(simd_bool_symbols)
+
       # Unofficial, Bool64x2 does not yet exist, but needed for Float64x2 comparisons.
       if metadata['simdFloat64x2']:
         asm_global_funcs += '  var SIMD_Int32x4_fromBool64x2Bits = global.SIMD.Int32x4.fromBool64x2Bits;\n';
     if settings['USE_PTHREADS']:
-#      asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor']])
-# TODO: Once bug https://bugzilla.mozilla.org/show_bug.cgi?id=1141986 is implemented, replace the following line with the above one!
-      asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor']])
+      asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor']])
     asm_global_vars = ''.join(['  var ' + g + '=env' + access_quote(g) + '|0;\n' for g in basic_vars + global_vars])
 
     # sent data
@@ -1220,9 +1265,11 @@ def emscript_wasm_backend(infile, settings, outfile, outfile_name, libraries=[],
   assert settings['BINARYEN'], 'need BINARYEN option set so we can use Binaryen s2wasm on the backend output'
   wasm = outfile_name[:-3] + '.wast'
   s2wasm_args = [os.path.join(settings['BINARYEN'], 'bin', 's2wasm'), temp_s]
+  s2wasm_args += ['--global-base=%d' % shared.Settings.GLOBAL_BASE]
   if DEBUG:
     logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
     t = time.time()
+    s2wasm_args += ['--debug']
   shared.check_call(s2wasm_args, stdout=open(wasm, 'w'))
   if DEBUG:
     logging.debug('  emscript: binaryen s2wasm took %s seconds' % (time.time() - t))
@@ -1237,7 +1284,7 @@ def emscript_wasm_backend(infile, settings, outfile, outfile_name, libraries=[],
   # Integrate info from backend
 
   output = open(wasm).read()
-  parts = output.split('\n; METADATA:')
+  parts = output.split('\n;; METADATA:')
   assert len(parts) == 2
   metadata_raw = parts[1]
   parts = output = None
@@ -1256,10 +1303,11 @@ def emscript_wasm_backend(infile, settings, outfile, outfile_name, libraries=[],
     'simd': False,
     'maxGlobalAlign': 0,
     'initializers': [],
-    'staticBump': 0,
     'exports': [],
-    'asmConsts': metadata_json['asmConsts'],
   }
+
+  for k, v in metadata_json.iteritems():
+    metadata[k] = v
 
   # TODO: emit it from s2wasm; for now, we parse it right here
   for line in open(wasm).readlines():

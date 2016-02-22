@@ -198,10 +198,30 @@ int main() {
       finish(EXIT_FAILURE);
     }
     char buffer[1000];
-    sprintf(buffer, "%s:%u\n", inet_ntoa(adr_inet.sin_addr), (unsigned)ntohs(adr_inet.sin_port));
-    char *correct = "127.0.0.1:49161\n";
+    sprintf(buffer, "%s:%u", inet_ntoa(adr_inet.sin_addr), (unsigned)ntohs(adr_inet.sin_port));
+    // TODO: This is not the correct result: We should have a auto-bound address
+    char *correct = "0.0.0.0:0";
     printf("got (expected) socket: %s (%s), size %d (%d)\n", buffer, correct, strlen(buffer), strlen(correct));
-    assert(strncmp(buffer, correct, 10) == 0);
+    assert(strlen(buffer) == strlen(correct));
+    assert(strcmp(buffer, correct) == 0);
+  }
+
+  {
+    int z;
+    struct sockaddr_in adr_inet;
+    socklen_t len_inet = sizeof adr_inet;
+    z = getpeername(server.fd, (struct sockaddr *)&adr_inet, &len_inet);
+    if (z != 0) {
+      perror("getpeername");
+      finish(EXIT_FAILURE);
+    }
+    char buffer[1000];
+    sprintf(buffer, "%s:%u", inet_ntoa(adr_inet.sin_addr), (unsigned)ntohs(adr_inet.sin_port));
+    char correct[1000];
+    sprintf(correct, "127.0.0.1:%u", SOCKK);
+    printf("got (expected) socket: %s (%s), size %d (%d)\n", buffer, correct, strlen(buffer), strlen(correct));
+    assert(strlen(buffer) == strlen(correct));
+    assert(strcmp(buffer, correct) == 0);
   }
 
 #ifdef __EMSCRIPTEN__

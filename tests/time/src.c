@@ -74,7 +74,7 @@ int main() {
   // ones to watch, but we don't where they are since the zoneinfo could be US or
   // European)
   int mktimeOk = 1;
-  for (int i = 0; i < 2*24*266; ++i) {
+  for (int i = 0; i < 2*24*366; ++i) {
     struct tm tmp;
     time_t test = xmas2002 + 30*60*i;
     if (localtime_r(&test, &tmp) != &tmp) printf("localtime_r failed\n");

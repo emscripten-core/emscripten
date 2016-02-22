@@ -127,7 +127,7 @@ while 1:
     try:
       shared.check_execute(js_args)
       assert os.path.exists(filename + '.js')
-      return True
+      return js_args
     except:
       return False
 
@@ -144,7 +144,8 @@ while 1:
     fails += 1
     shutil.copyfile(fullname, 'newfail_%d_%d%s' % (os.getpid(), fails, suffix))
 
-  if not try_js():
+  js_args = try_js()
+  if not js_args:
     fail()
     continue
   if not execute_js(engine1):
@@ -155,7 +156,7 @@ while 1:
     continue
 
   # This is ok. Try validation in secondary JS engine
-  if opts != '-O0' and engine2:
+  if opts != '-O0' and 'ALLOW_MEMORY_GROWTH=1' not in js_args and engine2:
     try:
       js2 = shared.run_js(filename + '.js', stderr=PIPE, engine=engine2 + ['-w'], full_output=True, check_timeout=True, assert_returncode=None)
     except:

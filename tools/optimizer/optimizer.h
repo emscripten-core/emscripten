@@ -34,6 +34,10 @@ enum AsmType {
   ASM_INT8X16,
   ASM_INT16X8,
   ASM_INT32X4,
+  ASM_BOOL8X16,
+  ASM_BOOL16X8,
+  ASM_BOOL32X4,
+  ASM_BOOL64X2,
   ASM_NONE // number of types
 };
 
@@ -111,7 +115,11 @@ extern cashew::IString SIMD_INT8X16_CHECK,
                SIMD_INT16X8_CHECK,
                SIMD_INT32X4_CHECK,
                SIMD_FLOAT32X4_CHECK,
-               SIMD_FLOAT64X2_CHECK;
+               SIMD_FLOAT64X2_CHECK,
+               SIMD_BOOL8X16_CHECK,
+               SIMD_BOOL16X8_CHECK,
+               SIMD_BOOL32X4_CHECK,
+               SIMD_BOOL64X2_CHECK;
 
 int parseInt(const char *str);
 

@@ -315,7 +315,7 @@ EM_BUILD_VERBOSE_LEVEL = int(os.getenv('EM_BUILD_VERBOSE')) if os.getenv('EM_BUI
 
 # Expectations
 
-EXPECTED_LLVM_VERSION = (3, 8)
+EXPECTED_LLVM_VERSION = (3, 9)
 
 actual_clang_version = None
 
@@ -1063,6 +1063,7 @@ class Building:
     env['CXX'] = EMXX if not WINDOWS else 'python %r' % EMXX
     env['AR'] = EMAR if not WINDOWS else 'python %r' % EMAR
     env['LD'] = EMCC if not WINDOWS else 'python %r' % EMCC
+    env['NM'] = LLVM_NM
     env['LDSHARED'] = EMCC if not WINDOWS else 'python %r' % EMCC
     env['RANLIB'] = EMRANLIB if not WINDOWS else 'python %r' % EMRANLIB
     env['EMMAKEN_COMPILER'] = Building.COMPILER
@@ -1086,24 +1087,24 @@ class Building:
     def is_exe(fpath):
       return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
 
+    if os.path.isabs(program):
+      if os.path.isfile(program): return program
+
+      if WINDOWS:
+        for suffix in ['.exe', '.cmd', '.bat']:
+          if is_exe(program + suffix): return program + suffix
+
     fpath, fname = os.path.split(program)
     if fpath:
-      if is_exe(program):
-        return program
+      if is_exe(program): return program
     else:
       for path in os.environ["PATH"].split(os.pathsep):
         path = path.strip('"')
         exe_file = os.path.join(path, program)
-        if is_exe(exe_file):
-          return exe_file
-
-        if WINDOWS and not '.' in fname:
-          if is_exe(exe_file + '.exe'):
-            return exe_file + '.exe'
-          if is_exe(exe_file + '.cmd'):
-            return exe_file + '.cmd'
-          if is_exe(exe_file + '.bat'):
-            return exe_file + '.bat'
+        if is_exe(exe_file): return exe_file
+        if WINDOWS:
+          for suffix in ['.exe', '.cmd', '.bat']:
+            if is_exe(exe_file + suffix): return exe_file + suffix
 
     return None
 
@@ -1291,7 +1292,6 @@ class Building:
         return f
       else:
         return os.path.abspath(f)
-    files = map(make_paths_absolute, files)
     # Paths of already included object files from archives.
     added_contents = set()
     # Map of archive name to list of extracted object file paths.
@@ -1299,7 +1299,7 @@ class Building:
     has_ar = False
     for f in files:
       if not f.startswith('-'):
-        has_ar = has_ar or Building.is_ar(f)
+        has_ar = has_ar or Building.is_ar(make_paths_absolute(f))
 
     # If we have only one archive or the force_archive_contents flag is set,
     # then we will add every object file we see, regardless of whether it
@@ -1383,6 +1383,7 @@ class Building:
 
     current_archive_group = None
     for f in files:
+      absolute_path_f = make_paths_absolute(f)
       if f.startswith('-'):
         if f in ['--start-group', '-(']:
           assert current_archive_group is None, 'Nested --start-group, missing --end-group?'
@@ -1402,10 +1403,10 @@ class Building:
           current_archive_group = None
         else:
           logging.debug('Ignoring unsupported link flag: %s' % f)
-      elif not Building.is_ar(f):
-        if Building.is_bitcode(f):
+      elif not Building.is_ar(absolute_path_f):
+        if Building.is_bitcode(absolute_path_f):
           if has_ar:
-            consider_object(f, force_add=True)
+            consider_object(absolute_path_f, force_add=True)
           else:
             # If there are no archives then we can simply link all valid bitcode
             # files and skip the symbol table stuff.
@@ -1413,11 +1414,11 @@ class Building:
       else:
         # Extract object files from ar archives, and link according to gnu ld semantics
         # (link in an entire .o from the archive if it supplies symbols still unresolved)
-        consider_archive(f)
+        consider_archive(absolute_path_f)
         # If we're inside a --start-group/--end-group section, add to the list
         # so we can loop back around later.
         if current_archive_group is not None:
-          current_archive_group.append(f)
+          current_archive_group.append(absolute_path_f)
     assert current_archive_group is None, '--start-group without matching --end-group'
 
     try_delete(target)
@@ -1438,15 +1439,9 @@ class Building:
 
       response_fh = open(response_file, 'w')
       for arg in actual_files:
-        # we can't put things with spaces in the response file
-        if " " in arg:
-          link_args.append(arg)
-        else:
-          response_fh.write(arg + "\n")
+        # escaped double quotes allows 'space' characters in pathname the response file can use
+        response_fh.write("\"" + arg + "\"\n")
       response_fh.close()
-
-      if len(' '.join(link_args)) > 8192:
-        logging.warning('emcc: link command line is very long, even with response file -- use paths with no spaces')
 
     if not just_calculate:
       logging.debug('emcc: llvm-linking: %s to %s', actual_files, target)
@@ -1658,6 +1653,11 @@ class Building:
       safe_move(ret, output_filename)
       ret = output_filename
     return ret
+
+  @staticmethod
+  def eliminate_duplicate_funcs(filename):
+    import duplicate_function_eliminator
+    duplicate_function_eliminator.eliminate_duplicate_funcs(filename)
 
   @staticmethod
   def closure_compiler(filename, pretty=True):
@@ -1937,8 +1937,9 @@ class JS:
     s = ''.join(map(chr, s))
     s = s.replace('\\', '\\\\').replace("'", "\\'")
     s = s.replace('\n', '\\n').replace('\r', '\\r')
+    # Escape the ^Z (= 0x1a = substitute) ASCII character and all characters higher than 7-bit ASCII.
     def escape(x): return '\\x{:02x}'.format(ord(x.group()))
-    return re.sub('[\x80-\xff]', escape, s)
+    return re.sub('[\x1a\x80-\xff]', escape, s)
 
 def execute(cmd, *args, **kw):
   try:
