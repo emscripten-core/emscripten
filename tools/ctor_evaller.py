@@ -168,21 +168,12 @@ if len(removed) > 0:
   asm = get_asm(open(js_file).read())
   exports_start = asm.find('return {')
   exports_text = asm[asm.find('{', exports_start) + 1 : asm.find('};', exports_start)]
-  exports = map(lambda x: x.split(':')[1], exports_text.replace(' ', '').split(','))
-  print exports
+  exports = map(lambda x: x.split(':')[1].strip(), exports_text.replace(' ', '').split(','))
   for r in removed:
     assert r in exports, 'global ctors were exported'
-  reachable = shared.Building.calculate_reachable_functions(js_file, exports, can_reach=False)['reachable']
-  for r in removed:
-    assert r in reachable, 'reachable'
-  print len(exports), len(reachable)
   exports = filter(lambda e: e not in removed, exports)
   reachable = shared.Building.calculate_reachable_functions(js_file, exports, can_reach=False)['reachable']
   for r in removed:
-    assert r not in reachable, 'NOT reachable'
-  print len(exports), len(reachable)
-  proc = subprocess.Popen(shared.NODE_JS + [shared.path_from_root('tools', 'js-optimizer.js'), js_file, 'JSDFE'], stdout=subprocess.PIPE)
-  out, err = proc.communicate()
-  assert proc.returncode == 0
-  open(js_file, 'w').write(out)
+    assert r not in reachable, 'removed ctors must NOT be reachable'
+  shared.Building.js_optimizer(js_file, ['removeFuncs'], extra_info={ 'keep': reachable }, output_filename=js_file)
 

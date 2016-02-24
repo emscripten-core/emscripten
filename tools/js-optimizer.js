@@ -7845,6 +7845,15 @@ function JSDCE(ast) {
   }
 }
 
+function removeFuncs(ast) {
+  assert(ast[0] === 'toplevel');
+  var keep = set(extraInfo.keep);
+  ast[1] = ast[1].filter(function(node) {
+    assert(node[0] === 'defun');
+    return node[1] in keep;
+  });
+}
+
 // Passes table
 
 var minifyWhitespace = false, printMetadata = true, asm = false, asmPreciseF32 = false, emitJSON = false, last = false;
@@ -7882,6 +7891,7 @@ var passes = {
   dumpCallGraph: dumpCallGraph,
   asmLastOpts: asmLastOpts,
   JSDCE: JSDCE,
+  removeFuncs: removeFuncs,
   noop: function() {},
 
   // flags
