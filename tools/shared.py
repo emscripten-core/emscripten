@@ -1660,6 +1660,47 @@ class Building:
     duplicate_function_eliminator.eliminate_duplicate_funcs(filename)
 
   @staticmethod
+  def calculate_reachable_functions(infile, initial_list):
+    import asm_module
+    temp = configuration.get_temp_files().get('.js').name
+    Building.js_optimizer(infile, ['dumpCallGraph'], output_filename=temp, just_concat=True)
+    asm = asm_module.AsmModule(temp)
+    lines = asm.funcs_js.split('\n')
+    can_call = {}
+    for i in range(len(lines)):
+      line = lines[i]
+      if line.startswith('// REACHABLE '):
+        curr = json.loads(line[len('// REACHABLE '):])
+        func = curr[0]
+        targets = curr[2]
+        can_call[func] = set(targets)
+    # function tables too - treat a function all as a function that can call anything in it, which is effectively what it is
+    for name, funcs in asm.tables.iteritems():
+      can_call[name] = set(funcs[1:-1].split(','))
+    #print can_call
+    # Note: We ignore calls in from outside the asm module, so you could do emterpreted => outside => emterpreted, and we would
+    #       miss the first one there. But this is acceptable to do, because we can't save such a stack anyhow, due to the outside!
+    #print 'can call', can_call, '\n!!!\n', asm.tables, '!'
+    reachable_from = {}
+    for func, targets in can_call.iteritems():
+      for target in targets:
+        if target not in reachable_from:
+          reachable_from[target] = set()
+        reachable_from[target].add(func)
+    #print 'reachable from', reachable_from
+    # find all functions that can reach the sync funcs, which are those that can be on the stack during an async save/load, and hence must all be emterpreted
+    to_check = initial_list[:]
+    advised = set()
+    while len(to_check) > 0:
+      curr = to_check.pop()
+      if curr in reachable_from:
+        for reacher in reachable_from[curr]:
+          if reacher not in advised:
+            if not JS.is_dyn_call(reacher) and not JS.is_function_table(reacher): advised.add(str(reacher))
+            to_check.append(reacher)
+    return { 'reachable': list(advised), 'total_funcs': len(can_call) }
+
+  @staticmethod
   def closure_compiler(filename, pretty=True):
     if not check_closure_compiler():
       logging.error('Cannot run closure compiler')
@@ -1940,6 +1981,14 @@ class JS:
     # Escape the ^Z (= 0x1a = substitute) ASCII character and all characters higher than 7-bit ASCII.
     def escape(x): return '\\x{:02x}'.format(ord(x.group()))
     return re.sub('[\x1a\x80-\xff]', escape, s)
+
+  @staticmethod
+  def is_dyn_call(func):
+    return func.startswith('dynCall_')
+
+  @staticmethod
+  def is_function_table(name):
+    return name.startswith('FUNCTION_TABLE_')
 
 def execute(cmd, *args, **kw):
   try:
