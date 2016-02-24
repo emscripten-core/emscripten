@@ -16,6 +16,9 @@ temp_file = js_file + '.ctorEval.js'
 
 # helpers
 
+def get_asm(js):
+  return js[js.find(js_optimizer.start_asm_marker):js.find(js_optimizer.end_asm_marker)]
+
 def eval_ctor(js, mem_init):
 
   def kill_func(asm, name):
@@ -44,7 +47,7 @@ def eval_ctor(js, mem_init):
   ctor = ctors[0].replace('()', '')
   shared.logging.debug('trying to eval ctor: ' + ctor)
   # Find the asm module, and receive the mem init.
-  asm = js[js.find(js_optimizer.start_asm_marker):js.find(js_optimizer.end_asm_marker)]
+  asm = get_asm(js)
   assert len(asm) > 0
   asm = asm.replace('use asm', 'not asm') # don't try to validate this
   # find all global vars
@@ -135,13 +138,14 @@ console.log(Array.prototype.slice.call(heap.subarray(globalBase, newSize)));
   else:
     new_ctors = ctors_text[:ctors_text.find('(') + 1] + ctors_text[ctors_text.find(',')+1:]
   js = js[:ctors_start] + new_ctors + js[ctors_end:]
+  removed.append(ctor)
   return (js, mem_init)
 
 # main
 
 # keep running while we succeed in removing a constructor
 
-removed_one = False
+removed = []
 
 while True:
   shared.logging.debug('ctor_evaller: trying to eval a global constructor')
@@ -155,14 +159,30 @@ while True:
   js, mem_init = result
   open(js_file, 'w').write(js)
   open(mem_init_file, 'wb').write(mem_init)
-  removed_one = True
 
-# If we removed one, dead function elimination can help us TODO
+# If we removed one, dead function elimination can help us
 
-#if removed_one:
-#  shared.logging.debug('ctor_evaller: JSDFE')
-#  proc = subprocess.Popen(shared.NODE_JS + [shared.path_from_root('tools', 'js-optimizer.js'), js_file, 'JSDFE'], stdout=subprocess.PIPE)
-#  out, err = proc.communicate()
-#  assert proc.returncode == 0
-#  open(js_file, 'w').write(out)
+if len(removed) > 0:
+  shared.logging.debug('ctor_evaller: JSDFE')
+  # find exports
+  asm = get_asm(open(js_file).read())
+  exports_start = asm.find('return {')
+  exports_text = asm[asm.find('{', exports_start) + 1 : asm.find('};', exports_start)]
+  exports = map(lambda x: x.split(':')[1], exports_text.replace(' ', '').split(','))
+  print exports
+  for r in removed:
+    assert r in exports, 'global ctors were exported'
+  reachable = shared.Building.calculate_reachable_functions(js_file, exports, can_reach=False)['reachable']
+  for r in removed:
+    assert r in reachable, 'reachable'
+  print len(exports), len(reachable)
+  exports = filter(lambda e: e not in removed, exports)
+  reachable = shared.Building.calculate_reachable_functions(js_file, exports, can_reach=False)['reachable']
+  for r in removed:
+    assert r not in reachable, 'NOT reachable'
+  print len(exports), len(reachable)
+  proc = subprocess.Popen(shared.NODE_JS + [shared.path_from_root('tools', 'js-optimizer.js'), js_file, 'JSDFE'], stdout=subprocess.PIPE)
+  out, err = proc.communicate()
+  assert proc.returncode == 0
+  open(js_file, 'w').write(out)
 
