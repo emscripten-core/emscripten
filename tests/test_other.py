@@ -861,10 +861,13 @@ This pointer might make sense in another type signature:''', '''Invalid function
     Building.emar('cr', lib_name, [lib_src_name + '.o']) # libLIB.a with lib.c.o
 
     def test(lib_args, err_expected):
+      print err_expected
       output = Popen([PYTHON, EMCC, main_name, '-o', 'a.out.js'] + lib_args, stdout=PIPE, stderr=PIPE).communicate()
+      #print output[1]
       if err_expected:
         self.assertContained(err_expected, output[1])
       else:
+        self.assertNotContained('unresolved symbol', output[1])
         out_js = os.path.join(self.get_dir(), 'a.out.js')
         assert os.path.exists(out_js), '\n'.join(output)
         self.assertContained('result: 42', run_js(out_js))
@@ -873,6 +876,23 @@ This pointer might make sense in another type signature:''', '''Invalid function
     test(['-Wl,--start-group', lib_name, '-Wl,--start-group'], 'Nested --start-group, missing --end-group?')
     test(['-Wl,--end-group', lib_name, '-Wl,--start-group'], '--end-group without --start-group')
     test(['-Wl,--start-group', lib_name, '-Wl,--end-group'], None)
+
+    print 'embind test with groups'
+
+    main_name = os.path.join(self.get_dir(), 'main.cpp')
+    open(main_name, 'w').write(r'''
+      #include <stdio.h>
+      #include<emscripten/val.h>
+      using namespace emscripten;
+      extern "C" int x();
+      int main() {
+        int y = -x();
+        y = val::global("Math").call<int>("abs", y);
+        printf("result: %d\n", y);
+        return 0;
+      }
+    ''')
+    test(['-Wl,--start-group', lib_name, '-Wl,--end-group', '--bind'], None)
 
   def test_link_group_bitcode(self):
     one = open('1.c', 'w').write(r'''
