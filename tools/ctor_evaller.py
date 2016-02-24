@@ -17,6 +17,21 @@ temp_file = js_file + '.ctorEval.js'
 # helpers
 
 def eval_ctor(js, mem_init):
+
+  def kill_func(asm, name):
+    before = len(asm)
+    asm = asm.replace('function ' + name + '(', 'function KILLED_' + name + '(', 1)
+    assert len(asm) > before
+    return asm
+
+  def add_func(asm, func):
+    before = len(asm)
+    asm = asm.replace('function ', ' ' + func + '\nfunction ', 1)
+    assert len(asm) > before
+    name = func[func.find(' ')+1 : func.find('(')]
+    asm = asm.replace('return {', 'return { ' + name + ': ' + name + ',')
+    return asm
+
   # Find the global ctors
   ctors_start = js.find('__ATINIT__.push(')
   if ctors_start < 0: return False
@@ -32,22 +47,18 @@ def eval_ctor(js, mem_init):
   asm = js[js.find(js_optimizer.start_asm_marker):js.find(js_optimizer.end_asm_marker)]
   assert len(asm) > 0
   asm = asm.replace('use asm', 'not asm') # don't try to validate this
-  # hack out some special functions
-  def kill_func(asm, name):
-    before = len(asm)
-    asm = asm.replace('function ' + name + '(', 'function KILLED_' + name + '(', 1)
-    assert len(asm) > before
-    return asm
-  def add_func(asm, func):
-    before = len(asm)
-    asm = asm.replace('function ', ' ' + func + '\nfunction ', 1)
-    assert len(asm) > before
-    return asm
-  # replace malloc/free with a deterministic method that allocs unfreeable blocks at the end of static memory
-  asm = kill_func(asm, '_malloc')
-  asm = kill_func(asm, '_free')
-  asm = add_func(asm, 'function _malloc() { abort() }')
-  asm = add_func(asm, 'function _free() { abort() }')
+  # find all global vars
+  pre_funcs = asm[:asm.find('function ')]
+  parts = filter(lambda x: x.startswith('var ') and ' new ' not in x, map(lambda x: x.strip(), pre_funcs.split(';')))
+  global_vars = []
+  for part in parts:
+    part = part[4:] # skip 'var '
+    bits = map(lambda x: x.replace(' ', ''), part.split(','))
+    for bit in bits:
+      name, value = bit.split('=')
+      if value == '0' or '+' in value or '|0' in value or '.0' in value:
+        global_vars.append(name)
+  asm = add_func(asm, 'function dumpGlobals() { return [ ' + ', '.join(global_vars) + '] }')
   # Generate a safe sandboxed environment. We replace all ffis with errors. Otherwise,
   # asm.js can't call outside, so we are ok.
   open(temp_file, 'w').write('''
@@ -94,11 +105,16 @@ var libraryArg = {
 %s
 (globalArg, libraryArg, buffer);
 
+var globalsBefore = asm['dumpGlobals']();
+
 // Try to run the constructor
 asm['%s']();
 // We succeeded!
 
 // Verify asm global vars
+var globalsAfter = asm['dumpGlobals']();
+
+if (JSON.stringify(globalsBefore) !== JSON.stringify(globalsAfter)) throw 'globals changed ' + globalsBefore + ' vs ' + globalsAfter;
 
 // Write out new mem init. It might be bigger, look for non-0 bytes
 var newSize = totalMemory;
@@ -123,7 +139,7 @@ console.log(Array.prototype.slice.call(heap.subarray(globalBase, newSize)));
 
 # main
 
-# keep running whlie we succeed in removing a constructor
+# keep running while we succeed in removing a constructor
 
 removed_one = False
 
