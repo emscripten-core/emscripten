@@ -163,7 +163,7 @@ while True:
 # If we removed one, dead function elimination can help us
 
 if len(removed) > 0:
-  shared.logging.debug('ctor_evaller: JSDFE')
+  shared.logging.debug('ctor_evaller: eliminate no longer needed functions after ctor elimination')
   # find exports
   asm = get_asm(open(js_file).read())
   exports_start = asm.find('return {')
