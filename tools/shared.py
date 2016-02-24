@@ -1655,6 +1655,10 @@ class Building:
     return ret
 
   @staticmethod
+  def eval_ctors(js_file, mem_init_file):
+    subprocess.check_call([PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, mem_init_file, str(Settings.TOTAL_MEMORY), str(Settings.GLOBAL_BASE)])
+
+  @staticmethod
   def eliminate_duplicate_funcs(filename):
     import duplicate_function_eliminator
     duplicate_function_eliminator.eliminate_duplicate_funcs(filename)

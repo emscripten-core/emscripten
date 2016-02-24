@@ -12,6 +12,8 @@ mem_init_file = sys.argv[2]
 total_memory = int(sys.argv[3])
 global_base = int(sys.argv[4])
 
+assert global_base > 0
+
 temp_file = js_file + '.ctorEval.js'
 
 # helpers

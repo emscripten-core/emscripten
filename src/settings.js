@@ -691,4 +691,6 @@ var ELIMINATE_DUPLICATE_FUNCTIONS = 0; // disabled by default
 var ELIMINATE_DUPLICATE_FUNCTIONS_PASSES = 5;
 var ELIMINATE_DUPLICATE_FUNCTIONS_DUMP_EQUIVALENT_FUNCTIONS = 0;
 
+var EVAL_CTORS = 0; // Try to evaluate global ctors ahead of time. Can be slow to run.
+
 // Reserved: variables containing POINTER_MASKING.

@@ -1660,6 +1660,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         JSOptimizer.flush()
         shared.Building.eliminate_duplicate_funcs(final)
 
+      if shared.Settings.EVAL_CTORS:
+        assert memory_init_file, 'EVAL_CTORS requires --memory-init-file'
+        JSOptimizer.flush()
+        shared.Building.eval_ctors(final, memfile)
+        if DEBUG: save_intermediate('eval-ctors', 'js')
+
       if not shared.Settings.EMTERPRETIFY:
         do_minify()
 
