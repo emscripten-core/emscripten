@@ -169,11 +169,18 @@ if len(removed) > 0:
   # find exports
   asm = get_asm(open(js_file).read())
   exports_start = asm.find('return {')
-  exports_text = asm[asm.find('{', exports_start) + 1 : asm.find('};', exports_start)]
+  exports_end = asm.find('};', exports_start)
+  exports_text = asm[asm.find('{', exports_start) + 1 : exports_end]
   exports = map(lambda x: x.split(':')[1].strip(), exports_text.replace(' ', '').split(','))
   for r in removed:
     assert r in exports, 'global ctors were exported'
   exports = filter(lambda e: e not in removed, exports)
+  # fix up the exports
+  js = open(js_file).read()
+  absolute_exports_start = js.find(exports_text)
+  js = js[:absolute_exports_start] + ', '.join(map(lambda e: e + ': ' + e, exports)) + js[absolute_exports_start + len(exports_text):]
+  open(js_file, 'w').write(js)
+  # find unreachable methods and remove them
   reachable = shared.Building.calculate_reachable_functions(js_file, exports, can_reach=False)['reachable']
   for r in removed:
     assert r not in reachable, 'removed ctors must NOT be reachable'
