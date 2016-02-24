@@ -141,12 +141,12 @@ while True:
   open(mem_init_file, 'wb').write(mem_init)
   removed_one = True
 
-# If we removed one, dead function elimination can help us
+# If we removed one, dead function elimination can help us TODO
 
-if removed_one:
-  shared.logging.debug('ctor_evaller: JSDFE')
-  proc = subprocess.Popen(shared.NODE_JS + [shared.path_from_root('tools', 'js-optimizer.js'), js_file, 'JSDFE'], stdout=subprocess.PIPE)
-  out, err = proc.communicate()
-  assert proc.returncode == 0
-  open(js_file, 'w').write(out)
+#if removed_one:
+#  shared.logging.debug('ctor_evaller: JSDFE')
+#  proc = subprocess.Popen(shared.NODE_JS + [shared.path_from_root('tools', 'js-optimizer.js'), js_file, 'JSDFE'], stdout=subprocess.PIPE)
+#  out, err = proc.communicate()
+#  assert proc.returncode == 0
+#  open(js_file, 'w').write(out)
 
