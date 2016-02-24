@@ -1676,7 +1676,7 @@ class Building:
         can_call[func] = set(targets)
     # function tables too - treat a function all as a function that can call anything in it, which is effectively what it is
     for name, funcs in asm.tables.iteritems():
-      can_call[name] = set(funcs[1:-1].split(','))
+      can_call[name] = set(map(lambda x: x.strip(), funcs[1:-1].split(',')))
     #print can_call
     # Note: We ignore calls in from outside the asm module, so you could do emterpreted => outside => emterpreted, and we would
     #       miss the first one there. But this is acceptable to do, because we can't save such a stack anyhow, due to the outside!
@@ -1701,13 +1701,17 @@ class Building:
               to_check.append(reacher)
     else:
       # find all functions that are reachable from the initial list, including it
+      # all tables are assumed reachable, as they can be called from dyncall from outside
+      for name, funcs in asm.tables.iteritems():
+        to_check.append(name)
       while len(to_check) > 0:
         curr = to_check.pop()
-        advised.add(curr)
+        if not JS.is_function_table(curr):
+          advised.add(curr)
         if curr in can_call:
           for target in can_call[curr]:
             if target not in advised:
-              if not JS.is_dyn_call(target) and not JS.is_function_table(target): advised.add(str(target))
+              advised.add(str(target))
               to_check.append(target)
     return { 'reachable': list(advised), 'total_funcs': len(can_call) }
 
