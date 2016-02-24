@@ -72,7 +72,8 @@ var LibraryPThreadStub = {
 
   pthread_cond_broadcast__asm: true,
   pthread_cond_broadcast__sig: 'ii',
-  pthread_cond_broadcast: function() {
+  pthread_cond_broadcast: function(x) {
+    x = x | 0;
     return 0;
   },
 
