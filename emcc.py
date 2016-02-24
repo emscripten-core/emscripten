@@ -1111,6 +1111,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       separate_asm = True
       shared.Settings.FINALIZE_ASM_JS = False
 
+    if shared.Settings.GLOBAL_BASE < 0:
+      shared.Settings.GLOBAL_BASE = 8 # default if nothing else sets it
+
     shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
     shared.Settings.OPT_LEVEL = opt_level
     shared.Settings.DEBUG_LEVEL = debug_level

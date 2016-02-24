@@ -482,7 +482,7 @@ function reSign(value, bits, ignore) {
 // Above 0 is static memory, starting with globals.
 // Then the stack.
 // Then 'dynamic' memory for sbrk.
-Runtime.GLOBAL_BASE = {{{ GLOBAL_BASE }}} < 0 ? 8 : {{{ GLOBAL_BASE }}};
+Runtime.GLOBAL_BASE = {{{ GLOBAL_BASE }}};
 
 if (RETAIN_COMPILER_SETTINGS) {
   var blacklist = set('STRUCT_INFO');
