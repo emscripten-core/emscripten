@@ -129,7 +129,7 @@ console.log(Array.prototype.slice.call(heap.subarray(globalBase, newSize)));
 ''' % (total_memory, mem_init, global_base, asm, ctor))
   # Execute the sandboxed code. If an error happened due to calling an ffi, that's fine,
   # us exiting with an error tells the caller that we failed.
-  proc = subprocess.Popen(shared.NODE_JS + [temp_file], stdout=subprocess.PIPE)
+  proc = subprocess.Popen(shared.NODE_JS + [temp_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   out, err = proc.communicate()
   if proc.returncode != 0: return False
   # Success! out contains the new mem init, write it out
@@ -155,7 +155,7 @@ while True:
   mem_init = json.dumps(map(ord, open(mem_init_file, 'rb').read()))
   result = eval_ctor(js, mem_init)
   if not result:
-    shared.logging.debug('ctor_evaller: done')
+    shared.logging.debug('ctor_evaller: not successful any more, done')
     break # that's it, no more luck. either no ctors, or we failed to eval a ctor
   shared.logging.debug('ctor_evaller: success!')
   js, mem_init = result
