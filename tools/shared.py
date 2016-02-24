@@ -1660,7 +1660,7 @@ class Building:
     duplicate_function_eliminator.eliminate_duplicate_funcs(filename)
 
   @staticmethod
-  def calculate_reachable_functions(infile, initial_list):
+  def calculate_reachable_functions(infile, initial_list, can_reach=True):
     import asm_module
     temp = configuration.get_temp_files().get('.js').name
     Building.js_optimizer(infile, ['dumpCallGraph'], output_filename=temp, just_concat=True)
@@ -1688,16 +1688,27 @@ class Building:
           reachable_from[target] = set()
         reachable_from[target].add(func)
     #print 'reachable from', reachable_from
-    # find all functions that can reach the sync funcs, which are those that can be on the stack during an async save/load, and hence must all be emterpreted
     to_check = initial_list[:]
     advised = set()
-    while len(to_check) > 0:
-      curr = to_check.pop()
-      if curr in reachable_from:
-        for reacher in reachable_from[curr]:
-          if reacher not in advised:
-            if not JS.is_dyn_call(reacher) and not JS.is_function_table(reacher): advised.add(str(reacher))
-            to_check.append(reacher)
+    if can_reach:
+      # find all functions that can reach the initial list
+      while len(to_check) > 0:
+        curr = to_check.pop()
+        if curr in reachable_from:
+          for reacher in reachable_from[curr]:
+            if reacher not in advised:
+              if not JS.is_dyn_call(reacher) and not JS.is_function_table(reacher): advised.add(str(reacher))
+              to_check.append(reacher)
+    else:
+      # find all functions that are reachable from the initial list, including it
+      while len(to_check) > 0:
+        curr = to_check.pop()
+        advised.add(curr)
+        if curr in can_call:
+          for target in can_call[curr]:
+            if target not in advised:
+              if not JS.is_dyn_call(target) and not JS.is_function_table(target): advised.add(str(target))
+              to_check.append(target)
     return { 'reachable': list(advised), 'total_funcs': len(can_call) }
 
   @staticmethod
