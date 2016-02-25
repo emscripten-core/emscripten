@@ -41,13 +41,17 @@ def eval_ctor(js, mem_init):
 
   # Find the global ctors
   ctors_start = js.find('__ATINIT__.push(')
-  if ctors_start < 0: return False
+  if ctors_start < 0:
+    shared.logging.debug('no ctors')
+    return False
   ctors_end = js.find(');', ctors_start)
-  if ctors_end < 0: return False
+  assert ctors_end > 0
   ctors_end += 3
   ctors_text = js[ctors_start:ctors_end]
   ctors = filter(lambda ctor: ctor.endswith('()') and not ctor == 'function()' and '.' not in ctor, ctors_text.split(' '))
-  if len(ctors) == 0: return False
+  if len(ctors) == 0:
+    shared.logging.debug('zero ctors')
+    return False
   ctor = ctors[0].replace('()', '')
   shared.logging.debug('trying to eval ctor: ' + ctor)
   # Find the asm module, and receive the mem init.
@@ -72,7 +76,8 @@ def eval_ctor(js, mem_init):
         'HEAP8', 'HEAP16', 'HEAP32',
         'HEAPU8', 'HEAPU16', 'HEAPU32',
         'HEAPF32', 'HEAPF64',
-      ]:
+        'nan', 'inf',
+      ] or name.startswith('Math_'):
         if 'new ' not in value:
           global_vars.append(name)
         new_globals += ' var ' + name + ' = ' + value + ';\n'
@@ -113,6 +118,10 @@ if (!Math.imul) {
     // the final |0 converts the unsigned value into a signed value
     return ((al * bl) + (((ah * bl + al * bh) << 16) >>> 0)|0);
   };
+}
+if (!Math.fround) {
+  var froundBuffer = new Float32Array(1);
+  Math.fround = function(x) { froundBuffer[0] = x; return froundBuffer[0] };
 }
 
 var globalArg = {
