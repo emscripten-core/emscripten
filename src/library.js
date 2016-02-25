@@ -716,13 +716,33 @@ LibraryManager.library = {
 
   memcpy__asm: true,
   memcpy__sig: 'iiii',
-  memcpy__deps: ['emscripten_memcpy_big'],
+  memcpy__deps: ['emscripten_memcpy_big'
+#if SIMD
+                 , 'SIMD_Int32x4_load', 'SIMD_Int32x4_store'
+#endif
+                ],
   memcpy: function(dest, src, num) {
     dest = dest|0; src = src|0; num = num|0;
     var ret = 0;
-    if ((num|0) >= 4096) return _emscripten_memcpy_big(dest|0, src|0, num|0)|0;
+    var aligned_dest_end = 0;
+    var block_aligned_dest_end = 0;
+    var dest_end = 0;
+    // Test against a benchmarked cutoff limit for when HEAPU8.set() becomes faster to use.
+    if ((num|0) >=
+#if SIMD
+      200000
+#else
+      8192
+#endif
+    ) {
+      return _emscripten_memcpy_big(dest|0, src|0, num|0)|0;
+    }
+
     ret = dest|0;
+    dest_end = (dest + num)|0;
+    aligned_dest_end = (dest_end & -4)|0;
     if ((dest&3) == (src&3)) {
+      // The initial unaligned < 4-byte front.
       while (dest & 3) {
         if ((num|0) == 0) return ret|0;
         {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
@@ -730,18 +750,55 @@ LibraryManager.library = {
         src = (src+1)|0;
         num = (num-1)|0;
       }
-      while ((num|0) >= 4) {
+      block_aligned_dest_end = (aligned_dest_end - 64)|0;
+      while ((dest|0) <= (block_aligned_dest_end|0) ) {
+#if SIMD
+        SIMD_Int32x4_store(HEAPU8, dest, SIMD_Int32x4_load(HEAPU8, src));
+        SIMD_Int32x4_store(HEAPU8, dest+16, SIMD_Int32x4_load(HEAPU8, src+16));
+        SIMD_Int32x4_store(HEAPU8, dest+32, SIMD_Int32x4_load(HEAPU8, src+32));
+        SIMD_Int32x4_store(HEAPU8, dest+48, SIMD_Int32x4_load(HEAPU8, src+48));
+#else
+        {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 4, makeGetValueAsm('src', 4, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 8, makeGetValueAsm('src', 8, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 12, makeGetValueAsm('src', 12, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 16, makeGetValueAsm('src', 16, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 20, makeGetValueAsm('src', 20, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 24, makeGetValueAsm('src', 24, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 28, makeGetValueAsm('src', 28, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 32, makeGetValueAsm('src', 32, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 36, makeGetValueAsm('src', 36, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 40, makeGetValueAsm('src', 40, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 44, makeGetValueAsm('src', 44, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 48, makeGetValueAsm('src', 48, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 52, makeGetValueAsm('src', 52, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 56, makeGetValueAsm('src', 56, 'i32'), 'i32') }}};
+        {{{ makeSetValueAsm('dest', 60, makeGetValueAsm('src', 60, 'i32'), 'i32') }}};
+#endif
+        dest = (dest+64)|0;
+        src = (src+64)|0;
+      }
+      while ((dest|0) < (aligned_dest_end|0) ) {
         {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i32'), 'i32') }}};
         dest = (dest+4)|0;
         src = (src+4)|0;
-        num = (num-4)|0;
+      }
+    } else {
+      // In the unaligned copy case, unroll a bit as well.
+      while ((dest|0) < (aligned_dest_end|0) ) {
+        {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
+        {{{ makeSetValueAsm('dest', 1, makeGetValueAsm('src', 1, 'i8'), 'i8') }}};
+        {{{ makeSetValueAsm('dest', 2, makeGetValueAsm('src', 2, 'i8'), 'i8') }}};
+        {{{ makeSetValueAsm('dest', 3, makeGetValueAsm('src', 3, 'i8'), 'i8') }}};
+        dest = (dest+4)|0;
+        src = (src+4)|0;
       }
     }
-    while ((num|0) > 0) {
+    // The remaining unaligned < 4 byte tail.
+    while ((dest|0) < (dest_end|0)) {
       {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
       dest = (dest+1)|0;
       src = (src+1)|0;
-      num = (num-1)|0;
     }
     return ret|0;
   },
