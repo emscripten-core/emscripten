@@ -52,8 +52,12 @@ def eval_ctor(js, mem_init):
   asm = get_asm(js)
   assert len(asm) > 0
   asm = asm.replace('use asm', 'not asm') # don't try to validate this
-  # find all global vars
-  pre_funcs = asm[:asm.find('function ')]
+  # find all global vars, and provide only safe ones TODO. Also add dumping for those.
+  pre_funcs_start = asm.find(';') + 1
+  pre_funcs_end = asm.find('function ', pre_funcs_start)
+  pre_funcs_end = asm.rfind(';', pre_funcs_start, pre_funcs_end) + 1
+  pre_funcs = asm[pre_funcs_start:pre_funcs_end]
+  print pre_funcs
   parts = filter(lambda x: x.startswith('var ') and ' new ' not in x, map(lambda x: x.strip(), pre_funcs.split(';')))
   global_vars = []
   for part in parts:
@@ -61,7 +65,7 @@ def eval_ctor(js, mem_init):
     bits = map(lambda x: x.replace(' ', ''), part.split(','))
     for bit in bits:
       name, value = bit.split('=')
-      if value == '0' or '+' in value or '|0' in value or '.0' in value:
+      if value in ['0', '+0', '0.0'] or name in ['']:
         global_vars.append(name)
   asm = add_func(asm, 'function dumpGlobals() { return [ ' + ', '.join(global_vars) + '] }')
   # find static bump. this is the maximum area we'll write to during startup.
@@ -71,7 +75,6 @@ def eval_ctor(js, mem_init):
   static_bump = int(js[static_bump_start + len(static_bump_op):static_bump_end])
   # Generate a safe sandboxed environment. We replace all ffis with errors. Otherwise,
   # asm.js can't call outside, so we are ok.
-  # TODO: do not allow access to constants imported, which might point to runtime-allocated memory XXX
   open(temp_file, 'w').write('''
 var totalMemory = %s;
 
