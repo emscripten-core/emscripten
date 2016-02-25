@@ -15,6 +15,7 @@ global_base = int(sys.argv[4])
 assert global_base > 0
 
 temp_file = js_file + '.ctorEval.js'
+#temp_file = '/tmp/emscripten_temp/ctorEval.js'
 
 # helpers
 
@@ -57,7 +58,6 @@ def eval_ctor(js, mem_init):
   pre_funcs_end = asm.find('function ', pre_funcs_start)
   pre_funcs_end = asm.rfind(';', pre_funcs_start, pre_funcs_end) + 1
   pre_funcs = asm[pre_funcs_start:pre_funcs_end]
-  print pre_funcs
   parts = filter(lambda x: x.startswith('var ') and ' new ' not in x, map(lambda x: x.strip(), pre_funcs.split(';')))
   global_vars = []
   for part in parts:
@@ -65,7 +65,7 @@ def eval_ctor(js, mem_init):
     bits = map(lambda x: x.replace(' ', ''), part.split(','))
     for bit in bits:
       name, value = bit.split('=')
-      if value in ['0', '+0', '0.0'] or name in ['']:
+      if value in ['0', '+0', '0.0'] or name in []: # ['STACKTOP', 'STATIC_MAX', 'DYNAMICTOP']
         global_vars.append(name)
   asm = add_func(asm, 'function dumpGlobals() { return [ ' + ', '.join(global_vars) + '] }')
   # find static bump. this is the maximum area we'll write to during startup.
@@ -88,10 +88,10 @@ var staticBump = %d;
 
 heap.set(memInit, globalBase);
 
-var STACKTOP = globalBase + staticBump;
-while (STACKTOP %% 16 !== 0) STACKTOP++;
-var STACK_MAX = totalMemory;
-var DYNAMICTOP = STACK_MAX;
+var stacktop = globalBase + staticBump;
+while (stacktop %% 16 !== 0) stacktop++;
+var stackMax = totalMemory;
+var dynamicTop = stackMax;
 
 if (!Math.imul) {
   Math.imul = Math.imul || function(a, b) {
@@ -120,9 +120,9 @@ var globalArg = {
 };
 
 var libraryArg = {
-  STACKTOP: STACKTOP,
-  STACK_MAX: STACK_MAX,
-  DYNAMICTOP: DYNAMICTOP,
+  STACKTOP: stacktop,
+  STACK_MAX: stackMax,
+  DYNAMICTOP: dynamicTop,
 };
 
 // Instantiate asm
