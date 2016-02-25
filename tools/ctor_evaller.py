@@ -71,6 +71,7 @@ def eval_ctor(js, mem_init):
   static_bump = int(js[static_bump_start + len(static_bump_op):static_bump_end])
   # Generate a safe sandboxed environment. We replace all ffis with errors. Otherwise,
   # asm.js can't call outside, so we are ok.
+  # TODO: do not allow access to constants imported, which might point to runtime-allocated memory XXX
   open(temp_file, 'w').write('''
 var totalMemory = %s;
 
@@ -146,7 +147,9 @@ console.log(Array.prototype.slice.call(heap.subarray(globalBase, newSize)));
   # us exiting with an error tells the caller that we failed.
   proc = subprocess.Popen(shared.NODE_JS + [temp_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   out, err = proc.communicate()
-  if proc.returncode != 0: return False
+  if proc.returncode != 0:
+    shared.logging.debug('failed to eval ctor:\n' + err)
+    return False
   # Success! out contains the new mem init, write it out
   mem_init = ''.join(map(chr, json.loads(out)))
   # Remove this ctor and write that out # TODO: remove from the asm export as well
