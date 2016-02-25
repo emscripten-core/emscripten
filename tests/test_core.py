@@ -7014,6 +7014,10 @@ def process(filename):
     assert ec_js_size < js_size
     assert ec_mem_size > mem_size
 
+    print 'assertions too'
+    Settings.ASSERTIONS = 1
+    self.do_run(src, output)
+
   def test_embind(self):
     Building.COMPILER_TEST_OPTS += ['--bind']
 

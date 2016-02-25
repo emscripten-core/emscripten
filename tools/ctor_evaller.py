@@ -15,7 +15,8 @@ global_base = int(sys.argv[4])
 assert global_base > 0
 
 temp_file = js_file + '.ctorEval.js'
-#temp_file = '/tmp/emscripten_temp/ctorEval.js'
+if shared.DEBUG:
+  temp_file = '/tmp/emscripten_temp/ctorEval.js'
 
 # helpers
 
@@ -53,20 +54,29 @@ def eval_ctor(js, mem_init):
   asm = get_asm(js)
   assert len(asm) > 0
   asm = asm.replace('use asm', 'not asm') # don't try to validate this
-  # find all global vars, and provide only safe ones TODO. Also add dumping for those.
+  # find all global vars, and provide only safe ones. Also add dumping for those.
   pre_funcs_start = asm.find(';') + 1
   pre_funcs_end = asm.find('function ', pre_funcs_start)
   pre_funcs_end = asm.rfind(';', pre_funcs_start, pre_funcs_end) + 1
   pre_funcs = asm[pre_funcs_start:pre_funcs_end]
-  parts = filter(lambda x: x.startswith('var ') and ' new ' not in x, map(lambda x: x.strip(), pre_funcs.split(';')))
+  parts = filter(lambda x: x.startswith('var '), map(lambda x: x.strip(), pre_funcs.split(';')))
   global_vars = []
+  new_globals = '\n'
   for part in parts:
     part = part[4:] # skip 'var '
-    bits = map(lambda x: x.replace(' ', ''), part.split(','))
+    bits = map(lambda x: x.strip(), part.split(','))
     for bit in bits:
-      name, value = bit.split('=')
-      if value in ['0', '+0', '0.0'] or name in []: # ['STACKTOP', 'STATIC_MAX', 'DYNAMICTOP']
-        global_vars.append(name)
+      name, value = map(lambda x: x.strip(), bit.split('='))
+      if value in ['0', '+0', '0.0'] or name in [
+        'STACKTOP', 'STACK_MAX', 'DYNAMICTOP',
+        'HEAP8', 'HEAP16', 'HEAP32',
+        'HEAPU8', 'HEAPU16', 'HEAPU32',
+        'HEAPF32', 'HEAPF64',
+      ]:
+        if 'new ' not in value:
+          global_vars.append(name)
+        new_globals += ' var ' + name + ' = ' + value + ';\n'
+  asm = asm[:pre_funcs_start] + new_globals + asm[pre_funcs_end:]
   asm = add_func(asm, 'function dumpGlobals() { return [ ' + ', '.join(global_vars) + '] }')
   # find static bump. this is the maximum area we'll write to during startup.
   static_bump_op = 'STATICTOP = STATIC_BASE + '
