@@ -64,6 +64,11 @@ def eval_ctor(js, mem_init):
       if value == '0' or '+' in value or '|0' in value or '.0' in value:
         global_vars.append(name)
   asm = add_func(asm, 'function dumpGlobals() { return [ ' + ', '.join(global_vars) + '] }')
+  # find static bump. this is the maximum area we'll write to during startup.
+  static_bump_op = 'STATICTOP = STATIC_BASE + '
+  static_bump_start = js.find(static_bump_op)
+  static_bump_end = js.find(';', static_bump_start)
+  static_bump = int(js[static_bump_start + len(static_bump_op):static_bump_end])
   # Generate a safe sandboxed environment. We replace all ffis with errors. Otherwise,
   # asm.js can't call outside, so we are ok.
   open(temp_file, 'w').write('''
@@ -73,9 +78,15 @@ var buffer = new ArrayBuffer(totalMemory);
 var heap = new Uint8Array(buffer);
 
 var memInit = %s;
-var globalBase = %d;
-
 heap.set(memInit, globalBase);
+
+var globalBase = %d;
+var staticBump = %d;
+
+var STACKTOP = globalBase + staticBump;
+while (STACKTOP %% 16 !== 0) STACKTOP++;
+var STACK_MAX = totalMemory;
+var DYNAMICTOP = STACK_MAX;
 
 if (!Math.imul) {
   Math.imul = Math.imul || function(a, b) {
@@ -104,6 +115,9 @@ var globalArg = {
 };
 
 var libraryArg = {
+  STACKTOP: STACKTOP,
+  STACK_MAX: STACK_MAX,
+  DYNAMICTOP: DYNAMICTOP,
 };
 
 // Instantiate asm
@@ -122,11 +136,11 @@ var globalsAfter = asm['dumpGlobals']();
 if (JSON.stringify(globalsBefore) !== JSON.stringify(globalsAfter)) throw 'globals changed ' + globalsBefore + ' vs ' + globalsAfter;
 
 // Write out new mem init. It might be bigger, look for non-0 bytes
-var newSize = totalMemory;
+var newSize = globalBase + staticBump;
 while (newSize > globalBase && heap[newSize-1] == 0) newSize--;
 console.log(Array.prototype.slice.call(heap.subarray(globalBase, newSize)));
 
-''' % (total_memory, mem_init, global_base, asm, ctor))
+''' % (total_memory, mem_init, global_base, static_bump, asm, ctor))
   # Execute the sandboxed code. If an error happened due to calling an ffi, that's fine,
   # us exiting with an error tells the caller that we failed.
   proc = subprocess.Popen(shared.NODE_JS + [temp_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
