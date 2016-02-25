@@ -599,7 +599,7 @@ function _emscripten_asm_const_%s(%s) {
     if metadata['simdUint32x4']:
       simdinttypes += ['Uint32x4']
       simdintfloatfuncs += ['fromUint32x4Bits']
-    if metadata['simdInt32x4']:
+    if metadata['simdInt32x4'] or settings['SIMD']: # Always import Int32x4 when building with -s SIMD=1, since memcpy is SIMD optimized.
       simdinttypes += ['Int32x4']
       simdintfloatfuncs += ['fromInt32x4Bits']
     if metadata['simdFloat32x4']:
@@ -626,7 +626,7 @@ function _emscripten_asm_const_%s(%s) {
     fundamentals = ['Math']
     fundamentals += ['Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
     fundamentals += ['NaN', 'Infinity']
-    if metadata['simd']:
+    if metadata['simd'] or settings['SIMD']: # Always import SIMD when building with -s SIMD=1, since in that mode memcpy is SIMD optimized.
         fundamentals += ['SIMD']
     if settings['ALLOW_MEMORY_GROWTH']: fundamentals.append('byteLength')
     math_envs = []
@@ -860,7 +860,7 @@ function ftCall_%s(%s) {%s
       return g if not g.startswith('Math_') else g.split('_')[1]
     asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global' + access_quote(g) + ';\n' for g in maths])
     asm_global_funcs += ''.join(['  var ' + g + '=env' + access_quote(math_fix(g)) + ';\n' for g in basic_funcs + global_funcs])
-    if metadata['simd']:
+    if metadata['simd'] or settings['SIMD']: # Always import SIMD when building with -s SIMD=1, since in that mode memcpy is SIMD optimized.
       def string_contains_any(s, str_list):
         for sub in str_list:
           if sub in s:
