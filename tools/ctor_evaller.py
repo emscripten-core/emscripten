@@ -170,7 +170,10 @@ removed = []
 while True:
   shared.logging.debug('ctor_evaller: trying to eval a global constructor')
   js = open(js_file).read()
-  mem_init = json.dumps(map(ord, open(mem_init_file, 'rb').read()))
+  if os.path.exists(mem_init_file):
+    mem_init = json.dumps(map(ord, open(mem_init_file, 'rb').read()))
+  else:
+    mem_init = []
   result = eval_ctor(js, mem_init)
   if not result:
     shared.logging.debug('ctor_evaller: not successful any more, done')
