@@ -2962,7 +2962,7 @@ var LibraryGL = {
     GLctx.uniformMatrix3x4fv(location, transpose, view);
   },
 
-  glUniformMatrix3x4fv__sig: 'viiii',
+  glUniformMatrix4x3fv__sig: 'viiii',
   glUniformMatrix4x3fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix4x3fv', 'location');
