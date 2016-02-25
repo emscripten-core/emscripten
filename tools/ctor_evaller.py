@@ -78,10 +78,11 @@ var buffer = new ArrayBuffer(totalMemory);
 var heap = new Uint8Array(buffer);
 
 var memInit = %s;
-heap.set(memInit, globalBase);
 
 var globalBase = %d;
 var staticBump = %d;
+
+heap.set(memInit, globalBase);
 
 var STACKTOP = globalBase + staticBump;
 while (STACKTOP %% 16 !== 0) STACKTOP++;
