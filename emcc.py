@@ -1111,6 +1111,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       separate_asm = True
       shared.Settings.FINALIZE_ASM_JS = False
 
+    if shared.Settings.EVAL_CTORS:
+      assert js_opts > 0, 'need JS opts for EVAL_CTORS, use -O2 or above'
+      if not shared.Settings.NO_EXIT_RUNTIME:
+        if shared.Settings.ASSERTIONS:
+          logging.warning('applying NO_EXIT_RUNTIME to maximize EVAL_CTORS effectiveness - atexit()s etc. will not run')
+        shared.Settings.NO_EXIT_RUNTIME = 1
+
     if shared.Settings.GLOBAL_BASE < 0:
       shared.Settings.GLOBAL_BASE = 8 # default if nothing else sets it
 
