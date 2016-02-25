@@ -6953,6 +6953,25 @@ def process(filename):
 
     self.do_run_from_file(src, output)
 
+  def test_eval_ctors(self):
+    Settings.NO_EXIT_RUNTIME = 1 # easy to remove ctors when no atexits during startup
+    if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args): return self.skip('need js optimizations')
+    src = open(path_from_root('tests', 'hello_libcxx.cpp')).read()
+    output = 'hello, world!'
+    self.do_run(src, output)
+    js_size = os.stat('src.cpp.o.js').st_size
+    if self.uses_memory_init_file():
+      mem_size = os.stat('src.cpp.o.js.mem').st_size
+    self.emcc_args += ['-s', 'EVAL_CTORS=1']
+    self.do_run(src, output)
+    ec_js_size = os.stat('src.cpp.o.js').st_size
+    if self.uses_memory_init_file():
+      ec_mem_size = os.stat('src.cpp.o.js.mem').st_size
+    print js_size, ' => ', ec_js_size
+    print mem_size, ' => ', ec_mem_size
+    assert ec_js_size < js_size
+    assert ec_mem_size > mem_size
+
   def test_embind(self):
     Building.COMPILER_TEST_OPTS += ['--bind']
 
