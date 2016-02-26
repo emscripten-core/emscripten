@@ -71,7 +71,7 @@ struct Space {
       start = split_memory*index;
     } else {
       // small area in existing chunk 0
-      start = EM_ASM_INT_V({ return (DYNAMICTOP+3)&-4; });
+      start = EM_ASM_INT_V({ return (STACK_MAX+3)&-4; });
       assert(start < split_memory);
     }
     int size = (split_memory*(index+1)) - start;

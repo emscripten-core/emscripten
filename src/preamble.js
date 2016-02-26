@@ -52,8 +52,7 @@ function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
 #endif
   if (dest <= 0) abort('segmentation fault storing ' + bytes + ' bytes to address ' + dest);
   if (dest % bytes !== 0) abort('alignment error storing to address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
-  if (dest + bytes > Math.max(DYNAMICTOP, STATICTOP)) abort('segmentation fault, exceeded the top of the available heap when storing ' + bytes + ' bytes to address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + DYNAMICTOP);
-  assert(DYNAMICTOP <= TOTAL_MEMORY);
+  assert(dest + bytes <= TOTAL_MEMORY);
   setValue(dest, value, getSafeHeapType(bytes, isFloat), 1);
 }
 function SAFE_HEAP_STORE_D(dest, value, bytes) {
@@ -63,8 +62,7 @@ function SAFE_HEAP_STORE_D(dest, value, bytes) {
 function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
   if (dest <= 0) abort('segmentation fault loading ' + bytes + ' bytes from address ' + dest);
   if (dest % bytes !== 0) abort('alignment error loading from address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
-  if (dest + bytes > Math.max(DYNAMICTOP, STATICTOP)) abort('segmentation fault, exceeded the top of the available heap when loading ' + bytes + ' bytes from address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + DYNAMICTOP);
-  assert(DYNAMICTOP <= TOTAL_MEMORY);
+  assert(dest + bytes <= TOTAL_MEMORY);
   var type = getSafeHeapType(bytes, isFloat);
   var ret = getValue(dest, type, 1);
   if (unsigned) ret = unSign(ret, parseInt(type.substr(1)), 1);
@@ -351,12 +349,10 @@ function getValue(ptr, type, noSafe) {
 var ALLOC_NORMAL = 0; // Tries to use _malloc()
 var ALLOC_STACK = 1; // Lives for the duration of the current function call
 var ALLOC_STATIC = 2; // Cannot be freed
-var ALLOC_DYNAMIC = 3; // Cannot be freed except through sbrk
 var ALLOC_NONE = 4; // Do not allocate
 {{{ maybeExport('ALLOC_NORMAL') }}}
 {{{ maybeExport('ALLOC_STACK') }}}
 {{{ maybeExport('ALLOC_STATIC') }}}
-{{{ maybeExport('ALLOC_DYNAMIC') }}}
 {{{ maybeExport('ALLOC_NONE') }}}
 
 // allocate(): This is for internal use. You can use it yourself as well, but the interface
@@ -388,7 +384,7 @@ function allocate(slab, types, allocator, ptr) {
   if (allocator == ALLOC_NONE) {
     ret = ptr;
   } else {
-    ret = [typeof _malloc === 'function' ? _malloc : Runtime.staticAlloc, Runtime.stackAlloc, Runtime.staticAlloc, Runtime.dynamicAlloc][allocator === undefined ? ALLOC_STATIC : allocator](Math.max(size, singleType ? 1 : types.length));
+    ret = [typeof _malloc === 'function' ? _malloc : Runtime.staticAlloc, Runtime.stackAlloc, Runtime.staticAlloc][allocator === undefined ? ALLOC_STATIC : allocator](Math.max(size, singleType ? 1 : types.length));
   }
 
   if (zeroinit) {
@@ -450,7 +446,7 @@ function allocate(slab, types, allocator, ptr) {
 // Allocate memory during any stage of startup - static memory early on, dynamic memory later, malloc when ready
 function getMemory(size) {
   if (!staticSealed) return Runtime.staticAlloc(size);
-  if ((typeof _sbrk !== 'undefined' && !_sbrk.called) || !runtimeInitialized) return Runtime.dynamicAlloc(size);
+  if (!runtimeInitialized) return Runtime.stackAlloc(size); // unfreeable, of course
   return _malloc(size);
 }
 {{{ maybeExport('getMemory') }}}
@@ -886,7 +882,6 @@ function updateGlobalBufferViews() {
 
 var STATIC_BASE = 0, STATICTOP = 0, staticSealed = false; // static area
 var STACK_BASE = 0, STACKTOP = 0, STACK_MAX = 0; // stack area
-var DYNAMIC_BASE = 0, DYNAMICTOP = 0; // dynamic area handled by sbrk
 
 #if USE_PTHREADS
 if (ENVIRONMENT_IS_PTHREAD) {
@@ -933,9 +928,8 @@ function enlargeMemory() {
   return false; // malloc will report failure
 #endif
 #else
-  // TOTAL_MEMORY is the current size of the actual array, and DYNAMICTOP is the new top.
+  // TOTAL_MEMORY is the current size of the actual array.
 #if ASSERTIONS
-  assert(DYNAMICTOP >= TOTAL_MEMORY);
   assert(TOTAL_MEMORY > 4); // So the loop below will not be infinite
 #endif
 
@@ -948,9 +942,9 @@ function enlargeMemory() {
 
   var LIMIT = Math.pow(2, 31); // 2GB is a practical maximum, as we use signed ints as pointers
                                // and JS engines seem unhappy to give us 2GB arrays currently
-  if (DYNAMICTOP >= LIMIT) return false;
 
-  while (TOTAL_MEMORY <= DYNAMICTOP) { // Simple heuristic.
+  var previous = TOTAL_MEMORY;
+  while (TOTAL_MEMORY <= previous) { // Simple heuristic.
     if (TOTAL_MEMORY < LIMIT/2) {
       TOTAL_MEMORY = alignMemoryPage(2*TOTAL_MEMORY); // double until 1GB
     } else {

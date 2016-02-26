@@ -387,8 +387,7 @@ function JSify(data, functionsOnly) {
       print('STACK_BASE = STACKTOP = Runtime.alignMemory(STATICTOP);\n');
       print('staticSealed = true; // seal the static portion of memory\n');
       print('STACK_MAX = STACK_BASE + TOTAL_STACK;\n');
-      print('DYNAMIC_BASE = DYNAMICTOP = Runtime.alignMemory(STACK_MAX);\n');
-      if (ASSERTIONS) print('assert(DYNAMIC_BASE < TOTAL_MEMORY, "TOTAL_MEMORY not big enough for stack");\n');
+      if (ASSERTIONS) print('assert(STACK_MAX < TOTAL_MEMORY, "TOTAL_MEMORY not big enough for stack");\n');
     }
     if (SPLIT_MEMORY) {
       print('assert(STACK_MAX < SPLIT_MEMORY, "SPLIT_MEMORY size must be big enough so the entire static memory + stack can fit in one chunk, need " + STACK_MAX);\n');
@@ -429,7 +428,6 @@ function JSify(data, functionsOnly) {
                 assert(typeof dep == 'function');
                 var text = dep();
                 assert(text.indexOf('\n') < 0);
-                text = text.replace('ALLOC_STATIC', 'ALLOC_DYNAMIC');
                 print('/* PRE_ASM */ ' + text + '\n');
               });
             }

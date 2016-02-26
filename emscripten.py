@@ -605,7 +605,9 @@ function _emscripten_asm_const_%s(%s) {
     basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
     basic_float_vars = []
 
-    if settings['SAFE_HEAP']: basic_vars += ['DYNAMICTOP']
+    if settings['SAFE_HEAP']:
+      asm_setup += 'var DYNAMICTOP = STACK_MAX;\n'
+      basic_vars += ['DYNAMICTOP']
 
     if metadata.get('preciseI64MathUsed'):
       basic_vars += ['cttz_i8']

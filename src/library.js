@@ -435,16 +435,33 @@ LibraryManager.library = {
     // Implement a Linux-like 'memory area' for our 'process'.
     // Changes the size of the memory area by |bytes|; returns the
     // address of the previous top ('break') of the memory area
-    // We control the "dynamic" memory - DYNAMIC_BASE to DYNAMICTOP
+    // We control the "dynamic" memory - above static and the top
     var self = _sbrk;
     if (!self.called) {
-      DYNAMICTOP = alignMemoryPage(DYNAMICTOP); // make sure we start out aligned
+      self.top = alignMemoryPage(STACK_MAX); // make sure we start out aligned
       self.called = true;
-      assert(Runtime.dynamicAlloc);
-      self.alloc = Runtime.dynamicAlloc;
-      Runtime.dynamicAlloc = function() { abort('cannot dynamically allocate, sbrk now has control') };
+      self.alloc = function(bytes) {
+#if USE_PTHREADS
+        if (typeof ENVIRONMENT_IS_PTHREAD !== 'undefined' && ENVIRONMENT_IS_PTHREAD) throw 'Runtime.dynamicAlloc is not available in pthreads!'; // This is because each worker has its own copy of self.top, of which main thread is authoritative.
+#endif
+        var ret = (self.top = ((self.top + bytes) & -15));
+#if SAFE_HEAP
+        if (asm) Runtime.setDynamicTop(self.top);
+#endif
+        if (self.top >= TOTAL_MEMORY) {
+          var success = enlargeMemory(); // XXX TO HOW MUCH?
+          if (!success) {
+            self.top = ret;
+#if SAFE_HEAP
+            if (asm) Runtime.setDynamicTop(self.top);
+#endif
+            return 0;
+          }
+        }
+        return ret;
+      };
     }
-    var ret = DYNAMICTOP;
+    var ret = self.top;
     if (bytes != 0) {
       var success = self.alloc(bytes);
       if (!success) return -1 >>> 0; // sbrk failure code

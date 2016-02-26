@@ -302,17 +302,12 @@ var emscriptenMemoryProfiler = {
     html += '. STACK_MAX: ' + toHex(STACK_MAX, width) + '.';
     html += '<br />STACK memory area used now (should be zero): ' + this.formatBytes(STACKTOP - STACK_BASE) + '.' + colorBar('#FFFF00') + ' STACK watermark highest seen usage (approximate lower-bound!): ' + this.formatBytes(this.stackTopWatermark - STACK_BASE);
 
-    html += '<br />' + colorBar('#70FF70') + 'DYNAMIC memory area size: ' + this.formatBytes(DYNAMICTOP-DYNAMIC_BASE);
-    html += '. DYNAMIC_BASE: ' + toHex(DYNAMIC_BASE, width);
-    html += '. DYNAMICTOP: ' + toHex(DYNAMICTOP, width) + '.';
-    html += '<br />' + colorBar('#6699CC') + colorBar('#003366') + colorBar('#0000FF') + 'DYNAMIC memory area used: ' + this.formatBytes(this.totalMemoryAllocated) + ' (' + (this.totalMemoryAllocated * 100.0 / (TOTAL_MEMORY - DYNAMIC_BASE)).toFixed(2) + '% of all free memory)';
-
     var preloadedMemoryUsed = 0;
     for (i in this.preRunMallocs) preloadedMemoryUsed += this.preRunMallocs[i]|0;
     html += '<br />' + colorBar('#FF9900') + colorBar('#FFDD33') + 'Preloaded memory used, most likely memory reserved by files in the virtual filesystem : ' + this.formatBytes(preloadedMemoryUsed);
 
     html += '<br />OpenAL audio data: ' + this.formatBytes(this.countOpenALAudioDataSize()) + ' (outside HEAP)';
-    html += '<br />' + colorBar('#FFFFFF') + 'Unallocated HEAP space: ' + this.formatBytes(TOTAL_MEMORY - DYNAMICTOP);
+    html += '<br />' + colorBar('#FFFFFF') + 'Unallocated HEAP space: ' + this.formatBytes(TOTAL_MEMORY - STACK_MAX);
     html += '<br /># of total malloc()s/free()s performed in app lifetime: ' + this.totalTimesMallocCalled + '/' + this.totalTimesFreeCalled + ' (delta: ' + (this.totalTimesMallocCalled-this.totalTimesFreeCalled) + ')';
 
     // Background clear
@@ -330,9 +325,6 @@ var emscriptenMemoryProfiler = {
 
     this.drawContext.fillStyle = "#FF0000";
     this.fillLine(STACK_BASE, STACKTOP);
-
-    this.drawContext.fillStyle = "#70FF70";
-    this.fillLine(DYNAMIC_BASE, DYNAMICTOP);
 
     if (this.detailedHeapUsage) {
       this.printAllocsWithCyclingColors(["#6699CC", "#003366", "#0000FF"], this.allocatedPtrSizes);

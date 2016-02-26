@@ -261,8 +261,6 @@ var LibraryTracing = {
         'stack_base':   STACK_BASE,
         'stack_top':    STACKTOP,
         'stack_max':    STACK_MAX,
-        'dynamic_base': DYNAMIC_BASE,
-        'dynamic_top':  DYNAMICTOP,
         'total_memory': TOTAL_MEMORY
       };
       var now = EmscriptenTrace.now();

@@ -49,26 +49,11 @@ var RuntimeGenerator = {
   // An allocation that cannot normally be free'd (except through sbrk, which once
   // called, takes control of STATICTOP)
   staticAlloc: function(size) {
-    if (ASSERTIONS) size = '(assert(!staticSealed),' + size + ')'; // static area must not be sealed
 #if USE_PTHREADS
     if (typeof ENVIRONMENT_IS_PTHREAD !== 'undefined' && ENVIRONMENT_IS_PTHREAD) throw 'Runtime.staticAlloc is not available in pthreads!'; // This is because each worker has its own copy of STATICTOP, of which main thread is authoritative.
 #endif
-    var ret = RuntimeGenerator.alloc(size, 'STATIC');
-    return ret;
-  },
-
-  // allocation on the top of memory, adjusted dynamically by sbrk
-  dynamicAlloc: function(size) {
-    if (ASSERTIONS) size = '(assert(DYNAMICTOP > 0),' + size + ')'; // dynamic area must be ready
-#if USE_PTHREADS
-    if (typeof ENVIRONMENT_IS_PTHREAD !== 'undefined' && ENVIRONMENT_IS_PTHREAD) throw 'Runtime.dynamicAlloc is not available in pthreads!'; // This is because each worker has its own copy of DYNAMICTOP, of which main thread is authoritative.
-#endif
-    var ret = RuntimeGenerator.alloc(size, 'DYNAMIC');
-    if (SAFE_HEAP) ret += '; if (asm) { Runtime.setDynamicTop(DYNAMICTOP); }';
-    ret += '; if (DYNAMICTOP >= TOTAL_MEMORY) { var success = enlargeMemory(); if (!success) { DYNAMICTOP = ret; ';
-    if (SAFE_HEAP) ret += 'if (asm) { Runtime.setDynamicTop(DYNAMICTOP); }';
-    ret += ' return 0; } }'
-    return ret;
+    // After we seal static memory
+    return 'STATICTOP; if (staticSealed) return Runtime.stackAlloc(' + size + '); STATICTOP = (STATICTOP + size)|0;STATICTOP = (((STATICTOP)+15)&-16)';
   },
 
   forceAlign: function(target, quantum) {
@@ -421,7 +406,6 @@ var Runtime = {
 
 Runtime.stackAlloc = unInline('stackAlloc', ['size']);
 Runtime.staticAlloc = unInline('staticAlloc', ['size']);
-Runtime.dynamicAlloc = unInline('dynamicAlloc', ['size']);
 Runtime.alignMemory = unInline('alignMemory', ['size', 'quantum']);
 Runtime.makeBigInt = unInline('makeBigInt', ['low', 'high', 'unsigned']);
 
