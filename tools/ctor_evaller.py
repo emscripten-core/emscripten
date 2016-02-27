@@ -95,16 +95,18 @@ def eval_ctor(js, mem_init):
   asm = kill_func(asm, '_free')
   asm = add_func(asm, '''
 function _malloc(x) {
+  if (x === 0) x = 1;
   while (staticTop % 16 !== 0) staticTop++;
   if (staticTop >= stackBase) throw 'not enough room for an allocation of size ' + x;
   var ret = staticTop;
   staticTop += x;
+  addSegment(ret, x);
   return ret;
 }
 ''')
   asm = add_func(asm, '''
 function _free(x) {
-  throw 'todo: free';
+  if (x) freeSegment(x);
 }
 ''')
   # Generate a safe sandboxed environment. We replace all ffis with errors. Otherwise,
@@ -133,6 +135,51 @@ var stackBase = stackTop;
 
 var stackMax = stackTop + totalStack;
 var dynamicTop = stackMax;
+
+// malloc manangement
+
+var segments = []; // list of malloc segments
+
+function optimizeSegments() {
+  while (1) {
+    var more = false;
+    for (var i = 0; i < segments.length - 1; i++) {
+      if (segments[i].free && segments[i+1].free && segments[i].start === segments[i+1].end) {
+        segments[i].start = segments[i+1].end;
+        segments.splice(i+1, 1);
+        i--;
+        more = true;
+      }
+    }
+    if (!more) break;
+  }
+  if (segments.length > 0) {
+    staticTop = segments[segments.length-1].end;
+  }
+}
+function addSegment(ptr, size) {
+  segments.push({ start: ptr, end: ptr + size, free: false }); // always at the end
+}
+function freeSegment(ptr) {
+  for (var i = 0; i < segments.length; i++) {
+    if (segments[i].start === ptr) {
+      segments[i].free = true;
+      optimizeSegments();
+      return;
+    }
+  }
+  // ignore a bad free()
+}
+function calculateWastedSegments() {
+  var waste = 0;
+  for (var i = 0; i < segments.length; i++) {
+    if (segments[i].free) {
+      waste += segments[i].end - segments[i].start;
+    }
+  }
+  return waste;
+}
+// end malloc management
 
 if (!Math.imul) {
   Math.imul = Math.imul || function(a, b) {
@@ -184,6 +231,10 @@ asm['%s']();
 var globalsAfter = asm['dumpGlobals']();
 
 if (JSON.stringify(globalsBefore) !== JSON.stringify(globalsAfter)) throw 'globals changed ' + globalsBefore + ' vs ' + globalsAfter;
+
+// Check if malloc/free is leading to too much waste
+var waste = calculateWastedSegments();
+if (waste > 1024 && waste > 0.25 * staticBump) throw 'too much waste caused by free()s'
 
 // Write out new mem init. It might be bigger if we added to the zero section; mallocs might make it even bigger than the original staticBump.
 var newSize;

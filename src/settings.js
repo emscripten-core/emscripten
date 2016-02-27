@@ -708,7 +708,10 @@ var EVAL_CTORS = 0; // This tries to evaluate global ctors at compile-time, appl
                     // allocated positions in memory (as opposed to using malloc's
                     // data structures, which would incur fragmentation etc.). This
                     // means that (1) memory addresses may be different (but valid
-                    // either way), and (2) such mallocs cannot be freed.
+                    // either way), (2) such mallocs cannot be freed after startup
+                    // (this is optimized for the case that mallocs in ctors are
+                    // permanent), and (3) if you have custom malloc/free replacments,
+                    // you won't see them operate where they would have in ctors.
                     //
                     // This optimization can be much more effective together with
                     // NO_EXIT_RUNTIME. It will note that if relevant.
