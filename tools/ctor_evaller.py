@@ -1,7 +1,7 @@
 '''
 Tries to evaluate global constructors, applying their effects ahead of time.
 
-This is an LTO-like operation, and to avoid parsing the entire tree, we operate on the text in python
+This is an LTO-like operation, and to avoid parsing the entire tree (we might fail to parse a massive project, we operate on the text in python.
 '''
 
 import os, sys, json, subprocess

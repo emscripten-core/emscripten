@@ -6958,8 +6958,8 @@ def process(filename):
 
     orig_args = self.emcc_args[:]
 
-    print 'artificial 1'
-    self.emcc_args += ['-s', 'EVAL_CTORS=1']
+    print 'leave printf in ctor'
+    self.emcc_args = orig_args + ['-s', 'EVAL_CTORS=1']
     self.do_run(r'''
       #include <stdio.h>
       struct C {
@@ -6969,8 +6969,20 @@ def process(filename):
       int main() {}
     ''', "constructing!\n");
 
-    print 'artificial 2'
-    def test():
+    def do_test(test):
+      self.emcc_args = orig_args + ['-s', 'EVAL_CTORS=1']
+      test()
+      ec_js_size = os.stat('src.cpp.o.js').st_size
+      ec_mem_size = os.stat('src.cpp.o.js.mem').st_size
+      self.emcc_args = orig_args[:]
+      test()
+      js_size = os.stat('src.cpp.o.js').st_size
+      mem_size = os.stat('src.cpp.o.js.mem').st_size
+      assert ec_js_size < js_size
+      assert ec_mem_size > mem_size
+
+    print 'remove ctor of just assigns to memory'
+    def test1():
       self.do_run(r'''
         #include <stdio.h>
         struct C {
@@ -6986,15 +6998,7 @@ def process(filename):
           printf("x: %d\n", c.x);
         }
       ''', "x: 11\n");
-    test()
-    ec_js_size = os.stat('src.cpp.o.js').st_size
-    ec_mem_size = os.stat('src.cpp.o.js.mem').st_size
-    self.emcc_args = orig_args[:]
-    test()
-    js_size = os.stat('src.cpp.o.js').st_size
-    mem_size = os.stat('src.cpp.o.js.mem').st_size
-    assert ec_js_size < js_size
-    assert ec_mem_size > mem_size
+    do_test(test1)
 
     print 'libcxx'
     src = open(path_from_root('tests', 'hello_libcxx.cpp')).read()
