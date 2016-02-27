@@ -6028,6 +6028,20 @@ int main() {
     src = open('a.out.js').read()
     assert 'use asm' not in src
 
+  def test_eval_ctors(self):
+    if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+    try:
+      os.environ['EMCC_DEBUG'] = '1'
+      WARNING = 'note: consider using  -s NO_EXIT_RUNTIME=1  to maximize the effectiveness of EVAL_CTORS'
+      out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O2', '-s', 'EVAL_CTORS=1'], stderr=PIPE).communicate()
+      self.assertContained(WARNING, err)
+      self.assertContained('hello, world!', run_js('a.out.js'))
+      out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O2', '-s', 'EVAL_CTORS=1', '-s', 'NO_EXIT_RUNTIME=1'], stderr=PIPE).communicate()
+      self.assertNotContained(WARNING, err)
+      self.assertContained('hello, world!', run_js('a.out.js'))
+    finally:
+      del os.environ['EMCC_DEBUG']
+
   def test_override_environment(self):
     open('main.cpp', 'w').write(r'''
       #include <emscripten.h>

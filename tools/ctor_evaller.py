@@ -204,6 +204,8 @@ console.log(Array.prototype.slice.call(heap.subarray(globalBase, newSize)));
   out, err = proc.communicate()
   if proc.returncode != 0:
     shared.logging.debug('failed to eval ctor:\n' + err)
+    if '_atexit' in err:
+      shared.logging.debug('note: consider using  -s NO_EXIT_RUNTIME=1  to maximize the effectiveness of EVAL_CTORS')
     return False
   # Success! out contains the new mem init, write it out
   mem_init = ''.join(map(chr, json.loads(out)))
