@@ -6997,7 +6997,6 @@ def process(filename):
     assert ec_mem_size > mem_size
 
     print 'libcxx'
-    Settings.NO_EXIT_RUNTIME = 1 # easy to remove ctors when no atexits during startup
     src = open(path_from_root('tests', 'hello_libcxx.cpp')).read()
     output = 'hello, world!'
     self.do_run(src, output)
