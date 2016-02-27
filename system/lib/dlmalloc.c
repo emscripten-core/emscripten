@@ -3194,7 +3194,7 @@ static int init_mparams(void) {
 #endif /* USE_DEV_RANDOM */
 #ifdef WIN32
                 magic = (size_t)(GetTickCount() ^ (size_t)0x55555555U);
-#elif defined(LACKS_TIME_H)
+#elif defined(LACKS_TIME_H) || defined(__EMSCRIPTEN__)
             magic = (size_t)&magic ^ (size_t)0x55555555U;
 #else
             magic = (size_t)(time(0) ^ (size_t)0x55555555U);
