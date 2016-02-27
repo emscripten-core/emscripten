@@ -6956,6 +6956,8 @@ def process(filename):
   def test_eval_ctors(self):
     if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args): return self.skip('need js optimizations')
 
+    Settings.NO_EXIT_RUNTIME = 1 # this is used in EVAL_CTORS anyhow, use it in other builds to compare as well
+
     orig_args = self.emcc_args[:]
 
     print 'leave printf in ctor'
@@ -6978,6 +6980,8 @@ def process(filename):
       test()
       js_size = os.stat('src.cpp.o.js').st_size
       mem_size = os.stat('src.cpp.o.js.mem').st_size
+      print js_size, ' => ', ec_js_size
+      print mem_size, ' => ', ec_mem_size
       assert ec_js_size < js_size
       assert ec_mem_size > mem_size
 
@@ -6999,6 +7003,26 @@ def process(filename):
         }
       ''', "x: 11\n");
     do_test(test1)
+
+    print 'remove ctor even with malloc'
+    def test2():
+      self.do_run(r'''
+        #include <vector>
+        #include <stdio.h>
+        struct C {
+          std::vector<int> x;
+          C() {
+            volatile int y = 10;
+            y++;
+            x.push_back((int)y);
+          }
+        };
+        C c;
+        int main() {
+          printf("x: %d\n", c.x[0]);
+        }
+      ''', "x: 11\n");
+    do_test(test2)
 
     print 'libcxx'
     src = open(path_from_root('tests', 'hello_libcxx.cpp')).read()

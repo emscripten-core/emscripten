@@ -1656,7 +1656,7 @@ class Building:
 
   @staticmethod
   def eval_ctors(js_file, mem_init_file):
-    subprocess.check_call([PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, mem_init_file, str(Settings.TOTAL_MEMORY), str(Settings.GLOBAL_BASE)])
+    subprocess.check_call([PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, mem_init_file, str(Settings.TOTAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE)])
 
   @staticmethod
   def eliminate_duplicate_funcs(filename):

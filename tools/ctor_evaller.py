@@ -10,7 +10,8 @@ import shared, js_optimizer
 js_file = sys.argv[1]
 mem_init_file = sys.argv[2]
 total_memory = int(sys.argv[3])
-global_base = int(sys.argv[4])
+total_stack = int(sys.argv[4])
+global_base = int(sys.argv[5])
 
 assert global_base > 0
 
@@ -28,7 +29,6 @@ def eval_ctor(js, mem_init):
   def kill_func(asm, name):
     before = len(asm)
     asm = asm.replace('function ' + name + '(', 'function KILLED_' + name + '(', 1)
-    assert len(asm) > before
     return asm
 
   def add_func(asm, func):
@@ -88,10 +88,30 @@ def eval_ctor(js, mem_init):
   static_bump_start = js.find(static_bump_op)
   static_bump_end = js.find(';', static_bump_start)
   static_bump = int(js[static_bump_start + len(static_bump_op):static_bump_end])
+  # remove malloc/free, if present, and add a simple malloc that adds to the mem init file.
+  # this makes mallocs evallable, and avoids malloc allocator fragmentation, etc. However,
+  # if we see a bunch of frees, we give up
+  asm = kill_func(asm, '_malloc')
+  asm = kill_func(asm, '_free')
+  asm = add_func(asm, '''
+function _malloc(x) {
+  while (staticTop % 16 !== 0) staticTop++;
+  if (staticTop >= stackBase) throw 'not enough room for an allocation of size ' + x;
+  var ret = staticTop;
+  staticTop += x;
+  return ret;
+}
+''')
+  asm = add_func(asm, '''
+function _free(x) {
+  throw 'todo: free';
+}
+''')
   # Generate a safe sandboxed environment. We replace all ffis with errors. Otherwise,
   # asm.js can't call outside, so we are ok.
   open(temp_file, 'w').write('''
-var totalMemory = %s;
+var totalMemory = %d;
+var totalStack = %d;
 
 var buffer = new ArrayBuffer(totalMemory);
 var heap = new Uint8Array(buffer);
@@ -103,9 +123,15 @@ var staticBump = %d;
 
 heap.set(memInit, globalBase);
 
-var stacktop = globalBase + staticBump;
-while (stacktop %% 16 !== 0) stacktop++;
-var stackMax = totalMemory;
+var staticTop = globalBase + staticBump;
+var staticBase = staticTop;
+
+var stackTop = totalMemory - totalStack; // put it anywhere - it's not memory we need after this execution (we ensure stack is unwound)
+while (stackTop %% 16 !== 0) stackTop--;
+if (stackTop <= staticTop) throw 'not enough room for stack';
+var stackBase = stackTop;
+
+var stackMax = stackTop + totalStack;
 var dynamicTop = stackMax;
 
 if (!Math.imul) {
@@ -139,7 +165,7 @@ var globalArg = {
 };
 
 var libraryArg = {
-  STACKTOP: stacktop,
+  STACKTOP: stackTop,
   STACK_MAX: stackMax,
   DYNAMICTOP: dynamicTop,
 };
@@ -159,12 +185,19 @@ var globalsAfter = asm['dumpGlobals']();
 
 if (JSON.stringify(globalsBefore) !== JSON.stringify(globalsAfter)) throw 'globals changed ' + globalsBefore + ' vs ' + globalsAfter;
 
-// Write out new mem init. It might be bigger, look for non-0 bytes
-var newSize = globalBase + staticBump;
-while (newSize > globalBase && heap[newSize-1] == 0) newSize--;
+// Write out new mem init. It might be bigger if we added to the zero section; mallocs might make it even bigger than the original staticBump.
+var newSize;
+if (staticTop > staticBase) {
+  // we malloced
+  newSize = staticTop;
+} else {
+  // look for zeros
+  newSize = globalBase + staticBump;
+  while (newSize > globalBase && heap[newSize-1] == 0) newSize--;
+}
 console.log(Array.prototype.slice.call(heap.subarray(globalBase, newSize)));
 
-''' % (total_memory, mem_init, global_base, static_bump, asm, ctor))
+''' % (total_memory, total_stack, mem_init, global_base, static_bump, asm, ctor))
   # Execute the sandboxed code. If an error happened due to calling an ffi, that's fine,
   # us exiting with an error tells the caller that we failed.
   proc = subprocess.Popen(shared.NODE_JS + [temp_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -180,6 +213,13 @@ console.log(Array.prototype.slice.call(heap.subarray(globalBase, newSize)));
   else:
     new_ctors = ctors_text[:ctors_text.find('(') + 1] + ctors_text[ctors_text.find(',')+1:]
   js = js[:ctors_start] + new_ctors + js[ctors_end:]
+  if len(mem_init) > static_bump:
+    # we malloced, and need a bigger mem init
+    static_bump_action = 'STATICTOP = STATIC_BASE + %d;' % static_bump
+    assert js.count(static_bump_action) == 1
+    size = len(mem_init)
+    while size % 16 != 0: size += 1
+    js = js.replace(static_bump_action, 'STATICTOP = STATIC_BASE + %d;' % size)
   removed.append(ctor)
   return (js, mem_init)
 
