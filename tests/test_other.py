@@ -6029,6 +6029,7 @@ int main() {
     assert 'use asm' not in src
 
   def test_eval_ctors(self):
+    # TODO: add 3 ctors with adjustable priorites, one of which is bad, and reorder, seeing we get 0 1 or 2 ctors removed depending on order
     if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
     try:
       os.environ['EMCC_DEBUG'] = '1'

@@ -33,7 +33,7 @@ def find_ctors(js):
   ctors_end += 3
   return (ctors_start, ctors_end)
 
-def eval_ctor(js, mem_init):
+def eval_ctors(js, mem_init, num):
 
   def kill_func(asm, name):
     before = len(asm)
@@ -50,16 +50,14 @@ def eval_ctor(js, mem_init):
 
   # Find the global ctors
   ctors_start, ctors_end = find_ctors(js)
-  if ctors_start < 0:
-    shared.logging.debug('no ctors')
-    return False
+  assert ctors_start > 0
   ctors_text = js[ctors_start:ctors_end]
-  ctors = filter(lambda ctor: ctor.endswith('()') and not ctor == 'function()' and '.' not in ctor, ctors_text.split(' '))
-  if len(ctors) == 0:
-    shared.logging.debug('zero ctors')
-    return False
-  ctor = ctors[0].replace('()', '')
-  shared.logging.debug('trying to eval ctor: ' + ctor)
+  all_ctors = filter(lambda ctor: ctor.endswith('()') and not ctor == 'function()' and '.' not in ctor, ctors_text.split(' '))
+  all_ctors = map(lambda ctor: ctor.replace('()', ''), all_ctors)
+  total_ctors = len(all_ctors)
+  assert total_ctors > 0
+  ctors = all_ctors[:num]
+  shared.logging.debug('trying to eval ctors: ' + ', '.join(ctors))
   # Find the asm module, and receive the mem init.
   asm = get_asm(js)
   assert len(asm) > 0
@@ -234,8 +232,10 @@ var libraryArg = {
 
 var globalsBefore = asm['dumpGlobals']();
 
-// Try to run the constructor
-asm['%s']();
+// Try to run the constructors
+(%s).forEach(function(ctor) {
+  asm[ctor]();
+});
 // We succeeded!
 
 // Verify asm global vars
@@ -245,7 +245,7 @@ if (JSON.stringify(globalsBefore) !== JSON.stringify(globalsAfter)) throw 'globa
 
 // Check if malloc/free is leading to too much waste
 var waste = calculateWastedSegments();
-if (waste > 1024 && waste > 0.25 * staticBump) throw 'too much waste caused by free()s'
+if (waste > 1024 && waste > 0.25 * staticBump) throw 'too much waste caused by free()s'; // XXX FIXME 1 percent of totalMemory
 
 // Write out new mem init. It might be bigger if we added to the zero section; mallocs might make it even bigger than the original staticBump.
 var newSize;
@@ -259,23 +259,26 @@ if (staticTop > staticBase) {
 }
 console.log(Array.prototype.slice.call(heap.subarray(globalBase, newSize)));
 
-''' % (total_memory, total_stack, mem_init, global_base, static_bump, asm, ctor))
+''' % (total_memory, total_stack, mem_init, global_base, static_bump, asm, json.dumps(ctors)))
   # Execute the sandboxed code. If an error happened due to calling an ffi, that's fine,
   # us exiting with an error tells the caller that we failed.
   proc = subprocess.Popen(shared.NODE_JS + [temp_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   out, err = proc.communicate()
   if proc.returncode != 0:
-    shared.logging.debug('failed to eval ctor:\n' + err)
+    shared.logging.debug('failed to eval ctors:\n' + err)
     if '_atexit' in err:
       shared.logging.debug('note: consider using  -s NO_EXIT_RUNTIME=1  to maximize the effectiveness of EVAL_CTORS')
     return False
   # Success! out contains the new mem init, write it out
   mem_init = ''.join(map(chr, json.loads(out)))
-  # Remove this ctor and write that out # TODO: remove from the asm export as well
-  if len(ctors) == 1:
-    new_ctors = ''
+  # Remove this ctor and write that out
+  if len(ctors) == total_ctors:
+    new_ctors = '' # remove them all
   else:
-    new_ctors = ctors_text[:ctors_text.find('(') + 1] + ctors_text[ctors_text.find(',')+1:]
+    temp = ctors_text.find(',') + 1
+    for i in range(len(ctors)-1):
+      temp = ctors_text.find(',', temp) + 1
+    new_ctors = ctors_text[:ctors_text.find('(') + 1] + ctors_text[temp:]
   js = js[:ctors_start] + new_ctors + js[ctors_end:]
   if len(mem_init) > static_bump:
     # we malloced, and need a bigger mem init
@@ -284,52 +287,77 @@ console.log(Array.prototype.slice.call(heap.subarray(globalBase, newSize)));
     size = len(mem_init)
     while size % 16 != 0: size += 1
     js = js.replace(static_bump_action, 'STATICTOP = STATIC_BASE + %d;' % size)
-  removed.append(ctor)
-  return (js, mem_init)
+  return (js, mem_init, ctors)
 
 # main
 
-# keep running while we succeed in removing a constructor
+js = open(js_file).read()
+ctors_start, ctors_end = find_ctors(js)
+if ctors_start < 0:
+  shared.logging.debug('ctor_evaller: no ctors')
+  sys.exit(0)
 
-removed = []
+num_ctors = js[ctors_start:ctors_end].count(',') + 1
+shared.logging.debug('ctor_evaller: %d ctors' % num_ctors)
+
+if os.path.exists(mem_init_file):
+  mem_init = json.dumps(map(ord, open(mem_init_file, 'rb').read()))
+else:
+  mem_init = []
+
+# find how many ctors we can remove, by bisection (if there are hundreds, running them sequentially is silly slow)
+
+low = 0 # definitely possible; will remain a valid value
+high = num_ctors + 1 # definitely impossible; will remain an invalid value
+next = num_ctors # be optimistic, try all of them to begin with
 
 while True:
-  shared.logging.debug('ctor_evaller: trying to eval a global constructor')
-  js = open(js_file).read()
-  if os.path.exists(mem_init_file):
-    mem_init = json.dumps(map(ord, open(mem_init_file, 'rb').read()))
-  else:
-    mem_init = []
-  result = eval_ctor(js, mem_init)
+  shared.logging.debug('ctor_evaller: trying to eval %d global constructors' % next)
+  result = eval_ctors(js, mem_init, next)
   if not result:
-    shared.logging.debug('ctor_evaller: not successful any more, done')
-    break # that's it, no more luck. either no ctors, or we failed to eval a ctor
+    shared.logging.debug('ctor_evaller: not successful')
+    if next == low + 1:
+      shared.logging.debug('ctor_evaller: done')
+      break
+    high = next
+    next = (low + next) / 2
+    continue
   shared.logging.debug('ctor_evaller: success!')
-  js, mem_init = result
-  open(js_file, 'w').write(js)
-  open(mem_init_file, 'wb').write(mem_init)
+  low = next
+  if next == high - 1:
+    shared.logging.debug('ctor_evaller: done')
+    break
+  next = (next + high) / 2
 
-# If we removed one, dead function elimination can help us
+if low == 0:
+  sys.exit(0) # we failed to remove even one
 
-if len(removed) > 0:
-  shared.logging.debug('ctor_evaller: eliminate no longer needed functions after ctor elimination')
-  # find exports
-  asm = get_asm(open(js_file).read())
-  exports_start = asm.find('return {')
-  exports_end = asm.find('};', exports_start)
-  exports_text = asm[asm.find('{', exports_start) + 1 : exports_end]
-  exports = map(lambda x: x.split(':')[1].strip(), exports_text.replace(' ', '').split(','))
-  for r in removed:
-    assert r in exports, 'global ctors were exported'
-  exports = filter(lambda e: e not in removed, exports)
-  # fix up the exports
-  js = open(js_file).read()
-  absolute_exports_start = js.find(exports_text)
-  js = js[:absolute_exports_start] + ', '.join(map(lambda e: e + ': ' + e, exports)) + js[absolute_exports_start + len(exports_text):]
-  open(js_file, 'w').write(js)
-  # find unreachable methods and remove them
-  reachable = shared.Building.calculate_reachable_functions(js_file, exports, can_reach=False)['reachable']
-  for r in removed:
-    assert r not in reachable, 'removed ctors must NOT be reachable'
-  shared.Building.js_optimizer(js_file, ['removeFuncs'], extra_info={ 'keep': reachable }, output_filename=js_file)
+# final execution of optimal result
+shared.logging.debug('ctor_evaller: we managed to remove %d ctors' % low)
+js, mem_init, removed = eval_ctors(js, mem_init, low)
+open(js_file, 'w').write(js)
+open(mem_init_file, 'wb').write(mem_init)
+
+# Dead function elimination can help us
+
+shared.logging.debug('ctor_evaller: eliminate no longer needed functions after ctor elimination')
+# find exports
+asm = get_asm(open(js_file).read())
+exports_start = asm.find('return {')
+exports_end = asm.find('};', exports_start)
+exports_text = asm[asm.find('{', exports_start) + 1 : exports_end]
+exports = map(lambda x: x.split(':')[1].strip(), exports_text.replace(' ', '').split(','))
+for r in removed:
+  assert r in exports, 'global ctors were exported'
+exports = filter(lambda e: e not in removed, exports)
+# fix up the exports
+js = open(js_file).read()
+absolute_exports_start = js.find(exports_text)
+js = js[:absolute_exports_start] + ', '.join(map(lambda e: e + ': ' + e, exports)) + js[absolute_exports_start + len(exports_text):]
+open(js_file, 'w').write(js)
+# find unreachable methods and remove them
+reachable = shared.Building.calculate_reachable_functions(js_file, exports, can_reach=False)['reachable']
+for r in removed:
+  assert r not in reachable, 'removed ctors must NOT be reachable'
+shared.Building.js_optimizer(js_file, ['removeFuncs'], extra_info={ 'keep': reachable }, output_filename=js_file)
 
