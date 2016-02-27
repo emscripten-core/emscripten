@@ -1579,7 +1579,11 @@ extern "C" {
 #    endif
 #  endif
 #  ifdef _SC_PAGE_SIZE
-#    define malloc_getpagesize sysconf(_SC_PAGE_SIZE)
+#    if defined(__EMSCRIPTEN__)
+#      define malloc_getpagesize (4096) /* avoid sysconf calls during startup */
+#    else
+#      define malloc_getpagesize sysconf(_SC_PAGE_SIZE)
+#    endif
 #  else
 #    if defined(BSD) || defined(DGUX) || defined(HAVE_GETPAGESIZE)
 extern size_t getpagesize();
