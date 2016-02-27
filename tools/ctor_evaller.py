@@ -77,6 +77,7 @@ def eval_ctor(js, mem_init):
         'HEAPU8', 'HEAPU16', 'HEAPU32',
         'HEAPF32', 'HEAPF64',
         'nan', 'inf',
+        '_emscripten_memcpy_big',
       ] or name.startswith('Math_'):
         if 'new ' not in value:
           global_vars.append(name)
@@ -215,6 +216,10 @@ var libraryArg = {
   STACKTOP: stackTop,
   STACK_MAX: stackMax,
   DYNAMICTOP: dynamicTop,
+  _emscripten_memcpy_big: function(dest, src, num) {
+    heap.set(heap.subarray(src, src+num), dest);
+    return dest;
+  },
 };
 
 // Instantiate asm
