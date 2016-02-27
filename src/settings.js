@@ -716,6 +716,16 @@ var EVAL_CTORS = 0; // This tries to evaluate global ctors at compile-time, appl
                     // This optimization can be much more effective together with
                     // NO_EXIT_RUNTIME. It will note that if relevant.
                     //
+                    // This optimization can increase the size of the mem init file,
+                    // both because ctors to write to memory that would otherwise be
+                    // in a zeroinit area, and because mallocs can add memory after
+                    // zeroinit areas. This may not be a significant increase after
+                    // gzip, if there are mostly zeros in there, and in any case
+                    // the mem init increase would be offset by a code size decrease.
+                    // (Unless you have a small ctor that writes 'random' data to memory,
+                    // which would reduce little code but add potentially lots of
+                    // uncompressible data.)
+                    //
                     // LLVM's GlobalOpt *almost* does this operation. It does in simple
                     // cases, where LLVM IR is not too complex for its logic to evaluate,
                     // but it isn't powerful enough for e.g. libc++ iostream ctors. It
