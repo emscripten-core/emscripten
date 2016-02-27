@@ -24,6 +24,15 @@ if shared.DEBUG:
 def get_asm(js):
   return js[js.find(js_optimizer.start_asm_marker):js.find(js_optimizer.end_asm_marker)]
 
+def find_ctors(js):
+  ctors_start = js.find('__ATINIT__.push(')
+  if ctors_start < 0:
+    return (-1, -1)
+  ctors_end = js.find(');', ctors_start)
+  assert ctors_end > 0
+  ctors_end += 3
+  return (ctors_start, ctors_end)
+
 def eval_ctor(js, mem_init):
 
   def kill_func(asm, name):
@@ -40,13 +49,10 @@ def eval_ctor(js, mem_init):
     return asm
 
   # Find the global ctors
-  ctors_start = js.find('__ATINIT__.push(')
+  ctors_start, ctors_end = find_ctors(js)
   if ctors_start < 0:
     shared.logging.debug('no ctors')
     return False
-  ctors_end = js.find(');', ctors_start)
-  assert ctors_end > 0
-  ctors_end += 3
   ctors_text = js[ctors_start:ctors_end]
   ctors = filter(lambda ctor: ctor.endswith('()') and not ctor == 'function()' and '.' not in ctor, ctors_text.split(' '))
   if len(ctors) == 0:
