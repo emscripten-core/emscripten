@@ -701,13 +701,18 @@ var EVAL_CTORS = 0; // This tries to evaluate global ctors at compile-time, appl
                     // execute safely in a sandbox. Any ffi access out of asm.js causes
                     // failure, as it could do something nondeterministic and/or
                     // alter some other state we don't see. If all the global ctor does
-                    // is pure compuation inside asm.js, it should be ok.
+                    // is pure compuation inside asm.js, it should be ok. Run with
+                    // EMCC_DEBUG=1 in the env to see logging, and errors when it
+                    // fails to eval (you'll see a message, or a stack trace; in the
+                    // latter case, the functions on the stack should give you an idea
+                    // of what ffi was called and why, and perhaps you can refactor
+                    // your code to avoid it, e.g., remove mallocs in global ctors).
                     //
                     // This optimization can be much more effective together with
                     // NO_EXIT_RUNTIME. It will note that if relevant.
                     //
                     // This optimization can increase the size of the mem init file,
-                    // both because ctors to write to memory that would otherwise be
+                    // because ctors can write to memory that would otherwise be
                     // in a zeroinit area. This may not be a significant increase after
                     // gzip, if there are mostly zeros in there, and in any case
                     // the mem init increase would be offset by a code size decrease.

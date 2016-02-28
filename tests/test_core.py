@@ -7002,29 +7002,9 @@ def process(filename):
       ''', "x: 11\n");
     do_test(test1)
 
-    Settings.NO_EXIT_RUNTIME = 1 # this is used in EVAL_CTORS anyhow, use it in other builds to compare as well
-
-    print 'remove ctor even with malloc'
-    def test2():
-      self.do_run(r'''
-        #include <vector>
-        #include <stdio.h>
-        struct C {
-          std::vector<int> x;
-          C() {
-            volatile int y = 10;
-            y++;
-            x.push_back((int)y);
-          }
-        };
-        C c;
-        int main() {
-          printf("x: %d\n", c.x[0]);
-        }
-      ''', "x: 11\n");
-    do_test(test2)
-
     print 'libcxx'
+
+    Settings.NO_EXIT_RUNTIME = 1 # this is used in EVAL_CTORS anyhow, use it in other builds to compare as well
 
     src = open(path_from_root('tests', 'hello_libcxx.cpp')).read()
     output = 'hello, world!'
