@@ -703,23 +703,12 @@ var EVAL_CTORS = 0; // This tries to evaluate global ctors at compile-time, appl
                     // alter some other state we don't see. If all the global ctor does
                     // is pure compuation inside asm.js, it should be ok.
                     //
-                    // This should have no visible effects, except that we execute
-                    // mallocs in ctors in an optimized way, giving them statically
-                    // allocated positions in memory (as opposed to using malloc's
-                    // data structures, which would incur fragmentation etc.). This
-                    // means that (1) memory addresses may be different (but valid
-                    // either way), (2) such mallocs cannot be freed after startup
-                    // (this is optimized for the case that mallocs in ctors are
-                    // permanent), and (3) if you have custom malloc/free replacments,
-                    // you won't see them operate where they would have in ctors.
-                    //
                     // This optimization can be much more effective together with
                     // NO_EXIT_RUNTIME. It will note that if relevant.
                     //
                     // This optimization can increase the size of the mem init file,
                     // both because ctors to write to memory that would otherwise be
-                    // in a zeroinit area, and because mallocs can add memory after
-                    // zeroinit areas. This may not be a significant increase after
+                    // in a zeroinit area. This may not be a significant increase after
                     // gzip, if there are mostly zeros in there, and in any case
                     // the mem init increase would be offset by a code size decrease.
                     // (Unless you have a small ctor that writes 'random' data to memory,
