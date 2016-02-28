@@ -6030,7 +6030,36 @@ int main() {
 
   def test_eval_ctors(self):
     # TODO: add 3 ctors with adjustable priorites, one of which is bad, and reorder, seeing we get 0 1 or 2 ctors removed depending on order
-    if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+    def test(p1, p2, p3, expected):
+      src = r'''
+        #include <stdio.h>
+        volatile int total = 0;
+        struct C {
+          C(int x) {
+            volatile int y = x;
+            y++;
+            y--;
+            total <<= 4;
+            total += int(y);
+          }
+        };
+        C __attribute__((init_priority(%d))) c1(0x5);
+        C __attribute__((init_priority(%d))) c2(0x8);
+        C __attribute__((init_priority(%d))) c3(0xe);
+        int main() {
+          printf("total is 0x%%x.\n", total);
+        }
+      ''' % (p1, p2, p3)
+      open('src.cpp', 'w').write(src)
+      check_execute([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'EVAL_CTORS=1'])
+      self.assertContained('total is %s.' % hex(expected), run_js('a.out.js'))
+      return open('a.out.js').read().count('function _')
+    first = test(1000, 2000, 3000, 0x58e)
+    second = test(3000, 1000, 2000, 0x8e5)
+    third = test(2000, 3000, 1000, 0xe58)
+    print first, second, third
+
+    if os.environ.get('EMCC_DEBUG'): raise Exception('cannot run in debug mode')
     try:
       os.environ['EMCC_DEBUG'] = '1'
       WARNING = 'note: consider using  -s NO_EXIT_RUNTIME=1  to maximize the effectiveness of EVAL_CTORS'
