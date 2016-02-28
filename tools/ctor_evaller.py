@@ -228,9 +228,11 @@ else:
 low = 0 # definitely possible; will remain a valid value
 high = num_ctors + 1 # definitely impossible; will remain an invalid value
 next = num_ctors # be optimistic, try all of them to begin with
+last = -1
 
 while True:
   shared.logging.debug('ctor_evaller: trying to eval %d global constructors' % next)
+  last = next
   result = eval_ctors(js, mem_init, next)
   if not result:
     shared.logging.debug('ctor_evaller: not successful')
@@ -252,7 +254,11 @@ if low == 0:
 
 # final execution of optimal result
 shared.logging.debug('ctor_evaller: we managed to remove %d ctors' % low)
-js, mem_init, removed = eval_ctors(js, mem_init, low)
+if last == low:
+  js, mem_init, removed = result
+else:
+  shared.logging.debug('ctor_evaller: final execution')
+  js, mem_init, removed = eval_ctors(js, mem_init, low)
 open(js_file, 'w').write(js)
 open(mem_init_file, 'wb').write(mem_init)
 
