@@ -706,7 +706,7 @@ var EVAL_CTORS = 0; // This tries to evaluate global ctors at compile-time, appl
                     // fails to eval (you'll see a message, or a stack trace; in the
                     // latter case, the functions on the stack should give you an idea
                     // of what ffi was called and why, and perhaps you can refactor
-                    // your code to avoid it, e.g., remove mallocs in global ctors).
+                    // your code to avoid it, e.g., remove mallocs, printfs in global ctors).
                     //
                     // This optimization can be much more effective together with
                     // NO_EXIT_RUNTIME. It will note that if relevant.
