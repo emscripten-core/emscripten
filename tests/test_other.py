@@ -6029,36 +6029,50 @@ int main() {
     assert 'use asm' not in src
 
   def test_eval_ctors(self):
-    # TODO: add 3 ctors with adjustable priorites, one of which is bad, and reorder, seeing we get 0 1 or 2 ctors removed depending on order
-    def test(p1, p2, p3, expected):
+    # ensure order of execution remains correct, even with a bad ctor
+    def test(p1, p2, p3, last, expected):
       src = r'''
         #include <stdio.h>
+        #include <stdlib.h>
         volatile int total = 0;
         struct C {
           C(int x) {
             volatile int y = x;
             y++;
             y--;
+            if (y == 0xf) {
+              printf("you can't eval me ahead of time\n"); // bad ctor
+            }
             total <<= 4;
             total += int(y);
           }
         };
         C __attribute__((init_priority(%d))) c1(0x5);
         C __attribute__((init_priority(%d))) c2(0x8);
-        C __attribute__((init_priority(%d))) c3(0xe);
+        C __attribute__((init_priority(%d))) c3(%d);
         int main() {
           printf("total is 0x%%x.\n", total);
         }
-      ''' % (p1, p2, p3)
+      ''' % (p1, p2, p3, last)
       open('src.cpp', 'w').write(src)
-      check_execute([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'EVAL_CTORS=1'])
+      check_execute([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'EVAL_CTORS=1', '-profiling-funcs'])
       self.assertContained('total is %s.' % hex(expected), run_js('a.out.js'))
+      shutil.copyfile('a.out.js', 'x' + hex(expected) + '.js')
       return open('a.out.js').read().count('function _')
-    first = test(1000, 2000, 3000, 0x58e)
-    second = test(3000, 1000, 2000, 0x8e5)
-    third = test(2000, 3000, 1000, 0xe58)
+    print 'no bad ctor'
+    first  = test(1000, 2000, 3000, 0xe, 0x58e)
+    second = test(3000, 1000, 2000, 0xe, 0x8e5)
+    third  = test(2000, 3000, 1000, 0xe, 0xe58)
     print first, second, third
+    assert first == second and second == third
+    print 'with bad ctor'
+    first  = test(1000, 2000, 3000, 0xf, 0x58f) # 2 will succeed
+    second = test(3000, 1000, 2000, 0xf, 0x8f5) # 1 will succedd
+    third  = test(2000, 3000, 1000, 0xf, 0xf58) # 0 will succeed
+    print first, second, third
+    assert first < second and second < third
 
+    # test debug logging
     if os.environ.get('EMCC_DEBUG'): raise Exception('cannot run in debug mode')
     try:
       os.environ['EMCC_DEBUG'] = '1'
