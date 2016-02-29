@@ -41,17 +41,20 @@ var LibraryPThreadStub = {
     // XXX implement if/when getpshared is required
     return 0;
   },
-  pthread_cond_init: function() {},
-  pthread_cond_destroy: function() {},
-  pthread_cond_broadcast: function() {
-    return 0;
-  },
-  pthread_cond_wait: function() {
-    return 0;
-  },
-  pthread_cond_timedwait: function() {
-    return 0;
-  },
+  pthread_cond_init: function() { return 0; },
+  pthread_cond_destroy: function() { return 0; },
+  pthread_cond_wait: function() { return 0; },
+  pthread_cond_timedwait: function() { return 0; },
+  pthread_cond_broadcast: function() { return 0; },
+  pthread_cond_signal: function() { return 0; },
+
+  pthread_condattr_init: function() { return 0; },
+  pthread_condattr_destroy: function() { return 0; },
+  pthread_condattr_setclock: function() { return 0; },
+  pthread_condattr_setpshared: function() { return 0; },
+  pthread_condattr_getclock: function() { return 0; },
+  pthread_condattr_getpshared: function() { return 0; },
+
   pthread_self: function() {
     //FIXME: assumes only a single thread
     return 0;
@@ -136,9 +139,25 @@ var LibraryPThreadStub = {
     _pthread_cleanup_push.level = __ATEXIT__.length;
   },
 
-  pthread_rwlock_init: function() {
-    return 0; // XXX
-  },
+  pthread_rwlock_init: function() { return 0; },
+  pthread_rwlock_destroy: function() { return 0; },
+  pthread_rwlock_rdlock: function() { return 0; },
+  pthread_rwlock_tryrdlock: function() { return 0; },
+  pthread_rwlock_timedrdlock: function() { return 0; },
+  pthread_rwlock_wrlock: function() { return 0; },
+  pthread_rwlock_trywrlock: function() { return 0; },
+  pthread_rwlock_timedwrlock: function() { return 0; },
+
+  pthread_rwlockattr_init: function() { return 0; },
+  pthread_rwlockattr_destroy: function() { return 0; },
+  pthread_rwlockattr_setpshared: function() { return 0; },
+  pthread_rwlockattr_getpshared: function() { return 0; },
+
+  pthread_spin_init: function() { return 0; },
+  pthread_spin_destroy: function() { return 0; },
+  pthread_spin_lock: function() { return 0; },
+  pthread_spin_trylock: function() { return 0; },
+  pthread_spin_unlock: function() { return 0; },
 
   pthread_attr_setdetachstate: function() {},
 
@@ -147,7 +166,6 @@ var LibraryPThreadStub = {
   },
   pthread_exit: function() {},
 
-  pthread_cond_signal: function() {},
   pthread_equal: function() {},
   pthread_join: function() {},
   pthread_detach: function() {},
