@@ -214,7 +214,12 @@ if ctors_start < 0:
   shared.logging.debug('ctor_evaller: no ctors')
   sys.exit(0)
 
-num_ctors = js[ctors_start:ctors_end].count(',') + 1
+ctors_text = js[ctors_start:ctors_end];
+if ctors_text.count('(') == 1:
+  shared.logging.debug('ctor_evaller: push, but no ctors')
+  sys.exit(0)
+
+num_ctors = ctors_text.count(',') + 1
 shared.logging.debug('ctor_evaller: %d ctors' % num_ctors)
 
 if os.path.exists(mem_init_file):
@@ -233,6 +238,7 @@ last = -1
 while True:
   shared.logging.debug('ctor_evaller: trying to eval %d global constructors' % next)
   last = next
+  assert next > 0
   result = eval_ctors(js, mem_init, next)
   if not result:
     shared.logging.debug('ctor_evaller: not successful')

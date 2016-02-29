@@ -6029,6 +6029,9 @@ int main() {
     assert 'use asm' not in src
 
   def test_eval_ctors(self):
+    # check no ctors is ok
+    check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Oz'])
+    self.assertContained('hello, world!', run_js('a.out.js'))
     # on by default in -Oz, but user-overridable
     def get_size(args):
       print 'get_size', args
