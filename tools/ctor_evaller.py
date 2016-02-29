@@ -80,6 +80,7 @@ def eval_ctors(js, mem_init, num):
         'HEAP8', 'HEAP16', 'HEAP32',
         'HEAPU8', 'HEAPU16', 'HEAPU32',
         'HEAPF32', 'HEAPF64',
+        'Int8View', 'Int16View', 'Int32View', 'Uint8View', 'Uint16View', 'Uint32View', 'Float32View', 'Float64View',
         'nan', 'inf',
         '_emscripten_memcpy_big', '_sbrk', '___dso_handle',
         '_atexit', '___cxa_atexit',
