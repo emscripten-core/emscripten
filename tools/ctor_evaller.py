@@ -112,13 +112,13 @@ heap.set(memInit, globalBase);
 var staticTop = globalBase + staticBump;
 var staticBase = staticTop;
 
-var stackTop = totalMemory - totalStack; // put it anywhere - it's not memory we need after this execution (we ensure stack is unwound)
+var stackTop = staticTop;
 while (stackTop %% 16 !== 0) stackTop--;
-if (stackTop <= staticTop) throw 'not enough room for stack';
 var stackBase = stackTop;
 var stackMax = stackTop + totalStack;
+if (stackMax >= totalMemory) throw 'not enough room for stack';
 
-var dynamicTop = staticTop + totalStack;
+var dynamicTop = stackMax;
 
 if (!Math.imul) {
   Math.imul = Math.imul || function(a, b) {
