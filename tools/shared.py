@@ -1001,12 +1001,14 @@ class Settings2(type):
       self.attrs = values
 
     @classmethod
-    def apply_opt_level(self, opt_level, noisy=False):
+    def apply_opt_level(self, opt_level, shrink_level=0, noisy=False):
       if opt_level >= 1:
         self.attrs['ASM_JS'] = 1
         self.attrs['ASSERTIONS'] = 0
         self.attrs['DISABLE_EXCEPTION_CATCHING'] = 1
         self.attrs['ALIASING_FUNCTION_POINTERS'] = 1
+      if shrink_level >= 2:
+        self.attrs['EVAL_CTORS'] = 1
 
     def __getattr__(self, attr):
       if attr in self.attrs:

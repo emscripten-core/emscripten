@@ -6029,6 +6029,25 @@ int main() {
     assert 'use asm' not in src
 
   def test_eval_ctors(self):
+    # on by default in -Oz, but user-overridable
+    def get_size(args):
+      print 'get_size', args
+      check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'NO_EXIT_RUNTIME=1'] + args)
+      self.assertContained('hello, world!', run_js('a.out.js'))
+      return (os.stat('a.out.js').st_size, os.stat('a.out.js.mem').st_size)
+    def check_size(left, right):
+      if left[0] == right[0] and left[1] == right[1]: return 0
+      if left[0] < right[0] and left[1] > right[1]: return -1 # smaller js, bigger mem
+      if left[0] > right[0] and left[1] < right[1]: return 1
+      assert 0, [left, right]
+    o2_size = get_size(['-O2'])
+    assert check_size(get_size(['-O2']), o2_size) == 0, 'deterministic'
+    assert check_size(get_size(['-O2', '-s', 'EVAL_CTORS=1']), o2_size) < 0, 'eval_ctors works if user asks for it'
+    oz_size = get_size(['-Oz'])
+    assert check_size(get_size(['-Oz']), oz_size) == 0, 'deterministic'
+    assert check_size(get_size(['-Oz', '-s', 'EVAL_CTORS=1']), oz_size) == 0, 'eval_ctors is on by default in oz'
+    assert check_size(get_size(['-Oz', '-s', 'EVAL_CTORS=0']), oz_size) == 1, 'eval_ctors can be turned off'
+
     # ensure order of execution remains correct, even with a bad ctor
     def test(p1, p2, p3, last, expected):
       src = r'''

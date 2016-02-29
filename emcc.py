@@ -906,7 +906,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       next_arg_index += 1
 
     # Apply optimization level settings
-    shared.Settings.apply_opt_level(opt_level, noisy=True)
+    shared.Settings.apply_opt_level(opt_level=opt_level, shrink_level=shrink_level, noisy=True)
 
     if os.environ.get('EMCC_FAST_COMPILER') == '0':
       logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
@@ -1110,9 +1110,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
       separate_asm = True
       shared.Settings.FINALIZE_ASM_JS = False
-
-    if shared.Settings.EVAL_CTORS:
-      assert js_opts > 0, 'need JS opts for EVAL_CTORS, use -O2 or above'
 
     if shared.Settings.GLOBAL_BASE < 0:
       shared.Settings.GLOBAL_BASE = 8 # default if nothing else sets it
@@ -1663,8 +1660,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         JSOptimizer.flush()
         shared.Building.eliminate_duplicate_funcs(final)
 
-      if shared.Settings.EVAL_CTORS:
-        assert memory_init_file, 'EVAL_CTORS requires --memory-init-file'
+      if shared.Settings.EVAL_CTORS and memory_init_file:
         JSOptimizer.flush()
         shared.Building.eval_ctors(final, memfile)
         if DEBUG: save_intermediate('eval-ctors', 'js')

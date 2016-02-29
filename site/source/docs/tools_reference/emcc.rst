@@ -78,6 +78,8 @@ Options that are modified or new in *emcc* are listed below:
 ``-Oz``
 	Like ``-Os``, but reduces code size even further. This can effect both bitcode generation and JavaScript.
 
+	For JavaScript, this turns on some code size reduction optimizations that can take a significant amount of compilation time.
+
  	.. note:: For more tips on optimizing your code, see :ref:`Optimizing-Code`.
 
 .. _emcc-s-option-value:
