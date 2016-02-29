@@ -977,9 +977,12 @@ class Settings2(type):
       for i in range(len(args)):
         if args[i].startswith('-O'):
           v = args[i][2]
-          if v in ['s', 'z']: v = '2'
+          shrink = 0
+          if v in ['s', 'z']:
+            v = '2'
+            shrink = 1 if v == 's' else 2
           level = eval(v)
-          self.apply_opt_level(level)
+          self.apply_opt_level(level, shrink)
       for i in range(len(args)):
         if args[i] == '-s':
           declare = re.sub(r'([\w\d]+)\s*=\s*(.+)', r'self.attrs["\1"]=\2;', args[i+1])
