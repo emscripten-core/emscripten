@@ -7020,7 +7020,7 @@ function emterpretify(ast) {
         ret = ret.concat(reg[1]);
         actuals.push(reg[0]);
         var curr = ASM_SIG[detectType(param, asmData)];
-        assert(curr !== 'v');//, JSON.stringify(param) + ' ==> ' + ASM_SIG[detectType(param, asmData)]);
+        if (curr === 'v') curr = 'i'; // if we can't detect it, it must be an asm global. the only possibilities are int. TODO: add globals to detectType
         sig += curr;
       });
       ret.push(internal ? 'INTCALL' : 'EXTCALL');
