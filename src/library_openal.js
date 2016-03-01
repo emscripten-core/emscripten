@@ -56,10 +56,9 @@ var LibraryOpenAL = {
         var entry = src.queue[i];
 
         var startOffset = (startTime - currentTime) / src.playbackRate;
-        var endTime = startTime + entry.buffer.duration / src.playbackRate;
-        if (entry.src) {
-          endTime = startTime + entry.src.duration;
-        }
+        var endTime;
+        if (entry.src) endTime = startTime + entry.src.duration; // n.b. entry.src.duration already factors in playbackRate, so no divide by src.playbackRate on it.
+        else endTime = startTime + entry.buffer.duration / src.playbackRate;
 
         // Clean up old buffers.
         if (currentTime >= endTime) {
@@ -539,6 +538,8 @@ var LibraryOpenAL = {
         var currentTime = AL.currentContext.ctx.currentTime;
         var oldrate = entry.src.playbackRate.value;
         var offset = currentTime - src.bufferPosition;
+        // entry.src.duration is expressed after factoring in playbackRate, so when changing playback rate, need
+        // to recompute/rescale the rate to the new playback speed.
         entry.src.duration = (entry.src.duration - offset) * oldrate / src.playbackRate;
         entry.src.playbackRate.value = src.playbackRate;
         src.bufferPosition = currentTime;
