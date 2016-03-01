@@ -754,7 +754,8 @@ var LibraryGLFW = {
         var contextAttributes = {
           antialias: (GLFW.hints[0x0002100D] > 1), // GLFW_SAMPLES
           depth: (GLFW.hints[0x00021005] > 0),     // GLFW_DEPTH_BITS
-          stencil: (GLFW.hints[0x00021006] > 0)    // GLFW_STENCIL_BITS
+          stencil: (GLFW.hints[0x00021006] > 0),   // GLFW_STENCIL_BITS
+          alpha: (GLFW.hints[0x00021004] > 0)      // GLFW_ALPHA_BITS 
         }
         Module.ctx = Browser.createContext(Module['canvas'], true, true, contextAttributes);
       }
