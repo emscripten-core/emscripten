@@ -1660,7 +1660,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         JSOptimizer.flush()
         shared.Building.eliminate_duplicate_funcs(final)
 
-      if shared.Settings.EVAL_CTORS and memory_init_file:
+      if shared.Settings.EVAL_CTORS and memory_init_file and debug_level < 4:
         JSOptimizer.flush()
         shared.Building.eval_ctors(final, memfile)
         if DEBUG: save_intermediate('eval-ctors', 'js')
