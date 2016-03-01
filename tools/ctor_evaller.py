@@ -15,9 +15,12 @@ global_base = int(sys.argv[5])
 
 assert global_base > 0
 
-temp_file = js_file + '.ctorEval.js'
+config = shared.Configuration()
+
 if shared.DEBUG:
   temp_file = '/tmp/emscripten_temp/ctorEval.js'
+else:
+  temp_file = config.get_temp_files().get('.ctorEval.js').name
 
 # helpers
 
@@ -198,18 +201,20 @@ console.log(JSON.stringify([Array.prototype.slice.call(heap.subarray(globalBase,
 ''' % (total_memory, total_stack, mem_init, global_base, static_bump, asm, json.dumps(ctors)))
   # Execute the sandboxed code. If an error happened due to calling an ffi, that's fine,
   # us exiting with an error tells the caller that we failed. If it times out, give up.
-  proc = subprocess.Popen(shared.NODE_JS + [temp_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  out_file = config.get_temp_files().get('.out').name
+  err_file = config.get_temp_files().get('.err').name
+  proc = subprocess.Popen(shared.NODE_JS + [temp_file], stdout=open(out_file, 'w'), stderr=open(err_file, 'w'))
   try:
-    out = shared.jsrun.timeout_run(proc, timeout=10, full_output=True)
+    shared.jsrun.timeout_run(proc, timeout=10, full_output=True)
     if proc.returncode != 0:
-      shared.logging.debug('failed to eval ctors:\n' + out)
+      shared.logging.debug('failed to eval ctors:\n' + open(err_file).read())
       return False
   except Exception, e:
     if 'Timed out' not in str(e): raise e
     shared.logging.debug('ctors timed out\n')
     return False
   # Success! out contains the new mem init and other info
-  mem_init_raw, atexits = json.loads(out)
+  mem_init_raw, atexits = json.loads(open(out_file).read())
   mem_init = ''.join(map(chr, mem_init_raw))
   # Remove the evalled ctors, add a new one for atexits if needed, and write that out
   if len(ctors) == total_ctors and len(atexits) == 0:
