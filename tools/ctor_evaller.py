@@ -211,8 +211,7 @@ console.log(JSON.stringify([Array.prototype.slice.call(heap.subarray(globalBase,
   # Success! out contains the new mem init and other info
   mem_init_raw, atexits = json.loads(out)
   mem_init = ''.join(map(chr, mem_init_raw))
-  # Remove the evalled ctors, add a new magic one, and write that out
-  shared.logging.debug('ctor_evaller: ' + ctors_text)
+  # Remove the evalled ctors, add a new one for atexits if needed, and write that out
   if len(ctors) == total_ctors and len(atexits) == 0:
     new_ctors = ''
   else:
