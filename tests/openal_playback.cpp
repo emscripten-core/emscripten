@@ -9,10 +9,26 @@
 #include <emscripten.h>
 #endif
 
+#ifndef EMSCRIPTEN_KEEPALIVE
+#define EMSCRIPTEN_KEEPALIVE
+#endif
+
+extern "C"
+{
+void EMSCRIPTEN_KEEPALIVE test_finished()
+{
+#ifdef REPORT_RESULT
+  int result = 1;
+  REPORT_RESULT();
+#endif
+}
+}
+
 void playSource(void* arg)
 {
   ALuint source = static_cast<ALuint>(reinterpret_cast<intptr_t>(arg));
   ALint state;
+
   alGetSourcei(source, AL_SOURCE_STATE, &state);
   assert(state == AL_PLAYING);
   alSourcePause(source);
@@ -21,13 +37,11 @@ void playSource(void* arg)
   alSourcePlay(source);
   alGetSourcei(source, AL_SOURCE_STATE, &state);
   assert(state == AL_PLAYING);
+#ifndef TEST_LOOPED_PLAYBACK
   alSourceStop(source);
   alGetSourcei(source, AL_SOURCE_STATE, &state);
   assert(state == AL_STOPPED);
-
-#ifdef REPORT_RESULT
-  int result = 1;
-  REPORT_RESULT();
+  test_finished();
 #endif
 }
 
@@ -155,6 +169,23 @@ int main() {
 
   alGetSourcei(sources[0], AL_SOURCE_STATE, &state);
   assert(state == AL_PLAYING);
+
+#ifdef TEST_LOOPED_PLAYBACK
+  alSourcei(sources[0], AL_LOOPING, AL_TRUE);
+  alSourcef(sources[0], AL_PITCH, 1.5f);
+  printf("You should hear a continuously looping clip of the 1902 piano song \"The Entertainer\" played back at a high playback rate (high pitch). Press OK when confirmed.\n");
+  EM_ASM(
+    var btn = document.createElement('input');
+    btn.type = 'button';
+    btn.name = btn.value = 'OK';
+    btn.onclick = function() {
+      _test_finished();
+    };
+    document.body.appendChild(btn);
+  );
+#else
+  printf("You should hear a short audio clip playing back.\n");
+#endif
 
 #ifdef __EMSCRIPTEN__
   emscripten_async_call(playSource, reinterpret_cast<void*>(sources[0]), 700);
