@@ -6956,7 +6956,7 @@ def process(filename):
   def test_eval_ctors(self):
     if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args): return self.skip('need js optimizations')
 
-    orig_args = self.emcc_args[:]
+    orig_args = self.emcc_args[:] + ['-s', 'EVAL_CTORS=0']
 
     print 'leave printf in ctor'
     self.emcc_args = orig_args + ['-s', 'EVAL_CTORS=1']
@@ -7003,8 +7003,6 @@ def process(filename):
     do_test(test1)
 
     print 'libcxx'
-
-    Settings.NO_EXIT_RUNTIME = 1 # this is used in EVAL_CTORS anyhow, use it in other builds to compare as well
 
     src = open(path_from_root('tests', 'hello_libcxx.cpp')).read()
     output = 'hello, world!'

@@ -6035,7 +6035,7 @@ int main() {
     # on by default in -Oz, but user-overridable
     def get_size(args):
       print 'get_size', args
-      check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'NO_EXIT_RUNTIME=1'] + args)
+      check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp')] + args)
       self.assertContained('hello, world!', run_js('a.out.js'))
       return (os.stat('a.out.js').st_size, os.stat('a.out.js.mem').st_size)
     def check_size(left, right):
@@ -6093,20 +6093,6 @@ int main() {
     third  = test(2000, 3000, 1000, 0xf, 0xf58) # 0 will succeed
     print first, second, third
     assert first < second and second < third
-
-    # test debug logging
-    if os.environ.get('EMCC_DEBUG'): raise Exception('cannot run in debug mode')
-    try:
-      os.environ['EMCC_DEBUG'] = '1'
-      WARNING = 'note: consider using  -s NO_EXIT_RUNTIME=1  to maximize the effectiveness of EVAL_CTORS'
-      out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O2', '-s', 'EVAL_CTORS=1'], stderr=PIPE).communicate()
-      self.assertContained(WARNING, err)
-      self.assertContained('hello, world!', run_js('a.out.js'))
-      out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O2', '-s', 'EVAL_CTORS=1', '-s', 'NO_EXIT_RUNTIME=1'], stderr=PIPE).communicate()
-      self.assertNotContained(WARNING, err)
-      self.assertContained('hello, world!', run_js('a.out.js'))
-    finally:
-      del os.environ['EMCC_DEBUG']
 
   def test_override_environment(self):
     open('main.cpp', 'w').write(r'''

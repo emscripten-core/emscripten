@@ -708,9 +708,6 @@ var EVAL_CTORS = 0; // This tries to evaluate global ctors at compile-time, appl
                     // of what ffi was called and why, and perhaps you can refactor
                     // your code to avoid it, e.g., remove mallocs, printfs in global ctors).
                     //
-                    // This optimization can be much more effective together with
-                    // NO_EXIT_RUNTIME. It will note that if relevant.
-                    //
                     // This optimization can increase the size of the mem init file,
                     // because ctors can write to memory that would otherwise be
                     // in a zeroinit area. This may not be a significant increase after

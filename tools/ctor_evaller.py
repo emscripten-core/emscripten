@@ -81,7 +81,8 @@ def eval_ctors(js, mem_init, num):
         'HEAPU8', 'HEAPU16', 'HEAPU32',
         'HEAPF32', 'HEAPF64',
         'nan', 'inf',
-        '_emscripten_memcpy_big', '_sbrk',
+        '_emscripten_memcpy_big', '_sbrk', '___dso_handle',
+        '_atexit', '___cxa_atexit',
       ] or name.startswith('Math_'):
         if 'new ' not in value:
           global_vars.append(name)
@@ -136,6 +137,8 @@ if (!Math.fround) {
   Math.fround = function(x) { froundBuffer[0] = x; return froundBuffer[0] };
 }
 
+var atexits = []; // we record and replay atexits
+
 var globalArg = {
   Int8Array: Int8Array,
   Int16Array: Int16Array,
@@ -154,9 +157,18 @@ var libraryArg = {
   STACKTOP: stackTop,
   STACK_MAX: stackMax,
   DYNAMICTOP: dynamicTop,
+  ___dso_handle: 0, // used by atexit, value doesn't matter
   _emscripten_memcpy_big: function(dest, src, num) {
     heap.set(heap.subarray(src, src+num), dest);
     return dest;
+  },
+  _atexit: function(x) {
+    atexits.push([x, 0]);
+    return 0;
+  },
+  ___cxa_atexit: function(x, y) {
+    atexits.push([x, y]);
+    return 0;
   },
 };
 
@@ -180,7 +192,7 @@ if (JSON.stringify(globalsBefore) !== JSON.stringify(globalsAfter)) throw 'globa
 // Write out new mem init. It might be bigger if we added to the zero section, look for zeros
 var newSize = globalBase + staticBump;
 while (newSize > globalBase && heap[newSize-1] == 0) newSize--;
-console.log(JSON.stringify([Array.prototype.slice.call(heap.subarray(globalBase, newSize))]));
+console.log(JSON.stringify([Array.prototype.slice.call(heap.subarray(globalBase, newSize)), atexits]));
 
 ''' % (total_memory, total_stack, mem_init, global_base, static_bump, asm, json.dumps(ctors)))
   # Execute the sandboxed code. If an error happened due to calling an ffi, that's fine,
@@ -193,16 +205,19 @@ console.log(JSON.stringify([Array.prototype.slice.call(heap.subarray(globalBase,
       shared.logging.debug('note: consider using  -s NO_EXIT_RUNTIME=1  to maximize the effectiveness of EVAL_CTORS')
     return False
   # Success! out contains the new mem init and other info
-  mem_init_raw = json.loads(out)[0]
+  mem_init_raw, atexits = json.loads(out)
   mem_init = ''.join(map(chr, mem_init_raw))
   # Remove the evalled ctors, add a new magic one, and write that out
-  if len(ctors) == total_ctors:
+  shared.logging.debug('ctor_evaller: ' + ctors_text)
+  if len(ctors) == total_ctors and len(atexits) == 0:
     new_ctors = ''
   else:
-    temp = ctors_text.find(',') + 1
-    for i in range(len(ctors)-1):
-      temp = ctors_text.find(',', temp) + 1
-    new_ctors = ctors_text[:ctors_text.find('(') + 1] + ctors_text[temp:]
+    elements = []
+    if len(atexits) > 0:
+      elements.append('{ func: function() { %s } }' % '; '.join(map(lambda x: '_atexit(' + str(x[0]) + ',' + str(x[1]) + ')', atexits)))
+    for ctor in all_ctors[num:]:
+      elements.append('{ func: function() { %s() } }' % ctor)
+    new_ctors = '__ATINIT__.push(' + ', '.join(elements) + ');'
   js = js[:ctors_start] + new_ctors + js[ctors_end:]
   return (js, mem_init, ctors)
 
