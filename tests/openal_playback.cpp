@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <math.h>
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
@@ -43,6 +44,15 @@ void playSource(void* arg)
   assert(state == AL_STOPPED);
   test_finished();
 #endif
+}
+
+void main_tick(void *arg)
+{
+  ALuint source = static_cast<ALuint>(reinterpret_cast<intptr_t>(arg));
+
+  double t = emscripten_get_now() * 0.001;
+  double pitch = sin(t) * 0.5 + 1.0;
+  alSourcef(source, AL_PITCH, pitch);
 }
 
 int main() {
@@ -173,7 +183,11 @@ int main() {
 #ifdef TEST_LOOPED_PLAYBACK
   alSourcei(sources[0], AL_LOOPING, AL_TRUE);
   alSourcef(sources[0], AL_PITCH, 1.5f);
+#ifdef TEST_ANIMATED_LOOPED_PITCHED_PLAYBACK
+  printf("You should hear a continuously looping clip of the 1902 piano song \"The Entertainer\" played back at a dynamic playback rate that smoothly varies its pitch according to a sine wave. Press OK when confirmed.\n");
+#else
   printf("You should hear a continuously looping clip of the 1902 piano song \"The Entertainer\" played back at a high playback rate (high pitch). Press OK when confirmed.\n");
+#endif
   EM_ASM(
     var btn = document.createElement('input');
     btn.type = 'button';
@@ -188,7 +202,12 @@ int main() {
 #endif
 
 #ifdef __EMSCRIPTEN__
+
+#ifdef TEST_ANIMATED_LOOPED_PITCHED_PLAYBACK
+  emscripten_set_main_loop_arg(main_tick, (void*)buffers[0], 0, 0);
+#else
   emscripten_async_call(playSource, reinterpret_cast<void*>(sources[0]), 700);
+#endif
 #else
   usleep(700000);
   playSource(reinterpret_cast<void*>(sources[0]));
