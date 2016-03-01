@@ -6029,7 +6029,20 @@ int main() {
     assert 'use asm' not in src
 
   def test_eval_ctors(self):
-    # check no ctors is ok
+    print 'non-terminating ctor'
+    src = r'''
+      struct C {
+        C() {
+          volatile int y = 0;
+          while (y == 0) {}
+        }
+      };
+      C always;
+      int main() {}
+    '''
+    open('src.cpp', 'w').write(src)
+    check_execute([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'EVAL_CTORS=1', '-profiling-funcs'])
+    print 'check no ctors is ok'
     check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Oz'])
     self.assertContained('hello, world!', run_js('a.out.js'))
     # on by default in -Oz, but user-overridable

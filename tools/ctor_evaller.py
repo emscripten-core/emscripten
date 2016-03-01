@@ -197,13 +197,16 @@ console.log(JSON.stringify([Array.prototype.slice.call(heap.subarray(globalBase,
 
 ''' % (total_memory, total_stack, mem_init, global_base, static_bump, asm, json.dumps(ctors)))
   # Execute the sandboxed code. If an error happened due to calling an ffi, that's fine,
-  # us exiting with an error tells the caller that we failed.
+  # us exiting with an error tells the caller that we failed. If it times out, give up.
   proc = subprocess.Popen(shared.NODE_JS + [temp_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-  out, err = proc.communicate()
-  if proc.returncode != 0:
-    shared.logging.debug('failed to eval ctors:\n' + err)
-    if '_atexit' in err:
-      shared.logging.debug('note: consider using  -s NO_EXIT_RUNTIME=1  to maximize the effectiveness of EVAL_CTORS')
+  try:
+    out = shared.jsrun.timeout_run(proc, timeout=10, full_output=True)
+    if proc.returncode != 0:
+      shared.logging.debug('failed to eval ctors:\n' + out)
+      return False
+  except Exception, e:
+    if 'Timed out' not in str(e): raise e
+    shared.logging.debug('ctors timed out\n')
     return False
   # Success! out contains the new mem init and other info
   mem_init_raw, atexits = json.loads(out)
@@ -259,7 +262,6 @@ while True:
   if not result:
     shared.logging.debug('ctor_evaller: not successful')
     if next == low + 1:
-      shared.logging.debug('ctor_evaller: done')
       break
     high = next
     next = (low + next) / 2
@@ -267,7 +269,6 @@ while True:
   shared.logging.debug('ctor_evaller: success!')
   low = next
   if next == high - 1:
-    shared.logging.debug('ctor_evaller: done')
     break
   next = (next + high) / 2
 
