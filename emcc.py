@@ -1128,7 +1128,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.WASM_BACKEND:
       # to bootstrap struct_info, we need binaryen
-      os.environ['EMCC_WASM_BACKEND_BINARYEN'] = shared.Settings.BINARYEN
+      os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
 
     shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
     shared.Settings.OPT_LEVEL = opt_level
