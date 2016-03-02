@@ -1262,9 +1262,9 @@ def emscript_wasm_backend(infile, settings, outfile, outfile_name, libraries=[],
     import shutil
     shutil.copyfile(temp_s, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-llvm-backend-output.s'))
 
-  assert settings['BINARYEN'], 'need BINARYEN option set so we can use Binaryen s2wasm on the backend output'
+  assert shared.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen s2wasm on the backend output'
   wasm = outfile_name[:-3] + '.wast'
-  s2wasm_args = [os.path.join(settings['BINARYEN'], 'bin', 's2wasm'), temp_s]
+  s2wasm_args = [os.path.join(shared.BINARYEN_ROOT, 's2wasm'), temp_s]
   s2wasm_args += ['--global-base=%d' % shared.Settings.GLOBAL_BASE]
   if DEBUG:
     logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
@@ -1665,4 +1665,3 @@ WARNING: You should normally never use this! Use emcc instead.
 
 if __name__ == '__main__':
   _main()
-
