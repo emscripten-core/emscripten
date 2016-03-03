@@ -3072,3 +3072,6 @@ window.close = function() {
     open('huge.dat', 'w').write(''.join([chr((x*x)&255) for x in range(size*2)])) # larger than a memory chunk
     self.btest('split_memory_large_file.cpp', expected='1', args=['-s', 'SPLIT_MEMORY=' + str(size), '-s', 'TOTAL_MEMORY=100000000', '-s', 'TOTAL_STACK=10240', '--preload-file', 'huge.dat'], timeout=60)
 
+  def test_window_focus(self):
+    self.btest('test_window_focus.c', '1', args=['-O2', '--closure', '1']) # tests a problem that will happen only with "--closure 1"
+
