@@ -6110,6 +6110,25 @@ int main() {
     print first, second, third
     assert first < second and second < third
 
+    print 'helpful output'
+    if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+    try:
+      os.environ['EMCC_DEBUG'] = '1'
+      open('src.cpp', 'w').write(r'''
+#include <stdio.h>
+struct C {
+  C() { printf("constructing!\n"); } // don't remove this!
+};
+C c;
+int main() {}
+      ''')
+      out, err = Popen([PYTHON, EMCC, 'src.cpp', '-Oz'], stderr=PIPE).communicate()
+      assert '___syscall54' in err, 'the failing call should be mentioned'
+      assert 'ctorEval.js' in err, 'with a stack trace'
+      assert 'ctor_evaller: not successful' in err, 'with logging'
+    finally:
+      del os.environ['EMCC_DEBUG']
+
   def test_override_environment(self):
     open('main.cpp', 'w').write(r'''
       #include <emscripten.h>
