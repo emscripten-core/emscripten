@@ -834,10 +834,6 @@ def get_llvm_target():
   assert LLVM_TARGET is not None
   return LLVM_TARGET
 
-def get_llvm_target_command():
-  global LLVM_TARGET
-  assert LLVM_TARGET is not None
-
 # COMPILER_OPTS: options passed to clang when generating bitcode for us
 try:
   COMPILER_OPTS # Can be set in EM_CONFIG, optionally
