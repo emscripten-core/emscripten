@@ -180,23 +180,36 @@ var libraryArg = {
 %s
 (globalArg, libraryArg, buffer);
 
-var globalsBefore = asm['dumpGlobals']();
-
 // Try to run the constructors
-(%s).forEach(function(ctor) {
-  asm[ctor]();
-});
-// We succeeded!
 
-// Verify asm global vars
-var globalsAfter = asm['dumpGlobals']();
+var allCtors = %s;
+var numSuccessful = 0;
 
-if (JSON.stringify(globalsBefore) !== JSON.stringify(globalsAfter)) throw 'globals changed ' + globalsBefore + ' vs ' + globalsAfter;
+for (var i = 0; i < allCtors.length; i++) {
+  try {
+    var globalsBefore = asm['dumpGlobals']();
+
+    asm[allCtors[i]]();
+
+    var globalsAfter = asm['dumpGlobals']();
+    if (JSON.stringify(globalsBefore) !== JSON.stringify(globalsAfter)) {
+      console.warn('globals modified');
+      break;
+    }
+
+    // this one was ok.
+    numSuccessful = i + 1;
+
+  } catch (e) {
+    console.warn(e.stack);
+    break;
+  }
+}
 
 // Write out new mem init. It might be bigger if we added to the zero section, look for zeros
 var newSize = globalBase + staticBump;
 while (newSize > globalBase && heap[newSize-1] == 0) newSize--;
-console.log(JSON.stringify([Array.prototype.slice.call(heap.subarray(globalBase, newSize)), atexits]));
+console.log(JSON.stringify([numSuccessful, Array.prototype.slice.call(heap.subarray(globalBase, newSize)), atexits]));
 
 ''' % (total_memory, total_stack, mem_init, global_base, static_bump, asm, json.dumps(ctors)))
   # Execute the sandboxed code. If an error happened due to calling an ffi, that's fine,
@@ -207,15 +220,17 @@ console.log(JSON.stringify([Array.prototype.slice.call(heap.subarray(globalBase,
   try:
     shared.jsrun.timeout_run(proc, timeout=10, full_output=True)
     if proc.returncode != 0:
-      shared.logging.debug('failed to eval ctors:\n' + open(err_file).read())
-      return False
+      shared.logging.debug('unexpected error while trying to eval ctors:\n' + open(err_file).read())
+      return (0, 0, 0, 0)
   except Exception, e:
     if 'Timed out' not in str(e): raise e
     shared.logging.debug('ctors timed out\n')
-    return False
-  # Success! out contains the new mem init and other info
-  mem_init_raw, atexits = json.loads(open(out_file).read())
+    return (0, 0, 0, 0)
+  # out contains the new mem init and other info
+  num_successful, mem_init_raw, atexits = json.loads(open(out_file).read())
   mem_init = ''.join(map(chr, mem_init_raw))
+  if num_successful < total_ctors:
+    shared.logging.debug('not all ctors could be evalled:\n' + open(err_file).read())
   # Remove the evalled ctors, add a new one for atexits if needed, and write that out
   if len(ctors) == total_ctors and len(atexits) == 0:
     new_ctors = ''
@@ -227,7 +242,7 @@ console.log(JSON.stringify([Array.prototype.slice.call(heap.subarray(globalBase,
       elements.append('{ func: function() { %s() } }' % ctor)
     new_ctors = '__ATINIT__.push(' + ', '.join(elements) + ');'
   js = js[:ctors_start] + new_ctors + js[ctors_end:]
-  return (js, mem_init, ctors)
+  return (num_successful, js, mem_init, ctors)
 
 # main
 
@@ -251,41 +266,21 @@ else:
   mem_init = []
 
 # find how many ctors we can remove, by bisection (if there are hundreds, running them sequentially is silly slow)
-# TODO: instead of bisection, a single run can tell how many succeeded. but if we try reorderings etc, maybe not worth it
 
-low = 0 # definitely possible; will remain a valid value
-high = num_ctors + 1 # definitely impossible; will remain an invalid value
-next = num_ctors # be optimistic, try all of them to begin with
-last = -1
+shared.logging.debug('ctor_evaller: trying to eval %d global constructors' % num_ctors)
+num_successful, new_js, new_mem_init, removed = eval_ctors(js, mem_init, num_ctors)
+if num_successful == 0:
+  shared.logging.debug('ctor_evaller: not successful')
+  sys.exit(0)
 
-while True:
-  shared.logging.debug('ctor_evaller: trying to eval %d global constructors' % next)
-  last = next
-  assert next > 0
-  result = eval_ctors(js, mem_init, next)
-  if not result:
-    shared.logging.debug('ctor_evaller: not successful')
-    if next == low + 1:
-      break
-    high = next
-    next = (low + next) / 2
-    continue
-  shared.logging.debug('ctor_evaller: success!')
-  low = next
-  if next == high - 1:
-    break
-  next = (next + high) / 2
-
-if low == 0:
-  sys.exit(0) # we failed to remove even one
-
-# final execution of optimal result
-shared.logging.debug('ctor_evaller: we managed to remove %d ctors' % low)
-if last == low:
-  js, mem_init, removed = result
+shared.logging.debug('ctor_evaller: we managed to remove %d ctors' % num_successful)
+if num_successful == num_ctors:
+  js = new_js
+  mem_init = new_mem_init
 else:
   shared.logging.debug('ctor_evaller: final execution')
-  js, mem_init, removed = eval_ctors(js, mem_init, low)
+  check, js, mem_init, removed = eval_ctors(js, mem_init, num_successful)
+  assert check == num_successful
 open(js_file, 'w').write(js)
 open(mem_init_file, 'wb').write(mem_init)
 
