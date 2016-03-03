@@ -579,6 +579,15 @@ var LibraryGLFW = {
       var win = GLFW.WindowFromId(winid);
       if (!win) return;
       win.windowSizeFunc = cbfun;
+     
+#if USE_GLFW == 2
+      // As documented in GLFW2 API (http://www.glfw.org/GLFWReference27.pdf#page=22), when size
+      // callback function is set, it will be called with the current window size before this
+      // function returns.
+      // GLFW3 on the over hand doesn't have this behavior (https://github.com/glfw/glfw/issues/62).
+      if (!win.windowSizeFunc) return;
+      Runtime.dynCall('vii', win.windowSizeFunc, [win.width, win.height]);
+#endif
     },
 
     setWindowCloseCallback: function(winid, cbfun) {
@@ -754,7 +763,8 @@ var LibraryGLFW = {
         var contextAttributes = {
           antialias: (GLFW.hints[0x0002100D] > 1), // GLFW_SAMPLES
           depth: (GLFW.hints[0x00021005] > 0),     // GLFW_DEPTH_BITS
-          stencil: (GLFW.hints[0x00021006] > 0)    // GLFW_STENCIL_BITS
+          stencil: (GLFW.hints[0x00021006] > 0),   // GLFW_STENCIL_BITS
+          alpha: (GLFW.hints[0x00021004] > 0)      // GLFW_ALPHA_BITS 
         }
         Module.ctx = Browser.createContext(Module['canvas'], true, true, contextAttributes);
       }

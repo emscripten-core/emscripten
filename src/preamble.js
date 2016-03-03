@@ -1620,6 +1620,11 @@ if (!Math['clz32']) Math['clz32'] = function(x) {
 };
 Math.clz32 = Math['clz32']
 
+if (!Math['trunc']) Math['trunc'] = function(x) {
+  return x < 0 ? Math.ceil(x) : Math.floor(x);
+};
+Math.trunc = Math['trunc'];
+
 var Math_abs = Math.abs;
 var Math_cos = Math.cos;
 var Math_sin = Math.sin;
@@ -1638,6 +1643,7 @@ var Math_imul = Math.imul;
 var Math_fround = Math.fround;
 var Math_min = Math.min;
 var Math_clz32 = Math.clz32;
+var Math_trunc = Math.trunc;
 
 // A counter of dependencies for calling run(). If we need to
 // do asynchronous work before running, increment this and

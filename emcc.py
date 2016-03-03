@@ -1774,7 +1774,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.BINARYEN:
       # Emit wasm.js at the top of the js. TODO: for html, it could be a separate script tag
-      binaryen_bin = os.path.join(shared.Settings.BINARYEN, 'bin')
+      binaryen_bin = os.path.join(shared.BINARYEN_ROOT, 'bin')
       wasm_js = open(os.path.join(binaryen_bin, 'wasm.js')).read()
       wasm_js = wasm_js.replace("Module['asmjsCodeFile']", '"' + os.path.basename(asm_target) + '"') # " or '? who knows :)
       wasm_js = wasm_js.replace('Module["asmjsCodeFile"]', '"' + os.path.basename(asm_target) + '"')
@@ -1938,4 +1938,3 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
 if __name__ == '__main__':
   run()
-
