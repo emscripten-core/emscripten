@@ -703,7 +703,6 @@ fi
       ([PYTHON, 'embuilder.py', 'build', 'libcxx_noexcept'], ['success'], True, ['libcxx_noexcept.a']),
       ([PYTHON, 'embuilder.py', 'build', 'libcxxabi'], ['success'], True, ['libcxxabi.bc']),
       ([PYTHON, 'embuilder.py', 'build', 'gl'], ['success'], True, ['gl.bc']),
-      ([PYTHON, 'embuilder.py', 'build', 'struct_info'], ['success'], True, ['struct_info.compiled.json']),
       ([PYTHON, 'embuilder.py', 'build', 'native_optimizer'], ['success'], True, ['optimizer.2.exe']),
       ([PYTHON, 'embuilder.py', 'build', 'zlib'], ['building and verifying zlib', 'success'], True, [os.path.join('ports-builds', 'zlib', 'libz.a')]),
       ([PYTHON, 'embuilder.py', 'build', 'libpng'], ['building and verifying libpng', 'success'], True, [os.path.join('ports-builds', 'libpng', 'libpng.bc')]),
@@ -794,11 +793,23 @@ fi
     test()
 
     try:
-      print 'wacky env vars, these should not mess our bootstrapping of struct_info etc. up'
+      print 'wacky env vars, these should not mess our bootstrapping'
       os.environ['EMCC_FORCE_STDLIBS'] = '1'
       Cache.erase()
       build()
       test()
     finally:
       del os.environ['EMCC_FORCE_STDLIBS']
+
+  def test_struct_info(self):
+    restore()
+
+    struct_info_file = path_from_root('src', 'struct_info.compiled.json')
+    before = open(struct_info_file).read()
+    os.remove(struct_info_file)
+    self.check_working([EMCC, 'tests/hello_world.c'], '')
+    self.assertContained('hello, world!', run_js('a.out.js'))
+    assert os.path.exists(struct_info_file), 'removing the struct info file forces a rebuild'
+    after = open(struct_info_file).read()
+    assert after == before, 'struct info must be already valid, recreating it should not alter anything'
 

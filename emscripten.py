@@ -1547,7 +1547,7 @@ def main(args, compiler_engine, cache, temp_files, DEBUG, DEBUG_CACHE):
   # libraries
   libraries = args.libraries[0].split(',') if len(args.libraries) > 0 else []
 
-  settings.setdefault('STRUCT_INFO', cache.get_path('struct_info.compiled.json'))
+  settings.setdefault('STRUCT_INFO', shared.path_from_root('src', 'struct_info.compiled.json'))
   struct_info = settings.get('STRUCT_INFO')
 
   if not os.path.exists(struct_info) and not settings.get('BOOTSTRAPPING_STRUCT_INFO') and not settings.get('ONLY_MY_CODE'):
