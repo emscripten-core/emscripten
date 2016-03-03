@@ -3020,42 +3020,36 @@ var LibraryGL = {
 
   glVertexAttrib1fv__sig: 'vii',
   glVertexAttrib1fv: function(index, v) {
-    v = {{{ makeHEAPView('F32', 'v', 'v+' + (1*4)) }}};
-#if USE_PTHREADS
-    // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-    v = new Float32Array(v);
-#endif
-    GLctx.vertexAttrib1fv(index, v);
+    var view = GL.miniTempBufferViews[0];
+    view[0] = HEAPF32[v >> 2];
+    GLctx.vertexAttrib1fv(index, view);
   },
 
   glVertexAttrib2fv__sig: 'vii',
   glVertexAttrib2fv: function(index, v) {
-    v = {{{ makeHEAPView('F32', 'v', 'v+' + (2*4)) }}};
-#if USE_PTHREADS
-    // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-    v = new Float32Array(v);
-#endif
-    GLctx.vertexAttrib2fv(index, v);
+    var view = GL.miniTempBufferViews[1];
+    view[0] = HEAPF32[v >> 2];
+    view[1] = HEAPF32[v + 4 >> 2];
+    GLctx.vertexAttrib2fv(index, view);
   },
 
   glVertexAttrib3fv__sig: 'vii',
   glVertexAttrib3fv: function(index, v) {
-    v = {{{ makeHEAPView('F32', 'v', 'v+' + (3*4)) }}};
-#if USE_PTHREADS
-    // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-    v = new Float32Array(v);
-#endif
-    GLctx.vertexAttrib3fv(index, v);
+    var view = GL.miniTempBufferViews[2];
+    view[0] = HEAPF32[v >> 2];
+    view[1] = HEAPF32[v + 4 >> 2];
+    view[2] = HEAPF32[v + 8 >> 2];
+    GLctx.vertexAttrib3fv(index, view);
   },
 
   glVertexAttrib4fv__sig: 'vii',
   glVertexAttrib4fv: function(index, v) {
-    v = {{{ makeHEAPView('F32', 'v', 'v+' + (4*4)) }}};
-#if USE_PTHREADS
-    // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
-    v = new Float32Array(v);
-#endif
-    GLctx.vertexAttrib4fv(index, v);
+    var view = GL.miniTempBufferViews[3];
+    view[0] = HEAPF32[v >> 2];
+    view[1] = HEAPF32[v + 4 >> 2];
+    view[2] = HEAPF32[v + 8 >> 2];
+    view[3] = HEAPF32[v + 12 >> 2];
+    GLctx.vertexAttrib4fv(index, view);
   },
 
 #if USE_WEBGL2
