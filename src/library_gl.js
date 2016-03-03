@@ -1113,10 +1113,19 @@ var LibraryGL = {
     if (type == 0x1401 /* GL_UNSIGNED_BYTE */) {
       pixels = {{{ makeHEAPView('U8', 'pixels', 'pixels+bytes') }}};
     } else if (type == 0x1406 /* GL_FLOAT */) {
+#if GL_ASSERTIONS
+      assert((pixels & 3) == 0, 'Pointer to float data passed to texture get function must be aligned to four bytes!');
+#endif
       pixels = {{{ makeHEAPView('F32', 'pixels', 'pixels+bytes') }}};
     } else if (type == 0x1405 /* GL_UNSIGNED_INT */ || type == 0x84FA /* UNSIGNED_INT_24_8_WEBGL */) {
+#if GL_ASSERTIONS
+      assert((pixels & 3) == 0, 'Pointer to integer data passed to texture get function must be aligned to four bytes!');
+#endif
       pixels = {{{ makeHEAPView('U32', 'pixels', 'pixels+bytes') }}};
     } else {
+#if GL_ASSERTIONS
+      assert((pixels & 1) == 0, 'Pointer to int16 data passed to texture get function must be aligned to two bytes!');
+#endif
       pixels = {{{ makeHEAPView('U16', 'pixels', 'pixels+bytes') }}};
     }
     return {
@@ -1991,6 +2000,9 @@ var LibraryGL = {
 
   glClearBufferiv__sig: 'viii',
   glClearBufferiv: function(buffer, drawbuffer, value) {
+#if GL_ASSERTIONS
+    assert((value & 3) == 0, 'Pointer to integer data passed to glClearBufferiv must be aligned to four bytes!');
+#endif
     var view = {{{ makeHEAPView('32', 'value', 'value+16') }}};
 #if USE_PTHREADS
     // TODO: This is temporary to cast a shared Int32Array to a non-shared Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
@@ -2001,6 +2013,9 @@ var LibraryGL = {
 
   glClearBufferuiv__sig: 'viii',
   glClearBufferuiv: function(buffer, drawbuffer, value) {
+#if GL_ASSERTIONS
+    assert((value & 3) == 0, 'Pointer to integer data passed to glClearBufferuiv must be aligned to four bytes!');
+#endif
     var view = {{{ makeHEAPView('U32', 'value', 'value+16') }}};
 #if USE_PTHREADS
     // TODO: This is temporary to cast a shared Uint32Array to a non-shared Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
@@ -2466,6 +2481,7 @@ var LibraryGL = {
   glUniform1iv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform1iv', 'location');
+    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform1iv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
@@ -2480,6 +2496,7 @@ var LibraryGL = {
   glUniform2iv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform2iv', 'location');
+    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform2iv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     count *= 2;
@@ -2495,6 +2512,7 @@ var LibraryGL = {
   glUniform3iv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform3iv', 'location');
+    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform3iv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     count *= 3;
@@ -2510,6 +2528,7 @@ var LibraryGL = {
   glUniform4iv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform4iv', 'location');
+    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform4iv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     count *= 4;
@@ -2525,6 +2544,7 @@ var LibraryGL = {
   glUniform1fv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform1fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniform1fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
@@ -2548,6 +2568,7 @@ var LibraryGL = {
   glUniform2fv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform2fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniform2fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
@@ -2572,6 +2593,7 @@ var LibraryGL = {
   glUniform3fv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform3fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniform3fv must be aligned to four bytes!' + value);
 #endif
     location = GL.uniforms[location];
     var view;
@@ -2597,6 +2619,7 @@ var LibraryGL = {
   glUniform4fv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform4fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniform4fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
@@ -2660,6 +2683,7 @@ var LibraryGL = {
   glUniform1uiv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform1uiv', 'location');
+    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform1uiv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     value = {{{ makeHEAPView('U32', 'value', 'value+count*4') }}};
@@ -2674,6 +2698,7 @@ var LibraryGL = {
   glUniform2uiv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform2uiv', 'location');
+    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform2uiv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     count *= 2;
@@ -2689,6 +2714,7 @@ var LibraryGL = {
   glUniform3uiv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform3uiv', 'location');
+    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform3uiv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     count *= 3;
@@ -2704,6 +2730,7 @@ var LibraryGL = {
   glUniform4uiv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform4uiv', 'location');
+    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform4uiv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     count *= 4;
@@ -2720,6 +2747,7 @@ var LibraryGL = {
   glUniformMatrix2fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix2fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
@@ -2746,6 +2774,7 @@ var LibraryGL = {
   glUniformMatrix3fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix3fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
@@ -2777,6 +2806,7 @@ var LibraryGL = {
   glUniformMatrix4fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix4fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
@@ -2816,6 +2846,7 @@ var LibraryGL = {
   glUniformMatrix2x3fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix2x3fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2x3fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
@@ -2844,6 +2875,7 @@ var LibraryGL = {
   glUniformMatrix3x2fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix3x2fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3x2fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
@@ -2872,6 +2904,7 @@ var LibraryGL = {
   glUniformMatrix2x4fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix2x4fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2x4fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
@@ -2902,6 +2935,7 @@ var LibraryGL = {
   glUniformMatrix4x2fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix4x2fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4x2fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
@@ -2932,6 +2966,7 @@ var LibraryGL = {
   glUniformMatrix3x4fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix3x4fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3x4fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
@@ -2966,6 +3001,7 @@ var LibraryGL = {
   glUniformMatrix4x3fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix4x3fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4x3fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
@@ -3020,6 +3056,9 @@ var LibraryGL = {
 
   glVertexAttrib1fv__sig: 'vii',
   glVertexAttrib1fv: function(index, v) {
+#if GL_ASSERTIONS
+    assert((v & 3) == 0, 'Pointer to float data passed to glVertexAttrib1fv must be aligned to four bytes!');
+#endif
     var view = GL.miniTempBufferViews[0];
     view[0] = HEAPF32[v >> 2];
     GLctx.vertexAttrib1fv(index, view);
@@ -3027,6 +3066,9 @@ var LibraryGL = {
 
   glVertexAttrib2fv__sig: 'vii',
   glVertexAttrib2fv: function(index, v) {
+#if GL_ASSERTIONS
+    assert((v & 3) == 0, 'Pointer to float data passed to glVertexAttrib2fv must be aligned to four bytes!');
+#endif
     var view = GL.miniTempBufferViews[1];
     view[0] = HEAPF32[v >> 2];
     view[1] = HEAPF32[v + 4 >> 2];
@@ -3035,6 +3077,9 @@ var LibraryGL = {
 
   glVertexAttrib3fv__sig: 'vii',
   glVertexAttrib3fv: function(index, v) {
+#if GL_ASSERTIONS
+    assert((v & 3) == 0, 'Pointer to float data passed to glVertexAttrib3fv must be aligned to four bytes!');
+#endif
     var view = GL.miniTempBufferViews[2];
     view[0] = HEAPF32[v >> 2];
     view[1] = HEAPF32[v + 4 >> 2];
@@ -3044,6 +3089,9 @@ var LibraryGL = {
 
   glVertexAttrib4fv__sig: 'vii',
   glVertexAttrib4fv: function(index, v) {
+#if GL_ASSERTIONS
+    assert((v & 3) == 0, 'Pointer to float data passed to glVertexAttrib4fv must be aligned to four bytes!');
+#endif
     var view = GL.miniTempBufferViews[3];
     view[0] = HEAPF32[v >> 2];
     view[1] = HEAPF32[v + 4 >> 2];
@@ -3055,6 +3103,9 @@ var LibraryGL = {
 #if USE_WEBGL2
   glVertexAttribI4iv__sig: 'vii',
   glVertexAttribI4iv: function(index, v) {
+#if GL_ASSERTIONS
+    assert((v & 3) == 0, 'Pointer to integer data passed to glVertexAttribI4iv must be aligned to four bytes!');
+#endif
     v = {{{ makeHEAPView('32', 'v', 'v+' + (4*4)) }}};
 #if USE_PTHREADS
     // TODO: This is temporary to cast a shared Int32Array to a non-shared Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
@@ -3065,6 +3116,9 @@ var LibraryGL = {
 
   glVertexAttribI4uiv__sig: 'vii',
   glVertexAttribI4uiv: function(index, v) {
+#if GL_ASSERTIONS
+    assert((v & 3) == 0, 'Pointer to integer data passed to glVertexAttribI4uiv must be aligned to four bytes!');
+#endif
     v = {{{ makeHEAPView('U32', 'v', 'v+' + (4*4)) }}};
 #if USE_PTHREADS
     // TODO: This is temporary to cast a shared Uint32Array to a non-shared Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
