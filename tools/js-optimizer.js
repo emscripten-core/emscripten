@@ -7779,15 +7779,15 @@ function JSDCE(ast) {
     };
     return scope[name];
   }
-  function cleanUp(ast, name) {
+  function cleanUp(ast, names) {
     traverse(ast, function(node, type) {
-      if (type === 'defun' && node[1] === name) return emptyNode();
+      if (type === 'defun' && node[1] in names) return emptyNode();
       if (type === 'defun' || type === 'function') return null; // do not enter other scopes
       if (type === 'var') {
         node[1] = node[1].filter(function(varItem, j) {
           var curr = varItem[0];
           var value = varItem[1];
-          return curr !== name || (value && hasSideEffects(value));
+          return !(curr in names) || (value && hasSideEffects(value));
         });
         if (node[1].length === 0) return emptyNode();
       }
@@ -7827,7 +7827,7 @@ function JSDCE(ast) {
         }
         if (data.def && !data.use && !data.param) {
           // this is eliminateable!
-          cleanUp(node[3], name);
+          cleanUp(node[3], set(name));
         }
       }
     }
@@ -7835,14 +7835,17 @@ function JSDCE(ast) {
   // toplevel
   var scope = scopes.pop();
   assert(scopes.length === 0);
-  for (name in scope) {
+
+  var names = set();
+  for (var name in scope) {
     var data = scope[name];
     if (data.def && !data.use) {
       assert(!data.param); // can't be
       // this is eliminateable!
-      cleanUp(ast, name);
+      names[name] = 0;
     }
   }
+  cleanUp(ast, names);
 }
 
 // Passes table
