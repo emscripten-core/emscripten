@@ -897,6 +897,25 @@ if (ENVIRONMENT_IS_PTHREAD) {
 }
 #endif
 
+#if STACK_OVERFLOW_CHECK
+// Initializes the stack cookie. Called at the startup of main and at the startup of each thread in pthreads mode.
+function writeStackCookie() {
+  assert((STACK_MAX & 3) == 0);
+  HEAPU32[(STACK_MAX >> 2)-1] = 0x02135467;
+  HEAPU32[(STACK_MAX >> 2)-2] = 0x89BACDFE;
+}
+
+function checkStackCookie() {
+  if (HEAPU32[(STACK_MAX >> 2)-1] != 0x02135467 || HEAPU32[(STACK_MAX >> 2)-2] != 0x89BACDFE) {
+    abort('Stack overflow! Stack cookie has been overwritten, expected hex dwords 0x89BACDFE and 0x02135467, but received 0x' + HEAPU32[(STACK_MAX >> 2)-2].toString(16) + ' ' + HEAPU32[(STACK_MAX >> 2)-1].toString(16));
+  }
+}
+#endif
+
+function abortStackOverflow(allocSize) {
+  abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (STACK_MAX - STACKTOP) + ' bytes available!');
+}
+
 #if ALLOW_MEMORY_GROWTH == 0
 function abortOnCannotGrowMemory() {
   abort('Cannot enlarge memory arrays. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which adjusts the size at runtime but prevents some optimizations, (3) set Module.TOTAL_MEMORY to a higher value before the program runs, or if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
@@ -1447,6 +1466,9 @@ function preRun() {
 }
 
 function ensureInitRuntime() {
+#if STACK_OVERFLOW_CHECK
+  checkStackCookie();
+#endif
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
@@ -1456,6 +1478,9 @@ function ensureInitRuntime() {
 }
 
 function preMain() {
+#if STACK_OVERFLOW_CHECK
+  checkStackCookie();
+#endif
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
@@ -1463,6 +1488,9 @@ function preMain() {
 }
 
 function exitRuntime() {
+#if STACK_OVERFLOW_CHECK
+  checkStackCookie();
+#endif
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
@@ -1471,6 +1499,9 @@ function exitRuntime() {
 }
 
 function postRun() {
+#if STACK_OVERFLOW_CHECK
+  checkStackCookie();
+#endif
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif

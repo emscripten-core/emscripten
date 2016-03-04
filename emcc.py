@@ -934,6 +934,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # used for warnings in emscripten.py
         shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = original_exported_response or shared.Settings.EXPORTED_FUNCTIONS[:]
 
+    # -s ASSERTIONS=1 implies the heaviest stack overflow check mode. Set the implication here explicitly to avoid having to
+    # do preprocessor "#if defined(ASSERTIONS) || defined(STACK_OVERFLOW_CHECK)" in .js files, which is not supported.
+    if shared.Settings.ASSERTIONS: shared.Settings.STACK_OVERFLOW_CHECK = 2
+
     try:
       assert shared.Settings.ASM_JS > 0, 'ASM_JS must be enabled in fastcomp'
       assert shared.Settings.SAFE_HEAP in [0, 1], 'safe heap must be 0 or 1 in fastcomp'

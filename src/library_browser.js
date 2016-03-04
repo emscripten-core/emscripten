@@ -1157,6 +1157,10 @@ var LibraryBrowser = {
         }
       });
 
+#if STACK_OVERFLOW_CHECK
+      checkStackCookie();
+#endif
+
       // catch pauses from the main loop itself
       if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) return;
 

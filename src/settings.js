@@ -32,6 +32,11 @@ var ASSERTIONS = 1; // Whether we should add runtime assertions, for example to
                     // of positive size, etc., whether we should throw if we encounter a bad __label__, i.e.,
                     // if code flow runs into a fault
                     // ASSERTIONS == 2 gives even more runtime checks
+var STACK_OVERFLOW_CHECK = 0; // Chooses what kind of stack smash checks to emit to generated code:
+                              // 0: Stack overflows are not checked.
+                              // 1: Adds a security cookie at the top of the stack, which is checked at end of each tick and at exit (practically zero performance overhead)
+                              // 2: Same as above, but also adds an explicit check for allocate() calls which call ALLOC_STACK. Has a small performance cost.
+                              //    -s ASSERTIONS=1 automatically enables -s STACK_OVERFLOW_CHECK=2.
 var VERBOSE = 0; // When set to 1, will generate more verbose output during compilation.
 
 var INVOKE_RUN = 1; // Whether we will run the main() function. Disable if you embed the generated

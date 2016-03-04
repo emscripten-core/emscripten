@@ -588,6 +588,7 @@ function _emscripten_asm_const_%s(%s) {
              '"); ' + extra
 
     basic_funcs = ['abort', 'assert'] + [m.replace('.', '_') for m in math_envs]
+    if settings['STACK_OVERFLOW_CHECK']: basic_funcs += ['abortStackOverflow']
 
     asm_safe_heap = settings['SAFE_HEAP'] and not settings['SAFE_HEAP_LOG'] and not settings['RELOCATABLE'] # optimized safe heap in asm, when we can
 
@@ -938,7 +939,7 @@ function stackAlloc(size) {
   ret = STACKTOP;
   STACKTOP = (STACKTOP + size)|0;
   STACKTOP = (STACKTOP + 15)&-16;
-''' + ('if ((STACKTOP|0) >= (STACK_MAX|0)) abort();\n' if settings['ASSERTIONS'] else '') + '''
+''' + ('  if ((STACKTOP|0) >= (STACK_MAX|0)) abortStackOverflow(size|0);\n' if (settings['ASSERTIONS'] or settings['STACK_OVERFLOW_CHECK'] >= 2) else '') + '''
   return ret|0;
 }
 function stackSave() {
