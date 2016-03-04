@@ -1421,7 +1421,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shutil.move(wasm_temp, wasm_target)
       open(wasm_target + '.mappedGlobals', 'w').write('{}') # no need for mapped globals for now, but perhaps some day
 
-    log_time('emscript (llvm=>%s)' % ('wasm' if shared.Settings.BINARYEN else 'js'))
+    log_time('emscript (llvm => executable code)')
 
     # Embed and preload files
     if shared.Settings.SPLIT_MEMORY:
@@ -1802,6 +1802,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.BINARYEN:
       # Emit wasm.js at the top of the js. TODO: for html, it could be a separate script tag
+      logging.debug('integrating wasm.js')
       binaryen_bin = os.path.join(shared.BINARYEN_ROOT, 'bin')
       wasm_js = open(os.path.join(binaryen_bin, 'wasm.js')).read()
       wasm_js = wasm_js.replace("Module['asmjsCodeFile']", '"' + os.path.basename(asm_target) + '"') # " or '? who knows :)
@@ -1822,7 +1823,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       combined.write(js)
       combined.close()
       if not shared.Settings.WASM_BACKEND:
-        # generate .wast file
+        logging.debug('asm2wasm (asm.js => WebAssembly)')
         subprocess.check_call([os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--mapped-globals=' + wasm_target + '.mappedGlobals'], stdout=open(wasm_target, 'w'))
 
     # If we were asked to also generate HTML, do that
