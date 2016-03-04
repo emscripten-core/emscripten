@@ -1465,6 +1465,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         method = '(Module[\'wasmJSMethod\'] || "' + shared.Settings.BINARYEN_METHOD + '")'
         wasm_js_glue = wasm_js_glue.replace("Module['wasmJSMethod']", method) # " or '? who knows :)
         wasm_js_glue = wasm_js_glue.replace('Module["wasmJSMethod"]', method)
+      wasm_js_glue = wasm_js_glue.replace('{{{ WASM_BACKEND }}}', str(shared.Settings.WASM_BACKEND)) # if wasm backend, wasm contains memory segments
       pre_js = wasm_js_glue + '\n' + pre_js
 
     # Apply pre and postjs files
