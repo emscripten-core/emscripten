@@ -13,7 +13,6 @@ locale_t newlocale(int mask, const char *name, locale_t base)
 		static int used_first = 0;
 		if (!used_first) {
 			used_first = 1;
-			memset(&first, 0, sizeof first);
 			base = &first;
 		} else {
 			base = calloc(1, sizeof *base);
