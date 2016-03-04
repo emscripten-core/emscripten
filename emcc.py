@@ -1452,6 +1452,21 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       file_code = execute([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE)[0]
       pre_js = file_code + pre_js
 
+    if shared.Settings.BINARYEN:
+      # add in the glue integration code as a pre-js, so it is optimized together with everything else
+      wasm_js_glue = open(os.path.join(shared.BINARYEN_ROOT, 'src', 'js', 'wasm.js-post.js')).read()
+      wasm_js_glue = wasm_js_glue.replace("Module['asmjsCodeFile']", '"' + os.path.basename(asm_target) + '"') # " or '? who knows :)
+      wasm_js_glue = wasm_js_glue.replace('Module["asmjsCodeFile"]', '"' + os.path.basename(asm_target) + '"')
+      wasm_js_glue = wasm_js_glue.replace("Module['wasmCodeFile']", '"' + os.path.basename(wasm_target) + '"') # " or '? who knows :)
+      wasm_js_glue = wasm_js_glue.replace('Module["wasmCodeFile"]', '"' + os.path.basename(wasm_target) + '"')
+      wasm_js_glue = wasm_js_glue.replace("Module['providedTotalMemory']", str(shared.Settings.TOTAL_MEMORY))
+      wasm_js_glue = wasm_js_glue.replace('Module["providedTotalMemory"]', str(shared.Settings.TOTAL_MEMORY))
+      if shared.Settings.BINARYEN_METHOD:
+        method = '(Module[\'wasmJSMethod\'] || "' + shared.Settings.BINARYEN_METHOD + '")'
+        wasm_js_glue = wasm_js_glue.replace("Module['wasmJSMethod']", method) # " or '? who knows :)
+        wasm_js_glue = wasm_js_glue.replace('Module["wasmJSMethod"]', method)
+      pre_js = wasm_js_glue + '\n' + pre_js
+
     # Apply pre and postjs files
     if pre_js or post_js:
       logging.debug('applying pre/postjses')
@@ -1801,21 +1816,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shutil.move(temp, asm_target)
 
     if shared.Settings.BINARYEN:
-      # Emit wasm.js at the top of the js. TODO: for html, it could be a separate script tag
+      # Emit wasm.js at the top of the js. This is *not* optimized with the rest of the code, since
+      # (1) it contains asm.js, whose validation would be broken, and (2) it's very large so it would
+      # be slow in cleanup/JSDCE etc.
+      # TODO: for html, it could be a separate script tag
+      # TODO: add the core "integrate" bit as a pre-js, and the rest separately, so that we optimize the core with our code.
       logging.debug('integrating wasm.js')
       binaryen_bin = os.path.join(shared.BINARYEN_ROOT, 'bin')
       wasm_js = open(os.path.join(binaryen_bin, 'wasm.js')).read()
-      wasm_js = wasm_js.replace("Module['asmjsCodeFile']", '"' + os.path.basename(asm_target) + '"') # " or '? who knows :)
-      wasm_js = wasm_js.replace('Module["asmjsCodeFile"]', '"' + os.path.basename(asm_target) + '"')
-      wasm_js = wasm_js.replace("Module['wasmCodeFile']", '"' + os.path.basename(wasm_target) + '"') # " or '? who knows :)
-      wasm_js = wasm_js.replace('Module["wasmCodeFile"]', '"' + os.path.basename(wasm_target) + '"')
-      wasm_js = wasm_js.replace("Module['providedTotalMemory']", str(shared.Settings.TOTAL_MEMORY))
-      wasm_js = wasm_js.replace('Module["providedTotalMemory"]', str(shared.Settings.TOTAL_MEMORY))
       wasm_js = wasm_js.replace('EMSCRIPTEN_', 'emscripten_') # do not confuse the markers
-      if shared.Settings.BINARYEN_METHOD:
-        method = '(Module[\'wasmJSMethod\'] || "' + shared.Settings.BINARYEN_METHOD + '")'
-        wasm_js = wasm_js.replace("Module['wasmJSMethod']", method) # " or '? who knows :)
-        wasm_js = wasm_js.replace('Module["wasmJSMethod"]', method)
       js = open(js_target).read()
       combined = open(js_target, 'w')
       combined.write(wasm_js)
