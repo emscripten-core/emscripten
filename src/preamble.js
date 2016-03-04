@@ -910,11 +910,11 @@ function checkStackCookie() {
     abort('Stack overflow! Stack cookie has been overwritten, expected hex dwords 0x89BACDFE and 0x02135467, but received 0x' + HEAPU32[(STACK_MAX >> 2)-2].toString(16) + ' ' + HEAPU32[(STACK_MAX >> 2)-1].toString(16));
   }
 }
-#endif
 
 function abortStackOverflow(allocSize) {
   abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (STACK_MAX - STACKTOP) + ' bytes available!');
 }
+#endif
 
 #if ALLOW_MEMORY_GROWTH == 0
 function abortOnCannotGrowMemory() {
