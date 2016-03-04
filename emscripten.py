@@ -1335,6 +1335,8 @@ def emscript_wasm_backend(infile, settings, outfile, outfile_name, libraries=[],
 
   settings['MAX_GLOBAL_ALIGN'] = metadata['maxGlobalAlign']
 
+  settings['IMPLEMENTED_FUNCTIONS'] = metadata['implementedFunctions']
+
   # Save settings to a file to work around v8 issue 1579
   settings_file = temp_files.get('.txt').name
   def save_settings():
