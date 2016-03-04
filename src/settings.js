@@ -701,7 +701,7 @@ var EVAL_CTORS = 0; // This tries to evaluate global ctors at compile-time, appl
                     // execute safely in a sandbox. Any ffi access out of asm.js causes
                     // failure, as it could do something nondeterministic and/or
                     // alter some other state we don't see. If all the global ctor does
-                    // is pure compuation inside asm.js, it should be ok. Run with
+                    // is pure computation inside asm.js, it should be ok. Run with
                     // EMCC_DEBUG=1 in the env to see logging, and errors when it
                     // fails to eval (you'll see a message, or a stack trace; in the
                     // latter case, the functions on the stack should give you an idea
