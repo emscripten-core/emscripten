@@ -1844,6 +1844,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         else:
           script_env['PYTHONPATH'] = root_dir
         for script in shared.Settings.BINARYEN_SCRIPTS.split(','):
+          logging.debug('running binaryen script: ' + script)
           subprocess.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), js_target, wasm_target], env=script_env)
 
     # If we were asked to also generate HTML, do that
