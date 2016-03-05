@@ -1835,6 +1835,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if not shared.Settings.WASM_BACKEND:
         logging.debug('asm2wasm (asm.js => WebAssembly)')
         subprocess.check_call([os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--mapped-globals=' + wasm_target + '.mappedGlobals'], stdout=open(wasm_target, 'w'))
+      if shared.Settings.BINARYEN_SCRIPTS:
+        binaryen_scripts = os.path.join(shared.BINARYEN_ROOT, 'scripts')
+        script_env = os.environ.copy()
+        root_dir = os.path.abspath(os.path.dirname(__file__))
+        if script_env.get('PYTHONPATH'):
+          script_env['PYTHONPATH'] += ':' + root_dir
+        else:
+          script_env['PYTHONPATH'] = root_dir
+        for script in shared.Settings.BINARYEN_SCRIPTS.split(','):
+          subprocess.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), js_target, wasm_target], env=script_env)
 
     # If we were asked to also generate HTML, do that
     if final_suffix == 'html':
