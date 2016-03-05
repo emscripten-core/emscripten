@@ -3033,7 +3033,7 @@ LibraryManager.library = {
     }
     return 1;
   },
-  _inet_ntop6_raw__deps: ['ntohs', '_inet_ntop4_raw'],
+  _inet_ntop6_raw__deps: ['_inet_ntop4_raw'],
   _inet_ntop6_raw: function(ints) {
     //  ref:  http://www.ietf.org/rfc/rfc2373.txt - section 2.5.4
     //  Format for IPv4 compatible and mapped  128-bit IPv6 Addresses
