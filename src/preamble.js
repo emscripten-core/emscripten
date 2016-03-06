@@ -885,7 +885,8 @@ function updateGlobalBufferViews() {
 }
 
 var STATIC_BASE = 0, STATICTOP = 0, staticSealed = false; // static area
-var STACK_BASE = 0, STACKTOP = 0, STACK_MAX = 0; // stack area
+var STACK_BASE = 0, STACK_MAX = 0; // stack area
+STACKTOP = 0; // Create without 'var' keyword to make this a deletable property. After the asm.js module has been created, STACKTOP is managed inside asm.js module and this variable is deleted.
 var DYNAMIC_BASE = 0, DYNAMICTOP = 0; // dynamic area handled by sbrk
 
 #if USE_PTHREADS

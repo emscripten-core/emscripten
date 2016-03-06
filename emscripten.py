@@ -1203,6 +1203,12 @@ Runtime.setDynamicTop = asm['setDynamicTop'];
 Runtime.setTempRet0 = asm['setTempRet0'];
 Runtime.getTempRet0 = asm['getTempRet0'];
 ''')
+    funcs_js.append('''delete STACKTOP;
+''')
+    if settings['ASSERTIONS']:
+      # Some older browsers have had bugs with deleting variables from the global object, so test that it succeeds.
+      funcs_js.append('''assert(typeof STACKTOP === 'undefined');
+''')
 
     # Set function table masks
     masks = {}
