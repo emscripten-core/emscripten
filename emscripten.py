@@ -461,8 +461,10 @@ function _emscripten_asm_const_%s(%s) {
             Counter.pre.append(specific_bad_func)
             return specific_bad if not newline else (specific_bad + '\n')
         clean_item = item.replace("asm['", '').replace("']", '')
-        if clean_item not in implemented_functions and not (settings['EMULATED_FUNCTION_POINTERS'] and not settings['RELOCATABLE']): # when emulating function pointers, we don't need wrappers
-                                                                                                                                     # but if relocating, then we also have the copies in-module, and do
+        # when emulating function pointers, we don't need wrappers
+        # but if relocating, then we also have the copies in-module, and do
+        # also if binaryen, as wasm requires wrappers for the function table
+        if clean_item not in implemented_functions and not (settings['EMULATED_FUNCTION_POINTERS'] and not settings['RELOCATABLE'] and not settings['BINARYEN']):
           # this is imported into asm, we must wrap it
           call_ident = clean_item
           if call_ident in metadata['redirects']: call_ident = metadata['redirects'][call_ident]
