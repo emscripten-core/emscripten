@@ -21,7 +21,7 @@ var RuntimeGenerator = {
   stackAlloc: function(size, sep) {
     sep = sep || ';';
     var ret = RuntimeGenerator.alloc(size, 'STACK', sep, (isNumber(size) && parseInt(size) % {{{ STACK_ALIGN }}} == 0));
-    if (ASSERTIONS) {
+    if (ASSERTIONS || STACK_OVERFLOW_CHECK >= 2) {
       ret += sep + '(assert(' + asmCoercion('(STACKTOP|0) < (STACK_MAX|0)', 'i32') + ')|0)';
     }
     return ret;
