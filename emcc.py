@@ -936,7 +936,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # -s ASSERTIONS=1 implies the heaviest stack overflow check mode. Set the implication here explicitly to avoid having to
     # do preprocessor "#if defined(ASSERTIONS) || defined(STACK_OVERFLOW_CHECK)" in .js files, which is not supported.
-    if shared.Settings.ASSERTIONS: shared.Settings.STACK_OVERFLOW_CHECK = 2
+    if shared.Settings.ASSERTIONS:
+      shared.Settings.STACK_OVERFLOW_CHECK = 2
 
     try:
       assert shared.Settings.ASM_JS > 0, 'ASM_JS must be enabled in fastcomp'
