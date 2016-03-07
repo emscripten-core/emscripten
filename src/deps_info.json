@@ -22,6 +22,8 @@
   "gethostbyname": ["malloc"],
   "gethostbyname_r": ["free"],
   "getaddrinfo": ["malloc", "htonl", "htons", "ntohs"],
+  "_inet_ntop6_raw": ["ntohs"],
+  "_read_sockaddr": ["ntohs"],
   "freeaddrinfo": ["free"],
   "gai_strerror": ["malloc"],
   "setprotoent": ["malloc"],
