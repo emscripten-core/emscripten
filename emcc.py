@@ -1959,6 +1959,20 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       else:
         assert len(asm_mods) == 0, 'no --separate-asm means no client code mods are possible'
 
+      if shared.Settings.BINARYEN:
+        # We need to load the wasm file before anything else, it has to be synchronously ready TODO: optimize
+        un_src()
+        script_inline = '''
+          var xhr = new XMLHttpRequest();
+          xhr.open('GET', '%s', true);
+          xhr.responseType = 'arraybuffer';
+          xhr.onload = function() {
+            Module.wasmBinary = xhr.response;
+%s
+          };
+          xhr.send(null);
+''' % (wasm_target[:-1] + 'm', script_inline) # TODO: support wasts too, not just wasm?
+
       html = open(target, 'w')
       assert (script_src or script_inline) and not (script_src and script_inline)
       if script_src:
