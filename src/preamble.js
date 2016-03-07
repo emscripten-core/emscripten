@@ -1317,7 +1317,7 @@ function getU32(ptr) {
 #if SAFE_SPLIT_MEMORY
   checkPtr(ptr, 2);
 #endif
-  return HEAPU32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] | 0;
+  return HEAPU32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] >>> 0;
 }
 function getF32(ptr) {
   ptr = ptr | 0;
