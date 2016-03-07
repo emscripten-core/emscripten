@@ -1834,7 +1834,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       combined.close()
       if not shared.Settings.WASM_BACKEND:
         logging.debug('asm2wasm (asm.js => WebAssembly)')
-        subprocess.check_call([os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--mapped-globals=' + wasm_target + '.mappedGlobals'], stdout=open(wasm_target, 'w'))
+        subprocess.check_call([os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--mapped-globals=' + wasm_target + '.mappedGlobals', '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)], stdout=open(wasm_target, 'w'))
       if shared.Settings.BINARYEN_SCRIPTS:
         binaryen_scripts = os.path.join(shared.BINARYEN_ROOT, 'scripts')
         script_env = os.environ.copy()
