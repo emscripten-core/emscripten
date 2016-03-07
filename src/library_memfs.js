@@ -39,7 +39,8 @@ mergeInto(LibraryManager.library, {
               write: MEMFS.stream_ops.write,
               allocate: MEMFS.stream_ops.allocate,
               mmap: MEMFS.stream_ops.mmap,
-              msync: MEMFS.stream_ops.msync
+              msync: MEMFS.stream_ops.msync,
+              close: MEMFS.stream_ops.close
             }
           },
           link: {
@@ -205,6 +206,11 @@ mergeInto(LibraryManager.library, {
         throw FS.genericErrors[ERRNO_CODES.ENOENT];
       },
       mknod: function(parent, name, mode, dev) {
+#if IDBFS_AUTOMATIC_SYNC
+        if (parent && parent.mount && parent.mount.type.deferredSyncFs) {
+          parent.mount.type.deferredSyncFs(parent.mount);
+        }
+#endif
         return MEMFS.createNode(parent, name, mode, dev);
       },
       rename: function(old_node, new_dir, new_name) {
@@ -226,8 +232,19 @@ mergeInto(LibraryManager.library, {
         old_node.name = new_name;
         new_dir.contents[new_name] = old_node;
         old_node.parent = new_dir;
+
+#if IDBFS_AUTOMATIC_SYNC
+        if (old_node && old_node.mount && old_node.mount.type.deferredSyncFs) {
+          old_node.mount.type.deferredSyncFs(old_node.mount);
+        }
+#endif
       },
       unlink: function(parent, name) {
+#if IDBFS_AUTOMATIC_SYNC
+        if (parent && parent.mount && parent.mount.type.deferredSyncFs) {
+          parent.mount.type.deferredSyncFs(parent.mount);
+        }
+#endif
         delete parent.contents[name];
       },
       rmdir: function(parent, name) {
@@ -235,6 +252,7 @@ mergeInto(LibraryManager.library, {
         for (var i in node.contents) {
           throw new FS.ErrnoError(ERRNO_CODES.ENOTEMPTY);
         }
+
         delete parent.contents[name];
       },
       readdir: function(node) {
@@ -371,6 +389,14 @@ mergeInto(LibraryManager.library, {
         var bytesWritten = MEMFS.stream_ops.write(stream, buffer, 0, length, offset, false);
         // should we check if bytesWritten and length are the same?
         return 0;
+      },
+      close: function(stream) {
+#if IDBFS_AUTOMATIC_SYNC
+        if (stream.node && stream.node.mount &&
+            stream.node.mount.type.deferredSyncFs) {
+          stream.node.mount.type.deferredSyncFs(stream.node.mount);
+        }
+#endif
       }
     }
   }

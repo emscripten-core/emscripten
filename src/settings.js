@@ -253,7 +253,7 @@ var LEGACY_GL_EMULATION = 0; // Includes code to emulate various desktop GL feat
                              // in some cases, see http://kripken.github.io/emscripten-site/docs/porting/multimedia_and_graphics/OpenGL-support.html
 var GL_FFP_ONLY = 0; // If you specified LEGACY_GL_EMULATION = 1 and only use fixed function pipeline in your code,
                      // you can also set this to 1 to signal the GL emulation layer that it can perform extra
-                     // optimizations by knowing that the user code does not use shaders at all. If 
+                     // optimizations by knowing that the user code does not use shaders at all. If
                      // LEGACY_GL_EMULATION = 0, this setting has no effect.
 
 var STB_IMAGE = 0; // Enables building of stb-image, a tiny public-domain library for decoding images, allowing
@@ -299,11 +299,11 @@ var ASYNCIFY_FUNCTIONS = ['emscripten_sleep', // Functions that call any functio
                           'emscripten_wget',  // will be transformed
                           'emscripten_yield'];
 var ASYNCIFY_WHITELIST = ['qsort',   // Functions in this list are never considered async, even if they appear in ASYNCIFY_FUNCTIONS
-                          'trinkle', // In the asyncify transformation, any function that calls a function pointer is considered async 
+                          'trinkle', // In the asyncify transformation, any function that calls a function pointer is considered async
                           '__toread', // This whitelist is useful when a function is known to be sync
                           '__uflow',  // currently this link contains some functions in libc
-                          '__fwritex', 
-                          'MUSL_vfprintf']; 
+                          '__fwritex',
+                          'MUSL_vfprintf'];
 
 var EXPORTED_RUNTIME_METHODS = [ // Methods that are exported on Module. By default we export quite a bit, you can reduce this list to lower your code size,
                                  // especially when closure is run (exporting prevents closure from eliminating code)
@@ -361,7 +361,7 @@ var FS_LOG = 0; // Log all FS operations.  This is especially helpful when you'r
                 // so that you can create a virtual file system with all of the required files.
 var CASE_INSENSITIVE_FS = 0; // If set to nonzero, the provided virtual filesystem if treated case-insensitive, like
                              // Windows and OSX do. If set to 0, the VFS is case-sensitive, like on Linux.
-var MEMFS_APPEND_TO_TYPED_ARRAYS = 0; // If set to nonzero, MEMFS will always utilize typed arrays as the backing store 
+var MEMFS_APPEND_TO_TYPED_ARRAYS = 0; // If set to nonzero, MEMFS will always utilize typed arrays as the backing store
                                       // for appending data to files. The default behavior is to use typed arrays for files
                                       // when the file size doesn't change after initial creation, and for files that do
                                       // change size, use normal JS arrays instead.
@@ -600,6 +600,7 @@ var EMTERPRETIFY_ADVISE = 0; // Performs a static analysis to suggest which func
                              // appears they can be on the stack when a sync function is called in the EMTERPRETIFY_ASYNC option.
                              // After showing the suggested list, compilation will halt. You can apply the provided list as an
                              // emcc argument when compiling later.
+var IDBFS_AUTOMATIC_SYNC = 0; // Automatic call syncfs on the mount when file changes.
 
 var SPLIT_MEMORY = 0; // If > 0, we split memory into chunks, of the size given in this parameter.
                       //  * TOTAL_MEMORY becomes the maximum amount of memory, as chunks are allocated on

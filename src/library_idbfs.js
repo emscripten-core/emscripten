@@ -15,6 +15,22 @@ mergeInto(LibraryManager.library, {
       // reuse all of the core MEMFS functionality
       return MEMFS.mount.apply(null, arguments);
     },
+#if IDBFS_AUTOMATIC_SYNC
+    AUTOMATIC_SYNC_TIMEOUT: 10000,
+    deferredSyncFs: function(mount) {
+      // If there is already a timer, don't set another one.
+      if (mount.mountSyncfsTimer) { return; }
+
+      // Set a timer what would trigger syncfs after 10 sec.
+      mount.mountSyncfsTimer = Browser.safeSetTimeout(function() {
+        IDBFS.syncfs(mount, false, function(err) {
+          if (err) {
+            console.log("IDBFS.syncfs threw an exception: ", err);
+          }
+        });
+      }, IDBFS.AUTOMATIC_SYNC_TIMEOUT);
+    },
+#endif
     syncfs: function(mount, populate, callback) {
       IDBFS.getLocalSet(mount, function(err, local) {
         if (err) return callback(err);
@@ -24,6 +40,11 @@ mergeInto(LibraryManager.library, {
 
           var src = populate ? remote : local;
           var dst = populate ? local : remote;
+
+#if IDBFS_AUTOMATIC_SYNC
+          clearTimeout(mount.idbSyncTimer);
+          mount.mountSyncfsTimer = undefined;
+#endif
 
           IDBFS.reconcile(src, dst, callback);
         });
