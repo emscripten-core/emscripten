@@ -71,6 +71,24 @@ if (!ENVIRONMENT_IS_PTHREAD) PthreadWorkerInit = {};
 var currentScriptUrl = ENVIRONMENT_IS_WORKER ? undefined : document.currentScript.src;
 #endif
 
+#if EMTERPRETIFY_ASYNC
+Module['resume'] = function(identifier) {
+  if (!EmterpreterAsync.suspensions.hasOwnProperty(identifier)) {
+    EmterpreterAsync.suspensions[identifier] = {};
+    EmterpreterAsync.suspensions[identifier].resume_count = 0;
+  }
+
+  if (EmterpreterAsync.suspensions[identifier].resume_count == -1) {
+    var resume = EmterpreterAsync.suspensions[identifier].raw_resume_handler;
+    EmterpreterAsync.suspensions[identifier].resume_count = 0;
+    EmterpreterAsync.suspensions[identifier].raw_resume_handler = undefined;
+    resume();
+  } else {
+    EmterpreterAsync.suspensions[identifier].resume_count += 1;
+  }
+};
+#endif
+
 if (ENVIRONMENT_IS_NODE) {
   // Expose functionality in the same simple way that the shells work
   // Note that we pollute the global namespace here, otherwise we break in node
