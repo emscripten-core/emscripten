@@ -8046,6 +8046,7 @@ asm2i = make_run("asm2i", compiler=CLANG, emcc_args=["-O2", '-s', 'EMTERPRETIFY=
 #asm2m = make_run("asm2m", compiler=CLANG, emcc_args=["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1"])
 #binaryen = make_run("binaryen", compiler=CLANG, emcc_args=["-s", "BINARYEN='..path..'"])
 #normalyen = make_run("normalyen", compiler=CLANG, emcc_args=['-s', 'GLOBAL_BASE=1024']) # useful comparison to binaryen
+#spidaryen = make_run("binaryen", compiler=CLANG, emcc_args=['-O3', '-s', 'BINARYEN=1', '-s', 'BINARYEN_SCRIPTS="spidermonkify.py"'])
 
 # Legacy test modes - 
 asm2nn = make_run("asm2nn", compiler=CLANG, emcc_args=["-O2"], env={"EMCC_NATIVE_OPTIMIZER": "0"})
