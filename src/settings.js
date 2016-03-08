@@ -696,4 +696,43 @@ var ELIMINATE_DUPLICATE_FUNCTIONS = 0; // disabled by default
 var ELIMINATE_DUPLICATE_FUNCTIONS_PASSES = 5;
 var ELIMINATE_DUPLICATE_FUNCTIONS_DUMP_EQUIVALENT_FUNCTIONS = 0;
 
+var EVAL_CTORS = 0; // This tries to evaluate global ctors at compile-time, applying their
+                    // effects into the mem init file. This saves running code during
+                    // startup, and also allows removing the global ctor functions and
+                    // other code that only they used, so this is also good for reducing
+                    // code size. However, this does make the compile step much slower.
+                    //
+                    // This basically runs the ctors during compile time, seeing if they
+                    // execute safely in a sandbox. Any ffi access out of asm.js causes
+                    // failure, as it could do something nondeterministic and/or
+                    // alter some other state we don't see. If all the global ctor does
+                    // is pure computation inside asm.js, it should be ok. Run with
+                    // EMCC_DEBUG=1 in the env to see logging, and errors when it
+                    // fails to eval (you'll see a message, or a stack trace; in the
+                    // latter case, the functions on the stack should give you an idea
+                    // of what ffi was called and why, and perhaps you can refactor
+                    // your code to avoid it, e.g., remove mallocs, printfs in global ctors).
+                    //
+                    // This optimization can increase the size of the mem init file,
+                    // because ctors can write to memory that would otherwise be
+                    // in a zeroinit area. This may not be a significant increase after
+                    // gzip, if there are mostly zeros in there, and in any case
+                    // the mem init increase would be offset by a code size decrease.
+                    // (Unless you have a small ctor that writes 'random' data to memory,
+                    // which would reduce little code but add potentially lots of
+                    // uncompressible data.)
+                    //
+                    // LLVM's GlobalOpt *almost* does this operation. It does in simple
+                    // cases, where LLVM IR is not too complex for its logic to evaluate,
+                    // but it isn't powerful enough for e.g. libc++ iostream ctors. It
+                    // is just hard to do at the LLVM IR level - LLVM IR is complex and
+                    // getting more complex, this would require GlobalOpt to have a full
+                    // interpreter, plus a way to write back into LLVM IR global objects.
+                    // At the asm.js level, however, everything has been lowered into a
+                    // simple low level, and we also just need to write bytes into an
+                    // array, so this is easy for us to do, but not for LLVM. A further
+                    // issue for LLVM is that it doesn't know that we will not link in
+                    // further code, so it only tries to optimize ctors with lowest
+                    // priority. We do know that, and can optimize all the ctors.
+
 // Reserved: variables containing POINTER_MASKING.

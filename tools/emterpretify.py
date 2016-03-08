@@ -523,12 +523,6 @@ opcode_used = {}
 for opcode in OPCODES:
   opcode_used[opcode] = False
 
-def is_function_table(name):
-  return name.startswith('FUNCTION_TABLE_')
-
-def is_dyn_call(func):
-  return func.startswith('dynCall_')
-
 def make_emterpreter(zero=False):
   # return is specialized per interpreter
   CASES[ROPCODES['RET']] = pop_stacktop(zero)
@@ -539,7 +533,7 @@ def make_emterpreter(zero=False):
     name = global_func_names[i]
     sig = global_func_sigs[i]
 
-    function_pointer_call = is_function_table(name)
+    function_pointer_call = shared.JS.is_function_table(name)
 
     # our local registers are never true floats, and we just do fround calls to ensure correctness, not caring
     # about performance. but when coercing to outside of the emterpreter, we need to know the true sig,
@@ -727,45 +721,12 @@ if __name__ == '__main__':
 
   if ADVISE:
     # Advise the user on which functions should likely be emterpreted
-    temp = temp_files.get('.js').name
-    shared.Building.js_optimizer(infile, ['dumpCallGraph'], output_filename=temp, just_concat=True)
-    asm = asm_module.AsmModule(temp)
-    lines = asm.funcs_js.split('\n')
-    can_call = {}
-    for i in range(len(lines)):
-      line = lines[i]
-      if line.startswith('// REACHABLE '):
-        curr = json.loads(line[len('// REACHABLE '):])
-        func = curr[0]
-        targets = curr[2]
-        can_call[func] = set(targets)
-    # function tables too - treat a function all as a function that can call anything in it, which is effectively what it is
-    for name, funcs in asm.tables.iteritems():
-      can_call[name] = set(funcs[1:-1].split(','))
-    #print can_call
-    # Note: We ignore calls in from outside the asm module, so you could do emterpreted => outside => emterpreted, and we would
-    #       miss the first one there. But this is acceptable to do, because we can't save such a stack anyhow, due to the outside!
-    #print 'can call', can_call, '\n!!!\n', asm.tables, '!'
-    reachable_from = {}
-    for func, targets in can_call.iteritems():
-      for target in targets:
-        if target not in reachable_from:
-          reachable_from[target] = set()
-        reachable_from[target].add(func)
-    #print 'reachable from', reachable_from
-    # find all functions that can reach the sync funcs, which are those that can be on the stack during an async save/load, and hence must all be emterpreted
-    to_check = list(SYNC_FUNCS)
-    advised = set()
-    while len(to_check) > 0:
-      curr = to_check.pop()
-      if curr in reachable_from:
-        for reacher in reachable_from[curr]:
-          if reacher not in advised:
-            if not is_dyn_call(reacher) and not is_function_table(reacher): advised.add(str(reacher))
-            to_check.append(reacher)
+    data = shared.Building.calculate_reachable_functions(infile, list(SYNC_FUNCS))
+    advised = data['reachable']
+    total_funcs = data['total_funcs']
     print "Suggested list of functions to run in the emterpreter:"
-    print "  -s EMTERPRETIFY_WHITELIST='" + str(sorted(list(advised))).replace("'", '"') + "'"
-    print "(%d%% out of %d functions)" % (int((100.0*len(advised))/len(can_call)), len(can_call))
+    print "  -s EMTERPRETIFY_WHITELIST='" + str(sorted(advised)).replace("'", '"') + "'"
+    print "(%d%% out of %d functions)" % (int((100.0*len(advised))/total_funcs), total_funcs)
     sys.exit(0)
 
   # final global functions
@@ -798,7 +759,7 @@ if __name__ == '__main__':
 
   # decide which functions will be emterpreted, and find which are externally reachable (from outside other emterpreted code; those will need trampolines)
 
-  emterpreted_funcs = set([func for func in asm.funcs if func not in BLACKLIST and not is_dyn_call(func)])
+  emterpreted_funcs = set([func for func in asm.funcs if func not in BLACKLIST and not shared.JS.is_dyn_call(func)])
 
   tabled_funcs = asm.get_table_funcs()
   exported_funcs = [func.split(':')[0] for func in asm.exports]

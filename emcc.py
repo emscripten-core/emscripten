@@ -906,7 +906,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       next_arg_index += 1
 
     # Apply optimization level settings
-    shared.Settings.apply_opt_level(opt_level, noisy=True)
+    shared.Settings.apply_opt_level(opt_level=opt_level, shrink_level=shrink_level, noisy=True)
 
     if os.environ.get('EMCC_FAST_COMPILER') == '0':
       logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
@@ -1115,6 +1115,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
       separate_asm = True
       shared.Settings.FINALIZE_ASM_JS = False
+
+    if shared.Settings.GLOBAL_BASE < 0:
+      shared.Settings.GLOBAL_BASE = 8 # default if nothing else sets it
 
     shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
     shared.Settings.OPT_LEVEL = opt_level
@@ -1661,6 +1664,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS and opt_level >= 2:
         JSOptimizer.flush()
         shared.Building.eliminate_duplicate_funcs(final)
+
+      if shared.Settings.EVAL_CTORS and memory_init_file and debug_level < 4:
+        JSOptimizer.flush()
+        shared.Building.eval_ctors(final, memfile)
+        if DEBUG: save_intermediate('eval-ctors', 'js')
 
       if not shared.Settings.EMTERPRETIFY:
         do_minify()

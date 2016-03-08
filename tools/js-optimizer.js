@@ -7020,7 +7020,7 @@ function emterpretify(ast) {
         ret = ret.concat(reg[1]);
         actuals.push(reg[0]);
         var curr = ASM_SIG[detectType(param, asmData)];
-        assert(curr !== 'v');//, JSON.stringify(param) + ' ==> ' + ASM_SIG[detectType(param, asmData)]);
+        if (curr === 'v') curr = 'i'; // if we can't detect it, it must be an asm global. the only possibilities are int. TODO: add globals to detectType
         sig += curr;
       });
       ret.push(internal ? 'INTCALL' : 'EXTCALL');
@@ -7848,6 +7848,15 @@ function JSDCE(ast) {
   cleanUp(ast, names);
 }
 
+function removeFuncs(ast) {
+  assert(ast[0] === 'toplevel');
+  var keep = set(extraInfo.keep);
+  ast[1] = ast[1].filter(function(node) {
+    assert(node[0] === 'defun');
+    return node[1] in keep;
+  });
+}
+
 // Passes table
 
 var minifyWhitespace = false, printMetadata = true, asm = false, asmPreciseF32 = false, emitJSON = false, last = false;
@@ -7885,6 +7894,7 @@ var passes = {
   dumpCallGraph: dumpCallGraph,
   asmLastOpts: asmLastOpts,
   JSDCE: JSDCE,
+  removeFuncs: removeFuncs,
   noop: function() {},
 
   // flags

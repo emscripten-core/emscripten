@@ -6028,6 +6028,107 @@ int main() {
     src = open('a.out.js').read()
     assert 'use asm' not in src
 
+  def test_eval_ctors(self):
+    print 'non-terminating ctor'
+    src = r'''
+      struct C {
+        C() {
+          volatile int y = 0;
+          while (y == 0) {}
+        }
+      };
+      C always;
+      int main() {}
+    '''
+    open('src.cpp', 'w').write(src)
+    check_execute([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'EVAL_CTORS=1', '-profiling-funcs'])
+    print 'check no ctors is ok'
+    check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Oz'])
+    self.assertContained('hello, world!', run_js('a.out.js'))
+    # on by default in -Oz, but user-overridable
+    def get_size(args):
+      print 'get_size', args
+      check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp')] + args)
+      self.assertContained('hello, world!', run_js('a.out.js'))
+      return (os.stat('a.out.js').st_size, os.stat('a.out.js.mem').st_size)
+    def check_size(left, right):
+      if left[0] == right[0] and left[1] == right[1]: return 0
+      if left[0] < right[0] and left[1] > right[1]: return -1 # smaller js, bigger mem
+      if left[0] > right[0] and left[1] < right[1]: return 1
+      assert 0, [left, right]
+    o2_size = get_size(['-O2'])
+    assert check_size(get_size(['-O2']), o2_size) == 0, 'deterministic'
+    assert check_size(get_size(['-O2', '-s', 'EVAL_CTORS=1']), o2_size) < 0, 'eval_ctors works if user asks for it'
+    oz_size = get_size(['-Oz'])
+    assert check_size(get_size(['-Oz']), oz_size) == 0, 'deterministic'
+    assert check_size(get_size(['-Oz', '-s', 'EVAL_CTORS=1']), oz_size) == 0, 'eval_ctors is on by default in oz'
+    assert check_size(get_size(['-Oz', '-s', 'EVAL_CTORS=0']), oz_size) == 1, 'eval_ctors can be turned off'
+
+    linkable_size =   get_size(['-Oz', '-s', 'EVAL_CTORS=1', '-s', 'LINKABLE=1'])
+    assert check_size(get_size(['-Oz', '-s', 'EVAL_CTORS=0', '-s', 'LINKABLE=1']), linkable_size) == 1, 'noticeable difference in linkable too'
+
+    # ensure order of execution remains correct, even with a bad ctor
+    def test(p1, p2, p3, last, expected):
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+        volatile int total = 0;
+        struct C {
+          C(int x) {
+            volatile int y = x;
+            y++;
+            y--;
+            if (y == 0xf) {
+              printf("you can't eval me ahead of time\n"); // bad ctor
+            }
+            total <<= 4;
+            total += int(y);
+          }
+        };
+        C __attribute__((init_priority(%d))) c1(0x5);
+        C __attribute__((init_priority(%d))) c2(0x8);
+        C __attribute__((init_priority(%d))) c3(%d);
+        int main() {
+          printf("total is 0x%%x.\n", total);
+        }
+      ''' % (p1, p2, p3, last)
+      open('src.cpp', 'w').write(src)
+      check_execute([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'EVAL_CTORS=1', '-profiling-funcs'])
+      self.assertContained('total is %s.' % hex(expected), run_js('a.out.js'))
+      shutil.copyfile('a.out.js', 'x' + hex(expected) + '.js')
+      return open('a.out.js').read().count('function _')
+    print 'no bad ctor'
+    first  = test(1000, 2000, 3000, 0xe, 0x58e)
+    second = test(3000, 1000, 2000, 0xe, 0x8e5)
+    third  = test(2000, 3000, 1000, 0xe, 0xe58)
+    print first, second, third
+    assert first == second and second == third
+    print 'with bad ctor'
+    first  = test(1000, 2000, 3000, 0xf, 0x58f) # 2 will succeed
+    second = test(3000, 1000, 2000, 0xf, 0x8f5) # 1 will succedd
+    third  = test(2000, 3000, 1000, 0xf, 0xf58) # 0 will succeed
+    print first, second, third
+    assert first < second and second < third
+
+    print 'helpful output'
+    if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+    try:
+      os.environ['EMCC_DEBUG'] = '1'
+      open('src.cpp', 'w').write(r'''
+#include <stdio.h>
+struct C {
+  C() { printf("constructing!\n"); } // don't remove this!
+};
+C c;
+int main() {}
+      ''')
+      out, err = Popen([PYTHON, EMCC, 'src.cpp', '-Oz'], stderr=PIPE).communicate()
+      assert '___syscall54' in err, 'the failing call should be mentioned'
+      assert 'ctorEval.js' in err, 'with a stack trace'
+      assert 'ctor_evaller: not successful' in err, 'with logging'
+    finally:
+      del os.environ['EMCC_DEBUG']
+
   def test_override_environment(self):
     open('main.cpp', 'w').write(r'''
       #include <emscripten.h>

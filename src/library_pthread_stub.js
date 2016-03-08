@@ -32,20 +32,35 @@ var LibraryPThreadStub = {
   pthread_mutexattr_init: function() {},
   pthread_mutexattr_settype: function() {},
   pthread_mutexattr_destroy: function() {},
-  pthread_mutex_lock: function() {},
-  pthread_mutex_unlock: function() {},
-  pthread_mutex_trylock: function() {
+
+  pthread_mutex_lock__asm: true,
+  pthread_mutex_lock__sig: 'ii',
+  pthread_mutex_lock: function(x) {
+    x = x | 0;
     return 0;
   },
+  pthread_mutex_unlock__asm: true,
+  pthread_mutex_unlock__sig: 'ii',
+  pthread_mutex_unlock: function(x) {
+    x = x | 0;
+    return 0;
+  },
+  pthread_mutex_trylock__asm: true,
+  pthread_mutex_trylock__sig: 'ii',
+  pthread_mutex_trylock: function(x) {
+    x = x | 0;
+    return 0;
+  },
+
   pthread_mutexattr_setpshared: function(attr, pshared) {
     // XXX implement if/when getpshared is required
     return 0;
   },
+
   pthread_cond_init: function() { return 0; },
   pthread_cond_destroy: function() { return 0; },
   pthread_cond_wait: function() { return 0; },
   pthread_cond_timedwait: function() { return 0; },
-  pthread_cond_broadcast: function() { return 0; },
   pthread_cond_signal: function() { return 0; },
 
   pthread_condattr_init: function() { return 0; },
@@ -55,10 +70,19 @@ var LibraryPThreadStub = {
   pthread_condattr_getclock: function() { return 0; },
   pthread_condattr_getpshared: function() { return 0; },
 
-  pthread_self: function() {
-    //FIXME: assumes only a single thread
+  pthread_cond_broadcast__asm: true,
+  pthread_cond_broadcast__sig: 'ii',
+  pthread_cond_broadcast: function(x) {
+    x = x | 0;
     return 0;
   },
+
+  pthread_self__asm: true,
+  pthread_self__sig: 'i',
+  pthread_self: function() {
+    return 0;
+  },
+
   pthread_attr_init: function(attr) {
     /* int pthread_attr_init(pthread_attr_t *attr); */
     //FIXME: should allocate a pthread_attr_t
