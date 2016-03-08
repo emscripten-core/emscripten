@@ -4279,7 +4279,6 @@ main(const int argc, const char * const * const argv)
       if '--closure' in opts: # no EXPORTED_RUNTIME_METHODS makes closure much more effective
         assert sizes['no_nuthin'] < 0.975*sizes['no_fs']
       assert sizes['no_fs_manual'] < sizes['no_fs'] # manual can remove a tiny bit more
-      assert sizes['no_fs'] < 1.02*sizes['no_fs_manual']
     test([], 0.75, 360000)
     test(['-O1'], 0.66, 210000)
     test(['-O2'], 0.50, 70000)
