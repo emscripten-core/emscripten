@@ -6123,9 +6123,9 @@ C c;
 int main() {}
       ''')
       out, err = Popen([PYTHON, EMCC, 'src.cpp', '-Oz'], stderr=PIPE).communicate()
-      assert '___syscall54' in err, 'the failing call should be mentioned'
-      assert 'ctorEval.js' in err, 'with a stack trace'
-      assert 'ctor_evaller: not successful' in err, 'with logging'
+      self.assertContained('___syscall54', err) # the failing call should be mentioned
+      self.assertContained('ctorEval.js', err) # with a stack trace
+      self.assertContained('ctor_evaller: not successful', err) # with logging
     finally:
       del os.environ['EMCC_DEBUG']
 
