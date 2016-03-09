@@ -327,7 +327,7 @@ f.close()
         ''')
       Popen([PYTHON, EMCC, c_file, '--cache', cache_dir_name]).communicate()
       assert os.path.exists(cache_dir_name), 'The cache directory %s must exist after the build' % cache_dir_name
-      assert os.path.exists(os.path.join(cache_dir_name, 'libc.bc')), 'The cache directory must contain a built libc'
+      assert os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')), 'The cache directory must contain a built libc'
     finally:
       os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
       shutil.rmtree(tempdirname)
