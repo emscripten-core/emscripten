@@ -362,9 +362,12 @@ def get_fastcomp_src_dir():
   return None
 
 def get_llc_targets():
-  llc_version_info = Popen([LLVM_COMPILER, '--version'], stdout=PIPE).communicate()[0]
-  pre, targets = llc_version_info.split('Registered Targets:')
-  return targets
+  try:
+    llc_version_info = Popen([LLVM_COMPILER, '--version'], stdout=PIPE).communicate()[0]
+    pre, targets = llc_version_info.split('Registered Targets:')
+    return targets
+  except Exception, e:
+    return '(no targets could be identified: ' + str(e) + ')'
 
 def has_asm_js_target(targets):
   return 'js' in targets and 'JavaScript (asm.js, emscripten) backend' in targets
