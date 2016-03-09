@@ -834,15 +834,26 @@ else:
     logging.debug('testing for asm.js target, because if not present (i.e. this is plain vanilla llvm, not emscripten fastcomp), we will use the wasm target instead (set EMCC_WASM_BACKEND to skip this check)')
     vanilla = not has_asm_js_target(get_llc_targets())
     saved_file = os.path.join(temp_cache.dirname, 'is_vanilla.txt')
-    open(saved_file, 'w').write('1' if vanilla else '0')
+    open(saved_file, 'w').write(('1' if vanilla else '0') + ':' + LLVM_ROOT)
     return saved_file
   is_vanilla_file = temp_cache.get('is_vanilla', check_vanilla, extension='.txt')
   if CONFIG_FILE and os.stat(CONFIG_FILE).st_mtime > os.stat(is_vanilla_file).st_mtime:
     logging.debug('config file changed since we checked vanilla; re-checking')
     os.remove(is_vanilla_file)
     is_vanilla_file = temp_cache.get('is_vanilla', check_vanilla, extension='.txt')
+  contents = open(is_vanilla_file).read()
+  if ':' not in contents:
+    logging.debug('regenerating vanilla check since old format')
+    os.remove(is_vanilla_file)
+    is_vanilla_file = temp_cache.get('is_vanilla', check_vanilla, extension='.txt')
+  is_vanilla, llvm_used = open(is_vanilla_file).read().split(':')
+  if llvm_used != LLVM_ROOT:
+    logging.debug('regenerating vanilla check since other llvm')
+    os.remove(is_vanilla_file)
+    is_vanilla_file = temp_cache.get('is_vanilla', check_vanilla, extension='.txt')
+    is_vanilla, llvm_used = open(is_vanilla_file).read().split(':')
   temp_cache = None
-  if open(is_vanilla_file).read() == '1':
+  if is_vanilla == '1':
     logging.debug('check tells us to use wasm backend')
     LLVM_TARGET = WASM_TARGET
   else:
