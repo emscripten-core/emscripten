@@ -835,7 +835,8 @@ else:
   temp_cache = cache.Cache()
   def check_vanilla():
     logging.debug('testing for asm.js target, because if not present (i.e. this is plain vanilla llvm, not emscripten fastcomp), we will use the wasm target instead (set EMCC_WASM_BACKEND to skip this check)')
-    vanilla = not has_asm_js_target(get_llc_targets())
+    targets = get_llc_targets()
+    vanilla = has_wasm_target(targets) and not has_asm_js_target(targets)
     saved_file = os.path.join(temp_cache.dirname, 'is_vanilla.txt')
     open(saved_file, 'w').write(('1' if vanilla else '0') + ':' + LLVM_ROOT)
     return saved_file
