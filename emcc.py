@@ -1455,16 +1455,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.BINARYEN:
       # add in the glue integration code as a pre-js, so it is optimized together with everything else
       wasm_js_glue = open(os.path.join(shared.BINARYEN_ROOT, 'src', 'js', 'wasm.js-post.js')).read()
-      wasm_js_glue = wasm_js_glue.replace("Module['asmjsCodeFile']", '"' + os.path.basename(asm_target) + '"') # " or '? who knows :)
-      wasm_js_glue = wasm_js_glue.replace('Module["asmjsCodeFile"]', '"' + os.path.basename(asm_target) + '"')
-      wasm_js_glue = wasm_js_glue.replace("Module['wasmCodeFile']", '"' + os.path.basename(wasm_target) + '"') # " or '? who knows :)
-      wasm_js_glue = wasm_js_glue.replace('Module["wasmCodeFile"]', '"' + os.path.basename(wasm_target) + '"')
-      wasm_js_glue = wasm_js_glue.replace("Module['providedTotalMemory']", str(shared.Settings.TOTAL_MEMORY))
-      wasm_js_glue = wasm_js_glue.replace('Module["providedTotalMemory"]', str(shared.Settings.TOTAL_MEMORY))
+      wasm_js_glue = wasm_js_glue.replace('{{{ asmjsCodeFile }}}', '"' + os.path.basename(asm_target) + '"')
+      wasm_js_glue = wasm_js_glue.replace('{{{ wasmCodeFile }}}', '"' + os.path.basename(wasm_target) + '"')
       if shared.Settings.BINARYEN_METHOD:
-        method = '(Module[\'wasmJSMethod\'] || "' + shared.Settings.BINARYEN_METHOD + '")'
-        wasm_js_glue = wasm_js_glue.replace("Module['wasmJSMethod']", method) # " or '? who knows :)
-        wasm_js_glue = wasm_js_glue.replace('Module["wasmJSMethod"]', method)
+        wasm_js_glue = wasm_js_glue.replace('{{{ wasmJSMethod }}}', '(Module[\'wasmJSMethod\'] || "' + shared.Settings.BINARYEN_METHOD + '")')
+      else:
+        wasm_js_glue = wasm_js_glue.replace('{{{ wasmJSMethod }}}', 'null')
       wasm_js_glue = wasm_js_glue.replace('{{{ WASM_BACKEND }}}', str(shared.Settings.WASM_BACKEND)) # if wasm backend, wasm contains memory segments
       pre_js = wasm_js_glue + '\n' + pre_js
 
