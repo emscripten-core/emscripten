@@ -621,13 +621,10 @@ var USE_GLFW = 2; // Specify the GLFW version that is being linked against.
                   // Only relevant, if you are linking against the GLFW library.
                   // Valid options are 2 for GLFW2 and 3 for GLFW3.
 
-var BINARYEN = ""; // Path to [Binaryen](https://github.com/WebAssembly/binaryen), which we use to
-                   // compile (at runtime) our asm.js output into WebAssembly. That then runs in
-                   // a shipped Binaryen interpreter for WebAssembly, or, once browsers get native
-                   // WebAssembly support, it will run directly.
-                   // This path should be to the root Binaryen directory (not the /bin subfolder).
-                   // You need to build Binaryen, so that /bin/wasm.js under the Binaryen
-                   // directory exists.
+var BINARYEN = 0; // Whether to use [Binaryen](https://github.com/WebAssembly/binaryen) to
+                  // compile (at runtime) our asm.js output into WebAssembly.
+                  // You need BINARYEN_ROOT set to the the root dir of binaryen, in your
+                  // ~/.emscripten file.
 var BINARYEN_METHOD = ""; // See binaryen's src/js/post.js for details.
 var BINARYEN_SCRIPTS = ""; // An optional comma-separated list of script hooks to run after binaryen,
                            // in binaryen's /scripts dir.
