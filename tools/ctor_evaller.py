@@ -18,7 +18,8 @@ assert global_base > 0
 config = shared.Configuration()
 
 if shared.DEBUG:
-  temp_file = '/tmp/emscripten_temp/ctorEval.js'
+  temp_file = os.path.join(shared.CANONICAL_TEMP_DIR, 'ctorEval.js')
+  shared.safe_ensure_dirs(shared.CANONICAL_TEMP_DIR)
 else:
   temp_file = config.get_temp_files().get('.ctorEval.js').name
 
