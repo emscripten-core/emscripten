@@ -835,15 +835,29 @@ fi
       if 'EMCC_WASM_BACKEND' in os.environ:
         del os.environ['EMCC_WASM_BACKEND']
 
+    def make_fake(report):
+      f = open(CONFIG_FILE, 'a')
+      f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake', 'bin') + '"\n')
+      f.close()
+
+      f = open(path_from_root('tests', 'fake', 'bin', 'llc'), 'w')
+      f.write('#!/bin/sh\n')
+      f.write('echo "llc fake output\nRegistered Targets:\n%s"' % report)
+      f.close()
+      os.chmod(path_from_root('tests', 'fake', 'bin', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+
     try:
       os.environ['EMCC_DEBUG'] = '1'
       os.environ['EMCC_WASM_BACKEND'] = '1'
+      make_fake('wasm32-unknown-unknown')
       # see that we request the right backend from llvm
       self.check_working([EMCC, 'tests/hello_world.c', '-c'], 'wasm32-unknown-unknown')
       os.environ['EMCC_WASM_BACKEND'] = '0'
+      make_fake('asmjs-unknown-emscripten')
       self.check_working([EMCC, 'tests/hello_world.c', '-c'], 'asmjs-unknown-emscripten')
       del os.environ['EMCC_WASM_BACKEND']
       # check the current installed one is ok
+      restore()
       self.check_working(EMCC)
       output = self.check_working(EMCC, 'check tells us to use')
       if 'wasm backend' in output:
@@ -862,16 +876,7 @@ fi
     os.makedirs(path_from_root('tests', 'fake', 'bin'))
 
     def test_with_fake(report, expected):
-      f = open(CONFIG_FILE, 'a')
-      f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake', 'bin') + '"\n')
-      f.close()
-
-      f = open(path_from_root('tests', 'fake', 'bin', 'llc'), 'w')
-      f.write('#!/bin/sh\n')
-      f.write('echo "llc fake output\nRegistered Targets:\n%s"' % report)
-      f.close()
-      os.chmod(path_from_root('tests', 'fake', 'bin', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
-
+      make_fake(report)
       try:
         os.environ['EMCC_DEBUG'] = '1'
         output = self.check_working([EMCC, 'tests/hello_world.c', '-c'], expected)
@@ -906,10 +911,11 @@ fi
 
     try:
       os.environ['EMCC_DEBUG'] = '1'
-      self.check_working([EMCC, 'tests/hello_world.c', '-c'])
+      self.check_working([EMCC, 'tests/hello_world.c', '-c'], 'use asm.js backend')
       os.environ['LLVM'] = path_from_root('tests', 'fake2', 'bin')
-      self.assertContained('regenerating vanilla check since other llvm', output)
+      self.check_working([EMCC, 'tests/hello_world.c', '-c'], 'regenerating vanilla check since other llvm')
     finally:
       del os.environ['EMCC_DEBUG']
-      del os.environ['LLVM']
+      if os.environ.get('LLVM'):
+        del os.environ['LLVM']
 
