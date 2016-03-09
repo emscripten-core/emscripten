@@ -882,3 +882,34 @@ fi
     test_with_fake('got js backend! JavaScript (asm.js, emscripten) backend', 'check tells us to use asm.js backend')
     test_with_fake('got wasm32 backend! WebAssembly 32-bit',                  'check tells us to use wasm backend')
 
+    # use LLVM env var to modify LLVM between vanilla checks
+
+    assert not os.environ.get('LLVM'), 'we need to modify LLVM env var for this'
+
+    f = open(CONFIG_FILE, 'a')
+    f.write('LLVM_ROOT = os.getenv("LLVM") or "' + path_from_root('tests', 'fake1', 'bin') + '"\n')
+    f.close()
+
+    safe_ensure_dirs(path_from_root('tests', 'fake1', 'bin'))
+    f = open(path_from_root('tests', 'fake1', 'bin', 'llc'), 'w')
+    f.write('#!/bin/sh\n')
+    f.write('echo "llc fake1 output\nRegistered Targets:\n%s"' % 'got js backend! JavaScript (asm.js, emscripten) backend')
+    f.close()
+    os.chmod(path_from_root('tests', 'fake1', 'bin', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+
+    safe_ensure_dirs(path_from_root('tests', 'fake2', 'bin'))
+    f = open(path_from_root('tests', 'fake2', 'bin', 'llc'), 'w')
+    f.write('#!/bin/sh\n')
+    f.write('echo "llc fake2 output\nRegistered Targets:\n%s"' % 'got wasm32 backend! WebAssembly 32-bit')
+    f.close()
+    os.chmod(path_from_root('tests', 'fake2', 'bin', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+
+    try:
+      os.environ['EMCC_DEBUG'] = '1'
+      self.check_working([EMCC, 'tests/hello_world.c', '-c'])
+      os.environ['LLVM'] = path_from_root('tests', 'fake2', 'bin')
+      self.assertContained('regenerating vanilla check since other llvm', output)
+    finally:
+      del os.environ['EMCC_DEBUG']
+      del os.environ['LLVM']
+
