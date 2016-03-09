@@ -33,7 +33,6 @@ Available operations and tasks:
         libcxx_noexcept
         libcxxabi
         gl
-        struct_info
         native_optimizer
         bullet
         freetype
@@ -80,7 +79,7 @@ operation = sys.argv[1]
 if operation == 'build':
   tasks = sys.argv[2:]
   if 'ALL' in tasks:
-    tasks = ['libc', 'libc-mt', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'gl', 'struct_info', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'vorbis', 'zlib']
+    tasks = ['libc', 'libc-mt', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'gl', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'vorbis', 'zlib']
     if os.environ.get('EMSCRIPTEN_NATIVE_OPTIMIZER'):
       print 'Skipping building of native-optimizer since environment variable EMSCRIPTEN_NATIVE_OPTIMIZER is present and set to point to a prebuilt native optimizer path.'
     elif hasattr(shared, 'EMSCRIPTEN_NATIVE_OPTIMIZER'):
@@ -138,10 +137,6 @@ if operation == 'build':
           return int(emscripten_GetProcAddress("waka waka"));
         }
       ''', ['gl.bc'])
-    elif what == 'struct_info':
-      build('''
-        int main() {}
-      ''', ['struct_info.compiled.json'])
     elif what == 'native_optimizer':
       build('''
         int main() {}

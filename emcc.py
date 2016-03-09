@@ -741,8 +741,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     for i in range(len(newargs)):
       if newargs[i] == '-s':
         if is_minus_s_for_emcc(newargs, i):
-          settings_changes.append(newargs[i+1])
+          key = newargs[i+1]
+          settings_changes.append(key)
           newargs[i] = newargs[i+1] = ''
+          assert key != 'WASM_BACKEND', 'do not set -s WASM_BACKEND, instead set EMCC_WASM_BACKEND=1 in the environment'
     newargs = [arg for arg in newargs if arg is not '']
 
     # Find input files
@@ -939,6 +941,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.ASSERTIONS:
       shared.Settings.STACK_OVERFLOW_CHECK = 2
 
+    if shared.get_llvm_target() == shared.WASM_TARGET:
+      shared.Settings.WASM_BACKEND = 1
+
+    # Use settings
+
     try:
       assert shared.Settings.ASM_JS > 0, 'ASM_JS must be enabled in fastcomp'
       assert shared.Settings.SAFE_HEAP in [0, 1], 'safe heap must be 0 or 1 in fastcomp'
@@ -1118,6 +1125,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.GLOBAL_BASE < 0:
       shared.Settings.GLOBAL_BASE = 8 # default if nothing else sets it
+
+    if shared.Settings.WASM_BACKEND:
+      # to bootstrap struct_info, we need binaryen
+      os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
 
     shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
     shared.Settings.OPT_LEVEL = opt_level
@@ -1304,7 +1315,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       logging.debug('linking: ' + str(linker_inputs))
       # force archive contents to all be included, if just archives, or if linking shared modules
       force_archive_contents = len([temp for i, temp in temp_files if not temp.endswith(STATICLIB_ENDINGS)]) == 0 or not shared.Building.can_build_standalone()
-      just_calculate = DEBUG != '2' # if  EMCC_DEBUG=2 , link now, otherwise defer to be more efficient
+
+      # if  EMCC_DEBUG=2  then we must link now, so the temp files are complete.
+      # if using the wasm backend, we might be using vanilla LLVM, which does not allow our fastcomp deferred linking opts.
+      # TODO: we could check if this is a fastcomp build, and still speed things up here
+      just_calculate = DEBUG != '2' and not shared.Settings.WASM_BACKEND
       final = shared.Building.link(linker_inputs, DEFAULT_FINAL, force_archive_contents=force_archive_contents, temp_files=misc_temp_files, just_calculate=just_calculate)
     else:
       if not LEAVE_INPUTS_RAW:
@@ -1406,7 +1421,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shutil.move(wasm_temp, wasm_target)
       open(wasm_target + '.mappedGlobals', 'w').write('{}') # no need for mapped globals for now, but perhaps some day
 
-    log_time('emscript (llvm=>%s)' % ('wasm' if shared.Settings.BINARYEN else 'js'))
+    log_time('emscript (llvm => executable code)')
 
     # Embed and preload files
     if shared.Settings.SPLIT_MEMORY:
@@ -1436,6 +1451,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         file_args.append('--use-preload-plugins')
       file_code = execute([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE)[0]
       pre_js = file_code + pre_js
+
+    if shared.Settings.BINARYEN:
+      # add in the glue integration code as a pre-js, so it is optimized together with everything else
+      wasm_js_glue = open(os.path.join(shared.BINARYEN_ROOT, 'src', 'js', 'wasm.js-post.js')).read()
+      wasm_js_glue = wasm_js_glue.replace('{{{ asmjsCodeFile }}}', '"' + os.path.basename(asm_target) + '"')
+      wasm_js_glue = wasm_js_glue.replace('{{{ wasmCodeFile }}}', '"' + os.path.basename(wasm_target) + '"')
+      if shared.Settings.BINARYEN_METHOD:
+        wasm_js_glue = wasm_js_glue.replace('{{{ wasmJSMethod }}}', '(Module[\'wasmJSMethod\'] || "' + shared.Settings.BINARYEN_METHOD + '")')
+      else:
+        wasm_js_glue = wasm_js_glue.replace('{{{ wasmJSMethod }}}', 'null')
+      wasm_js_glue = wasm_js_glue.replace('{{{ WASM_BACKEND }}}', str(shared.Settings.WASM_BACKEND)) # if wasm backend, wasm contains memory segments
+      pre_js = wasm_js_glue + '\n' + pre_js
 
     # Apply pre and postjs files
     if pre_js or post_js:
@@ -1786,20 +1813,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shutil.move(temp, asm_target)
 
     if shared.Settings.BINARYEN:
-      # Emit wasm.js at the top of the js. TODO: for html, it could be a separate script tag
+      # Emit wasm.js at the top of the js. This is *not* optimized with the rest of the code, since
+      # (1) it contains asm.js, whose validation would be broken, and (2) it's very large so it would
+      # be slow in cleanup/JSDCE etc.
+      # TODO: for html, it could be a separate script tag
+      # TODO: add the core "integrate" bit as a pre-js, and the rest separately, so that we optimize the core with our code.
+      logging.debug('integrating wasm.js')
       binaryen_bin = os.path.join(shared.BINARYEN_ROOT, 'bin')
       wasm_js = open(os.path.join(binaryen_bin, 'wasm.js')).read()
-      wasm_js = wasm_js.replace("Module['asmjsCodeFile']", '"' + os.path.basename(asm_target) + '"') # " or '? who knows :)
-      wasm_js = wasm_js.replace('Module["asmjsCodeFile"]', '"' + os.path.basename(asm_target) + '"')
-      wasm_js = wasm_js.replace("Module['wasmCodeFile']", '"' + os.path.basename(wasm_target) + '"') # " or '? who knows :)
-      wasm_js = wasm_js.replace('Module["wasmCodeFile"]', '"' + os.path.basename(wasm_target) + '"')
-      wasm_js = wasm_js.replace("Module['providedTotalMemory']", str(shared.Settings.TOTAL_MEMORY))
-      wasm_js = wasm_js.replace('Module["providedTotalMemory"]', str(shared.Settings.TOTAL_MEMORY))
       wasm_js = wasm_js.replace('EMSCRIPTEN_', 'emscripten_') # do not confuse the markers
-      if shared.Settings.BINARYEN_METHOD:
-        method = '(Module[\'wasmJSMethod\'] || "' + shared.Settings.BINARYEN_METHOD + '")'
-        wasm_js = wasm_js.replace("Module['wasmJSMethod']", method) # " or '? who knows :)
-        wasm_js = wasm_js.replace('Module["wasmJSMethod"]', method)
       js = open(js_target).read()
       combined = open(js_target, 'w')
       combined.write(wasm_js)
@@ -1807,8 +1829,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       combined.write(js)
       combined.close()
       if not shared.Settings.WASM_BACKEND:
-        # generate .wast file
-        subprocess.check_call([os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--mapped-globals=' + wasm_target + '.mappedGlobals'], stdout=open(wasm_target, 'w'))
+        logging.debug('asm2wasm (asm.js => WebAssembly)')
+        subprocess.check_call([os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--mapped-globals=' + wasm_target + '.mappedGlobals', '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)], stdout=open(wasm_target, 'w'))
+      if shared.Settings.BINARYEN_SCRIPTS:
+        binaryen_scripts = os.path.join(shared.BINARYEN_ROOT, 'scripts')
+        script_env = os.environ.copy()
+        root_dir = os.path.abspath(os.path.dirname(__file__))
+        if script_env.get('PYTHONPATH'):
+          script_env['PYTHONPATH'] += ':' + root_dir
+        else:
+          script_env['PYTHONPATH'] = root_dir
+        for script in shared.Settings.BINARYEN_SCRIPTS.split(','):
+          logging.debug('running binaryen script: ' + script)
+          subprocess.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), js_target, wasm_target], env=script_env)
 
     # If we were asked to also generate HTML, do that
     if final_suffix == 'html':
@@ -1921,6 +1954,20 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 ''' % (os.path.basename(asm_target), '\n'.join(asm_mods), script_inline)
       else:
         assert len(asm_mods) == 0, 'no --separate-asm means no client code mods are possible'
+
+      if shared.Settings.BINARYEN:
+        # We need to load the wasm file before anything else, it has to be synchronously ready TODO: optimize
+        un_src()
+        script_inline = '''
+          var xhr = new XMLHttpRequest();
+          xhr.open('GET', '%s', true);
+          xhr.responseType = 'arraybuffer';
+          xhr.onload = function() {
+            Module.wasmBinary = xhr.response;
+%s
+          };
+          xhr.send(null);
+''' % (wasm_target[:-1] + 'm', script_inline) # TODO: support wasts too, not just wasm?
 
       html = open(target, 'w')
       assert (script_src or script_inline) and not (script_src and script_inline)

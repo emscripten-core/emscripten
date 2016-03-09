@@ -9,6 +9,10 @@ class Cache:
       dirname = os.environ.get('EM_CACHE')
     if not dirname:
       dirname = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
+    if os.environ.get('EMCC_WASM_BACKEND') and os.environ.get('EMCC_WASM_BACKEND') != '0':
+      dirname = os.path.join(dirname, 'wasm')
+    else:
+      dirname = os.path.join(dirname, 'asmjs')
     self.dirname = dirname
     self.debug = debug
 

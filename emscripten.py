@@ -461,8 +461,10 @@ function _emscripten_asm_const_%s(%s) {
             Counter.pre.append(specific_bad_func)
             return specific_bad if not newline else (specific_bad + '\n')
         clean_item = item.replace("asm['", '').replace("']", '')
-        if clean_item not in implemented_functions and not (settings['EMULATED_FUNCTION_POINTERS'] and not settings['RELOCATABLE']): # when emulating function pointers, we don't need wrappers
-                                                                                                                                     # but if relocating, then we also have the copies in-module, and do
+        # when emulating function pointers, we don't need wrappers
+        # but if relocating, then we also have the copies in-module, and do
+        # also if binaryen, as wasm requires wrappers for the function table
+        if clean_item not in implemented_functions and not (settings['EMULATED_FUNCTION_POINTERS'] and not settings['RELOCATABLE'] and not settings['BINARYEN']):
           # this is imported into asm, we must wrap it
           call_ident = clean_item
           if call_ident in metadata['redirects']: call_ident = metadata['redirects'][call_ident]
@@ -1265,7 +1267,7 @@ def emscript_wasm_backend(infile, settings, outfile, outfile_name, libraries=[],
 
   assert shared.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen s2wasm on the backend output'
   wasm = outfile_name[:-3] + '.wast'
-  s2wasm_args = [os.path.join(shared.BINARYEN_ROOT, 's2wasm'), temp_s]
+  s2wasm_args = [os.path.join(shared.BINARYEN_ROOT, 'bin', 's2wasm'), temp_s]
   s2wasm_args += ['--global-base=%d' % shared.Settings.GLOBAL_BASE]
   if DEBUG:
     logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
@@ -1334,6 +1336,8 @@ def emscript_wasm_backend(infile, settings, outfile, outfile_name, libraries=[],
     settings['SIMD'] = 1
 
   settings['MAX_GLOBAL_ALIGN'] = metadata['maxGlobalAlign']
+
+  settings['IMPLEMENTED_FUNCTIONS'] = metadata['implementedFunctions']
 
   # Save settings to a file to work around v8 issue 1579
   settings_file = temp_files.get('.txt').name
@@ -1547,10 +1551,10 @@ def main(args, compiler_engine, cache, temp_files, DEBUG, DEBUG_CACHE):
   # libraries
   libraries = args.libraries[0].split(',') if len(args.libraries) > 0 else []
 
-  settings.setdefault('STRUCT_INFO', cache.get_path('struct_info.compiled.json'))
+  settings.setdefault('STRUCT_INFO', shared.path_from_root('src', 'struct_info.compiled.json'))
   struct_info = settings.get('STRUCT_INFO')
 
-  if not os.path.exists(struct_info) and not settings.get('BOOTSTRAPPING_STRUCT_INFO'):
+  if not os.path.exists(struct_info) and not settings.get('BOOTSTRAPPING_STRUCT_INFO') and not settings.get('ONLY_MY_CODE'):
     if DEBUG: logging.debug('  emscript: bootstrapping struct info...')
     shared.Building.ensure_struct_info(struct_info)
     if DEBUG: logging.debug('  emscript: bootstrapping struct info complete')
