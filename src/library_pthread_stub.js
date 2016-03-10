@@ -171,6 +171,7 @@ var LibraryPThreadStub = {
   pthread_rwlock_wrlock: function() { return 0; },
   pthread_rwlock_trywrlock: function() { return 0; },
   pthread_rwlock_timedwrlock: function() { return 0; },
+  pthread_rwlock_unlock: function() { return 0; },
 
   pthread_rwlockattr_init: function() { return 0; },
   pthread_rwlockattr_destroy: function() { return 0; },
