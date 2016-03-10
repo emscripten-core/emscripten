@@ -919,3 +919,30 @@ fi
       if os.environ.get('LLVM'):
         del os.environ['LLVM']
 
+    return # TODO: the rest of this
+
+    # check separate cache dirs are used
+
+    restore()
+    self.check_working([EMCC], '')
+
+    root_cache = os.path.expanduser('~/.emscripten_cache')
+    if os.path.exists(os.path.join(root_cache, 'asmjs')):
+      shutil.rmtree(os.path.join(root_cache, 'asmjs'))
+    if os.path.exists(os.path.join(root_cache, 'wasm')):
+      shutil.rmtree(os.path.join(root_cache, 'wasm'))
+
+    try:
+      os.environ['EMCC_WASM_BACKEND'] = '1'
+      self.check_working([EMCC, 'tests/hello_world.c'], '')
+      assert os.path.exists(os.path.join(root_cache, 'wasm'))
+      os.environ['EMCC_WASM_BACKEND'] = '0'
+      self.check_working([EMCC, 'tests/hello_world.c'], '')
+      assert os.path.exists(os.path.join(root_cache, 'asmjs'))
+      shutil.rmtree(os.path.join(root_cache, 'asmjs'))
+      del os.environ['EMCC_WASM_BACKEND']
+      self.check_working([EMCC, 'tests/hello_world.c'], '')
+      assert os.path.exists(os.path.join(root_cache, 'asmjs'))
+    finally:
+      del os.environ['EMCC_WASM_BACKEND']
+
