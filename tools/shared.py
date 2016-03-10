@@ -857,6 +857,7 @@ else:
   if is_vanilla == '1':
     logging.debug('check tells us to use wasm backend')
     LLVM_TARGET = WASM_TARGET
+    os.environ['EMCC_WASM_BACKEND'] = '1'
   else:
     logging.debug('check tells us to use asm.js backend')
     LLVM_TARGET = ASM_JS_TARGET
