@@ -3572,7 +3572,7 @@ void registerizeHarder(Ref ast) {
 // end registerizeHarder
 
 // minified names generation
-StringSet RESERVED("do if in for new try var env let");
+StringSet RESERVED("do if in for new try var env let case else enum this void with");
 const char *VALID_MIN_INITS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_$";
 const char *VALID_MIN_LATERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_$0123456789";
 

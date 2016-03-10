@@ -2234,7 +2234,7 @@ function getStackBumpSize(ast) {
 
 // Name minification
 
-var RESERVED = set('do', 'if', 'in', 'for', 'new', 'try', 'var', 'env', 'let');
+var RESERVED = set('do', 'if', 'in', 'for', 'new', 'try', 'var', 'env', 'let', 'case', 'else', 'enum', 'void', 'this', 'void', 'with');
 var VALID_MIN_INITS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_$';
 var VALID_MIN_LATERS = VALID_MIN_INITS + '0123456789';
 
