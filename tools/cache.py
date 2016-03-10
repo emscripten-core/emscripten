@@ -4,15 +4,16 @@ import tempfiles
 
 # Permanent cache for dlmalloc and stdlibc++
 class Cache:
-  def __init__(self, dirname=None, debug=False):
+  def __init__(self, dirname=None, debug=False, use_subdir=True):
     if dirname is None:
       dirname = os.environ.get('EM_CACHE')
     if not dirname:
       dirname = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
-    if os.environ.get('EMCC_WASM_BACKEND') and os.environ.get('EMCC_WASM_BACKEND') != '0':
-      dirname = os.path.join(dirname, 'wasm')
-    else:
-      dirname = os.path.join(dirname, 'asmjs')
+    if use_subdir:
+      if os.environ.get('EMCC_WASM_BACKEND') and os.environ.get('EMCC_WASM_BACKEND') != '0':
+        dirname = os.path.join(dirname, 'wasm')
+      else:
+        dirname = os.path.join(dirname, 'asmjs')
     self.dirname = dirname
     self.debug = debug
 
