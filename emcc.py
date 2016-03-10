@@ -1472,7 +1472,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if WINDOWS: # Avoid duplicating \r\n to \r\r\n when writing out.
         if pre_js: pre_js = pre_js.replace('\r\n', '\n')
         if post_js: post_js = post_js.replace('\r\n', '\n')
-      open(final, 'w').write(pre_js + src + post_js)
+      outfile = open(final, 'w')
+      outfile.write(pre_js)
+      outfile.write(src) # this may be large, don't join it to others
+      outfile.write(post_js)
+      outfile.close()
+      pre_js = src = post_js = None
       if DEBUG: save_intermediate('pre-post')
 
     # Apply a source code transformation, if requested
