@@ -840,18 +840,15 @@ else:
   is_vanilla_file = temp_cache.get('is_vanilla', check_vanilla, extension='.txt')
   if CONFIG_FILE and os.stat(CONFIG_FILE).st_mtime > os.stat(is_vanilla_file).st_mtime:
     logging.debug('config file changed since we checked vanilla; re-checking')
-    os.remove(is_vanilla_file)
-    is_vanilla_file = temp_cache.get('is_vanilla', check_vanilla, extension='.txt')
+    is_vanilla_file = temp_cache.get('is_vanilla', check_vanilla, extension='.txt', force=True)
   contents = open(is_vanilla_file).read()
   if ':' not in contents:
     logging.debug('regenerating vanilla check since old format')
-    os.remove(is_vanilla_file)
-    is_vanilla_file = temp_cache.get('is_vanilla', check_vanilla, extension='.txt')
+    is_vanilla_file = temp_cache.get('is_vanilla', check_vanilla, extension='.txt', force=True)
   is_vanilla, llvm_used = open(is_vanilla_file).read().split(':')
   if llvm_used != LLVM_ROOT:
     logging.debug('regenerating vanilla check since other llvm')
-    os.remove(is_vanilla_file)
-    is_vanilla_file = temp_cache.get('is_vanilla', check_vanilla, extension='.txt')
+    is_vanilla_file = temp_cache.get('is_vanilla', check_vanilla, extension='.txt', force=True)
     is_vanilla, llvm_used = open(is_vanilla_file).read().split(':')
   temp_cache = None
   if is_vanilla == '1':

@@ -32,10 +32,10 @@ class Cache:
 
   # Request a cached file. If it isn't in the cache, it will be created with
   # the given creator function
-  def get(self, shortname, creator, extension='.bc', what=None):
+  def get(self, shortname, creator, extension='.bc', what=None, force=False):
     if not shortname.endswith(extension): shortname += extension
     cachename = os.path.join(self.dirname, shortname)
-    if os.path.exists(cachename):
+    if os.path.exists(cachename) and not force:
       return cachename
     if what is None:
       if shortname.endswith(('.bc', '.so', '.a')): what = 'system library'
