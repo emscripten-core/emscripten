@@ -23,14 +23,13 @@ def get(ports, settings, shared):
       final = os.path.join(ports.get_build_dir(), 'sdl2-net', 'libsdl2_net.bc')
       shared.Building.link(o_s, final)
       return final
-    return [shared.Cache.get('sdl2-net', create)]
+    return [shared.Cache.get('sdl2-net', create, what='port')]
   else:
     return []
 
 def process_args(ports, args, settings, shared):
   if settings.USE_SDL_NET == 2:
     get(ports, settings, shared)
-    args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2-net', 'include')]
   return args
 
 def show():
