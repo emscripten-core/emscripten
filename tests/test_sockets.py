@@ -123,10 +123,6 @@ class CompiledServerHarness:
     # always run these tests last
     # make sure to use different ports in each one because it takes a while for the processes to be cleaned up
 
-    # NOTE all datagram tests are temporarily disabled, as
-    # we can't truly test datagram sockets until we have
-    # proper listen server support.
-
 class sockets(BrowserCore):
   emcc_args = []
 
