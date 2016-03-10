@@ -9,7 +9,7 @@ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 '''
 
-import os, sys, json, optparse, subprocess, re, time, string, logging
+import os, sys, json, optparse, subprocess, re, time, logging
 
 from tools import shared
 from tools import jsrun, cache as cache_module, tempfiles
@@ -37,8 +37,25 @@ if STDERR_FILE:
   logging.info('logging stderr in js compiler phase into %s' % STDERR_FILE)
   STDERR_FILE = open(STDERR_FILE, 'w')
 
-def emscript(infile, settings, outfile, outfile_name, libraries=[], compiler_engine=None,
-             temp_files=None, DEBUG=None, DEBUG_CACHE=None):
+def quoter(settings):
+  def quote(prop):
+    if settings['USE_CLOSURE_COMPILER'] == 2:
+      return ''.join(map(lambda p: "'" + p + "'", prop.split('.')))
+    else:
+      return prop
+  return quote
+
+def access_quoter(settings):
+  def access_quote(prop):
+    if settings['USE_CLOSURE_COMPILER'] == 2:
+      return ''.join(map(lambda p: "['" + p + "']", prop.split('.')))
+    else:
+      return '.' + prop
+  return access_quote
+
+
+def emscript(infile, settings, outfile, libraries=None, compiler_engine=None,
+             temp_files=None, DEBUG=None):
   """Runs the emscripten LLVM-to-JS compiler.
 
   Args:
@@ -47,6 +64,8 @@ def emscript(infile, settings, outfile, outfile_name, libraries=[], compiler_eng
       defined in src/settings.js.
     outfile: The file where the output is written.
   """
+
+  if libraries is None: libraries = []
 
   assert settings['ASM_JS'], 'fastcomp is asm.js-only (mode 1 or 2)'
 
@@ -60,6 +79,24 @@ def emscript(infile, settings, outfile, outfile_name, libraries=[], compiler_eng
     #   * Run compiler.js on the metadata to emit the shell js code, pre/post-ambles,
     #     JS library dependencies, etc.
 
+    # metadata and settings are modified by reference in some of the below
+    # these functions are split up to force variables to go out of scope and allow
+    # memory to be reclaimed
+
+    funcs, metadata, mem_init = get_and_parse_backend(infile, settings, temp_files, DEBUG)
+    glue, forwarded_data = compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DEBUG)
+
+    post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, last_forwarded_json = function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, settings, outfile, DEBUG)
+    finalize_output(metadata, post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, last_forwarded_json, settings, outfile, DEBUG)
+
+    success = True
+
+  finally:
+    outfile.close()
+    if not success:
+      shared.try_delete(outfile.name) # remove partial output
+
+def get_and_parse_backend(infile, settings, temp_files, DEBUG):
     temp_js = temp_files.get('.4.js').name
     backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
     backend_args = [backend_compiler, infile, '-march=js', '-filetype=asm', '-o', temp_js]
@@ -100,7 +137,6 @@ def emscript(infile, settings, outfile, outfile_name, libraries=[], compiler_eng
     shared.jsrun.timeout_run(subprocess.Popen(backend_args, stdout=subprocess.PIPE))
     if DEBUG:
       logging.debug('  emscript: llvm backend took %s seconds' % (time.time() - t))
-      t = time.time()
 
     # Split up output
     backend_output = open(temp_js).read()
@@ -156,17 +192,22 @@ def emscript(infile, settings, outfile, outfile_name, libraries=[], compiler_eng
         num = m.group(3)
         # TODO: handle 0x floats?
         if num.find('.') < 0:
-          e = num.find('e');
+          e = num.find('e')
           if e < 0:
             num += '.0'
           else:
             num = num[:e] + '.0' + num[e:]
         return m.group(1) + m.group(2) + num
-      funcs = re.sub(r'([(=,+\-*/%<>:?] *)\+(-?)((0x)?[0-9a-f]*\.?[0-9]+([eE][-+]?[0-9]+)?)', lambda m: fix_dot_zero(m), funcs)
+      funcs = re.sub(r'([(=,+\-*/%<>:?] *)\+(-?)((0x)?[0-9a-f]*\.?[0-9]+([eE][-+]?[0-9]+)?)', fix_dot_zero, funcs)
 
+    return funcs, metadata, mem_init
+
+def compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DEBUG):
     # js compiler
 
-    if DEBUG: logging.debug('emscript: js compiler glue')
+    if DEBUG:
+      logging.debug('emscript: js compiler glue')
+      t = time.time()
 
     # Settings changes
     i64_funcs = ['i64Add', 'i64Subtract', '__muldi3', '__divdi3', '__udivdi3', '__remdi3', '__uremdi3']
@@ -228,7 +269,6 @@ def emscript(infile, settings, outfile, outfile_name, libraries=[], compiler_eng
     save_settings()
 
     # Call js compiler
-    if DEBUG: t = time.time()
     out = jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
                        [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
                        cwd=path_from_root('src'), error_limit=300)
@@ -237,7 +277,17 @@ def emscript(infile, settings, outfile, outfile_name, libraries=[], compiler_eng
 
     if DEBUG:
       logging.debug('  emscript: glue took %s seconds' % (time.time() - t))
+
+    return glue, forwarded_data
+
+def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, settings, outfile, DEBUG):
+
+    if DEBUG:
+      logging.debug('emscript: python processing: function tables and exports')
       t = time.time()
+
+    access_quote = access_quoter(settings)
+    quote = quoter(settings)
 
     last_forwarded_json = forwarded_json = json.loads(forwarded_data)
 
@@ -360,7 +410,7 @@ function _emscripten_asm_const_%s(%s) {
       outfile.write(contents + '\n')
       return ''
     if not settings['BOOTSTRAPPING_STRUCT_INFO'] and len(funcs_js) > 1:
-      funcs_js[1] = re.sub(r'/\* PRE_ASM \*/(.*)\n', lambda m: move_preasm(m), funcs_js[1])
+      funcs_js[1] = re.sub(r'/\* PRE_ASM \*/(.*)\n', move_preasm, funcs_js[1])
 
     class Counter:
       i = 0
@@ -715,18 +765,6 @@ function ftCall_%s(%s) {%s
             body = 'if (((ptr|0) >= (fb|0)) & ((ptr|0) < (fb + {{{ FTM_' + sig + ' }}} | 0))) { ' + maybe_return + ' ' + shared.JS.make_coercion('FUNCTION_TABLE_' + sig + '[(ptr-fb)&{{{ FTM_' + sig + ' }}}](' + mini_coerced_params + ')', sig[0], settings, ffi_arg=True) + '; ' + ('return;' if sig[0] == 'v' else '') + ' }' + final_return
           funcs_js.append(make_func('mftCall_' + sig, body, params, coercions) + '\n')
 
-    def quote(prop):
-      if settings['USE_CLOSURE_COMPILER'] == 2:
-        return ''.join(map(lambda p: "'" + p + "'", prop.split('.')))
-      else:
-        return prop
-
-    def access_quote(prop):
-      if settings['USE_CLOSURE_COMPILER'] == 2:
-        return ''.join(map(lambda p: "['" + p + "']", prop.split('.')))
-      else:
-        return '.' + prop
-
     # calculate exports
     exported_implemented_functions = list(exported_implemented_functions) + metadata['initializers']
     if not settings['ONLY_MY_CODE']:
@@ -761,7 +799,7 @@ function ftCall_%s(%s) {%s
         asm_setup += 'var g$' + extern + ' = function() { ' + check(extern) + ' return ' + side + 'Module["' + extern + '"] };\n'
     def math_fix(g):
       return g if not g.startswith('Math_') else g.split('_')[1]
-    asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global' + access_quote(g) + ';\n' for g in maths]);
+    asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global' + access_quote(g) + ';\n' for g in maths])
     asm_global_funcs += ''.join(['  var ' + g + '=env' + access_quote(math_fix(g)) + ';\n' for g in basic_funcs + global_funcs])
     if metadata['simd']:
       def string_contains_any(s, str_list):
@@ -790,7 +828,7 @@ function ftCall_%s(%s) {%s
 
       # Unofficial, Bool64x2 does not yet exist, but needed for Float64x2 comparisons.
       if metadata['simdFloat64x2']:
-        asm_global_funcs += '  var SIMD_Int32x4_fromBool64x2Bits = global.SIMD.Int32x4.fromBool64x2Bits;\n';
+        asm_global_funcs += '  var SIMD_Int32x4_fromBool64x2Bits = global.SIMD.Int32x4.fromBool64x2Bits;\n'
     if settings['USE_PTHREADS']:
       asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor']])
     asm_global_vars = ''.join(['  var ' + g + '=env' + access_quote(g) + '|0;\n' for g in basic_vars + global_vars])
@@ -822,9 +860,7 @@ return real_''' + s + '''.apply(null, arguments);
         table = table.replace('var ' + tableName, 'var ' + tableName + ' = Module["' + tableName + '"]')
         receiving += table + '\n'
 
-    # finalize
-
-    if DEBUG: logging.debug('asm text sizes' + str([map(len, funcs_js), len(asm_setup), len(asm_global_vars), len(asm_global_funcs), len(pre_tables), len('\n'.join(function_tables_impls)), len(function_tables_defs.replace('\n', '\n  ')), len(exports), len(the_global), len(sending), len(receiving)]))
+    if DEBUG: logging.debug('asm text sizes' + str([map(len, funcs_js), len(asm_setup), len(asm_global_vars), len(asm_global_funcs), len(pre_tables), len('\n'.join(function_tables_impls)), len(function_tables_defs) + (function_tables_defs.count('\n') * len('  ')), len(exports), len(the_global), len(sending), len(receiving)]))
 
     final_function_tables = '\n'.join(function_tables_impls) + '\n' + function_tables_defs
     if settings.get('EMULATED_FUNCTION_POINTERS'):
@@ -836,6 +872,19 @@ return real_''' + s + '''.apply(null, arguments);
         receiving += 'Module["' + name + '"] = ' + fullname + ';\n'
 
       final_function_tables = final_function_tables.replace("asm['", '').replace("']", '').replace('var SIDE_FUNCTION_TABLE_', 'var FUNCTION_TABLE_').replace('var dynCall_', '//')
+
+    if DEBUG:
+      logging.debug('  emscript: python processing: function tables and exports took %s seconds' % (time.time() - t))
+
+    return post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, last_forwarded_json
+
+def finalize_output(metadata, post, funcs_js, need_asyncify, provide_fround, asm_safe_heap, sending, receiving, asm_setup, the_global, asm_global_vars, asm_global_funcs, pre_tables, final_function_tables, exports, last_forwarded_json, settings, outfile, DEBUG):
+
+    if DEBUG:
+      logging.debug('emscript: python processing: finalize')
+      t = time.time()
+
+    access_quote = access_quoter(settings)
 
     if settings['RELOCATABLE']:
       receiving += '''
@@ -1177,17 +1226,17 @@ function _emscripten_replace_memory(newBuffer) {
 '''] + ['''
 // EMSCRIPTEN_START_FUNCS
 '''] + runtime_funcs + funcs_js + ['''
-  %s
+  ''', pre_tables, final_function_tables, '''
 
   return %s;
 })
 // EMSCRIPTEN_END_ASM
 (%s, %s, buffer);
-%s;
-''' % (pre_tables + final_function_tables, exports,
+''' % (exports,
        'Module' + access_quote('asmGlobalArg'),
-       'Module' + access_quote('asmLibraryArg'),
-       receiving)]
+       'Module' + access_quote('asmLibraryArg')), '''
+''', receiving, ''';
+''']
 
     if not settings.get('SIDE_MODULE'):
       funcs_js.append('''
@@ -1218,8 +1267,9 @@ Runtime.getTempRet0 = asm['getTempRet0'];
       def fix(m):
         sig = m.groups(0)[0]
         return masks[sig]
-      return re.sub(r'{{{ FTM_([\w\d_$]+) }}}', lambda m: fix(m), js) # masks[m.groups(0)[0]]
-    funcs_js = map(lambda js: function_table_maskize(js, masks), funcs_js)
+      return re.sub(r'{{{ FTM_([\w\d_$]+) }}}', fix, js) # masks[m.groups(0)[0]]
+    for i in range(len(funcs_js)): # in-place as this can be large
+      funcs_js[i] = function_table_maskize(funcs_js[i], masks)
 
     if settings['SIDE_MODULE']:
       funcs_js.append('''
@@ -1234,23 +1284,17 @@ Runtime.registerFunctions(%(sigs)s, Module);
     if WINDOWS: post = post.replace('\r\n', '\n') # Normalize to UNIX line endings, otherwise writing to text file will duplicate \r\n to \r\r\n!
     outfile.write(post)
 
-    outfile.close()
+    if DEBUG:
+      logging.debug('  emscript: python processing: finalize took %s seconds' % (time.time() - t))
 
-    if DEBUG: logging.debug('  emscript: final python processing took %s seconds' % (time.time() - t))
-
-    success = True
-
-  finally:
-    if not success:
-      outfile.close()
-      shared.try_delete(outfile.name) # remove partial output
-
-def emscript_wasm_backend(infile, settings, outfile, outfile_name, libraries=[], compiler_engine=None,
-                          temp_files=None, DEBUG=None, DEBUG_CACHE=None):
+def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_engine=None,
+                          temp_files=None, DEBUG=None):
   # Overview:
   #   * Run LLVM backend to emit .s
   #   * Run Binaryen's s2wasm to generate WebAssembly.
   #   * We may also run some Binaryen passes here.
+
+  if libraries is None: libraries = []
 
   temp_s = temp_files.get('.wb.s').name
   backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
@@ -1266,7 +1310,7 @@ def emscript_wasm_backend(infile, settings, outfile, outfile_name, libraries=[],
     shutil.copyfile(temp_s, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-llvm-backend-output.s'))
 
   assert shared.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen s2wasm on the backend output'
-  wasm = outfile_name[:-3] + '.wast'
+  wasm = outfile.name[:-3] + '.wast'
   s2wasm_args = [os.path.join(shared.BINARYEN_ROOT, 'bin', 's2wasm'), temp_s]
   s2wasm_args += ['--global-base=%d' % shared.Settings.GLOBAL_BASE]
   if DEBUG:
@@ -1363,7 +1407,7 @@ def emscript_wasm_backend(infile, settings, outfile, outfile_name, libraries=[],
     logging.debug('  emscript: glue took %s seconds' % (time.time() - t))
     t = time.time()
 
-  last_forwarded_json = forwarded_json = json.loads(forwarded_data)
+  forwarded_json = json.loads(forwarded_data)
 
   pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
 
@@ -1440,23 +1484,7 @@ return ASM_CONSTS[code](%s);
 
   basic_funcs = ['abort', 'assert']
 
-  asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace', 'setThrew']
-  asm_runtime_funcs += ['setTempRet0', 'getTempRet0']
-
-  if settings['ONLY_MY_CODE']:
-    asm_runtime_funcs = []
-
-  def quote(prop):
-    if settings['USE_CLOSURE_COMPILER'] == 2:
-      return "'" + prop + "'"
-    else:
-      return prop
-
-  def access_quote(prop):
-    if settings['USE_CLOSURE_COMPILER'] == 2:
-      return "['" + prop + "']"
-    else:
-      return '.' + prop
+  access_quote = access_quoter(settings)
 
   # calculate globals
   try:
@@ -1502,8 +1530,6 @@ return real_''' + s + '''.apply(null, arguments);
   else:
     shared_array_buffer = ''
 
-  runtime_funcs = []
-
   funcs_js = ['''
 Module%s = %s;
 %s
@@ -1543,7 +1569,7 @@ if os.environ.get('EMCC_FAST_COMPILER') == '0':
   logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
   sys.exit(1)
 
-def main(args, compiler_engine, cache, temp_files, DEBUG, DEBUG_CACHE):
+def main(args, compiler_engine, cache, temp_files, DEBUG):
   # Prepare settings for serialization to JSON.
   settings = {}
   for setting in args.settings:
@@ -1563,8 +1589,8 @@ def main(args, compiler_engine, cache, temp_files, DEBUG, DEBUG_CACHE):
 
   emscripter = emscript_wasm_backend if settings['WASM_BACKEND'] else emscript
 
-  emscripter(args.infile, settings, args.outfile, args.outfile_name, libraries, compiler_engine=compiler_engine,
-             temp_files=temp_files, DEBUG=DEBUG, DEBUG_CACHE=DEBUG_CACHE)
+  emscripter(args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine,
+             temp_files=temp_files, DEBUG=DEBUG)
 
 def _main(args=None):
   if args is None:
@@ -1637,7 +1663,6 @@ WARNING: You should normally never use this! Use emcc instead.
   if len(positional) != 1:
     raise RuntimeError('Must provide exactly one positional argument. Got ' + str(len(positional)) + ': "' + '", "'.join(positional) + '"')
   keywords.infile = os.path.abspath(positional[0])
-  keywords.outfile_name = keywords.outfile
   if isinstance(keywords.outfile, basestring):
     keywords.outfile = open(keywords.outfile, 'w')
 
@@ -1655,10 +1680,8 @@ WARNING: You should normally never use this! Use emcc instead.
 
   if keywords.verbose is None:
     DEBUG = get_configuration().DEBUG
-    DEBUG_CACHE = get_configuration().DEBUG_CACHE
   else:
     DEBUG = keywords.verbose
-    DEBUG_CACHE = keywords.verbose
 
   cache = cache_module.Cache()
   temp_files.run_and_clean(lambda: main(
@@ -1667,7 +1690,6 @@ WARNING: You should normally never use this! Use emcc instead.
     cache=cache,
     temp_files=temp_files,
     DEBUG=DEBUG,
-    DEBUG_CACHE=DEBUG_CACHE,
   ))
 
 if __name__ == '__main__':
