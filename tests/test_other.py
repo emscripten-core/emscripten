@@ -325,12 +325,15 @@ f.close()
           return 0;
         }
         ''')
-      Popen([PYTHON, EMCC, c_file, '--cache', cache_dir_name]).communicate()
+      os.environ['EMCC_DEBUG'] = '1' # XXX temp hack for debugging
+      subprocess.check_call([PYTHON, EMCC, c_file, '--cache', cache_dir_name])
       assert os.path.exists(cache_dir_name), 'The cache directory %s must exist after the build' % cache_dir_name
       assert os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')), 'The cache directory must contain a built libc'
     finally:
       os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
       shutil.rmtree(tempdirname)
+      if os.environ.get('EMCC_DEBUG'): # XXX temp hack for debugging
+        del os.environ['EMCC_DEBUG']
 
   def test_emar_em_config_flag(self):
     # We expand this in case the EM_CONFIG is ~/.emscripten (default)
