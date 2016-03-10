@@ -1325,6 +1325,8 @@ def emscript_wasm_backend(infile, settings, outfile, outfile_name, libraries=[],
       parts = line.split(' ')
       metadata['exports'].append('_' + parts[3][1:-1])
 
+  metadata['declares'] = filter(lambda x: not x.startswith('emscripten_asm_const'), metadata['declares']) # we emit those ourselves
+
   if DEBUG: logging.debug(repr(metadata))
 
   settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE'] = list(
