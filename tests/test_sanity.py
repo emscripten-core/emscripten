@@ -823,8 +823,9 @@ fi
       # see that we test vanilla status, and just once
       TESTING = 'testing for asm.js target'
       self.check_working(EMCC, TESTING)
-      output = self.check_working(EMCC, 'check tells us to use')
-      assert TESTING not in output
+      for i in range(3):
+        output = self.check_working(EMCC, 'check tells us to use')
+        assert TESTING not in output
       # if env var tells us, do what it says
       os.environ['EMCC_WASM_BACKEND'] = '1'
       self.check_working(EMCC, 'EMCC_WASM_BACKEND tells us to use wasm backend')
