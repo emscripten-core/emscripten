@@ -817,47 +817,51 @@ except:
 ASM_JS_TARGET = 'asmjs-unknown-emscripten'
 WASM_TARGET = 'wasm32-unknown-unknown'
 
-# if the env var tells us what to do, do that
-if 'EMCC_WASM_BACKEND' in os.environ:
-  if os.environ['EMCC_WASM_BACKEND'] != '0':
-    logging.debug('EMCC_WASM_BACKEND tells us to use wasm backend')
-    LLVM_TARGET = WASM_TARGET
+def check_vanilla():
+  global LLVM_TARGET
+  # if the env var tells us what to do, do that
+  if 'EMCC_WASM_BACKEND' in os.environ:
+    if os.environ['EMCC_WASM_BACKEND'] != '0':
+      logging.debug('EMCC_WASM_BACKEND tells us to use wasm backend')
+      LLVM_TARGET = WASM_TARGET
+    else:
+      logging.debug('EMCC_WASM_BACKEND tells us to use asm.js backend')
+      LLVM_TARGET = ASM_JS_TARGET
   else:
-    logging.debug('EMCC_WASM_BACKEND tells us to use asm.js backend')
-    LLVM_TARGET = ASM_JS_TARGET
-else:
-  # if we are using vanilla LLVM, i.e. we don't have our asm.js backend, then we
-  # must use wasm (or at least try to). to know that, we have to run llc to
-  # see which backends it has. we cache this result.
-  temp_cache = cache.Cache(use_subdir=False)
-  def check_vanilla():
-    logging.debug('testing for asm.js target, because if not present (i.e. this is plain vanilla llvm, not emscripten fastcomp), we will use the wasm target instead (set EMCC_WASM_BACKEND to skip this check)')
-    targets = get_llc_targets()
-    vanilla = has_wasm_target(targets) and not has_asm_js_target(targets)
-    saved_file = os.path.join(temp_cache.dirname, 'is_vanilla.txt')
-    open(saved_file, 'w').write(('1' if vanilla else '0') + ':' + LLVM_ROOT)
-    return saved_file
-  is_vanilla_file = temp_cache.get('is_vanilla', check_vanilla, extension='.txt')
-  if CONFIG_FILE and os.stat(CONFIG_FILE).st_mtime > os.stat(is_vanilla_file).st_mtime:
-    logging.debug('config file changed since we checked vanilla; re-checking')
-    is_vanilla_file = temp_cache.get('is_vanilla', check_vanilla, extension='.txt', force=True)
-  contents = open(is_vanilla_file).read()
-  if ':' not in contents:
-    logging.debug('regenerating vanilla check since old format')
-    is_vanilla_file = temp_cache.get('is_vanilla', check_vanilla, extension='.txt', force=True)
-  is_vanilla, llvm_used = open(is_vanilla_file).read().split(':')
-  if llvm_used != LLVM_ROOT:
-    logging.debug('regenerating vanilla check since other llvm')
-    is_vanilla_file = temp_cache.get('is_vanilla', check_vanilla, extension='.txt', force=True)
+    # if we are using vanilla LLVM, i.e. we don't have our asm.js backend, then we
+    # must use wasm (or at least try to). to know that, we have to run llc to
+    # see which backends it has. we cache this result.
+    temp_cache = cache.Cache(use_subdir=False)
+    def check_vanilla():
+      logging.debug('testing for asm.js target, because if not present (i.e. this is plain vanilla llvm, not emscripten fastcomp), we will use the wasm target instead (set EMCC_WASM_BACKEND to skip this check)')
+      targets = get_llc_targets()
+      vanilla = has_wasm_target(targets) and not has_asm_js_target(targets)
+      saved_file = os.path.join(temp_cache.dirname, 'is_vanilla.txt')
+      open(saved_file, 'w').write(('1' if vanilla else '0') + ':' + LLVM_ROOT)
+      return saved_file
+    is_vanilla_file = temp_cache.get('is_vanilla', check_vanilla, extension='.txt')
+    if CONFIG_FILE and os.stat(CONFIG_FILE).st_mtime > os.stat(is_vanilla_file).st_mtime:
+      logging.debug('config file changed since we checked vanilla; re-checking')
+      is_vanilla_file = temp_cache.get('is_vanilla', check_vanilla, extension='.txt', force=True)
+    contents = open(is_vanilla_file).read()
+    if ':' not in contents:
+      logging.debug('regenerating vanilla check since old format')
+      is_vanilla_file = temp_cache.get('is_vanilla', check_vanilla, extension='.txt', force=True)
     is_vanilla, llvm_used = open(is_vanilla_file).read().split(':')
-  temp_cache = None
-  if is_vanilla == '1':
-    logging.debug('check tells us to use wasm backend')
-    LLVM_TARGET = WASM_TARGET
-    os.environ['EMCC_WASM_BACKEND'] = '1'
-  else:
-    logging.debug('check tells us to use asm.js backend')
-    LLVM_TARGET = ASM_JS_TARGET
+    if llvm_used != LLVM_ROOT:
+      logging.debug('regenerating vanilla check since other llvm')
+      is_vanilla_file = temp_cache.get('is_vanilla', check_vanilla, extension='.txt', force=True)
+      is_vanilla, llvm_used = open(is_vanilla_file).read().split(':')
+    temp_cache = None
+    if is_vanilla == '1':
+      logging.debug('check tells us to use wasm backend')
+      LLVM_TARGET = WASM_TARGET
+      os.environ['EMCC_WASM_BACKEND'] = '1'
+    else:
+      logging.debug('check tells us to use asm.js backend')
+      LLVM_TARGET = ASM_JS_TARGET
+
+check_vanilla()
 
 def get_llvm_target():
   global LLVM_TARGET
