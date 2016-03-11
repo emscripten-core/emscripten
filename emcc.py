@@ -1818,21 +1818,25 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shutil.move(temp, asm_target)
 
     if shared.Settings.BINARYEN:
+      binaryen_bin = os.path.join(shared.BINARYEN_ROOT, 'bin')
       # Emit wasm.js at the top of the js. This is *not* optimized with the rest of the code, since
       # (1) it contains asm.js, whose validation would be broken, and (2) it's very large so it would
       # be slow in cleanup/JSDCE etc.
       # TODO: for html, it could be a separate script tag
-      # TODO: add the core "integrate" bit as a pre-js, and the rest separately, so that we optimize the core with our code.
-      logging.debug('integrating wasm.js')
-      binaryen_bin = os.path.join(shared.BINARYEN_ROOT, 'bin')
-      wasm_js = open(os.path.join(binaryen_bin, 'wasm.js')).read()
-      wasm_js = wasm_js.replace('EMSCRIPTEN_', 'emscripten_') # do not confuse the markers
-      js = open(js_target).read()
-      combined = open(js_target, 'w')
-      combined.write(wasm_js)
-      combined.write('\n//^wasm.js\n')
-      combined.write(js)
-      combined.close()
+      # We need wasm.js if there is a chance the polyfill will be used. If the user sets
+      # BINARYEN_METHOD with something that doesn't use the polyfill, then we don't need it.
+      methods = shared.Settings.BINARYEN_METHOD.split(',')
+      if not shared.Settings.BINARYEN_METHOD or 'wasm-s-parser' in methods or 'asm2wasm' in methods:
+        logging.debug('integrating wasm.js')
+        wasm_js = open(os.path.join(binaryen_bin, 'wasm.js')).read()
+        wasm_js = wasm_js.replace('EMSCRIPTEN_', 'emscripten_') # do not confuse the markers
+        js = open(js_target).read()
+        combined = open(js_target, 'w')
+        combined.write(wasm_js)
+        combined.write('\n//^wasm.js\n')
+        combined.write(js)
+        combined.close()
+      # finish compiling to WebAssembly, using asm2wasm, if we didn't already emit WebAssembly directly using the wasm backend.
       if not shared.Settings.WASM_BACKEND:
         logging.debug('asm2wasm (asm.js => WebAssembly)')
         subprocess.check_call([os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--mapped-globals=' + wasm_target + '.mappedGlobals', '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)], stdout=open(wasm_target, 'w'))
