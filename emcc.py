@@ -856,7 +856,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     js_target = unsuffixed(target) + '.js'
 
     asm_target = js_target[:-3] + '.asm.js' # might not be used, but if it is, this is the name
-    wasm_target = asm_target.replace('.asm.js', '.wast') # ditto, might not be used
+    wasm_text_target = asm_target.replace('.asm.js', '.wast') # ditto, might not be used
+    wasm_binary_target = asm_target.replace('.asm.js', '.wasm') # ditto, might not be used
+
     if final_suffix == 'html' and not separate_asm and 'PRECISE_F32=2' in settings_changes or 'USE_PTHREADS=2' in settings_changes:
       separate_asm = True
       logging.warning('forcing separate asm output (--separate-asm), because -s PRECISE_F32=2 or -s USE_PTHREADS=2 was passed.')
@@ -1418,8 +1420,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.WASM_BACKEND:
       # we also received wasm at this stage
       wasm_temp = final[:-3] + '.wast'
-      shutil.move(wasm_temp, wasm_target)
-      open(wasm_target + '.mappedGlobals', 'w').write('{}') # no need for mapped globals for now, but perhaps some day
+      shutil.move(wasm_temp, wasm_text_target)
+      open(wasm_text_target + '.mappedGlobals', 'w').write('{}') # no need for mapped globals for now, but perhaps some day
 
     log_time('emscript (llvm => executable code)')
 
@@ -1456,7 +1458,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # add in the glue integration code as a pre-js, so it is optimized together with everything else
       wasm_js_glue = open(os.path.join(shared.BINARYEN_ROOT, 'src', 'js', 'wasm.js-post.js')).read()
       wasm_js_glue = wasm_js_glue.replace('{{{ asmjsCodeFile }}}', '"' + os.path.basename(asm_target) + '"')
-      wasm_js_glue = wasm_js_glue.replace('{{{ wasmCodeFile }}}', '"' + os.path.basename(wasm_target) + '"')
+      wasm_js_glue = wasm_js_glue.replace('{{{ wasmTextFile }}}', '"' + os.path.basename(wasm_text_target) + '"')
+      wasm_js_glue = wasm_js_glue.replace('{{{ wasmBinaryFile }}}', '"' + os.path.basename(wasm_binary_target) + '"')
       if shared.Settings.BINARYEN_METHOD:
         wasm_js_glue = wasm_js_glue.replace('{{{ wasmJSMethod }}}', '(Module[\'wasmJSMethod\'] || "' + shared.Settings.BINARYEN_METHOD + '")')
       else:
@@ -1839,7 +1842,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # finish compiling to WebAssembly, using asm2wasm, if we didn't already emit WebAssembly directly using the wasm backend.
       if not shared.Settings.WASM_BACKEND:
         logging.debug('asm2wasm (asm.js => WebAssembly)')
-        subprocess.check_call([os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--mapped-globals=' + wasm_target + '.mappedGlobals', '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)], stdout=open(wasm_target, 'w'))
+        subprocess.check_call([os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--mapped-globals=' + wasm_text_target + '.mappedGlobals', '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)], stdout=open(wasm_text_target, 'w'))
       if shared.Settings.BINARYEN_SCRIPTS:
         binaryen_scripts = os.path.join(shared.BINARYEN_ROOT, 'scripts')
         script_env = os.environ.copy()
@@ -1850,7 +1853,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           script_env['PYTHONPATH'] = root_dir
         for script in shared.Settings.BINARYEN_SCRIPTS.split(','):
           logging.debug('running binaryen script: ' + script)
-          subprocess.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), js_target, wasm_target], env=script_env)
+          subprocess.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), js_target, wasm_text_target], env=script_env)
 
     # If we were asked to also generate HTML, do that
     if final_suffix == 'html':
@@ -1976,7 +1979,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 %s
           };
           xhr.send(null);
-''' % (wasm_target[:-1] + 'm', script_inline) # TODO: support wasts too, not just wasm?
+''' % (wasm_binary_target, script_inline) # TODO: support wasts too, not just wasm?
 
       html = open(target, 'w')
       assert (script_src or script_inline) and not (script_src and script_inline)
