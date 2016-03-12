@@ -354,6 +354,11 @@ ok.
       with harness:
         self.btest(os.path.join('sockets', 'test_sockets_echo_client.c'), expected='0', args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram, sockets_include])
 
+  def test_sdl2_sockets_echo(self):
+    harness = CompiledServerHarness('sdl2_net_server.c', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'], 49164)
+    with harness:
+      self.btest('sdl2_net_client.c', expected='0', args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2', '-DSOCKK=%d' % harness.listen_port])
+
   def test_sockets_async_echo(self):
     if WINDOWS: return self.skip('This test is Unix-specific.')
     # Run with ./runner.py sockets.test_sockets_async_echo
