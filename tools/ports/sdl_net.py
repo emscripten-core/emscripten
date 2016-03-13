@@ -1,6 +1,6 @@
 import os, shutil, logging
 
-TAG = 'version_1'
+TAG = 'version_2'
 
 def get(ports, settings, shared):
   if settings.USE_SDL_NET == 2:
