@@ -1829,7 +1829,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # We need wasm.js if there is a chance the polyfill will be used. If the user sets
       # BINARYEN_METHOD with something that doesn't use the polyfill, then we don't need it.
       methods = shared.Settings.BINARYEN_METHOD.split(',')
-      if not shared.Settings.BINARYEN_METHOD or 'wasm-s-parser' in methods or 'asm2wasm' in methods:
+      if not shared.Settings.BINARYEN_METHOD or 'wasm-s-parser' in methods or 'asm2wasm' in methods or 'wasm-binary' in methods:
         logging.debug('integrating wasm.js')
         wasm_js = open(os.path.join(binaryen_bin, 'wasm.js')).read()
         wasm_js = wasm_js.replace('EMSCRIPTEN_', 'emscripten_') # do not confuse the markers
@@ -1854,6 +1854,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         for script in shared.Settings.BINARYEN_SCRIPTS.split(','):
           logging.debug('running binaryen script: ' + script)
           subprocess.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), js_target, wasm_text_target], env=script_env)
+      if 'wasm-binary' in methods:
+        logging.debug('wasm-as (wasm => binary)')
+        subprocess.check_call([os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target])
+        shutil.copyfile(wasm_text_target + '.mappedGlobals', wasm_binary_target + '.mappedGlobals')
 
     # If we were asked to also generate HTML, do that
     if final_suffix == 'html':
