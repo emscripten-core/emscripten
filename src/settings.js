@@ -642,6 +642,7 @@ var USE_SDL = 1; // Specify the SDL version that is being linked against.
                  // 2 is a port of the SDL C code on emscripten-ports
 var USE_SDL_IMAGE = 1; // Specify the SDL_image version that is being linked against. Must match USE_SDL
 var USE_SDL_TTF = 1; // Specify the SDL_ttf version that is being linked against. Must match USE_SDL
+var USE_SDL_NET = 1; // Specify the SDL_net version that is being linked against. Must match USE_SDL
 var USE_ZLIB = 0; // 1 = use zlib from emscripten-ports
 var USE_LIBPNG = 0; // 1 = use libpng from emscripten-ports
 var USE_BULLET = 0; // 1 = use bullet from emscripten-ports
