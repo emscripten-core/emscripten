@@ -88,7 +88,7 @@ if (ENVIRONMENT_IS_NODE) {
     var ret = nodeFS['readFileSync'](filename);
     // The path is absolute if the normalized version is the same as the resolved.
     if (!ret && filename != nodePath['resolve'](filename)) {
-      filename = path.join(__dirname, '..', 'src', filename);
+      filename = nodePath['join'](__dirname, '..', 'src', filename);
       ret = nodeFS['readFileSync'](filename);
     }
     if (ret && !binary) ret = ret.toString();
