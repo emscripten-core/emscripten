@@ -1548,7 +1548,7 @@ int f() {
       })();
     ''')
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.c'), '--pre-js', 'before.js', '--post-js', 'after.js', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1']).communicate()
-    self.assertTextDataIdentical(run_js(os.path.join(self.get_dir(), 'a.out.js')), 's\nu\nc\nc\ne\ns\ns\n')
+    self.assertTextDataIdentical('s\nu\nc\nc\ne\ns\ns\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_sdl_endianness(self):
     open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
