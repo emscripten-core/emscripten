@@ -1511,6 +1511,45 @@ int f() {
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'before.js', '--post-js', 'after.js', '-s', 'NO_EXIT_RUNTIME=1']).communicate()
     self.assertContained('hello from main\nhello from js\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+  def test_emscripten_suspend(self):
+    open(os.path.join(self.get_dir(), 'main.c'), 'w').write('''
+      #include <stdio.h>
+      #include <emscripten.h>
+
+      #define INPUT_LENGTH 7
+
+      int main(int argc, char **argv) {
+        char input[INPUT_LENGTH] = {};
+        for (int n = 0; n < INPUT_LENGTH; ++n) {
+          emscripten_suspend("char_ready");
+          input[n] = getchar();
+          printf("%c\\n", input[n]);
+        }
+
+        return 0;
+      }
+
+    ''')
+    open(os.path.join(self.get_dir(), 'before.js'), 'w').write('''
+      var userInput = [];
+      var Module = { stdin: (function() { return userInput.shift() || null; }) };
+    ''')
+    open(os.path.join(self.get_dir(), 'after.js'), 'w').write('''
+      (function() {
+        var desiredInput = "success";
+        var insertChar = (function(i, self) {
+          userInput.push(desiredInput.charCodeAt(i));
+          Module.resume("char_ready");
+          if (i < desiredInput.length) {
+            return setTimeout((function() { self(i + 1, self) }), Math.floor(Math.random() * 1500));
+          }
+        });
+        insertChar(0, insertChar);
+      })();
+    ''')
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.c'), '--pre-js', 'before.js', '--post-js', 'after.js', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1']).communicate()
+    self.assertTextDataIdentical(run_js(os.path.join(self.get_dir(), 'a.out.js')), 's\nu\nc\nc\ne\ns\ns\n')
+
   def test_sdl_endianness(self):
     open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
       #include <stdio.h>
