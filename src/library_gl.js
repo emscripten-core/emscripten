@@ -1051,18 +1051,30 @@ var LibraryGL = {
       case 0x1906 /* GL_ALPHA */:
       case 0x1909 /* GL_LUMINANCE */:
       case 0x1902 /* GL_DEPTH_COMPONENT */:
+#if USE_WEBGL2
       case 0x1903 /* GL_RED */:
+      case 0x8D94 /* GL_RED_INTEGER */:
+#endif
         numChannels = 1;
         break;
       case 0x190A /* GL_LUMINANCE_ALPHA */:
+#if USE_WEBGL2
       case 0x8227 /* GL_RG */:
+      case 0x8228 /* GL_RG_INTEGER*/:
+#endif
         numChannels = 2;
         break;
       case 0x1907 /* GL_RGB */:
+#if USE_WEBGL2
+      case 0x8D98 /* GL_RGB_INTEGER */:
+#endif
       case 0x8C40 /* GL_SRGB_EXT */:
         numChannels = 3;
         break;
       case 0x1908 /* GL_RGBA */:
+#if USE_WEBGL2
+      case 0x8D99 /* GL_RGBA_INTEGER */:
+#endif
       case 0x8C42 /* GL_SRGB_ALPHA_EXT */:
         numChannels = 4;
         break;
