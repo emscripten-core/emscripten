@@ -6358,14 +6358,34 @@ int main() {}
                                          use_hash_info=True)
 
   def test_cyberdwarf_pointers(self):
-    check_execute([PYTHON, EMCC, path_from_root('tests', 'debugger', 'test_pointers.cpp'), '-Oz', '-s', 'CYBERDWARF=1',
+    test_name = 'test_pointers'
+    check_execute([PYTHON, EMCC, path_from_root('tests', 'debugger', 'test_pointers.cpp'), '-O1', '-s', 'CYBERDWARF=1',
     '-std=c++11', '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', 'test_pointers.js' ], stderr=PIPE)
     run_js('test_pointers.js', engine=NODE_JS)
 
+  def test_cyberdwarf_arrays(self):
+    test_name = 'test_arrays'
+    check_execute([PYTHON, EMCC, path_from_root('tests', 'debugger', test_name + '.cpp'), '-O1', '-s', 'CYBERDWARF=1',
+    '-std=c++11', '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', test_name + '.js' ], stderr=PIPE)
+    run_js(test_name + '.js', engine=NODE_JS)
+
   def test_cyberdwarf_union(self):
-    check_execute([PYTHON, EMCC, path_from_root('tests', 'debugger', 'test_union.cpp'), '-Oz', '-s', 'CYBERDWARF=1',
-    '-std=c++11', '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', 'test_union.js' ], stderr=PIPE)
-    run_js('test_union.js', engine=NODE_JS)
+    test_name = 'test_union'
+    check_execute([PYTHON, EMCC, path_from_root('tests', 'debugger', test_name + '.cpp'), '-O1', '-s', 'CYBERDWARF=1',
+    '-std=c++11', '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', test_name + '.js' ], stderr=PIPE)
+    run_js(test_name + '.js', engine=NODE_JS)
+
+  def test_cyberdwarf_collections(self):
+    test_name = 'test_collections'
+    check_execute([PYTHON, EMCC, path_from_root('tests', 'debugger', test_name + '.cpp'), '-O1', '-s', 'CYBERDWARF=1',
+    '-std=c++11', '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', test_name + '.js' ], stderr=PIPE)
+    run_js(test_name + '.js', engine=NODE_JS)
+
+  def test_cyberdwarf_intrinsics(self):
+    test_name = 'test_intrinsics'
+    check_execute([PYTHON, EMCC, path_from_root('tests', 'debugger', test_name + '.cpp'), '-O3', '-s', 'CYBERDWARF=1',
+    '-std=c++11', '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', test_name + '.js' ], stderr=PIPE)
+    run_js(test_name + '.js', engine=NODE_JS)
 
   def test_source_file_with_fixed_language_mode(self):
     open('src_tmp_fixed_lang', 'w').write('''

@@ -134,6 +134,7 @@ def get_and_parse_backend(infile, settings, temp_files, DEBUG):
       backend_args += ['-emscripten-wasm']
     if settings['CYBERDWARF']:
       backend_args += ['-enable-cyberdwarf']
+      backend_args += ['-enable-debug-intrinsics']
 
     if DEBUG:
       logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))

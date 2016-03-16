@@ -86,6 +86,9 @@ var CyberDWARFHeapPrinter = function(cdFileLocation) {
       DW_ATE_lo_user = 0x80,
       DW_ATE_hi_user = 0xff;
 
+  // Right now only support deref ops
+  var DW_OP_deref = 0x06;
+
   var TYPE_ID_IDX = 0,
       NAME_IDX = 1,
       TAG_IDX = 2,
@@ -94,7 +97,14 @@ var CyberDWARFHeapPrinter = function(cdFileLocation) {
       SIZE_IDX = 5,
       C_ELEMS_IDX = 7;
 
-  function TypedVariable(base_ptr, type_id) {
+  function TypedVariable(base_ptr, type_id, dwarf_md) {
+    // Resolve count represents how many pointers have been followed already
+    if (typeof(dwarf_md) === "undefined") {
+      this.resolve_count = 0;
+    } else {
+      this._parseDwarf(dwarf_md);
+    }
+
     this.derives = [];
     this.primary = null;
     this.primary_type_id = "";
@@ -104,14 +114,15 @@ var CyberDWARFHeapPrinter = function(cdFileLocation) {
     this.built = false;
     this.resolved = false;
     this.name = "";
+    this.element_name = "";
     this.value = "";
-    this.pointerCount = 0;
+    this.pointer_count = 0;
     this.offset = 0;
     this.size = 0;
     this.standalone_id = 0;
-    this.dereference = true;
     this.isMember = false;
-    this.isInherited = false
+    this.isInherited = false;
+    this.definitionMissing = false;
   }
 
   TypedVariable.prototype.toString = function() {
@@ -128,11 +139,40 @@ var CyberDWARFHeapPrinter = function(cdFileLocation) {
     this._processTypes();
   }
 
+  // DWARF ops are metadata associated with intrinsics, describing what, if
+  // anything a debugger needs to do to the address to get to the variable.
+  // CyberDWARF inheriently acts a heap dumper, expecting a pointer to the
+  // object on the heap so there's always an implicit dereference.
+  // In the case of intrinsics, that's usually not the case, but LLVM has a lot
+  // of freedom on laying out variable storage.
+  //
+  // An example would be a pointer to a pointer and the pointer itself, LLVM
+  // might simply use 1 register, and add a derefence to the bare pointer
+  //
+  // Emscripten doesn't really offer a lot of creative options for memory layout
+  // (thankfully), but there are occasional DW_OP_bit_piece that show up rarely
+  // in what I've seen
+
+  TypedVariable.prototype._parseDwarf = function(dwarf_md) {
+    var dwarf_op = cyberdwarf["types"][dwarf_md];
+    if (dwarf_op[0] !== 99) {
+      throw "Got a bad type for a dwarf expression " + JSON.stringify(dwarf_op) + " " + dwarf_md;
+    }
+    // By default we're already at the pointer to this value
+    this.resolve_count = 1;
+
+    // Remove 1 from the resolve count for each deref
+    for (var i = 1; i < dwarf_op.length; i++) {
+      if (dwarf_op[i] !== DW_OP_deref) {
+        throw "Support for non deref chain DWARF ops is currently missing (got OP" + dwarf_op[i] + ")";
+      }
+      this.resolve_count -= 1;
+    }
+  }
+
   TypedVariable.prototype._buildDeriveChain = function() {
     var cur_td = type_id_to_type_descriptor(this.type_id, this.base_ptr);
-
     var ptr = this.base_ptr;
-
     while (cur_td[TYPE_ID_IDX] == 1 || cur_td[TYPE_ID_IDX] == 10) {
       if (cur_td[TYPE_ID_IDX] == 1) {
         this.derives.push(cur_td);
@@ -150,6 +190,19 @@ var CyberDWARFHeapPrinter = function(cdFileLocation) {
     this.primary = cur_td;
   }
 
+  TypedVariable.prototype._getArraySizes = function() {
+    var sizes = [];
+
+    for (var i in this.primary[C_ELEMS_IDX]) {
+      var sub_range = cyberdwarf['types'][this.primary[C_ELEMS_IDX][i]];
+      if (sub_range[TYPE_ID_IDX] == SUBRANGE_INFO) {
+        sizes.push(sub_range[1]);
+      }
+    }
+
+    return sizes;
+  }
+
   TypedVariable.prototype._processTypes = function() {
     var name_vec = [];
 
@@ -157,11 +210,11 @@ var CyberDWARFHeapPrinter = function(cdFileLocation) {
       switch (this.derives[i][TAG_IDX]) {
         case DW_TAG_reference_type: {
           name_vec.unshift("&");
-          this.pointerCount++;
+          this.pointer_count++;
         } break;
         case DW_TAG_pointer_type: {
           name_vec.unshift("*");
-          this.pointerCount++;
+          this.pointer_count++;
         } break;
         case DW_TAG_const_type: {
           name_vec.unshift("const");
@@ -170,19 +223,31 @@ var CyberDWARFHeapPrinter = function(cdFileLocation) {
           this.isInherited = true;
           name_vec.unshift(">");
           this.offset = this.derives[i][OFFSET_IDX] / 8;
+          /* Disable for now, need to fix this to support bit slices
+          if (this.derives[i][OFFSET_IDX] % 8 !== 0) {
+            console.log("Weird offset ", this.offset, name_vec, this.type_id);
+          }*/
         } break;
         case DW_TAG_member: {
           this.isMember = true;
           name_vec.push(":");
           name_vec.push(this.derives[i][NAME_IDX])
+          this.element_name = this.derives[i][NAME_IDX];
           this.offset = this.derives[i][OFFSET_IDX] / 8;
+          /* Disable for now, need to fix this to support bit slices
+          if (this.derives[i][SIZE_IDX] % 8 !== 0) {
+            console.log("Weird size ", this.offset, name_vec, this.derives[i][SIZE_IDX], this.type_id);
+          }
+          if (this.derives[i][OFFSET_IDX] % 8 !== 0) {
+            console.log("Weird offset ", this.offset, name_vec, this.derives[i][SIZE_IDX], this.derives[i], this.type_id);
+          }*/
         } break;
         case DW_TAG_typedef: {
           // Ignoring typedefs for the time being
         } break;
         case DW_TAG_volatile_type: {
           name_vec.unshift("volatile");
-        }
+        } break;
         default:
           console.error("Unimplemented " + type_descriptor);
       }
@@ -190,10 +255,14 @@ var CyberDWARFHeapPrinter = function(cdFileLocation) {
 
     if (this.primary[TYPE_ID_IDX] == BASIC_TYPE) {
       this.size = this.primary[4];
-      name_vec.unshift(this.primary[NAME_IDX]);
+      if (this.primary[NAME_IDX]) {
+        name_vec.unshift(this.primary[NAME_IDX]);
+      }
     } else if (this.primary[TYPE_ID_IDX] == COMPOSITE_TYPE) {
       this.size = this.primary[SIZE_IDX];
-      name_vec.unshift(this.primary[NAME_IDX]);
+      if (this.primary[NAME_IDX]) {
+        name_vec.unshift(this.primary[NAME_IDX]);
+      }
 
       switch (this.primary[TAG_IDX]) {
         case DW_TAG_structure_type: {
@@ -203,13 +272,17 @@ var CyberDWARFHeapPrinter = function(cdFileLocation) {
           name_vec.unshift("class");
         } break;
         case DW_TAG_enumeration_type: {
-          name_vec.unshift("class");
+          name_vec.unshift("enum");
         } break;
         case DW_TAG_union_type: {
           name_vec.unshift("union");
         } break;
         case DW_TAG_array_type: {
-          name_vec.unshift("array");
+          var sizes = this._getArraySizes().join("][");
+          name_vec.unshift("[" + sizes + "]");
+          var exemplar = new TypedVariable(this._getMyAddress(), this.primary[BASE_TYPE_IDX]);
+          exemplar._initialBuild();
+          name_vec.unshift(exemplar.name)
         } break;
         default:
           console.error("Unimplemented for composite " + this.primary);
@@ -221,7 +294,7 @@ var CyberDWARFHeapPrinter = function(cdFileLocation) {
 
   TypedVariable.prototype._getMyAddress = function() {
     var base_addr = this.base_ptr + this.offset;
-    for (var i = 0; i < this.pointerCount; i++) {
+    for (var i = this.resolve_count; i < this.pointer_count; i++) {
       if (base_addr == 0) {
         return 0;
       }
@@ -230,11 +303,23 @@ var CyberDWARFHeapPrinter = function(cdFileLocation) {
     return base_addr;
   }
 
+  function _get_array_key_from_idx(size_vec, offset) {
+    var idxes = [];
+    for (var i in size_vec) {
+      idxes.push(offset % size_vec[i]);
+      offset /= size_vec[i];
+      offset |= 0;
+    }
+    // This reads better with C code, following the order of brackets
+    return idxes.reverse().join(":");
+  }
+
   TypedVariable.prototype._resolveBaseTypeValue = function() {
     this.resolved = true;
     if (this.primary[TYPE_ID_IDX] == BASIC_TYPE) {
-      if (!this.dereference) {
+      if (this.resolve_count > 0) {
         switch (this.primary[TAG_IDX]) {
+          case DW_ATE_boolean:
           case DW_ATE_unsigned:
           case DW_ATE_float:
           case DW_ATE_signed: {
@@ -253,15 +338,41 @@ var CyberDWARFHeapPrinter = function(cdFileLocation) {
     } else {
       this.value = {};
 
-      for (var i in this.primary[C_ELEMS_IDX]) {
-        var cur_elem = new TypedVariable(this._getMyAddress(), this.primary[C_ELEMS_IDX][i]);
+      if (this.primary[TAG_IDX] === DW_TAG_array_type) {
+        // For computing offset, reverse them.
+        var sizes = this._getArraySizes().reverse();
+        var total_size = 1;
+        for (var i in sizes) {
+          total_size *= sizes[i];
+        }
 
-        cur_elem._initialBuild();
+        var array_of = type_id_to_type_descriptor(this.primary[BASE_TYPE_IDX]);
+        while (array_of[TYPE_ID_IDX] == 10) {
+          array_of = type_id_to_type_descriptor(array_of[TYPE_ID_IDX]);
+        }
 
-        if (cur_elem.size > 0 && (cur_elem.isInherited || cur_elem.isMember)) {
-          var pointed_elem = new TypedVariable(cur_elem._getMyAddress(), cur_elem.primary_type_id);
+        elem_size = ((this.primary[SIZE_IDX] / total_size) / 8) | 0;
+
+        for (var i = 0; i < total_size; i++) {
+          var offset = this._getMyAddress() + (i * elem_size);
+          var pointed_elem = new TypedVariable(offset, this.primary[BASE_TYPE_IDX]);
           pointed_elem._initialBuild();
-          this.value[cur_elem.name] = pointed_elem;
+          this.value[_get_array_key_from_idx(sizes, i)] = pointed_elem;
+        }
+      } else {
+        for (var i in this.primary[C_ELEMS_IDX]) {
+          var cur_elem = new TypedVariable(this._getMyAddress(), this.primary[C_ELEMS_IDX][i]);
+
+          cur_elem._initialBuild();
+
+          if (cur_elem.size > 0) {
+            if (cur_elem.isInherited || cur_elem.isMember) {
+              var pointed_elem = new TypedVariable(cur_elem._getMyAddress(), cur_elem.primary_type_id);
+              pointed_elem._initialBuild();
+              pointed_elem.element_name = cur_elem.element_name;
+              this.value[cur_elem.name] = pointed_elem;
+            }
+          }
         }
       }
     }
@@ -294,6 +405,11 @@ var CyberDWARFHeapPrinter = function(cdFileLocation) {
       return this.value;
     }
 
+    var visualizer = get_visualizer(this);
+    if (visualizer !== null) {
+      return visualizer.to_object(this);
+    }
+
     if (this.value == null) {
       return "null";
     }
@@ -305,6 +421,8 @@ var CyberDWARFHeapPrinter = function(cdFileLocation) {
     for (var i in childNames) {
       if (this.value[childNames[i]].resolved) {
         retval[childNames[i]] = this.value[childNames[i]]._prettyPrintToObjectHelper();
+      } else if (this.value[childNames[i]].base_ptr === 0) {
+        retval[childNames[i]] = null;
       } else {
         retval[childNames[i]] = "cd_tvptr(0x" + this.value[childNames[i]]._getMyAddress().toString(16) + ",'" + this.value[childNames[i]].type_id + "')";
       }
@@ -349,13 +467,14 @@ var CyberDWARFHeapPrinter = function(cdFileLocation) {
 
   function install_cyberdwarf(data_cd) {
     cyberdwarf = JSON.parse(data_cd)["cyberdwarf"];
+    cyberdwarf['types']['0'] = [0, "void", 7, 0, 32];
     invert_vtables();
   }
 
   function type_descriptor_to_heap_id(type_descriptor) {
     var id = "";
     switch (type_descriptor[TAG_IDX]) {
-      case DW_ATE_unsigned: case DW_ATE_unsigned_char: id = "u"; break;
+      case DW_ATE_boolean: case DW_ATE_unsigned: case DW_ATE_unsigned_char: id = "u"; break;
       case DW_ATE_signed: case DW_ATE_signed_char: id = "i"; break;
       case DW_ATE_float: id = "f"; break;
     }
@@ -363,15 +482,20 @@ var CyberDWARFHeapPrinter = function(cdFileLocation) {
     return id;
   }
 
-  function type_id_to_type_descriptor(type_id, ptr, dit) {
+  function type_id_to_type_descriptor(type_id, ptr) {
     if (!isNaN(+type_id)) {
       return cyberdwarf["types"][type_id];
     }
     if (typeof(type_id) === "string") {
-      if (dit) {
-        type_id = resolve_from_vtable(ptr, type_id);
+      type_id = resolve_from_vtable(ptr, type_id);
+      var temp_type_id = cyberdwarf["type_name_map"][type_id];
+      if (typeof(temp_type_id) === "undefined") {
+        if (typeof(cyberdwarf["type_name_map"]["fd_" + type_id]) !== "undefined") {
+          type_id = cyberdwarf["type_name_map"]["fd_" + type_id];
+        }
+      } else {
+        type_id = temp_type_id;
       }
-      type_id = cyberdwarf["type_name_map"][type_id];
     }
     return cyberdwarf["types"][type_id];
   }
@@ -406,15 +530,15 @@ var CyberDWARFHeapPrinter = function(cdFileLocation) {
     current_function = cyberdwarf["functions"][func_name];
   }
 
-  function pretty_print_to_object(val, type_id, depth) {
+  function pretty_print_to_object(val, type_id, depth, dwarf_md) {
     install_heap(Module.HEAPU8.buffer);
-    var base_type = new TypedVariable(val, current_function[type_id]);
+    var base_type = new TypedVariable(val, current_function[type_id], dwarf_md);
     return base_type.prettyPrintToObject(depth);
   }
 
-  function pretty_print_from_typename(val, type_name, depth) {
+  function pretty_print_from_typename(val, type_name, depth, dwarf_md) {
     install_heap(Module.HEAPU8.buffer);
-    var base_type = new TypedVariable(val, type_name);
+    var base_type = new TypedVariable(val, type_name, dwarf_md);
     return base_type.prettyPrintToObject(depth);
   }
 
@@ -452,6 +576,25 @@ var CyberDWARFHeapPrinter = function(cdFileLocation) {
       cdFileLocation = Module['cdInitializerPrefixURL'] + cdFileLocation;
     }
     if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
+      var data = Module['readBinary'](cdFileLocation);
+      install_cyberdwarf(data);
+      if (typeof(cb) !== "undefined") {
+        cb();
+      }
+    }
+
+    var decoded = pretty_print_to_object(val, name, depth);
+    return decoded;
+  }
+
+  function initialize_debugger(cb) {
+    var cdFile;
+    if (typeof Module['locateFile'] === 'function') {
+      cdFileLocation = Module['locateFile'](cdFileLocation);
+    } else if (Module['cdInitializerPrefixURL']) {
+      cdFileLocation = Module['cdInitializerPrefixURL'] + cdFileLocation;
+    }
+    if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
       var data = Module['read'](cdFileLocation);
       install_cyberdwarf(data);
     } else {
@@ -473,12 +616,90 @@ var CyberDWARFHeapPrinter = function(cdFileLocation) {
     }
   }
 
+  var visualizers = [];
+
+  function register_visualizer(visualizer) {
+    visualizers.push(visualizer);
+  }
+
+  function get_visualizer(typed_var) {
+    for (v in visualizers) {
+      if (visualizers[v].can_visualize(typed_var)) {
+        return visualizers[v];
+      }
+    }
+    return null;
+  }
+
+  function get_intrinsic_data(id) {
+    return cyberdwarf["intrinsics"][id];
+  }
+
+  register_visualizer({
+    can_visualize: function(typed_var) {
+      return typed_var.primary[NAME_IDX].startsWith("vector<");
+    },
+    to_object: function(val) {
+      var base = val.value[Object.keys(val.value)[0]].value;
+      //console.error(JSON.stringify(val, null, "  "));
+      var begin = null;
+      var end = null;
+      for (var e in base) {
+        if (base[e].element_name === "__begin_") {
+          begin = base[e];
+        }
+        if (base[e].element_name === "__end_") {
+          end = base[e];
+        }
+      }
+      if (begin == null) {
+        console.error(JSON.stringify(val, null, "  "));
+      }
+      var cur_ptr = begin._getMyAddress();
+      var vals = [];
+      while (cur_ptr < end._getMyAddress()) {
+        var c = new TypedVariable(cur_ptr, begin.type_id);
+        c._buildForPrettyPrint(10);
+        vals.push(c._prettyPrintToObjectHelper());
+        cur_ptr += begin.size / 8;
+      }
+
+      return vals;
+    }
+  });
+
+  var var_tracker = {};
+
+  function var_tracker_logger(a, b, c, d, e) {
+    var_tracker[e] = [a, b, c, d, e];
+  }
+
+  function enable_var_tracker() {
+    Module["cyberdwarf_debug_constant"] = var_tracker_logger;
+    Module["cyberdwarf_debug_value"] = var_tracker_logger;
+  }
+
+  function disable_var_tracker() {
+    Module["cyberdwarf_debug_constant"] = false;
+    Module["cyberdwarf_debug_value"] = false;
+  }
+
+  function dump_tracked_var(name) {
+    console.log(var_tracker[name]);
+    console.log(JSON.stringify(pretty_print_from_typename(var_tracker[name][0], var_tracker[name][1], 4, var_tracker[name][3]), null, "  "));
+  }
+
   return {
     "decode_from_stack": stack_decoder,
     "initialize_debugger": initialize_debugger,
     "set_current_function": set_current_function,
     "decode_var_by_var_name": pretty_print_to_object,
-    "decode_var_by_type_name": pretty_print_from_typename
+    "decode_var_by_type_name": pretty_print_from_typename,
+    "register_visualizer": register_visualizer,
+    "get_intrinsic_data": get_intrinsic_data,
+    "enable_var_tracker": enable_var_tracker,
+    "disable_var_tracker": disable_var_tracker,
+    "dump_tracked_var": dump_tracked_var
   };
 };
 
