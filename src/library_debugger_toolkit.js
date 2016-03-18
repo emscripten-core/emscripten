@@ -473,4 +473,4 @@ var EMDebugHeapPrinter = function(cdFileLocation) {
   };
 };
 
-mergeInto(LibraryManager.library, {"emdebug_Debugger": EMDebugHeapPrinter});
+mergeInto(LibraryManager.library, { "emdebug_Debugger": EMDebugHeapPrinter });

@@ -1522,8 +1522,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if DEBUG:
           # Copy into temp dir as well, so can be run there too
           shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
-
-          return 'memoryInitializer = "%s";' % os.path.basename(memfile)
+        return 'memoryInitializer = "%s";' % os.path.basename(memfile)
       src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
       open(final + '.mem.js', 'w').write(src)
       final += '.mem.js'
