@@ -859,7 +859,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     wasm_text_target = asm_target.replace('.asm.js', '.wast') # ditto, might not be used
     wasm_binary_target = asm_target.replace('.asm.js', '.wasm') # ditto, might not be used
 
-    if final_suffix == 'html' and not separate_asm and 'PRECISE_F32=2' in settings_changes or 'USE_PTHREADS=2' in settings_changes:
+    if final_suffix == 'html' and not separate_asm and ('PRECISE_F32=2' in settings_changes or 'USE_PTHREADS=2' in settings_changes):
       separate_asm = True
       logging.warning('forcing separate asm output (--separate-asm), because -s PRECISE_F32=2 or -s USE_PTHREADS=2 was passed.')
     if separate_asm:
