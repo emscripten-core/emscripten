@@ -1983,7 +1983,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 %s
           };
           xhr.send(null);
-''' % (wasm_binary_target, script_inline) # TODO: support wasts too, not just wasm?
+''' % (os.path.basename(wasm_binary_target), script_inline)
 
       html = open(target, 'w')
       assert (script_src or script_inline) and not (script_src and script_inline)
