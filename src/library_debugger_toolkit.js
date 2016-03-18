@@ -1,4 +1,4 @@
-var EMDebugHeapPrinter = function() {
+var EMDebugHeapPrinter = function(cdFileLocation) {
   var BASIC_TYPE = 0,
       DERIVED_TYPE = 1,
       COMPOSITE_TYPE = 2,
@@ -425,24 +425,51 @@ var EMDebugHeapPrinter = function() {
   function stack_decoder(val, name, depth, on_heap) {
     var err = new Error();
     var stack_frames = err.stack.split("\n");
-    var func_finder = new RegExp("at Object.([^\\s]+)", "g");
-    if (func_finder.exec(stack_frames[4])) {
-      set_current_function(func_finder.exec(stack_frames[4])[1]);
-    } else {
-      var func_finder = new RegExp("at ([^\\s]+)", "g");
-      set_current_function(func_finder.exec(stack_frames[4])[1]);
-    }
-    var decoded = pretty_print_to_object(val, name, depth);
+    var func_finder = new RegExp("at (?:Object\\.|)([^\\s]+)", "g");
+    var result = func_finder.exec(stack_frames[4]);
 
+    if (result.length > 1) {
+      set_current_function(result[1]);
+    }
+
+    var decoded = pretty_print_to_object(val, name, depth);
     return decoded;
   }
+
+  function initialize_debugger(cb) {
+    var cdFile;
+    if (typeof Module['locateFile'] === 'function') {
+      emDebugCDFile = Module['locateFile'](cdFileLocation);
+    } else if (Module['cdInitializerPrefixURL']) {
+      cdFileLocation = Module['cdInitializerPrefixURL'] + cdFileLocation;
+    }
+    if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
+      var data = Module['readBinary'](cdFileLocation);
+      install_cyberdwarf(data);
+    } else {
+      var applyEmDebugCDFile = function(data) {
+        install_cyberdwarf(data);
+        console.info("Debugger ready");
+        if (typeof(cb) !== "undefined") {
+          cb();
+        }
+      }
+      function doBrowserLoad() {
+        Module['readAsync'](cdFileLocation, applyEmDebugCDFile, function() {
+          throw 'could not load debug data ' + emDebugCDFile;
+        });
+      }
+      // fetch it from the network ourselves
+      doBrowserLoad();
+    }
+  }
+
   return {
     "decode_from_stack": stack_decoder,
-    "install_cd_file": install_cyberdwarf,
+    "initialize_debugger": initialize_debugger,
     "set_current_function": set_current_function,
     "decode_var_by_var_name": pretty_print_to_object,
     "decode_var_by_type_name": pretty_print_from_typename
-
   };
 };
 

@@ -1,5 +1,6 @@
 function init_cd_test(name) {
   console.log("-------------- Starting test " + name + " --------------");
+  Module['emdebugger_heap_printer'].initialize_debugger();
 }
 
 function TestException(message) {

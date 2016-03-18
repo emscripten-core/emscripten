@@ -1159,7 +1159,7 @@ var asm = (function(global, env, buffer) {
        access_quote('asmGlobalArg'), the_global,
        shared_array_buffer,
        access_quote('asmLibraryArg'), sending,
-       "'use asm';" if not metadata.get('hasInlineJS') and settings['ASM_JS'] == 1 and not settings['CYBERDWARF'] else "'almost asm';",
+       "'use asm';" if not metadata.get('hasInlineJS') and settings['ASM_JS'] == 1 else "'almost asm';",
        first_in_asm,
        '''
   var HEAP8 = new global%s(buffer);

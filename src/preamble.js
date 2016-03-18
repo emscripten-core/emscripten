@@ -2,9 +2,9 @@
 
 // === Preamble library stuff ===
 
-// Documentation for the public APIs defined in this file must be updated in: 
+// Documentation for the public APIs defined in this file must be updated in:
 //    site/source/docs/api_reference/preamble.js.rst
-// A prebuilt local version of the documentation is available at: 
+// A prebuilt local version of the documentation is available at:
 //    site/build/text/docs/api_reference/preamble.js.txt
 // You can also build docs locally as HTML or other formats in site/
 // An online HTML version (which may be of a different version of Emscripten)
@@ -152,7 +152,7 @@ var cwrap, ccall;
   // For fast lookup of conversion functions
   var toC = {'string' : JSfuncs['stringToC'], 'array' : JSfuncs['arrayToC']};
 
-  // C calling interface. 
+  // C calling interface.
   ccall = function ccallFunc(ident, returnType, argTypes, args, opts) {
     var func = getCFunc(ident);
     var cArgs = [];
@@ -213,7 +213,7 @@ var cwrap, ccall;
       }
     }
   }
-  
+
   cwrap = function cwrap(ident, returnType, argTypes) {
     argTypes = argTypes || [];
     var cfunc = getCFunc(ident);
@@ -568,7 +568,7 @@ function UTF8ToString(ptr) {
 //   str: the Javascript string to copy.
 //   outU8Array: the array to copy to. Each index in this array is assumed to be one 8-byte element.
 //   outIdx: The starting offset in the array to begin the copying.
-//   maxBytesToWrite: The maximum number of bytes this function can write to the array. This count should include the null 
+//   maxBytesToWrite: The maximum number of bytes this function can write to the array. This count should include the null
 //                    terminator, i.e. if maxBytesToWrite=1, only the null terminator will be written and nothing else.
 //                    maxBytesToWrite=0 does not write any bytes to the output, not even the null terminator.
 // Returns the number of bytes written, EXCLUDING the null terminator.
@@ -690,7 +690,7 @@ function UTF16ToString(ptr) {
 // Parameters:
 //   str: the Javascript string to copy.
 //   outPtr: Byte address in Emscripten HEAP where to write the string to.
-//   maxBytesToWrite: The maximum number of bytes this function can write to the array. This count should include the null 
+//   maxBytesToWrite: The maximum number of bytes this function can write to the array. This count should include the null
 //                    terminator, i.e. if maxBytesToWrite=2, only the null terminator will be written and nothing else.
 //                    maxBytesToWrite<2 does not write any bytes to the output, not even the null terminator.
 // Returns the number of bytes written, EXCLUDING the null terminator.
@@ -753,7 +753,7 @@ function UTF32ToString(ptr) {
 // Parameters:
 //   str: the Javascript string to copy.
 //   outPtr: Byte address in Emscripten HEAP where to write the string to.
-//   maxBytesToWrite: The maximum number of bytes this function can write to the array. This count should include the null 
+//   maxBytesToWrite: The maximum number of bytes this function can write to the array. This count should include the null
 //                    terminator, i.e. if maxBytesToWrite=4, only the null terminator will be written and nothing else.
 //                    maxBytesToWrite<4 does not write any bytes to the output, not even the null terminator.
 // Returns the number of bytes written, EXCLUDING the null terminator.
@@ -1273,7 +1273,7 @@ function freeSplitChunk(i) {
 function checkPtr(ptr, shifts) {
   if (ptr <= 0) abort('segmentation fault storing to address ' + ptr);
   if (ptr !== ((ptr >> shifts) << shifts)) abort('alignment error storing to address ' + ptr + ', which was expected to be aligned to a shift of ' + shifts);
-  if ((ptr >> SPLIT_MEMORY_BITS) !== (ptr + Math.pow(2, shifts) - 1 >> SPLIT_MEMORY_BITS)) abort('segmentation fault, write spans split chunks ' + [ptr, shifts]); 
+  if ((ptr >> SPLIT_MEMORY_BITS) !== (ptr + Math.pow(2, shifts) - 1 >> SPLIT_MEMORY_BITS)) abort('segmentation fault, write spans split chunks ' + [ptr, shifts]);
 }
 #endif
 
@@ -1884,6 +1884,10 @@ var /* show errors on likely calls to FS when it was not included */ FS = {
 Module['FS_createDataFile'] = FS.createDataFile;
 Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
 #endif
+#endif
+
+#if CYBERDWARF
+var emDebugCDFile = '{{{ BUNDLED_CD_DEBUG_FILE }}}';
 #endif
 
 // === Body ===

@@ -1118,6 +1118,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.CYBERDWARF:
       newargs.append('-g')
+      shared.Settings.BUNDLED_CD_DEBUG_FILE = target + ".cd"
       js_libraries.append(shared.path_from_root('src', 'library_cyberdwarf.js'))
       js_libraries.append(shared.path_from_root('src', 'library_debugger_toolkit.js'))
 
@@ -1521,9 +1522,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if DEBUG:
           # Copy into temp dir as well, so can be run there too
           shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
-        if shared.Settings.CYBERDWARF:
-          return 'memoryInitializer = "%s"; emDebugCDFile = "%s";' % (os.path.basename(memfile), os.path.basename(memfile)[:-3] + "cd")
-        else:
+
           return 'memoryInitializer = "%s";' % os.path.basename(memfile)
       src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
       open(final + '.mem.js', 'w').write(src)
@@ -1585,7 +1584,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             passes = ['asm'] + passes
             if shared.Settings.PRECISE_F32:
               passes = ['asmPreciseF32'] + passes
-            if emit_symbol_map or shared.Settings.CYBERDWARF and 'minifyNames' in passes:
+            if (emit_symbol_map or shared.Settings.CYBERDWARF) and 'minifyNames' in passes:
               passes += ['symbolMap='+target+'.symbols']
             if profiling_funcs and 'minifyNames' in passes:
               passes += ['profilingFuncs']

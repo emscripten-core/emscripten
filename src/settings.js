@@ -739,4 +739,6 @@ var EVAL_CTORS = 0; // This tries to evaluate global ctors at compile-time, appl
 
 var CYBERDWARF = 0; // disabled by default
 
+var BUNDLED_CD_DEBUG_FILE = ""; // Path to the CyberDWARF debug file passed to the compiler
+
 // Reserved: variables containing POINTER_MASKING.
