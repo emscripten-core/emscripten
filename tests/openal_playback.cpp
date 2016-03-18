@@ -147,6 +147,19 @@ int main() {
 
   alSourcei(sources[0], AL_BUFFER, buffers[0]);
 
+  // check basic AL_SOURCE_RELATIVE functionality
+  alGetSourcei(sources[0], AL_SOURCE_RELATIVE, &val);
+  assert(val == AL_FALSE);
+
+  alSourcei(sources[0], AL_SOURCE_RELATIVE, AL_TRUE);
+  alGetSourcei(sources[0], AL_SOURCE_RELATIVE, &val);
+  assert(val == AL_TRUE);
+
+  alSourcei(sources[0], AL_SOURCE_RELATIVE, AL_FALSE);
+  alGetSourcei(sources[0], AL_SOURCE_RELATIVE, &val);
+  assert(val == AL_FALSE);
+  // end AL_SOURCE_RELATIVE checks
+
   ALint state;
   alGetSourcei(sources[0], AL_SOURCE_STATE, &state);
   assert(state == AL_INITIAL);
