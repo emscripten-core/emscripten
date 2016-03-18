@@ -1886,4 +1886,9 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
 #endif
 #endif
 
+#if CYBERDWARF
+var emDebugCDFile = '{{{ BUNDLED_CD_DEBUG_FILE }}}';
+var STWD = '{{{ EXPORTED_RUNTIME_METHODS }}}';
+#endif
+
 // === Body ===

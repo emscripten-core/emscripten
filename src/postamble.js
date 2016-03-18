@@ -95,37 +95,8 @@ if (memoryInitializer) {
 #endif
 
 #if CYBERDWARF
-#if USE_PTHREADS
-if (emDebugCDFile && !ENVIRONMENT_IS_PTHREAD) {
-#else
-if (emDebugCDFile) {
+  Module['emdebugger_heap_printer'] = _emdebug_Debugger(emDebugCDFile);
 #endif
-  Module['emdebugger_heap_printer'] = _emdebug_Debugger();
-  if (typeof Module['locateFile'] === 'function') {
-    emDebugCDFile = Module['locateFile'](emDebugCDFile);
-  } else if (Module['cdInitializerPrefixURL']) {
-    emDebugCDFile = Module['cdInitializerPrefixURL'] + memoryInitializer;
-  }
-  if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
-    var data = Module['readBinary'](emDebugCDFile);
-    Module['emdebugger_heap_printer'].install_cd_file(data);
-  } else {
-    addRunDependency('debug cd file');
-    var applyEmDebugCDFile = function(data) {
-      Module['emdebugger_heap_printer'].install_cd_file(data);
-      removeRunDependency('debug cd file');
-    }
-    function doBrowserLoad() {
-      Module['readAsync'](emDebugCDFile, applyEmDebugCDFile, function() {
-        throw 'could not load debug data ' + emDebugCDFile;
-      });
-    }
-    // fetch it from the network ourselves
-    doBrowserLoad();
-  }
-}
-#endif
-
 
 function ExitStatus(status) {
   this.name = "ExitStatus";
