@@ -79,7 +79,7 @@ The following ``Module`` attributes affect code execution.
 
 .. js:attribute:: Module.noExitRuntime
 
-	If ``noExitRuntime`` is set to ``true``, the runtime is not shut down after ``run`` completes. Shutting down the runtime calls shutdown callbacks, for example ``atexit`` calls. If you want to continue using the code after ``run()`` finishes, it is necessary to set this. This is automatically set for you if you use an API command that implies that you want the runtime to not be shut down, for example ``emscripten_set_main_loop``.
+	If ``noExitRuntime`` is set to ``true``, the runtime is not shut down after ``run`` completes. Shutting down the runtime calls shutdown callbacks, for example ``atexit`` calls and closing filesystems (including WebSockets opened by Emscripten). If you want to continue using the code after ``run()`` finishes, it is necessary to set this. This is automatically set for you if you use an API command that implies that you want the runtime to not be shut down, for example ``emscripten_set_main_loop``.
 
 .. js:attribute:: Module.filePackagePrefixURL
 

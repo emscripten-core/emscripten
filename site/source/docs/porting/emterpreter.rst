@@ -52,24 +52,25 @@ Emterpreter-Async: Run Synchronous Code
 The emterpreter runs the code in an interpreter, which makes it feasible to manually control the call stack and so forth. To enable this support, build with ``-s EMTERPRETIFY_ASYNC=1``. You can then write synchronous-looking code, and it will "just work", e.g.
 
 ::
-
-    while (1) {
-      do_frame();
-      emscripten_sleep(10);
+    void frame_loop() {
+      while (1) {
+        do_frame();
+        emscripten_sleep(10);
+      }
     }
 
 is a simple way to do a main loop, which typically you would refactor your code for and use ``emscripten_set_main_loop``. Instead, in the emterpreter the call to ``emscripten_sleep`` will save the execution state, including call stack, do a ``setTimeout`` for the specified amount of milliseconds, and after that delay, reconstruct the execution state exactly as it was before. From the perspective of the source code, it looks like synchronous sleep, but under the hood it is converted to a form that can work in a web browser asynchronously.
 
 For a list of the APIs that can be used in this synchronous manner, see [the docs](http://kripken.github.io/emscripten-site/docs/api_reference/emscripten.h.html#emterpreter-async-functions).
 
-When using sleep in this manner, you can likely use the emterpreter whitelist very efficiently: Only things that can lead to a call to sleep (or another synchronous method) need to be emterpreted. In the example above, ``do_frame`` and everything that could call it should be in the whitelist, so that everything else runs at full asm.js speed. More specifically, for the interpreter to be able to save and later restore the state of execution, the current call stack must only contain emterpreted functions, not normal asm.js functions, and not functions from outside that are not compiled code. To save the state of execution, the interpreter records its current location and all variables on the stack, both of which we cannot do for code that is not run in the interpreter. Note that this makes using ``ccall`` or ``cwrap`` to call code which does an asynchronous operation a little tricky. There is some support for this (see the [async option](https://kripken.github.io/emscripten-site/docs/api_reference/preamble.js.html#ccall) on ccall), but if assumes there isn't anything else on the JS stack you want paused and resumed, and also, it works like a promise in that it returns to your JS code, but continues to work later on (this should probably be turned into a proper JS Promise).
+When using sleep in this manner, you can likely use the emterpreter whitelist very efficiently: Only things that can lead to a call to sleep (or another synchronous method) need to be emterpreted. In the example above, ``frame_loop`` and everything that could call it should be in the whitelist, so that everything else (e.g. ``do_frame`` runs at full asm.js speed. More specifically, for the interpreter to be able to save and later restore the state of execution, the current call stack must only contain emterpreted functions, not normal asm.js functions, and not functions from outside that are not compiled code. To save the state of execution, the interpreter records its current location and all variables on the stack, both of which we cannot do for code that is not run in the interpreter. Note that this makes using ``ccall`` or ``cwrap`` to call code which does an asynchronous operation a little tricky. There is some support for this (see the [async option](https://kripken.github.io/emscripten-site/docs/api_reference/preamble.js.html#ccall) on ccall), but if assumes there isn't anything else on the JS stack you want paused and resumed, and also, it works like a promise in that it returns to your JS code, but continues to work later on (this should probably be turned into a proper JS Promise).
 
 Semantics
 ---------
 
-``emscripten_sleep`` and other synchronous methods are meant to actually **be** synchronous. When they execute, control returns to the browser's main event loop (which allows rendering to show up), however, we attempt to block other asynchronous events. That is, if you do an ``emscripten_async_wget`` and then an ``emscripten_sleep``, the asynchronous wget will **not** execute during the sleep. The sleep must complete first. This keeps things in alignment with how synchronous code would work in C.
+``emscripten_sleep`` and other synchronous methods are meant to actually **be** synchronous. When they execute, control returns to the browser's main event loop (which allows rendering to show up), however, we attempt to block other asynchronous events. That is, if you do an ``emscripten_async_wget`` and then an ``emscripten_sleep``, the asynchronous wget will **not** execute during the sleep. The sleep must complete first. This keeps things in alignment with how synchronous code would work in C. Any non-emterpreted asm.js functions will cause an abort during an emterpreter pause as they could cause unexpected modification to globals or memory.
 
-If you **do** want asynchronous events during sleep, use ``emscripten_sleep_with_yield``. This is not fully tested yet, however, and may need rethinking.
+If you **do** want asynchronous events or arbitrary asm.js function execution during sleep, use ``emscripten_sleep_with_yield``. This is not fully tested yet, however, and may need rethinking.
 
 Deciding on which methods to Emterpret for async
 ------------------------------------------------
