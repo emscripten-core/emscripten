@@ -1195,7 +1195,7 @@ var LibraryGLFW = {
 
   glfwJoystickPresent: function(joy) { throw "glfwJoystickPresent is not implemented."; },
 
-  glfwGetJoystickAxes: function(joy, count) { throw "glfwGetJoystickParam is not implemented."; },
+  glfwGetJoystickAxes: function(joy, count) { throw "glfwGetJoystickAxes is not implemented."; },
 
   glfwGetJoystickButtons: function(joy, count) { throw "glfwGetJoystickButtons is not implemented."; },
 
