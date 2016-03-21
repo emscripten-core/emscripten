@@ -95,7 +95,7 @@ def run():
   global final, target, script_src, script_inline
 
   if DEBUG: logging.warning('invocation: ' + ' '.join(sys.argv) + (' + ' + EMCC_CFLAGS if EMCC_CFLAGS else '') + '  (in ' + os.getcwd() + ')')
-  if EMCC_CFLAGS: sys.argv.append(EMCC_CFLAGS)
+  if EMCC_CFLAGS: sys.argv.extend(shlex.split(EMCC_CFLAGS))
 
   if DEBUG and LEAVE_INPUTS_RAW: logging.warning('leaving inputs raw')
 
