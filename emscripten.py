@@ -130,6 +130,8 @@ def get_and_parse_backend(infile, settings, temp_files, DEBUG):
       backend_args += ['-emscripten-asyncify-whitelist=' + ','.join(settings['ASYNCIFY_WHITELIST'])]
     if settings['NO_EXIT_RUNTIME']:
       backend_args += ['-emscripten-no-exit-runtime']
+    if settings['BINARYEN']:
+      backend_args += ['-emscripten-wasm']
 
     if DEBUG:
       logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))
