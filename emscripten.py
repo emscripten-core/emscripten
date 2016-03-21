@@ -1315,7 +1315,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   wasm = outfile.name[:-3] + '.wast'
   s2wasm_args = [os.path.join(shared.BINARYEN_ROOT, 'bin', 's2wasm'), temp_s]
   s2wasm_args += ['--global-base=%d' % shared.Settings.GLOBAL_BASE]
-  s2wasm_args += ['--total-memory=%d' % shared.Settings.TOTAL_MEMORY]
+  s2wasm_args += ['--initial-memory=%d' % shared.Settings.TOTAL_MEMORY]
   if DEBUG:
     logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
     t = time.time()
