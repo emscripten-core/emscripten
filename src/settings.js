@@ -628,6 +628,9 @@ var BINARYEN = 0; // Whether to use [Binaryen](https://github.com/WebAssembly/bi
 var BINARYEN_METHOD = ""; // See binaryen's src/js/post.js for details.
 var BINARYEN_SCRIPTS = ""; // An optional comma-separated list of script hooks to run after binaryen,
                            // in binaryen's /scripts dir.
+var BINARYEN_IMPRECISE = 0; // Whether to apply imprecise/unsafe binaryen optimizations. If enabled,
+                            // code will run faster, but some types of undefined behavior might
+                            // trap in wasm.
 
 var WASM_BACKEND = 0; // Whether to use the WebAssembly backend that is in development in LLVM.
                       // This requires that BINARYEN be set, as we use Binaryen's s2wasm to
