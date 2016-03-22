@@ -814,15 +814,16 @@ function demangle(func) {
       if (getValue(status, 'i32') === 0 && ret) {
         return Pointer_stringify(ret);
       }
-      // otherwise, libcxxabi failed, we can try ours which may return a partial result
+      // otherwise, libcxxabi failed
     } catch(e) {
-      // failure when using libcxxabi, we can try ours which may return a partial result
-      return func;
+      // ignore problems here
     } finally {
       if (buf) _free(buf);
       if (status) _free(status);
       if (ret) _free(ret);
     }
+    // failure when using libcxxabi, don't demangle
+    return func;
   }
   Runtime.warnOnce('warning: build with  -s DEMANGLE_SUPPORT=1  to link in libcxxabi demangling');
   return func;
