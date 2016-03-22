@@ -29,8 +29,6 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def is_split_memory(self):
     return 'SPLIT_MEMORY=' in str(self.emcc_args)
   def is_wasm(self):
-    return 'WASM=1' in self.emcc_args
-  def is_binaryen(self):
     return 'BINARYEN' in str(self.emcc_args)
 
   def test_hello_world(self):
@@ -3019,7 +3017,7 @@ The current type of b is: 9
 
   def can_dlfcn(self):
     if Settings.ALLOW_MEMORY_GROWTH == 1: return self.skip('no dlfcn with memory growth yet')
-    if self.is_binaryen(): return self.skip('no shared modules in wasm')
+    if self.is_wasm(): return self.skip('no shared modules in wasm')
     return True
 
   def prep_dlfcn_lib(self):
@@ -6459,7 +6457,7 @@ def process(filename):
           'i1282vecnback', # uses simd
         ]:
           continue
-        if self.is_binaryen() and os.path.basename(shortname) in [
+        if self.is_wasm() and os.path.basename(shortname) in [
           'i1282vecnback', # uses simd
         ]:
           continue
