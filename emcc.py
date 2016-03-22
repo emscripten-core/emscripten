@@ -1959,7 +1959,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       codeXHR = null;
       var src = URL.createObjectURL(blob);
       var script = document.createElement('script');
-      script.src = URL.createObjectURL(blob);
+      script.src = src;
       script.onload = function() {
         setTimeout(function() {
           %s
