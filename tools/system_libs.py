@@ -329,6 +329,13 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # if building to wasm, we need more math code, since we have less builtins
   if shared.Settings.BINARYEN:
     system_libs += [('wasm-math', 'bc', create_wasm_math, wasm_math_symbols, [], False)]
+    # if libc is included, we definitely must be, as it might need us
+    for data in system_libs:
+      if data[3] == libc_symbols:
+        data[4].append('wasm-math')
+        break
+    else:
+      raise Exception('did not find libc?')
 
   # Go over libraries to figure out which we must include
   def maybe_noexcept(name):
