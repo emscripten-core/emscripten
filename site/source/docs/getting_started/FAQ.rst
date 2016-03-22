@@ -184,7 +184,7 @@ Why can't my code access a file in the same directory?
 
 Emscripten-generated code running *in the browser* cannot access files in the local file system. Instead you can use :ref:`preloading <emcc-preload-file>` and :ref:`embedding <emcc-embed-file>` to work around the lack of synchronous file IO. See :ref:`file-system-overview` for more information.
 
-It is possible to allow access to local file system for code running in *node.js*.
+It is possible to allow access to local file system for code running in *node.js*, use the :ref:`NODEFS <filesystem-api-nodefs>` filesystem option.
 
 
 .. _faq-when-safe-to-call-compiled-functions:
