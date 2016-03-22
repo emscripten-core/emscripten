@@ -863,7 +863,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       separate_asm = True
       logging.warning('forcing separate asm output (--separate-asm), because -s PRECISE_F32=2 or -s USE_PTHREADS=2 was passed.')
     if separate_asm:
-      shared.Settings.SEPARATE_ASM = asm_target
+      shared.Settings.SEPARATE_ASM = os.path.basename(asm_target)
 
     # Find library files
     for i, lib in libs:
