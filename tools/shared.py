@@ -909,7 +909,8 @@ if USE_EMSDK:
                      path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'emscripten')
   ]
   
-  CXX_INCLUDE_PATHS = [path_from_root('system', 'include', 'libcxx')
+  CXX_INCLUDE_PATHS = [path_from_root('system', 'include', 'libcxx'),
+                       path_from_root('system', 'lib', 'libcxxabi', 'include')
   ]
   
   C_OPTS = ['-nostdinc', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdsysteminc',
