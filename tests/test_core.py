@@ -6271,8 +6271,9 @@ def process(filename):
         Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 1
         test()
 
-        # Make sure that DFE ends up eliminating more than 200 functions
-        assert (num_original_funcs - self.count_funcs('src.cpp.o.js')) > 200
+        # Make sure that DFE ends up eliminating more than 200 functions (if we can view source)
+        if not self.is_wasm():
+          assert (num_original_funcs - self.count_funcs('src.cpp.o.js')) > 200
         break
 
   def test_openjpeg(self):
