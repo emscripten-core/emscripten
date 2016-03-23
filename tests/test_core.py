@@ -2315,10 +2315,11 @@ int main() {
 
     test()
 
-    print 'split memory'
-    Settings.SPLIT_MEMORY = 16*1024*1024
-    test()
-    Settings.SPLIT_MEMORY = 0
+    if not self.is_wasm():
+      print 'split memory'
+      Settings.SPLIT_MEMORY = 16*1024*1024
+      test()
+      Settings.SPLIT_MEMORY = 0
 
   def test_ssr(self): # struct self-ref
       src = '''
@@ -5788,10 +5789,11 @@ return malloc(size);
       self.emcc_args += ['-s', 'EMTERPRETIFY_WHITELIST=["_frexpl"]'] # test double call assertions
       test()
 
-    print 'split memory'
-    Settings.SPLIT_MEMORY = 8*1024*1024
-    test()
-    Settings.SPLIT_MEMORY = 0
+    if not self.is_wasm():
+      print 'split memory'
+      Settings.SPLIT_MEMORY = 8*1024*1024
+      test()
+      Settings.SPLIT_MEMORY = 0
 
   @SIMD
   def test_sse1(self):
