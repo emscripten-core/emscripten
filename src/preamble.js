@@ -851,7 +851,9 @@ function jsStackTrace() {
 }
 
 function stackTrace() {
-  return demangleAll(jsStackTrace());
+  var js = jsStackTrace();
+  if (Module['extraStackTrace']) js += '\n' + Module['extraStackTrace']();
+  return demangleAll(js);
 }
 {{{ maybeExport('stackTrace') }}}
 
