@@ -8042,7 +8042,7 @@ asm2f = make_run("asm2f", compiler=CLANG, emcc_args=["-Oz", "-s", "PRECISE_F32=1
 asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "-s", "SAFE_HEAP=1"])
 asm2i = make_run("asm2i", compiler=CLANG, emcc_args=["-O2", '-s', 'EMTERPRETIFY=1'])
 #asm2m = make_run("asm2m", compiler=CLANG, emcc_args=["-O2", "--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2", "-s", "ASSERTIONS=1"])
-#binaryen = make_run("binaryen", compiler=CLANG, emcc_args=['-O3', '-profiling', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-s-expr"'])
+#binaryen = make_run("binaryen", compiler=CLANG, emcc_args=['-O3', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-s-expr"'])
 #normalyen = make_run("normalyen", compiler=CLANG, emcc_args=['-O0', '-s', 'GLOBAL_BASE=1024']) # useful comparison to binaryen
 #spidaryen = make_run("binaryen", compiler=CLANG, emcc_args=['-O0', '-s', 'BINARYEN=1', '-s', 'BINARYEN_SCRIPTS="spidermonkify.py"'])
 
