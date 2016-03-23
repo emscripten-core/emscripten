@@ -3077,5 +3077,5 @@ window.close = function() {
       BINARYEN_ROOT
     except:
       return self.skip('no binaryen set up')
-    self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="wasm-binary"'])
+    self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
 
