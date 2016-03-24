@@ -262,7 +262,7 @@ double emscripten_asm_const_double(const char *code, ...);
 #if __EMSCRIPTEN__
 void emscripten_sleep(unsigned int ms);
 void emscripten_sleep_with_yield(unsigned int ms);
-void emscripten_suspend(char *identifier);
+void emscripten_block_on(char *identifier);
 #else
 #define emscripten_sleep SDL_Delay
 #endif

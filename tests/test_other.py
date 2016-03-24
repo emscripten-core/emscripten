@@ -1511,7 +1511,7 @@ int f() {
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'before.js', '--post-js', 'after.js', '-s', 'NO_EXIT_RUNTIME=1']).communicate()
     self.assertContained('hello from main\nhello from js\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
-  def test_emscripten_suspend(self):
+  def test_emscripten_block_on(self):
     open(os.path.join(self.get_dir(), 'main.c'), 'w').write('''
       #include <stdio.h>
       #include <emscripten.h>
@@ -1521,7 +1521,7 @@ int f() {
       int main(int argc, char **argv) {
         char input[INPUT_LENGTH] = {};
         for (int n = 0; n < INPUT_LENGTH; ++n) {
-          emscripten_suspend("char_ready");
+          emscripten_block_on("char_ready");
           input[n] = getchar();
           printf("%c\\n", input[n]);
         }
@@ -1539,7 +1539,7 @@ int f() {
         var desiredInput = "success";
         var insertChar = (function(i, self) {
           userInput.push(desiredInput.charCodeAt(i));
-          Module.resume("char_ready");
+          Module.notifyAbout("char_ready");
           if (i < desiredInput.length) {
             return setTimeout((function() { self(i + 1, self) }), Math.floor(Math.random() * 1500));
           }

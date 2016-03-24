@@ -215,7 +215,7 @@ mergeInto(LibraryManager.library, {
     yieldCallbacks: [],
     postAsync: null,
     asyncFinalizers: [], // functions to run when all asynchronicity is done
-    suspensions: {},
+    blocking_events: {},
 
     ensureInit: function() {
       if (this.initted) return;
@@ -345,22 +345,22 @@ mergeInto(LibraryManager.library, {
     }, true);
   },
 
-  emscripten_suspend__deps: ['$EmterpreterAsync'],
-  emscripten_suspend: function(identifier) {
+  emscripten_block_on__deps: ['$EmterpreterAsync'],
+  emscripten_block_on: function(identifier) {
     identifier = Pointer_stringify(identifier);
     EmterpreterAsync.handle(function(resume) {
-      if (!EmterpreterAsync.suspensions.hasOwnProperty(identifier)) {
-        EmterpreterAsync.suspensions[identifier] = {};
-        EmterpreterAsync.suspensions[identifier].resume_count = 0;
+      if (!EmterpreterAsync.blocking_events.hasOwnProperty(identifier)) {
+        EmterpreterAsync.blocking_events[identifier] = {};
+        EmterpreterAsync.blocking_events[identifier].notify_count = 0;
       }
 
-      // ASSERT: resume_count != -1 (...because we're running somehow!)
-      if (EmterpreterAsync.suspensions[identifier].resume_count == 0) {
-        EmterpreterAsync.suspensions[identifier].resume_count = -1;
-        EmterpreterAsync.suspensions[identifier].raw_resume_handler = resume;
+      // ASSERT: notify_count != -1 (...because we're running somehow!)
+      if (EmterpreterAsync.blocking_events[identifier].notify_count == 0) {
+        EmterpreterAsync.blocking_events[identifier].notify_count = -1;
+        EmterpreterAsync.blocking_events[identifier].raw_resume_handler = resume;
       } else {
-        EmterpreterAsync.suspensions[identifier].resume_count -= 1;
-        EmterpreterAsync.suspensions[identifier].raw_resume_handler = undefined;
+        EmterpreterAsync.blocking_events[identifier].notify_count -= 1;
+        EmterpreterAsync.blocking_events[identifier].raw_resume_handler = undefined;
         resume();
       }
     }, true);
