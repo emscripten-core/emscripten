@@ -622,7 +622,7 @@ var LibraryGL = {
                                              "OES_texture_float_linear", "OES_texture_half_float_linear", "WEBGL_compressed_texture_atc",
                                              "WEBGL_compressed_texture_pvrtc", "EXT_color_buffer_half_float", "WEBGL_color_buffer_float",
                                              "EXT_frag_depth", "EXT_sRGB", "WEBGL_draw_buffers", "WEBGL_shared_resources",
-                                             "EXT_shader_texture_lod" ];
+                                             "EXT_shader_texture_lod", "EXT_color_buffer_float"];
 
       function shouldEnableAutomatically(extension) {
         var ret = false;
