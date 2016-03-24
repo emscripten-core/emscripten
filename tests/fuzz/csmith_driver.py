@@ -122,6 +122,13 @@ while 1:
       js_args += ["--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2"]
     if random.random() < 0.5:
       js_args += ['-s', 'ASSERTIONS=1']
+    #js_args += ['-s', 'BINARYEN=1']
+    #if random.random() < 0.333:
+    #  js_args += ['-s', 'BINARYEN_METHOD="interpret-s-expr"']
+    #elif random.random() < 0.5:
+    #  js_args += ['-s', 'BINARYEN_METHOD="interpret-binary"']
+    #else:
+    #  js_args += ['-s', 'BINARYEN_METHOD="interpret-asm2wasm"']
     print '(compile)', ' '.join(js_args)
     open(fullname, 'a').write('\n// ' + ' '.join(js_args) + '\n\n')
     try:
