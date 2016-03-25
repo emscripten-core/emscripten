@@ -110,7 +110,8 @@ process(sys.argv[1])
 ''' % str(args[:-1]) # do not hardcode in the last argument, the default arg
 )
 
-    final = os.path.dirname(filename) + os.path.sep + self.name+'_' + os.path.basename(filename) + '.js'
+    final = os.path.dirname(filename) + os.path.sep + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
+    final = final.replace('.cpp', '')
     try_delete(final)
     output = Popen([PYTHON, EMCC, filename, #'-O3',
                     '-O3', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
