@@ -140,7 +140,7 @@ while 1:
 
   def execute_js(engine):
     print '(run in %s)' % engine
-    js = shared.run_js(filename + '.js', engine=engine1, check_timeout=True, assert_returncode=None)
+    js = shared.run_js(filename + '.js', engine=engine, check_timeout=True, assert_returncode=None)
     js = js.split('\n')[0] + '\n' # remove any extra printed stuff (node workarounds)
     return correct1 == js or correct2 == js
 
