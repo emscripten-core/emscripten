@@ -1097,6 +1097,14 @@ var LibraryBrowser = {
 
     Browser.mainLoop.func = func;
     Browser.mainLoop.arg = arg;
+    var argArray = [arg];
+    var browserIterationFunc = function() {
+      if (typeof arg !== 'undefined') {
+        Runtime.dynCall('vi', func, argArray);
+      } else {
+        Runtime.dynCall('v', func);
+      }
+    };
 
     var thisMainLoopId = Browser.mainLoop.currentlyRunningMainloop;
 
@@ -1149,13 +1157,7 @@ var LibraryBrowser = {
         Browser.mainLoop.method = ''; // just warn once per call to set main loop
       }
 
-      Browser.mainLoop.runIter(function() {
-        if (typeof arg !== 'undefined') {
-          Runtime.dynCall('vi', func, [arg]);
-        } else {
-          Runtime.dynCall('v', func);
-        }
-      });
+      Browser.mainLoop.runIter(browserIterationFunc);
 
 #if STACK_OVERFLOW_CHECK
       checkStackCookie();
