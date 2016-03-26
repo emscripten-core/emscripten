@@ -3073,9 +3073,5 @@ window.close = function() {
     self.btest('split_memory_large_file.cpp', expected='1', args=['-s', 'SPLIT_MEMORY=' + str(size), '-s', 'TOTAL_MEMORY=100000000', '-s', 'TOTAL_STACK=10240', '--preload-file', 'huge.dat'], timeout=60)
 
   def test_binaryen(self):
-    try:
-      BINARYEN_ROOT
-    except:
-      return self.skip('no binaryen set up')
     self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
 
