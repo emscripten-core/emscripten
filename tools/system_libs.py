@@ -553,7 +553,8 @@ def get_ports(settings):
   try:
     process_dependencies(settings)
     for port in ports.ports:
-      ret += port.get(Ports, settings, shared)
+      # ports return their output files, which will be linked, or a txt file
+      ret += filter(lambda f: not f.endswith('.txt'), port.get(Ports, settings, shared))
     ok = True
   finally:
     if not ok:

@@ -716,6 +716,7 @@ fi
       ([PYTHON, 'embuilder.py', 'build', 'freetype'], ['building and verifying freetype', 'success'], True, [os.path.join('ports-builds', 'freetype', 'libfreetype.a')]),
       ([PYTHON, 'embuilder.py', 'build', 'sdl2-ttf'], ['building and verifying sdl2-ttf', 'success'], True, [os.path.join('ports-builds', 'sdl2-ttf', 'libsdl2_ttf.bc')]),
       ([PYTHON, 'embuilder.py', 'build', 'sdl2-net'], ['building and verifying sdl2-net', 'success'], True, [os.path.join('ports-builds', 'sdl2-net', 'libsdl2_net.bc')]),
+      ([PYTHON, 'embuilder.py', 'build', 'binaryen'], ['building and verifying binaryen', 'success'], True, []),
     ]:
       print command
       Cache.erase()
@@ -948,4 +949,17 @@ fi
       assert os.path.exists(os.path.join(root_cache, 'asmjs'))
     finally:
       del os.environ['EMCC_WASM_BACKEND']
+
+  def test_binaryen(self):
+    tag_file = Cache.get_path('binaryen-tag.txt')
+    try_delete(tag_file)
+    # if BINARYEN_ROOT is set, we don't build the port. Check we do built it if not
+    restore()
+    config = open(CONFIG_FILE).read()
+    config = config.replace('BINARYEN_ROOT', '#')
+    open(CONFIG_FILE, 'w').write(config)
+    subprocess.check_call([PYTHON, 'embuilder.py', 'build', 'binaryen'])
+    assert os.path.exists(tag_file)
+    subprocess.check_call([PYTHON, 'emcc.py', 'tests/hello_world.c', '-s', 'BINARYEN=1'])
+    self.assertContained('hello, world!', run_js('a.out.js'))
 

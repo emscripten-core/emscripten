@@ -67,13 +67,14 @@ def build(src, result_libs, args=[]):
   temp_js = temp_files.get('.js').name
   shared.Building.emcc(temp, args, output_filename=temp_js)
   assert os.path.exists(temp_js), 'failed to build file'
-  for lib in result_libs:
-    assert os.path.exists(shared.Cache.get_path(lib)), 'not seeing that requested library %s has been built because file %s does not exist' % (lib, shared.Cache.get_path(lib))
+  if result_libs:
+    for lib in result_libs:
+      assert os.path.exists(shared.Cache.get_path(lib)), 'not seeing that requested library %s has been built because file %s does not exist' % (lib, shared.Cache.get_path(lib))
 
 def build_port(port_name, lib_name, params):
   build('''
     int main() {}
-  ''', [os.path.join('ports-builds', port_name, lib_name)], params)
+  ''', [os.path.join('ports-builds', port_name, lib_name)] if lib_name else None, params)
 
 operation = sys.argv[1]
 
@@ -162,6 +163,8 @@ if operation == 'build':
       build_port('freetype', 'libfreetype.a', ['-s', 'USE_FREETYPE=1'])
     elif what == 'sdl2-ttf':
       build_port('sdl2-ttf', 'libsdl2_ttf.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_TTF=2', '-s', 'USE_FREETYPE=1'])
+    elif what == 'binaryen':
+      build_port('binaryen', None, ['-s', 'BINARYEN=1'])
     else:
       shared.logging.error('unfamiliar build target: ' + what)
       sys.exit(1)
