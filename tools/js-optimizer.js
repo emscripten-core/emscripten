@@ -7940,15 +7940,7 @@ if (arguments_.indexOf('receiveJSON') < 0) {
 var emitAst = true;
 
 arguments_.slice(1).forEach(function(arg) {
-  //traverse(ast, function(node) {
-  //  if (node[0] === 'defun' && node[1] === 'copyTempFloat') printErr('pre ' + JSON.stringify(node, null, ' '));
-  //});
   passes[arg](ast);
-  //var func;
-  //traverse(ast, function(node) {
-  //  if (node[0] === 'defun') func = node;
-  //  if (isEmptyNode(node)) throw 'empty node after ' + arg + ', in ' + func[1];
-  //});
 });
 if (asm && last) {
   prepDotZero(ast);

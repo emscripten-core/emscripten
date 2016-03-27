@@ -1037,24 +1037,6 @@ function setThrew(threw, value) {
     threwValue = value;
   }
 }
-function copyTempFloat(ptr) {
-  ptr = ptr|0;
-  HEAP8[tempDoublePtr>>0] = HEAP8[ptr>>0];
-  HEAP8[tempDoublePtr+1>>0] = HEAP8[ptr+1>>0];
-  HEAP8[tempDoublePtr+2>>0] = HEAP8[ptr+2>>0];
-  HEAP8[tempDoublePtr+3>>0] = HEAP8[ptr+3>>0];
-}
-function copyTempDouble(ptr) {
-  ptr = ptr|0;
-  HEAP8[tempDoublePtr>>0] = HEAP8[ptr>>0];
-  HEAP8[tempDoublePtr+1>>0] = HEAP8[ptr+1>>0];
-  HEAP8[tempDoublePtr+2>>0] = HEAP8[ptr+2>>0];
-  HEAP8[tempDoublePtr+3>>0] = HEAP8[ptr+3>>0];
-  HEAP8[tempDoublePtr+4>>0] = HEAP8[ptr+4>>0];
-  HEAP8[tempDoublePtr+5>>0] = HEAP8[ptr+5>>0];
-  HEAP8[tempDoublePtr+6>>0] = HEAP8[ptr+6>>0];
-  HEAP8[tempDoublePtr+7>>0] = HEAP8[ptr+7>>0];
-}
 '''] + ['' if not settings['SAFE_HEAP'] else '''
 function setDynamicTop(value) {
   value = value | 0;
