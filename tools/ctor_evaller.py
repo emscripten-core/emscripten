@@ -246,65 +246,65 @@ console.log(JSON.stringify([numSuccessful, Array.prototype.slice.call(heap.subar
   return (num_successful, js, mem_init, ctors)
 
 # main
+if __name__ == '__main__':
+  js = open(js_file).read()
+  ctors_start, ctors_end = find_ctors(js)
+  if ctors_start < 0:
+    shared.logging.debug('ctor_evaller: no ctors')
+    sys.exit(0)
 
-js = open(js_file).read()
-ctors_start, ctors_end = find_ctors(js)
-if ctors_start < 0:
-  shared.logging.debug('ctor_evaller: no ctors')
-  sys.exit(0)
+  ctors_text = js[ctors_start:ctors_end];
+  if ctors_text.count('(') == 1:
+    shared.logging.debug('ctor_evaller: push, but no ctors')
+    sys.exit(0)
 
-ctors_text = js[ctors_start:ctors_end];
-if ctors_text.count('(') == 1:
-  shared.logging.debug('ctor_evaller: push, but no ctors')
-  sys.exit(0)
+  num_ctors = ctors_text.count(',') + 1
+  shared.logging.debug('ctor_evaller: %d ctors' % num_ctors)
 
-num_ctors = ctors_text.count(',') + 1
-shared.logging.debug('ctor_evaller: %d ctors' % num_ctors)
+  if os.path.exists(mem_init_file):
+    mem_init = json.dumps(map(ord, open(mem_init_file, 'rb').read()))
+  else:
+    mem_init = []
 
-if os.path.exists(mem_init_file):
-  mem_init = json.dumps(map(ord, open(mem_init_file, 'rb').read()))
-else:
-  mem_init = []
+  # find how many ctors we can remove, by bisection (if there are hundreds, running them sequentially is silly slow)
 
-# find how many ctors we can remove, by bisection (if there are hundreds, running them sequentially is silly slow)
+  shared.logging.debug('ctor_evaller: trying to eval %d global constructors' % num_ctors)
+  num_successful, new_js, new_mem_init, removed = eval_ctors(js, mem_init, num_ctors)
+  if num_successful == 0:
+    shared.logging.debug('ctor_evaller: not successful')
+    sys.exit(0)
 
-shared.logging.debug('ctor_evaller: trying to eval %d global constructors' % num_ctors)
-num_successful, new_js, new_mem_init, removed = eval_ctors(js, mem_init, num_ctors)
-if num_successful == 0:
-  shared.logging.debug('ctor_evaller: not successful')
-  sys.exit(0)
+  shared.logging.debug('ctor_evaller: we managed to remove %d ctors' % num_successful)
+  if num_successful == num_ctors:
+    js = new_js
+    mem_init = new_mem_init
+  else:
+    shared.logging.debug('ctor_evaller: final execution')
+    check, js, mem_init, removed = eval_ctors(js, mem_init, num_successful)
+    assert check == num_successful
+  open(js_file, 'w').write(js)
+  open(mem_init_file, 'wb').write(mem_init)
 
-shared.logging.debug('ctor_evaller: we managed to remove %d ctors' % num_successful)
-if num_successful == num_ctors:
-  js = new_js
-  mem_init = new_mem_init
-else:
-  shared.logging.debug('ctor_evaller: final execution')
-  check, js, mem_init, removed = eval_ctors(js, mem_init, num_successful)
-  assert check == num_successful
-open(js_file, 'w').write(js)
-open(mem_init_file, 'wb').write(mem_init)
+  # Dead function elimination can help us
 
-# Dead function elimination can help us
-
-shared.logging.debug('ctor_evaller: eliminate no longer needed functions after ctor elimination')
-# find exports
-asm = get_asm(open(js_file).read())
-exports_start = asm.find('return {')
-exports_end = asm.find('};', exports_start)
-exports_text = asm[asm.find('{', exports_start) + 1 : exports_end]
-exports = map(lambda x: x.split(':')[1].strip(), exports_text.replace(' ', '').split(','))
-for r in removed:
-  assert r in exports, 'global ctors were exported'
-exports = filter(lambda e: e not in removed, exports)
-# fix up the exports
-js = open(js_file).read()
-absolute_exports_start = js.find(exports_text)
-js = js[:absolute_exports_start] + ', '.join(map(lambda e: e + ': ' + e, exports)) + js[absolute_exports_start + len(exports_text):]
-open(js_file, 'w').write(js)
-# find unreachable methods and remove them
-reachable = shared.Building.calculate_reachable_functions(js_file, exports, can_reach=False)['reachable']
-for r in removed:
-  assert r not in reachable, 'removed ctors must NOT be reachable'
-shared.Building.js_optimizer(js_file, ['removeFuncs'], extra_info={ 'keep': reachable }, output_filename=js_file)
+  shared.logging.debug('ctor_evaller: eliminate no longer needed functions after ctor elimination')
+  # find exports
+  asm = get_asm(open(js_file).read())
+  exports_start = asm.find('return {')
+  exports_end = asm.find('};', exports_start)
+  exports_text = asm[asm.find('{', exports_start) + 1 : exports_end]
+  exports = map(lambda x: x.split(':')[1].strip(), exports_text.replace(' ', '').split(','))
+  for r in removed:
+    assert r in exports, 'global ctors were exported'
+  exports = filter(lambda e: e not in removed, exports)
+  # fix up the exports
+  js = open(js_file).read()
+  absolute_exports_start = js.find(exports_text)
+  js = js[:absolute_exports_start] + ', '.join(map(lambda e: e + ': ' + e, exports)) + js[absolute_exports_start + len(exports_text):]
+  open(js_file, 'w').write(js)
+  # find unreachable methods and remove them
+  reachable = shared.Building.calculate_reachable_functions(js_file, exports, can_reach=False)['reachable']
+  for r in removed:
+    assert r not in reachable, 'removed ctors must NOT be reachable'
+  shared.Building.js_optimizer(js_file, ['removeFuncs'], extra_info={ 'keep': reachable }, output_filename=js_file)
 
