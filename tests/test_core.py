@@ -23,6 +23,12 @@ def no_emterpreter(f):
     f(self)
   return decorated
 
+def no_wasm(f):
+  def decorated(self):
+    if self.is_wasm(): return self.skip('todo')
+    f(self)
+  return decorated
+
 class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
   def is_emterpreter(self):
     return 'EMTERPRETIFY=1' in self.emcc_args
@@ -7976,6 +7982,12 @@ int main(int argc, char **argv) {
 
     self.emcc_args = args + ['-s', 'ASSERTIONS=1']
     self.do_run(open(path_from_root('tests', 'stack_overflow.cpp'), 'r').read(), 'Stack overflow! Attempted to allocate')
+
+  @no_wasm
+  @no_emterpreter
+  def test_binaryen(self):
+    self.emcc_args += ['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"']
+    self.do_run(open(path_from_root('tests', 'hello_world.c')).read(), 'hello, world!')
 
 # Generate tests for everything
 def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,

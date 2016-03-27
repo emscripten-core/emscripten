@@ -6206,10 +6206,6 @@ int main() {}
     check_execute([PYTHON, EMCC, 'src.cpp', '-O2']) # optimized, so no assertions
     self.assertNotContained(WARNING, open('a.out.js').read())
 
-  def test_binaryen(self):
-    check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
-    self.assertContained('hello, world!', run_js('a.out.js'))
-
   ############################################################
   # Function eliminator tests
   ############################################################
