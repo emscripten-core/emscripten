@@ -258,8 +258,8 @@ if __name__ == '__main__':
     shared.logging.debug('ctor_evaller: push, but no ctors')
     sys.exit(0)
 
-  num_ctors = ctors_text.count(',') + 1
-  shared.logging.debug('ctor_evaller: %d ctors' % num_ctors)
+  num_ctors = ctors_text.count('function()')
+  shared.logging.debug('ctor_evaller: %d ctors, from |%s|' % (num_ctors, ctors_text))
 
   if os.path.exists(mem_init_file):
     mem_init = json.dumps(map(ord, open(mem_init_file, 'rb').read()))
