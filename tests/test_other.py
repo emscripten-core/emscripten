@@ -2310,6 +2310,28 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     assert 'one(int)' in output
     assert 'two(char)' in output
 
+  def test_demangle_cpp(self):
+    open('src.cpp', 'w').write('''
+      #include <stdio.h>
+      #include <emscripten.h>
+      #include <cxxabi.h>
+      #include <assert.h>
+
+      int main() {
+        char out[256];
+        int status = 1;
+        size_t length = 255;
+        abi::__cxa_demangle("_ZN4Waka1f12a234123412345pointEv", out, &length, &status);
+        assert(status == 0);
+        printf("%s\\n", out);
+        return 0;
+      }
+    ''')
+
+    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    output = run_js('a.out.js')
+    self.assertContained('Waka::f::a23412341234::point()', output)
+
   def test_module_exports_with_closure(self):
     # This test checks that module.export is retained when JavaScript is minified by compiling with --closure 1
     # This is important as if module.export is not present the Module object will not be visible to node.js
