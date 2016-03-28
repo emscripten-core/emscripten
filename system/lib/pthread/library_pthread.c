@@ -348,7 +348,7 @@ void * EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread_xprintf_varargs(i
 		len = vsnprintf(s, len+1, format, args);
 	}
 	em_queued_call q = { function, 0 };
-	q.args[0].vp = param0;
+	q.args[0].vp = (void*)param0;
 	q.args[1].vp = s;
 	q.returnValue.vp = 0;
 	emscripten_sync_run_in_main_thread(&q);
