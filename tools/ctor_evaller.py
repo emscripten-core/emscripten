@@ -231,7 +231,7 @@ console.log(JSON.stringify([numSuccessful, Array.prototype.slice.call(heap.subar
   num_successful, mem_init_raw, atexits = json.loads(open(out_file).read())
   mem_init = ''.join(map(chr, mem_init_raw))
   if num_successful < total_ctors:
-    shared.logging.debug('not all ctors could be evalled:\n' + open(err_file).read())
+    shared.logging.debug('not all ctors could be evalled, something was used that was not safe (and therefore was not defined, and caused an error):\n========\n' + open(err_file).read() + '========')
   # Remove the evalled ctors, add a new one for atexits if needed, and write that out
   if len(ctors) == total_ctors and len(atexits) == 0:
     new_ctors = ''
