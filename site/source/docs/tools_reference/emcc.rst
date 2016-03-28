@@ -362,7 +362,7 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-clear-ports:
 	 
 ``--clear-ports``
-	Manually clears the local copies and builds of projects from the Emscripten Ports repos (sdl2, etc.)
+	Manually clears the local copies of ports from the Emscripten Ports repos (sdl2, etc.). This also clears the cache, to remove their builds.
 	
 	You should only need to do this if a problem happens and you want all ports that you use to be downloaded and built from scratch. After this operation is complete, this process will exit.
 

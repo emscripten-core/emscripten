@@ -566,7 +566,6 @@ fi
         else:
           self.do([PYTHON, compiler, '--clear-ports'])
         assert not os.path.exists(PORTS_DIR)
-        if i == 0: Cache.erase() # test with cache erased and without
 
         # Building a file that doesn't need ports should not trigger anything
         output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp')])

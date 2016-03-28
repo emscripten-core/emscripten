@@ -631,8 +631,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.check_sanity(force=True) # this is a good time for a sanity check
         should_exit = True
       elif newargs[i] == '--clear-ports':
-        logging.warning('clearing ports')
+        logging.warning('clearing ports and cache')
         system_libs.Ports.erase()
+        shared.Cache.erase()
+        shared.check_sanity(force=True) # this is a good time for a sanity check
         should_exit = True
       elif newargs[i] == '--show-ports':
         system_libs.show_ports()
