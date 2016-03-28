@@ -1,6 +1,7 @@
 import os, json, logging, zipfile, glob
 import shared
 from subprocess import Popen, CalledProcessError
+import subprocess, multiprocessing, re
 import multiprocessing
 from tools.shared import check_call
 
@@ -545,6 +546,30 @@ class Ports:
   def clear_project_build(name):
     shared.try_delete(os.path.join(Ports.get_build_dir(), name))
     shared.try_delete(shared.Cache.get_path(name + '.bc'))
+
+  @staticmethod
+  def build_native(subdir):
+    old = os.getcwd()
+
+    try:
+      os.chdir(subdir)
+
+      # Configure
+      subprocess.check_call(['cmake', '.'])
+
+      # Check which CMake generator CMake used so we know which form to pass parameters to make/msbuild/etc. build tool.
+      generator = re.search('CMAKE_GENERATOR:INTERNAL=(.*)$', open('CMakeCache.txt', 'r').read(), re.MULTILINE).group(1)
+
+      # Make variants support '-jX' for number of cores to build, MSBuild does /maxcpucount:X
+      num_cores = os.environ.get('EMCC_CORES') or str(multiprocessing.cpu_count())
+      make_args = []
+      if 'Makefiles' in generator: make_args = ['--', '-j', num_cores]
+      elif 'Visual Studio' in generator: make_args = ['--', '/maxcpucount:' + num_cores]
+
+      # Kick off the build.
+      subprocess.check_call(['cmake', '--build', '.'] + make_args)
+    finally:
+      os.chdir(old)
 
 def get_ports(settings):
   ret = []
