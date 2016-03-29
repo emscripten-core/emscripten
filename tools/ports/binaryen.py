@@ -23,7 +23,7 @@ def get(ports, settings, shared):
     tag_file = os.path.join(ports.get_dir(), 'binaryen', 'tag.txt')
     open(tag_file, 'w').write(TAG)
     return tag_file
-  return [shared.Cache.get('binaryen-tag', create, what='port', extension='.txt')]
+  return [shared.Cache.get('binaryen_tag_' + TAG, create, what='port', extension='.txt')]
 
 def process_args(ports, args, settings, shared):
   if not needed(settings, shared):
