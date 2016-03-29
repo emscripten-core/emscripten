@@ -1,6 +1,6 @@
 import os, shutil, logging
 
-TAG = 'version_2'
+TAG = 'version_3'
 
 def needed(settings, shared):
   if not settings.BINARYEN: return False
