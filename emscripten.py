@@ -1293,9 +1293,9 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
     import shutil
     shutil.copyfile(temp_s, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-llvm-backend-output.s'))
 
-  assert shared.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen s2wasm on the backend output'
+  assert shared.Settings.BINARYEN_ROOT, 'need BINARYEN_ROOT config set so we can use Binaryen s2wasm on the backend output'
   wasm = outfile.name[:-3] + '.wast'
-  s2wasm_args = [os.path.join(shared.BINARYEN_ROOT, 'bin', 's2wasm'), temp_s]
+  s2wasm_args = [os.path.join(shared.Settings.BINARYEN_ROOT, 'bin', 's2wasm'), temp_s]
   s2wasm_args += ['--global-base=%d' % shared.Settings.GLOBAL_BASE]
   s2wasm_args += ['--initial-memory=%d' % shared.Settings.TOTAL_MEMORY]
   if DEBUG:
