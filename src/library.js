@@ -3679,25 +3679,21 @@ LibraryManager.library = {
     return Math.random();
   },
 
-  emscripten_get_now: function() {
-    if (!_emscripten_get_now.actual) {
-      if (ENVIRONMENT_IS_NODE) {
-        _emscripten_get_now.actual = function _emscripten_get_now_actual() {
-          var t = process['hrtime']();
-          return t[0] * 1e3 + t[1] / 1e6;
-        }
-      } else if (typeof dateNow !== 'undefined') {
-        _emscripten_get_now.actual = dateNow;
-      } else if (typeof self === 'object' && self['performance'] && typeof self['performance']['now'] === 'function') {
-        _emscripten_get_now.actual = function _emscripten_get_now_actual() { return self['performance']['now'](); };
-      } else if (typeof performance === 'object' && typeof performance['now'] === 'function') {
-        _emscripten_get_now.actual = function _emscripten_get_now_actual() { return performance['now'](); };
-      } else {
-        _emscripten_get_now.actual = Date.now;
-      }
-    }
-    return _emscripten_get_now.actual();
-  },
+  emscripten_get_now: function() { abort() }, // replaced by the postset at startup time
+  emscripten_get_now__postset: "if (ENVIRONMENT_IS_NODE) {\n" +
+                               "  _emscripten_get_now = function _emscripten_get_now_actual() {\n" +
+                               "    var t = process['hrtime']();\n" +
+                               "    return t[0] * 1e3 + t[1] / 1e6;\n" +
+                               "  };\n" +
+                               "} else if (typeof dateNow !== 'undefined') {\n" +
+                               "  _emscripten_get_now = dateNow;\n" +
+                               "} else if (typeof self === 'object' && self['performance'] && typeof self['performance']['now'] === 'function') {\n" +
+                               "  _emscripten_get_now = function _emscripten_get_now_actual() { return self['performance']['now'](); };\n" +
+                               "} else if (typeof performance === 'object' && typeof performance['now'] === 'function') {\n" +
+                               "  _emscripten_get_now = function _emscripten_get_now_actual() { return performance['now'](); };\n" +
+                               "} else {\n" +
+                               "  _emscripten_get_now = Date.now;\n" +
+                               "}",
 
   emscripten_get_now_res: function() { // return resolution of get_now, in nanoseconds
     if (ENVIRONMENT_IS_NODE) {
