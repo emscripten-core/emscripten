@@ -1458,7 +1458,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.BINARYEN:
       # add in the glue integration code as a pre-js, so it is optimized together with everything else
-      wasm_js_glue = open(os.path.join(shared.BINARYEN_ROOT, 'src', 'js', 'wasm.js-post.js')).read()
+      wasm_js_glue = open(os.path.join(shared.Settings.BINARYEN_ROOT, 'src', 'js', 'wasm.js-post.js')).read()
       wasm_js_glue = wasm_js_glue.replace('{{{ asmjsCodeFile }}}', '"' + os.path.basename(asm_target) + '"')
       wasm_js_glue = wasm_js_glue.replace('{{{ wasmTextFile }}}', '"' + os.path.basename(wasm_text_target) + '"')
       wasm_js_glue = wasm_js_glue.replace('{{{ wasmBinaryFile }}}', '"' + os.path.basename(wasm_binary_target) + '"')
@@ -1824,7 +1824,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shutil.move(temp, asm_target)
 
     if shared.Settings.BINARYEN:
-      binaryen_bin = os.path.join(shared.BINARYEN_ROOT, 'bin')
+      binaryen_bin = os.path.join(shared.Settings.BINARYEN_ROOT, 'bin')
       # Emit wasm.js at the top of the js. This is *not* optimized with the rest of the code, since
       # (1) it contains asm.js, whose validation would be broken, and (2) it's very large so it would
       # be slow in cleanup/JSDCE etc.
@@ -1849,7 +1849,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logging.debug('asm2wasm (asm.js => WebAssembly): ' + ' '.join(cmd))
         subprocess.check_call(cmd, stdout=open(wasm_text_target, 'w'))
       if shared.Settings.BINARYEN_SCRIPTS:
-        binaryen_scripts = os.path.join(shared.BINARYEN_ROOT, 'scripts')
+        binaryen_scripts = os.path.join(shared.Settings.BINARYEN_ROOT, 'scripts')
         script_env = os.environ.copy()
         root_dir = os.path.abspath(os.path.dirname(__file__))
         if script_env.get('PYTHONPATH'):
