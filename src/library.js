@@ -3688,9 +3688,9 @@ LibraryManager.library = {
                                "} else if (typeof dateNow !== 'undefined') {\n" +
                                "  _emscripten_get_now = dateNow;\n" +
                                "} else if (typeof self === 'object' && self['performance'] && typeof self['performance']['now'] === 'function') {\n" +
-                               "  _emscripten_get_now = function _emscripten_get_now_actual() { return self['performance']['now'](); };\n" +
+                               "  _emscripten_get_now = self['performance']['now'].bind(self['performance']);\n" +
                                "} else if (typeof performance === 'object' && typeof performance['now'] === 'function') {\n" +
-                               "  _emscripten_get_now = function _emscripten_get_now_actual() { return performance['now'](); };\n" +
+                               "  _emscripten_get_now = performance['now'].bind(performance);\n" +
                                "} else {\n" +
                                "  _emscripten_get_now = Date.now;\n" +
                                "}",
