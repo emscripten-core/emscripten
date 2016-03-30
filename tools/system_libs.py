@@ -557,8 +557,10 @@ class Ports:
     try:
       os.chdir(subdir)
 
+      cmake_build_type = 'Release'
+
       # Configure
-      subprocess.check_call(['cmake', '.'])
+      subprocess.check_call(['cmake', '-DCMAKE_BUILD_TYPE=' + cmake_build_type, '.'])
 
       # Check which CMake generator CMake used so we know which form to pass parameters to make/msbuild/etc. build tool.
       generator = re.search('CMAKE_GENERATOR:INTERNAL=(.*)$', open('CMakeCache.txt', 'r').read(), re.MULTILINE).group(1)
@@ -567,7 +569,7 @@ class Ports:
       num_cores = os.environ.get('EMCC_CORES') or str(multiprocessing.cpu_count())
       make_args = []
       if 'Makefiles' in generator: make_args = ['--', '-j', num_cores]
-      elif 'Visual Studio' in generator: make_args = ['--', '/maxcpucount:' + num_cores]
+      elif 'Visual Studio' in generator: make_args = ['--config', cmake_build_type, '--', '/maxcpucount:' + num_cores]
 
       # Kick off the build.
       subprocess.check_call(['cmake', '--build', '.'] + make_args)
