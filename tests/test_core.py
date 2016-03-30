@@ -35,7 +35,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def is_split_memory(self):
     return 'SPLIT_MEMORY=' in str(self.emcc_args)
   def is_wasm(self):
-    return 'BINARYEN' in str(self.emcc_args)
+    return 'BINARYEN' in str(self.emcc_args) or LLVM_TARGET == WASM_TARGET
 
   def test_hello_world(self):
       test_path = path_from_root('tests', 'core', 'test_hello_world')
