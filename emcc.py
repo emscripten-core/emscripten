@@ -381,10 +381,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   # Log out times for emcc stages
   class TimeLogger:
     last = time.time()
+
+    @staticmethod
+    def update():
+      TimeLogger.last = time.time()
+
   def log_time(name):
-    now = time.time()
-    logging.debug('emcc step "%s" took %.2f seconds', name, now - TimeLogger.last)
-    TimeLogger.last = now
+    if DEBUG:
+      now = time.time()
+      logging.debug('emcc step "%s" took %.2f seconds', name, now - TimeLogger.last)
+      TimeLogger.update()
 
   misc_temp_files = shared.configuration.get_temp_files()
 
@@ -1854,7 +1860,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.BINARYEN_IMPRECISE:
           cmd += ['--imprecise']
         logging.debug('asm2wasm (asm.js => WebAssembly): ' + ' '.join(cmd))
+        TimeLogger.update()
         subprocess.check_call(cmd, stdout=open(wasm_text_target, 'w'))
+        log_time('asm2wasm')
       if shared.Settings.BINARYEN_SCRIPTS:
         binaryen_scripts = os.path.join(shared.Settings.BINARYEN_ROOT, 'scripts')
         script_env = os.environ.copy()
