@@ -1118,6 +1118,15 @@ if (typeof Atomics === 'undefined') {
   Atomics['xor'] = function(t, i, v) { var w = t[i]; t[i] ^= v; return w; }
 }
 
+// In old Atomics spec, Atomics.OK/.TIMEDOUT/.NOTEQUAL were integers. In new spec, Atomics functions return strings, so if we are in the new spec,
+// assign the strings to the place where the integers would have been to keep implementation of emscripten_futex_wait straightforward without dynamic checks for both.
+// See https://github.com/tc39/ecmascript_sharedmem/issues/69 for details.
+if (typeof Atomics['OK'] === 'undefined') {
+  Atomics['OK'] = 'ok';
+  Atomics['TIMEDOUT'] = 'timed-out';
+  Atomics['NOTEQUAL'] = 'not-equal';
+}
+
 #else // USE_PTHREADS
 
 #if SPLIT_MEMORY == 0

@@ -784,9 +784,9 @@ var LibraryPThread = {
 #if PTHREADS_PROFILING
       PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}}, {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
 #endif
-      if (ret == Atomics.TIMEDOUT) return -{{{ cDefine('ETIMEDOUT') }}};
-      if (ret == Atomics.NOTEQUAL) return -{{{ cDefine('EWOULDBLOCK') }}};
-      if (ret == 0) return 0;
+      if (ret === Atomics.TIMEDOUT) return -{{{ cDefine('ETIMEDOUT') }}};
+      if (ret === Atomics.NOTEQUAL) return -{{{ cDefine('EWOULDBLOCK') }}};
+      if (ret === Atomics.OK) return 0;
       throw 'Atomics.futexWait returned an unexpected value ' + ret;
     } else {
       // Atomics.futexWait is not available in the main browser thread, so simulate it via busy spinning.
