@@ -1283,6 +1283,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
   temp_s = temp_files.get('.wb.s').name
   backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
   backend_args = [backend_compiler, infile, '-march=wasm32', '-filetype=asm', '-o', temp_s]
+  backend_args += ['-thread-model=single'] # no threads support in backend, tell llc to not emit atomics
   if DEBUG:
     logging.debug('emscript: llvm wasm backend: ' + ' '.join(backend_args))
     t = time.time()
