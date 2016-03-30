@@ -2,7 +2,7 @@ import os, shutil, logging
 
 TAG = 'version_5'
 
-def needed(settings, shared):
+def needed(settings, shared, ports):
   if not settings.BINARYEN: return False
   try:
     if shared.BINARYEN_ROOT: # if defined, and not falsey, we don't need the port
@@ -11,10 +11,12 @@ def needed(settings, shared):
       return False
   except:
     pass
+  settings.BINARYEN_ROOT = os.path.join(ports.get_dir(), 'binaryen', 'binaryen-' + TAG)
+  logging.debug('setting binaryen root to ' + settings.BINARYEN_ROOT)
   return True
 
 def get(ports, settings, shared):
-  if not needed(settings, shared):
+  if not needed(settings, shared, ports):
     return []
   ports.fetch_project('binaryen', 'https://github.com/WebAssembly/binaryen/archive/' + TAG + '.zip', 'binaryen-' + TAG)
   def create():
@@ -27,11 +29,9 @@ def get(ports, settings, shared):
   return [shared.Cache.get('binaryen_tag_' + TAG, create, what='port', extension='.txt')]
 
 def process_args(ports, args, settings, shared):
-  if not needed(settings, shared):
+  if not needed(settings, shared, ports):
     return args
   get(ports, settings, shared)
-  settings.BINARYEN_ROOT = os.path.join(ports.get_dir(), 'binaryen', 'binaryen-' + TAG)
-  logging.debug('setting binaryen root to ' + settings.BINARYEN_ROOT)
   return args
 
 def show():
