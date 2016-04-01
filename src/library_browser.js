@@ -372,7 +372,8 @@ var LibraryBrowser = {
       canvasContainer.requestFullScreen = canvasContainer['requestFullScreen'] ||
                                           canvasContainer['mozRequestFullScreen'] ||
                                           canvasContainer['msRequestFullscreen'] ||
-                                         (canvasContainer['webkitRequestFullScreen'] ? function() { canvasContainer['webkitRequestFullScreen'](Element['ALLOW_KEYBOARD_INPUT']) } : null);
+                                         (canvasContainer['webkitRequestFullScreen'] ? function() { canvasContainer['webkitRequestFullScreen'](Element['ALLOW_KEYBOARD_INPUT']) } : null) ||
+                                         (canvasContainer['webkitRequestFullscreen'] ? function() { canvasContainer['webkitRequestFullscreen'](Element['ALLOW_KEYBOARD_INPUT']) } : null);
 
       if (vrDevice) {
         canvasContainer.requestFullScreen({ vrDisplay: vrDevice });
