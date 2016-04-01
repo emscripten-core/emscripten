@@ -199,7 +199,6 @@ var Runtime = {
 #if ASSERTIONS
       assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
 #endif
-      if (!args.slice) args = Array.prototype.slice.call(args); // convert arguments object, which is not an array
       return Module['dynCall_' + sig].apply(null, [ptr].concat(args));
     } else {
 #if ASSERTIONS
@@ -345,9 +344,21 @@ var Runtime = {
     }
     var sigCache = Runtime.funcWrappers[sig];
     if (!sigCache[func]) {
-      sigCache[func] = function dynCall_wrapper() {
-        return Runtime.dynCall(sig, func, arguments);
-      };
+      // optimize away arguments usage in common cases
+      if (sig.length === 1) {
+        sigCache[func] = function dynCall_wrapper() {
+          return Runtime.dynCall(sig, func);
+        };
+      } else if (sig.length === 2) {
+        sigCache[func] = function dynCall_wrapper(arg) {
+          return Runtime.dynCall(sig, func, [arg]);
+        };
+      } else {
+        // general case
+        sigCache[func] = function dynCall_wrapper() {
+          return Runtime.dynCall(sig, func, Array.prototype.slice.call(arguments));
+        };
+      }
     }
     return sigCache[func];
   },
