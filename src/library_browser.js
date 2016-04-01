@@ -1098,14 +1098,18 @@ var LibraryBrowser = {
 
     Browser.mainLoop.func = func;
     Browser.mainLoop.arg = arg;
-    var argArray = [arg];
-    var browserIterationFunc = function() {
-      if (typeof arg !== 'undefined') {
+
+    var browserIterationFunc;
+    if (typeof arg !== 'undefined') {
+      var argArray = [arg];
+      browserIterationFunc = function() {
         Runtime.dynCall('vi', func, argArray);
-      } else {
+      };
+    } else {
+      browserIterationFunc = function() {
         Runtime.dynCall('v', func);
-      }
-    };
+      };
+    }
 
     var thisMainLoopId = Browser.mainLoop.currentlyRunningMainloop;
 
