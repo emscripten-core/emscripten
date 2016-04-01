@@ -11,7 +11,7 @@ data downloads.
 
 Usage:
 
-  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy] [--separate-metadata] [--lz4] [--use-preload-plugins]
+  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--no-heap-copy] [--separate-metadata] [--lz4] [--use-preload-plugins]
 
   --preload  ,
   --embed    See emcc --help for more details on those options.
@@ -33,6 +33,8 @@ Usage:
   --no-force Don't create output if no valid input file is specified.
 
   --use-preload-cache Stores package in IndexedDB so that subsequent loads don't need to do XHR. Checks package version.
+
+  --indexedDB-name Use specified IndexedDB database name (Default: 'EM_PRELOAD_CACHE')
 
   --no-heap-copy If specified, the preloaded filesystem is not copied inside the Emscripten HEAP, but kept in a separate typed array outside it.
                  The default, if this is not specified, is to embed the VFS inside the HEAP, so that mmap()ing files in it is a no-op.
@@ -96,6 +98,7 @@ force = True
 # If set to True, IndexedDB (IDBFS in library_idbfs.js) is used to locally cache VFS XHR so that subsequent 
 # page loads can read the data from the offline cache instead.
 use_preload_cache = False
+indexeddb_name = 'EM_PRELOAD_CACHE'
 # If set to True, the blob received from XHR is moved to the Emscripten HEAP, optimizing for mmap() performance.
 # If set to False, the XHR blob is kept intact, and fread()s etc. are performed directly to that data. This optimizes for minimal memory usage and fread() performance.
 no_heap_copy = True
@@ -118,6 +121,9 @@ for arg in sys.argv[2:]:
     leading = ''
   elif arg == '--use-preload-cache':
     use_preload_cache = True
+    leading = ''
+  elif arg.startswith('--indexedDB-name'):
+    indexeddb_name = arg.split('=')[1] if '=' in arg else None
     leading = ''
   elif arg == '--no-heap-copy':
     no_heap_copy = False
@@ -568,7 +574,7 @@ if has_preloaded:
       var indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
       var IDB_RO = "readonly";
       var IDB_RW = "readwrite";
-      var DB_NAME = 'EM_PRELOAD_CACHE';
+      var DB_NAME = "''' + indexeddb_name + '''";
       var DB_VERSION = 1;
       var METADATA_STORE_NAME = 'METADATA';
       var PACKAGE_STORE_NAME = 'PACKAGES';
