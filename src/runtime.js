@@ -196,12 +196,11 @@ var Runtime = {
 #if ASSERTIONS
       assert(args.length == sig.length-1);
 #endif
-      if (!args.splice) args = Array.prototype.slice.call(args);
-      args.splice(0, 0, ptr);
 #if ASSERTIONS
       assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
 #endif
-      return Module['dynCall_' + sig].apply(null, args);
+      if (!args.slice) args = Array.prototype.slice.call(args); // convert arguments object, which is not an array
+      return Module['dynCall_' + sig].apply(null, [ptr].concat(args));
     } else {
 #if ASSERTIONS
       assert(sig.length == 1);
