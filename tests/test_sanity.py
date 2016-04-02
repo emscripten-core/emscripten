@@ -950,7 +950,8 @@ fi
       del os.environ['EMCC_WASM_BACKEND']
 
   def test_binaryen(self):
-    tag_file = Cache.get_path('binaryen-tag.txt')
+    import tools.ports.binaryen as binaryen
+    tag_file = Cache.get_path('binaryen_tag_' + binaryen.TAG + '.txt')
     try_delete(tag_file)
     # if BINARYEN_ROOT is set, we don't build the port. Check we do built it if not
     restore()
