@@ -179,6 +179,15 @@ var LibraryManager = {
       }
     }
 
+    if (WASM_BACKEND) {
+      // all asm.js methods should just be run in JS. We should optimize them eventually into wasm. TODO
+      for (var x in lib) {
+        if (lib[x + '__asm']) {
+          lib[x + '__asm'] = undefined;
+        }
+      }
+    }
+
     /*
     // export code for CallHandlers.h
     printErr('============================');
