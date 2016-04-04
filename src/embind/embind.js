@@ -1487,7 +1487,7 @@ var LibraryEmbind = {
     }
   },
 
-  $makeClassHandle__deps: ['throwInternalError'],
+  $makeClassHandle__deps: ['$throwInternalError'],
   $makeClassHandle: function(prototype, record) {
     if (!record.ptrType || !record.ptr) {
         throwInternalError('makeClassHandle requires ptr and ptrType');
