@@ -515,7 +515,7 @@ def check_sanity(force=False):
           if sanity_mtime <= settings_mtime:
             reason = 'settings file has changed'
           else:
-            sanity_data = open(sanity_file).read()
+            sanity_data = open(sanity_file).read().rstrip('\n\r') # workaround weird bug with read() that appends new line char in some old python version
             if sanity_data != generate_sanity():
               reason = 'system change: %s vs %s' % (generate_sanity(), sanity_data)
             else:
