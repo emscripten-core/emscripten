@@ -1107,9 +1107,9 @@ if (typeof Atomics === 'undefined') {
   Atomics['add'] = function(t, i, v) { var w = t[i]; t[i] += v; return w; }
   Atomics['and'] = function(t, i, v) { var w = t[i]; t[i] &= v; return w; }
   Atomics['compareExchange'] = function(t, i, e, r) { var w = t[i]; if (w == e) t[i] = r; return w; }
-  Atomics['futexWait'] = function(t, i, v, o) { if (t[i] != v) abort('Multithreading is not supported, cannot sleep to wait for futex!'); }
-  Atomics['futexWake'] = function(t, i, c) {}
-  Atomics['futexWakeOrRequeue'] = function(t, i1, c, i2, v) {}
+  Atomics['wait'] = function(t, i, v, o) { if (t[i] != v) abort('Multithreading is not supported, cannot sleep to wait for futex!'); }
+  Atomics['wake'] = function(t, i, c) {}
+  Atomics['wakeOrRequeue'] = function(t, i1, c, i2, v) {}
   Atomics['isLockFree'] = function(s) { return true; }
   Atomics['load'] = function(t, i) { return t[i]; }
   Atomics['or'] = function(t, i, v) { var w = t[i]; t[i] |= v; return w; }
@@ -1125,6 +1125,13 @@ if (typeof Atomics['OK'] === 'undefined') {
   Atomics['OK'] = 'ok';
   Atomics['TIMEDOUT'] = 'timed-out';
   Atomics['NOTEQUAL'] = 'not-equal';
+}
+
+// If running browser with old API names, account for function renames. See https://bugzilla.mozilla.org/show_bug.cgi?id=1260910.
+if (typeof Atomics['wait'] === 'undefined') {
+  Atomics['wait'] = Atomics['futexWait'];
+  Atomics['wake'] = Atomics['futexWake'];
+  Atomics['wakeOrRequeue'] = Atomics['futexWakeOrRequeue'];
 }
 
 #else // USE_PTHREADS
