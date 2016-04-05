@@ -168,10 +168,11 @@ def add_coloring_to_emit_ansi(fn):
 WINDOWS = sys.platform.startswith('win')
 OSX = sys.platform == 'darwin'
 
-if WINDOWS:
-  logging.StreamHandler.emit = add_coloring_to_emit_windows(logging.StreamHandler.emit)
-else:
-  logging.StreamHandler.emit = add_coloring_to_emit_ansi(logging.StreamHandler.emit)
+if sys.stderr.isatty():
+  if WINDOWS:
+    logging.StreamHandler.emit = add_coloring_to_emit_windows(logging.StreamHandler.emit)
+  else:
+    logging.StreamHandler.emit = add_coloring_to_emit_ansi(logging.StreamHandler.emit)
 
 # Emscripten configuration is done through the --em-config command line option or
 # the EM_CONFIG environment variable. If the specified string value contains newline
