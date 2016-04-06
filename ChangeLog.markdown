@@ -10,9 +10,148 @@ Not all changes are documented here. In particular, new features, user-oriented 
 Current trunk code
 ------------------
  - To see a list of commits in the active development branch 'incoming', which have not yet been packaged in a release, see
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.12...incoming
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.34.12...incoming
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.34.12...incoming
+    - Emscripten: https://github.com/kripken/emscripten/compare/master...incoming
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/master...incoming
+    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/master...incoming
+
+v1.36.1: 3/8/2016
+-----------------
+ - Ctor evaller optimization option, and work to make standard libs more amenable to it.
+ - Fix JSDCE slowness issue with very large projects.
+ - `STACK_OVERFLOW_CHECK` option.
+ - Audio fixes.
+ - WebGL fixes.
+ - Binaryen fixes.
+
+v1.36.0: 2/23/2016
+------------------
+ - Duplicate function elimination option.
+ - Audio fixes.
+ - Update SimplifyStructRegSignatures from PNaCl.
+ - SIMD support improvements.
+
+v1.35.23: 2/9/2016
+------------------
+ - JSDCE pass to remove unneeded code from shell.
+ - Automatically set `NO_FILESYSTEM` based on static syscall usage, and add a `FORCE_FILESYSTEM` option for the rare case where files are used only from JS.
+ - SIMD fixes.
+ - Support complex math with compiler-rt.
+ - Allow overriding `ENVIRONMENT_IS_*` options.
+ - Auto-include Browser object as needed, remove `NO_BROWSER` option.
+
+v1.35.22: 1/13/2016
+-------------------
+ - Merge from LLVM.
+
+v1.35.21: 1/13/2016
+-------------------
+ - Visual Studio fixes.
+ - GLFW improvements.
+ - Make more tools call Python 2 properly.
+
+v1.35.20: 1/10/2016
+-------------------
+ - Atomic and SIMD fixes.
+
+v1.35.19: 1/7/2016
+------------------
+ - Merge from LLVM.
+
+v1.35.18: 1/7/2016
+------------------
+ - Stop emitting 'use asm' for memory growth, as browsers dropped it
+ - Sockets fixes.
+ - libc time fixes.
+ - Make test runner support wildcards.
+
+v1.35.17: 1/4/2016
+------------------
+ - Merge from LLVM.
+
+v1.35.16: 1/4/2016
+------------------
+ - Atomics updates.
+
+v1.35.15: 1/4/2016
+------------------
+ - Legalization fixes.
+ - SIMD updates.
+ - WebIDL improvements.
+ - `--threadprofiler` option
+
+v1.35.14: 12/15/2015
+--------------------
+ - Merge from LLVM.
+
+v1.35.13: 12/15/2015
+--------------------
+ - Legalization fixes.
+ - Atomics updates.
+ - `ONLY_MY_CODE` option.
+ - Initial work to add an option to use the wasm LLVM backend.
+ - Updates stb_image.
+
+v1.35.12: 11/28/2015
+--------------------
+ - Merge from LLVM.
+
+v1.35.11: 11/27/2015
+--------------------
+ - 64-bit atomics fix.
+
+v1.35.10: 11/25/2015
+--------------------
+ - Improve NaN canonicalization warning.
+ - Use typed array transfer with workers.
+ - WebIDL binder improvements.
+ - glfw key improvements.
+ - Binaryen integration.
+
+v1.35.8: 11/12/2015
+-------------------
+ - Optimize zero-initialized part of data segment/mem init.
+ - Add emcc.py, and improve Python support to call Python 2 properly.
+
+v1.35.9: 11/10/2015
+-------------------
+ - Optimize and fix round/roundf.
+ - Implement glfwSetInputMode when mode is GLFW_CURSOR and value is GLFW_CURSOR_NORMAL|GLFW_CURSOR_DISABLED.
+ - Fix realpath on directories.
+
+v1.35.7: 11/4/2015
+-------------------
+ - Rebase against upstream LLVM "master" branch, bringing us to current LLVM trunk.
+
+v1.35.6: 11/4/2015
+-------------------
+ (no changes)
+
+v1.35.5: 11/4/2015
+-------------------
+ - Use optimized native optimizer by default.
+ - asm2wasm support, compile asm.js into wasm (see Binaryen project).
+
+v1.35.4: 10/26/2015
+-------------------
+ - Move legalization into asm.js LLVM backend.
+
+v1.35.3: 10/26/2015
+-------------------
+ - SIMD fixes.
+ - Treat js-libraries as libraries in cmake.
+
+v1.35.2: 10/20/2015
+-------------------
+ - Rebase against upstream LLVM "google/stable" branch, bringing us to LLVM 3.8
+
+v1.35.1: 10/20/2015
+-------------------
+ - WebAudio fix for WebKit.
+ - "-s" emcc argument fixes.
+
+v1.35.0: 10/19/2015
+-------------------
+ - Test suite fixes.
 
 v1.34.12: 10/13/2015
 --------------------
