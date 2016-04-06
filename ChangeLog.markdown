@@ -10,148 +10,312 @@ Not all changes are documented here. In particular, new features, user-oriented 
 Current trunk code
 ------------------
  - To see a list of commits in the active development branch 'incoming', which have not yet been packaged in a release, see
-    - Emscripten: https://github.com/kripken/emscripten/compare/master...incoming
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/master...incoming
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/master...incoming
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.36.1...incoming
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.36.1...incoming
+    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.36.1...incoming
 
 v1.36.1: 3/8/2016
 -----------------
- - Ctor evaller optimization option, and work to make standard libs more amenable to it.
- - Fix JSDCE slowness issue with very large projects.
- - `STACK_OVERFLOW_CHECK` option.
- - Audio fixes.
- - WebGL fixes.
- - Binaryen fixes.
+ - Fixed glfwSetWindowSizeCallback to conform to GLFW2 API.
+ - Update OpenAL sources only when the browser window is visible to avoid occasional stuttering static glitches when the page tab is hidden. (#4107)
+ - Implemented LLVM math intrinsics powi, trunc and floor.
+ - Added support for SDL_GL_ALPHA_SIZE in GL context initialization. (#4125)
+ - Added no-op stubs for several pthread functions when building without pthreads enabled (#4130)
+ - Optimize glUniform*fv and glVertexAttrib*fv functions to generate less garbage and perform much faster (#4128)
+ - Added new EVAL_CTORS optimization pass which evaluates global data initializer constructors at link time, which would improve startup time and reduce code size of these ctors.
+ - Implemented support for OpenAL AL_PITCH option.
+ - Implemented new build options -s STACK_OVERFLOW_CHECK=0/1/2 which adds runtime stack overrun checks. 0: disabled, 1: minimal, between each frame, 2: at each explicit JS side stack allocation call to allocate().
+ - Fixed an issue with -s SPLIT_MEMORY mode where an unsigned 32-bit memory access would come out as signed. (#4150)
+ - Fixed asm.js validation in call handlers to llvm_powi_f*.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.36.0...1.36.1
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.36.0...1.36.1
+    - Emscripten-Clang: no changes.
 
 v1.36.0: 2/23/2016
 ------------------
- - Duplicate function elimination option.
- - Audio fixes.
- - Update SimplifyStructRegSignatures from PNaCl.
- - SIMD support improvements.
+ - Fixed an OpenAL bug where OpenAL sources would not respect global volume setting.
+ - Fixed an issue where alGetListenerf() with AL_GAIN would not return the correct value. (#4091)
+ - Fixed an issue where setting alListenerf() with AL_GAIN would not set the correct value. (#4092)
+ - Implemented new JS optimizer "Duplicate Function Elimination" pass which collapses identical functions to save code size.
+ - Implemented the _Exit() function.
+ - Added support for SSE3 and SSSE3 intrinsics (#4099) and partially for SSE 4.1 intrinsics (#4030, #4101)
+ - Added support for -include-pch flag (#4086)
+ - Fixed a regex syntax in ccall on Chrome Canary (#4111)
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.23...1.36.0
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.23...1.36.0
+    - Emscripten-Clang: no changes.
 
 v1.35.23: 2/9/2016
 ------------------
- - JSDCE pass to remove unneeded code from shell.
- - Automatically set `NO_FILESYSTEM` based on static syscall usage, and add a `FORCE_FILESYSTEM` option for the rare case where files are used only from JS.
- - SIMD fixes.
- - Support complex math with compiler-rt.
- - Allow overriding `ENVIRONMENT_IS_*` options.
- - Auto-include Browser object as needed, remove `NO_BROWSER` option.
+ - Provide $NM environment variable to point to llvm-nm when running emconfigure, which helps e.g. libjansson to build (#4036)
+ - Fixed glGetString(GL_SHADING_LANGUAGE_VERSION) to return appropriate result depending on if running on WebGL1 vs WebGL2, instead of hardcoding the result (#4040)
+ - Fixed a regression with CMake try_run() possibly failing, caused by the addition of CMAKE_CROSSCOMPILING_EMULATOR in v1.32.3.
+ - Fixed CMake to work in the case when NODE_JS is an array containing parameters to be passed to Node.js. (#4045)
+ - Fixed a memory issue that caused the Emscripten memory initializer file (.mem.js) to be unnecessarily retained in memory during runtime (#4044)
+ - Added support for complex valued mul and div ops.
+ - Added new option "Module.environment" which allows overriding the runtime ENVIRONMENT_IS_WEB/ENVIRONMENT_IS_WORKER/ENVIRONMENT_IS_NODE/ENVIRONMENT_IS_SHELL fields.
+ - Fixed an issue with SAFE_HEAP methods in async mode (#4046)
+ - Fixed WebSocket constructor to work in web worker environment (#3849)
+ - Fixed a potential issue with some browsers reporting gamepad axis values outside \[-1, 1\] (#3602)
+ - Changed libcxxabi to be linked in last, so that it does not override weakly linked methods in libcxx (#4053)
+ - Implemented new JSDCE code optimization pass which removes at JS link stage dead code that is not referenced anywhere (in addition to LLVM doing this for C++ link stage).
+ - Fixed a Windows issue where embedding memory initializer as a string in JS code might cause corrupted output. (#3854)
+ - Fixed an issue when spaces are present in directory names in response files (#4062)
+ - Fixed a build issue when using --tracing and -s ALLOW_MEMORY_GROWTH=1 simultaneously (#4064)
+ - Greatly updated Emscripten support for SIMD.js intrinsics (non-SSE or NEON)
+ - Fixed an issue where compiler would not generate a link error when JS library function depended on a nonexisting symbol. (#4077)
+ - Removed UTF16 and UTF32 marshalling code from being exported by default.
+ - Removed the -s NO_BROWSER linker option and automated the detection of when that option is needed.
+ - Removed the JS implemented C++ symbol name demangler, now always depend on the libcxxabi compiled one.
+ - Fixed an issue where Emscripten linker would redundantly generate missing function stubs for some functions that do exist.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.22...1.35.23
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.22...1.35.23
+    - Emscripten-Clang: no changes.
 
 v1.35.22: 1/13/2016
 -------------------
- - Merge from LLVM.
+ - Updated to latest upstream LLVM trunk as of January 13th.
+ - Bumped up the required LLVM version from LLVM 3.8 to LLVM 3.9.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.21...1.35.22
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.21...1.35.22
+    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.35.21...1.35.22
 
 v1.35.21: 1/13/2016
 -------------------
- - Visual Studio fixes.
- - GLFW improvements.
- - Make more tools call Python 2 properly.
+ - Improved support for handling GLFW2 keycodes.
+ - Improved emranlib, system/bin/sdl-config and system/bin/sdl2-config to be executable in both python2 and python3.
+ - Fixed build flags -s AGGRESSIVE_VARIABLE_ELIMINATION=1 and -s USE_PTHREADS=2 to correctly work when run on a browser that does not support pthreads.
+ - Fixed a build issue that caused sequences of \r\r\n to be emitted on Windows.
+ - Fixed an issue that prevented building LLVM on Visual Studio 2015 (emscripten-fastcomp-clang #7)
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.20...1.35.21
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.20...1.35.21
+    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.35.20...1.35.21
 
 v1.35.20: 1/10/2016
 -------------------
- - Atomic and SIMD fixes.
+ - Fixed -s USE_PTHREADS compilation mode to account that SharedArrayBuffer specification no longer allows futex waiting on the main thread. (#4024)
+ - Added new python2 vs python3 compatibility wrappers for emcmake, emconfigure, emmake and emar.
+ - Fixed atomicrmw i64 codegen (#4025)
+ - Optimized codegen to simplify "x != 0" to just "x" when output is a boolean.
+ - Fixed a compiler crash when generating atomics code in debug builds of LLVM.
+ - Fixed a compiler crash when generating SIMD.js code that utilizes non-canonical length vectors (e.g. <float x 3>)
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.19...1.35.20
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.19...1.35.20
+    - Emscripten-Clang: no changes.
 
 v1.35.19: 1/7/2016
 ------------------
- - Merge from LLVM.
+ - Updated to latest upstream LLVM trunk as of January 7th.
+ - Full list of changes:
+    - Emscripten: no changes.
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.18...1.35.19
+    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.35.18...1.35.19
 
 v1.35.18: 1/7/2016
 ------------------
- - Stop emitting 'use asm' for memory growth, as browsers dropped it
- - Sockets fixes.
- - libc time fixes.
- - Make test runner support wildcards.
+ - Implemented getpeername() and fixed issues with handling getsockname() (#3997)
+ - Fixed an issue with daylight saving time in mktime() (#4001)
+ - Optimized pthreads code to avoid unnecessary FFI transitions (#3504)
+ - Fixed issues with strftime() (#3993)
+ - Deprecated memory growth support in asm.js.
+ - Implemented llvm_bitreverse_i32() (#3976)
+ - Fixed missing include header that affected building relooper on some compilers.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.17...1.35.18
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.17...1.35.18
+    - Emscripten-Clang: no changes.
 
 v1.35.17: 1/4/2016
 ------------------
- - Merge from LLVM.
+ - Updated to latest upstream LLVM trunk as of January 4th.
+ - Full list of changes:
+    - Emscripten: no changes.
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.16...1.35.17
+    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp/compare/1.35.16...1.35.17
 
 v1.35.16: 1/4/2016
 ------------------
- - Atomics updates.
+ - Improved support for -s USE_PTHREADS=2 build mode and added support for Atomics.exchange().
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.15...1.35.16
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.15...1.35.16
+    - Emscripten-Clang: no changes.
 
 v1.35.15: 1/4/2016
 ------------------
- - Legalization fixes.
- - SIMD updates.
- - WebIDL improvements.
- - `--threadprofiler` option
+ - Fixed an error with glClearbufferfv not working. (#3961)
+ - Improved file packager code so that file:// URLs work in Chrome too (#3965)
+ - Fixed issues with the --memoryprofiler UI.
+ - Fixed a Windows issue when generating system libraries in cache (#3939)
+ - Fixed a regression from v1.35.13 where GLES2 compilation would not work when -s USE_PTHREADS=1 was passed.
+ - Added support for WebIDL arrays as input parameters to WebIDL binder.
+ - Updated build support when using the LLVM wasm backend.
+ - Added new linker option --threadprofiler which generates a threads dashboard on the generated page for threads status overview. (#3971)
+ - Improved backwards compatibility of building on GCC 4.3 - 4.6.
+ - Fixed an asm.js validation issue when building against updated SIMD.js specification. (#3986)
+ - Improved Rust support.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.14...1.35.15
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.14...1.35.15
+    - Emscripten-Clang: no changes.
 
 v1.35.14: 12/15/2015
 --------------------
- - Merge from LLVM.
+ - Updated to latest upstream LLVM trunk as of December 15th.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.13...1.35.14
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.13...1.35.14
+    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.35.13...1.35.14
 
 v1.35.13: 12/15/2015
 --------------------
- - Legalization fixes.
- - Atomics updates.
- - `ONLY_MY_CODE` option.
- - Initial work to add an option to use the wasm LLVM backend.
- - Updates stb_image.
+ - Updated -s USE_PTHREADS code generation to reflect that the SharedInt*Array hierarchy no longer exists in the SharedArrayBuffer spec.
+ - Removed references to Atomic.fence() which no longer is part of the SharedArrayBuffer specification.
+ - Fixed an issue where JS code minifiers might generate bad code for cwrap (#3945)
+ - Updated compiler to issue a warning when --separate-asm is being used and output suffix is .js.
+ - Added new build option -s ONLY_MY_CODE which aims to eliminate most of the Emscripten runtime and generate a very minimal compiler output.
+ - Added new build option -s WASM_BACKEND=0/1 which controls whether to utilize the upstream LLVM wasm emitting codegen backend.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.12...1.35.13
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.12...1.35.13
+    - Emscripten-Clang: no changes.
 
 v1.35.12: 11/28/2015
 --------------------
- - Merge from LLVM.
+ - Update to latest upstream LLVM trunk as of November 28th.
+ - Fix Emscripten to handle new style format outputted by llvm-nm.
+ - Added new build option BINARYEN_METHOD to allow choosing which wasm generation method to use.
+ - Updates to Binaryen support.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.11...1.35.12
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.11...1.35.12
+    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.35.11...1.35.12
 
 v1.35.11: 11/27/2015
 --------------------
- - 64-bit atomics fix.
+ - Updated atomics test to stress 64-bit atomics better (#3892)
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.10...1.35.11
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.10...1.35.11
+    - Emscripten-Clang: no changes.
 
 v1.35.10: 11/25/2015
 --------------------
- - Improve NaN canonicalization warning.
- - Use typed array transfer with workers.
- - WebIDL binder improvements.
- - glfw key improvements.
- - Binaryen integration.
+ - Integration with Binaryen.
+ - Add a performance warning when multiple FS.syncfs() calls are in flight simultaneously.
+ - Correctly pass GLFW_REPEAT when sending key press repeats.
+ - Improved filesystem performance when building in multithreaded mode (#3923)
+ - Improve error detection when data file fails to load.
+ - Clarified that -s NO_DYNAMIC_EXECUTION=1 and -s RELOCATABLE=1 build modes are mutually exclusive.
+ - Added new build option -s NO_DYNAMIC_EXECUTION=2 which demotes eval() errors to warnings at runtime, useful for iterating fixes in a codebase for multiple eval()s  (#3930)
+ - Added support to Module.locateFile(filename) to locate the pthread-main.js file (#3500)
+ - Changed -s USE_PTHREADS=2 and -s PRECISE_F32=2 to imply --separate-asm instead of requiring it, to be backwards compatible (#3829, #3933)
+ - Fixed bad codegen for some 64-bit atomics (#3892, #3936)
+ - When emitting NaN canonicalization warning, also print the location in code where it occurs.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.9...1.35.10
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.9...1.35.10
+    - Emscripten-Clang: no changes.
 
-v1.35.8: 11/12/2015
+v1.35.9: 11/12/2015
 -------------------
- - Optimize zero-initialized part of data segment/mem init.
- - Add emcc.py, and improve Python support to call Python 2 properly.
+ - Implement glfwSetInputMode when mode is GLFW_CURSOR and value is GLFW_CURSOR_NORMAL|GLFW_CURSOR_DISABLED
+ - Add explicit abort() when dlopen() is called without linking support
+ - Make emcc explicitly reinvoke itself from python2 if called from python3.
+ - Optimize memory initializer to omit zero-initialized values (#3907)
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.8...1.35.9
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.8...1.35.9
+    - Emscripten-Clang: no changes.
 
-v1.35.9: 11/10/2015
+v1.35.8: 11/10/2015
 -------------------
- - Optimize and fix round/roundf.
- - Implement glfwSetInputMode when mode is GLFW_CURSOR and value is GLFW_CURSOR_NORMAL|GLFW_CURSOR_DISABLED.
- - Fix realpath on directories.
+ - Removed obsoleted EXPORTED_GLOBALS build option.
+ - Export filesystem as global object 'FS' in Emscripten runtime.
+ - Fixed realpath() function on directories.
+ - Fixed round() and roundf() to work when building without -s PRECISE_F32=1 and optimize these to be faster (#3876)
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.7...1.35.8
+    - Emscripten-LLVM: no changes.
+    - Emscripten-Clang: no changes.
 
 v1.35.7: 11/4/2015
--------------------
- - Rebase against upstream LLVM "master" branch, bringing us to current LLVM trunk.
+------------------
+ - Updated to latest upstream LLVM trunk version as of November 4th.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.6...1.35.7
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.6...1.35.7
+    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.35.6...1.35.7
 
 v1.35.6: 11/4/2015
--------------------
- (no changes)
+------------------
+ - This tag was created for technical purposes, and has no changes compared to v1.35.6.
 
 v1.35.5: 11/4/2015
--------------------
- - Use optimized native optimizer by default.
- - asm2wasm support, compile asm.js into wasm (see Binaryen project).
+------------------
+ - Removed Content-Length and Connection: close headers in POST requests.
+ - Migrate to using the native C++11-implemented optimizer by default.
+ - Fixed call to glDrawBuffers(0, *); (#3890)
+ - Fixed lazy file system to work with closure (#3842)
+ - Fixed gzip compression with lazy file system (#3837)
+ - Added no-op gracefully failing stubs for process spawn functions (#3819)
+ - Clarified error message that memory growth is not supported with shared modules (#3893)
+ - Initial work on wasm support in optimizer
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.4...1.35.5
+    - Emscripten-LLVM: no changes.
+    - Emscripten-Clang: no changes.
 
 v1.35.4: 10/26/2015
 -------------------
- - Move legalization into asm.js LLVM backend.
+ - Move to legalization in the JS backend.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.3...1.35.4
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.3...1.35.4
+    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.35.3...1.35.4
 
 v1.35.3: 10/26/2015
 -------------------
- - SIMD fixes.
- - Treat js-libraries as libraries in cmake.
+ - Ignore O_CLOEXEC on NODEFS (#3862)
+ - Improved --js-library support in CMake by treating these as libraries (#3840)
+ - Still support -Wno-warn-absolute-paths (#3833)
+ - Add support to zext <4 x i1> to <4x i32>
+ - Emit emscripten versions of llvm and clang in clang --version
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.2...1.35.3
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.2...1.35.3
+    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.35.2...1.35.3
 
 v1.35.2: 10/20/2015
 -------------------
- - Rebase against upstream LLVM "google/stable" branch, bringing us to LLVM 3.8
+ - Rebase against upstream LLVM "google/stable" branch, bringing us to LLVM 3.8.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.1...1.35.2
+    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.1...1.35.2
+    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.35.1...1.35.2
 
 v1.35.1: 10/20/2015
 -------------------
- - WebAudio fix for WebKit.
- - "-s" emcc argument fixes.
+ - Fixed a bug where passing -s option to LLVM would not work.
+ - Work around a WebAudio bug on WebKit "pauseWebAudio failed: TypeError: Not enough arguments" (#3861)
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.0...1.35.1
+    - Emscripten-LLVM: no changes.
+    - Emscripten-Clang: no changes.
 
 v1.35.0: 10/19/2015
 -------------------
- - Test suite fixes.
+ - Fixed out of memory abort message.
+ - Full list of changes:
+    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.12...1.35.0
+    - Emscripten-LLVM: no changes.
+    - Emscripten-Clang: no changes.
 
 v1.34.12: 10/13/2015
 --------------------
