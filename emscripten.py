@@ -282,6 +282,7 @@ def compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DE
 
     return glue, forwarded_data
 
+
 def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, settings, outfile, DEBUG):
 
     if DEBUG:
@@ -1271,6 +1272,11 @@ Runtime.registerFunctions(%(sigs)s, Module);
     if DEBUG:
       logging.debug('  emscript: python processing: finalize took %s seconds' % (time.time() - t))
 
+
+def fixxx(s):
+  # XXX what should this do, exactly?
+  return s.replace('.', 'dot')
+
 def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_engine=None,
                           temp_files=None, DEBUG=None):
   # Overview:
@@ -1354,6 +1360,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
     elif line.startswith('  (export '):
       parts = line.split(' ')
       metadata['exports'].append('_' + parts[3][1:-1])
+      #map(metadata['exports'].replace('.', 'ಠ_ಠ')
 
   metadata['declares'] = filter(lambda x: not x.startswith('emscripten_asm_const'), metadata['declares']) # we emit those ourselves
 
@@ -1399,7 +1406,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
 
   # memory and global initializers
 
-  global_initializers = str(', '.join(map(lambda i: '{ func: function() { %s() } }' % i, metadata['initializers'])))
+  global_initializers = str(', '.join(map(lambda i: '{ func: function() { %s() } }' % fixxx(i), metadata['initializers'])))
 
   staticbump = metadata['staticBump']
   while staticbump % 16 != 0: staticbump += 1
@@ -1496,17 +1503,17 @@ return ASM_CONSTS[code](%s);
   if settings['ASSERTIONS']:
     # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
     # some support code
-    receiving = '\n'.join(['var real_' + s + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {
+    receiving = '\n'.join(['var real_' + fixxx(s) + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {
 assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
 assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-return real_''' + s + '''.apply(null, arguments);
+return real_''' + fixxx(s) + '''.apply(null, arguments);
 };
 ''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', 'runPostSets', '_emscripten_replace_memory']])
 
   if not settings['SWAPPABLE_ASM_MODULE']:
-    receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s[1:] + '"]' for s in exported_implemented_functions])
+    receiving += ';\n'.join(['var ' + fixxx(s) + ' = Module["' + s + '"] = asm["' + s[1:] + '"]' for s in exported_implemented_functions])
   else:
-    receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + s + ' = Module["' + s + '"] = function() { return Module["asm"]["' + s[1:] + '"].apply(null, arguments) }' for s in exported_implemented_functions])
+    receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + fixxx(s) + ' = Module["' + s + '"] = function() { return Module["asm"]["' + s[1:] + '"].apply(null, arguments) }' for s in exported_implemented_functions])
   receiving += ';\n'
 
   # finalize
