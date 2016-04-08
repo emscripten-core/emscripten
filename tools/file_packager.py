@@ -634,12 +634,13 @@ if has_preloaded:
       };
 
       function cacheRemotePackage(db, packageName, packageData, packageMeta, callback, errback) {
-        var transaction = db.transaction([PACKAGE_STORE_NAME, METADATA_STORE_NAME], IDB_RW);
-        var packages = transaction.objectStore(PACKAGE_STORE_NAME);
-        var metadata = transaction.objectStore(METADATA_STORE_NAME);
+        var transaction_packages = db.transaction([PACKAGE_STORE_NAME], IDB_RW);
+        var packages = transaction_packages.objectStore(PACKAGE_STORE_NAME);
 
         var putPackageRequest = packages.put(packageData, packageName);
         putPackageRequest.onsuccess = function(event) {
+          var transaction_metadata = db.transaction([METADATA_STORE_NAME], IDB_RW);
+          var metadata = transaction_metadata.objectStore(METADATA_STORE_NAME);
           var putMetadataRequest = metadata.put(packageMeta, packageName);
           putMetadataRequest.onsuccess = function(event) {
             callback(packageData);
