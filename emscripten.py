@@ -1188,8 +1188,8 @@ var asm = (function(global, env, buffer) {
   var undef = 0;
   var nan = global%s, inf = global%s;
   var tempInt = 0, tempBigInt = 0, tempBigIntP = 0, tempBigIntS = 0, tempBigIntR = 0.0, tempBigIntI = 0, tempBigIntD = 0, tempValue = 0, tempDouble = 0.0;
-''' % (access_quote('NaN'), access_quote('Infinity'))) + ''.join(['''
-  var tempRet%d = 0;''' % i for i in range(10)]) + '\n' + asm_global_funcs] + \
+  var tempRet0 = 0;
+''' % (access_quote('NaN'), access_quote('Infinity'))) + '\n' + asm_global_funcs] + \
   ['  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround else '0.0')] + \
   ['  var asyncState = 0;\n' if settings.get('EMTERPRETIFY_ASYNC') else ''] + \
   (['  const f0 = Math_fround(0);\n'] if provide_fround else []) + \
