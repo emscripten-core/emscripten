@@ -1543,6 +1543,10 @@ var asm = Module['asm'](%s, %s, buffer);
      'Module' + access_quote('asmLibraryArg'),
      receiving)]
 
+  # Store a list of all address-taken functions in the module. This is currently used by the dynCall
+  # mechanism, which looks up a function pointer to get its name, and calls that directly.
+  # TODO: It would be good to find a way to implement this functionality without exporting all
+  # address-taken functions.
   indirect_funcs = '[' + ','.join(['"%s"' % asmjs_mangle(f) for f in metadata['indirect_table']]) + ']'
   funcs_js.append('''
 Module%s = %s;

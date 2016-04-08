@@ -197,7 +197,7 @@ var Runtime = {
       assert(args.length == sig.length-1);
 #endif
       if (Module['usingWasm']) {
-        // look up function by name
+        // look up function by name and call it directly
         name = Module['indirectFunctions'][ptr]
         return Module[name].apply(null, args);
       }
