@@ -218,7 +218,7 @@ def compiler_glue(metadata, settings, libraries, compiler_engine, temp_files, DE
         settings['PRECISE_I64_MATH'] = 2
         break
 
-    metadata['declares'] = filter(lambda i64_func: i64_func not in ['getHigh32', 'setHigh32', '__muldi3', '__divdi3', '__remdi3', '__udivdi3', '__uremdi3'], metadata['declares']) # FIXME: do these one by one as normal js lib funcs
+    metadata['declares'] = filter(lambda i64_func: i64_func not in ['getHigh32', 'setHigh32'], metadata['declares']) # FIXME: do these one by one as normal js lib funcs
 
     # Syscalls optimization. Our syscalls are static, and so if we see a very limited set of them - in particular,
     # no open() syscall and just simple writing - then we don't need full filesystem support.
