@@ -6981,6 +6981,7 @@ var LibraryGL = {
   glDrawElements: function(mode, count, type, indices) {
 #if FULL_ES2
     var buf;
+    var vertexes = 0;
     if (!GL.currElementArrayBuffer) {
       var size = GL.calcBufLength(1, type, 0, count);
       buf = GL.getTempIndexBuffer(size);
@@ -6988,12 +6989,29 @@ var LibraryGL = {
       GLctx.bufferSubData(GLctx.ELEMENT_ARRAY_BUFFER,
                                0,
                                HEAPU8.subarray(indices, indices + size));
+
+      // Calculating vertex count if shader's attribute data is on client side
+      if (count > 0) {
+        for (var i = 0; i < GL.currentContext.maxVertexAttribs; ++i) {
+          var cb = GL.currentContext.clientBuffers[i];
+          if (cb.clientside && cb.enabled) {
+            var array_classes = {
+                5121 /* GL_UNSIGNED_BYTE */: Uint8Array,
+                5123 /* GL_UNSIGNED_SHORT */: Uint16Array,
+                5125 /* GL_UNSIGNED_INT */: Uint32Array};
+            if (array_classes[type])
+                vertexes = Math.max.apply(null, new array_classes[type](HEAPU8.buffer, indices, count)) + 1;
+            break;
+          }
+        }
+      }
+
       // the index is now 0
       indices = 0;
     }
 
     // bind any client-side buffers
-    GL.preDrawHandleClientVertexAttribBindings(count);
+    GL.preDrawHandleClientVertexAttribBindings(vertexes);
 #endif
 
     GLctx.drawElements(mode, count, type, indices);
