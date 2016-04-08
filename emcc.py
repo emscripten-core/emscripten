@@ -1859,6 +1859,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         cmd = [os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--mapped-globals=' + wasm_text_target + '.mappedGlobals', '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)]
         if shared.Settings.BINARYEN_IMPRECISE:
           cmd += ['--imprecise']
+        if opt_level == 0:
+          cmd += ['--no-opts']
         logging.debug('asm2wasm (asm.js => WebAssembly): ' + ' '.join(cmd))
         TimeLogger.update()
         subprocess.check_call(cmd, stdout=open(wasm_text_target, 'w'))
