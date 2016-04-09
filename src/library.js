@@ -893,7 +893,9 @@ LibraryManager.library = {
     return 'var cttz_i8 = allocate([' + range(256).map(function(x) { return cttz(x) }).join(',') + '], "i8", ALLOC_STATIC);';
 #endif
   }],
+#if BINARYEN == 0 // binaryen will convert these calls to wasm anyhow
   llvm_cttz_i32__asm: true,
+#endif
   llvm_cttz_i32__sig: 'ii',
   llvm_cttz_i32: function(x) {
     x = x|0;
