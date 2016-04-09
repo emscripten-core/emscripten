@@ -1213,51 +1213,6 @@ LibraryManager.library = {
     {{{ makeThrow('ptr') }}}
   },
 
-  llvm_uadd_with_overflow_i8: function(x, y) {
-    x = x & 0xff;
-    y = y & 0xff;
-    {{{ makeStructuralReturn(['(x+y) & 0xff', 'x+y > 255']) }}};
-  },
-
-  llvm_umul_with_overflow_i8: function(x, y) {
-    x = x & 0xff;
-    y = y & 0xff;
-    {{{ makeStructuralReturn(['(x*y) & 0xff', 'x*y > 255']) }}};
-  },
-
-  llvm_uadd_with_overflow_i16: function(x, y) {
-    x = x & 0xffff;
-    y = y & 0xffff;
-    {{{ makeStructuralReturn(['(x+y) & 0xffff', 'x+y > 65535']) }}};
-  },
-
-  llvm_umul_with_overflow_i16: function(x, y) {
-    x = x & 0xffff;
-    y = y & 0xffff;
-    {{{ makeStructuralReturn(['(x*y) & 0xffff', 'x*y > 65535']) }}};
-  },
-
-  llvm_uadd_with_overflow_i32: function(x, y) {
-    x = x>>>0;
-    y = y>>>0;
-    {{{ makeStructuralReturn(['(x+y)>>>0', 'x+y > 4294967295']) }}};
-  },
-
-  llvm_umul_with_overflow_i32: function(x, y) {
-    x = x>>>0;
-    y = y>>>0;
-    {{{ makeStructuralReturn(['(x*y)>>>0', 'x*y > 4294967295']) }}};
-  },
-
-  llvm_umul_with_overflow_i64__deps: ['__muldi3'],
-  llvm_umul_with_overflow_i64: function(xl, xh, yl, yh) {
-#if ASSERTIONS
-    Runtime.warnOnce('no overflow support in llvm_umul_with_overflow_i64');
-#endif
-    var low = ___muldi3(xl, xh, yl, yh);
-    {{{ makeStructuralReturn(['low', makeGetTempRet0(), '0']) }}};
-  },
-
   llvm_stacksave: function() {
     var self = _llvm_stacksave;
     if (!self.LLVM_SAVEDSTACKS) {
@@ -3944,20 +3899,6 @@ LibraryManager.library = {
     l = (a + c)>>>0;
     h = (b + d + (((l>>>0) < (a>>>0))|0))>>>0; // Add carry from low word to high word on overflow.
     {{{ makeStructuralReturn(['l|0', 'h'], true) }}};
-  },
-  llvm_uadd_with_overflow_i64__asm: true,
-  llvm_uadd_with_overflow_i64__sig: 'iiiii',
-  llvm_uadd_with_overflow_i64: function(a, b, c, d) {
-    a = a|0; b = b|0; c = c|0; d = d|0;
-    var l = 0, h = 0, overflow = 0;
-    l = (a + c)>>>0;
-    h = (b + d)>>>0;
-    overflow = ((h>>>0) < (b>>>0))|0; // Return whether addition overflowed even the high word.
-    if ((l>>>0) < (a>>>0)) {
-      h = (h + 1)>>>0; // Add carry from low word to high word on overflow.
-      overflow = overflow | (!h); // Check again for overflow.
-    }
-    {{{ makeStructuralReturn(['l|0', 'h', 'overflow'], true) }}};
   },
 
   i64Subtract__asm: true,
