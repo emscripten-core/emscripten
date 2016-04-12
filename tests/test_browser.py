@@ -600,8 +600,8 @@ window.close = function() {
       Module['arguments'] = ['-0'];
     ''')
 
-    self.btest('sdl_canvas_alpha.c', reference='sdl_canvas_alpha.png', reference_slack=11)
-    self.btest('sdl_canvas_alpha.c', args=['--pre-js', 'flag_0.js'], reference='sdl_canvas_alpha_flag_0.png', reference_slack=11)
+    self.btest('sdl_canvas_alpha.c', reference='sdl_canvas_alpha.png', reference_slack=12)
+    self.btest('sdl_canvas_alpha.c', args=['--pre-js', 'flag_0.js'], reference='sdl_canvas_alpha_flag_0.png', reference_slack=12)
 
 
   def test_sdl_key(self):
