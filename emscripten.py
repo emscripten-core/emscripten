@@ -1338,6 +1338,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
     'maxGlobalAlign': 0,
     'initializers': [],
     'exports': [],
+    'indirect_table': []
   }
 
   for k, v in metadata_json.iteritems():
@@ -1366,6 +1367,9 @@ def emscript_wasm_backend(infile, settings, outfile, libraries=None, compiler_en
       exportname = parts[3][1:-1]
       assert asmjs_mangle(exportname) not in metadata['exports']
       metadata['exports'].append(exportname)
+    elif line.startswith('  (table '):
+      parts = line.split()
+      metadata['indirect_table'] = [func[1:] for func in parts[1:]]
 
   metadata['declares'] = filter(lambda x: not x.startswith('emscripten_asm_const'), metadata['declares']) # we emit those ourselves
 
@@ -1540,6 +1544,15 @@ var asm = Module['asm'](%s, %s, buffer);
 ''' % ('Module' + access_quote('asmGlobalArg'),
      'Module' + access_quote('asmLibraryArg'),
      receiving)]
+
+  # Store a list of all address-taken functions in the module. This is currently used by the dynCall
+  # mechanism, which looks up a function pointer to get its name, and calls that directly.
+  # TODO: It would be good to find a way to implement this functionality without exporting all
+  # address-taken functions.
+  indirect_funcs = '[' + ','.join(['"%s"' % asmjs_mangle(f) for f in metadata['indirect_table']]) + ']'
+  funcs_js.append('''
+Module%s = %s;
+''' % (access_quote('indirectFunctions'), indirect_funcs))
 
   # wasm backend stack goes down, and is stored in the first global var location
   funcs_js.append('''

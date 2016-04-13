@@ -196,6 +196,11 @@ var Runtime = {
 #if ASSERTIONS
       assert(args.length == sig.length-1);
 #endif
+      if (Module['usingWasm']) {
+        // look up function by name and call it directly
+        name = Module['indirectFunctions'][ptr]
+        return Module[name].apply(null, args);
+      }
 #if ASSERTIONS
       assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
 #endif
@@ -502,4 +507,3 @@ if (RETAIN_COMPILER_SETTINGS) {
     } catch(e){}
   }
 }
-
