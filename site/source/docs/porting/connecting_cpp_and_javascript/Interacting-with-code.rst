@@ -39,7 +39,8 @@ to more detailed information.
    related manners, see the :ref:`file-system-overview`.
 
 .. note:: Before you can call your code, the runtime environment may need
-   to load a memory initialization file asynchronously depending on optimization
+   to load a memory initialization file, preload files, or
+   do other asynchronous operations depending on optimization
    and build settings.
    See :ref:`faq-when-safe-to-call-compiled-functions` in the FAQ.
 
